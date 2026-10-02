@@ -2038,6 +2038,10 @@ def _compile_function(
                 heap_base, offset = heap_base_register(result_ref)
                 assembler.emit(_lea(target.result_register, heap_base, offset))
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.POINTER_REBASE:
+                # Frame lowering models heap pointers as base + static offset;
+                # a dynamic rebase needs the register path (ADR-092).
+                fail("XAX.NATIVE.REBASE", graph_object.cid.hex(), "NATIVE-REBASE-REGISTER-PATH", "register-resident Linux function", "frame lowering")
             elif node.operation == Operation.POINTER_ADDRESS:
                 if _bits_width(resolve, node.results[0]) != target.pointer_bits:
                     fail("XAX.NATIVE.ADDRESS_WIDTH", graph_object.cid.hex(), "NATIVE-ADDRESS-POINTER-WIDTH", target.pointer_bits, _bits_width(resolve, node.results[0]))

@@ -10,9 +10,13 @@ Exact behavior (identical to ``linux_filestat_c/chains.c``):
 * write ``"<found> <steps>\\n"`` in decimal, release all mappings, and exit
   explicitly with status 0.
 
-The C twin links nodes with real pointers.  ADR-082 admits only
-provenance-free pointers in memory, so XAX expresses the links as arena
-indices with checked accesses; this workload measures what that costs (OI-37).
+The C twin links nodes with real pointers.  XAX expresses the links two ways:
+
+* ``links="index"``: arena indices with checked accesses (ADR-082), which
+  measured the OI-37 cost (ADR-090);
+* ``links="pointer"``: exposed node addresses (``pointer_address``) reloaded
+  with ``pointer_rebase`` into the arena view (ADR-092); field reads through
+  the rebased 16-byte node are statically in bounds.
 """
 
 from __future__ import annotations
@@ -42,7 +46,11 @@ C_SOURCE = HERE / "linux_filestat_c" / "chains.c"
 INDEX_SOURCE = HERE / "linux_filestat_c" / "chains_index.c"
 # Diagnostic C twins with XAX's representation (not baselines): they separate
 # link-representation cost and bounds-check cost from XAX code generation.
-DIAGNOSTICS = (("gcc-O2-index", ()), ("gcc-O2-index-checked", ("-DCHECKED",)))
+DIAGNOSTICS = (
+    ("gcc-O2-index", INDEX_SOURCE, ()),
+    ("gcc-O2-index-checked", INDEX_SOURCE, ("-DCHECKED",)),
+    ("gcc-O2-pointer-checked", C_SOURCE, ("-DCHECKED",)),
+)
 EVIDENCE = HERE / "oi37_chains_evidence.json"
 
 
@@ -54,7 +62,13 @@ class ChainsProgram:
     block_count: int
 
 
-def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS) -> ChainsProgram:
+LINKS = ("index", "pointer")
+
+
+def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str = "index") -> ChainsProgram:
+    if links not in LINKS:
+        raise ValueError(f"links must be one of {LINKS}")
+    pointer_links = links == "pointer"
     api = linux_api()
     kit = Kit()
     b32, b64 = kit.b32, kit.b64
@@ -95,6 +109,7 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS) -> ChainsPr
     arena, arena_token, arena_mem = mapping(arena_mem, arena_bytes, words, 8)
     table, bucket_token, bucket_mem = mapping(bucket_mem, bucket_bytes, words, 8)
     out, out_token, out_mem = mapping(out_mem, out_bytes, api.bytes_rw, 1)
+    arena_address = entry.op1(Operation.POINTER_ADDRESS, (arena,), b64, attributes=(1,)) if pointer_links else None
     state = {
         "proc": process, "fs": fs, "arena_token": arena_token, "arena_mem": arena_mem,
         "bucket_token": bucket_token, "bucket_mem": bucket_mem, "out_token": out_token, "out_mem": out_mem,
@@ -120,7 +135,9 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS) -> ChainsPr
     link = binary(b, Operation.ADD_WRAP, node, const(b, 8, b32), b32)
     arena_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (arena, link, head, arena_mem), mem, attributes=(8, 1))
     following = binary(b, Operation.ADD_WRAP, s["i"], const(b, 1))
-    bucket_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (table, bucket, following, bucket_mem), mem, attributes=(8, 1))
+    # Index links store i + 1; pointer links store the node's exposed address.
+    reference = binary(b, Operation.ADD_WRAP, arena_address, binary(b, Operation.MUL_WRAP, s["i"], const(b, NODE_BYTES))) if pointer_links else following
+    bucket_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (table, bucket, reference, bucket_mem), mem, attributes=(8, 1))
     b.br(insert, *flow.args(insert, {**s, "arena_mem": arena_mem, "bucket_mem": bucket_mem, "i": following, "x": key}))
 
     # --- lookup loop ---------------------------------------------------------------------
@@ -129,7 +146,6 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS) -> ChainsPr
     lookup_body, lookup_body_state = flow.block(*counters)
     walk, walk_state = flow.block(*counters, ("cur", b64))
     step, step_state = flow.block(*counters, ("cur", b64))
-    advance, advance_state = flow.block(*counters, ("node", b32))
     format_block, format_state = flow.block(("found", b64), ("steps", b64))
     zero = const(lookup_start, 0)
     lookup_start.br(lookup, *flow.args(lookup, {**start_state, "j": zero, "x": const(lookup_start, SEED), "found": zero, "steps": zero}))
@@ -152,19 +168,33 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS) -> ChainsPr
     )
     st = step
     ss = step_state
-    node = byte_offset(st, binary(st, Operation.SUB_WRAP, ss["cur"], const(st, 1)), NODE_BYTES)
-    stored, arena_mem = st.op(Operation.CHECKED_LOAD_BITS_LE, (arena, node, ss["arena_mem"]), (b64, mem), attributes=(8, 1))
     steps = binary(st, Operation.ADD_WRAP, ss["steps"], const(st, 1))
-    st.cbr(
-        compare(st, IntCompare.EQ, stored, ss["x"]),
-        lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": binary(st, Operation.ADD_WRAP, ss["found"], const(st, 1))}),
-        advance, flow.args(advance, {**ss, "arena_mem": arena_mem, "steps": steps, "node": node}),
-    )
-    ad = advance
-    ads = advance_state
-    link = binary(ad, Operation.ADD_WRAP, ads["node"], const(ad, 8, b32), b32)
-    successor, arena_mem = ad.op(Operation.CHECKED_LOAD_BITS_LE, (arena, link, ads["arena_mem"]), (b64, mem), attributes=(8, 1))
-    ad.br(walk, *flow.args(walk, {**ads, "arena_mem": arena_mem, "cur": successor}))
+    found = binary(st, Operation.ADD_WRAP, ss["found"], const(st, 1))
+    if pointer_links:
+        # Both fields come from one rebased node; no dynamic offset remains.
+        node = st.op1(Operation.POINTER_REBASE, (arena, ss["cur"]), words, attributes=(NODE_BYTES,))
+        stored, arena_mem = st.op(Operation.LOAD_BITS_LE, (node, ss["arena_mem"]), (b64, mem), attributes=(8, 8))
+        link = st.op1(Operation.ADDRESS_OFFSET, (node,), words, attributes=(8,))
+        successor, arena_mem = st.op(Operation.LOAD_BITS_LE, (link, arena_mem), (b64, mem), attributes=(8, 8))
+        st.cbr(
+            compare(st, IntCompare.EQ, stored, ss["x"]),
+            lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": found}),
+            walk, flow.args(walk, {**ss, "arena_mem": arena_mem, "steps": steps, "cur": successor}),
+        )
+    else:
+        advance, advance_state = flow.block(*counters, ("node", b32))
+        node = byte_offset(st, binary(st, Operation.SUB_WRAP, ss["cur"], const(st, 1)), NODE_BYTES)
+        stored, arena_mem = st.op(Operation.CHECKED_LOAD_BITS_LE, (arena, node, ss["arena_mem"]), (b64, mem), attributes=(8, 1))
+        st.cbr(
+            compare(st, IntCompare.EQ, stored, ss["x"]),
+            lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": found}),
+            advance, flow.args(advance, {**ss, "arena_mem": arena_mem, "steps": steps, "node": node}),
+        )
+        ad = advance
+        ads = advance_state
+        link = binary(ad, Operation.ADD_WRAP, ads["node"], const(ad, 8, b32), b32)
+        successor, arena_mem = ad.op(Operation.CHECKED_LOAD_BITS_LE, (arena, link, ads["arena_mem"]), (b64, mem), attributes=(8, 1))
+        ad.br(walk, *flow.args(walk, {**ads, "arena_mem": arena_mem, "cur": successor}))
 
     # --- output, release, explicit exit ---------------------------------------------------
     current, current_state = emit_decimal_line(kit, flow, format_block, format_state, ("found", "steps"), out, mem, "out_mem")
@@ -218,17 +248,22 @@ def reference_chains(nodes: int = NODES, buckets: int = BUCKETS) -> bytes:
     return f"{found} {steps}\n".encode()
 
 
-def compile_chains(nodes: int = NODES, buckets: int = BUCKETS) -> tuple[ChainsProgram, LinuxExecutable]:
-    program = build_chains_program(nodes, buckets)
+def compile_chains(nodes: int = NODES, buckets: int = BUCKETS, links: str = "index") -> tuple[ChainsProgram, LinuxExecutable]:
+    program = build_chains_program(nodes, buckets, links)
     return program, compile_linux_executable(program.reader, program.entry.cid, program.target.cid)
 
 
 def run_benchmark(repetitions: int, warmup: int) -> dict:
     program, executable = compile_chains()
+    pointer_program, pointer_executable = compile_chains(links="pointer")
     expected = reference_chains()
     with tempfile.TemporaryDirectory() as directory:
         work = Path(directory)
         artifacts, stripped = build_arms(work, "chains", executable.data, C_SOURCE)
+        artifacts["xax-pointer"] = work / "chains-xax-pointer"
+        artifacts["xax-pointer"].write_bytes(pointer_executable.data)
+        artifacts["xax-pointer"].chmod(0o755)
+        stripped["xax-pointer"] = len(pointer_executable.data)  # no section table to strip
 
         def validate(arm: str, path: Path) -> bytes:
             output, status = run_output(path, work)
@@ -238,8 +273,8 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
 
         results, output, reference_rss = measure_arms(work, artifacts, stripped, repetitions, warmup, validate)
         diagnostic_artifacts = {"gcc-O2": artifacts["gcc-O2"]}
-        for arm, flags in DIAGNOSTICS:
-            subprocess.run(["gcc", "-O2", *flags, "-o", str(work / arm), str(INDEX_SOURCE)], check=True)
+        for arm, source, flags in DIAGNOSTICS:
+            subprocess.run(["gcc", "-O2", *flags, "-o", str(work / arm), str(source)], check=True)
             diagnostic_artifacts[arm] = work / arm
         diagnostics, _output, _rss = measure_arms(
             work, diagnostic_artifacts, {arm: path.stat().st_size for arm, path in diagnostic_artifacts.items()}, repetitions, warmup, validate,
@@ -250,9 +285,11 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
         "index_vs_pointer": round(diagnostics["gcc-O2-index"]["wall_seconds_median"] / results["gcc-O2"]["wall_seconds_median"], 3),
         "checked_vs_unchecked_index": round(diagnostics["gcc-O2-index-checked"]["wall_seconds_median"] / diagnostics["gcc-O2-index"]["wall_seconds_median"], 3),
         "xax_vs_checked_index_c": round(xax_time / diagnostics["gcc-O2-index-checked"]["wall_seconds_median"], 3),
+        "checked_vs_unchecked_pointer": round(diagnostics["gcc-O2-pointer-checked"]["wall_seconds_median"] / results["gcc-O2"]["wall_seconds_median"], 3),
+        "xax_pointer_vs_checked_pointer_c": round(results["xax-pointer"]["wall_seconds_median"] / diagnostics["gcc-O2-pointer-checked"]["wall_seconds_median"], 3),
     }
     return {
-        "format": "xax-oi37-chains-evidence-v1",
+        "format": "xax-oi37-chains-evidence-v2",
         "evidence_label": "MEASURED",
         "workload": f"chained hash table: {NODES} xorshift64 inserts into {BUCKETS} buckets, then {NODES} successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
         "output": output.decode(),
@@ -266,10 +303,19 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
             "link_representation": "b64 arena index + 1 (0 = end); byte offset = (index - 1) * 16, checked against the view extent",
             "runtime_dependencies": [],
         },
+        "xax_pointer": {
+            "program_root": pointer_program.reader.root_cid.hex(),
+            "entry_function": pointer_program.entry.cid.hex(),
+            "graph_blocks": pointer_program.block_count,
+            "artifact_sha256": hashlib.sha256(pointer_executable.data).hexdigest(),
+            "artifact_bytes": len(pointer_executable.data),
+            "link_representation": "exposed node address (0 = end) reloaded by pointer_rebase(arena, address, 16): one range+alignment check, then unchecked field loads (ADR-092)",
+            "runtime_dependencies": [],
+        },
         "results": results,
         "diagnostics": diagnostics,
         "attribution": attribution,
-        "attribution_note": "all ratios are medians from the same run: representation = C index/C pointer; checks = checked/unchecked C index; codegen = XAX/checked C index (same representation and checks)",
+        "attribution_note": "all ratios are medians from the same run: representation = C index/C pointer; checks = checked/unchecked C index or pointer; codegen = XAX/C with the same representation and checks",
         "host": host_info(),
         "method": method_info(warmup, repetitions, reference_rss),
     }

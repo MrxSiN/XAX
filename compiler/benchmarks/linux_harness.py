@@ -89,7 +89,7 @@ def measure_arms(
     if len(outputs) != 1:
         raise AssertionError(f"outputs differ: {outputs}")
     baseline = results["gcc-O2"]["wall_seconds_median"]
-    best = min(item["wall_seconds_median"] for arm, item in results.items() if arm != "xax")
+    best = min(item["wall_seconds_median"] for arm, item in results.items() if not arm.startswith("xax"))
     for item in results.values():
         item["time_ratio_vs_gcc_O2"] = round(item["wall_seconds_median"] / baseline, 3)
         item["time_ratio_vs_best_baseline"] = round(item["wall_seconds_median"] / best, 3)

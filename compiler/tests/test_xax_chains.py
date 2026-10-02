@@ -1,4 +1,4 @@
-"""OI-37 evidence workload: arena + index chained hash table on Linux x86-64."""
+"""OI-37 evidence workload: index-linked and pointer-linked (ADR-092) chained hash tables."""
 
 from __future__ import annotations
 
@@ -20,9 +20,9 @@ LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() i
 class ChainsTests(unittest.TestCase):
     @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
     def test_small_tables_match_reference(self):
-        for nodes, buckets in ((1, 2), (4096, 64), (3000, 4096)):
-            with self.subTest(nodes=nodes, buckets=buckets):
-                _program, executable = compile_chains(nodes, buckets)
+        for nodes, buckets, links in ((1, 2, "index"), (4096, 64, "index"), (3000, 4096, "index"), (1, 2, "pointer"), (4096, 64, "pointer"), (3000, 4096, "pointer")):
+            with self.subTest(nodes=nodes, buckets=buckets, links=links):
+                _program, executable = compile_chains(nodes, buckets, links)
                 completed = run_linux_executable(executable.data)
                 self.assertEqual((completed.returncode, completed.stdout), (0, reference_chains(nodes, buckets)))
 
@@ -31,6 +31,9 @@ class ChainsTests(unittest.TestCase):
         evidence = json.loads(EVIDENCE.read_text())
         self.assertEqual(evidence["xax"]["artifact_sha256"], hashlib.sha256(executable.data).hexdigest())
         self.assertEqual(evidence["xax"]["program_root"], program.reader.root_cid.hex())
+        pointer_program, pointer_executable = compile_chains(links="pointer")
+        self.assertEqual(evidence["xax_pointer"]["artifact_sha256"], hashlib.sha256(pointer_executable.data).hexdigest())
+        self.assertEqual(evidence["xax_pointer"]["program_root"], pointer_program.reader.root_cid.hex())
 
 
 if __name__ == "__main__":

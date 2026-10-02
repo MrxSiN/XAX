@@ -20,7 +20,8 @@ SSA values in registers:
 * a conditional branch jumps straight to a successor whose edge needs no
   copies, and a jump to the block laid out next is omitted; when one
   successor is laid out next with no copies, it falls through and the other
-  edge's copies move to an out-of-line stub after the last block;
+  edge's copies move to an out-of-line stub after the last block; when both
+  edges copy, the edge to the innermost enclosing loop header stays inline;
 * trap paths (bounds, null view, zero divisor) are shared out-of-line
   stubs, so a passing check is a not-taken branch;
 * a block entered by a backward jump (a loop header in layout order) starts
@@ -48,6 +49,7 @@ from xax_compiler import (
     TrapReason,
     ValueRef,
     _decode_constant,
+    _decode_pointer_type,
     _is_erased_proof_function,
     _is_proof_type,
     decode_foreign_function,
@@ -121,6 +123,7 @@ SUPPORTED_OPERATIONS = frozenset(
         *_PURE_BINARY, *_COPY, *_MEMORY, *RESOURCE_EFFECT_OPERATIONS,
         Operation.UDIV, Operation.UREM, Operation.CONSTANT, Operation.INT_COMPARE, Operation.INT_TRUNCATE,
         Operation.ADDRESS_OFFSET, Operation.HEAP_VIEW, Operation.CALL_DIRECT, Operation.CALL_FOREIGN,
+        Operation.POINTER_ADDRESS, Operation.POINTER_REBASE,
     }
 )
 _CALLS = frozenset({Operation.CALL_DIRECT, Operation.CALL_FOREIGN})
@@ -149,6 +152,10 @@ def _group1_immediate(operation: Operation, register: int, value: int, width: in
     """``op r, imm32`` for add/or/and/sub/xor (and cmp as digit 7)."""
     digit = 7 if operation is None else _GROUP1[operation]
     return _rex(width > 32, 0, register) + b"\x81" + bytes((0xC0 | (digit << 3) | (register & 7),)) + (value & 0xFFFFFFFF).to_bytes(4, "little")
+
+
+def _rotate_right_immediate(register: int, amount: int) -> bytes:
+    return _rex(True, 0, register) + b"\xc1" + bytes((0xC0 | (1 << 3) | (register & 7), amount))
 
 
 def _shift_immediate(left: bool, register: int, amount: int, width: int) -> bytes:
@@ -755,6 +762,39 @@ def compile_register_resident(
                 retire(node_index, source)
                 define(result, register)
 
+            elif operation == Operation.POINTER_ADDRESS:
+                # Pointers are already addresses in registers on this path.
+                if widths[result] != 64:
+                    return -1
+                source = node.operands[0]
+                ensure(source, node_index)
+                register = destination_for(node_index, source, set())
+                retire(node_index, source)
+                define(result, register)
+
+            elif operation == Operation.POINTER_REBASE:
+                # ADR-092: trap unless view <= address <= view + span and the
+                # distance is a multiple of the result alignment.
+                view, address = node.operands
+                span = pointer_extent_from_graph(graph, view, resolve) - node.attributes[0]
+                alignment = _decode_pointer_type(resolve(node.results[0]), resolve)[2]
+                if widths[address] != 64 or span >= 1 << 31:
+                    return -1
+                base = ensure(view, node_index)
+                address_register = ensure(address, node_index, {view})
+                emit(_move_register(_SCRATCH, address_register, 64))
+                emit(_register_arithmetic(Operation.SUB_WRAP, _SCRATCH, base, 64))
+                # One unsigned compare checks both: rotating right by log2(alignment)
+                # moves any misaligned low bits to the top, above every valid quotient.
+                shift = alignment.bit_length() - 1
+                if shift:
+                    emit(_rotate_right_immediate(_SCRATCH, shift))
+                emit(_cmp_imm32(_SCRATCH, span >> shift))
+                trap_if(0x87, b"\x0f\x0b")
+                register = destination_for(node_index, address, {view})
+                retire(node_index, view, address)
+                define(result, register)
+
             elif operation == Operation.HEAP_VIEW:
                 source = node.operands[0]
                 source_register = ensure(source, node_index)
@@ -899,13 +939,19 @@ def compile_register_resident(
                 emit(false_copies)
                 goto(false_block)
             else:
-                false_label = f"false-{block_index}"
-                jump(b"\x0f" + bytes((if_false,)), false_label)
-                emit(true_copies)
-                goto(true_block)
-                label(false_label)
-                emit(false_copies)
-                goto(false_block)
+                # Both edges copy: keep the edge that stays in the innermost
+                # loop (the nearest backward target) inline, stub the other.
+                def nearness(target: int) -> int:
+                    return target if target <= block_index else -1
+                if nearness(false_block) > nearness(true_block):
+                    inline, inline_copies, stubbed, stubbed_copies, condition_code = false_block, false_copies, true_block, true_copies, if_false ^ 1
+                else:
+                    inline, inline_copies, stubbed, stubbed_copies, condition_code = true_block, true_copies, false_block, false_copies, if_false
+                stub = f"stub-{block_index}"
+                stubs.append((stub, stubbed_copies, stubbed))
+                jump(b"\x0f" + bytes((condition_code,)), stub)
+                emit(inline_copies)
+                goto(inline)
         else:
             reason, _ = decode_trap_payload(terminator.payload)
             emit(_immediate(RAX, reason) + b"\x0f\x0b")

@@ -1,5 +1,7 @@
 /* Baseline for the OI-37 `chains` workload: the same chained hash table
- * with real `next` pointers into a pool (XAX uses arena + index). */
+ * with real `next` pointers into a pool.  With -DCHECKED (diagnostic, not a
+ * baseline) every followed pointer gets the check XAX's `pointer_rebase`
+ * performs: inside the pool and 8-aligned relative to it, else trap. */
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/mman.h>
@@ -33,6 +35,10 @@ int main(void) {
     for (uint64_t j = 0; j < NODES; j++) {
         x = next_key(x);
         for (struct node *cur = buckets[x >> 48]; cur; cur = cur->next) {
+#ifdef CHECKED
+            uint64_t distance = (uint64_t)((uintptr_t)cur - (uintptr_t)pool);
+            if (((distance >> 3) | (distance << 61)) > (NODES * sizeof(struct node) - sizeof(struct node)) >> 3) __builtin_trap();
+#endif
             steps++;
             if (cur->key == x) { found++; break; }
         }
