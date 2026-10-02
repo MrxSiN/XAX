@@ -11,7 +11,7 @@ from __future__ import annotations
 import shutil
 import unittest
 
-from xax_compiler import IntCompare, Operation, bits_type, stack_owner_type, wasm32_wasi_target
+from xax_compiler import IntCompare, Operation, XaxError, bits_type, stack_owner_type, wasm32_wasi_target
 from xax_graph_builder import GraphBuilder, program_store
 from xax_platform import wasi_preview1_api
 from xax_wasm import compile_wasm_bound_target, run_wasi_isolated
@@ -20,7 +20,7 @@ NODE_BYTES, NODES = 8, 3
 KEYS = (5, 7, 30)
 
 
-def linked_list_program(first_link_offset: int = 0):
+def linked_list_program(first_link_offset: int = 0, *, expired: bool = False):
     api = wasi_preview1_api()
     b1, b32, words, mem = bits_type(1), api.b32, api.u32_ptr_rw, api.memory_effect
     owner = stack_owner_type()
@@ -45,6 +45,8 @@ def linked_list_program(first_link_offset: int = 0):
     process, cursor, total, token, memory = walk.params
     walk.cbr(walk.op1(Operation.INT_COMPARE, (cursor, walk.const(b32, 0)), b1, attributes=(IntCompare.NE,)), step, (process, cursor, total, token, memory), done, (process, total, token, memory))
     process, cursor, total, token, memory = step.params
+    if expired:  # end the storage, then rebase into it: expired provenance
+        step.op(Operation.STACK_END, (token, memory), ())
     node = step.op1(Operation.POINTER_REBASE, (view, cursor), words, attributes=(NODE_BYTES,))
     key, memory = step.op(Operation.LOAD_BITS_LE, (node, memory), (b32, mem), attributes=(4, 4))
     following, memory = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), words, attributes=(4,)), memory), (b32, mem), attributes=(4, 4))
@@ -57,6 +59,13 @@ def linked_list_program(first_link_offset: int = 0):
     target = wasm32_wasi_target()
     reader = program_store(function, target, (*graph.objects.values(), *api.symbols))
     return compile_wasm_bound_target(reader, function.cid, target)
+
+
+class WasmPointerRebaseVerifierTests(unittest.TestCase):
+    def test_expired_view_rejects(self):
+        with self.assertRaises(XaxError) as raised:
+            linked_list_program(expired=True)
+        self.assertEqual(raised.exception.diagnostic.rule, "MEMORY-LIFETIME-LIVE")
 
 
 @unittest.skipUnless(shutil.which("node"), "requires Node's node:wasi host")
