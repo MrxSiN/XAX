@@ -595,3 +595,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - New foreign ABI `linux-x86_64-startup-v1`: `argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`, `auxv_value`, lowered inline in the process entry (`xax_linux.linux_startup_api()`). `run_linux_executable` accepts `arguments` and `env`.
 - EXECUTED: an echo-style tool, envc, `AT_PAGESZ`, truncation reporting, and traps (`test_xax_linux_startup.py`). Full suite: 796 passed, plus the 17 pre-existing failures.
+
+## OI-38: PE on the converged allocator (ADR-095) — 2026-10-02
+
+- `x86_64-windows-pe-v1` uses `xax_x86_64_regalloc.py` first. It adds Win64 calls (including stack arguments), `function_address`, `call_indirect`, and stack storage, with per-profile foreign ABI ownership. It also fixes the constant-return epilogue bug.
+- PE fixture: 6/6 functions converged; code 700 B (was 1,269); EXECUTED-UNDER-WINE 9.0 (`windows_pe_wine_evidence.json`; `WineExecutionTests` runs when wine64 is installed).

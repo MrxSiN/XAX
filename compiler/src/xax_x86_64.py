@@ -840,6 +840,9 @@ def _function_closure(
     return tuple(functions[cid] for cid in sorted(functions))
 
 
+PE_HOSTED_IDENTITY = b"x86_64-windows-pe-v1"
+
+
 def _compile_register_resident_function(
     function: SemanticObject,
     graph_object: SemanticObject,
@@ -859,7 +862,7 @@ def _compile_register_resident_function(
     # The hosted PE profile also keeps compares, foreign calls, function
     # addresses, and heap-view memory in registers; legacy load-image
     # profiles keep their pinned bytes (U1.2b).
-    hosted = target.identity == b"x86_64-windows-pe-v1"
+    hosted = target.identity == PE_HOSTED_IDENTITY
     heap_values: set[ValueRef] = set()
     extents: dict[ValueRef, int] = {}
     if hosted:
@@ -1418,7 +1421,8 @@ def _compile_function(
                         "backend-declared explicit assist",
                         "none",
                     )
-    if target.abi == X86_64_LINUX_ABI:
+    if target.abi == X86_64_LINUX_ABI or target.identity == PE_HOSTED_IDENTITY:
+        # One register allocator for the hosted x86-64 profiles (OI-38, ADR-095).
         from xax_x86_64_regalloc import compile_register_resident
 
         allocated = compile_register_resident(function, graph_object, graph, parameter_types, return_types, resolve, target, process_entry)
