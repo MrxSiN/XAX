@@ -24,22 +24,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
-import platform
-import re
-import resource
-import shutil
-import statistics
-import subprocess
 import sys
 import tempfile
-import time
 import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
 from xax_compiler import IntCompare, Operation, Permission, SemanticObject, StoreReader, bits_type, heap_view_type, pointer_type, x86_64_linux_dynamic_exec_target
-from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
+from xax_graph_builder import GraphBuilder, program_store
+
+from benchmarks.linux_graph_kit import Flow, Kit, emit_decimal_line
+from benchmarks.linux_harness import build_arms, host_info, measure_arms, method_info, run_output
 from xax_linux import AT_FDCWD, LinuxApi, LinuxExecutable, c_function, compile_linux_executable, linux_api
 
 BUFFER_BYTES = 65536
@@ -52,14 +47,6 @@ STATUS_READ_FAILED = 3
 
 HERE = Path(__file__).resolve().parent
 C_SOURCE = HERE / "linux_filestat_c" / "filestat.c"
-RUNNER_SOURCE = HERE / "linux_filestat_c" / "runner.c"
-# Optimized baselines; every arm links the same libz.
-BASELINES = (
-    ("gcc-O2", "gcc", ("-O2",)),
-    ("gcc-O3", "gcc", ("-O3",)),
-    ("clang-O2", "clang", ("-O2",)),
-    ("gcc-O2-static", "gcc", ("-O2", "-static")),
-)
 EVIDENCE = HERE / "u1_linux_filestat_evidence.json"
 
 
@@ -69,26 +56,6 @@ class FilestatProgram:
     entry: SemanticObject
     target: SemanticObject
     block_count: int
-
-
-class _Flow:
-    """Carry named SSA state (including linear tokens) across explicit block parameters."""
-
-    def __init__(self, graph: GraphBuilder, names: tuple[str, ...], types: dict[str, SemanticObject]):
-        self.graph = graph
-        self.names = names
-        self.types = types
-
-    def block(self, *extra: tuple[str, SemanticObject]) -> tuple[BlockBuilder, dict]:
-        order = (*self.names, *(name for name, _type in extra))
-        types = {**self.types, **dict(extra)}
-        block = self.graph.block(*(types[name] for name in order))
-        block.order = order  # type: ignore[attr-defined]
-        return block, dict(zip(order, block.params))
-
-    @staticmethod
-    def args(target: BlockBuilder, state: dict) -> tuple:
-        return tuple(state[name] for name in target.order)  # type: ignore[attr-defined]
 
 
 def build_filestat_program() -> FilestatProgram:
@@ -105,7 +72,7 @@ def build_filestat_program() -> FilestatProgram:
 
     carried = ("proc", "fs", "buf_token", "buf_mem", "tab_token", "tab_mem")
     types = {"proc": api.process_effect, "fs": api.filesystem_effect, "buf_token": buffer_view, "buf_mem": mem, "tab_token": table_view, "tab_mem": mem}
-    flow = _Flow(graph, carried, types)
+    flow = Flow(graph, carried, types)
 
     # --- entry: two zeroed mappings, the path bytes, and openat -------------------
     entry = graph.block(api.process_effect, api.filesystem_effect, mem, mem)
@@ -125,14 +92,8 @@ def build_filestat_program() -> FilestatProgram:
     )
     state = {"proc": process, "fs": fs, "buf_token": buf_token, "buf_mem": buf_mem, "tab_token": tab_token, "tab_mem": tab_mem}
 
-    def const(block: BlockBuilder, value: int, type_=b64):
-        return block.const(type_, value)
-
-    def compare(block: BlockBuilder, kind: IntCompare, left, right):
-        return block.op1(Operation.INT_COMPARE, (left, right), b1, attributes=(kind,))
-
-    def binary(block: BlockBuilder, operation: Operation, left, right, type_=b64):
-        return block.op1(operation, (left, right), type_)
+    kit = Kit()
+    const, compare, binary = kit.const, kit.compare, kit.binary
 
     exit_block, exit_state = flow.block(("status", b32))
     counters = (("fd", b32), ("bytes", b64), ("lines", b64), ("words", b64), ("hash", b64), ("crc", b64), ("prev_ws", b64))
@@ -235,48 +196,7 @@ def build_filestat_program() -> FilestatProgram:
     }))
 
     # --- decimal formatting into the (no longer needed) input buffer --------------------
-    fields = ("bytes", "lines", "words", "hash", "crc", "best")
-    field_types = tuple((name, b64) for name in fields)
-    current, current_state = format_block, {**format_state, "pos": None}
-    position = const(format_block, 0, b32)
-    current_state["pos"] = position
-    carry = (*field_types, ("pos", b32))
-    for index, name in enumerate(fields):
-        separator = 10 if index == len(fields) - 1 else 32
-        # count digits
-        digits_block, digits_state = flow.block(*carry, ("t", b64), ("d", b32))
-        write_block, write_state = flow.block(*carry, ("v", b64), ("k", b32), ("d", b32))
-        current.br(digits_block, *flow.args(digits_block, {**current_state, "t": current_state[name], "d": const(current, 1, b32)}))
-        d = digits_block
-        ds = digits_state
-        more_block, more_state = flow.block(*carry, ("t", b64), ("d", b32))
-        d.cbr(
-            compare(d, IntCompare.UGE, ds["t"], const(d, 10)),
-            more_block, flow.args(more_block, ds),
-            write_block, flow.args(write_block, {**ds, "v": ds[name], "k": ds["d"]}),
-        )
-        more_block.br(digits_block, *flow.args(digits_block, {
-            **more_state, "t": binary(more_block, Operation.UDIV, more_state["t"], const(more_block, 10)),
-            "d": binary(more_block, Operation.ADD_WRAP, more_state["d"], const(more_block, 1, b32), b32),
-        }))
-        digit_block, digit_state = flow.block(*carry, ("v", b64), ("k", b32), ("d", b32))
-        done_block, done_state = flow.block(*carry, ("d", b32))
-        write_block.cbr(
-            compare(write_block, IntCompare.NE, write_state["k"], const(write_block, 0, b32)),
-            digit_block, flow.args(digit_block, write_state),
-            done_block, flow.args(done_block, write_state),
-        )
-        w = digit_block
-        ws = digit_state
-        k = binary(w, Operation.SUB_WRAP, ws["k"], const(w, 1, b32), b32)
-        ascii_digit = w.op1(Operation.INT_TRUNCATE, (binary(w, Operation.ADD_WRAP, binary(w, Operation.UREM, ws["v"], const(w, 10)), const(w, 48)),), b8)
-        buf_mem = w.op1(Operation.CHECKED_STORE_BITS_LE, (buf, binary(w, Operation.ADD_WRAP, ws["pos"], k, b32), ascii_digit, ws["buf_mem"]), mem, attributes=(1, 1))
-        w.br(write_block, *flow.args(write_block, {**ws, "buf_mem": buf_mem, "k": k, "v": binary(w, Operation.UDIV, ws["v"], const(w, 10))}))
-        f = done_block
-        fs_ = done_state
-        end = binary(f, Operation.ADD_WRAP, fs_["pos"], fs_["d"], b32)
-        buf_mem = f.op1(Operation.CHECKED_STORE_BITS_LE, (buf, end, const(f, separator, b8), fs_["buf_mem"]), mem, attributes=(1, 1))
-        current, current_state = f, {**fs_, "buf_mem": buf_mem, "pos": binary(f, Operation.ADD_WRAP, end, const(f, 1, b32), b32)}
+    current, current_state = emit_decimal_line(kit, flow, format_block, format_state, ("bytes", "lines", "words", "hash", "crc", "best"), buf, mem)
 
     out = current
     _written, fs, buf_mem = out.op(
@@ -326,40 +246,12 @@ def benchmark_input(size: int) -> bytes:
     return hashlib.shake_256(b"xax-u1-filestat").digest(size).translate(table)
 
 
-def _timed_run(command: list[str], cwd: str) -> tuple[float, int, bytes, int]:
-    """Time one run through the C runner; stdout is discarded (outputs are checked untimed)."""
-    runner, program = command
-    measured = subprocess.run([runner, program], cwd=cwd, capture_output=True, text=True, check=True).stdout.split()
-    return int(measured[0]) / 1e9, int(measured[2]), b"", int(measured[1])
-
-
-def _output(program: Path, cwd: Path) -> tuple[bytes, int]:
-    completed = subprocess.run([str(program)], cwd=cwd, capture_output=True, check=False)
-    return completed.stdout, completed.returncode
-
-
-def _tool_version(command: list[str]) -> str:
-    return subprocess.run(command, capture_output=True, text=True, check=True).stdout.splitlines()[0]
-
-
 def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
     """Execute the XAX artifact and optimized C baselines on identical input."""
     program, executable = compile_filestat()
     with tempfile.TemporaryDirectory() as directory:
         work = Path(directory)
-        artifacts = {"xax": work / "filestat-xax"}
-        artifacts["xax"].write_bytes(executable.data)
-        artifacts["xax"].chmod(0o755)
-        for name, compiler, flags in BASELINES:
-            subprocess.run([compiler, *flags, "-o", str(work / name), str(C_SOURCE), "-lz"], check=True)
-            artifacts[name] = work / name
-        stripped = {}
-        for name, path in artifacts.items():
-            copy = work / f"{name}.stripped"
-            shutil.copyfile(path, copy)
-            # The XAX image has no section table, so there is nothing to strip.
-            stripped_ok = subprocess.run(["strip", "-s", str(copy)], check=False, capture_output=True).returncode == 0
-            stripped[name] = copy.stat().st_size if stripped_ok else path.stat().st_size
+        artifacts, stripped = build_arms(work, "filestat", executable.data, C_SOURCE, ("-lz",))
         data = benchmark_input(size)
         (work / "input.dat").write_bytes(data)
         small = benchmark_input(200_003)
@@ -367,50 +259,25 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
         small_dir.mkdir()
         (small_dir / "input.dat").write_bytes(small)
         expected_small = reference_filestat(small)
-        runner = work / "runner"
-        subprocess.run(["gcc", "-O2", "-o", str(runner), str(RUNNER_SOURCE)], check=True)
-        baseline_rss = int(subprocess.run([str(runner), "/bin/true"], capture_output=True, text=True, check=True).stdout.split()[2])
-        results = {}
-        outputs = set()
-        for name, path in artifacts.items():
-            small_output, small_status = _output(path, small_dir)
+
+        def validate(arm: str, path: Path) -> bytes:
+            small_output, small_status = run_output(path, small_dir)
             if small_output != expected_small or small_status != 0:
-                raise AssertionError(f"{name} small-input mismatch: {small_output!r} status {small_status}")
-            output, status = _output(path, work)
+                raise AssertionError(f"{arm} small-input mismatch: {small_output!r} status {small_status}")
+            output, status = run_output(path, work)
             if status != 0:
-                raise AssertionError(f"{name} exited {status}")
-            outputs.add(output)
-            for _ in range(warmup):
-                _timed_run([str(runner), str(path)], str(work))
-            samples = []
-            for _ in range(repetitions):
-                elapsed, maxrss, _unused, status = _timed_run([str(runner), str(path)], str(work))
-                if status != 0:
-                    raise AssertionError(f"{name} exited {status}")
-                samples.append((elapsed, maxrss))
-            times = [item[0] for item in samples]
-            results[name] = {
-                "file_bytes": path.stat().st_size,
-                "stripped_bytes": stripped[name],
-                "wall_seconds_median": round(statistics.median(times), 6),
-                "wall_seconds_min": round(min(times), 6),
-                "wall_seconds_stdev": round(statistics.stdev(times), 6) if len(times) > 1 else 0.0,
-                "peak_rss_kib_max": max(item[1] for item in samples),
-                "throughput_mib_s_median": round(size / (1 << 20) / statistics.median(times), 2),
-            }
-        if len(outputs) != 1:
-            raise AssertionError(f"outputs differ: {outputs}")
-    baseline = results["gcc-O2"]["wall_seconds_median"]
-    best = min(item["wall_seconds_median"] for name, item in results.items() if name != "xax")
+                raise AssertionError(f"{arm} exited {status}")
+            return output
+
+        results, output, reference_rss = measure_arms(work, artifacts, stripped, repetitions, warmup, validate)
     for item in results.values():
-        item["time_ratio_vs_gcc_O2"] = round(item["wall_seconds_median"] / baseline, 3)
-        item["time_ratio_vs_best_baseline"] = round(item["wall_seconds_median"] / best, 3)
+        item["throughput_mib_s_median"] = round(size / (1 << 20) / item["wall_seconds_median"], 2)
     return {
         "format": "xax-u1-linux-filestat-evidence-v1",
         "evidence_label": "MEASURED",
         "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
         "input": {"bytes": size, "generator": "shake_256(b'xax-u1-filestat') translated to a 77-symbol text alphabet", "sha256": hashlib.sha256(data).hexdigest()},
-        "output": outputs.pop().decode(),
+        "output": output.decode(),
         "small_input_reference_check": {"bytes": len(small), "expected": expected_small.decode()},
         "xax": {
             "program_root": program.reader.root_cid.hex(),
@@ -425,17 +292,8 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
             "dt_needed": [item.decode() for item in executable.needed],
         },
         "results": results,
-        "host": {
-            "machine": platform.machine(),
-            "cpu": next((line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines() if line.startswith("model name")), "unknown"),
-            "kernel": platform.release(),
-            "logical_cpus": os.cpu_count(),
-            "python": platform.python_version(),
-            "gcc": _tool_version(["gcc", "--version"]),
-            "clang": _tool_version(["clang", "--version"]),
-            "zlib": zlib.ZLIB_RUNTIME_VERSION,
-        },
-        "method": {"warmup_runs": warmup, "repetitions": repetitions, "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss", "reference_dynamic_bin_true_rss_kib": baseline_rss, "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner", "c_flags": {name: f"{compiler} {' '.join(flags)} ... -lz" for name, compiler, flags in BASELINES}},
+        "host": host_info(zlib=zlib.ZLIB_RUNTIME_VERSION),
+        "method": method_info(warmup, repetitions, reference_rss, "-lz"),
     }
 
 

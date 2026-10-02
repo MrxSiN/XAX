@@ -12,7 +12,6 @@ import unittest
 from pathlib import Path
 
 from xax_compiler import (
-    IntCompare,
     Operation,
     TrapReason,
     XaxError,
@@ -28,7 +27,7 @@ from xax_compiler import (
 from xax_compiler import FloatFormat, float_type
 from xax_graph_builder import GraphBuilder, program_store
 from xax_linux import DYNAMIC_INTERPRETER, c_function, compile_linux_executable, linux_api, run_linux_executable
-from xax_x86_64 import compile_native, decode_syscall_name, encode_syscall_name
+from xax_x86_64 import decode_syscall_name, encode_syscall_name
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from benchmarks.linux_filestat import EVIDENCE, compile_filestat, reference_filestat  # noqa: E402
