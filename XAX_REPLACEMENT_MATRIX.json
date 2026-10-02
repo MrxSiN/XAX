@@ -89,24 +89,29 @@
         "abi": [
           "EXECUTED",
           "compiler/benchmarks/android_jni_platform_evidence.json",
-          "XAX_STATE.md"
+          "XAX_STATE.md",
+          "compiler/benchmarks/android_bionic_qemu_evidence.json"
         ],
         "artifact_format": [
           "EXECUTED",
           "compiler/benchmarks/android_minimal_activity.apk",
-          "compiler/integration/android/validate_activity_apk.sh"
+          "compiler/integration/android/validate_activity_apk.sh",
+          "compiler/benchmarks/android_official_tools_evidence.json"
         ],
         "platform_apis": [
           "EXECUTED",
-          "compiler/integration/android/activity_after_click.png"
+          "compiler/integration/android/activity_after_click.png",
+          "compiler/benchmarks/android_bionic_qemu_evidence.json"
         ],
         "ffi": [
           "EXECUTED",
-          "compiler/integration/android/validate_activity_apk.sh"
+          "compiler/integration/android/validate_activity_apk.sh",
+          "compiler/benchmarks/android_bionic_qemu_evidence.json"
         ],
         "dynamic_linking": [
           "EXECUTED",
-          "XAX_STATE.md"
+          "XAX_STATE.md",
+          "compiler/benchmarks/android_bionic_qemu_evidence.json"
         ],
         "debugging": [
           "PROTOTYPE",
@@ -127,11 +132,17 @@
         "autonomous_maintenance": [
           "PROTOTYPE",
           "compiler/benchmarks/m6_workspace_smoke.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/android_ndk_twin_evidence.json"
         ]
       },
       "blockers": [
-        "only a minimal Activity executed on device; libxposed runtime UNEXECUTED",
-        "no NDK/Kotlin size or latency comparison executed"
+        "only the minimal Activity executed on a device; libxposed and the packed container (ADR-105) are not yet executed under ART",
+        "native contracts executed under Android's linker and bionic via qemu-user (ADR-106), not on a device kernel",
+        "start-up latency and memory against an NDK/Kotlin twin need a device; sizes are measured (packed APK 0.79x the Java+NDK twin)",
+        "one DEX per class costs 1.17x the twin's DEX bytes (an edit-locality choice)"
       ]
     },
     {

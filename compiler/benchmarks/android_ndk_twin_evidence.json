@@ -1,0 +1,86 @@
+{
+  "behavior_match": true,
+  "format": "xax-android-ndk-twin-evidence-v1",
+  "java_ndk": {
+    "apk_bytes": 24792,
+    "apk_sha256": "40c087b9cd384790b8f237713db1744ac534b7e9e1e785a65462e8f8f7769a7f",
+    "badging": [
+      "package: name='xax.generated' versionCode='1' versionName=''",
+      "launchable-activity: name='xax.generated.XaxActivity'  label='' icon=''"
+    ],
+    "dex_bytes": 1708,
+    "dex_files": [
+      "classes.dex"
+    ],
+    "manifest_bytes": 1736,
+    "native_function_bytes": {
+      "Java_xax_generated_XaxActivity_xaxOnCreate": 4,
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick": 4
+    },
+    "native_library_bytes": 3840,
+    "native_needed": [
+      "libc.so",
+      "libdl.so"
+    ]
+  },
+  "label": "MEASURED",
+  "note": "sizes only; start-up latency and memory need a device",
+  "toolchain": {
+    "android_jar": "android-35",
+    "build_tools": "36.1.0",
+    "javac": "javac 21.0.11",
+    "ndk": "28.2.13676358"
+  },
+  "xax": {
+    "apk_bytes": 35413,
+    "apk_sha256": "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+    "badging": [
+      "package: name='xax.generated' versionCode='1' versionName=''",
+      "launchable-activity: name='xax.generated.XaxActivity'  label='' icon=''"
+    ],
+    "dex_bytes": 2000,
+    "dex_files": [
+      "classes.dex",
+      "classes2.dex"
+    ],
+    "manifest_bytes": 1132,
+    "native_function_bytes": {
+      "Java_xax_generated_XaxActivity_xaxOnCreate": 16,
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick": 4
+    },
+    "native_library_bytes": 17352,
+    "native_needed": []
+  },
+  "xax_over_java_ndk": {
+    "apk_bytes": 1.428,
+    "dex_bytes": 1.171,
+    "manifest_bytes": 0.652,
+    "native_library_bytes": 4.519
+  },
+  "xax_packed": {
+    "apk_bytes": 19557,
+    "apk_sha256": "fc22a704711f2f3884070ffe961ff64e44e68dbfcec41c149b2bdea0cf3250b4",
+    "badging": [
+      "package: name='xax.generated' versionCode='1' versionName=''",
+      "launchable-activity: name='xax.generated.XaxActivity'  label='' icon=''"
+    ],
+    "dex_bytes": 2000,
+    "dex_files": [
+      "classes.dex",
+      "classes2.dex"
+    ],
+    "manifest_bytes": 1132,
+    "native_function_bytes": {
+      "Java_xax_generated_XaxActivity_xaxOnCreate": 16,
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick": 4
+    },
+    "native_library_bytes": 1496,
+    "native_needed": []
+  },
+  "xax_packed_over_java_ndk": {
+    "apk_bytes": 0.789,
+    "dex_bytes": 1.171,
+    "manifest_bytes": 0.652,
+    "native_library_bytes": 0.39
+  }
+}

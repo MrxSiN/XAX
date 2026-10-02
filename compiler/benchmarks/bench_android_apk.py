@@ -40,6 +40,8 @@ from xax_manifest import AndroidManifestSpec, android_manifest_semantics, emit_b
 BENCHMARK_DIR = Path(__file__).parent
 SIGNER_FIXTURE = BENCHMARK_DIR.parent / "tests" / "fixtures" / "android_v2_test_signer.json"
 ARTIFACT_PATH = BENCHMARK_DIR / "android_minimal_activity.apk"
+# Same semantic program in the packed ELF container (ADR-105); the device-validated APK above is unchanged.
+PACKED_ARTIFACT_PATH = BENCHMARK_DIR / "android_minimal_activity_packed.apk"
 EVIDENCE_PATH = BENCHMARK_DIR / "android_apk_evidence.json"
 
 
@@ -53,7 +55,7 @@ def _signing_capability() -> RsaSigningCapability:
     )
 
 
-def _package_build(ui, manifest_semantics, artifact_kind: ArtifactKind, signer: RsaSigningCapability | None = None):
+def _package_build(ui, manifest_semantics, artifact_kind: ArtifactKind, signer: RsaSigningCapability | None = None, *, packed: bool = False):
     module = object_with_refs(
         Kind.MODULE,
         (
@@ -84,7 +86,7 @@ def _package_build(ui, manifest_semantics, artifact_kind: ArtifactKind, signer: 
         build_entries=((b"apk", ui["activity_callback"]),),
         capabilities=capabilities,
     )
-    target = android_arm64_shared_target()
+    target = android_arm64_shared_target(packed=packed)
     profile, policy = build_profile(grants=grants), trust_policy()
     request = build_request(
         package_object,
@@ -110,15 +112,16 @@ def _package_build(ui, manifest_semantics, artifact_kind: ArtifactKind, signer: 
     return result, resolution, package_object, request
 
 
-def _unsigned_package_build(ui, manifest_semantics):
-    return _package_build(ui, manifest_semantics, ArtifactKind.ANDROID_UNSIGNED_APK)
+def _unsigned_package_build(ui, manifest_semantics, *, packed: bool = False):
+    return _package_build(ui, manifest_semantics, ArtifactKind.ANDROID_UNSIGNED_APK, packed=packed)
 
 
-def _signed_package_build(ui, manifest_semantics, signer: RsaSigningCapability):
-    return _package_build(ui, manifest_semantics, ArtifactKind.ANDROID_SIGNED_APK, signer)
+def _signed_package_build(ui, manifest_semantics, signer: RsaSigningCapability, *, packed: bool = False):
+    return _package_build(ui, manifest_semantics, ArtifactKind.ANDROID_SIGNED_APK, signer, packed=packed)
 
 
-def build_fixture() -> tuple[bytes, bytes, bytes, bytes, bytes, bytes, bytes]:
+def build_fixture(*, packed: bool = False) -> tuple[bytes, bytes, bytes, bytes, bytes, bytes, bytes]:
+    """``packed`` builds the same semantic program for the packed ELF container (format 5, ADR-105)."""
     ui = ui_activity_fixture()
     manifest_semantics = android_manifest_semantics(
         AndroidManifestSpec(
@@ -130,9 +133,9 @@ def build_fixture() -> tuple[bytes, bytes, bytes, bytes, bytes, bytes, bytes]:
             launcher=True,
         )
     )
-    unsigned_result, _unsigned_resolution, _unsigned_package, _unsigned_request = _unsigned_package_build(ui, manifest_semantics)
+    unsigned_result, _unsigned_resolution, _unsigned_package, _unsigned_request = _unsigned_package_build(ui, manifest_semantics, packed=packed)
     signer = _signing_capability()
-    signed_result, _signed_resolution, _signed_package, _signed_request = _signed_package_build(ui, manifest_semantics, signer)
+    signed_result, _signed_resolution, _signed_package, _signed_request = _signed_package_build(ui, manifest_semantics, signer, packed=packed)
     unsigned = unsigned_result.artifact
     signed = signed_result.artifact
     with zipfile.ZipFile(io.BytesIO(unsigned), "r") as archive:
@@ -301,6 +304,7 @@ def collect_evidence() -> dict[str, object]:
 def main() -> None:
     _manifest_semantics, _manifest, _dex, _listener_dex, _elf, _unsigned, signed = build_fixture()
     ARTIFACT_PATH.write_bytes(signed)
+    PACKED_ARTIFACT_PATH.write_bytes(build_fixture(packed=True)[-1])
     evidence = collect_evidence()
     EVIDENCE_PATH.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(ARTIFACT_PATH)

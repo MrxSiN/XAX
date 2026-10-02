@@ -1,0 +1,421 @@
+{
+  "apks": {
+    "android_libxposed_argument_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "bd4420e0317b13e5db0abe0601dbb2e2aeb95f6fcc3394a52c4304613ea16dd0",
+      "signed": false
+    },
+    "android_libxposed_argument_target_fixture.apk": {
+      "bytes": 34010,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "43d9fb8e69f7ed0b68a60afb3cd9253f1c91ae51e1a39caf7555405b7a2a1729",
+      "signed": false
+    },
+    "android_libxposed_combined_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "bd3ffd9f43a7c4434693c37c97c6b66ff039a3b54a96fdb9d315882bb7788b1e",
+      "signed": false
+    },
+    "android_libxposed_deopt_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "2577118046cbb586cd90975edad6d3b028f54432ff13b040e3d48b990d7e694b",
+      "signed": false
+    },
+    "android_libxposed_hook_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "db7bcd898313460ac3ef9741804d2d04429bcf73d1458a1c3f90e41dcf86442e",
+      "signed": false
+    },
+    "android_libxposed_hot_reload_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a",
+      "signed": false
+    },
+    "android_libxposed_managed_fixture.apk": {
+      "bytes": 34289,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "906086fd79ae50805da35938fbdebdaa28458a0eff1cf6ad0e9eed224e973682",
+      "signed": false
+    },
+    "android_libxposed_native_fixture.apk": {
+      "bytes": 34233,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36",
+      "signed": false
+    },
+    "android_libxposed_remote_files_fixture.apk": {
+      "bytes": 34289,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "99dcb50159ec39e54eed5b0806b463f4f8006597fe9071570d92ed4dd9b8c5fa",
+      "signed": false
+    },
+    "android_libxposed_remote_preferences_fixture.apk": {
+      "bytes": 34289,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "aca0cb0c0bdc47480f7e92c71fb065ead3c85dea145fe77e54acd9e4eea2f5c4",
+      "signed": false
+    },
+    "android_libxposed_result_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "1a94558215ff1269d4f0a4762a6b4ef2af07cd531b8270b2cdcb54ab11e28fab",
+      "signed": false
+    },
+    "android_libxposed_runtime_module_signed.apk": {
+      "bytes": 35750,
+      "checks": {
+        "aapt2_badging": true,
+        "apksigner": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "11bbd2545d095e182ffaffb69ad999cad34aa6f0868812b50792301120291630",
+      "signed": true
+    },
+    "android_libxposed_runtime_target_signed.apk": {
+      "bytes": 35413,
+      "checks": {
+        "aapt2_badging": true,
+        "apksigner": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "3c37cc3fc2247f18151540fbdf9e201b9177ee74470f6d33fe3f52c86bf61919",
+      "signed": true
+    },
+    "android_libxposed_services_fixture.apk": {
+      "bytes": 34289,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "7cc3e60ecb1c164caef561bdfb3632aaef96fa413ca992a4e31cf5d06a73f0c7",
+      "signed": false
+    },
+    "android_libxposed_target_fixture.apk": {
+      "bytes": 34010,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "e682951f8e72f6ea812d3ef2816ad92b49fd1df90a3c08ad42b05b33d72e3eb0",
+      "signed": false
+    },
+    "android_libxposed_unhook_fixture.apk": {
+      "bytes": 34347,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "classes4.dex:d8_redex": true,
+        "classes4.dex:dexdump_checksum": true,
+        "classes4.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "6056ebd0a75ec626a1ae07da0b837a709247c907695a2cb349a9c946eaee7eda",
+      "signed": false
+    },
+    "android_minimal_activity.apk": {
+      "bytes": 35413,
+      "checks": {
+        "aapt2_badging": true,
+        "apksigner": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+      "signed": true
+    },
+    "android_minimal_activity_packed.apk": {
+      "bytes": 19557,
+      "checks": {
+        "aapt2_badging": true,
+        "apksigner": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "fc22a704711f2f3884070ffe961ff64e44e68dbfcec41c149b2bdea0cf3250b4",
+      "signed": true
+    },
+    "android_receiver_fixture.apk": {
+      "bytes": 34068,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "89c9a6f07616950ca96a5b21e1b84f17c024d9b45620ff7942cc021914d1c40c",
+      "signed": false
+    },
+    "android_service_fixture.apk": {
+      "bytes": 34068,
+      "checks": {
+        "aapt2_badging": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "c187caf782a439b1d26d2a57494398a24915c86120b2dc7a156da020b8d6fb9d",
+      "signed": false
+    }
+  },
+  "build_tools": "36.1.0",
+  "format": "xax-android-official-tools-evidence-v1",
+  "label": "STRUCTURAL",
+  "llvm_readelf": "Optimized build.",
+  "note": "format validation by Google's build tools; not ART verification or execution",
+  "passed": 20,
+  "total": 20
+}
