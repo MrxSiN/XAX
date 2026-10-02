@@ -555,6 +555,11 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
 - EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
 
+## Post-upgrade token test (lowest cost) — 2026-10-02
+
+- Offline, with no model tokens: after installing `tiktoken` 0.14.0, the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44.
+- Model: one `task-01` pair (change a shared constant) run as fresh `haiku` subagents. C used 38,278 tokens and 4 tool calls; XAX used 39,997 tokens and 7 tool calls (1.04× C). Both passed the external checkers on the first attempt with no repairs. This is n=1 with fixed agent-harness overhead dominating, so it is not OI-31 evidence. It agrees with the earlier `task-02` smoke check (1.04×): on tiny edits, the XAX protocol's extra inspect/test round trips cost about as much as the C edit saves.
+
 ## Browser pages with generated host bindings (ADR-103, U1.4) — 2026-10-02
 
 - Target `wasm32-browser-v1`, platform package `compiler/src/xax_web.py` (`xax-web-v1`: `query_copy`, `set_body_text`; host state ordered by `effect<io>`). `emit_browser_page` generates one deterministic HTML page containing the module plus host functions for the imported bindings only. Imports outside the package reject.
