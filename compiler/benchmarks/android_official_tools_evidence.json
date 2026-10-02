@@ -1,5 +1,23 @@
 {
   "apks": {
+    "android_counter_activity.apk": {
+      "bytes": 20561,
+      "checks": {
+        "aapt2_badging": true,
+        "apksigner": true,
+        "classes.dex:d8_redex": true,
+        "classes.dex:dexdump_checksum": true,
+        "classes.dex:dexdump_code": true,
+        "classes2.dex:d8_redex": true,
+        "classes2.dex:dexdump_checksum": true,
+        "classes2.dex:dexdump_code": true,
+        "lib/arm64-v8a/libxaxcounter.so:llvm_readelf": true,
+        "zipalign_16k": true
+      },
+      "passed": true,
+      "sha256": "7373e254165a69140e5a6268036cc5f722bbfae6a7f8982e5309a4b6c00110e7",
+      "signed": true
+    },
     "android_libxposed_argument_fixture.apk": {
       "bytes": 34347,
       "checks": {
@@ -416,6 +434,6 @@
   "label": "STRUCTURAL",
   "llvm_readelf": "Optimized build.",
   "note": "format validation by Google's build tools; not ART verification or execution",
-  "passed": 20,
-  "total": 20
+  "passed": 21,
+  "total": 21
 }
