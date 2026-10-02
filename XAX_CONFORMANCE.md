@@ -628,4 +628,6 @@ An implementation claiming this target MUST:
 6. trap with portable reason 2 on a zero `udiv`/`urem` divisor that is not a nonzero constant;
 7. reproduce the committed U1 artifact identity (`u1_linux_filestat_evidence.json`) byte-for-byte.
 
-Current implementation-local evidence: `compiler/tests/test_xax_linux.py` (17 tests, EXECUTED on Linux 6.18 x86-64) and the MEASURED U1 benchmark.
+For `x86_64-linux-elf-dynexec-v1` an implementation MUST additionally emit `PT_PHDR`, `PT_INTERP` naming exactly `/lib64/ld-linux-x86-64.so.2`, and `PT_DYNAMIC`, with `DT_NEEDED` entries equal to the set of declared `sysv-x86_64-c` sonames (no default libc) and bind-now GOT relocations only. It MUST reject `sysv-x86_64-c` on the static profile, reject non-INTEGER-class signatures (`SYSV-C-INTEGER-CLASS`), and reject one symbol name imported from two libraries (`XAX.LINUX.IMPORT`).
+
+Current implementation-local evidence: `compiler/tests/test_xax_linux.py` (22 tests, EXECUTED on Linux 6.18 x86-64) and the MEASURED U1 benchmark.

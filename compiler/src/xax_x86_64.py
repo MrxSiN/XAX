@@ -27,7 +27,9 @@ from xax_compiler import (
     NativeTargetDescription,
     Operation,
     LINUX_X86_64_SYSCALL_ABI,
+    SYSV_X86_64_C_ABI,
     X86_64_LINUX_ABI,
+    X86_64_LINUX_ELF_DYNAMIC_FORMAT,
     decode_foreign_function,
     pointer_extent_from_graph,
     RealtimeProfile,
@@ -74,6 +76,8 @@ class NativeImage:
     # for an aggregate passed by value or by hidden reference per its size.
     parameter_kinds: tuple[str, ...] = ()
     return_kinds: tuple[str, ...] = ()
+    # (image offset of a rel32 GOT displacement, library, symbol) for SysV C imports.
+    foreign_calls: tuple[tuple[int, bytes, bytes], ...] = ()
 
     @property
     def artifact_bytes(self) -> bytes:
@@ -86,6 +90,7 @@ class _Assembler:
         self.labels: dict[str, int] = {}
         self.branches: list[tuple[int, str]] = []
         self.calls: list[tuple[int, bytes]] = []
+        self.foreign_calls: list[tuple[int, bytes, bytes]] = []
 
     def emit(self, data: bytes) -> None:
         self.code.extend(data)
@@ -101,6 +106,12 @@ class _Assembler:
     def call(self, callee: bytes) -> None:
         self.emit(b"\xe8")
         self.calls.append((len(self.code), callee))
+        self.emit(bytes(4))
+
+    def foreign_call(self, library: bytes, name: bytes) -> None:
+        """``call qword [rip + GOT slot]``; the artifact emitter resolves the slot."""
+        self.emit(b"\xff\x15")
+        self.foreign_calls.append((len(self.code), library, name))
         self.emit(bytes(4))
 
     def address(self, register: int, callee: bytes) -> None:
@@ -670,6 +681,38 @@ def decode_syscall_name(name: bytes, machine_inputs: int) -> tuple[int, tuple[in
     return number, arguments
 
 
+# sysv-x86_64-c: INTEGER-class arguments in this order (System V AMD64 psABI).
+_SYSV_ARGUMENT_REGISTERS = (7, 6, 2, 1, 8, 9)  # rdi, rsi, rdx, rcx, r8, r9
+
+
+def _sysv_integer_class(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> bool:
+    """bits<1..64> or a pointer: the psABI INTEGER class this lowering supports."""
+    width = _value_width(resolve, cid)
+    return bool(width) and width <= 64 and not _is_float_cid(resolve, cid) and not _is_aggregate_cid(resolve, cid)
+
+
+def _emit_sysv_c_call(assembler: "_Assembler", node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> None:
+    """Call an imported C function through its GOT slot.
+
+    Only the bounded INTEGER-class subset is lowered: at most six integer or
+    pointer arguments of at most 64 bits and at most one such result.  Spill
+    code keeps no value in registers across a node and every frame keeps RSP
+    16-byte aligned at calls, so the psABI caller obligations are met without
+    saving anything.  Floats, aggregates, stack arguments, and variadic calls
+    reject rather than being guessed.
+    """
+    declaration = decode_foreign_function(node.entity)
+    if target.abi != X86_64_LINUX_ABI or target.image_format != X86_64_LINUX_ELF_DYNAMIC_FORMAT:
+        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-REQUIRES-DYNAMIC-PROFILE", [X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT], [target.abi, target.image_format])
+    machine = [(operand, cid) for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid))]
+    results = [cid for cid in node.results if not _is_proof_type(resolve(cid))]
+    if len(machine) > len(_SYSV_ARGUMENT_REGISTERS) or len(results) > 1 or not all(_sysv_integer_class(resolve, cid) for cid in (*(cid for _, cid in machine), *results)):
+        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-INTEGER-CLASS", "<=6 integer/pointer arguments, <=1 integer/pointer result", [len(machine), len(results)])
+    for register, (operand, _cid) in zip(_SYSV_ARGUMENT_REGISTERS, machine):
+        assembler.emit(_load(register, value_slot(operand)))
+    assembler.foreign_call(declaration.library, declaration.name)
+
+
 def _linux_syscall(node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> bytes:
     declaration = decode_foreign_function(node.entity)
     if declaration.abi != LINUX_X86_64_SYSCALL_ABI or target.abi != X86_64_LINUX_ABI:
@@ -1151,7 +1194,7 @@ def _compile_function(
         function, graph_object, graph, return_types, resolve, target
     )
     if register_resident is not None:
-        return register_resident
+        return (*register_resident, ())
 
     # Every machine value owns a frame slot holding its target ABI layout bytes
     # (zero padded to 8).  Scalars keep the historical one-qword slot; larger
@@ -1652,7 +1695,10 @@ def _compile_function(
                 assembler.label(nonnull)
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
             elif node.operation == Operation.CALL_FOREIGN:
-                assembler.emit(_linux_syscall(node, resolve, target, value_slot, graph_object))
+                if decode_foreign_function(node.entity).abi == SYSV_X86_64_C_ABI:
+                    _emit_sysv_c_call(assembler, node, resolve, target, value_slot, graph_object)
+                else:
+                    assembler.emit(_linux_syscall(node, resolve, target, value_slot, graph_object))
                 machine_results = tuple((index, cid) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid)))
                 if machine_results:
                     result_index, cid = machine_results[0]
@@ -1787,7 +1833,7 @@ def _compile_function(
             assembler.emit(_immediate(target.result_register, reason))
             assembler.emit(b"\x0f\x0b")
     code, calls = assembler.finish()
-    return code, calls, tuple(node_ranges)
+    return code, calls, tuple(node_ranges), tuple(assembler.foreign_calls)
 
 
 def _compile_native_with_target(
@@ -1804,7 +1850,7 @@ def _compile_native_with_target(
         fail("XAX.NATIVE.FUNCTION", function_cid.hex(), "NATIVE-ENTRY-FUNCTION", Kind.FUNCTION.name, entry.kind.name)
     description = decode_native_target(target_object)
     functions = _function_closure(entry, resolve, description)
-    fragments: dict[bytes, tuple[bytes, tuple[tuple[int, bytes], ...], tuple[ArtifactSemanticRange, ...]]] = {
+    fragments: dict[bytes, tuple[bytes, tuple[tuple[int, bytes], ...], tuple[ArtifactSemanticRange, ...], tuple[tuple[int, bytes, bytes], ...]]] = {
         function.cid: _compile_function(function, resolve, description, atomic_policy) for function in functions
     }
     if realtime_profile is not None:
@@ -1830,6 +1876,11 @@ def _compile_native_with_target(
             position = base + local_position
             displacement = offsets[callee] - (position + 4)
             image[position : position + 4] = displacement.to_bytes(4, "little", signed=True)
+    foreign_calls = tuple(
+        (offsets[function.cid] + position, library, name)
+        for function in functions
+        for position, library, name in fragments[function.cid][3]
+    )
     _, parameter_types, return_types = _decode_function_interface(entry, resolve)
     return NativeImage(
         bytes(image),
@@ -1841,6 +1892,7 @@ def _compile_native_with_target(
         tuple(semantic_ranges),
         tuple(_abi_kind(resolve, cid) for cid in parameter_types if not _is_proof_type(resolve(cid))),
         tuple(_abi_kind(resolve, cid) for cid in return_types if not _is_proof_type(resolve(cid))),
+        foreign_calls,
     )
 
 

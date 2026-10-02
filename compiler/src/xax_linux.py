@@ -6,9 +6,13 @@ Everything here is explicit platform/ABI contract data or artifact packaging:
   whose identity carries the exact register template (no libc, no wrappers);
 * the process-entry contract is the only compiler-generated code: it calls the
   XAX entry and passes its returned status to ``exit_group`` (syscall 231);
-* the executable is a static ELF64 ``ET_EXEC`` with one read/execute load
-  segment and a non-executable stack marker.  No interpreter, dynamic section,
-  relocation, libc, allocator, or runtime is emitted.
+* ``x86_64-linux-elf-exec-v1`` emits a static ELF64 ``ET_EXEC`` with one
+  read/execute load segment and a non-executable stack marker: no interpreter,
+  dynamic section, relocation, libc, allocator, or runtime;
+* ``x86_64-linux-elf-dynexec-v1`` explicitly requests the system dynamic
+  loader: ``PT_INTERP``, ``DT_NEEDED`` derived only from declared
+  ``sysv-x86_64-c`` imports, and bind-now GOT relocations.  It adds no libc
+  dependency of its own; a library pulls in only what its soname requires.
 """
 
 from __future__ import annotations
@@ -27,10 +31,12 @@ from xax_compiler import (
     ForeignDeallocatorContract,
     Kind,
     LINUX_X86_64_SYSCALL_ABI,
+    SYSV_X86_64_C_ABI,
     Permission,
     SemanticObject,
     StoreReader,
     X86_64_LINUX_ABI,
+    X86_64_LINUX_ELF_DYNAMIC_FORMAT,
     X86_64_LINUX_ELF_EXEC_FORMAT,
     _decode_function_interface,
     _is_proof_type,
@@ -46,6 +52,7 @@ from xax_compiler import (
     pointer_type,
     store_resolver,
 )
+from xax_elf import c_string_table, dynamic, hash_section, program_header, rela, symbol
 from xax_x86_64 import NativeImage, compile_native, encode_syscall_name
 
 # Linux x86-64 syscall numbers and flag values used by this package.
@@ -94,6 +101,11 @@ class LinuxApi:
     @property
     def symbols(self) -> tuple[SemanticObject, ...]:
         return (self.read, self.write, self.openat, self.close, self.mmap_anonymous)
+
+
+def c_function(library: bytes, name: bytes, inputs, outputs) -> SemanticObject:
+    """Typed ``sysv-x86_64-c`` import of ``name`` from the shared library ``library`` (a DT_NEEDED soname)."""
+    return foreign_function_symbol(library, name, inputs, outputs, abi=SYSV_X86_64_C_ABI)
 
 
 def linux_api() -> LinuxApi:
@@ -146,12 +158,19 @@ def _process_entry(entry_displacement: int) -> bytes:
     )
 
 
-_STUB_SIZE = 32  # stub padded so the XAX image starts 16-byte aligned
+_STUB_SIZE = 32  # adapter padded so the XAX image starts 16-byte aligned
 _BASE_ADDRESS = 0x400000
 _ELF_HEADER_SIZE = 64
 _PROGRAM_HEADER_SIZE = 56
-_PROGRAM_HEADER_COUNT = 2
-_CODE_OFFSET = _ELF_HEADER_SIZE + _PROGRAM_HEADER_SIZE * _PROGRAM_HEADER_COUNT  # 176, 16-aligned
+_SYMBOL_SIZE = 24
+_RELA_SIZE = 24
+PT_LOAD, PT_DYNAMIC, PT_INTERP, PT_PHDR, PT_GNU_STACK = 1, 2, 3, 6, 0x6474E551
+PF_R, PF_W, PF_X = 4, 2, 1
+R_X86_64_GLOB_DAT = 6
+DT_NULL, DT_NEEDED, DT_HASH, DT_STRTAB, DT_SYMTAB, DT_RELA, DT_RELASZ, DT_RELAENT, DT_STRSZ, DT_SYMENT = 0, 1, 4, 5, 6, 7, 8, 9, 10, 11
+DT_FLAGS, DF_BIND_NOW, DT_FLAGS_1, DF_1_NOW = 30, 8, 0x6FFFFFFB, 1
+# Fixed by the x86_64-linux-elf-dynexec-v1 profile identity, never inferred.
+DYNAMIC_INTERPRETER = b"/lib64/ld-linux-x86-64.so.2"
 
 
 @dataclass(frozen=True)
@@ -160,46 +179,119 @@ class LinuxExecutable:
     image: NativeImage
     target_cid: bytes
     semantic_ranges: tuple[ArtifactSemanticRange, ...]
+    entry_offset: int  # file offset of the process-entry adapter
+    needed: tuple[bytes, ...] = ()
+    parameter_widths: tuple[int, ...] = ()
+    return_widths: tuple[int, ...] = (32,)
 
     @property
     def artifact_bytes(self) -> bytes:
         return self.data
 
-    @property
-    def entry_offset(self) -> int:
-        return _CODE_OFFSET
 
-    parameter_widths: tuple[int, ...] = ()
-    return_widths: tuple[int, ...] = (32,)
+def _align(value: int, alignment: int) -> int:
+    return (value + alignment - 1) & -alignment
 
 
-def emit_linux_elf_executable(image: NativeImage) -> tuple[bytes, int]:
-    """Return ``(ELF bytes, file offset of the XAX image)`` for a compiled entry image."""
-    stub = _process_entry(_STUB_SIZE + image.entry_offset - (_ENTRY_CALL_OFFSET + 5))
-    code = stub.ljust(_STUB_SIZE, b"\xcc") + image.code
-    file_size = _CODE_OFFSET + len(code)
-    header = (
-        b"\x7fELF" + bytes((2, 1, 1, 0)) + bytes(8)
-        + struct.pack(
-            "<HHIQQQIHHHHHH",
-            2,  # ET_EXEC
-            62,  # EM_X86_64
-            1,
-            _BASE_ADDRESS + _CODE_OFFSET,
-            _ELF_HEADER_SIZE,
-            0,  # no section headers: nothing beyond the load image is emitted
-            0,
-            _ELF_HEADER_SIZE,
-            _PROGRAM_HEADER_SIZE,
-            _PROGRAM_HEADER_COUNT,
-            64,
-            0,
-            0,
-        )
+def _elf_header(entry_address: int, program_headers: int) -> bytes:
+    return b"\x7fELF" + bytes((2, 1, 1, 0)) + bytes(8) + struct.pack(
+        "<HHIQQQIHHHHHH",
+        2,  # ET_EXEC
+        62,  # EM_X86_64
+        1,
+        entry_address,
+        _ELF_HEADER_SIZE,
+        0,  # no section headers: nothing beyond the load image is emitted
+        0,
+        _ELF_HEADER_SIZE,
+        _PROGRAM_HEADER_SIZE,
+        program_headers,
+        64,
+        0,
+        0,
     )
-    load = struct.pack("<IIQQQQQQ", 1, 5, 0, _BASE_ADDRESS, _BASE_ADDRESS, file_size, file_size, PAGE_SIZE)  # PT_LOAD R+X
-    stack = struct.pack("<IIQQQQQQ", 0x6474E551, 6, 0, 0, 0, 0, 0, 16)  # PT_GNU_STACK R+W
-    return header + load + stack + code, _CODE_OFFSET + _STUB_SIZE
+
+
+def _adapter_and_image(image: NativeImage) -> bytearray:
+    stub = _process_entry(_STUB_SIZE + image.entry_offset - (_ENTRY_CALL_OFFSET + 5))
+    return bytearray(stub.ljust(_STUB_SIZE, b"\xcc") + image.code)
+
+
+_STACK_HEADER = program_header(PT_GNU_STACK, PF_R | PF_W, 0, 0, 0, 0, 16)
+
+
+def _emit_static(image: NativeImage) -> tuple[bytes, int, tuple[bytes, ...]]:
+    code_offset = _ELF_HEADER_SIZE + 2 * _PROGRAM_HEADER_SIZE  # 176, 16-aligned
+    code = _adapter_and_image(image)
+    file_size = code_offset + len(code)
+    load = program_header(PT_LOAD, PF_R | PF_X, 0, _BASE_ADDRESS, file_size, file_size, PAGE_SIZE)
+    return _elf_header(_BASE_ADDRESS + code_offset, 2) + load + _STACK_HEADER + bytes(code), code_offset, ()
+
+
+def _emit_dynamic(image: NativeImage) -> tuple[bytes, int, tuple[bytes, ...]]:
+    """ET_EXEC with PT_INTERP, DT_NEEDED from declared imports, and bind-now GOT slots."""
+    imports = sorted({(library, name) for _offset, library, name in image.foreign_calls})
+    names = [name for _library, name in imports]
+    if len(set(names)) != len(names):
+        # ELF symbol lookup is global, so one name cannot be bound to two libraries.
+        fail("XAX.LINUX.IMPORT", "elf", "LINUX-IMPORT-SYMBOL-UNIQUE", "one library per imported symbol", [list(item) for item in imports])
+    needed = tuple(sorted({library for library, _name in imports}))
+    strings, string_offsets = c_string_table((*needed, *names))
+    interpreter = DYNAMIC_INTERPRETER + b"\x00"
+    header_count = 6
+    interp_offset = _ELF_HEADER_SIZE + header_count * _PROGRAM_HEADER_SIZE
+    symtab_offset = _align(interp_offset + len(interpreter), 8)
+    strtab_offset = symtab_offset + _SYMBOL_SIZE * (len(names) + 1)
+    hash_bytes = hash_section((b"", *names))
+    hash_offset = _align(strtab_offset + len(strings), 8)
+    rela_offset = _align(hash_offset + len(hash_bytes), 8)
+    code_offset = _align(rela_offset + _RELA_SIZE * len(names), 16)
+    code = _adapter_and_image(image)
+    text_end = code_offset + len(code)
+    rw_offset = _align(text_end, 8)
+    rw_address = _align(_BASE_ADDRESS + text_end, PAGE_SIZE) + rw_offset % PAGE_SIZE
+    address = lambda offset: _BASE_ADDRESS + offset  # the R+X segment maps file offset 0 at the base
+    entries = [(DT_NEEDED, string_offsets[library]) for library in needed] + [
+        (DT_HASH, address(hash_offset)), (DT_STRTAB, address(strtab_offset)), (DT_SYMTAB, address(symtab_offset)),
+        (DT_STRSZ, len(strings)), (DT_SYMENT, _SYMBOL_SIZE), (DT_RELA, address(rela_offset)),
+        (DT_RELASZ, _RELA_SIZE * len(names)), (DT_RELAENT, _RELA_SIZE),
+        (DT_FLAGS, DF_BIND_NOW), (DT_FLAGS_1, DF_1_NOW), (DT_NULL, 0),
+    ]
+    dynamic_bytes = b"".join(dynamic(tag, value) for tag, value in entries)
+    got_address = rw_address + len(dynamic_bytes)
+    slot = {name: got_address + 8 * index for index, name in enumerate(names)}
+    for position, _library, name in image.foreign_calls:
+        site = code_offset + _STUB_SIZE + position
+        code[site - code_offset : site - code_offset + 4] = (slot[name] - (address(site) + 4)).to_bytes(4, "little", signed=True)
+    symbols = bytes(_SYMBOL_SIZE) + b"".join(symbol(string_offsets[name], 0x12, 0, 0, 0, 0) for name in names)  # GLOBAL FUNC, undefined
+    relocations = b"".join(rela(slot[name], index + 1, R_X86_64_GLOB_DAT) for index, name in enumerate(names))
+    rw_size = len(dynamic_bytes) + 8 * len(names)
+    headers = b"".join((
+        program_header(PT_PHDR, PF_R, _ELF_HEADER_SIZE, address(_ELF_HEADER_SIZE), header_count * _PROGRAM_HEADER_SIZE, header_count * _PROGRAM_HEADER_SIZE, 8),
+        program_header(PT_INTERP, PF_R, interp_offset, address(interp_offset), len(interpreter), len(interpreter), 1),
+        program_header(PT_LOAD, PF_R | PF_X, 0, _BASE_ADDRESS, text_end, text_end, PAGE_SIZE),
+        program_header(PT_LOAD, PF_R | PF_W, rw_offset, rw_address, rw_size, rw_size, PAGE_SIZE),
+        program_header(PT_DYNAMIC, PF_R | PF_W, rw_offset, rw_address, len(dynamic_bytes), len(dynamic_bytes), 8),
+        _STACK_HEADER,
+    ))
+    out = bytearray(_elf_header(address(code_offset), header_count) + headers)
+    for offset, blob in ((interp_offset, interpreter), (symtab_offset, symbols), (strtab_offset, strings), (hash_offset, hash_bytes), (rela_offset, relocations), (code_offset, bytes(code))):
+        out.extend(bytes(offset - len(out)))
+        out.extend(blob)
+    out.extend(bytes(rw_offset - len(out)))
+    out.extend(dynamic_bytes + bytes(8 * len(names)))
+    return bytes(out), code_offset, needed
+
+
+def emit_linux_elf_executable(image: NativeImage, *, dynamic_loader: bool = False) -> tuple[bytes, int, tuple[bytes, ...]]:
+    """Return ``(ELF bytes, adapter file offset, DT_NEEDED libraries)``.
+
+    The dynamic loader appears only when the target profile requests it; a
+    static profile with foreign C imports is rejected, never silently upgraded.
+    """
+    if image.foreign_calls and not dynamic_loader:
+        fail("XAX.LINUX.DYNAMIC_REQUIRED", "elf", "LINUX-DYNAMIC-LOADER-EXPLICIT", "x86_64-linux-elf-dynexec-v1", "static profile with C imports")
+    return _emit_dynamic(image) if dynamic_loader else _emit_static(image)
 
 
 def validate_process_entry(reader: StoreReader, entry_cid: bytes) -> None:
@@ -221,18 +313,19 @@ def validate_process_entry(reader: StoreReader, entry_cid: bytes) -> None:
 
 def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes) -> LinuxExecutable:
     resolve = store_resolver(reader)
-    target = resolve(target_cid)
-    description = decode_native_target(target)
-    if (description.abi, description.image_format) != (X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT):
-        fail("XAX.LINUX.TARGET", target_cid.hex(), "LINUX-ELF-EXEC-TARGET", [X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT], [description.abi, description.image_format])
+    description = decode_native_target(resolve(target_cid))
+    formats = (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT)
+    if description.abi != X86_64_LINUX_ABI or description.image_format not in formats:
+        fail("XAX.LINUX.TARGET", target_cid.hex(), "LINUX-ELF-EXEC-TARGET", [X86_64_LINUX_ABI, list(formats)], [description.abi, description.image_format])
     validate_process_entry(reader, entry_cid)
     image = compile_native(reader, entry_cid, target_cid)
-    data, image_offset = emit_linux_elf_executable(image)
+    data, adapter_offset, needed = emit_linux_elf_executable(image, dynamic_loader=description.image_format == X86_64_LINUX_ELF_DYNAMIC_FORMAT)
+    image_offset = adapter_offset + _STUB_SIZE
     ranges = tuple(
         ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, image_offset + item.start, image_offset + item.end)
         for item in image.semantic_ranges
     )
-    return LinuxExecutable(data, image, target_cid, ranges)
+    return LinuxExecutable(data, image, target_cid, ranges, adapter_offset, needed)
 
 
 def run_linux_executable(

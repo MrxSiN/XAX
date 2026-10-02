@@ -469,13 +469,13 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 ## OI-32 — General-path register allocation and code quality (R4 blocker)
 
-**Status:** OPEN. **Evidence (MEASURED, 2026-10-02):** `compiler/benchmarks/u1_linux_filestat_evidence.json` — the Linux x86-64 `filestat` artifact runs 6.2× slower than `gcc -O2` (median of 11 runs on a 32 MiB input) because the general x86-64 path stores every SSA value to a frame slot and reloads it per use. The legacy register-resident path covers only scalar add/sub/mul/call graphs.
+**Status:** OPEN. **Evidence (MEASURED, 2026-10-02):** `compiler/benchmarks/u1_linux_filestat_evidence.json` — the Linux x86-64 `filestat` artifact runs 5.9× slower than `gcc -O2` (median of 11 runs on a 32 MiB input) because the general x86-64 path stores every SSA value to a frame slot and reloads it per use. The legacy register-resident path covers only scalar add/sub/mul/call graphs.
 
 **Question.** What is the smallest register-allocation design (linear scan over block-parameter SSA, or extension of the register-resident path to memory/foreign operations) that closes most of the gap while keeping lowering deterministic and translation-validatable? Close with a measured R4 comparison on U1 plus no regression in legacy artifact identities, or with a recorded decision to version legacy profiles.
 
 ## OI-33 — Dynamic/external library calls on hosted targets
 
-**Status:** OPEN. UR-M1 item U1 requires an external or dynamic library call. The Linux profile is static and syscall-only. **Options:** (a) ELF `ET_EXEC`/`ET_DYN` with `PT_INTERP`, `DT_NEEDED`, and GOT/PLT imports using the existing Android ELF import machinery, with the C ABI (SysV) as a new foreign ABI and an explicit dynamic-loader capability (`XAX_SPEC.md` §12.5); (b) a static archive importer. Close with an executed program calling a real shared library (e.g. `libz` or `libc` `qsort` with an XAX callback) whose loader dependency is explicit in the artifact contract.
+**Status:** PARTIALLY RESOLVED (2026-10-02, ADR-083). Linux x86-64 now calls INTEGER-class C functions in shared libraries through an explicitly requested loader (`x86_64-linux-elf-dynexec-v1`); `filestat` calls `libz.so.1` `crc32` (EXECUTED and MEASURED). Still open: C callbacks into XAX (SysV-to-internal adapters), float/aggregate/stack/variadic classification, symbol versioning, direct binding, and Android device `dlopen` validation. Original framing: UR-M1 item U1 requires an external or dynamic library call. The Linux profile is static and syscall-only. **Options:** (a) ELF `ET_EXEC`/`ET_DYN` with `PT_INTERP`, `DT_NEEDED`, and GOT/PLT imports using the existing Android ELF import machinery, with the C ABI (SysV) as a new foreign ABI and an explicit dynamic-loader capability (`XAX_SPEC.md` §12.5); (b) a static archive importer. Close with an executed program calling a real shared library (e.g. `libz` or `libc` `qsort` with an XAX callback) whose loader dependency is explicit in the artifact contract.
 
 ## OI-34 — Shift and sign-extension selection versus kernel operations
 

@@ -924,6 +924,10 @@ def x86_64_windows_target() -> SemanticObject:
 # Linux process-entry contract and declared ``linux-x86_64-syscall-v1`` calls.
 X86_64_LINUX_ABI = 5
 X86_64_LINUX_ELF_EXEC_FORMAT = 5
+# Same machine profile, plus an explicit dynamic-loader capability: ELF64
+# ET_EXEC with PT_INTERP (/lib64/ld-linux-x86-64.so.2), DT_NEEDED derived only
+# from declared ``sysv-x86_64-c`` imports, and bind-now GOT relocations.
+X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
 X86_64_LINUX_OPERATIONS = (
     1, 2, 3, *range(5, 25),
     38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 72),
@@ -936,6 +940,15 @@ def x86_64_linux_exec_target() -> SemanticObject:
         b"x86_64-linux-elf-exec-v1",
         tuple(sorted(set(X86_64_LINUX_OPERATIONS))),
         machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+    )
+
+
+def x86_64_linux_dynamic_exec_target() -> SemanticObject:
+    """Linux x86-64 ELF64 executable that explicitly requests the system dynamic loader."""
+    return _x86_64_windows_target(
+        b"x86_64-linux-elf-dynexec-v1",
+        tuple(sorted(set(X86_64_LINUX_OPERATIONS))),
+        machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 32),
     )
 
 
@@ -1533,8 +1546,13 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         fail("XAX.TARGET.PROFILE", obj.cid.hex(), "TARGET-PROFILE-SUPPORTED", [1, 2, 3, 4], profile)
     if architecture == 1:
         machine = (abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space)
-        if machine not in ((1, 1, 64, 64, 16, 32), (X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32)):
-            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-X86-64-PROFILE", [[1, 1, 64, 64, 16, 32], [X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32]], list(machine))
+        allowed_machines = (
+            (1, 1, 64, 64, 16, 32),
+            (X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+            (X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 32),
+        )
+        if machine not in allowed_machines:
+            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-X86-64-PROFILE", [list(item) for item in allowed_machines], list(machine))
         registers = (*argument_registers, result_register, *scratch_registers)
         if argument_registers != (1, 2, 8, 9) or result_register != 0 or scratch_registers != (10, 11) or any(register is None or register >= 16 for register in registers):
             fail("XAX.TARGET.ABI", obj.cid.hex(), "TARGET-WINDOWS-X64-REGISTERS", [[1, 2, 8, 9], 0, [10, 11]], [list(argument_registers), result_register, list(scratch_registers)])
@@ -2413,7 +2431,8 @@ class ForeignFunctionDescription:
 # target can actually lower is a separate backend/target-package question.
 ANDROID_AAPCS64_C_ABI = b"android-aapcs64-c"
 LINUX_X86_64_SYSCALL_ABI = b"linux-x86_64-syscall-v1"
-FOREIGN_CALL_ABIS = frozenset({ANDROID_AAPCS64_C_ABI, LINUX_X86_64_SYSCALL_ABI})
+SYSV_X86_64_C_ABI = b"sysv-x86_64-c"
+FOREIGN_CALL_ABIS = frozenset({ANDROID_AAPCS64_C_ABI, LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI})
 
 _FOREIGN_ALLOCATOR_TAG = 1
 _FOREIGN_DEALLOCATOR_TAG = 2

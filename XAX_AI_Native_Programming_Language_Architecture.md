@@ -952,7 +952,7 @@ None imposes cost on programs that do not use it. Current per-row status is trac
 
 Universal replacement cannot require rewriting the world. Every foreign call names an ABI in the verifier's foreign-ABI registry; the declaration's identity carries everything lowering needs (symbol/service, ABI, typed signature, ownership/allocation contracts, fixed arguments). Deterministic importers convert external metadata — C headers/API descriptions, POSIX, Win32, Objective-C runtime metadata, JVM class files, .NET metadata, Android SDK/DEX/JNI, Web IDL, syscall tables, GPU API descriptions, existing library symbol tables — into ordinary XAX semantic packages. Humans never write wrapper source. C++ and other complex ABIs are explicit ABI packages; no universal ABI is assumed. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions remain visible to verification.
 
-Implemented: `android-aapcs64-c` (EXECUTED for JNI callbacks on device), Android SDK/JAR import (STRUCTURAL), JNI 1.6 table package (STRUCTURAL), `linux-x86_64-syscall-v1` (EXECUTED and MEASURED). Its syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments. Generic importers: UNIMPLEMENTED (OI-35).
+Implemented: `android-aapcs64-c` (EXECUTED for JNI callbacks on device), Android SDK/JAR import (STRUCTURAL), JNI 1.6 table package (STRUCTURAL), `linux-x86_64-syscall-v1` (EXECUTED and MEASURED), and `sysv-x86_64-c` integer-class imports from shared libraries (EXECUTED and MEASURED: `libz.so.1` `crc32`). Its syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments. Generic importers: UNIMPLEMENTED (OI-35).
 
 ---
 
@@ -992,7 +992,7 @@ Artifact infrastructure is shared and target-neutral where possible:
 
 | Format | Status |
 |---|---|
-| ELF64 ET_EXEC (Linux x86-64, static) | EXECUTED, MEASURED |
+| ELF64 ET_EXEC (Linux x86-64, static or with explicit `PT_INTERP`/`DT_NEEDED`) | EXECUTED, MEASURED |
 | ELF64 ET_DYN (Android arm64) | EXECUTED (device) |
 | DEX 039, APK v2 signing | EXECUTED (device, bounded) |
 | Wasm core module | EXECUTED (Node harness) |
@@ -1005,7 +1005,7 @@ Artifact infrastructure is shared and target-neutral where possible:
 
 Universal replacement needs much stronger optimization than a prototype backend. The planned evolution, each step preserving exact observable semantics and using translation validation where appropriate: constant propagation/folding, DCE, CFG simplification, inlining, specialization, devirtualization, escape analysis, scalar replacement, load/store forwarding, alias-aware optimization, GVN/CSE, LICM, loop simplification/unrolling/vectorization, SLP, strength reduction, bounds-check elimination (prove → erase), interprocedural and whole-program optimization, PGO, code layout, instruction selection, peephole, scheduling, register allocation, and bounded superoptimization. The optimization machinery itself should eventually be XAX.
 
-Current state (MEASURED, U1): the general x86-64 path spills every SSA value to the frame, so the Linux `filestat` workload runs 6.2× slower than `gcc -O2`. Register allocation in the general path is the next performance dependency (OI-32). LLVM is never an architectural dependency.
+Current state (MEASURED, U1): the general x86-64 path spills every SSA value to the frame, so the Linux `filestat` workload runs 5.9× slower than `gcc -O2`. Register allocation in the general path is the next performance dependency (OI-32). LLVM is never an architectural dependency.
 
 ---
 
@@ -1017,7 +1017,7 @@ Production use needs derived, non-authoritative views: semantic-to-machine mappi
 
 # 50. Replacement evidence matrix
 
-`docs/universal_replacement_matrix.json` is the only authoritative replacement record. For each target it records 19 capabilities, each with an evidence label, evidence paths, and a note: semantic expressibility, code generation, ABI, artifact format, platform APIs, FFI, concurrency, atomics, SIMD, dynamic linking, debugging, optimization maturity, real execution, practical application, performance, memory, code size, AI tokens, and autonomous maintenance. It also records runtime requirements, blockers, and the replacement level. Snapshot (2026-10-02): Linux x86-64 ELF, Android arm64, and Wasm core are **R1**; Windows raw images, AArch64 bare-metal raw images, and the synthetic SIMT target are **R0**; RISC-V, PE, Mach-O, iOS, WASI, browser, JVM, CLR, SPIR-V, and Cortex-M are below R0. No target is R2 or higher.
+`docs/universal_replacement_matrix.json` is the only authoritative replacement record. For each target it records 19 capabilities, each with an evidence label, evidence paths, and a note: semantic expressibility, code generation, ABI, artifact format, platform APIs, FFI, concurrency, atomics, SIMD, dynamic linking, debugging, optimization maturity, real execution, practical application, performance, memory, code size, AI tokens, and autonomous maintenance. It also records runtime requirements, blockers, and the replacement level. Snapshot (2026-10-02): Linux x86-64 ELF is **R2**; Android arm64 and Wasm core are **R1**; Windows raw images, AArch64 bare-metal raw images, and the synthetic SIMT target are **R0**; RISC-V, PE, Mach-O, iOS, WASI, browser, JVM, CLR, SPIR-V, and Cortex-M are below R0. No target is R3 or higher.
 
 ---
 
@@ -1037,7 +1037,7 @@ UR-M1 marks the transition from compiler-architecture prototype to practical gen
 4. Android application;
 5. accelerator/GPU workload.
 
-Each item must reach R3 for its workload class, and item 1 also records R4 measurements. Progress: item 1 is partial. Linux `filestat` is EXECUTED and MEASURED with allocation, file I/O, 35-block control flow, and a histogram, but has no dynamic library call yet. Items 2–4 are partial at R0/R1. Item 5 is PROTOTYPE.
+Each item must reach R3 for its workload class, and item 1 also records R4 measurements. Progress: item 1's capabilities are EXECUTED and MEASURED. Linux `filestat` uses `mmap` allocation, file I/O, a 41-block control flow, a histogram, and an explicit dynamic call to `libz.so.1` `crc32`, with no XAX runtime. It is at R2 because it is a benchmark-scale utility rather than an application, and it is 5.9× slower than `gcc -O2`. Items 2–4 are partial at R0/R1. Item 5 is PROTOTYPE.
 
 ---
 

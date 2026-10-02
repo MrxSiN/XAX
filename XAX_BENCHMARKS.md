@@ -568,15 +568,15 @@ Every performance statement used for an R4 decision or any comparative claim MUS
 
 ### 15.1 U1 Linux `filestat` (MEASURED, 2026-10-02)
 
-Source: `compiler/benchmarks/linux_filestat.py` (XAX graph and harness), `compiler/benchmarks/linux_filestat_c/filestat.c` (baseline), `compiler/benchmarks/linux_filestat_c/runner.c` (fork/exec/wait4 timer). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`.
+Source: `compiler/benchmarks/linux_filestat.py` (XAX graph and harness), `compiler/benchmarks/linux_filestat_c/filestat.c` (baseline, `-lz`), `compiler/benchmarks/linux_filestat_c/runner.c` (fork/exec/wait4 timer). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`.
 
-Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs, Linux 6.18.44 x86-64, gcc 13.3.0. Input: 32 MiB deterministic text (`shake_256` + 77-symbol alphabet). 1 warmup, 11 repetitions; times are `CLOCK_MONOTONIC` around fork/exec/wait4; peak RSS from `wait4` `ru_maxrss`. All three arms produce identical output, and each matches the independent Python reference contract on a 200,003-byte input.
+Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs, Linux 6.18.44 x86-64, gcc 13.3.0, zlib 1.3. The workload includes one external `libz.so.1` `crc32` call per 64 KiB chunk in every arm; XAX uses `x86_64-linux-elf-dynexec-v1` (explicit `ld.so`, `DT_NEEDED libz.so.1` only). Input: 32 MiB deterministic text (`shake_256` + 77-symbol alphabet). 1 warmup, 11 repetitions; times are `CLOCK_MONOTONIC` around fork/exec/wait4; peak RSS from `wait4` `ru_maxrss`. All three arms produce identical output, and each matches the independent Python reference contract on a 200,003-byte input.
 
 | Arm | Median wall (s) | Ratio vs gcc -O2 | Peak RSS (KiB) | File / stripped bytes |
 |---|---:|---:|---:|---:|
-| gcc -O2 (dynamic glibc) | 0.0899 | 1.00 | 1,632 | 16,224 / 14,472 |
-| gcc -O2 -static | 0.0853 | 0.95 | 652 | 785,400 / 706,584 |
-| XAX `x86_64-linux-elf-exec-v1` | 0.5570 | 6.20 | 188 | 18,339 / 18,339 |
+| gcc -O2 (dynamic glibc + libz) | 0.0991 | 1.00 | 1,792 | 16,256 / 14,472 |
+| gcc -O2 -static (+ libz.a) | 0.1007 | 1.02 | 716 | 798,120 / 718,872 |
+| XAX `x86_64-linux-elf-dynexec-v1` | 0.5852 | 5.90 | 1,204 | 23,472 / 23,472 |
 
-Interpretation: XAX is **not** runtime-competitive on this workload (R4 not met). The cause is the general path's spill-every-value code generation (OI-32), not hidden runtime work: the artifact has zero runtime dependencies, and the smaller RSS reflects the absence of libc and loader. Run-to-run variation on this shared host was about ±10% (5.1×–6.2× across three recorded runs); the committed JSON holds the last run.
+Interpretation: XAX is **not** runtime-competitive on this workload (R4 not met). The cause is the general path's spill-every-value code generation (OI-32), not hidden runtime work: XAX adds no runtime of its own; its RSS is the cost of the explicitly requested loader plus `libz` and the libc that `libz` itself requires. The earlier static, syscall-only variant (no CRC field) measured 188 KiB and 18,339 B. Run-to-run variation on this shared host was about ±10% (5.1×–6.2× across the recorded runs); the committed JSON holds the last run.
 
