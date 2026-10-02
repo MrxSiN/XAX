@@ -529,11 +529,15 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Status.** OPEN (partially addressed). ADR-081 adds one-way provenance exposure (`pointer_address`), which unblocks address-valued interface structs (WASI `fd_write` iovecs, executed). ADR-082 admits provenance-free pointers (function addresses, external pointers) as memory elements, unblocking function-pointer/dispatch tables (EXECUTED on Windows PE). Still open: storing pointers *with* local provenance and reloading them as dereferenceable pointers (pointer-linked lists/trees over XAX storage), which needs typed mixed storage and lifetime coupling between the container and the referenced storage; arena + index is the current verified alternative. Memory elements remain whole-byte bits/float scalars (`MEMORY-BYTE-ADDRESSABLE-VALUE`).
 
+**Measured justification (2026-10-02, ADR-090).** On a 2^20-node chained hash table (`oi37_chains_evidence.json`), arena + index links cost 1.44–1.47× versus pointer links in C, and the bounds checks equivalent to XAX's checked access cost a further 1.34–1.41×. The ADR-082 falsification condition is met for speed. A design that closes this must carry node extent with the provenance, so the per-access check disappears along with the index scaling. Sequenced after OI-38, whose measured share (1.73–1.80×) is larger.
+
 ## OI-38 — x86-64 register allocation: convergence and remaining code-quality gap
 
 **Status:** OPEN (partially addressed). Two register-resident allocators exist: ADR-083 extends the legacy allocator for the PE profile, and ADR-089 is a separate module for the Linux profiles. On Linux `filestat` the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` but 1.41–1.82× `clang -O2`, the fastest baseline (`u1_linux_filestat_evidence.json`, seven runs).
 
 **Question.** Which single allocator design serves both profiles? The candidates are global allocation across blocks (loop-invariant pointers currently reload from home slots every iteration), edge-copy hints, LICM, and unrolling. The design must stay deterministic and differentially validatable against the reference executor.
+
+**Additional evidence (ADR-090).** On the pointer-chasing `chains` workload, XAX code generation is 1.73–1.80× slower than equivalent checked-index C; the walk loop spans three blocks, so per-block allocation round-trips loop state through edges and home slots.
 
 **Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the best C baseline reported.
 

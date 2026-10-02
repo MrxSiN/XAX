@@ -326,7 +326,8 @@
         ],
         "performance": [
           "MEASURED",
-          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+          "compiler/benchmarks/u1_linux_filestat_evidence.json",
+          "compiler/benchmarks/oi37_chains_evidence.json"
         ],
         "memory": [
           "MEASURED",
@@ -346,7 +347,8 @@
         "1.41x behind clang -O2 on filestat; per-block allocation only (OI-32)",
         "no argv/env/auxv in the process-entry contract (OI-36)",
         "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
-        "no threads, signals, sockets, clocks packages; no DWARF"
+        "no threads, signals, sockets, clocks packages; no DWARF",
+        "pointer-chasing workload 3.49-3.58x gcc -O2 (index links + checks + codegen; ADR-090)"
       ]
     },
     {

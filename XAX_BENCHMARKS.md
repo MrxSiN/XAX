@@ -602,3 +602,18 @@ The workload opens `input.dat`, reads it in 64 KiB chunks into an anonymous `mma
 
 Seven independent 31-repetition runs on this shared host gave XAX/`gcc -O2` 0.95–1.14 and XAX/`clang -O2` 1.41–1.82; the committed JSON is the last written run. **R4 is not met**: `clang -O2` is fastest, and peak memory exceeds the static baseline because the explicitly requested loader maps `libz` and the libc it requires. Binary size is the smallest of all arms. Before the Linux register allocator (ADR-089), the frame path measured 5.9× `gcc -O2` with a 23,472-byte artifact. The remaining gap is attributed to per-block allocation: loop-invariant pointers reload from home slots each iteration, one edge-induced spill, and no unrolling (OI-38).
 
+### 15.2 OI-37 `chains`: arena + index versus pointer links (MEASURED, 2026-10-02)
+
+Source: `compiler/benchmarks/linux_chains.py`; C twins `linux_filestat_c/chains.c` (pointer links) and `chains_index.c` (diagnostic: XAX's index representation, optionally with XAX-equivalent bounds checks). Evidence: `compiler/benchmarks/oi37_chains_evidence.json`. Same host and method as §15.1 (3 warmup runs, 31 repetitions). Every arm prints `1048576 9437420`, and each matches an independent reference on smaller tables in the test suite.
+
+| Arm | Median wall (s) | Stdev (s) | vs gcc -O2 | Peak RSS (KiB) | File bytes |
+|---|---:|---:|---:|---:|---:|
+| gcc 13 -O2 (pointer links) | 0.2813 | 0.0605 | 1.00 | 18,272 | 16,096 |
+| gcc 13 -O3 | 0.2781 | 0.0796 | 0.99 | 18,272 | 16,096 |
+| clang 18 -O2 | 0.3509 | 0.2060 | 1.25 | 18,272 | 16,160 |
+| gcc 13 -O2 -static | 0.2678 | 0.0459 | 0.95 | 17,420 | 785,304 |
+| diagnostic: gcc -O2, index links | 0.4062 | 0.1110 | 1.42 | 18,272 | 16,104 |
+| diagnostic: gcc -O2, index links + checks | 0.5450 | 0.1239 | 1.90 | 18,272 | 16,136 |
+| XAX `x86_64-linux-elf-exec-v1` (index links, checked) | 0.9815 | 0.0691 | 3.49 | 16,896 | 1,598 |
+
+Across two runs, the attribution (median ratios within one run) was: index vs pointer 1.44–1.47×, checked vs unchecked index 1.34–1.41×, and XAX vs checked-index C 1.73–1.80×. In total XAX ran 3.49–3.58× `gcc -O2`. Decision: ADR-090. The diagnostic arms are not baselines and are excluded from "best baseline" ratios; their file sizes are unstripped.
