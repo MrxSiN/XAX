@@ -1,0 +1,182 @@
+{
+  "case": "m6_cross_target_artifact_mapping_accounting_v2",
+  "claim_scope": "deterministic accounting/conformance smoke only; no timing or performance conclusion",
+  "environment": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "targets": {
+    "1938fb7b07b9388009ac28f6fa324343523fa45424309d9e78002145c538c341": {
+      "artifact": {
+        "compiler_identity": "13dbd0cf3458d70b1e2f817928fa7248dabd7c6dade5ca52624ace6d6c296c78",
+        "digest": "698dfec16abf2adfe7a199a6d0ce01001abf1c04e7f742dea02951d4447ea28d",
+        "entry_offset": 0,
+        "format": "aarch64-baremetal-load-image-v1",
+        "handle": "A0.0",
+        "identity": "389b5677aa52c28e05f88be8041d8f374c24790112bd30273e65378830092692",
+        "lowering_identity": "6b4ba19b0a735126006a902a7a030c98c2478dfe21df55bdc5028ea28982f9a9",
+        "semantic_root": "R0.0",
+        "size_bytes": 44,
+        "target": "1938fb7b07b9388009ac28f6fa324343523fa45424309d9e78002145c538c341"
+      },
+      "entities_exposed": 9,
+      "mappings": {
+        "artifact_contributors_at_store_start": [
+          [
+            "F0",
+            "function",
+            0,
+            44
+          ],
+          [
+            "F0.B0.N1",
+            "node",
+            12,
+            20
+          ]
+        ],
+        "function": [
+          [
+            0,
+            44,
+            "function"
+          ]
+        ],
+        "stack_alloc_classification": "unavailable",
+        "store": [
+          [
+            12,
+            20,
+            "node"
+          ]
+        ]
+      },
+      "queries": 7,
+      "query_bytes": {
+        "artifact": 567,
+        "function_nodes": 558,
+        "map_artifact_page_1": 290,
+        "map_artifact_page_2": 297,
+        "map_function": 282,
+        "map_stack_alloc": 223,
+        "map_store": 285,
+        "total": 2502
+      }
+    },
+    "59242efd6cbe061e63fc62ebc6c06bdee3d9d68325758e2b562af41e8a5c6d25": {
+      "artifact": {
+        "compiler_identity": "13dbd0cf3458d70b1e2f817928fa7248dabd7c6dade5ca52624ace6d6c296c78",
+        "digest": "0191ce4817c61cc96256f82c665dccca06f11d774925f57c25bdeb6a6137693e",
+        "entry_offset": 39,
+        "format": "wasm32-core-module-v1",
+        "handle": "A0.0",
+        "identity": "fc1cf65d671318606f6feb0bbf6beeb3360fd396992ebb136e4ac4cc38e01787",
+        "lowering_identity": "546ca644b02be7c240931ee7ed46e236ac02b10047506044e82eed530836821b",
+        "semantic_root": "R0.0",
+        "size_bytes": 78,
+        "target": "59242efd6cbe061e63fc62ebc6c06bdee3d9d68325758e2b562af41e8a5c6d25"
+      },
+      "entities_exposed": 9,
+      "mappings": {
+        "artifact_contributors_at_store_start": [
+          [
+            "F0",
+            "function",
+            39,
+            78
+          ],
+          [
+            "F0.B0.N1",
+            "node",
+            56,
+            63
+          ]
+        ],
+        "function": [
+          [
+            39,
+            78,
+            "function"
+          ]
+        ],
+        "stack_alloc_classification": "unavailable",
+        "store": [
+          [
+            56,
+            63,
+            "node"
+          ]
+        ]
+      },
+      "queries": 7,
+      "query_bytes": {
+        "artifact": 558,
+        "function_nodes": 558,
+        "map_artifact_page_1": 291,
+        "map_artifact_page_2": 297,
+        "map_function": 283,
+        "map_stack_alloc": 223,
+        "map_store": 285,
+        "total": 2495
+      }
+    },
+    "d66dafc5ec0eec9156610fa9e0ef1d3ccf302217580e145f58a137165be2b9be": {
+      "artifact": {
+        "compiler_identity": "13dbd0cf3458d70b1e2f817928fa7248dabd7c6dade5ca52624ace6d6c296c78",
+        "digest": "4f0aad0b3c17fddd89aa23d36339c6523f73d7fcf46da9468f5362ecec78a035",
+        "entry_offset": 0,
+        "format": "x86_64-windows-load-image-v1",
+        "handle": "A0.0",
+        "identity": "9da04110c68a05564f800485277dd6c119873657227ae938d62a868329cf090a",
+        "lowering_identity": "d071ac136d8b85c8e3f993804c655b90e3a6ef583e6c472328ce5b28ec51c45c",
+        "semantic_root": "R0.0",
+        "size_bytes": 43,
+        "target": "d66dafc5ec0eec9156610fa9e0ef1d3ccf302217580e145f58a137165be2b9be"
+      },
+      "entities_exposed": 9,
+      "mappings": {
+        "artifact_contributors_at_store_start": [
+          [
+            "F0",
+            "function",
+            0,
+            43
+          ],
+          [
+            "F0.B0.N1",
+            "node",
+            12,
+            21
+          ]
+        ],
+        "function": [
+          [
+            0,
+            43,
+            "function"
+          ]
+        ],
+        "stack_alloc_classification": "unavailable",
+        "store": [
+          [
+            12,
+            21,
+            "node"
+          ]
+        ]
+      },
+      "queries": 7,
+      "query_bytes": {
+        "artifact": 564,
+        "function_nodes": 558,
+        "map_artifact_page_1": 290,
+        "map_artifact_page_2": 297,
+        "map_function": 282,
+        "map_stack_alloc": 223,
+        "map_store": 285,
+        "total": 2499
+      }
+    }
+  }
+}

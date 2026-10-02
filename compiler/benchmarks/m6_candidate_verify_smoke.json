@@ -1,0 +1,33 @@
+{
+  "after_commit_result": [
+    6
+  ],
+  "before_result": [
+    5
+  ],
+  "candidate_accounted_transaction_bytes": 26,
+  "candidate_accounted_verified_objects": 4,
+  "candidate_handle": "C0.0",
+  "candidate_reused_objects": 4,
+  "candidate_rollbacks": 1,
+  "candidate_touched_objects": 4,
+  "candidate_transaction_bytes": 26,
+  "candidate_verifications": 1,
+  "candidate_verified_objects": 4,
+  "canonical_root_unchanged_after_rollback": true,
+  "canonical_root_unchanged_after_verify": true,
+  "entities_exposed": 3,
+  "environment": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "generation_after_rollback": 0,
+  "generation_after_verify": 0,
+  "operation": "verify+rollback+ordinary-commit",
+  "ordinary_commit_succeeded": true,
+  "ordinary_commit_transaction_bytes": 26,
+  "query_bytes": 424,
+  "schema": "xax-m6-candidate-verify-smoke-v1",
+  "timing": false
+}

@@ -1,0 +1,38 @@
+{
+  "after_result": [
+    5
+  ],
+  "before_result": [
+    5
+  ],
+  "caller_count_after": 1,
+  "committed": true,
+  "destination_handle": "F1.B0.N0",
+  "entities_exposed": 3,
+  "environment": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "expected_destination": [
+    0,
+    0
+  ],
+  "expected_source": [
+    0,
+    1
+  ],
+  "mutation": "move-pure-node",
+  "node_constants_after": [
+    3,
+    2
+  ],
+  "query_bytes": 424,
+  "reused_objects": 4,
+  "schema": "xax-m6-move-node-smoke-v1",
+  "source_handle": "F1.B0.N1",
+  "timing": false,
+  "touched_objects": 6,
+  "transaction_bytes": 28,
+  "verified_objects": 6
+}

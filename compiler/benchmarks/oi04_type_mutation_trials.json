@@ -1,0 +1,8 @@
+{
+  "issue": "OI-04",
+  "status": "not_run",
+  "model": null,
+  "reason": "No raw external model/tokenizer trial is committed for the extended OI-04 mutation corpus.",
+  "tokenizer": null,
+  "trials": []
+}

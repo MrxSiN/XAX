@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">XAX Native Fixture</string>
+    <string name="app_description">XAX generated native libxposed fixture</string>
+</resources>

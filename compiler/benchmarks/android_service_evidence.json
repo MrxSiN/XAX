@@ -1,0 +1,104 @@
+{
+  "dex": {
+    "allocations_emitted_in_callbacks": 0,
+    "bytes": 940,
+    "checksum_valid": true,
+    "lifecycle_native_transitions_each": 1,
+    "on_bind_code_units": 2,
+    "on_bind_native_transitions": 0,
+    "on_bind_opcodes": [
+      "0x12",
+      "0x11"
+    ],
+    "on_create_code_units": 7,
+    "on_create_opcodes": [
+      "0x6f",
+      "0x01",
+      "0x00",
+      "0x70",
+      "0x09",
+      "0x00",
+      "0x0e"
+    ],
+    "on_destroy_code_units": 7,
+    "on_destroy_opcodes": [
+      "0x6f",
+      "0x02",
+      "0x00",
+      "0x70",
+      "0x0a",
+      "0x00",
+      "0x0e"
+    ],
+    "reflection_operations_emitted": 0,
+    "sha256": "b137d277df9fa9957c3e5a2e79e286055cb0168e3e02013f3e7ce43b0386d669",
+    "signature_valid": true,
+    "superclass": "Landroid/app/Service;"
+  },
+  "environment_note": "direct structural unbound-Service evidence only; package-manager/ART/service execution is UNEXECUTED because no Android device/emulator is available",
+  "generic_apk": {
+    "blake3": "ee0d8fc00bad539d0d170282f8d729dad95b03ebacd9036e48d9b34bf5165f3e",
+    "build_key": "4e50881841208a33930e15c1abd0e20743fbef0c5fcd3dcf4d14d4163b820ff4",
+    "bytes": 34068,
+    "entries": [
+      "AndroidManifest.xml",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "ccac30b3191e353f4752b7763d2b8e7ce35dc92afe04b3fb3a209b306fea6998",
+    "repeat_identical": true,
+    "request_root": "4253b36044ca137a1d5b6cef8f615425024e9983d237623f88cd7a451079bae4",
+    "snapshot_root": "4cd03c133f3f65967e89fd9caa3959955ba5378d208e981fc9b1fd56de4e44f4"
+  },
+  "manifest": {
+    "service_attributes": {
+      "exported": false,
+      "name": "xax.generated.XaxService"
+    },
+    "service_count": 1
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick",
+      "Java_xax_generated_XaxService_xaxOnCreate",
+      "Java_xax_generated_XaxService_xaxOnDestroy"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "48a6dea928ed16cb53e1396861ea851b7a77045d71cb9557287f7de18a546671"
+  },
+  "production_dependencies": {
+    "d8_r8_invocations": 0,
+    "external_manifest_compiler_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0
+  },
+  "runtime_validation": {
+    "on_bind_null_result": "UNEXECUTED",
+    "on_create_callback": "UNEXECUTED",
+    "on_destroy_callback": "UNEXECUTED",
+    "package_install": "UNEXECUTED",
+    "service_instantiation": "UNEXECUTED"
+  },
+  "schema": "xax-android-service-evidence-v1",
+  "semantic_input": {
+    "callback_cid": "597952721f372a94284476f707d9316bf52a09d0c49282a92492ec4c7e58bf42",
+    "class_descriptor": "Lxax/generated/XaxService;",
+    "export_cids": [
+      "e98f6cd4c311ea828221ee0542f61bcf97b0b500fd77c40d1af929075b68720e",
+      "5c6ffb1b82df44a85f58655ad15c1eeacebca1275e11b3f5e3db7fe4b5383a98"
+    ],
+    "exported": false,
+    "jni_symbols": [
+      "Java_xax_generated_XaxService_xaxOnCreate",
+      "Java_xax_generated_XaxService_xaxOnDestroy"
+    ],
+    "loader_domain": "app:xax.generated",
+    "service_carrier_cid": "dd90fe1129df574f01ca85443a8634a7870ddbe24e9e28686207f3eb0d33c73d"
+  }
+}

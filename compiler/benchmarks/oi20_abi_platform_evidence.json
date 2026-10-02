@@ -1,0 +1,1008 @@
+{
+  "ai_payload": {
+    "classification_query_bytes": 41,
+    "coarse_capability_bytes": 7,
+    "parameterized_capability_bytes": 9,
+    "parameterized_capability_mutation_bytes": 5,
+    "tokenizer_model_tokens": null
+  },
+  "backend_conformance": {
+    "aapcs64_backend_stack_bytes": 0,
+    "aapcs64_candidate_stack_bytes": 0,
+    "aapcs64_physical_plan_match": true,
+    "win64_by_reference_match": true,
+    "win64_rows": [
+      {
+        "backend_by_reference": false,
+        "backend_kind": "u32",
+        "candidate_by_reference": false,
+        "type": "b32"
+      },
+      {
+        "backend_by_reference": false,
+        "backend_kind": "f64",
+        "candidate_by_reference": false,
+        "type": "f64"
+      },
+      {
+        "backend_by_reference": false,
+        "backend_kind": "a8",
+        "candidate_by_reference": false,
+        "type": "pair32"
+      },
+      {
+        "backend_by_reference": true,
+        "backend_kind": "a16",
+        "candidate_by_reference": true,
+        "type": "pair64"
+      },
+      {
+        "backend_by_reference": true,
+        "backend_kind": "a16",
+        "candidate_by_reference": true,
+        "type": "hfa4"
+      },
+      {
+        "backend_by_reference": true,
+        "backend_kind": "a24",
+        "candidate_by_reference": true,
+        "type": "triple64"
+      }
+    ]
+  },
+  "candidate": "data-driven ABI classifier carrier + parameterized platform capability family",
+  "canonical_semantics_changed": false,
+  "capabilities": {
+    "cases": [
+      {
+        "case": "bionic_getpid",
+        "coarse_authority_overgrant_members": 13,
+        "coarse_bytes": 7,
+        "family": "dynamic_symbol",
+        "family_members": 14,
+        "parameterized_authority_overgrant_members": 0,
+        "parameterized_bytes": 22,
+        "requested_parameters": [
+          "libc.so",
+          "getpid"
+        ],
+        "requested_satisfied_coarse": true,
+        "requested_satisfied_parameterized": true,
+        "unrelated_same_family_satisfied_coarse": true,
+        "unrelated_same_family_satisfied_parameterized": false
+      },
+      {
+        "case": "jni_getenv",
+        "coarse_authority_overgrant_members": 4,
+        "coarse_bytes": 7,
+        "family": "jni_invoke_slot",
+        "family_members": 5,
+        "parameterized_authority_overgrant_members": 0,
+        "parameterized_bytes": 9,
+        "requested_parameters": [
+          "6"
+        ],
+        "requested_satisfied_coarse": true,
+        "requested_satisfied_parameterized": true,
+        "unrelated_same_family_satisfied_coarse": true,
+        "unrelated_same_family_satisfied_parameterized": false
+      },
+      {
+        "case": "jni_findclass",
+        "coarse_authority_overgrant_members": 228,
+        "coarse_bytes": 7,
+        "family": "jni_native_slot",
+        "family_members": 229,
+        "parameterized_authority_overgrant_members": 0,
+        "parameterized_bytes": 9,
+        "requested_parameters": [
+          "6"
+        ],
+        "requested_satisfied_coarse": true,
+        "requested_satisfied_parameterized": true,
+        "unrelated_same_family_satisfied_coarse": true,
+        "unrelated_same_family_satisfied_parameterized": false
+      }
+    ],
+    "unsupported": {
+      "diagnostic": "platform.unsupported_operation",
+      "family": "jni_invoke_slot",
+      "parameter": 8,
+      "rejected": true
+    }
+  },
+  "classification": {
+    "aapcs64": {
+      "hfa4": {
+        "inputs": [
+          {
+            "count": 4,
+            "index": 0,
+            "indirect": false,
+            "kind": "hfa",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 4,
+            "index": 0,
+            "indirect": false,
+            "kind": "hfa",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "large_aggregate": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 8,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "medium_aggregate": {
+        "inputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "mixed_scalar": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "scalar_int": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "small_aggregate": {
+        "inputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "stack_pressure": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 2,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 3,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 4,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 5,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 6,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 7,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 8
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 16
+      }
+    },
+    "android_aapcs64": {
+      "hfa4": {
+        "inputs": [
+          {
+            "count": 4,
+            "index": 0,
+            "indirect": false,
+            "kind": "hfa",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 4,
+            "index": 0,
+            "indirect": false,
+            "kind": "hfa",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "large_aggregate": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 8,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "medium_aggregate": {
+        "inputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "mixed_scalar": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "scalar_int": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "small_aggregate": {
+        "inputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 2,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr2",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 0
+      },
+      "stack_pressure": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 2,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 3,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 4,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 5,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 6,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 7,
+            "indirect": false,
+            "kind": "integer",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 8
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 16
+      }
+    },
+    "win64": {
+      "hfa4": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 32
+      },
+      "large_aggregate": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 32
+      },
+      "medium_aggregate": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": true,
+            "kind": "ref",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 32
+      },
+      "mixed_scalar": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 8,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 3,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "fpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 32
+      },
+      "scalar_int": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 2,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 32
+      },
+      "small_aggregate": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 32
+      },
+      "stack_pressure": {
+        "inputs": [
+          {
+            "count": 1,
+            "index": 1,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 2,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 8,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": 9,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 32
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 40
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 48
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 56
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 64
+          },
+          {
+            "count": 1,
+            "index": -1,
+            "indirect": false,
+            "kind": "stack",
+            "offset": 72
+          }
+        ],
+        "outputs": [
+          {
+            "count": 1,
+            "index": 0,
+            "indirect": false,
+            "kind": "gpr",
+            "offset": 0
+          }
+        ],
+        "stack_bytes": 80
+      }
+    }
+  },
+  "compile_equivalence": [
+    {
+      "boundary": "windows_x86_64",
+      "bytes": 5,
+      "identical": true,
+      "sha256": "666fcd767b66aff9df79ce2322b0ad62e7dd784cc06c3192ff4fe908aa939a22"
+    },
+    {
+      "boundary": "aapcs64_baremetal",
+      "bytes": 52,
+      "identical": true,
+      "sha256": "120eb2d27407144700506e3f88119ac1538acdc7d6a09972555824239f5c4452"
+    },
+    {
+      "boundary": "android_aapcs64_bionic",
+      "bytes": 17424,
+      "identical": true,
+      "imports": [
+        "getpid"
+      ],
+      "needed": [
+        "libc.so"
+      ],
+      "sha256": "4825819706d61727e343116eb99c46d77d6569699450cd4a2537ea34a634194d"
+    }
+  ],
+  "diagnostics": {
+    "diagnostic": "abi.unclassifiable_type: unsupported type form",
+    "unclassifiable_signature_rejected": true
+  },
+  "foreign_inference": {
+    "carrier_cid": "0fc711e8d5e40e5f1bab59a6fb33294aa74c70b3bd0d48d98f5500d06f144758",
+    "declaration_cid": "afb673fa0784a3e17df8b143ffbfda6ea18e3ca41040c319c19a606bf204e0b8",
+    "input_locations": [],
+    "materialized_authoritative": true,
+    "mismatch_rejected": true,
+    "output_locations": [
+      {
+        "count": 1,
+        "index": 0,
+        "indirect": false,
+        "kind": "gpr",
+        "offset": 0
+      }
+    ],
+    "signature_digest": "c4648c0e352ea64900e9e78c5456d742c8e6ec8567b848bcdeb4b7c18a23a90b",
+    "suggestion_authoritative": false
+  },
+  "host_observed_classifier_cost": {
+    "aapcs64": {
+      "median_peak_bytes": 2499,
+      "median_us": 239.778414,
+      "p10_us": 234.181707,
+      "p90_us": 280.58256,
+      "semantic": false
+    },
+    "android_aapcs64": {
+      "median_peak_bytes": 2499,
+      "median_us": 237.833505,
+      "p10_us": 234.169093,
+      "p90_us": 256.857581,
+      "semantic": false
+    },
+    "win64": {
+      "median_peak_bytes": 2187,
+      "median_us": 86.310478,
+      "p10_us": 83.71913599999999,
+      "p90_us": 96.123707,
+      "semantic": false
+    }
+  },
+  "implementation": {
+    "benchmark_classifier_lines": 71,
+    "benchmark_codec_lines": 73,
+    "existing_abi_classification_helper_lines": 109,
+    "production_lines_added": 0,
+    "production_lines_removed": 0
+  },
+  "inventory": {
+    "aapcs64_baremetal": {
+      "aggregate_rule": "HFA<=4 V regs; <=8 one X; <=16 X pair; >16 by reference",
+      "argument_registers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "full_call_clobber_set_present": false,
+      "imports_relocations": "bare-metal image fixture has no dynamic foreign-import model",
+      "result_register": 0,
+      "scratch_registers": [
+        9,
+        10
+      ],
+      "shadow_space": 0,
+      "stack_alignment": 16
+    },
+    "android_aapcs64": {
+      "argument_registers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "bionic_fixture_imports": [
+        "getpid"
+      ],
+      "bionic_fixture_needed": [
+        "libc.so"
+      ],
+      "bionic_fixture_relocations": 1,
+      "classification_reuses_aapcs64": true,
+      "full_call_clobber_set_present": false,
+      "platform_target_operations": 242,
+      "result_register": 0,
+      "scratch_registers": [
+        9,
+        10
+      ],
+      "shadow_space": 0,
+      "stack_alignment": 16
+    },
+    "windows_x86_64": {
+      "aggregate_rule": "1/2/4/8-byte aggregate direct; other aggregate by reference",
+      "argument_registers": [
+        1,
+        2,
+        8,
+        9
+      ],
+      "full_call_clobber_set_present": false,
+      "imports_relocations": "raw-load-image fixture has no dynamic foreign-import model",
+      "result_register": 0,
+      "scratch_registers": [
+        10,
+        11
+      ],
+      "shadow_space": 32,
+      "stack_alignment": 16
+    }
+  },
+  "model_tokens": null,
+  "package": {
+    "aapcs64_android_classification_fields": 15,
+    "aapcs64_android_reused_classification_fields": 15,
+    "candidate_objects": 3,
+    "carriers": {
+      "aapcs64": {
+        "bytes": 67,
+        "cid": "3bd98999e415195ef13ee94259977b7e69b8e0f52449a7dc967b2ff7deafd8cb"
+      },
+      "android_aapcs64": {
+        "bytes": 77,
+        "cid": "0fc711e8d5e40e5f1bab59a6fb33294aa74c70b3bd0d48d98f5500d06f144758"
+      },
+      "win64": {
+        "bytes": 65,
+        "cid": "fe3eae89ee9cb645586882e8c6810bcf4403f5491201d901c55c34b0351b9c9a"
+      }
+    },
+    "total_bytes": 209
+  },
+  "raw_sha256": "40bf7f15c24d77932f09553732b02380f1a550f2356d9b2d74f1d71e0be71975",
+  "version": 1
+}

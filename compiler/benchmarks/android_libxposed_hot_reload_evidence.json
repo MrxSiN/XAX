@@ -1,0 +1,142 @@
+{
+  "apk": {
+    "blake3": "d2c8c022ef8f8708ddc9f7790eb1e28d89776dd65be07b746dc87f1c0311e707",
+    "build_key": "430dba9a938005a6fc8bc425ad1774a5b28952451e3174a102a258c496b45275",
+    "bytes": 34347,
+    "delta_bytes_vs_retained_non_hot_reload": 0,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "classes4.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "e73855e2acf92599a7629ca84bc1c0df2743b502353aef69af0ceb9130ecf216",
+    "repeat_identical": true,
+    "request_root": "7f7566dcb6832bf11807ee7d7527f7adb39200a0df103c2c617b0144df82c439",
+    "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a",
+    "snapshot_root": "20ad901e463ad2aa360009174844c8428460396b1f25bdd5b1a8898d24a1eae2"
+  },
+  "environment_note": "direct semantic/DEX/APK structural evidence only; framework hot-reload callback delivery, old HookHandle transfer, atomic replacement behavior, and target-process continuity are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
+  "hooker_hot_path_regression": {
+    "baseline_retained_hooker_sha256": "da793892e4cc4b8d3a6fa77702cfb5d8544be03acd6ca17a9c39666b1724cbfd",
+    "byte_identical": true,
+    "hot_reload_hooker_sha256": "da793892e4cc4b8d3a6fa77702cfb5d8544be03acd6ca17a9c39666b1724cbfd"
+  },
+  "managed_dex": {
+    "bytes": 2920,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "on_hot_reloaded": {
+      "check_cast_count": 2,
+      "code_units": 51,
+      "empty_guard_count": 1,
+      "id_mismatch_guard_count": 1,
+      "instruction_opcodes": [
+        "0x72",
+        "0x0c",
+        "0x38",
+        "0x1f",
+        "0x5b",
+        "0x72",
+        "0x0c",
+        "0x72",
+        "0x0a",
+        "0x39",
+        "0x12",
+        "0x72",
+        "0x0c",
+        "0x1f",
+        "0x72",
+        "0x0c",
+        "0x1a",
+        "0x6e",
+        "0x0a",
+        "0x38",
+        "0x22",
+        "0x70",
+        "0x72",
+        "0x0c",
+        "0x5b",
+        "0x0e"
+      ],
+      "invoke_interface_count": 6,
+      "invoke_virtual_count": 1,
+      "iput_object_count": 2,
+      "new_array_count": 0,
+      "new_instance_count": 1,
+      "saved_state_null_guard_count": 1
+    },
+    "on_hot_reloading": {
+      "code_units": 11,
+      "instruction_opcodes": [
+        "0x54",
+        "0x38",
+        "0x72",
+        "0x12",
+        "0x0f",
+        "0x12",
+        "0x0f"
+      ],
+      "invoke_interface_count": 1,
+      "missing_loader_reject_guard_count": 1,
+      "policy": "save host-owned PackageReadyParam ClassLoader; reject reload if it was never captured",
+      "raw_units": [
+        "0x1054",
+        "0x0002",
+        "0x0038",
+        "0x0007",
+        "0x2072",
+        "0x000a",
+        "0x0020",
+        "0x1012",
+        "0x000f",
+        "0x0012",
+        "0x000f"
+      ]
+    },
+    "required_symbols_present": true,
+    "sha256": "6df8b8cf8d4368a96400b28c5ad51cd539c96d964b06ed640c265ec7e73a2f94",
+    "signature_valid": true
+  },
+  "metadata": {
+    "auto_hot_reload_line_present": true,
+    "module_prop_utf8": "minApiVersion=102\ntargetApiVersion=102\nstaticScope=true\nautoHotReload=true\n"
+  },
+  "runtime_validation": {
+    "id_mismatch_skip": "UNEXECUTED",
+    "missing_target_state_rejects_reload": "UNEXECUTED",
+    "no_hook_gap": "UNEXECUTED",
+    "old_handle_transfer": "UNEXECUTED",
+    "on_hot_reloading_delivery": "UNEXECUTED",
+    "replace_hook_atomicity": "UNEXECUTED",
+    "saved_target_class_loader_transfer": "UNEXECUTED",
+    "stable_hook_id_round_trip": "UNEXECUTED",
+    "target_process_continuity": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-hot-reload-evidence-v1",
+  "semantic_input": {
+    "failure_policy": "propagate",
+    "hook_adapter_cid": "363b83a457638749236b831cf60201284d8829af6a393edc7bf171b7adf7f367",
+    "hook_id": "xax.primary",
+    "hook_installation_cid": "88b3fe746c09a50be1b422edfa86f7cf34488f8f3d031551d109d3902fcf0ac4",
+    "hot_reload_cid": "dcdeb6ec7017fa0e26372c8fd3828f564b80c6304c04cbcf9d8351c21a55bf09",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "mismatch_policy": "skip-replacement",
+    "missing_state_policy": "reject-reload",
+    "policy": "single-retained-hook-id-guarded-atomic-replace",
+    "state_policy": "package-ready-class-loader"
+  },
+  "upstream_profile": {
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "auto_hot_reload": true,
+    "java_entry_count": 1,
+    "min_api_version": 102,
+    "replacement_contract": "capture PackageReadyParam ClassLoader; save/restore it across generations; setId(stable ID) at install; HotReloadedParam old handle must be nonempty and getId()==stable ID before replaceHook(new generated Hooker)",
+    "target_api_version": 102
+  }
+}

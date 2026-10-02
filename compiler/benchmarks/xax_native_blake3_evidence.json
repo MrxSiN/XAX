@@ -1,0 +1,33 @@
+{
+  "digest": "64479cf7293960210547db8d982359e0c4ce054525ed7086cf93030828fc0533",
+  "host": {
+    "machine": "x86_64",
+    "platform": "linux",
+    "python": "3.13.5"
+  },
+  "native": {
+    "code_bytes": 19744,
+    "host_abi_thunk_bytes": 279,
+    "vector_matches_python": true
+  },
+  "performance": {
+    "leaf_iterations": 5000,
+    "leaf_speedup": 5.183146068834388,
+    "python_leaf_ns": 192940648,
+    "python_whole_ns": 1459915491,
+    "whole_iterations": 2,
+    "whole_payload_bytes": 1048576,
+    "whole_speedup": 4.7705473453386595,
+    "xax_native_leaf_ns": 37224621,
+    "xax_native_whole_ns": 306026832
+  },
+  "schema": "xax-native-blake3-evidence-v1",
+  "semantic": {
+    "function_cid": "3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564",
+    "graph_cid": "f1744e682b2f99c542100f0e987dced9a87f40dfa4b8f173596fb24b78faa216",
+    "native_semantic_ranges": 806,
+    "store_bytes": 11827,
+    "store_root_cid": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+    "target_cid": "1af26ed7e2dfbcddec66b46419bd81a7b3b97d91f1618b79318f1777a83565ff"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "artifact_bytes": 108,
+  "artifact_sha256": "3766932e195970e563376f48093c6ccf479aa838d08845b70571a8903266d938",
+  "native_result": 8,
+  "reference_result": 8,
+  "runtime_assists": [],
+  "target_cid": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56"
+}

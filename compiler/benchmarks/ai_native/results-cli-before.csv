@@ -1,0 +1,6 @@
+task_id,arm,pass,input_tokens,output_tokens,total_tokens,turns,elapsed_seconds,notes
+task-01,XAX,TRUE,185354,1294,186648,1,,matched fresh Codex CLI baseline
+task-02,XAX,TRUE,274645,1408,276053,1,,matched fresh Codex CLI baseline
+task-03,XAX,TRUE,296613,1925,298538,1,,matched fresh Codex CLI baseline
+task-04,XAX,TRUE,185676,1558,187234,1,,matched fresh Codex CLI baseline
+task-05,XAX,TRUE,200781,1896,202677,1,,matched fresh Codex CLI baseline

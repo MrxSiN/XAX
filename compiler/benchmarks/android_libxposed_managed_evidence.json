@@ -1,0 +1,120 @@
+{
+  "environment_note": "direct DEX/ELF/metadata structural evidence only; framework attachment, lifecycle delivery, ART verification, hook installation, and target-process execution are UNEXECUTED because no compatible Android/libxposed runtime is available",
+  "generic_apk": {
+    "blake3": "1d6ab6cad6618d8fe63c39a5a44516d15e0a7052d2eff6c715d6911351e9c1f4",
+    "build_key": "93ce046c834cb781f7da1217b5254d4f442844c0978d4c7541799355c657b1f2",
+    "bytes": 34289,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "4c11232b86c3b890a5bef49570789f436660baed79a465b96eb7cb65273fe574",
+    "repeat_identical": true,
+    "request_root": "d090f7cd1682d3c1ae98b8dcb2c6e21b21df0613c8f58e171aade43e353660a1",
+    "sha256": "906086fd79ae50805da35938fbdebdaa28458a0eff1cf6ad0e9eed224e973682",
+    "snapshot_root": "a9137af6caa73b688dd78355d9479ff379bc46c431244338c09efb2edc1ed0d8"
+  },
+  "managed_dex": {
+    "allocations_emitted_in_lifecycle_callbacks": 0,
+    "bytes": 956,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "has_clinit": false,
+    "native_library_loads_in_on_module_loaded": 1,
+    "native_transitions_per_lifecycle_callback": 1,
+    "on_module_loaded_code_units": 9,
+    "on_module_loaded_opcodes": [
+      "0x1a",
+      "0x0e",
+      "0x71",
+      "0x01",
+      "0x00",
+      "0x70",
+      "0x05",
+      "0x21",
+      "0x0e"
+    ],
+    "on_package_ready_code_units": 4,
+    "on_package_ready_opcodes": [
+      "0x70",
+      "0x06",
+      "0x10",
+      "0x0e"
+    ],
+    "reflection_operations_emitted": 0,
+    "sha256": "9c333663a7362560069aed0193aa329491964672f44800ed2e95e0d218a39bf8",
+    "signature_valid": true,
+    "superclass_descriptor": "Lio/github/libxposed/api/XposedModule;"
+  },
+  "modern_metadata": {
+    "java_init_list_utf8": "xax.generated.XaxModule\n",
+    "legacy_assets_present": false,
+    "module_prop_utf8": "minApiVersion=101\ntargetApiVersion=102\nstaticScope=true\n",
+    "native_init_list_present": false,
+    "scope_list_utf8": "com.example.target\n"
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxModule_xaxOnModuleLoaded",
+      "Java_xax_generated_XaxModule_xaxOnPackageReady",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "3a77875eb0f995410d0d0963d0dcc09d00a8f3a4df1659260f8a778bf632dd58"
+  },
+  "production_dependencies": {
+    "bundled_libxposed_api_classes": 0,
+    "c_cpp_bridge_source_files": 0,
+    "d8_r8_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0,
+    "javac_kotlinc_invocations": 0
+  },
+  "runtime_validation": {
+    "framework_attach": "UNEXECUTED",
+    "jni_callbacks": "UNEXECUTED",
+    "managed_hook": "UNEXECUTED",
+    "module_discovery": "UNEXECUTED",
+    "native_library_load": "UNEXECUTED",
+    "on_module_loaded": "UNEXECUTED",
+    "on_package_ready": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-managed-evidence-v1",
+  "semantic_input": {
+    "callback_export_cids": [
+      "662618055dab919c829454db0b257a9d15651feab3b1475f96fa6d8403d55d2a",
+      "6119fb47b5be521d0456a9c369e6446ccee8b9454181a6d4d4eb3736b8677cd8"
+    ],
+    "callback_function_cids": [
+      "c901017f59f4d170fe247e1a8ec3f744c58d845c2991d9ae7aa261d1c9334971",
+      "6e715f154fced8d496a981682c133bd63dbc8310db78fba202d6e99a360c0db0"
+    ],
+    "callbacks": [
+      "onModuleLoaded",
+      "onPackageReady"
+    ],
+    "java_entry": "xax.generated.XaxModule",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "scope": [
+      "com.example.target"
+    ]
+  },
+  "upstream_profile": {
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "framework_attachment": "external libxposed framework responsibility",
+    "managed_superclass": "io.github.libxposed.api.XposedModule",
+    "min_api_version": 101,
+    "target_api_version": 102
+  }
+}

@@ -1,0 +1,81 @@
+# x86-64 Windows raw load-image disassembly
+
+Generated with GNU objdump 2.46 using:
+
+    objdump -D -b binary -m i386:x86-64 IMAGE.bin
+
+## branch/direct-call vector
+
+Image SHA-256: `8148798f74978748a6cf9b2111b49e60e897f81e61acca1aa1ba47e56e96ca75`
+Entry offset: `0x30`
+
+```text
+0000000000000000 <.data>:
+   0: 48 81 ec 48 00 00 00  sub    $0x48,%rsp
+   7: 48 89 4c 24 20        mov    %rcx,0x20(%rsp)
+   c: 48 89 54 24 28        mov    %rdx,0x28(%rsp)
+  11: 48 8b 44 24 20        mov    0x20(%rsp),%rax
+  16: 4c 8b 54 24 28        mov    0x28(%rsp),%r10
+  1b: 44 01 d0              add    %r10d,%eax
+  1e: 48 89 44 24 30        mov    %rax,0x30(%rsp)
+  23: 48 8b 44 24 30        mov    0x30(%rsp),%rax
+  28: 48 81 c4 48 00 00 00  add    $0x48,%rsp
+  2f: c3                    ret
+  30: 48 81 ec 88 00 00 00  sub    $0x88,%rsp
+  37: 48 89 4c 24 20        mov    %rcx,0x20(%rsp)
+  3c: 48 89 54 24 28        mov    %rdx,0x28(%rsp)
+  41: 4c 89 44 24 30        mov    %r8,0x30(%rsp)
+  46: 48 8b 44 24 20        mov    0x20(%rsp),%rax
+  4b: 48 85 c0              test   %rax,%rax
+  4e: 0f 84 2d 00 00 00     je     0x81
+  54: 4c 8b 5c 24 28        mov    0x28(%rsp),%r11
+  59: 4c 89 5c 24 68        mov    %r11,0x68(%rsp)
+  5e: 4c 8b 5c 24 30        mov    0x30(%rsp),%r11
+  63: 4c 89 5c 24 70        mov    %r11,0x70(%rsp)
+  68: 4c 8b 5c 24 68        mov    0x68(%rsp),%r11
+  6d: 4c 89 5c 24 38        mov    %r11,0x38(%rsp)
+  72: 4c 8b 5c 24 70        mov    0x70(%rsp),%r11
+  77: 4c 89 5c 24 40        mov    %r11,0x40(%rsp)
+  7c: e9 2d 00 00 00        jmp    0xae
+  81: 4c 8b 5c 24 28        mov    0x28(%rsp),%r11
+  86: 4c 89 5c 24 68        mov    %r11,0x68(%rsp)
+  8b: 4c 8b 5c 24 30        mov    0x30(%rsp),%r11
+  90: 4c 89 5c 24 70        mov    %r11,0x70(%rsp)
+  95: 4c 8b 5c 24 68        mov    0x68(%rsp),%r11
+  9a: 4c 89 5c 24 50        mov    %r11,0x50(%rsp)
+  9f: 4c 8b 5c 24 70        mov    0x70(%rsp),%r11
+  a4: 4c 89 5c 24 58        mov    %r11,0x58(%rsp)
+  a9: e9 21 00 00 00        jmp    0xcf
+  ae: 48 8b 4c 24 38        mov    0x38(%rsp),%rcx
+  b3: 48 8b 54 24 40        mov    0x40(%rsp),%rdx
+  b8: e8 43 ff ff ff        call   0x0
+  bd: 48 89 44 24 48        mov    %rax,0x48(%rsp)
+  c2: 48 8b 44 24 48        mov    0x48(%rsp),%rax
+  c7: 48 81 c4 88 00 00 00  add    $0x88,%rsp
+  ce: c3                    ret
+  cf: 48 8b 44 24 50        mov    0x50(%rsp),%rax
+  d4: 4c 8b 54 24 58        mov    0x58(%rsp),%r10
+  d9: 44 29 d0              sub    %r10d,%eax
+  dc: 48 89 44 24 60        mov    %rax,0x60(%rsp)
+  e1: 48 8b 44 24 60        mov    0x60(%rsp),%rax
+  e6: 48 81 c4 88 00 00 00  add    $0x88,%rsp
+  ed: c3                    ret
+```
+
+## stack-memory vector
+
+Image SHA-256: `4f0aad0b3c17fddd89aa23d36339c6523f73d7fcf46da9468f5362ecec78a035`
+Entry offset: `0x0`
+
+```text
+0000000000000000 <.data>:
+   0: 48 81 ec 48 00 00 00  sub    $0x48,%rsp
+   7: 48 89 4c 24 20        mov    %rcx,0x20(%rsp)
+   c: 48 8b 44 24 20        mov    0x20(%rsp),%rax
+  11: 89 44 24 38           mov    %eax,0x38(%rsp)
+  15: 8b 44 24 38           mov    0x38(%rsp),%eax
+  19: 48 89 44 24 28        mov    %rax,0x28(%rsp)
+  1e: 48 8b 44 24 28        mov    0x28(%rsp),%rax
+  23: 48 81 c4 48 00 00 00  add    $0x48,%rsp
+  2a: c3                    ret
+```

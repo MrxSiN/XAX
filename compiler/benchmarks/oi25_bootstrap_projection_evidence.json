@@ -1,0 +1,206 @@
+{
+  "canonical_target": {
+    "b2": true,
+    "b3": true,
+    "b4": true,
+    "comparison": "raw-byte-identity",
+    "generation_digests": [
+      "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+      "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+      "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788"
+    ],
+    "root": "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+    "target": "xax-semantic-image-v1"
+  },
+  "decision": "require raw byte identity whenever emitter-controlled nonsemantic variability can be normalized; projection is reserved for target/profile-declared variability that cannot be eliminated",
+  "host_observation": {
+    "semantic": false,
+    "timing_artifact": null
+  },
+  "implementation": {
+    "production_emitter_normalization_added_lines": 5,
+    "projection_checker_source_lines": 68,
+    "projection_runtime_required": false,
+    "selected": "deterministic-emitter-byte-identity"
+  },
+  "issue": "OI-25",
+  "negative_controls": {
+    "corrupt_payload_rejected": true,
+    "semantic_mutation_entry": "__main__.py output write",
+    "semantic_mutation_projected_digest_changed": true,
+    "semantic_mutation_runtime_byte_identity": false,
+    "unknown_layout_rejected": true
+  },
+  "status": "closed",
+  "variable_artifact": {
+    "all_projected_identical": true,
+    "all_raw_distinct": true,
+    "artifact": "m14-seed-pyz-v1",
+    "declared_nonsemantic_fields": [
+      "ZIP local DOS modification time/date",
+      "ZIP central-directory DOS modification time/date"
+    ],
+    "deterministic_emitter_sha256": "b60eec6cd64ae480e1e9a8cf7adf3c5d2cf32f526c9f574c96b3d192ff43bf7b",
+    "difference_attribution_b2_b3": [
+      {
+        "bytes": 1,
+        "end": 37,
+        "field": "local:__main__.py:dos-time-date",
+        "start": 36
+      },
+      {
+        "bytes": 1,
+        "end": 618,
+        "field": "local:blake3.py:dos-time-date",
+        "start": 617
+      },
+      {
+        "bytes": 1,
+        "end": 2977,
+        "field": "local:xax_compiler.py:dos-time-date",
+        "start": 2976
+      },
+      {
+        "bytes": 1,
+        "end": 41565,
+        "field": "local:xax_selfhost.py:dos-time-date",
+        "start": 41564
+      },
+      {
+        "bytes": 1,
+        "end": 46015,
+        "field": "central:__main__.py:dos-time-date",
+        "start": 46014
+      },
+      {
+        "bytes": 1,
+        "end": 46072,
+        "field": "central:blake3.py:dos-time-date",
+        "start": 46071
+      },
+      {
+        "bytes": 1,
+        "end": 46127,
+        "field": "central:xax_compiler.py:dos-time-date",
+        "start": 46126
+      },
+      {
+        "bytes": 1,
+        "end": 46188,
+        "field": "central:xax_selfhost.py:dos-time-date",
+        "start": 46187
+      }
+    ],
+    "difference_attribution_b3_b4": [
+      {
+        "bytes": 1,
+        "end": 37,
+        "field": "local:__main__.py:dos-time-date",
+        "start": 36
+      },
+      {
+        "bytes": 1,
+        "end": 618,
+        "field": "local:blake3.py:dos-time-date",
+        "start": 617
+      },
+      {
+        "bytes": 1,
+        "end": 2977,
+        "field": "local:xax_compiler.py:dos-time-date",
+        "start": 2976
+      },
+      {
+        "bytes": 1,
+        "end": 41565,
+        "field": "local:xax_selfhost.py:dos-time-date",
+        "start": 41564
+      },
+      {
+        "bytes": 1,
+        "end": 46015,
+        "field": "central:__main__.py:dos-time-date",
+        "start": 46014
+      },
+      {
+        "bytes": 1,
+        "end": 46072,
+        "field": "central:blake3.py:dos-time-date",
+        "start": 46071
+      },
+      {
+        "bytes": 1,
+        "end": 46127,
+        "field": "central:xax_compiler.py:dos-time-date",
+        "start": 46126
+      },
+      {
+        "bytes": 1,
+        "end": 46188,
+        "field": "central:xax_selfhost.py:dos-time-date",
+        "start": 46187
+      }
+    ],
+    "entry_names": [
+      "__main__.py",
+      "blake3.py",
+      "xax_compiler.py",
+      "xax_selfhost.py"
+    ],
+    "generations": [
+      {
+        "generation": "B2",
+        "projected_bytes": 46255,
+        "projected_digest": "e66994a87dea4f6de05d33ba18ed2d1505c51cc441ecc1fa3098464d718fd625",
+        "raw_blake3": "18a07070071781ec854c1433d179b8972cf8b071e69cbd05851e65fe941e5c34",
+        "raw_bytes": 46255,
+        "raw_sha256": "8b2a551f9dbbbbe57508b19995a9c2a79fc541e858b200272a312125d12442c5",
+        "runtime": {
+          "byte_identical_to_input": true,
+          "output_blake3": "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+          "output_bytes": 2020,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "{\"byte_identical\": true, \"input_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\", \"input_root\": \"097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d\", \"output_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\"}"
+        },
+        "source_metadata_year": 2024
+      },
+      {
+        "generation": "B3",
+        "projected_bytes": 46255,
+        "projected_digest": "e66994a87dea4f6de05d33ba18ed2d1505c51cc441ecc1fa3098464d718fd625",
+        "raw_blake3": "23c9be266bedeb8ed5302f670ca93389949ab294fc98f4a140444e3d6173d9bb",
+        "raw_bytes": 46255,
+        "raw_sha256": "0f95bd73a0007c0f96ad4fcdd52c4b8a6ccc5b03ca61b3f1378747cc64836590",
+        "runtime": {
+          "byte_identical_to_input": true,
+          "output_blake3": "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+          "output_bytes": 2020,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "{\"byte_identical\": true, \"input_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\", \"input_root\": \"097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d\", \"output_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\"}"
+        },
+        "source_metadata_year": 2025
+      },
+      {
+        "generation": "B4",
+        "projected_bytes": 46255,
+        "projected_digest": "e66994a87dea4f6de05d33ba18ed2d1505c51cc441ecc1fa3098464d718fd625",
+        "raw_blake3": "67c2e18e4fb78958b643eb72b985b6c8fa5b7113e600a2997e6e100bb436c694",
+        "raw_bytes": 46255,
+        "raw_sha256": "679227b11be49cdafedd01d533d3a1795b2f79a666bbae9ad629974558457f0b",
+        "runtime": {
+          "byte_identical_to_input": true,
+          "output_blake3": "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+          "output_bytes": 2020,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "{\"byte_identical\": true, \"input_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\", \"input_root\": \"097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d\", \"output_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\"}"
+        },
+        "source_metadata_year": 2026
+      }
+    ],
+    "projection_equals_deterministic_emission": true,
+    "projection_id": "xax-m14-seed-pyz-projection-v1"
+  }
+}

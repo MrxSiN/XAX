@@ -1,0 +1,106 @@
+{
+  "all_faults_detected": true,
+  "corpus_schema": "xax-atomic-litmus-v1",
+  "deterministic_work_units": {
+    "minimum_event_records": 16,
+    "target_capability_queries": 7
+  },
+  "fault_count": 7,
+  "fault_detection": {
+    "accept_unsupported_width_alignment": 1,
+    "break_release_sequence": 1,
+    "downgrade_order": 8,
+    "ignore_sc_total_order": 2,
+    "narrow_scope": 1,
+    "omit_fence": 2,
+    "swap_cas_failure_order": 2
+  },
+  "fault_matrix": {
+    "accept_unsupported_width_alignment": [
+      "target_atomic_matrix"
+    ],
+    "break_release_sequence": [
+      "release_sequence_rmw"
+    ],
+    "downgrade_order": [
+      "acq_rel_rmw",
+      "cmpxchg_failure_acquire",
+      "cmpxchg_success",
+      "release_acquire",
+      "release_acquire_redundant",
+      "release_sequence_rmw",
+      "seq_cst_store_load_redundant",
+      "seq_cst_with_fence"
+    ],
+    "ignore_sc_total_order": [
+      "seq_cst_store_load_redundant",
+      "seq_cst_with_fence"
+    ],
+    "narrow_scope": [
+      "target_atomic_matrix"
+    ],
+    "omit_fence": [
+      "seq_cst_with_fence",
+      "target_atomic_matrix"
+    ],
+    "swap_cas_failure_order": [
+      "cmpxchg_failure_acquire",
+      "cmpxchg_success"
+    ]
+  },
+  "full_case_count": 11,
+  "minimum_case_count": 9,
+  "minimum_corpus": [
+    "target_atomic_matrix",
+    "seq_cst_with_fence",
+    "relaxed_read_from",
+    "release_sequence_rmw",
+    "cmpxchg_failure_acquire",
+    "release_acquire",
+    "acq_rel_rmw",
+    "cmpxchg_success",
+    "unordered_non_atomic_race"
+  ],
+  "physical_concurrent_execution": {
+    "performed": false,
+    "reason": "forbidden outcomes are nondeterministic/rare; deterministic abstract/package conformance is primary for this corpus"
+  },
+  "policy": {
+    "portable_minimum": "the committed greedy minimum corpus",
+    "sufficiency": "only for the seven declared injected fault classes; extend the fault model before extending the corpus",
+    "target_additions": "add vectors for each target-only scope/family/legalization and every unsupported capability boundary claimed by that package",
+    "unsupported_reporting": "unsupported is an explicit result with reason, never a silent pass/skip",
+    "version": "xax-atomic-litmus-v1"
+  },
+  "schema": "xax-oi29-atomic-litmus-evidence-v1",
+  "target_conformance": {
+    "aarch64_artifact_bytes": 36,
+    "aarch64_atomic_node_hex": "ea030091bf3b03d540fddf88bf3b03d5",
+    "aarch64_rmw": "unsupported",
+    "aarch64_seq_cst_fence_count": 2,
+    "aarch64_seq_cst_load": "bounded_sequence",
+    "wasm_load": "unsupported",
+    "x86_artifact_bytes": 46,
+    "x86_atomic_node_hex": "8b4424400faef04889442430",
+    "x86_bad_alignment": "unsupported",
+    "x86_bad_scope": "unsupported",
+    "x86_bad_width": "unsupported",
+    "x86_seq_cst_fence_count": 1,
+    "x86_seq_cst_load": "bounded_sequence"
+  },
+  "timing": {
+    "aarch64_lowering_median_ns": 19152027,
+    "validator_median_ns": 1065464,
+    "validator_median_peak_bytes": 3392,
+    "validator_p10_ns": 913286,
+    "validator_p90_ns": 1949985,
+    "x86_lowering_median_ns": 26067806
+  },
+  "unsupported": {
+    "aarch64_rmw": "target package supports only atomic load/store",
+    "wasm32_all_portable_atomics": "wasm32 target package declares no atomic capability",
+    "x86_alignment2_for_32": "natural alignment requirement is 4 bytes",
+    "x86_device_scope": "x86-64 package declares system scope only",
+    "x86_width16": "x86-64 package declares 32/64-bit atomic widths only"
+  }
+}

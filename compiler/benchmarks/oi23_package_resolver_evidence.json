@@ -1,0 +1,438 @@
+{
+  "ai_model_measurement": {
+    "available": false,
+    "input_tokens": null,
+    "invalid_edits": null,
+    "output_tokens": null,
+    "reason": "no OpenAI/Codex/Anthropic client, credentials, or tokenizer installed in measurement environment",
+    "repair_turns": null
+  },
+  "ai_mutation_tasks": [
+    {
+      "mutation_bytes": 50,
+      "name": "add_dependency_constraint",
+      "target_snapshot": "36f3e65b9dbd6210e276105d2517113fdf6e0a5568829abff973e3be0d031393",
+      "view_bytes": 79
+    },
+    {
+      "mutation_bytes": 50,
+      "name": "change_dependency_range",
+      "target_snapshot": "cea63515cbffd9f5fa1d7be153731f6199e13fd15cb8d9681baa9589283d24af",
+      "view_bytes": 226
+    },
+    {
+      "mutation_bytes": 50,
+      "name": "repair_unsatisfied_range",
+      "target_snapshot": "d54a69cfab1b47126b4bac09656bf1061012c5c250c0a826ae87cb7e0328d8d6",
+      "view_bytes": 121
+    },
+    {
+      "mutation_bytes": 71,
+      "name": "repair_ambiguous_with_exact_root",
+      "target_snapshot": "02e801108ae9b075bf86d2c647a65eee42933aa4f284ab642eef8b2f1c4b73cc",
+      "view_bytes": 118
+    }
+  ],
+  "constraint_algebra": {
+    "coexistence": "one selected root per logical identity; simultaneous major lines use distinct logical identities",
+    "excluded": [
+      "OR",
+      "arbitrary predicates",
+      "scripts",
+      "implicit latest"
+    ],
+    "forms": [
+      "exact_root",
+      "exact_version",
+      "inclusive_lower_exclusive_upper_range"
+    ],
+    "limits": {
+      "candidate_checks": 1000000,
+      "requirement_visits": 1000000,
+      "states": 100000
+    },
+    "selection": "highest compatible version; exact root authoritative"
+  },
+  "failures": {
+    "ambiguous_same_version": {
+      "actual": [
+        "0c5d249cc440e5da4df7d0bc44d595ef70490426ec62dfe552a0d6a3b9c8cad6",
+        "1c45cf05905696b5497e6920e51e49e0a38ed119ceeb0850e4ff1937767f36ad"
+      ],
+      "code": "XAX.RESOLVE.AMBIGUOUS",
+      "diagnostic_bytes": 332,
+      "rule": "RESOLVE-VERSION-UNIQUE"
+    },
+    "explicit_state_budget": {
+      "actual": 4,
+      "code": "XAX.RESOLVE.BUDGET",
+      "rule": "RESOLVE-STATE-BOUND"
+    },
+    "unsatisfied_range": {
+      "actual": {
+        "checks": 2,
+        "states": 0,
+        "visits": 1
+      },
+      "code": "XAX.RESOLVE.UNSAT",
+      "diagnostic_bytes": 231,
+      "rule": "RESOLVE-CONSTRAINT-SATISFIABLE"
+    }
+  },
+  "host_observation": {
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "logical_cpus": 5,
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "implementation_lines": {
+    "constraint_and_catalog_codec": 109,
+    "resolver": 92
+  },
+  "resolver_identity": "oi23-exact-range-resolver-v1",
+  "schema": "xax-oi23-evidence-v1",
+  "timing": {
+    "adversarial_d16_v8": {
+      "max_ms": 5.718025,
+      "median_ms": 4.78491,
+      "min_ms": 4.565044
+    },
+    "adversarial_d32_v8": {
+      "max_ms": 13.676443,
+      "median_ms": 10.590561,
+      "min_ms": 9.898339
+    },
+    "adversarial_d8_v4": {
+      "max_ms": 1.560393,
+      "median_ms": 1.214612,
+      "min_ms": 1.175801
+    },
+    "coexisting_major_lines": {
+      "max_ms": 2.364004,
+      "median_ms": 0.234205,
+      "min_ms": 0.219074
+    },
+    "diamond_shared": {
+      "max_ms": 0.603907,
+      "median_ms": 0.388246,
+      "min_ms": 0.349772
+    },
+    "generated_service": {
+      "max_ms": 1.732475,
+      "median_ms": 1.591872,
+      "min_ms": 1.497658
+    },
+    "linear_upgrade": {
+      "max_ms": 0.44659,
+      "median_ms": 0.400968,
+      "min_ms": 0.384819
+    }
+  },
+  "workloads": [
+    {
+      "backtracks": 0,
+      "candidate_checks": 12,
+      "candidate_packages": 13,
+      "compatibility_catalog_bytes": 654,
+      "name": "linear_upgrade",
+      "requirement_visits": 5,
+      "root": "872801848243372cd652e3ec12efe2df7b7f770748d389176dde93f1284f865e",
+      "selected_count": 3,
+      "selected_roots": [
+        "32e925a7d259135ee8d424af3e9f1ef8b407a4c022df7c2682e9adebd8366a64",
+        "83b6c4ad77f695f3b283d69da22779193641191eb13d5540ae641b13ebb04604",
+        "872801848243372cd652e3ec12efe2df7b7f770748d389176dde93f1284f865e"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "lib": "6.0.0",
+        "util": "6.0.0"
+      },
+      "semantic_object_bytes": 6727,
+      "semantic_objects": 66,
+      "snapshot": "858657917a19bb8efcc9c182e532d40ef011dd85d11ceecff2de4112d5a245d0",
+      "snapshot_bytes": 195,
+      "states": 2,
+      "work_units": 19
+    },
+    {
+      "backtracks": 0,
+      "candidate_checks": 10,
+      "candidate_packages": 11,
+      "compatibility_catalog_bytes": 556,
+      "name": "diamond_shared",
+      "requirement_visits": 13,
+      "root": "3077037545ec56f24d4feef5aa516c32d967096342d1a898138437becd194cb5",
+      "selected_count": 4,
+      "selected_roots": [
+        "2cbb8cb4017c74d0e4830f972177418f754ba67281bf86d43fc48f95248cbc77",
+        "3077037545ec56f24d4feef5aa516c32d967096342d1a898138437becd194cb5",
+        "71adaeb0ce2c3d96fd8794d7bf2e8d08ee7bc365c54711bef05c5ef90f8dfaa7",
+        "ae834f3ba3c5ca19bd7bf024aeee09371fe7ee6d152a7b45f79846c1449ab0ae"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "left": "1.0.0",
+        "right": "1.0.0",
+        "shared": "6.0.0"
+      },
+      "semantic_object_bytes": 5720,
+      "semantic_objects": 56,
+      "snapshot": "572c97a189e79b3181a12e8cb244468f979f8f70e10294949b619710b548beb6",
+      "snapshot_bytes": 227,
+      "states": 3,
+      "work_units": 26
+    },
+    {
+      "backtracks": 0,
+      "candidate_checks": 4,
+      "candidate_packages": 5,
+      "compatibility_catalog_bytes": 286,
+      "name": "coexisting_major_lines",
+      "requirement_visits": 6,
+      "root": "c84dba41141c9f2a7c3f57dbaba5945304ab05d8f4737b387a280ef8cb755631",
+      "selected_count": 3,
+      "selected_roots": [
+        "6042b2106f04bbe4393f0885bcb8e1825d953c7db3f5a64fecde88250a66bde0",
+        "c84dba41141c9f2a7c3f57dbaba5945304ab05d8f4737b387a280ef8cb755631",
+        "cd8a134a7e2079cb7a0742e156d6545ecfd8f54e6523af30ba55996db06bc3cf"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "codec/1": "1.5.0",
+        "codec/2": "2.1.0"
+      },
+      "semantic_object_bytes": 2625,
+      "semantic_objects": 26,
+      "snapshot": "e848a770853a91462b71a6d8000d9ff03b384722db1062ac2a05b0175b1b89c9",
+      "snapshot_bytes": 195,
+      "states": 2,
+      "work_units": 12
+    },
+    {
+      "backtracks": 0,
+      "candidate_checks": 32,
+      "candidate_packages": 33,
+      "compatibility_catalog_bytes": 2200,
+      "name": "generated_service",
+      "requirement_visits": 291,
+      "root": "e2ba965bac89bb444543b9e6bf4580daca9b39a2bdb3ff56dcda9a66613c590b",
+      "selected_count": 13,
+      "selected_roots": [
+        "039aa425b0c813ce9a342648301151d582bef9af71ba00235f2a72dd6d33f18d",
+        "2c532de62ff6062a83bf839246d476c912e749e64e4262a2988025a29b3c73c2",
+        "433f68b9baa6b880d7b8813e4d9e3a4f1ce32dd122c1844deef2a1b634bb6e28",
+        "446d85e2b7c923af3a7012e223e139db08b0b3161a1baff8aecc9f8deb29194a",
+        "49b0562de6046276cea3355ccca65932763d39803f89dd78505fee6e8261b66e",
+        "5135959849d5f782c7897c856f58e5e685ae5f4a84ed1c12f84a47516fcc5c00",
+        "80107b86ed77fb677749b727ad43bbd1dc51000a70b657fb8022ab746cf443b1",
+        "95006909774e22d722c7f481cf36043cbf57ea453eb8e9f17a6e1bfa2bb4176a",
+        "9b0c1ddf45c1a2770fbbed357a36f1ac071d5cc54a579ae058935ef1acae5e15",
+        "ab6312168354b7b4a7a79212127852febf7f729e9f4afdeb835d5c4981e534be",
+        "c6dc320664c6cd0c794c17337270092c3a6ded55659ef5db4209b9f657a4cef5",
+        "e2ba965bac89bb444543b9e6bf4580daca9b39a2bdb3ff56dcda9a66613c590b",
+        "f1126c0a49846256bfb54555b599256d5ea4e9d505098e870bb28d8aea9f72ba"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "lib0": "6.0.0",
+        "lib1": "6.0.0",
+        "lib2": "6.0.0",
+        "lib3": "6.0.0",
+        "service/0": "1.0.0",
+        "service/1": "1.0.0",
+        "service/2": "1.0.0",
+        "service/3": "1.0.0",
+        "service/4": "1.0.0",
+        "service/5": "1.0.0",
+        "service/6": "1.0.0",
+        "service/7": "1.0.0"
+      },
+      "semantic_object_bytes": 17073,
+      "semantic_objects": 166,
+      "snapshot": "bd462d5d43a1d93e11206441ca03eeba772bd1d42a21eeb3bd2011a2fcca7f76",
+      "snapshot_bytes": 515,
+      "states": 12,
+      "work_units": 335
+    },
+    {
+      "backtracks": 3,
+      "candidate_checks": 4,
+      "candidate_packages": 33,
+      "compatibility_catalog_bytes": 2360,
+      "name": "adversarial_d8_v4",
+      "requirement_visits": 176,
+      "root": "54952b3252d2707cd83f77d8e0f7a449b4dec793b34bfe67f9eaddf340d485e8",
+      "selected_count": 9,
+      "selected_roots": [
+        "3dcd54a74d28ae421a41a9f5003fd6fced6d0f078a68b19204aa8d464dce38f4",
+        "41b1871cf813ee8b19724ea71c7e5dc94fbcea169dce3d5f9be78fe642e10a3c",
+        "444c1c7c809904babbf577c35cd2941431235165411d0a18968e7e56739f69ca",
+        "53d5751c23b35eb9476954699e60dcfaf888c849a863572169039e480063a7c4",
+        "54952b3252d2707cd83f77d8e0f7a449b4dec793b34bfe67f9eaddf340d485e8",
+        "655e84a9d64eb09739bd44eb4e2f6074fc17de22681de9e41e2c0a42cc143364",
+        "7117bfb8c225ff3a3743d83a84c44506764d2817c0388669b350474fa8d175a6",
+        "bc465509427e4a031505075d39bf95972c6dd6facb7d04447abf2a546934032d",
+        "f13a70056b85c77ebdad67bea7c8548abbdb5674c03072f0ba3a21b159d8280e"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "p0": "1.0.0",
+        "p1": "1.0.0",
+        "p2": "1.0.0",
+        "p3": "1.0.0",
+        "p4": "1.0.0",
+        "p5": "1.0.0",
+        "p6": "1.0.0",
+        "p7": "1.0.0"
+      },
+      "semantic_object_bytes": 4383,
+      "semantic_objects": 50,
+      "snapshot": "fc25d7fa7e510d818b8460784fa6f6362285c9d8af0b00478810003d52f1cb5b",
+      "snapshot_bytes": 387,
+      "states": 32,
+      "work_units": 212
+    },
+    {
+      "backtracks": 7,
+      "candidate_checks": 8,
+      "candidate_packages": 129,
+      "compatibility_catalog_bytes": 9321,
+      "name": "adversarial_d16_v8",
+      "requirement_visits": 1216,
+      "root": "54952b3252d2707cd83f77d8e0f7a449b4dec793b34bfe67f9eaddf340d485e8",
+      "selected_count": 17,
+      "selected_roots": [
+        "3dcd54a74d28ae421a41a9f5003fd6fced6d0f078a68b19204aa8d464dce38f4",
+        "41b1871cf813ee8b19724ea71c7e5dc94fbcea169dce3d5f9be78fe642e10a3c",
+        "444c1c7c809904babbf577c35cd2941431235165411d0a18968e7e56739f69ca",
+        "47b570cb93ea7034adc151b28f2693fb36d1d0044b17a10c2913959a0725661c",
+        "53d5751c23b35eb9476954699e60dcfaf888c849a863572169039e480063a7c4",
+        "54952b3252d2707cd83f77d8e0f7a449b4dec793b34bfe67f9eaddf340d485e8",
+        "655e84a9d64eb09739bd44eb4e2f6074fc17de22681de9e41e2c0a42cc143364",
+        "7117bfb8c225ff3a3743d83a84c44506764d2817c0388669b350474fa8d175a6",
+        "7a9b6332dfd91af9d10ae5ea027bd5b04614bd09647903b6736fc5008f9b21fa",
+        "883b6b495d9762f3a7c1799a1a34c4d5d04f6b0f1f86c7fdb08521dd5ab9028d",
+        "8b93152391f0161b77ac17af4a4eb06d44f3da6b42a227d0168d3c3ee82c1967",
+        "9ce43be8beef065e1a9508207a96147f39ab35de8183b66922563b653fcb2b9b",
+        "a92a24a58d245d438cf8d2c479303e68f0b1a573c9aa63beb0876069cc48b4f3",
+        "bc465509427e4a031505075d39bf95972c6dd6facb7d04447abf2a546934032d",
+        "f13a70056b85c77ebdad67bea7c8548abbdb5674c03072f0ba3a21b159d8280e",
+        "fbf9cb77dfb87abafc606f2c2b9e7c79d44d31a86b539506662ecbc8bdd75676",
+        "fc7b5cbd5528db16182ef265fa2f48cab6e023bb6888ba1d302fb1d18858ac3a"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "p0": "1.0.0",
+        "p1": "1.0.0",
+        "p10": "1.0.0",
+        "p11": "1.0.0",
+        "p12": "1.0.0",
+        "p13": "1.0.0",
+        "p14": "1.0.0",
+        "p15": "1.0.0",
+        "p2": "1.0.0",
+        "p3": "1.0.0",
+        "p4": "1.0.0",
+        "p5": "1.0.0",
+        "p6": "1.0.0",
+        "p7": "1.0.0",
+        "p8": "1.0.0",
+        "p9": "1.0.0"
+      },
+      "semantic_object_bytes": 13751,
+      "semantic_objects": 162,
+      "snapshot": "798ca8a367ae1c45bbdf23097b06136d77570cafcd9a3e885161b73ef606cee7",
+      "snapshot_bytes": 643,
+      "states": 128,
+      "work_units": 1352
+    },
+    {
+      "backtracks": 7,
+      "candidate_checks": 8,
+      "candidate_packages": 257,
+      "compatibility_catalog_bytes": 18665,
+      "name": "adversarial_d32_v8",
+      "requirement_visits": 4480,
+      "root": "54952b3252d2707cd83f77d8e0f7a449b4dec793b34bfe67f9eaddf340d485e8",
+      "selected_count": 33,
+      "selected_roots": [
+        "00d8a8affe5d02552177e71b9964df04fd735cf192a0f2b63832c1d8736c9cc3",
+        "01966c720bd57e27b8abba31c0048f35e61980ad0c6460701d35d240ae83a48f",
+        "12753dae4195e5cc76ac3de003089c574e77f52266efa8a4e788a108119e2519",
+        "21fae26370d71d5bc24b99f2ba958efb93d96ffe0faa51c0309a4e5e8a544e8f",
+        "2607d3b967cca0833505832717c03736d514256d99d81fa69b86d71ff585448c",
+        "35c1c721147595878c18bb4364141536f25121fd18303d00079196d9996d7a04",
+        "3dcd54a74d28ae421a41a9f5003fd6fced6d0f078a68b19204aa8d464dce38f4",
+        "41b1871cf813ee8b19724ea71c7e5dc94fbcea169dce3d5f9be78fe642e10a3c",
+        "42a483423f06ea35e911ac397d9b64956c86d84323e65a52cf950a2697cb2907",
+        "4344b633224f8292a2a5bb3731c61fd117d571c9e4ff9c7826a4fe3f6d6a5a3a",
+        "444c1c7c809904babbf577c35cd2941431235165411d0a18968e7e56739f69ca",
+        "47b570cb93ea7034adc151b28f2693fb36d1d0044b17a10c2913959a0725661c",
+        "52515d50be2be1295fec3f824be86e46158870e47244b958313279fe45791c78",
+        "53d5751c23b35eb9476954699e60dcfaf888c849a863572169039e480063a7c4",
+        "54952b3252d2707cd83f77d8e0f7a449b4dec793b34bfe67f9eaddf340d485e8",
+        "655e84a9d64eb09739bd44eb4e2f6074fc17de22681de9e41e2c0a42cc143364",
+        "7117bfb8c225ff3a3743d83a84c44506764d2817c0388669b350474fa8d175a6",
+        "7a9b6332dfd91af9d10ae5ea027bd5b04614bd09647903b6736fc5008f9b21fa",
+        "82ca4750db6f1617d04fb153dadc04a71a2f9a1b5d96734dbba0a0699e8d0380",
+        "883b6b495d9762f3a7c1799a1a34c4d5d04f6b0f1f86c7fdb08521dd5ab9028d",
+        "8b93152391f0161b77ac17af4a4eb06d44f3da6b42a227d0168d3c3ee82c1967",
+        "90d5d1a746567d8e3444bba57c0dc6e3a901bc19cac24c773ee805a00d89c8ec",
+        "94f8fc683676e9bff1de5bf64a1fad9e296f3fe7908ac97ede7a744cb2602fbf",
+        "9ce43be8beef065e1a9508207a96147f39ab35de8183b66922563b653fcb2b9b",
+        "a92a24a58d245d438cf8d2c479303e68f0b1a573c9aa63beb0876069cc48b4f3",
+        "bc465509427e4a031505075d39bf95972c6dd6facb7d04447abf2a546934032d",
+        "d1cbb9cc72b1207ddf60c65d820efbbbbea13abaddc834441e8af4b465b8776e",
+        "d920ed1010c0ed19511b677949b5214b6f18cf5f21fe9c224e0bd231ff0aa51c",
+        "dc1dcb83cd755a0cad0b3441bd3da186df025736b45024d668610468c020fed6",
+        "f13a70056b85c77ebdad67bea7c8548abbdb5674c03072f0ba3a21b159d8280e",
+        "f429448a31e02ddefa6daef6f07bb9a2355331421a3719dc1f915257cd860a5d",
+        "fbf9cb77dfb87abafc606f2c2b9e7c79d44d31a86b539506662ecbc8bdd75676",
+        "fc7b5cbd5528db16182ef265fa2f48cab6e023bb6888ba1d302fb1d18858ac3a"
+      ],
+      "selected_versions": {
+        "app": "1.0.0",
+        "p0": "1.0.0",
+        "p1": "1.0.0",
+        "p10": "1.0.0",
+        "p11": "1.0.0",
+        "p12": "1.0.0",
+        "p13": "1.0.0",
+        "p14": "1.0.0",
+        "p15": "1.0.0",
+        "p16": "1.0.0",
+        "p17": "1.0.0",
+        "p18": "1.0.0",
+        "p19": "1.0.0",
+        "p2": "1.0.0",
+        "p20": "1.0.0",
+        "p21": "1.0.0",
+        "p22": "1.0.0",
+        "p23": "1.0.0",
+        "p24": "1.0.0",
+        "p25": "1.0.0",
+        "p26": "1.0.0",
+        "p27": "1.0.0",
+        "p28": "1.0.0",
+        "p29": "1.0.0",
+        "p3": "1.0.0",
+        "p30": "1.0.0",
+        "p31": "1.0.0",
+        "p4": "1.0.0",
+        "p5": "1.0.0",
+        "p6": "1.0.0",
+        "p7": "1.0.0",
+        "p8": "1.0.0",
+        "p9": "1.0.0"
+      },
+      "semantic_object_bytes": 23991,
+      "semantic_objects": 290,
+      "snapshot": "614b9e8440a3d8ad5f8d42259f61b440a1b7f6e28283ade9e31bcde32793a41b",
+      "snapshot_bytes": 1155,
+      "states": 256,
+      "work_units": 4744
+    }
+  ]
+}

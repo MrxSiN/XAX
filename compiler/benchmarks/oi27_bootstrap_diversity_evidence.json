@@ -1,0 +1,139 @@
+{
+  "comparison": {
+    "b2_b4_reconstruction_byte_identical": true,
+    "generation_root": "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+    "generation_sha256": [
+      "05eb15404836e9f77b2f2931489859c43c0f75dcb00c891504e9ddcdd427cd07",
+      "05eb15404836e9f77b2f2931489859c43c0f75dcb00c891504e9ddcdd427cd07",
+      "05eb15404836e9f77b2f2931489859c43c0f75dcb00c891504e9ddcdd427cd07",
+      "05eb15404836e9f77b2f2931489859c43c0f75dcb00c891504e9ddcdd427cd07"
+    ],
+    "m11_root_verified": "e73735dff5be8c569a94fa434abf73015330d59fc13c4e4bf8e81aad87e2b92e"
+  },
+  "fault_injection": {
+    "primary_verifier_omission": {
+      "container_valid": true,
+      "detected_by_independent_semantics": true,
+      "diagnostic": "arithmetic type"
+    },
+    "runtime_or_transport_corruption": {
+      "detected": true,
+      "diagnostic": "object cid mismatch"
+    },
+    "seed_or_compiler_semantic_divergence": {
+      "detected_by_pinned_release_root": true,
+      "diagnostic": "expected root mismatch",
+      "structurally_valid": true
+    },
+    "serializer_or_object_hash_bug": {
+      "detected": true,
+      "diagnostic": "object cid mismatch",
+      "outer_digest_repaired": true
+    }
+  },
+  "format": "xax-oi27-bootstrap-diversity-v1",
+  "host_observations_nonsemantic": {
+    "go": "go version go1.23.2 linux/amd64",
+    "machine": "x86_64",
+    "python": "3.13.5",
+    "system": "Linux"
+  },
+  "independent": {
+    "binary_bytes": 1794183,
+    "binary_rebuild_byte_identical": true,
+    "binary_sha256": "75da41166fa08edff1b1bf3d28b4878fca64370d12114e2b9330a5a315bca3c7",
+    "external_packages": [],
+    "implementation": "oi27_independent_checker.go",
+    "implemented_scope": [
+      "suite-1 BLAKE3-256",
+      "canonical store/index/CID verification",
+      "M11 arithmetic subset verification",
+      "M14 semantic-image subset verification",
+      "canonical store re-emission"
+    ],
+    "known_answer_blake3": {
+      "abc": "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85",
+      "empty": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
+    },
+    "not_implemented": [
+      "general META evaluator",
+      "native/wasm/accelerator lowering",
+      "package resolver",
+      "full second compiler"
+    ],
+    "source_bytes": 23509,
+    "source_lines": 1037,
+    "source_sha256": "b8a2099298784c7357fbb54acb2b22621ffc94bcd7997300f8bc521c7ac2b71b",
+    "toolchain": "go version go1.23.2 linux/amd64"
+  },
+  "primary": {
+    "authoritative_bytes_sha256": "05eb15404836e9f77b2f2931489859c43c0f75dcb00c891504e9ddcdd427cd07",
+    "authoritative_root": "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+    "build_policy": "M14 fixed semantic-image recursive-build policy",
+    "closure_target": "xax-semantic-image-v1",
+    "comparison_projection": "raw-byte-identity",
+    "compiler_identity": "xax-m14-semantic-image-compiler-v1",
+    "evaluator_identity": "xax-m14-meta-evaluator-v1",
+    "historical_seed": "m14_seed_runtime.pyz",
+    "historical_seed_sha256": "4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52",
+    "runtime": "CPython 3.13.5",
+    "selected_seed": "m14_seed_reachable.pyz",
+    "selected_seed_bytes": 32017,
+    "selected_seed_sha256": "992e66fd2b99c529a79efa93f42c0da39824489abbdda8131c6c52c3712076e2",
+    "verifier_identity": "xax-verifier-v1"
+  },
+  "residual_common_mode_dependencies": [
+    "normative XAX specification and committed expected roots",
+    "release test vectors",
+    "host kernel/hardware",
+    "cryptographic BLAKE3 specification",
+    "human/release-policy authorization"
+  ],
+  "scope_options": [
+    {
+      "implemented": false,
+      "name": "full_independent_seed",
+      "reason": "would duplicate META evaluation/construction and become a second compiler obligation; no extra measured benefit required by injected release threats"
+    },
+    {
+      "detects": [
+        "runtime/transport corruption",
+        "serializer/index corruption",
+        "object/store hash mismatch"
+      ],
+      "implemented": true,
+      "mode": "container",
+      "name": "independent_serializer_hash_only",
+      "semantic_fault_detection": false
+    },
+    {
+      "detects": [
+        "bounded semantic verifier omission",
+        "root divergence"
+      ],
+      "implemented": true,
+      "mode": "verify",
+      "name": "independent_verifier_only",
+      "requires_container_hash_core": true
+    },
+    {
+      "detects": [
+        "root divergence",
+        "bounded semantic invalidity",
+        "container/hash/serializer corruption"
+      ],
+      "implemented": true,
+      "mode": "verify+rewrite",
+      "name": "selected_combined_release_checker",
+      "permanent_production_dependency": false
+    }
+  ],
+  "selected_threshold": "release-only independent verifier+canonical-serializer/hash checker; no permanent second compiler",
+  "status": "closed",
+  "threat_model": {
+    "common_source_bug": "Independent Go semantic checks catch injected verifier omission; shared specification/test misunderstandings remain common-mode risk.",
+    "hash_or_serializer_bug": "Independent Go BLAKE3 and canonical-container implementation catches rehashed inner-record corruption and layout/index errors.",
+    "runtime_or_interpreter_compromise": "Different Go runtime/checker detects corrupt or divergent Python-seed output; common kernel/hardware remain residual dependencies.",
+    "seed_or_compiler_compromise": "Detects any divergent reconstructed semantic image under the pinned authoritative root; does not prove a pinned authoritative compiler graph benign."
+  }
+}

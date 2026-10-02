@@ -1,0 +1,83 @@
+{
+  "dex": {
+    "allocations_emitted_in_on_receive": 0,
+    "bytes": 804,
+    "checksum_valid": true,
+    "native_transitions": 1,
+    "on_receive_code_units": 4,
+    "on_receive_opcodes": [
+      "0x70",
+      "0x05",
+      "0x10",
+      "0x0e"
+    ],
+    "reflection_operations_emitted": 0,
+    "sha256": "97ff4e32ff13a466c57b2bd3a661cef70c973a339e6e7c3f3cd25ef88cfb4951",
+    "signature_valid": true,
+    "superclass": "Landroid/content/BroadcastReceiver;"
+  },
+  "environment_note": "direct structural BroadcastReceiver evidence only; package-manager/ART/broadcast execution is UNEXECUTED because no Android device/emulator is available",
+  "generic_apk": {
+    "blake3": "3d96ee3958dbf7e7b28c42aa7873b6e321df460b51232dc0a15380acdd81dbc3",
+    "build_key": "b5a46cf09c4c5ee2a786eb3def7f93d8355e02dc872d1efd0fefa896f98b8076",
+    "bytes": 34068,
+    "entries": [
+      "AndroidManifest.xml",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "e1a68c33f7360ef6edce5a8b111d09bcdcfdc70aaa23961f4b40c5e35c9f898e",
+    "repeat_identical": true,
+    "request_root": "5460258182d920be0e8d238c6c459df52ab91aef576d2127a0c5030c3819f14c",
+    "snapshot_root": "40294672a30d720d6408ba4cfdf1803665ce78baad2e7fb79abb3dd153a56546"
+  },
+  "manifest": {
+    "action_present": true,
+    "receiver_attributes": {
+      "exported": true,
+      "name": "xax.generated.XaxReceiver"
+    },
+    "receiver_count": 1
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick",
+      "Java_xax_generated_XaxReceiver_xaxOnReceive"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "fd0a6112a4806a733e3a43d806aeb7c5afb082100ccaefd445a6a10bf7df644f"
+  },
+  "production_dependencies": {
+    "d8_r8_invocations": 0,
+    "external_manifest_compiler_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0
+  },
+  "runtime_validation": {
+    "broadcast_delivery": "UNEXECUTED",
+    "package_install": "UNEXECUTED",
+    "receiver_instantiation": "UNEXECUTED",
+    "xax_callback_execution": "UNEXECUTED"
+  },
+  "schema": "xax-android-components-evidence-v1",
+  "semantic_input": {
+    "action": "xax.generated.ACTION_TEST",
+    "callback_cid": "efabd7e0c510cdddfbfd83c45f7ea428b314e7025bc562f6c135993da7772bbf",
+    "class_descriptor": "Lxax/generated/XaxReceiver;",
+    "export_cid": "e431dc6e54b25a2f816e6286291fc3e5dba801456921e918827f411d2f80c07e",
+    "exported": true,
+    "jni_symbol": "Java_xax_generated_XaxReceiver_xaxOnReceive",
+    "loader_domains": {
+      "context": "android.boot",
+      "intent": "android.boot",
+      "receiver": "app:xax.generated"
+    },
+    "receiver_carrier_cid": "8e22c5b22f4e7dc579ff0590ef4b26128522befa3c075d753688081cea1a4dff"
+  }
+}

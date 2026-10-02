@@ -1,0 +1,391 @@
+{
+  "accepted_subset": {
+    "m11_vectors": 6,
+    "m14_transition_steps_to_hosted_compiler": 1,
+    "object_kinds": [
+      "TYPE",
+      "GRAPH_FRAGMENT",
+      "FUNCTION",
+      "MODULE",
+      "PROGRAM_ROOT"
+    ],
+    "operations": [
+      "ADD_WRAP",
+      "MUL_WRAP",
+      "CALL_DIRECT",
+      "META_CANONICAL_STORE",
+      "META_VERIFY_SEMANTICS",
+      "META_MATERIALIZE_PROGRAM"
+    ],
+    "terminators": [
+      "RETURN",
+      "CONDITIONAL_BRANCH"
+    ]
+  },
+  "baseline": {
+    "bytes": 46255,
+    "seed": "compiler/bootstrap/m14_seed_runtime.pyz",
+    "sha256": "4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52"
+  },
+  "candidates": [
+    {
+      "blake3_256": "eb8157fd2a00fcca5666ea574b7641b4adcb43382f5fbb60f8addead5f04b7b6",
+      "compiler_source_bytes": 202406,
+      "compiler_source_lines": 4330,
+      "name": "baseline",
+      "relative_seed_bytes": 1.0,
+      "seed_bytes": 46255,
+      "seed_specific_evaluator_lines": 0,
+      "selected_top_level_statements": null,
+      "sha256": "4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52",
+      "timing": {
+        "max_wall_ns": 2164621226,
+        "median_peak_rss_kb": 110380,
+        "median_wall_ns": 1620205423,
+        "min_wall_ns": 1075789621,
+        "peak_rss_kb": [
+          110252,
+          110508
+        ],
+        "samples": 2,
+        "wall_ns": [
+          1075789621,
+          2164621226
+        ]
+      },
+      "uncompressed_source_bytes": 231319,
+      "uncompressed_source_lines": 5160,
+      "validation": null
+    },
+    {
+      "blake3_256": "30c117663ae113526b3cd828c83d6cd1b8093af3785066b51e235afba2ce0d4c",
+      "compiler_source_bytes": 202406,
+      "compiler_source_lines": 4330,
+      "name": "entry_pruned",
+      "relative_seed_bytes": 0.915015,
+      "seed_bytes": 42324,
+      "seed_specific_evaluator_lines": 0,
+      "selected_top_level_statements": null,
+      "sha256": "3b71d007ee87c563ffaffb9711e44dcf890b983bceb04104c85667631580250f",
+      "timing": {
+        "max_wall_ns": 1804361537,
+        "median_peak_rss_kb": 110124,
+        "median_wall_ns": 1474714466,
+        "min_wall_ns": 1145067395,
+        "peak_rss_kb": [
+          110124,
+          110124
+        ],
+        "samples": 2,
+        "wall_ns": [
+          1145067395,
+          1804361537
+        ]
+      },
+      "uncompressed_source_bytes": 213497,
+      "uncompressed_source_lines": 4637,
+      "validation": {
+        "corrupt_output_bytes": 0,
+        "corrupt_store_rejected": true,
+        "m11_all_match": true,
+        "m11_vectors": [
+          {
+            "actual": 0,
+            "arguments": [
+              0,
+              0,
+              0
+            ],
+            "expected": 0,
+            "matches": true
+          },
+          {
+            "actual": 3,
+            "arguments": [
+              0,
+              1,
+              2
+            ],
+            "expected": 3,
+            "matches": true
+          },
+          {
+            "actual": 1,
+            "arguments": [
+              0,
+              4294967295,
+              2
+            ],
+            "expected": 1,
+            "matches": true
+          },
+          {
+            "actual": 12,
+            "arguments": [
+              1,
+              3,
+              4
+            ],
+            "expected": 12,
+            "matches": true
+          },
+          {
+            "actual": 4294967294,
+            "arguments": [
+              1,
+              4294967295,
+              2
+            ],
+            "expected": 4294967294,
+            "matches": true
+          },
+          {
+            "actual": 0,
+            "arguments": [
+              1,
+              2147483648,
+              2
+            ],
+            "expected": 0,
+            "matches": true
+          }
+        ],
+        "m14_first_rebuild": true,
+        "m14_second_rebuild": true,
+        "unsupported_build_bundle_diagnostic": "ValueError: XAX.SEED.UNSUPPORTED_KIND:BUILD",
+        "unsupported_build_bundle_rejected": true,
+        "unsupported_operation_diagnostic": "ValueError: XAX.SEED.UNSUPPORTED_OP:SUB_WRAP",
+        "unsupported_operation_rejected": true
+      }
+    },
+    {
+      "blake3_256": "80c1c6a58ba59a8947719622df65a8faa5ec8d7fa302affb0c9c90be6ee31dc4",
+      "compiler_source_bytes": 146094,
+      "compiler_source_lines": 3050,
+      "name": "reachable_pruned",
+      "relative_seed_bytes": 0.692185,
+      "seed_bytes": 32017,
+      "seed_specific_evaluator_lines": 0,
+      "selected_top_level_statements": 130,
+      "sha256": "992e66fd2b99c529a79efa93f42c0da39824489abbdda8131c6c52c3712076e2",
+      "timing": {
+        "max_wall_ns": 992643957,
+        "median_peak_rss_kb": 104110,
+        "median_wall_ns": 987022259,
+        "min_wall_ns": 981400562,
+        "peak_rss_kb": [
+          104108,
+          104112
+        ],
+        "samples": 2,
+        "wall_ns": [
+          981400562,
+          992643957
+        ]
+      },
+      "uncompressed_source_bytes": 157185,
+      "uncompressed_source_lines": 3357,
+      "validation": {
+        "corrupt_output_bytes": 0,
+        "corrupt_store_rejected": true,
+        "m11_all_match": true,
+        "m11_vectors": [
+          {
+            "actual": 0,
+            "arguments": [
+              0,
+              0,
+              0
+            ],
+            "expected": 0,
+            "matches": true
+          },
+          {
+            "actual": 3,
+            "arguments": [
+              0,
+              1,
+              2
+            ],
+            "expected": 3,
+            "matches": true
+          },
+          {
+            "actual": 1,
+            "arguments": [
+              0,
+              4294967295,
+              2
+            ],
+            "expected": 1,
+            "matches": true
+          },
+          {
+            "actual": 12,
+            "arguments": [
+              1,
+              3,
+              4
+            ],
+            "expected": 12,
+            "matches": true
+          },
+          {
+            "actual": 4294967294,
+            "arguments": [
+              1,
+              4294967295,
+              2
+            ],
+            "expected": 4294967294,
+            "matches": true
+          },
+          {
+            "actual": 0,
+            "arguments": [
+              1,
+              2147483648,
+              2
+            ],
+            "expected": 0,
+            "matches": true
+          }
+        ],
+        "m14_first_rebuild": true,
+        "m14_second_rebuild": true,
+        "unsupported_build_bundle_diagnostic": "ValueError: XAX.SEED.UNSUPPORTED_KIND:BUILD",
+        "unsupported_build_bundle_rejected": true,
+        "unsupported_operation_diagnostic": "ValueError: XAX.SEED.UNSUPPORTED_OP:SUB_WRAP",
+        "unsupported_operation_rejected": true
+      }
+    },
+    {
+      "blake3_256": "74cd15f224fb44529d5db2c0fe2c8e793433bca5632ac748d736e1a4571c8086",
+      "compiler_source_bytes": 118074,
+      "compiler_source_lines": 2492,
+      "name": "specialized_subset",
+      "relative_seed_bytes": 0.592195,
+      "seed_bytes": 27392,
+      "seed_specific_evaluator_lines": 30,
+      "selected_top_level_statements": 110,
+      "sha256": "421005fd7da6c449a7d1d95358b2821ddba69284f36e64b47e71006393870d02",
+      "timing": {
+        "max_wall_ns": 1136169263,
+        "median_peak_rss_kb": 102316,
+        "median_wall_ns": 1060400238,
+        "min_wall_ns": 984631213,
+        "peak_rss_kb": [
+          102316,
+          102316
+        ],
+        "samples": 2,
+        "wall_ns": [
+          984631213,
+          1136169263
+        ]
+      },
+      "uncompressed_source_bytes": 131130,
+      "uncompressed_source_lines": 2826,
+      "validation": {
+        "corrupt_output_bytes": 0,
+        "corrupt_store_rejected": true,
+        "m11_all_match": true,
+        "m11_vectors": [
+          {
+            "actual": 0,
+            "arguments": [
+              0,
+              0,
+              0
+            ],
+            "expected": 0,
+            "matches": true
+          },
+          {
+            "actual": 3,
+            "arguments": [
+              0,
+              1,
+              2
+            ],
+            "expected": 3,
+            "matches": true
+          },
+          {
+            "actual": 1,
+            "arguments": [
+              0,
+              4294967295,
+              2
+            ],
+            "expected": 1,
+            "matches": true
+          },
+          {
+            "actual": 12,
+            "arguments": [
+              1,
+              3,
+              4
+            ],
+            "expected": 12,
+            "matches": true
+          },
+          {
+            "actual": 4294967294,
+            "arguments": [
+              1,
+              4294967295,
+              2
+            ],
+            "expected": 4294967294,
+            "matches": true
+          },
+          {
+            "actual": 0,
+            "arguments": [
+              1,
+              2147483648,
+              2
+            ],
+            "expected": 0,
+            "matches": true
+          }
+        ],
+        "m14_first_rebuild": true,
+        "m14_second_rebuild": true,
+        "unsupported_build_bundle_diagnostic": "ValueError: XAX.SEED.UNSUPPORTED_KIND:BUILD",
+        "unsupported_build_bundle_rejected": true,
+        "unsupported_operation_diagnostic": "ValueError: XAX.SEED.UNSUPPORTED_OP:SUB_WRAP",
+        "unsupported_operation_rejected": true
+      }
+    }
+  ],
+  "dependencies": {
+    "external_blake3_package": false,
+    "python_interpreter_bytes_counted_in_seed": false,
+    "python_interpreter_required": true,
+    "python_interpreter_version_measured": "3.13.5",
+    "repository_pythonpath_required": false,
+    "suite1_hash_source": "bundled in-tree pure-Python blake3.py",
+    "suite1_hash_source_bytes": 8290
+  },
+  "host_observations_nonsemantic": {
+    "logical_cpus": 5,
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "issue": "OI-26",
+  "negative_behavior": {
+    "corrupt canonical store": "reject before output publication",
+    "excluded SUB_WRAP operation": "reject XAX.SEED.UNSUPPORTED_OP",
+    "excluded_build/package/target snapshot": "reject XAX.SEED.UNSUPPORTED_KIND"
+  },
+  "portable_full_suite_required": false,
+  "selection": {
+    "candidate": "reachable_pruned",
+    "reason": "the specialized subset saves additional bytes but adds a new seed-specific evaluator correctness surface; reachable pruning removes unused implementation without adding a second semantic execution path",
+    "rule": "retain the existing generic verifier/evaluator/serializer after static top-level reachability pruning; do not replace them with seed-specific semantic execution solely to save additional archive bytes"
+  },
+  "status": "closed"
+}

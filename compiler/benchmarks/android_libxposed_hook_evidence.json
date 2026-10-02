@@ -1,0 +1,220 @@
+{
+  "environment_note": "direct semantic/DEX/ELF/APK structural evidence only; module discovery, package-ready delivery, reflection resolution, hook installation, interception, original invocation, and target-process execution are UNEXECUTED because no compatible Android/libxposed runtime is available",
+  "generic_apk": {
+    "blake3": "7c181a452abaa69ac8fce98c5d129eed26f7f1339b82b176af6ce651f7cfb125",
+    "build_key": "4c39bd5da7ad470271f2553dac34c41588cd901340cbb24f4cfa724162fc9fec",
+    "bytes": 34347,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "classes4.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "2bae0c03058a54ac7ce22081c0cc88b24b39cfbeacd436ad757032c55a4a914a",
+    "repeat_identical": true,
+    "request_root": "bfaa3833ac147b91ad131a287476aa36345ff60c0b8190be594bec21604ddd52",
+    "sha256": "db7bcd898313460ac3ef9741804d2d04429bcf73d1458a1c3f90e41dcf86442e",
+    "snapshot_root": "df62c52c9940a166d0e7b8d1062851c1af2fe09476b59abfe4e26c48b14ed85a"
+  },
+  "handle_lifetime": {
+    "note": "the HookHandle is intentionally not retained by the bounded process-lifetime profile; explicit unhook is not claimed",
+    "policy": "process",
+    "returned_hook_handle_stored_for_unhook": false,
+    "unhook_supported_by_this_profile": false
+  },
+  "hot_hooker_dex": {
+    "allocations_per_intercept_emitted": 0,
+    "argument_reads": 0,
+    "bytes": 672,
+    "chain_proceed_calls": 1,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxHooker;",
+    "intercept_code_units": 5,
+    "intercept_code_units_raw": [
+      "0x1072",
+      "0x0000",
+      "0x0002",
+      "0x000c",
+      "0x0011"
+    ],
+    "intercept_instruction_opcodes": [
+      "0x72",
+      "0x0c",
+      "0x11"
+    ],
+    "interfaces": [
+      "Lio/github/libxposed/api/XposedInterface$Hooker;"
+    ],
+    "opcode_counts": {
+      "invoke_direct": 0,
+      "invoke_interface": 1,
+      "invoke_virtual": 0,
+      "move_result_object": 1,
+      "new_instance": 0,
+      "return_object": 1,
+      "return_void": 0,
+      "sget_object": 0
+    },
+    "reflection_strings_present": [],
+    "sha256": "da793892e4cc4b8d3a6fa77702cfb5d8544be03acd6ca17a9c39666b1724cbfd",
+    "signature_valid": true
+  },
+  "install_dex": {
+    "bytes": 1896,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "hooker_allocations_during_install": 1,
+    "native_package_ready_transitions": 1,
+    "on_package_ready_code_units": 40,
+    "on_package_ready_code_units_raw": [
+      "0x1072",
+      "0x0004",
+      "0x0008",
+      "0x000c",
+      "0x011a",
+      "0x0018",
+      "0x206e",
+      "0x0006",
+      "0x0010",
+      "0x010c",
+      "0x001a",
+      "0x0021",
+      "0x0312",
+      "0x306e",
+      "0x0005",
+      "0x0301",
+      "0x020c",
+      "0x206e",
+      "0x0002",
+      "0x0027",
+      "0x030c",
+      "0x0562",
+      "0x0000",
+      "0x2072",
+      "0x0001",
+      "0x0053",
+      "0x030c",
+      "0x0422",
+      "0x000e",
+      "0x1070",
+      "0x0008",
+      "0x0004",
+      "0x2072",
+      "0x0000",
+      "0x0043",
+      "0x060c",
+      "0x2070",
+      "0x000d",
+      "0x0087",
+      "0x000e"
+    ],
+    "on_package_ready_instruction_opcodes": [
+      "0x72",
+      "0x0c",
+      "0x1a",
+      "0x6e",
+      "0x0c",
+      "0x1a",
+      "0x12",
+      "0x6e",
+      "0x0c",
+      "0x6e",
+      "0x0c",
+      "0x62",
+      "0x72",
+      "0x0c",
+      "0x22",
+      "0x70",
+      "0x72",
+      "0x0c",
+      "0x70",
+      "0x0e"
+    ],
+    "opcode_counts": {
+      "invoke_direct": 2,
+      "invoke_interface": 3,
+      "invoke_virtual": 3,
+      "move_result_object": 6,
+      "new_instance": 1,
+      "return_object": 0,
+      "return_void": 1,
+      "sget_object": 1
+    },
+    "sha256": "44376dd8ba5c12b2f5f3ba68eb5cc1763c33ac0605d00c79b13d9390be857b0f",
+    "signature_valid": true,
+    "target_lookup_strings": [
+      "getClassLoader",
+      "loadClass",
+      "getDeclaredMethod",
+      "hook",
+      "setExceptionMode",
+      "intercept",
+      "PROTECTIVE"
+    ],
+    "try_catch_handlers": 0
+  },
+  "modern_metadata": {
+    "java_init_list_utf8": "xax.generated.XaxModule\n",
+    "module_prop_utf8": "minApiVersion=101\ntargetApiVersion=102\nstaticScope=true\n",
+    "scope_list_utf8": "com.example.target\n"
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxModule_xaxOnModuleLoaded",
+      "Java_xax_generated_XaxModule_xaxOnPackageReady",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "3a77875eb0f995410d0d0963d0dcc09d00a8f3a4df1659260f8a778bf632dd58"
+  },
+  "production_dependencies": {
+    "bundled_libxposed_api_classes": 0,
+    "c_cpp_bridge_source_files": 0,
+    "d8_r8_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0,
+    "javac_kotlinc_invocations": 0
+  },
+  "runtime_validation": {
+    "chain_proceed": "UNEXECUTED",
+    "classloader_resolution": "UNEXECUTED",
+    "hook_installation": "UNEXECUTED",
+    "interception": "UNEXECUTED",
+    "module_discovery": "UNEXECUTED",
+    "package_ready": "UNEXECUTED",
+    "target_process_survival": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-hook-evidence-v1",
+  "semantic_input": {
+    "exception_mode": "PROTECTIVE",
+    "failure_policy": "propagate",
+    "hook_adapter_cid": "363b83a457638749236b831cf60201284d8829af6a393edc7bf171b7adf7f367",
+    "hook_installation_cid": "430ea39018132d40ea633271fb6649c012d72d3b38f4201dd7277510ab99d7fc",
+    "hooker_class": "xax.generated.XaxHooker",
+    "lifetime_policy": "process",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "scope": [
+      "com.example.target"
+    ],
+    "target_class": "android.app.Activity",
+    "target_method": "onResume",
+    "target_parameters": []
+  },
+  "upstream_profile": {
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "hook_api": "XposedInterface.hook(Executable)->HookBuilder; HookBuilder.setExceptionMode(PROTECTIVE).intercept(Hooker)",
+    "hot_chain_api": "Hooker.intercept(Chain)->Object; Chain.proceed()->Object",
+    "managed_entry_superclass": "io.github.libxposed.api.XposedModule",
+    "target_api_version": 102
+  }
+}

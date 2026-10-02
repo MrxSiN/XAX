@@ -1,0 +1,827 @@
+{
+  "bounded_optimizer_choice": {
+    "actual_fastest_on_this_run": "mem_direct",
+    "family": "memory",
+    "selected": "mem_direct",
+    "selected_function_cid": "f4238495d658896facccbbb6800ad4e5a80f498e304000c85247fa1116aa1141",
+    "semantic_root_unchanged_by_calibration": "a695ee434ed1079e6f0e4033fd90b91e9bc812f605c3177f97725b077b0bda96",
+    "verified_before_emission": true
+  },
+  "calibration_function_count": 5,
+  "calibration_functions": [
+    {
+      "code_bytes": 3,
+      "function_cid": "30ea4af519cbab75c6059a1476b054163e7044133b37a9d21da604ee5d67ca19",
+      "name": "cal_base"
+    },
+    {
+      "code_bytes": 19,
+      "function_cid": "2f6fe8724d2fe974e16eca05218026234fd29a8d4e2aa8a0e48904e0a5388352",
+      "name": "cal_add8"
+    },
+    {
+      "code_bytes": 15,
+      "function_cid": "80b27e4694564210d4750d9d36a9bcad7bd27126da65347038c68bad012523cd",
+      "name": "cal_mul4"
+    },
+    {
+      "code_bytes": 29,
+      "function_cid": "aa37dcf337cee894ffff5c7b0e7532e500a59c8cd5f1b281bf978d04a140acda",
+      "name": "cal_branch"
+    },
+    {
+      "code_bytes": 66,
+      "function_cid": "7a6fc6e87e11cc0712b76679c14829574d7c467e32804386919be163b7313acc",
+      "name": "cal_mem4"
+    }
+  ],
+  "calibration_identity": "5e954727d81100b71e8503d372996dec99fbd6133d1d80d65fe68f336e5b3d45",
+  "candidate_count": 8,
+  "candidates": [
+    {
+      "code_bytes": 5,
+      "family": "arithmetic",
+      "features": {
+        "add": 1,
+        "alu_total": 1,
+        "branch": 0,
+        "critical_add": 1,
+        "critical_mul": 0,
+        "memory": 0,
+        "mul": 0,
+        "sub": 0
+      },
+      "function_cid": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+      "name": "arith_add2",
+      "outputs": [
+        [
+          0
+        ],
+        [
+          2
+        ],
+        [
+          14
+        ],
+        [
+          4294967294
+        ],
+        [
+          4294967294
+        ]
+      ],
+      "vectors": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          2147483647
+        ],
+        [
+          4294967295
+        ]
+      ]
+    },
+    {
+      "code_bytes": 16,
+      "family": "arithmetic",
+      "features": {
+        "add": 0,
+        "alu_total": 1,
+        "branch": 0,
+        "critical_add": 0,
+        "critical_mul": 1,
+        "memory": 0,
+        "mul": 1,
+        "sub": 0
+      },
+      "function_cid": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+      "name": "arith_mul2",
+      "outputs": [
+        [
+          0
+        ],
+        [
+          2
+        ],
+        [
+          14
+        ],
+        [
+          4294967294
+        ],
+        [
+          4294967294
+        ]
+      ],
+      "vectors": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          2147483647
+        ],
+        [
+          4294967295
+        ]
+      ]
+    },
+    {
+      "code_bytes": 38,
+      "family": "control",
+      "features": {
+        "add": 1,
+        "alu_total": 1,
+        "branch": 1,
+        "critical_add": 1,
+        "critical_mul": 0,
+        "memory": 0,
+        "mul": 0,
+        "sub": 1
+      },
+      "function_cid": "988c572deb9d0d2744fabf7ba5cd33b592b23c01d75ced6de698d5812d70827c",
+      "name": "branch_lazy",
+      "outputs": [
+        [
+          4
+        ],
+        [
+          10
+        ],
+        [
+          4294967294
+        ],
+        [
+          0
+        ]
+      ],
+      "vectors": [
+        [
+          0,
+          7,
+          3
+        ],
+        [
+          1,
+          7,
+          3
+        ],
+        [
+          0,
+          4294967295,
+          1
+        ],
+        [
+          1,
+          4294967295,
+          1
+        ]
+      ]
+    },
+    {
+      "code_bytes": 38,
+      "family": "control",
+      "features": {
+        "add": 1,
+        "alu_total": 2,
+        "branch": 1,
+        "critical_add": 2,
+        "critical_mul": 0,
+        "memory": 0,
+        "mul": 0,
+        "sub": 1
+      },
+      "function_cid": "5ff782cfa1f1ef4b8cbad0ae47c4e41f61a7b5d2cadd2ba69b3ec42bd5680968",
+      "name": "branch_eager",
+      "outputs": [
+        [
+          4
+        ],
+        [
+          10
+        ],
+        [
+          4294967294
+        ],
+        [
+          0
+        ]
+      ],
+      "vectors": [
+        [
+          0,
+          7,
+          3
+        ],
+        [
+          1,
+          7,
+          3
+        ],
+        [
+          0,
+          4294967295,
+          1
+        ],
+        [
+          1,
+          4294967295,
+          1
+        ]
+      ]
+    },
+    {
+      "code_bytes": 3,
+      "family": "memory",
+      "features": {
+        "add": 0,
+        "alu_total": 0,
+        "branch": 0,
+        "critical_add": 0,
+        "critical_mul": 0,
+        "memory": 0,
+        "mul": 0,
+        "sub": 0
+      },
+      "function_cid": "f4238495d658896facccbbb6800ad4e5a80f498e304000c85247fa1116aa1141",
+      "name": "mem_direct",
+      "outputs": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          4294967295
+        ]
+      ],
+      "vectors": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          4294967295
+        ]
+      ]
+    },
+    {
+      "code_bytes": 43,
+      "family": "memory",
+      "features": {
+        "add": 0,
+        "alu_total": 0,
+        "branch": 0,
+        "critical_add": 0,
+        "critical_mul": 0,
+        "memory": 2,
+        "mul": 0,
+        "sub": 0
+      },
+      "function_cid": "a73f64f3d1540cf8527a2a7f21fa87455b0a82f3937b4d96b0a1f4976b99313b",
+      "name": "mem_stack_roundtrip",
+      "outputs": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          4294967295
+        ]
+      ],
+      "vectors": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          4294967295
+        ]
+      ]
+    },
+    {
+      "code_bytes": 7,
+      "family": "dependency",
+      "features": {
+        "add": 2,
+        "alu_total": 2,
+        "branch": 0,
+        "critical_add": 2,
+        "critical_mul": 0,
+        "memory": 0,
+        "mul": 0,
+        "sub": 0
+      },
+      "function_cid": "ed1ae564604b7d6f35e2df371f743d2f6156a0c4a8c0ddf975a30d363325370c",
+      "name": "dep_chain4x",
+      "outputs": [
+        [
+          0
+        ],
+        [
+          4
+        ],
+        [
+          28
+        ],
+        [
+          0
+        ],
+        [
+          4294967292
+        ]
+      ],
+      "vectors": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          1073741824
+        ],
+        [
+          4294967295
+        ]
+      ]
+    },
+    {
+      "code_bytes": 11,
+      "family": "dependency",
+      "features": {
+        "add": 3,
+        "alu_total": 3,
+        "branch": 0,
+        "critical_add": 2,
+        "critical_mul": 0,
+        "memory": 0,
+        "mul": 0,
+        "sub": 0
+      },
+      "function_cid": "6a1d226f80149cb9c5f3e5e5e8c30aa96ad4ca6e321d00f86cd531e55813e840",
+      "name": "dep_parallel4x",
+      "outputs": [
+        [
+          0
+        ],
+        [
+          4
+        ],
+        [
+          28
+        ],
+        [
+          0
+        ],
+        [
+          4294967292
+        ]
+      ],
+      "vectors": [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          7
+        ],
+        [
+          1073741824
+        ],
+        [
+          4294967295
+        ]
+      ]
+    }
+  ],
+  "closure": {
+    "closed": false,
+    "remaining": [
+      "second materially different real microarchitecture",
+      "repeat objective/model evaluation there before choosing a default/fallback"
+    ]
+  },
+  "family_count": 4,
+  "measurement_policy": {
+    "clock": "CLOCK_MONOTONIC_RAW",
+    "harness_overhead": "common mapped-function call ABI and loop overhead; batch clock overhead is outside per-call loop and not subtracted",
+    "iterations_per_sample": 100000,
+    "pinned_cpu": 0,
+    "sample_count": 21,
+    "warmup_iterations": 50000
+  },
+  "microarchitecture": {
+    "machine": "x86_64",
+    "model": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "release": "6.18.44",
+    "system": "Linux",
+    "vendor": "GenuineIntel"
+  },
+  "model_version": "xax-oi17-cost-model-v1",
+  "nonsemantic_guards": {
+    "calibration_not_in_semantic_store": true,
+    "cost_change_cannot_change_function_cids": true,
+    "cost_change_may_change_build_policy_choice": true,
+    "timing_guarantee": null
+  },
+  "objectives": {
+    "code_size": {
+      "classification": "exact lowering result",
+      "pairs": [
+        {
+          "best": "arith_add2",
+          "bytes": {
+            "arith_add2": 5,
+            "arith_mul2": 16
+          },
+          "family": "arithmetic"
+        },
+        {
+          "best": "tie",
+          "bytes": {
+            "branch_eager": 38,
+            "branch_lazy": 38
+          },
+          "family": "control"
+        },
+        {
+          "best": "mem_direct",
+          "bytes": {
+            "mem_direct": 3,
+            "mem_stack_roundtrip": 43
+          },
+          "family": "memory"
+        },
+        {
+          "best": "dep_chain4x",
+          "bytes": {
+            "dep_chain4x": 7,
+            "dep_parallel4x": 11
+          },
+          "family": "dependency"
+        }
+      ]
+    },
+    "latency": {
+      "classification": "measured estimate evidence, not guarantee",
+      "models": {
+        "measured_calibrated": {
+          "coefficients_ns": {
+            "add": 0.08528000000000002,
+            "base": 1.71894,
+            "branch": 0.6779999999999999,
+            "memory": 0.13556500000000005,
+            "mul": 0.50214,
+            "sub": 0.08528000000000002
+          },
+          "metrics": {
+            "mean_normalized_absolute_error": 0.17837488158954937,
+            "pairs": [
+              {
+                "correct": false,
+                "family": "arithmetic",
+                "observed_best": "arith_mul2",
+                "predicted_best": "arith_add2"
+              },
+              {
+                "correct": true,
+                "family": "control",
+                "observed_best": "branch_lazy",
+                "predicted_best": "branch_lazy"
+              },
+              {
+                "correct": true,
+                "family": "memory",
+                "observed_best": "mem_direct",
+                "predicted_best": "mem_direct"
+              },
+              {
+                "correct": false,
+                "family": "dependency",
+                "observed_best": "dep_chain4x",
+                "predicted_best": "dep_parallel4x"
+              }
+            ],
+            "pairwise_accuracy": 0.5,
+            "pairwise_correct": 2,
+            "pairwise_total": 4
+          },
+          "predictions_ns": {
+            "arith_add2": 1.80422,
+            "arith_mul2": 2.2210799999999997,
+            "branch_eager": 2.5675,
+            "branch_lazy": 2.48222,
+            "dep_chain4x": 1.8895,
+            "dep_parallel4x": 1.8895,
+            "mem_direct": 1.71894,
+            "mem_stack_roundtrip": 1.99007
+          }
+        },
+        "static_table": {
+          "metrics": {
+            "mean_normalized_absolute_error": 0.24122470591010287,
+            "pairs": [
+              {
+                "correct": false,
+                "family": "arithmetic",
+                "observed_best": "arith_mul2",
+                "predicted_best": "arith_add2"
+              },
+              {
+                "correct": false,
+                "family": "control",
+                "observed_best": "branch_lazy",
+                "predicted_best": "branch_eager"
+              },
+              {
+                "correct": true,
+                "family": "memory",
+                "observed_best": "mem_direct",
+                "predicted_best": "mem_direct"
+              },
+              {
+                "correct": true,
+                "family": "dependency",
+                "observed_best": "dep_chain4x",
+                "predicted_best": "dep_chain4x"
+              }
+            ],
+            "pairwise_accuracy": 0.5,
+            "pairwise_correct": 2,
+            "pairwise_total": 4
+          },
+          "predictions_ns": {
+            "arith_add2": 1.9000000000000001,
+            "arith_mul2": 2.45,
+            "branch_eager": 2.75,
+            "branch_lazy": 2.75,
+            "dep_chain4x": 2.2,
+            "dep_parallel4x": 2.5,
+            "mem_direct": 1.6,
+            "mem_stack_roundtrip": 2.7
+          }
+        },
+        "symbolic": {
+          "metrics": {
+            "mean_normalized_absolute_error": 0.23233885866202827,
+            "pairs": [
+              {
+                "correct": false,
+                "family": "arithmetic",
+                "observed_best": "arith_mul2",
+                "predicted_best": "arith_add2"
+              },
+              {
+                "correct": true,
+                "family": "control",
+                "observed_best": "branch_lazy",
+                "predicted_best": "branch_lazy"
+              },
+              {
+                "correct": true,
+                "family": "memory",
+                "observed_best": "mem_direct",
+                "predicted_best": "mem_direct"
+              },
+              {
+                "correct": false,
+                "family": "dependency",
+                "observed_best": "dep_chain4x",
+                "predicted_best": "dep_parallel4x"
+              }
+            ],
+            "pairwise_accuracy": 0.5,
+            "pairwise_correct": 2,
+            "pairwise_total": 4
+          },
+          "predictions_ns": {
+            "arith_add2": 1.9000000000000001,
+            "arith_mul2": 2.45,
+            "branch_eager": 2.75,
+            "branch_lazy": 2.45,
+            "dep_chain4x": 2.2,
+            "dep_parallel4x": 2.2,
+            "mem_direct": 1.6,
+            "mem_stack_roundtrip": 2.7
+          }
+        }
+      },
+      "observed_ns": {
+        "arith_add2": 1.71906,
+        "arith_mul2": 1.71889,
+        "branch_eager": 2.93439,
+        "branch_lazy": 2.89968,
+        "dep_chain4x": 1.7186,
+        "dep_parallel4x": 1.71874,
+        "mem_direct": 1.71881,
+        "mem_stack_roundtrip": 5.20189
+      }
+    },
+    "throughput": {
+      "classification": "measured estimate evidence, not guarantee",
+      "models": {
+        "measured_calibrated": {
+          "coefficients_ns": {
+            "add": 0.012456250000000002,
+            "base": 1.71922,
+            "branch": 0.6758100000000002,
+            "memory": 0.09652499999999997,
+            "mul": 0.001,
+            "sub": 0.012456250000000002
+          },
+          "metrics": {
+            "mean_normalized_absolute_error": 0.07594774684861341,
+            "pairs": [
+              {
+                "correct": false,
+                "family": "arithmetic",
+                "observed_best": "arith_mul2",
+                "predicted_best": "arith_add2"
+              },
+              {
+                "correct": false,
+                "family": "control",
+                "observed_best": "branch_lazy",
+                "predicted_best": "branch_eager"
+              },
+              {
+                "correct": true,
+                "family": "memory",
+                "observed_best": "mem_direct",
+                "predicted_best": "mem_direct"
+              },
+              {
+                "correct": false,
+                "family": "dependency",
+                "observed_best": "dep_parallel4x",
+                "predicted_best": "dep_chain4x"
+              }
+            ],
+            "pairwise_accuracy": 0.25,
+            "pairwise_correct": 1,
+            "pairwise_total": 4
+          },
+          "predictions_ns": {
+            "arith_add2": 1.73167625,
+            "arith_mul2": 1.73267625,
+            "branch_eager": 2.4074862500000003,
+            "branch_lazy": 2.4074862500000003,
+            "dep_chain4x": 1.73167625,
+            "dep_parallel4x": 1.7441325,
+            "mem_direct": 1.71922,
+            "mem_stack_roundtrip": 1.91227
+          }
+        },
+        "static_table": {
+          "metrics": {
+            "mean_normalized_absolute_error": 0.33226161691584527,
+            "pairs": [
+              {
+                "correct": false,
+                "family": "arithmetic",
+                "observed_best": "arith_mul2",
+                "predicted_best": "arith_add2"
+              },
+              {
+                "correct": false,
+                "family": "control",
+                "observed_best": "branch_lazy",
+                "predicted_best": "branch_eager"
+              },
+              {
+                "correct": true,
+                "family": "memory",
+                "observed_best": "mem_direct",
+                "predicted_best": "mem_direct"
+              },
+              {
+                "correct": false,
+                "family": "dependency",
+                "observed_best": "dep_parallel4x",
+                "predicted_best": "dep_chain4x"
+              }
+            ],
+            "pairwise_accuracy": 0.25,
+            "pairwise_correct": 1,
+            "pairwise_total": 4
+          },
+          "predictions_ns": {
+            "arith_add2": 1.9000000000000001,
+            "arith_mul2": 2.45,
+            "branch_eager": 2.75,
+            "branch_lazy": 2.75,
+            "dep_chain4x": 2.2,
+            "dep_parallel4x": 2.5,
+            "mem_direct": 1.6,
+            "mem_stack_roundtrip": 2.7
+          }
+        },
+        "symbolic": {
+          "metrics": {
+            "mean_normalized_absolute_error": 0.27531063558568136,
+            "pairs": [
+              {
+                "correct": false,
+                "family": "arithmetic",
+                "observed_best": "arith_mul2",
+                "predicted_best": "arith_add2"
+              },
+              {
+                "correct": false,
+                "family": "control",
+                "observed_best": "branch_lazy",
+                "predicted_best": "branch_eager"
+              },
+              {
+                "correct": true,
+                "family": "memory",
+                "observed_best": "mem_direct",
+                "predicted_best": "mem_direct"
+              },
+              {
+                "correct": false,
+                "family": "dependency",
+                "observed_best": "dep_parallel4x",
+                "predicted_best": "dep_chain4x"
+              }
+            ],
+            "pairwise_accuracy": 0.25,
+            "pairwise_correct": 1,
+            "pairwise_total": 4
+          },
+          "predictions_ns": {
+            "arith_add2": 1.9000000000000001,
+            "arith_mul2": 2.75,
+            "branch_eager": 2.45,
+            "branch_lazy": 2.45,
+            "dep_chain4x": 1.9000000000000001,
+            "dep_parallel4x": 2.2,
+            "mem_direct": 1.6,
+            "mem_stack_roundtrip": 2.7
+          }
+        }
+      },
+      "observed_ns": {
+        "arith_add2": 1.64873,
+        "arith_mul2": 1.64736,
+        "branch_eager": 2.27554,
+        "branch_lazy": 2.07659,
+        "dep_chain4x": 1.67206,
+        "dep_parallel4x": 1.64841,
+        "mem_direct": 1.64716,
+        "mem_stack_roundtrip": 1.66186
+      }
+    }
+  },
+  "raw_measurement_file": "oi17_cost_model_raw.json",
+  "raw_measurement_sha256": "84afcbc371e7970aaa1b9f67a89fe3e2d80f8fc98d5ebc86ea3d07f9eaeb0052",
+  "schema": "xax-oi17-cost-model-evidence-v1",
+  "semantic_equivalence": {
+    "arithmetic": true,
+    "control": true,
+    "dependency": true,
+    "memory": true
+  },
+  "status": "open",
+  "target": {
+    "architecture": "x86-64 Win64 emitted code executed via explicit ms_abi on host",
+    "cid": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56"
+  }
+}

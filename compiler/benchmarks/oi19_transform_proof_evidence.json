@@ -1,0 +1,380 @@
+{
+  "corpus": [
+    {
+      "candidate_cid": "b5249b70b73c41bcc5fa0aba185966152e8bdaf774dbf795a713ed98ffe059ac",
+      "candidate_store_bytes": 773,
+      "class": "local_rewrite",
+      "finite_translation_accepts": null,
+      "name": "local_add_zero_effect_preserved",
+      "source_cid": "d5d618dc7d615e2dc92bd4c9a8536aa6b798c24d3110b75545cc484871b8d947",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 107,
+      "witness_sha256": "4403fb928c67071cdbbc44abc64e37c42b911d89e891c94da819fc530151cbcd"
+    },
+    {
+      "candidate_cid": "8df3f34404c8d3628e96d6c3c46196919c05374a929fe0ea435a845c1baa480b",
+      "candidate_store_bytes": 763,
+      "class": "local_rewrite",
+      "finite_translation_accepts": true,
+      "name": "local_const_fold",
+      "source_cid": "84ff673adefe029fda543eb51ce4ed90499d6dfdfa2e1c8e24782bd56b5f112c",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "228b74d8ab6cd67a8f65ece4e350e9c156f82462b8faa1fdd74726026296e80e"
+    },
+    {
+      "candidate_cid": "cd85f84463daf28476e215ae0e4ce66132fe25204b48e642485d7f339c572596",
+      "candidate_store_bytes": 762,
+      "class": "local_rewrite",
+      "finite_translation_accepts": true,
+      "name": "local_wrap_overflow_fold",
+      "source_cid": "32ddf06a28962ecbd4d99de412d447794fe5370e56b4ec0322650c4563e8fdfe",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "7f77863499bddaac457c8a021394099f7508b78b4b21bca2645b45765d409783"
+    },
+    {
+      "candidate_cid": "691b73a2c1a2d12f633524ffdaf569e25bead49dd31b1568bf50516351436854",
+      "candidate_store_bytes": 786,
+      "class": "cfg",
+      "finite_translation_accepts": true,
+      "name": "cfg_constant_branch",
+      "source_cid": "1d52b0d3490ac160aff95b83c1740a996b5101f5e9d7fe6816ac47cd2073bc18",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 107,
+      "witness_sha256": "8efbb3c58c34ce7aac35fa1e888ef800a366843c6040948730000c04435da85d"
+    },
+    {
+      "candidate_cid": "c0106c5872e9781cba010371035d80793daa03c40ecbfc117abe8a44b365f5ec",
+      "candidate_store_bytes": 633,
+      "class": "inline",
+      "finite_translation_accepts": true,
+      "name": "inline_pure_single_block",
+      "source_cid": "1359d8d8685c4796351af7fffa0b1d67a0494617606cb0533d31d07768ca55a2",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "ad05e9a1cbd22186d088348747a96170a10d439ec8bed804c0d1dcd1a787896b"
+    },
+    {
+      "candidate_cid": "5334c6723423efa0da44c263c85188ff2b6858b44a0e920cb4f818cebfdd8a0c",
+      "candidate_store_bytes": 631,
+      "class": "search",
+      "finite_translation_accepts": true,
+      "name": "search_mul2_to_add",
+      "source_cid": "216b04a01a36f28546bfb5117942cc8ca7cd44f6e3f786cfc1ae2fd90b1b0ce4",
+      "verifier_accepts": true,
+      "witness_accepts": true,
+      "witness_bytes": 139,
+      "witness_sha256": "fed2ad866d4edee0c2133e870c1853a973f94b3e98e20fea7a97283674707f3b"
+    }
+  ],
+  "decision": {
+    "effectful_or_resource_transform": "verifier alone is insufficient; any future untrusted transform that can alter effects/resources requires a checker that covers the observable effect/resource relation, otherwise reject",
+    "finite_oracle": "test-only exact oracle for <=4-bit pure concrete fixtures; not production semantics",
+    "ordinary_verifier": "always required for graph/type/effect/dominance validity; it is not semantic equivalence evidence",
+    "search_generated_wrapping_arithmetic": "use exact polynomial normal-form translation validation plus ordinary verifier; no proof object or solver is required",
+    "solver": "not justified by this corpus; no dependency added",
+    "trusted_conventional_rules": "keep current conservative local/CFG/inlining rule premises plus ordinary verifier; the witness prototype is not adopted because it would add a second checker unless it fully replaces the trusted rule implementation",
+    "witness_migration_threshold": "move a conventional rule family out of the trusted generator only when one independent witness checker covers the complete family, rejects all family fault fixtures, and its correctness-critical implementation is smaller than the trusted rule code it replaces; this prototype is 223 checker/codec lines versus 276 current local/CFG/inline generator lines but covers only the measured subset"
+  },
+  "false_rejection": {
+    "finite_translation": 0,
+    "verifier": 0,
+    "witness": 0
+  },
+  "fault_detection": {
+    "finite_translation": 6,
+    "finite_translation_applicable": 6,
+    "verifier": 1,
+    "verifier_total": 7,
+    "witness": 7,
+    "witness_total": 7
+  },
+  "faults": [
+    {
+      "candidate_cid": "a51ffbb2e3efaeab24f6dad88395504b8bad39b9fa37bf4b168cab0477ded03f",
+      "class": "dropped_effect",
+      "detected_by_finite_translation": null,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": null,
+      "name": "dropped_effect",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "db020b29dcceadd2b8c73d9fcc3054de07ea3fd7f90de2c68fc0ae43cab66592",
+      "class": "wrong_constant",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "wrong_constant",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "f8dbb0689aaf7a74ec67a618ba8d4050c170794b047e2b9c59a0029d7175c09e",
+      "class": "overflow_assumption",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "overflow_assumption",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "bfc29bec64f90acd7fa315f8f62fe177275cb8907fe5d9666a5b2188f09cd6e8",
+      "class": "wrong_control",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "wrong_cfg_edge",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "4c47dee11585d40e8bcc2e83eb05d6a2d184d349ea7395132c4b778b8bd296ff",
+      "class": "dropped_dependency",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "wrong_inline_argument",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "4ec3e25f26b60413f11ffe314eb803a18bf7b4b16a7151f784c208358c7f0aa8",
+      "class": "dropped_dependency",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": false,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "dropped_dependency",
+      "verifier_accepts": true,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    },
+    {
+      "candidate_cid": "4a26046cd4f29a3122941ff3e0aded87242ef92a669e56ad77b7743b3638b14d",
+      "class": "dominance_error",
+      "detected_by_finite_translation": true,
+      "detected_by_verifier": true,
+      "detected_by_witness": true,
+      "finite_translation_accepts": false,
+      "name": "dominance_error",
+      "verifier_accepts": false,
+      "witness_accepts": false,
+      "witness_rejection_preserves_source": true
+    }
+  ],
+  "host_observations": {
+    "classification": "non-semantic compile-tooling measurements",
+    "raw_sha256": "23ddbf746b58b83beb410e2a36a45afc2cd62bfd8bd54dc2356fe1d5a28b89ec",
+    "summary": [
+      {
+        "candidates_per_second": 966.8916945937218,
+        "case": "local_add_zero_effect_preserved",
+        "class": "local_rewrite",
+        "mechanism": "verifier",
+        "median_ns": 1034242,
+        "median_peak_bytes": 5307,
+        "p10_ns": 981210,
+        "p90_ns": 1936493
+      },
+      {
+        "candidates_per_second": 346.8558557246131,
+        "case": "local_add_zero_effect_preserved",
+        "class": "local_rewrite",
+        "mechanism": "witness",
+        "median_ns": 2883042,
+        "median_peak_bytes": 10606,
+        "p10_ns": 2042767,
+        "p90_ns": 3884491
+      },
+      {
+        "candidates_per_second": 898.5081171223301,
+        "case": "local_const_fold",
+        "class": "local_rewrite",
+        "mechanism": "verifier",
+        "median_ns": 1112956,
+        "median_peak_bytes": 4903,
+        "p10_ns": 960666,
+        "p90_ns": 1835739
+      },
+      {
+        "candidates_per_second": 456.72277658217905,
+        "case": "local_const_fold",
+        "class": "local_rewrite",
+        "mechanism": "witness",
+        "median_ns": 2189512,
+        "median_peak_bytes": 8912,
+        "p10_ns": 1916731,
+        "p90_ns": 3407631
+      },
+      {
+        "candidates_per_second": 158.56618116344765,
+        "case": "local_const_fold",
+        "class": "local_rewrite",
+        "mechanism": "finite_translation",
+        "median_ns": 6306515,
+        "median_peak_bytes": 12767,
+        "p10_ns": 5397524,
+        "p90_ns": 8585382
+      },
+      {
+        "candidates_per_second": 1030.7928755719613,
+        "case": "local_wrap_overflow_fold",
+        "class": "local_rewrite",
+        "mechanism": "verifier",
+        "median_ns": 970127,
+        "median_peak_bytes": 4987,
+        "p10_ns": 935578,
+        "p90_ns": 1130619
+      },
+      {
+        "candidates_per_second": 468.96352495495603,
+        "case": "local_wrap_overflow_fold",
+        "class": "local_rewrite",
+        "mechanism": "witness",
+        "median_ns": 2132362,
+        "median_peak_bytes": 9068,
+        "p10_ns": 1892527,
+        "p90_ns": 2529771
+      },
+      {
+        "candidates_per_second": 179.88927814929912,
+        "case": "local_wrap_overflow_fold",
+        "class": "local_rewrite",
+        "mechanism": "finite_translation",
+        "median_ns": 5558975,
+        "median_peak_bytes": 12595,
+        "p10_ns": 5211467,
+        "p90_ns": 7458339
+      },
+      {
+        "candidates_per_second": 1002.6288929573341,
+        "case": "cfg_constant_branch",
+        "class": "cfg",
+        "mechanism": "verifier",
+        "median_ns": 997378,
+        "median_peak_bytes": 5217,
+        "p10_ns": 943966,
+        "p90_ns": 1302788
+      },
+      {
+        "candidates_per_second": 461.8041765569728,
+        "case": "cfg_constant_branch",
+        "class": "cfg",
+        "mechanism": "witness",
+        "median_ns": 2165420,
+        "median_peak_bytes": 10790,
+        "p10_ns": 1909926,
+        "p90_ns": 2692961
+      },
+      {
+        "candidates_per_second": 24.681417203026772,
+        "case": "cfg_constant_branch",
+        "class": "cfg",
+        "mechanism": "finite_translation",
+        "median_ns": 40516312,
+        "median_peak_bytes": 46977,
+        "p10_ns": 34555282,
+        "p90_ns": 69395711
+      },
+      {
+        "candidates_per_second": 886.8904291219342,
+        "case": "inline_pure_single_block",
+        "class": "inline",
+        "mechanism": "verifier",
+        "median_ns": 1127535,
+        "median_peak_bytes": 4857,
+        "p10_ns": 820732,
+        "p90_ns": 4752632
+      },
+      {
+        "candidates_per_second": 402.3911692843553,
+        "case": "inline_pure_single_block",
+        "class": "inline",
+        "mechanism": "witness",
+        "median_ns": 2485144,
+        "median_peak_bytes": 9516,
+        "p10_ns": 1920645,
+        "p90_ns": 3817584
+      },
+      {
+        "candidates_per_second": 3.4184710031769456,
+        "case": "inline_pure_single_block",
+        "class": "inline",
+        "mechanism": "finite_translation",
+        "median_ns": 292528443,
+        "median_peak_bytes": 276523,
+        "p10_ns": 242031043,
+        "p90_ns": 337191698
+      },
+      {
+        "candidates_per_second": 1128.0824853913318,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "verifier",
+        "median_ns": 886460,
+        "median_peak_bytes": 4819,
+        "p10_ns": 843848,
+        "p90_ns": 2975359
+      },
+      {
+        "candidates_per_second": 571.7951738200148,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "witness",
+        "median_ns": 1748878,
+        "median_peak_bytes": 9639,
+        "p10_ns": 1285200,
+        "p90_ns": 3512589
+      },
+      {
+        "candidates_per_second": 24.193409274993442,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "finite_translation",
+        "median_ns": 41333571,
+        "median_peak_bytes": 45243,
+        "p10_ns": 36522424,
+        "p90_ns": 49484114
+      },
+      {
+        "candidates_per_second": 569.1296130089371,
+        "case": "search_mul2_to_add",
+        "class": "search",
+        "mechanism": "polynomial_translation",
+        "median_ns": 1757069,
+        "median_peak_bytes": 8267,
+        "p10_ns": 1333502,
+        "p90_ns": 2510756
+      }
+    ]
+  },
+  "implementation": {
+    "benchmark_finite_oracle_lines": 18,
+    "benchmark_witness_codec_checker_lines": 223,
+    "existing_exact_polynomial_validator_lines": 83,
+    "existing_trusted_local_cfg_inline_generator_lines": 276,
+    "solver_dependency_lines": 0
+  },
+  "issue": "OI-19",
+  "scope": "transformation correctness mechanism granularity",
+  "semantic_identity_note": "witnesses and validation records are compiler artifacts only; no proof bytes enter canonical XAX identity"
+}

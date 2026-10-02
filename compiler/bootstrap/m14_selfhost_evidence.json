@@ -1,0 +1,63 @@
+{
+  "b2_recursive_compilation": true,
+  "b3_semantic_equivalence": true,
+  "b4_deterministic_fixed_point": true,
+  "b5_semantic_image_toolchain_closure": true,
+  "b6_bootstrap_independence": true,
+  "closure_target": "xax-semantic-image-v1",
+  "compiler_function": "4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc",
+  "compiler_root": "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+  "equivalence_vectors": [
+    {
+      "generation0_digest": "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+      "generation1_digest": "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+      "input_cid": "4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc",
+      "matches": true
+    },
+    {
+      "generation0_digest": "81c22761764a440c68fa5f4d81f1dc0666d87508e0e651c165ee2dd0934bd95a",
+      "generation1_digest": "81c22761764a440c68fa5f4d81f1dc0666d87508e0e651c165ee2dd0934bd95a",
+      "input_cid": "57b37fe05fd0711640a953cc0276f5d9b60c374cb921ea19df1bc76aa6de6e02",
+      "matches": true
+    },
+    {
+      "generation0_digest": "4124977d6acd391f49e3d029ae9d58aaa5cb1fee9271149b22ded2476e56f69c",
+      "generation1_digest": "4124977d6acd391f49e3d029ae9d58aaa5cb1fee9271149b22ded2476e56f69c",
+      "input_cid": "92bc87f1aded5548c14b93d2334d14cca958b964cc127b95a91b68952d3e0303",
+      "matches": true
+    },
+    {
+      "generation0_digest": "cf0346459f1c268bf2d855f7af350af5ce44e3b75c04138f688637b90f35ac77",
+      "generation1_digest": "cf0346459f1c268bf2d855f7af350af5ce44e3b75c04138f688637b90f35ac77",
+      "input_cid": "d67af8501bbc6e206f5699e4ac653be2a3f830d40659c197509ad6f7294d5780",
+      "matches": true
+    }
+  ],
+  "generation_digests": [
+    "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+    "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788",
+    "6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788"
+  ],
+  "generation_roots": [
+    "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+    "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+    "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d"
+  ],
+  "milestone": "M14",
+  "scope": "B5/B6 apply only to xax-semantic-image-v1. Legacy x86-64, AArch64, WebAssembly, and accelerator lowerers remain bootstrap/reference implementations and are not included in this closure claim.",
+  "seed_runtime": {
+    "blake3_256": "eb8157fd2a00fcca5666ea574b7641b4adcb43382f5fbb60f8addead5f04b7b6",
+    "filename": "m14_seed_runtime.pyz",
+    "immutable_seed_boundary": true,
+    "python_runtime": "3.13.5",
+    "repository_pythonpath_removed": true,
+    "repository_source_independent_reconstruction": true,
+    "sha256": "4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52",
+    "source_files_bundled": [
+      "blake3.py",
+      "xax_compiler.py",
+      "xax_selfhost.py"
+    ],
+    "stdout": "{\"byte_identical\": true, \"input_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\", \"input_root\": \"097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d\", \"output_digest\": \"6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788\"}"
+  }
+}

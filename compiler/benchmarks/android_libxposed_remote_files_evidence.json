@@ -1,0 +1,77 @@
+{
+  "apk": {
+    "blake3": "54a48363e426cb6353e2aa811fbe6d6fd40e3d316f1ad488ab4c5d77ff884b2c",
+    "build_key": "30092d3d1e9137a4d7a5883b86cd61501373df6f92f3f2b75f823d8569c0be6c",
+    "bytes": 34289,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "175f786daac5869cb9441d7a73362772af50d34a429f54d24b5a4872310a379b",
+    "repeat_identical": true,
+    "request_root": "a72ebe366c7615cd9442b1de2fa09dcd5d49260b25da9c0b69bfc753db29c138",
+    "sha256": "99dcb50159ec39e54eed5b0806b463f4f8006597fe9071570d92ed4dd9b8c5fa",
+    "snapshot_root": "0c6aebf5911b42efe8b2be66f74dd66c77f98d17e70d718dd6d7b93fa6eaa0f2"
+  },
+  "environment_note": "direct semantic/DEX/APK structural evidence only; PROP_CAP_REMOTE behavior, remote file listing/opening, file-descriptor use, and framework failures are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
+  "managed_dex": {
+    "bytes": 1428,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "helpers": {
+      "list": {
+        "allocation_opcodes": 0,
+        "and_int_lit8_count": 1,
+        "code_units": 16,
+        "generated_method": "xaxListRemoteFilesIfSupported",
+        "if_eqz_count": 1,
+        "invoke_virtual_count": 2,
+        "null_fallback_count": 1
+      },
+      "open": {
+        "allocation_opcodes": 0,
+        "and_int_lit8_count": 1,
+        "code_units": 16,
+        "generated_method": "xaxOpenRemoteFileIfSupported",
+        "if_eqz_count": 1,
+        "invoke_virtual_count": 2,
+        "null_fallback_count": 1
+      }
+    },
+    "sha256": "c935eff28b45f887a78c27b49857dd0b32f0214f7c7ffb6f6fc4ee3c57a784ab",
+    "signature_valid": true
+  },
+  "runtime_validation": {
+    "capability_bit": "UNEXECUTED",
+    "failure_propagation": "UNEXECUTED",
+    "list_remote_files": "UNEXECUTED",
+    "open_remote_file": "UNEXECUTED",
+    "unsupported_returns_null": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-remote-files-evidence-v1",
+  "semantic_input": {
+    "capability_policy": "nullable-on-unsupported",
+    "failure_policy": "propagate",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "operations": [
+      "list",
+      "open"
+    ],
+    "remote_files_cid": "2cd4dcf506f1c1a1f35e0c3e1816f76484e6e147073fa261d7797b725171a877"
+  },
+  "upstream_contract": {
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "capability": "PROP_CAP_REMOTE = 1L << 1",
+    "operations": [
+      "listRemoteFiles()->String[]",
+      "openRemoteFile(String)->ParcelFileDescriptor"
+    ]
+  }
+}

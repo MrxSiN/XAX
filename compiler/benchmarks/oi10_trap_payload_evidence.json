@@ -1,0 +1,37 @@
+{
+  "portable_core": {
+    "encoding": "empty => reason 0; otherwise canonical ULEB u16 reason followed by opaque target/platform bytes",
+    "reason_bits": 16,
+    "reasons_standardized_in_prototype": {
+      "0": "unspecified",
+      "1": "explicit"
+    }
+  },
+  "schema": "xax-oi10-trap-payload-evidence-v1",
+  "targets": [
+    {
+      "alternate_detail_graph_cid": "b80447e786c859020c0f7145867dcf6ac49d2a0bd51c75e036e95e0fc035b092",
+      "alternate_detail_same_machine_code": true,
+      "diagnostic_json": "{\"trap\":{\"payload\":\"b42477696e646f77732d657863657074696f6e2d64657461696c\",\"reason\":4660,\"target_data\":\"77696e646f77732d657863657074696f6e2d64657461696c\"}}",
+      "graph_cid": "8f278c9873609d586653391e45067bb1503357b4f3cd02545385bcf210cf3a60",
+      "machine_code_bytes": 19,
+      "machine_code_hex": "4881ec2800000048b834120000000000000f0b",
+      "name": "x86_64-windows",
+      "portable_reason": 4660,
+      "target_cid": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+      "target_data_hex": "77696e646f77732d657863657074696f6e2d64657461696c"
+    },
+    {
+      "alternate_detail_graph_cid": "b80447e786c859020c0f7145867dcf6ac49d2a0bd51c75e036e95e0fc035b092",
+      "alternate_detail_same_machine_code": true,
+      "diagnostic_json": "{\"trap\":{\"payload\":\"b4246669726d776172652d64657461696c\",\"reason\":4660,\"target_data\":\"6669726d776172652d64657461696c\"}}",
+      "graph_cid": "668ab0f684cad1565db4242a11396b17e25e0567f01b03843c910381eee08c90",
+      "machine_code_bytes": 8,
+      "machine_code_hex": "804682d2804622d4",
+      "name": "aarch64-baremetal",
+      "portable_reason": 4660,
+      "target_cid": "0af5a0c8db7996951be281cf7ab22a7ee158287c43f195c9518f782f5832e355",
+      "target_data_hex": "6669726d776172652d64657461696c"
+    }
+  ]
+}

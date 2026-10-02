@@ -1,0 +1,260 @@
+{
+  "approved_entrypoints": {
+    "m11_b0_b1_component": "load canonical m11_compiler_subset.xax; verify; evaluate six arithmetic vectors",
+    "m14_semantic_image": "load canonical m14_selfhost_compiler.xax; verify; execute materialize->verify->canonical-store call graph"
+  },
+  "format": "xax-oi26-seed-reachability-v1",
+  "implementation_dependencies": {
+    "evaluator": [
+      "CompileTimeEvaluator",
+      "wrapping add/mul",
+      "conditional branch",
+      "direct call",
+      "M14 materialize/verify/canonical-store META ops"
+    ],
+    "external_runtime": {
+      "bundled_in_seed_bytes": false,
+      "external_blake3_package": false,
+      "python": "3.13.5"
+    },
+    "hash": {
+      "bundled_source_bytes": 8290,
+      "module": "blake3.py",
+      "suite": "BLAKE3-256/suite-1"
+    },
+    "serializer": [
+      "write_store",
+      "canonical object/index/trailer encoding"
+    ],
+    "verifier": [
+      "verify_store",
+      "verify_object",
+      "CID/reference/root reachability",
+      "type/graph/function checks for accepted objects"
+    ]
+  },
+  "semantic_features": {
+    "accepted_object_kinds": [
+      "TYPE",
+      "GRAPH_FRAGMENT",
+      "FUNCTION",
+      "MODULE",
+      "PROGRAM_ROOT"
+    ],
+    "accepted_operations": [
+      "ADD_WRAP",
+      "MUL_WRAP",
+      "CALL_DIRECT",
+      "META_CANONICAL_STORE",
+      "META_VERIFY_SEMANTICS",
+      "META_MATERIALIZE_PROGRAM"
+    ],
+    "accepted_terminators": [
+      "RETURN",
+      "CONDITIONAL_BRANCH"
+    ],
+    "m11_build_snapshot_inventory_only": {
+      "bytes": 1566,
+      "object_kinds": {
+        "BUILD": 4,
+        "FUNCTION": 1,
+        "GRAPH_FRAGMENT": 1,
+        "MODULE": 1,
+        "PACKAGE": 1,
+        "TARGET": 1,
+        "TYPE": 2
+      },
+      "objects": 11,
+      "operations": {
+        "ADD_WRAP": 1,
+        "MUL_WRAP": 1
+      },
+      "root": "ad0af6c240790d0e9845c2776fa8f4431fd7bf149997348995a323a1a262ad0e",
+      "terminators": {
+        "CONDITIONAL_BRANCH": 1,
+        "RETURN": 2
+      }
+    },
+    "m11_program": {
+      "bytes": 820,
+      "object_kinds": {
+        "FUNCTION": 1,
+        "GRAPH_FRAGMENT": 1,
+        "MODULE": 1,
+        "PROGRAM_ROOT": 1,
+        "TYPE": 2
+      },
+      "objects": 6,
+      "operations": {
+        "ADD_WRAP": 1,
+        "MUL_WRAP": 1
+      },
+      "root": "e73735dff5be8c569a94fa434abf73015330d59fc13c4e4bf8e81aad87e2b92e",
+      "terminators": {
+        "CONDITIONAL_BRANCH": 1,
+        "RETURN": 2
+      }
+    },
+    "m14_program": {
+      "bytes": 2020,
+      "object_kinds": {
+        "FUNCTION": 4,
+        "GRAPH_FRAGMENT": 4,
+        "MODULE": 1,
+        "PROGRAM_ROOT": 1,
+        "TYPE": 4
+      },
+      "objects": 14,
+      "operations": {
+        "CALL_DIRECT": 3,
+        "META_CANONICAL_STORE": 1,
+        "META_MATERIALIZE_PROGRAM": 1,
+        "META_VERIFY_SEMANTICS": 1
+      },
+      "root": "097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d",
+      "terminators": {
+        "RETURN": 4
+      }
+    }
+  },
+  "static_reachable_seed_compiler": {
+    "selected_candidate": "reachable_pruned",
+    "top_level_names": [
+      "ATOMIC_OPERATIONS",
+      "ATTRIBUTE_OPERATIONS",
+      "AcceleratorMemorySpace",
+      "AtomicFamily",
+      "AtomicOrder",
+      "AtomicRmwKind",
+      "AtomicScope",
+      "Block",
+      "CID_SIZE",
+      "CONTAINER_MAJOR",
+      "Callable",
+      "CompareExchangeStrength",
+      "CompileTimeBudget",
+      "CompileTimeEvaluator",
+      "CompileTimeInput",
+      "CompileTimeResult",
+      "Cursor",
+      "Diagnostic",
+      "ENTITY_OPERATIONS",
+      "EffectDomain",
+      "HASH_SUITE",
+      "HandlerEntryContract",
+      "IntEnum",
+      "IntFlag",
+      "Iterable",
+      "Kind",
+      "MAGIC",
+      "MAX_RESOURCE_CALL_ACCESSES",
+      "MEMORY_OPERATIONS",
+      "META_OPERATIONS",
+      "MetaCapability",
+      "NativeTargetDescription",
+      "Node",
+      "NonsemanticRecord",
+      "OpaqueKind",
+      "Operation",
+      "Permission",
+      "RESOURCE_EFFECT_OPERATIONS",
+      "ResourceFlags",
+      "SEMANTIC_DOMAIN",
+      "SUPPORTED_KINDS",
+      "SemanticObject",
+      "Sequence",
+      "StoreReader",
+      "TARGET_OPERATIONS",
+      "TRAILER_MAGIC",
+      "TargetOperationContract",
+      "TargetValueConstraint",
+      "TargetValueConstraintKind",
+      "Terminator",
+      "TerminatorKind",
+      "ValueRef",
+      "XaxError",
+      "XaxTrap",
+      "_ATOMIC_ORDERS",
+      "_CompileTimeContext",
+      "_EffectFact",
+      "_EffectType",
+      "_OwnerFact",
+      "_ParsedBlock",
+      "_ParsedGraph",
+      "_ParsedNode",
+      "_PointerFact",
+      "_ResourceCallBody",
+      "_ResourceCallContract",
+      "_ResourceType",
+      "_atomic_order",
+      "_compile_time_key",
+      "_compile_time_value",
+      "_compile_time_value_size",
+      "_decode_constant",
+      "_decode_effect_type",
+      "_decode_function_interface",
+      "_decode_opaque_type",
+      "_decode_pointer_type",
+      "_decode_recursion_group",
+      "_decode_resource_type",
+      "_encode_edges",
+      "_encode_value",
+      "_execute_compile_time_function",
+      "_execute_compile_time_graph",
+      "_execute_compile_time_group_member",
+      "_is_effect",
+      "_is_memory_effect",
+      "_is_opaque",
+      "_is_proof_type",
+      "_is_resource",
+      "_is_stack_owner",
+      "_is_stack_pointer",
+      "_merge_interval",
+      "_parse_graph",
+      "_range_initialized",
+      "_read_edge",
+      "_read_value",
+      "_reference",
+      "_resource_body_matches",
+      "_resource_call_candidates",
+      "_resource_call_contract",
+      "_resource_entry_contract",
+      "_summarize_resource_contract",
+      "_target_constraint_matches",
+      "_type_reference",
+      "_verify_function",
+      "_verify_graph_contract",
+      "_verify_linear_flow",
+      "_verify_memory_node",
+      "_verify_meta_node",
+      "_verify_recursion_group",
+      "_verify_reference_list",
+      "_verify_resource_effect_node",
+      "_verify_target_node",
+      "_verify_type",
+      "annotations",
+      "asdict",
+      "blake3",
+      "constant",
+      "dataclass",
+      "decode_bits_width",
+      "decode_native_target",
+      "decode_object",
+      "effect_type",
+      "encode_references",
+      "fail",
+      "function",
+      "gcd",
+      "graph_fragment",
+      "object_with_refs",
+      "ref_body",
+      "semantic_cid",
+      "target",
+      "uleb",
+      "verify_object",
+      "verify_store",
+      "write_store"
+    ],
+    "top_level_statement_count": 130
+  }
+}

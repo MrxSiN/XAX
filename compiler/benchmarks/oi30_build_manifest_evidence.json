@@ -1,0 +1,197 @@
+{
+  "negative_effects": {
+    "CLOCK": "BUILD-NO-LIVE-NONDETERMINISM",
+    "NETWORK": "BUILD-NO-LIVE-NONDETERMINISM",
+    "RANDOM": "BUILD-NO-LIVE-NONDETERMINISM"
+  },
+  "policy": {
+    "ambient": "forbidden/unobservable in hermetic reproducible mode",
+    "cache_key_inputs": [
+      "snapshot_root",
+      "request_root",
+      "compiler_identity",
+      "lowering_identity"
+    ],
+    "signing_algorithm": "fixed by signed-APK lowering identity",
+    "signing_material": "BLAKE3 digest must be in snapshot external closure",
+    "snapshot_transitive_inputs": [
+      "package/build-entry",
+      "target",
+      "profile",
+      "features/configuration",
+      "trust/resolver",
+      "external_input_digests"
+    ]
+  },
+  "rows": [
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "5916854c84a87c646b4b2615b0be724a3bc6366ca15d944c7243401d50725599",
+      "bytes_same": true,
+      "class": "semantic",
+      "expected": "baseline",
+      "key_same": true,
+      "perturbation": "baseline",
+      "provenance": "8aa127b4ab4495c4027fdf33360451ec2d199668a644d940f8745afbe5ee8c4b",
+      "request": "f8e0692addbeca19514859ebdff694698f7542d8527fc2122867f1f4b2a5040c",
+      "snapshot": "f00e4d0b45895160c8289ef2c32cda8f3f90a8061039a0ca3f7df094be0b6fa3"
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "5916854c84a87c646b4b2615b0be724a3bc6366ca15d944c7243401d50725599",
+      "bytes_same": true,
+      "class": "ambient",
+      "expected": "unchanged",
+      "key_same": true,
+      "perturbation": "cwd_env_locale_timezone_source_date",
+      "provenance": "8aa127b4ab4495c4027fdf33360451ec2d199668a644d940f8745afbe5ee8c4b",
+      "request": "f8e0692addbeca19514859ebdff694698f7542d8527fc2122867f1f4b2a5040c",
+      "snapshot": "f00e4d0b45895160c8289ef2c32cda8f3f90a8061039a0ca3f7df094be0b6fa3"
+    },
+    {
+      "all_bytes_same": true,
+      "all_key_same": true,
+      "class": "ambient",
+      "expected": "unchanged",
+      "perturbation": "worker_count_4"
+    },
+    {
+      "bytes_same": true,
+      "class": "ambient",
+      "expected": "canonicalized",
+      "key_same": true,
+      "perturbation": "metadata_external_order",
+      "snapshot_same": true
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "456505e44eb909f5b4a3287498bf4e48756dc0449e76886f6a88bd2a70af7567",
+      "bytes_same": true,
+      "class": "toolchain",
+      "expected": "key_changes_bytes_stable",
+      "key_same": false,
+      "perturbation": "compiler_identity",
+      "provenance": "8999fa3ce9d7707181ffecf0e683e14bac0ef337fb3b4cc7a6f641dcd7eaa67c",
+      "request": "f8e0692addbeca19514859ebdff694698f7542d8527fc2122867f1f4b2a5040c",
+      "snapshot": "f00e4d0b45895160c8289ef2c32cda8f3f90a8061039a0ca3f7df094be0b6fa3"
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "2f34be399fb72643a9f3da56dad33bbf4c7cc675683ea12c3835e2b711453d4f",
+      "bytes_same": true,
+      "class": "toolchain",
+      "expected": "key_changes_bytes_stable",
+      "key_same": false,
+      "perturbation": "lowering_identity",
+      "provenance": "1d225f6bfa7cb414b4b7a2e54e070df2bbdbc1cdecc249941d0356a5015d981b",
+      "request": "f8e0692addbeca19514859ebdff694698f7542d8527fc2122867f1f4b2a5040c",
+      "snapshot": "f00e4d0b45895160c8289ef2c32cda8f3f90a8061039a0ca3f7df094be0b6fa3"
+    },
+    {
+      "artifact_bytes": 62,
+      "artifact_digest": "1cc566ee4cc39286fd638b71a81e5e148637cf7cfe827a3bdd630b90f826f022",
+      "build_key": "30d4756e7482478c5b5b6867c722c1bb39caa15e5bc076c4c39d63c8b9f0a21c",
+      "bytes_same": false,
+      "class": "semantic",
+      "expected": "key_and_bytes_change",
+      "key_same": false,
+      "perturbation": "target",
+      "provenance": "11e6c641714fe4e2c2d3dfa35e1847d7dcf3df3dc798a28bf659211828b0cfd9",
+      "request": "668acb3db322af1bd9df42228805cfaca919eb2561ef0309dc843886851bdd7d",
+      "snapshot": "5cf6bfce0292204b9755b6d0a734e3d21f8b743cff9c28d552e132e8db83b783"
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "994e35221387ddfb1deb41b7cf3ca7ee954b03e4c70efcf7b60a394a67d99bff",
+      "bytes_same": true,
+      "class": "build-policy",
+      "expected": "key_changes",
+      "key_same": false,
+      "perturbation": "profile",
+      "provenance": "1b3af6594ab6ef33dee87f9c97b50e91a7fb7bd1368cbcc7285705bba859b4dd",
+      "request": "a117194b991b78ed03cfe8930e5e2f226e87e291b81177e233467714480ba3ad",
+      "snapshot": "1de691de926d1f8ac784b108e41cfe035d21e535cbb2cf4e5902d0c24d3163c0"
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "a3696976ffbf742ec31c50ab38a9127879f8b613189f32737772c9dfad4a7e50",
+      "bytes_same": true,
+      "class": "semantic",
+      "expected": "key_changes",
+      "key_same": false,
+      "perturbation": "configuration",
+      "provenance": "2a549bbb84378c85d5d91c96c3242b9d3cf1a5fd80617c522558f2da9a46363b",
+      "request": "d00571747d4a5cf7e09f81bd2dd8f1b863484d7a8ef5a8aeb6d2145a14068c83",
+      "snapshot": "d016b378fcde08474000df39554054104cf3ed800e2a414be4b27a06c1042776"
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "80806109162846aa13857759001970150d3bd7ed921e7fd9d7c9b0ccabe3ca1a",
+      "build_key": "4611125f28ddc81701f027b1aad7318cd6210cc0fc847e29013fe79a886f9844",
+      "bytes_same": false,
+      "class": "semantic",
+      "expected": "key_and_bytes_change",
+      "key_same": false,
+      "perturbation": "build_program_semantics",
+      "provenance": "ec8c401a932df20bd000d995a0f6460c14982061b0c90f97e206437f2f192c39",
+      "request": "aead4db8f1541bb9b2efc5185667274f1fea899595cf054591ee9ddc0a1dc0ac",
+      "snapshot": "975dab3b0cfeaecc46608299e04ae125199fcd5c96fb61cdb1e488aa332f8a1e"
+    },
+    {
+      "artifact_bytes": 13,
+      "artifact_digest": "e5ab302833990b979ef0ff12716467351f60ffbf510c6e065db0230569a81f1a",
+      "build_key": "43d0b13333096ba53383fd34d842d048f907e2eff291b7f74a4001711ac303a0",
+      "bytes_same": true,
+      "class": "external",
+      "expected": "key_changes",
+      "key_same": false,
+      "perturbation": "external_sdk_digest",
+      "provenance": "430ed24377358efd9570664a21c888b8c9714c75ef3f6a4089b577ad4a052afc",
+      "request": "f8e0692addbeca19514859ebdff694698f7542d8527fc2122867f1f4b2a5040c",
+      "snapshot": "3b9070eb50a8d5e65110a61130d90ccbd4b326d8631cce335e57d0f5d968f1cf"
+    },
+    {
+      "bytes_same": false,
+      "class": "external",
+      "expected": "key_and_bytes_change",
+      "first": {
+        "artifact_bytes": 35413,
+        "artifact_digest": "d3127d553b00047670ee03499f89db528c1bf94ed4e3a4cdbfe2cb679b6f15a7",
+        "build_key": "7ee09362df45a39d6099c39ba0651b6a127018bb212cd89c07f7bb3a3614af3e",
+        "provenance": "1334469eb00b21f024a6fbd578d9ae5493fdef4aa81f3108c6f4f26697371a7e",
+        "request": "e2529109891d2be239bdc4d46554b77f324040f725f1351c835c6396a1cf0e7f",
+        "snapshot": "6a3873f7c968e1018115c8a7b09c24d7cc61fc87b4f5a56942024936b5bb9051"
+      },
+      "input_digest_same": false,
+      "key_same": false,
+      "perturbation": "signing_material",
+      "second": {
+        "artifact_bytes": 35413,
+        "artifact_digest": "ca2ab7ba1c84676a76f2b42dad55fc31e0925db63d79e248a8343fb9d7686026",
+        "build_key": "e0d344a64776f68dc8dbd52d9ad48f55d218cda6d4571f977e00c698d326fa24",
+        "provenance": "dd98f1a4d74e993b0173a7d2200920f8f5ea5a5109055ec876ef43b416287fcd",
+        "request": "e2529109891d2be239bdc4d46554b77f324040f725f1351c835c6396a1cf0e7f",
+        "snapshot": "4a05fcb763b6fe1b81f6be952eb9481f82a68c21763cb226ccd940a3a35deb05"
+      }
+    },
+    {
+      "class": "toolchain",
+      "expected": "fixed_by_android_signed_lowering_identity",
+      "lowering_identity": "9b56f1305305788260f8bde6bfe0da2c348ca05f48acc310ac9b1ed90c65c97f",
+      "perturbation": "signing_algorithm"
+    },
+    {
+      "class": "ambient",
+      "expected": "unobservable_by_current_build_api",
+      "perturbation": "undeclared_environment",
+      "result": "no environment observation capability exists; benign environment perturbation above is byte/key stable"
+    }
+  ],
+  "schema": "xax-oi30-build-manifest-evidence-v1"
+}

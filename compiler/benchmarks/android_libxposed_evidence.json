@@ -1,0 +1,73 @@
+{
+  "environment_note": "direct modern-libxposed metadata/native ELF structural evidence only; Xposed framework loading, native_init invocation, hooks, and target-process execution are UNEXECUTED because no compatible Android/libxposed environment is available",
+  "generic_apk": {
+    "blake3": "69bbaeb6554204b10f7e4e9aa0c34f4ba85e658825d835f7368ec716d02f4db9",
+    "build_key": "188c3b70c77125f61d1746d7b696247405023169ae3822b6b67aad12e393d203",
+    "bytes": 34233,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/native_init.list",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "legacy_assets_native_init_present": false,
+    "legacy_assets_xposed_init_present": false,
+    "package_root": "dd5d6f9c4a794b7f9a13610359aa89270c984f9014b801406335d473e141e1a2",
+    "repeat_identical": true,
+    "request_root": "7a941892e9134c8e6accd5f23e999324675a7dc3a4ec98eb369109beba104a94",
+    "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36",
+    "snapshot_root": "ca641c3f14bdca6e6fd050b368764737dccae51b449adde1775af6e55dffc10e"
+  },
+  "modern_metadata": {
+    "module_prop_utf8": "minApiVersion=101\ntargetApiVersion=102\nstaticScope=true\n",
+    "native_init_list_utf8": "libxaxapp.so\n",
+    "scope_list_utf8": "com.example.target\n"
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick",
+      "native_init"
+    ],
+    "imports": [],
+    "native_init_exported": true,
+    "needed": [],
+    "relocations": 0,
+    "sha256": "df6188bd86eb3d5a53479e6c26fc82367497c5f1c2f3d1b0f78fa34664abe954"
+  },
+  "production_dependencies": {
+    "c_cpp_bridge_source_files": 0,
+    "d8_r8_invocations": 0,
+    "external_linker_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0
+  },
+  "runtime_validation": {
+    "framework_api_version_read": "UNEXECUTED",
+    "module_discovery": "UNEXECUTED",
+    "native_hook_callback": "UNEXECUTED",
+    "native_hook_install": "UNEXECUTED",
+    "native_init_invocation": "UNEXECUTED",
+    "native_unhook": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-native-evidence-v1",
+  "semantic_input": {
+    "libxposed_carrier_cid": "81abb43f3cf9f3a3208134996815b427ca6896474463cbb4d38d30e56aba9265",
+    "manifest_carrier_cid": "2344bfd3c551d67cd1d1eca5dfb43982934429b5a05b89958c730440378f59f0",
+    "min_api_version": 101,
+    "native_entries": [
+      "libxaxapp.so"
+    ],
+    "native_init_export_cid": "51a58fcf0138daed2653d41629e1e27957e248d57ee2c82b84721495ff511086",
+    "native_init_function_cid": "69e821874396588f2e1b17c87d0e1e63295b60053731da943c8bc48e69c2cc87",
+    "scopes": [
+      "com.example.target"
+    ],
+    "static_scope": true,
+    "target_api_version": 102
+  }
+}

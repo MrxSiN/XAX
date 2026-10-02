@@ -1,0 +1,243 @@
+{
+  "claims": {
+    "cache_maintenance": "clean/invalidate are explicit only on the non-coherent package; coherent shared memory omits them",
+    "framework": "no device framework or new object kind; both flows use resource<K,state>, effect<device,7>, and generic target-op contracts",
+    "shared_states": "six state IDs cover mapping, host/device ownership, cache-dirty/stale state, and in-flight unsynchronized device work in both packages",
+    "synchronization": "device write produces device_pending; synchronize is the only transition back to transferable device_owned"
+  },
+  "flows": {
+    "coherent_shared": {
+      "action_sequence": [
+        "acquire",
+        "map",
+        "host_write",
+        "device_acquire",
+        "device_write",
+        "synchronize",
+        "host_acquire",
+        "host_read",
+        "unmap",
+        "release"
+      ],
+      "all_execution_match": true,
+      "deployment_blake3": "b95463f28a80709ee455ee6fb5c671b8b02de17322e3e287244de9a0da75b803",
+      "deployment_bytes": 148,
+      "deployment_sha256": "5a71ce0a7ca7263614dddce2242ca346080043651341111b2c18700615d3ce4d",
+      "deterministic": true,
+      "entry_cid": "31070d92d4aba75f0e59a61d990b3c12a1b63f3c262a1ecca781a1b07a32c21e",
+      "execution": [
+        {
+          "expected": [
+            0
+          ],
+          "input": [
+            0,
+            0
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "expected": [
+            16
+          ],
+          "input": [
+            7,
+            9
+          ],
+          "result": [
+            16
+          ]
+        },
+        {
+          "expected": [
+            1
+          ],
+          "input": [
+            4294967295,
+            2
+          ],
+          "result": [
+            1
+          ]
+        },
+        {
+          "expected": [
+            0
+          ],
+          "input": [
+            2147483648,
+            2147483648
+          ],
+          "result": [
+            0
+          ]
+        }
+      ],
+      "memory_spaces": [
+        {
+          "device_visible": true,
+          "host_visible": true,
+          "id": 1
+        }
+      ],
+      "program_root": "64999e2664c4696da468a98725194e871941605c21e233c571f219eb3dff87f6",
+      "state_ids_used_by_target": [
+        1,
+        2,
+        4,
+        5
+      ],
+      "synchronizing_actions": [
+        "synchronize"
+      ],
+      "target_cid": "1401bbc194a3f8a1579496ab62516effe87aa0d6e931870bce1a7e66b48b5d49",
+      "target_identity": "oi07-coherent-shared-dma-v1"
+    },
+    "noncoherent_split": {
+      "action_sequence": [
+        "acquire",
+        "map",
+        "host_write",
+        "cache_clean",
+        "device_acquire",
+        "device_write",
+        "synchronize",
+        "host_acquire",
+        "cache_invalidate",
+        "host_read",
+        "unmap",
+        "release"
+      ],
+      "all_execution_match": true,
+      "deployment_blake3": "b3568b8b1c1df7a97f45643edd87ef1a00965c217e207690dbd7f17a6f6e17e1",
+      "deployment_bytes": 163,
+      "deployment_sha256": "febaf7f40fd0f1bafebf1112812eaaa7e3302e81ea96ec5ba8eade374680fe33",
+      "deterministic": true,
+      "entry_cid": "55c95d9808d98cae4e1c39e0a54f2aa5e45c135620e335fb2eaf106a1ee82b74",
+      "execution": [
+        {
+          "expected": [
+            0
+          ],
+          "input": [
+            0,
+            0
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "expected": [
+            16
+          ],
+          "input": [
+            7,
+            9
+          ],
+          "result": [
+            16
+          ]
+        },
+        {
+          "expected": [
+            1
+          ],
+          "input": [
+            4294967295,
+            2
+          ],
+          "result": [
+            1
+          ]
+        },
+        {
+          "expected": [
+            0
+          ],
+          "input": [
+            2147483648,
+            2147483648
+          ],
+          "result": [
+            0
+          ]
+        }
+      ],
+      "memory_spaces": [
+        {
+          "device_visible": false,
+          "host_visible": true,
+          "id": 1
+        },
+        {
+          "device_visible": true,
+          "host_visible": false,
+          "id": 2
+        }
+      ],
+      "program_root": "dc14ce94c67c97bd31788f91ef03b6e1241751ca6d999cefa1063d63f0327da3",
+      "state_ids_used_by_target": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "synchronizing_actions": [
+        "synchronize"
+      ],
+      "target_cid": "8a8c94bdfe21a7467cdff4145f4db1356aabf0983bfa010af9daaabbe1f6b425",
+      "target_identity": "oi07-noncoherent-split-dma-v1"
+    }
+  },
+  "negative": {
+    "coherent_without_synchronize": {
+      "code": "XAX.TARGET.OPERATION",
+      "rule": "TARGET-OPERATION-TYPE"
+    },
+    "noncoherent_without_cache_clean": {
+      "code": "XAX.TARGET.OPERATION",
+      "rule": "TARGET-OPERATION-TYPE"
+    },
+    "noncoherent_without_synchronize": {
+      "code": "XAX.TARGET.OPERATION",
+      "rule": "TARGET-OPERATION-TYPE"
+    }
+  },
+  "schema": "xax.oi07-dma-v1",
+  "shared_action_vocabulary": {
+    "acquire": 1,
+    "cache_clean": 4,
+    "cache_invalidate": 9,
+    "device_acquire": 5,
+    "device_write": 6,
+    "host_acquire": 8,
+    "host_read": 10,
+    "host_write": 3,
+    "map": 2,
+    "release": 12,
+    "synchronize": 7,
+    "unmap": 11
+  },
+  "shared_resource_kind": 1002,
+  "shared_state_vocabulary": {
+    "device_owned": 4,
+    "device_pending": 5,
+    "host_dirty": 3,
+    "host_mapped": 2,
+    "host_stale": 6,
+    "host_unmapped": 1
+  },
+  "state_type_cids": {
+    "device_owned": "39296a2b86ef0a2768095b66cd7451e69b85af6eb23897b027a6cbe3b4744706",
+    "device_pending": "c3ef5d75df756b97d8dc9aa02717dd5fec90e6a8140d4ea28d1bed9ac50541a7",
+    "host_dirty": "0b9a06ec3eb0475c70c0aafec6297bd7ec554215e83f016ea25cce88318fab96",
+    "host_mapped": "4b81073404733678e6e6facffa884839d619bcdc91eb95e23a294e8333bb5170",
+    "host_stale": "913f101c506d03661536b7a474ee5fb5fbb6d1748278a04f3f81bd8338783be8",
+    "host_unmapped": "78131450053db640fa4ee8662aa338678c403f7329f0ff6525ebf5aaad973587"
+  }
+}

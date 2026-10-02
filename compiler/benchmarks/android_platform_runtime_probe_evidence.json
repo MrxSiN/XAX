@@ -1,0 +1,33 @@
+{
+  "artifact_bytes": 17496,
+  "artifact_sha256": "cdca66dca2f55b0b8951912646710a63812850737f5baf79a74de24fb5345c02",
+  "contracts": [
+    "file.open/write/read/close",
+    "pthread.create/join",
+    "socket/connect/send/recv/close"
+  ],
+  "exports": [
+    "xax_file_probe",
+    "xax_thread_create_probe",
+    "xax_thread_join_probe",
+    "xax_socket_probe"
+  ],
+  "imports": [
+    "close",
+    "connect",
+    "open",
+    "pthread_create",
+    "pthread_join",
+    "read",
+    "recv",
+    "send",
+    "socket",
+    "write"
+  ],
+  "runtime": {
+    "executed": false,
+    "reason": "requires adb plus a compatible arm64 Android device/emulator"
+  },
+  "schema": "xax-android-platform-runtime-proof-v1",
+  "target": "android-arm64-v8a-shared-v4"
+}

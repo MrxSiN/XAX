@@ -1,0 +1,135 @@
+{
+  "activity_ui_bridge": {
+    "activity_class": "Lxax/generated/XaxActivity;",
+    "activity_dex_bytes": 1236,
+    "activity_dex_sha256": "22f1cb2ed30cc7d2c69669015120dc3ee59166a1266936da589de4e498af3ab9",
+    "activity_on_create_code_units": 28,
+    "activity_on_create_sequence": [
+      "invoke-super Activity.onCreate",
+      "new-instance Button",
+      "invoke-direct Button.<init>(Activity)",
+      "const-string XAX",
+      "invoke-virtual TextView.setText",
+      "new-instance XaxOnClickListener",
+      "invoke-direct listener.<init>",
+      "invoke-virtual View.setOnClickListener",
+      "invoke-virtual Activity.setContentView",
+      "invoke-direct-native xaxOnCreate",
+      "return-void"
+    ],
+    "button_state_change": "generated managed click adapter sets text to Clicked, then invokes XAX callback",
+    "click_allocations_emitted": 0,
+    "click_code_units": 11,
+    "click_visible_state_change": "clicked View narrowed to TextView; setText(Clicked) before native callback",
+    "combined_elf_bytes": 17352,
+    "combined_elf_exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick"
+    ],
+    "combined_elf_imports": [],
+    "combined_elf_needed": [],
+    "combined_elf_relocations": 0,
+    "combined_elf_sha256": "cca1ef118c793e7656c0dbc453ec78dbf5fda31a15a361db4c7a415db3f59ccc",
+    "incremental_click_text_edit": {
+      "edited_listener_dex_sha256": "755f82c0780950073a294383008bbe82a8c428785761a8be51cf2339ec4b74ab",
+      "edited_semantic_ui_cid": "ece9149173c0d272d69631cbc5e46b8e4f871e80aa1aa58b03ee88b7686a7c89",
+      "listener_dex_changed": true,
+      "primary_activity_dex_unchanged": true
+    },
+    "initial_button_text": "XAX",
+    "listener_class": "Lxax/generated/XaxOnClickListener;",
+    "listener_dex_bytes": 764,
+    "listener_dex_sha256": "87ae2aa8f025624f4350ed2fcce53496440b85adc1102d02c0f1ed913e8bda79",
+    "listener_interfaces": [
+      "Landroid/view/View$OnClickListener;"
+    ],
+    "managed_allocations_during_activity_create": 2,
+    "native_transitions_during_activity_create": 1,
+    "native_transitions_per_click": 1,
+    "reflection_operations_emitted": 0,
+    "secondary_dex_policy": "classes2.dex; valid for this minSdk>=21 fixture without a multidex support runtime",
+    "semantic_ui_cid": "2f5d4c1e16498da946dbfd64c815782b831c28af6311907add0bcc598b2fc7bb"
+  },
+  "bridge": {
+    "class_descriptor": "Lxax/generated/XaxActivity;",
+    "jni_symbol": "Java_xax_generated_XaxActivity_xaxOnCreate",
+    "lifecycle_method": "onCreate",
+    "lifecycle_sequence": [
+      "invoke-super",
+      "invoke-direct-native",
+      "return-void"
+    ],
+    "native_callback": "xaxOnCreate",
+    "native_transitions_per_callback": 1,
+    "semantic_export_cid": "64d071ec349e564504a3d92945bf4dc50e7e63f2d0a6de37f85e2441f0badc43",
+    "xax_callback_cid": "8bacc7eb5d90c54e5fdb53f07887375682f30450a65d6bea2a24f8ecb8379f3b"
+  },
+  "dex": {
+    "bytes": 756,
+    "checksum_valid": true,
+    "classes": 1,
+    "d8_r8_invocations": 0,
+    "java_kotlin_source_files": 0,
+    "methods": 7,
+    "protos": 3,
+    "sha256": "b68ca8eba02f693c0f28c9dd749a4ccf0fc6c897d8c89a3fcc66f2e6a166118b",
+    "signature_valid": true,
+    "strings": 13,
+    "types": 6,
+    "version": "039"
+  },
+  "elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "8c1ff25c7822e60792c594a60b4f6be96194e27ccc8db766c9d92ea4d3c25264",
+    "text_bytes": 16
+  },
+  "environment_note": "structural direct-emission evidence only; ART/Android execution is unexecuted because no device/emulator is available",
+  "interface_callback_bridge": {
+    "callback_sequence": [
+      "invoke-direct-native",
+      "return-void"
+    ],
+    "class_descriptor": "Lxax/generated/XaxOnClickListener;",
+    "dex_bytes": 796,
+    "dex_code_units": 4,
+    "dex_sha256": "c7e696fe07c502ddf1dc899e6d743492e36e6976a661695d5633e98f675503bd",
+    "elf_bytes": 17352,
+    "elf_exports": [
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick"
+    ],
+    "elf_imports": [],
+    "elf_needed": [],
+    "elf_relocations": 0,
+    "elf_sha256": "75810149326b5bb1bc978281c0bd6838d52db204868f9f34964dc4cc23d085ba",
+    "interfaces": [
+      "Landroid/view/View$OnClickListener;"
+    ],
+    "jni_symbol": "Java_xax_generated_XaxOnClickListener_xaxOnClick",
+    "method": "onClick",
+    "native_callback": "xaxOnClick",
+    "native_transitions_per_callback": 1,
+    "per_callback_allocations_emitted": 0,
+    "reflection_operations_emitted": 0,
+    "semantic_export_cid": "2bb7784f922dacf8301364443f1444eaaf1c1dbe24870d1edace4d8fec09d5d7",
+    "semantic_loader_domains": {
+      "listener": "app:xax.generated",
+      "view": "android.boot"
+    },
+    "xax_callback_cid": "9ec585dd3fac76a032ef5f09589b2af9581bab8b97177e4ce06d2226d778e294"
+  },
+  "remaining_before_activity_runtime": [
+    "real Android package-manager verification of the directly emitted manifest/APK/v2 signature",
+    "real ART verification/class initialization and System.loadLibrary execution",
+    "real Activity lifecycle execution through invoke-super then the XAX JNI callback",
+    "real UI behavior including instantiation/registration of the generated listener adapter",
+    "promote the current bounded UI lowering configuration into authoritative XAX semantic build data"
+  ],
+  "runtime_validation": "UNEXECUTED",
+  "schema": "xax-android-managed-bridge-evidence-v3"
+}

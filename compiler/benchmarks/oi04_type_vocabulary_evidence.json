@@ -1,0 +1,6109 @@
+{
+  "bits_envelope_bytes": {
+    "1": 39,
+    "16": 39,
+    "32": 39,
+    "64": 39,
+    "8": 39
+  },
+  "canonical_identity": "structural type CID only; catalog/dictionary/AI aliases expand to exact structural objects",
+  "catalogs": {
+    "bits5": {
+      "container_digest_overhead_bytes": 32,
+      "digest": "09d2e19db9dcb3c57c53f80e95bf80267b4a51d06286698d8f5012052b299435",
+      "entries": [
+        {
+          "body": "0101",
+          "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+          "index": 0,
+          "name": "bits1"
+        },
+        {
+          "body": "0108",
+          "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+          "index": 1,
+          "name": "bits8"
+        },
+        {
+          "body": "0110",
+          "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+          "index": 2,
+          "name": "bits16"
+        },
+        {
+          "body": "0120",
+          "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+          "index": 3,
+          "name": "bits32"
+        },
+        {
+          "body": "0140",
+          "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+          "index": 4,
+          "name": "bits64"
+        }
+      ]
+    },
+    "bits5_float2": {
+      "container_digest_overhead_bytes": 32,
+      "digest": "2eab17fc976cffe52fe89feaf85b7998fffef2b89371bb97fd3015b043932b72",
+      "entries": [
+        {
+          "body": "0101",
+          "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+          "index": 0,
+          "name": "bits1"
+        },
+        {
+          "body": "0108",
+          "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+          "index": 1,
+          "name": "bits8"
+        },
+        {
+          "body": "0110",
+          "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+          "index": 2,
+          "name": "bits16"
+        },
+        {
+          "body": "0120",
+          "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+          "index": 3,
+          "name": "bits32"
+        },
+        {
+          "body": "0140",
+          "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+          "index": 4,
+          "name": "bits64"
+        },
+        {
+          "body": "0701",
+          "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+          "index": 5,
+          "name": "binary32"
+        },
+        {
+          "body": "0702",
+          "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+          "index": 6,
+          "name": "binary64"
+        }
+      ]
+    },
+    "bits5_float4": {
+      "container_digest_overhead_bytes": 32,
+      "digest": "7fdea9bfbd2dce7a24f2aa2bae9ef7598b9ec7682264eeac052351e55d00f001",
+      "entries": [
+        {
+          "body": "0101",
+          "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+          "index": 0,
+          "name": "bits1"
+        },
+        {
+          "body": "0108",
+          "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+          "index": 1,
+          "name": "bits8"
+        },
+        {
+          "body": "0110",
+          "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+          "index": 2,
+          "name": "bits16"
+        },
+        {
+          "body": "0120",
+          "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+          "index": 3,
+          "name": "bits32"
+        },
+        {
+          "body": "0140",
+          "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+          "index": 4,
+          "name": "bits64"
+        },
+        {
+          "body": "0b020b0f0e100f",
+          "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+          "index": 5,
+          "name": "binary16"
+        },
+        {
+          "body": "0b02087f7e100f",
+          "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+          "index": 6,
+          "name": "bfloat16"
+        },
+        {
+          "body": "0701",
+          "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+          "index": 7,
+          "name": "binary32"
+        },
+        {
+          "body": "0702",
+          "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+          "index": 8,
+          "name": "binary64"
+        }
+      ]
+    },
+    "common": {
+      "container_digest_overhead_bytes": 32,
+      "digest": "af8ff9bc167c2467f8eaf727805d40da6731ba49de7128068e5692ee94661a99",
+      "entries": [
+        {
+          "body": "0101",
+          "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+          "index": 0,
+          "name": "bits1"
+        },
+        {
+          "body": "0108",
+          "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+          "index": 1,
+          "name": "bits8"
+        },
+        {
+          "body": "0110",
+          "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+          "index": 2,
+          "name": "bits16"
+        },
+        {
+          "body": "0120",
+          "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+          "index": 3,
+          "name": "bits32"
+        },
+        {
+          "body": "0140",
+          "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+          "index": 4,
+          "name": "bits64"
+        },
+        {
+          "body": "0b020b0f0e100f",
+          "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+          "index": 5,
+          "name": "binary16"
+        },
+        {
+          "body": "0b02087f7e100f",
+          "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+          "index": 6,
+          "name": "bfloat16"
+        },
+        {
+          "body": "0701",
+          "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+          "index": 7,
+          "name": "binary32"
+        },
+        {
+          "body": "0702",
+          "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+          "index": 8,
+          "name": "binary64"
+        },
+        {
+          "body": "0301",
+          "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+          "index": 9,
+          "name": "effect_memory"
+        },
+        {
+          "body": "040101",
+          "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+          "index": 10,
+          "name": "stack_owner"
+        },
+        {
+          "body": "0501",
+          "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+          "index": 11,
+          "name": "opaque_type"
+        },
+        {
+          "body": "0502",
+          "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+          "index": 12,
+          "name": "opaque_constant"
+        },
+        {
+          "body": "0503",
+          "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+          "index": 13,
+          "name": "opaque_function"
+        },
+        {
+          "body": "0504",
+          "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+          "index": 14,
+          "name": "opaque_target"
+        },
+        {
+          "body": "0505",
+          "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+          "index": 15,
+          "name": "opaque_graph"
+        },
+        {
+          "body": "0506",
+          "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+          "index": 16,
+          "name": "opaque_object"
+        },
+        {
+          "body": "0507",
+          "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+          "index": 17,
+          "name": "opaque_bytes"
+        }
+      ]
+    }
+  },
+  "cid_dictionary_policy": {
+    "entry_bytes": 32,
+    "minimum_object_reference_count": 2,
+    "order": "CID lexicographic"
+  },
+  "codec_source_lines": {
+    "catalog_alias": 88,
+    "cid_dictionary": 97
+  },
+  "float_descriptors": {
+    "bfloat16": {
+      "body": "0b02087f7e100f",
+      "envelope_bytes": 44,
+      "production_supported": false
+    },
+    "binary16": {
+      "body": "0b020b0f0e100f",
+      "envelope_bytes": 44,
+      "production_supported": false
+    },
+    "binary32": {
+      "body": "0701",
+      "envelope_bytes": 39,
+      "production_supported": true
+    },
+    "binary32_ftz": {
+      "body": "0b02187f7e200b",
+      "envelope_bytes": 44,
+      "production_supported": false
+    },
+    "binary64": {
+      "body": "0702",
+      "envelope_bytes": 39,
+      "production_supported": true
+    },
+    "e4m3fn": {
+      "body": "0b020408060815",
+      "envelope_bytes": 44,
+      "production_supported": false
+    }
+  },
+  "issue": "OI-04",
+  "model_token_status": "not_run",
+  "model_trial_summary": {
+    "alias": {
+      "invalid_or_failed": 0,
+      "passes": 0,
+      "repair_turns": 0,
+      "successful_total_tokens": null,
+      "tokens_per_success": null,
+      "trials": 0
+    },
+    "structural": {
+      "invalid_or_failed": 0,
+      "passes": 0,
+      "repair_turns": 0,
+      "successful_total_tokens": null,
+      "tokens_per_success": null,
+      "trials": 0
+    }
+  },
+  "mutation_tasks": [
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 9,
+          "target_response": "TYPE u64\n",
+          "view": "OI04-MUTATION-V1\ncurrent=u32\nrequest=change the bit width from 32 to 64\nreply=TYPE <type>\n",
+          "view_bytes": 90
+        },
+        "structural": {
+          "response_bytes": 14,
+          "target_response": "TYPE bits<64>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=bits<32>\nrequest=change the bit width from 32 to 64\nreply=TYPE <type>\n",
+          "view_bytes": 95
+        }
+      },
+      "target_cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+      "task_id": "bit-width"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 9,
+          "target_response": "TYPE f64\n",
+          "view": "OI04-MUTATION-V1\ncurrent=f32\nrequest=change the float format from binary32 to binary64\nreply=TYPE <type>\n",
+          "view_bytes": 105
+        },
+        "structural": {
+          "response_bytes": 60,
+          "target_response": "TYPE float<radix=2,p=53,emax=1023,emin=-1022,w=64,flags=15>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>\nrequest=change the float format from binary32 to binary64\nreply=TYPE <type>\n",
+          "view_bytes": 154
+        }
+      },
+      "target_cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+      "task_id": "float-format"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 10,
+          "target_response": "TYPE bf16\n",
+          "view": "OI04-MUTATION-V1\ncurrent=f16\nrequest=change the 16-bit float format from binary16 to bfloat16\nreply=TYPE <type>\n",
+          "view_bytes": 112
+        },
+        "structural": {
+          "response_bytes": 57,
+          "target_response": "TYPE float<radix=2,p=8,emax=127,emin=-126,w=16,flags=15>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=float<radix=2,p=11,emax=15,emin=-14,w=16,flags=15>\nrequest=change the 16-bit float format from binary16 to bfloat16\nreply=TYPE <type>\n",
+          "view_bytes": 159
+        }
+      },
+      "target_cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+      "task_id": "float16-format"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 11,
+          "target_response": "TYPE v8f32\n",
+          "view": "OI04-MUTATION-V1\ncurrent=v4f32\nrequest=change the vector lane count from 4 to 8\nreply=TYPE <type>\n",
+          "view_bytes": 98
+        },
+        "structural": {
+          "response_bytes": 65,
+          "target_response": "TYPE vec<8,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=vec<4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\nrequest=change the vector lane count from 4 to 8\nreply=TYPE <type>\n",
+          "view_bytes": 152
+        }
+      },
+      "target_cid": "a4c33f22fa48df8149cba1816d628dadac2a38cb448f7b4be3637cf998979e86",
+      "task_id": "vector-lanes"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 13,
+          "target_response": "TYPE p1r4f32\n",
+          "view": "OI04-MUTATION-V1\ncurrent=p1rw4f32\nrequest=narrow pointer permission from read_write to read\nreply=TYPE <type>\n",
+          "view_bytes": 110
+        },
+        "structural": {
+          "response_bytes": 99,
+          "target_response": "TYPE ptr<space=1,permission=read,alignment=4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=ptr<space=1,permission=read_write,alignment=4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\nrequest=narrow pointer permission from read_write to read\nreply=TYPE <type>\n",
+          "view_bytes": 201
+        }
+      },
+      "target_cid": "dd3abc390087fb6119267825c1a5450892adcbb3a5c9be253dc07ff5ce3885c7",
+      "task_id": "pointer-permission"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 14,
+          "target_response": "TYPE p2rw4f32\n",
+          "view": "OI04-MUTATION-V1\ncurrent=p1rw4f32\nrequest=change pointer address space from 1 to 2\nreply=TYPE <type>\n",
+          "view_bytes": 101
+        },
+        "structural": {
+          "response_bytes": 105,
+          "target_response": "TYPE ptr<space=2,permission=read_write,alignment=4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=ptr<space=1,permission=read_write,alignment=4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\nrequest=change pointer address space from 1 to 2\nreply=TYPE <type>\n",
+          "view_bytes": 192
+        }
+      },
+      "target_cid": "2d46b1863188a99adf5205aa3926486126f64a434e9c69da42ff325d988a89ae",
+      "task_id": "pointer-space"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 11,
+          "target_response": "TYPE v4f32\n",
+          "view": "OI04-MUTATION-V1\ncurrent=none\nrequest=create a 4-lane binary32 vector type\nreply=TYPE <type>\n",
+          "view_bytes": 93
+        },
+        "structural": {
+          "response_bytes": 65,
+          "target_response": "TYPE vec<4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=none\nrequest=create a 4-lane binary32 vector type\nreply=TYPE <type>\n",
+          "view_bytes": 93
+        }
+      },
+      "target_cid": "303a6fcc4e2293e4702f3af7499aa0587bfefe0d8f061fe4194a6a0d91bdb457",
+      "task_id": "create-vector"
+    },
+    {
+      "arms": {
+        "alias": {
+          "response_bytes": 14,
+          "target_response": "TYPE p1rw4f32\n",
+          "view": "OI04-MUTATION-V1\ncurrent=p1rw3f32\nrequest=repair the invalid pointer alignment 3 to alignment 4\nreply=TYPE <type>\n",
+          "view_bytes": 114
+        },
+        "structural": {
+          "response_bytes": 105,
+          "target_response": "TYPE ptr<space=1,permission=read_write,alignment=4,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\n",
+          "view": "OI04-MUTATION-V1\ncurrent=ptr<space=1,permission=read_write,alignment=3,float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>>\nrequest=repair the invalid pointer alignment 3 to alignment 4\nreply=TYPE <type>\n",
+          "view_bytes": 205
+        }
+      },
+      "target_cid": "c8a64f8bd1d29c02da3f8c05a712cd07e22fba16bb8e4ea02ff5f9335434e56d",
+      "task_id": "invalid-repair"
+    }
+  ],
+  "raw_model_trials": {
+    "issue": "OI-04",
+    "model": null,
+    "reason": "No raw external model/tokenizer trial is committed for the extended OI-04 mutation corpus.",
+    "status": "not_run",
+    "tokenizer": null,
+    "trials": []
+  },
+  "representative_aggregate": {
+    "bits5": {
+      "bytes": 18190,
+      "delta": 197
+    },
+    "bits5_float2": {
+      "bytes": 16743,
+      "delta": -1250
+    },
+    "bits5_float4": {
+      "bytes": 16273,
+      "delta": -1720
+    },
+    "cid_dictionary": {
+      "bytes": 15092,
+      "delta": -2901
+    },
+    "common": {
+      "bytes": 15723,
+      "delta": -2270
+    },
+    "structural_bytes": 17993,
+    "workloads": [
+      "numeric_service_verified",
+      "numeric_abi_extended"
+    ]
+  },
+  "representative_corpus": {
+    "numeric_abi_extended": {
+      "float_formats_used": [
+        "binary16",
+        "bfloat16",
+        "binary32",
+        "binary64"
+      ],
+      "modules": 2,
+      "root_cid": "94eb3ad9aeb82886be9d65d1471018cbc02d7baf58b43ebf03c75fe760419860",
+      "store_bytes": 11762,
+      "uses": [
+        "function signatures",
+        "call contracts",
+        "stack load/store for supported floats",
+        "pointer forms",
+        "array and vec shapes"
+      ],
+      "verification_limit": "binary16/bfloat16 and vec<N,T> remain measurement-only unsupported type forms",
+      "verified": false
+    },
+    "numeric_service_verified": {
+      "float_formats_used": [
+        "binary32",
+        "binary64"
+      ],
+      "modules": 1,
+      "root_cid": "25fdca5fb6874ff1118816eec702bdb35f5f99ed0b96a30990b3c06f127f2341",
+      "store_bytes": 6231,
+      "uses": [
+        "function signatures",
+        "call contracts",
+        "stack load/store",
+        "pointer permission/address-space",
+        "array vector-shapes"
+      ],
+      "verified": true
+    }
+  },
+  "tokenizer_measurements": {
+    "raw": [],
+    "status": "unavailable"
+  },
+  "type_texts": {
+    "bfloat16": {
+      "catalog": "T6",
+      "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+      "short": "bf16",
+      "structural": "float<radix=2,p=8,emax=127,emin=-126,w=16,flags=15>"
+    },
+    "binary16": {
+      "catalog": "T5",
+      "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+      "short": "f16",
+      "structural": "float<radix=2,p=11,emax=15,emin=-14,w=16,flags=15>"
+    },
+    "binary32": {
+      "catalog": "T7",
+      "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+      "short": "f32",
+      "structural": "float<radix=2,p=24,emax=127,emin=-126,w=32,flags=15>"
+    },
+    "binary32_ftz": {
+      "catalog": "float<radix=2,p=24,emax=127,emin=-126,w=32,flags=11>",
+      "cid": "ac7ffc25db9bbdd9a67e411eb9e09be0a0c7371ce70b1e4409d650880bf06bbe",
+      "short": "binary32_ftz",
+      "structural": "float<radix=2,p=24,emax=127,emin=-126,w=32,flags=11>"
+    },
+    "binary64": {
+      "catalog": "T8",
+      "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+      "short": "f64",
+      "structural": "float<radix=2,p=53,emax=1023,emin=-1022,w=64,flags=15>"
+    },
+    "bits1": {
+      "catalog": "T0",
+      "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+      "short": "u1",
+      "structural": "bits<1>"
+    },
+    "bits16": {
+      "catalog": "T2",
+      "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+      "short": "u16",
+      "structural": "bits<16>"
+    },
+    "bits32": {
+      "catalog": "T3",
+      "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+      "short": "u32",
+      "structural": "bits<32>"
+    },
+    "bits64": {
+      "catalog": "T4",
+      "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+      "short": "u64",
+      "structural": "bits<64>"
+    },
+    "bits8": {
+      "catalog": "T1",
+      "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+      "short": "u8",
+      "structural": "bits<8>"
+    },
+    "e4m3fn": {
+      "catalog": "float<radix=2,p=4,emax=8,emin=-6,w=8,flags=21>",
+      "cid": "c644efed1214bab5861978096455ada6b0035fc4b59631412aeb5538e7b7ce97",
+      "short": "e4m3fn",
+      "structural": "float<radix=2,p=4,emax=8,emin=-6,w=8,flags=21>"
+    }
+  },
+  "workloads": {
+    "ai_task-01": {
+      "bits5": {
+        "bytes": 661,
+        "delta": -132,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 661,
+        "delta": -132,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 661,
+        "delta": -132,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 737,
+        "delta": -56,
+        "entries": 1,
+        "references": 3,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 661,
+        "delta": -132,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 6,
+      "structural_bytes": 793,
+      "type_bodies": [
+        "0120"
+      ],
+      "type_objects": 1,
+      "type_references": 3
+    },
+    "ai_task-02": {
+      "bits5": {
+        "bytes": 649,
+        "delta": -129,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 649,
+        "delta": -129,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 649,
+        "delta": -129,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 725,
+        "delta": -53,
+        "entries": 1,
+        "references": 3,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 649,
+        "delta": -129,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 3
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 6,
+      "structural_bytes": 778,
+      "type_bodies": [
+        "0120"
+      ],
+      "type_objects": 1,
+      "type_references": 3
+    },
+    "ai_task-03": {
+      "bits5": {
+        "bytes": 768,
+        "delta": -159,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 768,
+        "delta": -159,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 768,
+        "delta": -159,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 844,
+        "delta": -83,
+        "entries": 1,
+        "references": 4,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 768,
+        "delta": -159,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 7,
+      "structural_bytes": 927,
+      "type_bodies": [
+        "0120"
+      ],
+      "type_objects": 1,
+      "type_references": 4
+    },
+    "ai_task-04": {
+      "bits5": {
+        "bytes": 768,
+        "delta": -160,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 768,
+        "delta": -160,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 768,
+        "delta": -160,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 844,
+        "delta": -84,
+        "entries": 1,
+        "references": 4,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 768,
+        "delta": -160,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 7,
+      "structural_bytes": 928,
+      "type_bodies": [
+        "0120"
+      ],
+      "type_objects": 1,
+      "type_references": 4
+    },
+    "ai_task-05": {
+      "bits5": {
+        "bytes": 780,
+        "delta": -160,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 780,
+        "delta": -160,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 780,
+        "delta": -160,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 856,
+        "delta": -84,
+        "entries": 1,
+        "references": 4,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 780,
+        "delta": -160,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 7,
+      "structural_bytes": 940,
+      "type_bodies": [
+        "0120"
+      ],
+      "type_objects": 1,
+      "type_references": 4
+    },
+    "c0_all_kinds": {
+      "bits5": {
+        "bytes": 1009,
+        "delta": -220,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 6
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 1009,
+        "delta": -220,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 6
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 1009,
+        "delta": -220,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 6
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 1085,
+        "delta": -144,
+        "entries": 1,
+        "references": 6,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 1009,
+        "delta": -220,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 6
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 9,
+      "structural_bytes": 1229,
+      "type_bodies": [
+        "0120"
+      ],
+      "type_objects": 1,
+      "type_references": 6
+    },
+    "m11_bootstrap_bundle": {
+      "bits5": {
+        "bytes": 1331,
+        "delta": -235,
+        "entries": 5,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 1331,
+        "delta": -235,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 1331,
+        "delta": -235,
+        "entries": 9,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 1452,
+        "delta": -114,
+        "entries": 4,
+        "references": 8,
+        "table_bytes": 128
+      },
+      "common": {
+        "bytes": 1331,
+        "delta": -235,
+        "entries": 18,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 11,
+      "structural_bytes": 1566,
+      "type_bodies": [
+        "0101",
+        "0120"
+      ],
+      "type_objects": 2,
+      "type_references": 4
+    },
+    "m11_compiler_subset": {
+      "bits5": {
+        "bytes": 581,
+        "delta": -239,
+        "entries": 5,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 581,
+        "delta": -239,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 581,
+        "delta": -239,
+        "entries": 9,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 764,
+        "delta": -56,
+        "entries": 2,
+        "references": 4,
+        "table_bytes": 64
+      },
+      "common": {
+        "bytes": 581,
+        "delta": -239,
+        "entries": 18,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 2
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 6,
+      "structural_bytes": 820,
+      "type_bodies": [
+        "0101",
+        "0120"
+      ],
+      "type_objects": 2,
+      "type_references": 4
+    },
+    "m14_selfhost_compiler": {
+      "bits5": {
+        "bytes": 1897,
+        "delta": -123,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 3
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 1897,
+        "delta": -123,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 3
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 1897,
+        "delta": -123,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 3
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 1663,
+        "delta": -357,
+        "entries": 4,
+        "references": 16,
+        "table_bytes": 128
+      },
+      "common": {
+        "bytes": 1265,
+        "delta": -755,
+        "entries": 18,
+        "entries_hit": 4,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 3
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 2
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 5
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 6
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 14,
+      "structural_bytes": 2020,
+      "type_bodies": [
+        "0101",
+        "0503",
+        "0506",
+        "0507"
+      ],
+      "type_objects": 4,
+      "type_references": 16
+    },
+    "m2_direct_call": {
+      "bits5": {
+        "bytes": 807,
+        "delta": -160,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 807,
+        "delta": -160,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 807,
+        "delta": -160,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 853,
+        "delta": -114,
+        "entries": 2,
+        "references": 6,
+        "table_bytes": 64
+      },
+      "common": {
+        "bytes": 807,
+        "delta": -160,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 7,
+      "structural_bytes": 967,
+      "type_bodies": [
+        "0108"
+      ],
+      "type_objects": 1,
+      "type_references": 4
+    },
+    "numeric_abi_extended": {
+      "bits5": {
+        "bytes": 11881,
+        "delta": 119,
+        "entries": 5,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 11049,
+        "delta": -713,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 12
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 10
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 10579,
+        "delta": -1183,
+        "entries": 9,
+        "entries_hit": 4,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 5
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 5
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 12
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 10
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 9857,
+        "delta": -1905,
+        "entries": 23,
+        "references": 88,
+        "table_bytes": 736
+      },
+      "common": {
+        "bytes": 10304,
+        "delta": -1458,
+        "entries": 18,
+        "entries_hit": 6,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 5
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 5
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 12
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 10
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 2
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 2
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 86,
+      "structural_bytes": 11762,
+      "type_bodies": [
+        "0201000104",
+        "0201000108",
+        "0201000304",
+        "0201000308",
+        "0202000108",
+        "0202000304",
+        "0301",
+        "040101",
+        "0701",
+        "0702",
+        "090002",
+        "090004",
+        "090008",
+        "090008",
+        "090008",
+        "0b02087f7e100f",
+        "0b020b0f0e100f",
+        "0c02",
+        "0c04",
+        "0c08",
+        "0c08",
+        "0c08"
+      ],
+      "type_objects": 22,
+      "type_references": 85
+    },
+    "numeric_service_verified": {
+      "bits5": {
+        "bytes": 6309,
+        "delta": 78,
+        "entries": 5,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 5694,
+        "delta": -537,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 8
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 7
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 5694,
+        "delta": -537,
+        "entries": 9,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 8
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 7
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 5235,
+        "delta": -996,
+        "entries": 12,
+        "references": 46,
+        "table_bytes": 384
+      },
+      "common": {
+        "bytes": 5419,
+        "delta": -812,
+        "entries": 18,
+        "entries_hit": 4,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 8
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 7
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 2
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 2
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 45,
+      "structural_bytes": 6231,
+      "type_bodies": [
+        "0201000104",
+        "0201000108",
+        "0201000304",
+        "0201000308",
+        "0202000108",
+        "0202000304",
+        "0301",
+        "040101",
+        "0701",
+        "0702",
+        "090002",
+        "090004",
+        "090008"
+      ],
+      "type_objects": 13,
+      "type_references": 47
+    },
+    "oi03_mutual": {
+      "bits5": {
+        "bytes": 3931,
+        "delta": -1119,
+        "entries": 5,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 12
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 21
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 3931,
+        "delta": -1119,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 12
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 21
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 3931,
+        "delta": -1119,
+        "entries": 9,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 12
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 21
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 3717,
+        "delta": -1333,
+        "entries": 6,
+        "references": 50,
+        "table_bytes": 192
+      },
+      "common": {
+        "bytes": 3931,
+        "delta": -1119,
+        "entries": 18,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 12
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 21
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 26,
+      "structural_bytes": 5050,
+      "type_bodies": [
+        "0101",
+        "0140"
+      ],
+      "type_objects": 2,
+      "type_references": 33
+    },
+    "oi03_none": {
+      "bits5": {
+        "bytes": 3862,
+        "delta": -820,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 26
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 3862,
+        "delta": -820,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 26
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 3862,
+        "delta": -820,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 26
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 3740,
+        "delta": -942,
+        "entries": 4,
+        "references": 35,
+        "table_bytes": 128
+      },
+      "common": {
+        "bytes": 3862,
+        "delta": -820,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 26
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 29,
+      "structural_bytes": 4682,
+      "type_bodies": [
+        "0140"
+      ],
+      "type_objects": 1,
+      "type_references": 26
+    },
+    "reverse_bits64_only": {
+      "bits5": {
+        "bytes": 2334,
+        "delta": -520,
+        "entries": 5,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 16
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 2334,
+        "delta": -520,
+        "entries": 7,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 16
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 2334,
+        "delta": -520,
+        "entries": 9,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 16
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 2410,
+        "delta": -444,
+        "entries": 1,
+        "references": 16,
+        "table_bytes": 32
+      },
+      "common": {
+        "bytes": 2334,
+        "delta": -520,
+        "entries": 18,
+        "entries_hit": 1,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 16
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 19,
+      "structural_bytes": 2854,
+      "type_bodies": [
+        "0140"
+      ],
+      "type_objects": 1,
+      "type_references": 16
+    },
+    "reverse_bits_mixed": {
+      "bits5": {
+        "bytes": 2334,
+        "delta": -815,
+        "entries": 5,
+        "entries_hit": 5,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 2
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 4
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 2334,
+        "delta": -815,
+        "entries": 7,
+        "entries_hit": 5,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 2
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 4
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 2334,
+        "delta": -815,
+        "entries": 9,
+        "entries_hit": 5,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 2
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 4
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 2839,
+        "delta": -310,
+        "entries": 5,
+        "references": 16,
+        "table_bytes": 160
+      },
+      "common": {
+        "bytes": 2334,
+        "delta": -815,
+        "entries": 18,
+        "entries_hit": 5,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 2
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 4
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 2
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 4
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 4
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 23,
+      "structural_bytes": 3149,
+      "type_bodies": [
+        "0101",
+        "0108",
+        "0110",
+        "0120",
+        "0140"
+      ],
+      "type_objects": 5,
+      "type_references": 16
+    },
+    "reverse_float_exotic": {
+      "bits5": {
+        "bytes": 3140,
+        "delta": 55,
+        "entries": 5,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 2742,
+        "delta": -343,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 4
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 4
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 2742,
+        "delta": -343,
+        "entries": 9,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 4
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 4
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 2742,
+        "delta": -343,
+        "entries": 4,
+        "references": 16,
+        "table_bytes": 128
+      },
+      "common": {
+        "bytes": 2742,
+        "delta": -343,
+        "entries": 18,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 4
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 4
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 22,
+      "structural_bytes": 3085,
+      "type_bodies": [
+        "0701",
+        "0702",
+        "0b020408060815",
+        "0b02187f7e200b"
+      ],
+      "type_objects": 4,
+      "type_references": 16
+    },
+    "reverse_float_ieee": {
+      "bits5": {
+        "bytes": 3140,
+        "delta": 54,
+        "entries": 5,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 2618,
+        "delta": -468,
+        "entries": 7,
+        "entries_hit": 2,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 6
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 6
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 2334,
+        "delta": -752,
+        "entries": 9,
+        "entries_hit": 4,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 2
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 2
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 6
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 6
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 2742,
+        "delta": -344,
+        "entries": 4,
+        "references": 16,
+        "table_bytes": 128
+      },
+      "common": {
+        "bytes": 2334,
+        "delta": -752,
+        "entries": 18,
+        "entries_hit": 4,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 2
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 2
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 6
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 6
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 22,
+      "structural_bytes": 3086,
+      "type_bodies": [
+        "0701",
+        "0702",
+        "0b02087f7e100f",
+        "0b020b0f0e100f"
+      ],
+      "type_objects": 4,
+      "type_references": 16
+    },
+    "reverse_float_zero_catalog": {
+      "bits5": {
+        "bytes": 1674,
+        "delta": 45,
+        "entries": 5,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float2": {
+        "bytes": 1674,
+        "delta": 45,
+        "entries": 7,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 5,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 6,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "bits5_float4": {
+        "bytes": 1674,
+        "delta": 45,
+        "entries": 9,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "cid_dictionary": {
+        "bytes": 1459,
+        "delta": -170,
+        "entries": 2,
+        "references": 8,
+        "table_bytes": 64
+      },
+      "common": {
+        "bytes": 1674,
+        "delta": 45,
+        "entries": 18,
+        "entries_hit": 0,
+        "entry_hits": [
+          {
+            "cid": "e6b0c92b5c583840550533a278df62e0eb67109ee57f1405b6210ec6ffc76624",
+            "index": 0,
+            "name": "bits1",
+            "references": 0
+          },
+          {
+            "cid": "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "index": 1,
+            "name": "bits8",
+            "references": 0
+          },
+          {
+            "cid": "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e",
+            "index": 2,
+            "name": "bits16",
+            "references": 0
+          },
+          {
+            "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c",
+            "index": 3,
+            "name": "bits32",
+            "references": 0
+          },
+          {
+            "cid": "8c19ff215f417b48484c90f25f7bbb2482d1efe6743c38f9f5fefe7b48684b52",
+            "index": 4,
+            "name": "bits64",
+            "references": 0
+          },
+          {
+            "cid": "265a4995601ce2281ced8357eb36104f066b822e6d9d6ee8b491eac564818100",
+            "index": 5,
+            "name": "binary16",
+            "references": 0
+          },
+          {
+            "cid": "d28e2ce6987d7e95a7af6d85af59f461aa69a8af2226e8270fdc7183dc9ecbf3",
+            "index": 6,
+            "name": "bfloat16",
+            "references": 0
+          },
+          {
+            "cid": "3fbb0e678f0dae29d67290db8f4f948c1b2179773397452af193040a369aecd8",
+            "index": 7,
+            "name": "binary32",
+            "references": 0
+          },
+          {
+            "cid": "ffd556bdc33ed8732ea145fbe165d6e7eb440b5ba66d50b0cbb94ff83a120836",
+            "index": 8,
+            "name": "binary64",
+            "references": 0
+          },
+          {
+            "cid": "2b2704e5644b2a600cc1c05f91f133f54c03637cddb3aaf658a635fff068bd0a",
+            "index": 9,
+            "name": "effect_memory",
+            "references": 0
+          },
+          {
+            "cid": "34a90e6582f27450d8fa1564f4f4d8342f8ccf58a047d8e9b6bec6e5f7ffe4b6",
+            "index": 10,
+            "name": "stack_owner",
+            "references": 0
+          },
+          {
+            "cid": "3db9dbd8c3ba82d393bcd42aadce8b394b0794808b96d377bbc1a2fc2a2a5316",
+            "index": 11,
+            "name": "opaque_type",
+            "references": 0
+          },
+          {
+            "cid": "e66c08515f856c64906f89633c3761a2b8131241dc135b508e4fd9482dc6bdb2",
+            "index": 12,
+            "name": "opaque_constant",
+            "references": 0
+          },
+          {
+            "cid": "203bb1e008cfccf83db3c475dda0aab84ed3b35b4c3c0b56740cca50be3ab166",
+            "index": 13,
+            "name": "opaque_function",
+            "references": 0
+          },
+          {
+            "cid": "0d9802e056bb5b52feb5ee0564be46c17225c3e80737b474f1f08e6cdc4ce25b",
+            "index": 14,
+            "name": "opaque_target",
+            "references": 0
+          },
+          {
+            "cid": "a8ddb118c8beac676c0dd8afb3267d078ebfd840ac2bb9fbe4d3fcedc5d9340d",
+            "index": 15,
+            "name": "opaque_graph",
+            "references": 0
+          },
+          {
+            "cid": "ca3bc70ff6cf95d714f0f82925807150959b0d0d71132c70be8872376d66aae0",
+            "index": 16,
+            "name": "opaque_object",
+            "references": 0
+          },
+          {
+            "cid": "d447b05c4301e43f05c83ab9cef044a011ba43a46f0f0d8156c507c9e70c7e76",
+            "index": 17,
+            "name": "opaque_bytes",
+            "references": 0
+          }
+        ],
+        "header_digest_bytes": 32
+      },
+      "objects": 12,
+      "structural_bytes": 1629,
+      "type_bodies": [
+        "0b020408060815",
+        "0b02187f7e200b"
+      ],
+      "type_objects": 2,
+      "type_references": 8
+    }
+  }
+}
