@@ -33,58 +33,58 @@
   "results": {
     "clang-O2": {
       "file_bytes": 16352,
-      "peak_rss_kib_max": 1792,
+      "peak_rss_kib_max": 1800,
       "stripped_bytes": 14576,
-      "throughput_mib_s_median": 497.37,
+      "throughput_mib_s_median": 484.83,
       "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.635,
-      "wall_seconds_median": 0.064339,
-      "wall_seconds_min": 0.050597,
-      "wall_seconds_stdev": 0.007545
+      "time_ratio_vs_gcc_O2": 0.659,
+      "wall_seconds_median": 0.066003,
+      "wall_seconds_min": 0.054765,
+      "wall_seconds_stdev": 0.013383
     },
     "gcc-O2": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1792,
+      "peak_rss_kib_max": 1796,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 315.74,
-      "time_ratio_vs_best_baseline": 1.575,
+      "throughput_mib_s_median": 319.65,
+      "time_ratio_vs_best_baseline": 1.517,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.10135,
-      "wall_seconds_min": 0.078366,
-      "wall_seconds_stdev": 0.011927
+      "wall_seconds_median": 0.10011,
+      "wall_seconds_min": 0.077824,
+      "wall_seconds_stdev": 0.010191
     },
     "gcc-O2-static": {
       "file_bytes": 798120,
       "peak_rss_kib_max": 716,
       "stripped_bytes": 718872,
-      "throughput_mib_s_median": 328.52,
-      "time_ratio_vs_best_baseline": 1.514,
-      "time_ratio_vs_gcc_O2": 0.961,
-      "wall_seconds_median": 0.097406,
-      "wall_seconds_min": 0.089789,
-      "wall_seconds_stdev": 0.006068
+      "throughput_mib_s_median": 312.56,
+      "time_ratio_vs_best_baseline": 1.551,
+      "time_ratio_vs_gcc_O2": 1.023,
+      "wall_seconds_median": 0.102381,
+      "wall_seconds_min": 0.085046,
+      "wall_seconds_stdev": 0.012842
     },
     "gcc-O3": {
       "file_bytes": 16256,
       "peak_rss_kib_max": 1792,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 318.44,
-      "time_ratio_vs_best_baseline": 1.562,
-      "time_ratio_vs_gcc_O2": 0.992,
-      "wall_seconds_median": 0.10049,
-      "wall_seconds_min": 0.094569,
-      "wall_seconds_stdev": 0.004548
+      "throughput_mib_s_median": 319.21,
+      "time_ratio_vs_best_baseline": 1.519,
+      "time_ratio_vs_gcc_O2": 1.001,
+      "wall_seconds_median": 0.100248,
+      "wall_seconds_min": 0.079792,
+      "wall_seconds_stdev": 0.007149
     },
     "xax": {
-      "file_bytes": 3400,
+      "file_bytes": 3416,
       "peak_rss_kib_max": 1184,
-      "stripped_bytes": 3400,
-      "throughput_mib_s_median": 337.63,
-      "time_ratio_vs_best_baseline": 1.473,
-      "time_ratio_vs_gcc_O2": 0.935,
-      "wall_seconds_median": 0.094779,
-      "wall_seconds_min": 0.07497,
-      "wall_seconds_stdev": 0.008777
+      "stripped_bytes": 3416,
+      "throughput_mib_s_median": 319.26,
+      "time_ratio_vs_best_baseline": 1.519,
+      "time_ratio_vs_gcc_O2": 1.001,
+      "wall_seconds_median": 0.100232,
+      "wall_seconds_min": 0.075892,
+      "wall_seconds_stdev": 0.017013
     }
   },
   "small_input_reference_check": {
@@ -93,8 +93,8 @@
   },
   "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
   "xax": {
-    "artifact_bytes": 3400,
-    "artifact_sha256": "c2098a47ca8e2422d6c659384d28614b7fa54ce08ec6813491ddf4c76a6e408c",
+    "artifact_bytes": 3416,
+    "artifact_sha256": "4c8b644c62604b1c62220b47c99db557d72df1a5bd2d19d73ca853b43adc8ed8",
     "codegen": "xax_x86_64_regalloc: per-block register allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, in-block bounds-check reuse, power-of-two strength reduction",
     "dt_needed": [
       "libz.so.1"
@@ -102,8 +102,8 @@
     "dynamic_loader": "/lib64/ld-linux-x86-64.so.2 (requested by x86_64-linux-elf-dynexec-v1)",
     "entry_function": "96706b22727b206613d9c2f74ece931d8c15a5160e3e71c4b59e0336dc49a923",
     "graph_blocks": 41,
-    "program_root": "f48cc10582409e681820882e0247daf0c787b472d7a38c4ad627cc06fc4cfec8",
+    "program_root": "237dde7aa820a3b30952d9426704a0ff2ee6b6917acd3a635dc1574b0feff5d9",
     "runtime_dependencies": [],
-    "target": "d966e9096dc1824b6e8a63c38f4a501186865eb9827b665bfb5f100b1877c4ad"
+    "target": "fa3b92313bff155f70f3a6c6db68c01b0451d66b95383a04d2cd992e6f7ff3d4"
   }
 }
