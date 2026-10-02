@@ -1,7 +1,8 @@
 """Differential validation of the Linux register-resident lowering (U1.2b, ADR-089).
 
 Seeded random integer programs (straight-line DAGs plus a counted loop with
-block parameters) are executed by the reference executor and natively after
+block parameters, and a second corpus whose loops call earlier programs while
+pinned values are live, ADR-091) are executed by the reference executor and natively after
 lowering through ``xax_x86_64_regalloc``.  Every 64-bit result must match.
 This is translation validation by execution over a fixed corpus, not a proof.
 """
@@ -64,7 +65,7 @@ def _step(rng: random.Random, block: BlockBuilder, pool: list) -> object:
     return block.op1(Operation.INT_ZERO_EXTEND, (narrow,), B64)
 
 
-def _random_function(rng: random.Random):
+def _random_function(rng: random.Random, callees: tuple = ()):
     graph = GraphBuilder()
     entry = graph.block(B64, B64, B64, B64)
     pool = list(entry.params)
@@ -77,6 +78,11 @@ def _random_function(rng: random.Random):
     local = [a, b, *rng.sample(pool, min(3, len(pool)))]
     for _ in range(rng.randrange(2, 12)):
         local.append(_step(rng, loop, local))
+    if callees:
+        # Values from the entry block stay pinned across this call.
+        arguments = tuple(_value(rng, loop, [*local, *pool]) for _ in range(4))
+        local.append(loop.op1(Operation.CALL_DIRECT, arguments, B64, entity=rng.choice(callees)))
+        local.append(loop.op1(rng.choice(BINARY[:6]), (local[-1], rng.choice(pool)), B64))
     following = loop.op1(Operation.ADD_WRAP, (counter, loop.const(B32, 1)), B32)
     condition = loop.op1(Operation.INT_COMPARE, (following, loop.const(B32, rng.randrange(1, 6))), B1, attributes=(IntCompare.ULT,))
     loop.cbr(condition, loop, (following, local[-1], local[-2]), exit_block, (local[-1], local[-3]))
@@ -88,6 +94,8 @@ def _random_function(rng: random.Random):
 class RegisterAllocatorDifferentialTests(unittest.TestCase):
     SEED = 20261002
     PROGRAMS = 120
+    CALLING_SEED = 20261003
+    CALLING_PROGRAMS = 40
 
     def _corpus(self):
         rng = random.Random(self.SEED)
@@ -96,12 +104,18 @@ class RegisterAllocatorDifferentialTests(unittest.TestCase):
             function, graph = _random_function(rng)
             functions.append((function, tuple(_random_constant(rng) for _ in range(4))))
             objects.extend(graph.objects.values())
+        rng = random.Random(self.CALLING_SEED)
+        leaves = tuple(function for function, _arguments in functions[:8])
+        for _ in range(self.CALLING_PROGRAMS):
+            function, graph = _random_function(rng, leaves)
+            functions.append((function, tuple(_random_constant(rng) for _ in range(4))))
+            objects.extend(graph.objects.values())
         return functions, objects
 
     def test_corpus_uses_register_resident_lowering(self):
         functions, objects = self._corpus()
         target = x86_64_linux_exec_target()
-        for function, _arguments in functions[:20]:
+        for function, _arguments in (*functions[:20], *functions[-20:]):
             reader = program_store(function, target, objects)
             resolve = store_resolver(reader)
             graph_object, parameters, returns = _decode_function_interface(function, resolve)
