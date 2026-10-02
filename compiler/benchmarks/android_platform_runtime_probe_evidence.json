@@ -1,6 +1,6 @@
 {
   "artifact_bytes": 17496,
-  "artifact_sha256": "cdca66dca2f55b0b8951912646710a63812850737f5baf79a74de24fb5345c02",
+  "artifact_sha256": "cefd4e6cdedf2dcb88300c3a00ab5076dad8eefc33d9c3e669e5c7485cde7dff",
   "contracts": [
     "file.open/write/read/close",
     "pthread.create/join",

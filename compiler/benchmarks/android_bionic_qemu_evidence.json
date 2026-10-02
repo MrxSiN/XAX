@@ -280,14 +280,14 @@
     "platform_probe": {
       "exit": 0,
       "library_bytes": 17496,
-      "library_sha256": "cdca66dca2f55b0b8951912646710a63812850737f5baf79a74de24fb5345c02",
+      "library_sha256": "cefd4e6cdedf2dcb88300c3a00ab5076dad8eefc33d9c3e669e5c7485cde7dff",
       "passed": true,
       "stdout": "XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1"
     },
     "platform_probe@packed": {
       "exit": 0,
-      "library_bytes": 3016,
-      "library_sha256": "ecbb369ade2a4c82131ed07c65ae8cd76bf2fdc9de9e01c67e38c9e28983f3bf",
+      "library_bytes": 2760,
+      "library_sha256": "dfb65ac39e30c374a304e8784d5e5729122db7f77f34efbc75f4f4625a575a3f",
       "passed": true,
       "stdout": "XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1"
     },
@@ -310,14 +310,14 @@
     "pthread_xax_start_routine": {
       "exit": 0,
       "library_bytes": 17424,
-      "library_sha256": "d624a743463acdc50887fb7447a6102fb0421c6dd1df25d34918441f99a57e5d",
+      "library_sha256": "7ffc042d434bb7a4139bc0ff22ef9f580dc9942c64c9bd0d3a6a4ecffefc858e",
       "passed": true,
       "stdout": "XAX_THREAD_ENTRY_OK 4/4"
     },
     "pthread_xax_start_routine@packed": {
       "exit": 0,
-      "library_bytes": 1936,
-      "library_sha256": "89d17568b6a8aec3bae7684858ae8091c100224fbd3d062f80db0a89649a78ab",
+      "library_bytes": 1664,
+      "library_sha256": "8235956c709e5ebc52d7047e0775badc135b39849db2f9d5c75ab24d4a753e24",
       "passed": true,
       "stdout": "XAX_THREAD_ENTRY_OK 4/4"
     }

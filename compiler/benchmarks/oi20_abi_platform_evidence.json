@@ -842,9 +842,9 @@
     },
     {
       "boundary": "aapcs64_baremetal",
-      "bytes": 52,
+      "bytes": 8,
       "identical": true,
-      "sha256": "120eb2d27407144700506e3f88119ac1538acdc7d6a09972555824239f5c4452"
+      "sha256": "05f4de57e892c56d671b2fabf3f9bf3ea502917bedf9c804fda8c638cf9af72b"
     },
     {
       "boundary": "android_aapcs64_bionic",

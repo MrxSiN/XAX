@@ -534,6 +534,62 @@ def _arithmetic(operation: Operation, destination: int, left: int, right: int, w
     return base | (right << 16) | (left << 5) | destination
 
 
+# AArch64 condition codes for IntCompare (cmp left, right; cset on the condition).
+_CONDITION = {
+    IntCompare.EQ: 0, IntCompare.NE: 1, IntCompare.UGE: 2, IntCompare.ULT: 3, IntCompare.UGT: 8, IntCompare.ULE: 9,
+    IntCompare.SGE: 10, IntCompare.SLT: 11, IntCompare.SGT: 12, IntCompare.SLE: 13,
+}
+
+
+def _compare(left: int, right: int, width: int) -> int:
+    """``cmp`` (``subs`` to the zero register) of two 32- or 64-bit registers."""
+    return (0x6B000000 if width == 32 else 0xEB000000) | (right << 16) | (left << 5) | 31
+
+
+def _cset(destination: int, comparison: IntCompare) -> int:
+    """``cset Wd, cond`` (``csinc Wd, wzr, wzr, !cond``)."""
+    return 0x1A9F07E0 | ((_CONDITION[comparison] ^ 1) << 12) | destination
+
+
+# Operations the register-resident path lowers.  A general-target function
+# uses it only when all its operations are here and all its machine values
+# are 32/64-bit integers, pointers, or compare results (ADR-110); anything
+# else keeps the uniform frame path.
+_REGISTER_PATH_OPERATIONS = frozenset({
+    Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.CONSTANT, Operation.INT_COMPARE,
+    Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, Operation.FUNCTION_ADDRESS,
+})
+
+
+def _register_path_eligible(graph, parameters, returns, resolve: Callable[[bytes], SemanticObject]) -> bool:
+    def scalar(cid: bytes, widths: tuple[int, ...] = (32, 64)) -> bool:
+        obj = resolve(cid)
+        if _is_proof_type(obj):
+            return True
+        if obj.body[:1] == b"\x02":
+            return True
+        return obj.body[:1] == b"\x01" and decode_bits_width(obj) in widths
+
+    if not all(scalar(cid) for cid in (*parameters, *returns)):
+        return False
+    for block in graph.blocks:
+        if not all(scalar(cid, (1, 32, 64)) for cid in block.parameters):
+            return False
+        for node in block.nodes:
+            if node.operation not in _REGISTER_PATH_OPERATIONS:
+                return False
+            if node.operation == Operation.INT_COMPARE:
+                if not all(scalar(cid) for cid in node.operand_types):
+                    return False
+            elif not all(scalar(cid) for cid in (*node.operand_types, *node.results)):
+                return False
+            if node.operation in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT):
+                machine = [cid for cid in node.operand_types if not _is_proof_type(resolve(cid))]
+                if len(machine) > 8 + (node.operation == Operation.CALL_INDIRECT):
+                    return False
+    return True
+
+
 def _function_closure(
     entry: SemanticObject,
     resolve: Callable[[bytes], SemanticObject],
@@ -1395,7 +1451,7 @@ def _compile_function(
                     "backend-declared explicit assist",
                     capability.runtime_helper.hex() if capability.runtime_helper else "none",
                 )
-    if _general_aarch64_target(target):
+    if _general_aarch64_target(target) and not _register_path_eligible(graph, parameter_types, return_types, resolve):
         return _compile_general_function(function, resolve, target)
 
     # AArch64 machine values remain in caller-saved registers by default.  The
@@ -1490,6 +1546,23 @@ def _compile_function(
         return {value: tuple(positions) for value, positions in uses.items()}
 
     block_uses = {index: uses_for_block(index) for index in range(len(graph.blocks))}
+
+    # A value used outside its defining block (by dominance) gets one frame
+    # "home", written once at its definition and reloaded where needed (as on
+    # x86-64, ADR-089).  SSA values never change, so a home is never rewritten.
+    defined_in: dict[ValueRef, int] = {value: index for index, values in machine_parameters.items() for value in values}
+    for index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            for result_index in range(len(node.results)):
+                value = ValueRef.node_result(index, node_index, result_index)
+                if value in widths:
+                    defined_in[value] = index
+    homed = sorted(
+        {value for index, uses in block_uses.items() for value in uses if defined_in.get(value, index) != index},
+        key=lambda value: (value.tag, value.block, value.index, value.result),
+    )
+    home_offset = {value: dynamic_spill_base + 8 * position for position, value in enumerate(homed)}
+    dynamic_spill_base += 8 * len(homed)
 
     def lower_block(
         block_index: int,
@@ -1651,6 +1724,21 @@ def _compile_function(
                 bind_register(value, allocatable_registers[machine_index])
             else:
                 backing_offset[value] = edge_spill_base + (machine_index - len(allocatable_registers)) * 8
+        for value, offset in home_offset.items():
+            if defined_in[value] == block_index:
+                last_use.setdefault(value, -1)  # keep it until its home is written
+            else:
+                backing_offset[value] = offset
+        for value in machine_parameters[block_index]:
+            if value in home_offset:
+                if value in register_for:
+                    emit(_load_store(False, register_for[value], home_offset[value], widths[value]))
+                else:  # an edge-spilled parameter: copy its slot to its home
+                    emit(_load_store(True, scratch_register, backing_offset[value], widths[value]))
+                    emit(_load_store(False, scratch_register, home_offset[value], widths[value]))
+                if last_use[value] == -1:
+                    release_value(value)
+                backing_offset[value] = home_offset[value]
         # Parameters with no semantic use must not occupy registers merely
         # because the ABI delivered them there.  Releasing them here lets leaf
         # ABI entry points place their first real result directly in x0.
@@ -1788,6 +1876,21 @@ def _compile_function(
                 else:
                     destination_register = acquire_register(node_index, {left_value, right_value})
                 emit(_arithmetic(node.operation, destination_register, left_register, right_register, width))
+                for operand in {left_value, right_value}:
+                    if last_use.get(operand, -1) == node_index:
+                        release_value(operand)
+                bind_register(result, destination_register)
+                if result not in last_use:
+                    release_value(result)
+
+            elif node.operation == Operation.INT_COMPARE:
+                width = widths[node.operands[0]]
+                left_value, right_value = node.operands
+                left_register = ensure_register(left_value, node_index)
+                right_register = ensure_register(right_value, node_index, {left_value} if right_value != left_value else set())
+                destination_register = acquire_register(node_index, {left_value, right_value})
+                emit(_compare(left_register, right_register, width))
+                emit(_cset(destination_register, IntCompare(node.attributes[0])))
                 for operand in {left_value, right_value}:
                     if last_use.get(operand, -1) == node_index:
                         release_value(operand)
@@ -1963,6 +2066,15 @@ def _compile_function(
 
             elif node.operation not in (Operation.STACK_ALLOC, Operation.ADDRESS_OFFSET, Operation.STACK_END, *RESOURCE_EFFECT_OPERATIONS):
                 fail("XAX.AARCH64.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "AARCH64-OP-LOWERED", list(target.supported_operations), node.operation)
+
+            for result_index in range(len(node.results)):
+                value = ValueRef.node_result(block_index, node_index, result_index)
+                if value in home_offset:
+                    emit(_load_store(False, register_for[value], home_offset[value], widths[value]))
+                    if last_use[value] in (-1, node_index):
+                        release_value(value)
+                    else:
+                        backing_offset[value] = home_offset[value]
 
             if assembler is not None and node_ranges is not None:
                 node_end = len(assembler.code)
