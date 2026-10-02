@@ -453,6 +453,17 @@ def compile_register_resident(
     homes.sort(key=lambda value: (value.tag, value.block, value.index, value.result))
     pinned = _choose_pins(graph, homes, uses_by_block)
     loop_headers = {target for source, block in enumerate(graph.blocks) for target, _arguments in block.terminator.edges if target <= source}
+    # Rotation (header duplication) makes the duplicated header's successors
+    # the real backward-branch targets, so they are aligned too.
+    loop_headers |= {
+        target
+        for header in tuple(loop_headers)
+        if graph.blocks[header].terminator.kind == TerminatorKind.CONDITIONAL_BRANCH
+        and len(graph.blocks[header].nodes) <= 2
+        and all(node.operation in (Operation.CONSTANT, Operation.INT_COMPARE) for node in graph.blocks[header].nodes)
+        for target, _arguments in graph.blocks[header].terminator.edges
+        if target > header
+    }
     homes = [value for value in homes if value not in pinned]
     allocatable = tuple(
         register
