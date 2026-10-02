@@ -360,3 +360,8 @@ This design MUST be reconsidered if reproducible future measurements establish a
 A falsified claim MUST be recorded as such. Benchmark definitions MUST not be changed after results merely to preserve a preferred architectural conclusion.
 
 The governing rule is empirical: XAX's semantic-first design is justified only if measured compiler behavior, generated code, and AI interaction costs support it.
+
+## 12. Universal replacement benchmarks (2026-10-02)
+
+Replacement-level performance claims (R4) follow `XAX_BENCHMARKS.md` §15 and `docs/18_UNIVERSAL_REPLACEMENT.md` §15. The first recorded comparison is U1 Linux `filestat` against `gcc -O2` and `gcc -O2 -static` (MEASURED; XAX 6.2× slower, smaller artifact than static glibc, lower peak RSS). AI-efficiency claims (R5) require real model trials; offline tokenizer counts never establish R5.
+

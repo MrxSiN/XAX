@@ -30,6 +30,8 @@ M13 — accelerator target path: **complete for the declared prototype slice**. 
 
 M14 — full self-hosting transition: **complete for the declared `xax-semantic-image-v1` closure target**. The authoritative XAX compiler graph materializes a program root, invokes an XAX-hosted verifier-facing service, emits the reachable canonical store through the trusted serialization substrate, and performs XAX-hosted finalization/build orchestration. Executed recursive generations establish B2, four generation-equivalence vectors establish B3, generation 0/1/2 reach exact byte identity for B4, the declared semantic-image service path establishes target-scoped B5, and reconstruction through the committed immutable seed runtime with repository Python sources removed from the import path establishes the declared B6 seed boundary. This B5/B6 claim explicitly excludes the legacy x86-64, AArch64, WebAssembly, and accelerator lowerers.
 
+U1 — Linux x86-64 hosted native proof (Phase U, `docs/18`): **partial; EXECUTED and MEASURED**. Exact integer completion (`bit.and`, `bit.or`, `udiv`, `urem`, `int.truncate`, `int.zero_extend`; portable trap reason 2), the foreign-ABI registry, `linux-x86_64-syscall-v1` template declarations, first-class x86-64 pointer values on the new profile, and the `x86_64-linux-elf-exec-v1` static ELF64 emitter with an explicit process-entry contract are implemented. The `filestat` workload (two `mmap` allocations, `openat`/`read`/`write`/`close`, a 35-block control-flow graph, FNV-1a, a 256-entry histogram, decimal formatting) executes on this Linux host with output identical to `gcc -O2` and to an independent reference. MEASURED: 6.2× slower than `gcc -O2`, 18,339 B artifact, 188 KiB peak RSS (`XAX_BENCHMARKS.md` §15.1). Not yet done: external/dynamic library call (OI-33), argv/env (OI-36). Replacement matrix: Linux x86-64, Android arm64, and Wasm core at R1; no target at R2+.
+
 Post-roadmap AI-native experiment: **a five-task manual C-vs-XAX Codex Desktop benchmark is ready; no C-vs-XAX model trials have run**. The OI-01 transport-candidate arms have one 30-trial Claude Code run (30/30 completed; details below and in `XAX_OPEN_ISSUES.md`). It has no API transport, frozen corpus, preregistration, or significance machinery. See `compiler/benchmarks/ai_native/README.md`.
 
 
@@ -152,6 +154,8 @@ Repository: repository root. Compiler: `compiler/`.
 - AArch64 bare-metal raw callable load image, target CID `0af5a0c8db7996951be281cf7ab22a7ee158287c43f195c9518f782f5832e355`. Invocation uses QEMU/semihosting only as a test harness; emitted code contains neither.
 - Prototype SIMT packet accelerator, profile 3 / architecture 4, target CID `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`. It emits a deterministic deployment packet with no declared runtime dependency; `run_accelerator_deployment` is a conformance harness, not an emitted runtime or physical-GPU claim.
 
+- x86-64 Linux static ELF64 executable `x86_64-linux-elf-exec-v1`, target CID `cf6bee201d8c92a4dce049f7cec01ad7a7510de7f76ecac32d20420f4ab66e80`. EXECUTED natively on Linux x86-64; the only generated non-XAX code is the 9-instruction process-entry adapter; syscalls only through `linux-x86_64-syscall-v1` declarations.
+
 All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, linker, or LLVM dependency. The M13 accelerator package declares an empty runtime-dependency set.
 
 ## Build and test commands
@@ -189,6 +193,9 @@ The full unfiltered suite still requires a Windows x86-64 execution host for six
 - OI-08 effect partition/edge-encoding harness on 2026-10-01: focused tests pass **8/8**. Syntax compilation passed for all compiler source, benchmark, and test modules. The broad core/workspace/build/optimizer/bootstrap/selfhost/accelerator plus OI-05/OI-06/OI-07/OI-08 run produced **260 passes** and exactly the same **8 host-bound execution failures** (6 Windows x86-64, 2 AArch64/QEMU); rerunning with only those eight collected node IDs deselected produced **260/260 passed**. The portable non-evidence OI-02/OI-03/OI-04 subset added **24/24 passed**, and the AI-native test module added **13 passed / 1 existing skip**. No semantic test was weakened or skipped to make OI-08 pass.
 
 ## Known gaps
+
+- U1 Linux profile: no shared-library/C-ABI calls or dynamic ELF (OI-33); no argv/env/auxv (OI-36); no threads, signals, TLS, sockets, or clocks packages; atomics not executed on Linux; no DWARF (OI-41). The general x86-64 path spills every value, giving a measured 6.2× runtime gap to `gcc -O2` (OI-32). New integer operations lower only on x86-64 Linux; AArch64, Wasm, and Windows target packages do not advertise them.
+- Pointer types in foreign declarations must match exactly, so Linux syscalls accept only address-space-2 (heap/external) pointers; stack buffers cannot be passed to the platform yet.
 
 - Workspace specialization is deliberately restricted to one explicit-constant clone of a standalone straight-line single-block constants/wrapping-arithmetic function. It does not evaluate calls, control flow, effects/resources, target queries, types as values, or arbitrary compile-time XAX; it does not automatically rewire callers or implement specialization caching policy.
 - No external normative fixture corpus exists yet; current vectors are implementation-local.
@@ -301,6 +308,8 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 - Capstone 5.0.9 — transitive QEMU-package dependency used only to inspect AArch64 bytes.
 
 ## Current blockers
+
+- **Phase U / UR-M1:** U2 register allocation (OI-32) and U3 dynamic/external library calls (OI-33) are the next dependencies (`XAX_IMPLEMENTATION_ROADMAP.md` Phase U).
 
 - **OI-31 / exploratory AI-native evaluation:** run the five C/XAX pairs manually in Codex Desktop under one fixed model setting and record the displayed token counts and all turns.
 - No M6–M14 implementation/validation blocker remains for the declared prototype/closure scopes.
@@ -507,3 +516,15 @@ The first performance-critical compiler leaf now executes as ordinary XAX semant
 `compiler/src/blake3.py` retains its dependency-free Python compressor as the immutable bootstrap/fallback path. After `xax_compiler` is available on a compatible x86-64 host, the first compression lazily loads/verifies/lowers the committed XAX graph; recursive hashing during accelerator initialization is forced through the Python leaf. Subsequent compiler BLAKE3 compression calls use the XAX-generated native leaf. The Linux host boundary uses a 279-byte SysV-to-Win64 argument trampoline only because the repository x86-64 target ABI is Win64; the trampoline contains no hash logic.
 
 Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, reproduced by `bench_xax_native_blake3.py`. The native graph matched the Python compressor on the committed vector and full public BLAKE3 digests. On the evidence host (`x86_64` Linux, Python 3.13.5), median 5,000-call leaf timing improved by **5.18x** and two 1 MiB whole-hash iterations improved by **4.77x** after warm-up. These are host measurements, not a cross-platform performance guarantee. The existing official BLAKE3 vector tests remain authoritative for digest compatibility.
+
+## U1 — Linux x86-64 hosted native proof (2026-10-02)
+
+- Kernel integer completion (ADR-077): operations 66–71 with verifier rules (`XAX.INT.WIDTH`, shared binary typing), reference semantics (`_binary_integer`), and x86-64 lowering. The divide-by-zero check is omitted for nonzero constant divisors.
+- Foreign ABIs (ADR-078): `FOREIGN_CALL_ABIS` registry in `xax_compiler.py`; `encode_syscall_name`/`decode_syscall_name` and `_linux_syscall` in `xax_x86_64.py`; typed declarations in `xax_linux.py` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`).
+- Pointers (ADR-080): on the Linux profile, escaping frame pointers are materialized at definition and non-frame pointers use base-register exact access. `pointer_extent_from_graph` is now shared by the AArch64 and x86-64 backends (moved from `xax_aarch64.py`; its diagnostic is now `XAX.NATIVE.POINTER`).
+- Artifact (ADR-079): `emit_linux_elf_executable` / `compile_linux_executable` in `xax_linux.py`; 176-byte header area, 32-byte entry adapter, image at file offset 208.
+- Construction tooling: `xax_graph_builder.py` (block/node builder plus a reachable-closure store writer). It is not a source language.
+- Replacement matrix (ADR-081): `docs/universal_replacement_matrix.json`, validated by `xax_replacement.py` (`python -m xax_replacement` in `compiler/src`).
+- Evidence: `compiler/tests/test_xax_linux.py` (17 tests), `compiler/tests/test_xax_replacement_matrix.py` (5 tests), and `compiler/benchmarks/u1_linux_filestat_evidence.json` (artifact SHA-256 `336e1392467cd0b5a34a676c97341c8f8a5a3b96e4909d65926fae5d8b51d8aa`).
+- Regression (Linux x86-64, Python 3.11.15, pytest): every legacy outcome is identical to the pre-change baseline. The same 16 pre-existing failures remain: 5 Windows-only x86-64 execution cases, 2 AArch64/QEMU cases, the stale `test_stack_memory_executes_natively` code-hash pin, 5 OI-25 projection replays (`XAX.OI25.PROJECTION.LAYOUT`), the OI-26 reachability replay, the OI-03 replay (needs `tiktoken`), and the wheel build (`pip wheel --no-build-isolation` fails in this environment). No legacy target CID or artifact hash changed.
+

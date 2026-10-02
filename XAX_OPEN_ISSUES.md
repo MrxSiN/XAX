@@ -466,3 +466,45 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 **Evidence audit (2026-10-02).** The repository already contains ten primary rows in `compiler/benchmarks/ai_native/results.csv` and ten confirmation rows in `results-run-2.csv`, each labeled with a Codex Desktop session ID. All ten stored primary workspaces still pass their official checkers. The primary rows are C 5/5, 1,363,522 total tokens, median 261,725, 6 turns versus XAX 5/5, 1,698,890 total tokens, median 327,918, 7 turns; the confirmation rows are C 5/5, 1,320,698 tokens, median 262,319, 5 turns versus XAX 5/5, 1,632,943 tokens, median 333,673, 5 turns. Thus the historical measurements are negative for XAX on token usage, but they are not qualifying OI-31 closure evidence: the CSV schema does not record model/reasoning settings, the referenced Desktop session logs are absent here, and recorded row/session order is C then XAX for every pair rather than a balanced/alternating arm order. This environment also exposes no Codex Desktop/session store with which to perform or authenticate a fresh qualifying rerun. `OI31_RESULT_NOTE.md` records the raw-file hashes and checker audit. Do not replace these historical rows or infer the missing settings.
 
 **Remaining to close.** Run one fresh ten-cell Codex Desktop pass under one explicitly recorded fixed model/reasoning setting and balanced/alternating arm order, preserving every failure/retry and importing exact session usage. A negative XAX result still closes the experiment.
+
+## OI-32 — General-path register allocation and code quality (R4 blocker)
+
+**Status:** OPEN. **Evidence (MEASURED, 2026-10-02):** `compiler/benchmarks/u1_linux_filestat_evidence.json` — the Linux x86-64 `filestat` artifact runs 6.2× slower than `gcc -O2` (median of 11 runs on a 32 MiB input) because the general x86-64 path stores every SSA value to a frame slot and reloads it per use. The legacy register-resident path covers only scalar add/sub/mul/call graphs.
+
+**Question.** What is the smallest register-allocation design (linear scan over block-parameter SSA, or extension of the register-resident path to memory/foreign operations) that closes most of the gap while keeping lowering deterministic and translation-validatable? Close with a measured R4 comparison on U1 plus no regression in legacy artifact identities, or with a recorded decision to version legacy profiles.
+
+## OI-33 — Dynamic/external library calls on hosted targets
+
+**Status:** OPEN. UR-M1 item U1 requires an external or dynamic library call. The Linux profile is static and syscall-only. **Options:** (a) ELF `ET_EXEC`/`ET_DYN` with `PT_INTERP`, `DT_NEEDED`, and GOT/PLT imports using the existing Android ELF import machinery, with the C ABI (SysV) as a new foreign ABI and an explicit dynamic-loader capability (`XAX_SPEC.md` §12.5); (b) a static archive importer. Close with an executed program calling a real shared library (e.g. `libz` or `libc` `qsort` with an XAX callback) whose loader dependency is explicit in the artifact contract.
+
+## OI-34 — Shift and sign-extension selection versus kernel operations
+
+**Status:** OPEN. ADR-077 rejected shift and sign-extension kernel operations as exact compositions. **Falsification:** if lowering cannot reliably select single instructions for `mul.wrap 2^k`, `udiv 2^k`, and `(zext x ^ m) - m`, or if real-model trials show materially higher token cost or repair rate for the compositions, admit `shl`, `lshr`, `ashr`, and `int.sign_extend` under UR-011 with measured evidence.
+
+## OI-35 — Generic deterministic foreign-metadata importers
+
+**Status:** OPEN. Required by UR-022: C headers/API descriptions, POSIX, Win32, Objective-C runtime metadata, JVM class files (partially present for Android SDK JARs), .NET metadata, Web IDL, syscall tables, GPU API descriptions, and library symbol tables, each converted to ordinary XAX platform packages. Open choices: the canonical carrier for imported declarations beyond foreign function carriers (records, enums, constants, callbacks, variadics), and how unknown ownership/alias facts are marked. Close per importer with a round-trip test and an executed call.
+
+## OI-36 — Process-entry access to argv, environment, and auxiliary vector
+
+**Status:** OPEN. The Linux process-entry contract passes no machine values. Programs needing arguments require a typed, provenance-correct representation of the initial stack (`argc`, `argv`, `envp`, `auxv`) — likely a read-only external pointer view plus explicit bounds — without fabricating extents. Close with an executed program reading its arguments and a negative test for out-of-bounds argv access.
+
+## OI-37 — WASI and browser host bindings
+
+**Status:** OPEN. Wasm modules currently have no imports. Required: Wasm import lowering as a foreign ABI, a WASI platform package, and deterministic generated bindings from Web IDL for DOM/Web APIs and WebGPU, with no handwritten JavaScript. Close U3 with an executed WASI command (e.g. under a WASI runtime) and an executed browser page whose glue is generated.
+
+## OI-38 — Managed targets: JVM class files and .NET CLI assemblies
+
+**Status:** OPEN. DEX synthesis exists for Android. Open choice: direct class-file/CLI emission versus a shared managed-IR lowering reused across DEX/JVM/CLI. Close with an executed JVM program and an executed CLR program from XAX semantics.
+
+## OI-39 — Real GPU execution path
+
+**Status:** OPEN. Only the synthetic SIMT packet exists (PROTOTYPE). Close U5 with a SPIR-V compute kernel emitted directly from XAX target-package semantics, executed on a physical Vulkan device with measured results against a GLSL/HLSL or CUDA baseline. Interacts with OI-13 (scope normalization) and OI-16 (target granularity).
+
+## OI-40 — Standard semantic libraries as XAX packages
+
+**Status:** OPEN. Library behavior currently modeled in Python (`xax_strings.py`, `xax_platform.py`) is tooling, not XAX semantics. Open choices: package granularity, specialization boundaries (OI-15), and how library effect/allocation contracts are published. Close with at least one allocator, one string, and one collection package as canonical XAX graphs, used by an executed workload, contributing zero bytes when unused.
+
+## OI-41 — Debug information and observability formats
+
+**Status:** OPEN. Exact per-node semantic ranges are retained. Required: DWARF (ELF/Android), PDB/CodeView (PE), and Wasm name/DWARF sections generated from retained ranges as non-authoritative views; profiling and sanitizer/instrumentation builds as explicit build policies. Close with a debugger stepping an XAX-built executable at semantic-node granularity.

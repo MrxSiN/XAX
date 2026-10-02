@@ -561,3 +561,22 @@ Host: Windows 11 x86-64, CPython 3.12.10, bytecode cache enabled. "Before" = the
 | full unittest discovery | 90.6 s | 45.0 s |
 
 Generated x86-64/AArch64 code is byte-identical before/after; M14 compiler root, generation digests, equivalence vectors, and fixed point are unchanged. Mechanisms: `StoreReader.get` decodes and CID-checks each record once; `_parse_graph` is memoized by graph CID with dependency-resolve replay (falling back to an uncached parse on any replay failure so diagnostics stay exact); `Cursor.uleb` checks minimality without re-encoding; BLAKE3 compression uses inlined local-word rounds (official vectors pass); objects created or decoded by the compiler carry a non-copyable CID-checked flag; and `StoreReader.from_objects` validates contents eagerly but emits canonical bytes and the container digest only when `.data` is read. Remaining measured bottleneck: pure-Python BLAKE3 is ~40% of cold verification.
+
+## 15. Universal replacement performance claims
+
+Every performance statement used for an R4 decision or any comparative claim MUST record: exact hardware (CPU model, logical CPU count), OS/kernel, compiler/toolchain versions for every arm, optimization settings, workload definition and input generator/digest, warmup runs, repetitions, central value and variance, binary size (file and stripped), peak memory with the measurement method, execution time with the timer and what it includes, and generated code properties where useful. Baselines are the platform's established optimized toolchains (optimized C/C++, Rust, platform-native compilers, Wasm/GPU toolchains, or hand-written machine code where appropriate). Benchmark definitions MUST NOT be changed to favor XAX, and an unfavorable result is reported with the same prominence as a favorable one.
+
+### 15.1 U1 Linux `filestat` (MEASURED, 2026-10-02)
+
+Source: `compiler/benchmarks/linux_filestat.py` (XAX graph and harness), `compiler/benchmarks/linux_filestat_c/filestat.c` (baseline), `compiler/benchmarks/linux_filestat_c/runner.c` (fork/exec/wait4 timer). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`.
+
+Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs, Linux 6.18.44 x86-64, gcc 13.3.0. Input: 32 MiB deterministic text (`shake_256` + 77-symbol alphabet). 1 warmup, 11 repetitions; times are `CLOCK_MONOTONIC` around fork/exec/wait4; peak RSS from `wait4` `ru_maxrss`. All three arms produce identical output, and each matches the independent Python reference contract on a 200,003-byte input.
+
+| Arm | Median wall (s) | Ratio vs gcc -O2 | Peak RSS (KiB) | File / stripped bytes |
+|---|---:|---:|---:|---:|
+| gcc -O2 (dynamic glibc) | 0.0899 | 1.00 | 1,632 | 16,224 / 14,472 |
+| gcc -O2 -static | 0.0853 | 0.95 | 652 | 785,400 / 706,584 |
+| XAX `x86_64-linux-elf-exec-v1` | 0.5570 | 6.20 | 188 | 18,339 / 18,339 |
+
+Interpretation: XAX is **not** runtime-competitive on this workload (R4 not met). The cause is the general path's spill-every-value code generation (OI-32), not hidden runtime work: the artifact has zero runtime dependencies, and the smaller RSS reflects the absence of libc and loader. Run-to-run variation on this shared host was about ±10% (5.1×–6.2× across three recorded runs); the committed JSON holds the last run.
+

@@ -604,3 +604,28 @@ demonstrate, for the exact declared profile:
     cleanup/migration MUST reject or remain outside the profile rather than being inferred.
     Runtime saved-state transfer, ID transfer, mismatch behavior, and replacement atomicity
     remain unproven until compatible framework execution.
+
+## 23. Universal replacement conformance (R0–R6)
+
+A replacement claim has the form `R<n> / <target id> / <workload class>` and is valid only when `docs/universal_replacement_matrix.json` records it and `compiler/src/xax_replacement.py` computes the same level from the recorded evidence. Obligations per level are `docs/18_UNIVERSAL_REPLACEMENT.md` §3. Additionally:
+
+- R0 requires verified canonical XAX for a representative workload plus either reference execution or an independent reference contract that the executed artifact is compared against.
+- R1 requires an artifact in the target's native deployable format, produced by XAX lowering without an external compiler, assembler, or linker in the production path, and executed on the target. Emulator execution MUST be recorded as such.
+- R2 requires executed evidence for ABI, platform APIs, and FFI for the declared workload class. Missing interoperability classes MUST be listed as blockers.
+- R4 requires `XAX_BENCHMARKS.md` §15 records for runtime, peak memory, and binary size, and an explicit `competitive` decision against the declared bound.
+- R5 requires real-model trials under `XAX_BENCHMARKS.md` §6; offline tokenizer counts are not R5 evidence.
+- Negative vectors are mandatory: the matrix validator MUST reject over-claimed levels, missing or nonexistent evidence, unknown labels, and XAX-added runtimes (`compiler/tests/test_xax_replacement_matrix.py`).
+
+## 24. Linux x86-64 hosted executable obligations (`x86_64-linux-elf-exec-v1`)
+
+An implementation claiming this target MUST:
+
+1. emit a static ELF64 `ET_EXEC` with no `PT_INTERP`, `PT_DYNAMIC`, relocations, or section-dependent loading, and a non-executable stack marker;
+2. generate no code other than the lowered XAX functions and the documented process-entry adapter (`docs/18` §8.2);
+3. reject entries with machine parameters or a status type other than `bits<8>`/`bits<32>` (`XAX.LINUX.ENTRY`), and reject non-Linux target packages (`XAX.LINUX.TARGET`);
+4. lower `linux-x86_64-syscall-v1` declarations exactly per their register template; reject non-canonical templates, unused or duplicated operands, more than six arguments, and the ABI on other targets (`XAX.FOREIGN.SYSCALL`, `XAX.NATIVE.FOREIGN_ABI`);
+5. project allocator-contract syscall failures to null and trap on `heap.view` of null (executed vector: a `1<<62`-byte mapping request terminates with SIGILL, never a proven view);
+6. trap with portable reason 2 on a zero `udiv`/`urem` divisor that is not a nonzero constant;
+7. reproduce the committed U1 artifact identity (`u1_linux_filestat_evidence.json`) byte-for-byte.
+
+Current implementation-local evidence: `compiler/tests/test_xax_linux.py` (17 tests, EXECUTED on Linux 6.18 x86-64) and the MEASURED U1 benchmark.
