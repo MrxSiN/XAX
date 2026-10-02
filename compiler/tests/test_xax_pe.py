@@ -356,6 +356,27 @@ class HostedPeTests(unittest.TestCase):
             emit_pe_executable(compile_native_bound_target(reader, entry.cid, target))
 
 
+class WineExecutionTests(unittest.TestCase):
+    """The hosted fixture under Wine (ADR-095): Wine reimplements the Windows API, it is not Windows."""
+
+    def test_hosted_fixture_executes_and_matches_evidence(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from benchmarks.bench_windows_pe_wine import EVIDENCE_PATH, run_under_wine, wine_executable
+
+        wine = wine_executable()
+        if wine is None:
+            self.skipTest("wine64 is not installed")
+        reader, entry, target = hosted_fixture()
+        pe = emit_pe_executable(compile_native_bound_target(reader, entry.cid, target))
+        self.assertEqual(json.loads(Path(EVIDENCE_PATH).read_text())["pe_sha256"], hashlib.sha256(pe).hexdigest())
+        with tempfile.TemporaryDirectory() as prefix:
+            completed = run_under_wine(pe, wine, prefix)
+        self.assertEqual((completed.stdout, completed.returncode), (b"XAX\n", 1339 % 256))
+
+
 def pe_digest() -> str:
     reader, entry, target = hosted_fixture()
     return hashlib.sha256(emit_pe_executable(compile_native_bound_target(reader, entry.cid, target))).hexdigest()

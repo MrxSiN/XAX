@@ -543,6 +543,8 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Progress (ADR-091, 2026-10-02).** The Linux allocator pins cross-block values used in loops to callee-saved registers, falls through on branches, and moves trap paths out of line. `chains` went from 1.80× to 1.06× the equivalent checked-index C, and from 3.49× to 1.91× `gcc -O2`. `filestat` measures 0.94× `gcc -O2` and 1.47× `clang -O2`. Remaining: convergence with the PE allocator, range-based redundant-check elimination, and LICM.
 
+**Progress (ADR-095).** PE now uses the Linux allocator first, with Win64 calls, stack storage, function addresses, and indirect calls. All six PE fixture functions take it (700 vs 1,269 code bytes), executed under Wine. Remaining: floats and aggregates (the last hosted uses of the ADR-083 path), range-based check elimination, LICM, and a Windows-host re-run.
+
 **Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the best C baseline reported.
 
 ## OI-39 — Shift and sign-extension selection versus kernel operations

@@ -1,4 +1,8 @@
-"""Register-resident x86-64 lowering for the Linux profiles (U1.2b, ADR-089, OI-38).
+"""Register-resident x86-64 lowering for the hosted profiles (U1.2b, ADR-089, OI-38).
+
+Linux (static and dynamic ELF) and, since ADR-095, the Windows PE profile use
+this allocator first; functions it cannot lower fall back to the legacy
+allocator (ADR-083) and then to frame lowering.
 
 The legacy register-resident path in :mod:`xax_x86_64` covers only scalar
 add/sub/mul/call graphs and is kept byte-stable for committed artifacts.  This
@@ -77,6 +81,7 @@ from xax_x86_64 import (
     _lea,
     _load,
     _load_exact,
+    PE_HOSTED_IDENTITY,
     _move_register,
     _register_arithmetic,
     _rex,
@@ -95,6 +100,7 @@ RBX, RBP, RSI, RDI = 3, 5, 6, 7
 CALLEE_SAVED = (RBX, RBP, RSI, RDI, 12, 13, 14, 15)
 _SHADOW_SPACE = 32
 _SCRATCH = 11
+WIN64_C_ABI = b"win64-c"
 # Preserved across every Linux call kind; see the module docstring (ADR-091).
 PINNABLE = (RBX, RBP, 12, 13, 14, 15)
 _CYCLE_WEIGHT = 8
@@ -124,10 +130,11 @@ SUPPORTED_OPERATIONS = frozenset(
         *_PURE_BINARY, *_COPY, *_MEMORY, *RESOURCE_EFFECT_OPERATIONS,
         Operation.UDIV, Operation.UREM, Operation.CONSTANT, Operation.INT_COMPARE, Operation.INT_TRUNCATE,
         Operation.ADDRESS_OFFSET, Operation.HEAP_VIEW, Operation.CALL_DIRECT, Operation.CALL_FOREIGN,
-        Operation.POINTER_ADDRESS, Operation.POINTER_REBASE,
+        Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.FUNCTION_ADDRESS,
+        Operation.STACK_ALLOC, Operation.STACK_END, Operation.CALL_INDIRECT,
     }
 )
-_CALLS = frozenset({Operation.CALL_DIRECT, Operation.CALL_FOREIGN})
+_CALLS = frozenset({Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT})
 _GROUP1 = {Operation.ADD_WRAP: 0, Operation.BIT_OR: 1, Operation.BIT_AND: 4, Operation.SUB_WRAP: 5, Operation.BIT_XOR: 6}
 _JUMP_IF_FALSE = {
     IntCompare.EQ: 0x85, IntCompare.NE: 0x84, IntCompare.ULT: 0x83, IntCompare.ULE: 0x87,
@@ -211,7 +218,7 @@ def _eligible(graph, parameter_types, return_types, resolve) -> dict[ValueRef, i
                 continue
             if node.operation in _CALLS:
                 inputs = [cid for cid in node.operand_types if not _is_proof_type(resolve(cid))]
-                if node.operation == Operation.CALL_DIRECT and len(inputs) > 4:
+                if node.operation in (Operation.CALL_DIRECT, Operation.CALL_INDIRECT) and len(inputs) > 4 + (node.operation == Operation.CALL_INDIRECT):
                     return None
                 if any(machine_width(cid) is None for cid in inputs):
                     return None
@@ -282,12 +289,25 @@ def compile_register_resident(
         for block in graph.blocks for node in block.nodes
     )
 
+    windows = target.identity == PE_HOSTED_IDENTITY
     startup_frame = {"size": 0}  # set before emission; the dry run's code is discarded
     constants: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):
         for node_index, node in enumerate(block.nodes):
             if node.operation == Operation.CONSTANT:
                 constants[ValueRef.node_result(block_index, node_index)] = _decode_constant(node.entity, resolve)[1]
+
+    # Stack storage lives in the frame; its pointers are rematerialized with
+    # ``lea`` at each use (like constants), so they never need homes or spills.
+    stack_storage: list[tuple[ValueRef, int, int]] = []
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation == Operation.STACK_ALLOC:
+                extent, alignment = node.attributes
+                if alignment > 16:
+                    return None  # the frame base is only 16-byte aligned
+                stack_storage.append((ValueRef.node_result(block_index, node_index), extent, alignment))
+    stack_values = {value for value, _extent, _alignment in stack_storage}
 
     def immediate(value: ValueRef, width: int) -> int | None:
         constant = constants.get(value)
@@ -324,7 +344,7 @@ def compile_register_resident(
                 uses.setdefault(value, []).append(position)
         uses_by_block[block_index] = {value: tuple(sorted(items)) for value, items in uses.items()}
         for value in uses:
-            if value.block != block_index and value not in homes and value not in constants:
+            if value.block != block_index and value not in homes and value not in constants and value not in stack_values:
                 homes.append(value)
     homes.sort(key=lambda value: (value.tag, value.block, value.index, value.result))
     pinned = _choose_pins(graph, homes, uses_by_block)
@@ -336,12 +356,28 @@ def compile_register_resident(
         if register not in pinned.values()
     )
 
-    shadow = _SHADOW_SPACE if has_call else 0
+    # Win64 foreign calls pass arguments past the fourth on the stack, above
+    # the 32-byte shadow space; reserve the largest such outgoing area.
+    outgoing = max(
+        (
+            max(0, sum(1 for cid in node.operand_types if not _is_proof_type(resolve(cid))) - len(target.argument_registers))
+            for block in graph.blocks for node in block.nodes
+            if windows and node.operation == Operation.CALL_FOREIGN
+        ),
+        default=0,
+    )
+    shadow = _SHADOW_SPACE + 8 * outgoing if has_call else 0
     edge_spill_count = max((max(0, len(params) - len(allocatable)) for params in machine_parameters.values()), default=0)
     edge_spill_base = shadow
     home_base = edge_spill_base + edge_spill_count * 8
     home_offset = {value: home_base + index * 8 for index, value in enumerate(homes)}
-    dynamic_spill_base = home_base + len(homes) * 8
+    stack_offset: dict[ValueRef, int] = {}
+    cursor = home_base + len(homes) * 8
+    for value, extent, alignment in stack_storage:
+        cursor = _align(cursor, alignment)
+        stack_offset[value] = cursor
+        cursor += extent
+    dynamic_spill_base = _align(cursor, 8)
 
     def width_bytes(value: ValueRef) -> int:
         return 8 if widths[value] > 32 else 4
@@ -409,7 +445,7 @@ def compile_register_resident(
 
         def spill(value: ValueRef, keep: bool = False) -> None:
             register = register_for[value]
-            if value in constants or value in pinned:  # rematerialized on demand, never stored
+            if value in constants or value in pinned or value in stack_offset:  # rematerialized on demand, never stored
                 if not keep:
                     unbind(value)
                 return
@@ -454,6 +490,11 @@ def compile_register_resident(
             if value in constants:
                 register = acquire(position, protected, excluded)
                 emit(_load_constant(register, constants[value]))
+                bind(value, register)
+                return register
+            if value in stack_offset:
+                register = acquire(position, protected, excluded)
+                emit(_lea(register, 4, stack_offset[value]))  # lea reg, [rsp + storage]
                 bind(value, register)
                 return register
             try:
@@ -511,6 +552,8 @@ def compile_register_resident(
                 return "reg", register_for[value]
             if value in constants:
                 return "const", constants[value]
+            if value in stack_offset:
+                return "stack", stack_offset[value]
             if value in spill_offset:
                 return "spill", spill_offset[value]
             fail("XAX.NATIVE.VALUE", graph_object.cid.hex(), "NATIVE-VALUE-LOCATION", "register or spill", [value.block, value.index, value.result])
@@ -535,6 +578,8 @@ def compile_register_resident(
                     emit(_load(destination, source, width_bytes(operand)))
                 elif kind == "const":
                     emit(_load_constant(destination, source))
+                elif kind == "stack":
+                    emit(_lea(destination, 4, source))
 
         def emit_startup_read(name: bytes, extent: int, prefix: str) -> None:
             """Inline ``linux-x86_64-startup-v1`` read (ADR-094); result in rax.
@@ -628,8 +673,8 @@ def compile_register_resident(
                 kind, source_location = location(source)
                 if kind == "reg":
                     emit(_store(source_location, destination_offset, 8))
-                elif kind == "const":
-                    emit(_load_constant(_SCRATCH, source_location))
+                elif kind in ("const", "stack"):
+                    emit(_load_constant(_SCRATCH, source_location) if kind == "const" else _lea(_SCRATCH, 4, source_location))
                     emit(_store(_SCRATCH, destination_offset, 8))
                 elif source_location != destination_offset:
                     emit(_load(_SCRATCH, source_location, width_bytes(source)))
@@ -649,7 +694,7 @@ def compile_register_resident(
                     delayed.append((register, kind, source_location, width_bytes(source)))
             parallel_moves(moves)
             for register, kind, where, width in delayed:
-                emit(_load_constant(register, where) if kind == "const" else _load(register, where, width))
+                emit(_load_constant(register, where) if kind == "const" else _lea(register, 4, where) if kind == "stack" else _load(register, where, width))
 
         def edge_code(target_block: int, arguments: tuple[ValueRef, ...]) -> bytes:
             capture.append(bytearray())
@@ -781,8 +826,17 @@ def compile_register_resident(
                 retire(node_index, dividend, divisor)
                 define(result, RAX if operation == Operation.UDIV else RDX)
 
-            elif operation == Operation.CONSTANT:
-                pass  # rematerialized at each use
+            elif operation in (Operation.CONSTANT, Operation.STACK_ALLOC, Operation.STACK_END):
+                pass  # constants and stack pointers are rematerialized at each use; lifetimes erase
+
+            elif operation == Operation.CALL_INDIRECT:
+                callee, *arguments = machine_operands
+                place_arguments(node_index, (*arguments, callee), (*target.argument_registers[: len(arguments)], RAX))
+                emit(b"\xff\xd0")  # call rax
+                after_call(node_index, machine_operands)
+                results = [ValueRef.node_result(block_index, node_index, index) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid))]
+                if results:
+                    define(results[0], RAX)
 
             elif operation == Operation.INT_COMPARE and fused.get(block_index) == node_index:
                 pass  # emitted as cmp+jcc by the terminator
@@ -821,6 +875,12 @@ def compile_register_resident(
                 if node.attributes[0]:
                     emit(_lea(register, register, node.attributes[0]))
                 retire(node_index, source)
+                define(result, register)
+
+            elif operation == Operation.FUNCTION_ADDRESS:
+                register = acquire(node_index)
+                if assembler is not None:
+                    assembler.address(register, node.entity.cid)  # lea reg, [rip + function]
                 define(result, register)
 
             elif operation == Operation.POINTER_ADDRESS:
@@ -918,7 +978,25 @@ def compile_register_resident(
             elif operation == Operation.CALL_FOREIGN:
                 declaration = decode_foreign_function(node.entity)
                 results = [ValueRef.node_result(block_index, node_index, index) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid))]
-                if declaration.abi == SYSV_X86_64_C_ABI:
+                owned = (WIN64_C_ABI,) if windows else (SYSV_X86_64_C_ABI, LINUX_X86_64_SYSCALL_ABI, LINUX_X86_64_STARTUP_ABI)
+                if declaration.abi not in owned:
+                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", [abi.decode() for abi in owned], declaration.abi.decode("ascii", "replace"))
+                if declaration.abi == WIN64_C_ABI:
+                    # Win64: integer arguments in rcx, rdx, r8, r9; the frame
+                    # reserves the 32-byte shadow space for every call.
+                    registers = len(target.argument_registers)
+                    for position, operand in enumerate(machine_operands[registers:]):
+                        slot = _SHADOW_SPACE + 8 * position  # stack arguments sit above the shadow space
+                        kind, where = location(operand)
+                        if kind == "reg":
+                            emit(_store(where, slot, 8))
+                        else:
+                            emit(_load_constant(_SCRATCH, where) if kind == "const" else _lea(_SCRATCH, 4, where) if kind == "stack" else _load(_SCRATCH, where, width_bytes(operand)))
+                            emit(_store(_SCRATCH, slot, 8))
+                    place_arguments(node_index, machine_operands[:registers], target.argument_registers)
+                    if assembler is not None:
+                        assembler.call_import(node.entity.cid)
+                elif declaration.abi == SYSV_X86_64_C_ABI:
                     require_sysv_profile(target, graph_object)
                     if not all(_sysv_integer_class(resolve, cid) for cid in node.operand_types if not _is_proof_type(resolve(cid))):
                         return -1
@@ -966,6 +1044,10 @@ def compile_register_resident(
                 if kind == "reg":
                     if where != RAX:
                         emit(_move_register(RAX, where, 64))
+                elif kind == "const":
+                    emit(_load_constant(RAX, where))
+                elif kind == "stack":
+                    emit(_lea(RAX, 4, where))
                 else:
                     emit(_load(RAX, where, width_bytes(values[0])))
             else:

@@ -154,5 +154,46 @@ class RegisterAllocatorDifferentialTests(unittest.TestCase):
                 self.assertEqual(native[index], execute(reader, function.cid, arguments)[0])
 
 
+
+def _constant_return():
+    """Returns a constant that is never in a register at the return (the pre-ADR-095 epilogue loaded [rsp+5])."""
+    graph = GraphBuilder()
+    block = graph.block(B32)
+    block.ret(block.const(B32, 5))
+    return graph.function((B32,), (B32,)), tuple(graph.objects.values())
+
+
+class HandcraftedLoweringTests(unittest.TestCase):
+    """Paths the random corpus does not reach: constant returns, stack storage,
+    function addresses, and indirect calls (the PE dispatch table, ADR-082)."""
+
+    @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+    def test_linux_process_matches_reference(self):
+        sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+        from test_xax_pe import _dispatch_table
+
+        dispatch, dispatch_objects = _dispatch_table()
+        constant, constant_objects = _constant_return()
+        api = linux_api()
+        driver = GraphBuilder()
+        block = driver.block(api.process_effect)
+        (process,) = block.params
+        total = block.op1(Operation.ADD_WRAP, (block.op1(Operation.CALL_DIRECT, (), B32, entity=dispatch), block.op1(Operation.CALL_DIRECT, (block.const(B32, 9),), B32, entity=constant)), B32)
+        process = block.op1(Operation.CALL_FOREIGN, (total, process), api.process_effect, entity=api.exit_group)
+        block.ret(total, process)
+        entry = driver.function((api.process_effect,), (B32, api.process_effect))
+        target = x86_64_linux_exec_target()
+        reader = program_store(entry, target, (*dispatch_objects, dispatch, *constant_objects, constant, *api.types, *driver.objects.values()))
+        resolve = store_resolver(reader)
+        for function in (dispatch, constant):
+            graph_object, parameters, returns = _decode_function_interface(function, resolve)
+            self.assertIsNotNone(compile_register_resident(function, graph_object, _parse_graph(graph_object, resolve), parameters, returns, resolve, decode_native_target(target)))
+        # The executor rejects pointer-typed memory elements (ADR-082); the
+        # dispatch result is its documented add1(10) + times3(10) = 41.
+        expected = 41 + execute(reader, constant.cid, (9,))[0]
+        completed = run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid).data)
+        self.assertEqual((expected, completed.returncode), (46, 46), completed.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
