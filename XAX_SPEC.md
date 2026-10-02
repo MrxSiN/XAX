@@ -201,7 +201,7 @@ unreachable
 
 There is no fallthrough and no truthiness coercion. `switch` has no fallthrough and requires unique cases plus either a default or proof of exhaustiveness.
 
-`trap` is explicit fatal control. It performs no implicit unwinding or cleanup. Its portable payload core is a 16-bit unsigned reason: the empty payload is reason 0 (`unspecified`) with no target detail; a non-empty payload begins with the canonical ULEB encoding of a reason in `0..65535`, followed by target/platform-specific bytes, with the zero encoding permitted only when such suffix bytes are present. Prototype portable reason 1 denotes `explicit`; additional portable meanings require an explicit specification decision. Target-specific suffix bytes are semantic data but do not acquire portable meaning or implicit cleanup/unwind behavior. `unreachable` is a verifier assertion and MUST be proven unreachable unless a separately defined raw/target construct supplies different semantics.
+`trap` is explicit fatal control. It performs no implicit unwinding or cleanup. Its portable payload core is a 16-bit unsigned reason: the empty payload is reason 0 (`unspecified`) with no target detail; a non-empty payload begins with the canonical ULEB encoding of a reason in `0..65535`, followed by target/platform-specific bytes, with the zero encoding permitted only when such suffix bytes are present. Prototype portable reason 1 denotes `explicit`; reason 2 denotes `integer-divide-by-zero` (ADR-084); additional portable meanings require an explicit specification decision. Target-specific suffix bytes are semantic data but do not acquire portable meaning or implicit cleanup/unwind behavior. `unreachable` is a verifier assertion and MUST be proven unreachable unless a separately defined raw/target construct supplies different semantics.
 
 Core `call` has no hidden exceptional successor.
 
@@ -234,7 +234,7 @@ ABI/platform contracts that define its representation and lifetime.
 
 `bits<N>` is an exact N-bit value domain for arbitrary positive `N`. Stored bits have no global signedness. Signedness is an operation property where required.
 
-Integer arithmetic MUST identify exact behavior, including overflow semantics. Representative families include wrapping, checked, saturating, signed, and unsigned interpretations where applicable. Pure bit operations likewise have width-exact semantics. `bit.xor` returns the N-bit exclusive-or of two `bits<N>` values; `rotate.right k` rotates one `bits<N>` value right by the explicit amount `0 <= k < N` without changing width.
+Integer arithmetic MUST identify exact behavior, including overflow semantics. Representative families include wrapping, checked, saturating, signed, and unsigned interpretations where applicable. Pure bit operations likewise have width-exact semantics. `bit.xor`, `bit.and`, and `bit.or` return the N-bit exclusive-or, conjunction, and disjunction of two `bits<N>` values; `rotate.right k` rotates one `bits<N>` value right by the explicit amount `0 <= k < N` without changing width. `udiv` and `urem` return the unsigned quotient and remainder of two `bits<N>` values; a zero divisor executes an explicit trap with portable reason 2 and never yields a value. `int.truncate` maps `bits<M>` to `bits<N>` for `N < M` by keeping the low N bits; `int.zero_extend` maps `bits<M>` to `bits<N>` for `N > M`; identity width changes are invalid nodes. Constant shifts and sign extension are not kernel operations: they are the exact compositions `mul.wrap 2^k`, `udiv 2^k`, and `(zext(x) xor 2^(M-1)) - 2^(M-1)`, which lowering MAY select as single instructions (ADR-084, OI-39).
 
 There are no implicit integer promotions or implicit value conversions.
 
@@ -1144,6 +1144,10 @@ Executable/object containers (raw images, ELF, PE/COFF, Mach-O, WebAssembly, DEX
 ### 21.9 Foreign ecosystem import
 
 Interoperability is mandatory. Deterministic importers SHOULD convert external metadata (C headers/API descriptions, POSIX, Win32, Objective-C runtime metadata, JVM/DEX metadata, .NET metadata, Web IDL, syscall tables, GPU API descriptions, shared/static library symbol tables) into XAX platform/ABI packages of typed foreign declarations. Importers are build-time XAX or bootstrap tooling; their output is canonical semantic state, never wrapper source. No universal ABI is assumed; C++ and similar ABIs require explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions remain verifier-visible (§12). Each foreign ABI is owned by exactly one backend, which rejects declarations of any other ABI.
+
+### 21.9a Linux x86-64 hosted profiles
+
+`linux-x86_64-syscall-v1` declarations encode the syscall number and an explicit register template (`nr` or `nr:arg,...`, with `$k` machine-operand references each used exactly once and unsigned 64-bit literals). Arguments use `rdi, rsi, rdx, r10, r8, r9`, the result is the exact 64-bit `rax`, and allocator-contract failures `-4095..-1` project to null (ADR-085). `sysv-x86_64-c` declarations import a C symbol from a shared library named by soname. They lower only on `x86_64-linux-elf-dynexec-v1`, which explicitly requests `/lib64/ld-linux-x86-64.so.2`, derives `DT_NEEDED` only from declared sonames, and is bounded to the psABI INTEGER class (ADR-087). On both Linux profiles `e_entry` is the XAX entry function; the program exits explicitly with `exit_group`, the entry is lowered for Linux's aligned no-return-address entry, and returning traps (ADR-086, §21.8).
 
 ### 21.10 Standard semantic libraries
 

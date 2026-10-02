@@ -266,11 +266,87 @@
     },
     {
       "id": "linux-x86_64",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R2",
+      "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux.py",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux.py",
+          "compiler/tests/test_xax_regalloc_differential.py"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux.py"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_linux.py",
+          "compiler/tests/test_xax_linux.py",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "platform_apis": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux.py"
+        ],
+        "ffi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux.py",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "atomics": [
+          "STRUCTURAL",
+          "compiler/tests/test_xax_compiler.py"
+        ],
+        "dynamic_linking": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux.py",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "debugging": [
+          "STRUCTURAL",
+          "compiler/tests/test_xax_linux.py"
+        ],
+        "optimization": [
+          "MEASURED",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json",
+          "compiler/tests/test_xax_regalloc_differential.py"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "practical_application": [
+          "PROTOTYPE",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "performance": [
+          "MEASURED",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "memory": [
+          "MEASURED",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        ],
+        "ai_tokens": [
+          "PROTOTYPE",
+          "compiler/benchmarks/ai_native/OI31_RESULT_NOTE.md"
+        ]
+      },
       "blockers": [
-        "no ELF executable container or SysV foreign-call ABI on x86-64; no Linux host in current evidence"
+        "filestat is a benchmark-scale utility, not a deployed application (R3)",
+        "1.41x behind clang -O2 on filestat; per-block allocation only (OI-32)",
+        "no argv/env/auxv in the process-entry contract (OI-36)",
+        "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
+        "no threads, signals, sockets, clocks packages; no DWARF"
       ]
     },
     {

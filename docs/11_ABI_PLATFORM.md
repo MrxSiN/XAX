@@ -637,7 +637,7 @@ A `call_foreign` declaration names `(abi, library, symbol, typed interface)`. Th
 
 ### 17.2 Ownership of foreign ABIs
 
-Each foreign ABI string is owned by one backend: x86-64 accepts only `win64-c`, AArch64 only `android-aapcs64-c`. Declarations for another ABI reject (`XAX.FOREIGN.ABI`) rather than being reinterpreted. Raw load images cannot bind imports and reject import-bearing images (`XAX.NATIVE.IMPORTS`).
+Each foreign ABI string is owned by one backend and profile: x86-64 accepts `win64-c` on the PE profile and `linux-x86_64-syscall-v1`/`sysv-x86_64-c` on the Linux profiles (§19), AArch64 accepts only `android-aapcs64-c`, and wasm32 accepts only `wasm32-import`. Declarations for another ABI reject (`XAX.FOREIGN.ABI`) rather than being reinterpreted. Raw load images cannot bind imports and reject import-bearing images (`XAX.NATIVE.IMPORTS`).
 
 ### 17.3 Process lifecycle
 
@@ -650,3 +650,27 @@ The PE entry point is the XAX entry function itself: it takes no machine paramet
 ## 18. wasm32 WASI slice (2026-10-02)
 
 Target `wasm32-wasi-v1` adds `call_foreign` under the `wasm32-import` ABI: a declaration's `library` is the wasm import module and its `name` the field. Value types follow the wasm32 general profile (pointers are i32 linear-memory addresses). The module exports `_start` and `memory`; the entry takes and returns no machine values; termination is the program's explicit `proc_exit`. The WASI host is a platform-required runtime (UR-002); no JavaScript glue is generated or required. Bounded package: `xax_platform.wasi_preview1_api` (`args_sizes_get`, `fd_write`, `proc_exit`). `fd_write` iovec buffer words are exposed addresses (`pointer_address`, ADR-081); its declaration takes the buffer storage's memory effect as a second memory input/output so the buffer cannot end before the call. APIs that need provenance-carrying pointers reloaded from memory wait on OI-37.
+
+## 19. Linux x86-64 hosted slice (2026-10-02)
+
+Targets `x86_64-linux-elf-exec-v1` (static) and `x86_64-linux-elf-dynexec-v1` (explicit dynamic loader) keep XAX-internal calls on the general x86-64 register convention. Their external boundaries are the process entry, syscalls, and declared C imports. No Linux concept enters the kernel (ADR-084–ADR-089).
+
+### 19.1 `linux-x86_64-syscall-v1`
+
+A declaration has library `linux` and a canonical register-template name:
+
+```text
+name = nr                      -- machine operands passed in order
+name = nr ":" arg ("," arg)*   -- arg = "$k" (k-th machine operand) | unsigned 64-bit decimal literal
+```
+
+Each machine operand is used exactly once, with at most six arguments, placed in `rdi, rsi, rdx, r10, r8, r9`; `eax` carries the number, and the result is the exact 64-bit `rax`. Proof values erase. With an allocator contract, the kernel's error range `-4095..-1` projects to the contract's nullable (zero) pointer, and `heap_view` then traps on null. Fixed literals (`PROT_READ|PROT_WRITE`, `MAP_PRIVATE|MAP_ANONYMOUS`, `fd = -1`) live in the template, so "anonymous private mappings are zero-filled" is part of the `mmap_anonymous` declaration identity rather than an assumption about caller arguments. Syscalls that read or write program memory take the reached storage's memory effect. Bounded package: `xax_linux.linux_api()` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`, `exit_group`). Platform pointers are address-space-2 (heap/external) pointers.
+
+### 19.2 `sysv-x86_64-c`
+
+A declaration imports a C symbol from the shared library named by its soname (`library`). It lowers only on the explicit-loader profile; on the static profile it rejects (`SYSV-C-REQUIRES-DYNAMIC-PROFILE`). The artifact's `PT_INTERP` is exactly `/lib64/ld-linux-x86-64.so.2`; `DT_NEEDED` lists exactly the declared sonames (no default libc); each import gets one bind-now `R_X86_64_GLOB_DAT` GOT slot and is called through the shared `call_import` path. Signatures are limited to the psABI INTEGER class: at most six integer or pointer arguments in `rdi, rsi, rdx, rcx, r8, r9` and at most one integer or pointer result (`SYSV-C-INTEGER-CLASS`). ELF symbol lookup is global, so one symbol name cannot be imported from two libraries (`XAX.LINUX.IMPORT`); the declared library is a load dependency, not a direct binding. Callbacks, floats, aggregates, stack arguments, variadics, and symbol versioning are OI-40.
+
+### 19.3 Process lifecycle
+
+As on Windows (§17.3), the container emits no code: `e_entry` is the XAX entry function, which takes no machine parameters, returns at most one integer (`XAX.LINUX.ENTRY`), and ends the process with an explicit `exit_group`. Linux starts a process with RSP 16-byte aligned and no return address, so the entry function is lowered as a process entry. Its frame uses that alignment, it saves no callee-saved registers, and its `ret` lowers to `ud2`, so returning traps instead of exiting or jumping to an unknown address. argv/env/auxv, TLS, signals, and unwind data are absent until explicit contracts require them (OI-33).
+

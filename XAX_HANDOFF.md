@@ -7,13 +7,13 @@
 - B5/B6 claims are target-scoped. The M14 `xax-semantic-image-v1` result does not silently close the legacy native, WebAssembly, or accelerator backends.
 - No hidden allocation, synchronization, syscall, initialization, exception edge, ownership transfer, device runtime, or target runtime assistance.
 - Tests/benchmarks count only when actually executed. Host-unavailable cases remain unavailable, not passed.
-- The AI-native premise remains unproven until the five-task manual C-vs-XAX Codex Desktop experiment runs. The historical one-edit tokenizer measurement is a microbenchmark, not proof.
+- The AI-native premise remains unproven. Historical, non-qualifying Codex Desktop C-vs-XAX rows are negative for XAX (1.25× C's tokens), so OI-31 still needs a qualifying run. The one-edit tokenizer measurement is a microbenchmark, not proof.
 
 ## Current repository state
 
 M1–M14 are complete for their explicitly declared prototype scopes. M14 adds function/graph introspection; generic semantic-object and byte META values; verifier-gated program materialization; canonical-store emission; semantic verification; recursive semantic-image compilation; and an immutable seed boundary.
 
-The AI-native benchmark under `compiler/benchmarks/ai_native/` is now intentionally tiny: five paired structural edits, C and XAX only, manual Codex Desktop execution, native XAX verification, and one flat CSV. The concise README there is the complete runbook. No real-model trial has executed for the C-vs-XAX pair. Separately, the OI-01 transport candidates (typed/unified handles × `line`/`pipe`/`json` framing) have one Claude Code run: 30 Claude Code trials (`claude-opus-5-5` subagents, 5 tasks × 6 arms, n=1) completed 30/30. Offline, unified handles save 15 view tokens across the five tasks and unified/pipe is the smallest measured fallback at 237 combined view+packet tokens under both tested encodings. In-model harness-token differences were below run-to-run noise; failed `verify`/`test` checks were `line` 0, `pipe` 2, `json` 14, with nine of ten JSON trials requiring repair. The tested flat-array JSON framing is therefore disfavored and line framing is the observed reliability leader on this corpus, but no transport or handle namespace is canonical and OI-01 remains open.
+The AI-native benchmark under `compiler/benchmarks/ai_native/` is now intentionally tiny: five paired structural edits, C and XAX only, manual Codex Desktop execution, native XAX verification, and one flat CSV. The concise README there is the complete runbook. Historical, non-qualifying C-vs-XAX Codex Desktop rows exist (negative for XAX; OI-31). A post-upgrade one-pair `haiku` smoke check measured XAX at 1.04× C. Separately, the OI-01 transport candidates (typed/unified handles × `line`/`pipe`/`json` framing) have one Claude Code run: 30 Claude Code trials (`claude-opus-5-5` subagents, 5 tasks × 6 arms, n=1) completed 30/30. Offline, unified handles save 15 view tokens across the five tasks and unified/pipe is the smallest measured fallback at 237 combined view+packet tokens under both tested encodings. In-model harness-token differences were below run-to-run noise; failed `verify`/`test` checks were `line` 0, `pipe` 2, `json` 14, with nine of ten JSON trials requiring repair. The tested flat-array JSON framing is therefore disfavored and line framing is the observed reliability leader on this corpus, but no transport or handle namespace is canonical and OI-01 remains open.
 
 OI-02 now has four measured objectization arms in `compiler/benchmarks/bench_oi02_granularity.py`: function, module, `call_indirect`, and block. The block arm splits multi-block graphs into a skeleton plus content-addressed block units and requires byte-identical canonical graph/function reassembly before verification/execution. It shows modest rewrite-byte reuse on shallow four-block edits, but higher store/query overhead and no protection from direct-call caller-CID cascades; `call_indirect` remains the strongest locality result. OI-02 is still open and the canonical format is unchanged.
 
@@ -53,15 +53,17 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 - `XAX_REPLACEMENT_MATRIX.json` is machine-checked: `compiler/src/xax_replacement.py` derives each row's level from cited evidence; `tests/test_replacement_matrix.py` rejects overclaims. Update a row only with an existing evidence path.
 - U1.2a EXECUTED: x86-64 heap views (checked dynamic heap array round trip; OOB traps). U1.4 WASI EXECUTED under Node (`wasi_command_evidence.json`). ADR-079 (pointer-free memory frontiers), ADR-080 (WASI), OI-37 (pointers in memory).
 - U1.1 EXECUTED: direct PE32+ hosted executable with kernel32 imports (`xax_pe.py`, target `x86_64-windows-pe-v1`, `xax_platform.win32_kernel32_api`, evidence `compiler/benchmarks/windows_pe_hosted_evidence.json`). Process exit must be an explicit `ExitProcess` call.
-- AI token trials were deliberately deferred until this upgrade landed; when run, use the smallest corpus (n=1 per cell) first.
+- U1.3 EXECUTED/MEASURED on Linux x86-64 (ADR-084–ADR-089, OI-38–OI-40, conformance §23 item 11, benchmarks §15.1). It adds integer completion (operations 67–72), `linux-x86_64-syscall-v1`, `sysv-x86_64-c`, and static plus explicit-loader ELF64 executables (`xax_linux.py`, `xax_elf.py`) whose entry is the XAX entry function with an explicit `exit_group`. A separate Linux register allocator (`xax_x86_64_regalloc.py`) is differentially validated. The `filestat` workload (`compiler/benchmarks/linux_filestat.py`) runs at 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2`, with a 3,560-byte artifact; the Linux row is at R2.
+- AI token trials ran after the upgrade at the lowest cost: offline `tiktoken` replays plus one `haiku` C/XAX pair (XAX 1.04× C, both pass). See `XAX_STATE.md`.
 
 ## Exact next task
 
 1. **OI-37 remainder**: local-provenance pointer store/reload (pointer-linked structures over XAX storage). Done: address exposure (ADR-081, WASI stdout EXECUTED) and provenance-free pointer elements (ADR-082, dispatch table EXECUTED). Needs typed mixed storage + container/referent lifetime coupling; justify against arena+index first.
 2. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
-3. **U1.3**: ELF64 executable + SysV foreign ABI (reuse the Android ELF writer); needs a Linux host for EXECUTED evidence.
-3. Install a C toolchain on the measuring host and run `compiler/benchmarks/windows_c_reference/hosted.c` for the first R4 size/time comparison.
-4. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
+3. **OI-38**: converge the PE (ADR-083) and Linux (ADR-089) register allocators into one, then add cross-block allocation/LICM. The target is to close the 1.41–1.82× gap to `clang -O2` on Linux `filestat` while keeping the differential corpus green.
+4. **OI-33 (Linux)**: argv/env/auxv as typed external views of the initial stack, so Linux tools can take arguments; **OI-40**: SysV callbacks, floats, and aggregates.
+5. Install a C toolchain on the measuring host and run `compiler/benchmarks/windows_c_reference/hosted.c` for the first R4 size/time comparison.
+6. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
 
 ## Reproduce M14 evidence
 

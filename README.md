@@ -55,6 +55,7 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 
 | Target | Status |
 |---|---|
+| x86-64 Linux | Direct ELF64 executables via syscalls, optionally with explicit shared-library imports — executed and measured |
 | x86-64 Windows | Direct native encoder, Win64 ABI; direct PE32+ executables with kernel32 imports |
 | AArch64 | AAPCS64 bare-metal and Android shared objects |
 | WebAssembly (wasm32) | Direct module emission |
@@ -94,7 +95,7 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 
 ## Project status
 
-XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open.
+XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); no platform is above R2. On the one cross-toolchain workload (Linux `filestat`), XAX roughly matches `gcc -O2` but is 1.4–1.8× slower than `clang -O2`.
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

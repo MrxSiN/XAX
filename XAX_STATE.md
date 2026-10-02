@@ -30,12 +30,12 @@ M13 — accelerator target path: **complete for the declared prototype slice**. 
 
 M14 — full self-hosting transition: **complete for the declared `xax-semantic-image-v1` closure target**. The authoritative XAX compiler graph materializes a program root, invokes an XAX-hosted verifier-facing service, emits the reachable canonical store through the trusted serialization substrate, and performs XAX-hosted finalization/build orchestration. Executed recursive generations establish B2, four generation-equivalence vectors establish B3, generation 0/1/2 reach exact byte identity for B4, the declared semantic-image service path establishes target-scoped B5, and reconstruction through the committed immutable seed runtime with repository Python sources removed from the import path establishes the declared B6 seed boundary. This B5/B6 claim explicitly excludes the legacy x86-64, AArch64, WebAssembly, and accelerator lowerers.
 
-Post-roadmap AI-native experiment: **a five-task manual C-vs-XAX Codex Desktop benchmark is ready; no C-vs-XAX model trials have run**. The OI-01 transport-candidate arms have one 30-trial Claude Code run (30/30 completed; details below and in `XAX_OPEN_ISSUES.md`). It has no API transport, frozen corpus, preregistration, or significance machinery. See `compiler/benchmarks/ai_native/README.md`.
+Post-roadmap AI-native experiment: **a five-task manual C-vs-XAX Codex Desktop benchmark is ready; historical, non-qualifying Codex Desktop rows exist and are negative for XAX (1.25× C's tokens; see OI-31)**. The OI-01 transport-candidate arms have one 30-trial Claude Code run (30/30 completed; details below and in `XAX_OPEN_ISSUES.md`). It has no API transport, frozen corpus, preregistration, or significance machinery. See `compiler/benchmarks/ai_native/README.md`.
 
 
 Repository: repository root. Compiler: `compiler/`.
 
-U1 — universal-replacement proof set: **in progress**. U1.1 (direct PE32+ hosted executable with explicit kernel32 imports) is EXECUTED; remaining steps are listed in `XAX_IMPLEMENTATION_ROADMAP.md` U1. Per-platform replacement levels are derived in `XAX_REPLACEMENT_MATRIX.json` (current: android-arm64 R2; windows-x86_64-pe, aarch64-baremetal, wasm32-core, wasm32-wasi R1; accelerator-simt-packet R0; all other rows NONE).
+U1 — universal-replacement proof set: **in progress**. U1.1 (direct PE32+ hosted executable with explicit kernel32 imports) is EXECUTED; remaining steps are listed in `XAX_IMPLEMENTATION_ROADMAP.md` U1. Per-platform replacement levels are derived in `XAX_REPLACEMENT_MATRIX.json` (current: linux-x86_64 and android-arm64 R2; windows-x86_64-pe, aarch64-baremetal, wasm32-core, wasm32-wasi R1; accelerator-simt-packet R0; all other rows NONE). U1.3 (Linux x86-64 ELF64 static and explicit-loader executables, syscall and SysV C ABIs) is EXECUTED/MEASURED, and the Linux side of U1.2b (ADR-089 allocator) is MEASURED; see the Linux section below.
 
 ## Implemented
 
@@ -155,6 +155,8 @@ U1 — universal-replacement proof set: **in progress**. U1.1 (direct PE32+ host
 - Prototype SIMT packet accelerator, profile 3 / architecture 4, target CID `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`. It emits a deterministic deployment packet with no declared runtime dependency; `run_accelerator_deployment` is a conformance harness, not an emitted runtime or physical-GPU claim.
 
 - x86-64 Windows hosted PE32+ executable, target `x86_64-windows-pe-v1` (CID `9c6224e5e314c60a1bbfd2dc54b28ccac19b570d5113ba2c70bb7686fbf67d1c`): v5 operations plus `call_foreign`, `heap_view`, and `pointer_address` under the `win64-c` ABI, bound through a loader-filled import table by `xax_pe.emit_pe_executable`. Runs as an ordinary Windows process; no harness.
+
+- x86-64 Linux `x86_64-linux-elf-exec-v1` (static) and `x86_64-linux-elf-dynexec-v1` (explicit `ld.so`, declared `DT_NEEDED` only): direct ELF64 `ET_EXEC`, EXECUTED natively on Linux x86-64. `e_entry` is the XAX entry; the program exits explicitly with `exit_group`.
 
 All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, linker, or LLVM dependency. The M13 accelerator package declares an empty runtime-dependency set.
 
@@ -552,3 +554,17 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - ADR-083: on `x86_64-windows-pe-v1` the register-resident allocator now also lowers compares, foreign calls (with shadow space), function addresses, heap views, heap pointer arithmetic, static/checked heap loads/stores, and cross-block SSA uses (frame homes). Stack-storage/float/aggregate/indirect-call functions remain on the frame path with the forwarding peephole. Legacy targets unchanged.
 - MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
 - EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
+
+## U1.3 Linux x86-64 executables and the Linux register path — 2026-10-02
+
+- Kernel integer completion (ADR-084): `bit.and` 67, `bit.or` 68, `udiv` 69, `urem` 70, `int.truncate` 71, `int.zero_extend` 72, with verifier rules, reference semantics, and x86-64 lowering. Portable trap reason 2 is `integer-divide-by-zero`. Only the Linux target packages advertise these operations.
+- Foreign ABIs: `linux-x86_64-syscall-v1` (ADR-085, register templates in declaration identity) and `sysv-x86_64-c` (ADR-087, INTEGER class only), both added to the single `FOREIGN_ABIS` registry. Typed declarations live in `xax_linux.py` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`, `exit_group`, and `c_function` for C imports).
+- Containers (ADR-086/087): `xax_linux.py` emits static or explicit-loader ELF64 `ET_EXEC` with no container code. Generic ELF packing is in `xax_elf.py`, shared with the Android emitter (Android bytes unchanged). Linux imports use the shared `call_import`/`NativeImage.imports` path.
+- Process entry: the entry function is lowered for Linux's aligned, no-return-address start (`compile_native(..., process_entry=True)`); its `ret` lowers to `ud2`, and exit is the program's explicit `exit_group` (ADR-076 rule).
+- Frame path (ADR-088): on Linux profiles only, escaping frame pointers are materialized and value pointers use base-register access, alongside main's heap-view lowering. `pointer_extent_from_graph` is shared with AArch64.
+- Register path (ADR-089): `xax_x86_64_regalloc.py`, separate from the PE allocator (ADR-083); convergence is OI-38. Differential corpus: `compiler/tests/test_xax_regalloc_differential.py` (120 seeded programs executed natively versus the reference executor).
+- Workload: `compiler/benchmarks/linux_filestat.py`. MEASURED (`u1_linux_filestat_evidence.json`, `XAX_BENCHMARKS.md` §15.1): 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` over seven runs; 3,560-byte artifact; 1,184 KiB peak RSS (loader + libz + libc). R4 is not met.
+- Construction tooling: `xax_graph_builder.py` (block/node builder and reachable-closure store writer); it is not a source language.
+- Token test after the upgrade (lowest cost). Offline: with `tiktoken` installed, the OI-01 transport counts and the OI-03/OI-04 replays reproduce, and the AI-native tests pass 17/17. The OI-12 and OI-13 committed evidence records `tiktoken` as unavailable, so those replays fail whenever it is present (environment-dependent; predates this work). Model: one `task-02` pair with `haiku` subagents — C 35,151 tokens, XAX 36,492 tokens (1.04×), both pass; this is not OI-31 evidence.
+- Regression on Linux x86-64 (Python 3.11.15, pytest, `tiktoken` installed): the merged tree has exactly main's 17 environment/evidence failures — host-bound Windows/QEMU cases, the stale stack-memory hash pin, the OI-25/OI-26 replays, the OI-12/OI-13 `tiktoken` replays, and the wheel build — with 781 tests passing.
+

@@ -465,6 +465,8 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence audit (2026-10-02).** The repository already contains ten primary rows in `compiler/benchmarks/ai_native/results.csv` and ten confirmation rows in `results-run-2.csv`, each labeled with a Codex Desktop session ID. All ten stored primary workspaces still pass their official checkers. The primary rows are C 5/5, 1,363,522 total tokens, median 261,725, 6 turns versus XAX 5/5, 1,698,890 total tokens, median 327,918, 7 turns; the confirmation rows are C 5/5, 1,320,698 tokens, median 262,319, 5 turns versus XAX 5/5, 1,632,943 tokens, median 333,673, 5 turns. Thus the historical measurements are negative for XAX on token usage, but they are not qualifying OI-31 closure evidence: the CSV schema does not record model/reasoning settings, the referenced Desktop session logs are absent here, and recorded row/session order is C then XAX for every pair rather than a balanced/alternating arm order. This environment also exposes no Codex Desktop/session store with which to perform or authenticate a fresh qualifying rerun. `OI31_RESULT_NOTE.md` records the raw-file hashes and checker audit. Do not replace these historical rows or infer the missing settings.
 
+**Post-upgrade smoke check (2026-10-02).** This was the lowest-token run possible: one pair (`task-02`, operation change) with fresh Claude Code `haiku` subagents in parallel. Both arms passed the official checker. C used 35,151 tokens and 3 tool calls; XAX used 36,492 tokens and 8 tool calls, i.e. XAX cost 1.04× C (`results-claude-haiku-u.csv`). One pair under a different product and model is not OI-31 evidence. Offline, with `tiktoken` installed, the committed OI-01 transport counts reproduce exactly (unified/pipe 237/237; typed/line 262/257).
+
 **Remaining to close.** Run one fresh ten-cell Codex Desktop pass under one explicitly recorded fixed model/reasoning setting and balanced/alternating arm order, preserving every failure/retry and importing exact session usage. A negative XAX result still closes the experiment.
 
 ## OI-32 — Foreign metadata importer scope and representation
@@ -485,7 +487,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** Executed PE and ELF programs that (a) cross a foreign exception boundary under an explicit adapter, (b) use TLS, and (c) produce symbolized stack traces, with measured size cost of the emitted metadata versus none.
 
-**Status.** OPEN. Only explicit `ExitProcess` is implemented and executed.
+**Status.** OPEN. Explicit `ExitProcess` (PE) and explicit `exit_group` (Linux ELF, ADR-086) are implemented and executed. Linux enters `e_entry` aligned with no return address; the entry function is lowered for that and traps if it returns. Still missing on Linux: argv/env/auxv access as typed external views of the initial stack, TLS, and unwind/debug data.
 
 ## OI-34 — First production GPU target
 
@@ -526,3 +528,20 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 **Evidence that closes it.** One representation that admits WASI `fd_write` iovecs and a heap linked list with verified traversal on two targets of different pointer widths, plus negative vectors for forged/expired provenance, with measured verifier cost and AI tokens per edit.
 
 **Status.** OPEN (partially addressed). ADR-081 adds one-way provenance exposure (`pointer_address`), which unblocks address-valued interface structs (WASI `fd_write` iovecs, executed). ADR-082 admits provenance-free pointers (function addresses, external pointers) as memory elements, unblocking function-pointer/dispatch tables (EXECUTED on Windows PE). Still open: storing pointers *with* local provenance and reloading them as dereferenceable pointers (pointer-linked lists/trees over XAX storage), which needs typed mixed storage and lifetime coupling between the container and the referenced storage; arena + index is the current verified alternative. Memory elements remain whole-byte bits/float scalars (`MEMORY-BYTE-ADDRESSABLE-VALUE`).
+
+## OI-38 — x86-64 register allocation: convergence and remaining code-quality gap
+
+**Status:** OPEN (partially addressed). Two register-resident allocators exist: ADR-083 extends the legacy allocator for the PE profile, and ADR-089 is a separate module for the Linux profiles. On Linux `filestat` the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` but 1.41–1.82× `clang -O2`, the fastest baseline (`u1_linux_filestat_evidence.json`, seven runs).
+
+**Question.** Which single allocator design serves both profiles? The candidates are global allocation across blocks (loop-invariant pointers currently reload from home slots every iteration), edge-copy hints, LICM, and unrolling. The design must stay deterministic and differentially validatable against the reference executor.
+
+**Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the best C baseline reported.
+
+## OI-39 — Shift and sign-extension selection versus kernel operations
+
+**Status:** OPEN. ADR-084 rejected shift and sign-extension kernel operations as exact compositions. The Linux allocator already selects `shl`/`shr`/`and` for constant powers of two. **Falsification:** admit `shl`/`lshr`/`ashr`/`int.sign_extend` under §21.5 if real-model trials show materially higher token cost or repair rate for the compositions, or if lowering cannot select them reliably on another target.
+
+## OI-40 — Breadth of the SysV C ABI on Linux
+
+**Status:** OPEN. `sysv-x86_64-c` (ADR-087) lowers only INTEGER-class signatures with at most six arguments. Still missing: callbacks from C into XAX (a SysV-to-internal convention adapter as explicit generated code), SSE-class floats, aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. Close with an executed program that passes an XAX callback to `qsort` and calls a float-returning libm function, plus negative vectors for unsupported classifications.
+

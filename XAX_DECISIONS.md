@@ -914,3 +914,58 @@ This file records merged v0.1 decisions. Each decision is normative unless super
 | Alternatives rejected | Rewriting the frame lowering as a global allocator in one step (large risk, invalidates pinned evidence); keeping the peephole only. |
 | Measured | `compiler/benchmarks/x86_register_path_evidence.json`: the same verified `sum_to` graph, 200,000,000 iterations, 7 runs, Windows 11 AMD Family 25: frame path 433 code bytes, median 738.7 ms; register path 89 code bytes, median 92.1 ms (8.02x). Hosted PE fixture code 2,181 → 1,269 bytes (−42%), PE 3,584 → 2,560 bytes, still exit 1339 on 20/20 runs. Intra-XAX comparison only; no external C/Rust baseline. |
 | Falsification condition | Replace with a global allocator when stack-storage/float/aggregate-heavy functions dominate measured hosted workloads. |
+
+## ADR-084 — Exact integer completion admits six operations and rejects shifts and sign extension
+
+| Field | Record |
+|---|---|
+| Decision | Add `bit.and` (67), `bit.or` (68), `udiv` (69), `urem` (70), `int.truncate` (71), and `int.zero_extend` (72). Binary operations take two `bits<N>` operands and return `bits<N>`; width operations require strict narrowing or widening. A zero divisor executes a trap with new portable reason 2 (`integer-divide-by-zero`); lowering omits the check when the divisor is a nonzero constant. Do not add shift or sign-extension operations. |
+| Kernel admission (`XAX_SPEC.md` §21.5) | AND, OR, and division have no exact composition at equal cost from add/sub/mul/xor/rotate: bitwise composition needs per-bit loops, and division needs a loop. Width changes had no expression except a store/load round trip through memory. Shifts by constants are exactly `mul.wrap 2^k` and `udiv 2^k`, and sign extension is `(zext(x) xor m) - m`, so admitting them would duplicate existing mechanisms; single-instruction selection is a lowering concern (OI-39). |
+| Alternatives rejected | Signed division/remainder (deferred until a workload needs them); variable shifts with hardware-specific masking; returning an unspecified value for a zero divisor. |
+| Evidence | Verifier, reference executor, and x86-64 lowering EXECUTED (`compiler/tests/test_xax_linux.py`, `test_xax_regalloc_differential.py`). Only the Linux target packages advertise the operations; every other target identity and committed artifact is unchanged. |
+| Falsification condition | Admit `shl`/`lshr`/`ashr`/`int.sign_extend` if measured token cost or repair rate for the compositions is materially worse, or if lowering cannot select them reliably (OI-39). |
+
+## ADR-085 — Linux syscalls are `linux-x86_64-syscall-v1` declarations carrying an explicit register template
+
+| Field | Record |
+|---|---|
+| Decision | Add the foreign ABI `linux-x86_64-syscall-v1`, owned by the x86-64 backend on Linux profiles only (ADR-076 ownership rule). A declaration has library `linux` and a canonical name `nr` or `nr:arg,...`, where each `arg` is `$k` (the k-th machine operand, each used exactly once) or an unsigned 64-bit literal. Arguments go in `rdi, rsi, rdx, r10, r8, r9`; the result is the exact 64-bit `rax`. With an allocator contract, `-4095..-1` projects to the nullable zero pointer, and `heap_view` traps on null. |
+| Rationale | Syscalls are the smallest hosted boundary: no libc, loader, or runtime. Fixed arguments in the declaration identity make contracts such as "anonymous private mapping, zero-filled" sound without trusting caller operands, and leave lowering with no unstated tables. |
+| Alternatives rejected | A syscall kernel operation (OS concept in the kernel); a name-to-number table in the backend; libc wrappers as a mandatory runtime. |
+| Evidence | EXECUTED (`compiler/tests/test_xax_linux.py`); negative vectors cover non-canonical templates, duplicate or missing operands, more than six arguments, and unknown ABIs. |
+
+## ADR-086 — Linux x86-64 executables are direct ELF64 `ET_EXEC` whose entry point is the XAX entry function
+
+| Field | Record |
+|---|---|
+| Decision | Add target `x86_64-linux-elf-exec-v1` (architecture 1, ABI 5, image format 5). The emitter (`xax_linux.py`) writes one R+X `PT_LOAD` at `0x400000` and a `PT_GNU_STACK` R+W marker, with no section table, interpreter, dynamic section, relocations, or added code. `e_entry` is the XAX entry function. As on Windows (ADR-076), the program ends the process with an explicit `exit_group` declaration. Linux enters `e_entry` with RSP 16-byte aligned and no return address, so the entry function is lowered as a *process entry*: its frame is laid out for that alignment, it saves no callee-saved registers, and its `ret` lowers to `ud2`. A program that returns instead of exiting therefore traps deterministically, never jumping to a garbage address and never exiting implicitly. |
+| Rationale | Linux execution was runnable on the development host and exercises allocation, I/O, control flow, and data structures end to end. Applying ADR-076's no-container-code rule keeps lifecycle uniform across PE and ELF. The alignment difference is an ABI fact of the entry function, not container code. |
+| Alternatives rejected | A generated entry adapter that calls `exit_group` after the entry returns (an implicit exit; superseded during the merge with ADR-076); linking with libc or an external linker. |
+| Evidence | EXECUTED and MEASURED on Linux 6.18 x86-64 (`u1_linux_filestat_evidence.json`); `test_returning_entry_traps_instead_of_exiting` checks the trap. |
+| Falsification condition | argv/env/auxv access (OI-33), TLS, or signals requiring container-owned startup code would force a revision. |
+
+## ADR-087 — Shared-library calls require the explicit-loader profile and are bounded to the INTEGER-class SysV C ABI
+
+| Field | Record |
+|---|---|
+| Decision | Add the foreign ABI `sysv-x86_64-c` (library = soname, name = symbol) and target `x86_64-linux-elf-dynexec-v1` (image format 6). Only this profile lowers C imports; the static profile rejects them rather than adding a loader silently. The ELF gains `PT_PHDR`, `PT_INTERP` (`/lib64/ld-linux-x86-64.so.2`, fixed by the profile identity), and `PT_DYNAMIC`, with `DT_NEEDED` exactly for the declared sonames, `.dynsym`/`.dynstr`/SysV hash/RELA in the R+X segment, and the dynamic table plus GOT in a congruently mapped R+W segment, under `DF_BIND_NOW`/`DF_1_NOW` with one `R_X86_64_GLOB_DAT` per import. Calls use main's `call_import` path (`call [rip+slot]`) with at most six INTEGER-class arguments and one INTEGER-class result. Generic ELF byte packing lives in `xax_elf.py`, shared with the Android emitter. |
+| Rationale | `XAX_SPEC.md` §12.5 requires an explicit dynamic-loader capability and an explicit dependency request; a separate profile puts both in target identity, and deriving `DT_NEEDED` from declarations keeps every dependency program-visible. Bind-now avoids lazy-binding trampolines. |
+| Alternatives rejected | Implicit `PT_INTERP` when imports appear; lazy PLT binding; a libffi-style generic call path; libc as a default dependency. |
+| Evidence | EXECUTED: `libz.so.1` `crc32` called from XAX (`test_external_library_call_executes`). MEASURED: `u1_linux_filestat_evidence.json` (per-chunk `crc32`). Android ELF bytes are unchanged after the `xax_elf.py` extraction. |
+| Limitation | ELF symbol lookup is global, so the declared library is a load dependency, not a direct binding; duplicate symbol names across libraries reject. No callbacks, floats, aggregates, stack arguments, variadics, or symbol versioning (OI-40). |
+
+## ADR-088 — Linux frame lowering treats every pointer as a machine value
+
+| Field | Record |
+|---|---|
+| Decision | On Linux profiles the frame (spill) path, in addition to main's heap-view handling (U1.2a), materializes frame pointers that escape into calls, edges, returns, or stores once at their definition. It also addresses pointers that are neither frame-resident nor heap-view-derived (parameters, call results, block parameters) through a base register, with exact 1/2/4/8-byte and `[base+index]` checked access. Legacy and PE profiles are unaffected. |
+| Rationale | Hosted programs pass addresses to the platform and between functions; pointers that arrive as values otherwise had no lowering. Gating by profile keeps every committed artifact identical. |
+
+## ADR-089 — Linux uses a separate register-resident allocator module; convergence with ADR-083 is tracked
+
+| Field | Record |
+|---|---|
+| Decision | `xax_x86_64_regalloc.py` lowers Linux-profile functions first. It allocates per block over 14 registers (callee-saved pushed only when used), uses dominance-crossing home slots, and rematerializes constants with exact imm32 folding (64-bit operands only below 2^31). It fuses a compare consumed only by its block's branch into `cmp`+`jcc`, reuses an identical in-block bounds check, applies power-of-two strength reduction (`shl`/`shr`/`and`), and spills everything across calls. Ineligible functions fall back to the frame path. ADR-083 extends the legacy allocator for the PE profile instead; the two are deliberately kept separate during this merge and converge under OI-38. |
+| Rationale | The two allocators were developed in parallel. Merging them in place would regenerate committed PE evidence without new measurements. The Linux module is self-contained and validated independently. |
+| Evidence | MEASURED (`u1_linux_filestat_evidence.json`): `filestat` went from 5.9× to 0.95–1.14× `gcc -O2` (1.41–1.82× `clang -O2`, the fastest baseline) across seven 31-repetition runs, with a 3,560-byte artifact. Validation: `test_xax_regalloc_differential.py` runs 120 seeded random programs (DAGs and counted loops, all integer operations, compares, width changes, boundary and power-of-two constants) natively and compares every 64-bit result with the reference executor; 1,320 matched across eleven seeds during development. |
+| Falsification condition | Merge into one allocator when either profile's design is measured strictly better on both workloads (OI-38). |
