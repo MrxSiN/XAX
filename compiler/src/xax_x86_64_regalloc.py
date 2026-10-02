@@ -9,10 +9,23 @@ SSA values in registers:
   path), extended with the x64 callee-saved registers, which are saved and
   restored only when used;
 * block parameters arrive in fixed registers or fixed edge slots;
-* a value used outside its defining block by dominance gets one frame
-  "home" slot written at its definition;
-* calls (internal, syscall, SysV C) spill every live value and treat all
-  registers as clobbered, which satisfies every calling convention involved.
+* a value used outside its defining block by dominance is either *pinned*
+  (ADR-091): it owns one of ``PINNABLE`` for the whole function, ranked by
+  uses in blocks on a CFG cycle; or gets one frame "home" slot written at
+  its definition;
+* calls (internal, syscall, SysV C) spill every unpinned live value and treat
+  the volatile registers as clobbered.  Pinned registers survive every call:
+  SysV C callees preserve them, syscalls touch only rax/rcx/r11, and XAX
+  callees either never use them (frame and legacy paths) or save them here;
+* a conditional branch jumps straight to a successor whose edge needs no
+  copies, and a jump to the block laid out next is omitted; when one
+  successor is laid out next with no copies, it falls through and the other
+  edge's copies move to an out-of-line stub after the last block;
+* trap paths (bounds, null view, zero divisor) are shared out-of-line
+  stubs, so a passing check is a not-taken branch;
+* a block entered by a backward jump (a loop header in layout order) starts
+  on a ``LOOP_ALIGNMENT`` boundary, padded with recommended multi-byte NOPs.
+  Functions start 16-byte aligned in the image, so the boundary is absolute.
 
 Unsupported operations return ``None`` so the caller falls back to the
 spill-every-value lowering; nothing is guessed.
@@ -79,6 +92,25 @@ RBX, RBP, RSI, RDI = 3, 5, 6, 7
 CALLEE_SAVED = (RBX, RBP, RSI, RDI, 12, 13, 14, 15)
 _SHADOW_SPACE = 32
 _SCRATCH = 11
+# Preserved across every Linux call kind; see the module docstring (ADR-091).
+PINNABLE = (RBX, RBP, 12, 13, 14, 15)
+_CYCLE_WEIGHT = 8
+LOOP_ALIGNMENT = 16
+# Intel SDM recommended NOP encodings, 1 to 9 bytes.
+_NOPS = (
+    b"\x90", b"\x66\x90", b"\x0f\x1f\x00", b"\x0f\x1f\x40\x00", b"\x0f\x1f\x44\x00\x00",
+    b"\x66\x0f\x1f\x44\x00\x00", b"\x0f\x1f\x80\x00\x00\x00\x00",
+    b"\x0f\x1f\x84\x00\x00\x00\x00\x00", b"\x66\x0f\x1f\x84\x00\x00\x00\x00\x00",
+)
+
+
+def _nop_padding(length: int) -> bytes:
+    padding = b""
+    while length:
+        step = min(length, len(_NOPS))
+        padding += _NOPS[step - 1]
+        length -= step
+    return padding
 
 _PURE_BINARY = frozenset({Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR})
 _COMMUTATIVE = frozenset({Operation.ADD_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR})
@@ -184,6 +216,37 @@ def _eligible(graph, parameter_types, return_types, resolve) -> dict[ValueRef, i
     return widths
 
 
+def _choose_pins(graph, homes: list[ValueRef], uses_by_block: dict[int, dict[ValueRef, tuple[int, ...]]]) -> dict[ValueRef, int]:
+    """Give ``PINNABLE`` registers to the cross-block values used most inside CFG cycles.
+
+    A pinned register holds one value from its definition to the end of the
+    function, so every later use reads it without a home-slot reload.  Only
+    values used in a block on a cycle qualify; ties break by value order, so
+    the choice is deterministic.
+    """
+    successors = [tuple(target for target, _arguments in block.terminator.edges) for block in graph.blocks]
+
+    def reaches(start: int, goal: int) -> bool:
+        seen, stack = set(), [start]
+        while stack:
+            block = stack.pop()
+            if block == goal:
+                return True
+            if block not in seen:
+                seen.add(block)
+                stack.extend(successors[block])
+        return False
+
+    cyclic = {index for index in range(len(graph.blocks)) if any(reaches(successor, index) for successor in successors[index])}
+    weights = {}
+    for value in homes:
+        using = [block for block, uses in uses_by_block.items() if block != value.block and value in uses]
+        if any(block in cyclic for block in using):
+            weights[value] = sum(_CYCLE_WEIGHT if block in cyclic else 1 for block in using)
+    ranked = sorted(weights, key=lambda value: (-weights[value], value.tag, value.block, value.index, value.result))
+    return dict(zip(ranked, PINNABLE))
+
+
 def compile_register_resident(
     function: SemanticObject,
     graph_object: SemanticObject,
@@ -202,7 +265,6 @@ def compile_register_resident(
     widths = _eligible(graph, parameter_types, return_types, resolve)
     if widths is None:
         return None
-    allocatable = (*target.argument_registers, target.scratch_registers[0], target.result_register, *CALLEE_SAVED)
     machine_parameters = {
         block_index: tuple(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)) if ValueRef.parameter(block_index, index) in widths)
         for block_index, block in enumerate(graph.blocks)
@@ -256,6 +318,14 @@ def compile_register_resident(
             if value.block != block_index and value not in homes and value not in constants:
                 homes.append(value)
     homes.sort(key=lambda value: (value.tag, value.block, value.index, value.result))
+    pinned = _choose_pins(graph, homes, uses_by_block)
+    loop_headers = {target for source, block in enumerate(graph.blocks) for target, _arguments in block.terminator.edges if target <= source}
+    homes = [value for value in homes if value not in pinned]
+    allocatable = tuple(
+        register
+        for register in (*target.argument_registers, target.scratch_registers[0], target.result_register, *CALLEE_SAVED)
+        if register not in pinned.values()
+    )
 
     shadow = _SHADOW_SPACE if has_call else 0
     edge_spill_count = max((max(0, len(params) - len(allocatable)) for params in machine_parameters.values()), default=0)
@@ -267,20 +337,23 @@ def compile_register_resident(
     def width_bytes(value: ValueRef) -> int:
         return 8 if widths[value] > 32 else 4
 
-    def lower_block(block_index: int, assembler: _Assembler | None, ranges: list | None, used_registers: set[int], epilogue: bytes) -> int:
+    def lower_block(block_index: int, assembler: _Assembler | None, ranges: list | None, used_registers: set[int], epilogue: bytes, stubs: list, traps: dict) -> int:
         block = graph.blocks[block_index]
         uses = uses_by_block[block_index]
         last_use = {value: positions[-1] for value, positions in uses.items()}
         register_for: dict[ValueRef, int] = {}
         value_for_register: dict[int, ValueRef] = {}
-        spill_offset: dict[ValueRef, int] = {value: home_offset[value] for value in uses if value.block != block_index}
+        spill_offset: dict[ValueRef, int] = {value: home_offset[value] for value in uses if value.block != block_index and value in home_offset}
         spill_id: dict[ValueRef, int] = {}
         free_spills: list[int] = []
         state = {"next": 0, "max": 0}
+        capture: list[bytearray] = []  # edge copies are measured before choosing the branch layout
         checked: set[tuple[ValueRef, ValueRef, int]] = set()  # proven in-bounds (pointer, index, maximum)
 
         def emit(data: bytes) -> None:
-            if assembler is not None:
+            if capture:
+                capture[-1] += data
+            elif assembler is not None:
                 assembler.emit(data)
 
         def jump(opcode: bytes, label: str) -> None:
@@ -290,6 +363,10 @@ def compile_register_resident(
         def label(name: str) -> None:
             if assembler is not None:
                 assembler.label(name)
+
+        def trap_if(condition_code: int, trap: bytes) -> None:
+            """Jump to the shared out-of-line stub executing ``trap`` when the condition holds."""
+            jump(b"\x0f" + bytes((condition_code,)), traps.setdefault(trap, f"trap-{len(traps)}"))
 
         def bind(value: ValueRef, register: int) -> None:
             old_value = value_for_register.get(register)
@@ -317,9 +394,13 @@ def compile_register_resident(
         def next_use(value: ValueRef, position: int) -> int:
             return next((item for item in uses.get(value, ()) if item > position), 1 << 30)
 
+        def consumable(value: ValueRef, position: int) -> bool:
+            """Whether the value's register may become the result register here."""
+            return last_use.get(value) == position and value not in pinned
+
         def spill(value: ValueRef, keep: bool = False) -> None:
             register = register_for[value]
-            if value in constants:  # rematerialized on demand, never stored
+            if value in constants or value in pinned:  # rematerialized on demand, never stored
                 if not keep:
                     unbind(value)
                 return
@@ -341,7 +422,7 @@ def compile_register_resident(
             for register in allocatable:
                 if register not in value_for_register and register not in excluded:
                     return register
-            candidates = [value for value, register in register_for.items() if value not in protected and register not in excluded]
+            candidates = [value for value, register in register_for.items() if value not in protected and value not in pinned and register not in excluded]
             if not candidates:
                 fail("XAX.NATIVE.REGISTER_PRESSURE", graph_object.cid.hex(), "NATIVE-SPILLABLE-REGISTER", "one non-protected live value", len(protected))
             victim = max(candidates, key=lambda value: (next_use(value, position), register_for[value], value.tag, value.block, value.index, value.result))
@@ -350,6 +431,9 @@ def compile_register_resident(
             return register
 
         def ensure(value: ValueRef, position: int, protected: frozenset | set = frozenset(), excluded: tuple[int, ...] = ()) -> int:
+            if value in pinned and pinned[value] not in excluded:
+                bind(value, pinned[value])
+                return pinned[value]
             if value in register_for and register_for[value] not in excluded:
                 return register_for[value]
             if value in register_for:
@@ -373,6 +457,9 @@ def compile_register_resident(
             return register
 
         def define(value: ValueRef, register: int) -> None:
+            if value in pinned and register != pinned[value]:
+                emit(_move_register(pinned[value], register, 64))
+                register = pinned[value]
             bind(value, register)
             if value in home_offset and value.block == block_index:
                 emit(_store(register, home_offset[value], width_bytes(value)))
@@ -388,7 +475,7 @@ def compile_register_resident(
         def destination_for(position: int, source: ValueRef, protected: set) -> int:
             """Reuse the source register when this is its last use, else a fresh one."""
             source_register = register_for[source]
-            if last_use.get(source) == position:
+            if consumable(source, position):
                 unbind(source)
                 return source_register
             register = acquire(position, {*protected, source})
@@ -409,6 +496,8 @@ def compile_register_resident(
                 pending = [(d, _SCRATCH if s == src else s, w) for d, s, w in pending]
 
         def location(value: ValueRef) -> tuple[str, int]:
+            if value in pinned:
+                return "reg", pinned[value]
             if value in register_for:
                 return "reg", register_for[value]
             if value in constants:
@@ -441,7 +530,9 @@ def compile_register_resident(
         def emit_compare(position: int, left: ValueRef, right: ValueRef) -> None:
             value = immediate(right, widths[left])
             left_register = ensure(left, position)
-            if value is not None:
+            if value == 0:
+                emit(_test_register(left_register, widths[left]))  # same flags as cmp with zero
+            elif value is not None:
                 emit(_group1_immediate(None, left_register, value, widths[left]))
             else:
                 right_register = ensure(right, position, {left})
@@ -449,7 +540,8 @@ def compile_register_resident(
 
         def after_call(position: int, operands: tuple[ValueRef, ...]) -> None:
             for value in tuple(register_for):
-                unbind(value)
+                if value not in pinned:
+                    unbind(value)
             for operand in set(operands):
                 if last_use.get(operand) == position:
                     release(operand)
@@ -462,7 +554,7 @@ def compile_register_resident(
                 if argument in widths and destination in widths:
                     pairs.append((argument, destinations.index(destination), destination))
             for source, index, destination in pairs:
-                if index < len(allocatable):
+                if index < len(allocatable) or destination in pinned:
                     continue
                 destination_offset = edge_spill_base + (index - len(allocatable)) * 8
                 kind, source_location = location(source)
@@ -476,20 +568,37 @@ def compile_register_resident(
                     emit(_store(_SCRATCH, destination_offset, 8))
             moves, delayed = [], []
             for source, index, destination in pairs:
-                if index >= len(allocatable):
+                if destination in pinned:
+                    register = pinned[destination]
+                elif index < len(allocatable):
+                    register = allocatable[index]
+                else:
                     continue
                 kind, source_location = location(source)
                 if kind == "reg":
-                    moves.append((allocatable[index], source_location, widths[destination]))
+                    moves.append((register, source_location, widths[destination]))
                 else:
-                    delayed.append((allocatable[index], kind, source_location, width_bytes(source)))
+                    delayed.append((register, kind, source_location, width_bytes(source)))
             parallel_moves(moves)
             for register, kind, where, width in delayed:
                 emit(_load_constant(register, where) if kind == "const" else _load(register, where, width))
 
+        def edge_code(target_block: int, arguments: tuple[ValueRef, ...]) -> bytes:
+            capture.append(bytearray())
+            copy_edge(target_block, arguments)
+            return bytes(capture.pop())
+
+        def goto(target_block: int) -> None:
+            if target_block != block_index + 1:
+                jump(b"\xe9", f"block-{target_block}")
+
+        if assembler is not None and block_index in loop_headers:
+            assembler.emit(_nop_padding(-len(assembler.code) % LOOP_ALIGNMENT))
         label(f"block-{block_index}")
         for index, value in enumerate(machine_parameters[block_index]):
-            if index < len(allocatable):
+            if value in pinned:
+                bind(value, pinned[value])  # edges write pinned parameters directly
+            elif index < len(allocatable):
                 bind(value, allocatable[index])
             else:
                 spill_offset[value] = edge_spill_base + (index - len(allocatable)) * 8
@@ -537,10 +646,10 @@ def compile_register_resident(
                 width = widths[result]
                 left_register = ensure(left, node_index)
                 right_register = ensure(right, node_index, {left})
-                if last_use.get(left) == node_index and left != right:
+                if consumable(left, node_index) and left != right:
                     destination, source = left_register, right_register
                     unbind(left)
-                elif last_use.get(right) == node_index and operation in _COMMUTATIVE and left != right:
+                elif consumable(right, node_index) and operation in _COMMUTATIVE and left != right:
                     destination, source = right_register, left_register
                     unbind(right)
                 else:
@@ -550,16 +659,23 @@ def compile_register_resident(
                 retire(node_index, left, right)
                 define(result, destination)
 
-            elif operation in (Operation.UDIV, Operation.UREM) and _power_of_two(constants.get(node.operands[1])) is not None and (constants[node.operands[1]] - 1) < (1 << 31):
+            elif operation in (Operation.UDIV, Operation.UREM) and _power_of_two(constants.get(node.operands[1])) is not None:
                 dividend, divisor = node.operands
                 shift = _power_of_two(constants[divisor])
+                mask = constants[divisor] - 1
+                width = widths[result]
                 ensure(dividend, node_index)
                 destination = destination_for(node_index, dividend, set())
                 if operation == Operation.UDIV:
                     if shift:
-                        emit(_shift_immediate(False, destination, shift, widths[result]))
+                        emit(_shift_immediate(False, destination, shift, width))
+                elif mask < (1 << 31):
+                    emit(_group1_immediate(Operation.BIT_AND, destination, mask, width))
+                elif mask == 0xFFFFFFFF:
+                    emit(_move_register(destination, destination, 32))
                 else:
-                    emit(_group1_immediate(Operation.BIT_AND, destination, constants[divisor] - 1, widths[result]))
+                    emit(_load_constant(_SCRATCH, mask))
+                    emit(_register_arithmetic(Operation.BIT_AND, destination, _SCRATCH, width))
                 retire(node_index, dividend, divisor)
                 define(result, destination)
 
@@ -568,11 +684,8 @@ def compile_register_resident(
                 width = widths[result]
                 divisor_register = ensure(divisor, node_index, {dividend}, excluded=(RAX, RDX))
                 if (_constant_value(graph, divisor, resolve) or 0) == 0:
-                    nonzero = f"ra-divisor-{block_index}-{node_index}"
                     emit(_test_register(divisor_register, width))
-                    jump(b"\x0f\x85", nonzero)
-                    emit(_immediate(RAX, TrapReason.INTEGER_DIVIDE_BY_ZERO) + b"\x0f\x0b")
-                    label(nonzero)
+                    trap_if(0x84, _immediate(RAX, TrapReason.INTEGER_DIVIDE_BY_ZERO) + b"\x0f\x0b")
                 for fixed in (RDX, RAX):
                     occupant = value_for_register.get(fixed)
                     if occupant is None or (fixed == RAX and occupant == dividend):
@@ -645,11 +758,8 @@ def compile_register_resident(
             elif operation == Operation.HEAP_VIEW:
                 source = node.operands[0]
                 source_register = ensure(source, node_index)
-                nonnull = f"ra-heap-view-{block_index}-{node_index}"
                 emit(_test_register(source_register, 64))
-                jump(b"\x0f\x85", nonnull)
-                emit(b"\x0f\x0b")
-                label(nonnull)
+                trap_if(0x84, b"\x0f\x0b")
                 register = destination_for(node_index, source, set())
                 retire(node_index, source)
                 define(result, register)
@@ -680,11 +790,8 @@ def compile_register_resident(
                         pass  # an earlier check in this block already proved this exact access
                     else:
                         checked.add((pointer, index_value, maximum))
-                        in_bounds = f"ra-checked-{block_index}-{node_index}"
                         emit(_cmp_imm32(index, maximum))
-                        jump(b"\x0f\x86", in_bounds)
-                        emit(b"\x0f\x0b")
-                        label(in_bounds)
+                        trap_if(0x87, b"\x0f\x0b")  # ja: unsigned index above the last valid offset
                     if operation == Operation.CHECKED_LOAD_BITS_LE:
                         register = acquire(node_index, {pointer, index_value})
                         emit(_base_index_load(register, base, index, 0, size))
@@ -724,7 +831,7 @@ def compile_register_resident(
                     place_arguments(node_index, ordered, registers)
                     for register, item in zip(_SYSCALL_ARGUMENT_REGISTERS, template):
                         if not isinstance(item, str):
-                            emit(_immediate(register, item))
+                            emit(_load_constant(register, item) if item >= 0 else _immediate(register, item))
                     emit(b"\xb8" + number.to_bytes(4, "little") + b"\x0f\x05")
                     if declaration.allocator is not None:
                         emit(b"\x48\x3d\x01\xf0\xff\xff\x72\x02\x31\xc0")
@@ -759,26 +866,46 @@ def compile_register_resident(
             emit(epilogue)
         elif terminator.kind == TerminatorKind.BRANCH:
             target_block, arguments = terminator.edges[0]
-            copy_edge(target_block, arguments)
-            jump(b"\xe9", f"block-{target_block}")
+            emit(edge_code(target_block, arguments))
+            goto(target_block)
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             condition = terminator.values[0]
-            false_label = f"false-{block_index}"
             if block_index in fused:
                 compare = block.nodes[fused[block_index]]
                 emit_compare(position, *compare.operands)
-                jump(b"\x0f" + bytes((_JUMP_IF_FALSE[IntCompare(compare.attributes[0])],)), false_label)
+                if_false = _JUMP_IF_FALSE[IntCompare(compare.attributes[0])]
             else:
                 register = ensure(condition, position)
                 emit(_test_register(register, widths[condition]))
-                jump(b"\x0f\x84", false_label)
-            target_block, arguments = terminator.edges[0]
-            copy_edge(target_block, arguments)
-            jump(b"\xe9", f"block-{target_block}")
-            label(false_label)
-            target_block, arguments = terminator.edges[1]
-            copy_edge(target_block, arguments)
-            jump(b"\xe9", f"block-{target_block}")
+                if_false = 0x84
+            (true_block, true_arguments), (false_block, false_arguments) = terminator.edges
+            # Edge copies never change allocation state, so measuring them is free.
+            true_copies, false_copies = edge_code(true_block, true_arguments), edge_code(false_block, false_arguments)
+            following = block_index + 1
+            if (false_block == following and not false_copies) or (true_block == following and not true_copies):
+                # Fall through to the next block; the other edge leaves via a stub when it copies.
+                taken, condition_code, copies = (true_block, if_false ^ 1, true_copies) if false_block == following and not false_copies else (false_block, if_false, false_copies)
+                destination = f"block-{taken}"
+                if copies:
+                    destination = f"stub-{block_index}"
+                    stubs.append((destination, copies, taken))
+                jump(b"\x0f" + bytes((condition_code,)), destination)
+            elif not false_copies:
+                jump(b"\x0f" + bytes((if_false,)), f"block-{false_block}")
+                emit(true_copies)
+                goto(true_block)
+            elif not true_copies:
+                jump(b"\x0f" + bytes((if_false ^ 1,)), f"block-{true_block}")  # jcc condition codes pair by their low bit
+                emit(false_copies)
+                goto(false_block)
+            else:
+                false_label = f"false-{block_index}"
+                jump(b"\x0f" + bytes((if_false,)), false_label)
+                emit(true_copies)
+                goto(true_block)
+                label(false_label)
+                emit(false_copies)
+                goto(false_block)
         else:
             reason, _ = decode_trap_payload(terminator.payload)
             emit(_immediate(RAX, reason) + b"\x0f\x0b")
@@ -786,7 +913,7 @@ def compile_register_resident(
 
     # Dry run: spill count and used callee-saved registers, without emission.
     used: set[int] = set()
-    plan = [lower_block(index, None, None, used, b"") for index in range(len(graph.blocks))]
+    plan = [lower_block(index, None, None, used, b"", [], {}) for index in range(len(graph.blocks))]
     if any(item < 0 for item in plan):
         return None
     spill_count = max(plan, default=0)
@@ -807,13 +934,27 @@ def compile_register_resident(
         assembler.emit(_push(register))
     if frame_size:
         assembler.emit(b"\x48\x81\xec" + frame_size.to_bytes(4, "little"))
+    # Edges write pinned parameters directly; the function's own arguments
+    # arrive in argument registers instead.
+    for index, value in enumerate(machine_parameters[graph.entry]):
+        if value in pinned:
+            assembler.emit(_move_register(pinned[value], allocatable[index], 64))
     if graph.entry:
         assembler.relative(b"\xe9", f"block-{graph.entry}")
     ranges: list[ArtifactSemanticRange] = []
+    stubs: list[tuple[str, bytes, int]] = []
+    traps: dict[bytes, str] = {}
     for block_index in range(len(graph.blocks)):
-        observed = lower_block(block_index, assembler, ranges, set(), epilogue)
+        observed = lower_block(block_index, assembler, ranges, set(), epilogue, stubs, traps)
         if observed > spill_count or observed < 0:
             fail("XAX.NATIVE.SPILL_PLAN", graph_object.cid.hex(), "NATIVE-SPILL-PLAN-DETERMINISTIC", spill_count, observed)
+    for name, copies, target_block in stubs:
+        assembler.label(name)
+        assembler.emit(copies)
+        assembler.relative(b"\xe9", f"block-{target_block}")
+    for trap, name in traps.items():
+        assembler.label(name)
+        assembler.emit(trap)
     code, calls = assembler.finish()
     return code, calls, tuple(ranges)
 
