@@ -875,10 +875,14 @@ class NativeTargetDescription:
     target_operations: tuple[TargetOperationContract, ...] = ()
 
 
-def _x86_64_windows_target(identity: bytes, operations: tuple[int, ...]) -> SemanticObject:
+def _x86_64_windows_target(
+    identity: bytes,
+    operations: tuple[int, ...],
+    machine: tuple[int, ...] = (2, 1, 1, 1, 64, 64, 16, 32),
+) -> SemanticObject:
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(identity)) + identity)
-    for value in (2, 1, 1, 1, 64, 64, 16, 32):
+    for value in machine:
         body.extend(uleb(value))
     body.extend(uleb(4) + bytes((1, 2, 8, 9)))
     body.extend(uleb(0))
@@ -912,6 +916,39 @@ def x86_64_windows_target() -> SemanticObject:
     return _x86_64_windows_target(
         b"x86_64-windows-load-image-v2",
         (1, 2, 3, *range(5, 25)),
+    )
+
+
+# x86-64 Linux hosted executable: XAX-internal calls keep the x64 register
+# convention of the general profile; the only external boundaries are the
+# Linux process-entry contract and declared ``linux-x86_64-syscall-v1`` calls.
+X86_64_LINUX_ABI = 5
+X86_64_LINUX_ELF_EXEC_FORMAT = 5
+# Same machine profile, plus an explicit dynamic-loader capability: ELF64
+# ET_EXEC with PT_INTERP (/lib64/ld-linux-x86-64.so.2), DT_NEEDED derived only
+# from declared ``sysv-x86_64-c`` imports, and bind-now GOT relocations.
+X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
+X86_64_LINUX_OPERATIONS = (
+    1, 2, 3, *range(5, 25),
+    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 73),
+)
+
+
+def x86_64_linux_exec_target() -> SemanticObject:
+    """Static ELF64 ET_EXEC for Linux x86-64 with no libc, loader, or runtime."""
+    return _x86_64_windows_target(
+        b"x86_64-linux-elf-exec-v1",
+        tuple(sorted(set(X86_64_LINUX_OPERATIONS))),
+        machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+    )
+
+
+def x86_64_linux_dynamic_exec_target() -> SemanticObject:
+    """Linux x86-64 ELF64 executable that explicitly requests the system dynamic loader."""
+    return _x86_64_windows_target(
+        b"x86_64-linux-elf-dynexec-v1",
+        tuple(sorted(set(X86_64_LINUX_OPERATIONS))),
+        machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 32),
     )
 
 
@@ -1536,8 +1573,14 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
     if profile not in (1, 2, 3, 4):
         fail("XAX.TARGET.PROFILE", obj.cid.hex(), "TARGET-PROFILE-SUPPORTED", [1, 2, 3, 4], profile)
     if architecture == 1:
-        if (abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space) != (1, 1, 64, 64, 16, 32):
-            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-X86-64-WINDOWS", [1, 1, 64, 64, 16, 32], [abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space])
+        machine = (abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space)
+        allowed_machines = (
+            (1, 1, 64, 64, 16, 32),
+            (X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+            (X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 32),
+        )
+        if machine not in allowed_machines:
+            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-X86-64-PROFILE", [list(item) for item in allowed_machines], list(machine))
         registers = (*argument_registers, result_register, *scratch_registers)
         if argument_registers != (1, 2, 8, 9) or result_register != 0 or scratch_registers != (10, 11) or any(register is None or register >= 16 for register in registers):
             fail("XAX.TARGET.ABI", obj.cid.hex(), "TARGET-WINDOWS-X64-REGISTERS", [[1, 2, 8, 9], 0, [10, 11]], [list(argument_registers), result_register, list(scratch_registers)])
@@ -2184,6 +2227,29 @@ class Operation(IntEnum):
     META_FUNCTION_PARAMETER_COUNT = 64
     META_FUNCTION_RETURN_COUNT = 65
     POINTER_ADDRESS = 66
+    BIT_AND = 67
+    BIT_OR = 68
+    UDIV = 69
+    UREM = 70
+    INT_TRUNCATE = 71
+    INT_ZERO_EXTEND = 72
+
+
+# Same-width binary integer operations: two bits<N> operands, one bits<N> result.
+BINARY_INTEGER_OPERATIONS = frozenset(
+    {
+        Operation.ADD_WRAP,
+        Operation.SUB_WRAP,
+        Operation.MUL_WRAP,
+        Operation.BIT_XOR,
+        Operation.BIT_AND,
+        Operation.BIT_OR,
+        Operation.UDIV,
+        Operation.UREM,
+    }
+)
+# Width-changing integer operations: one bits<M> operand, one bits<N> result.
+INTEGER_WIDTH_OPERATIONS = frozenset({Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND})
 
 
 RESOURCE_EFFECT_OPERATIONS = frozenset(
@@ -2271,6 +2337,7 @@ class TerminatorKind(IntEnum):
 class TrapReason(IntEnum):
     UNSPECIFIED = 0
     EXPLICIT = 1
+    INTEGER_DIVIDE_BY_ZERO = 2
 
 
 def trap_payload(reason: int | TrapReason = TrapReason.EXPLICIT, target_data: bytes = b"") -> bytes:
@@ -2304,8 +2371,12 @@ def decode_trap_payload(payload: bytes) -> tuple[int, bytes]:
 
 
 FOREIGN_FUNCTION_PREFIX = b"foreign-function-v1"
-# Each foreign ABI is owned by exactly one backend, which rejects the others.
-FOREIGN_ABIS = (b"android-aapcs64-c", b"win64-c", b"wasm32-import")
+# Foreign boundary conventions with a defined verifier contract.  Each is
+# owned by exactly one backend, which rejects the others.
+ANDROID_AAPCS64_C_ABI = b"android-aapcs64-c"
+LINUX_X86_64_SYSCALL_ABI = b"linux-x86_64-syscall-v1"
+SYSV_X86_64_C_ABI = b"sysv-x86_64-c"
+FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI)
 ANDROID_EXPORT_PREFIX = b"android-export-v1"
 
 
@@ -3599,6 +3670,27 @@ def _constant_operand(blocks: Sequence["_ParsedBlock"], ref: ValueRef, resolve: 
         return None
     _type, value = _decode_constant(node.entity, resolve)
     return value if isinstance(value, int) else None
+
+
+def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], SemanticObject]) -> int:
+    """Recover the statically verified extent for stack/heap-view pointer SSA."""
+    if ref.tag == 0:
+        parameters = graph.blocks[ref.block].parameters
+        if ref.index + 1 < len(parameters):
+            info = _heap_view_info(resolve(parameters[ref.index + 1]))
+            if info is not None:
+                return info[0]
+        fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "heap-view parameter or derived pointer", [ref.block, ref.index, ref.result])
+    node = graph.blocks[ref.block].nodes[ref.index]
+    if node.operation == Operation.STACK_ALLOC:
+        return node.attributes[0]
+    if node.operation == Operation.HEAP_VIEW:
+        return node.attributes[0]
+    if node.operation == Operation.ADDRESS_OFFSET:
+        return pointer_extent_from_graph(graph, node.operands[0], resolve) - node.attributes[0]
+    if node.operation == Operation.POINTER_CAST:
+        return pointer_extent_from_graph(graph, node.operands[0], resolve)
+    fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "stack allocation, heap view, or derived pointer", node.operation)
 
 
 def _verify_foreign_heap_call(
@@ -5243,12 +5335,21 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     fail("XAX.STRUCT.OPERATION", obj.cid.hex(), "GRAPH-OP-SUPPORTED", list(Operation), node.operation)
                 operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
                 node.operand_types = operand_types
-                if node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR):
+                if node.operation in BINARY_INTEGER_OPERATIONS:
                     if len(node.operands) != 2 or len(node.results) != 1 or node.attributes:
                         fail("XAX.STRUCT.OP_ARITY", obj.cid.hex(), "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes", [len(node.operands), len(node.results), len(node.attributes)])
                     decode_bits_width(resolve(node.results[0]))
                     if operand_types != (node.results[0], node.results[0]):
                         fail("XAX.STRUCT.OP_TYPE", obj.cid.hex(), "GRAPH-OP-TYPE", [node.results[0].hex()] * 2, [cid.hex() for cid in operand_types])
+                elif node.operation in INTEGER_WIDTH_OPERATIONS:
+                    if len(node.operands) != 1 or len(node.results) != 1 or node.attributes:
+                        fail("XAX.INT.WIDTH", obj.cid.hex(), "INT-WIDTH-CONTRACT", [1, 1, 0], [len(node.operands), len(node.results), len(node.attributes)])
+                    source_width = decode_bits_width(resolve(operand_types[0]))
+                    result_width = decode_bits_width(resolve(node.results[0]))
+                    # Strict narrowing/widening only: an identity width change is not a canonical node.
+                    narrows = node.operation == Operation.INT_TRUNCATE
+                    if (result_width >= source_width) if narrows else (result_width <= source_width):
+                        fail("XAX.INT.WIDTH", obj.cid.hex(), "INT-TRUNCATE-NARROWS" if narrows else "INT-ZERO-EXTEND-WIDENS", f"result {'<' if narrows else '>'} {source_width}", result_width)
                 elif node.operation == Operation.ROTATE_RIGHT:
                     if len(node.operands) != 1 or len(node.results) != 1 or len(node.attributes) != 1:
                         fail("XAX.INT.ROTATE", obj.cid.hex(), "INT-ROTATE-CONTRACT", [1, 1, 1], [len(node.operands), len(node.results), len(node.attributes)])
@@ -6723,6 +6824,23 @@ def _verified_resolver(reader: StoreReader) -> Callable[[bytes], SemanticObject]
     return reader.get
 
 
+def _binary_integer(operation: Operation, left: int, right: int, width: int) -> int:
+    """Exact reference semantics for every same-width binary integer operation."""
+    mask = (1 << width) - 1
+    if operation in (Operation.UDIV, Operation.UREM):
+        if right == 0:
+            raise XaxTrap(trap_payload(TrapReason.INTEGER_DIVIDE_BY_ZERO))
+        return (left // right if operation == Operation.UDIV else left % right) & mask
+    return {
+        Operation.ADD_WRAP: left + right,
+        Operation.SUB_WRAP: left - right,
+        Operation.MUL_WRAP: left * right,
+        Operation.BIT_XOR: left ^ right,
+        Operation.BIT_AND: left & right,
+        Operation.BIT_OR: left | right,
+    }[operation] & mask
+
+
 def _execute_function(
     function_object: SemanticObject,
     arguments: tuple[object, ...],
@@ -6843,17 +6961,11 @@ def _execute_graph(
             if fuel[0] < 0:
                 fail("XAX.EXEC.FUEL", owner.cid.hex(), "EXEC-FUEL", ">= 0", fuel[0])
             operands = tuple(read(value) for value in node.operands)
-            if node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR):
+            if node.operation in BINARY_INTEGER_OPERATIONS:
                 width = decode_bits_width(resolve(node.results[0]))
-                mask = (1 << width) - 1
-                if node.operation == Operation.ADD_WRAP:
-                    results = ((operands[0] + operands[1]) & mask,)
-                elif node.operation == Operation.SUB_WRAP:
-                    results = ((operands[0] - operands[1]) & mask,)
-                elif node.operation == Operation.MUL_WRAP:
-                    results = ((operands[0] * operands[1]) & mask,)
-                else:
-                    results = ((operands[0] ^ operands[1]) & mask,)
+                results = (_binary_integer(node.operation, operands[0], operands[1], width),)
+            elif node.operation in INTEGER_WIDTH_OPERATIONS:
+                results = (int(operands[0]) & ((1 << decode_bits_width(resolve(node.results[0]))) - 1),)
             elif node.operation == Operation.ROTATE_RIGHT:
                 width = decode_bits_width(resolve(node.results[0]))
                 amount = node.attributes[0]

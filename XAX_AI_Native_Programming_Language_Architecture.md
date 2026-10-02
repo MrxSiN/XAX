@@ -134,6 +134,8 @@ The language kernel should remain extremely small.
 | target | machine/platform-defined primitive |
 | meta | compile-time semantic construction and inspection |
 
+The exact-arithmetic family currently contains wrapping add/sub/mul, `bit.and`, `bit.or`, `bit.xor`, `rotate.right k`, `udiv`/`urem` (explicit portable trap on a zero divisor), `int.truncate`, `int.zero_extend`, integer comparison, and IEEE float operations. Shifts and sign extension are exact compositions of these (ADR-084); target lowering selects single instructions for them when profitable.
+
 Arithmetic operations are parameterized by exact semantics.
 
 For example, overflow is not determined by vague language rules.
@@ -951,7 +953,7 @@ Containers are target/platform package responsibilities: raw load images, ELF, P
 
 A container adds no code beyond explicit platform contracts. Import tables, relocations, headers, and section layout are derived deterministically from semantic identity. Process start and exit, loaders, TLS, and unwind data are explicit platform contracts, not container conveniences.
 
-First hosted evidence: XAX emits a PE32+ executable directly, with kernel32 imports bound through the loader-filled import table and process exit as an explicit `ExitProcess` call. The container contains zero bytes of startup code. Native hosted platforms need: complete calling conventions, relocations, TLS, atomics, vectors, unwind data when required, and static/dynamic linking when requested.
+First hosted evidence: XAX emits a PE32+ executable directly, with kernel32 imports bound through the loader-filled import table and process exit as an explicit `ExitProcess` call. The container contains zero bytes of startup code. Linux follows the same rule (ADR-086): `e_entry` is the XAX entry function, the program calls `exit_group` explicitly, and the entry is lowered for Linux's aligned, no-return-address start, so returning traps. A static profile emits only one load segment. An explicit-loader profile adds `PT_INTERP` and `DT_NEEDED` derived from declared C imports, with bind-now GOT slots (ADR-087). Native hosted platforms need: complete calling conventions, relocations, TLS, atomics, vectors, unwind data when required, and static/dynamic linking when requested.
 
 ---
 
@@ -960,6 +962,8 @@ First hosted evidence: XAX emits a PE32+ executable directly, with kernel32 impo
 A universal replacement cannot require rewriting the world. Interop is mandatory for: C ABI and headers, POSIX, Win32, Objective-C runtime/framework APIs, JVM metadata, .NET metadata, Android SDK/DEX/JNI, browser/Web APIs, system calls, GPU APIs, and existing shared/static libraries.
 
 Deterministic importers convert external metadata into XAX platform/ABI packages of typed foreign declarations. No human writes wrapper source. There is no universal ABI: C++ and other complex ABIs are explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions stay visible to verification. Each foreign ABI is owned by one backend, which rejects the others.
+
+Current ABIs: `android-aapcs64-c`, `win64-c`, `wasm32-import`, `linux-x86_64-syscall-v1`, and `sysv-x86_64-c`. Syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments (ADR-085). `sysv-x86_64-c` calls real shared libraries (EXECUTED and MEASURED: `libz.so.1` `crc32`) but covers only INTEGER-class signatures (OI-40).
 
 ---
 
@@ -997,6 +1001,8 @@ Universal replacement needs far stronger optimization than a prototype backend. 
 
 Every transformation preserves exact observable semantics; high-risk and search transformations use translation validation or equivalence checking. Profile data stays non-semantic unless promoted into build identity. Parallel compilation never alters semantics. Optimizer machinery migrates into XAX where practical. LLVM is never a permanent architectural dependency.
 
+Current state (MEASURED). Two register-resident x86-64 allocators exist: PE (ADR-083) and Linux (ADR-089). Convergence is OI-38. On the Linux `filestat` workload the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` across seven runs, validated against the reference executor on a random-program corpus. Cross-block allocation, LICM, and loop transformations come next.
+
 ---
 
 # 46. Practical debugging and observability
@@ -1015,6 +1021,8 @@ The goal is not "faster than assembly"; it is:
 
     minimize selected target cost
     subject to exact semantics
+
+Snapshot (2026-10-02): Linux x86-64 and Android arm64 are at R2; Windows PE, AArch64 bare metal, Wasm core, and WASI are at R1; the synthetic accelerator is at R0; nothing is at R3 or higher. The first cross-toolchain measurement is Linux `filestat` (`XAX_BENCHMARKS.md` §15.1), which does not meet R4.
 
 The first replacement milestone (U1) is a hosted native application, a bare-metal program, a WebAssembly/WASI or browser application, an Android application, and an accelerator workload, all from XAX semantics, measured against established implementations.
 

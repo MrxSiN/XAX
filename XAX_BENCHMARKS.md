@@ -585,3 +585,20 @@ Replacement levels R4/R5 (`XAX_SPEC.md` §21.2) are earned only through this sec
 **AI token trials.** For the same workloads, run the §6 task classes with real models and record §6.3 metrics. Per the current work order, token trials run only after the replacement upgrade lands, using the smallest corpus that exercises each task class once (n=1 per cell first, extended only when differences exceed run-to-run noise).
 
 **Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.
+
+### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
+
+This is the first cross-toolchain comparison. Source: `compiler/benchmarks/linux_filestat.py` (XAX graph and harness), `compiler/benchmarks/linux_filestat_c/filestat.c` (fixed semantic twin, linked with `-lz`), and `compiler/benchmarks/linux_filestat_c/runner.c` (fork/exec/`wait4` timer). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`.
+
+The workload opens `input.dat`, reads it in 64 KiB chunks into an anonymous `mmap` buffer, and counts bytes, lines, and words. It also computes FNV-1a 64, keeps a 256-entry histogram in a second mapping, and folds each chunk into `libz.so.1` `crc32`. It then writes six decimal fields and exits explicitly. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs, Linux 6.18.44 x86-64, gcc 13.3.0, clang 18.1.3, zlib 1.3. Input: 32 MiB deterministic text (`shake_256` + 77-symbol alphabet). 3 warmup runs and 31 repetitions per arm; `CLOCK_MONOTONIC` around fork/exec/`wait4`; peak RSS from `ru_maxrss`. All arms produce identical output, and each matches an independent Python reference contract on a 200,003-byte input.
+
+| Arm | Median wall (s) | Stdev (s) | vs gcc -O2 | vs best baseline | Peak RSS (KiB) | File / stripped bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| clang 18 -O2 (dynamic glibc + libz) | 0.0694 | 0.0090 | 0.64 | 1.00 | 1,860 | 16,352 / 14,576 |
+| gcc 13 -O2 (dynamic glibc + libz) | 0.1079 | 0.0136 | 1.00 | 1.55 | 1,792 | 16,256 / 14,472 |
+| gcc 13 -O3 | 0.1004 | 0.0069 | 0.93 | 1.45 | 1,800 | 16,256 / 14,472 |
+| gcc 13 -O2 -static (+ libz.a) | 0.1040 | 0.0133 | 0.96 | 1.50 | 716 | 798,120 / 718,872 |
+| XAX `x86_64-linux-elf-dynexec-v1` | 0.1133 | 0.0242 | 1.05 | 1.63 | 1,184 | 3,560 / 3,560 |
+
+Seven independent 31-repetition runs on this shared host gave XAX/`gcc -O2` 0.95–1.14 and XAX/`clang -O2` 1.41–1.82; the committed JSON is the last written run. **R4 is not met**: `clang -O2` is fastest, and peak memory exceeds the static baseline because the explicitly requested loader maps `libz` and the libc it requires. Binary size is the smallest of all arms. Before the Linux register allocator (ADR-089), the frame path measured 5.9× `gcc -O2` with a 23,472-byte artifact. The remaining gap is attributed to per-block allocation: loop-invariant pointers reload from home slots each iteration, one edge-induced spill, and no unrolling (OI-38).
+

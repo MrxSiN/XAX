@@ -24,6 +24,11 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertIn("windows-x86_64-pe.simd: bare label EXECUTED needs evidence", errors)
         self.assertIn("windows-x86_64-pe.memory: missing evidence no/such/file.json", errors)
 
+    def test_linux_benchmark_utility_is_not_an_application(self):
+        row = next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64")
+        self.assertEqual(row["fields"]["practical_application"][0], "PROTOTYPE")
+        self.assertEqual(derived_level(row), "R2")
+
     def test_levels_are_cumulative(self):
         row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "ai_tokens": ["MEASURED", "x"]}}
         self.assertEqual(derived_level(row), "R0")  # R5 evidence cannot skip R1-R4
