@@ -63,7 +63,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2â
 3. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
 4. **OI-33 (Linux)**: argv/env/auxv done (ADR-094); TLS and unwind/debug data remain. **OI-40**: register scalars and pure callbacks done (ADR-102); aggregates, stack arguments, and variadics remain. **OI-42**: callbacks that read memory the C caller lends (the `qsort` comparator); design candidates are in the issue.
 5. Done under Wine (ADR-100: MinGW-w64 C twin; XAX file 20% smaller, code larger because gcc folds `sum_to`/dispatch). Still needed: a Windows host, and a run-time-bound PE workload.
-6. **Browser (ADR-103)**: next is event entries (OI-43, which reuses the ADR-102 code-entry type), then a Web IDL-driven binding importer (OI-32) and an Emscripten/Rust wasm size comparison for R4.
+6. **Browser (ADR-103/104)**: click entries are done. Next: static storage, so state need not live in the DOM; a Web IDL-driven binding importer (OI-32); and an Emscripten/Rust wasm size comparison for R4.
 7. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
 
 ## Reproduce M14 evidence
@@ -166,7 +166,7 @@ The unfiltered test command requires the Windows x86-64 and AArch64/QEMU hosts f
 ## Universal-replacement continuation â€” 2026-10-02 (ADR-102, ADR-103)
 
 - ADR-102: C can call pure XAX functions. The calling convention is part of the code-address type, and x86-64 generates a 20-byte SysV adapter for each such function. `sysv-x86_64-c` imports now take and return SSE-class scalars. EXECUTED with libc `tsearch`/`tfind` and libm. OI-40 remains open for aggregates, stack arguments, and variadics; OI-42 opened for effectful callbacks.
-- ADR-103: the browser target with generated host pages. EXECUTED in headless Chromium; the browser row is at R1. OI-43 opened for event entries.
+- ADR-103/104: the browser target with generated host pages and XAX click entries. EXECUTED in headless Chromium; the browser row is at R2. OI-43 opened and closed.
 - Host: Linux x86-64 with gcc, clang, node 22, and Playwright Chromium. No Wine and no QEMU, so PE and AArch64 rows could not be re-executed here.
 - Regression: identical failure set before and after (2 failures and 27 errors, all host or dependency bound: no pytest, Windows/Wine, tokenizer, or wheel build).
 

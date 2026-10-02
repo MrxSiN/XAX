@@ -1006,7 +1006,7 @@ def wasm32_browser_target() -> SemanticObject:
     """
     return wasm32_general_target(WASM32_BROWSER_IDENTITY, (
         Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR,
-        Operation.UDIV, Operation.UREM, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND,
+        Operation.UDIV, Operation.UREM, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.FUNCTION_ADDRESS,
     ))
 
 
@@ -2430,7 +2430,9 @@ FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_6
 # The ABI is part of the code-address *type*, so an entry address can only be
 # passed where a declaration names that exact type, and CALL_INDIRECT (which
 # requires ``ptr<opaque<function>>``) can never call it with the wrong convention.
-FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI,)
+# A browser host calls event entries with the page authority it holds (ADR-104).
+WASM32_BROWSER_EVENT_ABI = b"wasm32-browser-event"
+FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, WASM32_BROWSER_EVENT_ABI)
 _CODE_ENTRY_PREFIX = b"code-entry:"
 
 
@@ -6008,11 +6010,19 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                     entry_abi = foreign_entry_abi(result_type, resolve)
                     if entry_abi is not None:
-                        # A foreign caller cannot supply or receive proof values, so
-                        # an entry with effects or resources would hide them (ADR-102).
                         _graph, callee_parameters, callee_returns = _decode_function_interface(node.entity, resolve)
-                        if entry_abi not in FOREIGN_ENTRY_ABIS or any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns)):
-                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", [abi.decode() for abi in FOREIGN_ENTRY_ABIS] + ["no proof parameters or results"], entry_abi.decode("ascii", "replace"))
+                        if entry_abi == WASM32_BROWSER_EVENT_ABI:
+                            # The host supplies the entry's declared authority and takes it back
+                            # (ADR-104).  Memory effects name storage the host cannot vouch for.
+                            admissible = callee_parameters == callee_returns and all(
+                                _is_effect(resolve(cid)) and not _is_memory_effect(resolve(cid)) for cid in callee_parameters
+                            )
+                        else:
+                            # A C caller cannot supply or receive proof values, so an
+                            # entry with effects or resources would hide them (ADR-102).
+                            admissible = entry_abi in FOREIGN_ENTRY_ABIS and not any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns))
+                        if not admissible:
+                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else"}, entry_abi.decode("ascii", "replace"))
                     elif not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                 elif node.operation == Operation.CALL_FOREIGN:

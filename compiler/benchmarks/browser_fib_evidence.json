@@ -1,39 +1,75 @@
 {
-  "decision": "ADR-103",
-  "format": "xax-browser-fib-evidence-v1",
+  "clicks_per_run": 2,
+  "decision": [
+    "ADR-103",
+    "ADR-104"
+  ],
+  "format": "xax-browser-fib-evidence-v2",
   "host": {
     "browser": "Chromium 141.0.7390.37 (headless, Playwright)"
   },
   "label": "EXECUTED",
-  "module_bytes": 1270,
-  "module_sha256": "03ee3077ff18f93ba7166d0d5068ebe609b83559024ce4df4c7145caa10b4f98",
-  "page_bytes": 2343,
-  "page_sha256": "f762b2332e8626d65ad9bda3e239681319ab9f59e856bd58ba832a5ab4461154",
+  "module_bytes": 3700,
+  "module_sha256": "5951ae482da1cf2e736e0e25d2c9eb361d9bd1b8b264f9b564aac152f5e240dd",
+  "page_bytes": 5843,
+  "page_sha256": "2c4361ff3b72d8551eb125f3f185fcbfaa2d1bf5d393bef846883697b1165f63",
   "runs": [
     {
-      "expected": "832040",
-      "observed": "832040",
+      "expected": [
+        "30 832040",
+        "31 1346269",
+        "32 2178309"
+      ],
+      "observed": [
+        "30 832040",
+        "31 1346269",
+        "32 2178309"
+      ],
       "page_errors": [],
       "passed": true,
       "query": "30"
     },
     {
-      "expected": "2880067194370816120",
-      "observed": "2880067194370816120",
+      "expected": [
+        "90 2880067194370816120",
+        "91 4660046610375530309",
+        "92 7540113804746346429"
+      ],
+      "observed": [
+        "90 2880067194370816120",
+        "91 4660046610375530309",
+        "92 7540113804746346429"
+      ],
       "page_errors": [],
       "passed": true,
       "query": "90"
     },
     {
-      "expected": "0",
-      "observed": "0",
+      "expected": [
+        "0 0",
+        "1 1",
+        "2 1"
+      ],
+      "observed": [
+        "0 0",
+        "1 1",
+        "2 1"
+      ],
       "page_errors": [],
       "passed": true,
       "query": ""
     },
     {
-      "expected": "13",
-      "observed": "13",
+      "expected": [
+        "7 13",
+        "8 21",
+        "9 34"
+      ],
+      "observed": [
+        "7 13",
+        "8 21",
+        "9 34"
+      ],
       "page_errors": [],
       "passed": true,
       "query": "7x9"

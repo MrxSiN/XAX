@@ -9,7 +9,11 @@ runtime, allocator, or event loop of its own; ``_start`` runs once after
 instantiation, and the program's bindings run synchronously inside it.
 
 Host state (the document and the URL) is ordered by one ``effect<io>``
-token that the host supplies to ``_start``.
+token that the host supplies to ``_start``.  Event handlers are XAX
+functions whose address has the ``code-entry:wasm32-browser-event`` type
+(ADR-104).  The browser runs each handler to completion after the previous
+one, and no binding dispatches events synchronously, so the host hands the
+same page authority to one entry at a time.
 """
 
 from __future__ import annotations
@@ -24,12 +28,15 @@ from dataclasses import dataclass
 
 from xax_compiler import (
     EffectDomain,
+    WASM32_BROWSER_EVENT_ABI,
     Permission,
     SemanticObject,
     bits_type,
     decode_foreign_function,
     effect_type,
     fail,
+    foreign_entry_code_type,
+    foreign_entry_pointer_type,
     foreign_function_symbol,
     memory_effect_type,
     pointer_type,
@@ -50,16 +57,21 @@ class WebApi:
     bytes_read: SemanticObject
     memory_effect: SemanticObject
     page_effect: SemanticObject
+    event_entry_code: SemanticObject
+    # Address of an XAX event handler ``fn(effect<io>) -> effect<io>`` (ADR-104).
+    event_entry: SemanticObject
     query_copy: SemanticObject
     set_body_text: SemanticObject
+    body_text_copy: SemanticObject
+    body_on_click: SemanticObject
 
     @property
     def types(self) -> tuple[SemanticObject, ...]:
-        return (self.b8, self.b32, self.bytes_rw, self.bytes_read, self.memory_effect, self.page_effect)
+        return (self.b8, self.b32, self.bytes_rw, self.bytes_read, self.memory_effect, self.page_effect, self.event_entry_code, self.event_entry)
 
     @property
     def symbols(self) -> tuple[SemanticObject, ...]:
-        return (self.query_copy, self.set_body_text)
+        return (self.query_copy, self.set_body_text, self.body_text_copy, self.body_on_click)
 
 
 def web_api() -> WebApi:
@@ -72,13 +84,18 @@ def web_api() -> WebApi:
     def binding(name: bytes, inputs, outputs) -> SemanticObject:
         return foreign_function_symbol(WEB_LIBRARY, name, inputs, outputs, abi=_ABI)
 
+    entry = foreign_entry_pointer_type(WASM32_BROWSER_EVENT_ABI)
     return WebApi(
-        b8, b32, bytes_rw, bytes_read, memory, page,
+        b8, b32, bytes_rw, bytes_read, memory, page, foreign_entry_code_type(WASM32_BROWSER_EVENT_ABI), entry,
         # Copies the UTF-8 query string (without "?") into [buffer, buffer + capacity)
         # and returns its full byte length; a result above capacity reports truncation.
         binding(b"query_copy", (bytes_rw, b32, page, memory), (b32, page, memory)),
         # Replaces the body's text with the UTF-8 bytes [buffer, buffer + length).
         binding(b"set_body_text", (bytes_read, b32, page, memory), (page, memory)),
+        # Copies the body's text as UTF-8, like query_copy.
+        binding(b"body_text_copy", (bytes_rw, b32, page, memory), (b32, page, memory)),
+        # Runs the handler on every click on the body, after the current entry returns.
+        binding(b"body_on_click", (entry, page), (page,)),
     )
 
 
@@ -87,6 +104,8 @@ def web_api() -> WebApi:
 _HOST = {
     b"query_copy": "(p, n) => { const b = new TextEncoder().encode(location.search.slice(1)); view().set(b.subarray(0, n), p); return b.length; }",
     b"set_body_text": "(p, n) => { document.body.textContent = new TextDecoder().decode(view().subarray(p, p + n)); }",
+    b"body_text_copy": "(p, n) => { const b = new TextEncoder().encode(document.body.textContent); view().set(b.subarray(0, n), p); return b.length; }",
+    b"body_on_click": "(k) => { document.body.addEventListener(\"click\", () => exports[\"entry_\" + k]()); }",
 }
 
 
@@ -138,12 +157,12 @@ def emit_browser_page(image: WasmImage, api: WebApi | None = None) -> bytes:
     module = base64.b64encode(image.module).decode("ascii")
     script = (
         f'const bytes = Uint8Array.from(atob("{module}"), c => c.charCodeAt(0));\n'
-        "let memory;\n"
+        "let memory, exports;\n"
         "const view = () => new Uint8Array(memory.buffer);\n"
         f"const imports = {{{json.dumps(WEB_LIBRARY.decode())}: {{\n" + "".join(f"  {entry},\n" for entry in entries) + "}};\n"
         "const { instance } = await WebAssembly.instantiate(bytes, imports);\n"
-        "memory = instance.exports.memory;\n"
-        "instance.exports._start();\n"
+        "({ memory } = exports = instance.exports);\n"
+        "exports._start();\n"
     )
     return ('<!doctype html>\n<meta charset="utf-8">\n<title>XAX</title>\n<body>\n<script type="module">\n' + script + "</script>\n").encode("utf-8")
 
@@ -157,8 +176,12 @@ const { chromium } = require("playwright");
   page.on("pageerror", error => errors.push(String(error)));
   await page.goto(process.argv[1]);
   await page.waitForFunction(() => document.body && document.body.textContent.length > 0, null, { timeout: 10000 }).catch(() => {});
-  const text = await page.evaluate(() => document.body.textContent);
-  console.log(JSON.stringify({ text, errors, version: browser.version() }));
+  const texts = [await page.evaluate(() => document.body.textContent)];
+  for (let click = 0; click < Number(process.argv[2]); click++) {
+    await page.click("body");
+    texts.push(await page.evaluate(() => document.body.textContent));
+  }
+  console.log(JSON.stringify({ texts, errors, version: browser.version() }));
   await browser.close();
 })();
 """
@@ -179,15 +202,18 @@ def _node_environment() -> dict[str, str]:
     return environment
 
 
-def run_browser_page(page: bytes, query: str = "", timeout: float = 60.0) -> dict:
-    """Test harness only: load the page in headless Chromium and return the body text, page errors, and browser version."""
+def run_browser_page(page: bytes, query: str = "", *, clicks: int = 0, timeout: float = 60.0) -> dict:
+    """Test harness only: load the page in headless Chromium, click the body ``clicks`` times.
+
+    Returns the body text after loading and after each click (``texts``), page errors, and the browser version.
+    """
     with tempfile.TemporaryDirectory() as directory:
         path = os.path.join(directory, "index.html")
         with open(path, "wb") as handle:
             handle.write(page)
         url = "file://" + path + (f"?{query}" if query else "")
         completed = subprocess.run(
-            [shutil.which("node") or "node", "-e", _PLAYWRIGHT_SCRIPT, url],
+            [shutil.which("node") or "node", "-e", _PLAYWRIGHT_SCRIPT, url, str(clicks)],
             capture_output=True, text=True, timeout=timeout, env=_node_environment(), check=False,
         )
     if completed.returncode:

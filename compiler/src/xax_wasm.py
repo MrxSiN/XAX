@@ -30,6 +30,7 @@ from xax_compiler import (
     _is_proof_type,
     _is_erased_proof_function,
     _parse_graph,
+    WASM32_BROWSER_EVENT_ABI,
     WASM32_BROWSER_IDENTITY,
     WASM32_WASI_IDENTITY,
     abi_layout,
@@ -38,6 +39,7 @@ from xax_compiler import (
     decode_float_width,
     decode_native_target,
     fail,
+    foreign_entry_abi,
     uleb,
     verify_store,
 )
@@ -149,6 +151,12 @@ def _function_closure(
                 if node.operation == Operation.CALL_DIRECT:
                     if not _is_erased_proof_function(node.entity, resolve):
                         visit(node.entity)
+                elif node.operation == Operation.FUNCTION_ADDRESS:
+                    # Only host-invoked entries have an address here (ADR-104); wasm
+                    # has no internal code addresses or C entries.
+                    if foreign_entry_abi(resolve(node.results[0]), resolve) != WASM32_BROWSER_EVENT_ABI:
+                        fail("XAX.WASM.FUNCTION_ADDRESS", graph_object.cid.hex(), "WASM-FUNCTION-ADDRESS-EVENT-ENTRY", WASM32_BROWSER_EVENT_ABI.decode(), node.results[0].hex())
+                    visit(node.entity)
             if block.terminator.kind not in supported_terminators:
                 fail("XAX.WASM.UNSUPPORTED_TERMINATOR", graph_object.cid.hex(), "WASM-TERMINATOR-TARGET-SUPPORTED", list(supported_terminators), block.terminator.kind)
         active.remove(function.cid)
@@ -206,6 +214,7 @@ def _compile_function(
     import_indices: dict[bytes, int],
     stack_addresses: dict[tuple[bytes, int, int], int],
     aggregate_addresses: dict[tuple[bytes, int, int, int, int], int],
+    event_entries: dict[bytes, int],
 ) -> tuple[bytes, tuple[ArtifactSemanticRange, ...]]:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph = _parse_graph(graph_object, resolve)
@@ -419,6 +428,11 @@ def _compile_function(
                 base = 0x6A if width <= 32 else 0x7C
                 code.append(base + (node.operation - Operation.ADD_WRAP))
                 mask(width)
+                set_(result)
+
+            elif node.operation == Operation.FUNCTION_ADDRESS:
+                # An event entry's address is its export number: the host calls `entry_<k>`.
+                iconst(event_entries[node.entity.cid])
                 set_(result)
 
             elif node.operation in _BITWISE_AND_DIVISION:
@@ -802,6 +816,16 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
                         fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "WASM-FOREIGN-ABI", "wasm32-import", declaration.abi.decode("ascii", "replace"))
                     carriers[node.entity.cid] = node.entity
     imports = sorted(carriers.values(), key=lambda carrier: (decode_foreign_function(carrier).library, decode_foreign_function(carrier).name))
+    # Host-invoked entries are numbered in function-CID order and exported as `entry_<k>` (ADR-104).
+    event_entries = {
+        cid: number for number, cid in enumerate(sorted({
+            node.entity.cid
+            for function in functions
+            for block in _parse_graph(_decode_function_interface(function, resolve)[0], resolve).blocks
+            for node in block.nodes
+            if node.operation == Operation.FUNCTION_ADDRESS
+        }))
+    }
     import_indices = {carrier.cid: index for index, carrier in enumerate(imports)}
     indices = {function.cid: len(imports) + index for index, function in enumerate(functions)}
     stack_addresses, aggregate_addresses, memory_size = _memory_layout(functions, resolve)
@@ -833,11 +857,15 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
         if any(not _is_proof_type(resolve(cid)) for cid in (*entry_parameters, *entry_returns)):
             fail("XAX.WASM.WASI_ENTRY", function_cid.hex(), "WASI-START-NO-MACHINE-VALUES", "() -> ()", [cid.hex() for cid in (*entry_parameters, *entry_returns)])
         # WASI command ABI: the host calls `_start` and reads `memory`; exit is an explicit proc_exit import.
-        module.extend(_section(7, _vector([uleb(6) + b"_start" + b"\x00" + uleb(indices[entry.cid]), uleb(6) + b"memory" + b"\x02\x00"])))
+        exports = [uleb(6) + b"_start" + b"\x00" + uleb(indices[entry.cid]), uleb(6) + b"memory" + b"\x02\x00"]
+        for cid, number in event_entries.items():
+            name = b"entry_%d" % number
+            exports.append(uleb(len(name)) + name + b"\x00" + uleb(indices[cid]))
+        module.extend(_section(7, _vector(exports)))
     else:
         module.extend(_section(7, b"\x01" + uleb(5) + b"entry" + b"\x00" + uleb(indices[entry.cid])))
 
-    compiled = [_compile_function(function, resolve, indices, import_indices, stack_addresses, aggregate_addresses) for function in functions]
+    compiled = [_compile_function(function, resolve, indices, import_indices, stack_addresses, aggregate_addresses, event_entries) for function in functions]
     bodies = [item[0] for item in compiled]
     vector_prefix = uleb(len(bodies))
     code_payload = vector_prefix + b"".join(bodies)
