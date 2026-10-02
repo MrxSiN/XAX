@@ -487,7 +487,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** Executed PE and ELF programs that (a) cross a foreign exception boundary under an explicit adapter, (b) use TLS, and (c) produce symbolized stack traces, with measured size cost of the emitted metadata versus none.
 
-**Status.** OPEN. Explicit `ExitProcess` (PE) and explicit `exit_group` (Linux ELF, ADR-086) are implemented and executed. Linux enters `e_entry` aligned with no return address; the entry function is lowered for that and traps if it returns. Still missing on Linux: argv/env/auxv access as typed external views of the initial stack, TLS, and unwind/debug data.
+**Status.** OPEN. Explicit `ExitProcess` (PE) and explicit `exit_group` (Linux ELF, ADR-086) are implemented and executed. Linux enters `e_entry` aligned with no return address; the entry function is lowered for that and traps if it returns. Linux argv/env/auxv are available through the inline `linux-x86_64-startup-v1` ABI (ADR-094, executed). Still missing on Linux: TLS and unwind/debug data.
 
 ## OI-34 — First production GPU target
 

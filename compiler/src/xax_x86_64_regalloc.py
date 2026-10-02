@@ -39,6 +39,7 @@ from typing import Callable
 from xax_artifact import ArtifactSemanticRange
 from xax_compiler import (
     IntCompare,
+    LINUX_X86_64_STARTUP_ABI,
     LINUX_X86_64_SYSCALL_ABI,
     NativeTargetDescription,
     Operation,
@@ -281,6 +282,7 @@ def compile_register_resident(
         for block in graph.blocks for node in block.nodes
     )
 
+    startup_frame = {"size": 0}  # set before emission; the dry run's code is discarded
     constants: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):
         for node_index, node in enumerate(block.nodes):
@@ -533,6 +535,65 @@ def compile_register_resident(
                     emit(_load(destination, source, width_bytes(operand)))
                 elif kind == "const":
                     emit(_load_constant(destination, source))
+
+        def emit_startup_read(name: bytes, extent: int, prefix: str) -> None:
+            """Inline ``linux-x86_64-startup-v1`` read (ADR-094); result in rax.
+
+            At process entry RSP pointed at argc; the entry frame has no pushes,
+            so that address is RSP + frame size.  Uses only volatile registers.
+            """
+            labels = iter(f"{prefix}-{index}" for index in range(16))
+
+            def loop_until_zero(test: bytes, step: bytes) -> None:
+                top, done = next(labels), next(labels)
+                label(top); emit(test); jump(b"\x0f\x84", done); emit(step); jump(b"\xe9", top); label(done)
+
+            def environment_count() -> None:  # rsi = &envp[0]; rcx = envc
+                emit(_load_exact(RAX, _SCRATCH, 0, 8))
+                emit(bytes.fromhex("498d74c310"))  # lea rsi, [r11 + rax*8 + 16]
+                emit(bytes.fromhex("31c9"))  # xor ecx, ecx
+                loop_until_zero(bytes.fromhex("48833cce00"), bytes.fromhex("4883c101"))  # cmp [rsi+rcx*8], 0 / add rcx, 1
+
+            def string_length_and_copy() -> None:  # rsi = string; rax = length, or bytes copied to rdx when extent
+                emit(bytes.fromhex("31c0"))
+                loop_until_zero(bytes.fromhex("803c0600"), bytes.fromhex("4883c001"))  # cmp byte [rsi+rax], 0 / add rax, 1
+                if extent:
+                    fits = next(labels)
+                    emit(bytes.fromhex("4889c1"))  # mov rcx, rax
+                    emit(_cmp_imm32(1, extent)); jump(b"\x0f\x86", fits)
+                    emit(b"\xb9" + extent.to_bytes(4, "little"))  # mov ecx, extent
+                    label(fits)
+                    emit(bytes.fromhex("4889c8"))  # mov rax, rcx: the copy returns the copied byte count
+                    emit(_move_register(RDI, RDX, 64) + b"\xf3\xa4")  # rep movsb
+
+            emit(_lea(_SCRATCH, 4, startup_frame["size"]))  # r11 = &argc
+            if name == b"argc":
+                emit(_load_exact(RAX, _SCRATCH, 0, 8))
+            elif name in (b"arg_length", b"arg_copy"):
+                emit(bytes.fromhex("493b3b")); trap_if(0x83, b"\x0f\x0b")  # cmp rdi, [r11]; index >= argc traps
+                emit(bytes.fromhex("498b74fb08"))  # mov rsi, [r11 + rdi*8 + 8]
+                string_length_and_copy()
+            elif name == b"envc":
+                environment_count()
+                emit(bytes.fromhex("4889c8"))  # mov rax, rcx
+            elif name in (b"env_length", b"env_copy"):
+                environment_count()
+                emit(bytes.fromhex("4839cf")); trap_if(0x83, b"\x0f\x0b")  # cmp rdi, rcx; index >= envc traps
+                emit(bytes.fromhex("488b34fe"))  # mov rsi, [rsi + rdi*8]
+                string_length_and_copy()
+            elif name == b"auxv_value":
+                environment_count()
+                emit(bytes.fromhex("488d74ce08"))  # lea rsi, [rsi + rcx*8 + 8]: first auxv pair
+                top, absent, found, done = next(labels), next(labels), next(labels), next(labels)
+                label(top)
+                emit(bytes.fromhex("488b06")); emit(bytes.fromhex("4885c0")); jump(b"\x0f\x84", absent)  # AT_NULL ends
+                emit(bytes.fromhex("4839f8")); jump(b"\x0f\x84", found)  # cmp rax, rdi
+                emit(bytes.fromhex("4883c610")); jump(b"\xe9", top)
+                label(absent); emit(bytes.fromhex("31c0")); jump(b"\xe9", done)
+                label(found); emit(bytes.fromhex("488b4608"))  # mov rax, [rsi + 8]
+                label(done)
+            else:
+                fail("XAX.NATIVE.STARTUP", graph_object.cid.hex(), "LINUX-STARTUP-NAME", "argc|arg_length|arg_copy|envc|env_length|env_copy|auxv_value", name.decode("ascii", "replace"))
 
         def emit_compare(position: int, left: ValueRef, right: ValueRef) -> None:
             value = immediate(right, widths[left])
@@ -875,6 +936,12 @@ def compile_register_resident(
                     emit(b"\xb8" + number.to_bytes(4, "little") + b"\x0f\x05")
                     if declaration.allocator is not None:
                         emit(b"\x48\x3d\x01\xf0\xff\xff\x72\x02\x31\xc0")
+                elif declaration.abi == LINUX_X86_64_STARTUP_ABI:
+                    if not process_entry:
+                        fail("XAX.NATIVE.STARTUP", graph_object.cid.hex(), "LINUX-STARTUP-PROCESS-ENTRY", "process entry function", "called function")
+                    extent = pointer_extent_from_graph(graph, machine_operands[1], resolve) if declaration.name.endswith(b"_copy") else 0
+                    place_arguments(node_index, machine_operands, (RDI, RDX)[: len(machine_operands)])
+                    emit_startup_read(declaration.name, extent, f"startup-{block_index}-{node_index}")
                 else:
                     return -1
                 after_call(node_index, machine_operands)
@@ -975,6 +1042,7 @@ def compile_register_resident(
     else:
         epilogue = (b"\x48\x81\xc4" + frame_size.to_bytes(4, "little") if frame_size else b"") + b"".join(_pop(register) for register in reversed(saved)) + b"\xc3"
 
+    startup_frame["size"] = frame_size
     assembler = _Assembler()
     for register in saved:
         assembler.emit(_push(register))

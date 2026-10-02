@@ -33,6 +33,7 @@ from xax_compiler import (
     ForeignAllocatorContract,
     ForeignDeallocatorContract,
     Kind,
+    LINUX_X86_64_STARTUP_ABI,
     LINUX_X86_64_SYSCALL_ABI,
     SYSV_X86_64_C_ABI,
     Permission,
@@ -143,6 +144,51 @@ def linux_api() -> LinuxApi:
     # Ends the process; the explicit call is the only process-exit path.
     exit_group = syscall(SYS_EXIT_GROUP, (b32, process), (process,))
     return LinuxApi(b8, b32, b64, bytes_rw, bytes_read, memory, filesystem, process, heap, read, write, openat, close, mmap_anonymous, exit_group)
+
+
+@dataclass(frozen=True)
+class LinuxStartupApi:
+    """Typed reads of the initial process stack (``linux-x86_64-startup-v1``, ADR-094).
+
+    The kernel places ``argc``, ``argv[]``, ``envp[]``, and ``auxv`` pairs at
+    the entry stack pointer.  These declarations are lowered inline in the
+    process entry function only; nothing runs before the entry function.
+    An index outside ``argv``/``envp`` traps.  ``*_length`` returns the byte
+    length without the terminating NUL; ``*_copy`` copies at most the
+    destination view's static extent and returns the bytes copied, so a result
+    below ``*_length`` reports truncation.  ``auxv_value`` returns 0 for an
+    absent type.
+    """
+
+    argc: SemanticObject
+    arg_length: SemanticObject
+    arg_copy: SemanticObject
+    envc: SemanticObject
+    env_length: SemanticObject
+    env_copy: SemanticObject
+    auxv_value: SemanticObject
+
+    @property
+    def symbols(self) -> tuple[SemanticObject, ...]:
+        return (self.argc, self.arg_length, self.arg_copy, self.envc, self.env_length, self.env_copy, self.auxv_value)
+
+
+def linux_startup_api(api: LinuxApi | None = None) -> LinuxStartupApi:
+    api = api or linux_api()
+    b64, bytes_rw, memory = api.b64, api.bytes_rw, api.memory_effect
+
+    def startup(name: bytes, inputs, outputs) -> SemanticObject:
+        return foreign_function_symbol(_LIBRARY, name, inputs, outputs, abi=LINUX_X86_64_STARTUP_ABI)
+
+    return LinuxStartupApi(
+        startup(b"argc", (), (b64,)),
+        startup(b"arg_length", (b64,), (b64,)),
+        startup(b"arg_copy", (b64, bytes_rw, memory), (b64, memory)),
+        startup(b"envc", (), (b64,)),
+        startup(b"env_length", (b64,), (b64,)),
+        startup(b"env_copy", (b64, bytes_rw, memory), (b64, memory)),
+        startup(b"auxv_value", (b64,), (b64,)),
+    )
 
 
 _BASE_ADDRESS = 0x400000
@@ -320,11 +366,18 @@ def run_linux_executable(
     stdin: bytes = b"",
     timeout: float = 60.0,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+    arguments: tuple[str, ...] = (),
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess:
-    """Test harness only: write the artifact to a temporary file and execute it."""
+    """Test harness only: write the artifact to a temporary file and execute it.
+
+    ``arguments`` follow ``argv[0]`` (the temporary path); ``env`` replaces the
+    environment when given.
+    """
     with tempfile.TemporaryDirectory() as directory:
         path = os.path.join(directory, "xax-program")
         with open(path, "wb") as handle:
             handle.write(data)
         os.chmod(path, 0o755)
-        return runner([path], cwd=cwd, input=stdin, capture_output=True, timeout=timeout, check=False)
+        extra = {} if env is None else {"env": env}
+        return runner([path, *arguments], cwd=cwd, input=stdin, capture_output=True, timeout=timeout, check=False, **extra)
