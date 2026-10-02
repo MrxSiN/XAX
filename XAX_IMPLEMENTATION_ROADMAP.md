@@ -346,6 +346,26 @@ This roadmap orders implementation work. A milestone is complete only when every
 
 **Benchmarks now valid**: full self-build, whole-toolchain reproducibility, end-to-end compiler resource accounting, AI-native maintenance/context scaling.
 
+## Phase U — Universal replacement (after M14)
+
+Phase U converts the M1–M14 prototype into a practical general-purpose replacement, as defined in `docs/18_UNIVERSAL_REPLACEMENT.md`. Sequencing rule: prefer work that unlocks many targets at once (shared lowering, foreign ABIs, artifact infrastructure) before per-platform breadth. Do not redo completed work, and never claim a replacement level the matrix does not compute.
+
+| Milestone | Capability | Unlocks | Status (2026-10-02) |
+|---|---|---|---|
+| **U1** | Linux x86-64 hosted native proof: exact integer completion, syscall ABI, first-class pointers, static ELF64 executable, real allocation/I/O/data-structure workload measured against `gcc -O2` | Linux R1; shared ELF/x86 infrastructure | **Partial — EXECUTED/MEASURED.** Remaining: external/dynamic library call (→ U3), argv/env (OI-36). |
+| **U2** | General-path register allocation + translation-validated machine optimizations (OI-32) | R4 on every CPU target; shared by x86-64/AArch64 | UNIMPLEMENTED; current gap 6.2× vs `gcc -O2` |
+| **U3** | C-ABI foreign calls and dynamic ELF imports with an explicit loader capability (OI-33) | libraries on Linux and Android; R2 | UNIMPLEMENTED (Android GOT import code is the starting point) |
+| **U4** | Bare-metal startup/reset, sections, memory-map layout, and vector tables; RISC-V target-package proof | embedded R1–R3; third ISA family | UNIMPLEMENTED |
+| **U5** | Wasm imports, WASI package, generated browser bindings (OI-37) | WASI and browser R1–R3 | UNIMPLEMENTED |
+| **U6** | Nontrivial Android application beyond the bounded Activity | Android R3 | UNIMPLEMENTED |
+| **U7** | SPIR-V compute kernel executed on a physical device (OI-39) | GPU R1 | UNIMPLEMENTED |
+| **U8** | Foreign-metadata importers (C headers first) and first XAX standard semantic packages (OI-35, OI-40) | ecosystem reuse without human wrapper code | UNIMPLEMENTED |
+| **U9** | Debug information and observability (OI-41) | production debugging | UNIMPLEMENTED |
+
+**UR-M1 (first universal-replacement milestone)** closes when U1's workload, a U4 bare-metal program, a U5 Wasm/WASI or browser application, a U6 Android application, and a U7 GPU workload each reach R3 for their declared workload classes, and U1 records R4 measurements (competitive or not). The native workload must also perform a real external/dynamic library call.
+
+**U1 exit evidence (current):** `compiler/tests/test_xax_linux.py`, `compiler/benchmarks/u1_linux_filestat_evidence.json`, ADR-077–ADR-080, `XAX_CONFORMANCE.md` §24.
+
 ## 2. Bootstrap mapping
 
 | Bootstrap evidence | Earliest roadmap point | Meaning |

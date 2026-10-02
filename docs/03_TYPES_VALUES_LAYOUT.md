@@ -144,6 +144,8 @@ Therefore `bits<32>` can be consumed by both signed and unsigned operations with
 
 Arbitrary widths are normative. Implementations MAY impose explicit compilation-resource limits, but MUST report them rather than silently changing width.
 
+Implemented kernel integer operations (2026-10-02, ADR-077): `add.wrap`, `sub.wrap`, `mul.wrap`, `bit.and`, `bit.or`, `bit.xor`, `rotate.right k`, `udiv`, `urem` (zero divisor → trap, portable reason 2), `int.truncate`, `int.zero_extend`, and `int.compare` (unsigned and signed predicates). The interpretations named above that are not in this list — `lshr`, `ashr`, `sext`, signed division — are, for now, exact compositions or future admissions under the kernel admission rule (`docs/18` §5, OI-34). They are not implicit behaviors of any existing operation.
+
 ### 4.3 Integer constants
 
 A `bits<N>` constant is canonically identified by:

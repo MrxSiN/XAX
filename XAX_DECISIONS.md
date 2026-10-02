@@ -809,3 +809,80 @@ This file records merged v0.1 decisions. Each decision is normative unless super
 | Alternatives rejected | `unhook()` followed by normal installation; silently replaying `onPackageReady`; rebuilding target reflection state without a preserved target loader; unconditionally replacing list index zero; saving module-defined state containers or HookHandles; inventing hidden retries; generic serialization; a generic reload runtime; process-global hook maps. |
 | Structural evidence | `android_libxposed_hot_reload_evidence.json` reproduces a 34,347-byte APK. Managed DEX is 2,920 bytes. Initial package-ready installation includes `setId("xax.primary")` and stores the target ClassLoader. `onHotReloading` is 11 code units with one null-state rejection branch and one `setSavedInstanceState` call. `onHotReloaded` is 51 code units and restores the saved ClassLoader before one old-list emptiness guard, one `HookHandle.getId`, one `String.equals`, one ID-mismatch guard, one Hooker allocation, one `replaceHook`, and one store of the returned handle, with no new-array and no target-member reflection. Metadata is `minApiVersion=102`, `targetApiVersion=102`, `staticScope=true`, `autoHotReload=true`. Hooker bytes remain identical to the retained non-hot-reload baseline. Runtime saved-state transfer/reload/ID-transfer/atomicity remains UNEXECUTED. |
 | Limitation/falsification | The profile still supports only one generated hook. It transfers only the host-owned target/app ClassLoader; package/process identity, listeners, threads, resources, and arbitrary external state are not migrated. Generalize to multiple hooks only with explicit unique IDs and deterministic matching. Revise the saved-state or transfer/mismatch policy if compatible runtime execution shows that framework validation, old-handle identity, or lifecycle differs from the API-102 contract. |
+
+## ADR-074 — Universal replacement is a per-target, per-workload, evidence-gated claim
+
+| Field | Record |
+|---|---|
+| Decision | Define replacement-capability as `intent -> XAX semantics -> verify -> optimize -> build -> deployable artifact` without a human-authored program in another language, claimed per target platform *and* workload class, at cumulative levels R0–R6 (`docs/18` §2–§3, `XAX_SPEC.md` §21). Compiler-generated adapters must be deterministic, contract-derived, and attributable; platform-required runtimes are allowed only through explicit platform contracts; XAX adds no mandatory runtime. No platform or language is described as "replaced" below R3. |
+| Rationale | "Replace language X" is not testable. Software classes on concrete platforms are. Cumulative levels separate expressibility, execution, interoperability, practical use, performance, AI efficiency, and maintenance, so progress cannot be overstated by collapsing them. |
+| Alternatives rejected | Per-language feature parity checklists (would pull foreign semantics into the kernel); a single "supported" flag per target; inferring performance or AI efficiency from execution. |
+| Limitation/falsification | Revise the level boundaries if a level repeatedly cannot be evaluated independently, e.g. R2 lifecycle evidence that is impossible without R3-scale applications on some platform. |
+
+## ADR-075 — Six evidence labels; claims never exceed their label
+
+| Field | Record |
+|---|---|
+| Decision | Every implementation claim is one of PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, UNIMPLEMENTED (`docs/18` §4). Host-unavailable cases are not passes. |
+| Rationale | The repository already distinguished structural from runtime evidence ad hoc (Android libxposed "UNEXECUTED"). A closed vocabulary makes the distinction mechanical and checkable. |
+| Alternatives rejected | Free-text status; percentage completion; "supported/unsupported". |
+
+## ADR-076 — Layered kernel/library/platform/ABI/target hierarchy with a kernel admission rule
+
+| Field | Record |
+|---|---|
+| Decision | Adopt the hierarchy kernel → compile-time construction → zero-cost semantic libraries → platform packages → ABI packages → target packages → artifact. A kernel addition requires an ADR showing that no exact and efficient composition of existing primitives exists and that no mechanism is duplicated (UR-011). Conventional models (closures, objects, interfaces, generics, async, exceptions, GC, RC, reflection, dynamic typing, strings, collections, actors, GPU kernels) lower into kernel semantics per `docs/18` §6. |
+| Rationale | Universal replacement by kernel growth converges on the union of all languages and imposes every domain's costs on every program. Layering keeps the verifier small and the cost of a feature local to the programs that request it. |
+| Alternatives rejected | Built-in object/async/exception/string types; per-domain dialects; a separate target-description DSL. |
+
+## ADR-077 — Exact integer completion admits six operations and rejects shifts and sign extension
+
+| Field | Record |
+|---|---|
+| Decision | Add `bit.and` (66), `bit.or` (67), `udiv` (68), `urem` (69), `int.truncate` (70), and `int.zero_extend` (71). Binary operations take two `bits<N>` operands and return `bits<N>`; width operations require strict narrowing/widening. A zero divisor executes a trap with new portable reason 2 (`integer-divide-by-zero`); lowering omits the runtime check when the divisor is a nonzero constant. Do not add shift or sign-extension operations. |
+| Rationale | AND, OR, and division have no efficient exact composition from add/sub/mul/xor/rotate (bitwise composition needs per-bit loops; division needs a loop). Width changes had no expression except a store/load round trip through memory. Shifts by constants are exactly `mul.wrap 2^k` and `udiv 2^k`; sign extension is `(zext(x) xor m) - m`, so admitting them would duplicate existing mechanisms (UR-011). Their single-instruction selection is a lowering problem (OI-34). |
+| Alternatives rejected | Signed division/remainder (deferred until a workload needs them; they are not compositions of unsigned forms without branches); variable shifts with masked amounts (hardware-specific semantics); returning an unspecified value for a zero divisor (forbidden by exact semantics). |
+| Evidence | Verifier, reference executor, and x86-64 lowering EXECUTED in `compiler/tests/test_xax_linux.py`. Legacy target packages do not advertise the operations, so existing target identities and artifact bytes are unchanged (full-suite regression identical to baseline). |
+| Limitation/falsification | Revisit shifts/sign extension if measured token cost or repair rate for the compositions is materially worse than single operations (OI-34). |
+
+## ADR-078 — Foreign ABIs are a verifier registry; Linux syscalls are template-carrying declarations
+
+| Field | Record |
+|---|---|
+| Decision | Replace the hard-coded `android-aapcs64-c` check with the `FOREIGN_CALL_ABIS` registry. Add `linux-x86_64-syscall-v1`: library `linux`, name = canonical register template `nr` or `nr:arg,...` (`$k` operand references used exactly once, unsigned 64-bit literals). Arguments use `rdi, rsi, rdx, r10, r8, r9`; the result is the exact 64-bit `rax`. With an allocator contract, `-4095..-1` is projected to the nullable zero pointer, and `heap.view` traps explicitly on null. |
+| Rationale | Syscalls are the smallest hosted platform boundary: no libc, loader, or runtime. Putting fixed arguments into the declaration identity lets a contract such as "anonymous private mapping, zero-filled" be sound without trusting caller operands, and leaves lowering with no hidden tables (UR-021). |
+| Alternatives rejected | A syscall kernel operation (OS concept in the kernel, violates FND-006); a Python-side name→number table (unstated lowering input); libc wrappers (mandatory runtime for freestanding programs). |
+| Evidence | EXECUTED/MEASURED: `compiler/tests/test_xax_linux.py`, `compiler/benchmarks/u1_linux_filestat_evidence.json`. Negative vectors cover non-canonical templates, duplicate/missing operands, too many arguments, and unknown ABIs. |
+
+## ADR-079 — First hosted executable: static Linux x86-64 ELF64 with an explicit process-entry contract
+
+| Field | Record |
+|---|---|
+| Decision | Add target `x86_64-linux-elf-exec-v1` (architecture 1, ABI 5, image format 5). XAX-internal calls keep the general x64 register convention. The artifact is a static ELF64 `ET_EXEC` with one R+X `PT_LOAD` at `0x400000`, a `PT_GNU_STACK` R+W marker, no section table, no interpreter, no dynamic section, and no relocations. The entry has only erased proof parameters and returns a `bits<8|32>` status; the generated 9-instruction adapter reserves the home area, calls the entry, and invokes `exit_group(status)`. |
+| Rationale | Linux/POSIX execution was the highest-leverage missing proof: it is runnable on the development host, exercises allocation, I/O, control flow, and data structures end to end, and reuses the existing x86-64 encoder. Keeping internal calls on the existing convention avoided touching legacy bytes; only boundary contracts are new. |
+| Alternatives rejected | Linking against libc or using `gcc` as a linker (external toolchain in the production path); reusing the Windows raw image under a SysV shim (not a deployable artifact); a dynamic ELF first (requires loader contracts, OI-33). |
+| Evidence | EXECUTED/MEASURED on Linux 6.18 x86-64 (`u1_linux_filestat_evidence.json`): 18,339-byte artifact, outputs identical to `gcc -O2` and to an independent reference, zero runtime dependencies. |
+| Limitation/falsification | No argv/env/auxv (OI-36), threads, signals, TLS, or dynamic libraries (OI-33). Internal-convention choice is revisited when native SysV callbacks or C-ABI exports are needed. |
+
+## ADR-080 — First-class pointer values only on profiles with a foreign/heap boundary
+
+| Field | Record |
+|---|---|
+| Decision | On the Linux profile (ABI 5 with `heap.view`), the x86-64 general path treats pointers as machine values: frame pointers that escape into calls, edges, returns, or stores are materialized once at their definition; non-frame pointers address memory through a base register with 1/2/4/8-byte exact access and `[base+index]` checked access. Legacy profiles keep their frame-offset-only pointer lowering byte-for-byte. |
+| Rationale | Hosted programs must pass heap and stack addresses to the platform. Escape-only materialization adds no instruction when a pointer never escapes, and limiting the change to the new profile preserves every committed legacy artifact hash. |
+| Alternatives rejected | Always materializing pointers (changes legacy bytes and adds dead stores); enabling dynamic bases on legacy profiles (their callers never materialize pointers, which would silently miscompile). |
+
+## ADR-081 — Replacement status is machine-checked data
+
+| Field | Record |
+|---|---|
+| Decision | `docs/universal_replacement_matrix.json` records 19 capabilities per target with labels, evidence paths, and notes, plus runtime requirements, blockers, and the level. `compiler/src/xax_replacement.py` computes the evidence-supported level and rejects unknown labels, missing or nonexistent evidence for EXECUTED/MEASURED/PROVEN/STRUCTURAL, any XAX-added runtime, missing blockers, and any recorded level that differs from the computed one. |
+| Rationale | Unchecked boxes become marketing claims when status is prose. Making the level a function of the evidence prevents drift between documents. |
+| Alternatives rejected | A markdown table (unvalidated); storing the matrix as canonical XAX semantics now (it is tooling state, not program meaning; revisit when build/report data become XAX objects). |
+
+## ADR-082 — Priority reconciliation for universal replacement
+
+| Field | Record |
+|---|---|
+| Decision | The universal-replacement priority order (semantic correctness, AI tokens per successful change, generation reliability, runtime performance, memory, binary size, compilation quality, portability, build determinism, toolchain simplicity, human usability) refines `XAX_SPEC.md` §1 items 3–8. Deterministic *meaning* remains part of semantic correctness and SPEC item 2; build/tooling reproducibility ranks below performance and portability objectives but remains a required capability where a build mode requests it. |
+| Rationale | The two lists differ only in where "determinism" appears; separating semantic determinism from build reproducibility removes the apparent conflict without weakening any invariant. |

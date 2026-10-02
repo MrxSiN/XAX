@@ -7,7 +7,16 @@
 - B5/B6 claims are target-scoped. The M14 `xax-semantic-image-v1` result does not silently close the legacy native, WebAssembly, or accelerator backends.
 - No hidden allocation, synchronization, syscall, initialization, exception edge, ownership transfer, device runtime, or target runtime assistance.
 - Tests/benchmarks count only when actually executed. Host-unavailable cases remain unavailable, not passed.
-- The AI-native premise remains unproven until the five-task manual C-vs-XAX Codex Desktop experiment runs. The historical one-edit tokenizer measurement is a microbenchmark, not proof.
+- The AI-native premise remains unproven. Historical, non-qualifying Codex Desktop C-vs-XAX rows are negative for XAX (1.25× C's total tokens), so OI-31 still needs a qualifying run. The one-edit tokenizer measurement is a microbenchmark, not proof.
+- Replacement claims exist only as `docs/universal_replacement_matrix.json` entries whose level `compiler/src/xax_replacement.py` computes from evidence. Never write a level or "replaces X" claim in prose that the matrix does not support.
+- Kernel growth requires an ADR under the UR-011 admission rule (`docs/18` §5). Platform concepts belong in platform/ABI/target packages.
+
+## Universal replacement upgrade — 2026-10-02 (read first)
+
+- Normative definition, levels R0–R6, evidence labels, layering, and UR-M1: `docs/18_UNIVERSAL_REPLACEMENT.md`; `XAX_SPEC.md` §21; architecture v0.2 Part II; ADR-074–ADR-082; OI-32–OI-41; `XAX_CONFORMANCE.md` §23–§24; `XAX_BENCHMARKS.md` §15; roadmap Phase U.
+- U1 implemented and EXECUTED/MEASURED on Linux x86-64: integer completion (and/or/udiv/urem/truncate/zero-extend), foreign-ABI registry plus `linux-x86_64-syscall-v1`, first-class pointers on the Linux profile, a static ELF64 `x86_64-linux-elf-exec-v1` emitter, and the `filestat` workload (`compiler/benchmarks/linux_filestat.py`). Result: 6.2× slower than `gcc -O2`, 18,339 B, 188 KiB RSS. Legacy artifacts are byte-identical.
+- Replacement levels: Linux x86-64, Android arm64, and Wasm core at R1; Windows raw, AArch64 bare-metal raw, and synthetic SIMT at R0; nothing at R2+.
+- Validation: `PYTHONPATH=compiler/src:compiler:. python -m pytest -q compiler/tests` from the repository root (needs `pytest`). Expected: the 16 pre-existing environment/evidence failures listed in `XAX_STATE.md` §U1 and nothing else.
 
 ## Current repository state
 
@@ -49,7 +58,9 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 
 ## Exact next task
 
-Execute **OI-31** by running the five C/XAX pairs in Codex Desktop with one fixed model/reasoning setting. Record every turn and available token count in `results.csv`; do not reset failed attempts.
+Implementation: **U2 / OI-32** — register allocation for the general x86-64 path, measured on U1 `filestat` (target: close most of the 6.2× gap without changing legacy profile bytes), then **U3 / OI-33** — a C-ABI dynamic library call from the Linux profile to finish U1's external-library requirement.
+
+Evaluation (unchanged, needs a human-operated environment): **OI-31** — run the five C/XAX pairs in Codex Desktop with one fixed, recorded model/reasoning setting and balanced arm order. Record every turn and available token count; do not reset failed attempts.
 
 ## Reproduce M14 evidence
 

@@ -1,7 +1,7 @@
 # XAX Specification
 
-**Status:** merged v0.1 normative architecture  
-**Source set:** founding architecture plus Stages 01–17  
+**Status:** merged v0.2 normative architecture (v0.1 plus universal replacement, §21)  
+**Source set:** founding architecture plus Stages 01–18  
 **Authority:** this document is the canonical merged documentation specification; it does not replace the canonical semantic program representation defined here.
 
 ## 1. Normative language and precedence
@@ -20,6 +20,10 @@ When requirements conflict, implementations and future revisions MUST resolve th
 8. human convenience.
 
 Human readability, writability, naming style, formatting, and textual source preservation have no normative weight.
+
+Item 2 concerns deterministic *meaning*. Build/tooling reproducibility is a lower-ranked objective that refines items 4–7; the universal-replacement priority list in `docs/18_UNIVERSAL_REPLACEMENT.md` and the architecture document refines items 3–8 without reordering items 1–2 (ADR-082).
+
+Implementation claims in normative, state, and handoff documents MUST carry one evidence label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, or UNIMPLEMENTED (§21.3).
 
 A later implementation choice MUST NOT silently weaken a higher-ranked requirement. Performance, token-efficiency, portability, and self-hosting claims are objectives until supported by the evidence required in `XAX_BENCHMARKS.md` or `XAX_CONFORMANCE.md`.
 
@@ -195,7 +199,7 @@ unreachable
 
 There is no fallthrough and no truthiness coercion. `switch` has no fallthrough and requires unique cases plus either a default or proof of exhaustiveness.
 
-`trap` is explicit fatal control. It performs no implicit unwinding or cleanup. Its portable payload core is a 16-bit unsigned reason: the empty payload is reason 0 (`unspecified`) with no target detail; a non-empty payload begins with the canonical ULEB encoding of a reason in `0..65535`, followed by target/platform-specific bytes, with the zero encoding permitted only when such suffix bytes are present. Prototype portable reason 1 denotes `explicit`; additional portable meanings require an explicit specification decision. Target-specific suffix bytes are semantic data but do not acquire portable meaning or implicit cleanup/unwind behavior. `unreachable` is a verifier assertion and MUST be proven unreachable unless a separately defined raw/target construct supplies different semantics.
+`trap` is explicit fatal control. It performs no implicit unwinding or cleanup. Its portable payload core is a 16-bit unsigned reason: the empty payload is reason 0 (`unspecified`) with no target detail; a non-empty payload begins with the canonical ULEB encoding of a reason in `0..65535`, followed by target/platform-specific bytes, with the zero encoding permitted only when such suffix bytes are present. Prototype portable reason 1 denotes `explicit`; reason 2 denotes `integer-divide-by-zero` (ADR-077); additional portable meanings require an explicit specification decision. Target-specific suffix bytes are semantic data but do not acquire portable meaning or implicit cleanup/unwind behavior. `unreachable` is a verifier assertion and MUST be proven unreachable unless a separately defined raw/target construct supplies different semantics.
 
 Core `call` has no hidden exceptional successor.
 
@@ -228,7 +232,7 @@ ABI/platform contracts that define its representation and lifetime.
 
 `bits<N>` is an exact N-bit value domain for arbitrary positive `N`. Stored bits have no global signedness. Signedness is an operation property where required.
 
-Integer arithmetic MUST identify exact behavior, including overflow semantics. Representative families include wrapping, checked, saturating, signed, and unsigned interpretations where applicable. Pure bit operations likewise have width-exact semantics. `bit.xor` returns the N-bit exclusive-or of two `bits<N>` values; `rotate.right k` rotates one `bits<N>` value right by the explicit amount `0 <= k < N` without changing width.
+Integer arithmetic MUST identify exact behavior, including overflow semantics. Representative families include wrapping, checked, saturating, signed, and unsigned interpretations where applicable. Pure bit operations likewise have width-exact semantics. `bit.xor`, `bit.and`, and `bit.or` return the N-bit exclusive-or, conjunction, and disjunction of two `bits<N>` values; `rotate.right k` rotates one `bits<N>` value right by the explicit amount `0 <= k < N` without changing width. `udiv` and `urem` return the unsigned quotient and remainder of two `bits<N>` values; a zero divisor executes an explicit trap with portable reason 2 and never yields a value. `int.truncate` maps `bits<M>` to `bits<N>` for `N < M` by keeping the low N bits; `int.zero_extend` maps `bits<M>` to `bits<N>` for `N > M`; identity width changes are invalid nodes. Shifts by constants and sign extension are not kernel operations: they are the exact compositions `mul.wrap 2^k`, `udiv 2^k`, and `(zext(x) xor 2^(M-1)) - 2^(M-1)`, which lowering MAY select as single instructions (ADR-077, OI-34).
 
 There are no implicit integer promotions or implicit value conversions.
 
@@ -817,6 +821,8 @@ A boundary MUST explicitly preserve, adapt, weaken, or mark unknown each require
 
 Adapters may perform representation conversion, ownership transfer, bounds reconstruction, error conversion, callback bridging, unwind containment, and other explicit work, but may not allocate, copy, lock, call a syscall, initialize, or acquire resources invisibly.
 
+Every foreign call names an ABI in the verifier's registry (`android-aapcs64-c`, `linux-x86_64-syscall-v1`); unknown ABIs reject with `XAX.FOREIGN.ABI`. A foreign declaration's identity MUST contain every fact lowering needs; lowering MUST NOT consult unstated tables. `linux-x86_64-syscall-v1` declarations encode the syscall number and an explicit register template (`nr` or `nr:arg,...` with `$k` operand references and unsigned literals, each machine operand used exactly once); the template, argument registers, result projection, and allocator null projection are defined in `docs/18_UNIVERSAL_REPLACEMENT.md` §8.1 (ADR-078).
+
 ### 12.4 Platform capabilities
 
 Platform facilities are explicit semantic capabilities. Examples include filesystem, network, process, threads, clocks, entropy, display, audio, GPU, dynamic loading, virtual memory, environment data, identity/security context, IPC, and devices.
@@ -832,6 +838,8 @@ The standard environment is layered semantic packages, not one mandatory runtime
 Dynamic linking is optional and requires an explicit dynamic-loader capability plus explicit program/dependency request. Foreign import does not imply dynamic linking.
 
 Unsupported ABI/platform facts produce structured validation failures, never silent semantic weakening.
+
+A hosted executable target defines an explicit process-entry contract. For `x86_64-linux-elf-exec-v1` the entry function has only erased proof parameters and returns one `bits<8>` or `bits<32>` status plus proof values; the only generated code is the documented entry adapter that calls the entry and passes its status to `exit_group` (`docs/18` §8.2, ADR-079).
 
 ## 13. Compiler core, verifier, incrementality, and semantic database
 
@@ -1035,6 +1043,30 @@ Unresolved evidence-dependent choices are listed only in `XAX_OPEN_ISSUES.md`. T
 A change that can alter accepted program meaning, canonical identity, verifier validity, target behavior, transaction semantics, ABI behavior, or build reproducibility requires a versioned specification/schema/contract change and corresponding conformance updates.
 
 No implementation behavior, benchmark result, common practice, or human-facing syntax silently changes XAX semantics.
+
+---
+
+## 21. Universal replacement
+
+### 21.1 Definition
+
+A target platform/workload class is replacement-capable when an AI can construct, verify, optimize, and build a deployable artifact from XAX semantics without a human-authored program in another language. Claims MUST name a target and a workload class. Compiler-generated adapters MUST be deterministic, contract-derived, and attributable. Platform-required runtimes are permitted only through explicit platform contracts; XAX MUST NOT add its own mandatory runtime. Normative detail: `docs/18_UNIVERSAL_REPLACEMENT.md` (UR-001–UR-024).
+
+### 21.2 Replacement levels
+
+R0 semantic expressibility; R1 executable lowering (executed native artifact); R2 platform interoperability; R3 practical application; R4 measured performance competitiveness; R5 measured AI efficiency; R6 autonomous maintenance. Levels are cumulative. A platform or language MUST NOT be described as replaced below R3, and R4–R6 MUST NOT be inferred from lower levels.
+
+### 21.3 Evidence labels
+
+PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, UNIMPLEMENTED, as defined in `docs/18` §4. A host-unavailable test is not a pass.
+
+### 21.4 Layering and kernel admission
+
+Programs are built as kernel → compile-time construction → zero-cost semantic libraries → platform packages → ABI packages → target packages → artifact. A kernel addition MUST be justified by an ADR showing that no exact and efficient composition of existing primitives exists and that no existing mechanism is duplicated (UR-011). Language-specific concepts are not kernel concepts by default. Unused libraries and platform facilities contribute zero runtime code, data, initialization, and metadata.
+
+### 21.5 Replacement matrix
+
+`docs/universal_replacement_matrix.json` is the authoritative replacement record, validated by `compiler/src/xax_replacement.py`. Prose MUST NOT exceed it.
 
 ---
 

@@ -55,7 +55,8 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 
 | Target | Status |
 |---|---|
-| x86-64 Windows | Direct native encoder, Win64 ABI |
+| x86-64 Linux | Static ELF64 executables via direct syscalls — executed and measured (U1) |
+| x86-64 Windows | Direct native encoder, Win64 ABI (raw load image) |
 | AArch64 | AAPCS64 bare-metal and Android shared objects |
 | WebAssembly (wasm32) | Direct module emission |
 | Android | DEX, manifest, resources, APK signing, JNI, libxposed modules |
@@ -65,7 +66,7 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 
 ```text
 XAX/
-├── docs/                    Normative specification (01–17)
+├── docs/                    Normative specification (01–18) + replacement matrix
 │   └── 09_AI_PROTOCOL.md    How AI agents must interact with XAX
 ├── compiler/                Python 3.12 bootstrap compiler (`xaxc`)
 │   ├── src/                 Store, verifier, workspace, backends
@@ -93,6 +94,8 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 ## Project status
 
 XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open.
+
+The long-term objective is **universal replacement**: building the software that today requires C, C++, Rust, Java, JavaScript, Python, and similar languages, directly from XAX semantics. Progress is evidence-gated with levels R0–R6 ([`docs/18_UNIVERSAL_REPLACEMENT.md`](docs/18_UNIVERSAL_REPLACEMENT.md)) and recorded only in the machine-checked [replacement matrix](docs/universal_replacement_matrix.json). Today, no target is above R1, and the measured native runtime is 6.2× slower than `gcc -O2`. Nothing is claimed as replaced.
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

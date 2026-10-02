@@ -1,0 +1,1982 @@
+{
+ "format": "xax-universal-replacement-matrix-v1",
+ "as_of": "2026-10-02",
+ "authority": "docs/18_UNIVERSAL_REPLACEMENT.md section 14",
+ "targets": [
+  {
+   "id": "linux-x86_64-elf-exec",
+   "platform": "Linux x86-64 (static ELF64 ET_EXEC)",
+   "workload_class": "hosted command-line tools using syscalls, allocation, and file I/O",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "EXECUTED",
+     "note": "filestat: 35-block verified graph; output equals independent reference contract",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py",
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
+    },
+    "code_generation": {
+     "label": "EXECUTED",
+     "note": "direct x86-64 encoder; first-class pointers; and/or/udiv/urem/trunc/zext",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py"
+     ]
+    },
+    "abi": {
+     "label": "EXECUTED",
+     "note": "linux-x86_64-syscall-v1 register templates + process-entry contract",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py"
+     ]
+    },
+    "artifact_format": {
+     "label": "EXECUTED",
+     "note": "direct static ELF64 ET_EXEC, PT_LOAD R+X and PT_GNU_STACK only",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py",
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
+    },
+    "platform_apis": {
+     "label": "EXECUTED",
+     "note": "openat/read/write/close/mmap/munmap executed; no threads, signals, sockets, clocks, argv/env yet",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py"
+     ]
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no C-ABI/shared-library calls; only kernel syscalls (OI-33)",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no thread/futex contract",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "STRUCTURAL",
+     "note": "x86-64 atomic lowering shared with the Windows profile; not executed on Linux",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py"
+     ]
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no vec<N,T> lowering",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no PT_INTERP/DT_NEEDED (OI-33)",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "STRUCTURAL",
+     "note": "semantic ranges rebased to ELF file offsets; no DWARF (OI-41)",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py"
+     ]
+    },
+    "optimization_maturity": {
+     "label": "PROTOTYPE",
+     "note": "M12 bounded passes; backend spills every value (no register allocation in the general path)",
+     "evidence": [
+      "compiler/benchmarks/m12_optimizer_evidence.json"
+     ]
+    },
+    "real_execution": {
+     "label": "MEASURED",
+     "note": "executed on Linux 6.18 x86-64 host",
+     "evidence": [
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
+    },
+    "practical_application": {
+     "label": "EXECUTED",
+     "note": "filestat is a real workload but R3 also requires R2 (libraries, argv)",
+     "evidence": [
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
+    },
+    "performance_evidence": {
+     "label": "MEASURED",
+     "note": "median 6.2x slower than gcc -O2 on 32 MiB input",
+     "evidence": [
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ],
+     "competitive": false
+    },
+    "memory_evidence": {
+     "label": "MEASURED",
+     "note": "peak RSS 188 KiB vs 652 KiB gcc -O2 -static, 1632 KiB dynamic",
+     "evidence": [
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
+    },
+    "code_size_evidence": {
+     "label": "MEASURED",
+     "note": "18,339 B vs 14,472 B stripped dynamic / 706,584 B stripped static",
+     "evidence": [
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "OI-32 register allocation (6.2x runtime gap)",
+    "OI-33 dynamic/external library calls",
+    "OI-36 argv/env/auxv entry contract",
+    "no threads/signals/sockets packages"
+   ],
+   "replacement_level": "R1"
+  },
+  {
+   "id": "android-arm64",
+   "platform": "Android arm64-v8a (APK: DEX + ELF ET_DYN)",
+   "workload_class": "Android applications with native XAX code",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "EXECUTED",
+     "note": "Activity UI carrier + JNI callbacks",
+     "evidence": [
+      "compiler/tests/test_xax_android.py",
+      "XAX_STATE.md"
+     ]
+    },
+    "code_generation": {
+     "label": "EXECUTED",
+     "note": "AArch64 lowering + direct DEX 039 synthesis",
+     "evidence": [
+      "compiler/tests/test_xax_android.py"
+     ]
+    },
+    "abi": {
+     "label": "EXECUTED",
+     "note": "AAPCS64 + JNI callbacks on device (Pixel 8 Pro, 2026-10-02)",
+     "evidence": [
+      "compiler/integration/android/validate_activity_apk.sh",
+      "XAX_STATE.md"
+     ]
+    },
+    "artifact_format": {
+     "label": "EXECUTED",
+     "note": "signed APK installed and dexopt'd on ART",
+     "evidence": [
+      "compiler/benchmarks/android_minimal_activity.apk",
+      "compiler/integration/android/validate_activity_apk.sh"
+     ]
+    },
+    "platform_apis": {
+     "label": "EXECUTED",
+     "note": "Activity lifecycle, Button, click listener on device; services/receivers STRUCTURAL",
+     "evidence": [
+      "XAX_STATE.md"
+     ]
+    },
+    "ffi": {
+     "label": "STRUCTURAL",
+     "note": "JNI 1.6 table package and android-aapcs64-c imports; device-executed only via callbacks",
+     "evidence": [
+      "compiler/benchmarks/android_jni_platform_evidence.json"
+     ]
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no thread contract",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "AArch64 atomic profile is bare-metal only",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no NEON lowering",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "STRUCTURAL",
+     "note": "explicit GOT imports, no default DT_NEEDED; device dlopen validation pending",
+     "evidence": [
+      "compiler/benchmarks/android_arm64_evidence.json"
+     ]
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no DWARF",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "PROTOTYPE",
+     "note": "register-resident legacy path; general path spills",
+     "evidence": [
+      "compiler/benchmarks/aarch64_register_residency_evidence.json"
+     ]
+    },
+    "real_execution": {
+     "label": "EXECUTED",
+     "note": "3 cold runs on Pixel 8 Pro SDK 37; render and click verified",
+     "evidence": [
+      "XAX_STATE.md"
+     ]
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "only a minimal Activity fixture executed",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no runtime benchmark vs Kotlin/Java/NDK",
+     "evidence": [],
+     "competitive": false
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "none",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "STRUCTURAL",
+     "note": "35,413 B signed APK vs no recorded Kotlin baseline",
+     "evidence": [
+      "compiler/benchmarks/android_apk_evidence.json"
+     ]
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": [
+     "ART"
+    ]
+   },
+   "known_blockers": [
+    "nontrivial application",
+    "libxposed runtime UNEXECUTED",
+    "no performance baseline"
+   ],
+   "replacement_level": "R1"
+  },
+  {
+   "id": "wasm32-core",
+   "platform": "WebAssembly core module (no imports)",
+   "workload_class": "freestanding compute modules",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "EXECUTED",
+     "note": "general-language vectors",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py",
+      "compiler/tests/test_xax_general_language.py"
+     ]
+    },
+    "code_generation": {
+     "label": "EXECUTED",
+     "note": "direct module emission",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py"
+     ]
+    },
+    "abi": {
+     "label": "EXECUTED",
+     "note": "core-module exports",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py"
+     ]
+    },
+    "artifact_format": {
+     "label": "EXECUTED",
+     "note": "validated and run by V8 (Node harness)",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py"
+     ]
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no imports, WASI, or browser bindings (OI-37)",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no host imports",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "none",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "PROTOTYPE",
+     "note": "M12 bounded passes; backend spills every value (no register allocation in the general path)",
+     "evidence": [
+      "compiler/benchmarks/m12_optimizer_evidence.json"
+     ]
+    },
+    "real_execution": {
+     "label": "EXECUTED",
+     "note": "Node/V8 engine executes emitted modules",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py"
+     ]
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "none",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no baseline",
+     "evidence": [],
+     "competitive": false
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": [
+     "Wasm engine"
+    ]
+   },
+   "known_blockers": [
+    "OI-37 WASI and browser bindings",
+    "wasm32 indirect calls",
+    "recursive stack lowering"
+   ],
+   "replacement_level": "R1"
+  },
+  {
+   "id": "x86_64-windows-raw-image",
+   "platform": "Windows x86-64 (raw callable load image)",
+   "workload_class": "native compute functions",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "EXECUTED",
+     "note": "historical Windows-host execution",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py",
+      "XAX_STATE.md"
+     ]
+    },
+    "code_generation": {
+     "label": "EXECUTED",
+     "note": "Win64 encoder (historical Windows host)",
+     "evidence": [
+      "compiler/tests/test_xax_x86_64_codegen.py"
+     ]
+    },
+    "abi": {
+     "label": "EXECUTED",
+     "note": "Win64 calls from a host harness",
+     "evidence": [
+      "compiler/tests/test_xax_compiler.py"
+     ]
+    },
+    "artifact_format": {
+     "label": "PROTOTYPE",
+     "note": "raw image loaded by a harness; no PE/COFF",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "EXECUTED",
+     "note": "native x86-64 atomics (historical Windows host)",
+     "evidence": [
+      "compiler/benchmarks/oi11_atomic_policy_evidence.json"
+     ]
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "PROTOTYPE",
+     "note": "M12 bounded passes; backend spills every value (no register allocation in the general path)",
+     "evidence": [
+      "compiler/benchmarks/m12_optimizer_evidence.json"
+     ]
+    },
+    "real_execution": {
+     "label": "EXECUTED",
+     "note": "historical; 6 cases unavailable on Linux hosts",
+     "evidence": [
+      "XAX_STATE.md"
+     ]
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "no PE/COFF executable or DLL",
+    "no Win32 API package"
+   ],
+   "replacement_level": "R0"
+  },
+  {
+   "id": "aarch64-baremetal-raw-image",
+   "platform": "AArch64 bare metal (raw callable image)",
+   "workload_class": "freestanding firmware compute",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "EXECUTED",
+     "note": "historical QEMU execution",
+     "evidence": [
+      "compiler/tests/test_xax_aarch64_codegen.py",
+      "XAX_STATE.md"
+     ]
+    },
+    "code_generation": {
+     "label": "EXECUTED",
+     "note": "AAPCS64 encoder",
+     "evidence": [
+      "compiler/tests/test_xax_aarch64_codegen.py"
+     ]
+    },
+    "abi": {
+     "label": "EXECUTED",
+     "note": "AAPCS64 (QEMU harness)",
+     "evidence": [
+      "XAX_STATE.md"
+     ]
+    },
+    "artifact_format": {
+     "label": "PROTOTYPE",
+     "note": "callable raw image; no reset vector, sections, or linker layout",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "STRUCTURAL",
+     "note": "OI-11 load/store profile",
+     "evidence": [
+      "compiler/benchmarks/oi11_atomic_policy_evidence.json"
+     ]
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "PROTOTYPE",
+     "note": "register-resident scalar path",
+     "evidence": [
+      "compiler/benchmarks/aarch64_register_residency_evidence.json"
+     ]
+    },
+    "real_execution": {
+     "label": "EXECUTED",
+     "note": "QEMU 11 (recorded emulator); 2 cases unavailable on this host",
+     "evidence": [
+      "XAX_STATE.md"
+     ]
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "deterministic startup/reset contract",
+    "sections and memory-map layout",
+    "interrupt vector tables",
+    "MMIO/volatile on real hardware"
+   ],
+   "replacement_level": "R0"
+  },
+  {
+   "id": "simt-synthetic-accelerator",
+   "platform": "Synthetic SIMT packet target (M13)",
+   "workload_class": "accelerator kernels (architecture proof only)",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "EXECUTED",
+     "note": "conformance harness executes deployment packets",
+     "evidence": [
+      "compiler/tests/test_xax_accelerator.py",
+      "compiler/benchmarks/m13_accelerator_evidence.json"
+     ]
+    },
+    "code_generation": {
+     "label": "PROTOTYPE",
+     "note": "deterministic packet for a synthetic device",
+     "evidence": [
+      "compiler/benchmarks/m13_accelerator_evidence.json"
+     ]
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "PROTOTYPE",
+     "note": "synthetic packet format",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no physical device (OI-39)",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "OI-39 real SPIR-V/Vulkan device execution",
+    "OI-13 scope normalization"
+   ],
+   "replacement_level": "R0"
+  },
+  {
+   "id": "riscv64-linux",
+   "platform": "RISC-V 64 Linux",
+   "workload_class": "hosted and embedded RISC-V software",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "RISC-V target package and encoder"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "x86_64-windows-pe",
+   "platform": "Windows x86-64 PE/COFF",
+   "workload_class": "Win32 desktop/server applications",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "PE/COFF emitter",
+    "Win32 import package (OI-35)"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "aarch64-macos-macho",
+   "platform": "macOS arm64 Mach-O",
+   "workload_class": "Apple desktop applications",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "Mach-O emitter + code signing",
+    "Objective-C runtime/framework contracts"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "ios-arm64",
+   "platform": "iOS/iPadOS arm64",
+   "workload_class": "Apple mobile applications",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "Mach-O + app bundle",
+    "UIKit contracts"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "wasi-preview1",
+   "platform": "WASI (Wasm + host imports)",
+   "workload_class": "command-line Wasm programs",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "Wasm import lowering",
+    "WASI platform package (OI-37)"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "browser-wasm",
+   "platform": "Browser (Wasm + generated bindings)",
+   "workload_class": "web applications",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "generated deterministic host bindings from Web IDL (OI-37)"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "jvm-classfile",
+   "platform": "JVM class files",
+   "workload_class": "JVM applications",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "class-file emitter (OI-38)"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "dotnet-cli",
+   "platform": "CLI/CLR assemblies",
+   "workload_class": ".NET applications",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "CLI metadata/IL emitter (OI-38)"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "spirv-vulkan",
+   "platform": "SPIR-V compute on Vulkan",
+   "workload_class": "GPU compute kernels",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "SPIR-V emitter and device execution (OI-39)"
+   ],
+   "replacement_level": null
+  },
+  {
+   "id": "cortex-m-baremetal",
+   "platform": "ARMv7-M/ARMv8-M bare metal",
+   "workload_class": "microcontroller firmware",
+   "capabilities": {
+    "semantic_expressibility": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_generation": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "abi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "artifact_format": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "platform_apis": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ffi": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "concurrency": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "atomics": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "simd": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "dynamic_linking": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "debugging": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "optimization_maturity": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "real_execution": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "practical_application": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "performance_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "memory_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "code_size_evidence": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    },
+    "ai_token_evidence": {
+     "label": "MEASURED",
+     "note": "mixed, non-qualifying, target-independent: Codex Desktop C-vs-XAX rows negative (XAX 1,698,890 vs C 1,363,522 tokens, 1.25x; confirmation run 1.24x), ChatGPT continuous-session byte proxy favored XAX (C 1.77x) with context carryover, Codex CLI XAX-only protocol optimization 1,151,150 -> 468,496 tokens without a C pair; OI-31 open",
+     "evidence": [
+      "compiler/benchmarks/ai_native/results.csv",
+      "compiler/benchmarks/ai_native/results-run-2.csv",
+      "compiler/benchmarks/ai_native/results-after-final.csv",
+      "CHATBOX_BENCHMARK_SUMMARY.md"
+     ],
+     "improves": false
+    },
+    "autonomous_maintenance": {
+     "label": "UNIMPLEMENTED",
+     "note": "no implementation",
+     "evidence": []
+    }
+   },
+   "runtime_requirement": {
+    "xax_runtime": [],
+    "platform_runtime": []
+   },
+   "known_blockers": [
+    "Thumb-2 target package",
+    "vector table/startup contract"
+   ],
+   "replacement_level": null
+  }
+ ]
+}

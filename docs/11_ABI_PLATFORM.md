@@ -626,3 +626,8 @@ existing retained field.  No native ABI changes are introduced.  There is no
 unhook/install window, no generated target-member lookup in the reload callback, and no
 implicit state/resource migration.  Multiple-hook matching and saved-instance-state are
 not ABI commitments of this bounded profile.
+
+## 17. Linux x86-64 syscall ABI and process entry (2026-10-02)
+
+`linux-x86_64-syscall-v1` is a registered foreign ABI (ADR-078). Each declaration's identity carries the syscall number and an explicit register template, so lowering consults no unstated table, and fixed arguments (protection flags, anonymous-mapping flags, `fd = -1`) are part of the declaration rather than trusted caller operands. Allocator-contract failures `-4095..-1` project to null, and `heap.view` traps on null. The `x86_64-linux-elf-exec-v1` process-entry contract (ADR-079) admits only erased proof parameters and a `bits<8|32>` status; the generated adapter calls the entry and passes its status to `exit_group`. Definitions: `docs/18_UNIVERSAL_REPLACEMENT.md` §8.1–§8.2. Not yet covered: C-ABI shared-library calls (OI-33) and argv/env/auxv (OI-36).
+
