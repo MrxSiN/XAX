@@ -241,6 +241,21 @@ def evidence() -> dict:
                 "passed": completed.returncode == 0 and completed.stdout.strip() == "XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1",
             }
 
+        # bionic's pthread_create runs an XAX start routine (ADR-107), four threads at once.
+        from benchmarks import android_thread_entry
+
+        loader = work / "thread_loader"
+        subprocess.run([_clang(24), "-O2", "-fPIE", "-pie", "-pthread", str(HERE.parent / "integration/android/thread_entry_loader.c"), "-ldl", "-o", str(loader)], check=True)
+        for suffix in CONTAINERS:
+            library = work / "libxax_threads.so"
+            library.write_bytes(android_thread_entry.build_library(packed=bool(suffix)))
+            completed = _run(loader, "./libxax_threads.so", cwd=work)
+            rows["pthread_xax_start_routine" + suffix] = {
+                "library_bytes": library.stat().st_size, "library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
+                "stdout": completed.stdout.strip(), "exit": completed.returncode,
+                "passed": completed.returncode == 0 and completed.stdout.strip() == "XAX_THREAD_ENTRY_OK 4/4",
+            }
+
         # libxposed native entry.
         module = HERE.parent / "integration/android/libxposed_fixture/app/src/main/jniLibs/arm64-v8a/libxaxmodule.so"
         loader = work / "device_loader"

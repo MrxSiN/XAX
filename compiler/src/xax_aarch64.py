@@ -13,6 +13,8 @@ from xax_artifact import ArtifactSemanticRange
 
 from xax_compiler import (
     store_resolver,
+    ANDROID_AAPCS64_C_ABI,
+    XaxError,
     foreign_entry_abi,
     ATOMIC_OPERATIONS,
     AtomicLegalizationPolicy,
@@ -575,9 +577,9 @@ def _function_closure(
                     if not _is_erased_proof_function(node.entity, resolve):
                         visit(node.entity)
                 elif node.operation == Operation.FUNCTION_ADDRESS:
-                    if foreign_entry_abi(resolve(node.results[0]), resolve) is not None:
-                        # No AArch64 foreign entry adapter exists yet (ADR-102).
-                        fail("XAX.AARCH64.FOREIGN_ENTRY", graph_object.cid.hex(), "AARCH64-FOREIGN-ENTRY-UNSUPPORTED", "ptr<opaque<function>>", node.results[0].hex())
+                    entry_abi = foreign_entry_abi(resolve(node.results[0]), resolve)
+                    if entry_abi is not None:
+                        _require_android_entry(node.entity, entry_abi, resolve, target, graph_object)
                     visit(node.entity)
             if block.terminator.kind not in target.supported_terminators:
                 fail("XAX.AARCH64.UNSUPPORTED_TERMINATOR", graph_object.cid.hex(), "AARCH64-TERMINATOR-TARGET-SUPPORTED", list(target.supported_terminators), block.terminator.kind)
@@ -2179,6 +2181,35 @@ def _kernel(image: Aarch64Image, arguments: Sequence[int]) -> bytes:
     call_position = call_index * 4
     words[call_index] = 0x94000000 | (((entry - call_position) // 4) & 0x3FFFFFF)
     return b"".join(word.to_bytes(4, "little") for word in words) + image.code
+
+
+def _require_android_entry(function: SemanticObject, abi: bytes, resolve, target: NativeTargetDescription, graph_object: SemanticObject) -> None:
+    """An ``android-aapcs64-c`` entry is the function's own address (ADR-107).
+
+    XAX AArch64 code allocates only x0-x7 and x9, never x18 (the Android
+    platform register) or x19-x28, and keeps SP 16-byte aligned, so it already
+    meets the AAPCS64 callee obligations and needs no adapter.  AAPCS64 leaves
+    the upper bits of narrow arguments unspecified, so entry parameters must be
+    64-bit integers or pointers.
+    """
+    if abi != ANDROID_AAPCS64_C_ABI or target.abi != 4:
+        fail("XAX.AARCH64.FOREIGN_ENTRY", graph_object.cid.hex(), "AARCH64-FOREIGN-ENTRY-TARGET", [ANDROID_AAPCS64_C_ABI.decode(), 4], [abi.decode("ascii", "replace"), target.abi])
+    _graph, parameters, returns = _decode_function_interface(function, resolve)
+    wide = lambda cid: _sysv_like_width(resolve, cid) == 64
+    if len(parameters) > 8 or len(returns) > 1 or not all(wide(cid) for cid in parameters) or not all(_sysv_like_width(resolve, cid) for cid in returns):
+        fail("XAX.AARCH64.FOREIGN_ENTRY", function.cid.hex(), "AARCH64-ENTRY-SIGNATURE", "<=8 64-bit integer/pointer parameters, <=1 integer/pointer result", [[cid.hex() for cid in parameters], [cid.hex() for cid in returns]])
+
+
+def _sysv_like_width(resolve, cid: bytes) -> int:
+    """Width of an integer or pointer scalar, or 0 for anything else."""
+    obj = resolve(cid)
+    if obj.body[:1] == b"\x01":
+        return decode_bits_width(obj)
+    try:
+        _decode_pointer_type(obj, resolve)
+    except XaxError:
+        return 0
+    return 64
 
 
 def run_aarch64_qemu(

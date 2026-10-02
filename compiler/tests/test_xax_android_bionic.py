@@ -43,6 +43,11 @@ class HeaderTests(unittest.TestCase):
         committed = json.loads(bionic.EVIDENCE.read_text(encoding="utf-8"))
         for (export, *_rest, source), suffix in ((case, suffix) for case in bionic.CASES for suffix in bionic.CONTAINERS):
             self.assertEqual(committed["runs"][export + suffix]["library_sha256"], hashlib.sha256(bionic._library(source, packed=bool(suffix))).hexdigest())
+        from benchmarks import android_thread_entry
+
+        for suffix in bionic.CONTAINERS:
+            library = android_thread_entry.build_library(packed=bool(suffix))
+            self.assertEqual(committed["runs"]["pthread_xax_start_routine" + suffix]["library_sha256"], hashlib.sha256(library).hexdigest())
         self.assertEqual(committed["passed"], committed["total"])
 
 

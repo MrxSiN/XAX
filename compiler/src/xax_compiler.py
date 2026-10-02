@@ -2444,7 +2444,7 @@ FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_6
 # requires ``ptr<opaque<function>>``) can never call it with the wrong convention.
 # A browser host calls event entries with the page authority it holds (ADR-104).
 WASM32_BROWSER_EVENT_ABI = b"wasm32-browser-event"
-FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, WASM32_BROWSER_EVENT_ABI)
+FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, ANDROID_AAPCS64_C_ABI, WASM32_BROWSER_EVENT_ABI)
 _CODE_ENTRY_PREFIX = b"code-entry:"
 
 
@@ -6034,7 +6034,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                             # entry with effects or resources would hide them (ADR-102).
                             admissible = entry_abi in FOREIGN_ENTRY_ABIS and not any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns))
                         if not admissible:
-                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else"}, entry_abi.decode("ascii", "replace"))
+                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else"}, entry_abi.decode("ascii", "replace"))
                     elif not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                 elif node.operation == Operation.CALL_FOREIGN:
