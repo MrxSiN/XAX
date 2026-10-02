@@ -568,3 +568,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Token test after the upgrade (lowest cost). Offline: with `tiktoken` installed, the OI-01 transport counts and the OI-03/OI-04 replays reproduce, and the AI-native tests pass 17/17. The OI-12 and OI-13 committed evidence records `tiktoken` as unavailable, so those replays fail whenever it is present (environment-dependent; predates this work). Model: one `task-02` pair with `haiku` subagents — C 35,151 tokens, XAX 36,492 tokens (1.04×), both pass; this is not OI-31 evidence.
 - Regression on Linux x86-64 (Python 3.11.15, pytest, `tiktoken` installed): the merged tree has exactly main's 17 environment/evidence failures — host-bound Windows/QEMU cases, the stale stack-memory hash pin, the OI-25/OI-26 replays, the OI-12/OI-13 `tiktoken` replays, and the wheel build — with 781 tests passing.
 
+## OI-37 measurement: arena + index versus pointer links — 2026-10-02
+
+- Workload `compiler/benchmarks/linux_chains.py` (chained hash table, 2^20 nodes, 2^16 buckets) in XAX with arena indices and checked access. Its C twin uses pointer links, and diagnostic C twins use index links with and without checks. Shared tooling: `benchmarks/linux_graph_kit.py` and `benchmarks/linux_harness.py` (filestat ported with a byte-identical artifact).
+- MEASURED (`oi37_chains_evidence.json`, two runs): XAX 3.49–3.58× `gcc -O2`, 1,598 B, 16,896 KiB RSS. Attribution: representation 1.44–1.47×, checks 1.34–1.41×, XAX code generation 1.73–1.80×. Decision ADR-090: OI-37 pointer provenance is justified but follows OI-38.
+- Tests: `compiler/tests/test_xax_chains.py` (small-table correctness against an independent reference, plus artifact identity).

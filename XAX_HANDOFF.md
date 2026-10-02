@@ -58,9 +58,9 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 
 ## Exact next task
 
-1. **OI-37 remainder**: local-provenance pointer store/reload (pointer-linked structures over XAX storage). Done: address exposure (ADR-081, WASI stdout EXECUTED) and provenance-free pointer elements (ADR-082, dispatch table EXECUTED). Needs typed mixed storage + container/referent lifetime coupling; justify against arena+index first.
-2. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
-3. **OI-38**: converge the PE (ADR-083) and Linux (ADR-089) register allocators into one, then add cross-block allocation/LICM. The target is to close the 1.41–1.82× gap to `clang -O2` on Linux `filestat` while keeping the differential corpus green.
+1. **OI-38** (now first, per ADR-090): converge the PE (ADR-083) and Linux (ADR-089) allocators and add cross-block allocation/LICM. Measured shares: 1.73–1.80× on `chains` and 1.41–1.82× vs `clang -O2` on `filestat`. Keep the differential corpus green and re-measure both workloads.
+2. **OI-37 remainder**, now justified (ADR-090: arena+index 1.44–1.47× slower than pointer links in C, checks a further 1.34–1.41×): a local-provenance pointer store/reload design that carries node extent, so neither index scaling nor per-access checks remain. Done already: address exposure (ADR-081) and provenance-free pointer elements (ADR-082).
+3. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
 4. **OI-33 (Linux)**: argv/env/auxv as typed external views of the initial stack, so Linux tools can take arguments; **OI-40**: SysV callbacks, floats, and aggregates.
 5. Install a C toolchain on the measuring host and run `compiler/benchmarks/windows_c_reference/hosted.c` for the first R4 size/time comparison.
 6. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
