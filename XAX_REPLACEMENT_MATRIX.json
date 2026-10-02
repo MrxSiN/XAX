@@ -122,7 +122,8 @@
         ],
         "optimization": [
           "PROTOTYPE",
-          "compiler/benchmarks/aarch64_register_residency_evidence.json"
+          "compiler/benchmarks/aarch64_register_residency_evidence.json",
+          "compiler/tests/test_xax_aarch64_regalloc_differential.py"
         ],
         "real_execution": [
           "EXECUTED",
