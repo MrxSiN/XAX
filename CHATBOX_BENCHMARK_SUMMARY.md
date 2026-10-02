@@ -1,32 +1,56 @@
-# ChatGPT Continuous-Session XAX Benchmark Summary
+# ChatGPT Continuous-Session XAX Benchmark Results
 
 Interpretation: **Task-attributable observable token proxy for sequential benchmark tasks executed in one continuous ChatGPT session.**
 
-Provider-reported token telemetry was unavailable for all trials. Recorded proxy counts used the benchmark session's deterministic UTF-8-byte fallback because `tiktoken` was unavailable; these values are not exact OpenAI billing/model token usage. Exact byte counts are preserved in `chatbox-results.csv`.
+Provider-reported input/output/total token telemetry was unavailable. `tiktoken` was not installed in the execution environment, so the recorded proxy uses the session's deterministic UTF-8 byte fallback; exact UTF-8 byte counts are retained in the CSV. These values are not OpenAI billing/model token counts.
 
-Percentage difference below is `(C - XAX) / XAX * 100`; positive means C used more recorded task-local proxy units.
+## Completion
 
-## Matched core tasks — TASK-LOCAL PROXY
+- Recorded trials: **76**
+- Successful trials: **76/76**
+- Transport cells: **66/66 passed**
+- Failed checker/test attempts: **3**
+- Repairs: **3**
+- Total recorded task-local proxy units: **107,423**
 
-| Task | C proxy | XAX proxy | Abs. diff | C vs XAX | C/XAX | Checks C/XAX | Repairs C/XAX | Result |
-|---|---:|---:|---:|---:|---:|---:|---:|---|
-| task-01 | 945 | 1,764 | 819 | -46.4% | 0.54 | 1/1 | 0/0 | PASS/PASS |
-| task-02 | 3,692 | 1,700 | 1,992 | +117.2% | 2.17 | 1/1 | 0/0 | PASS/PASS |
-| task-03 | 1,087 | 695 | 392 | +56.4% | 1.56 | 1/1 | 0/0 | PASS/PASS |
-| task-04 | 2,846 | 2,481 | 365 | +14.7% | 1.15 | 1/1 | 0/0 | PASS/PASS |
-| task-05 | 5,814 | 1,508 | 4,306 | +285.5% | 3.86 | 1/1 | 0/0 | PASS/PASS |
+The public benchmark CLI accepts numbered tasks through `task-11`; probing `task-12` returned `unknown task: task-12`.
 
-## Aggregate — TASK-LOCAL PROXY
+## Aggregate by arm
 
-| Arm | Total proxy | Median/task | Successful | Checks | Failed checks | Repairs |
+| Arm | Trials | Successful | Proxy total | Median / trial | Failed checks | Repairs |
 |---|---:|---:|---:|---:|---:|---:|
-| C | 14,384 | 2,846 | 5/5 | 5 | 0 | 0 |
-| XAX | 8,148 | 1,700 | 5/5 | 5 | 0 | 0 |
+| C | 5 | 5 | 14,384 | 2,846 | 0 | 0 |
+| XAX | 5 | 5 | 8,148 | 1,700 | 0 | 0 |
+| XAX-TYPED-LINE | 11 | 11 | 16,661 | 1,292 | 3 | 3 |
+| XAX-TYPED-PIPE | 11 | 11 | 13,292 | 1,123 | 0 | 0 |
+| XAX-TYPED-JSON | 11 | 11 | 13,720 | 1,204 | 0 | 0 |
+| XAX-UNIFIED-LINE | 11 | 11 | 14,530 | 1,235 | 0 | 0 |
+| XAX-UNIFIED-PIPE | 11 | 11 | 12,956 | 1,137 | 0 | 0 |
+| XAX-UNIFIED-JSON | 11 | 11 | 13,732 | 1,217 | 0 | 0 |
 
-Across the five matched successful tasks, C recorded 14,384 proxy units and XAX recorded 8,148. Aggregate C/XAX ratio: 1.77; C was 76.5% higher than XAX by this recorded proxy.
+## Transport coverage
 
-## PROVIDER-REPORTED
+| Task | T-LINE | T-PIPE | T-JSON | U-LINE | U-PIPE | U-JSON |
+|---|---|---|---|---|---|---|
+| task-01 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-02 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-03 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-04 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-05 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-06 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-07 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-08 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-09 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-10 | PASS | PASS | PASS | PASS | PASS | PASS |
+| task-11 | PASS | PASS | PASS | PASS | PASS | PASS |
 
-Provider input tokens: unavailable. Provider output tokens: unavailable. Provider total tokens: unavailable.
+## Trials requiring repair
 
-This experiment does not reproduce a fresh-session benchmark and cannot eliminate learning or context carryover between sequential tasks.
+| Trial | Task | Arm | Checks | Failed | Repairs | Proxy total |
+|---:|---|---|---:|---:|---:|---:|
+| 41 | task-06 | XAX-TYPED-LINE | 2 | 1 | 1 | 1,464 |
+| 47 | task-07 | XAX-TYPED-LINE | 3 | 2 | 2 | 1,613 |
+
+## Scientific limitation
+
+This is a continuous-chat experiment. It does **not** reproduce a fresh-session benchmark and cannot remove context/learning carryover between sequential tasks. `carry_in_proxy_tokens` is retained per trial as metadata and is not added to the task-local proxy total.
