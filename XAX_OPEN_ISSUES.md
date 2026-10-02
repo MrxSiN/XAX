@@ -601,4 +601,4 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Evidence that closes it.** An executed page whose XAX click handler updates the DOM on each click, with negative vectors for a handler that has machine parameters and for an undeclared event kind.
 
-**Status:** OPEN.
+**Status: CLOSED (2026-10-02, ADR-104).** Candidate (a) was implemented. In headless Chromium 141, the XAX `on_click` entry re-renders `"n fib(n)"` on each click for four queries with no page errors (`browser_fib_evidence.json`). Negative vectors cover a machine parameter, a claimed memory effect, an internal address on wasm, a browser entry on x86-64, and an undeclared binding (`WEB-IMPORT-DECLARED`). Remaining breadth (more event kinds, element addressing, timers, fetch) is ordinary binding-package growth under OI-32.

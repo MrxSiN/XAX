@@ -403,7 +403,7 @@
     },
     {
       "id": "browser-web",
-      "level": "R1",
+      "level": "R2",
       "runtime_requirement": "platform-required browser JavaScript host; the page script is compiler-generated from the imported xax-web-v1 declarations only (ADR-103)",
       "fields": {
         "semantic_expressibility": [
@@ -425,8 +425,9 @@
           "compiler/benchmarks/browser_fib_evidence.json"
         ],
         "platform_apis": [
-          "PROTOTYPE",
-          "compiler/src/xax_web.py"
+          "EXECUTED",
+          "compiler/src/xax_web.py",
+          "compiler/benchmarks/browser_fib_evidence.json"
         ],
         "ffi": [
           "EXECUTED",
@@ -443,8 +444,8 @@
         ]
       },
       "blockers": [
-        "two bindings (query_copy, set_body_text); no events or host-invoked entries (OI-43)",
-        "no Web IDL importer (OI-32); no fetch, timers, canvas, or WebGPU",
+        "four bindings (query, body text read/write, body click); no element addressing, timers, fetch, canvas, or WebGPU",
+        "no Web IDL importer (OI-32); no static storage, so cross-event state lives in the DOM",
         "no comparison against Emscripten/Rust wasm toolchains (R4)",
         "recursion/reentrant stack lowering absent on wasm32"
       ]

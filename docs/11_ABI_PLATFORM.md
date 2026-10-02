@@ -659,8 +659,12 @@ The target shares the WASI command container (§18): the module exports `_start`
 |---|---|---|---|
 | `query_copy` | `ptr<b8,rw>`, `bits<32>` capacity, `effect<io>`, memory | `bits<32>` length, `effect<io>`, memory | Copy the UTF-8 query string (without `?`) into at most `capacity` bytes; return its full length (a result above `capacity` reports truncation). |
 | `set_body_text` | `ptr<b8,read>`, `bits<32>` length, `effect<io>`, memory | `effect<io>`, memory | Replace `document.body`'s text with the UTF-8 bytes. |
+| `body_text_copy` | `ptr<b8,rw>`, `bits<32>` capacity, `effect<io>`, memory | `bits<32>` length, `effect<io>`, memory | As `query_copy`, for `document.body.textContent`. |
+| `body_on_click` | event entry, `effect<io>` | `effect<io>` | Call the entry on every click on the body, after the current entry returns. |
 
-`emit_browser_page(image)` returns one HTML file containing the base64 module plus a script that defines host functions for the imported bindings only, instantiates the module, and calls `_start` once. Any other import rejects (`WEB-IMPORT-DECLARED`). The script holds no allocator, scheduler, or event loop. The harness `run_browser_page` (tests only) loads the page in headless Chromium through Playwright. Events are OI-43.
+`emit_browser_page(image)` returns one HTML file containing the base64 module plus a script that defines host functions for the imported bindings only, instantiates the module, and calls `_start` once. Any other import rejects (`WEB-IMPORT-DECLARED`). The script holds no allocator, scheduler, or event loop. The harness `run_browser_page` (tests only) loads the page in headless Chromium through Playwright and can click the body.
+
+**Event entries (ADR-104).** A handler is passed as `FUNCTION_ADDRESS` with type `web_api().event_entry` (`ptr<opaque_identity<"code-entry:wasm32-browser-event">>`). Its parameters must be non-memory effects that it returns unchanged; the host supplies them on each call, as it does for `_start`. On wasm32 the address is `i32.const k`, and the module exports the handler as `entry_<k>`. The generated listener calls `exports["entry_" + k]()`. Listeners run to completion one at a time and no binding dispatches events synchronously, so entries never overlap.
 
 ## 19. Linux x86-64 hosted slice (2026-10-02)
 

@@ -8,13 +8,25 @@ import sys
 import unittest
 from pathlib import Path
 
-from xax_compiler import Operation, XaxError, bits_type, foreign_function_symbol, stack_owner_type, wasm32_browser_target, wasm32_general_target
+from xax_compiler import (
+    Operation,
+    XaxError,
+    bits_type,
+    foreign_function_symbol,
+    function_pointer_type,
+    opaque_type,
+    OpaqueKind,
+    stack_owner_type,
+    wasm32_browser_target,
+    wasm32_general_target,
+    x86_64_linux_dynamic_exec_target,
+)
 from xax_graph_builder import GraphBuilder, program_store
 from xax_wasm import compile_wasm, compile_wasm_bound_target
 from xax_web import emit_browser_page, playwright_available, run_browser_page, web_api
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from benchmarks.browser_fib import CASES, EVIDENCE, compile_page, reference  # noqa: E402
+from benchmarks.browser_fib import CASES, CLICKS, EVIDENCE, compile_page, expected_texts  # noqa: E402
 
 B32 = bits_type(32)
 
@@ -64,9 +76,61 @@ class BrowserPageTests(unittest.TestCase):
             compile_wasm_bound_target(reader, function.cid, target)
         self.assertEqual(caught.exception.diagnostic.rule, "WASM-OP-TARGET-SUPPORTED")
 
-    def test_cases_match_the_reference(self):
-        for query, expected in CASES:
-            self.assertEqual(reference(query), expected)
+    def test_reference_texts(self):
+        self.assertEqual(expected_texts("30"), ["30 832040", "31 1346269", "32 2178309"])
+        self.assertEqual(expected_texts("7x9")[0], "7 13")
+
+    def test_click_entry_is_exported_and_registered(self):
+        module, page = compile_page()
+        self.assertIn(b"entry_0", module)
+        self.assertIn(b"body_on_click", page)
+
+
+def _entry_program(handler_parameters, handler_returns, address_type=None, target=None):
+    """``_start`` that takes the address of a handler with the given interface."""
+    api = web_api()
+    handler_graph = GraphBuilder()
+    block = handler_graph.block(*handler_parameters)
+    block.ret(*block.params)
+    handler = handler_graph.function(handler_parameters, handler_returns)
+    graph = GraphBuilder()
+    start = graph.block(api.page_effect)
+    start.op1(Operation.FUNCTION_ADDRESS, (), address_type or api.event_entry, entity=handler)
+    start.ret(start.params[0])
+    function = graph.function((api.page_effect,), (api.page_effect,))
+    target = target or wasm32_browser_target()
+    objects = (*api.types, opaque_type(OpaqueKind.FUNCTION), *handler_graph.objects.values(), *graph.objects.values())
+    return program_store(function, target, objects), function, target
+
+
+class EventEntryTests(unittest.TestCase):
+    def test_entry_with_machine_parameters_rejects(self):
+        api = web_api()
+        with self.assertRaises(XaxError) as caught:
+            _entry_program((api.page_effect, B32), (api.page_effect, B32))
+        self.assertEqual(caught.exception.diagnostic.rule, "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY")
+
+    def test_entry_cannot_claim_a_memory_effect(self):
+        api = web_api()
+        with self.assertRaises(XaxError) as caught:
+            _entry_program((api.page_effect, api.memory_effect), (api.page_effect, api.memory_effect))
+        self.assertEqual(caught.exception.diagnostic.rule, "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY")
+
+    def test_internal_address_rejects_on_wasm(self):
+        api = web_api()
+        reader, function, target = _entry_program((api.page_effect,), (api.page_effect,), address_type=function_pointer_type())
+        with self.assertRaises(XaxError) as caught:
+            compile_wasm(reader, function.cid, target.cid)
+        self.assertEqual(caught.exception.diagnostic.rule, "WASM-FUNCTION-ADDRESS-EVENT-ENTRY")
+
+    def test_event_entry_rejects_on_x86_64(self):
+        from xax_x86_64 import compile_native_bound_target
+
+        api = web_api()
+        reader, function, _target = _entry_program((api.page_effect,), (api.page_effect,))
+        with self.assertRaises(XaxError) as caught:
+            compile_native_bound_target(reader, function.cid, x86_64_linux_dynamic_exec_target())
+        self.assertEqual(caught.exception.diagnostic.rule, "SYSV-ENTRY-TARGET")
 
     def test_committed_evidence_matches_the_compiled_page(self):
         committed = json.loads(EVIDENCE.read_text(encoding="utf-8"))
@@ -78,12 +142,12 @@ class BrowserPageTests(unittest.TestCase):
 
 @unittest.skipUnless(playwright_available(), "requires Node.js with Playwright and Chromium")
 class BrowserExecutionTests(unittest.TestCase):
-    def test_page_reads_the_url_computes_and_renders(self):
+    def test_page_reads_the_url_renders_and_handles_clicks(self):
         _module, page = compile_page()
-        for query, expected in CASES:
+        for query in CASES:
             with self.subTest(query=query):
-                observed = run_browser_page(page, query)
-                self.assertEqual((observed["text"], observed["errors"]), (expected, []))
+                observed = run_browser_page(page, query, clicks=CLICKS)
+                self.assertEqual((observed["texts"], observed["errors"]), (expected_texts(query), []))
 
 
 if __name__ == "__main__":

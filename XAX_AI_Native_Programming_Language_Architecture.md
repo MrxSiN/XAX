@@ -977,7 +977,7 @@ JVM, Android DEX/ART, and .NET CLI/CLR are targets and platforms. Java, Kotlin, 
 
 The web target is WebAssembly plus platform contracts: WASI for system interfaces, browser host APIs (DOM, fetch, WebGPU, events) through declarations imported from Web IDL-class metadata. XAX never requires handwritten JavaScript. If a host requires glue, the compiler generates it deterministically from explicit platform semantics and records it in provenance.
 
-First evidence (ADR-103, EXECUTED in headless Chromium): target `wasm32-browser-v1` and the `xax-web-v1` binding package. The page is one generated HTML file containing the module plus host functions for exactly the bindings the module imports. An XAX program reads its URL, computes, and renders into the DOM. Event entries are OI-43; a Web IDL importer is OI-32.
+First evidence (ADR-103, EXECUTED in headless Chromium): target `wasm32-browser-v1` and the `xax-web-v1` binding package. The page is one generated HTML file containing the module plus host functions for exactly the bindings the module imports. An XAX program reads its URL, computes, renders into the DOM, and handles clicks through an XAX event entry (ADR-104, which reuses the ADR-102 code-entry type). A Web IDL importer is OI-32.
 
 ---
 

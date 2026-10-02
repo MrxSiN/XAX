@@ -560,7 +560,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Target `wasm32-browser-v1`, platform package `compiler/src/xax_web.py` (`xax-web-v1`: `query_copy`, `set_body_text`; host state ordered by `effect<io>`). `emit_browser_page` generates one deterministic HTML page containing the module plus host functions for the imported bindings only. Imports outside the package reject.
 - The wasm backend lowers `bit.and`/`bit.or`/`bit.xor`/`udiv`/`urem`/`int.truncate`/`int.zero_extend`, but only on targets that list them. Existing wasm targets and their evidence are byte-identical.
 - EXECUTED in headless Chromium 141 through Playwright (`compiler/benchmarks/browser_fib.py`, `browser_fib_evidence.json`). The XAX program reads the URL query, parses `n`, computes `fib(n)` modulo 2^64, formats it, and renders it into the DOM. Four queries pass with no page errors. Module 1,270 B, page 2,343 B. Vectors: `compiler/tests/test_xax_web.py` (7 tests).
-- Matrix: `browser-web` NONE → R1 (`platform_apis` PROTOTYPE: two bindings, no events). Events are OI-43.
+- Event entries (ADR-104, closes OI-43): `code-entry:wasm32-browser-event` addresses lower to exported `entry_<k>`; `body_on_click` and `body_text_copy` bindings. The interactive page (`n fib(n)`, advanced by XAX on each click) passes 4 queries × 2 clicks in Chromium. Module 3,700 B, page 5,843 B.
+- Matrix: `browser-web` NONE → R2 (bounded bindings executed, including events). R3 needs a nontrivial application.
 
 ## C callbacks and SSE-class SysV arguments (ADR-102, OI-40) — 2026-10-02
 

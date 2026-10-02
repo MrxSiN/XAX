@@ -1157,7 +1157,7 @@ Interoperability is mandatory. Deterministic importers SHOULD convert external m
 
 ### 21.9b Browser pages
 
-`wasm32-browser-v1` (ADR-103) uses the WASI command container (`_start` and `memory` exports; proof-only entry). Browser APIs are `wasm32-import` declarations of a platform package. Each has exactly one fixed host meaning, and host state is ordered by an `effect<io>` token supplied to `_start`. The host page MUST be generated from the imported declarations alone: an import outside the package rejects, and unused bindings emit nothing. Event entries are OI-43.
+`wasm32-browser-v1` (ADR-103) uses the WASI command container (`_start` and `memory` exports; proof-only entry). Browser APIs are `wasm32-import` declarations of a platform package. Each has exactly one fixed host meaning, and host state is ordered by an `effect<io>` token supplied to `_start`. The host page MUST be generated from the imported declarations alone: an import outside the package rejects, and unused bindings emit nothing. Event handlers are foreign entries of ABI `wasm32-browser-event` (ADR-104): their parameters MUST be non-memory effects returned unchanged, with no machine values, and the host supplies that authority on each call. On wasm32 the address is the export number of `entry_<k>`.
 
 ### 21.10 Standard semantic libraries
 
