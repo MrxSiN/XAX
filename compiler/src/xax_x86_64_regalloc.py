@@ -38,6 +38,7 @@ spill-every-value lowering; nothing is guessed.
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Callable
 
 from xax_artifact import ArtifactSemanticRange
@@ -123,7 +124,7 @@ def _nop_padding(length: int) -> bytes:
 
 _PURE_BINARY = frozenset({Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR})
 _COMMUTATIVE = frozenset({Operation.ADD_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR})
-_COPY = frozenset({Operation.INT_ZERO_EXTEND, Operation.POINTER_CAST})
+_COPY = frozenset({Operation.INT_ZERO_EXTEND, Operation.POINTER_CAST, Operation.LINK_MAKE})
 _MEMORY = frozenset({Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE})
 SUPPORTED_OPERATIONS = frozenset(
     {
@@ -131,7 +132,7 @@ SUPPORTED_OPERATIONS = frozenset(
         Operation.UDIV, Operation.UREM, Operation.CONSTANT, Operation.INT_COMPARE, Operation.INT_TRUNCATE,
         Operation.ADDRESS_OFFSET, Operation.HEAP_VIEW, Operation.CALL_DIRECT, Operation.CALL_FOREIGN,
         Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.FUNCTION_ADDRESS,
-        Operation.STACK_ALLOC, Operation.STACK_END, Operation.CALL_INDIRECT,
+        Operation.STACK_ALLOC, Operation.STACK_END, Operation.CALL_INDIRECT, Operation.LINK_FOLLOW,
     }
 )
 _CALLS = frozenset({Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT})
@@ -309,6 +310,84 @@ def compile_register_resident(
                 stack_storage.append((ValueRef.node_result(block_index, node_index), extent, alignment))
     stack_values = {value for value, _extent, _alignment in stack_storage}
 
+    # Block parameters proven nonzero by every incoming edge: the edge is the
+    # taken side of ``x != 0`` (or not-taken side of ``x == 0``) and passes x.
+    incoming: dict[int, list[tuple[int, int, tuple[ValueRef, ...]]]] = {}
+    for source, block in enumerate(graph.blocks):
+        for edge_index, (target_block, arguments) in enumerate(block.terminator.edges):
+            incoming.setdefault(target_block, []).append((source, edge_index, arguments))
+
+    def edge_proves_nonzero(source: int, edge_index: int, arguments: tuple[ValueRef, ...], parameter: int) -> bool:
+        terminator = graph.blocks[source].terminator
+        condition = terminator.values[0] if terminator.kind == TerminatorKind.CONDITIONAL_BRANCH else None
+        if condition is None or condition.tag != 1 or condition.block != source:
+            return False
+        compare = graph.blocks[source].nodes[condition.index]
+        if compare.operation != Operation.INT_COMPARE or parameter >= len(arguments):
+            return False
+        tested, other = compare.operands
+        if constants.get(other) != 0:
+            tested, other = other, tested
+        kind = IntCompare(compare.attributes[0])
+        taken = (kind == IntCompare.NE and edge_index == 0) or (kind == IntCompare.EQ and edge_index == 1)
+        return constants.get(other) == 0 and taken and arguments[parameter] == tested
+
+    nonzero_parameters = {
+        block_index: {
+            ValueRef.parameter(block_index, parameter)
+            for parameter in range(len(block.parameters))
+            if block_index != graph.entry and incoming.get(block_index)
+            and all(edge_proves_nonzero(*edge, parameter) for edge in incoming[block_index])
+        }
+        for block_index, block in enumerate(graph.blocks)
+    }
+
+    # Upper bounds of integer values, enough to prove index arithmetic in range.
+    definition = {ValueRef.node_result(b, i): node for b, block in enumerate(graph.blocks) for i, node in enumerate(block.nodes)}
+
+    def maximum(value: ValueRef, depth: int = 0) -> int | None:
+        if value in constants:
+            return constants[value]
+        node = definition.get(value)
+        if node is None or depth > 8 or value not in widths:
+            return None
+        limit = (1 << widths[value]) - 1
+        left = node.operands[0] if node.operands else None
+        if node.operation == Operation.UDIV and constants.get(node.operands[1]):
+            bound = maximum(left, depth + 1)
+            return (limit if bound is None else bound) // constants[node.operands[1]]
+        if node.operation == Operation.BIT_AND:
+            bounds = [b for b in (maximum(left, depth + 1), maximum(node.operands[1], depth + 1)) if b is not None]
+            return min(bounds) if bounds else limit
+        if node.operation == Operation.MUL_WRAP and constants.get(node.operands[1]) is not None:
+            bound = maximum(left, depth + 1)
+            return None if bound is None or bound * constants[node.operands[1]] > limit else bound * constants[node.operands[1]]
+        if node.operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
+            bound = maximum(left, depth + 1)
+            return limit if bound is None else min(bound, limit)
+        return None
+
+    def multiple_of(value: ValueRef, factor: int) -> bool:
+        node = definition.get(value)
+        if value in constants:
+            return constants[value] % factor == 0
+        return node is not None and node.operation == Operation.MUL_WRAP and constants.get(node.operands[1], 1) % factor == 0
+
+    def proven_rebase(node) -> bool:
+        """``pointer_rebase(view, pointer_address(view) + offset)`` with offset provably in range and aligned."""
+        view, address = node.operands
+        add = definition.get(address)
+        if add is None or add.operation != Operation.ADD_WRAP:
+            return False
+        for base, offset in (add.operands, add.operands[::-1]):
+            exposed = definition.get(base)
+            if exposed is not None and exposed.operation == Operation.POINTER_ADDRESS and exposed.operands[0] == view:
+                span = pointer_extent_from_graph(graph, view, resolve) - node.attributes[0]
+                bound = maximum(offset)
+                alignment = _decode_pointer_type(resolve(node.results[0]), resolve)[2]
+                return bound is not None and bound <= span and multiple_of(offset, alignment)
+        return False
+
     def immediate(value: ValueRef, width: int) -> int | None:
         constant = constants.get(value)
         return constant if constant is not None and _immediate_fits(constant, width) else None
@@ -329,6 +408,31 @@ def compile_register_resident(
             fused[block_index] = condition.index
 
     # Values used in a block other than the one defining them live in a home slot.
+    # A constant ``address_offset`` used only as the address of plain loads and
+    # stores folds into their displacement: no register copy, and the base
+    # pointer carries the liveness (``[base + disp]``).
+    memory_address_uses: dict[ValueRef, int] = {}
+    other_uses: set[ValueRef] = set()
+    for block in graph.blocks:
+        for node in block.nodes:
+            for position, operand in enumerate(node.operands):
+                plain = node.operation in (Operation.LOAD_BITS_LE, Operation.RAW_LOAD_BITS_LE, Operation.STORE_BITS_LE) and position == 0
+                if plain:
+                    memory_address_uses[operand] = memory_address_uses.get(operand, 0) + 1
+                else:
+                    other_uses.add(operand)
+        other_uses.update(block.terminator.values)
+        other_uses.update(value for _target, arguments in block.terminator.edges for value in arguments)
+    folded: dict[ValueRef, tuple[ValueRef, int]] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            value = ValueRef.node_result(block_index, node_index)
+            if node.operation == Operation.ADDRESS_OFFSET and memory_address_uses.get(value) and value not in other_uses and node.attributes[0] < 1 << 31:
+                folded[value] = (node.operands[0], node.attributes[0])
+
+    def through_fold(value: ValueRef) -> ValueRef:
+        return folded[value][0] if value in folded else value
+
     uses_by_block: dict[int, dict[ValueRef, tuple[int, ...]]] = {}
     homes: list[ValueRef] = []
     for block_index, block in enumerate(graph.blocks):
@@ -336,7 +440,7 @@ def compile_register_resident(
         position = len(block.nodes)
         for node_index, node in enumerate(block.nodes):
             use_position = position if fused.get(block_index) == node_index else node_index
-            for operand in node.operands:
+            for operand in map(through_fold, node.operands):
                 if operand in widths:
                     uses.setdefault(operand, []).append(use_position)
         for value in (*block.terminator.values, *(value for _target, arguments in block.terminator.edges for value in arguments)):
@@ -382,9 +486,30 @@ def compile_register_resident(
     def width_bytes(value: ValueRef) -> int:
         return 8 if widths[value] > 32 else 4
 
-    def lower_block(block_index: int, assembler: _Assembler | None, ranges: list | None, used_registers: set[int], epilogue: bytes, stubs: list, traps: dict) -> int:
+    def duplicable(target_block: int) -> bool:
+        """A header that only tests and branches can be copied into a jumping predecessor (loop rotation)."""
+        header = graph.blocks[target_block]
+        return (
+            header.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH and len(header.nodes) <= 2
+            and all(node.operation in (Operation.CONSTANT, Operation.INT_COMPARE) for node in header.nodes)
+        )
+
+    def lower_block(block_index: int, assembler: _Assembler | None, ranges: list | None, used_registers: set[int], epilogue: bytes, stubs: list, traps: dict, copy_tag: str = "", copy_following: int | None = None) -> int:
+        """Lower one block; with ``copy_tag`` emit an inline copy (no label) followed by ``copy_following``."""
+        following = copy_following if copy_tag else block_index + 1
         block = graph.blocks[block_index]
         uses = uses_by_block[block_index]
+        nonzero = nonzero_parameters[block_index]
+        # Register hints: a value of this block passed once on an edge prefers
+        # the target parameter's register, which saves the edge copy.
+        hint: dict[str, ValueRef | None] = {"value": None}
+        edge_hints: dict[ValueRef, int] = {}
+        edge_uses = Counter(value for _target, arguments in block.terminator.edges for value in arguments)
+        for target_block, arguments in block.terminator.edges:
+            for index, value in enumerate(machine_parameters[target_block]):
+                argument = arguments[value.index]
+                if argument.tag == 1 and argument.block == block_index and edge_uses[argument] == 1 and value not in pinned and index < len(allocatable):
+                    edge_hints[argument] = allocatable[index]
         last_use = {value: positions[-1] for value, positions in uses.items()}
         register_for: dict[ValueRef, int] = {}
         value_for_register: dict[int, ValueRef] = {}
@@ -464,6 +589,9 @@ def compile_register_resident(
                 unbind(value)
 
         def acquire(position: int, protected: frozenset | set = frozenset(), excluded: tuple[int, ...] = ()) -> int:
+            preferred = edge_hints.get(hint["value"])
+            if preferred is not None and preferred not in value_for_register and preferred not in excluded:
+                return preferred  # the result goes straight into its successor's parameter register
             for register in allocatable:
                 if register not in value_for_register and register not in excluded:
                     return register
@@ -702,12 +830,22 @@ def compile_register_resident(
             return bytes(capture.pop())
 
         def goto(target_block: int) -> None:
-            if target_block != block_index + 1:
+            if target_block != following:
                 jump(b"\xe9", f"block-{target_block}")
 
-        if assembler is not None and block_index in loop_headers:
-            assembler.emit(_nop_padding(-len(assembler.code) % LOOP_ALIGNMENT))
-        label(f"block-{block_index}")
+        def continue_to(target_block: int) -> None:
+            """Jump to ``target_block``, or run a copy of it here when it only tests and branches."""
+            if not copy_tag and target_block not in (following, block_index) and duplicable(target_block):
+                # The header's entry state is canonical (parameters in their fixed
+                # registers), so its test-and-branch can run here instead of a jump.
+                state["max"] = max(state["max"], lower_block(target_block, assembler, None, used_registers, epilogue, stubs, traps, f"-from{block_index}", following))
+            else:
+                goto(target_block)
+
+        if not copy_tag:
+            if assembler is not None and block_index in loop_headers:
+                assembler.emit(_nop_padding(-len(assembler.code) % LOOP_ALIGNMENT))
+            label(f"block-{block_index}")
         for index, value in enumerate(machine_parameters[block_index]):
             if value in pinned:
                 bind(value, pinned[value])  # edges write pinned parameters directly
@@ -729,6 +867,7 @@ def compile_register_resident(
         for node_index, node in enumerate(block.nodes):
             start = len(assembler.code) if assembler is not None else 0
             result = ValueRef.node_result(block_index, node_index)
+            hint["value"] = result
             operation = node.operation
             machine_operands = tuple(operand for operand in node.operands if operand in widths)
 
@@ -868,6 +1007,9 @@ def compile_register_resident(
                 retire(node_index, source)
                 define(result, register)
 
+            elif operation == Operation.ADDRESS_OFFSET and result in folded:
+                retire(node_index, node.operands[0])  # folded into the loads/stores that use it
+
             elif operation == Operation.ADDRESS_OFFSET:
                 source = node.operands[0]
                 ensure(source, node_index)
@@ -901,19 +1043,35 @@ def compile_register_resident(
                 alignment = _decode_pointer_type(resolve(node.results[0]), resolve)[2]
                 if widths[address] != 64 or span >= 1 << 31:
                     return -1
-                base = ensure(view, node_index)
-                address_register = ensure(address, node_index, {view})
-                emit(_move_register(_SCRATCH, address_register, 64))
-                emit(_register_arithmetic(Operation.SUB_WRAP, _SCRATCH, base, 64))
-                # One unsigned compare checks both: rotating right by log2(alignment)
-                # moves any misaligned low bits to the top, above every valid quotient.
-                shift = alignment.bit_length() - 1
-                if shift:
-                    emit(_rotate_right_immediate(_SCRATCH, shift))
-                emit(_cmp_imm32(_SCRATCH, span >> shift))
-                trap_if(0x87, b"\x0f\x0b")
+                if proven_rebase(node):
+                    # Value ranges prove the check (OI-38 range elimination): the result is the address.
+                    ensure(address, node_index)
+                else:
+                    base = ensure(view, node_index)
+                    address_register = ensure(address, node_index, {view})
+                    emit(_move_register(_SCRATCH, address_register, 64))
+                    emit(_register_arithmetic(Operation.SUB_WRAP, _SCRATCH, base, 64))
+                    # One unsigned compare checks both: rotating right by log2(alignment)
+                    # moves any misaligned low bits to the top, above every valid quotient.
+                    shift = alignment.bit_length() - 1
+                    if shift:
+                        emit(_rotate_right_immediate(_SCRATCH, shift))
+                    emit(_cmp_imm32(_SCRATCH, span >> shift))
+                    trap_if(0x87, b"\x0f\x0b")
                 register = destination_for(node_index, address, {view})
                 retire(node_index, view, address)
+                define(result, register)
+
+            elif operation == Operation.LINK_FOLLOW:
+                # ADR-097: a link is null or a record start of the view's
+                # storage, so only null needs a (cold) trap.
+                link = node.operands[1]
+                link_register = ensure(link, node_index, {node.operands[0]})
+                if link not in nonzero:
+                    emit(_test_register(link_register, 64))
+                    trap_if(0x84, b"\x0f\x0b")
+                register = destination_for(node_index, link, set())
+                retire(node_index, *node.operands)
                 define(result, register)
 
             elif operation == Operation.HEAP_VIEW:
@@ -928,18 +1086,23 @@ def compile_register_resident(
             elif operation in _MEMORY:
                 if operation == Operation.STACK_ALLOC:  # pragma: no cover - excluded by eligibility
                     return -1
-                pointer = node.operands[0]
+                pointer, displacement = folded.get(node.operands[0], (node.operands[0], 0))
                 base = ensure(pointer, node_index)
                 size = node.attributes[0]
                 if operation in (Operation.LOAD_BITS_LE, Operation.RAW_LOAD_BITS_LE):
-                    register = acquire(node_index, {pointer})
-                    emit(_load_exact(register, base, 0, size))
+                    hinted = edge_hints.get(result)
+                    if consumable(pointer, node_index) and (hinted is None or hinted == base or hinted in value_for_register):
+                        register = base  # the base dies here; load into it (``mov r, [r + d]``)
+                        unbind(pointer)
+                    else:
+                        register = acquire(node_index, {pointer})
+                    emit(_load_exact(register, base, displacement, size))
                     retire(node_index, pointer)
                     define(result, register)
                 elif operation == Operation.STORE_BITS_LE:
                     value = node.operands[1]
                     value_register = ensure(value, node_index, {pointer})
-                    emit(_store_exact(value_register, base, 0, size))
+                    emit(_store_exact(value_register, base, displacement, size))
                     retire(node_index, pointer, value)
                 else:
                     index_value = node.operands[1]
@@ -1056,7 +1219,7 @@ def compile_register_resident(
         elif terminator.kind == TerminatorKind.BRANCH:
             target_block, arguments = terminator.edges[0]
             emit(edge_code(target_block, arguments))
-            goto(target_block)
+            continue_to(target_block)
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             condition = terminator.values[0]
             if block_index in fused:
@@ -1070,37 +1233,41 @@ def compile_register_resident(
             (true_block, true_arguments), (false_block, false_arguments) = terminator.edges
             # Edge copies never change allocation state, so measuring them is free.
             true_copies, false_copies = edge_code(true_block, true_arguments), edge_code(false_block, false_arguments)
-            following = block_index + 1
             if (false_block == following and not false_copies) or (true_block == following and not true_copies):
                 # Fall through to the next block; the other edge leaves via a stub when it copies.
                 taken, condition_code, copies = (true_block, if_false ^ 1, true_copies) if false_block == following and not false_copies else (false_block, if_false, false_copies)
                 destination = f"block-{taken}"
                 if copies:
-                    destination = f"stub-{block_index}"
+                    destination = f"stub-{block_index}{copy_tag}"
                     stubs.append((destination, copies, taken))
                 jump(b"\x0f" + bytes((condition_code,)), destination)
+            elif copy_tag and not true_copies:
+                # A rotated loop test: branch back into the body, leave on the other edge.
+                jump(b"\x0f" + bytes((if_false ^ 1,)), f"block-{true_block}")
+                emit(false_copies)
+                goto(false_block)
             elif not false_copies:
                 jump(b"\x0f" + bytes((if_false,)), f"block-{false_block}")
                 emit(true_copies)
-                goto(true_block)
+                continue_to(true_block)
             elif not true_copies:
                 jump(b"\x0f" + bytes((if_false ^ 1,)), f"block-{true_block}")  # jcc condition codes pair by their low bit
                 emit(false_copies)
-                goto(false_block)
+                continue_to(false_block)
             else:
                 # Both edges copy: keep the next block inline (it needs no jump),
                 # else the edge to the innermost loop header; stub the other.
                 def nearness(target: int) -> int:
-                    return 1 << 30 if target == block_index + 1 else target if target <= block_index else -1
+                    return 1 << 30 if target == following else target if target <= block_index else -1
                 if nearness(false_block) > nearness(true_block):
                     inline, inline_copies, stubbed, stubbed_copies, condition_code = false_block, false_copies, true_block, true_copies, if_false ^ 1
                 else:
                     inline, inline_copies, stubbed, stubbed_copies, condition_code = true_block, true_copies, false_block, false_copies, if_false
-                stub = f"stub-{block_index}"
+                stub = f"stub-{block_index}{copy_tag}"
                 stubs.append((stub, stubbed_copies, stubbed))
                 jump(b"\x0f" + bytes((condition_code,)), stub)
                 emit(inline_copies)
-                goto(inline)
+                continue_to(inline)
         else:
             reason, _ = decode_trap_payload(terminator.payload)
             emit(_immediate(RAX, reason) + b"\x0f\x0b")

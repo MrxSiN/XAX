@@ -930,7 +930,7 @@ X86_64_LINUX_ELF_EXEC_FORMAT = 5
 X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
 X86_64_LINUX_OPERATIONS = (
     1, 2, 3, *range(5, 25),
-    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 74),
+    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 76),
 )
 
 
@@ -2047,6 +2047,27 @@ def dma_resource_types() -> tuple[SemanticObject, ...]:
     )
 
 
+LINK_BYTES = 8
+
+
+def link_type() -> SemanticObject:
+    """``link`` (form 11, ADR-097): an 8-byte record link, null or a record of the same storage.
+
+    Its storage size is fixed on every target (wasm32 keeps the address
+    zero-extended), so record layouts are target independent.
+    """
+    return SemanticObject.create(Kind.TYPE, uleb(11))
+
+
+def null_link() -> SemanticObject:
+    """The only ``link`` constant: null."""
+    return SemanticObject.create(Kind.CONSTANT, uleb(0) + uleb(LINK_BYTES) + bytes(LINK_BYTES), [link_type().cid])
+
+
+def _is_link_type(obj: SemanticObject) -> bool:
+    return obj.kind == Kind.TYPE and obj.body == uleb(11) and not obj.references
+
+
 def opaque_type(kind: OpaqueKind | int) -> SemanticObject:
     try:
         kind = OpaqueKind(kind)
@@ -2234,6 +2255,8 @@ class Operation(IntEnum):
     INT_TRUNCATE = 71
     INT_ZERO_EXTEND = 72
     POINTER_REBASE = 73
+    LINK_MAKE = 74
+    LINK_FOLLOW = 75
 
 
 # Same-width binary integer operations: two bits<N> operands, one bits<N> result.
@@ -2281,6 +2304,8 @@ MEMORY_OPERATIONS = frozenset(
         Operation.HEAP_VIEW,
         Operation.POINTER_ADDRESS,
         Operation.POINTER_REBASE,
+        Operation.LINK_MAKE,
+        Operation.LINK_FOLLOW,
     }
 )
 
@@ -2969,6 +2994,8 @@ def value_bit_width(obj: SemanticObject, resolve: Callable[[bytes], SemanticObje
         return 64
     if form == 7:
         return decode_float_width(obj)
+    if form == 11:
+        return LINK_BYTES * 8
     if form == 8:
         widths = [value_bit_width(resolve(cid), resolve) for cid in _decode_tuple_type(obj, resolve)]
         return None if any(width is None for width in widths) else sum(widths)
@@ -3021,6 +3048,8 @@ def abi_layout(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], 
     if form == 7:
         size = decode_float_width(obj) // 8
         return AbiLayout(size, size)
+    if form == 11:
+        return AbiLayout(LINK_BYTES, LINK_BYTES)
     if form in (8, 9):
         if form == 8:
             components = _decode_tuple_type(obj, resolve)
@@ -3054,7 +3083,7 @@ def abi_scalar_leaves(
     static field list (homogeneous-float classification) treat sums as opaque.
     """
     form = Cursor(obj.body, obj.cid.hex()).uleb()
-    if form in (1, 2, 7):
+    if form in (1, 2, 7, 11):
         return ((base, abi_layout(obj, resolve, pointer_bytes).size, form == 7),)
     if form in (8, 9):
         layout = abi_layout(obj, resolve, pointer_bytes)
@@ -3252,8 +3281,11 @@ def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]
         _decode_array_type(obj, resolve)
     elif form == 10:
         _decode_sum_type(obj, resolve)
+    elif form == 11:
+        if obj.body != uleb(11) or obj.references:
+            fail("XAX.TYPE.LINK", obj.cid.hex(), "TYPE-LINK-CANONICAL", "empty link body", obj.body.hex())
     else:
-        fail("XAX.TYPE.FORM", obj.cid.hex(), "TYPE-FORM-SUPPORTED", list(range(1, 11)), form)
+        fail("XAX.TYPE.FORM", obj.cid.hex(), "TYPE-FORM-SUPPORTED", list(range(1, 12)), form)
 
 
 def _is_memory_effect(obj: SemanticObject) -> bool:
@@ -3320,8 +3352,12 @@ def _decode_constant(
         # patterns and signed zero retain their exact bits.
         if math.isnan(decoded) and raw != (0x7FC00000 if width == 32 else 0x7FF8000000000000):
             fail("XAX.CONSTANT.FLOAT_NAN", obj.cid.hex(), "CONST-FLOAT-CANONICAL-NAN", "canonical quiet NaN", value.hex())
+    elif form == 11:
+        if value != bytes(LINK_BYTES):
+            fail("XAX.CONSTANT.LINK", obj.cid.hex(), "CONST-LINK-NULL-ONLY", bytes(LINK_BYTES).hex(), value.hex())
+        decoded = 0
     else:
-        fail("XAX.CONSTANT.TYPE", obj.cid.hex(), "CONST-SCALAR-TYPE", ["bits<N>", "float<F>"], type_object.cid.hex())
+        fail("XAX.CONSTANT.TYPE", obj.cid.hex(), "CONST-SCALAR-TYPE", ["bits<N>", "float<F>", "link (null)"], type_object.cid.hex())
     if set(obj.references) != {type_object.cid}:
         fail("XAX.CANON.UNUSED_REFERENCE", obj.cid.hex(), "SER-REFS-DIRECT-ONLY", [type_object.cid.hex()], [cid.hex() for cid in obj.references])
     return type_object.cid, decoded
@@ -3536,6 +3572,22 @@ class _PointerFact:
     # ADR-092): the pointer lies somewhere in [offset, offset + window] in
     # steps of ``alignment``.  Static facts hold for every position.
     window: int = 0
+    # Element type of the storage's root view (ADR-097): records and link
+    # fields are typed relative to it.
+    record: bytes | None = None
+    # Storage (and its record type) that this storage's link fields point
+    # into: itself by default, another live record view when named at
+    # ``heap_view`` creation, None when unknown (borrowed views).
+    link_target: tuple[int, int] | None = None
+    link_record: bytes | None = None
+
+
+@dataclass(frozen=True)
+class _LinkFact:
+    """A ``link`` value: null (``storage`` None) or a record start in ``storage`` (ADR-097)."""
+
+    storage: tuple[int, int] | None
+    record: bytes | None
 
 
 @dataclass(frozen=True)
@@ -3594,6 +3646,11 @@ def _merge_block_facts(incoming: Sequence[_BlockFacts], parameter_count: int) ->
         candidates = [facts.pointers.get(index) for facts in incoming]
         if candidates[0] is not None and all(item == candidates[0] for item in candidates):
             pointers[index] = candidates[0]
+        elif all(isinstance(item, _LinkFact) for item in candidates):
+            # A link fact already means "null or a record of that storage", so null joins it.
+            targets = {item for item in candidates if item.storage is not None}
+            if len(targets) == 1:
+                pointers[index] = targets.pop()
         owner_candidates = [facts.owners.get(index) for facts in incoming]
         if owner_candidates[0] is not None and all(item == owner_candidates[0] for item in owner_candidates):
             owners[index] = owner_candidates[0]
@@ -3648,7 +3705,7 @@ def _entry_heap_view_facts(
     for index, extent, initialized in _heap_view_triples(parameters, resolve):
         storage = (-2, index)
         element, permission, alignment = _decode_pointer_type(resolve(parameters[index - 1]), resolve)
-        pointers[index - 1] = _PointerFact(storage, element, permission, 0, extent, alignment, storage)
+        pointers[index - 1] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element)  # borrowed: link target unknown
         owners[index] = _OwnerFact(storage)
         effects[index + 1] = _EffectFact(storage, ((0, extent),) if initialized else ())
     return _BlockFacts(pointers, owners, effects, frozenset(), frozenset())
@@ -3735,7 +3792,7 @@ def _verify_foreign_heap_call(
         token_type = resolve(operand_types[contract.token_input])
         if _heap_view_info(token_type) is not None:
             fact = pointers.get(pointer_ref)
-            if fact is None or fact.storage != owner.storage or fact.offset or fact.window:
+            if not isinstance(fact, _PointerFact) or fact.storage != owner.storage or fact.offset or fact.window:
                 fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-DEALLOCATE-VIEW-BASE", owner.storage, None if fact is None else [fact.storage, fact.offset])
             released = owner.storage
         elif _is_heap_owner(token_type):
@@ -3748,6 +3805,12 @@ def _verify_foreign_heap_call(
     _end_heap_views(node.operands, operand_types, owners, owner_consumers, ended, resolve)
     memory_outputs = [index for index, cid in enumerate(node.results) if _is_memory_effect(resolve(cid))]
     memory_inputs = [ref for ref, cid in zip(node.operands, operand_types) if _is_memory_effect(resolve(cid))]
+    linked = {fact.storage for fact in pointers.values() if isinstance(fact, _PointerFact) and _record_has_link(fact.record, resolve)}
+    for ref in memory_inputs:
+        fact = effects.get(ref)
+        if fact is not None and fact.storage in linked and fact.storage != released:
+            # Foreign code could write arbitrary bytes into link fields (ADR-097).
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-STORAGE-FOREIGN", "deallocation only", fact.storage)
     for position, ref in enumerate(memory_inputs):
         fact = effects.get(ref)
         if fact is None:
@@ -3760,6 +3823,7 @@ def _verify_foreign_heap_call(
         if position < len(memory_outputs) and fact.storage != released and fact.storage not in ended:
             effects[ValueRef.node_result(block_index, node_index, memory_outputs[position])] = fact
     if released is not None:
+        _check_link_dependents(graph, released, pointers, ended)
         ended.add(released)
     if declaration.allocator is not None:
         contract = declaration.allocator
@@ -3809,7 +3873,7 @@ def _verify_heap_view_call(
         effect = effects.get(effect_ref)
         if owner is None or token_ref in owner_consumers:
             fail("XAX.MEMORY.OWNER", graph.cid.hex(), "HEAP-VIEW-CALL-OWNER", "live heap view", [token_ref.block, token_ref.index, token_ref.result])
-        if pointer_fact is None or pointer_fact.storage != owner.storage or pointer_fact.offset or pointer_fact.window:
+        if not isinstance(pointer_fact, _PointerFact) or pointer_fact.storage != owner.storage or pointer_fact.offset or pointer_fact.window:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-VIEW-CALL-BASE", owner.storage, None if pointer_fact is None else [pointer_fact.storage, pointer_fact.offset])
         if effect is None or effect.storage != owner.storage:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-EFFECT-PROVENANCE", owner.storage, None if effect is None else effect.storage)
@@ -3826,7 +3890,7 @@ def _verify_heap_view_call(
         pending = passed.get(callee_returns[index])
         storage = pending.pop(0) if pending else (block_index, node_index, index)
         element, permission, alignment = _decode_pointer_type(resolve(callee_returns[index - 1]), resolve)
-        pointers[ValueRef.node_result(block_index, node_index, index - 1)] = _PointerFact(storage, element, permission, 0, extent, alignment, storage)
+        pointers[ValueRef.node_result(block_index, node_index, index - 1)] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element)
         owners[ValueRef.node_result(block_index, node_index, index)] = _OwnerFact(storage)
         effects[ValueRef.node_result(block_index, node_index, index + 1)] = _EffectFact(storage, ((0, extent),) if initialized else ())
     for remaining in passed.values():
@@ -3863,7 +3927,7 @@ def _verify_heap_view_return(
             owner is None
             or token_ref in owner_consumers
             or owner.storage in ended
-            or pointer_fact is None
+            or not isinstance(pointer_fact, _PointerFact)
             or pointer_fact.storage != owner.storage
             or pointer_fact.offset
             or pointer_fact.window
@@ -3899,6 +3963,31 @@ def _range_initialized(intervals: tuple[tuple[int, int], ...], start: int, end: 
     return any(old_start <= start and end <= old_end for old_start, old_end in intervals)
 
 
+def _record_layout(type_cid: bytes, resolve: Callable[[bytes], SemanticObject], where: str) -> AbiLayout | None:
+    """Layout of a record element (a tuple of bits/float/link fields, ADR-097), else None."""
+    obj = resolve(type_cid)
+    if obj.kind != Kind.TYPE or not obj.body.startswith(uleb(8)):
+        return None
+    for field in _decode_tuple_type(obj, resolve):
+        field_object = resolve(field)
+        form = Cursor(field_object.body, field_object.cid.hex()).uleb()
+        if not (form == 11 or form == 7 or (form == 1 and decode_bits_width(field_object) % 8 == 0)):
+            fail("XAX.MEMORY.RECORD", where, "MEMORY-RECORD-FIELD", "whole-byte bits, float, or link field", field.hex())
+    return abi_layout(obj, resolve)
+
+
+def _record_has_link(type_cid: bytes | None, resolve: Callable[[bytes], SemanticObject]) -> bool:
+    obj = resolve(type_cid) if type_cid is not None else None
+    return obj is not None and obj.body.startswith(uleb(8)) and any(_is_link_type(resolve(field)) for field in _decode_tuple_type(obj, resolve))
+
+
+def _check_link_dependents(graph: SemanticObject, storage, pointers, ended) -> None:
+    """A storage named as another live storage's link target must outlive it (ADR-097)."""
+    for fact in pointers.values():
+        if isinstance(fact, _PointerFact) and fact.link_target == storage and fact.storage != storage and fact.storage not in ended:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-TARGET-OUTLIVES", "dependent storage ended first", [fact.storage, storage])
+
+
 def _verify_memory_node(
     graph: SemanticObject,
     resolve: Callable[[bytes], SemanticObject],
@@ -3924,9 +4013,8 @@ def _verify_memory_node(
             fail("XAX.MEMORY.CONTRACT", graph.cid.hex(), "MEMORY-OP-CONTRACT", expected, actual)
 
     def pointer(value: ValueRef) -> _PointerFact:
-        try:
-            fact = pointers[value]
-        except KeyError:
+        fact = pointers.get(value)
+        if not isinstance(fact, _PointerFact):
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-PROVENANCE-PROVEN", "local stack pointer", [value.block, value.index, value.result])
         if fact.storage in ended:
             fail("XAX.MEMORY.USE_AFTER_LIFETIME", graph.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", fact.storage)
@@ -3955,18 +4043,38 @@ def _verify_memory_node(
             if size not in (4, 8):
                 fail("XAX.MEMORY.ACCESS_SIZE", graph.cid.hex(), "MEMORY-POINTER-ELEMENT-SIZE", [4, 8], size)
             return size
+        if form == 11:
+            return LINK_BYTES
         width = decode_bits_width(type_object) if form == 1 else decode_float_width(type_object) if form == 7 else None
         if width is None or width < 1 or width % 8:
             fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-BYTE-ADDRESSABLE-VALUE", "bits or float scalar with whole-byte width", type_cid.hex())
         return width // 8
 
-    def stored_pointer_provenance(value: ValueRef) -> None:
+    def stored_pointer_provenance(value: ValueRef, destination: _PointerFact) -> None:
+        fact = pointers.get(value)
+        if _is_link_type(resolve(destination.element)):
+            # Link fields hold only null or a record start of their own
+            # storage (ADR-097), so loaded links need no range check.
+            if not isinstance(fact, _LinkFact) or (fact.storage is not None and (fact.storage != destination.link_target or fact.record != destination.link_record)):
+                fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-STORE-PROVENANCE", "null or a link into this storage", None if not isinstance(fact, _LinkFact) else fact.storage)
+            return
         # Only provenance-free pointers (function addresses, foreign/external
         # pointers) may be stored: a reloaded pointer carries no facts, so a
         # stored local-storage pointer could outlive its storage unseen (OI-37).
-        if value in pointers:
-            fact = pointers[value]
+        if isinstance(fact, _PointerFact):
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-POINTER-STORE-LOCAL-PROVENANCE", "provenance-free pointer", [fact.storage[0], fact.storage[1]])
+
+    def view_record(element: bytes, extent: int) -> None:
+        if _is_link_type(resolve(element)):
+            fail("XAX.MEMORY.RECORD", graph.cid.hex(), "MEMORY-LINK-RECORD-ONLY", "record element with link fields", element.hex())
+        layout = _record_layout(element, resolve, graph.cid.hex())
+        if layout is not None and extent % layout.size:
+            fail("XAX.MEMORY.RECORD", graph.cid.hex(), "MEMORY-RECORD-EXTENT", f"multiple of {layout.size}", extent)
+
+    def loaded_link(pointer_fact: _PointerFact, result: ValueRef) -> None:
+        # A link field holds null or a record start of its storage (ADR-097).
+        if _is_link_type(resolve(pointer_fact.element)) and pointer_fact.link_target is not None:
+            pointers[result] = _LinkFact(pointer_fact.link_target, pointer_fact.link_record)
 
     def access(pointer_fact: _PointerFact, size: int, alignment: int) -> None:
         expected_size = element_size(pointer_fact.element)
@@ -3978,9 +4086,19 @@ def _verify_memory_node(
             fail("XAX.MEMORY.BOUNDS", graph.cid.hex(), "MEMORY-BOUNDS", f"at least {size} bytes", pointer_fact.extent)
 
     if operation == Operation.HEAP_VIEW:
-        contract(3, 3, 2)
+        # An optional fourth operand names the record view this storage's
+        # link fields point into (ADR-097); without it they point into itself.
+        if len(node.operands) == 4:
+            target = pointer(node.operands[3])
+            if _record_layout(target.element, resolve, graph.cid.hex()) is None or target.element != target.record or target.offset or target.window:
+                fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-TARGET-ROOT-VIEW", "a whole record view", [target.offset, target.window])
+            link_target = (target.storage, target.record)
+            contract(4, 3, 2)
+        else:
+            link_target = None
+            contract(3, 3, 2)
         extent, alignment = node.attributes
-        raw_ref, token_ref, allocation_effect_ref = node.operands
+        raw_ref, token_ref, allocation_effect_ref = node.operands[:3]
         allocation = (heap_allocations or {}).get(raw_ref)
         if allocation is None:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-VIEW-ALLOCATION-PROVEN", "foreign allocator pointer result", [raw_ref.block, raw_ref.index, raw_ref.result])
@@ -4020,7 +4138,9 @@ def _verify_memory_node(
         storage = (block_index, node_index)
         ended.discard(storage)
         owner_consumers.add(token_ref)
-        pointers[result_refs[0]] = _PointerFact(storage, element, permission, 0, extent, alignment, storage)
+        view_record(element, extent)
+        target_storage, target_record = link_target or (storage, element)
+        pointers[result_refs[0]] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element, link_target=target_storage, link_record=target_record)
         owners[result_refs[1]] = _OwnerFact(storage)
         effects[result_refs[2]] = _EffectFact(storage, ((0, extent),) if allocation.zeroed else ())
         return
@@ -4044,7 +4164,8 @@ def _verify_memory_node(
             fail("XAX.MEMORY.LIFETIME_LEAK", graph.cid.hex(), "MEMORY-LIFETIME-EXPLICIT-END", "storage ended before re-allocation", storage)
         allocations.add(storage)
         ended.discard(storage)  # a loop re-entering this node starts a fresh lifetime
-        pointers[result_refs[0]] = _PointerFact(storage, pointer_element, permission, 0, extent, alignment, storage)
+        view_record(pointer_element, extent)
+        pointers[result_refs[0]] = _PointerFact(storage, pointer_element, permission, 0, extent, alignment, storage, record=pointer_element, link_target=storage, link_record=pointer_element)
         owners[result_refs[1]] = _OwnerFact(storage)
         effects[result_refs[2]] = _EffectFact(storage, ())
         return
@@ -4062,6 +4183,7 @@ def _verify_memory_node(
             fail("XAX.MEMORY.LIFETIME_TYPE", graph.cid.hex(), "MEMORY-LIFETIME-TYPES", ["resource<stack-storage,live>", "effect<memory>"], [cid.hex() for cid in node.operand_types])
         consume_effect(node.operands[1], owner.storage)
         owner_consumers.add(owner_ref)
+        _check_link_dependents(graph, owner.storage, pointers, ended)
         ended.add(owner.storage)
         return
 
@@ -4121,8 +4243,51 @@ def _verify_memory_node(
             fail("XAX.MEMORY.BOUNDS", graph.cid.hex(), "MEMORY-REBASE-EXTENT", f"1..{view.extent}", extent)
         if alignment > view.alignment:
             fail("XAX.MEMORY.ALIGNMENT", graph.cid.hex(), "MEMORY-REBASE-ALIGNMENT", f"<= {view.alignment}", alignment)
+        record_layout = _record_layout(element, resolve, graph.cid.hex())
+        if record_layout is not None and (alignment % record_layout.size or view.offset % record_layout.size):
+            # Every admitted position must be a record start, or fields would be reinterpreted.
+            fail("XAX.MEMORY.RECORD", graph.cid.hex(), "MEMORY-REBASE-RECORD-STRIDE", f"alignment multiple of {record_layout.size}", alignment)
         pointers[result_refs[0]] = _PointerFact(
-            view.storage, element, permission, view.offset, extent, alignment, view.alias_class, view.window + view.extent - extent
+            view.storage, element, permission, view.offset, extent, alignment, view.alias_class, view.window + view.extent - extent, view.record,
+            view.link_target, view.link_record,
+        )
+        return
+
+    if operation == Operation.LINK_MAKE:
+        # A link names one whole record of its storage (ADR-097).
+        contract(1, 1, 0)
+        source = pointer(node.operands[0])
+        layout = _record_layout(source.element, resolve, graph.cid.hex())
+        if layout is None or source.element != source.record:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-MAKE-RECORD", "pointer to a storage record", source.element.hex())
+        if source.offset % layout.size or (source.window and source.alignment % layout.size) or source.extent < layout.size:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-MAKE-RECORD-START", f"record start (stride {layout.size})", [source.offset, source.window, source.alignment])
+        if not _is_link_type(resolve(node.results[0])):
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-MAKE-TYPE", "link", node.results[0].hex())
+        pointers[result_refs[0]] = _LinkFact(source.storage, source.record)
+        return
+
+    if operation == Operation.LINK_FOLLOW:
+        # Check-free reload (ADR-097): the link is null (trap) or a record
+        # start of this storage, so the result needs no range check.
+        contract(2, 1, 0)
+        view = pointer(node.operands[0])
+        link = pointers.get(node.operands[1])
+        layout = _record_layout(view.element, resolve, graph.cid.hex())
+        if layout is None or view.element != view.record or view.offset or view.window:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-FOLLOW-ROOT-VIEW", "the storage's whole record view", [view.offset, view.window])
+        if not isinstance(link, _LinkFact) or link.storage != view.storage or link.record != view.record:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-FOLLOW-PROVENANCE", view.storage, None if not isinstance(link, _LinkFact) else link.storage)
+        element, permission, alignment = _decode_pointer_type(resolve(node.results[0]), resolve)
+        record_alignment = layout.size & -layout.size  # largest power of two dividing the stride
+        actual_alignment = min(view.alignment, record_alignment)
+        if _decode_pointer_space(resolve(node.operand_types[0])) != _decode_pointer_space(resolve(node.results[0])) or element != view.element or permission & view.permission != permission:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-FOLLOW-NO-AUTHORITY-GAIN", [view.element.hex(), int(view.permission)], [element.hex(), int(permission)])
+        if alignment > actual_alignment:
+            fail("XAX.MEMORY.ALIGNMENT", graph.cid.hex(), "MEMORY-LINK-FOLLOW-ALIGNMENT", f"<= {actual_alignment}", alignment)
+        pointers[result_refs[0]] = _PointerFact(
+            view.storage, element, permission, 0, layout.size, actual_alignment, view.alias_class, view.extent - layout.size, view.record,
+            view.link_target, view.link_record,
         )
         return
 
@@ -4149,12 +4314,13 @@ def _verify_memory_node(
         # a local storage fact, propagate its bounds/lifetime under the narrower
         # type; external/opaque pointers remain external typed values.
         pointer_fact = pointers.get(node.operands[0])
-        if pointer_fact is not None:
+        if isinstance(pointer_fact, _PointerFact):
             if pointer_fact.storage in ended:
                 fail("XAX.MEMORY.USE_AFTER_LIFETIME", graph.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", pointer_fact.storage)
             pointers[result_refs[0]] = _PointerFact(
                 pointer_fact.storage, element, permission, pointer_fact.offset, pointer_fact.extent,
-                min(pointer_fact.alignment, alignment), pointer_fact.alias_class, pointer_fact.window
+                min(pointer_fact.alignment, alignment), pointer_fact.alias_class, pointer_fact.window, pointer_fact.record,
+                pointer_fact.link_target, pointer_fact.link_record,
             )
         return
 
@@ -4166,7 +4332,20 @@ def _verify_memory_node(
             fail("XAX.MEMORY.BOUNDS", graph.cid.hex(), "MEMORY-ADDRESS-BOUNDS", f"<= {pointer_fact.extent}", offset)
         element, permission, alignment = _decode_pointer_type(resolve(node.results[0]), resolve)
         actual_alignment = pointer_fact.alignment if not offset else gcd(pointer_fact.alignment, offset)
-        if element != pointer_fact.element or permission & pointer_fact.permission != permission:
+        remaining = pointer_fact.extent - offset
+        record_layout = _record_layout(pointer_fact.element, resolve, graph.cid.hex())
+        if record_layout is not None and element != pointer_fact.element:
+            # Field address (ADR-097): an exact field offset, extent clamped to the field.
+            fields = _decode_tuple_type(resolve(pointer_fact.element), resolve)
+            index = next((position for position, field_offset in enumerate(record_layout.offsets) if field_offset == offset and fields[position] == element), None)
+            if index is None:
+                fail("XAX.MEMORY.RECORD", graph.cid.hex(), "MEMORY-RECORD-FIELD-OFFSET", [[item, fields[position].hex()] for position, item in enumerate(record_layout.offsets)], [offset, element.hex()])
+            remaining = abi_layout(resolve(element), resolve).size
+        elif record_layout is not None and offset % record_layout.size:
+            fail("XAX.MEMORY.RECORD", graph.cid.hex(), "MEMORY-RECORD-OFFSET-STRIDE", f"multiple of {record_layout.size}", offset)
+        elif element != pointer_fact.element:
+            fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-ADDRESS-NO-AUTHORITY-GAIN", [pointer_fact.element.hex(), int(pointer_fact.permission)], [element.hex(), int(permission)])
+        if permission & pointer_fact.permission != permission:
             fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-ADDRESS-NO-AUTHORITY-GAIN", [pointer_fact.element.hex(), int(pointer_fact.permission)], [element.hex(), int(permission)])
         if alignment > actual_alignment:
             fail("XAX.MEMORY.ALIGNMENT", graph.cid.hex(), "MEMORY-ADDRESS-ALIGNMENT", f"<= {actual_alignment}", alignment)
@@ -4175,10 +4354,13 @@ def _verify_memory_node(
             element,
             permission,
             pointer_fact.offset + offset,
-            pointer_fact.extent - offset,
+            remaining,
             actual_alignment,
             pointer_fact.alias_class,
             pointer_fact.window,
+            pointer_fact.record,
+            pointer_fact.link_target,
+            pointer_fact.link_record,
         )
         return
 
@@ -4206,7 +4388,7 @@ def _verify_memory_node(
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-WRITE-PERMISSION", "write", int(pointer_fact.permission))
             if node.operand_types[2] != pointer_fact.element:
                 fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-STORE-TYPE", pointer_fact.element.hex(), node.operand_types[2].hex())
-            stored_pointer_provenance(node.operands[2])
+            stored_pointer_provenance(node.operands[2], pointer_fact)
             effect_index = 3
         effect = consume_effect(node.operands[effect_index], pointer_fact.storage)
         effect_type = node.operand_types[effect_index]
@@ -4218,6 +4400,8 @@ def _verify_memory_node(
         view_end = pointer_fact.offset + pointer_fact.window + pointer_fact.extent
         if is_load and not _range_initialized(effect.initialized, pointer_fact.offset, view_end):
             fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [pointer_fact.offset, view_end], effect.initialized)
+        if is_load:
+            loaded_link(pointer_fact, result_refs[0])
         effects[result_refs[-1]] = effect
         return
 
@@ -4259,7 +4443,7 @@ def _verify_memory_node(
             fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-WRITE-PERMISSION", "write", int(pointer_fact.permission))
         if node.operand_types[1] != pointer_fact.element:
             fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-STORE-TYPE", pointer_fact.element.hex(), node.operand_types[1].hex())
-        stored_pointer_provenance(node.operands[1])
+        stored_pointer_provenance(node.operands[1], pointer_fact)
         effect = consume_effect(node.operands[2], pointer_fact.storage)
         if not _is_memory_effect(resolve(node.operand_types[2])) or node.results != (node.operand_types[2],):
             fail("XAX.MEMORY.EFFECT_TYPE", graph.cid.hex(), "MEMORY-EFFECT-TYPE", "one matching effect<memory> result", [cid.hex() for cid in node.results])
@@ -4280,6 +4464,7 @@ def _verify_memory_node(
         start = pointer_fact.offset
         if not _range_initialized(effect.initialized, start, start + pointer_fact.window + size):
             fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-INITIALIZED", [start, start + pointer_fact.window + size], effect.initialized)
+        loaded_link(pointer_fact, result_refs[0])
         effects[result_refs[1]] = effect
         return
 
@@ -4342,6 +4527,8 @@ def _verify_memory_node(
                 fail("XAX.ATOMIC.CONTRACT", graph.cid.hex(), "ATOMIC-CMPXCHG-RESULT", [pointer_fact.element.hex(), "bits<1>"], [cid.hex() for cid in ordinary_results])
         if pointer_fact.window:
             fail("XAX.MEMORY.REBASE", graph.cid.hex(), "MEMORY-REBASE-STATIC-ONLY", "statically positioned pointer", pointer_fact.window)
+        if _is_link_type(resolve(pointer_fact.element)):
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-NO-ATOMICS", "non-link element", pointer_fact.element.hex())
         start = pointer_fact.offset
         initialized = _range_initialized(effect.initialized, start, start + size)
         if operation != Operation.ATOMIC_STORE and not initialized:
@@ -5367,7 +5554,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     )
                     pointer_extent = (decode_bits_width(resolve(pointer_element)) + 7) // 8
                     pointers[ValueRef.parameter(block_index, seed.pointer_operand)] = _PointerFact(
-                        storage, pointer_element, permission, 0, pointer_extent, pointer_alignment, storage
+                        storage, pointer_element, permission, 0, pointer_extent, pointer_alignment, storage, record=pointer_element
                     )
                     owners[ValueRef.parameter(block_index, seed.owner_operand)] = _OwnerFact(storage)
                     effects[ValueRef.parameter(block_index, seed.effect_operand)] = _EffectFact(
@@ -5441,7 +5628,12 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 elif node.operation == Operation.INT_COMPARE:
                     if len(node.operands) != 2 or len(node.results) != 1 or len(node.attributes) != 1:
                         fail("XAX.INT.COMPARE", obj.cid.hex(), "INT-COMPARE-CONTRACT", [2, 1, 1], [len(node.operands), len(node.results), len(node.attributes)])
-                    width = decode_bits_width(resolve(operand_types[0]))
+                    if _is_link_type(resolve(operand_types[0])):
+                        # Links compare only for (in)equality, e.g. against null (ADR-097).
+                        if node.attributes[0] not in (IntCompare.EQ, IntCompare.NE):
+                            fail("XAX.INT.COMPARE", obj.cid.hex(), "INT-COMPARE-LINK-EQUALITY", [IntCompare.EQ, IntCompare.NE], node.attributes[0])
+                    else:
+                        decode_bits_width(resolve(operand_types[0]))
                     if operand_types[1] != operand_types[0] or decode_bits_width(resolve(node.results[0])) != 1:
                         fail("XAX.INT.COMPARE", obj.cid.hex(), "INT-COMPARE-TYPE", [operand_types[0].hex(), "bits<1>"], [[cid.hex() for cid in operand_types], node.results[0].hex()])
                     try:
@@ -5556,7 +5748,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         if resource_contract.pointer_operand is not None:
                             pointer_ref = node.operands[resource_contract.pointer_operand]
                             pointer_fact = pointers.get(pointer_ref)
-                            if pointer_fact is None:
+                            if not isinstance(pointer_fact, _PointerFact):
                                 fail("XAX.MEMORY.PROVENANCE", obj.cid.hex(), "MEMORY-PROVENANCE-PROVEN", "live local stack pointer", [pointer_ref.block, pointer_ref.index, pointer_ref.result])
                             if pointer_fact.storage in ended:
                                 fail("XAX.MEMORY.USE_AFTER_LIFETIME", obj.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", pointer_fact.storage)
@@ -5667,7 +5859,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     stack_input_indices = [
                         index
                         for index, _cid in enumerate(contract.inputs)
-                        if pointers.get(node.operands[1 + index]) is not None
+                        if isinstance(pointers.get(node.operands[1 + index]), _PointerFact)
                     ]
                     if stack_input_indices:
                         if len(stack_input_indices) != 1:
@@ -5685,7 +5877,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                             )
                         pointer_ref = node.operands[1 + pointer_contract_index]
                         pointer_fact = pointers.get(pointer_ref)
-                        if pointer_fact is None or pointer_fact.storage in ended:
+                        if not isinstance(pointer_fact, _PointerFact) or pointer_fact.storage in ended:
                             fail("XAX.MEMORY.PROVENANCE", obj.cid.hex(), "MEMORY-PROVENANCE-PROVEN", "live local stack pointer", [pointer_ref.block, pointer_ref.index, pointer_ref.result])
                         owner_ref = node.operands[1 + owner_indices[0]]
                         owner = owners.get(owner_ref)
@@ -5745,6 +5937,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                             [[], [constant_type.hex()]],
                             [[cid.hex() for cid in operand_types], [cid.hex() for cid in node.results]],
                         )
+                    if _is_link_type(resolve(constant_type)):
+                        pointers[ValueRef.node_result(block_index, node_index)] = _LinkFact(None, None)  # null
                 elif node.operation in MEMORY_OPERATIONS or node.operation in ATOMIC_OPERATIONS:
                     _verify_memory_node(
                         obj,
@@ -5885,7 +6079,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     returns = [item for _block, item in sorted(returns_by_block, key=lambda pair: pair[0])]
     parsed = _ParsedGraph(
         entry, tuple(blocks), tuple(returns), tuple(member_spans),
-        tuple(sorted(((ref, fact.extent) for ref, fact in global_pointers.items()), key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))),
+        tuple(sorted(((ref, fact.extent) for ref, fact in global_pointers.items() if isinstance(fact, _PointerFact)), key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))),
     )
     _verify_linear_flow(obj, parsed, resolve)
     return parsed
@@ -7119,7 +7313,7 @@ def _execute_graph(
                 results = (_RuntimePointer(pointer.storage, pointer.offset + node.attributes[0]),)
             elif node.operation == Operation.POINTER_CAST:
                 results = (operands[0],)
-            elif node.operation in (Operation.POINTER_ADDRESS, Operation.POINTER_REBASE):
+            elif node.operation in (Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW):
                 # The reference executor has no address space; addresses are target facts.
                 fail("XAX.EXEC.UNSUPPORTED", "executor", f"EXEC-{node.operation.name.replace('_', '-')}-TARGET-ONLY", "compiled target", "reference executor")
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:

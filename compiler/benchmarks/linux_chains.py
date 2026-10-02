@@ -16,7 +16,12 @@ The C twin links nodes with real pointers.  XAX expresses the links two ways:
   measured the OI-37 cost (ADR-090);
 * ``links="pointer"``: exposed node addresses (``pointer_address``) reloaded
   with ``pointer_rebase`` into the arena view (ADR-092); field reads through
-  the rebased 16-byte node are statically in bounds.
+  the rebased 16-byte node are statically in bounds;
+* ``links="link"``: the arena is a record view of ``(key: bits<64>, next:
+  link)`` and the bucket table a record view of ``(head: link)`` whose link
+  target is the arena (ADR-097).  Links are therefore null or arena records,
+  so ``link_follow`` needs no range check; each lookup does one checked
+  rebase to its bucket and the walk is check-free.
 """
 
 from __future__ import annotations
@@ -30,7 +35,10 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from xax_compiler import IntCompare, Operation, Permission, SemanticObject, StoreReader, heap_view_type, pointer_type, x86_64_linux_exec_target
+from xax_compiler import (
+    IntCompare, Operation, Permission, SemanticObject, StoreReader, heap_view_type, link_type, null_link, pointer_type, tuple_type,
+    x86_64_linux_exec_target,
+)
 from xax_graph_builder import GraphBuilder, program_store
 from xax_linux import LinuxExecutable, compile_linux_executable, linux_api
 
@@ -62,23 +70,33 @@ class ChainsProgram:
     block_count: int
 
 
-LINKS = ("index", "pointer")
+LINKS = ("index", "pointer", "link")
 
 
 def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str = "index") -> ChainsProgram:
     if links not in LINKS:
         raise ValueError(f"links must be one of {LINKS}")
     pointer_links = links == "pointer"
+    record_links = links == "link"
     api = linux_api()
     kit = Kit()
     b32, b64 = kit.b32, kit.b64
     const, compare, binary = kit.const, kit.compare, kit.binary
     mem = api.memory_effect
     words = pointer_type(b64, Permission.READ_WRITE, 8, space=2)
+    link_t = link_type()
+    record = tuple_type((b64, link_t))
+    records = pointer_type(record, Permission.READ_WRITE, NODE_BYTES, space=2)
+    key_field = pointer_type(b64, Permission.READ_WRITE, 8, space=2)
+    next_field = pointer_type(link_t, Permission.READ_WRITE, 8, space=2)
+    head_record = tuple_type((link_t,))
+    heads = pointer_type(head_record, Permission.READ_WRITE, 8, space=2)
+    arena_type = records if record_links else words
+    table_type = heads if record_links else words
     arena_bytes, bucket_bytes, out_bytes = nodes * NODE_BYTES, buckets * 8, 4096
     shift = 64 - (buckets.bit_length() - 1)
     graph = GraphBuilder()
-    graph.track(*api.types, words, kit.b1)
+    graph.track(*api.types, words, kit.b1, link_t, record, records, key_field, next_field, head_record, heads)
 
     carried = ("proc", "fs", "arena_token", "arena_mem", "bucket_token", "bucket_mem", "out_token", "out_mem")
     types = {
@@ -102,14 +120,35 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
     entry = graph.block(api.process_effect, api.filesystem_effect, mem, mem, mem)
     process, fs, arena_mem, bucket_mem, out_mem = entry.params
 
-    def mapping(memory, size, pointer_type_, alignment):
+    def mapping(memory, size, pointer_type_, alignment, link_target=None):
         raw, owner, memory = entry.op(Operation.CALL_FOREIGN, (const(entry, size), memory), (api.bytes_rw, api.heap_owner, mem), entity=api.mmap_anonymous)
-        return entry.op(Operation.HEAP_VIEW, (raw, owner, memory), (pointer_type_, heap_view_type(size), mem), attributes=(size, alignment))
+        operands = (raw, owner, memory) if link_target is None else (raw, owner, memory, link_target)
+        return entry.op(Operation.HEAP_VIEW, operands, (pointer_type_, heap_view_type(size), mem), attributes=(size, alignment))
 
-    arena, arena_token, arena_mem = mapping(arena_mem, arena_bytes, words, 8)
-    table, bucket_token, bucket_mem = mapping(bucket_mem, bucket_bytes, words, 8)
+    arena, arena_token, arena_mem = mapping(arena_mem, arena_bytes, arena_type, NODE_BYTES if record_links else 8)
+    table, bucket_token, bucket_mem = mapping(bucket_mem, bucket_bytes, table_type, 8, arena if record_links else None)
     out, out_token, out_mem = mapping(out_mem, out_bytes, api.bytes_rw, 1)
-    arena_address = entry.op1(Operation.POINTER_ADDRESS, (arena,), b64, attributes=(1,)) if pointer_links else None
+    arena_address = entry.op1(Operation.POINTER_ADDRESS, (arena,), b64, attributes=(1,)) if pointer_links or record_links else None
+
+    def record_at(block, index):
+        """Record ``index`` of the arena: one checked rebase (ADR-092) onto a record start."""
+        address = binary(block, Operation.ADD_WRAP, arena_address, binary(block, Operation.MUL_WRAP, index, const(block, NODE_BYTES)))
+        return block.op1(Operation.POINTER_REBASE, (arena, address), records, attributes=(NODE_BYTES,))
+
+    table_address = entry.op1(Operation.POINTER_ADDRESS, (table,), b64, attributes=(1,)) if record_links else None
+
+    def head_at(block, bucket):
+        """The link field of bucket ``bucket`` (one checked rebase onto a head record)."""
+        address = binary(block, Operation.ADD_WRAP, table_address, binary(block, Operation.MUL_WRAP, bucket, const(block, 8)))
+        head_pointer = block.op1(Operation.POINTER_REBASE, (table, address), heads, attributes=(8,))
+        return block.op1(Operation.ADDRESS_OFFSET, (head_pointer,), next_field, attributes=(0,))
+
+    def key_of(block, record_pointer):
+        return block.op1(Operation.ADDRESS_OFFSET, (record_pointer,), key_field, attributes=(0,))
+
+    def next_of(block, record_pointer):
+        return block.op1(Operation.ADDRESS_OFFSET, (record_pointer,), next_field, attributes=(8,))
+
     state = {
         "proc": process, "fs": fs, "arena_token": arena_token, "arena_mem": arena_mem,
         "bucket_token": bucket_token, "bucket_mem": bucket_mem, "out_token": out_token, "out_mem": out_mem,
@@ -128,26 +167,40 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
     b = insert_body
     s = body_state
     key = next_key(b, s["x"])
-    bucket = byte_offset(b, binary(b, Operation.UDIV, key, const(b, 1 << shift)), 8)
-    head, bucket_mem = b.op(Operation.CHECKED_LOAD_BITS_LE, (table, bucket, s["bucket_mem"]), (b64, mem), attributes=(8, 1))
-    node = byte_offset(b, s["i"], NODE_BYTES)
-    arena_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (arena, node, key, s["arena_mem"]), mem, attributes=(8, 1))
-    link = binary(b, Operation.ADD_WRAP, node, const(b, 8, b32), b32)
-    arena_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (arena, link, head, arena_mem), mem, attributes=(8, 1))
-    following = binary(b, Operation.ADD_WRAP, s["i"], const(b, 1))
-    # Index links store i + 1; pointer links store the node's exposed address.
-    reference = binary(b, Operation.ADD_WRAP, arena_address, binary(b, Operation.MUL_WRAP, s["i"], const(b, NODE_BYTES))) if pointer_links else following
-    bucket_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (table, bucket, reference, bucket_mem), mem, attributes=(8, 1))
-    b.br(insert, *flow.args(insert, {**s, "arena_mem": arena_mem, "bucket_mem": bucket_mem, "i": following, "x": key}))
+    if record_links:
+        bucket_head = head_at(b, binary(b, Operation.UDIV, key, const(b, 1 << shift)))
+        head, bucket_mem = b.op(Operation.LOAD_BITS_LE, (bucket_head, s["bucket_mem"]), (link_t, mem), attributes=(8, 8))
+        node = record_at(b, s["i"])
+        arena_mem = b.op1(Operation.STORE_BITS_LE, (key_of(b, node), key, s["arena_mem"]), mem, attributes=(8, 8))
+        arena_mem = b.op1(Operation.STORE_BITS_LE, (next_of(b, node), head, arena_mem), mem, attributes=(8, 8))
+        made = b.op1(Operation.LINK_MAKE, (node,), link_t)
+        bucket_mem = b.op1(Operation.STORE_BITS_LE, (bucket_head, made, bucket_mem), mem, attributes=(8, 8))
+        b.br(insert, *flow.args(insert, {**s, "arena_mem": arena_mem, "bucket_mem": bucket_mem, "i": binary(b, Operation.ADD_WRAP, s["i"], const(b, 1)), "x": key}))
+    else:
+        bucket = byte_offset(b, binary(b, Operation.UDIV, key, const(b, 1 << shift)), 8)
+        head, bucket_mem = b.op(Operation.CHECKED_LOAD_BITS_LE, (table, bucket, s["bucket_mem"]), (b64, mem), attributes=(8, 1))
+        node = byte_offset(b, s["i"], NODE_BYTES)
+        arena_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (arena, node, key, s["arena_mem"]), mem, attributes=(8, 1))
+        link = binary(b, Operation.ADD_WRAP, node, const(b, 8, b32), b32)
+        arena_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (arena, link, head, arena_mem), mem, attributes=(8, 1))
+        following = binary(b, Operation.ADD_WRAP, s["i"], const(b, 1))
+        # Index links store i + 1; pointer links store the node's exposed address.
+        reference = binary(b, Operation.ADD_WRAP, arena_address, binary(b, Operation.MUL_WRAP, s["i"], const(b, NODE_BYTES))) if pointer_links else following
+        bucket_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (table, bucket, reference, bucket_mem), mem, attributes=(8, 1))
+        b.br(insert, *flow.args(insert, {**s, "arena_mem": arena_mem, "bucket_mem": bucket_mem, "i": following, "x": key}))
 
     # --- lookup loop ---------------------------------------------------------------------
     counters = (("j", b64), ("x", b64), ("found", b64), ("steps", b64))
     lookup, lookup_state = flow.block(*counters)
     lookup_body, lookup_body_state = flow.block(*counters)
-    walk, walk_state = flow.block(*counters, ("cur", b64))
-    step, step_state = flow.block(*counters, ("cur", b64))
-    if not pointer_links:  # created here so index mode keeps its original block order
+    cursor_type = link_t if record_links else b64
+    walk, walk_state = flow.block(*counters, ("cur", cursor_type))
+    step, step_state = flow.block(*counters, ("cur", cursor_type))
+    if links == "index":  # created here so index mode keeps its original block order
         advance, advance_state = flow.block(*counters, ("node", b32))
+    elif record_links:  # C's control flow: found++ in its own block; cur->next only when the key differs
+        advance, advance_state = flow.block(*counters, ("node", records))
+        hit, hit_state = flow.block(*counters)
     format_block, format_state = flow.block(("found", b64), ("steps", b64))
     zero = const(lookup_start, 0)
     lookup_start.br(lookup, *flow.args(lookup, {**start_state, "j": zero, "x": const(lookup_start, SEED), "found": zero, "steps": zero}))
@@ -159,18 +212,38 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
     lb = lookup_body
     ls = lookup_body_state
     key = next_key(lb, ls["x"])
-    bucket = byte_offset(lb, binary(lb, Operation.UDIV, key, const(lb, 1 << shift)), 8)
-    head, bucket_mem = lb.op(Operation.CHECKED_LOAD_BITS_LE, (table, bucket, ls["bucket_mem"]), (b64, mem), attributes=(8, 1))
-    following = binary(lb, Operation.ADD_WRAP, ls["j"], const(lb, 1))
-    lb.br(walk, *flow.args(walk, {**ls, "bucket_mem": bucket_mem, "x": key, "j": following, "cur": head}))
+    if record_links:
+        head, bucket_mem = lb.op(Operation.LOAD_BITS_LE, (head_at(lb, binary(lb, Operation.UDIV, key, const(lb, 1 << shift))), ls["bucket_mem"]), (link_t, mem), attributes=(8, 8))
+        following = binary(lb, Operation.ADD_WRAP, ls["j"], const(lb, 1))
+        lb.br(walk, *flow.args(walk, {**ls, "bucket_mem": bucket_mem, "x": key, "j": following, "cur": head}))
+    else:
+        bucket = byte_offset(lb, binary(lb, Operation.UDIV, key, const(lb, 1 << shift)), 8)
+        head, bucket_mem = lb.op(Operation.CHECKED_LOAD_BITS_LE, (table, bucket, ls["bucket_mem"]), (b64, mem), attributes=(8, 1))
+        following = binary(lb, Operation.ADD_WRAP, ls["j"], const(lb, 1))
+        lb.br(walk, *flow.args(walk, {**ls, "bucket_mem": bucket_mem, "x": key, "j": following, "cur": head}))
+    end = walk.op1(Operation.CONSTANT, (), link_t, entity=null_link()) if record_links else const(walk, 0)
     walk.cbr(
-        compare(walk, IntCompare.NE, walk_state["cur"], const(walk, 0)),
+        compare(walk, IntCompare.NE, walk_state["cur"], end),
         step, flow.args(step, walk_state),
         lookup, flow.args(lookup, walk_state),
     )
     st = step
     ss = step_state
-    if pointer_links:
+    if record_links:
+        # Check-free (ADR-097): the walk's own null test already proved cur nonzero.
+        node = st.op1(Operation.LINK_FOLLOW, (arena, ss["cur"]), records)
+        stored, arena_mem = st.op(Operation.LOAD_BITS_LE, (key_of(st, node), ss["arena_mem"]), (b64, mem), attributes=(8, 8))
+        steps = binary(st, Operation.ADD_WRAP, ss["steps"], const(st, 1))
+        st.cbr(
+            compare(st, IntCompare.EQ, stored, ss["x"]),
+            hit, flow.args(hit, {**ss, "arena_mem": arena_mem, "steps": steps}),
+            advance, flow.args(advance, {**ss, "arena_mem": arena_mem, "steps": steps, "node": node}),
+        )
+        hit.br(lookup, *flow.args(lookup, {**hit_state, "found": binary(hit, Operation.ADD_WRAP, hit_state["found"], const(hit, 1))}))
+        ad, ads = advance, advance_state
+        successor, arena_mem = ad.op(Operation.LOAD_BITS_LE, (next_of(ad, ads["node"]), ads["arena_mem"]), (link_t, mem), attributes=(8, 8))
+        ad.br(walk, *flow.args(walk, {**ads, "arena_mem": arena_mem, "cur": successor}))
+    elif pointer_links:
         # Both fields come from one rebased node; no dynamic offset remains.
         node = st.op1(Operation.POINTER_REBASE, (arena, ss["cur"]), words, attributes=(NODE_BYTES,))
         stored, arena_mem = st.op(Operation.LOAD_BITS_LE, (node, ss["arena_mem"]), (b64, mem), attributes=(8, 8))
@@ -205,8 +278,18 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
         (b64, api.filesystem_effect, mem), entity=api.write,
     )
     cs = current_state
-    _r, arena_mem = current.op(Operation.CALL_FOREIGN, (arena, cs["arena_token"], cs["arena_mem"]), (b64, mem), entity=api.munmap_view(words, arena_bytes))
-    _r, bucket_mem = current.op(Operation.CALL_FOREIGN, (table, cs["bucket_token"], cs["bucket_mem"]), (b64, mem), entity=api.munmap_view(words, bucket_bytes))
+    def release_arena():
+        return current.op(Operation.CALL_FOREIGN, (arena, cs["arena_token"], cs["arena_mem"]), (b64, mem), entity=api.munmap_view(arena_type, arena_bytes))[1]
+
+    def release_table():
+        return current.op(Operation.CALL_FOREIGN, (table, cs["bucket_token"], cs["bucket_mem"]), (b64, mem), entity=api.munmap_view(table_type, bucket_bytes))[1]
+
+    if record_links:  # the table's links target the arena, so the table ends first
+        bucket_mem = release_table()
+        arena_mem = release_arena()
+    else:
+        arena_mem = release_arena()
+        bucket_mem = release_table()
     _r, out_mem = current.op(Operation.CALL_FOREIGN, (out, cs["out_token"], out_mem), (b64, mem), entity=api.munmap_view(api.bytes_rw, out_bytes))
     status = const(current, 0, b32)
     process = current.op1(Operation.CALL_FOREIGN, (status, cs["proc"]), api.process_effect, entity=api.exit_group)

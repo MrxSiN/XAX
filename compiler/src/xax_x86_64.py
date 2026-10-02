@@ -2042,6 +2042,8 @@ def _compile_function(
                 heap_base, offset = heap_base_register(result_ref)
                 assembler.emit(_lea(target.result_register, heap_base, offset))
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation in (Operation.LINK_MAKE, Operation.LINK_FOLLOW):
+                fail("XAX.NATIVE.LINK", graph_object.cid.hex(), "NATIVE-LINK-REGISTER-PATH", "register-resident hosted function", "frame lowering")
             elif node.operation == Operation.POINTER_REBASE:
                 # Frame lowering models heap pointers as base + static offset;
                 # a dynamic rebase needs the register path (ADR-092).
