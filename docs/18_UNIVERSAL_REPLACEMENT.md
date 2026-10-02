@@ -122,8 +122,8 @@ Core semantics hardcode no ISA, OS, object format, or ABI (`FND-006`). Every cla
 
 | Class | Required package content | Current status |
 |---|---|---|
-| CPU (x86-64, AArch64, RISC-V, future ISAs) | instruction semantics, registers, calling conventions, relocations, object/executable formats, TLS, atomics, vectors, unwind data when required | x86-64 EXECUTED (Linux ELF, Windows raw image); AArch64 EXECUTED (Android device, QEMU bare metal); RISC-V UNIMPLEMENTED |
-| Operating systems (Linux, Windows, macOS, BSD, Android, Apple mobile, bare metal, RTOS) | process-entry contract, syscall or system-API ABI, loader/format contract | Linux x86-64 static EXECUTED; Android EXECUTED (Activity); bare metal EXECUTED (raw image, QEMU); others UNIMPLEMENTED |
+| CPU (x86-64, AArch64, RISC-V, future ISAs) | instruction semantics, registers, calling conventions, relocations, object/executable formats, TLS, atomics, vectors, unwind data when required | x86-64 EXECUTED (Linux static/dynamic ELF, Windows raw image); AArch64 EXECUTED (Android device, QEMU bare metal); RISC-V UNIMPLEMENTED |
+| Operating systems (Linux, Windows, macOS, BSD, Android, Apple mobile, bare metal, RTOS) | process-entry contract, syscall or system-API ABI, loader/format contract | Linux x86-64 static and dynamic EXECUTED; Android EXECUTED (Activity); bare metal EXECUTED (raw image, QEMU); others UNIMPLEMENTED |
 | Web (Wasm, WASI, browser host, DOM/Web APIs, WebGPU) | core module + generated, deterministic host bindings from platform contracts; no handwritten JavaScript | core Wasm EXECUTED (Node harness, no imports); WASI/browser bindings UNIMPLEMENTED |
 | Managed (JVM, Android DEX/ART, .NET CLI/CLR) | managed runtime is a *target*; XAX emits its artifact format; Java/C#/Kotlin semantics never enter the kernel | DEX EXECUTED on ART (bounded Activity); JVM/CLI UNIMPLEMENTED |
 | GPU/accelerators (SPIR-V/Vulkan, CUDA-compatible, Metal, DXIL) | execution topology, scopes, memory spaces, barriers, launches, host/device ownership | synthetic SIMT PROTOTYPE; no real device |
@@ -144,7 +144,7 @@ A universal replacement cannot require rewriting the world.
 | UR-023 | C++ and other complex foreign ABIs are handled by explicit ABI packages; no universal ABI is assumed. |
 | UR-024 | Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions remain visible to verification. |
 
-Implemented today: `android-aapcs64-c` foreign calls (EXECUTED on device for JNI), Android SDK/JAR API-version import (STRUCTURAL), JNI 1.6 table package (STRUCTURAL/EXECUTED for the Activity fixture), and `linux-x86_64-syscall-v1` (EXECUTED). Generic C-header/Win32/ObjC/JVM/.NET importers are UNIMPLEMENTED (OI-35).
+Implemented today: `android-aapcs64-c` foreign calls (EXECUTED on device for JNI), Android SDK/JAR API-version import (STRUCTURAL), JNI 1.6 table package (STRUCTURAL/EXECUTED for the Activity fixture), `linux-x86_64-syscall-v1` (EXECUTED), and `sysv-x86_64-c` (EXECUTED; §8.3). Generic C-header/Win32/ObjC/JVM/.NET importers are UNIMPLEMENTED (OI-35).
 
 ### 8.1 `linux-x86_64-syscall-v1`
 
@@ -160,6 +160,10 @@ Each machine operand is used exactly once. Arguments go to `rdi, rsi, rdx, r10, 
 ### 8.2 Linux process-entry contract
 
 For `x86_64-linux-elf-exec-v1`, the entry function has only erased proof parameters (initial effect frontiers) and returns one `bits<8>` or `bits<32>` status plus proof values. The only compiler-generated code is the documented 9-instruction adapter: reserve the x64 home area, call the entry, and pass its status to `exit_group`. There is no libc, dynamic loader, `_init`, TLS setup, or allocator. `argv`/`envp`/auxv access is not yet part of the contract (OI-36).
+
+### 8.3 `sysv-x86_64-c`
+
+`sysv-x86_64-c` declarations import a C function by symbol from a shared library named by its soname (`library`). They lower only on `x86_64-linux-elf-dynexec-v1`, which explicitly requests the system loader `/lib64/ld-linux-x86-64.so.2`; on the static profile they reject (`SYSV-C-REQUIRES-DYNAMIC-PROFILE`). `DT_NEEDED` entries are exactly the declared libraries. Every import gets one bind-now `R_X86_64_GLOB_DAT` GOT slot and is called with `call [rip+slot]`. Arguments use the psABI INTEGER class only — at most six integer or pointer arguments in `rdi, rsi, rdx, rcx, r8, r9` and at most one integer or pointer result in `rax`. Floats, aggregates, stack arguments, variadics, and callbacks reject (`SYSV-C-INTEGER-CLASS`). ELF lookup is global, so one symbol name cannot be declared from two libraries in one artifact (`XAX.LINUX.IMPORT`); the declared library is enforced as a load dependency, not as a direct binding.
 
 ## 9. Hosted managed targets and the web
 
@@ -181,12 +185,13 @@ Artifact infrastructure is shared across targets:
 
 | Format | Status |
 |---|---|
-| ELF64 ET_EXEC (Linux x86-64, static) | EXECUTED/MEASURED (U1) |
+| ELF64 ET_EXEC (Linux x86-64, static) | EXECUTED (U1) |
+| ELF64 ET_EXEC with `PT_INTERP`, `DT_NEEDED`, bind-now GOT (Linux x86-64 dynexec) | EXECUTED/MEASURED (U1) |
 | ELF64 ET_DYN (Android arm64 shared object) | EXECUTED (device) |
 | DEX 039 / APK v2 signing | EXECUTED (device, bounded Activity) |
 | Wasm core module | EXECUTED (Node harness) |
 | Raw load images (x86-64 Windows, AArch64 bare metal) | EXECUTED (historical host/QEMU evidence) |
-| PE/COFF, Mach-O, relocatable objects (ET_REL/COFF/Mach-O object), static archives, ELF dynamic executables with `PT_INTERP` | UNIMPLEMENTED |
+| PE/COFF, Mach-O, relocatable objects (ET_REL/COFF/Mach-O object), static archives, PIE/ET_DYN executables | UNIMPLEMENTED |
 
 ## 13. Practical debugging and observability
 
@@ -213,7 +218,7 @@ UR-M1 proves the transition from "compiler architecture prototype" to "practical
 
 | Item | Requirement | Status (2026-10-02) |
 |---|---|---|
-| U1 | Native hosted CPU application with real allocation, filesystem I/O, an external/dynamic library call, nontrivial control flow, and data structures, with no hidden language runtime; measured against an optimized baseline | **Partial.** Linux x86-64 `filestat`: allocation (`mmap`), filesystem I/O, 35-block control flow, histogram data structure, no runtime — EXECUTED and MEASURED (6.2× slower than `gcc -O2`, 18,339 B vs 706,584 B static glibc, 188 KiB vs 652 KiB peak RSS). Dynamic/external library call: UNIMPLEMENTED (OI-33). |
+| U1 | Native hosted CPU application with real allocation, filesystem I/O, an external/dynamic library call, nontrivial control flow, and data structures, with no hidden language runtime; measured against an optimized baseline | **Capabilities EXECUTED and MEASURED; level R2.** Linux x86-64 `filestat`: allocation (`mmap`), filesystem I/O, a 41-block control flow, a histogram, and a dynamic `libz.so.1` `crc32` call through an explicitly requested loader, with no XAX runtime. 5.9× slower than `gcc -O2`; 23,472 B vs 718,872 B static; 1,204 KiB vs 716 KiB peak RSS. R3 needs an application rather than a benchmark utility. |
 | U2 | Bare-metal program with deterministic startup and exact layout | Partial: raw AArch64 images EXECUTED in QEMU (historical); startup/section layout UNIMPLEMENTED. |
 | U3 | WebAssembly/browser or WASI application | Partial: core modules EXECUTED in Node; WASI/browser bindings UNIMPLEMENTED (OI-37). |
 | U4 | Android application | Partial: bounded Activity EXECUTED on Pixel 8 Pro; nontrivial application UNIMPLEMENTED. |

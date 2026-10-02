@@ -14,8 +14,8 @@
 ## Universal replacement upgrade — 2026-10-02 (read first)
 
 - Normative definition, levels R0–R6, evidence labels, layering, and UR-M1: `docs/18_UNIVERSAL_REPLACEMENT.md`; `XAX_SPEC.md` §21; architecture v0.2 Part II; ADR-074–ADR-082; OI-32–OI-41; `XAX_CONFORMANCE.md` §23–§24; `XAX_BENCHMARKS.md` §15; roadmap Phase U.
-- U1 implemented and EXECUTED/MEASURED on Linux x86-64: integer completion (and/or/udiv/urem/truncate/zero-extend), foreign-ABI registry plus `linux-x86_64-syscall-v1`, first-class pointers on the Linux profile, a static ELF64 `x86_64-linux-elf-exec-v1` emitter, and the `filestat` workload (`compiler/benchmarks/linux_filestat.py`). Result: 6.2× slower than `gcc -O2`, 18,339 B, 188 KiB RSS. Legacy artifacts are byte-identical.
-- Replacement levels: Linux x86-64, Android arm64, and Wasm core at R1; Windows raw, AArch64 bare-metal raw, and synthetic SIMT at R0; nothing at R2+.
+- U1 and U3 implemented and EXECUTED/MEASURED on Linux x86-64: integer completion (and/or/udiv/urem/truncate/zero-extend), foreign-ABI registry, `linux-x86_64-syscall-v1`, `sysv-x86_64-c`, first-class pointers on the Linux profiles, and static plus explicit-loader ELF64 emitters. The `filestat` workload (`compiler/benchmarks/linux_filestat.py`) calls `libz.so.1` `crc32`. Result: 5.9× slower than `gcc -O2`, 23,472 B, 1,204 KiB RSS. Legacy and Android artifacts are byte-identical.
+- Replacement levels: Linux x86-64 at R2; Android arm64 and Wasm core at R1; Windows raw, AArch64 bare-metal raw, and synthetic SIMT at R0; nothing at R2+.
 - Validation: `PYTHONPATH=compiler/src:compiler:. python -m pytest -q compiler/tests` from the repository root (needs `pytest`). Expected: the 16 pre-existing environment/evidence failures listed in `XAX_STATE.md` §U1 and nothing else.
 
 ## Current repository state
@@ -58,7 +58,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 
 ## Exact next task
 
-Implementation: **U2 / OI-32** — register allocation for the general x86-64 path, measured on U1 `filestat` (target: close most of the 6.2× gap without changing legacy profile bytes), then **U3 / OI-33** — a C-ABI dynamic library call from the Linux profile to finish U1's external-library requirement.
+Implementation: **U2 / OI-32** — register allocation for the general x86-64 path, measured on U1 `filestat` (target: close most of the 5.9× gap without changing legacy profile bytes). Then OI-36 (argv/env), so hosted tools can take arguments.
 
 Evaluation (unchanged, needs a human-operated environment): **OI-31** — run the five C/XAX pairs in Codex Desktop with one fixed, recorded model/reasoning setting and balanced arm order. Record every turn and available token count; do not reset failed attempts.
 

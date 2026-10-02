@@ -352,9 +352,9 @@ Phase U converts the M1–M14 prototype into a practical general-purpose replace
 
 | Milestone | Capability | Unlocks | Status (2026-10-02) |
 |---|---|---|---|
-| **U1** | Linux x86-64 hosted native proof: exact integer completion, syscall ABI, first-class pointers, static ELF64 executable, real allocation/I/O/data-structure workload measured against `gcc -O2` | Linux R1; shared ELF/x86 infrastructure | **Partial — EXECUTED/MEASURED.** Remaining: external/dynamic library call (→ U3), argv/env (OI-36). |
-| **U2** | General-path register allocation + translation-validated machine optimizations (OI-32) | R4 on every CPU target; shared by x86-64/AArch64 | UNIMPLEMENTED; current gap 6.2× vs `gcc -O2` |
-| **U3** | C-ABI foreign calls and dynamic ELF imports with an explicit loader capability (OI-33) | libraries on Linux and Android; R2 | UNIMPLEMENTED (Android GOT import code is the starting point) |
+| **U1** | Linux x86-64 hosted native proof: exact integer completion, syscall ABI, first-class pointers, static ELF64 executable, real allocation/I/O/data-structure workload measured against `gcc -O2` | Linux R1; shared ELF/x86 infrastructure | **Capabilities EXECUTED/MEASURED; matrix R2.** Remaining: argv/env (OI-36); R3 needs an application rather than a benchmark utility. |
+| **U2** | General-path register allocation + translation-validated machine optimizations (OI-32) | R4 on every CPU target; shared by x86-64/AArch64 | UNIMPLEMENTED; current gap 5.9× vs `gcc -O2` |
+| **U3** | C-ABI foreign calls and dynamic ELF imports with an explicit loader capability (OI-33) | libraries on Linux and Android; R2 | **EXECUTED/MEASURED for INTEGER-class imports on Linux x86-64** (`libz.so.1` `crc32`); callbacks, floats, aggregates, variadics, and Android device `dlopen` validation remain |
 | **U4** | Bare-metal startup/reset, sections, memory-map layout, and vector tables; RISC-V target-package proof | embedded R1–R3; third ISA family | UNIMPLEMENTED |
 | **U5** | Wasm imports, WASI package, generated browser bindings (OI-37) | WASI and browser R1–R3 | UNIMPLEMENTED |
 | **U6** | Nontrivial Android application beyond the bounded Activity | Android R3 | UNIMPLEMENTED |

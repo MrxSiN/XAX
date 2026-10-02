@@ -5,14 +5,17 @@ Exact behavior (identical to ``linux_filestat_c/filestat.c``):
 * open ``input.dat`` in the working directory read-only;
 * read it in 65,536-byte chunks into an anonymous-``mmap`` buffer;
 * count bytes, ``\\n`` lines, and whitespace-separated words (space, tab,
-  CR, LF), compute 64-bit FNV-1a, and keep a 256-entry byte histogram in a
-  second anonymous mapping;
+  CR, LF), compute 64-bit FNV-1a, keep a 256-entry byte histogram in a
+  second anonymous mapping, and fold every chunk into zlib's CRC-32 by
+  calling ``crc32`` in the system ``libz.so.1``;
 * select the most frequent byte (lowest byte value on ties);
-* write ``"<bytes> <lines> <words> <fnv1a> <byte>\\n"`` in decimal to stdout;
+* write ``"<bytes> <lines> <words> <fnv1a> <crc32> <byte>\\n"`` in decimal;
 * release both mappings and return status 0 (2: open failed, 3: read failed).
 
 The graph is built through :mod:`xax_graph_builder`; Python here is only the
-construction tool.  The program has no libc, allocator runtime, or loader.
+construction tool.  The program has no XAX runtime and no libc dependency of
+its own; the dynamic loader is requested explicitly by the target profile
+and loads only ``libz.so.1`` (and what that library itself needs).
 """
 
 from __future__ import annotations
@@ -30,12 +33,13 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
-from xax_compiler import IntCompare, Operation, Permission, SemanticObject, StoreReader, bits_type, heap_view_type, pointer_type, x86_64_linux_exec_target
+from xax_compiler import IntCompare, Operation, Permission, SemanticObject, StoreReader, bits_type, heap_view_type, pointer_type, x86_64_linux_dynamic_exec_target
 from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
-from xax_linux import AT_FDCWD, LinuxApi, LinuxExecutable, compile_linux_executable, linux_api
+from xax_linux import AT_FDCWD, LinuxApi, LinuxExecutable, c_function, compile_linux_executable, linux_api
 
 BUFFER_BYTES = 65536
 TABLE_BYTES = 256 * 8
@@ -84,6 +88,7 @@ def build_filestat_program() -> FilestatProgram:
     b1 = bits_type(1)
     b8, b32, b64 = api.b8, api.b32, api.b64
     words_rw = pointer_type(b64, Permission.READ_WRITE, 8, space=2)
+    zlib_crc32 = c_function(b"libz.so.1", b"crc32", (b64, api.bytes_read, b32, api.memory_effect), (b64, api.memory_effect))
     buffer_view = heap_view_type(BUFFER_BYTES)
     table_view = heap_view_type(TABLE_BYTES)
     mem = api.memory_effect
@@ -105,7 +110,7 @@ def build_filestat_program() -> FilestatProgram:
         if byte:  # the zero-filled mapping already supplies the terminator
             pointer = buf if offset == 0 else entry.op1(Operation.ADDRESS_OFFSET, (buf,), api.bytes_rw, attributes=(offset,))
             buf_mem = entry.op1(Operation.STORE_BITS_LE, (pointer, entry.const(b8, byte), buf_mem), mem, attributes=(1, 1))
-    path = entry.op1(Operation.POINTER_CAST, (buf,), api.bytes_read)
+    path = buffer_read = entry.op1(Operation.POINTER_CAST, (buf,), api.bytes_read)
     opened, fs, buf_mem = entry.op(
         Operation.CALL_FOREIGN, (entry.const(b32, AT_FDCWD), path, entry.const(b32, 0), entry.const(b32, 0), fs, buf_mem),
         (b64, api.filesystem_effect, mem), entity=api.openat,
@@ -122,19 +127,20 @@ def build_filestat_program() -> FilestatProgram:
         return block.op1(operation, (left, right), type_)
 
     exit_block, exit_state = flow.block(("status", b32))
-    counters = (("fd", b32), ("bytes", b64), ("lines", b64), ("words", b64), ("hash", b64), ("prev_ws", b64))
+    counters = (("fd", b32), ("bytes", b64), ("lines", b64), ("words", b64), ("hash", b64), ("crc", b64), ("prev_ws", b64))
     read_block, read_state = flow.block(*counters)
 
     fd_ok = compare(entry, IntCompare.ULT, opened, const(entry, 1 << 31))
     initial = {
         **state, "fd": entry.op1(Operation.INT_TRUNCATE, (opened,), b32), "bytes": const(entry, 0), "lines": const(entry, 0),
-        "words": const(entry, 0), "hash": const(entry, FNV_OFFSET), "prev_ws": const(entry, 1),
+        "words": const(entry, 0), "hash": const(entry, FNV_OFFSET), "crc": const(entry, 0), "prev_ws": const(entry, 1),
     }
     entry.cbr(fd_ok, read_block, flow.args(read_block, initial), exit_block, flow.args(exit_block, {**state, "status": const(entry, STATUS_OPEN_FAILED, b32)}))
 
     # --- read loop -------------------------------------------------------------------
     scan_block, scan_state = flow.block(*counters, ("i", b32), ("n", b32))
     check_block, check_state = flow.block(*counters, ("n64", b64))
+    chunk_block, chunk_state = flow.block(*counters, ("n64", b64))
     close_block, close_state = flow.block(*counters)
     count, fs, buf_mem = read_block.op(
         Operation.CALL_FOREIGN, (read_state["fd"], buf, const(read_block, BUFFER_BYTES), read_state["fs"], read_state["buf_mem"]),
@@ -149,8 +155,15 @@ def build_filestat_program() -> FilestatProgram:
     check_block.cbr(
         compare(check_block, IntCompare.UGT, check_state["n64"], const(check_block, BUFFER_BYTES)),
         exit_block, flow.args(exit_block, {**check_state, "status": const(check_block, STATUS_READ_FAILED, b32)}),
-        scan_block, flow.args(scan_block, {**check_state, "i": const(check_block, 0, b32), "n": check_block.op1(Operation.INT_TRUNCATE, (check_state["n64"],), b32)}),
+        chunk_block, flow.args(chunk_block, check_state),
     )
+    # External library call: zlib's CRC-32 over each chunk, through the
+    # explicitly requested dynamic loader (sysv-x86_64-c, DT_NEEDED libz.so.1).
+    chunk_n = chunk_block.op1(Operation.INT_TRUNCATE, (chunk_state["n64"],), b32)
+    crc, buf_mem = chunk_block.op(
+        Operation.CALL_FOREIGN, (chunk_state["crc"], buffer_read, chunk_n, chunk_state["buf_mem"]), (b64, mem), entity=zlib_crc32,
+    )
+    chunk_block.br(scan_block, *flow.args(scan_block, {**chunk_state, "crc": crc, "buf_mem": buf_mem, "i": const(chunk_block, 0, b32), "n": chunk_n}))
 
     # --- per-byte body ---------------------------------------------------------------
     body_block, body_state = flow.block(*counters, ("i", b32), ("n", b32))
@@ -188,7 +201,7 @@ def build_filestat_program() -> FilestatProgram:
     b.br(scan_block, *flow.args(scan_block, updated))
 
     # --- close, then select the most frequent byte -------------------------------------
-    results = (("bytes", b64), ("lines", b64), ("words", b64), ("hash", b64))
+    results = (("bytes", b64), ("lines", b64), ("words", b64), ("hash", b64), ("crc", b64))
     best_names = (("k", b64), ("best", b64), ("best_count", b64))
     max_block, max_state = flow.block(*results, *best_names)
     status, fs = close_block.op(Operation.CALL_FOREIGN, (close_state["fd"], close_state["fs"]), (b64, api.filesystem_effect), entity=api.close)
@@ -214,7 +227,7 @@ def build_filestat_program() -> FilestatProgram:
     }))
 
     # --- decimal formatting into the (no longer needed) input buffer --------------------
-    fields = ("bytes", "lines", "words", "hash", "best")
+    fields = ("bytes", "lines", "words", "hash", "crc", "best")
     field_types = tuple((name, b64) for name in fields)
     current, current_state = format_block, {**format_state, "pos": None}
     position = const(format_block, 0, b32)
@@ -258,9 +271,8 @@ def build_filestat_program() -> FilestatProgram:
         current, current_state = f, {**fs_, "buf_mem": buf_mem, "pos": binary(f, Operation.ADD_WRAP, end, const(f, 1, b32), b32)}
 
     out = current
-    text = out.op1(Operation.POINTER_CAST, (buf,), api.bytes_read)
     _written, fs, buf_mem = out.op(
-        Operation.CALL_FOREIGN, (const(out, 1, b32), text, out.op1(Operation.INT_ZERO_EXTEND, (current_state["pos"],), b64), current_state["fs"], current_state["buf_mem"]),
+        Operation.CALL_FOREIGN, (const(out, 1, b32), buffer_read, out.op1(Operation.INT_ZERO_EXTEND, (current_state["pos"],), b64), current_state["fs"], current_state["buf_mem"]),
         (b64, api.filesystem_effect, mem), entity=api.write,
     )
     out.br(exit_block, *flow.args(exit_block, {**current_state, "fs": fs, "buf_mem": buf_mem, "status": const(out, 0, b32)}))
@@ -272,7 +284,7 @@ def build_filestat_program() -> FilestatProgram:
     e.ret(exit_state["status"], exit_state["fs"], buf_mem, tab_mem)
 
     function = graph.function((api.filesystem_effect, mem, mem), (b32, api.filesystem_effect, mem, mem))
-    target = x86_64_linux_exec_target()
+    target = x86_64_linux_dynamic_exec_target()
     reader = program_store(function, target, tuple(graph.objects.values()))
     return FilestatProgram(reader, function, target, len(graph.blocks))
 
@@ -289,7 +301,7 @@ def reference_filestat(data: bytes) -> bytes:
         digest = ((digest ^ byte) * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
         histogram[byte] += 1
     best = max(range(256), key=lambda value: (histogram[value], -value))
-    return f"{len(data)} {lines} {words} {digest} {best}\n".encode()
+    return f"{len(data)} {lines} {words} {digest} {zlib.crc32(data)} {best}\n".encode()
 
 
 def compile_filestat() -> tuple[FilestatProgram, LinuxExecutable]:
@@ -329,7 +341,7 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
         artifacts["xax"].write_bytes(executable.data)
         artifacts["xax"].chmod(0o755)
         for name, flags in (("gcc-O2", ["-O2"]), ("gcc-O2-static", ["-O2", "-static"])):
-            subprocess.run(["gcc", *flags, "-o", str(work / name), str(C_SOURCE)], check=True)
+            subprocess.run(["gcc", *flags, "-o", str(work / name), str(C_SOURCE), "-lz"], check=True)
             artifacts[name] = work / name
         stripped = {}
         for name, path in artifacts.items():
@@ -384,7 +396,7 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
     return {
         "format": "xax-u1-linux-filestat-evidence-v1",
         "evidence_label": "MEASURED",
-        "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, 256-entry histogram, decimal write",
+        "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
         "input": {"bytes": size, "generator": "shake_256(b'xax-u1-filestat') translated to a 77-symbol text alphabet", "sha256": hashlib.sha256(data).hexdigest()},
         "output": outputs.pop().decode(),
         "small_input_reference_check": {"bytes": len(small), "expected": expected_small.decode()},
@@ -397,6 +409,8 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
             "artifact_bytes": len(executable.data),
             "codegen": "x86-64 spill-every-value bootstrap lowering; no register allocation across nodes",
             "runtime_dependencies": [],
+            "dynamic_loader": "/lib64/ld-linux-x86-64.so.2 (requested by x86_64-linux-elf-dynexec-v1)",
+            "dt_needed": [item.decode() for item in executable.needed],
         },
         "results": results,
         "host": {
@@ -406,8 +420,9 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
             "logical_cpus": os.cpu_count(),
             "python": platform.python_version(),
             "gcc": _tool_version(["gcc", "--version"]),
+            "zlib": zlib.ZLIB_RUNTIME_VERSION,
         },
-        "method": {"warmup_runs": warmup, "repetitions": repetitions, "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss", "reference_dynamic_bin_true_rss_kib": baseline_rss, "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner", "c_flags": {"gcc-O2": "-O2", "gcc-O2-static": "-O2 -static"}},
+        "method": {"warmup_runs": warmup, "repetitions": repetitions, "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss", "reference_dynamic_bin_true_rss_kib": baseline_rss, "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner", "c_flags": {"gcc-O2": "-O2 ... -lz", "gcc-O2-static": "-O2 -static ... -lz"}},
     }
 
 

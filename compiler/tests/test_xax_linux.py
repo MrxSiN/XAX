@@ -21,11 +21,13 @@ from xax_compiler import (
     execute,
     foreign_function_symbol,
     heap_view_type,
+    x86_64_linux_dynamic_exec_target,
     x86_64_linux_exec_target,
     x86_64_windows_general_target,
 )
+from xax_compiler import FloatFormat, float_type
 from xax_graph_builder import GraphBuilder, program_store
-from xax_linux import compile_linux_executable, linux_api, run_linux_executable
+from xax_linux import DYNAMIC_INTERPRETER, c_function, compile_linux_executable, linux_api, run_linux_executable
 from xax_x86_64 import compile_native, decode_syscall_name, encode_syscall_name
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -173,6 +175,77 @@ class ProcessEntryTests(unittest.TestCase):
         self.assertEqual(data, compile_linux_executable(reader, entry.cid, target.cid).data)
 
 
+def _crc_program(target, data: bytes = b"hello", declaration=None):
+    """mmap a page, store ``data``, return ``libz crc32(0, data) & 0xff``."""
+    api = linux_api()
+    declaration = declaration or c_function(b"libz.so.1", b"crc32", (B64, api.bytes_read, B32, api.memory_effect), (B64, api.memory_effect))
+    graph = GraphBuilder()
+    block = graph.block(api.filesystem_effect, api.memory_effect)
+    fs, memory = block.params
+    raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 4096), memory), (api.bytes_rw, api.heap_owner, api.memory_effect), entity=api.mmap_anonymous)
+    pointer, view, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (api.bytes_rw, heap_view_type(4096), api.memory_effect), attributes=(4096, 1))
+    for offset, byte in enumerate(data):
+        address = pointer if offset == 0 else block.op1(Operation.ADDRESS_OFFSET, (pointer,), api.bytes_rw, attributes=(offset,))
+        memory = block.op1(Operation.STORE_BITS_LE, (address, block.const(api.b8, byte), memory), api.memory_effect, attributes=(1, 1))
+    readable = block.op1(Operation.POINTER_CAST, (pointer,), api.bytes_read)
+    crc, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 0), readable, block.const(B32, len(data)), memory), (B64, api.memory_effect), entity=declaration)
+    _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, api.memory_effect), entity=api.munmap_view(api.bytes_rw, 4096))
+    status = block.op1(Operation.BIT_AND, (block.op1(Operation.INT_TRUNCATE, (crc,), B32), block.const(B32, 0xFF)), B32)
+    block.ret(status, fs, memory)
+    entry = graph.function((api.filesystem_effect, api.memory_effect), (B32, api.filesystem_effect, api.memory_effect))
+    return program_store(entry, target, (*api.types, *graph.objects.values())), entry, target
+
+
+class DynamicLinkingTests(unittest.TestCase):
+    def test_dynamic_executable_declares_only_requested_loader_and_libraries(self):
+        reader, entry, target = _crc_program(x86_64_linux_dynamic_exec_target())
+        executable = compile_linux_executable(reader, entry.cid, target.cid)
+        data = executable.data
+        self.assertEqual(executable.needed, (b"libz.so.1",))
+        phoff, phnum = struct.unpack_from("<Q", data, 32)[0], struct.unpack_from("<H", data, 56)[0]
+        headers = [struct.unpack_from("<IIQQQQQQ", data, phoff + 56 * index) for index in range(phnum)]
+        self.assertEqual([item[0] for item in headers], [6, 3, 1, 1, 2, 0x6474E551])
+        interp = headers[1]
+        self.assertEqual(data[interp[2]:interp[2] + interp[5]], DYNAMIC_INTERPRETER + b"\x00")
+        self.assertNotIn(b"libc.so", data)  # no libc dependency of XAX's own
+        self.assertEqual(data, compile_linux_executable(reader, entry.cid, target.cid).data)
+
+    def test_static_profile_rejects_c_imports(self):
+        reader, entry, target = _crc_program(x86_64_linux_exec_target())
+        with self.assertRaises(XaxError) as caught:
+            compile_linux_executable(reader, entry.cid, target.cid)
+        self.assertEqual(caught.exception.diagnostic.code, "XAX.NATIVE.FOREIGN_ABI")
+
+    def test_emitter_rejects_implicit_loader_and_ambiguous_imports(self):
+        from xax_linux import emit_linux_elf_executable
+        from xax_x86_64 import NativeImage
+
+        def image(*imports):
+            return NativeImage(bytes(16), 0, (), (32,), bytes(32), (), foreign_calls=imports)
+
+        with self.assertRaises(XaxError) as caught:
+            emit_linux_elf_executable(image((2, b"libz.so.1", b"crc32")))
+        self.assertEqual(caught.exception.diagnostic.code, "XAX.LINUX.DYNAMIC_REQUIRED")
+        with self.assertRaises(XaxError) as caught:
+            emit_linux_elf_executable(image((2, b"libz.so.1", b"crc32"), (8, b"libother.so", b"crc32")), dynamic_loader=True)
+        self.assertEqual(caught.exception.diagnostic.code, "XAX.LINUX.IMPORT")
+
+    def test_non_integer_c_signature_rejects(self):
+        api = linux_api()
+        f64 = float_type(FloatFormat.BINARY64)
+        declaration = c_function(b"libm.so.6", b"sqrt", (f64,), (f64,))
+        graph = GraphBuilder()
+        block = graph.block(api.filesystem_effect)
+        value = block.op1(Operation.CALL_FOREIGN, (block.op1(Operation.UINT_TO_FLOAT, (block.const(B32, 4),), f64),), f64, entity=declaration)
+        block.ret(block.op1(Operation.FLOAT_TO_UINT_TRUNC, (value,), B32), block.params[0])
+        entry = graph.function((api.filesystem_effect,), (B32, api.filesystem_effect))
+        target = x86_64_linux_dynamic_exec_target()
+        reader = program_store(entry, target, tuple(graph.objects.values()))
+        with self.assertRaises(XaxError) as caught:
+            compile_linux_executable(reader, entry.cid, target.cid)
+        self.assertEqual(caught.exception.diagnostic.rule, "SYSV-C-INTEGER-CLASS")
+
+
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host to execute ELF64 artifacts")
 class LinuxExecutionTests(unittest.TestCase):
     def test_integer_operations_execute_natively(self):
@@ -214,6 +287,13 @@ class LinuxExecutionTests(unittest.TestCase):
         reader = program_store(entry, target, (*api.types, *graph.objects.values()))
         completed = run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid).data)
         self.assertEqual(completed.returncode, -4)
+
+    def test_external_library_call_executes(self):
+        import zlib
+
+        reader, entry, target = _crc_program(x86_64_linux_dynamic_exec_target())
+        completed = run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid).data)
+        self.assertEqual(completed.returncode, zlib.crc32(b"hello") & 0xFF)
 
     def test_filestat_matches_reference_contract(self):
         _program, executable = compile_filestat()

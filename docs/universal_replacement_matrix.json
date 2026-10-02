@@ -4,13 +4,13 @@
  "authority": "docs/18_UNIVERSAL_REPLACEMENT.md section 14",
  "targets": [
   {
-   "id": "linux-x86_64-elf-exec",
-   "platform": "Linux x86-64 (static ELF64 ET_EXEC)",
-   "workload_class": "hosted command-line tools using syscalls, allocation, and file I/O",
+   "id": "linux-x86_64-elf",
+   "platform": "Linux x86-64 (ELF64 ET_EXEC: static, or dynamic with an explicit loader)",
+   "workload_class": "hosted batch tools that process files in their working directory using allocation, file I/O, and shared C libraries",
    "capabilities": {
     "semantic_expressibility": {
      "label": "EXECUTED",
-     "note": "filestat: 35-block verified graph; output equals independent reference contract",
+     "note": "filestat: 41-block verified graph; output equals an independent reference contract",
      "evidence": [
       "compiler/tests/test_xax_linux.py",
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
@@ -18,21 +18,21 @@
     },
     "code_generation": {
      "label": "EXECUTED",
-     "note": "direct x86-64 encoder; first-class pointers; and/or/udiv/urem/trunc/zext",
+     "note": "direct x86-64 encoder; first-class pointers; and/or/udiv/urem/trunc/zext; SysV INTEGER-class calls",
      "evidence": [
       "compiler/tests/test_xax_linux.py"
      ]
     },
     "abi": {
      "label": "EXECUTED",
-     "note": "linux-x86_64-syscall-v1 register templates + process-entry contract",
+     "note": "linux-x86_64-syscall-v1 templates, sysv-x86_64-c imports, process-entry contract",
      "evidence": [
       "compiler/tests/test_xax_linux.py"
      ]
     },
     "artifact_format": {
      "label": "EXECUTED",
-     "note": "direct static ELF64 ET_EXEC, PT_LOAD R+X and PT_GNU_STACK only",
+     "note": "direct ELF64 ET_EXEC; static profile has PT_LOAD+PT_GNU_STACK only; dynamic profile adds PT_INTERP/PT_DYNAMIC/GOT",
      "evidence": [
       "compiler/tests/test_xax_linux.py",
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
@@ -40,15 +40,18 @@
     },
     "platform_apis": {
      "label": "EXECUTED",
-     "note": "openat/read/write/close/mmap/munmap executed; no threads, signals, sockets, clocks, argv/env yet",
+     "note": "openat/read/write/close/mmap/munmap executed; no argv/env (OI-36), threads, signals, sockets, clocks",
      "evidence": [
       "compiler/tests/test_xax_linux.py"
      ]
     },
     "ffi": {
-     "label": "UNIMPLEMENTED",
-     "note": "no C-ABI/shared-library calls; only kernel syscalls (OI-33)",
-     "evidence": []
+     "label": "EXECUTED",
+     "note": "libz.so.1 crc32 called through ld.so with bind-now GOT; integer-class only; no callbacks, floats, aggregates, stack args",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py",
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
     },
     "concurrency": {
      "label": "UNIMPLEMENTED",
@@ -68,9 +71,12 @@
      "evidence": []
     },
     "dynamic_linking": {
-     "label": "UNIMPLEMENTED",
-     "note": "no PT_INTERP/DT_NEEDED (OI-33)",
-     "evidence": []
+     "label": "EXECUTED",
+     "note": "explicit dynexec profile; DT_NEEDED derived only from declared imports; global ELF symbol lookup (no direct binding)",
+     "evidence": [
+      "compiler/tests/test_xax_linux.py",
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
+     ]
     },
     "debugging": {
      "label": "STRUCTURAL",
@@ -94,15 +100,13 @@
      ]
     },
     "practical_application": {
-     "label": "EXECUTED",
-     "note": "filestat is a real workload but R3 also requires R2 (libraries, argv)",
-     "evidence": [
-      "compiler/benchmarks/u1_linux_filestat_evidence.json"
-     ]
+     "label": "PROTOTYPE",
+     "note": "filestat is a benchmark-scale wc/checksum utility, not a deployed application",
+     "evidence": []
     },
     "performance_evidence": {
      "label": "MEASURED",
-     "note": "median 6.2x slower than gcc -O2 on 32 MiB input",
+     "note": "median 5.9x slower than gcc -O2 on 32 MiB input",
      "evidence": [
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ],
@@ -110,14 +114,14 @@
     },
     "memory_evidence": {
      "label": "MEASURED",
-     "note": "peak RSS 188 KiB vs 652 KiB gcc -O2 -static, 1632 KiB dynamic",
+     "note": "peak RSS 1,204 KiB (ld.so + libz + libc) vs 716 KiB gcc -O2 -static, 1,792 KiB dynamic",
      "evidence": [
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ]
     },
     "code_size_evidence": {
      "label": "MEASURED",
-     "note": "18,339 B vs 14,472 B stripped dynamic / 706,584 B stripped static",
+     "note": "23,472 B vs 14,472 B stripped dynamic / 718,872 B stripped static",
      "evidence": [
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ]
@@ -144,12 +148,13 @@
     "platform_runtime": []
    },
    "known_blockers": [
-    "OI-32 register allocation (6.2x runtime gap)",
-    "OI-33 dynamic/external library calls",
+    "OI-32 register allocation (5.9x runtime gap)",
     "OI-36 argv/env/auxv entry contract",
-    "no threads/signals/sockets packages"
+    "C callbacks, floats, aggregates, variadics in sysv-x86_64-c",
+    "no threads/signals/sockets packages",
+    "R3 needs a deployed application, not a benchmark utility"
    ],
-   "replacement_level": "R1"
+   "replacement_level": "R2"
   },
   {
    "id": "android-arm64",
