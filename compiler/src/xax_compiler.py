@@ -2378,7 +2378,9 @@ FOREIGN_FUNCTION_PREFIX = b"foreign-function-v1"
 ANDROID_AAPCS64_C_ABI = b"android-aapcs64-c"
 LINUX_X86_64_SYSCALL_ABI = b"linux-x86_64-syscall-v1"
 SYSV_X86_64_C_ABI = b"sysv-x86_64-c"
-FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI)
+# Inline reads of the Linux initial process stack (argv, envp, auxv; ADR-094).
+LINUX_X86_64_STARTUP_ABI = b"linux-x86_64-startup-v1"
+FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI)
 ANDROID_EXPORT_PREFIX = b"android-export-v1"
 
 

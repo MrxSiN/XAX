@@ -61,7 +61,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 1. **OI-37 remainder**. ADR-092 `pointer_rebase` gives pointer links at 1.64× `gcc -O2`, and 1.07× C with the same check. wasm32 executes it too (ADR-093). Next: check-free reloads (typed storage proving stored links valid), then AI tokens per edit, now justified (ADR-090: arena+index 1.44–1.47× slower than pointer links in C, checks a further 1.34–1.41×): a local-provenance pointer store/reload design that carries node extent, so neither index scaling nor per-access checks remain. Done already: address exposure (ADR-081) and provenance-free pointer elements (ADR-082).
 2. **OI-38 remainder**: converge the PE (ADR-083) and Linux (ADR-089/091) allocators, then add range-based check elimination and LICM. `filestat` is still 1.47× `clang -O2`.
 3. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
-4. **OI-33 (Linux)**: argv/env/auxv as typed external views of the initial stack, so Linux tools can take arguments; **OI-40**: SysV callbacks, floats, and aggregates.
+4. **OI-33 (Linux)**: argv/env/auxv done (ADR-094); TLS and unwind/debug data remain. **OI-40**: SysV callbacks, floats, and aggregates.
 5. Install a C toolchain on the measuring host and run `compiler/benchmarks/windows_c_reference/hosted.c` for the first R4 size/time comparison.
 6. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
 

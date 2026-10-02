@@ -590,3 +590,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `wasm32-wasi-v1` lowers operation 73 (`i32.sub; i32.rotr; i32.gt_u; unreachable`). The wasm static layout reserves address 0–15, so 0 is never a storage address.
 - EXECUTED: a WASI linked-list walk exits 42, and four corrupted-link vectors trap (`test_xax_wasm_rebase.py`). Full suite: 790 passed, plus the 17 pre-existing failures.
+
+## Linux argv/env/auxv (ADR-094) — 2026-10-02
+
+- New foreign ABI `linux-x86_64-startup-v1`: `argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`, `auxv_value`, lowered inline in the process entry (`xax_linux.linux_startup_api()`). `run_linux_executable` accepts `arguments` and `env`.
+- EXECUTED: an echo-style tool, envc, `AT_PAGESZ`, truncation reporting, and traps (`test_xax_linux_startup.py`). Full suite: 796 passed, plus the 17 pre-existing failures.
