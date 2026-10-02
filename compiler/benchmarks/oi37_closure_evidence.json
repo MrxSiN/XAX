@@ -1,0 +1,127 @@
+{
+  "edit": "chains links: arena index (checked loads) -> pointer_rebase (ADR-092)",
+  "edit_cost": {
+    "graph_nodes": {
+      "index": 135,
+      "pointer": 134
+    },
+    "node_delta": [
+      [
+        "-",
+        "CHECKED_LOAD_BITS_LE",
+        [
+          8,
+          1
+        ],
+        2
+      ],
+      [
+        "-",
+        "CONSTANT",
+        [],
+        2
+      ],
+      [
+        "-",
+        "INT_TRUNCATE",
+        [],
+        1
+      ],
+      [
+        "-",
+        "SUB_WRAP",
+        [],
+        1
+      ],
+      [
+        "+",
+        "ADDRESS_OFFSET",
+        [
+          8
+        ],
+        1
+      ],
+      [
+        "+",
+        "LOAD_BITS_LE",
+        [
+          8,
+          8
+        ],
+        2
+      ],
+      [
+        "+",
+        "POINTER_ADDRESS",
+        [
+          1
+        ],
+        1
+      ],
+      [
+        "+",
+        "POINTER_REBASE",
+        [
+          16
+        ],
+        1
+      ]
+    ],
+    "node_delta_operations": 11,
+    "node_delta_tokens": {
+      "cl100k_base": 86,
+      "o200k_base": 87
+    },
+    "rewritten_bytes": 4458,
+    "rewritten_hex_tokens": {
+      "cl100k_base": 4190,
+      "o200k_base": 4198
+    },
+    "rewritten_kinds": [
+      [
+        "FUNCTION",
+        1
+      ],
+      [
+        "GRAPH_FRAGMENT",
+        1
+      ],
+      [
+        "MODULE",
+        1
+      ],
+      [
+        "PROGRAM_ROOT",
+        1
+      ]
+    ],
+    "rewritten_objects": 4
+  },
+  "evidence_label": "MEASURED",
+  "issue": "OI-37",
+  "model_run": null,
+  "tokenizer": "tiktoken 0.14.0",
+  "verifier_cost": {
+    "chains_verify_microseconds": {
+      "index": 2554.1,
+      "pointer": 2746.7
+    },
+    "microseconds_per_additional_read": {
+      "checked_load": 46.75,
+      "rebase_load": 47.88
+    },
+    "repeats": 15,
+    "straight_line_verify_microseconds": {
+      "checked_load": {
+        "1": 979.6,
+        "16": 1674.5,
+        "256": 12899.8
+      },
+      "rebase_load": {
+        "1": 1323.8,
+        "16": 2276.4,
+        "256": 13533.0
+      }
+    }
+  }
+}

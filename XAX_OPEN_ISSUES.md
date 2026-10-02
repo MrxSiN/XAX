@@ -527,7 +527,17 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** One representation that admits WASI `fd_write` iovecs and a heap linked list with verified traversal on two targets of different pointer widths, plus negative vectors for forged/expired provenance, with measured verifier cost and AI tokens per edit.
 
-**Status.** OPEN (partially addressed). ADR-081 adds one-way provenance exposure (`pointer_address`), which unblocks address-valued interface structs (WASI `fd_write` iovecs, executed). ADR-082 admits provenance-free pointers (function addresses, external pointers) as memory elements, unblocking function-pointer/dispatch tables (EXECUTED on Windows PE). Still open: storing pointers *with* local provenance and reloading them as dereferenceable pointers (pointer-linked lists/trees over XAX storage), which needs typed mixed storage and lifetime coupling between the container and the referenced storage; arena + index is the current verified alternative. Memory elements remain whole-byte bits/float scalars (`MEMORY-BYTE-ADDRESSABLE-VALUE`).
+**Status: CLOSED (2026-10-02, ADR-096).** Closure evidence, criterion by criterion:
+
+- *WASI `fd_write` iovecs:* address-valued interface structs via `pointer_address` (ADR-081), executed under `node:wasi`.
+- *A linked list with verified traversal on two pointer widths:* x86-64 Linux, 64-bit, heap views (`chains` with `pointer_rebase`, 2^20 nodes, ADR-092); wasm32, 32-bit (`test_xax_wasm_rebase.py`, ADR-093). Deviation stated: the wasm32 list lives in stack storage, because the wasm32 profile has no heap allocator; the representation and the checks are identical.
+- *Negative vectors:* forged, misaligned, below-view, and wrapped addresses trap on both targets. Expired provenance (rebase after unmap or `stack_end`) rejects with `MEMORY-LIFETIME-LIVE` on both targets, and authority, extent, alignment, width, and initialization violations reject on x86-64.
+- *Verifier cost* (`oi37_closure_evidence.json`): `verify_store` costs 47.9 µs per additional rebase+load against 46.8 µs per checked load (straight-line, K = 1–256). Pointer-linked `chains` verifies in 2.7 ms, index-linked in 2.6 ms.
+- *AI tokens per edit* (offline tiktoken 0.14.0, no model run): switching `chains` from index to pointer links rewrites 4 objects (4,458 envelope bytes, 4,198 `o200k` hex-carrier tokens). The operation delta is 11 operations, 87 `o200k` tokens in a compact `[±, operation, attributes, count]` view.
+
+Check-free reloads, which remove the per-link check (1.5× in C on `chains`), are not part of the closure criteria and move to OI-41.
+
+**History.** OPEN (partially addressed). ADR-081 adds one-way provenance exposure (`pointer_address`), which unblocks address-valued interface structs (WASI `fd_write` iovecs, executed). ADR-082 admits provenance-free pointers (function addresses, external pointers) as memory elements, unblocking function-pointer/dispatch tables (EXECUTED on Windows PE). Still open: storing pointers *with* local provenance and reloading them as dereferenceable pointers (pointer-linked lists/trees over XAX storage), which needs typed mixed storage and lifetime coupling between the container and the referenced storage; arena + index is the current verified alternative. Memory elements remain whole-byte bits/float scalars (`MEMORY-BYTE-ADDRESSABLE-VALUE`).
 
 **Progress (2026-10-02, ADR-092).** `pointer_rebase` (op 73) reloads an exposed address as a pointer inside a live view, with one range+alignment check, so field reads need no further checks. Pointer-linked `chains` measures 1.64× `gcc -O2` and 1.07× C with the same check; index links measure 2.00×. wasm32 (32-bit pointers) executes the same representation with trap vectors (ADR-093). Remaining for closure: check-free reloads (typed storage) and AI tokens per edit, with verifier cost.
 
@@ -554,4 +564,14 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 ## OI-40 — Breadth of the SysV C ABI on Linux
 
 **Status:** OPEN. `sysv-x86_64-c` (ADR-087) lowers only INTEGER-class signatures with at most six arguments. Still missing: callbacks from C into XAX (a SysV-to-internal convention adapter as explicit generated code), SSE-class floats, aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. Close with an executed program that passes an XAX callback to `qsort` and calls a float-returning libm function, plus negative vectors for unsupported classifications.
+
+## OI-41 — Check-free pointer reloads (typed mixed storage)
+
+**Question.** Can stored links be reloaded as dereferenceable pointers without a per-link range check, by proving that every value stored in a link field is null or a valid record address in the same storage?
+
+**Fixed constraints.** No manufactured provenance; no hidden runtime metadata; the kernel grows only under the §21.5 admission rule. The likely shape is a record-layout view type, a link scalar type, make-link and follow-link operations (null test only), and rules that keep foreign code from writing link fields.
+
+**Evidence that closes it.** `chains` (or an equivalent pointer-chasing workload) within 1.1× of unchecked pointer C on the same host, verified, with negative vectors for forged link fields, and measured kernel and verifier growth.
+
+**Status.** OPEN. Measured motivation: the `pointer_rebase` check costs 1.51× in C on `chains`, and XAX pointer links run at 1.58× `gcc -O2` (`oi37_chains_evidence.json`). The user deferred this kernel growth on 2026-10-02 in favour of argv/env (ADR-094) and allocator convergence (ADR-095).
 

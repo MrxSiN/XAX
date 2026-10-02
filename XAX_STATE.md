@@ -600,3 +600,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `x86_64-windows-pe-v1` uses `xax_x86_64_regalloc.py` first. It adds Win64 calls (including stack arguments), `function_address`, `call_indirect`, and stack storage, with per-profile foreign ABI ownership. It also fixes the constant-return epilogue bug.
 - PE fixture: 6/6 functions converged; code 700 B (was 1,269); EXECUTED-UNDER-WINE 9.0 (`windows_pe_wine_evidence.json`; `WineExecutionTests` runs when wine64 is installed).
+
+## OI-37 closed (ADR-096) — 2026-10-02
+
+- Closure evidence: iovecs (ADR-081); pointer-linked traversal on x86-64 (heap) and wasm32 (stack storage, the stated deviation); forged/expired vectors on both targets; verifier cost and offline edit tokens (`oi37_closure_evidence.json`).
+- Check-free reloads move to OI-41 (typed mixed storage, deferred).

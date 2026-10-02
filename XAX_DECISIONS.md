@@ -1025,3 +1025,12 @@ This file records merged v0.1 decisions. Each decision is normative unless super
 | Bug fixed | A function returning a constant that was not in a register loaded `[rsp + constant]` instead of the constant. Only process-entry exits had hit it, where it was harmless. `HandcraftedLoweringTests` now covers constant returns, stack storage, function addresses, and indirect calls on Linux. |
 | Evidence | All six functions of the PE hosted fixture now take this allocator, versus 0 of 6 before ADR-095 (ADR-083 handled them). Code is 700 bytes, down from 1,269, and the PE is 2,048 bytes, down from 2,560. EXECUTED-UNDER-WINE (`windows_pe_wine_evidence.json`, Wine 9.0, 20 runs): stdout `XAX\n`, exit 1339 mod 256 = 59. Wine is not Windows, and `windows_pe_hosted_evidence.json` remains the Windows-host record for its own (older) bytes. The Linux differential corpus (160 programs) and every Linux test are unchanged. `chains` evidence was regenerated for the 2-byte exit-path change. |
 | Consequences | OI-38 is narrowed to: floats and aggregates in the allocator (then deleting the hosted use of the legacy path), range-based check elimination, and LICM. Re-executing on a real Windows host is still needed to refresh the Windows-host record. |
+
+## ADR-096 — Close OI-37 on `pointer_rebase`; open OI-41 for check-free reloads
+
+| Field | Record |
+|---|---|
+| Decision | OI-37 is closed. Its closure criteria are met by `pointer_address` (ADR-081), provenance-free pointer elements (ADR-082), and `pointer_rebase` on x86-64 Linux and wasm32 (ADR-092/093), with the negative vectors listed in the issue, measured verifier cost, and offline edit-token cost (`oi37_closure_evidence.json`, `bench_oi37_closure.py`). Removing the per-link check is a separate performance question that needs kernel growth (typed mixed storage), so it is tracked as OI-41. |
+| Stated deviation | The wasm32 traversal uses stack storage because that profile has no heap allocator; the representation and the checks are the same as on x86-64. |
+| Evidence | Verifier: 47.9 µs per rebase+load against 46.8 µs per checked load; `chains` verifies in 2.7 ms (pointer) and 2.6 ms (index). Edit: 4 rewritten objects, 4,458 bytes, 4,198 o200k hex tokens; an 11-operation delta of 87 o200k tokens. Performance (`oi37_chains_evidence.json`, one 31-repetition run): pointer links 1.58× `gcc -O2` and 1.05× checked-pointer C. |
+| Consequences | PE does not yet lower `pointer_rebase` (its target operation set omits 73). |
