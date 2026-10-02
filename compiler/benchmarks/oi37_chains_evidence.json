@@ -1,10 +1,11 @@
 {
   "attribution": {
-    "checked_vs_unchecked_index": 1.261,
-    "checked_vs_unchecked_pointer": 1.512,
-    "index_vs_pointer": 1.488,
-    "xax_pointer_vs_checked_pointer_c": 1.046,
-    "xax_vs_checked_index_c": 1.172
+    "checked_vs_unchecked_index": 1.275,
+    "checked_vs_unchecked_pointer": 1.577,
+    "index_vs_pointer": 1.355,
+    "xax_link_vs_gcc_O2_pointer": 1.066,
+    "xax_pointer_vs_checked_pointer_c": 1.009,
+    "xax_vs_checked_index_c": 0.984
   },
   "attribution_note": "all ratios are medians from the same run: representation = C index/C pointer; checks = checked/unchecked C index or pointer; codegen = XAX/C with the same representation and checks",
   "diagnostics": {
@@ -12,35 +13,35 @@
       "file_bytes": 16104,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16104,
-      "time_ratio_vs_best_baseline": 1.463,
-      "time_ratio_vs_gcc_O2": 1.463,
-      "wall_seconds_median": 0.378942,
-      "wall_seconds_min": 0.280042,
-      "wall_seconds_stdev": 0.095374
+      "time_ratio_vs_best_baseline": 1.212,
+      "time_ratio_vs_gcc_O2": 1.212,
+      "wall_seconds_median": 0.315041,
+      "wall_seconds_min": 0.260854,
+      "wall_seconds_stdev": 0.05001
     },
     "gcc-O2-index-checked": {
       "file_bytes": 16136,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16136,
-      "time_ratio_vs_best_baseline": 1.845,
-      "time_ratio_vs_gcc_O2": 1.845,
-      "wall_seconds_median": 0.477694,
-      "wall_seconds_min": 0.365011,
-      "wall_seconds_stdev": 0.114857
+      "time_ratio_vs_best_baseline": 1.545,
+      "time_ratio_vs_gcc_O2": 1.545,
+      "wall_seconds_median": 0.401691,
+      "wall_seconds_min": 0.304505,
+      "wall_seconds_stdev": 0.059685
     },
     "gcc-O2-pointer-checked": {
       "file_bytes": 16128,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16128,
-      "time_ratio_vs_best_baseline": 1.486,
-      "time_ratio_vs_gcc_O2": 1.486,
-      "wall_seconds_median": 0.384806,
-      "wall_seconds_min": 0.293358,
-      "wall_seconds_stdev": 0.1074
+      "time_ratio_vs_best_baseline": 1.411,
+      "time_ratio_vs_gcc_O2": 1.411,
+      "wall_seconds_median": 0.366759,
+      "wall_seconds_min": 0.295528,
+      "wall_seconds_stdev": 0.0624
     }
   },
   "evidence_label": "MEASURED",
-  "format": "xax-oi37-chains-evidence-v2",
+  "format": "xax-oi37-chains-evidence-v3",
   "host": {
     "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
@@ -69,81 +70,100 @@
       "file_bytes": 16160,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14544,
-      "time_ratio_vs_best_baseline": 1.165,
-      "time_ratio_vs_gcc_O2": 1.116,
-      "wall_seconds_median": 0.284157,
-      "wall_seconds_min": 0.227359,
-      "wall_seconds_stdev": 0.064778
+      "time_ratio_vs_best_baseline": 1.181,
+      "time_ratio_vs_gcc_O2": 1.181,
+      "wall_seconds_median": 0.27476,
+      "wall_seconds_min": 0.20514,
+      "wall_seconds_stdev": 0.053761
     },
     "gcc-O2": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.043,
+      "time_ratio_vs_best_baseline": 1.0,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.25458,
-      "wall_seconds_min": 0.206194,
-      "wall_seconds_stdev": 0.056815
+      "wall_seconds_median": 0.232575,
+      "wall_seconds_min": 0.204151,
+      "wall_seconds_stdev": 0.048552
     },
     "gcc-O2-static": {
       "file_bytes": 785304,
       "peak_rss_kib_max": 17420,
       "stripped_bytes": 706584,
-      "time_ratio_vs_best_baseline": 1.054,
-      "time_ratio_vs_gcc_O2": 1.01,
-      "wall_seconds_median": 0.257227,
-      "wall_seconds_min": 0.201772,
-      "wall_seconds_stdev": 0.042868
+      "time_ratio_vs_best_baseline": 1.045,
+      "time_ratio_vs_gcc_O2": 1.045,
+      "wall_seconds_median": 0.243064,
+      "wall_seconds_min": 0.189176,
+      "wall_seconds_stdev": 0.04623
     },
     "gcc-O3": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.958,
-      "wall_seconds_median": 0.243991,
-      "wall_seconds_min": 0.208773,
-      "wall_seconds_stdev": 0.027246
+      "time_ratio_vs_best_baseline": 1.038,
+      "time_ratio_vs_gcc_O2": 1.038,
+      "wall_seconds_median": 0.241359,
+      "wall_seconds_min": 0.206053,
+      "wall_seconds_stdev": 0.056494
     },
     "xax": {
-      "file_bytes": 1350,
+      "file_bytes": 1496,
       "peak_rss_kib_max": 16896,
-      "stripped_bytes": 1350,
-      "time_ratio_vs_best_baseline": 2.294,
-      "time_ratio_vs_gcc_O2": 2.198,
-      "wall_seconds_median": 0.559682,
-      "wall_seconds_min": 0.460712,
-      "wall_seconds_stdev": 0.116472
+      "stripped_bytes": 1496,
+      "time_ratio_vs_best_baseline": 1.7,
+      "time_ratio_vs_gcc_O2": 1.7,
+      "wall_seconds_median": 0.395294,
+      "wall_seconds_min": 0.342634,
+      "wall_seconds_stdev": 0.024304
+    },
+    "xax-link": {
+      "file_bytes": 1408,
+      "peak_rss_kib_max": 16896,
+      "stripped_bytes": 1408,
+      "time_ratio_vs_best_baseline": 1.066,
+      "time_ratio_vs_gcc_O2": 1.066,
+      "wall_seconds_median": 0.24788,
+      "wall_seconds_min": 0.202981,
+      "wall_seconds_stdev": 0.042465
     },
     "xax-pointer": {
-      "file_bytes": 1334,
+      "file_bytes": 1472,
       "peak_rss_kib_max": 16896,
-      "stripped_bytes": 1334,
-      "time_ratio_vs_best_baseline": 1.65,
-      "time_ratio_vs_gcc_O2": 1.581,
-      "wall_seconds_median": 0.402577,
-      "wall_seconds_min": 0.346481,
-      "wall_seconds_stdev": 0.09776
+      "stripped_bytes": 1472,
+      "time_ratio_vs_best_baseline": 1.591,
+      "time_ratio_vs_gcc_O2": 1.591,
+      "wall_seconds_median": 0.369981,
+      "wall_seconds_min": 0.297306,
+      "wall_seconds_stdev": 0.064502
     }
   },
   "workload": "chained hash table: 1048576 xorshift64 inserts into 65536 buckets, then 1048576 successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
   "xax": {
-    "artifact_bytes": 1350,
-    "artifact_sha256": "69000261759107056bf555b0ddd05606eafeff9732b696ba8e7850f1fcdda8a2",
+    "artifact_bytes": 1496,
+    "artifact_sha256": "9aa6a30db9928743b6e1bdbefb90958db44acd62c832a55eff0600356f4d5f78",
     "entry_function": "a0b372c0739f9fa0da45e720d12e6c15b0cc96080b476c170258bfbff047c7e6",
     "graph_blocks": 20,
     "link_representation": "b64 arena index + 1 (0 = end); byte offset = (index - 1) * 16, checked against the view extent",
-    "program_root": "633173ab7dcc12c778cc73d97bbedd2480a273655aedc15a4b7e5a44899bdd81",
+    "program_root": "7c254f8629066c93584d2b2e35beaad8b95e7e9edec43110484706d55292cffd",
     "runtime_dependencies": [],
-    "target": "7c634e1ca3d6c21940060bdc6f9a22c0261b7bc142f20ecdd3927676631d6da1"
+    "target": "ee3e4e5e241816da226eaa7f8158f7a3deaeaaafaeed2b7fc6f85b8d03e8f733"
+  },
+  "xax_link": {
+    "artifact_bytes": 1408,
+    "artifact_sha256": "6fbc8e81628205f49f378633ff4eae83baf9724407a57e6d40b7ad828b530311",
+    "entry_function": "4f852e40b56a9d7f6f2c38acc41b235de526ac897b8011bbe8c14863c79b3355",
+    "graph_blocks": 21,
+    "link_representation": "record link fields (ADR-097): heads table targets the arena; link_follow is check-free (null test elided by the walk's own test)",
+    "program_root": "2f6cfa8387b2e4c92110b1db2979a4fc74499803c77d60a151d6a0494d77bde7",
+    "runtime_dependencies": []
   },
   "xax_pointer": {
-    "artifact_bytes": 1334,
-    "artifact_sha256": "80b8d10bc8d4e7ee84e697c0493164f3307523320c5ebfce1e29d1d0525eb4fd",
+    "artifact_bytes": 1472,
+    "artifact_sha256": "762af2fb7c47297ec6e842175f3ee11b9a69cc57ec4609ef8bcb3c58996dcd15",
     "entry_function": "6cdc6b7b7a3bf8187e44b44f257038ec2659945e8225680d2742dd06d2cd3c49",
     "graph_blocks": 19,
     "link_representation": "exposed node address (0 = end) reloaded by pointer_rebase(arena, address, 16): one range+alignment check, then unchecked field loads (ADR-092)",
-    "program_root": "6170585d206ecdf6f18b0a07f1757c09213ecd6924a89fc45899dc40bbe6d7b8",
+    "program_root": "d082ef087a4a50de1975c7d269364617a61d49b35793a7c2b4faf7d25aaf8d2b",
     "runtime_dependencies": []
   }
 }

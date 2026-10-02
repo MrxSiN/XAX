@@ -1,0 +1,53 @@
+{
+  "evidence_label": "MEASURED",
+  "issue": "OI-41",
+  "kernel_growth": {
+    "operation_extended": "heap_view: optional 4th operand naming the link target record view",
+    "operation_ids": [
+      74,
+      75
+    ],
+    "operations_added": [
+      "LINK_MAKE",
+      "LINK_FOLLOW"
+    ],
+    "type_forms_added": {
+      "11": "link (8 bytes on every target; null constant only)"
+    },
+    "verifier_rules_added": [
+      "CONST-LINK-NULL-ONLY",
+      "INT-COMPARE-LINK-EQUALITY",
+      "MEMORY-LINK-FOLLOW-ALIGNMENT",
+      "MEMORY-LINK-FOLLOW-NO-AUTHORITY-GAIN",
+      "MEMORY-LINK-FOLLOW-PROVENANCE",
+      "MEMORY-LINK-FOLLOW-ROOT-VIEW",
+      "MEMORY-LINK-MAKE-RECORD",
+      "MEMORY-LINK-MAKE-RECORD-START",
+      "MEMORY-LINK-MAKE-TYPE",
+      "MEMORY-LINK-NO-ATOMICS",
+      "MEMORY-LINK-RECORD-ONLY",
+      "MEMORY-LINK-STORAGE-FOREIGN",
+      "MEMORY-LINK-STORE-PROVENANCE",
+      "MEMORY-LINK-TARGET-OUTLIVES",
+      "MEMORY-LINK-TARGET-ROOT-VIEW",
+      "MEMORY-REBASE-RECORD-STRIDE",
+      "MEMORY-RECORD-EXTENT",
+      "MEMORY-RECORD-FIELD",
+      "MEMORY-RECORD-FIELD-OFFSET",
+      "MEMORY-RECORD-OFFSET-STRIDE",
+      "TYPE-LINK-CANONICAL"
+    ],
+    "verifier_source_lines_vs_base": {
+      "added": 227,
+      "base": "cb0b53c",
+      "removed": 33
+    }
+  },
+  "model_run": null,
+  "repeats": 15,
+  "verifier_cost": {
+    "chains_index_verify_microseconds": 3523.8,
+    "chains_link_verify_microseconds": 3572.0,
+    "chains_pointer_verify_microseconds": 4009.8
+  }
+}
