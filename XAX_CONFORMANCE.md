@@ -604,3 +604,18 @@ demonstrate, for the exact declared profile:
     cleanup/migration MUST reject or remain outside the profile rather than being inferred.
     Runtime saved-state transfer, ID transfer, mismatch behavior, and replacement atomicity
     remain unproven until compatible framework execution.
+
+## 23. Universal-replacement obligations
+
+Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels certify an implementation; R-levels certify a `(platform package, workload class)` pair.
+
+1. **Claim form.** An R-level claim MUST name the platform row of `XAX_REPLACEMENT_MATRIX.json`, the workload, the target/platform/ABI package identities, and the evidence artifacts. The claimed level MUST equal the level derived by `compiler/src/xax_replacement.py`; `compiler/tests/test_replacement_matrix.py` MUST pass.
+2. **Labels.** Each matrix field is `UNIMPLEMENTED`, `NOT_APPLICABLE`, or one of PROVEN/EXECUTED/MEASURED/STRUCTURAL/PROTOTYPE with at least one existing evidence path. Bare labels and missing paths are non-conforming.
+3. **No hidden runtime.** For R1+ the row's `runtime_requirement` MUST list every platform-required runtime and compiler-generated adapter; an emitted artifact containing any XAX-owned runtime, startup code, or exit path not derived from an explicit contract is non-conforming.
+4. **Foreign ABI ownership.** A backend MUST reject foreign declarations whose ABI it does not own (`XAX.FOREIGN.ABI`); a container that cannot bind imports MUST reject images that contain them (`XAX.NATIVE.IMPORTS`).
+5. **Hosted lifecycle.** Process/application start and exit MUST be explicit platform contracts. For `x86_64-windows-pe-v1`, the entry MUST take no machine parameters and return only integer values (`XAX.PE.ENTRY`), and process termination is the program's explicit `ExitProcess` call.
+6. **Negative vectors.** Each new platform row at R1+ MUST add negative tests for its ABI/container rules. Current vectors: `compiler/tests/test_xax_pe.py` (wrong-ABI foreign call, raw-image foreign call, parameterized PE entry, raw execution of an import-bearing image) and `compiler/tests/test_replacement_matrix.py` (overclaim, bare label, missing evidence).
+7. **Heap views and frontiers (U1.2a).** `x86_64-windows-pe-v1` MUST trap (not assume) on a null allocator result before producing a heap view, and MUST range-check dynamic heap offsets at runtime: `compiler/tests/test_xax_pe.py::test_out_of_bounds_heap_store_traps` requires `STATUS_ILLEGAL_INSTRUCTION` for an index one past the view. Pointer-free memory-effect calls MUST consume the input effect linearly (ADR-079).
+8. **WASI (U1.4).** `wasm32-wasi-v1` MUST import only declared `wasm32-import` functions, export `_start` and `memory`, reject entries with machine parameters/results (`XAX.WASM.WASI_ENTRY`), reject other foreign ABIs (`XAX.FOREIGN.ABI`), and the core wasm profile MUST reject foreign calls. Vectors: `compiler/tests/test_xax_wasi.py`.
+9. **Address exposure (ADR-081).** `pointer_address` MUST carry waiver attribute 1, MUST reject exposure of ended storage, MUST produce a provenance-free integer of the target pointer width (backends reject other widths), and MUST NOT be executable by the reference executor. Vectors: `compiler/tests/test_xax_wasi.py::test_address_exposure_requires_waiver_and_live_storage`.
+10. **Pointer elements (ADR-082).** Pointer-typed memory accesses MUST use the target pointer width (`NATIVE-POINTER-ELEMENT-WIDTH`); storing a pointer with local storage provenance MUST reject (`MEMORY-POINTER-STORE-LOCAL-PROVENANCE`); reloaded pointers MUST carry no storage facts. Vectors: `compiler/tests/test_xax_pe.py::test_local_pointer_store_rejects_until_oi37` and the executed dispatch table in the PE fixture.

@@ -29,7 +29,9 @@ from xax_compiler import (
     _is_proof_type,
     _is_erased_proof_function,
     _parse_graph,
+    WASM32_WASI_IDENTITY,
     abi_layout,
+    decode_foreign_function,
     decode_bits_width,
     decode_float_width,
     decode_native_target,
@@ -186,6 +188,7 @@ def _compile_function(
     function: SemanticObject,
     resolve: Callable[[bytes], SemanticObject],
     function_indices: dict[bytes, int],
+    import_indices: dict[bytes, int],
     stack_addresses: dict[tuple[bytes, int, int], int],
     aggregate_addresses: dict[tuple[bytes, int, int, int, int], int],
 ) -> tuple[bytes, tuple[ArtifactSemanticRange, ...]]:
@@ -538,12 +541,14 @@ def _compile_function(
                 get(source); code.extend(b"\x28\x02\x00"); iconst(node.attributes[0]); code.extend(b"\x46\x45\x04\x40\x00\x0b")
                 load_value_from(source, layout.payload_offset, result, node.results[0])
 
-            elif node.operation == Operation.CALL_DIRECT:
+            elif node.operation in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN):
                 machine_operands = tuple(operand for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid)))
                 machine_results = tuple((i, cid) for i, cid in enumerate(node.results) if not _is_proof_type(resolve(cid)))
                 for operand in machine_operands:
                     get(operand)
-                if not _is_erased_proof_function(node.entity, resolve):
+                if node.operation == Operation.CALL_FOREIGN:
+                    code.extend(b"\x10" + uleb(import_indices[node.entity.cid]))
+                elif not _is_erased_proof_function(node.entity, resolve):
                     code.extend(b"\x10" + uleb(function_indices[node.entity.cid]))
                 if machine_results:
                     result_index, result_cid = machine_results[0]
@@ -565,6 +570,11 @@ def _compile_function(
                 get(node.operands[0]); iconst(node.attributes[0]); code.append(0x6A); set_(result)
 
             elif node.operation == Operation.POINTER_CAST:
+                get(node.operands[0]); set_(result)
+
+            elif node.operation == Operation.POINTER_ADDRESS:
+                if _width(resolve, node.results[0]) != 32:
+                    fail("XAX.WASM.ADDRESS_WIDTH", graph_object.cid.hex(), "WASM-ADDRESS-POINTER-WIDTH", 32, _width(resolve, node.results[0]))
                 get(node.operands[0]); set_(result)
 
             elif node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
@@ -707,27 +717,55 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
             tuple("i" for _ in legacy.parameter_widths), tuple("i" for _ in legacy.return_widths),
         )
     functions = _function_closure(entry, resolve, target.supported_operations, target.supported_terminators)
-    indices = {function.cid: index for index, function in enumerate(functions)}
+    wasi = target.identity == WASM32_WASI_IDENTITY
+    # Imports take the first function indices; one per distinct foreign carrier.
+    carriers: dict[bytes, SemanticObject] = {}
+    for function in functions:
+        graph_object, _, _ = _decode_function_interface(function, resolve)
+        for block in _parse_graph(graph_object, resolve).blocks:
+            for node in block.nodes:
+                if node.operation == Operation.CALL_FOREIGN:
+                    declaration = decode_foreign_function(node.entity)
+                    if declaration.abi != b"wasm32-import":
+                        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "WASM-FOREIGN-ABI", "wasm32-import", declaration.abi.decode("ascii", "replace"))
+                    carriers[node.entity.cid] = node.entity
+    imports = sorted(carriers.values(), key=lambda carrier: (decode_foreign_function(carrier).library, decode_foreign_function(carrier).name))
+    import_indices = {carrier.cid: index for index, carrier in enumerate(imports)}
+    indices = {function.cid: len(imports) + index for index, function in enumerate(functions)}
     stack_addresses, aggregate_addresses, memory_size = _memory_layout(functions, resolve)
 
     signatures: list[bytes] = []
-    type_indices: list[int] = []
-    for function in functions:
-        _, parameters, returns = _decode_function_interface(function, resolve)
+
+    def type_index(parameters: Sequence[bytes], returns: Sequence[bytes]) -> int:
         signature = b"\x60" + _vector([bytes((_valtype_for_cid(resolve, cid),)) for cid in parameters if not _is_proof_type(resolve(cid))]) + _vector([bytes((_valtype_for_cid(resolve, cid),)) for cid in returns if not _is_proof_type(resolve(cid))])
         if signature not in signatures:
             signatures.append(signature)
-        type_indices.append(signatures.index(signature))
+        return signatures.index(signature)
+
+    import_entries = []
+    for carrier in imports:
+        declaration = decode_foreign_function(carrier)
+        index = type_index(declaration.inputs, declaration.outputs)
+        import_entries.append(uleb(len(declaration.library)) + declaration.library + uleb(len(declaration.name)) + declaration.name + b"\x00" + uleb(index))
+    type_indices = [type_index(*_decode_function_interface(function, resolve)[1:]) for function in functions]
 
     module = bytearray(b"\x00asm\x01\x00\x00\x00")
     module.extend(_section(1, _vector(signatures)))
+    if import_entries:
+        module.extend(_section(2, _vector(import_entries)))
     module.extend(_section(3, _vector([uleb(index) for index in type_indices])))
-    if memory_size:
+    if memory_size or wasi:
         module.extend(_section(5, b"\x01\x00\x01"))
-    export = uleb(5) + b"entry" + b"\x00" + uleb(indices[entry.cid])
-    module.extend(_section(7, b"\x01" + export))
+    if wasi:
+        _, entry_parameters, entry_returns = _decode_function_interface(entry, resolve)
+        if any(not _is_proof_type(resolve(cid)) for cid in (*entry_parameters, *entry_returns)):
+            fail("XAX.WASM.WASI_ENTRY", function_cid.hex(), "WASI-START-NO-MACHINE-VALUES", "() -> ()", [cid.hex() for cid in (*entry_parameters, *entry_returns)])
+        # WASI command ABI: the host calls `_start` and reads `memory`; exit is an explicit proc_exit import.
+        module.extend(_section(7, _vector([uleb(6) + b"_start" + b"\x00" + uleb(indices[entry.cid]), uleb(6) + b"memory" + b"\x02\x00"])))
+    else:
+        module.extend(_section(7, b"\x01" + uleb(5) + b"entry" + b"\x00" + uleb(indices[entry.cid])))
 
-    compiled = [_compile_function(function, resolve, indices, stack_addresses, aggregate_addresses) for function in functions]
+    compiled = [_compile_function(function, resolve, indices, import_indices, stack_addresses, aggregate_addresses) for function in functions]
     bodies = [item[0] for item in compiled]
     vector_prefix = uleb(len(bodies))
     code_payload = vector_prefix + b"".join(bodies)
@@ -827,3 +865,26 @@ else { console.log(JSON.stringify([{kind:(Number.isInteger(result) ? "i" : "f"),
         else:
             values.append(int(item["value"]) & ((1 << width) - 1))
     return tuple(values)
+
+
+def run_wasi_isolated(image: WasmImage, arguments: Sequence[str] = (), node_executable: str | None = None) -> tuple[int, bytes]:
+    """Run a WASI command module under Node's ``node:wasi`` host; returns (exit code, stdout).
+
+    The host is a platform-required runtime and test harness, not part of the artifact.
+    """
+    node = node_executable or shutil.which("node")
+    if not node:
+        fail("XAX.WASM.HOST", "host", "WASM-HOST-NODE", "node executable", "missing")
+    script = """
+const { WASI } = require("node:wasi");
+const wasi = new WASI({ version: "preview1", args: JSON.parse(process.argv[2]), env: {}, returnOnExit: true });
+const instance = new WebAssembly.Instance(new WebAssembly.Module(Buffer.from(process.argv[1], "hex")), wasi.getImportObject());
+process.exitCode = wasi.start(instance);
+"""
+    completed = subprocess.run(
+        [node, "--no-warnings", "-e", script, image.module.hex(), json.dumps(list(arguments))],
+        check=False, capture_output=True,
+    )
+    if completed.stderr.strip():
+        raise RuntimeError(completed.stderr.decode(errors="replace").strip())
+    return completed.returncode, completed.stdout

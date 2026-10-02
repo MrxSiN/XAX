@@ -1,0 +1,34 @@
+{
+  "claim": "EXECUTED",
+  "target": "2226dfbfbbf14381fa7d3f697203049c3b0b72e08c17b4cebaa37b3897ddacca",
+  "entry": "196cdc381957f29b8e3162753f860b281969ce2e875f5dc88de1192c574798c3",
+  "module_bytes": 635,
+  "module_sha256": "88df18930bdaa37aac7d6c9d0dc298be360da1d9735d4b61edc4c68ac2842c29",
+  "imports": [
+    "wasi_snapshot_preview1!args_sizes_get",
+    "wasi_snapshot_preview1!fd_write",
+    "wasi_snapshot_preview1!proc_exit"
+  ],
+  "exports": [
+    "_start",
+    "memory"
+  ],
+  "host": {
+    "runtime": "node v26.7.0",
+    "wasi": "preview1"
+  },
+  "execution": {
+    "args": [
+      "xax",
+      "one",
+      "two"
+    ],
+    "stdout": "XAX\n",
+    "exit_code": 97,
+    "runs": 10,
+    "expected": "argc*10 + argv bytes + sum_to(10) + errnos = 30 + 12 + 55 + 0 + 0; stdout via fd_write iovec holding an exposed address"
+  },
+  "runtime_dependencies": [
+    "platform-required WASI host (Node.js here)"
+  ]
+}
