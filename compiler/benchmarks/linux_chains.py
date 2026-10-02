@@ -340,6 +340,7 @@ def compile_chains(nodes: int = NODES, buckets: int = BUCKETS, links: str = "ind
 def run_benchmark(repetitions: int, warmup: int) -> dict:
     program, executable = compile_chains()
     pointer_program, pointer_executable = compile_chains(links="pointer")
+    link_program, link_executable = compile_chains(links="link")
     expected = reference_chains()
     with tempfile.TemporaryDirectory() as directory:
         work = Path(directory)
@@ -348,6 +349,10 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
         artifacts["xax-pointer"].write_bytes(pointer_executable.data)
         artifacts["xax-pointer"].chmod(0o755)
         stripped["xax-pointer"] = len(pointer_executable.data)  # no section table to strip
+        artifacts["xax-link"] = work / "chains-xax-link"
+        artifacts["xax-link"].write_bytes(link_executable.data)
+        artifacts["xax-link"].chmod(0o755)
+        stripped["xax-link"] = len(link_executable.data)
 
         def validate(arm: str, path: Path) -> bytes:
             output, status = run_output(path, work)
@@ -371,9 +376,10 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
         "xax_vs_checked_index_c": round(xax_time / diagnostics["gcc-O2-index-checked"]["wall_seconds_median"], 3),
         "checked_vs_unchecked_pointer": round(diagnostics["gcc-O2-pointer-checked"]["wall_seconds_median"] / results["gcc-O2"]["wall_seconds_median"], 3),
         "xax_pointer_vs_checked_pointer_c": round(results["xax-pointer"]["wall_seconds_median"] / diagnostics["gcc-O2-pointer-checked"]["wall_seconds_median"], 3),
+        "xax_link_vs_gcc_O2_pointer": round(results["xax-link"]["wall_seconds_median"] / results["gcc-O2"]["wall_seconds_median"], 3),
     }
     return {
-        "format": "xax-oi37-chains-evidence-v2",
+        "format": "xax-oi37-chains-evidence-v3",
         "evidence_label": "MEASURED",
         "workload": f"chained hash table: {NODES} xorshift64 inserts into {BUCKETS} buckets, then {NODES} successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
         "output": output.decode(),
@@ -394,6 +400,15 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
             "artifact_sha256": hashlib.sha256(pointer_executable.data).hexdigest(),
             "artifact_bytes": len(pointer_executable.data),
             "link_representation": "exposed node address (0 = end) reloaded by pointer_rebase(arena, address, 16): one range+alignment check, then unchecked field loads (ADR-092)",
+            "runtime_dependencies": [],
+        },
+        "xax_link": {
+            "program_root": link_program.reader.root_cid.hex(),
+            "entry_function": link_program.entry.cid.hex(),
+            "graph_blocks": link_program.block_count,
+            "artifact_sha256": hashlib.sha256(link_executable.data).hexdigest(),
+            "artifact_bytes": len(link_executable.data),
+            "link_representation": "record link fields (ADR-097): heads table targets the arena; link_follow is check-free (null test elided by the walk's own test)",
             "runtime_dependencies": [],
         },
         "results": results,
