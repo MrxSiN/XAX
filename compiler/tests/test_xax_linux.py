@@ -244,20 +244,20 @@ class DynamicLinkingTests(unittest.TestCase):
             emit_linux_elf_executable(image((2, b"libz.so.1", b"crc32"), (8, b"libother.so", b"crc32")), dynamic_loader=True)
         self.assertEqual(caught.exception.diagnostic.code, "XAX.LINUX.IMPORT")
 
-    def test_non_integer_c_signature_rejects(self):
+    def test_c_signature_outside_register_scalars_rejects(self):
+        """Seven INTEGER-class arguments need the stack, which this lowering does not guess (OI-40)."""
         api = linux_api()
-        f64 = float_type(FloatFormat.BINARY64)
-        declaration = c_function(b"libm.so.6", b"sqrt", (f64,), (f64,))
+        declaration = c_function(b"libc.so.6", b"seven", (B64,) * 7, (B64,))
         graph = GraphBuilder()
         block = graph.block(api.filesystem_effect)
-        value = block.op1(Operation.CALL_FOREIGN, (block.op1(Operation.UINT_TO_FLOAT, (block.const(B32, 4),), f64),), f64, entity=declaration)
-        block.ret(block.op1(Operation.FLOAT_TO_UINT_TRUNC, (value,), B32), block.params[0])
+        value = block.op1(Operation.CALL_FOREIGN, tuple(block.const(B64, index) for index in range(7)), B64, entity=declaration)
+        block.ret(block.op1(Operation.INT_TRUNCATE, (value,), B32), block.params[0])
         entry = graph.function((api.filesystem_effect,), (B32, api.filesystem_effect))
         target = x86_64_linux_dynamic_exec_target()
         reader = program_store(entry, target, tuple(graph.objects.values()))
         with self.assertRaises(XaxError) as caught:
             compile_linux_executable(reader, entry.cid, target.cid)
-        self.assertEqual(caught.exception.diagnostic.rule, "SYSV-C-INTEGER-CLASS")
+        self.assertEqual(caught.exception.diagnostic.rule, "SYSV-C-SCALAR-CLASS")
 
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host to execute ELF64 artifacts")

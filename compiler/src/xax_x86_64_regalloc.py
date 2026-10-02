@@ -94,6 +94,7 @@ from xax_x86_64 import (
     _test_register,
     _value_width,
     _zero32,
+    code_address_label,
     decode_syscall_name,
     require_sysv_profile,
 )
@@ -1052,7 +1053,7 @@ def compile_register_resident(
             elif operation == Operation.FUNCTION_ADDRESS:
                 register = acquire(node_index)
                 if assembler is not None:
-                    assembler.address(register, node.entity.cid)  # lea reg, [rip + function]
+                    assembler.address(register, code_address_label(node, resolve))  # lea reg, [rip + function or its entry adapter]
                 define(result, register)
 
             elif operation == Operation.POINTER_ADDRESS:
@@ -1200,8 +1201,10 @@ def compile_register_resident(
                         assembler.call_import(node.entity.cid)
                 elif declaration.abi == SYSV_X86_64_C_ABI:
                     require_sysv_profile(target, graph_object)
-                    if not all(_sysv_integer_class(resolve, cid) for cid in node.operand_types if not _is_proof_type(resolve(cid))):
-                        return -1
+                    if len(machine_operands) > len(_SYSV_ARGUMENT_REGISTERS) or len(results) > 1 or not all(
+                        _sysv_integer_class(resolve, cid) for cid in (*node.operand_types, *node.results) if not _is_proof_type(resolve(cid))
+                    ):
+                        return -1  # SSE-class values use the frame path, which also rejects stack arguments
                     place_arguments(node_index, machine_operands, _SYSV_ARGUMENT_REGISTERS)
                     if assembler is not None:
                         assembler.call_import(node.entity.cid)

@@ -48,6 +48,8 @@ from xax_compiler import (
     decode_native_target,
     effect_type,
     fail,
+    foreign_entry_code_type,
+    foreign_entry_pointer_type,
     foreign_function_symbol,
     heap_owner_type,
     heap_view_type,
@@ -87,6 +89,11 @@ class LinuxApi:
     close: SemanticObject
     mmap_anonymous: SemanticObject
     exit_group: SemanticObject
+    # An XAX code address C code may call (``sysv-x86_64-c`` entry, ADR-102):
+    # FUNCTION_ADDRESS with this result type yields a compiler-generated
+    # adapter, never the function's internal entry.
+    c_callback_code: SemanticObject
+    c_callback: SemanticObject
 
     def munmap_view(self, view_pointer: SemanticObject, extent: int) -> SemanticObject:
         """``munmap`` of one whole proven heap view; the length is the exact view extent."""
@@ -101,6 +108,7 @@ class LinuxApi:
         return (
             self.b8, self.b32, self.b64, self.bytes_rw, self.bytes_read,
             self.memory_effect, self.filesystem_effect, self.process_effect, self.heap_owner,
+            self.c_callback_code, self.c_callback,
         )
 
     @property
@@ -143,7 +151,10 @@ def linux_api() -> LinuxApi:
     )
     # Ends the process; the explicit call is the only process-exit path.
     exit_group = syscall(SYS_EXIT_GROUP, (b32, process), (process,))
-    return LinuxApi(b8, b32, b64, bytes_rw, bytes_read, memory, filesystem, process, heap, read, write, openat, close, mmap_anonymous, exit_group)
+    return LinuxApi(
+        b8, b32, b64, bytes_rw, bytes_read, memory, filesystem, process, heap, read, write, openat, close, mmap_anonymous, exit_group,
+        foreign_entry_code_type(SYSV_X86_64_C_ABI), foreign_entry_pointer_type(SYSV_X86_64_C_ABI),
+    )
 
 
 @dataclass(frozen=True)

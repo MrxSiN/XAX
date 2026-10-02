@@ -13,6 +13,7 @@ from xax_artifact import ArtifactSemanticRange
 
 from xax_compiler import (
     store_resolver,
+    foreign_entry_abi,
     ATOMIC_OPERATIONS,
     AtomicLegalizationPolicy,
     AtomicOrder,
@@ -574,6 +575,9 @@ def _function_closure(
                     if not _is_erased_proof_function(node.entity, resolve):
                         visit(node.entity)
                 elif node.operation == Operation.FUNCTION_ADDRESS:
+                    if foreign_entry_abi(resolve(node.results[0]), resolve) is not None:
+                        # No AArch64 foreign entry adapter exists yet (ADR-102).
+                        fail("XAX.AARCH64.FOREIGN_ENTRY", graph_object.cid.hex(), "AARCH64-FOREIGN-ENTRY-UNSUPPORTED", "ptr<opaque<function>>", node.results[0].hex())
                     visit(node.entity)
             if block.terminator.kind not in target.supported_terminators:
                 fail("XAX.AARCH64.UNSUPPORTED_TERMINATOR", graph_object.cid.hex(), "AARCH64-TERMINATOR-TARGET-SUPPORTED", list(target.supported_terminators), block.terminator.kind)

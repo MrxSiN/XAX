@@ -284,7 +284,8 @@
         ],
         "abi": [
           "EXECUTED",
-          "compiler/tests/test_xax_linux.py"
+          "compiler/tests/test_xax_linux.py",
+          "compiler/benchmarks/linux_c_interop_evidence.json"
         ],
         "artifact_format": [
           "EXECUTED",
@@ -299,7 +300,8 @@
         "ffi": [
           "EXECUTED",
           "compiler/tests/test_xax_linux.py",
-          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+          "compiler/benchmarks/u1_linux_filestat_evidence.json",
+          "compiler/benchmarks/linux_c_interop_evidence.json"
         ],
         "atomics": [
           "STRUCTURAL",
@@ -349,7 +351,7 @@
       "blockers": [
         "filestat is a benchmark-scale utility, not a deployed application (R3)",
         "1.38x behind clang -O2 on filestat; float/aggregate functions still fall back (OI-38)",
-        "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
+        "sysv-x86_64-c: register scalars (INTEGER + SSE) and pure C-to-XAX callbacks only (ADR-102); no effectful callbacks (OI-42), aggregates, stack arguments, variadics",
         "no threads, signals, sockets, clocks packages; no DWARF",
         "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)"
       ]

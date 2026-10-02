@@ -56,6 +56,7 @@ from xax_compiler import (
     decode_bits_width,
     decode_float_width,
     decode_foreign_function,
+    foreign_entry_abi,
     value_bit_width,
     decode_native_target,
     fail,
@@ -748,25 +749,106 @@ def require_sysv_profile(target: NativeTargetDescription, graph_object: Semantic
         fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-REQUIRES-DYNAMIC-PROFILE", [X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT], [target.abi, target.image_format])
 
 
+# psABI SSE class: f32/f64 scalars in xmm0..xmm7, independent of the INTEGER sequence.
+_SYSV_VECTOR_REGISTERS = 8
+
+
+def _sysv_scalar_classes(resolve: Callable[[bytes], SemanticObject], cids: Sequence[bytes]) -> list[tuple[bool, int]] | None:
+    """``(is_sse, register)`` per scalar in psABI order, or ``None`` outside the lowered subset."""
+    classes: list[tuple[bool, int]] = []
+    integers = vectors = 0
+    for cid in cids:
+        if _is_float_cid(resolve, cid) and vectors < _SYSV_VECTOR_REGISTERS:
+            classes.append((True, vectors))
+            vectors += 1
+        elif _sysv_integer_class(resolve, cid) and integers < len(_SYSV_ARGUMENT_REGISTERS):
+            classes.append((False, _SYSV_ARGUMENT_REGISTERS[integers]))
+            integers += 1
+        else:
+            return None
+    return classes
+
+
 def _emit_sysv_c_call(assembler: "_Assembler", node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> None:
     """Call an imported C function through its GOT slot.
 
-    Only the bounded INTEGER-class subset is lowered: at most six integer or
-    pointer arguments of at most 64 bits and at most one such result.  Spill
-    code keeps no value in registers across a node and every frame keeps RSP
-    16-byte aligned at calls, so the psABI caller obligations are met without
-    saving anything.  Floats, aggregates, stack arguments, and variadic calls
-    reject rather than being guessed.
+    The lowered subset is register-passed scalars: at most six INTEGER-class
+    (integer or pointer, at most 64 bits) and at most eight SSE-class (f32/f64)
+    arguments, and at most one such result (rax or xmm0).  Spill code keeps no
+    value in registers across a node and every frame keeps RSP 16-byte aligned
+    at calls, so the psABI caller obligations are met without saving anything.
+    Aggregates, stack arguments, and variadic calls reject rather than being guessed.
     """
-    declaration = decode_foreign_function(node.entity)
     require_sysv_profile(target, graph_object)
     machine = [(operand, cid) for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid))]
     results = [cid for cid in node.results if not _is_proof_type(resolve(cid))]
-    if len(machine) > len(_SYSV_ARGUMENT_REGISTERS) or len(results) > 1 or not all(_sysv_integer_class(resolve, cid) for cid in (*(cid for _, cid in machine), *results)):
-        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-INTEGER-CLASS", "<=6 integer/pointer arguments, <=1 integer/pointer result", [len(machine), len(results)])
-    for register, (operand, _cid) in zip(_SYSV_ARGUMENT_REGISTERS, machine):
-        assembler.emit(_load(register, value_slot(operand)))
+    classes = _sysv_scalar_classes(resolve, [cid for _operand, cid in machine])
+    if classes is None or len(results) > 1 or _sysv_scalar_classes(resolve, results) is None:
+        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-SCALAR-CLASS", "<=6 INTEGER and <=8 SSE scalar arguments, <=1 scalar result", [len(machine), len(results)])
+    for (sse, register), (operand, cid) in zip(classes, machine):
+        if sse:
+            assembler.emit(_xmm_memory(True, register, value_slot(operand), decode_float_width(resolve(cid))))
+        else:
+            assembler.emit(_load(register, value_slot(operand)))
     assembler.call_import(node.entity.cid)
+
+
+# Label of the compiler-generated SysV entry adapter for a function (ADR-102).
+# Labels are 33 bytes, so they never collide with a 32-byte CID.
+_SYSV_ENTRY_LABEL = b"E"
+
+
+def code_address_label(node, resolve: Callable[[bytes], SemanticObject]) -> bytes:
+    """Relocation label of a FUNCTION_ADDRESS: the function itself, or its SysV entry adapter."""
+    if foreign_entry_abi(resolve(node.results[0]), resolve) == SYSV_X86_64_C_ABI:
+        return _SYSV_ENTRY_LABEL + node.entity.cid
+    return node.entity.cid
+
+
+def _zero_extending_move(destination: int, source: int, width: int) -> bytes:
+    """``mov``/``movzx`` of the low ``width`` bits of ``source`` into ``destination``."""
+    rex = 0x40 | (0x04 if destination >= 8 else 0) | (0x01 if source >= 8 else 0)
+    prefix = bytes((rex,)) if rex != 0x40 else b""
+    modrm = bytes((0xC0 | ((destination & 7) << 3) | (source & 7),))
+    if width == 64:
+        return bytes((rex | 0x08, 0x8B)) + modrm
+    if width == 32:
+        return prefix + b"\x8b" + modrm
+    if width == 16:
+        return prefix + b"\x0f\xb7" + modrm
+    return bytes((rex,)) + b"\x0f\xb6" + modrm  # REX selects sil/dil
+
+
+def _sysv_entry_adapter(function: SemanticObject, resolve: Callable[[bytes], SemanticObject], target: NativeTargetDescription) -> tuple[bytes, int]:
+    """SysV caller to XAX internal convention; returns ``(code, call displacement offset)``.
+
+    A SysV caller enters with RSP 8 mod 16; reserving the 32-byte shadow space
+    plus 8 restores the alignment the internal callee expects.  Internal
+    callees preserve rbx, rbp, and r12-r15 (the SysV callee-saved set), and
+    every other register the adapter touches is SysV caller-saved.  Narrow
+    integer arguments are zero-extended explicitly because SysV leaves the
+    bits above the C type unspecified.  The result is already in rax.
+    """
+    _graph, parameters, returns = _decode_function_interface(function, resolve)
+    widths = [_value_width(resolve, cid) for cid in parameters]
+    if (
+        len(parameters) > len(target.argument_registers) or len(returns) > 1
+        or not all(_sysv_integer_class(resolve, cid) for cid in (*parameters, *returns))
+        or any(width not in (8, 16, 32, 64) for width in widths)
+    ):
+        fail(
+            "XAX.NATIVE.FOREIGN_ENTRY", function.cid.hex(), "SYSV-ENTRY-SIGNATURE",
+            "<=4 integer/pointer parameters of 8/16/32/64 bits, <=1 integer/pointer result",
+            [[cid.hex() for cid in parameters], [cid.hex() for cid in returns]],
+        )
+    code = bytearray(b"\x48\x83\xec\x28")  # sub rsp, 40
+    # Highest position first: each SysV source is read before the internal register that overwrites it.
+    for position in reversed(range(len(parameters))):
+        code += _zero_extending_move(target.argument_registers[position], _SYSV_ARGUMENT_REGISTERS[position], widths[position])
+    code += b"\xe8"
+    call = len(code)
+    code += bytes(4) + b"\x48\x83\xc4\x28\xc3"  # call function; add rsp, 40; ret
+    return bytes(code), call
 
 
 def _linux_syscall(node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> bytes:
@@ -833,6 +915,8 @@ def _function_closure(
             for node in block.nodes:
                 if node.operation not in target.supported_operations:
                     fail("XAX.NATIVE.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "NATIVE-OP-TARGET-SUPPORTED", list(target.supported_operations), node.operation)
+                if node.operation == Operation.FUNCTION_ADDRESS and code_address_label(node, resolve) != node.entity.cid and target.abi != X86_64_LINUX_ABI:
+                    fail("XAX.NATIVE.FOREIGN_ENTRY", graph_object.cid.hex(), "SYSV-ENTRY-TARGET", X86_64_LINUX_ABI, target.abi)
                 if node.operation in (Operation.CALL_DIRECT, Operation.FUNCTION_ADDRESS):
                     if node.entity is not None and node.entity.kind == Kind.FUNCTION and not _is_erased_proof_function(node.entity, resolve):
                         visit(node.entity)
@@ -1242,7 +1326,7 @@ def _compile_register_resident_function(
             elif node.operation == Operation.FUNCTION_ADDRESS:
                 destination = acquire(node_index)
                 if assembler is not None:
-                    assembler.address(destination, node.entity.cid)
+                    assembler.address(destination, code_address_label(node, resolve))
                 define(result, destination)
 
             elif node.operation in (Operation.HEAP_VIEW, Operation.ADDRESS_OFFSET, Operation.POINTER_CAST, Operation.POINTER_ADDRESS):
@@ -1881,7 +1965,7 @@ def _compile_function(
                 assembler.emit(_zero_bytes(RSP, destination, _slot_bytes(layouts[result_ref])))
                 assembler.emit(_copy_bytes(RSP, destination, RSP, source + layouts[node.operands[0]].payload_offset, layouts[result_ref].size))
             elif node.operation == Operation.FUNCTION_ADDRESS:
-                assembler.address(target.result_register, node.entity.cid)
+                assembler.address(target.result_register, code_address_label(node, resolve))
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
             elif node.operation in (Operation.STACK_ALLOC, Operation.ADDRESS_OFFSET, Operation.POINTER_CAST) and result_ref in escaping_pointers:
                 # A frame-resident pointer that flows into a call, edge, or
@@ -1900,8 +1984,12 @@ def _compile_function(
                 machine_results = tuple((index, cid) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid)))
                 if machine_results:
                     result_index, cid = machine_results[0]
-                    mask_register(target.result_register, _value_width(resolve, cid) or 64)
-                    assembler.emit(_store(target.result_register, value_slot(ValueRef.node_result(block_index, node_index, result_index))))
+                    slot = value_slot(ValueRef.node_result(block_index, node_index, result_index))
+                    if _is_float_cid(resolve, cid):
+                        assembler.emit(_xmm_memory(False, 0, slot, decode_float_width(resolve(cid))))
+                    else:
+                        mask_register(target.result_register, _value_width(resolve, cid) or 64)
+                        assembler.emit(_store(target.result_register, slot))
             elif dynamic_pointers and node.operation in DYNAMIC_MEMORY_OPERATIONS and node.operands[0] not in pointers and node.operands[0] not in heap_pointers:
                 _emit_dynamic_memory(assembler, node, target, value_slot, result_ref, block_index, node_index, pointer_extent=pointer_extent_from_graph(graph, node.operands[0], resolve) if node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE) else 0)
             elif node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE) and node.attributes[0] not in (4, 8) and node.operands[0] in pointers:
@@ -2208,6 +2296,18 @@ def _compile_native_with_target(
             ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, base + item.start, base + item.end)
             for item in fragments[function.cid][2]
         )
+    # Compiler-generated foreign entry adapters follow the functions (ADR-102).
+    adapter_calls: list[tuple[int, bytes]] = []
+    labels = {callee for fragment in fragments.values() for _position, callee in fragment[1] if len(callee) == len(_SYSV_ENTRY_LABEL) + len(entry.cid)}
+    for label in sorted(labels):
+        while len(image) % 16:
+            image.append(0x90)
+        code, call = _sysv_entry_adapter(resolve(label[len(_SYSV_ENTRY_LABEL):]), resolve, description)
+        offsets[label] = len(image)
+        adapter_calls.append((len(image) + call, label[len(_SYSV_ENTRY_LABEL):]))
+        image.extend(code)
+    for position, callee in adapter_calls:
+        image[position : position + 4] = (offsets[callee] - (position + 4)).to_bytes(4, "little", signed=True)
     imports: list[tuple[int, bytes, bytes]] = []
     for function in functions:
         base = offsets[function.cid]
