@@ -555,6 +555,14 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
 - EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
 
+## C callbacks and SSE-class SysV arguments (ADR-102, OI-40) — 2026-10-02
+
+- A code address's calling convention is now part of its type. `FUNCTION_ADDRESS` returns `ptr<opaque<function>>` (internal) or `ptr<opaque_identity<"code-entry:sysv-x86_64-c">>` (`linux_api().c_callback`). The verifier requires foreign-entry targets to be pure and rejects both convention mismatches. No new operation, object kind, or type form.
+- x86-64 emits one 20-byte SysV-to-internal adapter per C-entry function after all functions. `sysv-x86_64-c` imports pass f32/f64 in `xmm0`–`xmm7` and return them in `xmm0`.
+- EXECUTED (`compiler/benchmarks/linux_c_interop.py`, `linux_c_interop_evidence.json`): libc `tsearch`/`tfind` with an XAX comparator exits 31 (a constant comparator, as a control, exits 78); libm `ldexp`/`pow`/`sqrtf` exits 68. Artifacts are 1,640 and 1,536 bytes and deterministic. Vectors: `compiler/tests/test_xax_c_interop.py` (12 tests).
+- Bug fixed: the Linux register allocator silently dropped SysV C arguments past the sixth. It now defers to the frame path, which rejects (`SYSV-C-SCALAR-CLASS`).
+- Open: effectful callbacks such as a `qsort` comparator that reads elements (OI-42); aggregates, stack arguments, and variadics (OI-40).
+
 ## U1.3 Linux x86-64 executables and the Linux register path — 2026-10-02
 
 - Kernel integer completion (ADR-084): `bit.and` 67, `bit.or` 68, `udiv` 69, `urem` 70, `int.truncate` 71, `int.zero_extend` 72, with verifier rules, reference semantics, and x86-64 lowering. Portable trap reason 2 is `integer-divide-by-zero`. Only the Linux target packages advertise these operations.

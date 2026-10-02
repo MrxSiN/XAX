@@ -2409,6 +2409,36 @@ SYSV_X86_64_C_ABI = b"sysv-x86_64-c"
 # Inline reads of the Linux initial process stack (argv, envp, auxv; ADR-094).
 LINUX_X86_64_STARTUP_ABI = b"linux-x86_64-startup-v1"
 FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI)
+# Conventions a foreign caller may use to enter an XAX function (ADR-102).
+# The ABI is part of the code-address *type*, so an entry address can only be
+# passed where a declaration names that exact type, and CALL_INDIRECT (which
+# requires ``ptr<opaque<function>>``) can never call it with the wrong convention.
+FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI,)
+_CODE_ENTRY_PREFIX = b"code-entry:"
+
+
+def foreign_entry_code_type(abi: bytes) -> SemanticObject:
+    """Opaque code element of a foreign entry address type."""
+    if abi not in FOREIGN_ENTRY_ABIS:
+        raise ValueError("unsupported foreign entry ABI")
+    return opaque_identity_type(_CODE_ENTRY_PREFIX + abi)
+
+
+def foreign_entry_pointer_type(abi: bytes) -> SemanticObject:
+    """Type of a ``FUNCTION_ADDRESS`` whose callers use the foreign convention ``abi``."""
+    return pointer_type(foreign_entry_code_type(abi), Permission.READ, 8)
+
+
+def foreign_entry_abi(pointer: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> bytes | None:
+    """The foreign entry ABI named by a code-address type, or ``None`` for any other type."""
+    try:
+        element, _permission, _alignment = _decode_pointer_type(pointer, resolve)
+        identity = _decode_opaque_identity_type(resolve(element))
+    except XaxError:
+        return None
+    return identity[len(_CODE_ENTRY_PREFIX):] if identity.startswith(_CODE_ENTRY_PREFIX) else None
+
+
 ANDROID_EXPORT_PREFIX = b"android-export-v1"
 
 
@@ -5958,9 +5988,16 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     try:
                         element, _permission, _alignment = _decode_pointer_type(result_type, resolve)
                     except XaxError:
-                        fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>>", node.results[0].hex())
-                    if not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
-                        fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>>", node.results[0].hex())
+                        fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
+                    entry_abi = foreign_entry_abi(result_type, resolve)
+                    if entry_abi is not None:
+                        # A foreign caller cannot supply or receive proof values, so
+                        # an entry with effects or resources would hide them (ADR-102).
+                        _graph, callee_parameters, callee_returns = _decode_function_interface(node.entity, resolve)
+                        if entry_abi not in FOREIGN_ENTRY_ABIS or any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns)):
+                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", [abi.decode() for abi in FOREIGN_ENTRY_ABIS] + ["no proof parameters or results"], entry_abi.decode("ascii", "replace"))
+                    elif not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
+                        fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                 elif node.operation == Operation.CALL_FOREIGN:
                     if node.entity is None:
                         fail("XAX.FOREIGN.CALL", obj.cid.hex(), "FOREIGN-CALL-TARGET", "foreign function carrier", None)

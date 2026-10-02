@@ -963,7 +963,7 @@ A universal replacement cannot require rewriting the world. Interop is mandatory
 
 Deterministic importers convert external metadata into XAX platform/ABI packages of typed foreign declarations. No human writes wrapper source. There is no universal ABI: C++ and other complex ABIs are explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions stay visible to verification. Each foreign ABI is owned by one backend, which rejects the others.
 
-Current ABIs: `android-aapcs64-c`, `win64-c`, `wasm32-import`, `linux-x86_64-syscall-v1`, and `sysv-x86_64-c`. Syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments (ADR-085). `sysv-x86_64-c` calls real shared libraries (EXECUTED and MEASURED: `libz.so.1` `crc32`) but covers only INTEGER-class signatures (OI-40).
+Current ABIs: `android-aapcs64-c`, `win64-c`, `wasm32-import`, `linux-x86_64-syscall-v1`, and `sysv-x86_64-c`. Syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments (ADR-085). `sysv-x86_64-c` calls real shared libraries (EXECUTED and MEASURED: `libz.so.1` `crc32`) and covers register-passed INTEGER and SSE scalars. C can call back into pure XAX functions: the calling convention is part of the code-address type, and the compiler generates the adapter (ADR-102, EXECUTED with libc `tsearch`). Effectful callbacks are OI-42; aggregates and variadics remain OI-40.
 
 ---
 

@@ -563,7 +563,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 ## OI-40 — Breadth of the SysV C ABI on Linux
 
-**Status:** OPEN. `sysv-x86_64-c` (ADR-087) lowers only INTEGER-class signatures with at most six arguments. Still missing: callbacks from C into XAX (a SysV-to-internal convention adapter as explicit generated code), SSE-class floats, aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. Close with an executed program that passes an XAX callback to `qsort` and calls a float-returning libm function, plus negative vectors for unsupported classifications.
+**Status:** OPEN (partially addressed, ADR-102). `sysv-x86_64-c` lowers register-passed scalars: up to six INTEGER-class and eight SSE-class (f32/f64) arguments, and one scalar result. Pure C-to-XAX callbacks run through a compiler-generated adapter, typed by a `code-entry:sysv-x86_64-c` code-address type. Executed: libc `tsearch`/`tfind` with an XAX comparator, and libm `ldexp`/`pow`/`sqrtf` (`linux_c_interop_evidence.json`). Still missing: callbacks that read memory the C caller passes (OI-42), aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. The original closure program (`qsort` with an XAX comparator) depends on OI-42.
 
 ## OI-41 — Check-free pointer reloads (typed mixed storage)
 
@@ -579,3 +579,14 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **History.** Measured motivation: the `pointer_rebase` check costs 1.51× in C on `chains`, and XAX pointer links ran at 1.58× `gcc -O2`. The user first deferred this in favour of ADR-094/095, then asked for it.
 
+## OI-42 — Effectful foreign entries (callbacks that touch memory or effects)
+
+**Question.** How does an XAX function called by foreign code receive the effect and resource proofs it needs, when the foreign caller cannot pass proof values? Example: a `qsort` comparator reads the two array elements whose addresses `qsort` passes, and those elements live in an XAX heap view that the caller lent to `qsort`.
+
+**Fixed constraints.** No ambient authority and no hidden effects (ADR-102 rejects proof parameters on foreign entries for this reason). The proofs a callback uses must come from the foreign declaration that receives it, because only that call is in progress when the callback runs. Whatever the adapter synthesizes must be erased at run time. Bounds stay checked or proven, since the foreign caller chooses the addresses.
+
+**Candidates.** (a) The foreign declaration states, per callback parameter, which of its own borrowed inputs the callback may use. The adapter then supplies the matching erased tokens, and pointer arguments are refined into that view with a checked rebase (as `pointer_rebase`, ADR-092). (b) Callbacks receive only an opaque context integer and reach memory through explicit raw operations with an `unsafe` effect waiver.
+
+**Evidence that closes it.** An executed `qsort` (or `bsearch`) program whose XAX comparator reads elements of an XAX-owned array. It needs negative vectors for using the borrow after the foreign call returns, for writing through a read-only lent view, and for a callback stored past the call (for example, registered with `atexit`).
+
+**Status:** OPEN.
