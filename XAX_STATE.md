@@ -579,3 +579,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - `xax_x86_64_regalloc.py`: cross-block values used in loops are pinned to `rbx/rbp/r12–r15`; fall-through branch layout with out-of-line edge stubs; shared cold trap stubs; power-of-two `udiv`/`urem` as shift/mask; 16-byte loop-header alignment.
 - MEASURED (one run each): `chains` 1.91× `gcc -O2` (was 3.49×), and 1.06× equivalent checked-index C (was 1.80×). `filestat` 0.94× `gcc -O2`, 1.47× `clang -O2`.
 - Differential corpus: 120 + 40 programs (the 40 call while values are pinned). Evidence JSONs regenerated.
+
+## OI-37 step: `pointer_rebase` (ADR-092) — 2026-10-02
+
+- Operation 73 in the kernel. Verifier windows, executor and frame-path rejection, Linux allocator lowering (`sub; ror; cmp; ja` to a cold trap). Spec §5.6, conformance §23 item 12.
+- `chains` builds `links="pointer"`, and C gains a `-DCHECKED` diagnostic. MEASURED: pointer links 1.64× `gcc -O2` (1.07× checked-pointer C); index links 2.00×. The Linux allocator also keeps a layout-next successor inline when both edges copy.
+- Tests: `compiler/tests/test_xax_pointer_rebase.py` (executed traps, verifier rejections), and `test_xax_chains.py` covers both link kinds.

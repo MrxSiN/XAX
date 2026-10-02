@@ -645,3 +645,21 @@ Same host, method, and sources as §15.1–15.2; one 31-repetition run each. Out
 | XAX (index links, checked) | 0.4609 | 0.0579 | 1.91 | 1.98 | 16,896 | 1,352 |
 
 The `chains` attribution in this run is index vs pointer 1.47×, checks 1.22×, and XAX vs checked-index C 1.06×. Code generation is no longer the dominant factor (it was 1.73–1.80×, §15.2). **R4 is still not met**: `clang -O2` is 1.47× faster on `filestat`, and pointer-linked C is 1.91× faster on `chains`.
+
+### 15.4 `chains` with `pointer_rebase` links (ADR-092; MEASURED, 2026-10-02)
+
+Same host and method as §15.1–15.3, one 31-repetition run (this host's stdev is 13–25% of the median). Every arm prints `1048576 9437420`. Diagnostic arms are not baselines.
+
+| Arm | Median wall (s) | Stdev (s) | vs gcc -O2 | Peak RSS (KiB) | File bytes |
+|---|---:|---:|---:|---:|---:|
+| gcc 13 -O2 (pointer links) | 0.2697 | 0.0349 | 1.00 | 18,272 | 16,096 |
+| gcc 13 -O3 | 0.2718 | 0.0693 | 1.01 | 18,272 | 16,096 |
+| clang 18 -O2 | 0.3322 | 0.1354 | 1.23 | 18,272 | 16,160 |
+| gcc 13 -O2 -static | 0.2948 | 0.0939 | 1.09 | 17,420 | 785,304 |
+| diagnostic: pointer links + rebase-equivalent check | 0.4106 | 0.0689 | 1.47 | 18,272 | 16,128 |
+| diagnostic: index links | 0.3811 | 0.0739 | 1.37 | 18,272 | 16,104 |
+| diagnostic: index links + checks | 0.5615 | 0.1141 | 2.02 | 18,272 | 16,136 |
+| XAX, pointer links (`pointer_rebase`) | 0.4411 | 0.0681 | 1.64 | 16,896 | 1,336 |
+| XAX, index links (checked) | 0.5382 | 0.0724 | 2.00 | 16,896 | 1,352 |
+
+Attribution in this run: index vs pointer links (C) 1.41×; checks on pointer links (C) 1.52×; checks on index links (C) 1.47×. XAX pointer vs checked-pointer C 1.07×; XAX index vs checked-index C 0.96×. `filestat` in the same session: XAX 0.96× `gcc -O2`, 1.37× `clang -O2`. **R4 is not met.** The remaining `chains` gap is the per-link check, which only check-free reloads (OI-37 typed storage) remove.
