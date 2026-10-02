@@ -930,7 +930,7 @@ X86_64_LINUX_ELF_EXEC_FORMAT = 5
 X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
 X86_64_LINUX_OPERATIONS = (
     1, 2, 3, *range(5, 25),
-    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 73),
+    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 74),
 )
 
 
@@ -2233,6 +2233,7 @@ class Operation(IntEnum):
     UREM = 70
     INT_TRUNCATE = 71
     INT_ZERO_EXTEND = 72
+    POINTER_REBASE = 73
 
 
 # Same-width binary integer operations: two bits<N> operands, one bits<N> result.
@@ -2279,6 +2280,7 @@ MEMORY_OPERATIONS = frozenset(
         Operation.POINTER_CAST,
         Operation.HEAP_VIEW,
         Operation.POINTER_ADDRESS,
+        Operation.POINTER_REBASE,
     }
 )
 
@@ -3528,6 +3530,10 @@ class _PointerFact:
     extent: int
     alignment: int
     alias_class: tuple[int, int]
+    # Bytes the true offset may exceed ``offset`` by (``pointer_rebase``,
+    # ADR-092): the pointer lies somewhere in [offset, offset + window] in
+    # steps of ``alignment``.  Static facts hold for every position.
+    window: int = 0
 
 
 @dataclass(frozen=True)
@@ -3690,6 +3696,8 @@ def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], S
         return pointer_extent_from_graph(graph, node.operands[0], resolve) - node.attributes[0]
     if node.operation == Operation.POINTER_CAST:
         return pointer_extent_from_graph(graph, node.operands[0], resolve)
+    if node.operation == Operation.POINTER_REBASE:
+        return node.attributes[0]
     fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "stack allocation, heap view, or derived pointer", node.operation)
 
 
@@ -3725,7 +3733,7 @@ def _verify_foreign_heap_call(
         token_type = resolve(operand_types[contract.token_input])
         if _heap_view_info(token_type) is not None:
             fact = pointers.get(pointer_ref)
-            if fact is None or fact.storage != owner.storage or fact.offset:
+            if fact is None or fact.storage != owner.storage or fact.offset or fact.window:
                 fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-DEALLOCATE-VIEW-BASE", owner.storage, None if fact is None else [fact.storage, fact.offset])
             released = owner.storage
         elif _is_heap_owner(token_type):
@@ -3799,7 +3807,7 @@ def _verify_heap_view_call(
         effect = effects.get(effect_ref)
         if owner is None or token_ref in owner_consumers:
             fail("XAX.MEMORY.OWNER", graph.cid.hex(), "HEAP-VIEW-CALL-OWNER", "live heap view", [token_ref.block, token_ref.index, token_ref.result])
-        if pointer_fact is None or pointer_fact.storage != owner.storage or pointer_fact.offset:
+        if pointer_fact is None or pointer_fact.storage != owner.storage or pointer_fact.offset or pointer_fact.window:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-VIEW-CALL-BASE", owner.storage, None if pointer_fact is None else [pointer_fact.storage, pointer_fact.offset])
         if effect is None or effect.storage != owner.storage:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-EFFECT-PROVENANCE", owner.storage, None if effect is None else effect.storage)
@@ -3856,6 +3864,7 @@ def _verify_heap_view_return(
             or pointer_fact is None
             or pointer_fact.storage != owner.storage
             or pointer_fact.offset
+            or pointer_fact.window
             or pointer_fact.extent != extent
             or effect is None
             or effect.storage != owner.storage
@@ -4071,8 +4080,8 @@ def _verify_memory_node(
 
     if operation == Operation.POINTER_ADDRESS:
         # Exposes a pointer's address as bits<pointer width>.  The integer has
-        # no provenance and can never become a dereferenceable pointer again
-        # through verified operations; the mandatory waiver attribute (1 =
+        # no provenance; only ``pointer_rebase`` can turn it back into a
+        # pointer, and only inside a live view it names; the mandatory waiver attribute (1 =
         # provenance exposed) keeps the exposure machine-visible.  Foreign
         # code that dereferences the address must receive the storage's
         # memory effect so the lifetime ordering stays explicit.
@@ -4086,6 +4095,33 @@ def _verify_memory_node(
         pointer_fact = pointers.get(node.operands[0])
         if pointer_fact is not None and pointer_fact.storage in ended:
             fail("XAX.MEMORY.USE_AFTER_LIFETIME", graph.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", pointer_fact.storage)
+        return
+
+    if operation == Operation.POINTER_REBASE:
+        # Re-derives a pointer from an address integer *inside an existing
+        # live view* (ADR-092).  Provenance is not manufactured: the result
+        # carries the view's storage, lifetime, and alias class, an extent
+        # narrowed to ``attributes[0]`` bytes, and a window covering every
+        # position the runtime check admits.  At run time the address must lie
+        # in [view, view + view extent - extent] and be aligned to the result
+        # alignment relative to the view, or the program traps.
+        contract(2, 1, 1)
+        view = pointer(node.operands[0])
+        extent = node.attributes[0]
+        width = decode_bits_width(resolve(node.operand_types[1]))
+        if width not in (32, 64):
+            fail("XAX.MEMORY.REBASE", graph.cid.hex(), "MEMORY-REBASE-ADDRESS-WIDTH", [32, 64], width)
+        view_type, result_type = resolve(node.operand_types[0]), resolve(node.results[0])
+        element, permission, alignment = _decode_pointer_type(result_type, resolve)
+        if _decode_pointer_space(view_type) != _decode_pointer_space(result_type) or element != view.element or permission & view.permission != permission:
+            fail("XAX.MEMORY.REBASE", graph.cid.hex(), "MEMORY-REBASE-NO-AUTHORITY-GAIN", [view.element.hex(), int(view.permission)], [element.hex(), int(permission)])
+        if extent < 1 or extent > view.extent:
+            fail("XAX.MEMORY.BOUNDS", graph.cid.hex(), "MEMORY-REBASE-EXTENT", f"1..{view.extent}", extent)
+        if alignment > view.alignment:
+            fail("XAX.MEMORY.ALIGNMENT", graph.cid.hex(), "MEMORY-REBASE-ALIGNMENT", f"<= {view.alignment}", alignment)
+        pointers[result_refs[0]] = _PointerFact(
+            view.storage, element, permission, view.offset, extent, alignment, view.alias_class, view.window + view.extent - extent
+        )
         return
 
     if operation == Operation.POINTER_CAST:
@@ -4116,7 +4152,7 @@ def _verify_memory_node(
                 fail("XAX.MEMORY.USE_AFTER_LIFETIME", graph.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", pointer_fact.storage)
             pointers[result_refs[0]] = _PointerFact(
                 pointer_fact.storage, element, permission, pointer_fact.offset, pointer_fact.extent,
-                min(pointer_fact.alignment, alignment), pointer_fact.alias_class
+                min(pointer_fact.alignment, alignment), pointer_fact.alias_class, pointer_fact.window
             )
         return
 
@@ -4140,6 +4176,7 @@ def _verify_memory_node(
             pointer_fact.extent - offset,
             actual_alignment,
             pointer_fact.alias_class,
+            pointer_fact.window,
         )
         return
 
@@ -4176,8 +4213,9 @@ def _verify_memory_node(
         # The dynamic offset is range-checked at runtime.  A checked load can
         # prove initialization only when the entire candidate view is already
         # initialized; a checked store cannot add a statically known interval.
-        if is_load and not _range_initialized(effect.initialized, pointer_fact.offset, pointer_fact.offset + pointer_fact.extent):
-            fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [pointer_fact.offset, pointer_fact.offset + pointer_fact.extent], effect.initialized)
+        view_end = pointer_fact.offset + pointer_fact.window + pointer_fact.extent
+        if is_load and not _range_initialized(effect.initialized, pointer_fact.offset, view_end):
+            fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [pointer_fact.offset, view_end], effect.initialized)
         effects[result_refs[-1]] = effect
         return
 
@@ -4206,7 +4244,7 @@ def _verify_memory_node(
             fail("XAX.MEMORY.RAW_EFFECT", graph.cid.hex(), "MEMORY-RAW-EFFECT-CONTINUATION", [effect_type.hex(), node.operand_types[2].hex()], [cid.hex() for cid in node.results[1:]])
         if not (waivers & 2):
             start = pointer_fact.offset
-            if not _range_initialized(effect.initialized, start, start + size):
+            if not _range_initialized(effect.initialized, start, start + pointer_fact.window + size):
                 fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-INITIALIZED", [start, start + size], effect.initialized)
         effects[result_refs[1]] = effect
         return
@@ -4224,7 +4262,8 @@ def _verify_memory_node(
         if not _is_memory_effect(resolve(node.operand_types[2])) or node.results != (node.operand_types[2],):
             fail("XAX.MEMORY.EFFECT_TYPE", graph.cid.hex(), "MEMORY-EFFECT-TYPE", "one matching effect<memory> result", [cid.hex() for cid in node.results])
         start = pointer_fact.offset
-        effects[result_refs[0]] = _EffectFact(effect.storage, _merge_interval(effect.initialized, start, start + size))
+        # A windowed store initializes an unknown position, so it proves nothing new.
+        effects[result_refs[0]] = effect if pointer_fact.window else _EffectFact(effect.storage, _merge_interval(effect.initialized, start, start + size))
         return
 
     if operation == Operation.LOAD_BITS_LE:
@@ -4237,8 +4276,8 @@ def _verify_memory_node(
         if node.results[0] != pointer_fact.element or not _is_memory_effect(resolve(node.operand_types[1])) or node.results[1] != node.operand_types[1]:
             fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-LOAD-TYPE", [pointer_fact.element.hex(), node.operand_types[1].hex()], [cid.hex() for cid in node.results])
         start = pointer_fact.offset
-        if not _range_initialized(effect.initialized, start, start + size):
-            fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-INITIALIZED", [start, start + size], effect.initialized)
+        if not _range_initialized(effect.initialized, start, start + pointer_fact.window + size):
+            fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-INITIALIZED", [start, start + pointer_fact.window + size], effect.initialized)
         effects[result_refs[1]] = effect
         return
 
@@ -4299,6 +4338,8 @@ def _verify_memory_node(
         if operation == Operation.ATOMIC_CMPXCHG:
             if len(ordinary_results) != 2 or ordinary_results[0] != pointer_fact.element or decode_bits_width(resolve(ordinary_results[1])) != 1:
                 fail("XAX.ATOMIC.CONTRACT", graph.cid.hex(), "ATOMIC-CMPXCHG-RESULT", [pointer_fact.element.hex(), "bits<1>"], [cid.hex() for cid in ordinary_results])
+        if pointer_fact.window:
+            fail("XAX.MEMORY.REBASE", graph.cid.hex(), "MEMORY-REBASE-STATIC-ONLY", "statically positioned pointer", pointer_fact.window)
         start = pointer_fact.offset
         initialized = _range_initialized(effect.initialized, start, start + size)
         if operation != Operation.ATOMIC_STORE and not initialized:
@@ -5517,6 +5558,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                                 fail("XAX.MEMORY.PROVENANCE", obj.cid.hex(), "MEMORY-PROVENANCE-PROVEN", "live local stack pointer", [pointer_ref.block, pointer_ref.index, pointer_ref.result])
                             if pointer_fact.storage in ended:
                                 fail("XAX.MEMORY.USE_AFTER_LIFETIME", obj.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", pointer_fact.storage)
+                            if pointer_fact.window:
+                                fail("XAX.MEMORY.REBASE", obj.cid.hex(), "MEMORY-REBASE-STATIC-ONLY", "statically positioned pointer", pointer_fact.window)
                             required_size = (decode_bits_width(resolve(pointer_fact.element)) + 7) // 8
                             if pointer_fact.extent < required_size:
                                 fail("XAX.MEMORY.BOUNDS", obj.cid.hex(), "MEMORY-CALL-POINTER-BOUNDS", f"at least {required_size} bytes", pointer_fact.extent)
@@ -7074,9 +7117,9 @@ def _execute_graph(
                 results = (_RuntimePointer(pointer.storage, pointer.offset + node.attributes[0]),)
             elif node.operation == Operation.POINTER_CAST:
                 results = (operands[0],)
-            elif node.operation == Operation.POINTER_ADDRESS:
+            elif node.operation in (Operation.POINTER_ADDRESS, Operation.POINTER_REBASE):
                 # The reference executor has no address space; addresses are target facts.
-                fail("XAX.EXEC.UNSUPPORTED", "executor", "EXEC-POINTER-ADDRESS-TARGET-ONLY", "compiled target", "reference executor")
+                fail("XAX.EXEC.UNSUPPORTED", "executor", f"EXEC-{node.operation.name.replace('_', '-')}-TARGET-ONLY", "compiled target", "reference executor")
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:
                 pointer, dynamic_offset, effect = operands
                 size, alignment = node.attributes
