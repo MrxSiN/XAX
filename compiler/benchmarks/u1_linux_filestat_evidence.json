@@ -33,58 +33,58 @@
   "results": {
     "clang-O2": {
       "file_bytes": 16352,
-      "peak_rss_kib_max": 1800,
+      "peak_rss_kib_max": 1792,
       "stripped_bytes": 14576,
-      "throughput_mib_s_median": 484.83,
+      "throughput_mib_s_median": 471.12,
       "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.659,
-      "wall_seconds_median": 0.066003,
-      "wall_seconds_min": 0.054765,
-      "wall_seconds_stdev": 0.013383
+      "time_ratio_vs_gcc_O2": 0.702,
+      "wall_seconds_median": 0.067923,
+      "wall_seconds_min": 0.051457,
+      "wall_seconds_stdev": 0.009028
     },
     "gcc-O2": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1796,
+      "peak_rss_kib_max": 1792,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 319.65,
-      "time_ratio_vs_best_baseline": 1.517,
+      "throughput_mib_s_median": 330.7,
+      "time_ratio_vs_best_baseline": 1.425,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.10011,
-      "wall_seconds_min": 0.077824,
-      "wall_seconds_stdev": 0.010191
+      "wall_seconds_median": 0.096763,
+      "wall_seconds_min": 0.078784,
+      "wall_seconds_stdev": 0.009968
     },
     "gcc-O2-static": {
       "file_bytes": 798120,
       "peak_rss_kib_max": 716,
       "stripped_bytes": 718872,
-      "throughput_mib_s_median": 312.56,
+      "throughput_mib_s_median": 303.75,
       "time_ratio_vs_best_baseline": 1.551,
-      "time_ratio_vs_gcc_O2": 1.023,
-      "wall_seconds_median": 0.102381,
-      "wall_seconds_min": 0.085046,
-      "wall_seconds_stdev": 0.012842
+      "time_ratio_vs_gcc_O2": 1.089,
+      "wall_seconds_median": 0.105351,
+      "wall_seconds_min": 0.082532,
+      "wall_seconds_stdev": 0.011483
     },
     "gcc-O3": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1792,
+      "peak_rss_kib_max": 1860,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 319.21,
-      "time_ratio_vs_best_baseline": 1.519,
-      "time_ratio_vs_gcc_O2": 1.001,
-      "wall_seconds_median": 0.100248,
-      "wall_seconds_min": 0.079792,
-      "wall_seconds_stdev": 0.007149
+      "throughput_mib_s_median": 318.82,
+      "time_ratio_vs_best_baseline": 1.478,
+      "time_ratio_vs_gcc_O2": 1.037,
+      "wall_seconds_median": 0.10037,
+      "wall_seconds_min": 0.087333,
+      "wall_seconds_stdev": 0.008224
     },
     "xax": {
-      "file_bytes": 3416,
+      "file_bytes": 3424,
       "peak_rss_kib_max": 1184,
-      "stripped_bytes": 3416,
-      "throughput_mib_s_median": 319.26,
-      "time_ratio_vs_best_baseline": 1.519,
-      "time_ratio_vs_gcc_O2": 1.001,
-      "wall_seconds_median": 0.100232,
-      "wall_seconds_min": 0.075892,
-      "wall_seconds_stdev": 0.017013
+      "stripped_bytes": 3424,
+      "throughput_mib_s_median": 343.11,
+      "time_ratio_vs_best_baseline": 1.373,
+      "time_ratio_vs_gcc_O2": 0.964,
+      "wall_seconds_median": 0.093264,
+      "wall_seconds_min": 0.073618,
+      "wall_seconds_stdev": 0.013512
     }
   },
   "small_input_reference_check": {
@@ -93,8 +93,8 @@
   },
   "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
   "xax": {
-    "artifact_bytes": 3416,
-    "artifact_sha256": "4c8b644c62604b1c62220b47c99db557d72df1a5bd2d19d73ca853b43adc8ed8",
+    "artifact_bytes": 3424,
+    "artifact_sha256": "48e0f6bd78c6aba6a1706c992e98f4a6ff45c48c0a31f2799416f83d2edd207d",
     "codegen": "xax_x86_64_regalloc: per-block register allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, in-block bounds-check reuse, power-of-two strength reduction",
     "dt_needed": [
       "libz.so.1"
