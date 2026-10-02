@@ -26,11 +26,16 @@ from xax_compiler import (
     Kind,
     NativeTargetDescription,
     Operation,
+    LINUX_X86_64_SYSCALL_ABI,
+    X86_64_LINUX_ABI,
+    decode_foreign_function,
+    pointer_extent_from_graph,
     RealtimeProfile,
     RESOURCE_EFFECT_OPERATIONS,
     SemanticObject,
     StoreReader,
     TerminatorKind,
+    TrapReason,
     decode_trap_payload,
     ValueRef,
     _decode_constant,
@@ -193,6 +198,8 @@ def _arithmetic(operation: int, width: int) -> bytes:
             Operation.SUB_WRAP: b"\x4c\x29\xd0",
             Operation.MUL_WRAP: b"\x49\x0f\xaf\xc2",
             Operation.BIT_XOR: b"\x4c\x31\xd0",
+            Operation.BIT_AND: b"\x4c\x21\xd0",
+            Operation.BIT_OR: b"\x4c\x09\xd0",
         }[operation]
     if width == 32:
         return {
@@ -200,6 +207,8 @@ def _arithmetic(operation: int, width: int) -> bytes:
             Operation.SUB_WRAP: b"\x44\x29\xd0",
             Operation.MUL_WRAP: b"\x41\x0f\xaf\xc2",
             Operation.BIT_XOR: b"\x44\x31\xd0",
+            Operation.BIT_AND: b"\x44\x21\xd0",
+            Operation.BIT_OR: b"\x44\x09\xd0",
         }[operation]
     fail("XAX.NATIVE.BITS", "x86_64", "NATIVE-BITS-SUPPORTED", [32, 64], width)
 
@@ -406,6 +415,7 @@ def _mxcsr_load(offset: int) -> bytes:
 
 RSP = 4
 RAX = 0
+RDX = 2
 
 
 def _layout(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> AbiLayout | None:
@@ -489,6 +499,200 @@ def _bits_width(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> int |
     if obj.kind != Kind.TYPE or not obj.body or obj.body[0] != 1:
         return None
     return decode_bits_width(obj)
+
+
+def _constant_value(graph, ref: ValueRef, resolve: Callable[[bytes], SemanticObject]) -> int | None:
+    """Integer value of ``ref`` when it is directly produced by a CONSTANT node."""
+    if ref.tag != 1:
+        return None
+    node = graph.blocks[ref.block].nodes[ref.index]
+    if node.operation != Operation.CONSTANT or node.entity is None:
+        return None
+    _type, value = _decode_constant(node.entity, resolve)
+    return value if isinstance(value, int) else None
+
+
+# Pointer consumers that address a frame-resident pointer by its static offset.
+_STATIC_POINTER_CONSUMERS = frozenset(
+    {
+        Operation.LOAD_BITS_LE,
+        Operation.STORE_BITS_LE,
+        Operation.CHECKED_LOAD_BITS_LE,
+        Operation.CHECKED_STORE_BITS_LE,
+        Operation.RAW_LOAD_BITS_LE,
+        Operation.ADDRESS_OFFSET,
+        Operation.POINTER_CAST,
+        *ATOMIC_OPERATIONS,
+    }
+)
+DYNAMIC_MEMORY_OPERATIONS = frozenset(
+    {
+        Operation.LOAD_BITS_LE,
+        Operation.STORE_BITS_LE,
+        Operation.CHECKED_LOAD_BITS_LE,
+        Operation.CHECKED_STORE_BITS_LE,
+        Operation.RAW_LOAD_BITS_LE,
+    }
+)
+
+
+def _escaping_pointers(graph, pointers: dict[ValueRef, int]) -> frozenset[ValueRef]:
+    """Frame-resident pointers whose address value is observed outside a static access."""
+    escaping: set[ValueRef] = set()
+    for block in graph.blocks:
+        for node in block.nodes:
+            for position, operand in enumerate(node.operands):
+                if operand in pointers and not (position == 0 and node.operation in _STATIC_POINTER_CONSUMERS):
+                    escaping.add(operand)
+        uses = (*block.terminator.values, *(value for _target, arguments in block.terminator.edges for value in arguments))
+        escaping.update(value for value in uses if value in pointers)
+    return frozenset(escaping)
+
+
+def _indexed_exact(load: bool, register: int, base: int, index: int, displacement: int, size: int) -> bytes:
+    """``[base + index + disp32]`` zero-extending load or exact-width store of 1/2/4/8 bytes."""
+    if size not in (1, 2, 4, 8) or index == RSP or not -(1 << 31) <= displacement < 1 << 31:
+        fail("XAX.NATIVE.MEMORY_ENCODING", "x86_64", "NATIVE-INDEXED-MEMORY-ENCODABLE", "1/2/4/8-byte [base+index+disp32]", [size, index, displacement])
+    rex = 0x40 | (0x08 if size == 8 else 0) | (0x04 if register >= 8 else 0) | (0x02 if index >= 8 else 0) | (0x01 if base >= 8 else 0)
+    if load:
+        opcode = {1: b"\x0f\xb6", 2: b"\x0f\xb7", 4: b"\x8b", 8: b"\x8b"}[size]
+        prefix = b""
+    else:
+        opcode = b"\x88" if size == 1 else b"\x89"
+        prefix = b"\x66" if size == 2 else b""
+    # A byte store from spl/bpl/sil/dil needs an otherwise-empty REX prefix.
+    force_rex = not load and size == 1 and 4 <= register < 8
+    rex_bytes = bytes((rex,)) if rex != 0x40 or force_rex else b""
+    modrm = 0x84 | ((register & 7) << 3)
+    sib = ((index & 7) << 3) | (base & 7)
+    return prefix + rex_bytes + opcode + bytes((modrm, sib)) + displacement.to_bytes(4, "little", signed=True)
+
+
+def _emit_dynamic_memory(
+    assembler: "_Assembler",
+    node,
+    target: NativeTargetDescription,
+    value_slot: Callable[[ValueRef], int],
+    result_ref: ValueRef,
+    block_index: int,
+    node_index: int,
+    *,
+    pointer_extent: int,
+    static_base: int | None = None,
+) -> None:
+    """Lower a byte-addressed access whose base is a first-class pointer value.
+
+    ``static_base`` reuses the same encoding for frame pointers whose access
+    width the legacy fixed-offset path cannot encode (1/2-byte accesses).
+    """
+    if static_base is None:
+        base, displacement = target.argument_registers[0], 0
+        assembler.emit(_load(base, value_slot(node.operands[0])))
+    else:
+        base, displacement = RSP, static_base
+    size = node.attributes[0]
+    if node.operation in (Operation.LOAD_BITS_LE, Operation.RAW_LOAD_BITS_LE):
+        assembler.emit(_load_exact(target.result_register, base, displacement, size))
+        assembler.emit(_store(target.result_register, value_slot(result_ref)))
+        return
+    if node.operation == Operation.STORE_BITS_LE:
+        assembler.emit(_load(target.result_register, value_slot(node.operands[1])))
+        assembler.emit(_store_exact(target.result_register, base, displacement, size))
+        return
+    maximum = pointer_extent - size
+    if maximum < 0:
+        assembler.emit(b"\x0f\x0b")
+        return
+    index = target.scratch_registers[0]
+    assembler.emit(_load(index, value_slot(node.operands[1]), 4))
+    assembler.emit(_cmp_imm32(index, maximum))
+    in_bounds = f"dynamic-checked-{block_index}-{node_index}"
+    assembler.relative(b"\x0f\x86", in_bounds)
+    assembler.emit(b"\x0f\x0b")
+    assembler.label(in_bounds)
+    if node.operation == Operation.CHECKED_LOAD_BITS_LE:
+        assembler.emit(_indexed_exact(True, target.result_register, base, index, displacement, size))
+        assembler.emit(_store(target.result_register, value_slot(result_ref)))
+    else:
+        assembler.emit(_load(target.result_register, value_slot(node.operands[2])))
+        assembler.emit(_indexed_exact(False, target.result_register, base, index, displacement, size))
+
+
+# linux-x86_64-syscall-v1: integer/pointer arguments in this register order.
+_SYSCALL_ARGUMENT_REGISTERS = (7, 6, 2, 10, 8, 9)  # rdi, rsi, rdx, r10, r8, r9
+
+
+def encode_syscall_name(number: int, arguments: Sequence[int | str] | None = None) -> bytes:
+    """Encode an explicit syscall register template as a foreign symbol name.
+
+    ``arguments`` items are ``"$k"`` (the k-th machine operand) or exact
+    unsigned 64-bit literals.  ``None`` passes the machine operands in order.
+    The template is semantic identity: no argument is supplied implicitly.
+    """
+    if not 0 <= number < 1 << 31:
+        raise ValueError("syscall number out of range")
+    if arguments is None:
+        return str(number).encode("ascii")
+    items = []
+    for item in arguments:
+        if isinstance(item, str):
+            if not (item.startswith("$") and item[1:].isdigit()):
+                raise ValueError("syscall operand reference must be $k")
+            items.append(item)
+        else:
+            if not 0 <= item < 1 << 64:
+                raise ValueError("syscall literal must be an unsigned 64-bit value")
+            items.append(str(item))
+    if len(items) > len(_SYSCALL_ARGUMENT_REGISTERS):
+        raise ValueError("Linux x86-64 syscalls take at most six arguments")
+    return f"{number}:{','.join(items)}".encode("ascii")
+
+
+def decode_syscall_name(name: bytes, machine_inputs: int) -> tuple[int, tuple[int | str, ...]]:
+    """Inverse of :func:`encode_syscall_name`, validated against the operand count."""
+    try:
+        text = name.decode("ascii")
+        number_text, _, template = text.partition(":")
+        number = int(number_text)
+        if str(number) != number_text:
+            raise ValueError
+        if not _:
+            arguments: tuple[int | str, ...] = tuple(f"${index}" for index in range(machine_inputs))
+        else:
+            arguments = tuple(item if item.startswith("$") else int(item) for item in template.split(","))
+        if encode_syscall_name(number, arguments if _ else None) != name:
+            raise ValueError
+    except ValueError:
+        fail("XAX.FOREIGN.SYSCALL", name.hex(), "SYSCALL-TEMPLATE-CANONICAL", "nr or nr:arg,...", name.decode("ascii", "replace"))
+    references = sorted(int(item[1:]) for item in arguments if isinstance(item, str))
+    if references != list(range(machine_inputs)) or len(arguments) > len(_SYSCALL_ARGUMENT_REGISTERS):
+        fail("XAX.FOREIGN.SYSCALL", name.hex(), "SYSCALL-TEMPLATE-OPERANDS", f"each of {machine_inputs} machine operands exactly once", list(arguments))
+    return number, arguments
+
+
+def _linux_syscall(node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> bytes:
+    declaration = decode_foreign_function(node.entity)
+    if declaration.abi != LINUX_X86_64_SYSCALL_ABI or target.abi != X86_64_LINUX_ABI:
+        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI-TARGET", [LINUX_X86_64_SYSCALL_ABI.decode(), X86_64_LINUX_ABI], [declaration.abi.decode("ascii", "replace"), target.abi])
+    machine = tuple(operand for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid)))
+    if sum(1 for cid in node.results if not _is_proof_type(resolve(cid))) > 1:
+        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSCALL-ONE-RESULT", 1, len(node.results))
+    number, arguments = decode_syscall_name(declaration.name, len(machine))
+    code = bytearray()
+    for register, argument in zip(_SYSCALL_ARGUMENT_REGISTERS, arguments):
+        if isinstance(argument, str):
+            code += _load(register, value_slot(machine[int(argument[1:])]))
+        else:
+            code += _immediate(register, argument)
+    code += b"\xb8" + number.to_bytes(4, "little")  # mov eax, nr
+    code += b"\x0f\x05"  # syscall (clobbers rcx, r11; no value lives in registers here)
+    if declaration.allocator is not None:
+        # The kernel reports failure as -4095..-1; the allocator contract's
+        # nullable result is the explicit ABI projection of that range.
+        code += b"\x48\x3d\x01\xf0\xff\xff"  # cmp rax, -4095
+        code += b"\x72\x02"  # jb success
+        code += b"\x31\xc0"  # xor eax, eax
+    return bytes(code)
 
 
 def _general_x86_target(target: NativeTargetDescription) -> bool:
@@ -1008,6 +1212,9 @@ def _compile_function(
     )
     pointers: dict[ValueRef, int] = {}
     pointer_extents: dict[ValueRef, int] = {}
+    # Profiles with a foreign/heap boundary treat pointers as first-class
+    # machine values; legacy profiles keep their frame-offset-only pointers.
+    dynamic_pointers = Operation.HEAP_VIEW in target.supported_operations and target.abi == X86_64_LINUX_ABI
     for block_index, block in enumerate(graph.blocks):
         for node_index, node in enumerate(block.nodes):
             result = ValueRef.node_result(block_index, node_index)
@@ -1017,16 +1224,17 @@ def _compile_function(
                 pointer_extents[result] = node.attributes[0]
                 cursor += node.attributes[0]
             elif node.operation == Operation.ADDRESS_OFFSET:
-                try:
+                if node.operands[0] in pointers:
                     pointers[result] = pointers[node.operands[0]] + node.attributes[0]
                     pointer_extents[result] = pointer_extents[node.operands[0]] - node.attributes[0]
-                except KeyError:
+                elif not dynamic_pointers:
                     fail("XAX.NATIVE.POINTER", graph_object.cid.hex(), "NATIVE-POINTER-LOCAL", "local stack pointer", node.operands[0].index)
             elif node.operation == Operation.POINTER_CAST:
                 if node.operands[0] in pointers:
                     pointers[result] = pointers[node.operands[0]]
                     pointer_extents[result] = pointer_extents[node.operands[0]]
 
+    escaping_pointers = _escaping_pointers(graph, pointers) if dynamic_pointers else frozenset()
     float_control = any(
         node.operation in (
             Operation.FLOAT_ADD, Operation.FLOAT_SUB, Operation.FLOAT_MUL, Operation.FLOAT_DIV,
@@ -1159,7 +1367,35 @@ def _compile_function(
         for node_index, node in enumerate(block.nodes):
             node_start = len(assembler.code)
             result_ref = ValueRef.node_result(block_index, node_index)
-            if node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR):
+            if node.operation in (Operation.UDIV, Operation.UREM):
+                width = _bits_width(resolve, node.results[0])
+                if width not in (32, 64):
+                    fail("XAX.NATIVE.BITS", graph_object.cid.hex(), "NATIVE-BITS-SUPPORTED", [32, 64], width)
+                divisor = target.scratch_registers[0]
+                assembler.emit(_load(target.result_register, value_slot(node.operands[0]), 8 if width == 64 else 4))
+                if (_constant_value(graph, node.operands[1], resolve) or 0) == 0:
+                    # Divisor not proven nonzero: the explicit portable trap is emitted.
+                    assembler.emit(_load(divisor, value_slot(node.operands[1]), 8 if width == 64 else 4))
+                    assembler.emit(_test_register(divisor, width))
+                    nonzero = f"divisor-nonzero-{block_index}-{node_index}"
+                    assembler.relative(b"\x0f\x85", nonzero)
+                    assembler.emit(_immediate(target.result_register, TrapReason.INTEGER_DIVIDE_BY_ZERO))
+                    assembler.emit(b"\x0f\x0b")
+                    assembler.label(nonzero)
+                else:
+                    assembler.emit(_load(divisor, value_slot(node.operands[1]), 8 if width == 64 else 4))
+                assembler.emit(_zero32(RDX))
+                assembler.emit(_rex(width == 64, 0, divisor) + b"\xf7" + bytes((0xF0 | (divisor & 7),)))  # div divisor
+                quotient_or_remainder = target.result_register if node.operation == Operation.UDIV else RDX
+                assembler.emit(_store(quotient_or_remainder, value_slot(result_ref)))
+            elif node.operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
+                # Machine slots hold zero-extended values, so widening is a copy
+                # and narrowing masks to the exact result width.
+                assembler.emit(_load(target.result_register, value_slot(node.operands[0])))
+                if node.operation == Operation.INT_TRUNCATE:
+                    mask_register(target.result_register, _bits_width(resolve, node.results[0]))
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR):
                 width = _bits_width(resolve, node.results[0])
                 assembler.emit(_load(target.result_register, value_slot(node.operands[0]), 8 if width == 64 else 4))
                 assembler.emit(_load(target.scratch_registers[0], value_slot(node.operands[1]), 8 if width == 64 else 4))
@@ -1396,6 +1632,36 @@ def _compile_function(
                         assembler.emit(_store_exact(target.result_register, RSP, slot, _layout(resolve, cid).size))
                     else:
                         assembler.emit(_store(target.result_register, slot))
+            elif node.operation in (Operation.STACK_ALLOC, Operation.ADDRESS_OFFSET, Operation.POINTER_CAST) and result_ref in escaping_pointers:
+                # A frame-resident pointer that flows into a call, edge, or
+                # return is materialized once at its definition.
+                assembler.emit(_lea(target.result_register, RSP, pointers[result_ref]))
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.ADDRESS_OFFSET and result_ref not in pointers:
+                assembler.emit(_load(target.result_register, value_slot(node.operands[0])))
+                assembler.emit(_lea(target.result_register, target.result_register, node.attributes[0]))
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.HEAP_VIEW:
+                # The allocator result is nullable; the proven view is backed by
+                # an explicit runtime trap, never by an assumption.
+                nonnull = f"heap-view-nonnull-{block_index}-{node_index}"
+                assembler.emit(_load(target.result_register, value_slot(node.operands[0])))
+                assembler.emit(_test_register(target.result_register, 64))
+                assembler.relative(b"\x0f\x85", nonnull)
+                assembler.emit(b"\x0f\x0b")
+                assembler.label(nonnull)
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.CALL_FOREIGN:
+                assembler.emit(_linux_syscall(node, resolve, target, value_slot, graph_object))
+                machine_results = tuple((index, cid) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid)))
+                if machine_results:
+                    result_index, cid = machine_results[0]
+                    mask_register(target.result_register, _value_width(resolve, cid) or 64)
+                    assembler.emit(_store(target.result_register, value_slot(ValueRef.node_result(block_index, node_index, result_index))))
+            elif dynamic_pointers and node.operation in DYNAMIC_MEMORY_OPERATIONS and node.operands[0] not in pointers:
+                _emit_dynamic_memory(assembler, node, target, value_slot, result_ref, block_index, node_index, pointer_extent=pointer_extent_from_graph(graph, node.operands[0], resolve) if node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE) else 0)
+            elif node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE) and node.attributes[0] not in (4, 8):
+                _emit_dynamic_memory(assembler, node, target, value_slot, result_ref, block_index, node_index, pointer_extent=pointer_extents[node.operands[0]], static_base=pointers[node.operands[0]])
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:
                 size, _alignment = node.attributes
                 base = pointers[node.operands[0]]

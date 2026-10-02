@@ -1,0 +1,76 @@
+{
+  "evidence_label": "MEASURED",
+  "format": "xax-u1-linux-filestat-evidence-v1",
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "kernel": "6.18.44-fc-v51",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "python": "3.11.15"
+  },
+  "input": {
+    "bytes": 33554432,
+    "generator": "shake_256(b'xax-u1-filestat') translated to a 77-symbol text alphabet",
+    "sha256": "6cdba25da2a5a87136f41bcf19c9b5916bfbf94c8b37d6da3ba08a2f004a16d8"
+  },
+  "method": {
+    "c_flags": {
+      "gcc-O2": "-O2",
+      "gcc-O2-static": "-O2 -static"
+    },
+    "reference_dynamic_bin_true_rss_kib": 1252,
+    "repetitions": 11,
+    "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
+    "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
+    "warmup_runs": 1
+  },
+  "output": "33554432 393277 4860376 5898466954233640526 32\n",
+  "results": {
+    "gcc-O2": {
+      "file_bytes": 16224,
+      "peak_rss_kib_max": 1632,
+      "stripped_bytes": 14472,
+      "throughput_mib_s_median": 356.07,
+      "time_ratio_vs_gcc_O2": 1.0,
+      "wall_seconds_median": 0.089871,
+      "wall_seconds_min": 0.081109,
+      "wall_seconds_stdev": 0.009972
+    },
+    "gcc-O2-static": {
+      "file_bytes": 785400,
+      "peak_rss_kib_max": 652,
+      "stripped_bytes": 706584,
+      "throughput_mib_s_median": 375.11,
+      "time_ratio_vs_gcc_O2": 0.949,
+      "wall_seconds_median": 0.085309,
+      "wall_seconds_min": 0.08089,
+      "wall_seconds_stdev": 0.003161
+    },
+    "xax": {
+      "file_bytes": 18339,
+      "peak_rss_kib_max": 188,
+      "stripped_bytes": 18339,
+      "throughput_mib_s_median": 57.45,
+      "time_ratio_vs_gcc_O2": 6.198,
+      "wall_seconds_median": 0.557014,
+      "wall_seconds_min": 0.443855,
+      "wall_seconds_stdev": 0.073888
+    }
+  },
+  "small_input_reference_check": {
+    "bytes": 200003,
+    "expected": "200003 2403 29046 18344484276585617717 32\n"
+  },
+  "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, 256-entry histogram, decimal write",
+  "xax": {
+    "artifact_bytes": 18339,
+    "artifact_sha256": "336e1392467cd0b5a34a676c97341c8f8a5a3b96e4909d65926fae5d8b51d8aa",
+    "codegen": "x86-64 spill-every-value bootstrap lowering; no register allocation across nodes",
+    "entry_function": "049adf457dfbc38c3dac9626f87402d524424e4deae036502f7cfc5655728a11",
+    "graph_blocks": 35,
+    "program_root": "399f976e1591f73a31ea9f28650392b8447d2368006de7fcb3e7d7f731ba8915",
+    "runtime_dependencies": [],
+    "target": "cf6bee201d8c92a4dce049f7cec01ad7a7510de7f76ecac32d20420f4ab66e80"
+  }
+}
