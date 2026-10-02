@@ -56,6 +56,10 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 - U1.3 EXECUTED/MEASURED on Linux x86-64 (ADR-084–ADR-089, OI-38–OI-40, conformance §23 item 11, benchmarks §15.1). It adds integer completion (operations 67–72), `linux-x86_64-syscall-v1`, `sysv-x86_64-c`, and static plus explicit-loader ELF64 executables (`xax_linux.py`, `xax_elf.py`) whose entry is the XAX entry function with an explicit `exit_group`. A separate Linux register allocator (`xax_x86_64_regalloc.py`) is differentially validated. The `filestat` workload (`compiler/benchmarks/linux_filestat.py`) runs at 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2`, with a 3,560-byte artifact; the Linux row is at R2.
 - AI token trials ran after the upgrade at the lowest cost: offline `tiktoken` replays plus one `haiku` C/XAX pair (XAX 1.04× C, both pass). See `XAX_STATE.md`.
 
+## Queued (deferred by the user, 2026-10-02)
+
+- **Device run of the stateful app (ADR-111)**: on an arm64 device, run `compiler/integration/android/validate_counter_apk.sh`. It expects 0 → 1 → 2 → 3, then `force-stop` and relaunch → 3, then 4. Record the output in `compiler/benchmarks/android_counter_evidence.json` (`device`) and, if it passes, raise the Android `practical_application` matrix field from PROTOTYPE to EXECUTED.
+
 ## Exact next task
 
 1. **ADR-097 breadth**: done for wasm32/PE (ADR-098), calls, and padding (ADR-099). Cross-storage targets across calls done (ADR-101: `link_target`, x86-64 executed). Remaining: execute a cross-call program on wasm32 and PE.
