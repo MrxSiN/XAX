@@ -1,0 +1,107 @@
+{
+  "api_guard_example": {
+    "available": true,
+    "declared_deprecated": 5,
+    "declared_since": 3,
+    "entity": "fixture/api/Example.add(IJ)I",
+    "reachable_runtime_max": null,
+    "reachable_runtime_min": 3
+  },
+  "classes": [
+    {
+      "class_contract_cid": "2b739ce66b0ecf3e3ff50010c4ed81e346ba3f416e7338dd36bbcb915ea5a662",
+      "fields": [
+        [
+          "FLAG",
+          "I"
+        ],
+        [
+          "name",
+          "Ljava/lang/String;"
+        ]
+      ],
+      "interfaces": [
+        "java/io/Serializable"
+      ],
+      "internal_name": "fixture/api/Example",
+      "member_contract_cids": [
+        "48cecc830889a0947bddad12f12645be3aafd2587b2732175617423f26b01ac9",
+        "4e7a34df264075ffeb475c3ee9273e8527c9b0f72b05af17ca994355d9746cac",
+        "76b1585ab144d414aca100117a8f949bbeb478e335818ba8de535ad410861f63",
+        "e3ffb1851b110452bac1f5d4870ae29efb3edc559092a0e0080db2713f48c8bb",
+        "ea0845131184f2fa64393358d75beb0e35e7e08de79780686a09eaa6103eb192"
+      ],
+      "methods": [
+        [
+          "<init>",
+          "()V"
+        ],
+        [
+          "add",
+          "(IJ)I"
+        ],
+        [
+          "hello",
+          "(Ljava/lang/String;)Ljava/lang/String;"
+        ]
+      ],
+      "superclass": "java/lang/Object"
+    },
+    {
+      "class_contract_cid": "9acdfc00301d65d25b0e12fa200de1c2c30adf3327548e23dd6760ca478e3dee",
+      "fields": [],
+      "interfaces": [],
+      "internal_name": "fixture/api/Other",
+      "member_contract_cids": [
+        "f0676898f6956b3c136b2f436bbb147f45ae7b66d7bcbffee6915d7efdd2d0a0"
+      ],
+      "methods": [
+        [
+          "ping",
+          "()V"
+        ]
+      ],
+      "superclass": "java/lang/Object"
+    }
+  ],
+  "direct_parser": {
+    "api_versions_xml": true,
+    "classfile": true,
+    "jar_zip": true
+  },
+  "external_compiler_invocations": 0,
+  "inputs": {
+    "api_versions_xml_sha256": "56e1210abab878a8ad9cc60e4f5dc3b1f904f66c0016ca04daa5cb2bbd2643c4",
+    "class_sha256": {
+      "fixture/api/Example.class": "a7257a6eb182bac95265ff83a103956add133a63a0ecd6ec931cbba15b1a1801",
+      "fixture/api/Other.class": "aa2cbd7e46a6deb262b23b10313361508f7a3c82c8441f1c8b60990964078b03"
+    }
+  },
+  "limitations": {
+    "generic_signature_semantics": "descriptor/access/annotation identity is imported; generic Signature attributes are not yet semanticized",
+    "multi_release_jar": "hard rejected until an explicit version-selection profile exists",
+    "official_platform_jar_runtime_validation": "not run on this host because no Android SDK platform JAR is installed"
+  },
+  "query_example": {
+    "matches": [
+      [
+        "hello",
+        "(Ljava/lang/String;)Ljava/lang/String;"
+      ]
+    ],
+    "needle": "he"
+  },
+  "schema": "xax-android-sdk-import-evidence-v1",
+  "semantic_object_cids": [
+    "2b739ce66b0ecf3e3ff50010c4ed81e346ba3f416e7338dd36bbcb915ea5a662",
+    "48cecc830889a0947bddad12f12645be3aafd2587b2732175617423f26b01ac9",
+    "4e7a34df264075ffeb475c3ee9273e8527c9b0f72b05af17ca994355d9746cac",
+    "76b1585ab144d414aca100117a8f949bbeb478e335818ba8de535ad410861f63",
+    "9acdfc00301d65d25b0e12fa200de1c2c30adf3327548e23dd6760ca478e3dee",
+    "e3ffb1851b110452bac1f5d4870ae29efb3edc559092a0e0080db2713f48c8bb",
+    "ea0845131184f2fa64393358d75beb0e35e7e08de79780686a09eaa6103eb192",
+    "f0676898f6956b3c136b2f436bbb147f45ae7b66d7bcbffee6915d7efdd2d0a0"
+  ],
+  "semantic_object_count": 8,
+  "zip_entry_order_independent": true
+}

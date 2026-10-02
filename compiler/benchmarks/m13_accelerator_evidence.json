@@ -1,0 +1,291 @@
+{
+  "claims": {
+    "fundamental_core": "generic target-op contract only; accelerator topology/space/opcode facts reside in target package",
+    "host_device_semantics": "allocate, H2D transfer, launch, synchronize, D2H transfer, and free are explicit target operations threaded by one device effect and one linear buffer resource",
+    "performance": "not measured; no hardware throughput/latency claim",
+    "runtime_dependencies": "none for this target revision; any declared dependency would require explicit compiler permission"
+  },
+  "deployment": {
+    "blake3_256": "b4ba34f70945722503a3927b8a44ca308055a0786873aa5e98f69356d5da4f5b",
+    "bytes": 122,
+    "deterministic": true,
+    "instruction_semantics": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "runtime_dependencies": [],
+    "semantic_ranges": [
+      {
+        "end": 122,
+        "node": null,
+        "start": 0
+      },
+      {
+        "end": 87,
+        "node": 0,
+        "start": 80
+      },
+      {
+        "end": 94,
+        "node": 1,
+        "start": 87
+      },
+      {
+        "end": 101,
+        "node": 2,
+        "start": 94
+      },
+      {
+        "end": 108,
+        "node": 3,
+        "start": 101
+      },
+      {
+        "end": 115,
+        "node": 4,
+        "start": 108
+      },
+      {
+        "end": 122,
+        "node": 5,
+        "start": 115
+      }
+    ],
+    "sha256": "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f"
+  },
+  "entry_function": "d49da9c603a8371c12f401f422a491ce682f233f12ef6589b9a11b06a129539b",
+  "execution": {
+    "all_match": true,
+    "vectors": [
+      {
+        "arguments": [
+          0,
+          0
+        ],
+        "expected": [
+          0
+        ],
+        "result": [
+          0
+        ]
+      },
+      {
+        "arguments": [
+          1,
+          2
+        ],
+        "expected": [
+          3
+        ],
+        "result": [
+          3
+        ]
+      },
+      {
+        "arguments": [
+          7,
+          9
+        ],
+        "expected": [
+          16
+        ],
+        "result": [
+          16
+        ]
+      },
+      {
+        "arguments": [
+          4294967295,
+          1
+        ],
+        "expected": [
+          0
+        ],
+        "result": [
+          0
+        ]
+      },
+      {
+        "arguments": [
+          4294967294,
+          5
+        ],
+        "expected": [
+          3
+        ],
+        "result": [
+          3
+        ]
+      },
+      {
+        "arguments": [
+          2147483648,
+          2147483648
+        ],
+        "expected": [
+          0
+        ],
+        "result": [
+          0
+        ]
+      }
+    ]
+  },
+  "milestone": "M13",
+  "negative": {
+    "unsupported_memory_pair": {
+      "actual_rule": "TARGET-OPERATION-MEMORY-SPACES",
+      "diagnostic_code": "XAX.TARGET.OPERATION",
+      "expected_rule": "TARGET-OPERATION-MEMORY-SPACES",
+      "matched": true
+    },
+    "unsupported_scope": {
+      "actual_rule": "TARGET-OPERATION-SCOPE-SUPPORTED",
+      "diagnostic_code": "XAX.TARGET.OPERATION",
+      "expected_rule": "TARGET-OPERATION-SCOPE-SUPPORTED",
+      "matched": true
+    }
+  },
+  "program_root": "6e088c0ff84c0723a9c3b7f527bf2bd98b886f8e5846f0200f5b1ee2ecf7db5c",
+  "scope": "prototype non-CPU SIMT accelerator target package and deployment path",
+  "target": {
+    "architecture_id": 4,
+    "deployment_format_id": 3,
+    "execution_scopes": [
+      "device",
+      "workgroup"
+    ],
+    "lane_width": 32,
+    "max_groups": 65535,
+    "memory_spaces": [
+      {
+        "access_widths": [
+          32
+        ],
+        "address_bits": 64,
+        "address_unit_bits": 8,
+        "device_visible": false,
+        "host_visible": true,
+        "id": 1,
+        "minimum_alignment": 4,
+        "visibility_scopes": [
+          "system"
+        ]
+      },
+      {
+        "access_widths": [
+          32
+        ],
+        "address_bits": 64,
+        "address_unit_bits": 8,
+        "device_visible": true,
+        "host_visible": false,
+        "id": 2,
+        "minimum_alignment": 4,
+        "visibility_scopes": [
+          "device",
+          "workgroup"
+        ]
+      },
+      {
+        "access_widths": [
+          32
+        ],
+        "address_bits": 32,
+        "address_unit_bits": 8,
+        "device_visible": true,
+        "host_visible": false,
+        "id": 3,
+        "minimum_alignment": 4,
+        "visibility_scopes": [
+          "workgroup"
+        ]
+      }
+    ],
+    "target_operations": [
+      {
+        "destination_space": 1,
+        "encoding_opcode": 16,
+        "id": 1,
+        "may_block": false,
+        "runtime_dependency": "",
+        "scopes": [
+          "device"
+        ],
+        "semantic_code": 1,
+        "source_space": 1,
+        "synchronizes": false
+      },
+      {
+        "destination_space": 2,
+        "encoding_opcode": 17,
+        "id": 2,
+        "may_block": false,
+        "runtime_dependency": "",
+        "scopes": [
+          "device"
+        ],
+        "semantic_code": 2,
+        "source_space": 1,
+        "synchronizes": false
+      },
+      {
+        "destination_space": 2,
+        "encoding_opcode": 18,
+        "id": 3,
+        "may_block": false,
+        "runtime_dependency": "",
+        "scopes": [
+          "device"
+        ],
+        "semantic_code": 3,
+        "source_space": 2,
+        "synchronizes": false
+      },
+      {
+        "destination_space": 2,
+        "encoding_opcode": 19,
+        "id": 4,
+        "may_block": true,
+        "runtime_dependency": "",
+        "scopes": [
+          "device"
+        ],
+        "semantic_code": 4,
+        "source_space": 2,
+        "synchronizes": true
+      },
+      {
+        "destination_space": 1,
+        "encoding_opcode": 20,
+        "id": 5,
+        "may_block": false,
+        "runtime_dependency": "",
+        "scopes": [
+          "device"
+        ],
+        "semantic_code": 5,
+        "source_space": 2,
+        "synchronizes": false
+      },
+      {
+        "destination_space": 1,
+        "encoding_opcode": 21,
+        "id": 6,
+        "may_block": false,
+        "runtime_dependency": "",
+        "scopes": [
+          "device"
+        ],
+        "semantic_code": 6,
+        "source_space": 1,
+        "synchronizes": false
+      }
+    ]
+  },
+  "target_root": "202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04"
+}

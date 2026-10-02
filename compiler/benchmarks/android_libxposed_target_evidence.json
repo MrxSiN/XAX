@@ -1,0 +1,122 @@
+{
+  "activity_dex": {
+    "bytes": 1324,
+    "checksum_valid": true,
+    "class_descriptor": "Lcom/example/target/XaxActivity;",
+    "hook_target_code_units": 3,
+    "hook_target_code_units_raw": [
+      "0x001a",
+      "0x000f",
+      "0x0011"
+    ],
+    "hook_target_opcodes": [
+      "0x1a",
+      "0x11"
+    ],
+    "hook_target_result_literal_present": true,
+    "on_create_code_units": 30,
+    "on_create_code_units_raw": [
+      "0x206f",
+      "0x0001",
+      "0x0043",
+      "0x0022",
+      "0x0005",
+      "0x2070",
+      "0x0004",
+      "0x0030",
+      "0x106e",
+      "0x0008",
+      "0x0003",
+      "0x010c",
+      "0x206e",
+      "0x0005",
+      "0x0010",
+      "0x0222",
+      "0x0008",
+      "0x1070",
+      "0x000b",
+      "0x0002",
+      "0x206e",
+      "0x0003",
+      "0x0020",
+      "0x206e",
+      "0x0002",
+      "0x0003",
+      "0x2070",
+      "0x000a",
+      "0x0043",
+      "0x000e"
+    ],
+    "on_create_uses_hook_target": true,
+    "placeholder_present": false,
+    "sha256": "f6ec7537bb4bf020d2c169b02742f4e265d60e0efd6d7c8ad9f713f04aa06bd5",
+    "signature_valid": true
+  },
+  "environment_note": "direct semantic/DEX/ELF/APK structural evidence only; install, Activity launch, UI rendering, and any libxposed hook execution are UNEXECUTED because no Android/libxposed runtime is available",
+  "generic_apk": {
+    "blake3": "95a9058dcfb08ad9601551704af638792bca32d39cdc18d52f3180e16734416e",
+    "build_key": "0199887ecf4ec2240e57201e4a126c3b700fba7891e7bc1c9461f8f1e4791980",
+    "bytes": 34010,
+    "entries": [
+      "AndroidManifest.xml",
+      "classes.dex",
+      "classes2.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "66146640938fefc9f1a307d6c16fd479f323d1e6c35ebbcb56352a0b80c2a82a",
+    "repeat_identical": true,
+    "request_root": "4ef24903b4db1a1b3f3c80e49b262ec56429c0b6c480657a10fb2b95f812f64d",
+    "sha256": "e682951f8e72f6ea812d3ef2816ad92b49fd1df90a3c08ad42b05b33d72e3eb0",
+    "snapshot_root": "6979719a23a042c17f1058962b78f193fc388d3cb97954d6704b9d52a9cc8d51"
+  },
+  "listener_dex": {
+    "bytes": 768,
+    "checksum_valid": true,
+    "class_descriptor": "Lcom/example/target/XaxOnClickListener;",
+    "interfaces": [
+      "Landroid/view/View$OnClickListener;"
+    ],
+    "sha256": "767d47ac56f9aaf8f8fef44512f020821cf39918f5eb0bdd0cdf17e3812a0e61",
+    "signature_valid": true
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_com_example_target_XaxActivity_xaxOnCreate",
+      "Java_com_example_target_XaxOnClickListener_xaxOnClick"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "41a1796ced84171b8b710767bbc07d21d0099a28aeefb61ce8dbc1707c2d7ef3"
+  },
+  "production_dependencies": {
+    "c_cpp_bridge_source_files": 0,
+    "d8_r8_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0,
+    "javac_kotlinc_invocations": 0
+  },
+  "runtime_validation": {
+    "activity_launch": "UNEXECUTED",
+    "apk_install": "UNEXECUTED",
+    "hooked_result_visible": "UNEXECUTED",
+    "unhooked_result_visible": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-target-evidence-v1",
+  "semantic_input": {
+    "activity_callback_cid": "f3ea683de72203904e7299e11eaec42c35f69a6bb14ff867e220b47bbcd7fdbb",
+    "activity_class": "com.example.target.XaxActivity",
+    "activity_export_cid": "88f6247b07541a636249c6be1b4356f0414e03d62afcbc0b41c97a989fe9cf1c",
+    "click_text": "Clicked",
+    "listener_callback_cid": "87a3b69c36cc7f411ea03ffd58c4969ddc9d7a1a9f6b5485cba90b0a0e1d2a49",
+    "listener_class": "com.example.target.XaxOnClickListener",
+    "listener_export_cid": "05870746291aa83459df55016aa42c0f108c0cf2485649578393bea1f97a6ac1",
+    "manifest_cid": "1d6397d38305a0aba5c6fa86d1867557c347ed8192716a0b8763b36db85b5231",
+    "package_name": "com.example.target",
+    "target_method": "hookTarget",
+    "target_method_descriptor": "()Ljava/lang/String;",
+    "ui_cid": "b7d2d2ebd339d88caea3b2471071eca212e5d2d68d894b00735336ce4032d4c3",
+    "unhooked_result": "Original"
+  }
+}

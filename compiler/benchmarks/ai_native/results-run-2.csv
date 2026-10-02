@@ -1,0 +1,11 @@
+task_id,arm,pass,input_tokens,output_tokens,total_tokens,turns,elapsed_seconds,notes
+task-01,C,TRUE,328916,1516,330432,1,,Codex Desktop session 01a0f2af-3511-77c0-bd74-e014e247c28c; initial checker import failure
+task-01,XAX,TRUE,335615,1530,337145,1,,Codex Desktop session 01a0f2af-c6c3-7a10-a057-8ddd03726c6b; initial checker import failure
+task-02,C,TRUE,261195,1124,262319,1,,Codex Desktop session 01a0f2b2-b1fc-7910-867f-5654acd0f177; initial checker import failure
+task-02,XAX,TRUE,390474,1810,392284,1,,Codex Desktop session 01a0f2b3-231b-78a1-a99a-1c0021c1a3dc; initial checker import failure
+task-03,C,TRUE,199105,1334,200439,1,,Codex Desktop session 01a0f2b4-45b3-7ed3-bbea-911043d65d17; initial checker import failure
+task-03,XAX,TRUE,332123,1550,333673,1,,Codex Desktop session 01a0f2b5-f12f-70f3-9f4f-ee5fac141137; initial checker import failure
+task-04,C,TRUE,257506,1382,258888,1,,Codex Desktop session 01a0f2b6-bfd2-7743-bd4d-ef2992b4f066; initial checker import failure
+task-04,XAX,TRUE,258322,1054,259376,1,,Codex Desktop session 01a0f2b7-776e-71a1-afa9-a648271fb627; initial checker import failure
+task-05,C,TRUE,267381,1239,268620,1,,Codex Desktop session 01a0f2b8-333c-7cf3-b0fd-1d1b2089c27c; initial checker import failure
+task-05,XAX,TRUE,309254,1211,310465,1,,Codex Desktop session 01a0f2b8-f2c1-75c1-a6ed-42b953925dfb; initial checker import failure

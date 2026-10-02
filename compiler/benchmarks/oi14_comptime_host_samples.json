@@ -1,0 +1,129 @@
+{
+  "evaluator_peak_vs_host_peak_pairs": [
+    [
+      288,
+      29976
+    ],
+    [
+      256,
+      32761
+    ],
+    [
+      304,
+      28536
+    ]
+  ],
+  "fuel_input": false,
+  "note": "Host time/memory are observations only and never enter compile-time keys or budgets; correlation is descriptive over three workloads only.",
+  "peak_memory_correlation_pearson_r": -0.9999650662768907,
+  "samples_per_workload": 11,
+  "schema": "xax-oi14-host-observations-v1",
+  "semantic": false,
+  "workloads": [
+    {
+      "elapsed_max_ns": 15167484,
+      "elapsed_median_ns": 10709244,
+      "elapsed_min_ns": 9889529,
+      "elapsed_ns": [
+        13785974,
+        14311012,
+        10141138,
+        9889529,
+        12214010,
+        10574185,
+        15167484,
+        11239100,
+        10186808,
+        10709244,
+        10189084
+      ],
+      "identity": "compiler-like-body-generation",
+      "tracemalloc_peak_bytes": [
+        29976,
+        30120,
+        29944,
+        30088,
+        29912,
+        30040,
+        29864,
+        30008,
+        29832,
+        29976,
+        29800
+      ],
+      "tracemalloc_peak_max_bytes": 30120,
+      "tracemalloc_peak_median_bytes": 29976,
+      "tracemalloc_peak_min_bytes": 29800
+    },
+    {
+      "elapsed_max_ns": 34830339,
+      "elapsed_median_ns": 21982957,
+      "elapsed_min_ns": 14862941,
+      "elapsed_ns": [
+        14862941,
+        24730763,
+        16570705,
+        21982957,
+        15642295,
+        16304841,
+        21650124,
+        34830339,
+        29482447,
+        23133290,
+        30044342
+      ],
+      "identity": "target-adapter-interface-generation",
+      "tracemalloc_peak_bytes": [
+        32953,
+        32721,
+        32841,
+        32665,
+        32817,
+        32649,
+        32801,
+        32633,
+        32785,
+        32609,
+        32761
+      ],
+      "tracemalloc_peak_max_bytes": 32953,
+      "tracemalloc_peak_median_bytes": 32761,
+      "tracemalloc_peak_min_bytes": 32609
+    },
+    {
+      "elapsed_max_ns": 18463904,
+      "elapsed_median_ns": 11196904,
+      "elapsed_min_ns": 8663685,
+      "elapsed_ns": [
+        9157753,
+        11196904,
+        12038785,
+        18463904,
+        15415272,
+        14988880,
+        8663685,
+        10918735,
+        10341116,
+        10764685,
+        12279697
+      ],
+      "identity": "ordinary-generic-construction",
+      "tracemalloc_peak_bytes": [
+        28536,
+        28688,
+        28520,
+        28672,
+        28512,
+        28672,
+        28512,
+        28672,
+        28512,
+        28672,
+        28512
+      ],
+      "tracemalloc_peak_max_bytes": 28688,
+      "tracemalloc_peak_median_bytes": 28536,
+      "tracemalloc_peak_min_bytes": 28512
+    }
+  ]
+}

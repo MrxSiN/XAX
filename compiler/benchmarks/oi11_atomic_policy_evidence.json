@@ -1,0 +1,377 @@
+{
+  "canonical_identity": {
+    "aarch64_graph_cid_unchanged_by_policy_rejection": true,
+    "policy_is_not_source_semantics": true,
+    "x86_graph_cid_unchanged_by_policy_rejection": true
+  },
+  "cases": {
+    "aarch64_bounded_seq_cst_load": {
+      "alignment": 4,
+      "architecture": "aarch64-baremetal-atomic-v1",
+      "artifact_bytes": 36,
+      "artifact_sha256": "7100e318c0d40d457668b2afdd03d6495d2ed98b84d1299f7f79af09537af2ac",
+      "atomic_node_machine_bytes": 16,
+      "atomic_node_machine_hex": "ea030091bf3b03d540fddf88bf3b03d5",
+      "capability": {
+        "latency_bound": null,
+        "lock_free": "always",
+        "max_inline_instructions": 3,
+        "progress": "wait_free",
+        "required_alignment": 4,
+        "retry_behavior": "none",
+        "runtime_helper": null,
+        "support": "bounded_sequence",
+        "supported_orders": [
+          "relaxed",
+          "acquire",
+          "seq_cst"
+        ],
+        "supported_scopes": [
+          "system"
+        ]
+      },
+      "deterministic_repeat": true,
+      "graph_cid": "33a2abfa68258edb674b4f5b7c8dc3a1063c9e802265ad5cf115dffba645a774",
+      "input": 305419896,
+      "order": "seq_cst",
+      "progress": "wait_free",
+      "reference_result": 305419896,
+      "retry_bound": 0,
+      "runtime_assists": [],
+      "scope": "system",
+      "target_cid": "36a76848c08d9830f339951577a012e6acd9fecad722c1c5772ffb8fe88bef3b",
+      "unsupported_operations": [],
+      "width": 32
+    },
+    "aarch64_native_acquire_load": {
+      "alignment": 4,
+      "architecture": "aarch64-baremetal-atomic-v1",
+      "artifact_bytes": 28,
+      "artifact_sha256": "9d786df265349865225ee5e29b6e0ee4bc1b9bca6f6d51e101df49a5c67b157c",
+      "atomic_node_machine_bytes": 8,
+      "atomic_node_machine_hex": "ea03009140fddf88",
+      "capability": {
+        "latency_bound": null,
+        "lock_free": "always",
+        "max_inline_instructions": null,
+        "progress": "wait_free",
+        "required_alignment": 4,
+        "retry_behavior": "none",
+        "runtime_helper": null,
+        "support": "native",
+        "supported_orders": [
+          "relaxed",
+          "acquire",
+          "seq_cst"
+        ],
+        "supported_scopes": [
+          "system"
+        ]
+      },
+      "deterministic_repeat": true,
+      "graph_cid": "0fb00b1a80b5aecde10f4849d414e1c55a55c245d9d04ae5534ff11fdb077941",
+      "input": 305419896,
+      "order": "acquire",
+      "progress": "wait_free",
+      "reference_result": 305419896,
+      "retry_bound": 0,
+      "runtime_assists": [],
+      "scope": "system",
+      "target_cid": "36a76848c08d9830f339951577a012e6acd9fecad722c1c5772ffb8fe88bef3b",
+      "unsupported_operations": [],
+      "width": 32
+    },
+    "x86_bounded_seq_cst_load": {
+      "alignment": 4,
+      "architecture": "x86_64-windows-load-image-v2",
+      "artifact_bytes": 46,
+      "artifact_sha256": "d280ef2fbf3ee59a716e2487d414132f9cf8e0b4df26abdcff3acf79389cfe5b",
+      "atomic_node_machine_bytes": 12,
+      "atomic_node_machine_hex": "8b4424400faef04889442430",
+      "capability": {
+        "latency_bound": null,
+        "lock_free": "always",
+        "max_inline_instructions": 2,
+        "progress": "wait_free",
+        "required_alignment": 4,
+        "retry_behavior": "none",
+        "runtime_helper": null,
+        "support": "bounded_sequence",
+        "supported_orders": [
+          "relaxed",
+          "acquire",
+          "seq_cst"
+        ],
+        "supported_scopes": [
+          "system"
+        ]
+      },
+      "deterministic_repeat": true,
+      "graph_cid": "33a2abfa68258edb674b4f5b7c8dc3a1063c9e802265ad5cf115dffba645a774",
+      "input": 305419896,
+      "order": "seq_cst",
+      "progress": "wait_free",
+      "reference_result": 305419896,
+      "retry_bound": 0,
+      "runtime_assists": [],
+      "scope": "system",
+      "target_cid": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+      "unsupported_operations": [],
+      "width": 32
+    },
+    "x86_native_acquire_load": {
+      "alignment": 4,
+      "architecture": "x86_64-windows-load-image-v2",
+      "artifact_bytes": 43,
+      "artifact_sha256": "39505b6c6f8474757b9ffb0887a67f3d8bb25e570cb96004671012ec383012c3",
+      "atomic_node_machine_bytes": 9,
+      "atomic_node_machine_hex": "8b4424404889442430",
+      "capability": {
+        "latency_bound": null,
+        "lock_free": "always",
+        "max_inline_instructions": null,
+        "progress": "wait_free",
+        "required_alignment": 4,
+        "retry_behavior": "none",
+        "runtime_helper": null,
+        "support": "native",
+        "supported_orders": [
+          "relaxed",
+          "acquire",
+          "seq_cst"
+        ],
+        "supported_scopes": [
+          "system"
+        ]
+      },
+      "deterministic_repeat": true,
+      "graph_cid": "0fb00b1a80b5aecde10f4849d414e1c55a55c245d9d04ae5534ff11fdb077941",
+      "input": 305419896,
+      "order": "acquire",
+      "progress": "wait_free",
+      "reference_result": 305419896,
+      "retry_bound": 0,
+      "runtime_assists": [],
+      "scope": "system",
+      "target_cid": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+      "unsupported_operations": [],
+      "width": 32
+    }
+  },
+  "closure": {
+    "bounded_second_architecture": "AArch64 system-scope 32/64-bit seq-cst load: finite address + DMB ISH + LDAR + DMB ISH, retry_bound=0, no helper",
+    "remaining": [],
+    "status": "closed",
+    "unknowns_preserved": [
+      "AArch64 hardware latency/timing guarantee",
+      "all target timing guarantees without explicit target metadata"
+    ]
+  },
+  "measurements": {
+    "aarch64_bounded_vs_native_node_delta_bytes": 8,
+    "aarch64_execution": {
+      "hardware_latency_samples": null,
+      "harness": "xax_aarch64.run_aarch64_qemu",
+      "qemu_system_aarch64_available": false,
+      "status": "missing on this x86-64 host; no AArch64 hardware/QEMU executable available"
+    },
+    "timing_guarantee": null,
+    "timing_statement": "observed latency is cost evidence only; target timing bounds remain unknown",
+    "x86_bounded_vs_native_node_delta_bytes": 3,
+    "x86_observed_latency": {
+      "bounded_seq_cst_load": {
+        "guarantee": null,
+        "iterations_per_sample": 500000,
+        "max_ns_per_call": 35.65746,
+        "median_batch_ns": 9416560,
+        "median_ns_per_call": 18.83312,
+        "min_ns_per_call": 17.533634,
+        "p10_ns_per_call": 17.94376,
+        "p90_ns_per_call": 24.11178,
+        "raw_batch_ns": [
+          9699329,
+          17828730,
+          12775889,
+          8971880,
+          9319493,
+          9449886,
+          10211217,
+          9529506,
+          9256568,
+          9253911,
+          9407178,
+          12402481,
+          9949096,
+          9631350,
+          9199422,
+          9527651,
+          9771913,
+          9011941,
+          8946527,
+          9416560,
+          8766817,
+          10364604,
+          12055890,
+          9307611,
+          9050105,
+          8939850,
+          11432308,
+          9143061,
+          9157961,
+          9311134,
+          9654257
+        ],
+        "sample_count": 31
+      },
+      "native_acquire_load": {
+        "guarantee": null,
+        "iterations_per_sample": 500000,
+        "max_ns_per_call": 4.200356,
+        "median_batch_ns": 997069,
+        "median_ns_per_call": 1.994138,
+        "min_ns_per_call": 1.962222,
+        "p10_ns_per_call": 1.965538,
+        "p90_ns_per_call": 2.331232,
+        "raw_batch_ns": [
+          995558,
+          1223350,
+          997069,
+          984750,
+          983548,
+          1165616,
+          989301,
+          985773,
+          2100178,
+          1169435,
+          996818,
+          1143934,
+          1026304,
+          989937,
+          987987,
+          1056734,
+          1028596,
+          981299,
+          983776,
+          982660,
+          1021232,
+          981111,
+          983130,
+          1086099,
+          1017717,
+          1048283,
+          982769,
+          1104577,
+          1018024,
+          1066000,
+          985078
+        ],
+        "sample_count": 31
+      }
+    }
+  },
+  "negative_rejections": {
+    "unknown_timing_strict_profile": {
+      "code": "XAX.REALTIME.PROFILE",
+      "rule": "REALTIME-TARGET-TIMING-BOUND"
+    },
+    "unsupported_alignment": {
+      "code": "XAX.AARCH64.ATOMIC_UNSUPPORTED",
+      "rule": "AARCH64-ATOMIC-CAPABILITY"
+    },
+    "unsupported_order": {
+      "code": "XAX.ATOMIC.ORDER",
+      "rule": "ATOMIC-ORDER-LEGAL"
+    },
+    "unsupported_scope": {
+      "code": "XAX.AARCH64.ATOMIC_UNSUPPORTED",
+      "rule": "AARCH64-ATOMIC-CAPABILITY"
+    },
+    "unsupported_width": {
+      "code": "XAX.AARCH64.ATOMIC_UNSUPPORTED",
+      "rule": "AARCH64-ATOMIC-CAPABILITY"
+    }
+  },
+  "policy": {
+    "bounded_sequence": "select only when target declares bounded_sequence, retry bound is finite, exact max inline instructions are known, and permit_bounded_inline is true",
+    "default_permit_bounded_inline": true,
+    "default_permit_runtime_assist": false,
+    "native": "select only when exact target width/alignment/family/order/scope capability is native",
+    "reject": "unsupported exact capability, disabled bounded-inline policy, absent/disabled runtime helper, or post-lowering real-time profile violation",
+    "runtime_assist": "select only when target declares runtime_assist with an explicit 32-byte helper identity and permit_runtime_assist is true; no current target implements one",
+    "runtime_assist_default": {
+      "code": "XAX.ATOMIC.LEGALIZATION_POLICY",
+      "rule": "ATOMIC-RUNTIME-ASSIST-PERMITTED"
+    },
+    "runtime_assist_missing_identity": {
+      "code": "XAX.ATOMIC.LEGALIZATION_POLICY",
+      "rule": "ATOMIC-RUNTIME-ASSIST-IDENTITY"
+    }
+  },
+  "policy_rejections": {
+    "aarch64_baremetal": {
+      "code": "XAX.ATOMIC.LEGALIZATION_POLICY",
+      "graph_cid_after_rejection": "33a2abfa68258edb674b4f5b7c8dc3a1063c9e802265ad5cf115dffba645a774",
+      "rule": "ATOMIC-BOUNDED-INLINE-PERMITTED"
+    },
+    "x86_64_windows": {
+      "code": "XAX.ATOMIC.LEGALIZATION_POLICY",
+      "graph_cid_after_rejection": "33a2abfa68258edb674b4f5b7c8dc3a1063c9e802265ad5cf115dffba645a774",
+      "rule": "ATOMIC-BOUNDED-INLINE-PERMITTED"
+    }
+  },
+  "schema": "xax-oi11-atomic-policy-evidence-v2",
+  "target_diversity": {
+    "aarch64_baremetal": {
+      "latency_bound": null,
+      "lock_free": "always",
+      "max_inline_instructions": 3,
+      "progress": "wait_free",
+      "required_alignment": 4,
+      "retry_behavior": "none",
+      "runtime_helper": null,
+      "support": "bounded_sequence",
+      "supported_orders": [
+        "relaxed",
+        "acquire",
+        "seq_cst"
+      ],
+      "supported_scopes": [
+        "system"
+      ]
+    },
+    "wasm32_core": {
+      "latency_bound": null,
+      "lock_free": "no",
+      "max_inline_instructions": null,
+      "progress": "unknown",
+      "required_alignment": 4,
+      "retry_behavior": "potentially_unbounded",
+      "runtime_helper": null,
+      "support": "unsupported",
+      "supported_orders": [
+        "relaxed",
+        "acquire",
+        "seq_cst"
+      ],
+      "supported_scopes": []
+    },
+    "x86_64_windows": {
+      "latency_bound": null,
+      "lock_free": "always",
+      "max_inline_instructions": 2,
+      "progress": "wait_free",
+      "required_alignment": 4,
+      "retry_behavior": "none",
+      "runtime_helper": null,
+      "support": "bounded_sequence",
+      "supported_orders": [
+        "relaxed",
+        "acquire",
+        "seq_cst"
+      ],
+      "supported_scopes": [
+        "system"
+      ]
+    }
+  }
+}

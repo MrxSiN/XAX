@@ -1,0 +1,64 @@
+{
+  "artifact": {
+    "compiler_identity": "13dbd0cf3458d70b1e2f817928fa7248dabd7c6dade5ca52624ace6d6c296c78",
+    "digest": "4f0aad0b3c17fddd89aa23d36339c6523f73d7fcf46da9468f5362ecec78a035",
+    "entry_offset": 0,
+    "format": "x86_64-windows-load-image-v1",
+    "handle": "A0.0",
+    "identity": "9da04110c68a05564f800485277dd6c119873657227ae938d62a868329cf090a",
+    "lowering_identity": "d071ac136d8b85c8e3f993804c655b90e3a6ef583e6c472328ce5b28ec51c45c",
+    "semantic_root": "R0.0",
+    "size_bytes": 43,
+    "target": "d66dafc5ec0eec9156610fa9e0ef1d3ccf302217580e145f58a137165be2b9be"
+  },
+  "case": "m6_x86_artifact_mapping_accounting_v2",
+  "claim_scope": "deterministic accounting/conformance smoke only; no timing or performance conclusion",
+  "entities_exposed": 9,
+  "environment": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "mappings": {
+    "artifact_contributors_at_store_start": [
+      [
+        "F0",
+        "function",
+        0,
+        43
+      ],
+      [
+        "F0.B0.N1",
+        "node",
+        12,
+        21
+      ]
+    ],
+    "function": [
+      [
+        0,
+        43,
+        "function"
+      ]
+    ],
+    "stack_alloc_classification": "unavailable",
+    "store": [
+      [
+        12,
+        21,
+        "node"
+      ]
+    ]
+  },
+  "queries": 7,
+  "query_bytes": {
+    "artifact": 564,
+    "function_nodes": 558,
+    "map_artifact_page_1": 290,
+    "map_artifact_page_2": 297,
+    "map_function": 282,
+    "map_stack_alloc": 223,
+    "map_store": 285,
+    "total": 2499
+  }
+}

@@ -1,0 +1,225 @@
+{
+  "candidate_portable_lattice": [
+    "workgroup",
+    "device"
+  ],
+  "claims": {
+    "cross_space": "workgroup global/local synchronization is legal on both; device synchronization involving local memory rejects on both",
+    "portable_subset": "workgroup < device maps exactly and round-trips on both measured target packages",
+    "runtime": "semantic/target-package conformance only; no physical accelerator executed",
+    "target_specific_escape": "system is explicit on coherent-grid and nonportable; it is rejected on the SIMT package"
+  },
+  "evidence_sha256_without_digest_field": "8c09cd154fb033cdb9193e76384f89d0768bf3a96b26a428831ccf4870acf6bb",
+  "issue": "OI-13",
+  "mapping": {
+    "coherent_roundtrip": [
+      "workgroup",
+      "device"
+    ],
+    "coherent_system_reverse": null,
+    "simt_roundtrip": [
+      "workgroup",
+      "device"
+    ],
+    "simt_system_supported": false
+  },
+  "measurement": {
+    "benchmark_mapping_verifier_lowering_lines": 67,
+    "portable_expression_bytes": 31,
+    "production_core_semantic_lines_added": 0,
+    "second_target_package_lines": 59,
+    "target_specific_expression_bytes": 21,
+    "token_cost": {
+      "portable_tokens": null,
+      "reason": "tiktoken unavailable; bytes are not substituted for tokens",
+      "target_specific_tokens": null,
+      "tokenizer": null
+    }
+  },
+  "ordering_relation": [
+    [
+      "workgroup",
+      "device"
+    ]
+  ],
+  "targets": [
+    {
+      "contracts": 6,
+      "deployment_bytes": 122,
+      "deployment_deterministic": true,
+      "execution_result": [
+        16
+      ],
+      "memory_spaces": 3,
+      "package_object_bytes": 276,
+      "package_object_count": 1,
+      "scopes": [
+        "device",
+        "workgroup"
+      ],
+      "target_cid": "202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04",
+      "target_identity": "simt32-packet-accelerator-v1"
+    },
+    {
+      "contracts": 6,
+      "deployment_bytes": 120,
+      "deployment_deterministic": true,
+      "execution_result": [
+        16
+      ],
+      "memory_spaces": 2,
+      "package_object_bytes": 269,
+      "package_object_count": 1,
+      "scopes": [
+        "system",
+        "device",
+        "workgroup"
+      ],
+      "target_cid": "0ffdb5e9fece2ccf25d51b7b48246ae8deb04cc9652471f786aa9f6eb91db7bf",
+      "target_identity": "coherent-grid-accelerator-v1"
+    }
+  ],
+  "vectors": [
+    {
+      "coherent": {
+        "error": null,
+        "packet_blake3": "ab333eee748f285232a91fdb1f9b7c292765a8b49107d5732e1b84f7e836f412",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "destination_space": "local",
+      "effect": "atomic",
+      "name": "wg_atomic_acquire",
+      "operation": "atomic_load",
+      "order": "acquire",
+      "portable_scope": "workgroup",
+      "simt": {
+        "error": null,
+        "packet_blake3": "178719de3b253275ffe7778b103dd7e60f575ec000fe86070e5aea0c5ccfd5f9",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "source_space": "local",
+      "target_scope": null
+    },
+    {
+      "coherent": {
+        "error": null,
+        "packet_blake3": "66c1923d2ecfb8b29e0b76817aa1ea2184ef2ab85afda85b3526a6a9268774cf",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "destination_space": "local",
+      "effect": "atomic",
+      "name": "wg_cross_space_barrier",
+      "operation": "barrier",
+      "order": "acq_rel",
+      "portable_scope": "workgroup",
+      "simt": {
+        "error": null,
+        "packet_blake3": "4f554d3de32a1314b672a658c187a8f0647132c7fc3695f2373c72a757065351",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "source_space": "global",
+      "target_scope": null
+    },
+    {
+      "coherent": {
+        "error": null,
+        "packet_blake3": "afeb9cf0d37bc41f281726949e77ad0bb16ca830e89905115880cad9145f7b1e",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "destination_space": "global",
+      "effect": "atomic",
+      "name": "device_atomic_seq_cst",
+      "operation": "atomic_store",
+      "order": "seq_cst",
+      "portable_scope": "device",
+      "simt": {
+        "error": null,
+        "packet_blake3": "3e7224d060bdf1190e25ed8babf6c7a90af2c0ad55dcbe240de0e6abe50e95d0",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "source_space": "global",
+      "target_scope": null
+    },
+    {
+      "coherent": {
+        "error": null,
+        "packet_blake3": "9934b29144de584c78dea3c1090fd8c1fabc21802d89a8f3dd93c4633feb3098",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "destination_space": "global",
+      "effect": "atomic",
+      "name": "device_barrier",
+      "operation": "barrier",
+      "order": "seq_cst",
+      "portable_scope": "device",
+      "simt": {
+        "error": null,
+        "packet_blake3": "31516c0b4aa2cc5524052260751146dd5d6992301be157aaf6c733bfe6a65cb7",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "source_space": "global",
+      "target_scope": null
+    },
+    {
+      "coherent": {
+        "error": "scope device not visible in memory space 2",
+        "packet_bytes": null,
+        "semantic_valid": true,
+        "target_legal": false
+      },
+      "destination_space": "local",
+      "effect": "atomic",
+      "name": "device_to_local_reject",
+      "operation": "barrier",
+      "order": "seq_cst",
+      "portable_scope": "device",
+      "simt": {
+        "error": "scope device not visible in memory space 3",
+        "packet_bytes": null,
+        "semantic_valid": true,
+        "target_legal": false
+      },
+      "source_space": "global",
+      "target_scope": null
+    },
+    {
+      "coherent": {
+        "error": null,
+        "packet_blake3": "edae9c79bcc09d47487c34efec2336a5b32f60b8a991983bf6ad79ecd8668c7e",
+        "packet_bytes": 41,
+        "semantic_valid": true,
+        "target_legal": true
+      },
+      "destination_space": "system",
+      "effect": "atomic",
+      "name": "target_only_system",
+      "operation": "barrier",
+      "order": "seq_cst",
+      "portable_scope": null,
+      "simt": {
+        "error": "scope not supported by target: system",
+        "packet_bytes": null,
+        "semantic_valid": true,
+        "target_legal": false
+      },
+      "source_space": "system",
+      "target_scope": "system"
+    }
+  ]
+}

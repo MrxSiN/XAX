@@ -1,0 +1,29 @@
+{
+  "claims": [
+    "accounting",
+    "determinism",
+    "semantic execution"
+  ],
+  "date": "2026-09-29",
+  "entities_exposed": 4,
+  "measurement": "deterministic non-timing accounting smoke",
+  "non_claims": [
+    "timing",
+    "model success",
+    "META conformance",
+    "language performance"
+  ],
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.10",
+  "query_bytes": 479,
+  "reused_objects": 5,
+  "root": "f7ac925388e2fb7bafa420135660a2a2ed239afd9586452872bc3d71b63934b1",
+  "schema": "xax.m6.specialize.accounting.v1",
+  "source_and_caller_preserved": true,
+  "source_cid": "b56ed14d7c2992d8713392a397ba12645fe02f48fdfd1a72667ba03ed69c3bc5",
+  "specialized_cid": "28e05c5b4a7dceca1ab59e4e7522d072ab1fc1c20dc2decb7a2e372f1bac0942",
+  "specialized_result": 8,
+  "touched_objects": 5,
+  "transaction_bytes": 15,
+  "verified_objects": 5
+}

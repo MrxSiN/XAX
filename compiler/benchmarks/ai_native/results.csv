@@ -1,0 +1,11 @@
+task_id,arm,pass,input_tokens,output_tokens,total_tokens,turns,elapsed_seconds,notes
+task-01,C,TRUE,260404,1321,261725,1,,Codex Desktop session 01a0f274-623c-7f91-b441-e9fc9e180e0e
+task-01,XAX,TRUE,326471,1447,327918,1,,Codex Desktop session 01a0f276-5eaa-7bd3-8dad-83a09e0632d2
+task-02,C,TRUE,225507,1246,226753,1,,Codex Desktop session 01a0f278-c453-77e3-ac37-19860dbfa28e
+task-02,XAX,TRUE,390499,1677,392176,1,,Codex Desktop session 01a0f27a-ba06-7193-a5f5-8bd454788776
+task-03,C,TRUE,308467,1337,309804,1,,Codex Desktop session 01a0f27b-3f0b-77a2-90c5-5a1f1f6e34ae
+task-03,XAX,TRUE,443422,1827,445249,1,,Codex Desktop session 01a0f27c-2f47-7bb0-9eb6-656cd6139cd6
+task-04,C,TRUE,305510,1461,306971,1,,Codex Desktop session 01a0f27c-aa31-79a0-9ffd-5c1fc685e7d8
+task-04,XAX,TRUE,302181,1296,303477,1,,Codex Desktop session 01a0f27d-11b3-76b1-bc15-3d9121fcb19c
+task-05,C,TRUE,257027,1242,258269,2,,Codex Desktop session 01a0f27d-7a6e-7c13-91a1-d80339c2807d
+task-05,XAX,TRUE,228905,1165,230070,3,,Codex Desktop session 01a0f27d-eca6-7351-8ec7-a313df81de1d

@@ -1,0 +1,71 @@
+{
+  "environment_note": "direct structural resource-table evidence only; Android AssetManager/package-manager loading is UNEXECUTED because no Android device/emulator/build-tools runtime is available",
+  "output": {
+    "bytes": 628,
+    "entries": [
+      {
+        "name": "app_name",
+        "resource_id": "0x7f010000",
+        "value": "XAX"
+      },
+      {
+        "name": "clicked",
+        "resource_id": "0x7f010001",
+        "value": "Clicked"
+      },
+      {
+        "name": "greeting",
+        "resource_id": "0x7f010002",
+        "value": "Hello from XAX"
+      }
+    ],
+    "package_id": 127,
+    "repeat_identical": true,
+    "sha256": "25959b07120a70b731841533ca26c2985e9204d6bf41ee2ba4ef2687da8cfa1f",
+    "type": "string"
+  },
+  "production_dependencies": {
+    "aapt2_invocations": 0,
+    "external_resource_linker_invocations": 0,
+    "runtime_xax_resource_parser_added": 0
+  },
+  "resource_backed_ui_apk": {
+    "activity_contains_inline_XAX": false,
+    "activity_dex_bytes": 1216,
+    "apk_blake3": "4080afd13e974e5d2061cc68fdbde42a942454fd5b0ceb8cacef537bc07b5ff2",
+    "apk_bytes": 34742,
+    "build_key": "7383353c180e9bd1c427ecb21dc58529ed4d517951af85367ccc22f98f15a199",
+    "click_resource_id": "0x7f010001",
+    "initial_resource_id": "0x7f010000",
+    "listener_contains_inline_Clicked": false,
+    "listener_dex_bytes": 736,
+    "package_root": "108ab80492e29dab964ffd34787ff51ddd38c7db5290c3651539f7ccc0ac480e",
+    "request_root": "a280f1453529f3f1961c220cff85441a52172d2231f52ad69e29a584ef3ce094",
+    "resources_entry_present": true,
+    "snapshot_root": "079cf93c1f27817a2442221d7a6c532852d243d6fc9159568704a46acaa2c460",
+    "ui_semantic_cid": "e372a206494c96d618726a3b941d7125c85468e5796ef46e01d4f5f6c96e3121"
+  },
+  "runtime_validation": {
+    "asset_manager_table_load": "UNEXECUTED",
+    "resources_get_string": "UNEXECUTED"
+  },
+  "schema": "xax-android-resources-evidence-v1",
+  "semantic_input": {
+    "carrier_cid": "40538fdabca5824f5c678b13f7f43e66127a9cec5693dfd36943c59866cf3b57",
+    "package": "xax.generated",
+    "strings": [
+      {
+        "name": "app_name",
+        "value": "XAX"
+      },
+      {
+        "name": "clicked",
+        "value": "Clicked"
+      },
+      {
+        "name": "greeting",
+        "value": "Hello from XAX"
+      }
+    ]
+  }
+}

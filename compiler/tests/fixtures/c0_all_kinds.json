@@ -1,0 +1,16 @@
+{
+  "fixture_revision": 1,
+  "byte_length": 1229,
+  "root_cid": "7046fcc2c7fc26bd66d282872faa7ec6381588b7a2ab8712b3e806bba90044aa",
+  "objects": [
+    {"kind": "module", "cid": "1655d7f5349b7d1f9bda33dd45ca43306144bef7d1c17370ed3116e0bfd7e570"},
+    {"kind": "graph_fragment", "cid": "1ad0726b9b4f1910f235a298d33bed7d29e36fa59e5625952c97a63e22428f07"},
+    {"kind": "constant", "cid": "24394b7c1a5d5415a2c1e8249f987bd86da5b6ba63e1708c0d209564795de569"},
+    {"kind": "function", "cid": "4f31c6ac1fe3c280a4886ba745272ff15cfcb500f021c0dcddfe335066da2c7e"},
+    {"kind": "program_root", "cid": "7046fcc2c7fc26bd66d282872faa7ec6381588b7a2ab8712b3e806bba90044aa"},
+    {"kind": "type", "cid": "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c"},
+    {"kind": "graph_fragment", "cid": "a6f07397dbc39c1532a86480b66aa74ccc7e21b36976ccb49851d765b71dc0e3"},
+    {"kind": "target", "cid": "aa7fff34383b1569ef0c464bd75040194f1d729e3e280f1ec64a03de8f95ae78"},
+    {"kind": "recursion_group", "cid": "f04a69e47716dccc06ce6eec986a73608fd16c6a22acc824d1665a6409d41c7a"}
+  ]
+}

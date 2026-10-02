@@ -1,0 +1,621 @@
+{
+  "fault_matrix": {
+    "accept_unsupported_width_alignment": [
+      "target_atomic_matrix"
+    ],
+    "break_release_sequence": [
+      "release_sequence_rmw"
+    ],
+    "downgrade_order": [
+      "acq_rel_rmw",
+      "cmpxchg_failure_acquire",
+      "cmpxchg_success",
+      "release_acquire",
+      "release_acquire_redundant",
+      "release_sequence_rmw",
+      "seq_cst_store_load_redundant",
+      "seq_cst_with_fence"
+    ],
+    "ignore_sc_total_order": [
+      "seq_cst_store_load_redundant",
+      "seq_cst_with_fence"
+    ],
+    "narrow_scope": [
+      "target_atomic_matrix"
+    ],
+    "omit_fence": [
+      "seq_cst_with_fence",
+      "target_atomic_matrix"
+    ],
+    "swap_cas_failure_order": [
+      "cmpxchg_failure_acquire",
+      "cmpxchg_success"
+    ]
+  },
+  "faults": [
+    "downgrade_order",
+    "omit_fence",
+    "swap_cas_failure_order",
+    "break_release_sequence",
+    "ignore_sc_total_order",
+    "narrow_scope",
+    "accept_unsupported_width_alignment"
+  ],
+  "minimum_corpus": [
+    "target_atomic_matrix",
+    "seq_cst_with_fence",
+    "relaxed_read_from",
+    "release_sequence_rmw",
+    "cmpxchg_failure_acquire",
+    "release_acquire",
+    "acq_rel_rmw",
+    "cmpxchg_success",
+    "unordered_non_atomic_race"
+  ],
+  "minimum_count": 9,
+  "race_case": {
+    "coverage": [
+      "race_rejection"
+    ],
+    "expected": {
+      "accepted": false,
+      "rule": "CONCURRENCY-CONFLICT-HAPPENS-BEFORE"
+    },
+    "name": "unordered_non_atomic_race"
+  },
+  "schema": "xax-atomic-litmus-v1",
+  "scope": "sufficient only for the declared OI-29 fault model; target packages may add target-specific vectors",
+  "semantic_cases": [
+    {
+      "coverage": [
+        "family.load",
+        "family.store",
+        "order.relaxed"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "x",
+          "order": "relaxed",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": null,
+          "family": "load",
+          "location": "x",
+          "order": "relaxed",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [],
+        "mo": [
+          [
+            "x",
+            [
+              0
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "load1",
+          "store0"
+        ]
+      ],
+      "name": "relaxed_read_from"
+    },
+    {
+      "coverage": [
+        "order.acquire",
+        "order.release",
+        "synchronizes"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "flag",
+          "order": "release",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": null,
+          "family": "load",
+          "location": "flag",
+          "order": "acquire",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ]
+        ],
+        "mo": [
+          [
+            "flag",
+            [
+              0
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "load1",
+          "store0",
+          "hb0-1"
+        ]
+      ],
+      "name": "release_acquire"
+    },
+    {
+      "coverage": [
+        "family.rmw",
+        "release_sequence"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "x",
+          "order": "release",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": null,
+          "family": "rmw",
+          "location": "x",
+          "order": "relaxed",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 2,
+          "failure_order": null,
+          "family": "load",
+          "location": "x",
+          "order": "acquire",
+          "reads_from": 1,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            2
+          ]
+        ],
+        "mo": [
+          [
+            "x",
+            [
+              0,
+              1
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "load2",
+          "rmw1",
+          "release-head0"
+        ]
+      ],
+      "name": "release_sequence_rmw"
+    },
+    {
+      "coverage": [
+        "family.rmw",
+        "order.acq_rel"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "x",
+          "order": "release",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": null,
+          "family": "rmw",
+          "location": "x",
+          "order": "acq_rel",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ]
+        ],
+        "mo": [
+          [
+            "x",
+            [
+              0,
+              1
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "rmw1",
+          "store0",
+          "hb0-1"
+        ]
+      ],
+      "name": "acq_rel_rmw"
+    },
+    {
+      "coverage": [
+        "family.fence",
+        "order.seq_cst",
+        "sc_total_order"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "x",
+          "order": "seq_cst",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "fence",
+          "location": "f",
+          "order": "seq_cst",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": null,
+          "family": "load",
+          "location": "x",
+          "order": "seq_cst",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "mo": [
+          [
+            "x",
+            [
+              0
+            ]
+          ]
+        ],
+        "sc": [
+          0,
+          1,
+          2
+        ]
+      },
+      "expected_outcomes": [
+        [
+          "load2",
+          "store0",
+          "sc0-1-2"
+        ]
+      ],
+      "name": "seq_cst_with_fence"
+    },
+    {
+      "coverage": [
+        "family.cmpxchg.success"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "x",
+          "order": "release",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": "acquire",
+          "family": "cmpxchg",
+          "location": "x",
+          "order": "acq_rel",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": "strong",
+          "succeeded": true
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ]
+        ],
+        "mo": [
+          [
+            "x",
+            [
+              0,
+              1
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "cas1",
+          "success",
+          "hb0-1"
+        ]
+      ],
+      "name": "cmpxchg_success"
+    },
+    {
+      "coverage": [
+        "order.acquire",
+        "order.release",
+        "synchronizes"
+      ],
+      "events": [
+        {
+          "agent": 2,
+          "failure_order": null,
+          "family": "store",
+          "location": "ready",
+          "order": "release",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 3,
+          "failure_order": null,
+          "family": "load",
+          "location": "ready",
+          "order": "acquire",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ]
+        ],
+        "mo": [
+          [
+            "ready",
+            [
+              0
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "load1",
+          "store0",
+          "hb0-1"
+        ]
+      ],
+      "name": "release_acquire_redundant"
+    },
+    {
+      "coverage": [
+        "order.seq_cst",
+        "sc_total_order"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "y",
+          "order": "seq_cst",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": null,
+          "family": "load",
+          "location": "y",
+          "order": "seq_cst",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ]
+        ],
+        "mo": [
+          [
+            "y",
+            [
+              0
+            ]
+          ]
+        ],
+        "sc": [
+          0,
+          1
+        ]
+      },
+      "expected_outcomes": [
+        [
+          "load1",
+          "store0",
+          "sc0-1"
+        ]
+      ],
+      "name": "seq_cst_store_load_redundant"
+    },
+    {
+      "coverage": [
+        "cmpxchg.failure_order",
+        "family.cmpxchg.failure"
+      ],
+      "events": [
+        {
+          "agent": 0,
+          "failure_order": null,
+          "family": "store",
+          "location": "x",
+          "order": "release",
+          "reads_from": null,
+          "spurious_failure": false,
+          "strength": null,
+          "succeeded": null
+        },
+        {
+          "agent": 1,
+          "failure_order": "acquire",
+          "family": "cmpxchg",
+          "location": "x",
+          "order": "seq_cst",
+          "reads_from": 0,
+          "spurious_failure": false,
+          "strength": "weak",
+          "succeeded": false
+        }
+      ],
+      "expected": {
+        "accepted": true,
+        "hb": [
+          [
+            0,
+            1
+          ]
+        ],
+        "mo": [
+          [
+            "x",
+            [
+              0
+            ]
+          ]
+        ],
+        "sc": []
+      },
+      "expected_outcomes": [
+        [
+          "cas1",
+          "failure",
+          "failure-order-acquire"
+        ]
+      ],
+      "name": "cmpxchg_failure_acquire"
+    }
+  ],
+  "target_case": {
+    "expected": {
+      "aarch64_rmw": "unsupported",
+      "aarch64_seq_cst_fence_count": 2,
+      "aarch64_seq_cst_load": "bounded_sequence",
+      "wasm_load": "unsupported",
+      "x86_bad_alignment": "unsupported",
+      "x86_bad_scope": "unsupported",
+      "x86_bad_width": "unsupported",
+      "x86_seq_cst_fence_count": 1,
+      "x86_seq_cst_load": "bounded_sequence"
+    },
+    "name": "target_atomic_matrix"
+  }
+}

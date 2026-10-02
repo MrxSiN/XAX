@@ -1,0 +1,109 @@
+{
+  "apk": {
+    "blake3": "748063afd32dfeea11e13165ad42441a2f910403288e44f0b089ac3b4e3d8d2f",
+    "build_key": "bd486a54a6eace7924269fded873054c9769d43cc3415ecd71afa59ee32020e4",
+    "bytes": 34289,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "ac055901886c2c846250abc6833fd231239248c1f0a039f707b719645f1a59e7",
+    "repeat_identical": true,
+    "request_root": "89c3df55acceb9fde6cfa62de16451b37c023895379d0164b360f72d7f794ff3",
+    "sha256": "7cc3e60ecb1c164caef561bdfb3632aaef96fa413ca992a4e31cf5d06a73f0c7",
+    "snapshot_root": "fa51d990b6b61e982c87f39e52e764e25d38258dedbcdcea822b6bc7af9b107e"
+  },
+  "environment_note": "direct semantic/DEX/APK structural evidence only; actual framework values, remote capability support, remote preferences, and remote file access are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
+  "managed_dex": {
+    "bytes": 1664,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "remote_types_present": {
+      "ParcelFileDescriptor": true,
+      "SharedPreferences": true
+    },
+    "sha256": "80da175f4f04298800c60f4325d56eb00dea0edcb9823407c6e4755d6fff212b",
+    "signature_valid": true,
+    "wrappers": {
+      "framework-name": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxFrameworkName",
+        "invoke_virtual_count": 1,
+        "move_result_object_count": 1,
+        "return_object_count": 1
+      },
+      "framework-version": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxFrameworkVersion",
+        "invoke_virtual_count": 1,
+        "move_result_object_count": 1,
+        "return_object_count": 1
+      },
+      "list-remote-files": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxListRemoteFiles",
+        "invoke_virtual_count": 1,
+        "move_result_object_count": 1,
+        "return_object_count": 1
+      },
+      "open-remote-file": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxOpenRemoteFile",
+        "invoke_virtual_count": 1,
+        "move_result_object_count": 1,
+        "return_object_count": 1
+      },
+      "remote-preferences": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxRemotePreferences",
+        "invoke_virtual_count": 1,
+        "move_result_object_count": 1,
+        "return_object_count": 1
+      }
+    }
+  },
+  "runtime_validation": {
+    "framework_name": "UNEXECUTED",
+    "framework_version": "UNEXECUTED",
+    "list_remote_files": "UNEXECUTED",
+    "open_remote_file": "UNEXECUTED",
+    "remote_preferences": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-services-evidence-v1",
+  "semantic_input": {
+    "failure_policy": "propagate",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "module_services_cid": "6b65f216c27bce41e17e4c600ac737ba14fb1daf33892cf90957ea1baa957071",
+    "services": [
+      "framework-name",
+      "framework-version",
+      "remote-preferences",
+      "list-remote-files",
+      "open-remote-file"
+    ]
+  },
+  "upstream_contract": {
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "hidden_caching": false,
+    "methods": [
+      "getFrameworkName()->String",
+      "getFrameworkVersion()->String",
+      "getRemotePreferences(String)->SharedPreferences",
+      "listRemoteFiles()->String[]",
+      "openRemoteFile(String)->ParcelFileDescriptor"
+    ],
+    "remote_failure_policy": "propagate"
+  }
+}

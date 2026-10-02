@@ -1,0 +1,159 @@
+{
+  "dex": {
+    "click_bridge": "onClick -> check-cast clicked View -> setText(Clicked) -> xaxOnClick(native) -> return",
+    "click_visible_state_change": "button text XAX -> Clicked",
+    "initial_button_text": "XAX",
+    "lifecycle_bridge": "onCreate -> invoke-super -> managed Button/listener setup -> xaxOnCreate(native) -> return",
+    "managed_activity_create_allocations_emitted": 2,
+    "managed_click_allocations_emitted": 0,
+    "multidex_runtime_dependency": 0,
+    "native_transitions_per_click_callback": 1,
+    "native_transitions_per_lifecycle_callback": 1,
+    "primary_bytes": 1236,
+    "primary_checksum_valid": true,
+    "primary_classes": 1,
+    "primary_methods": 12,
+    "primary_sha256": "22f1cb2ed30cc7d2c69669015120dc3ee59166a1266936da589de4e498af3ab9",
+    "primary_signature_valid": true,
+    "reflection_operations_emitted": 0,
+    "secondary_bytes": 764,
+    "secondary_checksum_valid": true,
+    "secondary_classes": 1,
+    "secondary_methods": 5,
+    "secondary_sha256": "87ae2aa8f025624f4350ed2fcce53496440b85adc1102d02c0f1ed913e8bda79",
+    "secondary_signature_valid": true,
+    "version": "039"
+  },
+  "elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "cca1ef118c793e7656c0dbc453ec78dbf5fda31a15a361db4c7a415db3f59ccc"
+  },
+  "environment_note": "direct-emission structural/signature evidence only; Android package-manager/ART/Activity execution is UNEXECUTED because no Android device/emulator/build-tools runtime is available",
+  "generic_build_request": {
+    "signed": {
+      "artifact_digest_blake3": "d3127d553b00047670ee03499f89db528c1bf94ed4e3a4cdbfe2cb679b6f15a7",
+      "artifact_kind": "ANDROID_SIGNED_APK",
+      "build_key": "fb0d07fc04a091d3b8ba60e963d3082a8acf0f25b34d09c69ddea0b8fa569016",
+      "bytes": 35413,
+      "package_root": "e47d300b4d3d71073191c506a5d183678740cbc5eb080782404f8e8fc5e29b98",
+      "private_key_material_in_provenance": false,
+      "private_key_material_in_semantic_store": false,
+      "repeat_path_matches_fixture": true,
+      "request_root": "90d3cc5806eee20e7bc21f10d9ae986a9c9e62a6d2104eec7fbbdfcc4c060fe3",
+      "signer_identity_sha256": "630536dd2294653f10dc127531202ffa0de9ecce911bfd27abf61213e3f4ef68",
+      "snapshot_root": "b57730f9e92944ccbd89dea68803c5f10ae9cb28d20acc34e8b0e8e8b3059c0f"
+    },
+    "unsigned": {
+      "artifact_digest_blake3": "a068f75e1fada94ae9f5f2cea250387820cb5c42a702d76452ab952c9b755c33",
+      "artifact_kind": "ANDROID_UNSIGNED_APK",
+      "build_key": "a165e74950f16fd2d3deb30c6a3d229c131138d3cf780f7bc8d4f440f5cfa44b",
+      "bytes": 34010,
+      "package_root": "63edd3a122a8462ce9f8c7eba96dc1c42675cc8d4e6d92767b185834af6e490d",
+      "repeat_path_matches_fixture": true,
+      "request_root": "6c5d601f56a7b87719f9a6f6827cae0b017484154bdcf81f5757624d44c89c65",
+      "snapshot_root": "1050f9fbea5675e049850b89371808d2d04384b39dc8ee7c515527ee2c0b64ce"
+    }
+  },
+  "manifest": {
+    "activity": "xax.generated.XaxActivity",
+    "bytes": 1132,
+    "elements": [
+      "manifest",
+      "uses-sdk",
+      "application",
+      "activity",
+      "intent-filter",
+      "action",
+      "category"
+    ],
+    "min_sdk": 28,
+    "package": "xax.generated",
+    "semantic_cid": "2344bfd3c551d67cd1d1eca5dfb43982934429b5a05b89958c730440378f59f0",
+    "sha256": "6ab9b357e699b50b2d86f97ee3a610beec9e8c92b00c1c08c59a17a7c599d729",
+    "target_sdk": 35
+  },
+  "remaining_before_fixture_b_runtime_proof": [
+    "execute package-manager signature/manifest validation on Android",
+    "execute ART DEX verification/class initialization",
+    "launch Activity and observe managed Button/listener construction plus one JNI lifecycle callback",
+    "click the rendered Button and observe one JNI click callback",
+    "validate the XAX-semantic UI carrier lowering and visible state mutation on real ART/Android"
+  ],
+  "runtime_validation": {
+    "activity_launch": "UNEXECUTED",
+    "button_click_callback": "UNEXECUTED",
+    "button_render": "UNEXECUTED",
+    "jni_callback": "UNEXECUTED",
+    "native_library_load": "UNEXECUTED",
+    "package_install": "UNEXECUTED",
+    "validation_harness": "compiler/integration/android/validate_activity_apk.sh"
+  },
+  "schema": "xax-android-apk-evidence-v2",
+  "semantic_source_policy": {
+    "aapt2_invocations": 0,
+    "apksigner_invocations": 0,
+    "c_cpp_bridge_source_files": 0,
+    "d8_r8_invocations": 0,
+    "external_linker_invocations": 0,
+    "gradle_build_files": 0,
+    "java_source_files": 0,
+    "javac_invocations": 0,
+    "kotlin_source_files": 0,
+    "kotlinc_invocations": 0
+  },
+  "signed_apk": {
+    "bytes": 35413,
+    "certificate_key_matches": true,
+    "certificate_sha256": "630536dd2294653f10dc127531202ffa0de9ecce911bfd27abf61213e3f4ef68",
+    "content_digest_valid": true,
+    "expected_certificate_sha256": "630536dd2294653f10dc127531202ffa0de9ecce911bfd27abf61213e3f4ef68",
+    "sha256": "048b3130a6e0996abb9640fdc730114ca5734aa321253e5689cc6aa436b46ae5",
+    "signature_algorithm_id": 259,
+    "signature_valid": true,
+    "v2_signing_block_offset": 33736,
+    "v2_signing_block_size": 1403
+  },
+  "unsigned_apk": {
+    "bytes": 34010,
+    "entry_alignment": {
+      "AndroidManifest.xml": {
+        "aligned": true,
+        "data_offset": 56,
+        "required_alignment": 4,
+        "size": 1132
+      },
+      "classes.dex": {
+        "aligned": true,
+        "data_offset": 1236,
+        "required_alignment": 4,
+        "size": 1236
+      },
+      "classes2.dex": {
+        "aligned": true,
+        "data_offset": 2520,
+        "required_alignment": 4,
+        "size": 764
+      },
+      "lib/arm64-v8a/libxaxapp.so": {
+        "aligned": true,
+        "data_offset": 16384,
+        "required_alignment": 16384,
+        "size": 17352
+      }
+    },
+    "entry_order": [
+      "AndroidManifest.xml",
+      "classes.dex",
+      "classes2.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "sha256": "08fec62d67cc2758035c26e04fdc783f3738d4537c73090d6e284fbfb8f6379e"
+  }
+}

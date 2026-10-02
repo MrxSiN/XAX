@@ -1,0 +1,32 @@
+{
+  "module": {
+    "bytes": 35750,
+    "expected_hooked_text": "HookedResult",
+    "package": "com.example.module",
+    "scope": "com.example.target",
+    "sha256": "11bbd2545d095e182ffaffb69ad999cad34aa6f0868812b50792301120291630",
+    "v2_certificate_key_matches": true,
+    "v2_content_digest_valid": true,
+    "v2_signature_valid": true
+  },
+  "purpose": "validation-only installable pair; no runtime result is claimed",
+  "runtime_validation": {
+    "install": "UNEXECUTED",
+    "interception": "UNEXECUTED",
+    "module_enabled_and_scoped": "EXTERNAL_PRECONDITION",
+    "package_ready": "UNEXECUTED",
+    "visible_hooked_result": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-runtime-pair-evidence-v1",
+  "signer_identity_sha256": "630536dd2294653f10dc127531202ffa0de9ecce911bfd27abf61213e3f4ef68",
+  "target": {
+    "activity": "com.example.target.XaxActivity",
+    "bytes": 35413,
+    "expected_unhooked_text": "OriginalArg",
+    "package": "com.example.target",
+    "sha256": "3c37cc3fc2247f18151540fbdf9e201b9177ee74470f6d33fe3f52c86bf61919",
+    "v2_certificate_key_matches": true,
+    "v2_content_digest_valid": true,
+    "v2_signature_valid": true
+  }
+}

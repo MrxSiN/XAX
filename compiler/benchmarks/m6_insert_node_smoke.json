@@ -1,0 +1,31 @@
+{
+  "after_result": [
+    12
+  ],
+  "before_result": [
+    5
+  ],
+  "committed": true,
+  "entities_exposed": 4,
+  "environment": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "expected_position": [
+    0,
+    1
+  ],
+  "insert_before": "F0.B0.N1",
+  "mutation": "insert-pure-node+replace-use",
+  "nodes_after": 4,
+  "nodes_before": 3,
+  "query_bytes": 576,
+  "reused_objects": 4,
+  "schema": "xax-m6-insert-node-smoke-v1",
+  "timing": false,
+  "touched_objects": 5,
+  "transaction_bytes": 43,
+  "transaction_local_result": "I4.R0",
+  "verified_objects": 5
+}

@@ -1,0 +1,506 @@
+{
+  "budget": {
+    "hot_call_threshold": 10,
+    "inline_cold_nodes": 2,
+    "inline_hot_nodes": 8,
+    "pass_iterations": 4,
+    "polynomial_terms": 256,
+    "search_candidates": 64,
+    "search_memory_bytes": 262144,
+    "search_steps": 96
+  },
+  "caveats": [
+    "code-size cost is exact for the emitted candidate extent but is not runtime latency/throughput measurement",
+    "search equivalence is currently limited to pure wrapping integer polynomial expressions",
+    "effectful/resource/atomic regions are preserved conservatively and excluded from search/inlining",
+    "profile data affects profitability only and is not semantic legality evidence"
+  ],
+  "claims": {
+    "cost": "target lowering-derived exact function byte extent used as code-size estimate",
+    "interprocedural": "pure single-block direct-call inlining with profile-separated profitability",
+    "local": "constant folding, wrapping identities, CSE, DCE, constant-CFG simplification",
+    "profile": "tooling-only call weights; never serialized into canonical XAX objects",
+    "search": "deterministically bounded enumerative wrapping-arithmetic search",
+    "validation": "ordinary verifier plus exact polynomial equivalence over Z/(2^N)"
+  },
+  "milestone": "M12",
+  "optimization_policy": {
+    "deterministic": true,
+    "hot_call_threshold": 10,
+    "inline_cold_nodes": 2,
+    "inline_hot_nodes": 8,
+    "objective": "code_size",
+    "pass_iterations": 4,
+    "polynomial_terms": 256,
+    "search_candidates": 64,
+    "search_memory_bytes": 262144,
+    "search_steps": 96
+  },
+  "optimization_policy_root": "924e070eceab1b9abba8c1cbb67fb2365fa7cc9f21362537f4b228bcdbd90dba",
+  "profile_guided": {
+    "callee": "7debfe2b549fd65f1edb0b9bd2e0448fe2bce289ff5fd463860f2b872122535d",
+    "caller": "8fd2baf7db90319fc730de9d7ca1299b94f7f5e0b6085b12b1dd0d5a82ae129c",
+    "cold_function": "8fd2baf7db90319fc730de9d7ca1299b94f7f5e0b6085b12b1dd0d5a82ae129c",
+    "different_profitability_output": true,
+    "hot_function": "7debfe2b549fd65f1edb0b9bd2e0448fe2bce289ff5fd463860f2b872122535d",
+    "profile_bytes_absent_from_canonical_store": true,
+    "profile_identity": "6d31322d65766964656e63652d686f742d70726f66696c652d7631",
+    "profile_tooling_digest_sha256": "19be615163dca0577565ff5c2f6082181370b9322d8ba762175452206f02df28",
+    "vectors": [
+      {
+        "arguments": [
+          0
+        ],
+        "cold": [
+          3
+        ],
+        "hot": [
+          3
+        ],
+        "seed": [
+          3
+        ]
+      },
+      {
+        "arguments": [
+          1
+        ],
+        "cold": [
+          4
+        ],
+        "hot": [
+          4
+        ],
+        "seed": [
+          4
+        ]
+      },
+      {
+        "arguments": [
+          100
+        ],
+        "cold": [
+          103
+        ],
+        "hot": [
+          103
+        ],
+        "seed": [
+          103
+        ]
+      },
+      {
+        "arguments": [
+          4294967295
+        ],
+        "cold": [
+          2
+        ],
+        "hot": [
+          2
+        ],
+        "seed": [
+          2
+        ]
+      }
+    ],
+    "vectors_match": true
+  },
+  "scope": "optimizer expansion and validated search prototype",
+  "targets": [
+    {
+      "after_cost": {
+        "artifact_bytes": 43,
+        "assumptions": [
+          "target-architecture=1",
+          "exact emitted function extent used as size oracle"
+        ],
+        "classification": "lowering-derived estimate",
+        "entity": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+        "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+        "objective": "code_size",
+        "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+        "unit": "bytes",
+        "value": 43
+      },
+      "before_cost": {
+        "artifact_bytes": 59,
+        "assumptions": [
+          "target-architecture=1",
+          "exact emitted function extent used as size oracle"
+        ],
+        "classification": "lowering-derived estimate",
+        "entity": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+        "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+        "objective": "code_size",
+        "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+        "unit": "bytes",
+        "value": 59
+      },
+      "candidate_cost_reports": [
+        {
+          "artifact_bytes": 59,
+          "assumptions": [
+            "target-architecture=1",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+          "unit": "bytes",
+          "value": 59
+        },
+        {
+          "artifact_bytes": 43,
+          "assumptions": [
+            "target-architecture=1",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+          "unit": "bytes",
+          "value": 43
+        },
+        {
+          "artifact_bytes": 59,
+          "assumptions": [
+            "target-architecture=1",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+          "unit": "bytes",
+          "value": 59
+        },
+        {
+          "artifact_bytes": 76,
+          "assumptions": [
+            "target-architecture=1",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "61415c2a888fa73242836f5de875a64fde09855a49fd886da39d4107b81ac684",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+          "unit": "bytes",
+          "value": 76
+        },
+        {
+          "artifact_bytes": 92,
+          "assumptions": [
+            "target-architecture=1",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "d2339098c8306d97de849cfefed53d85925b9c3579d607cc26b34339467ff18d",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+          "unit": "bytes",
+          "value": 92
+        }
+      ],
+      "deterministic_function": true,
+      "deterministic_store_bytes": true,
+      "input_function": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+      "search": {
+        "attempted": true,
+        "candidates": 64,
+        "equivalent_candidates": 4,
+        "peak_memory_bytes": 6560,
+        "rejected_validation": 60,
+        "selected_function": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+        "steps": 64,
+        "validator_identity": "7861782d6d31322d777261702d706f6c792d76616c696461746f722d7631"
+      },
+      "selected_function": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+      "target_root": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+      "vectors": [
+        {
+          "after": [
+            0
+          ],
+          "arguments": [
+            0
+          ],
+          "before": [
+            0
+          ]
+        },
+        {
+          "after": [
+            2
+          ],
+          "arguments": [
+            1
+          ],
+          "before": [
+            2
+          ]
+        },
+        {
+          "after": [
+            4
+          ],
+          "arguments": [
+            2
+          ],
+          "before": [
+            4
+          ]
+        },
+        {
+          "after": [
+            6
+          ],
+          "arguments": [
+            3
+          ],
+          "before": [
+            6
+          ]
+        },
+        {
+          "after": [
+            34
+          ],
+          "arguments": [
+            17
+          ],
+          "before": [
+            34
+          ]
+        },
+        {
+          "after": [
+            4294967294
+          ],
+          "arguments": [
+            2147483647
+          ],
+          "before": [
+            4294967294
+          ]
+        },
+        {
+          "after": [
+            4294967294
+          ],
+          "arguments": [
+            4294967295
+          ],
+          "before": [
+            4294967294
+          ]
+        }
+      ],
+      "vectors_match": true
+    },
+    {
+      "after_cost": {
+        "artifact_bytes": 66,
+        "assumptions": [
+          "target-architecture=2",
+          "exact emitted function extent used as size oracle"
+        ],
+        "classification": "lowering-derived estimate",
+        "entity": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+        "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+        "objective": "code_size",
+        "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+        "unit": "bytes",
+        "value": 32
+      },
+      "before_cost": {
+        "artifact_bytes": 70,
+        "assumptions": [
+          "target-architecture=2",
+          "exact emitted function extent used as size oracle"
+        ],
+        "classification": "lowering-derived estimate",
+        "entity": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+        "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+        "objective": "code_size",
+        "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+        "unit": "bytes",
+        "value": 36
+      },
+      "candidate_cost_reports": [
+        {
+          "artifact_bytes": 70,
+          "assumptions": [
+            "target-architecture=2",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+          "unit": "bytes",
+          "value": 36
+        },
+        {
+          "artifact_bytes": 66,
+          "assumptions": [
+            "target-architecture=2",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+          "unit": "bytes",
+          "value": 32
+        },
+        {
+          "artifact_bytes": 70,
+          "assumptions": [
+            "target-architecture=2",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+          "unit": "bytes",
+          "value": 36
+        },
+        {
+          "artifact_bytes": 77,
+          "assumptions": [
+            "target-architecture=2",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "61415c2a888fa73242836f5de875a64fde09855a49fd886da39d4107b81ac684",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+          "unit": "bytes",
+          "value": 43
+        },
+        {
+          "artifact_bytes": 81,
+          "assumptions": [
+            "target-architecture=2",
+            "exact emitted function extent used as size oracle"
+          ],
+          "classification": "lowering-derived estimate",
+          "entity": "d2339098c8306d97de849cfefed53d85925b9c3579d607cc26b34339467ff18d",
+          "model_identity": "7861782d6d31322d6c6f776572696e672d73697a652d7631",
+          "objective": "code_size",
+          "target": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+          "unit": "bytes",
+          "value": 47
+        }
+      ],
+      "deterministic_function": true,
+      "deterministic_store_bytes": true,
+      "input_function": "e07bd34c4be97bbbc8f63a4387e8642832802fe485aa6420be88e29b0e20d27f",
+      "search": {
+        "attempted": true,
+        "candidates": 64,
+        "equivalent_candidates": 4,
+        "peak_memory_bytes": 6560,
+        "rejected_validation": 60,
+        "selected_function": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+        "steps": 64,
+        "validator_identity": "7861782d6d31322d777261702d706f6c792d76616c696461746f722d7631"
+      },
+      "selected_function": "949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b",
+      "target_root": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+      "vectors": [
+        {
+          "after": [
+            0
+          ],
+          "arguments": [
+            0
+          ],
+          "before": [
+            0
+          ]
+        },
+        {
+          "after": [
+            2
+          ],
+          "arguments": [
+            1
+          ],
+          "before": [
+            2
+          ]
+        },
+        {
+          "after": [
+            4
+          ],
+          "arguments": [
+            2
+          ],
+          "before": [
+            4
+          ]
+        },
+        {
+          "after": [
+            6
+          ],
+          "arguments": [
+            3
+          ],
+          "before": [
+            6
+          ]
+        },
+        {
+          "after": [
+            34
+          ],
+          "arguments": [
+            17
+          ],
+          "before": [
+            34
+          ]
+        },
+        {
+          "after": [
+            4294967294
+          ],
+          "arguments": [
+            2147483647
+          ],
+          "before": [
+            4294967294
+          ]
+        },
+        {
+          "after": [
+            4294967294
+          ],
+          "arguments": [
+            4294967295
+          ],
+          "before": [
+            4294967294
+          ]
+        }
+      ],
+      "vectors_match": true
+    }
+  ]
+}

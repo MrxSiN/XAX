@@ -1,0 +1,69 @@
+{
+  "host": {
+    "logical_cpus": 5,
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "samples": {
+    "baseline": {
+      "max_wall_ns": 2164621226,
+      "median_peak_rss_kb": 110380,
+      "median_wall_ns": 1620205423,
+      "min_wall_ns": 1075789621,
+      "peak_rss_kb": [
+        110252,
+        110508
+      ],
+      "samples": 2,
+      "wall_ns": [
+        1075789621,
+        2164621226
+      ]
+    },
+    "entry_pruned": {
+      "max_wall_ns": 1804361537,
+      "median_peak_rss_kb": 110124,
+      "median_wall_ns": 1474714466,
+      "min_wall_ns": 1145067395,
+      "peak_rss_kb": [
+        110124,
+        110124
+      ],
+      "samples": 2,
+      "wall_ns": [
+        1145067395,
+        1804361537
+      ]
+    },
+    "reachable_pruned": {
+      "max_wall_ns": 992643957,
+      "median_peak_rss_kb": 104110,
+      "median_wall_ns": 987022259,
+      "min_wall_ns": 981400562,
+      "peak_rss_kb": [
+        104108,
+        104112
+      ],
+      "samples": 2,
+      "wall_ns": [
+        981400562,
+        992643957
+      ]
+    },
+    "specialized_subset": {
+      "max_wall_ns": 1136169263,
+      "median_peak_rss_kb": 102316,
+      "median_wall_ns": 1060400238,
+      "min_wall_ns": 984631213,
+      "peak_rss_kb": [
+        102316,
+        102316
+      ],
+      "samples": 2,
+      "wall_ns": [
+        984631213,
+        1136169263
+      ]
+    }
+  }
+}

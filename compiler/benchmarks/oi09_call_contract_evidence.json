@@ -1,0 +1,560 @@
+{
+  "claims": {
+    "all_calls_bounded": true,
+    "referenced_contract_is_separately_content_addressed": true,
+    "sealed_sets_are_devirtualization_evidence_not_a_required_contract_replacement": true,
+    "unknown_effect_contract_supported": false
+  },
+  "corpus": {
+    "callable_dispatch_indices": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      9,
+      9,
+      9,
+      9,
+      9,
+      9,
+      9,
+      9,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14
+    ],
+    "callable_values": 120,
+    "calls_per_callable": 8,
+    "contracts": [
+      {
+        "cid": "9a50b4bd046723fb2111c896ac6fd49d95f0d6b8c1a4d7b72bc3e10bafaa3bda",
+        "effects": [],
+        "implementation_cids": [
+          "3b10b4c4dfc8f8c2983856c77efd3e2dfb7059c9944c1db0cb1942de60cab4fb",
+          "b4674525545147b8f592d5b5a21ab3d7c2984191c8c36ea79781c9710b6873a1",
+          "33bf5e1bf31ba4e898a29d91be247361ffb18cc6d32b376cc74dd1ed64b9f15e",
+          "fd2b62ff216fbe6a526e05722a32dba40620b25100389f456ca27295b866111f",
+          "e28291043a9273987ff043bf755d20e2b5dd6f578803173c48ce9a065e36e928",
+          "e6e2d0eeeb3f4b58044a49152fa0d8a20353608cbf5f056d4206ccb6e9920ac4"
+        ],
+        "inputs": [
+          "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c"
+        ],
+        "may_return": true,
+        "may_trap": false,
+        "object_bytes": 75,
+        "outputs": [
+          "70bc721413a0e348b918104f74735b38a2f0fa24d6faaf4597eff803ef931a6c"
+        ]
+      },
+      {
+        "cid": "4301c0db203304a79a8b6e25fecaf313053930e08afd249a56e4e9c3d63e59b5",
+        "effects": [
+          [
+            "filesystem",
+            0
+          ]
+        ],
+        "implementation_cids": [
+          "e484211eb706cdbe891f0f87e75881b1a384148a963339049b478cce2620b948",
+          "32ddd76f7dccedc75b4b92ca77c25a2b471adc241886ec53e3130a08aed9db8a",
+          "9db9c0ce5c558e786c00b98c12a7ce878abcc58bc8b4b66ff88f24fabba5f908",
+          "55b786de05dcd86e6b07a91c64287e82325f9e0ab493095df1570d3735c017bf"
+        ],
+        "inputs": [
+          "c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567"
+        ],
+        "may_return": true,
+        "may_trap": false,
+        "object_bytes": 75,
+        "outputs": [
+          "c0bccc4581f6497319c020d4f090f292851eaca295e91a3814668574aa3ec567"
+        ]
+      },
+      {
+        "cid": "abcc622ad0cb2a1947c252f25b34d6e7b4f6c9f6e6d2b6fd2160d40e46d87ebc",
+        "effects": [
+          [
+            "network",
+            0
+          ]
+        ],
+        "implementation_cids": [
+          "355e19e2e195d5687e90bfcc812e72b69a88afaad5b21861a146391eebae9569",
+          "a545ae8d1b370791e4a137153fd26bce7029a8b57942bedcd9c9818aebda2519",
+          "01c1e28c8f8ea4c99cd3ce1eae2a74323d4fbe12ad779620251787e2d6373dcd",
+          "0724ad910b5e0c4065523c140be709615528ee5f95c35d863930baec34129954"
+        ],
+        "inputs": [
+          "46dc722d89286dc35ebc86a510b0fd258dfe3b75272ae01eb348a69fd62288fe"
+        ],
+        "may_return": true,
+        "may_trap": false,
+        "object_bytes": 75,
+        "outputs": [
+          "46dc722d89286dc35ebc86a510b0fd258dfe3b75272ae01eb348a69fd62288fe"
+        ]
+      },
+      {
+        "cid": "4edfe1a1116378094509008d33e746c923c3fbdcbfb56d375838200358ff314a",
+        "effects": [
+          [
+            "device",
+            0
+          ]
+        ],
+        "implementation_cids": [
+          "507e05bd6c9306fae20533913d642a98e12f5790cd46692ef941b0839947ccb6",
+          "74e4dd6fde9ed4c0bb6749d7884df6e3027dc1bc3d3f37dadee8f74c96ea6c0a",
+          "8b01f43bdf021ab25f4d23cc491f8b9ed0089ec16958b32e36cc06cd2a8c27bd",
+          "775487addd7a16f869d444aaff5714df9fcead70b15850fecc27e03fab8f91be"
+        ],
+        "inputs": [
+          "f662c82ec510e3d3c01e01601a1f7a0eed15af3d535e3e9ec73948c3f8ae7b02",
+          "b521bb364b8d183579067d9f382197af790ca2c8293a0f6b398d6577b712cc95"
+        ],
+        "may_return": true,
+        "may_trap": false,
+        "object_bytes": 109,
+        "outputs": [
+          "f662c82ec510e3d3c01e01601a1f7a0eed15af3d535e3e9ec73948c3f8ae7b02",
+          "b521bb364b8d183579067d9f382197af790ca2c8293a0f6b398d6577b712cc95"
+        ]
+      },
+      {
+        "cid": "a2b52260b411f7dc2966487d2052c7e9910181d79ed9161fd556c075f2c78283",
+        "effects": [],
+        "implementation_cids": [
+          "06a4b9994ef618ead320359075d49ec1c534c1d915b727e40814dc75e4f2ee9a",
+          "976ea585b1d0138b8149653aec0614a1fdbb3ad80e8cf5c19698feb4ef892a75"
+        ],
+        "inputs": [],
+        "may_return": false,
+        "may_trap": true,
+        "object_bytes": 41,
+        "outputs": []
+      }
+    ],
+    "dispatch_sets": [
+      {
+        "contract_cid": "9a50b4bd046723fb2111c896ac6fd49d95f0d6b8c1a4d7b72bc3e10bafaa3bda",
+        "targets": [
+          "3b10b4c4dfc8f8c2983856c77efd3e2dfb7059c9944c1db0cb1942de60cab4fb"
+        ]
+      },
+      {
+        "contract_cid": "9a50b4bd046723fb2111c896ac6fd49d95f0d6b8c1a4d7b72bc3e10bafaa3bda",
+        "targets": [
+          "3b10b4c4dfc8f8c2983856c77efd3e2dfb7059c9944c1db0cb1942de60cab4fb",
+          "b4674525545147b8f592d5b5a21ab3d7c2984191c8c36ea79781c9710b6873a1"
+        ]
+      },
+      {
+        "contract_cid": "9a50b4bd046723fb2111c896ac6fd49d95f0d6b8c1a4d7b72bc3e10bafaa3bda",
+        "targets": [
+          "33bf5e1bf31ba4e898a29d91be247361ffb18cc6d32b376cc74dd1ed64b9f15e",
+          "3b10b4c4dfc8f8c2983856c77efd3e2dfb7059c9944c1db0cb1942de60cab4fb",
+          "b4674525545147b8f592d5b5a21ab3d7c2984191c8c36ea79781c9710b6873a1",
+          "e28291043a9273987ff043bf755d20e2b5dd6f578803173c48ce9a065e36e928",
+          "e6e2d0eeeb3f4b58044a49152fa0d8a20353608cbf5f056d4206ccb6e9920ac4",
+          "fd2b62ff216fbe6a526e05722a32dba40620b25100389f456ca27295b866111f"
+        ]
+      },
+      {
+        "contract_cid": "4301c0db203304a79a8b6e25fecaf313053930e08afd249a56e4e9c3d63e59b5",
+        "targets": [
+          "e484211eb706cdbe891f0f87e75881b1a384148a963339049b478cce2620b948"
+        ]
+      },
+      {
+        "contract_cid": "4301c0db203304a79a8b6e25fecaf313053930e08afd249a56e4e9c3d63e59b5",
+        "targets": [
+          "32ddd76f7dccedc75b4b92ca77c25a2b471adc241886ec53e3130a08aed9db8a",
+          "e484211eb706cdbe891f0f87e75881b1a384148a963339049b478cce2620b948"
+        ]
+      },
+      {
+        "contract_cid": "4301c0db203304a79a8b6e25fecaf313053930e08afd249a56e4e9c3d63e59b5",
+        "targets": [
+          "32ddd76f7dccedc75b4b92ca77c25a2b471adc241886ec53e3130a08aed9db8a",
+          "55b786de05dcd86e6b07a91c64287e82325f9e0ab493095df1570d3735c017bf",
+          "9db9c0ce5c558e786c00b98c12a7ce878abcc58bc8b4b66ff88f24fabba5f908",
+          "e484211eb706cdbe891f0f87e75881b1a384148a963339049b478cce2620b948"
+        ]
+      },
+      {
+        "contract_cid": "abcc622ad0cb2a1947c252f25b34d6e7b4f6c9f6e6d2b6fd2160d40e46d87ebc",
+        "targets": [
+          "355e19e2e195d5687e90bfcc812e72b69a88afaad5b21861a146391eebae9569"
+        ]
+      },
+      {
+        "contract_cid": "abcc622ad0cb2a1947c252f25b34d6e7b4f6c9f6e6d2b6fd2160d40e46d87ebc",
+        "targets": [
+          "355e19e2e195d5687e90bfcc812e72b69a88afaad5b21861a146391eebae9569",
+          "a545ae8d1b370791e4a137153fd26bce7029a8b57942bedcd9c9818aebda2519"
+        ]
+      },
+      {
+        "contract_cid": "abcc622ad0cb2a1947c252f25b34d6e7b4f6c9f6e6d2b6fd2160d40e46d87ebc",
+        "targets": [
+          "01c1e28c8f8ea4c99cd3ce1eae2a74323d4fbe12ad779620251787e2d6373dcd",
+          "0724ad910b5e0c4065523c140be709615528ee5f95c35d863930baec34129954",
+          "355e19e2e195d5687e90bfcc812e72b69a88afaad5b21861a146391eebae9569",
+          "a545ae8d1b370791e4a137153fd26bce7029a8b57942bedcd9c9818aebda2519"
+        ]
+      },
+      {
+        "contract_cid": "4edfe1a1116378094509008d33e746c923c3fbdcbfb56d375838200358ff314a",
+        "targets": [
+          "507e05bd6c9306fae20533913d642a98e12f5790cd46692ef941b0839947ccb6"
+        ]
+      },
+      {
+        "contract_cid": "4edfe1a1116378094509008d33e746c923c3fbdcbfb56d375838200358ff314a",
+        "targets": [
+          "507e05bd6c9306fae20533913d642a98e12f5790cd46692ef941b0839947ccb6",
+          "74e4dd6fde9ed4c0bb6749d7884df6e3027dc1bc3d3f37dadee8f74c96ea6c0a"
+        ]
+      },
+      {
+        "contract_cid": "4edfe1a1116378094509008d33e746c923c3fbdcbfb56d375838200358ff314a",
+        "targets": [
+          "507e05bd6c9306fae20533913d642a98e12f5790cd46692ef941b0839947ccb6",
+          "74e4dd6fde9ed4c0bb6749d7884df6e3027dc1bc3d3f37dadee8f74c96ea6c0a",
+          "775487addd7a16f869d444aaff5714df9fcead70b15850fecc27e03fab8f91be",
+          "8b01f43bdf021ab25f4d23cc491f8b9ed0089ec16958b32e36cc06cd2a8c27bd"
+        ]
+      },
+      {
+        "contract_cid": "a2b52260b411f7dc2966487d2052c7e9910181d79ed9161fd556c075f2c78283",
+        "targets": [
+          "06a4b9994ef618ead320359075d49ec1c534c1d915b727e40814dc75e4f2ee9a"
+        ]
+      },
+      {
+        "contract_cid": "a2b52260b411f7dc2966487d2052c7e9910181d79ed9161fd556c075f2c78283",
+        "targets": [
+          "06a4b9994ef618ead320359075d49ec1c534c1d915b727e40814dc75e4f2ee9a",
+          "976ea585b1d0138b8149653aec0614a1fdbb3ad80e8cf5c19698feb4ef892a75"
+        ]
+      },
+      {
+        "contract_cid": "a2b52260b411f7dc2966487d2052c7e9910181d79ed9161fd556c075f2c78283",
+        "targets": [
+          "06a4b9994ef618ead320359075d49ec1c534c1d915b727e40814dc75e4f2ee9a",
+          "976ea585b1d0138b8149653aec0614a1fdbb3ad80e8cf5c19698feb4ef892a75"
+        ]
+      }
+    ],
+    "implementation_only_mutation": {
+      "contract_cid": "9a50b4bd046723fb2111c896ac6fd49d95f0d6b8c1a4d7b72bc3e10bafaa3bda",
+      "new_function_cid": "3a89cacf93cc6788f9173976e466016f2b91c49a495ce35dd21a45ed4a744a49",
+      "old_function_cid": "3b10b4c4dfc8f8c2983856c77efd3e2dfb7059c9944c1db0cb1942de60cab4fb"
+    },
+    "indirect_calls": 960
+  },
+  "decision": {
+    "base_contract_representation": "referenced",
+    "embedded_role": "possible future serialization compression for low-reuse contracts, not semantic authority",
+    "reason": "referenced is the only candidate that reduces ideal token atoms and verification cost in both call-heavy profiles while retaining implementation-independent content identity; its sparse-profile byte penalty is recorded rather than hidden",
+    "sealed_dispatch_role": "optional exact-target optimization fact, not the sole bounded contract"
+  },
+  "host": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "schema": "xax-oi09-call-contract-evidence-v1",
+  "token_metric": "ideal semantic atoms; one atom per scalar/local reference, independent of a particular text tokenizer",
+  "workloads": {
+    "reuse_heavy_960_calls": {
+      "embedded": {
+        "callable_object_count": 120,
+        "contract_object_count": 0,
+        "devirtualization": {
+          "exact_target_set_callable_fraction": 0.0,
+          "singleton_call_fraction": 0.0,
+          "singleton_callable_fraction": 0.0
+        },
+        "ideal_token_atoms": 1801,
+        "metadata_object_count": 0,
+        "object_count": 120,
+        "package_interface_stability": {
+          "callable_contract_refs_changed": 0,
+          "contract_identity_stable": true,
+          "contract_metadata_objects_changed": 0,
+          "indirect_call_refs_changed": 0
+        },
+        "persistent_bytes": 9962,
+        "reuse": {
+          "callables_per_contract_or_set": 1.0,
+          "distinct_contracts": 5,
+          "distinct_dispatch_sets": 0
+        },
+        "verification_timing": {
+          "max_ns": 4416480,
+          "median_ns": 2511496,
+          "min_ns": 2355000,
+          "repetitions": 31
+        }
+      },
+      "referenced": {
+        "callable_object_count": 120,
+        "contract_object_count": 5,
+        "devirtualization": {
+          "exact_target_set_callable_fraction": 0.0,
+          "singleton_call_fraction": 0.0,
+          "singleton_callable_fraction": 0.0
+        },
+        "ideal_token_atoms": 1231,
+        "metadata_object_count": 0,
+        "object_count": 125,
+        "package_interface_stability": {
+          "callable_contract_refs_changed": 0,
+          "contract_identity_stable": true,
+          "contract_metadata_objects_changed": 0,
+          "indirect_call_refs_changed": 0
+        },
+        "persistent_bytes": 9737,
+        "reuse": {
+          "callables_per_contract_or_set": 24.0,
+          "distinct_contracts": 5,
+          "distinct_dispatch_sets": 0
+        },
+        "verification_timing": {
+          "max_ns": 909436,
+          "median_ns": 603302,
+          "min_ns": 577378,
+          "repetitions": 31
+        }
+      },
+      "sealed": {
+        "callable_object_count": 120,
+        "contract_object_count": 0,
+        "devirtualization": {
+          "exact_target_set_callable_fraction": 1.0,
+          "singleton_call_fraction": 0.3333333333333333,
+          "singleton_callable_fraction": 0.3333333333333333
+        },
+        "ideal_token_atoms": 1341,
+        "metadata_object_count": 15,
+        "object_count": 135,
+        "package_interface_stability": {
+          "callable_contract_refs_changed": 24,
+          "contract_identity_stable": false,
+          "contract_metadata_objects_changed": 3,
+          "indirect_call_refs_changed": 192
+        },
+        "persistent_bytes": 11651,
+        "reuse": {
+          "callables_per_contract_or_set": 8.0,
+          "distinct_contracts": 5,
+          "distinct_dispatch_sets": 15
+        },
+        "verification_timing": {
+          "max_ns": 1961973,
+          "median_ns": 770210,
+          "min_ns": 688207,
+          "repetitions": 31
+        }
+      }
+    },
+    "sparse_callable_960_calls": {
+      "embedded": {
+        "callable_object_count": 15,
+        "contract_object_count": 0,
+        "devirtualization": {
+          "exact_target_set_callable_fraction": 0.0,
+          "singleton_call_fraction": 0.0,
+          "singleton_callable_fraction": 0.0
+        },
+        "ideal_token_atoms": 1066,
+        "metadata_object_count": 0,
+        "object_count": 15,
+        "package_interface_stability": {
+          "callable_contract_refs_changed": 0,
+          "contract_identity_stable": true,
+          "contract_metadata_objects_changed": 0,
+          "indirect_call_refs_changed": 0
+        },
+        "persistent_bytes": 2087,
+        "reuse": {
+          "callables_per_contract_or_set": 1.0,
+          "distinct_contracts": 5,
+          "distinct_dispatch_sets": 0
+        },
+        "verification_timing": {
+          "max_ns": 2305614,
+          "median_ns": 363320,
+          "min_ns": 326233,
+          "repetitions": 31
+        }
+      },
+      "referenced": {
+        "callable_object_count": 15,
+        "contract_object_count": 5,
+        "devirtualization": {
+          "exact_target_set_callable_fraction": 0.0,
+          "singleton_call_fraction": 0.0,
+          "singleton_callable_fraction": 0.0
+        },
+        "ideal_token_atoms": 1021,
+        "metadata_object_count": 0,
+        "object_count": 20,
+        "package_interface_stability": {
+          "callable_contract_refs_changed": 0,
+          "contract_identity_stable": true,
+          "contract_metadata_objects_changed": 0,
+          "indirect_call_refs_changed": 0
+        },
+        "persistent_bytes": 2387,
+        "reuse": {
+          "callables_per_contract_or_set": 3.0,
+          "distinct_contracts": 5,
+          "distinct_dispatch_sets": 0
+        },
+        "verification_timing": {
+          "max_ns": 573776,
+          "median_ns": 292972,
+          "min_ns": 275283,
+          "repetitions": 31
+        }
+      },
+      "sealed": {
+        "callable_object_count": 15,
+        "contract_object_count": 0,
+        "devirtualization": {
+          "exact_target_set_callable_fraction": 1.0,
+          "singleton_call_fraction": 0.3333333333333333,
+          "singleton_callable_fraction": 0.3333333333333333
+        },
+        "ideal_token_atoms": 1131,
+        "metadata_object_count": 15,
+        "object_count": 30,
+        "package_interface_stability": {
+          "callable_contract_refs_changed": 3,
+          "contract_identity_stable": false,
+          "contract_metadata_objects_changed": 3,
+          "indirect_call_refs_changed": 192
+        },
+        "persistent_bytes": 4301,
+        "reuse": {
+          "callables_per_contract_or_set": 1.0,
+          "distinct_contracts": 5,
+          "distinct_dispatch_sets": 15
+        },
+        "verification_timing": {
+          "max_ns": 711882,
+          "median_ns": 426454,
+          "min_ns": 408004,
+          "repetitions": 31
+        }
+      }
+    }
+  }
+}

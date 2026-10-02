@@ -1,0 +1,24 @@
+{
+  "case": "m6-workspace-batch-edit-smoke",
+  "case_version": 4,
+  "classification": "exploratory deterministic accounting; not a comparative AI benchmark",
+  "date": "2026-09-29",
+  "implementation": "xax-compiler 0.1.0 Python bootstrap",
+  "base_root": "a2fef6793230de8ba2c44014c6a6672537bc531f307049d6f6e07769a643dfa4",
+  "candidate_root": "b4e08ad88a1caffe78a2754a30eab291e4c8473bd0c98696e79615cc9096b4f9",
+  "mutations": [
+    "F0.B0.N0 constant 2 to 4",
+    "F0.B0.N1 constant 3 to 5",
+    "F0.B0.N2 add.wrap to mul.wrap"
+  ],
+  "read_set": ["F0.B0.N0", "F0.B0.N1", "F0.B0.N2", "E2"],
+  "entities_exposed": 4,
+  "query_response_bytes": 534,
+  "query_response_encoding": "compact sorted-key JSON bootstrap projection; non-authoritative tooling",
+  "transaction_bytes": 101,
+  "touched_objects": 6,
+  "reused_objects": 2,
+  "oracle": "reference execution returned 20 for constants 4 and 5 after mul.wrap substitution",
+  "token_counts": "unavailable; no model/tokenizer experiment was run",
+  "timing": "not measured"
+}

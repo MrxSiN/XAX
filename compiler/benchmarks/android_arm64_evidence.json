@@ -1,0 +1,268 @@
+{
+  "environment_note": "structural/codegen measurements only; no Android device/emulator or Android NDK was available on the measurement host",
+  "fixtures": {
+    "bionic_import": {
+      "elf": {
+        "bss_bytes": 0,
+        "constructors": 0,
+        "data_bytes": 0,
+        "exports": [
+          "probe_getpid"
+        ],
+        "file_bytes": 17424,
+        "imports": [
+          "getpid"
+        ],
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "needed": [
+          "libc.so"
+        ],
+        "pt_load": 2,
+        "relocations": 1,
+        "rodata_bytes": 0,
+        "text_bytes": 44,
+        "tls": 0
+      },
+      "entry_code": {
+        "bytes": 24,
+        "frame_bytes": 16,
+        "instructions": 6,
+        "sp_adjustments": 2,
+        "stack_loads": 1,
+        "stack_stores": 1,
+        "words_hex": [
+          "d10043ff",
+          "f90003fe",
+          "94000006",
+          "f94003fe",
+          "910043ff",
+          "d65f03c0"
+        ],
+        "x30_stack_ops": 2
+      },
+      "sha256": "4825819706d61727e343116eb99c46d77d6569699450cd4a2537ea34a634194d"
+    },
+    "jni_onload": {
+      "elf": {
+        "bss_bytes": 0,
+        "constructors": 0,
+        "data_bytes": 0,
+        "exports": [
+          "JNI_OnLoad"
+        ],
+        "file_bytes": 17352,
+        "imports": [],
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "needed": [],
+        "pt_load": 2,
+        "relocations": 0,
+        "rodata_bytes": 0,
+        "text_bytes": 64,
+        "tls": 0
+      },
+      "entry_code": {
+        "bytes": 60,
+        "frame_bytes": 16,
+        "instructions": 15,
+        "sp_adjustments": 2,
+        "stack_loads": 1,
+        "stack_stores": 1,
+        "words_hex": [
+          "d10043ff",
+          "f90007fe",
+          "f9400001",
+          "f9401821",
+          "528000c2",
+          "72a00022",
+          "910003e3",
+          "aa0103ea",
+          "aa0303e1",
+          "d63f0140",
+          "528000c0",
+          "72a00020",
+          "f94007fe",
+          "910043ff",
+          "d65f03c0"
+        ],
+        "x30_stack_ops": 2
+      },
+      "sha256": "018eac6f3d463da10f1bf290d1f551a92e46716433a03c212e79afe33fef6b1b"
+    },
+    "libxposed_hook_call": {
+      "elf": {
+        "bss_bytes": 0,
+        "constructors": 0,
+        "data_bytes": 0,
+        "exports": [
+          "hook_probe"
+        ],
+        "file_bytes": 17352,
+        "imports": [],
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "needed": [],
+        "pt_load": 2,
+        "relocations": 0,
+        "rodata_bytes": 0,
+        "text_bytes": 48,
+        "tls": 0
+      },
+      "entry_code": {
+        "bytes": 44,
+        "frame_bytes": 16,
+        "instructions": 11,
+        "sp_adjustments": 2,
+        "stack_loads": 1,
+        "stack_stores": 1,
+        "words_hex": [
+          "d10043ff",
+          "f90003fe",
+          "f9400400",
+          "aa0003ea",
+          "aa0103e0",
+          "aa0203e1",
+          "aa0303e2",
+          "d63f0140",
+          "f94003fe",
+          "910043ff",
+          "d65f03c0"
+        ],
+        "x30_stack_ops": 2
+      },
+      "sha256": "233bbdf8643d493959e10af48941f92d115f10a7a546bcbcb0fa72f06665078c"
+    },
+    "libxposed_native_init": {
+      "elf": {
+        "bss_bytes": 0,
+        "constructors": 0,
+        "data_bytes": 0,
+        "exports": [
+          "native_init"
+        ],
+        "file_bytes": 17352,
+        "imports": [],
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "needed": [],
+        "pt_load": 2,
+        "relocations": 0,
+        "rodata_bytes": 0,
+        "text_bytes": 32,
+        "tls": 0
+      },
+      "entry_code": {
+        "bytes": 16,
+        "frame_bytes": 0,
+        "instructions": 4,
+        "sp_adjustments": 0,
+        "stack_loads": 0,
+        "stack_stores": 0,
+        "words_hex": [
+          "b9400001",
+          "f9400400",
+          "10000040",
+          "d65f03c0"
+        ],
+        "x30_stack_ops": 0
+      },
+      "sha256": "50d4fde201fa94fded8d8f026693949a9856e27bbb6cb85ae90e7cf27a10fe47"
+    },
+    "minimal_native_init": {
+      "elf": {
+        "bss_bytes": 0,
+        "constructors": 0,
+        "data_bytes": 0,
+        "exports": [
+          "native_init"
+        ],
+        "file_bytes": 17352,
+        "imports": [],
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "needed": [],
+        "pt_load": 2,
+        "relocations": 0,
+        "rodata_bytes": 0,
+        "text_bytes": 32,
+        "tls": 0
+      },
+      "entry_code": {
+        "bytes": 8,
+        "frame_bytes": 0,
+        "instructions": 2,
+        "sp_adjustments": 0,
+        "stack_loads": 0,
+        "stack_stores": 0,
+        "words_hex": [
+          "10000080",
+          "d65f03c0"
+        ],
+        "x30_stack_ops": 0
+      },
+      "sha256": "bdece7317a5c067043ca684d6a8c75ce619f75708e0adbe83def5a8176dfdd80"
+    },
+    "simple_add": {
+      "elf": {
+        "bss_bytes": 0,
+        "constructors": 0,
+        "data_bytes": 0,
+        "exports": [
+          "add"
+        ],
+        "file_bytes": 17352,
+        "imports": [],
+        "load_alignments": [
+          16384,
+          16384
+        ],
+        "needed": [],
+        "pt_load": 2,
+        "relocations": 0,
+        "rodata_bytes": 0,
+        "text_bytes": 16,
+        "tls": 0
+      },
+      "entry_code": {
+        "bytes": 8,
+        "frame_bytes": 0,
+        "instructions": 2,
+        "sp_adjustments": 0,
+        "stack_loads": 0,
+        "stack_stores": 0,
+        "words_hex": [
+          "0b010000",
+          "d65f03c0"
+        ],
+        "x30_stack_ops": 0
+      },
+      "sha256": "40e73860523b6d323e808ca2e1e81a55ee649118d92aebaaff6a649fa05e3928"
+    }
+  },
+  "ndk_c_reference": "source fixtures committed; optimized NDK comparison not measured because Android NDK is unavailable on this host",
+  "runtime_overhead_audit_minimal": {
+    "automatic_libc_dependency": 0,
+    "automatic_libdl_dependency": 0,
+    "constructors": 0,
+    "cpp_runtime": 0,
+    "destructors": 0,
+    "dynamic_relocations": 0,
+    "exception_runtime": 0,
+    "exported_symbols": 1,
+    "tls_entries": 0,
+    "xax_heap_allocations_at_startup": 0,
+    "xax_runtime_dependency": 0
+  },
+  "schema": "xax-android-arm64-evidence-v1"
+}

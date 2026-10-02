@@ -1,0 +1,105 @@
+{
+  "activity_dex": {
+    "bytes": 1328,
+    "checksum_valid": true,
+    "class_descriptor": "Lcom/example/target/XaxActivity;",
+    "hook_target_code_units": 1,
+    "hook_target_code_units_raw": [
+      "0x0111"
+    ],
+    "hook_target_semantics": "return incoming String argument unchanged",
+    "on_create_code_units": 32,
+    "on_create_code_units_raw": [
+      "0x206f",
+      "0x0001",
+      "0x0043",
+      "0x0022",
+      "0x0005",
+      "0x2070",
+      "0x0004",
+      "0x0030",
+      "0x011a",
+      "0x000f",
+      "0x206e",
+      "0x0008",
+      "0x0013",
+      "0x010c",
+      "0x206e",
+      "0x0005",
+      "0x0010",
+      "0x0222",
+      "0x0008",
+      "0x1070",
+      "0x000b",
+      "0x0002",
+      "0x206e",
+      "0x0003",
+      "0x0020",
+      "0x206e",
+      "0x0002",
+      "0x0003",
+      "0x2070",
+      "0x000a",
+      "0x0043",
+      "0x000e"
+    ],
+    "original_argument_literal_present": true,
+    "sha256": "cf5a20b6d6f0d160bd69d6e32583dcc84d608bb70463c787e5bc13af0ba5f5bf",
+    "signature_valid": true
+  },
+  "environment_note": "direct semantic/DEX/ELF/APK structural evidence only; install, Activity launch, UI rendering, and libxposed execution are UNEXECUTED because no compatible Android/libxposed runtime is available",
+  "generic_apk": {
+    "blake3": "e47fd28f7016509f75d4777628230f48ff350fb599e67695bf35f3db47a5de4b",
+    "build_key": "9c1d79df06bd739fb48c483785b7ce969b9598eed4b5d356fcaae4efa6c15301",
+    "bytes": 34010,
+    "entries": [
+      "AndroidManifest.xml",
+      "classes.dex",
+      "classes2.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "f4e4f2b71665d2de5b15f8a55f699be6465c8dc3da313ed280781d6d031a96bb",
+    "repeat_identical": true,
+    "request_root": "5b9133784a0f0b2e2142594ea22e052e12d3d57036ce1d75c8c243a1ccb0a82e",
+    "sha256": "43d9fb8e69f7ed0b68a60afb3cd9253f1c91ae51e1a39caf7555405b7a2a1729",
+    "snapshot_root": "1e9cfe373aa4b51dbc5eb017ab6c743269f4e243e9abbe021751ef625f8f11f9"
+  },
+  "listener_dex": {
+    "bytes": 768,
+    "class_descriptor": "Lcom/example/target/XaxOnClickListener;",
+    "interfaces": [
+      "Landroid/view/View$OnClickListener;"
+    ],
+    "sha256": "767d47ac56f9aaf8f8fef44512f020821cf39918f5eb0bdd0cdf17e3812a0e61"
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_com_example_target_XaxActivity_xaxOnCreate",
+      "Java_com_example_target_XaxOnClickListener_xaxOnClick"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "41a1796ced84171b8b710767bbc07d21d0099a28aeefb61ce8dbc1707c2d7ef3"
+  },
+  "runtime_validation": {
+    "activity_launch": "UNEXECUTED",
+    "apk_install": "UNEXECUTED",
+    "unhooked_argument_result_visible": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-argument-target-evidence-v1",
+  "semantic_input": {
+    "activity_callback_cid": "f3ea683de72203904e7299e11eaec42c35f69a6bb14ff867e220b47bbcd7fdbb",
+    "activity_class": "com.example.target.XaxActivity",
+    "listener_callback_cid": "87a3b69c36cc7f411ea03ffd58c4969ddc9d7a1a9f6b5485cba90b0a0e1d2a49",
+    "listener_class": "com.example.target.XaxOnClickListener",
+    "manifest_cid": "1d6397d38305a0aba5c6fa86d1867557c347ed8192716a0b8763b36db85b5231",
+    "original_argument": "OriginalArg",
+    "package_name": "com.example.target",
+    "target_method": "hookTarget",
+    "target_method_descriptor": "(Ljava/lang/String;)Ljava/lang/String;",
+    "ui_cid": "6b2299c6ed3675b6b348d3f944f7189a5918590fc0863785a5352e2319f94c54",
+    "unhooked_result": "OriginalArg"
+  }
+}

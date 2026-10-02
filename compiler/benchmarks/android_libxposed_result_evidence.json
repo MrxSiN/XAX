@@ -1,0 +1,153 @@
+{
+  "environment_note": "paired target/module direct structural evidence only; installation, interception, original invocation, result replacement, UI observation, and process survival are UNEXECUTED because no compatible Android/libxposed runtime is available",
+  "hot_hooker_dex": {
+    "allocations_per_intercept_emitted": 0,
+    "argument_reads": 0,
+    "bytes": 688,
+    "chain_proceed_calls": 1,
+    "class_descriptor": "Lxax/generated/XaxHooker;",
+    "intercept_code_units": 7,
+    "intercept_code_units_raw": [
+      "0x1072",
+      "0x0000",
+      "0x0003",
+      "0x000c",
+      "0x011a",
+      "0x0001",
+      "0x0111"
+    ],
+    "intercept_instruction_opcodes": [
+      "0x72",
+      "0x0c",
+      "0x1a",
+      "0x11"
+    ],
+    "lookup_strings_present": [],
+    "opcode_counts": {
+      "invoke_direct": 0,
+      "invoke_interface": 1,
+      "invoke_virtual": 0,
+      "move_result_object": 1,
+      "new_instance": 0,
+      "return_object": 1,
+      "return_void": 0,
+      "sget_object": 0
+    },
+    "original_result_capture": "move-result-object v0 before replacement const-string",
+    "replacement_literal_present": true,
+    "sha256": "f6d52c7e8dd0df978b8147de10aee9a62f5f0a6d7846e2c21a4b45a8313ea9bb"
+  },
+  "install_dex": {
+    "bytes": 1908,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "on_package_ready_code_units": 40,
+    "on_package_ready_instruction_opcodes": [
+      "0x72",
+      "0x0c",
+      "0x1a",
+      "0x6e",
+      "0x0c",
+      "0x1a",
+      "0x12",
+      "0x6e",
+      "0x0c",
+      "0x6e",
+      "0x0c",
+      "0x62",
+      "0x72",
+      "0x0c",
+      "0x22",
+      "0x70",
+      "0x72",
+      "0x0c",
+      "0x70",
+      "0x0e"
+    ],
+    "sha256": "2c1c18621fc7b10fe6258cc9bca767d09ac789f4c9bb0f70e4a6e11acbd8c8a8",
+    "target_lookup_strings_present": [
+      "com.example.target.XaxActivity",
+      "hookTarget",
+      "getClassLoader",
+      "loadClass",
+      "getDeclaredMethod",
+      "hook"
+    ]
+  },
+  "module_apk": {
+    "blake3": "a0c707325cc280266ec4788c48f06eaa21b6528db54e0cbd6342df887e0e010b",
+    "build_key": "a8868238f2b182c6843515994dcae7e3a01422efae72f05be39fdfef814fa58c",
+    "bytes": 34347,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "classes4.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "370c5254031b4c04e66eecaca2e9b2ec4aa047cf330a29bdbc2a7c051ea395bd",
+    "repeat_identical": true,
+    "request_root": "1bbbbff24a159fb17ff144273f885aeff2ef79f94076b8aa5662ee61612f8fbb",
+    "scope_list_utf8": "com.example.target\n",
+    "sha256": "1a94558215ff1269d4f0a4762a6b4ef2af07cd531b8270b2cdcb54ab11e28fab",
+    "snapshot_root": "23c655f548e45712b344393e852228fcfe5e50f22360c389bd0236ba18d58eb5"
+  },
+  "native_elf": {
+    "bytes": 17352,
+    "exports": [
+      "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxModule_xaxOnModuleLoaded",
+      "Java_xax_generated_XaxModule_xaxOnPackageReady",
+      "Java_xax_generated_XaxOnClickListener_xaxOnClick"
+    ],
+    "imports": [],
+    "needed": [],
+    "relocations": 0,
+    "sha256": "3a77875eb0f995410d0d0963d0dcc09d00a8f3a4df1659260f8a778bf632dd58"
+  },
+  "production_dependencies": {
+    "bundled_libxposed_api_classes": 0,
+    "c_cpp_bridge_source_files": 0,
+    "d8_r8_invocations": 0,
+    "gradle_invocations": 0,
+    "java_kotlin_source_files": 0,
+    "javac_kotlinc_invocations": 0
+  },
+  "runtime_validation": {
+    "chain_proceed": "UNEXECUTED",
+    "hook_installation": "UNEXECUTED",
+    "interception": "UNEXECUTED",
+    "module_discovery": "UNEXECUTED",
+    "package_ready": "UNEXECUTED",
+    "result_replacement": "UNEXECUTED",
+    "target_ui_changed_from_original_to_hooked": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-result-evidence-v1",
+  "semantic_input": {
+    "hook_adapter_cid": "363b83a457638749236b831cf60201284d8829af6a393edc7bf171b7adf7f367",
+    "hook_installation_cid": "f037f2b1f2355d2ac2aee94a555f5f1fbd043788c81b5d9ead464b4c179eb680",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "replacement_string": "Hooked",
+    "result_mode": "replace_after_proceed",
+    "result_policy_cid": "b90313d59d87c2d9bc9c9ba678c5794501c9e9e3e5a89738037d1547bf7603a5",
+    "scope": [
+      "com.example.target"
+    ],
+    "target_class": "com.example.target.XaxActivity",
+    "target_method": "hookTarget",
+    "target_return_descriptor": "Ljava/lang/String;"
+  },
+  "target_contract": {
+    "class_name": "com.example.target.XaxActivity",
+    "method_descriptor": "()Ljava/lang/String;",
+    "method_name": "hookTarget",
+    "package_name": "com.example.target",
+    "target_apk_sha256": "e682951f8e72f6ea812d3ef2816ad92b49fd1df90a3c08ad42b05b33d72e3eb0",
+    "target_method_code_units": 3,
+    "unhooked_result": "Original"
+  }
+}

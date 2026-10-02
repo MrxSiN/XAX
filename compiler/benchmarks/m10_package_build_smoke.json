@@ -1,0 +1,29 @@
+{
+  "cross_target_cache_separated": true,
+  "wasm32": {
+    "artifact_bytes": 62,
+    "artifact_digest": "1cc566ee4cc39286fd638b71a81e5e148637cf7cfe827a3bdd630b90f826f022",
+    "build_key": "92b705a924300f62ac1897f0a855486054f94d6e1e509a4a6fe9ee707a7be590",
+    "cache_verified": true,
+    "package_root": "6937f679df8e722d53fe1e497c9bfbbe55824f01fef00bfbd2ba860b776f611a",
+    "provenance_root": "57322be2caf9811036b3998aa7e614ad9aba0ed554384ab6d60b103df1293957",
+    "repeat_byte_identical": true,
+    "request_root": "3f41973b236afadacdd69a69af810f7f339c00050396ae940d363da5e3316f79",
+    "snapshot_root": "0c7823663324f58e25e73e477356407f4e004720d245d23d5517bb674082c117",
+    "store_bytes": 1549,
+    "target_root": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed"
+  },
+  "x86_64": {
+    "artifact_bytes": 35,
+    "artifact_digest": "4c6bd5edce503f68519033d7d58cc43c5a2bd8fe0636cc625855ee63f6b3b889",
+    "build_key": "cf3528c16cc24b16c341568282b11871ad49079b5034722ef88bf8e8158dd3be",
+    "cache_verified": true,
+    "package_root": "6937f679df8e722d53fe1e497c9bfbbe55824f01fef00bfbd2ba860b776f611a",
+    "provenance_root": "369eac5c301f307f2298e20e3d380febbc8be213085effda304a868154b64504",
+    "repeat_byte_identical": true,
+    "request_root": "84aac2b8742ebeb7b86fec62470057aa06548ae463e2861b1bf42f4d5a64cbae",
+    "snapshot_root": "0441036881fb4ca91a8f3acf52d0bcb8b076e1a92592039da0a11a6668767349",
+    "store_bytes": 1599,
+    "target_root": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56"
+  }
+}

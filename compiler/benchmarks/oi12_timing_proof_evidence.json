@@ -1,0 +1,142 @@
+{
+  "deletion_semantics": {
+    "proof_sidecar_is_store_input": false,
+    "root_cid_after_sidecar_delete": "9f3ce746f0b11c9017f14567529fe1a1685fcdf528fee63f82c36adf65bf3d0f",
+    "root_cid_without_sidecar": "9f3ce746f0b11c9017f14567529fe1a1685fcdf528fee63f82c36adf65bf3d0f"
+  },
+  "fail_closed": {
+    "unknown_interrupt": "unknown-interrupt-bound",
+    "unknown_memory": "unknown-memory-bound"
+  },
+  "fixture": {
+    "function_cids": {
+      "caller": "670e6a2455ce32ffb7c200828566b59827ffb834d4601f089802a6617532699d",
+      "leaf": "a73f64f3d1540cf8527a2a7f21fa87455b0a82f3937b4d96b0a1f4976b99313b",
+      "unrelated": "4f31c6ac1fe3c280a4886ba745272ff15cfcb500f021c0dcddfe335066da2c7e"
+    },
+    "root_cid": "9f3ce746f0b11c9017f14567529fe1a1685fcdf528fee63f82c36adf65bf3d0f",
+    "store_bytes": 2051,
+    "target_cid": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56"
+  },
+  "invalidation": {
+    "callee_body_edit": {
+      "invalidated": 2,
+      "reused": 1,
+      "reused_roles": [
+        "unrelated"
+      ]
+    },
+    "cost_estimate_only_change": {
+      "invalidated": 0,
+      "reused": 3,
+      "reused_roles": [
+        "caller",
+        "leaf",
+        "unrelated"
+      ]
+    },
+    "memory_assumption_change": {
+      "invalidated": 2,
+      "reused": 1,
+      "reused_roles": [
+        "unrelated"
+      ]
+    },
+    "profile_change": {
+      "invalidated": 3,
+      "reused": 0,
+      "reused_roles": []
+    },
+    "sub_operation_assumption_change": {
+      "invalidated": 1,
+      "reused": 2,
+      "reused_roles": [
+        "leaf",
+        "unrelated"
+      ]
+    },
+    "target_change": {
+      "invalidated": 3,
+      "reused": 0,
+      "reused_roles": []
+    },
+    "unrelated_function_edit": {
+      "invalidated": 1,
+      "reused": 2,
+      "reused_roles": [
+        "caller",
+        "leaf"
+      ]
+    }
+  },
+  "models": {
+    "bounded-memory-interrupt": {
+      "caller_proof_bytes": 363,
+      "cost_estimate": {
+        "available": false,
+        "kind": "separate-nonproof-estimate",
+        "used_by_proof": false,
+        "value_cycles": null
+      },
+      "dependencies": 4,
+      "dependency_fingerprint": "68a040faad69e4c2ffe72838f18fd7d69797b22f46e1d090a6a52d696f89e98d",
+      "guarantee_cycles": 42,
+      "interrupt_mask_bound_cycles": 7,
+      "interrupt_service_cycles": 11,
+      "max_interrupts": 2,
+      "memory_extra_cycles": 6,
+      "model_version": 1,
+      "path_control_bound": 8,
+      "progress": "wait_free",
+      "proof_set_bytes": 946,
+      "proof_set_entries": 3,
+      "query_request_bytes": 10,
+      "query_response_bytes": 14,
+      "query_tokens": {
+        "available": false,
+        "tokenizer": null,
+        "tokens": null
+      },
+      "recursion_bound": 0,
+      "retry_bound": 0,
+      "timed_path_memory_ops": 2,
+      "timed_path_steps": 8
+    },
+    "fixed-inorder": {
+      "caller_proof_bytes": 351,
+      "cost_estimate": {
+        "available": false,
+        "kind": "separate-nonproof-estimate",
+        "used_by_proof": false,
+        "value_cycles": null
+      },
+      "dependencies": 4,
+      "dependency_fingerprint": "cd84e998591acbf6ceedd54b9efc3fd5c36d2014e6325152958e0392efc70bed",
+      "guarantee_cycles": 15,
+      "interrupt_mask_bound_cycles": 0,
+      "interrupt_service_cycles": 0,
+      "max_interrupts": 0,
+      "memory_extra_cycles": null,
+      "model_version": 1,
+      "path_control_bound": 8,
+      "progress": "wait_free",
+      "proof_set_bytes": 911,
+      "proof_set_entries": 3,
+      "query_request_bytes": 10,
+      "query_response_bytes": 14,
+      "query_tokens": {
+        "available": false,
+        "tokenizer": null,
+        "tokens": null
+      },
+      "recursion_bound": 0,
+      "retry_bound": 0,
+      "timed_path_memory_ops": 2,
+      "timed_path_steps": 8
+    }
+  },
+  "profile_identity": "86a7678ce3a03e2caf2ae3a1fd2c9a9e3d91e2f06cc2d004e241446add61a690",
+  "status": "measurement-only-nonsemantic-sidecar",
+  "tokenizer_note": "actual tokenizer tokens are null when tiktoken is unavailable; bytes are not substituted for tokens",
+  "version": 1
+}

@@ -1,0 +1,2189 @@
+{
+  "ai_context": "query/rewrite bytes are binary envelope bytes an agent or cache must receive",
+  "case": "oi02-objectization-granularity",
+  "cases": {
+    "chain-4x8": {
+      "merges": {
+        "different_modules_entry_vs_add": {
+          "block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "function": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "module": {
+            "conflicting_non_root_bytes": 3375,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          }
+        },
+        "same_module_leaf_vs_sibling": {
+          "block": {
+            "conflicting_non_root_bytes": 11262,
+            "conflicting_non_root_objects": 79,
+            "objects_rewritten_by_both": 80
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 567,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "function": {
+            "conflicting_non_root_bytes": 9462,
+            "conflicting_non_root_objects": 54,
+            "objects_rewritten_by_both": 55
+          },
+          "module": {
+            "conflicting_non_root_bytes": 13356,
+            "conflicting_non_root_objects": 4,
+            "objects_rewritten_by_both": 5
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 567,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          }
+        }
+      },
+      "mutations": {
+        "add_function_middle_module": {
+          "block": {
+            "base_bytes": 16939,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 102,
+            "rebound_declarations": 0,
+            "reused_bytes": 16465,
+            "reused_objects": 134,
+            "rewritten_bytes": 1034,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "call_indirect": {
+            "base_bytes": 18123,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 134,
+            "rebound_declarations": 1,
+            "reused_bytes": 17385,
+            "reused_objects": 134,
+            "rewritten_bytes": 1335,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          },
+          "function": {
+            "base_bytes": 14635,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 102,
+            "rebound_declarations": 0,
+            "reused_bytes": 14161,
+            "reused_objects": 102,
+            "rewritten_bytes": 962,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "module": {
+            "base_bytes": 15253,
+            "cid_churn": 3,
+            "proof_reused_fine_objects": 51,
+            "rebound_declarations": 0,
+            "reused_bytes": 6921,
+            "reused_objects": 3,
+            "rewritten_bytes": 8820,
+            "rewritten_objects": 3,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 19191,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 135,
+            "rebound_declarations": 0,
+            "reused_bytes": 18453,
+            "reused_objects": 167,
+            "rewritten_bytes": 1366,
+            "rewritten_objects": 8,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          }
+        },
+        "entry_constant_last_module": {
+          "block": {
+            "base_bytes": 16939,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 99,
+            "rebound_declarations": 0,
+            "reused_bytes": 15984,
+            "reused_objects": 130,
+            "rewritten_bytes": 955,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 18123,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 131,
+            "rebound_declarations": 1,
+            "reused_bytes": 16976,
+            "reused_objects": 131,
+            "rewritten_bytes": 1147,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 14635,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 99,
+            "rebound_declarations": 0,
+            "reused_bytes": 13752,
+            "reused_objects": 99,
+            "rewritten_bytes": 883,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 15253,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 75,
+            "rebound_declarations": 0,
+            "reused_bytes": 10296,
+            "reused_objects": 4,
+            "rewritten_bytes": 4957,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 29,
+            "verification_frontier_if_interface_only": 29
+          },
+          "stable_interface_block": {
+            "base_bytes": 19191,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 132,
+            "rebound_declarations": 0,
+            "reused_bytes": 18009,
+            "reused_objects": 163,
+            "rewritten_bytes": 1182,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "leaf_constant_first_module": {
+          "block": {
+            "base_bytes": 16939,
+            "cid_churn": 101,
+            "proof_reused_fine_objects": 35,
+            "rebound_declarations": 0,
+            "reused_bytes": 2725,
+            "reused_objects": 35,
+            "rewritten_bytes": 14293,
+            "rewritten_objects": 102,
+            "verification_frontier_fine_objects": 70,
+            "verification_frontier_if_interface_only": 70
+          },
+          "call_indirect": {
+            "base_bytes": 18123,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 70,
+            "rebound_declarations": 1,
+            "reused_bytes": 17088,
+            "reused_objects": 132,
+            "rewritten_bytes": 1114,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 67,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 14635,
+            "cid_churn": 69,
+            "proof_reused_fine_objects": 35,
+            "rebound_declarations": 0,
+            "reused_bytes": 2725,
+            "reused_objects": 35,
+            "rewritten_bytes": 11989,
+            "rewritten_objects": 70,
+            "verification_frontier_fine_objects": 70,
+            "verification_frontier_if_interface_only": 70
+          },
+          "module": {
+            "base_bytes": 15253,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 15017,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 101,
+            "verification_frontier_if_interface_only": 101
+          },
+          "stable_interface_block": {
+            "base_bytes": 19191,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 133,
+            "rebound_declarations": 0,
+            "reused_bytes": 18121,
+            "reused_objects": 164,
+            "rewritten_bytes": 1149,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "sibling_constant_first_module": {
+          "block": {
+            "base_bytes": 16939,
+            "cid_churn": 81,
+            "proof_reused_fine_objects": 48,
+            "rebound_declarations": 0,
+            "reused_bytes": 5427,
+            "reused_objects": 55,
+            "rewritten_bytes": 11512,
+            "rewritten_objects": 81,
+            "verification_frontier_fine_objects": 56,
+            "verification_frontier_if_interface_only": 56
+          },
+          "call_indirect": {
+            "base_bytes": 18123,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 83,
+            "rebound_declarations": 1,
+            "reused_bytes": 16976,
+            "reused_objects": 131,
+            "rewritten_bytes": 1147,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 53,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 14635,
+            "cid_churn": 56,
+            "proof_reused_fine_objects": 48,
+            "rebound_declarations": 0,
+            "reused_bytes": 4923,
+            "reused_objects": 48,
+            "rewritten_bytes": 9712,
+            "rewritten_objects": 56,
+            "verification_frontier_fine_objects": 56,
+            "verification_frontier_if_interface_only": 56
+          },
+          "module": {
+            "base_bytes": 15253,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 14938,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 100,
+            "verification_frontier_if_interface_only": 100
+          },
+          "stable_interface_block": {
+            "base_bytes": 19191,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 132,
+            "rebound_declarations": 0,
+            "reused_bytes": 18009,
+            "reused_objects": 163,
+            "rewritten_bytes": 1182,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        }
+      },
+      "query_read_function_0_0": {
+        "block": {
+          "bytes": 369
+        },
+        "call_indirect": {
+          "bytes": 297
+        },
+        "function": {
+          "bytes": 297
+        },
+        "module": {
+          "bytes": 3231
+        },
+        "stable_interface_block": {
+          "bytes": 480
+        }
+      },
+      "shape": {
+        "blocks_per_function": 1,
+        "functions_per_module": 8,
+        "modules": 4
+      },
+      "store": {
+        "block": {
+          "index_and_container_bytes": 4881,
+          "objects": 136,
+          "record_bytes": 16939,
+          "store_bytes": 21820
+        },
+        "call_indirect": {
+          "index_and_container_bytes": 4885,
+          "objects": 136,
+          "record_bytes": 18123,
+          "store_bytes": 23008
+        },
+        "function": {
+          "index_and_container_bytes": 3756,
+          "objects": 104,
+          "record_bytes": 14635,
+          "store_bytes": 18391
+        },
+        "module": {
+          "index_and_container_bytes": 295,
+          "objects": 6,
+          "record_bytes": 15253,
+          "store_bytes": 15548
+        },
+        "stable_interface_block": {
+          "index_and_container_bytes": 6062,
+          "objects": 169,
+          "record_bytes": 19191,
+          "store_bytes": 25253
+        }
+      }
+    },
+    "chain-8x16": {
+      "merges": {
+        "different_modules_entry_vs_add": {
+          "block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "function": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "module": {
+            "conflicting_non_root_bytes": 6647,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          }
+        },
+        "same_module_leaf_vs_sibling": {
+          "block": {
+            "conflicting_non_root_bytes": 49962,
+            "conflicting_non_root_objects": 347,
+            "objects_rewritten_by_both": 348
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "function": {
+            "conflicting_non_root_bytes": 41826,
+            "conflicting_non_root_objects": 234,
+            "objects_rewritten_by_both": 235
+          },
+          "module": {
+            "conflicting_non_root_bytes": 53032,
+            "conflicting_non_root_objects": 8,
+            "objects_rewritten_by_both": 9
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          }
+        }
+      },
+      "mutations": {
+        "add_function_middle_module": {
+          "block": {
+            "base_bytes": 66571,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 65701,
+            "reused_objects": 522,
+            "rewritten_bytes": 1430,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "call_indirect": {
+            "base_bytes": 71307,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 522,
+            "rebound_declarations": 1,
+            "reused_bytes": 69909,
+            "reused_objects": 522,
+            "rewritten_bytes": 1995,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          },
+          "function": {
+            "base_bytes": 57355,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 56485,
+            "reused_objects": 394,
+            "rewritten_bytes": 1358,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "module": {
+            "base_bytes": 58513,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 195,
+            "rebound_declarations": 0,
+            "reused_bytes": 26759,
+            "reused_objects": 5,
+            "rewritten_bytes": 32242,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 205,
+            "verification_frontier_if_interface_only": 205
+          },
+          "stable_interface_block": {
+            "base_bytes": 75351,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 523,
+            "rebound_declarations": 0,
+            "reused_bytes": 73953,
+            "reused_objects": 651,
+            "rewritten_bytes": 2026,
+            "rewritten_objects": 8,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          }
+        },
+        "entry_constant_last_module": {
+          "block": {
+            "base_bytes": 66571,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 65220,
+            "reused_objects": 518,
+            "rewritten_bytes": 1351,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 71307,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 519,
+            "rebound_declarations": 1,
+            "reused_bytes": 69500,
+            "reused_objects": 519,
+            "rewritten_bytes": 1807,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 57355,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 56076,
+            "reused_objects": 391,
+            "rewritten_bytes": 1279,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 58513,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 339,
+            "rebound_declarations": 0,
+            "reused_bytes": 46700,
+            "reused_objects": 8,
+            "rewritten_bytes": 11813,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 75351,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 73509,
+            "reused_objects": 647,
+            "rewritten_bytes": 1842,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "leaf_constant_first_module": {
+          "block": {
+            "base_bytes": 66571,
+            "cid_churn": 393,
+            "proof_reused_fine_objects": 131,
+            "rebound_declarations": 0,
+            "reused_bytes": 10309,
+            "reused_objects": 131,
+            "rewritten_bytes": 56341,
+            "rewritten_objects": 394,
+            "verification_frontier_fine_objects": 266,
+            "verification_frontier_if_interface_only": 266
+          },
+          "call_indirect": {
+            "base_bytes": 71307,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 266,
+            "rebound_declarations": 1,
+            "reused_bytes": 69612,
+            "reused_objects": 520,
+            "rewritten_bytes": 1774,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 259,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 57355,
+            "cid_churn": 265,
+            "proof_reused_fine_objects": 131,
+            "rebound_declarations": 0,
+            "reused_bytes": 10309,
+            "reused_objects": 131,
+            "rewritten_bytes": 47125,
+            "rewritten_objects": 266,
+            "verification_frontier_fine_objects": 266,
+            "verification_frontier_if_interface_only": 266
+          },
+          "module": {
+            "base_bytes": 58513,
+            "cid_churn": 9,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 58277,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 393,
+            "verification_frontier_if_interface_only": 393
+          },
+          "stable_interface_block": {
+            "base_bytes": 75351,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 521,
+            "rebound_declarations": 0,
+            "reused_bytes": 73621,
+            "reused_objects": 648,
+            "rewritten_bytes": 1809,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "sibling_constant_first_module": {
+          "block": {
+            "base_bytes": 66571,
+            "cid_churn": 349,
+            "proof_reused_fine_objects": 160,
+            "rebound_declarations": 0,
+            "reused_bytes": 16227,
+            "reused_objects": 175,
+            "rewritten_bytes": 50344,
+            "rewritten_objects": 349,
+            "verification_frontier_fine_objects": 236,
+            "verification_frontier_if_interface_only": 236
+          },
+          "call_indirect": {
+            "base_bytes": 71307,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 295,
+            "rebound_declarations": 1,
+            "reused_bytes": 69500,
+            "reused_objects": 519,
+            "rewritten_bytes": 1807,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 229,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 57355,
+            "cid_churn": 236,
+            "proof_reused_fine_objects": 160,
+            "rebound_declarations": 0,
+            "reused_bytes": 15147,
+            "reused_objects": 160,
+            "rewritten_bytes": 42208,
+            "rewritten_objects": 236,
+            "verification_frontier_fine_objects": 236,
+            "verification_frontier_if_interface_only": 236
+          },
+          "module": {
+            "base_bytes": 58513,
+            "cid_churn": 9,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 58198,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 392,
+            "verification_frontier_if_interface_only": 392
+          },
+          "stable_interface_block": {
+            "base_bytes": 75351,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 73509,
+            "reused_objects": 647,
+            "rewritten_bytes": 1842,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        }
+      },
+      "query_read_function_0_0": {
+        "block": {
+          "bytes": 369
+        },
+        "call_indirect": {
+          "bytes": 297
+        },
+        "function": {
+          "bytes": 297
+        },
+        "module": {
+          "bytes": 6503
+        },
+        "stable_interface_block": {
+          "bytes": 480
+        }
+      },
+      "shape": {
+        "blocks_per_function": 1,
+        "functions_per_module": 16,
+        "modules": 8
+      },
+      "store": {
+        "block": {
+          "index_and_container_bytes": 18940,
+          "objects": 524,
+          "record_bytes": 66571,
+          "store_bytes": 85511
+        },
+        "call_indirect": {
+          "index_and_container_bytes": 18954,
+          "objects": 524,
+          "record_bytes": 71307,
+          "store_bytes": 90261
+        },
+        "function": {
+          "index_and_container_bytes": 14364,
+          "objects": 396,
+          "record_bytes": 57355,
+          "store_bytes": 71719
+        },
+        "module": {
+          "index_and_container_bytes": 445,
+          "objects": 10,
+          "record_bytes": 58513,
+          "store_bytes": 58958
+        },
+        "stable_interface_block": {
+          "index_and_container_bytes": 23564,
+          "objects": 653,
+          "record_bytes": 75351,
+          "store_bytes": 98915
+        }
+      }
+    },
+    "chain-8x16-b4": {
+      "merges": {
+        "different_modules_entry_vs_add": {
+          "block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "function": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "module": {
+            "conflicting_non_root_bytes": 7079,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          }
+        },
+        "same_module_leaf_vs_sibling": {
+          "block": {
+            "conflicting_non_root_bytes": 50063,
+            "conflicting_non_root_objects": 346,
+            "objects_rewritten_by_both": 347
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "function": {
+            "conflicting_non_root_bytes": 44877,
+            "conflicting_non_root_objects": 234,
+            "objects_rewritten_by_both": 235
+          },
+          "module": {
+            "conflicting_non_root_bytes": 56488,
+            "conflicting_non_root_objects": 8,
+            "objects_rewritten_by_both": 9
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          }
+        }
+      },
+      "mutations": {
+        "add_function_middle_module": {
+          "block": {
+            "base_bytes": 83936,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 83066,
+            "reused_objects": 654,
+            "rewritten_bytes": 1600,
+            "rewritten_objects": 8,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "call_indirect": {
+            "base_bytes": 74763,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 522,
+            "rebound_declarations": 1,
+            "reused_bytes": 73365,
+            "reused_objects": 522,
+            "rewritten_bytes": 2022,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          },
+          "function": {
+            "base_bytes": 60811,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 59941,
+            "reused_objects": 394,
+            "rewritten_bytes": 1385,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "module": {
+            "base_bytes": 61969,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 195,
+            "rebound_declarations": 0,
+            "reused_bytes": 28487,
+            "reused_objects": 5,
+            "rewritten_bytes": 33997,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 205,
+            "verification_frontier_if_interface_only": 205
+          },
+          "stable_interface_block": {
+            "base_bytes": 92716,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 523,
+            "rebound_declarations": 0,
+            "reused_bytes": 91318,
+            "reused_objects": 783,
+            "rewritten_bytes": 2196,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          }
+        },
+        "entry_constant_last_module": {
+          "block": {
+            "base_bytes": 83936,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 82578,
+            "reused_objects": 650,
+            "rewritten_bytes": 1358,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 74763,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 519,
+            "rebound_declarations": 1,
+            "reused_bytes": 72929,
+            "reused_objects": 519,
+            "rewritten_bytes": 1834,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 60811,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 59505,
+            "reused_objects": 391,
+            "rewritten_bytes": 1306,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 61969,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 339,
+            "rebound_declarations": 0,
+            "reused_bytes": 49724,
+            "reused_objects": 8,
+            "rewritten_bytes": 12245,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 92716,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 90867,
+            "reused_objects": 779,
+            "rewritten_bytes": 1849,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "leaf_constant_first_module": {
+          "block": {
+            "base_bytes": 83936,
+            "cid_churn": 393,
+            "proof_reused_fine_objects": 131,
+            "rebound_declarations": 0,
+            "reused_bytes": 27380,
+            "reused_objects": 263,
+            "rewritten_bytes": 56635,
+            "rewritten_objects": 394,
+            "verification_frontier_fine_objects": 266,
+            "verification_frontier_if_interface_only": 266
+          },
+          "call_indirect": {
+            "base_bytes": 74763,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 266,
+            "rebound_declarations": 1,
+            "reused_bytes": 73041,
+            "reused_objects": 520,
+            "rewritten_bytes": 1801,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 259,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 60811,
+            "cid_churn": 265,
+            "proof_reused_fine_objects": 131,
+            "rebound_declarations": 0,
+            "reused_bytes": 10309,
+            "reused_objects": 131,
+            "rewritten_bytes": 50581,
+            "rewritten_objects": 266,
+            "verification_frontier_fine_objects": 266,
+            "verification_frontier_if_interface_only": 266
+          },
+          "module": {
+            "base_bytes": 61969,
+            "cid_churn": 9,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 61733,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 393,
+            "verification_frontier_if_interface_only": 393
+          },
+          "stable_interface_block": {
+            "base_bytes": 92716,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 521,
+            "rebound_declarations": 0,
+            "reused_bytes": 90946,
+            "reused_objects": 780,
+            "rewritten_bytes": 1849,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "sibling_constant_first_module": {
+          "block": {
+            "base_bytes": 83936,
+            "cid_churn": 349,
+            "proof_reused_fine_objects": 160,
+            "rebound_declarations": 0,
+            "reused_bytes": 33361,
+            "reused_objects": 307,
+            "rewritten_bytes": 50575,
+            "rewritten_objects": 349,
+            "verification_frontier_fine_objects": 236,
+            "verification_frontier_if_interface_only": 236
+          },
+          "call_indirect": {
+            "base_bytes": 74763,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 295,
+            "rebound_declarations": 1,
+            "reused_bytes": 72929,
+            "reused_objects": 519,
+            "rewritten_bytes": 1834,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 229,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 60811,
+            "cid_churn": 236,
+            "proof_reused_fine_objects": 160,
+            "rebound_declarations": 0,
+            "reused_bytes": 15552,
+            "reused_objects": 160,
+            "rewritten_bytes": 45259,
+            "rewritten_objects": 236,
+            "verification_frontier_fine_objects": 236,
+            "verification_frontier_if_interface_only": 236
+          },
+          "module": {
+            "base_bytes": 61969,
+            "cid_churn": 9,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 61654,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 392,
+            "verification_frontier_if_interface_only": 392
+          },
+          "stable_interface_block": {
+            "base_bytes": 92716,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 90867,
+            "reused_objects": 779,
+            "rewritten_bytes": 1849,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        }
+      },
+      "query_read_function_0_0": {
+        "block": {
+          "bytes": 710
+        },
+        "call_indirect": {
+          "bytes": 324
+        },
+        "function": {
+          "bytes": 324
+        },
+        "module": {
+          "bytes": 6935
+        },
+        "stable_interface_block": {
+          "bytes": 821
+        }
+      },
+      "shape": {
+        "blocks_per_function": 4,
+        "functions_per_module": 16,
+        "modules": 8
+      },
+      "store": {
+        "block": {
+          "index_and_container_bytes": 23834,
+          "objects": 656,
+          "record_bytes": 83936,
+          "store_bytes": 107770
+        },
+        "call_indirect": {
+          "index_and_container_bytes": 18984,
+          "objects": 524,
+          "record_bytes": 74763,
+          "store_bytes": 93747
+        },
+        "function": {
+          "index_and_container_bytes": 14365,
+          "objects": 396,
+          "record_bytes": 60811,
+          "store_bytes": 75176
+        },
+        "module": {
+          "index_and_container_bytes": 445,
+          "objects": 10,
+          "record_bytes": 61969,
+          "store_bytes": 62414
+        },
+        "stable_interface_block": {
+          "index_and_container_bytes": 28458,
+          "objects": 785,
+          "record_bytes": 92716,
+          "store_bytes": 121174
+        }
+      }
+    },
+    "service-6x8-b4": {
+      "merges": {
+        "different_modules_entry_vs_add": {
+          "block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "function": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "module": {
+            "conflicting_non_root_bytes": 3591,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          }
+        },
+        "same_module_leaf_vs_sibling": {
+          "block": {
+            "conflicting_non_root_bytes": 5887,
+            "conflicting_non_root_objects": 36,
+            "objects_rewritten_by_both": 37
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 567,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "function": {
+            "conflicting_non_root_bytes": 5745,
+            "conflicting_non_root_objects": 28,
+            "objects_rewritten_by_both": 29
+          },
+          "module": {
+            "conflicting_non_root_bytes": 21402,
+            "conflicting_non_root_objects": 6,
+            "objects_rewritten_by_both": 7
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 567,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          }
+        }
+      },
+      "mutations": {
+        "add_function_middle_module": {
+          "block": {
+            "base_bytes": 30487,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 152,
+            "rebound_declarations": 0,
+            "reused_bytes": 29947,
+            "reused_objects": 239,
+            "rewritten_bytes": 1270,
+            "rewritten_objects": 8,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "call_indirect": {
+            "base_bytes": 28379,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 200,
+            "rebound_declarations": 1,
+            "reused_bytes": 27575,
+            "reused_objects": 200,
+            "rewritten_bytes": 1428,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          },
+          "function": {
+            "base_bytes": 23147,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 152,
+            "rebound_declarations": 0,
+            "reused_bytes": 22607,
+            "reused_objects": 152,
+            "rewritten_bytes": 1055,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "module": {
+            "base_bytes": 24035,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 75,
+            "rebound_declarations": 0,
+            "reused_bytes": 10944,
+            "reused_objects": 4,
+            "rewritten_bytes": 13606,
+            "rewritten_objects": 4,
+            "verification_frontier_fine_objects": 83,
+            "verification_frontier_if_interface_only": 83
+          },
+          "stable_interface_block": {
+            "base_bytes": 33827,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 201,
+            "rebound_declarations": 0,
+            "reused_bytes": 33023,
+            "reused_objects": 288,
+            "rewritten_bytes": 1602,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          }
+        },
+        "entry_constant_last_module": {
+          "block": {
+            "base_bytes": 30487,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 149,
+            "rebound_declarations": 0,
+            "reused_bytes": 29459,
+            "reused_objects": 235,
+            "rewritten_bytes": 1028,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 28379,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 197,
+            "rebound_declarations": 1,
+            "reused_bytes": 27139,
+            "reused_objects": 197,
+            "rewritten_bytes": 1240,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 23147,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 149,
+            "rebound_declarations": 0,
+            "reused_bytes": 22171,
+            "reused_objects": 149,
+            "rewritten_bytes": 976,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 24035,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 123,
+            "rebound_declarations": 0,
+            "reused_bytes": 18126,
+            "reused_objects": 6,
+            "rewritten_bytes": 5909,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 31,
+            "verification_frontier_if_interface_only": 31
+          },
+          "stable_interface_block": {
+            "base_bytes": 33827,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 198,
+            "rebound_declarations": 0,
+            "reused_bytes": 32572,
+            "reused_objects": 284,
+            "rewritten_bytes": 1255,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "leaf_constant_first_module": {
+          "block": {
+            "base_bytes": 30487,
+            "cid_churn": 138,
+            "proof_reused_fine_objects": 51,
+            "rebound_declarations": 0,
+            "reused_bytes": 10660,
+            "reused_objects": 103,
+            "rewritten_bytes": 19906,
+            "rewritten_objects": 139,
+            "verification_frontier_fine_objects": 104,
+            "verification_frontier_if_interface_only": 104
+          },
+          "call_indirect": {
+            "base_bytes": 28379,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 104,
+            "rebound_declarations": 1,
+            "reused_bytes": 27251,
+            "reused_objects": 198,
+            "rewritten_bytes": 1207,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 99,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 23147,
+            "cid_churn": 103,
+            "proof_reused_fine_objects": 51,
+            "rebound_declarations": 0,
+            "reused_bytes": 3989,
+            "reused_objects": 51,
+            "rewritten_bytes": 19237,
+            "rewritten_objects": 104,
+            "verification_frontier_fine_objects": 104,
+            "verification_frontier_if_interface_only": 104
+          },
+          "module": {
+            "base_bytes": 24035,
+            "cid_churn": 7,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 23799,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 151,
+            "verification_frontier_if_interface_only": 151
+          },
+          "stable_interface_block": {
+            "base_bytes": 33827,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 199,
+            "rebound_declarations": 0,
+            "reused_bytes": 32651,
+            "reused_objects": 285,
+            "rewritten_bytes": 1255,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "sibling_constant_first_module": {
+          "block": {
+            "base_bytes": 30487,
+            "cid_churn": 39,
+            "proof_reused_fine_objects": 124,
+            "rebound_declarations": 0,
+            "reused_bytes": 24154,
+            "reused_objects": 202,
+            "rewritten_bytes": 6333,
+            "rewritten_objects": 39,
+            "verification_frontier_fine_objects": 30,
+            "verification_frontier_if_interface_only": 30
+          },
+          "call_indirect": {
+            "base_bytes": 28379,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 177,
+            "rebound_declarations": 1,
+            "reused_bytes": 27139,
+            "reused_objects": 197,
+            "rewritten_bytes": 1240,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 25,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 23147,
+            "cid_churn": 30,
+            "proof_reused_fine_objects": 124,
+            "rebound_declarations": 0,
+            "reused_bytes": 17086,
+            "reused_objects": 124,
+            "rewritten_bytes": 6061,
+            "rewritten_objects": 30,
+            "verification_frontier_fine_objects": 30,
+            "verification_frontier_if_interface_only": 30
+          },
+          "module": {
+            "base_bytes": 24035,
+            "cid_churn": 7,
+            "proof_reused_fine_objects": 4,
+            "rebound_declarations": 0,
+            "reused_bytes": 315,
+            "reused_objects": 1,
+            "rewritten_bytes": 23720,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 150,
+            "verification_frontier_if_interface_only": 150
+          },
+          "stable_interface_block": {
+            "base_bytes": 33827,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 198,
+            "rebound_declarations": 0,
+            "reused_bytes": 32572,
+            "reused_objects": 284,
+            "rewritten_bytes": 1255,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        }
+      },
+      "query_read_function_0_0": {
+        "block": {
+          "bytes": 710
+        },
+        "call_indirect": {
+          "bytes": 324
+        },
+        "function": {
+          "bytes": 324
+        },
+        "module": {
+          "bytes": 3447
+        },
+        "stable_interface_block": {
+          "bytes": 821
+        }
+      },
+      "shape": {
+        "blocks_per_function": 4,
+        "functions_per_module": 8,
+        "modules": 6
+      },
+      "store": {
+        "block": {
+          "index_and_container_bytes": 8732,
+          "objects": 241,
+          "record_bytes": 30487,
+          "store_bytes": 39219
+        },
+        "call_indirect": {
+          "index_and_container_bytes": 7297,
+          "objects": 202,
+          "record_bytes": 28379,
+          "store_bytes": 35676
+        },
+        "function": {
+          "index_and_container_bytes": 5566,
+          "objects": 154,
+          "record_bytes": 23147,
+          "store_bytes": 28713
+        },
+        "module": {
+          "index_and_container_bytes": 369,
+          "objects": 8,
+          "record_bytes": 24035,
+          "store_bytes": 24404
+        },
+        "stable_interface_block": {
+          "index_and_container_bytes": 10477,
+          "objects": 290,
+          "record_bytes": 33827,
+          "store_bytes": 44304
+        }
+      }
+    },
+    "star-8x16": {
+      "merges": {
+        "different_modules_entry_vs_add": {
+          "block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "function": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "module": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          }
+        },
+        "same_module_leaf_vs_sibling": {
+          "block": {
+            "conflicting_non_root_bytes": 969,
+            "conflicting_non_root_objects": 4,
+            "objects_rewritten_by_both": 5
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "function": {
+            "conflicting_non_root_bytes": 897,
+            "conflicting_non_root_objects": 3,
+            "objects_rewritten_by_both": 4
+          },
+          "module": {
+            "conflicting_non_root_bytes": 6503,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          }
+        }
+      },
+      "mutations": {
+        "add_function_middle_module": {
+          "block": {
+            "base_bytes": 66340,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 65470,
+            "reused_objects": 522,
+            "rewritten_bytes": 1430,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "call_indirect": {
+            "base_bytes": 71076,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 522,
+            "rebound_declarations": 1,
+            "reused_bytes": 69678,
+            "reused_objects": 522,
+            "rewritten_bytes": 1995,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          },
+          "function": {
+            "base_bytes": 57124,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 56254,
+            "reused_objects": 394,
+            "rewritten_bytes": 1358,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "module": {
+            "base_bytes": 58058,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 339,
+            "rebound_declarations": 0,
+            "reused_bytes": 46310,
+            "reused_objects": 8,
+            "rewritten_bytes": 12236,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 61,
+            "verification_frontier_if_interface_only": 61
+          },
+          "stable_interface_block": {
+            "base_bytes": 75120,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 523,
+            "rebound_declarations": 0,
+            "reused_bytes": 73722,
+            "reused_objects": 651,
+            "rewritten_bytes": 2026,
+            "rewritten_objects": 8,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          }
+        },
+        "entry_constant_last_module": {
+          "block": {
+            "base_bytes": 66340,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 64989,
+            "reused_objects": 518,
+            "rewritten_bytes": 1351,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 71076,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 519,
+            "rebound_declarations": 1,
+            "reused_bytes": 69269,
+            "reused_objects": 519,
+            "rewritten_bytes": 1807,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 57124,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 55845,
+            "reused_objects": 391,
+            "rewritten_bytes": 1279,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 58058,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 339,
+            "rebound_declarations": 0,
+            "reused_bytes": 46310,
+            "reused_objects": 8,
+            "rewritten_bytes": 11748,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 75120,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 73278,
+            "reused_objects": 647,
+            "rewritten_bytes": 1842,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "leaf_constant_first_module": {
+          "block": {
+            "base_bytes": 66340,
+            "cid_churn": 50,
+            "proof_reused_fine_objects": 362,
+            "rebound_declarations": 0,
+            "reused_bytes": 59071,
+            "reused_objects": 474,
+            "rewritten_bytes": 7348,
+            "rewritten_objects": 51,
+            "verification_frontier_fine_objects": 35,
+            "verification_frontier_if_interface_only": 35
+          },
+          "call_indirect": {
+            "base_bytes": 71076,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 490,
+            "rebound_declarations": 1,
+            "reused_bytes": 69381,
+            "reused_objects": 520,
+            "rewritten_bytes": 1774,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 35,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 57124,
+            "cid_churn": 34,
+            "proof_reused_fine_objects": 362,
+            "rebound_declarations": 0,
+            "reused_bytes": 51007,
+            "reused_objects": 362,
+            "rewritten_bytes": 6196,
+            "rewritten_objects": 35,
+            "verification_frontier_fine_objects": 35,
+            "verification_frontier_if_interface_only": 35
+          },
+          "module": {
+            "base_bytes": 58058,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 340,
+            "rebound_declarations": 0,
+            "reused_bytes": 46389,
+            "reused_objects": 8,
+            "rewritten_bytes": 11748,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 75120,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 521,
+            "rebound_declarations": 0,
+            "reused_bytes": 73390,
+            "reused_objects": 648,
+            "rewritten_bytes": 1809,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "sibling_constant_first_module": {
+          "block": {
+            "base_bytes": 66340,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 64989,
+            "reused_objects": 518,
+            "rewritten_bytes": 1351,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 71076,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 519,
+            "rebound_declarations": 1,
+            "reused_bytes": 69269,
+            "reused_objects": 519,
+            "rewritten_bytes": 1807,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 57124,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 55845,
+            "reused_objects": 391,
+            "rewritten_bytes": 1279,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 58058,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 340,
+            "rebound_declarations": 0,
+            "reused_bytes": 46389,
+            "reused_objects": 8,
+            "rewritten_bytes": 11669,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 56,
+            "verification_frontier_if_interface_only": 56
+          },
+          "stable_interface_block": {
+            "base_bytes": 75120,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 73278,
+            "reused_objects": 647,
+            "rewritten_bytes": 1842,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        }
+      },
+      "query_read_function_0_0": {
+        "block": {
+          "bytes": 369
+        },
+        "call_indirect": {
+          "bytes": 297
+        },
+        "function": {
+          "bytes": 297
+        },
+        "module": {
+          "bytes": 6503
+        },
+        "stable_interface_block": {
+          "bytes": 480
+        }
+      },
+      "shape": {
+        "blocks_per_function": 1,
+        "functions_per_module": 16,
+        "modules": 8
+      },
+      "store": {
+        "block": {
+          "index_and_container_bytes": 18957,
+          "objects": 524,
+          "record_bytes": 66340,
+          "store_bytes": 85297
+        },
+        "call_indirect": {
+          "index_and_container_bytes": 18958,
+          "objects": 524,
+          "record_bytes": 71076,
+          "store_bytes": 90034
+        },
+        "function": {
+          "index_and_container_bytes": 14362,
+          "objects": 396,
+          "record_bytes": 57124,
+          "store_bytes": 71486
+        },
+        "module": {
+          "index_and_container_bytes": 445,
+          "objects": 10,
+          "record_bytes": 58058,
+          "store_bytes": 58503
+        },
+        "stable_interface_block": {
+          "index_and_container_bytes": 23604,
+          "objects": 653,
+          "record_bytes": 75120,
+          "store_bytes": 98724
+        }
+      }
+    },
+    "star-8x16-b4": {
+      "merges": {
+        "different_modules_entry_vs_add": {
+          "block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "function": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "module": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 0,
+            "conflicting_non_root_objects": 0,
+            "objects_rewritten_by_both": 1
+          }
+        },
+        "same_module_leaf_vs_sibling": {
+          "block": {
+            "conflicting_non_root_bytes": 846,
+            "conflicting_non_root_objects": 3,
+            "objects_rewritten_by_both": 4
+          },
+          "call_indirect": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "function": {
+            "conflicting_non_root_bytes": 924,
+            "conflicting_non_root_objects": 3,
+            "objects_rewritten_by_both": 4
+          },
+          "module": {
+            "conflicting_non_root_bytes": 6935,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          },
+          "stable_interface_block": {
+            "conflicting_non_root_bytes": 1095,
+            "conflicting_non_root_objects": 1,
+            "objects_rewritten_by_both": 2
+          }
+        }
+      },
+      "mutations": {
+        "add_function_middle_module": {
+          "block": {
+            "base_bytes": 69061,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 68191,
+            "reused_objects": 535,
+            "rewritten_bytes": 1600,
+            "rewritten_objects": 8,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "call_indirect": {
+            "base_bytes": 74532,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 522,
+            "rebound_declarations": 1,
+            "reused_bytes": 73134,
+            "reused_objects": 522,
+            "rewritten_bytes": 2022,
+            "rewritten_objects": 7,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          },
+          "function": {
+            "base_bytes": 60580,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 394,
+            "rebound_declarations": 0,
+            "reused_bytes": 59710,
+            "reused_objects": 394,
+            "rewritten_bytes": 1385,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 6,
+            "verification_frontier_if_interface_only": 6
+          },
+          "module": {
+            "base_bytes": 61514,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 339,
+            "rebound_declarations": 0,
+            "reused_bytes": 49334,
+            "reused_objects": 8,
+            "rewritten_bytes": 12695,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 61,
+            "verification_frontier_if_interface_only": 61
+          },
+          "stable_interface_block": {
+            "base_bytes": 77841,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 523,
+            "rebound_declarations": 0,
+            "reused_bytes": 76443,
+            "reused_objects": 664,
+            "rewritten_bytes": 2196,
+            "rewritten_objects": 9,
+            "verification_frontier_fine_objects": 7,
+            "verification_frontier_if_interface_only": 7
+          }
+        },
+        "entry_constant_last_module": {
+          "block": {
+            "base_bytes": 69061,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 67703,
+            "reused_objects": 531,
+            "rewritten_bytes": 1358,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 74532,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 519,
+            "rebound_declarations": 1,
+            "reused_bytes": 72698,
+            "reused_objects": 519,
+            "rewritten_bytes": 1834,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 60580,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 59274,
+            "reused_objects": 391,
+            "rewritten_bytes": 1306,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 61514,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 339,
+            "rebound_declarations": 0,
+            "reused_bytes": 49334,
+            "reused_objects": 8,
+            "rewritten_bytes": 12180,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 77841,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 75992,
+            "reused_objects": 660,
+            "rewritten_bytes": 1849,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "leaf_constant_first_module": {
+          "block": {
+            "base_bytes": 69061,
+            "cid_churn": 36,
+            "proof_reused_fine_objects": 362,
+            "rebound_declarations": 0,
+            "reused_bytes": 63472,
+            "reused_objects": 501,
+            "rewritten_bytes": 5668,
+            "rewritten_objects": 37,
+            "verification_frontier_fine_objects": 35,
+            "verification_frontier_if_interface_only": 35
+          },
+          "call_indirect": {
+            "base_bytes": 74532,
+            "cid_churn": 4,
+            "proof_reused_fine_objects": 490,
+            "rebound_declarations": 1,
+            "reused_bytes": 72810,
+            "reused_objects": 520,
+            "rewritten_bytes": 1801,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 35,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 60580,
+            "cid_churn": 34,
+            "proof_reused_fine_objects": 362,
+            "rebound_declarations": 0,
+            "reused_bytes": 54031,
+            "reused_objects": 362,
+            "rewritten_bytes": 6628,
+            "rewritten_objects": 35,
+            "verification_frontier_fine_objects": 35,
+            "verification_frontier_if_interface_only": 35
+          },
+          "module": {
+            "base_bytes": 61514,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 340,
+            "rebound_declarations": 0,
+            "reused_bytes": 49413,
+            "reused_objects": 8,
+            "rewritten_bytes": 12180,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 57,
+            "verification_frontier_if_interface_only": 57
+          },
+          "stable_interface_block": {
+            "base_bytes": 77841,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 521,
+            "rebound_declarations": 0,
+            "reused_bytes": 76071,
+            "reused_objects": 661,
+            "rewritten_bytes": 1849,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        },
+        "sibling_constant_first_module": {
+          "block": {
+            "base_bytes": 69061,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 67703,
+            "reused_objects": 531,
+            "rewritten_bytes": 1358,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "call_indirect": {
+            "base_bytes": 74532,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 519,
+            "rebound_declarations": 1,
+            "reused_bytes": 72698,
+            "reused_objects": 519,
+            "rewritten_bytes": 1834,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "function": {
+            "base_bytes": 60580,
+            "cid_churn": 5,
+            "proof_reused_fine_objects": 391,
+            "rebound_declarations": 0,
+            "reused_bytes": 59274,
+            "reused_objects": 391,
+            "rewritten_bytes": 1306,
+            "rewritten_objects": 5,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          },
+          "module": {
+            "base_bytes": 61514,
+            "cid_churn": 2,
+            "proof_reused_fine_objects": 340,
+            "rebound_declarations": 0,
+            "reused_bytes": 49413,
+            "reused_objects": 8,
+            "rewritten_bytes": 12101,
+            "rewritten_objects": 2,
+            "verification_frontier_fine_objects": 56,
+            "verification_frontier_if_interface_only": 56
+          },
+          "stable_interface_block": {
+            "base_bytes": 77841,
+            "cid_churn": 6,
+            "proof_reused_fine_objects": 520,
+            "rebound_declarations": 0,
+            "reused_bytes": 75992,
+            "reused_objects": 660,
+            "rewritten_bytes": 1849,
+            "rewritten_objects": 6,
+            "verification_frontier_fine_objects": 5,
+            "verification_frontier_if_interface_only": 5
+          }
+        }
+      },
+      "query_read_function_0_0": {
+        "block": {
+          "bytes": 710
+        },
+        "call_indirect": {
+          "bytes": 324
+        },
+        "function": {
+          "bytes": 324
+        },
+        "module": {
+          "bytes": 6935
+        },
+        "stable_interface_block": {
+          "bytes": 821
+        }
+      },
+      "shape": {
+        "blocks_per_function": 4,
+        "functions_per_module": 16,
+        "modules": 8
+      },
+      "store": {
+        "block": {
+          "index_and_container_bytes": 19556,
+          "objects": 537,
+          "record_bytes": 69061,
+          "store_bytes": 88617
+        },
+        "call_indirect": {
+          "index_and_container_bytes": 18970,
+          "objects": 524,
+          "record_bytes": 74532,
+          "store_bytes": 93502
+        },
+        "function": {
+          "index_and_container_bytes": 14358,
+          "objects": 396,
+          "record_bytes": 60580,
+          "store_bytes": 74938
+        },
+        "module": {
+          "index_and_container_bytes": 445,
+          "objects": 10,
+          "record_bytes": 61514,
+          "store_bytes": 61959
+        },
+        "stable_interface_block": {
+          "index_and_container_bytes": 24173,
+          "objects": 666,
+          "record_bytes": 77841,
+          "store_bytes": 102014
+        }
+      }
+    }
+  },
+  "classification": "tooling-only deterministic accounting over synthetic chain/star stress fixtures plus a generated multi-module service-like DAG; candidates never become canonical store v1",
+  "granularities": {
+    "block": "measurement-only: each graph fragment becomes a skeleton over per-block units (canonical single-block encoding, block-local reference table); verification reassembles and checks whole graphs",
+    "call_indirect": "measurement-only: callers reference a nominal declaration (symbol + signature) and each module binds declarations to definitions; verification frontier conservatively includes transitive callers of rebound declarations",
+    "function": "current canonical store: type/constant/graph_fragment/function/module/root objects",
+    "module": "measurement-only packing: one unit per module of exclusively owned fine envelopes, shared objects in one common unit",
+    "stable_interface_block": "measurement-only: stable callee declaration -> canonical immutable CallContract summary, module binding -> separately objectized block-skeleton body; reassembly must match canonical graph/function CIDs and stale summary/body pairs reject"
+  },
+  "model_visible_context_tokens": {
+    "status": "unavailable: no tokenizer/model trial is available in this environment; byte counts are not substituted for model tokens"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "accounted_query_bytes": 520,
+  "bounded_page_bytes": [
+    171,
+    171,
+    178
+  ],
+  "bounded_page_entity_counts": [
+    1,
+    1,
+    1
+  ],
+  "bounded_total_response_bytes": 520,
+  "budget_bytes": 178,
+  "continuations": [
+    1,
+    2,
+    null
+  ],
+  "entities_exposed": 3,
+  "kind": "m6-response-byte-budget-accounting-v1",
+  "notes": "Exact deterministic bootstrap JSON bytes only; not model-token counts or timing evidence.",
+  "query_count": 3,
+  "timing": false,
+  "unbounded_response_bytes": 424
+}

@@ -1,0 +1,14 @@
+
+compiler/integration/android/libxposed_fixture/app/src/main/jniLibs/arm64-v8a/libxaxmodule.so:	file format elf64-littleaarch64
+
+Disassembly of section .text:
+
+0000000000000190 <native_init>:
+     190: 10000080     	adr	x0, 0x1a0 <native_init+0x10>
+     194: d65f03c0     	ret
+     198: d503201f     	nop
+     19c: d503201f     	nop
+     1a0: d65f03c0     	ret
+     1a4: d503201f     	nop
+     1a8: d503201f     	nop
+     1ac: d503201f     	nop

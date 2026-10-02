@@ -1,0 +1,115 @@
+{
+  "apk": {
+    "blake3": "8837bab22185dab8a5dcfdaf520755d5051aaa77a1accd7ec0db737127345242",
+    "build_key": "126500a1165d3ddaf8a0b0f54c4d97c2c9d05c471e9f307dd51f94211aef8dba",
+    "bytes": 34347,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "classes4.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "df05999179b1f7434941c9b18bbdf7f8360217c795f9f7c44925ec511c8cac01",
+    "repeat_identical": true,
+    "request_root": "5127ca56d421d95d82c29c0a8586a4b4837032af9370fc4d6853dbd10e4518e9",
+    "sha256": "2577118046cbb586cd90975edad6d3b028f54432ff13b040e3d48b990d7e694b",
+    "snapshot_root": "c4ffafd14d2bbe88107dfdc634ae4af394d672e92c312d884ce0baa7940f0aa2"
+  },
+  "environment_note": "direct semantic/DEX/APK structural evidence only; actual ART deoptimization success and hook behavior are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
+  "hot_hooker": {
+    "deoptimize_string_present": false,
+    "intercept_code_units": 5,
+    "note": "deoptimization is install-time only and does not enter the interceptor hot path",
+    "opcode_counts": {
+      "invoke_direct": 0,
+      "invoke_interface": 1,
+      "invoke_virtual": 0,
+      "move_result_object": 1,
+      "new_instance": 0,
+      "return_object": 1,
+      "return_void": 0,
+      "sget_object": 0
+    }
+  },
+  "install_dex": {
+    "bytes": 1956,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "deoptimize_call_count": 1,
+    "deoptimize_precedes_hook": true,
+    "extra_allocations_for_deoptimization": 0,
+    "hook_call_count": 1,
+    "instruction_opcodes": [
+      "0x72",
+      "0x0c",
+      "0x1a",
+      "0x6e",
+      "0x0c",
+      "0x1a",
+      "0x12",
+      "0x6e",
+      "0x0c",
+      "0x6e",
+      "0x6e",
+      "0x0c",
+      "0x62",
+      "0x72",
+      "0x0c",
+      "0x22",
+      "0x70",
+      "0x72",
+      "0x0c",
+      "0x70",
+      "0x0e"
+    ],
+    "invoke_virtual_names": [
+      "loadClass",
+      "getDeclaredMethod",
+      "deoptimize",
+      "hook"
+    ],
+    "on_package_ready_code_units": 43,
+    "opcode_counts": {
+      "invoke_direct": 2,
+      "invoke_interface": 3,
+      "invoke_virtual": 4,
+      "move_result_object": 6,
+      "new_instance": 1,
+      "return_object": 0,
+      "return_void": 1,
+      "sget_object": 1
+    },
+    "sha256": "b428fa73e8b7316e613912720f27e1a22827ed8429d71d20d8bdef9156fa8be9",
+    "signature_valid": true
+  },
+  "runtime_validation": {
+    "deoptimization_return": "UNEXECUTED",
+    "hook_installation": "UNEXECUTED",
+    "interception": "UNEXECUTED",
+    "module_discovery": "UNEXECUTED",
+    "package_ready": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-deopt-evidence-v1",
+  "semantic_input": {
+    "deoptimization_cid": "657d49cbd6f6c27a2cd2cc01253050acd7e70b9d6a2c1fd25ef4c1b26a923aba",
+    "hook_adapter_cid": "363b83a457638749236b831cf60201284d8829af6a393edc7bf171b7adf7f367",
+    "hook_installation_cid": "430ea39018132d40ea633271fb6649c012d72d3b38f4201dd7277510ab99d7fc",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "result_policy": "best-effort",
+    "target_class": "android.app.Activity",
+    "target_method": "onResume",
+    "target_parameters": []
+  },
+  "upstream_contract": {
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "boolean_result_use": "explicitly ignored",
+    "method": "XposedInterface.deoptimize(Executable)->boolean",
+    "semantic_result_policy": "best-effort"
+  }
+}

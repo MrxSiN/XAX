@@ -1,0 +1,581 @@
+{
+ "transport_version": "X1",
+ "tokenizer": "tiktoken 0.14.0",
+ "encodings": [
+  "cl100k_base",
+  "o200k_base"
+ ],
+ "model_run": null,
+ "rows": [
+  {
+   "task_id": "task-01",
+   "handles": "typed",
+   "framing": "line",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 3\nN1 add.wrap P0 N0\nN2 mul.wrap N1 N0\nreturn N2\n",
+   "view_bytes": 75,
+   "view_tokens": {
+    "cl100k_base": 40,
+    "o200k_base": 39
+   },
+   "packet": "X1 R0.0\nset-constant N0 7\n",
+   "packet_bytes": 26,
+   "packet_tokens": {
+    "cl100k_base": 15,
+    "o200k_base": 15
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-01",
+   "handles": "typed",
+   "framing": "pipe",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 3\nN1 add.wrap P0 N0\nN2 mul.wrap N1 N0\nreturn N2\n",
+   "view_bytes": 75,
+   "view_tokens": {
+    "cl100k_base": 40,
+    "o200k_base": 39
+   },
+   "packet": "X1|R0.0;C|N0|7",
+   "packet_bytes": 14,
+   "packet_tokens": {
+    "cl100k_base": 13,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-01",
+   "handles": "typed",
+   "framing": "json",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 3\nN1 add.wrap P0 N0\nN2 mul.wrap N1 N0\nreturn N2\n",
+   "view_bytes": 75,
+   "view_tokens": {
+    "cl100k_base": 40,
+    "o200k_base": 39
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"C\",\"N0\",7]]",
+   "packet_bytes": 26,
+   "packet_tokens": {
+    "cl100k_base": 17,
+    "o200k_base": 17
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-01",
+   "handles": "unified",
+   "framing": "line",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 3\n2 add.wrap 0 1\n3 mul.wrap 2 1\nreturn 3\n",
+   "view_bytes": 66,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "X1 R0.0\nset-constant 1 7\n",
+   "packet_bytes": 25,
+   "packet_tokens": {
+    "cl100k_base": 15,
+    "o200k_base": 15
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-01",
+   "handles": "unified",
+   "framing": "pipe",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 3\n2 add.wrap 0 1\n3 mul.wrap 2 1\nreturn 3\n",
+   "view_bytes": 66,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "X1|R0.0;C|1|7",
+   "packet_bytes": 13,
+   "packet_tokens": {
+    "cl100k_base": 12,
+    "o200k_base": 13
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-01",
+   "handles": "unified",
+   "framing": "json",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 3\n2 add.wrap 0 1\n3 mul.wrap 2 1\nreturn 3\n",
+   "view_bytes": 66,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"C\",1,7]]",
+   "packet_bytes": 23,
+   "packet_tokens": {
+    "cl100k_base": 16,
+    "o200k_base": 16
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-02",
+   "handles": "typed",
+   "framing": "line",
+   "semantic_entities": 3,
+   "view": "R0 f(P0:u32)->u32\nN0 const 5\nN1 add.wrap P0 N0\nreturn N1\n",
+   "view_bytes": 57,
+   "view_tokens": {
+    "cl100k_base": 31,
+    "o200k_base": 30
+   },
+   "packet": "X1 R0.0\nset-op N1 mul.wrap\n",
+   "packet_bytes": 27,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-02",
+   "handles": "typed",
+   "framing": "pipe",
+   "semantic_entities": 3,
+   "view": "R0 f(P0:u32)->u32\nN0 const 5\nN1 add.wrap P0 N0\nreturn N1\n",
+   "view_bytes": 57,
+   "view_tokens": {
+    "cl100k_base": 31,
+    "o200k_base": 30
+   },
+   "packet": "X1|R0.0;O|N1|mul.wrap",
+   "packet_bytes": 21,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 15
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-02",
+   "handles": "typed",
+   "framing": "json",
+   "semantic_entities": 3,
+   "view": "R0 f(P0:u32)->u32\nN0 const 5\nN1 add.wrap P0 N0\nreturn N1\n",
+   "view_bytes": 57,
+   "view_tokens": {
+    "cl100k_base": 31,
+    "o200k_base": 30
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"O\",\"N1\",\"mul.wrap\"]]",
+   "packet_bytes": 35,
+   "packet_tokens": {
+    "cl100k_base": 18,
+    "o200k_base": 18
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-02",
+   "handles": "unified",
+   "framing": "line",
+   "semantic_entities": 3,
+   "view": "R0 f(0:u32)->u32\n1 const 5\n2 add.wrap 0 1\nreturn 2\n",
+   "view_bytes": 51,
+   "view_tokens": {
+    "cl100k_base": 29,
+    "o200k_base": 28
+   },
+   "packet": "X1 R0.0\nset-op 2 mul.wrap\n",
+   "packet_bytes": 26,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-02",
+   "handles": "unified",
+   "framing": "pipe",
+   "semantic_entities": 3,
+   "view": "R0 f(0:u32)->u32\n1 const 5\n2 add.wrap 0 1\nreturn 2\n",
+   "view_bytes": 51,
+   "view_tokens": {
+    "cl100k_base": 29,
+    "o200k_base": 28
+   },
+   "packet": "X1|R0.0;O|2|mul.wrap",
+   "packet_bytes": 20,
+   "packet_tokens": {
+    "cl100k_base": 13,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-02",
+   "handles": "unified",
+   "framing": "json",
+   "semantic_entities": 3,
+   "view": "R0 f(0:u32)->u32\n1 const 5\n2 add.wrap 0 1\nreturn 2\n",
+   "view_bytes": 51,
+   "view_tokens": {
+    "cl100k_base": 29,
+    "o200k_base": 28
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"O\",2,\"mul.wrap\"]]",
+   "packet_bytes": 32,
+   "packet_tokens": {
+    "cl100k_base": 17,
+    "o200k_base": 17
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-03",
+   "handles": "typed",
+   "framing": "line",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 2\nN1 const 9\nN2 mul.wrap P0 N0\nreturn N2\n",
+   "view_bytes": 68,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "X1 R0.0\nreplace-operand N2 1 N1\n",
+   "packet_bytes": 32,
+   "packet_tokens": {
+    "cl100k_base": 17,
+    "o200k_base": 17
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-03",
+   "handles": "typed",
+   "framing": "pipe",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 2\nN1 const 9\nN2 mul.wrap P0 N0\nreturn N2\n",
+   "view_bytes": 68,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "X1|R0.0;U|N2|1|N1",
+   "packet_bytes": 17,
+   "packet_tokens": {
+    "cl100k_base": 16,
+    "o200k_base": 17
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-03",
+   "handles": "typed",
+   "framing": "json",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 2\nN1 const 9\nN2 mul.wrap P0 N0\nreturn N2\n",
+   "view_bytes": 68,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"U\",\"N2\",1,\"N1\"]]",
+   "packet_bytes": 31,
+   "packet_tokens": {
+    "cl100k_base": 20,
+    "o200k_base": 20
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-03",
+   "handles": "unified",
+   "framing": "line",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 2\n2 const 9\n3 mul.wrap 0 1\nreturn 3\n",
+   "view_bytes": 61,
+   "view_tokens": {
+    "cl100k_base": 34,
+    "o200k_base": 33
+   },
+   "packet": "X1 R0.0\nreplace-operand 3 1 2\n",
+   "packet_bytes": 30,
+   "packet_tokens": {
+    "cl100k_base": 17,
+    "o200k_base": 17
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-03",
+   "handles": "unified",
+   "framing": "pipe",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 2\n2 const 9\n3 mul.wrap 0 1\nreturn 3\n",
+   "view_bytes": 61,
+   "view_tokens": {
+    "cl100k_base": 34,
+    "o200k_base": 33
+   },
+   "packet": "X1|R0.0;U|3|1|2",
+   "packet_bytes": 15,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 15
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-03",
+   "handles": "unified",
+   "framing": "json",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 2\n2 const 9\n3 mul.wrap 0 1\nreturn 3\n",
+   "view_bytes": 61,
+   "view_tokens": {
+    "cl100k_base": 34,
+    "o200k_base": 33
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"U\",3,1,2]]",
+   "packet_bytes": 25,
+   "packet_tokens": {
+    "cl100k_base": 18,
+    "o200k_base": 18
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-04",
+   "handles": "typed",
+   "framing": "line",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 4\nN1 const 21\nN2 add.wrap P0 N0\nreturn N2\n",
+   "view_bytes": 69,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "X1 R0.0\ndelete N1\n",
+   "packet_bytes": 18,
+   "packet_tokens": {
+    "cl100k_base": 11,
+    "o200k_base": 11
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-04",
+   "handles": "typed",
+   "framing": "pipe",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 4\nN1 const 21\nN2 add.wrap P0 N0\nreturn N2\n",
+   "view_bytes": 69,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "X1|R0.0;D|N1",
+   "packet_bytes": 12,
+   "packet_tokens": {
+    "cl100k_base": 11,
+    "o200k_base": 12
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-04",
+   "handles": "typed",
+   "framing": "json",
+   "semantic_entities": 4,
+   "view": "R0 f(P0:u32)->u32\nN0 const 4\nN1 const 21\nN2 add.wrap P0 N0\nreturn N2\n",
+   "view_bytes": 69,
+   "view_tokens": {
+    "cl100k_base": 37,
+    "o200k_base": 36
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"D\",\"N1\"]]",
+   "packet_bytes": 24,
+   "packet_tokens": {
+    "cl100k_base": 15,
+    "o200k_base": 15
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-04",
+   "handles": "unified",
+   "framing": "line",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 4\n2 const 21\n3 add.wrap 0 1\nreturn 3\n",
+   "view_bytes": 62,
+   "view_tokens": {
+    "cl100k_base": 34,
+    "o200k_base": 33
+   },
+   "packet": "X1 R0.0\ndelete 2\n",
+   "packet_bytes": 17,
+   "packet_tokens": {
+    "cl100k_base": 11,
+    "o200k_base": 11
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-04",
+   "handles": "unified",
+   "framing": "pipe",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 4\n2 const 21\n3 add.wrap 0 1\nreturn 3\n",
+   "view_bytes": 62,
+   "view_tokens": {
+    "cl100k_base": 34,
+    "o200k_base": 33
+   },
+   "packet": "X1|R0.0;D|2",
+   "packet_bytes": 11,
+   "packet_tokens": {
+    "cl100k_base": 10,
+    "o200k_base": 11
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-04",
+   "handles": "unified",
+   "framing": "json",
+   "semantic_entities": 4,
+   "view": "R0 f(0:u32)->u32\n1 const 4\n2 const 21\n3 add.wrap 0 1\nreturn 3\n",
+   "view_bytes": 62,
+   "view_tokens": {
+    "cl100k_base": 34,
+    "o200k_base": 33
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"D\",2]]",
+   "packet_bytes": 21,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-05",
+   "handles": "typed",
+   "framing": "line",
+   "semantic_entities": 5,
+   "view": "R0 f(P0:u32)->u32\nN0 const 2\nN1 const 9\nN2 add.wrap P0 N0\nN3 add.wrap N2 N1\nreturn N3\n",
+   "view_bytes": 86,
+   "view_tokens": {
+    "cl100k_base": 46,
+    "o200k_base": 45
+   },
+   "packet": "X1 R0.0\nmove N1 before N0\n",
+   "packet_bytes": 26,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-05",
+   "handles": "typed",
+   "framing": "pipe",
+   "semantic_entities": 5,
+   "view": "R0 f(P0:u32)->u32\nN0 const 2\nN1 const 9\nN2 add.wrap P0 N0\nN3 add.wrap N2 N1\nreturn N3\n",
+   "view_bytes": 86,
+   "view_tokens": {
+    "cl100k_base": 46,
+    "o200k_base": 45
+   },
+   "packet": "X1|R0.0;M|N1|N0",
+   "packet_bytes": 15,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 15
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-05",
+   "handles": "typed",
+   "framing": "json",
+   "semantic_entities": 5,
+   "view": "R0 f(P0:u32)->u32\nN0 const 2\nN1 const 9\nN2 add.wrap P0 N0\nN3 add.wrap N2 N1\nreturn N3\n",
+   "view_bytes": 86,
+   "view_tokens": {
+    "cl100k_base": 46,
+    "o200k_base": 45
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"M\",\"N1\",\"N0\"]]",
+   "packet_bytes": 29,
+   "packet_tokens": {
+    "cl100k_base": 18,
+    "o200k_base": 18
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-05",
+   "handles": "unified",
+   "framing": "line",
+   "semantic_entities": 5,
+   "view": "R0 f(0:u32)->u32\n1 const 2\n2 const 9\n3 add.wrap 0 1\n4 add.wrap 3 2\nreturn 4\n",
+   "view_bytes": 76,
+   "view_tokens": {
+    "cl100k_base": 42,
+    "o200k_base": 41
+   },
+   "packet": "X1 R0.0\nmove 2 before 1\n",
+   "packet_bytes": 24,
+   "packet_tokens": {
+    "cl100k_base": 14,
+    "o200k_base": 14
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-05",
+   "handles": "unified",
+   "framing": "pipe",
+   "semantic_entities": 5,
+   "view": "R0 f(0:u32)->u32\n1 const 2\n2 const 9\n3 add.wrap 0 1\n4 add.wrap 3 2\nreturn 4\n",
+   "view_bytes": 76,
+   "view_tokens": {
+    "cl100k_base": 42,
+    "o200k_base": 41
+   },
+   "packet": "X1|R0.0;M|2|1",
+   "packet_bytes": 13,
+   "packet_tokens": {
+    "cl100k_base": 12,
+    "o200k_base": 13
+   },
+   "reaches_target": true
+  },
+  {
+   "task_id": "task-05",
+   "handles": "unified",
+   "framing": "json",
+   "semantic_entities": 5,
+   "view": "R0 f(0:u32)->u32\n1 const 2\n2 const 9\n3 add.wrap 0 1\n4 add.wrap 3 2\nreturn 4\n",
+   "view_bytes": 76,
+   "view_tokens": {
+    "cl100k_base": 42,
+    "o200k_base": 41
+   },
+   "packet": "[\"X1\",\"R0.0\",[\"M\",2,1]]",
+   "packet_bytes": 23,
+   "packet_tokens": {
+    "cl100k_base": 16,
+    "o200k_base": 16
+   },
+   "reaches_target": true
+  }
+ ]
+}

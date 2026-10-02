@@ -1,0 +1,305 @@
+{
+  "distribution_threshold_nodes": 256,
+  "format": {
+    "corrupt_or_stale": "reject_or_rebuild",
+    "key": [
+      "semantic_root_cid",
+      "verifier_identity",
+      "compiler_identity"
+    ],
+    "magic": "XDI1",
+    "record": [
+      "object_cid",
+      "dependency_fingerprint",
+      "exact_direct_dependencies",
+      "exact_reverse_users"
+    ],
+    "semantic": false,
+    "version": 1,
+    "write_policy": "atomic_replace"
+  },
+  "parallel": {
+    "16": {
+      "cold_best_ms": 13.577739,
+      "cold_best_worker_count": 1,
+      "cold_one_worker_ms": 13.577739,
+      "cold_speedup_vs_one_worker": 1.0,
+      "output_digest": "880e17dd1e7dce0f3bc06e9efe03f7b5fea2a1a6d2c9e73993d0f6b8a2da0711",
+      "outputs_schedule_independent": true,
+      "payload_bytes": 4127,
+      "task_count": 4,
+      "warm_best_median_ms": 4.239701,
+      "warm_best_worker_count": 4,
+      "warm_one_worker_median_ms": 7.49884,
+      "warm_speedup_vs_one_worker": 1.7687190676889715,
+      "workers_tested": [
+        1,
+        2,
+        4
+      ]
+    },
+    "2048": {
+      "cold_best_ms": 272.723712,
+      "cold_best_worker_count": 2,
+      "cold_one_worker_ms": 384.610942,
+      "cold_speedup_vs_one_worker": 1.4102585330020738,
+      "output_digest": "1dc45ff7bd8283a72d453925baa1c3ac5e3036bc398778a8c8e584a3f0a8c24c",
+      "outputs_schedule_independent": true,
+      "payload_bytes": 101237,
+      "task_count": 4,
+      "warm_best_median_ms": 132.195876,
+      "warm_best_worker_count": 4,
+      "warm_one_worker_median_ms": 258.933958,
+      "warm_speedup_vs_one_worker": 1.958714339923887,
+      "workers_tested": [
+        1,
+        2,
+        4
+      ]
+    },
+    "256": {
+      "cold_best_ms": 32.607221,
+      "cold_best_worker_count": 4,
+      "cold_one_worker_ms": 48.464921,
+      "cold_speedup_vs_one_worker": 1.486324792904001,
+      "output_digest": "e8f10105082cb8bae902f8b159124b0b7fa6d93f3b0213ed5c6516d6c7089bf3",
+      "outputs_schedule_independent": true,
+      "payload_bytes": 15204,
+      "task_count": 4,
+      "warm_best_median_ms": 19.687161,
+      "warm_best_worker_count": 4,
+      "warm_one_worker_median_ms": 38.758122,
+      "warm_speedup_vs_one_worker": 1.9687004134318808,
+      "workers_tested": [
+        1,
+        2,
+        4
+      ]
+    },
+    "4096": {
+      "cold_best_ms": 277.79028,
+      "cold_best_worker_count": 4,
+      "cold_one_worker_ms": 651.22366,
+      "cold_speedup_vs_one_worker": 2.3442996637607334,
+      "output_digest": "98e5997754cf9a820d860acd0639ce1267779415f4c443f8a8e13759bd829a78",
+      "outputs_schedule_independent": true,
+      "payload_bytes": 199541,
+      "task_count": 4,
+      "warm_best_median_ms": 267.999827,
+      "warm_best_worker_count": 2,
+      "warm_one_worker_median_ms": 556.353836,
+      "warm_speedup_vs_one_worker": 2.075948489324958,
+      "workers_tested": [
+        1,
+        2,
+        4
+      ]
+    }
+  },
+  "parallel_diagnostic_reference": [
+    "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "diagnostic",
+    "{\"actual\":\"missing\",\"code\":\"XAX.IDENTITY.OBJECT_MISSING\",\"entity\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"expected\":\"stored object\",\"rule\":\"ID-REFERENCE-RESOLVED\"}"
+  ],
+  "projects": {
+    "deep_chain": {
+      "edits": {
+        "leaf_body": {
+          "added_objects": 258,
+          "invalidated_old_bytes": 45941,
+          "invalidation_count": 258,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 45941,
+          "new_root": "88c7f4244fa10172a7d5aede84af66bc82faacb4ab19007e69006cc13e4584f0",
+          "removed_objects": 258,
+          "reused_object_bytes": 20425,
+          "reused_objects": 258,
+          "update": {
+            "added_objects": 258,
+            "decoded_new_objects": 258,
+            "removed_objects": 258,
+            "retained_objects": 258
+          },
+          "updated_index_bytes": 38248
+        },
+        "leaf_interface": {
+          "added_objects": 258,
+          "invalidated_old_bytes": 45941,
+          "invalidation_count": 258,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 45946,
+          "new_root": "58ddb89a3cfb38be6417306e01f90fb90333a3d6f6bbdaabc18c1b2d90371599",
+          "removed_objects": 258,
+          "reused_object_bytes": 20425,
+          "reused_objects": 258,
+          "update": {
+            "added_objects": 258,
+            "decoded_new_objects": 258,
+            "removed_objects": 258,
+            "retained_objects": 258
+          },
+          "updated_index_bytes": 38362
+        }
+      },
+      "index_bytes": 38370,
+      "index_edges": 1153,
+      "index_objects": 516,
+      "index_sha256": "4544c99906657bcb2313b7754e2dde9ec08f01ca1930a575f793a93f5d6c176a",
+      "objects": 516,
+      "root": "72e1687713d9f9b52c59142110e76215c1a7dc30a2e140ea2d0f25adacbae83e",
+      "store_bytes": 85021
+    },
+    "mixed_modules": {
+      "edits": {
+        "leaf_body": {
+          "added_objects": 265,
+          "invalidated_old_bytes": 46442,
+          "invalidation_count": 265,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 46442,
+          "new_root": "e01cc79ae7e1308f17ed2f24f4520d8a7695fc8985eb9338a256c134c046fc89",
+          "removed_objects": 265,
+          "reused_object_bytes": 20425,
+          "reused_objects": 258,
+          "update": {
+            "added_objects": 265,
+            "decoded_new_objects": 265,
+            "removed_objects": 265,
+            "retained_objects": 258
+          },
+          "updated_index_bytes": 38836
+        },
+        "leaf_interface": {
+          "added_objects": 265,
+          "invalidated_old_bytes": 46442,
+          "invalidation_count": 265,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 46615,
+          "new_root": "bf8d7a91ee60faea0da7969b96ea6fec4f1457d0508d44eb99289d116ed77508",
+          "removed_objects": 265,
+          "reused_object_bytes": 20425,
+          "reused_objects": 258,
+          "update": {
+            "added_objects": 265,
+            "decoded_new_objects": 265,
+            "removed_objects": 265,
+            "retained_objects": 258
+          },
+          "updated_index_bytes": 38838
+        }
+      },
+      "index_bytes": 38847,
+      "index_edges": 1160,
+      "index_objects": 523,
+      "index_sha256": "3ef37c3affbab35dc79ff1c23205b7096dd9d819db70944268f5d944868f7f0d",
+      "objects": 523,
+      "root": "1a39b76ba8b188059e3353d6b7dd4ee783c17cffe6fe4e072a73dc04f7ddfe75",
+      "store_bytes": 85794
+    },
+    "service_generated": {
+      "edits": {
+        "leaf_body": {
+          "added_objects": 151,
+          "invalidated_old_bytes": 27546,
+          "invalidation_count": 151,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 27546,
+          "new_root": "103852bdfec6ca6f5d60fb67719fc79f8a838603e98acf425c0f904443c7337a",
+          "removed_objects": 151,
+          "reused_object_bytes": 11577,
+          "reused_objects": 146,
+          "update": {
+            "added_objects": 151,
+            "decoded_new_objects": 151,
+            "removed_objects": 151,
+            "retained_objects": 146
+          },
+          "updated_index_bytes": 21906
+        },
+        "leaf_interface": {
+          "added_objects": 151,
+          "invalidated_old_bytes": 27546,
+          "invalidation_count": 151,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 27554,
+          "new_root": "894728174ac3b28d8adb5b218d2aa363aa972c2a7b6b6413ea085003a65adb48",
+          "removed_objects": 151,
+          "reused_object_bytes": 11577,
+          "reused_objects": 146,
+          "update": {
+            "added_objects": 151,
+            "decoded_new_objects": 151,
+            "removed_objects": 151,
+            "retained_objects": 146
+          },
+          "updated_index_bytes": 21922
+        }
+      },
+      "index_bytes": 21878,
+      "index_edges": 654,
+      "index_objects": 297,
+      "index_sha256": "61d2c0925c84b815da085475fe7c95f6e9304b5b056b974d9853eb45f043927d",
+      "objects": 297,
+      "root": "80e81530d75051b2d29e2609e7947b7d12c41e7d548f6226f7727271de8d8298",
+      "store_bytes": 49855
+    },
+    "shallow_fanout": {
+      "edits": {
+        "leaf_body": {
+          "added_objects": 265,
+          "invalidated_old_bytes": 46442,
+          "invalidation_count": 265,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 46442,
+          "new_root": "7f407a89fd62a10ce3e9c9908d7e7d7f45c9a1677e172e38a90b9ebcc9f67627",
+          "removed_objects": 265,
+          "reused_object_bytes": 20425,
+          "reused_objects": 258,
+          "update": {
+            "added_objects": 265,
+            "decoded_new_objects": 265,
+            "removed_objects": 265,
+            "retained_objects": 258
+          },
+          "updated_index_bytes": 38869
+        },
+        "leaf_interface": {
+          "added_objects": 265,
+          "invalidated_old_bytes": 46442,
+          "invalidation_count": 265,
+          "invalidation_exact": true,
+          "matches_full_rebuild": true,
+          "new_object_bytes": 46825,
+          "new_root": "948d0b0bb73ea0df2a72e69039e97e2de10d04f34108f682fd35a64dcf88f744",
+          "removed_objects": 265,
+          "reused_object_bytes": 20425,
+          "reused_objects": 258,
+          "update": {
+            "added_objects": 265,
+            "decoded_new_objects": 265,
+            "removed_objects": 265,
+            "retained_objects": 258
+          },
+          "updated_index_bytes": 38864
+        }
+      },
+      "index_bytes": 38865,
+      "index_edges": 1160,
+      "index_objects": 523,
+      "index_sha256": "f337db4ad79bc5d5f4f468362970111fc25ae0280bf1b3fb2a6caa5ac9fa48d5",
+      "objects": 523,
+      "root": "8c24abd1e01e2047700db7b1b4992071352fba82a89b41501ba7782f92527660",
+      "store_bytes": 85787
+    }
+  },
+  "raw_timing_available": true,
+  "schema": 1,
+  "threshold_rule": "lowest measured nodes/task where parallel workers improve both median cold-batch and warm-batch wall time by at least 20%; cold batches include process startup and payload serialization"
+}

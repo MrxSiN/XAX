@@ -1,0 +1,424 @@
+{
+  "aggregate": {
+    "per_instruction_model_description_bytes": 450,
+    "per_instruction_objects": 12,
+    "per_instruction_package_bytes": 324,
+    "shared_primitive_model_description_bytes": 354,
+    "shared_primitive_objects": 18,
+    "shared_primitive_package_bytes": 279
+  },
+  "canonical_target_schema_changed": false,
+  "date": "2026-10-02",
+  "implementation": {
+    "opaque_validator_lines": 24,
+    "per_instruction_decoder_lines": 24,
+    "per_instruction_encoder_lines": 17,
+    "production_verifier_decoder_changed_functions": 0,
+    "shared_decoder_lines": 39,
+    "shared_encoder_lines": 18
+  },
+  "lowering_equivalence": {
+    "aarch64_baremetal": {
+      "32": {
+        "arms": {
+          "per_instruction": {
+            "artifact_blake3": "bbd628128d1b5882cfb975ede3b0c6784f511947b432b6973467174c2f459323",
+            "artifact_bytes": 12,
+            "entry_function": "dcaaccb366f1d3543ce4d44da5169db9421ce2a5ad32b8d9740d7bc02535c348",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              4,
+              4
+            ],
+            "package_cid": "95898edc8790343c1e3e96b0e388fcdc6d502e590daa1346ba50be2a3e6bc3bf",
+            "program_root": "2592aaef926f25a275f5a7864dec8d6dacdd7c29fc346d7c765dfe1e984948f2",
+            "semantic_reference_result": [
+              8
+            ]
+          },
+          "shared_primitive": {
+            "artifact_blake3": "bbd628128d1b5882cfb975ede3b0c6784f511947b432b6973467174c2f459323",
+            "artifact_bytes": 12,
+            "entry_function": "dcaaccb366f1d3543ce4d44da5169db9421ce2a5ad32b8d9740d7bc02535c348",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              4,
+              4
+            ],
+            "package_cid": "8d0f61ac10d771445d75fe854102022cad24c0013c2e3a7fcc044aa78839f2f8",
+            "program_root": "2592aaef926f25a275f5a7864dec8d6dacdd7c29fc346d7c765dfe1e984948f2",
+            "semantic_reference_result": [
+              8
+            ]
+          }
+        },
+        "identical_artifact_bytes": true,
+        "identical_node_code_size": true
+      },
+      "64": {
+        "arms": {
+          "per_instruction": {
+            "artifact_blake3": "f307733304433ea70c8a91740845c45a9e696465bf0066fde5c948b834ec2b06",
+            "artifact_bytes": 12,
+            "entry_function": "e22f1f17b3b6c08b4ebece71c7e26721533c938cfb63483ef7b903e113fe6242",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              4,
+              4
+            ],
+            "package_cid": "95898edc8790343c1e3e96b0e388fcdc6d502e590daa1346ba50be2a3e6bc3bf",
+            "program_root": "f3f3623acc564b3cb5522e20a159f0adb82b525dade29bbbb066b25d5787f201",
+            "semantic_reference_result": [
+              8
+            ]
+          },
+          "shared_primitive": {
+            "artifact_blake3": "f307733304433ea70c8a91740845c45a9e696465bf0066fde5c948b834ec2b06",
+            "artifact_bytes": 12,
+            "entry_function": "e22f1f17b3b6c08b4ebece71c7e26721533c938cfb63483ef7b903e113fe6242",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              4,
+              4
+            ],
+            "package_cid": "8d0f61ac10d771445d75fe854102022cad24c0013c2e3a7fcc044aa78839f2f8",
+            "program_root": "f3f3623acc564b3cb5522e20a159f0adb82b525dade29bbbb066b25d5787f201",
+            "semantic_reference_result": [
+              8
+            ]
+          }
+        },
+        "identical_artifact_bytes": true,
+        "identical_node_code_size": true
+      }
+    },
+    "wasm32_core": {
+      "32": {
+        "arms": {
+          "per_instruction": {
+            "artifact_blake3": "f1095334342fc0ee40a368d4eaaaf26eff3a46b96ef40accc1adbba39fbd3093",
+            "artifact_bytes": 75,
+            "entry_function": "dcaaccb366f1d3543ce4d44da5169db9421ce2a5ad32b8d9740d7bc02535c348",
+            "executed_result": [
+              8
+            ],
+            "execution_matches_reference": true,
+            "node_code_bytes": [
+              7,
+              7
+            ],
+            "package_cid": "438b1043bcc78951c0fdde98a0be6e817860b93e0ca58536f8216a745e81ec79",
+            "program_root": "71c1c35e2738dcaf20cc7d68f746ca57b6596147b18db8dd2ade5d68671659bd",
+            "semantic_reference_result": [
+              8
+            ]
+          },
+          "shared_primitive": {
+            "artifact_blake3": "f1095334342fc0ee40a368d4eaaaf26eff3a46b96ef40accc1adbba39fbd3093",
+            "artifact_bytes": 75,
+            "entry_function": "dcaaccb366f1d3543ce4d44da5169db9421ce2a5ad32b8d9740d7bc02535c348",
+            "executed_result": [
+              8
+            ],
+            "execution_matches_reference": true,
+            "node_code_bytes": [
+              7,
+              7
+            ],
+            "package_cid": "4324107e444e593328377bd78d2914ec478b30191591d64e83ff516410be9892",
+            "program_root": "71c1c35e2738dcaf20cc7d68f746ca57b6596147b18db8dd2ade5d68671659bd",
+            "semantic_reference_result": [
+              8
+            ]
+          }
+        },
+        "identical_artifact_bytes": true,
+        "identical_node_code_size": true
+      },
+      "64": {
+        "arms": {
+          "per_instruction": {
+            "artifact_blake3": "f741f34d423fda620a42ce2db8e8a26ddbd8b9025d1ae02851c6676d6b237777",
+            "artifact_bytes": 77,
+            "entry_function": "e22f1f17b3b6c08b4ebece71c7e26721533c938cfb63483ef7b903e113fe6242",
+            "executed_result": [
+              8
+            ],
+            "execution_matches_reference": true,
+            "node_code_bytes": [
+              7,
+              7
+            ],
+            "package_cid": "438b1043bcc78951c0fdde98a0be6e817860b93e0ca58536f8216a745e81ec79",
+            "program_root": "48274412a4fa3897c15de33cdc7289c1011788475a9caabe7cd7f613b037fc79",
+            "semantic_reference_result": [
+              8
+            ]
+          },
+          "shared_primitive": {
+            "artifact_blake3": "f741f34d423fda620a42ce2db8e8a26ddbd8b9025d1ae02851c6676d6b237777",
+            "artifact_bytes": 77,
+            "entry_function": "e22f1f17b3b6c08b4ebece71c7e26721533c938cfb63483ef7b903e113fe6242",
+            "executed_result": [
+              8
+            ],
+            "execution_matches_reference": true,
+            "node_code_bytes": [
+              7,
+              7
+            ],
+            "package_cid": "4324107e444e593328377bd78d2914ec478b30191591d64e83ff516410be9892",
+            "program_root": "48274412a4fa3897c15de33cdc7289c1011788475a9caabe7cd7f613b037fc79",
+            "semantic_reference_result": [
+              8
+            ]
+          }
+        },
+        "identical_artifact_bytes": true,
+        "identical_node_code_size": true
+      }
+    },
+    "x86_64_windows": {
+      "32": {
+        "arms": {
+          "per_instruction": {
+            "artifact_blake3": "75292e2ac8180a14e5e04b5a35ccd92f7e7d212fe0c6aa938d8cf49103ea5a9b",
+            "artifact_bytes": 8,
+            "entry_function": "dcaaccb366f1d3543ce4d44da5169db9421ce2a5ad32b8d9740d7bc02535c348",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              2,
+              3
+            ],
+            "package_cid": "a11d6db55216be0e7e5619e6ba8390dd3deab1f0ac419a7c2c1016d9d1efa239",
+            "program_root": "014a7f1a5794f0174b9ff47ac0473b2cdaa2fc65809c5ad1339e83c31cb39a7c",
+            "semantic_reference_result": [
+              8
+            ]
+          },
+          "shared_primitive": {
+            "artifact_blake3": "75292e2ac8180a14e5e04b5a35ccd92f7e7d212fe0c6aa938d8cf49103ea5a9b",
+            "artifact_bytes": 8,
+            "entry_function": "dcaaccb366f1d3543ce4d44da5169db9421ce2a5ad32b8d9740d7bc02535c348",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              2,
+              3
+            ],
+            "package_cid": "476f438b5ccc4850411a539fee9a2857098dad571759a655bbe876ec2b4f3d8a",
+            "program_root": "014a7f1a5794f0174b9ff47ac0473b2cdaa2fc65809c5ad1339e83c31cb39a7c",
+            "semantic_reference_result": [
+              8
+            ]
+          }
+        },
+        "identical_artifact_bytes": true,
+        "identical_node_code_size": true
+      },
+      "64": {
+        "arms": {
+          "per_instruction": {
+            "artifact_blake3": "b822ba60fe4f0fce23e632816cb5f61b39c55f480d5b99d05fbd18e490801fa0",
+            "artifact_bytes": 10,
+            "entry_function": "e22f1f17b3b6c08b4ebece71c7e26721533c938cfb63483ef7b903e113fe6242",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              3,
+              3
+            ],
+            "package_cid": "a11d6db55216be0e7e5619e6ba8390dd3deab1f0ac419a7c2c1016d9d1efa239",
+            "program_root": "ec9d3f0c291e76fff333cc48b93085825b993efbeeaee9abbca581fa1864e8c5",
+            "semantic_reference_result": [
+              8
+            ]
+          },
+          "shared_primitive": {
+            "artifact_blake3": "b822ba60fe4f0fce23e632816cb5f61b39c55f480d5b99d05fbd18e490801fa0",
+            "artifact_bytes": 10,
+            "entry_function": "e22f1f17b3b6c08b4ebece71c7e26721533c938cfb63483ef7b903e113fe6242",
+            "executed_result": null,
+            "execution_matches_reference": null,
+            "node_code_bytes": [
+              3,
+              3
+            ],
+            "package_cid": "476f438b5ccc4850411a539fee9a2857098dad571759a655bbe876ec2b4f3d8a",
+            "program_root": "ec9d3f0c291e76fff333cc48b93085825b993efbeeaee9abbca581fa1864e8c5",
+            "semantic_reference_result": [
+              8
+            ]
+          }
+        },
+        "identical_artifact_bytes": true,
+        "identical_node_code_size": true
+      }
+    }
+  },
+  "opaque_contract_minimum": {
+    "accelerator_conditional_minimum": {
+      "legality": [
+        "supported_scopes"
+      ],
+      "memory": [
+        "source_space",
+        "destination_space",
+        "visibility"
+      ]
+    },
+    "missing_behavior_policy": "reject; never infer purity/memory/control",
+    "negative_fixture_count": 23,
+    "negative_rejections": {
+      "accelerator_missing_legality_supported_scopes": "synchronizing accelerator contract missing supported_scopes",
+      "accelerator_missing_memory_destination_space": "synchronizing accelerator contract missing destination_space",
+      "accelerator_missing_memory_source_space": "synchronizing accelerator contract missing source_space",
+      "accelerator_missing_memory_visibility": "synchronizing accelerator contract missing visibility",
+      "missing_control": "opaque contract missing control",
+      "missing_control_block": "opaque control behavior incomplete",
+      "missing_control_branch": "opaque control behavior incomplete",
+      "missing_control_synchronize": "opaque control behavior incomplete",
+      "missing_control_terminate": "opaque control behavior incomplete",
+      "missing_control_trap": "opaque control behavior incomplete",
+      "missing_effects": "opaque contract missing effects",
+      "missing_inputs": "opaque contract missing inputs",
+      "missing_legality": "opaque contract missing legality",
+      "missing_legality_execution_state": "opaque legality incomplete",
+      "missing_legality_privilege": "opaque legality incomplete",
+      "missing_memory": "opaque contract missing memory",
+      "missing_memory_access": "opaque memory behavior incomplete",
+      "missing_memory_alias_visibility": "opaque memory behavior incomplete",
+      "missing_memory_ordering": "opaque memory behavior incomplete",
+      "missing_memory_spaces": "opaque memory behavior incomplete",
+      "missing_optimization": "opaque contract missing optimization",
+      "missing_optimization_barrier": "opaque optimization restriction incomplete",
+      "missing_outputs": "opaque contract missing outputs"
+    },
+    "pure_arithmetic_barrier": "none",
+    "required_control_fields": [
+      "branch",
+      "trap",
+      "block",
+      "synchronize",
+      "terminate"
+    ],
+    "required_legality_fields": [
+      "privilege",
+      "execution_state"
+    ],
+    "required_memory_fields": [
+      "access",
+      "spaces",
+      "ordering",
+      "alias_visibility"
+    ],
+    "required_optimization_fields": [
+      "barrier"
+    ],
+    "required_top_level_fields": [
+      "inputs",
+      "outputs",
+      "effects",
+      "control",
+      "memory",
+      "legality",
+      "optimization"
+    ],
+    "synchronizing_accelerator_barrier": "device-space-1"
+  },
+  "optimization": {
+    "complete_opaque_accelerator_barrier": "device-space-1",
+    "global_unknown_barrier_used": false,
+    "opportunities_blocked_by_granularity_difference": 0,
+    "per_instruction_fold_cse_reorder_bits": 7,
+    "shared_primitive_fold_cse_reorder_bits": 7
+  },
+  "schema": "xax.oi16.target-granularity.evidence.v1",
+  "scope": "measurement-only target-description granularity over existing add/sub wrapping integer lowerings",
+  "targets": {
+    "aarch64_baremetal": {
+      "add_new_width_bytes": {
+        "per_instruction": 34,
+        "shared_primitive": 14
+      },
+      "equal_normalized_contracts": true,
+      "per_instruction": {
+        "model_description_bytes": 153,
+        "model_tokens": null,
+        "objects": 4,
+        "package_bytes": 111,
+        "package_cid": "95898edc8790343c1e3e96b0e388fcdc6d502e590daa1346ba50be2a3e6bc3bf"
+      },
+      "shared_primitive": {
+        "encoding_variants": 4,
+        "model_description_bytes": 121,
+        "model_tokens": null,
+        "objects": 6,
+        "package_bytes": 96,
+        "package_cid": "8d0f61ac10d771445d75fe854102022cad24c0013c2e3a7fcc044aa78839f2f8",
+        "semantic_primitives": 2
+      }
+    },
+    "wasm32_core": {
+      "add_new_width_bytes": {
+        "per_instruction": 34,
+        "shared_primitive": 14
+      },
+      "equal_normalized_contracts": true,
+      "per_instruction": {
+        "model_description_bytes": 147,
+        "model_tokens": null,
+        "objects": 4,
+        "package_bytes": 105,
+        "package_cid": "438b1043bcc78951c0fdde98a0be6e817860b93e0ca58536f8216a745e81ec79"
+      },
+      "shared_primitive": {
+        "encoding_variants": 4,
+        "model_description_bytes": 115,
+        "model_tokens": null,
+        "objects": 6,
+        "package_bytes": 90,
+        "package_cid": "4324107e444e593328377bd78d2914ec478b30191591d64e83ff516410be9892",
+        "semantic_primitives": 2
+      }
+    },
+    "x86_64_windows": {
+      "add_new_width_bytes": {
+        "per_instruction": 34,
+        "shared_primitive": 14
+      },
+      "equal_normalized_contracts": true,
+      "per_instruction": {
+        "model_description_bytes": 150,
+        "model_tokens": null,
+        "objects": 4,
+        "package_bytes": 108,
+        "package_cid": "a11d6db55216be0e7e5619e6ba8390dd3deab1f0ac419a7c2c1016d9d1efa239"
+      },
+      "shared_primitive": {
+        "encoding_variants": 4,
+        "model_description_bytes": 118,
+        "model_tokens": null,
+        "objects": 6,
+        "package_bytes": 93,
+        "package_cid": "476f438b5ccc4850411a539fee9a2857098dad571759a655bbe876ec2b4f3d8a",
+        "semantic_primitives": 2
+      }
+    }
+  },
+  "timing": {
+    "artifact": "oi16_target_granularity_timing.json",
+    "sample_count_per_target_form": 20,
+    "semantic_fuel_or_guarantee": false
+  },
+  "token_measurement": {
+    "available": false,
+    "bytes_are_not_tokens": true,
+    "reason": "no tokenizer/model integration installed in execution environment"
+  }
+}

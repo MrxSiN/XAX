@@ -1,0 +1,122 @@
+{
+  "artifact_bytes": 144,
+  "artifact_digest": "3f9f35e6fe8c8ec00e0490fa3e9f9b613255f6ab930c8d8ab2b9d18a221be09a",
+  "authoritative_program": "canonical .xax semantic store",
+  "bootstrap_labels": [
+    "B0",
+    "B1"
+  ],
+  "bootstrap_store_bytes": 1566,
+  "bootstrap_target": "wasm32",
+  "build_profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
+  "claims_not_made": [
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "B6"
+  ],
+  "conformance_vector_count": 6,
+  "declared_subset": "bits32 arithmetic constant folder: selector 0 add.wrap, selector 1 mul.wrap",
+  "entry_function_root": "7904e4c65885dfec17044df53c604b28dce22bd13a6f8b4925a8ce41cde62a50",
+  "lowering_identity": "546ca644b02be7c240931ee7ed46e236ac02b10047506044e82eed530836821b",
+  "milestone": "M11",
+  "module_root": "2610bfca16600385e2e5cd135c6a9bae2eb06ff3190ece6af8485ceee65245b1",
+  "package_root": "c65da02999393448b39895a6085e64c65837eeded76bf9faecce1a56b18767b1",
+  "program_root": "e73735dff5be8c569a94fa434abf73015330d59fc13c4e4bf8e81aad87e2b92e",
+  "program_store_bytes": 820,
+  "provenance_root": "2b951daac225cb560c650332e97299346f786fbd3f3a34c08e60676c7534f6aa",
+  "repeat_build_identical": true,
+  "request_root": "b44f86473bcb8cd1e49e242b5a14a798cb783582fff4fa5924d9df3bb13d950d",
+  "seed_compiler_identity": "13dbd0cf3458d70b1e2f817928fa7248dabd7c6dade5ca52624ace6d6c296c78",
+  "seed_hosted_all_match": true,
+  "snapshot_root": "ad0af6c240790d0e9845c2776fa8f4431fd7bf149997348995a323a1a262ad0e",
+  "target_root": "946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed",
+  "trust_policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
+  "vectors": [
+    {
+      "arguments": [
+        0,
+        0,
+        0
+      ],
+      "hosted": [
+        0
+      ],
+      "match": true,
+      "seed": [
+        0
+      ]
+    },
+    {
+      "arguments": [
+        0,
+        1,
+        2
+      ],
+      "hosted": [
+        3
+      ],
+      "match": true,
+      "seed": [
+        3
+      ]
+    },
+    {
+      "arguments": [
+        0,
+        4294967295,
+        2
+      ],
+      "hosted": [
+        1
+      ],
+      "match": true,
+      "seed": [
+        1
+      ]
+    },
+    {
+      "arguments": [
+        1,
+        3,
+        4
+      ],
+      "hosted": [
+        12
+      ],
+      "match": true,
+      "seed": [
+        12
+      ]
+    },
+    {
+      "arguments": [
+        1,
+        4294967295,
+        2
+      ],
+      "hosted": [
+        4294967294
+      ],
+      "match": true,
+      "seed": [
+        4294967294
+      ]
+    },
+    {
+      "arguments": [
+        1,
+        2147483648,
+        2
+      ],
+      "hosted": [
+        0
+      ],
+      "match": true,
+      "seed": [
+        0
+      ]
+    }
+  ]
+}

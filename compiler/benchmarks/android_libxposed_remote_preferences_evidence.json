@@ -1,0 +1,145 @@
+{
+  "apk": {
+    "blake3": "1baaa0a9f94b9c63c18dc204e21f476a0917bc2871c41a16ad0817a9bab9b390",
+    "build_key": "33c33ee860b88528d3cb9eb254df531984f9637269e221ad0c1d1c106f322237",
+    "bytes": 34289,
+    "entries": [
+      "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
+      "META-INF/xposed/module.prop",
+      "META-INF/xposed/scope.list",
+      "classes.dex",
+      "classes2.dex",
+      "classes3.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "package_root": "7034daf135d0772a17fb6ebf6094469455b3a2d0f53e873b1fdbd3105ba442c3",
+    "repeat_identical": true,
+    "request_root": "ba9736b936f14fc20e14ffa2e451b177ab0aba145786aebdadd95453a7600225",
+    "sha256": "aca0cb0c0bdc47480f7e92c71fb065ead3c85dea145fe77e54acd9e4eea2f5c4",
+    "snapshot_root": "02f1d3a5f7ec5881b71156a43ef83f5ed40780337ccee76c9610473c86c4fc43"
+  },
+  "environment_note": "direct semantic/DEX/APK structural evidence only; PROP_CAP_REMOTE behavior, returned SharedPreferences values, cross-process change visibility, and framework failures are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
+  "managed_dex": {
+    "acquire": {
+      "allocation_opcodes": 0,
+      "and_int_lit8_count": 1,
+      "code_units": 16,
+      "generated_method": "xaxRemotePreferencesIfSupported",
+      "if_eqz_count": 1,
+      "invoke_virtual_count": 2,
+      "null_fallback_count": 1
+    },
+    "bytes": 2144,
+    "checksum_valid": true,
+    "class_descriptor": "Lxax/generated/XaxModule;",
+    "sha256": "88182bfe6b6f6212b37b8c4d74b593f82d76a67db33206d560b6af8510007e7b",
+    "signature_valid": true,
+    "typed_reads": {
+      "boolean": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxPrefBoolean",
+        "invoke_interface_count": 1,
+        "terminal_opcodes": [
+          10,
+          15
+        ]
+      },
+      "contains": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxPrefContains",
+        "invoke_interface_count": 1,
+        "terminal_opcodes": [
+          10,
+          15
+        ]
+      },
+      "float": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxPrefFloat",
+        "invoke_interface_count": 1,
+        "terminal_opcodes": [
+          10,
+          15
+        ]
+      },
+      "int": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxPrefInt",
+        "invoke_interface_count": 1,
+        "terminal_opcodes": [
+          10,
+          15
+        ]
+      },
+      "long": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxPrefLong",
+        "invoke_interface_count": 1,
+        "terminal_opcodes": [
+          11,
+          16
+        ]
+      },
+      "string": {
+        "allocation_opcodes": 0,
+        "code_units": 5,
+        "generated_method": "xaxPrefString",
+        "invoke_interface_count": 1,
+        "terminal_opcodes": [
+          12,
+          17
+        ]
+      }
+    },
+    "write_surface_absent": {
+      "Editor": true,
+      "apply": true,
+      "edit": true,
+      "putBoolean": true
+    }
+  },
+  "runtime_validation": {
+    "capability_bit": "UNEXECUTED",
+    "change_listener_visibility": "UNEXECUTED",
+    "failure_propagation": "UNEXECUTED",
+    "remote_preferences_read": "UNEXECUTED",
+    "unsupported_returns_null": "UNEXECUTED"
+  },
+  "schema": "xax-android-libxposed-remote-preferences-evidence-v1",
+  "semantic_input": {
+    "capability_policy": "nullable-on-unsupported",
+    "failure_policy": "propagate",
+    "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
+    "metadata_cid": "daf08e7907f86a3f9629b0b8591bf3a01b4188ba23b91089e893e5bb11d8c325",
+    "reads": [
+      "boolean",
+      "int",
+      "long",
+      "float",
+      "string",
+      "contains"
+    ],
+    "remote_preferences_cid": "1f4bcc7595ae4382f50f8f54c5887ce9e7c215f1801196bd0beaff55ed214ae5"
+  },
+  "upstream_contract": {
+    "acquire_method": "getRemotePreferences(String)->SharedPreferences",
+    "api_coordinate": "io.github.libxposed:api:102.0.0",
+    "capability": "PROP_CAP_REMOTE = 1L << 1",
+    "framework_properties_method": "getFrameworkProperties()->long",
+    "hooked_process_access": "read-only",
+    "typed_reads": [
+      "getBoolean(String,boolean)->boolean",
+      "getInt(String,int)->int",
+      "getLong(String,long)->long",
+      "getFloat(String,float)->float",
+      "getString(String,String)->String",
+      "contains(String)->boolean"
+    ]
+  }
+}

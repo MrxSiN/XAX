@@ -1,0 +1,1629 @@
+{
+  "corpus_size": 9,
+  "decision": "open_pending_model_repair_trials",
+  "model_access": {
+    "credentials": {
+      "ANTHROPIC_API_KEY": false,
+      "CODEX_API_KEY": false,
+      "OPENAI_API_KEY": false
+    },
+    "executables": {
+      "claude": null,
+      "codex": null,
+      "openai": null
+    }
+  },
+  "model_run": null,
+  "payload_version": "D1",
+  "policies": {
+    "minimal": "core diagnostic fields plus directly implicated repair handles",
+    "near": "minimal plus deterministic one-hop producers/users/types/effects capped at 8 entities and 1024 bytes"
+  },
+  "rows": [
+    {
+      "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+      "family": "stale-relation",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 205,
+      "policy": "minimal",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-OPERAND-PRECONDITION",
+      "target_root": "5e7d1c81c87fac6f8bf58c0178ad41b3f0e102c697baae374e62a10df6006634",
+      "task_id": "relation",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+      "family": "stale-relation",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 7,
+      "payload_bytes": 831,
+      "policy": "near",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-OPERAND-PRECONDITION",
+      "target_root": "5e7d1c81c87fac6f8bf58c0178ad41b3f0e102c697baae374e62a10df6006634",
+      "task_id": "relation",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+      "family": "containment-drift",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 196,
+      "policy": "minimal",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-NODE-CONTAINMENT",
+      "target_root": "ca419ef51817e50fcf8ef97f5bf75560f3cbc2abaeba728a92850ccba7479772",
+      "task_id": "containment",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+      "family": "containment-drift",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 3,
+      "payload_bytes": 499,
+      "policy": "near",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-NODE-CONTAINMENT",
+      "target_root": "ca419ef51817e50fcf8ef97f5bf75560f3cbc2abaeba728a92850ccba7479772",
+      "task_id": "containment",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.DELETE_USE_CONFLICT",
+      "family": "delete-used-node",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 216,
+      "policy": "minimal",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-DELETE-NODE-UNUSED",
+      "target_root": "a57ac13e44aec57ca5052fe7571e228c2cf6fc6106a62d0cdbdf940e24e04292",
+      "task_id": "delete-used",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.DELETE_USE_CONFLICT",
+      "family": "delete-used-node",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 4,
+      "payload_bytes": 608,
+      "policy": "near",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-DELETE-NODE-UNUSED",
+      "target_root": "a57ac13e44aec57ca5052fe7571e228c2cf6fc6106a62d0cdbdf940e24e04292",
+      "task_id": "delete-used",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.PROOF_CONFLICT",
+      "family": "proof-dependency",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 321,
+      "policy": "minimal",
+      "repair_handles": 2,
+      "repair_turns": null,
+      "rule": "WORKSPACE-PROOF-DEPENDENCY",
+      "target_root": "280eba58d348af79b589949eacbdc399cd36445319042d72f6d0926549e689a0",
+      "task_id": "proof",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.PROOF_CONFLICT",
+      "family": "proof-dependency",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 7,
+      "payload_bytes": 947,
+      "policy": "near",
+      "repair_handles": 2,
+      "repair_turns": null,
+      "rule": "WORKSPACE-PROOF-DEPENDENCY",
+      "target_root": "280eba58d348af79b589949eacbdc399cd36445319042d72f6d0926549e689a0",
+      "task_id": "proof",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+      "family": "insert-position",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 195,
+      "policy": "minimal",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-INSERT-POSITION",
+      "target_root": "2d65c789e291158f9ead756084a80b5ebf5aba5a8d51f6da2173f05e4f350842",
+      "task_id": "insert",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+      "family": "insert-position",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 4,
+      "payload_bytes": 587,
+      "policy": "near",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-INSERT-POSITION",
+      "target_root": "2d65c789e291158f9ead756084a80b5ebf5aba5a8d51f6da2173f05e4f350842",
+      "task_id": "insert",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+      "family": "edge-argument",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 211,
+      "policy": "minimal",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-EDGE-ARGUMENT-PRECONDITION",
+      "target_root": "d16f05c330a470a920d387442595332a8ce75002106e7b51264d832e8d70a2b4",
+      "task_id": "edge",
+      "truncated": false
+    },
+    {
+      "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+      "family": "edge-argument",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 5,
+      "payload_bytes": 645,
+      "policy": "near",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "WORKSPACE-EDGE-ARGUMENT-PRECONDITION",
+      "target_root": "d16f05c330a470a920d387442595332a8ce75002106e7b51264d832e8d70a2b4",
+      "task_id": "edge",
+      "truncated": false
+    },
+    {
+      "code": "XAX.STRUCT.SSA_DOMINANCE",
+      "family": "move-dominance",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 247,
+      "policy": "minimal",
+      "repair_handles": 2,
+      "repair_turns": null,
+      "rule": "GRAPH-SSA-DOMINANCE",
+      "target_root": "7ce9cdec5f352f921c8afb629116d6dace84a755356c4d600372f1564d399764",
+      "task_id": "move",
+      "truncated": false
+    },
+    {
+      "code": "XAX.STRUCT.SSA_DOMINANCE",
+      "family": "move-dominance",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 7,
+      "payload_bytes": 894,
+      "policy": "near",
+      "repair_handles": 2,
+      "repair_turns": null,
+      "rule": "GRAPH-SSA-DOMINANCE",
+      "target_root": "7ce9cdec5f352f921c8afb629116d6dace84a755356c4d600372f1564d399764",
+      "task_id": "move",
+      "truncated": false
+    },
+    {
+      "code": "XAX.STRUCT.OP_TYPE",
+      "family": "type-mismatch",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 483,
+      "policy": "minimal",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "GRAPH-OP-TYPE",
+      "target_root": "3f5763310f7ccb3d9209f10cf5f67bcf45c8848c5a71bac5b7fc9ae37a6bcdaf",
+      "task_id": "type",
+      "truncated": false
+    },
+    {
+      "code": "XAX.STRUCT.OP_TYPE",
+      "family": "type-mismatch",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 5,
+      "payload_bytes": 917,
+      "policy": "near",
+      "repair_handles": 1,
+      "repair_turns": null,
+      "rule": "GRAPH-OP-TYPE",
+      "target_root": "3f5763310f7ccb3d9209f10cf5f67bcf45c8848c5a71bac5b7fc9ae37a6bcdaf",
+      "task_id": "type",
+      "truncated": false
+    },
+    {
+      "code": "XAX.RESOURCE.DROP",
+      "family": "resource-effect",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 0,
+      "payload_bytes": 240,
+      "policy": "minimal",
+      "repair_handles": 2,
+      "repair_turns": null,
+      "rule": "RESOURCE-LINEAR-CONTINUATION",
+      "target_root": "351ad2b4b5df76d918fb314ae1efc9c9f68c08426dbc27af91880eab19e20c5b",
+      "task_id": "resource",
+      "truncated": false
+    },
+    {
+      "code": "XAX.RESOURCE.DROP",
+      "family": "resource-effect",
+      "invalid_followups": null,
+      "model_input_tokens": null,
+      "model_output_tokens": null,
+      "model_pass": null,
+      "model_total_tokens": null,
+      "near_entities": 8,
+      "payload_bytes": 1008,
+      "policy": "near",
+      "repair_handles": 2,
+      "repair_turns": null,
+      "rule": "RESOURCE-LINEAR-CONTINUATION",
+      "target_root": "351ad2b4b5df76d918fb314ae1efc9c9f68c08426dbc27af91880eab19e20c5b",
+      "task_id": "resource",
+      "truncated": true
+    }
+  ],
+  "schema": "xax-oi28-diagnostic-payload-v1",
+  "tasks": [
+    {
+      "expected_context_need": "minimal-likely",
+      "family": "stale-relation",
+      "initial_failure": {
+        "actual": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+        "entity": "F0.B0.N2",
+        "expected": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "rule": "WORKSPACE-OPERAND-PRECONDITION"
+      },
+      "known_repair": [
+        {
+          "expected": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "node": "F0.B0.N2",
+          "operand": 0,
+          "value": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "verb": "replace-use"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+          "dependencies": [],
+          "entity": "F0.B0.N2",
+          "expected": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "repair": [
+            "F0.B0.N2"
+          ],
+          "rule": "WORKSPACE-OPERAND-PRECONDITION",
+          "v": "D1"
+        },
+        "near": {
+          "actual": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "F0.B0.N2",
+          "expected": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "near": [
+            {
+              "handle": "F0.B0.N0",
+              "kind": "node",
+              "operation": "constant",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            },
+            {
+              "handle": "F0.B0.N1",
+              "kind": "node",
+              "operation": "constant",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N1.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "operation",
+                  "add_wrap"
+                ],
+                [
+                  "operands",
+                  2
+                ],
+                [
+                  "results",
+                  1
+                ]
+              ],
+              "handle": "F0.B0.N2",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N2.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T0",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N2"
+          ],
+          "rule": "WORKSPACE-OPERAND-PRECONDITION",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the rejected operand relation update using only the diagnostic payload.",
+      "target_root": "5e7d1c81c87fac6f8bf58c0178ad41b3f0e102c697baae374e62a10df6006634",
+      "task_id": "relation"
+    },
+    {
+      "expected_context_need": "minimal-likely",
+      "family": "containment-drift",
+      "initial_failure": {
+        "actual": [
+          0,
+          0
+        ],
+        "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+        "entity": "F0.B0.N0",
+        "expected": [
+          0,
+          1
+        ],
+        "rule": "WORKSPACE-NODE-CONTAINMENT"
+      },
+      "known_repair": [
+        {
+          "expected_block": 0,
+          "expected_index": 0,
+          "node": "F0.B0.N0",
+          "verb": "delete"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": [
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+          "dependencies": [],
+          "entity": "F0.B0.N0",
+          "expected": [
+            0,
+            1
+          ],
+          "repair": [
+            "F0.B0.N0"
+          ],
+          "rule": "WORKSPACE-NODE-CONTAINMENT",
+          "v": "D1"
+        },
+        "near": {
+          "actual": [
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "F0.B0.N0",
+          "expected": [
+            0,
+            1
+          ],
+          "near": [
+            {
+              "facts": [
+                [
+                  "operation",
+                  "constant"
+                ],
+                [
+                  "operands",
+                  0
+                ],
+                [
+                  "results",
+                  1
+                ],
+                [
+                  "constant",
+                  9
+                ]
+              ],
+              "handle": "F0.B0.N0",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T0",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N0"
+          ],
+          "rule": "WORKSPACE-NODE-CONTAINMENT",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the stale containment precondition and delete the requested unused node.",
+      "target_root": "ca419ef51817e50fcf8ef97f5bf75560f3cbc2abaeba728a92850ccba7479772",
+      "task_id": "containment"
+    },
+    {
+      "expected_context_need": "dependency-context-likely",
+      "family": "delete-used-node",
+      "initial_failure": {
+        "actual": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "code": "XAX.WORKSPACE.DELETE_USE_CONFLICT",
+        "entity": "F0.B0.N0",
+        "expected": "zero semantic uses",
+        "rule": "WORKSPACE-DELETE-NODE-UNUSED"
+      },
+      "known_repair": [
+        {
+          "expected": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "node": "F0.B0.N2",
+          "operand": 0,
+          "stage": 1,
+          "value": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "verb": "replace-use"
+        },
+        {
+          "expected_block": 0,
+          "expected_index": 0,
+          "node": "refresh:N0",
+          "stage": 2,
+          "verb": "delete"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.DELETE_USE_CONFLICT",
+          "dependencies": [],
+          "entity": "F0.B0.N0",
+          "expected": "zero semantic uses",
+          "repair": [
+            "F0.B0.N0"
+          ],
+          "rule": "WORKSPACE-DELETE-NODE-UNUSED",
+          "v": "D1"
+        },
+        "near": {
+          "actual": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.DELETE_USE_CONFLICT",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "F0.B0.N0",
+          "expected": "zero semantic uses",
+          "near": [
+            {
+              "facts": [
+                [
+                  "operation",
+                  "constant"
+                ],
+                [
+                  "operands",
+                  0
+                ],
+                [
+                  "results",
+                  1
+                ],
+                [
+                  "constant",
+                  2
+                ]
+              ],
+              "handle": "F0.B0.N0",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "handle": "F0.B0.N2",
+              "kind": "node",
+              "operation": "add_wrap",
+              "relation": "user",
+              "type": null
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T0",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N0"
+          ],
+          "rule": "WORKSPACE-DELETE-NODE-UNUSED",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the rejected deletion by removing the live use before deleting the node.",
+      "target_root": "a57ac13e44aec57ca5052fe7571e228c2cf6fc6106a62d0cdbdf940e24e04292",
+      "task_id": "delete-used"
+    },
+    {
+      "expected_context_need": "dependency-context-likely",
+      "family": "proof-dependency",
+      "initial_failure": {
+        "actual": {
+          "freshness": "changed or stale",
+          "verifier": "bootstrap-schema-1"
+        },
+        "code": "XAX.WORKSPACE.PROOF_CONFLICT",
+        "entity": "P0.0",
+        "expected": {
+          "freshness": "preserved",
+          "subject": "node",
+          "verifier": "bootstrap-schema-1"
+        },
+        "rule": "WORKSPACE-PROOF-DEPENDENCY"
+      },
+      "known_repair": [
+        {
+          "node": "F0.B0.N2",
+          "verb": "refresh-proof"
+        },
+        {
+          "expected": "mul_wrap",
+          "node": "F0.B0.N2",
+          "value": "sub_wrap",
+          "verb": "set-op"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": {
+            "freshness": "changed or stale",
+            "verifier": "bootstrap-schema-1"
+          },
+          "base": "R0.1",
+          "code": "XAX.WORKSPACE.PROOF_CONFLICT",
+          "dependencies": [],
+          "entity": "P0.0",
+          "expected": {
+            "freshness": "preserved",
+            "subject": "node",
+            "verifier": "bootstrap-schema-1"
+          },
+          "repair": [
+            "P0.0",
+            "F0.B0.N2"
+          ],
+          "rule": "WORKSPACE-PROOF-DEPENDENCY",
+          "v": "D1"
+        },
+        "near": {
+          "actual": {
+            "freshness": "changed or stale",
+            "verifier": "bootstrap-schema-1"
+          },
+          "base": "R0.1",
+          "code": "XAX.WORKSPACE.PROOF_CONFLICT",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "P0.0",
+          "expected": {
+            "freshness": "preserved",
+            "subject": "node",
+            "verifier": "bootstrap-schema-1"
+          },
+          "near": [
+            {
+              "handle": "F0.B0.N0",
+              "kind": "node",
+              "operation": "constant",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            },
+            {
+              "handle": "F0.B0.N1",
+              "kind": "node",
+              "operation": "constant",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N1.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "operation",
+                  "mul_wrap"
+                ],
+                [
+                  "operands",
+                  2
+                ],
+                [
+                  "results",
+                  1
+                ]
+              ],
+              "handle": "F0.B0.N2",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N2.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T0",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "P0.0",
+            "F0.B0.N2"
+          ],
+          "rule": "WORKSPACE-PROOF-DEPENDENCY",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Refresh the invalid proof dependency and retry the same semantic operation change.",
+      "target_root": "280eba58d348af79b589949eacbdc399cd36445319042d72f6d0926549e689a0",
+      "task_id": "proof"
+    },
+    {
+      "expected_context_need": "minimal-likely",
+      "family": "insert-position",
+      "initial_failure": {
+        "actual": [
+          0,
+          1
+        ],
+        "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+        "entity": "F0.B0.N1",
+        "expected": [
+          0,
+          0
+        ],
+        "rule": "WORKSPACE-INSERT-POSITION"
+      },
+      "known_repair": [
+        {
+          "anchor": "F0.B0.N1",
+          "expected_block": 0,
+          "expected_index": 1,
+          "local_id": 0,
+          "value": 9,
+          "verb": "insert-constant"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": [
+            0,
+            1
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+          "dependencies": [],
+          "entity": "F0.B0.N1",
+          "expected": [
+            0,
+            0
+          ],
+          "repair": [
+            "F0.B0.N1"
+          ],
+          "rule": "WORKSPACE-INSERT-POSITION",
+          "v": "D1"
+        },
+        "near": {
+          "actual": [
+            0,
+            1
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.CONTAINMENT_CONFLICT",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "F0.B0.N1",
+          "expected": [
+            0,
+            0
+          ],
+          "near": [
+            {
+              "facts": [
+                [
+                  "operation",
+                  "constant"
+                ],
+                [
+                  "operands",
+                  0
+                ],
+                [
+                  "results",
+                  1
+                ],
+                [
+                  "constant",
+                  3
+                ]
+              ],
+              "handle": "F0.B0.N1",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N1.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "handle": "F0.B0.N2",
+              "kind": "node",
+              "operation": "add_wrap",
+              "relation": "user",
+              "type": null
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T0",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N1"
+          ],
+          "rule": "WORKSPACE-INSERT-POSITION",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the stale insertion position and insert constant 9 immediately before the requested anchor.",
+      "target_root": "2d65c789e291158f9ead756084a80b5ebf5aba5a8d51f6da2173f05e4f350842",
+      "task_id": "insert"
+    },
+    {
+      "expected_context_need": "minimal-likely",
+      "family": "edge-argument",
+      "initial_failure": {
+        "actual": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+        "entity": "F0.B0.N1",
+        "expected": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "rule": "WORKSPACE-EDGE-ARGUMENT-PRECONDITION"
+      },
+      "known_repair": [
+        {
+          "argument": 0,
+          "edge": 0,
+          "expected": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "node": "F0.B0.N1",
+          "verb": "disconnect-edge"
+        },
+        {
+          "argument": 0,
+          "edge": 0,
+          "node": "F0.B0.N1",
+          "value": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "verb": "connect-edge"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+          "dependencies": [],
+          "entity": "F0.B0.N1",
+          "expected": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "repair": [
+            "F0.B0.N1"
+          ],
+          "rule": "WORKSPACE-EDGE-ARGUMENT-PRECONDITION",
+          "v": "D1"
+        },
+        "near": {
+          "actual": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "base": "R0.0",
+          "code": "XAX.WORKSPACE.RELATION_CONFLICT",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "F0.B0.N1",
+          "expected": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "near": [
+            {
+              "facts": [
+                [
+                  "operation",
+                  "add_wrap"
+                ],
+                [
+                  "operands",
+                  2
+                ],
+                [
+                  "results",
+                  1
+                ]
+              ],
+              "handle": "F0.B0.N1",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N1.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T1"
+            },
+            {
+              "handle": "F0.B0.P0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T1"
+            },
+            {
+              "handle": "F0.B0.P1",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T1"
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T1",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N1"
+          ],
+          "rule": "WORKSPACE-EDGE-ARGUMENT-PRECONDITION",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the stale edge-argument precondition and change B0's branch argument from P0 to P1.",
+      "target_root": "d16f05c330a470a920d387442595332a8ce75002106e7b51264d832e8d70a2b4",
+      "task_id": "edge"
+    },
+    {
+      "expected_context_need": "dependency-context-likely",
+      "family": "move-dominance",
+      "initial_failure": {
+        "actual": 1,
+        "code": "XAX.STRUCT.SSA_DOMINANCE",
+        "entity": "31f2eaae261105c61118548b53b8863fe1666ad9a755268facfae6994ad22015",
+        "expected": "node < 0",
+        "rule": "GRAPH-SSA-DOMINANCE"
+      },
+      "known_repair": [
+        {
+          "before": "F0.B0.N0",
+          "before_block": 0,
+          "before_index": 0,
+          "expected_block": 0,
+          "expected_index": 1,
+          "node": "F0.B0.N1",
+          "verb": "move"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": 1,
+          "base": "R0.0",
+          "code": "XAX.STRUCT.SSA_DOMINANCE",
+          "dependencies": [],
+          "entity": "31f2eaae261105c61118548b53b8863fe1666ad9a755268facfae6994ad22015",
+          "expected": "node < 0",
+          "repair": [
+            "F0.B0.N2",
+            "F0.B0.N0"
+          ],
+          "rule": "GRAPH-SSA-DOMINANCE",
+          "v": "D1"
+        },
+        "near": {
+          "actual": 1,
+          "base": "R0.0",
+          "code": "XAX.STRUCT.SSA_DOMINANCE",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "31f2eaae261105c61118548b53b8863fe1666ad9a755268facfae6994ad22015",
+          "expected": "node < 0",
+          "near": [
+            {
+              "facts": [
+                [
+                  "operation",
+                  "constant"
+                ],
+                [
+                  "operands",
+                  0
+                ],
+                [
+                  "results",
+                  1
+                ],
+                [
+                  "constant",
+                  2
+                ]
+              ],
+              "handle": "F0.B0.N0",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "handle": "F0.B0.N1",
+              "kind": "node",
+              "operation": "constant",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N1.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "operation",
+                  "add_wrap"
+                ],
+                [
+                  "operands",
+                  2
+                ],
+                [
+                  "results",
+                  1
+                ]
+              ],
+              "handle": "F0.B0.N2",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N2.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T0",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N2",
+            "F0.B0.N0"
+          ],
+          "rule": "GRAPH-SSA-DOMINANCE",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the dominance-breaking move with the smallest valid move that satisfies the requested reorder.",
+      "target_root": "7ce9cdec5f352f921c8afb629116d6dace84a755356c4d600372f1564d399764",
+      "task_id": "move"
+    },
+    {
+      "expected_context_need": "dependency-context-likely",
+      "family": "type-mismatch",
+      "initial_failure": {
+        "actual": [
+          "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+          "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e"
+        ],
+        "code": "XAX.STRUCT.OP_TYPE",
+        "entity": "26a361b3931999aa53ca9271f502f6339adaa73b9113b6f62278dea4f378a618",
+        "expected": [
+          "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+          "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d"
+        ],
+        "rule": "GRAPH-OP-TYPE"
+      },
+      "known_repair": [
+        {
+          "expected": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "node": "F0.B0.N0",
+          "operand": 1,
+          "value": [
+            0,
+            0,
+            3,
+            0
+          ],
+          "verb": "replace-use"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": [
+            "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e"
+          ],
+          "base": "R0.0",
+          "code": "XAX.STRUCT.OP_TYPE",
+          "dependencies": [],
+          "entity": "26a361b3931999aa53ca9271f502f6339adaa73b9113b6f62278dea4f378a618",
+          "expected": [
+            "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d"
+          ],
+          "repair": [
+            "F0.B0.N0"
+          ],
+          "rule": "GRAPH-OP-TYPE",
+          "v": "D1"
+        },
+        "near": {
+          "actual": [
+            "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "0304cab3a2a23cfb0580405d30a21c2f17bbc3fd9bd0e2e8aaadfaadd425934e"
+          ],
+          "base": "R0.0",
+          "code": "XAX.STRUCT.OP_TYPE",
+          "continuation": null,
+          "dependencies": [],
+          "entity": "26a361b3931999aa53ca9271f502f6339adaa73b9113b6f62278dea4f378a618",
+          "expected": [
+            "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d",
+            "bde1d3a507d1213c65b51c2a97f8f3259142fa8be649ad26b9ced2d18c5c410d"
+          ],
+          "near": [
+            {
+              "facts": [
+                [
+                  "operation",
+                  "add_wrap"
+                ],
+                [
+                  "operands",
+                  2
+                ],
+                [
+                  "results",
+                  1
+                ]
+              ],
+              "handle": "F0.B0.N0",
+              "kind": "node"
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "result"
+              ],
+              "type": "T1"
+            },
+            {
+              "handle": "F0.B0.P0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T1"
+            },
+            {
+              "handle": "F0.B0.P1",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T1"
+            },
+            {
+              "facts": [
+                [
+                  "width",
+                  8
+                ]
+              ],
+              "form": "bits",
+              "handle": "T1",
+              "kind": "type"
+            }
+          ],
+          "repair": [
+            "F0.B0.N0"
+          ],
+          "rule": "GRAPH-OP-TYPE",
+          "truncated": false,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the rejected operand replacement by selecting the requested compatible b8 parameter.",
+      "target_root": "3f5763310f7ccb3d9209f10cf5f67bcf45c8848c5a71bac5b7fc9ae37a6bcdaf",
+      "task_id": "type"
+    },
+    {
+      "expected_context_need": "dependency-context-likely",
+      "family": "resource-effect",
+      "initial_failure": {
+        "actual": 0,
+        "code": "XAX.RESOURCE.DROP",
+        "entity": "cca8ffe9197f60565040455c339ed7863f3046d95432b3fedf10cababe60f074",
+        "expected": 1,
+        "rule": "RESOURCE-LINEAR-CONTINUATION"
+      },
+      "known_repair": [
+        {
+          "expected": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "node": "F0.B0.N2",
+          "operand": 0,
+          "value": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "verb": "replace-use"
+        },
+        {
+          "expected": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "node": "F0.B0.N3",
+          "operand": 0,
+          "value": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "verb": "replace-use"
+        }
+      ],
+      "payloads": {
+        "minimal": {
+          "actual": 0,
+          "base": "R0.0",
+          "code": "XAX.RESOURCE.DROP",
+          "dependencies": [],
+          "entity": "cca8ffe9197f60565040455c339ed7863f3046d95432b3fedf10cababe60f074",
+          "expected": 1,
+          "repair": [
+            "F0.B0.N2",
+            "F0.B0.N3"
+          ],
+          "rule": "RESOURCE-LINEAR-CONTINUATION",
+          "v": "D1"
+        },
+        "near": {
+          "actual": 0,
+          "base": "R0.0",
+          "code": "XAX.RESOURCE.DROP",
+          "continuation": 8,
+          "dependencies": [],
+          "entity": "cca8ffe9197f60565040455c339ed7863f3046d95432b3fedf10cababe60f074",
+          "expected": 1,
+          "near": [
+            {
+              "handle": "F0.B0.N0",
+              "kind": "node",
+              "operation": "resource_acquire",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N0.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T1"
+            },
+            {
+              "handle": "F0.B0.N1",
+              "kind": "node",
+              "operation": "resource_acquire",
+              "relation": "producer",
+              "type": null
+            },
+            {
+              "handle": "F0.B0.N1.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T1"
+            },
+            {
+              "handle": "F0.B0.N1.R1",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            },
+            {
+              "facts": [
+                [
+                  "operation",
+                  "resource_release"
+                ],
+                [
+                  "operands",
+                  2
+                ],
+                [
+                  "results",
+                  1
+                ]
+              ],
+              "handle": "F0.B0.N2",
+              "kind": "node"
+            },
+            {
+              "domain": "filesystem",
+              "handle": "F0.B0.N2",
+              "inputs": [
+                "F0.B0.N1.R1"
+              ],
+              "kind": "effect",
+              "outputs": [
+                "F0.B0.N2.R0"
+              ]
+            },
+            {
+              "handle": "F0.B0.N2.R0",
+              "kind": "value",
+              "relations": [
+                "operand"
+              ],
+              "type": "T0"
+            }
+          ],
+          "repair": [
+            "F0.B0.N2",
+            "F0.B0.N3"
+          ],
+          "rule": "RESOURCE-LINEAR-CONTINUATION",
+          "truncated": true,
+          "v": "D1"
+        }
+      },
+      "prompt": "Repair the linear-resource failure by completing the requested resource swap without changing the effect chain.",
+      "target_root": "351ad2b4b5df76d918fb314ae1efc9c9f68c08426dbc27af91880eab19e20c5b",
+      "task_id": "resource"
+    }
+  ],
+  "timing": false,
+  "totals": {
+    "minimal_payload_bytes": 2314,
+    "near_overhead_bytes": 4622,
+    "near_payload_bytes": 6936
+  }
+}

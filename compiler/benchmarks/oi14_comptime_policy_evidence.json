@@ -1,0 +1,283 @@
+{
+  "boundary": {
+    "call_depth": {
+      "above": 3,
+      "above_steps": 9,
+      "at": 2,
+      "at_steps": 9,
+      "below": 1,
+      "cache_entries_after_failure": 0,
+      "failure": {
+        "actual": 2,
+        "code": "XAX.META.BUDGET",
+        "payload_bytes": 199,
+        "rule": "META-CALL-DEPTH"
+      },
+      "root_unchanged": true
+    },
+    "graph_nodes": {
+      "above": 2,
+      "above_steps": 9,
+      "at": 1,
+      "at_steps": 9,
+      "below": 0,
+      "cache_entries_after_failure": 0,
+      "failure": {
+        "actual": 1,
+        "code": "XAX.META.BUDGET",
+        "payload_bytes": 206,
+        "rule": "META-GRAPH-NODE-BUDGET"
+      },
+      "root_unchanged": true
+    },
+    "memory_bytes": {
+      "above": 305,
+      "above_steps": 9,
+      "at": 304,
+      "at_steps": 9,
+      "below": 303,
+      "cache_entries_after_failure": 0,
+      "failure": {
+        "actual": 304,
+        "code": "XAX.META.BUDGET",
+        "payload_bytes": 206,
+        "rule": "META-MEMORY-BUDGET"
+      },
+      "root_unchanged": true
+    },
+    "semantic_objects": {
+      "above": 4,
+      "above_steps": 9,
+      "at": 3,
+      "at_steps": 9,
+      "below": 2,
+      "cache_entries_after_failure": 0,
+      "failure": {
+        "actual": 3,
+        "code": "XAX.META.BUDGET",
+        "payload_bytes": 202,
+        "rule": "META-OBJECT-BUDGET"
+      },
+      "root_unchanged": true
+    },
+    "steps": {
+      "above": 10,
+      "above_steps": 9,
+      "at": 9,
+      "at_steps": 9,
+      "below": 8,
+      "cache_entries_after_failure": 0,
+      "failure": {
+        "actual": 9,
+        "code": "XAX.META.BUDGET",
+        "payload_bytes": 200,
+        "rule": "META-STEP-BUDGET"
+      },
+      "root_unchanged": true
+    }
+  },
+  "budget_models": {
+    "current_vector": {
+      "limits": {
+        "compiler-like-body-generation": {
+          "call_depth": 1,
+          "graph_nodes": 1,
+          "memory_bytes": 288,
+          "semantic_objects": 3,
+          "steps": 13
+        },
+        "ordinary-generic-construction": {
+          "call_depth": 2,
+          "graph_nodes": 1,
+          "memory_bytes": 304,
+          "semantic_objects": 3,
+          "steps": 9
+        },
+        "target-adapter-interface-generation": {
+          "call_depth": 1,
+          "graph_nodes": 1,
+          "memory_bytes": 256,
+          "semantic_objects": 3,
+          "steps": 9
+        }
+      },
+      "workload_specific_calibration_values": 15
+    },
+    "selected": "semantic_steps_plus_hard_caps",
+    "semantic_steps_plus_hard_caps": {
+      "calibration_values": 7,
+      "global_hard_caps": {
+        "call_depth": 2,
+        "graph_nodes": 1,
+        "memory_bytes": 304,
+        "semantic_objects": 3
+      },
+      "host_dependent_terms": 0,
+      "workload_specific_step_limits": {
+        "compiler-like-body-generation": 13,
+        "ordinary-generic-construction": 9,
+        "target-adapter-interface-generation": 9
+      }
+    }
+  },
+  "capability_policy": {
+    "body_capability": "inspect_function",
+    "coarse_packet_bytes_conceptual": {
+      "compiler-like-body-generation": 3,
+      "ordinary-generic-construction": 5,
+      "target-adapter-interface-generation": 5
+    },
+    "interface_operations": [
+      "meta_function_parameter_count",
+      "meta_function_return_count"
+    ],
+    "new_capability": "inspect_function_interface",
+    "selected": "function-interface separate from function-body; retain existing coarse domains otherwise",
+    "split_packet_bytes": {
+      "compiler-like-body-generation": 4,
+      "ordinary-generic-construction": 5,
+      "target-adapter-interface-generation": 5
+    },
+    "target_adapter_has_body_authority": false,
+    "token_counts": null,
+    "token_reason": "tiktoken/model tokenizer unavailable",
+    "tokenizer": null
+  },
+  "deterministic_projection_sha256": "4a767279b191f80f1e8948e3abdc1a3ef0e4ec9471d782a4ad9d7cb96a56bc99",
+  "host_observations": {
+    "artifact": "oi14_comptime_host_samples.json",
+    "excluded_from_budget_and_reproducibility_hash": true,
+    "fuel_input": false,
+    "peak_memory_correlation_pearson_r": -0.9999650662768907,
+    "raw_sha256": "a38b203e3621802010b37db16034cb150ebbd986d3db117a43413ba7d432c6c7",
+    "samples_per_workload": 11,
+    "semantic": false,
+    "summary": [
+      {
+        "elapsed_max_ns": 15167484,
+        "elapsed_median_ns": 10709244,
+        "elapsed_min_ns": 9889529,
+        "identity": "compiler-like-body-generation",
+        "tracemalloc_peak_max_bytes": 30120,
+        "tracemalloc_peak_median_bytes": 29976,
+        "tracemalloc_peak_min_bytes": 29800
+      },
+      {
+        "elapsed_max_ns": 34830339,
+        "elapsed_median_ns": 21982957,
+        "elapsed_min_ns": 14862941,
+        "identity": "target-adapter-interface-generation",
+        "tracemalloc_peak_max_bytes": 32953,
+        "tracemalloc_peak_median_bytes": 32761,
+        "tracemalloc_peak_min_bytes": 32609
+      },
+      {
+        "elapsed_max_ns": 18463904,
+        "elapsed_median_ns": 11196904,
+        "elapsed_min_ns": 8663685,
+        "identity": "ordinary-generic-construction",
+        "tracemalloc_peak_max_bytes": 28688,
+        "tracemalloc_peak_median_bytes": 28536,
+        "tracemalloc_peak_min_bytes": 28512
+      }
+    ]
+  },
+  "implementation_delta": {
+    "added_lines": 37,
+    "core_file": "compiler/src/xax_compiler.py",
+    "deleted_lines": 4,
+    "new_capabilities": 1,
+    "new_dependencies": 0,
+    "new_meta_operations": 2
+  },
+  "schema": "xax-oi14-comptime-policy-v1",
+  "workloads": [
+    {
+      "capabilities": [
+        "inspect_function_interface",
+        "inspect_function",
+        "construct_semantics"
+      ],
+      "capability_packet_bytes": 4,
+      "capability_tokens": null,
+      "constructed_objects": 3,
+      "created_cids": [
+        "55392582b5e9b5b92e562a707041d5d8efce6a9016114ded09dd5b0ae6cbdfcc",
+        "717a9925de3955ce037ff91354a2bd92704255ca313b882d7e49c0b0af170d98",
+        "f0ee74729739b0c9310163fea92d7f958c5d4b6941ff3d0dda0fea6c01404123"
+      ],
+      "emitted_graph_nodes": 1,
+      "entry_cid": "0abdff8c2b92187d0f69c7cecf7d66f54bd16ca314d8bbbf4e2a03d6a9caebd8",
+      "evaluated_blocks": 1,
+      "evaluated_nodes": 12,
+      "identity": "compiler-like-body-generation",
+      "max_call_depth": 1,
+      "peak_frame_bytes": 288,
+      "root_cid": "f87a2a5a84a012dd2745f52e236b6b3a6a479159bbcaf795f08b19651eef2827",
+      "steps": 13,
+      "values": [
+        "55392582b5e9b5b92e562a707041d5d8efce6a9016114ded09dd5b0ae6cbdfcc",
+        8
+      ]
+    },
+    {
+      "capabilities": [
+        "inspect_function_interface",
+        "inspect_target",
+        "inspect_type",
+        "construct_semantics"
+      ],
+      "capability_packet_bytes": 5,
+      "capability_tokens": null,
+      "constructed_objects": 3,
+      "created_cids": [
+        "5b80f02466035cbbe3e78e5f38c3b98085aae34c7a36d0f41d8e5a355461cab7",
+        "679dee36bbc23876ff34e5796dc66977b568c836a2eb1a771c03d5b6b3f7f828",
+        "bce7602c42b6db786a8191293ec2e414413f9134e398dcaf8c90010b9abd1d7f"
+      ],
+      "emitted_graph_nodes": 1,
+      "entry_cid": "0f143aa854c136211b35a9edebf08f469a4497962a122add881d4f6e8b6c4b1a",
+      "evaluated_blocks": 1,
+      "evaluated_nodes": 8,
+      "identity": "target-adapter-interface-generation",
+      "max_call_depth": 1,
+      "peak_frame_bytes": 256,
+      "root_cid": "b1d7fe15db12473e0c41c740b6a31f74fb4fa073514de058a2b44c355bb18a68",
+      "steps": 9,
+      "values": [
+        "bce7602c42b6db786a8191293ec2e414413f9134e398dcaf8c90010b9abd1d7f",
+        1,
+        1
+      ]
+    },
+    {
+      "capabilities": [
+        "inspect_type",
+        "inspect_constant",
+        "read_declared_input",
+        "construct_semantics"
+      ],
+      "capability_packet_bytes": 5,
+      "capability_tokens": null,
+      "constructed_objects": 3,
+      "created_cids": [
+        "03dfe6520ab043dd40d391d8834a41ce4314481ce6d7cc8dd8bf15ea560b5adc",
+        "2b4cfb8ccb6a77ee1df0fc44cf2bd9d9f03c8eff34c2e377059ecce8b6c29d7a",
+        "d81ed6cf1ae324ff00f8e5420adc52be10890a07e439d170a8f98b59567dbf35"
+      ],
+      "emitted_graph_nodes": 1,
+      "entry_cid": "a1e2dba4c8b11424b4de34d33c70ffdc46a763237486a2320181d02fb8d5c334",
+      "evaluated_blocks": 2,
+      "evaluated_nodes": 7,
+      "identity": "ordinary-generic-construction",
+      "max_call_depth": 2,
+      "peak_frame_bytes": 304,
+      "root_cid": "078c337c53e53a615fc83ac703ed81d56ae8a0126346616f437649fa94a203e0",
+      "steps": 9,
+      "values": [
+        "03dfe6520ab043dd40d391d8834a41ce4314481ce6d7cc8dd8bf15ea560b5adc",
+        44
+      ]
+    }
+  ]
+}

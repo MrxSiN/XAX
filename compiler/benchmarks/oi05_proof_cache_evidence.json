@@ -1,0 +1,323 @@
+{
+  "build": {
+    "cold_build": {
+      "max_ns": 234006364,
+      "median_ns": 218557961,
+      "min_ns": 207996357,
+      "raw_ns": [
+        217396254,
+        219926198,
+        234006364,
+        225349861,
+        218476190,
+        218557961,
+        207996357
+      ]
+    },
+    "cold_store_load_plus_build": {
+      "max_ns": 329266965,
+      "median_ns": 319640166,
+      "min_ns": 302911807,
+      "raw_ns": [
+        326122955,
+        329266965,
+        314147129,
+        327428120,
+        319640166,
+        302911807,
+        313804702
+      ]
+    },
+    "deterministic": {
+      "artifact_bytes": 35,
+      "artifact_digest": "29c9cdf7e093b019d12bf7a9086c2b81459166da5d76891eca9765e8161a9d28",
+      "build_key": "c4fce10cf8369ecceb217291b135099dcfb3c6f563c6da61a9a0e2e209868d9e",
+      "cache_bytes": 34123,
+      "cache_entries": 296,
+      "provenance_cid": "c1fbda5b807d8789d7199f39881ca30ead9cf8d2475f773247d0cc72ad1c8b20"
+    },
+    "warm_build": {
+      "max_ns": 180099987,
+      "median_ns": 171805751,
+      "min_ns": 165469836,
+      "raw_ns": [
+        175745717,
+        178483822,
+        171805751,
+        180099987,
+        170053085,
+        165844221,
+        165469836
+      ]
+    },
+    "warm_sidecar_load_plus_build": {
+      "max_ns": 262279311,
+      "median_ns": 253185762,
+      "min_ns": 246425939,
+      "raw_ns": [
+        252553040,
+        262279311,
+        259857134,
+        260404084,
+        253185762,
+        246425939,
+        249113510
+      ]
+    }
+  },
+  "compile": {
+    "artifact_bytes": 35,
+    "artifact_digest": "29c9cdf7e093b019d12bf7a9086c2b81459166da5d76891eca9765e8161a9d28",
+    "cold_compile": {
+      "max_ns": 149857017,
+      "median_ns": 127552511,
+      "min_ns": 122008438,
+      "raw_ns": [
+        149857017,
+        122008438,
+        129550680,
+        123890437,
+        126180598,
+        127552511,
+        127782132
+      ]
+    },
+    "cold_store_load_plus_compile": {
+      "max_ns": 179993003,
+      "median_ns": 171696924,
+      "min_ns": 166612904,
+      "raw_ns": [
+        179993003,
+        171395288,
+        171696924,
+        166612904,
+        172929920,
+        176610241,
+        169540430
+      ]
+    },
+    "warm_compile": {
+      "max_ns": 82548534,
+      "median_ns": 79362496,
+      "min_ns": 77086289,
+      "raw_ns": [
+        77543746,
+        77086289,
+        79362496,
+        81540783,
+        77891307,
+        82548534,
+        79876537
+      ]
+    },
+    "warm_sidecar_load_plus_compile": {
+      "max_ns": 163991422,
+      "median_ns": 162725156,
+      "min_ns": 159573258,
+      "raw_ns": [
+        159741136,
+        160235713,
+        163887218,
+        162725156,
+        163991422,
+        163670350,
+        159573258
+      ]
+    }
+  },
+  "environment": {
+    "implementation": "CPython",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "incremental": {
+    "commit_with_cache": {
+      "max_ns": 413151262,
+      "median_ns": 397859231,
+      "min_ns": 384252556,
+      "raw_ns": [
+        384252556,
+        396672601,
+        403307591,
+        413151262,
+        397859231,
+        398919788,
+        394619952
+      ]
+    },
+    "commit_without_cache": {
+      "max_ns": 393066536,
+      "median_ns": 388336706,
+      "min_ns": 379984996,
+      "raw_ns": [
+        383749810,
+        380739813,
+        393018909,
+        388336706,
+        379984996,
+        392371232,
+        393066536
+      ]
+    },
+    "deterministic": {
+      "artifact_digest": "87f1c87888362a3761ce7fbeafe4695f0d8374b6f9abef2c68b9657261fa8cc6",
+      "base_cache_bytes": 33639,
+      "base_cache_entries": 291,
+      "cache_dependency_cids_maintained": 102,
+      "cache_entries_invalidated": 5,
+      "cache_entries_written": 5,
+      "post_edit_cache_bytes": 33639,
+      "post_edit_cache_entries": 291,
+      "post_edit_root": "d70f6d8764d8230eb786d3f1115424fdbc458115b799ab57ee662a1aaa32c5af",
+      "post_edit_warm_verify": {
+        "cache_entries_after": 291,
+        "cache_entries_before": 291,
+        "cache_entries_invalidated": 0,
+        "cache_entries_written": 0,
+        "cache_hits": 291,
+        "cache_misses": 0,
+        "dependency_cids_checked": 577,
+        "objects": 291
+      },
+      "reused_objects": 286,
+      "touched_objects": 5,
+      "verified_objects": 5
+    },
+    "post_edit_compile_with_cache": {
+      "max_ns": 85470740,
+      "median_ns": 81682269,
+      "min_ns": 79489690,
+      "raw_ns": [
+        80222719,
+        80101661,
+        81682269,
+        85470740,
+        82849828,
+        79489690,
+        84207984
+      ]
+    },
+    "post_edit_compile_without_cache": {
+      "max_ns": 136113001,
+      "median_ns": 127609896,
+      "min_ns": 124883107,
+      "raw_ns": [
+        126392974,
+        127609896,
+        131548820,
+        136113001,
+        124883107,
+        129181104,
+        127244615
+      ]
+    }
+  },
+  "inputs": {
+    "build_entry": "905626ae8e029314776e3ffde7014858810022654aa624cf284f1485da25df99",
+    "build_object_count": 296,
+    "build_request": "9cc57a4d05e0d1bf3762df7026a78ad46996f6d9ba198ef810bf88c9a107d9ab",
+    "build_snapshot_root": "213e8110589cd2630659ff818a770498008d3e14a7bc0a3c4dc685a9ce8c1892",
+    "build_store_bytes": 42935,
+    "function_count": 96,
+    "program_object_count": 291,
+    "program_root": "1792501c3a240972a2c9202ba35e8a425c1c35fc8b8d0ba33d74a84cca88c59e",
+    "program_store_bytes": 42155,
+    "repetitions": 7,
+    "target": "24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56",
+    "verifier_identity": "bootstrap-schema-1"
+  },
+  "schema": "xax-oi05-proof-cache-evidence-v1",
+  "timing": true,
+  "verification": {
+    "cold_store_load_plus_verify": {
+      "max_ns": 142641004,
+      "median_ns": 135976637,
+      "min_ns": 134005026,
+      "raw_ns": [
+        135976637,
+        136890179,
+        134577144,
+        135378490,
+        142641004,
+        136018318,
+        134005026
+      ]
+    },
+    "cold_verify": {
+      "max_ns": 140603139,
+      "median_ns": 92646597,
+      "min_ns": 86939073,
+      "raw_ns": [
+        87893096,
+        140603139,
+        86939073,
+        92646597,
+        98997093,
+        92151597,
+        93390037
+      ]
+    },
+    "deterministic": {
+      "cache_bytes": 33639,
+      "cache_digest": "1cc1923af3e9f98ff8eb454442df1f572c42d3579695155c94694e9650332989",
+      "cold": {
+        "cache_entries_after": 291,
+        "cache_entries_before": 0,
+        "cache_entries_invalidated": 0,
+        "cache_entries_written": 291,
+        "cache_hits": 0,
+        "cache_misses": 291,
+        "dependency_cids_checked": 577,
+        "objects": 291
+      },
+      "warm": {
+        "cache_entries_after": 291,
+        "cache_entries_before": 291,
+        "cache_entries_invalidated": 0,
+        "cache_entries_written": 0,
+        "cache_hits": 291,
+        "cache_misses": 0,
+        "dependency_cids_checked": 577,
+        "objects": 291
+      },
+      "warm_after_sidecar_decode": {
+        "cache_entries_after": 291,
+        "cache_entries_before": 291,
+        "cache_entries_invalidated": 0,
+        "cache_entries_written": 0,
+        "cache_hits": 291,
+        "cache_misses": 0,
+        "dependency_cids_checked": 577,
+        "objects": 291
+      }
+    },
+    "warm_sidecar_load_plus_verify": {
+      "max_ns": 134616462,
+      "median_ns": 124269186,
+      "min_ns": 122580204,
+      "raw_ns": [
+        123838398,
+        124269186,
+        131085853,
+        127690003,
+        134616462,
+        122580204,
+        124118402
+      ]
+    },
+    "warm_verify": {
+      "max_ns": 47464112,
+      "median_ns": 42457618,
+      "min_ns": 41052386,
+      "raw_ns": [
+        41847594,
+        41052386,
+        42915535,
+        41605245,
+        47464112,
+        42497266,
+        42457618
+      ]
+    }
+  }
+}

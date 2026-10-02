@@ -1,0 +1,145 @@
+{
+  "alias_strategy": {
+    "format": "XHA2/v1",
+    "index_bytes": 19145,
+    "index_entries": 297,
+    "lookup_accepts_suites": [
+      1,
+      2
+    ],
+    "repository_extra_bytes": 19145,
+    "root_semantics_equal": true,
+    "semantic_envelopes_rewritten": 0,
+    "source_store_bytes_rewritten": 0,
+    "suite1_root_unchanged": true,
+    "suite2_root": "98d761b2986074fe4628a56961c21a49700853d07076e5ae50c320eb6f22282f"
+  },
+  "cache_behavior": {
+    "alias_direct_reuse_entries": 297,
+    "alias_direct_reuse_percent": 100.0,
+    "full_direct_reuse_entries": 0,
+    "full_direct_reuse_percent": 0.0,
+    "full_reuse_requires_explicit_equivalence_map": true,
+    "suite1_cache_entries": 297,
+    "suite1_verify_cache_misses": 297
+  },
+  "full_readdress_strategy": {
+    "child_references_using_suite2": 654,
+    "container_bytes": 48413,
+    "format": "XHF2/v1",
+    "lookup_accepts_suites": [
+      1,
+      2
+    ],
+    "records": 297,
+    "repository_extra_bytes_while_rollback_retained": 48413,
+    "root_semantics_equal": true,
+    "semantic_envelopes_rewritten": 297,
+    "suite1_root_unchanged_while_staged": true,
+    "suite2_root": "aec55bd4d2f179e0e8ca81b1bdf39046bd0df04048746faacc30a5cd2cbce30f"
+  },
+  "measurements": {
+    "decode_ms": {
+      "alias": {
+        "max": 61.684981,
+        "median": 14.728003,
+        "min": 13.812963
+      },
+      "full_readdress": {
+        "max": 23.820015,
+        "median": 22.457209,
+        "min": 21.550415
+      }
+    },
+    "hash_mib_per_s": {
+      "blake3_suite1": {
+        "max": 5.063633694011443,
+        "median": 4.823826482163304,
+        "min": 4.364295430930123
+      },
+      "sha256_test_suite2": {
+        "max": 680.2132852559517,
+        "median": 605.3279150338228,
+        "min": 577.3999420034125
+      }
+    },
+    "host": {
+      "platform": "Linux x86_64",
+      "python": "3.13.5"
+    },
+    "lookup_us_per_object": {
+      "alias_suite2": {
+        "max": 1.732171875,
+        "median": 1.16228125,
+        "min": 1.074265625
+      },
+      "full_suite2": {
+        "max": 1.52803125,
+        "median": 1.241734375,
+        "min": 1.142125
+      },
+      "suite1": {
+        "max": 0.107984375,
+        "median": 0.09353125,
+        "min": 0.083734375
+      }
+    },
+    "migration_ms": {
+      "alias": {
+        "max": 13.651379,
+        "median": 11.583655,
+        "min": 10.682779
+      },
+      "full_readdress": {
+        "max": 12.561456,
+        "median": 11.618924,
+        "min": 10.822201
+      }
+    },
+    "samples_per_cell": 11
+  },
+  "migration_rules": {
+    "corrupt_integrity": "reject",
+    "interruption": "atomic replace leaves authoritative suite-1 store unchanged; restart recomputes deterministic artifact",
+    "mixed_reference_in_XHF2": "not representable; header declares suite 2 for every child reference",
+    "rollback": "delete migration artifact; suite-1 repository remains authoritative",
+    "stale_source_fingerprint": "reject",
+    "unknown_suite": "reject"
+  },
+  "project": {
+    "name": "service_generated_package",
+    "object_kinds": {
+      "constant": 144,
+      "function": 72,
+      "graph_fragment": 72,
+      "module": 6,
+      "package": 1,
+      "target": 1,
+      "type": 1
+    },
+    "objects": 297,
+    "store_bytes": 49881,
+    "suite1_root": "e8257c3b4ae804d77d7d3c78c8b54ebe4bfb4120ba215edf0c6556306585e459"
+  },
+  "raw_timing_present": true,
+  "schema": "xax-oi22-hash-migration-evidence-v1",
+  "security_analysis": {
+    "algorithm_transition_explicit": true,
+    "cryptographic_strength_claim": "none beyond exercising a distinct 256-bit suite",
+    "forced_collision_detection": true,
+    "suite1_reinterpretation_possible": false,
+    "test_algorithm_is_not_recommendation": true,
+    "unknown_suite_rejected": true
+  },
+  "status": "closed",
+  "suite_policy": {
+    "collision_policy": "same suite digest for unequal source semantics rejects migration",
+    "cross_suite_equivalence": "equality of decoded canonical semantics",
+    "persistent_identity": "(suite_id,digest)",
+    "raw_digest_note": "no equal raw digests observed; equality would still require suite + decoded semantics",
+    "suite_1": "BLAKE3-256 permanent for XAX v0.1",
+    "suite_2_recommended": false,
+    "suite_2_test_only": "SHA-256",
+    "suite_inference_from_digest": false
+  }
+}
