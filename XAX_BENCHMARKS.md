@@ -159,6 +159,8 @@ The first decisive family compares identical semantic tasks using:
 3. compact graph packets;
 4. tokenizer-native XAX transactions.
 
+Later replacement-scale studies (§15) additionally include, where relevant: Rust-like source, a verbose structured protocol, the compact fallback protocol, and a binary/tool-call protocol. An encoding is never called optimal without these measurements; a form with fewer tokens but more repair turns loses on tokens per successful change.
+
 The tokenizer-native arm is valid only when the evaluated model/tokenizer actually supports the dedicated vocabulary/integration. Otherwise it is `unavailable`.
 
 ### 6.2 Required task classes
@@ -174,7 +176,9 @@ The initial corpus MUST include:
 - resource/effect repair once supported;
 - targeted local optimization;
 - stale-root recovery once workspace transactions exist;
-- constant local edit with increasing unrelated repository/project size.
+- constant local edit with increasing unrelated repository/project size;
+- cross-function refactor and API (interface) change;
+- local change inside a large repository/application.
 
 Each task defines the desired semantic end state independently of representation.
 
@@ -196,6 +200,12 @@ For every attempted task record:
 | commit conflict rate | stale/conflicted expected-base rejection fraction |
 | context growth | context change as unrelated project size increases |
 | task success rate | fraction passing verifier and behavioral oracle within attempt budget |
+| bytes transmitted | request/response payload bytes |
+| irrelevant context | retrieved entities/tokens not needed by the final mutation |
+| verifier failures | rejected candidates by diagnostic code |
+| stale transaction failures | expected-root/read-set rejections |
+| latency | wall time from task start to committed success |
+| final semantic correctness | behavioral oracle result of the committed root |
 
 Token accounting uses the exact evaluated tokenizer.
 
@@ -561,3 +571,17 @@ Host: Windows 11 x86-64, CPython 3.12.10, bytecode cache enabled. "Before" = the
 | full unittest discovery | 90.6 s | 45.0 s |
 
 Generated x86-64/AArch64 code is byte-identical before/after; M14 compiler root, generation digests, equivalence vectors, and fixed point are unchanged. Mechanisms: `StoreReader.get` decodes and CID-checks each record once; `_parse_graph` is memoized by graph CID with dependency-resolve replay (falling back to an uncached parse on any replay failure so diagnostics stay exact); `Cursor.uleb` checks minimality without re-encoding; BLAKE3 compression uses inlined local-word rounds (official vectors pass); objects created or decoded by the compiler carry a non-copyable CID-checked flag; and `StoreReader.from_objects` validates contents eagerly but emits canonical bytes and the container digest only when `.data` is read. Remaining measured bottleneck: pure-Python BLAKE3 is ~40% of cold verification.
+
+## 15. Universal-replacement benchmarks
+
+Replacement levels R4/R5 (`XAX_SPEC.md` §21.2) are earned only through this section.
+
+**Workloads.** The U1 workloads (`XAX_IMPLEMENTATION_ROADMAP.md`): hosted native application, bare-metal program, WebAssembly/WASI or browser application, Android application, accelerator workload; later, representative per-domain workloads (server, database, compiler, game loop, HPC kernel, AI runtime operator) as the matrix grows. Workload definitions are fixed before XAX results are seen and are not tuned to favor XAX.
+
+**Baselines.** The platform's established toolchains at stated versions and settings: optimized C/C++ (Clang/GCC/MSVC), Rust, platform-native compilers (Kotlin/Java for Android/JVM, C# for CLR, Swift for Apple), Emscripten/wasi-sdk or Rust for WebAssembly, vendor GPU toolchains, and hand-written assembly where a credible implementation exists (§4.4). "Faster than assembly" is never claimed universally; the objective is minimum selected target cost subject to exact semantics.
+
+**Record per result.** Exact hardware; OS/build; compiler/toolchain versions and flags; optimization/build policy; workload and input; warmup; repetitions; median, p95/p99 where meaningful, and dispersion (MAD/IQR); binary size; peak memory; execution time; startup where relevant; generated instruction/code properties when useful; platform-required runtime and generated adapters. Unavailable baselines are recorded as unavailable with the reason; they are never estimated.
+
+**AI token trials.** For the same workloads, run the §6 task classes with real models and record §6.3 metrics. Per the current work order, token trials run only after the replacement upgrade lands, using the smallest corpus that exercises each task class once (n=1 per cell first, extended only when differences exceed run-to-run noise).
+
+**Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.

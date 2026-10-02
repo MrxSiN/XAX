@@ -1,0 +1,39 @@
+{
+  "claim": "EXECUTED",
+  "target": "9c6224e5e314c60a1bbfd2dc54b28ccac19b570d5113ba2c70bb7686fbf67d1c",
+  "entry": "5dfd27886c034ef5bc1ec63df442df2f4dc73703e1fc09653c0b060b6746252c",
+  "pe_bytes": 2560,
+  "pe_sha256": "a5e017310316b735f58dc75b50280d78ab3ed41ddac3d899065bf595b490c630",
+  "code_bytes": 1269,
+  "imports": [
+    "kernel32.dll!ExitProcess",
+    "kernel32.dll!GetProcessHeap",
+    "kernel32.dll!GetStdHandle",
+    "kernel32.dll!HeapAlloc",
+    "kernel32.dll!HeapFree",
+    "kernel32.dll!VirtualAlloc",
+    "kernel32.dll!VirtualFree",
+    "kernel32.dll!WriteFile"
+  ],
+  "runtime_dependencies": [],
+  "host": {
+    "system": "Windows",
+    "release": "11",
+    "version": "10.0.26200",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"
+  },
+  "c_baseline": "UNAVAILABLE: no C toolchain on host; see benchmarks/windows_c_reference/hosted.c",
+  "execution": {
+    "stdout": "XAX\n",
+    "exit_code": 1339,
+    "runs": 20,
+    "process_wall_ns": {
+      "median": 13567750,
+      "p95": 19674000,
+      "min": 12770400,
+      "max": 21339100
+    },
+    "note": "wall time includes CreateProcess/loader/pipe overhead measured from Python subprocess; not a code-quality claim"
+  }
+}

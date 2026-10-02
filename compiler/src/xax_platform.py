@@ -154,3 +154,137 @@ def posix_android_api() -> PosixAndroidApi:
         malloc, free, open_, read, write, close, clock_gettime, getpid,
         pthread_create, pthread_join, socket, connect, send, recv,
     )
+
+
+@dataclass(frozen=True)
+class Win32Kernel32Api:
+    """Bounded kernel32 contracts for hosted x86-64 Windows PE programs.
+
+    Same rules as the POSIX package: exact typed declarations, proof-only
+    effect/resource values, no wrapper layer.  ``HANDLE``/``LPOVERLAPPED`` are
+    pointer-sized ``b64`` words; caller buffers are borrowed space-1 pointers.
+    """
+    b8: SemanticObject
+    b32: SemanticObject
+    b64: SemanticObject
+    byte_ptr_read: SemanticObject
+    u32_ptr_rw: SemanticObject
+    heap_ptr_rw: SemanticObject
+    memory_effect: SemanticObject
+    filesystem_effect: SemanticObject
+    process_effect: SemanticObject
+    heap_resource: SemanticObject
+    get_std_handle: SemanticObject
+    write_file: SemanticObject
+    get_process_heap: SemanticObject
+    heap_alloc: SemanticObject
+    heap_free: SemanticObject
+    exit_process: SemanticObject
+    virtual_alloc: SemanticObject
+
+    def virtual_free_view(self, view_type: SemanticObject, pointer: SemanticObject) -> SemanticObject:
+        """``VirtualFree(view, 0, MEM_RELEASE)`` consuming a proven heap view typed ``pointer``."""
+        return foreign_function_symbol(
+            b"kernel32.dll", b"VirtualFree",
+            (pointer, self.b64, self.b32, view_type, self.memory_effect),
+            (self.b32, self.memory_effect),
+            abi=b"win64-c", deallocator=ForeignDeallocatorContract(0, 3),
+        )
+
+    @property
+    def types(self) -> tuple[SemanticObject, ...]:
+        return (
+            self.b8, self.b32, self.b64, self.byte_ptr_read, self.u32_ptr_rw, self.heap_ptr_rw,
+            self.memory_effect, self.filesystem_effect, self.process_effect, self.heap_resource,
+        )
+
+    @property
+    def symbols(self) -> tuple[SemanticObject, ...]:
+        return (
+            self.get_std_handle, self.write_file, self.get_process_heap, self.heap_alloc, self.heap_free,
+            self.exit_process, self.virtual_alloc,
+        )
+
+
+def win32_kernel32_api() -> Win32Kernel32Api:
+    b8, b32, b64 = bits_type(8), bits_type(32), bits_type(64)
+    byte_ptr_read = pointer_type(b8, Permission.READ, 1)
+    u32_ptr_rw = pointer_type(b32, Permission.READ_WRITE, 4)
+    heap_ptr_rw = pointer_type(b8, Permission.READ_WRITE, 1, space=2)
+    memory = memory_effect_type()
+    filesystem = effect_type(EffectDomain.FILESYSTEM, 0)
+    process = effect_type(EffectDomain.SYSCALL, 0)
+    heap = resource_type(0x100, 1, flags=ResourceFlags.RELEASABLE, instance=0)
+    k32, abi = b"kernel32.dll", b"win64-c"
+    return Win32Kernel32Api(
+        b8, b32, b64, byte_ptr_read, u32_ptr_rw, heap_ptr_rw, memory, filesystem, process, heap,
+        foreign_function_symbol(k32, b"GetStdHandle", (b32, process), (b64, process), abi=abi),
+        foreign_function_symbol(
+            k32, b"WriteFile", (b64, byte_ptr_read, b32, u32_ptr_rw, b64, filesystem, memory), (b32, filesystem, memory), abi=abi
+        ),
+        foreign_function_symbol(k32, b"GetProcessHeap", (process,), (b64, process), abi=abi),
+        # HeapAlloc returns MEMORY_ALLOCATION_ALIGNMENT (16) aligned blocks on x64.
+        foreign_function_symbol(
+            k32, b"HeapAlloc", (b64, b32, b64, memory), (heap_ptr_rw, heap, memory), abi=abi,
+            allocator=ForeignAllocatorContract((2,), 0, 1, 16, False),
+        ),
+        foreign_function_symbol(
+            k32, b"HeapFree", (b64, b32, heap_ptr_rw, heap, memory), (b32, memory), abi=abi,
+            deallocator=ForeignDeallocatorContract(2, 3),
+        ),
+        # Process exit is an explicit call: returning from a PE entry does not
+        # end the process while loader worker threads are alive.
+        foreign_function_symbol(k32, b"ExitProcess", (b32, process), (process,), abi=abi),
+        # VirtualAlloc(NULL, size, type, protect): committed pages are always
+        # zero-filled and page aligned, independent of the flag values.
+        foreign_function_symbol(
+            k32, b"VirtualAlloc", (b64, b64, b32, b32, memory), (heap_ptr_rw, heap, memory), abi=abi,
+            allocator=ForeignAllocatorContract((1,), 0, 1, 4096, True),
+        ),
+    )
+
+
+@dataclass(frozen=True)
+class WasiPreview1Api:
+    """Bounded ``wasi_snapshot_preview1`` imports (wasm32 linear-memory pointers)."""
+    b32: SemanticObject
+    u32_ptr_rw: SemanticObject
+    memory_effect: SemanticObject
+    process_effect: SemanticObject
+    args_sizes_get: SemanticObject
+    proc_exit: SemanticObject
+    u32_ptr_read: SemanticObject
+    fd_write: SemanticObject
+
+    @property
+    def types(self) -> tuple[SemanticObject, ...]:
+        return (self.b32, self.u32_ptr_rw, self.u32_ptr_read, self.memory_effect, self.process_effect)
+
+    @property
+    def symbols(self) -> tuple[SemanticObject, ...]:
+        return (self.args_sizes_get, self.proc_exit, self.fd_write)
+
+
+def wasi_preview1_api() -> WasiPreview1Api:
+    b32 = bits_type(32)
+    u32_ptr_rw = pointer_type(b32, Permission.READ_WRITE, 4)
+    memory = memory_effect_type()
+    process = effect_type(EffectDomain.SYSCALL, 0)
+    module, abi = b"wasi_snapshot_preview1", b"wasm32-import"
+    return WasiPreview1Api(
+        b32, u32_ptr_rw, memory, process,
+        # errno args_sizes_get(argc*, argv_buf_size*): the host writes both words.
+        foreign_function_symbol(module, b"args_sizes_get", (u32_ptr_rw, u32_ptr_rw, memory), (b32, memory), abi=abi),
+        # proc_exit does not return; exit is explicit program semantics.
+        foreign_function_symbol(module, b"proc_exit", (b32, process), (process,), abi=abi),
+        pointer_type(b32, Permission.READ, 4),
+        # errno fd_write(fd, iovs*, iovs_len, nwritten*): iovec words hold
+        # exposed buffer addresses (pointer_address).  The first memory effect
+        # orders the iovec/nwritten storage; the second orders the buffer
+        # storage those exposed addresses reach, so its lifetime stays explicit.
+        foreign_function_symbol(
+            module, b"fd_write",
+            (b32, pointer_type(b32, Permission.READ, 4), b32, u32_ptr_rw, memory, memory),
+            (b32, memory, memory), abi=abi,
+        ),
+    )

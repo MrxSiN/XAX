@@ -626,3 +626,27 @@ existing retained field.  No native ABI changes are introduced.  There is no
 unhook/install window, no generated target-member lookup in the reload callback, and no
 implicit state/resource migration.  Multiple-hook matching and saved-instance-state are
 not ABI commitments of this bounded profile.
+
+## 17. Windows x86-64 hosted PE slice (2026-10-02)
+
+Target `x86_64-windows-pe-v1` adds the `win64-c` foreign ABI to the general x86-64 operation set. It is a platform/ABI package choice; no Windows concept enters the kernel.
+
+### 17.1 Imports
+
+A `call_foreign` declaration names `(abi, library, symbol, typed interface)`. The x86-64 backend lowers it to `call qword [rip+disp32]`; the PE container allocates one import-address-table slot per distinct `(library, symbol)` and the Windows loader binds it. Effect and resource arguments are proof values and erase. Pointer-sized platform words (`HANDLE`, `LPOVERLAPPED`) are typed `b64`; caller buffers are borrowed address-space-1 pointers whose lifetime the verifier checks at the call. Allocator/deallocator contracts (HeapAlloc/HeapFree) carry the same linear heap-owner rules as the POSIX package.
+
+### 17.2 Ownership of foreign ABIs
+
+Each foreign ABI string is owned by one backend: x86-64 accepts only `win64-c`, AArch64 only `android-aapcs64-c`. Declarations for another ABI reject (`XAX.FOREIGN.ABI`) rather than being reinterpreted. Raw load images cannot bind imports and reject import-bearing images (`XAX.NATIVE.IMPORTS`).
+
+### 17.3 Process lifecycle
+
+The PE entry point is the XAX entry function itself: it takes no machine parameters and returns only integers (`XAX.PE.ENTRY`). The container emits no startup or exit code. Because a process whose loader worker threads are alive does not end when the entry returns, termination is the program's explicit `ExitProcess` call. TLS callbacks, exception/unwind tables, exports, and resources are absent until explicit contracts require them (OI-33).
+
+### 17.4 Heap views
+
+`heap_view` lowers to a null test plus `ud2` on failure, then stores the base. Static heap accesses fold the view offset into `[base+disp]`; checked accesses compare the dynamic offset against `extent - size` and trap with `ud2` before `[base+index+disp]`. `VirtualAlloc` is declared with a zero-filled, 4096-aligned allocator contract (committed pages are zero-filled by the platform), so checked loads over the whole view are initialization-proven; `VirtualFree(view, 0, MEM_RELEASE)` consumes the view.
+
+## 18. wasm32 WASI slice (2026-10-02)
+
+Target `wasm32-wasi-v1` adds `call_foreign` under the `wasm32-import` ABI: a declaration's `library` is the wasm import module and its `name` the field. Value types follow the wasm32 general profile (pointers are i32 linear-memory addresses). The module exports `_start` and `memory`; the entry takes and returns no machine values; termination is the program's explicit `proc_exit`. The WASI host is a platform-required runtime (UR-002); no JavaScript glue is generated or required. Bounded package: `xax_platform.wasi_preview1_api` (`args_sizes_get`, `fd_write`, `proc_exit`). `fd_write` iovec buffer words are exposed addresses (`pointer_address`, ADR-081); its declaration takes the buffer storage's memory effect as a second memory input/output so the buffer cannot end before the call. APIs that need provenance-carrying pointers reloaded from memory wait on OI-37.

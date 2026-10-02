@@ -11,6 +11,7 @@ This roadmap orders implementation work. A milestone is complete only when every
 5. Runtime/profile dependencies introduced by lowering must be exposed before profile validation.
 6. Self-hosting status follows B0–B6 evidence and is not inferred from implementation language alone.
 7. Later milestones MUST NOT silently change the semantics of earlier accepted vectors; semantic changes require versioning.
+8. Post-M14 milestones (U-series) are defined by replacement-matrix evidence: a step is complete only when its matrix row changes under the validator.
 
 ## M1 — Minimal canonical semantic store and verifier
 
@@ -345,6 +346,46 @@ This roadmap orders implementation work. A milestone is complete only when every
 **Dependencies**: all prior milestones.
 
 **Benchmarks now valid**: full self-build, whole-toolchain reproducibility, end-to-end compiler resource accounting, AI-native maintenance/context scaling.
+
+## U1 — Universal-replacement proof set (after M14)
+
+M1–M14 establish a compiler-architecture prototype. U1 is the first milestone measured in replacement terms (`XAX_SPEC.md` §21): every result is a row update in `XAX_REPLACEMENT_MATRIX.json`, and levels are derived, never asserted.
+
+**Entry criteria**: M14 complete; replacement matrix and validator present.
+
+**Required workloads** (all originate from verified XAX semantics; no human-authored program in another language):
+
+1. **Hosted native application** on a mainstream OS performing real allocation, filesystem or network I/O, at least one dynamic/external library call, nontrivial control flow, and a data structure, with no hidden language runtime.
+2. **Bare-metal program** on a named board or emulator with deterministic startup, explicit sections/layout, MMIO, and an interrupt handler.
+3. **WebAssembly application** using WASI or browser host APIs through compiler-generated bindings.
+4. **Android application** beyond the minimal Activity (state, I/O, lifecycle).
+5. **Accelerator workload** executed on physical GPU/accelerator hardware.
+
+**Exit criteria**
+
+- each workload holds at least R2 in the matrix for its platform row; at least two hold R3;
+- each workload has a measured comparison (time, peak memory, binary size) against an established toolchain baseline under `XAX_BENCHMARKS.md` §15, reported whether favorable or not;
+- every platform-required runtime and generated adapter is listed in the row's `runtime_requirement` and build provenance;
+- negative tests reject the corresponding verifier/ABI misuse (wrong foreign ABI, missing exit/lifecycle contract, undeclared imports).
+
+**Ordered implementation sequence** (ADR-077; reorder only on matrix evidence):
+
+| Step | Work | Unblocks | Status |
+|---|---|---|---|
+| U1.1 | Direct PE32+ container, `win64-c` foreign ABI, IAT import binding, explicit process exit | workload 1 (Windows), R1 hosted | EXECUTED (`windows_pe_hosted_evidence.json`) |
+| U1.2a | x86-64 `heap_view` lowering: non-null trap, folded static/checked dynamic heap loads/stores | workload 1 data structures | EXECUTED (heap array in `windows_pe_hosted_evidence.json`) |
+| U1.2b | register-allocating frame lowering (replaces spill-every-value) | R4 on every x86-64 row | PROTOTYPE (PE register path: compares, foreign calls, heap views, cross-block homes; `sum_to` 8.02x faster, fixture code −42%; stack/float/aggregate functions still frame path + peephole) |
+| U1.2c | pointer values in memory (OI-37) | iovecs, linked structures, vtables | PROTOTYPE (address exposure ADR-081 EXECUTED via WASI `fd_write`; provenance-free pointer elements ADR-082 EXECUTED as a dispatch table; local-provenance pointer reloads UNIMPLEMENTED) |
+| U1.3 | ELF64 executable container + SysV foreign ABI (x86-64, AArch64 Linux) | Linux rows; reuses Android ELF writer | UNIMPLEMENTED |
+| U1.4 | wasm32 imports + WASI and generated browser bindings | workload 3 | WASI EXECUTED (`wasi_command_evidence.json`); browser bindings UNIMPLEMENTED |
+| U1.5 | Deterministic foreign metadata importer (OI-32) | every platform API package | PROTOTYPE (Android classfiles) |
+| U1.6 | Bare-metal board package: vector table, sections, MMIO, interrupt entry | workload 2 | PROTOTYPE (AArch64 raw image) |
+| U1.7 | Real GPU target package and device execution (OI-34) | workload 5 | UNIMPLEMENTED |
+| U1.8 | Baseline toolchains on measuring hosts; first R4 measurements | R4 on all rows | UNIMPLEMENTED |
+
+**Dependencies**: M4/M5 backends, M7 resources/effects, M10 build/provenance, M13 accelerator scopes.
+
+**Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`); AI token trials on the same workloads once U1 applications exist (R5).
 
 ## 2. Bootstrap mapping
 

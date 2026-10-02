@@ -55,11 +55,13 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 
 | Target | Status |
 |---|---|
-| x86-64 Windows | Direct native encoder, Win64 ABI |
+| x86-64 Windows | Direct native encoder, Win64 ABI; direct PE32+ executables with kernel32 imports |
 | AArch64 | AAPCS64 bare-metal and Android shared objects |
 | WebAssembly (wasm32) | Direct module emission |
 | Android | DEX, manifest, resources, APK signing, JNI, libxposed modules |
 | SIMT accelerator | Deployment-packet format (conformance only) |
+
+Per-platform replacement levels (R0–R6) are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); see `XAX_SPEC.md` §21.
 
 ## Repository layout
 
@@ -92,7 +94,7 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 
 ## Project status
 
-XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open.
+XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open.
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

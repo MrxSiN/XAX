@@ -466,3 +466,63 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 **Evidence audit (2026-10-02).** The repository already contains ten primary rows in `compiler/benchmarks/ai_native/results.csv` and ten confirmation rows in `results-run-2.csv`, each labeled with a Codex Desktop session ID. All ten stored primary workspaces still pass their official checkers. The primary rows are C 5/5, 1,363,522 total tokens, median 261,725, 6 turns versus XAX 5/5, 1,698,890 total tokens, median 327,918, 7 turns; the confirmation rows are C 5/5, 1,320,698 tokens, median 262,319, 5 turns versus XAX 5/5, 1,632,943 tokens, median 333,673, 5 turns. Thus the historical measurements are negative for XAX on token usage, but they are not qualifying OI-31 closure evidence: the CSV schema does not record model/reasoning settings, the referenced Desktop session logs are absent here, and recorded row/session order is C then XAX for every pair rather than a balanced/alternating arm order. This environment also exposes no Codex Desktop/session store with which to perform or authenticate a fresh qualifying rerun. `OI31_RESULT_NOTE.md` records the raw-file hashes and checker audit. Do not replace these historical rows or infer the missing settings.
 
 **Remaining to close.** Run one fresh ten-cell Codex Desktop pass under one explicitly recorded fixed model/reasoning setting and balanced/alternating arm order, preserving every failure/retry and importing exact session usage. A negative XAX result still closes the experiment.
+
+## OI-32 — Foreign metadata importer scope and representation
+
+**Question.** Which external interface sources should deterministic importers read first (C headers, curated API descriptions, Win32 metadata, JVM/DEX classfiles, .NET metadata, Web IDL, syscall tables), and what is the smallest typed-declaration package format that keeps ownership, nullability, callbacks, threading, and error conventions verifier-visible?
+
+**Fixed constraints.** Importer output is canonical XAX semantic state (foreign declarations, types, effects, resources), never wrapper source. Unknown ownership/aliasing/lifetime facts import as explicit conservative contracts, not optimistic ones. Importers are deterministic over a declared input digest (OI-30 rules).
+
+**Evidence that closes it.** One importer over two unrelated ecosystems (e.g. the existing Android classfile importer plus a Win32/C header source) producing packages consumed by executed programs, with measured package size, import latency, declaration error rate, and AI tokens to call an imported API versus a hand-built declaration.
+
+**Status.** OPEN. Hand-built bounded packages exist (`xax_platform.posix_android_api`, `xax_platform.win32_kernel32_api`); the Android SDK classfile importer is structural only.
+
+## OI-33 — Hosted process lifecycle, unwind, and TLS contracts
+
+**Question.** How are per-OS process entry/exit, thread-local storage, unwind tables (SEH/`.pdata`, DWARF CFI), and foreign-exception crossing represented so that hosted containers emit only what explicit contracts require?
+
+**Fixed constraints.** No container-owned startup/exit code (ADR-076). Unwind data is emitted only when a contract requires it (foreign unwinding through XAX frames, platform debuggers/profilers) and never implies exception semantics inside XAX.
+
+**Evidence that closes it.** Executed PE and ELF programs that (a) cross a foreign exception boundary under an explicit adapter, (b) use TLS, and (c) produce symbolized stack traces, with measured size cost of the emitted metadata versus none.
+
+**Status.** OPEN. Only explicit `ExitProcess` is implemented and executed.
+
+## OI-34 — First production GPU target
+
+**Question.** Which real accelerator representation (SPIR-V/Vulkan compute, PTX/CUDA-compatible, Metal, DXIL) should be the first production target package, given available hardware and the M13 synthetic scope model?
+
+**Fixed constraints.** No XAX device runtime; launch/transfer/synchronization are explicit effects/resources; vendor scope lattices normalize through OI-13 without kernel changes.
+
+**Evidence that closes it.** One kernel executed on physical hardware through the selected representation, validated against a CPU oracle, with measured throughput versus a vendor-toolchain baseline.
+
+**Status.** OPEN. Only the synthetic SIMT packet target exists (R0 in the matrix).
+
+## OI-35 — Managed-platform emission strategy (JVM, CLR)
+
+**Question.** For JVM and .NET, should XAX emit bytecode/IL directly (as for DEX), emit native code plus a generated managed bridge, or choose per workload?
+
+**Fixed constraints.** Managed runtimes are targets, never kernel semantics; any GC/object interaction is explicit platform contract; generated bridges follow UR-001.
+
+**Evidence that closes it.** One executed application per strategy on one managed platform with measured startup, steady-state time, memory, artifact size, and generated-adapter size.
+
+**Status.** OPEN. Direct DEX emission is EXECUTED on Android (minimal Activity); no classfile or IL container exists.
+
+## OI-36 — Standard semantic library granularity
+
+**Question.** What package granularity and versioning for the standard semantic libraries (§21.10) minimizes AI tokens per change and linked footprint while keeping cross-package specialization possible?
+
+**Fixed constraints.** No mandatory runtime; unused packages contribute zero bytes; all runtime behavior explicit.
+
+**Evidence that closes it.** At least two library families (e.g. slices/text and allocators/collections) used by an executed application, with measured code/data contribution per used feature, compile cost, and AI query/mutation tokens.
+
+**Status.** OPEN. Only zero-copy byte slices and bounded foreign heap contracts exist.
+
+## OI-37 — Pointer values stored in memory
+
+**Question.** How should pointer-typed values be stored to and loaded from memory (provenance, extent, permission, alias class, target pointer width) so that iovecs, linked structures, vtables, and object graphs are expressible without raw waivers?
+
+**Fixed constraints.** Provenance is never manufactured: a loaded pointer carries at most the facts the verifier can re-establish; unknown provenance stays explicit (checked/raw policy). Pointer width/layout comes from the target ABI, not the kernel. No hidden runtime metadata.
+
+**Evidence that closes it.** One representation that admits WASI `fd_write` iovecs and a heap linked list with verified traversal on two targets of different pointer widths, plus negative vectors for forged/expired provenance, with measured verifier cost and AI tokens per edit.
+
+**Status.** OPEN (partially addressed). ADR-081 adds one-way provenance exposure (`pointer_address`), which unblocks address-valued interface structs (WASI `fd_write` iovecs, executed). ADR-082 admits provenance-free pointers (function addresses, external pointers) as memory elements, unblocking function-pointer/dispatch tables (EXECUTED on Windows PE). Still open: storing pointers *with* local provenance and reloading them as dereferenceable pointers (pointer-linked lists/trees over XAX storage), which needs typed mixed storage and lifetime coupling between the container and the referenced storage; arena + index is the current verified alternative. Memory elements remain whole-byte bits/float scalars (`MEMORY-BYTE-ADDRESSABLE-VALUE`).

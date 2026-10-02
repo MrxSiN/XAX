@@ -47,6 +47,7 @@ from xax_compiler import (
     analyze_realtime,
     decode_bits_width,
     decode_float_width,
+    decode_foreign_function,
     value_bit_width,
     decode_native_target,
     fail,
@@ -69,6 +70,9 @@ class NativeImage:
     # for an aggregate passed by value or by hidden reference per its size.
     parameter_kinds: tuple[str, ...] = ()
     return_kinds: tuple[str, ...] = ()
+    # (disp32 position of a ``call [rip+disp32]``, library, symbol) for each
+    # foreign call; a container emitter (e.g. PE) binds these to import slots.
+    imports: tuple[tuple[int, bytes, bytes], ...] = ()
 
     @property
     def artifact_bytes(self) -> bytes:
@@ -81,9 +85,50 @@ class _Assembler:
         self.labels: dict[str, int] = {}
         self.branches: list[tuple[int, str]] = []
         self.calls: list[tuple[int, bytes]] = []
+        self.chunks: list[int] = []
 
     def emit(self, data: bytes) -> None:
+        self.chunks.append(len(self.code))
         self.code.extend(data)
+
+    def forward_stores(self) -> list[tuple[int, int]]:
+        """Forward ``mov [rsp+d],src`` into a directly following ``mov dst,[rsp+d]``.
+
+        The reload becomes nothing (dst == src) or ``mov dst, src``.  Matches
+        whole emitted chunks only and never a chunk that is a branch target.
+        Returns (offset, bytes removed) per rewrite.
+        """
+        bounds = [*self.chunks, len(self.code)]
+        targets = set(self.labels.values())
+        rewrites: list[tuple[int, int, bytes]] = []
+        for i in range(len(bounds) - 2):
+            store = bytes(self.code[bounds[i]:bounds[i + 1]])
+            load = bytes(self.code[bounds[i + 1]:bounds[i + 2]])
+            if not (
+                len(store) in (5, 8) and len(load) == len(store) and store[0] in (0x48, 0x4C) and load[0] in (0x48, 0x4C)
+                and store[1] == 0x89 and load[1] == 0x8B and store[2] & 7 == 4
+                and store[2] >> 6 == (1 if len(store) == 5 else 2) and store[3] == 0x24
+                and load[2] & 0xC7 == store[2] & 0xC7 and load[3:] == store[3:] and bounds[i + 1] not in targets
+            ):
+                continue
+            source = (store[0] & 4) << 1 | (store[2] >> 3) & 7
+            destination = (load[0] & 4) << 1 | (load[2] >> 3) & 7
+            replacement = b"" if source == destination else bytes((
+                0x48 | (0x04 if source >= 8 else 0) | (0x01 if destination >= 8 else 0), 0x89, 0xC0 | (source & 7) << 3 | (destination & 7),
+            ))
+            rewrites.append((bounds[i + 1], len(load), replacement))
+        for position, length, replacement in reversed(rewrites):
+            self.code[position:position + length] = replacement
+        removed = [(position, length - len(replacement)) for position, length, replacement in rewrites]
+
+        def shift(offset: int) -> int:
+            return offset - sum(delta for position, delta in removed if position < offset)
+
+        self.labels = {name: shift(offset) for name, offset in self.labels.items()}
+        self.branches = [(shift(position), label) for position, label in self.branches]
+        self.calls = [(shift(position), callee) for position, callee in self.calls]
+        self.chunks = []
+        return removed
 
     def label(self, name: str) -> None:
         self.labels[name] = len(self.code)
@@ -96,6 +141,11 @@ class _Assembler:
     def call(self, callee: bytes) -> None:
         self.emit(b"\xe8")
         self.calls.append((len(self.code), callee))
+        self.emit(bytes(4))
+
+    def call_import(self, carrier: bytes) -> None:
+        self.emit(bytes((0xFF, 0x15)))  # call qword [rip+disp32]
+        self.calls.append((len(self.code), carrier))
         self.emit(bytes(4))
 
     def address(self, register: int, callee: bytes) -> None:
@@ -150,10 +200,14 @@ def _fence(order: AtomicOrder) -> bytes:
 
 
 def _load(register: int, offset: int, width: int = 8) -> bytes:
+    if width in (1, 2):
+        return _load_exact(register, RSP, offset, width)
     return _memory_instruction(0x8B, register, offset, width)
 
 
 def _store(register: int, offset: int, width: int = 8) -> bytes:
+    if width in (1, 2):
+        return _store_exact(register, RSP, offset, width)
     return _memory_instruction(0x89, register, offset, width)
 
 
@@ -165,6 +219,22 @@ def _indexed_memory_instruction(opcode: int, register: int, index: int, offset: 
     modrm = 0x84 | ((register & 7) << 3)
     sib = ((index & 7) << 3) | 0x04
     return prefix + bytes((opcode, modrm, sib)) + offset.to_bytes(4, "little")
+
+
+def _base_index_access(opcode: bytes, register: int, base: int, index: int, offset: int, width: int) -> bytes:
+    """[base + index + disp32] access of 1/2/4/8 bytes."""
+    rex = 0x40 | (0x08 if width == 8 else 0) | (0x04 if register >= 8 else 0) | (0x02 if index >= 8 else 0) | (0x01 if base >= 8 else 0)
+    prefix = (b"\x66" if width == 2 and opcode == b"\x89" else b"") + (bytes((rex,)) if rex != 0x40 or (width == 1 and 4 <= register < 8) else b"")
+    return prefix + opcode + bytes((0x84 | ((register & 7) << 3), ((index & 7) << 3) | (base & 7))) + offset.to_bytes(4, "little", signed=True)
+
+
+def _base_index_load(register: int, base: int, index: int, offset: int, width: int) -> bytes:
+    """Zero-extending load."""
+    return _base_index_access({1: b"\x0f\xb6", 2: b"\x0f\xb7", 4: b"\x8b", 8: b"\x8b"}[width], register, base, index, offset, width)
+
+
+def _base_index_store(register: int, base: int, index: int, offset: int, width: int) -> bytes:
+    return _base_index_access(b"\x88" if width == 1 else b"\x89", register, base, index, offset, width)
 
 
 def _indexed_load(register: int, index: int, offset: int, width: int) -> bytes:
@@ -378,6 +448,14 @@ def _setcc(kind: IntCompare) -> bytes:
     return b"\x0f" + bytes((opcode, 0xC0)) + b"\x0f\xb6\xc0"
 
 
+def _setcc_register(kind: IntCompare, register: int) -> bytes:
+    """setcc r8 + movzx r32, r8 for any general register."""
+    opcode = _setcc(kind)[1]
+    low = bytes((0x40 | (0x01 if register >= 8 else 0),)) if register >= 4 else b""
+    extend = bytes((0x40 | (0x04 if register >= 8 else 0) | (0x01 if register >= 8 else 0),)) if register >= 4 else b""
+    return low + b"\x0f" + bytes((opcode, 0xC0 | (register & 7))) + extend + b"\x0f\xb6" + bytes((0xC0 | ((register & 7) << 3) | (register & 7),))
+
+
 def _float_setcc(kind: FloatCompare) -> bytes:
     if kind == FloatCompare.EQ:
         return b"\x0f\x94\xc0\x0f\x9b\xc2\x20\xd0\x0f\xb6\xc0"
@@ -554,6 +632,46 @@ def _compile_register_resident_function(
         Operation.CALL_DIRECT,
         *RESOURCE_EFFECT_OPERATIONS,
     }
+    # The hosted PE profile also keeps compares, foreign calls, function
+    # addresses, and heap-view memory in registers; legacy load-image
+    # profiles keep their pinned bytes (U1.2b).
+    hosted = target.identity == b"x86_64-windows-pe-v1"
+    heap_values: set[ValueRef] = set()
+    extents: dict[ValueRef, int] = {}
+    if hosted:
+        allowed |= {
+            Operation.INT_COMPARE, Operation.CALL_FOREIGN, Operation.FUNCTION_ADDRESS, Operation.HEAP_VIEW,
+            Operation.ADDRESS_OFFSET, Operation.POINTER_CAST, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE,
+            Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.POINTER_ADDRESS,
+        }
+        for block_index, block in enumerate(graph.blocks):
+            for node_index, node in enumerate(block.nodes):
+                result = ValueRef.node_result(block_index, node_index)
+                if node.operation == Operation.HEAP_VIEW:
+                    heap_values.add(result)
+                    extents[result] = node.attributes[0]
+                elif node.operation in (Operation.ADDRESS_OFFSET, Operation.POINTER_CAST) and node.operands[0] in heap_values:
+                    heap_values.add(result)
+                    extents[result] = extents[node.operands[0]] - (node.attributes[0] if node.operation == Operation.ADDRESS_OFFSET else 0)
+                memory_operand = node.operation in (
+                    Operation.ADDRESS_OFFSET, Operation.POINTER_CAST, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE,
+                    Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.POINTER_ADDRESS,
+                )
+                if memory_operand and node.operands[0] not in heap_values:
+                    return None  # stack storage stays on the frame path
+                if node.operation == Operation.INT_COMPARE and _bits_width(resolve, node.operand_types[0]) not in (32, 64):
+                    return None
+                if node.operation == Operation.CALL_FOREIGN:
+                    machine_inputs = [cid for cid in node.operand_types if not _is_proof_type(resolve(cid))]
+                    machine_results = [cid for cid in node.results if not _is_proof_type(resolve(cid))]
+                    if len(machine_inputs) > len(target.argument_registers) or len(machine_results) > 1:
+                        return None
+                    if any(_is_float_cid(resolve, cid) or _is_aggregate_cid(resolve, cid) for cid in (*machine_inputs, *machine_results)):
+                        return None
+                if node.operation in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                    value_cid = node.results[0] if node.operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE) else node.operand_types[-2]
+                    if _is_float_cid(resolve, value_cid) or _is_aggregate_cid(resolve, value_cid):
+                        return None
     if any(node.operation not in allowed for block in graph.blocks for node in block.nodes):
         return None
     if any(block.terminator.kind not in (TerminatorKind.RETURN, TerminatorKind.BRANCH, TerminatorKind.CONDITIONAL_BRANCH) for block in graph.blocks):
@@ -583,7 +701,9 @@ def _compile_register_resident_function(
     for block_index, block in enumerate(graph.blocks):
         params: list[ValueRef] = []
         for index, type_cid in enumerate(block.parameters):
-            width = _bits_width(resolve, type_cid)
+            width = (_value_width if hosted else _bits_width)(resolve, type_cid)
+            if hosted and width and (_is_float_cid(resolve, type_cid) or _is_aggregate_cid(resolve, type_cid)):
+                return None
             if width and width <= 64:
                 value = ValueRef.parameter(block_index, index)
                 widths[value] = width
@@ -596,7 +716,8 @@ def _compile_register_resident_function(
                     widths[ValueRef.node_result(block_index, node_index, result_index)] = width
 
     has_call = any(
-        node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve)
+        node.operation == Operation.CALL_FOREIGN
+        or node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve)
         for block in graph.blocks
         for node in block.nodes
     )
@@ -605,7 +726,19 @@ def _compile_register_resident_function(
         (max(0, len(machine_parameters[index]) - len(allocatable)) for index in range(len(graph.blocks))),
         default=0,
     )
-    dynamic_spill_base = edge_spill_base + edge_spill_count * 8
+    # Values used outside their defining block get one frame home, written at
+    # definition and reloaded where used (dominance guarantees the write first).
+    crossing: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        referenced = [operand for node in block.nodes for operand in node.operands]
+        referenced += list(block.terminator.values) + [value for _, arguments in block.terminator.edges for value in arguments]
+        crossing.update(value for value in referenced if value in widths and value.block != block_index)
+    home_base = edge_spill_base + edge_spill_count * 8
+    home_offset = {
+        value: home_base + index * 8
+        for index, value in enumerate(sorted(crossing, key=lambda item: (item.tag, item.block, item.index, item.result)))
+    }
+    dynamic_spill_base = home_base + len(home_offset) * 8
 
     def block_uses(block_index: int) -> dict[ValueRef, tuple[int, ...]]:
         block = graph.blocks[block_index]
@@ -659,6 +792,18 @@ def _compile_register_resident_function(
             register = register_for.pop(value, None)
             if register is not None and value_for_register.get(register) == value:
                 value_for_register.pop(register, None)
+
+        def define(value: ValueRef, register: int) -> None:
+            bind(value, register)
+            if value in home_offset:
+                emit(_store(register, home_offset[value], width_bytes(value)))
+                spill_offset[value] = home_offset[value]
+            if value not in last_use:
+                release(value)
+
+        for value, offset in home_offset.items():
+            if value.block != block_index:
+                spill_offset[value] = offset
 
         def release(value: ValueRef) -> None:
             unbind(value)
@@ -731,6 +876,14 @@ def _compile_register_resident_function(
             else:
                 spill_offset[value] = edge_spill_base + (index - len(allocatable)) * 8
         for value in machine_parameters[block_index]:
+            if value in home_offset:
+                kind_register = register_for.get(value)
+                if kind_register is not None:
+                    emit(_store(kind_register, home_offset[value], width_bytes(value)))
+                else:
+                    emit(_load(scratch, spill_offset[value], width_bytes(value)))
+                    emit(_store(scratch, home_offset[value], width_bytes(value)))
+                spill_offset[value] = home_offset[value]
             if value not in last_use:
                 release(value)
 
@@ -813,37 +966,127 @@ def _compile_register_resident_function(
                 for operand in {left, right}:
                     if last_use.get(operand) == node_index:
                         release(operand)
-                bind(result, destination)
-                if result not in last_use:
-                    release(result)
+                define(result, destination)
 
             elif node.operation == Operation.CONSTANT:
                 _, value = _decode_constant(node.entity, resolve)
                 register = acquire(node_index)
                 emit(_immediate(register, value))
-                bind(result, register)
-                if result not in last_use:
-                    release(result)
+                define(result, register)
 
-            elif node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve):
+            elif node.operation == Operation.CALL_FOREIGN or (node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve)):
+                if node.operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).abi != b"win64-c":
+                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", "win64-c", decode_foreign_function(node.entity).abi.decode("ascii", "replace"))
                 operands = tuple(operand for operand in node.operands if operand in widths)
                 results = tuple(
                     ValueRef.node_result(block_index, node_index, result_index)
                     for result_index, type_cid in enumerate(node.results)
-                    if _bits_width(resolve, type_cid) is not None
+                    if ValueRef.node_result(block_index, node_index, result_index) in widths
                 )
                 live_after = prepare_call(node_index, operands)
                 if assembler is not None:
-                    assembler.call(node.entity.cid)
+                    if node.operation == Operation.CALL_FOREIGN:
+                        assembler.call_import(node.entity.cid)
+                    else:
+                        assembler.call(node.entity.cid)
                 for value in tuple(register_for):
                     unbind(value)
                 for value in tuple(spill_id):
                     if value not in live_after:
                         release(value)
                 if results:
-                    bind(results[0], target.result_register)
-                    if results[0] not in last_use:
-                        release(results[0])
+                    define(results[0], target.result_register)
+
+            elif node.operation == Operation.INT_COMPARE:
+                left, right = node.operands
+                left_register = ensure(left, node_index)
+                right_register = ensure(right, node_index, {left})
+                emit(_cmp_registers(left_register, right_register, widths[left]))
+                for operand in {left, right}:
+                    if last_use.get(operand) == node_index:
+                        release(operand)
+                destination = acquire(node_index)
+                emit(_setcc_register(IntCompare(node.attributes[0]), destination))
+                define(result, destination)
+
+            elif node.operation == Operation.FUNCTION_ADDRESS:
+                destination = acquire(node_index)
+                if assembler is not None:
+                    assembler.address(destination, node.entity.cid)
+                define(result, destination)
+
+            elif node.operation in (Operation.HEAP_VIEW, Operation.ADDRESS_OFFSET, Operation.POINTER_CAST, Operation.POINTER_ADDRESS):
+                source = node.operands[0]
+                source_register = ensure(source, node_index)
+                if last_use.get(source) == node_index:
+                    release(source)
+                destination = acquire(node_index, {source} if source in register_for else set())
+                if node.operation == Operation.ADDRESS_OFFSET:
+                    emit(_lea(destination, source_register, node.attributes[0]))
+                elif destination != source_register:
+                    emit(_move_register(destination, source_register, 64))
+                if node.operation == Operation.HEAP_VIEW:
+                    # The allocator result is nullable: non-null provenance is trapped, not assumed.
+                    emit(_test_register(destination, 64))
+                    if assembler is not None:
+                        nonnull = f"heap-view-nonnull-{block_index}-{node_index}"
+                        assembler.relative(b"\x0f\x85", nonnull)
+                        assembler.emit(b"\x0f\x0b")
+                        assembler.label(nonnull)
+                define(result, destination)
+
+            elif node.operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE):
+                size = node.attributes[0]
+                checked = node.operation == Operation.CHECKED_LOAD_BITS_LE
+                pointer = node.operands[0]
+                protected = {pointer} | ({node.operands[1]} if checked else set())
+                base = ensure(pointer, node_index)
+                index_register = ensure(node.operands[1], node_index, {pointer}) if checked else None
+                destination = acquire(node_index, protected)
+                if checked:
+                    maximum = extents[pointer] - size
+                    if maximum < 0:
+                        emit(b"\x0f\x0b")
+                    else:
+                        emit(_cmp_imm32(index_register, maximum))
+                        if assembler is not None:
+                            ok = f"checked-load-{block_index}-{node_index}"
+                            assembler.relative(b"\x0f\x86", ok)
+                            assembler.emit(b"\x0f\x0b")
+                            assembler.label(ok)
+                        emit(_base_index_load(destination, base, index_register, 0, size))
+                else:
+                    emit(_load_exact(destination, base, 0, size))
+                for operand in protected:
+                    if last_use.get(operand) == node_index:
+                        release(operand)
+                define(result, destination)
+
+            elif node.operation in (Operation.STORE_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                size = node.attributes[0]
+                checked = node.operation == Operation.CHECKED_STORE_BITS_LE
+                pointer = node.operands[0]
+                value = node.operands[2] if checked else node.operands[1]
+                base = ensure(pointer, node_index)
+                index_register = ensure(node.operands[1], node_index, {pointer}) if checked else None
+                value_register = ensure(value, node_index, {pointer} | ({node.operands[1]} if checked else set()))
+                if checked:
+                    maximum = extents[pointer] - size
+                    if maximum < 0:
+                        emit(b"\x0f\x0b")
+                    else:
+                        emit(_cmp_imm32(index_register, maximum))
+                        if assembler is not None:
+                            ok = f"checked-store-{block_index}-{node_index}"
+                            assembler.relative(b"\x0f\x86", ok)
+                            assembler.emit(b"\x0f\x0b")
+                            assembler.label(ok)
+                        emit(_base_index_store(value_register, base, index_register, 0, size))
+                else:
+                    emit(_store_exact(value_register, base, 0, size))
+                for operand in {pointer, value, *((node.operands[1],) if checked else ())}:
+                    if last_use.get(operand) == node_index:
+                        release(operand)
 
             elif node.operation not in RESOURCE_EFFECT_OPERATIONS and node.operation != Operation.CALL_DIRECT:
                 return max_spills
@@ -1007,6 +1250,8 @@ def _compile_function(
         default=0,
     )
     pointers: dict[ValueRef, int] = {}
+    # Proven heap views: (view root value whose frame slot holds the base, byte offset).
+    heap_pointers: dict[ValueRef, tuple[ValueRef, int]] = {}
     pointer_extents: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):
         for node_index, node in enumerate(block.nodes):
@@ -1017,6 +1262,11 @@ def _compile_function(
                 pointer_extents[result] = node.attributes[0]
                 cursor += node.attributes[0]
             elif node.operation == Operation.ADDRESS_OFFSET:
+                if node.operands[0] in heap_pointers:
+                    root, offset = heap_pointers[node.operands[0]]
+                    heap_pointers[result] = (root, offset + node.attributes[0])
+                    pointer_extents[result] = pointer_extents[node.operands[0]] - node.attributes[0]
+                    continue
                 try:
                     pointers[result] = pointers[node.operands[0]] + node.attributes[0]
                     pointer_extents[result] = pointer_extents[node.operands[0]] - node.attributes[0]
@@ -1026,6 +1276,12 @@ def _compile_function(
                 if node.operands[0] in pointers:
                     pointers[result] = pointers[node.operands[0]]
                     pointer_extents[result] = pointer_extents[node.operands[0]]
+                elif node.operands[0] in heap_pointers:
+                    heap_pointers[result] = heap_pointers[node.operands[0]]
+                    pointer_extents[result] = pointer_extents[node.operands[0]]
+            elif node.operation == Operation.HEAP_VIEW:
+                heap_pointers[result] = (result, 0)
+                pointer_extents[result] = node.attributes[0]
 
     float_control = any(
         node.operation in (
@@ -1104,6 +1360,11 @@ def _compile_function(
         assembler.relative(b"\xe9", f"block-{graph.entry}")
     node_ranges: list[ArtifactSemanticRange] = []
 
+    def heap_base_register(pointer: ValueRef) -> tuple[int, int]:
+        root, offset = heap_pointers[pointer]
+        assembler.emit(_load(target.scratch_registers[1], slots[root]))
+        return target.scratch_registers[1], offset
+
     def value_slot(value: ValueRef) -> int:
         try:
             return slots[value]
@@ -1158,6 +1419,10 @@ def _compile_function(
         assembler.label(f"block-{block_index}")
         for node_index, node in enumerate(block.nodes):
             node_start = len(assembler.code)
+            if node.operation in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                value_cid = node.results[0] if node.operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE) else node.operand_types[-2]
+                if _type_form(resolve, value_cid) == 2 and node.attributes[0] * 8 != target.pointer_bits:
+                    fail("XAX.NATIVE.POINTER_WIDTH", graph_object.cid.hex(), "NATIVE-POINTER-ELEMENT-WIDTH", target.pointer_bits // 8, node.attributes[0])
             result_ref = ValueRef.node_result(block_index, node_index)
             if node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR):
                 width = _bits_width(resolve, node.results[0])
@@ -1338,7 +1603,9 @@ def _compile_function(
             elif node.operation == Operation.FUNCTION_ADDRESS:
                 assembler.address(target.result_register, node.entity.cid)
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
-            elif node.operation in (Operation.CALL_DIRECT, Operation.CALL_INDIRECT):
+            elif node.operation in (Operation.CALL_DIRECT, Operation.CALL_INDIRECT, Operation.CALL_FOREIGN):
+                if node.operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).abi != b"win64-c":
+                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", "win64-c", decode_foreign_function(node.entity).abi.decode("ascii", "replace"))
                 operand_pairs = tuple(
                     (operand, cid, operand_index)
                     for operand_index, (operand, cid) in enumerate(zip(node.operands, node.operand_types))
@@ -1364,6 +1631,9 @@ def _compile_function(
                             assembler.emit(_xmm_memory(True, position, value_slot(operand), decode_float_width(resolve(cid))))
                         elif _win64_by_reference(resolve, cid):
                             assembler.emit(_lea(target.argument_registers[position], RSP, call_copies[(block_index, node_index, operand_index)]))
+                        elif operand in pointers:
+                            # Frame-resident storage is addressed only where it escapes.
+                            assembler.emit(_lea(target.argument_registers[position], RSP, pointers[operand]))
                         else:
                             assembler.emit(_load(target.argument_registers[position], value_slot(operand)))
                         continue
@@ -1379,10 +1649,15 @@ def _compile_function(
                         assembler.emit(_load_exact(target.scratch_registers[0], RSP, value_slot(operand), layout.size))
                         assembler.emit(_store_exact(target.scratch_registers[0], RSP, outgoing, layout.size))
                     else:
-                        assembler.emit(_load(target.scratch_registers[0], value_slot(operand)))
+                        if operand in pointers:
+                            assembler.emit(_lea(target.scratch_registers[0], RSP, pointers[operand]))
+                        else:
+                            assembler.emit(_load(target.scratch_registers[0], value_slot(operand)))
                         assembler.emit(_store(target.scratch_registers[0], outgoing))
                 if node.operation == Operation.CALL_INDIRECT:
                     assembler.emit(_call_register(target.scratch_registers[1]))
+                elif node.operation == Operation.CALL_FOREIGN:
+                    assembler.call_import(node.entity.cid)
                 elif not _is_erased_proof_function(node.entity, resolve):
                     assembler.call(node.entity.cid)
                 if machine_results and not hidden:
@@ -1398,7 +1673,7 @@ def _compile_function(
                         assembler.emit(_store(target.result_register, slot))
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:
                 size, _alignment = node.attributes
-                base = pointers[node.operands[0]]
+                base = pointers.get(node.operands[0])
                 extent = pointer_extents[node.operands[0]]
                 maximum = extent - size
                 if maximum < 0:
@@ -1411,11 +1686,15 @@ def _compile_function(
                     assembler.relative(b"\x0f\x86", ok)
                     assembler.emit(b"\x0f\x0b")
                     assembler.label(ok)
-                    assembler.emit(_indexed_load(target.result_register, index_register, base, size))
+                    if base is None:
+                        heap_base, offset = heap_base_register(node.operands[0])
+                        assembler.emit(_base_index_load(target.result_register, heap_base, index_register, offset, size))
+                    else:
+                        assembler.emit(_indexed_load(target.result_register, index_register, base, size))
                     assembler.emit(_store(target.result_register, value_slot(result_ref)))
             elif node.operation == Operation.CHECKED_STORE_BITS_LE:
                 size, _alignment = node.attributes
-                base = pointers[node.operands[0]]
+                base = pointers.get(node.operands[0])
                 extent = pointer_extents[node.operands[0]]
                 maximum = extent - size
                 if maximum < 0:
@@ -1429,10 +1708,54 @@ def _compile_function(
                     assembler.emit(b"\x0f\x0b")
                     assembler.label(ok)
                     assembler.emit(_load(target.result_register, value_slot(node.operands[2])))
-                    assembler.emit(_indexed_store(target.result_register, index_register, base, size))
+                    if base is None:
+                        heap_base, offset = heap_base_register(node.operands[0])
+                        assembler.emit(_base_index_store(target.result_register, heap_base, index_register, offset, size))
+                    else:
+                        assembler.emit(_indexed_store(target.result_register, index_register, base, size))
             elif node.operation == Operation.RAW_LOAD_BITS_LE:
                 assembler.emit(_load(target.result_register, pointers[node.operands[0]], node.attributes[0]))
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.STORE_BITS_LE and node.operands[0] in heap_pointers:
+                assembler.emit(_load(target.result_register, value_slot(node.operands[1])))
+                heap_base, offset = heap_base_register(node.operands[0])
+                assembler.emit(_store_exact(target.result_register, heap_base, offset, node.attributes[0]))
+            elif node.operation in (Operation.LOAD_BITS_LE, Operation.RAW_LOAD_BITS_LE) and node.operands[0] in heap_pointers:
+                heap_base, offset = heap_base_register(node.operands[0])
+                assembler.emit(_load_exact(target.result_register, heap_base, offset, node.attributes[0]))
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.HEAP_VIEW:
+                # The allocator result is nullable; the proven view's non-null
+                # provenance is backed by an explicit trap, not an assumption.
+                register = target.result_register
+                assembler.emit(_load(register, value_slot(node.operands[0])))
+                assembler.emit(_rex(True, register, register) + b"\x85" + bytes((0xC0 | ((register & 7) << 3) | (register & 7),)))
+                nonnull = f"heap-view-nonnull-{block_index}-{node_index}"
+                assembler.relative(b"\x0f\x85", nonnull)
+                assembler.emit(b"\x0f\x0b")
+                assembler.label(nonnull)
+                assembler.emit(_store(register, value_slot(result_ref)))
+            elif node.operation in (Operation.ADDRESS_OFFSET, Operation.POINTER_CAST) and result_ref in heap_pointers:
+                # Heap addresses are values: materialize so calls, returns, and
+                # block arguments see them; memory ops fold the offset instead.
+                # ponytail: always materialized; skip unused ones once frames get a register allocator.
+                heap_base, offset = heap_base_register(result_ref)
+                assembler.emit(_lea(target.result_register, heap_base, offset))
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.POINTER_ADDRESS:
+                if _bits_width(resolve, node.results[0]) != target.pointer_bits:
+                    fail("XAX.NATIVE.ADDRESS_WIDTH", graph_object.cid.hex(), "NATIVE-ADDRESS-POINTER-WIDTH", target.pointer_bits, _bits_width(resolve, node.results[0]))
+                operand = node.operands[0]
+                if operand in pointers:
+                    assembler.emit(_lea(target.result_register, RSP, pointers[operand]))
+                elif operand in heap_pointers:
+                    heap_base, offset = heap_base_register(operand)
+                    assembler.emit(_lea(target.result_register, heap_base, offset))
+                else:
+                    assembler.emit(_load(target.result_register, value_slot(operand)))
+                assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation in (Operation.ATOMIC_LOAD, Operation.ATOMIC_STORE, Operation.ATOMIC_RMW, Operation.ATOMIC_CMPXCHG) and node.operands[0] in heap_pointers:
+                fail("XAX.NATIVE.POINTER", graph_object.cid.hex(), "NATIVE-ATOMIC-STACK-STORAGE", "stack storage", "heap view")
             elif node.operation == Operation.STORE_BITS_LE:
                 assembler.emit(_load(target.result_register, value_slot(node.operands[1])))
                 assembler.emit(_store(target.result_register, pointers[node.operands[0]], node.attributes[0]))
@@ -1520,6 +1843,17 @@ def _compile_function(
             reason, _target_data = decode_trap_payload(terminator.payload)
             assembler.emit(_immediate(target.result_register, reason))
             assembler.emit(b"\x0f\x0b")
+    if target.identity == b"x86_64-windows-pe-v1":
+        # ponytail: local store->load forwarding over the spill-every-value frame;
+        # legacy load-image profiles keep their pinned bytes. Replace with a register allocator (U1.2b).
+        removed = assembler.forward_stores()
+        if removed:
+            def shift(offset: int) -> int:
+                return offset - sum(delta for position, delta in removed if position < offset)
+            node_ranges = [
+                ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, shift(item.start), shift(item.end))
+                for item in node_ranges
+            ]
     code, calls = assembler.finish()
     return code, calls, tuple(node_ranges)
 
@@ -1558,10 +1892,15 @@ def _compile_native_with_target(
             ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, base + item.start, base + item.end)
             for item in fragments[function.cid][2]
         )
+    imports: list[tuple[int, bytes, bytes]] = []
     for function in functions:
         base = offsets[function.cid]
         for local_position, callee in fragments[function.cid][1]:
             position = base + local_position
+            if callee not in offsets:
+                declaration = decode_foreign_function(resolve(callee))
+                imports.append((position, declaration.library, declaration.name))
+                continue
             displacement = offsets[callee] - (position + 4)
             image[position : position + 4] = displacement.to_bytes(4, "little", signed=True)
     _, parameter_types, return_types = _decode_function_interface(entry, resolve)
@@ -1575,6 +1914,7 @@ def _compile_native_with_target(
         tuple(semantic_ranges),
         tuple(_abi_kind(resolve, cid) for cid in parameter_types if not _is_proof_type(resolve(cid))),
         tuple(_abi_kind(resolve, cid) for cid in return_types if not _is_proof_type(resolve(cid))),
+        tuple(imports),
     )
 
 
@@ -1616,6 +1956,8 @@ def run_native(image: NativeImage, arguments: Sequence[object]) -> tuple[object,
     """Call the entry through libffi.  Floats are Python floats; aggregates are layout bytes."""
     if sys.platform != "win32" or platform.machine().lower() not in ("amd64", "x86_64"):
         fail("XAX.NATIVE.HOST", "host", "NATIVE-HOST-X86-64-WINDOWS", "Windows x86-64", [sys.platform, platform.machine()])
+    if image.imports:
+        fail("XAX.NATIVE.IMPORTS", "entry", "NATIVE-RAW-IMAGE-NO-IMPORTS", "import-free raw image", len(image.imports))
     if len(arguments) != len(image.parameter_widths):
         fail("XAX.NATIVE.ARGUMENT_COUNT", "entry", "NATIVE-ARGUMENT-COUNT", len(image.parameter_widths), len(arguments))
     parameter_kinds = image.parameter_kinds or tuple(f"u{width}" for width in image.parameter_widths)

@@ -1,4 +1,6 @@
-# XAX — AI-Native Programming Language Architecture v0.1
+# XAX — AI-Native Programming Language Architecture v0.2
+
+**v0.2 scope.** v0.1 framed XAX as a compiler-architecture prototype (sections 1–34, preserved below). v0.2 extends the same principles to a universal-replacement architecture (sections 35–47). This document states principles and intent; `XAX_SPEC.md` is normative and wins on conflict; implementation status lives in `XAX_STATE.md` and `XAX_REPLACEMENT_MATRIX.json`.
 
 ## Founding definition
 
@@ -27,16 +29,19 @@ In descending order:
 
 | Priority | Requirement |
 |---|---|
-| 1 | Exact semantics |
-| 2 | Minimum AI token expenditure |
-| 3 | Minimum probability of AI generation error |
-| 4 | Native machine performance |
-| 5 | Minimal memory/code footprint |
-| 6 | Universal hardware targeting |
-| 7 | Determinism |
-| 8 | Incremental/local modification |
-| 9 | Compiler simplicity |
-| 10 | Human usability |
+| 1 | Semantic correctness (deterministic meaning is part of correctness) |
+| 2 | Minimum AI tokens per successful semantic change |
+| 3 | AI generation reliability |
+| 4 | Runtime performance |
+| 5 | Memory footprint |
+| 6 | Binary footprint |
+| 7 | Compilation quality |
+| 8 | Hardware/platform portability |
+| 9 | Deterministic behavior of builds and tooling |
+| 10 | Compiler/toolchain simplicity |
+| 11 | Human usability |
+
+Incremental/local modification serves priority 2. Reconciliation with `XAX_SPEC.md` §1 is ADR-078.
 
 Human readability has zero normative weight.
 
@@ -794,6 +799,8 @@ This must be experimentally measured.
 
 # 33. First prototype
 
+*Status: achieved — M1–M5 (see `XAX_STATE.md`).*
+
 XAX should not begin by implementing a giant language specification.
 
 Version 0 needs only enough semantics to compile:
@@ -816,6 +823,8 @@ Only after this succeeds should ownership, SIMD, atomics, GPUs and high-level li
 ---
 
 # 34. First decisive experiment
+
+*Status: open — historical C-vs-XAX rows are negative for XAX on tokens and not qualifying (OI-31); the tokenizer-native arm remains unavailable (OI-01).*
 
 The first benchmark should compare four representations of the same small programs:
 
@@ -840,7 +849,178 @@ If tokenizer-native semantic transactions do not substantially outperform source
 
 ---
 
-# 35. Core invariant
+# 35. Universal replacement
+
+The long-term objective is that one canonical AI-native semantic language removes the practical need to author software in C, C++, Rust, assembly, Java, Kotlin, C#, Swift, Objective-C, JavaScript, TypeScript, Python, Go, PHP, Ruby, Dart, Solidity, Fortran, COBOL, CUDA-style languages, shell languages, and their peers.
+
+This does not mean reproducing their features. It means XAX is sufficient to build what they build:
+
+    firmware, bootloaders, kernels, hypervisors, drivers
+    embedded and real-time systems
+    desktop, mobile, web, and browser/Wasm applications
+    servers, distributed systems, databases, compilers
+    game engines and games
+    GPU kernels, scientific/HPC software, AI runtimes
+    cloud infrastructure
+    JVM/.NET/managed-platform applications
+    scripting-style applications
+    smart contracts and legacy/mainframe workloads where target specifications permit
+
+A platform is **replacement-capable** when an AI can go
+
+    intent -> XAX semantics -> verify -> optimize -> build -> deployable artifact
+
+with no human-authored program in any other language. Compiler-generated adapters are permitted. Platform-required runtimes (ART, a JVM, the CLR, a WebAssembly engine, a GPU driver) are permitted only when the platform itself requires them and their behavior is represented by explicit platform/ABI contracts. Examples:
+
+    browser   XAX -> WebAssembly + generated platform bindings -> browser
+    Android   XAX -> native machine code and/or DEX -> Android
+    JVM       XAX -> JVM-compatible artifact -> JVM
+    .NET      XAX -> CLI-compatible artifact -> CLR
+    Apple     XAX -> Mach-O + Apple ABI/framework contracts -> platform
+    GPU       XAX -> target-specific GPU representation/binary -> device
+
+The normative definition is `XAX_SPEC.md` §21.
+
+---
+
+# 36. Replacement conformance levels
+
+Replacement is claimed per platform and workload, at cumulative evidence-gated levels:
+
+| Level | Meaning |
+|---|---|
+| R0 | semantic expressibility: the workload is represented exactly in XAX |
+| R1 | executable lowering: XAX directly produces an executable representation that ran |
+| R2 | platform interoperability: ABI, system APIs, libraries, callbacks, dynamic loading, resources, lifecycle work |
+| R3 | practical application: a nontrivial real workload ran |
+| R4 | performance competitiveness: runtime, memory, binary size measured competitive with established toolchains |
+| R5 | AI efficiency: tokens per successful change and repair rate measured better than textual-source workflows |
+| R6 | autonomous maintenance: query, modify, verify, benchmark, rebuild, commit through semantic transactions |
+
+Every implementation claim carries one label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, or UNIMPLEMENTED. No platform or language is "replaced" until the required evidence exists.
+
+---
+
+# 37. Kernel, libraries, and packages
+
+Universality comes from layering, never from growing the kernel:
+
+    tiny universal XAX kernel
+        -> compile-time semantic construction
+        -> zero-cost semantic libraries
+        -> platform packages
+        -> ABI packages
+        -> target packages
+        -> generated machine/platform artifact
+
+The kernel stays approximately: values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta operations.
+
+Before anything enters the kernel it must be shown that existing primitives cannot express it exactly and efficiently. Concepts such as class, object, trait, interface, async, future, string, dictionary, exception, and garbage-collected object are not kernel concepts. Duplicate mechanisms, speculative generality, extra layers, and per-domain DSLs are rejected. There is one semantic language.
+
+---
+
+# 38. Zero-cost high-level abstraction policy
+
+Target: **zero unavoidable language overhead**. Runtime cost may come only from semantics the program requests or from unavoidable requirements of the selected hardware/platform ABI.
+
+Never mandatory: garbage collector, allocator, reference counting, object runtime, exception runtime, scheduler, async runtime, reflection runtime, libc, VM, JIT, initialization framework, dynamic loader, statically provable bounds checks, statically provable ownership bookkeeping, and any hidden synchronization, allocation, cleanup, syscall, stack object, or heap object.
+
+Common programming models lower into existing semantics:
+
+    closures            -> function + explicit environment
+    objects             -> storage + functions
+    interfaces/traits   -> specialization, or explicit dispatch table + call_indirect
+    generics            -> compile-time specialization
+    async/coroutines    -> explicit state machine (+ scheduler capability when needed)
+    exceptions          -> sums/control, or explicit foreign-unwind adapter
+    GC                  -> optional collector package with explicit roots
+    reference counting  -> explicit library operations
+    reflection          -> compile-time introspection; retained metadata only when requested
+    dynamic typing      -> tagged/boxed representations from libraries
+    strings/collections -> explicit representations + libraries
+    actors/tasks        -> libraries
+    GPU kernels         -> target/platform packages
+
+A program that does not use a model pays nothing for it. Safety follows `prove -> erase check`; when proof fails the policy is explicit (reject, checked operation, explicit trap, or raw waiver), and undefined behavior is never silently turned into optimizer permission.
+
+---
+
+# 39. Executable and object formats
+
+Containers are target/platform package responsibilities: raw load images, ELF, PE/COFF, Mach-O, WebAssembly modules, DEX/APK, classfiles/JARs, CLI assemblies, GPU binaries.
+
+A container adds no code beyond explicit platform contracts. Import tables, relocations, headers, and section layout are derived deterministically from semantic identity. Process start and exit, loaders, TLS, and unwind data are explicit platform contracts, not container conveniences.
+
+First hosted evidence: XAX emits a PE32+ executable directly, with kernel32 imports bound through the loader-filled import table and process exit as an explicit `ExitProcess` call. The container contains zero bytes of startup code. Native hosted platforms need: complete calling conventions, relocations, TLS, atomics, vectors, unwind data when required, and static/dynamic linking when requested.
+
+---
+
+# 40. Foreign ecosystem import
+
+A universal replacement cannot require rewriting the world. Interop is mandatory for: C ABI and headers, POSIX, Win32, Objective-C runtime/framework APIs, JVM metadata, .NET metadata, Android SDK/DEX/JNI, browser/Web APIs, system calls, GPU APIs, and existing shared/static libraries.
+
+Deterministic importers convert external metadata into XAX platform/ABI packages of typed foreign declarations. No human writes wrapper source. There is no universal ABI: C++ and other complex ABIs are explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions stay visible to verification. Each foreign ABI is owned by one backend, which rejects the others.
+
+---
+
+# 41. Hosted managed targets
+
+JVM, Android DEX/ART, and .NET CLI/CLR are targets and platforms. Java, Kotlin, and C# semantics are not reproduced in the kernel. Where a managed runtime is required, XAX emits its artifact format directly (as already done for DEX) or emits native code plus a compiler-generated managed bridge; any GC or object-model interaction is an explicit platform contract.
+
+---
+
+# 42. Web and browser target model
+
+The web target is WebAssembly plus platform contracts: WASI for system interfaces, browser host APIs (DOM, fetch, WebGPU, events) through declarations imported from Web IDL-class metadata. XAX never requires handwritten JavaScript. If a host requires glue, the compiler generates it deterministically from explicit platform semantics and records it in provenance.
+
+---
+
+# 43. Production GPU and accelerator path
+
+Target packages model SIMT/SIMD execution, memory spaces, synchronization scopes, barriers, kernels, launches, shared/workgroup memory, host/device ownership, and device resources. The same core semantics map to SPIR-V/Vulkan, CUDA-compatible targets, Metal, DXIL, and future accelerators. Launch, transfer, and synchronization are explicit effects/resources; there is no XAX device runtime. The synthetic M13 target proves the package mechanism; production requires physical-device execution and vendor-baseline measurements.
+
+Embedded and bare-metal targets require: no runtime, deterministic startup, exact sections/layout, interrupts, MMIO, DMA, volatile operations, custom layout semantics, fixed memory budgets, optional zero allocation, and bounded stack analysis where requested. Legacy and specialized targets (mainframes, legacy ISAs, DSPs, consoles, custom accelerators) are added as target packages whenever target/ABI information exists, never hardcoded.
+
+---
+
+# 44. Standard semantic library strategy
+
+A minimal modular ecosystem, not a runtime: allocators, arenas, text, slices, arrays, maps, sets, numerics, big integers, filesystem, sockets, HTTP, TLS integration, threads, synchronization, event loops, serialization, compression, cryptography interfaces, graphics, audio, databases, SIMD, tensors, GPU compute.
+
+Programs link only what they semantically require. Unused packages contribute zero runtime code and data. Every package's runtime behavior is explicit effects, resources, and capabilities.
+
+---
+
+# 45. Compiler optimization trajectory
+
+Universal replacement needs far stronger optimization than a prototype backend. The path is incremental: constant propagation/folding, dead-code elimination, CFG simplification, inlining, specialization, devirtualization, escape analysis, scalar replacement, load/store forwarding, alias-aware optimization, GVN/CSE, LICM, loop simplification/unrolling/vectorization, SLP, strength reduction, bounds-check elimination, interprocedural and whole-program optimization, PGO, code layout, instruction selection, peephole, scheduling, register allocation, and bounded superoptimization where justified.
+
+Every transformation preserves exact observable semantics; high-risk and search transformations use translation validation or equivalence checking. Profile data stays non-semantic unless promoted into build identity. Parallel compilation never alters semantics. Optimizer machinery migrates into XAX where practical. LLVM is never a permanent architectural dependency.
+
+---
+
+# 46. Practical debugging and observability
+
+Production use requires observability through derived, non-authoritative views: semantic-to-machine maps, crash location mapping, stack traces where platforms permit, disassembly maps, profiling, debugger integration, coverage, sanitizer/instrumentation builds, and deterministic diagnostics. Instrumented builds are separate build policies. None of these views becomes source.
+
+---
+
+# 47. Replacement evidence matrix and benchmarks
+
+`XAX_REPLACEMENT_MATRIX.json` tracks each platform: semantic expressibility, code generation, ABI, artifact format, platform APIs, FFI, concurrency, atomics, SIMD, dynamic linking, debugging, optimization maturity, runtime requirement, real execution, performance/memory/code-size/AI-token evidence, blockers, and replacement level. Levels are derived from cited evidence by a validator; unchecked boxes never become claims.
+
+Replacement benchmarks compare XAX against the platform's established toolchains (optimized C/C++, Rust, platform-native compilers, WebAssembly toolchains, GPU toolchains, hand-written assembly where credible), recording hardware, OS, toolchain versions, settings, workload, warmup, repetitions, variance, binary size, peak memory, and time. Benchmark definitions are never tuned to favor XAX. AI benchmarks measure total successful-task tokens and repair counts on real models; repository size should have as little relationship as possible to task context size.
+
+The goal is not "faster than assembly"; it is:
+
+    minimize selected target cost
+    subject to exact semantics
+
+The first replacement milestone (U1) is a hosted native application, a bare-metal program, a WebAssembly/WASI or browser application, an Android application, and an accelerator workload, all from XAX semantics, measured against established implementations.
+
+---
+
+# 48. Core invariant
 
 The fundamental XAX rule is:
 
@@ -861,3 +1041,9 @@ The AI sees whatever semantic neighborhood is useful.
 The processor sees machine instructions.
 
 None of those representations is forced to resemble the others.
+
+The same semantic system must scale from tiny bare-metal firmware to operating systems, native, web, and mobile applications, servers and databases, games, and GPU/HPC/AI workloads, without imposing the costs of one domain on another:
+
+    The AI should communicate meaning,
+    the compiler should own representation,
+    and the hardware should receive only what execution requires.

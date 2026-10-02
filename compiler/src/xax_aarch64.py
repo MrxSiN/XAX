@@ -1176,6 +1176,8 @@ def _compile_general_function(
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, direct=node.entity.cid)
                 elif node.operation == Operation.CALL_FOREIGN:
                     declaration = decode_foreign_function(node.entity)
+                    if declaration.abi != b"android-aapcs64-c":
+                        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "AARCH64-FOREIGN-ABI", "android-aapcs64-c", declaration.abi.decode("ascii", "replace"))
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, foreign=(declaration.library, declaration.name))
                 else:
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, indirect=indirect_ref)
@@ -1837,6 +1839,8 @@ def _compile_function(
                 )
                 live_after = prepare_real_call(node_index, machine_operands)
                 declaration = decode_foreign_function(node.entity)
+                if declaration.abi != b"android-aapcs64-c":
+                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "AARCH64-FOREIGN-ABI", "android-aapcs64-c", declaration.abi.decode("ascii", "replace"))
                 if assembler is not None:
                     assembler.foreign_call(declaration.library, declaration.name)
                 finish_real_call(live_after, machine_results)

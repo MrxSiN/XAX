@@ -47,9 +47,21 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 - Pre-existing failures, not caused by this change (both reproduce on pre-edit bytecode): `test_stack_memory_executes_natively` pins a stale code SHA-256 (43-byte code still executes correctly); `test_float_descriptor_is_not_accepted_semantics` now rejects with `XAX.CANON.TRAILING_BYTES` instead of `XAX.TYPE.FORM` since float types became form 7. Four test modules import `pytest`, which is not installed here.
 - Self-hosting reality check: the M14 hosted compiler is four XAX nodes orchestrating Python META primitives (verify, canonical store); all verification, lowering, encoding, and emission still execute in Python. No compiler functionality migrated to XAX in this pass.
 
+## Universal-replacement upgrade — 2026-10-02
+
+- Normative: `XAX_SPEC.md` §21 (replacement definition, R0–R6, evidence labels, kernel admission rule, model lowerings, platform classes, containers, foreign import, libraries, observability) and explicit document precedence in §1. ADR-074–ADR-078; OI-32–OI-36; `XAX_CONFORMANCE.md` §23; `XAX_BENCHMARKS.md` §15; roadmap U1; architecture v0.2 (§35–§47).
+- `XAX_REPLACEMENT_MATRIX.json` is machine-checked: `compiler/src/xax_replacement.py` derives each row's level from cited evidence; `tests/test_replacement_matrix.py` rejects overclaims. Update a row only with an existing evidence path.
+- U1.2a EXECUTED: x86-64 heap views (checked dynamic heap array round trip; OOB traps). U1.4 WASI EXECUTED under Node (`wasi_command_evidence.json`). ADR-079 (pointer-free memory frontiers), ADR-080 (WASI), OI-37 (pointers in memory).
+- U1.1 EXECUTED: direct PE32+ hosted executable with kernel32 imports (`xax_pe.py`, target `x86_64-windows-pe-v1`, `xax_platform.win32_kernel32_api`, evidence `compiler/benchmarks/windows_pe_hosted_evidence.json`). Process exit must be an explicit `ExitProcess` call.
+- AI token trials were deliberately deferred until this upgrade landed; when run, use the smallest corpus (n=1 per cell) first.
+
 ## Exact next task
 
-Execute **OI-31** by running the five C/XAX pairs in Codex Desktop with one fixed model/reasoning setting. Record every turn and available token count in `results.csv`; do not reset failed attempts.
+1. **OI-37 remainder**: local-provenance pointer store/reload (pointer-linked structures over XAX storage). Done: address exposure (ADR-081, WASI stdout EXECUTED) and provenance-free pointer elements (ADR-082, dispatch table EXECUTED). Needs typed mixed storage + container/referent lifetime coupling; justify against arena+index first.
+2. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
+3. **U1.3**: ELF64 executable + SysV foreign ABI (reuse the Android ELF writer); needs a Linux host for EXECUTED evidence.
+3. Install a C toolchain on the measuring host and run `compiler/benchmarks/windows_c_reference/hosted.c` for the first R4 size/time comparison.
+4. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
 
 ## Reproduce M14 evidence
 

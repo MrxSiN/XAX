@@ -11,15 +11,21 @@ The keywords **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are
 When requirements conflict, implementations and future revisions MUST resolve them in this order:
 
 1. semantic correctness and exact meaning;
-2. deterministic machine interpretation;
-3. AI token/reasoning efficiency, including generation reliability and repair cost;
-4. runtime performance/latency and memory/code footprint;
-5. universal target extensibility;
-6. locality and incremental operation;
-7. implementation simplicity;
-8. human convenience.
+2. deterministic machine interpretation of meaning;
+3. AI tokens per successful semantic change, including generation reliability and repair cost;
+4. runtime performance/latency, then memory footprint, then binary footprint;
+5. compilation (generated-code) quality;
+6. universal hardware/platform portability and target extensibility;
+7. deterministic/reproducible builds and tooling behavior;
+8. locality and incremental operation;
+9. compiler/toolchain simplicity;
+10. human convenience.
+
+(Refined by ADR-078; ranks 1–2 together are the mission's "semantic correctness".)
 
 Human readability, writability, naming style, formatting, and textual source preservation have no normative weight.
+
+Document precedence: this specification is normative; `docs/NN_*.md` stage documents are detailed normative text subordinate to it on conflict; `XAX_CONFORMANCE.md` and `XAX_BENCHMARKS.md` define test and measurement obligations; `XAX_DECISIONS.md` records adopted rationale; `XAX_AI_Native_Programming_Language_Architecture.md` states founding principles and architecture intent and never overrides this specification; `XAX_STATE.md`, `XAX_HANDOFF.md`, and `XAX_REPLACEMENT_MATRIX.json` record evidence, never requirements.
 
 A later implementation choice MUST NOT silently weaken a higher-ranked requirement. Performance, token-efficiency, portability, and self-hosting claims are objectives until supported by the evidence required in `XAX_BENCHMARKS.md` or `XAX_CONFORMANCE.md`.
 
@@ -361,6 +367,10 @@ DMA buffers, mappings, ownership transitions, cache maintenance, and synchroniza
 Unsafety is operation-local. A raw operation MUST enumerate waived obligations, such as provenance, bounds, alignment, permission, aliasing, initialization, or lifetime.
 
 A waiver never removes unrelated typing, SSA, effect, resource, capability, or control obligations. Missing proof never silently becomes unchecked behavior.
+
+`pointer_address` (ADR-081) converts a pointer to `bits<N>`, N equal to the selected target's pointer width. It carries a mandatory provenance-exposure waiver attribute, requires live storage when the pointer has a local fact, and produces an integer with no provenance: no verified operation converts it back into a dereferenceable pointer. Foreign code that dereferences an exposed address MUST receive that storage's memory effect so lifetime ordering stays explicit.
+
+Pointer-typed memory elements (ADR-082) hold one target pointer word (access size 4 or 8; the backend requires its pointer width). Only provenance-free pointers — function addresses and foreign/external pointers without a local storage fact — may be stored; a reloaded pointer carries no facts. Storing a pointer with local storage provenance is rejected (`MEMORY-POINTER-STORE-LOCAL-PROVENANCE`) until container/referent lifetime coupling exists (OI-37). Pointer-linked data over XAX-owned storage uses arena + index representations.
 
 ### 5.7 Resources
 
@@ -1035,6 +1045,113 @@ Unresolved evidence-dependent choices are listed only in `XAX_OPEN_ISSUES.md`. T
 A change that can alter accepted program meaning, canonical identity, verifier validity, target behavior, transaction semantics, ABI behavior, or build reproducibility requires a versioned specification/schema/contract change and corresponding conformance updates.
 
 No implementation behavior, benchmark result, common practice, or human-facing syntax silently changes XAX semantics.
+
+## 21. Universal replacement
+
+### 21.1 Definition
+
+XAX is a candidate replacement for authoring software otherwise written in C, C++, Rust, assembly, Java, Kotlin, C#, Swift, Objective-C, JavaScript, TypeScript, Python, Go, PHP, Ruby, Dart, Solidity, Fortran, COBOL, CUDA-style languages, shell languages, and comparable languages. Replacement means sufficiency for the **software those languages build**, not reproduction of their features.
+
+A platform/workload class is **replacement-capable** when an AI can perform
+
+```text
+intent -> construct XAX semantics -> verify -> optimize -> build -> deployable artifact
+```
+
+without any human-authored program in another programming language.
+
+| ID | Requirement |
+|---|---|
+| UR-001 | Compiler-generated adapters (DEX entry shims, host bindings, loader stubs, import tables) are permitted only when deterministically generated from XAX semantic/platform contracts and recorded in build provenance. They are never authored source. |
+| UR-002 | A platform-required runtime (ART, a WebAssembly engine, CLR, JVM, a GPU driver) is permitted only when the selected platform itself requires it and its observable behavior is represented by explicit platform/ABI contracts. XAX MUST NOT add a runtime of its own. |
+| UR-003 | Replacement claims are scoped to `(platform package, workload class, R-level)` and MUST be backed by the evidence in §21.3. Architecture goals are not implementation facts. |
+| UR-004 | A program pays only for semantics it requests. No domain (managed, web, GPU, real-time, scripting-style) may impose runtime, code, data, or verification cost on programs that do not use it. |
+
+### 21.2 Replacement conformance levels
+
+Levels are cumulative; a level is held only when every lower level is held.
+
+| Level | Name | Required evidence |
+|---|---|---|
+| R0 | Semantic expressibility | The workload is represented exactly in verified XAX (STRUCTURAL or stronger). |
+| R1 | Executable lowering | XAX directly produces a valid executable representation that EXECUTED on the target (a harness, emulator, or device must be named). |
+| R2 | Platform interoperability | Required ABI, system APIs, libraries, callbacks, dynamic loading, resources, and platform lifecycle EXECUTED. |
+| R3 | Practical application | A nontrivial real application/workload EXECUTED successfully. |
+| R4 | Performance competitiveness | Runtime, memory, and binary size MEASURED against the platform's established toolchains under `XAX_BENCHMARKS.md`. |
+| R5 | AI efficiency | Total tokens per successful change and repair rate MEASURED against textual-source workflows on real model trials. |
+| R6 | Autonomous maintenance | Query, modify, verify, benchmark, rebuild, and commit of the application EXECUTED through semantic transactions without whole-source regeneration. |
+
+A negative R4/R5 measurement is valid evidence and MUST be reported; the level is held only when the measured result is competitive.
+
+### 21.3 Evidence labels
+
+Every implemented claim in state, matrix, handoff, or benchmark documents carries exactly one label:
+
+| Label | Meaning |
+|---|---|
+| PROVEN | machine-checked proof or exhaustive verification of the stated property |
+| EXECUTED | the artifact ran and produced the checked result; host/harness/device named |
+| MEASURED | quantitative result recorded under benchmark rules, with raw data |
+| STRUCTURAL | verified or inspected artifact structure; not executed |
+| PROTOTYPE | bounded implementation exists; scope is narrower than the claim's name suggests |
+| UNIMPLEMENTED | absent |
+
+A stronger label requires stronger evidence. Host-unavailable executions remain unavailable, never passed.
+
+### 21.4 Universal Replacement Matrix
+
+`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. The matrix records evidence; it never defines requirements.
+
+### 21.5 Kernel admission rule
+
+Universal replacement is achieved by layering, not by kernel growth:
+
+```text
+tiny XAX kernel -> compile-time construction -> zero-cost semantic libraries
+-> platform packages -> ABI packages -> target packages -> artifact
+```
+
+The kernel remains approximately: values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta operations. A kernel addition MUST be recorded as an ADR demonstrating that the semantics cannot be expressed exactly, with equal-or-better generated cost, verification precision, and AI tokens per change, using existing primitives plus libraries/packages. Language-specific concepts (class, object, trait, interface, async, future, string, dictionary, exception, GC object) are not kernel concepts unless that demonstration exists.
+
+### 21.6 Lowering of conventional programming models
+
+These are library or compile-time patterns over existing semantics. None is mandatory, and none adds cost to programs that do not use it.
+
+| Model | XAX realization |
+|---|---|
+| closures | function + explicit environment aggregate (+ explicit storage when escaping) |
+| objects | storage + functions; layout is explicit |
+| interfaces/traits | compile-time specialization; dynamic dispatch = explicit table + `call_indirect` under a referenced CallContract |
+| generics | compile-time specialization (§8.3) |
+| async/coroutines | explicit state machine; scheduler/event loop only as an explicitly linked capability |
+| exceptions | sums + explicit control; foreign unwinding only through an explicit ABI adapter (§6.3) |
+| GC | optional collector package with explicit roots, barriers, and allocation effects |
+| reference counting | explicit library operations on linear resources |
+| reflection | compile-time introspection; runtime metadata only when explicitly retained |
+| dynamic typing | tagged sums/boxed representations supplied by libraries |
+| strings, collections | explicit representations + semantic libraries |
+| actors/tasks | libraries over atomics, resources, and platform thread capabilities |
+| GPU kernels | target/platform packages over `target_op`, memory spaces, and scopes |
+
+### 21.7 Platform classes
+
+Without changing kernel semantics, the target/platform/ABI package architecture MUST be able to describe: CPU ISAs (x86-64, AArch64, RISC-V, future ISAs) including registers, calling conventions, relocations, object/executable formats, TLS, atomics, vectors, unwind data, and static/dynamic linking; operating systems (Linux, Windows, macOS, BSD/Unix, Android, Apple mobile OSes, RTOS, bare metal); the web (WebAssembly, WASI, browser host APIs/DOM/WebGPU through compiler-generated bindings, never handwritten JavaScript); managed runtimes (JVM, DEX/ART, CLI/CLR) as targets, never as kernel semantics; accelerators (SIMT/SIMD, memory spaces, synchronization scopes, barriers, launches, host/device ownership); embedded systems (no runtime, deterministic startup, exact sections, interrupts, MMIO, DMA, volatile access, fixed budgets, optional bounded-stack analysis); and legacy/specialized targets (mainframes, DSPs, consoles, custom accelerators) whenever target/ABI information is available. Target packages MUST be able to express irregular registers, predication, vector-length-dependent execution, SIMT, capabilities, tagged memory, multiple memory spaces, non-coherent memory, asynchronous devices, special calling conventions, target atomics, unusual traps, and security features without an imaginary universal CPU.
+
+### 21.8 Executable and object formats
+
+Executable/object containers (raw images, ELF, PE/COFF, Mach-O, WebAssembly, DEX/APK, classfile/JAR, CLI assemblies, GPU binaries) are target/platform package responsibilities. A container MUST add no code beyond what explicit platform contracts require; container metadata (import tables, relocations, headers) is derived deterministically from semantic identity. Process start/exit, loader behavior, and platform lifecycle are explicit platform contracts: when a platform does not end a process on entry return, the program performs the explicit exit operation; the container supplies no hidden exit path.
+
+### 21.9 Foreign ecosystem import
+
+Interoperability is mandatory. Deterministic importers SHOULD convert external metadata (C headers/API descriptions, POSIX, Win32, Objective-C runtime metadata, JVM/DEX metadata, .NET metadata, Web IDL, syscall tables, GPU API descriptions, shared/static library symbol tables) into XAX platform/ABI packages of typed foreign declarations. Importers are build-time XAX or bootstrap tooling; their output is canonical semantic state, never wrapper source. No universal ABI is assumed; C++ and similar ABIs require explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions remain verifier-visible (§12). Each foreign ABI is owned by exactly one backend, which rejects declarations of any other ABI.
+
+### 21.10 Standard semantic libraries
+
+The standard ecosystem is a set of independently linked semantic packages (allocators, arenas, text, slices, arrays, maps, sets, numerics, big integers, filesystem, sockets, HTTP, TLS integration, threads, synchronization, event loops, serialization, compression, cryptography interfaces, graphics, audio, database interfaces, SIMD, tensors, GPU compute). There is no mandatory runtime: unused packages contribute zero code and data, and every package's runtime semantics are explicit effects, resources, and capabilities.
+
+### 21.11 Observability
+
+Semantic-to-machine maps, crash/stack mapping where platforms permit, disassembly maps, profiling, debugger integration, coverage, and instrumentation/sanitizer builds are derived, non-authoritative views (§9.8, ADR-030). Instrumented builds are distinct build policies; their artifacts never become source and never alter release semantics.
 
 ---
 

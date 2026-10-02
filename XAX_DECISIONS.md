@@ -809,3 +809,108 @@ This file records merged v0.1 decisions. Each decision is normative unless super
 | Alternatives rejected | `unhook()` followed by normal installation; silently replaying `onPackageReady`; rebuilding target reflection state without a preserved target loader; unconditionally replacing list index zero; saving module-defined state containers or HookHandles; inventing hidden retries; generic serialization; a generic reload runtime; process-global hook maps. |
 | Structural evidence | `android_libxposed_hot_reload_evidence.json` reproduces a 34,347-byte APK. Managed DEX is 2,920 bytes. Initial package-ready installation includes `setId("xax.primary")` and stores the target ClassLoader. `onHotReloading` is 11 code units with one null-state rejection branch and one `setSavedInstanceState` call. `onHotReloaded` is 51 code units and restores the saved ClassLoader before one old-list emptiness guard, one `HookHandle.getId`, one `String.equals`, one ID-mismatch guard, one Hooker allocation, one `replaceHook`, and one store of the returned handle, with no new-array and no target-member reflection. Metadata is `minApiVersion=102`, `targetApiVersion=102`, `staticScope=true`, `autoHotReload=true`. Hooker bytes remain identical to the retained non-hot-reload baseline. Runtime saved-state transfer/reload/ID-transfer/atomicity remains UNEXECUTED. |
 | Limitation/falsification | The profile still supports only one generated hook. It transfers only the host-owned target/app ClassLoader; package/process identity, listeners, threads, resources, and arbitrary external state are not migrated. Generalize to multiple hooks only with explicit unique IDs and deterministic matching. Revise the saved-state or transfer/mismatch policy if compatible runtime execution shows that framework validation, old-handle identity, or lifecycle differs from the API-102 contract. |
+
+## ADR-074 — Universal replacement is reached by layering, not kernel growth
+
+| Field | Record |
+|---|---|
+| Decision | XAX targets replacement of conventional languages by sufficiency for the software they build. The kernel stays approximately values, exact arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target operations, and compile-time/meta. Every conventional model (closures, objects, traits, generics, async, exceptions, GC, RC, reflection, dynamic typing, strings, collections, actors, GPU kernels) is realized by compile-time construction, zero-cost libraries, or platform/ABI/target packages (`XAX_SPEC.md` §21.5–§21.6). A kernel addition requires an ADR showing the semantics cannot be expressed exactly at equal-or-better generated cost, verification precision, and AI tokens per change. |
+| Rationale | Every kernel concept multiplies verifier, optimizer, target, and AI-protocol surface for every program. Libraries and packages are paid for only by programs that use them (FND-004/FND-010), so layering is the only route that scales from firmware to managed applications without imposing one domain's cost on another. |
+| Alternatives rejected | Adding classes/async/exceptions/strings/GC objects to the kernel; one DSL per domain; a mandatory standard runtime; importing a host language's object model. |
+| Runtime cost expectation | Zero for unused abstractions; requested abstractions cost exactly their explicit lowering. |
+| AI/token expectation | Smaller kernel vocabulary and fewer verifier rules per edit; library-level concepts are queried only when used. |
+| Falsification condition | A workload whose exact semantics or competitive generated code is measurably unattainable through layering. Then a kernel addition is admitted by ADR with that evidence. |
+
+## ADR-075 — Replacement claims use cumulative R0–R6 levels derived from cited evidence
+
+| Field | Record |
+|---|---|
+| Decision | Replacement capability is claimed per `(platform package, workload class)` at cumulative levels R0 semantic expressibility, R1 executable lowering, R2 platform interoperability, R3 practical application, R4 performance competitiveness, R5 AI efficiency, R6 autonomous maintenance. Each implemented claim carries one evidence label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, UNIMPLEMENTED. `XAX_REPLACEMENT_MATRIX.json` stores the per-platform record; `compiler/src/xax_replacement.py` derives levels from cited evidence and the test suite rejects overclaims, uncited labels, and missing evidence paths. |
+| Rationale | Prose status tables drifted toward capability language. A derived level makes "supports platform X" impossible to state without the evidence that justifies it, and keeps the matrix cheap for an AI to update (one row, one field). |
+| Alternatives rejected | Checkbox matrices in Markdown; maturity grades without evidence links; per-language rather than per-platform rows. |
+| Runtime cost expectation | None (tooling only). |
+| AI/token expectation | One compact JSON row per platform; validator diagnostics name the exact field. |
+| Falsification condition | If levels cannot be meaningfully ordered for some platform class (e.g. R4 required before R2), split the workload class rather than weaken cumulativity. |
+
+## ADR-076 — Hosted Windows uses a direct PE32+ container with explicit imports and explicit process exit
+
+| Field | Record |
+|---|---|
+| Decision | Add target `x86_64-windows-pe-v1` (v5 operations plus `call_foreign`) and the `win64-c` foreign ABI. Foreign calls lower to `call [rip+disp32]`; the PE emitter (`xax_pe.py`) binds each to one loader-filled IAT slot, emits no startup stub, CRT, base relocations, or linker, and sets the entry point to the XAX entry function. Process exit is an explicit `ExitProcess` foreign call. Each foreign ABI is owned by exactly one backend: x86-64 rejects non-`win64-c` declarations and AArch64 rejects non-`android-aapcs64-c`; raw load images reject foreign imports. `x86_64-windows-load-image-v5` stays byte-identical. Stack pointers passed to foreign calls are materialized with one `lea` only at the escaping call site. |
+| Rationale | PE/import infrastructure is the smallest high-leverage step from "harness-loaded raw image" to a deployable hosted artifact with dynamic library calls, and it is executable on the current host. Returning from a PE entry does not terminate a process whose loader worker threads remain alive (observed: hang), so an implicit exit would be a hidden lifecycle operation; the explicit call keeps it visible. |
+| Alternatives rejected | Emitting a container-owned exit stub; linking via an external linker; CRT startup; treating `android-aapcs64-c` declarations as ABI-neutral; materializing every stack address eagerly. |
+| Runtime cost expectation | Zero container code; one indirect call per foreign call (platform-required import binding). |
+| Executed evidence | At U1.1 (since regenerated for U1.2a, see `XAX_STATE.md`) `compiler/benchmarks/windows_pe_hosted_evidence.json` recorded: 2,048-byte PE, 918 code bytes, six kernel32 imports, stdout `XAX\n`, exit 57, 20/20 runs on Windows 11 x86-64. Code is from the existing spill-every-value frame lowering; no code-quality claim. |
+| Falsification condition | Revise if a PE feature required by a real application (TLS callbacks, SEH/unwind tables, exports, resources) cannot be derived from explicit contracts without a container-owned runtime. |
+
+## ADR-077 — Next milestone is U1, a five-domain replacement proof, ordered by shared infrastructure
+
+| Field | Record |
+|---|---|
+| Decision | After M14 the roadmap continues with U1 (`XAX_IMPLEMENTATION_ROADMAP.md`): a hosted native application, a bare-metal program, a WebAssembly/WASI or browser application, an Android application, and an accelerator workload, all from XAX semantics, each recorded in the replacement matrix. Work is ordered by how many matrix rows it unblocks: (1) executable containers + import binding (PE done; ELF executable next), (2) register-allocating frame lowering and foreign-heap memory access on x86-64, (3) wasm imports/WASI, (4) a generic metadata importer producing foreign-declaration packages, (5) a real GPU target package with physical execution. |
+| Rationale | Containers, ABI binding, and memory access are shared by every hosted platform; a stronger optimizer is shared by every target. Domain-specific features without these unblock one row at most. |
+| Alternatives rejected | Starting with JVM/.NET/Apple containers before generic import/ABI machinery; custom GPU runtime before a real device target; broad optimizer search before register allocation. |
+| Falsification condition | Reorder when matrix evidence shows a later item unblocks more rows or a dependency was misjudged. |
+
+## ADR-078 — Priority order refined for universal replacement
+
+| Field | Record |
+|---|---|
+| Decision | Adopt the universal-replacement mission order: semantic correctness → AI tokens per successful change → AI generation reliability → runtime performance → memory footprint → binary footprint → compilation quality → portability → deterministic behavior → toolchain simplicity → human usability. Deterministic *interpretation of meaning* remains inseparable from semantic correctness (ADR-003 rank 2 stays directly below it); the mission's "deterministic behavior" rank refers to reproducible builds and tooling. `XAX_SPEC.md` §1 and the architecture §1 table state the merged order. |
+| Rationale | The mission separates footprint and compilation-quality ranks that ADR-003 grouped, and places build reproducibility below portability. Keeping semantic determinism at the top avoids weakening exact meaning, which every other rank depends on. |
+| Alternatives rejected | Moving semantic determinism to rank 9 (would allow nondeterministic meaning for performance); leaving the two orders unreconciled. |
+| Runtime cost expectation | None directly. |
+| AI/token expectation | None directly. |
+| Falsification condition | A conflict case where this order selects a design that the mission order (read literally) would reject and evidence favors the literal reading. |
+
+## ADR-079 — Pointer-free memory-effect interfaces are pure ordering frontiers
+
+| Field | Record |
+|---|---|
+| Decision | A direct call whose callee interface carries `effect<memory>` values but no pointer and no stack owner is accepted without a fixed stack resource-call contract. The caller's input memory effect is consumed linearly; the returned effect carries no storage facts. Interfaces that include pointers or stack owners keep the existing bounded contracts. |
+| Rationale | Without a pointer, the callee cannot reach caller storage under the provenance model, so the effect is only an ordering token. The previous rule rejected every effect-bearing call, which made a function that allocates and frees its own heap data uncallable. |
+| Alternatives rejected | Adding a new kernel call-contract kind; erasing memory effects from calls (would hide ordering); inferring facts through the call. |
+| Runtime cost expectation | None (proof values erase). |
+| Evidence | `tests/test_xax_pe.py`: `squares_sum(mem)` (VirtualAlloc, heap view, two loops of checked heap accesses, VirtualFree) is called from the PE entry and executes; a forked effect into two such calls rejects (`RESOURCE-LINEAR-CONTINUATION`/`MEMORY-EFFECT-LINEAR`). |
+| Falsification condition | A pointer-free path through which a callee can observe or mutate caller storage (e.g. a future global/static storage model) would require extending the rule. |
+
+## ADR-080 — WASI is a wasm32 target package with explicit module imports and an explicit `proc_exit`
+
+| Field | Record |
+|---|---|
+| Decision | Add `wasm32-wasi-v1` (general wasm32 operations plus `call_foreign`) and the `wasm32-import` foreign ABI, whose declaration `library`/`name` are the wasm import module/field. Imports occupy the first function indices in deterministic `(module, field)` order; the module exports `_start` (entry must have no machine parameters or results) and `memory`. Exit is the program's explicit `proc_exit` call. `wasm32-core-module-v2` bytes are unchanged. Target operation lists are canonicalized by sorting at construction. |
+| Rationale | WASI is the smallest standardized system interface for wasm and runs on this host (Node `node:wasi`), so it gives EXECUTED host-interop evidence without JavaScript glue. |
+| Alternatives rejected | Generated JS glue for WASI; a XAX-owned `_start` wrapper calling `proc_exit` implicitly; reusing the `entry` export name. |
+| Evidence | `compiler/benchmarks/wasi_command_evidence.json`: 451-byte module, imports `args_sizes_get` and `proc_exit`; the host writes argc/argv-size into XAX stack storage and XAX reads them back; exit 97 on 10/10 runs (Node v26.7.0). |
+| Falsification condition | Revise if WASI preview2/component-model hosts require a container shape that cannot be derived from explicit imports. |
+
+## ADR-081 — `pointer_address`: explicit, one-way provenance exposure
+
+| Field | Record |
+|---|---|
+| Decision | Add memory-family operation `pointer_address` (id 66): one pointer operand, one `bits<32|64>` result, one attribute that MUST be 1 (provenance exposed). If the pointer carries a local storage fact the storage must be live. The result is a plain integer: there is no verified integer-to-pointer operation, so exposure never manufactures provenance. Backends require N to equal the target pointer width (x86-64: 64, wasm32: 32). The reference executor rejects it (addresses are target facts). Foreign declarations that read through exposed addresses take the reached storage's memory effect as an additional input/output so lifetime ordering is verifier-visible (`wasi_preview1_api.fd_write`). |
+| Kernel admission (`XAX_SPEC.md` §21.5) | Not expressible with existing primitives: `pointer_cast` keeps pointer types and elements, memory elements are byte-addressable scalars only, and no other operation yields an address value. Without it, any platform API whose arguments are structs containing addresses (WASI iovecs, Win32/POSIX struct-of-pointer APIs, MMIO descriptor rings, DMA descriptors) is inexpressible. Cost: zero bytes on x86-64 stack values (`lea`), zero instructions on wasm32 (pointer already an i32). |
+| Alternatives rejected | Pointer-typed memory elements now (requires provenance-carrying reloads, typed mixed storage, and lifetime coupling — the open half of OI-37); a raw integer-to-pointer operation (would create unverified provenance); implicit exposure on foreign calls (hidden). |
+| Evidence | `compiler/tests/test_xax_wasi.py`: a WASI module writes `XAX\n` to stdout through `fd_write` with an iovec holding an exposed message address; exit 97 on 10/10 runs under Node v26.7.0 (`wasi_command_evidence.json`, 635-byte module). Negative vectors: missing waiver (`MEMORY-ADDRESS-EXPOSE-WAIVER`), exposure after storage end (`MEMORY-LIFETIME-LIVE`). |
+| Falsification condition | If verified provenance-carrying pointer stores (OI-37) subsume every use, `pointer_address` remains only for genuinely address-valued interfaces (MMIO/DMA/ABI structs). |
+
+## ADR-082 — Provenance-free pointers may live in memory; local-provenance pointers may not (yet)
+
+| Field | Record |
+|---|---|
+| Decision | Memory elements may be pointer types. An access of a pointer element has size 4 or 8 in the verifier and must equal the target pointer width in the backend (`NATIVE-POINTER-ELEMENT-WIDTH`). Stores (plain and checked) accept only values without a local storage fact; storing a stack/heap-view pointer rejects with `MEMORY-POINTER-STORE-LOCAL-PROVENANCE`. Reloaded pointers carry no facts, so they can be passed to foreign calls or used by `call_indirect` under a bounded CallContract, but never dereferenced through verified memory operations. The reference executor rejects pointer elements (`EXEC-MEMORY-SCALAR`). |
+| Rationale | Function addresses and external pointers cannot dangle relative to XAX-owned storage, so no lifetime coupling is required and the change adds no proof state. It makes dispatch tables (the §21.6 lowering of interfaces/traits) expressible without a kernel object model. Linked structures over XAX storage use arena + index, which is already verifiable and position-independent. |
+| Alternatives rejected | Allowing any pointer store and dropping facts (dangling local pointers would escape lifetime checks); a full provenance-carrying store model now (needs typed mixed storage and container/referent lifetime coupling — remaining OI-37 work); a vtable kernel concept. |
+| Runtime cost expectation | One machine word per stored pointer; table dispatch costs one load + one indirect call. |
+| Evidence | `compiler/tests/test_xax_pe.py::_dispatch_table`: two function addresses stored into stack memory, reloaded by checked dynamic-offset loads, and called with `call_indirect`; `add1(10) + times3(10) = 41` contributes to the PE exit code 1339 (20/20 runs, `windows_pe_hosted_evidence.json`). Negative: storing the table's own stack address rejects. |
+| Falsification condition | A workload needing pointer-linked XAX-owned storage whose arena/index form is measurably worse in code size, speed, or AI tokens per edit; that would justify the coupled-provenance design. |
+
+## ADR-083 — Hosted x86-64 extends the register-resident allocator instead of rewriting frame lowering
+
+| Field | Record |
+|---|---|
+| Decision | For `x86_64-windows-pe-v1` only, the existing per-block register-resident allocator (next-use spilling, parallel edge moves) additionally lowers `int_compare` (32/64-bit, `setcc` into any register), `call_foreign` (IAT call with Win64 shadow space), `function_address`, `heap_view` (null trap), heap `address_offset`/`pointer_cast`/`pointer_address`, and static/checked heap loads/stores (`[base]`, `[base+index]` after an unsigned bound check). Values used outside their defining block get one frame home written at definition (dominance orders the write first). Functions with stack storage, floats, aggregates, or indirect calls stay on the frame path (with the store→load forwarding peephole). Legacy load-image profiles keep their pinned bytes. |
+| Rationale | The register-resident allocator already existed and was verified on arithmetic/branches/calls; widening its operation set was the shortest path to register-allocated hot loops without regenerating evidence for every legacy target. |
+| Alternatives rejected | Rewriting the frame lowering as a global allocator in one step (large risk, invalidates pinned evidence); keeping the peephole only. |
+| Measured | `compiler/benchmarks/x86_register_path_evidence.json`: the same verified `sum_to` graph, 200,000,000 iterations, 7 runs, Windows 11 AMD Family 25: frame path 433 code bytes, median 738.7 ms; register path 89 code bytes, median 92.1 ms (8.02x). Hosted PE fixture code 2,181 → 1,269 bytes (−42%), PE 3,584 → 2,560 bytes, still exit 1339 on 20/20 runs. Intra-XAX comparison only; no external C/Rust baseline. |
+| Falsification condition | Replace with a global allocator when stack-storage/float/aggregate-heavy functions dominate measured hosted workloads. |

@@ -927,14 +927,42 @@ def x86_64_windows_general_target() -> SemanticObject:
     )
 
 
-def wasm32_general_target() -> SemanticObject:
+def x86_64_windows_pe_target() -> SemanticObject:
+    """v5 plus explicit Win64 foreign calls; v5 stays byte-identical.
+
+    Only the PE container binds foreign calls (import slots); raw load images reject them.
+    """
+    return _x86_64_windows_target(
+        b"x86_64-windows-pe-v1",
+        (
+            1, 2, 3, *range(5, 25),
+            Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE,
+            Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, *range(44, 62),
+            Operation.BIT_XOR, Operation.ROTATE_RIGHT, Operation.POINTER_ADDRESS,
+        ),
+    )
+
+
+WASM32_WASI_IDENTITY = b"wasm32-wasi-v1"
+
+
+def wasm32_wasi_target() -> SemanticObject:
+    """wasm32 general profile plus explicit ``wasm32-import`` foreign calls.
+
+    The container exports ``memory`` and ``_start`` (WASI command ABI); host
+    functions are module imports named by their foreign declarations.
+    """
+    return wasm32_general_target(WASM32_WASI_IDENTITY, (Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS))
+
+
+def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:
     """wasm32 core module with native f32/f64 plus memory-backed aggregates and sums."""
-    identity = b"wasm32-core-module-v2"
     operations = (
         1, 2, 3, *range(5, 20),
         Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE,
-        *range(44, 61),
+        *range(44, 61), *extra,
     )
+    operations = tuple(sorted(operations))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(identity)) + identity)
     for value in (1, 2, 2, 2, 64, 32):
@@ -2155,6 +2183,7 @@ class Operation(IntEnum):
     ROTATE_RIGHT = 63
     META_FUNCTION_PARAMETER_COUNT = 64
     META_FUNCTION_RETURN_COUNT = 65
+    POINTER_ADDRESS = 66
 
 
 RESOURCE_EFFECT_OPERATIONS = frozenset(
@@ -2183,6 +2212,7 @@ MEMORY_OPERATIONS = frozenset(
         Operation.RAW_LOAD_BITS_LE,
         Operation.POINTER_CAST,
         Operation.HEAP_VIEW,
+        Operation.POINTER_ADDRESS,
     }
 )
 
@@ -2274,6 +2304,8 @@ def decode_trap_payload(payload: bytes) -> tuple[int, bytes]:
 
 
 FOREIGN_FUNCTION_PREFIX = b"foreign-function-v1"
+# Each foreign ABI is owned by exactly one backend, which rejects the others.
+FOREIGN_ABIS = (b"android-aapcs64-c", b"win64-c", b"wasm32-import")
 ANDROID_EXPORT_PREFIX = b"android-export-v1"
 
 
@@ -3813,10 +3845,25 @@ def _verify_memory_node(
     def element_size(type_cid: bytes) -> int:
         type_object = resolve(type_cid)
         form = Cursor(type_object.body, type_object.cid.hex()).uleb()
+        if form == 2:
+            # Pointer elements (ADR-082) are one target pointer word; the
+            # backend rejects an access size that differs from its pointer width.
+            size = node.attributes[0]
+            if size not in (4, 8):
+                fail("XAX.MEMORY.ACCESS_SIZE", graph.cid.hex(), "MEMORY-POINTER-ELEMENT-SIZE", [4, 8], size)
+            return size
         width = decode_bits_width(type_object) if form == 1 else decode_float_width(type_object) if form == 7 else None
         if width is None or width < 1 or width % 8:
             fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-BYTE-ADDRESSABLE-VALUE", "bits or float scalar with whole-byte width", type_cid.hex())
         return width // 8
+
+    def stored_pointer_provenance(value: ValueRef) -> None:
+        # Only provenance-free pointers (function addresses, foreign/external
+        # pointers) may be stored: a reloaded pointer carries no facts, so a
+        # stored local-storage pointer could outlive its storage unseen (OI-37).
+        if value in pointers:
+            fact = pointers[value]
+            fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-POINTER-STORE-LOCAL-PROVENANCE", "provenance-free pointer", [fact.storage[0], fact.storage[1]])
 
     def access(pointer_fact: _PointerFact, size: int, alignment: int) -> None:
         expected_size = element_size(pointer_fact.element)
@@ -3930,6 +3977,25 @@ def _verify_memory_node(
             effects[result_refs[0]] = consume_effect(node.operands[0], memory_effect.storage)
         return
 
+    if operation == Operation.POINTER_ADDRESS:
+        # Exposes a pointer's address as bits<pointer width>.  The integer has
+        # no provenance and can never become a dereferenceable pointer again
+        # through verified operations; the mandatory waiver attribute (1 =
+        # provenance exposed) keeps the exposure machine-visible.  Foreign
+        # code that dereferences the address must receive the storage's
+        # memory effect so the lifetime ordering stays explicit.
+        contract(1, 1, 1)
+        if node.attributes[0] != 1:
+            fail("XAX.MEMORY.ADDRESS_EXPOSE", graph.cid.hex(), "MEMORY-ADDRESS-EXPOSE-WAIVER", 1, node.attributes[0])
+        _decode_pointer_type(resolve(node.operand_types[0]), resolve)
+        width = decode_bits_width(resolve(node.results[0]))
+        if width not in (32, 64):
+            fail("XAX.MEMORY.ADDRESS_EXPOSE", graph.cid.hex(), "MEMORY-ADDRESS-WIDTH", [32, 64], width)
+        pointer_fact = pointers.get(node.operands[0])
+        if pointer_fact is not None and pointer_fact.storage in ended:
+            fail("XAX.MEMORY.USE_AFTER_LIFETIME", graph.cid.hex(), "MEMORY-LIFETIME-LIVE", "live storage", pointer_fact.storage)
+        return
+
     if operation == Operation.POINTER_CAST:
         contract(1, 1, 0)
         source_type = resolve(node.operand_types[0])
@@ -4009,6 +4075,7 @@ def _verify_memory_node(
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-WRITE-PERMISSION", "write", int(pointer_fact.permission))
             if node.operand_types[2] != pointer_fact.element:
                 fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-STORE-TYPE", pointer_fact.element.hex(), node.operand_types[2].hex())
+            stored_pointer_provenance(node.operands[2])
             effect_index = 3
         effect = consume_effect(node.operands[effect_index], pointer_fact.storage)
         effect_type = node.operand_types[effect_index]
@@ -4060,6 +4127,7 @@ def _verify_memory_node(
             fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-WRITE-PERMISSION", "write", int(pointer_fact.permission))
         if node.operand_types[1] != pointer_fact.element:
             fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-STORE-TYPE", pointer_fact.element.hex(), node.operand_types[1].hex())
+        stored_pointer_provenance(node.operands[1])
         effect = consume_effect(node.operands[2], pointer_fact.storage)
         if not _is_memory_effect(resolve(node.operand_types[2])) or node.results != (node.operand_types[2],):
             fail("XAX.MEMORY.EFFECT_TYPE", graph.cid.hex(), "MEMORY-EFFECT-TYPE", "one matching effect<memory> result", [cid.hex() for cid in node.results])
@@ -5311,7 +5379,21 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         for group, types in ((0, callee_parameters), (1, callee_returns))
                         for index, type_cid in enumerate(types)
                     )
-                    if has_resource_interface:
+                    # With no pointer or stack owner in the interface the callee
+                    # cannot reach caller storage: memory effects are a pure
+                    # ordering frontier.  The input is consumed linearly and the
+                    # returned frontier carries no storage facts (conservative).
+                    frontier_only = has_resource_interface and not any(
+                        _is_stack_owner(resolve(type_cid)) or _is_stack_pointer(resolve(type_cid))
+                        for type_cid in (*callee_parameters, *callee_returns)
+                    )
+                    if frontier_only:
+                        for ref, type_cid in zip(node.operands, operand_types):
+                            if _is_memory_effect(resolve(type_cid)) and ref in effects:
+                                if ref in effect_consumers:
+                                    fail("XAX.MEMORY.EFFECT_FORK", obj.cid.hex(), "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_DIRECT.name)
+                                effect_consumers[ref] = Operation.CALL_DIRECT
+                    elif has_resource_interface:
                         if resource_contract is None:
                             fail(
                                 "XAX.MEMORY.CALL_CONTRACT",
@@ -5403,8 +5485,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     if node.entity is None:
                         fail("XAX.FOREIGN.CALL", obj.cid.hex(), "FOREIGN-CALL-TARGET", "foreign function carrier", None)
                     declaration = decode_foreign_function(node.entity)
-                    if declaration.abi != b"android-aapcs64-c":
-                        fail("XAX.FOREIGN.ABI", obj.cid.hex(), "FOREIGN-CALL-ABI", "android-aapcs64-c", declaration.abi.decode("ascii", "replace"))
+                    if declaration.abi not in FOREIGN_ABIS:
+                        fail("XAX.FOREIGN.ABI", obj.cid.hex(), "FOREIGN-CALL-ABI", [abi.decode() for abi in FOREIGN_ABIS], declaration.abi.decode("ascii", "replace"))
                     if operand_types != declaration.inputs or node.results != declaration.outputs:
                         fail("XAX.FOREIGN.CALL", obj.cid.hex(), "FOREIGN-CALL-CONTRACT", [[cid.hex() for cid in declaration.inputs], [cid.hex() for cid in declaration.outputs]], [[cid.hex() for cid in operand_types], [cid.hex() for cid in node.results]])
                     _verify_foreign_heap_call(
@@ -6880,6 +6962,9 @@ def _execute_graph(
                 results = (_RuntimePointer(pointer.storage, pointer.offset + node.attributes[0]),)
             elif node.operation == Operation.POINTER_CAST:
                 results = (operands[0],)
+            elif node.operation == Operation.POINTER_ADDRESS:
+                # The reference executor has no address space; addresses are target facts.
+                fail("XAX.EXEC.UNSUPPORTED", "executor", "EXEC-POINTER-ADDRESS-TARGET-ONLY", "compiled target", "reference executor")
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:
                 pointer, dynamic_offset, effect = operands
                 size, alignment = node.attributes
