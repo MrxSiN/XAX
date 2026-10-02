@@ -198,6 +198,80 @@ def calling_program(pass_table: bool = False):
     return function, x86_64_linux_exec_target(), (*graph.objects.values(), *callee_objects, callee, *heads_objects, heads_callee)
 
 
+def table_walking_callee(declare: bool = True, declare_on: str = "views"):
+    """Borrow (table, arena) with ``link_target(table, arena)`` (ADR-101): walk from head 0, store the sum in arena record 3's key."""
+    api = linux_api()
+    mem = api.memory_effect
+    graph = GraphBuilder()
+    graph.track(LINK, RECORD, HEAD, RECORDS, HEADS, KEY, NEXT, mem, bits_type(1))
+    params = (HEADS, heap_view_type(TABLE), mem, RECORDS, heap_view_type(ARENA), mem)
+    entry = graph.block(*params)
+    table, table_token, table_mem, arena, arena_token, arena_mem = entry.params
+    if declare:
+        if declare_on == "views":
+            entry.op(Operation.LINK_TARGET, (table, arena), ())
+        else:  # a non-view operand
+            entry.op(Operation.LINK_TARGET, (table, entry.op1(Operation.ADDRESS_OFFSET, (arena,), RECORDS, attributes=(16,))), ())
+    head, table_mem = entry.op(Operation.LOAD_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (table,), NEXT, attributes=(0,)), table_mem), (LINK, mem), attributes=(8, 8))
+    carried = (heap_view_type(TABLE), mem, heap_view_type(ARENA), mem)
+    walk = graph.block(*carried, LINK, B64)
+    step = graph.block(*carried, LINK, B64)
+    done = graph.block(*carried, B64)
+    entry.br(walk, table_token, table_mem, arena_token, arena_mem, head, entry.const(B64, 0))
+    *state, cursor, total = walk.params
+    test = walk.op1(Operation.INT_COMPARE, (cursor, walk.op1(Operation.CONSTANT, (), LINK, entity=null_link())), bits_type(1), attributes=(IntCompare.NE,))
+    walk.cbr(test, step, (*state, cursor, total), done, (*state, total))
+    table_token, table_mem, arena_token, arena_mem, cursor, total = step.params
+    node = step.op1(Operation.LINK_FOLLOW, (arena, cursor), RECORDS)
+    key, arena_mem = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), KEY, attributes=(0,)), arena_mem), (B64, mem), attributes=(8, 8))
+    following, arena_mem = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), NEXT, attributes=(8,)), arena_mem), (LINK, mem), attributes=(8, 8))
+    step.br(walk, table_token, table_mem, arena_token, arena_mem, following, step.op1(Operation.ADD_WRAP, (total, key), B64))
+    table_token, table_mem, arena_token, arena_mem, total = done.params
+    arena_mem = done.op1(Operation.STORE_BITS_LE, (done.op1(Operation.ADDRESS_OFFSET, (done.op1(Operation.ADDRESS_OFFSET, (arena,), RECORDS, attributes=(48,)),), KEY, attributes=(0,)), total, arena_mem), mem, attributes=(8, 8))
+    # Both borrowed views come back; their pointers are elided from the machine returns (ADR-101).
+    done.ret(table, table_token, table_mem, arena, arena_token, arena_mem)
+    return graph.function(params, params), tuple(graph.objects.values())
+
+
+def table_calling_program(callee_options=None, wrong_arena: bool = False):
+    """Table head 0 -> arena record 1 -> record 2 (keys 40, 2); a declared callee sums them into record 3."""
+    api = linux_api()
+    mem = api.memory_effect
+    callee, callee_objects = table_walking_callee(**(callee_options or {}))
+    graph = GraphBuilder()
+    graph.track(*api.types, LINK, RECORD, HEAD, RECORDS, HEADS, KEY, NEXT)
+    block = graph.block(api.process_effect, api.filesystem_effect, mem, mem, mem)
+    process, fs, arena_mem, table_mem, other_mem = block.params
+
+    def records_view(memory):
+        raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, ARENA), memory), (api.bytes_rw, api.heap_owner, mem), entity=api.mmap_anonymous)
+        return block.op(Operation.HEAP_VIEW, (raw, owner, memory), (RECORDS, heap_view_type(ARENA), mem), attributes=(ARENA, 16))
+
+    arena, arena_token, arena_mem = records_view(arena_mem)
+    other, other_token, other_mem = records_view(other_mem)
+    raw, owner, table_mem = block.op(Operation.CALL_FOREIGN, (block.const(B64, TABLE), table_mem), (api.bytes_rw, api.heap_owner, mem), entity=api.mmap_anonymous)
+    table, table_token, table_mem = block.op(Operation.HEAP_VIEW, (raw, owner, table_mem, arena), (HEADS, heap_view_type(TABLE), mem), attributes=(TABLE, 8))
+    records = [arena] + [block.op1(Operation.ADDRESS_OFFSET, (arena,), RECORDS, attributes=(16 * index,)) for index in (1, 2)]
+    for index, key in ((1, 40), (2, 2)):
+        arena_mem = block.op1(Operation.STORE_BITS_LE, (block.op1(Operation.ADDRESS_OFFSET, (records[index],), KEY, attributes=(0,)), block.const(B64, key), arena_mem), mem, attributes=(8, 8))
+    made = block.op1(Operation.LINK_MAKE, (records[2],), LINK)
+    arena_mem = block.op1(Operation.STORE_BITS_LE, (block.op1(Operation.ADDRESS_OFFSET, (records[1],), NEXT, attributes=(8,)), made, arena_mem), mem, attributes=(8, 8))
+    table_mem = block.op1(Operation.STORE_BITS_LE, (block.op1(Operation.ADDRESS_OFFSET, (table,), NEXT, attributes=(0,)), block.op1(Operation.LINK_MAKE, (records[1],), LINK), table_mem), mem, attributes=(8, 8))
+    if wrong_arena:  # the table's links point into `arena`, not `other`
+        table, table_token, table_mem, other, other_token, other_mem = block.op(Operation.CALL_DIRECT, (table, table_token, table_mem, other, other_token, other_mem), (HEADS, heap_view_type(TABLE), mem, RECORDS, heap_view_type(ARENA), mem), entity=callee)
+    else:
+        table, table_token, table_mem, arena, arena_token, arena_mem = block.op(Operation.CALL_DIRECT, (table, table_token, table_mem, arena, arena_token, arena_mem), (HEADS, heap_view_type(TABLE), mem, RECORDS, heap_view_type(ARENA), mem), entity=callee)
+    total, arena_mem = block.op(Operation.LOAD_BITS_LE, (block.op1(Operation.ADDRESS_OFFSET, (block.op1(Operation.ADDRESS_OFFSET, (arena,), RECORDS, attributes=(48,)),), KEY, attributes=(0,)), arena_mem), (B64, mem), attributes=(8, 8))
+    table_mem = block.op(Operation.CALL_FOREIGN, (table, table_token, table_mem), (B64, mem), entity=api.munmap_view(HEADS, TABLE))[1]
+    other_mem = block.op(Operation.CALL_FOREIGN, (other, other_token, other_mem), (B64, mem), entity=api.munmap_view(RECORDS, ARENA))[1]
+    arena_mem = block.op(Operation.CALL_FOREIGN, (arena, arena_token, arena_mem), (B64, mem), entity=api.munmap_view(RECORDS, ARENA))[1]
+    status = block.op1(Operation.INT_TRUNCATE, (total,), B32)
+    process = block.op1(Operation.CALL_FOREIGN, (status, process), api.process_effect, entity=api.exit_group)
+    block.ret(status, process, fs, arena_mem, table_mem, other_mem)
+    function = graph.function((api.process_effect, api.filesystem_effect, mem, mem, mem), (B32, api.process_effect, api.filesystem_effect, mem, mem, mem))
+    return function, x86_64_linux_exec_target(), (*graph.objects.values(), *callee_objects, callee)
+
+
 class LinkVerifierTests(unittest.TestCase):
     REJECTIONS = {
         "bits-into-link": "MEMORY-STORE-TYPE",
@@ -226,6 +300,19 @@ class LinkVerifierTests(unittest.TestCase):
             program_store(*calling_program(pass_table=True))
         self.assertEqual(raised.exception.diagnostic.rule, "MEMORY-LINK-CALL-TARGET")
 
+    def test_declared_cross_storage_targets(self):
+        program_store(*table_calling_program())
+        cases = {
+            "MEMORY-LINK-CALL-TARGET": dict(wrong_arena=True),
+            "MEMORY-LINK-FOLLOW-PROVENANCE": dict(callee_options=dict(declare=False)),
+            "MEMORY-LINK-TARGET-DECLARATION": dict(callee_options=dict(declare_on="offset")),
+        }
+        for rule, options in cases.items():
+            with self.subTest(rule=rule):
+                with self.assertRaises(XaxError) as raised:
+                    program_store(*table_calling_program(**options))
+                self.assertEqual(raised.exception.diagnostic.rule, rule)
+
     def test_link_constants_are_null_only(self):
         from xax_compiler import Kind, SemanticObject, _decode_constant, uleb
 
@@ -247,6 +334,11 @@ class LinkExecutionTests(unittest.TestCase):
 
     def test_callee_follows_borrowed_links(self):
         function, target, objects = calling_program()
+        completed = run_linux_executable(compile_linux_executable(program_store(function, target, objects), function.cid, target.cid).data)
+        self.assertEqual(completed.returncode, 42)
+
+    def test_declared_callee_walks_cross_storage_links(self):
+        function, target, objects = table_calling_program()
         completed = run_linux_executable(compile_linux_executable(program_store(function, target, objects), function.cid, target.cid).data)
         self.assertEqual(completed.returncode, 42)
 
