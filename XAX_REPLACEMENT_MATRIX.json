@@ -329,7 +329,8 @@
         "performance": [
           "MEASURED",
           "compiler/benchmarks/u1_linux_filestat_evidence.json",
-          "compiler/benchmarks/oi37_chains_evidence.json"
+          "compiler/benchmarks/oi37_chains_evidence.json",
+          "compiler/benchmarks/oi41_links_evidence.json"
         ],
         "memory": [
           "MEASURED",
@@ -346,10 +347,10 @@
       },
       "blockers": [
         "filestat is a benchmark-scale utility, not a deployed application (R3)",
-        "1.37x behind clang -O2 on filestat; allocator not converged with PE (OI-38, ADR-091)",
+        "1.38x behind clang -O2 on filestat; float/aggregate functions still fall back (OI-38)",
         "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "pointer-chasing workload 1.58x gcc -O2: per-link pointer_rebase check (OI-41)"
+        "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097); links not yet lowered on wasm32/PE"
       ]
     },
     {

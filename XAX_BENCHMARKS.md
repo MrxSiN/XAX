@@ -663,3 +663,22 @@ Same host and method as §15.1–15.3, one 31-repetition run (this host's stdev 
 | XAX, index links (checked) | 0.5382 | 0.0724 | 2.00 | 16,896 | 1,352 |
 
 Attribution in this run: index vs pointer links (C) 1.41×; checks on pointer links (C) 1.52×; checks on index links (C) 1.47×. XAX pointer vs checked-pointer C 1.07×; XAX index vs checked-index C 0.96×. `filestat` in the same session: XAX 0.96× `gcc -O2`, 1.37× `clang -O2`. **R4 is not met.** The remaining `chains` gap is the per-link check, which only check-free reloads (OI-37 typed storage) remove.
+
+### 15.5 `chains` with record links (ADR-097, OI-41; MEASURED, 2026-10-02)
+
+Same host and method as §15.1–15.4; one 31-repetition run. Every arm prints `1048576 9437420`. Diagnostic arms are not baselines.
+
+| Arm | Median wall (s) | Stdev (s) | vs gcc -O2 | Peak RSS (KiB) | File bytes |
+|---|---:|---:|---:|---:|---:|
+| gcc 13 -O2 (pointer links) | 0.2326 | 0.0486 | 1.00 | 18,272 | 16,096 |
+| gcc 13 -O3 | 0.2414 | 0.0565 | 1.04 | 18,272 | 16,096 |
+| clang 18 -O2 | 0.2748 | 0.0538 | 1.18 | 18,272 | 16,160 |
+| gcc 13 -O2 -static | 0.2431 | 0.0462 | 1.04 | 17,420 | 785,304 |
+| diagnostic: pointers + rebase-equivalent check | 0.3668 | 0.0624 | 1.41 | 18,272 | 16,128 |
+| diagnostic: index links | 0.3150 | 0.0500 | 1.21 | 18,272 | 16,104 |
+| diagnostic: index links + checks | 0.4017 | 0.0597 | 1.54 | 18,272 | 16,136 |
+| XAX, record links (`link_follow`, ADR-097) | 0.2479 | 0.0425 | 1.07 | 16,896 | 1,408 |
+| XAX, `pointer_rebase` links | 0.3700 | 0.0645 | 1.59 | 16,896 | 1,472 |
+| XAX, index links (checked) | 0.3953 | 0.0243 | 1.70 | 16,896 | 1,496 |
+
+Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 criterion (≤ 1.1×), at the edge of this host's noise (A/B probes measured 1.04–1.12×). Verifier: 3.6 ms for links against 3.5 ms for index links. `filestat` in this session: 0.95× `gcc -O2`, 1.38× `clang -O2`.
