@@ -12,6 +12,7 @@ from typing import Callable, Sequence
 from xax_artifact import ArtifactSemanticRange
 
 from xax_compiler import (
+    _decode_pointer_type,
     store_resolver,
     FloatCompare,
     IntCompare,
@@ -156,12 +157,17 @@ def _function_closure(
     return tuple(functions[cid] for cid in sorted(functions))
 
 
+_NULL_GUARD_BYTES = 16
+
+
 def _memory_layout(
     functions: Sequence[SemanticObject], resolve: Callable[[bytes], SemanticObject]
 ) -> tuple[dict[tuple[bytes, int, int], int], dict[tuple[bytes, int, int, int, int], int], int]:
     stack_addresses: dict[tuple[bytes, int, int], int] = {}
     aggregate_addresses: dict[tuple[bytes, int, int, int, int], int] = {}
-    cursor = 0
+    # Address 0 is never storage, so an exposed storage address is never the
+    # null link a program may use as a terminator (ADR-092).
+    cursor = _NULL_GUARD_BYTES
     for function in functions:
         graph_object, _, _ = _decode_function_interface(function, resolve)
         graph = _parse_graph(graph_object, resolve)
@@ -251,6 +257,8 @@ def _compile_function(
                 pointer_extents[result] = pointer_extents[node.operands[0]] - node.attributes[0]
             elif node.operation == Operation.POINTER_CAST and node.operands[0] in pointer_extents:
                 pointer_extents[result] = pointer_extents[node.operands[0]]
+            elif node.operation == Operation.POINTER_REBASE:
+                pointer_extents[result] = node.attributes[0]
 
     code = bytearray()
     node_ranges: list[tuple[int, int, int, int]] = []
@@ -576,6 +584,22 @@ def _compile_function(
                 if _width(resolve, node.results[0]) != 32:
                     fail("XAX.WASM.ADDRESS_WIDTH", graph_object.cid.hex(), "WASM-ADDRESS-POINTER-WIDTH", 32, _width(resolve, node.results[0]))
                 get(node.operands[0]); set_(result)
+
+            elif node.operation == Operation.POINTER_REBASE:
+                # ADR-092: trap unless 0 <= address - view <= span with the
+                # distance a multiple of the alignment; rotr folds both tests.
+                view, address = node.operands
+                if _width(resolve, node.operand_types[1]) != 32:
+                    fail("XAX.WASM.ADDRESS_WIDTH", graph_object.cid.hex(), "WASM-ADDRESS-POINTER-WIDTH", 32, _width(resolve, node.operand_types[1]))
+                if view not in pointer_extents:
+                    fail("XAX.WASM.POINTER", graph_object.cid.hex(), "WASM-REBASE-VIEW-EXTENT", "known view extent", [view.block, view.index])
+                shift = _decode_pointer_type(resolve(node.results[0]), resolve)[2].bit_length() - 1
+                get(address); get(view); code.append(0x6B)  # i32.sub
+                if shift:
+                    iconst(shift); code.append(0x78)  # i32.rotr
+                iconst((pointer_extents[view] - node.attributes[0]) >> shift); code.append(0x4B)  # i32.gt_u
+                code.extend(b"\x04\x40\x00\x0b")  # if unreachable end
+                get(address); set_(result)
 
             elif node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
                 size, alignment = node.attributes

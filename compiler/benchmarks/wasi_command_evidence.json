@@ -1,9 +1,9 @@
 {
   "claim": "EXECUTED",
-  "target": "2226dfbfbbf14381fa7d3f697203049c3b0b72e08c17b4cebaa37b3897ddacca",
+  "target": "d0a8562859feee6ae5e603f82019bd2805732605624aa41d3a21f92e7cad313c",
   "entry": "196cdc381957f29b8e3162753f860b281969ce2e875f5dc88de1192c574798c3",
   "module_bytes": 635,
-  "module_sha256": "88df18930bdaa37aac7d6c9d0dc298be360da1d9735d4b61edc4c68ac2842c29",
+  "module_sha256": "fbf0131d8a45dabc578e97389b390ac4d3d011fe3fef892cdc9174511bd066d6",
   "imports": [
     "wasi_snapshot_preview1!args_sizes_get",
     "wasi_snapshot_preview1!fd_write",
@@ -14,7 +14,7 @@
     "memory"
   ],
   "host": {
-    "runtime": "node v26.7.0",
+    "runtime": "node v22.22.0",
     "wasi": "preview1"
   },
   "execution": {
