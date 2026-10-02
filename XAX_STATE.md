@@ -555,6 +555,13 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
 - EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
 
+## Browser pages with generated host bindings (ADR-103, U1.4) — 2026-10-02
+
+- Target `wasm32-browser-v1`, platform package `compiler/src/xax_web.py` (`xax-web-v1`: `query_copy`, `set_body_text`; host state ordered by `effect<io>`). `emit_browser_page` generates one deterministic HTML page containing the module plus host functions for the imported bindings only. Imports outside the package reject.
+- The wasm backend lowers `bit.and`/`bit.or`/`bit.xor`/`udiv`/`urem`/`int.truncate`/`int.zero_extend`, but only on targets that list them. Existing wasm targets and their evidence are byte-identical.
+- EXECUTED in headless Chromium 141 through Playwright (`compiler/benchmarks/browser_fib.py`, `browser_fib_evidence.json`). The XAX program reads the URL query, parses `n`, computes `fib(n)` modulo 2^64, formats it, and renders it into the DOM. Four queries pass with no page errors. Module 1,270 B, page 2,343 B. Vectors: `compiler/tests/test_xax_web.py` (7 tests).
+- Matrix: `browser-web` NONE → R1 (`platform_apis` PROTOTYPE: two bindings, no events). Events are OI-43.
+
 ## C callbacks and SSE-class SysV arguments (ADR-102, OI-40) — 2026-10-02
 
 - A code address's calling convention is now part of its type. `FUNCTION_ADDRESS` returns `ptr<opaque<function>>` (internal) or `ptr<opaque_identity<"code-entry:sysv-x86_64-c">>` (`linux_api().c_callback`). The verifier requires foreign-entry targets to be pure and rejects both convention mismatches. No new operation, object kind, or type form.

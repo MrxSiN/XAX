@@ -242,7 +242,7 @@
       "blockers": [
         "three WASI imports only (args_sizes_get, fd_write, proc_exit); no files/clocks/sockets",
         "provenance-carrying pointers in memory (OI-37) absent",
-        "no browser host bindings; recursion/reentrant stack lowering absent"
+        "recursion/reentrant stack lowering absent"
       ]
     },
     {
@@ -403,11 +403,50 @@
     },
     {
       "id": "browser-web",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R1",
+      "runtime_requirement": "platform-required browser JavaScript host; the page script is compiler-generated from the imported xax-web-v1 declarations only (ADR-103)",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/benchmarks/browser_fib_evidence.json",
+          "compiler/tests/test_xax_web.py"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/benchmarks/browser_fib_evidence.json"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/benchmarks/browser_fib_evidence.json"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_web.py",
+          "compiler/benchmarks/browser_fib_evidence.json"
+        ],
+        "platform_apis": [
+          "PROTOTYPE",
+          "compiler/src/xax_web.py"
+        ],
+        "ffi": [
+          "EXECUTED",
+          "compiler/benchmarks/browser_fib_evidence.json",
+          "compiler/tests/test_xax_web.py"
+        ],
+        "dynamic_linking": [
+          "EXECUTED",
+          "compiler/benchmarks/browser_fib_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/benchmarks/browser_fib_evidence.json"
+        ]
+      },
       "blockers": [
-        "needs generated browser host bindings over the wasm32 import path (WASI path exists)"
+        "two bindings (query_copy, set_body_text); no events or host-invoked entries (OI-43)",
+        "no Web IDL importer (OI-32); no fetch, timers, canvas, or WebGPU",
+        "no comparison against Emscripten/Rust wasm toolchains (R4)",
+        "recursion/reentrant stack lowering absent on wasm32"
       ]
     },
     {

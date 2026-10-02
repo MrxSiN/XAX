@@ -651,6 +651,17 @@ The PE entry point is the XAX entry function itself: it takes no machine paramet
 
 Target `wasm32-wasi-v1` adds `call_foreign` under the `wasm32-import` ABI: a declaration's `library` is the wasm import module and its `name` the field. Value types follow the wasm32 general profile (pointers are i32 linear-memory addresses). The module exports `_start` and `memory`; the entry takes and returns no machine values; termination is the program's explicit `proc_exit`. The WASI host is a platform-required runtime (UR-002); no JavaScript glue is generated or required. Bounded package: `xax_platform.wasi_preview1_api` (`args_sizes_get`, `fd_write`, `proc_exit`). `fd_write` iovec buffer words are exposed addresses (`pointer_address`, ADR-081); its declaration takes the buffer storage's memory effect as a second memory input/output so the buffer cannot end before the call. APIs that need provenance-carrying pointers reloaded from memory wait on OI-37.
 
+## 18a. wasm32 browser slice (`wasm32-browser-v1`, ADR-103)
+
+The target shares the WASI command container (§18): the module exports `_start` and `memory`, and `_start` takes and returns proof values only. Browser APIs are `wasm32-import` declarations in `xax_web.web_api()`, import module `xax-web-v1`:
+
+| Binding | Inputs | Outputs | Host meaning |
+|---|---|---|---|
+| `query_copy` | `ptr<b8,rw>`, `bits<32>` capacity, `effect<io>`, memory | `bits<32>` length, `effect<io>`, memory | Copy the UTF-8 query string (without `?`) into at most `capacity` bytes; return its full length (a result above `capacity` reports truncation). |
+| `set_body_text` | `ptr<b8,read>`, `bits<32>` length, `effect<io>`, memory | `effect<io>`, memory | Replace `document.body`'s text with the UTF-8 bytes. |
+
+`emit_browser_page(image)` returns one HTML file containing the base64 module plus a script that defines host functions for the imported bindings only, instantiates the module, and calls `_start` once. Any other import rejects (`WEB-IMPORT-DECLARED`). The script holds no allocator, scheduler, or event loop. The harness `run_browser_page` (tests only) loads the page in headless Chromium through Playwright. Events are OI-43.
+
 ## 19. Linux x86-64 hosted slice (2026-10-02)
 
 Targets `x86_64-linux-elf-exec-v1` (static) and `x86_64-linux-elf-dynexec-v1` (explicit dynamic loader) keep XAX-internal calls on the general x86-64 register convention. Their external boundaries are the process entry, syscalls, and declared C imports. No Linux concept enters the kernel (ADR-084–ADR-089).

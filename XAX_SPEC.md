@@ -1155,6 +1155,10 @@ Interoperability is mandatory. Deterministic importers SHOULD convert external m
 
 `linux-x86_64-startup-v1` (ADR-094) reads the initial process stack inline, with no code before the entry function. It is owned by the Linux profiles and allowed only in the process entry function (`LINUX-STARTUP-PROCESS-ENTRY`). The declarations have library `linux` and these names: `argc() -> bits<64>`, `arg_length(i)`, `arg_copy(i, ptr<bytes,rw>, memory) -> (bits<64>, memory)`, `envc`, `env_length`, `env_copy`, and `auxv_value(type) -> bits<64>`. An index at or past `argc`/`envc` traps. `*_length` excludes the terminating NUL. `*_copy` copies at most the destination view's static extent and returns the bytes copied, so a result below `*_length` reports truncation. `auxv_value` returns 0 when the type is absent.
 
+### 21.9b Browser pages
+
+`wasm32-browser-v1` (ADR-103) uses the WASI command container (`_start` and `memory` exports; proof-only entry). Browser APIs are `wasm32-import` declarations of a platform package. Each has exactly one fixed host meaning, and host state is ordered by an `effect<io>` token supplied to `_start`. The host page MUST be generated from the imported declarations alone: an import outside the package rejects, and unused bindings emit nothing. Event entries are OI-43.
+
 ### 21.10 Standard semantic libraries
 
 The standard ecosystem is a set of independently linked semantic packages (allocators, arenas, text, slices, arrays, maps, sets, numerics, big integers, filesystem, sockets, HTTP, TLS integration, threads, synchronization, event loops, serialization, compression, cryptography interfaces, graphics, audio, database interfaces, SIMD, tensors, GPU compute). There is no mandatory runtime: unused packages contribute zero code and data, and every package's runtime semantics are explicit effects, resources, and capabilities.

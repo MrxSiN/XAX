@@ -1,0 +1,42 @@
+{
+  "decision": "ADR-103",
+  "format": "xax-browser-fib-evidence-v1",
+  "host": {
+    "browser": "Chromium 141.0.7390.37 (headless, Playwright)"
+  },
+  "label": "EXECUTED",
+  "module_bytes": 1270,
+  "module_sha256": "03ee3077ff18f93ba7166d0d5068ebe609b83559024ce4df4c7145caa10b4f98",
+  "page_bytes": 2343,
+  "page_sha256": "f762b2332e8626d65ad9bda3e239681319ab9f59e856bd58ba832a5ab4461154",
+  "runs": [
+    {
+      "expected": "832040",
+      "observed": "832040",
+      "page_errors": [],
+      "passed": true,
+      "query": "30"
+    },
+    {
+      "expected": "2880067194370816120",
+      "observed": "2880067194370816120",
+      "page_errors": [],
+      "passed": true,
+      "query": "90"
+    },
+    {
+      "expected": "0",
+      "observed": "0",
+      "page_errors": [],
+      "passed": true,
+      "query": ""
+    },
+    {
+      "expected": "13",
+      "observed": "13",
+      "page_errors": [],
+      "passed": true,
+      "query": "7x9"
+    }
+  ]
+}
