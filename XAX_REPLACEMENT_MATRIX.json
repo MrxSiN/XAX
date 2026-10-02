@@ -66,7 +66,7 @@
       "blockers": [
         "kernel32 package covers 8 calls; no exported callbacks, threads, files, sockets",
         "float/aggregate functions still use the legacy allocator or frame path (ADR-095); current bytes executed under Wine, not yet on a Windows host",
-        "local-provenance pointer reloads (OI-37, ADR-092) not yet lowered on PE",
+        "record links / pointer_rebase executed under Wine only (ADR-098), not on a Windows host",
         "no C/Rust baseline toolchain on the measuring host",
         "no PDB/unwind data; SIMD absent"
       ]
@@ -350,7 +350,7 @@
         "1.38x behind clang -O2 on filestat; float/aggregate functions still fall back (OI-38)",
         "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097); links not yet lowered on wasm32/PE"
+        "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)"
       ]
     },
     {
