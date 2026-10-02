@@ -1,0 +1,25 @@
+{
+  "claim": "MEASURED-UNDER-WINE",
+  "workload": "tests/test_xax_pe.py::hosted_fixture and its C twin: WriteFile, heap alloc/free, sum_to(10), VirtualAlloc squares sum, function-pointer dispatch; exit 1339",
+  "compiler": "x86_64-w64-mingw32-gcc (GCC) 13-win32",
+  "c_flags": "-O2 -nostdlib -ffreestanding -fno-asynchronous-unwind-tables -e start -s ... -lkernel32",
+  "wine": "wine-9.0 (Ubuntu 9.0~repack-4build3)",
+  "file_bytes": {
+    "xax": 2048,
+    "c-mingw-O2": 2560
+  },
+  "executable_bytes": {
+    "xax": 757,
+    "c-mingw-O2": 416
+  },
+  "sha256": {
+    "xax": "afdf2e7370b2ca800ec511338e3b82b0baf6f289757172162d37f9c7793d7f2a",
+    "c-mingw-O2": "f9b2db8278ad0a49620cefb35e417c1f9c008647f7fe92b91224a424bf0600ea"
+  },
+  "runs": 21,
+  "process_wall_ms_median": {
+    "xax": 2564.19,
+    "c-mingw-O2": 2549.87
+  },
+  "note": "wall time is dominated by Wine process start-up; Wine is not Windows; gcc inlines and constant-folds sum_to(10) and the dispatch table and vectorizes the squares loops, all of which XAX executes at run time"
+}

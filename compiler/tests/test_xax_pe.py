@@ -377,6 +377,25 @@ class WineExecutionTests(unittest.TestCase):
         self.assertEqual((completed.stdout, completed.returncode), (b"XAX\n", 1339 % 256))
 
 
+class CTwinTests(unittest.TestCase):
+    """The C twin of the hosted fixture (MinGW-w64, no CRT) must behave identically under Wine."""
+
+    def test_c_twin_matches_fixture(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        from benchmarks.bench_windows_pe_c_wine import CC, build_c
+        from benchmarks.bench_windows_pe_wine import run_under_wine, wine_executable
+
+        wine = wine_executable()
+        if wine is None or shutil.which(CC) is None:
+            self.skipTest("wine64 and MinGW-w64 are required")
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as prefix:
+            completed = run_under_wine(build_c(Path(directory)).read_bytes(), wine, prefix)
+        self.assertEqual((completed.stdout, completed.returncode), (b"XAX\n", 1339 % 256))
+
+
 def pe_digest() -> str:
     reader, entry, target = hosted_fixture()
     return hashlib.sha256(emit_pe_executable(compile_native_bound_target(reader, entry.cid, target))).hexdigest()

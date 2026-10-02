@@ -62,7 +62,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2â
 2. **OI-38 remainder**: PE now uses the converged allocator (ADR-095, executed under Wine). Remaining: floats and aggregates in it, range-based check elimination, LICM, and a Windows-host re-run of the PE evidence. `filestat` is still 1.47Ã— `clang -O2`.
 3. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
 4. **OI-33 (Linux)**: argv/env/auxv done (ADR-094); TLS and unwind/debug data remain. **OI-40**: SysV callbacks, floats, and aggregates.
-5. Install a C toolchain on the measuring host and run `compiler/benchmarks/windows_c_reference/hosted.c` for the first R4 size/time comparison.
+5. Done under Wine (ADR-100: MinGW-w64 C twin; XAX file 20% smaller, code larger because gcc folds `sum_to`/dispatch). Still needed: a Windows host, and a run-time-bound PE workload.
 6. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
 
 ## Reproduce M14 evidence

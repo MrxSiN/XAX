@@ -682,3 +682,12 @@ Same host and method as §15.1–15.4; one 31-repetition run. Every arm prints `
 | XAX, index links (checked) | 0.3953 | 0.0243 | 1.70 | 16,896 | 1,496 |
 
 Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 criterion (≤ 1.1×), at the edge of this host's noise (A/B probes measured 1.04–1.12×). Verifier: 3.6 ms for links against 3.5 ms for index links. `filestat` in this session: 0.95× `gcc -O2`, 1.38× `clang -O2`.
+
+### 15.6 Windows PE hosted fixture: XAX vs MinGW-w64 C, under Wine (MEASURED-UNDER-WINE, 2026-10-02)
+
+| Arm | File bytes | Executable bytes | Median process wall (ms) |
+|---|---:|---:|---:|
+| XAX `x86_64-windows-pe-v1` | 2,048 | 757 | 2564.19 |
+| C, `x86_64-w64-mingw32-gcc (GCC) 13-win32` `-O2`, no CRT | 2,560 | 416 | 2549.87 |
+
+21 runs each, interleaved, under wine-9.0 (Ubuntu 9.0~repack-4build3). Both print `XAX\n` and exit 1339 (59 mod 256). Wall time is Wine start-up. The C code is smaller because gcc folds work XAX performs at run time. Source: `bench_windows_pe_c_wine.py`.
