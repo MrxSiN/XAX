@@ -136,6 +136,11 @@
         "code_size": [
           "MEASURED",
           "compiler/benchmarks/android_ndk_twin_evidence.json"
+        ],
+        "concurrency": [
+          "EXECUTED",
+          "compiler/benchmarks/android_bionic_qemu_evidence.json",
+          "compiler/tests/test_xax_android_c_entry.py"
         ]
       },
       "blockers": [

@@ -7,6 +7,9 @@ introduced by this module.
 from dataclasses import dataclass
 
 from xax_compiler import (
+    ANDROID_AAPCS64_C_ABI,
+    foreign_entry_code_type,
+    foreign_entry_pointer_type,
     EffectDomain,
     ForeignAllocatorContract,
     ForeignDeallocatorContract,
@@ -90,6 +93,38 @@ class PosixAndroidApi:
             self.clock_gettime, self.getpid, self.pthread_create, self.pthread_join,
             self.socket, self.connect, self.send, self.recv,
         )
+
+
+@dataclass(frozen=True)
+class AndroidCEntryApi:
+    """Bionic calls that receive an XAX function as a C callback (ADR-107).
+
+    ``c_entry`` is the type of ``FUNCTION_ADDRESS`` for such a callback.  On
+    AArch64 the address is the function itself; the target must be pure and
+    take only 64-bit integers or pointers.
+    """
+
+    c_entry_code: SemanticObject
+    c_entry: SemanticObject
+    # pthread_create(pthread_t*, attr, start_routine, arg); ``attr`` and ``arg``
+    # are passed as 64-bit values (0 for default attributes).
+    pthread_create: SemanticObject
+
+    @property
+    def types(self) -> tuple[SemanticObject, ...]:
+        return (self.c_entry_code, self.c_entry)
+
+
+def android_c_entry_api(api: "PosixAndroidApi | None" = None) -> AndroidCEntryApi:
+    api = api or posix_android_api()
+    code = foreign_entry_code_type(ANDROID_AAPCS64_C_ABI)
+    entry = foreign_entry_pointer_type(ANDROID_AAPCS64_C_ABI)
+    pthread_create = foreign_function_symbol(
+        b"libc.so", b"pthread_create",
+        (api.byte_ptr_rw, api.b64, entry, api.b64, api.thread_effect, api.memory_effect),
+        (api.b32, api.thread_effect, api.memory_effect),
+    )
+    return AndroidCEntryApi(code, entry, pthread_create)
 
 
 def posix_android_api() -> PosixAndroidApi:

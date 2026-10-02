@@ -12,7 +12,7 @@
     "native": 233
   },
   "label": "EXECUTED",
-  "passed": 29,
+  "passed": 31,
   "runs": {
     "JNI_OnLoad": {
       "calls": [
@@ -306,7 +306,21 @@
       "passed": true,
       "problems": [],
       "source": "arm64:bionic_import"
+    },
+    "pthread_xax_start_routine": {
+      "exit": 0,
+      "library_bytes": 17424,
+      "library_sha256": "d624a743463acdc50887fb7447a6102fb0421c6dd1df25d34918441f99a57e5d",
+      "passed": true,
+      "stdout": "XAX_THREAD_ENTRY_OK 4/4"
+    },
+    "pthread_xax_start_routine@packed": {
+      "exit": 0,
+      "library_bytes": 1936,
+      "library_sha256": "89d17568b6a8aec3bae7684858ae8091c100224fbd3d062f80db0a89649a78ab",
+      "passed": true,
+      "stdout": "XAX_THREAD_ENTRY_OK 4/4"
     }
   },
-  "total": 29
+  "total": 31
 }

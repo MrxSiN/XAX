@@ -598,6 +598,10 @@ The modern packaging fixture places native module metadata under
 is not part of XAX native code generation.
 
 
+### 16.4a C callbacks into XAX (ADR-107)
+
+C code on Android may call a pure XAX function whose address has type `android_c_entry_api().c_entry` (`ptr<opaque_identity<"code-entry:android-aapcs64-c">>`). On AArch64 the address is the function itself. XAX code uses only x0–x7 and x9, never x18 or x19–x28, and keeps SP 16-byte aligned, so no adapter is needed. Parameters must be 64-bit integers or pointers, because AAPCS64 leaves the upper bits of narrower arguments unspecified. `android_c_entry_api().pthread_create` takes such an entry as its start routine. Effectful callbacks are OI-42.
+
 ### 16.5 libxposed API-102 remote-capability ABI surface
 
 Remote framework resources are target/platform calls, not XAX kernel operations.  The
