@@ -573,3 +573,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Workload `compiler/benchmarks/linux_chains.py` (chained hash table, 2^20 nodes, 2^16 buckets) in XAX with arena indices and checked access. Its C twin uses pointer links, and diagnostic C twins use index links with and without checks. Shared tooling: `benchmarks/linux_graph_kit.py` and `benchmarks/linux_harness.py` (filestat ported with a byte-identical artifact).
 - MEASURED (`oi37_chains_evidence.json`, two runs): XAX 3.49–3.58× `gcc -O2`, 1,598 B, 16,896 KiB RSS. Attribution: representation 1.44–1.47×, checks 1.34–1.41×, XAX code generation 1.73–1.80×. Decision ADR-090: OI-37 pointer provenance is justified but follows OI-38.
 - Tests: `compiler/tests/test_xax_chains.py` (small-table correctness against an independent reference, plus artifact identity).
+
+## OI-38 step 1: Linux allocator (ADR-091) — 2026-10-02
+
+- `xax_x86_64_regalloc.py`: cross-block values used in loops are pinned to `rbx/rbp/r12–r15`; fall-through branch layout with out-of-line edge stubs; shared cold trap stubs; power-of-two `udiv`/`urem` as shift/mask; 16-byte loop-header alignment.
+- MEASURED (one run each): `chains` 1.91× `gcc -O2` (was 3.49×), and 1.06× equivalent checked-index C (was 1.80×). `filestat` 0.94× `gcc -O2`, 1.47× `clang -O2`.
+- Differential corpus: 120 + 40 programs (the 40 call while values are pinned). Evidence JSONs regenerated.

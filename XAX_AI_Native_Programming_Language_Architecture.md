@@ -1001,7 +1001,7 @@ Universal replacement needs far stronger optimization than a prototype backend. 
 
 Every transformation preserves exact observable semantics; high-risk and search transformations use translation validation or equivalence checking. Profile data stays non-semantic unless promoted into build identity. Parallel compilation never alters semantics. Optimizer machinery migrates into XAX where practical. LLVM is never a permanent architectural dependency.
 
-Current state (MEASURED). Two register-resident x86-64 allocators exist: PE (ADR-083) and Linux (ADR-089). Convergence is OI-38. On the Linux `filestat` workload the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` across seven runs, validated against the reference executor on a random-program corpus. Cross-block allocation, LICM, and loop transformations come next.
+Current state (MEASURED). Two register-resident x86-64 allocators exist: PE (ADR-083) and Linux (ADR-089; ADR-091 adds pinned loop values, fall-through layout and cold trap stubs, bringing `chains` from 3.49× to 1.91× `gcc -O2`). Convergence is OI-38. On the Linux `filestat` workload the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` across seven runs, validated against the reference executor on a random-program corpus. Cross-block allocation, LICM, and loop transformations come next.
 
 ---
 

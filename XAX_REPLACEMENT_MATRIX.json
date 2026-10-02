@@ -344,11 +344,11 @@
       },
       "blockers": [
         "filestat is a benchmark-scale utility, not a deployed application (R3)",
-        "1.41x behind clang -O2 on filestat; per-block allocation only (OI-32)",
+        "1.47x behind clang -O2 on filestat; allocator not converged with PE (OI-38, ADR-091)",
         "no argv/env/auxv in the process-entry contract (OI-36)",
         "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "pointer-chasing workload 3.49-3.58x gcc -O2 (index links + checks + codegen; ADR-090)"
+        "pointer-chasing workload 1.91x gcc -O2 (index links + checks; codegen 1.06x checked-index C; ADR-090/091)"
       ]
     },
     {

@@ -617,3 +617,31 @@ Source: `compiler/benchmarks/linux_chains.py`; C twins `linux_filestat_c/chains.
 | XAX `x86_64-linux-elf-exec-v1` (index links, checked) | 0.9815 | 0.0691 | 3.49 | 16,896 | 1,598 |
 
 Across two runs, the attribution (median ratios within one run) was: index vs pointer 1.44–1.47×, checked vs unchecked index 1.34–1.41×, and XAX vs checked-index C 1.73–1.80×. In total XAX ran 3.49–3.58× `gcc -O2`. Decision: ADR-090. The diagnostic arms are not baselines and are excluded from "best baseline" ratios; their file sizes are unstripped.
+
+### 15.3 After ADR-091 (OI-38 step 1): `filestat` and `chains` re-measured (MEASURED, 2026-10-02)
+
+Same host, method, and sources as §15.1–15.2; one 31-repetition run each. Outputs are unchanged and validated as before.
+
+`filestat` (`u1_linux_filestat_evidence.json`):
+
+| Arm | Median wall (s) | Stdev (s) | vs gcc -O2 | vs best baseline | Peak RSS (KiB) | File bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| gcc 13 -O2 | 0.1013 | 0.0119 | 1.00 | 1.57 | 1,792 | 16,256 |
+| gcc 13 -O3 | 0.1005 | 0.0045 | 0.99 | 1.56 | 1,792 | 16,256 |
+| clang 18 -O2 | 0.0643 | 0.0075 | 0.64 | 1.00 | 1,792 | 16,352 |
+| gcc 13 -O2 -static | 0.0974 | 0.0061 | 0.96 | 1.51 | 716 | 798,120 |
+| XAX `x86_64-linux-elf-exec-v1` | 0.0948 | 0.0088 | 0.94 | 1.47 | 1,184 | 3,400 |
+
+`chains` (`oi37_chains_evidence.json`):
+
+| Arm | Median wall (s) | Stdev (s) | vs gcc -O2 | vs best baseline | Peak RSS (KiB) | File bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| gcc 13 -O2 | 0.2418 | 0.0288 | 1.00 | 1.04 | 18,272 | 16,096 |
+| gcc 13 -O3 | 0.2328 | 0.0364 | 0.96 | 1.00 | 18,272 | 16,096 |
+| clang 18 -O2 | 0.2967 | 0.0848 | 1.23 | 1.27 | 18,272 | 16,160 |
+| gcc 13 -O2 -static | 0.2513 | 0.0394 | 1.04 | 1.08 | 17,420 | 785,304 |
+| diagnostic: index links | 0.3563 | 0.0554 | 1.39 | — | 18,272 | 16,104 |
+| diagnostic: index links + checks | 0.4336 | 0.0484 | 1.69 | — | 18,272 | 16,136 |
+| XAX (index links, checked) | 0.4609 | 0.0579 | 1.91 | 1.98 | 16,896 | 1,352 |
+
+The `chains` attribution in this run is index vs pointer 1.47×, checks 1.22×, and XAX vs checked-index C 1.06×. Code generation is no longer the dominant factor (it was 1.73–1.80×, §15.2). **R4 is still not met**: `clang -O2` is 1.47× faster on `filestat`, and pointer-linked C is 1.91× faster on `chains`.
