@@ -993,6 +993,23 @@ def wasm32_wasi_target() -> SemanticObject:
     return wasm32_general_target(WASM32_WASI_IDENTITY, (Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW, Operation.LINK_TARGET))
 
 
+WASM32_BROWSER_IDENTITY = b"wasm32-browser-v1"
+
+
+def wasm32_browser_target() -> SemanticObject:
+    """wasm32 general profile for a browser page (ADR-103).
+
+    Like ``wasm32-wasi-v1`` the module exports ``memory`` and ``_start``; its
+    imports are typed ``wasm32-import`` declarations whose host side the
+    compiler generates (``xax_web``).  It adds the integer-completion
+    operations (ADR-084) so programs can parse and format numbers.
+    """
+    return wasm32_general_target(WASM32_BROWSER_IDENTITY, (
+        Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR,
+        Operation.UDIV, Operation.UREM, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND,
+    ))
+
+
 def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:
     """wasm32 core module with native f32/f64 plus memory-backed aggregates and sums."""
     operations = (

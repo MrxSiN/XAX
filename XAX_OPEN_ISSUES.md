@@ -590,3 +590,15 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 **Evidence that closes it.** An executed `qsort` (or `bsearch`) program whose XAX comparator reads elements of an XAX-owned array. It needs negative vectors for using the borrow after the foreign call returns, for writing through a read-only lent view, and for a callback stored past the call (for example, registered with `atexit`).
 
 **Status:** OPEN.
+
+## OI-43 — Browser event entries (host-invoked XAX entry points)
+
+**Question.** How does a browser page deliver events (click, input, timers, fetch completion) to XAX without hand-written JavaScript and without hidden effects?
+
+**Fixed constraints.** The host page stays compiler-generated (ADR-103). An event entry receives its authority (the page `effect<io>` token and any other proofs) from the host, as `_start` does. JavaScript runs handlers to completion one at a time, so the host's event order is the effect order. Unused event kinds emit no host code.
+
+**Candidates.** (a) Reuse ADR-102: a code-address type `code-entry:wasm32-browser-event` whose functions take and return proof values only. `FUNCTION_ADDRESS` lowers to a table index, and a binding such as `listen_click(element, entry)` registers it. (b) Named exports declared by a content-addressed carrier, as Android does for JNI exports. In that case registration is fixed at build time rather than performed by program semantics.
+
+**Evidence that closes it.** An executed page whose XAX click handler updates the DOM on each click, with negative vectors for a handler that has machine parameters and for an undeclared event kind.
+
+**Status:** OPEN.

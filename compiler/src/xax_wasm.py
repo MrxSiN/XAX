@@ -30,6 +30,7 @@ from xax_compiler import (
     _is_proof_type,
     _is_erased_proof_function,
     _parse_graph,
+    WASM32_BROWSER_IDENTITY,
     WASM32_WASI_IDENTITY,
     abi_layout,
     decode_foreign_function,
@@ -158,6 +159,14 @@ def _function_closure(
 
 
 _NULL_GUARD_BYTES = 16
+# (i32, i64) opcodes of the integer-completion operations (ADR-084, ADR-103).
+_BITWISE_AND_DIVISION = {
+    Operation.BIT_AND: (0x71, 0x83),
+    Operation.BIT_OR: (0x72, 0x84),
+    Operation.BIT_XOR: (0x73, 0x85),
+    Operation.UDIV: (0x6E, 0x80),
+    Operation.UREM: (0x70, 0x82),
+}
 
 
 def _memory_layout(
@@ -410,6 +419,27 @@ def _compile_function(
                 base = 0x6A if width <= 32 else 0x7C
                 code.append(base + (node.operation - Operation.ADD_WRAP))
                 mask(width)
+                set_(result)
+
+            elif node.operation in _BITWISE_AND_DIVISION:
+                # Operands are kept masked to their width, so these results are
+                # already in range.  A zero divisor traps in the wasm engine,
+                # which is the portable integer-divide-by-zero trap (ADR-084).
+                width = decode_bits_width(resolve(node.results[0]))
+                get(node.operands[0]); get(node.operands[1])
+                code.append(_BITWISE_AND_DIVISION[Operation(node.operation)][width > 32])
+                set_(result)
+
+            elif node.operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
+                source = decode_bits_width(resolve(node.operand_types[0]))
+                destination = decode_bits_width(resolve(node.results[0]))
+                get(node.operands[0])
+                if source > 32 >= destination:
+                    code.append(0xA7)  # i32.wrap_i64
+                elif destination > 32 >= source:
+                    code.append(0xAD)  # i64.extend_i32_u
+                if node.operation == Operation.INT_TRUNCATE:
+                    mask(destination)
                 set_(result)
 
             elif node.operation == Operation.CONSTANT:
@@ -758,7 +788,8 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
             tuple("i" for _ in legacy.parameter_widths), tuple("i" for _ in legacy.return_widths),
         )
     functions = _function_closure(entry, resolve, target.supported_operations, target.supported_terminators)
-    wasi = target.identity == WASM32_WASI_IDENTITY
+    # WASI and browser commands share the container contract: export `_start` and `memory`.
+    command = target.identity in (WASM32_WASI_IDENTITY, WASM32_BROWSER_IDENTITY)
     # Imports take the first function indices; one per distinct foreign carrier.
     carriers: dict[bytes, SemanticObject] = {}
     for function in functions:
@@ -795,9 +826,9 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
     if import_entries:
         module.extend(_section(2, _vector(import_entries)))
     module.extend(_section(3, _vector([uleb(index) for index in type_indices])))
-    if memory_size or wasi:
+    if memory_size or command:
         module.extend(_section(5, b"\x01\x00\x01"))
-    if wasi:
+    if command:
         _, entry_parameters, entry_returns = _decode_function_interface(entry, resolve)
         if any(not _is_proof_type(resolve(cid)) for cid in (*entry_parameters, *entry_returns)):
             fail("XAX.WASM.WASI_ENTRY", function_cid.hex(), "WASI-START-NO-MACHINE-VALUES", "() -> ()", [cid.hex() for cid in (*entry_parameters, *entry_returns)])
