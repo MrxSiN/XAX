@@ -116,6 +116,31 @@ def _relativize_symlinks(root: Path) -> None:
                 path.symlink_to(os.path.relpath(target, directory))
 
 
+# Namespaces nativeloader asks for when ART runs (dalvikvm64).  On a device these come from
+# /linkerconfig/ld.config.txt, generated at boot; every one here resolves through ``default``,
+# so no library is ever loaded twice.
+_NAMESPACES = ("system", "com_android_art", "com_android_runtime", "com_android_i18n", "com_android_os_statsd", "com_android_conscrypt", "com_android_tzdata")
+
+
+def _write_runtime_configuration(root: Path) -> None:
+    """Linker namespaces and public libraries that ART needs outside a booted device."""
+    lines = [
+        "# Host-validation linker configuration (a device generates this at boot).",
+        *(f"dir.host = {directory}" for directory in (f"{root}/", "/apex/", "/system/", "/data/")),
+        "[host]",
+        "additional.namespaces = " + ",".join(_NAMESPACES),
+        "namespace.default.isolated = false",
+        "namespace.default.search.paths = " + ":".join(f"/apex/{name}/${{LIB}}" for name in APEXES) + ":/system/${LIB}",
+    ]
+    for name in _NAMESPACES:
+        lines += [f"namespace.{name}.isolated = false", f"namespace.{name}.visible = true",
+                  f"namespace.{name}.links = default", f"namespace.{name}.link.default.allow_all_shared_libs = true"]
+    (root / "linkerconfig").mkdir(exist_ok=True)
+    (root / "linkerconfig/ld.config.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Only bionic is public here; the framework's JNI libraries are not loaded by a bare dalvikvm.
+    (root / "system/etc/public.libraries.txt").write_text("libc.so\nlibm.so\nlibdl.so\nliblog.so\n", encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--prefix", type=Path, default=Path("/opt/android"))
@@ -137,7 +162,7 @@ def main() -> None:
     root = prefix / "root"
     shutil.rmtree(root, ignore_errors=True)
     (root / "system").mkdir(parents=True)
-    for directory in ("bin", "lib64", "framework"):
+    for directory in ("bin", "lib64", "framework", "etc"):
         _debugfs(system, f"rdump /system/{directory} {root / 'system'}")
     work = prefix / "apex-work"
     shutil.rmtree(work, ignore_errors=True)
@@ -147,6 +172,7 @@ def main() -> None:
     for directory in ("data/local/tmp", "data/dalvik-cache"):
         (root / directory).mkdir(parents=True, exist_ok=True)
     _relativize_symlinks(root)
+    _write_runtime_configuration(root)
 
     library = prefix / "libxposed"
     library.mkdir(exist_ok=True)

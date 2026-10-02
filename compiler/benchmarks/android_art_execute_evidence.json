@@ -1,0 +1,98 @@
+{
+  "environment": {
+    "art": "dalvikvm64 from the Android 14 arm64 system image (arm64-v8a-34_r04), under qemu-aarch64 user mode",
+    "boot_image": "/system/framework/boot.art (precompiled arm64)",
+    "libxposed_api": "io.github.libxposed:api:102.0.0"
+  },
+  "format": "xax-android-art-execute-evidence-v1",
+  "label": "EXECUTED",
+  "note": "ART dalvikvm64 runs the unmodified module APK with its XAX native library; the libxposed framework is a recording stand-in",
+  "passed": 12,
+  "runs": {
+    "android_libxposed_argument_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=com.example.target.XaxActivity.hookTarget/1 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[HookedArg] original=HookedArg result=HookedArg",
+      "observed": "hooked=com.example.target.XaxActivity.hookTarget/1 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[HookedArg] original=HookedArg result=HookedArg",
+      "passed": true,
+      "sha256": "bd4420e0317b13e5db0abe0601dbb2e2aeb95f6fcc3394a52c4304613ea16dd0"
+    },
+    "android_libxposed_combined_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=com.example.target.XaxActivity.hookTarget/1 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[HookedArg] original=HookedArg result=HookedResult",
+      "observed": "hooked=com.example.target.XaxActivity.hookTarget/1 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[HookedArg] original=HookedArg result=HookedResult",
+      "passed": true,
+      "sha256": "bd3ffd9f43a7c4434693c37c97c6b66ff039a3b54a96fdb9d315882bb7788b1e"
+    },
+    "android_libxposed_deopt_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.deoptimize, framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "observed": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.deoptimize, framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "passed": true,
+      "sha256": "2577118046cbb586cd90975edad6d3b028f54432ff13b040e3d48b990d7e694b"
+    },
+    "android_libxposed_hook_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "observed": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "passed": true,
+      "sha256": "db7bcd898313460ac3ef9741804d2d04429bcf73d1458a1c3f90e41dcf86442e"
+    },
+    "android_libxposed_hot_reload_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.setId, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "observed": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.setId, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "passed": true,
+      "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a"
+    },
+    "android_libxposed_managed_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=none services=[] calls=[]",
+      "observed": "hooked=none services=[] calls=[]",
+      "passed": true,
+      "sha256": "906086fd79ae50805da35938fbdebdaa28458a0eff1cf6ad0e9eed224e973682"
+    },
+    "android_libxposed_remote_files_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=none services=[nocap.files=null,nocap.open=null,cap.files=[config.json],cap.open=threw:FileNotFoundException] calls=[framework.getFrameworkProperties, framework.getFrameworkProperties, framework.getFrameworkProperties, framework.listRemoteFiles, framework.getFrameworkProperties, framework.openRemoteFile]",
+      "observed": "hooked=none services=[nocap.files=null,nocap.open=null,cap.files=[config.json],cap.open=threw:FileNotFoundException] calls=[framework.getFrameworkProperties, framework.getFrameworkProperties, framework.getFrameworkProperties, framework.listRemoteFiles, framework.getFrameworkProperties, framework.openRemoteFile]",
+      "passed": true,
+      "sha256": "99dcb50159ec39e54eed5b0806b463f4f8006597fe9071570d92ed4dd9b8c5fa"
+    },
+    "android_libxposed_remote_preferences_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=none services=[nocap.prefs=false,cap.prefs=true,bool=true,int=7,long=70000000000,float=1.5,string=remote,contains=true] calls=[framework.getFrameworkProperties, framework.getFrameworkProperties, framework.getRemotePreferences, prefs.getBoolean, prefs.getInt, prefs.getLong, prefs.getFloat, prefs.getString, prefs.contains]",
+      "observed": "hooked=none services=[nocap.prefs=false,cap.prefs=true,bool=true,int=7,long=70000000000,float=1.5,string=remote,contains=true] calls=[framework.getFrameworkProperties, framework.getFrameworkProperties, framework.getRemotePreferences, prefs.getBoolean, prefs.getInt, prefs.getLong, prefs.getFloat, prefs.getString, prefs.contains]",
+      "passed": true,
+      "sha256": "aca0cb0c0bdc47480f7e92c71fb065ead3c85dea145fe77e54acd9e4eea2f5c4"
+    },
+    "android_libxposed_result_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=com.example.target.XaxActivity.hookTarget/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[] original=OriginalResult result=Hooked",
+      "observed": "hooked=com.example.target.XaxActivity.hookTarget/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[] original=OriginalResult result=Hooked",
+      "passed": true,
+      "sha256": "1a94558215ff1269d4f0a4762a6b4ef2af07cd531b8270b2cdcb54ab11e28fab"
+    },
+    "android_libxposed_runtime_module_signed.apk": {
+      "exit": 0,
+      "expected": "hooked=com.example.target.XaxActivity.hookTarget/1 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[HookedArg] original=HookedArg result=HookedResult",
+      "observed": "hooked=com.example.target.XaxActivity.hookTarget/1 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept] proceeds=1 proceed_args=[HookedArg] original=HookedArg result=HookedResult",
+      "passed": true,
+      "sha256": "11bbd2545d095e182ffaffb69ad999cad34aa6f0868812b50792301120291630"
+    },
+    "android_libxposed_services_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=none services=[name=XaxArtHarness,version=1.0,files=[config.json],open=threw:FileNotFoundException,prefs=true] calls=[framework.getFrameworkName, framework.getFrameworkVersion, framework.listRemoteFiles, framework.openRemoteFile, framework.getRemotePreferences]",
+      "observed": "hooked=none services=[name=XaxArtHarness,version=1.0,files=[config.json],open=threw:FileNotFoundException,prefs=true] calls=[framework.getFrameworkName, framework.getFrameworkVersion, framework.listRemoteFiles, framework.openRemoteFile, framework.getRemotePreferences]",
+      "passed": true,
+      "sha256": "7cc3e60ecb1c164caef561bdfb3632aaef96fa413ca992a4e31cf5d06a73f0c7"
+    },
+    "android_libxposed_unhook_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "observed": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
+      "passed": true,
+      "sha256": "6056ebd0a75ec626a1ae07da0b837a709247c907695a2cb349a9c946eaee7eda"
+    }
+  },
+  "total": 12
+}
