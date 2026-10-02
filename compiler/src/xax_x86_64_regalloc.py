@@ -21,7 +21,7 @@ SSA values in registers:
   copies, and a jump to the block laid out next is omitted; when one
   successor is laid out next with no copies, it falls through and the other
   edge's copies move to an out-of-line stub after the last block; when both
-  edges copy, the edge to the innermost enclosing loop header stays inline;
+  edges copy, the next block (else the innermost loop header) stays inline;
 * trap paths (bounds, null view, zero divisor) are shared out-of-line
   stubs, so a passing check is a not-taken branch;
 * a block entered by a backward jump (a loop header in layout order) starts
@@ -939,10 +939,10 @@ def compile_register_resident(
                 emit(false_copies)
                 goto(false_block)
             else:
-                # Both edges copy: keep the edge that stays in the innermost
-                # loop (the nearest backward target) inline, stub the other.
+                # Both edges copy: keep the next block inline (it needs no jump),
+                # else the edge to the innermost loop header; stub the other.
                 def nearness(target: int) -> int:
-                    return target if target <= block_index else -1
+                    return 1 << 30 if target == block_index + 1 else target if target <= block_index else -1
                 if nearness(false_block) > nearness(true_block):
                     inline, inline_copies, stubbed, stubbed_copies, condition_code = false_block, false_copies, true_block, true_copies, if_false ^ 1
                 else:
