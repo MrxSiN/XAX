@@ -95,7 +95,7 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 
 XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open.
 
-The long-term objective is **universal replacement**: building the software that today requires C, C++, Rust, Java, JavaScript, Python, and similar languages, directly from XAX semantics. Progress is evidence-gated with levels R0–R6 ([`docs/18_UNIVERSAL_REPLACEMENT.md`](docs/18_UNIVERSAL_REPLACEMENT.md)) and recorded only in the machine-checked [replacement matrix](docs/universal_replacement_matrix.json). Today, no target is above R2, and the measured native runtime is 5.9× slower than `gcc -O2`. Nothing is claimed as replaced.
+The long-term objective is **universal replacement**: building the software that today requires C, C++, Rust, Java, JavaScript, Python, and similar languages, directly from XAX semantics. Progress is evidence-gated with levels R0–R6 ([`docs/18_UNIVERSAL_REPLACEMENT.md`](docs/18_UNIVERSAL_REPLACEMENT.md)) and recorded only in the machine-checked [replacement matrix](docs/universal_replacement_matrix.json). Today no target is above R2. On the one measured native workload, XAX matches `gcc -O2` but is 1.41× slower than `clang -O2`. Nothing is claimed as replaced.
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

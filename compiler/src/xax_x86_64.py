@@ -237,8 +237,8 @@ def _register_arithmetic(operation: int, destination: int, source: int, width: i
     if width not in (32, 64):
         fail("XAX.NATIVE.BITS", "x86_64", "NATIVE-BITS-SUPPORTED", [32, 64], width)
     rex_w = 0x08 if width == 64 else 0
-    if operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.BIT_XOR):
-        opcode = {Operation.ADD_WRAP: 0x01, Operation.SUB_WRAP: 0x29, Operation.BIT_XOR: 0x31}[operation]
+    if operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR):
+        opcode = {Operation.ADD_WRAP: 0x01, Operation.SUB_WRAP: 0x29, Operation.BIT_XOR: 0x31, Operation.BIT_AND: 0x21, Operation.BIT_OR: 0x09}[operation]
         rex = 0x40 | rex_w | (0x04 if source >= 8 else 0) | (0x01 if destination >= 8 else 0)
         prefix = bytes((rex,)) if rex != 0x40 else b""
         return prefix + bytes((opcode, 0xC0 | ((source & 7) << 3) | (destination & 7)))
@@ -691,6 +691,12 @@ def _sysv_integer_class(resolve: Callable[[bytes], SemanticObject], cid: bytes) 
     return bool(width) and width <= 64 and not _is_float_cid(resolve, cid) and not _is_aggregate_cid(resolve, cid)
 
 
+def require_sysv_profile(target: NativeTargetDescription, graph_object: SemanticObject) -> None:
+    """C imports need the profile that explicitly requests the dynamic loader."""
+    if target.abi != X86_64_LINUX_ABI or target.image_format != X86_64_LINUX_ELF_DYNAMIC_FORMAT:
+        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-REQUIRES-DYNAMIC-PROFILE", [X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT], [target.abi, target.image_format])
+
+
 def _emit_sysv_c_call(assembler: "_Assembler", node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> None:
     """Call an imported C function through its GOT slot.
 
@@ -702,8 +708,7 @@ def _emit_sysv_c_call(assembler: "_Assembler", node, resolve, target: NativeTarg
     reject rather than being guessed.
     """
     declaration = decode_foreign_function(node.entity)
-    if target.abi != X86_64_LINUX_ABI or target.image_format != X86_64_LINUX_ELF_DYNAMIC_FORMAT:
-        fail("XAX.NATIVE.FOREIGN_ABI", graph_object.cid.hex(), "SYSV-C-REQUIRES-DYNAMIC-PROFILE", [X86_64_LINUX_ABI, X86_64_LINUX_ELF_DYNAMIC_FORMAT], [target.abi, target.image_format])
+    require_sysv_profile(target, graph_object)
     machine = [(operand, cid) for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid))]
     results = [cid for cid in node.results if not _is_proof_type(resolve(cid))]
     if len(machine) > len(_SYSV_ARGUMENT_REGISTERS) or len(results) > 1 or not all(_sysv_integer_class(resolve, cid) for cid in (*(cid for _, cid in machine), *results)):
@@ -1190,6 +1195,12 @@ def _compile_function(
                         "backend-declared explicit assist",
                         "none",
                     )
+    if target.abi == X86_64_LINUX_ABI:
+        from xax_x86_64_regalloc import compile_register_resident
+
+        allocated = compile_register_resident(function, graph_object, graph, parameter_types, return_types, resolve, target)
+        if allocated is not None:
+            return allocated
     register_resident = _compile_register_resident_function(
         function, graph_object, graph, return_types, resolve, target
     )

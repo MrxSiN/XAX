@@ -52,6 +52,13 @@ STATUS_READ_FAILED = 3
 HERE = Path(__file__).resolve().parent
 C_SOURCE = HERE / "linux_filestat_c" / "filestat.c"
 RUNNER_SOURCE = HERE / "linux_filestat_c" / "runner.c"
+# Optimized baselines; every arm links the same libz.
+BASELINES = (
+    ("gcc-O2", "gcc", ("-O2",)),
+    ("gcc-O3", "gcc", ("-O3",)),
+    ("clang-O2", "clang", ("-O2",)),
+    ("gcc-O2-static", "gcc", ("-O2", "-static")),
+)
 EVIDENCE = HERE / "u1_linux_filestat_evidence.json"
 
 
@@ -340,8 +347,8 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
         artifacts = {"xax": work / "filestat-xax"}
         artifacts["xax"].write_bytes(executable.data)
         artifacts["xax"].chmod(0o755)
-        for name, flags in (("gcc-O2", ["-O2"]), ("gcc-O2-static", ["-O2", "-static"])):
-            subprocess.run(["gcc", *flags, "-o", str(work / name), str(C_SOURCE), "-lz"], check=True)
+        for name, compiler, flags in BASELINES:
+            subprocess.run([compiler, *flags, "-o", str(work / name), str(C_SOURCE), "-lz"], check=True)
             artifacts[name] = work / name
         stripped = {}
         for name, path in artifacts.items():
@@ -391,8 +398,10 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
         if len(outputs) != 1:
             raise AssertionError(f"outputs differ: {outputs}")
     baseline = results["gcc-O2"]["wall_seconds_median"]
+    best = min(item["wall_seconds_median"] for name, item in results.items() if name != "xax")
     for item in results.values():
         item["time_ratio_vs_gcc_O2"] = round(item["wall_seconds_median"] / baseline, 3)
+        item["time_ratio_vs_best_baseline"] = round(item["wall_seconds_median"] / best, 3)
     return {
         "format": "xax-u1-linux-filestat-evidence-v1",
         "evidence_label": "MEASURED",
@@ -407,7 +416,7 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
             "graph_blocks": program.block_count,
             "artifact_sha256": hashlib.sha256(executable.data).hexdigest(),
             "artifact_bytes": len(executable.data),
-            "codegen": "x86-64 spill-every-value bootstrap lowering; no register allocation across nodes",
+            "codegen": "xax_x86_64_regalloc: per-block register allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, in-block bounds-check reuse, power-of-two strength reduction",
             "runtime_dependencies": [],
             "dynamic_loader": "/lib64/ld-linux-x86-64.so.2 (requested by x86_64-linux-elf-dynexec-v1)",
             "dt_needed": [item.decode() for item in executable.needed],
@@ -420,17 +429,18 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
             "logical_cpus": os.cpu_count(),
             "python": platform.python_version(),
             "gcc": _tool_version(["gcc", "--version"]),
+            "clang": _tool_version(["clang", "--version"]),
             "zlib": zlib.ZLIB_RUNTIME_VERSION,
         },
-        "method": {"warmup_runs": warmup, "repetitions": repetitions, "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss", "reference_dynamic_bin_true_rss_kib": baseline_rss, "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner", "c_flags": {"gcc-O2": "-O2 ... -lz", "gcc-O2-static": "-O2 -static ... -lz"}},
+        "method": {"warmup_runs": warmup, "repetitions": repetitions, "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss", "reference_dynamic_bin_true_rss_kib": baseline_rss, "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner", "c_flags": {name: f"{compiler} {' '.join(flags)} ... -lz" for name, compiler, flags in BASELINES}},
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--size", type=int, default=32 << 20)
-    parser.add_argument("--repetitions", type=int, default=7)
-    parser.add_argument("--warmup", type=int, default=1)
+    parser.add_argument("--repetitions", type=int, default=31)
+    parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--write", action="store_true", help="update the committed evidence JSON")
     arguments = parser.parse_args(argv)
     evidence = run_benchmark(arguments.size, arguments.repetitions, arguments.warmup)

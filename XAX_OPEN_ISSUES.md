@@ -469,7 +469,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 ## OI-32 — General-path register allocation and code quality (R4 blocker)
 
-**Status:** OPEN. **Evidence (MEASURED, 2026-10-02):** `compiler/benchmarks/u1_linux_filestat_evidence.json` — the Linux x86-64 `filestat` artifact runs 5.9× slower than `gcc -O2` (median of 11 runs on a 32 MiB input) because the general x86-64 path stores every SSA value to a frame slot and reloads it per use. The legacy register-resident path covers only scalar add/sub/mul/call graphs.
+**Status:** PARTIALLY RESOLVED (2026-10-02, ADR-084). Before: the Linux `filestat` artifact ran 5.9× slower than `gcc -O2` because the general path spilled every SSA value. After U2 (`xax_x86_64_regalloc.py`, Linux profiles only): 1.03× `gcc -O2`, 1.41× `clang -O2` (best baseline), 3,608 B (MEASURED, `u1_linux_filestat_evidence.json`). It is differentially validated on 1,320 random programs. Still open: cross-block/global allocation (loop-invariant pointers reload from home slots each iteration), allocation hints for edge copies, LICM, unrolling/vectorization, migration of legacy profiles (needs versioned target identities), and an AArch64 counterpart. Original question:
 
 **Question.** What is the smallest register-allocation design (linear scan over block-parameter SSA, or extension of the register-resident path to memory/foreign operations) that closes most of the gap while keeping lowering deterministic and translation-validatable? Close with a measured R4 comparison on U1 plus no regression in legacy artifact identities, or with a recorded decision to version legacy profiles.
 

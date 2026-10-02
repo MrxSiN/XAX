@@ -87,9 +87,10 @@
     },
     "optimization_maturity": {
      "label": "PROTOTYPE",
-     "note": "M12 bounded passes; backend spills every value (no register allocation in the general path)",
+     "note": "per-block register allocation with rematerialized immediates, cmp+jcc fusion, bounds-check reuse, strength reduction; no cross-block allocation, LICM, or vectorization (OI-32)",
      "evidence": [
-      "compiler/benchmarks/m12_optimizer_evidence.json"
+      "compiler/tests/test_xax_regalloc_differential.py",
+      "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ]
     },
     "real_execution": {
@@ -106,7 +107,7 @@
     },
     "performance_evidence": {
      "label": "MEASURED",
-     "note": "median 5.9x slower than gcc -O2 on 32 MiB input",
+     "note": "median 1.03x gcc -O2 but 1.41x the best baseline (clang -O2) on 32 MiB input",
      "evidence": [
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ],
@@ -114,14 +115,14 @@
     },
     "memory_evidence": {
      "label": "MEASURED",
-     "note": "peak RSS 1,204 KiB (ld.so + libz + libc) vs 716 KiB gcc -O2 -static, 1,792 KiB dynamic",
+     "note": "peak RSS 1,184 KiB (ld.so + libz + libc) vs 716 KiB gcc -O2 -static, 1,792 KiB dynamic",
      "evidence": [
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ]
     },
     "code_size_evidence": {
      "label": "MEASURED",
-     "note": "23,472 B vs 14,472 B stripped dynamic / 718,872 B stripped static",
+     "note": "3,608 B vs 14,472 B stripped gcc dynamic / 718,872 B stripped static",
      "evidence": [
       "compiler/benchmarks/u1_linux_filestat_evidence.json"
      ]
@@ -148,7 +149,7 @@
     "platform_runtime": []
    },
    "known_blockers": [
-    "OI-32 register allocation (5.9x runtime gap)",
+    "OI-32 cross-block allocation/LICM (1.41x behind clang -O2)",
     "OI-36 argv/env/auxv entry contract",
     "C callbacks, floats, aggregates, variadics in sysv-x86_64-c",
     "no threads/signals/sockets packages",
