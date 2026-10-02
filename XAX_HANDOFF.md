@@ -63,6 +63,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2â
 3. **U1.2b remainder**: stack-storage, float, aggregate, and indirect-call functions on the PE register path (ADR-083 covers compares, foreign calls, heap memory; `sum_to` 8.02x). Install a C toolchain to turn this into an R4 comparison.
 4. **OI-33 (Linux)**: argv/env/auxv done (ADR-094); TLS and unwind/debug data remain. **OI-40**: register scalars and pure callbacks done (ADR-102); aggregates, stack arguments, and variadics remain. **OI-42**: callbacks that read memory the C caller lends (the `qsort` comparator); design candidates are in the issue.
 5. Done under Wine (ADR-100: MinGW-w64 C twin; XAX file 20% smaller, code larger because gcc folds `sum_to`/dispatch). Still needed: a Windows host, and a run-time-bound PE workload.
+5a. **Android (ADR-105/106)**: device-free evidence exists (`bench_android_bionic.py`, `bench_android_official_tools.py`, `bench_android_ndk_twin.py`; they need the host tooling listed in `XAX_STATE.md`). Next: run the packed APK on a device, then make format 5 the default. After that, a richer Activity (state, I/O, lifecycle: U1 workload 4) and libxposed runtime execution.
 6. **Browser (ADR-103/104)**: click entries are done. Next: static storage, so state need not live in the DOM; a Web IDL-driven binding importer (OI-32); and an Emscripten/Rust wasm size comparison for R4.
 7. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
 

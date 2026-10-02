@@ -555,6 +555,16 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
 - EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
 
+## Android without a device (ADR-105, ADR-106) — 2026-10-02
+
+- Host tooling (not in the repository): `qemu-user-static` 8.2.2, NDK r28c, build-tools 34 and 36.1, platform 35, and the official Android 14 arm64 system image. `linker64` and bionic were extracted from it into a qemu root (paths in `bench_android_bionic.py`).
+- EXECUTED under Android's `linker64` and bionic, via `qemu-aarch64` (`android_bionic_qemu_evidence.json`, 29/29). That covers the platform-contract probe (file, pthread, socket through 10 bionic imports; first execution ever), libxposed `native_init`, nine JNI fixtures checked slot by slot against recording stubs generated from the NDK `jni.h`, `JNI_OnLoad`/`GetEnv`, a bionic `getpid` import, and both callbacks from the device-validated APK. Every case runs in both ELF containers.
+- XAX's 229 native and 5 invoke JNI slot names equal the `jni.h` order exactly.
+- STRUCTURAL: all 20 committed APKs pass `apksigner`, `zipalign -c -P 16`, `aapt2`, `dexdump`, D8 re-dex, and `llvm-readelf` (`android_official_tools_evidence.json`). A first run reported 12 false `apksigner` failures; the cause was the benchmark's signed-APK detector, not the APKs (libxposed fixtures carry unsigned `META-INF/xposed/` metadata).
+- ADR-105: the packed container (format 5) cuts the Activity library from 17,352 to 1,496 bytes and the APK from 35,413 to 19,557 bytes. The format-4 APK is byte-identical.
+- MEASURED against a Java + NDK twin (`XAX_BENCHMARKS.md` §15.7): format 4 is 1.43× the twin's APK; packed is 0.79× the APK and 0.39× the native library. DEX is 1.17× (one DEX per class). With equal 16 KiB alignment, the first comparison (2.83×) was unfair to XAX, because the twin had only 4 KiB alignment.
+- Regression: 693 tests. The failure set equals the baseline except for environment effects of installing `tiktoken` (OI-03 now passes; OI-12/OI-13 evidence replays fail whenever `tiktoken` is present, as already recorded below).
+
 ## Post-upgrade token test (lowest cost) — 2026-10-02
 
 - Offline, with no model tokens: after installing `tiktoken` 0.14.0, the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44.

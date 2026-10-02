@@ -28,6 +28,8 @@ from xax_elf import (
 )
 from xax_aarch64 import Aarch64Bundle, compile_aarch64_bundle_bound_target
 from xax_compiler import (
+    ANDROID_ELF_FORMAT,
+    ANDROID_ELF_PACKED_FORMAT,
     Cursor,
     Kind,
     SemanticObject,
@@ -590,7 +592,11 @@ def emit_android_elf(
     rodata: bytes = b"",
     data: bytes = b"",
     bss_bytes: int = 0,
+    packed: bool = False,
 ) -> AndroidSharedObject:
+    """Emit the ET_DYN.  ``packed`` selects format 5 (ADR-105): the RW segment
+    follows RX in the file, and its addresses are its file offsets plus one
+    constant, so it starts on a fresh 16 KiB page in memory."""
     if not exports:
         raise ValueError("Android shared object requires at least one explicit export")
     exports = tuple(sorted(exports, key=lambda item: item.name))
@@ -648,7 +654,9 @@ def emit_android_elf(
     text_offset = _align(rela_offset + rela_size, 16)
     rodata_offset = _align(text_offset + len(text), 16)
     rx_end = rodata_offset + len(rodata)
-    rw_offset = _align(rx_end, ELF_PAGE_ALIGNMENT)
+    rw_offset = _align(rx_end, 8 if packed else ELF_PAGE_ALIGNMENT)
+    # RW address = file offset + delta; p_vaddr stays congruent to p_offset modulo the page.
+    delta = _align(rx_end, ELF_PAGE_ALIGNMENT) - (rw_offset - rw_offset % ELF_PAGE_ALIGNMENT) if packed else 0
     got_offset = rw_offset
     got_size = 8 * len(import_names)
     data_offset = _align(got_offset + got_size, 8)
@@ -667,8 +675,8 @@ def emit_android_elf(
     dynsym_address = dynsym_offset
     dynstr_address = dynstr_offset
     rela_address = rela_offset
-    got_address = got_offset
-    dynamic_address = dynamic_offset
+    got_address = got_offset + delta
+    dynamic_address = dynamic_offset + delta
 
     # Patch import thunks now that GOT virtual addresses are known.
     import_index_by_name = {name: index for index, name in enumerate(import_names)}
@@ -756,7 +764,7 @@ def emit_android_elf(
     rw_memsz = rw_mem_end - rw_offset
     program_headers = b"".join((
         _program_header(PT_LOAD, PF_R | PF_X, 0, 0, rx_filesz, rx_filesz, ELF_PAGE_ALIGNMENT),
-        _program_header(PT_LOAD, PF_R | PF_W, rw_offset, rw_offset, rw_filesz, rw_memsz, ELF_PAGE_ALIGNMENT),
+        _program_header(PT_LOAD, PF_R | PF_W, rw_offset, rw_offset + delta, rw_filesz, rw_memsz, ELF_PAGE_ALIGNMENT),
         _program_header(PT_DYNAMIC, PF_R | PF_W, dynamic_offset, dynamic_address, dynamic_size, dynamic_size, 8),
         _program_header(PT_GNU_STACK, PF_R | PF_W, 0, 0, 0, 0, 16),
     ))
@@ -769,8 +777,8 @@ def emit_android_elf(
     section_headers.append(_section_header(sh_name[b".text"], SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, text_address, text_offset, len(text), 0, 0, 16, 0))
     section_headers.append(_section_header(sh_name[b".rodata"], SHT_PROGBITS, SHF_ALLOC, rodata_offset, rodata_offset, len(rodata), 0, 0, 16, 0))
     section_headers.append(_section_header(sh_name[b".got"], SHT_PROGBITS, SHF_ALLOC | SHF_WRITE, got_address, got_offset, got_size, 0, 0, 8, 8))
-    section_headers.append(_section_header(sh_name[b".data"], SHT_PROGBITS, SHF_ALLOC | SHF_WRITE, data_offset, data_offset, len(data), 0, 0, 8, 0))
-    section_headers.append(_section_header(sh_name[b".bss"], SHT_NOBITS, SHF_ALLOC | SHF_WRITE, bss_offset, bss_offset, bss_bytes, 0, 0, 8, 0))
+    section_headers.append(_section_header(sh_name[b".data"], SHT_PROGBITS, SHF_ALLOC | SHF_WRITE, data_offset + delta, data_offset, len(data), 0, 0, 8, 0))
+    section_headers.append(_section_header(sh_name[b".bss"], SHT_NOBITS, SHF_ALLOC | SHF_WRITE, bss_offset + delta, bss_offset, bss_bytes, 0, 0, 8, 0))
     section_headers.append(_section_header(sh_name[b".dynamic"], SHT_DYNAMIC, SHF_ALLOC | SHF_WRITE, dynamic_address, dynamic_offset, len(dynamic), 3, 0, 8, 16))
     section_headers.append(_section_header(sh_name[b".shstrtab"], SHT_STRTAB, 0, 0, shstrtab_offset, len(shstrtab), 0, 0, 1, 0))
 
@@ -815,7 +823,7 @@ def compile_android_shared(
             normalized_exports.append(AndroidExport(decoded.name, decoded.function_cid))
     exports = tuple(normalized_exports)
     description = decode_native_target(target_object)
-    if description.identity not in (ANDROID_TARGET_IDENTITY, ANDROID_GENERAL_TARGET_IDENTITY) or (description.architecture, description.abi, description.image_format) != (3, 4, 4):
+    if description.identity not in (ANDROID_TARGET_IDENTITY, ANDROID_GENERAL_TARGET_IDENTITY) or (description.architecture, description.abi) != (3, 4) or description.image_format not in (ANDROID_ELF_FORMAT, ANDROID_ELF_PACKED_FORMAT):
         fail(
             "XAX.ANDROID.TARGET", target_object.cid.hex(), "ANDROID-ARM64-SHARED-TARGET",
             [ANDROID_TARGET_IDENTITY.decode(), ANDROID_GENERAL_TARGET_IDENTITY.decode()],
@@ -823,7 +831,7 @@ def compile_android_shared(
         )
     function_cids = tuple(dict.fromkeys(item.function_cid for item in exports))
     bundle = compile_aarch64_bundle_bound_target(reader, function_cids, target_object)
-    return emit_android_elf(bundle, exports, soname=soname, rodata=rodata, data=data, bss_bytes=bss_bytes)
+    return emit_android_elf(bundle, exports, soname=soname, rodata=rodata, data=data, bss_bytes=bss_bytes, packed=description.image_format == ANDROID_ELF_PACKED_FORMAT)
 
 
 def inspect_android_elf(data: bytes) -> AndroidElfView:

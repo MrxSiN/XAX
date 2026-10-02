@@ -1,0 +1,312 @@
+{
+  "environment": {
+    "android_build": "Android/sdk_phone64_arm64/emu64a:14/UE1A.230829.036.A1/11228894:userdebug/test-keys",
+    "kind": "qemu-aarch64 user mode with Android linker64 and bionic from an official system image; no device, kernel, or ART",
+    "ndk": "28.2.13676358",
+    "ndk_clang": "Android (13624864, +pgo, +bolt, +lto, +mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)",
+    "qemu": "qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)"
+  },
+  "format": "xax-android-bionic-qemu-evidence-v1",
+  "jni_header_slots": {
+    "invoke": 8,
+    "native": 233
+  },
+  "label": "EXECUTED",
+  "passed": 29,
+  "runs": {
+    "JNI_OnLoad": {
+      "calls": [
+        "GetEnv"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "018eac6f3d463da10f1bf290d1f551a92e46716433a03c212e79afe33fef6b1b",
+      "passed": true,
+      "problems": [],
+      "source": "arm64:jni_onload"
+    },
+    "JNI_OnLoad@packed": {
+      "calls": [
+        "GetEnv"
+      ],
+      "library_bytes": 1432,
+      "library_sha256": "d31aefbdb2f1080a396306b1d5156596441f1b22405fe618d09f8ca7b8d21055",
+      "passed": true,
+      "problems": [],
+      "source": "arm64:jni_onload"
+    },
+    "Java_xax_generated_XaxActivity_xaxOnCreate": {
+      "calls": [],
+      "library_bytes": 17352,
+      "library_sha256": "cca1ef118c793e7656c0dbc453ec78dbf5fda31a15a361db4c7a415db3f59ccc",
+      "passed": true,
+      "problems": [],
+      "source": "apk:android_minimal_activity.apk"
+    },
+    "Java_xax_generated_XaxActivity_xaxOnCreate@packed": {
+      "calls": [],
+      "library_bytes": 1496,
+      "library_sha256": "8413573ac3202058bc0ed1cd89445400fd2f82595abcff59ac6a87cb6207c581",
+      "passed": true,
+      "problems": [],
+      "source": "apk:android_minimal_activity.apk"
+    },
+    "Java_xax_generated_XaxOnClickListener_xaxOnClick": {
+      "calls": [],
+      "library_bytes": 17352,
+      "library_sha256": "cca1ef118c793e7656c0dbc453ec78dbf5fda31a15a361db4c7a415db3f59ccc",
+      "passed": true,
+      "problems": [],
+      "source": "apk:android_minimal_activity.apk"
+    },
+    "Java_xax_generated_XaxOnClickListener_xaxOnClick@packed": {
+      "calls": [],
+      "library_bytes": 1496,
+      "library_sha256": "8413573ac3202058bc0ed1cd89445400fd2f82595abcff59ac6a87cb6207c581",
+      "passed": true,
+      "problems": [],
+      "source": "apk:android_minimal_activity.apk"
+    },
+    "jni_get_version_probe": {
+      "calls": [
+        "GetVersion"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "7e3495551f12659345e20efafb699fd5b9a1e73ce40adf062b780fd569e8f191",
+      "passed": true,
+      "problems": [],
+      "source": "jni:get_version"
+    },
+    "jni_get_version_probe@packed": {
+      "calls": [
+        "GetVersion"
+      ],
+      "library_bytes": 1416,
+      "library_sha256": "626e0824dcfcb44236956c58b2a42265d601ae64e1920053f0be499bcf10e7f3",
+      "passed": true,
+      "problems": [],
+      "source": "jni:get_version"
+    },
+    "jni_global_ref_roundtrip": {
+      "calls": [
+        "NewGlobalRef",
+        "DeleteGlobalRef"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "53199bcc2615e4818c5863c6ab2333063379dc7994cd6a28073e16a31260ae9f",
+      "passed": true,
+      "problems": [],
+      "source": "jni:global_ref_roundtrip"
+    },
+    "jni_global_ref_roundtrip@packed": {
+      "calls": [
+        "NewGlobalRef",
+        "DeleteGlobalRef"
+      ],
+      "library_bytes": 1464,
+      "library_sha256": "b77282bfe5b0b393febb5bd008b06521f28930329dfd5e6207f53b19aa2a6b79",
+      "passed": true,
+      "problems": [],
+      "source": "jni:global_ref_roundtrip"
+    },
+    "jni_new_xax_click_listener": {
+      "calls": [
+        "NewObject"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "ae5ab8c6cb0da62d51ed2db2955e07df4c98127cbf452f31f669f7c92c6500b5",
+      "passed": true,
+      "problems": [],
+      "source": "jni:generated_listener_construction"
+    },
+    "jni_new_xax_click_listener@packed": {
+      "calls": [
+        "NewObject"
+      ],
+      "library_bytes": 1432,
+      "library_sha256": "80da027c7ae521ca35d6abad4d97661f1b52846dd3f0b5883701b72e06c0a91c",
+      "passed": true,
+      "problems": [],
+      "source": "jni:generated_listener_construction"
+    },
+    "jni_post_delayed_cached": {
+      "calls": [
+        "CallBooleanMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "31ac22c99e187a600a0a3a9d92c27b5a66c93dca6b2ec220b6b9bcebaa29e8ba",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_post_delayed"
+    },
+    "jni_post_delayed_cached@packed": {
+      "calls": [
+        "CallBooleanMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 1480,
+      "library_sha256": "039040bdd54eda1986de51adf39048c6862e70fa6cda18371956107f4067e9de",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_post_delayed"
+    },
+    "jni_release_target_method_cache": {
+      "calls": [
+        "DeleteGlobalRef"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "1be8b5711ef6f78e44871f6c6f965a622d54bc29a295fb6d79cae4e1fc3da013",
+      "passed": true,
+      "problems": [],
+      "source": "jni:release_method_cache"
+    },
+    "jni_release_target_method_cache@packed": {
+      "calls": [
+        "DeleteGlobalRef"
+      ],
+      "library_bytes": 1432,
+      "library_sha256": "1ede924c866cfe2604d7258ceda47a0b12bebdbd15f1b4fb200c994370db185d",
+      "passed": true,
+      "problems": [],
+      "source": "jni:release_method_cache"
+    },
+    "jni_resolve_call_twice_release": {
+      "calls": [
+        "GetObjectClass",
+        "NewGlobalRef",
+        "DeleteLocalRef",
+        "GetMethodID",
+        "CallVoidMethodA",
+        "ExceptionClear",
+        "CallVoidMethodA",
+        "ExceptionClear",
+        "DeleteGlobalRef"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "49eb6a77defa0723fc9f6a729d38a3586961b1485fb9a0204155c9272a22990d",
+      "passed": true,
+      "problems": [],
+      "source": "jni:loader_relative_method_cache"
+    },
+    "jni_resolve_call_twice_release@packed": {
+      "calls": [
+        "GetObjectClass",
+        "NewGlobalRef",
+        "DeleteLocalRef",
+        "GetMethodID",
+        "CallVoidMethodA",
+        "ExceptionClear",
+        "CallVoidMethodA",
+        "ExceptionClear",
+        "DeleteGlobalRef"
+      ],
+      "library_bytes": 1752,
+      "library_sha256": "72ccd6f01b1d2fadbe84b7f538ae5c5be780e5f9a2da8debbd0a0a6382e0ecd4",
+      "passed": true,
+      "problems": [],
+      "source": "jni:loader_relative_method_cache"
+    },
+    "jni_set_clickable_cached": {
+      "calls": [
+        "CallVoidMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "38297e7f6bf191442bd07c3e0342afe033de5cfbf9dc660d8a20cae6487c0262",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_set_clickable"
+    },
+    "jni_set_clickable_cached@packed": {
+      "calls": [
+        "CallVoidMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 1496,
+      "library_sha256": "d525fdd465440ee9c4943cbab869aa5a99f019593aeaae73f7d56a3a49a275c1",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_set_clickable"
+    },
+    "jni_set_value_cached": {
+      "calls": [
+        "CallVoidMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "f073882c194359f3513902610831cb16941d99747205b2e19595c36fea99d5d9",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_app_set_value"
+    },
+    "jni_set_value_cached@packed": {
+      "calls": [
+        "CallVoidMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 1448,
+      "library_sha256": "6d9290112b56739fa7bb6ba2d44a34f8034bc7d9fec3b03b6cbd641f217f5966",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_app_set_value"
+    },
+    "jni_set_visibility_cached": {
+      "calls": [
+        "CallVoidMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 17352,
+      "library_sha256": "ca9adebdd15abacd8a48ba46447cbb386cc8f1c0965dd6774019f10d8cdc8fe0",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_set_visibility"
+    },
+    "jni_set_visibility_cached@packed": {
+      "calls": [
+        "CallVoidMethodA",
+        "ExceptionClear"
+      ],
+      "library_bytes": 1480,
+      "library_sha256": "50ae71d94b04bd255c2cc3d3b87261afdd9a693688261d96dfb968afc2b33083",
+      "passed": true,
+      "problems": [],
+      "source": "jni:cached_set_visibility"
+    },
+    "libxposed_native_init": {
+      "exit": 0,
+      "library_sha256": "bdece7317a5c067043ca684d6a8c75ce619f75708e0adbe83def5a8176dfdd80",
+      "passed": true
+    },
+    "platform_probe": {
+      "exit": 0,
+      "library_bytes": 17496,
+      "library_sha256": "cdca66dca2f55b0b8951912646710a63812850737f5baf79a74de24fb5345c02",
+      "passed": true,
+      "stdout": "XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1"
+    },
+    "platform_probe@packed": {
+      "exit": 0,
+      "library_bytes": 3016,
+      "library_sha256": "ecbb369ade2a4c82131ed07c65ae8cd76bf2fdc9de9e01c67e38c9e28983f3bf",
+      "passed": true,
+      "stdout": "XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1"
+    },
+    "probe_getpid": {
+      "calls": [],
+      "library_bytes": 17424,
+      "library_sha256": "4825819706d61727e343116eb99c46d77d6569699450cd4a2537ea34a634194d",
+      "passed": true,
+      "problems": [],
+      "source": "arm64:bionic_import"
+    },
+    "probe_getpid@packed": {
+      "calls": [],
+      "library_bytes": 1552,
+      "library_sha256": "e6d7aee709d9951c358655524f9e7785b4255b7e500bb4292e8db364c398dc02",
+      "passed": true,
+      "problems": [],
+      "source": "arm64:bionic_import"
+    }
+  },
+  "total": 29
+}

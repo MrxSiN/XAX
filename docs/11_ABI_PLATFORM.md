@@ -585,7 +585,11 @@ JNI-specific code or startup work.
 ### 16.4 Android shared-object startup surface
 
 The direct ELF emitter produces two 16-KiB-aligned `PT_LOAD` segments plus the
-minimal dynamic metadata required by the specific module. It emits no implicit
+minimal dynamic metadata required by the specific module. The target's image
+format selects the container (ADR-105): format 4 maps each segment at its file
+offset, with the RW segment at the next 16 KiB file boundary. Format 5 packs RW
+right after RX in the file and maps it at the next 16 KiB page, congruent to
+its offset, so a small module is about 1.5 KB rather than 17 KB. It emits no implicit
 `.init_array`, `.fini_array`, TLS segment, exception/unwind runtime, C++ runtime,
 allocator initialization, or default libc/libdl dependency.
 

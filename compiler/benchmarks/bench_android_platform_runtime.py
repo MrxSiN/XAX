@@ -99,8 +99,11 @@ def _reader_and_exports():
     return reader, target, exports
 
 
-def build_probe() -> bytes:
+def build_probe(*, packed: bool = False) -> bytes:
+    """The probe library; ``packed`` binds the same program to the packed container (format 5, ADR-105)."""
     reader, target, exports = _reader_and_exports()
+    if packed:
+        target = android_arm64_shared_general_target(packed=True)
     return compile_android_shared(reader, exports, target_object=target, soname=b"libxax_platform_probe.so").data
 
 

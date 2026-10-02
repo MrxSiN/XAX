@@ -1170,19 +1170,29 @@ def android_jni_native_operation(slot: int) -> int:
     return ANDROID_JNI_NATIVE_OPERATION_BASE + slot
 
 
-def android_arm64_shared_target() -> SemanticObject:
+# Android ET_DYN containers.  Format 4 maps every segment at its file offset,
+# so the RW segment starts on the next 16 KiB file boundary.  Format 5 (ADR-105)
+# packs the RW segment directly after RX in the file and places it at the next
+# 16 KiB-aligned address congruent to its offset, as standard linkers do.
+ANDROID_ELF_FORMAT = 4
+ANDROID_ELF_PACKED_FORMAT = 5
+
+
+def android_arm64_shared_target(*, packed: bool = False) -> SemanticObject:
     """Android arm64-v8a ET_DYN target sharing the existing AAPCS64 backend.
 
     Profile 4 carries only bounded platform-ABI target operations; Android
     concepts stay in this target package rather than the fundamental language.
+    ``packed`` selects the packed container (format 5) for the same operations.
     """
     return _android_arm64_shared_target(
         b"android-arm64-v8a-shared-v3",
         (1, 2, 3, *range(5, 20), Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, Operation.TARGET_OP),
+        ANDROID_ELF_PACKED_FORMAT if packed else ANDROID_ELF_FORMAT,
     )
 
 
-def android_arm64_shared_general_target() -> SemanticObject:
+def android_arm64_shared_general_target(*, packed: bool = False) -> SemanticObject:
     """v3 plus float/aggregate/sum/conversion parity and foreign-heap views.
 
     v3 stays byte-identical so existing Android artifacts keep their identity.
@@ -1193,6 +1203,7 @@ def android_arm64_shared_general_target() -> SemanticObject:
             1, 2, 3, *range(5, 20), Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT,
             Operation.TARGET_OP, *AARCH64_GENERAL_OPERATIONS, Operation.HEAP_VIEW,
         ),
+        ANDROID_ELF_PACKED_FORMAT if packed else ANDROID_ELF_FORMAT,
     )
 
 
@@ -1202,11 +1213,11 @@ ANDROID_ARM64_SHARED_IDENTITIES = (
 )
 
 
-def _android_arm64_shared_target(identity: bytes, operations: Sequence[int]) -> SemanticObject:
+def _android_arm64_shared_target(identity: bytes, operations: Sequence[int], image_format: int = ANDROID_ELF_FORMAT) -> SemanticObject:
     operations = tuple(sorted({int(value) for value in operations}))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(identity)) + identity)
-    for value in (4, 3, 4, 4, 64, 64, 16, 0):
+    for value in (4, 3, 4, image_format, 64, 64, 16, 0):
         body.extend(uleb(value))
     body.extend(uleb(8) + bytes(range(8)))
     body.extend(uleb(0))
@@ -1606,8 +1617,9 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-WASM32-CORE", [2, 2, 64, 32], [abi, image_format, word_bits, pointer_bits])
     elif architecture == 3:
         machine = (abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space)
-        if machine not in ((3, 1, 64, 64, 16, 0), (4, 4, 64, 64, 16, 0)):
-            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-PROFILE", [[3, 1, 64, 64, 16, 0], [4, 4, 64, 64, 16, 0]], list(machine))
+        allowed_machines = ((3, 1, 64, 64, 16, 0), (4, ANDROID_ELF_FORMAT, 64, 64, 16, 0), (4, ANDROID_ELF_PACKED_FORMAT, 64, 64, 16, 0))
+        if machine not in allowed_machines:
+            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-PROFILE", [list(item) for item in allowed_machines], list(machine))
         if abi == 4 and profile != 4:
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-ANDROID-PROFILE", 4, profile)
         if abi == 3 and profile not in (1, 2):
