@@ -146,6 +146,8 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
     lookup_body, lookup_body_state = flow.block(*counters)
     walk, walk_state = flow.block(*counters, ("cur", b64))
     step, step_state = flow.block(*counters, ("cur", b64))
+    if not pointer_links:  # created here so index mode keeps its original block order
+        advance, advance_state = flow.block(*counters, ("node", b32))
     format_block, format_state = flow.block(("found", b64), ("steps", b64))
     zero = const(lookup_start, 0)
     lookup_start.br(lookup, *flow.args(lookup, {**start_state, "j": zero, "x": const(lookup_start, SEED), "found": zero, "steps": zero}))
@@ -168,26 +170,25 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
     )
     st = step
     ss = step_state
-    steps = binary(st, Operation.ADD_WRAP, ss["steps"], const(st, 1))
-    found = binary(st, Operation.ADD_WRAP, ss["found"], const(st, 1))
     if pointer_links:
         # Both fields come from one rebased node; no dynamic offset remains.
         node = st.op1(Operation.POINTER_REBASE, (arena, ss["cur"]), words, attributes=(NODE_BYTES,))
         stored, arena_mem = st.op(Operation.LOAD_BITS_LE, (node, ss["arena_mem"]), (b64, mem), attributes=(8, 8))
         link = st.op1(Operation.ADDRESS_OFFSET, (node,), words, attributes=(8,))
         successor, arena_mem = st.op(Operation.LOAD_BITS_LE, (link, arena_mem), (b64, mem), attributes=(8, 8))
+        steps = binary(st, Operation.ADD_WRAP, ss["steps"], const(st, 1))
         st.cbr(
             compare(st, IntCompare.EQ, stored, ss["x"]),
-            lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": found}),
+            lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": binary(st, Operation.ADD_WRAP, ss["found"], const(st, 1))}),
             walk, flow.args(walk, {**ss, "arena_mem": arena_mem, "steps": steps, "cur": successor}),
         )
     else:
-        advance, advance_state = flow.block(*counters, ("node", b32))
         node = byte_offset(st, binary(st, Operation.SUB_WRAP, ss["cur"], const(st, 1)), NODE_BYTES)
         stored, arena_mem = st.op(Operation.CHECKED_LOAD_BITS_LE, (arena, node, ss["arena_mem"]), (b64, mem), attributes=(8, 1))
+        steps = binary(st, Operation.ADD_WRAP, ss["steps"], const(st, 1))
         st.cbr(
             compare(st, IntCompare.EQ, stored, ss["x"]),
-            lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": found}),
+            lookup, flow.args(lookup, {**ss, "arena_mem": arena_mem, "steps": steps, "found": binary(st, Operation.ADD_WRAP, ss["found"], const(st, 1))}),
             advance, flow.args(advance, {**ss, "arena_mem": arena_mem, "steps": steps, "node": node}),
         )
         ad = advance
