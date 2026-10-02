@@ -33,58 +33,58 @@
   "results": {
     "clang-O2": {
       "file_bytes": 16352,
-      "peak_rss_kib_max": 1792,
+      "peak_rss_kib_max": 1796,
       "stripped_bytes": 14576,
-      "throughput_mib_s_median": 471.12,
+      "throughput_mib_s_median": 470.72,
       "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.702,
-      "wall_seconds_median": 0.067923,
-      "wall_seconds_min": 0.051457,
-      "wall_seconds_stdev": 0.009028
+      "time_ratio_vs_gcc_O2": 0.69,
+      "wall_seconds_median": 0.067981,
+      "wall_seconds_min": 0.054702,
+      "wall_seconds_stdev": 0.013307
     },
     "gcc-O2": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1792,
+      "peak_rss_kib_max": 1796,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 330.7,
-      "time_ratio_vs_best_baseline": 1.425,
+      "throughput_mib_s_median": 324.89,
+      "time_ratio_vs_best_baseline": 1.449,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.096763,
-      "wall_seconds_min": 0.078784,
-      "wall_seconds_stdev": 0.009968
+      "wall_seconds_median": 0.098495,
+      "wall_seconds_min": 0.079666,
+      "wall_seconds_stdev": 0.00928
     },
     "gcc-O2-static": {
       "file_bytes": 798120,
       "peak_rss_kib_max": 716,
       "stripped_bytes": 718872,
-      "throughput_mib_s_median": 303.75,
-      "time_ratio_vs_best_baseline": 1.551,
-      "time_ratio_vs_gcc_O2": 1.089,
-      "wall_seconds_median": 0.105351,
-      "wall_seconds_min": 0.082532,
-      "wall_seconds_stdev": 0.011483
+      "throughput_mib_s_median": 319.28,
+      "time_ratio_vs_best_baseline": 1.474,
+      "time_ratio_vs_gcc_O2": 1.018,
+      "wall_seconds_median": 0.100227,
+      "wall_seconds_min": 0.082885,
+      "wall_seconds_stdev": 0.007855
     },
     "gcc-O3": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1860,
+      "peak_rss_kib_max": 1792,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 318.82,
-      "time_ratio_vs_best_baseline": 1.478,
-      "time_ratio_vs_gcc_O2": 1.037,
-      "wall_seconds_median": 0.10037,
-      "wall_seconds_min": 0.087333,
-      "wall_seconds_stdev": 0.008224
+      "throughput_mib_s_median": 326.14,
+      "time_ratio_vs_best_baseline": 1.443,
+      "time_ratio_vs_gcc_O2": 0.996,
+      "wall_seconds_median": 0.098118,
+      "wall_seconds_min": 0.086868,
+      "wall_seconds_stdev": 0.004889
     },
     "xax": {
-      "file_bytes": 3424,
+      "file_bytes": 3808,
       "peak_rss_kib_max": 1184,
-      "stripped_bytes": 3424,
-      "throughput_mib_s_median": 343.11,
-      "time_ratio_vs_best_baseline": 1.373,
-      "time_ratio_vs_gcc_O2": 0.964,
-      "wall_seconds_median": 0.093264,
-      "wall_seconds_min": 0.073618,
-      "wall_seconds_stdev": 0.013512
+      "stripped_bytes": 3808,
+      "throughput_mib_s_median": 340.98,
+      "time_ratio_vs_best_baseline": 1.38,
+      "time_ratio_vs_gcc_O2": 0.953,
+      "wall_seconds_median": 0.093847,
+      "wall_seconds_min": 0.076829,
+      "wall_seconds_stdev": 0.01113
     }
   },
   "small_input_reference_check": {
@@ -93,8 +93,8 @@
   },
   "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
   "xax": {
-    "artifact_bytes": 3424,
-    "artifact_sha256": "48e0f6bd78c6aba6a1706c992e98f4a6ff45c48c0a31f2799416f83d2edd207d",
+    "artifact_bytes": 3808,
+    "artifact_sha256": "a7b57e339d6bafaa8e63637127e86d01412021c4de98ac868305c248b536d543",
     "codegen": "xax_x86_64_regalloc: per-block register allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, in-block bounds-check reuse, power-of-two strength reduction",
     "dt_needed": [
       "libz.so.1"
@@ -102,8 +102,8 @@
     "dynamic_loader": "/lib64/ld-linux-x86-64.so.2 (requested by x86_64-linux-elf-dynexec-v1)",
     "entry_function": "96706b22727b206613d9c2f74ece931d8c15a5160e3e71c4b59e0336dc49a923",
     "graph_blocks": 41,
-    "program_root": "237dde7aa820a3b30952d9426704a0ff2ee6b6917acd3a635dc1574b0feff5d9",
+    "program_root": "fa19592432106bbd7e961b73d2df292ec3cef9ed07aadf53c99dc07f34fb25b0",
     "runtime_dependencies": [],
-    "target": "fa3b92313bff155f70f3a6c6db68c01b0451d66b95383a04d2cd992e6f7ff3d4"
+    "target": "082282535cd2b75af6956c4dcc495de51cccd466ad43a2ee68b81ec9b6477afb"
   }
 }
