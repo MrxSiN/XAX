@@ -976,6 +976,7 @@ def x86_64_windows_pe_target() -> SemanticObject:
             Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE,
             Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, *range(44, 62),
             Operation.BIT_XOR, Operation.ROTATE_RIGHT, Operation.POINTER_ADDRESS,
+            Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW,
         ),
     )
 
@@ -989,7 +990,7 @@ def wasm32_wasi_target() -> SemanticObject:
     The container exports ``memory`` and ``_start`` (WASI command ABI); host
     functions are module imports named by their foreign declarations.
     """
-    return wasm32_general_target(WASM32_WASI_IDENTITY, (Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.POINTER_REBASE))
+    return wasm32_general_target(WASM32_WASI_IDENTITY, (Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW))
 
 
 def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:

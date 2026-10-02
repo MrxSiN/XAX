@@ -611,3 +611,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Kernel: type `link` (form 11), operations `link_make` (74) and `link_follow` (75), record views over tuple elements, and an optional `heap_view` link-target operand. Verifier rules: 21 (`oi41_links_evidence.json`).
 - Allocator (shared by Linux and PE): null-test elision, displacement folding, loop rotation with aligned targets, edge hints, and range-proven rebase elision.
 - MEASURED: `chains` record links 1.066× `gcc -O2`. Tests: `test_xax_links.py` (9 rejection vectors, null-only constants, a walk, and a null-follow trap). Full suite: 801+ passed, plus the 17 pre-existing failures.
+
+## Record links on wasm32 and PE (ADR-098) — 2026-10-02
+
+- wasm32: 8-byte link fields holding zero-extended `i32` addresses; `link_follow` as `i32.eqz`/`unreachable`. PE: operations 73–75 admitted and lowered by the converged allocator.
+- EXECUTED: `test_xax_wasm_links.py` (walk exits 42, null traps) and `test_xax_pe_links.py` (exit 42 under Wine 9.0). Full suite: 807 passed, plus the 17 pre-existing failures.

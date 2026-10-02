@@ -89,8 +89,8 @@ def _width(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> int | None
         return decode_bits_width(resolve(cid))
     if form == 7:
         return decode_float_width(resolve(cid))
-    if form == 2:
-        return 32
+    if form in (2, 11):
+        return 32  # pointers and link values are wasm32 addresses (links occupy 8 bytes in memory)
     if form in (8, 9, 10):
         return 32  # internal ABI pointer to C-layout bytes in linear memory
     return None
@@ -102,7 +102,7 @@ def _kind(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> str | None:
         return "i"
     if form == 7:
         return "f"
-    if form == 2:
+    if form in (2, 11):
         return "p"
     if form in (8, 9, 10):
         return "a"
@@ -115,7 +115,7 @@ def _valtype_for_cid(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> 
         return 0x7F if decode_bits_width(resolve(cid)) <= 32 else 0x7E
     if form == 7:
         return 0x7D if decode_float_width(resolve(cid)) == 32 else 0x7C
-    if form in (2, 8, 9, 10):
+    if form in (2, 8, 9, 10, 11):
         return 0x7F
     return None
 
@@ -443,7 +443,7 @@ def _compile_function(
                 code.append(base + offset); set_(result)
 
             elif node.operation == Operation.INT_COMPARE:
-                width = decode_bits_width(resolve(node.operand_types[0]))
+                width = 32 if _form(resolve, node.operand_types[0]) == 11 else decode_bits_width(resolve(node.operand_types[0]))
                 comparison = IntCompare(node.attributes[0])
                 signed_comparison = comparison in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE)
                 get_integer(node.operands[0], width, signed=signed_comparison)
@@ -640,6 +640,23 @@ def _compile_function(
                         if opcode is None:
                             fail("XAX.WASM.MEMORY_WIDTH", graph_object.cid.hex(), "WASM-MEMORY-WIDTH", [8, 16, 32, 64], width)
                         code.extend(bytes((opcode,)) + uleb(int(log2(alignment))) + b"\x00")
+
+            elif node.operation in (Operation.RAW_LOAD_BITS_LE, Operation.LOAD_BITS_LE) and _form(resolve, node.results[0]) == 11:
+                # A link field is 8 bytes holding a zero-extended wasm32 address (ADR-097).
+                get(node.operands[0])
+                code.extend(b"\x29" + uleb(int(log2(max(1, node.attributes[1])))) + b"\x00\xa7")  # i64.load; i32.wrap_i64
+                set_(result)
+
+            elif node.operation == Operation.STORE_BITS_LE and _form(resolve, node.operand_types[1]) == 11:
+                get(node.operands[0]); get(node.operands[1])
+                code.extend(b"\xad\x37" + uleb(int(log2(max(1, node.attributes[1])))) + b"\x00")  # i64.extend_i32_u; i64.store
+
+            elif node.operation == Operation.LINK_MAKE:
+                get(node.operands[0]); set_(result)
+
+            elif node.operation == Operation.LINK_FOLLOW:
+                get(node.operands[1]); code.extend(b"\x45\x04\x40\x00\x0b")  # i32.eqz; if unreachable end
+                get(node.operands[1]); set_(result)
 
             elif node.operation in (Operation.RAW_LOAD_BITS_LE, Operation.LOAD_BITS_LE):
                 size = node.attributes[0]
