@@ -621,3 +621,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - Borrowed record views link into themselves (callers may pass only such views). Windowed record loads ignore uninitialized padding.
 - EXECUTED: a callee walk (exit 42); a cross-target table cannot be passed; padded wasm32 stack records walk to 42; an unwritten field still rejects.
+
+## PE row: first C comparison (ADR-100) — 2026-10-02
+
+- `hosted.c` is now an exact twin of the fixture (exit 1339). MinGW-w64 no-CRT build; `CTwinTests` checks parity under Wine.
+- MEASURED-UNDER-WINE: file 2,048 B (XAX) against 2,560 B (C); code 757 B against 416 B (gcc folds `sum_to` and the dispatch table); wall time equal, start-up bound.
