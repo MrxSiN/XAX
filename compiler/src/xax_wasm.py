@@ -686,7 +686,7 @@ def _compile_function(
                     fail("XAX.WASM.MEMORY_WIDTH", graph_object.cid.hex(), "WASM-MEMORY-WIDTH", [8, 16, 32, 64], width)
                 code.extend(bytes((opcode,)) + uleb(int(log2(alignment))) + b"\x00")
 
-            elif node.operation in (Operation.STACK_END, *RESOURCE_EFFECT_OPERATIONS):
+            elif node.operation in (Operation.STACK_END, Operation.LINK_TARGET, *RESOURCE_EFFECT_OPERATIONS):
                 pass
 
             else:

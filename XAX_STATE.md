@@ -626,3 +626,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `hosted.c` is now an exact twin of the fixture (exit 1339). MinGW-w64 no-CRT build; `CTwinTests` checks parity under Wine.
 - MEASURED-UNDER-WINE: file 2,048 B (XAX) against 2,560 B (C); code 757 B against 416 B (gcc folds `sum_to` and the dispatch table); wall time equal, start-up bound.
+
+## Cross-call link targets (ADR-101) — 2026-10-02
+
+- `link_target` (op 76) lets a callee borrow a table and the arena its links point into. Every call site checks the pair. It lowers to no code.
+- x86-64 elides returned borrowed views when a function has more than one machine return. Executed: callee walks cross-storage links, exit 42. Three rejection vectors.
+- Linux target profiles now list op 76. That changes the `chains` and `filestat` program roots; the executables are byte-identical. Evidence JSONs are updated.

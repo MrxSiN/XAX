@@ -10,7 +10,7 @@ import argparse
 import json
 import math
 import struct
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from enum import IntEnum, IntFlag
 from math import gcd
 from pathlib import Path
@@ -930,7 +930,7 @@ X86_64_LINUX_ELF_EXEC_FORMAT = 5
 X86_64_LINUX_ELF_DYNAMIC_FORMAT = 6
 X86_64_LINUX_OPERATIONS = (
     1, 2, 3, *range(5, 25),
-    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 76),
+    38, 39, 40, 41, 42, 43, *range(44, 62), 62, 63, *range(66, 77),
 )
 
 
@@ -976,7 +976,7 @@ def x86_64_windows_pe_target() -> SemanticObject:
             Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE,
             Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, *range(44, 62),
             Operation.BIT_XOR, Operation.ROTATE_RIGHT, Operation.POINTER_ADDRESS,
-            Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW,
+            Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW, Operation.LINK_TARGET,
         ),
     )
 
@@ -990,7 +990,7 @@ def wasm32_wasi_target() -> SemanticObject:
     The container exports ``memory`` and ``_start`` (WASI command ABI); host
     functions are module imports named by their foreign declarations.
     """
-    return wasm32_general_target(WASM32_WASI_IDENTITY, (Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW))
+    return wasm32_general_target(WASM32_WASI_IDENTITY, (Operation.CALL_FOREIGN, Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW, Operation.LINK_TARGET))
 
 
 def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:
@@ -2258,6 +2258,7 @@ class Operation(IntEnum):
     POINTER_REBASE = 73
     LINK_MAKE = 74
     LINK_FOLLOW = 75
+    LINK_TARGET = 76
 
 
 # Same-width binary integer operations: two bits<N> operands, one bits<N> result.
@@ -2307,6 +2308,7 @@ MEMORY_OPERATIONS = frozenset(
         Operation.POINTER_REBASE,
         Operation.LINK_MAKE,
         Operation.LINK_FOLLOW,
+        Operation.LINK_TARGET,
     }
 )
 
@@ -3697,8 +3699,38 @@ def _heap_view_triples(types: Sequence[bytes], resolve: Callable[[bytes], Semant
     return tuple(triples)
 
 
+def borrowed_view_returns(parameters: Sequence[bytes], returns: Sequence[bytes], resolve: Callable[[bytes], SemanticObject]) -> dict[int, int]:
+    """Return-pointer index -> parameter-pointer index for borrowed views a call gives back (ADR-101).
+
+    Verified returns give borrowed views back in order per view type, whole
+    and unchanged, so their pointers equal the passed ones.  Lowering elides
+    them only when the signature would otherwise return more than one machine
+    value; single-result signatures keep their established ABI.
+    """
+    if sum(1 for cid in returns if not _is_proof_type(resolve(cid))) <= 1:
+        return {}
+    pending: dict[bytes, list[int]] = {}
+    for index, _extent, _initialized in _heap_view_triples(tuple(parameters), resolve):
+        pending.setdefault(parameters[index], []).append(index - 1)
+    elided: dict[int, int] = {}
+    for index, _extent, _initialized in _heap_view_triples(tuple(returns), resolve):
+        queue = pending.get(returns[index])
+        if queue:
+            elided[index - 1] = queue.pop(0)
+    return elided
+
+
+def _link_target_declarations(entry_block) -> dict[int, int]:
+    """``link_target`` declarations of a function: borrowed view parameter -> target view parameter (ADR-101)."""
+    declared: dict[int, int] = {}
+    for node in entry_block.nodes:
+        if node.operation == Operation.LINK_TARGET and len(node.operands) == 2 and all(ref.tag == 0 for ref in node.operands):
+            declared[node.operands[0].index] = node.operands[1].index
+    return declared
+
+
 def _entry_heap_view_facts(
-    parameters: tuple[bytes, ...], resolve: Callable[[bytes], SemanticObject]
+    parameters: tuple[bytes, ...], resolve: Callable[[bytes], SemanticObject], declared: dict[int, int] | None = None
 ) -> _BlockFacts:
     pointers: dict[int, _PointerFact] = {}
     owners: dict[int, _OwnerFact] = {}
@@ -3711,6 +3743,10 @@ def _entry_heap_view_facts(
         pointers[index - 1] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element, link_target=storage, link_record=element)
         owners[index] = _OwnerFact(storage)
         effects[index + 1] = _EffectFact(storage, ((0, extent),) if initialized else ())
+    # A declared view links into another borrowed view instead (checked at every call).
+    for view, target in (declared or {}).items():
+        if view in pointers and target in pointers and view != target:
+            pointers[view] = replace(pointers[view], link_target=pointers[target].storage, link_record=pointers[target].record)
     return _BlockFacts(pointers, owners, effects, frozenset(), frozenset())
 
 
@@ -3869,6 +3905,9 @@ def _verify_heap_view_call(
     # Borrowed views come back in order per view type; unreturned ones were
     # released by the callee, so their storage ends here.
     passed: dict[bytes, list[tuple[int, int]]] = {}
+    passed_facts: dict[tuple[int, int], _PointerFact] = {}
+    callee_graph = _decode_function_interface(node.entity, resolve)[0] if node.entity is not None and node.entity.kind == Kind.FUNCTION else None
+    declared = _declared_link_targets(callee_graph) if callee_graph is not None else {}
     for index, extent, initialized in inputs:
         pointer_ref, token_ref, effect_ref = node.operands[index - 1:index + 2]
         owner = owners.get(token_ref)
@@ -3878,8 +3917,13 @@ def _verify_heap_view_call(
             fail("XAX.MEMORY.OWNER", graph.cid.hex(), "HEAP-VIEW-CALL-OWNER", "live heap view", [token_ref.block, token_ref.index, token_ref.result])
         if not isinstance(pointer_fact, _PointerFact) or pointer_fact.storage != owner.storage or pointer_fact.offset or pointer_fact.window:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-VIEW-CALL-BASE", owner.storage, None if pointer_fact is None else [pointer_fact.storage, pointer_fact.offset])
-        if _record_has_link(pointer_fact.record, resolve) and pointer_fact.link_target != pointer_fact.storage:
+        if (index - 1) in declared:
+            target_fact = pointers.get(node.operands[declared[index - 1]])
+            if not isinstance(target_fact, _PointerFact) or pointer_fact.link_target != target_fact.storage or pointer_fact.link_record != target_fact.record:
+                fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-CALL-TARGET", "the declared target view", pointer_fact.link_target)
+        elif _record_has_link(pointer_fact.record, resolve) and pointer_fact.link_target != pointer_fact.storage:
             fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-CALL-TARGET", "a view whose links point into itself", pointer_fact.link_target)
+        passed_facts[owner.storage] = pointer_fact
         if effect is None or effect.storage != owner.storage:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-EFFECT-PROVENANCE", owner.storage, None if effect is None else effect.storage)
         if owner.storage in ended:
@@ -3895,11 +3939,16 @@ def _verify_heap_view_call(
         pending = passed.get(callee_returns[index])
         storage = pending.pop(0) if pending else (block_index, node_index, index)
         element, permission, alignment = _decode_pointer_type(resolve(callee_returns[index - 1]), resolve)
-        pointers[ValueRef.node_result(block_index, node_index, index - 1)] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element, link_target=storage, link_record=element)
+        # A returned borrowed view keeps the caller's link target (callees return only self-targeted new views).
+        before = passed_facts.get(storage)
+        target, target_record = (before.link_target, before.link_record) if before is not None else (storage, element)
+        pointers[ValueRef.node_result(block_index, node_index, index - 1)] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element, link_target=target, link_record=target_record)
         owners[ValueRef.node_result(block_index, node_index, index)] = _OwnerFact(storage)
         effects[ValueRef.node_result(block_index, node_index, index + 1)] = _EffectFact(storage, ((0, extent),) if initialized else ())
-    for remaining in passed.values():
-        ended.update(remaining)
+    released = {storage for remaining in passed.values() for storage in remaining}
+    for storage in released:
+        _check_link_dependents(graph, storage, pointers, ended | released)
+    ended.update(released)
 
 
 def _verify_heap_view_return(
@@ -3944,6 +3993,8 @@ def _verify_heap_view_return(
             fail("XAX.MEMORY.HEAP_VIEW", graph.cid.hex(), "HEAP-VIEW-RETURN-WHOLE", "live base pointer, view, and matching effect", [token_ref.index, pointer_ref.index, effect_ref.index])
         if initialized and not _range_initialized(effect.initialized, 0, extent):
             fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "HEAP-VIEW-RETURN-INITIALIZED", [0, extent], effect.initialized)
+        if owner.storage not in borrowed_storages and _record_has_link(pointer_fact.record, resolve) and pointer_fact.link_target != owner.storage:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-RETURN-TARGET", "a new view returned must link into itself", pointer_fact.link_target)
         pending = borrowed.get(value_types[index])
         expected = pending.pop(0) if pending else None
         if (expected is not None and owner.storage != expected) or (expected is None and owner.storage in borrowed_storages):
@@ -4289,6 +4340,17 @@ def _verify_memory_node(
             view.storage, element, permission, view.offset, extent, alignment, view.alias_class, view.window + view.extent - extent, view.record,
             view.link_target, view.link_record,
         )
+        return
+
+    if operation == Operation.LINK_TARGET:
+        # Proof only (ADR-101): borrowed view operand 0 links into borrowed view
+        # operand 1.  The entry facts were seeded from it; callers are checked.
+        contract(2, 0, 0)
+        view, target = pointer(node.operands[0]), pointer(node.operands[1])
+        if any(ref.tag != 0 or ref.block != block_index for ref in node.operands) or view.storage[0] != -2 or target.storage[0] != -2:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-TARGET-DECLARATION", "two borrowed view parameters of the entry block", [[ref.tag, ref.block, ref.index] for ref in node.operands])
+        if not _record_has_link(view.record, resolve) or _record_layout(target.record, resolve, graph.cid.hex()) is None or view.link_target != target.storage:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-TARGET-DECLARATION", "a link-bearing view and a record view", [view.record.hex() if view.record else None, target.record.hex() if target.record else None])
         return
 
     if operation == Operation.LINK_MAKE:
@@ -5352,6 +5414,48 @@ def _read_edge(cursor: Cursor) -> tuple[int, tuple[ValueRef, ...]]:
     return target, tuple(_read_value(cursor) for _ in range(cursor.uleb()))
 
 
+def _declared_link_targets(obj: SemanticObject) -> dict[int, int]:
+    """Entry-block ``link_target`` declarations, read structurally (no verification).
+
+    Call-site checks need a callee's declarations without parsing (and so
+    without recursing into) the callee; the callee's own verification checks
+    the declarations themselves.
+    """
+    cursor = Cursor(obj.body, obj.cid.hex())
+    block_count, entry = cursor.uleb(), cursor.uleb()
+    declared: dict[int, int] = {}
+    for block_index in range(block_count):
+        for _ in range(cursor.uleb()):
+            cursor.uleb()
+        for _ in range(cursor.uleb()):
+            operation = cursor.uleb()
+            if operation == Operation.CALL_GROUP_MEMBER:
+                cursor.uleb()
+            if operation in ENTITY_OPERATIONS:
+                cursor.uleb()
+            operands = tuple(_read_value(cursor) for _ in range(cursor.uleb()))
+            for _ in range(cursor.uleb()):
+                cursor.uleb()
+            if operation in ATTRIBUTE_OPERATIONS:
+                for _ in range(cursor.uleb()):
+                    cursor.uleb()
+            if block_index == entry and operation == Operation.LINK_TARGET and len(operands) == 2 and all(ref.tag == 0 for ref in operands):
+                declared[operands[0].index] = operands[1].index
+        if block_index >= entry:
+            break  # declarations live in the entry block; blocks are decoded in order
+        kind = TerminatorKind(cursor.uleb())
+        if kind == TerminatorKind.BRANCH:
+            _read_edge(cursor)
+        elif kind == TerminatorKind.CONDITIONAL_BRANCH:
+            _read_value(cursor), _read_edge(cursor), _read_edge(cursor)
+        elif kind == TerminatorKind.RETURN:
+            for _ in range(cursor.uleb()):
+                _read_value(cursor)
+        else:
+            cursor.byte_string()
+    return declared
+
+
 _PARSED_GRAPHS: dict[bytes, tuple[_ParsedGraph, tuple[bytes, ...]]] = {}
 _PARSED_GRAPHS_LIMIT = 4096
 
@@ -5518,7 +5622,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     for source_index, source in enumerate(blocks):
         for edge_index, (target, _arguments) in enumerate(source.terminator.edges):
             incoming_edges[target].append((source_index, edge_index))
-    entry_facts = _entry_heap_view_facts(blocks[entry].parameters, resolve)
+    entry_facts = _entry_heap_view_facts(blocks[entry].parameters, resolve, _link_target_declarations(blocks[entry]))
     exits: dict[int, dict[tuple[int, int], _BlockFacts]] = {}
     previous_seeds: dict[int, _BlockFacts] | None = None
     for _fact_pass in range(2 * len(blocks) + 2):
@@ -7351,6 +7455,8 @@ def _execute_graph(
                 results = (_RuntimePointer(pointer.storage, pointer.offset + node.attributes[0]),)
             elif node.operation == Operation.POINTER_CAST:
                 results = (operands[0],)
+            elif node.operation == Operation.LINK_TARGET:
+                results = ()  # proof only
             elif node.operation in (Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW):
                 # The reference executor has no address space; addresses are target facts.
                 fail("XAX.EXEC.UNSUPPORTED", "executor", f"EXEC-{node.operation.name.replace('_', '-')}-TARGET-ONLY", "compiled target", "reference executor")

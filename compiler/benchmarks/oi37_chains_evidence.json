@@ -144,7 +144,7 @@
     "entry_function": "a0b372c0739f9fa0da45e720d12e6c15b0cc96080b476c170258bfbff047c7e6",
     "graph_blocks": 20,
     "link_representation": "b64 arena index + 1 (0 = end); byte offset = (index - 1) * 16, checked against the view extent",
-    "program_root": "7c254f8629066c93584d2b2e35beaad8b95e7e9edec43110484706d55292cffd",
+    "program_root": "92fc4516c075e33602a8a1d0fe05b7ce18b85e42f4fd6f90640722228a556067",
     "runtime_dependencies": [],
     "target": "ee3e4e5e241816da226eaa7f8158f7a3deaeaaafaeed2b7fc6f85b8d03e8f733"
   },
@@ -163,7 +163,7 @@
     "entry_function": "6cdc6b7b7a3bf8187e44b44f257038ec2659945e8225680d2742dd06d2cd3c49",
     "graph_blocks": 19,
     "link_representation": "exposed node address (0 = end) reloaded by pointer_rebase(arena, address, 16): one range+alignment check, then unchecked field loads (ADR-092)",
-    "program_root": "d082ef087a4a50de1975c7d269364617a61d49b35793a7c2b4faf7d25aaf8d2b",
+    "program_root": "1dc611494058f20e1ead7472907e87dec7ad169110241ae1015800b67f183bf0",
     "runtime_dependencies": []
   }
 }

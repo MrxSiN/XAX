@@ -56,6 +56,7 @@ from xax_compiler import (
     ValueRef,
     _decode_constant,
     _decode_pointer_type,
+    borrowed_view_returns,
     _is_erased_proof_function,
     _is_proof_type,
     decode_foreign_function,
@@ -132,7 +133,7 @@ SUPPORTED_OPERATIONS = frozenset(
         Operation.UDIV, Operation.UREM, Operation.CONSTANT, Operation.INT_COMPARE, Operation.INT_TRUNCATE,
         Operation.ADDRESS_OFFSET, Operation.HEAP_VIEW, Operation.CALL_DIRECT, Operation.CALL_FOREIGN,
         Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.FUNCTION_ADDRESS,
-        Operation.STACK_ALLOC, Operation.STACK_END, Operation.CALL_INDIRECT, Operation.LINK_FOLLOW,
+        Operation.STACK_ALLOC, Operation.STACK_END, Operation.CALL_INDIRECT, Operation.LINK_FOLLOW, Operation.LINK_TARGET,
     }
 )
 _CALLS = frozenset({Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT})
@@ -190,7 +191,8 @@ def _pop(register: int) -> bytes:
 def _eligible(graph, parameter_types, return_types, resolve) -> dict[ValueRef, int] | None:
     """Machine widths for every value, or ``None`` when the graph needs the general path."""
     machine_parameters = [cid for cid in parameter_types if not _is_proof_type(resolve(cid))]
-    machine_returns = [cid for cid in return_types if not _is_proof_type(resolve(cid))]
+    elided = borrowed_view_returns(parameter_types, return_types, resolve)
+    machine_returns = [cid for index, cid in enumerate(return_types) if not _is_proof_type(resolve(cid)) and index not in elided]
     if len(machine_parameters) > 4 or len(machine_returns) > 1:
         return None
 
@@ -433,6 +435,19 @@ def compile_register_resident(
     def through_fold(value: ValueRef) -> ValueRef:
         return folded[value][0] if value in folded else value
 
+    # Borrowed views a call gives back keep the passed pointer (ADR-101): the
+    # result is a copy of the operand, which therefore stays live across the call.
+    call_aliases: dict[ValueRef, ValueRef] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation == Operation.CALL_DIRECT:
+                for result_index, parameter_index in borrowed_view_returns(node.operand_types, node.results, resolve).items():
+                    call_aliases[ValueRef.node_result(block_index, node_index, result_index)] = node.operands[parameter_index]
+    own_elided = borrowed_view_returns(parameter_types, return_types, resolve)
+
+    def with_aliases(value: ValueRef) -> tuple[ValueRef, ...]:
+        return (value, call_aliases[value]) if value in call_aliases else (value,)
+
     uses_by_block: dict[int, dict[ValueRef, tuple[int, ...]]] = {}
     homes: list[ValueRef] = []
     for block_index, block in enumerate(graph.blocks):
@@ -440,10 +455,14 @@ def compile_register_resident(
         position = len(block.nodes)
         for node_index, node in enumerate(block.nodes):
             use_position = position if fused.get(block_index) == node_index else node_index
-            for operand in map(through_fold, node.operands):
+            for operand in (item for value in map(through_fold, node.operands) for item in with_aliases(value)):
                 if operand in widths:
                     uses.setdefault(operand, []).append(use_position)
-        for value in (*block.terminator.values, *(value for _target, arguments in block.terminator.edges for value in arguments)):
+            if node.operation == Operation.CALL_DIRECT:  # aliased operands are read again after the call
+                for result, operand in call_aliases.items():
+                    if result.block == block_index and result.index == node_index and operand in widths:
+                        uses.setdefault(operand, []).append(node_index + 1)
+        for value in (item for value in (*block.terminator.values, *(value for _target, arguments in block.terminator.edges for value in arguments)) for item in with_aliases(value)):
             if value in widths:
                 uses.setdefault(value, []).append(position)
         uses_by_block[block_index] = {value: tuple(sorted(items)) for value, items in uses.items()}
@@ -976,8 +995,8 @@ def compile_register_resident(
                 retire(node_index, dividend, divisor)
                 define(result, RAX if operation == Operation.UDIV else RDX)
 
-            elif operation in (Operation.CONSTANT, Operation.STACK_ALLOC, Operation.STACK_END):
-                pass  # constants and stack pointers are rematerialized at each use; lifetimes erase
+            elif operation in (Operation.CONSTANT, Operation.STACK_ALLOC, Operation.STACK_END, Operation.LINK_TARGET):
+                pass  # constants and stack pointers are rematerialized at each use; lifetimes and link declarations erase
 
             elif operation == Operation.CALL_INDIRECT:
                 callee, *arguments = machine_operands
@@ -1145,9 +1164,18 @@ def compile_register_resident(
                 if assembler is not None:
                     assembler.call(node.entity.cid)
                 after_call(node_index, machine_operands)
-                results = [ValueRef.node_result(block_index, node_index, index) for index, cid in enumerate(node.results) if not _is_proof_type(resolve(cid))]
+                results = [
+                    ValueRef.node_result(block_index, node_index, index) for index, cid in enumerate(node.results)
+                    if not _is_proof_type(resolve(cid)) and ValueRef.node_result(block_index, node_index, index) not in call_aliases
+                ]
                 if results:
                     define(results[0], RAX)
+                for alias, operand in call_aliases.items():
+                    if alias.block == block_index and alias.index == node_index:
+                        source = ensure(operand, node_index + 1, {results[0]} if results else set())
+                        register = acquire(node_index + 1, {operand, *results})
+                        emit(_move_register(register, source, 64))
+                        define(alias, register)
 
             elif operation == Operation.CALL_FOREIGN:
                 declaration = decode_foreign_function(node.entity)
@@ -1212,7 +1240,7 @@ def compile_register_resident(
         terminator = block.terminator
         position = len(block.nodes)
         if terminator.kind == TerminatorKind.RETURN:
-            values = [value for value in terminator.values if value in widths]
+            values = [value for index, value in enumerate(terminator.values) if value in widths and index not in own_elided]
             if values:
                 kind, where = location(values[0])
                 if kind == "reg":

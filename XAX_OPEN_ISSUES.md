@@ -575,5 +575,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Status: CLOSED (2026-10-02, ADR-097).** Record views with typed `link` fields, `link_make`/`link_follow`, and per-storage link targets make reloads check-free (null test only, elided under a dominating null test). `chains` runs at 1.066× unchecked pointer `gcc -O2` (`oi37_chains_evidence.json`), within the 1.1× criterion. Forged-link vectors reject (`test_xax_links.py`). Growth: 1 type form, 2 operations, 1 optional `heap_view` operand, 21 rules, +227/−33 verifier lines. Verify time is 3.6 ms against 3.5 ms for index links (`oi41_links_evidence.json`).
 
+**Follow-up (ADR-101).** Cross-storage targets now cross direct calls through a per-function `link_target` declaration. Growth: 1 operation and 2 rules.
+
 **History.** Measured motivation: the `pointer_rebase` check costs 1.51× in C on `chains`, and XAX pointer links ran at 1.58× `gcc -O2`. The user first deferred this in favour of ADR-094/095, then asked for it.
 

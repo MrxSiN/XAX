@@ -13,6 +13,7 @@ from typing import Callable, Sequence
 from xax_artifact import ArtifactSemanticRange
 
 from xax_compiler import (
+    borrowed_view_returns,
     store_resolver,
     ATOMIC_OPERATIONS,
     AbiLayout,
@@ -814,7 +815,9 @@ def _function_closure(
         functions[function.cid] = function
         graph_object, parameters, returns = _decode_function_interface(function, resolve)
         machine_parameters = tuple(cid for cid in parameters if not _is_proof_type(resolve(cid)))
-        machine_returns = tuple(cid for cid in returns if not _is_proof_type(resolve(cid)))
+        # Borrowed views a call gives back are not returned in registers (ADR-101).
+        elided = borrowed_view_returns(parameters, returns, resolve)
+        machine_returns = tuple(cid for index, cid in enumerate(returns) if not _is_proof_type(resolve(cid)) and index not in elided)
         # A Win64 by-reference return consumes the first argument position.
         # The legacy raw profile remains register-only; the general profile
         # follows Win64 into 8-byte stack argument slots after the first four.
@@ -2042,6 +2045,8 @@ def _compile_function(
                 heap_base, offset = heap_base_register(result_ref)
                 assembler.emit(_lea(target.result_register, heap_base, offset))
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
+            elif node.operation == Operation.LINK_TARGET:
+                pass  # proof only (ADR-101)
             elif node.operation in (Operation.LINK_MAKE, Operation.LINK_FOLLOW):
                 fail("XAX.NATIVE.LINK", graph_object.cid.hex(), "NATIVE-LINK-REGISTER-PATH", "register-resident hosted function", "frame lowering")
             elif node.operation == Operation.POINTER_REBASE:
