@@ -349,7 +349,7 @@
         "1.37x behind clang -O2 on filestat; allocator not converged with PE (OI-38, ADR-091)",
         "sysv-x86_64-c is INTEGER-class only: no callbacks, floats, aggregates, variadics",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "pointer-chasing workload 1.64x gcc -O2 with pointer_rebase links (per-link check; OI-37, ADR-092)"
+        "pointer-chasing workload 1.58x gcc -O2: per-link pointer_rebase check (OI-41)"
       ]
     },
     {

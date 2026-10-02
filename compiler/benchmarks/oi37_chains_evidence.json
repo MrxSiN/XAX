@@ -1,10 +1,10 @@
 {
   "attribution": {
-    "checked_vs_unchecked_index": 1.474,
-    "checked_vs_unchecked_pointer": 1.523,
-    "index_vs_pointer": 1.413,
-    "xax_pointer_vs_checked_pointer_c": 1.074,
-    "xax_vs_checked_index_c": 0.958
+    "checked_vs_unchecked_index": 1.261,
+    "checked_vs_unchecked_pointer": 1.512,
+    "index_vs_pointer": 1.488,
+    "xax_pointer_vs_checked_pointer_c": 1.046,
+    "xax_vs_checked_index_c": 1.172
   },
   "attribution_note": "all ratios are medians from the same run: representation = C index/C pointer; checks = checked/unchecked C index or pointer; codegen = XAX/C with the same representation and checks",
   "diagnostics": {
@@ -12,31 +12,31 @@
       "file_bytes": 16104,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16104,
-      "time_ratio_vs_best_baseline": 1.368,
-      "time_ratio_vs_gcc_O2": 1.368,
-      "wall_seconds_median": 0.381095,
-      "wall_seconds_min": 0.301919,
-      "wall_seconds_stdev": 0.073928
+      "time_ratio_vs_best_baseline": 1.463,
+      "time_ratio_vs_gcc_O2": 1.463,
+      "wall_seconds_median": 0.378942,
+      "wall_seconds_min": 0.280042,
+      "wall_seconds_stdev": 0.095374
     },
     "gcc-O2-index-checked": {
       "file_bytes": 16136,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16136,
-      "time_ratio_vs_best_baseline": 2.016,
-      "time_ratio_vs_gcc_O2": 2.016,
-      "wall_seconds_median": 0.561544,
-      "wall_seconds_min": 0.430183,
-      "wall_seconds_stdev": 0.114103
+      "time_ratio_vs_best_baseline": 1.845,
+      "time_ratio_vs_gcc_O2": 1.845,
+      "wall_seconds_median": 0.477694,
+      "wall_seconds_min": 0.365011,
+      "wall_seconds_stdev": 0.114857
     },
     "gcc-O2-pointer-checked": {
       "file_bytes": 16128,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16128,
-      "time_ratio_vs_best_baseline": 1.474,
-      "time_ratio_vs_gcc_O2": 1.474,
-      "wall_seconds_median": 0.410603,
-      "wall_seconds_min": 0.337273,
-      "wall_seconds_stdev": 0.068897
+      "time_ratio_vs_best_baseline": 1.486,
+      "time_ratio_vs_gcc_O2": 1.486,
+      "wall_seconds_median": 0.384806,
+      "wall_seconds_min": 0.293358,
+      "wall_seconds_stdev": 0.1074
     }
   },
   "evidence_label": "MEASURED",
@@ -57,7 +57,7 @@
       "gcc-O2-static": "gcc -O2 -static",
       "gcc-O3": "gcc -O3"
     },
-    "reference_dynamic_bin_true_rss_kib": 1248,
+    "reference_dynamic_bin_true_rss_kib": 1252,
     "repetitions": 31,
     "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
     "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
@@ -69,67 +69,67 @@
       "file_bytes": 16160,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14544,
-      "time_ratio_vs_best_baseline": 1.232,
-      "time_ratio_vs_gcc_O2": 1.232,
-      "wall_seconds_median": 0.332177,
-      "wall_seconds_min": 0.22954,
-      "wall_seconds_stdev": 0.135359
+      "time_ratio_vs_best_baseline": 1.165,
+      "time_ratio_vs_gcc_O2": 1.116,
+      "wall_seconds_median": 0.284157,
+      "wall_seconds_min": 0.227359,
+      "wall_seconds_stdev": 0.064778
     },
     "gcc-O2": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.0,
+      "time_ratio_vs_best_baseline": 1.043,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.269659,
-      "wall_seconds_min": 0.222685,
-      "wall_seconds_stdev": 0.034943
+      "wall_seconds_median": 0.25458,
+      "wall_seconds_min": 0.206194,
+      "wall_seconds_stdev": 0.056815
     },
     "gcc-O2-static": {
       "file_bytes": 785304,
       "peak_rss_kib_max": 17420,
       "stripped_bytes": 706584,
-      "time_ratio_vs_best_baseline": 1.093,
-      "time_ratio_vs_gcc_O2": 1.093,
-      "wall_seconds_median": 0.294767,
-      "wall_seconds_min": 0.206911,
-      "wall_seconds_stdev": 0.093904
+      "time_ratio_vs_best_baseline": 1.054,
+      "time_ratio_vs_gcc_O2": 1.01,
+      "wall_seconds_median": 0.257227,
+      "wall_seconds_min": 0.201772,
+      "wall_seconds_stdev": 0.042868
     },
     "gcc-O3": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.008,
-      "time_ratio_vs_gcc_O2": 1.008,
-      "wall_seconds_median": 0.271774,
-      "wall_seconds_min": 0.228774,
-      "wall_seconds_stdev": 0.069328
+      "time_ratio_vs_best_baseline": 1.0,
+      "time_ratio_vs_gcc_O2": 0.958,
+      "wall_seconds_median": 0.243991,
+      "wall_seconds_min": 0.208773,
+      "wall_seconds_stdev": 0.027246
     },
     "xax": {
-      "file_bytes": 1352,
+      "file_bytes": 1350,
       "peak_rss_kib_max": 16896,
-      "stripped_bytes": 1352,
-      "time_ratio_vs_best_baseline": 1.996,
-      "time_ratio_vs_gcc_O2": 1.996,
-      "wall_seconds_median": 0.538181,
-      "wall_seconds_min": 0.439238,
-      "wall_seconds_stdev": 0.072367
+      "stripped_bytes": 1350,
+      "time_ratio_vs_best_baseline": 2.294,
+      "time_ratio_vs_gcc_O2": 2.198,
+      "wall_seconds_median": 0.559682,
+      "wall_seconds_min": 0.460712,
+      "wall_seconds_stdev": 0.116472
     },
     "xax-pointer": {
-      "file_bytes": 1336,
+      "file_bytes": 1334,
       "peak_rss_kib_max": 16896,
-      "stripped_bytes": 1336,
-      "time_ratio_vs_best_baseline": 1.636,
-      "time_ratio_vs_gcc_O2": 1.636,
-      "wall_seconds_median": 0.441147,
-      "wall_seconds_min": 0.34493,
-      "wall_seconds_stdev": 0.06813
+      "stripped_bytes": 1334,
+      "time_ratio_vs_best_baseline": 1.65,
+      "time_ratio_vs_gcc_O2": 1.581,
+      "wall_seconds_median": 0.402577,
+      "wall_seconds_min": 0.346481,
+      "wall_seconds_stdev": 0.09776
     }
   },
   "workload": "chained hash table: 1048576 xorshift64 inserts into 65536 buckets, then 1048576 successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
   "xax": {
-    "artifact_bytes": 1352,
-    "artifact_sha256": "e141256dc5eee76e8399cd068e40eedfe630f4c70df36144e51fd42c5d5ab614",
+    "artifact_bytes": 1350,
+    "artifact_sha256": "69000261759107056bf555b0ddd05606eafeff9732b696ba8e7850f1fcdda8a2",
     "entry_function": "a0b372c0739f9fa0da45e720d12e6c15b0cc96080b476c170258bfbff047c7e6",
     "graph_blocks": 20,
     "link_representation": "b64 arena index + 1 (0 = end); byte offset = (index - 1) * 16, checked against the view extent",
@@ -138,8 +138,8 @@
     "target": "7c634e1ca3d6c21940060bdc6f9a22c0261b7bc142f20ecdd3927676631d6da1"
   },
   "xax_pointer": {
-    "artifact_bytes": 1336,
-    "artifact_sha256": "9e88221fdd8ea2fcd414367634689e8f2f531bb3904ed058579faf909406c0c6",
+    "artifact_bytes": 1334,
+    "artifact_sha256": "80b8d10bc8d4e7ee84e697c0493164f3307523320c5ebfce1e29d1d0525eb4fd",
     "entry_function": "6cdc6b7b7a3bf8187e44b44f257038ec2659945e8225680d2742dd06d2cd3c49",
     "graph_blocks": 19,
     "link_representation": "exposed node address (0 = end) reloaded by pointer_rebase(arena, address, 16): one range+alignment check, then unchecked field loads (ADR-092)",
