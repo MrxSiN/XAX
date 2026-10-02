@@ -45,7 +45,6 @@ from xax_compiler import (
 from xax_x86_64 import (
     RAX,
     RDX,
-    RSP,
     _SYSCALL_ARGUMENT_REGISTERS,
     _SYSV_ARGUMENT_REGISTERS,
     _Assembler,

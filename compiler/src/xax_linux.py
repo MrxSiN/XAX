@@ -44,7 +44,6 @@ from xax_compiler import (
     _decode_function_interface,
     _is_proof_type,
     bits_type,
-    decode_bits_width,
     decode_native_target,
     effect_type,
     fail,
