@@ -1,5 +1,14 @@
 {
   "apks": {
+    "android_counter_activity.apk": {
+      "class_loader_context": null,
+      "classes": {
+        "Lxax/counter/CounterActivity;": "Verified",
+        "Lxax/counter/CounterClickListener;": "Verified"
+      },
+      "passed": true,
+      "sha256": "7373e254165a69140e5a6268036cc5f722bbfae6a7f8982e5309a4b6c00110e7"
+    },
     "android_libxposed_argument_fixture.apk": {
       "class_loader_context": "libxposed-api-102.0.0",
       "classes": {
@@ -219,6 +228,6 @@
     "rejected": true
   },
   "note": "ART dex2oat verify-only compilation and oatdump class status; no class is initialized or run",
-  "passed": 20,
-  "total": 20
+  "passed": 21,
+  "total": 21
 }

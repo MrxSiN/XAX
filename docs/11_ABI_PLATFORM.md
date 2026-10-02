@@ -602,6 +602,10 @@ is not part of XAX native code generation.
 
 C code on Android may call a pure XAX function whose address has type `android_c_entry_api().c_entry` (`ptr<opaque_identity<"code-entry:android-aapcs64-c">>`). On AArch64 the address is the function itself. XAX code uses only x0–x7 and x9, never x18 or x19–x28, and keeps SP 16-byte aligned, so no adapter is needed. Parameters must be 64-bit integers or pointers, because AAPCS64 leaves the upper bits of narrower arguments unspecified. `android_c_entry_api().pthread_create` takes such an entry as its start routine. Effectful callbacks are OI-42.
 
+### 16.4b Stateful Activity (ADR-111)
+
+`xax_android_counter.counter_activity_semantics` describes an Activity whose state lives in one private file. The generated DEX opens `<files dir>/<state file>` read-write/create, detaches the descriptor, and passes it as a `jint` to a private native method (`xaxOnCreate(Bundle, int)` or `xaxOnClick(View, int)`, both returning `long`). The XAX function owns the descriptor from then on and closes it before returning. Managed bodies are emitted through `DexAssembledMethod`.
+
 ### 16.5 libxposed API-102 remote-capability ABI surface
 
 Remote framework resources are target/platform calls, not XAX kernel operations.  The

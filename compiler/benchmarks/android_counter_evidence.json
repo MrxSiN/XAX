@@ -1,0 +1,45 @@
+{
+  "apk_sha256": "7373e254165a69140e5a6268036cc5f722bbfae6a7f8982e5309a4b6c00110e7",
+  "art_verify": {
+    "classes": {
+      "Lxax/counter/CounterActivity;": "Verified",
+      "Lxax/counter/CounterClickListener;": "Verified"
+    },
+    "label": "EXECUTED",
+    "passed": true
+  },
+  "decision": "ADR-111",
+  "device": {
+    "label": "UNEXECUTED",
+    "oracle": "integration/android/validate_counter_apk.sh"
+  },
+  "format": "xax-android-counter-evidence-v1",
+  "native_under_bionic": {
+    "expected": "XAX_COUNTER seen=0,1,2,3,3,4 file_bytes=8 stored=4 fds_closed=1",
+    "label": "EXECUTED",
+    "observed": "XAX_COUNTER seen=0,1,2,3,3,4 file_bytes=8 stored=4 fds_closed=1",
+    "passed": true
+  },
+  "official_tools": {
+    "checks": {
+      "aapt2_badging": true,
+      "apksigner": true,
+      "classes.dex:d8_redex": true,
+      "classes.dex:dexdump_checksum": true,
+      "classes.dex:dexdump_code": true,
+      "classes2.dex:d8_redex": true,
+      "classes2.dex:dexdump_checksum": true,
+      "classes2.dex:dexdump_code": true,
+      "lib/arm64-v8a/libxaxcounter.so:llvm_readelf": true,
+      "zipalign_16k": true
+    },
+    "label": "STRUCTURAL",
+    "passed": true
+  },
+  "sizes": {
+    "activity_dex": 1656,
+    "library": 2496,
+    "listener_dex": 1280,
+    "signed": 20561
+  }
+}

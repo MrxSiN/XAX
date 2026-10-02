@@ -146,9 +146,14 @@
           "EXECUTED",
           "compiler/benchmarks/android_bionic_qemu_evidence.json",
           "compiler/tests/test_xax_android_c_entry.py"
+        ],
+        "practical_application": [
+          "PROTOTYPE",
+          "compiler/benchmarks/android_counter_evidence.json"
         ]
       },
       "blockers": [
+        "stateful app (ADR-111) is ART-verified and its native persistence executes under bionic, but it has not run on a device, so R3 is not met",
         "minimal Activity executed on a device; libxposed modules executed on ART with a stand-in framework (ADR-109), not yet under LSPosed in a target process; packed container not yet on a device",
         "native contracts executed under Android's linker and bionic via qemu-user (ADR-106), not on a device kernel",
         "start-up latency and memory against an NDK/Kotlin twin need a device; sizes are measured (packed APK 0.79x the Java+NDK twin)",

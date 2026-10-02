@@ -388,6 +388,107 @@ class DexLibxposedHotReloadSpec:
             raise ValueError("bounded libxposed hot reload requires reject-reload missing-state policy")
 
 
+# Generic extension point for managed bodies (ADR-111).  A shape that needs new
+# managed code supplies instructions with symbolic references; the emitter
+# derives every pool entry from them, so no emitter change is needed per shape.
+_ASSEMBLED_OPCODES = {
+    "return-void": 0x0E, "move-result": 0x0A, "move-result-wide": 0x0B, "move-result-object": 0x0C,
+    "const": 0x14, "const-string": 0x1A, "check-cast": 0x1F, "new-instance": 0x22,
+    "invoke-virtual": 0x6E, "invoke-super": 0x6F, "invoke-direct": 0x70, "invoke-static": 0x71, "invoke-interface": 0x72,
+}
+
+
+@dataclass(frozen=True, order=True)
+class DexMethodRef:
+    class_descriptor: str
+    name: str
+    proto: DexProto
+
+
+@dataclass(frozen=True, order=True)
+class DexInstruction:
+    """One instruction: ``registers`` in operand order; ``reference`` is a string, a type, or a ``DexMethodRef``."""
+
+    mnemonic: str
+    registers: tuple[int, ...] = ()
+    reference: str | DexMethodRef | None = None
+    literal: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.mnemonic not in _ASSEMBLED_OPCODES:
+            raise ValueError(f"unsupported assembled instruction {self.mnemonic}")
+        if self.mnemonic.startswith("invoke-"):
+            if not isinstance(self.reference, DexMethodRef) or not 0 <= len(self.registers) <= 5 or any(not 0 <= item <= 15 for item in self.registers):
+                raise ValueError("invoke needs a method reference and at most five registers v0..v15")
+        elif self.mnemonic in ("const-string", "check-cast", "new-instance"):
+            if not isinstance(self.reference, str) or len(self.registers) != 1:
+                raise ValueError(f"{self.mnemonic} needs one register and one reference")
+            if self.mnemonic != "const-string":
+                _validate_type_descriptor(self.reference, allow_void=False)
+        elif self.mnemonic == "const":
+            if len(self.registers) != 1 or self.literal is None or not -(1 << 31) <= self.literal < (1 << 32):
+                raise ValueError("const needs one register and a 32-bit literal")
+        elif self.mnemonic != "return-void" and len(self.registers) != 1:
+            raise ValueError(f"{self.mnemonic} needs one register")
+        if any(not 0 <= item <= 0xFF for item in self.registers):
+            raise ValueError("assembled instructions address v0..v255")
+
+
+@dataclass(frozen=True, order=True)
+class DexAssembledMethod:
+    """A method body given as instructions; parameters occupy the last registers, as DEX requires."""
+
+    name: str
+    proto: DexProto
+    registers_size: int
+    instructions: tuple[DexInstruction, ...]
+    access_flags: int = ACC_PUBLIC
+
+    def __post_init__(self) -> None:
+        _validate_member_name(self.name)
+        if self.access_flags & ACC_NATIVE or not self.instructions:
+            raise ValueError("assembled method needs a body")
+        if self.registers_size < self.ins_size or self.registers_size > 0xFFFF:
+            raise ValueError("assembled method registers must hold its parameters")
+
+    @property
+    def ins_size(self) -> int:
+        return int(not self.access_flags & ACC_STATIC) + sum(2 if item in ("J", "D") else 1 for item in self.proto.parameters)
+
+    @property
+    def outs_size(self) -> int:
+        return max((len(item.registers) for item in self.instructions if item.mnemonic.startswith("invoke-")), default=0)
+
+    @property
+    def references(self) -> tuple:
+        return tuple(item.reference for item in self.instructions if item.reference is not None)
+
+
+def _assemble(method: DexAssembledMethod, string_idx, type_idx, method_idx) -> tuple[int, ...]:
+    units: list[int] = []
+    for item in method.instructions:
+        opcode = _ASSEMBLED_OPCODES[item.mnemonic]
+        if item.mnemonic.startswith("invoke-"):
+            reference = item.reference
+            index = method_idx[(reference.class_descriptor, reference.name, reference.proto)]
+            registers = (*item.registers, 0, 0, 0, 0, 0)
+            units += [(len(item.registers) << 12) | (registers[4] << 8) | opcode, index,
+                      registers[0] | (registers[1] << 4) | (registers[2] << 8) | (registers[3] << 12)]
+        elif item.mnemonic in ("const-string", "check-cast", "new-instance"):
+            index = string_idx[item.reference] if item.mnemonic == "const-string" else type_idx[item.reference]
+            units += [(item.registers[0] << 8) | opcode, index]
+        elif item.mnemonic == "const":
+            value = item.literal & 0xFFFFFFFF
+            units += [(item.registers[0] << 8) | opcode, value & 0xFFFF, value >> 16]
+        elif item.mnemonic == "return-void":
+            units.append(opcode)
+        else:
+            units.append((item.registers[0] << 8) | opcode)
+    if any(unit > 0xFFFF for unit in units):
+        raise ValueError("assembled method index exceeds 16-bit DEX capacity")
+    return tuple(units)
+
+
 @dataclass(frozen=True)
 class DexBridgeSpec:
     class_descriptor: str
@@ -409,9 +510,16 @@ class DexBridgeSpec:
     echo_string_methods: tuple[DexEchoStringMethod, ...] = ()
     libxposed_hot_reload: DexLibxposedHotReloadSpec | None = None
     libxposed_remote_files: DexLibxposedRemoteFilesSpec | None = None
+    assembled_methods: tuple[DexAssembledMethod, ...] = ()
 
     def __post_init__(self) -> None:
         _validate_class_descriptor(self.class_descriptor)
+        assembled = tuple(sorted(self.assembled_methods, key=lambda item: (item.name, item.proto)))
+        if len({(item.name, item.proto) for item in assembled}) != len(assembled):
+            raise ValueError("duplicate assembled method")
+        if {(item.name, item.proto) for item in assembled} & {(item.name, item.proto) for item in self.native_methods}:
+            raise ValueError("assembled method duplicates a native method")
+        object.__setattr__(self, "assembled_methods", assembled)
         _validate_class_descriptor(self.superclass_descriptor)
         if self.class_descriptor == self.superclass_descriptor:
             raise ValueError("bridge class cannot extend itself")
@@ -959,6 +1067,8 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         *(item.proto for item in spec.null_return_overrides),
         *(item.proto for item in spec.constant_string_methods),
         *(item.proto for item in spec.echo_string_methods),
+        *(item.proto for item in spec.assembled_methods),
+        *(reference.proto for item in spec.assembled_methods for reference in item.references if isinstance(reference, DexMethodRef)),
     }
     if has_library_load:
         all_protos.add(load_library_proto)
@@ -1015,6 +1125,9 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         *(item.name for item in spec.constant_string_methods),
         *(item.value for item in spec.constant_string_methods),
         *(item.name for item in spec.echo_string_methods),
+        *(item.name for item in spec.assembled_methods),
+        *(reference.name if isinstance(reference, DexMethodRef) else reference for item in spec.assembled_methods for reference in item.references),
+        *(reference.class_descriptor for item in spec.assembled_methods for reference in item.references if isinstance(reference, DexMethodRef)),
         *(proto.return_type for proto in all_protos),
         *(param for proto in all_protos for param in proto.parameters),
         *(_shorty(proto) for proto in all_protos),
@@ -1121,6 +1234,12 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         *(proto.return_type for proto in all_protos),
         *(param for proto in all_protos for param in proto.parameters),
     }
+    for item in spec.assembled_methods:
+        for reference, instruction in zip(item.references, (entry for entry in item.instructions if entry.reference is not None)):
+            if isinstance(reference, DexMethodRef):
+                type_descriptors.add(reference.class_descriptor)
+            elif instruction.mnemonic != "const-string":
+                type_descriptors.add(reference)
     if has_library_load:
         type_descriptors.add("Ljava/lang/System;")
     if activity_ui is not None:
@@ -1196,6 +1315,8 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         *((spec.class_descriptor, item.name, item.proto) for item in spec.constant_string_methods),
         *((spec.class_descriptor, item.name, item.proto) for item in spec.echo_string_methods),
         *((spec.superclass_descriptor, item.name, item.proto) for item in spec.forwarding_overrides if item.call_super),
+        *((spec.class_descriptor, item.name, item.proto) for item in spec.assembled_methods),
+        *((reference.class_descriptor, reference.name, reference.proto) for item in spec.assembled_methods for reference in item.references if isinstance(reference, DexMethodRef)),
     }
     if has_library_load:
         method_keys.add(("Ljava/lang/System;", "loadLibrary", load_library_proto))
@@ -2039,6 +2160,15 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         data.extend(struct.pack("<HHHHII", 2, 1, 1, 0, 0, len(units)))
         data.extend(struct.pack(f"<{len(units)}H", *units))
 
+    for item in spec.assembled_methods:
+        _align(data)
+        code_off = data_off + len(data)
+        code_offsets[item.name] = code_off
+        code_item_offsets.append(code_off)
+        units = _assemble(item, string_idx, type_idx, method_idx)
+        data.extend(struct.pack("<HHHHII", item.registers_size, item.ins_size, item.outs_size, 0, 0, len(units)))
+        data.extend(struct.pack(f"<{len(units)}H", *units))
+
     class_data_off = data_off + len(data)
     direct_methods: list[tuple[str, DexProto, int, int]] = [
         ("<init>", constructor_proto, ACC_PUBLIC | ACC_CONSTRUCTOR, code_offsets["<init>"])
@@ -2057,6 +2187,9 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         virtual_methods.append((item.name, item.proto, item.access_flags, code_offsets[item.name]))
     for item in spec.echo_string_methods:
         virtual_methods.append((item.name, item.proto, item.access_flags, code_offsets[item.name]))
+    for item in spec.assembled_methods:
+        direct = item.access_flags & (ACC_PRIVATE | ACC_STATIC | ACC_CONSTRUCTOR)
+        (direct_methods if direct else virtual_methods).append((item.name, item.proto, item.access_flags, code_offsets[item.name]))
     if module_services is not None:
         for service in module_services.services:
             generated_name, _, proto = module_service_methods[service]
