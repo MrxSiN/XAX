@@ -103,7 +103,8 @@
         "platform_apis": [
           "EXECUTED",
           "compiler/integration/android/activity_after_click.png",
-          "compiler/benchmarks/android_bionic_qemu_evidence.json"
+          "compiler/benchmarks/android_bionic_qemu_evidence.json",
+          "compiler/benchmarks/android_art_execute_evidence.json"
         ],
         "ffi": [
           "EXECUTED",
@@ -125,7 +126,8 @@
         ],
         "real_execution": [
           "EXECUTED",
-          "compiler/integration/android/activity_after_click.png"
+          "compiler/integration/android/activity_after_click.png",
+          "compiler/benchmarks/android_art_execute_evidence.json"
         ],
         "ai_tokens": [
           "PROTOTYPE",
@@ -146,7 +148,7 @@
         ]
       },
       "blockers": [
-        "only the minimal Activity executed on a device; every APK (62 classes, including libxposed modules) passes ART's verifier (ADR-108), but libxposed hooks and the packed container are not yet executed",
+        "minimal Activity executed on a device; libxposed modules executed on ART with a stand-in framework (ADR-109), not yet under LSPosed in a target process; packed container not yet on a device",
         "native contracts executed under Android's linker and bionic via qemu-user (ADR-106), not on a device kernel",
         "start-up latency and memory against an NDK/Kotlin twin need a device; sizes are measured (packed APK 0.79x the Java+NDK twin)",
         "one DEX per class costs 1.17x the twin's DEX bytes (an edit-locality choice)"
