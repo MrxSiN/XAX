@@ -1,8 +1,8 @@
 {
   "attribution": {
-    "checked_vs_unchecked_index": 1.342,
-    "index_vs_pointer": 1.444,
-    "xax_vs_checked_index_c": 1.801
+    "checked_vs_unchecked_index": 1.217,
+    "index_vs_pointer": 1.473,
+    "xax_vs_checked_index_c": 1.063
   },
   "attribution_note": "all ratios are medians from the same run: representation = C index/C pointer; checks = checked/unchecked C index; codegen = XAX/checked C index (same representation and checks)",
   "diagnostics": {
@@ -10,21 +10,21 @@
       "file_bytes": 16104,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16104,
-      "time_ratio_vs_best_baseline": 1.417,
-      "time_ratio_vs_gcc_O2": 1.417,
-      "wall_seconds_median": 0.406182,
-      "wall_seconds_min": 0.285435,
-      "wall_seconds_stdev": 0.110957
+      "time_ratio_vs_best_baseline": 1.391,
+      "time_ratio_vs_gcc_O2": 1.391,
+      "wall_seconds_median": 0.356315,
+      "wall_seconds_min": 0.272151,
+      "wall_seconds_stdev": 0.055379
     },
     "gcc-O2-index-checked": {
       "file_bytes": 16136,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 16136,
-      "time_ratio_vs_best_baseline": 1.901,
-      "time_ratio_vs_gcc_O2": 1.901,
-      "wall_seconds_median": 0.544957,
-      "wall_seconds_min": 0.415223,
-      "wall_seconds_stdev": 0.123861
+      "time_ratio_vs_best_baseline": 1.692,
+      "time_ratio_vs_gcc_O2": 1.692,
+      "wall_seconds_median": 0.433642,
+      "wall_seconds_min": 0.348033,
+      "wall_seconds_stdev": 0.048357
     }
   },
   "evidence_label": "MEASURED",
@@ -57,57 +57,57 @@
       "file_bytes": 16160,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14544,
-      "time_ratio_vs_best_baseline": 1.31,
-      "time_ratio_vs_gcc_O2": 1.247,
-      "wall_seconds_median": 0.35087,
-      "wall_seconds_min": 0.25069,
-      "wall_seconds_stdev": 0.205997
+      "time_ratio_vs_best_baseline": 1.274,
+      "time_ratio_vs_gcc_O2": 1.227,
+      "wall_seconds_median": 0.296689,
+      "wall_seconds_min": 0.215329,
+      "wall_seconds_stdev": 0.084831
     },
     "gcc-O2": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.05,
+      "time_ratio_vs_best_baseline": 1.039,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.281275,
-      "wall_seconds_min": 0.206744,
-      "wall_seconds_stdev": 0.060454
+      "wall_seconds_median": 0.241834,
+      "wall_seconds_min": 0.203865,
+      "wall_seconds_stdev": 0.028781
     },
     "gcc-O2-static": {
       "file_bytes": 785304,
       "peak_rss_kib_max": 17420,
       "stripped_bytes": 706584,
-      "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.952,
-      "wall_seconds_median": 0.267769,
-      "wall_seconds_min": 0.211114,
-      "wall_seconds_stdev": 0.045874
+      "time_ratio_vs_best_baseline": 1.08,
+      "time_ratio_vs_gcc_O2": 1.039,
+      "wall_seconds_median": 0.251338,
+      "wall_seconds_min": 0.207116,
+      "wall_seconds_stdev": 0.039447
     },
     "gcc-O3": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18272,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.039,
-      "time_ratio_vs_gcc_O2": 0.989,
-      "wall_seconds_median": 0.278117,
-      "wall_seconds_min": 0.222711,
-      "wall_seconds_stdev": 0.079622
+      "time_ratio_vs_best_baseline": 1.0,
+      "time_ratio_vs_gcc_O2": 0.963,
+      "wall_seconds_median": 0.232827,
+      "wall_seconds_min": 0.198443,
+      "wall_seconds_stdev": 0.036393
     },
     "xax": {
-      "file_bytes": 1598,
+      "file_bytes": 1352,
       "peak_rss_kib_max": 16896,
-      "stripped_bytes": 1598,
-      "time_ratio_vs_best_baseline": 3.665,
-      "time_ratio_vs_gcc_O2": 3.489,
-      "wall_seconds_median": 0.981478,
-      "wall_seconds_min": 0.827425,
-      "wall_seconds_stdev": 0.069111
+      "stripped_bytes": 1352,
+      "time_ratio_vs_best_baseline": 1.98,
+      "time_ratio_vs_gcc_O2": 1.906,
+      "wall_seconds_median": 0.460946,
+      "wall_seconds_min": 0.3987,
+      "wall_seconds_stdev": 0.0579
     }
   },
   "workload": "chained hash table: 1048576 xorshift64 inserts into 65536 buckets, then 1048576 successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
   "xax": {
-    "artifact_bytes": 1598,
-    "artifact_sha256": "85cdec68ee6a1864fa368ef73d46df209f7f08c696371302f02b96a8dc68a5e2",
+    "artifact_bytes": 1352,
+    "artifact_sha256": "e141256dc5eee76e8399cd068e40eedfe630f4c70df36144e51fd42c5d5ab614",
     "entry_function": "a0b372c0739f9fa0da45e720d12e6c15b0cc96080b476c170258bfbff047c7e6",
     "graph_blocks": 20,
     "link_representation": "b64 arena index + 1 (0 = end); byte offset = (index - 1) * 16, checked against the view extent",

@@ -23,7 +23,7 @@
       "gcc-O2-static": "gcc -O2 -static ... -lz",
       "gcc-O3": "gcc -O3 ... -lz"
     },
-    "reference_dynamic_bin_true_rss_kib": 1248,
+    "reference_dynamic_bin_true_rss_kib": 1252,
     "repetitions": 31,
     "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
     "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
@@ -33,58 +33,58 @@
   "results": {
     "clang-O2": {
       "file_bytes": 16352,
-      "peak_rss_kib_max": 1860,
+      "peak_rss_kib_max": 1792,
       "stripped_bytes": 14576,
-      "throughput_mib_s_median": 460.83,
+      "throughput_mib_s_median": 497.37,
       "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.644,
-      "wall_seconds_median": 0.06944,
-      "wall_seconds_min": 0.054421,
-      "wall_seconds_stdev": 0.008977
+      "time_ratio_vs_gcc_O2": 0.635,
+      "wall_seconds_median": 0.064339,
+      "wall_seconds_min": 0.050597,
+      "wall_seconds_stdev": 0.007545
     },
     "gcc-O2": {
       "file_bytes": 16256,
       "peak_rss_kib_max": 1792,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 296.63,
-      "time_ratio_vs_best_baseline": 1.554,
+      "throughput_mib_s_median": 315.74,
+      "time_ratio_vs_best_baseline": 1.575,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.107877,
-      "wall_seconds_min": 0.086655,
-      "wall_seconds_stdev": 0.013601
+      "wall_seconds_median": 0.10135,
+      "wall_seconds_min": 0.078366,
+      "wall_seconds_stdev": 0.011927
     },
     "gcc-O2-static": {
       "file_bytes": 798120,
       "peak_rss_kib_max": 716,
       "stripped_bytes": 718872,
-      "throughput_mib_s_median": 307.83,
-      "time_ratio_vs_best_baseline": 1.497,
-      "time_ratio_vs_gcc_O2": 0.964,
-      "wall_seconds_median": 0.103952,
-      "wall_seconds_min": 0.078807,
-      "wall_seconds_stdev": 0.013291
+      "throughput_mib_s_median": 328.52,
+      "time_ratio_vs_best_baseline": 1.514,
+      "time_ratio_vs_gcc_O2": 0.961,
+      "wall_seconds_median": 0.097406,
+      "wall_seconds_min": 0.089789,
+      "wall_seconds_stdev": 0.006068
     },
     "gcc-O3": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1800,
+      "peak_rss_kib_max": 1792,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 318.8,
-      "time_ratio_vs_best_baseline": 1.445,
-      "time_ratio_vs_gcc_O2": 0.93,
-      "wall_seconds_median": 0.100375,
-      "wall_seconds_min": 0.087709,
-      "wall_seconds_stdev": 0.006948
+      "throughput_mib_s_median": 318.44,
+      "time_ratio_vs_best_baseline": 1.562,
+      "time_ratio_vs_gcc_O2": 0.992,
+      "wall_seconds_median": 0.10049,
+      "wall_seconds_min": 0.094569,
+      "wall_seconds_stdev": 0.004548
     },
     "xax": {
-      "file_bytes": 3560,
+      "file_bytes": 3400,
       "peak_rss_kib_max": 1184,
-      "stripped_bytes": 3560,
-      "throughput_mib_s_median": 282.31,
-      "time_ratio_vs_best_baseline": 1.632,
-      "time_ratio_vs_gcc_O2": 1.051,
-      "wall_seconds_median": 0.113349,
-      "wall_seconds_min": 0.089762,
-      "wall_seconds_stdev": 0.024183
+      "stripped_bytes": 3400,
+      "throughput_mib_s_median": 337.63,
+      "time_ratio_vs_best_baseline": 1.473,
+      "time_ratio_vs_gcc_O2": 0.935,
+      "wall_seconds_median": 0.094779,
+      "wall_seconds_min": 0.07497,
+      "wall_seconds_stdev": 0.008777
     }
   },
   "small_input_reference_check": {
@@ -93,8 +93,8 @@
   },
   "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
   "xax": {
-    "artifact_bytes": 3560,
-    "artifact_sha256": "67a1a7f536eb715d6eb887182f469e36042b4ded0ce9ef2a4cf26526a8beb40e",
+    "artifact_bytes": 3400,
+    "artifact_sha256": "c2098a47ca8e2422d6c659384d28614b7fa54ce08ec6813491ddf4c76a6e408c",
     "codegen": "xax_x86_64_regalloc: per-block register allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, in-block bounds-check reuse, power-of-two strength reduction",
     "dt_needed": [
       "libz.so.1"

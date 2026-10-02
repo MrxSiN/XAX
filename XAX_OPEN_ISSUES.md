@@ -539,6 +539,8 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Additional evidence (ADR-090).** On the pointer-chasing `chains` workload, XAX code generation is 1.73–1.80× slower than equivalent checked-index C; the walk loop spans three blocks, so per-block allocation round-trips loop state through edges and home slots.
 
+**Progress (ADR-091, 2026-10-02).** The Linux allocator pins cross-block values used in loops to callee-saved registers, falls through on branches, and moves trap paths out of line. `chains` went from 1.80× to 1.06× the equivalent checked-index C, and from 3.49× to 1.91× `gcc -O2`. `filestat` measures 0.94× `gcc -O2` and 1.47× `clang -O2`. Remaining: convergence with the PE allocator, range-based redundant-check elimination, and LICM.
+
 **Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the best C baseline reported.
 
 ## OI-39 — Shift and sign-extension selection versus kernel operations
