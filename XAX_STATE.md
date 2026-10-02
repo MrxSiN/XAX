@@ -585,3 +585,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Operation 73 in the kernel. Verifier windows, executor and frame-path rejection, Linux allocator lowering (`sub; ror; cmp; ja` to a cold trap). Spec §5.6, conformance §23 item 12.
 - `chains` builds `links="pointer"`, and C gains a `-DCHECKED` diagnostic. MEASURED: pointer links 1.64× `gcc -O2` (1.07× checked-pointer C); index links 2.00×. The Linux allocator also keeps a layout-next successor inline when both edges copy.
 - Tests: `compiler/tests/test_xax_pointer_rebase.py` (executed traps, verifier rejections), and `test_xax_chains.py` covers both link kinds.
+
+## OI-37 step: `pointer_rebase` on wasm32 (ADR-093) — 2026-10-02
+
+- `wasm32-wasi-v1` lowers operation 73 (`i32.sub; i32.rotr; i32.gt_u; unreachable`). The wasm static layout reserves address 0–15, so 0 is never a storage address.
+- EXECUTED: a WASI linked-list walk exits 42, and four corrupted-link vectors trap (`test_xax_wasm_rebase.py`). Full suite: 790 passed, plus the 17 pre-existing failures.
