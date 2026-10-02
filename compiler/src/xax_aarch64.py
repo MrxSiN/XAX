@@ -39,6 +39,7 @@ from xax_compiler import (
     _float_raw_bits,
     _int_to_float,
     _heap_view_info,
+    pointer_extent_from_graph,
     _is_proof_type,
     _is_erased_proof_function,
     _parse_graph,
@@ -1245,7 +1246,7 @@ def _compile_general_function(
             elif node.operation == Operation.CHECKED_LOAD_BITS_LE:
                 size, _alignment = node.attributes
                 # Extent is statically carried by stack allocation or heap view.
-                extent = _pointer_extent_from_graph(graph, node.operands[0], resolve)
+                extent = pointer_extent_from_graph(graph, node.operands[0], resolve)
                 maximum = extent - size
                 if maximum < 0:
                     emit(_brk(_BRK_MEMORY_CHECK))
@@ -1256,7 +1257,7 @@ def _compile_general_function(
 
             elif node.operation == Operation.CHECKED_STORE_BITS_LE:
                 size, _alignment = node.attributes
-                extent = _pointer_extent_from_graph(graph, node.operands[0], resolve)
+                extent = pointer_extent_from_graph(graph, node.operands[0], resolve)
                 maximum = extent - size
                 if maximum < 0:
                     emit(_brk(_BRK_MEMORY_CHECK))
@@ -1355,26 +1356,6 @@ def _value_type_for_ref(graph, ref: ValueRef) -> bytes:
         return graph.blocks[ref.block].parameters[ref.index]
     return graph.blocks[ref.block].nodes[ref.index].results[ref.result]
 
-
-def _pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], SemanticObject]) -> int:
-    """Recover the statically verified extent for stack/heap-view pointer SSA."""
-    if ref.tag == 0:
-        parameters = graph.blocks[ref.block].parameters
-        if ref.index + 1 < len(parameters):
-            info = _heap_view_info(resolve(parameters[ref.index + 1]))
-            if info is not None:
-                return info[0]
-        fail("XAX.AARCH64.POINTER", "aarch64", "AARCH64-POINTER-EXTENT", "heap-view parameter or derived pointer", [ref.block, ref.index, ref.result])
-    node = graph.blocks[ref.block].nodes[ref.index]
-    if node.operation == Operation.STACK_ALLOC:
-        return node.attributes[0]
-    if node.operation == Operation.HEAP_VIEW:
-        return node.attributes[0]
-    if node.operation == Operation.ADDRESS_OFFSET:
-        return _pointer_extent_from_graph(graph, node.operands[0], resolve) - node.attributes[0]
-    if node.operation == Operation.POINTER_CAST:
-        return _pointer_extent_from_graph(graph, node.operands[0], resolve)
-    fail("XAX.AARCH64.POINTER", "aarch64", "AARCH64-POINTER-EXTENT", "stack allocation, heap view, or derived pointer", node.operation)
 
 def _compile_function(
     function: SemanticObject,
