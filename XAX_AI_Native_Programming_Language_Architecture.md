@@ -1005,7 +1005,7 @@ Artifact infrastructure is shared and target-neutral where possible:
 
 Universal replacement needs much stronger optimization than a prototype backend. The planned evolution, each step preserving exact observable semantics and using translation validation where appropriate: constant propagation/folding, DCE, CFG simplification, inlining, specialization, devirtualization, escape analysis, scalar replacement, load/store forwarding, alias-aware optimization, GVN/CSE, LICM, loop simplification/unrolling/vectorization, SLP, strength reduction, bounds-check elimination (prove → erase), interprocedural and whole-program optimization, PGO, code layout, instruction selection, peephole, scheduling, register allocation, and bounded superoptimization. The optimization machinery itself should eventually be XAX.
 
-Current state (MEASURED, U1): the general x86-64 path spills every SSA value to the frame, so the Linux `filestat` workload runs 5.9× slower than `gcc -O2`. Register allocation in the general path is the next performance dependency (OI-32). LLVM is never an architectural dependency.
+Current state (MEASURED, U1/U2): on the Linux profiles a register-resident lowering does per-block allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, bounds-check reuse, and power-of-two strength reduction. It is differentially validated against the reference executor on 1,320 random programs (120 committed). The `filestat` workload now runs at parity with `gcc -O2` (1.03×), but 1.41× behind `clang -O2`; it was 5.9× slower before U2. Cross-block allocation, LICM, and loop transformations are the next steps (OI-32). LLVM is never an architectural dependency.
 
 ---
 
@@ -1037,7 +1037,7 @@ UR-M1 marks the transition from compiler-architecture prototype to practical gen
 4. Android application;
 5. accelerator/GPU workload.
 
-Each item must reach R3 for its workload class, and item 1 also records R4 measurements. Progress: item 1's capabilities are EXECUTED and MEASURED. Linux `filestat` uses `mmap` allocation, file I/O, a 41-block control flow, a histogram, and an explicit dynamic call to `libz.so.1` `crc32`, with no XAX runtime. It is at R2 because it is a benchmark-scale utility rather than an application, and it is 5.9× slower than `gcc -O2`. Items 2–4 are partial at R0/R1. Item 5 is PROTOTYPE.
+Each item must reach R3 for its workload class, and item 1 also records R4 measurements. Progress: item 1's capabilities are EXECUTED and MEASURED. Linux `filestat` uses `mmap` allocation, file I/O, a 41-block control flow, a histogram, and an explicit dynamic call to `libz.so.1` `crc32`, with no XAX runtime. It is at R2 because it is a benchmark-scale utility rather than an application. It runs at parity with `gcc -O2` but 1.41× behind `clang -O2`. Items 2–4 are partial at R0/R1. Item 5 is PROTOTYPE.
 
 ---
 
