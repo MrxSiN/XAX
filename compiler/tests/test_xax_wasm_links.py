@@ -26,25 +26,33 @@ KEY = pointer_type(B32, Permission.READ_WRITE, 4)
 NEXT = pointer_type(LINK, Permission.READ_WRITE, 8)
 
 
-def program(*, null_follow: bool = False):
+PADDED = tuple_type((B32, LINK))  # 4 padding bytes after the key
+PADDED_RECORDS = pointer_type(PADDED, Permission.READ_WRITE, 16)
+
+
+def program(*, null_follow: bool = False, padded: bool = False, skip_key: bool = False):
     api = wasi_preview1_api()
     mem, owner = api.memory_effect, stack_owner_type()
     graph = GraphBuilder()
     graph.track(*api.types, owner, B1, B64, LINK, RECORD, RECORDS, KEY, NEXT)
+    records_type = PADDED_RECORDS if padded else RECORDS
+    graph.track(PADDED, PADDED_RECORDS)
     entry = graph.block(api.process_effect)
     (process,) = entry.params
-    view, token, memory = entry.op(Operation.STACK_ALLOC, (), (RECORDS, owner, mem), attributes=(16 * len(KEYS), 16))
-    records = [view if index == 0 else entry.op1(Operation.ADDRESS_OFFSET, (view,), RECORDS, attributes=(16 * index,)) for index in range(len(KEYS))]
+    view, token, memory = entry.op(Operation.STACK_ALLOC, (), (records_type, owner, mem), attributes=(16 * len(KEYS), 16))
+    records = [view if index == 0 else entry.op1(Operation.ADDRESS_OFFSET, (view,), records_type, attributes=(16 * index,)) for index in range(len(KEYS))]
     null = entry.op1(Operation.CONSTANT, (), LINK, entity=null_link())
     for index, (record, key) in enumerate(zip(records, KEYS)):
         following = entry.op1(Operation.LINK_MAKE, (records[index + 1],), LINK) if index + 1 < len(KEYS) else null
-        memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), KEY, attributes=(0,)), entry.const(B32, key), memory), mem, attributes=(4, 4))
-        memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), KEY, attributes=(4,)), entry.const(B32, 0), memory), mem, attributes=(4, 4))
+        if not (skip_key and index == 1):
+            memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), KEY, attributes=(0,)), entry.const(B32, key), memory), mem, attributes=(4, 4))
+        if not padded:  # the explicit pad field; padded records leave their padding unwritten (ADR-099)
+            memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), KEY, attributes=(4,)), entry.const(B32, 0), memory), mem, attributes=(4, 4))
         memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), NEXT, attributes=(8,)), following, memory), mem, attributes=(8, 8))
     first = null if null_follow else entry.op1(Operation.LINK_MAKE, (view,), LINK)
     if null_follow:  # the head is a loaded null link: verified, traps at run time
         first, memory = entry.op(Operation.LOAD_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (records[-1],), NEXT, attributes=(8,)), memory), (LINK, mem), attributes=(8, 8))
-        entry.op1(Operation.LINK_FOLLOW, (view, first), RECORDS)
+        entry.op1(Operation.LINK_FOLLOW, (view, first), records_type)
     walk = graph.block(api.process_effect, LINK, B32, owner, mem)
     step = graph.block(api.process_effect, LINK, B32, owner, mem)
     done = graph.block(api.process_effect, B32, owner, mem)
@@ -53,7 +61,7 @@ def program(*, null_follow: bool = False):
     test = walk.op1(Operation.INT_COMPARE, (cursor, walk.op1(Operation.CONSTANT, (), LINK, entity=null_link())), B1, attributes=(IntCompare.NE,))
     walk.cbr(test, step, (process, cursor, total, token, memory), done, (process, total, token, memory))
     process, cursor, total, token, memory = step.params
-    node = step.op1(Operation.LINK_FOLLOW, (view, cursor), RECORDS)
+    node = step.op1(Operation.LINK_FOLLOW, (view, cursor), records_type)
     key, memory = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), KEY, attributes=(0,)), memory), (B32, mem), attributes=(4, 4))
     following, memory = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), NEXT, attributes=(8,)), memory), (LINK, mem), attributes=(8, 8))
     step.br(walk, process, following, step.op1(Operation.ADD_WRAP, (total, key), B32), token, memory)
@@ -67,6 +75,14 @@ def program(*, null_follow: bool = False):
 
 @unittest.skipUnless(shutil.which("node"), "requires Node's node:wasi host")
 class WasmLinkTests(unittest.TestCase):
+    def test_unwritten_padding_is_allowed_but_fields_are_not(self):
+        from xax_compiler import XaxError
+
+        self.assertEqual(run_wasi_isolated(program(padded=True))[0], sum(KEYS))
+        with self.assertRaises(XaxError) as raised:
+            program(padded=True, skip_key=True)
+        self.assertEqual(raised.exception.diagnostic.rule, "MEMORY-INITIALIZED")
+
     def test_linked_records_walk(self):
         self.assertEqual(run_wasi_isolated(program())[0], sum(KEYS))
 

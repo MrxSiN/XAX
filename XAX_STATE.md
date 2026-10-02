@@ -616,3 +616,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - wasm32: 8-byte link fields holding zero-extended `i32` addresses; `link_follow` as `i32.eqz`/`unreachable`. PE: operations 73–75 admitted and lowered by the converged allocator.
 - EXECUTED: `test_xax_wasm_links.py` (walk exits 42, null traps) and `test_xax_pe_links.py` (exit 42 under Wine 9.0). Full suite: 807 passed, plus the 17 pre-existing failures.
+
+## Links across calls and padding (ADR-099) — 2026-10-02
+
+- Borrowed record views link into themselves (callers may pass only such views). Windowed record loads ignore uninitialized padding.
+- EXECUTED: a callee walk (exit 42); a cross-target table cannot be passed; padded wasm32 stack records walk to 42; an unwritten field still rejects.

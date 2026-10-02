@@ -3706,7 +3706,9 @@ def _entry_heap_view_facts(
     for index, extent, initialized in _heap_view_triples(parameters, resolve):
         storage = (-2, index)
         element, permission, alignment = _decode_pointer_type(resolve(parameters[index - 1]), resolve)
-        pointers[index - 1] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element)  # borrowed: link target unknown
+        # A callee assumes each borrowed record view links into itself; callers
+        # may pass only such views (ADR-099).
+        pointers[index - 1] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element, link_target=storage, link_record=element)
         owners[index] = _OwnerFact(storage)
         effects[index + 1] = _EffectFact(storage, ((0, extent),) if initialized else ())
     return _BlockFacts(pointers, owners, effects, frozenset(), frozenset())
@@ -3876,6 +3878,8 @@ def _verify_heap_view_call(
             fail("XAX.MEMORY.OWNER", graph.cid.hex(), "HEAP-VIEW-CALL-OWNER", "live heap view", [token_ref.block, token_ref.index, token_ref.result])
         if not isinstance(pointer_fact, _PointerFact) or pointer_fact.storage != owner.storage or pointer_fact.offset or pointer_fact.window:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "HEAP-VIEW-CALL-BASE", owner.storage, None if pointer_fact is None else [pointer_fact.storage, pointer_fact.offset])
+        if _record_has_link(pointer_fact.record, resolve) and pointer_fact.link_target != pointer_fact.storage:
+            fail("XAX.MEMORY.LINK", graph.cid.hex(), "MEMORY-LINK-CALL-TARGET", "a view whose links point into itself", pointer_fact.link_target)
         if effect is None or effect.storage != owner.storage:
             fail("XAX.MEMORY.PROVENANCE", graph.cid.hex(), "MEMORY-EFFECT-PROVENANCE", owner.storage, None if effect is None else effect.storage)
         if owner.storage in ended:
@@ -3891,7 +3895,7 @@ def _verify_heap_view_call(
         pending = passed.get(callee_returns[index])
         storage = pending.pop(0) if pending else (block_index, node_index, index)
         element, permission, alignment = _decode_pointer_type(resolve(callee_returns[index - 1]), resolve)
-        pointers[ValueRef.node_result(block_index, node_index, index - 1)] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element)
+        pointers[ValueRef.node_result(block_index, node_index, index - 1)] = _PointerFact(storage, element, permission, 0, extent, alignment, storage, record=element, link_target=storage, link_record=element)
         owners[ValueRef.node_result(block_index, node_index, index)] = _OwnerFact(storage)
         effects[ValueRef.node_result(block_index, node_index, index + 1)] = _EffectFact(storage, ((0, extent),) if initialized else ())
     for remaining in passed.values():
@@ -3980,6 +3984,39 @@ def _record_layout(type_cid: bytes, resolve: Callable[[bytes], SemanticObject], 
 def _record_has_link(type_cid: bytes | None, resolve: Callable[[bytes], SemanticObject]) -> bool:
     obj = resolve(type_cid) if type_cid is not None else None
     return obj is not None and obj.body.startswith(uleb(8)) and any(_is_link_type(resolve(field)) for field in _decode_tuple_type(obj, resolve))
+
+
+def _window_initialized(initialized, fact: "_PointerFact", size: int, resolve) -> bool:
+    """Initialization for an access at any position of ``fact``'s window.
+
+    Gaps that lie entirely in record padding are allowed (ADR-099): fields
+    never read padding bytes, so stack records need not write them.
+    """
+    start, end = fact.offset, fact.offset + fact.window + size
+    if _range_initialized(initialized, start, end):
+        return True
+    layout = _record_layout(fact.record, resolve, "verifier") if fact.window and fact.record is not None else None
+    if layout is None:
+        return False
+    fields = set()
+    for position, field in enumerate(_decode_tuple_type(resolve(fact.record), resolve)):
+        offset = layout.offsets[position]
+        fields.update(range(offset, offset + abi_layout(resolve(field), resolve).size))
+
+    def padding_only(low: int, high: int) -> bool:
+        # A gap as long as a record always contains field bytes.
+        return high - low < layout.size and not any(byte % layout.size in fields for byte in range(low, high))
+
+    cursor = start
+    for low, high in sorted(initialized):
+        if high <= cursor:
+            continue
+        if low >= end:
+            break
+        if low > cursor and not padding_only(cursor, low):
+            return False
+        cursor = max(cursor, high)
+    return cursor >= end or padding_only(cursor, end)
 
 
 def _check_link_dependents(graph: SemanticObject, storage, pointers, ended) -> None:
@@ -4463,7 +4500,7 @@ def _verify_memory_node(
         if node.results[0] != pointer_fact.element or not _is_memory_effect(resolve(node.operand_types[1])) or node.results[1] != node.operand_types[1]:
             fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-LOAD-TYPE", [pointer_fact.element.hex(), node.operand_types[1].hex()], [cid.hex() for cid in node.results])
         start = pointer_fact.offset
-        if not _range_initialized(effect.initialized, start, start + pointer_fact.window + size):
+        if not _window_initialized(effect.initialized, pointer_fact, size, resolve):
             fail("XAX.MEMORY.UNINITIALIZED", graph.cid.hex(), "MEMORY-INITIALIZED", [start, start + pointer_fact.window + size], effect.initialized)
         loaded_link(pointer_fact, result_refs[0])
         effects[result_refs[1]] = effect
