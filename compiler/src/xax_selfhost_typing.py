@@ -1,8 +1,8 @@
-"""Self-hosting step S4 (ADR-132): scalar operation typing rules as XAX semantics.
+"""Self-hosting steps S4 and S4b (ADR-132, ADR-133): operation typing rules as XAX semantics.
 
 After S3e proves every value use defined and dominated, the verifier types
 each node.  This XAX function decides the arity and operand/result type rules
-of the scalar operation families, decoding the type objects itself:
+of the pure typing families, decoding the type objects itself:
 
 * integer binary (``add/sub/mul.wrap``, ``bit.and/or/xor``, ``udiv``, ``urem``):
   two operands and one result of the same ``bits<N>``, no attributes;
@@ -15,22 +15,32 @@ of the scalar operation families, decoding the type objects itself:
 * ``float_to_uint/sint_trunc``: float operand, ``bits<=64>`` result;
 * ``float.convert``: float operand and result;
 * ``int.compare``: equal ``bits<N>`` operands (or link operands with ``eq``/``ne``
-  only), ``bits<1>`` result, known kind.
+  only), ``bits<1>`` result, known kind;
+* S4b: ``aggregate.make`` (operands are the tuple's elements in order, or
+  ``count`` copies of the array element), ``aggregate.get`` (index below the
+  element count, result is that element), ``sum.make`` / ``sum.get`` (variant
+  below the variant count, operand / result is that variant), ``sum.tag``
+  (a ``bits<W>`` result with ``2^W`` at least the variant count).
+
+Aggregate and sum types are proven only when every element or variant is a
+scalar the decoder knows (``bits``, float, link), which are never proof types;
+nested aggregates and other elements are left to the bootstrap.
 
 Input words: the type count T, then per type its object kind, reference
-count, body length L, and L body bytes (one per word); then the node count
-N and per node its operation, operand count, result count, attribute count,
-first attribute (clamped below 2^63), operand type indices, result type
-indices.  Output: ``out[0]`` status (0 accept, 1 reject on a malformed
+count R, body length L, L body bytes (one per word), and the type indices of
+its R references in table order; then the node count N and per node its
+operation, operand count, result count, attribute count, first attribute
+(clamped below 2^63), operand type indices, result type indices; then three
+zero words.  Output: ``out[0]`` status (0 accept, 1 reject on a malformed
 stream, 2 defer when the tables do not fit), ``out[1]`` the proven count,
 then one verdict per node: 0 outside these families, 1 proven, 2 not proven.
 
 Soundness is one-sided by construction: a node is proven only when every
 condition the bootstrap checks holds, with type bodies decoded strictly
-(single-byte form; a value of one byte, or two bytes with a nonzero final
-byte; exact end).  Anything else, including a canonical encoding this
-decoder does not accept, is "not proven", and the bootstrap checks the node
-and raises the exact diagnostic.
+(single-byte forms; canonical values of at most three bytes; exact end).
+Anything else, including a canonical encoding this decoder does not accept,
+is "not proven", and the bootstrap checks the node and raises the exact
+diagnostic.
 """
 
 from __future__ import annotations
@@ -61,14 +71,20 @@ ACCEPT, REJECT, DEFER = 0, 1, 2
 NOT_COVERED, PROVEN, NOT_PROVEN = 0, 1, 2
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
+# Per-type tables, each T words from TABLE + k*T.
+WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)
+TABLES = 7
+MARKS = 128  # scratch marks for reference use, after the tables; at most this many references
+TUPLE, ARRAY, SUM = 8, 9, 10
 
 BINARY_INTEGER = (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR, Operation.UDIV, Operation.UREM)
 FLOAT_BINARY = (Operation.FLOAT_ADD, Operation.FLOAT_SUB, Operation.FLOAT_MUL, Operation.FLOAT_DIV)
 TO_FLOAT = (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT)
 FROM_FLOAT = (Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC)
+AGGREGATES = (Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.SUM_GET)
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
-     Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE}
+     Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES}
 )
 
 
@@ -86,8 +102,9 @@ LINK_COMPARE_KINDS = (int(IntCompare.EQ), int(IntCompare.NE))
 class _Typing:
     """Branch-free predicates over the cfg builder: every flag is a ``bits<64>`` 0 or 1."""
 
-    def __init__(self, b: _Builder):
+    def __init__(self, b: _Builder, count):
         self.b = b
+        self.count = count
 
     def flag(self, condition):
         return self.b.cur.op1(Operation.INT_ZERO_EXTEND, (condition,), B64)
@@ -113,28 +130,54 @@ class _Typing:
             result = self.b.op(Operation.BIT_OR, result, item)
         return result
 
+    def not_(self, flag):
+        return self.b.op(Operation.BIT_XOR, flag, 1)
+
     def one_of(self, value, codes):
         return self.any(*(self.eq(value, int(code)) for code in codes))
 
     def nonzero(self, value):
         return self.flag(self.b.cmp(IntCompare.NE, value, 0))
 
+    def pick(self, flag, if_true, if_false):
+        return self.b.select(self.b.cmp(IntCompare.NE, flag, 0), if_true, if_false)
+
+    def slot(self, table: int, index):
+        return self.b.add(self.b.add(self.b.c(TABLE), self.b.mul(self.count, table)), index)
+
+    def lookup(self, table: int, value):
+        """Table entry for a type index; 0 for an index outside the table."""
+        valid = self.b.cmp(IntCompare.ULT, value, self.count)
+        index = self.b.select(valid, value, self.b.c(0))
+        return self.b.mul(self.flag(valid), self.b.get(self.slot(table, index)))
+
+    def scalar(self, value):
+        return self.any(self.nonzero(self.lookup(WIDTH, value)), self.nonzero(self.lookup(FORMAT, value)), self.lookup(LINK, value))
+
+    def uleb(self, at):
+        """``(value, size, ok)`` for a canonical ULEB of at most three bytes at ``at``."""
+        b = self.b
+        x0, x1, x2 = (b.read(b.add(at, k)) for k in range(3))
+        one = self.lt(x0, 128)
+        two = self.all(self.not_(one), self.lt(x1, 128), self.nonzero(x1))
+        three = self.all(self.not_(one), self.le(b.c(128), x1), self.lt(x1, 256), self.lt(x2, 128), self.nonzero(x2))
+        low = b.sub(x0, 128)
+        value = b.add(b.add(b.mul(one, x0), b.mul(two, b.add(low, b.mul(x1, 128)))), b.mul(three, b.add(b.add(low, b.mul(b.sub(x1, 128), 128)), b.mul(x2, 16384))))
+        size = b.add(b.add(one, b.mul(two, 2)), b.mul(three, 3))
+        return value, size, self.all(self.lt(x0, 256), self.any(one, two, three))
+
 
 def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b = _Builder()
-    t = _Typing(b)
     count = b.read(b.c(0))
-    b.check(b.cmp(IntCompare.ULE, b.mul(count, 3), OUT_WORDS - TABLE), b.defer_block)
-    nodes_at = b.for_range(b.c(0), count, lambda index, carried: _type_entry(b, t, index, carried, count), (b.c(1),))[0]
+    t = _Typing(b, count)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(b.mul(count, TABLES), MARKS), IN_WORDS), OUT_WORDS - TABLE), b.defer_block)
+    nodes_at = b.for_range(b.c(0), count, lambda index, carried: _scalar_entry(b, t, index, carried), (b.c(1),))[0]
+    items = b.add(t.slot(TABLES, b.c(0)), MARKS)
+    b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
-
-    def lookup(table: int, value):
-        valid = b.cmp(IntCompare.ULT, value, count)
-        index = b.select(valid, value, b.c(0))
-        return b.mul(t.flag(valid), b.get(b.add(b.add(b.c(TABLE), b.mul(count, table)), index)))
-
-    _end, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried, lookup), (b.add(nodes_at, 1), b.c(0)))
+    _end, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
     b.put(b.c(1), proven)
     b.put(b.c(0), ACCEPT)
     in_view, in_mem, out_view, out_mem = b.state
@@ -149,8 +192,8 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     return program_store(function, x86_64_linux_exec_target(), tuple(b.g.objects.values())), function
 
 
-def _type_entry(b: _Builder, t: _Typing, index, carried, count):
-    """One type: its ``bits`` width, float format, and link flag (0 when not that form)."""
+def _scalar_entry(b: _Builder, t: _Typing, index, carried):
+    """Pass 1, one type: its ``bits`` width, float format, link flag, and stream position."""
     (position,) = carried
     kind, references, length = (b.read(b.add(position, k)) for k in range(3))
     base = b.add(position, 3)
@@ -164,20 +207,62 @@ def _type_entry(b: _Builder, t: _Typing, index, carried, count):
     bits_ok = t.all(plain, t.eq(first, 1), t.any(single, double), t.nonzero(value))
     float_ok = t.all(plain, t.eq(first, 7), single, t.any(t.eq(second, 1), t.eq(second, 2)))
     link_ok = t.all(plain, t.eq(length, 1), t.eq(first, 11))
-    b.put(b.add(b.c(TABLE), index), b.mul(bits_ok, value))
-    b.put(b.add(b.add(b.c(TABLE), count), index), b.mul(float_ok, second))
-    b.put(b.add(b.add(b.c(TABLE), b.mul(count, 2)), index), link_ok)
-    return (b.add(base, length),)
+    b.put(t.slot(WIDTH, index), b.mul(bits_ok, value))
+    b.put(t.slot(FORMAT, index), b.mul(float_ok, second))
+    b.put(t.slot(LINK, index), link_ok)
+    b.put(t.slot(POSITION, index), position)
+    return (b.add(b.add(base, length), references),)
 
 
-def _node_entry(b: _Builder, t: _Typing, index, carried, lookup):
+def _aggregate_entry(b: _Builder, t: _Typing, index, carried):
+    """Pass 2, one type: a tuple, array, or sum of known scalars, with its element type indices."""
+    (cursor,) = carried
+    position = b.get(t.slot(POSITION, index))
+    kind, references, length = (b.read(b.add(position, k)) for k in range(3))
+    base = b.add(position, 3)
+    end = b.add(base, length)  # the reference indices follow the body
+    form = b.read(base)
+    plain = t.all(t.eq(kind, int(Kind.TYPE)), t.le(b.c(1), references), t.le(references, MARKS), t.le(b.c(2), length))
+    listed = t.all(plain, t.any(t.eq(form, TUPLE), t.eq(form, SUM)))
+    is_array = t.all(plain, t.eq(form, ARRAY))
+    count, size, count_ok = t.uleb(b.add(base, 1))
+    # Tuple or sum: ``count`` reference indices, each naming a scalar, every reference used.
+    b.for_range(b.c(0), b.mul(listed, references), lambda k, c: (b.put(b.add(t.slot(TABLES, b.c(0)), k), 0),) and (), ())
+    steps = t.pick(t.all(listed, count_ok, t.le(count, length)), count, b.c(0))
+
+    def item(k, carried):
+        at, ok = carried
+        reference, width, reference_ok = t.uleb(at)
+        inside = t.all(reference_ok, t.lt(reference, references), t.le(b.add(at, width), end))
+        element = b.read(b.add(end, t.pick(inside, reference, b.c(0))))
+        b.put(b.add(cursor, k), element)
+        b.put(b.add(t.slot(TABLES, b.c(0)), t.pick(inside, reference, b.c(0))), 1)
+        return b.add(at, width), t.all(ok, inside, t.scalar(element))
+
+    after, items_ok = b.for_range(b.c(0), steps, item, (b.add(b.add(base, 1), size), b.c(1)))
+    (used,) = b.for_range(b.c(0), b.mul(listed, references), lambda k, c: (b.add(c[0], b.get(b.add(t.slot(TABLES, b.c(0)), k))),), (b.c(0),))
+    listed_ok = t.all(listed, count_ok, t.nonzero(steps), items_ok, t.eq(after, end), t.eq(used, references))
+    # Array: reference index 0 (its only reference), then the count, exact end.
+    reference, width, reference_ok = t.uleb(b.add(base, 1))
+    array_count, array_size, array_count_ok = t.uleb(b.add(b.add(base, 1), width))
+    element = b.read(end)
+    array_ok = t.all(is_array, reference_ok, t.eq(reference, 0), t.eq(references, 1), array_count_ok, t.eq(b.add(b.add(b.add(base, 1), width), array_size), end), t.scalar(element))
+    b.put(b.add(cursor, b.mul(listed, steps)), element)  # an array's one element (harmless after a list)
+    ok = t.any(listed_ok, array_ok)
+    b.put(t.slot(AGGREGATE, index), b.mul(ok, form))
+    b.put(t.slot(COUNT, index), t.pick(array_ok, array_count, count))
+    b.put(t.slot(ITEMS, index), cursor)
+    return (b.add(b.add(cursor, b.mul(listed, steps)), 1),)
+
+
+def _node_entry(b: _Builder, t: _Typing, index, carried):
     position, proven = carried
     operation, operands, results, attributes, attribute = (b.read(b.add(position, k)) for k in range(5))
     ids = b.add(position, 5)
     first, second, result = b.read(ids), b.read(b.add(ids, 1)), b.read(b.add(ids, operands))
-    width, first_width = lookup(0, result), lookup(0, first)
-    form, first_form = lookup(1, result), lookup(1, first)
-    first_link = lookup(2, first)
+    width, first_width = t.lookup(WIDTH, result), t.lookup(WIDTH, first)
+    form, first_form = t.lookup(FORMAT, result), t.lookup(FORMAT, first)
+    first_link = t.lookup(LINK, first)
 
     def shape(count_in: int, count_out: int, count_attributes: int):
         return t.all(t.eq(operands, count_in), t.eq(results, count_out), t.eq(attributes, count_attributes))
@@ -186,6 +271,30 @@ def _node_entry(b: _Builder, t: _Typing, index, carried, lookup):
     is_float, first_float = t.nonzero(form), t.nonzero(first_form)
     same_first, same_second, same_operands = t.eq(first, result), t.eq(second, result), t.eq(second, first)
     kind_in = lambda limit: t.all(t.le(b.c(1), attribute), t.le(attribute, limit))  # noqa: E731
+
+    # S4b: aggregates and sums, by the result's (make) or first operand's (get, tag) type.
+    def element(owner, position_):
+        """Element ``position_`` of ``owner``'s list (an array's one element), or 0 outside it."""
+        shape_ = t.lookup(AGGREGATE, owner)
+        inside = t.lt(position_, t.lookup(COUNT, owner))
+        offset = t.pick(t.eq(shape_, ARRAY), b.c(0), t.pick(inside, position_, b.c(0)))
+        return b.mul(t.all(t.nonzero(shape_), inside), b.get(b.add(t.lookup(ITEMS, owner), offset))), t.all(t.nonzero(shape_), inside)
+
+    result_shape, first_shape = t.lookup(AGGREGATE, result), t.lookup(AGGREGATE, first)
+    make_listed = t.all(t.eq(attributes, 0), t.eq(results, 1), t.any(t.eq(result_shape, TUPLE), t.eq(result_shape, ARRAY)), t.eq(operands, t.lookup(COUNT, result)))
+
+    def make_step(k, carried):
+        (ok,) = carried
+        expected, inside = element(result, k)
+        return (t.all(ok, inside, t.eq(b.read(b.add(ids, k)), expected)),)
+
+    (make_ok,) = b.for_range(b.c(0), b.mul(make_listed, operands), make_step, (make_listed,))
+    get_element, get_inside = element(first, attribute)
+    tuple_or_array = t.any(t.eq(first_shape, TUPLE), t.eq(first_shape, ARRAY))
+    make_variant, make_inside = element(result, attribute)
+    # Variant count c fits in bits<W> when the bit length of c - 1 is at most W.
+    variants = t.lookup(COUNT, first)
+    _rest, needed = b.loop((b.sub(variants, 1), b.c(0)), lambda v: b.cmp(IntCompare.NE, v[0], 0), lambda v: (b.op(Operation.UDIV, v[0], 2), b.add(v[1], 1)))
     families = (
         (t.one_of(operation, BINARY_INTEGER), t.all(shape(2, 1, 0), is_bits, same_first, same_second)),
         (t.eq(operation, int(Operation.INT_TRUNCATE)), t.all(shape(1, 1, 0), is_bits, first_bits, t.lt(width, first_width))),
@@ -203,6 +312,11 @@ def _node_entry(b: _Builder, t: _Typing, index, carried, lookup):
                 t.any(t.all(first_link, t.one_of(attribute, LINK_COMPARE_KINDS)), t.all(first_bits, kind_in(INT_COMPARE_KINDS))),
             ),
         ),
+        (t.eq(operation, int(Operation.AGGREGATE_MAKE)), make_ok),
+        (t.eq(operation, int(Operation.AGGREGATE_GET)), t.all(shape(1, 1, 1), tuple_or_array, get_inside, t.eq(result, get_element))),
+        (t.eq(operation, int(Operation.SUM_MAKE)), t.all(shape(1, 1, 1), t.eq(result_shape, SUM), make_inside, t.eq(first, make_variant))),
+        (t.eq(operation, int(Operation.SUM_TAG)), t.all(shape(1, 1, 0), t.eq(first_shape, SUM), is_bits, t.le(needed, width))),
+        (t.eq(operation, int(Operation.SUM_GET)), t.all(shape(1, 1, 1), t.eq(first_shape, SUM), get_inside, t.eq(result, get_element))),
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
@@ -234,11 +348,11 @@ def write_typing_store() -> bytes:
     return reader.data
 
 
-BODY_LIMIT = 16  # longer bodies are never bits/float/link types: passed as "other"
+BODY_LIMIT = 64  # longer bodies are passed as "other" (never proven)
 
 
 def type_info_from(resolve):
-    """``type_info`` over a resolver: None when the CID does not resolve."""
+    """``type_info`` over a resolver: ``(kind, references, body)``, or None when the CID does not resolve."""
 
     def info(cid: bytes):
         try:
@@ -246,8 +360,8 @@ def type_info_from(resolve):
         except Exception:  # noqa: BLE001 - any resolution failure leaves the node to the bootstrap
             return None
         if len(item.body) > BODY_LIMIT:
-            return 0, 0, b""
-        return int(item.kind), len(item.references), item.body
+            return 0, (), b""
+        return int(item.kind), tuple(item.references), item.body
 
     return info
 
@@ -257,20 +371,27 @@ def marshal(blocks, operand_types_of, type_info) -> tuple[list[int], list[tuple[
 
     ``operand_types_of(block, node)`` gives a node's operand type CIDs (or None
     to leave it to the bootstrap); ``type_info(cid)`` returns ``(kind,
-    reference count, body)`` or None when the type cannot be resolved.
+    references, body)`` or None when the type cannot be resolved.  The types a
+    type references are listed too (their own references transitively).
     """
     types: dict[bytes, int] = {}
-    entries: list[tuple[int, int, int, bytes]] = []
+    entries: list[list] = []
     nodes: list[int] = []
     keys: list[tuple[int, int]] = []
 
     def type_index(cid: bytes) -> int | None:
-        if cid not in types:
-            info = type_info(cid)
-            if info is None:
-                return None
-            types[cid] = len(entries)
-            entries.append((cid, *info))
+        if cid in types:
+            return types[cid]
+        info = type_info(cid)
+        if info is None:
+            return None
+        kind, references, body = info
+        types[cid] = len(entries)
+        entry = [kind, (), body]
+        entries.append(entry)
+        indices = [type_index(reference) for reference in references]
+        # An unresolvable reference makes the type "other": nothing referencing it is proven.
+        entry[0], entry[1] = (kind, tuple(indices)) if None not in indices else (0, ())
         return types[cid]
 
     for block_index, block in enumerate(blocks):
@@ -287,8 +408,8 @@ def marshal(blocks, operand_types_of, type_info) -> tuple[list[int], list[tuple[
             nodes += [int(node.operation), len(node.operands), len(node.results), len(node.attributes), attribute, *indices]
             keys.append((block_index, node_index))
     words = [len(entries)]
-    for _cid, kind, references, body in entries:
-        words += [kind, references, len(body), *body]
+    for kind, references, body in entries:
+        words += [kind, len(references), len(body), *body, *references]
     # Three zero words end the stream so the decoder's fixed look-ahead stays inside it.
     words += [len(keys), *nodes, 0, 0, 0]
     return words, keys

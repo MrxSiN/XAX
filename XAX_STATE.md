@@ -765,3 +765,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S4: scalar operation typing is XAX (ADR-132) — 2026-10-03
 
 - `xax_selfhost_typing.py` (store `bootstrap/xax_op_typing.xax`) types the integer, compare, rotate, float, and conversion nodes, decoding type objects itself. It is the default verifier path on Linux x86-64. The bootstrap checks only the nodes it does not prove, so diagnostics are unchanged. EXECUTED: on 600 random nodes, the proven set is exactly the bootstrap-accepted set. MEASURED: all 2,419 covered nodes in four real stores are proven, with verify time roughly unchanged. Full suite: 868 tests, 17 skipped.
+
+## Self-hosting step S4b: aggregate and sum typing is XAX (ADR-133) — 2026-10-03
+
+- The XAX typing function now also decodes tuple, array, and sum types (of scalar elements) and checks `aggregate.make/get` and `sum.make/tag/get`. On 1,000 random nodes it agrees with the bootstrap: every proven node is accepted, and every accepted node is proven except those with nested aggregates. 2,444/2,444 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4c: call, constant, memory, and resource nodes together with the fact tracking.

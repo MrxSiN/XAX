@@ -254,3 +254,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S4 — 2026-10-03 (ADR-132)
 
 - Scalar operation typing is XAX (`XAX_TYPING_PYTHON=1` forces the bootstrap; regenerate with `xax_selfhost_typing.write_typing_store()`). Wiring: `_native_typing()` and the `proven_nodes` gate in `_parse_graph_uncached`. Next is S4b: aggregate/sum/call typing, then memory and resource facts, which are the bulk of the remaining verifier.
+
+## S4b — 2026-10-03 (ADR-133)
+
+- Aggregate and sum typing joined the XAX typing function (two-pass type decoding: scalars, then tuple/array/sum of scalars). Regenerate the store with `xax_selfhost_typing.write_typing_store()` after any change; `test_committed_store_is_the_built_program` fails otherwise. Next is S4c: move call, constant, and memory typing together with `_end_heap_views` and the pointer/owner/effect facts, which is most of the remaining verifier.
