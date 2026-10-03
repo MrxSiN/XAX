@@ -357,6 +357,23 @@ def _choose_pins(graph, homes: list[ValueRef], uses_by_block: dict[int, dict[Val
     return pins
 
 
+# Operations a loop header may contain and still be copied into a jumping
+# predecessor (rotation): pure, non-trapping-by-construction or shared-stub code.
+_ROTATABLE = frozenset({
+    Operation.CONSTANT, Operation.INT_COMPARE, *_PURE_BINARY, *_COPY, Operation.INT_TRUNCATE, Operation.ROTATE_RIGHT,
+    Operation.ADDRESS_OFFSET, Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE,
+})
+_ROTATE_LIMIT = 16
+
+
+def _rotatable(header) -> bool:
+    """A small test-and-branch header that can be copied into a jumping predecessor (loop rotation)."""
+    return (
+        header.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH and len(header.nodes) <= _ROTATE_LIMIT
+        and all(node.operation in _ROTATABLE for node in header.nodes)
+    )
+
+
 def _reachable(graph, start: int) -> set[int]:
     """Blocks reachable from ``start`` (including itself)."""
     seen, stack = set(), [start]
@@ -675,6 +692,23 @@ def compile_register_resident(
             break
     else:
         parameter_bound.clear()
+    # Narrowing: from a post-fixpoint, recomputing every parameter from its
+    # incoming edges (never above its current bound) stays a post-fixpoint,
+    # so it recovers precision that widening gave away.
+    for _round in range(len(graph.blocks) + 4 if parameter_bound else 0):
+        maximum_cache.clear()
+        recomputed: dict[ValueRef, int] = {}
+        for source, edge_index, parameter, argument in incoming_arguments:
+            bound = edge_bound(source, edge_index, argument)
+            bound = (1 << widths[parameter]) - 1 if bound is None else min(bound, (1 << widths[parameter]) - 1)
+            recomputed[parameter] = max(recomputed.get(parameter, 0), bound)
+        narrowed = False
+        for parameter, bound in recomputed.items():
+            if bound < parameter_bound[parameter]:
+                parameter_bound[parameter] = bound
+                narrowed = True
+        if not narrowed:
+            break
     maximum_cache.clear()
 
     def multiple_of(value: ValueRef, factor: int) -> bool:
@@ -967,9 +1001,7 @@ def compile_register_resident(
     loop_headers |= {
         target
         for header in tuple(loop_headers)
-        if graph.blocks[header].terminator.kind == TerminatorKind.CONDITIONAL_BRANCH
-        and len(graph.blocks[header].nodes) <= 2
-        and all(node.operation in (Operation.CONSTANT, Operation.INT_COMPARE) for node in graph.blocks[header].nodes)
+        if _rotatable(graph.blocks[header])
         for target, _arguments in graph.blocks[header].terminator.edges
         if target > header
     }
@@ -1040,11 +1072,9 @@ def compile_register_resident(
 
     def duplicable(target_block: int) -> bool:
         """A header that only tests and branches can be copied into a jumping predecessor (loop rotation)."""
-        header = graph.blocks[target_block]
-        return (
-            header.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH and len(header.nodes) <= 2
-            and all(node.operation in (Operation.CONSTANT, Operation.INT_COMPARE) for node in header.nodes)
-        )
+        return _rotatable(graph.blocks[target_block])
+
+    closed = {"at": 0}  # code length right after the last unconditional transfer
 
     def lower_block(block_index: int, assembler: _Assembler | None, ranges: list | None, used_registers: set[int], epilogue: bytes, stubs: list, traps: dict, copy_tag: str = "", copy_following: int | None = None) -> int:
         """Lower one block; with ``copy_tag`` emit an inline copy (no label) followed by ``copy_following``."""
@@ -1081,6 +1111,8 @@ def compile_register_resident(
         def jump(opcode: bytes, label: str) -> None:
             if assembler is not None:
                 assembler.relative(opcode, label)
+                if opcode == b"\xe9":
+                    closed["at"] = len(assembler.code)
 
         def label(name: str) -> None:
             if assembler is not None:
@@ -1410,7 +1442,8 @@ def compile_register_resident(
                 goto(target_block)
 
         if not copy_tag:
-            if assembler is not None and block_index in loop_headers:
+            # Pad unless a block of the same loop falls through: its NOPs would run every iteration.
+            if assembler is not None and block_index in loop_headers and (closed["at"] == len(assembler.code) or block_index - 1 not in _reachable(graph, block_index)):
                 assembler.emit(_nop_padding(-len(assembler.code) % LOOP_ALIGNMENT))
             label(f"block-{block_index}")
         for index, value in enumerate(machine_parameters[block_index]):
@@ -1602,7 +1635,10 @@ def compile_register_resident(
                 ensure(source, node_index)
                 register = destination_for(node_index, source, set())
                 width = widths[result]
-                if width == 32:
+                bound = maximum(source)
+                if bound is not None and bound < 1 << width:
+                    pass  # the value already fits: registers hold it zero-extended
+                elif width == 32:
                     emit(_move_register(register, register, 32))
                 else:
                     emit(_and_immediate(register, (1 << width) - 1, width=32))
@@ -1848,6 +1884,8 @@ def compile_register_resident(
             else:
                 emit(b"\x31\xc0")
             emit(epilogue)
+            if assembler is not None and not capture:
+                closed["at"] = len(assembler.code)
         elif terminator.kind == TerminatorKind.BRANCH:
             target_block, arguments = terminator.edges[0]
             emit(edge_code(target_block, arguments))
@@ -1859,10 +1897,18 @@ def compile_register_resident(
                 emit_compare(position, *compare.operands)
                 if_false = _JUMP_IF_FALSE[IntCompare(compare.attributes[0])]
             elif block_index in membership:
+                # Out of the mask's span branches straight to the false edge (through a stub
+                # carrying its copies); in span, one bit test decides: no clamp needed.
                 subject, low, mask, _tree = membership[block_index]
                 register = ensure(subject, position)
                 temporary = acquire(position, {subject})
-                emit(_member_bit_test(register, low, mask, temporary))
+                (_true_target, _true_arguments), (false_target, false_arguments) = terminator.edges
+                outside = f"member-out-{block_index}{copy_tag}"
+                stubs.append((outside, edge_code(false_target, false_arguments), false_target))
+                emit(bytes((0x44 | (register >= 8), 0x8D, 0x98 | (register & 7))) + (b"\x24" if register & 7 == 4 else b"") + ((-low) & 0xFFFFFFFF).to_bytes(4, "little"))  # lea r11d, [x - low]
+                emit(b"\x41\x83\xfb" + bytes((mask.bit_length() - 1,)))  # cmp r11d, highest member offset
+                jump(b"\x0f\x87", outside)  # ja: above every member
+                emit(_load_constant(temporary, mask) + bytes((0x4C | (temporary >= 8), 0x0F, 0xA3, 0xD8 | (temporary & 7))))  # bt tmp, r11
                 if_false = 0x83  # jnc: the bit is clear
             else:
                 register = ensure(condition, position)
@@ -1909,6 +1955,8 @@ def compile_register_resident(
         else:
             reason, _ = decode_trap_payload(terminator.payload)
             emit(_immediate(RAX, reason) + b"\x0f\x0b")
+            if assembler is not None and not capture:
+                closed["at"] = len(assembler.code)
         return state["max"]
 
     # Dry run: spill count and used callee-saved registers, without emission.
