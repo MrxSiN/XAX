@@ -796,3 +796,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Across the whole suite, every graph the bootstrap accepts is now decided by XAX. Python only produces diagnostics on a decline or a rejection. The exceptions are the helper programs' own seed graphs, parsed while those programs are built or loaded.
 - Larger views let the engine handle the biggest self-hosting graphs (98K values, 1,594 blocks).
 - `verify_store` is 10–25% faster with the XAX path on the measured stores. Full suite: 875 tests, 17 skipped. Next: S5, the RISC-V backend in XAX.
+
+## Self-hosting step S5a: RISC-V code generation in XAX (ADR-140) — 2026-10-03
+
+- `compile_riscv64` now generates code with an XAX program (`xax_selfhost_riscv64_backend.py`): liveness, linear scan, frame layout, lowering, the `li` planner, and jump fixups. Images are byte-identical to the bootstrap's, which stays as the fallback and the source of diagnostics.
+- Compiling is 2.3× faster on a 300-value loop. Full suite: 881 tests, 17 skipped. Next: S5b, which feeds the program from the XAX decoders instead of the Python marshal.

@@ -37,6 +37,7 @@ from xax_compiler import (
     StoreReader,
     TerminatorKind,
     ValueRef,
+    XaxError,
     _decode_constant,
     _decode_function_interface,
     _is_erased_proof_function,
@@ -582,15 +583,64 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
     return ranges
 
 
-def compile_riscv64_bound_target(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, *, encoder: str = "auto") -> Riscv64Image:
+def compile_riscv64_bound_target(
+    reader: StoreReader, function_cid: bytes, target_object: SemanticObject, *, encoder: str = "auto", backend: str = "auto",
+) -> Riscv64Image:
+    """``backend``: ``"auto"`` (the XAX backend program where it runs, ADR-140), ``"xax"`` (fails where it
+    cannot run or declines), or ``"python"`` (the bootstrap code generator)."""
     _ACTIVE.append(select_encoder(encoder))
     try:
-        return _compile_riscv64(reader, function_cid, target_object)
+        return _compile_riscv64(reader, function_cid, target_object, backend)
     finally:
         _ACTIVE.pop()
 
 
-def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: SemanticObject) -> Riscv64Image:
+_NONE = 0xFFFFFFFF
+
+
+def _marshal(functions: Sequence[SemanticObject], resolve) -> list[int]:
+    """S5a (ADR-140): the structural stream the XAX backend program reads (see ``xax_selfhost_riscv64_backend``).
+
+    Raises the bootstrap's diagnostic for a value that is neither ``bits<N <= 64>`` nor a proof value."""
+    index = {function.cid: position for position, function in enumerate(functions)}
+    words = [len(functions)]
+    for function in functions:
+        graph_object, _parameters, return_types = _decode_function_interface(function, resolve)
+        graph = parse_function_graph(function, resolve)
+        where = graph_object.cid.hex()
+        ids: dict[ValueRef, int] = {}
+        for block_index, block in enumerate(graph.blocks):
+            for parameter in range(len(block.parameters)):
+                ids[ValueRef.parameter(block_index, parameter)] = len(ids)
+            for node_index, node in enumerate(block.nodes):
+                for result in range(len(node.results)):
+                    ids[ValueRef.node_result(block_index, node_index, result)] = len(ids)
+        width = lambda cid: _machine_width(resolve, cid, where) or 0  # noqa: E731
+        words += [len(graph.blocks), graph.entry, len(ids)]
+        for block in graph.blocks:
+            words += [len(block.parameters), *(width(cid) for cid in block.parameters), len(block.nodes)]
+            for node in block.nodes:
+                if node.operation == Operation.CONSTANT:
+                    extra = int(_decode_constant(node.entity, resolve)[1]) & ((1 << 64) - 1)
+                elif node.operation == Operation.CALL_DIRECT:
+                    extra = _NONE if _is_erased_proof_function(node.entity, resolve) else index[node.entity.cid]
+                else:
+                    extra = 0
+                words += [
+                    int(node.operation), len(node.results), *(width(cid) for cid in node.results),
+                    len(node.operands), *(ids[value] for value in node.operands), len(node.attributes), *node.attributes, extra,
+                ]
+            terminator = block.terminator
+            values = terminator.values
+            flags = [int(not _is_proof_type(resolve(cid))) for cid in return_types[: len(values)]] if terminator.kind == TerminatorKind.RETURN else []
+            flags += [0] * (len(values) - len(flags))
+            words += [int(terminator.kind), len(values), *(ids[value] for value in values), *flags, len(terminator.edges)]
+            for target, arguments in terminator.edges:
+                words += [target, len(arguments), *(ids[value] for value in arguments)]
+    return words
+
+
+def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, backend: str = "python") -> Riscv64Image:
     verify_store(reader)
     resolve = store_resolver(reader)
     entry = resolve(function_cid)
@@ -602,6 +652,10 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
     functions = _function_closure(entry, resolve, target.supported_operations, target.supported_terminators)
     # The entry is laid out first so the image starts at its entry point.
     functions = (entry, *(function for function in functions if function.cid != entry.cid))
+    if backend != "python":
+        image = _compile_with_xax(functions, resolve, entry, function_cid, target_object, backend == "xax")
+        if image is not None:
+            return image
     emitter = _Emitter(function_cid.hex())
     offsets: dict[bytes, int] = {}
     node_ranges: list[ArtifactSemanticRange] = []
@@ -623,8 +677,40 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
     )
 
 
-def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes, *, encoder: str = "auto") -> Riscv64Image:
-    return compile_riscv64_bound_target(reader, function_cid, store_resolver(reader)(target_cid), encoder=encoder)
+def _compile_with_xax(functions, resolve, entry, function_cid: bytes, target_object: SemanticObject, required: bool) -> Riscv64Image | None:
+    """The image from the XAX backend program (ADR-140), or None (the bootstrap then generates it and raises
+    any diagnostic)."""
+    from xax_selfhost_riscv64_backend import native_backend
+
+    native = native_backend()
+    if native is None:
+        if required:
+            fail("XAX.RISCV64.HOST", "host", "RISCV64-XAX-BACKEND", "Linux x86-64 host for the native XAX backend", "unavailable")
+        return None
+    try:
+        words = _marshal(functions, resolve)
+    except XaxError:
+        return None
+    result = native.compile(words, len(functions))
+    if result is None:
+        if required:
+            fail("XAX.RISCV64.BACKEND", function_cid.hex(), "RISCV64-XAX-BACKEND-DECLINED", "accepted", "declined")
+        return None
+    code_words, word_offsets, ranges = result
+    code = b"".join(word.to_bytes(4, "little") for word in code_words)
+    offsets = {function.cid: 4 * offset for function, offset in zip(functions, word_offsets)}
+    function_ranges = []
+    for position, function in enumerate(functions):
+        end = offsets[functions[position + 1].cid] if position + 1 < len(functions) else len(code)
+        function_ranges.append(ArtifactSemanticRange(function.cid, None, None, offsets[function.cid], end))
+    node_ranges = [ArtifactSemanticRange(functions[f].cid, block, node, start, end) for f, block, node, start, end in ranges]
+    _graph, parameters, returns = _decode_function_interface(entry, resolve)
+    widths = lambda cids: tuple(w for w in (_machine_width(resolve, cid, function_cid.hex()) for cid in cids) if w is not None)  # noqa: E731
+    return Riscv64Image(code, 0, tuple(sorted(offsets.items())), widths(parameters), widths(returns), target_object.cid, (*function_ranges, *node_ranges))
+
+
+def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes, *, encoder: str = "auto", backend: str = "auto") -> Riscv64Image:
+    return compile_riscv64_bound_target(reader, function_cid, store_resolver(reader)(target_cid), encoder=encoder, backend=backend)
 
 
 # ------------------------------------------------------------------ harness
