@@ -30,6 +30,8 @@ This roadmap orders implementation work. A milestone is complete only when every
 - structural verifier and deterministic machine diagnostics;
 - deterministic rejection of malformed/noncanonical inputs.
 
+**Progress (2026-10-03)**: workload 1 holds R3 on Linux x86-64 through `jsonmin` (ADR-126; allocation, stdin/stdout I/O, recursion over borrowed memory, nontrivial control flow; the dynamic library call is `filestat`'s `libz` `crc32` on the same row), and Linux AArch64 runs the same graph (emulated). Workload 3 is at R2 (browser) and workload 5 at R1 (SPIR-V on llvmpipe, ADR-124). Workloads 2 and 4 are unchanged.
+
 **Exit criteria**
 
 - canonical objects can be created, identified, loaded, verified/rejected deterministically, and round-tripped without byte/identity change;

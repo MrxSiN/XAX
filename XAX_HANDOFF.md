@@ -218,3 +218,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `group_member_function(group, k)` is the callable member identity; `parse_function_graph(function, resolve)` is the lowering view every backend now uses instead of `_parse_graph` for function bodies. New backends must use it too, or they will see raw `call.group_member` nodes.
 - Next: wasm shadow stack for recursive frames; a workspace mutation that creates member functions; a verified stack-depth bound where a real-time profile asks for one.
 
+## jsonmin — 2026-10-03 (ADR-126)
+
+- `benchmarks/jsonmin.py` builds the program (`build_jsonmin(arch)`), states the contract (`reference_jsonmin`), and measures it (`python -m benchmarks.jsonmin --write`). `src/xax_structured.py` is the construction helper; call `drop()` on a linear token a node consumes, or it rides later edges twice (`RESOURCE-LINEAR-CONTINUATION`).
+- To reach R4: keep parser state in registers instead of the context view (pass position and output length as scalars and return them packed), prune dead names at joins in `Proc`, and read straight into the input view (a `pointer_rebase` window instead of the chunk copy).
+

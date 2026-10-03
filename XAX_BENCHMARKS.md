@@ -748,3 +748,17 @@ Device: llvmpipe (LLVM 20.1.2, 256 bits), Vulkan 1.4 through the `vulkan` Python
 
 A CPU implementation is not GPU performance evidence (conformance §23.17). The gap is the dispatch-loop lowering, which keeps llvmpipe from vectorizing the loop across invocations. Source: `compiler/benchmarks/spirv_kernels.py`; data: `spirv_compute_evidence.json`.
 
+### 15.12 `jsonmin` (R3 application): XAX vs C twins on Linux x86-64 (ADR-126; MEASURED, 2026-10-03)
+
+Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified. XAX: the `jsonmin` graph (recursion group value/array/object plus four plain functions) as a static `x86_64-linux-elf-exec-v1` executable with no libc, loader, or allocator. Baselines: `jsonmin_c/jsonmin.c`, the same algorithm in C, built by the U1.3 harness (gcc 13.3 `-O2`, `-O3`, `-O2 -static`; clang 18 `-O2`). Input: `benchmark_document(8 MiB)` (8,390,986 bytes, pretty-printed records with escapes and numbers) on stdin through `runner.c`; 11 runs after 2 warmups; every output equals `reference_jsonmin`.
+
+| Arm | Wall (median) | vs gcc -O2 | Peak RSS | Stripped bytes |
+|---|---:|---:|---:|---:|
+| XAX | 59.8 ms | 2.11× | 12,416 KiB | 16,250 (static) |
+| gcc -O2 | 28.4 ms | 1.00× | 13,736 KiB | 14,472 (dynamic) |
+| gcc -O3 | 27.1 ms | 0.96× | 13,736 KiB | 14,552 (dynamic) |
+| clang -O2 | 26.1 ms | 0.92× | 13,800 KiB | 14,552 (dynamic) |
+| gcc -O2 -static | 28.3 ms | 1.00× | 13,000 KiB | 706,584 (static) |
+
+Not competitive in time (2.29× the best baseline), so the Linux row is R3, not R4. Peak RSS is the lowest of all arms. Known costs: parser state goes through a 12-byte context view at every call, all named locals ride every block edge (the construction helper does not prune dead names), and input is copied from a 64 KiB read chunk byte by byte. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
+

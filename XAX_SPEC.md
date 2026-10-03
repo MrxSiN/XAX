@@ -1116,7 +1116,7 @@ A stronger label requires stronger evidence. Host-unavailable executions remain 
 
 ### 21.4 Universal Replacement Matrix
 
-`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. The matrix records evidence; it never defines requirements.
+`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. Because a MEASURED label only says that a comparison exists, R4 additionally requires the row's `competitive` verdict `[true, evidence...]`; a row with `[false, ...]` or no verdict derives at most R3 (ADR-126). An emulator-only row cannot cite performance evidence (§21.2). The matrix records evidence; it never defines requirements.
 
 ### 21.5 Kernel admission rule
 

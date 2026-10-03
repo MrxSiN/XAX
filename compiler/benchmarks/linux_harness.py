@@ -29,8 +29,12 @@ def tool_version(command: list[str]) -> str:
     return subprocess.run(command, capture_output=True, text=True, check=True).stdout.splitlines()[0]
 
 
-def run_output(program: Path, cwd: Path) -> tuple[bytes, int]:
-    completed = subprocess.run([str(program)], cwd=cwd, capture_output=True, check=False)
+def run_output(program: Path, cwd: Path, stdin_path: Path | None = None) -> tuple[bytes, int]:
+    if stdin_path is None:
+        completed = subprocess.run([str(program)], cwd=cwd, capture_output=True, check=False)
+    else:
+        with open(stdin_path, "rb") as stdin:
+            completed = subprocess.run([str(program)], cwd=cwd, stdin=stdin, capture_output=True, check=False)
     return completed.stdout, completed.returncode
 
 
@@ -59,6 +63,7 @@ def measure_arms(
     repetitions: int,
     warmup: int,
     validate: Callable[[str, Path], bytes],
+    stdin_path: Path | None = None,
 ) -> tuple[dict, bytes, int]:
     """Validate each arm (``validate`` returns its output), then time it; outputs must agree."""
     runner = work / "runner"
@@ -69,7 +74,8 @@ def measure_arms(
         outputs.add(validate(arm, path))
 
         def timed() -> tuple[float, int]:
-            measured = subprocess.run([str(runner), str(path)], cwd=work, capture_output=True, text=True, check=True).stdout.split()
+            command = [str(runner), str(path)] + ([str(stdin_path)] if stdin_path is not None else [])
+            measured = subprocess.run(command, cwd=work, capture_output=True, text=True, check=True).stdout.split()
             if int(measured[1]) != 0:
                 raise AssertionError(f"{arm} exited {measured[1]}")
             return int(measured[0]) / 1e9, int(measured[2])

@@ -295,7 +295,7 @@
     },
     {
       "id": "linux-x86_64",
-      "level": "R2",
+      "level": "R3",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
         "semantic_expressibility": [
@@ -353,22 +353,26 @@
           "compiler/benchmarks/u1_linux_filestat_evidence.json"
         ],
         "practical_application": [
-          "PROTOTYPE",
-          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+          "EXECUTED",
+          "compiler/tests/test_jsonmin.py",
+          "compiler/benchmarks/jsonmin_evidence.json"
         ],
         "performance": [
           "MEASURED",
           "compiler/benchmarks/u1_linux_filestat_evidence.json",
           "compiler/benchmarks/oi37_chains_evidence.json",
-          "compiler/benchmarks/oi41_links_evidence.json"
+          "compiler/benchmarks/oi41_links_evidence.json",
+          "compiler/benchmarks/jsonmin_evidence.json"
         ],
         "memory": [
           "MEASURED",
-          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+          "compiler/benchmarks/u1_linux_filestat_evidence.json",
+          "compiler/benchmarks/jsonmin_evidence.json"
         ],
         "code_size": [
           "MEASURED",
-          "compiler/benchmarks/u1_linux_filestat_evidence.json"
+          "compiler/benchmarks/u1_linux_filestat_evidence.json",
+          "compiler/benchmarks/jsonmin_evidence.json"
         ],
         "ai_tokens": [
           "PROTOTYPE",
@@ -376,15 +380,20 @@
         ]
       },
       "blockers": [
-        "filestat is a benchmark-scale utility, not a deployed application (R3)",
-        "1.38x behind clang -O2 on filestat; float/aggregate functions still fall back (OI-38)",
+        "not competitive (R4): jsonmin 2.11x gcc -O2 and 2.29x clang -O2 time (lower peak RSS); filestat 1.38x clang -O2; float/aggregate functions still fall back (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)"
+        "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)",
+        "jsonmin writes its output with one write call (no partial-write loop: pointers cannot take a dynamic offset without pointer_rebase)"
+      ],
+      "competitive": [
+        false,
+        "compiler/benchmarks/jsonmin_evidence.json",
+        "compiler/benchmarks/u1_linux_filestat_evidence.json"
       ]
     },
     {
       "id": "linux-aarch64",
-      "level": "R2",
+      "level": "R3",
       "runtime_requirement": "none for the static profile; the dynexec profile requests /lib/ld-linux-aarch64.so.1 explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
         "semantic_expressibility": [
@@ -434,7 +443,8 @@
           "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
         ],
         "practical_application": [
-          "PROTOTYPE",
+          "EXECUTED",
+          "compiler/tests/test_jsonmin.py",
           "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
         ],
         "performance": "UNIMPLEMENTED",
@@ -447,7 +457,6 @@
       "blockers": [
         "executed only under qemu-aarch64 user mode, not hardware (OI-44); emulated times are not performance evidence",
         "frame path keeps every value in memory: filestat is 6.6x gcc -O2 emulated wall time; the register path (ADR-110) covers only scalar arithmetic, compares, and calls",
-        "filestat is a benchmark-scale utility, not a deployed application (R3)",
         "no TLS, unwind/DWARF, argv/env, threads, atomics, or C-callable XAX entries on this profile; no peak-memory measurement"
       ]
     },

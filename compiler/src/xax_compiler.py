@@ -4178,12 +4178,15 @@ def _constant_operand(blocks: Sequence["_ParsedBlock"], ref: ValueRef, resolve: 
 
 def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], SemanticObject]) -> int:
     """Recover the statically verified extent for stack/heap-view pointer SSA."""
+    verified = dict(getattr(graph, "pointer_extents", ()))
     if ref.tag == 0:
         parameters = graph.blocks[ref.block].parameters
         if ref.index + 1 < len(parameters):
             info = _heap_view_info(resolve(parameters[ref.index + 1]))
             if info is not None:
                 return info[0]
+        if ref in verified:
+            return verified[ref]
         fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "heap-view parameter or derived pointer", [ref.block, ref.index, ref.result])
     node = graph.blocks[ref.block].nodes[ref.index]
     if node.operation == Operation.STACK_ALLOC:
@@ -4196,6 +4199,8 @@ def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], S
         return pointer_extent_from_graph(graph, node.operands[0], resolve)
     if node.operation == Operation.POINTER_REBASE:
         return node.attributes[0]
+    if ref in verified:  # e.g. a borrowed view given back by a call (ADR-101)
+        return verified[ref]
     fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "stack allocation, heap view, or derived pointer", node.operation)
 
 

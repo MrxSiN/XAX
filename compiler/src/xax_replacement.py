@@ -39,10 +39,22 @@ def label(row: dict, field: str) -> str:
     return value if isinstance(value, str) else value[0]
 
 
+def competitive(row: dict) -> bool:
+    """R4 needs a measured *and* competitive result (XAX_SPEC.md §21.2).
+
+    A MEASURED label only says a comparison exists; the row's ``competitive``
+    verdict, which must cite evidence, says it favours XAX or is at parity.
+    """
+    verdict = row.get("competitive")
+    return isinstance(verdict, list) and len(verdict) >= 2 and verdict[0] is True
+
+
 def derived_level(row: dict) -> str:
     level = "NONE"
     for name, fields, accepted in REQUIREMENTS:
         if not all(label(row, field) in accepted for field in fields):
+            break
+        if name == "R4" and not competitive(row):
             break
         level = name
     return level
@@ -69,6 +81,12 @@ def validate(matrix: dict, repo_root: Path) -> list[str]:
         # Conformance §23.17: an emulator-only row cannot cite performance.
         if any("not hardware" in blocker for blocker in row.get("blockers", ())) and label(row, "performance") in ("MEASURED", "PROVEN"):
             errors.append(f"{rid}.performance: emulator-only row cannot claim performance evidence")
+        verdict = row.get("competitive")
+        if verdict is not None:
+            if not isinstance(verdict, list) or len(verdict) < 2 or not isinstance(verdict[0], bool):
+                errors.append(f"{rid}.competitive: expected [bool, evidence...]")
+            else:
+                errors.extend(f"{rid}.competitive: missing evidence {path}" for path in verdict[1:] if not (repo_root / path).exists())
         if row.get("level") not in LEVELS:
             errors.append(f"{rid}: unknown level {row.get('level')}")
         elif row["level"] != derived_level(row):

@@ -1,6 +1,7 @@
 /* Measurement harness only: fork/exec one program with stdout to /dev/null,
  * report wall nanoseconds, exit status, and wait4 ru_maxrss (KiB).  The
- * child's pre-exec high-water mark is this small runner's, not Python's. */
+ * child's pre-exec high-water mark is this small runner's, not Python's.
+ * An optional second argument is a file opened as the child's stdin. */
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/resource.h>
@@ -9,13 +10,18 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
-    if (argc != 2) return 64;
+    if (argc != 2 && argc != 3) return 64;
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     pid_t pid = fork();
     if (pid == 0) {
         int null = open("/dev/null", O_WRONLY);
         dup2(null, 1);
+        if (argc == 3) {
+            int input = open(argv[2], O_RDONLY);
+            if (input < 0) _exit(126);
+            dup2(input, 0);
+        }
         execl(argv[1], argv[1], (char *)0);
         _exit(127);
     }
