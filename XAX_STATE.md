@@ -709,3 +709,12 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - S3c (ADR-120): graph-body syntax is decoded by XAX (`xax_selfhost_graph.py`, store `bootstrap/xax_graph_decoder.xax`); `_parse_graph` walks its stream. Parses and diagnostics are identical on real graphs and 1,500 mutations. Full suite: 936 passed, 1 host-bound failure.
 - S3d (ADR-121): branch targets, dominators, and block order are computed by XAX (`xax_selfhost_cfg.py`, store `bootstrap/xax_cfg_analysis.xax`), identical to the bootstrap on 400 random CFGs. Full suite: 941 passed, 1 host-bound failure.
 - S3e (ADR-122): every value use's definition and dominance is checked by XAX; `value_type` is a plain lookup when XAX proves them all. Full suite: 942 passed, 1 host-bound failure.
+
+## Linux AArch64 executables (ADR-123) — 2026-10-03
+
+- New platform row `linux-aarch64` at R2 (emulator-only): static and explicit-loader ELF64 executables from the shared AAPCS64 lowerer, `linux-aarch64-syscall-v1` thunks, `aapcs64-linux-c` imports, and the unchanged `filestat` graph executed under qemu-aarch64 with glibc and `libz.so.1`. 14,024 bytes vs 67,496 for gcc -O2; 6.6× gcc's emulated time (frame path).
+- AArch64 frame path: integer completion operations; liveness-shared value slots on the Linux identities (filestat frame 4,848 → 240 bytes).
+- Fixed a miscompile: a duplicate `_cset` made frame-path integer and float compares crash or pick the wrong condition. Regression test executes every compare kind.
+- Matrix validator now enforces conformance §23.17 (no performance evidence on emulator-only rows). `requires-python` lowered to 3.11, where the full suite passes.
+- Full suite: 809 tests pass, 17 skipped (host-bound), on Python 3.11 with qemu-user, pytest, tiktoken, and unicorn installed.
+

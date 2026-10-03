@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "xax-compiler"
 version = "0.1.0"
 description = "Bootstrap implementation of the XAX canonical semantic store"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
@@ -16,6 +16,6 @@ xaxc = "xax_compiler:main"
 package-dir = {"" = "src"}
 py-modules = ["blake3", "xax_accelerator", "xax_artifact", "xax_aarch64", "xax_android", "xax_android_components", "xax_android_counter",
     "xax_apk", "xax_apk_signing", "xax_android_sdk",
-    "xax_dex", "xax_bootstrap", "xax_build", "xax_compiler", "xax_elf", "xax_graph_builder", "xax_jni", "xax_jvm", "xax_libxposed", "xax_linux",
+    "xax_dex", "xax_bootstrap", "xax_build", "xax_compiler", "xax_elf", "xax_graph_builder", "xax_jni", "xax_jvm", "xax_libxposed", "xax_linux", "xax_linux_aarch64",
     "xax_manifest", "xax_native_blake3", "xax_native_blake3_store", "xax_optimizer", "xax_pe", "xax_platform", "xax_replacement", "xax_resources", "xax_riscv64", "xax_selfhost_riscv64", "xax_selfhost_blake3", "xax_selfhost_store", "xax_selfhost_graph", "xax_selfhost_cfg", "xax_selfhost", "xax_strings", "xax_wasm", "xax_wasm_legacy", "xax_web", "xax_workspace", "xax_x86_64", "xax_x86_64_regalloc"]
 

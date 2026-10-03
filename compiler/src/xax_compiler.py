@@ -1285,6 +1285,38 @@ def aarch64_baremetal_general_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# Linux AArch64 hosted executable (ADR-123).  Same AAPCS64 machine as the
+# bare-metal and Android profiles; ABI 5 adds only the Linux process-entry
+# contract, declared ``linux-aarch64-syscall-v1`` calls, and (format 7 only)
+# explicitly requested dynamic-loader ``aapcs64-linux-c`` imports.
+AARCH64_LINUX_ABI = 5
+AARCH64_LINUX_ELF_EXEC_FORMAT = 6
+AARCH64_LINUX_ELF_DYNAMIC_FORMAT = 7
+# ADR-084 integer completion, lowered by the AArch64 frame path (ADR-123).
+AARCH64_INTEGER_COMPLETION_OPERATIONS = (62, 63, 67, 68, 69, 70, 71, 72)
+AARCH64_LINUX_IDENTITIES = (b"aarch64-linux-elf-exec-v1", b"aarch64-linux-elf-dynexec-v1")
+
+
+def aarch64_linux_exec_target(*, dynamic: bool = False) -> SemanticObject:
+    """ELF64 ET_EXEC for Linux AArch64: static by default, explicit loader when ``dynamic``."""
+    identity = AARCH64_LINUX_IDENTITIES[int(dynamic)]
+    image_format = AARCH64_LINUX_ELF_DYNAMIC_FORMAT if dynamic else AARCH64_LINUX_ELF_EXEC_FORMAT
+    operations = tuple(sorted({
+        1, 2, 3, *range(5, 20), *(int(value) for value in AARCH64_GENERAL_OPERATIONS),
+        int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), *AARCH64_INTEGER_COMPLETION_OPERATIONS,
+    }))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(identity)) + identity)
+    for value in (1, 3, AARCH64_LINUX_ABI, image_format, 64, 64, 16, 0):
+        body.extend(uleb(value))
+    body.extend(uleb(8) + bytes(range(8)))
+    body.extend(uleb(0))
+    body.extend(uleb(2) + bytes((9, 10)))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 ANDROID_JNI_ENV_FUNCTIONS_OPERATION = 10
 ANDROID_JNI_REFERENCE_RESOURCE_KIND = 2001
 ANDROID_JNI_REFERENCE_WORD_BORROWED_OPERATION = 11
@@ -1765,11 +1797,16 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-WASM32-CORE", [2, 2, 64, 32], [abi, image_format, word_bits, pointer_bits])
     elif architecture == 3:
         machine = (abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space)
-        allowed_machines = ((3, 1, 64, 64, 16, 0), (4, ANDROID_ELF_FORMAT, 64, 64, 16, 0), (4, ANDROID_ELF_PACKED_FORMAT, 64, 64, 16, 0))
+        allowed_machines = (
+            (3, 1, 64, 64, 16, 0), (4, ANDROID_ELF_FORMAT, 64, 64, 16, 0), (4, ANDROID_ELF_PACKED_FORMAT, 64, 64, 16, 0),
+            (AARCH64_LINUX_ABI, AARCH64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 0), (AARCH64_LINUX_ABI, AARCH64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 0),
+        )
         if machine not in allowed_machines:
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-PROFILE", [list(item) for item in allowed_machines], list(machine))
         if abi == 4 and profile != 4:
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-ANDROID-PROFILE", 4, profile)
+        if abi == AARCH64_LINUX_ABI and profile != 1:
+            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-LINUX-PROFILE", 1, profile)
         if abi == 3 and profile not in (1, 2):
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-BAREMETAL-PROFILE", [1, 2], profile)
         registers = (*argument_registers, result_register, *scratch_registers)
@@ -2585,6 +2622,11 @@ LINUX_X86_64_SYSCALL_ABI = b"linux-x86_64-syscall-v1"
 SYSV_X86_64_C_ABI = b"sysv-x86_64-c"
 # Inline reads of the Linux initial process stack (argv, envp, auxv; ADR-094).
 LINUX_X86_64_STARTUP_ABI = b"linux-x86_64-startup-v1"
+# Linux AArch64 (ADR-123): ``svc #0`` with the number in x8 and arguments in
+# x0..x5, through the same explicit register template as x86-64; C imports
+# follow AAPCS64 through the explicitly requested glibc dynamic loader.
+LINUX_AARCH64_SYSCALL_ABI = b"linux-aarch64-syscall-v1"
+AAPCS64_LINUX_C_ABI = b"aapcs64-linux-c"
 # JVM member access (ADR-112): library is the class's internal name, name is
 # ``member(descriptor)`` or ``field:descriptor``; the descriptor must agree with
 # the declared XAX types.
@@ -2592,7 +2634,10 @@ JVM_INVOKESTATIC_ABI = b"jvm-invokestatic"
 JVM_INVOKEVIRTUAL_ABI = b"jvm-invokevirtual"
 JVM_GETSTATIC_ABI = b"jvm-getstatic"
 JVM_FOREIGN_ABIS = (JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_GETSTATIC_ABI)
-FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI, *JVM_FOREIGN_ABIS)
+FOREIGN_ABIS = (
+    ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI,
+    *JVM_FOREIGN_ABIS, LINUX_AARCH64_SYSCALL_ABI, AAPCS64_LINUX_C_ABI,
+)
 # Conventions a foreign caller may use to enter an XAX function (ADR-102).
 # The ABI is part of the code-address *type*, so an entry address can only be
 # passed where a declaration names that exact type, and CALL_INDIRECT (which

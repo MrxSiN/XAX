@@ -66,6 +66,9 @@ def validate(matrix: dict, repo_root: Path) -> list[str]:
                 errors.append(f"{rid}.{field}: expected [LABEL, evidence...]")
             else:
                 errors.extend(f"{rid}.{field}: missing evidence {path}" for path in value[1:] if not (repo_root / path).exists())
+        # Conformance §23.17: an emulator-only row cannot cite performance.
+        if any("not hardware" in blocker for blocker in row.get("blockers", ())) and label(row, "performance") in ("MEASURED", "PROVEN"):
+            errors.append(f"{rid}.performance: emulator-only row cannot claim performance evidence")
         if row.get("level") not in LEVELS:
             errors.append(f"{rid}: unknown level {row.get('level')}")
         elif row["level"] != derived_level(row):

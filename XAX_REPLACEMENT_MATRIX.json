@@ -384,11 +384,71 @@
     },
     {
       "id": "linux-aarch64",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R2",
+      "runtime_requirement": "none for the static profile; the dynexec profile requests /lib/ld-linux-aarch64.so.1 explicitly and loads only declared DT_NEEDED libraries",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_linux_aarch64.py",
+          "compiler/tests/test_xax_linux_aarch64.py",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "platform_apis": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py"
+        ],
+        "ffi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "dynamic_linking": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "debugging": [
+          "STRUCTURAL",
+          "compiler/src/xax_linux_aarch64.py"
+        ],
+        "optimization": [
+          "PROTOTYPE",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/tests/test_xax_linux_aarch64.py",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "practical_application": [
+          "PROTOTYPE",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "performance": "UNIMPLEMENTED",
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+        ],
+        "ai_tokens": "UNIMPLEMENTED"
+      },
       "blockers": [
-        "Android ET_DYN emitter exists; no Linux executable profile or glibc/musl/syscall package"
+        "executed only under qemu-aarch64 user mode, not hardware (OI-44); emulated times are not performance evidence",
+        "frame path keeps every value in memory: filestat is 6.6x gcc -O2 emulated wall time; the register path (ADR-110) covers only scalar arithmetic, compares, and calls",
+        "filestat is a benchmark-scale utility, not a deployed application (R3)",
+        "no TLS, unwind/DWARF, argv/env, threads, atomics, or C-callable XAX entries on this profile; no peak-memory measurement"
       ]
     },
     {

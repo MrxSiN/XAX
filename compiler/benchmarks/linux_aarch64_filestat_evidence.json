@@ -1,0 +1,52 @@
+{
+  "evidence_label": "EXECUTED (outputs, sizes); MEASURED-EMULATED (times)",
+  "format": "xax-linux-aarch64-filestat-evidence-v1",
+  "host": {
+    "baseline_compiler": "aarch64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "executor": "qemu-aarch64 -L aarch64-linux-gnu",
+    "machine": "x86_64",
+    "qemu": "qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+    "zlib": "1.3"
+  },
+  "input": {
+    "bytes": 4194304,
+    "sha256": "74f65ca921d36a78a52e9d0f0a907f1911c6a9a63cb0eef9503c4b0dae18bdc9"
+  },
+  "method": {
+    "repetitions": 7,
+    "timer": "time.perf_counter around the whole emulated process",
+    "warmup": 1
+  },
+  "output": "4194304 49453 608070 16914471643810082238 1494747281 32\n",
+  "results": {
+    "gcc-O2": {
+      "artifact_bytes": 67496,
+      "wall_seconds_median": 0.074866,
+      "wall_seconds_stdev": 0.015055
+    },
+    "ratio_xax_over_gcc": {
+      "artifact_bytes": 0.208,
+      "wall_seconds_median": 6.647
+    },
+    "xax": {
+      "artifact_bytes": 14024,
+      "wall_seconds_median": 0.497621,
+      "wall_seconds_stdev": 0.027482
+    }
+  },
+  "workload": "U1.3 filestat graph (openat/read loop, counts, FNV-1a 64, zlib crc32 via libz.so.1, histogram, decimal write)",
+  "xax": {
+    "artifact_bytes": 14024,
+    "artifact_sha256": "dedd61271d4ea4f818ace1459859476f59ceb524a3fd73d78fd2015c5aaf783c",
+    "code_bytes": 13024,
+    "codegen": "AAPCS64 frame path with liveness-shared value slots (ADR-123); no register allocation for this workload yet",
+    "dt_needed": [
+      "libz.so.1"
+    ],
+    "dynamic_loader": "/lib/ld-linux-aarch64.so.1 (requested by aarch64-linux-elf-dynexec-v1)",
+    "entry_function": "181b651f61aa7db759577a06eac35885bfc73f949b39940c2f79c1235daa358a",
+    "program_root": "98d26edcc109a1c03372d72145a7e18e6978f854de534aed44d6dd26af0150d9",
+    "runtime_dependencies": [],
+    "target": "3bafe6cd6eaee5d6636ced6d1924da74a0463c6187722cb5ca226930bf56b7ee"
+  }
+}

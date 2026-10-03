@@ -201,3 +201,10 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - S3c (ADR-120): graph-body syntax is XAX (`XAX_GRAPH_PYTHON_DECODER=1` forces the bootstrap parser; regenerate with `write_graph_decoder_store()`). Next is S3d: branch targets, value definitions, and dominance over the decoded stream.
 - S3d (ADR-121): control-flow analysis is XAX (`XAX_CFG_PYTHON=1` forces the bootstrap; regenerate with `write_cfg_store()`). Next is S3e: value definitions and SSA dominance.
 - S3e (ADR-122): value definitions and dominance are checked in the same XAX CFG function (out word 2). Next is S4: per-operation typing rules.
+
+## Linux AArch64 — 2026-10-03 (ADR-123)
+
+- `xax_linux_aarch64.py`: `aarch64-linux-elf-exec-v1`/`-dynexec-v1`, syscall and C-import thunks, `e_entry` stub. `benchmarks.linux_filestat.build_filestat_program("aarch64")` builds the same graph for it. Host setup: `apt-get install qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross`; for `filestat`, copy an arm64 `libz.so.1` (Ubuntu ports `zlib1g_*_arm64.deb`) into `/usr/aarch64-linux-gnu/lib/`.
+- Fixed duplicate `_cset` in `xax_aarch64.py` (frame-path compares were wrong). Frame slots are liveness-shared only on the Linux identities; extending this to Android/bare metal changes committed artifacts and needs their evidence re-run.
+- Next for this row: AArch64 register path for memory, logic, and division (the 6.6×), then a hardware run (OI-44).
+
