@@ -411,11 +411,71 @@
     },
     {
       "id": "jvm",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R2",
+      "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112); no XAX runtime classes",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_jvm.py",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "platform_apis": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "ffi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "dynamic_linking": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "debugging": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "optimization": [
+          "PROTOTYPE",
+          "compiler/src/xax_jvm.py",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "performance": [
+          "MEASURED",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "memory": [
+          "MEASURED",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ]
+      },
       "blockers": [
-        "DEX emission exists for Android; no classfile/JAR container"
+        "no practical application yet (R3): scalar subset only - no linear memory, aggregates, sums, recursion groups, or indirect calls on this target",
+        "JVM objects only arrive as foreign results: no object/array/string construction, no JVM-to-XAX callbacks (interfaces)",
+        "collatz kernel 1.03-1.04x javac on the same HotSpot; class file 1.51x javac because block parameters are not coalesced (OI-35)",
+        "no classfile metadata importer: java.base declarations are hand-written (OI-32)"
       ]
     },
     {

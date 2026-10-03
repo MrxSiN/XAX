@@ -1010,6 +1010,34 @@ def wasm32_browser_target() -> SemanticObject:
     ))
 
 
+# JVM classfile target (ADR-112): architecture 5 is the JVM's typed operand-stack
+# machine.  Values live in method locals; there is no linear memory in v1.
+JVM_ARCHITECTURE = 5
+JVM_ABI = 6
+JVM_JAR_FORMAT = 1
+JVM_CLASSFILE_IDENTITY = b"jvm-classfile-v1"
+JVM_OPERATIONS = (
+    1, 2, 3, 5, 6, *range(12, 20), 42, *range(44, 51), 57, 58, 59, 60, 62, 63, *range(67, 73),
+)
+
+
+def jvm_classfile_target() -> SemanticObject:
+    """JVM class file (major 61) packaged as a runnable JAR; scalar general subset.
+
+    Bits up to 32 lower to ``int`` and up to 64 to ``long``, kept zero-extended;
+    f32/f64 lower to strict IEEE ``float``/``double``.  Foreign calls are typed
+    ``jvm-invokestatic``/``jvm-invokevirtual``/``jvm-getstatic`` declarations.
+    """
+    operations = tuple(sorted(set(JVM_OPERATIONS)))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(JVM_CLASSFILE_IDENTITY)) + JVM_CLASSFILE_IDENTITY)
+    for value in (1, JVM_ARCHITECTURE, JVM_ABI, JVM_JAR_FORMAT, 64, 64):
+        body.extend(uleb(value))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:
     """wasm32 core module with native f32/f64 plus memory-backed aggregates and sums."""
     operations = (
@@ -1511,14 +1539,14 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         argument_registers = tuple(cursor.uleb() for _ in range(cursor.uleb()))
         result_register: int | None = cursor.uleb()
         scratch_registers = tuple(cursor.uleb() for _ in range(cursor.uleb()))
-    elif architecture in (2, 4):
+    elif architecture in (2, 4, JVM_ARCHITECTURE):
         stack_alignment = 1
         shadow_space = 0
         argument_registers = ()
         result_register = None
         scratch_registers = ()
     else:
-        fail("XAX.TARGET.ARCHITECTURE", obj.cid.hex(), "TARGET-ARCHITECTURE-SUPPORTED", [1, 2, 3, 4], architecture)
+        fail("XAX.TARGET.ARCHITECTURE", obj.cid.hex(), "TARGET-ARCHITECTURE-SUPPORTED", [1, 2, 3, 4, JVM_ARCHITECTURE], architecture)
     operations = tuple(cursor.uleb() for _ in range(cursor.uleb()))
     terminators = tuple(cursor.uleb() for _ in range(cursor.uleb()))
     atomic_widths: tuple[int, ...] = ()
@@ -1613,6 +1641,8 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         registers = (*argument_registers, result_register, *scratch_registers)
         if argument_registers != (1, 2, 8, 9) or result_register != 0 or scratch_registers != (10, 11) or any(register is None or register >= 16 for register in registers):
             fail("XAX.TARGET.ABI", obj.cid.hex(), "TARGET-WINDOWS-X64-REGISTERS", [[1, 2, 8, 9], 0, [10, 11]], [list(argument_registers), result_register, list(scratch_registers)])
+    elif architecture == JVM_ARCHITECTURE and (profile, abi, image_format, word_bits, pointer_bits) != (1, JVM_ABI, JVM_JAR_FORMAT, 64, 64):
+        fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-JVM-CLASSFILE", [1, JVM_ABI, JVM_JAR_FORMAT, 64, 64], [profile, abi, image_format, word_bits, pointer_bits])
     elif architecture == 2 and (abi, image_format, word_bits, pointer_bits) != (2, 2, 64, 32):
         fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-WASM32-CORE", [2, 2, 64, 32], [abi, image_format, word_bits, pointer_bits])
     elif architecture == 3:
@@ -2437,7 +2467,14 @@ LINUX_X86_64_SYSCALL_ABI = b"linux-x86_64-syscall-v1"
 SYSV_X86_64_C_ABI = b"sysv-x86_64-c"
 # Inline reads of the Linux initial process stack (argv, envp, auxv; ADR-094).
 LINUX_X86_64_STARTUP_ABI = b"linux-x86_64-startup-v1"
-FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI)
+# JVM member access (ADR-112): library is the class's internal name, name is
+# ``member(descriptor)`` or ``field:descriptor``; the descriptor must agree with
+# the declared XAX types.
+JVM_INVOKESTATIC_ABI = b"jvm-invokestatic"
+JVM_INVOKEVIRTUAL_ABI = b"jvm-invokevirtual"
+JVM_GETSTATIC_ABI = b"jvm-getstatic"
+JVM_FOREIGN_ABIS = (JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_GETSTATIC_ABI)
+FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI, *JVM_FOREIGN_ABIS)
 # Conventions a foreign caller may use to enter an XAX function (ADR-102).
 # The ABI is part of the code-address *type*, so an entry address can only be
 # passed where a declaration names that exact type, and CALL_INDIRECT (which

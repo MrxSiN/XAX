@@ -65,6 +65,10 @@ class ArtifactKind(IntEnum):
     ACCELERATOR_DEPLOYMENT = 2
     ANDROID_UNSIGNED_APK = 3
     ANDROID_SIGNED_APK = 4
+    # JVM (ADR-112): a class library, or a JAR whose Main-Class runs the
+    # proof-only process entry.  The request names which; it is never inferred.
+    JVM_LIBRARY_JAR = 5
+    JVM_EXECUTABLE_JAR = 6
 
 
 class OptimizationObjective(IntEnum):
@@ -1843,6 +1847,22 @@ def build(
                 )
             artifact = sign_apk_v2(artifact, signing_capability)
             lowering = ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1
+    elif description.architecture == 5:
+        jar_kinds = ((ArtifactKind.JVM_LIBRARY_JAR,), (ArtifactKind.JVM_EXECUTABLE_JAR,))
+        if request_view.requested_artifacts not in jar_kinds:
+            fail(
+                "XAX.BUILD.ARTIFACT", request.cid.hex(), "BUILD-ARTIFACT-SUPPORTED",
+                [ArtifactKind.JVM_LIBRARY_JAR.name, ArtifactKind.JVM_EXECUTABLE_JAR.name],
+                [item.name for item in request_view.requested_artifacts],
+            )
+        from xax_jvm import compile_jvm_bound_target
+
+        image = compile_jvm_bound_target(
+            reader, function_root, target_object,
+            process_entry=request_view.requested_artifacts == (ArtifactKind.JVM_EXECUTABLE_JAR,),
+        )
+        artifact = image.artifact_bytes
+        lowering = lowering_identity(description.architecture, description.image_format)
     else:
         expected_artifact = ArtifactKind.ACCELERATOR_DEPLOYMENT if description.architecture == 4 else ArtifactKind.NATIVE_IMAGE
         if request_view.requested_artifacts != (expected_artifact,):

@@ -33,6 +33,9 @@ ACCELERATOR_LOWERING_IDENTITY_V1 = bytes.fromhex(
 ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1 = bytes.fromhex(
     "8a1ce792e3284d5b891a956fe026cd91431771942065d969837e744c7e9acb22"
 )
+JVM_LOWERING_IDENTITY_V1 = bytes.fromhex(
+    "b6e88b4db216422c2c353ca9b835417645783201e5db1b7a4ffa49838d867ca5"
+)
 ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1 = bytes.fromhex(
     "9b56f1305305788260f8bde6bfe0da2c348ca05f48acc310ac9b1ed90c65c97f"
 )
@@ -47,6 +50,7 @@ def lowering_identity(architecture: int, image_format: int) -> bytes:
             (2, 2): WASM_LOWERING_IDENTITY_V1,
             (3, 1): AARCH64_LOWERING_IDENTITY_V1,
             (4, 3): ACCELERATOR_LOWERING_IDENTITY_V1,
+            (5, 1): JVM_LOWERING_IDENTITY_V1,
         }[(architecture, image_format)]
     except KeyError as error:
         raise ValueError("unsupported bootstrap lowering identity") from error
