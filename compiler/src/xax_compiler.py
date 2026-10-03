@@ -6155,6 +6155,37 @@ def _native_cfg():
     return _NATIVE_CFG
 
 
+# Self-hosting S4 (ADR-132): scalar operation typing rules are an XAX function.
+_NATIVE_TYPING = None
+_TYPING_ATTEMPTED = False
+_TYPING_BUILDING = False
+
+
+def _native_typing():
+    global _NATIVE_TYPING, _TYPING_ATTEMPTED, _TYPING_BUILDING
+    if _TYPING_BUILDING or _CFG_BUILDING:
+        return None
+    if _TYPING_ATTEMPTED:
+        return _NATIVE_TYPING
+    hashing = sys.modules.get("blake3")
+    if _DECODER_BUILDING or _GRAPH_DECODER_BUILDING or (hashing is not None and (getattr(hashing, "_NATIVE_BUILDING", False) or getattr(hashing, "_HASHER_BUILDING", False))):
+        return None
+    partial = sys.modules.get("xax_selfhost_typing")
+    if partial is not None and not hasattr(partial, "native_typing_usable"):
+        return None
+    _TYPING_ATTEMPTED = True
+    _TYPING_BUILDING = True
+    try:
+        from xax_selfhost_typing import NativeTyping, native_typing_usable
+
+        _NATIVE_TYPING = NativeTyping() if native_typing_usable() else None
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _NATIVE_TYPING = None
+    finally:
+        _TYPING_BUILDING = False
+    return _NATIVE_TYPING
+
+
 def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ParsedGraph:
     decoder = _native_graph_decoder()
     parsed = None
@@ -6234,6 +6265,24 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         if value.block != use_block and value.block not in dominators[use_block]:
             fail("XAX.STRUCT.SSA_DOMINANCE", obj.cid.hex(), "GRAPH-SSA-DOMINANCE", sorted(dominators[use_block]), value.block)
         return type_cid
+
+    # Self-hosting S4 (ADR-132): once S3e proved every use valid, the XAX typing
+    # function decides the scalar operation families; a node it proves skips the
+    # bootstrap checks below, and every other node takes them unchanged.
+    proven_nodes: frozenset[tuple[int, int]] = frozenset()
+    typing = _native_typing() if checked_uses else None
+    if typing is not None:
+        from xax_selfhost_typing import PROVEN, marshal, type_info_from
+
+        words, keys = marshal(
+            blocks,
+            lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
+            type_info_from(resolve),
+        )
+        if keys:
+            status, verdicts = typing.check(words, len(keys))
+            if status == 0:
+                proven_nodes = frozenset(key for key, verdict in zip(keys, verdicts) if verdict == PROVEN)
 
     # Memory facts flow only along explicit block parameters.  Blocks are
     # verified in reverse postorder; a back edge first contributes nothing
@@ -6350,7 +6399,9 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     fail("XAX.STRUCT.OPERATION", obj.cid.hex(), "GRAPH-OP-SUPPORTED", list(Operation), node.operation)
                 operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
                 node.operand_types = operand_types
-                if node.operation in BINARY_INTEGER_OPERATIONS:
+                if (block_index, node_index) in proven_nodes:
+                    pass  # S4 (ADR-132): typed by the XAX rules
+                elif node.operation in BINARY_INTEGER_OPERATIONS:
                     if len(node.operands) != 2 or len(node.results) != 1 or node.attributes:
                         fail("XAX.STRUCT.OP_ARITY", obj.cid.hex(), "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes", [len(node.operands), len(node.results), len(node.attributes)])
                     decode_bits_width(resolve(node.results[0]))

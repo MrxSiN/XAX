@@ -761,3 +761,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - Offline only, with zero model tokens (tiktoken 0.14.0): the AI-native harness and the OI-03/OI-04/OI-12/OI-13 tokenizer replays pass 67/67 against the changed verifier. New offline token evidence comes from OI-36 (`oi36_stdlib_evidence.json`): using the standard packages takes a 268-token interface view plus a 1,360-token application mutation, against 3,256 tokens with the library bodies inline.
 - No model pair was run. `xax_workspace`, the AI-native harness, and `docs/09_AI_PROTOCOL.md` are unchanged since the last pair (`task-01`, `haiku`, XAX 1.065× C), so a new pair would only repeat that regression check. The next paid trial should measure something new: a library-using edit, such as adding a call to `hashset_u64.contains`.
+
+## Self-hosting step S4: scalar operation typing is XAX (ADR-132) — 2026-10-03
+
+- `xax_selfhost_typing.py` (store `bootstrap/xax_op_typing.xax`) types the integer, compare, rotate, float, and conversion nodes, decoding type objects itself. It is the default verifier path on Linux x86-64. The bootstrap checks only the nodes it does not prove, so diagnostics are unchanged. EXECUTED: on 600 random nodes, the proven set is exactly the bootstrap-accepted set. MEASURED: all 2,419 covered nodes in four real stores are proven, with verify time roughly unchanged. Full suite: 868 tests, 17 skipped.
