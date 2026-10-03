@@ -1,0 +1,29 @@
+{
+  "format": "xax-selfhost-s2-evidence-v1",
+  "component": "BLAKE3-256 hash (chunking, padding, chaining-value tree) over lent views",
+  "store": {
+    "path": "compiler/bootstrap/xax_blake3_hash.xax",
+    "bytes": 34025,
+    "sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3",
+    "root_cid": "3d8e9a8b0381806c32764e097ae9f35e744eb23c9fc23ac4e88155e9db02e2be",
+    "hash_cid": "8578b942796a9dac1610130ddc202a08305cb0f48d1dbf5b40bfba99f8eb63a1"
+  },
+  "native_leaf_bytes": 44387,
+  "agreement_with_python_driver": [
+    3000,
+    3000
+  ],
+  "host_cost_nonsemantic": {
+    "host": "Linux x86_64 Python 3.11.15",
+    "objects": 3000,
+    "object_hashing_ms": {
+      "xax_hash": 49.15,
+      "python_driver_with_s0_leaf": 568.0,
+      "speedup": 11.56
+    },
+    "one_mib_ms": {
+      "xax_hash": 17.65,
+      "python_driver_with_s0_leaf": 216.73
+    }
+  }
+}

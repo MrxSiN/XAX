@@ -399,8 +399,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 |---|---|---|---|
 | S0 | BLAKE3 compression (CID hashing leaf) | scalar leaf | EXECUTED (native XAX leaf, 2026-10-02) |
 | S1 | RISC-V instruction encoder + `li` planner | scalar leaf, loops | EXECUTED (ADR-116): production default on Linux x86-64; self-compilation fixed point; runs on x86-64, RISC-V, and the JVM |
-| S2 | Buffer-passing leaves: the whole RISC-V word stream for one function written into a borrowed view | borrowed heap views across the leaf boundary | next |
-| S3 | Canonical store codec: ULEB, object framing, full BLAKE3 tree hash, so CIDs come from XAX | S2 buffers | planned |
+| S2 | The whole BLAKE3 hash (chunking, padding, chaining-value tree) over lent views, so every CID comes from XAX | borrowed heap views across the leaf boundary | EXECUTED (ADR-117): production default on Linux x86-64; 11.6× faster object hashing than the driver it replaces |
+| S3 | Canonical store codec: ULEB, object framing, and store index decoding into lent views | S2 buffers | next |
 | S4 | Structural verifier checks (arity, types, reference closure) over decoded stores | S3 | planned |
 | S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | planned |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
