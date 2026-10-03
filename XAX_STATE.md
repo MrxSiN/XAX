@@ -684,3 +684,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Lend entries: `qsort_r` with an XAX comparator (ADR-115, OI-42 closed) — 2026-10-03
 
 - `sysv-x86_64-c-lend` entries read a view lent by the C call that receives them. EXECUTED: glibc `qsort_r` sorts a 16-element XAX heap array; exit 117 (`linux_qsort_evidence.json`). Seven rejection vectors (`test_xax_lend_entry.py`, 9 tests).
+
+## Post-upgrade token test (lowest cost) — 2026-10-03
+
+- Offline, with no model tokens (tiktoken 0.14.0, `o200k_base`): the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44. With a tokenizer installed, the OI-12/OI-13 suites now check real counts, and OI-12's committed evidence records them (9 and 7 tokens per timing query/response).
+- Model: one `task-01` pair (change a shared constant), each arm a fresh `haiku` subagent given the identical task prompt. C used 37,576 tokens and 3 tool calls; XAX used 40,021 tokens and 10 tool calls (1.065× C). Both pass the external checkers on the first attempt with no repairs. n=1, dominated by fixed agent-harness overhead, so this is neither R5 nor OI-31 evidence. It matches the earlier results (1.04×, 1.04×): on one-constant edits, the XAX protocol's inspect/mutate/test round trips cost slightly more than the C edit saves. The ADR-112–115 changes did not touch the workspace protocol, so this is a regression check, not a new measurement of it.

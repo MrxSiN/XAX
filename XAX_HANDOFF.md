@@ -188,4 +188,4 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - MEASURED: JVM Collatz 1.04× `javac` kernel time, 1.51× class bytes. RISC-V Collatz 3.72× `clang -O2` emulated instructions, after a liveness-hull linear scan cut it from 15.9×.
 - Repairs: OI-25/OI-26 evidence replays no longer depend on filesystem order or interpreter version; one stale code hash was re-pinned after execution; the wheel now packages `xax_web`, `xax_android_counter`, `xax_jvm`, and `xax_riscv64`.
 - Regression here: 903 passed, 19 skipped, 2 failed (`tiktoken` absent; wheel needs Python ≥ 3.12).
-
+- Lowest-cost token test after this upgrade: offline replays 44/44; one `haiku` `task-01` pair, both PASS, XAX 1.065× C (40,021 vs 37,576 tokens; 10 vs 3 tool calls). Not R5 or OI-31 evidence.
