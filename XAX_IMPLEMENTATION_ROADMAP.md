@@ -402,7 +402,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S2 | The whole BLAKE3 hash (chunking, padding, chaining-value tree) over lent views, so every CID comes from XAX | borrowed heap views across the leaf boundary | EXECUTED (ADR-117): production default on Linux x86-64; 11.6× faster object hashing than the driver it replaces |
 | S3 | Store container decoder: header, record envelopes and CID order, non-semantic records, index, trailer, root presence | S2 buffers | EXECUTED (ADR-118): production `StoreReader` path on Linux x86-64; bootstrap parser only for diagnostics and deferrals |
 | S3b | Object envelopes: kind, schema version, sorted reference table, exact body bounds, per record | S3 | EXECUTED (ADR-119): `StoreReader.get` builds objects from the XAX parse; CIDs checked with the S2 hash |
-| S3c | Typed body decoding (type, constant, graph, and function bodies) into lent views | S3b | next |
+| S3c | Graph-body syntax: blocks, nodes, entity and attribute presence per operation, values, terminators, exact end, reference bounds | S3b | EXECUTED (ADR-120): `_parse_graph` walks the XAX decoder's stream; resolution, type checks, and trap payloads stay in body order |
+| S3d | Graph structure checks (branch targets, value definitions, dominance) over the decoded stream | S3c | next |
 | S4 | Structural verifier checks (arity, types, reference closure) over decoded stores | S3 | planned |
 | S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | planned |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
