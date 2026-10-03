@@ -1097,7 +1097,7 @@ Levels are cumulative; a level is held only when every lower level is held.
 | R5 | AI efficiency | Total tokens per successful change and repair rate MEASURED against textual-source workflows on real model trials. |
 | R6 | Autonomous maintenance | Query, modify, verify, benchmark, rebuild, and commit of the application EXECUTED through semantic transactions without whole-source regeneration. |
 
-A negative R4/R5 measurement is valid evidence and MUST be reported; the level is held only when the measured result is competitive.
+A negative R4/R5 measurement is valid evidence and MUST be reported; the level is held only when the measured result is competitive. For CPU/native runtime, competitive means `XAX_BENCHMARKS.md` §15.0: against an optimized C/C++ baseline and at least one implementation outside C/C++, XAX's median is at most 1.05× the fastest valid implementation's (ADR-147).
 
 ### 21.3 Evidence labels
 

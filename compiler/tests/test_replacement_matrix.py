@@ -37,7 +37,7 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertEqual(practical[0], "EXECUTED")
         # The benchmark-scale filestat utility alone is not the application.
         self.assertIn("compiler/benchmarks/jsonmin_evidence.json", practical)
-        self.assertEqual(derived_level(row), "R3")
+        self.assertEqual(derived_level(row), "R4")
 
     def test_not_applicable_needs_a_justification_and_only_covers_dynamic_linking(self):
         bad = copy.deepcopy(MATRIX)
@@ -53,15 +53,35 @@ class ReplacementMatrixTests(unittest.TestCase):
     def test_measured_but_uncompetitive_rows_stop_at_r3(self):
         row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64"))
         self.assertTrue(all(row["fields"][field][0] == "MEASURED" for field in ("performance", "memory", "code_size")))
-        self.assertEqual(derived_level(row), "R3")
-        row["competitive"] = [True, "compiler/benchmarks/jsonmin_evidence.json"]
         self.assertEqual(derived_level(row), "R4")
+        row["competitive"] = [False, "compiler/benchmarks/jsonmin_evidence.json"]
+        self.assertEqual(derived_level(row), "R3")
         bad = copy.deepcopy(MATRIX)
         target = next(r for r in bad["platforms"] if r["id"] == "linux-x86_64")
-        target["level"] = "R4"
+        target["competitive"] = [False, "compiler/benchmarks/jsonmin_evidence.json"]
         self.assertIn("linux-x86_64: claimed R4 but evidence supports R3", validate(bad, ROOT))
         target["competitive"] = [True]
         self.assertIn("linux-x86_64.competitive: expected [bool, evidence...]", validate(bad, ROOT))
+
+    def test_competitive_runtime_evidence_follows_the_multi_language_rule(self):
+        import json
+        import tempfile
+
+        from xax_replacement import _runtime_rule_errors
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cases = {
+                "c_only.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "gcc-O2": {}}},
+                "slow.json": {"results": {"xax": {"performance_class": "competitive-below-primary-target"}, "gcc-O2": {}, "rustc-O3": {}}},
+                "good.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "gcc-O2": {}, "rustc-O3": {}}},
+            }
+            for name, body in cases.items():
+                (root / name).write_text(json.dumps(body))
+            self.assertEqual(_runtime_rule_errors("r", ["c_only.json"], root), ["r.competitive: c_only.json has no implementation outside C/C++"])
+            self.assertEqual(_runtime_rule_errors("r", ["slow.json"], root), ["r.competitive: slow.json has no XAX arm within 1.05x of the fastest"])
+            self.assertEqual(_runtime_rule_errors("r", ["good.json"], root), [])
+        self.assertEqual(validate(MATRIX, ROOT), [])
 
     def test_levels_are_cumulative(self):
         row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "ai_tokens": ["MEASURED", "x"]}}

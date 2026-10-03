@@ -828,3 +828,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S6b.3: recursion groups, group member functions, and targets decided by XAX (ADR-146) — 2026-10-03
 
 - The store verifier decides recursion groups, with the bootstrap's full member key for the canonical order. It also decides group member functions, and identity carriers plus general and concurrency targets. Every corpus function (including jsonmin's group member), group, list, contract, and target is proven. Full suite: 890 tests, 18 skipped. Next: S6b.4 (build and package objects, the remaining target profiles, and the per-graph glue).
+
+## Multi-language performance rule; x86-64 within 1.05× of the fastest (ADR-147, ADR-148) — 2026-10-03
+
+- Performance requirements were updated: each CPU/native runtime comparison now includes C/C++ and Rust, and XAX must be within 1.05× of the fastest valid implementation. The first run measured XAX at 1.57× (`filestat`), 1.18× (`chains`), and 1.21× (`jsonmin`) the fastest: unmet.
+- After ADR-148 (range-proven checks, a lowering view with leaf inlining and layout, call-aware allocation), the interleaved re-run measures 1.017×, 1.000× (XAX fastest), and 1.029×: MEASURED, primary target met on all three. Linux x86-64 row: R4 for that scope. Full suite: 1,059 passed, 4 skipped. Next: S6b.4.
