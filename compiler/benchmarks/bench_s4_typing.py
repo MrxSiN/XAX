@@ -95,8 +95,8 @@ def run() -> dict:
     from xax_selfhost_typing import NativeTyping, STORE_PATH
 
     return {
-        "step": "S4 to S4d.2b",
-        "adr": "ADR-132 to ADR-137",
+        "step": "S4 to S4d.2d (S4 complete)",
+        "adr": "ADR-132 to ADR-139",
         "evidence_label": "MEASURED",
         "store_bytes": STORE_PATH.stat().st_size,
         "native_code_bytes": NativeTyping().code_size,
