@@ -695,3 +695,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - `xax_selfhost_riscv64.py` builds `encode(kind, a1..a6)`, covering all RV64 formats plus the `li` planner, as one XAX function. Its committed store is `bootstrap/xax_riscv64_encoder.xax` (10,129 bytes). On Linux x86-64 the RISC-V backend encodes through it by default, natively, with the Python encoders as reference and fallback.
 - EXECUTED: the native leaf agrees with Python on 12,072/12,072 cases. The encoder also runs on RISC-V (emulated, 300/300) and on the JVM. Corpus images are byte-identical with either encoder, and the encoder compiling itself is a fixed point (`test_xax_selfhost_riscv64.py`, `selfhost_s1_evidence.json`).
 - Cost: about 2.0 µs per native call against 0.18 µs in Python; a RISC-V compile takes 2.30 ms against 2.15 ms. The compiler is still mostly Python; see the S ladder in the roadmap.
+
+## Self-hosting step S2: every CID from an XAX-authored hash (ADR-117) — 2026-10-03
+
+- `xax_selfhost_blake3.py` implements the whole BLAKE3-256 hash as one XAX function over lent input and scratch views (store `bootstrap/xax_blake3_hash.xax`, 34,025 bytes; native leaf 44,387 bytes). `blake3.blake3()` uses it by default on Linux x86-64, so the compiler's content identities come from XAX code.
+- EXECUTED: official vectors, boundary and random lengths up to 1 MiB, and 3,000/3,000 agreement with the Python driver. MEASURED: 11.6× faster object hashing (49 ms against 568 ms for 3,000 objects).

@@ -296,8 +296,71 @@ class _Blake3:
         return other
 
 
-def blake3(data: bytes = b"") -> _Blake3:
-    return _Blake3(data)
+# Self-hosting S2 (ADR-117): the whole hash is an XAX function lowered by the
+# XAX x86-64 backend.  It is loaded on first use under the same guard as the
+# compression leaf: building it hashes semantic objects through the Python
+# driver.  Inputs over its lent view, other digest lengths, and hosts without
+# the leaf use the Python driver below.
+_NATIVE_HASHER = None
+_HASHER_ATTEMPTED = False
+_HASHER_BUILDING = False
+
+
+def _native_hasher():
+    global _NATIVE_HASHER, _HASHER_ATTEMPTED, _HASHER_BUILDING
+    if _HASHER_BUILDING or _NATIVE_BUILDING:
+        return None
+    if _HASHER_ATTEMPTED:
+        return _NATIVE_HASHER
+    compiler = sys.modules.get("xax_compiler")
+    if compiler is None or not hasattr(compiler, "Operation"):
+        return None
+    partial = sys.modules.get("xax_selfhost_blake3")
+    if partial is not None and not hasattr(partial, "native_hasher_usable"):
+        return None  # that module is still importing; try again on a later hash
+    _HASHER_ATTEMPTED = True
+    _HASHER_BUILDING = True
+    try:
+        from xax_selfhost_blake3 import NativeHasher, native_hasher_usable
+
+        _NATIVE_HASHER = NativeHasher() if native_hasher_usable() else None
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _NATIVE_HASHER = None
+    finally:
+        _HASHER_BUILDING = False
+    return _NATIVE_HASHER
+
+
+class _OneShot:
+    """Buffers input and hashes it in one call to the XAX hash on ``digest``."""
+
+    def __init__(self, hasher, data: bytes = b"") -> None:
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError("a bytes-like object is required")
+        self._hasher = hasher
+        self._data = bytearray(data)
+
+    def update(self, data: bytes) -> "_OneShot":
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError("a bytes-like object is required")
+        self._data += data
+        return self
+
+    def digest(self, length: int = _OUT_LEN) -> bytes:
+        if length == _OUT_LEN and len(self._data) <= self._hasher.capacity:
+            return self._hasher.digest(bytes(self._data))
+        return _Blake3(bytes(self._data)).digest(length)
+
+    def hexdigest(self, length: int = _OUT_LEN) -> str:
+        return self.digest(length).hex()
+
+    def copy(self) -> "_OneShot":
+        return _OneShot(self._hasher, bytes(self._data))
+
+
+def blake3(data: bytes = b""):
+    hasher = _native_hasher()
+    return _OneShot(hasher, data) if hasher is not None else _Blake3(data)
 
 
 __all__ = ["blake3"]
