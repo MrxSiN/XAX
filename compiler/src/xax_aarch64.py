@@ -2573,7 +2573,7 @@ def run_aarch64_qemu(
         kernel = Path(directory) / "kernel.bin"
         kernel.write_bytes(_kernel(image, arguments))
         completed = subprocess.run(
-            [qemu, "-M", "virt", "-cpu", "cortex-a72", "-nographic", "-monitor", "none", "-serial", "none", "-semihosting-config", "enable=on,target=native", "-kernel", str(kernel)],
+            [qemu, "-M", "virt", "-cpu", "cortex-a72", "-nographic", "-net", "none", "-monitor", "none", "-serial", "none", "-semihosting-config", "enable=on,target=native", "-kernel", str(kernel)],
             check=False,
             capture_output=True,
             timeout=15,
