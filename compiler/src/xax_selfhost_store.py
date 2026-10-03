@@ -57,10 +57,13 @@ from xax_graph_builder import GraphBuilder, program_store
 STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_store_decoder.xax"
 DATA_EXTENT = 1 << 22
 OUT_EXTENT = 1 << 21
-HEADER_WORDS, RECORD_WORDS = 8, 3  # header: status + seven fields
+# Per record: offset, length, CID offset, parsed flag, kind, reference count,
+# references offset, body offset, body length.
+HEADER_WORDS, RECORD_WORDS = 8, 9  # header: status + seven fields
 MAX_RECORDS = (OUT_EXTENT // 4 - HEADER_WORDS) // RECORD_WORDS
 ACCEPT, REJECT, DEFER = 0, 1, 2
 CID_BYTES = 32
+MAX_KIND = 11  # Kind.CALL_CONTRACT
 
 B1, B8, B32, B64 = bits_type(1), bits_type(8), bits_type(32), bits_type(64)
 MEM = memory_effect_type()
@@ -129,10 +132,10 @@ class _Decoder:
         self.cur.cbr(condition, following, self.state, failure or self.reject_block, self.state)
         self.cur, self.state = following, tuple(following.params)
 
-    def need(self, position, count, limit=None):
+    def need(self, position, count, limit=None, failure=None):
         """``position + count <= limit`` (the bootstrap ``take`` bound); returns the end."""
         end = self.add(position, count)
-        self.check(self.cmp(IntCompare.ULE, end, limit if limit is not None else self.length))
+        self.check(self.cmp(IntCompare.ULE, end, limit if limit is not None else self.length), failure)
         return end
 
     def loop_header(self, values):
@@ -154,13 +157,14 @@ class _Decoder:
     def enter(self, block):
         self.cur, self.state = block, tuple(block.params)
 
-    def uleb(self, position, limit=None):
-        """Bootstrap ULEB: returns (value, big, next).  Rejects unterminated, longer than
-        ten bytes, and non-minimal encodings; ``big`` marks bits at or above 2^35."""
+    def uleb(self, position, limit=None, failure=None):
+        """Bootstrap ULEB: returns (value, big, next).  Unterminated, longer than ten
+        bytes, and non-minimal encodings go to ``failure`` (default reject); ``big``
+        marks bits at or above 2^35."""
         limit = limit if limit is not None else self.length
         header, (pos, value, group, big) = self.loop_header((position, self.c(0), self.c(0), self.c(0)))
-        self.check(self.cmp(IntCompare.ULT, group, 10))
-        self.check(self.cmp(IntCompare.ULT, pos, limit))
+        self.check(self.cmp(IntCompare.ULT, group, 10), failure)
+        self.check(self.cmp(IntCompare.ULT, pos, limit), failure)
         byte = self.load8(pos)
         low = self.op(Operation.BIT_AND, byte, self.c(0x7F))
         scale = self.c(0)
@@ -177,12 +181,12 @@ class _Decoder:
         self.back(header, (following, value, self.add(group, 1), big))
         self.enter(done)
         # A final zero group is allowed only as the single byte 00.
-        self.check(self.cmp(IntCompare.NE, self.op(Operation.BIT_OR, self.flag(IntCompare.NE, byte, 0), self.flag(IntCompare.EQ, group, 0)), 0))
+        self.check(self.cmp(IntCompare.NE, self.op(Operation.BIT_OR, self.flag(IntCompare.NE, byte, 0), self.flag(IntCompare.EQ, group, 0)), 0), failure)
         return value, big, following
 
-    def small_uleb(self, position, limit=None):
-        value, big, following = self.uleb(position, limit)
-        self.check(self.cmp(IntCompare.EQ, big, 0))
+    def small_uleb(self, position, limit=None, failure=None):
+        value, big, following = self.uleb(position, limit, failure)
+        self.check(self.cmp(IntCompare.EQ, big, 0), failure)
         return value, following
 
     def compare(self, a, a_length, b, b_length):
@@ -247,7 +251,34 @@ def build_decoder_program() -> tuple[StoreReader, SemanticObject]:
     d.set_out(slot, offset)
     d.set_out(d.add(slot, 1), length)
     d.set_out(d.add(slot, 2), payload)
-    d.back(header, (d.add(i, 1), end, payload, d.op(Operation.BIT_OR, root_found, is_root)))
+    following = (d.add(i, 1), end, payload, d.op(Operation.BIT_OR, root_found, is_root))
+    # S3b: parse the object envelope (kind, schema version, sorted references,
+    # exact body).  A malformed object does not reject the store (objects decode
+    # lazily); it is marked unparsed so ``get`` reports it with the bootstrap decoder.
+    bad = d.g.block(*STATE)
+    inner = d.add(payload, CID_BYTES)
+    kind, inner = d.small_uleb(inner, end, bad)
+    d.check(d.cmp(IntCompare.UGE, kind, 1), bad)
+    d.check(d.cmp(IntCompare.ULE, kind, MAX_KIND), bad)
+    version, inner = d.small_uleb(inner, end, bad)
+    d.check(d.cmp(IntCompare.EQ, version, 1), bad)
+    reference_count, references = d.small_uleb(inner, end, bad)
+    references_end = d.need(references, d.mul(reference_count, CID_BYTES), end, bad)
+    sorted_header, (r,) = d.loop_header((d.c(1),))
+    sorted_done = d.branch_loop(sorted_header, d.cmp(IntCompare.ULT, r, reference_count))
+    current = d.add(references, d.mul(r, CID_BYTES))
+    less, _equal = d.compare(d.op(Operation.SUB_WRAP, current, d.c(CID_BYTES)), d.c(CID_BYTES), current, d.c(CID_BYTES))
+    d.check(d.cmp(IntCompare.NE, less, 0), bad)
+    d.back(sorted_header, (d.add(r, 1),))
+    d.enter(sorted_done)
+    body_length, body = d.small_uleb(references_end, end, bad)
+    d.check(d.cmp(IntCompare.EQ, d.add(body, body_length), end), bad)
+    for word, value in enumerate((d.c(1), kind, reference_count, references, body, body_length)):
+        d.set_out(d.add(slot, 3 + word), value)
+    d.back(header, following)
+    d.enter(bad)
+    d.set_out(d.add(slot, 3), d.c(0))
+    d.back(header, following)
     d.enter(records_done)
 
     # Non-semantic records: (schema, byte string) exactly filling the envelope, in strict byte order.
@@ -355,7 +386,7 @@ class NativeDecoder:
         self.capacity = DATA_EXTENT
 
     def decode(self, data: bytes):
-        """``(status, header words, records)``; records are (offset, length, CID offset)."""
+        """``(status, header words, records)``; each record is the nine words described at RECORD_WORDS."""
         with self._lock:
             ctypes.memmove(self._data, data, len(data))
             slots = self._slots
@@ -368,7 +399,7 @@ class NativeDecoder:
             header = tuple(out[1:HEADER_WORDS])
             count = header[1]
             flat = out[HEADER_WORDS:HEADER_WORDS + RECORD_WORDS * count]
-            return status, header, tuple(zip(flat[0::3], flat[1::3], flat[2::3]))
+            return status, header, tuple(tuple(flat[index:index + RECORD_WORDS]) for index in range(0, len(flat), RECORD_WORDS))
 
 
 def native_decoder_usable() -> bool:

@@ -91,7 +91,7 @@ class NativeDecoderTests(unittest.TestCase):
                 self.assertEqual(status == ACCEPT, ok)
                 if ok:
                     accepted += 1
-                    self.assertEqual({data[c:c + 32]: (o, n) for o, n, c in records}, index)
+                    self.assertEqual({data[c:c + 32]: (o, n) for o, n, c, *_rest in records}, index)
         self.assertGreater(accepted, 300)
 
     def test_production_reader_matches_the_bootstrap_reader(self):
@@ -111,6 +111,31 @@ class NativeDecoderTests(unittest.TestCase):
             with self.assertRaises(XaxError) as raised:
                 StoreReader(data)
             self.assertEqual(raised.exception.diagnostic, expected)
+
+    def test_objects_match_the_bootstrap_decoder(self):
+        """S3b: every object (or its exact diagnostic) equals the bootstrap decoder's."""
+        rng = random.Random(77)
+        parsed_objects = 0
+        for trial in range(600):
+            data = self.seeds[trial] if trial < len(self.seeds) else _mutate(rng, rng.choice(self.seeds))
+            ok, _index, bootstrap = _bootstrap(data, verify_digest=False)
+            if not ok:
+                continue
+            reader = StoreReader(data, verify_digest=False)
+            if not hasattr(reader, "_parsed"):
+                continue  # deferred to the bootstrap parser
+            parsed_objects += len(reader._parsed)
+            for cid in reader.object_cids:
+                outcomes = []
+                for source in (reader, bootstrap):
+                    try:
+                        obj = source.get(cid)
+                        outcomes.append((obj.kind, obj.references, obj.body, obj.cid))
+                    except XaxError as error:
+                        outcomes.append(error.diagnostic)
+                with self.subTest(trial=trial, cid=cid.hex()[:12]):
+                    self.assertEqual(outcomes[0], outcomes[1])
+        self.assertGreater(parsed_objects, 1000)
 
     def test_huge_minor_defers_to_the_bootstrap_parser(self):
         reader = StoreReader(self.seeds[1])
