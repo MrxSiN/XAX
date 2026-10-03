@@ -1,55 +1,70 @@
 {
-  "adr": "ADR-132 to ADR-135",
+  "adr": "ADR-132 to ADR-136",
   "corpus": {
     "blake3_selfhost": {
       "blocks": 12,
-      "covered_nodes": 1545,
+      "covered_nodes": 1548,
+      "fact_free_graphs": 1,
+      "graphs": 2,
+      "proven_call_contracts": 3,
       "proven_constant_nodes": 266,
-      "proven_nodes": 1545,
+      "proven_nodes": 1548,
       "proven_terminators": 12,
-      "verify_ms_bootstrap_only": 45.62,
-      "verify_ms_xax_typing": 37.71
+      "verify_ms_bootstrap_only": 43.77,
+      "verify_ms_xax_typing": 37.3
     },
     "cfg_selfhost": {
       "blocks": 101,
       "covered_nodes": 722,
+      "fact_free_graphs": 0,
+      "graphs": 1,
+      "proven_call_contracts": 0,
       "proven_constant_nodes": 250,
       "proven_nodes": 722,
       "proven_terminators": 101,
-      "verify_ms_bootstrap_only": 43.51,
-      "verify_ms_xax_typing": 39.24
+      "verify_ms_bootstrap_only": 43.75,
+      "verify_ms_xax_typing": 38.72
     },
     "jsonmin": {
       "blocks": 230,
-      "covered_nodes": 942,
+      "covered_nodes": 955,
+      "fact_free_graphs": 0,
+      "graphs": 8,
+      "proven_call_contracts": 0,
       "proven_constant_nodes": 326,
       "proven_nodes": 942,
       "proven_terminators": 230,
-      "verify_ms_bootstrap_only": 118.35,
-      "verify_ms_xax_typing": 113.49
+      "verify_ms_bootstrap_only": 116.16,
+      "verify_ms_xax_typing": 126.94
     },
     "m14_selfhost_compiler": {
       "blocks": 4,
-      "covered_nodes": 3,
+      "covered_nodes": 6,
+      "fact_free_graphs": 4,
+      "graphs": 4,
+      "proven_call_contracts": 3,
       "proven_constant_nodes": 0,
-      "proven_nodes": 3,
+      "proven_nodes": 6,
       "proven_terminators": 4,
-      "verify_ms_bootstrap_only": 0.86,
-      "verify_ms_xax_typing": 0.85
+      "verify_ms_bootstrap_only": 0.84,
+      "verify_ms_xax_typing": 1.16
     },
     "uniqcount": {
       "blocks": 80,
-      "covered_nodes": 162,
+      "covered_nodes": 166,
+      "fact_free_graphs": 0,
+      "graphs": 5,
+      "proven_call_contracts": 0,
       "proven_constant_nodes": 85,
       "proven_nodes": 162,
       "proven_terminators": 80,
-      "verify_ms_bootstrap_only": 32.27,
-      "verify_ms_xax_typing": 33.12
+      "verify_ms_bootstrap_only": 32.95,
+      "verify_ms_xax_typing": 31.92
     }
   },
   "evidence_label": "MEASURED",
-  "native_code_bytes": 38479,
+  "native_code_bytes": 46118,
   "note": "verify_store medians over 7 runs in fresh processes; the graph parse cache is cleared before every run",
-  "step": "S4/S4b/S4c/S4d.1",
-  "store_bytes": 80461
+  "step": "S4 to S4d.2a",
+  "store_bytes": 95971
 }

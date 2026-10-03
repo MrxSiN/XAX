@@ -1,4 +1,4 @@
-"""S4 to S4d.1 (ADR-132 to ADR-135): the XAX typing rules agree with the bootstrap verifier.
+"""S4 to S4d.2a (ADR-132 to ADR-136): the XAX typing rules agree with the bootstrap verifier.
 
 Soundness: every node the XAX function proves is accepted by the bootstrap
 (run with the native path off).  Coverage: well-typed nodes of every covered
@@ -73,6 +73,27 @@ BAD_CONSTANTS = (
 CONSTANTS = (*GOOD_CONSTANTS, *BAD_CONSTANTS)
 
 
+def _callee(parameters, returns, body):
+    graph = GraphBuilder()
+    block = graph.block(*parameters)
+    block.ret(*body(block))
+    function = graph.function(parameters, returns)
+    return function, tuple(graph.objects.values())
+
+
+from xax_compiler import memory_effect_type  # noqa: E402
+
+MEMORY = memory_effect_type()
+CALLEES = (
+    _callee((B32, B32), (B32,), lambda block: (block.op1(Operation.ADD_WRAP, tuple(block.params), B32),)),
+    _callee((F64,), (F64, B1), lambda block: (block.params[0], block.op1(Operation.FLOAT_COMPARE, (block.params[0], block.params[0]), B1, attributes=(1,)))),
+    _callee((SUM3,), (B8,), lambda block: (block.op1(Operation.SUM_TAG, (block.params[0],), B8),)),
+    _callee((), (TRIPLE,), lambda block: (block.op1(Operation.AGGREGATE_MAKE, (block.const(B8, 1), block.op1(Operation.CONSTANT, (), F64, entity=float_constant(F64, 2.0)), block.const(B8, 3)), TRIPLE),)),
+    _callee((B8, MEMORY), (B8, MEMORY), lambda block: tuple(block.params)),  # a memory frontier: never fact-free
+)
+CALLEE_OBJECTS = tuple(item for _function, objects in CALLEES for item in objects)
+
+
 @contextlib.contextmanager
 def _typing_path(native):
     """Verify with ``native`` as the typing function (None: bootstrap only), parse cache cleared."""
@@ -101,7 +122,7 @@ def _outcome(native, operation, operand_types, result_types, attributes, entity=
         block.ret(*results)
         try:
             entry = graph.function(tuple(operand_types), tuple(result_types))
-            program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *POOL, *CONSTANTS))
+            program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *POOL, *CONSTANTS, *CALLEE_OBJECTS))
         except XaxError as error:
             return error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity
         except ValueError as error:
@@ -138,6 +159,16 @@ def _samples(count: int, seed: int = 132):
             continue
         if operation in META_RULES:
             samples.append(_meta_sample(rng, operation))
+            continue
+        if operation == Operation.CALL_DIRECT:
+            function, _objects = rng.choice(CALLEES)
+            from xax_compiler import _decode_function_interface
+
+            objects = {item.cid: item for item in (*CALLEE_OBJECTS, *POOL)}
+            _graph, parameters, returns = _decode_function_interface(function, objects.__getitem__)
+            operand_types = tuple(objects[cid] if rng.random() < 0.9 else rng.choice(POOL) for cid in parameters)
+            result_types = tuple(objects[cid] for cid in returns) if rng.random() < 0.85 else (rng.choice(POOL),)
+            samples.append((operation, operand_types, result_types, (), function))
             continue
         if operation == Operation.CONSTANT:
             entity = rng.choice(CONSTANTS)
@@ -228,7 +259,7 @@ def _meta_sample(rng, operation):
 def _native_verdicts(native, samples):
     from xax_selfhost_typing import marshal, type_info_from
 
-    objects = {item.cid: item for item in (*POOL, *CONSTANTS, link_type())}
+    objects = {item.cid: item for item in (*POOL, *CONSTANTS, *CALLEE_OBJECTS, link_type())}
     nodes = [
         SimpleNamespace(operation=sample[0], operands=sample[1], results=tuple(item.cid for item in sample[2]), attributes=sample[3], entity=sample[4] if len(sample) > 4 else None)
         for sample in samples
@@ -406,6 +437,52 @@ class SelfhostTypingTests(unittest.TestCase):
         baseline = [outcome(None, *case) for case in cases]
         self.assertEqual([outcome(self.native, *case) for case in cases], baseline)
         self.assertTrue(any(item is None for item in baseline) and not all(item is None for item in baseline))
+
+    def test_memory_free_graphs_skip_the_fact_passes(self):
+        """S4d.2a: a pure graph with a pure call is fully proven and memory-free; a memory frontier clears the flag."""
+        import xax_compiler
+        from xax_compiler import _parse_graph, store_resolver
+        from xax_selfhost_typing import PROVEN, marshal, type_info_from
+
+        def flags(callee):
+            function, _objects = callee
+            graph = GraphBuilder()
+            entry = graph.block(B8, MEMORY)
+            value, frontier = entry.params
+            if callee is CALLEES[0]:
+                (result,) = entry.op(Operation.CALL_DIRECT, (entry.const(B32, 2), entry.const(B32, 3)), (B32,), entity=function)
+                entry.ret(entry.op1(Operation.INT_TRUNCATE, (result,), B8), frontier)
+            else:
+                result, frontier = entry.op(Operation.CALL_DIRECT, (value, frontier), (B8, MEMORY), entity=function)
+                entry.ret(result, frontier)
+            caller = graph.function((B8, MEMORY), (B8, MEMORY))
+            with _typing_path(self.native):
+                reader = program_store(caller, x86_64_linux_exec_target(), (*graph.objects.values(), *CALLEE_OBJECTS, *POOL))
+                resolve = store_resolver(reader)
+                parsed = _parse_graph(xax_compiler._decode_function_interface(caller, resolve)[0], resolve)
+            types = lambda b, v: parsed.blocks[v.block].parameters[v.index] if v.tag == 0 else parsed.blocks[v.block].nodes[v.index].results[v.result]  # noqa: E731
+            words, keys = marshal(parsed.blocks, lambda b, n: parsed.blocks[b].nodes[n].operand_types, type_info_from(resolve), types)
+            status, verdicts = self.native.check(words, len(keys) + len(parsed.blocks) + 1)
+            self.assertEqual(status, 0)
+            return all(item == PROVEN for item in verdicts[:-1]), verdicts[-1]
+
+        # The caller's own memory frontier makes even the pure call's graph tracked; a pure caller is memory-free.
+        self.assertEqual(flags(CALLEES[0]), (True, 0))
+        self.assertEqual(flags(CALLEES[4]), (True, 0))
+        pure = GraphBuilder()
+        block = pure.block(B32)
+        (result,) = block.op(Operation.CALL_DIRECT, (block.params[0], block.const(B32, 1)), (B32,), entity=CALLEES[0][0])
+        block.ret(result)
+        caller = pure.function((B32,), (B32,))
+        with _typing_path(self.native):
+            reader = program_store(caller, x86_64_linux_exec_target(), (*pure.objects.values(), *CALLEE_OBJECTS))
+            resolve = store_resolver(reader)
+            parsed = _parse_graph(xax_compiler._decode_function_interface(caller, resolve)[0], resolve)
+        types = lambda b, v: parsed.blocks[v.block].parameters[v.index] if v.tag == 0 else parsed.blocks[v.block].nodes[v.index].results[v.result]  # noqa: E731
+        words, keys = marshal(parsed.blocks, lambda b, n: parsed.blocks[b].nodes[n].operand_types, type_info_from(resolve), types)
+        status, verdicts = self.native.check(words, len(keys) + len(parsed.blocks) + 1)
+        self.assertEqual((status, verdicts), (0, [PROVEN] * (len(keys) + len(parsed.blocks)) + [1]))
+        self.assertEqual(parsed.returns, ((B32.cid,),))
 
     def test_committed_store_is_the_built_program(self):
         import xax_compiler

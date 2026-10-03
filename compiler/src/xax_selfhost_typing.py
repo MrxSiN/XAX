@@ -80,8 +80,11 @@ TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
 WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)
-EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE = range(7, 16)
-TABLES = 16
+EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE, EDOMAIN = range(7, 17)
+TABLES = 17
+# S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
+MEMORY_EFFECT_DOMAIN = 1
+FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
 PADDING = 24  # zero words ending the stream: the decoders' look-ahead stays inside it
 AFFINE, PARTITIONABLE, RELEASABLE, ACQUIRABLE = 1, 2, 4, 8
 EFFECT_DOMAINS, OPAQUE_KINDS = 11, 7
@@ -119,7 +122,7 @@ META_RULES = {
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
      Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES,
-     *RESOURCE_COUNTS, Operation.EFFECT_STEP, *META_RULES, Operation.CONSTANT}
+     *RESOURCE_COUNTS, Operation.EFFECT_STEP, *META_RULES, Operation.CONSTANT, Operation.CALL_DIRECT}
 )
 CONDITIONAL_BRANCH = int(TerminatorKind.CONDITIONAL_BRANCH)
 F32_QUIET_NAN, F64_QUIET_NAN = 0x7FC00000, 0x7FF8000000000000
@@ -219,11 +222,14 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     # S4d.1: terminator typing, one verdict per block after the node verdicts.
     blocks = b.read(blocks_at)
     places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
-    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 2), TABLE), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 3), TABLE), b.defer_block)
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
     b.for_range(b.c(0), blocks, lambda index, carried: _block_entry(b, t, index, carried, blocks, places, verdicts), ())
+    # S4d.2a: the graph is memory-free when every type object is decoded and none is one the fact system tracks.
+    (memory_free,) = b.for_range(b.c(0), count, lambda index, carried: (t.all(carried[0], _fact_free_type(b, t, index)),), (b.c(1),))
+    b.put(b.add(verdicts, blocks), memory_free)
     b.put(b.c(1), proven)
     b.put(b.c(0), ACCEPT)
     in_view, in_mem, out_view, out_mem = b.state
@@ -338,6 +344,7 @@ def _proof_entry(b: _Builder, t: _Typing, index, carried):
     full = t.all(header, t.eq(steps, tcount), transitions_ok, t.eq(after, end), t.not_(owner_shape))
     resource_ok = t.any(owner, full)
     b.put(t.slot(EFFECT, index), effect_ok)
+    b.put(t.slot(EDOMAIN, index), b.mul(effect_ok, v1))
     b.put(t.slot(OPAQUE, index), b.mul(opaque_ok, v1))
     b.put(t.slot(RESOURCE, index), resource_ok)
     b.put(t.slot(RKIND, index), v1)
@@ -424,6 +431,60 @@ def _resource_rules(b: _Builder, t: _Typing, operation, operands, results, attri
             checks.append(t.one_of(attribute, tuple(Operation)))
         rules.append((meta, t.all(*checks)))
     return rules
+
+
+def _known(t: _Typing, value):
+    """A type the decoders fully validated (what ``_verify_type`` accepts, restricted to decoded forms)."""
+    return t.any(
+        t.nonzero(t.lookup(WIDTH, value)), t.nonzero(t.lookup(FORMAT, value)), t.lookup(LINK, value), t.nonzero(t.lookup(AGGREGATE, value)),
+        t.lookup(EFFECT, value), t.lookup(RESOURCE, value), t.nonzero(t.lookup(OPAQUE, value)),
+    )
+
+
+def _fact_free_type(b: _Builder, t: _Typing, index):
+    """1 unless entry ``index`` is a type the fact system tracks, or a type the decoders did not validate."""
+    kind = b.read(b.get(t.slot(POSITION, index)))
+    tracked = t.any(
+        t.lookup(LINK, index),
+        t.all(t.lookup(EFFECT, index), t.eq(t.lookup(EDOMAIN, index), MEMORY_EFFECT_DOMAIN)),
+        t.all(t.lookup(RESOURCE, index), t.one_of(t.lookup(RKIND, index), FACT_RESOURCE_KINDS)),
+    )
+    return t.any(t.not_(t.eq(kind, int(Kind.TYPE))), t.all(_known(t, index), t.not_(tracked)))
+
+
+def _call_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, ids):
+    """``call.direct``: a function object (not a group member) whose decoded interface equals the node's types."""
+    entity = b.read(extra_at)
+    valid = t.lt(entity, t.count)
+    position = b.get(t.slot(POSITION, t.pick(valid, entity, b.c(0))))
+    kind, references, length = (b.read(b.add(position, k)) for k in range(3))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    graph, size, graph_ok = t.uleb(base)
+    graph_inside = t.all(graph_ok, t.lt(graph, references))
+    graph_entry = b.read(b.add(end, t.pick(graph_inside, graph, b.c(0))))
+    graph_entry_ok = t.lt(graph_entry, t.count)
+    graph_kind = b.mul(graph_entry_ok, b.read(b.get(t.slot(POSITION, t.pick(graph_entry_ok, graph_entry, b.c(0))))))
+
+    def interface(start, expected_count, expected_at):
+        count, count_size, count_ok = t.uleb(start)
+        same = t.all(count_ok, t.eq(count, expected_count))
+
+        def item(k, carried):
+            at, ok = carried
+            reference, width, reference_ok = t.uleb(at)
+            inside = t.all(reference_ok, t.lt(reference, references), t.le(b.add(at, width), end))
+            declared = b.read(b.add(end, t.pick(inside, reference, b.c(0))))
+            return b.add(at, width), t.all(ok, inside, _known(t, declared), t.eq(declared, b.read(b.add(expected_at, k))))
+
+        return b.for_range(b.c(0), b.mul(same, count), item, (b.add(start, count_size), same))
+
+    after_parameters, parameters_ok = interface(b.add(base, size), operands, ids)
+    after_returns, returns_ok = interface(after_parameters, results, b.add(ids, operands))
+    return t.all(
+        t.eq(extra, 1), valid, t.eq(kind, int(Kind.FUNCTION)), graph_inside, t.eq(graph_kind, int(Kind.GRAPH_FRAGMENT)),
+        parameters_ok, returns_ok, t.eq(after_returns, end),
+    )
 
 
 def _block_place(b: _Builder, index, carried, places):
@@ -580,6 +641,7 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
         (t.eq(operation, int(Operation.SUM_GET)), t.all(shape(1, 1, 1), t.eq(first_shape, SUM), get_inside, t.eq(result, get_element))),
         *((t.eq(operation, int(member)), condition) for member, condition in _resource_rules(b, t, operation, operands, results, attributes, attribute, ids, extra_at)),
         (t.eq(operation, int(Operation.CONSTANT)), _constant_rule(b, t, operands, results, extra, extra_at, result)),
+        (t.eq(operation, int(Operation.CALL_DIRECT)), _call_rule(b, t, operands, results, extra, extra_at, ids)),
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
@@ -622,8 +684,9 @@ def type_info_from(resolve):
             item = resolve(cid)
         except Exception:  # noqa: BLE001 - any resolution failure leaves the node to the bootstrap
             return None
-        if len(item.body) > BODY_LIMIT:
-            return 0, (), b""
+        if len(item.body) > BODY_LIMIT or item.kind not in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION):
+            # Kind only: graph bodies (and their references) are never needed, and no rule accepts a longer body.
+            return int(item.kind), (), b""
         return int(item.kind), tuple(item.references), item.body
 
     return info
@@ -674,7 +737,7 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None) -> tuple[li
             # effect.step also lists its operand values (distinctness is part of its rule).
             if node.operation == Operation.EFFECT_STEP:
                 extra = [values.setdefault(value, len(values)) for value in node.operands]
-            elif node.operation == Operation.CONSTANT:
+            elif node.operation in (Operation.CONSTANT, Operation.CALL_DIRECT):
                 entity = None if node.entity is None else type_index(node.entity.cid)
                 extra = [] if entity is None else [entity]
             else:
