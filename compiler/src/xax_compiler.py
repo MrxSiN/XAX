@@ -6011,11 +6011,21 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     # order come from an XAX function; on reject or defer the bootstrap below
     # computes them (and raises the exact branch-target diagnostic).
     analysis = _native_cfg()
-    native_order = None
+    native_order, uses_valid = None, False
     if analysis is not None:
-        status, native_order, dominators = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks])
+        uses = []
+        for block_index, block in enumerate(blocks):
+            for node_index, node in enumerate(block.nodes):
+                uses.extend((block_index, node_index, value.tag, value.block, value.index, value.result) for value in node.operands)
+            term = block.terminator
+            end = len(block.nodes)
+            terminator_values = [*term.values, *(argument for _target, arguments in term.edges for argument in arguments)]
+            uses.extend((block_index, end, value.tag, value.block, value.index, value.result) for value in terminator_values)
+        tables = [(len(block.parameters), tuple(len(node.results) for node in block.nodes)) for block in blocks]
+        status, native_order, dominators, uses_valid = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks], (tables, uses))
         if status != 0:
             native_order = None
+    checked_uses = native_order is not None and uses_valid
     if native_order is None:
         predecessors = [set() for _ in blocks]
         for block_index, block in enumerate(blocks):
@@ -6039,6 +6049,10 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     changed = True
 
     def value_type(value: ValueRef, use_block: int, use_node: int) -> bytes:
+        if checked_uses:
+            # S3e (ADR-122): the XAX analysis proved every use defined and dominated.
+            source = blocks[value.block]
+            return source.parameters[value.index] if value.tag == 0 else source.nodes[value.index].results[value.result]
         if value.block >= len(blocks):
             fail("XAX.STRUCT.VALUE_BLOCK", obj.cid.hex(), "GRAPH-VALUE-DEFINED", f"< {len(blocks)}", value.block)
         source = blocks[value.block]
