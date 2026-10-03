@@ -611,4 +611,4 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Evidence that closes it.** One case where an emulator and hardware disagree on an XAX image (which would show that emulation is insufficient), or a documented hardware run on two ISA rows with no discrepancy against the emulator corpus.
 
-**Status.** OPEN. The riscv64 and aarch64-baremetal rows are emulator-only.
+**Status.** OPEN. The riscv64, aarch64-baremetal, and linux-aarch64 (qemu-aarch64 user mode, ADR-123) rows are emulator-only. The matrix validator now rejects `performance` evidence on any row whose blockers say "not hardware" (conformance §23.17).

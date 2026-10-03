@@ -13,7 +13,12 @@ from xax_artifact import ArtifactSemanticRange
 
 from xax_compiler import (
     store_resolver,
+    AAPCS64_LINUX_C_ABI,
+    AARCH64_LINUX_ABI,
+    AARCH64_LINUX_ELF_DYNAMIC_FORMAT,
+    AARCH64_LINUX_IDENTITIES,
     ANDROID_AAPCS64_C_ABI,
+    LINUX_AARCH64_SYSCALL_ABI,
     XaxError,
     foreign_entry_abi,
     ATOMIC_OPERATIONS,
@@ -111,6 +116,11 @@ class _Assembler:
     def cbz(self, register: int, label: str) -> None:
         self.branches.append((len(self.code), label, 19, register, 0x34000000))
         self.emit(0x34000000 | register)
+
+    def cbnz(self, register: int, label: str, wide: bool = True) -> None:
+        base = 0xB5000000 if wide else 0x35000000
+        self.branches.append((len(self.code), label, 19, register, base))
+        self.emit(base | register)
 
     def bcond(self, condition: int, label: str) -> None:
         # B.cond uses imm19 in bits 23:5.  A zero pseudo-register keeps the
@@ -296,6 +306,34 @@ def _bfi(destination: int, source: int, lsb: int, width: int) -> int:
 
 def _lsr(destination: int, source: int, shift: int) -> int:
     return 0xD340FC00 | (shift << 16) | (source << 5) | destination
+
+
+def _lsl(destination: int, source: int, shift: int) -> int:
+    """``lsl Xd, Xn, #shift`` (``ubfm Xd, Xn, #(-shift % 64), #(63 - shift)``)."""
+    return 0xD3400000 | (((-shift) % 64) << 16) | ((63 - shift) << 10) | (source << 5) | destination
+
+
+def _udiv(destination: int, left: int, right: int, wide: bool) -> int:
+    return (0x9AC00800 if wide else 0x1AC00800) | (right << 16) | (left << 5) | destination
+
+
+def _msub(destination: int, left: int, right: int, minuend: int, wide: bool) -> int:
+    """``msub Rd, Rn, Rm, Ra``: Ra - Rn * Rm."""
+    return (0x9B008000 if wide else 0x1B008000) | (right << 16) | (minuend << 10) | (left << 5) | destination
+
+
+_LOGICAL_BASE = {Operation.BIT_AND: 0x0A000000, Operation.BIT_OR: 0x2A000000, Operation.BIT_XOR: 0x4A000000}
+
+
+def _logical(operation: Operation, destination: int, left: int, right: int, wide: bool) -> int:
+    return _LOGICAL_BASE[operation] | (0x80000000 if wide else 0) | (right << 16) | (left << 5) | destination
+
+
+_INTEGER_COMPLETION_BINARY = frozenset({Operation.BIT_AND, Operation.BIT_OR, Operation.BIT_XOR, Operation.UDIV, Operation.UREM})
+_BRK_DIVIDE_BY_ZERO = 6
+# Frame path only: a third per-node scratch (x9 is a declared scratch register
+# and holds no value across nodes there).
+_REMAINDER_TEMP = 9
 
 
 def _cmp_registers(left: int, right: int, width: int) -> int:
@@ -546,7 +584,7 @@ def _compare(left: int, right: int, width: int) -> int:
     return (0x6B000000 if width == 32 else 0xEB000000) | (right << 16) | (left << 5) | 31
 
 
-def _cset(destination: int, comparison: IntCompare) -> int:
+def _cset_compare(destination: int, comparison: IntCompare) -> int:
     """``cset Wd, cond`` (``csinc Wd, wzr, wzr, !cond``)."""
     return 0x1A9F07E0 | ((_CONDITION[comparison] ^ 1) << 12) | destination
 
@@ -559,6 +597,21 @@ _REGISTER_PATH_OPERATIONS = frozenset({
     Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.CONSTANT, Operation.INT_COMPARE,
     Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, Operation.FUNCTION_ADDRESS,
 })
+
+
+def _require_foreign_abi(declaration, target: NativeTargetDescription, graph_object: SemanticObject) -> None:
+    """Each foreign convention belongs to exactly one AArch64 platform profile.
+
+    Android: ``android-aapcs64-c``.  Linux (ADR-123): ``linux-aarch64-syscall-v1``
+    always, and ``aapcs64-linux-c`` only when the profile explicitly requests
+    the dynamic loader.
+    """
+    if target.abi == AARCH64_LINUX_ABI:
+        allowed = (LINUX_AARCH64_SYSCALL_ABI,) + ((AAPCS64_LINUX_C_ABI,) if target.image_format == AARCH64_LINUX_ELF_DYNAMIC_FORMAT else ())
+    else:
+        allowed = (ANDROID_AAPCS64_C_ABI,)
+    if declaration.abi not in allowed:
+        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "AARCH64-FOREIGN-ABI", [item.decode() for item in allowed], declaration.abi.decode("ascii", "replace"))
 
 
 def _register_path_eligible(graph, parameters, returns, resolve: Callable[[bytes], SemanticObject]) -> bool:
@@ -731,6 +784,71 @@ def _general_aarch64_target(target: NativeTargetDescription) -> bool:
     )
 
 
+def _frame_live_hulls(graph, machine_values: set) -> dict:
+    """Linear ``[first, last]`` position hull of each machine value's liveness.
+
+    Positions number blocks in index order (block start, each node, the
+    terminator).  Block liveness is the usual backward dataflow, so a value
+    live around a loop covers every block of the loop.  Entry parameters are
+    defined at position 0, before any block runs.
+    """
+    starts, uses, defs = [], [], []
+    position = 1
+    for block_index, block in enumerate(graph.blocks):
+        starts.append(position)
+        position += len(block.nodes) + 2
+        used: set = set()
+        defined = {ValueRef.parameter(block_index, index) for index in range(len(block.parameters))}
+        for node_index, node in enumerate(block.nodes):
+            used.update(ref for ref in node.operands if ref in machine_values and ref not in defined)
+            defined.update(ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)))
+        terminator = block.terminator
+        refs = (*terminator.values, *(ref for _target, arguments in terminator.edges for ref in arguments))
+        used.update(ref for ref in refs if ref in machine_values and ref not in defined)
+        uses.append(used)
+        defs.append(defined)
+    successors = [tuple(target for target, _arguments in block.terminator.edges) for block in graph.blocks]
+    live_in = [set(item) for item in uses]
+    live_out: list[set] = [set() for _ in graph.blocks]
+    changed = True
+    while changed:
+        changed = False
+        for block_index in reversed(range(len(graph.blocks))):
+            out = set().union(*(live_in[target] for target in successors[block_index])) if successors[block_index] else set()
+            incoming = uses[block_index] | (out - defs[block_index])
+            if out != live_out[block_index] or incoming != live_in[block_index]:
+                live_out[block_index], live_in[block_index] = out, incoming
+                changed = True
+    hull: dict = {}
+
+    def cover(ref, first: int, last: int) -> None:
+        if ref in machine_values:
+            low, high = hull.get(ref, (first, last))
+            hull[ref] = (min(low, first), max(high, last))
+
+    for block_index, block in enumerate(graph.blocks):
+        start = starts[block_index]
+        end = start + len(block.nodes) + 1
+        for index in range(len(block.parameters)):
+            cover(ValueRef.parameter(block_index, index), 0 if block_index == graph.entry else start, start)
+        for node_index, node in enumerate(block.nodes):
+            here = start + 1 + node_index
+            for ref in node.operands:
+                cover(ref, here, here)
+            for index in range(len(node.results)):
+                cover(ValueRef.node_result(block_index, node_index, index), here, here)
+        terminator = block.terminator
+        for ref in (*terminator.values, *(ref for _target, arguments in terminator.edges for ref in arguments)):
+            cover(ref, end, end)
+        for ref in live_in[block_index]:
+            cover(ref, start, start)
+        for ref in live_out[block_index]:
+            cover(ref, end, end)
+    for ref in machine_values:
+        hull.setdefault(ref, (0, 0))
+    return hull
+
+
 def _compile_general_function(
     function: SemanticObject,
     resolve: Callable[[bytes], SemanticObject],
@@ -791,23 +909,39 @@ def _compile_general_function(
 
     slots: dict[ValueRef, int] = {}
     layouts: dict[ValueRef, object] = {}
-
-    def allocate_value(ref: ValueRef, cid: bytes) -> None:
-        nonlocal cursor
-        if _is_proof_type(resolve(cid)):
-            return
-        layout = abi_layout(resolve(cid), resolve)
-        cursor = _align(cursor, max(8, layout.alignment))
-        slots[ref] = cursor
-        layouts[ref] = layout
-        cursor += _slot_size(layout)
-
+    values: list[tuple[ValueRef, object]] = []
     for block_index, block in enumerate(graph.blocks):
         for index, cid in enumerate(block.parameters):
-            allocate_value(ValueRef.parameter(block_index, index), cid)
+            if not _is_proof_type(resolve(cid)):
+                values.append((ValueRef.parameter(block_index, index), abi_layout(resolve(cid), resolve)))
         for node_index, node in enumerate(block.nodes):
             for result_index, cid in enumerate(node.results):
-                allocate_value(ValueRef.node_result(block_index, node_index, result_index), cid)
+                if not _is_proof_type(resolve(cid)):
+                    values.append((ValueRef.node_result(block_index, node_index, result_index), abi_layout(resolve(cid), resolve)))
+    # Values share a slot only when their conservative live hulls are
+    # disjoint (ADR-123).  A node's operands and results always overlap, so
+    # lowerings that write a result before their last operand read stay exact.
+    # Profiles whose committed artifacts predate ADR-123 keep one slot per
+    # value, so their executed evidence stays byte-identical.
+    share = target.identity in AARCH64_LINUX_IDENTITIES
+    intervals = _frame_live_hulls(graph, {ref for ref, _layout in values}) if share else {}
+    free: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    ordered = sorted(values, key=lambda item: (intervals[item[0]][0], item[0].tag, item[0].block, item[0].index, item[0].result)) if share else values
+    for ref, layout in ordered:
+        start, end = intervals[ref] if share else (0, 0)
+        key = (_slot_size(layout), max(8, layout.alignment))
+        candidates = free.setdefault(key, [])
+        reuse = next((position for position, (offset, busy_until) in enumerate(candidates) if busy_until < start), None) if share else None
+        if reuse is None:
+            cursor = _align(cursor, key[1])
+            offset = cursor
+            cursor += key[0]
+            candidates.append((offset, end))
+        else:
+            offset = candidates[reuse][0]
+            candidates[reuse] = (offset, end)
+        slots[ref] = offset
+        layouts[ref] = layout
 
     # Whole-edge temporary area makes CFG parameter assignment a true parallel
     # copy even for overlapping aggregate values.
@@ -1061,6 +1195,46 @@ def _compile_general_function(
                     emit(word)
                 store_gpr(result0, _TEMP, node.results[0])
 
+            elif node.operation in _INTEGER_COMPLETION_BINARY:
+                # Integer completion (ADR-084 on AArch64, ADR-123): operands are
+                # zero-extended in their slots, so bitwise results need no mask.
+                width = decode_bits_width(resolve(node.results[0]))
+                wide = width > 32
+                load_gpr(node.operands[0], _TEMP)
+                load_gpr(node.operands[1], _TEMP2)
+                if node.operation in (Operation.UDIV, Operation.UREM):
+                    ok = f"divisor-nonzero-{block_index}-{node_index}"
+                    assembler.cbnz(_TEMP2, ok, wide)
+                    emit(_brk(_BRK_DIVIDE_BY_ZERO))
+                    assembler.label(ok)
+                    if node.operation == Operation.UDIV:
+                        emit(_udiv(_TEMP, _TEMP, _TEMP2, wide))
+                    else:
+                        emit(_udiv(_REMAINDER_TEMP, _TEMP, _TEMP2, wide))
+                        emit(_msub(_TEMP, _REMAINDER_TEMP, _TEMP2, _TEMP, wide))
+                else:
+                    emit(_logical(node.operation, _TEMP, _TEMP, _TEMP2, wide))
+                store_gpr(result0, _TEMP, node.results[0])
+
+            elif node.operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
+                load_gpr(node.operands[0], _TEMP, node.operand_types[0])
+                for word in _mask_register_words(_TEMP, decode_bits_width(resolve(node.results[0]))):
+                    emit(word)
+                store_gpr(result0, _TEMP, node.results[0])
+
+            elif node.operation == Operation.ROTATE_RIGHT:
+                width = decode_bits_width(resolve(node.results[0]))
+                amount = node.attributes[0]
+                load_gpr(node.operands[0], _TEMP)
+                if amount:
+                    # (v >> a) | (v << (w - a)), then the exact w-bit mask.
+                    emit(_lsr(_TEMP2, _TEMP, amount))
+                    emit(_lsl(_TEMP, _TEMP, width - amount))
+                    emit(_logical(Operation.BIT_OR, _TEMP, _TEMP, _TEMP2, True))
+                    for word in _mask_register_words(_TEMP, width):
+                        emit(word)
+                store_gpr(result0, _TEMP, node.results[0])
+
             elif node.operation == Operation.CONSTANT:
                 cid, value = _decode_constant(node.entity, resolve)
                 if _type_form(resolve, cid) == 7:
@@ -1239,8 +1413,7 @@ def _compile_general_function(
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, direct=node.entity.cid)
                 elif node.operation == Operation.CALL_FOREIGN:
                     declaration = decode_foreign_function(node.entity)
-                    if declaration.abi != b"android-aapcs64-c":
-                        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "AARCH64-FOREIGN-ABI", "android-aapcs64-c", declaration.abi.decode("ascii", "replace"))
+                    _require_foreign_abi(declaration, target, graph_object)
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, foreign=(declaration.library, declaration.name))
                 else:
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, indirect=indirect_ref)
@@ -1890,7 +2063,7 @@ def _compile_function(
                 right_register = ensure_register(right_value, node_index, {left_value} if right_value != left_value else set())
                 destination_register = acquire_register(node_index, {left_value, right_value})
                 emit(_compare(left_register, right_register, width))
-                emit(_cset(destination_register, IntCompare(node.attributes[0])))
+                emit(_cset_compare(destination_register, IntCompare(node.attributes[0])))
                 for operand in {left_value, right_value}:
                     if last_use.get(operand, -1) == node_index:
                         release_value(operand)
@@ -1929,8 +2102,7 @@ def _compile_function(
                 )
                 live_after = prepare_real_call(node_index, machine_operands)
                 declaration = decode_foreign_function(node.entity)
-                if declaration.abi != b"android-aapcs64-c":
-                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "AARCH64-FOREIGN-ABI", "android-aapcs64-c", declaration.abi.decode("ascii", "replace"))
+                _require_foreign_abi(declaration, target, graph_object)
                 if assembler is not None:
                     assembler.foreign_call(declaration.library, declaration.name)
                 finish_real_call(live_after, machine_results)

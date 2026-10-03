@@ -58,12 +58,21 @@ class FilestatProgram:
     block_count: int
 
 
-def build_filestat_program() -> FilestatProgram:
-    api: LinuxApi = linux_api()
+def build_filestat_program(arch: str = "x86_64") -> FilestatProgram:
+    """The same semantic graph for every Linux architecture; only the platform package differs (ADR-123)."""
+    if arch == "aarch64":
+        from xax_compiler import aarch64_linux_exec_target
+        from xax_linux_aarch64 import c_function as aarch64_c_function, linux_aarch64_api
+
+        api: LinuxApi = linux_aarch64_api()
+        import_c, target = aarch64_c_function, aarch64_linux_exec_target(dynamic=True)
+    else:
+        api = linux_api()
+        import_c, target = c_function, x86_64_linux_dynamic_exec_target()
     b1 = bits_type(1)
     b8, b32, b64 = api.b8, api.b32, api.b64
     words_rw = pointer_type(b64, Permission.READ_WRITE, 8, space=2)
-    zlib_crc32 = c_function(b"libz.so.1", b"crc32", (b64, api.bytes_read, b32, api.memory_effect), (b64, api.memory_effect))
+    zlib_crc32 = import_c(b"libz.so.1", b"crc32", (b64, api.bytes_read, b32, api.memory_effect), (b64, api.memory_effect))
     buffer_view = heap_view_type(BUFFER_BYTES)
     table_view = heap_view_type(TABLE_BYTES)
     mem = api.memory_effect
@@ -214,7 +223,6 @@ def build_filestat_program() -> FilestatProgram:
     e.ret(exit_state["status"], process, exit_state["fs"], buf_mem, tab_mem)
 
     function = graph.function((api.process_effect, api.filesystem_effect, mem, mem), (b32, api.process_effect, api.filesystem_effect, mem, mem))
-    target = x86_64_linux_dynamic_exec_target()
     reader = program_store(function, target, tuple(graph.objects.values()))
     return FilestatProgram(reader, function, target, len(graph.blocks))
 

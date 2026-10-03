@@ -24,6 +24,13 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertIn("windows-x86_64-pe.simd: bare label EXECUTED needs evidence", errors)
         self.assertIn("windows-x86_64-pe.memory: missing evidence no/such/file.json", errors)
 
+    def test_emulator_only_rows_cannot_cite_performance(self):
+        bad = copy.deepcopy(MATRIX)
+        row = next(r for r in bad["platforms"] if r["id"] == "linux-aarch64")
+        self.assertTrue(any("not hardware" in blocker for blocker in row["blockers"]))
+        row["fields"]["performance"] = ["MEASURED", "compiler/benchmarks/linux_aarch64_filestat_evidence.json"]
+        self.assertIn("linux-aarch64.performance: emulator-only row cannot claim performance evidence", validate(bad, ROOT))
+
     def test_linux_benchmark_utility_is_not_an_application(self):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64")
         self.assertEqual(row["fields"]["practical_application"][0], "PROTOTYPE")

@@ -723,3 +723,16 @@ Metric: RV64IM instructions executed in Unicorn (unicorn 2.1.0), counted per exe
 | collatz | 300 | 304,143 | 81,678 | 3.72× | 336 | 104 | 3.23× |
 
 Before register allocation (every value spilled), Collatz measured 15.9× instructions and 8.85× bytes. clang turns `sum_to` into a closed form (14 instructions); XAX runs the loop. XAX does not yet fuse compares into branches or coalesce edge copies. Source: `bench_riscv64_twin.py`; data: `riscv64_twin_evidence.json`.
+
+### 15.10 Linux AArch64 `filestat`: XAX vs `aarch64-linux-gnu-gcc -O2`, emulated (ADR-123; MEASURED-EMULATED, 2026-10-03)
+
+The unchanged U1.3 `filestat` graph, built with the Linux AArch64 platform package. Executor: qemu-aarch64 8.2.2 user mode on x86-64; baseline: `aarch64-linux-gnu-gcc` 13.3.0 `-O2`, stripped, linked against the same `libz.so.1` (zlib 1.3). Input: 4 MiB generated corpus; 7 runs after 1 warmup; both outputs equal the reference contract.
+
+| Arm | Artifact bytes | Emulated wall time (median) |
+|---|---:|---:|
+| XAX (`aarch64-linux-elf-dynexec-v1`) | 14,024 | 0.498 s |
+| gcc -O2 (stripped) | 67,496 | 0.075 s |
+| Ratio | 0.21× | 6.6× |
+
+Times are emulated and are not performance evidence (conformance §23.17); they rank two programs under one translator. The gap is the AArch64 frame path, which keeps every value in a stack slot; gcc's size includes 64 KiB segment padding. Source: `compiler/benchmarks/linux_aarch64_filestat.py`; data: `linux_aarch64_filestat_evidence.json`.
+
