@@ -65,12 +65,17 @@ STATE = (IN_VIEW, MEM, OUT_VIEW, MEM)
 
 
 class _Builder:
-    def __init__(self) -> None:
+    def __init__(self, in_extent: int = IN_EXTENT, out_extent: int = OUT_EXTENT) -> None:
+        # Other self-hosted programs reuse this builder with their own view extents.
+        self.in_words = in_extent // 8
+        self.in_pointer, self.out_pointer = IN_POINTER, OUT_POINTER
+        self.in_view, self.out_view = heap_view_type(in_extent), heap_view_type(out_extent)
+        self.state_types = (self.in_view, MEM, self.out_view, MEM)
         self.g = GraphBuilder()
-        entry = self.g.block(IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
+        entry = self.g.block(self.in_pointer, self.in_view, MEM, self.out_pointer, self.out_view, MEM)
         self.inp, in_view, in_mem, self.out, out_view, out_mem = entry.params
         self.cur, self.state = entry, (in_view, in_mem, out_view, out_mem)
-        self.reject_block, self.defer_block = self.g.block(*STATE), self.g.block(*STATE)
+        self.reject_block, self.defer_block = self.g.block(*self.state_types), self.g.block(*self.state_types)
 
     def c(self, value):
         return self.cur.const(B64, value)
@@ -95,7 +100,7 @@ class _Builder:
 
     def read(self, index):
         in_view, in_mem, out_view, out_mem = self.state
-        self.check(self.cmp(IntCompare.ULT, index, IN_WORDS), self.reject_block)
+        self.check(self.cmp(IntCompare.ULT, index, self.in_words), self.reject_block)
         in_view, in_mem, out_view, out_mem = self.state
         value, in_mem = self.cur.op(Operation.CHECKED_LOAD_BITS_LE, (self.inp, self._offset(index), in_mem), (B64, MEM), attributes=(8, 1))
         self.state = (in_view, in_mem, out_view, out_mem)
@@ -113,7 +118,7 @@ class _Builder:
         self.state = (in_view, in_mem, out_view, out_mem)
 
     def check(self, condition, failure=None):
-        following = self.g.block(*STATE)
+        following = self.g.block(*self.state_types)
         self.cur.cbr(condition, following, self.state, failure or self.reject_block, self.state)
         self.cur, self.state = following, tuple(following.params)
 
@@ -122,11 +127,11 @@ class _Builder:
 
     def loop(self, values, condition, body):
         """``while condition(values): values = body(values)``; returns the exit values."""
-        header = self.g.block(*(B64,) * len(values), *STATE)
+        header = self.g.block(*(B64,) * len(values), *self.state_types)
         self.cur.br(header, *values, *self.state)
         self.enter(header, len(values))
         current = header.params[: len(values)]
-        inside, done = self.g.block(*STATE), self.g.block(*STATE)
+        inside, done = self.g.block(*self.state_types), self.g.block(*self.state_types)
         self.cur.cbr(condition(current), inside, self.state, done, self.state)
         self.enter(inside)
         following = body(current)

@@ -34,7 +34,8 @@ from __future__ import annotations
 
 import xax_selfhost_typing as _T
 from xax_compiler import IntCompare, Operation, Permission, TerminatorKind
-from xax_selfhost_cfg import IN_POINTER, IN_VIEW, IN_WORDS, MEM, OUT_POINTER, OUT_VIEW, OUT_WORDS
+from xax_selfhost_cfg import MEM
+from xax_selfhost_typing import IN_POINTER, IN_VIEW, IN_WORDS, OUT_POINTER, OUT_VIEW, OUT_WORDS
 from xax_structured import B1, B32, B64, Proc
 
 NONE = 0xFFFFFFFF
@@ -43,7 +44,8 @@ VIEW_TYPES = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
 # Header words at the end of the output view.
 HEADER = OUT_WORDS - 64
 (H_STATUS, H_FACTS_AT, H_V, H_S, H_E, H_B, H_ENTRY, H_NODES, H_VALUES, H_SITES, H_BLOCKS, H_EDGES, H_ARENA, H_ARENA_END,
- H_VISIT, H_PASS, H_ORDER, H_EXTENTS, H_STALE, H_COUNT, H_TABLE, H_LIST, H_KINDS, H_ENTRY_FACTS, H_CIDS, H_REASON, H_NODE) = range(27)
+ H_VISIT, H_PASS, H_ORDER, H_EXTENTS, H_STALE, H_COUNT, H_TABLE, H_LIST, H_KINDS, H_ENTRY_FACTS, H_CIDS, H_REASON, H_NODE,
+ H_RENTRY, H_RENTRY_SEED_INIT, H_RENTRY_LAST) = range(30)
 # Decline sites: H_REASON names the check that declined (``DECLINE_SITES[code]``: "file:line"), for diagnosis only.
 DECLINE_SITES: list[str] = []
 ACCEPTED = 1
@@ -501,7 +503,8 @@ class _Node:
         self.tids_at = e.add(self.vids_at, self.no)
         self.nr = e.rd(e.add(self.tids_at, self.no))
         self.rt_at = e.add(e.add(self.tids_at, self.no), 1)
-        self.next = e.add(self.rt_at, self.nr)
+        self.aux_at = e.add(self.rt_at, self.nr)  # [count, words]
+        self.next = e.add(e.add(self.aux_at, 1), e.rd(self.aux_at))
 
     def attr(self, index: int):
         return self.e.rd(self.e.add(self.attrs_at, index))
@@ -981,7 +984,13 @@ def _foreign_declaration(tables):
         blob()  # name
         e.var("record", e.alloc(e.add(length, 16)))
         _require(e, e.ne(p["record"], NONE))
-        e.var("out", p["record"])
+        from xax_compiler import SYSV_X86_64_C_ABI
+
+        sysv = e.eq(abi_length, len(SYSV_X86_64_C_ABI))
+        for offset, byte in enumerate(SYSV_X86_64_C_ABI):
+            sysv = e.both(sysv, e.eq(e.rd(e.add(abi_start, offset)), byte))
+        e.st(p["record"], e.flag(sysv))
+        e.var("out", e.add(p["record"], 1))
         cids = e.hd(H_CIDS)
 
         def interface():
@@ -1091,15 +1100,46 @@ def _call_foreign(tables, declaration, end_views):
         _require(e, e.ne(n.entity, NONE))
         e.var("decl", e.call(declaration, n.entity))
         _require(e, e.ne(p["decl"], NONE))
-        decl = p["decl"]
+        sysv = e.ld(p["decl"])
+        decl = e.add(p["decl"], 1)
         inputs = e.ld(decl)
         outputs_at = e.add(e.add(decl, 1), inputs)
         outputs = e.ld(outputs_at)
         _require(e, e.both(e.eq(n.no, inputs), e.eq(n.nr, outputs)))
         e.for_("j", 0, inputs, lambda: _require(e, e.eq(n.tid(0) if False else e.rd(e.add(n.tids_at, p["j"])), e.ld(e.add(e.add(decl, 1), p["j"])))))
         e.for_("j", 0, outputs, lambda: _require(e, e.eq(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(e.add(outputs_at, 1), p["j"])))))
-        # Lend entries (code-entry pointer operands): a later stage.
-        e.for_("j", 0, inputs, lambda: _require(e, e.not_(e.both(e.eq(e.table(_T.FORMB, e.rd(e.add(n.tids_at, p["j"]))), 2), e.eq(e.table(_T.PTR, e.rd(e.add(n.tids_at, p["j"]))), 0)))))
+        # ``_verify_lend_entries``: a lend entry goes only to a sysv call lending it a whole initialized view
+        # of its extent with that storage's frontier, and returning a memory frontier.
+        e.var("memory_out", 0)
+        e.for_("j", 0, outputs, lambda: e.if_(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.rt_at, p["j"]))), 0), lambda: e.set("memory_out", 1)))
+
+        def lend_check():
+            view = _lend_view(e, e.rd(e.add(n.tids_at, p["j"])), "lend")
+
+            def lent():
+                _require(e, _heap_view(e, view))
+                extent = e.table(_T.RINSTANCE, view)
+                e.var("lent", 0)
+
+                def effect_operand():
+                    effect_ref = e.rd(e.add(n.vids_at, p["k"]))
+
+                    def pointer_operand():
+                        value = e.rd(e.add(n.vids_at, p["m"]))
+                        whole = e.both(e.eq(e.value(PSTAMP, value), pass_id), e.eq(e.value(PK, value), POINTER), e.eq(e.value(POFF, value), 0),
+                                       e.eq(e.value(PWIN, value), 0), e.eq(e.value(PEXT, value), extent), e.not_(_ended(e, e.value(PST, value))),
+                                       e.eq(e.value(PST, value), e.value(EST, effect_ref)))
+                        e.if_(whole, lambda: e.if_(e.ne(e.call(_COVERS[0], e.value(EIV, effect_ref), 0, extent), 0), lambda: e.set("lent", 1)))
+
+                    e.if_(e.both(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.tids_at, p["k"]))), 0), e.eq(e.value(ESTAMP, effect_ref), visit)),
+                          lambda: e.for_("m", 0, inputs, pointer_operand))
+
+                e.if_(e.both(e.ne(sysv, 0), e.ne(p["memory_out"], 0)), lambda: e.for_("k", 0, inputs, effect_operand))
+                _require(e, e.ne(p["lent"], 0))
+
+            e.if_(e.ne(view, NONE), lent)
+
+        e.for_("j", 0, inputs, lend_check)
         # Operands naming ended storage reject.
         e.for_("j", 0, inputs, lambda: _require(e, e.not_(e.both(
             e.eq(e.value(PSTAMP, e.rd(e.add(n.vids_at, p["j"]))), pass_id), e.eq(e.value(PK, e.rd(e.add(n.vids_at, p["j"]))), POINTER),
@@ -1306,7 +1346,7 @@ def _call_direct(tables, covers):
 
         scan(n.no, n.tids_at)
         scan(n.nr, n.rt_at)
-        _require(e, e.either(e.eq(p["resource"], 0), e.eq(p["stack"], 0)))  # stack resource contracts: a later stage
+        e.if_(e.both(e.ne(p["resource"], 0), e.ne(p["stack"], 0)), lambda: _resource_call(e, n))
 
         def frontier():
             visit = e.hd(H_VISIT)
@@ -1322,10 +1362,68 @@ def _call_direct(tables, covers):
 
             e.for_("j", 0, n.no, each)
 
-        e.if_(e.ne(p["resource"], 0), frontier)
+        e.if_(e.both(e.ne(p["resource"], 0), e.eq(p["stack"], 0)), frontier)
         _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
+
+
+def _resource_call(e: E, n):
+    """A direct call through a stack resource contract (the callee's single block summarized)."""
+    p = e.p
+    visit = e.hd(H_VISIT)
+    aux_count = e.rd(n.aux_at)
+    blocks, operations = e.rd(e.add(n.aux_at, 1)), e.rd(e.add(n.aux_at, 2))
+    single = e.flag(e.both(e.ne(aux_count, 0), e.eq(blocks, 1)))
+    body = _body_shape(e, lambda k: e.rd(e.add(e.add(n.aux_at, 3), k)), e.mul(single, operations))
+    kind, permission, requires_initialized, initializes = _resource_contract(e, n.tids_at, n.no, n.rt_at, n.nr, single, body)
+    _require(e, e.ne(kind, R_NONE))
+    e.var("has_pointer", e.flag(e.ne(kind, R_PASS)))
+    owner_operand = e.sel(e.eq(kind, R_PASS), 0, e.sel(e.eq(kind, R_LOAD), 1, 2))
+    effect_operand = e.add(owner_operand, 1)
+    owner_result = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 0, 1)
+    effect_result = e.add(owner_result, 1)
+    pointer_ref = n.vid(0)
+    e.var("size", 0)
+    e.var("offset", 0)
+
+    def with_pointer():
+        _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), e.hd(H_PASS)), e.eq(e.value(PK, pointer_ref), POINTER)))
+        _require(e, e.both(e.not_(_ended(e, e.value(PST, pointer_ref))), e.eq(e.value(PWIN, pointer_ref), 0)))
+        width = e.table(_T.WIDTH, e.value(PEL, pointer_ref))
+        _require(e, e.ne(width, 0))
+        e.set("size", e.udiv(e.add(width, 7), 8))
+        e.set("offset", e.value(POFF, pointer_ref))
+        _require(e, e.le(p["size"], e.value(PEXT, pointer_ref)))
+        _require(e, e.eq(e.and_(e.value(PPERM, pointer_ref), permission), permission))
+
+    e.if_(e.ne(p["has_pointer"], 0), with_pointer)
+    owner_ref = e.rd(e.add(n.vids_at, owner_operand))
+    effect_ref = e.rd(e.add(n.vids_at, effect_operand))
+    _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.ne(e.value(OCON, owner_ref), visit)))
+    storage = e.value(OST, owner_ref)
+    _require(e, e.not_(_ended(e, storage)))
+    e.if_(e.ne(p["has_pointer"], 0), lambda: _require(e, e.eq(e.value(PST, pointer_ref), storage)))
+    _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), storage)))
+    e.var("intervals", e.value(EIV, effect_ref))
+    e.if_(e.both(e.ne(p["has_pointer"], 0), e.ne(requires_initialized, 0)), lambda: _require(
+        e, e.ne(e.call(_COVERS[0], p["intervals"], p["offset"], e.add(p["offset"], p["size"])), 0)))
+    _require(e, e.ne(e.value(ECON, effect_ref), visit))
+    e.set_value(OCON, owner_ref, visit)
+    e.set_value(ECON, effect_ref, visit)
+    e.set_value(OST, e.add(n.base, owner_result), storage)
+    e.set_value(OSTAMP, e.add(n.base, owner_result), visit)
+
+    def initialize():
+        e.set("intervals", e.call(_INSERT[0], p["intervals"], p["offset"], e.add(p["offset"], p["size"])))
+        _require(e, e.ne(p["intervals"], NONE))
+
+    e.if_(e.both(e.ne(p["has_pointer"], 0), e.ne(initializes, 0)), initialize)
+    _set_effect(e, e.add(n.base, effect_result), storage, p["intervals"])
+
+
+_COVERS: list = []
+_INSERT: list = []
 
 
 def _call_group(tables, covers):
@@ -1344,6 +1442,489 @@ def _call_group(tables, covers):
         check(n.no, n.tids_at)
         check(n.nr, n.rt_at)
         _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+# -- S4d.2d: atomics and raw loads ----------------------------------------------------------------------
+
+ATOMIC_SHAPES = {
+    Operation.ATOMIC_LOAD: (2, 2, 3, 1), Operation.ATOMIC_STORE: (3, 1, 3, 2),
+    Operation.ATOMIC_RMW: (3, 2, 4, 2), Operation.ATOMIC_CMPXCHG: (4, 3, 5, 3),
+}  # operands, results, attributes, effect operand index
+ATOMIC_ORDERS = {
+    Operation.ATOMIC_LOAD: (1, 2, 5), Operation.ATOMIC_STORE: (1, 3, 5), Operation.ATOMIC_RMW: (1, 2, 3, 4, 5), Operation.ATOMIC_CMPXCHG: (1, 2, 3, 4, 5),
+}  # ``_ATOMIC_ORDERS``: relaxed 1, acquire 2, release 3, acq_rel 4, seq_cst 5
+FENCE_ORDERS = (2, 3, 4, 5)
+READ_STRENGTH = {1: 0, 3: 0, 2: 1, 4: 1, 5: 2}  # compare-exchange: the failure order is no stronger
+SCOPES = (1, 2, 3)
+UNSAFE_DOMAIN = 10
+MAX_ACCESSES = 8  # MAX_RESOURCE_CALL_ACCESSES
+
+
+def _one_of(e: E, value, codes):
+    return e.either(*(e.eq(value, code) for code in codes))
+
+
+def _atomic(tables, covers, insert, operation):
+    operands, results, attributes, effect_index = ATOMIC_SHAPES[operation]
+
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        source = n.vid(0)
+        _pointer(e, source)
+        _require(e, n.shape(operands, results, attributes))
+        if operation == Operation.ATOMIC_RMW:
+            kind, order, scope, alignment = (n.attr(k) for k in range(4))
+            _require(e, e.both(_one_of(e, kind, (1, 2)), _one_of(e, order, ATOMIC_ORDERS[operation])))
+        elif operation == Operation.ATOMIC_CMPXCHG:
+            success, failure, scope, alignment, strength = (n.attr(k) for k in range(5))
+            _require(e, e.both(_one_of(e, success, ATOMIC_ORDERS[operation]), _one_of(e, failure, (1, 2, 5)), _one_of(e, strength, (1, 2))))
+            strength_of = lambda order: e.add(e.flag(e.either(e.eq(order, 2), e.eq(order, 4))), e.mul(e.flag(e.eq(order, 5)), 2))  # noqa: E731
+            _require(e, e.le(strength_of(failure), strength_of(success)))
+        else:
+            order, scope, alignment = (n.attr(k) for k in range(3))
+            _require(e, _one_of(e, order, ATOMIC_ORDERS[operation]))
+        _require(e, _one_of(e, scope, SCOPES))
+        element = e.value(PEL, source)
+        width = e.table(_T.WIDTH, element)
+        _require(e, e.ne(width, 0))
+        size = e.udiv(e.add(width, 7), 8)
+        _access(e, source, size, alignment)
+        storage = e.value(PST, source)
+        intervals = _consume_effect(e, n.vid(effect_index), storage)
+        effect_type = n.tid(effect_index)
+        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, effect_type), 0), e.eq(n.rtid(results - 1), effect_type)))
+        permission = e.value(PPERM, source)
+        if operation != Operation.ATOMIC_LOAD:
+            _require(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0))
+        if operation != Operation.ATOMIC_STORE:
+            _require(e, e.ne(e.and_(permission, int(Permission.READ)), 0))
+        for index in range(1, effect_index):
+            _require(e, e.eq(n.tid(index), element))
+        if operation in (Operation.ATOMIC_LOAD, Operation.ATOMIC_RMW):
+            _require(e, e.eq(n.rtid(0), element))
+        if operation == Operation.ATOMIC_CMPXCHG:
+            _require(e, e.both(e.eq(n.rtid(0), element), e.eq(e.table(_T.WIDTH, n.rtid(1)), 1)))
+        _require(e, e.both(e.eq(e.value(PWIN, source), 0), e.eq(e.table(_T.LINK, element), 0)))
+        start = e.value(POFF, source)
+        if operation != Operation.ATOMIC_STORE:
+            _require(e, e.ne(e.call(covers, intervals, start, e.add(start, size)), 0))
+        e.var("next_list", e.call(insert, intervals, start, e.add(start, size)))
+        _require(e, e.ne(p["next_list"], NONE))
+        _set_effect(e, e.add(n.base, results - 1), storage, p["next_list"])
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _atomic_fence(tables):
+    def build(e: E):
+        n = _Node(e)
+        _require(e, n.shape(1, 1, 2))
+        _require(e, e.both(_one_of(e, n.attr(0), FENCE_ORDERS), _one_of(e, n.attr(1), SCOPES)))
+        _require(e, e.both(e.eq(e.table(_T.FORMB, n.tid(0)), 3), e.eq(n.rtid(0), n.tid(0))))
+        frontier = n.vid(0)
+
+        def carry():
+            storage = e.value(EST, frontier)
+            intervals = _consume_effect(e, frontier, storage)
+            _set_effect(e, n.base, storage, intervals)
+
+        e.if_(e.eq(e.value(ESTAMP, frontier), e.hd(H_VISIT)), carry)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _raw_load(tables, covers):
+    def build(e: E):
+        n = _Node(e)
+        source = n.vid(0)
+        _pointer(e, source)
+        _require(e, n.shape(3, 3, 3))
+        size, alignment, waivers = n.attr(0), n.attr(1), n.attr(2)
+        _require(e, e.both(e.ne(waivers, 0), e.eq(e.and_(waivers, ~3 & ((1 << 64) - 1)), 0)))
+        element = e.value(PEL, source)
+        _require(e, e.both(e.ne(size, 0), e.eq(size, _element_size(e, element, size)), e.le(size, e.value(PEXT, source))))
+        _require(e, e.both(e.ne(e.and_(e.value(PPERM, source), int(Permission.READ)), 0), e.eq(n.rtid(0), element)))
+        e.if_(e.eq(e.and_(waivers, 1), 0), lambda: _require(e, e.both(
+            e.power_of_two(alignment), e.le(alignment, e.value(PALIGN, source)), e.eq(e.urem(e.value(POFF, source), alignment), 0))))
+        storage = e.value(PST, source)
+        intervals = _consume_effect(e, n.vid(1), storage)
+        unsafe = n.tid(2)
+        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.ne(e.table(_T.EFFECT, unsafe), 0), e.eq(e.table(_T.EDOMAIN, unsafe), UNSAFE_DOMAIN)))
+        _require(e, e.both(e.eq(n.rtid(1), n.tid(1)), e.eq(n.rtid(2), unsafe)))
+        start = e.value(POFF, source)
+        e.if_(e.eq(e.and_(waivers, 2), 0), lambda: _require(e, e.ne(e.call(covers, intervals, start, e.add(e.add(start, e.value(PWIN, source)), size)), 0)))
+        _set_effect(e, e.add(n.base, 1), storage, intervals)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+# -- S4d.2d: stack resource call contracts (``_resource_call_candidates`` and ``_summarize_resource_contract``) --
+# Contract kinds and their operand/result positions.
+R_NONE, R_PASS, R_STORE, R_LOAD, R_MIXED = range(5)
+RESOURCE_SHAPES = {  # pointer operand (None), owner operand, effect operand, owner result, effect result, return count
+    R_PASS: (None, 0, 1, 0, 1, 2), R_STORE: (0, 2, 3, 0, 1, 2), R_LOAD: (0, 1, 2, 1, 2, 3), R_MIXED: (0, 2, 3, 1, 2, 3),
+}
+STORE_OP, LOAD_OP = int(Operation.STORE_BITS_LE), int(Operation.LOAD_BITS_LE)
+
+
+def _body_shape(e: E, operation_at, count):
+    """``(all stores, all loads, mixed body)`` flags of a single block's operations (``operation_at(k)``)."""
+    p = e.p
+    e.var("stores", 0)
+    e.var("loads", 0)
+    e.var("others", 0)
+
+    def each():
+        operation = operation_at(p["u"])
+        e.if_(e.eq(operation, STORE_OP), lambda: e.set("stores", e.add(p["stores"], 1)), lambda: e.if_(
+            e.eq(operation, LOAD_OP), lambda: e.set("loads", e.add(p["loads"], 1)), lambda: e.set("others", e.add(p["others"], 1))))
+
+    e.for_("u", 0, count, each)
+    sized = e.both(e.le(1, count), e.le(count, MAX_ACCESSES))
+    all_stores = e.flag(e.both(sized, e.eq(p["stores"], count)))
+    all_loads = e.flag(e.both(sized, e.eq(p["loads"], count)))
+    last_load = e.eq(operation_at(e.sub(count, 1)), LOAD_OP)
+    mixed = e.flag(e.both(sized, e.le(2, count), last_load, e.ne(p["stores"], 0), e.ne(p["loads"], 0), e.eq(p["others"], 0)))
+    first_load = e.flag(e.both(e.ne(count, 0), e.eq(operation_at(0), LOAD_OP)))
+    return all_stores, all_loads, mixed, first_load
+
+
+def _resource_contract(e: E, parameters_at, parameters, returns_at, returns, single_block, body):
+    """The unique summarized contract: ``(kind, required permission, requires initialized, initializes)``.
+
+    ``returns_at`` None matches any returns (entry contracts); ``body`` is ``_body_shape``'s result.
+    """
+    p = e.p
+    param = lambda k: e.rd(e.add(parameters_at, k))  # noqa: E731
+    owner, memory = (lambda t: e.ne(e.table(_T.STACKOWNER, t), 0)), (lambda t: e.ne(e.table(_T.MEMEFFECT, t), 0))
+    pointer_ok = e.both(e.eq(e.table(_T.FORMB, param(0)), 2), e.ne(e.table(_T.PTR, param(0)), 0))
+    element = e.table(_T.PELEM, param(0))
+    two = e.both(e.eq(parameters, 2), owner(param(0)), memory(param(1)))
+    four = e.both(e.eq(parameters, 4), pointer_ok, e.eq(param(1), element), owner(param(2)), memory(param(3)))
+    three = e.both(e.eq(parameters, 3), pointer_ok, owner(param(1)), memory(param(2)))
+
+    def returns_are(*expected):
+        if returns_at is None:
+            return e.eq(0, 0)
+        same = e.eq(returns, len(expected))
+        for k, value in enumerate(expected):
+            same = e.both(same, e.eq(e.rd(e.add(returns_at, k)), value))
+        return same
+
+    all_stores, all_loads, mixed, first_load = body
+    candidates = (
+        (R_PASS, e.both(two, returns_are(param(0), param(1))), e.c(1)),
+        (R_STORE, e.both(four, returns_are(param(2), param(3))), all_stores),
+        (R_MIXED, e.both(four, returns_are(element, param(2), param(3))), mixed),
+        (R_LOAD, e.both(three, returns_are(element, param(1), param(2))), all_loads),
+    )
+    e.var("contract", R_NONE)
+    e.var("contracts", 0)
+    for kind, candidate, matches in candidates:
+        e.if_(e.both(candidate, e.ne(single_block, 0), e.ne(matches, 0)), lambda kind=kind: (e.set("contract", kind), e.set("contracts", e.add(p["contracts"], 1))))
+    e.if_(e.ne(p["contracts"], 1), lambda: e.set("contract", R_NONE))
+    permission = e.sel(e.ne(all_stores, 0), int(Permission.WRITE), e.sel(e.ne(all_loads, 0), int(Permission.READ), int(Permission.READ_WRITE)))
+    initializes = e.flag(e.ne(p["stores"], 0))
+    return p["contract"], permission, first_load, initializes
+
+
+# -- S4d.2d: function interfaces, code-entry identities, function.address, lend entries, call.indirect -------
+
+def _known_type(e: E, type_index):
+    """A type the typing decoders validated (``_verify_type`` accepts it)."""
+    return e.either(*(e.ne(e.table(table, type_index), 0) for table in (
+        _T.WIDTH, _T.FORMAT, _T.LINK, _T.AGGREGATE, _T.EFFECT, _T.RESOURCE, _T.OPAQUE, _T.PTR, _T.OPID)))
+
+
+def _object_kind(e: E, entry):
+    count = e.hd(H_COUNT)
+    valid = e.lt(entry, count)
+    position = e.ld(e.add(e.add(e.hd(H_TABLE), e.mul(count, _T.POSITION)), e.sel(valid, entry, 0)))
+    return e.mul(e.flag(valid), e.rd(position))
+
+
+def _object_position(e: E, entry):
+    count = e.hd(H_COUNT)
+    return e.ld(e.add(e.add(e.hd(H_TABLE), e.mul(count, _T.POSITION)), e.sel(e.lt(entry, count), entry, 0)))
+
+
+def _cid_lookup(e: E, at, name: str):
+    """The type-table index of the 32-byte CID at input bytes ``at`` (NONE when absent)."""
+    p = e.p
+    words = []
+    for word in range(4):
+        value = e.c(0)
+        for byte in range(8):
+            value = e.add(value, e.mul(e.rd(e.add(at, 8 * word + byte)), 1 << (8 * byte)))
+        words.append(value)
+    e.var(name, NONE)
+    cids = e.hd(H_CIDS)
+
+    def match():
+        same = None
+        for word in range(4):
+            here = e.eq(e.rd(e.add(cids, e.add(e.mul(p["cid_k"], 4), word))), words[word])
+            same = here if same is None else e.both(same, here)
+        e.if_(same, lambda: e.set(name, p["cid_k"]))
+
+    e.for_("cid_k", 0, e.hd(H_COUNT), match)
+    return p[name]
+
+
+def _interface(tables):
+    """``_decode_function_interface`` of a fragment function: a record [P, P types, R, R types], or NONE."""
+    from xax_compiler import Kind
+
+    def build(e: E):
+        p = e.p
+        entity = p["entity"]
+        _require(e, e.eq(_object_kind(e, entity), int(Kind.FUNCTION)))
+        position = _object_position(e, entity)
+        references, length = e.rd(e.add(position, 1)), e.rd(e.add(position, 2))
+        base = e.add(position, 3)
+        end = e.add(base, length)
+        graph, graph_size, graph_ok = _uleb(e, base)
+        _require(e, e.both(graph_ok, e.lt(graph, references)))
+        _require(e, e.eq(_object_kind(e, e.rd(e.add(end, graph))), int(Kind.GRAPH_FRAGMENT)))
+        e.var("record", e.alloc(e.add(length, 4)))
+        _require(e, e.ne(p["record"], NONE))
+        e.var("at", e.add(base, graph_size))
+        e.var("out", p["record"])
+        for _list in range(2):
+            count, size, ok = _uleb(e, p["at"])
+            _require(e, ok)
+            e.set("at", e.add(p["at"], size))
+            e.st(p["out"], count)
+            e.set("out", e.add(p["out"], 1))
+
+            def each():
+                reference, width, reference_ok = _uleb(e, p["at"])
+                _require(e, e.both(reference_ok, e.lt(reference, references), e.le(e.add(p["at"], width), end)))
+                type_ = e.rd(e.add(end, reference))
+                _require(e, _known_type(e, type_))
+                e.st(p["out"], type_)
+                e.set("out", e.add(p["out"], 1))
+                e.set("at", e.add(p["at"], width))
+
+            e.for_("i", 0, count, each)
+        _require(e, e.eq(p["at"], end))
+        e.give(p["record"])
+    return _function(("entity",), build, tables)
+
+
+def _identity(e: E, type_index):
+    """(start, length) of an opaque identity type's bytes in the input."""
+    position = _object_position(e, type_index)
+    base = e.add(position, 3)
+    length, size, _ok = _uleb(e, e.add(base, 1))
+    return e.add(e.add(base, 1), size), length
+
+
+def _prefixed(e: E, start, length, prefix: bytes):
+    same = e.le(len(prefix), length)
+    for offset, byte in enumerate(prefix):
+        same = e.both(same, e.eq(e.rd(e.add(start, offset)), byte))
+    return same
+
+
+def _lend_view(e: E, pointer_type, name: str):
+    """``lend_entry_view``: for a lend-entry pointer type, the view type index (NONE when not a lend entry);
+    sets ``name + '_pointer'`` to the view pointer type index."""
+    from xax_compiler import _LEND_ENTRY_PREFIX
+
+    p = e.p
+    e.var(name, NONE)
+    e.var(name + "_pointer", NONE)
+    element = e.table(_T.PELEM, pointer_type)
+
+    def check():
+        start, length = _identity(e, element)
+
+        def found():
+            e.set(name + "_pointer", _cid_lookup(e, e.add(start, len(_LEND_ENTRY_PREFIX)), name + "_vp"))
+            e.set(name, _cid_lookup(e, e.add(start, len(_LEND_ENTRY_PREFIX) + 32), name + "_v"))
+
+        e.if_(e.both(_prefixed(e, start, length, _LEND_ENTRY_PREFIX), e.eq(length, len(_LEND_ENTRY_PREFIX) + 64)), found)
+
+    e.if_(e.both(e.ne(e.table(_T.PTR, pointer_type), 0), e.ne(e.table(_T.OPID, element), 0)), check)
+    return p[name]
+
+
+def _function_address(tables, interface):
+    from xax_compiler import FOREIGN_ENTRY_ABIS, WASM32_BROWSER_EVENT_ABI, _CODE_ENTRY_PREFIX, _LEND_ENTRY_PREFIX, Kind
+
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        _require(e, e.both(e.ne(n.entity, NONE), e.eq(_object_kind(e, n.entity), int(Kind.FUNCTION))))
+        _require(e, e.both(e.eq(n.no, 0), e.eq(n.nr, 1)))
+        result_type = n.rtid(0)
+        _require(e, e.ne(e.table(_T.PTR, result_type), 0))
+        element = e.table(_T.PELEM, result_type)
+
+        def entry():
+            start, length = _identity(e, element)
+            e.var("iface", e.call(interface, n.entity))
+            parameters_of = lambda: e.ld(p["iface"])  # noqa: E731
+
+            def lend():
+                # ``_lend_entry_admissible``
+                view = _lend_view(e, result_type, "lv")
+                _require(e, e.both(e.ne(view, NONE), e.ne(p["iface"], NONE)))
+                count = parameters_of()
+                params = e.add(p["iface"], 1)
+                returns_at = e.add(e.add(params, count), 1)
+                param = lambda k: e.ld(e.add(params, k))  # noqa: E731
+                _require(e, e.le(3, count))
+                _require(e, e.both(e.eq(param(e.sub(count, 3)), p["lv_pointer"]), e.eq(param(e.sub(count, 2)), view), e.ne(e.table(_T.MEMEFFECT, param(e.sub(count, 1))), 0)))
+                _require(e, e.both(_heap_view(e, view), e.eq(e.table(_T.RSTATE, view), 1), e.ne(e.table(_T.PTR, p["lv_pointer"]), 0), e.eq(e.table(_T.PPERM, p["lv_pointer"]), 1)))
+                e.for_("j", 0, e.sub(count, 3), lambda: _require(e, e.not_(_one_of(e, e.table(_T.FORMB, param(p["j"])), (3, 4)))))
+                _require(e, e.eq(e.ld(e.sub(returns_at, 1)), 4))
+                for k in range(3):
+                    _require(e, e.eq(e.ld(e.add(returns_at, 1 + k)), param(e.add(e.sub(count, 3), k))))
+                _require(e, e.eq(e.table(_T.FORMB, e.ld(returns_at)), 1))
+
+            def code():
+                _require(e, e.ne(p["iface"], NONE))
+                count = parameters_of()
+                params = e.add(p["iface"], 1)
+                returns_count = e.ld(e.add(params, count))
+                returns_at = e.add(e.add(params, count), 1)
+                abi_start, abi_length = e.add(start, len(_CODE_ENTRY_PREFIX)), e.sub(length, len(_CODE_ENTRY_PREFIX))
+                browser = e.both(e.eq(abi_length, len(WASM32_BROWSER_EVENT_ABI)), _prefixed(e, abi_start, abi_length, WASM32_BROWSER_EVENT_ABI))
+
+                def host():
+                    _require(e, e.eq(count, returns_count))
+                    e.for_("j", 0, count, lambda: _require(e, e.both(
+                        e.eq(e.ld(e.add(params, p["j"])), e.ld(e.add(returns_at, p["j"]))), e.ne(e.table(_T.EFFECT, e.ld(e.add(params, p["j"]))), 0),
+                        e.eq(e.table(_T.MEMEFFECT, e.ld(e.add(params, p["j"]))), 0))))
+
+                def foreign():
+                    known = None
+                    for abi in FOREIGN_ENTRY_ABIS:
+                        same = e.both(e.eq(abi_length, len(abi)), _prefixed(e, abi_start, abi_length, abi))
+                        known = same if known is None else e.either(known, same)
+                    _require(e, known)
+                    e.for_("j", 0, count, lambda: _require(e, e.not_(_one_of(e, e.table(_T.FORMB, e.ld(e.add(params, p["j"]))), (3, 4)))))
+                    e.for_("j", 0, returns_count, lambda: _require(e, e.not_(_one_of(e, e.table(_T.FORMB, e.ld(e.add(returns_at, p["j"]))), (3, 4)))))
+
+                e.if_(browser, host, foreign)
+
+            e.if_(_prefixed(e, start, length, _LEND_ENTRY_PREFIX), lend, lambda: e.if_(_prefixed(e, start, length, _CODE_ENTRY_PREFIX), code, lambda: _decline(e)))
+
+        e.if_(e.ne(e.table(_T.OPID, element), 0), entry, lambda: _require(e, e.eq(e.table(_T.OPAQUE, element), 3)))
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _call_indirect(tables):
+    """``call.indirect``: a bounded call contract, and the stack proof when a local pointer crosses it."""
+    from xax_compiler import Kind
+
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
+        _require(e, e.both(e.ne(n.entity, NONE), e.eq(_object_kind(e, n.entity), int(Kind.CALL_CONTRACT)), e.ne(n.no, 0)))
+        position = _object_position(e, n.entity)
+        references, length = e.rd(e.add(position, 1)), e.rd(e.add(position, 2))
+        base = e.add(position, 3)
+        end = e.add(base, length)
+        # Contract body: inputs, outputs (type references), may_return, may_trap; every reference used.
+        e.var("at", base)
+        e.var("used", 0)
+        lists = []
+        for which in range(2):
+            count, size, ok = _uleb(e, p["at"])
+            _require(e, ok)
+            e.set("at", e.add(p["at"], size))
+            e.var(f"list{which}", e.alloc(e.add(count, 1)))
+            _require(e, e.ne(p[f"list{which}"], NONE))
+            e.st(p[f"list{which}"], count)
+
+            def each(which=which):
+                reference, width, reference_ok = _uleb(e, p["at"])
+                _require(e, e.both(reference_ok, e.lt(reference, references), e.le(e.add(p["at"], width), end)))
+                type_ = e.rd(e.add(end, reference))
+                _require(e, _known_type(e, type_))
+                e.st(e.add(p[f"list{which}"], e.add(p["j"], 1)), type_)
+                e.set("at", e.add(p["at"], width))
+
+            e.for_("j", 0, count, each)
+            lists.append(p[f"list{which}"])
+        _require(e, e.both(e.le(e.rd(p["at"]), 1), e.le(e.rd(e.add(p["at"], 1)), 1), e.eq(e.add(p["at"], 2), end)))
+        # Every reference is used by some input or output.
+        def referenced():
+            target = e.rd(e.add(end, p["r"]))
+            e.var("hit", 0)
+            for which in range(2):
+                e.for_("j", 0, e.ld(p[f"list{which}"]), lambda which=which: e.if_(e.eq(e.ld(e.add(p[f"list{which}"], e.add(p["j"], 1))), target), lambda: e.set("hit", 1)))
+            _require(e, e.ne(p["hit"], 0))
+
+        e.for_("r", 0, references, referenced)
+        inputs, outputs = p["list0"], p["list1"]
+        callee = n.tid(0)
+        _require(e, e.both(e.ne(e.table(_T.PTR, callee), 0), e.eq(e.table(_T.OPAQUE, e.table(_T.PELEM, callee)), 3)))
+        _require(e, e.both(e.eq(e.sub(n.no, 1), e.ld(inputs)), e.eq(n.nr, e.ld(outputs))))
+        e.for_("j", 0, e.ld(inputs), lambda: _require(e, e.eq(e.rd(e.add(n.tids_at, e.add(p["j"], 1))), e.ld(e.add(inputs, e.add(p["j"], 1))))))
+        e.for_("j", 0, e.ld(outputs), lambda: _require(e, e.eq(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(outputs, e.add(p["j"], 1))))))
+        # The stack proof: one local pointer, its owner, and its frontier cross the call together.
+        e.var("pointers", 0)
+        e.var("pointer_value", NONE)
+
+        def find_pointer():
+            value = e.rd(e.add(n.vids_at, e.add(p["j"], 1)))
+            e.if_(e.both(e.eq(e.value(PSTAMP, value), pass_id), e.eq(e.value(PK, value), POINTER)), lambda: (
+                e.set("pointers", e.add(p["pointers"], 1)), e.set("pointer_value", value)))
+
+        e.for_("j", 0, e.ld(inputs), find_pointer)
+
+        def proof():
+            _require(e, e.eq(p["pointers"], 1))
+            owners_in, owners_out = e.c(0), e.c(0)
+            e.var("owner_in", NONE)
+            e.var("owner_out", NONE)
+            e.var("owners_in", 0)
+            e.var("owners_out", 0)
+            e.for_("j", 0, e.ld(inputs), lambda: e.if_(e.ne(e.table(_T.STACKOWNER, e.ld(e.add(inputs, e.add(p["j"], 1)))), 0), lambda: (
+                e.set("owners_in", e.add(p["owners_in"], 1)), e.set("owner_in", p["j"]))))
+            e.for_("j", 0, e.ld(outputs), lambda: e.if_(e.ne(e.table(_T.STACKOWNER, e.ld(e.add(outputs, e.add(p["j"], 1)))), 0), lambda: (
+                e.set("owners_out", e.add(p["owners_out"], 1)), e.set("owner_out", p["j"]))))
+            del owners_in, owners_out
+            _require(e, e.both(e.eq(p["owners_in"], 1), e.eq(p["owners_out"], 1)))
+            storage = e.value(PST, p["pointer_value"])
+            _require(e, e.not_(_ended(e, storage)))
+            owner_ref = e.rd(e.add(n.vids_at, e.add(p["owner_in"], 1)))
+            e.var("effects", 0)
+            e.var("effect_in", NONE)
+
+            def find_effect():
+                type_ = e.ld(e.add(inputs, e.add(p["j"], 1)))
+                value = e.rd(e.add(n.vids_at, e.add(p["j"], 1)))
+                e.if_(e.both(e.ne(e.table(_T.MEMEFFECT, type_), 0), e.eq(e.value(ESTAMP, value), visit), e.eq(e.value(EST, value), storage)), lambda: (
+                    e.set("effects", e.add(p["effects"], 1)), e.set("effect_in", p["j"])))
+
+            e.for_("j", 0, e.ld(inputs), find_effect)
+            _require(e, e.eq(p["effects"], 1))
+            effect_type = e.ld(e.add(inputs, e.add(p["effect_in"], 1)))
+            effect_ref = e.rd(e.add(n.vids_at, e.add(p["effect_in"], 1)))
+            e.var("effect_outs", 0)
+            e.var("effect_out", NONE)
+            e.for_("j", 0, e.ld(outputs), lambda: e.if_(e.both(e.eq(e.ld(e.add(outputs, e.add(p["j"], 1))), effect_type), e.ne(e.table(_T.MEMEFFECT, effect_type), 0)), lambda: (
+                e.set("effect_outs", e.add(p["effect_outs"], 1)), e.set("effect_out", p["j"]))))
+            _require(e, e.eq(p["effect_outs"], 1))
+            _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.eq(e.value(OST, owner_ref), storage)))
+            _require(e, e.both(e.ne(e.value(OCON, owner_ref), visit), e.ne(e.value(ECON, effect_ref), visit)))
+            e.set_value(OCON, owner_ref, visit)
+            e.set_value(ECON, effect_ref, visit)
+            e.set_value(OST, e.add(n.base, p["owner_out"]), storage)
+            e.set_value(OSTAMP, e.add(n.base, p["owner_out"]), visit)
+            _set_effect(e, e.add(n.base, p["effect_out"]), storage, e.value(EIV, effect_ref))
+
+        e.if_(e.ne(p["pointers"], 0), proof)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -1484,6 +2065,7 @@ def _block(tables, merge, empty, node, covers):
             e.set_value(ESTAMP, value, e.sel(e.ne(storage, NONE), visit, 0))
 
         e.for_("i", 0, count, seed_parameter)
+        e.if_(e.both(e.eq(block, e.hd(H_ENTRY)), e.ne(e.hd(H_RENTRY), R_NONE)), lambda: _seed_resource_entry(e, base))
 
         def seed_site():
             e.st(_site_word(e, 0, p["s"]), e.ld(e.add(_sets(e, p["seeds"], 1), p["s"])))
@@ -1505,6 +2087,7 @@ def _block(tables, merge, empty, node, covers):
         leaving = e.either(e.eq(kind, int(TerminatorKind.RETURN)), e.eq(kind, int(TerminatorKind.TRAP)))
         e.for_("s", 0, e.hd(H_S), lambda: _require(e, e.not_(e.both(leaving, e.ne(e.ld(_site_word(e, 0, p["s"])), 0), e.not_(_ended(e, p["s"]))))))
         e.if_(e.eq(kind, int(TerminatorKind.RETURN)), lambda: _return_views(e, term, values, covers))
+        e.if_(e.ne(e.hd(H_RENTRY), R_NONE), lambda: _return_resource_entry(e, term, values))
         edges_count_at = e.add(e.add(term, 2), e.mul(values, 2))
         e.var("edge_at", e.add(edges_count_at, 1))
 
@@ -1574,6 +2157,74 @@ def _entry_facts(e: E, empty, entry_params):
     return record
 
 
+def _entry_contract(e: E, entry_params, entry_count):
+    """A stack-owner entry: one block whose operations select a unique resource contract (``_resource_entry_contract``)."""
+    p = e.p
+    _require(e, e.eq(e.hd(H_B), 1))
+    nodes_at = e.ld(_block_word(e, e.hd(H_ENTRY), B_NODES))
+    count = e.rd(nodes_at)
+    e.var("operations", e.alloc(e.add(count, 1)))
+    _require(e, e.ne(p["operations"], NONE))
+    e.var("walk", e.add(nodes_at, 1))
+    e.var("last_base", NONE)
+
+    def each():
+        record = p["walk"]
+        e.st(e.add(p["operations"], p["c"]), e.rd(record))
+        e.set("last_base", e.rd(e.add(record, 4)))
+        attributes = e.rd(e.add(record, 5))
+        attrs_end = e.add(e.add(record, 6), attributes)
+        results_at = e.add(e.add(attrs_end, 1), e.mul(e.rd(attrs_end), 2))
+        aux_at = e.add(e.add(results_at, 1), e.rd(results_at))
+        e.set("walk", e.add(e.add(aux_at, 1), e.rd(aux_at)))
+
+    e.for_("c", 0, count, each)
+    body = _body_shape(e, lambda k: e.ld(e.add(p["operations"], k)), count)
+    kind, _permission, requires_initialized, _initializes = _resource_contract(e, e.add(entry_params, 2), entry_count, None, None, e.c(1), body)
+    _require(e, e.ne(kind, R_NONE))
+    e.set_hd(H_RENTRY, kind)
+    e.set_hd(H_RENTRY_SEED_INIT, requires_initialized)
+    e.set_hd(H_RENTRY_LAST, p["last_base"])
+
+
+def _seed_resource_entry(e: E, base):
+    """The entry's own storage (-1, 0) = site 0: its owner and frontier, and the pointer it lends (if any)."""
+    kind = e.hd(H_RENTRY)
+    visit = e.hd(H_VISIT)
+    params_at = e.ld(_block_word(e, e.hd(H_ENTRY), B_PARAMS))
+    types = e.add(params_at, 2)
+    owner_operand = e.sel(e.eq(kind, R_PASS), 0, e.sel(e.eq(kind, R_LOAD), 1, 2))
+    e.set_value(OST, e.add(base, owner_operand), 0)
+    e.set_value(OSTAMP, e.add(base, owner_operand), visit)
+    e.var("entry_extent", 0)
+
+    def lend_pointer():
+        pointer_type = e.rd(types)
+        element = e.table(_T.PELEM, pointer_type)
+        width = e.table(_T.WIDTH, element)
+        _require(e, e.ne(width, 0))
+        e.set("entry_extent", e.udiv(e.add(width, 7), 8))
+        _set_pointer(e, base, {PK: POINTER, PST: 0, PEL: element, PPERM: e.table(_T.PPERM, pointer_type), POFF: 0, PEXT: e.p["entry_extent"],
+                               PALIGN: e.table(_T.PALIGN, pointer_type), PALIAS: 0, PWIN: 0, PREC: element, PLT: NONE, PLR: NONE})
+
+    e.if_(e.ne(kind, R_PASS), lend_pointer)
+    _set_effect(e, e.add(base, e.add(owner_operand, 1)), 0, _initialized_list(e, e.flag(e.both(e.ne(kind, R_PASS), e.ne(e.hd(H_RENTRY_SEED_INIT), 0))), e.p["entry_extent"]))
+
+
+def _return_resource_entry(e: E, term, values):
+    """A stack-owner entry returns its live owner and frontier (and, for a mixed body, its final load first)."""
+    kind = e.hd(H_RENTRY)
+    visit = e.hd(H_VISIT)
+    ids_at = e.add(term, 2)
+    count = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 2, 3)
+    _require(e, e.both(e.eq(e.rd(term), int(TerminatorKind.RETURN)), e.eq(values, count)))
+    owner_result = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 0, 1)
+    owner_ref, effect_ref = e.rd(e.add(ids_at, owner_result)), e.rd(e.add(ids_at, e.add(owner_result, 1)))
+    e.if_(e.eq(kind, R_MIXED), lambda: _require(e, e.both(e.ne(e.hd(H_RENTRY_LAST), NONE), e.eq(e.rd(ids_at), e.hd(H_RENTRY_LAST)))))
+    _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.eq(e.value(OST, owner_ref), 0), e.ne(e.value(OCON, owner_ref), visit)))
+    _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), 0), e.ne(e.value(ECON, effect_ref), visit)))
+
+
 def _engine(tables, block, empty, record_equal):
     """The facts engine: layout, entry facts, passes to a fixpoint, and the pointer extents."""
     def build(e: E):
@@ -1624,7 +2275,8 @@ def _engine(tables, block, empty, record_equal):
                 results = e.rd(results_at)
                 result_base = e.rd(e.add(record, 4))
                 e.for_("r", 0, results, lambda: e.set_value(DEF, e.add(result_base, p["r"]), record))
-                e.set("cursor", e.add(e.add(results_at, 1), results))
+                aux_at = e.add(e.add(results_at, 1), results)
+                e.set("cursor", e.add(e.add(aux_at, 1), e.rd(aux_at)))
 
             e.for_("m", 0, e.rd(nodes_at), skip_node)
             e.st(_block_word(e, b, B_TERM), p["cursor"])
@@ -1640,7 +2292,10 @@ def _engine(tables, block, empty, record_equal):
         # Entry facts (borrowed views); a stack-owner entry parameter (resource entry contracts) declines.
         entry_params = e.ld(_block_word(e, e.hd(H_ENTRY), B_PARAMS))
         entry_count = e.rd(e.add(entry_params, 1))
-        e.for_("i", 0, entry_count, lambda: _require(e, e.eq(e.table(_T.STACKOWNER, e.rd(e.add(e.add(entry_params, 2), p["i"]))), 0)))
+        e.set_hd(H_RENTRY, R_NONE)
+        e.var("stack_entry", 0)
+        e.for_("i", 0, entry_count, lambda: e.if_(e.ne(e.table(_T.STACKOWNER, e.rd(e.add(e.add(entry_params, 2), p["i"]))), 0), lambda: e.set("stack_entry", 1)))
+        e.if_(e.ne(p["stack_entry"], 0), lambda: _entry_contract(e, entry_params, entry_count))
         e.set_hd(H_ENTRY_FACTS, _entry_facts(e, empty, entry_params))
         # Passes.
         e.var("passes", 0)
@@ -1689,6 +2344,8 @@ def build_engine():
 
     covers = add(_covers(tables))
     insert = add(_insert(tables))
+    _COVERS[:] = [covers]
+    _INSERT[:] = [insert]
     intersect = add(_intersect(tables, insert))
     list_equal = add(_list_equal(tables))
     empty = add(_empty_record(tables))
@@ -1696,6 +2353,7 @@ def build_engine():
     record_equal = add(_record_equal(tables, list_equal))
     end_views = add(_end_views(tables))
     declaration = add(_foreign_declaration(tables))
+    interface = add(_interface(tables))
     handlers = {
         Operation.STACK_ALLOC: add(_stack_alloc(tables)),
         Operation.STACK_END: add(_stack_end(tables)),
@@ -1711,6 +2369,11 @@ def build_engine():
         Operation.POINTER_REBASE: add(_pointer_rebase(tables)),
         Operation.CALL_FOREIGN: add(_call_foreign(tables, declaration, end_views)),
         Operation.CALL_GROUP_MEMBER: add(_call_group(tables, covers)),
+        Operation.ATOMIC_FENCE: add(_atomic_fence(tables)),
+        Operation.FUNCTION_ADDRESS: add(_function_address(tables, interface)),
+        Operation.CALL_INDIRECT: add(_call_indirect(tables)),
+        Operation.RAW_LOAD_BITS_LE: add(_raw_load(tables, covers)),
+        **{operation: add(_atomic(tables, covers, insert, operation)) for operation in ATOMIC_SHAPES},
     }
     node = add(_node_dispatch(tables, handlers, end_views))
     block = add(_block(tables, merge, empty, node, covers))
