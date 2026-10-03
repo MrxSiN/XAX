@@ -92,7 +92,8 @@ PTR, PSPACE, PELEM, PPERM, PALIGN, STACKOWNER, MEMEFFECT = range(17, 24)
 FORMB = 24  # S4d.2c: a type's raw first body byte (its form when single-byte), any type kind
 OPID = 25  # S4d.2d: an opaque identity type (form 6): 1 when ``_decode_opaque_identity_type`` accepts it
 EINST = 26  # S4d.2d: an effect type's instance (0 when absent)
-TABLES = 27
+OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a constant ``_decode_constant`` accepts
+TABLES = 28
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -255,6 +256,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     for _depth in range(2):
         b.for_range(b.c(0), count, lambda index, carried: _pointer_entry(b, t, index) or (), ())
         b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
+    b.for_range(b.c(0), count, lambda index, carried: _object_entry(b, t, index) or (), ())
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
     blocks_at, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
@@ -681,6 +683,12 @@ def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdi
 def _constant_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, result):
     """``constant``: a canonical constant object of a scalar type, no operands, one result of that type."""
     entity = b.read(extra_at)
+    ok, value_type = _constant_object(b, t, entity)
+    return t.all(ok, t.eq(extra, 1), t.eq(operands, 0), t.eq(results, 1), t.eq(result, value_type))
+
+
+def _constant_object(b: _Builder, t: _Typing, entity):
+    """``(ok, value type)``: entry ``entity`` is a constant object ``_decode_constant`` accepts."""
     position = t.pick(t.lt(entity, t.count), b.get(t.slot(POSITION, t.pick(t.lt(entity, t.count), entity, b.c(0)))), b.c(0))
     kind, references, length = (b.read(b.add(position, k)) for k in range(3))
     base = b.add(position, 3)
@@ -690,8 +698,8 @@ def _constant_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, 
     data = b.add(b.add(base, size), count_size)
     value_type = b.read(end)
     shape = t.all(
-        t.eq(extra, 1), t.lt(entity, t.count), t.eq(kind, int(Kind.CONSTANT)), t.eq(references, 1), reference_ok, t.eq(reference, 0),
-        count_ok, t.eq(b.add(data, count), end), t.eq(operands, 0), t.eq(results, 1), t.eq(result, value_type),
+        t.lt(entity, t.count), t.eq(kind, int(Kind.CONSTANT)), t.eq(references, 1), reference_ok, t.eq(reference, 0),
+        count_ok, t.eq(b.add(data, count), end),
     )
     width, form, link = t.lookup(WIDTH, value_type), t.lookup(FORMAT, value_type), t.lookup(LINK, value_type)
     # bits<W>: ceil(W/8) bytes, unused high bits of the last byte zero.
@@ -718,7 +726,15 @@ def _constant_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, 
     f32 = t.all(t.eq(form, 1), t.eq(count, 4), t.any(t.not_(nan(23, 0xFF, (1 << 23) - 1)), t.eq(raw, F32_QUIET_NAN)))
     f64 = t.all(t.eq(form, 2), t.eq(count, 8), t.any(t.not_(nan(52, 0x7FF, (1 << 52) - 1)), t.eq(raw, F64_QUIET_NAN)))
     link_ok = t.all(link, t.eq(count, 8), zero)
-    return t.all(shape, t.any(bits_ok, f32, f64, link_ok))
+    return t.all(shape, t.any(bits_ok, f32, f64, link_ok)), value_type
+
+
+def _object_entry(b: _Builder, t: _Typing, index):
+    """S6b (ADR-143): the entry's object verdict: a valid type (``_known``) or a valid constant."""
+    kind = b.read(b.get(t.slot(POSITION, index)))
+    constant_ok, _value_type = _constant_object(b, t, index)
+    verdict = t.any(t.all(t.eq(kind, int(Kind.TYPE)), _known(t, index)), t.all(t.eq(kind, int(Kind.CONSTANT)), constant_ok))
+    b.put(t.slot(OBJOK, index), verdict)
 
 
 def _node_entry(b: _Builder, t: _Typing, index, carried):
@@ -841,7 +857,7 @@ def type_info_from(resolve):
     return info
 
 
-def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None):
+def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None, objects=()):
     """Input words for the covered nodes of parsed ``blocks`` and their (block, node) keys.
 
     ``operand_types_of(block, node)`` gives a node's operand type CIDs (or None
@@ -872,6 +888,7 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None)
         entry[0], entry[1] = (kind, tuple(indices)) if None not in indices else (0, ())
         return types[cid]
 
+    listed = {cid: type_index(cid) for cid in objects}  # S6b: objects to give a verdict for
     for block_index, block in enumerate(blocks):
         for node_index, node in enumerate(block.nodes):
             if node.operation not in COVERED:
@@ -913,6 +930,8 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None)
         words += [kind, len(references), len(body), *body, *references]
     words += [len(keys), *nodes]
     words += [len(blocks) if value_type_of is not None else 0, *section, *facts_section, *(0,) * PADDING]
+    if objects:
+        return words, listed
     return (words, keys) if facts is None else (words, keys, refs)
 
 
@@ -1069,6 +1088,15 @@ class NativeTyping:
         if self._out[HEADER + H_STATUS] != ACCEPTED:
             return False, []
         return True, self._extents(values)
+
+    def object_verdicts(self, words: list[int], listed: dict) -> set[bytes]:
+        """S6b (ADR-143): the CIDs among ``listed`` (CID -> entry index) that XAX proves valid types or constants."""
+        status, _verdicts = self.check(words, 0)
+        if status != ACCEPT:
+            return set()
+        count = words[0]
+        base = TABLE + count * OBJOK
+        return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
 
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""

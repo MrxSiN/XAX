@@ -810,3 +810,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S6a: linear flow in XAX (ADR-142) — 2026-10-03
 
 - The facts engine proves resource and effect linearity (`_verify_linear_flow`), and the verifier skips the Python pass when it does. 6,518 suite graphs are proven, none of them wrongly. Full suite: 883 tests, 17 skipped. Next: S6b, object-level verification.
+
+## Self-hosting step S6b.1: types and constants decided by XAX (ADR-143) — 2026-10-03
+
+- `verify_store` asks the typing program for a verdict on every type and constant, and skips the Python decoders for each one proven. On 600 random and mutated objects, XAX proved every valid one and no invalid one. Full suite: 884 tests, 17 skipped. Next: S6b.2 (functions, groups, contracts, reference lists, build objects, targets).
