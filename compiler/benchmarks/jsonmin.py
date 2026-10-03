@@ -181,7 +181,8 @@ def string_function():
     def body(p: Proc):
         byte = p["byte"]
         p.if_(p.cmp(LT, byte, 0x20), _fail)  # includes the 0 byte after the input
-        _copy(p)
+        _emit(p, byte)  # the byte at pos, already loaded
+        _advance(p)
 
         def escape(q: Proc):
             escaped = _current(q)

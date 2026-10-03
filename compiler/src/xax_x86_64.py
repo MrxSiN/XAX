@@ -1519,9 +1519,10 @@ def _compile_function(
                     )
     if target.abi == X86_64_LINUX_ABI or target.identity == PE_HOSTED_IDENTITY:
         # One register allocator for the hosted x86-64 profiles (OI-38, ADR-095).
+        from xax_inline import inline_leaf_calls
         from xax_x86_64_regalloc import compile_register_resident
 
-        allocated = compile_register_resident(function, graph_object, graph, parameter_types, return_types, resolve, target, process_entry)
+        allocated = compile_register_resident(function, graph_object, inline_leaf_calls(graph, resolve), parameter_types, return_types, resolve, target, process_entry)
         if allocated is not None:
             return allocated
     register_resident = None if process_entry else _compile_register_resident_function(
