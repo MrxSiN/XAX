@@ -6321,6 +6321,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     proven_constants: frozenset[tuple[int, int]] = frozenset()
     proven_terminators: frozenset[int] = frozenset()
     fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
+    linear_proven = False  # S6a (ADR-142): XAX proved resource and effect linearity
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
     typing = _native_typing() if checked_uses else None
     if typing is not None:
@@ -6347,6 +6348,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 and len(proven_terminators) == len(blocks)
             )
             accepted, extents = typing.facts(len(value_refs))
+            linear_proven = typing.linear_flow()
             if accepted and len(proven_terminators) == len(blocks):
                 # The engine modelled every node (or found it typing-proven) and its passes converged.
                 engine_extents = [(ref, extent - 1) for ref, extent in zip(value_refs, extents) if extent]
@@ -7024,7 +7026,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         entry, tuple(blocks), tuple(returns), tuple(member_spans),
         tuple(sorted(pointer_extents, key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))),
     )
-    _verify_linear_flow(obj, parsed, resolve)
+    if not linear_proven:
+        _verify_linear_flow(obj, parsed, resolve)
     return parsed
 
 

@@ -806,3 +806,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - The XAX backend program now reads the store's objects and the XAX graph decoder's streams itself. It decides the target's operation sets, function interfaces, value widths, constants, the call closure (skipping erased proof callees), and the function order. Python only copies objects and assembles the image object.
 - Images are byte-identical to the bootstrap's. `compile_riscv64` is 6.4× faster on a 300-value loop. Full suite: 882 tests, 17 skipped. Next: S6.
+
+## Self-hosting step S6a: linear flow in XAX (ADR-142) — 2026-10-03
+
+- The facts engine proves resource and effect linearity (`_verify_linear_flow`), and the verifier skips the Python pass when it does. 6,518 suite graphs are proven, none of them wrongly. Full suite: 883 tests, 17 skipped. Next: S6b, object-level verification.
