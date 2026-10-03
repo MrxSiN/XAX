@@ -39,6 +39,8 @@ from xax_compiler import (
     ValueRef,
     XaxError,
     _decode_constant,
+    _heap_view_info,
+    borrowed_view_returns,
     _decode_function_interface,
     _is_erased_proof_function,
     _is_proof_type,
@@ -50,7 +52,7 @@ from xax_compiler import (
     verify_store,
 )
 
-ZERO, RA, SP, T0, T1, T2, A0 = 0, 1, 2, 5, 6, 7, 10
+ZERO, RA, SP, T0, T1, T2, A0, T3 = 0, 1, 2, 5, 6, 7, 10, 28
 UNIMP = 0xC0001073  # csrrw x0, cycle, x0: the canonical illegal instruction
 ARGUMENT_REGISTERS = 8
 
@@ -184,11 +186,18 @@ def select_encoder(choice: str = "auto"):
 
 
 class _Emitter:
-    def __init__(self, where: str) -> None:
+    def __init__(self, where: str, far: bool = False) -> None:
         self.where = where
         self.words: list[int] = []
         self.labels: dict[object, int] = {}
         self.jumps: list[tuple[int, object, int]] = []  # (word index, label, rd)
+        # Views profile (ADR-145): every jump is ``auipc; jalr`` (+-2 GiB), as images exceed jal's +-1 MiB.
+        self.far = far
+
+    @property
+    def skip(self) -> int:
+        """The branch offset that skips one jump."""
+        return 12 if self.far else 8
 
     @property
     def offset(self) -> int:
@@ -203,6 +212,8 @@ class _Emitter:
     def jal(self, label: object, rd: int = ZERO) -> None:
         self.jumps.append((len(self.words), label, rd))
         self.words.append(0)
+        if self.far:
+            self.words.append(0)
 
     def li(self, rd: int, value: int) -> None:
         for word in _encoder().li(rd, value):
@@ -220,6 +231,15 @@ class _Emitter:
         for index, label, rd in self.jumps:
             target = function_labels[label[1]] if isinstance(label, tuple) and label[0] == "function" else self.labels[label]
             delta = target - 4 * index
+            if self.far:
+                if not -(1 << 31) <= delta < (1 << 31) - 2048:
+                    fail("XAX.RISCV64.LIMIT", self.where, "RISCV64-FAR-RANGE", "+-2 GiB", delta)
+                base = rd if rd != ZERO else T3
+                high = ((delta + 0x800) >> 12) & 0xFFFFF
+                low = delta - ((((high << 12) ^ 0x80000000) - 0x80000000))
+                self.words[index] = (high << 12) | (base << 7) | 0x17  # auipc base, high
+                self.words[index + 1] = _encoder().i(low, base, 0, rd, 0x67)  # jalr rd, low(base)
+                continue
             if not -(1 << 20) <= delta < 1 << 20:
                 fail("XAX.RISCV64.LIMIT", self.where, "RISCV64-JAL-RANGE", "+-1 MiB", delta)
             self.words[index] = _encoder().j(delta, rd)
@@ -253,6 +273,8 @@ def _machine_width(resolve, cid: bytes, where: str) -> int | None:
     obj = resolve(cid)
     if _is_proof_type(obj):
         return None
+    if obj.kind == Kind.TYPE and obj.body[:1] == b"\x02":
+        return 64  # a pointer (views profile, ADR-145): one 64-bit address
     if obj.kind == Kind.TYPE and obj.body[:1] == b"\x01":
         width = decode_bits_width(obj)
         if width <= 64:
@@ -344,9 +366,66 @@ def _allocate_registers(graph, order: Sequence[int], machine: set[ValueRef]) -> 
     return assignment
 
 
+class _Rewritten:
+    """A parsed graph with borrowed-view call results replaced by the pointers passed in (views profile)."""
+
+    def __init__(self, entry, blocks):
+        self.entry, self.blocks = entry, blocks
+
+
+def _rewrite_borrowed_views(graph, resolve):
+    """``(graph, elided results)``: each pointer a direct call gives back as a borrowed view (``borrowed_view_returns``)
+    is the pointer passed in, so its uses read that operand instead (ADR-145)."""
+    from dataclasses import replace
+
+    alias: dict[ValueRef, ValueRef] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation != Operation.CALL_DIRECT or _is_erased_proof_function(node.entity, resolve):
+                continue
+            _graph, callee_parameters, callee_returns = _decode_function_interface(node.entity, resolve)
+            for result_index, parameter_index in borrowed_view_returns(callee_parameters, callee_returns, resolve).items():
+                alias[ValueRef.node_result(block_index, node_index, result_index)] = node.operands[parameter_index]
+    if not alias:
+        return graph, frozenset()
+
+    def canon(ref: ValueRef) -> ValueRef:
+        while ref in alias:
+            ref = alias[ref]
+        return ref
+
+    blocks = []
+    for block in graph.blocks:
+        nodes = tuple(replace(node, operands=tuple(canon(ref) for ref in node.operands)) for node in block.nodes)
+        term = block.terminator
+        terminator = replace(term, values=tuple(canon(ref) for ref in term.values),
+                             edges=tuple((target, tuple(canon(ref) for ref in arguments)) for target, arguments in term.edges))
+        blocks.append(replace(block, nodes=nodes, terminator=terminator))
+    return _Rewritten(graph.entry, tuple(blocks)), frozenset(alias)
+
+
+def _pointer_extents(graph, resolve) -> dict[ValueRef, int]:
+    """A pointer's extent: the instance of the ``heap_view<N>`` type right after it (as in parameter and result triples)."""
+    extents: dict[ValueRef, int] = {}
+
+    def scan(types, ref_of):
+        for index in range(len(types) - 1):
+            info = _heap_view_info(resolve(types[index + 1]))
+            if info is not None and resolve(types[index]).body[:1] == b"\x02":
+                extents[ref_of(index)] = info[0]
+
+    for block_index, block in enumerate(graph.blocks):
+        scan(block.parameters, lambda index, b=block_index: ValueRef.parameter(b, index))
+        for node_index, node in enumerate(block.nodes):
+            scan(node.results, lambda index, b=block_index, n=node_index: ValueRef.node_result(b, n, index))
+    return extents
+
+
 def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> list[tuple[int, int, int, int]]:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = parse_function_graph(function, resolve)
+    graph, elided = _rewrite_borrowed_views(parse_function_graph(function, resolve), resolve)
+    elided_returns = set(borrowed_view_returns(parameter_types, return_types, resolve))
+    extents = _pointer_extents(graph, resolve)
     where = graph_object.cid.hex()
     width_of: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):
@@ -357,7 +436,7 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
         for node_index, node in enumerate(block.nodes):
             for result_index, cid in enumerate(node.results):
                 width = _machine_width(resolve, cid, where)
-                if width is not None:
+                if width is not None and ValueRef.node_result(block_index, node_index, result_index) not in elided:
                     width_of[ValueRef.node_result(block_index, node_index, result_index)] = width
     order = [graph.entry] + [index for index in range(len(graph.blocks)) if index != graph.entry]
     register_of = _allocate_registers(graph, order, set(width_of))
@@ -483,7 +562,7 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
             elif operation in (Operation.UDIV, Operation.UREM):
                 trap_used = True
                 left, right = read(node.operands[0], T0), read(node.operands[1], T1)
-                e.emit(_encoder().b(8, ZERO, right, 1))  # bne divisor, zero, +8
+                e.emit(_encoder().b(e.skip, ZERO, right, 1))  # bne divisor, zero: skip the trap jump
                 e.jal(("trap", function.cid))
                 destination = target_register(result)
                 e.emit(_encoder().r(1, right, left, 5 if operation == Operation.UDIV else 7, destination))  # divu / remu
@@ -544,11 +623,34 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                     for register, argument in enumerate(arguments):
                         read_into(argument, A0 + register)
                     e.jal(("function", node.entity.cid), RA)
-                    machine_results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)) if ValueRef.node_result(block_index, node_index, index) in width_of]
+                    machine_results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)) if ValueRef.node_result(block_index, node_index, index) in width_of]  # elided views excluded
                     if len(machine_results) > 1:
                         fail("XAX.RISCV64.ABI", where, "RISCV64-SINGLE-RESULT", 1, len(machine_results))
                     if machine_results:
                         write(machine_results[0], A0)
+            elif operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                # Views profile (ADR-145): trap unless offset + size <= the pointer's view extent, then access.
+                trap_used = True
+                size = node.attributes[0]
+                funct3 = {1: 0, 2: 1, 4: 2, 8: 3}.get(size)
+                extent = extents.get(node.operands[0])
+                if funct3 is None or extent is None:
+                    fail("XAX.RISCV64.UNSUPPORTED_OPERATION", where, "RISCV64-CHECKED-ACCESS", "1/2/4/8-byte access through a view pointer", [size, extent])
+                pointer = read(node.operands[0], T0)
+                offset = read(node.operands[1], T1)
+                e.li(T3, (extent - size) & ((1 << 64) - 1) if extent >= size else 0)
+                if extent >= size:
+                    e.emit(_encoder().b(e.skip, offset, T3, 7))  # bgeu t3, offset: in bounds, skip the trap jump
+                e.jal(("trap", function.cid))
+                if operation == Operation.CHECKED_STORE_BITS_LE:
+                    value = read(node.operands[2], T3)
+                    e.emit(_encoder().r(0, offset, pointer, 0, T2))  # add t2, pointer, offset
+                    e.emit(_encoder().s(0, value, T2, funct3))
+                else:
+                    e.emit(_encoder().r(0, offset, pointer, 0, T2))
+                    destination = target_register(result)
+                    e.emit(_encoder().i(0, T2, {1: 4, 2: 5, 4: 6, 8: 3}[size], destination, 0x03))  # lbu/lhu/lwu/ld
+                    write(result, destination)
             elif operation in RESOURCE_EFFECT_OPERATIONS:
                 pass
             else:
@@ -558,7 +660,8 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
 
         terminator = block.terminator
         if terminator.kind == TerminatorKind.RETURN:
-            machine = [value for value, cid in zip(terminator.values, return_types) if not _is_proof_type(resolve(cid))]
+            machine = [value for position, (value, cid) in enumerate(zip(terminator.values, return_types))
+                       if not _is_proof_type(resolve(cid)) and position not in elided_returns]
             if len(machine) > 1:
                 fail("XAX.RISCV64.ABI", where, "RISCV64-SINGLE-RESULT", 1, len(machine))
             if machine:
@@ -569,7 +672,7 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             condition = read(terminator.values[0], T0)
             false_label = ("false", function.cid, block_index)
-            e.emit(_encoder().b(8, ZERO, condition, 1))  # bne cond, zero, +8: true edge follows
+            e.emit(_encoder().b(e.skip, ZERO, condition, 1))  # bne cond, zero: the true edge follows the jump
             e.jal(false_label)
             copy_edge(*terminator.edges[0])
             e.mark(false_label)
@@ -655,7 +758,7 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
     functions = _function_closure(entry, resolve, target.supported_operations, target.supported_terminators)
     # The entry is laid out first so the image starts at its entry point.
     functions = (entry, *(function for function in functions if function.cid != entry.cid))
-    emitter = _Emitter(function_cid.hex())
+    emitter = _Emitter(function_cid.hex(), far=int(Operation.CHECKED_LOAD_BITS_LE) in target.supported_operations)
     offsets: dict[bytes, int] = {}
     node_ranges: list[ArtifactSemanticRange] = []
     for function in functions:
@@ -688,6 +791,11 @@ def _compile_with_xax(reader: StoreReader, entry, function_cid: bytes, target_ob
         if required:
             fail("XAX.RISCV64.BACKEND", function_cid.hex(), "RISCV64-XAX-BACKEND", "accepted by the XAX backend program", "unavailable or declined")
         return None
+    return image_from_backend_output(reader, target_object, result)
+
+
+def image_from_backend_output(reader: StoreReader, target_object: SemanticObject, result) -> Riscv64Image:
+    """The ``Riscv64Image`` of the XAX backend program's collected output (``collect_output``), wherever it ran."""
     code_words, order, word_offsets, ranges, parameter_widths, return_widths = result
     objects = _table_objects(reader, target_object)
     functions = [objects[position] for position in order]
@@ -753,3 +861,52 @@ def run_riscv64(image: Riscv64Image, arguments: Sequence[int], *, instruction_li
     if not image.return_widths:
         return 0
     return emulator.reg_read(rv.UC_RISCV_REG_A0) & ((1 << image.return_widths[0]) - 1)
+
+
+_VIEWS_IN_BASE = 0x20000000
+_VIEWS_OUT_BASE = 0x40000000
+
+
+def run_riscv64_views(image: Riscv64Image, input_words: Sequence[int], input_capacity: int, output_capacity: int,
+                      read_back: Callable[[Callable[[int, int], list[int]]], object], *, instruction_limit: int = 20_000_000_000):
+    """Test harness (views profile, ADR-145): run an image whose entry takes ``(in view, out view)`` pointers.
+
+    ``input_words`` fill the input view (``input_capacity`` bytes); the output view (``output_capacity`` bytes)
+    starts zeroed.  After the call, ``read_back(read_words)`` collects the result, where ``read_words(start,
+    count)`` reads 64-bit words of the output view.  Returns ``(a0, read_back result)``; a trap returns ``"trap"``."""
+    try:
+        import unicorn
+        from unicorn import riscv_const as rv
+    except ImportError:
+        fail("XAX.RISCV64.HOST", "host", "RISCV64-HOST-EMULATOR", "unicorn", "missing")
+    emulator = unicorn.Uc(unicorn.UC_ARCH_RISCV, unicorn.UC_MODE_RISCV64)
+    size = (len(image.code) + 0xFFF) & -0x1000
+    emulator.mem_map(_CODE_BASE, size)
+    emulator.mem_write(_CODE_BASE, image.code)
+    emulator.mem_map(_RETURN_SENTINEL, 0x1000)
+    emulator.mem_map(_STACK_TOP - _STACK_SIZE, _STACK_SIZE)
+    emulator.mem_map(_VIEWS_IN_BASE, (input_capacity + 0xFFF) & -0x1000)
+    emulator.mem_map(_VIEWS_OUT_BASE, (output_capacity + 0xFFF) & -0x1000)
+    data = b"".join(int(word).to_bytes(8, "little") for word in input_words)
+    emulator.mem_write(_VIEWS_IN_BASE, data)
+    emulator.reg_write(rv.UC_RISCV_REG_SP, _STACK_TOP)
+    emulator.reg_write(rv.UC_RISCV_REG_RA, _RETURN_SENTINEL)
+    emulator.reg_write(rv.UC_RISCV_REG_A0, _VIEWS_IN_BASE)
+    emulator.reg_write(rv.UC_RISCV_REG_A1, _VIEWS_OUT_BASE)
+    try:
+        emulator.emu_start(_CODE_BASE + image.entry_offset, _RETURN_SENTINEL, count=instruction_limit)
+    except unicorn.UcError as error:
+        if error.errno == unicorn.UC_ERR_EXCEPTION:
+            pc = emulator.reg_read(rv.UC_RISCV_REG_PC)
+            for address in (pc - 4, pc):
+                if _CODE_BASE <= address < _CODE_BASE + len(image.code) and int.from_bytes(emulator.mem_read(address, 4), "little") == UNIMP:
+                    return "trap", None
+        raise
+    if emulator.reg_read(rv.UC_RISCV_REG_PC) != _RETURN_SENTINEL:
+        fail("XAX.RISCV64.HOST", "entry", "RISCV64-INSTRUCTION-LIMIT", instruction_limit, "exceeded")
+
+    def read_words(start: int, count: int) -> list[int]:
+        raw = bytes(emulator.mem_read(_VIEWS_OUT_BASE + 8 * start, 8 * count)) if count else b""
+        return [int.from_bytes(raw[k:k + 8], "little") for k in range(0, len(raw), 8)]
+
+    return emulator.reg_read(rv.UC_RISCV_REG_A0), read_back(read_words)

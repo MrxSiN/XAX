@@ -422,7 +422,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S6b.1 | Type and constant objects decided by XAX | S6a | EXECUTED (ADR-143): no Python type or constant decoding when verifying the corpus stores |
 | S6b.2 | Function, call-contract, and module/root objects, and store rootedness, decided by XAX | S6b.1 | EXECUTED (ADR-144): 17/17 ordinary corpus functions and every list and store check proven |
 | S6b.3 | Recursion groups, group member functions, targets, and build objects decided by XAX; the per-graph glue | S6b.2 | next |
-| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | in progress (S6a, S6b.1, S6b.2 done) |
+| B1–B4 (RISC-V backend) | The XAX RISC-V backend compiles its own store for a RISC-V views profile; the image, emulated, compiles it again | S5 | EXECUTED (ADR-145): gen1 = bootstrap reference, gen2 = gen1 on a corpus, gen3 == gen2 byte for byte |
+| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | in progress (S6a, S6b.1, S6b.2 done; B1–B4 for the RISC-V backend) |
 
 ## 2. Bootstrap mapping
 

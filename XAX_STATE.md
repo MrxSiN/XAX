@@ -819,3 +819,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - A native XAX store verifier decides ordinary functions (interface and graph contract), module and root reference lists, call contracts, and store rootedness and acyclicity. Every ordinary corpus function is proven. Full suite: 885 tests, 17 skipped.
 - The E DSL now binds a value already held by another variable as a fresh copy. This avoids an x86-64 register-resident lowering issue (aliased variables across control flow) whose root cause is open.
+
+## B1–B4 for the XAX RISC-V backend: a self-compilation fixed point (ADR-145) — 2026-10-03
+
+- A RISC-V views profile (checked heap-view loads and stores, 64-bit pointers, borrowed-view returns elided, `auipc`/`jalr` far jumps) lets the XAX RISC-V backend compile its own store. The XAX backend's image is identical to the bootstrap generator's (1,959,876 bytes).
+- That image, run in the RV64 emulator, compiles a corpus exactly as the native backend does. Compiling the backend store with it reproduces it byte for byte (gen3 == gen2, at most 22 billion emulated instructions).

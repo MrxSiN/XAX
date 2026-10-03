@@ -53,7 +53,7 @@ from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, HEADER, NONE, _function
 from xax_selfhost_typing import IN_WORDS, OUT_WORDS
 
 STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_riscv64_backend.xax"
-ZERO, RA, SP, T0, T1, T2, A0 = 0, 1, 2, 5, 6, 7, 10
+ZERO, RA, SP, T0, T1, T2, A0, T3 = 0, 1, 2, 5, 6, 7, 10, 28
 UNIMP = 0xC0001073
 ALLOCATABLE = (9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27)
 ARGUMENT_REGISTERS = 8
@@ -298,6 +298,11 @@ def _sign_extend(e: E, register, width):
     e.if_(e.lt(width, 64), narrow)
 
 
+def _skip(e: E):
+    """The branch offset that skips one jump (12 for the views profile's two-word jumps)."""
+    return e.sel(e.ne(_g(e, G_FAR), 0), 12, 8)
+
+
 def _jal(e: E, label_slot, rd):
     """A ``jal`` to the label whose word index ``label_slot`` will hold; patched at the end."""
     count = e.hd(S_JUMPS)
@@ -308,6 +313,7 @@ def _jal(e: E, label_slot, rd):
     e.st(e.add(at, 2), rd)
     e.set_hd(S_JUMPS, e.add(count, 1))
     _emit(e, 0)
+    e.if_(e.ne(_g(e, G_FAR), 0), lambda: _emit(e, 0))  # views profile: auipc; jalr
 
 
 def _bit(e: E, value):
@@ -775,7 +781,7 @@ def _block(tables):
                     e.set_hd(S_TRAP_USED, 1)
                     e.var("left", _call(e, "read", operand(0), T0))
                     e.var("right", _call(e, "read", operand(1), T1))
-                    _emit(e, enc_b(e, 8, ZERO, p["right"], 1))
+                    _emit(e, enc_b(e, _skip(e), ZERO, p["right"], 1))
                     _jal(e, e.hd(S_TRAP), ZERO)
                     e.var("dst", _target(e, result))
                     _emit(e, enc_r(e, 1, p["right"], p["left"], funct3, p["dst"]))
@@ -869,6 +875,32 @@ def _block(tables):
                 e.if_(e.ne(extra, NONE), machine)
 
             case((Operation.CALL_DIRECT,), call)
+            for code in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                def checked(store=code == Operation.CHECKED_STORE_BITS_LE):
+                    # Views profile (ADR-145): trap unless offset + size <= the pointer's extent (``extra``).
+                    e.set_hd(S_TRAP_USED, 1)
+                    size = attribute(0)
+                    e.var("size", size)
+                    _ok(e, e.both(e.ne(extra, NONE), e.either(*(e.eq(p["size"], k) for k in (1, 2, 4, 8)))))
+                    e.var("pointer", _call(e, "read", operand(0), T0))
+                    e.var("offset", _call(e, "read", operand(1), T1))
+                    fits = e.le(p["size"], extra)
+                    _call(e, "li", T3, e.sel(fits, e.sub(extra, p["size"]), 0))
+                    e.if_(fits, lambda: _emit(e, enc_b(e, _skip(e), p["offset"], T3, 7)))
+                    _jal(e, e.hd(S_TRAP), ZERO)
+                    funct3 = e.sel(e.eq(p["size"], 1), 0, e.sel(e.eq(p["size"], 2), 1, e.sel(e.eq(p["size"], 4), 2, 3)))
+                    if store:
+                        e.var("stored", _call(e, "read", operand(2), T3))
+                        _emit(e, enc_r(e, 0, p["offset"], p["pointer"], 0, T2))
+                        _emit(e, enc_s(e, 0, p["stored"], T2, funct3))
+                    else:
+                        _emit(e, enc_r(e, 0, p["offset"], p["pointer"], 0, T2))
+                        e.var("dst", _target(e, result))
+                        load3 = e.sel(e.eq(p["size"], 1), 4, e.sel(e.eq(p["size"], 2), 5, e.sel(e.eq(p["size"], 4), 6, 3)))
+                        _emit(e, enc_i(e, 0, T2, load3, p["dst"], 0x03))
+                        _call(e, "write", result, p["dst"])
+
+                case((code,), checked)
             case(tuple(RESOURCE_EFFECT_OPERATIONS), lambda: None)
             _ok(e, e.ne(p["handled"], 0))
 
@@ -904,7 +936,7 @@ def _block(tables):
 
         def conditional():
             condition = _call(e, "read", value(0), T0)
-            _emit(e, enc_b(e, 8, ZERO, condition, 1))
+            _emit(e, enc_b(e, _skip(e), ZERO, condition, 1))
             false_label = e.add(e.hd(S_FALSE_LABELS), b)
             _jal(e, false_label, ZERO)
             _call(e, "edge", first_edge, base_of(e.ld(first_edge)))
@@ -931,7 +963,7 @@ def _block(tables):
 # stream (``xax_selfhost_graph``); other kinds have none.
 
 GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
-(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS) = range(14)
+(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR) = range(15)
 NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
 ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
@@ -1035,6 +1067,7 @@ def _type_width(e: E, obj):
         pay = _at(e, G_PAY, obj)
         first = e.rd(pay)
         e.if_(e.either(e.eq(first, 3), e.eq(first, 4)), lambda: e.set("tw", 0))
+        e.if_(e.eq(first, 2), lambda: e.set("tw", 64))  # views profile: a pointer is one 64-bit address
 
         def bits():
             e.var("tw_at", e.add(pay, 1))
@@ -1121,6 +1154,87 @@ def _erased(tables):
     return _function(("f",), build, tables)
 
 
+def _type_form(e: E, obj):
+    """The first payload byte of listed, nonempty TYPE ``obj`` (NONE otherwise)."""
+    from xax_compiler import Kind
+
+    known = e.lt(obj, _g(e, G_O))
+    listed = e.sel(known, obj, 0)
+    pay = _at(e, G_PAY, listed)
+    typed = e.both(known, e.eq(_kind(e, listed), int(Kind.TYPE)), e.ne(e.rd(e.sub(pay, 1)), 0))
+    return e.sel(typed, e.rd(e.sel(typed, pay, 0)), NONE)
+
+
+def _view_extent(e: E, obj):
+    """``_heap_view_info``: the instance (extent) of heap-view type ``obj``; 0 when it is not a heap view."""
+    p = e.p
+    e.var("vx", 0)
+
+    def resource():
+        pay = _at(e, G_PAY, obj)
+        e.var("vx_at", e.add(pay, 1))
+        e.var("vx_end", e.add(pay, e.rd(e.sub(pay, 1))))
+        kind = _payload_uleb(e, "vx_at")
+        e.var("vx_kind", kind)
+        state = _payload_uleb(e, "vx_at")
+        e.var("vx_state", state)
+
+        def described():
+            _payload_uleb(e, "vx_at")  # flags
+            instance = _payload_uleb(e, "vx_at")
+            e.if_(e.both(e.eq(p["vx_kind"], 0x101), e.either(e.eq(p["vx_state"], 1), e.eq(p["vx_state"], 2))), lambda: e.set("vx", instance))
+
+        e.if_(e.lt(p["vx_at"], p["vx_end"]), described)
+
+    e.if_(e.eq(_type_form(e, obj), 4), resource)
+    return p["vx"]
+
+
+def _borrowed(tables):
+    """``borrowed_view_returns`` of function ``f``: ``R`` words, return position -> parameter position (NONE when the
+    return stays a machine value)."""
+    def build(e: E):
+        p = e.p
+        iface = _call(e, "interface", p["f"])
+        e.var("bi", iface)
+        e.var("bnp", e.ld(e.add(p["bi"], 1)))
+        e.var("brt", e.add(e.add(p["bi"], 2), p["bnp"]))
+        e.var("bnr", e.ld(p["brt"]))
+        e.var("bout", e.alloc(e.add(e.add(p["bnr"], p["bnp"]), 1)))
+        _ok(e, e.ne(p["bout"], NONE))
+        e.var("bused", e.add(p["bout"], p["bnr"]))
+        e.for_("q", 0, p["bnr"], lambda: e.st(e.add(p["bout"], p["q"]), NONE))
+        e.for_("q", 0, p["bnp"], lambda: e.st(e.add(p["bused"], p["q"]), 0))
+        e.var("bmachine", 0)
+        e.for_("q", 0, p["bnr"], lambda: e.if_(e.ne(_type_width(e, e.ld(e.add(e.add(p["brt"], 1), p["q"]))), 0),
+                                              lambda: e.set("bmachine", e.add(p["bmachine"], 1))))
+        e.var("bfound", 0)
+        e.var("btype", 0)
+
+        def pair():
+            def returned():
+                e.set("btype", e.ld(e.add(e.add(p["brt"], 1), p["r"])))
+
+                def view():
+                    e.set("bfound", 0)
+
+                    def match():
+                        e.st(e.add(p["bused"], p["j"]), 1)
+                        e.st(e.add(p["bout"], e.sub(p["r"], 1)), e.sub(p["j"], 1))
+                        e.set("bfound", 1)
+
+                    e.for_("j", 1, p["bnp"], lambda: e.if_(e.both(e.eq(p["bfound"], 0), e.eq(e.ld(e.add(p["bused"], p["j"])), 0),
+                                                                  e.eq(e.ld(e.add(e.add(p["bi"], 2), p["j"])), p["btype"])), match))
+
+                e.if_(e.ne(_view_extent(e, p["btype"]), 0), view)
+
+            e.for_("r", 1, p["bnr"], returned)
+
+        e.if_(e.lt(1, p["bmachine"]), pair)
+        e.give(p["bout"])
+    return _function(("f",), build, tables)
+
+
 def _emit_out(e: E, value):
     at = _g(e, G_OUT)
     e.st(at, value)
@@ -1178,7 +1292,7 @@ def _translate(tables):
             _ok(e, e.ne(width, NONE))
             return width
 
-        def value_id(name: str):
+        def raw_value_id(name: str):
             """The value at ``p[name]`` as a value id; advances past it."""
             at = p[name]
             tag, block, index = e.rd(at), e.rd(e.add(at, 1)), e.rd(e.add(at, 2))
@@ -1186,6 +1300,76 @@ def _translate(tables):
             e.if_(e.eq(tag, 1), lambda: e.set("vid_out", e.add(e.ld(e.add(p["node_base"], e.add(e.ld(e.add(p["first"], block)), index))), e.rd(e.add(at, 3)))))
             e.set(name, e.add(e.add(at, 3), e.flag(e.eq(tag, 1))))
             return p["vid_out"]
+
+        # Pass A2 (views profile, ADR-145): pointer extents from the following heap-view type, and each borrowed view a
+        # direct call gives back aliased to the pointer passed in (``_pointer_extents``, ``_rewrite_borrowed_views``).
+        e.var("ext", e.alloc(e.add(p["id"], 1)))
+        e.var("alias", e.alloc(e.add(p["id"], 1)))
+        _ok(e, e.both(e.ne(p["ext"], NONE), e.ne(p["alias"], NONE)))
+        e.for_("q", 0, p["id"], lambda: (e.st(e.add(p["ext"], p["q"]), 0), e.st(e.add(p["alias"], p["q"]), NONE)))
+
+        def scan(types_at, count, first_id):
+            """Extents of ``count`` types at input ``types_at`` whose values start at id ``first_id``."""
+            e.var("sc_at", types_at)
+            e.var("sc_id", first_id)
+
+            def pair():
+                extent = _view_extent(e, _reference(e, p["graph"], e.rd(e.add(e.add(p["sc_at"], p["k"]), 1))))
+                e.var("sc_ext", extent)
+                pointer = e.eq(_type_form(e, _reference(e, p["graph"], e.rd(e.add(p["sc_at"], p["k"])))), 2)
+                e.if_(e.both(e.ne(p["sc_ext"], 0), pointer), lambda: e.st(e.add(p["ext"], e.add(p["sc_id"], p["k"])), p["sc_ext"]))
+
+            e.for_("k", 0, e.sub(e.add(count, e.flag(e.eq(count, 0))), 1), pair)
+
+        e.set("pa", e.add(stream, 2))
+        e.set("nodes", 0)
+
+        def block_a2():
+            params = e.rd(p["pa"])
+            scan(e.add(p["pa"], 1), params, e.ld(e.add(p["base"], p["b"])))
+            e.set("pa", e.add(e.add(p["pa"], 1), e.rd(p["pa"])))
+            count = e.rd(p["pa"])
+            e.set("pa", e.add(p["pa"], 1))
+
+            def node():
+                e.set("pa", _call(e, "node_info", p["pa"]))
+                ni = _g(e, G_NI)
+                e.var("a2_op", e.ld(e.add(ni, NI_OP)))
+                e.var("a2_entity", e.ld(e.add(ni, NI_ENTITY)))
+                e.var("a2_ops", e.ld(e.add(ni, NI_OPERANDS)))
+                e.var("a2_results", e.ld(e.add(ni, NI_RESULTS)))
+                e.var("a2_id", e.ld(e.add(p["node_base"], p["nodes"])))
+                scan(e.add(p["a2_results"], 1), e.rd(p["a2_results"]), p["a2_id"])
+
+                def call():
+                    e.var("a2_callee", _reference(e, p["graph"], p["a2_entity"]))
+                    _ok(e, e.ne(p["a2_callee"], NONE))
+
+                    def kept():
+                        e.var("a2_map", _call(e, "borrowed", p["a2_callee"]))
+
+                        def aliased():
+                            e.var("a2_at", e.add(p["a2_ops"], 1))
+                            e.for_("j", 0, e.ld(e.add(p["a2_map"], p["r"])), lambda: raw_value_id("a2_at"))
+                            e.st(e.add(p["alias"], e.add(p["a2_id"], p["r"])), raw_value_id("a2_at"))
+
+                        e.for_("r", 0, e.rd(p["a2_results"]), lambda: e.if_(e.ne(e.ld(e.add(p["a2_map"], p["r"])), NONE), aliased))
+
+                    e.if_(e.eq(_call(e, "erased", p["a2_callee"]), 0), kept)
+
+                e.if_(e.eq(p["a2_op"], int(Operation.CALL_DIRECT)), call)
+                e.set("nodes", e.add(p["nodes"], 1))
+
+            e.for_("m", 0, count, node)
+            e.set("pa", _call(e, "term_end", p["pa"]))
+
+        e.for_("b", 0, B, block_a2)
+
+        def value_id(name: str):
+            """``raw_value_id`` through the borrowed-view aliases."""
+            e.var("vid_c", raw_value_id(name))
+            e.while_(lambda: e.ne(e.ld(e.add(p["alias"], p["vid_c"])), NONE), lambda: e.set("vid_c", e.ld(e.add(p["alias"], p["vid_c"]))))
+            return p["vid_c"]
 
         def values(name: str, emit=True):
             count = e.rd(p[name])
@@ -1197,6 +1381,8 @@ def _translate(tables):
 
         # Pass B: the stream.
         e.set("pa", e.add(stream, 2))
+        e.set("nodes", 0)
+        e.var("own", _call(e, "borrowed", f))
         returns_at = e.add(e.add(iface, 2), e.ld(e.add(iface, 1)))
 
         def block_b():
@@ -1217,7 +1403,13 @@ def _translate(tables):
                 _emit_out(e, operation)
                 results = e.rd(results_at)
                 _emit_out(e, results)
-                e.for_("q", 0, results, lambda: _emit_out(e, width_of(e.rd(e.add(e.add(results_at, 1), p["q"])))))
+                e.var("nb_id", e.ld(e.add(p["node_base"], p["nodes"])))
+                e.var("nb_results", results_at)
+                e.for_("q", 0, results, lambda: e.if_(e.ne(e.ld(e.add(p["alias"], e.add(p["nb_id"], p["q"]))), NONE), lambda: _emit_out(e, 0),
+                                                      lambda: _emit_out(e, width_of(e.rd(e.add(e.add(p["nb_results"], 1), p["q"]))))))
+                e.var("op0_at", e.add(p["na_ops"], 1))
+                e.var("op0", NONE)
+                e.if_(e.ne(e.rd(p["na_ops"]), 0), lambda: e.set("op0", value_id("op0_at")))
                 values("na_ops")
                 e.if_(e.eq(attributes_at, NONE), lambda: _emit_out(e, 0), lambda: (
                     _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"]))))))
@@ -1243,9 +1435,16 @@ def _translate(tables):
                     e.if_(e.ne(erased, 0), lambda: e.set("extra", NONE), lambda: (
                         _ok(e, e.ne(_at(e, G_FIDX, p["callee"]), NONE)), e.set("extra", _at(e, G_FIDX, p["callee"]))))
 
-                e.if_(e.eq(operation, int(Operation.CONSTANT)), constant, lambda: e.if_(e.eq(operation, int(Operation.CALL_DIRECT)), call))
+                def checked():
+                    known = e.ne(p["op0"], NONE)
+                    extent = e.ld(e.add(p["ext"], e.sel(known, p["op0"], 0)))
+                    e.set("extra", e.sel(e.both(known, e.ne(extent, 0)), extent, NONE))
+
+                e.if_(e.eq(operation, int(Operation.CONSTANT)), constant, lambda: e.if_(e.eq(operation, int(Operation.CALL_DIRECT)), call, lambda: e.if_(
+                    e.either(e.eq(operation, int(Operation.CHECKED_LOAD_BITS_LE)), e.eq(operation, int(Operation.CHECKED_STORE_BITS_LE))), checked)))
                 _emit_out(e, p["extra"])
                 e.set("pa", p["next_node"])
+                e.set("nodes", e.add(p["nodes"], 1))
 
             e.for_("m", 0, count, node)
             kind = e.rd(p["pa"])
@@ -1278,8 +1477,14 @@ def _translate(tables):
                 _emit_out(e, p["rc"])
                 e.var("rv_at", p["pa"])
                 e.for_("vv", 0, p["rc"], lambda: _emit_out(e, value_id("pa")))
-                e.for_("q", 0, p["rc"], lambda: _emit_out(e, e.sel(e.lt(p["q"], e.ld(returns_at)),
-                                                                      e.flag(e.ne(_type_width(e, e.ld(e.add(e.add(returns_at, 1), e.sel(e.lt(p["q"], e.ld(returns_at)), p["q"], 0)))), 0)), 0)))
+                def flag():
+                    declared = e.lt(p["q"], e.ld(returns_at))
+                    position = e.sel(declared, p["q"], 0)
+                    machine = e.both(declared, e.ne(_type_width(e, e.ld(e.add(e.add(returns_at, 1), position))), 0),
+                                     e.eq(e.ld(e.add(p["own"], position)), NONE))  # an elided borrowed view is no machine value
+                    _emit_out(e, e.flag(machine))
+
+                e.for_("q", 0, p["rc"], flag)
                 _emit_out(e, 0)
 
             def trap():
@@ -1340,6 +1545,7 @@ def _frontend(tables):
             e.var("tcount", count)
             e.for_("q", 0, p["tcount"], lambda table=table: (lambda value: (_ok(e, e.lt(value, 256 if table == G_SUP else 8)), e.st(e.add(_g(e, table), value), 1)))(
                 _payload_uleb(e, "ta")))
+        e.st(GLOBALS + G_FAR, _at(e, G_SUP, int(Operation.CHECKED_LOAD_BITS_LE)))  # views profile: far jumps
         # The closure from the entry (callees that are not erased proof functions).
         work = e.alloc(e.add(O, 1))
         _ok(e, e.ne(work, NONE))
@@ -1489,8 +1695,21 @@ def _program(tables, compile_function):
             index, label, rd = e.ld(at), e.ld(e.ld(e.add(at, 1))), e.ld(e.add(at, 2))
             _ok(e, e.ne(label, NONE))
             delta = e.mul(e.sub(label, index), 4)
-            _ok(e, e.lt(e.add(delta, 1 << 20), 1 << 21))
-            e.st(e.add(WORDS_AT, index), enc_j(e, delta, rd))
+
+            def far():
+                _ok(e, e.lt(e.add(delta, 1 << 31), (1 << 32) - 2048))
+                base = e.sel(e.ne(rd, ZERO), rd, T3)
+                high = e.and_(_sar(e, e.add(delta, 0x800), 12), 0xFFFFF)
+                upper = _shl(e, high, 12)
+                low = e.sub(delta, e.sub(_xor(e, upper, 0x80000000), 0x80000000))
+                e.st(e.add(WORDS_AT, index), _ors(e, upper, _shl(e, base, 7), e.v(0x17)))
+                e.st(e.add(WORDS_AT, e.add(index, 1)), enc_i(e, low, base, 0, rd, 0x67))
+
+            def near():
+                _ok(e, e.lt(e.add(delta, 1 << 20), 1 << 21))
+                e.st(e.add(WORDS_AT, index), enc_j(e, delta, rd))
+
+            e.if_(e.ne(_g(e, G_FAR), 0), far, near)
 
         e.for_("j", 0, e.hd(S_JUMPS), patch)
         e.st(1, e.hd(S_COUNT))
@@ -1526,6 +1745,7 @@ def build_backend_program():
     add("term_end", _term_end(tables))
     add("interface", _interface(tables))
     add("erased", _erased(tables))
+    add("borrowed", _borrowed(tables))
     add("translate", _translate(tables))
     add("frontend", _frontend(tables))
     compile_function = add("function", _compile_function(tables))
@@ -1620,19 +1840,29 @@ class NativeBackend:
             self._slots[0], self._slots[1] = ctypes.addressof(self._in), ctypes.addressof(self._out)
             self._call(self._entry, ctypes.addressof(self._slots), 4, ctypes.addressof(self._xmm))
             out = self._out
-            if out[0] != OK:
-                return None
-            count, ranges, offsets_at, order_at, widths_at = out[1], out[2], out[3], out[4], out[5]
-            functions = out[STREAM_AT]
-            code = list(out[WORDS_AT : WORDS_AT + count])
-            order = list(out[order_at : order_at + functions])
-            offsets = list(out[offsets_at : offsets_at + functions])
-            flat = list(out[RANGES_AT : RANGES_AT + 5 * ranges])
-            parameters = out[widths_at]
-            parameter_widths = tuple(out[widths_at + 1 : widths_at + 1 + parameters])
-            returns_at = widths_at + 1 + parameters
-            return_widths = tuple(out[returns_at + 1 : returns_at + 1 + out[returns_at]])
-        return code, order, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
+            result = collect_output(lambda start, count: list(out[start : start + count]))
+        return result
+
+
+
+
+def collect_output(read):
+    """The program's result from its output view, read as ``read(start word, count)``: ``(code words, function
+    order, function word offsets, node ranges, entry parameter widths, entry return widths)``, or None (declined)."""
+    status, count, ranges, offsets_at, order_at, widths_at = read(0, 6)
+    if status != OK:
+        return None
+    (functions,) = read(STREAM_AT, 1)
+    code = read(WORDS_AT, count)
+    order = read(order_at, functions)
+    offsets = read(offsets_at, functions)
+    flat = read(RANGES_AT, 5 * ranges)
+    (parameters,) = read(widths_at, 1)
+    parameter_widths = tuple(read(widths_at + 1, parameters))
+    returns_at = widths_at + 1 + parameters
+    (returns,) = read(returns_at, 1)
+    return_widths = tuple(read(returns_at + 1, returns))
+    return code, order, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
 
 
 _NATIVE: list = []
