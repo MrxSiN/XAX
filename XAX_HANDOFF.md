@@ -196,3 +196,4 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - Next is S2: pass a borrowed output view into a native leaf so a whole function's word stream comes from XAX. Then S3, the store codec and full BLAKE3, so CIDs are computed by XAX (ladder in the roadmap).
 - Commits on `main` carry no Claude attribution, per the user.
 - S2 (ADR-117): the whole BLAKE3 hash is XAX (`xax_selfhost_blake3.py`, `bootstrap/xax_blake3_hash.xax`), and `blake3.blake3()` uses it by default on Linux x86-64 (`XAX_BLAKE3_PYTHON_HASH=1` forces the driver). Next is S3: the store codec (ULEB, object framing, index) into lent views.
+- S3 (ADR-118): the store container decoder is XAX (`xax_selfhost_store.py`); `StoreReader._decode_native` is the production path, and `XAX_STORE_PYTHON_DECODER=1` forces the bootstrap parser. Regenerate with `write_decoder_store()`, which always uses the bootstrap parser. Next is S3b: object bodies.

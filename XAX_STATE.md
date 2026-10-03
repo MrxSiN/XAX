@@ -700,3 +700,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `xax_selfhost_blake3.py` implements the whole BLAKE3-256 hash as one XAX function over lent input and scratch views (store `bootstrap/xax_blake3_hash.xax`, 34,025 bytes; native leaf 44,387 bytes). `blake3.blake3()` uses it by default on Linux x86-64, so the compiler's content identities come from XAX code.
 - EXECUTED: official vectors, boundary and random lengths up to 1 MiB, and 3,000/3,000 agreement with the Python driver. MEASURED: 11.6× faster object hashing (49 ms against 568 ms for 3,000 objects).
+
+## Self-hosting step S3: the store container decoder is XAX (ADR-118) — 2026-10-03
+
+- `xax_selfhost_store.py` (store `bootstrap/xax_store_decoder.xax`) decides container acceptance and builds the record index. `StoreReader` uses it by default on Linux x86-64, checking digests with the S2 XAX hash, and runs the bootstrap parser only to produce diagnostics or for deferred cases. EXECUTED: identical accept/reject and index over 2,000 mutations (6,000 in development), and identical diagnostics on rejection. MEASURED: 0.70 ms against 1.17 ms per read of a 34 KB store.
+- With S0–S3 on the production path, an object's identity (hash) and the container that holds it are both computed by XAX code.
