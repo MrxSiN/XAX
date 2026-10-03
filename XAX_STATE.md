@@ -740,3 +740,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `xax_c_import` turns C prototypes (clang JSON AST) into canonical foreign declarations. It is byte-identical to the hand-built `crc32`, libm, and `strlen` declarations, and an XAX program using imported glibc stdio executes. Coverage: 855 of 1,084 functions across zlib.h, string.h, stdio.h, and math.h; the rest are refused with reasons (variadics, by-value types).
 
+## Bare-metal board on QEMU virt (ADR-128) — 2026-10-03
+
+- Board profile 5 and `aarch64-qemu-virt-v1`: a bare-metal XAX program prints over UART MMIO, takes three GICv2 virtual-timer interrupts through a contract-checked XAX handler, and powers off via PSCI (5,420-byte image, exact output). U1.6 is executed (emulated); the row stays R1 because bare metal cannot link foreign objects yet.
+

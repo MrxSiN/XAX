@@ -228,3 +228,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `import_c_functions(headers, soname, names, abi=..., overrides={...}, flags=[...])`; use `.function(name).inputs/.outputs` for node types and `.objects` for the store. POSIX names need `flags=["-D_GNU_SOURCE"]` (the importer parses as C11).
 - Next: by-value struct ABI classification (OI-40) to import struct returns; typed argument packs for variadics; an executed program over the Android classfile importer (closes OI-32 together with the token comparison).
 
+## Board packages — 2026-10-03 (ADR-128)
+
+- `xax_board.py` (package, image, `run_board_image`), workload `benchmarks/aarch64_virt_board.py`. Host: `apt-get install qemu-system-arm`; QEMU needs `-net none` (no EFI ROMs installed).
+- Next: static storage shared between handler and reset (a board RAM region as a declared heap view), linking foreign objects (R2), a second board (RISC-V `virt` needs RISC-V memory operations first), DMA with the OI-07 states.
+

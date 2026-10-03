@@ -333,6 +333,7 @@ def _logical(operation: Operation, destination: int, left: int, right: int, wide
 
 _INTEGER_COMPLETION_BINARY = frozenset({Operation.BIT_AND, Operation.BIT_OR, Operation.BIT_XOR, Operation.UDIV, Operation.UREM})
 _BRK_DIVIDE_BY_ZERO = 6
+BOARD_IDENTITY = b"aarch64-qemu-virt-v1"
 # Frame path only: a third per-node scratch (x9 is a declared scratch register
 # and holds no value across nodes there).
 _REMAINDER_TEMP = 9
@@ -1429,6 +1430,23 @@ def _compile_general_function(
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, foreign=(declaration.library, declaration.name))
                 else:
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, indirect=indirect_ref)
+
+            elif node.operation == Operation.TARGET_OP and decode_native_target(node.entity).identity == BOARD_IDENTITY:
+                # Board register and instruction operations (ADR-128): the
+                # operand (if any) is loaded into x16, a result comes back in x16.
+                from xax_board import board_operation_words
+
+                if target.identity != BOARD_IDENTITY:
+                    fail("XAX.AARCH64.TARGET_OP", graph_object.cid.hex(), "AARCH64-TARGET-OP-PACKAGE", "the board being compiled for", target.identity.decode("ascii", "replace"))
+                contract = next(item for item in decode_native_target(node.entity).target_operations if item.operation_id == node.attributes[0])
+                machine_operands = [operand for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid))]
+                machine_results = [ValueRef.node_result(block_index, node_index, i) for i, cid in enumerate(node.results) if not _is_proof_type(resolve(cid))]
+                if machine_operands:
+                    load_gpr(machine_operands[0], _TEMP)
+                for word in board_operation_words(contract.semantic_code, contract.encoding_opcode, _TEMP, _TEMP2):
+                    emit(word)
+                if machine_results:
+                    store_gpr(machine_results[0], _TEMP, node.results[0])
 
             elif node.operation == Operation.TARGET_OP:
                 description = decode_native_target(node.entity)

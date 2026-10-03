@@ -1,0 +1,16 @@
+{
+  "board": "QEMU virt, cortex-a57, 128 MiB, GICv2, PL011 UART, PSCI via HVC",
+  "evidence_label": "EXECUTED (QEMU virt, emulated; not hardware)",
+  "exit_status": 0,
+  "format": "xax-aarch64-virt-board-evidence-v1",
+  "generated_code": "reset stub (stack pointer, VBAR_EL1, bl reset, fault branch), fault stub (UART '!' then PSCI SYSTEM_OFF), 2 KiB vector table whose IRQ slot saves x0-x18/x30, calls the handler, restores, eret",
+  "image_bytes": 5420,
+  "image_sha256": "03f69f4f7c7f7b9744ac337fe8d2a706b4ae35d0b03636270d600d3743b8e3a3",
+  "irq_handler": "67980001eb55dd3a810e7844d3c2ebf6a790c38176414b77015ed96faccbb950",
+  "loaded_bytes": 5292,
+  "program_root": "fb14548de7b3376dc109f5c110d2854e953ddb59cd3cc6bd90edd61a0e923673",
+  "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+  "reset_entry": "8d47aa368d4807fa51be95d5f2cf74f4b5e17e71cba14857eb9f42e0e672e1b2",
+  "target": "4866b30ab34e2a4613151050eadcbae0a4dc57e4db12d77eda9ea2d9cfc901c6",
+  "uart_output": "boot\r\nirq\r\ntick\r\nirq\r\ntick\r\nirq\r\ntick\r\ndone\r\n"
+}
