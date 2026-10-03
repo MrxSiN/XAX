@@ -327,7 +327,8 @@
           "EXECUTED",
           "compiler/tests/test_xax_linux.py",
           "compiler/benchmarks/u1_linux_filestat_evidence.json",
-          "compiler/benchmarks/linux_c_interop_evidence.json"
+          "compiler/benchmarks/linux_c_interop_evidence.json",
+          "compiler/benchmarks/linux_qsort_evidence.json"
         ],
         "atomics": [
           "STRUCTURAL",
@@ -377,7 +378,6 @@
       "blockers": [
         "filestat is a benchmark-scale utility, not a deployed application (R3)",
         "1.38x behind clang -O2 on filestat; float/aggregate functions still fall back (OI-38)",
-        "sysv-x86_64-c: register scalars (INTEGER + SSE) and pure C-to-XAX callbacks only (ADR-102); no effectful callbacks (OI-42), aggregates, stack arguments, variadics",
         "no threads, signals, sockets, clocks packages; no DWARF",
         "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)"
       ]
@@ -402,20 +402,119 @@
     },
     {
       "id": "riscv64",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R1",
+      "runtime_requirement": "none: raw position-independent RV64IM image, LP64 integer convention, no loader, relocation, or data section (ADR-113)",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_riscv64.py",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "debugging": [
+          "PROTOTYPE",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "optimization": [
+          "PROTOTYPE",
+          "compiler/src/xax_riscv64.py",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ]
+      },
       "blockers": [
-        "no target package"
+        "executed only under the Unicorn RV64 emulator, not hardware; no Linux/RTOS executable container or syscall package",
+        "integer subset only: no floats (F/D), memory, aggregates, atomics, vector (V), or indirect calls",
+        "collatz kernel 3.72x clang -O2 emulated instructions and 3.23x code bytes (no compare/branch fusion or copy coalescing yet)"
       ]
     },
     {
       "id": "jvm",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R2",
+      "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112); no XAX runtime classes",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_jvm.py",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "platform_apis": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "ffi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "dynamic_linking": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "debugging": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py"
+        ],
+        "optimization": [
+          "PROTOTYPE",
+          "compiler/src/xax_jvm.py",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/tests/test_xax_jvm.py",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "performance": [
+          "MEASURED",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "memory": [
+          "MEASURED",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/jvm_twin_evidence.json"
+        ]
+      },
       "blockers": [
-        "DEX emission exists for Android; no classfile/JAR container"
+        "no practical application yet (R3): scalar subset only - no linear memory, aggregates, sums, recursion groups, or indirect calls on this target",
+        "JVM objects only arrive as foreign results: no object/array/string construction, no JVM-to-XAX callbacks (interfaces)",
+        "collatz kernel 1.03-1.04x javac on the same HotSpot; class file 1.51x javac because block parameters are not coalesced (OI-35)",
+        "no classfile metadata importer: java.base declarations are hand-written (OI-32)"
       ]
     },
     {

@@ -158,6 +158,10 @@ U1 — universal-replacement proof set: **in progress**. U1.1 (direct PE32+ host
 
 - x86-64 Linux `x86_64-linux-elf-exec-v1` (static) and `x86_64-linux-elf-dynexec-v1` (explicit `ld.so`, declared `DT_NEEDED` only): direct ELF64 `ET_EXEC`, EXECUTED natively on Linux x86-64. `e_entry` is the XAX entry; the program exits explicitly with `exit_group`.
 
+- JVM `jvm-classfile-v1` (architecture 5, ADR-112): one class file (major 61) in a stored deterministic JAR, EXECUTED on OpenJDK 21 HotSpot with `java -jar`. Foreign members are typed `jvm-invokestatic`/`jvm-invokevirtual`/`jvm-getstatic` declarations; `xax_jvm.java_base_api()` covers `System.out`, `println`, `print(char)`, `flush`, `System.exit`, `Math.sqrt`, `System.nanoTime`, and `Long.bitCount`.
+
+- RISC-V `riscv64-baremetal-raw-v1` (architecture 6, ADR-113): a raw position-independent RV64IM image with the LP64 integer convention, EXECUTED under the Unicorn RV64 emulator (test harness only).
+
 All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, linker, or LLVM dependency. The M13 accelerator package declares an empty runtime-dependency set.
 
 ## Build and test commands
@@ -174,7 +178,7 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 SOURCE_DATE_EPOCH=946684800 python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
 ```
 
-The full unfiltered suite still requires a Windows x86-64 execution host for six native cases and `qemu-system-aarch64` for two AArch64 execution cases. M14's `xax-semantic-image-v1` closure tests themselves are host-portable under the approved Python seed execution environment.
+Since ADR-114 the raw Win64 images also execute on Linux x86-64 hosts (a harness call thunk), and AArch64 raw images run in Unicorn when `qemu-system-aarch64` is absent (`pip install unicorn`). The RISC-V tests need Unicorn, and the JVM tests need `java` and `javac`. M14's `xax-semantic-image-v1` closure tests themselves are host-portable under the approved Python seed execution environment.
 
 ## Executed test state
 
@@ -668,3 +672,20 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - `link_target` (op 76) lets a callee borrow a table and the arena its links point into. Every call site checks the pair. It lowers to no code.
 - x86-64 elides returned borrowed views when a function has more than one machine return. Executed: callee walks cross-storage links, exit 42. Three rejection vectors.
 - Linux target profiles now list op 76. That changes the `chains` and `filestat` program roots; the executables are byte-identical. Evidence JSONs are updated.
+
+## JVM and RISC-V targets; evidence hosts (ADR-112–ADR-114) — 2026-10-03
+
+- JVM (ADR-112): `xax_jvm.py`. EXECUTED: integer differential corpus (widths 8/13/32/47/64), float/conversion grid, `java -jar` run (stdout through `System.out`, exit 7 via `System.exit`), a trap stack trace mapped to its node, package build (`JVM_EXECUTABLE_JAR`/`JVM_LIBRARY_JAR`), and workspace mapping (`test_xax_jvm.py`, 18 tests and 78 subtests). MEASURED: Collatz 1.04× `javac` kernel time, 1.51× class bytes, 1.01× peak RSS (`XAX_BENCHMARKS.md` §15.8). JVM row: R2.
+- RISC-V (ADR-113): `xax_riscv64.py`, with liveness-hull linear scan into s1–s11. EXECUTED under Unicorn: the same differential corpus, a register-pressure loop, traps; every word decodes under `llvm-mc` (`test_xax_riscv64.py`, 9 tests and 383 subtests). MEASURED (emulated): Collatz 3.72× `clang -O2` instructions, 3.23× bytes (§15.9). riscv64 row: R1.
+- Evidence hosts (ADR-114): the six Windows-only x86-64 tests and both QEMU-only AArch64 tests now execute on Linux. One stale code hash was re-pinned after execution.
+- Repairs: OI-25's projection benchmark wrote zip entries in filesystem order (Python 3.11 `zipapp` uses an unsorted `rglob`), so its replay failed on some hosts; it now writes them in declared order. OI-26's replay compared the generating interpreter's version, a host observation. The wheel listed neither `xax_web` nor `xax_android_counter`.
+- Regression on this host (Linux x86-64, Python 3.11.15, OpenJDK 21.0.11, clang 18.1.3, unicorn 2.1.0): **903 passed, 19 skipped, 2 failed**. The two failures are environment-bound: `tiktoken` is not installed, and the wheel build requires Python ≥ 3.12. Before this pass: 862 passed, 16 failed.
+
+## Lend entries: `qsort_r` with an XAX comparator (ADR-115, OI-42 closed) — 2026-10-03
+
+- `sysv-x86_64-c-lend` entries read a view lent by the C call that receives them. EXECUTED: glibc `qsort_r` sorts a 16-element XAX heap array; exit 117 (`linux_qsort_evidence.json`). Seven rejection vectors (`test_xax_lend_entry.py`, 9 tests).
+
+## Post-upgrade token test (lowest cost) — 2026-10-03
+
+- Offline, with no model tokens (tiktoken 0.14.0, `o200k_base`): the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44. With a tokenizer installed, the OI-12/OI-13 suites now check real counts, and OI-12's committed evidence records them (9 and 7 tokens per timing query/response).
+- Model: one `task-01` pair (change a shared constant), each arm a fresh `haiku` subagent given the identical task prompt. C used 37,576 tokens and 3 tool calls; XAX used 40,021 tokens and 10 tool calls (1.065× C). Both pass the external checkers on the first attempt with no repairs. n=1, dominated by fixed agent-harness overhead, so this is neither R5 nor OI-31 evidence. It matches the earlier results (1.04×, 1.04×): on one-constant edits, the XAX protocol's inspect/mutate/test round trips cost slightly more than the C edit saves. The ADR-112–115 changes did not touch the workspace protocol, so this is a regression check, not a new measurement of it.

@@ -8,7 +8,7 @@
 
 ![Status](https://img.shields.io/badge/status-research%20prototype-orange)
 ![Python](https://img.shields.io/badge/bootstrap-Python%203.12-blue)
-![Targets](https://img.shields.io/badge/targets-x86--64%20%7C%20AArch64%20%7C%20wasm32%20%7C%20Android-informational)
+![Targets](https://img.shields.io/badge/targets-x86--64%20%7C%20AArch64%20%7C%20RISC--V%20%7C%20wasm32%20%7C%20Android%20%7C%20JVM-informational)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
 </div>
@@ -60,6 +60,8 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 | AArch64 | AAPCS64 bare-metal and Android shared objects |
 | WebAssembly (wasm32) | Direct module emission |
 | Android | DEX, manifest, resources, APK signing, JNI, libxposed modules |
+| JVM | Direct class files in a deterministic JAR, typed JDK member calls — executed on HotSpot, measured against `javac` |
+| RISC-V (RV64IM) | Raw position-independent images, LP64 calls — executed under an emulator |
 | SIMT accelerator | Deployment-packet format (conformance only) |
 
 Per-platform replacement levels (R0–R6) are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); see `XAX_SPEC.md` §21.
@@ -95,7 +97,7 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 
 ## Project status
 
-XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); no platform is above R2. On the one cross-toolchain workload (Linux `filestat`), XAX roughly matches `gcc -O2` but is 1.4–1.8× slower than `clang -O2`.
+XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); no platform is above R2. On Linux `filestat`, XAX roughly matches `gcc -O2` but is 1.4–1.8× slower than `clang -O2`; on the JVM a Collatz kernel runs at 1.04× the `javac` twin's time.
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

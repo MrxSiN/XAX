@@ -643,7 +643,7 @@ class Workspace:
         self._compiler_identity = BOOTSTRAP_COMPILER_IDENTITY_V1
         self._lowering_identity = (
             lowering_identity(target_description.architecture, target_description.image_format)
-            if target_description is not None and (target_description.architecture, target_description.image_format) in ((1, 1), (2, 2), (3, 1), (4, 3))
+            if target_description is not None and (target_description.architecture, target_description.image_format) in ((1, 1), (2, 2), (3, 1), (4, 3), (5, 1), (6, 1))
             else None
         )
         self._lock = Lock()
@@ -1077,7 +1077,7 @@ class Workspace:
             function_handle = self._function_handles.get(function_cid)
         if function_handle is None:
             fail("XAX.WORKSPACE.ENTITY", function_cid.hex(), "WORKSPACE-FUNCTION", Kind.FUNCTION.name, "missing")
-        if target is None or description is None or (description.architecture, description.image_format) not in ((1, 1), (2, 2), (3, 1), (4, 3)):
+        if target is None or description is None or (description.architecture, description.image_format) not in ((1, 1), (2, 2), (3, 1), (4, 3), (5, 1), (6, 1)):
             response = ArtifactView(
                 None,
                 function_handle,
@@ -1105,6 +1105,14 @@ class Workspace:
             image = compile_wasm_bound_target(reader, function_cid, target)
         elif description.architecture == 3:
             image = compile_aarch64_bound_target(reader, function_cid, target)
+        elif description.architecture == 6:
+            from xax_riscv64 import compile_riscv64_bound_target
+
+            image = compile_riscv64_bound_target(reader, function_cid, target)
+        elif description.architecture == 5:
+            from xax_jvm import compile_jvm_bound_target
+
+            image = compile_jvm_bound_target(reader, function_cid, target)
         else:
             image = compile_accelerator_bound_target(reader, function_cid, target)
         if self._lowering_identity is None:

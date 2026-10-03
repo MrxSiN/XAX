@@ -507,7 +507,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** One executed application per strategy on one managed platform with measured startup, steady-state time, memory, artifact size, and generated-adapter size.
 
-**Status.** OPEN. Direct DEX emission is EXECUTED on Android (minimal Activity); no classfile or IL container exists.
+**Status.** OPEN (partially addressed, ADR-112). Direct emission is now EXECUTED on two managed platforms. DEX runs on Android (minimal and stateful Activities). JVM class files run on HotSpot 21 at 1.04× the `javac` twin's kernel time, with a 1.51× class file and 1.01× peak RSS (`jvm_twin_evidence.json`). The closing criterion is still unmet: there is no native-code-plus-generated-bridge arm on the JVM to compare against, and no CLI/IL container. Direct-emission gaps on the JVM: object, array, and string construction; JVM-to-XAX callbacks (interfaces), which need the generated-adapter rule of ADR-102; linear memory; and block-parameter coalescing (the class-size gap).
 
 ## OI-36 — Standard semantic library granularity
 
@@ -563,7 +563,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 ## OI-40 — Breadth of the SysV C ABI on Linux
 
-**Status:** OPEN (partially addressed, ADR-102). `sysv-x86_64-c` lowers register-passed scalars: up to six INTEGER-class and eight SSE-class (f32/f64) arguments, and one scalar result. Pure C-to-XAX callbacks run through a compiler-generated adapter, typed by a `code-entry:sysv-x86_64-c` code-address type. Executed: libc `tsearch`/`tfind` with an XAX comparator, and libm `ldexp`/`pow`/`sqrtf` (`linux_c_interop_evidence.json`). Still missing: callbacks that read memory the C caller passes (OI-42), aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. The original closure program (`qsort` with an XAX comparator) depends on OI-42.
+**Status:** OPEN (partially addressed, ADR-102). `sysv-x86_64-c` lowers register-passed scalars: up to six INTEGER-class and eight SSE-class (f32/f64) arguments, and one scalar result. Pure C-to-XAX callbacks run through a compiler-generated adapter, typed by a `code-entry:sysv-x86_64-c` code-address type. Executed: libc `tsearch`/`tfind` with an XAX comparator, and libm `ldexp`/`pow`/`sqrtf` (`linux_c_interop_evidence.json`). Still missing: callbacks that read memory the C caller passes (OI-42), aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. The original closure program, `qsort` with an XAX comparator, now runs as `qsort_r` with a lend entry (ADR-115, OI-42 closed).
 
 ## OI-41 — Check-free pointer reloads (typed mixed storage)
 
@@ -589,7 +589,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Evidence that closes it.** An executed `qsort` (or `bsearch`) program whose XAX comparator reads elements of an XAX-owned array. It needs negative vectors for using the borrow after the foreign call returns, for writing through a read-only lent view, and for a callback stored past the call (for example, registered with `atexit`).
 
-**Status:** OPEN.
+**Status: CLOSED (2026-10-03, ADR-115).** Candidate (a) was implemented as lend entries (`sysv-x86_64-c-lend`). Closing evidence: glibc `qsort_r` sorts an XAX-owned 16-element heap array with an XAX comparator that reads elements through the lent view (EXECUTED, exit 117; the descending comparator yields the descending checksum). Negative vectors: the entry kept past the call via `atexit` (`LEND-ENTRY-VIEW-LENT`), a call lending no view, a write through the lent view (`MEMORY-WRITE-PERMISSION`), a writable lent view, a view of another extent, and a callback returning a pointer into the view (`GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY`). `test_xax_lend_entry.py`, `linux_qsort_evidence.json`.
 
 ## OI-43 — Browser event entries (host-invoked XAX entry points)
 
@@ -602,3 +602,13 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 **Evidence that closes it.** An executed page whose XAX click handler updates the DOM on each click, with negative vectors for a handler that has machine parameters and for an undeclared event kind.
 
 **Status: CLOSED (2026-10-02, ADR-104).** Candidate (a) was implemented. In headless Chromium 141, the XAX `on_click` entry re-renders `"n fib(n)"` on each click for four queries with no page errors (`browser_fib_evidence.json`). Negative vectors cover a machine parameter, a claimed memory effect, an internal address on wasm, a browser entry on x86-64, and an undeclared binding (`WEB-IMPORT-DECLARED`). Remaining breadth (more event kinds, element addressing, timers, fetch) is ordinary binding-package growth under OI-32.
+
+## OI-44 — Hardware versus emulated execution as replacement evidence
+
+**Question.** ADR-114 lets emulated execution (QEMU, Unicorn) satisfy `code_generation` and `real_execution`, which is enough for R1. Should R1 for an ISA row (RISC-V, AArch64 bare metal) instead require one hardware run, as R3 effectively does for applications?
+
+**Fixed constraints.** Emulators never supply performance evidence, and emulator-only rows list "not hardware" as a blocker. Image bytes must equal what the hardware would receive.
+
+**Evidence that closes it.** One case where an emulator and hardware disagree on an XAX image (which would show that emulation is insufficient), or a documented hardware run on two ISA rows with no discrepancy against the emulator corpus.
+
+**Status.** OPEN. The riscv64 and aarch64-baremetal rows are emulator-only.

@@ -1,0 +1,96 @@
+{
+  "format": "xax-jvm-twin-evidence-v1",
+  "label": "MEASURED",
+  "workload": {
+    "name": "collatz-total-steps",
+    "n": 1000000,
+    "result": 131434424,
+    "warmup_kernel_calls": 5,
+    "repetitions": 7,
+    "fresh_jvm_per_repetition": true
+  },
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "logical_cpus": 4,
+    "os": "Linux 6.18.44-fc-v64",
+    "java": "openjdk version \"21.0.11\" 2026-04-21",
+    "javac": "javac 21.0.11",
+    "jvm_flags": "defaults"
+  },
+  "xax": {
+    "class_bytes": 1147,
+    "jar_bytes": 1509,
+    "kernel_ns": {
+      "median": 258363957,
+      "min": 256710314,
+      "max": 273402352,
+      "stdev": 5401534.2635,
+      "samples": [
+        256710314,
+        258363957,
+        259213033,
+        257965037,
+        273402352,
+        257351328,
+        259508424
+      ]
+    },
+    "process_wall_s": {
+      "median": 1.6325,
+      "min": 1.5921,
+      "max": 1.6704,
+      "stdev": 0.0228,
+      "samples": [
+        1.6455,
+        1.6282,
+        1.6325,
+        1.6185,
+        1.6704,
+        1.5921,
+        1.6467
+      ]
+    },
+    "peak_rss_kib": 41020
+  },
+  "javac": {
+    "class_bytes": 760,
+    "jar_bytes": 989,
+    "kernel_ns": {
+      "median": 248529723,
+      "min": 244005884,
+      "max": 272053941,
+      "stdev": 8900241.1425,
+      "samples": [
+        244005884,
+        255818545,
+        272053941,
+        250026989,
+        245777425,
+        247618176,
+        248529723
+      ]
+    },
+    "process_wall_s": {
+      "median": 1.5022,
+      "min": 1.4874,
+      "max": 1.5322,
+      "stdev": 0.0165,
+      "samples": [
+        1.5022,
+        1.4961,
+        1.524,
+        1.5248,
+        1.4874,
+        1.4947,
+        1.5322
+      ]
+    },
+    "peak_rss_kib": 40616
+  },
+  "ratio_xax_over_javac": {
+    "kernel_time_median": 1.04,
+    "class_bytes": 1.509,
+    "peak_rss": 1.01
+  },
+  "notes": "Kernel time excludes JVM startup and is measured after warmup calls in the same JVM; both arms run on the same HotSpot with default flags. The Java twin uses a signed loop compare; the XAX kernel's compares are unsigned (bits are unsigned), lowered as sign-flipped lcmp."
+}
