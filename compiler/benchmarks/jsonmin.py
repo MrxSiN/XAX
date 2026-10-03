@@ -16,8 +16,12 @@ Behavior (identical to ``jsonmin_c/jsonmin.c`` and :func:`reference_jsonmin`):
 
 The parser is one recursion group (value, array, object: mutual recursion,
 ADR-125) plus plain functions for whitespace, strings, numbers, and literals.
-Every function borrows three heap views (input, output, a 12-byte context of
-position, output length, and input length) and returns a status.  Python is
+Each function borrows the input and output views and takes and returns its
+state as one ``bits<64>``: position in the low half, output length in the
+high half, or an error position with the high half all ones.  The input view
+is one byte longer than ``CAPACITY`` and zero-filled, so the byte after the
+input is always 0: no scan needs a bounds compare, because a 0 byte stops it
+at the same position the contract reports for a premature end.  Python is
 only the construction tool (:mod:`xax_structured`).
 """
 
@@ -33,7 +37,6 @@ from xax_compiler import (
     RecursionMember,
     SemanticObject,
     StoreReader,
-    bits_type,
     canonical_recursion_order,
     group_member_function,
     heap_view_type,
@@ -49,17 +52,19 @@ MAX_DEPTH = 512
 EXIT_OK, EXIT_INVALID, EXIT_TOO_LARGE = 0, 1, 2
 CHUNK = 65536
 MESSAGE = b"jsonmin: invalid JSON at byte "
+ERROR = 0xFFFFFFFF  # high half of a failed state
 
 LT, LE, GT, GE, EQ, NE = IntCompare.ULT, IntCompare.ULE, IntCompare.UGT, IntCompare.UGE, IntCompare.EQ, IntCompare.NE
 MEM = memory_effect_type()
 BYTES = pointer_type(B8, Permission.READ_WRITE, 1, space=2)
-WORDS = pointer_type(B32, Permission.READ_WRITE, 4, space=2)
-IN_VIEW, OUT_VIEW, CTX_VIEW = heap_view_type(CAPACITY), heap_view_type(CAPACITY + 1), heap_view_type(12)
-TRIPLES = (("ip", BYTES), ("iv", IN_VIEW), ("im", MEM), ("op", BYTES), ("ov", OUT_VIEW), ("om", MEM), ("cp", WORDS), ("cv", CTX_VIEW), ("cm", MEM))
+# The input view holds CAPACITY bytes, the 0 byte after the input, and room
+# for one more CHUNK-byte read window past CAPACITY (the too-large check).
+INPUT_EXTENT = CAPACITY + CHUNK + 1
+IN_VIEW, OUT_VIEW = heap_view_type(INPUT_EXTENT), heap_view_type(CAPACITY + 1)
+TRIPLES = (("ip", BYTES), ("iv", IN_VIEW), ("im", MEM), ("op", BYTES), ("ov", OUT_VIEW), ("om", MEM))
 TRIPLE_TYPES = tuple(type_ for _name, type_ in TRIPLES)
 NAMES = tuple(name for name, _type in TRIPLES)
-POS, OUT, LEN = 0, 4, 8
-OK = 0
+STATE = (B64, *TRIPLE_TYPES)
 
 
 def _views(proc: Proc) -> tuple:
@@ -71,13 +76,17 @@ def _take_views(proc: Proc, values) -> None:
         proc[name] = value
 
 
-def _load_ctx(proc: Proc, offset: int):
-    value, proc["cm"] = proc.op(Operation.CHECKED_LOAD_BITS_LE, (proc["cp"], proc.const(offset), proc["cm"]), (B32, MEM), attributes=(4, 1))
-    return value
+def _low(proc: Proc, state):
+    return proc.op1(Operation.INT_TRUNCATE, (state,), B32)
 
 
-def _store_ctx(proc: Proc, offset: int, value) -> None:
-    proc["cm"] = proc.op1(Operation.CHECKED_STORE_BITS_LE, (proc["cp"], proc.const(offset), value, proc["cm"]), MEM, attributes=(4, 1))
+def _high(proc: Proc, state):
+    return proc.op1(Operation.INT_TRUNCATE, (proc.op1(Operation.ROTATE_RIGHT, (state,), B64, attributes=(32,)),), B32)
+
+
+def _pack(proc: Proc, low, high):
+    shifted = proc.op1(Operation.ROTATE_RIGHT, (proc.widen(proc._value(high, B32), B64),), B64, attributes=(32,))
+    return proc.op1(Operation.BIT_OR, (proc.widen(proc._value(low, B32), B64), shifted), B64)
 
 
 def _peek(proc: Proc, position):
@@ -92,48 +101,36 @@ def _emit(proc: Proc, byte) -> None:
 
 
 def _begin(proc: Proc) -> None:
-    """Load position, output length, and input length into locals."""
-    proc.let("pos", B32, _load_ctx(proc, POS))
-    proc.let("out", B32, _load_ctx(proc, OUT))
-    proc.let("len", B32, _load_ctx(proc, LEN))
+    proc.let("pos", B32, _low(proc, proc["state"]))
+    proc.let("out", B32, _high(proc, proc["state"]))
 
 
-def _save(proc: Proc) -> None:
-    _store_ctx(proc, POS, proc["pos"])
-    _store_ctx(proc, OUT, proc["out"])
+def _finish(proc: Proc, state=None) -> None:
+    proc.ret(state if state is not None else _pack(proc, proc["pos"], proc["out"]), *_views(proc))
 
 
-def _finish(proc: Proc, status) -> None:
-    """Write locals back and return ``status`` with the borrowed views."""
-    _save(proc)
-    proc.ret(proc._value(status, B32), *_views(proc))
+def _fail(proc: Proc) -> None:
+    proc.ret(_pack(proc, proc["pos"], ERROR), *_views(proc))
 
 
-def _fail_at(proc: Proc, code: int) -> None:
-    _finish(proc, code)
+def _failed(proc: Proc, state):
+    return proc.cmp(EQ, _high(proc, state), ERROR)
 
 
-def _call(proc: Proc, function: SemanticObject, extra=()):
-    """Call a plain parser function: locals go through the context."""
-    _save(proc)
-    status, *views = proc.op(Operation.CALL_DIRECT, (*extra, *_views(proc)), (B32, *TRIPLE_TYPES), entity=function)
+def _call(proc: Proc, function: SemanticObject, depth=None) -> None:
+    """Call a parser function; a failure returns from the caller unchanged."""
+    extra = () if depth is None else (depth,)
+    state, *views = proc.op(Operation.CALL_DIRECT, (*extra, _pack(proc, proc["pos"], proc["out"]), *_views(proc)), STATE, entity=function)
     _take_views(proc, views)
-    proc["pos"] = _load_ctx(proc, POS)
-    proc["out"] = _load_ctx(proc, OUT)
-    return status
+    proc.if_(_failed(proc, state), lambda p: _finish(p, state))
+    proc["pos"], proc["out"] = _low(proc, state), _high(proc, state)
 
 
-def _group(proc: Proc, member: int, depth):
-    _save(proc)
-    status, *views = proc.group_call(member, (depth, *_views(proc)), (B32, *TRIPLE_TYPES))
+def _group(proc: Proc, member: int, depth) -> None:
+    state, *views = proc.group_call(member, (depth, _pack(proc, proc["pos"], proc["out"]), *_views(proc)), STATE)
     _take_views(proc, views)
-    proc["pos"] = _load_ctx(proc, POS)
-    proc["out"] = _load_ctx(proc, OUT)
-    return status
-
-
-def _at_end(proc: Proc):
-    return proc.cmp(GE, proc["pos"], proc["len"])
+    proc.if_(_failed(proc, state), lambda p: _finish(p, state))
+    proc["pos"], proc["out"] = _low(proc, state), _high(proc, state)
 
 
 def _current(proc: Proc):
@@ -142,6 +139,11 @@ def _current(proc: Proc):
 
 def _advance(proc: Proc) -> None:
     proc["pos"] = proc.bin(Operation.ADD_WRAP, proc["pos"], 1)
+
+
+def _copy(proc: Proc) -> None:
+    _emit(proc, _current(proc))
+    _advance(proc)
 
 
 def _is(proc: Proc, value, *bytes_: int):
@@ -153,144 +155,111 @@ def _in_range(proc: Proc, value, low: int, high: int):
 
 
 def _new() -> Proc:
-    return Proc(TRIPLES)
+    proc = Proc((("state", B64), *TRIPLES))
+    _begin(proc)
+    return proc
 
 
 def _done(proc: Proc):
-    function = proc.function((B32, *TRIPLE_TYPES))
+    function = proc.function(STATE)
     return function, (*proc.graph.objects.values(), function)
 
 
 def whitespace_function():
     proc = _new()
-    _begin(proc)
-
-    def more(p: Proc):
-        ok = p.cmp(LT, p["pos"], p["len"])
-        # Read only in bounds: the byte at len (or 0) is never consulted when ok is false.
-        safe = p.op1(Operation.BIT_AND, (p["pos"], p.bin(Operation.SUB_WRAP, p.const(0), p.widen(ok))), B32)
-        byte = _peek(p, safe)
-        return p.all_of(ok, _is(p, byte, 0x20, 0x09, 0x0A, 0x0D))
-
-    proc.while_(more, _advance)
-    _finish(proc, OK)
+    proc.while_(lambda p: _is(p, _current(p), 0x20, 0x09, 0x0A, 0x0D), _advance)
+    _finish(proc)
     return _done(proc)
 
 
 def string_function():
     """At an opening quote: copy the string through its closing quote."""
     proc = _new()
-    _begin(proc)
-    _emit(proc, 0x22)
-    _advance(proc)
-    proc.let("done", B1, proc.const(0, B1))
+    _copy(proc)
+    proc.let("byte", B32, _current(proc))
 
     def body(p: Proc):
-        p.if_(_at_end(p), lambda q: _fail_at(q, 1))
-        byte = _current(p)
-        p.if_(p.cmp(LT, byte, 0x20), lambda q: _fail_at(q, 3))
-        _emit(p, byte)
-        _advance(p)
+        byte = p["byte"]
+        p.if_(p.cmp(LT, byte, 0x20), _fail)  # includes the 0 byte after the input
+        _copy(p)
 
         def escape(q: Proc):
-            q.if_(_at_end(q), lambda r: _fail_at(r, 1))
             escaped = _current(q)
 
             def unicode(r: Proc):
-                _emit(r, escaped)
-                _advance(r)
+                _copy(r)
                 for _ in range(4):
-                    r.if_(_at_end(r), lambda s: _fail_at(s, 1))
                     digit = _current(r)
                     hexadecimal = r.any_of(_in_range(r, digit, 0x30, 0x39), _in_range(r, digit, 0x41, 0x46), _in_range(r, digit, 0x61, 0x66))
-                    r.if_(hexadecimal, None, lambda s: _fail_at(s, 4))
-                    _emit(r, digit)
-                    _advance(r)
+                    r.if_(hexadecimal, None, _fail)
+                    _copy(r)
 
             def simple(r: Proc):
-                r.if_(_is(r, escaped, 0x22, 0x5C, 0x2F, 0x62, 0x66, 0x6E, 0x72, 0x74), None, lambda s: _fail_at(s, 4))
-                _emit(r, escaped)
-                _advance(r)
+                r.if_(_is(r, escaped, 0x22, 0x5C, 0x2F, 0x62, 0x66, 0x6E, 0x72, 0x74), None, _fail)
+                _copy(r)
 
             q.if_(q.cmp(EQ, escaped, 0x75), unicode, simple)
 
         p.if_(p.cmp(EQ, byte, 0x5C), escape)
-        p["done"] = p.cmp(EQ, byte, 0x22)
+        p["byte"] = _current(p)
 
-    proc.while_(lambda p: p.cmp(EQ, p.widen(p["done"]), 0), body)
-    _finish(proc, OK)
+    # Loop until the byte just copied was the closing quote.
+    proc.let("last", B32, proc.const(0))
+
+    def step(p: Proc):
+        p["last"] = p["byte"]
+        body(p)
+
+    proc.while_(lambda p: p.cmp(NE, p["last"], 0x22), step)
+    _finish(proc)
     return _done(proc)
 
 
-def _digits(proc: Proc, minimum: int, code: int) -> None:
-    """Copy one or more (``minimum`` 1) or zero or more ASCII digits."""
-    proc.let("count", B32, proc.const(0))
-
-    def more(p: Proc):
-        ok = p.cmp(LT, p["pos"], p["len"])
-        safe = p.op1(Operation.BIT_AND, (p["pos"], p.bin(Operation.SUB_WRAP, p.const(0), p.widen(ok))), B32)
-        return p.all_of(ok, _in_range(p, _peek(p, safe), 0x30, 0x39))
-
-    def copy(p: Proc):
-        _emit(p, _current(p))
-        _advance(p)
-        p["count"] = p.bin(Operation.ADD_WRAP, p["count"], 1)
-
-    proc.while_(more, copy)
+def _digits(proc: Proc, minimum: int) -> None:
+    start = proc["pos"]
+    proc.while_(lambda p: _in_range(p, _current(p), 0x30, 0x39), _copy)
     if minimum:
-        proc.if_(proc.cmp(EQ, proc["count"], 0), lambda p: _fail_at(p, code))
+        proc.if_(proc.cmp(EQ, proc["pos"], start), _fail)
 
 
 def _optional(proc: Proc, *bytes_: int):
-    """True (and the byte copied) when the current byte is one of ``bytes_``."""
-    ok = proc.cmp(LT, proc["pos"], proc["len"])
-    safe = proc.op1(Operation.BIT_AND, (proc["pos"], proc.bin(Operation.SUB_WRAP, proc.const(0), proc.widen(ok))), B32)
-    return proc.all_of(ok, _is(proc, _peek(proc, safe), *bytes_))
+    return _is(proc, _current(proc), *bytes_)
 
 
 def number_function():
     proc = _new()
-    _begin(proc)
-
-    def copy_one(p: Proc):
-        _emit(p, _current(p))
-        _advance(p)
-
-    proc.if_(_optional(proc, 0x2D), copy_one)
-    proc.if_(_at_end(proc), lambda p: _fail_at(p, 5))
-    proc.if_(proc.cmp(EQ, _current(proc), 0x30), copy_one, lambda p: _digits(p, 1, 5))
+    proc.if_(_optional(proc, 0x2D), _copy)
+    proc.if_(proc.cmp(EQ, _current(proc), 0x30), _copy, lambda p: _digits(p, 1))
 
     def fraction(p: Proc):
-        copy_one(p)
-        _digits(p, 1, 5)
+        _copy(p)
+        _digits(p, 1)
 
     proc.if_(_optional(proc, 0x2E), fraction)
 
     def exponent(p: Proc):
-        copy_one(p)
-        p.if_(_optional(p, 0x2B, 0x2D), copy_one)
-        _digits(p, 1, 5)
+        _copy(p)
+        p.if_(_optional(p, 0x2B, 0x2D), _copy)
+        _digits(p, 1)
 
     proc.if_(_optional(proc, 0x65, 0x45), exponent)
-    _finish(proc, OK)
+    _finish(proc)
     return _done(proc)
 
 
 def literal_function():
     proc = _new()
-    _begin(proc)
     first = _current(proc)
     for word in (b"true", b"false", b"null"):
         def matched(p: Proc, word=word):
             for byte in word:
-                p.if_(_at_end(p), lambda q: _fail_at(q, 1))
-                p.if_(p.cmp(EQ, _current(p), byte), None, lambda q: _fail_at(q, 6))
+                p.if_(p.cmp(EQ, _current(p), byte), None, _fail)
                 _emit(p, byte)
                 _advance(p)
-            _finish(p, OK)
+            _finish(p)
 
         proc.if_(proc.cmp(EQ, first, word[0]), matched)
-    _fail_at(proc, 6)
+    _fail(proc)
     return _done(proc)
 
 
@@ -310,16 +279,11 @@ def helpers() -> Helpers:
 
 def _member(kind: str, h: Helpers, index: dict[str, int]):
     """One recursion-group member graph; ``index`` maps value/array/object to member numbers."""
-    proc = Proc((("depth", B32), *TRIPLES))
+    proc = Proc((("depth", B32), ("state", B64), *TRIPLES))
     _begin(proc)
-
-    def returned(status):
-        proc.if_(proc.cmp(NE, status, OK), lambda p: _finish(p, status))
-
     if kind == "value":
-        proc.if_(proc.cmp(GT, proc["depth"], MAX_DEPTH), lambda p: _fail_at(p, 7))
+        proc.if_(proc.cmp(GT, proc["depth"], MAX_DEPTH), _fail)
         _call(proc, h.whitespace)
-        proc.if_(_at_end(proc), lambda p: _fail_at(p, 1))
         byte = _current(proc)
         nested = proc.bin(Operation.ADD_WRAP, proc["depth"], 1)
         for test, target in (
@@ -330,54 +294,43 @@ def _member(kind: str, h: Helpers, index: dict[str, int]):
             (lambda p: _is(p, byte, 0x74, 0x66, 0x6E), ("call", h.literal)),
         ):
             def dispatch(p: Proc, target=target):
-                status = _group(p, index[target[1]], nested) if target[0] == "group" else _call(p, target[1])
-                _finish(p, status)
+                if target[0] == "group":
+                    state, *views = p.group_call(index[target[1]], (nested, _pack(p, p["pos"], p["out"]), *_views(p)), STATE)
+                else:
+                    state, *views = p.op(Operation.CALL_DIRECT, (_pack(p, p["pos"], p["out"]), *_views(p)), STATE, entity=target[1])
+                _take_views(p, views)
+                _finish(p, state)  # success or failure: the callee's state is the result
 
             proc.if_(test(proc), dispatch)
-        _fail_at(proc, 8)
+        _fail(proc)  # includes the 0 byte after the input
     else:
         opening, closing = (0x5B, 0x5D) if kind == "array" else (0x7B, 0x7D)
-        _emit(proc, opening)
-        _advance(proc)
+        _copy(proc)
         _call(proc, h.whitespace)
-
-        def empty(p: Proc):
-            _emit(p, closing)
-            _advance(p)
-            _finish(p, OK)
-
-        proc.if_(_optional(proc, closing), empty)
+        proc.if_(_optional(proc, closing), lambda p: (_copy(p), _finish(p)))
         proc.let("more", B1, proc.const(1, B1))
 
         def element(p: Proc):
             if kind == "object":
                 _call(p, h.whitespace)
-                p.if_(_optional(p, 0x22), None, lambda q: _fail_at(q, 10))
-                returned_status = _call(p, h.string)
-                p.if_(p.cmp(NE, returned_status, OK), lambda q: _finish(q, returned_status))
+                p.if_(_optional(p, 0x22), None, _fail)
+                _call(p, h.string)
                 _call(p, h.whitespace)
-                p.if_(_optional(p, 0x3A), None, lambda q: _fail_at(q, 11))
-                _emit(p, 0x3A)
-                _advance(p)
-            status = _group(p, index["value"], p["depth"])
-            p.if_(p.cmp(NE, status, OK), lambda q: _finish(q, status))
+                p.if_(_optional(p, 0x3A), None, _fail)
+                _copy(p)
+            _group(p, index["value"], p["depth"])
             _call(p, h.whitespace)
 
-            def comma(q: Proc):
-                _emit(q, 0x2C)
-                _advance(q)
-
             def close(q: Proc):
-                q.if_(_optional(q, closing), None, lambda r: _fail_at(r, 9 if kind == "array" else 12))
-                _emit(q, closing)
-                _advance(q)
+                q.if_(_optional(q, closing), None, _fail)
+                _copy(q)
                 q["more"] = q.const(0, B1)
 
-            p.if_(_optional(p, 0x2C), comma, close)
+            p.if_(_optional(p, 0x2C), _copy, close)
 
         proc.while_(lambda p: p.cmp(NE, p.widen(p["more"]), 0), element)
-        _finish(proc, OK)
-    return RecursionMember(proc.fragment(), (B32, *TRIPLE_TYPES), (B32, *TRIPLE_TYPES)), tuple(proc.graph.objects.values())
+        _finish(proc)
+    return RecursionMember(proc.fragment(), (B32, *STATE), STATE), tuple(proc.graph.objects.values())
 
 
 def parser_group(h: Helpers):
@@ -415,73 +368,58 @@ def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
     h = helpers()
     group, index, group_objects = parser_group(h)
     value = group_member_function(group, index["value"])
-    chunk_view = heap_view_type(CHUNK)
-    parameters = (("proc", api.process_effect), ("fs", api.filesystem_effect), ("m1", MEM), ("m2", MEM), ("m3", MEM), ("m4", MEM))
-    proc = Proc(parameters)
+    proc = Proc((("proc", api.process_effect), ("fs", api.filesystem_effect), ("m1", MEM), ("m2", MEM)))
 
-    def mapping(memory: str, extent: int, pointer, view, name: str):
+    def mapping(memory: str, extent: int, view, name: str):
         raw, owner, effect = proc.op(Operation.CALL_FOREIGN, (proc.const(extent, B64), proc.drop(memory)), (api.bytes_rw, api.heap_owner, MEM), entity=api.mmap_anonymous)
-        p, v, m = proc.op(Operation.HEAP_VIEW, (raw, owner, effect), (pointer, view, MEM), attributes=(extent, 4 if pointer is WORDS else 1))
-        for suffix, value_, type_ in (("p", p, pointer), ("v", v, view), ("m", m, MEM)):
+        p, v, m = proc.op(Operation.HEAP_VIEW, (raw, owner, effect), (BYTES, view, MEM), attributes=(extent, 1))
+        for suffix, value_, type_ in (("p", p, BYTES), ("v", v, view), ("m", m, MEM)):
             proc.let(name + suffix, type_, value_)
 
-    mapping("m1", CAPACITY, BYTES, IN_VIEW, "i")
-    mapping("m2", CAPACITY + 1, BYTES, OUT_VIEW, "o")
-    mapping("m3", 12, WORDS, CTX_VIEW, "c")
-    mapping("m4", CHUNK, BYTES, chunk_view, "k")
+    mapping("m1", INPUT_EXTENT, IN_VIEW, "i")
+    mapping("m2", CAPACITY + 1, OUT_VIEW, "o")
     proc.let("total", B32, proc.const(0))
     proc.let("reading", B1, proc.const(1, B1))
     proc.let("code", B32, proc.const(EXIT_OK))
+    # Read straight into the input view through a CHUNK-byte window at the
+    # current length: the ADR-092 rebase idiom, checked against the view.
+    base = proc.op1(Operation.POINTER_ADDRESS, (proc["ip"],), B64, attributes=(1,))
 
     def read_chunk(p: Proc):
-        count, p["fs"], p["km"] = p.op(Operation.CALL_FOREIGN, (p.const(0), p["kp"], p.const(CHUNK, B64), p["fs"], p["km"]), (B64, api.filesystem_effect, MEM), entity=api.read)
-        p.if_(p.cmp(EQ, count, 0, B64), lambda q: q.__setitem__("reading", q.const(0, B1)))
+        address = p.bin(Operation.ADD_WRAP, base, p.widen(p["total"], B64), B64)
+        window = p.op1(Operation.POINTER_REBASE, (p["ip"], address), BYTES, attributes=(CHUNK,))
+        count, p["fs"], p["im"] = p.op(Operation.CALL_FOREIGN, (p.const(0), window, p.const(CHUNK, B64), p["fs"], p["im"]), (B64, api.filesystem_effect, MEM), entity=api.read)
 
-        def stop(r: Proc):
-            r["code"] = r.const(EXIT_TOO_LARGE)
-            r["reading"] = r.const(0, B1)
+        def stop(q: Proc):
+            q["code"] = q.const(EXIT_TOO_LARGE)
+            q["reading"] = q.const(0, B1)
 
         def got(q: Proc):
-            # A kernel error (-errno, unsigned) also stops with status 2.
-            q.if_(q.cmp(GT, count, CHUNK, B64), stop, accept)
+            q["total"] = q.bin(Operation.ADD_WRAP, q["total"], q.op1(Operation.INT_TRUNCATE, (count,), B32))
+            q.if_(q.cmp(GT, q["total"], CAPACITY), stop)
 
-        def accept(q: Proc):
-            n = q.op1(Operation.INT_TRUNCATE, (count,), B32)
-
-            def fits(r: Proc):
-                r.let("j", B32, r.const(0))
-
-                def copy(s: Proc):
-                    byte, s["km"] = s.op(Operation.CHECKED_LOAD_BITS_LE, (s["kp"], s["j"], s["km"]), (B8, MEM), attributes=(1, 1))
-                    s["im"] = s.op1(Operation.CHECKED_STORE_BITS_LE, (s["ip"], s.bin(Operation.ADD_WRAP, s["total"], s["j"]), byte, s["im"]), MEM, attributes=(1, 1))
-                    s["j"] = s.bin(Operation.ADD_WRAP, s["j"], 1)
-
-                r.while_(lambda s: s.cmp(LT, s["j"], n), copy)
-                r["total"] = r.bin(Operation.ADD_WRAP, r["total"], n)
-
-            too_large = q.cmp(GT, n, q.bin(Operation.SUB_WRAP, q.const(CAPACITY), q["total"]))
-            q.if_(too_large, stop, fits)
-
-        p.if_(p.cmp(NE, count, 0, B64), got)
+        # Zero ends input; a kernel error (-errno, unsigned) stops with status 2.
+        p.if_(p.cmp(EQ, count, 0, B64), lambda q: q.__setitem__("reading", q.const(0, B1)), lambda q: q.if_(q.cmp(GT, count, CHUNK, B64), stop, got))
 
     proc.while_(lambda p: p.cmp(NE, p.widen(p["reading"]), 0), read_chunk)
+    proc.let("where", B32, proc.const(0))  # error position, or output length on success
 
     def parse(p: Proc):
-        for offset, value_ in ((POS, p.const(0)), (OUT, p.const(0)), (LEN, p["total"])):
-            p["cm"] = p.op1(Operation.CHECKED_STORE_BITS_LE, (p["cp"], p.const(offset), value_, p["cm"]), MEM, attributes=(4, 1))
-        views = ("ip", "iv", "im", "op", "ov", "om", "cp", "cv", "cm")
-        status, *results = p.op(Operation.CALL_DIRECT, (p.const(0), *(p[name] for name in views)), (B32, *TRIPLE_TYPES), entity=value)
-        for name, item in zip(views, results):
-            p[name] = item
+        state, *results = p.op(Operation.CALL_DIRECT, (p.const(0), p.const(0, B64), *_views_of(p)), STATE, entity=value)
+        _take_entry_views(p, results)
 
         def trailing(q: Proc):
-            _status, *results = q.op(Operation.CALL_DIRECT, tuple(q[name] for name in views), (B32, *TRIPLE_TYPES), entity=h.whitespace)
-            for name, item in zip(views, results):
-                q[name] = item
-            position, q["cm"] = q.op(Operation.CHECKED_LOAD_BITS_LE, (q["cp"], q.const(POS), q["cm"]), (B32, MEM), attributes=(4, 1))
-            q.if_(q.cmp(NE, position, q["total"]), lambda r: r.__setitem__("code", r.const(EXIT_INVALID)))
+            after, *results = q.op(Operation.CALL_DIRECT, (state, *_views_of(q)), STATE, entity=h.whitespace)
+            _take_entry_views(q, results)
+            position = _low(q, after)
+            q["where"] = _high(q, after)
+            q.if_(q.cmp(NE, position, q["total"]), lambda r: (r.__setitem__("code", r.const(EXIT_INVALID)), r.__setitem__("where", position)))
 
-        p.if_(p.cmp(EQ, status, OK), trailing, lambda q: q.__setitem__("code", q.const(EXIT_INVALID)))
+        def failed(q: Proc):
+            q["code"] = q.const(EXIT_INVALID)
+            q["where"] = _low(q, state)
+
+        p.if_(_failed(p, state), failed, trailing)
 
     proc.if_(proc.cmp(EQ, proc["code"], EXIT_OK), parse)
 
@@ -490,15 +428,13 @@ def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
         _count, p["fs"], p["om"] = p.op(Operation.CALL_FOREIGN, (p.const(fd), readable, p.widen(length, B64), p["fs"], p["om"]), (B64, api.filesystem_effect, MEM), entity=api.write)
 
     def success(p: Proc):
-        length, p["cm"] = p.op(Operation.CHECKED_LOAD_BITS_LE, (p["cp"], p.const(OUT), p["cm"]), (B32, MEM), attributes=(4, 1))
-        p["om"] = p.op1(Operation.CHECKED_STORE_BITS_LE, (p["op"], length, p.const(0x0A, B8), p["om"]), MEM, attributes=(1, 1))
-        write(p, 1, p.bin(Operation.ADD_WRAP, length, 1))
+        p["om"] = p.op1(Operation.CHECKED_STORE_BITS_LE, (p["op"], p["where"], p.const(0x0A, B8), p["om"]), MEM, attributes=(1, 1))
+        write(p, 1, p.bin(Operation.ADD_WRAP, p["where"], 1))
 
     def invalid(p: Proc):
-        position, p["cm"] = p.op(Operation.CHECKED_LOAD_BITS_LE, (p["cp"], p.const(POS), p["cm"]), (B32, MEM), attributes=(4, 1))
+        position = p["where"]
         for offset, byte in enumerate(MESSAGE):
             p["om"] = p.op1(Operation.CHECKED_STORE_BITS_LE, (p["op"], p.const(offset), p.const(byte, B8), p["om"]), MEM, attributes=(1, 1))
-        # Decimal digits of the offset, most significant first.
         p.let("digits", B32, p.const(1))
         p.let("scan", B32, position)
         p.while_(lambda q: q.cmp(GE, q["scan"], 10), lambda q: (q.__setitem__("scan", q.bin(Operation.UDIV, q["scan"], 10)), q.__setitem__("digits", q.bin(Operation.ADD_WRAP, q["digits"], 1))))
@@ -517,16 +453,26 @@ def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
         write(p, 2, p.bin(Operation.ADD_WRAP, end, 1))
 
     proc.if_(proc.cmp(EQ, proc["code"], EXIT_OK), success, lambda p: p.if_(p.cmp(EQ, p["code"], EXIT_INVALID), invalid))
-    for name, extent, pointer in (("i", CAPACITY, BYTES), ("o", CAPACITY + 1, BYTES), ("c", 12, WORDS), ("k", CHUNK, BYTES)):
-        _result, proc[name + "m"] = proc.op(
-            Operation.CALL_FOREIGN, (proc[name + "p"], proc[name + "v"], proc[name + "m"]), (B64, MEM), entity=api.munmap_view(pointer, extent),
-        )
+    for name, extent in (("i", INPUT_EXTENT), ("o", CAPACITY + 1)):
+        _result, proc[name + "m"] = proc.op(Operation.CALL_FOREIGN, (proc[name + "p"], proc[name + "v"], proc[name + "m"]), (B64, MEM), entity=api.munmap_view(BYTES, extent))
     process = proc.op1(Operation.CALL_FOREIGN, (proc["code"], proc["proc"]), api.process_effect, entity=api.exit_group)
-    proc.ret(proc["code"], process, proc["fs"], proc["im"], proc["om"], proc["cm"], proc["km"])
-    entry = proc.function((B32, api.process_effect, api.filesystem_effect, MEM, MEM, MEM, MEM))
-    objects = (*api.types, *proc.graph.objects.values(), *group_objects, value, *h.objects, WORDS, B64)
+    proc.ret(proc["code"], process, proc["fs"], proc["im"], proc["om"])
+    entry = proc.function((B32, api.process_effect, api.filesystem_effect, MEM, MEM))
+    objects = (*api.types, *proc.graph.objects.values(), *group_objects, value, *h.objects, B64)
     reader = program_store(entry, target, objects)
     return JsonminProgram(reader, entry, target)
+
+
+_ENTRY_VIEWS = ("ip", "iv", "im", "op", "ov", "om")
+
+
+def _views_of(proc: Proc) -> tuple:
+    return tuple(proc[name] for name in _ENTRY_VIEWS)
+
+
+def _take_entry_views(proc: Proc, values) -> None:
+    for name, value in zip(_ENTRY_VIEWS, values):
+        proc[name] = value
 
 
 # -- the exact contract, stated independently ------------------------------------------

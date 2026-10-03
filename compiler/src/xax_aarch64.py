@@ -1464,6 +1464,31 @@ def _compile_general_function(
             elif node.operation == Operation.POINTER_CAST:
                 copy_ref(result0, node.operands[0])
 
+            elif node.operation == Operation.POINTER_ADDRESS:
+                copy_ref(result0, node.operands[0])
+
+            elif node.operation == Operation.POINTER_REBASE:
+                # ADR-092 on AArch64 (ADR-126): trap unless 0 <= address - view
+                # <= span and the distance is a multiple of the alignment; the
+                # rotate folds both tests into one unsigned compare.
+                view, address = node.operands
+                span = pointer_extent_from_graph(graph, view, resolve) - node.attributes[0]
+                shift = _decode_pointer_type(resolve(node.results[0]), resolve)[2].bit_length() - 1
+                load_gpr(address, _TEMP)
+                load_gpr(view, _TEMP2)
+                emit(0xCB000000 | (_TEMP2 << 16) | (_TEMP << 5) | _REMAINDER_TEMP)  # sub x9, address, view
+                if shift:
+                    emit(0x93C00000 | (_REMAINDER_TEMP << 16) | (shift << 10) | (_REMAINDER_TEMP << 5) | _REMAINDER_TEMP)  # ror x9, x9, #shift
+                for word in _move_immediate(_TEMP2, max(span, 0) >> shift, 64):
+                    emit(word)
+                ok = f"rebase-in-range-{block_index}-{node_index}"
+                emit(_cmp_registers(_REMAINDER_TEMP, _TEMP2, 64))
+                if span >= 0:
+                    assembler.bcond(_COND["ls"], ok)
+                emit(_brk(_BRK_MEMORY_CHECK))
+                assembler.label(ok)
+                store_gpr(result0, _TEMP, node.results[0])
+
             elif node.operation == Operation.HEAP_VIEW:
                 # The allocator contract is nullable.  Producing a proven heap
                 # view establishes non-null provenance, so that proof must be

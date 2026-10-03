@@ -1326,6 +1326,7 @@ def aarch64_linux_exec_target(*, dynamic: bool = False) -> SemanticObject:
     operations = tuple(sorted({
         1, 2, 3, *range(5, 20), *(int(value) for value in AARCH64_GENERAL_OPERATIONS),
         int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), *AARCH64_INTEGER_COMPLETION_OPERATIONS,
+        int(Operation.POINTER_ADDRESS), int(Operation.POINTER_REBASE),
     }))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(identity)) + identity)

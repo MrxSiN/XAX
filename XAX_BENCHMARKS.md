@@ -734,6 +734,8 @@ The unchanged U1.3 `filestat` graph, built with the Linux AArch64 platform packa
 | gcc -O2 (stripped) | 67,496 | 0.075 s |
 | Ratio | 0.21× | 6.6× |
 
+Re-run after the target package gained `pointer_address`/`pointer_rebase` (ADR-126; new target identity, same code): 7.2× emulated time, same sizes (`linux_aarch64_filestat_evidence.json`).
+
 Times are emulated and are not performance evidence (conformance §23.17); they rank two programs under one translator. The gap is the AArch64 frame path, which keeps every value in a stack slot; gcc's size includes 64 KiB segment padding. Source: `compiler/benchmarks/linux_aarch64_filestat.py`; data: `linux_aarch64_filestat_evidence.json`.
 
 ### 15.11 SPIR-V Collatz: XAX vs glslang on Mesa llvmpipe (ADR-124; MEASURED-SOFTWARE-DEVICE, 2026-10-03)
@@ -752,13 +754,12 @@ A CPU implementation is not GPU performance evidence (conformance §23.17). The 
 
 Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified. XAX: the `jsonmin` graph (recursion group value/array/object plus four plain functions) as a static `x86_64-linux-elf-exec-v1` executable with no libc, loader, or allocator. Baselines: `jsonmin_c/jsonmin.c`, the same algorithm in C, built by the U1.3 harness (gcc 13.3 `-O2`, `-O3`, `-O2 -static`; clang 18 `-O2`). Input: `benchmark_document(8 MiB)` (8,390,986 bytes, pretty-printed records with escapes and numbers) on stdin through `runner.c`; 11 runs after 2 warmups; every output equals `reference_jsonmin`.
 
-| Arm | Wall (median) | vs gcc -O2 | Peak RSS | Stripped bytes |
-|---|---:|---:|---:|---:|
-| XAX | 59.8 ms | 2.11× | 12,416 KiB | 16,250 (static) |
-| gcc -O2 | 28.4 ms | 1.00× | 13,736 KiB | 14,472 (dynamic) |
-| gcc -O3 | 27.1 ms | 0.96× | 13,736 KiB | 14,552 (dynamic) |
-| clang -O2 | 26.1 ms | 0.92× | 13,800 KiB | 14,552 (dynamic) |
-| gcc -O2 -static | 28.3 ms | 1.00× | 13,000 KiB | 706,584 (static) |
+| Arm | Wall (median) | vs gcc -O2 | vs best | Peak RSS | Stripped bytes |
+|---|---:|---:|---:|---:|---:|
+| XAX | 42.3 ms | 1.56× | 1.67× | 12,416 KiB | 10,664 (static) |
+| gcc -O2 | 27.2 ms | 1.00× | 1.07× | 13,672 KiB | 14,472 (dynamic) |
+| gcc -O3 | 28.5 ms | 1.05× | 1.12× | 13,736 KiB | 14,552 (dynamic) |
+| clang -O2 | 25.4 ms | 0.94× | 1.00× | 13,800 KiB | 14,552 (dynamic) |
+| gcc -O2 -static | 28.5 ms | 1.05× | 1.12× | 13,000 KiB | 706,584 (static) |
 
-Not competitive in time (2.29× the best baseline), so the Linux row is R3, not R4. Peak RSS is the lowest of all arms. Known costs: parser state goes through a 12-byte context view at every call, all named locals ride every block edge (the construction helper does not prune dead names), and input is copied from a 64 KiB read chunk byte by byte. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
-
+The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program changes (a 0 sentinel byte after the input instead of bounds compares, parser state passed as one `bits<64>` instead of through a context view, reads straight into the input view through a `pointer_rebase` window) and one compiler change (`ror` on the Linux register allocator) cut executed instructions on a 1 MiB input from 60.4M to 36.7M (gcc -O2: 20.8M, Valgrind). Not competitive in time, so the Linux row is R3, not R4. Peak RSS and binary size are the smallest of all arms. Most of the remaining gap is in the whitespace and string loops, where each small-set membership test (`c == ' ' || c == '\t' || …`) becomes `sete`/`or` chains instead of a compare chain or a bit test. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
