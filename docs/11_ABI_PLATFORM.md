@@ -727,3 +727,11 @@ Narrow JVM arguments (B, C, S) are narrowed explicitly with `i2b`/`i2c`/`i2s`, a
 
 LP64 integer calling convention: arguments in a0–a7, one result in a0, `ra` for the return address, and s0–s11 preserved (the allocator uses s1–s11 and saves the ones it touches). The image needs only RV64I plus M and contains no data, relocations, or runtime. A wrapping container (Linux ELF, board package) adds the platform's entry contract, as on the other ISAs.
 
+
+## 22. Linux AArch64 slice (`aarch64-linux-elf-*-v1`, ADR-123, 2026-10-03)
+
+Syscalls: `linux-aarch64-syscall-v1`, the §19 template identity with asm-generic numbers, `x0..x5` arguments and `x8` number, reached through one compiler-generated thunk per declaration (operands staged in `x9..x14`). C imports: `aapcs64-linux-c`, AAPCS64 register arguments, through `/lib/ld-linux-aarch64.so.1` on the dynexec profile only. The process entry is reached from an 8-byte stub that traps if the entry returns.
+
+## 23. SPIR-V compute slice (`spirv-compute-v1`, ADR-124, 2026-10-03)
+
+Entry contract: `(bits<32> invocation, (ptr<bits<32>>, heap_view<E>, memory)...) -> (view triples)`. Binding *i* of set 0 is triple *i*; binding *k* is the status word; push constant 0 is the launch count. The Vulkan loader and driver are platform-required and recorded as such; the module contains no runtime. Traps raise the status word with `atomicMax` and end only their own invocation.
