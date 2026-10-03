@@ -301,3 +301,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S6a — 2026-10-03 (ADR-142)
 
 - `_linear_flow` in `xax_selfhost_facts.py` sets `H_LINEAR`. The engine runs it right after laying out the graph, so it is set even when the fact passes later decline. `NativeTyping.linear_flow()` reads the flag, but only after a check that returned status 0; otherwise the header may be stale.
+
+## S6b.1 — 2026-10-03 (ADR-143)
+
+- `xax_compiler._XAX_VALID_OBJECTS` holds the CIDs XAX proved. `_xax_prove_objects` fills it at the start of `verify_store`. To compare against the bootstrap, clear the set, as `test_xax_selfhost_objects._bootstrap_accepts` does.

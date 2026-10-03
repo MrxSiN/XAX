@@ -3674,7 +3674,26 @@ def _decode_opaque_identity_type(obj: SemanticObject) -> bytes:
     return identity
 
 
+# S6b (ADR-143): CIDs of types and constants the XAX typing program proved valid.  Validity is a
+# function of the CID (bodies and references are content-addressed), so the set is process-wide.
+_XAX_VALID_OBJECTS: set[bytes] = set()
+
+
+def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
+    """Ask the XAX typing program for verdicts on every type and constant not yet proven (S6b)."""
+    pending = [cid for cid, obj in objects.items() if obj.kind in (Kind.TYPE, Kind.CONSTANT) and cid not in _XAX_VALID_OBJECTS]
+    typing = _native_typing() if pending else None
+    if typing is None:
+        return
+    from xax_selfhost_typing import marshal, type_info_from
+
+    words, listed = marshal([], lambda *_args: None, type_info_from(resolve), objects=pending)
+    _XAX_VALID_OBJECTS.update(typing.object_verdicts(words, listed))
+
+
 def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
+    if obj.cid in _XAX_VALID_OBJECTS:
+        return  # S6b: the XAX type decoders accepted it
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     if form == 1:
@@ -7263,7 +7282,8 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         _verify_type(obj, resolve)
         return
     if obj.kind == Kind.CONSTANT:
-        _decode_constant(obj, resolve)
+        if obj.cid not in _XAX_VALID_OBJECTS:
+            _decode_constant(obj, resolve)
         return
     if obj.kind == Kind.GRAPH_FRAGMENT:
         _parse_graph(obj, resolve)
@@ -7317,6 +7337,7 @@ def verify_store(
         except KeyError:
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
 
+    _xax_prove_objects(objects, resolve)
     for obj in objects.values():
         dependency_cids_checked += len(obj.references)
         if cache is not None and cache.contains(verifier_identity, obj):
