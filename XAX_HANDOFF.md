@@ -317,3 +317,10 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - Rebuild `bootstrap/xax_riscv64_backend.xax` with `write_backend_store()` after any change to `xax_selfhost_riscv64_backend.py`. The views-profile front end (pass A2 in `_translate`) must mirror `_pointer_extents` and `_rewrite_borrowed_views` in `xax_riscv64.py`.
 - B4 takes about 6 minutes under Unicorn: run `XAX_FIXED_POINT=1 python -m pytest tests/test_xax_selfhost_fixed_point.py`, or regenerate the evidence with `PYTHONPATH=src python benchmarks/bench_selfhost_fixed_point.py --write`.
 - `run_riscv64_views` maps the input view at `0x20000000` and the output view at `0x40000000`, and passes them in `a0` and `a1`. Read the output with one bulk `mem_read`: reading word by word is quadratic for a 2 MB image.
+
+## S6b.3 — 2026-10-03 (ADR-146)
+
+- In the verifier's object table, a graph fragment's payload is its decoder stream followed by `[body length, body bytes]`. `_program`'s record walk skips both. The store verifier is the only reader of that layout; the S5b RISC-V table is unchanged.
+- `graph` (in `_graph_ok`) is shared by ordinary functions and group members. In a group it writes `[count, (member, span start, span end)...]` for each member graph; `_group_ok` uses that for the breadth-first orders and the erased graph bytes.
+- `NativeStoreVerifier.verify(words, count, groups)` returns each proven group's member graph indices (read under the lock). `verify_object` parses them in member order.
+- To decide a store directly with `_xax_verify_store`, run `verify_store` on it first. Type verdicts (ADR-143) come from that run, and without them no function is proven.

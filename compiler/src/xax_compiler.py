@@ -7293,7 +7293,7 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
     A function's verdict is its graph object (still parsed here, so failures keep their order); other
     proven objects map to True."""
     try:
-        from xax_selfhost_verify import native_store_verifier, object_table
+        from xax_selfhost_verify import NONE as NONE_WORD, native_store_verifier, object_table
     except ImportError:
         return False, {}  # a module it needs is still importing (e.g. hashing at import time); the bootstrap verifies
     hashing = sys.modules.get("blake3")
@@ -7311,14 +7311,22 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
     if words is None:
         return False, {}
     words += [int(obj.cid in _XAX_VALID_OBJECTS) for obj in listed]
-    result = verifier.verify(words, len(listed))
+    groups = [position for position, obj in enumerate(listed) if obj.kind == Kind.RECURSION_GROUP]
+    result = verifier.verify(words, len(listed), groups)
     if result is None:
         return False, {}
-    store_ok, verdicts, graphs = result
+    store_ok, verdicts, graphs, members = result
     proven: dict[bytes, object] = {}
     for position, obj in enumerate(listed):
-        if verdicts[position] == 1:
-            proven[obj.cid] = listed[graphs[position]] if obj.kind == Kind.FUNCTION else True
+        if verdicts[position] != 1:
+            continue
+        if obj.kind == Kind.FUNCTION:
+            # An ordinary function's graph object; True for a group member function (its graphs go with the group).
+            proven[obj.cid] = True if graphs[position] == NONE_WORD else listed[graphs[position]]
+        elif obj.kind == Kind.RECURSION_GROUP:
+            proven[obj.cid] = tuple(listed[index] for index in members[position])
+        else:
+            proven[obj.cid] = True
     return store_ok, proven
 
 
@@ -7328,11 +7336,14 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         fail("XAX.IDENTITY.CID_MISMATCH", obj.cid.hex(), "ID-CID-INTEGRITY", expected.hex(), obj.cid.hex())
     for cid in obj.references:
         resolve(cid)
-    if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT):
-        # S6b.2: the XAX store verifier decided this object; a function's graph is still parsed (cached)
-        # so that an invalid graph fails exactly where the bootstrap would.
-        if obj.kind == Kind.FUNCTION:
+    if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET):
+        # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs
+        # in member order, are still parsed (cached) so that an invalid graph fails exactly where the bootstrap would.
+        if obj.kind == Kind.FUNCTION and proven is not True:
             _parse_graph(proven, resolve)
+        if obj.kind == Kind.RECURSION_GROUP:
+            for graph in proven:
+                _parse_graph(graph, resolve)
         return
     cursor = Cursor(obj.body, obj.cid.hex())
     if obj.kind == Kind.TYPE:
