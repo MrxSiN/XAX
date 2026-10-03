@@ -200,3 +200,4 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - S3b (ADR-119): object envelopes are parsed by XAX and `get` uses them. Next is S3c: typed body decoding (graph and function bodies).
 - S3c (ADR-120): graph-body syntax is XAX (`XAX_GRAPH_PYTHON_DECODER=1` forces the bootstrap parser; regenerate with `write_graph_decoder_store()`). Next is S3d: branch targets, value definitions, and dominance over the decoded stream.
 - S3d (ADR-121): control-flow analysis is XAX (`XAX_CFG_PYTHON=1` forces the bootstrap; regenerate with `write_cfg_store()`). Next is S3e: value definitions and SSA dominance.
+- S3e (ADR-122): value definitions and dominance are checked in the same XAX CFG function (out word 2). Next is S4: per-operation typing rules.

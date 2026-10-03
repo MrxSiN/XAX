@@ -11,8 +11,13 @@ function does all three over lent word views:
 Input words: block count n, entry, then per block its edge count and edge
 targets in terminator order.  Output: ``out[0]`` status (0 accept, 1 reject
 on a branch target >= n, 2 defer when the scratch would not fit), ``out[1]``
-the words per dominator bitset W, ``out[2 : 2+n]`` the block order, then n
-bitsets of W words.  Predecessor lists are built by a counting pass; the
+the words per dominator bitset W, ``out[2]`` whether every value use is valid
+(S3e), ``out[3 : 3+n]`` the block order, then n bitsets of W words.  After the
+edges come each block's parameter count, node count, and per-node result
+counts, then the uses: (use block, use node position, tag, value block, index,
+result).  A use is valid exactly when the bootstrap ``value_type`` would accept
+it: the block exists, the index (and result) exist, a node result precedes its
+use in the same block, and the defining block dominates the use's block.  Predecessor lists are built by a counting pass; the
 dominator fixpoint starts from the full sets (the entry's own set excepted)
 exactly as the bootstrap does, so its unique maximal solution is the same;
 the walk visits successors in edge order with an explicit stack, matching
@@ -146,7 +151,7 @@ def build_cfg_program() -> tuple[StoreReader, SemanticObject]:
     b.check(b.cmp(IntCompare.ULE, n, 1 << 16), b.defer_block)
     words = b.op(Operation.UDIV, b.add(n, 63), 64)
     # Layout of ``out``.
-    order = b.c(2)
+    order = b.c(3)
     dom = b.add(order, n)
     succ_start = b.add(dom, b.mul(n, words))
     succ_count, pred_count, pred_start, visited = (b.add(succ_start, b.mul(n, k)) for k in (1, 2, 3, 4))
@@ -155,9 +160,10 @@ def build_cfg_program() -> tuple[StoreReader, SemanticObject]:
     tmp = b.add(stack, b.mul(n, 2))                   # one bitset, W words
     preds = b.add(tmp, words)                         # edge-total words (at most IN_WORDS)
     # The whole layout must fit before anything is written.
-    b.check(b.cmp(IntCompare.ULE, b.add(preds, IN_WORDS), OUT_WORDS), b.defer_block)
+    tables = b.add(preds, IN_WORDS)                   # S3e: parameter/node counts and result-count positions, 3n
+    b.check(b.cmp(IntCompare.ULE, b.add(tables, b.mul(n, 3)), OUT_WORDS), b.defer_block)
     # Pass 1: edge lists (each target < n), with their start and count.
-    b.for_range(b.c(0), n, lambda block, carried: _edge_list(b, n, block, carried, succ_start, succ_count), (b.c(2), b.c(0)))
+    values_at, _total = b.for_range(b.c(0), n, lambda block, carried: _edge_list(b, n, block, carried, succ_start, succ_count), (b.c(2), b.c(0)))
     # Powers of two.
     b.for_range(b.c(0), b.c(64), lambda k, carried: _power(b, power, k, carried), (b.c(1),))
     # Predecessors by counting sort.
@@ -180,6 +186,11 @@ def build_cfg_program() -> tuple[StoreReader, SemanticObject]:
     (_depth, finished) = b.loop((b.c(1), b.c(0)), lambda v: b.cmp(IntCompare.NE, v[0], 0), lambda v: _walk_step(b, v[0], v[1], stack, visited, succ_start, succ_count, order))
     b.for_range(b.c(0), b.op(Operation.UDIV, finished, 2), lambda i, c: _swap(b, order, i, b.sub(b.sub(finished, i), 1)) or (), ())
     b.for_range(b.c(0), n, lambda block, carried: _append_unvisited(b, block, carried, visited, order, tmp), (finished,))
+    # S3e: every value use is defined and dominates its use.
+    uses_at = b.for_range(b.c(0), n, lambda block, carried: _value_table(b, block, carried, tables, n), (values_at,))[0]
+    use_count = b.read(uses_at)
+    (valid,) = b.for_range(b.c(0), use_count, lambda i, carried: _check_use(b, b.add(b.add(uses_at, 1), b.mul(i, 6)), carried, tables, n, dom, words, power), (b.c(1),))
+    b.put(b.c(2), valid)
     b.put(b.c(1), words)
     b.put(b.c(0), ACCEPT)
     in_view, in_mem, out_view, out_mem = b.state
@@ -201,6 +212,38 @@ def _edge_list(b, n, block, carried, succ_start, succ_count):
     b.put(b.add(succ_count, block), count)
     b.for_range(b.c(0), count, lambda e, c: b.check(b.cmp(IntCompare.ULT, b.read(b.add(b.add(position, 1), e)), n), b.reject_block) or (), ())
     return b.add(b.add(position, 1), count), b.add(total, count)
+
+
+def _value_table(b, block, carried, tables, n):
+    """Per block: parameter count, node count, and where its result counts start."""
+    (position,) = carried
+    nodes = b.read(b.add(position, 1))
+    b.put(b.add(tables, block), b.read(position))
+    b.put(b.add(tables, b.add(n, block)), nodes)
+    b.put(b.add(tables, b.add(b.mul(n, 2), block)), b.add(position, 2))
+    return (b.add(b.add(position, 2), nodes),)
+
+
+def _check_use(b, at, carried, tables, n, dom, words, power):
+    """A use (block, node position, tag, value block, index, result): the bootstrap's
+    ``value_type`` conditions, branch-free; out-of-range indices are clamped before lookup."""
+    (valid,) = carried
+    use_block, use_node, tag, value_block, index, result = (b.read(b.add(at, k)) for k in range(6))
+    flag = lambda condition: b.cur.op1(Operation.INT_ZERO_EXTEND, (condition,), B64)
+    in_range = b.cmp(IntCompare.ULT, value_block, n)
+    source = b.select(in_range, value_block, b.c(0))
+    parameters = b.get(b.add(tables, source))
+    nodes = b.get(b.add(tables, b.add(n, source)))
+    node_ok = b.cmp(IntCompare.ULT, index, nodes)
+    result_count = b.read(b.add(b.get(b.add(tables, b.add(b.mul(n, 2), source))), b.select(node_ok, index, b.c(0))))
+    same = flag(b.cmp(IntCompare.EQ, value_block, use_block))
+    parameter_ok = flag(b.cmp(IntCompare.ULT, index, parameters))
+    result_ok = b.mul(b.mul(flag(node_ok), flag(b.cmp(IntCompare.ULT, result, result_count))), b.op(Operation.BIT_OR, b.op(Operation.BIT_XOR, same, 1), flag(b.cmp(IntCompare.ULT, index, use_node))))
+    defined = b.select(b.cmp(IntCompare.EQ, tag, 0), parameter_ok, result_ok)
+    word = b.get(b.add(dom, b.add(b.mul(use_block, words), b.op(Operation.UDIV, source, 64))))
+    dominated = flag(b.cmp(IntCompare.NE, b.op(Operation.BIT_AND, word, b.get(b.add(power, b.op(Operation.UREM, source, 64)))), 0))
+    ok = b.mul(b.mul(flag(in_range), defined), b.op(Operation.BIT_OR, same, dominated))
+    return (b.op(Operation.BIT_AND, valid, ok),)
 
 
 def _power(b, power, k, carried):
@@ -348,14 +391,24 @@ class NativeCfg:
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
 
-    def analyze(self, entry: int, successors: list[list[int]]):
-        """``(status, order, dominator sets)`` for blocks with these edge targets."""
+    def analyze(self, entry: int, successors: list[list[int]], values=None):
+        """``(status, order, dominator sets, uses valid)`` for blocks with these edge targets.
+
+        ``values`` is ``(per-block (parameter count, result counts per node), uses)``
+        where each use is (use block, use node position, tag, block, index, result).
+        """
         words = [len(successors), entry]
         for targets in successors:
             words.append(len(targets))
             words.extend(targets)
+        tables, uses = values or ([(0, ())] * len(successors), ())
+        for parameter_count, result_counts in tables:
+            words += [parameter_count, len(result_counts), *result_counts]
+        words.append(len(uses))
+        for use in uses:
+            words.extend(use)
         if len(words) > IN_WORDS or any(word >= 1 << 63 for word in words):
-            return DEFER, None, None
+            return DEFER, None, None, False
         with self._lock:
             self._in[: len(words)] = words
             slots = self._slots
@@ -363,17 +416,17 @@ class NativeCfg:
             self._call(self._entry, ctypes.addressof(slots), 4, ctypes.addressof(self._xmm))
             status = self._out[0]
             if status != ACCEPT:
-                return status, None, None
-            n, width = len(successors), self._out[1]
-            order = list(self._out[2 : 2 + n])
-            flat = self._out[2 + n : 2 + n + n * width]
+                return status, None, None, False
+            n, width, valid = len(successors), self._out[1], bool(self._out[2])
+            order = list(self._out[3 : 3 + n])
+            flat = self._out[3 + n : 3 + n + n * width]
         dominators = []
         for block in range(n):
             bits = 0
             for index in range(width):
                 bits |= flat[block * width + index] << (64 * index)
             dominators.append({index for index in range(n) if bits >> index & 1})
-        return status, order, dominators
+        return status, order, dominators, valid
 
 
 def native_cfg_usable() -> bool:
