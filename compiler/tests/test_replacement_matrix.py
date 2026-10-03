@@ -31,10 +31,26 @@ class ReplacementMatrixTests(unittest.TestCase):
         row["fields"]["performance"] = ["MEASURED", "compiler/benchmarks/linux_aarch64_filestat_evidence.json"]
         self.assertIn("linux-aarch64.performance: emulator-only row cannot claim performance evidence", validate(bad, ROOT))
 
-    def test_linux_benchmark_utility_is_not_an_application(self):
+    def test_linux_application_is_the_cited_r3_evidence(self):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64")
-        self.assertEqual(row["fields"]["practical_application"][0], "PROTOTYPE")
-        self.assertEqual(derived_level(row), "R2")
+        practical = row["fields"]["practical_application"]
+        self.assertEqual(practical[0], "EXECUTED")
+        # The benchmark-scale filestat utility alone is not the application.
+        self.assertIn("compiler/benchmarks/jsonmin_evidence.json", practical)
+        self.assertEqual(derived_level(row), "R3")
+
+    def test_measured_but_uncompetitive_rows_stop_at_r3(self):
+        row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64"))
+        self.assertTrue(all(row["fields"][field][0] == "MEASURED" for field in ("performance", "memory", "code_size")))
+        self.assertEqual(derived_level(row), "R3")
+        row["competitive"] = [True, "compiler/benchmarks/jsonmin_evidence.json"]
+        self.assertEqual(derived_level(row), "R4")
+        bad = copy.deepcopy(MATRIX)
+        target = next(r for r in bad["platforms"] if r["id"] == "linux-x86_64")
+        target["level"] = "R4"
+        self.assertIn("linux-x86_64: claimed R4 but evidence supports R3", validate(bad, ROOT))
+        target["competitive"] = [True]
+        self.assertIn("linux-x86_64.competitive: expected [bool, evidence...]", validate(bad, ROOT))
 
     def test_levels_are_cumulative(self):
         row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "ai_tokens": ["MEASURED", "x"]}}

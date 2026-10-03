@@ -729,3 +729,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - AArch64 now elides borrowed-view returns (ADR-101), so view-passing functions compile there.
 - Full suite: 833 passed, 17 skipped.
 
+## First R3 application: `jsonmin` (ADR-126) — 2026-10-03
+
+- Linux x86-64 R2 → R3 and Linux AArch64 R2 → R3 (emulated). `jsonmin` validates and minifies JSON from stdin; it matches its reference contract and Python's parser on generated and mutated inputs. Against C twins it takes 2.11× gcc -O2 time with the lowest peak RSS, so it is not R4.
+- The matrix validator now gates R4 on an explicit `competitive` verdict.
+- Fixed: narrow-width register binary operations on the Linux x86-64 allocator; extents of pointers that calls give back.
+- Full suite: 840 passed, 17 skipped.
+

@@ -1,0 +1,102 @@
+{
+  "evidence_label": "MEASURED",
+  "format": "xax-jsonmin-evidence-v1",
+  "host": {
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "kernel": "6.18.44-fc-v64",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "python": "3.11.15"
+  },
+  "input": {
+    "bytes": 8390986,
+    "generator": "benchmark_document(size, seed=125)",
+    "sha256": "baf6a5befd21ad104d519f770ce377d66b4ac867b6292e73b74729fe1f832f82"
+  },
+  "method": {
+    "c_flags": {
+      "clang-O2": "clang -O2",
+      "gcc-O2": "gcc -O2",
+      "gcc-O2-static": "gcc -O2 -static",
+      "gcc-O3": "gcc -O3"
+    },
+    "reference_dynamic_bin_true_rss_kib": 1324,
+    "repetitions": 11,
+    "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
+    "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
+    "warmup_runs": 2
+  },
+  "output": {
+    "bytes": 4308036,
+    "sha256": "7705cd8a197f770e420faea809eceb6f80ce723aaffeb06640016685c4f09f27"
+  },
+  "results": {
+    "clang-O2": {
+      "file_bytes": 16520,
+      "peak_rss_kib_max": 13800,
+      "stripped_bytes": 14552,
+      "throughput_mib_s_median": 306.15,
+      "time_ratio_vs_best_baseline": 1.0,
+      "time_ratio_vs_gcc_O2": 0.92,
+      "wall_seconds_median": 0.026138,
+      "wall_seconds_min": 0.024603,
+      "wall_seconds_stdev": 0.000891
+    },
+    "gcc-O2": {
+      "file_bytes": 16480,
+      "peak_rss_kib_max": 13736,
+      "stripped_bytes": 14472,
+      "throughput_mib_s_median": 281.8,
+      "time_ratio_vs_best_baseline": 1.086,
+      "time_ratio_vs_gcc_O2": 1.0,
+      "wall_seconds_median": 0.028397,
+      "wall_seconds_min": 0.026852,
+      "wall_seconds_stdev": 0.004326
+    },
+    "gcc-O2-static": {
+      "file_bytes": 785512,
+      "peak_rss_kib_max": 13000,
+      "stripped_bytes": 706584,
+      "throughput_mib_s_median": 282.95,
+      "time_ratio_vs_best_baseline": 1.082,
+      "time_ratio_vs_gcc_O2": 0.996,
+      "wall_seconds_median": 0.028282,
+      "wall_seconds_min": 0.027498,
+      "wall_seconds_stdev": 0.003587
+    },
+    "gcc-O3": {
+      "file_bytes": 16528,
+      "peak_rss_kib_max": 13736,
+      "stripped_bytes": 14552,
+      "throughput_mib_s_median": 295.09,
+      "time_ratio_vs_best_baseline": 1.037,
+      "time_ratio_vs_gcc_O2": 0.955,
+      "wall_seconds_median": 0.027118,
+      "wall_seconds_min": 0.025752,
+      "wall_seconds_stdev": 0.002416
+    },
+    "xax": {
+      "file_bytes": 16250,
+      "peak_rss_kib_max": 12416,
+      "stripped_bytes": 16250,
+      "throughput_mib_s_median": 133.84,
+      "time_ratio_vs_best_baseline": 2.288,
+      "time_ratio_vs_gcc_O2": 2.106,
+      "wall_seconds_median": 0.059792,
+      "wall_seconds_min": 0.05795,
+      "wall_seconds_stdev": 0.002705
+    }
+  },
+  "workload": "jsonmin: read stdin, validate RFC 8259 JSON (depth <= 512), write it minified; recursive descent through a three-member recursion group (ADR-125)",
+  "xax": {
+    "artifact_bytes": 16250,
+    "artifact_sha256": "29fece9355031fe160baaaef133b9c804a3811455b6280eb73e81d057953f118",
+    "container": "x86_64-linux-elf-exec-v1 (static; no libc, loader, or allocator: four explicit anonymous mappings)",
+    "entry_function": "372d2c69c7c056d310bc6c2da87e87f104f9d7f39a0fc5ba38ce420f92e6f8a8",
+    "program_root": "7385badcf66db96d4456e6eaf8f78b3c5c8594fa332621431e6b1c88a08a0cde",
+    "runtime_dependencies": [],
+    "target": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e"
+  }
+}

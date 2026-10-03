@@ -938,7 +938,11 @@ def compile_register_resident(
                 else:
                     destination, source = acquire(node_index, {left, right}), right_register
                     emit(_move_register(destination, left_register, width))
-                emit(_register_arithmetic(operation, destination, source, width))
+                # Narrow values stay zero-extended: compute at 32 bits and mask
+                # only when the operation can carry out of the width.
+                emit(_register_arithmetic(operation, destination, source, 64 if width == 64 else 32))
+                if width < 32 and operation not in (Operation.BIT_AND, Operation.BIT_OR, Operation.BIT_XOR):
+                    emit(_and_immediate(destination, (1 << width) - 1, width=32))
                 retire(node_index, left, right)
                 define(result, destination)
 
