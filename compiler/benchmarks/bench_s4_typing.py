@@ -29,6 +29,14 @@ import json, statistics, time
 {load}
 import xax_compiler
 from xax_compiler import Kind, verify_store
+import xax_selfhost_typing
+engine = []
+_facts = xax_selfhost_typing.NativeTyping.facts
+def _counting(self, values):
+    result = _facts(self, values)
+    engine.append(result[0])
+    return result
+xax_selfhost_typing.NativeTyping.facts = _counting
 samples = []
 for _ in range({repeats}):
     xax_compiler._PARSED_GRAPHS.clear()
@@ -55,7 +63,7 @@ if native is not None:
             constants += sum(v == PROVEN and parsed.blocks[b].nodes[n].operation == Operation.CONSTANT for (b, n), v in zip(keys, verdicts))
             calls += sum(v == PROVEN and parsed.blocks[b].nodes[n].operation == Operation.CALL_DIRECT for (b, n), v in zip(keys, verdicts))
             fact_free += int(verdicts[-1] == 1 and sum(v == PROVEN for v in verdicts[:len(keys)]) == sum(len(x.nodes) for x in parsed.blocks) and all(v == PROVEN for v in verdicts[len(keys):-1]))
-print(json.dumps({{"verify_ms": round(statistics.median(samples) * 1e3, 2), "covered": covered, "proven": proven, "blocks": blocks, "blocks_proven": blocks_proven, "constants": constants, "graphs": graphs, "fact_free": fact_free, "calls": calls}}))
+print(json.dumps({{"verify_ms": round(statistics.median(samples) * 1e3, 2), "covered": covered, "proven": proven, "blocks": blocks, "blocks_proven": blocks_proven, "constants": constants, "graphs": graphs, "fact_free": fact_free, "calls": calls, "engine_accepted": sum(engine[:len(engine) // {repeats}]) if engine else 0}}))
 """
 
 
@@ -80,14 +88,15 @@ def run() -> dict:
             "proven_call_contracts": native["calls"],
             "graphs": native["graphs"],
             "fact_free_graphs": native["fact_free"],
+            "facts_engine_accepted_graphs": native["engine_accepted"],
             "verify_ms_xax_typing": native["verify_ms"],
             "verify_ms_bootstrap_only": bootstrap["verify_ms"],
         }
     from xax_selfhost_typing import NativeTyping, STORE_PATH
 
     return {
-        "step": "S4 to S4d.2a",
-        "adr": "ADR-132 to ADR-136",
+        "step": "S4 to S4d.2b",
+        "adr": "ADR-132 to ADR-137",
         "evidence_label": "MEASURED",
         "store_bytes": STORE_PATH.stat().st_size,
         "native_code_bytes": NativeTyping().code_size,

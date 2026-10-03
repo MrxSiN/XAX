@@ -781,3 +781,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S4d.2a: memory-free graphs skip the fact system (ADR-136) — 2026-10-03
 
 - XAX now checks `call.direct` contracts and reports whether a graph is memory-free. When it is, and every node and terminator is proven, the verifier runs no memory-fact passes. Outcomes are identical with the path on and off on random nodes, calls, and branching graphs. 5 of 20 corpus graphs take the skip path. Full suite: 870 tests, 17 skipped. Next is S4d.2b: stack-storage facts in XAX.
+
+## Self-hosting step S4d.2b: memory-fact engine in XAX, stack storage (ADR-137) — 2026-10-03
+
+- `xax_selfhost_facts.py` runs the bootstrap's memory-fact passes as XAX (same facts, merge, and fixpoint), accept or decline. It models stack storage now; on acceptance the verifier skips its Python passes and takes the pointer extents from XAX. Identical outcomes and extents on 300 random stack programs; full suite 872 tests, 17 skipped. Next: heap views (S4d.2c), then links, atomics, and the rest (S4d.2d).
