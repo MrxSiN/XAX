@@ -5959,6 +5959,37 @@ def _native_graph_decoder():
     return _NATIVE_GRAPH_DECODER
 
 
+# Self-hosting S3d (ADR-121): control-flow analysis is an XAX function.
+_NATIVE_CFG = None
+_CFG_ATTEMPTED = False
+_CFG_BUILDING = False
+
+
+def _native_cfg():
+    global _NATIVE_CFG, _CFG_ATTEMPTED, _CFG_BUILDING
+    if _CFG_BUILDING:
+        return None
+    if _CFG_ATTEMPTED:
+        return _NATIVE_CFG
+    hashing = sys.modules.get("blake3")
+    if _DECODER_BUILDING or _GRAPH_DECODER_BUILDING or (hashing is not None and (getattr(hashing, "_NATIVE_BUILDING", False) or getattr(hashing, "_HASHER_BUILDING", False))):
+        return None
+    partial = sys.modules.get("xax_selfhost_cfg")
+    if partial is not None and not hasattr(partial, "native_cfg_usable"):
+        return None
+    _CFG_ATTEMPTED = True
+    _CFG_BUILDING = True
+    try:
+        from xax_selfhost_cfg import NativeCfg, native_cfg_usable
+
+        _NATIVE_CFG = NativeCfg() if native_cfg_usable() else None
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _NATIVE_CFG = None
+    finally:
+        _CFG_BUILDING = False
+    return _NATIVE_CFG
+
+
 def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ParsedGraph:
     decoder = _native_graph_decoder()
     parsed = None
@@ -5976,26 +6007,36 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             sorted(cid.hex() for cid in used_references),
         )
 
-    predecessors = [set() for _ in blocks]
-    for block_index, block in enumerate(blocks):
-        for target, _ in block.terminator.edges:
-            if target >= len(blocks):
-                fail("XAX.STRUCT.BRANCH_TARGET", obj.cid.hex(), "GRAPH-BRANCH-TARGET", f"< {len(blocks)}", target)
-            predecessors[target].add(block_index)
-    dominators = [set(range(len(blocks))) for _ in blocks]
-    dominators[entry] = {entry}
-    changed = True
-    while changed:
-        changed = False
-        for index in range(len(blocks)):
-            if index == entry:
-                continue
-            new = {index}
-            if predecessors[index]:
-                new |= set.intersection(*(dominators[p] for p in predecessors[index]))
-            if new != dominators[index]:
-                dominators[index] = new
-                changed = True
+    # Self-hosting S3d (ADR-121): branch targets, dominators, and the block
+    # order come from an XAX function; on reject or defer the bootstrap below
+    # computes them (and raises the exact branch-target diagnostic).
+    analysis = _native_cfg()
+    native_order = None
+    if analysis is not None:
+        status, native_order, dominators = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks])
+        if status != 0:
+            native_order = None
+    if native_order is None:
+        predecessors = [set() for _ in blocks]
+        for block_index, block in enumerate(blocks):
+            for target, _ in block.terminator.edges:
+                if target >= len(blocks):
+                    fail("XAX.STRUCT.BRANCH_TARGET", obj.cid.hex(), "GRAPH-BRANCH-TARGET", f"< {len(blocks)}", target)
+                predecessors[target].add(block_index)
+        dominators = [set(range(len(blocks))) for _ in blocks]
+        dominators[entry] = {entry}
+        changed = True
+        while changed:
+            changed = False
+            for index in range(len(blocks)):
+                if index == entry:
+                    continue
+                new = {index}
+                if predecessors[index]:
+                    new |= set.intersection(*(dominators[p] for p in predecessors[index]))
+                if new != dominators[index]:
+                    dominators[index] = new
+                    changed = True
 
     def value_type(value: ValueRef, use_block: int, use_node: int) -> bytes:
         if value.block >= len(blocks):
@@ -6021,23 +6062,26 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     # fixpoint.  Facts only shrink between passes, so a failure in any pass is
     # a real failure and the final pass is exact.  Graphs without back edges
     # converge in one pass.
-    order: list[int] = []
-    visited = {entry}
-    walk: list[tuple[int, int]] = [(entry, 0)]
-    while walk:
-        current, edge_cursor = walk[-1]
-        out_edges = blocks[current].terminator.edges
-        if edge_cursor < len(out_edges):
-            walk[-1] = (current, edge_cursor + 1)
-            successor = out_edges[edge_cursor][0]
-            if successor not in visited:
-                visited.add(successor)
-                walk.append((successor, 0))
-        else:
-            order.append(current)
-            walk.pop()
-    order.reverse()
-    order.extend(index for index in range(len(blocks)) if index not in visited)
+    if native_order is not None:
+        order = native_order
+    else:
+        order = []
+        visited = {entry}
+        walk: list[tuple[int, int]] = [(entry, 0)]
+        while walk:
+            current, edge_cursor = walk[-1]
+            out_edges = blocks[current].terminator.edges
+            if edge_cursor < len(out_edges):
+                walk[-1] = (current, edge_cursor + 1)
+                successor = out_edges[edge_cursor][0]
+                if successor not in visited:
+                    visited.add(successor)
+                    walk.append((successor, 0))
+            else:
+                order.append(current)
+                walk.pop()
+        order.reverse()
+        order.extend(index for index in range(len(blocks)) if index not in visited)
     incoming_edges: dict[int, list[tuple[int, int]]] = {index: [] for index in range(len(blocks))}
     for source_index, source in enumerate(blocks):
         for edge_index, (target, _arguments) in enumerate(source.terminator.edges):
