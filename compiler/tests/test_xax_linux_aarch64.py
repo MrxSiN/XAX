@@ -259,6 +259,33 @@ class LinuxAarch64ExecutionTests(unittest.TestCase):
         completed = run_linux_aarch64_executable(compile_linux_aarch64_executable(reader, entry.cid, target.cid).data)
         self.assertEqual(completed.returncode, SIGTRAP)
 
+    def test_pointer_rebase_is_checked(self):
+        # ADR-092 on AArch64: a window at view + offset is legal only in range and aligned.
+        from xax_compiler import Permission, pointer_type
+
+        api = linux_aarch64_api()
+        words = pointer_type(B32, Permission.READ_WRITE, 4, space=2)
+        for offset, expected in ((8, 7), (64, SIGTRAP), (6, SIGTRAP)):
+            graph = GraphBuilder()
+            block = graph.block(api.process_effect, api.filesystem_effect, api.memory_effect)
+            process, fs, memory = block.params
+            raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 64), memory), (api.bytes_rw, api.heap_owner, api.memory_effect), entity=api.mmap_anonymous)
+            pointer, view, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (words, heap_view_type(64), api.memory_effect), attributes=(64, 4))
+            address = block.op1(Operation.ADD_WRAP, (block.op1(Operation.POINTER_ADDRESS, (pointer,), B64, attributes=(1,)), block.const(B64, offset)), B64)
+            window = block.op1(Operation.POINTER_REBASE, (pointer, address), words, attributes=(8,))
+            memory = block.op1(Operation.CHECKED_STORE_BITS_LE, (window, block.const(B32, 0), block.const(B32, 7), memory), api.memory_effect, attributes=(4, 1))
+            value, memory = block.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, block.const(B32, 8), memory), (B32, api.memory_effect), attributes=(4, 1))
+            _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, api.memory_effect), entity=api.munmap_view(words, 64))
+            process = block.op1(Operation.CALL_FOREIGN, (value, process), api.process_effect, entity=api.exit_group)
+            block.ret(value, process, fs, memory)
+            parameters = (api.process_effect, api.filesystem_effect, api.memory_effect)
+            entry = graph.function(parameters, (B32, *parameters))
+            target = aarch64_linux_exec_target()
+            reader = program_store(entry, target, (*api.types, *graph.objects.values()))
+            with self.subTest(offset=offset):
+                completed = run_linux_aarch64_executable(compile_linux_aarch64_executable(reader, entry.cid, target.cid).data)
+                self.assertEqual(completed.returncode, expected)
+
     def test_static_write_executes(self):
         reader, entry, target = _write_program(b"hello from xax\n")
         completed = run_linux_aarch64_executable(compile_linux_aarch64_executable(reader, entry.cid, target.cid).data)

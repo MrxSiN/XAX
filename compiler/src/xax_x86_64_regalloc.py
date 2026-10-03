@@ -131,7 +131,7 @@ _MEMORY = frozenset({Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.
 SUPPORTED_OPERATIONS = frozenset(
     {
         *_PURE_BINARY, *_COPY, *_MEMORY, *RESOURCE_EFFECT_OPERATIONS,
-        Operation.UDIV, Operation.UREM, Operation.CONSTANT, Operation.INT_COMPARE, Operation.INT_TRUNCATE,
+        Operation.UDIV, Operation.UREM, Operation.CONSTANT, Operation.INT_COMPARE, Operation.INT_TRUNCATE, Operation.ROTATE_RIGHT,
         Operation.ADDRESS_OFFSET, Operation.HEAP_VIEW, Operation.CALL_DIRECT, Operation.CALL_FOREIGN,
         Operation.POINTER_ADDRESS, Operation.POINTER_REBASE, Operation.FUNCTION_ADDRESS,
         Operation.STACK_ALLOC, Operation.STACK_END, Operation.CALL_INDIRECT, Operation.LINK_FOLLOW, Operation.LINK_TARGET,
@@ -218,6 +218,8 @@ def _eligible(graph, parameter_types, return_types, resolve) -> dict[ValueRef, i
         for node_index, node in enumerate(block.nodes):
             if node.operation not in SUPPORTED_OPERATIONS:
                 return None
+            if node.operation == Operation.ROTATE_RIGHT and _value_width(resolve, node.results[0]) not in (32, 64):
+                return None  # a native `ror` exists only at register widths
             if node.operation == Operation.CALL_DIRECT and _is_erased_proof_function(node.entity, resolve):
                 continue
             if node.operation in _CALLS:
@@ -1021,6 +1023,16 @@ def compile_register_resident(
                 retire(node_index, left, right)
                 register = acquire(node_index, {left, right})
                 emit(_setcc_register(IntCompare(node.attributes[0]), register))
+                define(result, register)
+
+            elif operation == Operation.ROTATE_RIGHT:
+                source = node.operands[0]
+                ensure(source, node_index)
+                register = destination_for(node_index, source, set())
+                amount = node.attributes[0]
+                if amount:
+                    emit(_rex(widths[result] > 32, 0, register) + b"\xc1" + bytes((0xC8 | (register & 7), amount)))  # ror r, imm8
+                retire(node_index, source)
                 define(result, register)
 
             elif operation == Operation.INT_TRUNCATE:

@@ -21,17 +21,17 @@
   "results": {
     "gcc-O2": {
       "artifact_bytes": 67496,
-      "wall_seconds_median": 0.074866,
-      "wall_seconds_stdev": 0.015055
+      "wall_seconds_median": 0.071544,
+      "wall_seconds_stdev": 0.011881
     },
     "ratio_xax_over_gcc": {
       "artifact_bytes": 0.208,
-      "wall_seconds_median": 6.647
+      "wall_seconds_median": 7.177
     },
     "xax": {
       "artifact_bytes": 14024,
-      "wall_seconds_median": 0.497621,
-      "wall_seconds_stdev": 0.027482
+      "wall_seconds_median": 0.513484,
+      "wall_seconds_stdev": 0.018893
     }
   },
   "workload": "U1.3 filestat graph (openat/read loop, counts, FNV-1a 64, zlib crc32 via libz.so.1, histogram, decimal write)",
@@ -45,8 +45,8 @@
     ],
     "dynamic_loader": "/lib/ld-linux-aarch64.so.1 (requested by aarch64-linux-elf-dynexec-v1)",
     "entry_function": "181b651f61aa7db759577a06eac35885bfc73f949b39940c2f79c1235daa358a",
-    "program_root": "98d26edcc109a1c03372d72145a7e18e6978f854de534aed44d6dd26af0150d9",
+    "program_root": "4a2f8876c6e4557ddda5f23bda8c8684578623166c3103a60d34f4c41dca3c57",
     "runtime_dependencies": [],
-    "target": "3bafe6cd6eaee5d6636ced6d1924da74a0463c6187722cb5ca226930bf56b7ee"
+    "target": "8443d5f4bdf211088be733d886a08c5467a5efa7b8098596858b732279e4f4e4"
   }
 }
