@@ -3,8 +3,8 @@
   "target": "d097451648daf413ae4bc8dd66d1276479cfc7216d1cd03c54786ff0c40c7252",
   "entry": "5dfd27886c034ef5bc1ec63df442df2f4dc73703e1fc09653c0b060b6746252c",
   "pe_bytes": 2048,
-  "pe_sha256": "88b27d0c0782b88d7829760302af668552b4a05a62276d5314e3b625ac8844dc",
-  "code_bytes": 657,
+  "pe_sha256": "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
+  "code_bytes": 636,
   "imports": [
     "kernel32.dll!ExitProcess",
     "kernel32.dll!GetProcessHeap",

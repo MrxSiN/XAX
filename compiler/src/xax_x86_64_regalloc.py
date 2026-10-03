@@ -1093,6 +1093,10 @@ def compile_register_resident(
                 if argument.tag == 1 and argument.block == block_index and edge_uses[argument] == 1 and value not in pinned and value not in parameter_slot and index < len(allocatable):
                     edge_hints[argument] = allocatable[index]
         last_use = {value: positions[-1] for value, positions in uses.items()}
+        call_positions = tuple(
+            index for index, node in enumerate(block.nodes)
+            if node.operation in _CALLS and not (node.operation == Operation.CALL_DIRECT and _is_erased_proof_function(node.entity, resolve))
+        )
         register_for: dict[ValueRef, int] = {}
         value_for_register: dict[int, ValueRef] = {}
         spill_offset: dict[ValueRef, int] = {value: home_offset[value] for value in uses if value.block != block_index and value in home_offset}
@@ -1176,6 +1180,12 @@ def compile_register_resident(
             preferred = edge_hints.get(hint["value"])
             if preferred is not None and preferred not in value_for_register and preferred not in excluded:
                 return preferred  # the result goes straight into its successor's parameter register
+            value = hint["value"]
+            if value is not None and any(position < call < last_use.get(value, -1) for call in call_positions):
+                # Live across a call: a callee-saved register keeps it without a spill.
+                for register in allocatable:
+                    if register in PINNABLE and register not in value_for_register and register not in excluded:
+                        return register
             for register in allocatable:
                 if register not in value_for_register and register not in excluded:
                     return register
@@ -1272,8 +1282,10 @@ def compile_register_resident(
 
         def place_arguments(position: int, operands: tuple[ValueRef, ...], registers: tuple[int, ...]) -> None:
             """Spill everything live after ``position``, then load operands into ``registers``."""
+            # Values in PINNABLE registers survive every call kind (see the module
+            # docstring), so only the volatile ones are stored.
             live_after = sorted(
-                (value for value in register_for if last_use.get(value, -1) > position),
+                (value for value in register_for if last_use.get(value, -1) > position and register_for[value] not in PINNABLE),
                 key=lambda item: (item.tag, item.block, item.index, item.result),
             )
             for value in live_after:
@@ -1375,7 +1387,7 @@ def compile_register_resident(
 
         def after_call(position: int, operands: tuple[ValueRef, ...]) -> None:
             for value in tuple(register_for):
-                if value not in pinned:
+                if value not in pinned and register_for[value] not in PINNABLE:
                     unbind(value)
             for operand in set(operands):
                 if last_use.get(operand) == position:
@@ -1386,7 +1398,9 @@ def compile_register_resident(
             pairs = []
             for index, argument in enumerate(arguments):
                 destination = ValueRef.parameter(target_block, index)
-                if argument in widths and destination in widths:
+                # A parameter the target never reads (not in its block, not elsewhere through a home or pin) needs no copy.
+                dead = destination not in uses_by_block[target_block] and destination not in home_offset and destination not in pinned
+                if argument in widths and destination in widths and not dead:
                     pairs.append((argument, destinations.index(destination), destination))
             for source, index, destination in pairs:
                 if destination in parameter_slot:
@@ -1966,7 +1980,10 @@ def compile_register_resident(
         return None
     spill_count = max(plan, default=0)
     # A process entry never returns to a caller, so it has nothing to preserve.
-    saved = () if process_entry else tuple(register for register in CALLEE_SAVED if register in used)
+    # SysV preserves rbx, rbp, r12-r15 only (rsi/rdi are caller-saved there, and this
+    # allocator never keeps a value in them across a call); Win64 also preserves rsi/rdi.
+    preserved = CALLEE_SAVED if windows else PINNABLE
+    saved = () if process_entry else tuple(register for register in CALLEE_SAVED if register in used and register in preserved)
     payload = dynamic_spill_base + spill_count * 8
     # A called function starts with RSP % 16 == 8; a process entry starts
     # aligned.  Keep RSP 16-byte aligned at every call either way.

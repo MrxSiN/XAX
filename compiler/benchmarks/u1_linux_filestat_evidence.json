@@ -25,7 +25,7 @@
       "gcc-O3": "gcc -O3 ... -lz"
     },
     "performance_rule": "XAX_BENCHMARKS.md \u00a715.0: fastest valid arm by median; <=1.05x meets the primary target, <=1.10x competitive, else unmet",
-    "reference_dynamic_bin_true_rss_kib": 1248,
+    "reference_dynamic_bin_true_rss_kib": 1260,
     "repetitions": 31,
     "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
     "rust_flags": {
@@ -38,76 +38,76 @@
   "results": {
     "clang-O2": {
       "file_bytes": 16352,
-      "peak_rss_kib_max": 1852,
+      "peak_rss_kib_max": 1800,
       "stripped_bytes": 14576,
-      "throughput_mib_s_median": 496.13,
+      "throughput_mib_s_median": 507.77,
       "time_ratio_vs_best_baseline": 1.0,
       "time_ratio_vs_fastest": 1.0,
-      "time_ratio_vs_gcc_O2": 0.668,
-      "wall_seconds_median": 0.064499,
-      "wall_seconds_min": 0.049141,
-      "wall_seconds_stdev": 0.011851
+      "time_ratio_vs_gcc_O2": 0.671,
+      "wall_seconds_median": 0.063021,
+      "wall_seconds_min": 0.049293,
+      "wall_seconds_stdev": 0.012013
     },
     "gcc-O2": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1852,
+      "peak_rss_kib_max": 1808,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 331.23,
-      "time_ratio_vs_best_baseline": 1.498,
-      "time_ratio_vs_fastest": 1.498,
+      "throughput_mib_s_median": 340.79,
+      "time_ratio_vs_best_baseline": 1.49,
+      "time_ratio_vs_fastest": 1.49,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.09661,
-      "wall_seconds_min": 0.080518,
-      "wall_seconds_stdev": 0.011835
+      "wall_seconds_median": 0.0939,
+      "wall_seconds_min": 0.072491,
+      "wall_seconds_stdev": 0.007626
     },
     "gcc-O2-static": {
       "file_bytes": 798120,
       "peak_rss_kib_max": 716,
       "stripped_bytes": 718872,
-      "throughput_mib_s_median": 318.35,
-      "time_ratio_vs_best_baseline": 1.558,
-      "time_ratio_vs_fastest": 1.558,
-      "time_ratio_vs_gcc_O2": 1.04,
-      "wall_seconds_median": 0.100517,
-      "wall_seconds_min": 0.073692,
-      "wall_seconds_stdev": 0.012976
+      "throughput_mib_s_median": 332.96,
+      "time_ratio_vs_best_baseline": 1.525,
+      "time_ratio_vs_fastest": 1.525,
+      "time_ratio_vs_gcc_O2": 1.024,
+      "wall_seconds_median": 0.096109,
+      "wall_seconds_min": 0.076081,
+      "wall_seconds_stdev": 0.012956
     },
     "gcc-O3": {
       "file_bytes": 16256,
-      "peak_rss_kib_max": 1780,
+      "peak_rss_kib_max": 1868,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 332.55,
-      "time_ratio_vs_best_baseline": 1.492,
-      "time_ratio_vs_fastest": 1.492,
-      "time_ratio_vs_gcc_O2": 0.996,
-      "wall_seconds_median": 0.096225,
-      "wall_seconds_min": 0.075794,
-      "wall_seconds_stdev": 0.009866
+      "throughput_mib_s_median": 331.4,
+      "time_ratio_vs_best_baseline": 1.532,
+      "time_ratio_vs_fastest": 1.532,
+      "time_ratio_vs_gcc_O2": 1.028,
+      "wall_seconds_median": 0.09656,
+      "wall_seconds_min": 0.075583,
+      "wall_seconds_stdev": 0.005986
     },
     "rustc-O3": {
       "file_bytes": 4355184,
-      "peak_rss_kib_max": 2368,
+      "peak_rss_kib_max": 2400,
       "stripped_bytes": 343616,
-      "throughput_mib_s_median": 450.51,
-      "time_ratio_vs_best_baseline": 1.101,
-      "time_ratio_vs_fastest": 1.101,
-      "time_ratio_vs_gcc_O2": 0.735,
-      "wall_seconds_median": 0.071031,
-      "wall_seconds_min": 0.056945,
-      "wall_seconds_stdev": 0.011001
+      "throughput_mib_s_median": 451.4,
+      "time_ratio_vs_best_baseline": 1.125,
+      "time_ratio_vs_fastest": 1.125,
+      "time_ratio_vs_gcc_O2": 0.755,
+      "wall_seconds_median": 0.07089,
+      "wall_seconds_min": 0.055524,
+      "wall_seconds_stdev": 0.015606
     },
     "xax": {
-      "file_bytes": 4344,
-      "peak_rss_kib_max": 1188,
+      "file_bytes": 4144,
+      "peak_rss_kib_max": 1196,
       "performance_class": "meets-primary-target",
-      "stripped_bytes": 4344,
-      "throughput_mib_s_median": 493.33,
+      "stripped_bytes": 4144,
+      "throughput_mib_s_median": 504.91,
       "time_ratio_vs_best_baseline": 1.006,
       "time_ratio_vs_fastest": 1.006,
-      "time_ratio_vs_gcc_O2": 0.671,
-      "wall_seconds_median": 0.064865,
-      "wall_seconds_min": 0.050011,
-      "wall_seconds_stdev": 0.01419
+      "time_ratio_vs_gcc_O2": 0.675,
+      "wall_seconds_median": 0.063378,
+      "wall_seconds_min": 0.049768,
+      "wall_seconds_stdev": 0.01505
     }
   },
   "small_input_reference_check": {
@@ -116,8 +116,8 @@
   },
   "workload": "filestat: openat/read loop over input.dat, byte/line/word counts, FNV-1a 64, zlib crc32 per chunk (libz.so.1), 256-entry histogram, decimal write",
   "xax": {
-    "artifact_bytes": 4344,
-    "artifact_sha256": "72e4e01e6fe865ac379561baa6c90cb253105b1d9db0582c436bea85ca45e3f1",
+    "artifact_bytes": 4144,
+    "artifact_sha256": "63b303a579ada7ad92d3a7b81fdfc68075315d94141af471074cf3f80e4c18ad",
     "codegen": "xax_x86_64_regalloc: per-block register allocation with callee-saved registers, rematerialized immediates, cmp+jcc fusion, in-block bounds-check reuse, power-of-two strength reduction",
     "dt_needed": [
       "libz.so.1"

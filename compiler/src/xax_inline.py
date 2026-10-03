@@ -361,8 +361,9 @@ def _layout(blocks: list[_Block], entry: _Block) -> list[_Block]:
     """Block order for fall-through: loop bodies stay contiguous, loop exits and returns go after.
 
     From each placed block the chain continues to an unplaced successor,
-    preferring one in the same strongly connected component (the loop goes
-    on), then one that does not end the function, then the earlier edge.
+    preferring the one with the shortest way back to this block (the
+    innermost loop goes on), then one that does not end the function, then a
+    join over a one-way arm, then the earlier edge.
     Successors not chosen wait on a stack and start later chains.  Only the
     order changes; the entry stays first.
     """
@@ -379,6 +380,24 @@ def _layout(blocks: list[_Block], entry: _Block) -> list[_Block]:
         return seen
 
     reaches = {id(block): reach(block) for block in blocks}
+
+    def distance(start: _Block, goal: _Block) -> int:
+        """Edges from ``start`` back to ``goal`` (breadth first); unreachable ranks last."""
+        if id(goal) not in reaches[id(start)] and start is not goal:
+            return 1 << 30
+        frontier, seen, steps = [start], {id(start)}, 0
+        while frontier:
+            if any(block is goal for block in frontier):
+                return steps
+            steps += 1
+            following = []
+            for block in frontier:
+                for target in successors[id(block)]:
+                    if id(target) not in seen:
+                        seen.add(id(target))
+                        following.append(target)
+            frontier = following
+        return 1 << 30
     incoming: dict[int, int] = {}
     for block in blocks:
         for target in successors[id(block)]:
@@ -391,7 +410,7 @@ def _layout(blocks: list[_Block], entry: _Block) -> list[_Block]:
             placed.add(id(block))
             options = [
                 (
-                    0 if id(block) in reaches[id(target)] else 1,
+                    distance(target, block),  # the innermost loop first (shortest way back)
                     1 if target.kind in (TerminatorKind.RETURN, TerminatorKind.TRAP) else 0,
                     -incoming.get(id(target), 0),  # a join (if-then's fall-through) before a one-way arm
                     edge, target,
