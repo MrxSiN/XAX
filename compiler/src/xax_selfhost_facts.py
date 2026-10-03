@@ -43,7 +43,9 @@ VIEW_TYPES = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
 # Header words at the end of the output view.
 HEADER = OUT_WORDS - 64
 (H_STATUS, H_FACTS_AT, H_V, H_S, H_E, H_B, H_ENTRY, H_NODES, H_VALUES, H_SITES, H_BLOCKS, H_EDGES, H_ARENA, H_ARENA_END,
- H_VISIT, H_PASS, H_ORDER, H_EXTENTS, H_STALE, H_COUNT, H_TABLE, H_LIST, H_KINDS, H_ENTRY_FACTS) = range(24)
+ H_VISIT, H_PASS, H_ORDER, H_EXTENTS, H_STALE, H_COUNT, H_TABLE, H_LIST, H_KINDS, H_ENTRY_FACTS, H_CIDS, H_REASON, H_NODE) = range(27)
+# Decline sites: H_REASON names the check that declined (``DECLINE_SITES[code]``: "file:line"), for diagnosis only.
+DECLINE_SITES: list[str] = []
 ACCEPTED = 1
 # Arguments past the second travel in header words (the native ABI takes four machine arguments,
 # two of which are the view pointers); a callee reads them before anything else.
@@ -51,7 +53,9 @@ H_ARG = 32
 REGISTER_ARGUMENTS = 2
 # Per-value fields (each an array of V words).
 (PK, PST, PEL, PPERM, POFF, PEXT, PALIGN, PALIAS, PWIN, PREC, PLT, PLR, PSTAMP, OST, OSTAMP, EST, EIV, ESTAMP, ECON, OCON) = range(20)
-VALUE_FIELDS = 20
+# S4d.2c: heap allocation facts (pass-stamped), and each value's defining node record (NONE: a parameter).
+(HSTAMP, HST, HSIZE, HZERO, HALIGN, DEF) = range(20, 26)
+VALUE_FIELDS = 26
 POINTER_WORDS = 12  # PK..PLR
 SLOT = POINTER_WORDS + 3  # pointer fact, owner storage, effect storage, effect intervals
 NO_POINTER, POINTER, LINK = 0, 1, 2
@@ -530,7 +534,17 @@ def _decline(e: E):
 
 
 def _require(e: E, condition):
-    e.if_(e.not_(condition), lambda: _decline(e))
+    import inspect
+
+    frame = inspect.stack()[1]
+    code = len(DECLINE_SITES)
+    DECLINE_SITES.append(f"{frame.function}:{frame.lineno}")
+    def decline():
+        # The innermost check names the reason (callers propagate NONE through their own checks).
+        e.if_(e.eq(e.hd(H_REASON), 0), lambda: e.set_hd(H_REASON, code + 1))
+        _decline(e)
+
+    e.if_(e.not_(condition), decline)
 
 
 def _pointer(e: E, value_id):
@@ -666,9 +680,9 @@ def _load(tables, covers):
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(1), storage)
         _require(e, e.both(e.eq(n.rtid(0), e.value(PEL, source)), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.eq(n.rtid(1), n.tid(1))))
-        _require(e, e.eq(e.value(PWIN, source), 0))  # windows: a later stage
+        # ``_window_initialized`` without records: every position of the window is initialized.
         start = e.value(POFF, source)
-        _require(e, e.ne(e.call(covers, intervals, start, e.add(start, size)), 0))
+        _require(e, e.ne(e.call(covers, intervals, start, e.add(e.add(start, e.value(PWIN, source)), size)), 0))
         _require(e, e.eq(e.table(_T.LINK, e.value(PEL, source)), 0))
         _set_effect(e, e.add(n.base, 1), storage, intervals)
         e.give(n.next)
@@ -691,11 +705,15 @@ def _store(tables, insert):
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(2), storage)
         _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0), e.eq(n.rtid(0), n.tid(2))))
-        _require(e, e.eq(e.value(PWIN, source), 0))
         start = e.value(POFF, source)
-        merged = e.call(insert, intervals, start, e.add(start, size))
-        _require(e, e.ne(merged, NONE))
-        _set_effect(e, n.base, storage, merged)
+        e.var("merged", intervals)  # a windowed store initializes an unknown position: nothing new
+
+        def place():
+            e.set("merged", e.call(insert, intervals, start, e.add(start, size)))
+            _require(e, e.ne(e.p["merged"], NONE))
+
+        e.if_(e.eq(e.value(PWIN, source), 0), place)
+        _set_effect(e, n.base, storage, e.p["merged"])
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -727,8 +745,550 @@ def _pointer_cast(tables):
     return _function(("cursor", "block"), build, tables)
 
 
-def _call_direct(tables):
-    """A direct call's fact effects: a memory frontier passed through (``frontier_only``); stack resources decline."""
+# -- S4d.2c: heap views, checked accesses, address and rebase, foreign calls, view-passing calls -------
+
+def _uleb(e: E, at):
+    """``(value, size, ok)``: a canonical ULEB of at most five bytes at input word ``at`` (as the typing decoder)."""
+    data = [e.rd(e.add(at, k)) for k in range(_T.ULEB_BYTES)]
+    value, size, ok = e.c(0), e.c(0), e.c(0)
+    continuing = e.c(1)
+    for length in range(1, len(data) + 1):
+        last = data[length - 1]
+        ends = e.flag(e.both(e.ne(continuing, 0), e.lt(last, 128), e.ne(last, 0) if length > 1 else e.eq(0, 0)))
+        total = e.c(0)
+        for index in range(length):
+            low = data[index] if index == length - 1 else e.sub(data[index], 128)
+            total = e.add(total, e.mul(low, 1 << (7 * index)))
+        value = e.add(value, e.mul(ends, total))
+        size = e.add(size, e.mul(ends, length))
+        ok = e.or_(ok, ends)
+        continuing = e.flag(e.both(e.ne(continuing, 0), e.le(128, last), e.lt(last, 256)))
+    return value, size, e.ne(ok, 0)
+
+
+def _heap_view(e: E, type_index):
+    """``_heap_view_info`` is not None: resource kind 0x101, state 1 or 2, extent >= 1."""
+    state = e.table(_T.RSTATE, type_index)
+    return e.both(e.ne(e.table(_T.RESOURCE, type_index), 0), e.eq(e.table(_T.RKIND, type_index), 0x101),
+                  e.either(e.eq(state, 1), e.eq(state, 2)), e.ne(e.table(_T.RINSTANCE, type_index), 0))
+
+
+def _heap_owner(e: E, type_index):
+    return e.both(e.ne(e.table(_T.RESOURCE, type_index), 0), e.eq(e.table(_T.RKIND, type_index), 0x100))
+
+
+def _triples_valid(e: E, count, at):
+    """``_heap_view_triples`` does not raise: every view token has a space-2 pointer before it and a memory effect after."""
+    p = e.p
+
+    def each():
+        index = p["q"]
+
+        def check():
+            _require(e, e.both(e.ne(index, 0), e.lt(e.add(index, 1), count)))
+            before, after = e.rd(e.add(at, e.sub(index, 1))), e.rd(e.add(at, e.add(index, 1)))
+            _require(e, e.both(e.ne(e.table(_T.PTR, before), 0), e.eq(e.table(_T.PSPACE, before), 2), e.ne(e.table(_T.MEMEFFECT, after), 0)))
+
+        e.if_(_heap_view(e, e.rd(e.add(at, index))), check)
+
+    e.for_("q", 0, count, each)
+
+
+def _end_views(tables):
+    """``_end_heap_views``: a live view token consumed by any other node ends its storage."""
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        visit = e.hd(H_VISIT)
+
+        def each():
+            value, type_ = n.vid(0) if False else e.rd(e.add(n.vids_at, p["j"])), e.rd(e.add(n.tids_at, p["j"]))
+
+            def end():
+                e.set_value(OCON, value, visit)
+                e.st(_site_word(e, 1, e.value(OST, value)), 1)
+
+            e.if_(e.both(e.eq(e.value(OSTAMP, value), visit), e.ne(e.value(OCON, value), visit), _heap_view(e, type_)), end)
+
+        e.for_("j", 0, n.no, each)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _checked(tables, covers, load: bool):
+    def build(e: E):
+        n = _Node(e)
+        source = n.vid(0)
+        _pointer(e, source)
+        _require(e, n.shape(3, 2, 2) if load else n.shape(4, 1, 2))
+        element = e.value(PEL, source)
+        size = n.attr(0)
+        _require(e, e.both(e.ne(size, 0), e.eq(size, _element_size(e, element, size)), e.eq(n.attr(1), 1)))
+        _require(e, e.eq(e.table(_T.WIDTH, n.tid(1)), 32))
+        permission = e.value(PPERM, source)
+        if load:
+            _require(e, e.both(e.ne(e.and_(permission, int(Permission.READ)), 0), e.eq(n.rtid(0), element)))
+            effect_index = 2
+        else:
+            _require(e, e.both(e.ne(e.and_(permission, int(Permission.WRITE)), 0), e.eq(n.tid(2), element)))
+            stored = n.vid(2)
+            _require(e, e.not_(e.both(e.eq(e.value(PSTAMP, stored), e.hd(H_PASS)), e.eq(e.value(PK, stored), POINTER))))
+            effect_index = 3
+        _require(e, e.eq(e.table(_T.LINK, element), 0))
+        storage = e.value(PST, source)
+        intervals = _consume_effect(e, n.vid(effect_index), storage)
+        effect_type = n.tid(effect_index)
+        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, effect_type), 0), e.eq(n.rtid(1 if load else 0), effect_type)))
+        if load:
+            start = e.value(POFF, source)
+            view_end = e.add(e.add(start, e.value(PWIN, source)), e.value(PEXT, source))
+            _require(e, e.ne(e.call(covers, intervals, start, view_end), 0))
+        _set_effect(e, e.add(n.base, 1 if load else 0), storage, intervals)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _heap_view_node(tables):
+    def build(e: E):
+        n = _Node(e)
+        _require(e, n.shape(3, 3, 2))  # a fourth (link target) operand: a later stage
+        extent, alignment = n.attr(0), n.attr(1)
+        raw, token, allocation_effect = n.vid(0), n.vid(1), n.vid(2)
+        visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
+        _require(e, e.eq(e.value(HSTAMP, raw), pass_id))
+        site, size = e.value(HST, raw), e.value(HSIZE, raw)
+        _require(e, e.both(e.eq(e.value(OSTAMP, token), visit), e.eq(e.value(OST, token), site), e.ne(e.value(OCON, token), visit), _heap_owner(e, n.tid(1))))
+        _require(e, e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0))
+        _require(e, e.both(e.ne(e.value(DEF, raw), NONE), e.eq(e.value(DEF, allocation_effect), e.value(DEF, raw))))
+        _require(e, e.both(e.ne(size, NONE), e.ne(extent, 0), e.le(extent, size)))
+        _require(e, e.both(e.power_of_two(alignment), e.le(alignment, e.value(HALIGN, raw))))
+        pointer_type = n.rtid(0)
+        _require(e, e.both(e.ne(e.table(_T.PTR, pointer_type), 0), e.eq(e.table(_T.PSPACE, pointer_type), 2)))
+        element, permission = e.table(_T.PELEM, pointer_type), e.table(_T.PPERM, pointer_type)
+        _require(e, e.le(e.table(_T.PALIGN, pointer_type), alignment))
+        view = n.rtid(1)
+        zeroed = e.value(HZERO, raw)
+        _require(e, e.both(_heap_view(e, view), e.eq(e.table(_T.RINSTANCE, view), extent), e.eq(e.flag(e.eq(e.table(_T.RSTATE, view), 1)), zeroed)))
+        _require(e, e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0))
+        _require(e, e.eq(e.table(_T.LINK, element), 0))
+        _not_record(e, element)
+        storage = n.site
+        e.st(_site_word(e, 1, storage), 0)
+        e.set_value(OCON, token, visit)
+        _set_pointer(e, n.base, {PK: POINTER, PST: storage, PEL: element, PPERM: permission, POFF: 0, PEXT: extent, PALIGN: alignment, PALIAS: storage, PWIN: 0, PREC: element, PLT: storage, PLR: element})
+        e.set_value(OST, e.add(n.base, 1), storage)
+        e.set_value(OSTAMP, e.add(n.base, 1), visit)
+        _set_effect(e, e.add(n.base, 2), storage, _initialized_list(e, zeroed, extent))
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _initialized_list(e: E, initialized, extent):
+    """A fresh interval list: [(0, extent)] when ``initialized``, else empty."""
+    p = e.p
+    e.var("fresh", e.alloc(3))
+    _require(e, e.ne(p["fresh"], NONE))
+    e.st(p["fresh"], e.flag(e.ne(initialized, 0)))
+    e.st(e.add(p["fresh"], 1), 0)
+    e.st(e.add(p["fresh"], 2), extent)
+    return p["fresh"]
+
+
+def _pointer_address(tables):
+    def build(e: E):
+        n = _Node(e)
+        _require(e, n.shape(1, 1, 1))
+        _require(e, e.both(e.eq(n.attr(0), 1), e.ne(e.table(_T.PTR, n.tid(0)), 0)))
+        width = e.table(_T.WIDTH, n.rtid(0))
+        _require(e, e.either(e.eq(width, 32), e.eq(width, 64)))
+        source = n.vid(0)
+        live = e.both(e.eq(e.value(PSTAMP, source), e.hd(H_PASS)), e.eq(e.value(PK, source), POINTER))
+        e.if_(live, lambda: _require(e, e.not_(_ended(e, e.value(PST, source)))))
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _pointer_rebase(tables):
+    def build(e: E):
+        n = _Node(e)
+        _require(e, n.shape(2, 1, 1))
+        view = n.vid(0)
+        _pointer(e, view)
+        extent = n.attr(0)
+        width = e.table(_T.WIDTH, n.tid(1))
+        _require(e, e.either(e.eq(width, 32), e.eq(width, 64)))
+        view_type, result_type = n.tid(0), n.rtid(0)
+        _require(e, e.both(e.ne(e.table(_T.PTR, view_type), 0), e.ne(e.table(_T.PTR, result_type), 0)))
+        element, permission, alignment = e.table(_T.PELEM, result_type), e.table(_T.PPERM, result_type), e.table(_T.PALIGN, result_type)
+        view_extent = e.value(PEXT, view)
+        _require(e, e.both(
+            e.eq(e.table(_T.PSPACE, view_type), e.table(_T.PSPACE, result_type)), e.eq(element, e.value(PEL, view)),
+            e.eq(e.and_(permission, e.value(PPERM, view)), permission),
+        ))
+        _require(e, e.both(e.ne(extent, 0), e.le(extent, view_extent), e.le(alignment, e.value(PALIGN, view))))
+        _not_record(e, element)
+        fields = {word: e.value(word, view) for word in range(POINTER_WORDS)}
+        fields.update({PEL: element, PPERM: permission, PEXT: extent, PALIGN: alignment, PWIN: e.sub(e.add(e.value(PWIN, view), view_extent), extent)})
+        _set_pointer(e, n.base, fields)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+# A foreign declaration record (arena): [inputs n, n type indices, outputs m, m type indices,
+#   allocator?, size count, size indices (count), pointer output, token output, alignment, zeroed,
+#   deallocator?, pointer input, token input].
+
+def _foreign_declaration(tables):
+    """``decode_foreign_function`` and the ABI check: a declaration record, or NONE."""
+    from xax_compiler import FOREIGN_ABIS, FOREIGN_FUNCTION_PREFIX, Kind
+
+    def build(e: E):
+        p = e.p
+        entity = p["entity"]
+        count = e.hd(H_COUNT)
+        _require(e, e.lt(entity, count))
+        position = e.ld(e.add(e.add(e.hd(H_TABLE), e.mul(count, _T.POSITION)), entity))
+        kind, references, length = (e.rd(e.add(position, k)) for k in range(3))
+        _require(e, e.both(e.eq(kind, int(Kind.TARGET)), e.eq(references, 0)))
+        base = e.add(position, 3)
+        end = e.add(base, length)
+        identity_length, size, ok = _uleb(e, base)
+        _require(e, ok)
+        e.var("at", e.add(base, size))
+        _require(e, e.eq(e.add(p["at"], identity_length), end))
+        for offset, byte in enumerate(FOREIGN_FUNCTION_PREFIX):
+            _require(e, e.eq(e.rd(e.add(p["at"], offset)), byte))
+        e.set("at", e.add(p["at"], len(FOREIGN_FUNCTION_PREFIX)))
+
+        def blob():
+            """A nonempty byte string; returns (start, length)."""
+            blob_length, blob_size, blob_ok = _uleb(e, p["at"])
+            _require(e, e.both(blob_ok, e.ne(blob_length, 0)))
+            start = e.add(p["at"], blob_size)
+            e.set("at", e.add(start, blob_length))
+            _require(e, e.le(p["at"], end))
+            return start, blob_length
+
+        abi_start, abi_length = blob()
+        known = None
+        for abi in FOREIGN_ABIS:
+            same = e.eq(abi_length, len(abi))
+            for offset, byte in enumerate(abi):
+                same = e.both(same, e.eq(e.rd(e.add(abi_start, offset)), byte))
+            known = same if known is None else e.either(known, same)
+        _require(e, known)
+        blob()  # library
+        blob()  # name
+        e.var("record", e.alloc(e.add(length, 16)))
+        _require(e, e.ne(p["record"], NONE))
+        e.var("out", p["record"])
+        cids = e.hd(H_CIDS)
+
+        def interface():
+            n_types, n_size, n_ok = _uleb(e, p["at"])
+            _require(e, n_ok)
+            e.set("at", e.add(p["at"], n_size))
+            e.st(p["out"], n_types)
+            e.set("out", e.add(p["out"], 1))
+
+            def each():
+                words = []
+                for word in range(4):
+                    value = e.c(0)
+                    for byte in range(8):
+                        value = e.add(value, e.mul(e.rd(e.add(p["at"], 8 * word + byte)), 1 << (8 * byte)))
+                    words.append(value)
+                e.var("found", NONE)
+
+                def match():
+                    same = None
+                    for word in range(4):
+                        here = e.eq(e.rd(e.add(cids, e.add(e.mul(p["c"], 4), word))), words[word])
+                        same = here if same is None else e.both(same, here)
+                    e.if_(same, lambda: e.set("found", p["c"]))
+
+                e.for_("c", 0, count, match)
+                e.st(p["out"], p["found"])
+                e.set("out", e.add(p["out"], 1))
+                e.set("at", e.add(p["at"], 32))
+                _require(e, e.le(p["at"], end))
+
+            e.for_("i", 0, n_types, each)
+            return n_types
+
+        inputs = interface()
+        outputs = interface()
+
+        def contract(tag: int, body):
+            present = e.both(e.lt(p["at"], end), e.eq(e.rd(p["at"]), tag))
+            e.st(p["out"], e.flag(present))
+            e.set("out", e.add(p["out"], 1))
+            e.if_(present, lambda: (e.set("at", e.add(p["at"], 1)), body()))
+
+        def field():
+            value, value_size, value_ok = _uleb(e, p["at"])
+            _require(e, value_ok)
+            e.set("at", e.add(p["at"], value_size))
+            e.st(p["out"], value)
+            e.set("out", e.add(p["out"], 1))
+            return value
+
+        def allocator():
+            sizes = field()
+            _require(e, e.ne(sizes, 0))
+            e.for_("s", 0, sizes, lambda: _require(e, e.lt(field(), inputs)))
+            pointer_output, token_output, alignment, zeroed = field(), field(), field(), field()
+            _require(e, e.both(e.le(zeroed, 1), e.lt(pointer_output, outputs), e.lt(token_output, outputs), e.power_of_two(alignment)))
+
+        def deallocator():
+            pointer_input, token_input = field(), field()
+            _require(e, e.both(e.lt(pointer_input, inputs), e.lt(token_input, inputs)))
+
+        contract(1, allocator)
+        contract(2, deallocator)
+        _require(e, e.eq(p["at"], end))
+        e.give(p["record"])
+    return _function(("entity",), build, tables)
+
+
+def _constant_value(e: E, value_id):
+    """``_constant_operand``: (value, ok) for a ``constant`` node's bits value of at most eight bytes."""
+    from xax_compiler import Kind
+
+    p = e.p
+    e.var("constant", 0)
+    e.var("constant_ok", 0)
+    definer = e.value(DEF, value_id)
+
+    def decode():
+        entity = e.rd(e.add(definer, 2))
+        count = e.hd(H_COUNT)
+
+        def known():
+            position = e.ld(e.add(e.add(e.hd(H_TABLE), e.mul(count, _T.POSITION)), entity))
+            base = e.add(position, 3)
+            length = e.rd(e.add(position, 2))
+            value_type = e.rd(e.add(base, length))
+            data_length = e.rd(e.add(base, 1))
+            data = e.add(base, 2)
+            bits = e.both(e.eq(e.rd(position), int(Kind.CONSTANT)), e.ne(e.table(_T.WIDTH, value_type), 0), e.le(data_length, 8), e.eq(e.add(data_length, 2), length))
+            value = e.c(0)
+            for byte in range(8):
+                value = e.add(value, e.mul(e.mul(e.flag(e.lt(byte, data_length)), e.rd(e.add(data, byte))), 1 << (8 * byte)))
+            e.if_(bits, lambda: (e.set("constant", value), e.set("constant_ok", 1)))
+
+        e.if_(e.lt(entity, count), known)
+
+    e.if_(e.both(e.ne(definer, NONE), e.eq(e.rd(definer), int(Operation.CONSTANT))), decode)
+    return p["constant"], p["constant_ok"]
+
+
+def _call_foreign(tables, declaration, end_views):
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
+        _require(e, e.ne(n.entity, NONE))
+        e.var("decl", e.call(declaration, n.entity))
+        _require(e, e.ne(p["decl"], NONE))
+        decl = p["decl"]
+        inputs = e.ld(decl)
+        outputs_at = e.add(e.add(decl, 1), inputs)
+        outputs = e.ld(outputs_at)
+        _require(e, e.both(e.eq(n.no, inputs), e.eq(n.nr, outputs)))
+        e.for_("j", 0, inputs, lambda: _require(e, e.eq(n.tid(0) if False else e.rd(e.add(n.tids_at, p["j"])), e.ld(e.add(e.add(decl, 1), p["j"])))))
+        e.for_("j", 0, outputs, lambda: _require(e, e.eq(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(e.add(outputs_at, 1), p["j"])))))
+        # Lend entries (code-entry pointer operands): a later stage.
+        e.for_("j", 0, inputs, lambda: _require(e, e.not_(e.both(e.eq(e.table(_T.FORMB, e.rd(e.add(n.tids_at, p["j"]))), 2), e.eq(e.table(_T.PTR, e.rd(e.add(n.tids_at, p["j"]))), 0)))))
+        # Operands naming ended storage reject.
+        e.for_("j", 0, inputs, lambda: _require(e, e.not_(e.both(
+            e.eq(e.value(PSTAMP, e.rd(e.add(n.vids_at, p["j"]))), pass_id), e.eq(e.value(PK, e.rd(e.add(n.vids_at, p["j"]))), POINTER),
+            _ended(e, e.value(PST, e.rd(e.add(n.vids_at, p["j"]))))))))
+        allocator_at = e.add(e.add(outputs_at, 1), outputs)
+        sizes = e.ld(e.add(allocator_at, 1))
+        has_allocator = e.ne(e.ld(allocator_at), 0)
+        deallocator_at = e.sel(has_allocator, e.add(e.add(allocator_at, 6), sizes), e.add(allocator_at, 1))
+        e.var("released", NONE)
+
+        def deallocate():
+            pointer_ref = e.rd(e.add(n.vids_at, e.ld(e.add(deallocator_at, 1))))
+            token_index = e.ld(e.add(deallocator_at, 2))
+            token_ref = e.rd(e.add(n.vids_at, token_index))
+            token_type = e.rd(e.add(n.tids_at, token_index))
+            _require(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)))
+            owner = e.value(OST, token_ref)
+
+            def view():
+                _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
+                                   e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)))
+                e.set("released", owner)
+
+            def heap():
+                _require(e, _heap_owner(e, token_type))
+                _require(e, e.both(e.eq(e.value(HSTAMP, pointer_ref), pass_id), e.eq(e.value(HST, pointer_ref), owner)))
+
+            e.if_(_heap_view(e, token_type), view, heap)
+            e.set_value(OCON, token_ref, visit)
+
+        e.if_(e.ne(e.ld(deallocator_at), 0), deallocate)
+        e.call(end_views, p["cursor"], p["block"])
+        # Memory frontiers: each input is consumed; the k-th carries its fact to the k-th memory output.
+        e.var("k", 0)
+        e.var("r", 0)
+
+        def each_input():
+            value, type_ = e.rd(e.add(n.vids_at, p["j"])), e.rd(e.add(n.tids_at, p["j"]))
+
+            def frontier():
+                def with_fact():
+                    _require(e, e.ne(e.value(ECON, value), visit))
+                    e.set_value(ECON, value, visit)
+
+                    # The k-th memory output: scan results for it.
+                    e.var("seen", 0)
+                    e.var("target", NONE)
+
+                    def find():
+                        e.if_(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.rt_at, p["r"]))), 0), lambda: (
+                            e.if_(e.eq(p["seen"], p["k"]), lambda: e.set("target", p["r"])), e.set("seen", e.add(p["seen"], 1))))
+
+                    e.for_("r", 0, n.nr, find)
+                    storage = e.value(EST, value)
+                    e.if_(e.both(e.ne(p["target"], NONE), e.ne(storage, p["released"]), e.not_(_ended(e, storage))),
+                          lambda: _set_effect(e, e.add(n.base, p["target"]), storage, e.value(EIV, value)))
+
+                e.if_(e.eq(e.value(ESTAMP, value), visit), with_fact)
+                e.set("k", e.add(p["k"], 1))
+
+            e.if_(e.ne(e.table(_T.MEMEFFECT, type_), 0), frontier)
+
+        e.for_("j", 0, inputs, each_input)
+        e.if_(e.ne(p["released"], NONE), lambda: e.st(_site_word(e, 1, p["released"]), 1))
+
+        def allocate():
+            pointer_output, token_output = e.ld(e.add(e.add(allocator_at, 2), sizes)), e.ld(e.add(e.add(allocator_at, 3), sizes))
+            alignment, zeroed = e.ld(e.add(e.add(allocator_at, 4), sizes)), e.ld(e.add(e.add(allocator_at, 5), sizes))
+            pointer_type = e.rd(e.add(n.rt_at, pointer_output))
+            _require(e, e.both(e.ne(e.table(_T.PTR, pointer_type), 0), e.eq(e.table(_T.PSPACE, pointer_type), 2)))
+            _require(e, _heap_owner(e, e.rd(e.add(n.rt_at, token_output))))
+            e.var("size", 1)
+            e.var("known_size", 1)
+
+            def factor():
+                value, ok = _constant_value(e, e.rd(e.add(n.vids_at, e.ld(e.add(e.add(allocator_at, 2), p["s"])))))
+                e.if_(e.eq(ok, 0), lambda: e.set("known_size", 0))
+                # Products past 2^62 decline (the bootstrap's integers are unbounded).
+                e.if_(e.both(e.ne(ok, 0), e.ne(value, 0)), lambda: _require(e, e.le(p["size"], e.udiv(1 << 62, value))))
+                e.set("size", e.mul(p["size"], value))
+
+            e.for_("s", 0, sizes, factor)
+            site = n.site
+            pointer_value = e.add(n.base, pointer_output)
+            e.set_value(HSTAMP, pointer_value, pass_id)
+            e.set_value(HST, pointer_value, site)
+            e.set_value(HSIZE, pointer_value, e.sel(e.ne(p["known_size"], 0), p["size"], NONE))
+            e.set_value(HZERO, pointer_value, zeroed)
+            e.set_value(HALIGN, pointer_value, alignment)
+            token_value = e.add(n.base, token_output)
+            e.set_value(OST, token_value, site)
+            e.set_value(OSTAMP, token_value, visit)
+
+        e.if_(has_allocator, allocate)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect=None):
+    """``_verify_heap_view_call``: borrow whole views across the call and re-establish returned ones."""
+    p = e.p
+    visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
+    _triples_valid(e, count, types_at)
+    _triples_valid(e, result_count, results_at)
+    # Passed views: (token type, storage, link record, used) in a scratch list.
+    e.var("passed", e.alloc(e.add(e.mul(count, 4), 1)))
+    _require(e, e.ne(p["passed"], NONE))
+    e.var("passed_n", 0)
+
+    def each_input():
+        index = p["q"]
+
+        def borrow():
+            pointer_ref, token_ref, effect_ref = (e.rd(e.add(n.vids_at, e.add(index, d))) for d in (-1, 0, 1))
+            view_type = e.rd(e.add(types_at, index))
+            extent = e.table(_T.RINSTANCE, view_type)
+            _require(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)))
+            owner = e.value(OST, token_ref)
+            _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
+                               e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)))
+            _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), owner)))
+            _require(e, e.not_(_ended(e, owner)))
+            _require(e, e.ne(e.value(ECON, effect_ref), visit))
+            initialized = e.eq(e.table(_T.RSTATE, view_type), 1)
+            e.if_(initialized, lambda: _require(e, e.ne(e.call(insert_effect, e.value(EIV, effect_ref), 0, extent), 0)))
+            e.set_value(OCON, token_ref, visit)
+            e.set_value(ECON, effect_ref, visit)
+            slot = e.add(p["passed"], e.mul(p["passed_n"], 4))
+            e.st(slot, view_type)
+            e.st(e.add(slot, 1), owner)
+            e.st(e.add(slot, 2), e.value(PLR, pointer_ref))
+            e.st(e.add(slot, 3), 0)
+            e.set("passed_n", e.add(p["passed_n"], 1))
+
+        e.if_(_heap_view(e, e.rd(e.add(types_at, index))), borrow)
+
+    e.for_("q", 0, count, each_input)
+
+    def each_output():
+        index = p["q"]
+
+        def give_back():
+            view_type = e.rd(e.add(results_at, index))
+            extent = e.table(_T.RINSTANCE, view_type)
+            e.var("storage", e.add(n.site, index))  # a new view: site (block, node, index)
+            e.var("link_record", NONE)
+
+            def match():
+                slot = e.add(p["passed"], e.mul(p["m"], 4))
+                e.if_(e.both(e.eq(p["storage"], e.add(n.site, index)), e.eq(e.ld(e.add(slot, 3)), 0), e.eq(e.ld(slot), view_type)), lambda: (
+                    e.set("storage", e.ld(e.add(slot, 1))), e.set("link_record", e.ld(e.add(slot, 2))), e.st(e.add(slot, 3), 1)))
+
+            e.for_("m", 0, p["passed_n"], match)
+            pointer_type = e.rd(e.add(results_at, e.sub(index, 1)))
+            element = e.table(_T.PELEM, pointer_type)
+            link_record = e.sel(e.eq(p["link_record"], NONE), element, p["link_record"])
+            base = n.base
+            _set_pointer(e, e.add(base, e.sub(index, 1)), {
+                PK: POINTER, PST: p["storage"], PEL: element, PPERM: e.table(_T.PPERM, pointer_type), POFF: 0, PEXT: extent,
+                PALIGN: e.table(_T.PALIGN, pointer_type), PALIAS: p["storage"], PWIN: 0, PREC: element, PLT: p["storage"], PLR: link_record,
+            })
+            e.set_value(OST, e.add(base, index), p["storage"])
+            e.set_value(OSTAMP, e.add(base, index), visit)
+            _set_effect(e, e.add(base, e.add(index, 1)), p["storage"], _initialized_list(e, e.flag(e.eq(e.table(_T.RSTATE, view_type), 1)), extent))
+
+        e.if_(_heap_view(e, e.rd(e.add(results_at, index))), give_back)
+
+    e.for_("q", 0, result_count, each_output)
+    # Views not given back were released by the callee: their storage ends.
+    e.for_("m", 0, p["passed_n"], lambda: e.if_(e.eq(e.ld(e.add(e.add(p["passed"], e.mul(p["m"], 4)), 3)), 0), lambda: e.st(
+        _site_word(e, 1, e.ld(e.add(e.add(p["passed"], e.mul(p["m"], 4)), 1))), 1)))
+
+
+def _view_slot(e: E, count, at, position):
+    """1 when ``position`` lies in a view triple of the ``count`` types at ``at``."""
+    p = e.p
+    e.var("in_slot", 0)
+
+    def each():
+        index = p["z"]
+        near = e.both(e.le(index, e.add(position, 1)), e.le(position, e.add(index, 1)))
+        e.if_(e.both(_heap_view(e, e.rd(e.add(at, index))), near), lambda: e.set("in_slot", 1))
+
+    e.for_("z", 0, count, each)
+    return p["in_slot"]
+
+
+def _call_direct(tables, covers):
+    """A direct call's fact effects: memory frontiers, view borrowing (stack resource contracts: a later stage)."""
     def build(e: E):
         p = e.p
         n = _Node(e)
@@ -738,13 +1298,15 @@ def _call_direct(tables):
         def scan(count, at):
             def each():
                 cid = e.rd(e.add(at, p["j"]))
-                e.if_(e.either(e.ne(e.table(_T.STACKOWNER, cid), 0), e.ne(e.table(_T.MEMEFFECT, cid), 0)), lambda: e.set("resource", 1))
-                e.if_(e.either(e.ne(e.table(_T.STACKOWNER, cid), 0), e.ne(e.table(_T.PTR, cid), 0)), lambda: e.set("stack", 1))
+                outside = e.eq(_view_slot(e, count, at, p["j"]), 0)
+                memory = e.both(e.ne(e.table(_T.MEMEFFECT, cid), 0), outside)
+                e.if_(e.either(e.ne(e.table(_T.STACKOWNER, cid), 0), memory), lambda: e.set("resource", 1))
+                e.if_(e.either(e.ne(e.table(_T.STACKOWNER, cid), 0), e.eq(e.table(_T.FORMB, cid), 2)), lambda: e.set("stack", 1))
             e.for_("j", 0, count, each)
 
         scan(n.no, n.tids_at)
         scan(n.nr, n.rt_at)
-        _require(e, e.either(e.eq(p["resource"], 0), e.eq(p["stack"], 0)))  # resource contracts: a later stage
+        _require(e, e.either(e.eq(p["resource"], 0), e.eq(p["stack"], 0)))  # stack resource contracts: a later stage
 
         def frontier():
             visit = e.hd(H_VISIT)
@@ -761,6 +1323,27 @@ def _call_direct(tables):
             e.for_("j", 0, n.no, each)
 
         e.if_(e.ne(p["resource"], 0), frontier)
+        _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _call_group(tables, covers):
+    """``call.group_member``: memory only as whole view triples, borrowed like a direct call."""
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+
+        def check(count, at):
+            def each():
+                cid = e.rd(e.add(at, p["j"]))
+                memory = e.either(e.ne(e.table(_T.STACKOWNER, cid), 0), e.ne(e.table(_T.MEMEFFECT, cid), 0), e.eq(e.table(_T.FORMB, cid), 2))
+                e.if_(memory, lambda: _require(e, e.ne(_view_slot(e, count, at, p["j"]), 0)))
+            e.for_("j", 0, count, each)
+
+        check(n.no, n.tids_at)
+        check(n.nr, n.rt_at)
+        _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -773,7 +1356,8 @@ B_PARAMS, B_NODES, B_TERM, B_INCOMING, B_SEED, B_PREVIOUS = range(BLOCK_WORDS)
 # Per-edge table words: current exit, its pass, previous exit, previous valid.
 EDGE_WORDS = 4
 E_EXIT, E_PASS, E_PREVIOUS, E_VALID = range(EDGE_WORDS)
-TYPING_COVERED_CALLS = (Operation.CALL_DIRECT, Operation.CONSTANT)
+# Nodes whose operands are not ended by ``_end_heap_views`` afterwards (they borrow or release views themselves).
+VIEW_KEEPING = (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.HEAP_VIEW)
 
 
 def _block_word(e: E, block, word: int):
@@ -784,24 +1368,75 @@ def _edge_word(e: E, edge, word: int):
     return e.add(e.add(e.hd(H_EDGES), e.mul(edge, EDGE_WORDS)), word)
 
 
-def _node_dispatch(tables, handlers):
-    """One node: typing proven where the typing function covers it, then its fact effects."""
+def _node_dispatch(tables, handlers, end_views):
+    """One node: typing proven where the typing function covers it, its fact effects, then ended views."""
     def build(e: E):
         p = e.p
         cursor = p["cursor"]
         operation, key = e.rd(cursor), e.rd(e.add(cursor, 1))
+        e.set_hd(H_NODE, cursor)  # diagnosis: the node being modelled
         # A node the typing function covers must be proven by it.
         e.if_(e.ne(key, NONE), lambda: _require(e, e.eq(e.ld(e.add(2, key)), _T.PROVEN)))
+        e.var("next", NONE)
+        e.var("handled", 0)
         for code, handler in handlers.items():
-            e.if_(e.eq(operation, int(code)), lambda handler=handler: e.give(e.call(handler, cursor, p["block"])))
-        # Any other node: modelled only when typing covers it.  It has no fact effects here:
-        # a constant's null-link fact cannot arise, because graphs with links decline.
-        _require(e, e.ne(key, NONE))
-        e.give(_Node(e).next)
+            e.if_(e.eq(operation, int(code)), lambda handler=handler: (e.set("next", e.call(handler, cursor, p["block"])), e.set("handled", 1)))
+        _require(e, e.ne(p["next"], NONE) if False else e.either(e.ne(p["handled"], 0), e.ne(key, NONE)))
+        e.if_(e.ne(p["handled"], 0), lambda: _require(e, e.ne(p["next"], NONE)), lambda: e.set("next", _Node(e).next))
+        # Any node without a view-keeping contract ends the live views whose tokens it consumes.
+        keeping = e.either(*(e.eq(operation, int(code)) for code in VIEW_KEEPING))
+        e.if_(e.not_(keeping), lambda: e.call(end_views, cursor, p["block"]))
+        e.give(p["next"])
     return _function(("cursor", "block"), build, tables)
 
 
-def _block(tables, merge, empty, node):
+def _return_views(e: E, term, values, covers):
+    """``_verify_heap_view_return``: returned views are whole, live, and give borrowed views back in order."""
+    p = e.p
+    visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
+    ids_at, types_at = e.add(term, 2), e.add(e.add(term, 2), values)
+    _triples_valid(e, values, types_at)
+    entry_params = e.ld(_block_word(e, e.hd(H_ENTRY), B_PARAMS))
+    entry_count, entry_types = e.rd(e.add(entry_params, 1)), e.add(entry_params, 2)
+    # Borrowed views given back so far, per entry view position (flags in a scratch list).
+    e.var("given", e.alloc(e.add(entry_count, 1)))
+    _require(e, e.ne(p["given"], NONE))
+    e.for_("g", 0, entry_count, lambda: e.st(e.add(p["given"], p["g"]), 0))
+
+    def each():
+        index = p["q"]
+
+        def check():
+            pointer_ref, token_ref, effect_ref = (e.rd(e.add(ids_at, e.add(index, d))) for d in (-1, 0, 1))
+            view_type = e.rd(e.add(types_at, index))
+            extent = e.table(_T.RINSTANCE, view_type)
+            _require(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)))
+            owner = e.value(OST, token_ref)
+            _require(e, e.not_(_ended(e, owner)))
+            _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
+                               e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0), e.eq(e.value(PEXT, pointer_ref), extent)))
+            _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), owner), e.ne(e.value(ECON, effect_ref), visit)))
+            e.if_(e.eq(e.table(_T.RSTATE, view_type), 1), lambda: _require(e, e.ne(e.call(covers, e.value(EIV, effect_ref), 0, extent), 0)))
+            # Order: the next borrowed view of this type, else not a borrowed view at all.
+            e.var("expected", NONE)
+            e.var("borrowed", 0)
+
+            def scan():
+                g = p["g"]
+                is_view = _heap_view(e, e.rd(e.add(entry_types, g)))
+                e.if_(e.both(is_view, e.eq(e.add(1, g), owner)), lambda: e.set("borrowed", 1))
+                e.if_(e.both(is_view, e.eq(p["expected"], NONE), e.eq(e.ld(e.add(p["given"], g)), 0), e.eq(e.rd(e.add(entry_types, g)), view_type)),
+                      lambda: (e.set("expected", g), e.st(e.add(p["given"], g), 1)))
+
+            e.for_("g", 0, entry_count, scan)
+            e.if_(e.ne(p["expected"], NONE), lambda: _require(e, e.eq(owner, e.add(1, p["expected"]))), lambda: _require(e, e.eq(p["borrowed"], 0)))
+
+        e.if_(_heap_view(e, e.rd(e.add(types_at, index))), check)
+
+    e.for_("q", 0, values, each)
+
+
+def _block(tables, merge, empty, node, covers):
     def build(e: E):
         p = e.p
         block = p["block"]
@@ -864,12 +1499,14 @@ def _block(tables, merge, empty, node):
             _require(e, e.ne(p["cursor"], NONE))
 
         e.for_("m", 0, e.rd(nodes_at), each_node)
-        # Terminator: no live storage at a return or trap; then the exit facts of every edge.
+        # Terminator: no live storage at a return or trap; returned views; then every edge's exit facts.
         term = e.ld(_block_word(e, block, B_TERM))
         kind, values = e.rd(term), e.rd(e.add(term, 1))
         leaving = e.either(e.eq(kind, int(TerminatorKind.RETURN)), e.eq(kind, int(TerminatorKind.TRAP)))
         e.for_("s", 0, e.hd(H_S), lambda: _require(e, e.not_(e.both(leaving, e.ne(e.ld(_site_word(e, 0, p["s"])), 0), e.not_(_ended(e, p["s"]))))))
-        e.var("edge_at", e.add(e.add(term, 3), values))
+        e.if_(e.eq(kind, int(TerminatorKind.RETURN)), lambda: _return_views(e, term, values, covers))
+        edges_count_at = e.add(e.add(term, 2), e.mul(values, 2))
+        e.var("edge_at", e.add(edges_count_at, 1))
 
         def each_exit():
             at = p["edge_at"]
@@ -881,14 +1518,14 @@ def _block(tables, merge, empty, node):
                 value = e.rd(e.add(e.add(at, 3), p["j"]))
                 e.if_(e.both(e.eq(e.value(PSTAMP, value), pass_id), e.ne(e.value(PK, value), NO_POINTER)), lambda: [
                     e.st(_slot(e, p["exit"], p["j"], word), e.value(word, value)) for word in range(POINTER_WORDS)])
-                e.if_(e.both(e.eq(e.value(OSTAMP, value), e.hd(H_VISIT)), e.ne(e.value(OCON, value), e.hd(H_VISIT))),
+                e.if_(e.both(e.eq(e.value(OSTAMP, value), visit), e.ne(e.value(OCON, value), visit)),
                       lambda: e.st(_slot(e, p["exit"], p["j"], POINTER_WORDS), e.value(OST, value)))
 
                 def effect():
                     e.st(_slot(e, p["exit"], p["j"], POINTER_WORDS + 1), e.value(EST, value))
                     e.st(_slot(e, p["exit"], p["j"], POINTER_WORDS + 2), e.value(EIV, value))
 
-                e.if_(e.both(e.eq(e.value(ESTAMP, value), e.hd(H_VISIT)), e.ne(e.value(ECON, value), e.hd(H_VISIT))), effect)
+                e.if_(e.both(e.eq(e.value(ESTAMP, value), visit), e.ne(e.value(ECON, value), visit)), effect)
 
             e.for_("j", 0, count_, each_argument)
 
@@ -902,9 +1539,39 @@ def _block(tables, merge, empty, node):
             e.st(_edge_word(e, edge, E_PASS), pass_id)
             e.set("edge_at", e.add(e.add(at, 3), count_))
 
-        e.for_("x", 0, e.rd(e.add(e.add(term, 2), values)), each_exit)
+        e.for_("x", 0, e.rd(edges_count_at), each_exit)
         e.give(1)
     return _function(("block",), build, tables)
+
+
+def _entry_facts(e: E, empty, entry_params):
+    """``_entry_heap_view_facts``: each borrowed view triple of the entry seeds its own storage (-2, index)."""
+    p = e.p
+    count, types = e.rd(e.add(entry_params, 1)), e.add(entry_params, 2)
+    _triples_valid(e, count, types)
+    e.var("entry_facts", e.call(empty, count))
+    _require(e, e.ne(p["entry_facts"], NONE))
+    record = p["entry_facts"]
+
+    def each():
+        index = p["i"]
+
+        def seed():
+            view_type, pointer_type = e.rd(e.add(types, index)), e.rd(e.add(types, e.sub(index, 1)))
+            storage = e.add(1, index)
+            element = e.table(_T.PELEM, pointer_type)
+            fields = {PK: POINTER, PST: storage, PEL: element, PPERM: e.table(_T.PPERM, pointer_type), POFF: 0, PEXT: e.table(_T.RINSTANCE, view_type),
+                      PALIGN: e.table(_T.PALIGN, pointer_type), PALIAS: storage, PWIN: 0, PREC: element, PLT: storage, PLR: element}
+            for word, value in fields.items():
+                e.st(_slot(e, record, e.sub(index, 1), word), value)
+            e.st(_slot(e, record, index, POINTER_WORDS), storage)
+            e.st(_slot(e, record, e.add(index, 1), POINTER_WORDS + 1), storage)
+            e.st(_slot(e, record, e.add(index, 1), POINTER_WORDS + 2), _initialized_list(e, e.flag(e.eq(e.table(_T.RSTATE, view_type), 1)), e.table(_T.RINSTANCE, view_type)))
+
+        e.if_(_heap_view(e, e.rd(e.add(types, index))), seed)
+
+    e.for_("i", 0, count, each)
+    return record
 
 
 def _engine(tables, block, empty, record_equal):
@@ -912,6 +1579,7 @@ def _engine(tables, block, empty, record_equal):
     def build(e: E):
         p = e.p
         e.set_hd(H_STATUS, 0)
+        e.set_hd(H_REASON, 0)
         _require(e, e.ne(e.rd(e.hd(H_FACTS_AT)), 0))  # no facts section: nothing to decide
         at = e.add(e.hd(H_FACTS_AT), 1)
         for field, offset in ((H_V, 0), (H_S, 1), (H_E, 2), (H_B, 3), (H_ENTRY, 4)):
@@ -933,13 +1601,10 @@ def _engine(tables, block, empty, record_equal):
         e.set_hd(H_VISIT, 0)
         e.set_hd(H_PASS, 0)
         e.for_("w", values, arena, lambda: e.st(p["w"], 0))
-        # Stage S4d.2b declines graphs with links, heap views, heap owners, or a stack-owner entry.
-        def each_type():
-            t = p["t"]
-            _require(e, e.eq(e.table(_T.LINK, t), 0))
-            _require(e, e.not_(e.both(e.ne(e.table(_T.RESOURCE, t), 0), e.either(e.eq(e.table(_T.RKIND, t), 0x100), e.eq(e.table(_T.RKIND, t), 0x101)))))
-        e.for_("t", 0, e.hd(H_COUNT), each_type)
-        # Block positions.
+        e.for_("v", 0, V, lambda: e.set_value(DEF, p["v"], NONE))
+        # Stage S4d.2c declines graphs with links.
+        e.for_("t", 0, e.hd(H_COUNT), lambda: _require(e, e.eq(e.table(_T.LINK, p["t"]), 0)))
+        # Block positions, and each node result's defining record.
         e.var("cursor", e.add(e.hd(H_KINDS), S))
 
         def place():
@@ -951,28 +1616,32 @@ def _engine(tables, block, empty, record_equal):
             e.set("cursor", e.add(nodes_at, 1))
 
             def skip_node():
-                e.p.let("skip", B64, e.rd(e.add(p["cursor"], 5)))
-                attrs_end = e.add(e.add(p["cursor"], 6), p["skip"])
+                record = p["cursor"]
+                attributes = e.rd(e.add(record, 5))
+                attrs_end = e.add(e.add(record, 6), attributes)
                 operands = e.rd(attrs_end)
                 results_at = e.add(e.add(attrs_end, 1), e.mul(operands, 2))
-                e.set("cursor", e.add(e.add(results_at, 1), e.rd(results_at)))
+                results = e.rd(results_at)
+                result_base = e.rd(e.add(record, 4))
+                e.for_("r", 0, results, lambda: e.set_value(DEF, e.add(result_base, p["r"]), record))
+                e.set("cursor", e.add(e.add(results_at, 1), results))
 
             e.for_("m", 0, e.rd(nodes_at), skip_node)
             e.st(_block_word(e, b, B_TERM), p["cursor"])
             term_values = e.rd(e.add(p["cursor"], 1))
-            e.var("at", e.add(e.add(p["cursor"], 3), term_values))
-            e.for_("x", 0, e.rd(e.add(e.add(p["cursor"], 2), term_values)), lambda: e.set("at", e.add(e.add(p["at"], 3), e.rd(e.add(p["at"], 2)))))
+            edges_at = e.add(e.add(p["cursor"], 2), e.mul(term_values, 2))
+            e.var("at", e.add(edges_at, 1))
+            e.for_("x", 0, e.rd(edges_at), lambda: e.set("at", e.add(e.add(p["at"], 3), e.rd(e.add(p["at"], 2)))))
             e.st(_block_word(e, b, B_INCOMING), p["at"])
             e.set("cursor", e.add(e.add(p["at"], 1), e.rd(p["at"])))
 
         e.for_("b", 0, B, place)
-        # Entry facts (stage S4d.2b: no borrowed views) and no stack-owner entry parameter.
+        e.set_hd(H_CIDS, p["cursor"])
+        # Entry facts (borrowed views); a stack-owner entry parameter (resource entry contracts) declines.
         entry_params = e.ld(_block_word(e, e.hd(H_ENTRY), B_PARAMS))
         entry_count = e.rd(e.add(entry_params, 1))
         e.for_("i", 0, entry_count, lambda: _require(e, e.eq(e.table(_T.STACKOWNER, e.rd(e.add(e.add(entry_params, 2), p["i"]))), 0)))
-        e.var("entry_facts", e.call(empty, entry_count))
-        _require(e, e.ne(p["entry_facts"], NONE))
-        e.set_hd(H_ENTRY_FACTS, p["entry_facts"])
+        e.set_hd(H_ENTRY_FACTS, _entry_facts(e, empty, entry_params))
         # Passes.
         e.var("passes", 0)
         e.var("done", 0)
@@ -1025,6 +1694,8 @@ def build_engine():
     empty = add(_empty_record(tables))
     merge = add(_merge(tables, empty, intersect))
     record_equal = add(_record_equal(tables, list_equal))
+    end_views = add(_end_views(tables))
+    declaration = add(_foreign_declaration(tables))
     handlers = {
         Operation.STACK_ALLOC: add(_stack_alloc(tables)),
         Operation.STACK_END: add(_stack_end(tables)),
@@ -1032,9 +1703,16 @@ def build_engine():
         Operation.LOAD_BITS_LE: add(_load(tables, covers)),
         Operation.STORE_BITS_LE: add(_store(tables, insert)),
         Operation.POINTER_CAST: add(_pointer_cast(tables)),
-        Operation.CALL_DIRECT: add(_call_direct(tables)),
+        Operation.CALL_DIRECT: add(_call_direct(tables, covers)),
+        Operation.CHECKED_LOAD_BITS_LE: add(_checked(tables, covers, True)),
+        Operation.CHECKED_STORE_BITS_LE: add(_checked(tables, covers, False)),
+        Operation.HEAP_VIEW: add(_heap_view_node(tables)),
+        Operation.POINTER_ADDRESS: add(_pointer_address(tables)),
+        Operation.POINTER_REBASE: add(_pointer_rebase(tables)),
+        Operation.CALL_FOREIGN: add(_call_foreign(tables, declaration, end_views)),
+        Operation.CALL_GROUP_MEMBER: add(_call_group(tables, covers)),
     }
-    node = add(_node_dispatch(tables, handlers))
-    block = add(_block(tables, merge, empty, node))
+    node = add(_node_dispatch(tables, handlers, end_views))
+    block = add(_block(tables, merge, empty, node, covers))
     engine = add(_engine(tables, block, empty, record_equal))
     return engine, tuple(objects)
