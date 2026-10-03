@@ -162,7 +162,7 @@
     },
     {
       "id": "aarch64-baremetal",
-      "level": "R1",
+      "level": "R2",
       "runtime_requirement": "none; the board image contains only the generated reset stub, fault stub, and vector table (ADR-128)",
       "fields": {
         "semantic_expressibility": [
@@ -202,13 +202,22 @@
           "EXECUTED",
           "compiler/tests/test_xax_board.py",
           "compiler/benchmarks/aarch64_virt_board_evidence.json"
-        ]
+        ],
+        "ffi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_elf_link.py",
+          "compiler/benchmarks/board_linked_c_evidence.json"
+        ],
+        "dynamic_linking": "NOT_APPLICABLE"
       },
       "blockers": [
         "executed only under QEMU (semihosting harness and the virt board), not hardware (OI-44)",
-        "no linking of foreign objects into bare-metal images (ffi), so R2 is not met",
-        "one board package (QEMU virt) and one interrupt source; no DMA program or nested interrupts; no static storage shared by handler and reset entry"
-      ]
+        "one board package (QEMU virt) and one interrupt source; no DMA program or nested interrupts; no static storage shared by handler and reset entry",
+        "static linking covers an AArch64 relocation subset (no GOT, TLS, or PLT forms) and freestanding objects only"
+      ],
+      "not_applicable": {
+        "dynamic_linking": "a bare-metal board image has no loader; foreign code is linked statically into the image (ADR-129)"
+      }
     },
     {
       "id": "wasm32-core",
@@ -714,7 +723,10 @@
         "dispatch-loop lowering: Collatz is 6.9x an equivalent glslang kernel on llvmpipe; structured lowering of reducible CFGs is next",
         "integer words only: no floats, 64-bit integers, calls, workgroup memory, barriers, or atomics",
         "no XAX host program: Vulkan instance, buffers, and dispatch come from a test harness (R2)"
-      ]
+      ],
+      "not_applicable": {
+        "dynamic_linking": "a SPIR-V module is loaded whole by the Vulkan driver; there is no symbol-level dynamic linking"
+      }
     },
     {
       "id": "rtos-embedded-mcu",

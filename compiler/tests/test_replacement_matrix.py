@@ -39,6 +39,17 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertIn("compiler/benchmarks/jsonmin_evidence.json", practical)
         self.assertEqual(derived_level(row), "R3")
 
+    def test_not_applicable_needs_a_justification_and_only_covers_dynamic_linking(self):
+        bad = copy.deepcopy(MATRIX)
+        row = next(r for r in bad["platforms"] if r["id"] == "aarch64-baremetal")
+        self.assertEqual(derived_level(row), "R2")
+        del row["not_applicable"]
+        self.assertIn("aarch64-baremetal.dynamic_linking: NOT_APPLICABLE needs a justification in not_applicable", validate(bad, ROOT))
+        self.assertEqual(derived_level(row), "R1")
+        row["not_applicable"] = {"ffi": "no foreign code", "dynamic_linking": "no loader"}
+        row["fields"]["ffi"] = "NOT_APPLICABLE"
+        self.assertEqual(derived_level(row), "R1")
+
     def test_measured_but_uncompetitive_rows_stop_at_r3(self):
         row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64"))
         self.assertTrue(all(row["fields"][field][0] == "MEASURED" for field in ("performance", "memory", "code_size")))

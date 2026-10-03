@@ -36,6 +36,7 @@ from typing import Mapping, Sequence
 
 from xax_compiler import (
     AAPCS64_LINUX_C_ABI,
+    AAPCS64_STATIC_C_ABI,
     FloatFormat,
     Permission,
     SYSV_X86_64_C_ABI,
@@ -225,8 +226,8 @@ def import_c_functions(
     flags: Sequence[str] = (),
 ) -> CImport:
     """Import exactly ``names`` from ``headers`` as declarations of ``library``."""
-    if abi not in (SYSV_X86_64_C_ABI, AAPCS64_LINUX_C_ABI):
-        raise ValueError("the C importer targets sysv-x86_64-c or aapcs64-linux-c")
+    if abi not in (SYSV_X86_64_C_ABI, AAPCS64_LINUX_C_ABI, AAPCS64_STATIC_C_ABI):
+        raise ValueError("the C importer targets sysv-x86_64-c, aapcs64-linux-c, or aapcs64-c")
     overrides = dict(overrides or {})
     unknown = set(overrides.values()) - {"pure"}
     if unknown:

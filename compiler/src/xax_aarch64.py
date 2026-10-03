@@ -16,6 +16,7 @@ from xax_compiler import (
     store_resolver,
     borrowed_view_returns,
     AAPCS64_LINUX_C_ABI,
+    AAPCS64_STATIC_C_ABI,
     AARCH64_LINUX_ABI,
     AARCH64_LINUX_ELF_DYNAMIC_FORMAT,
     AARCH64_LINUX_IDENTITIES,
@@ -611,6 +612,8 @@ def _require_foreign_abi(declaration, target: NativeTargetDescription, graph_obj
     """
     if target.abi == AARCH64_LINUX_ABI:
         allowed = (LINUX_AARCH64_SYSCALL_ABI,) + ((AAPCS64_LINUX_C_ABI,) if target.image_format == AARCH64_LINUX_ELF_DYNAMIC_FORMAT else ())
+    elif target.identity == BOARD_IDENTITY:
+        allowed = (AAPCS64_STATIC_C_ABI,)  # resolved by the board image's static link (ADR-129)
     else:
         allowed = (ANDROID_AAPCS64_C_ABI,)
     if declaration.abi not in allowed:

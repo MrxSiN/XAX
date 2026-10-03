@@ -745,3 +745,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Board profile 5 and `aarch64-qemu-virt-v1`: a bare-metal XAX program prints over UART MMIO, takes three GICv2 virtual-timer interrupts through a contract-checked XAX handler, and powers off via PSCI (5,420-byte image, exact output). U1.6 is executed (emulated); the row stays R1 because bare metal cannot link foreign objects yet.
 - The semihosting AArch64 harness now passes `-net none`: with `qemu-system-aarch64` installed but no EFI ROMs, its default NIC failed to start (3 tests errored in the commit that added the board; fixed in the next commit). Full suite: 853 passed, 17 skipped.
 
+## Static linking into bare-metal images (ADR-129) — 2026-10-03
+
+- `xax_elf_link` links freestanding AArch64 ELF objects (exact relocation subset) into board images. XAX calls C through `aapcs64-c` declarations imported from the header, including a C-side allocator under an explicit contract. The aarch64-baremetal row R1 → R2 (emulated). Matrix: `NOT_APPLICABLE` needs a justification and satisfies only `dynamic_linking`.
+
