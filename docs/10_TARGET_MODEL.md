@@ -475,3 +475,7 @@ helper or silently changing semantics.
 
 The target decoder knows six architectures: 1 x86-64, 2 wasm32, 3 AArch64, 4 the SIMT accelerator packet, 5 the JVM (ADR-112), and 6 RISC-V RV64 (ADR-113). Architectures 5 and 6 carry no register lists, because their convention is fixed by the identity (as for wasm32). Each accepts exactly one machine tuple. Adding them required no new operation, type form, or terminator. A package states its operation set, and every backend rejects operations outside it, so the JVM and RISC-V can each start with a subset and grow independently.
 
+
+## 24. Architecture 7 and a second AArch64 platform (2026-10-03)
+
+Architecture 7 is the SPIR-V logical SIMT device (`spirv-vulkan-compute-v1`, ADR-124): one machine tuple, no register lists, and the integer operation subset. A kernel needs no new semantic form: invocation index and storage buffers come from the target-owned entry contract, and the target checks the race rule that makes concurrent invocations equivalent to sequential ones. The AArch64 architecture gained ABI 5 (Linux, ADR-123) beside 3 (bare metal) and 4 (Android). The machine is the same; the platform package decides the foreign conventions, the container, and the process-entry contract. Each ABI number owns its foreign conventions, and the backend rejects the others.
