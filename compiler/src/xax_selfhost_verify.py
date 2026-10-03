@@ -1,24 +1,33 @@
-"""Self-hosting step S6b.2 (ADR-144): store-level and object-level verification as XAX semantics.
+"""Self-hosting steps S6b.2 and S6b.3 (ADR-144, ADR-146): store-level and object-level verification as XAX semantics.
 
 One XAX program, run natively like the typing program (ADR-132), reads every
 store object (the S5b object table: kind, reference indices, CID, and the
-body bytes, or for a graph fragment the S3c XAX graph-decoder stream) and
-decides, with the bootstrap's rules:
+body bytes; for a graph fragment the S3c XAX graph-decoder stream, then its
+body bytes) and decides, with the bootstrap's rules:
 
-* functions (``_verify_function``, ordinary graphs): the exact interface
-  body, a graph-fragment carrier, parameter and return types that are types
-  the XAX object verdicts proved (ADR-143), exact reference use, no group
-  member calls, and the graph contract: the entry block's parameters are the
-  interface's, and every ``return`` returns values of the interface's types;
+* functions (``_verify_function``): for an ordinary graph, the exact
+  interface body, a graph-fragment carrier, parameter and return types that
+  are types the XAX object verdicts proved (ADR-143), exact reference use, no
+  group member calls, and the graph contract (the entry block's parameters
+  are the interface's, and every ``return`` returns values of its types); for
+  a group member function, ``[group, member]`` naming a proven group and a
+  member it has;
+* recursion groups (``_verify_recursion_group``): the member list, each
+  member graph's contract, every ``call.group_member`` naming a member and
+  matching its interface, one recursive strongly connected component, and
+  the canonical member order (member keys: graph reference CIDs, the graph
+  bytes without member-call spans, parameter and return types);
+* targets (``decode_native_target``): identity-only carriers and the general
+  and concurrency profiles of every supported architecture;
 * module and program-root reference lists (``_verify_reference_list``);
 * call contracts (``_decode_call_contract``);
 * the store: every object reachable from the root, no reference cycle.
 
-Its output is a verdict per object (and each proven function's graph object)
-and a store verdict.  A verdict holds only when the bootstrap accepts; every
-other object, and every rejection, takes the bootstrap path and its exact
-diagnostic.  Recursion groups, group member functions, targets, and build
-objects stay with the bootstrap.
+Its output is a verdict per object (each proven function's graph object, each
+proven group's member graphs) and a store verdict.  A verdict holds only when
+the bootstrap accepts; every other object, and every rejection, takes the
+bootstrap path and its exact diagnostic.  Accelerator, platform, and board
+targets and build objects stay with the bootstrap.
 """
 
 from __future__ import annotations
@@ -155,8 +164,23 @@ def _skip_values(e: E, name: str):
     e.for_("sv", 0, count, lambda: e.set(name, e.add(e.add(p[name], 3), e.flag(e.eq(e.rd(p[name]), 1)))))
 
 
+def _interface(e: E, obj, name: str, end):
+    """Parameter and return types read at ``p[name]`` into a new ``[P, types, R, types]`` record."""
+    p = e.p
+    e.var(f"{name}_if", e.alloc(e.add(e.sub(end, p[name]), 3)))  # at most one type per body byte
+    _no(e, e.eq(p[f"{name}_if"], NONE))
+    record = p[f"{name}_if"]
+    e.var(f"{name}_np", _read(e, name, end))
+    e.st(record, p[f"{name}_np"])
+    e.for_("q", 0, p[f"{name}_np"], lambda: e.st(e.add(e.add(p[f"{name}_if"], 1), p["q"]), _type_reference(e, obj, name, end)))
+    e.var(f"{name}_rt", e.add(e.add(p[f"{name}_if"], 1), p[f"{name}_np"]))
+    e.st(p[f"{name}_rt"], _read(e, name, end))
+    e.for_("q", 0, e.ld(p[f"{name}_rt"]), lambda: e.st(e.add(e.add(p[f"{name}_rt"], 1), p["q"]), _type_reference(e, obj, name, end)))
+    return p[f"{name}_if"]
+
+
 def _function_ok(tables):
-    """``_verify_function`` for an ordinary function; 1 (and its graph object in GRAPHS) or 0."""
+    """``_verify_function``: 1 (and the graph object, or NONE for a group member function, in GRAPHS) or 0."""
     def build(e: E):
         p = e.p
         f = p["f"]
@@ -170,19 +194,41 @@ def _function_ok(tables):
         e.var("gi", graph_index)
         _no(e, e.le(p["refs"], p["gi"]))
         e.var("graph", _reference(e, f, p["gi"]))
-        _no(e, e.either(e.eq(p["graph"], NONE), e.ne(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT))))
+        _no(e, e.eq(p["graph"], NONE))
+
+        def member_function():
+            # ``decode_group_member_function``: [group, member], the group proven (S6b.3), member < its size.
+            e.var("member", _read(e, "fa", p["fend"]))
+            _no(e, e.ne(p["fa"], p["fend"]))
+            _no(e, e.ne(e.ld(e.add(VERDICTS_AT, p["graph"])), 1))
+            _no(e, e.le(e.ld(e.ld(e.add(GRAPHS_AT, p["graph"]))), p["member"]))
+            e.st(e.add(GRAPHS_AT, f), NONE)
+            e.give(1)
+
+        e.if_(e.both(e.eq(p["refs"], 1), e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP))), member_function)
+        _no(e, e.ne(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT)))
         _mark(e, p["gi"])
-        e.var("lists", e.alloc(e.add(e.sub(p["fend"], _payload(e, f)), 2)))  # at most one type per body byte
-        _no(e, e.eq(p["lists"], NONE))
-        e.var("np", _read(e, "fa", p["fend"]))
-        e.for_("q", 0, p["np"], lambda: e.st(e.add(p["lists"], p["q"]), _type_reference(e, f, "fa", p["fend"])))
-        e.var("nr", _read(e, "fa", p["fend"]))
-        e.var("returns", e.add(p["lists"], p["np"]))
-        e.for_("q", 0, p["nr"], lambda: e.st(e.add(p["returns"], p["q"]), _type_reference(e, f, "fa", p["fend"])))
+        e.var("iface", _interface(e, f, "fa", p["fend"]))
         _no(e, e.ne(p["fa"], p["fend"]))
         _no(e, e.eq(_all_marked(e, p["refs"]), 0))
-        # The graph: block and node positions, no group member calls.
-        g = p["graph"]
+        _no(e, e.ne(e.call(_FN["graph"], p["graph"], p["iface"], NONE, NONE), 1))
+        e.st(e.add(GRAPHS_AT, f), p["graph"])
+        e.give(1)
+    return _function(("f",), build, tables)
+
+
+def _graph_ok(tables):
+    """The graph contract of ``g`` against interface record ``iface`` (``_verify_graph_contract``).  Outside a group
+    (``members`` NONE) no node is a group member call; in a group (``members`` = ``[count, interface records]``)
+    each member call names a member and has its interface, and the calls are written to ``calls`` as
+    ``[count, (member, body span start, body span end) in node order]``."""
+    def build(e: E):
+        p = e.p
+        g = p["g"]
+        e.var("np", e.ld(p["iface"]))
+        e.var("lists", e.add(p["iface"], 1))
+        e.var("nr", e.ld(e.add(p["lists"], p["np"])))
+        e.var("returns", e.add(e.add(p["lists"], p["np"]), 1))
         stream = _payload(e, g)
         e.var("gs", stream)
         e.var("B", e.rd(p["gs"]))
@@ -206,7 +252,7 @@ def _function_ok(tables):
 
             def node():
                 e.st(e.add(p["node_at"], p["nodes"]), p["ga"])
-                _no(e, e.eq(e.rd(p["ga"]), int(Operation.CALL_GROUP_MEMBER)))
+                _no(e, e.both(e.eq(p["members"], NONE), e.eq(e.rd(p["ga"]), int(Operation.CALL_GROUP_MEMBER))))
                 e.set("ga", _node_end(e, p["ga"]))
                 e.st(e.add(p["results_at"], p["nodes"]), p["ne_results"])
                 e.set("nodes", e.add(p["nodes"], 1))
@@ -271,9 +317,350 @@ def _function_ok(tables):
             e.if_(e.eq(e.rd(p["ra"]), int(TerminatorKind.RETURN)), returning)
 
         e.for_("b", 0, p["B"], returns_of)
-        e.st(e.add(GRAPHS_AT, f), g)
+
+        def member_calls():
+            # ``_verify_recursion_group``: a member index in range, the member's parameter and result types.
+            e.var("mc", 0)
+
+            def check():
+                at = e.ld(e.add(p["node_at"], p["nn"]))
+                e.var("mc_at", at)
+
+                def group_call():
+                    e.var("gm", e.rd(e.add(p["mc_at"], 1)))
+                    _no(e, e.le(e.ld(p["members"]), p["gm"]))
+                    e.var("gm_if", e.ld(e.add(e.add(p["members"], 1), p["gm"])))
+                    e.var("gm_np", e.ld(p["gm_if"]))
+                    e.var("ma", e.add(p["mc_at"], 4))
+                    _no(e, e.ne(e.rd(p["ma"]), p["gm_np"]))
+                    e.set("ma", e.add(p["ma"], 1))
+                    e.for_("q", 0, p["gm_np"], lambda: _no(e, e.ne(value_type("ma"), e.ld(e.add(e.add(p["gm_if"], 1), p["q"])))))
+                    e.var("gm_rt", e.add(e.add(p["gm_if"], 1), p["gm_np"]))
+                    e.var("gm_results", e.ld(e.add(p["results_at"], p["nn"])))
+                    _no(e, e.ne(e.rd(p["gm_results"]), e.ld(p["gm_rt"])))
+                    e.for_("q", 0, e.ld(p["gm_rt"]), lambda: _no(e, e.ne(_reference(e, g, e.rd(e.add(e.add(p["gm_results"], 1), p["q"]))),
+                                                                          e.ld(e.add(e.add(p["gm_rt"], 1), p["q"])))))
+                    slot = e.add(e.add(p["calls"], 1), e.mul(p["mc"], 3))
+                    e.st(slot, p["gm"])
+                    e.st(e.add(slot, 1), e.rd(e.add(p["mc_at"], 2)))
+                    e.st(e.add(slot, 2), e.rd(e.add(p["mc_at"], 3)))
+                    e.set("mc", e.add(p["mc"], 1))
+
+                e.if_(e.eq(e.rd(p["mc_at"]), int(Operation.CALL_GROUP_MEMBER)), group_call)
+
+            e.for_("nn", 0, p["nodes"], check)
+            e.st(p["calls"], p["mc"])
+
+        e.if_(e.ne(p["members"], NONE), member_calls)
         e.give(1)
-    return _function(("f",), build, tables)
+    return _function(("g", "iface", "members", "calls"), build, tables)
+
+
+def _cid_word(e: E, obj, k):
+    return e.rd(e.add(e.add(e.add(_rec(e, obj), 2), _references(e, obj)), k))
+
+
+def _group_ok(tables):
+    """``_verify_recursion_group``: the member list (``_decode_recursion_group``), each member graph's contract and
+    member calls, one recursive strongly connected component, and the canonical member order.  The order check
+    compares member keys by their graphs' reference CIDs; a tie there (decided by the erased graph bytes in the
+    bootstrap) gives 0.  GRAPHS holds ``[count, member graphs]`` for a proven group."""
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        e.var("refs", _references(e, o))
+        e.var("ga", _payload(e, o))
+        end = e.add(p["ga"], e.rd(e.sub(p["ga"], 1)))
+        e.var("gend", end)
+        _clear_marks(e, p["refs"])
+        e.var("count", _read(e, "ga", p["gend"]))
+        _no(e, e.eq(p["count"], 0))
+        e.var("table", e.alloc(e.add(p["count"], 1)))  # [count, interface records]
+        e.var("graphs", e.alloc(e.add(p["count"], 1)))  # [count, graph objects]
+        e.var("callsof", e.alloc(e.add(p["count"], 1)))
+        _no(e, e.either(e.eq(p["table"], NONE), e.eq(p["graphs"], NONE), e.eq(p["callsof"], NONE)))
+        e.st(p["table"], p["count"])
+        e.st(p["graphs"], p["count"])
+
+        def member():
+            e.var("gi", _read(e, "ga", p["gend"]))
+            _no(e, e.le(p["refs"], p["gi"]))
+            e.var("mg", _reference(e, o, p["gi"]))
+            _no(e, e.either(e.eq(p["mg"], NONE), e.ne(_kind(e, p["mg"]), int(Kind.GRAPH_FRAGMENT))))
+            _mark(e, p["gi"])
+            e.st(e.add(e.add(p["graphs"], 1), p["i"]), p["mg"])
+            e.st(e.add(e.add(p["table"], 1), p["i"]), _interface(e, o, "ga", p["gend"]))
+
+        e.for_("i", 0, p["count"], member)
+        _no(e, e.ne(p["ga"], p["gend"]))
+        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+
+        def contract():
+            g = e.ld(e.add(e.add(p["graphs"], 1), p["i"]))
+            e.var("cg", g)
+            e.var("buffer", e.alloc(e.add(e.rd(e.sub(_payload(e, p["cg"]), 1)), 1)))  # at most one call per stream word
+            _no(e, e.eq(p["buffer"], NONE))
+            e.st(e.add(p["callsof"], p["i"]), p["buffer"])
+            _no(e, e.ne(e.call(_FN["graph"], p["cg"], e.ld(e.add(e.add(p["table"], 1), p["i"])), p["table"], p["buffer"]), 1))
+
+        e.for_("i", 0, p["count"], contract)
+        # ``_canonical_recursion_order``: breadth-first discovery from every start reaches every member.
+        _no(e, e.both(e.eq(p["count"], 1), e.eq(e.ld(e.ld(p["callsof"])), 0)))
+        e.var("order0", e.alloc(e.add(p["count"], 1)))
+        e.var("order", e.alloc(e.add(p["count"], 1)))
+        e.var("position", e.alloc(e.add(p["count"], 1)))
+        _no(e, e.either(e.eq(p["order0"], NONE), e.eq(p["order"], NONE), e.eq(p["position"], NONE)))
+
+        def discover(start, order):
+            e.for_("k", 0, p["count"], lambda: e.st(e.add(p["position"], p["k"]), NONE))
+            e.st(order, start)
+            e.st(e.add(p["position"], start), 0)
+            e.var("found", 1)
+            e.var("bk", 0)
+
+            def visit():
+                e.var("vb", e.ld(e.add(p["callsof"], e.ld(e.add(order, p["bk"])))))
+
+                def callee():
+                    e.var("vc", e.ld(e.add(e.add(p["vb"], 1), e.mul(p["c"], 3))))
+
+                    def add():
+                        e.st(e.add(p["position"], p["vc"]), p["found"])
+                        e.st(e.add(order, p["found"]), p["vc"])
+                        e.set("found", e.add(p["found"], 1))
+
+                    e.if_(e.eq(e.ld(e.add(p["position"], p["vc"])), NONE), add)
+
+                e.for_("c", 0, e.ld(p["vb"]), callee)
+                e.set("bk", e.add(p["bk"], 1))
+
+            e.while_(lambda: e.lt(p["bk"], p["found"]), visit)
+            _no(e, e.ne(p["found"], p["count"]))
+
+        # The stored order must be the discovery order from member 0 (otherwise its descriptor is not the identity's).
+        discover(0, p["order0"])
+        e.for_("k", 0, p["count"], lambda: _no(e, e.ne(e.ld(e.add(p["order0"], p["k"])), p["k"])))
+
+        # Erased member graphs (``_recursion_shape``): body bytes without the member-call spans.
+        e.var("erased", e.alloc(e.add(p["count"], 1)))
+        _no(e, e.eq(p["erased"], NONE))
+
+        def erase():
+            stream = _payload(e, e.ld(e.add(e.add(p["graphs"], 1), p["i"])))
+            e.var("eb", e.add(stream, e.rd(e.sub(stream, 1))))  # [body length, body bytes]
+            e.var("ex", e.alloc(e.add(e.rd(p["eb"]), 1)))
+            _no(e, e.eq(p["ex"], NONE))
+            e.var("en", 0)
+            e.var("epos", 0)
+
+            def copy(stop):
+                def byte():
+                    e.st(e.add(e.add(p["ex"], 1), p["en"]), e.rd(e.add(e.add(p["eb"], 1), p["cp"])))
+                    e.set("en", e.add(p["en"], 1))
+
+                e.for_("cp", p["epos"], stop, byte)
+
+            e.var("espans", e.ld(e.add(p["callsof"], p["i"])))
+
+            def span():
+                slot = e.add(e.add(p["espans"], 1), e.mul(p["sp"], 3))
+                e.var("sstart", e.ld(e.add(slot, 1)))
+                e.var("send", e.ld(e.add(slot, 2)))
+                copy(p["sstart"])
+                e.set("epos", p["send"])
+
+            e.for_("sp", 0, e.ld(p["espans"]), span)
+            copy(e.rd(p["eb"]))
+            e.st(p["ex"], p["en"])
+            e.st(e.add(p["erased"], p["i"]), p["ex"])
+
+        e.for_("i", 0, p["count"], erase)
+
+        def lexicographic(count_a, count_b, item_a, item_b, cid: bool):
+            """Fold one tuple comparison into ``kd`` (0 equal so far, 1 less, 2 greater): items, then lengths."""
+            e.var("lx_a", count_a)
+            e.var("lx_b", count_b)
+            e.var("lx_n", e.sel(e.lt(p["lx_a"], p["lx_b"]), p["lx_a"], p["lx_b"]))
+
+            def element():
+                e.var("xa", item_a(p["lx"]))
+                e.var("xb", item_b(p["lx"]))
+                if cid:
+                    _no(e, e.either(e.eq(p["xa"], NONE), e.eq(p["xb"], NONE)))
+
+                    def word():
+                        e.var("wa", _cid_word(e, p["xa"], p["w"]))
+                        e.var("wb", _cid_word(e, p["xb"], p["w"]))
+                        e.if_(e.both(e.eq(p["kd"], 0), e.lt(p["wa"], p["wb"])), lambda: e.set("kd", 1))
+                        e.if_(e.both(e.eq(p["kd"], 0), e.lt(p["wb"], p["wa"])), lambda: e.set("kd", 2))
+
+                    e.if_(e.ne(p["xa"], p["xb"]), lambda: e.for_("w", 0, 4, word))  # distinct objects have distinct CIDs
+                else:
+                    e.if_(e.lt(p["xa"], p["xb"]), lambda: e.set("kd", 1))
+                    e.if_(e.lt(p["xb"], p["xa"]), lambda: e.set("kd", 2))
+
+            e.for_("lx", 0, p["lx_n"], lambda: e.if_(e.eq(p["kd"], 0), element))
+            e.if_(e.both(e.eq(p["kd"], 0), e.lt(p["lx_a"], p["lx_b"])), lambda: e.set("kd", 1))
+            e.if_(e.both(e.eq(p["kd"], 0), e.lt(p["lx_b"], p["lx_a"])), lambda: e.set("kd", 2))
+
+        def key_compare(a, b):
+            """``kd`` for member keys ``(graph references, erased graph, parameters, returns)`` of ``a`` and ``b``."""
+            e.var("ka", e.ld(e.add(e.add(p["graphs"], 1), a)))
+            e.var("kb", e.ld(e.add(e.add(p["graphs"], 1), b)))
+            lexicographic(_references(e, p["ka"]), _references(e, p["kb"]), lambda k: _reference(e, p["ka"], k), lambda k: _reference(e, p["kb"], k), True)
+            e.var("xea", e.ld(e.add(p["erased"], a)))
+            e.var("xeb", e.ld(e.add(p["erased"], b)))
+            e.if_(e.eq(p["kd"], 0), lambda: lexicographic(e.ld(p["xea"]), e.ld(p["xeb"]), lambda k: e.ld(e.add(e.add(p["xea"], 1), k)),
+                                                          lambda k: e.ld(e.add(e.add(p["xeb"], 1), k)), False))
+            e.var("ia", e.ld(e.add(e.add(p["table"], 1), a)))
+            e.var("ib", e.ld(e.add(e.add(p["table"], 1), b)))
+            e.if_(e.eq(p["kd"], 0), lambda: lexicographic(e.ld(p["ia"]), e.ld(p["ib"]), lambda k: e.ld(e.add(e.add(p["ia"], 1), k)),
+                                                          lambda k: e.ld(e.add(e.add(p["ib"], 1), k)), True))
+            e.var("ira", e.add(e.add(p["ia"], 1), e.ld(p["ia"])))
+            e.var("irb", e.add(e.add(p["ib"], 1), e.ld(p["ib"])))
+            e.if_(e.eq(p["kd"], 0), lambda: lexicographic(e.ld(p["ira"]), e.ld(p["irb"]), lambda k: e.ld(e.add(e.add(p["ira"], 1), k)),
+                                                          lambda k: e.ld(e.add(e.add(p["irb"], 1), k)), True))
+
+        def start():
+            discover(p["s"], p["order"])
+            # This start's descriptor must not be below the identity's (member 0's): compare position by position.
+            e.var("cmp", 0)
+
+            def position():
+                e.var("pa", e.ld(e.add(p["order"], p["k"])))
+                e.var("kd", 0)
+                e.if_(e.ne(p["pa"], p["k"]), lambda: key_compare(p["pa"], p["k"]))
+                e.var("pba", e.ld(e.add(p["callsof"], p["pa"])))
+                e.var("pbb", e.ld(e.add(p["callsof"], p["k"])))
+                # Then the renumbered callees: this start's positions against the identity's (the member indices).
+                e.if_(e.eq(p["kd"], 0), lambda: lexicographic(
+                    e.ld(p["pba"]), e.ld(p["pbb"]), lambda c: e.ld(e.add(p["position"], e.ld(e.add(e.add(p["pba"], 1), e.mul(c, 3))))),
+                    lambda c: e.ld(e.add(e.add(p["pbb"], 1), e.mul(c, 3))), False))
+                _no(e, e.eq(p["kd"], 1))  # a smaller descriptor: the bootstrap rejects the order
+                e.if_(e.eq(p["kd"], 2), lambda: e.set("cmp", 1))
+
+            e.for_("k", 0, p["count"], lambda: e.if_(e.eq(p["cmp"], 0), position))
+
+        e.for_("s", 1, p["count"], start)
+        e.st(e.add(GRAPHS_AT, o), p["graphs"])
+        e.give(1)
+    return _function(("o",), build, tables)
+
+
+X86_64_MACHINES = ((1, 1), (5, 5), (5, 6))  # (abi, image format); 64-bit words and pointers, stack 16, shadow 32
+AARCH64_MACHINES = ((3, 1), (5, 6), (5, 7))  # Android and board formats need profiles 4 and 5
+
+
+def _sorted_list(e: E, name: str, end, low: int, high):
+    """A ``[count, values]`` list at ``p[name]`` of strictly increasing values in ``low..high`` (verdict 0 otherwise)."""
+    p = e.p
+    e.var("sl_count", _read(e, name, end))
+    e.var("sl_prev", 0)  # the previous value + 1
+
+    def item():
+        e.var("sl_item", _read(e, name, end))
+        _no(e, e.either(e.lt(p["sl_item"], low), e.lt(high, p["sl_item"]), e.le(e.add(p["sl_item"], 1), p["sl_prev"])))
+        e.set("sl_prev", e.add(p["sl_item"], 1))
+
+    e.for_("sl_q", 0, p["sl_count"], item)
+
+
+def _target_ok(tables):
+    """``decode_native_target(allow_carrier=True)`` for identity-only carriers and profile-1 (general) and
+    profile-2 (concurrency: atomics and handler entries) native targets; accelerator, platform, and board profiles
+    give 0."""
+    from xax_compiler import (
+        AtomicFamily, AtomicScope, EffectDomain, JVM_ABI, JVM_ARCHITECTURE, JVM_JAR_FORMAT, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE,
+        SPIRV_MODULE_FORMAT, SPIRV_VULKAN_ABI, TerminatorKind,
+    )
+
+    operations = sorted(int(item) for item in Operation)
+    terminators = sorted(int(item) for item in TerminatorKind)
+    assert operations == list(range(1, len(operations) + 1)) and terminators == list(range(1, len(terminators) + 1))
+
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        _no(e, e.ne(_references(e, o), 0))
+        e.var("ta", _payload(e, o))
+        end = e.add(p["ta"], e.rd(e.sub(p["ta"], 1)))
+        e.var("tend", end)
+        e.var("ilen", _read(e, "ta", p["tend"]))
+        _no(e, e.eq(p["ilen"], 0))
+        _no(e, e.lt(e.sub(p["tend"], p["ta"]), p["ilen"]))
+        e.set("ta", e.add(p["ta"], p["ilen"]))
+        e.if_(e.eq(p["ta"], p["tend"]), lambda: e.give(1))  # an identity-only carrier
+        e.var("profile", _read(e, "ta", p["tend"]))
+        _no(e, e.both(e.ne(p["profile"], 1), e.ne(p["profile"], 2)))
+        for name in ("arch", "abi", "format", "word", "pointer"):
+            e.var(name, _read(e, "ta", p["tend"]))
+        e.var("stack", 1)
+        e.var("shadow", 0)
+
+        def registers(arguments, scratch):
+            e.set("stack", _read(e, "ta", p["tend"]))
+            e.set("shadow", _read(e, "ta", p["tend"]))
+            _no(e, e.ne(_read(e, "ta", p["tend"]), len(arguments)))
+            for register in arguments:
+                _no(e, e.ne(_read(e, "ta", p["tend"]), register))
+            _no(e, e.ne(_read(e, "ta", p["tend"]), 0))  # the result register
+            _no(e, e.ne(_read(e, "ta", p["tend"]), len(scratch)))
+            for register in scratch:
+                _no(e, e.ne(_read(e, "ta", p["tend"]), register))
+
+        e.if_(e.eq(p["arch"], 1), lambda: registers((1, 2, 8, 9), (10, 11)))
+        e.if_(e.eq(p["arch"], 3), lambda: registers(tuple(range(8)), (9, 10)))
+        _sorted_list(e, "ta", p["tend"], 1, len(operations))  # sorted, unique, known operation codes (1..n)
+        _sorted_list(e, "ta", p["tend"], 1, len(terminators))
+
+        def concurrency():
+            _sorted_list(e, "ta", p["tend"], 1, NONE)  # atomic widths
+            _sorted_list(e, "ta", p["tend"], 1, len(AtomicScope))
+            _sorted_list(e, "ta", p["tend"], 1, len(AtomicFamily))
+            e.var("handlers", _read(e, "ta", p["tend"]))
+            e.var("event", 0)  # the previous event kind + 1
+
+            def handler():
+                e.var("kind", _read(e, "ta", p["tend"]))
+                _no(e, e.both(e.ne(p["event"], 0), e.le(e.add(p["kind"], 1), p["event"])))  # sorted unique event kinds
+                e.set("event", e.add(p["kind"], 1))
+                for _field in range(6):
+                    _read(e, "ta", p["tend"])
+                _sorted_list(e, "ta", p["tend"], 1, len(EffectDomain))
+                _no(e, e.eq(_read(e, "ta", p["tend"]), 0))  # stack bound
+                _read(e, "ta", p["tend"])
+
+            e.for_("h", 0, p["handlers"], handler)
+
+        e.if_(e.eq(p["profile"], 2), concurrency)
+        _no(e, e.ne(p["ta"], p["tend"]))
+
+        def machine(abi, image_format, word, pointer):
+            return e.both(e.eq(p["abi"], abi), e.eq(p["format"], image_format), e.eq(p["word"], word), e.eq(p["pointer"], pointer))
+
+        def x86_64():
+            _no(e, e.not_(e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in X86_64_MACHINES))))
+            _no(e, e.either(e.ne(p["stack"], 16), e.ne(p["shadow"], 32)))
+
+        def aarch64():
+            _no(e, e.not_(e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in AARCH64_MACHINES))))
+            _no(e, e.both(e.eq(p["abi"], 5), e.ne(p["profile"], 1)))  # aarch64 Linux: profile 1
+            _no(e, e.either(e.ne(p["stack"], 16), e.ne(p["shadow"], 0)))
+
+        known = {
+            1: x86_64,
+            3: aarch64,
+            2: lambda: _no(e, e.not_(machine(2, 2, 64, 32))),
+            RISCV64_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64)))),
+            SPIRV_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32)))),
+            JVM_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(JVM_ABI, JVM_JAR_FORMAT, 64, 64)))),
+        }
+        e.var("decided", 0)
+        for architecture, check in known.items():
+            e.if_(e.eq(p["arch"], architecture), lambda check=check: (check(), e.set("decided", 1)))
+        _no(e, e.eq(p["decided"], 0))  # architecture 4 needs profile 3; others are unsupported
+        e.give(1)
+    return _function(("o",), build, tables)
 
 
 def _list_ok(tables, allowed):
@@ -345,23 +732,31 @@ def _program(tables):
             e.if_(e.lt(1 << 16, references), lambda: e.give(NONE))
             payload_at = e.add(e.add(e.add(p["ra"], 2), references), 4)
             e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
+            e.if_(e.eq(_kind(e, p["o"]), int(Kind.GRAPH_FRAGMENT)),
+                  lambda: e.set("ra", e.add(e.add(p["ra"], 1), e.rd(p["ra"]))))  # [body length, body bytes]
 
         e.for_("o", 0, p["O"], record)
         e.if_(e.lt(IN_WORDS, e.add(p["ra"], p["O"])), lambda: e.give(NONE))
         e.st(GLOBALS + G_TYPEOK, p["ra"])  # the proven-type flags follow the records
 
-        # Per-object verdicts.
-        def verdict():
+        # Per-object verdicts: recursion groups first (group member functions need theirs).
+        def verdict(groups: bool):
             o = p["o"]
             kind = _kind(e, o)
             e.var("verdict", 0)
-            e.if_(e.eq(kind, int(Kind.FUNCTION)), lambda: e.set("verdict", e.call(_FN["function"], o)))
-            e.if_(e.eq(kind, int(Kind.MODULE)), lambda: e.set("verdict", e.call(_FN["module"], o)))
-            e.if_(e.eq(kind, int(Kind.PROGRAM_ROOT)), lambda: e.set("verdict", e.call(_FN["root"], o)))
-            e.if_(e.eq(kind, int(Kind.CALL_CONTRACT)), lambda: e.set("verdict", e.call(_FN["contract"], o)))
-            e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(p["verdict"], 1), 1, 0))
+            if groups:
+                e.if_(e.eq(kind, int(Kind.RECURSION_GROUP)), lambda: e.set("verdict", e.call(_FN["group"], o)))
+            else:
+                e.if_(e.eq(kind, int(Kind.FUNCTION)), lambda: e.set("verdict", e.call(_FN["function"], o)))
+                e.if_(e.eq(kind, int(Kind.MODULE)), lambda: e.set("verdict", e.call(_FN["module"], o)))
+                e.if_(e.eq(kind, int(Kind.PROGRAM_ROOT)), lambda: e.set("verdict", e.call(_FN["root"], o)))
+                e.if_(e.eq(kind, int(Kind.CALL_CONTRACT)), lambda: e.set("verdict", e.call(_FN["contract"], o)))
+                e.if_(e.eq(kind, int(Kind.TARGET)), lambda: e.set("verdict", e.call(_FN["target"], o)))
+            this_pass = e.eq(kind, int(Kind.RECURSION_GROUP)) if groups else e.ne(kind, int(Kind.RECURSION_GROUP))
+            e.if_(this_pass, lambda: e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(p["verdict"], 1), 1, 0)))
 
-        e.for_("o", 0, p["O"], verdict)
+        e.for_("o", 0, p["O"], lambda: verdict(True))
+        e.for_("o", 0, p["O"], lambda: verdict(False))
         # The store: everything reachable from the root, no cycle (iterative depth-first search).
         root = e.rd(1)
         e.var("root", root)
@@ -426,7 +821,10 @@ def build_verifier_program():
         _FN[name] = function
         return function
 
+    add("graph", _graph_ok(tables))
+    add("group", _group_ok(tables))
     add("function", _function_ok(tables))
+    add("target", _target_ok(tables))
     add("module", _list_ok(tables, MODULE_CHILDREN))
     add("root", _list_ok(tables, (Kind.MODULE,)))
     add("contract", _contract_ok(tables))
@@ -507,8 +905,10 @@ class NativeStoreVerifier:
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
 
-    def verify(self, words: list[int], count: int):
-        """``(store verdict, per-object verdicts, per-object graph objects)``, or None when it cannot run."""
+    def verify(self, words: list[int], count: int, groups=()):
+        """``(store verdict, per-object verdicts, per-object graph words, {group: member graphs})``, or None when it
+        cannot run.  A proven function's graph word is its graph object (NONE for a group member function); a proven
+        group's (``groups`` lists their positions) points at ``[count, member graphs]``."""
         if len(words) > IN_WORDS or any(not 0 <= word < 1 << 64 for word in words):
             return None
         with self._lock:
@@ -518,7 +918,9 @@ class NativeStoreVerifier:
             out = self._out
             if out[0] != OK:
                 return None
-            return out[1] == 1, list(out[VERDICTS_AT : VERDICTS_AT + count]), list(out[GRAPHS_AT : GRAPHS_AT + count])
+            verdicts, graphs = list(out[VERDICTS_AT : VERDICTS_AT + count]), list(out[GRAPHS_AT : GRAPHS_AT + count])
+            members = {o: tuple(out[graphs[o] + 1 : graphs[o] + 1 + out[graphs[o]]]) for o in groups if verdicts[o] == 1}
+            return out[1] == 1, verdicts, graphs, members
 
 
 def object_table(objects, head: list[int]) -> list[int] | None:
@@ -541,7 +943,9 @@ def object_table(objects, head: list[int]) -> list[int] | None:
             if status != 0:
                 return None
             payload = list(stream)
-        elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT):
+            words += [len(payload), *payload, len(obj.body), *obj.body]  # the body bytes (recursion-group keys)
+            continue
+        elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP):
             payload = list(obj.body)
         else:
             payload = []

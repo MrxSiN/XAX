@@ -824,3 +824,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - A RISC-V views profile (checked heap-view loads and stores, 64-bit pointers, borrowed-view returns elided, `auipc`/`jalr` far jumps) lets the XAX RISC-V backend compile its own store. The XAX backend's image is identical to the bootstrap generator's (1,959,876 bytes).
 - That image, run in the RV64 emulator, compiles a corpus exactly as the native backend does. Compiling the backend store with it reproduces it byte for byte (gen3 == gen2, at most 22 billion emulated instructions).
+
+## Self-hosting step S6b.3: recursion groups, group member functions, and targets decided by XAX (ADR-146) — 2026-10-03
+
+- The store verifier decides recursion groups, with the bootstrap's full member key for the canonical order. It also decides group member functions, and identity carriers plus general and concurrency targets. Every corpus function (including jsonmin's group member), group, list, contract, and target is proven. Full suite: 890 tests, 18 skipped. Next: S6b.4 (build and package objects, the remaining target profiles, and the per-graph glue).
