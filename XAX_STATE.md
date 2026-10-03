@@ -749,3 +749,6 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `xax_elf_link` links freestanding AArch64 ELF objects (exact relocation subset) into board images. XAX calls C through `aapcs64-c` declarations imported from the header, including a C-side allocator under an explicit contract. The aarch64-baremetal row R1 → R2 (emulated). Matrix: `NOT_APPLICABLE` needs a justification and satisfies only `dynamic_linking`.
 
+## Standard semantic libraries (ADR-130) — 2026-10-03
+
+- `xax_stdlib`: the `xax.text` and `xax.collections.hashset_u64` package families (canonical `PACKAGE` objects, function-granular, instantiated per extent or capacity, target independent). `uniqcount` uses them and is EXECUTED on Linux x86-64 and AArch64. OI-36 CLOSED.

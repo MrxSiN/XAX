@@ -1,0 +1,222 @@
+{
+  "adr": "ADR-130",
+  "ai_tokens": {
+    "library_nodes_per_function": {
+      "xax.collections.hashset_u64.insert": 42,
+      "xax.text.find_digits[extent=1114112]": 34,
+      "xax.text.format_u64[extent=32]": 21,
+      "xax.text.parse_u64[extent=1114112]": 20
+    },
+    "mutation_inline_bodies": {
+      "nodes": 190,
+      "tokens": {
+        "cl100k_base": 3251,
+        "o200k_base": 3256
+      }
+    },
+    "mutation_with_packages": {
+      "library_calls": 4,
+      "nodes": 73,
+      "tokens": {
+        "cl100k_base": 1357,
+        "o200k_base": 1360
+      }
+    },
+    "query_interface_view": {
+      "functions": 4,
+      "tokens": {
+        "cl100k_base": 264,
+        "o200k_base": 268
+      }
+    }
+  },
+  "app_store": {
+    "bytes": 15430,
+    "objects": 57
+  },
+  "artifact_bytes": {
+    "aarch64": 13748,
+    "x86_64": 2306
+  },
+  "compile_cost": {
+    "build_packages_ms": 9.22,
+    "build_program_ms": 15.93,
+    "compile_ms": {
+      "aarch64": 32.38,
+      "x86_64": 37.53
+    },
+    "repeats": 5,
+    "verify_store_ms": 1.56
+  },
+  "evidence_label": {
+    "aarch64": "qemu-aarch64 user mode (emulated)",
+    "execution": "EXECUTED",
+    "sizes_tokens_cost": "MEASURED",
+    "x86_64": "native"
+  },
+  "execution": {
+    "empty": {
+      "aarch64": [
+        0,
+        "0\n"
+      ],
+      "expected": [
+        0,
+        "0\n"
+      ],
+      "input_bytes": 0,
+      "x86_64": [
+        0,
+        "0\n"
+      ]
+    },
+    "mixed": {
+      "aarch64": [
+        0,
+        "3\n"
+      ],
+      "expected": [
+        0,
+        "3\n"
+      ],
+      "input_bytes": 38,
+      "x86_64": [
+        0,
+        "3\n"
+      ]
+    },
+    "random_20000": {
+      "aarch64": [
+        0,
+        "17626\n"
+      ],
+      "expected": [
+        0,
+        "17626\n"
+      ],
+      "input_bytes": 235925,
+      "x86_64": [
+        0,
+        "17626\n"
+      ]
+    },
+    "table_full": {
+      "aarch64": [
+        3,
+        ""
+      ],
+      "expected": [
+        3,
+        ""
+      ],
+      "input_bytes": 382115,
+      "x86_64": [
+        3,
+        ""
+      ]
+    }
+  },
+  "function_code_bytes": {
+    "aarch64": {
+      "uniqcount.entry": 5580,
+      "xax.collections.hashset_u64.insert": 2656,
+      "xax.text.find_digits[extent=1114112]": 2508,
+      "xax.text.format_u64[extent=32]": 1184,
+      "xax.text.parse_u64[extent=1114112]": 1412
+    },
+    "x86_64": {
+      "uniqcount.entry": 1145,
+      "xax.collections.hashset_u64.insert": 326,
+      "xax.text.find_digits[extent=1114112]": 232,
+      "xax.text.format_u64[extent=32]": 258,
+      "xax.text.parse_u64[extent=1114112]": 130
+    }
+  },
+  "issue": "OI-36",
+  "model_run": null,
+  "package_cids_identical_across_targets": true,
+  "packages": {
+    "xax.collections.hashset_u64{\"capacity\":65536}": {
+      "exports": [
+        "contains",
+        "insert"
+      ],
+      "manifest": {
+        "functions": {
+          "contains": "bb280d2b98bb1a218ee46264d482ba298b9b704d026eedc9c6c6894ea5d4a193",
+          "insert": "80bdab1a673e22fd921e830c20fc74aa3cedcd55890d99ce08705ad21b0e510d"
+        },
+        "package": "xax.collections.hashset_u64",
+        "package_cid": "77ea0382493bcd8912896f723f882008d4448f9f2f161d28f39b6107e868ac6e",
+        "parameters": {
+          "capacity": 65536
+        },
+        "version": 1
+      },
+      "package_object_in_app_store": false,
+      "store_bytes_contributed": 3105,
+      "store_objects_contributed": 20,
+      "used_exports": [
+        "insert"
+      ]
+    },
+    "xax.text{\"extent\":1114112}": {
+      "exports": [
+        "find_digits",
+        "format_u64",
+        "parse_u64",
+        "skip_spaces"
+      ],
+      "manifest": {
+        "functions": {
+          "find_digits": "3eb178ac38c0e5c07659aad6223eea03af2581f7cce3eb187b7abb9b4e984fff",
+          "format_u64": "5b71bfed29f09eed6535d26fc3183067c52133de425abe8d9fd773b46546aab9",
+          "parse_u64": "de68fb8e1e739463b65d1a077d5b2589da1a6e4e966e2dfcccfbc1b5daabf275",
+          "skip_spaces": "57aab22abbd4bc1be546114c86061b7da7ba07f656602a4b2da888d6a6d3fdc5"
+        },
+        "package": "xax.text",
+        "package_cid": "ba35423d22fcd0d3455e3293dfac3dc5103bdd1cf8b819778e2c1f191f4fa61c",
+        "parameters": {
+          "extent": 1114112
+        },
+        "version": 1
+      },
+      "package_object_in_app_store": false,
+      "store_bytes_contributed": 4077,
+      "store_objects_contributed": 20,
+      "used_exports": [
+        "find_digits",
+        "parse_u64"
+      ]
+    },
+    "xax.text{\"extent\":32}": {
+      "exports": [
+        "find_digits",
+        "format_u64",
+        "parse_u64",
+        "skip_spaces"
+      ],
+      "manifest": {
+        "functions": {
+          "find_digits": "acb564873f957ee9da438b42ccf29f676b1e2ec19ecf7f8fdbf9a83a21920b44",
+          "format_u64": "1000fc92d63c9d4bb3e7a00c6dbaf47a60b3404b1860fe3bf2f6b5b907ebf725",
+          "parse_u64": "aea37e18e6e7fcbaabc531baceefd10b11afe16adc6f848a9786079331e1e0e1",
+          "skip_spaces": "a771058a391454254470758e403e1da4c62593ba787fd29537a18d138796d47d"
+        },
+        "package": "xax.text",
+        "package_cid": "a0967a5b6f07d851701c5dc87477672e829cc1a6f20241cf7daff615faf52480",
+        "parameters": {
+          "extent": 32
+        },
+        "version": 1
+      },
+      "package_object_in_app_store": false,
+      "store_bytes_contributed": 2112,
+      "store_objects_contributed": 18,
+      "used_exports": [
+        "format_u64"
+      ]
+    }
+  },
+  "tokenizer": "tiktoken 0.14.0"
+}

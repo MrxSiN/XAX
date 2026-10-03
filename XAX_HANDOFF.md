@@ -238,3 +238,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `compile_board_image(..., objects=[...])`; compile C with `benchmarks.board_linked_c.CFLAGS` (`-fno-pic -fno-common -ffreestanding -fno-asynchronous-unwind-tables`).
 - Next: archive member selection, x86-64 relocations so Linux static profiles can link C, and calls from linked C back into XAX (code-entry addresses through `externals`).
 
+## Standard libraries — 2026-10-03 (ADR-130)
+
+- `text_package(extent)` and `hashset_package(capacity)` return a `Library`: index it by export name for the function to call, and pass `.objects` to `program_store`. The application lives in `benchmarks/uniqcount.py`, and `python -m benchmarks.bench_oi36_stdlib` regenerates the evidence.
+- Next: more families (arena allocator, growable vector over a caller-provided arena, UTF-8 validation), multi-value returns on native backends (removes span packing), and a versioning policy.
