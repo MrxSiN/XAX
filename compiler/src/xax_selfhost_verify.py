@@ -17,8 +17,15 @@ body bytes) and decides, with the bootstrap's rules:
   matching its interface, one recursive strongly connected component, and
   the canonical member order (member keys: graph reference CIDs, the graph
   bytes without member-call spans, parameter and return types);
-* targets (``decode_native_target``): identity-only carriers and the general
-  and concurrency profiles of every supported architecture;
+* targets (``decode_native_target``): identity-only carriers, the general,
+  concurrency, and platform profiles of every supported architecture, the
+  accelerator profile, and the AArch64 board profile (S6b.4c);
+* packages and build objects (S6b.4a/b): packages, profiles, trust
+  policies, signatures, optimization policies, then requests, snapshots, and
+  provenance, each later pass reading the earlier verdicts;
+* every graph fragment's per-graph glue (S6b.4d): type references naming
+  proven types, resolved entities, exact reference use, canonical trap
+  payloads;
 * module and program-root reference lists (``_verify_reference_list``);
 * call contracts (``_decode_call_contract``);
 * the store: every object reachable from the root, no reference cycle.
@@ -26,8 +33,7 @@ body bytes) and decides, with the bootstrap's rules:
 Its output is a verdict per object (each proven function's graph object, each
 proven group's member graphs) and a store verdict.  A verdict holds only when
 the bootstrap accepts; every other object, and every rejection, takes the
-bootstrap path and its exact diagnostic.  Accelerator, platform, and board
-targets and build objects stay with the bootstrap.
+bootstrap path and its exact diagnostic.
 """
 
 from __future__ import annotations
@@ -566,17 +572,20 @@ def _sorted_list(e: E, name: str, end, low: int, high):
 
 
 def _target_ok(tables):
-    """``decode_native_target(allow_carrier=True)`` for identity-only carriers and profile-1 (general) and
-    profile-2 (concurrency: atomics and handler entries) native targets; accelerator, platform, and board profiles
-    give 0."""
+    """``decode_native_target(allow_carrier=True)``: identity-only carriers; general (1), concurrency (2), and
+    platform (4) targets of every supported architecture; accelerator (3) targets of the accelerator
+    architecture; and AArch64 board (5) targets.  An accelerator profile on another architecture gives 0."""
     from xax_compiler import (
-        AtomicFamily, AtomicScope, EffectDomain, JVM_ABI, JVM_ARCHITECTURE, JVM_JAR_FORMAT, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE,
-        SPIRV_MODULE_FORMAT, SPIRV_VULKAN_ABI, TerminatorKind,
+        AARCH64_BOARD_ELF_FORMAT, ANDROID_ELF_FORMAT, ANDROID_ELF_PACKED_FORMAT, AtomicFamily, AtomicScope, BOARD_PROFILE, EffectDomain, JVM_ABI,
+        JVM_ARCHITECTURE, JVM_JAR_FORMAT, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE, SPIRV_MODULE_FORMAT,
+        SPIRV_VULKAN_ABI, TargetValueConstraintKind, TerminatorKind,
     )
 
     operations = sorted(int(item) for item in Operation)
     terminators = sorted(int(item) for item in TerminatorKind)
     assert operations == list(range(1, len(operations) + 1)) and terminators == list(range(1, len(terminators) + 1))
+    scopes, domains, constraint_kinds = len(AtomicScope), len(EffectDomain), len(TargetValueConstraintKind)
+    assert [int(item) for item in AtomicScope] == list(range(1, scopes + 1)) and [int(item) for item in EffectDomain] == list(range(1, domains + 1))
 
     def build(e: E):
         p = e.p
@@ -591,9 +600,10 @@ def _target_ok(tables):
         e.set("ta", e.add(p["ta"], p["ilen"]))
         e.if_(e.eq(p["ta"], p["tend"]), lambda: e.give(1))  # an identity-only carrier
         e.var("profile", _read(e, "ta", p["tend"]))
-        _no(e, e.both(e.ne(p["profile"], 1), e.ne(p["profile"], 2)))
+        _no(e, e.either(e.lt(p["profile"], 1), e.lt(BOARD_PROFILE, p["profile"])))
         for name in ("arch", "abi", "format", "word", "pointer"):
             e.var(name, _read(e, "ta", p["tend"]))
+        _no(e, e.both(e.eq(p["profile"], 3), e.ne(p["arch"], 4)))  # accelerator fields elsewhere: left to the bootstrap
         e.var("stack", 1)
         e.var("shadow", 0)
 
@@ -615,7 +625,7 @@ def _target_ok(tables):
 
         def concurrency():
             _sorted_list(e, "ta", p["tend"], 1, NONE)  # atomic widths
-            _sorted_list(e, "ta", p["tend"], 1, len(AtomicScope))
+            _sorted_list(e, "ta", p["tend"], 1, scopes)
             _sorted_list(e, "ta", p["tend"], 1, len(AtomicFamily))
             e.var("handlers", _read(e, "ta", p["tend"]))
             e.var("event", 0)  # the previous event kind + 1
@@ -626,13 +636,117 @@ def _target_ok(tables):
                 e.set("event", e.add(p["kind"], 1))
                 for _field in range(6):
                     _read(e, "ta", p["tend"])
-                _sorted_list(e, "ta", p["tend"], 1, len(EffectDomain))
+                _sorted_list(e, "ta", p["tend"], 1, domains)
                 _no(e, e.eq(_read(e, "ta", p["tend"]), 0))  # stack bound
                 _read(e, "ta", p["tend"])
 
             e.for_("h", 0, p["handlers"], handler)
 
-        e.if_(e.eq(p["profile"], 2), concurrency)
+        def flag_byte():
+            _no(e, e.le(p["tend"], p["ta"]))
+            _no(e, e.lt(1, e.rd(p["ta"])))
+            e.set("ta", e.add(p["ta"], 1))
+
+        def contracts(strict: bool, accelerator: bool):
+            """Target-operation contracts; ``strict`` adds the platform or accelerator canonical rules."""
+            e.var("ccount", _read(e, "ta", p["tend"]))
+            if strict:
+                _no(e, e.eq(p["ccount"], 0))
+            e.var("cprev", 0)
+
+            def contract():
+                e.var("cid_", _read(e, "ta", p["tend"]))
+                if strict:
+                    _no(e, e.le(e.add(p["cid_"], 1), p["cprev"]))
+                    e.set("cprev", e.add(p["cid_"], 1))
+                e.var("csem", _read(e, "ta", p["tend"]))
+                e.var("cenc", _read(e, "ta", p["tend"]))
+                if strict:
+                    _no(e, e.eq(p["csem"], 0))
+                if strict and accelerator:
+                    _no(e, e.lt(255, p["cenc"]))
+                for _signature in range(2):
+                    e.var("vcount", _read(e, "ta", p["tend"]))
+
+                    def constraint():
+                        e.var("vk", _read(e, "ta", p["tend"]))
+                        e.var("vp", _read(e, "ta", p["tend"]))
+                        e.var("vs", _read(e, "ta", p["tend"]))
+                        _no(e, e.either(e.lt(p["vk"], 1), e.lt(constraint_kinds, p["vk"])))
+                        if strict:
+                            bad = e.either(
+                                e.both(e.eq(p["vk"], 1), e.either(e.eq(p["vp"], 0), e.ne(p["vs"], 0))),
+                                e.both(e.eq(p["vk"], 2), e.either(e.eq(p["vp"], 0), e.eq(p["vs"], 0))),
+                                e.both(e.eq(p["vk"], 3), e.either(e.eq(p["vp"], 0), e.lt(domains, p["vp"]))),
+                                e.both(e.lt(3, p["vk"]), e.either(e.ne(p["vp"], 0), e.ne(p["vs"], 0))),
+                            )
+                            _no(e, bad)
+
+                    e.for_("vq", 0, p["vcount"], constraint)
+                if strict:
+                    _no(e, e.eq(e.rd(p["ta"]), 0))  # nonempty scopes
+                    e.var("csl", p["ta"])
+                    _sorted_list(e, "ta", p["tend"], 1, scopes)
+                    if accelerator:
+                        # A subset of the accelerator's scopes.
+                        e.var("cn", _read(e, "csl", p["tend"]))
+                        e.for_("cq", 0, p["cn"], lambda: _no(e, e.eq(e.and_(p["accmask"], e.sel(e.eq(_read(e, "csl", p["tend"]), 1), 1, e.sel(e.eq(p["csl_value"], 2), 2, 4))), 0)))
+                else:
+                    e.var("sc2", _read(e, "ta", p["tend"]))
+                    e.for_("sq2", 0, p["sc2"], lambda: _no(e, e.either(e.lt(_read(e, "ta", p["tend"]), 1), e.lt(scopes, p["ta_value"]))))
+                e.var("csrc", _read(e, "ta", p["tend"]))
+                e.var("cdst", _read(e, "ta", p["tend"]))
+                if strict and accelerator:
+                    for name in ("csrc", "cdst"):
+                        e.var("member", 0)
+                        e.for_("mq", 0, p["spaces"], lambda name=name: e.if_(e.eq(e.ld(e.add(p["space_ids"], p["mq"])), p[name]), lambda: e.set("member", 1)))
+                        _no(e, e.eq(p["member"], 0))
+                flag_byte()
+                flag_byte()
+                _start, length = _string(e, "ta", p["tend"])
+                if strict:
+                    _no(e, e.both(e.ne(length, 0), e.ne(length, 32)))
+
+            e.for_("cq_", 0, p["ccount"], contract)
+
+        def accelerator():
+            for name in ("lane", "groups"):
+                e.var(name, _read(e, "ta", p["tend"]))
+                _no(e, e.eq(p[name], 0))
+            # Accelerator scopes: strictly increasing, nonempty; their bit mask for the contract subset rule.
+            _no(e, e.eq(e.rd(p["ta"]), 0))
+            e.var("asl", p["ta"])
+            _sorted_list(e, "ta", p["tend"], 1, scopes)
+            e.var("accmask", 0)
+            e.var("an", _read(e, "asl", p["tend"]))
+            e.for_("aq", 0, p["an"], lambda: e.set("accmask", e.or_(p["accmask"], e.sel(e.eq(_read(e, "asl", p["tend"]), 1), 1, e.sel(e.eq(p["asl_value"], 2), 2, 4)))))
+            e.var("spaces", _read(e, "ta", p["tend"]))
+            _no(e, e.eq(p["spaces"], 0))
+            e.var("space_ids", e.alloc(e.add(p["spaces"], 1)))
+            _no(e, e.eq(p["space_ids"], NONE))
+            e.var("sprev", 0)
+
+            def space():
+                e.var("sid", _read(e, "ta", p["tend"]))
+                _no(e, e.le(e.add(p["sid"], 1), p["sprev"]))
+                e.set("sprev", e.add(p["sid"], 1))
+                e.st(e.add(p["space_ids"], p["spq"]), p["sid"])
+                for name in ("abits", "ubits", "align"):
+                    e.var(name, _read(e, "ta", p["tend"]))
+                    _no(e, e.eq(p[name], 0))
+                _no(e, e.not_(e.power_of_two(p["align"])))
+                _sorted_list(e, "ta", p["tend"], 1, NONE)  # access widths
+                _sorted_list(e, "ta", p["tend"], 1, scopes)  # visibility scopes
+                flag_byte()
+                flag_byte()
+
+            e.for_("spq", 0, p["spaces"], space)
+            contracts(True, True)
+
+        e.if_(e.either(e.eq(p["profile"], 2), e.eq(p["profile"], BOARD_PROFILE)), concurrency)
+        e.if_(e.eq(p["profile"], 3), accelerator)
+        e.if_(e.eq(p["profile"], 4), lambda: contracts(True, False))
+        e.if_(e.eq(p["profile"], BOARD_PROFILE), lambda: contracts(False, False))
         _no(e, e.ne(p["ta"], p["tend"]))
 
         def machine(abi, image_format, word, pointer):
@@ -643,14 +757,19 @@ def _target_ok(tables):
             _no(e, e.either(e.ne(p["stack"], 16), e.ne(p["shadow"], 32)))
 
         def aarch64():
-            _no(e, e.not_(e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in AARCH64_MACHINES))))
+            machines = (*AARCH64_MACHINES, (4, ANDROID_ELF_FORMAT), (4, ANDROID_ELF_PACKED_FORMAT), (3, AARCH64_BOARD_ELF_FORMAT))
+            _no(e, e.not_(e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in machines))))
+            _no(e, e.both(e.eq(p["abi"], 4), e.ne(p["profile"], 4)))  # Android: profile 4
             _no(e, e.both(e.eq(p["abi"], 5), e.ne(p["profile"], 1)))  # aarch64 Linux: profile 1
+            _no(e, e.both(e.eq(p["abi"], 3), e.ne(p["profile"], 1), e.ne(p["profile"], 2), e.ne(p["profile"], BOARD_PROFILE)))
+            _no(e, e.ne(e.flag(e.eq(p["format"], AARCH64_BOARD_ELF_FORMAT)), e.flag(e.eq(p["profile"], BOARD_PROFILE))))
             _no(e, e.either(e.ne(p["stack"], 16), e.ne(p["shadow"], 0)))
 
         known = {
             1: x86_64,
             3: aarch64,
             2: lambda: _no(e, e.not_(machine(2, 2, 64, 32))),
+            4: lambda: _no(e, e.either(e.ne(p["profile"], 3), e.not_(machine(4, 3, 32, 64)))),
             RISCV64_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64)))),
             SPIRV_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32)))),
             JVM_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(JVM_ABI, JVM_JAR_FORMAT, 64, 64)))),
@@ -658,7 +777,700 @@ def _target_ok(tables):
         e.var("decided", 0)
         for architecture, check in known.items():
             e.if_(e.eq(p["arch"], architecture), lambda check=check: (check(), e.set("decided", 1)))
-        _no(e, e.eq(p["decided"], 0))  # architecture 4 needs profile 3; others are unsupported
+        _no(e, e.eq(p["decided"], 0))  # an unsupported architecture
+        e.give(1)
+    return _function(("o",), build, tables)
+
+
+# -- S6b.4d (ADR-149): per-graph glue -----------------------------------------------------
+
+def _glue_ok(tables):
+    """The checks ``_graph_syntax_from_stream`` adds to the S3c stream: every parameter and result type reference
+    names a proven type, every entity reference resolves, every reference is used, and every trap payload is
+    empty or a canonical u16 ULEB reason with optional target bytes (``decode_trap_payload``)."""
+    def build(e: E):
+        p = e.p
+        g = p["g"]
+        e.var("refs", _references(e, g))
+        _clear_marks(e, p["refs"])
+        e.var("gs", _payload(e, g))
+        e.var("body_len_at", e.add(p["gs"], e.rd(e.sub(p["gs"], 1))))
+        e.var("body_at", e.add(p["body_len_at"], 1))
+        e.var("B", e.rd(p["gs"]))
+        e.var("ga", e.add(p["gs"], 2))
+        for name in ("ti", "tobj", "pc", "nc", "opc", "ei", "oc", "rc", "kind", "ac", "vc", "tsize", "tat", "b0", "b1", "b2", "aq", "aq_stop", "vq", "vq_stop"):
+            e.var(name, 0)
+
+        def type_reference():
+            e.var("ti", e.rd(p["ga"]))
+            e.set("ga", e.add(p["ga"], 1))
+            _no(e, e.le(p["refs"], p["ti"]))
+            e.var("tobj", _reference(e, g, p["ti"]))
+            _no(e, e.eq(p["tobj"], NONE))
+            _no(e, e.not_(_type_ok(e, p["tobj"])))
+            _mark(e, p["ti"])
+
+        def skip_value():
+            e.set("ga", e.add(e.add(p["ga"], 3), e.flag(e.eq(e.rd(p["ga"]), 1))))
+
+        def block():
+            e.var("pc", e.rd(p["ga"]))
+            e.set("ga", e.add(p["ga"], 1))
+            e.for_("pq", 0, p["pc"], type_reference)
+            e.var("nc", e.rd(p["ga"]))
+            e.set("ga", e.add(p["ga"], 1))
+
+            def node():
+                e.var("opc", e.rd(p["ga"]))
+                e.set("ga", e.add(p["ga"], 1))
+                e.if_(e.eq(p["opc"], int(Operation.CALL_GROUP_MEMBER)), lambda: e.set("ga", e.add(p["ga"], 3)))
+
+                def entity():
+                    e.var("ei", e.rd(p["ga"]))
+                    e.set("ga", e.add(p["ga"], 1))
+                    _no(e, e.le(p["refs"], p["ei"]))
+                    _no(e, e.eq(_reference(e, g, p["ei"]), NONE))
+                    _mark(e, p["ei"])
+
+                e.if_(e.either(*(e.eq(p["opc"], code) for code in ENTITY_CODES)), entity)
+                e.var("oc", e.rd(p["ga"]))
+                e.set("ga", e.add(p["ga"], 1))
+                e.for_("oq", 0, p["oc"], skip_value)
+                e.var("rc", e.rd(p["ga"]))
+                e.set("ga", e.add(p["ga"], 1))
+                e.for_("rq", 0, p["rc"], type_reference)
+                e.if_(e.either(*(e.eq(p["opc"], code) for code in ATTRIBUTE_CODES)), lambda: e.set("ga", e.add(e.add(p["ga"], 1), e.rd(p["ga"]))))
+
+            e.for_("nq", 0, p["nc"], node)
+            e.var("kind", e.rd(p["ga"]))
+            e.set("ga", e.add(p["ga"], 1))
+
+            def edge():
+                e.set("ga", e.add(p["ga"], 1))
+                e.var("ac", e.rd(p["ga"]))
+                e.set("ga", e.add(p["ga"], 1))
+                e.for_("aq", 0, p["ac"], skip_value)
+
+            def trap():
+                e.var("tsize", e.rd(p["ga"]))
+                e.var("tat", e.add(p["body_at"], e.rd(e.add(p["ga"], 1))))
+                e.set("ga", e.add(p["ga"], 2))
+                # decode_trap_payload: empty, or a minimal ULEB of at most three bytes naming a reason <= 0xFFFF
+                # (a zero reason only with target bytes), then the target bytes.
+                b0, b1, b2 = (e.rd(e.add(p["tat"], k)) for k in range(3))
+                e.var("b0", b0)
+                e.var("b1", b1)
+                e.var("b2", b2)
+                one = e.lt(p["b0"], 128)
+                two = e.both(e.le(128, p["b0"]), e.lt(1, p["tsize"]), e.lt(p["b1"], 128), e.ne(p["b1"], 0))
+                three = e.both(e.le(128, p["b0"]), e.le(128, p["b1"]), e.lt(2, p["tsize"]), e.lt(p["b2"], 128), e.ne(p["b2"], 0),
+                               e.le(e.add(e.add(e.sub(p["b0"], 128), e.mul(e.sub(p["b1"], 128), 128)), e.mul(p["b2"], 16384)), 0xFFFF))
+                zero_alone = e.both(e.eq(p["tsize"], 1), e.eq(p["b0"], 0))
+                e.if_(e.ne(p["tsize"], 0), lambda: _no(e, e.either(e.not_(e.either(one, two, three)), zero_alone)))
+
+            e.if_(e.eq(p["kind"], 1), edge)
+            e.if_(e.eq(p["kind"], 2), lambda: (skip_value(), edge(), edge()))
+            def returning():
+                e.set("vc", e.rd(p["ga"]))
+                e.set("ga", e.add(p["ga"], 1))
+                e.for_("vq", 0, p["vc"], skip_value)
+
+            e.if_(e.eq(p["kind"], 3), returning)
+            e.if_(e.eq(p["kind"], 4), trap)
+
+        e.for_("b", 0, p["B"], block)
+        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        e.give(1)
+    return _function(("g",), build, tables)
+
+
+# -- S6b.4a (ADR-149): packages and the leaf build forms ---------------------------------------
+
+def _string(e: E, name: str, end):
+    """A ``[ULEB length, bytes]`` byte string at ``p[name]`` inside ``end``: ``(start, length)`` variables; advances."""
+    p = e.p
+    length = _read(e, name, end)
+    e.var(f"{name}_slen", length)
+    e.var(f"{name}_sat", p[name])
+    _no(e, e.lt(e.sub(end, p[name]), p[f"{name}_slen"]))
+    e.set(name, e.add(p[name], p[f"{name}_slen"]))
+    return p[f"{name}_sat"], p[f"{name}_slen"]
+
+
+def _bytes_less_fn(tables):
+    """1 when the byte string at ``a`` (``a_len`` bytes) sorts strictly before the one at ``b`` (Python ``bytes`` order)."""
+    def build(e: E):
+        p = e.p
+        e.var("lx_min", e.sel(e.lt(p["a_len"], p["b_len"]), p["a_len"], p["b_len"]))
+        e.var("lx_k", 0)
+        e.var("lx_r", 2)  # 0 less, 1 greater, 2 undecided
+
+        def step():
+            x, y = e.rd(e.add(p["a"], p["lx_k"])), e.rd(e.add(p["b"], p["lx_k"]))
+            e.var("lx_x", x)
+            e.var("lx_y", y)
+            e.if_(e.lt(p["lx_x"], p["lx_y"]), lambda: e.set("lx_r", 0))
+            e.if_(e.lt(p["lx_y"], p["lx_x"]), lambda: e.set("lx_r", 1))
+            e.set("lx_k", e.add(p["lx_k"], 1))
+
+        e.while_(lambda: e.both(e.lt(p["lx_k"], p["lx_min"]), e.eq(p["lx_r"], 2)), step)
+        e.if_(e.eq(p["lx_r"], 2), lambda: e.set("lx_r", e.sel(e.lt(p["a_len"], p["b_len"]), 0, 1)))
+        e.give(e.sel(e.eq(p["lx_r"], 0), 1, 0))
+    return _function(("a", "b", "a_len", "b_len"), build, tables)
+
+
+def _cid_less_fn(tables):
+    """1 when object ``x``'s CID sorts strictly before object ``y``'s (four big-endian words)."""
+    def build(e: E):
+        p = e.p
+        e.var("cl_r", 2)
+        for k in range(4):
+            def word(k=k):
+                e.var("cl_x", _cid_word(e, p["x"], k))
+                e.var("cl_y", _cid_word(e, p["y"], k))
+                e.if_(e.lt(p["cl_x"], p["cl_y"]), lambda: e.set("cl_r", 0))
+                e.if_(e.lt(p["cl_y"], p["cl_x"]), lambda: e.set("cl_r", 1))
+            e.if_(e.eq(p["cl_r"], 2), word)
+        e.give(e.sel(e.eq(p["cl_r"], 0), 1, 0))
+    return _function(("x", "y"), build, tables)
+
+
+def _object_reference(e: E, obj, name: str, end, kind: int | None):
+    """A reference index read at ``p[name]`` naming a stored object (of ``kind`` when given); marks it."""
+    p = e.p
+    e.var(f"{name}_ri", _read(e, name, end))
+    _no(e, e.le(_references(e, obj), p[f"{name}_ri"]))
+    e.var(f"{name}_ro", _reference(e, obj, p[f"{name}_ri"]))
+    _no(e, e.eq(p[f"{name}_ro"], NONE))
+    if kind is not None:
+        _no(e, e.ne(_kind(e, p[f"{name}_ro"]), kind))
+    _mark(e, p[f"{name}_ri"])
+    return p[f"{name}_ro"]
+
+
+def _strictly_after(e: E, name: str, start, length, first):
+    """``(start, length)`` must sort strictly after the previous string remembered under ``name`` (unless ``first``)."""
+    p = e.p
+    e.if_(e.not_(first), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p[f"{name}_ps"], start, p[f"{name}_pl"], length), 1)))
+    e.var(f"{name}_ps", start)
+    e.var(f"{name}_pl", length)
+
+
+def _capability(e: E, name: str, end, prefix: str):
+    """A build capability ``[kind 1..9, scope bytes]`` read into ``prefix``_kind/_cs/_cl."""
+    p = e.p
+    e.var(f"{prefix}_kind", _read(e, name, end))
+    _no(e, e.either(e.lt(p[f"{prefix}_kind"], 1), e.lt(9, p[f"{prefix}_kind"])))
+    start, length = _string(e, name, end)
+    e.var(f"{prefix}_cs", start)
+    e.var(f"{prefix}_cl", length)
+
+
+def _package_ok(tables):
+    """``decode_package``: identity, canonical modules, dependencies, named build entries and schemas,
+    capabilities, exact end and exact reference use."""
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        e.var("refs", _references(e, o))
+        e.var("pa", _payload(e, o))
+        e.var("pend", e.add(p["pa"], e.rd(e.sub(p["pa"], 1))))
+        _clear_marks(e, p["refs"])
+        start, length = _string(e, "pa", p["pend"])
+        e.var("p_is", start)
+        e.var("p_il", length)
+        _no(e, e.eq(p["p_il"], 0))
+        e.var("mcount", _read(e, "pa", p["pend"]))
+        _no(e, e.eq(p["mcount"], 0))
+
+        def module():
+            e.var("mobj", _object_reference(e, o, "pa", p["pend"], int(Kind.MODULE)))
+            e.if_(e.ne(p["mq"], 0), lambda: _no(e, e.ne(e.call(_FN["cid_less"], p["mprev"], p["mobj"]), 1)))
+            e.var("mprev", p["mobj"])
+
+        e.var("mprev", 0)
+        e.for_("mq", 0, p["mcount"], module)
+        # Dependencies sort by key: exact (0x01 + root CID) before logical (0x02 + ULEB length + identity).
+        e.var("p_deps", p["pa"])
+        e.var("dcount", _read(e, "pa", p["pend"]))
+        e.var("dform", 0)  # the previous form; 0 before the first
+        e.var("dobj", 0)
+        e.var("dps", 0)
+        e.var("dpl", 0)
+
+        def dependency():
+            e.var("form", _read(e, "pa", p["pend"]))
+            _no(e, e.both(e.ne(p["form"], 1), e.ne(p["form"], 2)))
+            _no(e, e.lt(p["form"], p["dform"]))
+
+            def exact():
+                e.var("dnew", _object_reference(e, o, "pa", p["pend"], int(Kind.PACKAGE)))
+                e.if_(e.eq(p["dform"], 1), lambda: _no(e, e.ne(e.call(_FN["cid_less"], p["dobj"], p["dnew"]), 1)))
+                e.set("dobj", p["dnew"])
+
+            def logical():
+                e.var("dkey", p["pa"])  # the key is the encoded string: ULEB length, then bytes
+                _ds, dl = _string(e, "pa", p["pend"])
+                _no(e, e.eq(dl, 0))
+                e.var("dklen", e.sub(p["pa"], p["dkey"]))
+                e.if_(e.eq(p["dform"], 2), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p["dps"], p["dkey"], p["dpl"], p["dklen"]), 1)))
+                e.set("dps", p["dkey"])
+                e.set("dpl", p["dklen"])
+
+            e.if_(e.eq(p["form"], 1), exact, logical)
+            e.set("dform", p["form"])
+
+        e.for_("dq", 0, p["dcount"], dependency)
+        e.var("p_entries", p["pa"])
+        for collection, kind in (("ce", Kind.FUNCTION), ("cf", Kind.TYPE), ("cc", Kind.TYPE)):
+            e.var(f"{collection}_count", _read(e, "pa", p["pend"]))
+
+            def entry(collection=collection, kind=kind):
+                start, length = _string(e, "pa", p["pend"])
+                e.var(f"{collection}_ns", start)
+                e.var(f"{collection}_nl", length)
+                _no(e, e.eq(p[f"{collection}_nl"], 0))
+                _object_reference(e, o, "pa", p["pend"], int(kind))
+                _strictly_after(e, collection, p[f"{collection}_ns"], p[f"{collection}_nl"], e.eq(p[f"{collection}_q"], 0))
+
+            e.var(f"{collection}_ps", 0)
+            e.var(f"{collection}_pl", 0)
+            e.for_(f"{collection}_q", 0, p[f"{collection}_count"], entry)
+        e.var("p_caps", p["pa"])
+        e.var("kcount", _read(e, "pa", p["pend"]))
+        e.var("kprev", 0)
+
+        def capability():
+            # (kind, scope) strictly increasing.
+            _capability(e, "pa", p["pend"], "k")
+
+            def ordered():
+                _no(e, e.lt(p["k_kind"], p["kprev"]))
+                e.if_(e.eq(p["kprev"], p["k_kind"]), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p["kps"], p["k_cs"], p["kpl"], p["k_cl"]), 1)))
+
+            e.if_(e.ne(p["kq"], 0), ordered)
+            e.set("kprev", p["k_kind"])
+            e.var("kps", p["k_cs"])
+            e.var("kpl", p["k_cl"])
+
+        e.var("kps", 0)
+        e.var("kpl", 0)
+        e.for_("kq", 0, p["kcount"], capability)
+        _no(e, e.ne(p["pa"], p["pend"]))
+        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        # For requests and snapshots: [identity start, identity length, dependencies, entries, capabilities].
+        e.var("prec", e.alloc(5))
+        _no(e, e.eq(p["prec"], NONE))
+        for slot, name in enumerate(("p_is", "p_il", "p_deps", "p_entries", "p_caps")):
+            e.st(e.add(p["prec"], slot), p[name])
+        e.st(e.add(GRAPHS_AT, o), p["prec"])
+        e.give(1)
+    return _function(("o",), build, tables)
+
+
+def _build_ok(tables):
+    """The leaf build forms: profile (``decode_profile``), trust policy, signature, and optimization policy.
+    Requests, snapshots, and provenance give 0 here: later passes decide them (S6b.4b)."""
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        e.var("refs", _references(e, o))
+        e.var("ba", _payload(e, o))
+        e.var("bend", e.add(p["ba"], e.rd(e.sub(p["ba"], 1))))
+        _clear_marks(e, p["refs"])
+        e.var("form", _read(e, "ba", p["bend"]))
+
+        def finish():
+            _no(e, e.ne(p["ba"], p["bend"]))
+            _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+            e.give(1)
+
+        def profile():
+            e.var("mode", _read(e, "ba", p["bend"]))
+            _no(e, e.either(e.lt(p["mode"], 1), e.lt(3, p["mode"])))
+            _read(e, "ba", p["bend"])  # optimization level
+            _read(e, "ba", p["bend"])  # verification level
+            e.st(e.add(GRAPHS_AT, o), p["ba"])  # for snapshots: where the grants start
+            e.var("gcount", _read(e, "ba", p["bend"]))
+            e.var("gis", 0)
+            e.var("gil", 0)
+            e.var("gkind", 0)
+            e.var("gcs", 0)
+            e.var("gcl", 0)
+
+            def grant():
+                start, length = _string(e, "ba", p["bend"])
+                e.var("nis", start)
+                e.var("nil", length)
+                _no(e, e.eq(p["nil"], 0))
+                _capability(e, "ba", p["bend"], "g")
+
+                def ordered():
+                    # (identity, kind, scope) strictly increasing.
+                    e.var("gless", e.call(_FN["bytes_less"], p["gis"], p["nis"], p["gil"], p["nil"]))
+                    e.var("gmore", e.call(_FN["bytes_less"], p["nis"], p["gis"], p["nil"], p["gil"]))
+                    _no(e, e.ne(p["gmore"], 0))
+
+                    def same_identity():
+                        _no(e, e.lt(p["g_kind"], p["gkind"]))
+                        e.if_(e.eq(p["g_kind"], p["gkind"]), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p["gcs"], p["g_cs"], p["gcl"], p["g_cl"]), 1)))
+
+                    e.if_(e.eq(p["gless"], 0), same_identity)
+
+                e.if_(e.ne(p["gq"], 0), ordered)
+                e.set("gis", p["nis"])
+                e.set("gil", p["nil"])
+                e.set("gkind", p["g_kind"])
+                e.set("gcs", p["g_cs"])
+                e.set("gcl", p["g_cl"])
+
+            e.for_("gq", 0, p["gcount"], grant)
+            finish()
+
+        def trust():
+            for flag in ("rp", "rv"):
+                _no(e, e.le(p["bend"], p["ba"]))
+                e.var(flag, e.rd(p["ba"]))
+                _no(e, e.lt(1, p[flag]))
+                e.set("ba", e.add(p["ba"], 1))
+            for name in ("al", "si"):
+                e.var(f"{name}_count", _read(e, "ba", p["bend"]))
+
+                def item(name=name):
+                    start, length = _string(e, "ba", p["bend"])
+                    e.var(f"{name}_s", start)
+                    e.var(f"{name}_l", length)
+                    _no(e, e.eq(p[f"{name}_l"], 0))
+                    _strictly_after(e, name, p[f"{name}_s"], p[f"{name}_l"], e.eq(p[f"{name}_q"], 0))
+
+                e.var(f"{name}_ps", 0)
+                e.var(f"{name}_pl", 0)
+                e.for_(f"{name}_q", 0, p[f"{name}_count"], item)
+            e.st(e.add(GRAPHS_AT, o), p["rp"])  # for snapshots: package signatures required
+            required = e.either(e.ne(p["rp"], 0), e.ne(p["rv"], 0))
+            _no(e, e.both(required, e.either(e.eq(p["al_count"], 0), e.eq(p["si_count"], 0))))
+            finish()
+
+        def signature():
+            e.st(e.add(GRAPHS_AT, o), _object_reference(e, o, "ba", p["bend"], None))  # the signed object
+            for _field in range(3):
+                _start, length = _string(e, "ba", p["bend"])
+                _no(e, e.eq(length, 0))
+            finish()
+
+        def optimization():
+            _no(e, e.ne(_read(e, "ba", p["bend"]), 1))  # objective: code size
+            for _value in range(8):
+                _read(e, "ba", p["bend"])
+            _no(e, e.le(p["bend"], p["ba"]))
+            _no(e, e.lt(1, e.rd(p["ba"])))
+            e.set("ba", e.add(p["ba"], 1))
+            _no(e, e.ne(p["refs"], 0))
+            finish()
+
+        e.if_(e.eq(p["form"], 1), profile)
+        e.if_(e.eq(p["form"], 4), trust)
+        e.if_(e.eq(p["form"], 6), signature)
+        e.if_(e.eq(p["form"], 7), optimization)
+        e.give(0)
+    return _function(("o",), build, tables)
+
+
+# -- S6b.4b (ADR-149): requests, snapshots, provenance --------------------------------------
+
+def _form_of(e: E, obj):
+    """The build form of a BUILD object (its first body byte; every form is below 128)."""
+    return e.rd(_payload(e, obj))
+
+
+def _verdict(e: E, obj):
+    return e.ld(e.add(VERDICTS_AT, obj))
+
+
+def _aux(e: E, obj):
+    return e.ld(e.add(GRAPHS_AT, obj))
+
+
+def _same_bytes(e: E, a, a_len, b, b_len):
+    return e.both(e.eq(a_len, b_len), e.eq(e.call(_FN["bytes_less"], a, b, a_len, b_len), 0), e.eq(e.call(_FN["bytes_less"], b, a, b_len, a_len), 0))
+
+
+def _request_ok(tables):
+    """``decode_request``: a proven package with the entry, target, profile, bindings matching the package's
+    schemas name for name with constants of the schema types, canonical artifacts, exact use."""
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        e.var("refs", _references(e, o))
+        e.var("ra", _payload(e, o))
+        e.var("rend", e.add(p["ra"], e.rd(e.sub(p["ra"], 1))))
+        _clear_marks(e, p["refs"])
+        _no(e, e.ne(_read(e, "ra", p["rend"]), 2))
+        e.var("pkg", _object_reference(e, o, "ra", p["rend"], int(Kind.PACKAGE)))
+        _no(e, e.ne(_verdict(e, p["pkg"]), 1))
+        start, length = _string(e, "ra", p["rend"])
+        e.var("es", start)
+        e.var("el", length)
+        e.var("tgt", _object_reference(e, o, "ra", p["rend"], int(Kind.TARGET)))
+        e.var("prof", _object_reference(e, o, "ra", p["rend"], int(Kind.BUILD)))
+        _no(e, e.ne(_form_of(e, p["prof"]), 1))
+        # The package (proven) lists its entries, feature schemas, and configuration schemas from p_entries on.
+        e.var("q", e.ld(e.add(_aux(e, p["pkg"]), 3)))
+        e.var("qend", e.add(e.add(_payload(e, p["pkg"]), e.rd(e.sub(_payload(e, p["pkg"]), 1))), 0))
+        e.var("found", 0)
+
+        def entry():
+            start, length = _string(e, "q", p["qend"])
+            e.var("ns", start)
+            e.var("nl", length)
+            _read(e, "q", p["qend"])
+            e.if_(_same_bytes(e, p["ns"], p["nl"], p["es"], p["el"]), lambda: e.set("found", 1))
+
+        e.var("entries", _read(e, "q", p["qend"]))
+        e.for_("eq_", 0, p["entries"], entry)
+        _no(e, e.eq(p["found"], 0))
+        for schema in ("feature", "configuration"):
+            e.var("scount", _read(e, "q", p["qend"]))
+            e.var("bcount", _read(e, "ra", p["rend"]))
+            _no(e, e.ne(p["scount"], p["bcount"]))
+
+            def binding():
+                start, length = _string(e, "ra", p["rend"])
+                e.var("bs", start)
+                e.var("bl", length)
+                e.var("value", _object_reference(e, o, "ra", p["rend"], None))
+                start, length = _string(e, "q", p["qend"])
+                e.var("ss", start)
+                e.var("sl", length)
+                e.var("si", _read(e, "q", p["qend"]))
+                e.var("stype", _reference(e, p["pkg"], p["si"]))
+                _no(e, e.not_(_same_bytes(e, p["bs"], p["bl"], p["ss"], p["sl"])))
+                # ``_constant_type``: the value is a constant whose type reference is the schema's type.
+                _no(e, e.ne(_kind(e, p["value"]), int(Kind.CONSTANT)))
+                e.var("ca", _payload(e, p["value"]))
+                e.var("cend", e.add(p["ca"], e.rd(e.sub(p["ca"], 1))))
+                e.var("ct", _read(e, "ca", p["cend"]))
+                _no(e, e.le(_references(e, p["value"]), p["ct"]))
+                _no(e, e.ne(_reference(e, p["value"], p["ct"]), p["stype"]))
+
+            e.for_(f"b_{schema}", 0, p["bcount"], binding)
+        e.var("acount", _read(e, "ra", p["rend"]))
+        _no(e, e.eq(p["acount"], 0))
+        e.var("aprev", 0)
+
+        def artifact():
+            e.var("art", _read(e, "ra", p["rend"]))
+            _no(e, e.either(e.lt(p["art"], 1), e.lt(6, p["art"]), e.le(p["art"], p["aprev"])))
+            e.set("aprev", p["art"])
+
+        e.for_("aq", 0, p["acount"], artifact)
+        _no(e, e.ne(p["ra"], p["rend"]))
+        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        e.var("rrec", e.alloc(3))  # [package, target, profile]
+        _no(e, e.eq(p["rrec"], NONE))
+        e.st(p["rrec"], p["pkg"])
+        e.st(e.add(p["rrec"], 1), p["tgt"])
+        e.st(e.add(p["rrec"], 2), p["prof"])
+        e.st(e.add(GRAPHS_AT, o), p["rrec"])
+        e.give(1)
+    return _function(("o",), build, tables)
+
+
+def _listed(e: E, items, count, obj):
+    """The position of ``obj`` in the ``count`` words at ``items``, or NONE."""
+    p = e.p
+    e.var("ls_at", NONE)
+    e.for_("ls_q", 0, count, lambda: e.if_(e.eq(e.ld(e.add(items, p["ls_q"])), obj), lambda: e.set("ls_at", p["ls_q"])))
+    return p["ls_at"]
+
+
+def _snapshot_ok(tables):
+    """``decode_snapshot``: header kinds, canonical package, signature, and digest lists, exact use; a proven
+    request whose package is listed, an exact dependency closure, declared grants, and signature coverage."""
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        e.var("refs", _references(e, o))
+        e.var("sa", _payload(e, o))
+        e.var("send", e.add(p["sa"], e.rd(e.sub(p["sa"], 1))))
+        _clear_marks(e, p["refs"])
+        _no(e, e.ne(_read(e, "sa", p["send"]), 3))
+        e.var("req", _object_reference(e, o, "sa", p["send"], int(Kind.BUILD)))
+        _no(e, e.ne(_form_of(e, p["req"]), 2))
+        _start, length = _string(e, "sa", p["send"])
+        _no(e, e.eq(length, 0))
+        e.var("pol", _object_reference(e, o, "sa", p["send"], int(Kind.BUILD)))
+        _no(e, e.ne(_form_of(e, p["pol"]), 4))
+        for name, kind, form in (("pk", Kind.PACKAGE, None), ("sg", Kind.BUILD, 6)):
+            e.var(f"{name}_count", _read(e, "sa", p["send"]))
+            e.var(f"{name}_items", e.alloc(e.add(p[f"{name}_count"], 1)))
+            _no(e, e.eq(p[f"{name}_items"], NONE))
+
+            def item(name=name, kind=kind, form=form):
+                e.var(f"{name}_obj", _object_reference(e, o, "sa", p["send"], int(kind)))
+                if form is not None:
+                    _no(e, e.ne(_form_of(e, p[f"{name}_obj"]), form))
+                _no(e, e.ne(_verdict(e, p[f"{name}_obj"]), 1))
+                e.if_(e.ne(p[f"{name}_q"], 0), lambda: _no(e, e.ne(e.call(_FN["cid_less"], e.ld(e.add(p[f"{name}_items"], e.sub(p[f"{name}_q"], 1))), p[f"{name}_obj"]), 1)))
+                e.st(e.add(p[f"{name}_items"], p[f"{name}_q"]), p[f"{name}_obj"])
+
+            e.for_(f"{name}_q", 0, p[f"{name}_count"], item)
+        e.var("dcount", _read(e, "sa", p["send"]))
+
+        def digest():
+            _no(e, e.lt(e.sub(p["send"], p["sa"]), 32))
+            e.if_(e.ne(p["dq"], 0), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], e.sub(p["sa"], 32), p["sa"], 32, 32), 1)))
+            e.set("sa", e.add(p["sa"], 32))
+
+        e.for_("dq", 0, p["dcount"], digest)
+        _no(e, e.ne(p["sa"], p["send"]))
+        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        _no(e, e.ne(_verdict(e, p["req"]), 1))
+        _no(e, e.ne(_verdict(e, p["pol"]), 1))
+        e.var("rrec", _aux(e, p["req"]))
+        e.var("root", e.ld(p["rrec"]))
+        e.var("prof", e.ld(e.add(p["rrec"], 2)))
+        _no(e, e.ne(_verdict(e, p["prof"]), 1))
+        _no(e, e.eq(_listed(e, p["pk_items"], p["pk_count"], p["root"]), NONE))
+        # The dependency closure from the request's package is exactly the listed packages.
+        e.var("seen", e.alloc(e.add(p["pk_count"], 1)))
+        e.var("queue", e.alloc(e.add(p["pk_count"], 1)))
+        _no(e, e.either(e.eq(p["seen"], NONE), e.eq(p["queue"], NONE)))
+        e.for_("z", 0, p["pk_count"], lambda: e.st(e.add(p["seen"], p["z"]), 0))
+        e.var("head", 0)
+        e.var("tail", 0)
+
+        def enqueue(position):
+            e.var("eqp", position)
+            e.if_(e.eq(e.ld(e.add(p["seen"], p["eqp"])), 0), lambda: (
+                e.st(e.add(p["seen"], p["eqp"]), 1),
+                e.st(e.add(p["queue"], p["tail"]), p["eqp"]),
+                e.set("tail", e.add(p["tail"], 1)),
+            ))
+
+        enqueue(_listed(e, p["pk_items"], p["pk_count"], p["root"]))
+
+        def visit():
+            e.var("cur", e.ld(e.add(p["pk_items"], e.ld(e.add(p["queue"], p["head"])))))
+            e.set("head", e.add(p["head"], 1))
+            e.var("crec", _aux(e, p["cur"]))
+            e.var("w", e.ld(e.add(p["crec"], 2)))
+            e.var("wend", e.add(_payload(e, p["cur"]), e.rd(e.sub(_payload(e, p["cur"]), 1))))
+            e.var("deps", _read(e, "w", p["wend"]))
+
+            def dependency():
+                e.var("dform", _read(e, "w", p["wend"]))
+
+                def exact():
+                    e.var("dpos", _listed(e, p["pk_items"], p["pk_count"], _reference(e, p["cur"], _read(e, "w", p["wend"]))))
+                    _no(e, e.eq(p["dpos"], NONE))
+                    enqueue(p["dpos"])
+
+                def logical():
+                    start, length = _string(e, "w", p["wend"])
+                    e.var("lis", start)
+                    e.var("lil", length)
+                    e.var("matches", 0)
+                    e.var("match", 0)
+
+                    def candidate():
+                        e.var("other", _aux(e, e.ld(e.add(p["pk_items"], p["mq"]))))
+                        e.if_(_same_bytes(e, e.ld(p["other"]), e.ld(e.add(p["other"], 1)), p["lis"], p["lil"]),
+                              lambda: (e.set("matches", e.add(p["matches"], 1)), e.set("match", p["mq"])))
+
+                    e.for_("mq", 0, p["pk_count"], candidate)
+                    _no(e, e.ne(p["matches"], 1))
+                    enqueue(p["match"])
+
+                e.if_(e.eq(p["dform"], 1), exact, logical)
+
+            e.for_("dk", 0, p["deps"], dependency)
+
+        e.while_(lambda: e.lt(p["head"], p["tail"]), visit)
+        _no(e, e.ne(p["tail"], p["pk_count"]))
+        # Every profile grant names listed packages, each declaring the capability.
+        e.var("g", _aux(e, p["prof"]))
+        e.var("gend", e.add(_payload(e, p["prof"]), e.rd(e.sub(_payload(e, p["prof"]), 1))))
+        e.var("grants", _read(e, "g", p["gend"]))
+
+        def grant():
+            start, length = _string(e, "g", p["gend"])
+            e.var("gis", start)
+            e.var("gil", length)
+            e.var("gkind", _read(e, "g", p["gend"]))
+            start, length = _string(e, "g", p["gend"])
+            e.var("gcs", start)
+            e.var("gcl", length)
+            e.var("gfound", 0)
+
+            def package_view():
+                e.var("pv", e.ld(e.add(p["pk_items"], p["pq"])))
+                e.var("pvr", _aux(e, p["pv"]))
+
+                def declared():
+                    e.set("gfound", 1)
+                    e.var("c", e.ld(e.add(p["pvr"], 4)))
+                    e.var("cend", e.add(_payload(e, p["pv"]), e.rd(e.sub(_payload(e, p["pv"]), 1))))
+                    e.var("caps", _read(e, "c", p["cend"]))
+                    e.var("has", 0)
+
+                    def capability():
+                        e.var("ck", _read(e, "c", p["cend"]))
+                        start, length = _string(e, "c", p["cend"])
+                        e.var("cs", start)
+                        e.var("cl", length)
+                        e.if_(e.both(e.eq(p["ck"], p["gkind"]), _same_bytes(e, p["cs"], p["cl"], p["gcs"], p["gcl"])), lambda: e.set("has", 1))
+
+                    e.for_("cq", 0, p["caps"], capability)
+                    _no(e, e.eq(p["has"], 0))
+
+                e.if_(_same_bytes(e, e.ld(p["pvr"]), e.ld(e.add(p["pvr"], 1)), p["gis"], p["gil"]), declared)
+
+            e.for_("pq", 0, p["pk_count"], package_view)
+            _no(e, e.eq(p["gfound"], 0))
+
+        e.for_("gq", 0, p["grants"], grant)
+        # Signatures sign listed packages; a policy requiring package signatures covers every one.
+        e.var("signed", e.alloc(e.add(p["pk_count"], 1)))
+        _no(e, e.eq(p["signed"], NONE))
+        e.for_("z", 0, p["pk_count"], lambda: e.st(e.add(p["signed"], p["z"]), 0))
+
+        def signature():
+            e.var("spos", _listed(e, p["pk_items"], p["pk_count"], _aux(e, e.ld(e.add(p["sg_items"], p["sq"])))))
+            _no(e, e.eq(p["spos"], NONE))
+            e.st(e.add(p["signed"], p["spos"]), 1)
+
+        e.for_("sq", 0, p["sg_count"], signature)
+        e.if_(e.ne(_aux(e, p["pol"]), 0), lambda: e.for_("z", 0, p["pk_count"], lambda: _no(e, e.eq(e.ld(e.add(p["signed"], p["z"])), 0))))
+        e.st(e.add(GRAPHS_AT, o), p["req"])
+        e.give(1)
+    return _function(("o",), build, tables)
+
+
+def _provenance_ok(tables):
+    """``decode_provenance``: snapshot, request, target, profile; three digests and a producer; the exact closure."""
+    def build(e: E):
+        p = e.p
+        o = p["o"]
+        e.var("refs", _references(e, o))
+        e.var("va", _payload(e, o))
+        e.var("vend", e.add(p["va"], e.rd(e.sub(p["va"], 1))))
+        _clear_marks(e, p["refs"])
+        _no(e, e.ne(_read(e, "va", p["vend"]), 5))
+        e.var("snap", _object_reference(e, o, "va", p["vend"], int(Kind.BUILD)))
+        e.var("req", _object_reference(e, o, "va", p["vend"], int(Kind.BUILD)))
+        e.var("tgt", _object_reference(e, o, "va", p["vend"], int(Kind.TARGET)))
+        e.var("prof", _object_reference(e, o, "va", p["vend"], int(Kind.BUILD)))
+        _no(e, e.either(e.ne(_form_of(e, p["snap"]), 3), e.ne(_form_of(e, p["req"]), 2), e.ne(_form_of(e, p["prof"]), 1)))
+        _no(e, e.lt(e.sub(p["vend"], p["va"]), 96))
+        e.set("va", e.add(p["va"], 96))
+        _string(e, "va", p["vend"])
+        _no(e, e.ne(p["va"], p["vend"]))
+        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        _no(e, e.either(e.ne(_verdict(e, p["snap"]), 1), e.ne(_verdict(e, p["req"]), 1)))
+        _no(e, e.ne(_aux(e, p["snap"]), p["req"]))
+        e.var("rrec", _aux(e, p["req"]))
+        _no(e, e.either(e.ne(e.ld(e.add(p["rrec"], 1)), p["tgt"]), e.ne(e.ld(e.add(p["rrec"], 2)), p["prof"])))
         e.give(1)
     return _function(("o",), build, tables)
 
@@ -752,11 +1564,21 @@ def _program(tables):
                 e.if_(e.eq(kind, int(Kind.PROGRAM_ROOT)), lambda: e.set("verdict", e.call(_FN["root"], o)))
                 e.if_(e.eq(kind, int(Kind.CALL_CONTRACT)), lambda: e.set("verdict", e.call(_FN["contract"], o)))
                 e.if_(e.eq(kind, int(Kind.TARGET)), lambda: e.set("verdict", e.call(_FN["target"], o)))
+                e.if_(e.eq(kind, int(Kind.PACKAGE)), lambda: e.set("verdict", e.call(_FN["package"], o)))
+                e.if_(e.eq(kind, int(Kind.BUILD)), lambda: e.set("verdict", e.call(_FN["build"], o)))
+                e.if_(e.eq(kind, int(Kind.GRAPH_FRAGMENT)), lambda: e.set("verdict", e.call(_FN["glue"], o)))
             this_pass = e.eq(kind, int(Kind.RECURSION_GROUP)) if groups else e.ne(kind, int(Kind.RECURSION_GROUP))
             e.if_(this_pass, lambda: e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(p["verdict"], 1), 1, 0)))
 
         e.for_("o", 0, p["O"], lambda: verdict(True))
         e.for_("o", 0, p["O"], lambda: verdict(False))
+        # Requests, then snapshots, then provenance: each reads the verdicts and records of the ones before.
+        for form, name in ((2, "request"), (3, "snapshot"), (5, "provenance")):
+            def later(form=form, name=name):
+                o = p["o"]
+                e.if_(e.both(e.eq(_kind(e, o), int(Kind.BUILD)), e.eq(_form_of(e, o), form)), lambda: e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(e.call(_FN[name], o), 1), 1, 0)))
+
+            e.for_("o", 0, p["O"], later)
         # The store: everything reachable from the root, no cycle (iterative depth-first search).
         root = e.rd(1)
         e.var("root", root)
@@ -828,6 +1650,14 @@ def build_verifier_program():
     add("module", _list_ok(tables, MODULE_CHILDREN))
     add("root", _list_ok(tables, (Kind.MODULE,)))
     add("contract", _contract_ok(tables))
+    add("bytes_less", _bytes_less_fn(tables))
+    add("cid_less", _cid_less_fn(tables))
+    add("package", _package_ok(tables))
+    add("build", _build_ok(tables))
+    add("request", _request_ok(tables))
+    add("snapshot", _snapshot_ok(tables))
+    add("provenance", _provenance_ok(tables))
+    add("glue", _glue_ok(tables))
     program = add("program", _program(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
 
@@ -865,7 +1695,7 @@ def _native_image() -> tuple[bytes, int]:
 
     sources = Path(__file__).resolve().parent
     digest = hashlib.sha256(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
-    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py"):
+    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py", "xax_inline.py"):
         digest.update((sources / name).read_bytes())
     cache = Path(os.environ.get("XAX_NATIVE_CACHE", Path.home() / ".cache" / "xax-native"))
     entry = cache / f"store-verifier-{digest.hexdigest()}.bin"
@@ -945,7 +1775,8 @@ def object_table(objects, head: list[int]) -> list[int] | None:
             payload = list(stream)
             words += [len(payload), *payload, len(obj.body), *obj.body]  # the body bytes (recursion-group keys)
             continue
-        elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP):
+        elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP,
+                          Kind.PACKAGE, Kind.BUILD):
             payload = list(obj.body)
         else:
             payload = []

@@ -6077,9 +6077,12 @@ def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], Se
     used_references: set[bytes] = set()
     member_spans: list[tuple[int, int]] = []
 
+    glued = obj.cid in _XAX_GLUE_GRAPHS  # S6b.4d: XAX decided the types, reference use, and trap payloads
+
     def type_reference() -> bytes:
         type_object = resolve(references[take()])
-        _verify_type(type_object, resolve)
+        if not glued:
+            _verify_type(type_object, resolve)
         used_references.add(type_object.cid)
         return type_object.cid
 
@@ -6119,10 +6122,11 @@ def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], Se
         else:
             size, at = take(), take()
             trap_bytes = obj.body[at:at + size]
-            try:
-                decode_trap_payload(trap_bytes)
-            except ValueError as error:
-                fail("XAX.CONTROL.TRAP_PAYLOAD", obj.cid.hex(), "TRAP-PAYLOAD-CANONICAL", "empty or canonical u16 ULEB reason with optional target bytes", str(error))
+            if not glued:
+                try:
+                    decode_trap_payload(trap_bytes)
+                except ValueError as error:
+                    fail("XAX.CONTROL.TRAP_PAYLOAD", obj.cid.hex(), "TRAP-PAYLOAD-CANONICAL", "empty or canonical u16 ULEB reason with optional target bytes", str(error))
             term = Terminator(kind, payload=trap_bytes)
         blocks.append(_ParsedBlock(tuple(parameters), tuple(nodes), term))
     return entry, blocks, used_references, member_spans
@@ -6256,7 +6260,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         if status == 0:
             parsed = _graph_syntax_from_stream(obj, resolve, words)
     entry, blocks, used_references, member_spans = parsed or _graph_syntax_bootstrap(obj, resolve)
-    if used_references != set(obj.references):
+    if used_references != set(obj.references) and not (parsed is not None and obj.cid in _XAX_GLUE_GRAPHS):
         fail(
             "XAX.CANON.UNUSED_REFERENCE",
             obj.cid.hex(),
@@ -7287,6 +7291,11 @@ def _verify_reference_list(
             )
 
 
+# S6b.4d (ADR-149): graph CIDs whose per-graph glue (type references, entity resolution, reference use, trap
+# payloads) the XAX store verifier decided.  A CID's validity is permanent, so the set only grows.
+_XAX_GLUE_GRAPHS: set[bytes] = set()
+
+
 def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObject"]) -> tuple[bool, dict[bytes, object]]:
     """S6b.2 (ADR-144): the XAX store verifier's verdicts: ``(store proven, {cid: verdict})``.
 
@@ -7325,6 +7334,8 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
             proven[obj.cid] = True if graphs[position] == NONE_WORD else listed[graphs[position]]
         elif obj.kind == Kind.RECURSION_GROUP:
             proven[obj.cid] = tuple(listed[index] for index in members[position])
+        elif obj.kind == Kind.GRAPH_FRAGMENT:
+            _XAX_GLUE_GRAPHS.add(obj.cid)  # S6b.4d: the graph's references and trap payloads are decided
         else:
             proven[obj.cid] = True
     return store_ok, proven
@@ -7336,7 +7347,7 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         fail("XAX.IDENTITY.CID_MISMATCH", obj.cid.hex(), "ID-CID-INTEGRITY", expected.hex(), obj.cid.hex())
     for cid in obj.references:
         resolve(cid)
-    if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET):
+    if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD):
         # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs
         # in member order, are still parsed (cached) so that an invalid graph fails exactly where the bootstrap would.
         if obj.kind == Kind.FUNCTION and proven is not True:
