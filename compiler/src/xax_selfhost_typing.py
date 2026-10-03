@@ -91,7 +91,8 @@ EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE, EDOM
 PTR, PSPACE, PELEM, PPERM, PALIGN, STACKOWNER, MEMEFFECT = range(17, 24)
 FORMB = 24  # S4d.2c: a type's raw first body byte (its form when single-byte), any type kind
 OPID = 25  # S4d.2d: an opaque identity type (form 6): 1 when ``_decode_opaque_identity_type`` accepts it
-TABLES = 26
+EINST = 26  # S4d.2d: an effect type's instance (0 when absent)
+TABLES = 27
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -401,6 +402,7 @@ def _proof_entry(b: _Builder, t: _Typing, index, carried):
     b.put(t.slot(MEMEFFECT, index), t.all(effect_ok, t.eq(v1, MEMORY_EFFECT_DOMAIN), t.eq(p2, end)))
     b.put(t.slot(STACKOWNER, index), owner)
     b.put(t.slot(EDOMAIN, index), b.mul(effect_ok, v1))
+    b.put(t.slot(EINST, index), b.mul(effect_ok, t.pick(t.eq(p2, end), b.c(0), v2)))
     b.put(t.slot(OPAQUE, index), b.mul(opaque_ok, v1))
     # form 6: a nonempty byte string identity, exactly to the end, no references.
     b.put(t.slot(OPID, index), t.all(plain, t.eq(form, 6), ok1, t.nonzero(v1), t.eq(b.add(p2, v1), end)))
@@ -918,7 +920,8 @@ def _facts_section(blocks, facts, keys, type_index, value_type_of):
     from xax_compiler import ValueRef
     from xax_selfhost_facts import NONE
 
-    entry, order, callee_summary = facts
+    entry, order, callee_summary, *rest = facts
+    callee_links = rest[0] if rest else None
     key_of = {key: index for index, key in enumerate(keys)}
     refs, ids = [], {}
     for block_index, block in enumerate(blocks):
@@ -963,7 +966,15 @@ def _facts_section(blocks, facts, keys, type_index, value_type_of):
             # Auxiliary words: a direct call's callee summary ``[blocks, operation count, operations]``
             # when its interface carries a stack owner (resource call contracts), else none.
             summary = callee_summary(node) if node.operation == Operation.CALL_DIRECT and callee_summary is not None else None
-            body += [0] if summary is None else [len(summary[1]) + 2, summary[0], len(summary[1]), *summary[1]]
+            # S4d.2d: then the callee's entry ``link_target`` declarations ``[count, (view, target) pairs]``
+            # (count NONE when they cannot be read).
+            links = callee_links(node) if node.operation == Operation.CALL_DIRECT and callee_links is not None else {}
+            if summary is None and not links:
+                body += [0]
+            else:
+                aux = [summary[0], len(summary[1]), *summary[1]] if summary is not None else [0, 0]
+                aux += [NONE] if links is None else [len(links), *(item for pair in sorted(links.items()) for item in pair)]
+                body += [len(aux), *aux]
         term = block.terminator
         body += [
             int(term.kind), len(term.values), *(ids[value] for value in term.values),
