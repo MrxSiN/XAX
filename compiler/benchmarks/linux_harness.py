@@ -1,6 +1,8 @@
-"""Shared measurement harness for Linux XAX-versus-C workloads (tooling only).
+"""Shared measurement harness for Linux XAX-versus-baseline workloads (tooling only).
 
-Every arm is timed by ``linux_filestat_c/runner.c`` (fork/exec/wait4 with
+Baselines are optimized C (gcc, clang) and, per the multi-language rule
+(``XAX_BENCHMARKS.md`` §15.0), at least one implementation outside C/C++:
+an optimized ``rustc`` twin from ``rust_twins/``.  Every arm is timed by ``linux_filestat_c/runner.c`` (fork/exec/wait4 with
 ``CLOCK_MONOTONIC`` and ``ru_maxrss``); outputs are compared untimed.
 """
 
@@ -23,6 +25,18 @@ BASELINES = (
     ("clang-O2", "clang", ("-O2",)),
     ("gcc-O2-static", "gcc", ("-O2", "-static")),
 )
+RUST_TWINS = HERE / "rust_twins"
+RUST_FLAGS = ("-C", "opt-level=3", "-C", "panic=abort", "-C", "codegen-units=1")
+# XAX_BENCHMARKS.md §15.0: primary target <= 1.05x the fastest valid arm; <= 1.10x competitive.
+PRIMARY_TARGET, COMPETITIVE = 1.05, 1.10
+
+
+def classify(ratio_vs_fastest: float) -> str:
+    if ratio_vs_fastest <= PRIMARY_TARGET:
+        return "meets-primary-target"
+    if ratio_vs_fastest <= COMPETITIVE:
+        return "competitive-below-primary-target"
+    return "unmet"
 
 
 def tool_version(command: list[str]) -> str:
@@ -39,13 +53,18 @@ def run_output(program: Path, cwd: Path, stdin_path: Path | None = None) -> tupl
 
 
 def build_arms(work: Path, name: str, xax_bytes: bytes, c_source: Path, libraries: tuple[str, ...] = ()) -> tuple[dict[str, Path], dict[str, int]]:
-    """Write the XAX artifact and compile every C baseline; return paths and stripped sizes."""
+    """Write the XAX artifact and compile every C and Rust baseline; return paths and stripped sizes."""
     artifacts = {"xax": work / f"{name}-xax"}
     artifacts["xax"].write_bytes(xax_bytes)
     artifacts["xax"].chmod(0o755)
     for arm, compiler, flags in BASELINES:
         subprocess.run([compiler, *flags, "-o", str(work / arm), str(c_source), *libraries], check=True)
         artifacts[arm] = work / arm
+    rust_source = RUST_TWINS / f"{name}.rs"
+    if not rust_source.exists() or shutil.which("rustc") is None:
+        raise RuntimeError(f"the multi-language rule needs rustc and {rust_source}")
+    subprocess.run(["rustc", *RUST_FLAGS, "-o", str(work / "rustc-O3"), str(rust_source)], check=True)
+    artifacts["rustc-O3"] = work / "rustc-O3"
     stripped = {}
     for arm, path in artifacts.items():
         copy = work / f"{arm}.stripped"
@@ -96,9 +115,13 @@ def measure_arms(
         raise AssertionError(f"outputs differ: {outputs}")
     baseline = results["gcc-O2"]["wall_seconds_median"]
     best = min(item["wall_seconds_median"] for arm, item in results.items() if not arm.startswith("xax"))
-    for item in results.values():
+    fastest = min(item["wall_seconds_median"] for item in results.values())
+    for arm, item in results.items():
         item["time_ratio_vs_gcc_O2"] = round(item["wall_seconds_median"] / baseline, 3)
         item["time_ratio_vs_best_baseline"] = round(item["wall_seconds_median"] / best, 3)
+        item["time_ratio_vs_fastest"] = round(item["wall_seconds_median"] / fastest, 3)
+        if arm.startswith("xax"):
+            item["performance_class"] = classify(item["wall_seconds_median"] / fastest)
     return results, outputs.pop(), reference_rss
 
 
@@ -111,6 +134,7 @@ def host_info(**extra: str) -> dict:
         "python": platform.python_version(),
         "gcc": tool_version(["gcc", "--version"]),
         "clang": tool_version(["clang", "--version"]),
+        "rustc": tool_version(["rustc", "--version"]),
         **extra,
     }
 
@@ -123,4 +147,6 @@ def method_info(warmup: int, repetitions: int, reference_rss: int, link: str = "
         "reference_dynamic_bin_true_rss_kib": reference_rss,
         "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
         "c_flags": {arm: f"{compiler} {' '.join(flags)}{' ... ' + link if link else ''}" for arm, compiler, flags in BASELINES},
+        "rust_flags": {"rustc-O3": "rustc " + " ".join(RUST_FLAGS)},
+        "performance_rule": "XAX_BENCHMARKS.md §15.0: fastest valid arm by median; <=1.05x meets the primary target, <=1.10x competitive, else unmet",
     }

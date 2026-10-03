@@ -172,8 +172,7 @@
     "aarch64_execution": {
       "hardware_latency_samples": null,
       "harness": "xax_aarch64.run_aarch64_qemu",
-      "qemu_system_aarch64_available": false,
-      "status": "missing on this x86-64 host; no AArch64 hardware/QEMU executable available"
+      "status": "not measured: no AArch64 hardware; emulated timing is not latency evidence"
     },
     "timing_guarantee": null,
     "timing_statement": "observed latency is cost evidence only; target timing bounds remain unknown",
