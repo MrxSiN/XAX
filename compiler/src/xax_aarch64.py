@@ -11,8 +11,10 @@ from typing import Callable, Sequence
 
 from xax_artifact import ArtifactSemanticRange
 
+from xax_compiler import parse_function_graph
 from xax_compiler import (
     store_resolver,
+    borrowed_view_returns,
     AAPCS64_LINUX_C_ABI,
     AARCH64_LINUX_ABI,
     AARCH64_LINUX_ELF_DYNAMIC_FORMAT,
@@ -625,6 +627,8 @@ def _register_path_eligible(graph, parameters, returns, resolve: Callable[[bytes
 
     if not all(scalar(cid) for cid in (*parameters, *returns)):
         return False
+    if sum(not _is_proof_type(resolve(cid)) for cid in returns) > 1:
+        return False  # borrowed-view return elision lives on the frame path
     for block in graph.blocks:
         if not all(scalar(cid, (1, 32, 64)) for cid in block.parameters):
             return False
@@ -639,6 +643,8 @@ def _register_path_eligible(graph, parameters, returns, resolve: Callable[[bytes
             if node.operation in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT):
                 machine = [cid for cid in node.operand_types if not _is_proof_type(resolve(cid))]
                 if len(machine) > 8 + (node.operation == Operation.CALL_INDIRECT):
+                    return False
+                if sum(not _is_proof_type(resolve(cid)) for cid in node.results) > 1:
                     return False
     return True
 
@@ -656,7 +662,9 @@ def _function_closure(
         functions[function.cid] = function
         graph_object, parameters, returns = _decode_function_interface(function, resolve)
         machine_parameters = tuple(cid for cid in parameters if not _is_proof_type(resolve(cid)))
-        machine_returns = tuple(cid for cid in returns if not _is_proof_type(resolve(cid)))
+        # Borrowed views a function gives back stay out of registers (ADR-101 on AArch64, ADR-125).
+        elided = borrowed_view_returns(parameters, returns, resolve)
+        machine_returns = tuple(cid for index, cid in enumerate(returns) if not _is_proof_type(resolve(cid)) and index not in elided)
         widths = [_width(resolve, cid) or (_memory_size(resolve, cid) and 128) for cid in (*machine_parameters, *machine_returns)]
         if _general_aarch64_target(target):
             try:
@@ -677,7 +685,7 @@ def _function_closure(
                 or _assign_arguments([_abi_class(resolve, cid) for cid in machine_parameters]) is None
             ):
                 fail("XAX.AARCH64.ABI", function.cid.hex(), "AARCH64-ABI", [len(target.argument_registers), 1, "AAPCS64 register-assigned values"], [len(machine_parameters), len(machine_returns), widths])
-        graph = _parse_graph(graph_object, resolve)
+        graph = parse_function_graph(function, resolve)
         for block in graph.blocks:
             for node in block.nodes:
                 if node.operation not in target.supported_operations:
@@ -862,10 +870,11 @@ def _compile_general_function(
     views, and cross-call copies all have one uniform physical representation.
     """
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
+    graph = parse_function_graph(function, resolve)
 
     machine_parameter_types = tuple(cid for cid in parameter_types if not _is_proof_type(resolve(cid)))
-    machine_return_types = tuple(cid for cid in return_types if not _is_proof_type(resolve(cid)))
+    own_elided = borrowed_view_returns(parameter_types, return_types, resolve)
+    machine_return_types = tuple(cid for index, cid in enumerate(return_types) if not _is_proof_type(resolve(cid)) and index not in own_elided)
     if len(machine_return_types) > 1:
         fail("XAX.AARCH64.ABI", function.cid.hex(), "AARCH64-ABI-RETURNS", "at most one machine return", len(machine_return_types))
 
@@ -1401,9 +1410,10 @@ def _compile_general_function(
                 indirect_ref = None
                 if node.operation == Operation.CALL_INDIRECT:
                     _, indirect_ref, _ = machine.pop(0)
+                call_elided = borrowed_view_returns(node.operand_types, node.results, resolve) if node.operation == Operation.CALL_DIRECT else {}
                 machine_results = [
                     (ValueRef.node_result(block_index, node_index, i), cid)
-                    for i, cid in enumerate(node.results) if not _is_proof_type(resolve(cid))
+                    for i, cid in enumerate(node.results) if not _is_proof_type(resolve(cid)) and i not in call_elided
                 ]
                 if len(machine_results) > 1:
                     fail("XAX.AARCH64.ABI", graph_object.cid.hex(), "AARCH64-CALL-RETURNS", "at most one machine return", len(machine_results))
@@ -1411,6 +1421,8 @@ def _compile_general_function(
                     pass
                 elif node.operation == Operation.CALL_DIRECT:
                     marshal_call(block_index, node_index, machine, machine_results[0] if machine_results else None, direct=node.entity.cid)
+                    for result_index, parameter_index in call_elided.items():
+                        copy_ref(ValueRef.node_result(block_index, node_index, result_index), node.operands[parameter_index])
                 elif node.operation == Operation.CALL_FOREIGN:
                     declaration = decode_foreign_function(node.entity)
                     _require_foreign_abi(declaration, target, graph_object)
@@ -1515,7 +1527,7 @@ def _compile_general_function(
 
         term = block.terminator
         if term.kind == TerminatorKind.RETURN:
-            machine_values = [(value, cid) for value, cid in zip(term.values, return_types) if not _is_proof_type(resolve(cid))]
+            machine_values = [(value, cid) for index, (value, cid) in enumerate(zip(term.values, return_types)) if not _is_proof_type(resolve(cid)) and index not in own_elided]
             if machine_values:
                 value, cid = machine_values[0]
                 kind, count, member = _abi_class(resolve, cid)
@@ -1601,7 +1613,7 @@ def _compile_function(
     atomic_policy: AtomicLegalizationPolicy = AtomicLegalizationPolicy(),
 ) -> tuple[bytes, tuple[tuple[int, bytes], ...], tuple[tuple[int, bytes, bytes], ...], tuple[tuple[int, int, bytes], ...], tuple[ArtifactSemanticRange, ...]]:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
+    graph = parse_function_graph(function, resolve)
     for block in graph.blocks:
         for node in block.nodes:
             if node.operation not in ATOMIC_OPERATIONS:

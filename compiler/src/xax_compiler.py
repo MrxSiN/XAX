@@ -3071,6 +3071,84 @@ def function(
     return SemanticObject.create(Kind.FUNCTION, bytes(body), references)
 
 
+def group_member_function(group: SemanticObject, member: int) -> SemanticObject:
+    """The callable identity ``(recursion_group CID, member index)`` (ADR-125).
+
+    A ``function`` whose single reference is a recursion group and whose body
+    is the member index.  Its interface is the member's; ``call.direct`` and
+    ``function_address`` accept it like any function, so code outside the
+    group can call into it.  Functions over graph fragments keep their
+    encoding and identity unchanged.
+    """
+    if group.kind != Kind.RECURSION_GROUP or member < 0:
+        raise ValueError("group member functions name a recursion group and a member index")
+    return SemanticObject.create(Kind.FUNCTION, uleb(0) + uleb(member), (group.cid,))
+
+
+def decode_group_member_function(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[SemanticObject, int] | None:
+    """``(group, member)`` for a group member function, ``None`` for an ordinary function."""
+    if obj.kind != Kind.FUNCTION or len(obj.references) != 1:
+        return None
+    cursor = Cursor(obj.body, obj.cid.hex())
+    carrier = _reference(obj, cursor, resolve)
+    if carrier.kind != Kind.RECURSION_GROUP:
+        return None
+    member = cursor.uleb()
+    cursor.end("FUNCTION-GROUP-MEMBER-BODY")
+    return carrier, member
+
+
+def call_target(node, owner: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> SemanticObject | None:
+    """The function a direct call reaches: ``call.direct``'s entity, or for
+    ``call.group_member`` inside group member ``owner`` the sibling member
+    function.  Backends compile both as one direct call (ADR-125)."""
+    if node.operation == Operation.CALL_DIRECT:
+        return node.entity
+    if node.operation == Operation.CALL_GROUP_MEMBER:
+        decoded = decode_group_member_function(owner, resolve)
+        if decoded is None:
+            fail("XAX.STRUCT.GROUP_CALL_CONTEXT", owner.cid.hex(), "GRAPH-GROUP-CALL-CONTEXT", Kind.RECURSION_GROUP.name, owner.kind.name)
+        return group_member_function(decoded[0], node.member)
+    return None
+
+
+_MEMBER_GRAPHS: dict[bytes, "_ParsedGraph"] = {}
+
+
+def parse_function_graph(function: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> "_ParsedGraph":
+    """A function's parsed graph, as backends compile it (ADR-125).
+
+    For a group member function every ``call.group_member k`` becomes a
+    ``call.direct`` of member function ``k`` of the same group, so each
+    backend compiles recursion through its ordinary direct-call path.  The
+    canonical graph is unchanged; this is a lowering view.
+    """
+    graph_object, _parameters, _returns = _decode_function_interface(function, resolve)
+    parsed = _parse_graph(graph_object, resolve)
+    decoded = decode_group_member_function(function, resolve)
+    if decoded is None:
+        return parsed
+    cached = _MEMBER_GRAPHS.get(function.cid)
+    if cached is None:
+        group = decoded[0]
+        cached = replace(parsed, blocks=tuple(
+            replace(block, nodes=tuple(
+                replace(node, operation=Operation.CALL_DIRECT, member=None, entity=group_member_function(group, node.member))
+                if node.operation == Operation.CALL_GROUP_MEMBER else node
+                for node in block.nodes
+            ))
+            for block in parsed.blocks
+        ))
+        _MEMBER_GRAPHS[function.cid] = cached
+    return cached
+
+
+def supports_direct_calls(supported_operations) -> frozenset:
+    """A target that lists ``call.direct`` also accepts ``call.group_member`` (ADR-125)."""
+    operations = frozenset(int(item) for item in supported_operations)
+    return operations | {int(Operation.CALL_GROUP_MEMBER)} if int(Operation.CALL_DIRECT) in operations else operations
+
+
 @dataclass(frozen=True)
 class CallContractSummary:
     inputs: tuple[bytes, ...]
@@ -6496,6 +6574,28 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         obj, block_index, node_index, node, callee_parameters, callee_returns, resolve,
                         pointers, owners, effects, effect_consumers, owner_consumers, ended,
                     )
+                elif node.operation == Operation.CALL_GROUP_MEMBER:
+                    # A group call has the member's interface (checked with the
+                    # group) and the same whole-view borrowing contract as a
+                    # direct call (ADR-125).  Other memory-carrying operands
+                    # (stack pointers, owners, bare memory frontiers) reject.
+                    view_slots = {
+                        position
+                        for index, _extent, _initialized in _heap_view_triples(operand_types, resolve)
+                        for position in (index - 1, index, index + 1)
+                    } | {
+                        position
+                        for index, _extent, _initialized in _heap_view_triples(node.results, resolve)
+                        for position in (len(operand_types) + index - 1, len(operand_types) + index, len(operand_types) + index + 1)
+                    }
+                    for position, type_cid in enumerate((*operand_types, *node.results)):
+                        type_object = resolve(type_cid)
+                        if position not in view_slots and (_is_stack_owner(type_object) or _is_memory_effect(type_object) or _is_stack_pointer(type_object)):
+                            fail("XAX.MEMORY.GROUP_CALL", obj.cid.hex(), "GROUP-CALL-MEMORY-VIEWS-ONLY", "memory only as whole heap-view triples", type_cid.hex())
+                    _verify_heap_view_call(
+                        obj, block_index, node_index, node, operand_types, node.results, resolve,
+                        pointers, owners, effects, effect_consumers, owner_consumers, ended,
+                    )
                 elif node.operation == Operation.FUNCTION_ADDRESS:
                     if node.entity is None or node.entity.kind != Kind.FUNCTION:
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TARGET", Kind.FUNCTION.name, None if node.entity is None else node.entity.kind.name)
@@ -6798,6 +6898,14 @@ def _decode_function_interface(
 ) -> tuple[SemanticObject, tuple[bytes, ...], tuple[bytes, ...]]:
     cursor = Cursor(obj.body, obj.cid.hex())
     graph = _reference(obj, cursor, resolve)
+    if graph.kind == Kind.RECURSION_GROUP:
+        # Group member function (ADR-125): the interface is the member's.
+        member = cursor.uleb()
+        cursor.end("FUNCTION-GROUP-MEMBER-BODY")
+        members = _decode_recursion_group(graph, resolve)
+        if member >= len(members):
+            fail("XAX.STRUCT.RECURSION_MEMBER", obj.cid.hex(), "GRAPH-RECURSION-MEMBER", f"< {len(members)}", member)
+        return members[member]
     if graph.kind != Kind.GRAPH_FRAGMENT:
         fail("XAX.STRUCT.FUNCTION_GRAPH", obj.cid.hex(), "GRAPH-FUNCTION-CARRIER", Kind.GRAPH_FRAGMENT.name, graph.kind.name)
     parameters = tuple(_type_reference(obj, cursor, resolve) for _ in range(cursor.uleb()))
@@ -6808,6 +6916,9 @@ def _decode_function_interface(
 
 def _verify_function(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
     graph, parameters, returns = _decode_function_interface(obj, resolve)
+    if decode_group_member_function(obj, resolve) is not None:
+        # The member graph is verified with its group, which is a stored object.
+        return
     parsed = _parse_graph(graph, resolve)
     if any(node.operation == Operation.CALL_GROUP_MEMBER for block in parsed.blocks for node in block.nodes):
         fail(
@@ -7793,6 +7904,10 @@ def _execute_function(
     resolve: Callable[[bytes], SemanticObject],
     fuel: list[int],
 ) -> tuple[object, ...]:
+    member = decode_group_member_function(function_object, resolve)
+    if member is not None:
+        group, index = member
+        return _execute_group_member(group, _decode_recursion_group(group, resolve), index, arguments, resolve, fuel)
     graph_object, parameter_types, return_types = _decode_function_interface(function_object, resolve)
     return _execute_graph(function_object, graph_object, parameter_types, return_types, arguments, resolve, fuel)
 

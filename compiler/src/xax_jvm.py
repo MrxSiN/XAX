@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from xax_artifact import ArtifactSemanticRange
+from xax_compiler import parse_function_graph
 from xax_compiler import (
     EffectDomain,
     FloatCompare,
@@ -450,7 +451,7 @@ def _function_closure(entry: SemanticObject, resolve, supported_operations, supp
             continue
         functions[function.cid] = function
         graph_object, _parameters, _returns = _decode_function_interface(function, resolve)
-        for block in _parse_graph(graph_object, resolve).blocks:
+        for block in parse_function_graph(function, resolve).blocks:
             for node in block.nodes:
                 if node.operation not in supported_operations:
                     fail("XAX.JVM.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "JVM-OP-TARGET-SUPPORTED", list(supported_operations), node.operation)
@@ -484,7 +485,7 @@ def _compile_method(
     methods: dict[bytes, tuple[str, str]],
 ) -> _Method:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
+    graph = parse_function_graph(function, resolve)
     where = graph_object.cid.hex()
     parameters, returns = _signature(function, resolve)
     code = _Code(where)

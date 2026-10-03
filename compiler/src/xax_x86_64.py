@@ -13,6 +13,7 @@ from typing import Callable, Sequence
 
 from xax_artifact import ArtifactSemanticRange
 
+from xax_compiler import parse_function_graph
 from xax_compiler import (
     borrowed_view_returns,
     store_resolver,
@@ -917,7 +918,7 @@ def _function_closure(
             layout = _layout(resolve, cid)
             if layout is None or (not _is_aggregate_cid(resolve, cid) and layout.size > 8):
                 fail("XAX.NATIVE.VALUE", function.cid.hex(), "NATIVE-ABI-VALUE", "scalar <=64 bits or aggregate with a target ABI layout", [cid.hex() for cid in (*parameters, *returns)])
-        graph = _parse_graph(graph_object, resolve)
+        graph = parse_function_graph(function, resolve)
         for block in graph.blocks:
             for node in block.nodes:
                 if node.operation not in target.supported_operations:
@@ -1494,7 +1495,7 @@ def _compile_function(
     process contract requires an explicit exit call instead of a return.
     """
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
+    graph = parse_function_graph(function, resolve)
     for block in graph.blocks:
         for node in block.nodes:
             if node.operation in ATOMIC_OPERATIONS:

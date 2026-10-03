@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from xax_artifact import ArtifactSemanticRange
+from xax_compiler import parse_function_graph
 from xax_compiler import (
     IntCompare,
     Kind,
@@ -236,7 +237,7 @@ def _function_closure(entry: SemanticObject, resolve, operations, terminators) -
             continue
         functions[function.cid] = function
         graph_object, _parameters, _returns = _decode_function_interface(function, resolve)
-        for block in _parse_graph(graph_object, resolve).blocks:
+        for block in parse_function_graph(function, resolve).blocks:
             for node in block.nodes:
                 if node.operation not in operations:
                     fail("XAX.RISCV64.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "RISCV64-OP-TARGET-SUPPORTED", list(operations), node.operation)
@@ -344,7 +345,7 @@ def _allocate_registers(graph, order: Sequence[int], machine: set[ValueRef]) -> 
 
 def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> list[tuple[int, int, int, int]]:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
+    graph = parse_function_graph(function, resolve)
     where = graph_object.cid.hex()
     width_of: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):

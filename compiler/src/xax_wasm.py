@@ -11,6 +11,7 @@ from typing import Callable, Sequence
 
 from xax_artifact import ArtifactSemanticRange
 
+from xax_compiler import parse_function_graph
 from xax_compiler import (
     _decode_pointer_type,
     store_resolver,
@@ -130,20 +131,23 @@ def _function_closure(
     supported_terminators: tuple[int, ...],
 ) -> tuple[SemanticObject, ...]:
     functions: dict[bytes, SemanticObject] = {}
-    active: set[bytes] = set()
+    active: list[bytes] = []
+    recursive: set[bytes] = set()
 
     def visit(function: SemanticObject) -> None:
         if function.cid in active:
-            fail("XAX.WASM.RECURSION", function.cid.hex(), "WASM-DIRECT-CALL-ACYCLIC", "acyclic calls", "cycle")
+            # A call cycle (recursion through group members, ADR-125).
+            recursive.update(active[active.index(function.cid):])
+            return
         if function.cid in functions:
             return
-        active.add(function.cid)
+        active.append(function.cid)
         graph_object, parameters, returns = _decode_function_interface(function, resolve)
         machine_parameters = tuple(cid for cid in parameters if not _is_proof_type(resolve(cid)))
         machine_returns = tuple(cid for cid in returns if not _is_proof_type(resolve(cid)))
         if len(machine_returns) > 1 or any(_valtype_for_cid(resolve, cid) is None for cid in (*machine_parameters, *machine_returns)):
             fail("XAX.WASM.ABI", function.cid.hex(), "WASM-ABI-VALUE", "bits, float, pointer, or aggregate; at most one return", [cid.hex() for cid in (*parameters, *returns)])
-        graph = _parse_graph(graph_object, resolve)
+        graph = parse_function_graph(function, resolve)
         for block in graph.blocks:
             for node in block.nodes:
                 if node.operation not in supported_operations:
@@ -159,10 +163,20 @@ def _function_closure(
                     visit(node.entity)
             if block.terminator.kind not in supported_terminators:
                 fail("XAX.WASM.UNSUPPORTED_TERMINATOR", graph_object.cid.hex(), "WASM-TERMINATOR-TARGET-SUPPORTED", list(supported_terminators), block.terminator.kind)
-        active.remove(function.cid)
+        active.pop()
         functions[function.cid] = function
 
     visit(entry)
+    # wasm locals are per activation, so scalar recursion is reentrant; frame
+    # storage still has one static address per node, so a function on a call
+    # cycle must not use any (no stack allocation or aggregate results).
+    for cid in sorted(recursive):
+        graph = parse_function_graph(functions[cid], resolve)
+        if any(
+            node.operation == Operation.STACK_ALLOC or any(_kind(resolve, result) == "a" for result in node.results)
+            for block in graph.blocks for node in block.nodes
+        ):
+            fail("XAX.WASM.RECURSION", cid.hex(), "WASM-REENTRANT-FRAME", "no static frame storage in a recursive function", "stack allocation or aggregate result")
     return tuple(functions[cid] for cid in sorted(functions))
 
 
@@ -187,7 +201,7 @@ def _memory_layout(
     cursor = _NULL_GUARD_BYTES
     for function in functions:
         graph_object, _, _ = _decode_function_interface(function, resolve)
-        graph = _parse_graph(graph_object, resolve)
+        graph = parse_function_graph(function, resolve)
         for block_index, block in enumerate(graph.blocks):
             for node_index, node in enumerate(block.nodes):
                 if node.operation == Operation.STACK_ALLOC:
@@ -217,7 +231,7 @@ def _compile_function(
     event_entries: dict[bytes, int],
 ) -> tuple[bytes, tuple[ArtifactSemanticRange, ...]]:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph = _parse_graph(graph_object, resolve)
+    graph = parse_function_graph(function, resolve)
     locals_: list[int] = []
     slots: dict[ValueRef, int] = {}
     machine_parameter_count = sum(not _is_proof_type(resolve(cid)) for cid in parameter_types)
@@ -808,7 +822,7 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
     carriers: dict[bytes, SemanticObject] = {}
     for function in functions:
         graph_object, _, _ = _decode_function_interface(function, resolve)
-        for block in _parse_graph(graph_object, resolve).blocks:
+        for block in parse_function_graph(function, resolve).blocks:
             for node in block.nodes:
                 if node.operation == Operation.CALL_FOREIGN:
                     declaration = decode_foreign_function(node.entity)
@@ -821,7 +835,7 @@ def _compile_wasm_with_target(reader: StoreReader, function_cid: bytes, target_o
         cid: number for number, cid in enumerate(sorted({
             node.entity.cid
             for function in functions
-            for block in _parse_graph(_decode_function_interface(function, resolve)[0], resolve).blocks
+            for block in parse_function_graph(function, resolve).blocks
             for node in block.nodes
             if node.operation == Operation.FUNCTION_ADDRESS
         }))

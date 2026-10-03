@@ -723,3 +723,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - GPU row NONE → R1. `xax_spirv.py` lowers ordinary XAX functions (the `spirv-compute-v1` entry contract) to SPIR-V 1.3 compute modules; they pass `spirv-val` and run on Mesa llvmpipe with buffers and trap status equal to the reference executor. Concurrency safety is a checked rule (`SPIRV-KERNEL-OWN-ELEMENT`). Collatz: 6.9× glslang's time on llvmpipe, 1.81× module bytes (dispatch-loop lowering).
 - `GraphBuilder` blocks gained `trap()`; the reference executor accepts reference-backed heap-space pointer arguments.
 
+## Recursion is callable (ADR-125) — 2026-10-03
+
+- Group member functions make `(group, member)` callable; recursion now compiles and runs on the reference executor, wasm32, RISC-V, the JVM, AArch64 bare metal, and Linux x86-64/AArch64 executables (factorial, even/odd, and recursion over a borrowed view). Previously no compiled program could recurse.
+- AArch64 now elides borrowed-view returns (ADR-101), so view-passing functions compile there.
+- Full suite: 833 passed, 17 skipped.
+
