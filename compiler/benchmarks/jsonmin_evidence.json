@@ -22,11 +22,11 @@
       "gcc-O2-static": "gcc -O2 -static",
       "gcc-O3": "gcc -O3"
     },
-    "reference_dynamic_bin_true_rss_kib": 1324,
-    "repetitions": 11,
+    "reference_dynamic_bin_true_rss_kib": 1260,
+    "repetitions": 31,
     "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
     "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
-    "warmup_runs": 2
+    "warmup_runs": 3
   },
   "output": {
     "bytes": 4308036,
@@ -37,62 +37,62 @@
       "file_bytes": 16520,
       "peak_rss_kib_max": 13800,
       "stripped_bytes": 14552,
-      "throughput_mib_s_median": 315.15,
+      "throughput_mib_s_median": 321.53,
       "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_gcc_O2": 0.935,
-      "wall_seconds_median": 0.025392,
-      "wall_seconds_min": 0.024292,
-      "wall_seconds_stdev": 0.001593
+      "time_ratio_vs_gcc_O2": 0.914,
+      "wall_seconds_median": 0.024888,
+      "wall_seconds_min": 0.024208,
+      "wall_seconds_stdev": 0.00108
     },
     "gcc-O2": {
       "file_bytes": 16480,
       "peak_rss_kib_max": 13672,
       "stripped_bytes": 14472,
-      "throughput_mib_s_median": 294.71,
-      "time_ratio_vs_best_baseline": 1.069,
+      "throughput_mib_s_median": 294.04,
+      "time_ratio_vs_best_baseline": 1.093,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.027153,
-      "wall_seconds_min": 0.026604,
-      "wall_seconds_stdev": 0.000778
+      "wall_seconds_median": 0.027215,
+      "wall_seconds_min": 0.026271,
+      "wall_seconds_stdev": 0.002095
     },
     "gcc-O2-static": {
       "file_bytes": 785512,
       "peak_rss_kib_max": 13000,
       "stripped_bytes": 706584,
-      "throughput_mib_s_median": 280.57,
-      "time_ratio_vs_best_baseline": 1.123,
-      "time_ratio_vs_gcc_O2": 1.05,
-      "wall_seconds_median": 0.028521,
-      "wall_seconds_min": 0.027749,
-      "wall_seconds_stdev": 0.001218
+      "throughput_mib_s_median": 287.68,
+      "time_ratio_vs_best_baseline": 1.118,
+      "time_ratio_vs_gcc_O2": 1.022,
+      "wall_seconds_median": 0.027817,
+      "wall_seconds_min": 0.02577,
+      "wall_seconds_stdev": 0.003126
     },
     "gcc-O3": {
       "file_bytes": 16528,
-      "peak_rss_kib_max": 13736,
+      "peak_rss_kib_max": 13672,
       "stripped_bytes": 14552,
-      "throughput_mib_s_median": 280.58,
-      "time_ratio_vs_best_baseline": 1.123,
-      "time_ratio_vs_gcc_O2": 1.05,
-      "wall_seconds_median": 0.02852,
-      "wall_seconds_min": 0.026179,
-      "wall_seconds_stdev": 0.00377
+      "throughput_mib_s_median": 305.15,
+      "time_ratio_vs_best_baseline": 1.054,
+      "time_ratio_vs_gcc_O2": 0.964,
+      "wall_seconds_median": 0.026224,
+      "wall_seconds_min": 0.024941,
+      "wall_seconds_stdev": 0.0023
     },
     "xax": {
-      "file_bytes": 10664,
+      "file_bytes": 10584,
       "peak_rss_kib_max": 12416,
-      "stripped_bytes": 10664,
-      "throughput_mib_s_median": 188.96,
-      "time_ratio_vs_best_baseline": 1.668,
-      "time_ratio_vs_gcc_O2": 1.56,
-      "wall_seconds_median": 0.042348,
-      "wall_seconds_min": 0.034804,
-      "wall_seconds_stdev": 0.007389
+      "stripped_bytes": 10584,
+      "throughput_mib_s_median": 245.0,
+      "time_ratio_vs_best_baseline": 1.312,
+      "time_ratio_vs_gcc_O2": 1.2,
+      "wall_seconds_median": 0.032662,
+      "wall_seconds_min": 0.031264,
+      "wall_seconds_stdev": 0.003009
     }
   },
   "workload": "jsonmin: read stdin, validate RFC 8259 JSON (depth <= 512), write it minified; recursive descent through a three-member recursion group (ADR-125)",
   "xax": {
-    "artifact_bytes": 10664,
-    "artifact_sha256": "885a10b72bac0cb4e3eb80c2d09ffd25bdc061c00595af5183d70f2f6740f0aa",
+    "artifact_bytes": 10584,
+    "artifact_sha256": "dbca6653638d87f62f7eeeb7cbbbd89c01447781e5e211365e0cc54d67bb372b",
     "container": "x86_64-linux-elf-exec-v1 (static; no libc, loader, or allocator: four explicit anonymous mappings)",
     "entry_function": "1d078b93d399bcd4d892c796d7aaa109a035aaad3ae1117408b06ca3311ae783",
     "program_root": "bcfda920f7362bbca91596cbcbc6d540e8f31c14be8ad88222c1b4f2dd466940",

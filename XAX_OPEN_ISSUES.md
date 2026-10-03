@@ -545,7 +545,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 ## OI-38 — x86-64 register allocation: convergence and remaining code-quality gap
 
-**Status:** OPEN (partially addressed). Two register-resident allocators exist: ADR-083 extends the legacy allocator for the PE profile, and ADR-089 is a separate module for the Linux profiles. On Linux `filestat` the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` but 1.41–1.82× `clang -O2`, the fastest baseline (`u1_linux_filestat_evidence.json`, seven runs).
+**Status:** OPEN (partially addressed; ADR-131 adds bit-test selection of small-set membership branches: `jsonmin` 1.56× → 1.20× gcc -O2). Two register-resident allocators exist: ADR-083 extends the legacy allocator for the PE profile, and ADR-089 is a separate module for the Linux profiles. On Linux `filestat` the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` but 1.41–1.82× `clang -O2`, the fastest baseline (`u1_linux_filestat_evidence.json`, seven runs).
 
 **Question.** Which single allocator design serves both profiles? The candidates are global allocation across blocks (loop-invariant pointers currently reload from home slots every iteration), edge-copy hints, LICM, and unrolling. The design must stay deterministic and differentially validatable against the reference executor.
 

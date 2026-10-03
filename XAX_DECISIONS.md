@@ -1321,6 +1321,15 @@ This file records merged v0.1 decisions. Each decision is normative unless super
 | Evidence | EXECUTED (`test_xax_elf_link.py`, 4 tests; `board_linked_c_evidence.json`). On QEMU `virt`, an XAX reset entry takes a 16-byte block from the C bump allocator, stores `123456789`, calls C `board_crc32` (imported from `checksum.h`, using `.bss` tables built at run time), prints `crc cbf43926`, releases the block, and powers off. The image is 12,384 bytes. Layout and symbols are deterministic. Refusals: an undefined symbol, a `-fpic` GOT relocation, a `-fcommon` common symbol, a declaration naming the wrong object, and no object at all. The aarch64-baremetal row derives R2 (emulated). |
 | Limits | AArch64 only, a freestanding subset (no TLS, GOT, PLT, constructors, or C runtime), and no archive (`.a`) member selection yet. Linux static profiles still require the dynamic loader for C imports. |
 
+## ADR-131 — Small-set membership selection on the Linux x86-64 register allocator
+
+| Field | Record |
+|---|---|
+| Decision | A conditional branch whose condition is an OR tree of at least three `int.compare eq` tests is lowered to one bit test when all the tests compare the same `bits<32>` value against constants spanning at most 63 values, and every interior node is used once. The lowering is `lea r11d, [x - low]`, then a clamp of indices above 62 to 63 (`cmp`/`cmova`), then `bt mask, r11`, then `jnc`/`jc`. Bit 63 of the mask is always clear. The tree's nodes emit nothing, and the subject stays live until the branch. Sets that are wider, are narrower than 32 bits, are not used by a branch, or have fewer tests keep their compares. This is selection only, with no new operation: OI-39's rule (exact compositions stay compositions while lowering selects them reliably) holds. |
+| Rationale | `jsonmin`'s remaining gap (ADR-126) was mostly membership tests in its whitespace and number loops, which lowered to `sete`/`or` chains. |
+| Evidence | MEASURED (`jsonmin_evidence.json`, 31 runs). `jsonmin` went from 1.56× to 1.20× gcc -O2 and from 1.67× to 1.31× clang -O2 (32.7 ms). Executed instructions on a 1 MiB input fell from 36.7M to 29.5M (gcc -O2: 20.8M), and the artifact shrank from 10,664 to 10,584 bytes. EXECUTED (`test_xax_member_bit_test.py`): seven sets, fused and unfused, over 300 inputs each with exact results, including constants above 255 and spans of 62 and 63. The `jsonmin` and differential suites are unchanged. |
+| Limits | Linux x86-64 register path only, `bits<32>` subjects only. Sets wider than 63 values (the JSON escape set) still compare. AArch64 and RISC-V do not select it yet. |
+
 ## ADR-130 — Standard semantic libraries: packages, function granularity, instantiation
 
 | Field | Record |
