@@ -545,7 +545,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 ## OI-38 — x86-64 register allocation: convergence and remaining code-quality gap
 
-**Status:** OPEN (partially addressed; ADR-131 adds bit-test selection of small-set membership branches: `jsonmin` 1.56× → 1.20× gcc -O2). Two register-resident allocators exist: ADR-083 extends the legacy allocator for the PE profile, and ADR-089 is a separate module for the Linux profiles. On Linux `filestat` the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` but 1.41–1.82× `clang -O2`, the fastest baseline (`u1_linux_filestat_evidence.json`, seven runs).
+**Status:** OPEN (partially addressed; ADR-131 bit-test selection; ADR-148 brings all three Linux workloads within 1.05× of the fastest of gcc, clang, and rustc). Two register-resident allocators exist: ADR-083 extends the legacy allocator for the PE profile, and ADR-089 is a separate module for the Linux profiles. On Linux `filestat` the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` but 1.41–1.82× `clang -O2`, the fastest baseline (`u1_linux_filestat_evidence.json`, seven runs).
 
 **Question.** Which single allocator design serves both profiles? The candidates are global allocation across blocks (loop-invariant pointers currently reload from home slots every iteration), edge-copy hints, LICM, and unrolling. The design must stay deterministic and differentially validatable against the reference executor.
 
@@ -555,7 +555,9 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Progress (ADR-095).** PE now uses the Linux allocator first, with Win64 calls, stack storage, function addresses, and indirect calls. All six PE fixture functions take it (700 vs 1,269 code bytes), executed under Wine. Remaining: floats and aggregates (the last hosted uses of the ADR-083 path), range-based check elimination, LICM, and a Windows-host re-run.
 
-**Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the best C baseline reported.
+**Progress (ADR-147/148, 2026-10-03).** Range-proven check elimination, a lowering view (leaf inlining, layout, folding), loop pass-through slots, hoisted wide constants, and call-surviving callee-saved registers. Against the fastest of gcc, clang, and rustc (interleaved harness), `filestat` is 1.017×, `chains` (struct-of-arrays arm) is the fastest, and `jsonmin` 1.029×: the ADR-147 primary target is met on all three. Remaining: floats and aggregates on this path, a global (cross-block) allocator to remove the remaining shuffles and home reloads, translation validation of the lowering view, and a Windows-host re-run of the PE fixture.
+
+**Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the fastest baseline reported.
 
 ## OI-39 — Shift and sign-extension selection versus kernel operations
 

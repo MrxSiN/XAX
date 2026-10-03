@@ -96,7 +96,7 @@ Compile-time/memory cost of expensive modes remains visible.
 
 ### 4.3 C/Rust baseline rules
 
-When used, C/Rust baselines MUST:
+CPU/native runtime comparisons that judge performance MUST include an optimized C or C++ baseline and at least one implementation outside C/C++ (§15.0). When used, C/Rust baselines MUST:
 
 - implement the same semantic contract/algorithm unless the case explicitly studies algorithm choice;
 - name exact compiler versions and flags;
@@ -576,6 +576,17 @@ Generated x86-64/AArch64 code is byte-identical before/after; M14 compiler root,
 
 Replacement levels R4/R5 (`XAX_SPEC.md` §21.2) are earned only through this section.
 
+### 15.0 Multi-language runtime rule (normative, ADR-147)
+
+For each CPU/native runtime benchmark used to judge performance:
+
+- benchmark XAX, an optimized C or C++ baseline, and at least one additional relevant language/toolchain outside C/C++ (Rust, Zig, Fortran, or another established implementation of the workload);
+- run all implementations with identical observable semantics, inputs, hardware, OS conditions, measurement harness, warmup policy, and repetition policy; the Linux harness (`compiler/benchmarks/linux_harness.py`) interleaves repetitions, each round running every arm once with the order rotating by one;
+- the fastest valid implementation by median execution time is the reference: XAX **meets the primary target** at ≤ 1.05× of it, is **competitive below the primary target** at ≤ 1.10× (further optimization required), and is **unmet** above 1.10× (profile, optimize, and rerun the full comparison; never weaken the workload or remove a faster valid competitor);
+- after performance-relevant compiler or backend changes, rerun the multi-language comparison instead of relying on earlier, published, or cross-machine results.
+
+Each implementation may choose its own data representation for the same observable contract (idiomatic for its language); diagnostic arms that restate another language's representation are not baselines. Evidence JSON records `time_ratio_vs_fastest` and `performance_class` for every XAX arm. Results before ADR-147 (§15.1–15.13) compare against C only and are historical.
+
 **Workloads.** The U1 workloads (`XAX_IMPLEMENTATION_ROADMAP.md`): hosted native application, bare-metal program, WebAssembly/WASI or browser application, Android application, accelerator workload; later, representative per-domain workloads (server, database, compiler, game loop, HPC kernel, AI runtime operator) as the matrix grows. Workload definitions are fixed before XAX results are seen and are not tuned to favor XAX.
 
 **Baselines.** The platform's established toolchains at stated versions and settings: optimized C/C++ (Clang/GCC/MSVC), Rust, platform-native compilers (Kotlin/Java for Android/JVM, C# for CLR, Swift for Apple), Emscripten/wasi-sdk or Rust for WebAssembly, vendor GPU toolchains, and hand-written assembly where a credible implementation exists (§4.4). "Faster than assembly" is never claimed universally; the objective is minimum selected target cost subject to exact semantics.
@@ -778,3 +789,15 @@ The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program
 | artifact | 2,306 | 13,748 | |
 
 Unused exports (`contains`, `skip_spaces`, and the other instance's functions) and the package objects are absent from the 2,306-byte artifact and from the store. Cost (medians of 5): building the packages takes 10.8 ms, verifying the store 1.6 ms, and compiling 60.3 ms on x86-64 and 37.2 ms on AArch64. Offline tokens (tiktoken o200k_base; no model run): the interface view of the four exports is 268 tokens, and the application's node rendering is 1,360 tokens. Writing the four bodies inline would take 3,256 tokens (190 nodes). Source: `compiler/benchmarks/bench_oi36_stdlib.py`; data: `oi36_stdlib_evidence.json`.
+
+### 15.14 Multi-language comparison after ADR-148 (MEASURED, 2026-10-03)
+
+Host: Intel(R) Xeon(R) Processor @ 2.10GHz (Emerald Rapids, model 207), 4 logical CPUs, Linux 6.18.44 x86-64, shared. Toolchains: gcc 13.3.0, Ubuntu clang 18.1.3, rustc 1.97.0 (`-C opt-level=3 -C panic=abort -C codegen-units=1`). Rust twins: `compiler/benchmarks/rust_twins/{filestat,chains,jsonmin}.rs` (same contract; `filestat` links the same `libz.so.1`). Method: fork/exec/`wait4` runner, 3 warmup rounds and 31 interleaved rounds with rotating arm order; every output checked as before. Ratios are against the fastest valid arm; stripped bytes for C/Rust (dynamic unless `-static`), file bytes for XAX (no section table).
+
+| Workload | Fastest | XAX median | XAX / fastest | Class | Rust / fastest | XAX peak RSS (KiB) | XAX bytes |
+|---|---|---:|---:|---|---:|---:|---:|
+| `filestat` (32 MiB) | clang -O2, 63.3 ms | 64.4 ms | 1.017 | meets primary target | 1.106 | 1,192 (smallest) | 4,048 (smallest) |
+| `chains` (2^20 nodes) | XAX `soa`, 201.9 ms | 201.9 ms | 1.000 | meets primary target | 1.039 | 12,544 (smallest) | 1,302 (smallest) |
+| `jsonmin` (8 MiB) | clang -O2, 24.1 ms | 24.8 ms | 1.029 | meets primary target | 1.121 | 12,416 (smallest) | 15,631 (clang 14,552 dynamic) |
+
+The first multi-language run, before ADR-148, measured XAX/fastest 1.566 (`filestat`), 1.183 (`chains`, record links), and 1.208 (`jsonmin`). In `chains`, the other XAX arms remain slower (record links 1.185, `pointer_rebase` 1.639, checked index 2.119): they encode different link representations of the same contract, and the struct-of-arrays arm mirrors the Rust twin's. Run-to-run stdev on this host is 4–15% of the median. Sources: `linux_filestat.py`, `linux_chains.py`, `jsonmin.py`; data: `u1_linux_filestat_evidence.json`, `oi37_chains_evidence.json`, `jsonmin_evidence.json`.

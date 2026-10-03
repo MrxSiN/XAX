@@ -318,7 +318,7 @@
     },
     {
       "id": "linux-x86_64",
-      "level": "R3",
+      "level": "R4",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
         "semantic_expressibility": [
@@ -405,15 +405,15 @@
         ]
       },
       "blockers": [
-        "not competitive (R4): jsonmin 1.20x gcc -O2 and 1.31x clang -O2 time (smallest RSS and binary; ADR-131 bit-test selection); filestat 1.38x clang -O2; float/aggregate functions still fall back (OI-38)",
+        "R4 scope: three workloads (filestat, chains, jsonmin) on one shared x86-64 host; XAX within 1.05x of the fastest of gcc, clang, and rustc on each (ADR-147/148); float/aggregate functions still fall back to the older paths (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)",
         "jsonmin writes its output with one write call (no partial-write loop)"
       ],
       "competitive": [
-        false,
-        "compiler/benchmarks/jsonmin_evidence.json",
-        "compiler/benchmarks/u1_linux_filestat_evidence.json"
+        true,
+        "compiler/benchmarks/u1_linux_filestat_evidence.json",
+        "compiler/benchmarks/oi37_chains_evidence.json",
+        "compiler/benchmarks/jsonmin_evidence.json"
       ]
     },
     {

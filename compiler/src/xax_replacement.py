@@ -73,6 +73,24 @@ def derived_level(row: dict) -> str:
     return level
 
 
+def _runtime_rule_errors(rid: str, paths, repo_root: Path) -> list[str]:
+    """XAX_BENCHMARKS.md §15.0 (ADR-147): a competitive runtime verdict cites multi-language results that meet it."""
+    import json
+
+    errors = []
+    for path in paths:
+        if not str(path).endswith(".json") or not (repo_root / path).exists():
+            continue
+        results = json.loads((repo_root / path).read_text()).get("results")
+        if not isinstance(results, dict):
+            continue
+        if not any(arm.startswith("rustc") for arm in results):
+            errors.append(f"{rid}.competitive: {path} has no implementation outside C/C++")
+        if not any(arm.startswith("xax") and item.get("performance_class") == "meets-primary-target" for arm, item in results.items()):
+            errors.append(f"{rid}.competitive: {path} has no XAX arm within 1.05x of the fastest")
+    return errors
+
+
 def validate(matrix: dict, repo_root: Path) -> list[str]:
     """Return deterministic error strings; empty means valid."""
     errors = []
@@ -103,6 +121,8 @@ def validate(matrix: dict, repo_root: Path) -> list[str]:
                 errors.append(f"{rid}.competitive: expected [bool, evidence...]")
             else:
                 errors.extend(f"{rid}.competitive: missing evidence {path}" for path in verdict[1:] if not (repo_root / path).exists())
+                if verdict[0] is True:
+                    errors.extend(_runtime_rule_errors(rid, verdict[1:], repo_root))
         if row.get("level") not in LEVELS:
             errors.append(f"{rid}: unknown level {row.get('level')}")
         elif row["level"] != derived_level(row):
