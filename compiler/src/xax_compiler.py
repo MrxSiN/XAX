@@ -1307,6 +1307,13 @@ def aarch64_baremetal_general_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# Board packages (ADR-128): profile 5 carries both the profile-2 concurrency
+# section (atomics and interrupt handler contracts) and the profile-4
+# target-operation contracts (MMIO registers, system registers, wfi, ...).
+# AArch64 format 8 is a bare-metal ELF64 placed at the board's load address.
+BOARD_PROFILE = 5
+AARCH64_BOARD_ELF_FORMAT = 8
+
 # Linux AArch64 hosted executable (ADR-123).  Same AAPCS64 machine as the
 # bare-metal and Android profiles; ABI 5 adds only the Linux process-entry
 # contract, declared ``linux-aarch64-syscall-v1`` calls, and (format 7 only)
@@ -1729,7 +1736,7 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
     accelerator_scopes: tuple[AtomicScope, ...] = ()
     memory_spaces: tuple[AcceleratorMemorySpace, ...] = ()
     target_operations: tuple[TargetOperationContract, ...] = ()
-    if profile == 2:
+    if profile in (2, BOARD_PROFILE):
         atomic_widths = tuple(cursor.uleb() for _ in range(cursor.uleb()))
         try:
             atomic_scopes = tuple(AtomicScope(cursor.uleb()) for _ in range(cursor.uleb()))
@@ -1742,7 +1749,7 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
             handler_entries = tuple(handlers)
         except ValueError as error:
             fail("XAX.TARGET.CONCURRENCY", obj.cid.hex(), "TARGET-CONCURRENCY-ENUM", "known atomic/handler values", str(error))
-    elif profile == 3:
+    if profile == 3:
         accelerator_lane_width = cursor.uleb()
         accelerator_max_groups = cursor.uleb()
         try:
@@ -1776,7 +1783,7 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
             target_operations = tuple(contracts)
         except ValueError as error:
             fail("XAX.TARGET.ACCELERATOR", obj.cid.hex(), "TARGET-ACCELERATOR-ENUM", "known scope/value-constraint values", str(error))
-    elif profile == 4:
+    if profile in (4, BOARD_PROFILE):
         try:
             contracts = []
             for _ in range(cursor.uleb()):
@@ -1798,8 +1805,8 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         except ValueError as error:
             fail("XAX.TARGET.PLATFORM", obj.cid.hex(), "TARGET-PLATFORM-ENUM", "known scope/value-constraint values", str(error))
     cursor.end("TARGET-NATIVE-BODY")
-    if profile not in (1, 2, 3, 4):
-        fail("XAX.TARGET.PROFILE", obj.cid.hex(), "TARGET-PROFILE-SUPPORTED", [1, 2, 3, 4], profile)
+    if profile not in (1, 2, 3, 4, BOARD_PROFILE):
+        fail("XAX.TARGET.PROFILE", obj.cid.hex(), "TARGET-PROFILE-SUPPORTED", [1, 2, 3, 4, BOARD_PROFILE], profile)
     if architecture == 1:
         machine = (abi, image_format, word_bits, pointer_bits, stack_alignment, shadow_space)
         allowed_machines = (
@@ -1825,6 +1832,7 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         allowed_machines = (
             (3, 1, 64, 64, 16, 0), (4, ANDROID_ELF_FORMAT, 64, 64, 16, 0), (4, ANDROID_ELF_PACKED_FORMAT, 64, 64, 16, 0),
             (AARCH64_LINUX_ABI, AARCH64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 0), (AARCH64_LINUX_ABI, AARCH64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 0),
+            (3, AARCH64_BOARD_ELF_FORMAT, 64, 64, 16, 0),
         )
         if machine not in allowed_machines:
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-PROFILE", [list(item) for item in allowed_machines], list(machine))
@@ -1832,8 +1840,10 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-ANDROID-PROFILE", 4, profile)
         if abi == AARCH64_LINUX_ABI and profile != 1:
             fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-LINUX-PROFILE", 1, profile)
-        if abi == 3 and profile not in (1, 2):
-            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-BAREMETAL-PROFILE", [1, 2], profile)
+        if abi == 3 and profile not in (1, 2, BOARD_PROFILE):
+            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-BAREMETAL-PROFILE", [1, 2, BOARD_PROFILE], profile)
+        if (image_format == AARCH64_BOARD_ELF_FORMAT) != (profile == BOARD_PROFILE):
+            fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-AARCH64-BOARD-PROFILE", "board format with board profile", [image_format, profile])
         registers = (*argument_registers, result_register, *scratch_registers)
         if argument_registers != tuple(range(8)) or result_register != 0 or scratch_registers != (9, 10) or any(register is None or register >= 31 for register in registers):
             fail("XAX.TARGET.ABI", obj.cid.hex(), "TARGET-AAPCS64-REGISTERS", [list(range(8)), 0, [9, 10]], [list(argument_registers), result_register, list(scratch_registers)])

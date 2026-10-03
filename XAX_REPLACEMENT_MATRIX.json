@@ -163,7 +163,7 @@
     {
       "id": "aarch64-baremetal",
       "level": "R1",
-      "runtime_requirement": "none",
+      "runtime_requirement": "none; the board image contains only the generated reset stub, fault stub, and vector table (ADR-128)",
       "fields": {
         "semantic_expressibility": [
           "STRUCTURAL",
@@ -176,11 +176,14 @@
         ],
         "abi": [
           "EXECUTED",
-          "compiler/tests/test_xax_compiler.py"
+          "compiler/tests/test_xax_board.py",
+          "compiler/benchmarks/aarch64_virt_board_evidence.json"
         ],
         "artifact_format": [
           "EXECUTED",
-          "compiler/tests/fixtures/m5_aarch64.disasm"
+          "compiler/benchmarks/aarch64_virt_board_evidence.json",
+          "compiler/tests/fixtures/m5_aarch64.disasm",
+          "compiler/tests/test_xax_board.py"
         ],
         "optimization": [
           "PROTOTYPE",
@@ -189,11 +192,22 @@
         "real_execution": [
           "EXECUTED",
           "XAX_STATE.md"
+        ],
+        "platform_apis": [
+          "EXECUTED",
+          "compiler/tests/test_xax_board.py",
+          "compiler/benchmarks/aarch64_virt_board_evidence.json"
+        ],
+        "concurrency": [
+          "EXECUTED",
+          "compiler/tests/test_xax_board.py",
+          "compiler/benchmarks/aarch64_virt_board_evidence.json"
         ]
       },
       "blockers": [
-        "executed only under QEMU semihosting harness, not physical boards",
-        "no interrupt entry, MMIO/DMA device program, section/linker layout, or bounded-stack report on AArch64"
+        "executed only under QEMU (semihosting harness and the virt board), not hardware (OI-44)",
+        "no linking of foreign objects into bare-metal images (ffi), so R2 is not met",
+        "one board package (QEMU virt) and one interrupt source; no DMA program or nested interrupts; no static storage shared by handler and reset entry"
       ]
     },
     {
