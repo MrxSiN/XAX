@@ -262,3 +262,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S4c — 2026-10-03 (ADR-134)
 
 - Resource/effect and meta typing joined the XAX typing function (third type pass; nodes carry an extra-word count, used by `effect.step` for operand identities). The agreement test compares exact outcomes (code, rule, entity) with the path on and off, because later passes (linear flow, resource-join siblings) can still reject a node whose typing is proven. Next is S4d, which is a larger step: the call/memory branches update pointer, owner, and effect facts, so the fact tables must move with them.
+
+## S4d.1 — 2026-10-03 (ADR-135)
+
+- Constants and terminators joined the XAX typing function. Python skips their checks via `proven_constants` and `proven_terminators` in `_parse_graph_uncached`; a proven constant still records its link fact. `NativeTyping.check` returns node verdicts and then block verdicts. Next is S4d.2, which is a design step: represent the fact tables (pointer facts with storage, offset, extent, permission, and window; owner and effect facts with initialized intervals; ended and live sets; per-edge exits; the fixpoint) as XAX data, starting with stack storage.

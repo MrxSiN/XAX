@@ -773,3 +773,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S4c: resource, effect, and meta typing is XAX (ADR-134) — 2026-10-03
 
 - The XAX typing function now decodes effect, resource, and opaque types and checks `effect.step`, `resource.*`, and `meta.*` nodes. Every node check that reads only types is now XAX. For 2,000 random nodes, outcomes and exact diagnostics are identical with the path on and off. 2,447/2,447 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4d: call, constant, memory, atomic, and target typing, which needs the pointer/owner/effect fact tracking.
+
+## Self-hosting step S4d.1: constants and terminators typed by XAX (ADR-135) — 2026-10-03
+
+- The XAX typing function now validates constant objects and values, and terminator condition and edge types. Outcomes are identical with the path on and off on random nodes and 150 random branching graphs. 3,374/3,374 covered corpus nodes and 427/427 terminators are proven. Full suite: 870 tests, 17 skipped. Remaining in Python: call contracts and the pointer/owner/effect fact system (S4d.2).

@@ -1,4 +1,4 @@
-"""S4/S4b/S4c (ADR-132 to ADR-134): the XAX typing rules agree with the bootstrap verifier.
+"""S4 to S4d.1 (ADR-132 to ADR-135): the XAX typing rules agree with the bootstrap verifier.
 
 Soundness: every node the XAX function proves is accepted by the bootstrap
 (run with the native path off).  Coverage: well-typed nodes of every covered
@@ -17,8 +17,10 @@ from types import SimpleNamespace
 
 from xax_compiler import (
     EffectDomain, FloatFormat, Kind, Operation, ResourceFlags, SemanticObject, XaxError, array_type, bits_type, effect_type,
-    float_type, opaque_type, resource_type, sum_type, tuple_type, x86_64_linux_exec_target,
+    IntCompare, Terminator, ValueRef, constant, float_constant, float_type, null_link, opaque_type, resource_type, sum_type, tuple_type,
+    uleb, x86_64_linux_exec_target,
 )
+from xax_compiler import link_type
 from xax_graph_builder import GraphBuilder, program_store
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -52,6 +54,25 @@ POOL = (
 )
 
 
+def _raw_constant(type_object, value: bytes):
+    return SemanticObject.create(Kind.CONSTANT, uleb(0) + uleb(len(value)) + value, [type_object.cid])
+
+
+GOOD_CONSTANTS = (
+    constant(B8, 200), constant(B1, 1), constant(B100, 2 ** 99 + 5), constant(B200, 3), float_constant(F32, 1.5),
+    float_constant(F64, -0.0), float_constant(F64, float("nan")), float_constant(F32, float("inf")), null_link(),
+)
+BAD_CONSTANTS = (
+    _raw_constant(B1, bytes((2,))),  # a high bit above the width
+    _raw_constant(B8, bytes(2)),  # wrong length
+    _raw_constant(F32, (0x7FC00001).to_bytes(4, "little")),  # non-canonical NaN
+    _raw_constant(F64, bytes(4)),  # wrong float length
+    _raw_constant(PAIR, bytes(8)),  # not a scalar type
+    SemanticObject.create(Kind.CONSTANT, uleb(0) + uleb(8) + bytes((1,)) + bytes(7), [null_link().references[0]]),  # non-null link
+)
+CONSTANTS = (*GOOD_CONSTANTS, *BAD_CONSTANTS)
+
+
 @contextlib.contextmanager
 def _typing_path(native):
     """Verify with ``native`` as the typing function (None: bootstrap only), parse cache cleared."""
@@ -67,20 +88,20 @@ def _typing_path(native):
         xax_compiler._PARSED_GRAPHS.clear()
 
 
-def _bootstrap_accepts(operation, operand_types, result_types, attributes) -> bool:
-    return _outcome(None, operation, operand_types, result_types, attributes) is None
+def _bootstrap_accepts(operation, operand_types, result_types, attributes, entity=None) -> bool:
+    return _outcome(None, operation, operand_types, result_types, attributes, entity) is None
 
 
-def _outcome(native, operation, operand_types, result_types, attributes):
+def _outcome(native, operation, operand_types, result_types, attributes, entity=None):
     """None when the one-node store verifies, else the exact (code, rule, entity) of its rejection."""
     with _typing_path(native):
         graph = GraphBuilder()
         block = graph.block(*operand_types)
-        results = block.op(operation, tuple(block.params), tuple(result_types), attributes=tuple(attributes))
+        results = block.op(operation, tuple(block.params), tuple(result_types), attributes=tuple(attributes), entity=entity)
         block.ret(*results)
         try:
             entry = graph.function(tuple(operand_types), tuple(result_types))
-            program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *POOL))
+            program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *POOL, *CONSTANTS))
         except XaxError as error:
             return error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity
         except ValueError as error:
@@ -117,6 +138,13 @@ def _samples(count: int, seed: int = 132):
             continue
         if operation in META_RULES:
             samples.append(_meta_sample(rng, operation))
+            continue
+        if operation == Operation.CONSTANT:
+            entity = rng.choice(CONSTANTS)
+            value_type = next(item for item in (*POOL, link_type()) if item.cid == entity.references[0]) if entity.references[0] in {x.cid for x in (*POOL, link_type())} else B8
+            result = value_type if rng.random() < 0.85 else rng.choice(POOL)
+            operands = () if rng.random() < 0.95 else (B8,)
+            samples.append((operation, operands, (result,), (), entity))
             continue
         operands = rng.choice((1, 2, 2, 3)) if rng.random() < 0.15 else (1 if operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT, Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC, Operation.FLOAT_CONVERT) else 2)
         results = 2 if rng.random() < 0.05 else 1
@@ -200,8 +228,11 @@ def _meta_sample(rng, operation):
 def _native_verdicts(native, samples):
     from xax_selfhost_typing import marshal, type_info_from
 
-    objects = {item.cid: item for item in POOL}
-    nodes = [SimpleNamespace(operation=operation, operands=operand_types, results=tuple(item.cid for item in result_types), attributes=attributes) for operation, operand_types, result_types, attributes in samples]
+    objects = {item.cid: item for item in (*POOL, *CONSTANTS, link_type())}
+    nodes = [
+        SimpleNamespace(operation=sample[0], operands=sample[1], results=tuple(item.cid for item in sample[2]), attributes=sample[3], entity=sample[4] if len(sample) > 4 else None)
+        for sample in samples
+    ]
     words, keys = marshal([SimpleNamespace(nodes=nodes)], lambda _block, node: tuple(item.cid for item in samples[node][1]), type_info_from(objects.__getitem__))
     status, verdicts = native.check(words, len(keys))
     return status, dict(zip((node for _block, node in keys), verdicts))
@@ -275,6 +306,7 @@ class SelfhostTypingTests(unittest.TestCase):
             (Operation.META_FUNCTION_GRAPH, (OPAQUES[3],), (OPAQUES[5],), ()),
             (Operation.META_GRAPH_NODE_COUNT, (OPAQUES[5], B32), (B64,), ()),
             (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B1,), (int(Operation.ADD_WRAP),)),
+            *((Operation.CONSTANT, (), (next(item for item in (*POOL, link_type()) if item.cid == entity.references[0]),), (), entity) for entity in GOOD_CONSTANTS),
         ]
         bad = [
             (Operation.ADD_WRAP, (B32, B64), (B32,), ()),
@@ -308,6 +340,8 @@ class SelfhostTypingTests(unittest.TestCase):
             (Operation.META_FUNCTION_GRAPH, (OPAQUES[3],), (OPAQUES[6],), ()),
             (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B1,), (9999,)),
             (Operation.META_VERIFY_SEMANTICS, (OPAQUES[6],), (B8,), ()),
+            *((Operation.CONSTANT, (), (next((item for item in (*POOL, link_type()) if item.cid == entity.references[0]), B8),), (), entity) for entity in BAD_CONSTANTS),
+            (Operation.CONSTANT, (), (B32,), (), constant(B8, 1)),
         ]
         status, verdicts = _native_verdicts(self.native, good + bad)
         self.assertEqual(status, 0)
@@ -318,6 +352,60 @@ class SelfhostTypingTests(unittest.TestCase):
             self.assertEqual(verdicts[index], NOT_PROVEN, sample)
             self.assertFalse(_bootstrap_accepts(*sample), sample)
         self.assertNotIn(NOT_COVERED, verdicts.values())
+
+    def test_terminator_typing(self):
+        """S4d.1: branch conditions are bits<1>; edge arguments match the target's parameters."""
+        from xax_selfhost_typing import PROVEN, marshal, type_info_from
+
+        objects = {item.cid: item for item in POOL}
+        p = ValueRef.parameter
+
+        def verdicts(condition_type, edge_types, target_parameters):
+            blocks = [
+                SimpleNamespace(nodes=(), parameters=(condition_type.cid, *(item.cid for item in edge_types)),
+                                terminator=Terminator.conditional_branch(p(0, 0), 1, tuple(p(0, 1 + k) for k in range(len(edge_types))), 2, ())),
+                SimpleNamespace(nodes=(), parameters=tuple(item.cid for item in target_parameters), terminator=Terminator.return_(())),
+                SimpleNamespace(nodes=(), parameters=(), terminator=Terminator.return_(())),
+            ]
+            words, keys = marshal(blocks, lambda *_: (), type_info_from(objects.__getitem__), lambda block, value: blocks[value.block].parameters[value.index])
+            status, result = self.native.check(words, len(keys) + len(blocks))
+            self.assertEqual(status, 0)
+            return [item == PROVEN for item in result]
+
+        self.assertEqual(verdicts(B1, (B8, F64), (B8, F64)), [True, True, True])
+        self.assertEqual(verdicts(B8, (B8,), (B8,)), [False, True, True])  # condition not bits<1>
+        self.assertEqual(verdicts(B1, (B8,), (B32,)), [False, True, True])  # argument type mismatch
+        self.assertEqual(verdicts(B1, (B8,), (B8, B8)), [False, True, True])  # argument count mismatch
+        self.assertEqual(verdicts(OVERLONG, (), ()), [False, True, True])  # undecodable condition type
+
+    def test_branching_graphs_verify_identically(self):
+        """Multi-block graphs: outcomes and exact diagnostics are the same with the path on and off."""
+        rng = random.Random(135)
+        cases = []
+        for _ in range(150):
+            condition = rng.choice((B1, B1, B1, B8))
+            carried = tuple(rng.choice((B8, B32, F64)) for _ in range(rng.randrange(0, 3)))
+            declared = carried if rng.random() < 0.8 else tuple(rng.choice((B8, B32, F64)) for _ in range(len(carried) + rng.choice((0, 0, 1))))
+            cases.append((condition, carried, declared))
+
+        def outcome(native, condition, carried, declared):
+            with _typing_path(native):
+                graph = GraphBuilder()
+                entry = graph.block(condition, *carried)
+                then, otherwise = graph.block(*declared), graph.block()
+                entry.cbr(entry.params[0], then, entry.params[1:], otherwise, ())
+                then.ret(then.const(B32, 1))
+                otherwise.ret(otherwise.const(B32, 0))
+                try:
+                    function = graph.function((condition, *carried), (B32,))
+                    program_store(function, x86_64_linux_exec_target(), (*graph.objects.values(), *POOL))
+                except XaxError as error:
+                    return error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity
+                return None
+
+        baseline = [outcome(None, *case) for case in cases]
+        self.assertEqual([outcome(self.native, *case) for case in cases], baseline)
+        self.assertTrue(any(item is None for item in baseline) and not all(item is None for item in baseline))
 
     def test_committed_store_is_the_built_program(self):
         import xax_compiler

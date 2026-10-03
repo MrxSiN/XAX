@@ -411,7 +411,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S4 | Operation typing rules (arity and operand/result types per operation family) | S3e | EXECUTED for the scalar families (ADR-132): integer, compare, rotate, float, and conversion nodes are typed by XAX on the production path; 2,419/2,419 covered nodes of four real stores proven |
 | S4b | Aggregate and sum typing (`aggregate.make/get`, `sum.make/tag/get`) | S4 | EXECUTED (ADR-133): tuple, array, and sum types of scalars decoded and checked by XAX |
 | S4c | Resource/effect and meta typing (`effect.step`, `resource.*`, `meta.*`) with effect, resource, and opaque type decoding | S4b | EXECUTED (ADR-134): every node check that reads only types is now XAX |
-| S4d | Call, constant, memory, atomic, and target typing together with the pointer/owner/effect fact tracking they update | S4c | next |
+| S4d.1 | Constant typing (object decoding and canonical values) and terminator typing (conditions, edge arguments) | S4c | EXECUTED (ADR-135): 927 constants and 427 terminators in the corpus proven by XAX |
+| S4d.2 | Call contracts and the pointer/owner/effect fact tracking (stack storage first, then heap views, links, and windows), then memory, atomic, and target typing | S4d.1 | next |
 | S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | planned |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
 
