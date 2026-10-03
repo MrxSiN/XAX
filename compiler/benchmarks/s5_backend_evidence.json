@@ -1,25 +1,25 @@
 {
- "step": "S5a",
- "adr": "ADR-140",
+ "step": "S5b",
+ "adr": "ADR-140, ADR-141",
  "evidence_label": "MEASURED",
  "cases": {
   "random_64": {
    "image_bytes": 428,
    "byte_identical": true,
-   "compile_ms_xax": 1.49,
-   "compile_ms_python": 1.56
+   "compile_ms_xax": 0.58,
+   "compile_ms_python": 1.59
   },
   "loop_24_live": {
    "image_bytes": 2008,
    "byte_identical": true,
-   "compile_ms_xax": 2.47,
-   "compile_ms_python": 5.92
+   "compile_ms_xax": 1.47,
+   "compile_ms_python": 6.11
   },
   "loop_300_live": {
    "image_bytes": 73540,
    "byte_identical": true,
-   "compile_ms_xax": 43.93,
-   "compile_ms_python": 101.88
+   "compile_ms_xax": 16.66,
+   "compile_ms_python": 107.45
   }
  },
  "note": "median of 9 compile_riscv64 calls per backend in one process (store verification cached)"

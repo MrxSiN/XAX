@@ -801,3 +801,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `compile_riscv64` now generates code with an XAX program (`xax_selfhost_riscv64_backend.py`): liveness, linear scan, frame layout, lowering, the `li` planner, and jump fixups. Images are byte-identical to the bootstrap's, which stays as the fallback and the source of diagnostics.
 - Compiling is 2.3× faster on a 300-value loop. Full suite: 881 tests, 17 skipped. Next: S5b, which feeds the program from the XAX decoders instead of the Python marshal.
+
+## Self-hosting step S5b: S5 complete, store objects to RISC-V image in XAX (ADR-141) — 2026-10-03
+
+- The XAX backend program now reads the store's objects and the XAX graph decoder's streams itself. It decides the target's operation sets, function interfaces, value widths, constants, the call closure (skipping erased proof callees), and the function order. Python only copies objects and assembles the image object.
+- Images are byte-identical to the bootstrap's. `compile_riscv64` is 6.4× faster on a 300-value loop. Full suite: 882 tests, 17 skipped. Next: S6.

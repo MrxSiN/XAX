@@ -45,7 +45,7 @@ def main() -> None:
             timings[backend] = round(statistics.median(samples) * 1000, 2)
         results[name] = {"image_bytes": len(images["xax"].code), "byte_identical": images["xax"] == images["python"],
                          "compile_ms_xax": timings["xax"], "compile_ms_python": timings["python"]}
-    evidence = {"step": "S5a", "adr": "ADR-140", "evidence_label": "MEASURED", "cases": results,
+    evidence = {"step": "S5b", "adr": "ADR-140, ADR-141", "evidence_label": "MEASURED", "cases": results,
                 "note": "median of 9 compile_riscv64 calls per backend in one process (store verification cached)"}
     OUTPUT.write_text(json.dumps(evidence, indent=1) + "\n")
     print(json.dumps(evidence, indent=1))
