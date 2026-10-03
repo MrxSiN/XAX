@@ -266,3 +266,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S4d.1 — 2026-10-03 (ADR-135)
 
 - Constants and terminators joined the XAX typing function. Python skips their checks via `proven_constants` and `proven_terminators` in `_parse_graph_uncached`; a proven constant still records its link fact. `NativeTyping.check` returns node verdicts and then block verdicts. Next is S4d.2, which is a design step: represent the fact tables (pointer facts with storage, offset, extent, permission, and window; owner and effect facts with initialized intervals; ended and live sets; per-edge exits; the fixpoint) as XAX data, starting with stack storage.
+
+## S4d.2a — 2026-10-03 (ADR-136)
+
+- `fact_free` in `_parse_graph_uncached` gates the fact loop (`range(0 if fact_free else ...)`; the for-else fixpoint failure is guarded). The XAX check's last output word is the memory-free flag. Proven `call.direct` nodes are not added to `proven_nodes`, because their branch also does view and resource borrowing. Next is S4d.2b: model stack storage facts in XAX (allocation, owner, effect with initialized intervals, lifetime end, leaks), so graphs whose only memory is stack storage also skip the Python passes.

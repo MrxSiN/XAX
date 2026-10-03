@@ -6273,6 +6273,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     proven_nodes: frozenset[tuple[int, int]] = frozenset()
     proven_constants: frozenset[tuple[int, int]] = frozenset()
     proven_terminators: frozenset[int] = frozenset()
+    fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
     typing = _native_typing() if checked_uses else None
     if typing is not None:
         from xax_selfhost_typing import PROVEN, marshal, type_info_from
@@ -6283,12 +6284,19 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             type_info_from(resolve),
             lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
         )
-        status, verdicts = typing.check(words, len(keys) + len(blocks))
+        status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
         if status == 0:
             proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
             proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
-            proven_nodes = frozenset(proven) - proven_constants
-            proven_terminators = frozenset(index for index, verdict in enumerate(verdicts[len(keys):]) if verdict == PROVEN)
+            # A direct call's contract is proven, but its branch also borrows views and resources: it is skipped only in fact-free graphs.
+            proven_nodes = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation != Operation.CALL_DIRECT) - proven_constants
+            block_verdicts = verdicts[len(keys):len(keys) + len(blocks)]
+            proven_terminators = frozenset(index for index, verdict in enumerate(block_verdicts) if verdict == PROVEN)
+            fact_free = (
+                verdicts[-1] == 1
+                and len(proven) == sum(len(block.nodes) for block in blocks)
+                and len(proven_terminators) == len(blocks)
+            )
 
     # Memory facts flow only along explicit block parameters.  Blocks are
     # verified in reverse postorder; a back edge first contributes nothing
@@ -6323,7 +6331,18 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     entry_facts = _entry_heap_view_facts(blocks[entry].parameters, resolve, _link_target_declarations(blocks[entry]))
     exits: dict[int, dict[tuple[int, int], _BlockFacts]] = {}
     previous_seeds: dict[int, _BlockFacts] | None = None
-    for _fact_pass in range(2 * len(blocks) + 2):
+    returns_by_block: list[tuple[int, tuple[bytes, ...]]] = []
+    global_pointers: dict[ValueRef, _PointerFact] = {}
+    if fact_free:
+        # S4d.2a (ADR-136): XAX proved every node, constant, call contract, and terminator,
+        # and that no value has a type the fact system tracks, so the passes below would
+        # record nothing and reject nothing.  Only the derived types remain to record.
+        for block_index, block in enumerate(blocks):
+            for node_index, node in enumerate(block.nodes):
+                node.operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
+            if block.terminator.kind == TerminatorKind.RETURN:
+                returns_by_block.append((block_index, tuple(value_type(value, block_index, len(block.nodes)) for value in block.terminator.values)))
+    for _fact_pass in range(0 if fact_free else 2 * len(blocks) + 2):
         returns_by_block: list[tuple[int, tuple[bytes, ...]]] = []
         global_pointers: dict[ValueRef, _PointerFact] = {}
         heap_allocations: dict[ValueRef, _HeapAllocationFact] = {}
@@ -6962,7 +6981,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         previous_seeds = pass_seeds
         exits = pass_exits
     else:
-        fail("XAX.MEMORY.FACT_FIXPOINT", obj.cid.hex(), "MEMORY-FACT-FIXPOINT", 2 * len(blocks) + 2, "not converged")
+        if not fact_free:
+            fail("XAX.MEMORY.FACT_FIXPOINT", obj.cid.hex(), "MEMORY-FACT-FIXPOINT", 2 * len(blocks) + 2, "not converged")
     returns = [item for _block, item in sorted(returns_by_block, key=lambda pair: pair[0])]
     parsed = _ParsedGraph(
         entry, tuple(blocks), tuple(returns), tuple(member_spans),

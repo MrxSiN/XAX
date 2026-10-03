@@ -412,7 +412,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S4b | Aggregate and sum typing (`aggregate.make/get`, `sum.make/tag/get`) | S4 | EXECUTED (ADR-133): tuple, array, and sum types of scalars decoded and checked by XAX |
 | S4c | Resource/effect and meta typing (`effect.step`, `resource.*`, `meta.*`) with effect, resource, and opaque type decoding | S4b | EXECUTED (ADR-134): every node check that reads only types is now XAX |
 | S4d.1 | Constant typing (object decoding and canonical values) and terminator typing (conditions, edge arguments) | S4c | EXECUTED (ADR-135): 927 constants and 427 terminators in the corpus proven by XAX |
-| S4d.2 | Call contracts and the pointer/owner/effect fact tracking (stack storage first, then heap views, links, and windows), then memory, atomic, and target typing | S4d.1 | next |
+| S4d.2a | Direct-call contracts and memory-free graphs: XAX proves a graph has no tracked memory and Python runs no fact passes for it | S4d.1 | EXECUTED (ADR-136): 5 of 20 corpus graphs skip the fact system |
+| S4d.2b | Stack-storage facts (allocation, owner, effect, initialized intervals, lifetime end, leaks), then heap views, links, and pointer windows; then memory, atomic, and target typing | S4d.2a | next |
 | S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | planned |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
 
