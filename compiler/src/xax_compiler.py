@@ -6186,6 +6186,22 @@ def _native_typing():
     return _NATIVE_TYPING
 
 
+def _callee_summary(node: "_ParsedNode", resolve: Callable[[bytes], SemanticObject]) -> tuple[int, list[int]] | None:
+    """S4d.2d: ``(block count, operations of its single block)`` of a direct call's callee whose interface
+    carries a stack owner (the facts engine derives resource call contracts from it), else None."""
+    try:
+        if node.entity is None or node.entity.kind != Kind.FUNCTION:
+            return None
+        graph, parameters, returns = _decode_function_interface(node.entity, resolve)
+        if not any(_is_stack_owner(resolve(cid)) for cid in (*parameters, *returns)):
+            return None
+        parsed = _parse_graph(graph, resolve)
+    except XaxError:
+        return None
+    operations = [int(item.operation) for item in parsed.blocks[0].nodes] if len(parsed.blocks) == 1 else []
+    return len(parsed.blocks), operations
+
+
 def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ParsedGraph:
     decoder = _native_graph_decoder()
     parsed = None
@@ -6304,7 +6320,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
             type_info_from(resolve),
             lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
-            facts=(entry, order),
+            facts=(entry, order, lambda node: _callee_summary(node, resolve)),
         )
         status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
         if status == 0:

@@ -71,7 +71,13 @@ from xax_compiler import (
     x86_64_linux_exec_target,
 )
 from xax_graph_builder import program_store
-from xax_selfhost_cfg import B64, IN_POINTER, IN_VIEW, IN_WORDS, MEM, OUT_POINTER, OUT_VIEW, OUT_WORDS, _Builder
+from xax_compiler import heap_view_type
+from xax_selfhost_cfg import B64, IN_POINTER, MEM, OUT_POINTER, _Builder
+
+# The typing-and-facts program's own views: large graphs need room for their streams and fact tables.
+IN_EXTENT, OUT_EXTENT = 4 << 20, 16 << 20
+IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
+IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)
 
 STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_op_typing.xax"
 ACCEPT, REJECT, DEFER = 0, 1, 2
@@ -84,7 +90,8 @@ EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE, EDOM
 # S4d.2b: pointer types (form 2) and the exact stack-owner and memory-effect forms.
 PTR, PSPACE, PELEM, PPERM, PALIGN, STACKOWNER, MEMEFFECT = range(17, 24)
 FORMB = 24  # S4d.2c: a type's raw first body byte (its form when single-byte), any type kind
-TABLES = 25
+OPID = 25  # S4d.2d: an opaque identity type (form 6): 1 when ``_decode_opaque_identity_type`` accepts it
+TABLES = 26
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -233,16 +240,20 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
 
     engine, engine_objects = build_engine()
     _ENGINE[:] = [engine, engine_objects]
-    b = _Builder()
+    b = _Builder(IN_EXTENT, OUT_EXTENT)
     count = b.read(b.c(0))
     t = _Typing(b, count)
     b.check(b.cmp(IntCompare.ULE, b.add(b.add(b.mul(count, TABLES), MARKS), IN_WORDS), OUT_WORDS - TABLE), b.defer_block)
     nodes_at = b.for_range(b.c(0), count, lambda index, carried: _scalar_entry(b, t, index, carried), (b.c(1),))[0]
     items = b.add(t.slot(TABLES, b.c(0)), MARKS)
-    (items,) = b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
-    b.for_range(b.c(0), count, lambda index, carried: _proof_entry(b, t, index, carried), (items,))
-    for _depth in range(2):  # a pointer to a pointer validates on the second pass
+    # Aggregate items first (all elements unvalidated), so proof-type transition lists follow them.
+    (after_items,) = b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
+    b.for_range(b.c(0), count, lambda index, carried: _proof_entry(b, t, index, carried), (after_items,))
+    # Pointers and aggregates validate each other's elements: two rounds reach depth two
+    # (each aggregate round rewrites the same item slots: the layout does not depend on validity).
+    for _depth in range(2):
         b.for_range(b.c(0), count, lambda index, carried: _pointer_entry(b, t, index) or (), ())
+        b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
     blocks_at, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
@@ -279,6 +290,11 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     triples = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
     function = b.g.function(triples, triples)
     return program_store(function, x86_64_linux_exec_target(), (*b.g.objects.values(), *engine_objects)), function
+
+
+def _value_element(t: _Typing, element):
+    """A tuple, array, or sum element: a validated type that is not a proof type (effect or resource)."""
+    return t.all(_known(t, element), t.not_(t.any(t.lookup(EFFECT, element), t.lookup(RESOURCE, element))))
 
 
 def _scalar_entry(b: _Builder, t: _Typing, index, carried):
@@ -327,7 +343,7 @@ def _aggregate_entry(b: _Builder, t: _Typing, index, carried):
         element = b.read(b.add(end, t.pick(inside, reference, b.c(0))))
         b.put(b.add(cursor, k), element)
         b.put(b.add(t.slot(TABLES, b.c(0)), t.pick(inside, reference, b.c(0))), 1)
-        return b.add(at, width), t.all(ok, inside, t.scalar(element))
+        return b.add(at, width), t.all(ok, inside, _value_element(t, element))
 
     after, items_ok = b.for_range(b.c(0), steps, item, (b.add(b.add(base, 1), size), b.c(1)))
     (used,) = b.for_range(b.c(0), b.mul(listed, references), lambda k, c: (b.add(c[0], b.get(b.add(t.slot(TABLES, b.c(0)), k))),), (b.c(0),))
@@ -336,7 +352,7 @@ def _aggregate_entry(b: _Builder, t: _Typing, index, carried):
     reference, width, reference_ok = t.uleb(b.add(base, 1))
     array_count, array_size, array_count_ok = t.uleb(b.add(b.add(base, 1), width))
     element = b.read(end)
-    array_ok = t.all(is_array, reference_ok, t.eq(reference, 0), t.eq(references, 1), array_count_ok, t.eq(b.add(b.add(b.add(base, 1), width), array_size), end), t.scalar(element))
+    array_ok = t.all(is_array, reference_ok, t.eq(reference, 0), t.eq(references, 1), array_count_ok, t.eq(b.add(b.add(b.add(base, 1), width), array_size), end), _value_element(t, element))
     b.put(b.add(cursor, b.mul(listed, steps)), element)  # an array's one element (harmless after a list)
     ok = t.any(listed_ok, array_ok)
     b.put(t.slot(AGGREGATE, index), b.mul(ok, form))
@@ -386,6 +402,8 @@ def _proof_entry(b: _Builder, t: _Typing, index, carried):
     b.put(t.slot(STACKOWNER, index), owner)
     b.put(t.slot(EDOMAIN, index), b.mul(effect_ok, v1))
     b.put(t.slot(OPAQUE, index), b.mul(opaque_ok, v1))
+    # form 6: a nonempty byte string identity, exactly to the end, no references.
+    b.put(t.slot(OPID, index), t.all(plain, t.eq(form, 6), ok1, t.nonzero(v1), t.eq(b.add(p2, v1), end)))
     b.put(t.slot(RESOURCE, index), resource_ok)
     b.put(t.slot(RKIND, index), v1)
     b.put(t.slot(RSTATE, index), v2)
@@ -502,7 +520,7 @@ def _known(t: _Typing, value):
     """A type the decoders fully validated (what ``_verify_type`` accepts, restricted to decoded forms)."""
     return t.any(
         t.nonzero(t.lookup(WIDTH, value)), t.nonzero(t.lookup(FORMAT, value)), t.lookup(LINK, value), t.nonzero(t.lookup(AGGREGATE, value)),
-        t.lookup(EFFECT, value), t.lookup(RESOURCE, value), t.nonzero(t.lookup(OPAQUE, value)), t.lookup(PTR, value),
+        t.lookup(EFFECT, value), t.lookup(RESOURCE, value), t.nonzero(t.lookup(OPAQUE, value)), t.lookup(PTR, value), t.lookup(OPID, value),
     )
 
 
@@ -810,7 +828,7 @@ def type_info_from(resolve):
             item = resolve(cid)
         except Exception:  # noqa: BLE001 - any resolution failure leaves the node to the bootstrap
             return None
-        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP) and len(item.body) <= TARGET_BODY_LIMIT:
+        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT) and len(item.body) <= TARGET_BODY_LIMIT:
             return int(item.kind), tuple(item.references), item.body  # S4d.2c: foreign declarations, recursion groups
         if len(item.body) > BODY_LIMIT or item.kind not in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION):
             # Kind only: graph bodies (and their references) are never needed, and no rule accepts a longer body.
@@ -900,7 +918,7 @@ def _facts_section(blocks, facts, keys, type_index, value_type_of):
     from xax_compiler import ValueRef
     from xax_selfhost_facts import NONE
 
-    entry, order = facts
+    entry, order, callee_summary = facts
     key_of = {key: index for index, key in enumerate(keys)}
     refs, ids = [], {}
     for block_index, block in enumerate(blocks):
@@ -942,6 +960,10 @@ def _facts_section(blocks, facts, keys, type_index, value_type_of):
                 len(node.operands), *(ids[value] for value in node.operands), *(_index(type_index, cid) for cid in operand_types),
                 len(node.results), *(_index(type_index, cid) for cid in node.results),
             ]
+            # Auxiliary words: a direct call's callee summary ``[blocks, operation count, operations]``
+            # when its interface carries a stack owner (resource call contracts), else none.
+            summary = callee_summary(node) if node.operation == Operation.CALL_DIRECT and callee_summary is not None else None
+            body += [0] if summary is None else [len(summary[1]) + 2, summary[0], len(summary[1]), *summary[1]]
         term = block.terminator
         body += [
             int(term.kind), len(term.values), *(ids[value] for value in term.values),
