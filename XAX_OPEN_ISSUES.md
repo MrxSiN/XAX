@@ -507,7 +507,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** One executed application per strategy on one managed platform with measured startup, steady-state time, memory, artifact size, and generated-adapter size.
 
-**Status.** OPEN. Direct DEX emission is EXECUTED on Android (minimal Activity); no classfile or IL container exists.
+**Status.** OPEN (partially addressed, ADR-112). Direct emission is now EXECUTED on two managed platforms. DEX runs on Android (minimal and stateful Activities). JVM class files run on HotSpot 21 at 1.04× the `javac` twin's kernel time, with a 1.51× class file and 1.01× peak RSS (`jvm_twin_evidence.json`). The closing criterion is still unmet: there is no native-code-plus-generated-bridge arm on the JVM to compare against, and no CLI/IL container. Direct-emission gaps on the JVM: object, array, and string construction; JVM-to-XAX callbacks (interfaces), which need the generated-adapter rule of ADR-102; linear memory; and block-parameter coalescing (the class-size gap).
 
 ## OI-36 — Standard semantic library granularity
 
@@ -602,3 +602,13 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 **Evidence that closes it.** An executed page whose XAX click handler updates the DOM on each click, with negative vectors for a handler that has machine parameters and for an undeclared event kind.
 
 **Status: CLOSED (2026-10-02, ADR-104).** Candidate (a) was implemented. In headless Chromium 141, the XAX `on_click` entry re-renders `"n fib(n)"` on each click for four queries with no page errors (`browser_fib_evidence.json`). Negative vectors cover a machine parameter, a claimed memory effect, an internal address on wasm, a browser entry on x86-64, and an undeclared binding (`WEB-IMPORT-DECLARED`). Remaining breadth (more event kinds, element addressing, timers, fetch) is ordinary binding-package growth under OI-32.
+
+## OI-44 — Hardware versus emulated execution as replacement evidence
+
+**Question.** ADR-114 lets emulated execution (QEMU, Unicorn) satisfy `code_generation` and `real_execution`, which is enough for R1. Should R1 for an ISA row (RISC-V, AArch64 bare metal) instead require one hardware run, as R3 effectively does for applications?
+
+**Fixed constraints.** Emulators never supply performance evidence, and emulator-only rows list "not hardware" as a blocker. Image bytes must equal what the hardware would receive.
+
+**Evidence that closes it.** One case where an emulator and hardware disagree on an XAX image (which would show that emulation is insufficient), or a documented hardware run on two ISA rows with no discrepancy against the emulator corpus.
+
+**Status.** OPEN. The riscv64 and aarch64-baremetal rows are emulator-only.

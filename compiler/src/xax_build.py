@@ -1885,12 +1885,16 @@ def build(
             from xax_aarch64 import compile_aarch64_bound_target
 
             image = compile_aarch64_bound_target(reader, function_root, target_object)
+        elif description.architecture == 6:
+            from xax_riscv64 import compile_riscv64_bound_target
+
+            image = compile_riscv64_bound_target(reader, function_root, target_object)
         elif description.architecture == 4:
             from xax_accelerator import compile_accelerator_bound_target
 
             image = compile_accelerator_bound_target(reader, function_root, target_object)
         else:
-            fail("XAX.BUILD.TARGET", target_object.cid.hex(), "BUILD-TARGET-SUPPORTED", [1, 2, 3, 4], description.architecture)
+            fail("XAX.BUILD.TARGET", target_object.cid.hex(), "BUILD-TARGET-SUPPORTED", [1, 2, 3, 4, 5, 6], description.architecture)
         artifact = image.artifact_bytes
         lowering = lowering_identity(description.architecture, description.image_format)
     artifact_digest = blake3(artifact).digest()

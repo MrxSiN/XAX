@@ -71,6 +71,8 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 5a. **Android (ADR-105/106)**: device-free evidence exists (`bench_android_bionic.py`, `bench_android_official_tools.py`, `bench_android_ndk_twin.py`; they need the host tooling listed in `XAX_STATE.md`). C → XAX callbacks run on bionic threads (ADR-107). ART verifies all 62 classes in all 20 APKs, libxposed included (ADR-108). All 12 libxposed module profiles execute on ART with a stand-in framework (ADR-109); what remains is LSPosed in a real target process. rebuild the environment with `integration/android/make_android_root.py`. Next: run the packed APK on a device, then make format 5 the default; AArch64 loops now use registers (ADR-110); next for code quality: pinning loop-invariant homes, and floats/memory on the register path. After that, a richer Activity (state, I/O, lifecycle: U1 workload 4) and libxposed runtime execution.
 6. **Browser (ADR-103/104)**: click entries are done. Next: static storage, so state need not live in the DOM; a Web IDL-driven binding importer (OI-32); and an Emscripten/Rust wasm size comparison for R4.
 7. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
+8. **JVM (ADR-112, OI-35)**: JVM→XAX callbacks (generated adapter classes implementing a Java interface, following ADR-102's purity rule); explicit object/array/string construction contracts; block-parameter coalescing (class 1.51× `javac`); an R3 application; a native-plus-bridge arm to close OI-35.
+9. **RISC-V (ADR-113)**: compare/branch fusion and copy coalescing (Collatz 3.72× `clang -O2` instructions); F/D floats and memory; a Linux `ET_EXEC` profile through `xax_elf`; a QEMU-system or hardware run (OI-44).
 
 ## Reproduce M14 evidence
 
@@ -87,7 +89,7 @@ PYTHONPATH=src:. python -m benchmarks.ai_native prepare task-01 C
 PYTHONPATH=src:. python -m benchmarks.ai_native prepare task-01 XAX
 ```
 
-The unfiltered test command requires the Windows x86-64 and AArch64/QEMU hosts for the eight known execution cases. Do not report those cases as passing on Linux without the required environments.
+Since ADR-114 the eight formerly host-bound cases execute on Linux x86-64: raw Win64 images go through a harness call thunk, and AArch64 images run in Unicorn when QEMU is absent (`pip install unicorn`). PE executables still need Windows or Wine. The JVM tests need `java`/`javac`; the RISC-V tests need Unicorn (`llvm-mc` adds an independent decode).
 
 ## Relevant specification
 
@@ -179,3 +181,11 @@ The unfiltered test command requires the Windows x86-64 and AArch64/QEMU hosts f
 ## Native XAX compiler leaf — 2026-10-02
 
 BLAKE3 compression is now the first real compiler hot path implemented as an ordinary XAX graph and run through the normal x86-64 lowering path. The canonical store is `compiler/bootstrap/xax_blake3_compress.xax` and its regeneration/loader is `compiler/src/xax_native_blake3.py`; `compiler/src/blake3.py` keeps the pure-Python leaf for bootstrap/fallback and lazily switches to the verified native XAX compressor on compatible x86-64 hosts. The graph has CID `f1744e682b2f99c542100f0e987dced9a87f40dfa4b8f173596fb24b78faa216`; emitted x86-64 code is 19,744 bytes with 806 semantic ranges. Evidence and timings are in `compiler/benchmarks/xax_native_blake3_evidence.json`. The current Linux execution shim is only a SysV-to-Win64 ABI adapter around the ordinary emitted image; no BLAKE3 logic lives in the shim.
+
+## JVM and RISC-V targets — 2026-10-03 (ADR-112–ADR-114)
+
+- Two architectures were added with zero kernel changes. Architecture 5, `jvm-classfile-v1`, lowers XAX directly to class-file bytecode in a deterministic JAR; it is EXECUTED on HotSpot 21 and the JVM row is at R2. Architecture 6, `riscv64-baremetal-raw-v1`, emits a raw RV64IM image; it is EXECUTED under Unicorn and the riscv64 row is at R1. Both pass the same differential corpus against the reference executor.
+- MEASURED: JVM Collatz 1.04× `javac` kernel time, 1.51× class bytes. RISC-V Collatz 3.72× `clang -O2` emulated instructions, after a liveness-hull linear scan cut it from 15.9×.
+- Repairs: OI-25/OI-26 evidence replays no longer depend on filesystem order or interpreter version; one stale code hash was re-pinned after execution; the wheel now packages `xax_web`, `xax_android_counter`, `xax_jvm`, and `xax_riscv64`.
+- Regression here: 903 passed, 19 skipped, 2 failed (`tiktoken` absent; wheel needs Python ≥ 3.12).
+

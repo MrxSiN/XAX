@@ -402,11 +402,50 @@
     },
     {
       "id": "riscv64",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R1",
+      "runtime_requirement": "none: raw position-independent RV64IM image, LP64 integer convention, no loader, relocation, or data section (ADR-113)",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_riscv64.py",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "debugging": [
+          "PROTOTYPE",
+          "compiler/tests/test_xax_riscv64.py"
+        ],
+        "optimization": [
+          "PROTOTYPE",
+          "compiler/src/xax_riscv64.py",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/tests/test_xax_riscv64.py",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/riscv64_twin_evidence.json"
+        ]
+      },
       "blockers": [
-        "no target package"
+        "executed only under the Unicorn RV64 emulator, not hardware; no Linux/RTOS executable container or syscall package",
+        "integer subset only: no floats (F/D), memory, aggregates, atomics, vector (V), or indirect calls",
+        "collatz kernel 3.72x clang -O2 emulated instructions and 3.23x code bytes (no compare/branch fusion or copy coalescing yet)"
       ]
     },
     {

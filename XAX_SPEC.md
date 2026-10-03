@@ -1078,7 +1078,7 @@ Levels are cumulative; a level is held only when every lower level is held.
 | Level | Name | Required evidence |
 |---|---|---|
 | R0 | Semantic expressibility | The workload is represented exactly in verified XAX (STRUCTURAL or stronger). |
-| R1 | Executable lowering | XAX directly produces a valid executable representation that EXECUTED on the target (a harness, emulator, or device must be named). |
+| R1 | Executable lowering | XAX directly produces a valid executable representation that EXECUTED on the target (a harness, emulator, or device must be named). Emulated execution counts for correctness only, never as performance evidence; an emulator-only row lists "not hardware" as a blocker (ADR-114, OI-44). |
 | R2 | Platform interoperability | Required ABI, system APIs, libraries, callbacks, dynamic loading, resources, and platform lifecycle EXECUTED. |
 | R3 | Practical application | A nontrivial real application/workload EXECUTED successfully. |
 | R4 | Performance competitiveness | Runtime, memory, and binary size MEASURED against the platform's established toolchains under `XAX_BENCHMARKS.md`. |
@@ -1158,6 +1158,20 @@ Interoperability is mandatory. Deterministic importers SHOULD convert external m
 ### 21.9b Browser pages
 
 `wasm32-browser-v1` (ADR-103) uses the WASI command container (`_start` and `memory` exports; proof-only entry). Browser APIs are `wasm32-import` declarations of a platform package. Each has exactly one fixed host meaning, and host state is ordered by an `effect<io>` token supplied to `_start`. The host page MUST be generated from the imported declarations alone: an import outside the package rejects, and unused bindings emit nothing. Event handlers are foreign entries of ABI `wasm32-browser-event` (ADR-104): their parameters MUST be non-memory effects returned unchanged, with no machine values, and the host supplies that authority on each call. On wasm32 the address is the export number of `entry_<k>`.
+
+### 21.9c JVM class files
+
+`jvm-classfile-v1` (ADR-112) is target architecture 5 with the exact machine tuple (profile 1, ABI 6, format 1, 64, 64). It emits one class file of major version ≥ 61 (strict IEEE 754) in a byte-deterministic JAR. Its operation set is the scalar general subset: integer arithmetic and completion operations, compares, rotates, float arithmetic, compares and conversions, direct and foreign calls, and the erased resource/effect operations. Any other operation MUST reject (`JVM-OP-TARGET-SUPPORTED`).
+
+Bits up to 32 lower to `int` and up to 64 to `long`, kept zero-extended. Every observable result MUST equal the reference executor's, including traps. A trap MUST terminate the program abruptly and MUST NOT be catchable by XAX code.
+
+Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-getstatic`. The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
+
+`JVM_EXECUTABLE_JAR` requires a proof-only entry. Its `Main-Class` is the generated `main(String[])` that calls the entry and returns (JVM exit status 0); any other status MUST be an explicit `java/lang/System.exit` call.
+
+### 21.9d RISC-V RV64 raw images
+
+`riscv64-baremetal-raw-v1` (ADR-113) is target architecture 6 with the exact machine tuple (profile 1, ABI 7 LP64, format 1 raw, 64, 64). It needs only RV64I plus M. Functions follow the LP64 integer calling convention (a0–a7, a0, ra; s0–s11 preserved). A zero divisor MUST trap even though `divu`/`remu` do not. The image MUST be position-independent, with the entry at offset 0, and contain no loader, relocation, data section, or runtime.
 
 ### 21.10 Standard semantic libraries
 

@@ -1038,6 +1038,27 @@ def jvm_classfile_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# RISC-V RV64IM bare-metal raw image (ADR-113): LP64 integer convention,
+# position-independent code, no runtime.  The register convention is fixed by
+# the identity, so the profile carries no register lists.
+RISCV64_ARCHITECTURE = 6
+RISCV64_LP64_ABI = 7
+RISCV64_RAW_FORMAT = 1
+RISCV64_OPERATIONS = (1, 2, 3, 5, 6, *range(12, 20), 57, 62, 63, *range(67, 73))
+
+
+def riscv64_baremetal_target() -> SemanticObject:
+    identity = b"riscv64-baremetal-raw-v1"
+    operations = tuple(sorted(set(RISCV64_OPERATIONS)))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(identity)) + identity)
+    for value in (1, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64):
+        body.extend(uleb(value))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:
     """wasm32 core module with native f32/f64 plus memory-backed aggregates and sums."""
     operations = (
@@ -1539,14 +1560,14 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         argument_registers = tuple(cursor.uleb() for _ in range(cursor.uleb()))
         result_register: int | None = cursor.uleb()
         scratch_registers = tuple(cursor.uleb() for _ in range(cursor.uleb()))
-    elif architecture in (2, 4, JVM_ARCHITECTURE):
+    elif architecture in (2, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE):
         stack_alignment = 1
         shadow_space = 0
         argument_registers = ()
         result_register = None
         scratch_registers = ()
     else:
-        fail("XAX.TARGET.ARCHITECTURE", obj.cid.hex(), "TARGET-ARCHITECTURE-SUPPORTED", [1, 2, 3, 4, JVM_ARCHITECTURE], architecture)
+        fail("XAX.TARGET.ARCHITECTURE", obj.cid.hex(), "TARGET-ARCHITECTURE-SUPPORTED", [1, 2, 3, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE], architecture)
     operations = tuple(cursor.uleb() for _ in range(cursor.uleb()))
     terminators = tuple(cursor.uleb() for _ in range(cursor.uleb()))
     atomic_widths: tuple[int, ...] = ()
@@ -1641,6 +1662,8 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         registers = (*argument_registers, result_register, *scratch_registers)
         if argument_registers != (1, 2, 8, 9) or result_register != 0 or scratch_registers != (10, 11) or any(register is None or register >= 16 for register in registers):
             fail("XAX.TARGET.ABI", obj.cid.hex(), "TARGET-WINDOWS-X64-REGISTERS", [[1, 2, 8, 9], 0, [10, 11]], [list(argument_registers), result_register, list(scratch_registers)])
+    elif architecture == RISCV64_ARCHITECTURE and (profile, abi, image_format, word_bits, pointer_bits) != (1, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64):
+        fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-RISCV64-RAW", [1, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64], [profile, abi, image_format, word_bits, pointer_bits])
     elif architecture == JVM_ARCHITECTURE and (profile, abi, image_format, word_bits, pointer_bits) != (1, JVM_ABI, JVM_JAR_FORMAT, 64, 64):
         fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-JVM-CLASSFILE", [1, JVM_ABI, JVM_JAR_FORMAT, 64, 64], [profile, abi, image_format, word_bits, pointer_bits])
     elif architecture == 2 and (abi, image_format, word_bits, pointer_bits) != (2, 2, 64, 32):

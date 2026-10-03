@@ -470,3 +470,8 @@ imports it has no dynamic relocations or `DT_NEEDED` entries.
 The emitter is intentionally not a general ELF linker. Unsupported reach,
 relocation, or ABI cases fail explicitly rather than introducing a runtime
 helper or silently changing semantics.
+
+## 23. Architectures 5 and 6: the JVM and RISC-V (2026-10-03)
+
+The target decoder knows six architectures: 1 x86-64, 2 wasm32, 3 AArch64, 4 the SIMT accelerator packet, 5 the JVM (ADR-112), and 6 RISC-V RV64 (ADR-113). Architectures 5 and 6 carry no register lists, because their convention is fixed by the identity (as for wasm32). Each accepts exactly one machine tuple. Adding them required no new operation, type form, or terminator. A package states its operation set, and every backend rejects operations outside it, so the JVM and RISC-V can each start with a subset and grow independently.
+

@@ -2339,6 +2339,8 @@ def run_aarch64_qemu(
         fallback = Path(r"C:\msys64\ucrt64\bin\qemu-system-aarch64.exe")
         qemu = str(fallback) if fallback.exists() else None
     if not qemu:
+        if qemu_executable is None and _unicorn_available():
+            return _run_aarch64_unicorn(image, arguments)
         fail("XAX.AARCH64.HOST", "host", "AARCH64-HOST-QEMU", "qemu-system-aarch64 executable", "missing")
     with tempfile.TemporaryDirectory(prefix="xax-aarch64-") as directory:
         kernel = Path(directory) / "kernel.bin"
@@ -2360,3 +2362,39 @@ def run_aarch64_qemu(
         raise RuntimeError(f"unexpected QEMU result length {len(output)}: {output!r}")
     result = int.from_bytes(output, "little")
     return (result & ((1 << image.return_widths[0]) - 1),)
+
+
+def _unicorn_available() -> bool:
+    try:
+        import unicorn  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _run_aarch64_unicorn(image: Aarch64Image, arguments: Sequence[int]) -> tuple[int, ...]:
+    """Harness fallback when QEMU is absent: run the raw image in Unicorn's ARM64 CPU.
+
+    The image bytes are the ones QEMU would load after the semihosting
+    prologue; here the harness calls the entry directly with x0-x7 set and
+    a sentinel link register.  The emulator is a host tool, not the artifact.
+    """
+    import unicorn
+    from unicorn import arm64_const as arm
+
+    emulator = unicorn.Uc(unicorn.UC_ARCH_ARM64, unicorn.UC_MODE_ARM)
+    base, sentinel, stack_top = 0x40080000, 0x1000, 0x41000000
+    emulator.mem_map(base, (len(image.code) + 0xFFF) & -0x1000)
+    emulator.mem_write(base, image.code)
+    emulator.mem_map(sentinel, 0x1000)
+    emulator.mem_map(stack_top - (1 << 20), 1 << 20)
+    emulator.reg_write(arm.UC_ARM64_REG_SP, stack_top)
+    emulator.reg_write(arm.UC_ARM64_REG_LR, sentinel)
+    for register, argument in enumerate(arguments):
+        emulator.reg_write(arm.UC_ARM64_REG_X0 + register, argument)
+    emulator.emu_start(base + image.entry_offset, sentinel, count=50_000_000)
+    if emulator.reg_read(arm.UC_ARM64_REG_PC) != sentinel:
+        raise RuntimeError("aarch64 entry did not return")
+    if not image.return_widths:
+        return ()
+    return (emulator.reg_read(arm.UC_ARM64_REG_X0) & ((1 << image.return_widths[0]) - 1),)
