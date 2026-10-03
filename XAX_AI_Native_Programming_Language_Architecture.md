@@ -1,6 +1,6 @@
-# XAX — AI-Native Programming Language Architecture v0.3
+# XAX — AI-Native Programming Language Architecture v0.4
 
-**v0.3 scope.** v0.1 framed XAX as a compiler-architecture prototype (sections 1–34, preserved below). v0.2 extended the same principles to a universal-replacement architecture (sections 35–47). v0.3 records the first two architectures added without any kernel change, a managed JVM target and a RISC-V ISA target (§37, §39, §41). This document states principles and intent; `XAX_SPEC.md` is normative and wins on conflict; implementation status lives in `XAX_STATE.md` and `XAX_REPLACEMENT_MATRIX.json`.
+**v0.3 scope.** v0.1 framed XAX as a compiler-architecture prototype (sections 1–34, preserved below). v0.2 extended the same principles to a universal-replacement architecture (sections 35–47). v0.3 records the first two architectures added without any kernel change, a managed JVM target and a RISC-V ISA target (§37, §39, §41). v0.4 records a second AArch64 platform (Linux), a real GPU representation (SPIR-V for Vulkan), callable recursion, the first R3 application, deterministic C header import, board packages with interrupts, and static linking of existing C objects (§37, §39, §40, §43, §47; ADR-123–ADR-129). The only change to semantic-object encoding is the callable form of the recursion-group member identity the specification already defined. This document states principles and intent; `XAX_SPEC.md` is normative and wins on conflict; implementation status lives in `XAX_STATE.md` and `XAX_REPLACEMENT_MATRIX.json`.
 
 ## Founding definition
 
@@ -947,6 +947,9 @@ Common programming models lower into existing semantics:
 
 A program that does not use a model pays nothing for it. Safety follows `prove -> erase check`; when proof fails the policy is explicit (reject, checked operation, explicit trap, or raw waiver), and undefined behavior is never silently turned into optimizer permission.
 
+
+Recursion follows the same rule (ADR-125). A recursive strongly connected component is one content-addressed recursion group, and its member identity `(group, index)` is callable like any function. Backends see a group-local call as an ordinary direct call, so recursion costs exactly a call on every target and adds no runtime. A backend that cannot make frame storage reentrant, which today is wasm32 for stack allocations and aggregates, rejects the program rather than sharing frames.
+
 ---
 
 # 39. Executable and object formats
@@ -991,6 +994,8 @@ First evidence (ADR-103, EXECUTED in headless Chromium): target `wasm32-browser-
 
 Target packages model SIMT/SIMD execution, memory spaces, synchronization scopes, barriers, kernels, launches, shared/workgroup memory, host/device ownership, and device resources. The same core semantics map to SPIR-V/Vulkan, CUDA-compatible targets, Metal, DXIL, and future accelerators. Launch, transfer, and synchronization are explicit effects/resources; there is no XAX device runtime. The synthetic M13 target proves the package mechanism; production requires physical-device execution and vendor-baseline measurements.
 
+Bare metal (ADR-128, ADR-129): a board package lists the board's registers and instructions (UART, interrupt controller, timer, `wfi`, power-off) as typed target operations on a device effect, together with interrupt handler contracts. The image adds only a reset stub, a fault path, and a vector table that calls contract-checked XAX handlers. Existing freestanding C objects are linked in by an exact relocation subset, and each foreign declaration names the object that defines its symbol.
+
 First real representation (ADR-124): SPIR-V for Vulkan. A kernel is an ordinary XAX function; the target-owned entry contract maps its first parameter to the global invocation index and its borrowed view triples to storage-buffer bindings. Nothing was added to the kernel. Concurrency is not assumed safe: the target checks that every store, and every load of a stored-to buffer, touches only the invocation's own element. Any control-flow graph lowers to one structured dispatch loop, and traps become a status word raised with `atomicMax`. Kernels run on Mesa llvmpipe with buffers and traps equal to the reference executor. On that CPU device the dispatch loop costs 6.9× an equivalent glslang kernel, so structured lowering of reducible graphs and a physical-GPU run are the next steps (OI-34).
 
 Embedded and bare-metal targets require: no runtime, deterministic startup, exact sections/layout, interrupts, MMIO, DMA, volatile operations, custom layout semantics, fixed memory budgets, optional zero allocation, and bounded stack analysis where requested. Legacy and specialized targets (mainframes, legacy ISAs, DSPs, consoles, custom accelerators) are added as target packages whenever target/ABI information exists, never hardcoded.
@@ -1034,7 +1039,7 @@ The goal is not "faster than assembly"; it is:
     minimize selected target cost
     subject to exact semantics
 
-Snapshot (2026-10-03): Linux x86-64, Android arm64, the browser, and the JVM are at R2; Windows PE, AArch64 bare metal, RISC-V RV64, Wasm core, and WASI are at R1; the synthetic accelerator is at R0; nothing is at R3 or higher. Emulator execution (QEMU, Unicorn) counts as EXECUTED for code generation and execution correctness, never as hardware performance evidence, and each such row lists "not hardware" as a blocker (ADR-114). The first cross-toolchain measurement is Linux `filestat` (`XAX_BENCHMARKS.md` §15.1), which does not meet R4.
+Snapshot (2026-10-03, after ADR-129): R3: linux-aarch64, linux-x86_64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no row yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu. Linux x86-64 reached R3 with `jsonmin`, a validating JSON minifier that recurses through a recursion group; it measures 1.56× gcc -O2, so the row is not R4, and the matrix now requires an explicit `competitive` verdict before R4 can derive. Emulator and software-device execution (QEMU, Unicorn, llvmpipe) count as EXECUTED for correctness, never as performance evidence, and each such row lists "not hardware" as a blocker (ADR-114).
 
 The first replacement milestone (U1) is a hosted native application, a bare-metal program, a WebAssembly/WASI or browser application, an Android application, and an accelerator workload, all from XAX semantics, measured against established implementations.
 
