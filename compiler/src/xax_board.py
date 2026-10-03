@@ -29,6 +29,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 
 from xax_aarch64 import _move_immediate, compile_aarch64_bundle_bound_target
 from xax_compiler import (
@@ -105,7 +106,7 @@ IRQ_HANDLER = HandlerEntryContract(EVENT_IRQ, 1, 1, 0, 0, 0, 1, (EffectDomain.DE
 def qemu_virt_board() -> SemanticObject:
     operations = tuple(sorted({
         1, 2, 3, *range(5, 20), *(int(value) for value in AARCH64_GENERAL_OPERATIONS),
-        *AARCH64_INTEGER_COMPLETION_OPERATIONS, int(Operation.TARGET_OP),
+        *AARCH64_INTEGER_COMPLETION_OPERATIONS, int(Operation.TARGET_OP), int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW),
     }))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(IDENTITY)) + IDENTITY)
@@ -203,7 +204,12 @@ def _validate_reset(reader: StoreReader, reset_cid: bytes) -> None:
         fail("XAX.BOARD.ENTRY", reset_cid.hex(), "BOARD-RESET-PROOF-ONLY", "fn(device effect...) -> (device effect...)", [cid.hex() for cid in (*parameters, *returns)])
 
 
-def compile_board_image(reader: StoreReader, reset_cid: bytes, irq_handler_cid: bytes, target_cid: bytes) -> BoardImage:
+def compile_board_image(reader: StoreReader, reset_cid: bytes, irq_handler_cid: bytes, target_cid: bytes, objects: Sequence[str | Path] = ()) -> BoardImage:
+    """Build the board image; ``objects`` are ELF64 relocatable objects linked after the XAX code (ADR-129).
+
+    Every ``aapcs64-c`` declaration's library must name the object file that
+    defines its symbol, so a binding never depends on link order.
+    """
     resolve = store_resolver(reader)
     target = resolve(target_cid)
     description = decode_native_target(target)
@@ -213,8 +219,6 @@ def compile_board_image(reader: StoreReader, reset_cid: bytes, irq_handler_cid: 
     validate_handler_entry(reader, irq_handler_cid, target, EVENT_IRQ)
     bundle = compile_aarch64_bundle_bound_target(reader, (reset_cid, irq_handler_cid), target)
     offsets = dict(bundle.function_offsets)
-    if bundle.foreign_calls:
-        fail("XAX.BOARD.IMPORTS", "board", "BOARD-NO-FOREIGN-CALLS", 0, len(bundle.foreign_calls))
     # Layout: [reset stub][fault stub] padded to 2 KiB, [vector table, 2 KiB], [bundle].
     stack = list(_move_immediate(0, STACK_TOP, 64))
     adr_at, bl_at = (len(stack) + 1) * 4, (len(stack) + 4) * 4
@@ -233,6 +237,25 @@ def compile_board_image(reader: StoreReader, reset_cid: bytes, irq_handler_cid: 
             words = [0x14000000 | (((fault_at - position) // 4) & 0x3FFFFFF)]  # b fault
         text[position:position + 4 * len(words)] = _words(*words)
     text += bundle.code
+    text += bytes(-len(text) % 16)
+    writable = False
+    if objects or bundle.foreign_calls:
+        from xax_elf_link import _read_object, link_objects
+
+        linked = link_objects(objects, LOAD_ADDRESS + len(text))
+        definers = {}
+        for path in objects:
+            for symbol in _read_object(Path(path))[1]:
+                if symbol.binding in (1, 2) and symbol.section not in (0, 0xFFF1):
+                    definers[symbol.name] = Path(path).name.encode()
+        for position, library, name in bundle.foreign_calls:
+            symbol = name.decode("ascii", "replace")
+            if symbol not in linked.symbols or definers.get(symbol) != library:
+                fail("XAX.BOARD.LINK", "board", "BOARD-STATIC-SYMBOL", "a symbol defined by the named object", [library.decode("ascii", "replace"), symbol])
+            site = code_at + position
+            text[site:site + 4] = _bl(site, linked.symbols[symbol] - LOAD_ADDRESS).to_bytes(4, "little")
+        text += linked.data
+        writable = linked.writable
     displacement = vectors_at - adr_at
     text[adr_at:adr_at + 4] = (0x10000000 | ((displacement & 0x3) << 29) | (((displacement >> 2) & 0x7FFFF) << 5)).to_bytes(4, "little")
     text[bl_at:bl_at + 4] = _bl(bl_at, code_at + offsets[reset_cid]).to_bytes(4, "little")
@@ -240,7 +263,7 @@ def compile_board_image(reader: StoreReader, reset_cid: bytes, irq_handler_cid: 
     header_size = 64 + 56
     file_offset = 128  # p_offset ≡ p_vaddr (mod 16): the board loader needs no page alignment
     elf_header = b"\x7fELF" + bytes((2, 1, 1, 0)) + bytes(8) + struct.pack("<HHIQQQIHHHHHH", 2, 183, 1, LOAD_ADDRESS, 64, 0, 0, 64, 56, 1, 64, 0, 0)
-    load = program_header(1, 5, file_offset, LOAD_ADDRESS, len(text), len(text), 16)
+    load = program_header(1, 7 if writable else 5, file_offset, LOAD_ADDRESS, len(text), len(text), 16)
     data = elf_header + load + bytes(file_offset - header_size) + bytes(text)
     return BoardImage(data, bytes(text), target_cid)
 

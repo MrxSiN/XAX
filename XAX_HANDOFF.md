@@ -233,3 +233,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `xax_board.py` (package, image, `run_board_image`), workload `benchmarks/aarch64_virt_board.py`. Host: `apt-get install qemu-system-arm`; QEMU needs `-net none` (no EFI ROMs installed).
 - Next: static storage shared between handler and reset (a board RAM region as a declared heap view), linking foreign objects (R2), a second board (RISC-V `virt` needs RISC-V memory operations first), DMA with the OI-07 states.
 
+## Static linking — 2026-10-03 (ADR-129)
+
+- `compile_board_image(..., objects=[...])`; compile C with `benchmarks.board_linked_c.CFLAGS` (`-fno-pic -fno-common -ffreestanding -fno-asynchronous-unwind-tables`).
+- Next: archive member selection, x86-64 relocations so Linux static profiles can link C, and calls from linked C back into XAX (code-entry addresses through `externals`).
+

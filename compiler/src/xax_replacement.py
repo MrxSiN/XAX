@@ -34,9 +34,22 @@ REQUIREMENTS: tuple[tuple[str, tuple[str, ...], frozenset[str]], ...] = (
 )
 
 
+# Fields a platform may genuinely lack, satisfied by NOT_APPLICABLE only with a
+# written justification in the row's ``not_applicable`` map (ADR-129): a
+# platform without a loader has nothing to load.
+NOT_APPLICABLE_SATISFIES = frozenset({"dynamic_linking"})
+
+
 def label(row: dict, field: str) -> str:
     value = row.get("fields", {}).get(field, "UNIMPLEMENTED")
     return value if isinstance(value, str) else value[0]
+
+
+def _satisfied(row: dict, field: str, accepted: frozenset[str]) -> bool:
+    value = label(row, field)
+    if value == "NOT_APPLICABLE" and field in NOT_APPLICABLE_SATISFIES:
+        return bool(str(row.get("not_applicable", {}).get(field, "")).strip())
+    return value in accepted
 
 
 def competitive(row: dict) -> bool:
@@ -52,7 +65,7 @@ def competitive(row: dict) -> bool:
 def derived_level(row: dict) -> str:
     level = "NONE"
     for name, fields, accepted in REQUIREMENTS:
-        if not all(label(row, field) in accepted for field in fields):
+        if not all(_satisfied(row, field, accepted) for field in fields):
             break
         if name == "R4" and not competitive(row):
             break
@@ -81,6 +94,9 @@ def validate(matrix: dict, repo_root: Path) -> list[str]:
         # Conformance §23.17: an emulator-only row cannot cite performance.
         if any("not hardware" in blocker for blocker in row.get("blockers", ())) and label(row, "performance") in ("MEASURED", "PROVEN"):
             errors.append(f"{rid}.performance: emulator-only row cannot claim performance evidence")
+        for field, value in row.get("fields", {}).items():
+            if value == "NOT_APPLICABLE" and not str(row.get("not_applicable", {}).get(field, "")).strip():
+                errors.append(f"{rid}.{field}: NOT_APPLICABLE needs a justification in not_applicable")
         verdict = row.get("competitive")
         if verdict is not None:
             if not isinstance(verdict, list) or len(verdict) < 2 or not isinstance(verdict[0], bool):

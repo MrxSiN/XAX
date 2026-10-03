@@ -1,0 +1,21 @@
+{
+  "c_compiler": "aarch64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "c_flags": [
+    "-O2",
+    "-ffreestanding",
+    "-fno-pic",
+    "-fno-common",
+    "-fno-stack-protector",
+    "-mgeneral-regs-only",
+    "-fno-asynchronous-unwind-tables",
+    "-fno-unwind-tables"
+  ],
+  "c_source_sha256": "da1e47218c53bcae40b978901ff238bf65e0b0ab294852058cd7030ee428368f",
+  "evidence_label": "EXECUTED (QEMU virt, emulated; not hardware)",
+  "format": "xax-board-linked-c-evidence-v1",
+  "image_bytes": 12384,
+  "image_sha256": "f711d3cc60a78f95ff803235e82b866c611770f5c928ec8adbeb634cab21efe7",
+  "object_sha256": "562ec72f6fca3d3dde00b2af65586dfc24533b4c16dfd803ff93a594c36510f9",
+  "program_root": "dcbe55f246385016f95e939108363ec39767b1bd6e64c055ee8fc742117b4cfb",
+  "uart_output": "crc cbf43926\r\n"
+}
