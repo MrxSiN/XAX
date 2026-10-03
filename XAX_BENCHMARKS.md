@@ -736,3 +736,15 @@ The unchanged U1.3 `filestat` graph, built with the Linux AArch64 platform packa
 
 Times are emulated and are not performance evidence (conformance §23.17); they rank two programs under one translator. The gap is the AArch64 frame path, which keeps every value in a stack slot; gcc's size includes 64 KiB segment padding. Source: `compiler/benchmarks/linux_aarch64_filestat.py`; data: `linux_aarch64_filestat_evidence.json`.
 
+### 15.11 SPIR-V Collatz: XAX vs glslang on Mesa llvmpipe (ADR-124; MEASURED-SOFTWARE-DEVICE, 2026-10-03)
+
+Device: llvmpipe (LLVM 20.1.2, 256 bits), Vulkan 1.4 through the `vulkan` Python bindings. Baseline: the equivalent GLSL kernel (`GLSL_COLLATZ` in `spirv_kernels.py`) compiled by glslang 15.1.0 (`-V --target-env vulkan1.1`), with the same bindings, push constant, and 64-wide workgroups. Input: 2^18 random values in [1, 10^6); 5 dispatches each; outputs identical. Time is submit-to-fence.
+
+| Arm | Module bytes | Dispatch (median) |
+|---|---:|---:|
+| XAX | 3,132 | 0.0743 s |
+| glslang | 1,732 | 0.0108 s |
+| Ratio | 1.81× | 6.88× |
+
+A CPU implementation is not GPU performance evidence (conformance §23.17). The gap is the dispatch-loop lowering, which keeps llvmpipe from vectorizing the loop across invocations. Source: `compiler/benchmarks/spirv_kernels.py`; data: `spirv_compute_evidence.json`.
+

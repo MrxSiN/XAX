@@ -1154,6 +1154,28 @@ def riscv64_baremetal_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# SPIR-V compute for Vulkan (ADR-124): architecture 7 is a logical SIMT
+# device.  A kernel is an ordinary function under the target-owned
+# ``spirv-compute-v1`` entry contract; the module has no runtime.
+SPIRV_ARCHITECTURE = 7
+SPIRV_VULKAN_ABI = 8
+SPIRV_MODULE_FORMAT = 1
+SPIRV_VULKAN_COMPUTE_IDENTITY = b"spirv-vulkan-compute-v1"
+SPIRV_OPERATIONS = (1, 2, 3, 6, 8, 38, 39, 56, 57, 62, 63, *range(67, 73))
+
+
+def spirv_vulkan_compute_target() -> SemanticObject:
+    identity = SPIRV_VULKAN_COMPUTE_IDENTITY
+    operations = tuple(sorted(set(SPIRV_OPERATIONS)))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(identity)) + identity)
+    for value in (1, SPIRV_ARCHITECTURE, SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32):
+        body.extend(uleb(value))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 def wasm32_general_target(identity: bytes = b"wasm32-core-module-v2", extra: tuple[int, ...] = ()) -> SemanticObject:
     """wasm32 core module with native f32/f64 plus memory-backed aggregates and sums."""
     operations = (
@@ -1687,14 +1709,14 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
         argument_registers = tuple(cursor.uleb() for _ in range(cursor.uleb()))
         result_register: int | None = cursor.uleb()
         scratch_registers = tuple(cursor.uleb() for _ in range(cursor.uleb()))
-    elif architecture in (2, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE):
+    elif architecture in (2, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE, SPIRV_ARCHITECTURE):
         stack_alignment = 1
         shadow_space = 0
         argument_registers = ()
         result_register = None
         scratch_registers = ()
     else:
-        fail("XAX.TARGET.ARCHITECTURE", obj.cid.hex(), "TARGET-ARCHITECTURE-SUPPORTED", [1, 2, 3, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE], architecture)
+        fail("XAX.TARGET.ARCHITECTURE", obj.cid.hex(), "TARGET-ARCHITECTURE-SUPPORTED", [1, 2, 3, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE, SPIRV_ARCHITECTURE], architecture)
     operations = tuple(cursor.uleb() for _ in range(cursor.uleb()))
     terminators = tuple(cursor.uleb() for _ in range(cursor.uleb()))
     atomic_widths: tuple[int, ...] = ()
@@ -1791,6 +1813,8 @@ def decode_native_target(obj: SemanticObject, allow_carrier: bool = False) -> Na
             fail("XAX.TARGET.ABI", obj.cid.hex(), "TARGET-WINDOWS-X64-REGISTERS", [[1, 2, 8, 9], 0, [10, 11]], [list(argument_registers), result_register, list(scratch_registers)])
     elif architecture == RISCV64_ARCHITECTURE and (profile, abi, image_format, word_bits, pointer_bits) != (1, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64):
         fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-RISCV64-RAW", [1, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64], [profile, abi, image_format, word_bits, pointer_bits])
+    elif architecture == SPIRV_ARCHITECTURE and (profile, abi, image_format, word_bits, pointer_bits) != (1, SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32):
+        fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-SPIRV-COMPUTE", [1, SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32], [profile, abi, image_format, word_bits, pointer_bits])
     elif architecture == JVM_ARCHITECTURE and (profile, abi, image_format, word_bits, pointer_bits) != (1, JVM_ABI, JVM_JAR_FORMAT, 64, 64):
         fail("XAX.TARGET.MACHINE", obj.cid.hex(), "TARGET-JVM-CLASSFILE", [1, JVM_ABI, JVM_JAR_FORMAT, 64, 64], [profile, abi, image_format, word_bits, pointer_bits])
     elif architecture == 2 and (abi, image_format, word_bits, pointer_bits) != (2, 2, 64, 32):
@@ -7810,7 +7834,9 @@ def _execute_graph(
             if _is_opaque(resolve(element), OpaqueKind.FUNCTION):
                 if not isinstance(argument, _RuntimeFunctionPointer):
                     fail("XAX.EXEC.ARGUMENT_TYPE", owner.cid.hex(), "EXEC-ARGUMENT-TYPE", "function pointer", type(argument).__name__)
-            elif _decode_pointer_space(type_object) == 1:
+            elif _decode_pointer_space(type_object) == 1 or isinstance(argument, _RuntimePointer):
+                # Heap-space parameters may also be backed by reference storage
+                # (borrowed views; ADR-124), so checked accesses execute.
                 if not isinstance(argument, _RuntimePointer) or not argument.storage.live:
                     fail("XAX.EXEC.ARGUMENT_TYPE", owner.cid.hex(), "EXEC-ARGUMENT-TYPE", "live pointer", type(argument).__name__)
                 runtime_pointers.append(argument)

@@ -497,7 +497,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** One kernel executed on physical hardware through the selected representation, validated against a CPU oracle, with measured throughput versus a vendor-toolchain baseline.
 
-**Status.** OPEN. Only the synthetic SIMT packet target exists (R0 in the matrix).
+**Status.** OPEN (partially addressed, ADR-124). SPIR-V for Vulkan is the selected first representation: `spirv-vulkan-compute-v1` kernels execute on Mesa llvmpipe and match the reference executor (GPU row R1). Still missing for closure: execution on a physical GPU and a measured throughput comparison against a vendor or glslang baseline there (the llvmpipe comparison, 6.9× glslang for Collatz, is software-device evidence only).
 
 ## OI-35 — Managed-platform emission strategy (JVM, CLR)
 

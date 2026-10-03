@@ -1,0 +1,78 @@
+{
+  "collatz_twin": {
+    "arms": {
+      "glslang": {
+        "dispatch_seconds_median": 0.010805,
+        "module_bytes": 1732
+      },
+      "xax": {
+        "dispatch_seconds_median": 0.074318,
+        "module_bytes": 3132
+      }
+    },
+    "elements": 262144,
+    "glslang": "Glslang Version: 11:15.1.0",
+    "outputs_equal": true,
+    "ratio_xax_over_glslang": {
+      "dispatch_seconds_median": 6.878,
+      "module_bytes": 1.808
+    },
+    "repetitions": 5
+  },
+  "device": "llvmpipe (LLVM 20.1.2, 256 bits)",
+  "driver_version": "0x6402008",
+  "evidence_label": "EXECUTED (outputs equal the reference executor); MEASURED-SOFTWARE-DEVICE (times)",
+  "format": "xax-spirv-compute-evidence-v1",
+  "kernels": {
+    "collatz": {
+      "invocations": 256,
+      "kernel": "a4d591f0801ddbf3e8bb34d8e167f675466b1fe9ee55f6e641ba4f06a8871929",
+      "matches_reference_executor": true,
+      "module_bytes": 3132,
+      "module_sha256": "2e4849a15f75ae94d1172b9df0b07b9af4711416b362d242fd665c21044ea098",
+      "output_sha256": [
+        "2e16dc3cae45497bd68fcbe4cc70fe94b87c9d49c86d95e44142dd7eb629c9fb"
+      ],
+      "spirv_val": "pass",
+      "status": "0x0"
+    },
+    "mix": {
+      "invocations": 256,
+      "kernel": "b8c489ff4275cad26c30f6e4f71c4d06b856c1af5201423e7444f9377a958f38",
+      "matches_reference_executor": true,
+      "module_bytes": 9968,
+      "module_sha256": "452856e7de487a48c8dcd0463dcd9f54d88ce7aa4e987aff775bde941c211325",
+      "output_sha256": [
+        "6f6581255a82154c66d0a515b71d4132df7cbe9a4dd62011da808f8164a88895",
+        "240dbc5b4a3c3e0c18e3fd2867006b439fe929121bd0331a315fa5578abc32d9"
+      ],
+      "spirv_val": "pass",
+      "status": "0x10002"
+    },
+    "mix_bounds": {
+      "invocations": 64,
+      "kernel": "bfbf01d06417758eca64781699c4ef6f0e277eb93507b705afdf94b26a132468",
+      "matches_reference_executor": true,
+      "module_bytes": 9504,
+      "module_sha256": "6b1668d691e68c8cab51dea0cdca66af7c22781479b3d103bb88d852b64f8829",
+      "output_sha256": [
+        "2a3ab40f29a34b0de80eff10590dbcf10bb457a5e8bdf19a75841e83f0f74c5a",
+        "f99672a180a0e58ddef964a44c61dccb0db04bcb991ab894845b44051da4aa1d"
+      ],
+      "spirv_val": "pass",
+      "status": "0x20000"
+    },
+    "trap": {
+      "invocations": 64,
+      "kernel": "72180758d255b463b2c987080517c4b417c4b1f6d39fcc6c8110daf84a9ecc56",
+      "matches_reference_executor": true,
+      "module_bytes": 2148,
+      "module_sha256": "725c3fef0e602dd8a91555f24448fd12b1eb2f2ddbd0cf047157c1fead5681fa",
+      "output_sha256": [
+        "b90414a85252827a1430ea7394e2bdc098736062c0d28f7e0f35773b8f035f9c"
+      ],
+      "spirv_val": "pass",
+      "status": "0x10002"
+    }
+  }
+}

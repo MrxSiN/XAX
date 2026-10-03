@@ -718,3 +718,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Matrix validator now enforces conformance §23.17 (no performance evidence on emulator-only rows). `requires-python` lowered to 3.11, where the full suite passes.
 - Full suite: 809 tests pass, 17 skipped (host-bound), on Python 3.11 with qemu-user, pytest, tiktoken, and unicorn installed.
 
+## SPIR-V compute kernels on Vulkan (ADR-124) — 2026-10-03
+
+- GPU row NONE → R1. `xax_spirv.py` lowers ordinary XAX functions (the `spirv-compute-v1` entry contract) to SPIR-V 1.3 compute modules; they pass `spirv-val` and run on Mesa llvmpipe with buffers and trap status equal to the reference executor. Concurrency safety is a checked rule (`SPIRV-KERNEL-OWN-ELEMENT`). Collatz: 6.9× glslang's time on llvmpipe, 1.81× module bytes (dispatch-loop lowering).
+- `GraphBuilder` blocks gained `trap()`; the reference executor accepts reference-backed heap-space pointer arguments.
+

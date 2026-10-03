@@ -208,3 +208,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - Fixed duplicate `_cset` in `xax_aarch64.py` (frame-path compares were wrong). Frame slots are liveness-shared only on the Linux identities; extending this to Android/bare metal changes committed artifacts and needs their evidence re-run.
 - Next for this row: AArch64 register path for memory, logic, and division (the 6.6×), then a hardware run (OI-44).
 
+## SPIR-V / Vulkan — 2026-10-03 (ADR-124)
+
+- `xax_spirv.py` (compiler + `run_spirv_kernel` harness + `reference_dispatch`), kernels in `benchmarks/spirv_kernels.py`. Host setup: `apt-get install mesa-vulkan-drivers libvulkan1 spirv-tools glslang-tools` and `pip install vulkan`. Keep nested Vulkan create-info structs in named variables: inline temporaries in the bindings dangle (`VK_ERROR_UNKNOWN` at pipeline creation).
+- Next: structured lowering for reducible CFGs (the 6.9×), floats, then an XAX host program that drives Vulkan through `sysv-x86_64-c` imports (R2), then a physical GPU (OI-34).
+
