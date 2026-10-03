@@ -10,6 +10,7 @@ import argparse
 import json
 import math
 import struct
+import sys
 from dataclasses import asdict, dataclass, field, replace
 from enum import IntEnum, IntFlag
 from math import gcd
@@ -511,12 +512,49 @@ def _emit_store(root_cid: bytes, ordered: Iterable[SemanticObject], metadata: tu
     return bytes(out)
 
 
+# Self-hosting S3 (ADR-118): the store container decoder is an XAX function,
+# loaded on first use.  Loading it reads its own store, so the build guard
+# routes that read (and any during a partial import) through the bootstrap parser.
+_NATIVE_DECODER = None
+_DECODER_ATTEMPTED = False
+_DECODER_BUILDING = False
+
+
+def _native_store_decoder():
+    global _NATIVE_DECODER, _DECODER_ATTEMPTED, _DECODER_BUILDING
+    if _DECODER_BUILDING:
+        return None
+    if _DECODER_ATTEMPTED:
+        return _NATIVE_DECODER
+    hashing = sys.modules.get("blake3")
+    if hashing is not None and (getattr(hashing, "_NATIVE_BUILDING", False) or getattr(hashing, "_HASHER_BUILDING", False)):
+        return None  # a hash leaf is being built; decide later
+    if _DECODER_ATTEMPTED:
+        return _NATIVE_DECODER
+    partial = sys.modules.get("xax_selfhost_store")
+    if partial is not None and not hasattr(partial, "native_decoder_usable"):
+        return None
+    _DECODER_ATTEMPTED = True
+    _DECODER_BUILDING = True
+    try:
+        from xax_selfhost_store import NativeDecoder, native_decoder_usable
+
+        _NATIVE_DECODER = NativeDecoder() if native_decoder_usable() else None
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _NATIVE_DECODER = None
+    finally:
+        _DECODER_BUILDING = False
+    return _NATIVE_DECODER
+
+
 class StoreReader:
     """Indexed canonical store reader; object bodies decode only on ``get``."""
 
     def __init__(self, data: bytes, verify_digest: bool = True, proof_cache: ProofCache | None = None):
         self._data: bytes | None = data
         self.proof_cache = proof_cache
+        if self._decode_native(data, verify_digest):
+            return
         cursor = Cursor(data)
         if cursor.take(4) != MAGIC:
             fail("XAX.CONTAINER.MAGIC", "store", "SER-HEADER-MAGIC", MAGIC.hex(), data[:4].hex())
@@ -609,6 +647,34 @@ class StoreReader:
         self._index = {cid: (offset, length) for cid, offset, length in records}
         self._decoded: dict[bytes, SemanticObject] = {}
         self.nonsemantic_records = tuple(metadata)
+
+    def _decode_native(self, data: bytes, verify_digest: bool) -> bool:
+        """Self-hosting S3 (ADR-118): the XAX container decoder decides acceptance and builds the index.
+
+        Any reject, defer, or digest mismatch returns False, and the bootstrap
+        parser below then raises the exact diagnostic.
+        """
+        decoder = _native_store_decoder()
+        if decoder is None or not isinstance(data, (bytes, bytearray)) or len(data) > decoder.capacity:
+            return False
+        status, header, records = decoder.decode(data)
+        if status != 0:
+            return False
+        minor, _objects, metadata_count, metadata_start, _metadata_end, digest_end, root_at = header
+        if verify_digest and blake3(data[:digest_end]).digest() != data[digest_end:digest_end + CID_SIZE]:
+            return False
+        self.minor = minor
+        self.root_cid = bytes(data[root_at:root_at + CID_SIZE])
+        self._index = {bytes(data[cid_at:cid_at + CID_SIZE]): (offset, length) for offset, length, cid_at in records}
+        cursor = Cursor(data[metadata_start:])
+        metadata = []
+        for _ in range(metadata_count):
+            payload = Cursor(cursor.take(cursor.uleb()))
+            schema_id = payload.uleb()
+            metadata.append(NonsemanticRecord(schema_id, payload.byte_string()))
+        self._decoded: dict[bytes, SemanticObject] = {}
+        self.nonsemantic_records = tuple(metadata)
+        return True
 
     @classmethod
     def from_objects(
