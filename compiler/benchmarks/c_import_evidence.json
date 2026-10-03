@@ -1,0 +1,62 @@
+{
+  "byte_identical_to_hand_built": [
+    "libz crc32",
+    "libm ldexp",
+    "libm pow (pure)",
+    "libm sqrtf (pure)",
+    "libc strlen (aapcs64-linux-c)"
+  ],
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "evidence_label": "MEASURED (coverage, latency, size); EXECUTED and byte-identical declarations in test_xax_c_import.py",
+  "format": "xax-c-import-evidence-v1",
+  "headers": {
+    "math.h": {
+      "declaration_bytes": 98527,
+      "declared_functions": 701,
+      "import_seconds": 0.266,
+      "imported": 489,
+      "package_objects": 499,
+      "refusal_reasons": {
+        "by-value type": 212
+      },
+      "refused": 212,
+      "report_sha256": "5d109bcb51d7e35df637e3df0f2864f47158a40b253c28dd843b0de285b6f95a"
+    },
+    "stdio.h": {
+      "declaration_bytes": 18278,
+      "declared_functions": 98,
+      "import_seconds": 0.067,
+      "imported": 87,
+      "package_objects": 104,
+      "refusal_reasons": {
+        "by-value type": 1,
+        "variadic": 10
+      },
+      "refused": 11,
+      "report_sha256": "8eef0cc7db11d729a2868425e9007b010c171c18332be97983e64ff7e5e65296"
+    },
+    "string.h": {
+      "declaration_bytes": 14215,
+      "declared_functions": 64,
+      "import_seconds": 0.06,
+      "imported": 64,
+      "package_objects": 73,
+      "refusal_reasons": {},
+      "refused": 0,
+      "report_sha256": "b89e585313afec08a9d0488094f72455d5e4c0810b1cf0f15db50b0a35f0c9f2"
+    },
+    "zlib.h": {
+      "declaration_bytes": 46313,
+      "declared_functions": 221,
+      "import_seconds": 0.318,
+      "imported": 215,
+      "package_objects": 240,
+      "refusal_reasons": {
+        "by-value type": 1,
+        "variadic": 5
+      },
+      "refused": 6,
+      "report_sha256": "4fc155ef2494bdc824943833c7d528b37c68a1a85611cc113c592419ad1c412a"
+    }
+  }
+}
