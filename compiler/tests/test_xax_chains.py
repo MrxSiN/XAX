@@ -20,7 +20,7 @@ LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() i
 class ChainsTests(unittest.TestCase):
     @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
     def test_small_tables_match_reference(self):
-        for nodes, buckets, links in ((n, b, l) for l in ("index", "pointer", "link") for n, b in ((1, 2), (4096, 64), (3000, 4096))):
+        for nodes, buckets, links in ((n, b, l) for l in ("index", "pointer", "link", "soa") for n, b in ((1, 2), (4096, 64), (3000, 4096))):
             with self.subTest(nodes=nodes, buckets=buckets, links=links):
                 _program, executable = compile_chains(nodes, buckets, links)
                 completed = run_linux_executable(executable.data)
@@ -36,6 +36,8 @@ class ChainsTests(unittest.TestCase):
         self.assertEqual(evidence["xax_pointer"]["program_root"], pointer_program.reader.root_cid.hex())
         link_program, link_executable = compile_chains(links="link")
         self.assertEqual(evidence["xax_link"]["artifact_sha256"], hashlib.sha256(link_executable.data).hexdigest())
+        soa_program, soa_executable = compile_chains(links="soa")
+        self.assertEqual(evidence["xax_soa"]["artifact_sha256"], hashlib.sha256(soa_executable.data).hexdigest())
 
 
 if __name__ == "__main__":

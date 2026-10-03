@@ -21,7 +21,14 @@ The C twin links nodes with real pointers.  XAX expresses the links two ways:
   link)`` and the bucket table a record view of ``(head: link)`` whose link
   target is the arena (ADR-097).  Links are therefore null or arena records,
   so ``link_follow`` needs no range check; each lookup does one checked
-  rebase to its bucket and the walk is check-free.
+  rebase to its bucket and the walk is check-free;
+* ``links="soa"``: struct of arrays, as in the Rust twin: keys (``bits<64>``),
+  next links and bucket heads (``bits<32>``) in zero-filled mappings.  Node
+  ``i`` lives in slot ``i + 1`` (slot 0 is unused), so the stored link is the
+  slot itself and 0 terminates without initialising memory.  A followed link
+  is tested against the arena size (a link beyond it ends the walk); value
+  ranges then prove both field accesses in bounds, so they compile to
+  unchecked scaled loads.
 """
 
 from __future__ import annotations
@@ -36,7 +43,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from xax_compiler import (
-    IntCompare, Operation, Permission, SemanticObject, StoreReader, heap_view_type, link_type, null_link, pointer_type, tuple_type,
+    IntCompare, Operation, Permission, SemanticObject, StoreReader, heap_view_type, link_type, null_link, pointer_type, trap_payload, tuple_type,
     x86_64_linux_exec_target,
 )
 from xax_graph_builder import GraphBuilder, program_store
@@ -70,12 +77,14 @@ class ChainsProgram:
     block_count: int
 
 
-LINKS = ("index", "pointer", "link")
+LINKS = ("index", "pointer", "link", "soa")
 
 
 def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str = "index") -> ChainsProgram:
     if links not in LINKS:
         raise ValueError(f"links must be one of {LINKS}")
+    if links == "soa":
+        return _build_soa_program(nodes, buckets)
     pointer_links = links == "pointer"
     record_links = links == "link"
     api = linux_api()
@@ -301,6 +310,140 @@ def build_chains_program(nodes: int = NODES, buckets: int = BUCKETS, links: str 
     return ChainsProgram(reader, function, target, len(graph.blocks))
 
 
+def _build_soa_program(nodes: int, buckets: int) -> ChainsProgram:
+    api = linux_api()
+    kit = Kit()
+    b32, b64 = kit.b32, kit.b64
+    const, compare, binary = kit.const, kit.compare, kit.binary
+    mem = api.memory_effect
+    words = pointer_type(b64, Permission.READ_WRITE, 8, space=2)
+    halves = pointer_type(b32, Permission.READ_WRITE, 4, space=2)
+    key_bytes, next_bytes, head_bytes, out_bytes = (nodes + 1) * 8, (nodes + 1) * 4, buckets * 4, 4096
+    shift = 64 - (buckets.bit_length() - 1)
+    graph = GraphBuilder()
+    graph.track(*api.types, words, halves, kit.b1)
+    carried = ("proc", "fs", "key_token", "key_mem", "next_token", "next_mem", "head_token", "head_mem", "out_token", "out_mem")
+    types = {
+        "proc": api.process_effect, "fs": api.filesystem_effect,
+        "key_token": heap_view_type(key_bytes), "key_mem": mem, "next_token": heap_view_type(next_bytes), "next_mem": mem,
+        "head_token": heap_view_type(head_bytes), "head_mem": mem, "out_token": heap_view_type(out_bytes), "out_mem": mem,
+    }
+    flow = Flow(graph, carried, types)
+
+    def next_key(block, x):
+        x = binary(block, Operation.BIT_XOR, x, binary(block, Operation.MUL_WRAP, x, const(block, 1 << 13)))
+        x = binary(block, Operation.BIT_XOR, x, binary(block, Operation.UDIV, x, const(block, 1 << 7)))
+        return binary(block, Operation.BIT_XOR, x, binary(block, Operation.MUL_WRAP, x, const(block, 1 << 17)))
+
+    def offset(block, index, scale):
+        """Byte offset ``index * scale`` as the checked accesses' bits<32>."""
+        if index in widths64:
+            return block.op1(Operation.INT_TRUNCATE, (binary(block, Operation.MUL_WRAP, index, const(block, scale)),), b32)
+        return binary(block, Operation.MUL_WRAP, index, const(block, scale, b32), b32)
+
+    widths64: set = set()
+    entry = graph.block(api.process_effect, api.filesystem_effect, mem, mem, mem, mem)
+    process, fs, key_mem, next_mem, head_mem, out_mem = entry.params
+
+    def mapping(memory, size, pointer_type_, alignment):
+        raw, owner, memory = entry.op(Operation.CALL_FOREIGN, (const(entry, size), memory), (api.bytes_rw, api.heap_owner, mem), entity=api.mmap_anonymous)
+        return entry.op(Operation.HEAP_VIEW, (raw, owner, memory), (pointer_type_, heap_view_type(size), mem), attributes=(size, alignment))
+
+    keys, key_token, key_mem = mapping(key_mem, key_bytes, words, 8)
+    nexts, next_token, next_mem = mapping(next_mem, next_bytes, halves, 4)
+    heads, head_token, head_mem = mapping(head_mem, head_bytes, halves, 4)
+    out, out_token, out_mem = mapping(out_mem, out_bytes, api.bytes_rw, 1)
+    state = {
+        "proc": process, "fs": fs, "key_token": key_token, "key_mem": key_mem, "next_token": next_token, "next_mem": next_mem,
+        "head_token": head_token, "head_mem": head_mem, "out_token": out_token, "out_mem": out_mem,
+    }
+
+    # --- insert: keys[i] = x; next[i] = heads[b]; heads[b] = i + 1 ----------------------------
+    insert, insert_state = flow.block(("i", b64), ("x", b64))
+    insert_body, s = flow.block(("i", b64), ("x", b64))
+    lookup_start, start_state = flow.block()
+    entry.br(insert, *flow.args(insert, {**state, "i": const(entry, 0), "x": const(entry, SEED)}))
+    insert.cbr(
+        compare(insert, IntCompare.ULT, insert_state["i"], const(insert, nodes)),
+        insert_body, flow.args(insert_body, insert_state),
+        lookup_start, flow.args(lookup_start, insert_state),
+    )
+    b = insert_body
+    widths64.update((s["i"],))
+    key = next_key(b, s["x"])
+    bucket = b.op1(Operation.INT_TRUNCATE, (binary(b, Operation.UDIV, key, const(b, 1 << shift)),), b32)
+    head, head_mem = b.op(Operation.CHECKED_LOAD_BITS_LE, (heads, offset(b, bucket, 4), s["head_mem"]), (b32, mem), attributes=(4, 1))
+    following = binary(b, Operation.ADD_WRAP, s["i"], const(b, 1))
+    widths64.add(following)
+    key_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (keys, offset(b, following, 8), key, s["key_mem"]), mem, attributes=(8, 1))
+    next_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (nexts, offset(b, following, 4), head, s["next_mem"]), mem, attributes=(4, 1))
+    head_mem = b.op1(Operation.CHECKED_STORE_BITS_LE, (heads, offset(b, bucket, 4), b.op1(Operation.INT_TRUNCATE, (following,), b32), head_mem), mem, attributes=(4, 1))
+    b.br(insert, *flow.args(insert, {**s, "key_mem": key_mem, "next_mem": next_mem, "head_mem": head_mem, "i": following, "x": key}))
+
+    # --- lookup ---------------------------------------------------------------------------
+    counters = (("j", b64), ("x", b64), ("found", b64), ("steps", b64))
+    lookup, lookup_state = flow.block(*counters)
+    lookup_body, ls = flow.block(*counters)
+    walk, walk_state = flow.block(*counters, ("cur", b32))
+    step, step_state = flow.block(*counters, ("cur", b32))
+    visit, vs = flow.block(*counters, ("node", b32))
+    advance, advance_state = flow.block(*counters, ("node", b32))
+    format_block, format_state = flow.block(("found", b64), ("steps", b64))
+    zero = const(lookup_start, 0)
+    lookup_start.br(lookup, *flow.args(lookup, {**start_state, "j": zero, "x": const(lookup_start, SEED), "found": zero, "steps": zero}))
+    lookup.cbr(
+        compare(lookup, IntCompare.ULT, lookup_state["j"], const(lookup, nodes)),
+        lookup_body, flow.args(lookup_body, lookup_state),
+        format_block, flow.args(format_block, lookup_state),
+    )
+    lb = lookup_body
+    key = next_key(lb, ls["x"])
+    bucket = lb.op1(Operation.INT_TRUNCATE, (binary(lb, Operation.UDIV, key, const(lb, 1 << shift)),), b32)
+    head, head_mem = lb.op(Operation.CHECKED_LOAD_BITS_LE, (heads, offset(lb, bucket, 4), ls["head_mem"]), (b32, mem), attributes=(4, 1))
+    lb.br(walk, *flow.args(walk, {**ls, "head_mem": head_mem, "x": key, "j": binary(lb, Operation.ADD_WRAP, ls["j"], const(lb, 1)), "cur": head}))
+    walk.cbr(
+        compare(walk, IntCompare.NE, walk_state["cur"], const(walk, 0, b32)),
+        step, flow.args(step, walk_state),
+        lookup, flow.args(lookup, walk_state),
+    )
+    # A link beyond the arena also ends the walk (the insert loop never stores one);
+    # this one compare plays the role of Rust's bounds check and bounds the accesses.
+    step.cbr(
+        compare(step, IntCompare.ULE, step_state["cur"], const(step, nodes, b32)),
+        visit, flow.args(visit, {**step_state, "node": step_state["cur"]}),
+        lookup, flow.args(lookup, step_state),
+    )
+    stored, key_mem = visit.op(Operation.CHECKED_LOAD_BITS_LE, (keys, offset(visit, vs["node"], 8), vs["key_mem"]), (b64, mem), attributes=(8, 1))
+    steps = binary(visit, Operation.ADD_WRAP, vs["steps"], const(visit, 1))
+    visit.cbr(
+        compare(visit, IntCompare.EQ, stored, vs["x"]),
+        lookup, flow.args(lookup, {**vs, "key_mem": key_mem, "steps": steps, "found": binary(visit, Operation.ADD_WRAP, vs["found"], const(visit, 1))}),
+        advance, flow.args(advance, {**vs, "key_mem": key_mem, "steps": steps}),
+    )
+    ad, ads = advance, advance_state
+    successor, next_mem = ad.op(Operation.CHECKED_LOAD_BITS_LE, (nexts, offset(ad, ads["node"], 4), ads["next_mem"]), (b32, mem), attributes=(4, 1))
+    ad.br(walk, *flow.args(walk, {**ads, "next_mem": next_mem, "cur": successor}))
+
+    # --- output, release, explicit exit ------------------------------------------------------
+    current, cs = emit_decimal_line(kit, flow, format_block, format_state, ("found", "steps"), out, mem, "out_mem")
+    text = current.op1(Operation.POINTER_CAST, (out,), api.bytes_read)
+    _written, fs, out_mem = current.op(
+        Operation.CALL_FOREIGN, (const(current, 1, b32), text, current.op1(Operation.INT_ZERO_EXTEND, (cs["pos"],), b64), cs["fs"], cs["out_mem"]),
+        (b64, api.filesystem_effect, mem), entity=api.write,
+    )
+    key_mem = current.op(Operation.CALL_FOREIGN, (keys, cs["key_token"], cs["key_mem"]), (b64, mem), entity=api.munmap_view(words, key_bytes))[1]
+    next_mem = current.op(Operation.CALL_FOREIGN, (nexts, cs["next_token"], cs["next_mem"]), (b64, mem), entity=api.munmap_view(halves, next_bytes))[1]
+    head_mem = current.op(Operation.CALL_FOREIGN, (heads, cs["head_token"], cs["head_mem"]), (b64, mem), entity=api.munmap_view(halves, head_bytes))[1]
+    _r, out_mem = current.op(Operation.CALL_FOREIGN, (out, cs["out_token"], out_mem), (b64, mem), entity=api.munmap_view(api.bytes_rw, out_bytes))
+    status = const(current, 0, b32)
+    process = current.op1(Operation.CALL_FOREIGN, (status, cs["proc"]), api.process_effect, entity=api.exit_group)
+    current.ret(status, process, fs, key_mem, next_mem, head_mem, out_mem)
+    function = graph.function((api.process_effect, api.filesystem_effect, mem, mem, mem, mem), (b32, api.process_effect, api.filesystem_effect, mem, mem, mem, mem))
+    target = x86_64_linux_exec_target()
+    reader = program_store(function, target, tuple(graph.objects.values()))
+    return ChainsProgram(reader, function, target, len(graph.blocks))
+
+
 def reference_chains(nodes: int = NODES, buckets: int = BUCKETS) -> bytes:
     """Independent statement of the output contract (pointer-free Python model)."""
     mask = (1 << 64) - 1
@@ -341,6 +484,7 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
     program, executable = compile_chains()
     pointer_program, pointer_executable = compile_chains(links="pointer")
     link_program, link_executable = compile_chains(links="link")
+    soa_program, soa_executable = compile_chains(links="soa")
     expected = reference_chains()
     with tempfile.TemporaryDirectory() as directory:
         work = Path(directory)
@@ -353,6 +497,10 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
         artifacts["xax-link"].write_bytes(link_executable.data)
         artifacts["xax-link"].chmod(0o755)
         stripped["xax-link"] = len(link_executable.data)
+        artifacts["xax-soa"] = work / "chains-xax-soa"
+        artifacts["xax-soa"].write_bytes(soa_executable.data)
+        artifacts["xax-soa"].chmod(0o755)
+        stripped["xax-soa"] = len(soa_executable.data)
 
         def validate(arm: str, path: Path) -> bytes:
             output, status = run_output(path, work)
@@ -379,7 +527,7 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
         "xax_link_vs_gcc_O2_pointer": round(results["xax-link"]["wall_seconds_median"] / results["gcc-O2"]["wall_seconds_median"], 3),
     }
     return {
-        "format": "xax-oi37-chains-evidence-v3",
+        "format": "xax-oi37-chains-evidence-v4",
         "evidence_label": "MEASURED",
         "workload": f"chained hash table: {NODES} xorshift64 inserts into {BUCKETS} buckets, then {NODES} successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
         "output": output.decode(),
@@ -409,6 +557,15 @@ def run_benchmark(repetitions: int, warmup: int) -> dict:
             "artifact_sha256": hashlib.sha256(link_executable.data).hexdigest(),
             "artifact_bytes": len(link_executable.data),
             "link_representation": "record link fields (ADR-097): heads table targets the arena; link_follow is check-free (null test elided by the walk's own test)",
+            "runtime_dependencies": [],
+        },
+        "xax_soa": {
+            "program_root": soa_program.reader.root_cid.hex(),
+            "entry_function": soa_program.entry.cid.hex(),
+            "graph_blocks": soa_program.block_count,
+            "artifact_sha256": hashlib.sha256(soa_executable.data).hexdigest(),
+            "artifact_bytes": len(soa_executable.data),
+            "link_representation": "struct of arrays like the Rust twin: bits<32> slot links (node i in slot i + 1, 0 = end) in zero-filled mappings; one compare against the arena bounds each followed link, after which range analysis removes both access checks",
             "runtime_dependencies": [],
         },
         "results": results,

@@ -195,6 +195,22 @@ def _scaled_access(opcode: bytes, register: int, base: int, index: int, scale: i
     return prefix + opcode + bytes((0x04 | ((register & 7) << 3), sib))
 
 
+def _memory_operand_instruction(opcode: bytes, register: int, base: int, index: int | None, scale: int, displacement: int, wide: bool) -> bytes:
+    """``opcode reg, [base + index*scale + disp]`` (or with no index) for any general registers."""
+    rex = 0x40 | (0x08 if wide else 0) | (0x04 if register >= 8 else 0) | (0x02 if index is not None and index >= 8 else 0) | (0x01 if base >= 8 else 0)
+    prefix = bytes((rex,)) if rex != 0x40 else b""
+    if displacement == 0 and base & 7 != 5:
+        mod, tail = 0x00, b""
+    elif -128 <= displacement < 128:
+        mod, tail = 0x40, displacement.to_bytes(1, "little", signed=True)
+    else:
+        mod, tail = 0x80, displacement.to_bytes(4, "little", signed=True)
+    if index is None and base & 7 != 4:
+        return prefix + opcode + bytes((mod | ((register & 7) << 3) | (base & 7),)) + tail
+    sib = ((scale.bit_length() - 1) << 6 | ((index & 7) << 3) | (base & 7)) if index is not None else 0x24
+    return prefix + opcode + bytes((mod | ((register & 7) << 3) | 4, sib)) + tail
+
+
 def _scaled_load(register: int, base: int, index: int, scale: int, size: int) -> bytes:
     """Zero-extending load."""
     return _scaled_access({1: b"\x0f\xb6", 2: b"\x0f\xb7", 4: b"\x8b", 8: b"\x8b"}[size], register, base, index, scale, 4 if size < 4 else size)
@@ -550,7 +566,17 @@ def compile_register_resident(
     # Upper bounds of integer values, enough to prove index arithmetic in range.
     definition = {ValueRef.node_result(b, i): node for b, block in enumerate(graph.blocks) for i, node in enumerate(block.nodes)}
 
+    maximum_cache: dict[ValueRef, int | None] = {}
+
     def maximum(value: ValueRef, depth: int = 0) -> int | None:
+        if depth == 0 and value in maximum_cache:
+            return maximum_cache[value]
+        result = _maximum(value, depth)
+        if depth == 0:
+            maximum_cache[value] = result
+        return result
+
+    def _maximum(value: ValueRef, depth: int = 0) -> int | None:
         if value in constants:
             return constants[value]
         if value not in widths:
@@ -565,6 +591,9 @@ def compile_register_resident(
         if node.operation == Operation.UDIV and constants.get(node.operands[1]):
             bound = maximum(left, depth + 1)
             return (limit if bound is None else bound) // constants[node.operands[1]]
+        if node.operation == Operation.ADD_WRAP:
+            bounds = [maximum(operand, depth + 1) for operand in node.operands]
+            return limit if None in bounds or sum(bounds) > limit else sum(bounds)
         if node.operation == Operation.BIT_AND:
             bounds = [b for b in (maximum(left, depth + 1), maximum(node.operands[1], depth + 1)) if b is not None]
             return min(bounds) if bounds else limit
@@ -631,18 +660,22 @@ def compile_register_resident(
         for index, argument in enumerate(arguments)
         if ValueRef.parameter(target, index) in parameter_bound
     ]
-    for _round in range(4 * len(graph.blocks) + 16):
+    for round_index in range(4 * len(graph.blocks) + 16):
+        maximum_cache.clear()
         changed = False
         for source, edge_index, parameter, argument in incoming_arguments:
             bound = edge_bound(source, edge_index, argument)
             bound = (1 << widths[parameter]) - 1 if bound is None else min(bound, (1 << widths[parameter]) - 1)
             if bound > parameter_bound[parameter]:
-                parameter_bound[parameter] = bound
+                # Widening: a bound still growing after a few rounds (a counter) jumps
+                # to its width limit; branch refinement on edges bounds it again.
+                parameter_bound[parameter] = bound if round_index < 3 else (1 << widths[parameter]) - 1
                 changed = True
         if not changed:
             break
     else:
-        parameter_bound = {}
+        parameter_bound.clear()
+    maximum_cache.clear()
 
     def multiple_of(value: ValueRef, factor: int) -> bool:
         node = definition.get(value)
@@ -850,6 +883,31 @@ def compile_register_resident(
                     member_erased.update(chain)
     erased_index_nodes |= member_erased
 
+    # A 4/8-byte load whose only use is a compare fused into its block's branch,
+    # with no store or call after it in the block, becomes the compare's memory
+    # operand (``cmp reg, [mem]``): the load runs at the branch instead.
+    compare_load: dict[ValueRef, tuple] = {}  # load result -> (base pointer, index or None, scale, displacement)
+    _WRITES = (Operation.STORE_BITS_LE, Operation.CHECKED_STORE_BITS_LE, *_CALLS)
+    for block_index, node_index in fused.items():
+        block = graph.blocks[block_index]
+        left, right = block.nodes[node_index].operands
+        for candidate, other in ((left, right), (right, left)):
+            if candidate.tag != 1 or candidate.block != block_index or candidate.result or use_count[candidate] != 1 or other == candidate:
+                continue
+            load = block.nodes[candidate.index]
+            size = load.attributes[0] if load.attributes else 0
+            if size not in (4, 8) or widths.get(candidate) != 8 * size or other not in widths or immediate(other, widths[candidate]) is not None:
+                continue
+            if any(node.operation in _WRITES for node in block.nodes[candidate.index + 1:]) or candidate in rmw_erased or candidate in member_erased:
+                continue
+            if load.operation == Operation.LOAD_BITS_LE:
+                base, displacement = folded.get(load.operands[0], (load.operands[0], 0))
+                compare_load[candidate] = (base, None, 1, displacement)
+            elif load.operation == Operation.CHECKED_LOAD_BITS_LE and access_proven(load):
+                index, scale = scaled.get(load.operands[1], (load.operands[1], 1))
+                compare_load[candidate] = (load.operands[0], index, scale, 0)
+            break
+
     def operands_of(block_index: int, node_index: int, node) -> tuple[ValueRef, ...]:
         root = ValueRef.node_result(block_index, node_index)
         return (member_values[root][0],) if root in member_values else node.operands
@@ -880,9 +938,15 @@ def compile_register_resident(
         for node_index, node in enumerate(block.nodes):
             if ValueRef.node_result(block_index, node_index) in erased_index_nodes or ValueRef.node_result(block_index, node_index) in rmw_erased:
                 continue  # folded into the access that uses it
+            if ValueRef.node_result(block_index, node_index) in compare_load:  # read by the branch's compare
+                base, index, _scale, _displacement = compare_load[ValueRef.node_result(block_index, node_index)]
+                for operand in (base, index):
+                    if operand in widths:
+                        uses.setdefault(operand, []).append(position)
+                continue
             use_position = position if fused.get(block_index) == node_index or node_index in membership.get(block_index, (None, 0, 0, frozenset()))[3] else node_index
             for operand in (item for value in map(through_fold, operands_of(block_index, node_index, node)) for item in with_aliases(value)):
-                if operand in widths and operand not in rmw_erased:
+                if operand in widths and operand not in rmw_erased and operand not in compare_load:
                     uses.setdefault(operand, []).append(use_position)
             if node.operation == Operation.CALL_DIRECT:  # aliased operands are read again after the call
                 for result, operand in call_aliases.items():
@@ -1257,6 +1321,16 @@ def compile_register_resident(
                 fail("XAX.NATIVE.STARTUP", graph_object.cid.hex(), "LINUX-STARTUP-NAME", "argc|arg_length|arg_copy|envc|env_length|env_copy|auxv_value", name.decode("ascii", "replace"))
 
         def emit_compare(position: int, left: ValueRef, right: ValueRef) -> None:
+            if left in compare_load or right in compare_load:
+                loaded, other = (left, right) if left in compare_load else (right, left)
+                base_value, index_value, scale, displacement = compare_load[loaded]
+                base = ensure(base_value, position)
+                index = ensure(index_value, position, {base_value}) if index_value is not None else None
+                other_register = ensure(other, position, {base_value, *([index_value] if index_value is not None else [])})
+                # cmp [mem], reg (0x39) is mem - reg; cmp reg, [mem] (0x3B) is reg - mem.
+                opcode = b"\x39" if loaded == left else b"\x3b"
+                emit(_memory_operand_instruction(opcode, other_register, base, index, scale, displacement, widths[loaded] == 64))
+                return
             value = immediate(right, widths[left])
             left_register = ensure(left, position)
             if value == 0:
@@ -1364,8 +1438,8 @@ def compile_register_resident(
                 continue  # emitted as a bit test by the terminator
             start = len(assembler.code) if assembler is not None else 0
             result = ValueRef.node_result(block_index, node_index)
-            if result in erased_index_nodes or result in rmw_erased:
-                continue  # emitted by the access that uses it
+            if result in erased_index_nodes or result in rmw_erased or result in compare_load:
+                continue  # emitted by the access or compare that uses it
             hint["value"] = result
             operation = node.operation
             machine_operands = tuple(operand for operand in node.operands if operand in widths)
