@@ -6269,7 +6269,10 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     # Self-hosting S4 (ADR-132): once S3e proved every use valid, the XAX typing
     # function decides the scalar operation families; a node it proves skips the
     # bootstrap checks below, and every other node takes them unchanged.
+    # S4d.1 (ADR-135): constants and block terminators are typed by it too.
     proven_nodes: frozenset[tuple[int, int]] = frozenset()
+    proven_constants: frozenset[tuple[int, int]] = frozenset()
+    proven_terminators: frozenset[int] = frozenset()
     typing = _native_typing() if checked_uses else None
     if typing is not None:
         from xax_selfhost_typing import PROVEN, marshal, type_info_from
@@ -6278,11 +6281,14 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             blocks,
             lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
             type_info_from(resolve),
+            lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
         )
-        if keys:
-            status, verdicts = typing.check(words, len(keys))
-            if status == 0:
-                proven_nodes = frozenset(key for key, verdict in zip(keys, verdicts) if verdict == PROVEN)
+        status, verdicts = typing.check(words, len(keys) + len(blocks))
+        if status == 0:
+            proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
+            proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
+            proven_nodes = frozenset(proven) - proven_constants
+            proven_terminators = frozenset(index for index, verdict in enumerate(verdicts[len(keys):]) if verdict == PROVEN)
 
     # Memory facts flow only along explicit block parameters.  Blocks are
     # verified in reverse postorder; a back edge first contributes nothing
@@ -6801,6 +6807,10 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         effect_consumers[effect_ref] = Operation.CALL_INDIRECT
                         owners[ValueRef.node_result(block_index, node_index, owner_results[0])] = owner
                         effects[ValueRef.node_result(block_index, node_index, effect_results[0])] = effect
+                elif node.operation == Operation.CONSTANT and (block_index, node_index) in proven_constants:
+                    # S4d.1: XAX proved the constant object and contract; only the link fact remains.
+                    if _is_link_type(resolve(node.results[0])):
+                        pointers[ValueRef.node_result(block_index, node_index)] = _LinkFact(None, None)  # null
                 elif node.operation == Operation.CONSTANT:
                     if node.entity is None or node.entity.kind != Kind.CONSTANT:
                         fail("XAX.STRUCT.CONSTANT_TARGET", obj.cid.hex(), "GRAPH-CONSTANT-TARGET", Kind.CONSTANT.name, None if node.entity is None else node.entity.kind.name)
@@ -6882,11 +6892,12 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             term = block.terminator
             if resource_candidates and term.kind != TerminatorKind.RETURN:
                 fail("XAX.MEMORY.RESOURCE_DROP", obj.cid.hex(), "MEMORY-RESOURCE-TRANSFER", "explicit owner/effect return", term.kind.name)
-            if term.kind == TerminatorKind.CONDITIONAL_BRANCH:
+            typed_terminator = block_index in proven_terminators  # S4d.1: XAX proved condition and edge types
+            if term.kind == TerminatorKind.CONDITIONAL_BRANCH and not typed_terminator:
                 condition_type = resolve(value_type(term.values[0], block_index, len(block.nodes)))
                 if decode_bits_width(condition_type) != 1:
                     fail("XAX.STRUCT.CONDITION_TYPE", obj.cid.hex(), "GRAPH-CBR-CONDITION", "bits<1>", condition_type.cid.hex())
-            for target, arguments in term.edges:
+            for target, arguments in () if typed_terminator else term.edges:
                 actual = tuple(value_type(value, block_index, len(block.nodes)) for value in arguments)
                 expected = blocks[target].parameters
                 if actual != expected:

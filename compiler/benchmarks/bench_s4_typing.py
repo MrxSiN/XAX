@@ -33,22 +33,26 @@ samples = []
 for _ in range({repeats}):
     xax_compiler._PARSED_GRAPHS.clear()
     start = time.perf_counter(); verify_store(reader); samples.append(time.perf_counter() - start)
-covered = proven = 0
+covered = proven = blocks = blocks_proven = constants = 0
 native = xax_compiler._native_typing()
 if native is not None:
-    from xax_selfhost_typing import PROVEN, NOT_PROVEN, marshal, type_info_from
-    from xax_compiler import _parse_graph, store_resolver
+    from xax_selfhost_typing import PROVEN, marshal, type_info_from
+    from xax_compiler import Operation, _parse_graph, store_resolver
     resolve = store_resolver(reader)
     for item in reader.objects():
         if item.kind != Kind.GRAPH_FRAGMENT:
             continue
         parsed = _parse_graph(item, resolve)
-        words, keys = marshal(parsed.blocks, lambda b, n: parsed.blocks[b].nodes[n].operand_types, type_info_from(resolve))
-        if keys:
-            status, verdicts = native.check(words, len(keys))
-            covered += len(keys)
-            proven += sum(v == PROVEN for v in verdicts or [])
-print(json.dumps({{"verify_ms": round(statistics.median(samples) * 1e3, 2), "covered": covered, "proven": proven}}))
+        value_type = lambda b, v: parsed.blocks[v.block].parameters[v.index] if v.tag == 0 else parsed.blocks[v.block].nodes[v.index].results[v.result]
+        words, keys = marshal(parsed.blocks, lambda b, n: parsed.blocks[b].nodes[n].operand_types, type_info_from(resolve), value_type)
+        status, verdicts = native.check(words, len(keys) + len(parsed.blocks))
+        covered += len(keys)
+        blocks += len(parsed.blocks)
+        if status == 0:
+            proven += sum(v == PROVEN for v in verdicts[:len(keys)])
+            blocks_proven += sum(v == PROVEN for v in verdicts[len(keys):])
+            constants += sum(v == PROVEN and parsed.blocks[b].nodes[n].operation == Operation.CONSTANT for (b, n), v in zip(keys, verdicts))
+print(json.dumps({{"verify_ms": round(statistics.median(samples) * 1e3, 2), "covered": covered, "proven": proven, "blocks": blocks, "blocks_proven": blocks_proven, "constants": constants}}))
 """
 
 
@@ -67,14 +71,17 @@ def run() -> dict:
         rows[name] = {
             "covered_nodes": native["covered"],
             "proven_nodes": native["proven"],
+            "proven_constant_nodes": native["constants"],
+            "blocks": native["blocks"],
+            "proven_terminators": native["blocks_proven"],
             "verify_ms_xax_typing": native["verify_ms"],
             "verify_ms_bootstrap_only": bootstrap["verify_ms"],
         }
     from xax_selfhost_typing import NativeTyping, STORE_PATH
 
     return {
-        "step": "S4/S4b/S4c",
-        "adr": "ADR-132, ADR-133, ADR-134",
+        "step": "S4/S4b/S4c/S4d.1",
+        "adr": "ADR-132 to ADR-135",
         "evidence_label": "MEASURED",
         "store_bytes": STORE_PATH.stat().st_size,
         "native_code_bytes": NativeTyping().code_size,

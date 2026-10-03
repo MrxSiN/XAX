@@ -60,6 +60,7 @@ import threading
 from pathlib import Path
 
 from xax_compiler import (
+    TerminatorKind,
     FloatCompare,
     IntCompare,
     Kind,
@@ -118,8 +119,10 @@ META_RULES = {
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
      Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES,
-     *RESOURCE_COUNTS, Operation.EFFECT_STEP, *META_RULES}
+     *RESOURCE_COUNTS, Operation.EFFECT_STEP, *META_RULES, Operation.CONSTANT}
 )
+CONDITIONAL_BRANCH = int(TerminatorKind.CONDITIONAL_BRANCH)
+F32_QUIET_NAN, F64_QUIET_NAN = 0x7FC00000, 0x7FF8000000000000
 
 
 def _kind_range(kinds) -> int:
@@ -212,7 +215,15 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.for_range(b.c(0), count, lambda index, carried: _proof_entry(b, t, index, carried), (items,))
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
-    _end, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
+    blocks_at, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
+    # S4d.1: terminator typing, one verdict per block after the node verdicts.
+    blocks = b.read(blocks_at)
+    places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 2), TABLE), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
+    b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
+    verdicts = b.add(b.c(2), nodes)
+    b.for_range(b.c(0), blocks, lambda index, carried: _block_entry(b, t, index, carried, blocks, places, verdicts), ())
     b.put(b.c(1), proven)
     b.put(b.c(0), ACCEPT)
     in_view, in_mem, out_view, out_mem = b.state
@@ -415,6 +426,95 @@ def _resource_rules(b: _Builder, t: _Typing, operation, operands, results, attri
     return rules
 
 
+def _block_place(b: _Builder, index, carried, places):
+    """Record a block's stream position; skip its parameters and terminator."""
+    (position,) = carried
+    b.put(b.add(places, index), position)
+    parameters = b.read(b.add(position, 1))
+    at = b.add(b.add(position, 2), parameters)  # terminator kind, condition type, edge count
+    edges = b.read(b.add(at, 2))
+
+    def edge(_k, carried_):
+        (cursor,) = carried_
+        return (b.add(b.add(cursor, 2), b.read(b.add(cursor, 1))),)
+
+    (end,) = b.for_range(b.c(0), edges, edge, (b.add(at, 3),))
+    return (end,)
+
+
+def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdicts):
+    """A block's terminator: a ``bits<1>`` branch condition, and edge argument types equal to the target's parameters."""
+    position = b.get(b.add(places, index))
+    known = b.read(position)  # 0 when some value type was not marshalled
+    parameters = b.read(b.add(position, 1))
+    at = b.add(b.add(position, 2), parameters)
+    kind, condition, edges = b.read(at), b.read(b.add(at, 1)), b.read(b.add(at, 2))
+    condition_ok = t.any(t.not_(t.eq(kind, CONDITIONAL_BRANCH)), t.eq(t.lookup(WIDTH, condition), 1))
+
+    def edge(_k, carried):
+        cursor, ok = carried
+        target, count = b.read(cursor), b.read(b.add(cursor, 1))
+        inside = t.lt(target, blocks)
+        target_at = b.get(b.add(places, t.pick(inside, target, b.c(0))))
+        expected = b.read(b.add(target_at, 1))
+        same_count = t.all(inside, t.eq(count, expected))
+
+        def argument(j, carried_):
+            (match,) = carried_
+            return (t.all(match, t.eq(b.read(b.add(b.add(cursor, 2), j)), b.read(b.add(b.add(target_at, 2), j)))),)
+
+        (match,) = b.for_range(b.c(0), b.mul(same_count, count), argument, (same_count,))
+        return b.add(b.add(cursor, 2), count), t.all(ok, match)
+
+    _end, edges_ok = b.for_range(b.c(0), edges, edge, (b.add(at, 3), b.c(1)))
+    ok = t.all(t.nonzero(known), condition_ok, edges_ok)
+    b.put(b.add(verdicts, index), b.sub(b.c(NOT_PROVEN), ok))
+    return ()
+
+
+def _constant_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, result):
+    """``constant``: a canonical constant object of a scalar type, no operands, one result of that type."""
+    entity = b.read(extra_at)
+    position = t.pick(t.lt(entity, t.count), b.get(t.slot(POSITION, t.pick(t.lt(entity, t.count), entity, b.c(0)))), b.c(0))
+    kind, references, length = (b.read(b.add(position, k)) for k in range(3))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    reference, size, reference_ok = t.uleb(base)
+    count, count_size, count_ok = t.uleb(b.add(base, size))
+    data = b.add(b.add(base, size), count_size)
+    value_type = b.read(end)
+    shape = t.all(
+        t.eq(extra, 1), t.lt(entity, t.count), t.eq(kind, int(Kind.CONSTANT)), t.eq(references, 1), reference_ok, t.eq(reference, 0),
+        count_ok, t.eq(b.add(data, count), end), t.eq(operands, 0), t.eq(results, 1), t.eq(result, value_type),
+    )
+    width, form, link = t.lookup(WIDTH, value_type), t.lookup(FORMAT, value_type), t.lookup(LINK, value_type)
+    # bits<W>: ceil(W/8) bytes, unused high bits of the last byte zero.
+    spare = b.op(Operation.UREM, width, 8)
+    limit = b.c(256)
+    for bits_ in range(1, 8):
+        limit = t.pick(t.eq(spare, bits_), b.c(1 << bits_), limit)
+    last = b.read(b.add(data, t.pick(t.nonzero(count), b.sub(count, 1), b.c(0))))
+    bits_ok = t.all(t.nonzero(width), t.eq(count, b.op(Operation.UDIV, b.add(width, 7), 8)), t.lt(last, limit))
+    # float and link values: at most eight little-endian bytes.
+    small = t.le(count, 8)
+
+    def byte(k, carried):
+        raw, scale, zero = carried
+        value = b.read(b.add(data, k))
+        return b.add(raw, b.mul(value, scale)), b.mul(scale, 256), t.all(zero, t.eq(value, 0))
+
+    raw, _scale, zero = b.for_range(b.c(0), b.mul(small, count), byte, (b.c(0), b.c(1), b.c(1)))
+
+    def nan(exponent_shift, exponent_mask, mantissa_mask):
+        exponent = b.op(Operation.BIT_AND, b.op(Operation.UDIV, raw, 1 << exponent_shift), exponent_mask)
+        return t.all(t.eq(exponent, exponent_mask), t.nonzero(b.op(Operation.BIT_AND, raw, mantissa_mask)))
+
+    f32 = t.all(t.eq(form, 1), t.eq(count, 4), t.any(t.not_(nan(23, 0xFF, (1 << 23) - 1)), t.eq(raw, F32_QUIET_NAN)))
+    f64 = t.all(t.eq(form, 2), t.eq(count, 8), t.any(t.not_(nan(52, 0x7FF, (1 << 52) - 1)), t.eq(raw, F64_QUIET_NAN)))
+    link_ok = t.all(link, t.eq(count, 8), zero)
+    return t.all(shape, t.any(bits_ok, f32, f64, link_ok))
+
+
 def _node_entry(b: _Builder, t: _Typing, index, carried):
     position, proven = carried
     operation, operands, results, attributes, attribute, extra = (b.read(b.add(position, k)) for k in range(6))
@@ -479,6 +579,7 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
         (t.eq(operation, int(Operation.SUM_TAG)), t.all(shape(1, 1, 0), t.eq(first_shape, SUM), is_bits, t.le(needed, width))),
         (t.eq(operation, int(Operation.SUM_GET)), t.all(shape(1, 1, 1), t.eq(first_shape, SUM), get_inside, t.eq(result, get_element))),
         *((t.eq(operation, int(member)), condition) for member, condition in _resource_rules(b, t, operation, operands, results, attributes, attribute, ids, extra_at)),
+        (t.eq(operation, int(Operation.CONSTANT)), _constant_rule(b, t, operands, results, extra, extra_at, result)),
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
@@ -528,13 +629,15 @@ def type_info_from(resolve):
     return info
 
 
-def marshal(blocks, operand_types_of, type_info) -> tuple[list[int], list[tuple[int, int]]]:
+def marshal(blocks, operand_types_of, type_info, value_type_of=None) -> tuple[list[int], list[tuple[int, int]]]:
     """Input words for the covered nodes of parsed ``blocks`` and their (block, node) keys.
 
     ``operand_types_of(block, node)`` gives a node's operand type CIDs (or None
     to leave it to the bootstrap); ``type_info(cid)`` returns ``(kind,
-    references, body)`` or None when the type cannot be resolved.  The types a
-    type references are listed too (their own references transitively).
+    references, body)`` or None when the object cannot be resolved.  The
+    objects an object references are listed too (transitively).  With
+    ``value_type_of(block, value)``, every block's parameters and terminator
+    follow (S4d.1); otherwise the block section is empty.
     """
     types: dict[bytes, int] = {}
     entries: list[list] = []
@@ -569,13 +672,32 @@ def marshal(blocks, operand_types_of, type_info) -> tuple[list[int], list[tuple[
                 continue
             attribute = min(node.attributes[0], ATTRIBUTE_LIMIT) if node.attributes else 0
             # effect.step also lists its operand values (distinctness is part of its rule).
-            extra = [values.setdefault(value, len(values)) for value in node.operands] if node.operation == Operation.EFFECT_STEP else []
+            if node.operation == Operation.EFFECT_STEP:
+                extra = [values.setdefault(value, len(values)) for value in node.operands]
+            elif node.operation == Operation.CONSTANT:
+                entity = None if node.entity is None else type_index(node.entity.cid)
+                extra = [] if entity is None else [entity]
+            else:
+                extra = []
             nodes += [int(node.operation), len(node.operands), len(node.results), len(node.attributes), attribute, len(extra), *indices, *extra]
             keys.append((block_index, node_index))
+    section: list[int] = []
+    for block_index, block in enumerate(blocks if value_type_of is not None else ()):
+        parameters = [type_index(cid) for cid in block.parameters]
+        term = block.terminator
+        condition = type_index(value_type_of(block_index, term.values[0])) if term.kind == TerminatorKind.CONDITIONAL_BRANCH else 0
+        edges = [(target, [type_index(value_type_of(block_index, value)) for value in arguments]) for target, arguments in term.edges]
+        known = None not in parameters and condition is not None and all(None not in argument_types for _target, argument_types in edges)
+        clean = lambda items: [0 if item is None else item for item in items]  # noqa: E731
+        section += [int(known), len(parameters), *clean(parameters), int(term.kind), condition or 0, len(edges)]
+        for target, argument_types in edges:
+            section += [target, len(argument_types), *clean(argument_types)]
+    # Serialized last: the block section can add types.
     words = [len(entries)]
     for kind, references, body in entries:
         words += [kind, len(references), len(body), *body, *references]
-    words += [len(keys), *nodes, *(0,) * PADDING]
+    words += [len(keys), *nodes]
+    words += [len(blocks) if value_type_of is not None else 0, *section, *(0,) * PADDING]
     return words, keys
 
 
@@ -601,7 +723,7 @@ class NativeTyping:
         self._lock = threading.Lock()
 
     def check(self, words: list[int], count: int) -> tuple[int, list[int] | None]:
-        """``(status, verdict per node)`` for one marshalled stream of ``count`` nodes."""
+        """``(status, verdicts)`` for one marshalled stream: ``count`` verdicts (nodes, then blocks)."""
         if len(words) > IN_WORDS or any(word >= 1 << 64 for word in words):
             return DEFER, None
         with self._lock:
