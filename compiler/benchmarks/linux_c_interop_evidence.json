@@ -9,9 +9,9 @@
   "label": "EXECUTED",
   "programs": {
     "callback": {
-      "artifact_bytes": 1592,
-      "artifact_sha256": "11bf30f8e41b600fd5be63cd2dc453628fd569ae150a8a8e49e4e21eb1e6a7bd",
-      "code_bytes": 772,
+      "artifact_bytes": 1480,
+      "artifact_sha256": "3a78e19ae6bdda6f0679700310413104bad6385461fcc95ef9fbe1030b4cd894",
+      "code_bytes": 660,
       "expected_status": 31,
       "needed": [
         "libc.so.6"
