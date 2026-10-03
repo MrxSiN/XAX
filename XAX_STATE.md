@@ -833,3 +833,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - Performance requirements were updated: each CPU/native runtime comparison now includes C/C++ and Rust, and XAX must be within 1.05× of the fastest valid implementation. The first run measured XAX at 1.57× (`filestat`), 1.18× (`chains`), and 1.21× (`jsonmin`) the fastest: unmet.
 - After ADR-148 (range-proven checks, a lowering view with leaf inlining and layout, call-aware allocation), the interleaved re-run measures 1.017×, 1.000× (XAX fastest), and 1.029×: MEASURED, primary target met on all three. Linux x86-64 row: R4 for that scope. Full suite: 1,059 passed, 4 skipped. Next: S6b.4.
+
+## Self-hosting step S6b.4: packages, build objects, all target profiles, and per-graph glue decided by XAX (ADR-149) — 2026-10-03
+
+- The store verifier decides packages; profiles, trust policies, signatures, and optimization policies; then requests, snapshots, and provenance in later passes (closures, grants, signature coverage); platform, accelerator, and board targets; and every streamed graph's type references, reference use, and trap payloads. Randomized and mutated stores agree with the bootstrap exactly, and no verdict holds for an object the bootstrap rejects. Full suite: 1,064 passed, 4 skipped. Next: the remaining S6 work (the bootstrap's graph checks that are not yet XAX passes, then B1–B4 for the real compiler on one target).

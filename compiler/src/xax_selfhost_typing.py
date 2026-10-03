@@ -1034,7 +1034,7 @@ def _native_image() -> tuple[bytes, int]:
 
     sources = Path(__file__).resolve().parent
     digest = hashlib.sha256(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
-    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py"):
+    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py", "xax_inline.py"):
         digest.update((sources / name).read_bytes())
     cache = Path(os.environ.get("XAX_NATIVE_CACHE", Path.home() / ".cache" / "xax-native"))
     entry = cache / f"typing-{digest.hexdigest()}.bin"
