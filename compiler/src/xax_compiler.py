@@ -5802,7 +5802,8 @@ def _parse_graph(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]
     return graph
 
 
-def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ParsedGraph:
+def _graph_syntax_bootstrap(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]):
+    """The bootstrap graph-body parser: (entry, blocks, used references, member spans)."""
     cursor = Cursor(obj.body, obj.cid.hex())
     block_count = cursor.uleb()
     entry = cursor.uleb()
@@ -5858,6 +5859,114 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             term = Terminator(kind, payload=trap_bytes)
         blocks.append(_ParsedBlock(tuple(parameters), tuple(nodes), term))
     cursor.end("GRAPH-BODY")
+    return entry, blocks, used_references, member_spans
+
+
+def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], words) -> tuple:
+    """Rebuild the bootstrap parse from the XAX decoder's stream (S3c, ADR-120).
+
+    The stream is syntactically valid, so only resolution, type verification,
+    and trap payloads can fail, and they are checked here in body order, exactly
+    where the bootstrap parser checks them.
+    """
+    stream = iter(words)
+    take = stream.__next__
+    references = obj.references
+    block_count, entry = take(), take()
+    blocks: list[_ParsedBlock] = []
+    used_references: set[bytes] = set()
+    member_spans: list[tuple[int, int]] = []
+
+    def type_reference() -> bytes:
+        type_object = resolve(references[take()])
+        _verify_type(type_object, resolve)
+        used_references.add(type_object.cid)
+        return type_object.cid
+
+    def value() -> ValueRef:
+        tag = take()
+        if tag == 0:
+            return ValueRef.parameter(take(), take())
+        return ValueRef.node_result(take(), take(), take())
+
+    def edge() -> tuple[int, tuple[ValueRef, ...]]:
+        target = take()
+        return target, tuple(value() for _ in range(take()))
+
+    for _ in range(block_count):
+        parameters = [type_reference() for _ in range(take())]
+        nodes = []
+        for _ in range(take()):
+            operation = take()
+            member = None
+            if operation == Operation.CALL_GROUP_MEMBER:
+                member = take()
+                member_spans.append((take(), take()))
+            entity = resolve(references[take()]) if operation in ENTITY_OPERATIONS else None
+            if entity is not None:
+                used_references.add(entity.cid)
+            operands = tuple(value() for _ in range(take()))
+            results = tuple(type_reference() for _ in range(take()))
+            attributes = tuple(take() for _ in range(take())) if operation in ATTRIBUTE_OPERATIONS else ()
+            nodes.append(_ParsedNode(operation, member, entity, operands, results, attributes))
+        kind = TerminatorKind(take())
+        if kind == TerminatorKind.BRANCH:
+            term = Terminator(kind, edges=(edge(),))
+        elif kind == TerminatorKind.CONDITIONAL_BRANCH:
+            term = Terminator(kind, values=(value(),), edges=(edge(), edge()))
+        elif kind == TerminatorKind.RETURN:
+            term = Terminator(kind, values=tuple(value() for _ in range(take())))
+        else:
+            size, at = take(), take()
+            trap_bytes = obj.body[at:at + size]
+            try:
+                decode_trap_payload(trap_bytes)
+            except ValueError as error:
+                fail("XAX.CONTROL.TRAP_PAYLOAD", obj.cid.hex(), "TRAP-PAYLOAD-CANONICAL", "empty or canonical u16 ULEB reason with optional target bytes", str(error))
+            term = Terminator(kind, payload=trap_bytes)
+        blocks.append(_ParsedBlock(tuple(parameters), tuple(nodes), term))
+    return entry, blocks, used_references, member_spans
+
+
+# Self-hosting S3c (ADR-120): graph-body syntax is decoded by an XAX function.
+_NATIVE_GRAPH_DECODER = None
+_GRAPH_DECODER_ATTEMPTED = False
+_GRAPH_DECODER_BUILDING = False
+
+
+def _native_graph_decoder():
+    global _NATIVE_GRAPH_DECODER, _GRAPH_DECODER_ATTEMPTED, _GRAPH_DECODER_BUILDING
+    if _GRAPH_DECODER_BUILDING:
+        return None
+    if _GRAPH_DECODER_ATTEMPTED:
+        return _NATIVE_GRAPH_DECODER
+    hashing = sys.modules.get("blake3")
+    if _DECODER_BUILDING or (hashing is not None and (getattr(hashing, "_NATIVE_BUILDING", False) or getattr(hashing, "_HASHER_BUILDING", False))):
+        return None
+    partial = sys.modules.get("xax_selfhost_graph")
+    if partial is not None and not hasattr(partial, "native_graph_decoder_usable"):
+        return None
+    _GRAPH_DECODER_ATTEMPTED = True
+    _GRAPH_DECODER_BUILDING = True
+    try:
+        from xax_selfhost_graph import NativeGraphDecoder, native_graph_decoder_usable
+
+        _NATIVE_GRAPH_DECODER = NativeGraphDecoder() if native_graph_decoder_usable() else None
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _NATIVE_GRAPH_DECODER = None
+    finally:
+        _GRAPH_DECODER_BUILDING = False
+    return _NATIVE_GRAPH_DECODER
+
+
+def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ParsedGraph:
+    decoder = _native_graph_decoder()
+    parsed = None
+    if decoder is not None and len(obj.body) <= decoder.capacity:
+        status, words = decoder.decode(obj.body, len(obj.references))
+        if status == 0:
+            parsed = _graph_syntax_from_stream(obj, resolve, words)
+    entry, blocks, used_references, member_spans = parsed or _graph_syntax_bootstrap(obj, resolve)
     if used_references != set(obj.references):
         fail(
             "XAX.CANON.UNUSED_REFERENCE",
