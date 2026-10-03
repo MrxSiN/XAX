@@ -595,9 +595,201 @@ def _access(e: E, value_id, size, alignment):
     _require(e, e.le(size, extent))
 
 
-def _not_record(e: E, element):
-    """Stage S4d.2b models non-record elements only (records, links: later stages)."""
-    _require(e, e.ne(e.table(_T.AGGREGATE, element), 8))
+def _mod(e: E, value, modulus):
+    """``value % modulus`` (the modulus is nonzero wherever the result matters)."""
+    return e.urem(value, e.sel(e.eq(modulus, 0), 1, modulus))
+
+
+def _field_layout(e: E, field):
+    """``abi_layout`` of a record field: ``(size, alignment, valid)``; valid fields are whole-byte bits, float, or link."""
+    link = e.ne(e.table(_T.LINK, field), 0)
+    float_format = e.table(_T.FORMAT, field)
+    width = e.table(_T.WIDTH, field)
+    bits = e.both(e.ne(width, 0), e.eq(e.urem(width, 8), 0))
+    bits_size = e.sel(e.le(width, 8), 1, e.sel(e.le(width, 16), 2, e.sel(e.le(width, 32), 4, e.sel(
+        e.le(width, 64), 8, e.mul(8, e.udiv(e.add(width, 63), 64))))))
+    size = e.sel(link, 8, e.sel(e.ne(float_format, 0), e.sel(e.eq(float_format, 1), 4, 8), bits_size))
+    alignment = e.sel(link, 8, e.sel(e.ne(float_format, 0), size, e.sel(e.lt(bits_size, 8), bits_size, 8)))
+    return size, alignment, e.either(link, e.ne(float_format, 0), bits)
+
+
+def _layout(tables):
+    """``_record_layout``: 0 for a non-tuple element; a tuple's size (``upto`` NONE) or field ``upto``'s offset.
+
+    Declines (NONE) where the bootstrap raises: an undecodable tuple or a field that is not whole-byte
+    bits, float, or link."""
+    def build(e: E):
+        p = e.p
+        element = p["element"]
+        e.if_(e.ne(e.table(_T.FORMB, element), 8), lambda: e.give(0))
+        _require(e, e.eq(e.table(_T.AGGREGATE, element), 8))
+        items, count = e.table(_T.ITEMS, element), e.table(_T.COUNT, element)
+        e.var("at", 0)
+        e.var("widest", 1)
+        e.var("found", NONE)
+
+        def each():
+            size, alignment, valid = _field_layout(e, e.ld(e.add(items, p["f"])))
+            _require(e, valid)
+            e.set("at", e.and_(e.add(p["at"], e.sub(alignment, 1)), e.sub(0, alignment)))
+            e.if_(e.eq(p["f"], p["upto"]), lambda: e.set("found", p["at"]))
+            e.set("at", e.add(p["at"], size))
+            e.if_(e.lt(p["widest"], alignment), lambda: e.set("widest", alignment))
+
+        e.for_("f", 0, count, each)
+        e.if_(e.ne(p["upto"], NONE), lambda: e.give(p["found"]))
+        e.give(e.and_(e.add(p["at"], e.sub(p["widest"], 1)), e.sub(0, p["widest"])))
+    return _function(("element", "upto"), build, tables)
+
+
+_LAYOUT: list = []
+_HAS_LINK: list = []
+_WINDOW: list = []
+_DEPENDENTS: list = []
+
+
+def _record_bytes(e: E, element):
+    """A record element's stride (0: not a record); declines where ``_record_layout`` raises."""
+    size = e.call(_LAYOUT[0], element, NONE)
+    _require(e, e.ne(size, NONE))
+    return size
+
+
+def _has_link_function(tables):
+    """``_record_has_link``: 1 when a tuple record has a link field (declines on an undecodable tuple)."""
+    def build(e: E):
+        p = e.p
+        record = p["record"]
+        e.if_(e.ne(e.table(_T.FORMB, record), 8), lambda: e.give(0))
+        _require(e, e.eq(e.table(_T.AGGREGATE, record), 8))
+        items = e.table(_T.ITEMS, record)
+        e.var("linked", 0)
+        e.for_("f", 0, e.table(_T.COUNT, record), lambda: e.if_(e.ne(e.table(_T.LINK, e.ld(e.add(items, p["f"]))), 0), lambda: e.set("linked", 1)))
+        e.give(p["linked"])
+    return _function(("record",), build, tables)
+
+
+def _has_link(e: E, record):
+    linked = e.call(_HAS_LINK[0], record)
+    _require(e, e.ne(linked, NONE))
+    return linked
+
+
+def _dependents_function(tables):
+    """``_check_link_dependents``: no live storage still links into ``storage`` (1), else NONE."""
+    def build(e: E):
+        p = e.p
+        storage = p["storage"]
+
+        def each():
+            v = p["v"]
+            dependent = e.both(e.eq(e.value(PSTAMP, v), e.hd(H_PASS)), e.eq(e.value(PK, v), POINTER), e.eq(e.value(PLT, v), storage),
+                               e.ne(e.value(PST, v), storage))
+            e.if_(dependent, lambda: _require(e, _ended(e, e.value(PST, v))))
+
+        e.for_("v", 0, e.hd(H_V), each)
+        e.give(1)
+    return _function(("storage",), build, tables)
+
+
+def _check_dependents(e: E, storage):
+    _require(e, e.ne(e.call(_DEPENDENTS[0], storage), NONE))
+
+
+def _window_function(tables, covers):
+    """``_window_initialized``: 1 when an access of ``size`` at every window position reads initialized bytes.
+
+    Gaps lying entirely in record padding (shorter than a record, touching no field byte) are allowed."""
+    def build(e: E):
+        p = e.p
+        intervals, value, size = p["intervals"], p["value"], p["size"]
+        start = e.value(POFF, value)
+        end = e.add(e.add(start, e.value(PWIN, value)), size)
+        e.if_(e.ne(e.call(covers, intervals, start, end), 0), lambda: e.give(1))
+        e.if_(e.eq(e.value(PWIN, value), 0), lambda: e.give(0))
+        record = e.value(PREC, value)
+        stride = _record_bytes(e, record)
+        e.if_(e.eq(stride, 0), lambda: e.give(0))
+        items, count = e.table(_T.ITEMS, record), e.table(_T.COUNT, record)
+
+        def padding_only(low, high, flag):
+            """Sets ``flag`` to 1 when [low, high) is shorter than a record and touches no field byte."""
+            e.var(flag, e.flag(e.lt(e.sub(high, low), stride)))
+
+            def each_byte():
+                offset = _mod(e, p["byte"], stride)
+                e.var("field_at", 0)
+
+                def each_field():
+                    field_size, alignment, _valid = _field_layout(e, e.ld(e.add(items, p["g"])))
+                    e.set("field_at", e.and_(e.add(p["field_at"], e.sub(alignment, 1)), e.sub(0, alignment)))
+                    inside = e.both(e.le(p["field_at"], offset), e.lt(offset, e.add(p["field_at"], field_size)))
+                    e.if_(inside, lambda: e.set(flag, 0))
+                    e.set("field_at", e.add(p["field_at"], field_size))
+
+                e.for_("g", 0, count, each_field)
+
+            e.if_(e.ne(p[flag], 0), lambda: e.for_("byte", low, high, each_byte))
+
+        e.var("cursor", start)
+        e.var("ok", 1)
+        e.var("stop", 0)
+
+        def each_interval():
+            low = e.ld(e.add(intervals, e.add(1, e.mul(p["k"], 2))))
+            high = e.ld(e.add(intervals, e.add(2, e.mul(p["k"], 2))))
+
+            def visit():
+                def inside():
+                    def gap():
+                        padding_only(p["cursor"], low, "gap_ok")
+                        e.if_(e.eq(p["gap_ok"], 0), lambda: (e.set("ok", 0), e.set("stop", 1)))
+
+                    e.if_(e.lt(p["cursor"], low), gap)
+                    e.if_(e.both(e.eq(p["stop"], 0), e.lt(p["cursor"], high)), lambda: e.set("cursor", high))
+
+                e.if_(e.le(end, low), lambda: e.set("stop", 1), inside)
+
+            e.if_(e.both(e.eq(p["stop"], 0), e.lt(p["cursor"], high)), visit)
+
+        e.for_("k", 0, e.ld(intervals), each_interval)
+        e.if_(e.eq(p["ok"], 0), lambda: e.give(0))
+        e.if_(e.le(end, p["cursor"]), lambda: e.give(1))
+        padding_only(p["cursor"], end, "tail_ok")
+        e.give(p["tail_ok"])
+    return _function(("intervals", "value", "size"), build, tables)
+
+
+def _link_fact(e: E, value_id, storage, record):
+    """A ``_LinkFact``: null (``storage`` NONE) or a record start of ``storage``; canonical like a merged link."""
+    fields = {word: 0 for word in range(POINTER_WORDS)}
+    fields.update({PK: LINK, PST: storage, PREC: record, PLT: NONE, PLR: NONE})
+    _set_pointer(e, value_id, fields)
+
+
+def _loaded_link(e: E, source, result):
+    """``loaded_link``: a link field holds null or a record start of the view's link target."""
+    e.if_(e.both(e.ne(e.table(_T.LINK, e.value(PEL, source)), 0), e.ne(e.value(PLT, source), NONE)),
+          lambda: _link_fact(e, result, e.value(PLT, source), e.value(PLR, source)))
+
+
+def _stored_provenance(e: E, stored, destination):
+    """``stored_pointer_provenance``: links hold null or a link into the destination's target; no local pointers."""
+    current = e.eq(e.value(PSTAMP, stored), e.hd(H_PASS))
+
+    def link_field():
+        target = e.both(e.eq(e.value(PST, stored), e.value(PLT, destination)), e.eq(e.value(PREC, stored), e.value(PLR, destination)))
+        _require(e, e.both(current, e.eq(e.value(PK, stored), LINK), e.either(e.eq(e.value(PST, stored), NONE), target)))
+
+    e.if_(e.ne(e.table(_T.LINK, e.value(PEL, destination)), 0), link_field,
+          lambda: _require(e, e.not_(e.both(current, e.eq(e.value(PK, stored), POINTER)))))
+
+
+def _view_record(e: E, element, extent):
+    """``view_record``: no link element; a record view spans whole records."""
+    _require(e, e.eq(e.table(_T.LINK, element), 0))
+    stride = _record_bytes(e, element)
+    _require(e, e.eq(_mod(e, extent, stride), 0))
 
 
 def _stack_alloc(tables):
@@ -610,8 +802,7 @@ def _stack_alloc(tables):
         element, permission = e.table(_T.PELEM, pointer_type), e.table(_T.PPERM, pointer_type)
         _require(e, e.le(e.table(_T.PALIGN, pointer_type), alignment))
         _require(e, e.both(e.ne(e.table(_T.STACKOWNER, n.rtid(1)), 0), e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0)))
-        _require(e, e.eq(e.table(_T.LINK, element), 0))
-        _not_record(e, element)
+        _view_record(e, element, extent)
         site = n.site
         _require(e, e.not_(e.both(e.ne(e.ld(_site_word(e, 0, site)), 0), e.not_(_ended(e, site)))))
         e.st(_site_word(e, 0, site), 1)
@@ -640,6 +831,7 @@ def _stack_end(tables):
         _require(e, e.both(e.ne(e.table(_T.STACKOWNER, n.tid(0)), 0), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0)))
         _consume_effect(e, n.vid(1), storage)
         e.set_value(OCON, owner, visit)
+        _check_dependents(e, storage)
         e.st(_site_word(e, 1, storage), 1)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
@@ -659,13 +851,30 @@ def _address_offset(tables):
         source_alignment = e.value(PALIGN, source)
         low = e.and_(offset, e.sub(0, offset))  # the largest power of two dividing offset
         actual = e.sel(e.eq(offset, 0), source_alignment, e.sel(e.lt(low, source_alignment), low, source_alignment))
-        _not_record(e, e.value(PEL, source))
-        _require(e, e.eq(element, e.value(PEL, source)))
+        source_element = e.value(PEL, source)
+        stride = _record_bytes(e, source_element)
+        e.var("remaining", e.sub(extent, offset))
+
+        def field():
+            # Field address (ADR-097): an exact field offset, extent clamped to the field.
+            e.var("field_found", 0)
+            items = e.table(_T.ITEMS, source_element)
+
+            def each():
+                at = e.call(_LAYOUT[0], source_element, e.p["fi"])
+                e.if_(e.both(e.eq(at, offset), e.eq(e.ld(e.add(items, e.p["fi"])), element)), lambda: e.set("field_found", 1))
+
+            e.for_("fi", 0, e.table(_T.COUNT, source_element), each)
+            _require(e, e.ne(e.p["field_found"], 0))
+            e.set("remaining", _field_layout(e, element)[0])
+
+        e.if_(e.both(e.ne(stride, 0), e.ne(element, source_element)), field, lambda: e.if_(
+            e.ne(stride, 0), lambda: _require(e, e.eq(_mod(e, offset, stride), 0)), lambda: _require(e, e.eq(element, source_element))))
         source_permission = e.value(PPERM, source)
         _require(e, e.eq(e.and_(permission, source_permission), permission))
         _require(e, e.le(alignment, actual))
         fields = {word: e.value(word, source) for word in range(POINTER_WORDS)}
-        fields.update({PEL: element, PPERM: permission, POFF: e.add(e.value(POFF, source), offset), PEXT: e.sub(extent, offset), PALIGN: actual})
+        fields.update({PEL: element, PPERM: permission, POFF: e.add(e.value(POFF, source), offset), PEXT: e.p["remaining"], PALIGN: actual})
         _set_pointer(e, n.base, fields)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
@@ -683,10 +892,8 @@ def _load(tables, covers):
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(1), storage)
         _require(e, e.both(e.eq(n.rtid(0), e.value(PEL, source)), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.eq(n.rtid(1), n.tid(1))))
-        # ``_window_initialized`` without records: every position of the window is initialized.
-        start = e.value(POFF, source)
-        _require(e, e.ne(e.call(covers, intervals, start, e.add(e.add(start, e.value(PWIN, source)), size)), 0))
-        _require(e, e.eq(e.table(_T.LINK, e.value(PEL, source)), 0))
+        _require(e, e.eq(e.call(_WINDOW[0], intervals, source, size), 1))
+        _loaded_link(e, source, n.base)
         _set_effect(e, e.add(n.base, 1), storage, intervals)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
@@ -702,9 +909,7 @@ def _store(tables, insert):
         _access(e, source, size, n.attr(1))
         _require(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.WRITE)), 0))
         _require(e, e.eq(n.tid(1), e.value(PEL, source)))
-        _require(e, e.eq(e.table(_T.LINK, e.value(PEL, source)), 0))
-        stored = n.vid(1)
-        _require(e, e.not_(e.both(e.eq(e.value(PSTAMP, stored), e.hd(H_PASS)), e.eq(e.value(PK, stored), POINTER))))
+        _stored_provenance(e, n.vid(1), source)
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(2), storage)
         _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0), e.eq(n.rtid(0), n.tid(2))))
@@ -834,10 +1039,8 @@ def _checked(tables, covers, load: bool):
             effect_index = 2
         else:
             _require(e, e.both(e.ne(e.and_(permission, int(Permission.WRITE)), 0), e.eq(n.tid(2), element)))
-            stored = n.vid(2)
-            _require(e, e.not_(e.both(e.eq(e.value(PSTAMP, stored), e.hd(H_PASS)), e.eq(e.value(PK, stored), POINTER))))
+            _stored_provenance(e, n.vid(2), source)
             effect_index = 3
-        _require(e, e.eq(e.table(_T.LINK, element), 0))
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(effect_index), storage)
         effect_type = n.tid(effect_index)
@@ -846,6 +1049,7 @@ def _checked(tables, covers, load: bool):
             start = e.value(POFF, source)
             view_end = e.add(e.add(start, e.value(PWIN, source)), e.value(PEXT, source))
             _require(e, e.ne(e.call(covers, intervals, start, view_end), 0))
+            _loaded_link(e, source, n.base)
         _set_effect(e, e.add(n.base, 1 if load else 0), storage, intervals)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
@@ -853,8 +1057,23 @@ def _checked(tables, covers, load: bool):
 
 def _heap_view_node(tables):
     def build(e: E):
+        p = e.p
         n = _Node(e)
-        _require(e, n.shape(3, 3, 2))  # a fourth (link target) operand: a later stage
+        # An optional fourth operand names the whole record view this storage's links point into.
+        e.var("link_target", NONE)
+        e.var("link_record", NONE)
+
+        def targeted():
+            target = n.vid(3)
+            _pointer(e, target)
+            target_element = e.value(PEL, target)
+            _require(e, e.ne(_record_bytes(e, target_element), 0))
+            _require(e, e.both(e.eq(target_element, e.value(PREC, target)), e.eq(e.value(POFF, target), 0), e.eq(e.value(PWIN, target), 0)))
+            e.set("link_target", e.value(PST, target))
+            e.set("link_record", e.value(PREC, target))
+
+        e.if_(e.eq(n.no, 4), targeted)
+        _require(e, e.either(n.shape(3, 3, 2), n.shape(4, 3, 2)))
         extent, alignment = n.attr(0), n.attr(1)
         raw, token, allocation_effect = n.vid(0), n.vid(1), n.vid(2)
         visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
@@ -873,12 +1092,13 @@ def _heap_view_node(tables):
         zeroed = e.value(HZERO, raw)
         _require(e, e.both(_heap_view(e, view), e.eq(e.table(_T.RINSTANCE, view), extent), e.eq(e.flag(e.eq(e.table(_T.RSTATE, view), 1)), zeroed)))
         _require(e, e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0))
-        _require(e, e.eq(e.table(_T.LINK, element), 0))
-        _not_record(e, element)
+        _view_record(e, element, extent)
         storage = n.site
         e.st(_site_word(e, 1, storage), 0)
         e.set_value(OCON, token, visit)
-        _set_pointer(e, n.base, {PK: POINTER, PST: storage, PEL: element, PPERM: permission, POFF: 0, PEXT: extent, PALIGN: alignment, PALIAS: storage, PWIN: 0, PREC: element, PLT: storage, PLR: element})
+        targeted_ = e.ne(p["link_target"], NONE)
+        _set_pointer(e, n.base, {PK: POINTER, PST: storage, PEL: element, PPERM: permission, POFF: 0, PEXT: extent, PALIGN: alignment, PALIAS: storage, PWIN: 0,
+                                 PREC: element, PLT: e.sel(targeted_, p["link_target"], storage), PLR: e.sel(targeted_, p["link_record"], element)})
         e.set_value(OST, e.add(n.base, 1), storage)
         e.set_value(OSTAMP, e.add(n.base, 1), visit)
         _set_effect(e, e.add(n.base, 2), storage, _initialized_list(e, zeroed, extent))
@@ -929,7 +1149,8 @@ def _pointer_rebase(tables):
             e.eq(e.and_(permission, e.value(PPERM, view)), permission),
         ))
         _require(e, e.both(e.ne(extent, 0), e.le(extent, view_extent), e.le(alignment, e.value(PALIGN, view))))
-        _not_record(e, element)
+        stride = _record_bytes(e, element)
+        _require(e, e.both(e.eq(_mod(e, alignment, stride), 0), e.eq(_mod(e, e.value(POFF, view), stride), 0)))
         fields = {word: e.value(word, view) for word in range(POINTER_WORDS)}
         fields.update({PEL: element, PPERM: permission, PEXT: extent, PALIGN: alignment, PWIN: e.sub(e.add(e.value(PWIN, view), view_extent), extent)})
         _set_pointer(e, n.base, fields)
@@ -1172,6 +1393,33 @@ def _call_foreign(tables, declaration, end_views):
 
         e.if_(e.ne(e.ld(deallocator_at), 0), deallocate)
         e.call(end_views, p["cursor"], p["block"])
+        # Foreign code could write arbitrary bytes into link fields (ADR-097): link-bearing storage may only be released.
+        e.var("linked_any", 0)
+
+        def linked_value():
+            v = p["v"]
+            e.if_(e.both(e.eq(e.value(PSTAMP, v), pass_id), e.eq(e.value(PK, v), POINTER)), lambda: e.if_(
+                e.ne(_has_link(e, e.value(PREC, v)), 0), lambda: e.set("linked_any", 1)))
+
+        e.for_("v", 0, e.hd(H_V), linked_value)
+
+        def linked_inputs():
+            def each_effect():
+                value = e.rd(e.add(n.vids_at, p["j"]))
+                storage = e.value(EST, value)
+
+                def reached():
+                    e.var("linked", 0)
+                    e.for_("v", 0, e.hd(H_V), lambda: e.if_(e.both(
+                        e.eq(e.value(PSTAMP, p["v"]), pass_id), e.eq(e.value(PK, p["v"]), POINTER), e.eq(e.value(PST, p["v"]), storage)), lambda: e.if_(
+                        e.ne(_has_link(e, e.value(PREC, p["v"])), 0), lambda: e.set("linked", 1))))
+                    _require(e, e.either(e.eq(p["linked"], 0), e.eq(storage, p["released"])))
+
+                e.if_(e.both(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.tids_at, p["j"]))), 0), e.eq(e.value(ESTAMP, value), visit)), reached)
+
+            e.for_("j", 0, inputs, each_effect)
+
+        e.if_(e.ne(p["linked_any"], 0), linked_inputs)
         # Memory frontiers: each input is consumed; the k-th carries its fact to the k-th memory output.
         e.var("k", 0)
         e.var("r", 0)
@@ -1203,7 +1451,7 @@ def _call_foreign(tables, declaration, end_views):
             e.if_(e.ne(e.table(_T.MEMEFFECT, type_), 0), frontier)
 
         e.for_("j", 0, inputs, each_input)
-        e.if_(e.ne(p["released"], NONE), lambda: e.st(_site_word(e, 1, p["released"]), 1))
+        e.if_(e.ne(p["released"], NONE), lambda: (_check_dependents(e, p["released"]), e.st(_site_word(e, 1, p["released"]), 1)))
 
         def allocate():
             pointer_output, token_output = e.ld(e.add(e.add(allocator_at, 2), sizes)), e.ld(e.add(e.add(allocator_at, 3), sizes))
@@ -1238,14 +1486,21 @@ def _call_foreign(tables, declaration, end_views):
     return _function(("cursor", "block"), build, tables)
 
 
-def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect=None):
-    """``_verify_heap_view_call``: borrow whole views across the call and re-establish returned ones."""
+PASSED = 5  # passed-view slot: token type, storage, link record, used, link target
+
+
+def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect=None, declared_at=None):
+    """``_verify_heap_view_call``: borrow whole views across the call and re-establish returned ones.
+
+    ``declared_at``: the callee's entry ``link_target`` declarations ``[count, (view, target) pairs]``
+    (NONE when they could not be read), or None (no declarations)."""
     p = e.p
     visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
     _triples_valid(e, count, types_at)
     _triples_valid(e, result_count, results_at)
-    # Passed views: (token type, storage, link record, used) in a scratch list.
-    e.var("passed", e.alloc(e.add(e.mul(count, 4), 1)))
+    declared_count = e.c(0) if declared_at is None else e.rd(declared_at)
+    # Passed views: (token type, storage, link record, used, link target) in a scratch list.
+    e.var("passed", e.alloc(e.add(e.mul(count, PASSED), 1)))
     _require(e, e.ne(p["passed"], NONE))
     e.var("passed_n", 0)
 
@@ -1260,6 +1515,20 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
             owner = e.value(OST, token_ref)
             _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
                                e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)))
+            _require(e, e.ne(declared_count, NONE))
+            e.var("declared_target", NONE)
+            if declared_at is not None:
+                e.for_("dk", 0, declared_count, lambda: e.if_(e.eq(e.rd(e.add(declared_at, e.add(1, e.mul(p["dk"], 2)))), e.sub(index, 1)), lambda: e.set(
+                    "declared_target", e.rd(e.add(declared_at, e.add(2, e.mul(p["dk"], 2)))))))
+
+            def declared():
+                _require(e, e.lt(p["declared_target"], n.no))
+                target = e.rd(e.add(n.vids_at, p["declared_target"]))
+                _require(e, e.both(e.eq(e.value(PSTAMP, target), pass_id), e.eq(e.value(PK, target), POINTER),
+                                   e.eq(e.value(PLT, pointer_ref), e.value(PST, target)), e.eq(e.value(PLR, pointer_ref), e.value(PREC, target))))
+
+            e.if_(e.ne(p["declared_target"], NONE), declared, lambda: _require(e, e.either(
+                e.eq(_has_link(e, e.value(PREC, pointer_ref)), 0), e.eq(e.value(PLT, pointer_ref), e.value(PST, pointer_ref)))))
             _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), owner)))
             _require(e, e.not_(_ended(e, owner)))
             _require(e, e.ne(e.value(ECON, effect_ref), visit))
@@ -1267,11 +1536,12 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
             e.if_(initialized, lambda: _require(e, e.ne(e.call(insert_effect, e.value(EIV, effect_ref), 0, extent), 0)))
             e.set_value(OCON, token_ref, visit)
             e.set_value(ECON, effect_ref, visit)
-            slot = e.add(p["passed"], e.mul(p["passed_n"], 4))
+            slot = e.add(p["passed"], e.mul(p["passed_n"], PASSED))
             e.st(slot, view_type)
             e.st(e.add(slot, 1), owner)
             e.st(e.add(slot, 2), e.value(PLR, pointer_ref))
             e.st(e.add(slot, 3), 0)
+            e.st(e.add(slot, 4), e.value(PLT, pointer_ref))
             e.set("passed_n", e.add(p["passed_n"], 1))
 
         e.if_(_heap_view(e, e.rd(e.add(types_at, index))), borrow)
@@ -1284,22 +1554,28 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
         def give_back():
             view_type = e.rd(e.add(results_at, index))
             extent = e.table(_T.RINSTANCE, view_type)
+            _require(e, e.ne(declared_count, NONE))
             e.var("storage", e.add(n.site, index))  # a new view: site (block, node, index)
             e.var("link_record", NONE)
+            e.var("link_target", NONE)
 
             def match():
-                slot = e.add(p["passed"], e.mul(p["m"], 4))
+                slot = e.add(p["passed"], e.mul(p["m"], PASSED))
                 e.if_(e.both(e.eq(p["storage"], e.add(n.site, index)), e.eq(e.ld(e.add(slot, 3)), 0), e.eq(e.ld(slot), view_type)), lambda: (
-                    e.set("storage", e.ld(e.add(slot, 1))), e.set("link_record", e.ld(e.add(slot, 2))), e.st(e.add(slot, 3), 1)))
+                    e.set("storage", e.ld(e.add(slot, 1))), e.set("link_record", e.ld(e.add(slot, 2))), e.set("link_target", e.ld(e.add(slot, 4))),
+                    e.st(e.add(slot, 3), 1)))
 
             e.for_("m", 0, p["passed_n"], match)
             pointer_type = e.rd(e.add(results_at, e.sub(index, 1)))
             element = e.table(_T.PELEM, pointer_type)
-            link_record = e.sel(e.eq(p["link_record"], NONE), element, p["link_record"])
+            # A returned borrowed view keeps the caller's link target (callees return only self-targeted new views).
+            fresh = e.eq(p["storage"], e.add(n.site, index))
+            link_record = e.sel(fresh, element, p["link_record"])
+            link_target = e.sel(fresh, p["storage"], p["link_target"])
             base = n.base
             _set_pointer(e, e.add(base, e.sub(index, 1)), {
                 PK: POINTER, PST: p["storage"], PEL: element, PPERM: e.table(_T.PPERM, pointer_type), POFF: 0, PEXT: extent,
-                PALIGN: e.table(_T.PALIGN, pointer_type), PALIAS: p["storage"], PWIN: 0, PREC: element, PLT: p["storage"], PLR: link_record,
+                PALIGN: e.table(_T.PALIGN, pointer_type), PALIAS: p["storage"], PWIN: 0, PREC: element, PLT: link_target, PLR: link_record,
             })
             e.set_value(OST, e.add(base, index), p["storage"])
             e.set_value(OSTAMP, e.add(base, index), visit)
@@ -1308,9 +1584,12 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
         e.if_(_heap_view(e, e.rd(e.add(results_at, index))), give_back)
 
     e.for_("q", 0, result_count, each_output)
-    # Views not given back were released by the callee: their storage ends.
-    e.for_("m", 0, p["passed_n"], lambda: e.if_(e.eq(e.ld(e.add(e.add(p["passed"], e.mul(p["m"], 4)), 3)), 0), lambda: e.st(
-        _site_word(e, 1, e.ld(e.add(e.add(p["passed"], e.mul(p["m"], 4)), 1))), 1)))
+    # Views not given back were released by the callee: their storage ends, after every live storage
+    # linking into it has ended too.
+    released = lambda: e.eq(e.ld(e.add(e.add(p["passed"], e.mul(p["m"], PASSED)), 3)), 0)  # noqa: E731
+    storage_of = lambda: e.ld(e.add(e.add(p["passed"], e.mul(p["m"], PASSED)), 1))  # noqa: E731
+    e.for_("m", 0, p["passed_n"], lambda: e.if_(released(), lambda: e.st(_site_word(e, 1, storage_of()), 1)))
+    e.for_("m", 0, p["passed_n"], lambda: e.if_(released(), lambda: _check_dependents(e, storage_of())))
 
 
 def _view_slot(e: E, count, at, position):
@@ -1363,7 +1642,9 @@ def _call_direct(tables, covers):
             e.for_("j", 0, n.no, each)
 
         e.if_(e.both(e.ne(p["resource"], 0), e.eq(p["stack"], 0)), frontier)
-        _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers)
+        # Aux words: [count, summary blocks, operation count, operations, declaration count, pairs] (or [0]).
+        declared_at = e.sel(e.eq(e.rd(n.aux_at), 0), n.aux_at, e.add(e.add(n.aux_at, 3), e.rd(e.add(n.aux_at, 2))))
+        _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers, declared_at)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -1557,6 +1838,82 @@ def _raw_load(tables, covers):
         start = e.value(POFF, source)
         e.if_(e.eq(e.and_(waivers, 2), 0), lambda: _require(e, e.ne(e.call(covers, intervals, start, e.add(e.add(start, e.value(PWIN, source)), size)), 0)))
         _set_effect(e, e.add(n.base, 1), storage, intervals)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+# -- S4d.2d: records and links (ADR-097, ADR-099, ADR-101) ---------------------------------------
+
+def _link_make(tables):
+    """``link_make``: a link names one whole record of its storage."""
+    def build(e: E):
+        n = _Node(e)
+        _require(e, n.shape(1, 1, 0))
+        source = n.vid(0)
+        _pointer(e, source)
+        element = e.value(PEL, source)
+        stride = _record_bytes(e, element)
+        _require(e, e.both(e.ne(stride, 0), e.eq(element, e.value(PREC, source))))
+        _require(e, e.both(e.eq(_mod(e, e.value(POFF, source), stride), 0), e.le(stride, e.value(PEXT, source)),
+                           e.either(e.eq(e.value(PWIN, source), 0), e.eq(_mod(e, e.value(PALIGN, source), stride), 0))))
+        _require(e, e.ne(e.table(_T.LINK, n.rtid(0)), 0))
+        _link_fact(e, n.base, e.value(PST, source), e.value(PREC, source))
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _link_follow(tables):
+    """``link_follow``: a non-null link of this storage reloads one record, with no range check."""
+    def build(e: E):
+        n = _Node(e)
+        _require(e, n.shape(2, 1, 0))
+        view, link = n.vid(0), n.vid(1)
+        _pointer(e, view)
+        element_of_view = e.value(PEL, view)
+        stride = _record_bytes(e, element_of_view)
+        _require(e, e.both(e.ne(stride, 0), e.eq(element_of_view, e.value(PREC, view)), e.eq(e.value(POFF, view), 0), e.eq(e.value(PWIN, view), 0)))
+        _require(e, e.both(e.eq(e.value(PSTAMP, link), e.hd(H_PASS)), e.eq(e.value(PK, link), LINK),
+                           e.eq(e.value(PST, link), e.value(PST, view)), e.eq(e.value(PREC, link), e.value(PREC, view))))
+        view_type, result_type = n.tid(0), n.rtid(0)
+        _require(e, e.both(e.ne(e.table(_T.PTR, view_type), 0), e.ne(e.table(_T.PTR, result_type), 0)))
+        element, permission, alignment = e.table(_T.PELEM, result_type), e.table(_T.PPERM, result_type), e.table(_T.PALIGN, result_type)
+        record_alignment = e.and_(stride, e.sub(0, stride))  # the largest power of two dividing the stride
+        actual = e.sel(e.lt(e.value(PALIGN, view), record_alignment), e.value(PALIGN, view), record_alignment)
+        _require(e, e.both(e.eq(e.table(_T.PSPACE, view_type), e.table(_T.PSPACE, result_type)), e.eq(element, element_of_view),
+                           e.eq(e.and_(permission, e.value(PPERM, view)), permission), e.le(alignment, actual)))
+        fields = {word: e.value(word, view) for word in range(POINTER_WORDS)}
+        fields.update({PEL: element, PPERM: permission, POFF: 0, PEXT: stride, PALIGN: actual, PWIN: e.sub(e.value(PEXT, view), stride)})
+        _set_pointer(e, n.base, fields)
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _link_target(tables):
+    """``link_target`` (proof only): borrowed view operand 0 links into borrowed view operand 1."""
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        _require(e, n.shape(2, 0, 0))
+        view, target = n.vid(0), n.vid(1)
+        _pointer(e, view)
+        _pointer(e, target)
+        params_at = e.ld(_block_word(e, p["block"], B_PARAMS))
+        base, count = e.rd(params_at), e.rd(e.add(params_at, 1))
+        own = lambda value: e.both(e.eq(e.value(DEF, value), NONE), e.le(base, value), e.lt(value, e.add(base, count)))  # noqa: E731
+        borrowed = lambda value: e.eq(e.rd(e.add(e.hd(H_KINDS), e.value(PST, value))), SITE_BORROWED)  # noqa: E731
+        _require(e, e.both(own(view), own(target), borrowed(view), borrowed(target)))
+        _require(e, e.both(e.ne(_has_link(e, e.value(PREC, view)), 0), e.ne(_record_bytes(e, e.value(PREC, target)), 0),
+                           e.eq(e.value(PLT, view), e.value(PST, target))))
+        e.give(n.next)
+    return _function(("cursor", "block"), build, tables)
+
+
+def _constant(tables):
+    """A typing-proven constant; a link constant is the null link."""
+    def build(e: E):
+        n = _Node(e)
+        _require(e, e.ne(n.key, NONE))
+        e.if_(e.both(e.eq(n.nr, 1), e.ne(e.table(_T.LINK, n.rtid(0)), 0)), lambda: _link_fact(e, n.base, NONE, NONE))
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -2010,6 +2367,8 @@ def _return_views(e: E, term, values, covers):
                       lambda: (e.set("expected", g), e.st(e.add(p["given"], g), 1)))
 
             e.for_("g", 0, entry_count, scan)
+            e.if_(e.eq(p["borrowed"], 0), lambda: _require(e, e.either(
+                e.eq(_has_link(e, e.value(PREC, pointer_ref)), 0), e.eq(e.value(PLT, pointer_ref), owner))))
             e.if_(e.ne(p["expected"], NONE), lambda: _require(e, e.eq(owner, e.add(1, p["expected"]))), lambda: _require(e, e.eq(p["borrowed"], 0)))
 
         e.if_(_heap_view(e, e.rd(e.add(types_at, index))), check)
@@ -2154,6 +2513,27 @@ def _entry_facts(e: E, empty, entry_params):
         e.if_(_heap_view(e, e.rd(e.add(types, index))), seed)
 
     e.for_("i", 0, count, each)
+    # ``link_target`` declarations of the entry block: a borrowed view links into another borrowed view.
+    base = e.rd(entry_params)
+    nodes_at = e.ld(_block_word(e, e.hd(H_ENTRY), B_NODES))
+    e.var("cursor", e.add(nodes_at, 1))
+
+    def each_node():
+        n = _Node(e)
+        view_value, target_value = n.vid(0), n.vid(1)
+        parameter = lambda value: e.both(e.eq(e.value(DEF, value), NONE), e.le(base, value), e.lt(value, e.add(base, count)))  # noqa: E731
+        is_declaration = e.both(e.eq(n.op, int(Operation.LINK_TARGET)), e.eq(n.no, 2), parameter(view_value), parameter(target_value))
+
+        def declare():
+            view, target = e.sub(view_value, base), e.sub(target_value, base)
+            pointers = e.both(e.eq(e.ld(_slot(e, record, view, PK)), POINTER), e.eq(e.ld(_slot(e, record, target, PK)), POINTER), e.ne(view, target))
+            e.if_(pointers, lambda: (e.st(_slot(e, record, view, PLT), e.ld(_slot(e, record, target, PST))),
+                                     e.st(_slot(e, record, view, PLR), e.ld(_slot(e, record, target, PREC)))))
+
+        e.if_(is_declaration, declare)
+        e.set("cursor", n.next)
+
+    e.for_("d", 0, e.rd(nodes_at), each_node)
     return record
 
 
@@ -2253,8 +2633,6 @@ def _engine(tables, block, empty, record_equal):
         e.set_hd(H_PASS, 0)
         e.for_("w", values, arena, lambda: e.st(p["w"], 0))
         e.for_("v", 0, V, lambda: e.set_value(DEF, p["v"], NONE))
-        # Stage S4d.2c declines graphs with links.
-        e.for_("t", 0, e.hd(H_COUNT), lambda: _require(e, e.eq(e.table(_T.LINK, p["t"]), 0)))
         # Block positions, and each node result's defining record.
         e.var("cursor", e.add(e.hd(H_KINDS), S))
 
@@ -2346,6 +2724,10 @@ def build_engine():
     insert = add(_insert(tables))
     _COVERS[:] = [covers]
     _INSERT[:] = [insert]
+    _LAYOUT[:] = [add(_layout(tables))]
+    _HAS_LINK[:] = [add(_has_link_function(tables))]
+    _DEPENDENTS[:] = [add(_dependents_function(tables))]
+    _WINDOW[:] = [add(_window_function(tables, covers))]
     intersect = add(_intersect(tables, insert))
     list_equal = add(_list_equal(tables))
     empty = add(_empty_record(tables))
@@ -2375,6 +2757,13 @@ def build_engine():
         Operation.RAW_LOAD_BITS_LE: add(_raw_load(tables, covers)),
         **{operation: add(_atomic(tables, covers, insert, operation)) for operation in ATOMIC_SHAPES},
     }
+    from xax_selfhost_target import _target_op
+
+    handlers[Operation.TARGET_OP] = add(_target_op(tables))
+    handlers[Operation.LINK_MAKE] = add(_link_make(tables))
+    handlers[Operation.LINK_FOLLOW] = add(_link_follow(tables))
+    handlers[Operation.LINK_TARGET] = add(_link_target(tables))
+    handlers[Operation.CONSTANT] = add(_constant(tables))
     node = add(_node_dispatch(tables, handlers, end_views))
     block = add(_block(tables, merge, empty, node, covers))
     engine = add(_engine(tables, block, empty, record_equal))

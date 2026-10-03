@@ -6186,6 +6186,17 @@ def _native_typing():
     return _NATIVE_TYPING
 
 
+def _callee_links(node: "_ParsedNode", resolve: Callable[[bytes], SemanticObject]) -> dict[int, int] | None:
+    """S4d.2d: a direct call's callee ``link_target`` declarations as the view-call check reads them
+    (``_declared_link_targets``, structural); None when they cannot be read (the bootstrap raises)."""
+    if node.entity is None or node.entity.kind != Kind.FUNCTION:
+        return {}
+    try:
+        return _declared_link_targets(_decode_function_interface(node.entity, resolve)[0])
+    except (XaxError, ValueError, IndexError):
+        return None
+
+
 def _callee_summary(node: "_ParsedNode", resolve: Callable[[bytes], SemanticObject]) -> tuple[int, list[int]] | None:
     """S4d.2d: ``(block count, operations of its single block)`` of a direct call's callee whose interface
     carries a stack owner (the facts engine derives resource call contracts from it), else None."""
@@ -6320,7 +6331,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
             type_info_from(resolve),
             lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
-            facts=(entry, order, lambda node: _callee_summary(node, resolve)),
+            facts=(entry, order, lambda node: _callee_summary(node, resolve), lambda node: _callee_links(node, resolve)),
         )
         status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
         if status == 0:
