@@ -286,3 +286,9 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `target.op` lives in `xax_selfhost_target.py` and is registered in `build_engine`. Record and link helpers are `_layout`, `_has_link_function`, `_dependents_function`, and `_window_function` in `xax_selfhost_facts.py`.
 - A direct call's aux words are `[count, summary blocks, operation count, operations, declaration count, (view, target) pairs]`, or `[0]` when there is neither a summary nor a declaration.
 - After changing any XAX helper, rebuild its committed store: `write_typing_store()`, or `write_cfg_store()` for the CFG views. The store-equality tests check that the committed store is the built one.
+
+## S5a — 2026-10-03 (ADR-140)
+
+- `xax_riscv64._marshal` writes the backend program's stream, and `_compile_with_xax` turns its output into a `Riscv64Image`. Use `backend="python"` to compare, or `XAX_RISCV64_BACKEND_PYTHON=1` to disable the program.
+- After editing `xax_selfhost_riscv64_backend.py`, run `write_backend_store()`. A test checks that the committed store is the built one.
+- The program declines with `give(NONE)` (`_ok`) and records nothing about why. To debug, bisect with the differential in `test_xax_selfhost_riscv64_backend.py`.

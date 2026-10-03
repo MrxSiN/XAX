@@ -416,7 +416,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S4d.2b | The memory-fact passes as an XAX engine (accept or decline), modelling stack storage | S4d.2a | EXECUTED (ADR-137): identical outcomes and extents on 300 random stack programs; the engine accepts every valid one |
 | S4d.2c | Heap views (borrowed and allocated), checked accesses, foreign calls, view-passing direct and group calls and returns, pointer address and rebase windows | S4d.2b | EXECUTED (ADR-138): every corpus graph (20/20) verified by the XAX engine with identical extents |
 | S4d.2d | Links and records, atomics, raw loads, stack resource contracts, lend entries, indirect calls, function addresses, target operations: the engine accepts every graph the bootstrap accepts (S4 complete) | S4d.2c | EXECUTED (ADR-139): S4 complete. Across the whole suite, every graph the bootstrap accepts is decided by XAX, except the helper programs' own seed graphs |
-| S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | next |
+| S5a | RISC-V code generation (liveness, linear scan, frame, lowering, `li`, jump fixups) as an XAX program on the production path | S2–S4 | EXECUTED (ADR-140): byte-identical images; 2.3× faster on a 300-value loop |
+| S5b | The backend's input from the XAX store and graph decoders instead of the Python marshal: store bytes to image bytes | S5a | next |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
 
 ## 2. Bootstrap mapping
