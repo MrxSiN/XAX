@@ -769,3 +769,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S4b: aggregate and sum typing is XAX (ADR-133) — 2026-10-03
 
 - The XAX typing function now also decodes tuple, array, and sum types (of scalar elements) and checks `aggregate.make/get` and `sum.make/tag/get`. On 1,000 random nodes it agrees with the bootstrap: every proven node is accepted, and every accepted node is proven except those with nested aggregates. 2,444/2,444 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4c: call, constant, memory, and resource nodes together with the fact tracking.
+
+## Self-hosting step S4c: resource, effect, and meta typing is XAX (ADR-134) — 2026-10-03
+
+- The XAX typing function now decodes effect, resource, and opaque types and checks `effect.step`, `resource.*`, and `meta.*` nodes. Every node check that reads only types is now XAX. For 2,000 random nodes, outcomes and exact diagnostics are identical with the path on and off. 2,447/2,447 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4d: call, constant, memory, atomic, and target typing, which needs the pointer/owner/effect fact tracking.

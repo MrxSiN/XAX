@@ -16,6 +16,11 @@ of the pure typing families, decoding the type objects itself:
 * ``float.convert``: float operand and result;
 * ``int.compare``: equal ``bits<N>`` operands (or link operands with ``eq``/``ne``
   only), ``bits<1>`` result, known kind;
+* S4c: the resource/effect operations (``effect.step`` with distinct effect
+  operands and values; ``resource.acquire/transfer/transition/release/
+  discard/split/join`` with their flag, state-transition, and continuation
+  rules) and the meta operations (operand opaque kinds, result forms), with
+  effect, resource, and opaque type bodies decoded canonically;
 * S4b: ``aggregate.make`` (operands are the tuple's elements in order, or
   ``count`` copies of the array element), ``aggregate.get`` (index below the
   element count, result is that element), ``sum.make`` / ``sum.get`` (variant
@@ -30,8 +35,9 @@ Input words: the type count T, then per type its object kind, reference
 count R, body length L, L body bytes (one per word), and the type indices of
 its R references in table order; then the node count N and per node its
 operation, operand count, result count, attribute count, first attribute
-(clamped below 2^63), operand type indices, result type indices; then three
-zero words.  Output: ``out[0]`` status (0 accept, 1 reject on a malformed
+(clamped below 2^63), extra word count E, operand type indices, result type
+indices, and E extra words (``effect.step``: its operand value identities);
+then ``PADDING`` zero words.  Output: ``out[0]`` status (0 accept, 1 reject on a malformed
 stream, 2 defer when the tables do not fit), ``out[1]`` the proven count,
 then one verdict per node: 0 outside these families, 1 proven, 2 not proven.
 
@@ -73,7 +79,11 @@ TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
 WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)
-TABLES = 7
+EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE = range(7, 16)
+TABLES = 16
+PADDING = 24  # zero words ending the stream: the decoders' look-ahead stays inside it
+AFFINE, PARTITIONABLE, RELEASABLE, ACQUIRABLE = 1, 2, 4, 8
+EFFECT_DOMAINS, OPAQUE_KINDS = 11, 7
 MARKS = 128  # scratch marks for reference use, after the tables; at most this many references
 TUPLE, ARRAY, SUM = 8, 9, 10
 
@@ -82,9 +92,33 @@ FLOAT_BINARY = (Operation.FLOAT_ADD, Operation.FLOAT_SUB, Operation.FLOAT_MUL, O
 TO_FLOAT = (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT)
 FROM_FLOAT = (Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC)
 AGGREGATES = (Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.SUM_GET)
+# S4c: resource/effect operations, (operands, results) per operation.
+RESOURCE_COUNTS = {
+    Operation.RESOURCE_ACQUIRE: (1, 2), Operation.RESOURCE_TRANSFER: (2, 2), Operation.RESOURCE_TRANSITION: (2, 2),
+    Operation.RESOURCE_RELEASE: (2, 1), Operation.RESOURCE_DISCARD: (2, 1), Operation.RESOURCE_SPLIT: (2, 3), Operation.RESOURCE_JOIN: (3, 2),
+}
+# S4c: meta operations: operand kinds (an opaque kind, or None for bits), result count, attribute count,
+# and the result rule (an opaque kind, "bit" for bits<1>, or "bits" for any bits<N>).
+META_RULES = {
+    Operation.META_TYPE_BITS_WIDTH: ((1,), 1, 0, "bits"),
+    Operation.META_CONSTANT_VALUE: ((2,), 1, 0, "bits"),
+    Operation.META_TARGET_SUPPORTS: ((4,), 1, 1, "bit"),
+    Operation.META_DECLARED_INPUT: ((), 1, 1, "bits"),
+    Operation.META_MATERIALIZE_CONSTANT_FUNCTION: ((1, None), 1, 0, 3),
+    Operation.META_FUNCTION_GRAPH: ((3,), 1, 0, 5),
+    Operation.META_GRAPH_BLOCK_COUNT: ((5,), 1, 0, "bits"),
+    Operation.META_GRAPH_NODE_COUNT: ((5, None), 1, 0, "bits"),
+    Operation.META_GRAPH_NODE_OPERATION: ((5, None, None), 1, 0, "bits"),
+    Operation.META_CANONICAL_STORE: ((6,), 1, 0, 7),
+    Operation.META_VERIFY_SEMANTICS: ((6,), 1, 0, "bit"),
+    Operation.META_MATERIALIZE_PROGRAM: ((3,), 1, 0, 6),
+    Operation.META_FUNCTION_PARAMETER_COUNT: ((3,), 1, 0, "bits"),
+    Operation.META_FUNCTION_RETURN_COUNT: ((3,), 1, 0, "bits"),
+}
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
-     Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES}
+     Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES,
+     *RESOURCE_COUNTS, Operation.EFFECT_STEP, *META_RULES}
 )
 
 
@@ -174,7 +208,8 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.check(b.cmp(IntCompare.ULE, b.add(b.add(b.mul(count, TABLES), MARKS), IN_WORDS), OUT_WORDS - TABLE), b.defer_block)
     nodes_at = b.for_range(b.c(0), count, lambda index, carried: _scalar_entry(b, t, index, carried), (b.c(1),))[0]
     items = b.add(t.slot(TABLES, b.c(0)), MARKS)
-    b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
+    (items,) = b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
+    b.for_range(b.c(0), count, lambda index, carried: _proof_entry(b, t, index, carried), (items,))
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
     _end, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
@@ -198,7 +233,7 @@ def _scalar_entry(b: _Builder, t: _Typing, index, carried):
     kind, references, length = (b.read(b.add(position, k)) for k in range(3))
     base = b.add(position, 3)
     # Look-ahead past a short body reads the next words of the stream (which ends
-    # in three zero words); the length conditions below make them irrelevant.
+    # in PADDING zero words); the length conditions below make them irrelevant.
     first, second, third = (b.read(b.add(base, k)) for k in range(3))
     plain = t.all(t.eq(kind, int(Kind.TYPE)), t.eq(references, 0), t.lt(first, 128))
     single = t.all(t.lt(second, 128), t.eq(length, 2))
@@ -255,10 +290,136 @@ def _aggregate_entry(b: _Builder, t: _Typing, index, carried):
     return (b.add(b.add(cursor, b.mul(listed, steps)), 1),)
 
 
+def _proof_entry(b: _Builder, t: _Typing, index, carried):
+    """Pass 3, one type (S4c): effect, resource (with its transition list), and opaque forms."""
+    (cursor,) = carried
+    position = b.get(t.slot(POSITION, index))
+    kind, references, length = (b.read(b.add(position, k)) for k in range(3))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    form = b.read(base)
+    plain = t.all(t.eq(kind, int(Kind.TYPE)), t.eq(references, 0), t.lt(form, 128))
+    at = b.add(base, 1)
+    fields = []  # (value, ok, next position) for up to five header values
+    for _ in range(5):
+        value, size, ok = t.uleb(at)
+        at = b.add(at, size)
+        fields.append((value, t.all(ok, t.le(at, end)), at))
+    (v1, ok1, p2), (v2, ok2, p3), (v3, ok3, _p4), (v4, ok4, _p5), (tcount, ok5, p6) = fields
+    in_range = lambda value, low, high: t.all(t.le(b.c(low), value), t.le(value, high))  # noqa: E731
+    effect_ok = t.all(plain, t.eq(form, 3), ok1, in_range(v1, 1, EFFECT_DOMAINS), t.any(t.eq(p2, end), t.all(ok2, t.nonzero(v2), t.eq(p3, end))))
+    opaque_ok = t.all(plain, t.eq(form, 5), ok1, t.eq(p2, end), in_range(v1, 1, OPAQUE_KINDS))
+    resource = t.all(plain, t.eq(form, 4), ok1, ok2)
+    owner = t.all(resource, t.eq(p3, end), t.eq(v1, 1), t.eq(v2, 1))
+    header = t.all(resource, ok3, ok4, ok5, t.nonzero(v1), t.nonzero(v2), t.eq(b.op(Operation.BIT_AND, v3, ~0xF & (1 << 64) - 1), 0))
+    steps = t.pick(t.all(header, t.le(tcount, length)), tcount, b.c(0))
+
+    def transition(k, carried_):
+        at_, ok, previous = carried_
+        value, size, value_ok = t.uleb(at_)
+        after = b.add(at_, size)
+        b.put(b.add(cursor, k), value)
+        good = t.all(value_ok, t.le(after, end), t.lt(previous, value), t.nonzero(b.op(Operation.BIT_XOR, value, v2)))
+        return after, t.all(ok, good), value
+
+    after, transitions_ok, _last = b.for_range(b.c(0), steps, transition, (p6, b.c(1), b.c(0)))
+    owner_shape = t.all(t.eq(v1, 1), t.eq(v2, 1), t.eq(v3, RELEASABLE), t.eq(v4, 0), t.eq(tcount, 0))
+    full = t.all(header, t.eq(steps, tcount), transitions_ok, t.eq(after, end), t.not_(owner_shape))
+    resource_ok = t.any(owner, full)
+    b.put(t.slot(EFFECT, index), effect_ok)
+    b.put(t.slot(OPAQUE, index), b.mul(opaque_ok, v1))
+    b.put(t.slot(RESOURCE, index), resource_ok)
+    b.put(t.slot(RKIND, index), v1)
+    b.put(t.slot(RSTATE, index), v2)
+    b.put(t.slot(RFLAGS, index), t.pick(owner, b.c(RELEASABLE), v3))
+    b.put(t.slot(RINSTANCE, index), t.pick(owner, b.c(0), v4))
+    b.put(t.slot(TSTART, index), cursor)
+    b.put(t.slot(TCOUNT, index), b.mul(full, tcount))
+    return (b.add(cursor, steps),)
+
+
+def _resource_rules(b: _Builder, t: _Typing, operation, operands, results, attributes, attribute, ids, extra_at):
+    """S4c families: ``(member, ok)`` pairs for the resource/effect and meta operations."""
+    def operand(k):
+        return b.read(b.add(ids, k))
+
+    def result(k):
+        return b.read(b.add(b.add(ids, operands), k))
+
+    def flagged(value, bit):
+        return t.nonzero(b.op(Operation.BIT_AND, t.lookup(RFLAGS, value), bit))
+
+    is_resource = lambda value: t.lookup(RESOURCE, value)  # noqa: E731
+    last_in = b.read(b.add(ids, b.sub(operands, 1)))
+    last_out = b.read(b.add(b.add(ids, operands), b.sub(results, 1)))
+    continuation = t.all(t.lookup(EFFECT, last_in), t.eq(last_in, last_out))
+    source, target, second = operand(0), result(0), result(1)
+
+    def shape(count_in: int, count_out: int):
+        return t.all(t.eq(operands, count_in), t.eq(results, count_out), t.eq(attributes, 0), continuation)
+
+    def contains(k, carried):
+        (found,) = carried
+        listed = b.get(b.add(t.lookup(TSTART, source), k))
+        return (t.any(found, t.eq(listed, t.lookup(RSTATE, target))),)
+
+    (reachable,) = b.for_range(b.c(0), t.lookup(TCOUNT, source), contains, (b.c(0),))
+    rules = [
+        (Operation.RESOURCE_ACQUIRE, t.all(shape(1, 2), is_resource(target), flagged(target, ACQUIRABLE))),
+        (Operation.RESOURCE_TRANSFER, t.all(shape(2, 2), is_resource(source), t.eq(target, source))),
+        (
+            Operation.RESOURCE_TRANSITION,
+            t.all(
+                shape(2, 2), is_resource(source), is_resource(target), t.eq(t.lookup(RKIND, target), t.lookup(RKIND, source)),
+                t.eq(flagged(target, AFFINE), flagged(source, AFFINE)), t.eq(t.lookup(RINSTANCE, target), t.lookup(RINSTANCE, source)), reachable,
+            ),
+        ),
+        (Operation.RESOURCE_RELEASE, t.all(shape(2, 1), is_resource(source), flagged(source, RELEASABLE))),
+        (Operation.RESOURCE_DISCARD, t.all(shape(2, 1), is_resource(source), flagged(source, AFFINE))),
+        (Operation.RESOURCE_SPLIT, t.all(shape(2, 3), is_resource(source), t.eq(target, source), t.eq(second, source), flagged(source, PARTITIONABLE))),
+        (Operation.RESOURCE_JOIN, t.all(shape(3, 2), is_resource(source), t.eq(operand(1), source), t.eq(target, source), flagged(source, PARTITIONABLE))),
+    ]
+    # effect.step: matching effect operands/results, distinct types, distinct operand values.
+    stepping = t.all(t.eq(attributes, 0), t.nonzero(operands), t.eq(operands, results))
+
+    def step(k, carried):
+        (ok,) = carried
+        here = operand(k)
+        same = t.all(t.eq(here, result(k)), t.lookup(EFFECT, here))
+
+        def distinct(j, carried_):
+            (unique,) = carried_
+            other = t.lt(j, k)
+            clash = t.any(t.eq(operand(j), here), t.eq(b.read(b.add(extra_at, j)), b.read(b.add(extra_at, k))))
+            return (t.all(unique, t.not_(t.all(other, clash))),)
+
+        (unique,) = b.for_range(b.c(0), k, distinct, (b.c(1),))
+        return (t.all(ok, same, unique),)
+
+    (stepped,) = b.for_range(b.c(0), b.mul(stepping, operands), step, (stepping,))
+    rules.append((Operation.EFFECT_STEP, stepped))
+    for meta, (kinds, result_count, attribute_count, result_rule) in META_RULES.items():
+        checks = [t.eq(operands, len(kinds)), t.eq(results, result_count), t.eq(attributes, attribute_count)]
+        for position_, opaque in enumerate(kinds):
+            value = operand(position_)
+            checks.append(t.nonzero(t.lookup(WIDTH, value)) if opaque is None else t.eq(t.lookup(OPAQUE, value), opaque))
+        if result_rule == "bits":
+            checks.append(t.nonzero(t.lookup(WIDTH, target)))
+        elif result_rule == "bit":
+            checks.append(t.eq(t.lookup(WIDTH, target), 1))
+        else:
+            checks.append(t.eq(t.lookup(OPAQUE, target), result_rule))
+        if meta == Operation.META_TARGET_SUPPORTS:
+            checks.append(t.one_of(attribute, tuple(Operation)))
+        rules.append((meta, t.all(*checks)))
+    return rules
+
+
 def _node_entry(b: _Builder, t: _Typing, index, carried):
     position, proven = carried
-    operation, operands, results, attributes, attribute = (b.read(b.add(position, k)) for k in range(5))
-    ids = b.add(position, 5)
+    operation, operands, results, attributes, attribute, extra = (b.read(b.add(position, k)) for k in range(6))
+    ids = b.add(position, 6)
+    extra_at = b.add(ids, b.add(operands, results))
     first, second, result = b.read(ids), b.read(b.add(ids, 1)), b.read(b.add(ids, operands))
     width, first_width = t.lookup(WIDTH, result), t.lookup(WIDTH, first)
     form, first_form = t.lookup(FORMAT, result), t.lookup(FORMAT, first)
@@ -317,12 +478,13 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
         (t.eq(operation, int(Operation.SUM_MAKE)), t.all(shape(1, 1, 1), t.eq(result_shape, SUM), make_inside, t.eq(first, make_variant))),
         (t.eq(operation, int(Operation.SUM_TAG)), t.all(shape(1, 1, 0), t.eq(first_shape, SUM), is_bits, t.le(needed, width))),
         (t.eq(operation, int(Operation.SUM_GET)), t.all(shape(1, 1, 1), t.eq(first_shape, SUM), get_inside, t.eq(result, get_element))),
+        *((t.eq(operation, int(member)), condition) for member, condition in _resource_rules(b, t, operation, operands, results, attributes, attribute, ids, extra_at)),
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
     verdict = b.add(covered, b.sub(covered, ok))  # 0 outside, 1 proven, 2 not proven
     b.put(b.add(b.c(2), index), verdict)
-    return b.add(ids, b.add(operands, results)), b.add(proven, ok)
+    return b.add(extra_at, extra), b.add(proven, ok)
 
 
 def load_typing_program() -> tuple[StoreReader, SemanticObject]:
@@ -378,6 +540,7 @@ def marshal(blocks, operand_types_of, type_info) -> tuple[list[int], list[tuple[
     entries: list[list] = []
     nodes: list[int] = []
     keys: list[tuple[int, int]] = []
+    values: dict = {}
 
     def type_index(cid: bytes) -> int | None:
         if cid in types:
@@ -405,13 +568,14 @@ def marshal(blocks, operand_types_of, type_info) -> tuple[list[int], list[tuple[
             if any(item is None for item in indices):
                 continue
             attribute = min(node.attributes[0], ATTRIBUTE_LIMIT) if node.attributes else 0
-            nodes += [int(node.operation), len(node.operands), len(node.results), len(node.attributes), attribute, *indices]
+            # effect.step also lists its operand values (distinctness is part of its rule).
+            extra = [values.setdefault(value, len(values)) for value in node.operands] if node.operation == Operation.EFFECT_STEP else []
+            nodes += [int(node.operation), len(node.operands), len(node.results), len(node.attributes), attribute, len(extra), *indices, *extra]
             keys.append((block_index, node_index))
     words = [len(entries)]
     for kind, references, body in entries:
         words += [kind, len(references), len(body), *body, *references]
-    # Three zero words end the stream so the decoder's fixed look-ahead stays inside it.
-    words += [len(keys), *nodes, 0, 0, 0]
+    words += [len(keys), *nodes, *(0,) * PADDING]
     return words, keys
 
 

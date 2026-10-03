@@ -22,6 +22,7 @@ CORPUS = {
     "uniqcount": "from benchmarks.uniqcount import build_uniqcount as b; reader = b().reader",
     "blake3_selfhost": "from xax_compiler import StoreReader; from xax_selfhost_blake3 import STORE_PATH; reader = StoreReader(STORE_PATH.read_bytes())",
     "cfg_selfhost": "from xax_compiler import StoreReader; from xax_selfhost_cfg import STORE_PATH; reader = StoreReader(STORE_PATH.read_bytes())",
+    "m14_selfhost_compiler": "from pathlib import Path; from xax_compiler import StoreReader; reader = StoreReader(Path('bootstrap/m14_selfhost_compiler.xax').read_bytes())",
 }
 PROBE = """
 import json, statistics, time
@@ -72,8 +73,8 @@ def run() -> dict:
     from xax_selfhost_typing import NativeTyping, STORE_PATH
 
     return {
-        "step": "S4",
-        "adr": "ADR-132",
+        "step": "S4/S4b/S4c",
+        "adr": "ADR-132, ADR-133, ADR-134",
         "evidence_label": "MEASURED",
         "store_bytes": STORE_PATH.stat().st_size,
         "native_code_bytes": NativeTyping().code_size,

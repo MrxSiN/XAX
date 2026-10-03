@@ -258,3 +258,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S4b — 2026-10-03 (ADR-133)
 
 - Aggregate and sum typing joined the XAX typing function (two-pass type decoding: scalars, then tuple/array/sum of scalars). Regenerate the store with `xax_selfhost_typing.write_typing_store()` after any change; `test_committed_store_is_the_built_program` fails otherwise. Next is S4c: move call, constant, and memory typing together with `_end_heap_views` and the pointer/owner/effect facts, which is most of the remaining verifier.
+
+## S4c — 2026-10-03 (ADR-134)
+
+- Resource/effect and meta typing joined the XAX typing function (third type pass; nodes carry an extra-word count, used by `effect.step` for operand identities). The agreement test compares exact outcomes (code, rule, entity) with the path on and off, because later passes (linear flow, resource-join siblings) can still reject a node whose typing is proven. Next is S4d, which is a larger step: the call/memory branches update pointer, owner, and effect facts, so the fact tables must move with them.
