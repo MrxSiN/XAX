@@ -785,3 +785,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S4d.2b: memory-fact engine in XAX, stack storage (ADR-137) — 2026-10-03
 
 - `xax_selfhost_facts.py` runs the bootstrap's memory-fact passes as XAX (same facts, merge, and fixpoint), accept or decline. It models stack storage now; on acceptance the verifier skips its Python passes and takes the pointer extents from XAX. Identical outcomes and extents on 300 random stack programs; full suite 872 tests, 17 skipped. Next: heap views (S4d.2c), then links, atomics, and the rest (S4d.2d).
+
+## Self-hosting step S4d.2c: the facts engine models heap views and calls (ADR-138) — 2026-10-03
+
+- Borrowed and allocated views, checked accesses, rebase windows, foreign calls (carrier decoded in XAX), view-passing direct and group calls, and view returns are modelled. All 20 corpus graphs are verified by the XAX engine with identical pointer extents, and `verify_store` is 20–30% faster on the view-heavy stores. Full suite: 872 tests, 17 skipped. Remaining for S4d.2d: links and records, atomics, raw loads, stack resource contracts, lend entries, indirect calls, function addresses, and target operations.

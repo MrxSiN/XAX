@@ -275,3 +275,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 
 - The facts engine is built from `xax_structured.Proc` helpers (`E` in `xax_selfhost_facts.py`): every helper is an XAX function `f(a, b, views) -> (bits<64>, views)`, with more arguments passed in header words `H_ARG + i`. State lives in the output view (layout in `_engine`). Add an operation by writing a handler and registering it in `build_engine`'s `handlers`; graph-level declines live in `_engine`. Then regenerate the store with `xax_selfhost_typing.write_typing_store()` and run `test_xax_selfhost_facts.py`.
 - Cost: the per-process native compile is about 1.8 s. Caching the compiled image by store hash would remove it.
+
+## S4d.2c — 2026-10-03 (ADR-138)
+
+- To see why the engine declines a graph, patch `NativeTyping.facts` (as `test_xax_selfhost_facts.py` does) and call `native.decline_reason()`; header word `H_NODE` holds the node record being modelled. The native image cache lives in `~/.cache/xax-native` (override with `XAX_NATIVE_CACHE`).

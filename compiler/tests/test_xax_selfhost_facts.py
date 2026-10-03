@@ -168,3 +168,123 @@ class SelfhostFactsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# -- S4d.2c: borrowed heap views, checked accesses, rebase windows, view-passing calls --------------------
+
+from xax_compiler import heap_view_type  # noqa: E402
+
+EXTENT = 64
+VIEW_POINTER = pointer_type(B8, Permission.READ_WRITE, 1, space=2)
+READ_POINTER = pointer_type(B8, Permission.READ, 1, space=2)
+
+
+def _view_callee(initialized: bool):
+    """``(bits<32>, ptr, view, mem) -> (bits<32>, ptr, view, mem)``: reads byte 3 of the view (when initialized)."""
+    view = heap_view_type(EXTENT, initialized=initialized)
+    graph = GraphBuilder()
+    block = graph.block(B32, VIEW_POINTER, view, MEM)
+    seed, pointer, token, memory = block.params
+    if initialized:
+        value, memory = block.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, block.const(B32, 3), memory), (B8, MEM), attributes=(1, 1))
+        seed = block.op1(Operation.ADD_WRAP, (seed, block.op1(Operation.INT_ZERO_EXTEND, (value,), B32)), B32)
+    block.ret(seed, pointer, token, memory)
+    return graph.function((B32, VIEW_POINTER, view, MEM), (B32, VIEW_POINTER, view, MEM)), tuple(graph.objects.values())
+
+
+VIEW_MUTATIONS = (None, None, None, "fork", "uninitialized_read", "rebase_too_wide", "read_only_store", "stale_effect", "return_offset", "window_uninitialized")
+
+
+def _view_program(rng: random.Random, mutation: str | None):
+    initialized = mutation != "uninitialized_read" and (rng.random() < 0.7 or mutation is None and rng.random() < 0.5)
+    if mutation == "window_uninitialized":
+        initialized = False
+    view = heap_view_type(EXTENT, initialized=initialized)
+    callee, callee_objects = _view_callee(initialized)
+    graph = GraphBuilder()
+    graph.track(view, VIEW_POINTER, READ_POINTER, B64)
+    entry = graph.block(B32, VIEW_POINTER, view, MEM)
+    seed, pointer, token, memory = entry.params
+    offset = entry.const(B32, rng.randrange(0, EXTENT))
+    stored = memory
+    memory = entry.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, offset, entry.const(B8, 5), memory), MEM, attributes=(1, 1))
+    if mutation == "fork":
+        entry.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, offset, entry.const(B8, 6), stored), MEM, attributes=(1, 1))
+    if initialized or mutation == "uninitialized_read":
+        value, memory = entry.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, offset, memory), (B8, MEM), attributes=(1, 1))
+        seed = entry.op1(Operation.ADD_WRAP, (seed, entry.op1(Operation.INT_ZERO_EXTEND, (value,), B32)), B32)
+    if rng.random() < 0.6 or mutation in ("rebase_too_wide", "window_uninitialized"):
+        width = rng.choice((1, 4, 16, EXTENT)) if mutation != "rebase_too_wide" else EXTENT + 1
+        address = entry.op1(Operation.POINTER_ADDRESS, (pointer,), B64, attributes=(1,))
+        window = entry.op1(Operation.POINTER_REBASE, (pointer, address), VIEW_POINTER, attributes=(width,))
+        if initialized or mutation == "window_uninitialized":
+            value, memory = entry.op(Operation.LOAD_BITS_LE, (window, memory), (B8, MEM), attributes=(1, 1))
+        else:
+            memory = entry.op1(Operation.STORE_BITS_LE, (window, entry.const(B8, 1), memory), MEM, attributes=(1, 1))
+    if mutation == "read_only_store":
+        readable = entry.op1(Operation.POINTER_CAST, (pointer,), READ_POINTER)
+        memory = entry.op1(Operation.CHECKED_STORE_BITS_LE, (readable, offset, entry.const(B8, 2), memory), MEM, attributes=(1, 1))
+    before_call = memory
+    looping = rng.random() < 0.4
+    if rng.random() < 0.7:
+        seed, pointer, token, memory = entry.op(Operation.CALL_DIRECT, (seed, pointer, token, memory), (B32, VIEW_POINTER, view, MEM), entity=callee)
+    if mutation == "stale_effect":
+        memory = entry.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, offset, entry.const(B8, 3), before_call), MEM, attributes=(1, 1))
+    if looping:
+        header = graph.block(B32, VIEW_POINTER, view, MEM, B32)
+        body = graph.block(B32, VIEW_POINTER, view, MEM, B32)
+        done = graph.block(B32, VIEW_POINTER, view, MEM, B32)
+        entry.br(header, seed, pointer, token, memory, entry.const(B32, 0))
+        hs, hp, ht, hm, hi = header.params
+        header.cbr(header.op1(Operation.INT_COMPARE, (hi, header.const(B32, 2)), B1, attributes=(IntCompare.ULT,)), body, (hs, hp, ht, hm, hi), done, (hs, hp, ht, hm, hi))
+        bs, bp, bt, bm, bi = body.params
+        bm = body.op1(Operation.CHECKED_STORE_BITS_LE, (bp, bi, body.const(B8, 4), bm), MEM, attributes=(1, 1))
+        body.br(header, bs, bp, bt, bm, body.op1(Operation.ADD_WRAP, (bi, body.const(B32, 1)), B32))
+        block = done
+        seed, pointer, token, memory = done.params[:4]
+    else:
+        block = entry
+    if mutation == "return_offset":
+        pointer = block.op1(Operation.ADDRESS_OFFSET, (pointer,), VIEW_POINTER, attributes=(1,))
+    block.ret(seed, pointer, token, memory)
+    function = graph.function((B32, VIEW_POINTER, view, MEM), (B32, VIEW_POINTER, view, MEM))
+    return function, (*graph.objects.values(), *callee_objects)
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostHeapViewFactsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from xax_selfhost_typing import NativeTyping
+
+        cls.native = NativeTyping()
+
+    def test_view_programs_agree_with_the_bootstrap(self):
+        import xax_selfhost_typing as typing_module
+
+        engine = []
+        original = typing_module.NativeTyping.facts
+
+        def counting(self_, values):
+            result = original(self_, values)
+            engine.append(result[0])
+            return result
+
+        rng = random.Random(1372)
+        outcomes = {"accept": 0, "reject": 0}
+        typing_module.NativeTyping.facts = counting
+        try:
+            for _ in range(300):
+                mutation = rng.choice(VIEW_MUTATIONS)
+                function, objects = _view_program(rng, mutation)
+                baseline = _outcome(None, function, objects)
+                engine.clear()
+                with_engine = _outcome(self.native, function, objects)
+                self.assertEqual(with_engine, baseline, mutation)
+                outcomes[baseline[0]] += 1
+                if baseline[0] == "accept":
+                    self.assertTrue(engine and engine[-1], f"the engine declined a valid program ({mutation})")
+        finally:
+            typing_module.NativeTyping.facts = original
+        self.assertGreater(outcomes["accept"], 60)
+        self.assertGreater(outcomes["reject"], 60)

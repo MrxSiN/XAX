@@ -83,7 +83,8 @@ WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)
 EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE, EDOMAIN = range(7, 17)
 # S4d.2b: pointer types (form 2) and the exact stack-owner and memory-effect forms.
 PTR, PSPACE, PELEM, PPERM, PALIGN, STACKOWNER, MEMEFFECT = range(17, 24)
-TABLES = 24
+FORMB = 24  # S4d.2c: a type's raw first body byte (its form when single-byte), any type kind
+TABLES = 25
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -139,6 +140,29 @@ def _kind_range(kinds) -> int:
 
 INT_COMPARE_KINDS, FLOAT_COMPARE_KINDS = _kind_range(IntCompare), _kind_range(FloatCompare)
 LINK_COMPARE_KINDS = (int(IntCompare.EQ), int(IntCompare.NE))
+
+
+ULEB_BYTES = 5  # values below 2^35: view extents and instances up to 32 GiB
+
+
+def _uleb_bytes(t, data):
+    """Branch-free canonical ULEB of at most ``len(data)`` bytes: length L is the first byte below 128,
+    and a multi-byte encoding's last byte is nonzero.  ``t`` provides add/mul/flag predicates."""
+    b = t.b
+    value, size, ok = b.c(0), b.c(0), b.c(0)
+    continuing = b.c(1)  # every earlier byte had its continuation bit
+    for length in range(1, len(data) + 1):
+        last = data[length - 1]
+        ends = t.all(continuing, t.lt(last, 128), t.nonzero(last) if length > 1 else b.c(1))
+        total = b.c(0)
+        for index in range(length):
+            low = data[index] if index == length - 1 else b.sub(data[index], 128)
+            total = b.add(total, b.mul(low, 1 << (7 * index)))
+        value = b.add(value, b.mul(ends, total))
+        size = b.add(size, b.mul(ends, length))
+        ok = b.op(Operation.BIT_OR, ok, ends)
+        continuing = t.all(continuing, t.le(b.c(128), last), t.lt(last, 256))
+    return value, size, ok
 
 
 class _Typing:
@@ -197,16 +221,8 @@ class _Typing:
         return self.any(self.nonzero(self.lookup(WIDTH, value)), self.nonzero(self.lookup(FORMAT, value)), self.lookup(LINK, value))
 
     def uleb(self, at):
-        """``(value, size, ok)`` for a canonical ULEB of at most three bytes at ``at``."""
-        b = self.b
-        x0, x1, x2 = (b.read(b.add(at, k)) for k in range(3))
-        one = self.lt(x0, 128)
-        two = self.all(self.not_(one), self.lt(x1, 128), self.nonzero(x1))
-        three = self.all(self.not_(one), self.le(b.c(128), x1), self.lt(x1, 256), self.lt(x2, 128), self.nonzero(x2))
-        low = b.sub(x0, 128)
-        value = b.add(b.add(b.mul(one, x0), b.mul(two, b.add(low, b.mul(x1, 128)))), b.mul(three, b.add(b.add(low, b.mul(b.sub(x1, 128), 128)), b.mul(x2, 16384))))
-        size = b.add(b.add(one, b.mul(two, 2)), b.mul(three, 3))
-        return value, size, self.all(self.lt(x0, 256), self.any(one, two, three))
+        """``(value, size, ok)`` for a canonical ULEB of at most five bytes at ``at``."""
+        return _uleb_bytes(self, [self.b.read(self.b.add(at, k)) for k in range(ULEB_BYTES)])
 
 
 _ENGINE: list = []
@@ -284,6 +300,7 @@ def _scalar_entry(b: _Builder, t: _Typing, index, carried):
     b.put(t.slot(FORMAT, index), b.mul(float_ok, second))
     b.put(t.slot(LINK, index), link_ok)
     b.put(t.slot(POSITION, index), position)
+    b.put(t.slot(FORMB, index), b.mul(t.all(t.eq(kind, int(Kind.TYPE)), t.nonzero(length)), first))
     return (b.add(b.add(base, length), references),)
 
 
@@ -502,7 +519,14 @@ def _fact_free_type(b: _Builder, t: _Typing, index):
 
 
 def _call_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, ids):
-    """``call.direct``: a function object (not a group member) whose decoded interface equals the node's types."""
+    """``call.direct``: a function object whose decoded interface equals the node's types.
+
+    The function's graph is a graph fragment (its interface follows in the
+    function body) or a recursion group (the body names a member, whose
+    interface the group lists; ADR-125).  Group bodies are decoded whole, as
+    ``_decode_recursion_group`` does: every member's graph is a fragment, every
+    type is valid, the body ends exactly, and every reference is used.
+    """
     entity = b.read(extra_at)
     valid = t.lt(entity, t.count)
     position = b.get(t.slot(POSITION, t.pick(valid, entity, b.c(0))))
@@ -512,27 +536,79 @@ def _call_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, ids)
     graph, size, graph_ok = t.uleb(base)
     graph_inside = t.all(graph_ok, t.lt(graph, references))
     graph_entry = b.read(b.add(end, t.pick(graph_inside, graph, b.c(0))))
-    graph_entry_ok = t.lt(graph_entry, t.count)
-    graph_kind = b.mul(graph_entry_ok, b.read(b.get(t.slot(POSITION, t.pick(graph_entry_ok, graph_entry, b.c(0))))))
 
-    def interface(start, expected_count, expected_at):
+    def entry_kind(entry):
+        ok = t.lt(entry, t.count)
+        return b.mul(ok, b.read(b.get(t.slot(POSITION, t.pick(ok, entry, b.c(0))))))
+
+    graph_kind = entry_kind(graph_entry)
+
+    def interface(start, expected_count, expected_at, refs_at, ref_count, limit):
         count, count_size, count_ok = t.uleb(start)
         same = t.all(count_ok, t.eq(count, expected_count))
 
         def item(k, carried):
             at, ok = carried
             reference, width, reference_ok = t.uleb(at)
-            inside = t.all(reference_ok, t.lt(reference, references), t.le(b.add(at, width), end))
-            declared = b.read(b.add(end, t.pick(inside, reference, b.c(0))))
+            inside = t.all(reference_ok, t.lt(reference, ref_count), t.le(b.add(at, width), limit))
+            declared = b.read(b.add(refs_at, t.pick(inside, reference, b.c(0))))
             return b.add(at, width), t.all(ok, inside, _known(t, declared), t.eq(declared, b.read(b.add(expected_at, k))))
 
         return b.for_range(b.c(0), b.mul(same, count), item, (b.add(start, count_size), same))
 
-    after_parameters, parameters_ok = interface(b.add(base, size), operands, ids)
-    after_returns, returns_ok = interface(after_parameters, results, b.add(ids, operands))
+    after_parameters, parameters_ok = interface(b.add(base, size), operands, ids, end, references, end)
+    after_returns, returns_ok = interface(after_parameters, results, b.add(ids, operands), end, references, end)
+    fragment_ok = t.all(t.eq(graph_kind, int(Kind.GRAPH_FRAGMENT)), parameters_ok, returns_ok, t.eq(after_returns, end))
+    # A recursion-group member function: [graph, member], the group decoded whole.
+    member, member_size, member_ok = t.uleb(b.add(base, size))
+    group_ok = _group_member_interface(b, t, graph_entry, member, operands, results, ids, interface)
+    group_ok = t.all(t.eq(graph_kind, int(Kind.RECURSION_GROUP)), member_ok, t.eq(b.add(b.add(base, size), member_size), end), group_ok)
+    return t.all(t.eq(extra, 1), valid, t.eq(kind, int(Kind.FUNCTION)), graph_inside, t.any(fragment_ok, group_ok))
+
+
+def _group_member_interface(b: _Builder, t: _Typing, group_entry, member, operands, results, ids, interface):
+    """1 when the recursion group decodes and member ``member``'s interface equals the node's types."""
+    valid = t.lt(group_entry, t.count)
+    position = b.get(t.slot(POSITION, t.pick(valid, group_entry, b.c(0))))
+    references, length = b.read(b.add(position, 1)), b.read(b.add(position, 2))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    count, count_size, count_ok = t.uleb(base)
+    marks = t.slot(TABLES, b.c(0))
+    small = t.le(references, MARKS)
+    b.for_range(b.c(0), b.mul(small, references), lambda k, c: (b.put(b.add(marks, k), 0),) and (), ())
+
+    def reference(at, ok, need_graph):
+        value, width, value_ok = t.uleb(at)
+        inside = t.all(value_ok, t.lt(value, references), t.le(b.add(at, width), end))
+        target = b.read(b.add(end, t.pick(inside, value, b.c(0))))
+        b.put(b.add(marks, t.pick(inside, value, b.c(0))), 1)
+        target_ok = t.lt(target, t.count)
+        target_kind = b.mul(target_ok, b.read(b.get(t.slot(POSITION, t.pick(target_ok, target, b.c(0))))))
+        good = t.eq(target_kind, int(Kind.GRAPH_FRAGMENT)) if need_graph else _known(t, target)
+        return b.add(at, width), t.all(ok, inside, good)
+
+    def types_list(at, ok):
+        n, n_size, n_ok = t.uleb(at)
+        steps = b.mul(t.all(n_ok, t.le(n, length)), n)
+        return b.for_range(b.c(0), steps, lambda _k, c: reference(c[0], c[1], False), (b.add(at, n_size), t.all(ok, n_ok)))
+
+    def each_member(k, carried):
+        at, ok, target = carried
+        at, ok = reference(at, ok, True)
+        target = b.select(b.cmp(IntCompare.EQ, k, member), at, target)
+        at, ok = types_list(at, ok)
+        at, ok = types_list(at, ok)
+        return at, ok, target
+
+    members = b.mul(t.all(count_ok, t.nonzero(count), t.le(count, length)), count)
+    walked, members_ok, target = b.for_range(b.c(0), members, each_member, (b.add(base, count_size), t.all(count_ok, t.nonzero(count)), b.c(0)))
+    (used,) = b.for_range(b.c(0), b.mul(small, references), lambda k, c: (b.add(c[0], b.get(b.add(marks, k))),), (b.c(0),))
+    after_parameters, parameters_ok = interface(target, operands, ids, end, references, end)
+    _after_returns, returns_ok = interface(after_parameters, results, b.add(ids, operands), end, references, end)
     return t.all(
-        t.eq(extra, 1), valid, t.eq(kind, int(Kind.FUNCTION)), graph_inside, t.eq(graph_kind, int(Kind.GRAPH_FRAGMENT)),
-        parameters_ok, returns_ok, t.eq(after_returns, end),
+        valid, t.eq(b.read(position), int(Kind.RECURSION_GROUP)), small, members_ok, t.eq(walked, end), t.eq(used, references),
+        t.lt(member, count), parameters_ok, returns_ok,
     )
 
 
@@ -723,6 +799,7 @@ def write_typing_store() -> bytes:
 
 
 BODY_LIMIT = 64  # longer bodies are passed as "other" (never proven)
+TARGET_BODY_LIMIT = 4096  # foreign-function carriers embed their interface CIDs
 
 
 def type_info_from(resolve):
@@ -733,6 +810,8 @@ def type_info_from(resolve):
             item = resolve(cid)
         except Exception:  # noqa: BLE001 - any resolution failure leaves the node to the bootstrap
             return None
+        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP) and len(item.body) <= TARGET_BODY_LIMIT:
+            return int(item.kind), tuple(item.references), item.body  # S4d.2c: foreign declarations, recursion groups
         if len(item.body) > BODY_LIMIT or item.kind not in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION):
             # Kind only: graph bodies (and their references) are never needed, and no rule accepts a longer body.
             return int(item.kind), (), b""
@@ -805,6 +884,8 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None)
         for target, argument_types in edges:
             section += [target, len(argument_types), *clean(argument_types)]
     facts_section, refs = _facts_section(blocks, facts, keys, type_index, value_type_of) if facts is not None else ([0], None)
+    if facts is not None:
+        facts_section += _cid_words([cid for cid, _index in sorted(types.items(), key=lambda item: item[1])])
     # Serialized last: the block and facts sections can add types.
     words = [len(entries)]
     for kind, references, body in entries:
@@ -862,12 +943,20 @@ def _facts_section(blocks, facts, keys, type_index, value_type_of):
                 len(node.results), *(_index(type_index, cid) for cid in node.results),
             ]
         term = block.terminator
-        body += [int(term.kind), len(term.values), *(ids[value] for value in term.values), len(term.edges)]
+        body += [
+            int(term.kind), len(term.values), *(ids[value] for value in term.values),
+            *(_index(type_index, value_type_of(block_index, value)) for value in term.values), len(term.edges),
+        ]
         for edge_index, (target, arguments) in enumerate(term.edges):
             body += [target, edges[(block_index, edge_index)], len(arguments), *(ids[value] for value in arguments)]
         body += [len(incoming[block_index]), *incoming[block_index]]
     words = [1, len(refs), len(kinds), len(edges), len(blocks), entry, *order, *kinds, *body]
     return words, refs
+
+
+def _cid_words(cids: list[bytes]) -> list[int]:
+    """S4d.2c: each type entry's CID as four little-endian words (foreign declarations name types by CID)."""
+    return [int.from_bytes(cid[offset:offset + 8], "little") for cid in cids for offset in range(0, 32, 8)]
 
 
 def _index(type_index, cid: bytes) -> int:
@@ -877,13 +966,54 @@ def _index(type_index, cid: bytes) -> int:
     return NONE if index is None else index
 
 
+def _native_image() -> tuple[bytes, int]:
+    """``(machine code, entry offset)`` of the typing program, from the cache when present.
+
+    The cache key covers the exact store bytes and the backend sources that
+    lower them, so a changed store or compiler never reuses old code.  The
+    cache is a build artifact (``XAX_NATIVE_CACHE``, default
+    ``~/.cache/xax-native``); deleting it only costs a recompile.
+    """
+    import hashlib
+    import tempfile
+
+    from xax_x86_64 import compile_native
+
+    sources = Path(__file__).resolve().parent
+    digest = hashlib.sha256(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
+    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py"):
+        digest.update((sources / name).read_bytes())
+    cache = Path(os.environ.get("XAX_NATIVE_CACHE", Path.home() / ".cache" / "xax-native"))
+    entry = cache / f"typing-{digest.hexdigest()}.bin"
+    try:
+        data = entry.read_bytes()
+        return data[8:], int.from_bytes(data[:8], "little")
+    except OSError:
+        pass
+    reader, function = load_typing_program()
+    target = next(item for item in reader.objects() if item.kind == Kind.TARGET)
+    image = compile_native(reader, function.cid, target.cid)
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as handle:
+            handle.write(image.entry_offset.to_bytes(8, "little") + image.code)
+        os.replace(handle.name, entry)
+    except OSError:
+        pass  # an unwritable cache only costs the next process a recompile
+    return image.code, image.entry_offset
+
+
 class NativeTyping:
     def __init__(self) -> None:
-        from xax_x86_64 import _SYSV_TO_WIN64_THUNK, compile_native
+        from xax_x86_64 import _SYSV_TO_WIN64_THUNK
 
-        reader, function = load_typing_program()
-        target = next(item for item in reader.objects() if item.kind == Kind.TARGET)
-        image = compile_native(reader, function.cid, target.cid)
+        machine_code, entry_offset = _native_image()
+
+        class _Image:
+            code = machine_code
+
+        image = _Image()
+        image.entry_offset = entry_offset
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + image.code
         self._mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
@@ -904,8 +1034,22 @@ class NativeTyping:
 
         if self._out[HEADER + H_STATUS] != ACCEPTED:
             return False, []
+        return True, self._extents(values)
+
+    def decline_reason(self) -> str:
+        """The engine check that declined the last graph (diagnosis only)."""
+        from xax_selfhost_facts import DECLINE_SITES, H_REASON, HEADER, build_engine
+
+        if not DECLINE_SITES:
+            build_engine()  # the codes are assigned in build order
+        code = self._out[HEADER + H_REASON] - 1
+        return DECLINE_SITES[code] if 0 <= code < len(DECLINE_SITES) else f"code {code}"
+
+    def _extents(self, values: int) -> list[int]:
+        from xax_selfhost_facts import H_EXTENTS, HEADER
+
         base = self._out[HEADER + H_EXTENTS]
-        return True, list(self._out[base : base + values])
+        return list(self._out[base : base + values])
 
     def check(self, words: list[int], count: int) -> tuple[int, list[int] | None]:
         """``(status, verdicts)`` for one marshalled stream: ``count`` verdicts (nodes, then blocks)."""
