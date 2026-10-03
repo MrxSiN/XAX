@@ -1154,6 +1154,22 @@ def riscv64_baremetal_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# The views profile (ADR-145): the same RV64IM machine, plus 64-bit pointers into lent heap views and checked
+# accesses through them (``checked.load/store.bits.le``), so XAX programs over views run on RISC-V.
+RISCV64_VIEWS_IDENTITY = b"riscv64-baremetal-views-v1"
+
+
+def riscv64_views_target() -> SemanticObject:
+    operations = tuple(sorted({*RISCV64_OPERATIONS, int(Operation.CHECKED_LOAD_BITS_LE), int(Operation.CHECKED_STORE_BITS_LE)}))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(RISCV64_VIEWS_IDENTITY)) + RISCV64_VIEWS_IDENTITY)
+    for value in (1, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64):
+        body.extend(uleb(value))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 # SPIR-V compute for Vulkan (ADR-124): architecture 7 is a logical SIMT
 # device.  A kernel is an ordinary function under the target-owned
 # ``spirv-compute-v1`` entry contract; the module has no runtime.
