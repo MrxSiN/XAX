@@ -1,10 +1,10 @@
 {
   "claim": "EXECUTED-UNDER-WINE",
-  "target": "910a54f4804140e7704758c70143fdb8363ee7a598684d2b0cb4ab75e098e26f",
+  "target": "d097451648daf413ae4bc8dd66d1276479cfc7216d1cd03c54786ff0c40c7252",
   "entry": "5dfd27886c034ef5bc1ec63df442df2f4dc73703e1fc09653c0b060b6746252c",
   "pe_bytes": 2048,
-  "pe_sha256": "afdf2e7370b2ca800ec511338e3b82b0baf6f289757172162d37f9c7793d7f2a",
-  "code_bytes": 757,
+  "pe_sha256": "88b27d0c0782b88d7829760302af668552b4a05a62276d5314e3b625ac8844dc",
+  "code_bytes": 657,
   "imports": [
     "kernel32.dll!ExitProcess",
     "kernel32.dll!GetProcessHeap",

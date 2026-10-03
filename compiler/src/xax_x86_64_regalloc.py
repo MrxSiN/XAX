@@ -171,9 +171,46 @@ def _member_bit_test(register: int, low: int, mask: int, temporary: int) -> byte
 
 
 def _group1_immediate(operation: Operation, register: int, value: int, width: int) -> bytes:
-    """``op r, imm32`` for add/or/and/sub/xor (and cmp as digit 7)."""
+    """``op r, imm`` for add/or/and/sub/xor (and cmp as digit 7); imm8 when it sign-extends to ``value``."""
     digit = 7 if operation is None else _GROUP1[operation]
+    if 0 <= value < 128:
+        return _rex(width > 32, 0, register) + b"\x83" + bytes((0xC0 | (digit << 3) | (register & 7), value))
     return _rex(width > 32, 0, register) + b"\x81" + bytes((0xC0 | (digit << 3) | (register & 7),)) + (value & 0xFFFFFFFF).to_bytes(4, "little")
+
+
+def _compare_immediate(register: int, value: int) -> bytes:
+    """64-bit ``cmp r, imm`` for a bound in 0..2^31-1."""
+    if not 0 <= value < 1 << 31:
+        fail("XAX.NATIVE.MEMORY_ENCODING", "x86_64", "NATIVE-CHECKED-BOUND-ENCODABLE", "0..2^31-1", value)
+    return _group1_immediate(None, register, value, 64)
+
+
+def _scaled_access(opcode: bytes, register: int, base: int, index: int, scale: int, width: int, *, force_rex: bool = False) -> bytes:
+    """``[base + index*scale]`` access of 1/2/4/8 bytes, without a displacement when the base allows it."""
+    rex = 0x40 | (0x08 if width == 8 else 0) | (0x04 if register >= 8 else 0) | (0x02 if index >= 8 else 0) | (0x01 if base >= 8 else 0)
+    prefix = (b"\x66" if width == 2 else b"") + (bytes((rex,)) if rex != 0x40 or force_rex else b"")
+    sib = (scale.bit_length() - 1) << 6 | ((index & 7) << 3) | (base & 7)
+    if base & 7 == 5:  # rbp/r13 bases need a displacement byte
+        return prefix + opcode + bytes((0x44 | ((register & 7) << 3), sib, 0))
+    return prefix + opcode + bytes((0x04 | ((register & 7) << 3), sib))
+
+
+def _scaled_load(register: int, base: int, index: int, scale: int, size: int) -> bytes:
+    """Zero-extending load."""
+    return _scaled_access({1: b"\x0f\xb6", 2: b"\x0f\xb7", 4: b"\x8b", 8: b"\x8b"}[size], register, base, index, scale, 4 if size < 4 else size)
+
+
+def _scaled_store(register: int, base: int, index: int, scale: int, size: int) -> bytes:
+    if size == 1:
+        return _scaled_access(b"\x88", register, base, index, scale, 1, force_rex=4 <= register < 8)
+    return _scaled_access(b"\x89", register, base, index, scale, size)
+
+
+def _scaled_add_immediate(base: int, index: int, scale: int, size: int, value: int) -> bytes:
+    """``add size [base + index*scale], imm`` (read-modify-write); 4/8-byte accesses."""
+    if 0 <= value < 128:
+        return _scaled_access(b"\x83", 0, base, index, scale, size) + bytes((value,))
+    return _scaled_access(b"\x81", 0, base, index, scale, size) + (value & 0xFFFFFFFF).to_bytes(4, "little")
 
 
 def _rotate_right_immediate(register: int, amount: int) -> bytes:
@@ -185,6 +222,8 @@ def _shift_immediate(left: bool, register: int, amount: int, width: int) -> byte
 
 
 def _imul_immediate(destination: int, source: int, value: int, width: int) -> bytes:
+    if 0 <= value < 128:
+        return _rex(width > 32, destination, source) + b"\x6b" + bytes((0xC0 | ((destination & 7) << 3) | (source & 7), value))
     return _rex(width > 32, destination, source) + b"\x69" + bytes((0xC0 | ((destination & 7) << 3) | (source & 7),)) + value.to_bytes(4, "little")
 
 
@@ -276,7 +315,157 @@ def _choose_pins(graph, homes: list[ValueRef], uses_by_block: dict[int, dict[Val
         if any(block in cyclic for block in using):
             weights[value] = sum(_CYCLE_WEIGHT if block in cyclic else 1 for block in using)
     ranked = sorted(weights, key=lambda value: (-weights[value], value.tag, value.block, value.index, value.result))
-    return dict(zip(ranked, PINNABLE))
+
+    def copied(value: ValueRef) -> ValueRef | None:
+        if value.tag != 1 or value.result:
+            return None
+        node = graph.blocks[value.block].nodes[value.index]
+        return node.operands[0] if node.operation in _COPY else None
+
+    # A copy of a pinned value holds the same bits for the rest of the
+    # function, so it shares the source's register instead of taking one.
+    pins: dict[ValueRef, int] = {}
+    free = list(PINNABLE)
+    for value in ranked:
+        if copied(value) not in weights and free:
+            pins[value] = free.pop(0)
+    for value in ranked:
+        source = copied(value)
+        if source in weights:
+            while copied(source) in weights and source not in pins:
+                source = copied(source)
+            if source in pins:
+                pins[value] = pins[source]
+            elif free:
+                pins[value] = free.pop(0)
+    return pins
+
+
+def _reachable(graph, start: int) -> set[int]:
+    """Blocks reachable from ``start`` (including itself)."""
+    seen, stack = set(), [start]
+    while stack:
+        block = stack.pop()
+        if block not in seen:
+            seen.add(block)
+            stack.extend(target for target, _arguments in graph.blocks[block].terminator.edges)
+    return seen
+
+
+def _block_pressure(graph, machine_parameters, uses_by_block, block_index: int, ignored: frozenset = frozenset()) -> int:
+    """Peak number of simultaneously live machine values in a block (an estimate of register demand)."""
+    block = graph.blocks[block_index]
+    last = {value: positions[-1] for value, positions in uses_by_block[block_index].items() if value not in ignored}
+    defined_at = {value: value.index if value.tag == 1 and value.block == block_index else -1 for value in last}
+    peak = 0
+    for position in range(len(block.nodes) + 1):
+        live = sum(1 for value, end in last.items() if defined_at[value] <= position and end > position)
+        live += sum(1 for value, end in last.items() if defined_at[value] == position and end <= position)  # a result needs a register at its definition
+        peak = max(peak, live)
+    return peak
+
+
+def _loop_parameter_slots(graph, machine_parameters, uses_by_block, homes, pinned, registers: int, entry: int) -> dict[ValueRef, int]:
+    """Frame slots for loop pass-through block parameters under register pressure.
+
+    A parameter that its block only forwards on edges, inside a CFG cycle,
+    needs no register.  Parameters joined by such forwarding edges share one
+    slot (a class); a class is kept only when it is closed inside its
+    strongly connected component (every in-component edge into a member
+    passes the same class's member, and members are forwarded only to
+    members), so in-loop edge copies are no-ops and the slot is written on
+    loop entry and read on exit.  Only blocks whose machine parameters plus
+    peak in-block temporaries exceed the allocatable registers qualify, so
+    loops with free registers keep their values in registers.
+    """
+    count = len(graph.blocks)
+    successors = [tuple(target for target, _arguments in block.terminator.edges) for block in graph.blocks]
+
+    def reachable(start: int) -> set[int]:
+        seen, stack = set(), list(successors[start])
+        while stack:
+            block = stack.pop()
+            if block not in seen:
+                seen.add(block)
+                stack.extend(successors[block])
+        return seen
+
+    reach = [reachable(index) for index in range(count)]
+    component = [frozenset({index} | {other for other in reach[index] if index in reach[other]}) if index in reach[index] else frozenset() for index in range(count)]
+
+    def pressure(block_index: int) -> int:
+        return _block_pressure(graph, machine_parameters, uses_by_block, block_index)
+
+    def forwarded_only(value: ValueRef) -> bool:
+        block = graph.blocks[value.block]
+        if value in pinned or value in homes or value.block == entry or not component[value.block]:
+            return False
+        if value in block.terminator.values or any(value in node.operands for node in block.nodes):
+            return False
+        return value in uses_by_block[value.block]
+
+    candidates = {value for values in machine_parameters.values() for value in values if forwarded_only(value)}
+    parent = {value: value for value in candidates}
+
+    def find(value: ValueRef) -> ValueRef:
+        while parent[value] != value:
+            parent[value] = parent[parent[value]]
+            value = parent[value]
+        return value
+
+    for source, block in enumerate(graph.blocks):
+        for target, arguments in block.terminator.edges:
+            for index, argument in enumerate(arguments):
+                destination = ValueRef.parameter(target, index)
+                if argument in candidates and destination in candidates and argument.block == source:
+                    parent[find(argument)] = find(destination)
+    classes: dict[ValueRef, list[ValueRef]] = {}
+    for value in sorted(candidates, key=lambda item: (item.block, item.index)):
+        classes.setdefault(find(value), []).append(value)
+    rejected = set()
+    member_of: dict[tuple[ValueRef, int], ValueRef] = {}
+    for root, members in classes.items():
+        if len({member.block for member in members}) != len(members):
+            rejected.add(root)
+        for member in members:
+            member_of[(root, member.block)] = member
+    # An edge between two blocks of a class must pass the class member to the
+    # class member: then its copy is a no-op and the slot never holds two values.
+    for source, block in enumerate(graph.blocks):
+        for target, arguments in block.terminator.edges:
+            for index, argument in enumerate(arguments):
+                destination = ValueRef.parameter(target, index)
+                if destination not in candidates:
+                    continue
+                root = find(destination)
+                if (root, source) in member_of and member_of[(root, source)] != argument:
+                    rejected.add(root)
+    pressured = {index for index in range(count) if component[index] and pressure(index) > registers}
+    slots: dict[ValueRef, int] = {}
+    for root, members in classes.items():
+        if root in rejected:
+            continue
+        # The slot must serve a loop made only of member blocks (the hot loop);
+        # entry and exit copies then run outside it.
+        blocks = {member.block for member in members}
+
+        def loops_within(start: int) -> bool:
+            seen, stack = set(), [target for target in successors[start] if target in blocks]
+            while stack:
+                block = stack.pop()
+                if block == start:
+                    return True
+                if block not in seen:
+                    seen.add(block)
+                    stack.extend(target for target in successors[block] if target in blocks)
+            return False
+
+        if not any(block in pressured and loops_within(block) for block in blocks):
+            continue
+        slot = len(set(slots.values()))
+        for member in members:
+            slots[member] = slot
+    return slots
 
 
 def compile_register_resident(
@@ -364,10 +553,14 @@ def compile_register_resident(
     def maximum(value: ValueRef, depth: int = 0) -> int | None:
         if value in constants:
             return constants[value]
-        node = definition.get(value)
-        if node is None or depth > 8 or value not in widths:
+        if value not in widths:
             return None
-        limit = (1 << widths[value]) - 1
+        limit = (1 << widths[value]) - 1  # every bits<w> value lies in [0, 2^w)
+        if value.tag == 0:
+            return min(limit, parameter_bound.get(value, limit))
+        node = definition.get(value) if value.result == 0 else None
+        if node is None or depth > 8:
+            return limit
         left = node.operands[0] if node.operands else None
         if node.operation == Operation.UDIV and constants.get(node.operands[1]):
             bound = maximum(left, depth + 1)
@@ -377,11 +570,79 @@ def compile_register_resident(
             return min(bounds) if bounds else limit
         if node.operation == Operation.MUL_WRAP and constants.get(node.operands[1]) is not None:
             bound = maximum(left, depth + 1)
-            return None if bound is None or bound * constants[node.operands[1]] > limit else bound * constants[node.operands[1]]
+            return limit if bound is None or bound * constants[node.operands[1]] > limit else bound * constants[node.operands[1]]
         if node.operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
             bound = maximum(left, depth + 1)
             return limit if bound is None else min(bound, limit)
-        return None
+        if node.operation == Operation.INT_COMPARE:
+            return 1
+        return limit
+
+    # Block-parameter upper bounds (OI-38 range elimination): the maximum over
+    # incoming edges of the argument's bound, refined by an unsigned compare
+    # whose branch selects the edge (``x < y`` on the taken edge bounds x by
+    # max(y) - 1).  Parameters start at 0 and only grow, every transfer is
+    # monotone, and an iteration cap falls back to the width limit.
+    parameter_bound: dict[ValueRef, int] = {
+        ValueRef.parameter(block_index, index): 0
+        for block_index, block in enumerate(graph.blocks) for index in range(len(block.parameters))
+        if block_index != graph.entry and ValueRef.parameter(block_index, index) in widths
+    }
+    _UPPER = {  # (kind, taken edge?) -> how the left operand relates to the right
+        (IntCompare.ULT, True): "lt", (IntCompare.UGE, False): "lt",
+        (IntCompare.ULE, True): "le", (IntCompare.UGT, False): "le",
+        (IntCompare.UGT, True): "gt", (IntCompare.ULE, False): "gt",
+        (IntCompare.UGE, True): "ge", (IntCompare.ULT, False): "ge",
+        (IntCompare.EQ, True): "eq", (IntCompare.NE, False): "eq",
+    }
+
+    def edge_bound(source: int, edge_index: int, argument: ValueRef) -> int | None:
+        bound = maximum(argument)
+        if bound is None:
+            return None
+        terminator = graph.blocks[source].terminator
+        if terminator.kind != TerminatorKind.CONDITIONAL_BRANCH:
+            return bound
+        condition = terminator.values[0]
+        if condition.tag != 1 or condition.block != source or condition.result:
+            return bound
+        compare = graph.blocks[source].nodes[condition.index]
+        if compare.operation != Operation.INT_COMPARE:
+            return bound
+        relation = _UPPER.get((IntCompare(compare.attributes[0]), edge_index == 0))
+        left, right = compare.operands
+        if relation is None or argument not in (left, right):
+            return bound
+        if argument == right:
+            relation = {"lt": "gt", "le": "ge", "gt": "lt", "ge": "le", "eq": "eq"}[relation]
+        other = maximum(right if argument == left else left)
+        if other is None:
+            return bound
+        if relation == "lt":
+            return min(bound, other - 1) if other > 0 else bound
+        if relation in ("le", "eq"):
+            return min(bound, other)
+        return bound
+
+    incoming_arguments = [
+        (source, edge_index, ValueRef.parameter(target, index), argument)
+        for source, block in enumerate(graph.blocks)
+        for edge_index, (target, arguments) in enumerate(block.terminator.edges)
+        for index, argument in enumerate(arguments)
+        if ValueRef.parameter(target, index) in parameter_bound
+    ]
+    for _round in range(4 * len(graph.blocks) + 16):
+        changed = False
+        for source, edge_index, parameter, argument in incoming_arguments:
+            bound = edge_bound(source, edge_index, argument)
+            bound = (1 << widths[parameter]) - 1 if bound is None else min(bound, (1 << widths[parameter]) - 1)
+            if bound > parameter_bound[parameter]:
+                parameter_bound[parameter] = bound
+                changed = True
+        if not changed:
+            break
+    else:
+        parameter_bound = {}
 
     def multiple_of(value: ValueRef, factor: int) -> bool:
         node = definition.get(value)
@@ -479,7 +740,123 @@ def compile_register_resident(
             if node.operation == Operation.ADDRESS_OFFSET and memory_address_uses.get(value) and value not in other_uses and node.attributes[0] < 1 << 31:
                 folded[value] = (node.operands[0], node.attributes[0])
 
+    # Checked accesses whose index is provably in range need no check (OI-38
+    # range elimination).  Such an index ``x * s`` (s = 1/2/4/8, possibly
+    # truncated without loss) used only by these accesses folds into the SIB
+    # scale, so ``x`` is the only register read.
+    use_count = Counter(operand for block in graph.blocks for node in block.nodes for operand in node.operands)
+    use_count.update(value for block in graph.blocks for value in block.terminator.values)
+    use_count.update(value for block in graph.blocks for _target, arguments in block.terminator.edges for value in arguments)
+    checked_access = (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE)
+
+    def access_proven(node) -> bool:
+        bound = maximum(node.operands[1])
+        return bound is not None and bound <= pointer_extent_from_graph(graph, node.operands[0], resolve) - node.attributes[0]
+
+    index_uses: Counter = Counter()
+    for block in graph.blocks:
+        for node in block.nodes:
+            if node.operation in checked_access and access_proven(node):
+                index_uses[node.operands[1]] += 1
+    scaled: dict[ValueRef, tuple[ValueRef, int]] = {}
+    erased_index_nodes: set[ValueRef] = set()
+    for value, count in index_uses.items():
+        if use_count[value] != count or value.tag != 1:
+            continue
+        node = definition.get(value)
+        chain = [value]
+        if node is not None and node.operation == Operation.INT_TRUNCATE and maximum(node.operands[0]) is not None and maximum(node.operands[0]) < 1 << 32:
+            inner = node.operands[0]
+            if use_count[inner] != 1 or inner.tag != 1 or inner.block != value.block:
+                continue
+            chain.append(inner)
+            node = definition.get(inner)
+        if node is None or node.operation != Operation.MUL_WRAP or constants.get(node.operands[1]) not in (2, 4, 8) or node.operands[0] in constants:
+            continue
+        scaled[value] = (node.operands[0], constants[node.operands[1]])
+        erased_index_nodes.update(chain)
+
+    # ``store(p, i, load(p, i) + c)`` with a proven index, where the loaded and
+    # summed values have no other use, is one ``add [p + i*s], c``.
+    read_modify_write: dict[ValueRef, int] = {}  # store node -> constant
+    rmw_erased: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation != Operation.CHECKED_STORE_BITS_LE or node.attributes[0] not in (4, 8) or not access_proven(node):
+                continue
+            pointer, index, total, _memory = node.operands
+            add = definition.get(total)
+            if add is None or add.operation != Operation.ADD_WRAP or total.block != block_index or use_count[total] != 1:
+                continue
+            loaded, addend = add.operands if add.operands[1] in constants else add.operands[::-1]
+            load = definition.get(loaded)
+            if (
+                addend not in constants or not _immediate_fits(constants[addend], 32) or constants[addend] >= 1 << 31
+                or load is None or load.operation != Operation.CHECKED_LOAD_BITS_LE or loaded.block != block_index
+                or load.operands[:2] != (pointer, index) or load.attributes[0] != node.attributes[0] or use_count[loaded] != 1
+                or widths.get(loaded) != 8 * node.attributes[0]
+                or node.operands[3] != ValueRef.node_result(loaded.block, loaded.index, 1)
+            ):
+                continue
+            read_modify_write[ValueRef.node_result(block_index, node_index)] = constants[addend]
+            rmw_erased.update((loaded, total))
+
+    # A value that is an OR tree of ``x == c`` tests (optionally zero-extended)
+    # of one value below 2^32 against constants spanning at most 63 values is
+    # one bit test (ADR-131 applied to values).  Tests with other uses stay.
+    member_values: dict[ValueRef, tuple[ValueRef, int, int]] = {}
+    member_erased: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        for node_index in range(len(block.nodes) - 1, -1, -1):
+            root = ValueRef.node_result(block_index, node_index)
+            if block.nodes[node_index].operation != Operation.BIT_OR or root in member_erased or root not in widths:
+                continue
+            if block_index in membership and node_index in membership[block_index][3]:
+                continue
+            tests, internal, leaves, pending = [], [], [], [root]
+            while pending and tests is not None:
+                value = pending.pop()
+                node = definition.get(value) if value.tag == 1 and value.block == block_index and value.result == 0 else None
+                if node is None:
+                    tests = None
+                elif node.operation == Operation.BIT_OR and (value == root or use_count[value] == 1):
+                    internal.append(value)
+                    pending.extend(node.operands)
+                else:
+                    chain = [value]
+                    if node.operation == Operation.INT_ZERO_EXTEND:
+                        inner = node.operands[0]
+                        node = definition.get(inner) if inner.tag == 1 and inner.block == block_index and inner.result == 0 else None
+                        chain.append(inner)
+                    if (
+                        node is None or node.operation != Operation.INT_COMPARE or IntCompare(node.attributes[0]) != IntCompare.EQ
+                        or node.operands[1] not in constants or node.operands[0] in constants or constants[node.operands[1]] >= 1 << 32
+                    ):
+                        tests = None
+                    else:
+                        tests.append((node.operands[0], constants[node.operands[1]]))
+                        leaves.append(chain)
+            if tests is None or len(tests) < 3 or len({subject for subject, _value in tests}) != 1:
+                continue
+            subject = tests[0][0]
+            bound = maximum(subject)
+            low = min(value for _subject, value in tests)
+            if bound is None or bound >= 1 << 32 or max(value for _subject, value in tests) - low > 62:
+                continue
+            member_values[root] = (subject, low, sum({1 << (value - low) for _subject, value in tests}))
+            member_erased.update(value for value in internal if value != root)
+            for chain in leaves:  # a test with no other use is not computed separately
+                if all(use_count[value] == 1 for value in chain):
+                    member_erased.update(chain)
+    erased_index_nodes |= member_erased
+
+    def operands_of(block_index: int, node_index: int, node) -> tuple[ValueRef, ...]:
+        root = ValueRef.node_result(block_index, node_index)
+        return (member_values[root][0],) if root in member_values else node.operands
+
     def through_fold(value: ValueRef) -> ValueRef:
+        if value in scaled:
+            return scaled[value][0]
         return folded[value][0] if value in folded else value
 
     # Borrowed views a call gives back keep the passed pointer (ADR-101): the
@@ -501,9 +878,11 @@ def compile_register_resident(
         uses: dict[ValueRef, list[int]] = {}
         position = len(block.nodes)
         for node_index, node in enumerate(block.nodes):
+            if ValueRef.node_result(block_index, node_index) in erased_index_nodes or ValueRef.node_result(block_index, node_index) in rmw_erased:
+                continue  # folded into the access that uses it
             use_position = position if fused.get(block_index) == node_index or node_index in membership.get(block_index, (None, 0, 0, frozenset()))[3] else node_index
-            for operand in (item for value in map(through_fold, node.operands) for item in with_aliases(value)):
-                if operand in widths:
+            for operand in (item for value in map(through_fold, operands_of(block_index, node_index, node)) for item in with_aliases(value)):
+                if operand in widths and operand not in rmw_erased:
                     uses.setdefault(operand, []).append(use_position)
             if node.operation == Operation.CALL_DIRECT:  # aliased operands are read again after the call
                 for result, operand in call_aliases.items():
@@ -536,6 +915,35 @@ def compile_register_resident(
         for register in (*target.argument_registers, target.scratch_registers[0], target.result_register, *CALLEE_SAVED)
         if register not in pinned.values()
     )
+    # A 64-bit constant with no imm32 form, used inside a CFG cycle, gets a
+    # free pinnable register loaded once in the prologue (loop-invariant
+    # hoisting) when every cyclic block using it keeps enough registers; every
+    # constant node of that value shares it.
+    cyclic_blocks = {index for index in range(len(graph.blocks)) if any(index in _reachable(graph, successor) for successor in (t for t, _a in graph.blocks[index].terminator.edges))}
+    wide_uses: dict[int, set[int]] = {}
+    for block_index in cyclic_blocks:
+        for value in uses_by_block[block_index]:
+            if value in constants and not _immediate_fits(constants[value], 64):
+                wide_uses.setdefault(constants[value], set()).add(block_index)
+    hoisted_constants: dict[int, int] = {}
+    for constant in sorted(wide_uses, key=lambda item: (-len(wide_uses[item]), item)):
+        free = [register for register in PINNABLE if register in allocatable]
+        if not free:
+            break
+        demand = max(
+            _block_pressure(graph, machine_parameters, uses_by_block, block_index, frozenset(constants) | frozenset(
+                value for value in machine_parameters[block_index]
+                if all(position == len(graph.blocks[block_index].nodes) for position in uses_by_block[block_index].get(value, ()))))
+            for block_index in wide_uses[constant]
+        )
+        if demand > len(allocatable) - 1:
+            continue
+        register = free[-1]
+        hoisted_constants[constant] = register
+        allocatable = tuple(item for item in allocatable if item != register)
+    for value, constant in constants.items():
+        if constant in hoisted_constants:
+            pinned[value] = hoisted_constants[constant]
 
     # Win64 foreign calls pass arguments past the fourth on the stack, above
     # the 32-byte shadow space; reserve the largest such outgoing area.
@@ -552,8 +960,11 @@ def compile_register_resident(
     edge_spill_base = shadow
     home_base = edge_spill_base + edge_spill_count * 8
     home_offset = {value: home_base + index * 8 for index, value in enumerate(homes)}
+    parameter_slot = _loop_parameter_slots(graph, machine_parameters, uses_by_block, homes, pinned, len(allocatable), graph.entry)
+    slot_base = home_base + len(homes) * 8
+    parameter_slot = {value: slot_base + 8 * slot for value, slot in parameter_slot.items()}
     stack_offset: dict[ValueRef, int] = {}
-    cursor = home_base + len(homes) * 8
+    cursor = slot_base + 8 * len(set(parameter_slot.values()))
     for value, extent, alignment in stack_storage:
         cursor = _align(cursor, alignment)
         stack_offset[value] = cursor
@@ -585,7 +996,7 @@ def compile_register_resident(
         for target_block, arguments in block.terminator.edges:
             for index, value in enumerate(machine_parameters[target_block]):
                 argument = arguments[value.index]
-                if argument.tag == 1 and argument.block == block_index and edge_uses[argument] == 1 and value not in pinned and index < len(allocatable):
+                if argument.tag == 1 and argument.block == block_index and edge_uses[argument] == 1 and value not in pinned and value not in parameter_slot and index < len(allocatable):
                     edge_hints[argument] = allocatable[index]
         last_use = {value: positions[-1] for value, positions in uses.items()}
         register_for: dict[ValueRef, int] = {}
@@ -872,9 +1283,12 @@ def compile_register_resident(
                 if argument in widths and destination in widths:
                     pairs.append((argument, destinations.index(destination), destination))
             for source, index, destination in pairs:
-                if index < len(allocatable) or destination in pinned:
+                if destination in parameter_slot:
+                    destination_offset = parameter_slot[destination]
+                elif index < len(allocatable) or destination in pinned:
                     continue
-                destination_offset = edge_spill_base + (index - len(allocatable)) * 8
+                else:
+                    destination_offset = edge_spill_base + (index - len(allocatable)) * 8
                 kind, source_location = location(source)
                 if kind == "reg":
                     emit(_store(source_location, destination_offset, 8))
@@ -886,6 +1300,8 @@ def compile_register_resident(
                     emit(_store(_SCRATCH, destination_offset, 8))
             moves, delayed = [], []
             for source, index, destination in pairs:
+                if destination in parameter_slot:
+                    continue
                 if destination in pinned:
                     register = pinned[destination]
                 elif index < len(allocatable):
@@ -926,6 +1342,8 @@ def compile_register_resident(
         for index, value in enumerate(machine_parameters[block_index]):
             if value in pinned:
                 bind(value, pinned[value])  # edges write pinned parameters directly
+            elif value in parameter_slot:
+                spill_offset[value] = parameter_slot[value]
             elif index < len(allocatable):
                 bind(value, allocatable[index])
             else:
@@ -946,9 +1364,23 @@ def compile_register_resident(
                 continue  # emitted as a bit test by the terminator
             start = len(assembler.code) if assembler is not None else 0
             result = ValueRef.node_result(block_index, node_index)
+            if result in erased_index_nodes or result in rmw_erased:
+                continue  # emitted by the access that uses it
             hint["value"] = result
             operation = node.operation
             machine_operands = tuple(operand for operand in node.operands if operand in widths)
+
+            if result in member_values:
+                subject, low, mask = member_values[result]
+                register = ensure(subject, node_index)
+                retire(node_index, subject)
+                destination = acquire(node_index, {subject} if subject in register_for else set())
+                emit(_member_bit_test(register, low, mask, destination))
+                emit(_setcc_register(IntCompare.ULT, destination))  # setc: the tested bit
+                define(result, destination)
+                if assembler is not None and ranges is not None:
+                    ranges.append(ArtifactSemanticRange(function.cid, block_index, node_index, start, len(assembler.code)))
+                continue
 
             if operation in _PURE_BINARY and immediate(node.operands[1], widths[result]) is None and operation in _COMMUTATIVE and immediate(node.operands[0], widths[result]) is not None:
                 node_operands = (node.operands[1], node.operands[0])
@@ -965,6 +1397,10 @@ def compile_register_resident(
                     emit(_shift_immediate(True, destination, shift, width))
                 elif operation == Operation.MUL_WRAP:
                     emit(_imul_immediate(destination, destination, value, width))
+                elif operation == Operation.ADD_WRAP and width == 32 and (maximum(left) or 0) + value < 1 << 32:
+                    # No 32-bit carry is possible, so the 64-bit add gives the same zero-extended
+                    # value; 64-bit add-immediate is cheaper on recent cores (an induction step).
+                    emit(_group1_immediate(operation, destination, value, 64))
                 else:
                     emit(_group1_immediate(operation, destination, value, width))
                 if width < 64 and width != 32:
@@ -1064,11 +1500,17 @@ def compile_register_resident(
                 pass  # emitted as cmp+jcc by the terminator
 
             elif operation == Operation.INT_COMPARE:
+                # xor-zero the result before the compare, then setcc: no movzx and
+                # no false dependency on the register's previous value.
                 left, right = node.operands
+                ensure(left, node_index)
+                if immediate(right, widths[left]) is None:
+                    ensure(right, node_index, {left})
+                register = acquire(node_index, {left, right})
+                emit(_zero32(register))
                 emit_compare(node_index, left, right)
                 retire(node_index, left, right)
-                register = acquire(node_index, {left, right})
-                emit(_setcc_register(IntCompare(node.attributes[0]), register))
+                emit(_setcc_register(IntCompare(node.attributes[0]), register)[:-3 - (register >= 4)])
                 define(result, register)
 
             elif operation == Operation.ROTATE_RIGHT:
@@ -1092,6 +1534,10 @@ def compile_register_resident(
                     emit(_and_immediate(register, (1 << width) - 1, width=32))
                 retire(node_index, source)
                 define(result, register)
+
+            elif operation in _COPY and result in pinned and pinned[result] == pinned.get(source := node.operands[0]):
+                bind(result, pinned[result])  # the copy shares its pinned source's register
+                retire(node_index, source)
 
             elif operation in _COPY:
                 source = node.operands[0]
@@ -1149,7 +1595,7 @@ def compile_register_resident(
                     shift = alignment.bit_length() - 1
                     if shift:
                         emit(_rotate_right_immediate(_SCRATCH, shift))
-                    emit(_cmp_imm32(_SCRATCH, span >> shift))
+                    emit(_compare_immediate(_SCRATCH, span >> shift))
                     trap_if(0x87, b"\x0f\x0b")
                 register = destination_for(node_index, address, {view})
                 retire(node_index, view, address)
@@ -1198,26 +1644,34 @@ def compile_register_resident(
                     emit(_store_exact(value_register, base, displacement, size))
                     retire(node_index, pointer, value)
                 else:
-                    index_value = node.operands[1]
-                    maximum = pointer_extent_from_graph(graph, pointer, resolve) - size
+                    index_value, scale = scaled.get(node.operands[1], (node.operands[1], 1))
+                    last_offset = pointer_extent_from_graph(graph, pointer, resolve) - size
                     index = ensure(index_value, node_index, {pointer})
-                    if maximum < 0:
+                    if last_offset < 0:
                         emit(b"\x0f\x0b")
-                    elif (pointer, index_value, maximum) in checked:
-                        pass  # an earlier check in this block already proved this exact access
+                    elif access_proven(node) or (pointer, index_value, last_offset) in checked:
+                        pass  # value ranges, or an earlier check in this block, prove this exact access
                     else:
-                        checked.add((pointer, index_value, maximum))
-                        emit(_cmp_imm32(index, maximum))
+                        checked.add((pointer, index_value, last_offset))
+                        emit(_compare_immediate(index, last_offset))
                         trap_if(0x87, b"\x0f\x0b")  # ja: unsigned index above the last valid offset
-                    if operation == Operation.CHECKED_LOAD_BITS_LE:
-                        register = acquire(node_index, {pointer, index_value})
-                        emit(_base_index_load(register, base, index, 0, size))
+                    if result in read_modify_write:
+                        emit(_scaled_add_immediate(base, index, scale, size, read_modify_write[result]))
+                        retire(node_index, pointer, index_value)
+                    elif operation == Operation.CHECKED_LOAD_BITS_LE:
+                        hinted = edge_hints.get(result)
+                        if consumable(index_value, node_index) and index_value != pointer and (hinted is None or hinted == index or hinted in value_for_register):
+                            register = index  # the index dies here; load into it
+                            unbind(index_value)
+                        else:
+                            register = acquire(node_index, {pointer, index_value})
+                        emit(_scaled_load(register, base, index, scale, size))
                         retire(node_index, pointer, index_value)
                         define(result, register)
                     else:
                         value = node.operands[2]
                         value_register = ensure(value, node_index, {pointer, index_value})
-                        emit(_base_index_store(value_register, base, index, 0, size))
+                        emit(_scaled_store(value_register, base, index, scale, size))
                         retire(node_index, pointer, index_value, value)
 
             elif operation == Operation.CALL_DIRECT:
@@ -1412,6 +1866,8 @@ def compile_register_resident(
     for index, value in enumerate(machine_parameters[graph.entry]):
         if value in pinned:
             assembler.emit(_move_register(pinned[value], allocatable[index], 64))
+    for constant, register in sorted(hoisted_constants.items(), key=lambda item: item[1]):
+        assembler.emit(_load_constant(register, constant))
     if graph.entry:
         assembler.relative(b"\xe9", f"block-{graph.entry}")
     ranges: list[ArtifactSemanticRange] = []
