@@ -477,7 +477,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** One importer over two unrelated ecosystems (e.g. the existing Android classfile importer plus a Win32/C header source) producing packages consumed by executed programs, with measured package size, import latency, declaration error rate, and AI tokens to call an imported API versus a hand-built declaration.
 
-**Status.** OPEN. Hand-built bounded packages exist (`xax_platform.posix_android_api`, `xax_platform.win32_kernel32_api`); the Android SDK classfile importer is structural only.
+**Status.** OPEN (partially addressed, ADR-127). Hand-built bounded packages exist (`xax_platform.posix_android_api`, `xax_platform.win32_kernel32_api`); the Android SDK classfile importer is structural only. The C header importer (`xax_c_import`) is the second ecosystem: it reproduces hand-built declarations byte for byte, an imported stdio program executes, and coverage, latency, and package size are measured (`c_import_evidence.json`). Still missing for closure: an executed program over the classfile importer's output, a declaration error rate measured against curated metadata, and the AI-token comparison against hand-built declarations.
 
 ## OI-33 — Hosted process lifecycle, unwind, and TLS contracts
 

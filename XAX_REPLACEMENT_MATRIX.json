@@ -328,7 +328,9 @@
           "compiler/tests/test_xax_linux.py",
           "compiler/benchmarks/u1_linux_filestat_evidence.json",
           "compiler/benchmarks/linux_c_interop_evidence.json",
-          "compiler/benchmarks/linux_qsort_evidence.json"
+          "compiler/benchmarks/linux_qsort_evidence.json",
+          "compiler/tests/test_xax_c_import.py",
+          "compiler/benchmarks/c_import_evidence.json"
         ],
         "atomics": [
           "STRUCTURAL",

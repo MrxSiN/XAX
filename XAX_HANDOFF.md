@@ -223,3 +223,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `benchmarks/jsonmin.py` builds the program (`build_jsonmin(arch)`), states the contract (`reference_jsonmin`), and measures it (`python -m benchmarks.jsonmin --write`). `src/xax_structured.py` is the construction helper; call `drop()` on a linear token a node consumes, or it rides later edges twice (`RESOURCE-LINEAR-CONTINUATION`).
 - To reach R4: keep parser state in registers instead of the context view (pass position and output length as scalars and return them packed), prune dead names at joins in `Proc`, and read straight into the input view (a `pointer_rebase` window instead of the chunk copy).
 
+## C header import — 2026-10-03 (ADR-127)
+
+- `import_c_functions(headers, soname, names, abi=..., overrides={...}, flags=[...])`; use `.function(name).inputs/.outputs` for node types and `.objects` for the store. POSIX names need `flags=["-D_GNU_SOURCE"]` (the importer parses as C11).
+- Next: by-value struct ABI classification (OI-40) to import struct returns; typed argument packs for variadics; an executed program over the Android classfile importer (closes OI-32 together with the token comparison).
+

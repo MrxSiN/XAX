@@ -736,3 +736,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Fixed: narrow-width register binary operations on the Linux x86-64 allocator; extents of pointers that calls give back.
 - Full suite: 840 passed, 17 skipped.
 
+## C header import (ADR-127) — 2026-10-03
+
+- `xax_c_import` turns C prototypes (clang JSON AST) into canonical foreign declarations. It is byte-identical to the hand-built `crc32`, libm, and `strlen` declarations, and an XAX program using imported glibc stdio executes. Coverage: 855 of 1,084 functions across zlib.h, string.h, stdio.h, and math.h; the rest are refused with reasons (variadics, by-value types).
+
