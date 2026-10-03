@@ -224,7 +224,7 @@
       },
       "blockers": [
         "emitted modules have no imports: no WASI, no browser/DOM bindings, no generated JS glue",
-        "indirect calls and reentrant stack lowering absent"
+        "indirect calls absent; recursive functions cannot use stack allocations or aggregates (no shadow stack yet; scalar recursion executes, ADR-125)"
       ]
     },
     {
@@ -268,7 +268,7 @@
       "blockers": [
         "three WASI imports only (args_sizes_get, fd_write, proc_exit); no files/clocks/sockets",
         "provenance-carrying pointers in memory (OI-37) absent",
-        "recursion/reentrant stack lowering absent"
+        "recursive functions cannot use stack allocations or aggregates (no shadow stack yet; scalar recursion executes, ADR-125)"
       ]
     },
     {
@@ -571,7 +571,7 @@
         ]
       },
       "blockers": [
-        "no practical application yet (R3): scalar subset only - no linear memory, aggregates, sums, recursion groups, or indirect calls on this target",
+        "no practical application yet (R3): scalar subset only - no linear memory, aggregates, sums, or indirect calls (recursion executes, ADR-125) on this target",
         "JVM objects only arrive as foreign results: no object/array/string construction, no JVM-to-XAX callbacks (interfaces)",
         "collatz kernel 1.03-1.04x javac on the same HotSpot; class file 1.51x javac because block parameters are not coalesced (OI-35)",
         "no classfile metadata importer: java.base declarations are hand-written (OI-32)"
@@ -632,7 +632,7 @@
         "four bindings (query, body text read/write, body click); no element addressing, timers, fetch, canvas, or WebGPU",
         "no Web IDL importer (OI-32); no static storage, so cross-event state lives in the DOM",
         "no comparison against Emscripten/Rust wasm toolchains (R4)",
-        "recursion/reentrant stack lowering absent on wasm32"
+        "recursive functions cannot use stack allocations or aggregates (no shadow stack yet; scalar recursion executes, ADR-125)"
       ]
     },
     {

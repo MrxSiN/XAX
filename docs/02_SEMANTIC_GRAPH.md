@@ -98,7 +98,7 @@ Naive content hashing cannot represent cyclic function hashes. Mutually recursiv
 - is content-addressed as one immutable object;
 - exposes a persistent function identity as group identity plus member index.
 
-Non-recursive functions MUST use the standalone acyclic `function` encoding; a group MUST hold exactly one recursive strongly connected component in canonical member order (`XAX_SPEC.md` §3.3). Recursion otherwise has ordinary call semantics and introduces no mandatory runtime, scheduler, allocation, or stack policy.
+Non-recursive functions MUST use the standalone acyclic `function` encoding; a group MUST hold exactly one recursive strongly connected component in canonical member order (`XAX_SPEC.md` §3.3). Recursion otherwise has ordinary call semantics and introduces no mandatory runtime, scheduler, allocation, or stack policy. The member identity is callable from outside the group through a group member function (`XAX_SPEC.md` §3.3, ADR-125).
 
 ---
 

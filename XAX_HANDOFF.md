@@ -213,3 +213,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `xax_spirv.py` (compiler + `run_spirv_kernel` harness + `reference_dispatch`), kernels in `benchmarks/spirv_kernels.py`. Host setup: `apt-get install mesa-vulkan-drivers libvulkan1 spirv-tools glslang-tools` and `pip install vulkan`. Keep nested Vulkan create-info structs in named variables: inline temporaries in the bindings dangle (`VK_ERROR_UNKNOWN` at pipeline creation).
 - Next: structured lowering for reducible CFGs (the 6.9×), floats, then an XAX host program that drives Vulkan through `sysv-x86_64-c` imports (R2), then a physical GPU (OI-34).
 
+## Recursion — 2026-10-03 (ADR-125)
+
+- `group_member_function(group, k)` is the callable member identity; `parse_function_graph(function, resolve)` is the lowering view every backend now uses instead of `_parse_graph` for function bodies. New backends must use it too, or they will see raw `call.group_member` nodes.
+- Next: wasm shadow stack for recursive frames; a workspace mutation that creates member functions; a verified stack-depth bound where a real-time profile asks for one.
+
