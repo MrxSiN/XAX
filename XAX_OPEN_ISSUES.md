@@ -517,7 +517,7 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Evidence that closes it.** At least two library families (e.g. slices/text and allocators/collections) used by an executed application, with measured code/data contribution per used feature, compile cost, and AI query/mutation tokens.
 
-**Status.** OPEN. Only zero-copy byte slices and bounded foreign heap contracts exist.
+**Status: CLOSED (2026-10-03, ADR-130).** Answer: the package is a canonical `PACKAGE` object, the linking unit is the function (an application references exports by CID, and canonical stores hold only the reachable closure, so unused exports and packages contribute zero bytes), and specialization is static instantiation (each extent or capacity is its own package with its own CIDs). Closing evidence: `uniqcount` uses the `xax.text` and `xax.collections.hashset_u64` families and is EXECUTED on Linux x86-64 natively and on Linux AArch64 under qemu-aarch64, matching the reference. MEASURED (`oi36_stdlib_evidence.json`): code per used export (x86-64: 130 to 326 bytes), store bytes per instance (2,112 to 4,077), compile cost (11 ms build, 1.6 ms verify, 60 ms lower), and offline AI tokens (a 268-token interface view; 1,360 tokens for the application's mutation, against 3,256 with the bodies inline). Not covered: a model trial (R5), versioning policy beyond the identity, and in-graph type parameters.
 
 ## OI-37 — Pointer values stored in memory
 

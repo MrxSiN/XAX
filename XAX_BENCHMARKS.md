@@ -763,3 +763,18 @@ Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified.
 | gcc -O2 -static | 28.5 ms | 1.05× | 1.12× | 13,000 KiB | 706,584 (static) |
 
 The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program changes (a 0 sentinel byte after the input instead of bounds compares, parser state passed as one `bits<64>` instead of through a context view, reads straight into the input view through a `pointer_rebase` window) and one compiler change (`ror` on the Linux register allocator) cut executed instructions on a 1 MiB input from 60.4M to 36.7M (gcc -O2: 20.8M, Valgrind). Not competitive in time, so the Linux row is R3, not R4. Peak RSS and binary size are the smallest of all arms. Most of the remaining gap is in the whitespace and string loops, where each small-set membership test (`c == ' ' || c == '\t' || …`) becomes `sete`/`or` chains instead of a compare chain or a bit test. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
+
+### 15.13 Standard libraries in `uniqcount` (ADR-130, OI-36; MEASURED, 2026-10-03)
+
+`uniqcount` counts the distinct decimal numbers on stdin. It calls four exports of three package instances: `xax.text` at the 1,114,112-byte input extent (`find_digits`, `parse_u64`), `xax.text` at the 32-byte output extent (`format_u64`), and `xax.collections.hashset_u64` at capacity 65,536 (`insert`). Every run matches `reference_uniqcount` on x86-64 (native) and AArch64 (qemu-aarch64).
+
+| Function | x86-64 bytes | AArch64 bytes (frame path) | Graph nodes |
+|---|---:|---:|---:|
+| `uniqcount` entry | 1,145 | 5,580 | 73 |
+| `hashset_u64.insert` | 326 | 2,656 | 42 |
+| `text.find_digits` | 232 | 2,508 | 34 |
+| `text.format_u64` | 258 | 1,184 | 21 |
+| `text.parse_u64` | 130 | 1,412 | 20 |
+| artifact | 2,306 | 13,748 | |
+
+Unused exports (`contains`, `skip_spaces`, and the other instance's functions) and the package objects are absent from the 2,306-byte artifact and from the store. Cost (medians of 5): building the packages takes 10.8 ms, verifying the store 1.6 ms, and compiling 60.3 ms on x86-64 and 37.2 ms on AArch64. Offline tokens (tiktoken o200k_base; no model run): the interface view of the four exports is 268 tokens, and the application's node rendering is 1,360 tokens. Writing the four bodies inline would take 3,256 tokens (190 nodes). Source: `compiler/benchmarks/bench_oi36_stdlib.py`; data: `oi36_stdlib_evidence.json`.

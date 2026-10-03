@@ -1201,6 +1201,8 @@ A board package (ADR-128) is target profile 5: the profile-2 concurrency section
 
 The standard ecosystem is a set of independently linked semantic packages (allocators, arenas, text, slices, arrays, maps, sets, numerics, big integers, filesystem, sockets, HTTP, TLS integration, threads, synchronization, event loops, serialization, compression, cryptography interfaces, graphics, audio, database interfaces, SIMD, tensors, GPU compute). There is no mandatory runtime: unused packages contribute zero code and data, and every package's runtime semantics are explicit effects, resources, and capabilities.
 
+Package form (ADR-130). A library is a `PACKAGE` object whose logical identity is `name/version/parameters`, with one `MODULE` of functions and one named build entry per export. Applications call exports by CID, so a program store contains exactly the exports it reaches (unreachable objects are rejected, §3). Families are instantiated per static parameter (view extent, capacity); an instance's view types are part of each export's interface, and a call with another instance's view is rejected (`GRAPH-CALL-CONTRACT`). Library functions take memory only as borrowed heap-view triples and never allocate. Implemented families: `xax.text` and `xax.collections.hashset_u64` (`compiler/src/xax_stdlib.py`).
+
 ### 21.11 Observability
 
 Semantic-to-machine maps, crash/stack mapping where platforms permit, disassembly maps, profiling, debugger integration, coverage, and instrumentation/sanitizer builds are derived, non-authoritative views (§9.8, ADR-030). Instrumented builds are distinct build policies; their artifacts never become source and never alter release semantics.
