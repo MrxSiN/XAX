@@ -2504,15 +2504,50 @@ FOREIGN_ABIS = (ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_6
 # requires ``ptr<opaque<function>>``) can never call it with the wrong convention.
 # A browser host calls event entries with the page authority it holds (ADR-104).
 WASM32_BROWSER_EVENT_ABI = b"wasm32-browser-event"
-FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, ANDROID_AAPCS64_C_ABI, WASM32_BROWSER_EVENT_ABI)
+# A SysV entry that reads one view lent by the foreign call receiving it
+# (ADR-115, OI-42).  The view's pointer and token types are part of the
+# entry type, so the call site can check that it lends exactly that view.
+LEND_ENTRY_ABI = b"sysv-x86_64-c-lend"
+FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, ANDROID_AAPCS64_C_ABI, WASM32_BROWSER_EVENT_ABI, LEND_ENTRY_ABI)
 _CODE_ENTRY_PREFIX = b"code-entry:"
+_LEND_ENTRY_PREFIX = _CODE_ENTRY_PREFIX + LEND_ENTRY_ABI + b":"
 
 
 def foreign_entry_code_type(abi: bytes) -> SemanticObject:
     """Opaque code element of a foreign entry address type."""
-    if abi not in FOREIGN_ENTRY_ABIS:
-        raise ValueError("unsupported foreign entry ABI")
+    if abi not in FOREIGN_ENTRY_ABIS or abi == LEND_ENTRY_ABI:
+        raise ValueError("unsupported foreign entry ABI (lend entries use lend_entry_pointer_type)")
     return opaque_identity_type(_CODE_ENTRY_PREFIX + abi)
+
+
+def lend_entry_code_type(view_pointer: SemanticObject, view: SemanticObject) -> SemanticObject:
+    """Opaque code element of a lend entry over views typed ``(view_pointer, view)``."""
+    if _heap_view_info(view) is None or _decode_pointer_space(view_pointer) != 2:
+        raise ValueError("a lend entry names a space-2 view pointer type and a heap view type")
+    return opaque_identity_type(_LEND_ENTRY_PREFIX + view_pointer.cid + view.cid)
+
+
+def lend_entry_pointer_type(view_pointer: SemanticObject, view: SemanticObject) -> SemanticObject:
+    """A C-callable entry that reads the view a foreign call lends it (ADR-115).
+
+    The callee takes C scalars followed by exactly this read-only view triple
+    ``(view_pointer, view, memory)``, which C passes back as the callback's
+    context argument, and returns one integer plus the triple unchanged.
+    """
+    return pointer_type(lend_entry_code_type(view_pointer, view), Permission.READ, 8)
+
+
+def lend_entry_view(pointer: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, bytes] | None:
+    """``(view pointer type CID, view type CID)`` of a lend entry type, else ``None``."""
+    try:
+        element, _permission, _alignment = _decode_pointer_type(pointer, resolve)
+        identity = _decode_opaque_identity_type(resolve(element))
+    except XaxError:
+        return None
+    if not identity.startswith(_LEND_ENTRY_PREFIX) or len(identity) != len(_LEND_ENTRY_PREFIX) + 2 * CID_SIZE:
+        return None
+    rest = identity[len(_LEND_ENTRY_PREFIX):]
+    return rest[:CID_SIZE], rest[CID_SIZE:]
 
 
 def foreign_entry_pointer_type(abi: bytes) -> SemanticObject:
@@ -2527,6 +2562,8 @@ def foreign_entry_abi(pointer: SemanticObject, resolve: Callable[[bytes], Semant
         identity = _decode_opaque_identity_type(resolve(element))
     except XaxError:
         return None
+    if identity.startswith(_LEND_ENTRY_PREFIX):
+        return LEND_ENTRY_ABI
     return identity[len(_CODE_ENTRY_PREFIX):] if identity.startswith(_CODE_ENTRY_PREFIX) else None
 
 
@@ -3918,6 +3955,64 @@ def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], S
     if node.operation == Operation.POINTER_REBASE:
         return node.attributes[0]
     fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "stack allocation, heap view, or derived pointer", node.operation)
+
+
+def _lend_entry_admissible(entry_type: SemanticObject, parameters: Sequence[bytes], returns: Sequence[bytes], resolve: Callable[[bytes], SemanticObject]) -> bool:
+    """A lend entry's callee: C scalars, then the named read-only initialized view triple (ADR-115).
+
+    It returns one integer and the triple unchanged; the callee's own
+    verification then holds it to the borrowed-view rules (whole, live,
+    returned in order) and to the view's READ permission.
+    """
+    view_pointer, view = lend_entry_view(entry_type, resolve)
+    if len(parameters) < 3 or tuple(parameters[-3:-1]) != (view_pointer, view) or not _is_memory_effect(resolve(parameters[-1])):
+        return False
+    info = _heap_view_info(resolve(view))
+    _element, permission, _alignment = _decode_pointer_type(resolve(view_pointer), resolve)
+    scalars = parameters[:-3]
+    return (
+        info is not None and info[1] and permission == Permission.READ
+        and not any(_is_proof_type(resolve(cid)) for cid in scalars)
+        and len(returns) == 4 and tuple(returns[1:]) == tuple(parameters[-3:])
+        and resolve(returns[0]).body[:1] == b"\x01"
+    )
+
+
+def _verify_lend_entries(
+    graph: SemanticObject,
+    node: "_ParsedNode",
+    declaration: "ForeignFunctionDescription",
+    resolve: Callable[[bytes], SemanticObject],
+    pointers: dict[ValueRef, _PointerFact],
+    effects: dict[ValueRef, _EffectFact],
+    ended: set[tuple[int, int]],
+) -> None:
+    """A lend entry may only go to a C call that lends it the view it reads (ADR-115).
+
+    The call must pass a whole, live, initialized view of the entry's extent
+    together with that storage's memory effect, and must return a memory
+    effect, so the borrow cannot outlive the call.  A declaration that keeps
+    the entry (``atexit``) lends no view and rejects.
+    """
+    for cid in node.operand_types:
+        named = lend_entry_view(resolve(cid), resolve)
+        if named is None:
+            continue
+        extent = _heap_view_info(resolve(named[1]))[0]
+        lent = False
+        if declaration.abi == SYSV_X86_64_C_ABI and any(_is_memory_effect(resolve(item)) for item in node.results):
+            views = {
+                fact.storage for ref in node.operands
+                for fact in (pointers.get(ref),)
+                if isinstance(fact, _PointerFact) and not fact.offset and not fact.window and fact.extent == extent and fact.storage not in ended
+            }
+            lent = any(
+                fact is not None and fact.storage in views and _range_initialized(fact.initialized, 0, extent)
+                for ref, item in zip(node.operands, node.operand_types) if _is_memory_effect(resolve(item))
+                for fact in (effects.get(ref),)
+            )
+        if not lent:
+            fail("XAX.FOREIGN.LEND", graph.cid.hex(), "LEND-ENTRY-VIEW-LENT", f"a sysv-x86_64-c call lending a whole initialized {extent}-byte view and returning its memory effect", declaration.name.decode("ascii", "replace"))
 
 
 def _verify_foreign_heap_call(
@@ -6083,7 +6178,9 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     entry_abi = foreign_entry_abi(result_type, resolve)
                     if entry_abi is not None:
                         _graph, callee_parameters, callee_returns = _decode_function_interface(node.entity, resolve)
-                        if entry_abi == WASM32_BROWSER_EVENT_ABI:
+                        if entry_abi == LEND_ENTRY_ABI:
+                            admissible = _lend_entry_admissible(result_type, callee_parameters, callee_returns, resolve)
+                        elif entry_abi == WASM32_BROWSER_EVENT_ABI:
                             # The host supplies the entry's declared authority and takes it back
                             # (ADR-104).  Memory effects name storage the host cannot vouch for.
                             admissible = callee_parameters == callee_returns and all(
@@ -6094,7 +6191,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                             # entry with effects or resources would hide them (ADR-102).
                             admissible = entry_abi in FOREIGN_ENTRY_ABIS and not any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns))
                         if not admissible:
-                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else"}, entry_abi.decode("ascii", "replace"))
+                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else", "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple"}, entry_abi.decode("ascii", "replace"))
                     elif not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                 elif node.operation == Operation.CALL_FOREIGN:
@@ -6105,6 +6202,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         fail("XAX.FOREIGN.ABI", obj.cid.hex(), "FOREIGN-CALL-ABI", [abi.decode() for abi in FOREIGN_ABIS], declaration.abi.decode("ascii", "replace"))
                     if operand_types != declaration.inputs or node.results != declaration.outputs:
                         fail("XAX.FOREIGN.CALL", obj.cid.hex(), "FOREIGN-CALL-CONTRACT", [[cid.hex() for cid in declaration.inputs], [cid.hex() for cid in declaration.outputs]], [[cid.hex() for cid in operand_types], [cid.hex() for cid in node.results]])
+                    _verify_lend_entries(obj, node, declaration, resolve, pointers, effects, ended)
                     _verify_foreign_heap_call(
                         obj, blocks, block_index, node_index, node, declaration, resolve,
                         pointers, owners, effects, effect_consumers, owner_consumers, ended, heap_allocations,

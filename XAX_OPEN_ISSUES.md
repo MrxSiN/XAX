@@ -563,7 +563,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 ## OI-40 — Breadth of the SysV C ABI on Linux
 
-**Status:** OPEN (partially addressed, ADR-102). `sysv-x86_64-c` lowers register-passed scalars: up to six INTEGER-class and eight SSE-class (f32/f64) arguments, and one scalar result. Pure C-to-XAX callbacks run through a compiler-generated adapter, typed by a `code-entry:sysv-x86_64-c` code-address type. Executed: libc `tsearch`/`tfind` with an XAX comparator, and libm `ldexp`/`pow`/`sqrtf` (`linux_c_interop_evidence.json`). Still missing: callbacks that read memory the C caller passes (OI-42), aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. The original closure program (`qsort` with an XAX comparator) depends on OI-42.
+**Status:** OPEN (partially addressed, ADR-102). `sysv-x86_64-c` lowers register-passed scalars: up to six INTEGER-class and eight SSE-class (f32/f64) arguments, and one scalar result. Pure C-to-XAX callbacks run through a compiler-generated adapter, typed by a `code-entry:sysv-x86_64-c` code-address type. Executed: libc `tsearch`/`tfind` with an XAX comparator, and libm `ldexp`/`pow`/`sqrtf` (`linux_c_interop_evidence.json`). Still missing: callbacks that read memory the C caller passes (OI-42), aggregates by value and by memory, stack arguments, variadics through typed argument packs, symbol versioning, and direct binding. The original closure program, `qsort` with an XAX comparator, now runs as `qsort_r` with a lend entry (ADR-115, OI-42 closed).
 
 ## OI-41 — Check-free pointer reloads (typed mixed storage)
 
@@ -589,7 +589,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Evidence that closes it.** An executed `qsort` (or `bsearch`) program whose XAX comparator reads elements of an XAX-owned array. It needs negative vectors for using the borrow after the foreign call returns, for writing through a read-only lent view, and for a callback stored past the call (for example, registered with `atexit`).
 
-**Status:** OPEN.
+**Status: CLOSED (2026-10-03, ADR-115).** Candidate (a) was implemented as lend entries (`sysv-x86_64-c-lend`). Closing evidence: glibc `qsort_r` sorts an XAX-owned 16-element heap array with an XAX comparator that reads elements through the lent view (EXECUTED, exit 117; the descending comparator yields the descending checksum). Negative vectors: the entry kept past the call via `atexit` (`LEND-ENTRY-VIEW-LENT`), a call lending no view, a write through the lent view (`MEMORY-WRITE-PERMISSION`), a writable lent view, a view of another extent, and a callback returning a pointer into the view (`GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY`). `test_xax_lend_entry.py`, `linux_qsort_evidence.json`.
 
 ## OI-43 — Browser event entries (host-invoked XAX entry points)
 

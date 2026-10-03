@@ -58,6 +58,7 @@ from xax_compiler import (
     decode_float_width,
     decode_foreign_function,
     foreign_entry_abi,
+    LEND_ENTRY_ABI,
     value_bit_width,
     decode_native_target,
     fail,
@@ -801,7 +802,7 @@ _SYSV_ENTRY_LABEL = b"E"
 
 def code_address_label(node, resolve: Callable[[bytes], SemanticObject]) -> bytes:
     """Relocation label of a FUNCTION_ADDRESS: the function itself, or its SysV entry adapter."""
-    if foreign_entry_abi(resolve(node.results[0]), resolve) == SYSV_X86_64_C_ABI:
+    if foreign_entry_abi(resolve(node.results[0]), resolve) in (SYSV_X86_64_C_ABI, LEND_ENTRY_ABI):
         return _SYSV_ENTRY_LABEL + node.entity.cid
     return node.entity.cid
 
@@ -830,7 +831,12 @@ def _sysv_entry_adapter(function: SemanticObject, resolve: Callable[[bytes], Sem
     integer arguments are zero-extended explicitly because SysV leaves the
     bits above the C type unspecified.  The result is already in rax.
     """
-    _graph, parameters, returns = _decode_function_interface(function, resolve)
+    _graph, all_parameters, all_returns = _decode_function_interface(function, resolve)
+    # Proof values are erased and a lend entry's borrowed view pointer is
+    # elided from the results (ADR-101, ADR-115): the adapter maps machine values only.
+    elided = borrowed_view_returns(all_parameters, all_returns, resolve)
+    parameters = [cid for cid in all_parameters if not _is_proof_type(resolve(cid))]
+    returns = [cid for index, cid in enumerate(all_returns) if not _is_proof_type(resolve(cid)) and index not in elided]
     widths = [_value_width(resolve, cid) for cid in parameters]
     if (
         len(parameters) > len(target.argument_registers) or len(returns) > 1
@@ -917,7 +923,7 @@ def _function_closure(
                 if node.operation not in target.supported_operations:
                     fail("XAX.NATIVE.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "NATIVE-OP-TARGET-SUPPORTED", list(target.supported_operations), node.operation)
                 entry_abi = foreign_entry_abi(resolve(node.results[0]), resolve) if node.operation == Operation.FUNCTION_ADDRESS else None
-                if entry_abi is not None and (entry_abi != SYSV_X86_64_C_ABI or target.abi != X86_64_LINUX_ABI):
+                if entry_abi is not None and (entry_abi not in (SYSV_X86_64_C_ABI, LEND_ENTRY_ABI) or target.abi != X86_64_LINUX_ABI):
                     fail("XAX.NATIVE.FOREIGN_ENTRY", graph_object.cid.hex(), "SYSV-ENTRY-TARGET", [SYSV_X86_64_C_ABI.decode(), X86_64_LINUX_ABI], [entry_abi.decode("ascii", "replace"), target.abi])
                 if node.operation in (Operation.CALL_DIRECT, Operation.FUNCTION_ADDRESS):
                     if node.entity is not None and node.entity.kind == Kind.FUNCTION and not _is_erased_proof_function(node.entity, resolve):

@@ -165,7 +165,13 @@ class OI12TimingProofTests(unittest.TestCase):
 
     def test_committed_deterministic_evidence(self):
         path = Path(__file__).resolve().parents[1] / "benchmarks" / "oi12_timing_proof_evidence.json"
-        self.assertEqual(json.loads(path.read_text()), bench.collect_evidence())
+        committed, replayed = json.loads(path.read_text()), bench.collect_evidence()
+        if not replayed["models"]["fixed-inorder"]["query_tokens"]["available"]:
+            # Token counts need tiktoken; without it they are null, never substituted.
+            for evidence in (committed, replayed):
+                for model in evidence["models"].values():
+                    model.pop("query_tokens")
+        self.assertEqual(committed, replayed)
 
     def test_timing_sample_shape(self):
         timing = bench.collect_timing(self.fixture, self.profile, (bench.FIXED_IN_ORDER,))

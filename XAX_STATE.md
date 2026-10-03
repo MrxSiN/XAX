@@ -681,3 +681,6 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Repairs: OI-25's projection benchmark wrote zip entries in filesystem order (Python 3.11 `zipapp` uses an unsorted `rglob`), so its replay failed on some hosts; it now writes them in declared order. OI-26's replay compared the generating interpreter's version, a host observation. The wheel listed neither `xax_web` nor `xax_android_counter`.
 - Regression on this host (Linux x86-64, Python 3.11.15, OpenJDK 21.0.11, clang 18.1.3, unicorn 2.1.0): **903 passed, 19 skipped, 2 failed**. The two failures are environment-bound: `tiktoken` is not installed, and the wheel build requires Python ≥ 3.12. Before this pass: 862 passed, 16 failed.
 
+## Lend entries: `qsort_r` with an XAX comparator (ADR-115, OI-42 closed) — 2026-10-03
+
+- `sysv-x86_64-c-lend` entries read a view lent by the C call that receives them. EXECUTED: glibc `qsort_r` sorts a 16-element XAX heap array; exit 117 (`linux_qsort_evidence.json`). Seven rejection vectors (`test_xax_lend_entry.py`, 9 tests).
