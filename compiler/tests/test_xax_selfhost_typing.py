@@ -1,4 +1,4 @@
-"""S4 (ADR-132): the XAX scalar typing rules agree with the bootstrap verifier.
+"""S4/S4b (ADR-132, ADR-133): the XAX typing rules agree with the bootstrap verifier.
 
 Soundness: every node the XAX function proves is accepted by the bootstrap
 (run with the native path off).  Coverage: well-typed nodes of every covered
@@ -15,7 +15,7 @@ import sys
 import unittest
 from types import SimpleNamespace
 
-from xax_compiler import FloatFormat, Kind, Operation, SemanticObject, XaxError, bits_type, float_type, tuple_type, x86_64_linux_exec_target
+from xax_compiler import FloatFormat, Kind, Operation, SemanticObject, XaxError, array_type, bits_type, float_type, sum_type, tuple_type, x86_64_linux_exec_target
 from xax_graph_builder import GraphBuilder, program_store
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -23,7 +23,13 @@ B1, B8, B32, B64, B100, B200 = (bits_type(width) for width in (1, 8, 32, 64, 100
 F32, F64 = float_type(FloatFormat.BINARY32), float_type(FloatFormat.BINARY64)
 PAIR = tuple_type((B32, B32))
 OVERLONG = SemanticObject.create(Kind.TYPE, bytes((1, 0x88, 0x00)))  # bits<8> with an overlong width
-POOL = (B1, B8, B32, B64, B100, B200, F32, F64, PAIR, OVERLONG)
+TRIPLE = tuple_type((B8, F64, B8))
+ARRAY3, ARRAY0 = array_type(B32, 3), array_type(B8, 0)
+NESTED = tuple_type((PAIR, B8))  # an aggregate element: left to the bootstrap
+SUM3, SUM1 = sum_type((B8, B32, F64)), sum_type((B64,))
+ELEMENTS = {PAIR: (B32, B32), TRIPLE: (B8, F64, B8), ARRAY3: (B32,) * 3, ARRAY0: (), NESTED: (PAIR, B8)}
+VARIANTS = {SUM3: (B8, B32, F64), SUM1: (B64,)}
+POOL = (B1, B8, B32, B64, B100, B200, F32, F64, PAIR, OVERLONG, TRIPLE, ARRAY3, ARRAY0, NESTED, SUM3, SUM1)
 
 
 @contextlib.contextmanager
@@ -67,6 +73,9 @@ def _samples(count: int, seed: int = 132):
     samples = []
     for _ in range(count):
         operation = rng.choice(operations)
+        if operation in (Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.SUM_GET):
+            samples.append(_aggregate_sample(rng, operation))
+            continue
         operands = rng.choice((1, 2, 2, 3)) if rng.random() < 0.15 else (1 if operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT, Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC, Operation.FLOAT_CONVERT) else 2)
         results = 2 if rng.random() < 0.05 else 1
         wants_attribute = operation in (Operation.ROTATE_RIGHT, Operation.FLOAT_COMPARE, Operation.INT_COMPARE)
@@ -79,6 +88,32 @@ def _samples(count: int, seed: int = 132):
         result = first if rng.random() < 0.5 else rng.choice(POOL)
         samples.append((operation, operand_types, (result,) * results, attributes))
     return samples
+
+
+def _aggregate_sample(rng, operation):
+    noise = lambda: rng.choice(POOL)  # noqa: E731
+    attributes = (rng.randrange(0, 5),) if rng.random() < 0.9 else rng.choice(((), (0, 0)))
+    if operation == Operation.AGGREGATE_MAKE:
+        owner = rng.choice(tuple(ELEMENTS))
+        operands = tuple(item if rng.random() < 0.9 else noise() for item in ELEMENTS[owner])
+        if rng.random() < 0.1:
+            operands = operands[:-1] if operands else (noise(),)
+        return operation, operands, (owner,), () if rng.random() < 0.9 else (0,)
+    if operation == Operation.AGGREGATE_GET:
+        owner = rng.choice(tuple(ELEMENTS)) if rng.random() < 0.9 else noise()
+        elements = ELEMENTS.get(owner, ())
+        index = attributes[0] if attributes else 0
+        result = elements[index] if index < len(elements) and rng.random() < 0.8 else noise()
+        return operation, (owner,), (result,), attributes
+    owner = rng.choice(tuple(VARIANTS)) if rng.random() < 0.9 else noise()
+    variants = VARIANTS.get(owner, ())
+    index = attributes[0] if attributes else 0
+    variant = variants[index] if index < len(variants) and rng.random() < 0.8 else noise()
+    if operation == Operation.SUM_MAKE:
+        return operation, (variant,), (owner,), attributes
+    if operation == Operation.SUM_GET:
+        return operation, (owner,), (variant,), attributes
+    return operation, (owner,), (rng.choice((B1, B8, B32, F32, PAIR)),), () if rng.random() < 0.9 else (1,)
 
 
 def _native_verdicts(native, samples):
@@ -102,19 +137,22 @@ class SelfhostTypingTests(unittest.TestCase):
     def test_proven_nodes_are_accepted_by_the_bootstrap(self):
         from xax_selfhost_typing import PROVEN
 
-        samples = _samples(600)
+        samples = _samples(1000)
         status, verdicts = _native_verdicts(self.native, samples)
         self.assertEqual(status, 0)
-        proven = accepted = 0
+        proven = accepted = aggregates = 0
         for index, sample in enumerate(samples):
             accepts = _bootstrap_accepts(*sample)
-            accepted += accepts
             if verdicts[index] == PROVEN:
                 proven += 1
+                aggregates += any(item in ELEMENTS or item in VARIANTS for item in (*sample[1], *sample[2]))
                 self.assertTrue(accepts, sample)
-        self.assertGreater(proven, 40)
-        # Every accepted sample is proven except those the strict decoder declines (none in this pool).
-        self.assertEqual(proven, accepted)
+            # Every accepted sample is proven unless it involves a nested aggregate.
+            elif accepts and NESTED not in (*sample[1], *sample[2]):
+                self.fail(f"accepted but not proven: {sample}")
+            accepted += accepts
+        self.assertGreater(proven, 80)
+        self.assertGreater(aggregates, 30)
 
     def test_each_family_proves_its_well_typed_node(self):
         from xax_selfhost_typing import NOT_COVERED, NOT_PROVEN, PROVEN
@@ -131,6 +169,15 @@ class SelfhostTypingTests(unittest.TestCase):
             (Operation.FLOAT_TO_UINT_TRUNC, (F64,), (B8,), ()),
             (Operation.FLOAT_CONVERT, (F32,), (F64,), ()),
             (Operation.INT_COMPARE, (B8, B8), (B1,), (10,)),
+            (Operation.AGGREGATE_MAKE, (B8, F64, B8), (TRIPLE,), ()),
+            (Operation.AGGREGATE_MAKE, (B32, B32, B32), (ARRAY3,), ()),
+            (Operation.AGGREGATE_MAKE, (), (ARRAY0,), ()),
+            (Operation.AGGREGATE_GET, (TRIPLE,), (F64,), (1,)),
+            (Operation.AGGREGATE_GET, (ARRAY3,), (B32,), (2,)),
+            (Operation.SUM_MAKE, (B32,), (SUM3,), (1,)),
+            (Operation.SUM_TAG, (SUM3,), (B8,), ()),
+            (Operation.SUM_TAG, (SUM1,), (B1,), ()),
+            (Operation.SUM_GET, (SUM3,), (F64,), (2,)),
         ]
         bad = [
             (Operation.ADD_WRAP, (B32, B64), (B32,), ()),
@@ -146,6 +193,13 @@ class SelfhostTypingTests(unittest.TestCase):
             (Operation.INT_COMPARE, (B32, B32), (B1,), (0,)),
             (Operation.INT_COMPARE, (PAIR, PAIR), (B1,), (1,)),
             (Operation.ADD_WRAP, (OVERLONG, OVERLONG), (OVERLONG,), ()),
+            (Operation.AGGREGATE_MAKE, (B8, B8, F64), (TRIPLE,), ()),
+            (Operation.AGGREGATE_MAKE, (B32, B32), (ARRAY3,), ()),
+            (Operation.AGGREGATE_GET, (ARRAY3,), (B32,), (3,)),
+            (Operation.AGGREGATE_GET, (SUM3,), (B8,), (0,)),
+            (Operation.SUM_MAKE, (B8,), (SUM3,), (1,)),
+            (Operation.SUM_TAG, (SUM3,), (B1,), ()),
+            (Operation.SUM_GET, (SUM3,), (B8,), (3,)),
         ]
         status, verdicts = _native_verdicts(self.native, good + bad)
         self.assertEqual(status, 0)

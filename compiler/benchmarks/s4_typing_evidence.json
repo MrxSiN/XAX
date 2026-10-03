@@ -2,33 +2,33 @@
   "adr": "ADR-132",
   "corpus": {
     "blake3_selfhost": {
-      "covered_nodes": 1254,
-      "proven_nodes": 1254,
-      "verify_ms_bootstrap_only": 46.54,
-      "verify_ms_xax_typing": 44.76
+      "covered_nodes": 1279,
+      "proven_nodes": 1279,
+      "verify_ms_bootstrap_only": 48.7,
+      "verify_ms_xax_typing": 39.95
     },
     "cfg_selfhost": {
       "covered_nodes": 472,
       "proven_nodes": 472,
-      "verify_ms_bootstrap_only": 43.72,
-      "verify_ms_xax_typing": 46.59
+      "verify_ms_bootstrap_only": 61.48,
+      "verify_ms_xax_typing": 42.97
     },
     "jsonmin": {
       "covered_nodes": 616,
       "proven_nodes": 616,
-      "verify_ms_bootstrap_only": 127.3,
-      "verify_ms_xax_typing": 123.99
+      "verify_ms_bootstrap_only": 119.41,
+      "verify_ms_xax_typing": 109.81
     },
     "uniqcount": {
       "covered_nodes": 77,
       "proven_nodes": 77,
-      "verify_ms_bootstrap_only": 34.64,
-      "verify_ms_xax_typing": 31.39
+      "verify_ms_bootstrap_only": 34.09,
+      "verify_ms_xax_typing": 33.1
     }
   },
   "evidence_label": "MEASURED",
-  "native_code_bytes": 4763,
-  "note": "verify_store medians over 7 runs in fresh processes; the first run includes parsing (later runs hit the graph parse cache when present)",
+  "native_code_bytes": 12852,
+  "note": "verify_store medians over 7 runs in fresh processes; the graph parse cache is cleared before every run",
   "step": "S4",
-  "store_bytes": 14956
+  "store_bytes": 29664
 }
