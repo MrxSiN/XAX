@@ -289,6 +289,11 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 
 ## S5a — 2026-10-03 (ADR-140)
 
-- `xax_riscv64._marshal` writes the backend program's stream, and `_compile_with_xax` turns its output into a `Riscv64Image`. Use `backend="python"` to compare, or `XAX_RISCV64_BACKEND_PYTHON=1` to disable the program.
+- `xax_riscv64._object_table` copies the store objects for the backend program (S5b; the S5a `_marshal` is gone), and `_compile_with_xax` turns its output into a `Riscv64Image`. Use `backend="python"` to compare, or `XAX_RISCV64_BACKEND_PYTHON=1` to disable the program.
 - After editing `xax_selfhost_riscv64_backend.py`, run `write_backend_store()`. A test checks that the committed store is the built one.
 - The program declines with `give(NONE)` (`_ok`) and records nothing about why. To debug, bisect with the differential in `test_xax_selfhost_riscv64_backend.py`.
+
+## S5b — 2026-10-03 (ADR-141): S5 complete
+
+- The backend program's front end (`_frontend`, `_translate`, `_interface`, `_erased`, `_node_info`, `_term_end`) reads the graph-decoder stream format from `xax_selfhost_graph`. A change to that stream must change these readers too.
+- The output words are: `out[1]` the code word count, `out[2]` the range count, `out[3]` the offsets, `out[4]` the function order (object indices), `out[5]` the entry widths `[P, widths, R, widths]`, and `out[STREAM_AT]` the function count.

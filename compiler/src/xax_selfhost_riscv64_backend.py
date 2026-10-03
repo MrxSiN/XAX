@@ -1,29 +1,40 @@
-"""Self-hosting step S5a (ADR-140): the RISC-V RV64IM backend's code generation as XAX semantics.
+"""Self-hosting steps S5a and S5b (ADR-140, ADR-141): the RISC-V RV64IM backend as XAX semantics.
 
 ``xax_riscv64`` (ADR-113) lowers a verified function closure to a raw
-position-independent image: block-level liveness, interval hulls, a linear
-scan over the callee-saved registers s1-s11 with spills to frame slots, the
-frame layout, per-operation lowering, the ``li`` constant planner, parallel
-edge copies, traps, and PC-relative jump fixups.  This module builds the same
-code generation as one XAX program, run natively (x86-64) like the typing
-program (ADR-132).  Its input is a structural stream of the verified closure
-that ``xax_riscv64`` marshals; its output is the code words, the function
-offsets, and the per-node code ranges, byte-identical to the bootstrap.
+position-independent image.  This module builds the whole backend after
+verification as one XAX program, run natively (x86-64) like the typing program
+(ADR-132), from store objects to image words.
 
-The program accepts or declines.  It declines where the bootstrap would raise
-(more than eight machine arguments or one machine result, a jump past +-1 MiB,
-an operation outside the subset) or where a buffer would overflow; on decline
-the bootstrap backend runs and raises the exact diagnostic.
+The front end (S5b) reads every store object: kind, reference indices, CID,
+and payload.  For a graph fragment the payload is the S3c XAX graph-decoder
+stream; for anything else it is the body bytes.  From these it decides:
 
-Input stream (words): ``F``, then per function (entry first, then the closure
-in CID order): ``B, entry block, V`` and per block in index order ``P,
-P widths, N``, per node ``[operation, result count, result widths, operand
-count, operand value ids, attribute count, attributes, extra]`` (``extra``: a
-constant's value, a direct call's callee function index or ``NONE`` for an
-erased proof function, else 0), and the terminator ``[kind, value count, value
-ids, machine flags, edge count, per edge: target, argument count, argument
-ids]``.  Widths are 0 for proof values.  Value ids number each block's
-parameters, then its node results, block by block.
+* the target's operation and terminator sets (RISC-V architecture only);
+* each function's interface;
+* value widths and proof types (``_machine_width``);
+* constant values;
+* the call closure from the entry, skipping erased proof callees, checking
+  every operation and terminator against the target, and ordering the
+  functions entry first, then by CID.
+
+It writes an internal stream that the code generator (S5a) consumes:
+
+* block-level liveness over bitsets and values' interval hulls;
+* a linear scan over s1-s11 that spills to frame slots;
+* the frame layout;
+* lowering of every operation in the subset and of the four terminators,
+  with parallel edge copies through temporaries;
+* the ``li`` planner, far frame accesses, and PC-relative jump fixups.
+
+Its output is the code words, the function order and offsets, the per-node code
+ranges, and the entry's machine parameter and return widths.  All of it is
+byte-identical to the bootstrap.
+
+The program accepts or declines.  It declines where the bootstrap would
+raise (an unsupported operation or terminator, a non-``bits<=64`` value, more
+than eight machine arguments or one machine result, a jump past +-1 MiB) or
+where a buffer would overflow.  On a decline the bootstrap backend runs and
+raises the exact diagnostic.
 """
 
 from __future__ import annotations
@@ -52,7 +63,9 @@ SIMPLE = {Operation.ADD_WRAP: (0, 0), Operation.SUB_WRAP: (0x20, 0), Operation.M
 WORDS_AT, WORDS_LIMIT = 1 << 20, 4 << 20
 JUMPS_AT, JUMPS_LIMIT = 6 << 20, 3 << 20  # 3 words per jump
 RANGES_AT, RANGES_LIMIT = 10 << 20, 5 << 20  # 5 words per range
-ARENA_AT = 16 << 20
+META_AT = 15 << 20  # entry machine parameter and return widths; the function order
+ARENA_AT, ARENA_END = 16 << 20, (24 << 20) - 1
+STREAM_AT = 24 << 20  # the front end's internal stream (S5a format), read by the code generator
 # Backend state in the header (after the argument words).
 (S_COUNT, S_JUMPS, S_RANGES, S_FN, S_OFFSETS, S_REG, S_SLOT, S_WIDTH, S_TRAP, S_TRAP_USED, S_POW, S_FRAME, S_TEMPS,
  S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS) = range(44, 63)
@@ -318,7 +331,7 @@ def _compile_function(tables):
         p = e.p
         index = p["index"]
         e.set_hd(S_FN, index)
-        B, entry, V = (e.rd(e.add(p["cursor"], k)) for k in range(3))
+        B, entry, V = (e.ld(e.add(p["cursor"], k)) for k in range(3))
         _ok(e, e.both(e.ne(B, 0), e.lt(entry, B)))
         e.var("V", V)
         e.var("B", B)
@@ -357,32 +370,32 @@ def _compile_function(tables):
             b = p["b"]
             e.st(e.add(p["block_at"], b), p["at"])
             e.st(e.add(p["base"], b), p["next_id"])
-            count = e.rd(p["at"])
+            count = e.ld(p["at"])
             e.st(e.add(p["params"], b), count)
             e.if_(e.lt(p["max_params"], count), lambda: e.set("max_params", count))
-            e.for_("q", 0, count, lambda: (e.st(e.add(p["width"], e.add(p["next_id"], p["q"])), e.rd(e.add(e.add(p["at"], 1), p["q"]))),
+            e.for_("q", 0, count, lambda: (e.st(e.add(p["width"], e.add(p["next_id"], p["q"])), e.ld(e.add(e.add(p["at"], 1), p["q"]))),
                                            _put(e, e.add(p["pmask"], e.mul(b, p["W"])), e.add(p["next_id"], p["q"]))))
             e.set("next_id", e.add(p["next_id"], count))
             e.set("at", e.add(e.add(p["at"], 1), count))
-            nodes = e.rd(p["at"])
+            nodes = e.ld(p["at"])
             e.st(e.add(p["nodes_at"], b), e.add(p["at"], 1))
             e.set("at", e.add(p["at"], 1))
 
             def node():
-                results = e.rd(e.add(p["at"], 1))
-                e.for_("q", 0, results, lambda: e.st(e.add(p["width"], e.add(p["next_id"], p["q"])), e.rd(e.add(e.add(p["at"], 2), p["q"]))))
+                results = e.ld(e.add(p["at"], 1))
+                e.for_("q", 0, results, lambda: e.st(e.add(p["width"], e.add(p["next_id"], p["q"])), e.ld(e.add(e.add(p["at"], 2), p["q"]))))
                 e.set("next_id", e.add(p["next_id"], results))
                 operands_at = e.add(e.add(p["at"], 2), results)
-                attributes_at = e.add(e.add(operands_at, 1), e.rd(operands_at))
-                e.set("at", e.add(e.add(e.add(attributes_at, 1), e.rd(attributes_at)), 1))
+                attributes_at = e.add(e.add(operands_at, 1), e.ld(operands_at))
+                e.set("at", e.add(e.add(e.add(attributes_at, 1), e.ld(attributes_at)), 1))
 
             e.for_("m", 0, nodes, node)
             e.st(e.add(p["term_at"], b), p["at"])
-            values = e.rd(e.add(p["at"], 1))
+            values = e.ld(e.add(p["at"], 1))
             e.set("at", e.add(e.add(p["at"], 2), e.mul(values, 2)))
-            edges = e.rd(p["at"])
+            edges = e.ld(p["at"])
             e.set("at", e.add(p["at"], 1))
-            e.for_("x", 0, edges, lambda: e.set("at", e.add(e.add(p["at"], 2), e.rd(e.add(p["at"], 1)))))
+            e.for_("x", 0, edges, lambda: e.set("at", e.add(e.add(p["at"], 2), e.ld(e.add(p["at"], 1)))))
 
         e.for_("b", 0, B, place)
         _ok(e, e.eq(p["next_id"], V))
@@ -428,32 +441,32 @@ def _compile_function(tables):
             defs = e.add(p["defs"], e.mul(b, p["W"]))
             e.for_("q", 0, e.ld(e.add(p["params"], b)), lambda: (_put(e, defs, p["vid"]), touch(p["vid"], p["pos"]), e.set("vid", e.add(p["vid"], 1))))
             e.var("na_at", e.ld(e.add(p["nodes_at"], b)))
-            nodes = e.rd(e.sub(p["na_at"], 1))
+            nodes = e.ld(e.sub(p["na_at"], 1))
 
             def node():
                 e.set("pos", e.add(p["pos"], 1))
                 at = p["na_at"]
-                results = e.rd(e.add(at, 1))
+                results = e.ld(e.add(at, 1))
                 operands_at = e.add(e.add(at, 2), results)
-                e.for_("q", 0, e.rd(operands_at), lambda: use(p["wb"], e.rd(e.add(e.add(operands_at, 1), p["q"])), p["pos"]))
+                e.for_("q", 0, e.ld(operands_at), lambda: use(p["wb"], e.ld(e.add(e.add(operands_at, 1), p["q"])), p["pos"]))
                 e.for_("q", 0, results, lambda: (_put(e, defs, p["vid"]), touch(p["vid"], p["pos"]), e.set("vid", e.add(p["vid"], 1))))
-                attributes_at = e.add(e.add(operands_at, 1), e.rd(operands_at))
-                e.set("na_at", e.add(e.add(e.add(attributes_at, 1), e.rd(attributes_at)), 1))
+                attributes_at = e.add(e.add(operands_at, 1), e.ld(operands_at))
+                e.set("na_at", e.add(e.add(e.add(attributes_at, 1), e.ld(attributes_at)), 1))
 
             e.for_("m", 0, nodes, node)
             e.set("pos", e.add(p["pos"], 1))
             term = e.ld(e.add(p["term_at"], b))
-            values = e.rd(e.add(term, 1))
-            e.for_("q", 0, values, lambda: use(p["wb"], e.rd(e.add(e.add(term, 2), p["q"])), p["pos"]))
+            values = e.ld(e.add(term, 1))
+            e.for_("q", 0, values, lambda: use(p["wb"], e.ld(e.add(e.add(term, 2), p["q"])), p["pos"]))
             e.var("edge_at", e.add(e.add(e.add(term, 2), e.mul(values, 2)), 1))
 
             def edge():
                 at = p["edge_at"]
-                arguments = e.rd(e.add(at, 1))
-                e.for_("q", 0, arguments, lambda: use(p["wb"], e.rd(e.add(e.add(at, 2), p["q"])), p["pos"]))
+                arguments = e.ld(e.add(at, 1))
+                e.for_("q", 0, arguments, lambda: use(p["wb"], e.ld(e.add(e.add(at, 2), p["q"])), p["pos"]))
                 e.set("edge_at", e.add(e.add(at, 2), arguments))
 
-            e.for_("x", 0, e.rd(e.sub(p["edge_at"], 1)), edge)
+            e.for_("x", 0, e.ld(e.sub(p["edge_at"], 1)), edge)
             e.st(e.add(p["bend"], b), p["pos"])
             e.set("pos", e.add(p["pos"], 1))
 
@@ -469,7 +482,7 @@ def _compile_function(tables):
                 b = e.ld(e.add(p["order"], e.sub(e.sub(B, 1), p["k"])))
                 e.var("lb", b)
                 term = e.ld(e.add(p["term_at"], b))
-                values = e.rd(e.add(term, 1))
+                values = e.ld(e.add(term, 1))
                 edges_at = e.add(e.add(term, 2), e.mul(values, 2))
 
                 def word():
@@ -478,13 +491,13 @@ def _compile_function(tables):
                     e.var("e_at", e.add(edges_at, 1))
 
                     def edge():
-                        t = e.rd(p["e_at"])
+                        t = e.ld(p["e_at"])
                         live = e.ld(e.add(e.add(p["lin"], e.mul(t, p["W"])), w))
                         own = e.ld(e.add(e.add(p["pmask"], e.mul(t, p["W"])), w))
                         e.set("out_word", e.or_(p["out_word"], e.and_(live, _xor(e, own, (1 << 64) - 1))))
-                        e.set("e_at", e.add(e.add(p["e_at"], 2), e.rd(e.add(p["e_at"], 1))))
+                        e.set("e_at", e.add(e.add(p["e_at"], 2), e.ld(e.add(p["e_at"], 1))))
 
-                    e.for_("x", 0, e.rd(edges_at), edge)
+                    e.for_("x", 0, e.ld(edges_at), edge)
                     offset = e.add(e.mul(p["lb"], p["W"]), w)
                     defs = e.ld(e.add(p["defs"], offset))
                     new_in = e.or_(e.ld(e.add(p["uses"], offset)), e.and_(p["out_word"], _xor(e, defs, (1 << 64) - 1)))
@@ -671,14 +684,14 @@ def _copy_edge(tables):
     def build(e: E):
         p = e.p
         at = p["edge"]  # [target, argument count, argument ids]
-        target, count = e.rd(at), e.rd(e.add(at, 1))
+        target, count = e.ld(at), e.ld(e.add(at, 1))
         base = p["target_base"]
         moves = e.alloc(e.add(e.mul(count, 2), 1))
         _ok(e, e.ne(moves, NONE))
         e.var("moves_n", 0)
 
         def collect():
-            destination, argument = e.add(base, p["q"]), e.rd(e.add(e.add(at, 2), p["q"]))
+            destination, argument = e.add(base, p["q"]), e.ld(e.add(e.add(at, 2), p["q"]))
             needed = e.both(e.ne(_value(e, S_WIDTH, destination), 0), e.ne(_location(e, destination), _location(e, argument)))
             e.if_(needed, lambda: (e.st(e.add(moves, e.mul(p["moves_n"], 2)), destination), e.st(e.add(moves, e.add(e.mul(p["moves_n"], 2), 1)), argument),
                                    e.set("moves_n", e.add(p["moves_n"], 1))))
@@ -721,22 +734,22 @@ def _block(tables):
         b = p["b"]
         e.st(e.add(e.hd(S_BLOCK_LABELS), b), e.hd(S_COUNT))
         position = e.ld(e.add(e.hd(S_BLOCK_AT), b))  # the block's stream position (pass 1)
-        params = e.rd(position)
+        params = e.ld(position)
         e.var("na", e.add(e.add(position, 2), params))
-        nodes = e.rd(e.sub(p["na"], 1))
+        nodes = e.ld(e.sub(p["na"], 1))
         e.var("vid", e.add(p["vbase"], params))
 
         def node():
             start = e.hd(S_COUNT)
             e.var("start", start)
             at = p["na"]
-            operation, results = e.rd(at), e.rd(e.add(at, 1))
+            operation, results = e.ld(at), e.ld(e.add(at, 1))
             operands_at = e.add(e.add(at, 2), results)
-            operands = e.rd(operands_at)
+            operands = e.ld(operands_at)
             attributes_at = e.add(e.add(operands_at, 1), operands)
-            extra = e.rd(e.add(e.add(attributes_at, 1), e.rd(attributes_at)))
-            operand = lambda k: e.rd(e.add(e.add(operands_at, 1), k))  # noqa: E731
-            attribute = lambda k: e.rd(e.add(e.add(attributes_at, 1), k))  # noqa: E731
+            extra = e.ld(e.add(e.add(attributes_at, 1), e.ld(attributes_at)))
+            operand = lambda k: e.ld(e.add(e.add(operands_at, 1), k))  # noqa: E731
+            attribute = lambda k: e.ld(e.add(e.add(attributes_at, 1), k))  # noqa: E731
             result = p["vid"]
             width = _value(e, S_WIDTH, result)
             e.var("handled", 0)
@@ -869,13 +882,13 @@ def _block(tables):
 
             e.if_(e.lt(p["start"], e.hd(S_COUNT)), record)
             e.set("vid", e.add(p["vid"], results))
-            e.set("na", e.add(e.add(e.add(attributes_at, 1), e.rd(attributes_at)), 1))
+            e.set("na", e.add(e.add(e.add(attributes_at, 1), e.ld(attributes_at)), 1))
 
         e.for_("m", 0, nodes, node)
         term = p["na"]
-        kind, values = e.rd(term), e.rd(e.add(term, 1))
-        value = lambda k: e.rd(e.add(e.add(term, 2), k))  # noqa: E731
-        flag = lambda k: e.rd(e.add(e.add(e.add(term, 2), values), k))  # noqa: E731
+        kind, values = e.ld(term), e.ld(e.add(term, 1))
+        value = lambda k: e.ld(e.add(e.add(term, 2), k))  # noqa: E731
+        flag = lambda k: e.ld(e.add(e.add(e.add(term, 2), values), k))  # noqa: E731
         edges_at = e.add(e.add(term, 2), e.mul(values, 2))
         first_edge = e.add(edges_at, 1)
         base_of = lambda t: e.ld(e.add(e.hd(S_BASE), t))  # noqa: E731
@@ -887,17 +900,17 @@ def _block(tables):
             _ok(e, e.ne(e.call(_FN["epilogue"]), NONE))
 
         def branch():
-            _call(e, "edge", first_edge, base_of(e.rd(first_edge)))
+            _call(e, "edge", first_edge, base_of(e.ld(first_edge)))
 
         def conditional():
             condition = _call(e, "read", value(0), T0)
             _emit(e, enc_b(e, 8, ZERO, condition, 1))
             false_label = e.add(e.hd(S_FALSE_LABELS), b)
             _jal(e, false_label, ZERO)
-            _call(e, "edge", first_edge, base_of(e.rd(first_edge)))
-            second = e.add(e.add(first_edge, 2), e.rd(e.add(first_edge, 1)))
+            _call(e, "edge", first_edge, base_of(e.ld(first_edge)))
+            second = e.add(e.add(first_edge, 2), e.ld(e.add(first_edge, 1)))
             e.st(false_label, e.hd(S_COUNT))
-            _call(e, "edge", second, base_of(e.rd(second)))
+            _call(e, "edge", second, base_of(e.ld(second)))
 
         def trap():
             e.set_hd(S_TRAP_USED, 1)
@@ -909,14 +922,545 @@ def _block(tables):
     return _function(("b", "vbase"), build, tables)
 
 
+
+# -- S5b: the front end (store objects and graph-decoder streams to the internal stream) -------------
+#
+# Input view: ``O, entry object, target object``, then per object ``[kind, reference count, reference object
+# indices (NONE: not listed), CID as four big-endian words, payload length, payload]``.  The payload is the body,
+# one byte per word, for types, constants, functions, and targets; a graph fragment's is the S3c graph-decoder
+# stream (``xax_selfhost_graph``); other kinds have none.
+
+GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
+(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS) = range(14)
+NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
+ENTITY_CODES = (5, 6, 30, 41, 42, 43)
+ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
+                   61, 63, 64, 65, 66, 73, 74, 75, 76)
+
+
+def _g(e: E, slot: int):
+    return e.ld(GLOBALS + slot)
+
+
+def _at(e: E, table: int, index):
+    return e.ld(e.add(_g(e, table), index))
+
+
+def _reference(e: E, obj, k):
+    """Object index of ``obj``'s ``k``-th reference (NONE when that object is not listed)."""
+    return e.rd(e.add(e.add(_at(e, G_REC, obj), 2), k))
+
+
+def _kind(e: E, obj):
+    return e.rd(_at(e, G_REC, obj))
+
+
+def _in_set(e: E, value, codes):
+    return e.either(*(e.eq(value, code) for code in codes))
+
+
+def _payload_uleb(e: E, name: str):
+    """Read a ULEB at input word ``p[name]`` (one byte per word) and advance it."""
+    from xax_selfhost_facts import _uleb
+
+    p = e.p
+    value, size, ok = _uleb(e, p[name])
+    _ok(e, ok)
+    e.set(name, e.add(p[name], size))
+    return value
+
+
+def _node_info(tables):
+    """Graph-decoder node record at ``at``: fields into the NI scratch words; returns the next record."""
+    def build(e: E):
+        p = e.p
+        ni = _g(e, G_NI)
+        e.var("at", p["at"])
+        operation = e.rd(p["at"])
+        e.st(e.add(ni, NI_OP), operation)
+        e.set("at", e.add(p["at"], 1))
+        e.if_(e.eq(operation, int(Operation.CALL_GROUP_MEMBER)), lambda: e.set("at", e.add(p["at"], 3)))
+        e.st(e.add(ni, NI_ENTITY), NONE)
+        e.if_(_in_set(e, operation, ENTITY_CODES), lambda: (e.st(e.add(ni, NI_ENTITY), e.rd(p["at"])), e.set("at", e.add(p["at"], 1))))
+        e.st(e.add(ni, NI_OPERANDS), p["at"])
+        count = e.rd(p["at"])
+        e.set("at", e.add(p["at"], 1))
+        e.for_("q", 0, count, lambda: e.set("at", e.add(e.add(p["at"], 3), e.flag(e.eq(e.rd(p["at"]), 1)))))
+        e.st(e.add(ni, NI_RESULTS), p["at"])
+        e.set("at", e.add(e.add(p["at"], 1), e.rd(p["at"])))
+        e.st(e.add(ni, NI_ATTRIBUTES), NONE)
+        e.if_(_in_set(e, operation, ATTRIBUTE_CODES), lambda: (e.st(e.add(ni, NI_ATTRIBUTES), p["at"]), e.set("at", e.add(e.add(p["at"], 1), e.rd(p["at"])))))
+        e.give(p["at"])
+    return _function(("at",), build, tables)
+
+
+def _skip_values(e: E, name: str):
+    """Advance ``p[name]`` past ``[count, values]``."""
+    p = e.p
+    count = e.rd(p[name])
+    e.set(name, e.add(p[name], 1))
+    e.for_("sv", 0, count, lambda: e.set(name, e.add(e.add(p[name], 3), e.flag(e.eq(e.rd(p[name]), 1)))))
+
+
+def _term_end(tables):
+    """The position after the terminator at ``at``."""
+    def build(e: E):
+        p = e.p
+        kind = e.rd(p["at"])
+        e.var("at", e.add(p["at"], 1))
+
+        def edge():
+            e.set("at", e.add(p["at"], 1))
+            _skip_values(e, "at")
+
+        def conditional():
+            e.set("at", e.add(e.add(p["at"], 3), e.flag(e.eq(e.rd(p["at"]), 1))))
+            edge()
+            edge()
+
+        e.if_(e.eq(kind, 1), edge, lambda: e.if_(e.eq(kind, 2), conditional, lambda: e.if_(
+            e.eq(kind, 3), lambda: _skip_values(e, "at"), lambda: e.set("at", e.add(p["at"], 2)))))
+        e.give(p["at"])
+    return _function(("at",), build, tables)
+
+
+def _type_width(e: E, obj):
+    """``_machine_width``: bits width <= 64, 0 for a proof value (effect or resource), else NONE."""
+    from xax_compiler import Kind
+
+    p = e.p
+    e.var("tw", NONE)
+
+    def typed():
+        pay = _at(e, G_PAY, obj)
+        first = e.rd(pay)
+        e.if_(e.either(e.eq(first, 3), e.eq(first, 4)), lambda: e.set("tw", 0))
+
+        def bits():
+            e.var("tw_at", e.add(pay, 1))
+            width = _payload_uleb(e, "tw_at")
+            e.if_(e.both(e.ne(width, 0), e.le(width, 64)), lambda: e.set("tw", width))
+
+        e.if_(e.eq(first, 1), bits)
+
+    known = e.lt(obj, _g(e, G_O))
+    listed = e.sel(known, obj, 0)
+    nonempty = e.ne(e.rd(e.sub(_at(e, G_PAY, listed), 1)), 0)
+    e.if_(e.both(known, e.eq(_kind(e, listed), int(Kind.TYPE)), nonempty), typed)
+    return p["tw"]
+
+
+def _interface(tables):
+    """``_decode_function_interface`` of a verified function: ``[graph, P, types, R, types]`` (cached); NONE for a
+    group member or an unlisted graph."""
+    from xax_compiler import Kind
+
+    def build(e: E):
+        p = e.p
+        f = p["f"]
+        cached = _at(e, G_IFACE, f)
+        e.if_(e.ne(cached, NONE), lambda: e.give(cached))
+        _ok(e, e.eq(_kind(e, f), int(Kind.FUNCTION)))
+        e.var("ia", _at(e, G_PAY, f))
+        graph = _reference(e, f, _payload_uleb(e, "ia"))
+        e.var("graph", graph)
+        _ok(e, e.both(e.ne(p["graph"], NONE), e.eq(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT))))
+        params = _payload_uleb(e, "ia")
+        e.var("np", params)
+        e.var("record", e.alloc(e.add(p["np"], 2)))
+        _ok(e, e.ne(p["record"], NONE))
+        e.st(p["record"], p["graph"])
+        e.st(e.add(p["record"], 1), p["np"])
+        e.for_("q", 0, p["np"], lambda: e.st(e.add(e.add(p["record"], 2), p["q"]), _reference(e, f, _payload_uleb(e, "ia"))))
+        returns = _payload_uleb(e, "ia")
+        e.var("nr", returns)
+        e.var("rec2", e.alloc(e.add(p["nr"], 1)))
+        _ok(e, e.both(e.ne(p["rec2"], NONE), e.eq(p["rec2"], e.add(e.add(p["record"], 2), p["np"]))))  # contiguous
+        e.st(p["rec2"], p["nr"])
+        e.for_("q", 0, p["nr"], lambda: e.st(e.add(e.add(p["rec2"], 1), p["q"]), _reference(e, f, _payload_uleb(e, "ia"))))
+        e.st(e.add(_g(e, G_IFACE), f), p["record"])
+        e.give(p["record"])
+    return _function(("f",), build, tables)
+
+
+def _erased(tables):
+    """``_is_erased_proof_function``: proof-only interface and one block of resource/effect nodes returning."""
+    def build(e: E):
+        p = e.p
+        f = p["f"]
+        cached = _at(e, G_ERASED, f)
+        e.if_(e.ne(cached, NONE), lambda: e.give(cached))
+        iface = _call(e, "interface", f)
+        e.var("erased", 1)
+        params = e.ld(e.add(iface, 1))
+        returns_at = e.add(e.add(iface, 2), params)
+        e.for_("q", 0, params, lambda: e.if_(e.ne(_type_width(e, e.ld(e.add(e.add(iface, 2), p["q"]))), 0), lambda: e.set("erased", 0)))
+        e.for_("q", 0, e.ld(returns_at), lambda: e.if_(e.ne(_type_width(e, e.ld(e.add(e.add(returns_at, 1), p["q"]))), 0), lambda: e.set("erased", 0)))
+
+        def shape():
+            stream = _at(e, G_PAY, e.ld(iface))
+            e.if_(e.ne(e.rd(stream), 1), lambda: e.set("erased", 0))
+
+            def one_block():
+                e.var("ea", e.add(e.add(stream, 3), e.rd(e.add(stream, 2))))
+                nodes = e.rd(p["ea"])
+                e.set("ea", e.add(p["ea"], 1))
+
+                def node():
+                    e.set("ea", _call(e, "node_info", p["ea"]))
+                    e.if_(e.not_(_in_set(e, e.ld(e.add(_g(e, G_NI), NI_OP)), tuple(int(op) for op in RESOURCE_EFFECT_OPERATIONS))), lambda: e.set("erased", 0))
+
+                e.for_("m", 0, nodes, node)
+                e.if_(e.ne(e.rd(p["ea"]), int(TerminatorKind.RETURN)), lambda: e.set("erased", 0))
+
+            e.if_(e.ne(p["erased"], 0), one_block)
+
+        e.if_(e.ne(p["erased"], 0), shape)
+        e.st(e.add(_g(e, G_ERASED), f), p["erased"])
+        e.give(p["erased"])
+    return _function(("f",), build, tables)
+
+
+def _emit_out(e: E, value):
+    at = _g(e, G_OUT)
+    e.st(at, value)
+    e.st(GLOBALS + G_OUT, e.add(at, 1))
+
+
+def _translate(tables):
+    """One closure function into the internal stream (the S5a format) at ``G_OUT``."""
+    from xax_compiler import Kind
+
+    def build(e: E):
+        p = e.p
+        f = p["f"]
+        iface = _call(e, "interface", f)
+        graph = e.ld(iface)
+        e.var("graph", graph)
+        stream = _at(e, G_PAY, graph)
+        B, entry = e.rd(stream), e.rd(e.add(stream, 1))
+        e.var("B", B)
+        # Pass A: value bases per block and per node.
+        e.var("base", e.alloc(e.add(B, 1)))
+        e.var("first", e.alloc(e.add(B, 1)))
+        e.var("node_base", e.alloc(e.add(e.rd(e.sub(_at(e, G_PAY, graph), 1)), 1)))  # at most one node per stream word
+        _ok(e, e.both(e.ne(p["base"], NONE), e.ne(p["first"], NONE), e.ne(p["node_base"], NONE)))
+        e.var("pa", e.add(stream, 2))
+        e.var("id", 0)
+        e.var("nodes", 0)
+
+        def block_a():
+            b = p["b"]
+            e.st(e.add(p["base"], b), p["id"])
+            params = e.rd(p["pa"])
+            e.set("id", e.add(p["id"], params))
+            e.set("pa", e.add(e.add(p["pa"], 1), params))
+            count = e.rd(p["pa"])
+            e.set("pa", e.add(p["pa"], 1))
+            e.st(e.add(p["first"], b), p["nodes"])
+
+            def node():
+                e.st(e.add(p["node_base"], p["nodes"]), p["id"])
+                e.set("pa", _call(e, "node_info", p["pa"]))
+                e.set("id", e.add(p["id"], e.rd(e.ld(e.add(_g(e, G_NI), NI_RESULTS)))))
+                e.set("nodes", e.add(p["nodes"], 1))
+
+            e.for_("m", 0, count, node)
+            e.set("pa", _call(e, "term_end", p["pa"]))
+
+        e.for_("b", 0, B, block_a)
+        _emit_out(e, B)
+        _emit_out(e, entry)
+        _emit_out(e, p["id"])
+
+        def width_of(reference):
+            width = _type_width(e, _reference(e, p["graph"], reference))
+            _ok(e, e.ne(width, NONE))
+            return width
+
+        def value_id(name: str):
+            """The value at ``p[name]`` as a value id; advances past it."""
+            at = p[name]
+            tag, block, index = e.rd(at), e.rd(e.add(at, 1)), e.rd(e.add(at, 2))
+            e.var("vid_out", e.add(e.ld(e.add(p["base"], block)), index))
+            e.if_(e.eq(tag, 1), lambda: e.set("vid_out", e.add(e.ld(e.add(p["node_base"], e.add(e.ld(e.add(p["first"], block)), index))), e.rd(e.add(at, 3)))))
+            e.set(name, e.add(e.add(at, 3), e.flag(e.eq(tag, 1))))
+            return p["vid_out"]
+
+        def values(name: str, emit=True):
+            count = e.rd(p[name])
+            e.set(name, e.add(p[name], 1))
+            if emit:
+                _emit_out(e, count)
+            e.for_("vv", 0, count, lambda: _emit_out(e, value_id(name)))
+            return count
+
+        # Pass B: the stream.
+        e.set("pa", e.add(stream, 2))
+        returns_at = e.add(e.add(iface, 2), e.ld(e.add(iface, 1)))
+
+        def block_b():
+            params = e.rd(p["pa"])
+            _emit_out(e, params)
+            e.for_("q", 0, params, lambda: _emit_out(e, width_of(e.rd(e.add(e.add(p["pa"], 1), p["q"])))))
+            e.set("pa", e.add(e.add(p["pa"], 1), params))
+            count = e.rd(p["pa"])
+            e.set("pa", e.add(p["pa"], 1))
+            _emit_out(e, count)
+
+            def node():
+                e.var("next_node", _call(e, "node_info", p["pa"]))
+                ni = _g(e, G_NI)
+                operation, entity = e.ld(e.add(ni, NI_OP)), e.ld(e.add(ni, NI_ENTITY))
+                results_at, attributes_at = e.ld(e.add(ni, NI_RESULTS)), e.ld(e.add(ni, NI_ATTRIBUTES))
+                e.var("na_ops", e.ld(e.add(ni, NI_OPERANDS)))
+                _emit_out(e, operation)
+                results = e.rd(results_at)
+                _emit_out(e, results)
+                e.for_("q", 0, results, lambda: _emit_out(e, width_of(e.rd(e.add(e.add(results_at, 1), p["q"])))))
+                values("na_ops")
+                e.if_(e.eq(attributes_at, NONE), lambda: _emit_out(e, 0), lambda: (
+                    _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"]))))))
+                e.var("extra", 0)
+
+                def constant():
+                    obj = _reference(e, p["graph"], entity)
+                    _ok(e, e.both(e.ne(obj, NONE), e.eq(_kind(e, obj), int(Kind.CONSTANT))))
+                    e.var("ca", _at(e, G_PAY, obj))
+                    _payload_uleb(e, "ca")
+                    length = _payload_uleb(e, "ca")
+                    e.var("clen", length)
+                    _ok(e, e.le(p["clen"], 8))
+                    e.var("factor", 1)
+                    e.for_("q", 0, p["clen"], lambda: (e.set("extra", e.add(p["extra"], e.mul(e.rd(e.add(p["ca"], p["q"])), p["factor"]))),
+                                                       e.set("factor", e.mul(p["factor"], 256))))
+
+                def call():
+                    callee = _reference(e, p["graph"], entity)
+                    e.var("callee", callee)
+                    _ok(e, e.ne(p["callee"], NONE))
+                    erased = _call(e, "erased", p["callee"])
+                    e.if_(e.ne(erased, 0), lambda: e.set("extra", NONE), lambda: (
+                        _ok(e, e.ne(_at(e, G_FIDX, p["callee"]), NONE)), e.set("extra", _at(e, G_FIDX, p["callee"]))))
+
+                e.if_(e.eq(operation, int(Operation.CONSTANT)), constant, lambda: e.if_(e.eq(operation, int(Operation.CALL_DIRECT)), call))
+                _emit_out(e, p["extra"])
+                e.set("pa", p["next_node"])
+
+            e.for_("m", 0, count, node)
+            kind = e.rd(p["pa"])
+            e.var("tk", kind)
+            e.set("pa", e.add(p["pa"], 1))
+            _emit_out(e, kind)
+
+            def edge_out():
+                _emit_out(e, e.rd(p["pa"]))
+                e.set("pa", e.add(p["pa"], 1))
+                values("pa")
+
+            def branch():
+                _emit_out(e, 0)
+                _emit_out(e, 1)
+                edge_out()
+
+            def conditional():
+                _emit_out(e, 1)
+                _emit_out(e, value_id("pa"))
+                _emit_out(e, 0)
+                _emit_out(e, 2)
+                edge_out()
+                edge_out()
+
+            def returns():
+                count = e.rd(p["pa"])
+                e.var("rc", count)
+                e.set("pa", e.add(p["pa"], 1))
+                _emit_out(e, p["rc"])
+                e.var("rv_at", p["pa"])
+                e.for_("vv", 0, p["rc"], lambda: _emit_out(e, value_id("pa")))
+                e.for_("q", 0, p["rc"], lambda: _emit_out(e, e.sel(e.lt(p["q"], e.ld(returns_at)),
+                                                                      e.flag(e.ne(_type_width(e, e.ld(e.add(e.add(returns_at, 1), e.sel(e.lt(p["q"], e.ld(returns_at)), p["q"], 0)))), 0)), 0)))
+                _emit_out(e, 0)
+
+            def trap():
+                e.set("pa", e.add(p["pa"], 2))
+                _emit_out(e, 0)
+                _emit_out(e, 0)
+
+            e.if_(e.eq(kind, 1), branch, lambda: e.if_(e.eq(kind, 2), conditional, lambda: e.if_(e.eq(kind, 3), returns, trap)))
+
+        e.for_("b", 0, B, block_b)
+        e.give(1)
+    return _function(("f",), build, tables)
+
+
+def _frontend(tables):
+    """The closure, the target's operation sets, the function order, and the internal stream."""
+    from xax_compiler import Kind, RISCV64_ARCHITECTURE
+
+    def build(e: E):
+        p = e.p
+        O = e.rd(0)
+        e.st(GLOBALS + G_O, O)
+        for slot in (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_ORDER):
+            table = e.alloc(e.add(O, 1))
+            _ok(e, e.ne(table, NONE))
+            e.st(GLOBALS + slot, table)
+        for slot, size in ((G_SUP, 256), (G_SUPT, 8), (G_NI, 8)):
+            table = e.alloc(size)
+            _ok(e, e.ne(table, NONE))
+            e.st(GLOBALS + slot, table)
+            e.for_("q", 0, size, lambda table=table: e.st(e.add(table, p["q"]), 0))
+        e.var("ra", 3)
+
+        def record():
+            o = p["o"]
+            e.st(e.add(_g(e, G_REC), o), p["ra"])
+            references = e.rd(e.add(p["ra"], 1))
+            payload_at = e.add(e.add(e.add(p["ra"], 2), references), 4)
+            e.st(e.add(_g(e, G_PAY), o), e.add(payload_at, 1))
+            for slot in (G_FIDX, G_ERASED, G_IFACE):
+                e.st(e.add(_g(e, slot), o), NONE)
+            e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
+
+        e.for_("o", 0, O, record)
+        _ok(e, e.le(p["ra"], IN_WORDS))
+        entry, target = e.rd(1), e.rd(2)
+        e.var("entry", entry)
+        _ok(e, e.both(e.lt(p["entry"], O), e.eq(_kind(e, p["entry"]), int(Kind.FUNCTION)), e.lt(target, O)))
+        # The target's operation and terminator sets (a verified RISC-V package).
+        e.var("ta", _at(e, G_PAY, target))
+        identity = _payload_uleb(e, "ta")
+        e.set("ta", e.add(p["ta"], identity))
+        fields = [_payload_uleb(e, "ta") for _ in range(6)]
+        e.var("arch", fields[1])
+        _ok(e, e.eq(p["arch"], RISCV64_ARCHITECTURE))
+        for table in (G_SUP, G_SUPT):
+            count = _payload_uleb(e, "ta")
+            e.var("tcount", count)
+            e.for_("q", 0, p["tcount"], lambda table=table: (lambda value: (_ok(e, e.lt(value, 256 if table == G_SUP else 8)), e.st(e.add(_g(e, table), value), 1)))(
+                _payload_uleb(e, "ta")))
+        # The closure from the entry (callees that are not erased proof functions).
+        work = e.alloc(e.add(O, 1))
+        _ok(e, e.ne(work, NONE))
+        e.var("work", work)
+        e.var("wn", 1)
+        e.st(p["work"], p["entry"])
+        e.var("members", 0)
+        visited = _g(e, G_TW)  # reused as visited flags
+        e.for_("o", 0, O, lambda: e.st(e.add(visited, p["o"]), 0))
+
+        def visit():
+            e.set("wn", e.sub(p["wn"], 1))
+            f = e.ld(e.add(p["work"], p["wn"]))
+            e.var("cf", f)
+
+            def fresh():
+                e.st(e.add(visited, p["cf"]), 1)
+                e.st(e.add(_g(e, G_ORDER), p["members"]), p["cf"])
+                e.set("members", e.add(p["members"], 1))
+                iface = _call(e, "interface", p["cf"])
+                e.var("cg", e.ld(iface))
+                stream = _at(e, G_PAY, p["cg"])
+                e.var("wa", e.add(stream, 2))
+
+                def block():
+                    e.set("wa", e.add(e.add(p["wa"], 1), e.rd(p["wa"])))
+                    count = e.rd(p["wa"])
+                    e.set("wa", e.add(p["wa"], 1))
+
+                    def node():
+                        e.set("wa", _call(e, "node_info", p["wa"]))
+                        ni = _g(e, G_NI)
+                        operation = e.ld(e.add(ni, NI_OP))
+                        _ok(e, e.both(e.lt(operation, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(operation, 256), operation, 0)), 0)))
+
+                        def callee():
+                            e.var("cc", _reference(e, p["cg"], e.ld(e.add(ni, NI_ENTITY))))
+                            _ok(e, e.both(e.ne(p["cc"], NONE), e.eq(_kind(e, p["cc"]), int(Kind.FUNCTION))))
+                            e.if_(e.both(e.eq(_call(e, "erased", p["cc"]), 0), e.eq(e.ld(e.add(visited, p["cc"])), 0)), lambda: (
+                                e.st(e.add(p["work"], p["wn"]), p["cc"]), e.set("wn", e.add(p["wn"], 1)), _ok(e, e.le(p["wn"], O))))
+
+                        e.if_(e.eq(operation, int(Operation.CALL_DIRECT)), callee)
+
+                    e.for_("m", 0, count, node)
+                    kind = e.rd(p["wa"])
+                    _ok(e, e.both(e.lt(kind, 8), e.ne(_at(e, G_SUPT, e.sel(e.lt(kind, 8), kind, 0)), 0)))
+                    e.set("wa", _call(e, "term_end", p["wa"]))
+
+                e.for_("b", 0, e.rd(stream), block)
+
+            e.if_(e.eq(e.ld(e.add(visited, p["cf"])), 0), fresh)
+
+        e.while_(lambda: e.ne(p["wn"], 0), visit)
+        # Order: the entry, then the others by CID.
+        order = _g(e, G_ORDER)
+        e.for_("q", 0, p["members"], lambda: e.if_(e.eq(e.ld(e.add(order, p["q"])), p["entry"]), lambda: (
+            e.st(e.add(order, p["q"]), e.ld(order)), e.st(order, p["entry"]))))
+
+        def cid_before(x, y):
+            def word(obj, k):
+                record = _at(e, G_REC, obj)
+                return e.rd(e.add(e.add(e.add(record, 2), e.rd(e.add(record, 1))), k))
+            result = e.c(0)
+            equal = e.c(1)
+            for k in range(4):
+                wx, wy = word(x, k), word(y, k)
+                result = e.or_(result, e.flag(e.both(e.ne(equal, 0), e.lt(wx, wy))))
+                equal = e.flag(e.both(e.ne(equal, 0), e.eq(wx, wy)))
+            return e.ne(result, 0)
+
+        def insert():
+            e.var("item", e.ld(e.add(order, p["s"])))
+            e.var("j", p["s"])
+            e.while_(lambda: e.both(e.lt(1, p["j"]), cid_before(p["item"], e.ld(e.add(order, e.sub(p["j"], 1))))), lambda: (
+                e.st(e.add(order, p["j"]), e.ld(e.add(order, e.sub(p["j"], 1)))), e.set("j", e.sub(p["j"], 1))))
+            e.st(e.add(order, p["j"]), p["item"])
+
+        e.for_("s", 2, p["members"], insert)
+        e.for_("q", 0, p["members"], lambda: e.st(e.add(_g(e, G_FIDX), e.ld(e.add(order, p["q"]))), p["q"]))
+        e.st(GLOBALS + G_F, p["members"])
+        # The internal stream.
+        e.st(GLOBALS + G_OUT, STREAM_AT)
+        _emit_out(e, p["members"])
+        e.for_("q", 0, p["members"], lambda: _call(e, "translate", e.ld(e.add(order, p["q"]))))
+        _ok(e, e.lt(_g(e, G_OUT), STREAM_AT + (7 << 20)))
+        # The entry's machine parameter and return widths.
+        iface = _call(e, "interface", p["entry"])
+        widths = e.alloc(e.add(e.add(e.ld(e.add(iface, 1)), e.ld(e.add(e.add(iface, 2), e.ld(e.add(iface, 1))))), 4))
+        _ok(e, e.ne(widths, NONE))
+        e.st(GLOBALS + G_WIDTHS, widths)
+        e.var("wc", 0)
+        e.var("wbase", widths)
+        for part in range(2):
+            def lists(part=part):
+                at = e.add(iface, 1) if part == 0 else e.add(e.add(iface, 2), e.ld(e.add(iface, 1)))
+                e.var("wcount_at", p["wc"])
+                e.set("wc", e.add(p["wc"], 1))
+                e.var("machine", 0)
+
+                def each():
+                    width = _type_width(e, e.ld(e.add(e.add(at, 1), p["q"])))
+                    e.var("ew", width)
+                    _ok(e, e.ne(p["ew"], NONE))
+                    e.if_(e.ne(p["ew"], 0), lambda: (e.st(e.add(widths, p["wc"]), p["ew"]), e.set("wc", e.add(p["wc"], 1)), e.set("machine", e.add(p["machine"], 1))))
+
+                e.for_("q", 0, e.ld(at), each)
+                e.st(e.add(widths, p["wcount_at"]), p["machine"])
+
+            lists()
+        e.give(1)
+    return _function((), build, tables)
+
+
 # -- the program -----------------------------------------------------------------------------------
 
 def _program(tables, compile_function):
     def build(e: E):
         p = e.p
         e.st(0, 0)
-        e.set_hd(H_ARENA, ARENA_AT)
-        e.set_hd(H_ARENA_END, HEADER - 1)
+        e.set_hd(H_ARENA, ARENA_AT + 64)  # the front end's GLOBALS come first
+        e.set_hd(H_ARENA_END, ARENA_END)
         e.set_hd(S_COUNT, 0)
         e.set_hd(S_JUMPS, 0)
         e.set_hd(S_RANGES, 0)
@@ -925,12 +1469,13 @@ def _program(tables, compile_function):
         e.for_("z", 0, 64, lambda: (e.st(e.add(powers, p["z"]), p["power"]), e.set("power", e.mul(p["power"], 2))))
         e.set_hd(S_POW, powers)
         e.set_hd(S_LEVELS, e.alloc(32))
-        functions = e.rd(0)
+        _ok(e, e.ne(e.call(_FN["frontend"]), NONE))
+        functions = e.ld(STREAM_AT)
         offsets = e.alloc(e.add(functions, 1))
         _ok(e, e.ne(offsets, NONE))
         e.set_hd(S_OFFSETS, offsets)
         e.for_("f", 0, functions, lambda: e.st(e.add(offsets, p["f"]), NONE))
-        e.var("cursor", 1)
+        e.var("cursor", STREAM_AT + 1)
 
         def each():
             e.set("cursor", e.call(compile_function, p["cursor"], p["f"]))
@@ -951,6 +1496,8 @@ def _program(tables, compile_function):
         e.st(1, e.hd(S_COUNT))
         e.st(2, e.hd(S_RANGES))
         e.st(3, offsets)
+        e.st(4, _g(e, G_ORDER))
+        e.st(5, _g(e, G_WIDTHS))
         e.st(0, OK)
         e.give(1)
     return _function((), build, tables)
@@ -975,6 +1522,12 @@ def build_backend_program():
     add("epilogue", _epilogue(tables))
     add("edge", _copy_edge(tables))
     add("block", _block(tables))
+    add("node_info", _node_info(tables))
+    add("term_end", _term_end(tables))
+    add("interface", _interface(tables))
+    add("erased", _erased(tables))
+    add("translate", _translate(tables))
+    add("frontend", _frontend(tables))
     compile_function = add("function", _compile_function(tables))
     program = add("program", _program(tables, compile_function))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
@@ -1057,8 +1610,9 @@ class NativeBackend:
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
 
-    def compile(self, words: list[int], functions: int):
-        """``(code words, function word offsets, node ranges)``, or None when the program declines."""
+    def compile(self, words: list[int]):
+        """``(code words, function order, function word offsets, node ranges, entry parameter widths, entry return
+        widths)``, or None when the program declines."""
         if len(words) > IN_WORDS or any(not 0 <= word < 1 << 64 for word in words):
             return None
         with self._lock:
@@ -1068,11 +1622,17 @@ class NativeBackend:
             out = self._out
             if out[0] != OK:
                 return None
-            count, ranges, offsets_at = out[1], out[2], out[3]
+            count, ranges, offsets_at, order_at, widths_at = out[1], out[2], out[3], out[4], out[5]
+            functions = out[STREAM_AT]
             code = list(out[WORDS_AT : WORDS_AT + count])
+            order = list(out[order_at : order_at + functions])
             offsets = list(out[offsets_at : offsets_at + functions])
             flat = list(out[RANGES_AT : RANGES_AT + 5 * ranges])
-        return code, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)]
+            parameters = out[widths_at]
+            parameter_widths = tuple(out[widths_at + 1 : widths_at + 1 + parameters])
+            returns_at = widths_at + 1 + parameters
+            return_widths = tuple(out[returns_at + 1 : returns_at + 1 + out[returns_at]])
+        return code, order, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
 
 
 _NATIVE: list = []

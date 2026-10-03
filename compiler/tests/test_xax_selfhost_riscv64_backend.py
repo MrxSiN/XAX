@@ -105,6 +105,29 @@ class SelfhostRiscv64BackendTests(unittest.TestCase):
         entry = graph.function((b32, b32), (b32,))
         self.assertSameImage(entry, tuple(graph.objects.values()))
 
+    def test_closure_skips_erased_proof_callees_and_unreachable_functions(self):
+        from xax_compiler import EffectDomain, effect_type
+
+        io = effect_type(EffectDomain.IO)
+        callee_graph = GraphBuilder()
+        callee_block = callee_graph.block(io)
+        callee_block.ret(*callee_block.params)
+        erased = callee_graph.function((io,), (io,))
+        unused_graph = GraphBuilder()
+        unused_block = unused_graph.block(B64)
+        unused_block.ret(unused_block.op1(Operation.ADD_WRAP, (unused_block.params[0], unused_block.const(B64, 1)), B64))
+        unused = unused_graph.function((B64,), (B64,))
+        graph = GraphBuilder()
+        block = graph.block(B64, io)
+        value, effect = block.params
+        (effect,) = block.op(Operation.CALL_DIRECT, (effect,), (io,), entity=erased)
+        block.ret(block.op1(Operation.MUL_WRAP, (value, block.const(B64, 3)), B64), effect)
+        entry = graph.function((B64, io), (B64, io))
+        objects = (*graph.objects.values(), *callee_graph.objects.values(), *unused_graph.objects.values(), erased, unused)
+        python, xax = _both(entry, objects)
+        self.assertEqual(xax, python)
+        self.assertEqual([cid for cid, _offset in xax.function_offsets], [entry.cid])
+
     def test_rejections_keep_the_bootstrap_diagnostic(self):
         graph = GraphBuilder()
         block = graph.block(*(B64,) * 9)

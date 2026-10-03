@@ -598,45 +598,43 @@ def compile_riscv64_bound_target(
 _NONE = 0xFFFFFFFF
 
 
-def _marshal(functions: Sequence[SemanticObject], resolve) -> list[int]:
-    """S5a (ADR-140): the structural stream the XAX backend program reads (see ``xax_selfhost_riscv64_backend``).
+def _table_objects(reader: StoreReader, target_object: SemanticObject) -> list[SemanticObject]:
+    """The store's objects in store order, then the bound target when the store does not hold it."""
+    objects = list(reader.objects())
+    return objects if any(obj.cid == target_object.cid for obj in objects) else [*objects, target_object]
 
-    Raises the bootstrap's diagnostic for a value that is neither ``bits<N <= 64>`` nor a proof value."""
-    index = {function.cid: position for position, function in enumerate(functions)}
-    words = [len(functions)]
-    for function in functions:
-        graph_object, _parameters, return_types = _decode_function_interface(function, resolve)
-        graph = parse_function_graph(function, resolve)
-        where = graph_object.cid.hex()
-        ids: dict[ValueRef, int] = {}
-        for block_index, block in enumerate(graph.blocks):
-            for parameter in range(len(block.parameters)):
-                ids[ValueRef.parameter(block_index, parameter)] = len(ids)
-            for node_index, node in enumerate(block.nodes):
-                for result in range(len(node.results)):
-                    ids[ValueRef.node_result(block_index, node_index, result)] = len(ids)
-        width = lambda cid: _machine_width(resolve, cid, where) or 0  # noqa: E731
-        words += [len(graph.blocks), graph.entry, len(ids)]
-        for block in graph.blocks:
-            words += [len(block.parameters), *(width(cid) for cid in block.parameters), len(block.nodes)]
-            for node in block.nodes:
-                if node.operation == Operation.CONSTANT:
-                    extra = int(_decode_constant(node.entity, resolve)[1]) & ((1 << 64) - 1)
-                elif node.operation == Operation.CALL_DIRECT:
-                    extra = _NONE if _is_erased_proof_function(node.entity, resolve) else index[node.entity.cid]
-                else:
-                    extra = 0
-                words += [
-                    int(node.operation), len(node.results), *(width(cid) for cid in node.results),
-                    len(node.operands), *(ids[value] for value in node.operands), len(node.attributes), *node.attributes, extra,
-                ]
-            terminator = block.terminator
-            values = terminator.values
-            flags = [int(not _is_proof_type(resolve(cid))) for cid in return_types[: len(values)]] if terminator.kind == TerminatorKind.RETURN else []
-            flags += [0] * (len(values) - len(flags))
-            words += [int(terminator.kind), len(values), *(ids[value] for value in values), *flags, len(terminator.edges)]
-            for target, arguments in terminator.edges:
-                words += [target, len(arguments), *(ids[value] for value in arguments)]
+
+def _object_table(reader: StoreReader, entry: SemanticObject, target_object: SemanticObject) -> list[int] | None:
+    """S5b (ADR-141): every store object as the XAX backend program reads it (see ``xax_selfhost_riscv64_backend``).
+
+    No object is selected or interpreted here: each one's kind, reference indices, CID, and payload (its body bytes,
+    or for a graph fragment the S3c XAX graph-decoder stream) are copied in store order.  None when a graph body
+    cannot be streamed (the bootstrap generator then runs)."""
+    from xax_compiler import _native_graph_decoder
+
+    decoder = _native_graph_decoder()
+    if decoder is None:
+        return None
+    objects = _table_objects(reader, target_object)
+    index = {obj.cid: position for position, obj in enumerate(objects)}
+    if entry.cid not in index:
+        return None
+    words = [len(objects), index[entry.cid], index[target_object.cid]]
+    for obj in objects:
+        words += [int(obj.kind), len(obj.references), *(index.get(cid, _NONE) for cid in obj.references)]
+        words += [int.from_bytes(obj.cid[offset:offset + 8], "big") for offset in range(0, 32, 8)]
+        if obj.kind == Kind.GRAPH_FRAGMENT:
+            if len(obj.body) > decoder.capacity:
+                return None
+            status, stream = decoder.decode(obj.body, len(obj.references))
+            if status != 0:
+                return None
+            payload = list(stream)
+        elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET):
+            payload = list(obj.body)
+        else:
+            payload = []
+        words += [len(payload), *payload]
     return words
 
 
@@ -649,13 +647,14 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
     target = decode_native_target(target_object)
     if target.architecture != RISCV64_ARCHITECTURE:
         fail("XAX.RISCV64.TARGET", target_object.cid.hex(), "RISCV64-TARGET-PROFILE", RISCV64_ARCHITECTURE, target.architecture)
+    if backend != "python":
+        # S5b: the XAX program computes the closure, order, and stream from the store objects itself.
+        image = _compile_with_xax(reader, entry, function_cid, target_object, backend == "xax")
+        if image is not None:
+            return image
     functions = _function_closure(entry, resolve, target.supported_operations, target.supported_terminators)
     # The entry is laid out first so the image starts at its entry point.
     functions = (entry, *(function for function in functions if function.cid != entry.cid))
-    if backend != "python":
-        image = _compile_with_xax(functions, resolve, entry, function_cid, target_object, backend == "xax")
-        if image is not None:
-            return image
     emitter = _Emitter(function_cid.hex())
     offsets: dict[bytes, int] = {}
     node_ranges: list[ArtifactSemanticRange] = []
@@ -677,26 +676,21 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
     )
 
 
-def _compile_with_xax(functions, resolve, entry, function_cid: bytes, target_object: SemanticObject, required: bool) -> Riscv64Image | None:
-    """The image from the XAX backend program (ADR-140), or None (the bootstrap then generates it and raises
-    any diagnostic)."""
+def _compile_with_xax(reader: StoreReader, entry, function_cid: bytes, target_object: SemanticObject, required: bool) -> Riscv64Image | None:
+    """The image from the XAX backend program (ADR-140, ADR-141), or None (the bootstrap generator then runs and
+    raises any diagnostic)."""
     from xax_selfhost_riscv64_backend import native_backend
 
     native = native_backend()
-    if native is None:
-        if required:
-            fail("XAX.RISCV64.HOST", "host", "RISCV64-XAX-BACKEND", "Linux x86-64 host for the native XAX backend", "unavailable")
-        return None
-    try:
-        words = _marshal(functions, resolve)
-    except XaxError:
-        return None
-    result = native.compile(words, len(functions))
+    words = None if native is None else _object_table(reader, entry, target_object)
+    result = None if words is None else native.compile(words)
     if result is None:
         if required:
-            fail("XAX.RISCV64.BACKEND", function_cid.hex(), "RISCV64-XAX-BACKEND-DECLINED", "accepted", "declined")
+            fail("XAX.RISCV64.BACKEND", function_cid.hex(), "RISCV64-XAX-BACKEND", "accepted by the XAX backend program", "unavailable or declined")
         return None
-    code_words, word_offsets, ranges = result
+    code_words, order, word_offsets, ranges, parameter_widths, return_widths = result
+    objects = _table_objects(reader, target_object)
+    functions = [objects[position] for position in order]
     code = b"".join(word.to_bytes(4, "little") for word in code_words)
     offsets = {function.cid: 4 * offset for function, offset in zip(functions, word_offsets)}
     function_ranges = []
@@ -704,9 +698,7 @@ def _compile_with_xax(functions, resolve, entry, function_cid: bytes, target_obj
         end = offsets[functions[position + 1].cid] if position + 1 < len(functions) else len(code)
         function_ranges.append(ArtifactSemanticRange(function.cid, None, None, offsets[function.cid], end))
     node_ranges = [ArtifactSemanticRange(functions[f].cid, block, node, start, end) for f, block, node, start, end in ranges]
-    _graph, parameters, returns = _decode_function_interface(entry, resolve)
-    widths = lambda cids: tuple(w for w in (_machine_width(resolve, cid, function_cid.hex()) for cid in cids) if w is not None)  # noqa: E731
-    return Riscv64Image(code, 0, tuple(sorted(offsets.items())), widths(parameters), widths(returns), target_object.cid, (*function_ranges, *node_ranges))
+    return Riscv64Image(code, 0, tuple(sorted(offsets.items())), parameter_widths, return_widths, target_object.cid, (*function_ranges, *node_ranges))
 
 
 def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes, *, encoder: str = "auto", backend: str = "auto") -> Riscv64Image:
