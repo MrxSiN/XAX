@@ -51,8 +51,8 @@ from xax_compiler import (
 from xax_graph_builder import GraphBuilder, program_store
 
 STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_cfg_analysis.xax"
-IN_EXTENT = 1 << 20
-OUT_EXTENT = 1 << 22
+IN_EXTENT = 1 << 24
+OUT_EXTENT = 1 << 25
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 ACCEPT, REJECT, DEFER = 0, 1, 2
 

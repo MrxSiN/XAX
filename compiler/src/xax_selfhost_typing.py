@@ -75,7 +75,7 @@ from xax_compiler import heap_view_type
 from xax_selfhost_cfg import B64, IN_POINTER, MEM, OUT_POINTER, _Builder
 
 # The typing-and-facts program's own views: large graphs need room for their streams and fact tables.
-IN_EXTENT, OUT_EXTENT = 4 << 20, 16 << 20
+IN_EXTENT, OUT_EXTENT = 16 << 20, 256 << 20
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)
 
@@ -830,8 +830,9 @@ def type_info_from(resolve):
             item = resolve(cid)
         except Exception:  # noqa: BLE001 - any resolution failure leaves the node to the bootstrap
             return None
-        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT) and len(item.body) <= TARGET_BODY_LIMIT:
-            return int(item.kind), tuple(item.references), item.body  # S4d.2c: foreign declarations, recursion groups
+        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT, Kind.TYPE) and len(item.body) <= TARGET_BODY_LIMIT:
+            # S4d.2c: foreign declarations, recursion groups; S4d.2d: identity types embedding CIDs (lend entries).
+            return int(item.kind), tuple(item.references), item.body
         if len(item.body) > BODY_LIMIT or item.kind not in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION):
             # Kind only: graph bodies (and their references) are never needed, and no rule accepts a longer body.
             return int(item.kind), (), b""
