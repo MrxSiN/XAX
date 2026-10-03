@@ -325,9 +325,8 @@ def build() -> dict[str, object]:
     x86_latency = latency["cases"] if latency else None
     aarch64_execution = {
         "harness": "xax_aarch64.run_aarch64_qemu",
-        "qemu_system_aarch64_available": shutil.which("qemu-system-aarch64") is not None,
         "hardware_latency_samples": None,
-        "status": "missing on this x86-64 host; no AArch64 hardware/QEMU executable available",
+        "status": "not measured: no AArch64 hardware; emulated timing is not latency evidence",
     }
 
     return {
