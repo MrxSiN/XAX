@@ -1,0 +1,170 @@
+"""S4d.2 (ADR-137): the XAX facts engine agrees with the bootstrap memory-fact passes.
+
+Random stack-memory programs (allocations, field offsets, stores, loads,
+casts, ends; straight-line and looping, with pointers, owners, and frontiers
+carried through block parameters) and their mutations (use after end,
+double end, leaks, a forked frontier, out-of-bounds and misaligned accesses,
+uninitialized loads, permission and type errors) must verify or reject with
+the same exact diagnostic, and with the same pointer extents, whether the
+engine runs or not.  The engine must accept a substantial share of the
+valid programs.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import platform
+import random
+import sys
+import unittest
+
+from xax_compiler import (
+    IntCompare, Operation, Permission, XaxError, bits_type, memory_effect_type, pointer_type, resource_type, x86_64_linux_exec_target,
+)
+from xax_graph_builder import GraphBuilder, program_store
+
+LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+B1, B8, B32, B64 = (bits_type(width) for width in (1, 8, 32, 64))
+MEM = memory_effect_type()
+OWNER = resource_type(1, 1)
+ELEMENTS = {B8: 1, B32: 4, B64: 8}
+
+
+@contextlib.contextmanager
+def _engine(native):
+    import xax_compiler
+
+    saved = (xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED)
+    xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED = native, True
+    xax_compiler._PARSED_GRAPHS.clear()
+    try:
+        yield
+    finally:
+        xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED = saved
+        xax_compiler._PARSED_GRAPHS.clear()
+
+
+def _program(rng: random.Random, mutation: str | None):
+    """A random stack-memory function ``(bits<32>) -> bits<32>`` and the objects it needs."""
+    element = rng.choice(tuple(ELEMENTS))
+    size = ELEMENTS[element]
+    count = rng.randrange(1, 5)
+    extent = size * count
+    alignment = size if mutation != "under_aligned_alloc" else max(1, size // 2)
+    permission = Permission.READ_WRITE
+    pointer = pointer_type(element, permission, size)
+    graph = GraphBuilder()
+    graph.track(pointer, OWNER, MEM, element, B32, B1)
+    entry = graph.block(B32)
+    (seed,) = entry.params
+    p, owner, memory = entry.op(Operation.STACK_ALLOC, (), (pointer, OWNER, MEM), attributes=(extent, alignment))
+    value = entry.const(element, 7)
+    slots = list(range(count))
+    rng.shuffle(slots)
+    written = slots[: rng.randrange(1, count + 1)]
+    for slot in written:
+        at = p if slot == 0 else entry.op1(Operation.ADDRESS_OFFSET, (p,), pointer, attributes=(slot * size,))
+        if mutation == "forked_frontier" and slot == written[-1]:
+            entry.op1(Operation.STORE_BITS_LE, (at, value, memory), MEM, attributes=(size, size))
+        memory = entry.op1(Operation.STORE_BITS_LE, (at, value, memory), MEM, attributes=(size, size))
+    read_slot = written[0] if mutation != "uninitialized" else next((slot for slot in range(count) if slot not in written), count)
+    if mutation == "out_of_bounds":
+        read_slot = count
+    looping = rng.random() < 0.5
+    if looping:
+        # A loop carries the pointer, owner, frontier, and a counter; the body rewrites one slot.
+        header = graph.block(pointer, OWNER, MEM, B32)
+        body = graph.block(pointer, OWNER, MEM, B32)
+        exit_ = graph.block(pointer, OWNER, MEM, B32)
+        entry.br(header, p, owner, memory, entry.const(B32, 0))
+        hp, ho, hm, hi = header.params
+        header.cbr(header.op1(Operation.INT_COMPARE, (hi, header.const(B32, 3)), B1, attributes=(IntCompare.ULT,)), body, (hp, ho, hm, hi), exit_, (hp, ho, hm, hi))
+        bp, bo, bm, bi = body.params
+        target = written[-1]
+        at = bp if target == 0 else body.op1(Operation.ADDRESS_OFFSET, (bp,), pointer, attributes=(target * size,))
+        bm = body.op1(Operation.STORE_BITS_LE, (at, body.const(element, 9), bm), MEM, attributes=(size, size))
+        if mutation == "end_in_loop":
+            body.op(Operation.STACK_END, (bo, bm), ())
+        body.br(header, bp, bo, bm, body.op1(Operation.ADD_WRAP, (bi, body.const(B32, 1)), B32))
+        block, p, owner, memory = exit_, *exit_.params[:3]
+    else:
+        block = entry
+    at = p if read_slot == 0 else block.op1(Operation.ADDRESS_OFFSET, (p,), pointer, attributes=(read_slot * size,))
+    access = size if mutation != "wrong_size" else size * 2
+    align = size if mutation != "misaligned" else size * 2
+    if mutation == "cast_read_only":
+        at = block.op1(Operation.POINTER_CAST, (at,), pointer_type(element, Permission.READ, size))
+    loaded, memory = block.op(Operation.LOAD_BITS_LE, (at, memory), (element, MEM), attributes=(access, align))
+    if mutation == "cast_read_only":
+        block.op1(Operation.STORE_BITS_LE, (at, value, memory), MEM, attributes=(size, size))
+    if mutation == "use_after_end":
+        block.op(Operation.STACK_END, (owner, memory), ())
+        block.op(Operation.LOAD_BITS_LE, (at, memory), (element, MEM), attributes=(size, size))
+    elif mutation == "double_end":
+        block.op(Operation.STACK_END, (owner, memory), ())
+        block.op(Operation.STACK_END, (owner, memory), ())
+    elif mutation != "leak":
+        block.op(Operation.STACK_END, (owner, memory), ())
+    result = loaded if element == B32 else (block.op1(Operation.INT_ZERO_EXTEND, (loaded,), B32) if element == B8 else block.op1(Operation.INT_TRUNCATE, (loaded,), B32))
+    block.ret(block.op1(Operation.ADD_WRAP, (result, seed), B32))
+    function = graph.function((B32,), (B32,))
+    return function, tuple(graph.objects.values())
+
+
+MUTATIONS = (None, None, None, None, "use_after_end", "double_end", "leak", "forked_frontier", "out_of_bounds", "misaligned",
+             "uninitialized", "wrong_size", "cast_read_only", "end_in_loop", "under_aligned_alloc")
+
+
+def _outcome(native, function, objects):
+    from xax_compiler import _decode_function_interface, _parse_graph, store_resolver
+
+    with _engine(native):
+        try:
+            reader = program_store(function, x86_64_linux_exec_target(), objects)
+        except XaxError as error:
+            return ("reject", error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity)
+        resolve = store_resolver(reader)
+        parsed = _parse_graph(_decode_function_interface(function, resolve)[0], resolve)
+        return ("accept", parsed.pointer_extents, parsed.returns)
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostFactsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from xax_selfhost_typing import NativeTyping
+
+        cls.native = NativeTyping()
+
+    def test_stack_programs_agree_with_the_bootstrap(self):
+        import xax_selfhost_typing as typing_module
+
+        accepted = []
+        original = typing_module.NativeTyping.facts
+
+        def counting(self_, values):
+            result = original(self_, values)
+            accepted.append(result[0])
+            return result
+
+        rng = random.Random(137)
+        outcomes = {"accept": 0, "reject": 0}
+        typing_module.NativeTyping.facts = counting
+        try:
+            for _ in range(300):
+                mutation = rng.choice(MUTATIONS)
+                function, objects = _program(rng, mutation)
+                baseline = _outcome(None, function, objects)
+                with_engine = _outcome(self.native, function, objects)
+                self.assertEqual(with_engine, baseline, mutation)
+                outcomes[baseline[0]] += 1
+        finally:
+            typing_module.NativeTyping.facts = original
+        self.assertGreater(outcomes["accept"], 60)
+        self.assertGreater(outcomes["reject"], 60)
+        # The engine itself accepted many graphs (not only fallbacks to the bootstrap).
+        self.assertGreater(sum(accepted), 60)
+
+
+if __name__ == "__main__":
+    unittest.main()

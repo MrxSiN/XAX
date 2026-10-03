@@ -413,7 +413,9 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S4c | Resource/effect and meta typing (`effect.step`, `resource.*`, `meta.*`) with effect, resource, and opaque type decoding | S4b | EXECUTED (ADR-134): every node check that reads only types is now XAX |
 | S4d.1 | Constant typing (object decoding and canonical values) and terminator typing (conditions, edge arguments) | S4c | EXECUTED (ADR-135): 927 constants and 427 terminators in the corpus proven by XAX |
 | S4d.2a | Direct-call contracts and memory-free graphs: XAX proves a graph has no tracked memory and Python runs no fact passes for it | S4d.1 | EXECUTED (ADR-136): 5 of 20 corpus graphs skip the fact system |
-| S4d.2b | Stack-storage facts (allocation, owner, effect, initialized intervals, lifetime end, leaks), then heap views, links, and pointer windows; then memory, atomic, and target typing | S4d.2a | next |
+| S4d.2b | The memory-fact passes as an XAX engine (accept or decline), modelling stack storage | S4d.2a | EXECUTED (ADR-137): identical outcomes and extents on 300 random stack programs; the engine accepts every valid one |
+| S4d.2c | Heap views (borrowed and allocated), checked accesses, foreign calls, view-passing direct and group calls and returns, pointer address and rebase windows | S4d.2b | next |
+| S4d.2d | Links and records, atomics, indirect calls, function addresses, target operations: the engine accepts every graph the bootstrap accepts (S4 complete) | S4d.2c | planned |
 | S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | planned |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
 

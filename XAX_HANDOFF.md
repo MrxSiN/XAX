@@ -270,3 +270,8 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S4d.2a — 2026-10-03 (ADR-136)
 
 - `fact_free` in `_parse_graph_uncached` gates the fact loop (`range(0 if fact_free else ...)`; the for-else fixpoint failure is guarded). The XAX check's last output word is the memory-free flag. Proven `call.direct` nodes are not added to `proven_nodes`, because their branch also does view and resource borrowing. Next is S4d.2b: model stack storage facts in XAX (allocation, owner, effect with initialized intervals, lifetime end, leaks), so graphs whose only memory is stack storage also skip the Python passes.
+
+## S4d.2b — 2026-10-03 (ADR-137)
+
+- The facts engine is built from `xax_structured.Proc` helpers (`E` in `xax_selfhost_facts.py`): every helper is an XAX function `f(a, b, views) -> (bits<64>, views)`, with more arguments passed in header words `H_ARG + i`. State lives in the output view (layout in `_engine`). Add an operation by writing a handler and registering it in `build_engine`'s `handlers`; graph-level declines live in `_engine`. Then regenerate the store with `xax_selfhost_typing.write_typing_store()` and run `test_xax_selfhost_facts.py`.
+- Cost: the per-process native compile is about 1.8 s. Caching the compiled image by store hash would remove it.

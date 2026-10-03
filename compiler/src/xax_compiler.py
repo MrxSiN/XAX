@@ -6266,44 +6266,6 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             fail("XAX.STRUCT.SSA_DOMINANCE", obj.cid.hex(), "GRAPH-SSA-DOMINANCE", sorted(dominators[use_block]), value.block)
         return type_cid
 
-    # Self-hosting S4 (ADR-132): once S3e proved every use valid, the XAX typing
-    # function decides the scalar operation families; a node it proves skips the
-    # bootstrap checks below, and every other node takes them unchanged.
-    # S4d.1 (ADR-135): constants and block terminators are typed by it too.
-    proven_nodes: frozenset[tuple[int, int]] = frozenset()
-    proven_constants: frozenset[tuple[int, int]] = frozenset()
-    proven_terminators: frozenset[int] = frozenset()
-    fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
-    typing = _native_typing() if checked_uses else None
-    if typing is not None:
-        from xax_selfhost_typing import PROVEN, marshal, type_info_from
-
-        words, keys = marshal(
-            blocks,
-            lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
-            type_info_from(resolve),
-            lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
-        )
-        status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
-        if status == 0:
-            proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
-            proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
-            # A direct call's contract is proven, but its branch also borrows views and resources: it is skipped only in fact-free graphs.
-            proven_nodes = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation != Operation.CALL_DIRECT) - proven_constants
-            block_verdicts = verdicts[len(keys):len(keys) + len(blocks)]
-            proven_terminators = frozenset(index for index, verdict in enumerate(block_verdicts) if verdict == PROVEN)
-            fact_free = (
-                verdicts[-1] == 1
-                and len(proven) == sum(len(block.nodes) for block in blocks)
-                and len(proven_terminators) == len(blocks)
-            )
-
-    # Memory facts flow only along explicit block parameters.  Blocks are
-    # verified in reverse postorder; a back edge first contributes nothing
-    # (optimistic), then passes repeat until the block-entry facts reach a
-    # fixpoint.  Facts only shrink between passes, so a failure in any pass is
-    # a real failure and the final pass is exact.  Graphs without back edges
-    # converge in one pass.
     if native_order is not None:
         order = native_order
     else:
@@ -6324,6 +6286,50 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 walk.pop()
         order.reverse()
         order.extend(index for index in range(len(blocks)) if index not in visited)
+    # Self-hosting S4 (ADR-132): once S3e proved every use valid, the XAX typing
+    # function decides the scalar operation families; a node it proves skips the
+    # bootstrap checks below, and every other node takes them unchanged.
+    # S4d.1 (ADR-135): constants and block terminators are typed by it too.
+    proven_nodes: frozenset[tuple[int, int]] = frozenset()
+    proven_constants: frozenset[tuple[int, int]] = frozenset()
+    proven_terminators: frozenset[int] = frozenset()
+    fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
+    engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
+    typing = _native_typing() if checked_uses else None
+    if typing is not None:
+        from xax_selfhost_typing import PROVEN, marshal, type_info_from
+
+        words, keys, value_refs = marshal(
+            blocks,
+            lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
+            type_info_from(resolve),
+            lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
+            facts=(entry, order),
+        )
+        status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
+        if status == 0:
+            proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
+            proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
+            # A direct call's contract is proven, but its branch also borrows views and resources: it is skipped only in fact-free graphs.
+            proven_nodes = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation != Operation.CALL_DIRECT) - proven_constants
+            block_verdicts = verdicts[len(keys):len(keys) + len(blocks)]
+            proven_terminators = frozenset(index for index, verdict in enumerate(block_verdicts) if verdict == PROVEN)
+            fact_free = (
+                verdicts[-1] == 1
+                and len(proven) == sum(len(block.nodes) for block in blocks)
+                and len(proven_terminators) == len(blocks)
+            )
+            accepted, extents = typing.facts(len(value_refs))
+            if accepted and len(proven_terminators) == len(blocks):
+                # The engine modelled every node (or found it typing-proven) and its passes converged.
+                engine_extents = [(ref, extent - 1) for ref, extent in zip(value_refs, extents) if extent]
+
+    # Memory facts flow only along explicit block parameters.  Blocks are
+    # verified in reverse postorder; a back edge first contributes nothing
+    # (optimistic), then passes repeat until the block-entry facts reach a
+    # fixpoint.  Facts only shrink between passes, so a failure in any pass is
+    # a real failure and the final pass is exact.  Graphs without back edges
+    # converge in one pass.
     incoming_edges: dict[int, list[tuple[int, int]]] = {index: [] for index in range(len(blocks))}
     for source_index, source in enumerate(blocks):
         for edge_index, (target, _arguments) in enumerate(source.terminator.edges):
@@ -6333,7 +6339,9 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     previous_seeds: dict[int, _BlockFacts] | None = None
     returns_by_block: list[tuple[int, tuple[bytes, ...]]] = []
     global_pointers: dict[ValueRef, _PointerFact] = {}
-    if fact_free:
+    skip_passes = fact_free or engine_extents is not None
+    if skip_passes:
+        # S4d.2b (ADR-137): the XAX facts engine ran these passes and accepted the graph.
         # S4d.2a (ADR-136): XAX proved every node, constant, call contract, and terminator,
         # and that no value has a type the fact system tracks, so the passes below would
         # record nothing and reject nothing.  Only the derived types remain to record.
@@ -6342,7 +6350,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 node.operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
             if block.terminator.kind == TerminatorKind.RETURN:
                 returns_by_block.append((block_index, tuple(value_type(value, block_index, len(block.nodes)) for value in block.terminator.values)))
-    for _fact_pass in range(0 if fact_free else 2 * len(blocks) + 2):
+    for _fact_pass in range(0 if skip_passes else 2 * len(blocks) + 2):
         returns_by_block: list[tuple[int, tuple[bytes, ...]]] = []
         global_pointers: dict[ValueRef, _PointerFact] = {}
         heap_allocations: dict[ValueRef, _HeapAllocationFact] = {}
@@ -6981,12 +6989,13 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         previous_seeds = pass_seeds
         exits = pass_exits
     else:
-        if not fact_free:
+        if not skip_passes:
             fail("XAX.MEMORY.FACT_FIXPOINT", obj.cid.hex(), "MEMORY-FACT-FIXPOINT", 2 * len(blocks) + 2, "not converged")
     returns = [item for _block, item in sorted(returns_by_block, key=lambda pair: pair[0])]
+    pointer_extents = engine_extents if engine_extents is not None else [(ref, fact.extent) for ref, fact in global_pointers.items() if isinstance(fact, _PointerFact)]
     parsed = _ParsedGraph(
         entry, tuple(blocks), tuple(returns), tuple(member_spans),
-        tuple(sorted(((ref, fact.extent) for ref, fact in global_pointers.items() if isinstance(fact, _PointerFact)), key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))),
+        tuple(sorted(pointer_extents, key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))),
     )
     _verify_linear_flow(obj, parsed, resolve)
     return parsed

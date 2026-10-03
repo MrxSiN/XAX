@@ -81,7 +81,9 @@ ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
 WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)
 EFFECT, RESOURCE, RKIND, RSTATE, RFLAGS, RINSTANCE, TSTART, TCOUNT, OPAQUE, EDOMAIN = range(7, 17)
-TABLES = 17
+# S4d.2b: pointer types (form 2) and the exact stack-owner and memory-effect forms.
+PTR, PSPACE, PELEM, PPERM, PALIGN, STACKOWNER, MEMEFFECT = range(17, 24)
+TABLES = 24
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -207,7 +209,14 @@ class _Typing:
         return value, size, self.all(self.lt(x0, 256), self.any(one, two, three))
 
 
+_ENGINE: list = []
+
+
 def build_typing_program() -> tuple[StoreReader, SemanticObject]:
+    from xax_selfhost_facts import build_engine
+
+    engine, engine_objects = build_engine()
+    _ENGINE[:] = [engine, engine_objects]
     b = _Builder()
     count = b.read(b.c(0))
     t = _Typing(b, count)
@@ -216,6 +225,8 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     items = b.add(t.slot(TABLES, b.c(0)), MARKS)
     (items,) = b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
     b.for_range(b.c(0), count, lambda index, carried: _proof_entry(b, t, index, carried), (items,))
+    for _depth in range(2):  # a pointer to a pointer validates on the second pass
+        b.for_range(b.c(0), count, lambda index, carried: _pointer_entry(b, t, index) or (), ())
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
     blocks_at, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
@@ -224,12 +235,22 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
     b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 3), TABLE), b.defer_block)
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
-    b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
+    (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
     b.for_range(b.c(0), blocks, lambda index, carried: _block_entry(b, t, index, carried, blocks, places, verdicts), ())
     # S4d.2a: the graph is memory-free when every type object is decoded and none is one the fact system tracks.
     (memory_free,) = b.for_range(b.c(0), count, lambda index, carried: (t.all(carried[0], _fact_free_type(b, t, index)),), (b.c(1),))
     b.put(b.add(verdicts, blocks), memory_free)
+    # S4d.2b: the facts engine runs over the facts section (if any), reading these header words.
+    from xax_selfhost_facts import H_COUNT, H_FACTS_AT, H_LIST, H_NODES, H_TABLE, HEADER, VIEW_TYPES
+
+    for field, value in ((H_FACTS_AT, facts_at), (H_COUNT, count), (H_TABLE, b.c(TABLE)), (H_NODES, nodes), (H_LIST, b.add(b.add(places, blocks), 3))):
+        b.put(b.c(HEADER + field), value)
+    in_view, in_mem, out_view, out_mem = b.state
+    # The original pointers stay valid (the views come back whole); the shared reject/defer blocks use them.
+    _status, _inp, in_view, in_mem, _out, out_view, out_mem = b.cur.op(
+        Operation.CALL_DIRECT, (b.inp, in_view, in_mem, b.out, out_view, out_mem), (B64, *VIEW_TYPES), entity=_ENGINE[0])
+    b.state = (in_view, in_mem, out_view, out_mem)
     b.put(b.c(1), proven)
     b.put(b.c(0), ACCEPT)
     in_view, in_mem, out_view, out_mem = b.state
@@ -241,7 +262,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
         b.cur.ret(b.inp, in_view, in_mem, b.out, out_view, out_mem)
     triples = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
     function = b.g.function(triples, triples)
-    return program_store(function, x86_64_linux_exec_target(), tuple(b.g.objects.values())), function
+    return program_store(function, x86_64_linux_exec_target(), (*b.g.objects.values(), *engine_objects)), function
 
 
 def _scalar_entry(b: _Builder, t: _Typing, index, carried):
@@ -344,6 +365,8 @@ def _proof_entry(b: _Builder, t: _Typing, index, carried):
     full = t.all(header, t.eq(steps, tcount), transitions_ok, t.eq(after, end), t.not_(owner_shape))
     resource_ok = t.any(owner, full)
     b.put(t.slot(EFFECT, index), effect_ok)
+    b.put(t.slot(MEMEFFECT, index), t.all(effect_ok, t.eq(v1, MEMORY_EFFECT_DOMAIN), t.eq(p2, end)))
+    b.put(t.slot(STACKOWNER, index), owner)
     b.put(t.slot(EDOMAIN, index), b.mul(effect_ok, v1))
     b.put(t.slot(OPAQUE, index), b.mul(opaque_ok, v1))
     b.put(t.slot(RESOURCE, index), resource_ok)
@@ -354,6 +377,31 @@ def _proof_entry(b: _Builder, t: _Typing, index, carried):
     b.put(t.slot(TSTART, index), cursor)
     b.put(t.slot(TCOUNT, index), b.mul(full, tcount))
     return (b.add(cursor, steps),)
+
+
+def _pointer_entry(b: _Builder, t: _Typing, index):
+    """Pass 4, one type: ``ptr<space, element, permission, alignment>`` as ``_decode_pointer_type`` accepts it."""
+    position = b.get(t.slot(POSITION, index))
+    kind, references, length = (b.read(b.add(position, k)) for k in range(3))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    form = b.read(base)
+    at = b.add(base, 1)
+    fields = []
+    for _ in range(4):  # space, element reference, permission, alignment
+        value, size, ok = t.uleb(at)
+        at = b.add(at, size)
+        fields.append((value, t.all(ok, t.le(at, end))))
+    (space, space_ok), (reference, reference_ok), (permission, permission_ok), (alignment, alignment_ok) = fields
+    element = b.read(end)
+    element_ok = t.all(t.lt(element, t.count), _known(t, element), t.not_(t.any(t.lookup(EFFECT, element), t.lookup(RESOURCE, element))))
+    power = t.all(t.nonzero(alignment), t.eq(b.op(Operation.BIT_AND, alignment, b.sub(alignment, 1)), 0))
+    ok = t.all(
+        t.eq(kind, int(Kind.TYPE)), t.eq(references, 1), t.eq(form, 2), space_ok, t.nonzero(space), reference_ok, t.eq(reference, 0),
+        permission_ok, t.le(b.c(1), permission), t.le(permission, 3), alignment_ok, power, t.eq(at, end), element_ok,
+    )
+    for table, value in ((PTR, ok), (PSPACE, space), (PELEM, element), (PPERM, permission), (PALIGN, alignment)):
+        b.put(t.slot(table, index), b.mul(ok, value) if table != PTR else ok)
 
 
 def _resource_rules(b: _Builder, t: _Typing, operation, operands, results, attributes, attribute, ids, extra_at):
@@ -437,7 +485,7 @@ def _known(t: _Typing, value):
     """A type the decoders fully validated (what ``_verify_type`` accepts, restricted to decoded forms)."""
     return t.any(
         t.nonzero(t.lookup(WIDTH, value)), t.nonzero(t.lookup(FORMAT, value)), t.lookup(LINK, value), t.nonzero(t.lookup(AGGREGATE, value)),
-        t.lookup(EFFECT, value), t.lookup(RESOURCE, value), t.nonzero(t.lookup(OPAQUE, value)),
+        t.lookup(EFFECT, value), t.lookup(RESOURCE, value), t.nonzero(t.lookup(OPAQUE, value)), t.lookup(PTR, value),
     )
 
 
@@ -446,6 +494,7 @@ def _fact_free_type(b: _Builder, t: _Typing, index):
     kind = b.read(b.get(t.slot(POSITION, index)))
     tracked = t.any(
         t.lookup(LINK, index),
+        t.lookup(PTR, index),
         t.all(t.lookup(EFFECT, index), t.eq(t.lookup(EDOMAIN, index), MEMORY_EFFECT_DOMAIN)),
         t.all(t.lookup(RESOURCE, index), t.one_of(t.lookup(RKIND, index), FACT_RESOURCE_KINDS)),
     )
@@ -692,7 +741,7 @@ def type_info_from(resolve):
     return info
 
 
-def marshal(blocks, operand_types_of, type_info, value_type_of=None) -> tuple[list[int], list[tuple[int, int]]]:
+def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None):
     """Input words for the covered nodes of parsed ``blocks`` and their (block, node) keys.
 
     ``operand_types_of(block, node)`` gives a node's operand type CIDs (or None
@@ -755,13 +804,77 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None) -> tuple[li
         section += [int(known), len(parameters), *clean(parameters), int(term.kind), condition or 0, len(edges)]
         for target, argument_types in edges:
             section += [target, len(argument_types), *clean(argument_types)]
-    # Serialized last: the block section can add types.
+    facts_section, refs = _facts_section(blocks, facts, keys, type_index, value_type_of) if facts is not None else ([0], None)
+    # Serialized last: the block and facts sections can add types.
     words = [len(entries)]
     for kind, references, body in entries:
         words += [kind, len(references), len(body), *body, *references]
     words += [len(keys), *nodes]
-    words += [len(blocks) if value_type_of is not None else 0, *section, *(0,) * PADDING]
-    return words, keys
+    words += [len(blocks) if value_type_of is not None else 0, *section, *facts_section, *(0,) * PADDING]
+    return (words, keys) if facts is None else (words, keys, refs)
+
+
+def _facts_section(blocks, facts, keys, type_index, value_type_of):
+    """S4d.2b: the facts engine's input (see ``xax_selfhost_facts``); ``refs`` maps value ids to ValueRefs."""
+    from xax_compiler import ValueRef
+    from xax_selfhost_facts import NONE
+
+    entry, order = facts
+    key_of = {key: index for index, key in enumerate(keys)}
+    refs, ids = [], {}
+    for block_index, block in enumerate(blocks):
+        for index in range(len(block.parameters)):
+            ids[ValueRef.parameter(block_index, index)] = len(refs)
+            refs.append(ValueRef.parameter(block_index, index))
+        for node_index, node in enumerate(block.nodes):
+            for result in range(len(node.results)):
+                ids[ValueRef.node_result(block_index, node_index, result)] = len(refs)
+                refs.append(ValueRef.node_result(block_index, node_index, result))
+    entry_parameters = len(blocks[entry].parameters)
+    kinds = [0] + [1] * entry_parameters  # (-1, 0), then (-2, i)
+    sites: dict[tuple[int, int], int] = {}
+    for block_index, block in enumerate(blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation in (Operation.STACK_ALLOC, Operation.HEAP_VIEW, Operation.CALL_FOREIGN):
+                sites[(block_index, node_index)] = len(kinds)
+                kinds.append(2)
+            elif node.operation in (Operation.CALL_DIRECT, Operation.CALL_GROUP_MEMBER):
+                sites[(block_index, node_index)] = len(kinds)
+                kinds.extend([3] * len(node.results))
+    edges: dict[tuple[int, int], int] = {}
+    incoming: dict[int, list[int]] = {index: [] for index in range(len(blocks))}
+    for block_index, block in enumerate(blocks):
+        for edge_index, (target, _arguments) in enumerate(block.terminator.edges):
+            edges[(block_index, edge_index)] = len(edges)
+            incoming[target].append(edges[(block_index, edge_index)])
+    body: list[int] = []
+    for block_index, block in enumerate(blocks):
+        body += [ids[ValueRef.parameter(block_index, 0)] if block.parameters else 0, len(block.parameters), *(_index(type_index, cid) for cid in block.parameters), len(block.nodes)]
+        for node_index, node in enumerate(block.nodes):
+            ref = ValueRef.node_result(block_index, node_index, 0)
+            operand_types = [value_type_of(block_index, value) for value in node.operands]
+            supported = all(item < ATTRIBUTE_LIMIT for item in node.attributes)
+            entity = NONE if node.entity is None else _index(type_index, node.entity.cid)
+            body += [
+                int(node.operation) if supported else 0, key_of.get((block_index, node_index), NONE), entity, sites.get((block_index, node_index), NONE),
+                ids.get(ref, 0), len(node.attributes), *(min(item, ATTRIBUTE_LIMIT) for item in node.attributes),
+                len(node.operands), *(ids[value] for value in node.operands), *(_index(type_index, cid) for cid in operand_types),
+                len(node.results), *(_index(type_index, cid) for cid in node.results),
+            ]
+        term = block.terminator
+        body += [int(term.kind), len(term.values), *(ids[value] for value in term.values), len(term.edges)]
+        for edge_index, (target, arguments) in enumerate(term.edges):
+            body += [target, edges[(block_index, edge_index)], len(arguments), *(ids[value] for value in arguments)]
+        body += [len(incoming[block_index]), *incoming[block_index]]
+    words = [1, len(refs), len(kinds), len(edges), len(blocks), entry, *order, *kinds, *body]
+    return words, refs
+
+
+def _index(type_index, cid: bytes) -> int:
+    from xax_selfhost_facts import NONE
+
+    index = type_index(cid)
+    return NONE if index is None else index
 
 
 class NativeTyping:
@@ -784,6 +897,15 @@ class NativeTyping:
         self._slots = (ctypes.c_uint64 * 4)()
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
+
+    def facts(self, values: int) -> tuple[bool, list[int]]:
+        """After ``check``: whether the facts engine accepted, and per value its pointer extent + 1 (0: none)."""
+        from xax_selfhost_facts import ACCEPTED, H_EXTENTS, H_STATUS, HEADER
+
+        if self._out[HEADER + H_STATUS] != ACCEPTED:
+            return False, []
+        base = self._out[HEADER + H_EXTENTS]
+        return True, list(self._out[base : base + values])
 
     def check(self, words: list[int], count: int) -> tuple[int, list[int] | None]:
         """``(status, verdicts)`` for one marshalled stream: ``count`` verdicts (nodes, then blocks)."""
