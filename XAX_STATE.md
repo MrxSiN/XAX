@@ -814,3 +814,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S6b.1: types and constants decided by XAX (ADR-143) — 2026-10-03
 
 - `verify_store` asks the typing program for a verdict on every type and constant, and skips the Python decoders for each one proven. On 600 random and mutated objects, XAX proved every valid one and no invalid one. Full suite: 884 tests, 17 skipped. Next: S6b.2 (functions, groups, contracts, reference lists, build objects, targets).
+
+## Self-hosting step S6b.2: functions, lists, contracts, and rootedness decided by XAX (ADR-144) — 2026-10-03
+
+- A native XAX store verifier decides ordinary functions (interface and graph contract), module and root reference lists, call contracts, and store rootedness and acyclicity. Every ordinary corpus function is proven. Full suite: 885 tests, 17 skipped.
+- The E DSL now binds a value already held by another variable as a fresh copy. This avoids an x86-64 register-resident lowering issue (aliased variables across control flow) whose root cause is open.

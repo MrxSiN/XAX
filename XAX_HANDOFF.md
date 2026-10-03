@@ -305,3 +305,9 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S6b.1 — 2026-10-03 (ADR-143)
 
 - `xax_compiler._XAX_VALID_OBJECTS` holds the CIDs XAX proved. `_xax_prove_objects` fills it at the start of `verify_store`. To compare against the bootstrap, clear the set, as `test_xax_selfhost_objects._bootstrap_accepts` does.
+
+## S6b.2 — 2026-10-03 (ADR-144)
+
+- The store verifier (`xax_selfhost_verify.py`) records the check behind its last 0 verdict in `out[2]`, as an index into `DECLINE_SITES`. Call `build_verifier_program()` in-process first so the codes are assigned.
+- **Open: x86-64 register-resident lowering and aliased variables.** In `_function_ok`, `e.var("ne_results", p["ne_at"])` followed by `e.set("ne_at", ...)` and a branch produced a native value equal to the *new* `ne_at`. Storing the snapshot to memory, or binding `ne_at + 0`, was correct. Small `Proc` programs with the same shape compiled correctly, and the frame (spill-all) lowering could not run the program to compare. The `E.var` fresh-copy rule avoids the pattern in every E-DSL program. A root-cause fix belongs in `xax_x86_64_regalloc` (edge copies or home slots for block parameters bound to two names), with a regression test.
+- Helper programs import each other at hash time (`xax_structured` hashes its types at import). `_xax_verify_store` therefore returns "not proven" on `ImportError` and while any helper is building. Otherwise a swallowed `ImportError` leaves the native hasher off for the whole process, which slows the suite about 3×.

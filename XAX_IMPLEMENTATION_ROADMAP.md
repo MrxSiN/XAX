@@ -420,8 +420,9 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S5b | The backend's input from the XAX store and graph decoders instead of the Python marshal: store bytes to image bytes | S5a | EXECUTED (ADR-141): S5 complete. Closure, interfaces, widths, constants, and order are decided by XAX; 6.4× faster than the bootstrap generator on a 300-value loop |
 | S6a | Resource and effect linearity (`_verify_linear_flow`) decided by XAX | S4 | EXECUTED (ADR-142): 6,518 suite graphs proven, none unsound |
 | S6b.1 | Type and constant objects decided by XAX | S6a | EXECUTED (ADR-143): no Python type or constant decoding when verifying the corpus stores |
-| S6b.2 | Function, recursion-group, call-contract, module/root, build, and target objects decided by XAX | S6b.1 | next |
-| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | in progress (S6a, S6b.1 done) |
+| S6b.2 | Function, call-contract, and module/root objects, and store rootedness, decided by XAX | S6b.1 | EXECUTED (ADR-144): 17/17 ordinary corpus functions and every list and store check proven |
+| S6b.3 | Recursion groups, group member functions, targets, and build objects decided by XAX; the per-graph glue | S6b.2 | next |
+| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | in progress (S6a, S6b.1, S6b.2 done) |
 
 ## 2. Bootstrap mapping
 
