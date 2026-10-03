@@ -665,7 +665,14 @@ class StoreReader:
             return False
         self.minor = minor
         self.root_cid = bytes(data[root_at:root_at + CID_SIZE])
-        self._index = {bytes(data[cid_at:cid_at + CID_SIZE]): (offset, length) for offset, length, cid_at in records}
+        self._index = {}
+        # S3b: envelopes the XAX decoder parsed; ``get`` builds them without the bootstrap decoder.
+        self._parsed = {}
+        for offset, length, cid_at, parsed, kind, reference_count, references_at, body_at, body_length in records:
+            cid = bytes(data[cid_at:cid_at + CID_SIZE])
+            self._index[cid] = (offset, length)
+            if parsed:
+                self._parsed[cid] = (cid_at, kind, reference_count, references_at, body_at, body_length)
         cursor = Cursor(data[metadata_start:])
         metadata = []
         for _ in range(metadata_count):
@@ -720,6 +727,12 @@ class StoreReader:
             offset, length = self._index[cid]
         except KeyError:
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
+        parsed = getattr(self, "_parsed", {}).get(cid)
+        if parsed is not None:
+            obj = self._object_from_parse(cid, parsed)
+            if obj is not None:
+                self._decoded[cid] = obj
+                return obj
         cursor = Cursor(self.data[offset:], f"object:{cid.hex()}")
         actual_length = cursor.uleb()
         if actual_length != length:
@@ -727,6 +740,22 @@ class StoreReader:
         prefix_size = cursor.pos
         obj = decode_object(self.data[offset : offset + prefix_size + length], f"object:{cid.hex()}")
         self._decoded[cid] = obj
+        return obj
+
+    def _object_from_parse(self, cid: bytes, parsed: tuple[int, ...]) -> SemanticObject | None:
+        """Build an object from the XAX decoder's parse (S3b, ADR-119) and check its CID.
+
+        With minimal ULEBs the payload after the stored CID *is* the canonical
+        content, so the CID is the hash of the domain plus those bytes.  A
+        mismatch returns None, and the bootstrap decoder reports it.
+        """
+        cid_at, kind, reference_count, references_at, body_at, body_length = parsed
+        data = self.data
+        if blake3(SEMANTIC_DOMAIN + data[cid_at + CID_SIZE : body_at + body_length]).digest() != cid:
+            return None
+        references = tuple(bytes(data[at:at + CID_SIZE]) for at in range(references_at, references_at + CID_SIZE * reference_count, CID_SIZE))
+        obj = SemanticObject(Kind(kind), 1, references, bytes(data[body_at:body_at + body_length]), cid)
+        object.__setattr__(obj, "cid_checked", True)
         return obj
 
     def objects(self) -> Iterable[SemanticObject]:
