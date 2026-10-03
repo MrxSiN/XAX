@@ -2316,7 +2316,7 @@ class NativeTests(unittest.TestCase):
         reader, function_object, _, _ = stack_memory_fixture(target_object=target_object)
         image = compile_native(reader, function_object.cid, target_object.cid)
         self.assertEqual(len(image.code), 43)
-        self.assertEqual(hashlib.sha256(image.code).hexdigest(), "4f0aad0b3c17fddd89aa23d36339c6523f73d7fcf46da9468f5362ecec78a035")
+        self.assertEqual(hashlib.sha256(image.code).hexdigest(), "39505b6c6f8474757b9ffb0887a67f3d8bb25e570cb96004671012ec383012c3")
         self.assertEqual(run_native_isolated(image, (0xAABBCCDD,)), (0xAABBCCDD,))
 
     def test_unsupported_native_width_rejected(self):

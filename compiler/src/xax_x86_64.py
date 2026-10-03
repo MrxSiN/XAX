@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import json
 import platform
+import struct
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -2371,10 +2372,100 @@ def _ctype(kind: str):
     return ctypes.c_uint64
 
 
+# Test-harness thunk (never part of an artifact): a SysV-callable
+# ``u64 thunk(fn, const u64 *slots, u64 count, u64 *xmm0_out)`` that makes one
+# Win64 call.  Slots 0..3 go to RCX/RDX/R8/R9 *and* XMM0..3 (Win64 assigns
+# argument registers by position, so loading both is exact); slots 4.. go to
+# the stack above the 32-byte shadow area.  ``count`` is at least 4.
+_SYSV_TO_WIN64_THUNK = bytes.fromhex(
+    "554889e553415441554156"            # push rbp; mov rbp,rsp; push rbx,r12,r13,r14
+    "4889fb4989f44989d54989ce"          # rbx=fn r12=slots r13=count r14=out
+    "4c89e84883e804730231c0"            # rax = max(count-4, 0)
+    "488d04c52f0000004883e0f04829c4"    # rsp -= align16(32 + 8*rax)
+    "b904000000"                        # rcx = 4
+    "4c39e9730d498b04cc488904cc48ffc1ebee"  # copy slots[4..count) to [rsp+8*i]
+    "498b0c24498b5424084d8b4424104d8b4c2418"  # rcx,rdx,r8,r9 = slots[0..3]
+    "66480f6ec166480f6eca66490f6ed066490f6ed9"  # xmm0..3 = slots[0..3]
+    "ffd3"                              # call fn
+    "66410fd606"                        # [r14] = xmm0
+    "488d65e0415e415d415c5b5dc3"        # restore and return rax
+)
+
+
+def _run_native_win64_on_sysv(image: NativeImage, arguments: Sequence[object], parameter_kinds, return_kinds) -> tuple[object, ...]:
+    """Linux x86-64 harness: map the raw Win64 image and call it through the thunk.
+
+    Aggregates follow the Win64 size rule the compiler targets: 1/2/4/8-byte
+    values travel in an integer slot, others by pointer to a 16-byte-aligned
+    copy; a larger aggregate result is written through a hidden pointer in
+    the first slot.
+    """
+    import mmap
+
+    code = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16) + image.code
+    mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
+    keep: list[object] = []
+
+    def by_reference(data: bytes) -> int:
+        buffer = (ctypes.c_ubyte * (len(data) + 16))()
+        keep.append(buffer)
+        address = (ctypes.addressof(buffer) + 15) & ~15
+        ctypes.memmove(address, data, len(data))
+        return address
+
+    try:
+        mapping.write(code)
+        base = ctypes.addressof(ctypes.c_char.from_buffer(mapping))
+        slots: list[int] = []
+        result_buffer = None
+        if return_kinds and return_kinds[0].startswith("a") and int(return_kinds[0][1:]) not in (1, 2, 4, 8):
+            result_buffer = by_reference(bytes(int(return_kinds[0][1:])))
+            slots.append(result_buffer)
+        for argument, kind in zip(arguments, parameter_kinds):
+            if kind == "f32":
+                slots.append(int.from_bytes(struct.pack("<f", argument), "little"))
+            elif kind == "f64":
+                slots.append(int.from_bytes(struct.pack("<d", argument), "little"))
+            elif kind.startswith("a"):
+                data = bytes(argument)
+                slots.append(int.from_bytes(data, "little") if len(data) in (1, 2, 4, 8) else by_reference(data))
+            else:
+                slots.append(int(argument))
+        slots.extend([0] * (4 - len(slots)))
+        slot_array = (ctypes.c_uint64 * len(slots))(*slots)
+        xmm0 = ctypes.c_uint64()
+        thunk = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
+        offset = len(code) - len(image.code)
+        result = thunk(base + offset + image.entry_offset, ctypes.addressof(slot_array), len(slots), ctypes.addressof(xmm0))
+        del thunk
+        if not return_kinds:
+            return ()
+        kind = return_kinds[0]
+        if kind.startswith("a"):
+            size = int(kind[1:])
+            if result_buffer is not None:
+                return (ctypes.string_at(result_buffer, size),)
+            return (result.to_bytes(8, "little")[:size],)
+        if kind == "f32":
+            return (struct.unpack("<f", (xmm0.value & 0xFFFFFFFF).to_bytes(4, "little"))[0],)
+        if kind == "f64":
+            return (struct.unpack("<d", xmm0.value.to_bytes(8, "little"))[0],)
+        return (result & ((1 << image.return_widths[0]) - 1),)
+    finally:
+        keep.clear()
+        mapping.close()
+
+
 def run_native(image: NativeImage, arguments: Sequence[object]) -> tuple[object, ...]:
-    """Call the entry through libffi.  Floats are Python floats; aggregates are layout bytes."""
-    if sys.platform != "win32" or platform.machine().lower() not in ("amd64", "x86_64"):
-        fail("XAX.NATIVE.HOST", "host", "NATIVE-HOST-X86-64-WINDOWS", "Windows x86-64", [sys.platform, platform.machine()])
+    """Call the entry through libffi.  Floats are Python floats; aggregates are layout bytes.
+
+    On Linux x86-64 the same Win64-convention image runs through a harness
+    thunk (``_SYSV_TO_WIN64_THUNK``); the image bytes are identical.
+    """
+    machine = platform.machine().lower() in ("amd64", "x86_64")
+    linux_host = sys.platform.startswith("linux") and machine
+    if not linux_host and (sys.platform != "win32" or not machine):
+        fail("XAX.NATIVE.HOST", "host", "NATIVE-HOST-X86-64", "Windows or Linux x86-64", [sys.platform, platform.machine()])
     if image.imports:
         fail("XAX.NATIVE.IMPORTS", "entry", "NATIVE-RAW-IMAGE-NO-IMPORTS", "import-free raw image", len(image.imports))
     if len(arguments) != len(image.parameter_widths):
@@ -2384,6 +2475,9 @@ def run_native(image: NativeImage, arguments: Sequence[object]) -> tuple[object,
     for argument, width, kind in zip(arguments, image.parameter_widths, parameter_kinds):
         if kind.startswith("u") and (argument < 0 or argument >= 1 << width):
             fail("XAX.NATIVE.ARGUMENT_RANGE", "entry", "NATIVE-ARGUMENT-RANGE", f"bits<{width}>", argument)
+
+    if linux_host:
+        return _run_native_win64_on_sysv(image, arguments, parameter_kinds, return_kinds)
 
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.VirtualAlloc.argtypes = (ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint32, ctypes.c_uint32)
