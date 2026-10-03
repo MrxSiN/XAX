@@ -7271,12 +7271,53 @@ def _verify_reference_list(
             )
 
 
-def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
+def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObject"]) -> tuple[bool, dict[bytes, object]]:
+    """S6b.2 (ADR-144): the XAX store verifier's verdicts: ``(store proven, {cid: verdict})``.
+
+    A function's verdict is its graph object (still parsed here, so failures keep their order); other
+    proven objects map to True."""
+    try:
+        from xax_selfhost_verify import native_store_verifier, object_table
+    except ImportError:
+        return False, {}  # a module it needs is still importing (e.g. hashing at import time); the bootstrap verifies
+    hashing = sys.modules.get("blake3")
+    if (_TYPING_BUILDING or _CFG_BUILDING or _DECODER_BUILDING or _GRAPH_DECODER_BUILDING
+            or (hashing is not None and (getattr(hashing, "_NATIVE_BUILDING", False) or getattr(hashing, "_HASHER_BUILDING", False)))):
+        return False, {}  # a helper program's own store is verified by the bootstrap while it is built
+    verifier = native_store_verifier()
+    if verifier is None:
+        return False, {}
+    listed = list(objects.values())
+    index = {obj.cid: position for position, obj in enumerate(listed)}
+    if reader.root_cid not in index:
+        return False, {}
+    words = object_table(listed, [index[reader.root_cid]])
+    if words is None:
+        return False, {}
+    words += [int(obj.cid in _XAX_VALID_OBJECTS) for obj in listed]
+    result = verifier.verify(words, len(listed))
+    if result is None:
+        return False, {}
+    store_ok, verdicts, graphs = result
+    proven: dict[bytes, object] = {}
+    for position, obj in enumerate(listed):
+        if verdicts[position] == 1:
+            proven[obj.cid] = listed[graphs[position]] if obj.kind == Kind.FUNCTION else True
+    return store_ok, proven
+
+
+def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], proven: object = None) -> None:
     expected = semantic_cid(obj.kind, obj.schema_version, obj.references, obj.body)
     if obj.cid != expected:
         fail("XAX.IDENTITY.CID_MISMATCH", obj.cid.hex(), "ID-CID-INTEGRITY", expected.hex(), obj.cid.hex())
     for cid in obj.references:
         resolve(cid)
+    if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT):
+        # S6b.2: the XAX store verifier decided this object; a function's graph is still parsed (cached)
+        # so that an invalid graph fails exactly where the bootstrap would.
+        if obj.kind == Kind.FUNCTION:
+            _parse_graph(proven, resolve)
+        return
     cursor = Cursor(obj.body, obj.cid.hex())
     if obj.kind == Kind.TYPE:
         _verify_type(obj, resolve)
@@ -7338,13 +7379,14 @@ def verify_store(
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
 
     _xax_prove_objects(objects, resolve)
+    store_proven, proven_objects = _xax_verify_store(reader, objects)
     for obj in objects.values():
         dependency_cids_checked += len(obj.references)
         if cache is not None and cache.contains(verifier_identity, obj):
             cache_hits += 1
             continue
         cache_misses += 1
-        verify_object(obj, resolve)
+        verify_object(obj, resolve, proven_objects.get(obj.cid))
 
     reachable: set[bytes] = set()
     active: set[bytes] = set()
@@ -7360,8 +7402,9 @@ def verify_store(
         active.remove(cid)
         reachable.add(cid)
 
-    visit(reader.root_cid)
-    if reachable != set(objects):
+    if not store_proven:  # S6b.2: the XAX store verifier proved rootedness and acyclicity
+        visit(reader.root_cid)
+    if not store_proven and reachable != set(objects):
         fail(
             "XAX.IDENTITY.UNREACHABLE_OBJECT",
             "store",

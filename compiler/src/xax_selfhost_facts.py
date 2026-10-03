@@ -185,11 +185,18 @@ class E:
 
     # -- control ---------------------------------------------------------------------
     def var(self, name: str, value=0):
-        """Declare ``name`` (or reassign it when already in scope)."""
+        """Declare ``name`` (or reassign it when already in scope).
+
+        A value another variable already holds is bound as a fresh copy (``value + 0``): two variables never
+        share one SSA value, so block arguments never pass one value twice (the x86-64 register-resident
+        lowering has lost such a copy across later control flow; see the S6b.2 handoff note)."""
+        value = self.v(value)
+        if not isinstance(value, int) and any(held == value for other, held in self.p.vars.items() if other != name):
+            value = self.add(value, 0)
         if name in self.p.types:
-            self.p[name] = self.v(value)
+            self.p[name] = value
         else:
-            self.p.let(name, B64, self.v(value))
+            self.p.let(name, B64, value)
 
     def set(self, name: str, value):
         self.p[name] = self.v(value)
