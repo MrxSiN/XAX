@@ -637,11 +637,58 @@
     },
     {
       "id": "gpu-spirv-cuda-metal-dxil",
-      "level": "NONE",
-      "runtime_requirement": "n/a",
-      "fields": {},
+      "level": "R1",
+      "runtime_requirement": "the platform's Vulkan loader and driver (platform-required) create the pipeline and launch it; the module carries only the compiler-generated entry adapter, status binding, and trap stores (ADR-124); the host side is a test harness, not an XAX program",
+      "fields": {
+        "semantic_expressibility": [
+          "EXECUTED",
+          "compiler/tests/test_xax_spirv.py",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "code_generation": [
+          "EXECUTED",
+          "compiler/tests/test_xax_spirv.py",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "artifact_format": [
+          "EXECUTED",
+          "compiler/src/xax_spirv.py",
+          "compiler/tests/test_xax_spirv.py",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "real_execution": [
+          "EXECUTED",
+          "compiler/tests/test_xax_spirv.py",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "abi": [
+          "EXECUTED",
+          "compiler/tests/test_xax_spirv.py"
+        ],
+        "concurrency": [
+          "EXECUTED",
+          "compiler/tests/test_xax_spirv.py",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "optimization": [
+          "PROTOTYPE",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "code_size": [
+          "MEASURED",
+          "compiler/benchmarks/spirv_compute_evidence.json"
+        ],
+        "debugging": "UNIMPLEMENTED",
+        "platform_apis": "UNIMPLEMENTED",
+        "ffi": "UNIMPLEMENTED",
+        "dynamic_linking": "NOT_APPLICABLE"
+      },
       "blockers": [
-        "only the synthetic accelerator target exists"
+        "executed only on Mesa llvmpipe (a CPU Vulkan implementation), not hardware (OI-34, OI-44)",
+        "SPIR-V/Vulkan only; no PTX, Metal, or DXIL package",
+        "dispatch-loop lowering: Collatz is 6.9x an equivalent glslang kernel on llvmpipe; structured lowering of reducible CFGs is next",
+        "integer words only: no floats, 64-bit integers, calls, workgroup memory, barriers, or atomics",
+        "no XAX host program: Vulkan instance, buffers, and dispatch come from a test harness (R2)"
       ]
     },
     {

@@ -70,6 +70,9 @@ class BlockBuilder:
     def ret(self, *values: ValueRef) -> None:
         self.terminator = Terminator.return_(values)
 
+    def trap(self, payload: bytes = b"") -> None:
+        self.terminator = Terminator.trap(payload)
+
 
 class GraphBuilder:
     def __init__(self) -> None:
