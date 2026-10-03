@@ -250,3 +250,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## Token test — 2026-10-03 (after ADR-123–131)
 
 - Offline replays 67/67, zero model tokens. The model pair was skipped because the protocol and harness are unchanged since the last pair. See `XAX_STATE.md`.
+
+## S4 — 2026-10-03 (ADR-132)
+
+- Scalar operation typing is XAX (`XAX_TYPING_PYTHON=1` forces the bootstrap; regenerate with `xax_selfhost_typing.write_typing_store()`). Wiring: `_native_typing()` and the `proven_nodes` gate in `_parse_graph_uncached`. Next is S4b: aggregate/sum/call typing, then memory and resource facts, which are the bulk of the remaining verifier.

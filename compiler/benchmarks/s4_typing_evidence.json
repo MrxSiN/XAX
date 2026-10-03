@@ -1,0 +1,34 @@
+{
+  "adr": "ADR-132",
+  "corpus": {
+    "blake3_selfhost": {
+      "covered_nodes": 1254,
+      "proven_nodes": 1254,
+      "verify_ms_bootstrap_only": 46.54,
+      "verify_ms_xax_typing": 44.76
+    },
+    "cfg_selfhost": {
+      "covered_nodes": 472,
+      "proven_nodes": 472,
+      "verify_ms_bootstrap_only": 43.72,
+      "verify_ms_xax_typing": 46.59
+    },
+    "jsonmin": {
+      "covered_nodes": 616,
+      "proven_nodes": 616,
+      "verify_ms_bootstrap_only": 127.3,
+      "verify_ms_xax_typing": 123.99
+    },
+    "uniqcount": {
+      "covered_nodes": 77,
+      "proven_nodes": 77,
+      "verify_ms_bootstrap_only": 34.64,
+      "verify_ms_xax_typing": 31.39
+    }
+  },
+  "evidence_label": "MEASURED",
+  "native_code_bytes": 4763,
+  "note": "verify_store medians over 7 runs in fresh processes; the first run includes parsing (later runs hit the graph parse cache when present)",
+  "step": "S4",
+  "store_bytes": 14956
+}

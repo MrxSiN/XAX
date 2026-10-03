@@ -408,8 +408,8 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S3c | Graph-body syntax: blocks, nodes, entity and attribute presence per operation, values, terminators, exact end, reference bounds | S3b | EXECUTED (ADR-120): `_parse_graph` walks the XAX decoder's stream; resolution, type checks, and trap payloads stay in body order |
 | S3d | Control-flow analysis: branch-target check, dominator sets, depth-first reverse postorder | S3c | EXECUTED (ADR-121): `_parse_graph` uses the XAX results; the bootstrap computes them only on reject/defer |
 | S3e | Value-definition and SSA-dominance checks for every use | S3d | EXECUTED (ADR-122): when XAX proves every use valid, `value_type` is a plain lookup; otherwise the bootstrap checks run |
-| S4 | Operation typing rules (arity and operand/result types per operation family) | S3e | next |
-| S4 | Structural verifier checks (arity, types, reference closure) over decoded stores | S3 | planned |
+| S4 | Operation typing rules (arity and operand/result types per operation family) | S3e | EXECUTED for the scalar families (ADR-132): integer, compare, rotate, float, and conversion nodes are typed by XAX on the production path; 2,419/2,419 covered nodes of four real stores proven |
+| S4b | The remaining typing families (aggregate, sum, call, memory, atomic, resource) and memory-fact tracking | S4 | next |
 | S5 | The complete RISC-V integer-subset backend, from store bytes to image bytes | S2–S4 | planned |
 | S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | planned |
 
