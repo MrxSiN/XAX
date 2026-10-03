@@ -189,3 +189,9 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - Repairs: OI-25/OI-26 evidence replays no longer depend on filesystem order or interpreter version; one stale code hash was re-pinned after execution; the wheel now packages `xax_web`, `xax_android_counter`, `xax_jvm`, and `xax_riscv64`.
 - Regression here: 903 passed, 19 skipped, 2 failed (`tiktoken` absent; wheel needs Python ≥ 3.12).
 - Lowest-cost token test after this upgrade: offline replays 44/44; one `haiku` `task-01` pair, both PASS, XAX 1.065× C (40,021 vs 37,576 tokens; 10 vs 3 tool calls). Not R5 or OI-31 evidence.
+
+## Self-hosting S1 — 2026-10-03 (ADR-116)
+
+- The RISC-V encoder is an XAX function on the production path (`xax_selfhost_riscv64.py`, `bootstrap/xax_riscv64_encoder.xax`). Regenerate with `PYTHONPATH=src python -c "import xax_selfhost_riscv64 as m; m.write_encoder_store()"`; `test_xax_selfhost_riscv64.py` fails if the store drifts.
+- Next is S2: pass a borrowed output view into a native leaf so a whole function's word stream comes from XAX. Then S3, the store codec and full BLAKE3, so CIDs are computed by XAX (ladder in the roadmap).
+- Commits on `main` carry no Claude attribution, per the user.

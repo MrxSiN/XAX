@@ -1,0 +1,39 @@
+{
+  "format": "xax-selfhost-s1-evidence-v1",
+  "component": "riscv64 instruction encoder + li planner (encode/7 -> bits<64>)",
+  "store": {
+    "path": "compiler/bootstrap/xax_riscv64_encoder.xax",
+    "bytes": 10129,
+    "sha256": "344f0039bbdb2826caf4c78b565f984685339a7160a596e23d4b5b07e340e99a",
+    "root_cid": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
+    "encode_cid": "2ddaecebb5519aaced7145a872a0ce7a24d4cb4efb12c1d8b94584fe59af464a"
+  },
+  "images": {
+    "x86_64_native_leaf_bytes": 12008,
+    "riscv64_bytes": 2828,
+    "jvm_class_bytes": 5300
+  },
+  "agreement": {
+    "native_leaf_vs_python": [
+      12072,
+      12072
+    ],
+    "riscv64_in_emulator_vs_python": [
+      300,
+      300
+    ]
+  },
+  "self_compilation_fixed_point": true,
+  "host_cost_nonsemantic": {
+    "host": "Linux x86_64 Python 3.11.15",
+    "per_encode_call_us": {
+      "xax_native_leaf": 1.995,
+      "python_bootstrap": 0.181
+    },
+    "riscv64_compile_ms_one_program": {
+      "xax_encoder": 2.3,
+      "python_encoder": 2.15
+    },
+    "note": "The native leaf pays a ctypes call per word; encoding is not the compiler's bottleneck, and S1's purpose is moving logic into XAX, not speed."
+  }
+}

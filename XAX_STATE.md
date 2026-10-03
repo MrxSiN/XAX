@@ -689,3 +689,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - Offline, with no model tokens (tiktoken 0.14.0, `o200k_base`): the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44. With a tokenizer installed, the OI-12/OI-13 suites now check real counts, and OI-12's committed evidence records them (9 and 7 tokens per timing query/response).
 - Model: one `task-01` pair (change a shared constant), each arm a fresh `haiku` subagent given the identical task prompt. C used 37,576 tokens and 3 tool calls; XAX used 40,021 tokens and 10 tool calls (1.065× C). Both pass the external checkers on the first attempt with no repairs. n=1, dominated by fixed agent-harness overhead, so this is neither R5 nor OI-31 evidence. It matches the earlier results (1.04×, 1.04×): on one-constant edits, the XAX protocol's inspect/mutate/test round trips cost slightly more than the C edit saves. The ADR-112–115 changes did not touch the workspace protocol, so this is a regression check, not a new measurement of it.
+
+## Self-hosting step S1: XAX-authored RISC-V encoder on the production path (ADR-116) — 2026-10-03
+
+- `xax_selfhost_riscv64.py` builds `encode(kind, a1..a6)`, covering all RV64 formats plus the `li` planner, as one XAX function. Its committed store is `bootstrap/xax_riscv64_encoder.xax` (10,129 bytes). On Linux x86-64 the RISC-V backend encodes through it by default, natively, with the Python encoders as reference and fallback.
+- EXECUTED: the native leaf agrees with Python on 12,072/12,072 cases. The encoder also runs on RISC-V (emulated, 300/300) and on the JVM. Corpus images are byte-identical with either encoder, and the encoder compiling itself is a fixed point (`test_xax_selfhost_riscv64.py`, `selfhost_s1_evidence.json`).
+- Cost: about 2.0 µs per native call against 0.18 µs in Python; a RISC-V compile takes 2.30 ms against 2.15 ms. The compiler is still mostly Python; see the S ladder in the roadmap.

@@ -1006,6 +1006,17 @@ Self-hosting, toolchain closure, and bootstrap independence are distinct claims.
 
 No milestone may be claimed without committed evidence naming exact roots, targets, policies, and comparison method.
 
+### 16.5 Compiler migration steps
+
+The bootstrap compiler moves into XAX one component at a time. Steps `S1`, `S2`, ... are tracked in the roadmap. A component counts as migrated only when all of these hold:
+
+1. its authoritative logic is a committed canonical XAX store that regenerates byte-identically and verifies on load;
+2. the production compiler path executes that logic as code lowered by an XAX backend, not by the reference executor;
+3. any remaining bootstrap implementation is only a fallback and reference, and is differentially checked against the XAX component on committed vectors; and
+4. its outputs on the production path are byte-identical to the bootstrap reference's.
+
+A migration step is not a B-milestone. B1–B6 still require the whole compiler (§16.2).
+
 ### 16.3 Trust
 
 Recursive self-compilation alone is not proof of trust. Trust-sensitive releases SHOULD support diverse double compilation or comparably strong checks using independently sourced seeds and a fixed, auditable canonical projection when byte identity is not meaningful.
