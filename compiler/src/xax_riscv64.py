@@ -102,6 +102,85 @@ def _signed64(value: int) -> int:
     return value - (1 << 64) if value >> 63 else value
 
 
+def _li_words(rd: int, value: int) -> list[int]:
+    """Bootstrap reference for ``li rd, value`` (lui/addiw, then slli/addi levels)."""
+    value = _signed64(value)
+    if -2048 <= value < 2048:
+        return [_i(value, ZERO, 0, rd)]
+    if -(1 << 31) <= value < 1 << 31:
+        high = ((value + 0x800) >> 12) & 0xFFFFF
+        low = value - _signed64(((high << 12) ^ 0x80000000) - 0x80000000)
+        return [(high << 12) | (rd << 7) | 0x37] + ([_i(low, rd, 0, rd, 0x1B)] if low else [])  # lui; addiw
+    low = ((value & 0xFFF) ^ 0x800) - 0x800
+    high = (value - low) >> 12
+    shift = 12
+    while not high & 1:
+        high >>= 1
+        shift += 1
+    return _li_words(rd, high) + [_i(shift, rd, 1, rd)] + ([_i(low, rd, 0, rd)] if low else [])  # slli; addi
+
+
+class PythonEncoder:
+    """The bootstrap Python encoders (reference and fallback)."""
+
+    identity = "python-bootstrap"
+    r, i, s, b, j = staticmethod(_r), staticmethod(_i), staticmethod(_s), staticmethod(_b), staticmethod(_j)
+    li = staticmethod(_li_words)
+
+
+class XaxEncoder:
+    """The encoder authored as XAX semantics and run natively (ADR-116, ``xax_selfhost_riscv64``)."""
+
+    identity = "xax-native"
+
+    def __init__(self, native) -> None:
+        self.native = native
+
+    def r(self, funct7, rs2, rs1, funct3, rd, opcode=0x33):
+        return self.native(0, funct7, rs2, rs1, funct3, rd, opcode)
+
+    def i(self, imm, rs1, funct3, rd, opcode=0x13):
+        return self.native(1, imm, rs1, funct3, rd, opcode)
+
+    def s(self, imm, rs2, rs1, funct3=3, opcode=0x23):
+        return self.native(2, imm, rs2, rs1, funct3, opcode)
+
+    def b(self, offset, rs2, rs1, funct3):
+        return self.native(3, offset, rs2, rs1, funct3)
+
+    def j(self, offset, rd):
+        return self.native(4, offset, rd)
+
+    def li(self, rd, value):
+        words = []
+        while True:
+            word = self.native(6, rd, value, len(words))
+            if not word:
+                return words
+            words.append(word)
+
+
+_ACTIVE: list = []
+
+
+def _encoder():
+    return _ACTIVE[-1] if _ACTIVE else PythonEncoder
+
+
+def select_encoder(choice: str = "auto"):
+    """``"python"``, ``"xax"`` (fails where the leaf cannot run), or ``"auto"`` (XAX when it can run)."""
+    if choice == "python":
+        return PythonEncoder
+    from xax_selfhost_riscv64 import native_encoder
+
+    native = native_encoder()
+    if native is None:
+        if choice == "xax":
+            fail("XAX.RISCV64.HOST", "host", "RISCV64-XAX-ENCODER", "Linux x86-64 host for the native XAX encoder", "unavailable")
+        return PythonEncoder
+    return XaxEncoder(native)
+
+
 class _Emitter:
     def __init__(self, where: str) -> None:
         self.where = where
@@ -124,34 +203,16 @@ class _Emitter:
         self.words.append(0)
 
     def li(self, rd: int, value: int) -> None:
-        value = _signed64(value)
-        if -2048 <= value < 2048:
-            self.emit(_i(value, ZERO, 0, rd))
-        elif -(1 << 31) <= value < 1 << 31:
-            high = ((value + 0x800) >> 12) & 0xFFFFF
-            low = value - _signed64(((high << 12) ^ 0x80000000) - 0x80000000)
-            self.emit((high << 12) | (rd << 7) | 0x37)  # lui
-            if low:
-                self.emit(_i(low, rd, 0, rd, 0x1B))  # addiw
-        else:
-            low = ((value & 0xFFF) ^ 0x800) - 0x800
-            high = (value - low) >> 12
-            shift = 12
-            while not high & 1:
-                high >>= 1
-                shift += 1
-            self.li(rd, high)
-            self.emit(_i(shift, rd, 1, rd))  # slli
-            if low:
-                self.emit(_i(low, rd, 0, rd))  # addi
+        for word in _encoder().li(rd, value):
+            self.emit(word)
 
     def frame_access(self, store: bool, register: int, offset: int) -> None:
         if offset < 2048:
-            self.emit(_s(offset, register, SP) if store else _i(offset, SP, 3, register, 0x03))
+            self.emit(_encoder().s(offset, register, SP) if store else _encoder().i(offset, SP, 3, register, 0x03))
         else:
             self.li(T2, offset)
-            self.emit(_r(0, SP, T2, 0, T2))  # add t2, t2, sp
-            self.emit(_s(0, register, T2) if store else _i(0, T2, 3, register, 0x03))
+            self.emit(_encoder().r(0, SP, T2, 0, T2))  # add t2, t2, sp
+            self.emit(_encoder().s(0, register, T2) if store else _encoder().i(0, T2, 3, register, 0x03))
 
     def finish(self, function_labels: dict[bytes, int] | None = None) -> list[int]:
         for index, label, rd in self.jumps:
@@ -159,7 +220,7 @@ class _Emitter:
             delta = target - 4 * index
             if not -(1 << 20) <= delta < 1 << 20:
                 fail("XAX.RISCV64.LIMIT", self.where, "RISCV64-JAL-RANGE", "+-1 MiB", delta)
-            self.words[index] = _j(delta, rd)
+            self.words[index] = _encoder().j(delta, rd)
         return self.words
 
 
@@ -317,7 +378,7 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
 
     def move(destination: int, source: int) -> None:
         if destination != source:
-            e.emit(_i(0, source, 0, destination))  # mv
+            e.emit(_encoder().i(0, source, 0, destination))  # mv
 
     def read(ref: ValueRef, scratch: int) -> int:
         """Register holding ``ref``: its allocated register, or ``scratch`` after a reload."""
@@ -341,23 +402,23 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
     def mask(register: int, width: int) -> None:
         if width < 64:
             if width <= 11:
-                e.emit(_i((1 << width) - 1, register, 7, register))  # andi
+                e.emit(_encoder().i((1 << width) - 1, register, 7, register))  # andi
             else:
-                e.emit(_i(64 - width, register, 1, register))  # slli
-                e.emit(_i(64 - width, register, 5, register))  # srli
+                e.emit(_encoder().i(64 - width, register, 1, register))  # slli
+                e.emit(_encoder().i(64 - width, register, 5, register))  # srli
 
     def sign_extend(register: int, width: int) -> None:
         if width < 64:
-            e.emit(_i(64 - width, register, 1, register))  # slli
-            e.emit(_i(0x400 | (64 - width), register, 5, register))  # srai
+            e.emit(_encoder().i(64 - width, register, 1, register))  # slli
+            e.emit(_encoder().i(0x400 | (64 - width), register, 5, register))  # srai
 
     # Prologue: allocate the frame, save ra and the s-registers in use, home the arguments.
     if frame < 2048:
-        e.emit(_i(-frame, SP, 0, SP))
+        e.emit(_encoder().i(-frame, SP, 0, SP))
     else:
         e.li(T0, frame)
-        e.emit(_r(0x20, T0, SP, 0, SP))  # sub sp, sp, t0
-    e.emit(_s(0, RA, SP))
+        e.emit(_encoder().r(0x20, T0, SP, 0, SP))  # sub sp, sp, t0
+    e.emit(_encoder().s(0, RA, SP))
     for position, register in enumerate(saved):
         e.frame_access(True, register, 8 + 8 * position)
     for register, ref in enumerate(machine_parameters):
@@ -366,13 +427,13 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
     def epilogue() -> None:
         for position, register in enumerate(saved):
             e.frame_access(False, register, 8 + 8 * position)
-        e.emit(_i(0, SP, 3, RA, 0x03))  # ld ra, 0(sp)
+        e.emit(_encoder().i(0, SP, 3, RA, 0x03))  # ld ra, 0(sp)
         if frame < 2048:
-            e.emit(_i(frame, SP, 0, SP))
+            e.emit(_encoder().i(frame, SP, 0, SP))
         else:
             e.li(T0, frame)
-            e.emit(_r(0, T0, SP, 0, SP))
-        e.emit(_i(0, RA, 0, ZERO, 0x67))  # ret
+            e.emit(_encoder().r(0, T0, SP, 0, SP))
+        e.emit(_encoder().i(0, RA, 0, ZERO, 0x67))  # ret
 
     def location(ref: ValueRef) -> tuple[str, int]:
         return ("r", register_of[ref]) if ref in register_of else ("m", slot_of[ref])
@@ -413,26 +474,26 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                 funct7, funct3 = simple[Operation(operation)]
                 left, right = read(node.operands[0], T0), read(node.operands[1], T1)
                 destination = target_register(result)
-                e.emit(_r(funct7, right, left, funct3, destination))
+                e.emit(_encoder().r(funct7, right, left, funct3, destination))
                 if operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP):
                     mask(destination, width_of[result])
                 write(result, destination)
             elif operation in (Operation.UDIV, Operation.UREM):
                 trap_used = True
                 left, right = read(node.operands[0], T0), read(node.operands[1], T1)
-                e.emit(_b(8, ZERO, right, 1))  # bne divisor, zero, +8
+                e.emit(_encoder().b(8, ZERO, right, 1))  # bne divisor, zero, +8
                 e.jal(("trap", function.cid))
                 destination = target_register(result)
-                e.emit(_r(1, right, left, 5 if operation == Operation.UDIV else 7, destination))  # divu / remu
+                e.emit(_encoder().r(1, right, left, 5 if operation == Operation.UDIV else 7, destination))  # divu / remu
                 write(result, destination)
             elif operation == Operation.ROTATE_RIGHT:
                 width, amount = width_of[result], node.attributes[0]
                 source = read(node.operands[0], T0)
                 destination = target_register(result)
                 if amount:
-                    e.emit(_i(amount, source, 5, T1))  # srli t1, x, k
-                    e.emit(_i(width - amount, source, 1, destination))  # slli d, x, w-k
-                    e.emit(_r(0, T1, destination, 6, destination))  # or
+                    e.emit(_encoder().i(amount, source, 5, T1))  # srli t1, x, k
+                    e.emit(_encoder().i(width - amount, source, 1, destination))  # slli d, x, w-k
+                    e.emit(_encoder().r(0, T1, destination, 6, destination))  # or
                     mask(destination, width)
                 else:
                     move(destination, source)
@@ -461,17 +522,17 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                 destination = target_register(result)
                 less = 2 if signed else 3  # slt / sltu
                 if kind == IntCompare.EQ:
-                    e.emit(_r(0, right, left, 4, destination)); e.emit(_i(1, destination, 3, destination))  # xor; seqz
+                    e.emit(_encoder().r(0, right, left, 4, destination)); e.emit(_encoder().i(1, destination, 3, destination))  # xor; seqz
                 elif kind == IntCompare.NE:
-                    e.emit(_r(0, right, left, 4, destination)); e.emit(_r(0, destination, ZERO, 3, destination))  # xor; snez
+                    e.emit(_encoder().r(0, right, left, 4, destination)); e.emit(_encoder().r(0, destination, ZERO, 3, destination))  # xor; snez
                 elif kind in (IntCompare.ULT, IntCompare.SLT):
-                    e.emit(_r(0, right, left, less, destination))
+                    e.emit(_encoder().r(0, right, left, less, destination))
                 elif kind in (IntCompare.UGT, IntCompare.SGT):
-                    e.emit(_r(0, left, right, less, destination))
+                    e.emit(_encoder().r(0, left, right, less, destination))
                 elif kind in (IntCompare.ULE, IntCompare.SLE):
-                    e.emit(_r(0, left, right, less, destination)); e.emit(_i(1, destination, 4, destination))  # !(b < a)
+                    e.emit(_encoder().r(0, left, right, less, destination)); e.emit(_encoder().i(1, destination, 4, destination))  # !(b < a)
                 else:
-                    e.emit(_r(0, right, left, less, destination)); e.emit(_i(1, destination, 4, destination))  # !(a < b)
+                    e.emit(_encoder().r(0, right, left, less, destination)); e.emit(_encoder().i(1, destination, 4, destination))  # !(a < b)
                 write(result, destination)
             elif operation == Operation.CALL_DIRECT:
                 if not _is_erased_proof_function(node.entity, resolve):
@@ -506,7 +567,7 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             condition = read(terminator.values[0], T0)
             false_label = ("false", function.cid, block_index)
-            e.emit(_b(8, ZERO, condition, 1))  # bne cond, zero, +8: true edge follows
+            e.emit(_encoder().b(8, ZERO, condition, 1))  # bne cond, zero, +8: true edge follows
             e.jal(false_label)
             copy_edge(*terminator.edges[0])
             e.mark(false_label)
@@ -520,7 +581,15 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
     return ranges
 
 
-def compile_riscv64_bound_target(reader: StoreReader, function_cid: bytes, target_object: SemanticObject) -> Riscv64Image:
+def compile_riscv64_bound_target(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, *, encoder: str = "auto") -> Riscv64Image:
+    _ACTIVE.append(select_encoder(encoder))
+    try:
+        return _compile_riscv64(reader, function_cid, target_object)
+    finally:
+        _ACTIVE.pop()
+
+
+def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: SemanticObject) -> Riscv64Image:
     verify_store(reader)
     resolve = store_resolver(reader)
     entry = resolve(function_cid)
@@ -553,8 +622,8 @@ def compile_riscv64_bound_target(reader: StoreReader, function_cid: bytes, targe
     )
 
 
-def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes) -> Riscv64Image:
-    return compile_riscv64_bound_target(reader, function_cid, store_resolver(reader)(target_cid))
+def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes, *, encoder: str = "auto") -> Riscv64Image:
+    return compile_riscv64_bound_target(reader, function_cid, store_resolver(reader)(target_cid), encoder=encoder)
 
 
 # ------------------------------------------------------------------ harness
