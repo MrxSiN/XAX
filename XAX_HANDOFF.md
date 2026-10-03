@@ -246,3 +246,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## Membership selection — 2026-10-03 (ADR-131)
 
 - `membership` in `xax_x86_64_regalloc.compile_register_resident`: an analysis next to `fused`, plus `_member_bit_test`. Next: the same selection on the AArch64 frame and register paths, two-word masks for spans up to 127 (the JSON escape set), and a profile of the remaining `jsonmin` gap.
+
+## Token test — 2026-10-03 (after ADR-123–131)
+
+- Offline replays 67/67, zero model tokens. The model pair was skipped because the protocol and harness are unchanged since the last pair. See `XAX_STATE.md`.

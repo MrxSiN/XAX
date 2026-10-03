@@ -756,3 +756,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Small-set membership selection (ADR-131) — 2026-10-03
 
 - The Linux x86-64 register allocator lowers `x == c1 || x == c2 || …` branches to one `bt`. `jsonmin` went from 1.56× to 1.20× gcc -O2, and from 1.67× to 1.31× clang -O2. Linux stays at R3 (not competitive).
+
+## Post-upgrade token test (lowest cost) — 2026-10-03, after ADR-123–131
+
+- Offline only, with zero model tokens (tiktoken 0.14.0): the AI-native harness and the OI-03/OI-04/OI-12/OI-13 tokenizer replays pass 67/67 against the changed verifier. New offline token evidence comes from OI-36 (`oi36_stdlib_evidence.json`): using the standard packages takes a 268-token interface view plus a 1,360-token application mutation, against 3,256 tokens with the library bodies inline.
+- No model pair was run. `xax_workspace`, the AI-native harness, and `docs/09_AI_PROTOCOL.md` are unchanged since the last pair (`task-01`, `haiku`, XAX 1.065× C), so a new pair would only repeat that regression check. The next paid trial should measure something new: a library-using edit, such as adding a call to `hashset_u64.contains`.
