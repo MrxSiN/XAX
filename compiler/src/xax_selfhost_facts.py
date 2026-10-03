@@ -45,7 +45,7 @@ VIEW_TYPES = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
 HEADER = OUT_WORDS - 64
 (H_STATUS, H_FACTS_AT, H_V, H_S, H_E, H_B, H_ENTRY, H_NODES, H_VALUES, H_SITES, H_BLOCKS, H_EDGES, H_ARENA, H_ARENA_END,
  H_VISIT, H_PASS, H_ORDER, H_EXTENTS, H_STALE, H_COUNT, H_TABLE, H_LIST, H_KINDS, H_ENTRY_FACTS, H_CIDS, H_REASON, H_NODE,
- H_RENTRY, H_RENTRY_SEED_INIT, H_RENTRY_LAST) = range(30)
+ H_RENTRY, H_RENTRY_SEED_INIT, H_RENTRY_LAST, H_LINEAR) = range(31)
 # Decline sites: H_REASON names the check that declined (``DECLINE_SITES[code]``: "file:line"), for diagnosis only.
 DECLINE_SITES: list[str] = []
 ACCEPTED = 1
@@ -643,6 +643,7 @@ def _layout(tables):
 
 
 _LAYOUT: list = []
+_LINEAR: list = []
 _HAS_LINK: list = []
 _WINDOW: list = []
 _DEPENDENTS: list = []
@@ -2611,6 +2612,7 @@ def _engine(tables, block, empty, record_equal):
         p = e.p
         e.set_hd(H_STATUS, 0)
         e.set_hd(H_REASON, 0)
+        e.set_hd(H_LINEAR, 0)
         _require(e, e.ne(e.rd(e.hd(H_FACTS_AT)), 0))  # no facts section: nothing to decide
         at = e.add(e.hd(H_FACTS_AT), 1)
         for field, offset in ((H_V, 0), (H_S, 1), (H_E, 2), (H_B, 3), (H_ENTRY, 4)):
@@ -2667,6 +2669,7 @@ def _engine(tables, block, empty, record_equal):
 
         e.for_("b", 0, B, place)
         e.set_hd(H_CIDS, p["cursor"])
+        e.set_hd(H_LINEAR, e.call(_LINEAR[0]))
         # Entry facts (borrowed views); a stack-owner entry parameter (resource entry contracts) declines.
         entry_params = e.ld(_block_word(e, e.hd(H_ENTRY), B_PARAMS))
         entry_count = e.rd(e.add(entry_params, 1))
@@ -2710,6 +2713,186 @@ def _engine(tables, block, empty, record_equal):
     return _function((), build, tables)
 
 
+# -- S6a (ADR-142): ``_verify_linear_flow`` -----------------------------------------------------------
+
+def _linear_flow(tables):
+    """1 when ``_verify_linear_flow`` accepts the graph, else 0 (the bootstrap pass then runs and diagnoses).
+
+    Proof values (effects and resources) are consumed once: by one node of their block, or by exactly one
+    continuation of their block's terminator (one per conditional edge; none after a trap for effects).  Proof
+    parameters of non-entry blocks have predecessors that pass them.  ``resource.join`` is accepted when both
+    pieces come from results 0 and 1 of one ``resource.split`` through transfers and transitions, and no walk
+    from them passes a non-entry block parameter (where the bootstrap's origin comparison depends on its path)."""
+    def build(e: E):
+        p = e.p
+        V, B = e.hd(H_V), e.hd(H_B)
+        proof = lambda type_index: e.either(e.eq(e.table(_T.FORMB, type_index), 3), e.eq(e.table(_T.FORMB, type_index), 4))  # noqa: E731
+        names = ("vtype", "vblock", "nuse", "nbad", "ttotal", "tlocal", "tedge0", "tedge1", "eargs")
+        for name in names:
+            e.var(name, e.alloc(e.add(V, 1)))
+            e.if_(e.eq(p[name], NONE), lambda: e.give(0))
+            e.for_("z", 0, V, lambda name=name: e.st(e.add(p[name], p["z"]), 0))
+        e.set("eargs", e.alloc(e.add(e.hd(H_E), 1)))
+        e.if_(e.eq(p["eargs"], NONE), lambda: e.give(0))
+        cell = lambda name, value: e.add(p[name], value)  # noqa: E731
+        bump = lambda name, value: e.st(cell(name, value), e.add(e.ld(cell(name, value)), 1))  # noqa: E731
+
+        # Types, defining blocks, and use counts.
+        def each_block():
+            b = p["b"]
+            params_at = e.ld(_block_word(e, b, B_PARAMS))
+            base, count = e.rd(params_at), e.rd(e.add(params_at, 1))
+            e.for_("q", 0, count, lambda: (e.st(cell("vtype", e.add(base, p["q"])), e.rd(e.add(e.add(params_at, 2), p["q"]))),
+                                           e.st(cell("vblock", e.add(base, p["q"])), b)))
+            nodes_at = e.ld(_block_word(e, b, B_NODES))
+            e.var("cursor", e.add(nodes_at, 1))
+
+            def node():
+                n = _Node(e)
+                e.for_("q", 0, n.nr, lambda: (e.st(cell("vtype", e.add(n.base, p["q"])), n.rtid(p["q"])), e.st(cell("vblock", e.add(n.base, p["q"])), b)))
+
+                def use():
+                    value = n.vid(p["q"])
+                    bump("nuse", value)
+                    e.if_(e.ne(e.ld(cell("vblock", value)), b), lambda: e.st(cell("nbad", value), 1))
+
+                e.for_("q", 0, n.no, use)
+                e.set("cursor", n.next)
+
+            e.for_("m", 0, e.rd(nodes_at), node)
+            term = e.ld(_block_word(e, b, B_TERM))
+            values = e.rd(e.add(term, 1))
+
+            def term_use(value, edge):
+                bump("ttotal", value)
+                e.if_(e.eq(e.ld(cell("vblock", value)), b), lambda: (
+                    bump("tlocal", value),
+                    e.if_(e.eq(edge, 0), lambda: bump("tedge0", value)),
+                    e.if_(e.eq(edge, 1), lambda: bump("tedge1", value))))
+
+            e.for_("q", 0, values, lambda: term_use(e.rd(e.add(e.add(term, 2), p["q"])), NONE))
+            e.var("edge_at", e.add(e.add(e.add(term, 2), e.mul(values, 2)), 1))
+
+            def edge():
+                at = p["edge_at"]
+                arguments = e.rd(e.add(at, 2))
+                e.st(cell("eargs", e.rd(e.add(at, 1))), arguments)
+                e.for_("q", 0, arguments, lambda: term_use(e.rd(e.add(e.add(at, 3), p["q"])), p["x"]))
+                e.set("edge_at", e.add(e.add(at, 3), arguments))
+
+            e.for_("x", 0, e.rd(e.sub(p["edge_at"], 1)), edge)
+
+        e.for_("b", 0, B, each_block)
+        # Proof parameters of non-entry blocks: predecessors that pass them.
+        def parameters():
+            b = p["b"]
+            params_at = e.ld(_block_word(e, b, B_PARAMS))
+            incoming = e.ld(_block_word(e, b, B_INCOMING))
+            predecessors = e.rd(incoming)
+
+            def parameter():
+                def check():
+                    e.if_(e.eq(predecessors, 0), lambda: e.give(0))
+                    e.for_("k", 0, predecessors, lambda: e.if_(e.le(e.ld(cell("eargs", e.rd(e.add(incoming, e.add(1, p["k"]))))), p["q"]), lambda: e.give(0)))
+
+                e.if_(proof(e.rd(e.add(e.add(params_at, 2), p["q"]))), check)
+
+            e.for_("q", 0, e.rd(e.add(params_at, 1)), parameter)
+
+        e.for_("b", 0, B, lambda: e.if_(e.ne(p["b"], e.hd(H_ENTRY)), parameters))
+
+        # One continuation per proof value.
+        def value():
+            v = p["v"]
+            type_index = e.ld(cell("vtype", v))
+            uses, total, local = e.ld(cell("nuse", v)), e.ld(cell("ttotal", v)), e.ld(cell("tlocal", v))
+
+            def check():
+                e.if_(e.both(e.ne(uses, 0), e.ne(total, 0)), lambda: e.give(0))
+
+                def by_node():
+                    e.if_(e.either(e.ne(uses, 1), e.ne(e.ld(cell("nbad", v)), 0)), lambda: e.give(0))
+
+                def by_terminator():
+                    e.if_(e.ne(local, total), lambda: e.give(0))
+                    kind = e.rd(e.ld(_block_word(e, e.ld(cell("vblock", v)), B_TERM)))
+                    conditional = e.eq(kind, int(TerminatorKind.CONDITIONAL_BRANCH))
+                    effect_trap = e.both(e.eq(kind, int(TerminatorKind.TRAP)), e.eq(e.table(_T.FORMB, type_index), 3))
+                    e.if_(conditional, lambda: e.if_(e.either(e.ne(e.ld(cell("tedge0", v)), 1), e.ne(e.ld(cell("tedge1", v)), 1)), lambda: e.give(0)),
+                          lambda: e.if_(effect_trap, lambda: e.if_(e.ne(local, 0), lambda: e.give(0)), lambda: e.if_(e.ne(local, 1), lambda: e.give(0))))
+
+                e.if_(e.ne(uses, 0), by_node, by_terminator)
+
+            e.if_(proof(type_index), check)
+
+        e.for_("v", 0, V, value)
+
+        # resource.join: both pieces from one split (results 0 and 1), with path-independent origins.
+        def defining(value):
+            return e.value(DEF, value)
+
+        def trace(name, through_split):
+            """Follow ``p[name]`` back through transfers and transitions (and splits when ``through_split``);
+            returns 0 when the walk meets a non-entry block parameter."""
+            e.var(f"{name}_ok", 1)
+            e.var(f"{name}_go", 1)
+
+            def step():
+                record = defining(p[name])
+
+                def parameter():
+                    e.if_(e.ne(e.ld(cell("vblock", p[name])), e.hd(H_ENTRY)), lambda: e.set(f"{name}_ok", 0))
+                    e.set(f"{name}_go", 0)
+
+                def node_result():
+                    operation = e.rd(record)
+                    passing = e.either(e.eq(operation, int(Operation.RESOURCE_TRANSFER)), e.eq(operation, int(Operation.RESOURCE_TRANSITION)))
+                    if through_split:
+                        passing = e.either(passing, e.eq(operation, int(Operation.RESOURCE_SPLIT)))
+                    na = e.rd(e.add(record, 5))
+                    first_operand = e.rd(e.add(e.add(record, 7), na))
+                    e.if_(passing, lambda: e.set(name, first_operand), lambda: e.set(f"{name}_go", 0))
+
+                e.if_(e.eq(record, NONE), parameter, node_result)
+
+            e.while_(lambda: e.ne(p[f"{name}_go"], 0), step)
+            return p[f"{name}_ok"]
+
+        def joins():
+            b = p["b"]
+            nodes_at = e.ld(_block_word(e, b, B_NODES))
+            e.set("cursor", e.add(nodes_at, 1))
+
+            def node():
+                n = _Node(e)
+
+                def join():
+                    e.if_(e.lt(n.no, 2), lambda: e.give(0))
+                    e.var("left", n.vid(0))
+                    e.var("right", n.vid(1))
+                    e.if_(e.eq(trace("left", False), 0), lambda: e.give(0))
+                    e.if_(e.eq(trace("right", False), 0), lambda: e.give(0))
+                    left_record, right_record = defining(p["left"]), defining(p["right"])
+                    e.if_(e.either(e.eq(left_record, NONE), e.ne(left_record, right_record)), lambda: e.give(0))
+                    e.if_(e.ne(e.rd(left_record), int(Operation.RESOURCE_SPLIT)), lambda: e.give(0))
+                    base = e.rd(e.add(left_record, 4))
+                    pieces = e.add(e.sub(p["left"], base), e.sub(p["right"], base))
+                    e.if_(e.either(e.ne(pieces, 1), e.eq(p["left"], p["right"])), lambda: e.give(0))
+                    na = e.rd(e.add(left_record, 5))
+                    e.var("inner", e.rd(e.add(e.add(left_record, 7), na)))
+                    e.if_(e.eq(trace("inner", True), 0), lambda: e.give(0))
+
+                e.if_(e.eq(n.op, int(Operation.RESOURCE_JOIN)), join)
+                e.set("cursor", n.next)
+
+            e.for_("m", 0, e.rd(nodes_at), node)
+
+        e.var("cursor", 0)
+        e.for_("b", 0, B, joins)
+        e.give(1)
+    return _function((), build, tables)
+
+
 def build_engine():
     """The facts engine and its helpers: ``(engine function, every object)``."""
     tables = None
@@ -2728,6 +2911,7 @@ def build_engine():
     _HAS_LINK[:] = [add(_has_link_function(tables))]
     _DEPENDENTS[:] = [add(_dependents_function(tables))]
     _WINDOW[:] = [add(_window_function(tables, covers))]
+    _LINEAR[:] = [add(_linear_flow(tables))]
     intersect = add(_intersect(tables, insert))
     list_equal = add(_list_equal(tables))
     empty = add(_empty_record(tables))

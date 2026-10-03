@@ -418,7 +418,9 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S4d.2d | Links and records, atomics, raw loads, stack resource contracts, lend entries, indirect calls, function addresses, target operations: the engine accepts every graph the bootstrap accepts (S4 complete) | S4d.2c | EXECUTED (ADR-139): S4 complete. Across the whole suite, every graph the bootstrap accepts is decided by XAX, except the helper programs' own seed graphs |
 | S5a | RISC-V code generation (liveness, linear scan, frame, lowering, `li`, jump fixups) as an XAX program on the production path | S2–S4 | EXECUTED (ADR-140): byte-identical images; 2.3× faster on a 300-value loop |
 | S5b | The backend's input from the XAX store and graph decoders instead of the Python marshal: store bytes to image bytes | S5a | EXECUTED (ADR-141): S5 complete. Closure, interfaces, widths, constants, and order are decided by XAX; 6.4× faster than the bootstrap generator on a 300-value loop |
-| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | next |
+| S6a | Resource and effect linearity (`_verify_linear_flow`) decided by XAX | S4 | EXECUTED (ADR-142): 6,518 suite graphs proven, none unsound |
+| S6b | Object-level verification (types, constants, functions, groups, contracts, reference lists) decided by XAX | S6a | next |
+| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | in progress (S6a done) |
 
 ## 2. Bootstrap mapping
 

@@ -1070,6 +1070,12 @@ class NativeTyping:
             return False, []
         return True, self._extents(values)
 
+    def linear_flow(self) -> bool:
+        """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""
+        from xax_selfhost_facts import H_LINEAR, HEADER
+
+        return self._out[HEADER + H_LINEAR] == 1
+
     def decline_reason(self) -> str:
         """The engine check that declined the last graph (diagnosis only)."""
         from xax_selfhost_facts import DECLINE_SITES, H_REASON, HEADER, build_engine

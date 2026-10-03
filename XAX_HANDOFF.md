@@ -297,3 +297,7 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 
 - The backend program's front end (`_frontend`, `_translate`, `_interface`, `_erased`, `_node_info`, `_term_end`) reads the graph-decoder stream format from `xax_selfhost_graph`. A change to that stream must change these readers too.
 - The output words are: `out[1]` the code word count, `out[2]` the range count, `out[3]` the offsets, `out[4]` the function order (object indices), `out[5]` the entry widths `[P, widths, R, widths]`, and `out[STREAM_AT]` the function count.
+
+## S6a — 2026-10-03 (ADR-142)
+
+- `_linear_flow` in `xax_selfhost_facts.py` sets `H_LINEAR`. The engine runs it right after laying out the graph, so it is set even when the fact passes later decline. `NativeTyping.linear_flow()` reads the flag, but only after a check that returned status 0; otherwise the header may be stale.
