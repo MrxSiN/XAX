@@ -789,3 +789,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S4d.2c: the facts engine models heap views and calls (ADR-138) — 2026-10-03
 
 - Borrowed and allocated views, checked accesses, rebase windows, foreign calls (carrier decoded in XAX), view-passing direct and group calls, and view returns are modelled. All 20 corpus graphs are verified by the XAX engine with identical pointer extents, and `verify_store` is 20–30% faster on the view-heavy stores. Full suite: 872 tests, 17 skipped. Remaining for S4d.2d: links and records, atomics, raw loads, stack resource contracts, lend entries, indirect calls, function addresses, and target operations.
+
+## Self-hosting step S4d.2d: S4 complete (ADR-139) — 2026-10-03
+
+- The XAX facts engine now decides atomics, raw loads, stack resource contracts, function addresses, indirect calls, lend entries, and target operations, the last through a target-package decoder in XAX (`xax_selfhost_target.py`). It also decides records and links: layouts, field addresses, padding-aware windows, the link operations, link stores and loads, link targets, dependents, and declarations.
+- Across the whole suite, every graph the bootstrap accepts is now decided by XAX. Python only produces diagnostics on a decline or a rejection. The exceptions are the helper programs' own seed graphs, parsed while those programs are built or loaded.
+- Larger views let the engine handle the biggest self-hosting graphs (98K values, 1,594 blocks).
+- `verify_store` is 10–25% faster with the XAX path on the measured stores. Full suite: 875 tests, 17 skipped. Next: S5, the RISC-V backend in XAX.

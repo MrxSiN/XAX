@@ -279,3 +279,10 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 ## S4d.2c — 2026-10-03 (ADR-138)
 
 - To see why the engine declines a graph, patch `NativeTyping.facts` (as `test_xax_selfhost_facts.py` does) and call `native.decline_reason()`; header word `H_NODE` holds the node record being modelled. The native image cache lives in `~/.cache/xax-native` (override with `XAX_NATIVE_CACHE`).
+
+## S4d.2d — 2026-10-03 (ADR-139): S4 complete
+
+- To find graphs the engine declines, wrap `_parse_graph_uncached` and `NativeTyping.facts` over the suite and count graphs that parse but whose facts call did not accept. The result should be only seed graphs, parsed while `_TYPING_BUILDING` is set or while `_native_cfg()` is still loading.
+- `target.op` lives in `xax_selfhost_target.py` and is registered in `build_engine`. Record and link helpers are `_layout`, `_has_link_function`, `_dependents_function`, and `_window_function` in `xax_selfhost_facts.py`.
+- A direct call's aux words are `[count, summary blocks, operation count, operations, declaration count, (view, target) pairs]`, or `[0]` when there is neither a summary nor a declaration.
+- After changing any XAX helper, rebuild its committed store: `write_typing_store()`, or `write_cfg_store()` for the CFG views. The store-equality tests check that the committed store is the built one.

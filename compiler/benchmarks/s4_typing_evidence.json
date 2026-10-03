@@ -1,5 +1,5 @@
 {
-  "adr": "ADR-132 to ADR-137",
+  "adr": "ADR-132 to ADR-139",
   "corpus": {
     "blake3_selfhost": {
       "blocks": 12,
@@ -11,8 +11,8 @@
       "proven_constant_nodes": 266,
       "proven_nodes": 1548,
       "proven_terminators": 12,
-      "verify_ms_bootstrap_only": 41.62,
-      "verify_ms_xax_typing": 45.87
+      "verify_ms_bootstrap_only": 73.55,
+      "verify_ms_xax_typing": 66.83
     },
     "cfg_selfhost": {
       "blocks": 101,
@@ -24,8 +24,8 @@
       "proven_constant_nodes": 250,
       "proven_nodes": 722,
       "proven_terminators": 101,
-      "verify_ms_bootstrap_only": 43.65,
-      "verify_ms_xax_typing": 33.68
+      "verify_ms_bootstrap_only": 42.36,
+      "verify_ms_xax_typing": 36.25
     },
     "jsonmin": {
       "blocks": 230,
@@ -37,8 +37,8 @@
       "proven_constant_nodes": 326,
       "proven_nodes": 955,
       "proven_terminators": 230,
-      "verify_ms_bootstrap_only": 113.15,
-      "verify_ms_xax_typing": 84.77
+      "verify_ms_bootstrap_only": 122.17,
+      "verify_ms_xax_typing": 97.94
     },
     "m14_selfhost_compiler": {
       "blocks": 4,
@@ -50,8 +50,8 @@
       "proven_constant_nodes": 0,
       "proven_nodes": 6,
       "proven_terminators": 4,
-      "verify_ms_bootstrap_only": 0.8,
-      "verify_ms_xax_typing": 1.07
+      "verify_ms_bootstrap_only": 0.75,
+      "verify_ms_xax_typing": 1.15
     },
     "uniqcount": {
       "blocks": 80,
@@ -63,13 +63,13 @@
       "proven_constant_nodes": 85,
       "proven_nodes": 166,
       "proven_terminators": 80,
-      "verify_ms_bootstrap_only": 31.45,
-      "verify_ms_xax_typing": 23.48
+      "verify_ms_bootstrap_only": 31.52,
+      "verify_ms_xax_typing": 24.3
     }
   },
   "evidence_label": "MEASURED",
-  "native_code_bytes": 454135,
+  "native_code_bytes": 1030596,
   "note": "verify_store medians over 7 runs in fresh processes; the graph parse cache is cleared before every run",
-  "step": "S4 to S4d.2b",
-  "store_bytes": 1031986
+  "step": "S4 to S4d.2d (S4 complete)",
+  "store_bytes": 2718650
 }
