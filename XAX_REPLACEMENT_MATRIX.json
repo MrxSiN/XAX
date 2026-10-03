@@ -405,7 +405,7 @@
         ]
       },
       "blockers": [
-        "not competitive (R4): jsonmin 1.56x gcc -O2 and 1.67x clang -O2 time (smallest RSS and binary); filestat 1.38x clang -O2; small-set membership tests lower to sete/or chains; float/aggregate functions still fall back (OI-38)",
+        "not competitive (R4): jsonmin 1.20x gcc -O2 and 1.31x clang -O2 time (smallest RSS and binary; ADR-131 bit-test selection); filestat 1.38x clang -O2; float/aggregate functions still fall back (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
         "pointer-chasing workload 1.07x gcc -O2 with record links (ADR-097)",
         "jsonmin writes its output with one write call (no partial-write loop)"

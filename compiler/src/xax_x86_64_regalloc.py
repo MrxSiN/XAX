@@ -159,6 +159,17 @@ def _load_constant(register: int, value: int) -> bytes:
     return _immediate(register, value)
 
 
+def _member_bit_test(register: int, low: int, mask: int, temporary: int) -> bytes:
+    """CF = bit ``x - low`` of ``mask``, for a bits<32> ``x``; indices above 62 read bit 63 (clear)."""
+    lea = bytes((0x44 | (register >= 8), 0x8D, 0x98 | (register & 7))) + (b"\x24" if register & 7 == 4 else b"") + ((-low) & 0xFFFFFFFF).to_bytes(4, "little")
+    clamp = (
+        b"\x41\x83\xfb\x3f"  # cmp r11d, 63
+        + _rex(False, 0, temporary) + bytes((0xB8 + (temporary & 7),)) + (63).to_bytes(4, "little")  # mov tmp, 63
+        + bytes((0x44 | (temporary >= 8), 0x0F, 0x47, 0xD8 | (temporary & 7)))  # cmova r11d, tmp
+    )
+    return lea + clamp + _load_constant(temporary, mask) + bytes((0x4C | (temporary >= 8), 0x0F, 0xA3, 0xD8 | (temporary & 7)))  # bt tmp, r11
+
+
 def _group1_immediate(operation: Operation, register: int, value: int, width: int) -> bytes:
     """``op r, imm32`` for add/or/and/sub/xor (and cmp as digit 7)."""
     digit = 7 if operation is None else _GROUP1[operation]
@@ -412,6 +423,39 @@ def compile_register_resident(
         if node.operation == Operation.INT_COMPARE and consumers == 0:
             fused[block_index] = condition.index
 
+    # A branch on an OR tree of ``x == c`` tests of one bits<32> value against
+    # constants spanning at most 63 values becomes one bit test against a mask.
+    membership: dict[int, tuple[ValueRef, int, int, frozenset[int]]] = {}
+    for block_index, block in enumerate(graph.blocks):
+        terminator = block.terminator
+        if terminator.kind != TerminatorKind.CONDITIONAL_BRANCH or block_index in fused:
+            continue
+        condition = terminator.values[0]
+        if condition.tag != 1 or condition.block != block_index or block.nodes[condition.index].operation != Operation.BIT_OR:
+            continue
+        counts = Counter(operand for node in block.nodes for operand in node.operands)
+        counts.update(value for _target, arguments in terminator.edges for value in arguments)
+        if counts[condition]:
+            continue
+        tree, tests, pending = set(), [], [condition.index]
+        while pending and tests is not None:
+            index = pending.pop()
+            node = block.nodes[index]
+            tree.add(index)
+            if node.operation == Operation.BIT_OR and all(operand.tag == 1 and operand.block == block_index and counts[operand] == 1 for operand in node.operands):
+                pending.extend(operand.index for operand in node.operands)
+            elif node.operation == Operation.INT_COMPARE and IntCompare(node.attributes[0]) == IntCompare.EQ and node.operands[1] in constants and node.operands[0] not in constants:
+                tests.append((node.operands[0], constants[node.operands[1]] & 0xFFFFFFFF))
+            else:
+                tests = None
+        if tests is None or len(tests) < 3 or len({subject for subject, _value in tests}) != 1 or widths.get(tests[0][0]) != 32:
+            continue
+        low = min(value for _subject, value in tests)
+        if max(value for _subject, value in tests) - low > 62:
+            continue
+        mask = sum({1 << (value - low) for _subject, value in tests})
+        membership[block_index] = (tests[0][0], low, mask, frozenset(tree))
+
     # Values used in a block other than the one defining them live in a home slot.
     # A constant ``address_offset`` used only as the address of plain loads and
     # stores folds into their displacement: no register copy, and the base
@@ -457,7 +501,7 @@ def compile_register_resident(
         uses: dict[ValueRef, list[int]] = {}
         position = len(block.nodes)
         for node_index, node in enumerate(block.nodes):
-            use_position = position if fused.get(block_index) == node_index else node_index
+            use_position = position if fused.get(block_index) == node_index or node_index in membership.get(block_index, (None, 0, 0, frozenset()))[3] else node_index
             for operand in (item for value in map(through_fold, node.operands) for item in with_aliases(value)):
                 if operand in widths:
                     uses.setdefault(operand, []).append(use_position)
@@ -898,6 +942,8 @@ def compile_register_resident(
                 release(value)
 
         for node_index, node in enumerate(block.nodes):
+            if block_index in membership and node_index in membership[block_index][3]:
+                continue  # emitted as a bit test by the terminator
             start = len(assembler.code) if assembler is not None else 0
             result = ValueRef.node_result(block_index, node_index)
             hint["value"] = result
@@ -1284,6 +1330,12 @@ def compile_register_resident(
                 compare = block.nodes[fused[block_index]]
                 emit_compare(position, *compare.operands)
                 if_false = _JUMP_IF_FALSE[IntCompare(compare.attributes[0])]
+            elif block_index in membership:
+                subject, low, mask, _tree = membership[block_index]
+                register = ensure(subject, position)
+                temporary = acquire(position, {subject})
+                emit(_member_bit_test(register, low, mask, temporary))
+                if_false = 0x83  # jnc: the bit is clear
             else:
                 register = ensure(condition, position)
                 emit(_test_register(register, widths[condition]))

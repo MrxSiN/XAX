@@ -752,3 +752,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Standard semantic libraries (ADR-130) — 2026-10-03
 
 - `xax_stdlib`: the `xax.text` and `xax.collections.hashset_u64` package families (canonical `PACKAGE` objects, function-granular, instantiated per extent or capacity, target independent). `uniqcount` uses them and is EXECUTED on Linux x86-64 and AArch64. OI-36 CLOSED.
+
+## Small-set membership selection (ADR-131) — 2026-10-03
+
+- The Linux x86-64 register allocator lowers `x == c1 || x == c2 || …` branches to one `bt`. `jsonmin` went from 1.56× to 1.20× gcc -O2, and from 1.67× to 1.31× clang -O2. Linux stays at R3 (not competitive).

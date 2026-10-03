@@ -752,17 +752,17 @@ A CPU implementation is not GPU performance evidence (conformance §23.17). The 
 
 ### 15.12 `jsonmin` (R3 application): XAX vs C twins on Linux x86-64 (ADR-126; MEASURED, 2026-10-03)
 
-Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified. XAX: the `jsonmin` graph (recursion group value/array/object plus four plain functions) as a static `x86_64-linux-elf-exec-v1` executable with no libc, loader, or allocator. Baselines: `jsonmin_c/jsonmin.c`, the same algorithm in C, built by the U1.3 harness (gcc 13.3 `-O2`, `-O3`, `-O2 -static`; clang 18 `-O2`). Input: `benchmark_document(8 MiB)` (8,390,986 bytes, pretty-printed records with escapes and numbers) on stdin through `runner.c`; 11 runs after 2 warmups; every output equals `reference_jsonmin`.
+Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified. XAX: the `jsonmin` graph (recursion group value/array/object plus four plain functions) as a static `x86_64-linux-elf-exec-v1` executable with no libc, loader, or allocator. Baselines: `jsonmin_c/jsonmin.c`, the same algorithm in C, built by the U1.3 harness (gcc 13.3 `-O2`, `-O3`, `-O2 -static`; clang 18 `-O2`). Input: `benchmark_document(8 MiB)` (8,390,986 bytes, pretty-printed records with escapes and numbers) on stdin through `runner.c`; 31 runs after 3 warmups; every output equals `reference_jsonmin`.
 
 | Arm | Wall (median) | vs gcc -O2 | vs best | Peak RSS | Stripped bytes |
 |---|---:|---:|---:|---:|---:|
-| XAX | 42.3 ms | 1.56× | 1.67× | 12,416 KiB | 10,664 (static) |
-| gcc -O2 | 27.2 ms | 1.00× | 1.07× | 13,672 KiB | 14,472 (dynamic) |
-| gcc -O3 | 28.5 ms | 1.05× | 1.12× | 13,736 KiB | 14,552 (dynamic) |
-| clang -O2 | 25.4 ms | 0.94× | 1.00× | 13,800 KiB | 14,552 (dynamic) |
-| gcc -O2 -static | 28.5 ms | 1.05× | 1.12× | 13,000 KiB | 706,584 (static) |
+| XAX | 32.7 ms | 1.20× | 1.31× | 12,416 KiB | 10,584 (static) |
+| gcc -O2 | 27.2 ms | 1.00× | 1.09× | 13,672 KiB | 14,472 (dynamic) |
+| gcc -O3 | 26.2 ms | 0.96× | 1.05× | 13,672 KiB | 14,552 (dynamic) |
+| clang -O2 | 24.9 ms | 0.91× | 1.00× | 13,800 KiB | 14,552 (dynamic) |
+| gcc -O2 -static | 27.8 ms | 1.02× | 1.12× | 13,000 KiB | 706,584 (static) |
 
-The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program changes (a 0 sentinel byte after the input instead of bounds compares, parser state passed as one `bits<64>` instead of through a context view, reads straight into the input view through a `pointer_rebase` window) and one compiler change (`ror` on the Linux register allocator) cut executed instructions on a 1 MiB input from 60.4M to 36.7M (gcc -O2: 20.8M, Valgrind). Not competitive in time, so the Linux row is R3, not R4. Peak RSS and binary size are the smallest of all arms. Most of the remaining gap is in the whitespace and string loops, where each small-set membership test (`c == ' ' || c == '\t' || …`) becomes `sete`/`or` chains instead of a compare chain or a bit test. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
+The first version measured 2.11× gcc -O2 (59.8 ms, 16,250 bytes). Three program changes (a 0 sentinel byte after the input instead of bounds compares, parser state passed as one `bits<64>` instead of through a context view, reads straight into the input view through a `pointer_rebase` window) and one compiler change (`ror` on the Linux register allocator) brought it to 1.56× (42.3 ms; 36.7M executed instructions on a 1 MiB input, against 20.8M for gcc -O2 under Valgrind). Small-set membership selection (ADR-131) then lowered each `c == ' ' || c == '\t' || …` branch to one bit test, bringing it to 1.20× gcc -O2 and 1.31× clang -O2 (29.5M instructions, 10,584 bytes). Not competitive in time, so the Linux row is R3, not R4. Peak RSS and binary size are the smallest of all arms. The remaining gap is not yet profiled. One known contributor is the escape-set test, whose span (82 values) is too wide for one 64-bit mask, so it still lowers to compares. Source: `compiler/benchmarks/jsonmin.py`; data: `jsonmin_evidence.json`.
 
 ### 15.13 Standard libraries in `uniqcount` (ADR-130, OI-36; MEASURED, 2026-10-03)
 
