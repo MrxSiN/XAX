@@ -701,3 +701,25 @@ The twin (`benchmarks/android_ndk_twin/`) has the same classes, methods, strings
 | C, `x86_64-w64-mingw32-gcc (GCC) 13-win32` `-O2`, no CRT | 2,560 | 416 | 2549.87 |
 
 21 runs each, interleaved, under wine-9.0 (Ubuntu 9.0~repack-4build3). Both print `XAX\n` and exit 1339 (59 mod 256). Wall time is Wine start-up. The C code is smaller because gcc folds work XAX performs at run time. Source: `bench_windows_pe_c_wine.py`.
+
+### 15.8 JVM: XAX class file vs `javac` on the same HotSpot (ADR-112; MEASURED, 2026-10-03)
+
+Workload: total Collatz steps for every start value 1..1,000,000 (u64; nested loops; data-dependent branch). Result 131,434,424 on both arms. Each repetition is a fresh JVM with default flags; the kernel runs 5 times before the timed call, and only the timed call is measured with `System.nanoTime`. The two arms run interleaved, 7 repetitions each. Host: Intel(R) Xeon(R) Processor @ 2.80GHz, 4 logical CPUs, Linux 6.18.44-fc-v64; openjdk version "21.0.11" 2026-04-21; javac 21.0.11.
+
+| Arm | Class bytes | JAR bytes | Kernel median (ms) | min–max (ms) | Process wall median (s) | Peak RSS (KiB) |
+|---|---:|---:|---:|---:|---:|---:|
+| XAX `jvm-classfile-v1` | 1,147 | 1,509 | 258.4 | 256.7–273.4 | 1.6325 | 41,020 |
+| Java twin, `javac` | 760 | 989 | 248.5 | 244.0–272.1 | 1.5022 | 40,616 |
+
+Ratios XAX / `javac`: kernel time 1.04×, class bytes 1.509×, peak RSS 1.01×. The optimization history on this workload is 1.37× (first lowering), 1.056× (compare/branch fusion), 1.04× (scratch locals), and the class file went from 2,147 to 1,147 bytes. The remaining size gap is uncoalesced block parameters. The twin's loop compare is signed; XAX bits are unsigned, so XAX flips the sign bit before `lcmp`. Process wall time is dominated by JVM start-up and includes the warmup calls. Source: `bench_jvm_twin.py`; raw samples: `jvm_twin_evidence.json`.
+
+### 15.9 RISC-V RV64IM: XAX raw image vs `clang -O2`, emulated (ADR-113; MEASURED-EMULATED, 2026-10-03)
+
+Metric: RV64IM instructions executed in Unicorn (unicorn 2.1.0), counted per executed basic block, plus code bytes. This is not hardware time. Baseline: Ubuntu clang version 18.1.3 (1ubuntu1), `--target=riscv64-unknown-elf -march=rv64im -mabi=lp64 -O2 -ffreestanding -fno-builtin -mno-relax -c`, `.text` extracted with `llvm-objcopy`.
+
+| Kernel | Input | XAX instructions | clang instructions | Ratio | XAX bytes | clang bytes | Ratio |
+|---|---|---:|---:|---:|---:|---:|---:|
+| sum_to | 1000 | 17,030 | 14 | 1216.43× | 176 | 60 | 2.93× |
+| collatz | 300 | 304,143 | 81,678 | 3.72× | 336 | 104 | 3.23× |
+
+Before register allocation (every value spilled), Collatz measured 15.9× instructions and 8.85× bytes. clang turns `sum_to` into a closed form (14 instructions); XAX runs the loop. XAX does not yet fuse compares into branches or coalesce edge copies. Source: `bench_riscv64_twin.py`; data: `riscv64_twin_evidence.json`.

@@ -383,7 +383,9 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 | U1.5 | Deterministic foreign metadata importer (OI-32) | every platform API package | PROTOTYPE (Android classfiles) |
 | U1.6 | Bare-metal board package: vector table, sections, MMIO, interrupt entry | workload 2 | PROTOTYPE (AArch64 raw image) |
 | U1.7 | Real GPU target package and device execution (OI-34) | workload 5 | UNIMPLEMENTED |
-| U1.8 | Baseline toolchains on measuring hosts; first R4 measurements | R4 on all rows | **Linux MEASURED** against gcc -O2/-O3/-static and clang -O2 (`XAX_BENCHMARKS.md` §15.1; R4 not met). Windows/other hosts UNIMPLEMENTED. |
+| U1.8 | Baseline toolchains on measuring hosts; first R4 measurements | R4 on all rows | **Linux MEASURED** against gcc -O2/-O3/-static and clang -O2 (`XAX_BENCHMARKS.md` §15.1; R4 not met). **JVM MEASURED** against `javac` on the same HotSpot (§15.8: 1.04× kernel time, 1.51× class bytes). **RISC-V MEASURED-EMULATED** against `clang -O2` (§15.9: 3.72× instructions). Windows under Wine only (§15.6). |
+| U1.9 | Managed target by direct emission: JVM class files (OI-35) | JVM row; the managed-platform strategy question | EXECUTED (ADR-112): HotSpot runs XAX class files from `java -jar`, with typed JDK member calls, an explicit `System.exit`, and stack traces mapped to nodes; JVM row R2. Next: JVM→XAX callbacks (interfaces) through generated adapters; object/array/string construction contracts; block-parameter coalescing; a classfile metadata importer (OI-32). |
+| U1.10 | Third ISA through a target package only: RISC-V RV64 | riscv64 row; U1.6 on RISC-V boards | EXECUTED under Unicorn (ADR-113): raw RV64IM image with LP64 calls and a liveness-hull register allocator; riscv64 row R1. Next: compare/branch fusion, F/D floats and memory, a Linux `ET_EXEC` profile (reusing `xax_elf`), and a hardware or QEMU-system run (OI-44). |
 
 **Dependencies**: M4/M5 backends, M7 resources/effects, M10 build/provenance, M13 accelerator scopes.
 

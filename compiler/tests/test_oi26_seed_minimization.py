@@ -94,7 +94,11 @@ class OI26SeedMinimizationTests(unittest.TestCase):
         committed_reachability = json.loads(REACHABILITY.read_text())
         self.assertEqual(evidence["selection"]["candidate"], "reachable_pruned")
         self.assertEqual(evidence["host_observations_nonsemantic"], committed_timing["host"])
-        self.assertEqual(committed_reachability, _reachability_report(self.meta))
+        replayed = _reachability_report(self.meta)
+        # The interpreter version is a host observation of the generating run, not seed content.
+        for report in (committed_reachability, replayed):
+            report["implementation_dependencies"]["external_runtime"].pop("python")
+        self.assertEqual(committed_reachability, replayed)
         by_name = {item["name"]: item for item in evidence["candidates"]}
         for name, data in self.variants.items():
             self.assertEqual(by_name[name]["seed_bytes"], len(data))

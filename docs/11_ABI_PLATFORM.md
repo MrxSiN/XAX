@@ -649,7 +649,7 @@ A `call_foreign` declaration names `(abi, library, symbol, typed interface)`. Th
 
 ### 17.2 Ownership of foreign ABIs
 
-Each foreign ABI string is owned by one backend and profile: x86-64 accepts `win64-c` on the PE profile and `linux-x86_64-syscall-v1`/`sysv-x86_64-c` on the Linux profiles (§19), AArch64 accepts only `android-aapcs64-c`, and wasm32 accepts only `wasm32-import`. Declarations for another ABI reject (`XAX.FOREIGN.ABI`) rather than being reinterpreted. Raw load images cannot bind imports and reject import-bearing images (`XAX.NATIVE.IMPORTS`).
+Each foreign ABI string is owned by one backend and profile: x86-64 accepts `win64-c` on the PE profile and `linux-x86_64-syscall-v1`/`sysv-x86_64-c` on the Linux profiles (§19), AArch64 accepts only `android-aapcs64-c`, wasm32 accepts only `wasm32-import`, and the JVM accepts only `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-getstatic` (§20). The RISC-V raw profile accepts no foreign ABI. Declarations for another ABI reject (`XAX.FOREIGN.ABI`) rather than being reinterpreted. Raw load images cannot bind imports and reject import-bearing images (`XAX.NATIVE.IMPORTS`).
 
 ### 17.3 Process lifecycle
 
@@ -706,4 +706,24 @@ A declaration imports a C symbol from the shared library named by its soname (`l
 ### 19.3 Process lifecycle
 
 As on Windows (§17.3), the container emits no code: `e_entry` is the XAX entry function, which takes no machine parameters, returns at most one integer (`XAX.LINUX.ENTRY`), and ends the process with an explicit `exit_group`. Linux starts a process with RSP 16-byte aligned and no return address, so the entry function is lowered as a process entry. Its frame uses that alignment, it saves no callee-saved registers, and its `ret` lowers to `ud2`, so returning traps instead of exiting or jumping to an unknown address. argv/env/auxv, TLS, signals, and unwind data are absent until explicit contracts require them (OI-33).
+
+## 20. JVM slice (`jvm-classfile-v1`, ADR-112, 2026-10-03)
+
+The JVM is a target; no Java semantics enter the kernel. One class file (major version 61) holds every reachable function as a `public static` method and is packaged in a stored, byte-deterministic JAR.
+
+### 20.1 Member declarations
+
+A declaration's `library` is the class's internal name (`java/io/PrintStream`). Its `name` is `member(descriptor)` for methods or `field:descriptor` for static fields. The machine inputs and outputs must match the descriptor exactly: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and `L…;`/`[…` ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>` (`xax_jvm.jvm_reference_type`). For `jvm-invokevirtual` the receiver is the first machine input and has type `L<library>;`. Effects ride along as proof inputs and outputs, as on every other platform, and are erased. Rejections: `JVM-FOREIGN-DESCRIPTOR-TYPE`, `JVM-FOREIGN-ARITY`, `JVM-METHOD-DESCRIPTOR`.
+
+### 20.2 Values, traps, and exceptions
+
+Narrow JVM arguments (B, C, S) are narrowed explicitly with `i2b`/`i2c`/`i2s`, and B/S results are masked back to unsigned bits, so the conversion is part of the declaration rather than an assumption. A Java exception escaping a foreign member is not an XAX value: it unwinds through XAX frames and ends the program, exactly like a trap. Catching one would need an explicit foreign-unwind adapter (`XAX_SPEC.md` §21.6), which does not exist yet.
+
+### 20.3 Process lifecycle
+
+`JVM_EXECUTABLE_JAR` requires an entry that takes and returns only proof values. The generated `main(String[])` calls it and returns, which ends the JVM with status 0 when no other non-daemon thread exists; this is the platform's lifecycle. Other statuses are an explicit `System.exit(I)V` call.
+
+## 21. RISC-V RV64 raw slice (`riscv64-baremetal-raw-v1`, ADR-113, 2026-10-03)
+
+LP64 integer calling convention: arguments in a0–a7, one result in a0, `ra` for the return address, and s0–s11 preserved (the allocator uses s1–s11 and saves the ones it touches). The image needs only RV64I plus M and contains no data, relocations, or runtime. A wrapping container (Linux ELF, board package) adds the platform's entry contract, as on the other ISAs.
 

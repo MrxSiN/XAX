@@ -22,7 +22,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import zipapp
 import zipfile
 
 from blake3 import blake3
@@ -145,9 +144,22 @@ def build_seed(entries: dict[str, tuple[bytes, int]], year: int) -> bytes:
             path.write_bytes(payload)
             os.chmod(path, mode & 0o7777)
             os.utime(path, (epoch, epoch))
-        target = Path(directory) / "seed.pyz"
-        zipapp.create_archive(stage, target=target, interpreter="/usr/bin/env python3", compressed=True)
-        return target.read_bytes()
+        return _create_archive(stage, EXPECTED_ENTRIES)
+
+
+def _create_archive(stage: Path, names: tuple[str, ...]) -> bytes:
+    """``zipapp.create_archive`` output with entries in the declared order.
+
+    ``zipapp`` walks the directory with an unsorted ``rglob``, so its entry
+    order follows the host filesystem; this writes the same bytes
+    (shebang, deflated entries, file mtime and mode) in a fixed order.
+    """
+    out = io.BytesIO()
+    out.write(SHEBANG)
+    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name in names:
+            archive.write(stage / name, name)
+    return out.getvalue()
 
 
 def build_deterministic_seed(entries: dict[str, tuple[bytes, int]]) -> bytes:
@@ -234,9 +246,7 @@ def _unknown_layout(entries: dict[str, tuple[bytes, int]]) -> bytes:
             path.write_bytes(payload)
             os.chmod(path, mode & 0o7777)
             os.utime(path, (epoch, epoch))
-        target = Path(directory) / "seed.pyz"
-        zipapp.create_archive(stage, target=target, interpreter="/usr/bin/env python3", compressed=True)
-        return target.read_bytes()
+        return _create_archive(stage, tuple(expanded))
 
 
 def _stat(samples: list[int]) -> dict:

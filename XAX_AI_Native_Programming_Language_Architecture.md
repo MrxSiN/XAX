@@ -1,6 +1,6 @@
-# XAX — AI-Native Programming Language Architecture v0.2
+# XAX — AI-Native Programming Language Architecture v0.3
 
-**v0.2 scope.** v0.1 framed XAX as a compiler-architecture prototype (sections 1–34, preserved below). v0.2 extends the same principles to a universal-replacement architecture (sections 35–47). This document states principles and intent; `XAX_SPEC.md` is normative and wins on conflict; implementation status lives in `XAX_STATE.md` and `XAX_REPLACEMENT_MATRIX.json`.
+**v0.3 scope.** v0.1 framed XAX as a compiler-architecture prototype (sections 1–34, preserved below). v0.2 extended the same principles to a universal-replacement architecture (sections 35–47). v0.3 records the first two architectures added without any kernel change, a managed JVM target and a RISC-V ISA target (§37, §39, §41). This document states principles and intent; `XAX_SPEC.md` is normative and wins on conflict; implementation status lives in `XAX_STATE.md` and `XAX_REPLACEMENT_MATRIX.json`.
 
 ## Founding definition
 
@@ -919,6 +919,8 @@ The kernel stays approximately: values, exact arithmetic, aggregates, control, c
 
 Before anything enters the kernel it must be shown that existing primitives cannot express it exactly and efficiently. Concepts such as class, object, trait, interface, async, future, string, dictionary, exception, and garbage-collected object are not kernel concepts. Duplicate mechanisms, speculative generality, extra layers, and per-domain DSLs are rejected. There is one semantic language.
 
+Evidence for the layering (ADR-112, ADR-113): two architectures with nothing in common, a typed stack-machine VM (the JVM) and a load/store RISC ISA (RV64IM), were added with zero kernel changes. Neither needed a new operation, type form, terminator, or verifier rule for programs. Each added only a target architecture number with its machine tuple, a backend module, and (for the JVM) three foreign ABI names. Both run the same differential corpus against the same reference executor.
+
 ---
 
 # 38. Zero-cost high-level abstraction policy
@@ -953,6 +955,8 @@ Containers are target/platform package responsibilities: raw load images, ELF, P
 
 A container adds no code beyond explicit platform contracts. Import tables, relocations, headers, and section layout are derived deterministically from semantic identity. Process start and exit, loaders, TLS, and unwind data are explicit platform contracts, not container conveniences.
 
+Current containers: raw load images (x86-64, AArch64, RISC-V RV64), PE32+, ELF64 `ET_EXEC` and Android `ET_DYN`, WebAssembly modules, generated browser pages, DEX/APK, and JVM class files in a stored JAR (ADR-112). The JAR is byte-deterministic (fixed entry order and timestamps, no compression). Its `Main-Class` is a compiler-generated `main(String[])` that calls the proof-only XAX entry; this is the platform's required entry, recorded in the matrix row's `runtime_requirement`.
+
 First hosted evidence: XAX emits a PE32+ executable directly, with kernel32 imports bound through the loader-filled import table and process exit as an explicit `ExitProcess` call. The container contains zero bytes of startup code. Linux follows the same rule (ADR-086): `e_entry` is the XAX entry function, the program calls `exit_group` explicitly, and the entry is lowered for Linux's aligned, no-return-address start, so returning traps. A static profile emits only one load segment. An explicit-loader profile adds `PT_INTERP` and `DT_NEEDED` derived from declared C imports, with bind-now GOT slots (ADR-087). Native hosted platforms need: complete calling conventions, relocations, TLS, atomics, vectors, unwind data when required, and static/dynamic linking when requested.
 
 ---
@@ -963,13 +967,15 @@ A universal replacement cannot require rewriting the world. Interop is mandatory
 
 Deterministic importers convert external metadata into XAX platform/ABI packages of typed foreign declarations. No human writes wrapper source. There is no universal ABI: C++ and other complex ABIs are explicit ABI packages. Foreign exceptions, ownership, aliasing, lifetime, callbacks, thread requirements, dynamic loading, and calling conventions stay visible to verification. Each foreign ABI is owned by one backend, which rejects the others.
 
-Current ABIs: `android-aapcs64-c`, `win64-c`, `wasm32-import`, `linux-x86_64-syscall-v1`, and `sysv-x86_64-c`. Syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments (ADR-085). `sysv-x86_64-c` calls real shared libraries (EXECUTED and MEASURED: `libz.so.1` `crc32`) and covers register-passed INTEGER and SSE scalars. C can call back into pure XAX functions: the calling convention is part of the code-address type, and the compiler generates the adapter (ADR-102, EXECUTED with libc `tsearch`). Effectful callbacks are OI-42; aggregates and variadics remain OI-40.
+Current ABIs: `android-aapcs64-c`, `win64-c`, `wasm32-import`, `linux-x86_64-syscall-v1`, `sysv-x86_64-c`, and the JVM member ABIs `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-getstatic` (ADR-112). A JVM declaration's identity carries the class's internal name and the exact member descriptor, and the compiler rejects a descriptor that disagrees with the declared XAX types. JVM object references are `ptr<opaque-identity "jvm-ref:<descriptor>">`: handles that no XAX memory operation accepts. Syscall declarations carry an explicit register template in their identity, so a property such as "anonymous mappings are zero-filled" is part of the declaration rather than an assumption about caller arguments (ADR-085). `sysv-x86_64-c` calls real shared libraries (EXECUTED and MEASURED: `libz.so.1` `crc32`) and covers register-passed INTEGER and SSE scalars. C can call back into pure XAX functions: the calling convention is part of the code-address type, and the compiler generates the adapter (ADR-102, EXECUTED with libc `tsearch`). A callback may also read memory the C call was lent: a lend entry's type names the view, and the call that receives it must lend that view for exactly its own duration (ADR-115, EXECUTED with glibc `qsort_r` sorting an XAX array). Aggregates and variadics remain OI-40.
 
 ---
 
 # 41. Hosted managed targets
 
 JVM, Android DEX/ART, and .NET CLI/CLR are targets and platforms. Java, Kotlin, and C# semantics are not reproduced in the kernel. Where a managed runtime is required, XAX emits its artifact format directly (as already done for DEX) or emits native code plus a compiler-generated managed bridge; any GC or object-model interaction is an explicit platform contract.
+
+JVM evidence (ADR-112, EXECUTED on HotSpot 21). `jvm-classfile-v1` lowers verified XAX directly to class-file bytecode, with no Java source, `javac`, or bytecode library. Bits up to 64 become `int`/`long`, f32/f64 become strict `float`/`double`, functions become static methods, and blocks become labelled code with uniform StackMapTable frames. The HotSpot verifier accepts every emitted class. A trap is `athrow` of `java.lang.Error`; integer division by zero is the JVM's own `ArithmeticException`. A Java exception escaping a foreign call terminates the program like a trap, so XAX code never observes it. On a Collatz kernel the result runs at 1.04× the kernel time of the `javac`-compiled Java twin on the same JVM, with a class file 1.51× larger. Adding the JVM changed no kernel semantics: it needed one target architecture number, three foreign ABI names, and one backend module.
 
 ---
 
@@ -1003,11 +1009,13 @@ Universal replacement needs far stronger optimization than a prototype backend. 
 
 Every transformation preserves exact observable semantics; high-risk and search transformations use translation validation or equivalence checking. Profile data stays non-semantic unless promoted into build identity. Parallel compilation never alters semantics. Optimizer machinery migrates into XAX where practical. LLVM is never a permanent architectural dependency.
 
-Current state (MEASURED). Two register-resident x86-64 allocators exist: PE (ADR-083) and Linux (ADR-089; ADR-091 adds pinned loop values, fall-through layout and cold trap stubs, bringing `chains` from 3.49× to 1.91× `gcc -O2`). Convergence is OI-38. On the Linux `filestat` workload the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` across seven runs, validated against the reference executor on a random-program corpus. Cross-block allocation, LICM, and loop transformations come next.
+Current state (MEASURED). New targets reuse the same lowering ideas. The JVM backend fuses each compare with its branch, strength-reduces power-of-two division, and gives block-local values scratch locals (ADR-112). The RISC-V backend runs a linear scan over block-liveness hulls into the eleven callee-saved registers, which cut its Collatz instruction count from 15.9× to 3.72× `clang -O2` (ADR-113). Two register-resident x86-64 allocators exist: PE (ADR-083) and Linux (ADR-089; ADR-091 adds pinned loop values, fall-through layout and cold trap stubs, bringing `chains` from 3.49× to 1.91× `gcc -O2`). Convergence is OI-38. On the Linux `filestat` workload the frame path measured 5.9× `gcc -O2`; the Linux allocator measures 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` across seven runs, validated against the reference executor on a random-program corpus. Cross-block allocation, LICM, and loop transformations come next.
 
 ---
 
 # 46. Practical debugging and observability
+
+Current derived views: semantic byte ranges for every native, wasm, JVM, and RISC-V artifact through the workspace `artifact`/`map_semantic` queries. For the JVM, a `LineNumberTable` numbers each XAX node, so a platform stack trace names the exact semantic node (ADR-112, EXECUTED: an `ArithmeticException` trace maps back to its `UDIV` node).
 
 Production use requires observability through derived, non-authoritative views: semantic-to-machine maps, crash location mapping, stack traces where platforms permit, disassembly maps, profiling, debugger integration, coverage, sanitizer/instrumentation builds, and deterministic diagnostics. Instrumented builds are separate build policies. None of these views becomes source.
 
@@ -1024,7 +1032,7 @@ The goal is not "faster than assembly"; it is:
     minimize selected target cost
     subject to exact semantics
 
-Snapshot (2026-10-02): Linux x86-64 and Android arm64 are at R2; Windows PE, AArch64 bare metal, Wasm core, and WASI are at R1; the synthetic accelerator is at R0; nothing is at R3 or higher. The first cross-toolchain measurement is Linux `filestat` (`XAX_BENCHMARKS.md` §15.1), which does not meet R4.
+Snapshot (2026-10-03): Linux x86-64, Android arm64, the browser, and the JVM are at R2; Windows PE, AArch64 bare metal, RISC-V RV64, Wasm core, and WASI are at R1; the synthetic accelerator is at R0; nothing is at R3 or higher. Emulator execution (QEMU, Unicorn) counts as EXECUTED for code generation and execution correctness, never as hardware performance evidence, and each such row lists "not hardware" as a blocker (ADR-114). The first cross-toolchain measurement is Linux `filestat` (`XAX_BENCHMARKS.md` §15.1), which does not meet R4.
 
 The first replacement milestone (U1) is a hosted native application, a bare-metal program, a WebAssembly/WASI or browser application, an Android application, and an accelerator workload, all from XAX semantics, measured against established implementations.
 
