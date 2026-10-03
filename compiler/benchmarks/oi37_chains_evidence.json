@@ -1,11 +1,11 @@
 {
   "attribution": {
-    "checked_vs_unchecked_index": 1.26,
-    "checked_vs_unchecked_pointer": 1.418,
-    "index_vs_pointer": 1.393,
-    "xax_link_vs_gcc_O2_pointer": 1.51,
-    "xax_pointer_vs_checked_pointer_c": 1.111,
-    "xax_vs_checked_index_c": 1.093
+    "checked_vs_unchecked_index": 1.213,
+    "checked_vs_unchecked_pointer": 1.368,
+    "index_vs_pointer": 1.399,
+    "xax_link_vs_gcc_O2_pointer": 1.046,
+    "xax_pointer_vs_checked_pointer_c": 1.057,
+    "xax_vs_checked_index_c": 1.102
   },
   "attribution_note": "all ratios are medians from the same run: representation = C index/C pointer; checks = checked/unchecked C index or pointer; codegen = XAX/C with the same representation and checks",
   "diagnostics": {
@@ -13,34 +13,34 @@
       "file_bytes": 16104,
       "peak_rss_kib_max": 18280,
       "stripped_bytes": 16104,
-      "time_ratio_vs_best_baseline": 1.324,
-      "time_ratio_vs_fastest": 1.324,
-      "time_ratio_vs_gcc_O2": 1.324,
-      "wall_seconds_median": 0.315227,
-      "wall_seconds_min": 0.27006,
-      "wall_seconds_stdev": 0.060118
+      "time_ratio_vs_best_baseline": 1.331,
+      "time_ratio_vs_fastest": 1.331,
+      "time_ratio_vs_gcc_O2": 1.331,
+      "wall_seconds_median": 0.320158,
+      "wall_seconds_min": 0.265199,
+      "wall_seconds_stdev": 0.036099
     },
     "gcc-O2-index-checked": {
       "file_bytes": 16136,
       "peak_rss_kib_max": 18280,
       "stripped_bytes": 16136,
-      "time_ratio_vs_best_baseline": 1.668,
-      "time_ratio_vs_fastest": 1.668,
-      "time_ratio_vs_gcc_O2": 1.668,
-      "wall_seconds_median": 0.397172,
-      "wall_seconds_min": 0.324484,
-      "wall_seconds_stdev": 0.059036
+      "time_ratio_vs_best_baseline": 1.614,
+      "time_ratio_vs_fastest": 1.614,
+      "time_ratio_vs_gcc_O2": 1.614,
+      "wall_seconds_median": 0.388235,
+      "wall_seconds_min": 0.312638,
+      "wall_seconds_stdev": 0.04308
     },
     "gcc-O2-pointer-checked": {
       "file_bytes": 16128,
       "peak_rss_kib_max": 18280,
       "stripped_bytes": 16128,
-      "time_ratio_vs_best_baseline": 1.348,
-      "time_ratio_vs_fastest": 1.348,
-      "time_ratio_vs_gcc_O2": 1.348,
-      "wall_seconds_median": 0.321061,
-      "wall_seconds_min": 0.27201,
-      "wall_seconds_stdev": 0.044523
+      "time_ratio_vs_best_baseline": 1.302,
+      "time_ratio_vs_fastest": 1.302,
+      "time_ratio_vs_gcc_O2": 1.302,
+      "wall_seconds_median": 0.313129,
+      "wall_seconds_min": 0.271051,
+      "wall_seconds_stdev": 0.033633
     }
   },
   "evidence_label": "MEASURED",
@@ -69,6 +69,7 @@
     "rust_flags": {
       "rustc-O3": "rustc -C opt-level=3 -C panic=abort -C codegen-units=1"
     },
+    "schedule": "warmup rounds, then repetition rounds; each round runs every arm once, the arm order rotating by one per round",
     "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
     "warmup_runs": 3
   },
@@ -78,104 +79,104 @@
       "file_bytes": 16160,
       "peak_rss_kib_max": 18280,
       "stripped_bytes": 14544,
-      "time_ratio_vs_best_baseline": 1.198,
-      "time_ratio_vs_fastest": 1.198,
-      "time_ratio_vs_gcc_O2": 1.107,
-      "wall_seconds_median": 0.25067,
-      "wall_seconds_min": 0.221522,
-      "wall_seconds_stdev": 0.030678
+      "time_ratio_vs_best_baseline": 1.214,
+      "time_ratio_vs_fastest": 1.262,
+      "time_ratio_vs_gcc_O2": 1.113,
+      "wall_seconds_median": 0.254863,
+      "wall_seconds_min": 0.215128,
+      "wall_seconds_stdev": 0.058854
     },
     "gcc-O2": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18280,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.082,
-      "time_ratio_vs_fastest": 1.082,
+      "time_ratio_vs_best_baseline": 1.091,
+      "time_ratio_vs_fastest": 1.134,
       "time_ratio_vs_gcc_O2": 1.0,
-      "wall_seconds_median": 0.226362,
-      "wall_seconds_min": 0.198608,
-      "wall_seconds_stdev": 0.030432
+      "wall_seconds_median": 0.228924,
+      "wall_seconds_min": 0.200839,
+      "wall_seconds_stdev": 0.024916
     },
     "gcc-O2-static": {
       "file_bytes": 785304,
       "peak_rss_kib_max": 17420,
       "stripped_bytes": 706584,
-      "time_ratio_vs_best_baseline": 1.111,
-      "time_ratio_vs_fastest": 1.111,
-      "time_ratio_vs_gcc_O2": 1.027,
-      "wall_seconds_median": 0.232405,
-      "wall_seconds_min": 0.206525,
-      "wall_seconds_stdev": 0.028309
+      "time_ratio_vs_best_baseline": 1.078,
+      "time_ratio_vs_fastest": 1.121,
+      "time_ratio_vs_gcc_O2": 0.989,
+      "wall_seconds_median": 0.226358,
+      "wall_seconds_min": 0.195335,
+      "wall_seconds_stdev": 0.035296
     },
     "gcc-O3": {
       "file_bytes": 16096,
       "peak_rss_kib_max": 18280,
       "stripped_bytes": 14472,
-      "time_ratio_vs_best_baseline": 1.146,
-      "time_ratio_vs_fastest": 1.146,
-      "time_ratio_vs_gcc_O2": 1.06,
-      "wall_seconds_median": 0.239916,
-      "wall_seconds_min": 0.197204,
-      "wall_seconds_stdev": 0.037435
+      "time_ratio_vs_best_baseline": 1.162,
+      "time_ratio_vs_fastest": 1.208,
+      "time_ratio_vs_gcc_O2": 1.066,
+      "wall_seconds_median": 0.24393,
+      "wall_seconds_min": 0.195714,
+      "wall_seconds_stdev": 0.046211
     },
     "rustc-O3": {
       "file_bytes": 4353960,
       "peak_rss_kib_max": 14836,
       "stripped_bytes": 342376,
       "time_ratio_vs_best_baseline": 1.0,
-      "time_ratio_vs_fastest": 1.0,
-      "time_ratio_vs_gcc_O2": 0.924,
-      "wall_seconds_median": 0.20926,
-      "wall_seconds_min": 0.177332,
-      "wall_seconds_stdev": 0.02559
+      "time_ratio_vs_fastest": 1.039,
+      "time_ratio_vs_gcc_O2": 0.917,
+      "wall_seconds_median": 0.209883,
+      "wall_seconds_min": 0.178746,
+      "wall_seconds_stdev": 0.063752
     },
     "xax": {
       "file_bytes": 1272,
       "peak_rss_kib_max": 16896,
       "performance_class": "unmet",
       "stripped_bytes": 1272,
-      "time_ratio_vs_best_baseline": 2.075,
-      "time_ratio_vs_fastest": 2.075,
-      "time_ratio_vs_gcc_O2": 1.918,
-      "wall_seconds_median": 0.434181,
-      "wall_seconds_min": 0.378416,
-      "wall_seconds_stdev": 0.039815
+      "time_ratio_vs_best_baseline": 2.039,
+      "time_ratio_vs_fastest": 2.119,
+      "time_ratio_vs_gcc_O2": 1.869,
+      "wall_seconds_median": 0.42787,
+      "wall_seconds_min": 0.354413,
+      "wall_seconds_stdev": 0.045653
     },
     "xax-link": {
-      "file_bytes": 1333,
+      "file_bytes": 1312,
       "peak_rss_kib_max": 16896,
       "performance_class": "unmet",
-      "stripped_bytes": 1333,
-      "time_ratio_vs_best_baseline": 1.634,
-      "time_ratio_vs_fastest": 1.634,
-      "time_ratio_vs_gcc_O2": 1.51,
-      "wall_seconds_median": 0.341894,
-      "wall_seconds_min": 0.271007,
-      "wall_seconds_stdev": 0.0525
+      "stripped_bytes": 1312,
+      "time_ratio_vs_best_baseline": 1.14,
+      "time_ratio_vs_fastest": 1.185,
+      "time_ratio_vs_gcc_O2": 1.046,
+      "wall_seconds_median": 0.239347,
+      "wall_seconds_min": 0.203354,
+      "wall_seconds_stdev": 0.02921
     },
     "xax-pointer": {
       "file_bytes": 1271,
       "peak_rss_kib_max": 16896,
       "performance_class": "unmet",
       "stripped_bytes": 1271,
-      "time_ratio_vs_best_baseline": 1.705,
-      "time_ratio_vs_fastest": 1.705,
-      "time_ratio_vs_gcc_O2": 1.576,
-      "wall_seconds_median": 0.35672,
-      "wall_seconds_min": 0.288427,
-      "wall_seconds_stdev": 0.038039
+      "time_ratio_vs_best_baseline": 1.577,
+      "time_ratio_vs_fastest": 1.639,
+      "time_ratio_vs_gcc_O2": 1.446,
+      "wall_seconds_median": 0.330935,
+      "wall_seconds_min": 0.265215,
+      "wall_seconds_stdev": 0.045323
     },
     "xax-soa": {
       "file_bytes": 1302,
       "peak_rss_kib_max": 12544,
       "performance_class": "meets-primary-target",
       "stripped_bytes": 1302,
-      "time_ratio_vs_best_baseline": 1.003,
-      "time_ratio_vs_fastest": 1.003,
-      "time_ratio_vs_gcc_O2": 0.927,
-      "wall_seconds_median": 0.20985,
-      "wall_seconds_min": 0.174028,
-      "wall_seconds_stdev": 0.028743
+      "time_ratio_vs_best_baseline": 0.962,
+      "time_ratio_vs_fastest": 1.0,
+      "time_ratio_vs_gcc_O2": 0.882,
+      "wall_seconds_median": 0.201913,
+      "wall_seconds_min": 0.169277,
+      "wall_seconds_stdev": 0.021171
     }
   },
   "workload": "chained hash table: 1048576 xorshift64 inserts into 65536 buckets, then 1048576 successful lookups walking chains; XAX links are arena indices with checked access, C links are pointers",
@@ -190,8 +191,8 @@
     "target": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e"
   },
   "xax_link": {
-    "artifact_bytes": 1333,
-    "artifact_sha256": "70e9fa1f3038c1d231ead0acbb9e31c234ee7dd1fc6772fbb123829f2b581905",
+    "artifact_bytes": 1312,
+    "artifact_sha256": "43211a74ae6c0ab54eed2bf9777a0cf863fd309f276e3e44099d0102dd45e3f1",
     "entry_function": "4f852e40b56a9d7f6f2c38acc41b235de526ac897b8011bbe8c14863c79b3355",
     "graph_blocks": 21,
     "link_representation": "record link fields (ADR-097): heads table targets the arena; link_follow is check-free (null test elided by the walk's own test)",

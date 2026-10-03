@@ -92,24 +92,33 @@ def measure_arms(
     for arm, path in artifacts.items():
         outputs.add(validate(arm, path))
 
-        def timed() -> tuple[float, int]:
-            command = [str(runner), str(path)] + ([str(stdin_path)] if stdin_path is not None else [])
-            measured = subprocess.run(command, cwd=work, capture_output=True, text=True, check=True).stdout.split()
-            if int(measured[1]) != 0:
-                raise AssertionError(f"{arm} exited {measured[1]}")
-            return int(measured[0]) / 1e9, int(measured[2])
+    def timed(arm: str, path: Path) -> tuple[float, int]:
+        command = [str(runner), str(path)] + ([str(stdin_path)] if stdin_path is not None else [])
+        measured = subprocess.run(command, cwd=work, capture_output=True, text=True, check=True).stdout.split()
+        if int(measured[1]) != 0:
+            raise AssertionError(f"{arm} exited {measured[1]}")
+        return int(measured[0]) / 1e9, int(measured[2])
 
-        for _ in range(warmup):
-            timed()
-        samples = [timed() for _ in range(repetitions)]
-        times = [item[0] for item in samples]
+    # Interleaved rounds with a rotating arm order: every arm sees the same
+    # host conditions (drift and noise on a shared machine), not a time slice of its own.
+    arms = list(artifacts.items())
+    for _ in range(warmup):
+        for arm, path in arms:
+            timed(arm, path)
+    samples: dict[str, list[tuple[float, int]]] = {arm: [] for arm, _path in arms}
+    for repetition in range(repetitions):
+        shift = repetition % len(arms)
+        for arm, path in arms[shift:] + arms[:shift]:
+            samples[arm].append(timed(arm, path))
+    for arm, path in arms:
+        times = [item[0] for item in samples[arm]]
         results[arm] = {
             "file_bytes": path.stat().st_size,
             "stripped_bytes": stripped[arm],
             "wall_seconds_median": round(statistics.median(times), 6),
             "wall_seconds_min": round(min(times), 6),
             "wall_seconds_stdev": round(statistics.stdev(times), 6) if len(times) > 1 else 0.0,
-            "peak_rss_kib_max": max(item[1] for item in samples),
+            "peak_rss_kib_max": max(item[1] for item in samples[arm]),
         }
     if len(outputs) != 1:
         raise AssertionError(f"outputs differ: {outputs}")
@@ -143,6 +152,7 @@ def method_info(warmup: int, repetitions: int, reference_rss: int, link: str = "
     return {
         "warmup_runs": warmup,
         "repetitions": repetitions,
+        "schedule": "warmup rounds, then repetition rounds; each round runs every arm once, the arm order rotating by one per round",
         "timer": "CLOCK_MONOTONIC around fork/exec/wait4 in runner.c; peak RSS from wait4 ru_maxrss",
         "reference_dynamic_bin_true_rss_kib": reference_rss,
         "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
