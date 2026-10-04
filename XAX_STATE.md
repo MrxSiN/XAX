@@ -39,7 +39,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-150). Open: BLAKE3 through the RISC-V views profile (aggregates); the x86-64 backend, the driver's lowering structures, and the exact rejection diagnostics, which still run in Python; and B1–B4 on a second target.
+S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). Open: the x86-64 backend, the driver's lowering structures, and the exact rejection diagnostics, which still run in Python; and B1–B4 on a second target.
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -854,4 +854,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Markdown structure: one H1 per document (architecture, specification, bootstrap README), fence languages in `docs/10_TARGET_MODEL.md` and `docs/11_ABI_PLATFORM.md`, and a store table in `compiler/bootstrap/README.md`.
 - `compiler/pyproject.toml` gains a `test` extra (`pytest`, `pytest-xdist`, `unicorn`, `tiktoken`).
 - Full suite on Linux x86-64 (Python 3.11.15, the `XAX_HANDOFF.md` environment, Android root from `make_android_root.py`): **1,070 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` emulation runs).
+
+## S6d: aggregates and stack arguments in the RISC-V views profile (2026-10-04, ADR-151)
+
+- Both RISC-V generators lower `aggregate.make`/`aggregate.get` for tuples and arrays of up to 255 scalar fields, LP64 indirect results (a hidden result-area address in a0, field k at offset 8k), and stack arguments past a7. Frames without such calls are unchanged, so every earlier image is byte-identical. The shared, instruction-set-neutral analysis moved to `compiler/src/xax_views_lowering.py`.
+- BLAKE3 (`xax_blake3_hash.xax`) compiles through both generators to one 18,844-byte RV64 image. Emulated, it matches the official vectors and the reference across chunk and tree boundaries, and gives the production digest of every committed store under 1 MiB. gen2 (the backend's own RISC-V image) compiles the BLAKE3 store to gen1's image (a default test, 3 s).
+- Evidence regenerated: `selfhost_closure_evidence.json` (B1 now includes BLAKE3; B4 verifier image unchanged, 4,559,444 bytes) and `selfhost_fixed_point_evidence.json` (backend store 902,679 bytes; gen2 = reference = gen3, 2,810,964 bytes).
 

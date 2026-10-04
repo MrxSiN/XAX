@@ -8,7 +8,14 @@ only the RV64I base ISA plus the M extension (``mul``/``divu``/``remu``).
 Lowering contract:
 
 * every XAX function follows the LP64 integer calling convention: machine
-  arguments in a0-a7, one machine result in a0, return address in ra;
+  arguments in a0-a7 and then on the stack (8 bytes each, at the caller's
+  sp), one machine result in a0, return address in ra;
+* views profile aggregates (ADR-151): a tuple or array of ``bits<N <= 64>``
+  fields is no machine value.  ``aggregate.make`` emits nothing and
+  ``aggregate.get`` of a made aggregate is that field; a function returning
+  an aggregate takes the address of a caller-owned result area as a hidden
+  first argument (LP64's indirect return) and stores each field there as one
+  zero-extended doubleword; ``aggregate.get`` of a call's aggregate loads it;
 * values are kept zero-extended to their width in 64-bit registers and
   frame slots; a linear scan over block-liveness interval hulls keeps values
   in the eleven callee-saved registers (s1-s11) and spills the rest;
@@ -26,6 +33,16 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from xax_artifact import ArtifactSemanticRange
+from xax_views_lowering import (
+    Aggregates,
+    allocate_registers,
+    apply_aliases,
+    function_closure,
+    machine_width,
+    pointer_extents,
+    result_fields,
+    rewrite_borrowed_views,
+)
 from xax_compiler import parse_function_graph
 from xax_compiler import (
     IntCompare,
@@ -37,14 +54,11 @@ from xax_compiler import (
     StoreReader,
     TerminatorKind,
     ValueRef,
-    XaxError,
     _decode_constant,
-    _heap_view_info,
     borrowed_view_returns,
     _decode_function_interface,
     _is_erased_proof_function,
     _is_proof_type,
-    _parse_graph,
     decode_bits_width,
     decode_native_target,
     fail,
@@ -249,200 +263,48 @@ class _Emitter:
 # ------------------------------------------------------------------ lowering
 
 
-def _function_closure(entry: SemanticObject, resolve, operations, terminators) -> tuple[SemanticObject, ...]:
-    functions: dict[bytes, SemanticObject] = {}
-    pending = [entry]
-    while pending:
-        function = pending.pop()
-        if function.cid in functions:
-            continue
-        functions[function.cid] = function
-        graph_object, _parameters, _returns = _decode_function_interface(function, resolve)
-        for block in parse_function_graph(function, resolve).blocks:
-            for node in block.nodes:
-                if node.operation not in operations:
-                    fail("XAX.RISCV64.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "RISCV64-OP-TARGET-SUPPORTED", list(operations), node.operation)
-                if node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve):
-                    pending.append(node.entity)
-            if block.terminator.kind not in terminators:
-                fail("XAX.RISCV64.UNSUPPORTED_TERMINATOR", graph_object.cid.hex(), "RISCV64-TERMINATOR-TARGET-SUPPORTED", list(terminators), block.terminator.kind)
-    return tuple(functions[cid] for cid in sorted(functions))
-
-
-def _machine_width(resolve, cid: bytes, where: str) -> int | None:
-    obj = resolve(cid)
-    if _is_proof_type(obj):
-        return None
-    if obj.kind == Kind.TYPE and obj.body[:1] == b"\x02":
-        return 64  # a pointer (views profile, ADR-145): one 64-bit address
-    if obj.kind == Kind.TYPE and obj.body[:1] == b"\x01":
-        width = decode_bits_width(obj)
-        if width <= 64:
-            return width
-    fail("XAX.RISCV64.VALUE", where, "RISCV64-VALUE-BITS", "bits<N <= 64> or a proof value", cid.hex())
-
-
 # Callee-saved registers available to the allocator: s1, s2-s11.
 ALLOCATABLE = (9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27)
-
-
-def _allocate_registers(graph, order: Sequence[int], machine: set[ValueRef]) -> dict[ValueRef, int]:
-    """Linear scan over interval hulls from block-level liveness.
-
-    A value's interval covers its definition, every use, and every block
-    boundary where it is live; values that do not fit in ``ALLOCATABLE``
-    stay in frame slots.  Edge arguments are uses at their block's end.
-    """
-    position = 0
-    block_start: dict[int, int] = {}
-    block_end: dict[int, int] = {}
-    points: dict[ValueRef, list[int]] = {}
-    successors: dict[int, tuple[int, ...]] = {}
-    uses: dict[int, set[ValueRef]] = {}
-    definitions: dict[int, set[ValueRef]] = {}
-    for block_index in order:
-        block = graph.blocks[block_index]
-        block_start[block_index] = position
-        defined = {ValueRef.parameter(block_index, index) for index in range(len(block.parameters))}
-        used: set[ValueRef] = set()
-        for ref in defined:
-            points.setdefault(ref, []).append(position)
-        for node_index, node in enumerate(block.nodes):
-            position += 1
-            for operand in node.operands:
-                points.setdefault(operand, []).append(position)
-                if operand not in defined:
-                    used.add(operand)
-            for result_index in range(len(node.results)):
-                ref = ValueRef.node_result(block_index, node_index, result_index)
-                defined.add(ref)
-                points.setdefault(ref, []).append(position)
-        position += 1
-        terminator = block.terminator
-        for value in (*terminator.values, *(argument for _target, arguments in terminator.edges for argument in arguments)):
-            points.setdefault(value, []).append(position)
-            if value not in defined:
-                used.add(value)
-        block_end[block_index] = position
-        position += 1
-        successors[block_index] = tuple(target for target, _arguments in terminator.edges)
-        uses[block_index], definitions[block_index] = used, defined
-    live_in: dict[int, set[ValueRef]] = {index: set() for index in order}
-    live_out: dict[int, set[ValueRef]] = {index: set() for index in order}
-    changed = True
-    while changed:
-        changed = False
-        for block_index in reversed(order):
-            out = set()
-            for target in successors[block_index]:
-                out |= {ref for ref in live_in[target] if not (ref.tag == 0 and ref.block == target)}
-            new_in = uses[block_index] | (out - definitions[block_index])
-            if out != live_out[block_index] or new_in != live_in[block_index]:
-                live_out[block_index], live_in[block_index], changed = out, new_in, True
-    for block_index in order:
-        for ref in live_in[block_index]:
-            points.setdefault(ref, []).append(block_start[block_index])
-        for ref in live_out[block_index]:
-            points.setdefault(ref, []).append(block_end[block_index])
-    key = lambda ref: (ref.tag, ref.block, ref.index, ref.result)
-    intervals = sorted(((min(points[ref]), max(points[ref]), ref) for ref in machine if ref in points), key=lambda item: (item[0], item[1], key(item[2])))
-    assignment: dict[ValueRef, int] = {}
-    active: list[tuple[int, ValueRef]] = []  # (end, value)
-    free = list(ALLOCATABLE)
-    for start, end, ref in intervals:
-        for item in [item for item in active if item[0] < start]:
-            active.remove(item)
-            free.append(assignment[item[1]])
-        if free:
-            free.sort()
-            assignment[ref] = free.pop(0)
-            active.append((end, ref))
-        else:
-            furthest = max(active, key=lambda item: (item[0], key(item[1])))
-            if furthest[0] > end:
-                assignment[ref] = assignment.pop(furthest[1])
-                active.remove(furthest)
-                active.append((end, ref))
-    return assignment
-
-
-class _Rewritten:
-    """A parsed graph with borrowed-view call results replaced by the pointers passed in (views profile)."""
-
-    def __init__(self, entry, blocks):
-        self.entry, self.blocks = entry, blocks
-
-
-def _rewrite_borrowed_views(graph, resolve):
-    """``(graph, elided results)``: each pointer a direct call gives back as a borrowed view (``borrowed_view_returns``)
-    is the pointer passed in, so its uses read that operand instead (ADR-145)."""
-    from dataclasses import replace
-
-    alias: dict[ValueRef, ValueRef] = {}
-    for block_index, block in enumerate(graph.blocks):
-        for node_index, node in enumerate(block.nodes):
-            if node.operation != Operation.CALL_DIRECT or _is_erased_proof_function(node.entity, resolve):
-                continue
-            _graph, callee_parameters, callee_returns = _decode_function_interface(node.entity, resolve)
-            for result_index, parameter_index in borrowed_view_returns(callee_parameters, callee_returns, resolve).items():
-                alias[ValueRef.node_result(block_index, node_index, result_index)] = node.operands[parameter_index]
-    if not alias:
-        return graph, frozenset()
-
-    def canon(ref: ValueRef) -> ValueRef:
-        while ref in alias:
-            ref = alias[ref]
-        return ref
-
-    blocks = []
-    for block in graph.blocks:
-        nodes = tuple(replace(node, operands=tuple(canon(ref) for ref in node.operands)) for node in block.nodes)
-        term = block.terminator
-        terminator = replace(term, values=tuple(canon(ref) for ref in term.values),
-                             edges=tuple((target, tuple(canon(ref) for ref in arguments)) for target, arguments in term.edges))
-        blocks.append(replace(block, nodes=nodes, terminator=terminator))
-    return _Rewritten(graph.entry, tuple(blocks)), frozenset(alias)
-
-
-def _pointer_extents(graph, resolve) -> dict[ValueRef, int]:
-    """A pointer's extent: the instance of the ``heap_view<N>`` type right after it (as in parameter and result triples)."""
-    extents: dict[ValueRef, int] = {}
-
-    def scan(types, ref_of):
-        for index in range(len(types) - 1):
-            info = _heap_view_info(resolve(types[index + 1]))
-            if info is not None and resolve(types[index]).body[:1] == b"\x02":
-                extents[ref_of(index)] = info[0]
-
-    for block_index, block in enumerate(graph.blocks):
-        scan(block.parameters, lambda index, b=block_index: ValueRef.parameter(b, index))
-        for node_index, node in enumerate(block.nodes):
-            scan(node.results, lambda index, b=block_index, n=node_index: ValueRef.node_result(b, n, index))
-    return extents
+ISA = "RISCV64"
 
 
 def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> list[tuple[int, int, int, int]]:
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
-    graph, elided = _rewrite_borrowed_views(parse_function_graph(function, resolve), resolve)
+    graph, elided = rewrite_borrowed_views(parse_function_graph(function, resolve), resolve)
     elided_returns = set(borrowed_view_returns(parameter_types, return_types, resolve))
-    extents = _pointer_extents(graph, resolve)
+    extents = pointer_extents(graph, resolve)
     where = graph_object.cid.hex()
+    result_fields_ = result_fields(function, resolve, ISA)
+    aggregates = Aggregates(graph, resolve, where, result_fields_, ISA)
+    graph = apply_aliases(graph, aggregates.alias, aggregates.made if result_fields_ is not None else None)
+    elided = elided | aggregates.elided
     width_of: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):
         for index, cid in enumerate(block.parameters):
-            width = _machine_width(resolve, cid, where)
+            width = machine_width(resolve, cid, where, ISA)
             if width is not None:
                 width_of[ValueRef.parameter(block_index, index)] = width
         for node_index, node in enumerate(block.nodes):
             for result_index, cid in enumerate(node.results):
-                width = _machine_width(resolve, cid, where)
-                if width is not None and ValueRef.node_result(block_index, node_index, result_index) not in elided:
+                if ValueRef.node_result(block_index, node_index, result_index) in elided:
+                    continue
+                width = machine_width(resolve, cid, where, ISA)
+                if width is not None:
                     width_of[ValueRef.node_result(block_index, node_index, result_index)] = width
     order = [graph.entry] + [index for index in range(len(graph.blocks)) if index != graph.entry]
-    register_of = _allocate_registers(graph, order, set(width_of))
+    register_of = allocate_registers(graph, order, set(width_of), ALLOCATABLE)
     saved = sorted(set(register_of.values()))
-    # Frame: [0] ra, then saved s-registers, then spill slots, then edge temporaries.
-    cursor = 8 + 8 * len(saved)
+
+    def machine_arguments(node) -> list[ValueRef]:
+        return [operand for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid))]
+
+    calls = [(block_index, node_index, node) for block_index, block in enumerate(graph.blocks) for node_index, node in enumerate(block.nodes)
+             if node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve)]
+    hidden = {(b, n): int(ValueRef.node_result(b, n) in aggregates.returned) for b, n, _node in calls}
+    # Frame: outgoing stack arguments, [out] ra, the saved s-registers, spill slots, edge temporaries, the hidden
+    # result pointer, then one result area per aggregate call.
+    out = 8 * max([len(machine_arguments(node)) + hidden[b, n] - ARGUMENT_REGISTERS for b, n, node in calls] + [0])
+    cursor = out + 8 + 8 * len(saved)
     slot_of: dict[ValueRef, int] = {}
     for ref in sorted(width_of, key=lambda ref: (ref.block, ref.tag, ref.index, ref.result)):
         if ref not in register_of:
@@ -450,10 +312,14 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
             cursor += 8
     temporaries = cursor
     cursor += 8 * max([len(block.parameters) for block in graph.blocks] + [0])
+    result_pointer = cursor
+    cursor += 8 * (result_fields_ is not None)
+    area_of: dict[ValueRef, int] = {}
+    for ref in sorted(aggregates.returned, key=lambda ref: (ref.block, ref.index, ref.result)):
+        area_of[ref] = cursor
+        cursor += 8 * aggregates.returned[ref]
     frame = (cursor + 15) & -16
     machine_parameters = [ValueRef.parameter(graph.entry, index) for index in range(len(graph.blocks[graph.entry].parameters)) if ValueRef.parameter(graph.entry, index) in width_of]
-    if len(machine_parameters) > ARGUMENT_REGISTERS:
-        fail("XAX.RISCV64.ABI", where, "RISCV64-REGISTER-ARGUMENTS", f"<= {ARGUMENT_REGISTERS} machine parameters", len(machine_parameters))
 
     e = emitter
 
@@ -499,16 +365,22 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
     else:
         e.li(T0, frame)
         e.emit(_encoder().r(0x20, T0, SP, 0, SP))  # sub sp, sp, t0
-    e.emit(_encoder().s(0, RA, SP))
+    e.frame_access(True, RA, out)
     for position, register in enumerate(saved):
-        e.frame_access(True, register, 8 + 8 * position)
-    for register, ref in enumerate(machine_parameters):
-        write(ref, A0 + register)
+        e.frame_access(True, register, out + 8 + 8 * position)
+    if result_fields_ is not None:
+        e.frame_access(True, A0, result_pointer)
+    for position, ref in enumerate(machine_parameters, result_fields_ is not None):
+        if position < ARGUMENT_REGISTERS:
+            write(ref, A0 + position)
+        else:
+            e.frame_access(False, T0, frame + 8 * (position - ARGUMENT_REGISTERS))  # the caller's outgoing area
+            write(ref, T0)
 
     def epilogue() -> None:
         for position, register in enumerate(saved):
-            e.frame_access(False, register, 8 + 8 * position)
-        e.emit(_encoder().i(0, SP, 3, RA, 0x03))  # ld ra, 0(sp)
+            e.frame_access(False, register, out + 8 + 8 * position)
+        e.frame_access(False, RA, out)
         if frame < 2048:
             e.emit(_encoder().i(frame, SP, 0, SP))
         else:
@@ -617,11 +489,21 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                 write(result, destination)
             elif operation == Operation.CALL_DIRECT:
                 if not _is_erased_proof_function(node.entity, resolve):
-                    arguments = [operand for operand, cid in zip(node.operands, node.operand_types) if not _is_proof_type(resolve(cid))]
-                    if len(arguments) > ARGUMENT_REGISTERS:
-                        fail("XAX.RISCV64.ABI", where, "RISCV64-REGISTER-ARGUMENTS", f"<= {ARGUMENT_REGISTERS}", len(arguments))
-                    for register, argument in enumerate(arguments):
-                        read_into(argument, A0 + register)
+                    first = hidden[block_index, node_index]
+                    arguments = list(enumerate(machine_arguments(node), first))
+                    for position, argument in arguments:
+                        if position >= ARGUMENT_REGISTERS:
+                            e.frame_access(True, read(argument, T0), 8 * (position - ARGUMENT_REGISTERS))
+                    for position, argument in arguments:
+                        if position < ARGUMENT_REGISTERS:
+                            read_into(argument, A0 + position)
+                    if first:
+                        area = area_of[result]
+                        if area < 2048:
+                            e.emit(_encoder().i(area, SP, 0, A0))  # addi a0, sp, area
+                        else:
+                            e.li(A0, area)
+                            e.emit(_encoder().r(0, SP, A0, 0, A0))  # add a0, a0, sp
                     e.jal(("function", node.entity.cid), RA)
                     machine_results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)) if ValueRef.node_result(block_index, node_index, index) in width_of]  # elided views excluded
                     if len(machine_results) > 1:
@@ -651,7 +533,12 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                     destination = target_register(result)
                     e.emit(_encoder().i(0, T2, {1: 4, 2: 5, 4: 6, 8: 3}[size], destination, 0x03))  # lbu/lhu/lwu/ld
                     write(result, destination)
-            elif operation in RESOURCE_EFFECT_OPERATIONS:
+            elif operation == Operation.AGGREGATE_GET:
+                if result in width_of:  # a field of a call's aggregate (a made one's field is that operand)
+                    destination = target_register(result)
+                    e.frame_access(False, destination, area_of[node.operands[0]] + 8 * node.attributes[0])
+                    write(result, destination)
+            elif operation in RESOURCE_EFFECT_OPERATIONS or operation == Operation.AGGREGATE_MAKE:
                 pass
             else:
                 fail("XAX.RISCV64.UNSUPPORTED_OPERATION", where, "RISCV64-OP-LOWERED", "riscv64 integer subset", operation)
@@ -659,7 +546,12 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                 ranges.append((block_index, node_index, start, e.offset))
 
         terminator = block.terminator
-        if terminator.kind == TerminatorKind.RETURN:
+        if terminator.kind == TerminatorKind.RETURN and result_fields_ is not None:
+            e.frame_access(False, T1, result_pointer)
+            for position, value in enumerate(value for value in terminator.values if value in width_of):
+                e.emit(_encoder().s(8 * position, read(value, T0), T1))  # sd field, 8k(result area)
+            epilogue()
+        elif terminator.kind == TerminatorKind.RETURN:
             machine = [value for position, (value, cid) in enumerate(zip(terminator.values, return_types))
                        if not _is_proof_type(resolve(cid)) and position not in elided_returns]
             if len(machine) > 1:
@@ -755,7 +647,7 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
         image = _compile_with_xax(reader, entry, function_cid, target_object, backend == "xax")
         if image is not None:
             return image
-    functions = _function_closure(entry, resolve, target.supported_operations, target.supported_terminators)
+    functions = function_closure(entry, resolve, target.supported_operations, target.supported_terminators, ISA)
     # The entry is laid out first so the image starts at its entry point.
     functions = (entry, *(function for function in functions if function.cid != entry.cid))
     emitter = _Emitter(function_cid.hex(), far=int(Operation.CHECKED_LOAD_BITS_LE) in target.supported_operations)
@@ -772,7 +664,7 @@ def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: Se
         end = offsets[functions[index + 1].cid] if index + 1 < len(functions) else len(code)
         function_ranges.append(ArtifactSemanticRange(function.cid, None, None, offsets[function.cid], end))
     _graph, parameters, returns = _decode_function_interface(entry, resolve)
-    widths = lambda cids: tuple(w for w in (_machine_width(resolve, cid, function_cid.hex()) for cid in cids) if w is not None)
+    widths = lambda cids: tuple(w for w in (machine_width(resolve, cid, function_cid.hex(), ISA) for cid in cids) if w is not None)
     return Riscv64Image(
         code, 0, tuple(sorted(offsets.items())), widths(parameters), widths(returns), target_object.cid,
         (*function_ranges, *node_ranges),
@@ -868,12 +760,14 @@ _VIEWS_OUT_BASE = 0x40000000
 
 
 def run_riscv64_views(image: Riscv64Image, input_words: Sequence[int], input_capacity: int, output_capacity: int,
-                      read_back: Callable[[Callable[[int, int], list[int]]], object], *, instruction_limit: int = 20_000_000_000):
+                      read_back: Callable[[Callable[[int, int], list[int]]], object], *, instruction_limit: int = 20_000_000_000,
+                      extra_arguments: Sequence[int] = ()):
     """Test harness (views profile, ADR-145): run an image whose entry takes ``(in view, out view)`` pointers.
 
     ``input_words`` fill the input view (``input_capacity`` bytes); the output view (``output_capacity`` bytes)
     starts zeroed.  After the call, ``read_back(read_words)`` collects the result, where ``read_words(start,
-    count)`` reads 64-bit words of the output view.  Returns ``(a0, read_back result)``; a trap returns ``"trap"``."""
+    count)`` reads 64-bit words of the output view; ``extra_arguments`` go in a2, a3, ...  Returns ``(a0, read_back
+    result)``; a trap returns ``"trap"``."""
     try:
         import unicorn
         from unicorn import riscv_const as rv
@@ -893,6 +787,8 @@ def run_riscv64_views(image: Riscv64Image, input_words: Sequence[int], input_cap
     emulator.reg_write(rv.UC_RISCV_REG_RA, _RETURN_SENTINEL)
     emulator.reg_write(rv.UC_RISCV_REG_A0, _VIEWS_IN_BASE)
     emulator.reg_write(rv.UC_RISCV_REG_A1, _VIEWS_OUT_BASE)
+    for register, value in enumerate(extra_arguments, rv.UC_RISCV_REG_A2):
+        emulator.reg_write(register, value)
     try:
         emulator.emu_start(_CODE_BASE + image.entry_offset, _RETURN_SENTINEL, count=instruction_limit)
     except unicorn.UcError as error:

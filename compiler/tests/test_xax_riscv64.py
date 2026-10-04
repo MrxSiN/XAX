@@ -25,7 +25,10 @@ from xax_compiler import (
     decode_native_target,
     float_type,
     FloatFormat,
+    array_type,
     riscv64_baremetal_target,
+    riscv64_views_target,
+    tuple_type,
     uleb,
     RISCV64_ARCHITECTURE,
     RISCV64_LP64_ABI,
@@ -44,10 +47,54 @@ LLVM_MC = shutil.which("llvm-mc")
 B1 = bits_type(1)
 
 
-def _compile(entry, objects):
-    target = riscv64_baremetal_target()
+def _compile(entry, objects, target=None):
+    target = target or riscv64_baremetal_target()
     reader = program_store(entry, target, objects)
     return reader, compile_riscv64_bound_target(reader, entry.cid, target)
+
+
+B32, B64 = bits_type(32), bits_type(64)
+MASK32 = (1 << 32) - 1
+
+
+def aggregate_program(form: str = "tuple", fields: int = 12):
+    """ADR-151: ``entry(a, b)`` calls ``pack`` with ``fields`` arguments (past a7 on the stack) and a hidden result area,
+    and ``scale`` with nine scalar arguments; ``pack`` makes an aggregate whose field k is ``x_k * (k + 3) + k``.
+    Returns ``(entry, objects, reference(a, b))``."""
+    aggregate = tuple_type((B32,) * fields) if form == "tuple" else array_type(B32, fields)
+    pack = GraphBuilder()
+    block = pack.block(*(B32,) * fields)
+    made = [block.op1(Operation.ADD_WRAP, (block.op1(Operation.MUL_WRAP, (x, block.const(B32, k + 3)), B32), block.const(B32, k)), B32)
+            for k, x in enumerate(block.params)]
+    block.ret(block.op1(Operation.AGGREGATE_MAKE, made, aggregate))
+    pack_function = pack.function((B32,) * fields, (aggregate,))
+    scale = GraphBuilder()
+    block = scale.block(*(B64,) * 9)
+    total = block.params[0]
+    for k, x in enumerate(block.params[1:], 2):
+        total = block.op1(Operation.ADD_WRAP, (block.op1(Operation.MUL_WRAP, (total, block.const(B64, k)), B64), x), B64)
+    block.ret(total)
+    scale_function = scale.function((B64,) * 9, (B64,))
+    graph = GraphBuilder()
+    block = graph.block(B32, B32)
+    a, b = block.params
+    arguments = [block.op1(Operation.ADD_WRAP, (a if k % 2 else b, block.const(B32, k)), B32) for k in range(fields)]
+    packed = block.op1(Operation.CALL_DIRECT, arguments, aggregate, entity=pack_function)
+    picks = [block.op1(Operation.INT_ZERO_EXTEND, (block.op1(Operation.AGGREGATE_GET, (packed,), B32, attributes=(k,)),), B64)
+             for k in (0, fields // 2, fields - 1)]
+    scaled = block.op1(Operation.CALL_DIRECT, (*picks, *(block.const(B64, k) for k in range(6))), B64, entity=scale_function)
+    block.ret(block.op1(Operation.INT_TRUNCATE, (scaled,), B32))
+    entry = graph.function((B32, B32), (B32,))
+    objects = (*graph.objects.values(), *pack.objects.values(), *scale.objects.values(), aggregate, B32, B64)
+
+    def reference(x: int, y: int) -> int:
+        field = lambda k: ((((x if k % 2 else y) + k) & MASK32) * (k + 3) + k) & MASK32  # noqa: E731
+        total = 0
+        for k, value in enumerate([field(0), field(fields // 2), field(fields - 1), *range(6)]):
+            total = (total * (k + 1) + value) & ((1 << 64) - 1) if k else value
+        return total & MASK32
+
+    return entry, objects, reference
 
 
 def _disassemble(code: bytes) -> tuple[list[str], str]:
@@ -184,15 +231,44 @@ class Riscv64NegativeTests(unittest.TestCase):
             _compile(entry, tuple(graph.objects.values()))
         self.assertEqual(raised.exception.diagnostic.code, "XAX.RISCV64.UNSUPPORTED_OPERATION")
 
-    def test_more_than_eight_register_arguments_rejects(self):
-        b32 = bits_type(32)
+    def test_aggregates_outside_get_and_return_reject(self):
+        """ADR-151: an aggregate block parameter or call argument has no lowering in the views profile."""
+        aggregate = tuple_type((B32, B32))
         graph = GraphBuilder()
-        block = graph.block(*(b32,) * 9)
-        block.ret(block.params[8])
-        entry = graph.function((b32,) * 9, (b32,))
+        block = graph.block(B32)
+        made = block.op1(Operation.AGGREGATE_MAKE, (block.params[0], block.params[0]), aggregate)
+        tail = graph.block(aggregate)
+        block.br(tail, made)
+        tail.ret(tail.op1(Operation.AGGREGATE_GET, (tail.params[0],), B32, attributes=(1,)))
+        entry = graph.function((B32,), (B32,))
         with self.assertRaises(XaxError) as raised:
-            _compile(entry, tuple(graph.objects.values()))
-        self.assertEqual(raised.exception.diagnostic.rule, "RISCV64-REGISTER-ARGUMENTS")
+            _compile(entry, (*graph.objects.values(), aggregate), riscv64_views_target())
+        self.assertEqual(raised.exception.diagnostic.rule, "RISCV64-AGGREGATE-VALUE")
+        # Without aggregate.make/get in the target, the plain bare-metal profile rejects the operation itself.
+        with self.assertRaises(XaxError) as raised:
+            _compile(entry, (*graph.objects.values(), aggregate))
+        self.assertEqual(raised.exception.diagnostic.code, "XAX.RISCV64.UNSUPPORTED_OPERATION")
+
+
+@unittest.skipUnless(EMULATOR, "requires the unicorn RV64 emulator")
+class Riscv64CallingConventionTests(unittest.TestCase):
+    """ADR-151: arguments past a7 on the stack, and aggregate results through a hidden result area."""
+
+    def test_stack_arguments_and_aggregate_results_execute(self):
+        for form, fields in (("tuple", 12), ("array", 16), ("tuple", 3)):
+            entry, objects, reference = aggregate_program(form, fields)
+            _reader, image = _compile(entry, objects, riscv64_views_target())
+            for a, b in ((0, 0), (1, 2), (MASK32, 0x12345678), (0xDEADBEEF, 7)):
+                with self.subTest(form=form, fields=fields, a=a, b=b):
+                    self.assertEqual(run_riscv64(image, [a, b]), reference(a, b))
+
+    def test_entry_with_stack_parameters_compiles(self):
+        graph = GraphBuilder()
+        block = graph.block(*(B64,) * 10)
+        block.ret(block.op1(Operation.ADD_WRAP, (block.params[0], block.params[9]), B64))
+        entry = graph.function((B64,) * 10, (B64,))
+        _reader, image = _compile(entry, tuple(graph.objects.values()))
+        self.assertEqual(image.parameter_widths, (64,) * 10)
 
     def test_target_machine_tuple_is_exact(self):
         identity = b"riscv64-baremetal-raw-v1"

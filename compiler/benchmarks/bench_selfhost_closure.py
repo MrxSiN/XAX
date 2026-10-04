@@ -1,9 +1,10 @@
-"""S6c evidence (ADR-150): the XAX verifier and code generator close over themselves on RV64.
+"""S6c evidence (ADR-150, ADR-151): the XAX verifier and code generator close over themselves on RV64.
 
 B1: gen1 (the XAX RISC-V backend run natively) compiles every XAX helper
-program the views profile can express (CFG analysis, graph and store decoders,
-encoder, operation typing and facts, store verifier, the backend itself) to the
-image the bootstrap generator makes.  B2/B3: the store verifier's RISC-V image,
+program (CFG analysis, graph and store decoders, encoder, operation typing and
+facts, store verifier, the BLAKE3 hash, the backend itself) to the image the
+bootstrap generator makes.  The BLAKE3 image, emulated, hashes committed stores
+to the production digest.  B2/B3: the store verifier's RISC-V image,
 run in the Unicorn RV64 emulator, verifies every committed store (its own
 included) with exactly the native production verifier's verdicts.  B4: gen2 (the
 backend's own RISC-V image) compiling the verifier store under emulation
@@ -15,6 +16,8 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+
+import blake3
 import json
 import platform
 import sys
@@ -33,6 +36,7 @@ PROGRAMS = (
     ("xax_selfhost_store", "load_decoder_program"),
     ("xax_selfhost_typing", "load_typing_program"),
     ("xax_selfhost_verify", "load_verifier_program"),
+    ("xax_selfhost_blake3", "load_hash_program"),
     ("xax_selfhost_riscv64_backend", "load_backend_program"),
 )
 
@@ -104,6 +108,19 @@ def measure(include_b4: bool = True) -> dict:
                    "emulated_instructions_upper_bound": instructions,
                    "host_s_nonsemantic": {"native": round(native_seconds, 3), "emulated": round(emulated_seconds, 1)}})
 
+    from xax_selfhost_blake3 import INPUT_EXTENT, run_riscv64_hash
+
+    hash_image = images["xax_selfhost_blake3"][2]
+    hashes = []
+    for path in sorted(BOOTSTRAP.glob("*.xax")):
+        data = path.read_bytes()
+        if len(data) > INPUT_EXTENT:
+            continue
+        start = time.perf_counter()
+        digest = run_riscv64_hash(hash_image, data)
+        hashes.append({"store": path.name, "bytes": len(data), "emulated_equals_production": digest == blake3.blake3(data).digest(),
+                       "host_s_nonsemantic": round(time.perf_counter() - start, 2)})
+
     b4 = None
     if include_b4:
         backend_reader, backend_entry, backend_image = images["xax_selfhost_riscv64_backend"]
@@ -124,8 +141,8 @@ def measure(include_b4: bool = True) -> dict:
         "host_nonsemantic": f"{platform.system()} {platform.machine()} Python {platform.python_version()}",
         "b1_gen1_images": b1,
         "b3_emulated_verifier": b3,
+        "b3_emulated_blake3": hashes,
         "b4_gen2_compiles_verifier": b4,
-        "not_expressible": {"xax_selfhost_blake3": "aggregate.make/aggregate.get are outside the RISC-V views profile"},
     }
 
 

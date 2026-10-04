@@ -52,7 +52,7 @@ class VerifierClosureTests(unittest.TestCase):
 
         self.assertEqual(self.image, compile_riscv64_bound_target(self.reader, self.entry.cid, self.target, backend="python"))
         for module, loader in (("xax_selfhost_cfg", "load_cfg_program"), ("xax_selfhost_graph", "load_graph_decoder_program"),
-                               ("xax_selfhost_store", "load_decoder_program")):
+                               ("xax_selfhost_store", "load_decoder_program"), ("xax_selfhost_blake3", "load_hash_program")):
             with self.subTest(program=module):
                 reader, entry = getattr(importlib.import_module(module), loader)()
                 self.assertEqual(compile_riscv64_bound_target(reader, entry.cid, self.target, backend="xax"),
@@ -96,6 +96,26 @@ class VerifierClosureTests(unittest.TestCase):
                 self.assertTrue(same_verdicts(emulated, expected, listed))
                 declined += int(not expected[0] or 0 in expected[1])
         self.assertGreater(declined, 0)  # some mutation is declined somewhere, and the image agrees on it
+
+    @unittest.skipUnless(HAVE_UNICORN, "requires the unicorn emulator")
+    def test_b4_gen2_reproduces_the_blake3_image_which_hashes_like_production(self):
+        """ADR-151: gen2 (the backend's RISC-V image, emulated) compiles the BLAKE3 store to gen1's image, and that
+        image, emulated, computes the production digest of a committed store."""
+        import blake3
+        import xax_riscv64 as R
+        from xax_selfhost_blake3 import load_hash_program, run_riscv64_hash
+        from xax_selfhost_riscv64_backend import collect_output, load_backend_program
+        from xax_selfhost_typing import IN_WORDS, OUT_WORDS
+
+        backend_reader, backend_entry = load_backend_program()
+        gen2 = R.compile_riscv64_bound_target(backend_reader, backend_entry.cid, self.target, backend="xax")
+        reader, entry = load_hash_program()
+        gen1 = R.compile_riscv64_bound_target(reader, entry.cid, self.target, backend="xax")
+        words = R._object_table(reader, entry, self.target)
+        status, output = R.run_riscv64_views(gen2, words, 8 * IN_WORDS, 8 * OUT_WORDS, collect_output, instruction_limit=1 << 36)
+        self.assertEqual(R.image_from_backend_output(reader, self.target, output), gen1)
+        data = (BOOTSTRAP / "xax_blake3_compress.xax").read_bytes()
+        self.assertEqual(run_riscv64_hash(gen1, data), blake3.blake3(data).digest())
 
     @unittest.skipUnless(HAVE_UNICORN and os.environ.get("XAX_FIXED_POINT") == "1", "opt-in: XAX_FIXED_POINT=1 (minutes of emulation)")
     def test_b4_gen2_reproduces_the_verifier_image(self):

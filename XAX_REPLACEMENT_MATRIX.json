@@ -538,7 +538,7 @@
       },
       "blockers": [
         "executed only under the Unicorn RV64 emulator, not hardware; no Linux/RTOS executable container or syscall package",
-        "integer subset only: no floats (F/D), memory, aggregates, atomics, vector (V), or indirect calls",
+        "integer subset only: no floats (F/D), raw memory outside lent views, atomics, vector (V), or indirect calls; aggregates of scalar fields only as made values and call results (views profile, ADR-151)",
         "collatz kernel 3.72x clang -O2 emulated instructions and 3.23x code bytes (no compare/branch fusion or copy coalescing yet)"
       ]
     },

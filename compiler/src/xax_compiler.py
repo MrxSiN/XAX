@@ -1038,6 +1038,16 @@ def x86_64_linux_exec_target() -> SemanticObject:
     )
 
 
+def x86_64_views_target() -> SemanticObject:
+    """The views profile on x86-64 (ADR-152): raw position-independent code in the repository's x86-64 calling
+    convention (Win64 registers), for XAX programs over lent views; compiled by ``xax_x86_64_views``."""
+    return _x86_64_windows_target(
+        b"x86_64-linux-views-v1",
+        views_operations(),
+        machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+    )
+
+
 def x86_64_linux_dynamic_exec_target() -> SemanticObject:
     """Linux x86-64 ELF64 executable that explicitly requests the system dynamic loader."""
     return _x86_64_windows_target(
@@ -1155,12 +1165,20 @@ def riscv64_baremetal_target() -> SemanticObject:
 
 
 # The views profile (ADR-145): the same RV64IM machine, plus 64-bit pointers into lent heap views and checked
-# accesses through them (``checked.load/store.bits.le``), so XAX programs over views run on RISC-V.
+# accesses through them (``checked.load/store.bits.le``), so XAX programs over views run on RISC-V.  Aggregates of
+# scalar fields (``aggregate.make/get``, ADR-151) return through a caller-owned result area.
 RISCV64_VIEWS_IDENTITY = b"riscv64-baremetal-views-v1"
 
 
+def views_operations() -> tuple[int, ...]:
+    """The views profile's operations on every ISA (ADR-145, ADR-151): the RV64IM integer subset, checked accesses
+    through lent views, and aggregates of scalar fields."""
+    return tuple(sorted({*RISCV64_OPERATIONS, int(Operation.CHECKED_LOAD_BITS_LE), int(Operation.CHECKED_STORE_BITS_LE),
+                         int(Operation.AGGREGATE_MAKE), int(Operation.AGGREGATE_GET)}))
+
+
 def riscv64_views_target() -> SemanticObject:
-    operations = tuple(sorted({*RISCV64_OPERATIONS, int(Operation.CHECKED_LOAD_BITS_LE), int(Operation.CHECKED_STORE_BITS_LE)}))
+    operations = views_operations()
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(RISCV64_VIEWS_IDENTITY)) + RISCV64_VIEWS_IDENTITY)
     for value in (1, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64):

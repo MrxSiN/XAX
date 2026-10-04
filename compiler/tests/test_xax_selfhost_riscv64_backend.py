@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling suites' program builders
 
-from xax_compiler import IntCompare, Operation, XaxError, bits_type, riscv64_baremetal_target
+from xax_compiler import IntCompare, Operation, XaxError, bits_type, riscv64_baremetal_target, riscv64_views_target, tuple_type
 from xax_graph_builder import GraphBuilder, program_store
 from xax_riscv64 import compile_riscv64_bound_target
 
@@ -26,8 +26,8 @@ LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() i
 B1, B8, B64 = bits_type(1), bits_type(8), bits_type(64)
 
 
-def _both(entry, objects):
-    target = riscv64_baremetal_target()
+def _both(entry, objects, target=None):
+    target = target or riscv64_baremetal_target()
     reader = program_store(entry, target, objects)
     return (compile_riscv64_bound_target(reader, entry.cid, target, backend="python"),
             compile_riscv64_bound_target(reader, entry.cid, target, backend="xax"))
@@ -56,8 +56,8 @@ def _pressure(count: int, rounds: int = 5):
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
 class SelfhostRiscv64BackendTests(unittest.TestCase):
-    def assertSameImage(self, entry, objects):
-        python, xax = _both(entry, objects)
+    def assertSameImage(self, entry, objects, target=None):
+        python, xax = _both(entry, objects, target)
         self.assertEqual(xax, python)
 
     def test_random_programs_are_byte_identical(self):
@@ -129,22 +129,52 @@ class SelfhostRiscv64BackendTests(unittest.TestCase):
         self.assertEqual([cid for cid, _offset in xax.function_offsets], [entry.cid])
 
     def test_rejections_keep_the_bootstrap_diagnostic(self):
+        b32 = bits_type(32)
+        cases = {}
+        # An aggregate block parameter (ADR-151).
+        aggregate = tuple_type((b32, b32))
         graph = GraphBuilder()
-        block = graph.block(*(B64,) * 9)
-        total = block.params[0]
-        for value in block.params[1:]:
-            total = block.op1(Operation.ADD_WRAP, (total, value), B64)
-        block.ret(total)
-        entry = graph.function((B64,) * 9, (B64,))
-        target = riscv64_baremetal_target()
-        reader = program_store(entry, target, tuple(graph.objects.values()))
-        rules = []
-        for backend in ("python", "auto"):
-            with self.assertRaises(XaxError) as raised:
-                compile_riscv64_bound_target(reader, entry.cid, target, backend=backend)
-            rules.append(raised.exception.diagnostic.rule)
-        self.assertEqual(rules[0], rules[1])
-        self.assertEqual(rules[0], "RISCV64-REGISTER-ARGUMENTS")
+        block = graph.block(b32)
+        tail = graph.block(aggregate)
+        block.br(tail, block.op1(Operation.AGGREGATE_MAKE, (block.params[0], block.params[0]), aggregate))
+        tail.ret(tail.op1(Operation.AGGREGATE_GET, (tail.params[0],), b32, attributes=(0,)))
+        cases["RISCV64-AGGREGATE-VALUE"] = (graph.function((b32,), (b32,)), (*graph.objects.values(), aggregate))
+        # A made aggregate passed to a call.
+        callee = GraphBuilder()
+        block = callee.block(aggregate)
+        block.ret(block.op1(Operation.AGGREGATE_GET, (block.params[0],), b32, attributes=(1,)))
+        callee_function = callee.function((aggregate,), (b32,))
+        graph = GraphBuilder()
+        block = graph.block(b32)
+        made = block.op1(Operation.AGGREGATE_MAKE, (block.params[0], block.params[0]), aggregate)
+        block.ret(block.op1(Operation.CALL_DIRECT, (made,), b32, entity=callee_function))
+        cases["RISCV64-AGGREGATE-USE"] = (graph.function((b32,), (b32,)), (*graph.objects.values(), *callee.objects.values(), aggregate))
+        target = riscv64_views_target()
+        for expected, (entry, objects) in cases.items():
+            reader = program_store(entry, target, objects)
+            rules = []
+            for backend in ("python", "auto"):
+                with self.assertRaises(XaxError) as raised:
+                    compile_riscv64_bound_target(reader, entry.cid, target, backend=backend)
+                rules.append(raised.exception.diagnostic.rule)
+            self.assertEqual(rules, [expected, expected])
+
+    def test_stack_arguments_and_aggregate_results_are_byte_identical(self):
+        """ADR-151: the XAX program lowers stack arguments, hidden result areas, and field loads like the bootstrap."""
+        from test_xax_riscv64 import aggregate_program
+
+        for form, fields in (("tuple", 12), ("array", 16), ("tuple", 3), ("tuple", 255)):
+            with self.subTest(form=form, fields=fields):
+                entry, objects, _reference = aggregate_program(form, fields)
+                self.assertSameImage(entry, objects, riscv64_views_target())
+
+    def test_blake3_hash_is_byte_identical(self):
+        from xax_selfhost_blake3 import load_hash_program
+
+        reader, function = load_hash_program()
+        target = riscv64_views_target()
+        self.assertEqual(compile_riscv64_bound_target(reader, function.cid, target, backend="python"),
+                         compile_riscv64_bound_target(reader, function.cid, target, backend="xax"))
 
     def test_committed_store_is_the_built_program(self):
         from xax_selfhost_riscv64_backend import STORE_PATH, build_backend_program

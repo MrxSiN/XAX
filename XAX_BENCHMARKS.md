@@ -696,6 +696,15 @@ Same host and method as §15.1–15.4; one 31-repetition run. Every arm prints `
 
 Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 criterion (≤ 1.1×), at the edge of this host's noise (A/B probes measured 1.04–1.12×). Verifier: 3.6 ms for links against 3.5 ms for index links. `filestat` in this session: 0.95× `gcc -O2`, 1.38× `clang -O2`.
 
+### 15.6 Windows PE hosted fixture: XAX vs MinGW-w64 C, under Wine (MEASURED-UNDER-WINE, 2026-10-02)
+
+| Arm | File bytes | Executable bytes | Median process wall (ms) |
+|---|---:|---:|---:|
+| XAX `x86_64-windows-pe-v1` | 2,048 | 757 | 2564.19 |
+| C, `x86_64-w64-mingw32-gcc (GCC) 13-win32` `-O2`, no CRT | 2,560 | 416 | 2549.87 |
+
+21 runs each, interleaved, under wine-9.0 (Ubuntu 9.0~repack-4build3). Both print `XAX\n` and exit 1339 (59 mod 256). Wall time is Wine start-up. The C code is smaller because gcc folds work XAX performs at run time. Source: `bench_windows_pe_c_wine.py`.
+
 ### 15.7 Android minimal Activity: XAX vs Java + NDK twin, size only (MEASURED, 2026-10-02)
 
 | Arm | APK | DEX | Manifest | Native library | Native code per callback |
@@ -705,15 +714,6 @@ Record links run at 1.066× `gcc -O2` with real pointers. That meets the OI-41 c
 | Java + NDK twin | 24,792 | 1,708 (1 file) | 1,736 | 3,840 | `ret` (4 B) |
 
 The twin (`benchmarks/android_ndk_twin/`) has the same classes, methods, strings, manifest, and native callbacks. It is built with `javac --release 11` against the API 35 `android.jar`, `d8 --release --min-api 28` (build-tools 36.1.0), NDK r28c `clang -O2 -fPIC -shared -Wl,-z,max-page-size=16384 -Wl,--gc-sections` plus `llvm-strip --strip-unneeded`, and `aapt2 link`. Like the XAX APK, every entry is stored uncompressed, the `.so` is 16 KiB-aligned (`zipalign -P 16`), and the signature is v2-only RSA-2048. `aapt2` reports the same package, SDK, and launchable activity for all three. The twin's library also needs `libc.so` and `libdl.so`; XAX's needs nothing. XAX's DEX is larger because it emits one DEX per class, so a listener-only edit leaves the Activity DEX byte-identical. Native code is equal; the 16-byte symbol size reported for one XAX callback includes 12 bytes of alignment `nop`s. Start-up time and memory need a device. Source: `bench_android_ndk_twin.py`, evidence `android_ndk_twin_evidence.json`.
-
-### 15.6 Windows PE hosted fixture: XAX vs MinGW-w64 C, under Wine (MEASURED-UNDER-WINE, 2026-10-02)
-
-| Arm | File bytes | Executable bytes | Median process wall (ms) |
-|---|---:|---:|---:|
-| XAX `x86_64-windows-pe-v1` | 2,048 | 757 | 2564.19 |
-| C, `x86_64-w64-mingw32-gcc (GCC) 13-win32` `-O2`, no CRT | 2,560 | 416 | 2549.87 |
-
-21 runs each, interleaved, under wine-9.0 (Ubuntu 9.0~repack-4build3). Both print `XAX\n` and exit 1339 (59 mod 256). Wall time is Wine start-up. The C code is smaller because gcc folds work XAX performs at run time. Source: `bench_windows_pe_c_wine.py`.
 
 ### 15.8 JVM: XAX class file vs `javac` on the same HotSpot (ADR-112; MEASURED, 2026-10-03)
 

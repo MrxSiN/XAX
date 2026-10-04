@@ -32,8 +32,10 @@ byte-identical to the bootstrap.
 
 The program accepts or declines.  It declines where the bootstrap would
 raise (an unsupported operation or terminator, a non-``bits<=64`` value, more
-than eight machine arguments or one machine result, a jump past +-1 MiB) or
-where a buffer would overflow.  On a decline the bootstrap backend runs and
+than one machine result, an aggregate outside ``aggregate.get`` and returns, a
+jump past +-1 MiB) or where a buffer would overflow.  Arguments past a7 go on the
+stack, and an aggregate result returns through a caller-owned area whose
+address is the hidden first argument (ADR-151), as in ``xax_riscv64``.  On a decline the bootstrap backend runs and
 raises the exact diagnostic.
 """
 
@@ -69,7 +71,10 @@ STREAM_AT, STREAM_END = 12 << 20, 16 << 20  # the front end's internal stream (S
 ARENA_AT, ARENA_END = 16 << 20, HEADER - 1
 # Backend state in the header (after the argument words).
 (S_COUNT, S_JUMPS, S_RANGES, S_FN, S_OFFSETS, S_REG, S_SLOT, S_WIDTH, S_TRAP, S_TRAP_USED, S_POW, S_FRAME, S_TEMPS,
- S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS) = range(44, 63)
+ S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS, S_AGG) = range(44, 64)
+# ADR-151: the function's ``[outgoing argument bytes, hidden result pointer slot, result area table, area base]``.
+A_OUT, A_POINTER, A_AREAS, A_BASE = range(4)
+MAX_FIELDS = 255
 OK = 1
 
 
@@ -365,6 +370,10 @@ def _compile_function(tables):
         e.set_hd(S_WIDTH, p["width"])
         e.set_hd(S_REG, p["reg"])
         e.set_hd(S_SLOT, p["slot"])
+        array("area", e.add(V, 1), NONE)  # an aggregate call result's area, relative to the area base
+        e.var("areas", 0)
+        e.var("sret", 0)
+        e.var("out", 0)
         for name in ("block_at", "base", "params", "order", "bstart", "bend", "nodes_at", "term_at"):
             array(name, e.add(B, 1))
         for name in ("uses", "defs", "lin", "lout", "pmask"):
@@ -394,14 +403,21 @@ def _compile_function(tables):
             def node():
                 results = e.ld(e.add(p["at"], 1))
                 e.for_("q", 0, results, lambda: e.st(e.add(p["width"], e.add(p["next_id"], p["q"])), e.ld(e.add(e.add(p["at"], 2), p["q"]))))
-                e.set("next_id", e.add(p["next_id"], results))
                 operands_at = e.add(e.add(p["at"], 2), results)
                 attributes_at = e.add(e.add(operands_at, 1), e.ld(operands_at))
-                e.set("at", e.add(e.add(e.add(attributes_at, 1), e.ld(attributes_at)), 1))
+                e.var("pl_attrs", attributes_at)
+                hidden = e.both(e.eq(e.ld(p["at"]), int(Operation.CALL_DIRECT)), e.eq(e.ld(p["pl_attrs"]), 1))
+                e.if_(hidden, lambda: (e.st(e.add(p["area"], p["next_id"]), p["areas"]),
+                                       e.set("areas", e.add(p["areas"], e.mul(8, e.ld(e.add(p["pl_attrs"], 1)))))))
+                e.set("next_id", e.add(p["next_id"], results))
+                e.set("at", e.add(e.add(e.add(p["pl_attrs"], 1), e.ld(p["pl_attrs"])), 1))
 
             e.for_("m", 0, nodes, node)
             e.st(e.add(p["term_at"], b), p["at"])
             values = e.ld(e.add(p["at"], 1))
+            e.var("pl_values", values)
+            e.if_(e.eq(e.ld(p["at"]), int(TerminatorKind.RETURN)), lambda: e.for_("q", 0, p["pl_values"], lambda: e.if_(
+                e.eq(e.ld(e.add(e.add(e.add(p["at"], 2), p["pl_values"]), p["q"])), 2), lambda: e.set("sret", 1))))
             e.set("at", e.add(e.add(p["at"], 2), e.mul(values, 2)))
             edges = e.ld(p["at"])
             e.set("at", e.add(p["at"], 1))
@@ -459,6 +475,17 @@ def _compile_function(tables):
                 results = e.ld(e.add(at, 1))
                 operands_at = e.add(e.add(at, 2), results)
                 e.for_("q", 0, e.ld(operands_at), lambda: use(p["wb"], e.ld(e.add(e.add(operands_at, 1), p["q"])), p["pos"]))
+                walk_attrs = e.add(e.add(operands_at, 1), e.ld(operands_at))
+                e.var("wk_attrs", walk_attrs)
+
+                def outgoing():
+                    e.var("wk_n", e.flag(e.eq(e.ld(p["wk_attrs"]), 1)))
+                    e.for_("q", 0, e.ld(operands_at), lambda: e.if_(e.ne(e.ld(e.add(p["width"], e.ld(e.add(e.add(operands_at, 1), p["q"])))), 0), lambda: e.set(
+                        "wk_n", e.add(p["wk_n"], 1))))
+                    e.if_(e.lt(e.add(p["out"], ARGUMENT_REGISTERS * 8), e.mul(8, p["wk_n"])), lambda: e.set("out", e.sub(e.mul(8, p["wk_n"]), ARGUMENT_REGISTERS * 8)))
+
+                extra = e.ld(e.add(e.add(p["wk_attrs"], 1), e.ld(p["wk_attrs"])))
+                e.if_(e.both(e.eq(e.ld(at), int(Operation.CALL_DIRECT)), e.ne(extra, NONE)), outgoing)
                 e.for_("q", 0, results, lambda: (_put(e, defs, p["vid"]), touch(p["vid"], p["pos"]), e.set("vid", e.add(p["vid"], 1))))
                 attributes_at = e.add(e.add(operands_at, 1), e.ld(operands_at))
                 e.set("na_at", e.add(e.add(e.add(attributes_at, 1), e.ld(attributes_at)), 1))
@@ -621,19 +648,21 @@ def _compile_function(tables):
         for register in ALLOCATABLE:
             e.if_(e.ne(e.and_(p["used"], 1 << register), 0), lambda register=register: (
                 e.st(e.add(saved, p["nsaved"]), register), e.set("nsaved", e.add(p["nsaved"], 1))))
-        e.var("frame_cursor", e.add(8, e.mul(8, p["nsaved"])))
+        e.var("frame_cursor", e.add(e.add(p["out"], 8), e.mul(8, p["nsaved"])))
         e.for_("v", 0, V, lambda: e.if_(e.both(e.ne(e.ld(e.add(p["width"], p["v"])), 0), e.eq(e.ld(e.add(p["reg"], p["v"])), 0)), lambda: (
             e.st(e.add(p["slot"], p["v"]), p["frame_cursor"]), e.set("frame_cursor", e.add(p["frame_cursor"], 8)))))
         e.set_hd(S_TEMPS, p["frame_cursor"])
-        frame = e.and_(e.add(e.add(p["frame_cursor"], e.mul(8, p["max_params"])), 15), (1 << 64) - 16)
+        # Then the hidden result pointer (a function returning an aggregate), then the result areas (ADR-151).
+        e.var("pointer_slot", e.add(p["frame_cursor"], e.mul(8, p["max_params"])))
+        e.var("area_base", e.add(p["pointer_slot"], e.mul(8, p["sret"])))
+        frame = e.and_(e.add(e.add(p["area_base"], p["areas"]), 15), (1 << 64) - 16)
         e.var("frame", frame)
         e.set_hd(S_FRAME, frame)
-        # Entry machine parameters: at most eight.
+        record = array("agg", 4)
+        for field, name in ((A_OUT, "out"), (A_POINTER, "pointer_slot"), (A_AREAS, "area"), (A_BASE, "area_base")):
+            e.st(e.add(record, field), p[name])
+        e.set_hd(S_AGG, record)
         entry_base = e.ld(e.add(p["base"], entry))
-        e.var("machine_params", 0)
-        e.for_("q", 0, e.ld(e.add(p["params"], entry)), lambda: e.if_(e.ne(e.ld(e.add(p["width"], e.add(entry_base, p["q"]))), 0), lambda: e.set(
-            "machine_params", e.add(p["machine_params"], 1))))
-        _ok(e, e.le(p["machine_params"], ARGUMENT_REGISTERS))
 
         # Prologue.
         e.st(e.add(e.hd(S_OFFSETS), index), e.hd(S_COUNT))
@@ -646,11 +675,23 @@ def _compile_function(tables):
             _emit(e, enc_r(e, 0x20, T0, SP, 0, SP))
 
         e.if_(e.lt(p["frame"], 2048), small_frame, large_frame)
-        _emit(e, enc_s(e, 0, RA, SP))
-        e.for_("q", 0, p["nsaved"], lambda: _call(e, "frame", 1, e.ld(e.add(saved, p["q"])), e.add(8, e.mul(8, p["q"]))))
-        e.var("arg", 0)
-        e.for_("q", 0, e.ld(e.add(p["params"], entry)), lambda: e.if_(e.ne(e.ld(e.add(p["width"], e.add(entry_base, p["q"]))), 0), lambda: (
-            _call(e, "write", e.add(entry_base, p["q"]), e.add(A0, p["arg"])), e.set("arg", e.add(p["arg"], 1)))))
+        _call(e, "frame", 1, RA, p["out"])
+        e.for_("q", 0, p["nsaved"], lambda: _call(e, "frame", 1, e.ld(e.add(saved, p["q"])), e.add(e.add(p["out"], 8), e.mul(8, p["q"]))))
+        e.if_(e.ne(p["sret"], 0), lambda: _call(e, "frame", 1, A0, p["pointer_slot"]))
+        e.var("arg", p["sret"])
+
+        def parameter():
+            value = e.add(entry_base, p["q"])
+            e.var("pv", value)
+
+            def stacked():
+                _call(e, "frame", 0, T0, e.add(p["frame"], e.mul(8, e.sub(p["arg"], ARGUMENT_REGISTERS))))  # the caller's outgoing area
+                _call(e, "write", p["pv"], T0)
+
+            e.if_(e.lt(p["arg"], ARGUMENT_REGISTERS), lambda: _call(e, "write", p["pv"], e.add(A0, p["arg"])), stacked)
+            e.set("arg", e.add(p["arg"], 1))
+
+        e.for_("q", 0, e.ld(e.add(p["params"], entry)), lambda: e.if_(e.ne(e.ld(e.add(p["width"], e.add(entry_base, p["q"]))), 0), parameter))
 
         # Blocks in order.
         e.for_("k", 0, B, lambda: _ok(e, e.ne(e.call(_FN["block"], e.ld(e.add(p["order"], p["k"])), e.ld(e.add(p["base"], e.ld(e.add(p["order"], p["k"])))), ), NONE)))
@@ -671,8 +712,10 @@ def _epilogue(tables):
         saved = e.hd(S_SAVED)
         e.var("nsaved", 0)
         e.while_(lambda: e.both(e.lt(p["nsaved"], 11), e.ne(e.ld(e.add(saved, p["nsaved"])), 0)), lambda: e.set("nsaved", e.add(p["nsaved"], 1)))
-        e.for_("q", 0, p["nsaved"], lambda: _call(e, "frame", 0, e.ld(e.add(saved, p["q"])), e.add(8, e.mul(8, p["q"]))))
-        _emit(e, enc_i(e, 0, SP, 3, RA, 0x03))
+        out = e.ld(e.add(e.hd(S_AGG), A_OUT))
+        e.var("out", out)
+        e.for_("q", 0, p["nsaved"], lambda: _call(e, "frame", 0, e.ld(e.add(saved, p["q"])), e.add(e.add(p["out"], 8), e.mul(8, p["q"]))))
+        _call(e, "frame", 0, RA, p["out"])
         frame = e.hd(S_FRAME)
 
         def large():
@@ -869,9 +912,38 @@ def _block(tables):
 
             def call():
                 def machine():
-                    e.var("arg", 0)
-                    e.for_("q", 0, operands, lambda: e.if_(e.ne(_value(e, S_WIDTH, operand(p["q"])), 0), lambda: (
-                        _ok(e, e.lt(p["arg"], ARGUMENT_REGISTERS)), _read_into(e, operand(p["q"]), e.add(A0, p["arg"])), e.set("arg", e.add(p["arg"], 1)))))
+                    # ADR-151: an aggregate result's area address is the hidden first argument; arguments past a7 go to
+                    # the outgoing area, stored before the registers are loaded.
+                    e.var("hidden", e.flag(e.eq(e.ld(attributes_at), 1)))
+                    e.var("arg", p["hidden"])
+
+                    def stacked():
+                        e.if_(e.le(ARGUMENT_REGISTERS, p["arg"]), lambda: _call(e, "frame", 1, _call(e, "read", operand(p["q"]), T0),
+                                                                                e.mul(8, e.sub(p["arg"], ARGUMENT_REGISTERS))))
+                        e.set("arg", e.add(p["arg"], 1))
+
+                    e.for_("q", 0, operands, lambda: e.if_(e.ne(_value(e, S_WIDTH, operand(p["q"])), 0), stacked))
+                    e.set("arg", p["hidden"])
+
+                    def registered():
+                        e.if_(e.lt(p["arg"], ARGUMENT_REGISTERS), lambda: _read_into(e, operand(p["q"]), e.add(A0, p["arg"])))
+                        e.set("arg", e.add(p["arg"], 1))
+
+                    e.for_("q", 0, operands, lambda: e.if_(e.ne(_value(e, S_WIDTH, operand(p["q"])), 0), registered))
+
+                    def area():
+                        record = e.hd(S_AGG)
+                        relative = e.ld(e.add(e.ld(e.add(record, A_AREAS)), result))
+                        _ok(e, e.ne(relative, NONE))
+                        e.var("area_at", e.add(e.ld(e.add(record, A_BASE)), relative))
+
+                        def far():
+                            _call(e, "li", A0, p["area_at"])
+                            _emit(e, enc_r(e, 0, SP, A0, 0, A0))
+
+                        e.if_(e.lt(p["area_at"], 2048), lambda: _emit(e, enc_i(e, p["area_at"], SP, 0, A0)), far)
+
+                    e.if_(e.ne(p["hidden"], 0), area)
                     _jal(e, e.add(e.hd(S_OFFSETS), extra), RA)
                     e.var("machine_results", 0)
                     e.for_("q", 0, results, lambda: e.if_(e.ne(_value(e, S_WIDTH, e.add(result, p["q"])), 0), lambda: (
@@ -906,7 +978,22 @@ def _block(tables):
                         _call(e, "write", result, p["dst"])
 
                 case((code,), checked)
-            case(tuple(RESOURCE_EFFECT_OPERATIONS), lambda: None)
+
+            def get():
+                # A field of a call's aggregate is loaded from its area; a made aggregate's field is that operand (no code).
+                def load():
+                    record = e.hd(S_AGG)
+                    relative = e.ld(e.add(e.ld(e.add(record, A_AREAS)), operand(0)))
+                    _ok(e, e.ne(relative, NONE))
+                    e.var("field_at", e.add(e.add(e.ld(e.add(record, A_BASE)), relative), e.mul(8, attribute(0))))
+                    e.var("dst", _target(e, result))
+                    _call(e, "frame", 0, p["dst"], p["field_at"])
+                    _call(e, "write", result, p["dst"])
+
+                e.if_(e.ne(width, 0), load)
+
+            case((Operation.AGGREGATE_GET,), get)
+            case((*RESOURCE_EFFECT_OPERATIONS, Operation.AGGREGATE_MAKE), lambda: None)
             _ok(e, e.ne(p["handled"], 0))
 
             def record():
@@ -932,8 +1019,21 @@ def _block(tables):
 
         def returns():
             e.var("machine", 0)
-            e.for_("q", 0, values, lambda: e.if_(e.ne(flag(p["q"]), 0), lambda: (
-                _ok(e, e.eq(p["machine"], 0)), _read_into(e, value(p["q"]), A0), e.set("machine", 1))))
+            e.var("fields", 0)
+            e.for_("q", 0, values, lambda: e.if_(e.eq(flag(p["q"]), 2), lambda: e.set("fields", 1)))
+
+            def stored():
+                # ADR-151: each field into the caller's result area, as one doubleword.
+                _call(e, "frame", 0, T1, e.ld(e.add(e.hd(S_AGG), A_POINTER)))
+                e.set("fields", 0)
+                e.for_("q", 0, values, lambda: e.if_(e.eq(flag(p["q"]), 2), lambda: (
+                    _emit(e, enc_s(e, e.mul(8, p["fields"]), _call(e, "read", value(p["q"]), T0), T1)), e.set("fields", e.add(p["fields"], 1)))))
+
+            def scalar():
+                e.for_("q", 0, values, lambda: e.if_(e.ne(flag(p["q"]), 0), lambda: (
+                    _ok(e, e.eq(p["machine"], 0)), _read_into(e, value(p["q"]), A0), e.set("machine", 1))))
+
+            e.if_(e.ne(p["fields"], 0), stored, scalar)
             _ok(e, e.ne(e.call(_FN["epilogue"]), NONE))
 
         def branch():
@@ -1240,6 +1340,62 @@ def _borrowed(tables):
     return _function(("f",), build, tables)
 
 
+def _aggregate(tables):
+    """``_aggregate_fields`` (ADR-151): the field count of TYPE ``t``, a tuple or array of ``bits<N <= 64>``; 0 otherwise."""
+    def build(e: E):
+        p = e.p
+        obj = p["t"]
+        form = _type_form(e, obj)
+        e.var("ag_form", form)
+        e.var("ag_count", 0)
+        e.var("ag_ok", 1)
+
+        def scalar(field):
+            known = e.ne(field, NONE)
+            width = _type_width(e, e.sel(known, field, 0))
+            return e.both(known, e.eq(_type_form(e, e.sel(known, field, 0)), 1), e.ne(width, 0), e.le(width, 64))
+
+        def tuple_():
+            e.var("ag_at", e.add(_at(e, G_PAY, obj), 1))
+            e.set("ag_count", _payload_uleb(e, "ag_at"))
+            e.for_("q", 0, p["ag_count"], lambda: e.if_(e.not_(scalar(_reference(e, obj, _payload_uleb(e, "ag_at")))), lambda: e.set("ag_ok", 0)))
+
+        def array_():
+            e.var("ag_at", e.add(_at(e, G_PAY, obj), 1))
+            element = _reference(e, obj, _payload_uleb(e, "ag_at"))
+            e.var("ag_element", element)
+            e.set("ag_count", _payload_uleb(e, "ag_at"))
+            e.if_(e.not_(scalar(p["ag_element"])), lambda: e.set("ag_ok", 0))
+
+        e.if_(e.eq(p["ag_form"], 8), tuple_, lambda: e.if_(e.eq(p["ag_form"], 9), array_))
+        e.give(e.sel(e.both(e.ne(p["ag_ok"], 0), e.ne(p["ag_count"], 0), e.le(p["ag_count"], MAX_FIELDS)), p["ag_count"], 0))
+    return _function(("t",), build, tables)
+
+
+def _result_fields(tables):
+    """``_result_fields``: the field count when function ``f`` returns an aggregate (its only non-proof result), 0 when
+    it returns none; declines on any other mix."""
+    def build(e: E):
+        p = e.p
+        iface = _call(e, "interface", p["f"])
+        e.var("rf_at", e.add(e.add(iface, 2), e.ld(e.add(iface, 1))))
+        e.var("rf", 0)
+        e.var("rf_n", 0)
+        e.var("rf_machine", 0)
+
+        def each():
+            returned = e.ld(e.add(e.add(p["rf_at"], 1), p["q"]))
+            e.var("rf_t", returned)
+            e.var("rf_k", _call(e, "aggregate", p["rf_t"]))
+            e.if_(e.ne(p["rf_k"], 0), lambda: (e.set("rf", p["rf_k"]), e.set("rf_n", e.add(p["rf_n"], 1))),
+                  lambda: e.if_(e.ne(_type_width(e, p["rf_t"]), 0), lambda: e.set("rf_machine", 1)))
+
+        e.for_("q", 0, e.ld(p["rf_at"]), each)
+        _ok(e, e.either(e.eq(p["rf_n"], 0), e.both(e.eq(p["rf_n"], 1), e.eq(p["rf_machine"], 0))))
+        e.give(p["rf"])
+    return _function(("f",), build, tables)
+
+
 def _emit_out(e: E, value):
     at = _g(e, G_OUT)
     e.if_(e.lt(at, STREAM_END), lambda: e.st(at, value))  # past the end: nothing is written, and the front end declines
@@ -1310,8 +1466,12 @@ def _translate(tables):
         # direct call gives back aliased to the pointer passed in (``_pointer_extents``, ``_rewrite_borrowed_views``).
         e.var("ext", e.alloc(e.add(p["id"], 1)))
         e.var("alias", e.alloc(e.add(p["id"], 1)))
-        _ok(e, e.both(e.ne(p["ext"], NONE), e.ne(p["alias"], NONE)))
-        e.for_("q", 0, p["id"], lambda: (e.st(e.add(p["ext"], p["q"]), 0), e.st(e.add(p["alias"], p["q"]), NONE)))
+        # ADR-151: an ``aggregate.make`` result's operand list (input position), and which values are aggregates.
+        e.var("made", e.alloc(e.add(p["id"], 1)))
+        e.var("aggv", e.alloc(e.add(p["id"], 1)))
+        _ok(e, e.both(e.ne(p["ext"], NONE), e.ne(p["alias"], NONE), e.ne(p["made"], NONE), e.ne(p["aggv"], NONE)))
+        e.for_("q", 0, p["id"], lambda: (e.st(e.add(p["ext"], p["q"]), 0), e.st(e.add(p["alias"], p["q"]), NONE),
+                                         e.st(e.add(p["made"], p["q"]), NONE), e.st(e.add(p["aggv"], p["q"]), 0)))
 
         def scan(types_at, count, first_id):
             """Extents of ``count`` types at input ``types_at`` whose values start at id ``first_id``."""
@@ -1345,6 +1505,10 @@ def _translate(tables):
                 e.var("a2_results", e.ld(e.add(ni, NI_RESULTS)))
                 e.var("a2_id", e.ld(e.add(p["node_base"], p["nodes"])))
                 scan(e.add(p["a2_results"], 1), e.rd(p["a2_results"]), p["a2_id"])
+                e.for_("r", 0, e.rd(p["a2_results"]), lambda: e.if_(
+                    e.ne(_call(e, "aggregate", _reference(e, p["graph"], e.rd(e.add(e.add(p["a2_results"], 1), p["r"])))), 0),
+                    lambda: e.st(e.add(p["aggv"], e.add(p["a2_id"], p["r"])), 1)))
+                e.if_(e.eq(p["a2_op"], int(Operation.AGGREGATE_MAKE)), lambda: e.st(e.add(p["made"], p["a2_id"]), p["a2_ops"]))
 
                 def call():
                     e.var("a2_callee", _reference(e, p["graph"], p["a2_entity"]))
@@ -1370,24 +1534,66 @@ def _translate(tables):
 
         e.for_("b", 0, B, block_a2)
 
+        # Pass A3 (ADR-151): ``aggregate.get`` of a made aggregate is that field.
+        e.set("pa", e.add(stream, 2))
+        e.set("nodes", 0)
+
+        def block_a3():
+            e.set("pa", e.add(e.add(p["pa"], 1), e.rd(p["pa"])))
+            count = e.rd(p["pa"])
+            e.set("pa", e.add(p["pa"], 1))
+
+            def node():
+                e.set("pa", _call(e, "node_info", p["pa"]))
+                ni = _g(e, G_NI)
+
+                def get():
+                    e.var("a3_at", e.add(e.ld(e.add(ni, NI_OPERANDS)), 1))
+                    e.var("a3_agg", raw_value_id("a3_at"))
+                    e.var("a3_index", e.rd(e.add(e.ld(e.add(ni, NI_ATTRIBUTES)), 1)))
+
+                    def field():
+                        e.var("a3_field_at", e.add(e.ld(e.add(p["made"], p["a3_agg"])), 1))
+                        e.for_("j", 0, p["a3_index"], lambda: raw_value_id("a3_field_at"))
+                        e.st(e.add(p["alias"], e.ld(e.add(p["node_base"], p["nodes"]))), raw_value_id("a3_field_at"))
+
+                    e.if_(e.ne(e.ld(e.add(p["made"], p["a3_agg"])), NONE), field)
+
+                e.if_(e.eq(e.ld(e.add(ni, NI_OP)), int(Operation.AGGREGATE_GET)), get)
+                e.set("nodes", e.add(p["nodes"], 1))
+
+            e.for_("m", 0, count, node)
+            e.set("pa", _call(e, "term_end", p["pa"]))
+
+        e.for_("b", 0, B, block_a3)
+
         def value_id(name: str):
             """``raw_value_id`` through the borrowed-view aliases."""
             e.var("vid_c", raw_value_id(name))
             e.while_(lambda: e.ne(e.ld(e.add(p["alias"], p["vid_c"])), NONE), lambda: e.set("vid_c", e.ld(e.add(p["alias"], p["vid_c"]))))
             return p["vid_c"]
 
-        def values(name: str, emit=True):
+        def values(name: str, emit=True, scalar=None):
+            """Emit ``[count, value ids]``; ``scalar`` (a condition) declines on an aggregate value (ADR-151)."""
             count = e.rd(p[name])
             e.set(name, e.add(p[name], 1))
             if emit:
                 _emit_out(e, count)
-            e.for_("vv", 0, count, lambda: _emit_out(e, value_id(name)))
+
+            def each():
+                e.var("vv_id", value_id(name))
+                if scalar is not None:
+                    _ok(e, e.either(e.not_(scalar()), e.eq(e.ld(e.add(p["aggv"], p["vv_id"])), 0)))
+                _emit_out(e, p["vv_id"])
+
+            e.for_("vv", 0, count, each)
             return count
 
         # Pass B: the stream.
         e.set("pa", e.add(stream, 2))
         e.set("nodes", 0)
         e.var("own", _call(e, "borrowed", f))
+        e.var("own_fields", _call(e, "result_fields", f))
         returns_at = e.add(e.add(iface, 2), e.ld(e.add(iface, 1)))
 
         def block_b():
@@ -1410,14 +1616,36 @@ def _translate(tables):
                 _emit_out(e, results)
                 e.var("nb_id", e.ld(e.add(p["node_base"], p["nodes"])))
                 e.var("nb_results", results_at)
-                e.for_("q", 0, results, lambda: e.if_(e.ne(e.ld(e.add(p["alias"], e.add(p["nb_id"], p["q"]))), NONE), lambda: _emit_out(e, 0),
-                                                      lambda: _emit_out(e, width_of(e.rd(e.add(e.add(p["nb_results"], 1), p["q"]))))))
+                e.var("nb_op", operation)
+                aggregate_node = e.either(e.eq(p["nb_op"], int(Operation.AGGREGATE_MAKE)), e.eq(p["nb_op"], int(Operation.CALL_DIRECT)))
+                e.var("nb_aggregate_node", e.flag(aggregate_node))
+
+                def result_width():
+                    alias = e.ld(e.add(p["alias"], e.add(p["nb_id"], p["q"])))
+                    aggregate = e.ne(e.ld(e.add(p["aggv"], e.add(p["nb_id"], p["q"]))), 0)
+                    e.var("nb_agg", e.flag(aggregate))
+                    # An aggregate (made or call-returned, ADR-151) and an aliased value are no machine values.
+                    e.if_(e.ne(p["nb_agg"], 0), lambda: _ok(e, e.ne(p["nb_aggregate_node"], 0)))
+                    e.if_(e.either(e.ne(alias, NONE), e.ne(p["nb_agg"], 0)), lambda: _emit_out(e, 0),
+                          lambda: _emit_out(e, width_of(e.rd(e.add(e.add(p["nb_results"], 1), p["q"])))))
+
+                e.for_("q", 0, results, result_width)
                 e.var("op0_at", e.add(p["na_ops"], 1))
                 e.var("op0", NONE)
                 e.if_(e.ne(e.rd(p["na_ops"]), 0), lambda: e.set("op0", value_id("op0_at")))
-                values("na_ops")
-                e.if_(e.eq(attributes_at, NONE), lambda: _emit_out(e, 0), lambda: (
-                    _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"]))))))
+                values("na_ops", scalar=lambda: e.both(e.ne(p["nb_op"], int(Operation.AGGREGATE_GET)), e.ne(p["nb_op"], int(Operation.AGGREGATE_MAKE))))
+                e.var("nb_fields", 0)
+
+                def hidden():
+                    callee = _reference(e, p["graph"], entity)
+                    e.var("nb_callee", callee)
+                    _ok(e, e.ne(p["nb_callee"], NONE))
+                    e.if_(e.eq(_call(e, "erased", p["nb_callee"]), 0), lambda: e.set("nb_fields", _call(e, "result_fields", p["nb_callee"])))
+
+                e.if_(e.eq(p["nb_op"], int(Operation.CALL_DIRECT)), hidden)
+                e.if_(e.ne(p["nb_fields"], 0), lambda: (_emit_out(e, 1), _emit_out(e, p["nb_fields"])), lambda: e.if_(
+                    e.eq(attributes_at, NONE), lambda: _emit_out(e, 0), lambda: (
+                        _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"])))))))
                 e.var("extra", 0)
 
                 def constant():
@@ -1460,7 +1688,7 @@ def _translate(tables):
             def edge_out():
                 _emit_out(e, e.rd(p["pa"]))
                 e.set("pa", e.add(p["pa"], 1))
-                values("pa")
+                values("pa", scalar=lambda: e.eq(0, 0))
 
             def branch():
                 _emit_out(e, 0)
@@ -1474,6 +1702,48 @@ def _translate(tables):
                 _emit_out(e, 2)
                 edge_out()
                 edge_out()
+
+            def aggregate_returns():
+                # ADR-151: the made aggregate expands to its fields (flag 2, stored to the result area); the other
+                # returned values are proof values.
+                count = e.rd(p["pa"])
+                e.var("rc", count)
+                e.set("pa", e.add(p["pa"], 1))
+                e.var("rv_at", p["pa"])
+                e.var("rx", 0)
+
+                def counted():
+                    e.var("rx_id", value_id("rv_at"))
+                    fields = e.ld(e.add(p["made"], p["rx_id"]))
+                    e.set("rx", e.add(p["rx"], e.sel(e.ne(fields, NONE), e.rd(e.sel(e.ne(fields, NONE), fields, 0)), 1)))
+
+                e.for_("vv", 0, p["rc"], counted)
+                _emit_out(e, p["rx"])
+                for pass_ in ("values", "flags"):
+                    e.set("rv_at", p["pa"])
+
+                    def emitted(pass_=pass_):
+                        e.var("rx_id", value_id("rv_at"))
+                        e.var("rx_made", e.ld(e.add(p["made"], p["rx_id"])))
+
+                        def fields():
+                            e.var("rx_field_at", e.add(p["rx_made"], 1))
+                            if pass_ == "values":
+                                e.for_("j", 0, e.rd(p["rx_made"]), lambda: _emit_out(e, value_id("rx_field_at")))
+                            else:
+                                e.for_("j", 0, e.rd(p["rx_made"]), lambda: _emit_out(e, 2))
+
+                        def proof():
+                            declared = e.lt(p["vv"], e.ld(returns_at))
+                            position = e.sel(declared, p["vv"], 0)
+                            _ok(e, e.both(declared, e.eq(_type_width(e, e.ld(e.add(e.add(returns_at, 1), position))), 0)))
+                            _emit_out(e, p["rx_id"] if pass_ == "values" else 0)
+
+                        e.if_(e.ne(p["rx_made"], NONE), fields, proof)
+
+                    e.for_("vv", 0, p["rc"], emitted)
+                e.set("pa", p["rv_at"])
+                _emit_out(e, 0)
 
             def returns():
                 count = e.rd(p["pa"])
@@ -1497,7 +1767,8 @@ def _translate(tables):
                 _emit_out(e, 0)
                 _emit_out(e, 0)
 
-            e.if_(e.eq(kind, 1), branch, lambda: e.if_(e.eq(kind, 2), conditional, lambda: e.if_(e.eq(kind, 3), returns, trap)))
+            e.if_(e.eq(kind, 1), branch, lambda: e.if_(e.eq(kind, 2), conditional, lambda: e.if_(
+                e.eq(kind, 3), lambda: e.if_(e.ne(p["own_fields"], 0), aggregate_returns, returns), trap)))
 
         e.for_("b", 0, B, block_b)
         e.give(1)
@@ -1751,6 +2022,8 @@ def build_backend_program():
     add("interface", _interface(tables))
     add("erased", _erased(tables))
     add("borrowed", _borrowed(tables))
+    add("aggregate", _aggregate(tables))
+    add("result_fields", _result_fields(tables))
     add("translate", _translate(tables))
     add("frontend", _frontend(tables))
     compile_function = add("function", _compile_function(tables))

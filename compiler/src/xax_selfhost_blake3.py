@@ -262,6 +262,27 @@ def write_hash_store() -> bytes:
     return reader.data
 
 
+def riscv64_hash_image(backend: str = "auto"):
+    """The hash function compiled for the RISC-V views profile (ADR-151: the compression's 16-word result returns
+    through a caller-owned area)."""
+    from xax_compiler import riscv64_views_target
+    from xax_riscv64 import compile_riscv64_bound_target
+
+    reader, function = load_hash_program()
+    return compile_riscv64_bound_target(reader, function.cid, riscv64_views_target(), backend=backend)
+
+
+def run_riscv64_hash(image, data: bytes) -> bytes:
+    """Test harness: the digest the RV64 image computes for ``data`` in the Unicorn emulator."""
+    from xax_riscv64 import run_riscv64_views
+
+    padded = data + bytes(-len(data) % 8)
+    words = [int.from_bytes(padded[k:k + 8], "little") for k in range(0, len(padded), 8)]
+    collect = lambda read: b"".join(word.to_bytes(8, "little") for word in read(DIGEST_OFFSET // 8, 4))  # noqa: E731
+    _status, digest = run_riscv64_views(image, words, INPUT_EXTENT, SCRATCH_EXTENT, collect, extra_arguments=(len(data),))
+    return digest
+
+
 class NativeHasher:
     """The XAX hash lowered by the XAX x86-64 backend, called in-process with two lent buffers."""
 

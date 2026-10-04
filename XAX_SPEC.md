@@ -1007,17 +1007,6 @@ Self-hosting, toolchain closure, and bootstrap independence are distinct claims.
 
 No milestone may be claimed without committed evidence naming exact roots, targets, policies, and comparison method.
 
-### 16.5 Compiler migration steps
-
-The bootstrap compiler moves into XAX one component at a time. Steps `S1`, `S2`, ... are tracked in the roadmap. A component counts as migrated only when all of these hold:
-
-1. its authoritative logic is a committed canonical XAX store that regenerates byte-identically and verifies on load;
-2. the production compiler path executes that logic as code lowered by an XAX backend, not by the reference executor;
-3. any remaining bootstrap implementation is only a fallback and reference, and is differentially checked against the XAX component on committed vectors; and
-4. its outputs on the production path are byte-identical to the bootstrap reference's.
-
-A migration step is not a B-milestone. B1–B6 still require the whole compiler (§16.2).
-
 ### 16.3 Trust
 
 Recursive self-compilation alone is not proof of trust. Trust-sensitive releases SHOULD support diverse double compilation or comparably strong checks using independently sourced seeds and a fixed, auditable canonical projection when byte identity is not meaningful.
@@ -1029,6 +1018,17 @@ Repository collaboration is semantic and transactional. A repository root SHOULD
 A new AI session MUST be able to continue from canonical repository/continuation state without relying on conversation history. Multi-agent conflicts are detected at semantic entities, bindings, decisions, invariants, and proof dependencies, not source lines.
 
 Normative semantic changes MUST update affected decision records, conformance vectors/evidence validity, status claims, and handoff state consistently.
+
+### 16.5 Compiler migration steps
+
+The bootstrap compiler moves into XAX one component at a time. Steps `S1`, `S2`, ... are tracked in the roadmap. A component counts as migrated only when all of these hold:
+
+1. its authoritative logic is a committed canonical XAX store that regenerates byte-identically and verifies on load;
+2. the production compiler path executes that logic as code lowered by an XAX backend, not by the reference executor;
+3. any remaining bootstrap implementation is only a fallback and reference, and is differentially checked against the XAX component on committed vectors; and
+4. its outputs on the production path are byte-identical to the bootstrap reference's.
+
+A migration step is not a B-milestone. B1–B6 still require the whole compiler (§16.2).
 
 ## 17. Conformance model reference
 
@@ -1184,6 +1184,8 @@ Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-g
 ### 21.9d RISC-V RV64 raw images
 
 `riscv64-baremetal-raw-v1` (ADR-113) is target architecture 6 with the exact machine tuple (profile 1, ABI 7 LP64, format 1 raw, 64, 64). It needs only RV64I plus M. Functions follow the LP64 integer calling convention (a0–a7, a0, ra; s0–s11 preserved). A zero divisor MUST trap even though `divu`/`remu` do not. The image MUST be position-independent, with the entry at offset 0, and contain no loader, relocation, data section, or runtime.
+
+`riscv64-baremetal-views-v1` (ADR-145) adds 64-bit pointers into lent heap views with checked accesses, far (`auipc`/`jalr`) jumps, and (ADR-151) aggregates of `bits<N <= 64>` fields. Machine arguments past a7 MUST be passed on the stack in 8-byte slots at the caller's `sp`. A function whose non-proof result is one aggregate MUST take the address of a caller-owned result area as a hidden first argument (LP64's indirect return) and store field k as a zero-extended doubleword at offset 8k. `aggregate.make` and `aggregate.get` of a made aggregate emit no code; an aggregate MUST NOT reach a block parameter, edge, or call argument in this profile.
 
 ### 21.9e Linux AArch64 hosted profiles
 
