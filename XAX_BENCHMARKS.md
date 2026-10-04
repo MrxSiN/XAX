@@ -805,3 +805,17 @@ Host: Intel(R) Xeon(R) Processor @ 2.10GHz (Emerald Rapids, model 207), 4 logica
 | `jsonmin` (8 MiB) | clang -O2, 24.1 ms | 24.8 ms | 1.029 | meets primary target | 1.121 | 12,416 (smallest) | 15,631 (clang 14,552 dynamic) |
 
 The first multi-language run, before ADR-148, measured XAX/fastest 1.566 (`filestat`), 1.183 (`chains`, record links), and 1.208 (`jsonmin`). In `chains`, the other XAX arms remain slower (record links 1.185, `pointer_rebase` 1.639, checked index 2.119): they encode different link representations of the same contract, and the struct-of-arrays arm mirrors the Rust twin's. Run-to-run stdev on this host is 4–15% of the median. Sources: `linux_filestat.py`, `linux_chains.py`, `jsonmin.py`; data: `u1_linux_filestat_evidence.json`, `oi37_chains_evidence.json`, `jsonmin_evidence.json`.
+
+### 15.15 Android counter app: XAX vs Java + NDK twin, size only (ADR-153/154; MEASURED, 2026-10-04)
+
+The twin (`compiler/benchmarks/android_counter_twin/`) has the counter app's package, classes, native methods, state file, and behavior (read, increment, write, `fdatasync`, close). It is built with `javac --release 11` + `d8 --release --min-api 28`, NDK r28c `clang -O2 -fPIC -shared` + `llvm-strip`, `aapt2`, `zipalign -P 16`, and a v2-only `apksigner` signature (build-tools 36.1.0, `android-35`). Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`bench_android_counter_twin.py`).
+
+| Bytes | XAX | Java + NDK | XAX / twin |
+|---|---:|---:|---:|
+| APK | 20,393 | 28,892 | 0.706 |
+| DEX (XAX: one per class) | 2,936 | 2,472 | 1.188 |
+| Manifest | 1,132 | 1,736 | 0.652 |
+| Native library (XAX: packed container, no `libdl.so`) | 2,328 | 4,608 | 0.505 |
+| `xaxOnCreate` / `xaxOnClick` code | 128 / 168 | 96 / 132 | 1.33 / 1.27 |
+
+The native functions were 224 and 324 bytes before ADR-154 put heap access on the AArch64 register path. Start-up time and memory need arm64 hardware: `bench_android_counter_twin.py --device` measures cold-start `TotalTime` and total PSS, and an emulator run of it (recorded in the same evidence file with `hardware: false`) only shows that the harness works.

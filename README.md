@@ -146,7 +146,7 @@ sudo python compiler/integration/android/make_android_root.py
 curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y   # rustc twins for the multi-language benchmark rule
 ```
 
-What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest), and the physical-device Android scripts in [`compiler/integration/android/`](compiler/integration/android/README.md), which need `adb` and an arm64 device or emulator (`XAX_ANDROID_RUNTIME=1`).
+What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest). The Android device oracles in [`compiler/integration/android/`](compiler/integration/android/README.md) need `adb` and a target that runs arm64 code: a device, or an x86_64 Android emulator image with ARM translation (that README explains how to run one even without KVM). Emulator runs are correctness evidence only.
 
 AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
 

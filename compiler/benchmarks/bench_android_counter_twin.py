@@ -48,6 +48,7 @@ WARMUP = int(os.environ.get("XAX_TWIN_WARMUP", 3))
 RUNS = int(os.environ.get("XAX_TWIN_RUNS", 16))
 PASSES = 2
 UI_TIMEOUT = int(os.environ.get("XAX_UI_TIMEOUT", 60))
+TAP_RETRY = int(os.environ.get("XAX_TAP_RETRY", 0))  # as in validate_counter_apk.sh
 SIZE_KEYS = ("apk_bytes", "dex_bytes", "manifest_bytes", "native_library_bytes")
 
 
@@ -91,10 +92,15 @@ def _clicks_work() -> bool:
     size = _adb("shell", "wm", "size").strip().splitlines()[-1].split()[-1]
     width, height = (int(item) for item in size.split("x"))
     _adb("shell", "input", "tap", str(width // 2), str(height // 2))
+    retry_at = time.monotonic() + TAP_RETRY if TAP_RETRY else None
     while time.monotonic() < deadline:
         shown = _shown_count()
         if shown is not None and shown != before:
             return shown == before + 1
+        if retry_at is not None and time.monotonic() >= retry_at and shown == before:
+            # A lost tap leaves the count unchanged; a late duplicate overshoots and fails.
+            _adb("shell", "input", "tap", str(width // 2), str(height // 2))
+            retry_at = time.monotonic() + TAP_RETRY
         time.sleep(2)
     return False
 

@@ -898,3 +898,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Android row: `practical_application` EXECUTED, level R3. Correctness evidence only; arm64 hardware is still wanted, and start-up and memory against the twin need it.
 - Full suite: **1,096 passed, 5 skipped**.
 - The host has no KVM: the run needed `ro.hw_timeout_multiplier=20` (Android 12+), a JDWP connection on `system_server`, and hidden error dialogs (`compiler/integration/android/README.md`). The oracle now reads the state file correctly on non-debuggable builds and can retry a lost tap.
+
+## Android twin harness checked on the emulator (2026-10-04, ADR-153)
+
+- `bench_android_counter_twin.py --device` ran end to end on the API 32 emulator (`XAX_TWIN_RUNS=4`, `XAX_TWIN_WARMUP=1`): both apps installed, launched, and passed the click check, and every launch was tracked. Recorded with `hardware: false`; the timings and PSS there are not evidence. The run found and fixed four harness problems (dumpsys's 10 s limit, untracked launches, install races, lost taps).
+- Size comparison recorded in `XAX_BENCHMARKS.md` §15.15.
