@@ -568,9 +568,9 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; executed on HotSpot, Collatz kernel at 1.03–1.04× the `javac` twin; scalar subset only.",
-      "level": "R2",
-      "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112); no XAX runtime classes",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory, and the R3 application `jsonmin` runs on HotSpot at 1.18× the `javac` twin's process time; Collatz kernel at 1.03–1.04×.",
+      "level": "R3",
+      "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
         "semantic_expressibility": [
           "EXECUTED",
@@ -618,21 +618,29 @@
         ],
         "performance": [
           "MEASURED",
-          "compiler/benchmarks/jvm_twin_evidence.json"
+          "compiler/benchmarks/jvm_twin_evidence.json",
+          "compiler/benchmarks/jvm_jsonmin_evidence.json"
         ],
         "memory": [
           "MEASURED",
-          "compiler/benchmarks/jvm_twin_evidence.json"
+          "compiler/benchmarks/jvm_twin_evidence.json",
+          "compiler/benchmarks/jvm_jsonmin_evidence.json"
         ],
         "code_size": [
           "MEASURED",
-          "compiler/benchmarks/jvm_twin_evidence.json"
+          "compiler/benchmarks/jvm_twin_evidence.json",
+          "compiler/benchmarks/jvm_jsonmin_evidence.json"
+        ],
+        "practical_application": [
+          "EXECUTED",
+          "compiler/tests/test_jsonmin.py",
+          "compiler/benchmarks/jvm_jsonmin_evidence.json"
         ]
       },
       "blockers": [
-        "no practical application yet (R3): scalar subset only - no linear memory, aggregates, sums, or indirect calls (recursion executes, ADR-125) on this target",
+        "linear memory (ADR-156) is one byte[] with int offsets: freed blocks are never reused, at most 2^31 - 1 bytes; no stack allocations, aggregates, sums, or indirect calls on this target",
         "JVM objects only arrive as foreign results: no object/array/string construction, no JVM-to-XAX callbacks (interfaces)",
-        "collatz kernel 1.03-1.04x javac on the same HotSpot; class file 1.51x javac because block parameters are not coalesced (OI-35)",
+        "jsonmin 1.18x the javac twin's process wall time and 8.9x its class bytes (every local typed method-wide, multi-byte accesses through helper calls); collatz kernel 1.03-1.04x javac, class 1.51x (block parameters not coalesced, OI-35); no competitive verdict, so no R4",
         "no classfile metadata importer: java.base declarations are hand-written (OI-32)"
       ]
     },

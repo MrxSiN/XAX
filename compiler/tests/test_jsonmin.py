@@ -130,5 +130,46 @@ class JsonminAarch64Tests(unittest.TestCase):
             self.assertEqual((completed.returncode, completed.stdout, completed.stderr), reference_jsonmin(data))
 
 
+@unittest.skipUnless(__import__("shutil").which("java"), "requires a JVM")
+class JsonminJvmTests(unittest.TestCase):
+    """The same program on the JVM's linear memory (ADR-156): the JVM row's R3 application."""
+
+    @classmethod
+    def setUpClass(cls):
+        from xax_jvm import compile_jvm_bound_target
+
+        cls.program = build_jsonmin("jvm")
+        cls.image = compile_jvm_bound_target(cls.program.reader, cls.program.entry.cid, cls.program.target, process_entry=True)
+
+    def _run(self, data: bytes):
+        from xax_jvm import run_jvm_jar
+
+        completed = run_jvm_jar(self.image, stdin=data)
+        return completed.returncode, completed.stdout, completed.stderr
+
+    def test_jar_is_deterministic_and_uses_only_java_base(self):
+        from xax_jvm import compile_jvm_bound_target
+
+        program = build_jsonmin("jvm")
+        self.assertEqual(compile_jvm_bound_target(program.reader, program.entry.cid, program.target, process_entry=True).jar, self.image.jar)
+        self.assertNotIn(b"xax/jvm/Memory", self.image.class_bytes)  # the package is generated into the class
+
+    def test_cases_match_the_reference(self):
+        for data in CASES:
+            with self.subTest(data=data[:40]):
+                self.assertEqual(self._run(data), reference_jsonmin(data))
+
+    def test_generated_documents_and_mutations_match_the_reference(self):
+        rng = random.Random(7)
+        corpus = [benchmark_document(rng.randrange(50, 3000), seed=seed) for seed in range(6)]
+        inputs = corpus + [mutation for document in corpus for mutation in _mutations(rng, document, 8)]
+        for data in inputs:
+            self.assertEqual(self._run(data), reference_jsonmin(data), data[:80])
+
+    def test_input_over_capacity_exits_2(self):
+        self.assertEqual(self._run(b" " * (CAPACITY + 1)), (EXIT_TOO_LARGE, b"", b""))
+        self.assertEqual(self._run(b" " * (CAPACITY - 1) + b"0")[0], EXIT_OK)
+
+
 if __name__ == "__main__":
     unittest.main()

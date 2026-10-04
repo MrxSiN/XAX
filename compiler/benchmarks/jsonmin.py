@@ -356,7 +356,13 @@ class JsonminProgram:
 
 
 def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
-    if arch == "aarch64":
+    if arch == "jvm":
+        # ADR-156: the same program over the JVM's linear memory and standard streams.
+        from xax_compiler import jvm_classfile_memory_target
+        from xax_jvm import jvm_memory_api
+
+        api, target = jvm_memory_api(), jvm_classfile_memory_target()
+    elif arch == "aarch64":
         from xax_compiler import aarch64_linux_exec_target
         from xax_linux_aarch64 import linux_aarch64_api
 
@@ -457,8 +463,13 @@ def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
     for name, extent in (("i", INPUT_EXTENT), ("o", CAPACITY + 1)):
         _result, proc[name + "m"] = proc.op(Operation.CALL_FOREIGN, (proc[name + "p"], proc[name + "v"], proc[name + "m"]), (B64, MEM), entity=api.munmap_view(BYTES, extent))
     process = proc.op1(Operation.CALL_FOREIGN, (proc["code"], proc["proc"]), api.process_effect, entity=api.exit_group)
-    proc.ret(proc["code"], process, proc["fs"], proc["im"], proc["om"])
-    entry = proc.function((B32, api.process_effect, api.filesystem_effect, MEM, MEM))
+    if arch == "jvm":
+        # A JVM process entry returns only proof values; the status left with the exit call.
+        proc.ret(process, proc["fs"], proc["im"], proc["om"])
+        entry = proc.function((api.process_effect, api.filesystem_effect, MEM, MEM))
+    else:
+        proc.ret(proc["code"], process, proc["fs"], proc["im"], proc["om"])
+        entry = proc.function((B32, api.process_effect, api.filesystem_effect, MEM, MEM))
     objects = (*api.types, *proc.graph.objects.values(), *group_objects, value, *h.objects, B64)
     reader = program_store(entry, target, objects)
     return JsonminProgram(reader, entry, target)

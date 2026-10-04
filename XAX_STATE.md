@@ -37,7 +37,7 @@ Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, jvm, linux-aarch64; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with B1–B4 natively on x86-64, and it lowers every native helper. Open (S7b): the driver's lowering structures and the exact rejection diagnostics, which still run in Python.
 
@@ -905,3 +905,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Size comparison recorded in `XAX_BENCHMARKS.md` §15.15.
 - Platform contracts: `validate_platform_contracts.sh` (the `XAX_ANDROID_RUNTIME=1` test) passed on the same emulator: the XAX library's own `open/write/read/close`, `pthread_create/join`, and loopback socket calls printed `XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1` under the Android 12L kernel, arm64 code translated (`android_platform_runtime_probe_evidence.json`, `hardware: false`). The Android oracle scripts were not executable in git, so that test could not have passed anywhere before; they are now.
 - Test coverage on this host: the default suite gives 1,096 passed and 5 skipped. Of the five, the Android runtime test passes with the emulator (`XAX_ANDROID_RUNTIME=1`) and the two opt-in self-hosting files pass with `XAX_FIXED_POINT=1` (7 tests, about 40 minutes). Only the two Windows-host PE runs cannot run here.
+
+## JVM linear memory and the JVM R3 application (2026-10-04, ADR-156)
+
+- `jvm-classfile-memory-v1`: linear memory as one `byte[]` with `int` pointers, the generated `xax/jvm/Memory` package (allocate, free, read, write), view-return elision, and a 256 MiB entry thread. `tests/test_xax_jvm_memory.py` (widths, floats, traps, profile rejection).
+- `jsonmin` runs unchanged on HotSpot (`build_jsonmin("jvm")`) and matches its reference on every test input; JVM row R3 (`practical_application` EXECUTED).
+- MEASURED against a `javac` twin on an 8 MiB document: 1.178× process wall time, 1.00× peak RSS, 8.9× class bytes (`jvm_jsonmin_evidence.json`, `XAX_BENCHMARKS.md` §15.16).
+- Full suite: **1,106 passed, 5 skipped**.

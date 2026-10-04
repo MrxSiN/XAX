@@ -1,0 +1,64 @@
+{
+  "format": "xax-jvm-jsonmin-evidence-v1",
+  "decision": "ADR-156",
+  "label": "MEASURED",
+  "workload": {
+    "name": "jsonmin",
+    "input_bytes": 8389905,
+    "output_bytes": 4307543,
+    "repetitions": 7,
+    "fresh_jvm_per_repetition": true
+  },
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "logical_cpus": 4,
+    "java": "openjdk version \"21.0.11\" 2026-04-21",
+    "javac": "javac 21.0.11",
+    "jvm_flags": "defaults"
+  },
+  "xax": {
+    "class_bytes": 33330,
+    "jar_bytes": 33692,
+    "process_wall_s": {
+      "median": 0.2284,
+      "min": 0.2035,
+      "max": 0.2607,
+      "stdev": 0.0168,
+      "samples": [
+        0.2284,
+        0.2201,
+        0.2035,
+        0.2607,
+        0.2217,
+        0.2326,
+        0.2427
+      ]
+    },
+    "peak_rss_kib": 989608
+  },
+  "javac": {
+    "class_bytes": 3730,
+    "process_wall_s": {
+      "median": 0.1939,
+      "min": 0.1737,
+      "max": 0.2125,
+      "stdev": 0.0117,
+      "samples": [
+        0.1939,
+        0.1834,
+        0.2125,
+        0.1968,
+        0.1957,
+        0.1824,
+        0.1737
+      ]
+    },
+    "peak_rss_kib": 989736
+  },
+  "ratio_xax_over_javac": {
+    "process_wall_median": 1.178,
+    "class_bytes": 8.936,
+    "peak_rss": 1.0
+  },
+  "notes": "Whole-process wall time of a fresh JVM per run (start-up included in both arms), interleaved. Outputs equal reference_jsonmin. Not a CPU/native comparison under XAX_BENCHMARKS.md section 15.0: the baseline is the same platform's own compiler."
+}

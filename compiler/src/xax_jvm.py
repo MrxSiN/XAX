@@ -48,6 +48,13 @@ from typing import Callable, Sequence
 from xax_artifact import ArtifactSemanticRange
 from xax_compiler import parse_function_graph
 from xax_compiler import (
+    ForeignAllocatorContract,
+    ForeignDeallocatorContract,
+    JVM_CLASSFILE_MEMORY_IDENTITY,
+    heap_owner_type,
+    heap_view_type,
+    memory_effect_type,
+    pointer_extent_from_graph,
     EffectDomain,
     FloatCompare,
     FloatFormat,
@@ -72,6 +79,7 @@ from xax_compiler import (
     _decode_function_interface,
     _decode_opaque_identity_type,
     _decode_pointer_type,
+    borrowed_view_returns,
     _float_raw_bits,
     _int_to_float,
     _is_erased_proof_function,
@@ -178,6 +186,82 @@ def java_base_api() -> JavaBaseApi:
     )
 
 
+# The generated memory package (ADR-156).  Declarations name this reserved class;
+# the backend implements its members as static methods of the generated class
+# itself (compiler-generated adapters, UR-001), never as a library on the class path.
+MEMORY_CLASS = b"xax/jvm/Memory"
+_MEMORY_MEMBERS = {
+    "alloc(J)I": "xax$alloc", "free(I)J": "xax$free", "read(IIJ)J": "xax$read", "write(IIJ)J": "xax$write",
+}
+# Offsets below this are never storage, so 0 is never a valid block address.
+_HEAP_START, _INITIAL_MEMORY = 16, 1 << 16
+
+
+@dataclass(frozen=True)
+class JvmMemoryApi:
+    """Linear memory, standard streams, and exit for ``jvm-classfile-memory-v1``.
+
+    The surface mirrors ``xax_linux.LinuxApi`` (``read``/``write`` on
+    descriptors 0, 1, 2 returning a count or ``-errno``; zero-filled anonymous
+    blocks; an explicit exit), so the same XAX program builds for both.
+    ``mmap_anonymous`` returns a fresh, zero-filled, 16-byte-aligned block of
+    the one ``byte[]`` memory, or 0 when the request exceeds 2^31 - 1 bytes.
+    Blocks are never reused (``munmap_view`` ends the view; the bytes stay
+    until the process exits).
+    """
+
+    b8: SemanticObject
+    b32: SemanticObject
+    b64: SemanticObject
+    bytes_rw: SemanticObject
+    bytes_read: SemanticObject
+    memory_effect: SemanticObject
+    filesystem_effect: SemanticObject
+    process_effect: SemanticObject
+    heap_owner: SemanticObject
+    read: SemanticObject
+    write: SemanticObject
+    mmap_anonymous: SemanticObject
+    exit_group: SemanticObject
+
+    def munmap_view(self, view_pointer: SemanticObject, extent: int) -> SemanticObject:
+        return foreign_function_symbol(
+            MEMORY_CLASS, b"free(I)J", (view_pointer, heap_view_type(extent), self.memory_effect), (self.b64, self.memory_effect),
+            abi=JVM_INVOKESTATIC_ABI, deallocator=ForeignDeallocatorContract(0, 1),
+        )
+
+    @property
+    def types(self) -> tuple[SemanticObject, ...]:
+        return (
+            self.b8, self.b32, self.b64, self.bytes_rw, self.bytes_read,
+            self.memory_effect, self.filesystem_effect, self.process_effect, self.heap_owner,
+        )
+
+    @property
+    def symbols(self) -> tuple[SemanticObject, ...]:
+        return (self.read, self.write, self.mmap_anonymous, self.exit_group)
+
+
+def jvm_memory_api() -> JvmMemoryApi:
+    b8, b32, b64 = bits_type(8), bits_type(32), bits_type(64)
+    bytes_rw = pointer_type(b8, Permission.READ_WRITE, 1, space=2)
+    bytes_read = pointer_type(b8, Permission.READ, 1, space=2)
+    memory = memory_effect_type()
+    filesystem = effect_type(EffectDomain.FILESYSTEM, 0)
+    process = effect_type(EffectDomain.SYSCALL, 0)
+    heap = heap_owner_type()
+    return JvmMemoryApi(
+        b8, b32, b64, bytes_rw, bytes_read, memory, filesystem, process, heap,
+        jvm_static(MEMORY_CLASS, b"read(IIJ)J", (b32, bytes_rw, b64, filesystem, memory), (b64, filesystem, memory)),
+        jvm_static(MEMORY_CLASS, b"write(IIJ)J", (b32, bytes_read, b64, filesystem, memory), (b64, filesystem, memory)),
+        foreign_function_symbol(
+            MEMORY_CLASS, b"alloc(J)I", (b64, memory), (bytes_rw, heap, memory),
+            abi=JVM_INVOKESTATIC_ABI, allocator=ForeignAllocatorContract((0,), 0, 1, _HEAP_START, True),
+        ),
+        jvm_static(b"java/lang/System", b"exit(I)V", (b32, process), (process,)),
+    )
+
+
 @dataclass(frozen=True)
 class JvmImage:
     jar: bytes
@@ -222,7 +306,9 @@ def _jvm_type(resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str
             identity = _decode_opaque_identity_type(element_object)
             if identity.startswith(REFERENCE_PREFIX):
                 return identity[len(REFERENCE_PREFIX):].decode("ascii")
-    fail("XAX.JVM.VALUE", where, "JVM-VALUE-REPRESENTABLE", "bits<=64, f32, f64, or jvm-ref", cid.hex())
+        else:
+            return "I"  # an offset into the linear memory (ADR-156)
+    fail("XAX.JVM.VALUE", where, "JVM-VALUE-REPRESENTABLE", "bits<=64, f32, f64, jvm-ref, or memory pointer", cid.hex())
 
 
 def _slots(descriptor: str) -> int:
@@ -266,6 +352,8 @@ _NARROW_WIDTH = {"Z": 1, "B": 8, "C": 16, "S": 16, "I": 32, "J": 64}
 
 def _descriptor_matches(jvm: str, resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str) -> bool:
     xax = _jvm_type(resolve, cid, where)
+    if resolve(cid).body[:1] == b"\x02" and xax == "I":
+        return jvm == "I"  # a memory pointer is an int offset (ADR-156)
     if jvm in _NARROW_WIDTH:
         return xax in ("I", "J") and _width(resolve, cid) == _NARROW_WIDTH[jvm]
     return xax == jvm
@@ -391,6 +479,7 @@ class _Method:
     lines: tuple[tuple[int, int], ...]  # (start pc, line)
     node_ranges: tuple[tuple[int, int, int, int, int], ...] = ()  # (block, node, line, start, end)
     function_cid: bytes | None = None
+    access: int = 0x0009  # public static
 
 
 class _Code:
@@ -465,8 +554,9 @@ def _function_closure(entry: SemanticObject, resolve, supported_operations, supp
 def _signature(function: SemanticObject, resolve) -> tuple[tuple[str, ...], tuple[str, ...]]:
     _graph, parameters, returns = _decode_function_interface(function, resolve)
     where = function.cid.hex()
+    elided = borrowed_view_returns(parameters, returns, resolve)  # views given back are the lent ones (ADR-101)
     machine_parameters = tuple(t for t in (_jvm_type(resolve, cid, where) for cid in parameters) if t is not None)
-    machine_returns = tuple(t for t in (_jvm_type(resolve, cid, where) for cid in returns) if t is not None)
+    machine_returns = tuple(t for t in (_jvm_type(resolve, cid, where) for index, cid in enumerate(returns) if index not in elided) if t is not None)
     if len(machine_returns) > 1:
         fail("XAX.JVM.ABI", where, "JVM-SINGLE-RESULT", "at most one machine result", list(machine_returns))
     return machine_parameters, machine_returns
@@ -483,7 +573,10 @@ def _compile_method(
     pool: _Pool,
     class_name: str,
     methods: dict[bytes, tuple[str, str]],
+    needs: set[str] | None = None,
 ) -> _Method:
+    """``needs`` collects the generated memory members this method uses (ADR-156)."""
+    needs = needs if needs is not None else set()
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph = parse_function_graph(function, resolve)
     where = graph_object.cid.hex()
@@ -670,6 +763,13 @@ def _compile_method(
             lconst(1 << 63)
             code.op(0x83)  # flip the sign bit: unsigned order becomes signed order
 
+    def get_zero_extended(ref: ValueRef, width: int) -> None:
+        """Push ``ref`` as a long holding its unsigned value (address and index arithmetic)."""
+        if get(ref) == "I":
+            code.op(0x85)
+            if width == 32:
+                lconst(0xFFFFFFFF); code.op(0x7F)
+
     def compare_to_int(node) -> str:
         """Push an int r in {-1, 0, 1} ordered like the operands; return the relation r must satisfy."""
         if node.operation == Operation.FLOAT_COMPARE:
@@ -722,6 +822,52 @@ def _compile_method(
             if condition.tag == 1 and condition.block == block_index and uses.get(condition) == 1:
                 if block.nodes[condition.index].operation in (Operation.INT_COMPARE, Operation.FLOAT_COMPARE):
                     fused.add(condition)
+
+    def memory_field() -> None:
+        code.op(0xB2); code.raw(_u2(pool.field(class_name, "M", "[B")))
+
+    def memory_access(load: bool, size: int, value_cid: bytes, value_ref, push_address, result_ref) -> None:
+        """Little-endian access of ``size`` bytes at the pushed address (ADR-156)."""
+        is_float = resolve(value_cid).body[:1] == b"\x07"
+        if load:
+            descriptor = slot_of[result_ref][1]
+            if size == 1:
+                memory_field(); push_address(); code.op(0x33); iconst(0xFF); code.op(0x7E)  # baload & 0xff
+                if descriptor == "J":
+                    code.op(0x85)
+            else:
+                needs.add(f"ld{size}")
+                push_address()
+                code.op(0xB8); code.raw(_u2(pool.method(class_name, f"xax$ld{size}", "(I)J" if size == 8 else "(I)I")))
+                if is_float:
+                    code.op(0xB8)
+                    code.raw(_u2(pool.method("java/lang/Float", "intBitsToFloat", "(I)F") if size == 4 else pool.method("java/lang/Double", "longBitsToDouble", "(J)D")))
+                elif descriptor == "J" and size != 8:
+                    code.op(0x85); lconst((1 << (8 * size)) - 1); code.op(0x7F)
+                elif descriptor == "I" and size == 8:
+                    code.op(0x88)
+            if not is_float:
+                mask(descriptor, _width(resolve, value_cid))
+            put(result_ref)
+            return
+        if size == 1:
+            memory_field(); push_address()
+            if get(value_ref) == "J":
+                code.op(0x88)
+            code.op(0x54)  # bastore keeps the low byte
+            return
+        needs.add(f"st{size}")
+        push_address()
+        descriptor = get(value_ref)
+        if descriptor == "F":
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Float", "floatToRawIntBits", "(F)I")))
+        elif descriptor == "D":
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Double", "doubleToRawLongBits", "(D)J")))
+        elif size == 8 and descriptor == "I":
+            code.op(0x85)
+        elif size != 8 and descriptor == "J":
+            code.op(0x88)
+        code.op(0xB8); code.raw(_u2(pool.method(class_name, f"xax$st{size}", "(IJ)V" if size == 8 else "(II)V")))
 
     lines: list[tuple[int, int]] = []
     node_ranges: list[tuple[int, int, int, int, int]] = []
@@ -946,7 +1092,97 @@ def _compile_method(
                     callee_name, callee_descriptor = methods[node.entity.cid]
                     code.op(0xB8)
                     code.raw(_u2(pool.method(class_name, callee_name, callee_descriptor)))
-                    _store_call_result(node, block_index, node_index, slot_of, put)
+                    call_elided = borrowed_view_returns(node.operand_types, node.results, resolve)
+                    returned = [index for index in range(len(node.results)) if index not in call_elided and ValueRef.node_result(block_index, node_index, index) in slot_of]
+                    if len(returned) > 1:
+                        fail("XAX.JVM.ABI", where, "JVM-SINGLE-RESULT", "at most one machine result", len(returned))
+                    if returned:
+                        put(ValueRef.node_result(block_index, node_index, returned[0]))
+                    for result_index, parameter_index in sorted(call_elided.items()):
+                        get(node.operands[parameter_index]); put(ValueRef.node_result(block_index, node_index, result_index))
+
+            elif operation == Operation.HEAP_VIEW:
+                # The allocator contract is nullable; the view's non-null proof is an explicit trap.
+                trap_used = True
+                needs.add("memory")
+                get(node.operands[0]); code.branch(0x99, "trap")  # ifeq
+                get(node.operands[0]); put(result)
+
+            elif operation == Operation.ADDRESS_OFFSET:
+                get(node.operands[0]); iconst(node.attributes[0]); code.op(0x60); put(result)
+
+            elif operation == Operation.POINTER_CAST:
+                get(node.operands[0]); put(result)
+
+            elif operation == Operation.POINTER_ADDRESS:
+                get(node.operands[0])
+                if slot_of[result][1] == "J":
+                    code.op(0x85)  # offsets are below 2^31, so i2l is the zero extension
+                put(result)
+
+            elif operation == Operation.POINTER_REBASE:
+                # ADR-092: trap unless 0 <= address - view <= extent - window and the
+                # distance is a multiple of the result's alignment.
+                trap_used = True
+                view, address = node.operands
+                width = _width(resolve, node.operand_types[1])
+                span = pointer_extent_from_graph(graph, view, resolve) - node.attributes[0]
+                alignment = _decode_pointer_type(resolve(node.results[0]), resolve)[2]
+                get_zero_extended(address, width); get(view); code.op(0x85, 0x65)  # i2l; lsub
+                if alignment > 1:
+                    code.op(0x5C); lconst(alignment - 1); code.op(0x7F); lconst(0); code.op(0x94); code.branch(0x9A, "trap")
+                if span < 0:
+                    code.op(0x58); iconst(1); code.branch(0x9A, "trap")  # pop2; always traps
+                else:
+                    lconst(span)
+                    code.op(0xB8); code.raw(_u2(pool.method("java/lang/Long", "compareUnsigned", "(JJ)I")))
+                    code.branch(0x9D, "trap")  # ifgt
+                get_zero_extended(address, width); code.op(0x88); put(result)
+
+            elif operation in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                needs.add("memory")
+                checked = operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE)
+                load = operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE)
+                size = node.attributes[0]
+                pointer = node.operands[0]
+                value_cid = node.results[0] if load else node.operand_types[2 if checked else 1]
+                value_ref = None if load else node.operands[2 if checked else 1]
+                if size not in (1, 2, 4, 8):
+                    fail("XAX.JVM.MEMORY_WIDTH", where, "JVM-MEMORY-WIDTH", [1, 2, 4, 8], size)
+                if checked:
+                    trap_used = True
+                    index, index_width = node.operands[1], _width(resolve, node.operand_types[1])
+                    maximum = pointer_extent_from_graph(graph, pointer, resolve) - size
+                    if maximum < 0:
+                        iconst(1); code.branch(0x9A, "trap")  # always traps
+                    else:
+                        get_zero_extended(index, index_width); lconst(maximum)
+                        if index_width > 63:
+                            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Long", "compareUnsigned", "(JJ)I")))
+                        else:
+                            code.op(0x94)  # lcmp: both are non-negative longs
+                        code.branch(0x9D, "trap")  # ifgt
+
+                def push_address() -> None:
+                    get(pointer)
+                    if checked:
+                        if get(index) == "J":
+                            code.op(0x88)
+                        code.op(0x60)
+
+                memory_access(load, size, value_cid, value_ref, push_address, result if load else None)
+
+            elif operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).library == MEMORY_CLASS:
+                member = _foreign_member(node.entity, resolve)
+                key = member.name + member.descriptor
+                if key not in _MEMORY_MEMBERS:
+                    fail("XAX.JVM.FOREIGN", where, "JVM-MEMORY-MEMBER", sorted(_MEMORY_MEMBERS), key)
+                needs.update(("memory", key))
+                machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
+                slots = sum(_slots(get(operand)) for operand in machine)
+                max_call_slots = max(max_call_slots, slots)
+                code.op(0xB8); code.raw(_u2(pool.method(class_name, _MEMORY_MEMBERS[key], member.descriptor)))
+                _store_call_result(node, block_index, node_index, slot_of, put)
 
             elif operation == Operation.CALL_FOREIGN:
                 member = _foreign_member(node.entity, resolve)
@@ -974,7 +1210,8 @@ def _compile_method(
 
         terminator = block.terminator
         if terminator.kind == TerminatorKind.RETURN:
-            machine = [value for value, cid in zip(terminator.values, return_types) if value_type(cid) is not None]
+            own_elided = borrowed_view_returns(parameter_types, return_types, resolve)
+            machine = [value for index, (value, cid) in enumerate(zip(terminator.values, return_types)) if value_type(cid) is not None and index not in own_elided]
             if machine:
                 descriptor = get(machine[0])
                 code.op(_RETURN[_kind_letter(descriptor)])
@@ -1060,6 +1297,180 @@ def _store_call_result(node, block_index: int, node_index: int, slot_of, put) ->
         put(ValueRef.node_result(block_index, node_index, machine[0]))
 
 
+def _memory_methods(pool: _Pool, class_name: str, needs: set[str]) -> list[_Method]:
+    """``<clinit>`` and the generated memory members a class uses (ADR-156).
+
+    ``M`` is the linear memory and ``H`` the next free offset.  Every member is
+    ordinary bytecode in the generated class: no class outside ``java.base``.
+    """
+    if "memory" not in needs:
+        return []
+    if "ld8" in needs:
+        needs.add("ld4")
+    if "st8" in needs:
+        needs.add("st4")
+    M, H = pool.field(class_name, "M", "[B"), pool.field(class_name, "H", "I")
+    out: list[_Method] = []
+
+    def method(name: str, descriptor: str, code: _Code, locals_: tuple[str, ...], max_locals: int) -> None:
+        blob, frames = code.finish()
+        out.append(_Method(name, descriptor, blob, 8, max_locals, frames, locals_ if frames else (), ()))
+
+    def get_static(code: _Code, index: int) -> None:
+        code.op(0xB2); code.raw(_u2(index))
+
+    def put_static(code: _Code, index: int) -> None:
+        code.op(0xB3); code.raw(_u2(index))
+
+    def int_const(code: _Code, value: int) -> None:
+        if -1 <= value <= 5:
+            code.op(0x03 + value)
+        elif -128 <= value <= 127:
+            code.op(0x10, value & 0xFF)
+        else:
+            code.op(0x13); code.raw(_u2(pool.integer(value)))
+
+    def long_const(code: _Code, value: int) -> None:
+        code.op(0x14); code.raw(_u2(pool.long(value)))
+
+    def call(code: _Code, owner: str, name: str, descriptor: str, opcode: int = 0xB8) -> None:
+        code.op(opcode); code.raw(_u2(pool.method(owner, name, descriptor)))
+
+    # <clinit>: M = new byte[64 KiB]; H = 16
+    code = _Code("clinit")
+    int_const(code, _INITIAL_MEMORY); code.op(0xBC, 8); put_static(code, M)
+    int_const(code, _HEAP_START); put_static(code, H)
+    code.op(0xB1)
+    method("<clinit>", "()V", code, (), 0)
+
+    if "alloc(J)I" in needs:
+        # locals: n (J, 0-1), a (I, 2), end (J, 3-4)
+        code = _Code("xax$alloc")
+        get_static(code, H); int_const(code, 15); code.op(0x60); int_const(code, -16); code.op(0x7E, 0x3D)  # a
+        code.op(0x1C, 0x85, 0x1E, 0x61, 0x42)  # end = (long) a + n
+        code.op(0x1E, 0x09, 0x94); code.branch(0x9B, "null")  # n < 0 (unsigned >= 2^63)
+        code.op(0x21); long_const(code, 0x7FFFFFFF); code.op(0x94); code.branch(0x9D, "null")  # end > 2^31 - 1
+        code.op(0x21); get_static(code, M); code.op(0xBE, 0x85, 0x94); code.branch(0x9E, "fits")
+        get_static(code, M); get_static(code, M); code.op(0xBE, 0x04, 0x78, 0x21, 0x88)  # M, 2 * |M|, (int) end
+        call(code, "java/lang/Math", "max", "(II)I"); call(code, "java/util/Arrays", "copyOf", "([BI)[B"); put_static(code, M)
+        code.mark("fits")
+        code.op(0x21, 0x88); put_static(code, H); code.op(0x1C, 0xAC)  # H = end; return a
+        code.mark("null")
+        code.op(0x03, 0xAC)
+        method("xax$alloc", "(J)I", code, ("J", "I", "J"), 5)
+    if "free(I)J" in needs:
+        # Blocks are never reused: the view ends, the bytes stay until exit.
+        code = _Code("xax$free")
+        code.op(0x09, 0xAD)
+        method("xax$free", "(I)J", code, (), 1)
+    if "read(IIJ)J" in needs:
+        # locals: fd (0), p (1), n (J, 2-3), count (4).  EOF is 0; fd != 0 is -EBADF.
+        code = _Code("xax$read")
+        code.op(0x03, 0x36, 4)
+        code.op(0x1A); code.branch(0x9A, "bad")
+        get_static(code, pool.field("java/lang/System", "in", "Ljava/io/InputStream;")); get_static(code, M); code.op(0x1B, 0x20)
+        long_const(code, 0x7FFFFFFF); call(code, "java/lang/Math", "min", "(JJ)J"); code.op(0x88)
+        call(code, "java/io/InputStream", "read", "([BII)I", 0xB6); code.op(0x36, 4)
+        code.op(0x15, 4); code.branch(0x9C, "got")  # ifge
+        code.op(0x09, 0xAD)
+        code.mark("got")
+        code.op(0x15, 4, 0x85, 0xAD)
+        code.mark("bad")
+        long_const(code, -9); code.op(0xAD)
+        method("xax$read", "(IIJ)J", code, ("I", "I", "J", "I"), 5)
+    if "write(IIJ)J" in needs:
+        # locals: fd (0), p (1), n (J, 2-3), stream (4).  fd 1 is System.out, 2 System.err.
+        stream = "Ljava/io/PrintStream;"
+        code = _Code("xax$write")
+        code.op(0x01, 0x3A, 4)
+        code.op(0x1A, 0x04); code.branch(0xA0, "not-out")  # if_icmpne
+        get_static(code, pool.field("java/lang/System", "out", stream)); code.op(0x3A, 4); code.branch(0xA7, "go")
+        code.mark("not-out")
+        code.op(0x1A, 0x05); code.branch(0xA0, "bad")
+        get_static(code, pool.field("java/lang/System", "err", stream)); code.op(0x3A, 4)
+        code.mark("go")
+        code.op(0x19, 4); get_static(code, M); code.op(0x1B, 0x20, 0x88)
+        call(code, "java/io/PrintStream", "write", "([BII)V", 0xB6)
+        code.op(0x19, 4); call(code, "java/io/PrintStream", "flush", "()V", 0xB6)
+        code.op(0x20, 0xAD)
+        code.mark("bad")
+        long_const(code, -9); code.op(0xAD)
+        method("xax$write", "(IIJ)J", code, ("I", "I", "J", stream), 5)
+    for size in (2, 4):
+        if f"ld{size}" in needs:
+            code = _Code(f"xax$ld{size}")
+            for k in range(size):
+                get_static(code, M); code.op(0x1A)
+                if k:
+                    int_const(code, k); code.op(0x60)
+                code.op(0x33); int_const(code, 0xFF); code.op(0x7E)
+                if k:
+                    int_const(code, 8 * k); code.op(0x78, 0x80)  # ishl; ior
+            code.op(0xAC)
+            method(f"xax$ld{size}", "(I)I", code, (), 1)
+        if f"st{size}" in needs:
+            code = _Code(f"xax$st{size}")
+            for k in range(size):
+                get_static(code, M); code.op(0x1A)
+                if k:
+                    int_const(code, k); code.op(0x60)
+                code.op(0x1B)
+                if k:
+                    int_const(code, 8 * k); code.op(0x7C)  # iushr
+                code.op(0x54)
+            code.op(0xB1)
+            method(f"xax$st{size}", "(II)V", code, (), 2)
+    if "ld8" in needs:
+        code = _Code("xax$ld8")
+        code.op(0x1A); call(code, class_name, "xax$ld4", "(I)I"); code.op(0x85); long_const(code, 0xFFFFFFFF); code.op(0x7F)
+        code.op(0x1A, 0x07, 0x60); call(code, class_name, "xax$ld4", "(I)I"); code.op(0x85); int_const(code, 32); code.op(0x79, 0x81, 0xAD)
+        method("xax$ld8", "(I)J", code, (), 1)
+    if "st8" in needs:
+        code = _Code("xax$st8")
+        code.op(0x1A, 0x1F, 0x88); call(code, class_name, "xax$st4", "(II)V")
+        code.op(0x1A, 0x07, 0x60, 0x1F); int_const(code, 32); code.op(0x7D, 0x88); call(code, class_name, "xax$st4", "(II)V")
+        code.op(0xB1)
+        method("xax$st8", "(IJ)V", code, (), 3)
+    return out
+
+
+# The memory profile's process entry runs on its own thread with this stack
+# (ADR-156): XAX recursion depth is the program's, and JVM frames are larger
+# than native ones, so the launcher's default 1 MiB stack is not the platform limit.
+ENTRY_STACK_BYTES = 256 << 20
+
+
+def _threaded_launcher(pool: _Pool, class_name: str, entry_name: str) -> list[_Method]:
+    """``main`` starts ``run`` on a thread with ``ENTRY_STACK_BYTES`` of stack and joins it.
+
+    ``run`` calls the entry and then sets ``D``; an entry that ended by an
+    uncaught throwable (a trap) leaves ``D`` clear, and ``main`` then exits
+    with status 1, as the launcher does for an uncaught exception in ``main``.
+    """
+    D = pool.field(class_name, "D", "I")
+    init = bytes((0x2A, 0xB7)) + _u2(pool.method("java/lang/Object", "<init>", "()V")) + bytes((0xB1,))
+    run = bytes((0xB8,)) + _u2(pool.method(class_name, entry_name, "()V")) + bytes((0x04, 0xB3)) + _u2(D) + bytes((0xB1,))
+    code = _Code("main")
+    thread = "java/lang/Thread"
+    code.op(0xBB); code.raw(_u2(pool.klass(thread))); code.op(0x59, 0x01)
+    code.op(0xBB); code.raw(_u2(pool.klass(class_name))); code.op(0x59, 0xB7); code.raw(_u2(pool.method(class_name, "<init>", "()V")))
+    code.op(0x13); code.raw(_u2(pool.string("xax-entry")))
+    code.op(0x14); code.raw(_u2(pool.long(ENTRY_STACK_BYTES)))
+    code.op(0xB7); code.raw(_u2(pool.method(thread, "<init>", "(Ljava/lang/ThreadGroup;Ljava/lang/Runnable;Ljava/lang/String;J)V")))
+    code.op(0x4C, 0x2B, 0xB6); code.raw(_u2(pool.method(thread, "start", "()V")))
+    code.op(0x2B, 0xB6); code.raw(_u2(pool.method(thread, "join", "()V")))
+    code.op(0xB2); code.raw(_u2(D)); code.branch(0x9A, "done")  # ifne
+    code.op(0x04, 0xB8); code.raw(_u2(pool.method("java/lang/System", "exit", "(I)V")))
+    code.mark("done")
+    code.op(0xB1)
+    blob, frames = code.finish()
+    return [
+        _Method("<init>", "()V", init, 1, 1, (), (), (), access=0x0001),
+        _Method("run", "()V", run, 2, 1, (), (), (), access=0x0001),
+        _Method("main", "([Ljava/lang/String;)V", blob, 8, 2, frames, ("[Ljava/lang/String;", "Ljava/lang/Thread;"), ()),
+    ]
+
+
 def _main_method(pool: _Pool, class_name: str, entry_name: str) -> _Method:
     code = bytes((0xB8,)) + _u2(pool.method(class_name, entry_name, "()V")) + bytes((0xB1,))
     return _Method("main", "([Ljava/lang/String;)V", code, 0, 1, (), (), ())
@@ -1090,18 +1501,24 @@ def _serialize_method(method: _Method, pool: _Pool) -> bytes:
         + _u2(0) + _u2(len(attributes)) + b"".join(attributes)
     )
     code_attribute = _u2(pool.utf8("Code")) + _u4(len(code_body)) + code_body
-    return _u2(0x0009) + _u2(pool.utf8(method.name)) + _u2(pool.utf8(method.descriptor)) + _u2(1) + code_attribute
+    return _u2(method.access) + _u2(pool.utf8(method.name)) + _u2(pool.utf8(method.descriptor)) + _u2(1) + code_attribute
 
 
-def _class_file(class_name: str, methods: Sequence[_Method], pool: _Pool) -> tuple[bytes, dict[str, int]]:
-    """Return the class bytes and the file offset of each method's code array."""
+def _class_file(
+    class_name: str, methods: Sequence[_Method], pool: _Pool, fields: Sequence[tuple[str, str]] = (), interfaces: Sequence[str] = (),
+) -> tuple[bytes, dict[str, int]]:
+    """Return the class bytes and the file offset of each method's code array.
+
+    ``fields`` are private static fields (name, descriptor)."""
     this_index = pool.klass(class_name)
+    interface_indices = b"".join(_u2(pool.klass(name)) for name in interfaces)
+    field_blobs = [_u2(0x000A) + _u2(pool.utf8(name)) + _u2(pool.utf8(descriptor)) + _u2(0) for name, descriptor in fields]
     super_index = pool.klass("java/lang/Object")
     source_name = pool.utf8("SourceFile")
     source_value = pool.utf8("XAX")
     method_blobs = [_serialize_method(method, pool) for method in methods]  # finalizes the pool
     head = b"\xca\xfe\xba\xbe" + _u2(0) + _u2(CLASS_MAJOR_VERSION) + _u2(pool.count) + bytes(pool.data)
-    head += _u2(0x0031) + _u2(this_index) + _u2(super_index) + _u2(0) + _u2(0) + _u2(len(method_blobs))
+    head += _u2(0x0031) + _u2(this_index) + _u2(super_index) + _u2(len(interfaces)) + interface_indices + _u2(len(field_blobs)) + b"".join(field_blobs) + _u2(len(method_blobs))
     code_offsets: dict[str, int] = {}
     cursor = len(head)
     for method, blob in zip(methods, method_blobs):
@@ -1161,10 +1578,18 @@ def compile_jvm_bound_target(
         name = "entry" if function.cid == entry.cid else f"f{index}"
         names[function.cid] = (name, _method_descriptor(*_signature(function, resolve)))
     pool = _Pool()
-    methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names) for function in functions]
-    if process_entry:
+    needs: set[str] = set()
+    methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names, needs) for function in functions]
+    if needs and target.identity != JVM_CLASSFILE_MEMORY_IDENTITY:
+        fail("XAX.JVM.TARGET", target_object.cid.hex(), "JVM-MEMORY-PROFILE", JVM_CLASSFILE_MEMORY_IDENTITY.decode(), target.identity.decode("ascii", "replace"))
+    methods.extend(_memory_methods(pool, class_name, needs))
+    threaded = process_entry and target.identity == JVM_CLASSFILE_MEMORY_IDENTITY
+    if threaded:
+        methods.extend(_threaded_launcher(pool, class_name, "entry"))
+    elif process_entry:
         methods.append(_main_method(pool, class_name, "entry"))
-    class_bytes, code_offsets = _class_file(class_name, methods, pool)
+    fields = ((("M", "[B"), ("H", "I")) if needs else ()) + ((("D", "I"),) if threaded else ())
+    class_bytes, code_offsets = _class_file(class_name, methods, pool, fields, ("java/lang/Runnable",) if threaded else ())
     jar, class_offset = _jar(class_name, class_bytes, process_entry)
     entry_offset = class_offset + code_offsets["entry"]
     ranges: list[ArtifactSemanticRange] = []
@@ -1295,7 +1720,7 @@ def run_jvm_calls(
     return tuple(_decode(line, result_kind, result_width) for line in completed.stdout.splitlines())
 
 
-def run_jvm_jar(image: JvmImage, *, timeout: float = 120.0, java: str | None = None) -> subprocess.CompletedProcess:
+def run_jvm_jar(image: JvmImage, *, timeout: float = 120.0, java: str | None = None, stdin: bytes | None = None) -> subprocess.CompletedProcess:
     """Run the JAR with ``java -jar`` (the platform launcher); returns the completed process."""
     java = java or shutil.which("java")
     if not java:
@@ -1306,4 +1731,4 @@ def run_jvm_jar(image: JvmImage, *, timeout: float = 120.0, java: str | None = N
             handle.write(image.jar)
         # The host's JAVA_TOOL_OPTIONS banner would otherwise appear on stderr.
         env = {key: value for key, value in os.environ.items() if key != "JAVA_TOOL_OPTIONS"}
-        return subprocess.run([java, "-jar", jar], capture_output=True, timeout=timeout, check=False, env=env)
+        return subprocess.run([java, "-jar", jar], input=stdin, capture_output=True, timeout=timeout, check=False, env=env)

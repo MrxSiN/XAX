@@ -819,3 +819,14 @@ The twin (`compiler/benchmarks/android_counter_twin/`) has the counter app's pac
 | `xaxOnCreate` / `xaxOnClick` code | 128 / 168 | 96 / 132 | 1.33 / 1.27 |
 
 The native functions were 224 and 324 bytes before ADR-154 put heap access on the AArch64 register path. Start-up time and memory need arm64 hardware: `bench_android_counter_twin.py --device` measures cold-start `TotalTime` and total PSS, and an emulator run of it (recorded in the same evidence file with `hardware: false`) only shows that the harness works.
+
+### 15.16 `jsonmin` on the JVM: XAX vs a `javac` twin (ADR-156; MEASURED, 2026-10-04)
+
+Host: Intel Xeon @ 2.80 GHz, 4 logical CPUs, Linux x86-64 (shared container); OpenJDK 21, default flags. Workload: `benchmark_document(8 MiB, seed=1)`; both arms must print `reference_jsonmin`'s output. Each run is a fresh JVM (whole-process wall time, start-up included in both arms); 7 runs per arm, interleaved. The twin is a line-for-line Java port of `jsonmin_c/jsonmin.c` (`javac --release 17`). Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json` (`bench_jvm_jsonmin.py`).
+
+| Arm | Median wall | Peak RSS | Class bytes |
+|---|---:|---:|---:|
+| XAX (`jvm-classfile-memory-v1`) | 0.228 s | 1.00× | 8.9× |
+| `javac` twin | 0.194 s | 1.00× | 1.00× |
+
+XAX / twin wall time: 1.178. This compares the same platform's own compiler, not a CPU/native comparison under §15.0, so it carries no competitive verdict. The class-size gap comes from method-wide typed locals and helper calls for multi-byte accesses (ADR-156 limits).

@@ -1039,7 +1039,7 @@ The goal is not "faster than assembly"; it is:
     minimize selected target cost
     subject to exact semantics
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, jvm, linux-aarch64; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 History: Linux x86-64 reached R3 with `jsonmin`, a validating JSON minifier that recurses through a recursion group (ADR-126), and R4 after ADR-147/148, when all three Linux workloads came within 1.05× of the fastest of gcc, clang, and rustc on one shared host (`XAX_BENCHMARKS.md` §15.14). R4 needs an explicit `competitive` verdict that cites multi-language evidence. Emulator and software-device execution (QEMU, Unicorn, llvmpipe) count as EXECUTED for correctness, never as performance evidence, and each such row lists "not hardware" as a blocker (ADR-114).
 

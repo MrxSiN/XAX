@@ -1143,6 +1143,25 @@ def jvm_classfile_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# JVM class file with linear memory (ADR-156): the v1 subset plus heap views,
+# plain and checked loads/stores, address offsets, pointer casts, addresses, and
+# rebases over one ``byte[]`` whose ``int`` offsets are the pointers.
+JVM_CLASSFILE_MEMORY_IDENTITY = b"jvm-classfile-memory-v1"
+JVM_MEMORY_OPERATIONS = (*JVM_OPERATIONS, 8, 9, 10, 38, 39, 56, 61, 66, 73)
+
+
+def jvm_classfile_memory_target() -> SemanticObject:
+    """``jvm-classfile-v1`` plus linear memory; heap blocks come from the generated ``xax/jvm/Memory`` package."""
+    operations = tuple(sorted(set(JVM_MEMORY_OPERATIONS)))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(JVM_CLASSFILE_MEMORY_IDENTITY)) + JVM_CLASSFILE_MEMORY_IDENTITY)
+    for value in (1, JVM_ARCHITECTURE, JVM_ABI, JVM_JAR_FORMAT, 64, 64):
+        body.extend(uleb(value))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 # RISC-V RV64IM bare-metal raw image (ADR-113): LP64 integer convention,
 # position-independent code, no runtime.  The register convention is fixed by
 # the identity, so the profile carries no register lists.
