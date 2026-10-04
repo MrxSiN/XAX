@@ -108,7 +108,8 @@
           "EXECUTED",
           "compiler/integration/android/activity_after_click.png",
           "compiler/benchmarks/android_bionic_qemu_evidence.json",
-          "compiler/benchmarks/android_art_execute_evidence.json"
+          "compiler/benchmarks/android_art_execute_evidence.json",
+          "compiler/benchmarks/android_platform_runtime_probe_evidence.json"
         ],
         "ffi": [
           "EXECUTED",
@@ -161,7 +162,7 @@
       "blockers": [
         "stateful app (ADR-111/153/154) executed only on an Android 12L x86_64 emulator under software emulation, with the arm64 library run through ARM translation (libndk_translation), not on arm64 hardware (OI-44); correctness evidence only",
         "minimal Activity executed on a device; libxposed modules executed on ART with a stand-in framework (ADR-109), not yet under LSPosed in a target process; the packed container has run only on the emulator (counter app), not on a device",
-        "native contracts executed under Android's linker and bionic via qemu-user (ADR-106), not on a device kernel",
+        "native file/thread/socket contracts executed under Android's linker and bionic via qemu-user (ADR-106) and on an Android 12L emulator kernel through ARM translation (ADR-155), not on a device",
         "start-up latency and memory against Java + NDK twins need an arm64 hardware device (harness: bench_android_counter_twin.py --device, ADR-153); sizes are measured (packed minimal APK 0.79x its twin, counter APK 0.706x its twin)",
         "one DEX per class costs 1.17x the twin's DEX bytes (an edit-locality choice)"
       ]
