@@ -8,7 +8,7 @@
   "format": "xax-android-counter-twin-evidence-v1",
   "java_ndk": {
     "apk_bytes": 28892,
-    "apk_sha256": "0d73fc14645ed20af20a457015994b2efe20b716ec9726e185c9ecbd770cb224",
+    "apk_sha256": "3e0f87e77ef2bf8ff71385767dcba858e98b52ec6b672b2b63f397b2edc9602b",
     "badging": [
       "package: name='xax.counter' versionCode='1' versionName=''",
       "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
@@ -36,8 +36,8 @@
     "ndk": "28.2.13676358"
   },
   "xax": {
-    "apk_bytes": 20649,
-    "apk_sha256": "7e5afccd00204d348f9197b266ba83598cd074d91db6028bfab795eed3a07d08",
+    "apk_bytes": 20393,
+    "apk_sha256": "3f228494aedb7af4027ced20b663a77a24e22c03bb9ff476e0abf8eb9016c3bc",
     "badging": [
       "package: name='xax.counter' versionCode='1' versionName=''",
       "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
@@ -49,18 +49,18 @@
     ],
     "manifest_bytes": 1132,
     "native_function_bytes": {
-      "Java_xax_counter_CounterActivity_xaxOnCreate": 224,
-      "Java_xax_counter_CounterClickListener_xaxOnClick": 324
+      "Java_xax_counter_CounterActivity_xaxOnCreate": 128,
+      "Java_xax_counter_CounterClickListener_xaxOnClick": 168
     },
-    "native_library_bytes": 2584,
+    "native_library_bytes": 2328,
     "native_needed": [
       "libc.so"
     ]
   },
   "xax_over_java_ndk": {
-    "apk_bytes": 0.715,
+    "apk_bytes": 0.706,
     "dex_bytes": 1.188,
     "manifest_bytes": 0.652,
-    "native_library_bytes": 0.561
+    "native_library_bytes": 0.505
   }
 }

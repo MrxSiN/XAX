@@ -600,6 +600,8 @@ def _cset_compare(destination: int, comparison: IntCompare) -> int:
 _REGISTER_PATH_OPERATIONS = frozenset({
     Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.CONSTANT, Operation.INT_COMPARE,
     Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, Operation.FUNCTION_ADDRESS,
+    # Heap memory (ADR-154): a null-checked heap view and full-width loads/stores through it.
+    Operation.HEAP_VIEW, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE,
 })
 
 
@@ -644,6 +646,11 @@ def _register_path_eligible(graph, parameters, returns, resolve: Callable[[bytes
                     return False
             elif not all(scalar(cid) for cid in (*node.operand_types, *node.results)):
                 return False
+            if node.operation in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE):
+                # Full-width accesses only: the loaded or stored value is the whole access.
+                value_type = node.results[0] if node.operation == Operation.LOAD_BITS_LE else node.operand_types[1]
+                if decode_bits_width(resolve(value_type)) != 8 * node.attributes[0]:
+                    return False
             if node.operation in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT):
                 machine = [cid for cid in node.operand_types if not _is_proof_type(resolve(cid))]
                 if len(machine) > 8 + (node.operation == Operation.CALL_INDIRECT):
@@ -2274,22 +2281,59 @@ def _compile_function(
                 if result not in last_use:
                     release_value(result)
 
+            elif node.operation == Operation.HEAP_VIEW:
+                # The allocator contract is nullable; the view's non-null proof is
+                # backed by an explicit trap, as on the frame path (ADR-154).
+                raw = node.operands[0]
+                raw_register = ensure_register(raw, node_index)
+                if assembler is not None:
+                    nonnull = f"heap-view-nonnull-{block_index}-{node_index}"
+                    assembler.cbnz(raw_register, nonnull)
+                    emit(_brk(_BRK_NULL_HEAP))
+                    assembler.label(nonnull)
+                if last_use.get(raw, -1) == node_index:
+                    release_value(raw)
+                    bind_register(result, raw_register)
+                else:
+                    destination_register = acquire_register(node_index, {raw})
+                    emit(_move_register(destination_register, raw_register, 64))
+                    bind_register(result, destination_register)
+                if result not in last_use:
+                    release_value(result)
+
             elif node.operation == Operation.STORE_BITS_LE:
                 width = node.attributes[0] * 8
                 if width not in (8, 16, 32, 64):
                     fail("XAX.AARCH64.MEMORY_WIDTH", graph_object.cid.hex(), "AARCH64-MEMORY-WIDTH", [8, 16, 32, 64], width)
-                value = node.operands[1]
-                register = ensure_register(value, node_index)
-                emit(_exact_memory_load_store(False, register, pointers[node.operands[0]], width))
-                if last_use.get(value, -1) == node_index:
-                    release_value(value)
+                pointer, value = node.operands[:2]
+                if pointer in pointers:
+                    register = ensure_register(value, node_index)
+                    emit(_exact_memory_load_store(False, register, pointers[pointer], width))
+                else:
+                    # A heap pointer in a register (ADR-154).
+                    base_register = ensure_register(pointer, node_index)
+                    register = ensure_register(value, node_index, {pointer})
+                    emit(_base_access(False, register, base_register, 0, width // 8))
+                for operand in {pointer, value}:
+                    if operand in widths and last_use.get(operand, -1) == node_index:
+                        release_value(operand)
 
             elif node.operation == Operation.LOAD_BITS_LE:
                 width = node.attributes[0] * 8
                 if width not in (8, 16, 32, 64):
                     fail("XAX.AARCH64.MEMORY_WIDTH", graph_object.cid.hex(), "AARCH64-MEMORY-WIDTH", [8, 16, 32, 64], width)
-                destination_register = acquire_register(node_index)
-                emit(_exact_memory_load_store(True, destination_register, pointers[node.operands[0]], width))
+                pointer = node.operands[0]
+                if pointer in pointers:
+                    destination_register = acquire_register(node_index)
+                    emit(_exact_memory_load_store(True, destination_register, pointers[pointer], width))
+                else:
+                    base_register = ensure_register(pointer, node_index)
+                    if last_use.get(pointer, -1) == node_index:
+                        release_value(pointer)
+                        destination_register = base_register
+                    else:
+                        destination_register = acquire_register(node_index, {pointer})
+                    emit(_base_access(True, destination_register, base_register, 0, width // 8))
                 bind_register(result, destination_register)
                 if result not in last_use:
                     release_value(result)

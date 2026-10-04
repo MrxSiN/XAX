@@ -1,5 +1,5 @@
 {
-  "apk_sha256": "7e5afccd00204d348f9197b266ba83598cd074d91db6028bfab795eed3a07d08",
+  "apk_sha256": "3f228494aedb7af4027ced20b663a77a24e22c03bb9ff476e0abf8eb9016c3bc",
   "art_verify": {
     "classes": {
       "Lxax/counter/CounterActivity;": "Verified",
@@ -38,8 +38,8 @@
   },
   "sizes": {
     "activity_dex": 1656,
-    "library": 2584,
+    "library": 2328,
     "listener_dex": 1280,
-    "signed": 20649
+    "signed": 20393
   }
 }

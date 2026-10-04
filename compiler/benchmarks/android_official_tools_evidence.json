@@ -1,7 +1,7 @@
 {
   "apks": {
     "android_counter_activity.apk": {
-      "bytes": 20649,
+      "bytes": 20393,
       "checks": {
         "aapt2_badging": true,
         "apksigner": true,
@@ -15,7 +15,7 @@
         "zipalign_16k": true
       },
       "passed": true,
-      "sha256": "7e5afccd00204d348f9197b266ba83598cd074d91db6028bfab795eed3a07d08",
+      "sha256": "3f228494aedb7af4027ced20b663a77a24e22c03bb9ff476e0abf8eb9016c3bc",
       "signed": true
     },
     "android_libxposed_argument_fixture.apk": {

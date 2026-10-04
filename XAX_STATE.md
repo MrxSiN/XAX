@@ -884,3 +884,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - `validate_counter_apk.sh` polls the UI with a timeout; `android_counter_app.py --device` records the target and whether it is hardware.
 - Android row: still R2. The device run of the stateful app is still outstanding.
 - Full suite: **1,094 passed, 5 skipped** (the same host-bound five).
+
+## AArch64 register path: heap views and heap loads/stores (2026-10-04, ADR-154)
+
+- General AArch64 functions with null-checked heap views and full-width heap loads/stores now stay on the register path. A 40-program heap corpus matches its mirror under bionic (160 results); the ADR-110 corpus is unchanged.
+- The counter's callbacks shrink from 224/324 to 128/168 bytes (clang twin 96/132); APK 20,393 bytes, 0.706× the Java + NDK twin. No other committed artifact changes.
+- Full suite: **1,096 passed, 5 skipped** (the counter APK pin was the only failure before regenerating it).
+- Emulator: the API 30 x86_64 image runs arm64 code through ARM translation, but without KVM an arm64 app misses Android 11's fixed 10-second process-attach deadline, so the counter did not launch there (`compiler/integration/android/README.md`). The device run is still outstanding.

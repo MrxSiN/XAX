@@ -75,3 +75,39 @@ The script requires `adb`, `ANDROID_NDK_HOME`, and an arm64-v8a Android device o
 emulator. Success is recorded only after the device process prints
 `XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1`; the evidence JSON remains
 explicitly `executed: false` on hosts where that environment is unavailable.
+
+## Running the oracles without a device: x86_64 emulator with ARM translation
+
+The oracles need an `adb` target that advertises `arm64-v8a`. Without a device,
+the Android 11 (API 30) `google_apis` x86_64 system image runs arm64 libraries
+through its built-in ARM translation (`ro.dalvik.vm.native.bridge=libndk_translation.so`).
+The AOSP `default` image has no translation, and the emulator refuses arm64
+images on x86_64 hosts. A run on this image is correctness evidence only: the
+XAX library executes under binary translation, not on arm64 hardware, so it is
+never performance or memory evidence (`XAX_SPEC.md` §21.2, OI-44).
+
+```bash
+sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64"
+# AVD config.ini: abi.type=x86_64, image.sysdir.1=system-images/android-30/google_apis/x86_64/
+emulator -avd <name> -no-window -no-audio -no-snapshot -no-boot-anim -no-metrics \
+    -gpu swiftshader_indirect -memory 3072 -cores 4 [-accel off]
+```
+
+With hardware virtualization (`/dev/kvm`) this is an ordinary emulator. Without
+it (`-accel off`, software emulation) the framework is so slow that its own
+timeouts fire, so a host without KVM also needs:
+
+- a debugger attached to `system_server`: Android's watchdog does not kill a process
+  that is being debugged. A bare JDWP handshake through `adb forward tcp:<port>
+  jdwp:<pid>` is enough; `jdb` is not, because it suspends the VM on uncaught exceptions;
+- `settings put secure anr_show_background 1`, so background ANRs (for example the
+  network stack's, which takes `system_server` down with it) are reported instead
+  of killed;
+- an idle guest (`/proc/loadavg` below 2) before each launch: an app process must
+  attach to the activity manager within 10 seconds, and Android 11 has no
+  `ro.hw_timeout_multiplier`. The `wrap.<package>` property lengthens that limit but
+  starts the process without ARM translation, so the arm64 library cannot load;
+- `XAX_UI_TIMEOUT=120` for `validate_counter_apk.sh`.
+
+Disabling persistent telephony or Bluetooth packages to save CPU makes them
+crash in a loop; leave them enabled.

@@ -161,7 +161,7 @@
         "stateful app (ADR-111) is ART-verified and its native persistence executes under bionic, but it has not run on a device, so R3 is not met",
         "minimal Activity executed on a device; libxposed modules executed on ART with a stand-in framework (ADR-109), not yet under LSPosed in a target process; packed container not yet on a device",
         "native contracts executed under Android's linker and bionic via qemu-user (ADR-106), not on a device kernel",
-        "start-up latency and memory against Java + NDK twins need an arm64 hardware device (harness: bench_android_counter_twin.py --device, ADR-153); sizes are measured (packed minimal APK 0.79x its twin, counter APK 0.715x its twin)",
+        "start-up latency and memory against Java + NDK twins need an arm64 hardware device (harness: bench_android_counter_twin.py --device, ADR-153); sizes are measured (packed minimal APK 0.79x its twin, counter APK 0.706x its twin)",
         "one DEX per class costs 1.17x the twin's DEX bytes (an edit-locality choice)"
       ]
     },
