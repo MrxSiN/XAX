@@ -35,11 +35,17 @@ Post-roadmap AI-native experiment: **a five-task manual C-vs-XAX Codex Desktop b
 
 Repository: repository root. Compiler: `compiler/`.
 
-U1 — universal-replacement proof set: **in progress**. U1.1 (direct PE32+ hosted executable with explicit kernel32 imports) is EXECUTED; remaining steps are listed in `XAX_IMPLEMENTATION_ROADMAP.md` U1. Per-platform replacement levels are derived in `XAX_REPLACEMENT_MATRIX.json` (current: linux-x86_64 and android-arm64 R2; windows-x86_64-pe, aarch64-baremetal, wasm32-core, wasm32-wasi R1; accelerator-simt-packet R0; all other rows NONE). U1.3 (Linux x86-64 ELF64 static and explicit-loader executables, syscall and SysV C ABIs) is EXECUTED/MEASURED, and the Linux side of U1.2b (ADR-089 allocator) is MEASURED; see the Linux section below.
+U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
+
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+
+S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-150). Open: BLAKE3 through the RISC-V views profile (aggregates); the x86-64 backend, the driver's lowering structures, and the exact rejection diagnostics, which still run in Python; and B1–B4 on a second target.
+
+Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
 ## Implemented
 
-- Python 3.12 bootstrap library and `xaxc` diagnostic CLI.
+- Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.
 - M14 compile-time function/graph introspection plus generic semantic-object/byte opaque values, verifier-gated program materialization, canonical-store emission, and semantic verification under explicit META capabilities. Executed bootstrap labels are recorded separately from mere capability presence.
 - Container major 1 header/trailer with `XAX\0`/`XAXE` magic.
 - Minimal ULEB128, ZigZag, boolean, byte-string, list/count encoding checks.
@@ -841,3 +847,11 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 ## Self-hosting step S6c: all committed stores decided by XAX; B1–B4 for the store verifier on RV64 (ADR-150) — 2026-10-04
 
 - The graph decoder and the verifier windows now hold the largest helper stores, so every object of all 12 committed stores, the verifier's own included, is decided by XAX. The XAX RISC-V backend reclaims each function's arena and compiles the verifier and the typing program like the bootstrap. The verifier's RISC-V image verifies every committed store with the native verdicts (B2/B3). The backend's RISC-V image recompiles the verifier byte for byte (B4). The backend's own fixed point was re-run and still holds. S6 is EXECUTED for RV64. Next: aggregates in the RISC-V views profile (BLAKE3), and moving the Python driver's lowering structures and the x86-64 backend into XAX.
+
+## Documentation sync (2026-10-04)
+
+- Replacement levels in `README.md`, this file, `XAX_HANDOFF.md`, the roadmap, and the architecture document are now generated from `XAX_REPLACEMENT_MATRIX.json` by `compiler/src/xax_status_docs.py`; `tests/test_status_docs.py` fails while any copy is stale. Stale current-status text was corrected (README: "no platform is above R2", the 1.4–1.8× `clang` figure, and Python 3.12; the architecture snapshot after ADR-129; roadmap U1.8). Superseded benchmark sections (§15.1, §15.12) now point at §15.14.
+- Markdown structure: one H1 per document (architecture, specification, bootstrap README), fence languages in `docs/10_TARGET_MODEL.md` and `docs/11_ABI_PLATFORM.md`, and a store table in `compiler/bootstrap/README.md`.
+- `compiler/pyproject.toml` gains a `test` extra (`pytest`, `pytest-xdist`, `unicorn`, `tiktoken`).
+- Full suite on Linux x86-64 (Python 3.11.15, the `XAX_HANDOFF.md` environment, Android root from `make_android_root.py`): **1,070 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` emulation runs).
+

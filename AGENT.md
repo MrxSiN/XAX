@@ -15,3 +15,8 @@ For XAX programming tasks:
 9. Minimize total model-visible tokens per successful semantic change, but never trade away exact semantics, determinism, freshness checks, conflict detection, or verification success.
 
 If the XAX workspace/compiler interface is available, use it instead of producing a source-like textual substitute. Human-readable protocol examples and diagnostic notation are tooling views, not XAX source.
+
+For repository maintenance (compiler, evidence, documentation):
+
+- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels. After changing it, run `python -m xax_status_docs --write` from `compiler/src` to regenerate every `<!-- xax-status:levels -->` block; `tests/test_status_docs.py` fails while a block is stale.
+- Dated sections in `XAX_STATE.md`, `XAX_HANDOFF.md`, `XAX_BENCHMARKS.md`, and `XAX_DECISIONS.md` are historical records; record a new result in a new section and point the superseded one at it instead of rewriting it.

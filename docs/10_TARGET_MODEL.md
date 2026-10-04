@@ -429,7 +429,7 @@ Passing these tests does not establish that the design is optimal. It establishe
 
 The prototype now contains one hosted Android target package:
 
-```
+```text
 android-arm64-v8a-shared-v3
 architecture = AArch64
 ABI          = Android AAPCS64 C

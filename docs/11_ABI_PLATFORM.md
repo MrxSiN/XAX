@@ -533,7 +533,7 @@ registers.
 
 An Android export is a content-addressed build/target declaration containing:
 
-```
+```text
 ABI        = android-aapcs64-c
 visibility = default
 name       = exact unmangled byte string
@@ -555,7 +555,7 @@ symbols and `DT_NEEDED` dependencies.
 For the currently verified native-hook ABI on AArch64, the borrowed
 `NativeAPIEntries*` layout used by the target package is:
 
-```
+```text
 offset 0   uint32_t version
 offset 8   HookFunType hook_func
 offset 16  UnhookFunType unhook_func

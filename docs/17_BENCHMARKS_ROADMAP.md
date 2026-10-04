@@ -363,5 +363,5 @@ The governing rule is empirical: XAX's semantic-first design is justified only i
 
 ## 12. Universal replacement benchmarks (2026-10-02)
 
-Replacement-level performance claims (R4) follow `XAX_BENCHMARKS.md` §15. The first recorded comparison is U1 Linux `filestat` against `gcc -O2` and `gcc -O2 -static` (MEASURED; XAX 0.95–1.14× `gcc -O2`, 1.41–1.82× `clang -O2`, smallest artifact; with the explicit loader its peak RSS exceeds the static baseline). AI-efficiency claims (R5) require real model trials; offline tokenizer counts never establish R5.
+Replacement-level performance claims (R4) follow `XAX_BENCHMARKS.md` §15. The first recorded comparison is U1 Linux `filestat` against `gcc -O2` and `gcc -O2 -static` (MEASURED; XAX 0.95–1.14× `gcc -O2`, 1.41–1.82× `clang -O2`, smallest artifact; with the explicit loader its peak RSS exceeds the static baseline). The current result is `XAX_BENCHMARKS.md` §15.14: under the multi-language rule (§15.0) all three Linux workloads are within 1.05× of the fastest of gcc, clang, and rustc. AI-efficiency claims (R5) require real model trials; offline tokenizer counts never establish R5.
 

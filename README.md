@@ -2,12 +2,12 @@
 
 # XAX — eXact Autonomous eXecution
 
-### From Intent to Execution.
+**From Intent to Execution.**
 
 **A language built for AI agents**
 
 ![Status](https://img.shields.io/badge/status-research%20prototype-orange)
-![Python](https://img.shields.io/badge/bootstrap-Python%203.12-blue)
+![Python](https://img.shields.io/badge/bootstrap-Python%203.11%2B-blue)
 ![Targets](https://img.shields.io/badge/targets-x86--64%20%7C%20AArch64%20%7C%20RISC--V%20%7C%20wasm32%20%7C%20Android%20%7C%20JVM-informational)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
@@ -61,10 +61,12 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 | WebAssembly (wasm32) | Direct module emission |
 | Android | DEX, manifest, resources, APK signing, JNI, libxposed modules |
 | JVM | Direct class files in a deterministic JAR, typed JDK member calls — executed on HotSpot, measured against `javac` |
-| RISC-V (RV64IM) | Raw position-independent images, LP64 calls — executed under an emulator |
+| RISC-V (RV64IM) | Raw position-independent images, LP64 calls — executed under an emulator; the self-hosted XAX backend and store verifier reach B1–B4 here |
 | SIMT accelerator | Deployment-packet format (conformance only) |
 
-Per-platform replacement levels (R0–R6) are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); see `XAX_SPEC.md` §21.
+Per-platform replacement levels (R0–R6) are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); see [`XAX_SPEC.md`](XAX_SPEC.md) §21.
+
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 ## Repository layout
 
@@ -72,7 +74,7 @@ Per-platform replacement levels (R0–R6) are derived from evidence in [`XAX_REP
 XAX/
 ├── docs/                    Normative specification (01–17)
 │   └── 09_AI_PROTOCOL.md    How AI agents must interact with XAX
-├── compiler/                Python 3.12 bootstrap compiler (`xaxc`)
+├── compiler/                Python 3.11+ bootstrap compiler (`xaxc`)
 │   ├── src/                 Store, verifier, workspace, backends
 │   └── benchmarks/          Evidence, fixtures, AI-native experiments
 ├── XAX_SPEC.md              Language specification overview
@@ -85,7 +87,7 @@ XAX/
 
 ## Getting started
 
-Requires Python 3.12+. No third-party dependencies.
+Requires Python 3.11+. The compiler has no third-party runtime dependencies.
 
 ```bash
 cd compiler
@@ -93,11 +95,20 @@ pip install -e .
 xaxc --help
 ```
 
+The test suite runs from `compiler/`:
+
+```bash
+pip install -e '.[test]'           # pytest, pytest-xdist, unicorn, tiktoken
+PYTHONPATH=src:. python -m pytest -n auto tests
+```
+
+Tests that need a host tool (Node.js, Java, `qemu-aarch64`, `qemu-system-aarch64`, `aarch64-linux-gnu-gcc`, `spirv-val`, `llvm-mc`, clang, Mesa Vulkan, the Android NDK/build-tools/system-image root from `compiler/integration/android/make_android_root.py`) skip when it is absent. Skipped is not passed.
+
 AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
 
 ## Project status
 
-XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); no platform is above R2. On Linux `filestat`, XAX roughly matches `gcc -O2` but is 1.4–1.8× slower than `clang -O2`; on the JVM a Collatz kernel runs at 1.04× the `javac` twin's time.
+XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json) (summary under [Targets](#targets)). On one shared Linux x86-64 host, XAX is within 1.05× of the fastest of gcc, clang, and rustc on `filestat` (1.017×), `chains` (fastest), and `jsonmin` (1.029×) ([`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) §15.14); on the JVM a Collatz kernel runs at 1.04× the `javac` twin's time. The working compiler is still mostly Python: the XAX-hosted verifier and RISC-V backend reach B1–B4 on RV64 under emulation only (ADR-145, ADR-150).
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

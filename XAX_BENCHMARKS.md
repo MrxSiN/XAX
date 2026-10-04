@@ -599,6 +599,8 @@ Each implementation may choose its own data representation for the same observab
 
 ### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
+> Historical record. The current Linux x86-64 result is §15.14 (ADR-147/148), which supersedes the ratios and the R4 verdict here.
+
 This is the first cross-toolchain comparison. Source: `compiler/benchmarks/linux_filestat.py` (XAX graph and harness), `compiler/benchmarks/linux_filestat_c/filestat.c` (fixed semantic twin, linked with `-lz`), and `compiler/benchmarks/linux_filestat_c/runner.c` (fork/exec/`wait4` timer). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`.
 
 The workload opens `input.dat`, reads it in 64 KiB chunks into an anonymous `mmap` buffer, and counts bytes, lines, and words. It also computes FNV-1a 64, keeps a 256-entry histogram in a second mapping, and folds each chunk into `libz.so.1` `crc32`. It then writes six decimal fields and exits explicitly. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs, Linux 6.18.44 x86-64, gcc 13.3.0, clang 18.1.3, zlib 1.3. Input: 32 MiB deterministic text (`shake_256` + 77-symbol alphabet). 3 warmup runs and 31 repetitions per arm; `CLOCK_MONOTONIC` around fork/exec/`wait4`; peak RSS from `ru_maxrss`. All arms produce identical output, and each matches an independent Python reference contract on a 200,003-byte input.
@@ -762,6 +764,8 @@ Device: llvmpipe (LLVM 20.1.2, 256 bits), Vulkan 1.4 through the `vulkan` Python
 A CPU implementation is not GPU performance evidence (conformance §23.17). The gap is the dispatch-loop lowering, which keeps llvmpipe from vectorizing the loop across invocations. Source: `compiler/benchmarks/spirv_kernels.py`; data: `spirv_compute_evidence.json`.
 
 ### 15.12 `jsonmin` (R3 application): XAX vs C twins on Linux x86-64 (ADR-126; MEASURED, 2026-10-03)
+
+> Historical record. The current Linux x86-64 result is §15.14 (ADR-147/148), which supersedes the ratios and the R4 verdict here.
 
 Workload: read stdin, validate RFC 8259 JSON (depth ≤ 512), write it minified. XAX: the `jsonmin` graph (recursion group value/array/object plus four plain functions) as a static `x86_64-linux-elf-exec-v1` executable with no libc, loader, or allocator. Baselines: `jsonmin_c/jsonmin.c`, the same algorithm in C, built by the U1.3 harness (gcc 13.3 `-O2`, `-O3`, `-O2 -static`; clang 18 `-O2`). Input: `benchmark_document(8 MiB)` (8,390,986 bytes, pretty-printed records with escapes and numbers) on stdin through `runner.c`; 31 runs after 3 warmups; every output equals `reference_jsonmin`.
 

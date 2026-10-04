@@ -1209,7 +1209,7 @@ Semantic-to-machine maps, crash/stack mapping where platforms permit, disassembl
 
 ---
 
-# Android arm64-v8a hosted target note (2026-10-01)
+## Appendix A. Android arm64-v8a hosted target note (2026-10-01)
 
 The prototype includes `android-arm64-v8a-shared-v3` as an ordinary target/ABI
 package. This does not add Android, JNI, libxposed, or ELF operations to the XAX
@@ -1260,7 +1260,7 @@ mixed-argument path MAY distinguish nullable from proven-non-null JNI reference
 carrier identity, but this identity alone MUST NOT be described as a runtime null
 check or branch refinement.
 
-## Android direct artifact and SDK-package note (2026-10-01)
+## Appendix B. Android direct artifact and SDK-package note (2026-10-01)
 
 Android managed/platform support remains ordinary platform/package semantics rather
 than additions to the fundamental XAX kernel.  For the current bounded Android
