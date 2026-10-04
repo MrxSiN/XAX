@@ -61,11 +61,12 @@ SIMPLE = {Operation.ADD_WRAP: (0, 0), Operation.SUB_WRAP: (0x20, 0), Operation.M
           Operation.BIT_XOR: (0, 4), Operation.BIT_OR: (0, 6), Operation.BIT_AND: (0, 7)}
 # Output regions (word indices of the output view).
 WORDS_AT, WORDS_LIMIT = 1 << 20, 4 << 20
-JUMPS_AT, JUMPS_LIMIT = 6 << 20, 3 << 20  # 3 words per jump
-RANGES_AT, RANGES_LIMIT = 10 << 20, 5 << 20  # 5 words per range
-META_AT = 15 << 20  # entry machine parameter and return widths; the function order
-ARENA_AT, ARENA_END = 16 << 20, (24 << 20) - 1
-STREAM_AT = 24 << 20  # the front end's internal stream (S5a format), read by the code generator
+JUMPS_AT, JUMPS_LIMIT = 5 << 20, 2 << 20  # 3 words per jump
+RANGES_AT, RANGES_LIMIT = 7 << 20, 4 << 20  # 5 words per range
+META_AT = 11 << 20  # entry machine parameter and return widths; the function order
+STREAM_AT, STREAM_END = 12 << 20, 16 << 20  # the front end's internal stream (S5a format), read by the code generator
+# S6c: the arena takes the rest; each function's scratch is reclaimed after it is lowered.
+ARENA_AT, ARENA_END = 16 << 20, HEADER - 1
 # Backend state in the header (after the argument words).
 (S_COUNT, S_JUMPS, S_RANGES, S_FN, S_OFFSETS, S_REG, S_SLOT, S_WIDTH, S_TRAP, S_TRAP_USED, S_POW, S_FRAME, S_TEMPS,
  S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS) = range(44, 63)
@@ -350,6 +351,15 @@ def _compile_function(tables):
             e.for_("fill_k", 0, size, lambda: e.st(e.add(p[name], p["fill_k"]), fill))
             return p[name]
 
+        # The label slots outlive the function (the jumps are patched at the end); the rest of its arena is
+        # reclaimed when it is lowered, so each function, not the whole program, must fit the arena.
+        array("block_labels", e.add(B, 1), NONE)
+        array("false_labels", e.add(B, 1), NONE)
+        e.set_hd(S_BLOCK_LABELS, p["block_labels"])
+        e.set_hd(S_FALSE_LABELS, p["false_labels"])
+        array("trap", 1, NONE)
+        e.set_hd(S_TRAP, p["trap"])
+        e.var("mark", e.hd(H_ARENA))
         for name in ("width", "reg", "slot", "rank", "lo", "hi"):
             array(name, e.add(V, 1), NONE if name == "lo" else 0)
         e.set_hd(S_WIDTH, p["width"])
@@ -357,14 +367,8 @@ def _compile_function(tables):
         e.set_hd(S_SLOT, p["slot"])
         for name in ("block_at", "base", "params", "order", "bstart", "bend", "nodes_at", "term_at"):
             array(name, e.add(B, 1))
-        array("block_labels", e.add(B, 1), NONE)
-        array("false_labels", e.add(B, 1), NONE)
-        e.set_hd(S_BLOCK_LABELS, p["block_labels"])
-        e.set_hd(S_FALSE_LABELS, p["false_labels"])
         for name in ("uses", "defs", "lin", "lout", "pmask"):
             array(name, e.add(e.mul(B, words), 1))
-        array("trap", 1, NONE)
-        e.set_hd(S_TRAP, p["trap"])
         e.set_hd(S_TRAP_USED, 0)
 
         # Pass 1: block positions, value ids, widths, and the largest parameter count.
@@ -656,6 +660,7 @@ def _compile_function(tables):
             _emit(e, UNIMP)
 
         e.if_(e.ne(e.hd(S_TRAP_USED), 0), trap)
+        e.set_hd(H_ARENA, p["mark"])
         e.give(p["after"])
     return _function(("cursor", "index"), build, tables)
 
@@ -1237,7 +1242,7 @@ def _borrowed(tables):
 
 def _emit_out(e: E, value):
     at = _g(e, G_OUT)
-    e.st(at, value)
+    e.if_(e.lt(at, STREAM_END), lambda: e.st(at, value))  # past the end: nothing is written, and the front end declines
     e.st(GLOBALS + G_OUT, e.add(at, 1))
 
 
@@ -1630,7 +1635,7 @@ def _frontend(tables):
         e.st(GLOBALS + G_OUT, STREAM_AT)
         _emit_out(e, p["members"])
         e.for_("q", 0, p["members"], lambda: _call(e, "translate", e.ld(e.add(order, p["q"]))))
-        _ok(e, e.lt(_g(e, G_OUT), STREAM_AT + (7 << 20)))
+        _ok(e, e.lt(_g(e, G_OUT), STREAM_END))
         # The entry's machine parameter and return widths.
         iface = _call(e, "interface", p["entry"])
         widths = e.alloc(e.add(e.add(e.ld(e.add(iface, 1)), e.ld(e.add(e.add(iface, 2), e.ld(e.add(iface, 1))))), 4))

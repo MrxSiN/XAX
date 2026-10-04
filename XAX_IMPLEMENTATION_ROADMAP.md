@@ -423,8 +423,9 @@ M14 closed B2–B6 only for the small `xax-semantic-image-v1` target. The workin
 | S6b.2 | Function, call-contract, and module/root objects, and store rootedness, decided by XAX | S6b.1 | EXECUTED (ADR-144): 17/17 ordinary corpus functions and every list and store check proven |
 | S6b.3 | Recursion groups, group member functions, and targets decided by XAX | S6b.2 | EXECUTED (ADR-146): every corpus function, group, list, contract, and target proven; only build/package objects left |
 | S6b.4 | Build and package objects, accelerator/platform/board targets, and the per-graph glue (reference resolution, trap payloads) decided by XAX | S6b.3 | EXECUTED (ADR-149): every object kind and every per-graph check has an XAX decision path; declines and rejections keep the bootstrap's diagnostics |
+| S6c | Every committed store (the verifier's own included) decided by XAX; B1–B4 for the store verifier on RV64 | S6b.4, B1–B4 (RISC-V backend) | EXECUTED (ADR-150): no object of any helper store is left to Python; gen1 compiles every views-expressible helper program like the bootstrap; the verifier's RISC-V image verifies every committed store, its own included, with the native verdicts; gen2 reproduces the verifier image |
 | B1–B4 (RISC-V backend) | The XAX RISC-V backend compiles its own store for a RISC-V views profile; the image, emulated, compiles it again | S5 | EXECUTED (ADR-145): gen1 = bootstrap reference, gen2 = gen1 on a corpus, gen3 == gen2 byte for byte |
-| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | in progress (S6a–S6b.4 done; B1–B4 for the RISC-V backend) |
+| S6 | The full verifier, then B1–B4 for the real compiler on at least one target | S4–S5 | EXECUTED for RV64 (ADR-150): S6a–S6c; B1–B4 for the RISC-V backend (ADR-145) and the store verifier (ADR-150). Open: BLAKE3 in the views profile (aggregates), the Python driver's lowering structures |
 
 ## 2. Bootstrap mapping
 

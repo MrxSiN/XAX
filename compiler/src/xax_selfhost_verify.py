@@ -1746,11 +1746,18 @@ class NativeStoreVerifier:
             self._slots[0], self._slots[1] = ctypes.addressof(self._in), ctypes.addressof(self._out)
             self._call(self._entry, ctypes.addressof(self._slots), 4, ctypes.addressof(self._xmm))
             out = self._out
-            if out[0] != OK:
-                return None
-            verdicts, graphs = list(out[VERDICTS_AT : VERDICTS_AT + count]), list(out[GRAPHS_AT : GRAPHS_AT + count])
-            members = {o: tuple(out[graphs[o] + 1 : graphs[o] + 1 + out[graphs[o]]]) for o in groups if verdicts[o] == 1}
-            return out[1] == 1, verdicts, graphs, members
+            return collect_verdicts(lambda start, length: list(out[start : start + length]), count, groups)
+
+
+def collect_verdicts(read, count: int, groups=()):
+    """The program's result from its output view, read as ``read(start word, count)`` wherever it ran (natively
+    or as a RISC-V image, S6c): ``(store verdict, verdicts, graph words, {group: member graphs})``, or None."""
+    status, store = read(0, 2)
+    if status != OK:
+        return None
+    verdicts, graphs = read(VERDICTS_AT, count), read(GRAPHS_AT, count)
+    members = {o: tuple(read(graphs[o] + 1, read(graphs[o], 1)[0])) for o in groups if verdicts[o] == 1}
+    return store == 1, verdicts, graphs, members
 
 
 def object_table(objects, head: list[int]) -> list[int] | None:

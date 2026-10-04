@@ -75,7 +75,7 @@ from xax_compiler import heap_view_type
 from xax_selfhost_cfg import B64, IN_POINTER, MEM, OUT_POINTER, _Builder
 
 # The typing-and-facts program's own views: large graphs need room for their streams and fact tables.
-IN_EXTENT, OUT_EXTENT = 16 << 20, 256 << 20
+IN_EXTENT, OUT_EXTENT = 64 << 20, 256 << 20  # S6c: the largest helper stores as one verifier object table
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)
 

@@ -3,29 +3,29 @@
   "component": "XAX RISC-V backend program, compiled by itself for the riscv64 views profile",
   "store": {
     "path": "compiler/bootstrap/xax_riscv64_backend.xax",
-    "bytes": 704433,
-    "sha256": "814f9529c848b8973ea41fdbc0c59b5c39d4ff75ec31bdf5dfa24a21eb4d461a",
-    "root_cid": "b030b04ef6e7ec1aa065b0b8bdec42e8fb4f223fe521e92c1eacc66b3ab76648",
-    "entry_cid": "2abe5f3d8d7c99ec19503c5defcee9ed816740e005b0c13a0ba7c30abc91c6e1",
+    "bytes": 728919,
+    "sha256": "526bfe226574c453a512297e1615525cdef98965f4ef4bd5abd895bf2103775b",
+    "root_cid": "fdc9c620d8e148407e37bc65faebb155b4b6faa89185ed88dec404c5469f90ae",
+    "entry_cid": "c24fa9758de736c91cd4bd702dcbe51b50985589df6884a741f0c15d83010af3",
     "functions": 17
   },
   "target_cid": "18e6a6f493a60a5b1ea4bf0d3c81794480aa5ffc9145e314070eb9deaf493bc1",
-  "object_table_words": 594601,
+  "object_table_words": 614088,
   "gen2": {
-    "code_bytes": 1959876,
-    "sha256": "8ac6d3c5b967fe3a7e64fc822b5c9d5b07aa63b930ad5e37f35fe1cd58aaca42"
+    "code_bytes": 2094244,
+    "sha256": "c63d983b772b36a4f1e0a9bc80e2c5c6e58bbfcb86477569c8a7540648946519"
   },
   "gen2_equals_bootstrap_reference": true,
   "gen3": {
-    "code_bytes": 1959876,
-    "sha256": "8ac6d3c5b967fe3a7e64fc822b5c9d5b07aa63b930ad5e37f35fe1cd58aaca42"
+    "code_bytes": 2094244,
+    "sha256": "c63d983b772b36a4f1e0a9bc80e2c5c6e58bbfcb86477569c8a7540648946519"
   },
   "gen3_equals_gen2": true,
-  "emulated_instructions_upper_bound": 22000000000,
+  "emulated_instructions_upper_bound": 25000000000,
   "host_cost_nonsemantic": {
     "host": "Linux x86_64 Python 3.11.15",
-    "gen1_native_compile_s": 0.57,
-    "bootstrap_reference_compile_s": 4.08,
-    "gen2_emulated_compile_s": 337.7
+    "gen1_native_compile_s": 0.64,
+    "bootstrap_reference_compile_s": 3.11,
+    "gen2_emulated_compile_s": 270.2
   }
 }

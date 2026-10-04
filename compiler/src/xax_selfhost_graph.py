@@ -54,7 +54,7 @@ import xax_selfhost_store as store
 
 STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_graph_decoder.xax"
 BODY_EXTENT = 1 << 20
-OUT_EXTENT = 1 << 22
+OUT_EXTENT = 1 << 24  # S6c: a stream word per body byte for the largest (1 MiB) bodies, with room to spare
 OUT_WORDS = OUT_EXTENT // 8
 ACCEPT, REJECT, DEFER = 0, 1, 2
 
