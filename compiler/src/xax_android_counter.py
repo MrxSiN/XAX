@@ -47,7 +47,7 @@ from xax_dex import (
 )
 from xax_graph_builder import GraphBuilder
 from xax_jni import JniReferenceKind, jni_env_pointer_type, jni_reference_type, jni_type_objects
-from xax_platform import PosixAndroidApi, posix_android_api
+from xax_platform import PosixAndroidApi, PosixDescriptorApi, posix_android_api, posix_descriptor_api
 
 COUNTER_PREFIX = b"android-counter-activity-v1"
 # ParcelFileDescriptor.MODE_READ_WRITE | MODE_CREATE
@@ -114,8 +114,8 @@ def decode_counter_activity(obj: SemanticObject) -> CounterActivityDescription:
 
 @dataclass(frozen=True)
 class CounterNative:
-    on_create: SemanticObject  # (env, activity, bundle, fd, fs, memory) -> (count, fs, memory)
-    on_click: SemanticObject  # (env, listener, view, fd, fs, memory) -> (count, fs, memory)
+    on_create: SemanticObject  # (env, activity, bundle, fd, descriptor, fs, memory) -> (count, fs, memory)
+    on_click: SemanticObject  # (env, listener, view, fd, descriptor, fs, memory) -> (count, fs, memory)
     objects: tuple[SemanticObject, ...]
 
 
@@ -126,8 +126,12 @@ def _file_calls(api: PosixAndroidApi, cell: SemanticObject):
     return call(b"pread64"), call(b"pwrite64")
 
 
-def counter_native(description: CounterActivityDescription, *, api: PosixAndroidApi | None = None) -> CounterNative:
+def counter_native(description: CounterActivityDescription, *, api: PosixAndroidApi | None = None, descriptors: PosixDescriptorApi | None = None) -> CounterNative:
+    """Both JNI callbacks.  Each one owns the descriptor it is given (the ``descriptor``
+    token, ADR-153) and must close it exactly once; a click makes its write durable
+    with ``fdatasync`` before closing."""
     api = api or posix_android_api()
+    descriptors = descriptors or posix_descriptor_api(api)
     env = jni_env_pointer_type()
     activity = jni_reference_type(JniReferenceKind.BORROWED, description.activity_class.encode(), loader_domain=f"app:{description.package_name}".encode())
     bundle = jni_reference_type(JniReferenceKind.BORROWED, b"android.os.Bundle", loader_domain=b"android.boot")
@@ -141,8 +145,8 @@ def counter_native(description: CounterActivityDescription, *, api: PosixAndroid
 
     def callback(receiver, argument, increment: bool):
         graph = GraphBuilder()
-        block = graph.block(env, receiver, argument, B32, api.filesystem_effect, api.memory_effect)
-        _env, _receiver, _argument, fd, fs, memory = block.params
+        block = graph.block(env, receiver, argument, B32, descriptors.descriptor, api.filesystem_effect, api.memory_effect)
+        _env, _receiver, _argument, fd, owner_fd, fs, memory = block.params
         raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 8), memory), (api.byte_ptr_rw, api.heap_resource, api.memory_effect), entity=api.malloc)
         slot, owned, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (cell, view_type, api.memory_effect), attributes=(8, 8))
         memory = block.op1(Operation.STORE_BITS_LE, (slot, block.const(B64, 0), memory), api.memory_effect, attributes=(8, 8))
@@ -153,7 +157,8 @@ def counter_native(description: CounterActivityDescription, *, api: PosixAndroid
             count = block.op1(Operation.ADD_WRAP, (count, block.const(B64, 1)), B64)
             memory = block.op1(Operation.STORE_BITS_LE, (slot, count, memory), api.memory_effect, attributes=(8, 8))
             _written, fs, memory = block.op(Operation.CALL_FOREIGN, (fd, slot, block.const(B64, 8), offset, fs, memory), (B64, api.filesystem_effect, api.memory_effect), entity=pwrite)
-        _closed, fs = block.op(Operation.CALL_FOREIGN, (fd, fs), (B32, api.filesystem_effect), entity=api.close)
+            _synced, fs = block.op(Operation.CALL_FOREIGN, (fd, fs), (B32, api.filesystem_effect), entity=descriptors.fdatasync)
+        _closed, fs = block.op(Operation.CALL_FOREIGN, (fd, owner_fd, fs), (B32, api.filesystem_effect), entity=descriptors.close)
         memory = block.op1(Operation.CALL_FOREIGN, (slot, owned, memory), api.memory_effect, entity=free)
         block.ret(count, fs, memory)
         function = graph.function(block.parameter_types, (B64, api.filesystem_effect, api.memory_effect))
@@ -168,7 +173,7 @@ def counter_native(description: CounterActivityDescription, *, api: PosixAndroid
         (JniReferenceKind.BORROWED, description.listener_class.encode(), app),
         (JniReferenceKind.BORROWED, b"android.view.View", b"android.boot"),
     ))
-    objects = (*api.types, *references, *create_graph.objects.values(), *click_graph.objects.values(), pread, pwrite, free, cell, view_type)
+    objects = (*api.types, *references, *create_graph.objects.values(), *click_graph.objects.values(), pread, pwrite, free, cell, view_type, *descriptors.objects)
     return CounterNative(on_create, on_click, objects)
 
 

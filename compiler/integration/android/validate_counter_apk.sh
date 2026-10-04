@@ -30,9 +30,15 @@ launch() {
   sleep 1
 }
 
+# Poll the UI for up to XAX_UI_TIMEOUT seconds (default 30): slow targets, emulators
+# without hardware acceleration in particular, update the view later than one second.
 expect_text() {
-  adb shell uiautomator dump "$REMOTE_XML" >/dev/null
-  adb exec-out cat "$REMOTE_XML" | tr -d '\r' | grep -Fq "text=\"$1\"" || { echo "expected button text $1" >&2; exit 4; }
+  local deadline=$((SECONDS + ${XAX_UI_TIMEOUT:-30}))
+  until adb shell uiautomator dump "$REMOTE_XML" >/dev/null 2>&1 \
+      && adb exec-out cat "$REMOTE_XML" | tr -d '\r' | grep -Fq "text=\"$1\""; do
+    [ "$SECONDS" -lt "$deadline" ] || { echo "expected button text $1" >&2; exit 4; }
+    sleep 2
+  done
   [ -n "$(adb shell pidof "$PACKAGE" | tr -d '\r')" ] || { echo "process died" >&2; exit 5; }
   echo "ok: $1"
 }

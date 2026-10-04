@@ -88,23 +88,24 @@ def _readelf_dynamic(library: bytes) -> list[str]:
         return _run(LLVM / "llvm-readelf", "-d", handle.name).splitlines()
 
 
-def build_twin(work: Path) -> Path:
+def build_twin(work: Path, twin: Path = TWIN, library_name: str = "xaxapp") -> Path:
+    """Build a Java + NDK twin directory (``java/``, ``<library_name>.c``, ``AndroidManifest.xml``) into a signed APK."""
     classes = work / "classes"
-    sources = sorted(str(path) for path in (TWIN / "java").rglob("*.java"))
+    sources = sorted(str(path) for path in (twin / "java").rglob("*.java"))
     _run("javac", "--release", "11", "-cp", ANDROID_JAR, "-d", classes, *sources)
     dex = work / "dex"
     dex.mkdir()
     _run(BUILD_TOOLS / "d8", "--release", "--min-api", "28", "--lib", ANDROID_JAR, "--output", dex, *sorted(classes.rglob("*.class")))
-    library = work / "libxaxapp.so"
-    _run(LLVM / "aarch64-linux-android28-clang", "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, TWIN / "xaxapp.c")
+    library = work / f"lib{library_name}.so"
+    _run(LLVM / "aarch64-linux-android28-clang", "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, twin / f"{library_name}.c")
     _run(LLVM / "llvm-strip", "--strip-unneeded", library)
     linked = work / "linked.apk"
-    _run(BUILD_TOOLS / "aapt2", "link", "--manifest", TWIN / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked)
+    _run(BUILD_TOOLS / "aapt2", "link", "--manifest", twin / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked)
     stored = work / "stored.apk"
     with zipfile.ZipFile(linked) as source, zipfile.ZipFile(stored, "w", zipfile.ZIP_STORED) as out:
         out.writestr("AndroidManifest.xml", source.read("AndroidManifest.xml"))
         out.write(dex / "classes.dex", "classes.dex")
-        out.write(library, "lib/arm64-v8a/libxaxapp.so")
+        out.write(library, f"lib/arm64-v8a/lib{library_name}.so")
     aligned = work / "aligned.apk"
     _run(BUILD_TOOLS / "zipalign", "-P", "16", "-f", "4", stored, aligned)
     keystore = work / "twin.jks"

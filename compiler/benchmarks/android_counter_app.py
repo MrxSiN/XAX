@@ -7,7 +7,10 @@ increment, and descriptor close is XAX native code (``xax_android_counter``);
 the generated DEX only obtains the descriptor and displays the returned number.
 
 Run ``python -m benchmarks.android_counter_app`` from ``compiler/`` to rebuild
-``android_counter_activity.apk``.  Device check: ``integration/android/validate_counter_apk.sh``.
+``android_counter_activity.apk``.  Device check: ``integration/android/validate_counter_apk.sh``;
+``--device`` also runs it against the connected ``adb`` target and records the
+result, with the target's identity, under ``device`` in the evidence.  An emulator
+run is recorded as such (``hardware: false``): it is correctness evidence only.
 """
 
 from __future__ import annotations
@@ -71,7 +74,35 @@ def run_native(apk: Path) -> str:
     return completed.stdout.strip()
 
 
-def evidence() -> dict:
+ORACLE = HERE.parent / "integration/android/validate_counter_apk.sh"
+ORACLE_PASSED = "XAX counter Activity validation passed"
+_DEVICE_PROPERTIES = ("ro.build.fingerprint", "ro.build.version.sdk", "ro.product.cpu.abilist", "ro.dalvik.vm.native.bridge", "ro.kernel.qemu", "ro.boot.qemu")
+
+
+def run_device() -> dict:
+    """Run the device oracle on the connected ``adb`` target and describe the target."""
+    def prop(name: str) -> str:
+        return subprocess.run(["adb", "shell", "getprop", name], capture_output=True, text=True, timeout=120).stdout.strip()
+
+    properties = {name: prop(name) for name in _DEVICE_PROPERTIES}
+    completed = subprocess.run(["bash", str(ORACLE)], capture_output=True, text=True, timeout=3600)
+    output = [line for line in completed.stdout.splitlines() if line.startswith(("ok:", "note:", ORACLE_PASSED))]
+    output += [f"stderr: {line}" for line in completed.stderr.splitlines()[-5:]] if completed.returncode else []
+    emulated = "1" in (properties["ro.kernel.qemu"], properties["ro.boot.qemu"])
+    native_abi = properties["ro.product.cpu.abilist"].split(",")[0]
+    return {
+        "label": "EXECUTED" if completed.returncode == 0 and ORACLE_PASSED in completed.stdout else "FAILED",
+        "oracle": "integration/android/validate_counter_apk.sh",
+        "apk_sha256": hashlib.sha256(APK.read_bytes()).hexdigest(),
+        "target": properties,
+        "hardware": not emulated,
+        "arm64_native": native_abi == "arm64-v8a",
+        "output": output,
+        "passed": completed.returncode == 0,
+    }
+
+
+def evidence(device: dict | None = None) -> dict:
     from benchmarks import bench_android_art_verify as art, bench_android_official_tools as official
 
     official_row = official.validate_apk(APK)
@@ -89,14 +120,23 @@ def evidence() -> dict:
         "official_tools": {"label": "STRUCTURAL", "checks": official_row["checks"], "passed": official_row["passed"]},
         "art_verify": {"label": "EXECUTED", "classes": classes, "passed": set(classes.values()) == {"Verified"}},
         "native_under_bionic": {"label": "EXECUTED", "expected": EXPECTED_NATIVE, "observed": native, "passed": native == EXPECTED_NATIVE},
-        "device": {"label": "UNEXECUTED", "oracle": "integration/android/validate_counter_apk.sh"},
+        "device": device or _committed_device() or {"label": "UNEXECUTED", "oracle": "integration/android/validate_counter_apk.sh"},
     }
+
+
+def _committed_device() -> dict | None:
+    """Keep a recorded device run while it is still a run of the committed APK."""
+    if not EVIDENCE.exists():
+        return None
+    device = json.loads(EVIDENCE.read_text(encoding="utf-8")).get("device", {})
+    current = device.get("apk_sha256") == hashlib.sha256(APK.read_bytes()).hexdigest()
+    return device if current and device.get("label") == "EXECUTED" else None
 
 
 def main() -> int:
     artifacts = build()
     APK.write_bytes(artifacts["signed"])
-    result = evidence()
+    result = evidence(run_device() if "--device" in sys.argv[1:] else None)
     EVIDENCE.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({key: result[key]["passed"] for key in ("official_tools", "art_verify", "native_under_bionic")}))
     for name in ("activity_dex", "listener_dex", "library", "signed"):

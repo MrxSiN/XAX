@@ -1,0 +1,66 @@
+{
+  "behavior_match": true,
+  "decision": "ADR-153",
+  "device": {
+    "label": "UNEXECUTED",
+    "note": "start-up time and memory need an arm64 hardware device (--device)"
+  },
+  "format": "xax-android-counter-twin-evidence-v1",
+  "java_ndk": {
+    "apk_bytes": 28892,
+    "apk_sha256": "0d73fc14645ed20af20a457015994b2efe20b716ec9726e185c9ecbd770cb224",
+    "badging": [
+      "package: name='xax.counter' versionCode='1' versionName=''",
+      "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
+    ],
+    "dex_bytes": 2472,
+    "dex_files": [
+      "classes.dex"
+    ],
+    "manifest_bytes": 1736,
+    "native_function_bytes": {
+      "Java_xax_counter_CounterActivity_xaxOnCreate": 96,
+      "Java_xax_counter_CounterClickListener_xaxOnClick": 132
+    },
+    "native_library_bytes": 4608,
+    "native_needed": [
+      "libc.so",
+      "libdl.so"
+    ]
+  },
+  "label": "MEASURED",
+  "toolchain": {
+    "android_jar": "android-35",
+    "build_tools": "36.1.0",
+    "javac": "javac 21.0.11",
+    "ndk": "28.2.13676358"
+  },
+  "xax": {
+    "apk_bytes": 20649,
+    "apk_sha256": "7e5afccd00204d348f9197b266ba83598cd074d91db6028bfab795eed3a07d08",
+    "badging": [
+      "package: name='xax.counter' versionCode='1' versionName=''",
+      "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
+    ],
+    "dex_bytes": 2936,
+    "dex_files": [
+      "classes.dex",
+      "classes2.dex"
+    ],
+    "manifest_bytes": 1132,
+    "native_function_bytes": {
+      "Java_xax_counter_CounterActivity_xaxOnCreate": 224,
+      "Java_xax_counter_CounterClickListener_xaxOnClick": 324
+    },
+    "native_library_bytes": 2584,
+    "native_needed": [
+      "libc.so"
+    ]
+  },
+  "xax_over_java_ndk": {
+    "apk_bytes": 0.715,
+    "dex_bytes": 1.188,
+    "manifest_bytes": 0.652,
+    "native_library_bytes": 0.561
+  }
+}

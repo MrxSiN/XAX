@@ -191,6 +191,37 @@ def posix_android_api() -> PosixAndroidApi:
     )
 
 
+POSIX_DESCRIPTOR_RESOURCE_KIND = 0x102
+
+
+@dataclass(frozen=True)
+class PosixDescriptorApi:
+    """An open file descriptor's ownership as a linear proof value (ADR-153).
+
+    ``descriptor`` is erased by the ABI like every resource.  Whoever hands a
+    descriptor to XAX (a platform contract such as ``detachFd``) hands over the
+    token with it; ``close`` is the only declaration that consumes it, so the
+    verifier rejects a path that leaks the descriptor or closes it twice.
+    ``fdatasync`` makes written data durable before the descriptor is closed.
+    """
+
+    descriptor: SemanticObject
+    close: SemanticObject
+    fdatasync: SemanticObject
+
+    @property
+    def objects(self) -> tuple[SemanticObject, ...]:
+        return (self.descriptor, self.close, self.fdatasync)
+
+
+def posix_descriptor_api(api: "PosixAndroidApi | None" = None) -> PosixDescriptorApi:
+    api = api or posix_android_api()
+    descriptor = resource_type(POSIX_DESCRIPTOR_RESOURCE_KIND, 1, flags=ResourceFlags.LINEAR)
+    close = foreign_function_symbol(b"libc.so", b"close", (api.b32, descriptor, api.filesystem_effect), (api.b32, api.filesystem_effect))
+    fdatasync = foreign_function_symbol(b"libc.so", b"fdatasync", (api.b32, api.filesystem_effect), (api.b32, api.filesystem_effect))
+    return PosixDescriptorApi(descriptor, close, fdatasync)
+
+
 @dataclass(frozen=True)
 class Win32Kernel32Api:
     """Bounded kernel32 contracts for hosted x86-64 Windows PE programs.

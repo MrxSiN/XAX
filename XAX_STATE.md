@@ -876,3 +876,11 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Roadmap: the U1 progress paragraph and levels block had drifted into M1 and are back under U1; the U1.3 row no longer states the Linux rows' old R2 levels as current.
 - README test command fixed (`PYTHONPATH=src:.:..`; `compiler.benchmarks` imports need the repository root) and the complete Ubuntu host environment written out.
 - Full suite on Linux x86-64 (Python 3.11.15, that environment): **1,089 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` runs). A statically linked `busybox` fails the three OI-24 sandbox tests; the dynamic build is required.
+
+## Android counter: verified descriptor ownership, durable writes, Java + NDK twin (2026-10-04, ADR-153)
+
+- `xax_platform.posix_descriptor_api()`: a linear `descriptor` resource consumed only by the owning `close`, plus `fdatasync`. The counter's JNI callbacks take the token with the descriptor, so a leak (`XAX.RESOURCE.DROP`) or double close (`XAX.RESOURCE.DUPLICATE`) is rejected; a click syncs its write before closing. The rebuilt APK passes Google's tools and ART's verifier and runs the same sequence under bionic (`android_counter_evidence.json`).
+- `bench_android_counter_twin.py` and `benchmarks/android_counter_twin/`: a same-behavior Java + NDK twin. Sizes MEASURED: APK 0.715×, native library 0.561×, DEX 1.188× (`android_counter_twin_evidence.json`). `--device` measures cold start and PSS; it counts as evidence only on arm64 hardware.
+- `validate_counter_apk.sh` polls the UI with a timeout; `android_counter_app.py --device` records the target and whether it is hardware.
+- Android row: still R2. The device run of the stateful app is still outstanding.
+- Full suite: **1,094 passed, 5 skipped** (the same host-bound five).

@@ -8,8 +8,10 @@ import sys
 import unittest
 from pathlib import Path
 
-from xax_android_counter import counter_activity_semantics, decode_counter_activity
-from xax_compiler import XaxError, target
+from xax_android_counter import counter_activity_semantics, counter_native, decode_counter_activity
+from xax_compiler import Kind, Operation, StoreReader, XaxError, bits_type, object_with_refs, target, verify_store, write_store
+from xax_graph_builder import GraphBuilder
+from xax_platform import posix_android_api, posix_descriptor_api
 from xax_dex import DexAssembledMethod, DexInstruction, DexMethodRef, DexProto, _assemble
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -34,6 +36,67 @@ class CounterSemanticsTests(unittest.TestCase):
         with self.assertRaises(XaxError) as caught:
             decode_counter_activity(target(identity))
         self.assertEqual(caught.exception.diagnostic.rule, "ANDROID-COUNTER-FIELDS")
+
+
+def _closing_store(closes: int) -> StoreReader:
+    """``(fd, descriptor, fs) -> fs`` that calls the owning ``close`` ``closes`` times."""
+    api = posix_android_api()
+    descriptors = posix_descriptor_api(api)
+    graph = GraphBuilder()
+    block = graph.block(bits_type(32), descriptors.descriptor, api.filesystem_effect)
+    fd, owner, fs = block.params
+    for _ in range(closes):
+        _status, fs = block.op(Operation.CALL_FOREIGN, (fd, owner, fs), (bits_type(32), api.filesystem_effect), entity=descriptors.close)
+    block.ret(fs)
+    function = graph.function(block.parameter_types, (api.filesystem_effect,))
+    module = object_with_refs(Kind.MODULE, [function])
+    root = object_with_refs(Kind.PROGRAM_ROOT, [module])
+    available = {item.cid: item for item in (*graph.objects.values(), *descriptors.objects, *api.types, function, module, root)}
+    reachable, pending = {}, [root.cid]
+    while pending:
+        cid = pending.pop()
+        if cid not in reachable:
+            reachable[cid] = available[cid]
+            pending.extend(reachable[cid].references)
+    return StoreReader(write_store(root.cid, tuple(reachable.values())))
+
+
+def _reachable(start, objects) -> set[bytes]:
+    available = {item.cid: item for item in objects}
+    seen, pending = set(), [start.cid]
+    while pending:
+        cid = pending.pop()
+        if cid not in seen and cid in available:
+            seen.add(cid)
+            pending.extend(available[cid].references)
+    return seen
+
+
+class DescriptorOwnershipTests(unittest.TestCase):
+    """ADR-153: the descriptor handed over by ``detachFd`` is closed exactly once."""
+
+    def test_one_close_verifies(self):
+        verify_store(_closing_store(1))
+
+    def test_leaked_descriptor_rejects(self):
+        with self.assertRaises(XaxError) as caught:
+            verify_store(_closing_store(0))
+        self.assertEqual(caught.exception.diagnostic.code, "XAX.RESOURCE.DROP")
+
+    def test_double_close_rejects(self):
+        with self.assertRaises(XaxError) as caught:
+            verify_store(_closing_store(2))
+        self.assertEqual(caught.exception.diagnostic.code, "XAX.RESOURCE.DUPLICATE")
+
+    def test_click_syncs_before_closing_and_restore_does_not_sync(self):
+        descriptors = posix_descriptor_api()
+        native = counter_native(decode_counter_activity(counter_activity_semantics(**app.SEMANTICS)))
+        objects = (*native.objects, native.on_create, native.on_click)
+        click, create = _reachable(native.on_click, objects), _reachable(native.on_create, objects)
+        self.assertTrue({descriptors.close.cid, descriptors.fdatasync.cid, descriptors.descriptor.cid} <= click)
+        self.assertIn(descriptors.close.cid, create)
+        self.assertNotIn(descriptors.fdatasync.cid, create)
+        self.assertNotIn(posix_android_api().close.cid, click | create)
 
 
 class AssembledDexTests(unittest.TestCase):
@@ -70,7 +133,26 @@ class CounterApkTests(unittest.TestCase):
         committed = json.loads(app.EVIDENCE.read_text(encoding="utf-8"))
         self.assertEqual(committed["apk_sha256"], hashlib.sha256(app.APK.read_bytes()).hexdigest())
         self.assertTrue(all(committed[key]["passed"] for key in ("official_tools", "art_verify", "native_under_bionic")))
-        self.assertEqual(committed["device"]["label"], "UNEXECUTED")
+        device = committed["device"]
+        self.assertIn(device["label"], ("UNEXECUTED", "EXECUTED"))
+        if device["label"] == "EXECUTED":
+            # A recorded run is a run of exactly this APK, and says whether it was hardware.
+            self.assertEqual(device["apk_sha256"], committed["apk_sha256"])
+            self.assertTrue(device["passed"])
+            self.assertIn(app.ORACLE_PASSED, device["output"][-1])
+            self.assertIn("ok: 4", device["output"])
+            self.assertIsInstance(device["hardware"], bool)
+
+    def test_twin_evidence_compares_this_apk_with_the_same_behavior(self):
+        from benchmarks import bench_android_counter_twin as twin
+
+        committed = json.loads(twin.EVIDENCE.read_text(encoding="utf-8"))
+        self.assertEqual(committed["xax"]["apk_sha256"], hashlib.sha256(app.APK.read_bytes()).hexdigest())
+        self.assertTrue(committed["behavior_match"])
+        self.assertEqual(set(committed["xax"]["native_function_bytes"]), set(committed["java_ndk"]["native_function_bytes"]))
+        device = committed["device"]
+        # Start-up time and memory count only from hardware (XAX_SPEC.md section 21.2).
+        self.assertTrue(device["label"] != "MEASURED" or device["hardware"] is True)
 
     @unittest.skipUnless(bionic.QEMU and (bionic.ROOT / "system/bin/linker64").exists() and bionic.JNI_H.exists(), "requires the NDK, qemu-aarch64, and an Android bionic root")
     def test_native_state_survives_restart_under_bionic(self):
