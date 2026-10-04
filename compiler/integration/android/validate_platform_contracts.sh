@@ -7,7 +7,10 @@ EVIDENCE="$ROOT/benchmarks/android_platform_runtime_probe_evidence.json"
 : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME must point to an Android NDK}"
 command -v adb >/dev/null || { echo "adb is required" >&2; exit 2; }
 ABI="$(adb shell getprop ro.product.cpu.abi | tr -d '\r')"
-case "$ABI" in arm64-v8a*) ;; *) echo "requires arm64-v8a device/emulator, got $ABI" >&2; exit 2;; esac
+ABILIST="$(adb shell getprop ro.product.cpu.abilist | tr -d '\r')"
+# An x86_64 emulator image with ARM translation lists arm64-v8a after its native ABI;
+# the run is then recorded as translated, not hardware (XAX_SPEC.md section 21.2).
+case ",$ABILIST," in *,arm64-v8a,*) ;; *) echo "requires an arm64-v8a device/emulator, got $ABILIST" >&2; exit 2;; esac
 python "$ROOT/benchmarks/bench_android_platform_runtime.py"
 CLANG="$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" -type f -name 'aarch64-linux-android24-clang' -print -quit)"
 [ -n "$CLANG" ] || { echo "aarch64-linux-android24-clang not found in NDK" >&2; exit 2; }
@@ -25,7 +28,9 @@ grep -q '^XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1$' <<<"$OUTPUT"
 DEVICE="$(adb shell getprop ro.product.model | tr -d '\r')"
 ANDROID_RELEASE="$(adb shell getprop ro.build.version.release | tr -d '\r')"
 ANDROID_API="$(adb shell getprop ro.build.version.sdk | tr -d '\r')"
-OUTPUT="$OUTPUT" DEVICE="$DEVICE" ABI="$ABI" ANDROID_RELEASE="$ANDROID_RELEASE" ANDROID_API="$ANDROID_API" EVIDENCE="$EVIDENCE" python - <<'PY'
+BRIDGE="$(adb shell getprop ro.dalvik.vm.native.bridge | tr -d '\r')"
+QEMU="$(adb shell getprop ro.kernel.qemu | tr -d '\r')"
+OUTPUT="$OUTPUT" DEVICE="$DEVICE" ABI="$ABI" ABILIST="$ABILIST" BRIDGE="$BRIDGE" QEMU="$QEMU" ANDROID_RELEASE="$ANDROID_RELEASE" ANDROID_API="$ANDROID_API" EVIDENCE="$EVIDENCE" python - <<'PY'
 import json, os
 from pathlib import Path
 path=Path(os.environ['EVIDENCE'])
@@ -35,6 +40,10 @@ data['runtime']={
   'result': os.environ['OUTPUT'],
   'device': os.environ['DEVICE'],
   'abi': os.environ['ABI'],
+  'abilist': os.environ['ABILIST'],
+  'native_bridge': os.environ['BRIDGE'] or None,
+  'hardware': os.environ['QEMU'] != '1',
+  'arm64_native': os.environ['ABI'].startswith('arm64-v8a'),
   'android_release': os.environ['ANDROID_RELEASE'],
   'android_api': int(os.environ['ANDROID_API']),
   'file': True, 'thread': True, 'socket': True,

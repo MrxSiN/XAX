@@ -26,11 +26,13 @@ from ``compiler/``.
 from __future__ import annotations
 
 import json
+import os
 import re
 import statistics
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from benchmarks import android_counter_app as app
@@ -40,7 +42,12 @@ HERE = Path(__file__).resolve().parent
 TWIN = HERE / "android_counter_twin"
 EVIDENCE = HERE / "android_counter_twin_evidence.json"
 PACKAGE, COMPONENT = "xax.counter", "xax.counter/.CounterActivity"
-WARMUP, RUNS, PASSES = 3, 16, 2
+# Defaults are the hardware protocol; the overrides exist to check the harness on slow
+# targets (an emulator run is never performance evidence).
+WARMUP = int(os.environ.get("XAX_TWIN_WARMUP", 3))
+RUNS = int(os.environ.get("XAX_TWIN_RUNS", 16))
+PASSES = 2
+UI_TIMEOUT = int(os.environ.get("XAX_UI_TIMEOUT", 60))
 SIZE_KEYS = ("apk_bytes", "dex_bytes", "manifest_bytes", "native_library_bytes")
 
 
@@ -48,64 +55,97 @@ def _adb(*arguments: str, timeout: int = 600) -> str:
     return subprocess.run(["adb", *arguments], check=True, capture_output=True, text=True, timeout=timeout).stdout.replace("\r", "")
 
 
-def _cold_start() -> tuple[int, int]:
-    """One cold start: (``TotalTime`` ms, total PSS KiB of the started process)."""
+def _cold_start() -> dict[str, int | None]:
+    """One cold start: ``TotalTime`` (``None`` when Android did not track the launch),
+    ``WaitTime``, and the total PSS (KiB) of the started process."""
     _adb("shell", "am", "force-stop", PACKAGE)
     output = _adb("shell", "am", "start", "-W", "-n", COMPONENT)
     if "Status: ok" not in output:
         raise RuntimeError(f"launch failed:\n{output}")
-    total = int(re.search(r"^TotalTime: (\d+)$", output, re.M).group(1))
-    memory = _adb("shell", "dumpsys", "meminfo", PACKAGE)
-    pss = int(re.search(r"^\s*TOTAL(?: PSS)?:?\s+(\d+)", memory, re.M).group(1))
-    return total, pss
+    total = re.search(r"^TotalTime: (\d+)$", output, re.M)
+    memory = _adb("shell", "dumpsys", "-t", "600", "meminfo", PACKAGE)  # dumpsys's own limit is 10 s
+    return {
+        "total_time_ms": int(total.group(1)) if total else None,
+        "wait_time_ms": int(re.search(r"^WaitTime: (\d+)$", output, re.M).group(1)),
+        "pss_kib": int(re.search(r"^\s*TOTAL(?: PSS)?:?\s+(\d+)", memory, re.M).group(1)),
+    }
+
+
+def _shown_count() -> int | None:
+    """The number on the button, or ``None`` if the UI cannot be dumped right now."""
+    dump = subprocess.run(["adb", "shell", "uiautomator", "dump", "/data/local/tmp/xax_twin_ui.xml"], capture_output=True, text=True, timeout=600)
+    if dump.returncode:
+        return None
+    match = re.search(r'text="(\d+)"', _adb("exec-out", "cat", "/data/local/tmp/xax_twin_ui.xml"))
+    return int(match.group(1)) if match else None
 
 
 def _clicks_work() -> bool:
-    """A tap on the full-screen button turns the restored count into count + 1."""
-    def text() -> str:
-        _adb("shell", "uiautomator", "dump", "/data/local/tmp/xax_twin_ui.xml")
-        return re.search(r'text="(\d+)"', _adb("exec-out", "cat", "/data/local/tmp/xax_twin_ui.xml")).group(1)
-
-    before = int(text())
+    """A tap on the full-screen button turns the shown count into count + 1 (polled, ``XAX_UI_TIMEOUT``)."""
+    deadline = time.monotonic() + UI_TIMEOUT
+    before = None
+    while before is None and time.monotonic() < deadline:
+        before = _shown_count()
+    if before is None:
+        return False
     size = _adb("shell", "wm", "size").strip().splitlines()[-1].split()[-1]
     width, height = (int(item) for item in size.split("x"))
     _adb("shell", "input", "tap", str(width // 2), str(height // 2))
-    subprocess.run(["sleep", "2"], check=True)
-    return int(text()) == before + 1
+    while time.monotonic() < deadline:
+        shown = _shown_count()
+        if shown is not None and shown != before:
+            return shown == before + 1
+        time.sleep(2)
+    return False
+
+
+def _install(apk: Path, attempts: int = 3) -> None:
+    """Replace whichever arm is installed (both use one package) with ``apk``."""
+    for attempt in range(attempts):
+        subprocess.run(["adb", "uninstall", PACKAGE], capture_output=True, text=True, timeout=300)
+        completed = subprocess.run(["adb", "install", "-t", str(apk)], capture_output=True, text=True, timeout=900)
+        if completed.returncode == 0 and "Success" in completed.stdout:
+            return
+        time.sleep(10)
+    raise RuntimeError(f"adb install {apk.name} failed {attempts} times: {completed.stdout}{completed.stderr}")
 
 
 def measure_device(apks: dict[str, Path]) -> dict:
     """Cold starts of every arm on the connected target, in alternating install-once passes."""
     properties = {name: _adb("shell", "getprop", name).strip() for name in ("ro.build.fingerprint", "ro.product.model", "ro.product.cpu.abilist", "ro.kernel.qemu", "ro.boot.qemu")}
-    samples: dict[str, dict[str, list[int]]] = {arm: {"total_time_ms": [], "pss_kib": []} for arm in apks}
+    samples: dict[str, dict[str, list[int | None]]] = {arm: {"total_time_ms": [], "wait_time_ms": [], "pss_kib": []} for arm in apks}
     clicks = {}
     for pass_index in range(PASSES):
         for arm in (list(apks) if pass_index % 2 == 0 else list(reversed(apks))):
-            if PACKAGE in _adb("shell", "pm", "list", "packages", PACKAGE):
-                _adb("uninstall", PACKAGE, timeout=300)
-            _adb("install", "-t", str(apks[arm]), timeout=900)
+            _install(apks[arm])
             for _ in range(WARMUP):
                 _cold_start()
             if pass_index == 0:
                 clicks[arm] = _clicks_work()
             for _ in range(RUNS // PASSES):
-                total, pss = _cold_start()
-                samples[arm]["total_time_ms"].append(total)
-                samples[arm]["pss_kib"].append(pss)
-    _adb("uninstall", PACKAGE, timeout=300)
+                for key, value in _cold_start().items():
+                    samples[arm][key].append(value)
+    subprocess.run(["adb", "uninstall", PACKAGE], capture_output=True, timeout=300)
     emulated = "1" in (properties["ro.kernel.qemu"], properties["ro.boot.qemu"])
+    def stats(values: list[int | None]) -> tuple[float | None, float | None]:
+        present = [value for value in values if value is not None]
+        return (statistics.median(present) if present else None, round(statistics.stdev(present), 2) if len(present) > 1 else None)
+
     summary = {
         arm: {
             "clicks_work": clicks[arm],
-            **{f"median_{key}": statistics.median(values) for key, values in rows.items()},
-            **{f"stdev_{key}": round(statistics.stdev(values), 2) for key, values in rows.items()},
+            "untracked_launches": rows["total_time_ms"].count(None),
+            **{f"median_{key}": stats(values)[0] for key, values in rows.items()},
+            **{f"stdev_{key}": stats(values)[1] for key, values in rows.items()},
             "samples": rows,
         }
         for arm, rows in samples.items()
     }
-    fastest = min(item["median_total_time_ms"] for item in summary.values())
+    # TotalTime is the comparison; an arm with any untracked launch gets no ratio.
+    tracked = all(item["untracked_launches"] == 0 for item in summary.values())
+    fastest = min(item["median_total_time_ms"] for item in summary.values()) if tracked else None
     for item in summary.values():
-        item["time_ratio_vs_fastest"] = round(item["median_total_time_ms"] / fastest, 3)
+        item["time_ratio_vs_fastest"] = round(item["median_total_time_ms"] / fastest, 3) if tracked else None
     return {
         "label": "MEASURED" if not emulated else "EXECUTED",
         "hardware": not emulated,
@@ -154,7 +194,7 @@ def main() -> int:
     EVIDENCE.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({key: result[key] for key in ("behavior_match", "xax_over_java_ndk")}, indent=2))
     device = result["device"]
-    print("device:", device["label"], {arm: {key: value for key, value in row.items() if key.startswith(("median", "time", "clicks"))} for arm, row in device.get("arms", {}).items()})
+    print("device:", device["label"], {arm: {key: value for key, value in row.items() if key.startswith(("median", "time", "clicks", "untracked"))} for arm, row in device.get("arms", {}).items()})
     return 0 if result["behavior_match"] else 1
 
 

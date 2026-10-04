@@ -76,6 +76,17 @@ emulator. Success is recorded only after the device process prints
 `XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1`; the evidence JSON remains
 explicitly `executed: false` on hosts where that environment is unavailable.
 
+## Counter app against its Java + NDK twin (R4 harness)
+
+`python -m benchmarks.bench_android_counter_twin --device` (from `compiler/`, with
+`ANDROID_NDK_HOME`, `ANDROID_BUILD_TOOLS`, and `ANDROID_JAR` as for
+`bench_android_ndk_twin.py`) builds the twin in `benchmarks/android_counter_twin/`,
+installs each app in turn (they share the package `xax.counter`), checks its
+click path, and records cold-start `TotalTime` and total PSS over alternating
+install-once passes (`XAX_TWIN_WARMUP`, default 3; `XAX_TWIN_RUNS`, default 16).
+The result counts as performance and memory evidence only when the target is
+arm64 hardware (`hardware: true`); an emulator run only shows that the harness works.
+
 ## Running the oracles without a device: x86_64 emulator with ARM translation
 
 The oracles need an `adb` target that advertises `arm64-v8a`. Without a device,
@@ -110,6 +121,13 @@ timeouts fire. What worked on such a host:
 - **No ANR dialogs:** `settings put global hide_error_dialogs 1` and
   `anr_show_background` left at 0; ANR dialogs of system apps otherwise take the
   focus, and `uiautomator` then finds no window to dump.
+- **No framework crash when the network stack is killed:** under load its process
+  misses ANR deadlines and is killed, and `system_server` then crashes on purpose
+  ("Lost network stack"). `device_config put connectivity min_uptime_before_crash
+  999999999999` keeps `system_server` up while the stack restarts.
+- **Wait for the launcher** after every framework start: until the user is
+  unlocked, an installed app's activities do not resolve ("Activity class … does
+  not exist").
 - **Generous oracle timeouts:** `XAX_UI_TIMEOUT=900 XAX_TAP_RETRY=240` for
   `validate_counter_apk.sh` (a launch takes about a minute and one UI dump about
   half a minute under software emulation, and a tap is occasionally lost).
