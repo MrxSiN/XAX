@@ -32,11 +32,23 @@ launch() {
 
 # Poll the UI for up to XAX_UI_TIMEOUT seconds (default 30): slow targets, emulators
 # without hardware acceleration in particular, update the view later than one second.
+# With XAX_TAP_RETRY=<seconds>, a tap whose effect has not appeared by then is sent
+# again (a lost tap leaves the count unchanged; a late duplicate overshoots, which
+# the exact checks reject, so a retry cannot make the oracle pass falsely).
+shows_text() {
+  adb shell uiautomator dump "$REMOTE_XML" >/dev/null 2>&1 \
+    && adb exec-out cat "$REMOTE_XML" | tr -d '\r' | grep -Fq "text=\"$1\""
+}
+
 expect_text() {
-  local deadline=$((SECONDS + ${XAX_UI_TIMEOUT:-30}))
-  until adb shell uiautomator dump "$REMOTE_XML" >/dev/null 2>&1 \
-      && adb exec-out cat "$REMOTE_XML" | tr -d '\r' | grep -Fq "text=\"$1\""; do
+  local deadline=$((SECONDS + ${XAX_UI_TIMEOUT:-30})) retry_at=$((SECONDS + ${XAX_TAP_RETRY:-0}))
+  until shows_text "$1"; do
     [ "$SECONDS" -lt "$deadline" ] || { echo "expected button text $1" >&2; exit 4; }
+    if [ -n "${2:-}" ] && [ "${XAX_TAP_RETRY:-0}" -gt 0 ] && [ "$SECONDS" -ge "$retry_at" ] && shows_text "$2"; then
+      echo "note: tap lost (still $2), tapping again"
+      tap
+      retry_at=$((SECONDS + XAX_TAP_RETRY))
+    fi
     sleep 2
   done
   [ -n "$(adb shell pidof "$PACKAGE" | tr -d '\r')" ] || { echo "process died" >&2; exit 5; }
@@ -53,16 +65,28 @@ tap() {
 adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
 adb install -t "$APK" >/dev/null
 launch; expect_text 0
-tap; expect_text 1
-tap; expect_text 2
-tap; expect_text 3
+tap; expect_text 1 0
+tap; expect_text 2 1
+tap; expect_text 3 2
 launch; expect_text 3          # restored after the process was killed
-tap; expect_text 4
-# run-as works only for debuggable builds; the UI checks above already prove persistence.
-if STATE="$(adb exec-out run-as "$PACKAGE" od -An -tu8 -N8 files/xax.counter 2>/dev/null | tr -d ' \r\n')" && [ -n "$STATE" ]; then
+tap; expect_text 4 3
+# The state file's first 8 bytes as an unsigned number, or nothing when it cannot be
+# read: run-as needs a debuggable build (and prints its refusal on stdout), so on a
+# rooted target (adb root) the file is read directly.  The UI checks above already
+# prove persistence; this checks the bytes XAX wrote.
+read_state() {
+  local out
+  out="$(adb exec-out run-as "$PACKAGE" od -An -tu8 -N8 files/xax.counter 2>/dev/null | tr -d ' \r\n')"
+  if ! [[ "$out" =~ ^[0-9]+$ ]] && [ "$(adb shell id -u | tr -d '\r')" = 0 ]; then
+    out="$(adb exec-out od -An -tu8 -N8 "/data/data/$PACKAGE/files/xax.counter" 2>/dev/null | tr -d ' \r\n')"
+  fi
+  if [[ "$out" =~ ^[0-9]+$ ]]; then printf '%s' "$out"; fi
+}
+STATE="$(read_state)"
+if [ -n "$STATE" ]; then
   [ "$STATE" = "4" ] || { echo "state file holds '$STATE', expected 4" >&2; exit 6; }
   echo "ok: state file 4"
 else
-  echo "note: state file not readable via run-as (non-debuggable build)"
+  echo "note: state file not readable (non-debuggable build, no root)"
 fi
 echo "XAX counter Activity validation passed: restore, increment, persistence across process death, file contents"

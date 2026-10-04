@@ -10,8 +10,30 @@
   },
   "decision": "ADR-111",
   "device": {
-    "label": "UNEXECUTED",
-    "oracle": "integration/android/validate_counter_apk.sh"
+    "apk_sha256": "3f228494aedb7af4027ced20b663a77a24e22c03bb9ff476e0abf8eb9016c3bc",
+    "arm64_native": false,
+    "hardware": false,
+    "label": "EXECUTED",
+    "oracle": "integration/android/validate_counter_apk.sh",
+    "output": [
+      "ok: 0",
+      "ok: 1",
+      "ok: 2",
+      "ok: 3",
+      "ok: 3",
+      "ok: 4",
+      "ok: state file 4",
+      "XAX counter Activity validation passed: restore, increment, persistence across process death, file contents"
+    ],
+    "passed": true,
+    "target": {
+      "ro.boot.qemu": "1",
+      "ro.build.fingerprint": "google/sdk_gphone64_x86_64/emulator64_x86_64_arm64:12/SE1B.240122.005/11418786:userdebug/dev-keys",
+      "ro.build.version.sdk": "32",
+      "ro.dalvik.vm.native.bridge": "libndk_translation.so",
+      "ro.kernel.qemu": "1",
+      "ro.product.cpu.abilist": "x86_64,arm64-v8a"
+    }
   },
   "format": "xax-android-counter-evidence-v1",
   "native_under_bionic": {

@@ -11,7 +11,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -69,7 +69,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 
 ## Queued (deferred by the user, 2026-10-02)
 
-- **Device run of the stateful app (ADR-111)**: on an arm64 device, run `compiler/integration/android/validate_counter_apk.sh`. It expects 0 → 1 → 2 → 3, then `force-stop` and relaunch → 3, then 4. Record the output in `compiler/benchmarks/android_counter_evidence.json` (`device`) and, if it passes, raise the Android `practical_application` matrix field from PROTOTYPE to EXECUTED.
+- **Device run of the stateful app (ADR-111)**: on an arm64 device, run `compiler/integration/android/validate_counter_apk.sh`. It expects 0 → 1 → 2 → 3, then `force-stop` and relaunch → 3, then 4. Record the output in `compiler/benchmarks/android_counter_evidence.json` (`device`) and, if it passes, raise the Android `practical_application` matrix field from PROTOTYPE to EXECUTED. *(2026-10-04: done on an Android 12L x86_64 emulator through ARM translation, ADR-155; a run on arm64 hardware is still wanted.)*
 
 ## Exact next task
 
@@ -336,3 +336,10 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `graph` (in `_graph_ok`) is shared by ordinary functions and group members. In a group it writes `[count, (member, span start, span end)...]` for each member graph; `_group_ok` uses that for the breadth-first orders and the erased graph bytes.
 - `NativeStoreVerifier.verify(words, count, groups)` returns each proven group's member graph indices (read under the lock). `verify_object` parses them in member order.
 - To decide a store directly with `_xax_verify_store`, run `verify_store` on it first. Type verdicts (ADR-143) come from that run, and without them no function is proven.
+
+## Android counter upgrade and emulator notes — 2026-10-04 (ADR-153, ADR-154)
+
+- Host setup for the full suite is in `README.md` (Getting started). The API 30 `google_apis` x86_64 emulator image with ARM translation is the only route to an `adb` target on a host without `/dev/kvm`; see `compiler/integration/android/README.md` for the watchdog, ANR, and attach-timeout problems and their workarounds.
+- `python -m benchmarks.android_counter_app --device` records a device run of the committed counter APK (target identity, `hardware` flag). Only an EXECUTED run of the same APK hash is carried forward; rebuilding the APK resets it to UNEXECUTED.
+- `python -m benchmarks.bench_android_counter_twin --device` is the R4 harness for the Android row: cold start and PSS of XAX against the Java + NDK twin. It counts only on arm64 hardware; the matrix must not cite an emulator run for performance or memory.
+- Next for the Android row: the counter on a device (R3), the twin comparison on hardware (R4 sizes are already MEASURED), and write-then-rename persistence if torn writes matter. *(Later the same day the counter passed on an emulator, so the row is R3; see ADR-155.)*

@@ -59,8 +59,8 @@ Each platform's replacement level is derived from cited evidence in [`XAX_REPLAC
 | Target | Matrix id | Level | Status |
 |---|---|---|---|
 | x86-64 Linux | `linux-x86_64` | R4 | Direct ELF64 executables via syscalls, optionally with declared shared-library imports; executed and measured within 1.05× of the fastest of gcc, clang, and rustc on three workloads; the views profile is lowered by the XAX-hosted backend (native B1–B4). |
+| Android (arm64-v8a) | `android-arm64` | R3 | Direct DEX, manifest, resources, signed APKs, JNI shared objects, and libxposed modules; minimal Activity executed on a device; the stateful counter app (state, file I/O, lifecycle) passed its UI oracle on an Android 12L x86_64 emulator through ARM translation, not yet on arm64 hardware. |
 | AArch64 Linux | `linux-aarch64` | R3 | Static and dynamic ELF executables; a file-processing application executed under `qemu-aarch64` user mode only (no hardware, so no performance level). |
-| Android (arm64-v8a) | `android-arm64` | R2 | Direct DEX, manifest, resources, signed APKs, JNI shared objects, and libxposed modules; minimal Activity executed on a device, stateful app ART-verified with native persistence under bionic (not yet on a device). |
 | AArch64 bare metal | `aarch64-baremetal` | R2 | AAPCS64 images with a QEMU `virt` board package (reset/fault stubs, vector table, one interrupt source); executed under QEMU only. |
 | JVM | `jvm` | R2 | Direct class files in a deterministic JAR with typed JDK member calls; executed on HotSpot, Collatz kernel at 1.03–1.04× the `javac` twin; scalar subset only. |
 | Browser (WebAssembly + generated glue) | `browser-web` | R2 | wasm32 page whose JavaScript glue is compiler-generated from imported `xax-web-v1` declarations; four DOM bindings executed. |

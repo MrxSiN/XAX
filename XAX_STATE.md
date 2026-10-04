@@ -37,7 +37,7 @@ Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with B1–B4 natively on x86-64, and it lowers every native helper. Open (S7b): the driver's lowering structures and the exact rejection diagnostics, which still run in Python.
 
@@ -882,7 +882,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - `xax_platform.posix_descriptor_api()`: a linear `descriptor` resource consumed only by the owning `close`, plus `fdatasync`. The counter's JNI callbacks take the token with the descriptor, so a leak (`XAX.RESOURCE.DROP`) or double close (`XAX.RESOURCE.DUPLICATE`) is rejected; a click syncs its write before closing. The rebuilt APK passes Google's tools and ART's verifier and runs the same sequence under bionic (`android_counter_evidence.json`).
 - `bench_android_counter_twin.py` and `benchmarks/android_counter_twin/`: a same-behavior Java + NDK twin. Sizes MEASURED: APK 0.715×, native library 0.561×, DEX 1.188× (`android_counter_twin_evidence.json`). `--device` measures cold start and PSS; it counts as evidence only on arm64 hardware.
 - `validate_counter_apk.sh` polls the UI with a timeout; `android_counter_app.py --device` records the target and whether it is hardware.
-- Android row: still R2. The device run of the stateful app is still outstanding.
+- Android row: still R2. The device run of the stateful app is still outstanding. *(Superseded: R3 on an emulator, see the ADR-155 section below.)*
 - Full suite: **1,094 passed, 5 skipped** (the same host-bound five).
 
 ## AArch64 register path: heap views and heap loads/stores (2026-10-04, ADR-154)
@@ -890,4 +890,11 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - General AArch64 functions with null-checked heap views and full-width heap loads/stores now stay on the register path. A 40-program heap corpus matches its mirror under bionic (160 results); the ADR-110 corpus is unchanged.
 - The counter's callbacks shrink from 224/324 to 128/168 bytes (clang twin 96/132); APK 20,393 bytes, 0.706× the Java + NDK twin. No other committed artifact changes.
 - Full suite: **1,096 passed, 5 skipped** (the counter APK pin was the only failure before regenerating it).
-- Emulator: the API 30 x86_64 image runs arm64 code through ARM translation, but without KVM an arm64 app misses Android 11's fixed 10-second process-attach deadline, so the counter did not launch there (`compiler/integration/android/README.md`). The device run is still outstanding.
+- Emulator: the API 30 x86_64 image runs arm64 code through ARM translation, but without KVM an arm64 app misses Android 11's fixed 10-second process-attach deadline, so the counter did not launch there (`compiler/integration/android/README.md`). The device run is still outstanding. *(Superseded: it passed on API 32, see the ADR-155 section below.)*
+
+## Android R3: the counter app on an x86_64 emulator with ARM translation (2026-10-04, ADR-155)
+
+- The committed counter APK passed `validate_counter_apk.sh` on an Android 12L (API 32) `google_apis` x86_64 emulator, its arm64 library run through `libndk_translation`: 0 → 1 → 2 → 3, restore 3 after `force-stop`, 4, state file 4 (`android_counter_evidence.json` `device`, `hardware: false`).
+- Android row: `practical_application` EXECUTED, level R3. Correctness evidence only; arm64 hardware is still wanted, and start-up and memory against the twin need it.
+- Full suite: **1,096 passed, 5 skipped**.
+- The host has no KVM: the run needed `ro.hw_timeout_multiplier=20` (Android 12+), a JDWP connection on `system_server`, and hidden error dialogs (`compiler/integration/android/README.md`). The oracle now reads the state file correctly on non-debuggable builds and can retry a lost tap.

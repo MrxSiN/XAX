@@ -76,7 +76,7 @@ def run_native(apk: Path) -> str:
 
 ORACLE = HERE.parent / "integration/android/validate_counter_apk.sh"
 ORACLE_PASSED = "XAX counter Activity validation passed"
-_DEVICE_PROPERTIES = ("ro.build.fingerprint", "ro.build.version.sdk", "ro.product.cpu.abilist", "ro.dalvik.vm.native.bridge", "ro.kernel.qemu", "ro.boot.qemu")
+_DEVICE_PROPERTIES = ("ro.build.fingerprint", "ro.build.version.sdk", "ro.product.cpu.abilist", "ro.dalvik.vm.native.bridge", "ro.kernel.qemu", "ro.boot.qemu", "ro.hw_timeout_multiplier")
 
 
 def run_device() -> dict:
