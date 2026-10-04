@@ -1688,33 +1688,10 @@ def load_verifier_program():
 
 
 def _native_image() -> tuple[bytes, int]:
-    import hashlib
-    import tempfile
+    """``(machine code, entry offset)``, lowered for this host by the XAX x86-64 backend and cached (ADR-152)."""
+    from xax_selfhost_x86_64_backend import host_image
 
-    from xax_x86_64 import compile_native
-
-    sources = Path(__file__).resolve().parent
-    digest = hashlib.sha256(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
-    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py", "xax_inline.py"):
-        digest.update((sources / name).read_bytes())
-    cache = Path(os.environ.get("XAX_NATIVE_CACHE", Path.home() / ".cache" / "xax-native"))
-    entry = cache / f"store-verifier-{digest.hexdigest()}.bin"
-    try:
-        data = entry.read_bytes()
-        return data[8:], int.from_bytes(data[:8], "little")
-    except OSError:
-        pass
-    reader, function = load_verifier_program()
-    target = next(item for item in reader.objects() if item.kind == Kind.TARGET)
-    image = compile_native(reader, function.cid, target.cid)
-    try:
-        cache.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as handle:
-            handle.write(image.entry_offset.to_bytes(8, "little") + image.code)
-        os.replace(handle.name, entry)
-    except OSError:
-        pass
-    return image.code, image.entry_offset
+    return host_image(*load_verifier_program(), "store-verifier")
 
 
 class NativeStoreVerifier:

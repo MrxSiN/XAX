@@ -301,18 +301,17 @@ class NativeEncoder:
 
     @classmethod
     def load(cls) -> "NativeEncoder":
-        from xax_x86_64 import _SYSV_TO_WIN64_THUNK, compile_native
+        from xax_selfhost_x86_64_backend import host_image
+        from xax_x86_64 import _SYSV_TO_WIN64_THUNK
 
-        reader, encode = load_encoder_program()
-        target = next(item for item in reader.objects() if item.kind == Kind.TARGET)
-        image = compile_native(reader, encode.cid, target.cid)
+        machine_code, entry_offset = host_image(*load_encoder_program(), "riscv64-encoder")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
-        code = thunk + image.code
+        code = thunk + machine_code
         mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
         mapping.write(code)
         base = ctypes.addressof(ctypes.c_char.from_buffer(mapping))
         call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
-        return cls(len(image.code), mapping, call, base + len(thunk) + image.entry_offset, (ctypes.c_uint64 * 7)(), ctypes.c_uint64())
+        return cls(len(machine_code), mapping, call, base + len(thunk) + entry_offset, (ctypes.c_uint64 * 7)(), ctypes.c_uint64())
 
     def __call__(self, kind: int, *operands: int) -> int:
         slots = self._slots

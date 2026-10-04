@@ -287,19 +287,18 @@ class NativeHasher:
     """The XAX hash lowered by the XAX x86-64 backend, called in-process with two lent buffers."""
 
     def __init__(self) -> None:
-        from xax_x86_64 import _SYSV_TO_WIN64_THUNK, compile_native
+        from xax_selfhost_x86_64_backend import host_image
+        from xax_x86_64 import _SYSV_TO_WIN64_THUNK
 
-        reader, function = load_hash_program()
-        target = next(item for item in reader.objects() if item.kind == Kind.TARGET)
-        image = compile_native(reader, function.cid, target.cid)
+        machine_code, entry_offset = host_image(*load_hash_program(), "blake3-hash")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
-        code = thunk + image.code
+        code = thunk + machine_code
         self._mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
         self._mapping.write(code)
         base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
-        self._entry = base + len(thunk) + image.entry_offset
-        self.code_size = len(image.code)
+        self._entry = base + len(thunk) + entry_offset
+        self.code_size = len(machine_code)
         # Word arrays: the views are declared 4-aligned.
         self._input = (ctypes.c_uint32 * (INPUT_EXTENT // 4))()
         self._scratch = (ctypes.c_uint32 * (SCRATCH_EXTENT // 4))()

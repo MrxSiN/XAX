@@ -51,3 +51,4 @@ Each store is canonical XAX semantic state for one compiler component on the pro
 | `xax_op_typing.xax` | Operation, constant, and terminator typing (S4) | `src/xax_selfhost_typing.py` |
 | `xax_riscv64_backend.xax` | RISC-V code generation from store bytes (S5) | `src/xax_selfhost_riscv64_backend.py` |
 | `xax_store_verifier.xax` | The store verifier: facts, linearity, objects (S6) | `src/xax_selfhost_verify.py` |
+| `xax_x86_64_backend.xax` | x86-64 views-profile code generation; lowers every helper above for the host (S7a) | `src/xax_selfhost_x86_64_backend.py` |

@@ -1020,40 +1020,10 @@ def _index(type_index, cid: bytes) -> int:
 
 
 def _native_image() -> tuple[bytes, int]:
-    """``(machine code, entry offset)`` of the typing program, from the cache when present.
+    """``(machine code, entry offset)``, lowered for this host by the XAX x86-64 backend and cached (ADR-152)."""
+    from xax_selfhost_x86_64_backend import host_image
 
-    The cache key covers the exact store bytes and the backend sources that
-    lower them, so a changed store or compiler never reuses old code.  The
-    cache is a build artifact (``XAX_NATIVE_CACHE``, default
-    ``~/.cache/xax-native``); deleting it only costs a recompile.
-    """
-    import hashlib
-    import tempfile
-
-    from xax_x86_64 import compile_native
-
-    sources = Path(__file__).resolve().parent
-    digest = hashlib.sha256(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
-    for name in ("xax_compiler.py", "xax_x86_64.py", "xax_x86_64_regalloc.py", "xax_inline.py"):
-        digest.update((sources / name).read_bytes())
-    cache = Path(os.environ.get("XAX_NATIVE_CACHE", Path.home() / ".cache" / "xax-native"))
-    entry = cache / f"typing-{digest.hexdigest()}.bin"
-    try:
-        data = entry.read_bytes()
-        return data[8:], int.from_bytes(data[:8], "little")
-    except OSError:
-        pass
-    reader, function = load_typing_program()
-    target = next(item for item in reader.objects() if item.kind == Kind.TARGET)
-    image = compile_native(reader, function.cid, target.cid)
-    try:
-        cache.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as handle:
-            handle.write(image.entry_offset.to_bytes(8, "little") + image.code)
-        os.replace(handle.name, entry)
-    except OSError:
-        pass  # an unwritable cache only costs the next process a recompile
-    return image.code, image.entry_offset
+    return host_image(*load_typing_program(), "typing")
 
 
 class NativeTyping:

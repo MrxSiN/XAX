@@ -39,7 +39,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). Open: the x86-64 backend, the driver's lowering structures, and the exact rejection diagnostics, which still run in Python; and B1–B4 on a second target.
+S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with B1–B4 natively on x86-64, and it lowers every native helper. Open (S7b): the driver's lowering structures and the exact rejection diagnostics, which still run in Python.
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -860,4 +860,12 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Both RISC-V generators lower `aggregate.make`/`aggregate.get` for tuples and arrays of up to 255 scalar fields, LP64 indirect results (a hidden result-area address in a0, field k at offset 8k), and stack arguments past a7. Frames without such calls are unchanged, so every earlier image is byte-identical. The shared, instruction-set-neutral analysis moved to `compiler/src/xax_views_lowering.py`.
 - BLAKE3 (`xax_blake3_hash.xax`) compiles through both generators to one 18,844-byte RV64 image. Emulated, it matches the official vectors and the reference across chunk and tree boundaries, and gives the production digest of every committed store under 1 MiB. gen2 (the backend's own RISC-V image) compiles the BLAKE3 store to gen1's image (a default test, 3 s).
 - Evidence regenerated: `selfhost_closure_evidence.json` (B1 now includes BLAKE3; B4 verifier image unchanged, 4,559,444 bytes) and `selfhost_fixed_point_evidence.json` (backend store 902,679 bytes; gen2 = reference = gen3, 2,810,964 bytes).
+
+## S7a: the x86-64 backend as XAX; B1–B4 natively on x86-64 (2026-10-04, ADR-152)
+
+- `x86_64_views_target()` (`x86_64-linux-views-v1`) and its bootstrap reference `compiler/src/xax_x86_64_views.py` (Win64 registers, stack arguments above the shadow area, aggregate results through a hidden area, `ud2` traps). It matches the reference executor on 320 random calls and executes aggregates of 3–255 fields.
+- The XAX backends now share `compiler/src/xax_selfhost_views_backend.py` (front end, liveness, linear scan, edge copies, driver, native runner); the RISC-V store is byte-identical after the split. `compiler/src/xax_selfhost_x86_64_backend.py` adds the x86-64 hooks and lowering (store `compiler/bootstrap/xax_x86_64_backend.xax`, 974,862 bytes).
+- B1 on all nine helper programs, itself included; the native verifier image agrees with the bootstrap verifier on all 13 committed stores; gen2 reproduces itself natively in 0.95 s (`benchmarks/selfhost_x86_64_evidence.json`).
+- Production: every native helper is lowered by the XAX x86-64 backend (`host_image`); the optimizing `compile_native` lowers no XAX helper. MEASURED cost: 1.08–1.32× the optimizing images' run time; warm self-hosting suites 1.14×, cold 0.67×.
+- `blake3.py` now retries the native hasher when a module on its path is still importing (it previously gave up for the process). Full suite: **1,087 passed, 5 skipped** (the same host-bound five).
 

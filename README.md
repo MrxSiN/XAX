@@ -55,7 +55,7 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 
 | Target | Status |
 |---|---|
-| x86-64 Linux | Direct ELF64 executables via syscalls, optionally with explicit shared-library imports — executed and measured |
+| x86-64 Linux | Direct ELF64 executables via syscalls, optionally with explicit shared-library imports — executed and measured; the views profile is lowered by an XAX-hosted backend (native B1–B4) |
 | x86-64 Windows | Direct native encoder, Win64 ABI; direct PE32+ executables with kernel32 imports |
 | AArch64 | AAPCS64 bare-metal and Android shared objects |
 | WebAssembly (wasm32) | Direct module emission |
@@ -108,7 +108,7 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 
 ## Project status
 
-XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json) (summary under [Targets](#targets)). On one shared Linux x86-64 host, XAX is within 1.05× of the fastest of gcc, clang, and rustc on `filestat` (1.017×), `chains` (fastest), and `jsonmin` (1.029×) ([`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) §15.14); on the JVM a Collatz kernel runs at 1.04× the `javac` twin's time. The working compiler is still mostly Python: the XAX-hosted verifier and RISC-V backend reach B1–B4 on RV64 under emulation only (ADR-145, ADR-150).
+XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json) (summary under [Targets](#targets)). On one shared Linux x86-64 host, XAX is within 1.05× of the fastest of gcc, clang, and rustc on `filestat` (1.017×), `chains` (fastest), and `jsonmin` (1.029×) ([`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) §15.14); on the JVM a Collatz kernel runs at 1.04× the `javac` twin's time. Part of the compiler is now XAX: hashing, store decoding, verification, and RISC-V and x86-64 code generation for the views profile run as XAX programs, reach B1–B4 on RV64 (emulated) and natively on x86-64, and every native helper is lowered by the XAX x86-64 backend (ADR-150–ADR-152). The program backends (Linux, Windows, Android, JVM, WebAssembly) and the driver are still Python.
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 

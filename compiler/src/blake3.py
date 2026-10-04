@@ -324,7 +324,10 @@ def _native_hasher():
         from xax_selfhost_blake3 import NativeHasher, native_hasher_usable
 
         _NATIVE_HASHER = NativeHasher() if native_hasher_usable() else None
-    except (ImportError, OSError, RuntimeError, ValueError):
+    except ImportError:
+        # A module on the hasher's path is still importing (its constants hash semantic objects); try again later.
+        _NATIVE_HASHER, _HASHER_ATTEMPTED = None, False
+    except (OSError, RuntimeError, ValueError):
         _NATIVE_HASHER = None
     finally:
         _HASHER_BUILDING = False

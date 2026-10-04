@@ -1,0 +1,251 @@
+{
+  "format": "xax-selfhost-x86-64-evidence-v1",
+  "label": "EXECUTED",
+  "target_cid": "16661fd8f16cd9625a329827cde2dfd2107305c48ae23160cf02528dd5085447",
+  "host_nonsemantic": "Linux x86_64 Python 3.11.15",
+  "b1_gen1_images": [
+    {
+      "program": "xax_selfhost_cfg",
+      "store_bytes": 15478,
+      "functions": 1,
+      "code_bytes": 9642,
+      "image_sha256": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 2.81,
+        "bootstrap": 0.03
+      }
+    },
+    {
+      "program": "xax_selfhost_graph",
+      "store_bytes": 71275,
+      "functions": 1,
+      "code_bytes": 47417,
+      "image_sha256": "2822ff4ac1af1db1a272eb6f80dfe7b85b7505b515497b8f2492b61be5d9d7f4",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 0.09,
+        "bootstrap": 0.12
+      }
+    },
+    {
+      "program": "xax_selfhost_riscv64",
+      "store_bytes": 10129,
+      "functions": 1,
+      "code_bytes": 3894,
+      "image_sha256": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 0.01,
+        "bootstrap": 0.01
+      }
+    },
+    {
+      "program": "xax_selfhost_store",
+      "store_bytes": 29910,
+      "functions": 1,
+      "code_bytes": 19644,
+      "image_sha256": "da537d44bc3d2b85299a725a4cd3be20adc8e36666baa7bd98c492a293b8239f",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 0.03,
+        "bootstrap": 0.05
+      }
+    },
+    {
+      "program": "xax_selfhost_typing",
+      "store_bytes": 2790635,
+      "functions": 46,
+      "code_bytes": 3396677,
+      "image_sha256": "26e9a3cdb20a68f0c1d9dbc556185c8ad178dda1037c69fb26dc06386f5981a7",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 4.01,
+        "bootstrap": 7.52
+      }
+    },
+    {
+      "program": "xax_selfhost_verify",
+      "store_bytes": 1957449,
+      "functions": 16,
+      "code_bytes": 2993128,
+      "image_sha256": "e2eb1e46d927c84a79082ddc10af890c0384497393b20858d7671bc7b9d67952",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 3.22,
+        "bootstrap": 5.0
+      }
+    },
+    {
+      "program": "xax_selfhost_blake3",
+      "store_bytes": 34025,
+      "functions": 2,
+      "code_bytes": 20661,
+      "image_sha256": "56a0356d74ca76b052cee6b2b11e7a750c6276c6303d5b4f5aa44a77fb50347c",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 0.02,
+        "bootstrap": 0.04
+      }
+    },
+    {
+      "program": "xax_selfhost_riscv64_backend",
+      "store_bytes": 902679,
+      "functions": 19,
+      "code_bytes": 1764222,
+      "image_sha256": "f8fb468403c56f36180aa9ddfe1e8cc03bc45f9a5f03c3ff2eb672695aff2f0a",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 1.14,
+        "bootstrap": 2.48
+      }
+    },
+    {
+      "program": "xax_selfhost_x86_64_backend",
+      "store_bytes": 974862,
+      "functions": 25,
+      "code_bytes": 1835317,
+      "image_sha256": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 1.53,
+        "bootstrap": 3.17
+      }
+    }
+  ],
+  "b3_native_verifier": [
+    {
+      "store": "m11_bootstrap_bundle.xax",
+      "objects": 11,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "m11_compiler_subset.xax",
+      "objects": 6,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "m14_selfhost_compiler.xax",
+      "objects": 14,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_blake3_compress.xax",
+      "objects": 11,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_blake3_hash.xax",
+      "objects": 100,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_cfg_analysis.xax",
+      "objects": 27,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_graph_decoder.xax",
+      "objects": 71,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_op_typing.xax",
+      "objects": 836,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_riscv64_backend.xax",
+      "objects": 202,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_riscv64_encoder.xax",
+      "objects": 42,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_store_decoder.xax",
+      "objects": 37,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_store_verifier.xax",
+      "objects": 921,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    },
+    {
+      "store": "xax_x86_64_backend.xax",
+      "objects": 240,
+      "store_verdict": true,
+      "bootstrap_accepts": true,
+      "agrees": true
+    }
+  ],
+  "b4_native_fixed_point": {
+    "compiler": "gen2: the backend's x86-64 image, native",
+    "code_bytes": 1835317,
+    "sha256": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+    "gen3_equals_gen2": true,
+    "host_s_nonsemantic": 0.95
+  },
+  "runtime_vs_optimizing_bootstrap": [
+    {
+      "program": "xax_selfhost_verify",
+      "input": "xax_op_typing.xax",
+      "xax_backend_s": 0.3544,
+      "optimizing_bootstrap_s": 0.2784,
+      "ratio": 1.273,
+      "code_bytes": {
+        "xax_backend": 2993128,
+        "optimizing_bootstrap": 659575
+      }
+    },
+    {
+      "program": "xax_selfhost_verify",
+      "input": "xax_store_verifier.xax",
+      "xax_backend_s": 0.1906,
+      "optimizing_bootstrap_s": 0.1774,
+      "ratio": 1.075,
+      "code_bytes": {
+        "xax_backend": 2993128,
+        "optimizing_bootstrap": 659575
+      }
+    },
+    {
+      "program": "xax_selfhost_verify",
+      "input": "xax_riscv64_backend.xax",
+      "xax_backend_s": 0.1152,
+      "optimizing_bootstrap_s": 0.0874,
+      "ratio": 1.318,
+      "code_bytes": {
+        "xax_backend": 2993128,
+        "optimizing_bootstrap": 659575
+      }
+    }
+  ]
+}
