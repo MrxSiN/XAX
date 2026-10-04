@@ -24,6 +24,15 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertIn("windows-x86_64-pe.simd: bare label EXECUTED needs evidence", errors)
         self.assertIn("windows-x86_64-pe.memory: missing evidence no/such/file.json", errors)
 
+    def test_rows_need_a_name_and_summary_for_generated_tables(self):
+        bad = copy.deepcopy(MATRIX)
+        row = next(r for r in bad["platforms"] if r["id"] == "dotnet-clr")
+        del row["name"]
+        row["summary"] = " "
+        errors = validate(bad, ROOT)
+        self.assertIn("dotnet-clr: missing name", errors)
+        self.assertIn("dotnet-clr: missing summary", errors)
+
     def test_emulator_only_rows_cannot_cite_performance(self):
         bad = copy.deepcopy(MATRIX)
         row = next(r for r in bad["platforms"] if r["id"] == "linux-aarch64")

@@ -18,5 +18,5 @@ If the XAX workspace/compiler interface is available, use it instead of producin
 
 For repository maintenance (compiler, evidence, documentation):
 
-- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels. After changing it, run `python -m xax_status_docs --write` from `compiler/src` to regenerate every `<!-- xax-status:levels -->` block; `tests/test_status_docs.py` fails while a block is stale.
+- `XAX_REPLACEMENT_MATRIX.json` is the source of current replacement levels and of the README Targets table (each row's `name` and `summary`). After changing it, run `python -m xax_status_docs --write` from `compiler/src` to regenerate every `<!-- xax-status:levels -->` and `<!-- xax-status:targets -->` block; `tests/test_status_docs.py` fails while a block is stale.
 - Dated sections in `XAX_STATE.md`, `XAX_HANDOFF.md`, `XAX_BENCHMARKS.md`, and `XAX_DECISIONS.md` are historical records; record a new result in a new section and point the superseded one at it instead of rewriting it.

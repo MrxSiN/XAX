@@ -23,6 +23,18 @@ class StatusDocsTests(unittest.TestCase):
             self.assertIn("R4: linux-x86_64", page.read_text())
             self.assertEqual(sync(write=False, repo=root), [])
 
+    def test_targets_table_lists_every_platform_with_its_level(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copy(MATRIX, root / MATRIX.name)
+            page = root / "page.md"
+            page.write_text("# Page\n\n<!-- xax-status:targets --><!-- /xax-status:targets -->\n")
+            self.assertEqual(sync(write=True, repo=root), [page])
+            text = page.read_text()
+            self.assertIn("| x86-64 Linux | `linux-x86_64` | R4 |", text)
+            self.assertIn("| .NET CLI/CLR | `dotnet-clr` | — |", text)
+            self.assertLess(text.index("`linux-x86_64`"), text.index("`dotnet-clr`"))
+
 
 if __name__ == "__main__":
     unittest.main()

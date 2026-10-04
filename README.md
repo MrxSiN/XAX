@@ -53,20 +53,44 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 
 ## Targets
 
-| Target | Status |
-|---|---|
-| x86-64 Linux | Direct ELF64 executables via syscalls, optionally with explicit shared-library imports — executed and measured; the views profile is lowered by an XAX-hosted backend (native B1–B4) |
-| x86-64 Windows | Direct native encoder, Win64 ABI; direct PE32+ executables with kernel32 imports |
-| AArch64 | AAPCS64 bare-metal and Android shared objects |
-| WebAssembly (wasm32) | Direct module emission |
-| Android | DEX, manifest, resources, APK signing, JNI, libxposed modules |
-| JVM | Direct class files in a deterministic JAR, typed JDK member calls — executed on HotSpot, measured against `javac` |
-| RISC-V (RV64IM) | Raw position-independent images, LP64 calls — executed under an emulator; the self-hosted XAX backend and store verifier reach B1–B4 here |
-| SIMT accelerator | Deployment-packet format (conformance only) |
+Each platform's replacement level is derived from cited evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json) by `compiler/src/xax_replacement.py`; the table below is generated from that file (`python -m xax_status_docs --write` from `compiler/src`). "—" means the platform has no level yet: the work has not started. Each row's open blockers are listed in the matrix.
 
-Per-platform replacement levels (R0–R6) are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json); see [`XAX_SPEC.md`](XAX_SPEC.md) §21.
+<!-- xax-status:targets -->
+| Target | Matrix id | Level | Status |
+|---|---|---|---|
+| x86-64 Linux | `linux-x86_64` | R4 | Direct ELF64 executables via syscalls, optionally with declared shared-library imports; executed and measured within 1.05× of the fastest of gcc, clang, and rustc on three workloads; the views profile is lowered by the XAX-hosted backend (native B1–B4). |
+| AArch64 Linux | `linux-aarch64` | R3 | Static and dynamic ELF executables; a file-processing application executed under `qemu-aarch64` user mode only (no hardware, so no performance level). |
+| Android (arm64-v8a) | `android-arm64` | R2 | Direct DEX, manifest, resources, signed APKs, JNI shared objects, and libxposed modules; minimal Activity executed on a device, stateful app ART-verified with native persistence under bionic (not yet on a device). |
+| AArch64 bare metal | `aarch64-baremetal` | R2 | AAPCS64 images with a QEMU `virt` board package (reset/fault stubs, vector table, one interrupt source); executed under QEMU only. |
+| JVM | `jvm` | R2 | Direct class files in a deterministic JAR with typed JDK member calls; executed on HotSpot, Collatz kernel at 1.03–1.04× the `javac` twin; scalar subset only. |
+| Browser (WebAssembly + generated glue) | `browser-web` | R2 | wasm32 page whose JavaScript glue is compiler-generated from imported `xax-web-v1` declarations; four DOM bindings executed. |
+| x86-64 Windows | `windows-x86_64-pe` | R1 | Direct PE32+ executables, Win64 ABI, kernel32 imports; current bytes executed under Wine, not yet on a Windows host. |
+| WebAssembly (wasm32) | `wasm32-core` | R1 | Direct module emission with no imports; executed in a host WebAssembly engine. |
+| WebAssembly + WASI | `wasm32-wasi` | R1 | wasm32 modules with three WASI imports (args, `fd_write`, exit); executed under Node.js `node:wasi`. |
+| RISC-V (RV64IM) | `riscv64` | R1 | Raw position-independent images, LP64 integer calls; executed under the Unicorn emulator; the self-hosted XAX backend and store verifier reach B1–B4 here. |
+| GPU (SPIR-V/Vulkan; PTX, Metal, DXIL planned) | `gpu-spirv-cuda-metal-dxil` | R1 | Direct SPIR-V compute modules executed on Mesa llvmpipe (a CPU Vulkan driver), not GPU hardware; integer words only. |
+| SIMT accelerator packet | `accelerator-simt-packet` | R0 | Synthetic deployment-packet format checked by conformance tests only; no execution. |
+| macOS / iOS / iPadOS / watchOS / tvOS / visionOS | `macos-ios-apple` | — | Not started: no Mach-O container, Apple ABI package, or Objective-C runtime contract. |
+| .NET CLI/CLR | `dotnet-clr` | — | Not started: no CLI metadata/IL container. |
+| RTOS / embedded MCU (Cortex-M, RISC-V MCU) | `rtos-embedded-mcu` | — | Not started: no MCU target, vector table, or linker-layout package. |
+| BSD / other Unix | `bsd-unix` | — | Not started: no FreeBSD/OpenBSD/NetBSD syscall, ELF note, or libc ABI package. |
+<!-- /xax-status:targets -->
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+## Replacement levels (R0–R6)
+
+XAX does not claim to "replace" a language or platform from design intent. A platform reaches a level only when evidence for it exists; the levels are cumulative, so a platform holds a level only when it also holds every lower one. The normative definitions are in [`XAX_SPEC.md`](XAX_SPEC.md) §21.2.
+
+| Level | Name | What has to be shown |
+|---|---|---|
+| R0 | Semantic expressibility | The workload is represented exactly in verified XAX. |
+| R1 | Executable lowering | XAX directly produces a valid executable artifact for the target, and it executed (on hardware, a device, or a named emulator/harness). |
+| R2 | Platform interoperability | The platform's ABI, system APIs, foreign libraries, callbacks, dynamic loading, resources, and lifecycle executed. |
+| R3 | Practical application | A nontrivial real application or workload executed successfully. |
+| R4 | Performance competitiveness | Runtime, memory, and binary size were measured against the platform's established toolchains, and XAX is competitive (for native CPU code: within 1.05× of the fastest of an optimized C/C++ baseline and at least one non-C/C++ implementation). |
+| R5 | AI efficiency | Real model trials measured total tokens per successful change and repair rate, and XAX beats or materially improves on textual-source workflows. |
+| R6 | Autonomous maintenance | An AI queried, modified, verified, benchmarked, rebuilt, and committed the application through semantic transactions without regenerating whole source. |
+
+Evidence is labelled `PROVEN`, `EXECUTED`, `MEASURED`, `STRUCTURAL`, `PROTOTYPE`, or `UNIMPLEMENTED` ([`XAX_SPEC.md`](XAX_SPEC.md) §21.3). Emulated execution counts toward R1–R3 correctness only, never toward R4 performance. A platform counts as *replaced* for a workload class only at the level its evidence supports.
 
 ## Repository layout
 
@@ -99,10 +123,30 @@ The test suite runs from `compiler/`:
 
 ```bash
 pip install -e '.[test]'           # pytest, pytest-xdist, unicorn, tiktoken
-PYTHONPATH=src:. python -m pytest -n auto tests
+PYTHONPATH=src:.:.. python -m pytest -n auto tests
 ```
 
-Tests that need a host tool (Node.js, Java, `qemu-aarch64`, `qemu-system-aarch64`, `aarch64-linux-gnu-gcc`, `spirv-val`, `llvm-mc`, clang, Mesa Vulkan, the Android NDK/build-tools/system-image root from `compiler/integration/android/make_android_root.py`) skip when it is absent. Skipped is not passed.
+`..` must be on `PYTHONPATH` because some tests import `compiler.benchmarks.*`.
+
+Tests that need a host tool skip when it is absent; skipped is not passed. The complete host environment on Ubuntu 24.04 x86-64:
+
+```bash
+pip install -U --ignore-installed setuptools wheel   # Debian's patched setuptools fails the wheel test
+pip install vulkan
+# busybox must be the dynamic build, not busybox-static (the OI-24 sandbox test resolves its shared libraries)
+sudo apt-get install qemu-user qemu-user-static qemu-system-arm gcc-aarch64-linux-gnu \
+    libc6-dev-arm64-cross spirv-tools glslang-tools mesa-vulkan-drivers libvulkan1 \
+    wine64 mingw-w64 busybox zlib1g-dev e2fsprogs unzip curl time \
+    clang llvm lld default-jdk-headless nodejs
+# arm64 zlib for the qemu-aarch64 sysroot (filestat's libz.so.1 crc32 import)
+curl -sSfLO http://ports.ubuntu.com/ubuntu-ports/pool/main/z/zlib/zlib1g_1.3.dfsg-3.1ubuntu2_arm64.deb
+dpkg-deb -x zlib1g_*_arm64.deb zlib-arm64 && sudo cp -a zlib-arm64/usr/lib/aarch64-linux-gnu/libz.so* /usr/aarch64-linux-gnu/lib/
+# Android 14 system image, NDK r28c, build-tools, platform, libxposed API (pinned, ~1 GB) into /opt/android
+sudo python compiler/integration/android/make_android_root.py
+curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y   # rustc twins for the multi-language benchmark rule
+```
+
+What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest), and the physical-device Android scripts in [`compiler/integration/android/`](compiler/integration/android/README.md), which need `adb` and an arm64 device or emulator (`XAX_ANDROID_RUNTIME=1`).
 
 AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
 

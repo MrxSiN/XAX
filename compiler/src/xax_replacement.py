@@ -99,6 +99,7 @@ def validate(matrix: dict, repo_root: Path) -> list[str]:
         errors.append("duplicate platform id")
     for row in matrix.get("platforms", ()):
         rid = row.get("id")
+        errors.extend(f"{rid}: missing {key}" for key in ("name", "summary") if not str(row.get(key, "")).strip())
         for field, value in row.get("fields", {}).items():
             if field not in FIELDS:
                 errors.append(f"{rid}.{field}: unknown field")

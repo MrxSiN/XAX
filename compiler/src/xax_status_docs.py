@@ -3,7 +3,8 @@
 Documents that repeat replacement levels carry a marked block, rewritten here
 from the matrix, so the matrix stays the single source of those facts:
 
-    <!-- xax-status:levels -->...<!-- /xax-status:levels -->
+    <!-- xax-status:levels -->...<!-- /xax-status:levels -->     one-line summary
+    <!-- xax-status:targets -->...<!-- /xax-status:targets -->   per-platform table
 
 ``python -m xax_status_docs`` checks every block; ``--write`` regenerates them.
 """
@@ -17,7 +18,7 @@ from xax_replacement import LEVELS, load
 
 REPO = Path(__file__).resolve().parents[2]
 MATRIX = REPO / "XAX_REPLACEMENT_MATRIX.json"
-BLOCK = re.compile(r"(<!-- xax-status:levels -->)(.*?)(<!-- /xax-status:levels -->)", re.S)
+BLOCK = re.compile(r"(<!-- xax-status:(levels|targets) -->)(.*?)(<!-- /xax-status:\2 -->)", re.S)
 
 
 def levels_summary(matrix: dict) -> str:
@@ -31,18 +32,36 @@ def levels_summary(matrix: dict) -> str:
     return "Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): " + "; ".join(parts) + "."
 
 
+def targets_table(matrix: dict) -> str:
+    """Markdown table of every platform row, highest level first, then matrix order."""
+    rank = {level: index for index, level in enumerate(LEVELS)}
+    rows = sorted(matrix["platforms"], key=lambda row: -rank[row["level"]])
+    lines = [
+        "",
+        "| Target | Matrix id | Level | Status |",
+        "|---|---|---|---|",
+        *(f"| {row['name']} | `{row['id']}` | {'—' if row['level'] == 'NONE' else row['level']} | {row['summary']} |" for row in rows),
+        "",
+    ]
+    return "\n".join(lines)
+
+
+GENERATORS = {"levels": levels_summary, "targets": targets_table}
+
+
 def documents(repo: Path = REPO) -> list[Path]:
-    """Every Markdown file in the repository that carries a levels block."""
+    """Every Markdown file in the repository that carries a generated status block."""
     return sorted(path for path in repo.rglob("*.md") if ".git" not in path.parts and BLOCK.search(path.read_text(encoding="utf-8")))
 
 
 def sync(write: bool, repo: Path = REPO) -> list[Path]:
     """Return the documents whose blocks differ from the matrix; rewrite them when ``write``."""
-    summary = levels_summary(load(repo / MATRIX.name))
+    matrix = load(repo / MATRIX.name)
+    generated = {kind: generate(matrix) for kind, generate in GENERATORS.items()}
     stale = []
     for path in documents(repo):
         text = path.read_text(encoding="utf-8")
-        updated = BLOCK.sub(lambda match: match.group(1) + summary + match.group(3), text)
+        updated = BLOCK.sub(lambda match: match.group(1) + generated[match.group(2)] + match.group(4), text)
         if updated != text:
             stale.append(path)
             if write:

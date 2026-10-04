@@ -37,7 +37,7 @@ Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: linux-aarch64; R2: aarch64-baremetal, android-arm64, browser-web, jvm; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with B1–B4 natively on x86-64, and it lowers every native helper. Open (S7b): the driver's lowering structures and the exact rejection diagnostics, which still run in Python.
 
@@ -869,3 +869,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Production: every native helper is lowered by the XAX x86-64 backend (`host_image`); the optimizing `compile_native` lowers no XAX helper. MEASURED cost: 1.08–1.32× the optimizing images' run time; warm self-hosting suites 1.14×, cold 0.67×.
 - `blake3.py` now retries the native hasher when a module on its path is still importing (it previously gave up for the process). Full suite: **1,087 passed, 5 skipped** (the same host-bound five).
 
+
+## Documentation sync: generated Targets table and R0–R6 summary (2026-10-04)
+
+- `README.md` explains the replacement levels R0–R6 and the evidence labels, and its Targets table is now generated from `XAX_REPLACEMENT_MATRIX.json` (a new `<!-- xax-status:targets -->` block in `compiler/src/xax_status_docs.py`). Every matrix row carries a `name` and `summary`; the validator rejects a row without them. Platforms that have not started stay visible at level `NONE` (shown as "—"): Apple, .NET, RTOS/MCU, and a new `bsd-unix` row.
+- Roadmap: the U1 progress paragraph and levels block had drifted into M1 and are back under U1; the U1.3 row no longer states the Linux rows' old R2 levels as current.
+- README test command fixed (`PYTHONPATH=src:.:..`; `compiler.benchmarks` imports need the repository root) and the complete Ubuntu host environment written out.
+- Full suite on Linux x86-64 (Python 3.11.15, that environment): **1,089 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` runs). A statically linked `busybox` fails the three OI-24 sandbox tests; the dynamic build is required.
