@@ -74,7 +74,11 @@ def derived_level(row: dict) -> str:
 
 
 def _runtime_rule_errors(rid: str, paths, repo_root: Path) -> list[str]:
-    """XAX_BENCHMARKS.md §15.0 (ADR-147): a competitive runtime verdict cites multi-language results that meet it."""
+    """XAX_BENCHMARKS.md §15.0 (ADR-147): a competitive runtime verdict cites multi-language results that meet it.
+
+    A JVM comparison (any ``javac`` arm) follows §15.0a (ADR-157) instead: the
+    platform's own compilers, ``javac`` and ``kotlinc``, are the baselines.
+    """
     import json
 
     errors = []
@@ -84,7 +88,10 @@ def _runtime_rule_errors(rid: str, paths, repo_root: Path) -> list[str]:
         results = json.loads((repo_root / path).read_text()).get("results")
         if not isinstance(results, dict):
             continue
-        if not any(arm.startswith("rustc") for arm in results):
+        if any(arm.startswith("javac") for arm in results):
+            if not any(arm.startswith("kotlinc") for arm in results):
+                errors.append(f"{rid}.competitive: {path} has no JVM baseline besides javac")
+        elif not any(arm.startswith("rustc") for arm in results):
             errors.append(f"{rid}.competitive: {path} has no implementation outside C/C++")
         if not any(arm.startswith("xax") and item.get("performance_class") == "meets-primary-target" for arm, item in results.items()):
             errors.append(f"{rid}.competitive: {path} has no XAX arm within 1.05x of the fastest")

@@ -597,6 +597,10 @@ Each implementation may choose its own data representation for the same observab
 
 **Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.
 
+### 15.0a JVM runtime rule (normative, ADR-157)
+
+A JVM performance comparison applies §15.0 with the platform's own compilers as the baselines: a Java twin built by `javac` and a Kotlin twin built by `kotlinc`, each written the way a programmer of that language would write it, and run the same way as the XAX artifact (`java -jar`, the same HotSpot, flags, input, interleaving, warmup, and repetitions). XAX meets the primary target at ≤ 1.05× the fastest valid arm's median, as in §15.0. Each arm deploys as its toolchain builds it, so the Kotlin JAR carries the Kotlin runtime (`-include-runtime`). Program class bytes, JAR bytes, and peak RSS are recorded for every arm, and a code-size or memory gap is stated in the row's blockers. Evidence JSON has a `results` map with `javac*` and `kotlinc*` arms; `xax_replacement.py` rejects a competitive JVM verdict without both.
+
 ### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
 > Historical record. The current Linux x86-64 result is §15.14 (ADR-147/148), which supersedes the ratios and the R4 verdict here.
@@ -717,6 +721,8 @@ The twin (`benchmarks/android_ndk_twin/`) has the same classes, methods, strings
 
 ### 15.8 JVM: XAX class file vs `javac` on the same HotSpot (ADR-112; MEASURED, 2026-10-03)
 
+> Historical record. The current JVM Collatz result is §15.17 (ADR-157).
+
 Workload: total Collatz steps for every start value 1..1,000,000 (u64; nested loops; data-dependent branch). Result 131,434,424 on both arms. Each repetition is a fresh JVM with default flags; the kernel runs 5 times before the timed call, and only the timed call is measured with `System.nanoTime`. The two arms run interleaved, 7 repetitions each. Host: Intel(R) Xeon(R) Processor @ 2.80GHz, 4 logical CPUs, Linux 6.18.44-fc-v64; openjdk version "21.0.11" 2026-04-21; javac 21.0.11.
 
 | Arm | Class bytes | JAR bytes | Kernel median (ms) | min–max (ms) | Process wall median (s) | Peak RSS (KiB) |
@@ -822,6 +828,8 @@ The native functions were 224 and 324 bytes before ADR-154 put heap access on th
 
 ### 15.16 `jsonmin` on the JVM: XAX vs a `javac` twin (ADR-156; MEASURED, 2026-10-04)
 
+> Historical record. The current JVM result is §15.17 (ADR-157); `jvm_jsonmin_evidence.json` now holds that run (this one is in its git history).
+
 Host: Intel Xeon @ 2.80 GHz, 4 logical CPUs, Linux x86-64 (shared container); OpenJDK 21, default flags. Workload: `benchmark_document(8 MiB, seed=1)`; both arms must print `reference_jsonmin`'s output. Each run is a fresh JVM (whole-process wall time, start-up included in both arms); 7 runs per arm, interleaved. The twin is a line-for-line Java port of `jsonmin_c/jsonmin.c` (`javac --release 17`). Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json` (`bench_jvm_jsonmin.py`).
 
 | Arm | Median wall | Peak RSS | Class bytes |
@@ -830,3 +838,38 @@ Host: Intel Xeon @ 2.80 GHz, 4 logical CPUs, Linux x86-64 (shared container); Op
 | `javac` twin | 0.194 s | 1.00× | 1.00× |
 
 XAX / twin wall time: 1.178. This compares the same platform's own compiler, not a CPU/native comparison under §15.0, so it carries no competitive verdict. The class-size gap comes from method-wide typed locals and helper calls for multi-byte accesses (ADR-156 limits).
+
+### 15.17 JVM R4: `jsonmin` vs `javac` and `kotlinc` twins, Collatz vs `javac` (ADR-157; MEASURED, 2026-10-04)
+
+Host: Intel Xeon @ 2.80 GHz, 4 logical CPUs, Linux x86-64 (shared container); OpenJDK 21.0.11, default flags; `javac 21.0.11 --release 17`; `kotlinc-jvm 2.1.0 -include-runtime`. Rule: §15.0a.
+
+**`jsonmin`.** Workload `benchmark_document(8 MiB, seed=1)`; every run of every arm must print `reference_jsonmin`'s output. All three arms run as `java -jar` on a fresh JVM, so the wall time is the whole process, start-up included. There are 2 warmup rounds and 15 timed rounds, interleaved with the arm order rotating by one each round. Peak RSS is the largest `wait4` `ru_maxrss` over the timed runs, taken by a small runner process. Forking the benchmark process directly would count its own ~1 GB of Python heap. The twins are line-for-line ports of `jsonmin_c/jsonmin.c`. Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json` (`bench_jvm_jsonmin.py`).
+
+| Arm | Median wall (s) | Ratio vs fastest | Peak RSS (KiB) | Program class bytes | JAR bytes |
+|---|---:|---:|---:|---:|---:|
+| XAX (`jvm-classfile-memory-v1`) | 0.1336 | 1.000 (meets-primary-target) | 82,428 | 8,539 | 8,901 |
+| `javac` twin | 0.1367 | 1.023 | 92,284 | 3,730 | 2,647 |
+| `kotlinc` twin | 0.1461 | 1.094 | 94,048 | 5,649 | 4,775,072 |
+
+XAX was the fastest arm in all five full runs taken while preparing this record. Its ratio to `javac` was 0.92, 0.98, 0.96, 0.90, and 0.98 (the committed run, taken after the ADR-157 operand-order fix); the spread is this shared host's noise. XAX has the lowest peak RSS (0.89× `javac`, 0.88× `kotlinc`). Code size is where XAX trails. Its one program class is 2.29× the Java class and 1.51× the Kotlin classes. Its JAR is 3.4× the one-class Java JAR and 0.002× the Kotlin JAR, which bundles the Kotlin standard library. The XAX program keeps its graph's shape: the parser is inlined into a few large methods with packed (status, position) results and an explicit bounds-checked view per access. The twins call small helpers on two global arrays.
+
+From ADR-156 (1.178×, 33,330-byte class) to this result the backend gained the following (ADR-157):
+- liveness-based local slots with coalescing hints and parallel edge copies;
+- rematerialized and folded integer constants;
+- `if_icmp` compare fusion;
+- deferred stores, and `dup` before a store that is read next;
+- shared bounds-check and byte-access members;
+- rotate-to-shift forms;
+- Top frame slots, so block-local slots are never initialized;
+- jump threading;
+- copies coalesced through known value widths;
+- a pre-sized linear memory.
+
+**Collatz kernel** (§15.8 workload and protocol, `bench_jvm_twin.py`, `jvm_twin_evidence.json`):
+
+| Arm | Class bytes | JAR bytes | Kernel median (ms) | min–max (ms) | Process wall median (s) | Peak RSS (KiB) |
+|---|---:|---:|---:|---:|---:|---:|
+| XAX `jvm-classfile-v1` | 753 | 1,115 | 250.9 | 233.0–269.7 | 1.5646 | 40,312 |
+| Java twin, `javac` | 760 | 989 | 270.1 | 257.8–320.2 | 1.6841 | 40,136 |
+
+Ratios XAX / `javac`: kernel time 0.93×, class bytes 0.99×, peak RSS 1.00×. The §15.8 size gap (uncoalesced block parameters) is closed. This kernel has no Kotlin twin, so it is supporting evidence, not the §15.0a verdict.

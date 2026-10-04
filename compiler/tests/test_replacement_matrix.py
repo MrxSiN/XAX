@@ -84,12 +84,17 @@ class ReplacementMatrixTests(unittest.TestCase):
                 "c_only.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "gcc-O2": {}}},
                 "slow.json": {"results": {"xax": {"performance_class": "competitive-below-primary-target"}, "gcc-O2": {}, "rustc-O3": {}}},
                 "good.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "gcc-O2": {}, "rustc-O3": {}}},
+                "javac_only.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "javac": {}}},
+                "jvm.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "javac": {}, "kotlinc": {}}},
             }
             for name, body in cases.items():
                 (root / name).write_text(json.dumps(body))
             self.assertEqual(_runtime_rule_errors("r", ["c_only.json"], root), ["r.competitive: c_only.json has no implementation outside C/C++"])
             self.assertEqual(_runtime_rule_errors("r", ["slow.json"], root), ["r.competitive: slow.json has no XAX arm within 1.05x of the fastest"])
             self.assertEqual(_runtime_rule_errors("r", ["good.json"], root), [])
+            # §15.0a: a JVM comparison needs javac and kotlinc, not a C/C++ or Rust arm.
+            self.assertEqual(_runtime_rule_errors("r", ["javac_only.json"], root), ["r.competitive: javac_only.json has no JVM baseline besides javac"])
+            self.assertEqual(_runtime_rule_errors("r", ["jvm.json"], root), [])
         self.assertEqual(validate(MATRIX, ROOT), [])
 
     def test_levels_are_cumulative(self):

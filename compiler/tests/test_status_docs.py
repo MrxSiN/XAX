@@ -20,7 +20,7 @@ class StatusDocsTests(unittest.TestCase):
             page.write_text("# Page\n\n<!-- xax-status:levels -->R6: everything<!-- /xax-status:levels -->\n")
             self.assertEqual(sync(write=False, repo=root), [page])
             self.assertEqual(sync(write=True, repo=root), [page])
-            self.assertIn("R4: linux-x86_64", page.read_text())
+            self.assertRegex(page.read_text(), r"R4: [^;]*linux-x86_64")
             self.assertEqual(sync(write=False, repo=root), [])
 
     def test_targets_table_lists_every_platform_with_its_level(self):

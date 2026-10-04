@@ -11,7 +11,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, jvm, linux-aarch64; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm, linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -83,7 +83,7 @@ Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2�
 8. **Android (ADR-105/106)**: device-free evidence exists (`bench_android_bionic.py`, `bench_android_official_tools.py`, `bench_android_ndk_twin.py`; they need the host tooling listed in `XAX_STATE.md`). C → XAX callbacks run on bionic threads (ADR-107). ART verifies all 62 classes in all 20 APKs, libxposed included (ADR-108). All 12 libxposed module profiles execute on ART with a stand-in framework (ADR-109); what remains is LSPosed in a real target process. rebuild the environment with `integration/android/make_android_root.py`. Next: run the packed APK on a device, then make format 5 the default; AArch64 loops now use registers (ADR-110); next for code quality: pinning loop-invariant homes, and floats/memory on the register path. After that, a richer Activity (state, I/O, lifecycle: U1 workload 4) and libxposed runtime execution.
 9. **Browser (ADR-103/104)**: click entries are done. Next: static storage, so state need not live in the DOM; a Web IDL-driven binding importer (OI-32); and an Emscripten/Rust wasm size comparison for R4.
 10. OI-31 remains open (manual Codex Desktop C-vs-XAX pass with recorded fixed model/reasoning setting and balanced arm order).
-11. **JVM (ADR-112, OI-35)**: JVM→XAX callbacks (generated adapter classes implementing a Java interface, following ADR-102's purity rule); explicit object/array/string construction contracts; block-parameter coalescing (class 1.51× `javac`); an R3 application; a native-plus-bridge arm to close OI-35.
+11. **JVM (ADR-112, ADR-156, ADR-157, OI-35)**: R4 is done (`jsonmin` fastest of XAX/`javac`/`kotlinc`, §15.17). Next: application code size (`jsonmin` class 2.29× `javac`: packed results and an explicit view check per access); JVM→XAX callbacks (generated adapter classes implementing a Java interface, following ADR-102's purity rule); explicit object/array/string construction contracts; a native-plus-bridge arm to close OI-35.
 12. **RISC-V (ADR-113)**: compare/branch fusion and copy coalescing (Collatz 3.72× `clang -O2` instructions); F/D floats and memory; a Linux `ET_EXEC` profile through `xax_elf`; a QEMU-system or hardware run (OI-44).
 
 ## Reproduce M14 evidence
@@ -343,3 +343,13 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
 - `python -m benchmarks.android_counter_app --device` records a device run of the committed counter APK (target identity, `hardware` flag). Only an EXECUTED run of the same APK hash is carried forward; rebuilding the APK resets it to UNEXECUTED.
 - `python -m benchmarks.bench_android_counter_twin --device` is the R4 harness for the Android row: cold start and PSS of XAX against the Java + NDK twin. It counts only on arm64 hardware; the matrix must not cite an emulator run for performance or memory.
 - Next for the Android row: the counter on a device (R3), the twin comparison on hardware (R4 sizes are already MEASURED), and write-then-rename persistence if torn writes matter. *(Later the same day the counter passed on an emulator, so the row is R3; see ADR-155.)*
+
+## JVM R4 — 2026-10-04 (ADR-157)
+
+- Re-measure with `PYTHONPATH=src:.:.. python -m benchmarks.bench_jvm_jsonmin --write` and `PYTHONPATH=src python benchmarks/bench_jvm_twin.py --write` from `compiler/`. They need `java`, `javac`, `jar`, and `kotlinc` on `PATH`; `kotlinc` 2.1.0 is the JetBrains release under `/opt/kotlinc` here.
+- The jsonmin benchmark times each run through a small runner process. A child forked straight from the benchmark process inherits its ~1 GB Python heap in `ru_maxrss`.
+- Backend invariants that the JVM tests guard:
+  - every frame lists the same locals, and a slot is typed only if a value in it lives across a branch target;
+  - a value left on the operand stack never feeds an edge or a copy, whose readers use its slot;
+  - the generated `xax$ix`/`xax$cld1`/`xax$cst1` members throw the same `java.lang.Error` as the inline trap.
+

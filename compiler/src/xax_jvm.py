@@ -13,9 +13,10 @@ Representation (``jvm-classfile-v1``):
   (``jvm_reference_type``): an unforgeable handle that no XAX memory
   operation accepts; it exists only as a foreign result or argument;
 * every XAX function is a ``public static`` method; block parameters and
-  node results are method locals; edges copy arguments and ``goto``.  All
-  locals are typed for the whole method, so every branch target carries the
-  same full StackMapTable frame;
+  node results are method locals; edges copy arguments and ``goto``.  Values
+  never live together share a local of one fixed type (ADR-157), so every
+  branch target carries the same full StackMapTable frame; a local that holds
+  no value across a branch target is Top in it and is never initialized;
 * a trap is ``athrow`` of a ``java.lang.Error`` (the platform's abnormal
   termination); integer division by zero is the JVM's own
   ``ArithmeticException``.  The allocation exists only on the trap path;
@@ -460,7 +461,7 @@ class _Pool:
         return self._add(("fd", owner, name, descriptor), b"\x09" + _u2(self.klass(owner)) + _u2(self.name_type(name, descriptor)))
 
     def verification_type(self, descriptor: str) -> bytes:
-        tag = {"I": 1, "F": 2, "D": 3, "J": 4}.get(descriptor)
+        tag = {"T": 0, "I": 1, "F": 2, "D": 3, "J": 4}.get(descriptor)
         if tag is not None:
             return bytes((tag,))
         name = descriptor[1:-1] if descriptor.startswith("L") else descriptor
@@ -516,6 +517,43 @@ class _Code:
         return bytes(self.buf), tuple(sorted({self.labels[label] for label in self.targets}))
 
 
+def _bits_of(mask: int):
+    while mask:
+        low = mask & -mask
+        yield low
+        mask ^= low
+
+
+_SHORT_LOCAL = {0x15: 0x1A, 0x16: 0x1E, 0x17: 0x22, 0x18: 0x26, 0x19: 0x2A, 0x36: 0x3B, 0x37: 0x3F, 0x38: 0x43, 0x39: 0x47, 0x3A: 0x4B}
+class _HookedCode(_Code):
+    """``_Code`` that runs ``before`` ahead of every emission (the deferred-store flush, ADR-157)."""
+
+    def __init__(self, where: str) -> None:
+        super().__init__(where)
+        self.before: Callable[[], None] = lambda: None
+
+    def op(self, *values: int) -> None:
+        self.before(); super().op(*values)
+
+    def raw(self, blob: bytes) -> None:
+        self.before(); super().raw(blob)
+
+    def branch(self, opcode: int, label: object) -> None:
+        self.before(); super().branch(opcode, label)
+
+    def mark(self, label: object) -> None:
+        self.before(); super().mark(label)
+
+
+# Operations whose bytecode can raise a JVM exception or be a caller frame.
+_MAY_RAISE = frozenset({
+    Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.UDIV, Operation.UREM,
+    Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE,
+})
+# Lowerings that place their own branch targets inside a node.
+_INTERNAL_LABELS = frozenset({
+    Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT, Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC,
+})
 _LOAD = {"I": 0x15, "J": 0x16, "F": 0x17, "D": 0x18, "A": 0x19}
 _STORE = {"I": 0x36, "J": 0x37, "F": 0x38, "D": 0x39, "A": 0x3A}
 _RETURN = {"I": 0xAC, "J": 0xAD, "F": 0xAE, "D": 0xAF, "A": 0xB0}
@@ -529,6 +567,12 @@ _FLOAT_ARITHMETIC = {
     Operation.FLOAT_MUL: (0x6A, 0x6B), Operation.FLOAT_DIV: (0x6E, 0x6F),
 }
 _TRAP_MESSAGE = "XAX trap"
+# Pure integer operations folded when every operand is a constant (results are masked to width).
+_FOLDABLE = {
+    Operation.ADD_WRAP: lambda a, b: a + b, Operation.SUB_WRAP: lambda a, b: a - b, Operation.MUL_WRAP: lambda a, b: a * b,
+    Operation.BIT_AND: lambda a, b: a & b, Operation.BIT_OR: lambda a, b: a | b, Operation.BIT_XOR: lambda a, b: a ^ b,
+    Operation.INT_ZERO_EXTEND: lambda a: a, Operation.INT_TRUNCATE: lambda a: a, Operation.ROTATE_RIGHT: None,
+}
 
 
 def _function_closure(entry: SemanticObject, resolve, supported_operations, supported_terminators) -> tuple[SemanticObject, ...]:
@@ -575,24 +619,48 @@ def _compile_method(
     methods: dict[bytes, tuple[str, str]],
     needs: set[str] | None = None,
 ) -> _Method:
-    """``needs`` collects the generated memory members this method uses (ADR-156)."""
+    """Lower one function.  ``needs`` collects the generated memory members it uses (ADR-156).
+
+    Two passes (ADR-157): the first counts how often the lowering reads each
+    value; the second keeps a value on the operand stack instead of storing and
+    reloading it when its single read comes right after its definition.
+    """
+    reads: dict[ValueRef, int] = {}
+    _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, reads, None)
+    single = frozenset(ref for ref, count in reads.items() if count == 1)
+    return _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, {}, single)
+
+
+def _compile_method_pass(
+    function: SemanticObject,
+    name: str,
+    resolve: Callable[[bytes], SemanticObject],
+    pool: _Pool,
+    class_name: str,
+    methods: dict[bytes, tuple[str, str]],
+    needs: set[str] | None,
+    reads: dict[ValueRef, int],
+    single_read: frozenset | None,
+) -> _Method:
     needs = needs if needs is not None else set()
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph = parse_function_graph(function, resolve)
     where = graph_object.cid.hex()
     parameters, returns = _signature(function, resolve)
-    code = _Code(where)
+    code = _HookedCode(where)
+    pending: list = [None]  # a value left on the operand stack instead of stored
 
-    slot_of: dict[ValueRef, tuple[int, str]] = {}
-    frame_locals: list[str] = []
-    next_slot = 0
+    stored: list = [None]  # a value whose store waits: if it is read next, ``dup`` first
 
-    def allocate(descriptor: str) -> int:
-        nonlocal next_slot
-        slot = next_slot
-        next_slot += _slots(descriptor)
-        frame_locals.append(descriptor)
-        return slot
+    def flush() -> None:
+        for holder in (pending, stored):
+            ref = holder[0]
+            if ref is not None:
+                holder[0] = None
+                slot, descriptor = slot_of[ref]
+                local(_STORE, descriptor, slot)
+
+    code.before = flush
 
     def value_type(cid: bytes) -> str | None:
         return _jvm_type(resolve, cid, where)
@@ -603,54 +671,216 @@ def _compile_method(
             if value_type(graph.blocks[target].parameters[index]) is not None
         ]
 
-    # Method-wide ("global") locals: block parameters and values used outside
-    # their block.  They are typed in every frame and zeroed by the prelude.
-    # Every other value lives in a per-block scratch region that frames leave
-    # as Top, so it needs no initialization and is reused by the next block.
-    use_blocks: dict[ValueRef, set[int]] = {}
+    # Locals (ADR-157): every machine value gets a slot of one fixed JVM type for
+    # the whole method, so every frame lists the same typed locals.  Values that
+    # are never live at the same time share a slot (liveness over the CFG, then
+    # greedy coloring per type); a block parameter prefers the slot of an argument
+    # passed to it, which turns that edge copy into nothing.  Integer constants
+    # have no slot: each use rematerializes them.
+    # Integer constants by value reference, for rematerialization and strength
+    # reduction.  Pure integer nodes over constants fold to constants (ADR-157).
+    constants: dict[ValueRef, int] = {}
     for block_index, block in enumerate(graph.blocks):
-        for node in block.nodes:
-            for operand in node.operands:
-                use_blocks.setdefault(operand, set()).add(block_index)
-        for value in (*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)):
-            use_blocks.setdefault(value, set()).add(block_index)
-    labelled_blocks = set()  # blocks whose lowering places branch targets between nodes
-    stub_arguments: set[ValueRef] = set()  # copied after a false-edge stub label
+        for node_index, node in enumerate(block.nodes):
+            if node.operation == Operation.CONSTANT and value_type(node.results[0]) in ("I", "J"):
+                constants[ValueRef.node_result(block_index, node_index)] = int(_decode_constant(node.entity, resolve)[1])
+    folded: set[ValueRef] = set()
+    changed = True
+    while changed:
+        changed = False
+        for block_index, block in enumerate(graph.blocks):
+            for node_index, node in enumerate(block.nodes):
+                ref = ValueRef.node_result(block_index, node_index)
+                if ref in constants or node.operation not in _FOLDABLE or len(node.results) != 1 or value_type(node.results[0]) not in ("I", "J"):
+                    continue
+                if not all(operand in constants for operand in node.operands):
+                    continue
+                values = [constants[operand] for operand in node.operands]
+                width = _width(resolve, node.results[0])
+                if node.operation == Operation.ROTATE_RIGHT:
+                    amount = node.attributes[0] % width if width else 0
+                    value = (values[0] >> amount) | (values[0] << (width - amount))
+                else:
+                    value = _FOLDABLE[node.operation](*values)
+                constants[ref] = value & ((1 << width) - 1)
+                folded.add(ref)
+                changed = True
+    constant_refs: set[ValueRef] = set(constants)
+    descriptor_of: dict[ValueRef, str] = {}
     for block_index, block in enumerate(graph.blocks):
-        for node in block.nodes:
-            if (node.operation == Operation.UINT_TO_FLOAT and _width(resolve, node.operand_types[0]) == 64) or (
-                node.operation == Operation.FLOAT_TO_UINT_TRUNC and _width(resolve, node.results[0]) == 64
-            ):
-                labelled_blocks.add(block_index)
-        terminator = block.terminator
-        if terminator.kind == TerminatorKind.CONDITIONAL_BRANCH and all(edge_moves(*edge) for edge in terminator.edges):
-            stub_arguments.update(argument for _index, argument in edge_moves(*terminator.edges[1]))
-
-    def is_global(ref: ValueRef) -> bool:
-        return ref.tag == 0 or ref.block in labelled_blocks or ref in stub_arguments or use_blocks.get(ref, set()) - {ref.block} != set()
-
-    for index, cid in enumerate(graph.blocks[graph.entry].parameters):
-        descriptor = value_type(cid)
-        if descriptor is not None:
-            slot_of[ValueRef.parameter(graph.entry, index)] = (allocate(descriptor), descriptor)
-    parameter_slot_end = next_slot
-    for block_index, block in enumerate(graph.blocks):
-        if block_index != graph.entry:
-            for index, cid in enumerate(block.parameters):
-                descriptor = value_type(cid)
-                if descriptor is not None:
-                    slot_of[ValueRef.parameter(block_index, index)] = (allocate(descriptor), descriptor)
+        for index, cid in enumerate(block.parameters):
+            descriptor = value_type(cid)
+            if descriptor is not None:
+                descriptor_of[ValueRef.parameter(block_index, index)] = descriptor
         for node_index, node in enumerate(block.nodes):
             for result_index, cid in enumerate(node.results):
-                ref = ValueRef.node_result(block_index, node_index, result_index)
                 descriptor = value_type(cid)
-                if descriptor is not None and is_global(ref):
-                    slot_of[ref] = (allocate(descriptor), descriptor)
+                if descriptor is not None:
+                    descriptor_of[ValueRef.node_result(block_index, node_index, result_index)] = descriptor
+    # Known widths: an upper bound on the significant bits of integer values whose
+    # producer bounds them (byte loads, zero extensions, truncations), so a
+    # truncation that cannot change its operand is a copy.
+    known_width: dict[ValueRef, int] = {}
+    for _ in range(2):
+        for block_index, block in enumerate(graph.blocks):
+            for node_index, node in enumerate(block.nodes):
+                ref = ValueRef.node_result(block_index, node_index)
+                if node.operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE) and value_type(node.results[0]) in ("I", "J"):
+                    known_width[ref] = min(8 * node.attributes[0], _width(resolve, node.results[0]))
+                elif node.operation == Operation.INT_ZERO_EXTEND:
+                    known_width[ref] = known_width.get(node.operands[0], _width(resolve, node.operand_types[0]))
+                elif node.operation == Operation.INT_TRUNCATE:
+                    known_width[ref] = min(_width(resolve, node.results[0]), known_width.get(node.operands[0], 64))
+
+    def copy_like(node) -> bool:
+        """A node whose result is its operand's value in the same representation."""
+        if node.operation in (Operation.POINTER_CAST, Operation.HEAP_VIEW):
+            pass  # a heap view's pointer is its raw block (the null check reads only the operand)
+        elif node.operation not in (Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE) or value_type(node.operand_types[0]) != value_type(node.results[0]):
+            return False
+        elif node.operation == Operation.INT_TRUNCATE and known_width.get(node.operands[0], 64) > _width(resolve, node.results[0]):
+            return False
+        return node.operands[0] not in constant_refs and value_type(node.results[0]) is not None
+
+    tracked = [ref for ref in descriptor_of if ref not in constant_refs]
+    bit = {ref: 1 << index for index, ref in enumerate(tracked)}
+
+    def bits(refs) -> int:
+        mask = 0
+        for ref in refs:
+            mask |= bit.get(ref, 0)
+        return mask
+
+    successors = {index: [target for target, _arguments in block.terminator.edges] for index, block in enumerate(graph.blocks)}
+    upward: dict[int, int] = {}
+    defined: dict[int, int] = {}
+    for block_index, block in enumerate(graph.blocks):
+        seen = bits(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)))
+        exposed = 0
+        for node_index, node in enumerate(block.nodes):
+            exposed |= bits(node.operands) & ~seen
+            seen |= bits(ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)))
+        terminator_uses = bits((*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)))
+        upward[block_index] = exposed | (terminator_uses & ~seen)
+        defined[block_index] = seen
+    live_in = {index: 0 for index in range(len(graph.blocks))}
+    changed = True
+    while changed:
+        changed = False
+        for block_index in reversed(range(len(graph.blocks))):
+            out = 0
+            for successor in successors[block_index]:
+                out |= live_in[successor]
+            value = upward[block_index] | (out & ~defined[block_index])
+            if value != live_in[block_index]:
+                live_in[block_index] = value
+                changed = True
+    interference: dict[ValueRef, int] = {ref: 0 for ref in tracked}
+    by_bit = {bit[ref]: ref for ref in tracked}
+
+    def interfere(defs: int, live: int) -> None:
+        for ref_bit in _bits_of(defs):
+            interference[by_bit[ref_bit]] |= live & ~ref_bit
+            for other in _bits_of(live & ~ref_bit):
+                interference[by_bit[other]] |= ref_bit
+
+    across_labels = 0  # values a lowering's own branch targets must type
+    for block_index, block in enumerate(graph.blocks):
+        live = 0
+        for successor in successors[block_index]:
+            live |= live_in[successor]
+        live |= bits((*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)))
+        for node_index in reversed(range(len(block.nodes))):
+            node = block.nodes[node_index]
+            defs = bits(ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)))
+            operands = bits(node.operands)
+            # A result never shares a slot with its own node's operands (lowerings may reread
+            # them), except a copy, which may share its operand's slot and then emits nothing.
+            interfere(defs, live | defs | (0 if copy_like(node) else operands))
+            if node.operation in _INTERNAL_LABELS:
+                across_labels |= live | defs | operands
+            live = (live & ~defs) | operands
+        params = bits(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)))
+        interfere(params, live | params)
+
+    # Coalescing hints: a block parameter and the arguments passed to it; a copy and its operand.
+    hints: dict[ValueRef, list[ValueRef]] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if copy_like(node):
+                result = ValueRef.node_result(block_index, node_index)
+                hints.setdefault(result, []).append(node.operands[0])
+                hints.setdefault(node.operands[0], []).append(result)
+    for block in graph.blocks:
+        for target, arguments in block.terminator.edges:
+            for index, argument in enumerate(arguments):
+                parameter = ValueRef.parameter(target, index)
+                if parameter in bit and argument in bit:
+                    hints.setdefault(parameter, []).append(argument)
+                    hints.setdefault(argument, []).append(parameter)
+
+    slot_of: dict[ValueRef, tuple[int, str]] = {}
+    frame_locals: list[str] = []
+    slot_types: dict[int, str] = {}
+    occupants: dict[int, int] = {}  # slot -> bits of the values assigned to it
+    next_slot = 0
+
+    def new_slot(descriptor: str) -> int:
+        nonlocal next_slot
+        slot = next_slot
+        next_slot += _slots(descriptor)
+        frame_locals.append(descriptor)
+        slot_types[slot] = descriptor
+        occupants[slot] = 0
+        return slot
+
+    def assign(ref: ValueRef, slot: int) -> None:
+        slot_of[ref] = (slot, descriptor_of[ref])
+        occupants[slot] |= bit[ref]
+
+    for index, cid in enumerate(graph.blocks[graph.entry].parameters):
+        ref = ValueRef.parameter(graph.entry, index)
+        if ref in descriptor_of:
+            assign(ref, new_slot(descriptor_of[ref]))  # the JVM passes parameters in the first slots
+    parameter_slot_end = next_slot
+    for ref in tracked:
+        if ref in slot_of:
+            continue
+        descriptor = descriptor_of[ref]
+        candidates = [slot_of[hint][0] for hint in hints.get(ref, ()) if hint in slot_of]
+        candidates += [slot for slot in slot_types if slot not in candidates]
+        for slot in candidates:
+            if slot_types[slot] == descriptor and not occupants[slot] & interference[ref]:
+                assign(ref, slot)
+                break
+        else:
+            assign(ref, new_slot(descriptor))
+    for ref in constant_refs:
+        slot_of[ref] = (-1, descriptor_of[ref])
     global_slot_end = next_slot
+    # Frames type only the slots that hold a value across a branch target: a block's
+    # live-in values and parameters, edge arguments (read after a false stub), and
+    # values live at a lowering's internal label.  Every other slot is Top in every
+    # frame, so it needs no initialization (ADR-157).
+    framed = across_labels
+    for block_index, block in enumerate(graph.blocks):
+        framed |= live_in[block_index] | bits(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)))
+        framed |= bits(argument for _target, arguments in block.terminator.edges for argument in arguments)
+    typed_slots = {slot_of[ref][0] for ref in tracked if bit[ref] & framed}
+    typed_slots |= {slot for slot in slot_types if slot < parameter_slot_end}
+    frame_types: list[str] = []
+    for slot in sorted(slot_types):
+        if slot in typed_slots:
+            frame_types.append(slot_types[slot])
+        else:
+            frame_types.extend("T" * _slots(slot_types[slot]))
+    while frame_types and frame_types[-1] == "T":
+        frame_types.pop()
     scratch = [global_slot_end]
     max_locals = [global_slot_end]
 
     def scratch_slot(descriptor: str) -> int:
+        """A temporary past the typed locals: frames leave it Top, so it never lives across a branch target."""
         slot = scratch[0]
         scratch[0] += _slots(descriptor)
         max_locals[0] = max(max_locals[0], scratch[0])
@@ -658,16 +888,12 @@ def _compile_method(
 
     def enter_block(block_index: int) -> None:
         scratch[0] = global_slot_end
-        for node_index, node in enumerate(graph.blocks[block_index].nodes):
-            for result_index, cid in enumerate(node.results):
-                ref = ValueRef.node_result(block_index, node_index, result_index)
-                descriptor = value_type(cid)
-                if descriptor is not None and ref not in slot_of:
-                    slot_of[ref] = (scratch_slot(descriptor), descriptor)
 
     def local(opcode_table: dict[str, int], descriptor: str, slot: int) -> None:
         opcode = opcode_table[_kind_letter(descriptor)]
-        if slot <= 0xFF:
+        if slot <= 3:
+            code.op(_SHORT_LOCAL[opcode] + slot)  # iload_0 .. astore_3
+        elif slot <= 0xFF:
             code.op(opcode, slot)
         else:
             code.op(0xC4, opcode)
@@ -678,12 +904,37 @@ def _compile_method(
             slot, descriptor = slot_of[ref]
         except KeyError:
             fail("XAX.JVM.VALUE", where, "JVM-VALUE-MACHINE", "machine value", [ref.tag, ref.block, ref.index, ref.result])
+        if ref in constants:
+            const(descriptor, constants[ref])  # integer constants are rematerialized at each use
+            return descriptor
+        reads[ref] = reads.get(ref, 0) + 1
+        if pending[0] == ref:
+            pending[0] = None  # its only read: the value is already on top of the stack
+            return descriptor
+        if stored[0] == ref:
+            stored[0] = None  # read right after it is computed: dup, store, and use the copy
+            code.op(0x5C if descriptor in ("J", "D") else 0x59)
+            local(_STORE, descriptor, slot)
+            return descriptor
         local(_LOAD, descriptor, slot)
         return descriptor
 
+    # Only a value nothing reads through its slot implicitly may stay on the stack:
+    # edge arguments and copy operands can share a slot with the value they feed.
+    implicit: set[ValueRef] = set()
+    for block in graph.blocks:
+        for _target, arguments in block.terminator.edges:
+            implicit.update(arguments)
+        for node in block.nodes:
+            if copy_like(node):
+                implicit.add(node.operands[0])
+
     def put(ref: ValueRef) -> None:
-        slot, descriptor = slot_of[ref]
-        local(_STORE, descriptor, slot)
+        flush()
+        if single_read is not None and ref in single_read and ref not in implicit:
+            pending[0] = ref
+            return
+        stored[0] = ref
 
     def iconst(value: int) -> None:
         value = value & 0xFFFFFFFF
@@ -749,6 +1000,14 @@ def _compile_method(
 
     def get_as_long(ref: ValueRef, width: int, signed: bool) -> None:
         """Push ``ref`` widened to a long whose signed order is the requested order."""
+        if ref in constants:
+            value = constants[ref]
+            if signed and value >> (width - 1):
+                value -= 1 << width
+            elif not signed and width == 64:
+                value ^= 1 << 63
+            lconst(value)  # the transform folded
+            return
         descriptor = get(ref)
         if signed:
             sign_extend(descriptor, width)
@@ -763,12 +1022,40 @@ def _compile_method(
             lconst(1 << 63)
             code.op(0x83)  # flip the sign bit: unsigned order becomes signed order
 
+    def unsigned_long(width: int) -> None:
+        """Widen the int on the stack (a ``width``-bit value) to its unsigned long."""
+        if width == 32:
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Integer", "toUnsignedLong", "(I)J")))
+        else:
+            code.op(0x85)  # narrower values are non-negative ints
+
     def get_zero_extended(ref: ValueRef, width: int) -> None:
         """Push ``ref`` as a long holding its unsigned value (address and index arithmetic)."""
         if get(ref) == "I":
-            code.op(0x85)
-            if width == 32:
-                lconst(0xFFFFFFFF); code.op(0x7F)
+            unsigned_long(width)
+
+    def int_branch_if_not(node) -> int | None:
+        """``if_icmp<cond>`` that branches when an int compare is false; ``None`` when it needs the long path."""
+        if node.operation != Operation.INT_COMPARE or slot_of[node.operands[0]][1] != "I":
+            return None
+        kind = IntCompare(node.attributes[0])
+        width = _width(resolve, node.operand_types[0])
+        signed = kind in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE)
+        if signed and width < 32:
+            return None
+        flip = not signed and width == 32 and kind not in (IntCompare.EQ, IntCompare.NE)
+        if not flip and constants.get(node.operands[1]) == 0:
+            get(node.operands[0])
+            return _BRANCH_IF_NOT[_INT_RELATION[kind]]  # if<cond>: against zero
+        for operand in node.operands:
+            if flip and operand in constants:
+                iconst(constants[operand] ^ (1 << 31))  # folded sign flip
+            else:
+                get(operand)
+                if flip:
+                    iconst(-(1 << 31)); code.op(0x82)  # unsigned order becomes signed order
+        # Zero-extended values below 32 bits are non-negative, so signed int order is their order.
+        return _INT_BRANCH_IF_NOT[_INT_RELATION[kind]]
 
     def compare_to_int(node) -> str:
         """Push an int r in {-1, 0, 1} ordered like the operands; return the relation r must satisfy."""
@@ -781,8 +1068,11 @@ def _compile_method(
         kind = IntCompare(node.attributes[0])
         width = _width(resolve, node.operand_types[0])
         signed = kind in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE)
-        get_as_long(node.operands[0], width, signed)
-        get_as_long(node.operands[1], width, signed)
+        if kind in (IntCompare.EQ, IntCompare.NE) and slot_of[node.operands[0]][1] == "J":
+            get(node.operands[0]); get(node.operands[1])  # equality needs no order transform
+        else:
+            get_as_long(node.operands[0], width, signed)
+            get_as_long(node.operands[1], width, signed)
         code.op(0x94)  # lcmp
         return _INT_RELATION[kind]
 
@@ -799,13 +1089,6 @@ def _compile_method(
         compare()
         code.branch(branch, "trap")
 
-    # Integer constants by value reference, for strength reduction.
-    constants: dict[ValueRef, int] = {}
-    for block_index, block in enumerate(graph.blocks):
-        for node_index, node in enumerate(block.nodes):
-            if node.operation == Operation.CONSTANT and value_type(node.results[0]) in ("I", "J"):
-                constants[ValueRef.node_result(block_index, node_index)] = int(_decode_constant(node.entity, resolve)[1])
-
     # A compare whose only use is its own block's conditional branch fuses
     # into that branch (``lcmp``/``fcmp`` + ``if<cond>``), as javac emits it.
     uses: dict[ValueRef, int] = {}
@@ -815,6 +1098,19 @@ def _compile_method(
                 uses[operand] = uses.get(operand, 0) + 1
         for value in (*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)):
             uses[value] = uses.get(value, 0) + 1
+    users: dict[ValueRef, list] = {}
+    for block in graph.blocks:
+        for node in block.nodes:
+            for operand in node.operands:
+                users.setdefault(operand, []).append(node)
+
+    def sole_user(ref: ValueRef):
+        """The one node that reads ``ref``, when nothing else (a terminator included) does."""
+        return users[ref][0] if uses.get(ref) == 1 and len(users.get(ref, ())) == 1 else None
+
+    def definition(ref: ValueRef):
+        return graph.blocks[ref.block].nodes[ref.index] if ref.tag == 1 else None
+
     fused: set[ValueRef] = set()
     for block_index, block in enumerate(graph.blocks):
         if block.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
@@ -846,7 +1142,7 @@ def _compile_method(
                     code.op(0x85); lconst((1 << (8 * size)) - 1); code.op(0x7F)
                 elif descriptor == "I" and size == 8:
                     code.op(0x88)
-            if not is_float:
+            if not is_float and _width(resolve, value_cid) < 8 * size:
                 mask(descriptor, _width(resolve, value_cid))
             put(result_ref)
             return
@@ -874,37 +1170,67 @@ def _compile_method(
     line = 0
 
     # Prelude: give every non-parameter local its type before the first branch target.
-    position = 0
-    for descriptor in frame_locals:
-        if position >= parameter_slot_end:
+    for slot in sorted(typed_slots):
+        if slot >= parameter_slot_end:
+            descriptor = slot_types[slot]
             code.op(*_ZERO[_kind_letter(descriptor)])
-            local(_STORE, descriptor, position)
-        position += _slots(descriptor)
+            local(_STORE, descriptor, slot)
     if not code.buf:
         code.op(0x00)  # a branch target may not be the implicit frame at offset 0
 
-    def copy_edge(target: int, arguments: Sequence[ValueRef], *, jump: bool = True, force: bool = False) -> None:
-        moves = [move for move in edge_moves(target, arguments) if move[1] != ValueRef.parameter(target, move[0])]
-        overlapping = any(argument.tag == 0 and argument.block == target for _index, argument in moves)
-        if overlapping:
-            temporaries = []
-            for _index, argument in moves:
-                descriptor = get(argument)
-                temporary = scratch_slot(descriptor)
-                local(_STORE, descriptor, temporary)
-                temporaries.append(temporary)
-            for (index, _argument), temporary in zip(moves, temporaries):
-                _slot, descriptor = slot_of[ValueRef.parameter(target, index)]
-                local(_LOAD, descriptor, temporary)
-                put(ValueRef.parameter(target, index))
-        else:
-            for index, argument in moves:
-                get(argument)
-                put(ValueRef.parameter(target, index))
-        if jump and (force or target != following_block[0]):
-            code.branch(0xA7, ("block", target))
+    def edge_moves_needed(target: int, arguments: Sequence[ValueRef]) -> list[tuple[ValueRef, ValueRef]]:
+        """(parameter, argument) pairs that need a copy: different slots, or a constant argument."""
+        pairs = []
+        for index, argument in edge_moves(target, arguments):
+            parameter = ValueRef.parameter(target, index)
+            if argument in constant_refs or slot_of[argument][0] != slot_of[parameter][0]:
+                pairs.append((parameter, argument))
+        return pairs
 
-    order = [graph.entry] + [index for index in range(len(graph.blocks)) if index != graph.entry]
+    def copy_edge(target: int, arguments: Sequence[ValueRef], *, jump: bool = True, force: bool = False) -> None:
+        # Parallel copy: write a slot only once no pending move still reads it; a cycle
+        # goes through one temporary.
+        pending = [(slot_of[parameter][0], slot_of[parameter][1], argument) for parameter, argument in edge_moves_needed(target, arguments)]
+        while pending:
+            sources = {slot_of[source][0] for _slot, _descriptor, source in pending if isinstance(source, ValueRef) and source not in constant_refs}
+            sources |= {source[0] for _slot, _descriptor, source in pending if isinstance(source, tuple) and not isinstance(source, ValueRef)}
+            ready = next((move for move in pending if move[0] not in sources), None)
+            if ready is None:
+                destination, descriptor, source = pending[0]
+                temporary = scratch_slot(descriptor)
+                get(source); local(_STORE, descriptor, temporary)
+                pending = [(d, k, (temporary, descriptor) if s == source else s) for d, k, s in pending]
+                continue
+            destination, descriptor, source = ready
+            if isinstance(source, ValueRef):
+                get(source)
+            else:
+                local(_LOAD, source[1], source[0])
+            local(_STORE, descriptor, destination)
+            pending.remove(ready)
+        if jump and (force or resolved(target) != following_block[0]):
+            code.branch(0xA7, ("block", resolved(target)))
+
+    # Jump threading: an empty block whose one edge needs no copy is never emitted;
+    # branches to it go straight to where it leads.
+    def forwards_to(block_index: int) -> int | None:
+        block = graph.blocks[block_index]
+        if block_index == graph.entry or block.nodes or block.terminator.kind != TerminatorKind.BRANCH:
+            return None
+        target, arguments = block.terminator.edges[0]
+        return None if edge_moves_needed(target, arguments) else target
+
+    def resolved(target: int) -> int:
+        seen = set()
+        while target not in seen:
+            seen.add(target)
+            following = forwards_to(target)
+            if following is None:
+                return target
+            target = following
+        return target  # a cycle of empty blocks: emit the first one reached
+
+    order = [graph.entry] + [index for index in range(len(graph.blocks)) if index != graph.entry and resolved(index) == index]
     trap_used = False
     max_call_slots = 0
     following_block = [None]
@@ -916,14 +1242,23 @@ def _compile_method(
         for node_index, node in enumerate(block.nodes):
             line += 1
             start = len(code.buf)
-            lines.append((start, line))
+            if node.operation in _MAY_RAISE:
+                # Only a pc that can raise or call shows up in a stack trace (ADR-157);
+                # every pc still maps to its node through the artifact's semantic ranges.
+                lines.append((start, line))
             result = ValueRef.node_result(block_index, node_index)
             operation = node.operation
 
-            if operation in _ARITHMETIC:
+            if result in folded:
+                pass  # a constant: every use rematerializes it
+
+            elif operation in _ARITHMETIC:
                 width = _width(resolve, node.results[0])
-                descriptor = get(node.operands[0])
-                get(node.operands[1])
+                first, second = node.operands
+                if pending[0] == second and operation != Operation.SUB_WRAP:
+                    first, second = second, first  # commutative: read the stacked value first
+                descriptor = get(first)
+                get(second)
                 code.op(_ARITHMETIC[Operation(operation)][descriptor == "J"])
                 if operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP):
                     mask(descriptor, width)
@@ -956,14 +1291,28 @@ def _compile_method(
             elif operation == Operation.ROTATE_RIGHT:
                 width = _width(resolve, node.results[0])
                 amount = node.attributes[0]
+                source = definition(node.operands[0])
+                reader = sole_user(result)
+                long_ = width == 64
                 descriptor = get(node.operands[0])
-                if amount:
+                if amount and width in (32, 64) and source is not None and source.operation == Operation.INT_ZERO_EXTEND and _width(resolve, source.operand_types[0]) <= amount:
+                    iconst(width - amount); code.op(0x79 if long_ else 0x78)  # no bits above the amount: a left shift
+                elif amount and width in (32, 64) and reader is not None and reader.operation == Operation.INT_TRUNCATE and _width(resolve, reader.results[0]) <= width - amount:
+                    iconst(amount); code.op(0x7D if long_ else 0x7C)  # only the low bits are read: a right shift
+                elif amount and width in (32, 64):
+                    iconst(amount)  # Integer/Long.rotateRight: a JIT intrinsic (one ror)
+                    owner, signature = ("java/lang/Long", "(JI)J") if width == 64 else ("java/lang/Integer", "(II)I")
+                    code.op(0xB8); code.raw(_u2(pool.method(owner, "rotateRight", signature)))
+                elif amount:
                     long_ = descriptor == "J"
                     iconst(amount); code.op(0x7D if long_ else 0x7C)  # ushr
                     get(node.operands[0]); iconst(width - amount); code.op(0x79 if long_ else 0x78)  # shl
                     code.op(0x81 if long_ else 0x80)  # or
                     mask(descriptor, width)
                 put(result)
+
+            elif copy_like(node) and operation != Operation.HEAP_VIEW and slot_of[node.operands[0]][0] == slot_of[result][0]:
+                pass  # coalesced copy
 
             elif operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
                 source = _width(resolve, node.operand_types[0])
@@ -973,10 +1322,12 @@ def _compile_method(
                 if source_descriptor == "J" and destination_descriptor == "I":
                     code.op(0x88)
                 elif source_descriptor == "I" and destination_descriptor == "J":
-                    code.op(0x85)
-                    if source == 32:
-                        lconst(0xFFFFFFFF); code.op(0x7F)
-                if operation == Operation.INT_TRUNCATE:
+                    reader = sole_user(result)
+                    if reader is not None and reader.operation == Operation.ROTATE_RIGHT and reader.attributes[0] == 32 and _width(resolve, reader.results[0]) == 64:
+                        code.op(0x85)  # i2l: the rotation's left shift by 32 drops the sign copies
+                    else:
+                        unsigned_long(source)
+                if operation == Operation.INT_TRUNCATE and known_width.get(node.operands[0], 64) > destination:
                     mask(destination_descriptor, destination)
                 put(result)
 
@@ -987,9 +1338,8 @@ def _compile_method(
                     # Raw constant bits, so NaN payloads stay exact.
                     width = 32 if descriptor == "F" else 64
                     fconst_bits(int.from_bytes(node.entity.body[-(width // 8):], "little"), width)
-                else:
-                    const(descriptor, int(value))
-                put(result)
+                    put(result)
+                # integer constants: nothing to store, every use rematerializes them
 
             elif operation in _FLOAT_ARITHMETIC:
                 descriptor = get(node.operands[0]); get(node.operands[1])
@@ -1005,8 +1355,16 @@ def _compile_method(
 
             elif operation in (Operation.FLOAT_COMPARE, Operation.INT_COMPARE):
                 if result not in fused:
-                    relation = compare_to_int(node)
-                    _compare_result(code, iconst, relation)
+                    kind = IntCompare(node.attributes[0]) if operation == Operation.INT_COMPARE else None
+                    if kind in (IntCompare.EQ, IntCompare.NE) and slot_of[node.operands[0]][1] == "I":
+                        # x = a ^ b; (x | -x) >>> 31 is 1 exactly when a != b.
+                        get(node.operands[0]); get(node.operands[1]); code.op(0x82, 0x59, 0x74, 0x80)
+                        iconst(31); code.op(0x7C)
+                        if kind == IntCompare.EQ:
+                            iconst(1); code.op(0x82)
+                    else:
+                        relation = compare_to_int(node)
+                        _compare_result(code, iconst, relation)
                     put(result)
 
             elif operation in (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT):
@@ -1106,7 +1464,8 @@ def _compile_method(
                 trap_used = True
                 needs.add("memory")
                 get(node.operands[0]); code.branch(0x99, "trap")  # ifeq
-                get(node.operands[0]); put(result)
+                if slot_of[node.operands[0]][0] != slot_of[result][0]:
+                    get(node.operands[0]); put(result)
 
             elif operation == Operation.ADDRESS_OFFSET:
                 get(node.operands[0]); iconst(node.attributes[0]); code.op(0x60); put(result)
@@ -1149,12 +1508,15 @@ def _compile_method(
                 value_ref = None if load else node.operands[2 if checked else 1]
                 if size not in (1, 2, 4, 8):
                     fail("XAX.JVM.MEMORY_WIDTH", where, "JVM-MEMORY-WIDTH", [1, 2, 4, 8], size)
+                helper_check = False
                 if checked:
-                    trap_used = True
                     index, index_width = node.operands[1], _width(resolve, node.operand_types[1])
                     maximum = pointer_extent_from_graph(graph, pointer, resolve) - size
+                    trap_used = trap_used or not (0 <= maximum < 1 << 31 and index_width <= 32)
                     if maximum < 0:
                         iconst(1); code.branch(0x9A, "trap")  # always traps
+                    elif index_width <= 32 and maximum < 1 << 31:
+                        helper_check = True  # xax$ix while the address is pushed
                     else:
                         get_zero_extended(index, index_width); lconst(maximum)
                         if index_width > 63:
@@ -1165,12 +1527,39 @@ def _compile_method(
 
                 def push_address() -> None:
                     get(pointer)
-                    if checked:
+                    if helper_check:
+                        get(index); iconst(maximum)
+                        needs.add("ix")
+                        code.op(0xB8); code.raw(_u2(pool.method(class_name, "xax$ix", "(II)I")))
+                        code.op(0x60)
+                    elif checked:
                         if get(index) == "J":
                             code.op(0x88)
                         code.op(0x60)
 
-                memory_access(load, size, value_cid, value_ref, push_address, result if load else None)
+                if size == 1 and (helper_check or (load and not checked)):
+                    # Byte accesses through generated members (ADR-157), as a Java programmer's
+                    # at()/put() helpers: one call per access, inlined by the JIT.
+                    get(pointer)
+                    if helper_check:
+                        get(index); iconst(maximum)
+                    if load:
+                        member, signature = ("xax$cld1", "(III)I") if helper_check else ("xax$ld1", "(I)I")
+                    else:
+                        if get(value_ref) == "J":
+                            code.op(0x88)
+                        member, signature = "xax$cst1", "(IIII)V"
+                    needs.add(member[4:])
+                    code.op(0xB8); code.raw(_u2(pool.method(class_name, member, signature)))
+                    if load:
+                        descriptor = slot_of[result][1]
+                        if descriptor == "J":
+                            code.op(0x85)
+                        if _width(resolve, value_cid) < 8:
+                            mask(descriptor, _width(resolve, value_cid))
+                        put(result)
+                else:
+                    memory_access(load, size, value_cid, value_ref, push_address, result if load else None)
 
             elif operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).library == MEMORY_CLASS:
                 member = _foreign_member(node.entity, resolve)
@@ -1222,18 +1611,20 @@ def _compile_method(
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             condition = terminator.values[0]
             if condition in fused:
-                branch_if_not = _BRANCH_IF_NOT[compare_to_int(block.nodes[condition.index])]
+                branch_if_not = int_branch_if_not(block.nodes[condition.index])
+                if branch_if_not is None:
+                    branch_if_not = _BRANCH_IF_NOT[compare_to_int(block.nodes[condition.index])]
             else:
                 get(condition)
                 branch_if_not = 0x99  # ifeq
             (true_target, true_arguments), (false_target, false_arguments) = terminator.edges
-            true_moves = [m for m in edge_moves(true_target, true_arguments) if m[1] != ValueRef.parameter(true_target, m[0])]
-            false_moves = [m for m in edge_moves(false_target, false_arguments) if m[1] != ValueRef.parameter(false_target, m[0])]
+            true_moves = edge_moves_needed(true_target, true_arguments)
+            false_moves = edge_moves_needed(false_target, false_arguments)
             if not false_moves:
-                code.branch(branch_if_not, ("block", false_target))
+                code.branch(branch_if_not, ("block", resolved(false_target)))
                 copy_edge(true_target, true_arguments)
             elif not true_moves:
-                code.branch(_INVERSE_BRANCH[branch_if_not], ("block", true_target))
+                code.branch(_INVERSE_BRANCH[branch_if_not], ("block", resolved(true_target)))
                 copy_edge(false_target, false_arguments)
             else:
                 false_stub = ("false", block_index)
@@ -1251,11 +1642,20 @@ def _compile_method(
         ldc(pool.string(_TRAP_MESSAGE))
         code.op(0xB7); code.raw(_u2(pool.method("java/lang/Error", "<init>", "(Ljava/lang/String;)V")))
         code.op(0xBF)
+    # One LineNumberTable entry per code start: nodes that emitted nothing (rematerialized
+    # constants, coalesced copies) share the pc of the node after them, which owns it.
+    deduplicated: list[tuple[int, int]] = []
+    for start, number in lines:
+        if deduplicated and deduplicated[-1][0] == start:
+            deduplicated[-1] = (start, number)
+        else:
+            deduplicated.append((start, number))
+    lines = deduplicated
     blob, frames = code.finish()
     max_stack = max(8, max_call_slots + 2)
     return _Method(
         name, _method_descriptor(parameters, returns), blob, max_stack, max_locals[0],
-        frames, tuple(frame_locals), tuple(lines), tuple(node_ranges), function.cid,
+        frames, tuple(frame_types), tuple(lines), tuple(node_ranges), function.cid,
     )
 
 
@@ -1270,7 +1670,12 @@ _INT_RELATION = {
 }
 # if<cond> on r that branches when the relation is false.
 _BRANCH_IF_NOT = {"eq": 0x9A, "ne": 0x99, "lt": 0x9C, "ge": 0x9B, "gt": 0x9E, "le": 0x9D}
-_INVERSE_BRANCH = {0x99: 0x9A, 0x9A: 0x99, 0x9B: 0x9C, 0x9C: 0x9B, 0x9D: 0x9E, 0x9E: 0x9D}
+_INVERSE_BRANCH = {
+    0x99: 0x9A, 0x9A: 0x99, 0x9B: 0x9C, 0x9C: 0x9B, 0x9D: 0x9E, 0x9E: 0x9D,
+    0x9F: 0xA0, 0xA0: 0x9F, 0xA1: 0xA2, 0xA2: 0xA1, 0xA3: 0xA4, 0xA4: 0xA3,
+}
+# if_icmp<cond> on two ints that branches when the relation is false.
+_INT_BRANCH_IF_NOT = {"eq": 0xA0, "ne": 0x9F, "lt": 0xA2, "ge": 0xA1, "gt": 0xA4, "le": 0xA3}
 
 
 def _compare_result(code: _Code, iconst, relation: str) -> None:
@@ -1297,7 +1702,29 @@ def _store_call_result(node, block_index: int, node_index: int, slot_of, put) ->
         put(ValueRef.node_result(block_index, node_index, machine[0]))
 
 
-def _memory_methods(pool: _Pool, class_name: str, needs: set[str]) -> list[_Method]:
+def _initial_memory(functions: Sequence[SemanticObject], resolve) -> int:
+    """Bytes for ``M`` at class initialization: every constant-size ``alloc`` site once, 16-aligned.
+
+    Like a wasm module's initial memory, this sizes the common case so the
+    allocator never copies; a site that runs more than once grows ``M`` at run time.
+    """
+    total = _HEAP_START
+    for function in functions:
+        graph = parse_function_graph(function, resolve)
+        for block in graph.blocks:
+            for node in block.nodes:
+                if node.operation != Operation.CALL_FOREIGN or decode_foreign_function(node.entity).library != MEMORY_CLASS:
+                    continue
+                size = node.operands[0]
+                if decode_foreign_function(node.entity).name != b"alloc(J)I" or size.tag != 1:
+                    continue
+                source = graph.blocks[size.block].nodes[size.index]
+                if source.operation == Operation.CONSTANT:
+                    total = ((total + 15) & -16) + int(_decode_constant(source.entity, resolve)[1])
+    return max(_INITIAL_MEMORY, min(total, 1 << 30))
+
+
+def _memory_methods(pool: _Pool, class_name: str, needs: set[str], initial: int = _INITIAL_MEMORY) -> list[_Method]:
     """``<clinit>`` and the generated memory members a class uses (ADR-156).
 
     ``M`` is the linear memory and ``H`` the next free offset.  Every member is
@@ -1338,7 +1765,7 @@ def _memory_methods(pool: _Pool, class_name: str, needs: set[str]) -> list[_Meth
 
     # <clinit>: M = new byte[64 KiB]; H = 16
     code = _Code("clinit")
-    int_const(code, _INITIAL_MEMORY); code.op(0xBC, 8); put_static(code, M)
+    int_const(code, initial); code.op(0xBC, 8); put_static(code, M)
     int_const(code, _HEAP_START); put_static(code, H)
     code.op(0xB1)
     method("<clinit>", "()V", code, (), 0)
@@ -1358,6 +1785,34 @@ def _memory_methods(pool: _Pool, class_name: str, needs: set[str]) -> list[_Meth
         code.mark("null")
         code.op(0x03, 0xAC)
         method("xax$alloc", "(J)I", code, ("J", "I", "J"), 5)
+    if "ld1" in needs:
+        code = _Code("xax$ld1")
+        get_static(code, M); code.op(0x1A, 0x33); int_const(code, 0xFF); code.op(0x7E, 0xAC)  # M[a] & 0xff
+        method("xax$ld1", "(I)I", code, (), 1)
+    if "cld1" in needs:
+        # p, i, max: M[p + ix(i, max)] & 0xff
+        needs.add("ix")
+        code = _Code("xax$cld1")
+        get_static(code, M); code.op(0x1A, 0x1B, 0x1C); call(code, class_name, "xax$ix", "(II)I"); code.op(0x60, 0x33)
+        int_const(code, 0xFF); code.op(0x7E, 0xAC)
+        method("xax$cld1", "(III)I", code, (), 3)
+    if "cst1" in needs:
+        # p, i, max, v: M[p + ix(i, max)] = (byte) v
+        needs.add("ix")
+        code = _Code("xax$cst1")
+        get_static(code, M); code.op(0x1A, 0x1B, 0x1C); call(code, class_name, "xax$ix", "(II)I"); code.op(0x60, 0x1D, 0x54, 0xB1)
+        method("xax$cst1", "(IIII)V", code, (), 4)
+    if "ix" in needs:
+        # Checked index (ADR-157): i when 0 <= i <= max unsigned, else the trap.  One
+        # small shared method instead of a compare and branch at every checked access.
+        code = _Code("xax$ix")
+        code.op(0x1A, 0x1B); call(code, "java/lang/Integer", "compareUnsigned", "(II)I"); code.branch(0x9D, "trap")  # ifgt
+        code.op(0x1A, 0xAC)
+        code.mark("trap")
+        code.op(0xBB); code.raw(_u2(pool.klass("java/lang/Error"))); code.op(0x59)
+        code.op(0x13); code.raw(_u2(pool.string(_TRAP_MESSAGE)))
+        call(code, "java/lang/Error", "<init>", "(Ljava/lang/String;)V", 0xB7); code.op(0xBF)
+        method("xax$ix", "(II)I", code, ("I", "I"), 2)
     if "free(I)J" in needs:
         # Blocks are never reused: the view ends, the bytes stay until exit.
         code = _Code("xax$free")
@@ -1582,7 +2037,7 @@ def compile_jvm_bound_target(
     methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names, needs) for function in functions]
     if needs and target.identity != JVM_CLASSFILE_MEMORY_IDENTITY:
         fail("XAX.JVM.TARGET", target_object.cid.hex(), "JVM-MEMORY-PROFILE", JVM_CLASSFILE_MEMORY_IDENTITY.decode(), target.identity.decode("ascii", "replace"))
-    methods.extend(_memory_methods(pool, class_name, needs))
+    methods.extend(_memory_methods(pool, class_name, needs, _initial_memory(functions, resolve) if needs else _INITIAL_MEMORY))
     threaded = process_entry and target.identity == JVM_CLASSFILE_MEMORY_IDENTITY
     if threaded:
         methods.extend(_threaded_launcher(pool, class_name, "entry"))

@@ -37,7 +37,7 @@ Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: linux-x86_64; R3: android-arm64, jvm, linux-aarch64; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm, linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi, windows-x86_64-pe; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64) and **S6 EXECUTED** with B1–B4 for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with B1–B4 natively on x86-64, and it lowers every native helper. Open (S7b): the driver's lowering structures and the exact rejection diagnostics, which still run in Python.
 
@@ -910,5 +910,13 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 
 - `jvm-classfile-memory-v1`: linear memory as one `byte[]` with `int` pointers, the generated `xax/jvm/Memory` package (allocate, free, read, write), view-return elision, and a 256 MiB entry thread. `tests/test_xax_jvm_memory.py` (widths, floats, traps, profile rejection).
 - `jsonmin` runs unchanged on HotSpot (`build_jsonmin("jvm")`) and matches its reference on every test input; JVM row R3 (`practical_application` EXECUTED).
-- MEASURED against a `javac` twin on an 8 MiB document: 1.178× process wall time, 1.00× peak RSS, 8.9× class bytes (`jvm_jsonmin_evidence.json`, `XAX_BENCHMARKS.md` §15.16).
+- MEASURED against a `javac` twin on an 8 MiB document: 1.178× process wall time, 1.00× peak RSS, 8.9× class bytes (`jvm_jsonmin_evidence.json`, `XAX_BENCHMARKS.md` §15.16). Superseded by the ADR-157 section below (JVM R4).
 - Full suite: **1,106 passed, 5 skipped**.
+
+## JVM R4: code quality and the javac/kotlinc comparison (2026-10-04, ADR-157)
+
+- The JVM backend gained liveness-based slot coloring with coalescing, Top frame slots, folded and rematerialized constants, deferred and `dup`ed stores, `if_icmp`/`if` compare fusion, jump threading, rotate-to-shift forms, and shared bounds-check and byte-access members. `jsonmin`'s class went from 33,330 to 8,539 bytes.
+- MEASURED under the JVM runtime rule (`XAX_BENCHMARKS.md` §15.0a, §15.17). On 8 MiB, XAX takes 0.1336 s; the `javac` twin is 1.023× that and the `kotlinc` twin 1.094×. XAX is meets-primary-target with the lowest peak RSS (0.89× javac). Its program class is 2.29× javac's (blocker recorded). Collatz: 0.93× `javac` kernel time, 0.99× class bytes.
+- `xax_replacement.py` checks JVM verdicts for `javac` and `kotlinc` arms. JVM row **R4** (`jvm_jsonmin_evidence.json` competitive). Superseded: the ADR-156 section above (1.178×, R3).
+- Full suite: **1,108 passed, 5 skipped**.
+

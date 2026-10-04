@@ -334,7 +334,7 @@
     {
       "id": "linux-x86_64",
       "name": "x86-64 Linux",
-      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; executed and measured within 1.05× of the fastest of gcc, clang, and rustc on three workloads; the views profile is lowered by the XAX-hosted backend (native B1–B4).",
+      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; executed and measured within 1.05\u00d7 of the fastest of gcc, clang, and rustc on three workloads; the views profile is lowered by the XAX-hosted backend (native B1\u2013B4).",
       "level": "R4",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
@@ -518,7 +518,7 @@
     {
       "id": "riscv64",
       "name": "RISC-V (RV64IM)",
-      "summary": "Raw position-independent images, LP64 integer calls; executed under the Unicorn emulator; the self-hosted XAX backend and store verifier reach B1–B4 here.",
+      "summary": "Raw position-independent images, LP64 integer calls; executed under the Unicorn emulator; the self-hosted XAX backend and store verifier reach B1\u2013B4 here.",
       "level": "R1",
       "runtime_requirement": "none: raw position-independent RV64IM image, LP64 integer convention, no loader, relocation, or data section (ADR-113)",
       "fields": {
@@ -568,8 +568,8 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory, and the R3 application `jsonmin` runs on HotSpot at 1.18× the `javac` twin's process time; Collatz kernel at 1.03–1.04×.",
-      "level": "R3",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory; `jsonmin` on HotSpot runs within 1.05\u00d7 of the fastest of `javac` and `kotlinc` twins (fastest of the three, lowest peak RSS), with program classes 2.3\u00d7 javac's; Collatz kernel 0.93\u00d7 javac.",
+      "level": "R4",
       "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
         "semantic_expressibility": [
@@ -607,8 +607,10 @@
           "compiler/tests/test_xax_jvm.py"
         ],
         "optimization": [
-          "PROTOTYPE",
+          "MEASURED",
           "compiler/src/xax_jvm.py",
+          "compiler/tests/test_xax_jvm.py",
+          "compiler/benchmarks/jvm_jsonmin_evidence.json",
           "compiler/benchmarks/jvm_twin_evidence.json"
         ],
         "real_execution": [
@@ -638,10 +640,15 @@
         ]
       },
       "blockers": [
+        "R4 scope: one application (jsonmin) and one kernel (Collatz) on one shared x86-64 host, OpenJDK 21 defaults, whole-process time of a fresh JVM; baselines javac and kotlinc (XAX_BENCHMARKS.md section 15.0a, ADR-157)",
+        "code size: jsonmin's program class is 2.29x javac's and 1.51x kotlinc's (8,539 vs 3,730 and 5,649 bytes); its JAR is 3.4x javac's one-class JAR, 0.002x the kotlinc JAR with the Kotlin runtime",
         "linear memory (ADR-156) is one byte[] with int offsets: freed blocks are never reused, at most 2^31 - 1 bytes; no stack allocations, aggregates, sums, or indirect calls on this target",
         "JVM objects only arrive as foreign results: no object/array/string construction, no JVM-to-XAX callbacks (interfaces)",
-        "jsonmin 1.18x the javac twin's process wall time and 8.9x its class bytes (every local typed method-wide, multi-byte accesses through helper calls); collatz kernel 1.03-1.04x javac, class 1.51x (block parameters not coalesced, OI-35); no competitive verdict, so no R4",
         "no classfile metadata importer: java.base declarations are hand-written (OI-32)"
+      ],
+      "competitive": [
+        true,
+        "compiler/benchmarks/jvm_jsonmin_evidence.json"
       ]
     },
     {

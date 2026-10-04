@@ -130,13 +130,35 @@ def _run(command: list[str], env: dict[str, str]) -> tuple[bytes, float, int]:
     return stdout, wall, resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
 
 
-def _peak_rss_kib(command: list[str], env: dict[str, str]) -> int:
-    """Peak resident set of one run, measured by a fresh child via wait4."""
-    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+# A run is timed by a small runner process: a child's ru_maxrss counts the pages it
+# held before exec, so forking a large benchmark process (building ``jsonmin``
+# takes ~1 GB of Python heap) directly reports that size instead of the JVM's peak.
+_RUNNER = r"""
+import os, subprocess, sys, time
+stdin, stdout, stderr, *command = sys.argv[1:]
+with open(stdin or os.devnull, "rb") as i, open(stdout, "wb") as o, open(stderr, "wb") as e:
+    start = time.perf_counter()
+    process = subprocess.Popen(command, stdin=i, stdout=o, stderr=e)
     _pid, status, usage = os.wait4(process.pid, 0)
+    print(time.perf_counter() - start, usage.ru_maxrss, os.waitstatus_to_exitcode(status))
+"""
+
+
+def _measured_run(command: list[str], env: dict[str, str], stdin: Path | None = None) -> tuple[float, int, int, bytes, bytes]:
+    """Wall seconds, peak RSS (KiB), exit status, stdout, and stderr of one fresh process."""
+    with tempfile.TemporaryDirectory() as directory:
+        stdout, stderr = Path(directory, "stdout"), Path(directory, "stderr")
+        report = subprocess.run([sys.executable, "-c", _RUNNER, str(stdin or ""), str(stdout), str(stderr), *command], check=True, capture_output=True, text=True, env=env)
+        wall, rss, status = report.stdout.split()
+        return float(wall), int(rss), int(status), stdout.read_bytes(), stderr.read_bytes()
+
+
+def _peak_rss_kib(command: list[str], env: dict[str, str]) -> int:
+    """Peak resident set of one run of a fresh JVM."""
+    _wall, rss, status, _stdout, _stderr = _measured_run(command, env)
     if status:
         raise RuntimeError(f"exit status {status}")
-    return usage.ru_maxrss
+    return rss
 
 
 def _version(tool: str) -> str:

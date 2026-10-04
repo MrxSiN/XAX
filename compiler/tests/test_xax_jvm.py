@@ -173,6 +173,63 @@ class JvmIntegerDifferentialTests(unittest.TestCase):
             with self.subTest(width=width):
                 self.assertEqual(run_jvm_calls(image, calls, result_width=width), tuple(_reference(reader, entry.cid, call) for call in calls))
 
+    def test_subtraction_of_a_value_left_on_the_stack(self):
+        # ADR-157: a value read once right after its definition stays on the operand
+        # stack; only commutative operations may read it first.
+        for width in (32, 64):
+            bw = bits_type(width)
+            graph = GraphBuilder()
+            block = graph.block(bw, bw)
+            a, b = block.params
+            tripled = block.op1(Operation.MUL_WRAP, (b, block.const(bw, 3)), bw)
+            difference = block.op1(Operation.SUB_WRAP, (a, tripled), bw)
+            shifted = block.op1(Operation.ADD_WRAP, (b, block.const(bw, 5)), bw)
+            block.ret(block.op1(Operation.SUB_WRAP, (difference, shifted), bw))
+            entry = graph.function((bw, bw), (bw,))
+            reader, image = _compile(entry, tuple(graph.objects.values()))
+            calls = [(x, y) for x in _interesting(width) for y in (0, 1, 7, (1 << width) - 1)]
+            with self.subTest(width=width):
+                self.assertEqual(run_jvm_calls(image, calls, result_width=width), tuple(_reference(reader, entry.cid, call) for call in calls))
+
+    def test_rotate_shift_forms_match_reference(self):
+        # ADR-157: a rotation of a zero-extended value no wider than the amount is a left
+        # shift (and a 32-bit source then needs only i2l); a rotation read only through a
+        # narrow enough truncation is a right shift.  Near misses keep the intrinsic.
+        b8, b16, b32, b64 = bits_type(8), bits_type(16), bits_type(32), bits_type(64)
+        graph = GraphBuilder()
+        block = graph.block(b32, b32, b64)
+        a, b, c = block.params
+
+        def rotate(value, kind, amount):
+            return block.op1(Operation.ROTATE_RIGHT, (value,), kind, attributes=(amount,))
+
+        def zext(value, kind):
+            return block.op1(Operation.INT_ZERO_EXTEND, (value,), kind)
+
+        def trunc(value, kind):
+            return block.op1(Operation.INT_TRUNCATE, (value,), kind)
+
+        terms = [
+            block.op1(Operation.BIT_OR, (rotate(zext(a, b64), b64, 32), zext(b, b64)), b64),  # pack
+            zext(trunc(rotate(c, b64, 32), b32), b64),  # unpack the high half
+            zext(trunc(rotate(c, b64, 40), b8), b64),
+            rotate(zext(trunc(a, b16), b64), b64, 20),
+            rotate(zext(a, b64), b64, 31),  # source wider than the amount
+            zext(trunc(rotate(c, b64, 33), b32), b64),  # truncation wider than what a shift keeps
+            zext(rotate(zext(trunc(b, b8), b32), b32, 12), b64),
+            zext(trunc(rotate(trunc(c, b32), b32, 8), b16), b64),
+        ]
+        result = terms[0]
+        for index, term in enumerate(terms[1:], 1):
+            result = block.op1(Operation.BIT_XOR, (rotate(result, b64, index), term), b64)
+        block.ret(result)
+        entry = graph.function((b32, b32, b64), (b64,))
+        reader, image = _compile(entry, tuple(graph.objects.values()))
+        rng = random.Random(self.SEED)
+        calls = [(x, y, z) for x in _interesting(32) for y in (0, (1 << 32) - 1) for z in (0, (1 << 64) - 1)]
+        calls += [(rng.getrandbits(32), rng.getrandbits(32), rng.getrandbits(64)) for _ in range(16)]
+        self.assertEqual(run_jvm_calls(image, calls, result_width=64), tuple(_reference(reader, entry.cid, call) for call in calls))
+
 
 _CALLEE_OBJECTS: dict[bytes, tuple] = {}
 

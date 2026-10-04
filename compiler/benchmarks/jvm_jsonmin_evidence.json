@@ -1,64 +1,123 @@
 {
-  "format": "xax-jvm-jsonmin-evidence-v1",
-  "decision": "ADR-156",
+  "format": "xax-jvm-jsonmin-evidence-v2",
+  "decision": "ADR-157",
   "label": "MEASURED",
   "workload": {
     "name": "jsonmin",
     "input_bytes": 8389905,
     "output_bytes": 4307543,
-    "repetitions": 7,
-    "fresh_jvm_per_repetition": true
+    "warmup_rounds": 2,
+    "repetitions": 15,
+    "fresh_jvm_per_repetition": true,
+    "order": "interleaved, rotating by one per round"
   },
   "host": {
-    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "logical_cpus": 4,
     "java": "openjdk version \"21.0.11\" 2026-04-21",
     "javac": "javac 21.0.11",
-    "jvm_flags": "defaults"
+    "kotlinc": "info: kotlinc-jvm 2.1.0 (JRE 21.0.11+10-1-24.04.2-Ubuntu)",
+    "jvm_flags": "defaults",
+    "javac_flags": "--release 17",
+    "kotlinc_flags": "-include-runtime"
   },
-  "xax": {
-    "class_bytes": 33330,
-    "jar_bytes": 33692,
-    "process_wall_s": {
-      "median": 0.2284,
-      "min": 0.2035,
-      "max": 0.2607,
-      "stdev": 0.0168,
-      "samples": [
-        0.2284,
-        0.2201,
-        0.2035,
-        0.2607,
-        0.2217,
-        0.2326,
-        0.2427
-      ]
+  "results": {
+    "xax": {
+      "jar_bytes": 8901,
+      "program_class_bytes": 8539,
+      "wall_seconds_median": 0.1336,
+      "wall_seconds_min": 0.1152,
+      "wall_seconds_max": 0.1848,
+      "wall_seconds_stdev": 0.0211,
+      "wall_seconds_samples": [
+        0.1848,
+        0.1336,
+        0.1179,
+        0.1191,
+        0.1362,
+        0.1563,
+        0.1732,
+        0.1194,
+        0.1152,
+        0.1225,
+        0.1453,
+        0.1286,
+        0.1184,
+        0.1364,
+        0.1468
+      ],
+      "peak_rss_kib_max": 82428,
+      "time_ratio_vs_fastest": 1.0,
+      "performance_class": "meets-primary-target"
     },
-    "peak_rss_kib": 989608
-  },
-  "javac": {
-    "class_bytes": 3730,
-    "process_wall_s": {
-      "median": 0.1939,
-      "min": 0.1737,
-      "max": 0.2125,
-      "stdev": 0.0117,
-      "samples": [
-        0.1939,
-        0.1834,
-        0.2125,
-        0.1968,
-        0.1957,
-        0.1824,
-        0.1737
-      ]
+    "javac": {
+      "jar_bytes": 2647,
+      "program_class_bytes": 3730,
+      "wall_seconds_median": 0.1367,
+      "wall_seconds_min": 0.1269,
+      "wall_seconds_max": 0.1607,
+      "wall_seconds_stdev": 0.0111,
+      "wall_seconds_samples": [
+        0.1554,
+        0.1367,
+        0.1483,
+        0.1269,
+        0.141,
+        0.1361,
+        0.1394,
+        0.1502,
+        0.1312,
+        0.1577,
+        0.1336,
+        0.1607,
+        0.1291,
+        0.1306,
+        0.133
+      ],
+      "peak_rss_kib_max": 92284,
+      "time_ratio_vs_fastest": 1.023
     },
-    "peak_rss_kib": 989736
+    "kotlinc": {
+      "jar_bytes": 4775072,
+      "program_class_bytes": 5649,
+      "wall_seconds_median": 0.1461,
+      "wall_seconds_min": 0.1355,
+      "wall_seconds_max": 0.1799,
+      "wall_seconds_stdev": 0.0114,
+      "wall_seconds_samples": [
+        0.1515,
+        0.1378,
+        0.1405,
+        0.1462,
+        0.1402,
+        0.1461,
+        0.1428,
+        0.1355,
+        0.1799,
+        0.1613,
+        0.1552,
+        0.1427,
+        0.1582,
+        0.1473,
+        0.1425
+      ],
+      "peak_rss_kib_max": 94048,
+      "time_ratio_vs_fastest": 1.094
+    }
   },
-  "ratio_xax_over_javac": {
-    "process_wall_median": 1.178,
-    "class_bytes": 8.936,
-    "peak_rss": 1.0
+  "xax_over": {
+    "javac": {
+      "wall_median": 0.977,
+      "program_class_bytes": 2.289,
+      "jar_bytes": 3.363,
+      "peak_rss": 0.893
+    },
+    "kotlinc": {
+      "wall_median": 0.914,
+      "program_class_bytes": 1.512,
+      "jar_bytes": 0.002,
+      "peak_rss": 0.876
+    }
   },
-  "notes": "Whole-process wall time of a fresh JVM per run (start-up included in both arms), interleaved. Outputs equal reference_jsonmin. Not a CPU/native comparison under XAX_BENCHMARKS.md section 15.0: the baseline is the same platform's own compiler."
+  "notes": "Whole-process wall time of a fresh JVM per run (start-up included in every arm). Outputs equal reference_jsonmin. Baselines are the platform's own compilers (XAX_BENCHMARKS.md section 15.0a)."
 }
