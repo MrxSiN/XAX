@@ -955,3 +955,13 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - XAX functions become Java functional-interface objects (`jvm-interface:` code-entry types; the program class implements the interfaces). Two new foreign ABIs, `jvm-invokeinterface` and `jvm-invokestatic-interface`, call interface methods. EXECUTED: a JDK `IntStream` pipeline calls three XAX callbacks (`tests/test_xax_jvm_callbacks.py`). The self-hosted typing store was regenerated.
 - Full suite: **1,125 passed, 5 skipped**.
 
+## JVM objects, arrays, string constants, and casts (2026-10-05, ADR-162)
+
+- Seven typed foreign ABIs: `jvm-new`, `jvm-newarray`, `jvm-arrayload`, `jvm-arraystore`, `jvm-arraylength`, `jvm-ldc`, and `jvm-checkcast`. EXECUTED (`tests/test_xax_jvm_objects.py`):
+  - an `int[]` sorted by `Arrays.sort`;
+  - a `StringBuilder` string;
+  - an `Integer[]` sorted by an XAX `Comparator` callback that takes objects;
+  - an out-of-bounds load that terminates.
+- The JVM row's object-construction blocker is closed.
+- Full suite: **1,129 passed, 5 skipped**.
+

@@ -76,6 +76,13 @@ from xax_compiler import (
     JVM_INVOKEVIRTUAL_ABI,
     JVM_INVOKEINTERFACE_ABI,
     JVM_INVOKESTATIC_INTERFACE_ABI,
+    JVM_NEW_ABI,
+    JVM_NEWARRAY_ABI,
+    JVM_ARRAYLOAD_ABI,
+    JVM_ARRAYSTORE_ABI,
+    JVM_ARRAYLENGTH_ABI,
+    JVM_LDC_ABI,
+    JVM_CHECKCAST_ABI,
     JVM_INTERFACE_ENTRY_PREFIX,
     Kind,
     Operation,
@@ -450,6 +457,53 @@ class _ForeignMember:
     parameters: tuple[str, ...]  # JVM parameter descriptors in push order (receiver first)
     result: str  # JVM result descriptor, "V" for none
     interface: bool = False  # an InterfaceMethodref (ADR-161)
+    kind: str = "call"  # or new, newarray, arrayload, arraystore, arraylength, ldc, checkcast (ADR-162)
+
+
+_OBJECT_ABIS = {
+    JVM_NEW_ABI: "new", JVM_NEWARRAY_ABI: "newarray", JVM_ARRAYLOAD_ABI: "arrayload", JVM_ARRAYSTORE_ABI: "arraystore",
+    JVM_ARRAYLENGTH_ABI: "arraylength", JVM_LDC_ABI: "ldc", JVM_CHECKCAST_ABI: "checkcast",
+}
+_ARRAY_LOAD = {"I": 0x2E, "J": 0x2F, "F": 0x30, "D": 0x31, "A": 0x32, "B": 0x33, "Z": 0x33, "C": 0x34, "S": 0x35}
+_NEWARRAY_TYPE = {"Z": 4, "C": 5, "F": 6, "D": 7, "B": 8, "S": 9, "I": 10, "J": 11}
+
+
+def _reference_descriptor(descriptor: str) -> bool:
+    return descriptor.startswith("[") or (descriptor.startswith("L") and descriptor.endswith(";"))
+
+
+def _object_member(declaration, library: str, member: str, inputs, outputs, resolve, where: str) -> _ForeignMember:
+    """Object construction and array access (ADR-162): parameters and result by kind."""
+    kind = _OBJECT_ABIS[declaration.abi]
+    if kind == "new":
+        if not member.startswith("<init>(") or not member.endswith(")V"):
+            fail("XAX.JVM.DESCRIPTOR", where, "JVM-NEW-MEMBER", "<init>(descriptor)V", member)
+        parameters, _result = _parse_method_descriptor(member[len("<init>"):], where)
+        result, descriptor = f"L{library};", member[len("<init>"):]
+    elif kind == "newarray":
+        parameters, result, descriptor = ("I",), "[" + library, ""
+    elif kind in ("arrayload", "arraystore", "arraylength"):
+        if not library.startswith("["):
+            fail("XAX.JVM.DESCRIPTOR", where, "JVM-ARRAY-DESCRIPTOR", "[element", library)
+        element = library[1:]
+        parameters = {"arrayload": (library, "I"), "arraystore": (library, "I", element), "arraylength": (library,)}[kind]
+        result = {"arrayload": element, "arraystore": "V", "arraylength": "I"}[kind]
+        descriptor = ""
+    elif kind == "ldc":
+        if library != "java/lang/String" or not all(32 <= ord(character) < 127 for character in member):
+            fail("XAX.JVM.DESCRIPTOR", where, "JVM-LDC-STRING", "printable ASCII java/lang/String constant", member)
+        parameters, result, descriptor = (), "Ljava/lang/String;", ""
+    else:  # checkcast: any reference in, the target type out
+        source = _jvm_type(resolve, inputs[0], where) if len(inputs) == 1 else None
+        if source is None or not _reference_descriptor(source):
+            fail("XAX.JVM.FOREIGN", where, "JVM-CHECKCAST-INPUT", "one reference", source)
+        parameters, result, descriptor = (source,), library if library.startswith("[") else f"L{library};", ""
+    if len(inputs) != len(parameters) or len(outputs) != (result != "V"):
+        fail("XAX.JVM.FOREIGN", where, "JVM-FOREIGN-ARITY", [list(parameters), result], [len(inputs), len(outputs)])
+    for jvm, cid in (*zip(parameters, inputs), *((result, cid) for cid in outputs)):
+        if not _descriptor_matches(jvm, resolve, cid, where):
+            fail("XAX.JVM.FOREIGN", where, "JVM-FOREIGN-DESCRIPTOR-TYPE", jvm, cid.hex())
+    return _ForeignMember(0, library, member, descriptor, parameters, result, False, kind)
 
 
 def _foreign_member(carrier: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ForeignMember:
@@ -461,6 +515,8 @@ def _foreign_member(carrier: SemanticObject, resolve: Callable[[bytes], Semantic
     member = declaration.name.decode("ascii")
     inputs = [cid for cid in declaration.inputs if not _is_proof_type(resolve(cid))]
     outputs = [cid for cid in declaration.outputs if not _is_proof_type(resolve(cid))]
+    if declaration.abi in _OBJECT_ABIS:
+        return _object_member(declaration, class_name, member, inputs, outputs, resolve, where)
     if declaration.abi == JVM_GETSTATIC_ABI:
         if ":" not in member:
             fail("XAX.JVM.DESCRIPTOR", where, "JVM-FIELD-MEMBER", "name:descriptor", member)
@@ -2213,6 +2269,43 @@ def _compile_method_pass(
             slots = sum(_slots(get(operand)) for operand in machine)
             max_call_slots = max(max_call_slots, slots)
             code.op(0xB8); code.raw(_u2(pool.method(class_name, _MEMORY_MEMBERS[key], member.descriptor)))
+            _store_call_result(node, block_index, node_index, slot_of, keep)
+
+        elif operation == Operation.CALL_FOREIGN and _foreign_member(node.entity, resolve).kind != "call":
+            member = _foreign_member(node.entity, resolve)
+            machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
+            if member.kind == "new":
+                code.op(0xBB); code.raw(_u2(pool.klass(member.class_name))); code.op(0x59)  # new; dup
+            slots = 2
+            for operand, parameter in zip(machine, member.parameters):
+                slots += _slots(get(operand))
+                narrow = {"B": 0x91, "C": 0x92, "S": 0x93}.get(parameter)
+                if narrow is not None and member.kind == "new":
+                    code.op(narrow)
+            max_call_slots = max(max_call_slots, slots)
+            if member.kind == "new":
+                code.op(0xB7); code.raw(_u2(pool.method(member.class_name, "<init>", member.descriptor)))
+            elif member.kind == "newarray":
+                element = member.class_name
+                if element in _NEWARRAY_TYPE:
+                    code.op(0xBC, _NEWARRAY_TYPE[element])
+                else:
+                    code.op(0xBD); code.raw(_u2(pool.klass(element[1:-1] if element.startswith("L") else element)))  # anewarray
+            elif member.kind == "arrayload":
+                element = member.class_name[1:]
+                code.op(_ARRAY_LOAD[element if element in _ARRAY_LOAD else "A"])
+                if element in ("B", "S"):
+                    mask("I", _NARROW_WIDTH[element])  # the JVM loads these sign-extended
+            elif member.kind == "arraystore":
+                element = member.class_name[1:]
+                code.op(_ARRAY_LOAD[element if element in _ARRAY_LOAD else "A"] + 0x21)  # xastore
+            elif member.kind == "arraylength":
+                code.op(0xBE)
+            elif member.kind == "ldc":
+                ldc(pool.string(member.name))
+            else:  # checkcast
+                target_class = member.result[1:-1] if member.result.startswith("L") else member.result
+                code.op(0xC0); code.raw(_u2(pool.klass(target_class)))
             _store_call_result(node, block_index, node_index, slot_of, keep)
 
         elif operation == Operation.CALL_FOREIGN:

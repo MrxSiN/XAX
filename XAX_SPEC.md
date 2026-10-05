@@ -1177,7 +1177,16 @@ Interoperability is mandatory. Deterministic importers SHOULD convert external m
 
 Bits up to 32 lower to `int` and up to 64 to `long`, kept zero-extended. Every observable result MUST equal the reference executor's, including traps. A trap MUST terminate the program abruptly and MUST NOT be catchable by XAX code.
 
-Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, `jvm-getstatic`, `jvm-invokeinterface` (receiver first), and `jvm-invokestatic-interface` (a static method declared on an interface; ADR-161). The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
+Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, `jvm-getstatic`, `jvm-invokeinterface` (receiver first), and `jvm-invokestatic-interface` (a static method declared on an interface; ADR-161).
+
+Objects and arrays use further ABIs (ADR-162):
+- `jvm-new`: library is the class; name is `<init>(descriptor)V`; the result is `L<class>;`.
+- `jvm-newarray`: library is the element descriptor; the input is a 32-bit length; the result is `[<element>`.
+- `jvm-arrayload`, `jvm-arraystore`, `jvm-arraylength`: library is the array descriptor; inputs are the array and an index, plus the value for a store.
+- `jvm-ldc`: library is `java/lang/String`; name is the printable-ASCII literal.
+- `jvm-checkcast`: library is the target class or array descriptor; the input is one reference.
+
+Narrow array elements load zero-extended to their XAX width. A Java exception they raise (index, cast, negative size) terminates the program like a trap. The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
 
 `JVM_EXECUTABLE_JAR` requires a proof-only entry. Its `Main-Class` is the generated `main(String[])` that calls the entry and returns (JVM exit status 0); any other status MUST be an explicit `java/lang/System.exit` call.
 

@@ -2749,7 +2749,21 @@ JVM_GETSTATIC_ABI = b"jvm-getstatic"
 # methods declared on an interface (``invokestatic`` of an InterfaceMethodref).
 JVM_INVOKEINTERFACE_ABI = b"jvm-invokeinterface"
 JVM_INVOKESTATIC_INTERFACE_ABI = b"jvm-invokestatic-interface"
-JVM_FOREIGN_ABIS = (JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_GETSTATIC_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_INTERFACE_ABI)
+# Object construction and arrays (ADR-162): ``new C(args)`` (name ``<init>(descriptor)V``),
+# ``new T[n]`` (library: the element descriptor), typed array load/store/length
+# (library: the array descriptor), a string constant (name: the ASCII literal),
+# and ``checkcast`` (library: the target class or array descriptor).
+JVM_NEW_ABI = b"jvm-new"
+JVM_NEWARRAY_ABI = b"jvm-newarray"
+JVM_ARRAYLOAD_ABI = b"jvm-arrayload"
+JVM_ARRAYSTORE_ABI = b"jvm-arraystore"
+JVM_ARRAYLENGTH_ABI = b"jvm-arraylength"
+JVM_LDC_ABI = b"jvm-ldc"
+JVM_CHECKCAST_ABI = b"jvm-checkcast"
+JVM_FOREIGN_ABIS = (
+    JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_GETSTATIC_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_INTERFACE_ABI,
+    JVM_NEW_ABI, JVM_NEWARRAY_ABI, JVM_ARRAYLOAD_ABI, JVM_ARRAYSTORE_ABI, JVM_ARRAYLENGTH_ABI, JVM_LDC_ABI, JVM_CHECKCAST_ABI,
+)
 FOREIGN_ABIS = (
     ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI,
     *JVM_FOREIGN_ABIS, LINUX_AARCH64_SYSCALL_ABI, AAPCS64_LINUX_C_ABI, AAPCS64_STATIC_C_ABI,
