@@ -191,6 +191,22 @@ class JvmIntegerDifferentialTests(unittest.TestCase):
             with self.subTest(width=width):
                 self.assertEqual(run_jvm_calls(image, calls, result_width=width), tuple(_reference(reader, entry.cid, call) for call in calls))
 
+    def test_short_circuit_branches_match_reference(self):
+        # ADR-157: a branch on an OR/AND tree of compares jumps per compare (javac's || and &&).
+        from xax_structured import Proc
+
+        b32 = bits_type(32)
+        proc = Proc((("a", b32), ("b", b32), ("c", b32)))
+        either = proc.any_of(proc.cmp(IntCompare.EQ, proc["a"], 1), proc.all_of(proc.cmp(IntCompare.ULT, proc["b"], 10), proc.cmp(IntCompare.NE, proc["c"], 0)))
+        both = proc.all_of(proc.cmp(IntCompare.UGT, proc["a"], 100), proc.any_of(proc.cmp(IntCompare.EQ, proc["b"], 3), proc.cmp(IntCompare.EQ, proc["c"], 4)))
+        proc.if_(either, lambda p: p.ret(p.const(7)))
+        proc.if_(both, lambda p: p.ret(p.const(8)))
+        proc.ret(proc.const(9))
+        entry = proc.function((b32,))
+        reader, image = _compile(entry, tuple(proc.graph.objects.values()))
+        calls = [(a, b, c) for a in (0, 1, 101, (1 << 32) - 1) for b in (0, 3, 9, 10, (1 << 32) - 1) for c in (0, 4, 5)]
+        self.assertEqual(run_jvm_calls(image, calls, result_width=32), tuple(_reference(reader, entry.cid, call) for call in calls))
+
     def test_rotate_shift_forms_match_reference(self):
         # ADR-157: a rotation of a zero-extended value no wider than the amount is a left
         # shift (and a 32-bit source then needs only i2l); a rotation read only through a

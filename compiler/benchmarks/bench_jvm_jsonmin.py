@@ -389,7 +389,7 @@ def measure() -> dict:
     xax = results["xax"]
     return {
         "format": "xax-jvm-jsonmin-evidence-v2",
-        "decision": "ADR-157",
+        "decision": "ADR-158",
         "label": "MEASURED",
         "workload": {"name": "jsonmin", "input_bytes": len(document_bytes), "output_bytes": len(expected[1]), "warmup_rounds": WARMUP, "repetitions": REPETITIONS, "fresh_jvm_per_repetition": True, "order": "interleaved, rotating by one per round"},
         "host": {

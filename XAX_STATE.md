@@ -918,5 +918,23 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - The JVM backend gained liveness-based slot coloring with coalescing, Top frame slots, folded and rematerialized constants, deferred and `dup`ed stores, `if_icmp`/`if` compare fusion, jump threading, rotate-to-shift forms, and shared bounds-check and byte-access members. `jsonmin`'s class went from 33,330 to 8,539 bytes.
 - MEASURED under the JVM runtime rule (`XAX_BENCHMARKS.md` §15.0a, §15.17). On 8 MiB, XAX takes 0.1336 s; the `javac` twin is 1.023× that and the `kotlinc` twin 1.094×. XAX is meets-primary-target with the lowest peak RSS (0.89× javac). Its program class is 2.29× javac's (blocker recorded). Collatz: 0.93× `javac` kernel time, 0.99× class bytes.
 - `xax_replacement.py` checks JVM verdicts for `javac` and `kotlinc` arms. JVM row **R4** (`jvm_jsonmin_evidence.json` competitive). Superseded: the ADR-156 section above (1.178×, R3).
-- Full suite: **1,108 passed, 5 skipped**.
+- Full suite: **1,108 passed, 5 skipped**. Code size superseded by the ADR-158 section below.
+
+## JVM code size: `jsonmin`'s class below kotlinc's (2026-10-05, ADR-158)
+
+- The JVM backend now evaluates single-use pure values at their reader, as stack expressions. Branches on OR/AND trees of compares short-circuit.
+- Values get one name each:
+  - one-predecessor block parameters alias their edge arguments;
+  - a repeated load is the earlier load;
+  - copies and given-back views share locals.
+- Dead block parameters, dead pure nodes, and unused call results are dropped.
+- Frames exist only at branch targets. The trap label has its own empty frame, and definite assignment decides which locals need a zero store.
+- Blocks are laid out in fallthrough chains. Identical return blocks merge, and `x = x + c` is one `iinc`.
+- Constant ASCII stores become one `String.getBytes`. Internal methods take one-slot parameters first.
+- MEASURED (`XAX_BENCHMARKS.md` §15.18):
+  - **`jsonmin` class:** 33,330 bytes (ADR-156) → 8,539 (ADR-157) → **5,575**. That is 0.99× the `kotlinc` twin's classes (5,649) and 1.49× the `javac` twin's class (3,730).
+  - **`jsonmin` time and memory:** XAX is still the fastest arm (javac 1.197×, kotlinc 1.251×) with the lowest peak RSS.
+  - **Collatz:** class 724 vs 760 bytes, kernel 0.91× `javac`.
+- **Not met: 1.05× javac's class.** The remaining gap comes from the unchanged XAX program's shape, the same graph as on Linux. The parser is inlined into large functions, every call returns a packed (pos, out) state that is checked and unpacked, and every byte access goes through an explicit view. The line table maps each of 104 raising sites to its node (javac emits 98 entries for its statements).
+- Full suite: **1,111 passed, 5 skipped**.
 

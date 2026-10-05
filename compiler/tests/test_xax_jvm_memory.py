@@ -157,6 +157,55 @@ class JvmMemoryTests(unittest.TestCase):
         self.assertEqual(run_jvm_calls(_image(*program(EXTENT)), [()], result_width=1), (1,))
         self.assertEqual(run_jvm_calls(_image(*program(1 << 31)), [()], result_width=1), ("trap java.lang.Error",))
 
+    def test_constant_byte_runs_and_repeated_loads(self):
+        # ADR-157: constant ASCII bytes stored to consecutive constant indices become one
+        # string store; a second load from the same place with nothing stored in between
+        # is the first load's value.  Results must not change.
+        bytes_ = pointer_type(B8, Permission.READ_WRITE, 1, space=2)
+        proc = Proc((("i", B32), ("m", MEM)))
+        raw, owner, effect = proc.op(Operation.CALL_FOREIGN, (proc.const(EXTENT, B64), proc.drop("m")), (API.bytes_rw, API.heap_owner, MEM), entity=API.mmap_anonymous)
+        pointer, view, memory = proc.op(Operation.HEAP_VIEW, (raw, owner, effect), (bytes_, VIEW, MEM), attributes=(EXTENT, 1))
+        for offset, byte in enumerate(b"HELLO"):
+            memory = proc.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, proc.const(3 + offset), proc.const(byte, B8), memory), MEM, attributes=(1, 1))
+        first, memory = proc.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, proc["i"], memory), (B8, MEM), attributes=(1, 1))
+        again, memory = proc.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, proc["i"], memory), (B8, MEM), attributes=(1, 1))
+        fixed, memory = proc.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, proc.const(4), memory), (B8, MEM), attributes=(1, 1))
+        wide = [proc.op1(Operation.INT_ZERO_EXTEND, (value,), B64) for value in (first, again, fixed)]
+        mixed = proc.bin(Operation.ADD_WRAP, proc.bin(Operation.MUL_WRAP, wide[0], proc.const(1 << 16, B64), B64), proc.bin(Operation.MUL_WRAP, wide[1], proc.const(1 << 8, B64), B64), B64)
+        result = proc.bin(Operation.ADD_WRAP, mixed, wide[2], B64)
+        _status, memory = proc.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, MEM), entity=API.munmap_view(bytes_, EXTENT))
+        proc.ret(result, memory)
+        function = proc.function((B64, MEM))
+        image = _image((*proc.graph.objects.values(), bytes_), function)
+        self.assertIn(b"getBytes", image.class_bytes)  # the run is one String.getBytes call
+
+        def expected(i: int):
+            if i > EXTENT - 1:
+                return "trap java.lang.Error"
+            byte = b"HELLO"[i - 3] if 3 <= i < 8 else 0
+            return byte * 0x10100 + ord("E")
+
+        cases = [0, 2, 3, 5, 7, 8, EXTENT - 1, EXTENT, (1 << 32) - 1]
+        self.assertEqual(run_jvm_calls(image, [(i,) for i in cases], result_width=64), tuple(expected(i) for i in cases))
+
+    def test_a_trap_in_the_threaded_entry_exits_with_status_1(self):
+        from xax_jvm import run_jvm_jar
+
+        bytes_ = pointer_type(B8, Permission.READ_WRITE, 1, space=2)
+        proc = Proc((("m", MEM),))
+        raw, owner, effect = proc.op(Operation.CALL_FOREIGN, (proc.const(EXTENT, B64), proc.drop("m")), (API.bytes_rw, API.heap_owner, MEM), entity=API.mmap_anonymous)
+        pointer, view, memory = proc.op(Operation.HEAP_VIEW, (raw, owner, effect), (bytes_, VIEW, MEM), attributes=(EXTENT, 1))
+        _loaded, memory = proc.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, proc.const(EXTENT), memory), (B8, MEM), attributes=(1, 1))
+        _status, memory = proc.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, MEM), entity=API.munmap_view(bytes_, EXTENT))
+        proc.ret(memory)
+        function = proc.function((MEM,))
+        target = jvm_classfile_memory_target()
+        reader = program_store(function, target, (*API.types, *proc.graph.objects.values(), bytes_, B8, B32, B64, VIEW))
+        completed = run_jvm_jar(compile_jvm_bound_target(reader, function.cid, target, process_entry=True))
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn(b"xax-entry", completed.stderr)
+        self.assertIn(b"java.lang.Error", completed.stderr)
+
 
 class JvmMemoryProfileTests(unittest.TestCase):
     def test_the_v1_profile_rejects_memory(self):

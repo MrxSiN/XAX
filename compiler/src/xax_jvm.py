@@ -312,6 +312,11 @@ def _jvm_type(resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str
     fail("XAX.JVM.VALUE", where, "JVM-VALUE-REPRESENTABLE", "bits<=64, f32, f64, jvm-ref, or memory pointer", cid.hex())
 
 
+def _signed32(value: int) -> int:
+    value &= 0xFFFFFFFF
+    return value - (1 << 32) if value >> 31 else value
+
+
 def _slots(descriptor: str) -> int:
     return 2 if descriptor in ("J", "D") else 1
 
@@ -481,6 +486,10 @@ class _Method:
     node_ranges: tuple[tuple[int, int, int, int, int], ...] = ()  # (block, node, line, start, end)
     function_cid: bytes | None = None
     access: int = 0x0009  # public static
+    bare_frame: int | None = None  # a frame with no locals (the trap: it reads none)
+
+
+_NO_FALLTHROUGH = frozenset({0xA7, 0xC8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xBF})  # goto, ret, switches, returns, athrow
 
 
 class _Code:
@@ -490,9 +499,11 @@ class _Code:
         self.labels: dict[object, int] = {}
         self.fixups: list[tuple[int, object]] = []
         self.targets: set[object] = set()
+        self.ended = False  # the last instruction never falls through
 
     def op(self, *values: int) -> None:
         self.buf.extend(values)
+        self.ended = values[0] in _NO_FALLTHROUGH
 
     def raw(self, blob: bytes) -> None:
         self.buf.extend(blob)
@@ -501,10 +512,14 @@ class _Code:
         self.fixups.append((len(self.buf), label))
         self.targets.add(label)
         self.buf.extend((opcode, 0, 0))
+        self.ended = opcode == 0xA7
 
     def mark(self, label: object) -> None:
+        # A frame only where the verifier needs one (ADR-157): a branch target, or code
+        # after an instruction that never falls through.
         self.labels[label] = len(self.buf)
-        self.targets.add(label)
+        if self.ended:
+            self.targets.add(label)
 
     def finish(self) -> tuple[bytes, tuple[int, ...]]:
         for position, label in self.fixups:
@@ -554,6 +569,14 @@ _MAY_RAISE = frozenset({
 _INTERNAL_LABELS = frozenset({
     Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT, Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC,
 })
+# Pure integer operations a single-use value may be evaluated from at its reader.
+_TREE_OPERATIONS = frozenset({
+    Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_AND, Operation.BIT_OR, Operation.BIT_XOR,
+    Operation.ROTATE_RIGHT, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.INT_COMPARE,
+    Operation.ADDRESS_OFFSET, Operation.POINTER_ADDRESS,
+})
+# Pure nodes: never lowered when nothing reads their results (ADR-157).
+_DEAD_IF_UNREAD = frozenset({*_TREE_OPERATIONS, Operation.CONSTANT, Operation.POINTER_CAST})
 _LOAD = {"I": 0x15, "J": 0x16, "F": 0x17, "D": 0x18, "A": 0x19}
 _STORE = {"I": 0x36, "J": 0x37, "F": 0x38, "D": 0x39, "A": 0x3A}
 _RETURN = {"I": 0xAC, "J": 0xAD, "F": 0xAE, "D": 0xAF, "A": 0xB0}
@@ -606,6 +629,13 @@ def _signature(function: SemanticObject, resolve) -> tuple[tuple[str, ...], tupl
     return machine_parameters, machine_returns
 
 
+def _internal_order(items: Sequence, descriptors: Sequence[str] | None = None) -> list:
+    """Parameters of a method only this class calls, one-slot types first (ADR-157): more
+    of the hot ones land in locals 0-3, which have one-byte loads and stores."""
+    descriptors = items if descriptors is None else descriptors
+    return [items[index] for index in sorted(range(len(items)), key=lambda index: (_slots(descriptors[index]) == 2, index))]
+
+
 def _method_descriptor(parameters: Sequence[str], returns: Sequence[str]) -> str:
     return "(" + "".join(parameters) + ")" + (returns[0] if returns else "V")
 
@@ -626,9 +656,23 @@ def _compile_method(
     reloading it when its single read comes right after its definition.
     """
     reads: dict[ValueRef, int] = {}
-    _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, reads, None)
+    # The counting pass lowers into a scratch pool, so nothing only it used reaches the class.
+    _compile_method_pass(function, name, resolve, _Pool(), class_name, methods, set(), reads, None, None)
     single = frozenset(ref for ref, count in reads.items() if count == 1)
-    return _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, {}, single)
+    kept: frozenset = frozenset()
+    while True:
+        try:
+            return _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, {}, single, kept)
+        except _KeepParameters as retry:
+            kept |= retry.parameters  # their slots must hold them until a zero store
+
+
+class _KeepParameters(Exception):
+    """Reusing these dead parameters' slots would need a zero store before they are read."""
+
+    def __init__(self, parameters: frozenset) -> None:
+        super().__init__()
+        self.parameters = parameters
 
 
 def _compile_method_pass(
@@ -641,12 +685,15 @@ def _compile_method_pass(
     needs: set[str] | None,
     reads: dict[ValueRef, int],
     single_read: frozenset | None,
+    kept_parameters: frozenset | None = frozenset(),
 ) -> _Method:
     needs = needs if needs is not None else set()
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph = parse_function_graph(function, resolve)
     where = graph_object.cid.hex()
     parameters, returns = _signature(function, resolve)
+    if name != "entry":
+        parameters = _internal_order(parameters)
     code = _HookedCode(where)
     pending: list = [None]  # a value left on the operand stack instead of stored
 
@@ -668,7 +715,7 @@ def _compile_method_pass(
     def edge_moves(target: int, arguments: Sequence[ValueRef]) -> list[tuple[int, ValueRef]]:
         return [
             (index, argument) for index, argument in enumerate(arguments)
-            if value_type(graph.blocks[target].parameters[index]) is not None
+            if value_type(graph.blocks[target].parameters[index]) is not None and carried(target, index)
         ]
 
     # Locals (ADR-157): every machine value gets a slot of one fixed JVM type for
@@ -705,17 +752,114 @@ def _compile_method_pass(
                 constants[ref] = value & ((1 << width) - 1)
                 folded.add(ref)
                 changed = True
+    # One name per value (ADR-157).  A block entered by exactly one edge has
+    # parameters that are that edge's arguments, so they alias them instead of
+    # taking locals and copies.  A load from the same place as a load whose memory
+    # it consumes, with nothing stored in between, is that load's value: it emits
+    # nothing (it cannot trap: the first one did not).
+    alias: dict[ValueRef, ValueRef] = {}
+    incoming: dict[int, list[tuple[int, Sequence[ValueRef]]]] = {index: [] for index in range(len(graph.blocks))}
+    for block_index, block in enumerate(graph.blocks):
+        for target, arguments in block.terminator.edges:
+            incoming[target].append((block_index, arguments))
+    reachable, frontier = {graph.entry}, [graph.entry]
+    while frontier:
+        for target, _arguments in graph.blocks[frontier.pop()].terminator.edges:
+            if target not in reachable:
+                reachable.add(target)
+                frontier.append(target)
+    for block_index in reachable:
+        if block_index != graph.entry and len(incoming[block_index]) == 1:
+            for index, argument in enumerate(incoming[block_index][0][1]):
+                alias[ValueRef.parameter(block_index, index)] = argument
+
+    def canon(ref: ValueRef) -> ValueRef:
+        while ref in alias:
+            ref = alias[ref]
+        return ref
+
+    def same_index(left: ValueRef, right: ValueRef) -> bool:
+        left, right = canon(left), canon(right)
+        return left == right or (left in constants and right in constants and constants[left] == constants[right])
+
+    eliminated: set[tuple[int, int]] = set()
+    changed = True
+    while changed:
+        changed = False
+        for block_index in reachable:
+            for node_index, node in enumerate(graph.blocks[block_index].nodes):
+                if node.operation not in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE) or (block_index, node_index) in eliminated:
+                    continue
+                memory = canon(node.operands[-1])
+                if memory.tag != 1 or memory.result != 1:
+                    continue
+                earlier = graph.blocks[memory.block].nodes[memory.index]
+                if earlier.operation != node.operation or earlier.attributes != node.attributes or tuple(earlier.results) != tuple(node.results):
+                    continue
+                if not all(same_index(a, b) for a, b in zip(earlier.operands[:-1], node.operands[:-1])):
+                    continue
+                alias[ValueRef.node_result(block_index, node_index, 0)] = ValueRef.node_result(memory.block, memory.index, 0)
+                alias[ValueRef.node_result(block_index, node_index, 1)] = node.operands[-1]
+                eliminated.add((block_index, node_index))
+                changed = True
+
+    # Dead block parameters (ADR-157): structured code carries every variable along
+    # every edge; a parameter nothing reads, directly or by passing it on to a
+    # parameter that is read, gets no local, and its edges copy nothing.
+    needed: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if (block_index, node_index) not in eliminated and node.operation not in _DEAD_IF_UNREAD:
+                needed.update(canon(operand) for operand in node.operands)
+        if block.terminator.kind == TerminatorKind.RETURN:
+            # Only the machine result is returned: views given back are elided (ADR-101).
+            returned_elided = borrowed_view_returns(parameter_types, return_types, resolve)
+            needed.update(canon(value) for index, (value, cid) in enumerate(zip(block.terminator.values, return_types)) if value_type(cid) is not None and index not in returned_elided)
+        else:
+            needed.update(canon(value) for value in block.terminator.values)
+    changed = True
+    while changed:
+        changed = False
+        for block in graph.blocks:
+            for target, arguments in block.terminator.edges:
+                for index, argument in enumerate(arguments):
+                    parameter = ValueRef.parameter(target, index)
+                    if parameter in needed and parameter not in alias and canon(argument) not in needed:
+                        needed.add(canon(argument))
+                        changed = True
+        for block_index, block in enumerate(graph.blocks):
+            for node_index, node in enumerate(block.nodes):
+                # A pure node is live when one of its results is read.
+                if node.operation in _DEAD_IF_UNREAD and (block_index, node_index) not in eliminated:
+                    if any(ValueRef.node_result(block_index, node_index, index) in needed for index in range(len(node.results))):
+                        for operand in map(canon, node.operands):
+                            if operand not in needed:
+                                needed.add(operand)
+                                changed = True
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation in _DEAD_IF_UNREAD and not any(ValueRef.node_result(block_index, node_index, index) in needed for index in range(len(node.results))):
+                eliminated.add((block_index, node_index))  # dead: never lowered
+
+    def carried(target: int, index: int) -> bool:
+        """An edge argument the target's parameter takes: live, and not an alias of it."""
+        parameter = ValueRef.parameter(target, index)
+        return parameter not in alias and (parameter in needed or target == graph.entry)
+
+    def edge_reads(block) -> list[ValueRef]:
+        return [canon(argument) for target, arguments in block.terminator.edges for index, argument in enumerate(arguments) if carried(target, index)]
+
     constant_refs: set[ValueRef] = set(constants)
     descriptor_of: dict[ValueRef, str] = {}
     for block_index, block in enumerate(graph.blocks):
         for index, cid in enumerate(block.parameters):
             descriptor = value_type(cid)
-            if descriptor is not None:
+            if descriptor is not None and (block_index == graph.entry or carried(block_index, index)):
                 descriptor_of[ValueRef.parameter(block_index, index)] = descriptor
         for node_index, node in enumerate(block.nodes):
             for result_index, cid in enumerate(node.results):
                 descriptor = value_type(cid)
-                if descriptor is not None:
+                if descriptor is not None and ValueRef.node_result(block_index, node_index, result_index) not in alias and (block_index, node_index) not in eliminated:
                     descriptor_of[ValueRef.node_result(block_index, node_index, result_index)] = descriptor
     # Known widths: an upper bound on the significant bits of integer values whose
     # producer bounds them (byte loads, zero extensions, truncations), so a
@@ -732,17 +876,145 @@ def _compile_method_pass(
                 elif node.operation == Operation.INT_TRUNCATE:
                     known_width[ref] = min(_width(resolve, node.results[0]), known_width.get(node.operands[0], 64))
 
+    uses: dict[ValueRef, int] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if (block_index, node_index) not in eliminated:
+                for operand in node.operands:
+                    uses[canon(operand)] = uses.get(canon(operand), 0) + 1
+        for value in (*block.terminator.values, *edge_reads(block)):
+            uses[canon(value)] = uses.get(canon(value), 0) + 1
+
     def copy_like(node) -> bool:
         """A node whose result is its operand's value in the same representation."""
         if node.operation in (Operation.POINTER_CAST, Operation.HEAP_VIEW):
             pass  # a heap view's pointer is its raw block (the null check reads only the operand)
         elif node.operation not in (Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE) or value_type(node.operand_types[0]) != value_type(node.results[0]):
             return False
+        elif uses.get(node.operands[0]) == 1:
+            return False  # its operand's only reader: an expression on the stack, not a second name
         elif node.operation == Operation.INT_TRUNCATE and known_width.get(node.operands[0], 64) > _width(resolve, node.results[0]):
             return False
         return node.operands[0] not in constant_refs and value_type(node.results[0]) is not None
 
-    tracked = [ref for ref in descriptor_of if ref not in constant_refs]
+    def aliases(block_index: int, node_index: int, node) -> dict[ValueRef, ValueRef]:
+        """Results that are an operand's value: a copy, or a view a call gives back (ADR-101)."""
+        if copy_like(node):
+            return {ValueRef.node_result(block_index, node_index): node.operands[0]}
+        if node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve):
+            elided = borrowed_view_returns(node.operand_types, node.results, resolve)
+            return {ValueRef.node_result(block_index, node_index, result): node.operands[parameter] for result, parameter in elided.items() if value_type(node.results[result]) is not None}
+        return {}
+
+    copy_of: dict[ValueRef, ValueRef] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if copy_like(node) and node.operation != Operation.HEAP_VIEW:
+                copy_of[ValueRef.node_result(block_index, node_index)] = node.operands[0]
+
+    # Only a value nothing reads through its slot implicitly may stay on the stack:
+    # edge arguments and copy operands can share a slot with the value they feed.
+    implicit: set[ValueRef] = set()
+    for block in graph.blocks:
+        implicit.update(edge_reads(block))
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            implicit.update(canon(value) for value in aliases(block_index, node_index, node).values())
+
+    # A compare whose only use is its own block's conditional branch fuses
+    # into that branch (``lcmp``/``fcmp`` + ``if<cond>``), as javac emits it.
+    users: dict[ValueRef, list] = {}
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if (block_index, node_index) not in eliminated:
+                for operand in node.operands:
+                    users.setdefault(canon(operand), []).append(node)
+
+    def sole_user(ref: ValueRef):
+        """The one node that reads ``ref``, when nothing else (a terminator included) does."""
+        return users[ref][0] if uses.get(ref) == 1 and len(users.get(ref, ())) == 1 else None
+
+    def definition(ref: ValueRef):
+        return graph.blocks[ref.block].nodes[ref.index] if ref.tag == 1 else None
+
+    fused: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        if block.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
+            condition = block.terminator.values[0]
+            if condition.tag == 1 and condition.block == block_index and uses.get(condition) == 1:
+                if block.nodes[condition.index].operation in (Operation.INT_COMPARE, Operation.FLOAT_COMPARE):
+                    fused.add(condition)
+
+    # Expression trees (ADR-157): a pure integer node read exactly once, by a later
+    # node or the terminator of its own block, has no local.  It is emitted where
+    # it is read, as javac evaluates an expression on the operand stack, and its
+    # operands are live up to that point.
+    inlined: set[ValueRef] = set()
+    if single_read is not None:
+        site: dict[ValueRef, int] = {}  # value -> block of its one reader
+        for block_index, block in enumerate(graph.blocks):
+            for node in block.nodes:
+                if not copy_like(node):
+                    for operand in node.operands:
+                        site[operand] = block_index
+            for value in block.terminator.values:
+                site[value] = block_index
+        for block_index, block in enumerate(graph.blocks):
+            for node_index, node in enumerate(block.nodes):
+                ref = ValueRef.node_result(block_index, node_index)
+                if (
+                    node.operation in _TREE_OPERATIONS and len(node.results) == 1 and value_type(node.results[0]) in ("I", "J")
+                    and ref in single_read and ref not in implicit and ref not in constants and uses.get(ref) == 1
+                    and site.get(ref) == block_index and not copy_like(node)
+                ):
+                    inlined.add(ref)
+    evaluated_late = inlined | fused  # no local: lowered where they are read
+
+    def node_of(ref: ValueRef):
+        ref = canon(ref)
+        return graph.blocks[ref.block].nodes[ref.index] if ref.tag == 1 else None
+
+    def repacked(node) -> ValueRef | None:
+        """``s`` when ``node`` is ``zext(trunc(s)) | rotr(zext(trunc(rotr(s, 32))), 32)``: the u64
+        rebuilt from its own two 32-bit halves is ``s`` itself (ADR-157)."""
+        if node.operation != Operation.BIT_OR or _width(resolve, node.results[0]) != 64:
+            return None
+        for low_ref, high_ref in (node.operands, node.operands[::-1]):
+            low_zext, high_rotate = node_of(low_ref), node_of(high_ref)
+            if low_zext is None or high_rotate is None or low_zext.operation != Operation.INT_ZERO_EXTEND:
+                continue
+            if high_rotate.operation != Operation.ROTATE_RIGHT or high_rotate.attributes[0] != 32:
+                continue
+            high_zext = node_of(high_rotate.operands[0])
+            low_trunc = node_of(low_zext.operands[0])
+            if high_zext is None or low_trunc is None or high_zext.operation != Operation.INT_ZERO_EXTEND:
+                continue
+            high_trunc = node_of(high_zext.operands[0])
+            if high_trunc is None or low_trunc.operation != Operation.INT_TRUNCATE or high_trunc.operation != Operation.INT_TRUNCATE:
+                continue
+            if _width(resolve, low_trunc.results[0]) != 32 or _width(resolve, high_trunc.results[0]) != 32:
+                continue
+            split = node_of(high_trunc.operands[0])
+            if split is None or split.operation != Operation.ROTATE_RIGHT or split.attributes[0] != 32 or canon(split.operands[0]) != canon(low_trunc.operands[0]):
+                continue
+            whole = canon(low_trunc.operands[0])
+            if _width(resolve, low_trunc.operand_types[0]) == 64 and value_type(node.results[0]) == "J":
+                return whole
+        return None
+
+    def effective(refs) -> list[ValueRef]:
+        """Values read through ``refs``, looking through the trees evaluated where they are read."""
+        out = []
+        for ref in map(canon, refs):
+            if ref in evaluated_late and repacked(definition(ref)) is not None:
+                out.extend(effective((repacked(definition(ref)),)))
+            elif ref in evaluated_late:
+                out.extend(effective(definition(ref).operands))
+            else:
+                out.append(ref)
+        return out
+
+    tracked = [ref for ref in descriptor_of if ref not in constant_refs and ref not in evaluated_late]
     bit = {ref: 1 << index for index, ref in enumerate(tracked)}
 
     def bits(refs) -> int:
@@ -758,9 +1030,11 @@ def _compile_method_pass(
         seen = bits(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)))
         exposed = 0
         for node_index, node in enumerate(block.nodes):
-            exposed |= bits(node.operands) & ~seen
+            if ValueRef.node_result(block_index, node_index) in evaluated_late or (block_index, node_index) in eliminated:
+                continue
+            exposed |= bits(effective(node.operands)) & ~seen
             seen |= bits(ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)))
-        terminator_uses = bits((*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)))
+        terminator_uses = bits(effective((*block.terminator.values, *edge_reads(block))))
         upward[block_index] = exposed | (terminator_uses & ~seen)
         defined[block_index] = seen
     live_in = {index: 0 for index in range(len(graph.blocks))}
@@ -789,14 +1063,28 @@ def _compile_method_pass(
         live = 0
         for successor in successors[block_index]:
             live |= live_in[successor]
-        live |= bits((*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)))
+        terminator_reads = bits(effective(block.terminator.values))
+        live |= terminator_reads | bits(edge_reads(block))
+        if block.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
+            across_labels |= terminator_reads  # a short-circuit condition reads leaves after its own labels
         for node_index in reversed(range(len(block.nodes))):
             node = block.nodes[node_index]
+            if ValueRef.node_result(block_index, node_index) in evaluated_late or (block_index, node_index) in eliminated:
+                continue
             defs = bits(ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results)))
-            operands = bits(node.operands)
+            operands = bits(effective(node.operands))
             # A result never shares a slot with its own node's operands (lowerings may reread
             # them), except a copy, which may share its operand's slot and then emits nothing.
-            interfere(defs, live | defs | (0 if copy_like(node) else operands))
+            same_value = aliases(block_index, node_index, node)
+            reads_first = node.operation in _ARITHMETIC  # reads every operand before it writes
+            for result_index in range(len(node.results)):
+                ref = ValueRef.node_result(block_index, node_index, result_index)
+                if ref in bit:
+                    if reads_first:
+                        interfere(bit[ref], live | defs)  # may take a dying operand's local
+                    else:
+                        # A copy holds its operand's value: it may share that local even while both live.
+                        interfere(bit[ref], (live | defs | operands) & ~bits((canon(same_value[ref]),)) if ref in same_value else live | defs | operands)
             if node.operation in _INTERNAL_LABELS:
                 across_labels |= live | defs | operands
             live = (live & ~defs) | operands
@@ -807,17 +1095,34 @@ def _compile_method_pass(
     hints: dict[ValueRef, list[ValueRef]] = {}
     for block_index, block in enumerate(graph.blocks):
         for node_index, node in enumerate(block.nodes):
-            if copy_like(node):
+            for result, operand in aliases(block_index, node_index, node).items():
+                if result in bit and operand in bit:
+                    hints.setdefault(result, []).append(operand)
+                    hints.setdefault(operand, []).append(result)
+            if node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP):
                 result = ValueRef.node_result(block_index, node_index)
-                hints.setdefault(result, []).append(node.operands[0])
-                hints.setdefault(node.operands[0], []).append(result)
+                operand = canon(node.operands[0])
+                if result in bit and operand in bit:  # x = x + c, as one iinc
+                    hints.setdefault(result, []).append(operand)
     for block in graph.blocks:
         for target, arguments in block.terminator.edges:
             for index, argument in enumerate(arguments):
-                parameter = ValueRef.parameter(target, index)
+                parameter, argument = ValueRef.parameter(target, index), canon(argument)
                 if parameter in bit and argument in bit:
                     hints.setdefault(parameter, []).append(argument)
                     hints.setdefault(argument, []).append(parameter)
+
+    # Frames type only the slots that hold a value across a branch target: a block's
+    # live-in values and parameters, edge arguments (read after a false stub), and
+    # values live at a lowering's internal label.  Every other slot is Top in every
+    # frame, so it needs no initialization (ADR-157).
+    entered = {target for block in graph.blocks for target, _arguments in block.terminator.edges}
+    framed = across_labels
+    for block_index, block in enumerate(graph.blocks):
+        framed |= live_in[block_index]
+        if block_index in entered:  # the entry's parameters are only framed if a branch enters it
+            framed |= bits(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)))
+        framed |= bits(edge_reads(block))
 
     slot_of: dict[ValueRef, tuple[int, str]] = {}
     frame_locals: list[str] = []
@@ -838,39 +1143,51 @@ def _compile_method_pass(
         slot_of[ref] = (slot, descriptor_of[ref])
         occupants[slot] |= bit[ref]
 
-    for index, cid in enumerate(graph.blocks[graph.entry].parameters):
-        ref = ValueRef.parameter(graph.entry, index)
-        if ref in descriptor_of:
-            assign(ref, new_slot(descriptor_of[ref]))  # the JVM passes parameters in the first slots
+    incoming_parameters = [ValueRef.parameter(graph.entry, index) for index in range(len(graph.blocks[graph.entry].parameters))]
+    incoming_parameters = [ref for ref in incoming_parameters if ref in descriptor_of]
+    if name != "entry":
+        incoming_parameters = _internal_order(incoming_parameters, [descriptor_of[ref] for ref in incoming_parameters])
+    for ref in incoming_parameters:
+        assign(ref, new_slot(descriptor_of[ref]))  # the JVM passes parameters in the first slots
     parameter_slot_end = next_slot
-    for ref in tracked:
-        if ref in slot_of:
-            continue
+    # A parameter no branch target sees (read only before the first one) frees its
+    # slots for values of any one-slot type: the low slots have one-byte loads and
+    # stores (ADR-157).  Freed slots are untyped (None) until a value takes them.
+    freed: dict[int, ValueRef] = {}
+    for ref, (slot, descriptor) in list(slot_of.items()):
+        if ref.tag == 0 and ref.block == graph.entry and ref in bit and not bit[ref] & framed and kept_parameters is not None and ref not in kept_parameters:
+            del slot_types[slot]
+            for part in range(slot, slot + _slots(descriptor)):
+                slot_types[part] = None
+                occupants[part] = bit[ref]
+                freed[part] = ref
+    ordered = [ref for ref in tracked if ref not in slot_of]
+    for ref in ordered:
         descriptor = descriptor_of[ref]
         candidates = [slot_of[hint][0] for hint in hints.get(ref, ()) if hint in slot_of]
-        candidates += [slot for slot in slot_types if slot not in candidates]
+        candidates += [slot for slot in sorted(slot_types) if slot not in candidates]
         for slot in candidates:
-            if slot_types[slot] == descriptor and not occupants[slot] & interference[ref]:
+            fits = slot_types.get(slot) == descriptor or (slot_types.get(slot, "") is None and _slots(descriptor) == 1)
+            if fits and not occupants[slot] & interference[ref]:
+                slot_types[slot] = descriptor
                 assign(ref, slot)
                 break
         else:
             assign(ref, new_slot(descriptor))
-    for ref in constant_refs:
-        slot_of[ref] = (-1, descriptor_of[ref])
+    for ref in (*constant_refs, *evaluated_late):
+        if ref in descriptor_of:
+            slot_of[ref] = (-1, descriptor_of[ref])
+    for ref in alias:
+        if canon(ref) in slot_of:
+            slot_of[ref] = slot_of[canon(ref)]  # the same value, in its one local
     global_slot_end = next_slot
-    # Frames type only the slots that hold a value across a branch target: a block's
-    # live-in values and parameters, edge arguments (read after a false stub), and
-    # values live at a lowering's internal label.  Every other slot is Top in every
-    # frame, so it needs no initialization (ADR-157).
-    framed = across_labels
-    for block_index, block in enumerate(graph.blocks):
-        framed |= live_in[block_index] | bits(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)))
-        framed |= bits(argument for _target, arguments in block.terminator.edges for argument in arguments)
+    for slot in [slot for slot, descriptor in slot_types.items() if descriptor is None]:
+        slot_types[slot] = "T"  # a freed slot no value took
     typed_slots = {slot_of[ref][0] for ref in tracked if bit[ref] & framed}
-    typed_slots |= {slot for slot in slot_types if slot < parameter_slot_end}
+    typed_slots |= {slot for slot in slot_types if slot < parameter_slot_end and slot not in freed}
     frame_types: list[str] = []
     for slot in sorted(slot_types):
-        if slot in typed_slots:
+        if slot in typed_slots and slot_types[slot] != "T":
             frame_types.append(slot_types[slot])
         else:
             frame_types.extend("T" * _slots(slot_types[slot]))
@@ -900,12 +1217,18 @@ def _compile_method_pass(
             code.raw(_u2(slot))
 
     def get(ref: ValueRef) -> str:
+        ref = canon(ref)
+        while ref in copy_of and ref in slot_of and slot_of[ref][0] >= 0 and slot_of[ref][0] == slot_of.get(canon(copy_of[ref]), (-2,))[0]:
+            ref = canon(copy_of[ref])  # a coalesced copy is its operand, in the same local
         try:
             slot, descriptor = slot_of[ref]
         except KeyError:
             fail("XAX.JVM.VALUE", where, "JVM-VALUE-MACHINE", "machine value", [ref.tag, ref.block, ref.index, ref.result])
         if ref in constants:
             const(descriptor, constants[ref])  # integer constants are rematerialized at each use
+            return descriptor
+        if ref in inlined:
+            lower_node(ref.block, ref.index)  # an expression tree: evaluated where it is read
             return descriptor
         reads[ref] = reads.get(ref, 0) + 1
         if pending[0] == ref:
@@ -919,22 +1242,21 @@ def _compile_method_pass(
         local(_LOAD, descriptor, slot)
         return descriptor
 
-    # Only a value nothing reads through its slot implicitly may stay on the stack:
-    # edge arguments and copy operands can share a slot with the value they feed.
-    implicit: set[ValueRef] = set()
-    for block in graph.blocks:
-        for _target, arguments in block.terminator.edges:
-            implicit.update(arguments)
-        for node in block.nodes:
-            if copy_like(node):
-                implicit.add(node.operands[0])
-
     def put(ref: ValueRef) -> None:
+        if ref in inlined:
+            return  # stays on the operand stack for its reader
         flush()
         if single_read is not None and ref in single_read and ref not in implicit:
             pending[0] = ref
             return
         stored[0] = ref
+
+    def keep(ref: ValueRef) -> None:
+        """Store a call's result, or drop it when nothing reads it."""
+        if ref in needed:
+            put(ref)
+        else:
+            code.op(0x58 if slot_of[ref][1] in ("J", "D") else 0x57)  # pop2 / pop
 
     def iconst(value: int) -> None:
         value = value & 0xFFFFFFFF
@@ -1048,8 +1370,14 @@ def _compile_method_pass(
             get(node.operands[0])
             return _BRANCH_IF_NOT[_INT_RELATION[kind]]  # if<cond>: against zero
         for operand in node.operands:
+            source = definition(operand) if operand in inlined else None
             if flip and operand in constants:
                 iconst(constants[operand] ^ (1 << 31))  # folded sign flip
+            elif flip and source is not None and source.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP) and source.operands[1] in constants:
+                # (a +- c) ^ 2^31 == a + (2^31 +- c): one add for the offset and the flip
+                offset = constants[source.operands[1]]
+                get(source.operands[0])
+                iconst(((1 << 31) + (offset if source.operation == Operation.ADD_WRAP else -offset)) & 0xFFFFFFFF); code.op(0x60)
             else:
                 get(operand)
                 if flip:
@@ -1088,36 +1416,6 @@ def _compile_method_pass(
     def trap_if(compare: Callable[[], None], branch: int) -> None:
         compare()
         code.branch(branch, "trap")
-
-    # A compare whose only use is its own block's conditional branch fuses
-    # into that branch (``lcmp``/``fcmp`` + ``if<cond>``), as javac emits it.
-    uses: dict[ValueRef, int] = {}
-    for block in graph.blocks:
-        for node in block.nodes:
-            for operand in node.operands:
-                uses[operand] = uses.get(operand, 0) + 1
-        for value in (*block.terminator.values, *(argument for _target, arguments in block.terminator.edges for argument in arguments)):
-            uses[value] = uses.get(value, 0) + 1
-    users: dict[ValueRef, list] = {}
-    for block in graph.blocks:
-        for node in block.nodes:
-            for operand in node.operands:
-                users.setdefault(operand, []).append(node)
-
-    def sole_user(ref: ValueRef):
-        """The one node that reads ``ref``, when nothing else (a terminator included) does."""
-        return users[ref][0] if uses.get(ref) == 1 and len(users.get(ref, ())) == 1 else None
-
-    def definition(ref: ValueRef):
-        return graph.blocks[ref.block].nodes[ref.index] if ref.tag == 1 else None
-
-    fused: set[ValueRef] = set()
-    for block_index, block in enumerate(graph.blocks):
-        if block.terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
-            condition = block.terminator.values[0]
-            if condition.tag == 1 and condition.block == block_index and uses.get(condition) == 1:
-                if block.nodes[condition.index].operation in (Operation.INT_COMPARE, Operation.FLOAT_COMPARE):
-                    fused.add(condition)
 
     def memory_field() -> None:
         code.op(0xB2); code.raw(_u2(pool.field(class_name, "M", "[B")))
@@ -1167,15 +1465,66 @@ def _compile_method_pass(
 
     lines: list[tuple[int, int]] = []
     node_ranges: list[tuple[int, int, int, int, int]] = []
-    line = 0
 
     # Prelude: give every non-parameter local its type before the first branch target.
-    for slot in sorted(typed_slots):
+    # Definite assignment (ADR-157): a typed slot needs a zero store before the first
+    # branch target only if some branch target can be reached before a value is
+    # stored in it.  A block's labels see at least what is assigned on entry to it.
+    def stored_slots(block_index: int, edges: bool = True) -> set[int]:
+        out = set()
+        block = graph.blocks[block_index]
+        for node_index, node in enumerate(block.nodes):
+            for result_index in range(len(node.results)):
+                ref = ValueRef.node_result(block_index, node_index, result_index)
+                if ref in slot_of and slot_of[ref][0] >= 0 and not (single_read is not None and ref in single_read and ref not in implicit):
+                    out.add(slot_of[ref][0])
+        for target, _arguments in (block.terminator.edges if edges else ()):
+            out.update(slot_of[ValueRef.parameter(target, index)][0] for index in range(len(graph.blocks[target].parameters)) if ValueRef.parameter(target, index) in slot_of)
+        return out
+
+    every_slot = frozenset(slot_types)
+    predecessors: dict[int, list[int]] = {index: [] for index in range(len(graph.blocks))}
+    for block_index, block in enumerate(graph.blocks):
+        for target, _arguments in block.terminator.edges:
+            predecessors[target].append(block_index)
+    writes = {index: stored_slots(index) for index in range(len(graph.blocks))}
+    parameter_slots = frozenset(slot for slot in slot_types if slot < parameter_slot_end and slot not in freed)
+    assigned_in = {index: (parameter_slots if index == graph.entry else every_slot) for index in range(len(graph.blocks))}
+    changed = True
+    while changed:
+        changed = False
+        for block_index in range(len(graph.blocks)):
+            incoming = [assigned_in[p] | writes[p] for p in predecessors[block_index]]
+            if block_index == graph.entry:
+                incoming.append(parameter_slots)
+            value = frozenset.intersection(*map(frozenset, incoming)) if incoming else assigned_in[block_index]
+            if value != assigned_in[block_index]:
+                assigned_in[block_index] = value
+                changed = True
+    points = []  # slots assigned at every branch target a block can contain
+    for block_index, block in enumerate(graph.blocks):
+        if predecessors[block_index]:
+            points.append(assigned_in[block_index])  # its own label
+        so_far = set(assigned_in[block_index])
+        for node_index, node in enumerate(block.nodes):
+            if node.operation in _INTERNAL_LABELS:
+                points.append(frozenset(so_far))  # a label inside it (the trap's frame has no locals)
+            for result_index in range(len(node.results)):
+                ref = ValueRef.node_result(block_index, node_index, result_index)
+                if ref in slot_of and slot_of[ref][0] >= 0 and not (single_read is not None and ref in single_read and ref not in implicit):
+                    so_far.add(slot_of[ref][0])
+        if block.terminator.kind not in (TerminatorKind.RETURN, TerminatorKind.BRANCH):
+            points.append(frozenset(so_far))  # short-circuit and stub labels
+    needs_zero = {slot for slot in typed_slots if any(slot not in point for point in points)}
+    if needs_zero & set(freed):
+        raise _KeepParameters(frozenset(freed[slot] for slot in needs_zero & set(freed)))
+
+    for slot in sorted(needs_zero):
         if slot >= parameter_slot_end:
             descriptor = slot_types[slot]
             code.op(*_ZERO[_kind_letter(descriptor)])
             local(_STORE, descriptor, slot)
-    if not code.buf:
+    if not code.buf and any(graph.entry == target for block in graph.blocks for target, _arguments in block.terminator.edges):
         code.op(0x00)  # a branch target may not be the implicit frame at offset 0
 
     def edge_moves_needed(target: int, arguments: Sequence[ValueRef]) -> list[tuple[ValueRef, ValueRef]]:
@@ -1230,372 +1579,559 @@ def _compile_method_pass(
             target = following
         return target  # a cycle of empty blocks: emit the first one reached
 
-    order = [graph.entry] + [index for index in range(len(graph.blocks)) if index != graph.entry and resolved(index) == index]
+    # Layout (ADR-157): chains of fallthrough.  After a block comes the successor it can
+    # fall into (a branch's target; a conditional branch's false side, else its true
+    # side), when that one is not placed yet.
+    order: list[int] = []
+    placed: set[int] = set()
+    for start in [graph.entry] + list(range(len(graph.blocks))):
+        current = start if resolved(start) == start else None
+        while current is not None and current not in placed:
+            order.append(current)
+            placed.add(current)
+            terminator = graph.blocks[current].terminator
+            following = None
+            if terminator.kind == TerminatorKind.BRANCH:
+                following = resolved(terminator.edges[0][0])
+            elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
+                true_side, false_side = (resolved(target) for target, _arguments in terminator.edges)
+                is_return = {side: graph.blocks[side].terminator.kind == TerminatorKind.RETURN for side in (true_side, false_side)}
+                if is_return[false_side] and not is_return[true_side] and true_side not in placed:
+                    following = true_side  # a return is better reached by a jump: equal ones merge
+                else:
+                    following = false_side if false_side not in placed else true_side
+            current = following
     trap_used = False
     max_call_slots = 0
     following_block = [None]
+    def statically_in_bounds(node) -> bool:
+        """A checked one-byte access at a constant index inside its view: it cannot trap."""
+        if node.operation not in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE) or node.operands[1] not in constants:
+            return False
+        maximum = pointer_extent_from_graph(graph, node.operands[0], resolve) - node.attributes[0]
+        return 0 <= constants[node.operands[1]] <= maximum
+
+    # String runs (ADR-157): checked one-byte stores of constant ASCII bytes to consecutive
+    # constant indices of one view, each consuming the previous one's memory, become one
+    # call that stores a String constant's characters in the same order.
+    runs: dict[tuple[int, int], tuple[ValueRef, int, str]] = {}
+    in_run: set[tuple[int, int]] = set()
+    for block_index, block in enumerate(graph.blocks):
+        members: list[int] = []
+
+        def close_run() -> None:
+            if len(members) >= 3:
+                first = block.nodes[members[0]]
+                text = "".join(chr(constants[block.nodes[index].operands[2]]) for index in members)
+                runs[(block_index, members[0])] = (first.operands[0], constants[first.operands[1]], text)
+                in_run.update((block_index, index) for index in members[1:])
+            members.clear()
+
+        for node_index, node in enumerate(block.nodes):
+            if ValueRef.node_result(block_index, node_index) in constants:
+                continue  # emits nothing
+            fits = (
+                node.operation == Operation.CHECKED_STORE_BITS_LE and node.attributes[0] == 1 and statically_in_bounds(node)
+                and node.operands[2] in constants and 0 < constants[node.operands[2]] < 0x80
+            )
+            if fits and members:
+                previous = block.nodes[members[-1]]
+                fits = (
+                    node.operands[0] == previous.operands[0] and constants[node.operands[1]] == constants[previous.operands[1]] + 1
+                    and node.operands[3] == ValueRef.node_result(block_index, members[-1]) and uses.get(node.operands[3]) == 1
+                )
+                if not fits:
+                    close_run()
+                    fits = True  # it may start the next run
+            if fits:
+                members.append(node_index)
+            else:
+                close_run()
+        close_run()
+
+    def freeing(node) -> bool:
+        """The memory package's free: lowered to a constant, it cannot raise."""
+        if node.operation != Operation.CALL_FOREIGN or decode_foreign_function(node.entity).library != MEMORY_CLASS:
+            return False
+        member = _foreign_member(node.entity, resolve)
+        return member.name + member.descriptor == "free(I)J"
+
+    line_of: dict[tuple[int, int], int] = {}
+    for block_index in order:
+        for node_index in range(len(graph.blocks[block_index].nodes)):
+            line_of[(block_index, node_index)] = len(line_of) + 1
+
+    def lower_node(block_index: int, node_index: int) -> None:
+        nonlocal trap_used, max_call_slots
+        node = graph.blocks[block_index].nodes[node_index]
+        line = line_of[(block_index, node_index)]
+        start = len(code.buf)
+        if node.operation in _MAY_RAISE and not statically_in_bounds(node) and not freeing(node):
+            # Only a pc that can raise or call shows up in a stack trace (ADR-157);
+            # every pc still maps to its node through the artifact's semantic ranges.
+            lines.append((start, line))
+        result = ValueRef.node_result(block_index, node_index)
+        operation = node.operation
+
+        if result in folded:
+            pass  # a constant: every use rematerializes it
+
+        elif (block_index, node_index) in in_run:
+            pass  # stored by the first node of its string run
+
+        elif (block_index, node_index) in runs:
+            pointer, first_index, text = runs[(block_index, node_index)]
+            needs.add("memory")
+            # text.getBytes(0, n, M, p + i): each char's low byte, in order (indices proven in range)
+            ldc(pool.string(text)); iconst(0); iconst(len(text)); memory_field()
+            get(pointer); iconst(first_index); code.op(0x60)
+            code.op(0xB6); code.raw(_u2(pool.method("java/lang/String", "getBytes", "(II[BI)V")))
+
+        elif result in inlined and repacked(node) is not None:
+            get(repacked(node)); put(result)  # the halves of s, packed again: s
+
+        elif pack_operands(node) is not None:
+            low, high = pack_operands(node)
+            get(low)
+            iconst(high[1]) if isinstance(high, tuple) and high[0] == "constant" else get(high)
+            needs.add("shared:pk")
+            code.op(0xB8); code.raw(_u2(pool.method(class_name, "xax$pk", "(II)J")))
+            put(result)
+
+        elif (
+            operation in (Operation.ADD_WRAP, Operation.SUB_WRAP) and slot_of[result][1] == "I" and _width(resolve, node.results[0]) == 32
+            and canon(node.operands[1]) in constants and slot_of[result][0] >= 0 and slot_of[result][0] == slot_of[canon(node.operands[0])][0]
+            and -128 <= _signed32(constants[canon(node.operands[1])] * (1 if operation == Operation.ADD_WRAP else -1)) <= 127
+            and pending[0] != canon(node.operands[0]) and not (single_read is not None and result in single_read and result not in implicit)
+        ):
+            flush()
+            if stored[0] == canon(node.operands[0]):
+                flush()
+            delta = _signed32(constants[canon(node.operands[1])] * (1 if operation == Operation.ADD_WRAP else -1))
+            reads[canon(node.operands[0])] = reads.get(canon(node.operands[0]), 0) + 1  # a read, as both passes count it
+            slot = slot_of[result][0]
+            if slot <= 0xFF:
+                code.op(0x84, slot, delta & 0xFF)  # iinc: the local is its own operand
+            else:
+                code.op(0xC4, 0x84); code.raw(_u2(slot) + struct.pack(">h", delta))
+
+        elif operation in _ARITHMETIC:
+            width = _width(resolve, node.results[0])
+            first, second = node.operands
+            if pending[0] == second and operation != Operation.SUB_WRAP:
+                first, second = second, first  # commutative: read the stacked value first
+            descriptor = get(first)
+            get(second)
+            code.op(_ARITHMETIC[Operation(operation)][descriptor == "J"])
+            if operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP):
+                mask(descriptor, width)
+            put(result)
+
+        elif operation in (Operation.UDIV, Operation.UREM):
+            # A zero divisor raises the JVM's ArithmeticException: the trap.
+            width = _width(resolve, node.results[0])
+            divide = operation == Operation.UDIV
+            divisor = constants.get(node.operands[1])
+            if divisor and divisor & (divisor - 1) == 0:
+                # Power-of-two divisor: exact shift or mask, no trap possible.
+                descriptor = get(node.operands[0])
+                if divide:
+                    iconst(divisor.bit_length() - 1); code.op(0x7D if descriptor == "J" else 0x7C)
+                else:
+                    const(descriptor, divisor - 1); code.op(0x7F if descriptor == "J" else 0x7E)
+            elif width == 64:
+                get(node.operands[0]); get(node.operands[1])
+                code.op(0xB8)
+                code.raw(_u2(pool.method("java/lang/Long", "divideUnsigned" if divide else "remainderUnsigned", "(JJ)J")))
+            elif width == 32:
+                get_as_long(node.operands[0], 32, False); get_as_long(node.operands[1], 32, False)
+                code.op(0x6D if divide else 0x71, 0x88)  # ldiv/lrem; l2i
+            else:
+                descriptor = get(node.operands[0]); get(node.operands[1])
+                code.op((0x6C if divide else 0x70) + (descriptor == "J"))
+            put(result)
+
+        elif operation == Operation.ROTATE_RIGHT:
+            width = _width(resolve, node.results[0])
+            amount = node.attributes[0]
+            source = definition(node.operands[0])
+            reader = sole_user(result)
+            long_ = width == 64
+            descriptor = get(node.operands[0])
+            if amount and width in (32, 64) and source is not None and source.operation == Operation.INT_ZERO_EXTEND and _width(resolve, source.operand_types[0]) <= amount:
+                iconst(width - amount); code.op(0x79 if long_ else 0x78)  # no bits above the amount: a left shift
+            elif amount and width in (32, 64) and reader is not None and reader.operation == Operation.INT_TRUNCATE and _width(resolve, reader.results[0]) <= width - amount:
+                iconst(amount); code.op(0x7D if long_ else 0x7C)  # only the low bits are read: a right shift
+            elif amount and width in (32, 64):
+                iconst(amount)  # Integer/Long.rotateRight: a JIT intrinsic (one ror)
+                owner, signature = ("java/lang/Long", "(JI)J") if width == 64 else ("java/lang/Integer", "(II)I")
+                code.op(0xB8); code.raw(_u2(pool.method(owner, "rotateRight", signature)))
+            elif amount:
+                long_ = descriptor == "J"
+                iconst(amount); code.op(0x7D if long_ else 0x7C)  # ushr
+                get(node.operands[0]); iconst(width - amount); code.op(0x79 if long_ else 0x78)  # shl
+                code.op(0x81 if long_ else 0x80)  # or
+                mask(descriptor, width)
+            put(result)
+
+        elif copy_like(node) and operation != Operation.HEAP_VIEW and slot_of[node.operands[0]][0] == slot_of[result][0]:
+            pass  # coalesced copy
+
+        elif operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
+            source = _width(resolve, node.operand_types[0])
+            destination = _width(resolve, node.results[0])
+            source_descriptor = get(node.operands[0])
+            destination_descriptor = slot_of[result][1]
+            if source_descriptor == "J" and destination_descriptor == "I":
+                code.op(0x88)
+            elif source_descriptor == "I" and destination_descriptor == "J":
+                reader = sole_user(result)
+                if reader is not None and reader.operation == Operation.ROTATE_RIGHT and reader.attributes[0] == 32 and _width(resolve, reader.results[0]) == 64:
+                    code.op(0x85)  # i2l: the rotation's left shift by 32 drops the sign copies
+                else:
+                    unsigned_long(source)
+            if operation == Operation.INT_TRUNCATE and known_width.get(node.operands[0], 64) > destination:
+                mask(destination_descriptor, destination)
+            put(result)
+
+        elif operation == Operation.CONSTANT:
+            type_cid, value = _decode_constant(node.entity, resolve)
+            descriptor = slot_of[result][1]
+            if descriptor in ("F", "D"):
+                # Raw constant bits, so NaN payloads stay exact.
+                width = 32 if descriptor == "F" else 64
+                fconst_bits(int.from_bytes(node.entity.body[-(width // 8):], "little"), width)
+                put(result)
+            # integer constants: nothing to store, every use rematerializes them
+
+        elif operation in _FLOAT_ARITHMETIC:
+            descriptor = get(node.operands[0]); get(node.operands[1])
+            code.op(_FLOAT_ARITHMETIC[Operation(operation)][descriptor == "D"])
+            put(result)
+
+        elif operation == Operation.FLOAT_CONVERT:
+            source = get(node.operands[0])
+            destination = slot_of[result][1]
+            if source != destination:
+                code.op(0x8D if source == "F" else 0x90)
+            put(result)
+
+        elif operation in (Operation.FLOAT_COMPARE, Operation.INT_COMPARE):
+            if result not in fused:
+                kind = IntCompare(node.attributes[0]) if operation == Operation.INT_COMPARE else None
+                if kind in (IntCompare.EQ, IntCompare.NE) and slot_of[node.operands[0]][1] == "I":
+                    # x = a ^ b; (x | -x) >>> 31 is 1 exactly when a != b.
+                    get(node.operands[0]); get(node.operands[1]); code.op(0x82, 0x59, 0x74, 0x80)
+                    iconst(31); code.op(0x7C)
+                    if kind == IntCompare.EQ:
+                        iconst(1); code.op(0x82)
+                else:
+                    relation = compare_to_int(node)
+                    _compare_result(code, iconst, relation)
+                put(result)
+
+        elif operation in (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT):
+            width = _width(resolve, node.operand_types[0])
+            destination = slot_of[result][1]
+            signed = operation == Operation.SINT_TO_FLOAT
+            to_float = destination == "F"
+            if not signed and width == 64:
+                # u64: values with the top bit set halve with a sticky bit, convert, and double.
+                negative, done = fresh(), fresh()
+                get(node.operands[0]); lconst(0); code.op(0x94); code.branch(0x9B, negative)
+                get(node.operands[0]); code.op(0x89 if to_float else 0x8A); put(result); code.branch(0xA7, done)
+                code.mark(negative)
+                get(node.operands[0]); iconst(1); code.op(0x7D)
+                get(node.operands[0]); lconst(1); code.op(0x7F, 0x81)
+                code.op(0x89 if to_float else 0x8A)
+                code.op(0x59, 0x62) if to_float else code.op(0x5C, 0x63)  # dup/dup2; add
+                put(result)
+                code.mark(done)
+            else:
+                source_long = slot_of[node.operands[0]][1] == "J" or (width == 32 and not signed)
+                if source_long:
+                    get_as_long(node.operands[0], width, signed)
+                else:
+                    descriptor = get(node.operands[0])
+                    if signed:
+                        sign_extend(descriptor, width)
+                code.op((0x89 if to_float else 0x8A) if source_long else (0x86 if to_float else 0x87))
+                put(result)
+
+        elif operation in (Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC):
+            trap_used = True
+            source = slot_of[node.operands[0]][1]
+            source_width = 32 if source == "F" else 64
+            width = _width(resolve, node.results[0])
+            destination = slot_of[result][1]
+            signed = operation == Operation.FLOAT_TO_SINT_TRUNC
+
+            def against(threshold: float, nan_high: bool) -> Callable[[], None]:
+                def emit() -> None:
+                    get(node.operands[0]); fconst(threshold, source_width); float_cmp(source_width, nan_high)
+                return emit
+
+            # NaN traps: v compared with itself is unordered only for NaN.
+            get(node.operands[0]); get(node.operands[0]); float_cmp(source_width, False); code.branch(0x9A, "trap")
+            if signed:
+                lower = -(1 << (width - 1))
+                if _int_to_float(lower - 1, source_width) == lower - 1:
+                    trap_if(against(float(lower - 1), False), 0x9E)  # v <= lower-1
+                else:
+                    trap_if(against(float(lower), False), 0x9B)  # v < lower
+                trap_if(against(float(1 << (width - 1)), False), 0x9C)  # v >= 2^(w-1)
+                get(node.operands[0])
+                code.op((0x8B if source == "F" else 0x8E) if destination == "I" else (0x8C if source == "F" else 0x8F))
+                mask(destination, width)
+                put(result)
+            else:
+                trap_if(against(0.0, False), 0x9B)  # v < 0
+                trap_if(against(float(1 << width), False), 0x9C)  # v >= 2^w
+                to_long = 0x8C if source == "F" else 0x8F
+                if width == 64:
+                    small, done = fresh(), fresh()
+                    against(float(1 << 63), False)(); code.branch(0x9B, small)
+                    get(node.operands[0]); fconst(float(1 << 63), source_width); code.op(0x66 if source == "F" else 0x67, to_long)
+                    lconst(1 << 63); code.op(0x83); put(result); code.branch(0xA7, done)
+                    code.mark(small)
+                    get(node.operands[0]); code.op(to_long); put(result)
+                    code.mark(done)
+                elif destination == "I":
+                    get(node.operands[0])
+                    code.op(to_long, 0x88) if width == 32 else code.op(0x8B if source == "F" else 0x8E)
+                    put(result)
+                else:
+                    get(node.operands[0]); code.op(to_long); put(result)
+
+        elif operation == Operation.CALL_DIRECT:
+            if not _is_erased_proof_function(node.entity, resolve):
+                machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
+                if methods[node.entity.cid][0] != "entry":
+                    machine = _internal_order(machine, [value_type(cid) for cid in node.operand_types if value_type(cid) is not None])
+                slots = 0
+                for operand in machine:
+                    slots += _slots(get(operand))
+                max_call_slots = max(max_call_slots, slots)
+                callee_name, callee_descriptor = methods[node.entity.cid]
+                code.op(0xB8)
+                code.raw(_u2(pool.method(class_name, callee_name, callee_descriptor)))
+                call_elided = borrowed_view_returns(node.operand_types, node.results, resolve)
+                returned = [index for index in range(len(node.results)) if index not in call_elided and ValueRef.node_result(block_index, node_index, index) in slot_of]
+                if len(returned) > 1:
+                    fail("XAX.JVM.ABI", where, "JVM-SINGLE-RESULT", "at most one machine result", len(returned))
+                if returned:
+                    keep(ValueRef.node_result(block_index, node_index, returned[0]))
+                for result_index, parameter_index in sorted(call_elided.items()):
+                    given_back = ValueRef.node_result(block_index, node_index, result_index)
+                    if given_back in needed and given_back in slot_of and slot_of[given_back][0] != slot_of[node.operands[parameter_index]][0]:
+                        get(node.operands[parameter_index]); put(given_back)
+
+        elif operation == Operation.HEAP_VIEW:
+            # The allocator contract is nullable; the view's non-null proof is an explicit trap.
+            trap_used = True
+            needs.add("memory")
+            get(node.operands[0]); code.branch(0x99, "trap")  # ifeq
+            if slot_of[node.operands[0]][0] != slot_of[result][0]:
+                get(node.operands[0]); put(result)
+
+        elif operation == Operation.ADDRESS_OFFSET:
+            get(node.operands[0]); iconst(node.attributes[0]); code.op(0x60); put(result)
+
+        elif operation == Operation.POINTER_CAST:
+            get(node.operands[0]); put(result)
+
+        elif operation == Operation.POINTER_ADDRESS:
+            get(node.operands[0])
+            if slot_of[result][1] == "J":
+                code.op(0x85)  # offsets are below 2^31, so i2l is the zero extension
+            put(result)
+
+        elif operation == Operation.POINTER_REBASE:
+            # ADR-092: trap unless 0 <= address - view <= extent - window and the
+            # distance is a multiple of the result's alignment.
+            trap_used = True
+            view, address = node.operands
+            width = _width(resolve, node.operand_types[1])
+            span = pointer_extent_from_graph(graph, view, resolve) - node.attributes[0]
+            alignment = _decode_pointer_type(resolve(node.results[0]), resolve)[2]
+            get_zero_extended(address, width); get(view); code.op(0x85, 0x65)  # i2l; lsub
+            if alignment > 1:
+                code.op(0x5C); lconst(alignment - 1); code.op(0x7F); lconst(0); code.op(0x94); code.branch(0x9A, "trap")
+            if span < 0:
+                code.op(0x58); iconst(1); code.branch(0x9A, "trap")  # pop2; always traps
+            else:
+                lconst(span)
+                code.op(0xB8); code.raw(_u2(pool.method("java/lang/Long", "compareUnsigned", "(JJ)I")))
+                code.branch(0x9D, "trap")  # ifgt
+            get_zero_extended(address, width); code.op(0x88); put(result)
+
+        elif operation in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+            needs.add("memory")
+            checked = operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE)
+            load = operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE)
+            size = node.attributes[0]
+            pointer = node.operands[0]
+            value_cid = node.results[0] if load else node.operand_types[2 if checked else 1]
+            value_ref = None if load else node.operands[2 if checked else 1]
+            if size not in (1, 2, 4, 8):
+                fail("XAX.JVM.MEMORY_WIDTH", where, "JVM-MEMORY-WIDTH", [1, 2, 4, 8], size)
+            helper_check = False
+            if checked:
+                index, index_width = node.operands[1], _width(resolve, node.operand_types[1])
+                maximum = pointer_extent_from_graph(graph, pointer, resolve) - size
+                trap_used = trap_used or not (0 <= maximum < 1 << 31 and index_width <= 32)
+                if maximum < 0:
+                    iconst(1); code.branch(0x9A, "trap")  # always traps
+                elif index_width <= 32 and maximum < 1 << 31:
+                    helper_check = True  # xax$ix while the address is pushed
+                else:
+                    get_zero_extended(index, index_width); lconst(maximum)
+                    if index_width > 63:
+                        code.op(0xB8); code.raw(_u2(pool.method("java/lang/Long", "compareUnsigned", "(JJ)I")))
+                    else:
+                        code.op(0x94)  # lcmp: both are non-negative longs
+                    code.branch(0x9D, "trap")  # ifgt
+
+            def push_address() -> None:
+                get(pointer)
+                if helper_check:
+                    get(index); iconst(maximum)
+                    needs.add("ix")
+                    code.op(0xB8); code.raw(_u2(pool.method(class_name, "xax$ix", "(II)I")))
+                    code.op(0x60)
+                elif checked:
+                    if get(index) == "J":
+                        code.op(0x88)
+                    code.op(0x60)
+
+            if size == 1 and (helper_check or (load and not checked)):
+                # Byte accesses through generated members (ADR-157), as a Java programmer's
+                # at()/put() helpers: one call per access, inlined by the JIT.
+                if not load and get(value_ref) == "J":  # the byte first: often already on the stack
+                    code.op(0x88)
+                get(pointer)
+                if helper_check:
+                    get(index)  # the bound is part of the member: one per view extent
+                if load:
+                    member, signature = (f"xax$l{maximum:x}", "(II)I") if helper_check else ("xax$ld1", "(I)I")
+                else:
+                    member, signature = f"xax$s{maximum:x}", "(III)V"
+                needs.add(member[4:] if member == "xax$ld1" else f"b{member[4]}:{maximum:x}")
+                code.op(0xB8); code.raw(_u2(pool.method(class_name, member, signature)))
+                if load:
+                    descriptor = slot_of[result][1]
+                    if descriptor == "J":
+                        code.op(0x85)
+                    if _width(resolve, value_cid) < 8:
+                        mask(descriptor, _width(resolve, value_cid))
+                    put(result)
+            else:
+                memory_access(load, size, value_cid, value_ref, push_address, result if load else None)
+
+        elif operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).library == MEMORY_CLASS:
+            member = _foreign_member(node.entity, resolve)
+            key = member.name + member.descriptor
+            if key not in _MEMORY_MEMBERS:
+                fail("XAX.JVM.FOREIGN", where, "JVM-MEMORY-MEMBER", sorted(_MEMORY_MEMBERS), key)
+            needs.add("memory")
+            if key == "free(I)J":
+                # Blocks are never reused (ADR-156): free is the constant 0, no call.
+                if ValueRef.node_result(block_index, node_index) in slot_of and ValueRef.node_result(block_index, node_index) in needed:
+                    code.op(0x09)  # lconst_0
+                    put(ValueRef.node_result(block_index, node_index))
+                node_ranges.append((block_index, node_index, line, start, len(code.buf)))
+                return
+            needs.add(key)
+            machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
+            slots = sum(_slots(get(operand)) for operand in machine)
+            max_call_slots = max(max_call_slots, slots)
+            code.op(0xB8); code.raw(_u2(pool.method(class_name, _MEMORY_MEMBERS[key], member.descriptor)))
+            _store_call_result(node, block_index, node_index, slot_of, keep)
+
+        elif operation == Operation.CALL_FOREIGN:
+            member = _foreign_member(node.entity, resolve)
+            machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
+            slots = 0
+            for operand, parameter in zip(machine, member.parameters):
+                slots += _slots(get(operand))
+                narrow = {"B": 0x91, "C": 0x92, "S": 0x93}.get(parameter)
+                if narrow is not None:
+                    code.op(narrow)
+            max_call_slots = max(max_call_slots, slots)
+            reference = (pool.field if member.opcode == 0xB2 else pool.method)(member.class_name, member.name, member.descriptor)
+            code.op(member.opcode)
+            code.raw(_u2(reference))
+            if member.result in ("B", "S"):
+                mask("I", _NARROW_WIDTH[member.result])  # the JVM returns these sign-extended
+            _store_call_result(node, block_index, node_index, slot_of, keep)
+
+        elif operation in RESOURCE_EFFECT_OPERATIONS:
+            pass  # proof values only: erased
+
+        else:
+            fail("XAX.JVM.UNSUPPORTED_OPERATION", where, "JVM-OP-LOWERED", "jvm-classfile-v1 subset", operation)
+        node_ranges.append((block_index, node_index, line, start, len(code.buf)))
+
+    def pack_operands(node):
+        """(low, high) of ``zext(low) | rotr(zext(high), 32)``, two 32-bit halves in one u64,
+        when both halves are expression trees here: lowered as one call to ``xax$pk``."""
+        if node.operation != Operation.BIT_OR or _width(resolve, node.results[0]) != 64:
+            return None
+        for low_ref, high_ref in (node.operands, node.operands[::-1]):
+            if high_ref in constants and constants[high_ref] & 0xFFFFFFFF == 0:
+                low = definition(low_ref) if low_ref in inlined else None
+                if low is not None and low.operation == Operation.INT_ZERO_EXTEND and slot_of.get(low.operands[0], (0, ""))[1] == "I" and _width(resolve, low.operand_types[0]) == 32:
+                    return low.operands[0], ("constant", constants[high_ref] >> 32)
+                continue
+            low, high = (definition(ref) if ref in inlined else None for ref in (low_ref, high_ref))
+            if low is None or high is None or low.operation != Operation.INT_ZERO_EXTEND or high.operation != Operation.ROTATE_RIGHT or high.attributes[0] != 32:
+                continue
+            widened = definition(high.operands[0]) if high.operands[0] in inlined else None
+            if widened is None or widened.operation != Operation.INT_ZERO_EXTEND:
+                continue
+            if all(slot_of.get(ref, (0, ""))[1] == "I" and _width(resolve, cid) == 32 for ref, cid in ((low.operands[0], low.operand_types[0]), (widened.operands[0], widened.operand_types[0]))):
+                return low.operands[0], widened.operands[0]
+        return None
+
+    def jump_if(condition: ValueRef, when: bool, label) -> None:
+        """Branch to ``label`` when ``condition`` is ``when``: an OR/AND tree of
+        compares short-circuits (javac's ``||``/``&&``) instead of materializing."""
+        condition = canon(condition)
+        node = definition(condition) if condition in evaluated_late else None
+        if node is not None and node.operation in (Operation.BIT_OR, Operation.BIT_AND) and _width(resolve, node.results[0]) == 1:
+            first, second = node.operands
+            if (node.operation == Operation.BIT_OR) == when:
+                jump_if(first, when, label)
+                jump_if(second, when, label)
+            else:
+                skip = fresh()
+                jump_if(first, not when, skip)
+                jump_if(second, when, label)
+                code.mark(skip)
+            node_ranges.append((condition.block, condition.index, line_of[(condition.block, condition.index)], len(code.buf), len(code.buf)))
+            return
+        if node is not None and node.operation in (Operation.INT_COMPARE, Operation.FLOAT_COMPARE):
+            start = len(code.buf)
+            branch_if_not = int_branch_if_not(node)
+            if branch_if_not is None:
+                branch_if_not = _BRANCH_IF_NOT[compare_to_int(node)]
+            code.branch(_INVERSE_BRANCH[branch_if_not] if when else branch_if_not, label)
+            node_ranges.append((condition.block, condition.index, line_of[(condition.block, condition.index)], start, len(code.buf)))
+            return
+        get(condition)
+        code.branch(0x9A if when else 0x99, label)  # ifne / ifeq
+
+    return_blocks: dict[bytes, int] = {}
     for position_in_order, block_index in enumerate(order):
         following_block[0] = order[position_in_order + 1] if position_in_order + 1 < len(order) else None
         block = graph.blocks[block_index]
+        flush()
+        block_start, block_fixups, block_lines, block_ranges, entered_by_jump = len(code.buf), len(code.fixups), len(lines), len(node_ranges), code.ended
         code.mark(("block", block_index))
         enter_block(block_index)
-        for node_index, node in enumerate(block.nodes):
-            line += 1
-            start = len(code.buf)
-            if node.operation in _MAY_RAISE:
-                # Only a pc that can raise or call shows up in a stack trace (ADR-157);
-                # every pc still maps to its node through the artifact's semantic ranges.
-                lines.append((start, line))
-            result = ValueRef.node_result(block_index, node_index)
-            operation = node.operation
-
-            if result in folded:
-                pass  # a constant: every use rematerializes it
-
-            elif operation in _ARITHMETIC:
-                width = _width(resolve, node.results[0])
-                first, second = node.operands
-                if pending[0] == second and operation != Operation.SUB_WRAP:
-                    first, second = second, first  # commutative: read the stacked value first
-                descriptor = get(first)
-                get(second)
-                code.op(_ARITHMETIC[Operation(operation)][descriptor == "J"])
-                if operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP):
-                    mask(descriptor, width)
-                put(result)
-
-            elif operation in (Operation.UDIV, Operation.UREM):
-                # A zero divisor raises the JVM's ArithmeticException: the trap.
-                width = _width(resolve, node.results[0])
-                divide = operation == Operation.UDIV
-                divisor = constants.get(node.operands[1])
-                if divisor and divisor & (divisor - 1) == 0:
-                    # Power-of-two divisor: exact shift or mask, no trap possible.
-                    descriptor = get(node.operands[0])
-                    if divide:
-                        iconst(divisor.bit_length() - 1); code.op(0x7D if descriptor == "J" else 0x7C)
-                    else:
-                        const(descriptor, divisor - 1); code.op(0x7F if descriptor == "J" else 0x7E)
-                elif width == 64:
-                    get(node.operands[0]); get(node.operands[1])
-                    code.op(0xB8)
-                    code.raw(_u2(pool.method("java/lang/Long", "divideUnsigned" if divide else "remainderUnsigned", "(JJ)J")))
-                elif width == 32:
-                    get_as_long(node.operands[0], 32, False); get_as_long(node.operands[1], 32, False)
-                    code.op(0x6D if divide else 0x71, 0x88)  # ldiv/lrem; l2i
-                else:
-                    descriptor = get(node.operands[0]); get(node.operands[1])
-                    code.op((0x6C if divide else 0x70) + (descriptor == "J"))
-                put(result)
-
-            elif operation == Operation.ROTATE_RIGHT:
-                width = _width(resolve, node.results[0])
-                amount = node.attributes[0]
-                source = definition(node.operands[0])
-                reader = sole_user(result)
-                long_ = width == 64
-                descriptor = get(node.operands[0])
-                if amount and width in (32, 64) and source is not None and source.operation == Operation.INT_ZERO_EXTEND and _width(resolve, source.operand_types[0]) <= amount:
-                    iconst(width - amount); code.op(0x79 if long_ else 0x78)  # no bits above the amount: a left shift
-                elif amount and width in (32, 64) and reader is not None and reader.operation == Operation.INT_TRUNCATE and _width(resolve, reader.results[0]) <= width - amount:
-                    iconst(amount); code.op(0x7D if long_ else 0x7C)  # only the low bits are read: a right shift
-                elif amount and width in (32, 64):
-                    iconst(amount)  # Integer/Long.rotateRight: a JIT intrinsic (one ror)
-                    owner, signature = ("java/lang/Long", "(JI)J") if width == 64 else ("java/lang/Integer", "(II)I")
-                    code.op(0xB8); code.raw(_u2(pool.method(owner, "rotateRight", signature)))
-                elif amount:
-                    long_ = descriptor == "J"
-                    iconst(amount); code.op(0x7D if long_ else 0x7C)  # ushr
-                    get(node.operands[0]); iconst(width - amount); code.op(0x79 if long_ else 0x78)  # shl
-                    code.op(0x81 if long_ else 0x80)  # or
-                    mask(descriptor, width)
-                put(result)
-
-            elif copy_like(node) and operation != Operation.HEAP_VIEW and slot_of[node.operands[0]][0] == slot_of[result][0]:
-                pass  # coalesced copy
-
-            elif operation in (Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND):
-                source = _width(resolve, node.operand_types[0])
-                destination = _width(resolve, node.results[0])
-                source_descriptor = get(node.operands[0])
-                destination_descriptor = slot_of[result][1]
-                if source_descriptor == "J" and destination_descriptor == "I":
-                    code.op(0x88)
-                elif source_descriptor == "I" and destination_descriptor == "J":
-                    reader = sole_user(result)
-                    if reader is not None and reader.operation == Operation.ROTATE_RIGHT and reader.attributes[0] == 32 and _width(resolve, reader.results[0]) == 64:
-                        code.op(0x85)  # i2l: the rotation's left shift by 32 drops the sign copies
-                    else:
-                        unsigned_long(source)
-                if operation == Operation.INT_TRUNCATE and known_width.get(node.operands[0], 64) > destination:
-                    mask(destination_descriptor, destination)
-                put(result)
-
-            elif operation == Operation.CONSTANT:
-                type_cid, value = _decode_constant(node.entity, resolve)
-                descriptor = slot_of[result][1]
-                if descriptor in ("F", "D"):
-                    # Raw constant bits, so NaN payloads stay exact.
-                    width = 32 if descriptor == "F" else 64
-                    fconst_bits(int.from_bytes(node.entity.body[-(width // 8):], "little"), width)
-                    put(result)
-                # integer constants: nothing to store, every use rematerializes them
-
-            elif operation in _FLOAT_ARITHMETIC:
-                descriptor = get(node.operands[0]); get(node.operands[1])
-                code.op(_FLOAT_ARITHMETIC[Operation(operation)][descriptor == "D"])
-                put(result)
-
-            elif operation == Operation.FLOAT_CONVERT:
-                source = get(node.operands[0])
-                destination = slot_of[result][1]
-                if source != destination:
-                    code.op(0x8D if source == "F" else 0x90)
-                put(result)
-
-            elif operation in (Operation.FLOAT_COMPARE, Operation.INT_COMPARE):
-                if result not in fused:
-                    kind = IntCompare(node.attributes[0]) if operation == Operation.INT_COMPARE else None
-                    if kind in (IntCompare.EQ, IntCompare.NE) and slot_of[node.operands[0]][1] == "I":
-                        # x = a ^ b; (x | -x) >>> 31 is 1 exactly when a != b.
-                        get(node.operands[0]); get(node.operands[1]); code.op(0x82, 0x59, 0x74, 0x80)
-                        iconst(31); code.op(0x7C)
-                        if kind == IntCompare.EQ:
-                            iconst(1); code.op(0x82)
-                    else:
-                        relation = compare_to_int(node)
-                        _compare_result(code, iconst, relation)
-                    put(result)
-
-            elif operation in (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT):
-                width = _width(resolve, node.operand_types[0])
-                destination = slot_of[result][1]
-                signed = operation == Operation.SINT_TO_FLOAT
-                to_float = destination == "F"
-                if not signed and width == 64:
-                    # u64: values with the top bit set halve with a sticky bit, convert, and double.
-                    negative, done = fresh(), fresh()
-                    get(node.operands[0]); lconst(0); code.op(0x94); code.branch(0x9B, negative)
-                    get(node.operands[0]); code.op(0x89 if to_float else 0x8A); put(result); code.branch(0xA7, done)
-                    code.mark(negative)
-                    get(node.operands[0]); iconst(1); code.op(0x7D)
-                    get(node.operands[0]); lconst(1); code.op(0x7F, 0x81)
-                    code.op(0x89 if to_float else 0x8A)
-                    code.op(0x59, 0x62) if to_float else code.op(0x5C, 0x63)  # dup/dup2; add
-                    put(result)
-                    code.mark(done)
-                else:
-                    source_long = slot_of[node.operands[0]][1] == "J" or (width == 32 and not signed)
-                    if source_long:
-                        get_as_long(node.operands[0], width, signed)
-                    else:
-                        descriptor = get(node.operands[0])
-                        if signed:
-                            sign_extend(descriptor, width)
-                    code.op((0x89 if to_float else 0x8A) if source_long else (0x86 if to_float else 0x87))
-                    put(result)
-
-            elif operation in (Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC):
-                trap_used = True
-                source = slot_of[node.operands[0]][1]
-                source_width = 32 if source == "F" else 64
-                width = _width(resolve, node.results[0])
-                destination = slot_of[result][1]
-                signed = operation == Operation.FLOAT_TO_SINT_TRUNC
-
-                def against(threshold: float, nan_high: bool) -> Callable[[], None]:
-                    def emit() -> None:
-                        get(node.operands[0]); fconst(threshold, source_width); float_cmp(source_width, nan_high)
-                    return emit
-
-                # NaN traps: v compared with itself is unordered only for NaN.
-                get(node.operands[0]); get(node.operands[0]); float_cmp(source_width, False); code.branch(0x9A, "trap")
-                if signed:
-                    lower = -(1 << (width - 1))
-                    if _int_to_float(lower - 1, source_width) == lower - 1:
-                        trap_if(against(float(lower - 1), False), 0x9E)  # v <= lower-1
-                    else:
-                        trap_if(against(float(lower), False), 0x9B)  # v < lower
-                    trap_if(against(float(1 << (width - 1)), False), 0x9C)  # v >= 2^(w-1)
-                    get(node.operands[0])
-                    code.op((0x8B if source == "F" else 0x8E) if destination == "I" else (0x8C if source == "F" else 0x8F))
-                    mask(destination, width)
-                    put(result)
-                else:
-                    trap_if(against(0.0, False), 0x9B)  # v < 0
-                    trap_if(against(float(1 << width), False), 0x9C)  # v >= 2^w
-                    to_long = 0x8C if source == "F" else 0x8F
-                    if width == 64:
-                        small, done = fresh(), fresh()
-                        against(float(1 << 63), False)(); code.branch(0x9B, small)
-                        get(node.operands[0]); fconst(float(1 << 63), source_width); code.op(0x66 if source == "F" else 0x67, to_long)
-                        lconst(1 << 63); code.op(0x83); put(result); code.branch(0xA7, done)
-                        code.mark(small)
-                        get(node.operands[0]); code.op(to_long); put(result)
-                        code.mark(done)
-                    elif destination == "I":
-                        get(node.operands[0])
-                        code.op(to_long, 0x88) if width == 32 else code.op(0x8B if source == "F" else 0x8E)
-                        put(result)
-                    else:
-                        get(node.operands[0]); code.op(to_long); put(result)
-
-            elif operation == Operation.CALL_DIRECT:
-                if not _is_erased_proof_function(node.entity, resolve):
-                    machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
-                    slots = 0
-                    for operand in machine:
-                        slots += _slots(get(operand))
-                    max_call_slots = max(max_call_slots, slots)
-                    callee_name, callee_descriptor = methods[node.entity.cid]
-                    code.op(0xB8)
-                    code.raw(_u2(pool.method(class_name, callee_name, callee_descriptor)))
-                    call_elided = borrowed_view_returns(node.operand_types, node.results, resolve)
-                    returned = [index for index in range(len(node.results)) if index not in call_elided and ValueRef.node_result(block_index, node_index, index) in slot_of]
-                    if len(returned) > 1:
-                        fail("XAX.JVM.ABI", where, "JVM-SINGLE-RESULT", "at most one machine result", len(returned))
-                    if returned:
-                        put(ValueRef.node_result(block_index, node_index, returned[0]))
-                    for result_index, parameter_index in sorted(call_elided.items()):
-                        get(node.operands[parameter_index]); put(ValueRef.node_result(block_index, node_index, result_index))
-
-            elif operation == Operation.HEAP_VIEW:
-                # The allocator contract is nullable; the view's non-null proof is an explicit trap.
-                trap_used = True
-                needs.add("memory")
-                get(node.operands[0]); code.branch(0x99, "trap")  # ifeq
-                if slot_of[node.operands[0]][0] != slot_of[result][0]:
-                    get(node.operands[0]); put(result)
-
-            elif operation == Operation.ADDRESS_OFFSET:
-                get(node.operands[0]); iconst(node.attributes[0]); code.op(0x60); put(result)
-
-            elif operation == Operation.POINTER_CAST:
-                get(node.operands[0]); put(result)
-
-            elif operation == Operation.POINTER_ADDRESS:
-                get(node.operands[0])
-                if slot_of[result][1] == "J":
-                    code.op(0x85)  # offsets are below 2^31, so i2l is the zero extension
-                put(result)
-
-            elif operation == Operation.POINTER_REBASE:
-                # ADR-092: trap unless 0 <= address - view <= extent - window and the
-                # distance is a multiple of the result's alignment.
-                trap_used = True
-                view, address = node.operands
-                width = _width(resolve, node.operand_types[1])
-                span = pointer_extent_from_graph(graph, view, resolve) - node.attributes[0]
-                alignment = _decode_pointer_type(resolve(node.results[0]), resolve)[2]
-                get_zero_extended(address, width); get(view); code.op(0x85, 0x65)  # i2l; lsub
-                if alignment > 1:
-                    code.op(0x5C); lconst(alignment - 1); code.op(0x7F); lconst(0); code.op(0x94); code.branch(0x9A, "trap")
-                if span < 0:
-                    code.op(0x58); iconst(1); code.branch(0x9A, "trap")  # pop2; always traps
-                else:
-                    lconst(span)
-                    code.op(0xB8); code.raw(_u2(pool.method("java/lang/Long", "compareUnsigned", "(JJ)I")))
-                    code.branch(0x9D, "trap")  # ifgt
-                get_zero_extended(address, width); code.op(0x88); put(result)
-
-            elif operation in (Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
-                needs.add("memory")
-                checked = operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE)
-                load = operation in (Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE)
-                size = node.attributes[0]
-                pointer = node.operands[0]
-                value_cid = node.results[0] if load else node.operand_types[2 if checked else 1]
-                value_ref = None if load else node.operands[2 if checked else 1]
-                if size not in (1, 2, 4, 8):
-                    fail("XAX.JVM.MEMORY_WIDTH", where, "JVM-MEMORY-WIDTH", [1, 2, 4, 8], size)
-                helper_check = False
-                if checked:
-                    index, index_width = node.operands[1], _width(resolve, node.operand_types[1])
-                    maximum = pointer_extent_from_graph(graph, pointer, resolve) - size
-                    trap_used = trap_used or not (0 <= maximum < 1 << 31 and index_width <= 32)
-                    if maximum < 0:
-                        iconst(1); code.branch(0x9A, "trap")  # always traps
-                    elif index_width <= 32 and maximum < 1 << 31:
-                        helper_check = True  # xax$ix while the address is pushed
-                    else:
-                        get_zero_extended(index, index_width); lconst(maximum)
-                        if index_width > 63:
-                            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Long", "compareUnsigned", "(JJ)I")))
-                        else:
-                            code.op(0x94)  # lcmp: both are non-negative longs
-                        code.branch(0x9D, "trap")  # ifgt
-
-                def push_address() -> None:
-                    get(pointer)
-                    if helper_check:
-                        get(index); iconst(maximum)
-                        needs.add("ix")
-                        code.op(0xB8); code.raw(_u2(pool.method(class_name, "xax$ix", "(II)I")))
-                        code.op(0x60)
-                    elif checked:
-                        if get(index) == "J":
-                            code.op(0x88)
-                        code.op(0x60)
-
-                if size == 1 and (helper_check or (load and not checked)):
-                    # Byte accesses through generated members (ADR-157), as a Java programmer's
-                    # at()/put() helpers: one call per access, inlined by the JIT.
-                    get(pointer)
-                    if helper_check:
-                        get(index); iconst(maximum)
-                    if load:
-                        member, signature = ("xax$cld1", "(III)I") if helper_check else ("xax$ld1", "(I)I")
-                    else:
-                        if get(value_ref) == "J":
-                            code.op(0x88)
-                        member, signature = "xax$cst1", "(IIII)V"
-                    needs.add(member[4:])
-                    code.op(0xB8); code.raw(_u2(pool.method(class_name, member, signature)))
-                    if load:
-                        descriptor = slot_of[result][1]
-                        if descriptor == "J":
-                            code.op(0x85)
-                        if _width(resolve, value_cid) < 8:
-                            mask(descriptor, _width(resolve, value_cid))
-                        put(result)
-                else:
-                    memory_access(load, size, value_cid, value_ref, push_address, result if load else None)
-
-            elif operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).library == MEMORY_CLASS:
-                member = _foreign_member(node.entity, resolve)
-                key = member.name + member.descriptor
-                if key not in _MEMORY_MEMBERS:
-                    fail("XAX.JVM.FOREIGN", where, "JVM-MEMORY-MEMBER", sorted(_MEMORY_MEMBERS), key)
-                needs.update(("memory", key))
-                machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
-                slots = sum(_slots(get(operand)) for operand in machine)
-                max_call_slots = max(max_call_slots, slots)
-                code.op(0xB8); code.raw(_u2(pool.method(class_name, _MEMORY_MEMBERS[key], member.descriptor)))
-                _store_call_result(node, block_index, node_index, slot_of, put)
-
-            elif operation == Operation.CALL_FOREIGN:
-                member = _foreign_member(node.entity, resolve)
-                machine = [operand for operand, cid in zip(node.operands, node.operand_types) if value_type(cid) is not None]
-                slots = 0
-                for operand, parameter in zip(machine, member.parameters):
-                    slots += _slots(get(operand))
-                    narrow = {"B": 0x91, "C": 0x92, "S": 0x93}.get(parameter)
-                    if narrow is not None:
-                        code.op(narrow)
-                max_call_slots = max(max_call_slots, slots)
-                reference = (pool.field if member.opcode == 0xB2 else pool.method)(member.class_name, member.name, member.descriptor)
-                code.op(member.opcode)
-                code.raw(_u2(reference))
-                if member.result in ("B", "S"):
-                    mask("I", _NARROW_WIDTH[member.result])  # the JVM returns these sign-extended
-                _store_call_result(node, block_index, node_index, slot_of, put)
-
-            elif operation in RESOURCE_EFFECT_OPERATIONS:
-                pass  # proof values only: erased
-
-            else:
-                fail("XAX.JVM.UNSUPPORTED_OPERATION", where, "JVM-OP-LOWERED", "jvm-classfile-v1 subset", operation)
-            node_ranges.append((block_index, node_index, line, start, len(code.buf)))
+        for node_index in range(len(block.nodes)):
+            if ValueRef.node_result(block_index, node_index) not in evaluated_late and (block_index, node_index) not in eliminated:
+                lower_node(block_index, node_index)
 
         terminator = block.terminator
         if terminator.kind == TerminatorKind.RETURN:
@@ -1610,31 +2146,41 @@ def _compile_method_pass(
             copy_edge(*terminator.edges[0])
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             condition = terminator.values[0]
-            if condition in fused:
-                branch_if_not = int_branch_if_not(block.nodes[condition.index])
-                if branch_if_not is None:
-                    branch_if_not = _BRANCH_IF_NOT[compare_to_int(block.nodes[condition.index])]
-            else:
-                get(condition)
-                branch_if_not = 0x99  # ifeq
             (true_target, true_arguments), (false_target, false_arguments) = terminator.edges
             true_moves = edge_moves_needed(true_target, true_arguments)
             false_moves = edge_moves_needed(false_target, false_arguments)
-            if not false_moves:
-                code.branch(branch_if_not, ("block", resolved(false_target)))
+            if not true_moves and (false_moves or resolved(false_target) == following_block[0]):
+                jump_if(condition, True, ("block", resolved(true_target)))  # fall through to the false side
+                copy_edge(false_target, false_arguments)
+            elif not false_moves:
+                jump_if(condition, False, ("block", resolved(false_target)))
                 copy_edge(true_target, true_arguments)
             elif not true_moves:
-                code.branch(_INVERSE_BRANCH[branch_if_not], ("block", resolved(true_target)))
+                jump_if(condition, True, ("block", resolved(true_target)))
                 copy_edge(false_target, false_arguments)
             else:
                 false_stub = ("false", block_index)
-                code.branch(branch_if_not, false_stub)
+                jump_if(condition, False, false_stub)
                 copy_edge(true_target, true_arguments, force=True)  # the false stub follows, not the next block
                 code.mark(false_stub)
                 copy_edge(false_target, false_arguments)
         else:
             trap_used = True
             code.branch(0xA7, "trap")
+        if (
+            terminator.kind == TerminatorKind.RETURN and entered_by_jump and pending[0] is None and stored[0] is None
+            and len(code.fixups) == block_fixups and len(lines) == block_lines
+        ):
+            # Tail merging (ADR-157): a return block only reached by a jump, byte-identical to
+            # an earlier one (same locals, same frame), is that one.
+            body = bytes(code.buf[block_start:])
+            if body in return_blocks:
+                del code.buf[block_start:]
+                code.labels[("block", block_index)] = return_blocks[body]
+                del node_ranges[block_ranges:]
+                code.ended = True
+            else:
+                return_blocks[body] = block_start
     if trap_used:
         code.mark("trap")
         code.op(0xBB); code.raw(_u2(pool.klass("java/lang/Error")))
@@ -1656,6 +2202,7 @@ def _compile_method_pass(
     return _Method(
         name, _method_descriptor(parameters, returns), blob, max_stack, max_locals[0],
         frames, tuple(frame_types), tuple(lines), tuple(node_ranges), function.cid,
+        bare_frame=code.labels.get("trap"),
     )
 
 
@@ -1724,6 +2271,19 @@ def _initial_memory(functions: Sequence[SemanticObject], resolve) -> int:
     return max(_INITIAL_MEMORY, min(total, 1 << 30))
 
 
+def _shared_methods(pool: _Pool, shared: set[str], class_name: str) -> list[_Method]:
+    """Pure members the lowering shares across call sites (ADR-157); any profile."""
+    out: list[_Method] = []
+    if "pk" in shared:
+        # lo, hi: (lo & 0xffffffffL) | (long) hi << 32
+        code = _Code("xax$pk")
+        code.op(0x1A, 0xB8); code.raw(_u2(pool.method("java/lang/Integer", "toUnsignedLong", "(I)J")))
+        code.op(0x1B, 0x85, 0x10, 32, 0x79, 0x81, 0xAD)
+        blob, _frames = code.finish()
+        out.append(_Method("xax$pk", "(II)J", blob, 5, 2, (), (), ()))
+    return out
+
+
 def _memory_methods(pool: _Pool, class_name: str, needs: set[str], initial: int = _INITIAL_MEMORY) -> list[_Method]:
     """``<clinit>`` and the generated memory members a class uses (ADR-156).
 
@@ -1789,19 +2349,27 @@ def _memory_methods(pool: _Pool, class_name: str, needs: set[str], initial: int 
         code = _Code("xax$ld1")
         get_static(code, M); code.op(0x1A, 0x33); int_const(code, 0xFF); code.op(0x7E, 0xAC)  # M[a] & 0xff
         method("xax$ld1", "(I)I", code, (), 1)
-    if "cld1" in needs:
-        # p, i, max: M[p + ix(i, max)] & 0xff
-        needs.add("ix")
-        code = _Code("xax$cld1")
-        get_static(code, M); code.op(0x1A, 0x1B, 0x1C); call(code, class_name, "xax$ix", "(II)I"); code.op(0x60, 0x33)
-        int_const(code, 0xFF); code.op(0x7E, 0xAC)
-        method("xax$cld1", "(III)I", code, (), 3)
-    if "cst1" in needs:
-        # p, i, max, v: M[p + ix(i, max)] = (byte) v
-        needs.add("ix")
-        code = _Code("xax$cst1")
-        get_static(code, M); code.op(0x1A, 0x1B, 0x1C); call(code, class_name, "xax$ix", "(II)I"); code.op(0x60, 0x1D, 0x54, 0xB1)
-        method("xax$cst1", "(IIII)V", code, (), 4)
+    for item in sorted(needs):
+        # Checked byte members, one per view bound (ADR-157): p, i -> M[p + i] & 0xff and
+        # v, p, i -> M[p + i] = (byte) v, trapping unless i <= max (unsigned).
+        if item.startswith(("bl:", "bs:")):
+            maximum = int(item[3:], 16)
+            load = item[1] == "l"
+            member = f"xax${item[1]}{item[3:]}"
+            index = 0x1B if load else 0x1C  # iload_1 / iload_2
+            code = _Code(member)
+            code.op(index); int_const(code, -(1 << 31)); code.op(0x82); int_const(code, maximum ^ (1 << 31) if maximum < 1 << 31 else maximum - (1 << 32))
+            code.branch(0xA3, "trap")  # if_icmpgt: unsigned i > max
+            get_static(code, M)
+            if load:
+                code.op(0x1A, 0x1B, 0x60, 0x33); int_const(code, 0xFF); code.op(0x7E, 0xAC)
+            else:
+                code.op(0x1B, 0x1C, 0x60, 0x1A, 0x54, 0xB1)
+            code.mark("trap")
+            code.op(0xBB); code.raw(_u2(pool.klass("java/lang/Error"))); code.op(0x59)
+            code.op(0x13); code.raw(_u2(pool.string(_TRAP_MESSAGE)))
+            call(code, "java/lang/Error", "<init>", "(Ljava/lang/String;)V", 0xB7); code.op(0xBF)
+            method(member, "(II)I" if load else "(III)V", code, ("I", "I") if load else ("I", "I", "I"), 2 if load else 3)
     if "ix" in needs:
         # Checked index (ADR-157): i when 0 <= i <= max unsigned, else the trap.  One
         # small shared method instead of a compare and branch at every checked access.
@@ -1898,13 +2466,14 @@ ENTRY_STACK_BYTES = 256 << 20
 def _threaded_launcher(pool: _Pool, class_name: str, entry_name: str) -> list[_Method]:
     """``main`` starts ``run`` on a thread with ``ENTRY_STACK_BYTES`` of stack and joins it.
 
-    ``run`` calls the entry and then sets ``D``; an entry that ended by an
-    uncaught throwable (a trap) leaves ``D`` clear, and ``main`` then exits
-    with status 1, as the launcher does for an uncaught exception in ``main``.
+    ``run`` calls the entry and then ends the JVM with status 0, as returning
+    from ``main`` does (ADR-157).  An entry that ended by an uncaught throwable
+    (a trap) never gets there: ``join`` returns and ``main`` exits with status 1,
+    as the launcher does for an uncaught exception in ``main``.
     """
-    D = pool.field(class_name, "D", "I")
+    exit_ = pool.method("java/lang/System", "exit", "(I)V")
     init = bytes((0x2A, 0xB7)) + _u2(pool.method("java/lang/Object", "<init>", "()V")) + bytes((0xB1,))
-    run = bytes((0xB8,)) + _u2(pool.method(class_name, entry_name, "()V")) + bytes((0x04, 0xB3)) + _u2(D) + bytes((0xB1,))
+    run = bytes((0xB8,)) + _u2(pool.method(class_name, entry_name, "()V")) + bytes((0x03, 0xB8)) + _u2(exit_) + bytes((0xB1,))
     code = _Code("main")
     thread = "java/lang/Thread"
     code.op(0xBB); code.raw(_u2(pool.klass(thread))); code.op(0x59, 0x01)
@@ -1912,17 +2481,15 @@ def _threaded_launcher(pool: _Pool, class_name: str, entry_name: str) -> list[_M
     code.op(0x13); code.raw(_u2(pool.string("xax-entry")))
     code.op(0x14); code.raw(_u2(pool.long(ENTRY_STACK_BYTES)))
     code.op(0xB7); code.raw(_u2(pool.method(thread, "<init>", "(Ljava/lang/ThreadGroup;Ljava/lang/Runnable;Ljava/lang/String;J)V")))
-    code.op(0x4C, 0x2B, 0xB6); code.raw(_u2(pool.method(thread, "start", "()V")))
-    code.op(0x2B, 0xB6); code.raw(_u2(pool.method(thread, "join", "()V")))
-    code.op(0xB2); code.raw(_u2(D)); code.branch(0x9A, "done")  # ifne
-    code.op(0x04, 0xB8); code.raw(_u2(pool.method("java/lang/System", "exit", "(I)V")))
-    code.mark("done")
+    code.op(0x59, 0xB6); code.raw(_u2(pool.method(thread, "start", "()V")))  # dup; start
+    code.op(0xB6); code.raw(_u2(pool.method(thread, "join", "()V")))
+    code.op(0x04, 0xB8); code.raw(_u2(exit_))  # only after a trap
     code.op(0xB1)
     blob, frames = code.finish()
     return [
         _Method("<init>", "()V", init, 1, 1, (), (), (), access=0x0001),
         _Method("run", "()V", run, 2, 1, (), (), (), access=0x0001),
-        _Method("main", "([Ljava/lang/String;)V", blob, 8, 2, frames, ("[Ljava/lang/String;", "Ljava/lang/Thread;"), ()),
+        _Method("main", "([Ljava/lang/String;)V", blob, 8, 1, frames, ("[Ljava/lang/String;",), ()),
     ]
 
 
@@ -1939,7 +2506,9 @@ def _serialize_method(method: _Method, pool: _Pool) -> bytes:
         locals_blob = b"".join(pool.verification_type(descriptor) for descriptor in method.frame_locals)
         for offset in method.frames:
             delta = offset - previous - 1
-            if previous < 0:
+            if offset == method.bare_frame:
+                entries.extend(bytes((255,)) + _u2(delta) + _u2(0) + _u2(0))  # last: the trap
+            elif previous < 0:
                 entries.extend(bytes((255,)) + _u2(delta) + _u2(len(method.frame_locals)) + locals_blob + _u2(0))
             elif delta < 64:
                 entries.append(delta)  # same_frame: every frame equals the first
@@ -2031,19 +2600,23 @@ def compile_jvm_bound_target(
     names: dict[bytes, tuple[str, str]] = {}
     for index, function in enumerate(functions):
         name = "entry" if function.cid == entry.cid else f"f{index}"
-        names[function.cid] = (name, _method_descriptor(*_signature(function, resolve)))
+        parameters, returns = _signature(function, resolve)
+        names[function.cid] = (name, _method_descriptor(parameters if name == "entry" else _internal_order(parameters), returns))
     pool = _Pool()
     needs: set[str] = set()
     methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names, needs) for function in functions]
+    shared = {item.split(":", 1)[1] for item in needs if item.startswith("shared:")}
+    needs -= {f"shared:{item}" for item in shared}
     if needs and target.identity != JVM_CLASSFILE_MEMORY_IDENTITY:
         fail("XAX.JVM.TARGET", target_object.cid.hex(), "JVM-MEMORY-PROFILE", JVM_CLASSFILE_MEMORY_IDENTITY.decode(), target.identity.decode("ascii", "replace"))
+    methods.extend(_shared_methods(pool, shared, class_name))
     methods.extend(_memory_methods(pool, class_name, needs, _initial_memory(functions, resolve) if needs else _INITIAL_MEMORY))
     threaded = process_entry and target.identity == JVM_CLASSFILE_MEMORY_IDENTITY
     if threaded:
         methods.extend(_threaded_launcher(pool, class_name, "entry"))
     elif process_entry:
         methods.append(_main_method(pool, class_name, "entry"))
-    fields = ((("M", "[B"), ("H", "I")) if needs else ()) + ((("D", "I"),) if threaded else ())
+    fields = (("M", "[B"), ("H", "I")) if needs else ()
     class_bytes, code_offsets = _class_file(class_name, methods, pool, fields, ("java/lang/Runnable",) if threaded else ())
     jar, class_offset = _jar(class_name, class_bytes, process_entry)
     entry_offset = class_offset + code_offsets["entry"]
