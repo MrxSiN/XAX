@@ -568,7 +568,7 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory and `jvm-classfile-general-v1` aggregates, sums, stack allocations, indirect calls, links, atomics, JDK-called callbacks, object and array construction, and instance fields; a native-code-plus-JNI-bridge arm is measured against direct emission (OI-35); `jsonmin` on HotSpot runs fastest of XAX, `javac`, and `kotlinc` builds with the lowest peak RSS and a program class 0.99\u00d7 kotlinc's and 1.5\u00d7 javac's.",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory and `jvm-classfile-general-v1` aggregates, sums, stack allocations, indirect calls, links, atomics, JDK-called callbacks, object and array construction, and instance fields; a native-code-plus-JNI-bridge arm is measured against direct emission (OI-35), and declarations import from JDK class files (OI-32); `jsonmin` on HotSpot runs fastest of XAX, `javac`, and `kotlinc` builds with the lowest peak RSS and a program class 0.99\u00d7 kotlinc's and 1.5\u00d7 javac's.",
       "level": "R4",
       "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
@@ -595,7 +595,9 @@
         "platform_apis": [
           "EXECUTED",
           "compiler/tests/test_xax_jvm.py",
-          "compiler/tests/test_xax_jvm_objects.py"
+          "compiler/tests/test_xax_jvm_objects.py",
+          "compiler/tests/test_xax_jvm_import.py",
+          "compiler/benchmarks/oi32_import_evidence.json"
         ],
         "ffi": [
           "EXECUTED",
@@ -653,8 +655,7 @@
       "blockers": [
         "R4 scope: one application (jsonmin) and one kernel (Collatz) on one shared x86-64 host, OpenJDK 21 defaults, whole-process time of a fresh JVM; baselines javac and kotlinc (XAX_BENCHMARKS.md section 15.0a, ADR-157/158)",
         "code size: jsonmin's program class is 1.49x javac's and 0.99x kotlinc's (5,575 vs 3,730 and 5,649 bytes, ADR-158); its JAR is 2.2x javac's one-class JAR, 0.001x the kotlinc JAR with the Kotlin runtime; the rest of the javac gap is the program's shape (inlined parser, packed results, a checked view per access), not the lowering",
-        "linear memory (ADR-156) is one byte[] with int offsets: freed blocks are never reused, at most 2^31 - 1 bytes; the general profile (ADR-159) has a fixed 1 MiB shadow stack; atomics are sequential because one XAX thread runs (ADR-160), so a profile with JVM-to-XAX callbacks from other threads needs real JVM atomics",
-        "no classfile metadata importer: java.base declarations are hand-written (OI-32)"
+        "linear memory (ADR-156) is one byte[] with int offsets: freed blocks are never reused, at most 2^31 - 1 bytes; the general profile (ADR-159) has a fixed 1 MiB shadow stack; atomics are sequential because one XAX thread runs (ADR-160), so a profile with JVM-to-XAX callbacks from other threads needs real JVM atomics"
       ],
       "competitive": [
         true,

@@ -980,3 +980,12 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
   - 0.64× peak RSS;
   - 2.86× artifact bytes.
 - **OI-35 is closed for the JVM.** The answer is per workload, defaulting to direct emission. CLR is not covered.
+
+## JVM class-file importer; OI-32 closed (2026-10-05, ADR-166)
+
+- `xax_jvm_import` imports typed `jvm-*` declarations from JDK `.jmod`/JAR class files (exported public API only, conservative effects, opt-in callbacks). EXECUTED (`tests/test_xax_jvm_import.py`): a program over imported declarations only runs on HotSpot, and `java_base_api` is reproduced byte for byte.
+- MEASURED (`oi32_import_evidence.json`):
+  - 14,973 of 15,806 public and protected `java.base` members import, in 1.79 s.
+  - Declaration error rate is 0/30 (JVM) and 0/5 (C).
+  - An import request costs 0.40× (JVM) and 0.23× (C) the tokens of the hand-built declaration (offline).
+- **OI-32 is closed.** The JVM row's importer blocker is removed.

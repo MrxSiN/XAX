@@ -479,6 +479,22 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Status.** OPEN (partially addressed, ADR-127). Hand-built bounded packages exist (`xax_platform.posix_android_api`, `xax_platform.win32_kernel32_api`); the Android SDK classfile importer is structural only. The C header importer (`xax_c_import`) is the second ecosystem: it reproduces hand-built declarations byte for byte, an imported stdio program executes, and coverage, latency, and package size are measured (`c_import_evidence.json`). Still missing for closure: an executed program over the classfile importer's output, a declaration error rate measured against curated metadata, and the AI-token comparison against hand-built declarations.
 
+**Status: CLOSED (2026-10-05, ADR-166).** The status above is the historical record; this one supersedes it.
+- **Answer.**
+  - Read class files and C headers first.
+  - The package format is the canonical foreign declarations themselves.
+  - Unknown facts import conservatively:
+    - every member is ordered by an effect token;
+    - references are nullable;
+    - callbacks are opt-in entry types, which must be pure, so no thread crosses effects;
+    - Java exceptions and C errors keep their existing rules.
+  - Purity and effects are curated facts the caller states explicitly.
+- **Closing evidence.** Two unrelated ecosystems produce packages that executed programs consume: the C header importer (ADR-127) and the JVM class-file importer (`xax_jvm_import`), whose program runs on HotSpot. MEASURED in `oi32_import_evidence.json` and `c_import_evidence.json`:
+  - `java.base` imports 14,973 of 15,806 public and protected members in 1.79 s, as 3.7 MB of declarations.
+  - Declaration error rate against hand-built declarations is 0/30 (JVM) and 0/5 (C).
+  - An import request costs 0.40× (JVM) and 0.23× (C) the offline tokens of writing the declaration by hand.
+- **Not covered.** A model trial (R5, deferred), Win32, .NET metadata, and Web IDL.
+
 ## OI-33 — Hosted process lifecycle, unwind, and TLS contracts
 
 **Question.** How are per-OS process entry/exit, thread-local storage, unwind tables (SEH/`.pdata`, DWARF CFI), and foreign-exception crossing represented so that hosted containers emit only what explicit contracts require?

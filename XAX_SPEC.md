@@ -1215,6 +1215,8 @@ Narrow array elements load zero-extended to their XAX width. A Java exception th
 - For a process entry (`(env, class) -> bits<32>`, `JNI-PROCESS-ENTRY`), the bridge's `main` MUST call the method and pass its result to `System.exit`.
 - A trap in the native code faults in a JNI frame and ends the process abnormally.
 
+**Imported declarations** (ADR-166): `xax_jvm_import` derives these declarations from class files. An imported declaration MUST be byte-identical to the hand-built declaration with the same curated facts. A member MUST import only if it is a public member of a public class in a package its module exports unqualified. By default every member takes and returns the I/O effect, references are nullable `jvm-ref` pointers, and functional-interface parameters are plain references; purity, other effects, and callback parameters MUST be stated by the importer's caller.
+
 ### 21.9d RISC-V RV64 raw images
 
 `riscv64-baremetal-raw-v1` (ADR-113) is target architecture 6 with the exact machine tuple (profile 1, ABI 7 LP64, format 1 raw, 64, 64). It needs only RV64I plus M. Functions follow the LP64 integer calling convention (a0–a7, a0, ra; s0–s11 preserved). A zero divisor MUST trap even though `divu`/`remu` do not. The image MUST be position-independent, with the entry at offset 0, and contain no loader, relocation, data section, or runtime.

@@ -1,0 +1,314 @@
+{
+  "ai_tokens": {
+    "c": {
+      "declarations": 5,
+      "example": {
+        "hand_built": "{\"abi\":\"sysv-x86_64-c\",\"library\":\"libz.so.1\",\"name\":\"crc32\",\"in\":[\"b64\",\"ptr<b8>\",\"b32\",\"effect:memory\"],\"out\":[\"b64\",\"effect:memory\"]}",
+        "request": "{\"import\":\"crc32\"}"
+      },
+      "hand_built_tokens": {
+        "cl100k_base": 198,
+        "o200k_base": 205
+      },
+      "import_request_tokens": {
+        "cl100k_base": 47,
+        "o200k_base": 47
+      },
+      "request_over_hand_built": {
+        "cl100k_base": 0.237,
+        "o200k_base": 0.229
+      }
+    },
+    "jvm": {
+      "declarations": 30,
+      "example": {
+        "hand_built": "{\"abi\":\"jvm-invokeinterface\",\"library\":\"java/util/stream/IntStream\",\"name\":\"filter(Ljava/util/function/IntPredicate;)Ljava/util/stream/IntStream;\",\"in\":[\"ptr<jvm-ref:Ljava/util/stream/IntStream;>\",\"ptr<code-entry:jvm-interface:java/util/function/IntPredicate.test(I)Z>\"],\"out\":[\"ptr<jvm-ref:Ljava/util/stream/IntStream;>\"]}",
+        "request": "{\"import\":\"java/util/stream/IntStream.filter(Ljava/util/function/IntPredicate;)Ljava/util/stream/IntStream;\",\"pure\":true,\"callbacks\":true}"
+      },
+      "hand_built_tokens": {
+        "cl100k_base": 1431,
+        "o200k_base": 1497
+      },
+      "import_request_tokens": {
+        "cl100k_base": 584,
+        "o200k_base": 594
+      },
+      "request_over_hand_built": {
+        "cl100k_base": 0.408,
+        "o200k_base": 0.397
+      }
+    }
+  },
+  "decision": "ADR-166",
+  "error_rate": {
+    "c": {
+      "declarations": 5,
+      "error_rate": 0.0,
+      "errors": 0
+    },
+    "jvm": {
+      "declarations": 30,
+      "error_rate": 0.0,
+      "errors": 0
+    },
+    "jvm_rows": [
+      {
+        "facts": [
+          "callbacks",
+          "pure"
+        ],
+        "request": "java/util/stream/IntStream.filter(Ljava/util/function/IntPredicate;)Ljava/util/stream/IntStream;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_callbacks.FILTER"
+      },
+      {
+        "facts": [
+          "callbacks",
+          "pure"
+        ],
+        "request": "java/util/stream/IntStream.map(Ljava/util/function/IntUnaryOperator;)Ljava/util/stream/IntStream;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_callbacks.MAP"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/util/stream/IntStream.rangeClosed(II)Ljava/util/stream/IntStream;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_callbacks.RANGE"
+      },
+      {
+        "facts": [
+          "callbacks",
+          "pure"
+        ],
+        "request": "java/util/stream/IntStream.reduce(ILjava/util/function/IntBinaryOperator;)I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_callbacks.REDUCE"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/StringBuilder.append(I)Ljava/lang/StringBuilder;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.APPEND_INT"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.APPEND_STRING"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/Integer.valueOf(I)Ljava/lang/Integer;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.BOX"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/Integer.compare(II)I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.COMPARE"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/util/Arrays.deepHashCode([Ljava/lang/Object;)I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.DEEP_HASH"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/awt/Point.x:I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.GET_X"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/awt/Point.y:I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.GET_Y"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/String.hashCode()I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.HASH"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/StringBuilder.<init>()V",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.NEW_BUILDER"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/awt/Point.<init>(II)V",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.NEW_POINT"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/awt/Point.y:I=",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.PUT_Y"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/util/Arrays.sort([I)V",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.SORT_INTS"
+      },
+      {
+        "facts": [
+          "callbacks",
+          "pure"
+        ],
+        "request": "java/util/Arrays.sort([Ljava/lang/Object;Ljava/util/Comparator;)V",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.SORT_OBJECTS"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/String.length()I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.STRING_LENGTH"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/StringBuilder.toString()Ljava/lang/String;",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.TO_STRING"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/awt/Point.translate(II)V",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.TRANSLATE"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/Integer.intValue()I",
+        "status": "byte-identical",
+        "where": "tests.test_xax_jvm_objects.UNBOX"
+      },
+      {
+        "facts": [],
+        "request": "java/lang/System.out:Ljava/io/PrintStream;",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [],
+        "request": "java/io/PrintStream.println(J)V",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [],
+        "request": "java/io/PrintStream.println(D)V",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [],
+        "request": "java/io/PrintStream.print(C)V",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [],
+        "request": "java/io/PrintStream.flush()V",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [
+          "effect"
+        ],
+        "request": "java/lang/System.exit(I)V",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/Math.sqrt(D)D",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [
+          "effect"
+        ],
+        "request": "java/lang/System.nanoTime()J",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      },
+      {
+        "facts": [
+          "pure"
+        ],
+        "request": "java/lang/Long.bitCount(J)I",
+        "status": "byte-identical",
+        "where": "xax_jvm.java_base_api"
+      }
+    ]
+  },
+  "evidence_label": "MEASURED (coverage, latency, size, error rate, offline tokens); EXECUTED programs in test_xax_jvm_import.py and test_xax_c_import.py",
+  "format": "xax-oi32-import-evidence-v1",
+  "java": 65,
+  "jvm_coverage": {
+    "classes": 7554,
+    "declaration_bytes": 3716330,
+    "exported_packages": 54,
+    "import_microseconds_per_request": 113.0,
+    "import_seconds": 1.786,
+    "imported": 14973,
+    "load_seconds": 0.383,
+    "module": "java.base",
+    "package_objects": 17931,
+    "public_exported_classes": 1411,
+    "refusal_reasons": {
+      "constructor of an abstract class or interface": 77,
+      "member not public": 756
+    },
+    "refused": 833,
+    "report_sha256": "9e634101df6f285acc8b54e1c46c10a8bce913ba78326ae13a006b01f425f3d3",
+    "requests": 15806
+  },
+  "tokenizer": "tiktoken 0.14.0"
+}
