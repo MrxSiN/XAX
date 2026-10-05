@@ -52,6 +52,11 @@ from xax_compiler import (
     ForeignAllocatorContract,
     ForeignDeallocatorContract,
     JVM_CLASSFILE_MEMORY_IDENTITY,
+    JVM_CLASSFILE_GENERAL_IDENTITY,
+    _decode_array_type,
+    _decode_call_contract,
+    _decode_sum_type,
+    _decode_tuple_type,
     heap_owner_type,
     heap_view_type,
     memory_effect_type,
@@ -196,6 +201,9 @@ _MEMORY_MEMBERS = {
 }
 # Offsets below this are never storage, so 0 is never a valid block address.
 _HEAP_START, _INITIAL_MEMORY = 16, 1 << 16
+# The general profile's shadow stack (ADR-159): stack allocations live in
+# [_HEAP_START, _HEAP_START + STACK_BYTES) of the linear memory; the heap starts above it.
+STACK_BYTES = 1 << 20
 
 
 @dataclass(frozen=True)
@@ -300,6 +308,8 @@ def _jvm_type(resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str
             return "J"
     elif form == 7:
         return "F" if decode_float_width(obj) == 32 else "D"
+    elif form in (8, 9, 10):
+        return FLAT  # an aggregate or sum: an immutable flattened long[] (ADR-159)
     elif form == 2:
         element, _permission, _alignment = _decode_pointer_type(obj, resolve)
         element_object = resolve(element)
@@ -310,6 +320,37 @@ def _jvm_type(resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str
         else:
             return "I"  # an offset into the linear memory (ADR-156)
     fail("XAX.JVM.VALUE", where, "JVM-VALUE-REPRESENTABLE", "bits<=64, f32, f64, jvm-ref, or memory pointer", cid.hex())
+
+
+FLAT = "[J"
+
+
+def _flat_size(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> int:
+    """``long`` slots of a value in a flattened aggregate: a scalar is one (its raw bits),
+    a tuple or array the sum of its elements, a sum its tag plus its largest variant."""
+    obj = resolve(cid)
+    if _is_proof_type(obj):
+        return 0
+    form = obj.body[0] if obj.kind == Kind.TYPE and obj.body else None
+    if form == 8:
+        return sum(_flat_size(resolve, element) for element in _decode_tuple_type(obj, resolve))
+    if form == 9:
+        element, count = _decode_array_type(obj, resolve)
+        return count * _flat_size(resolve, element)
+    if form == 10:
+        return 1 + max(_flat_size(resolve, variant) for variant in _decode_sum_type(obj, resolve))
+    descriptor = _jvm_type(resolve, cid, cid.hex())
+    if descriptor not in ("I", "J", "F", "D"):
+        fail("XAX.JVM.AGGREGATE", cid.hex(), "JVM-AGGREGATE-SCALAR", "bits, floats, memory pointers, aggregates, sums", descriptor)
+    return 1
+
+
+def _aggregate_fields(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> tuple[bytes, ...]:
+    obj = resolve(cid)
+    if obj.body[0] == 8:
+        return _decode_tuple_type(obj, resolve)
+    element, count = _decode_array_type(obj, resolve)
+    return (element,) * count
 
 
 def _signed32(value: int) -> int:
@@ -562,6 +603,7 @@ class _HookedCode(_Code):
 
 # Operations whose bytecode can raise a JVM exception or be a caller frame.
 _MAY_RAISE = frozenset({
+    Operation.CALL_INDIRECT, Operation.SUM_GET,
     Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.UDIV, Operation.UREM,
     Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE,
 })
@@ -576,7 +618,10 @@ _TREE_OPERATIONS = frozenset({
     Operation.ADDRESS_OFFSET, Operation.POINTER_ADDRESS,
 })
 # Pure nodes: never lowered when nothing reads their results (ADR-157).
-_DEAD_IF_UNREAD = frozenset({*_TREE_OPERATIONS, Operation.CONSTANT, Operation.POINTER_CAST})
+_DEAD_IF_UNREAD = frozenset({
+    *_TREE_OPERATIONS, Operation.CONSTANT, Operation.POINTER_CAST,
+    Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.FUNCTION_ADDRESS,
+})
 _LOAD = {"I": 0x15, "J": 0x16, "F": 0x17, "D": 0x18, "A": 0x19}
 _STORE = {"I": 0x36, "J": 0x37, "F": 0x38, "D": 0x39, "A": 0x3A}
 _RETURN = {"I": 0xAC, "J": 0xAD, "F": 0xAE, "D": 0xAF, "A": 0xB0}
@@ -613,6 +658,8 @@ def _function_closure(entry: SemanticObject, resolve, supported_operations, supp
                     fail("XAX.JVM.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "JVM-OP-TARGET-SUPPORTED", list(supported_operations), node.operation)
                 if node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve):
                     pending.append(node.entity)
+                if node.operation == Operation.FUNCTION_ADDRESS:
+                    pending.append(node.entity)  # callable through the function table (ADR-159)
             if block.terminator.kind not in supported_terminators:
                 fail("XAX.JVM.UNSUPPORTED_TERMINATOR", graph_object.cid.hex(), "JVM-TERMINATOR-TARGET-SUPPORTED", list(supported_terminators), block.terminator.kind)
     return tuple(functions[cid] for cid in sorted(functions))
@@ -648,6 +695,7 @@ def _compile_method(
     class_name: str,
     methods: dict[bytes, tuple[str, str]],
     needs: set[str] | None = None,
+    context: "_ClassContext | None" = None,
 ) -> _Method:
     """Lower one function.  ``needs`` collects the generated memory members it uses (ADR-156).
 
@@ -657,14 +705,23 @@ def _compile_method(
     """
     reads: dict[ValueRef, int] = {}
     # The counting pass lowers into a scratch pool, so nothing only it used reaches the class.
-    _compile_method_pass(function, name, resolve, _Pool(), class_name, methods, set(), reads, None, None)
+    _compile_method_pass(function, name, resolve, _Pool(), class_name, methods, set(), reads, None, None, context)
     single = frozenset(ref for ref, count in reads.items() if count == 1)
     kept: frozenset = frozenset()
     while True:
         try:
-            return _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, {}, single, kept)
+            return _compile_method_pass(function, name, resolve, pool, class_name, methods, needs, {}, single, kept, context)
         except _KeepParameters as retry:
             kept |= retry.parameters  # their slots must hold them until a zero store
+
+
+@dataclass(frozen=True)
+class _ClassContext:
+    """Class-wide facts the methods share (ADR-159): each addressed function's table
+    index, and each indirect-call contract's dispatcher member (name, descriptor)."""
+
+    table: dict[bytes, int]
+    dispatchers: dict[bytes, tuple[str, str]]
 
 
 class _KeepParameters(Exception):
@@ -686,8 +743,10 @@ def _compile_method_pass(
     reads: dict[ValueRef, int],
     single_read: frozenset | None,
     kept_parameters: frozenset | None = frozenset(),
+    context: "_ClassContext | None" = None,
 ) -> _Method:
     needs = needs if needs is not None else set()
+    context = context or _ClassContext({}, {})
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph = parse_function_graph(function, resolve)
     where = graph_object.cid.hex()
@@ -904,6 +963,9 @@ def _compile_method_pass(
         if node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve):
             elided = borrowed_view_returns(node.operand_types, node.results, resolve)
             return {ValueRef.node_result(block_index, node_index, result): node.operands[parameter] for result, parameter in elided.items() if value_type(node.results[result]) is not None}
+        if node.operation == Operation.CALL_INDIRECT:
+            elided = borrowed_view_returns(node.operand_types[1:], node.results, resolve)
+            return {ValueRef.node_result(block_index, node_index, result): node.operands[1 + parameter] for result, parameter in elided.items() if value_type(node.results[result]) is not None}
         return {}
 
     copy_of: dict[ValueRef, ValueRef] = {}
@@ -1174,6 +1236,21 @@ def _compile_method_pass(
                 break
         else:
             assign(ref, new_slot(descriptor))
+    # Stack frame (ADR-159): every allocation has a fixed offset in this activation's
+    # frame, which the prologue takes from the shadow stack and every return gives back.
+    frame_offsets: dict[tuple[int, int], int] = {}
+    frame_size = 0
+    for block_index, block in enumerate(graph.blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation == Operation.STACK_ALLOC:
+                extent, alignment = node.attributes
+                if alignment > 16:
+                    fail("XAX.JVM.STACK", where, "JVM-STACK-ALIGNMENT", "<= 16", alignment)
+                frame_size = (frame_size + alignment - 1) & -alignment
+                frame_offsets[(block_index, node_index)] = frame_size
+                frame_size += extent
+    frame_size = (frame_size + 15) & -16
+    frame_slot = new_slot("I") if frame_offsets else -1
     for ref in (*constant_refs, *evaluated_late):
         if ref in descriptor_of:
             slot_of[ref] = (-1, descriptor_of[ref])
@@ -1184,6 +1261,8 @@ def _compile_method_pass(
     for slot in [slot for slot, descriptor in slot_types.items() if descriptor is None]:
         slot_types[slot] = "T"  # a freed slot no value took
     typed_slots = {slot_of[ref][0] for ref in tracked if bit[ref] & framed}
+    if frame_slot >= 0:
+        typed_slots.add(frame_slot)  # set by the prologue, read at every return
     typed_slots |= {slot for slot in slot_types if slot < parameter_slot_end and slot not in freed}
     frame_types: list[str] = []
     for slot in sorted(slot_types):
@@ -1250,6 +1329,43 @@ def _compile_method_pass(
             pending[0] = ref
             return
         stored[0] = ref
+
+    def to_long(descriptor: str) -> None:
+        """The raw bits of the scalar on the stack as a long (an aggregate slot)."""
+        if descriptor == "I":
+            code.op(0x85)
+        elif descriptor == "F":
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Float", "floatToRawIntBits", "(F)I"))); code.op(0x85)
+        elif descriptor == "D":
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Double", "doubleToRawLongBits", "(D)J")))
+
+    def from_long(descriptor: str) -> None:
+        if descriptor == "I":
+            code.op(0x88)
+        elif descriptor == "F":
+            code.op(0x88, 0xB8); code.raw(_u2(pool.method("java/lang/Float", "intBitsToFloat", "(I)F")))
+        elif descriptor == "D":
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/Double", "longBitsToDouble", "(J)D")))
+
+    def store_field(buffer: int, offset: int, value: ValueRef, cid: bytes) -> None:
+        descriptor = value_type(cid)
+        if descriptor is None:
+            return
+        if descriptor == FLAT:
+            # System.arraycopy(value, 0, buffer, offset, size): nested values are copied in
+            get(value); iconst(0); local(_LOAD, FLAT, buffer); iconst(offset); iconst(_flat_size(resolve, cid))
+            code.op(0xB8); code.raw(_u2(pool.method("java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V")))
+        else:
+            local(_LOAD, FLAT, buffer); iconst(offset); get(value); to_long(descriptor); code.op(0x50)  # lastore
+
+    def load_field(source: ValueRef, offset: int, cid: bytes) -> None:
+        descriptor = value_type(cid)
+        get(source)
+        if descriptor == FLAT:
+            iconst(offset); iconst(offset + _flat_size(resolve, cid))
+            code.op(0xB8); code.raw(_u2(pool.method("java/util/Arrays", "copyOfRange", "([JII)[J")))
+        else:
+            iconst(offset); code.op(0x2F); from_long(descriptor)  # laload
 
     def keep(ref: ValueRef) -> None:
         """Store a call's result, or drop it when nothing reads it."""
@@ -1488,7 +1604,7 @@ def _compile_method_pass(
         for target, _arguments in block.terminator.edges:
             predecessors[target].append(block_index)
     writes = {index: stored_slots(index) for index in range(len(graph.blocks))}
-    parameter_slots = frozenset(slot for slot in slot_types if slot < parameter_slot_end and slot not in freed)
+    parameter_slots = frozenset(slot for slot in slot_types if (slot < parameter_slot_end and slot not in freed) or slot == frame_slot)
     assigned_in = {index: (parameter_slots if index == graph.entry else every_slot) for index in range(len(graph.blocks))}
     changed = True
     while changed:
@@ -1524,6 +1640,13 @@ def _compile_method_pass(
             descriptor = slot_types[slot]
             code.op(*_ZERO[_kind_letter(descriptor)])
             local(_STORE, descriptor, slot)
+    if frame_offsets:
+        # fp = S; S += frame; trap when the shadow stack is exhausted
+        needs.update(("memory", "stack"))
+        stack_field = pool.field(class_name, "S", "I")
+        code.op(0xB2); code.raw(_u2(stack_field)); code.op(0x59); local(_STORE, "I", frame_slot)
+        iconst(frame_size); code.op(0x60, 0x59); code.op(0xB3); code.raw(_u2(stack_field))
+        iconst(_HEAP_START + STACK_BYTES); code.branch(0xA3, "trap")  # if_icmpgt
     if not code.buf and any(graph.entry == target for block in graph.blocks for target, _arguments in block.terminator.edges):
         code.op(0x00)  # a branch target may not be the implicit frame at offset 0
 
@@ -1601,7 +1724,7 @@ def _compile_method_pass(
                 else:
                     following = false_side if false_side not in placed else true_side
             current = following
-    trap_used = False
+    trap_used = bool(frame_offsets)  # the stack prologue's overflow check
     max_call_slots = 0
     following_block = [None]
     def statically_in_bounds(node) -> bool:
@@ -2065,6 +2188,76 @@ def _compile_method_pass(
                 mask("I", _NARROW_WIDTH[member.result])  # the JVM returns these sign-extended
             _store_call_result(node, block_index, node_index, slot_of, keep)
 
+        elif operation in (Operation.AGGREGATE_MAKE, Operation.SUM_MAKE):
+            # A fresh flattened long[] (ADR-159): fields in order, a sum's tag first.
+            size = _flat_size(resolve, node.results[0])
+            iconst(size); code.op(0xBC, 11)  # newarray long
+            buffer = scratch_slot(FLAT)
+            local(_STORE, FLAT, buffer)
+            if operation == Operation.SUM_MAKE:
+                local(_LOAD, FLAT, buffer); iconst(0); lconst(node.attributes[0]); code.op(0x50)  # lastore
+                store_field(buffer, 1, node.operands[0], node.operand_types[0])
+            else:
+                offset = 0
+                for operand, cid in zip(node.operands, node.operand_types):
+                    store_field(buffer, offset, operand, cid)
+                    offset += _flat_size(resolve, cid)
+            local(_LOAD, FLAT, buffer)
+            put(result)
+
+        elif operation == Operation.AGGREGATE_GET:
+            fields = _aggregate_fields(resolve, node.operand_types[0])
+            offset = sum(_flat_size(resolve, cid) for cid in fields[: node.attributes[0]])
+            load_field(node.operands[0], offset, node.results[0])
+            put(result)
+
+        elif operation == Operation.SUM_TAG:
+            get(node.operands[0]); iconst(0); code.op(0x2F)  # laload
+            if slot_of[result][1] == "I":
+                code.op(0x88)
+            put(result)
+
+        elif operation == Operation.SUM_GET:
+            trap_used = True
+            get(node.operands[0]); iconst(0); code.op(0x2F, 0x88); iconst(node.attributes[0])
+            code.branch(0xA0, "trap")  # if_icmpne: another variant
+            load_field(node.operands[0], 1, node.results[0])
+            put(result)
+
+        elif operation == Operation.FUNCTION_ADDRESS:
+            iconst(context.table[node.entity.cid])  # the function's table index (never 0)
+            put(result)
+
+        elif operation == Operation.CALL_INDIRECT:
+            dispatcher, descriptor = context.dispatchers[node.entity.cid]
+            get(node.operands[0])
+            machine = [operand for operand, cid in zip(node.operands[1:], node.operand_types[1:]) if value_type(cid) is not None]
+            slots = 1 + sum(_slots(get(operand)) for operand in machine)
+            max_call_slots = max(max_call_slots, slots)
+            code.op(0xB8); code.raw(_u2(pool.method(class_name, dispatcher, descriptor)))
+            call_elided = borrowed_view_returns(node.operand_types[1:], node.results, resolve)
+            returned = [index for index in range(len(node.results)) if index not in call_elided and ValueRef.node_result(block_index, node_index, index) in slot_of]
+            if returned:
+                keep(ValueRef.node_result(block_index, node_index, returned[0]))
+            for result_index, parameter_index in sorted(call_elided.items()):
+                given_back = ValueRef.node_result(block_index, node_index, result_index)
+                if given_back in needed and given_back in slot_of and slot_of[given_back][0] != slot_of[node.operands[1 + parameter_index]][0]:
+                    get(node.operands[1 + parameter_index]); put(given_back)
+
+        elif operation == Operation.STACK_ALLOC:
+            # Zero-filled storage at the allocation's fixed offset in this activation's frame (ADR-159).
+            needs.update(("memory", "stack"))
+            offset = frame_offsets[(block_index, node_index)]
+            extent = node.attributes[0]
+            memory_field(); local(_LOAD, "I", frame_slot); iconst(offset); code.op(0x60)
+            local(_LOAD, "I", frame_slot); iconst(offset + extent); code.op(0x60); iconst(0)
+            code.op(0xB8); code.raw(_u2(pool.method("java/util/Arrays", "fill", "([BIIB)V")))
+            local(_LOAD, "I", frame_slot); iconst(offset); code.op(0x60)
+            put(result)
+
+        elif operation == Operation.STACK_END:
+            pass  # proof only: the frame is released when the activation returns
+
         elif operation in RESOURCE_EFFECT_OPERATIONS:
             pass  # proof values only: erased
 
@@ -2135,6 +2328,8 @@ def _compile_method_pass(
 
         terminator = block.terminator
         if terminator.kind == TerminatorKind.RETURN:
+            if frame_offsets:
+                local(_LOAD, "I", frame_slot); code.op(0xB3); code.raw(_u2(pool.field(class_name, "S", "I")))  # S = fp
             own_elided = borrowed_view_returns(parameter_types, return_types, resolve)
             machine = [value for index, (value, cid) in enumerate(zip(terminator.values, return_types)) if value_type(cid) is not None and index not in own_elided]
             if machine:
@@ -2249,6 +2444,82 @@ def _store_call_result(node, block_index: int, node_index: int, slot_of, put) ->
         put(ValueRef.node_result(block_index, node_index, machine[0]))
 
 
+def _indirect_calls(functions, entry_cid: bytes, names, resolve, pool: _Pool, class_name: str):
+    """The function table and one dispatcher member per indirect-call contract (ADR-159).
+
+    A function pointer is the table index of a function whose address is taken
+    (1-based: 0 is never a function).  ``xax$i<k>(index, args...)`` calls the
+    addressed function of exactly the contract's types with that index, and traps
+    for any other index, as the platform does for a call through a bad pointer.
+    """
+    addressed: list[bytes] = []
+    contracts: dict[bytes, SemanticObject] = {}
+    for function in functions:
+        for block in parse_function_graph(function, resolve).blocks:
+            for node in block.nodes:
+                if node.operation == Operation.FUNCTION_ADDRESS and node.entity.cid not in addressed:
+                    addressed.append(node.entity.cid)
+                elif node.operation == Operation.CALL_INDIRECT:
+                    contracts.setdefault(node.entity.cid, node.entity)
+    table = {cid: index + 1 for index, cid in enumerate(sorted(addressed))}
+    dispatchers: dict[bytes, tuple[str, str]] = {}
+    plans = []
+    for number, cid in enumerate(sorted(contracts)):
+        summary = _decode_call_contract(contracts[cid], resolve)
+        where = cid.hex()
+        parameters = tuple(t for t in (_jvm_type(resolve, item, where) for item in summary.inputs) if t is not None)
+        elided = borrowed_view_returns(summary.inputs, summary.outputs, resolve)
+        returns = tuple(t for t in (_jvm_type(resolve, item, where) for index, item in enumerate(summary.outputs) if index not in elided) if t is not None)
+        if len(returns) > 1:
+            fail("XAX.JVM.ABI", where, "JVM-SINGLE-RESULT", "at most one machine result", list(returns))
+        name = f"xax$i{number}"
+        dispatchers[cid] = (name, _method_descriptor(("I", *parameters), returns))
+        candidates = []
+        for target_cid in sorted(table):
+            _graph, inputs, outputs = _decode_function_interface(resolve(target_cid), resolve)
+            if tuple(inputs) == tuple(summary.inputs) and tuple(outputs) == tuple(summary.outputs):
+                candidates.append(target_cid)
+        plans.append((name, parameters, returns, candidates))
+
+    def build() -> list[_Method]:
+        out = []
+        for name, parameters, returns, candidates in plans:
+            code = _Code(name)
+            slots, slot = [], 1
+            for descriptor in parameters:
+                slots.append(slot)
+                slot += _slots(descriptor)
+            for target_cid in candidates:
+                callee, callee_descriptor = names[target_cid]
+                order = list(range(len(parameters))) if callee == "entry" else _internal_order(list(range(len(parameters))), list(parameters))
+                code.op(0x1A); _int_constant(code, pool, table[target_cid]); code.branch(0xA0, ("next", target_cid))  # if_icmpne
+                for index in order:
+                    opcode = _LOAD[_kind_letter(parameters[index])]
+                    code.op(_SHORT_LOCAL[opcode] + slots[index]) if slots[index] <= 3 else code.op(opcode, slots[index])
+                code.op(0xB8); code.raw(_u2(pool.method(class_name, callee, callee_descriptor)))
+                code.op(_RETURN[_kind_letter(returns[0])] if returns else 0xB1)
+                code.mark(("next", target_cid))
+            code.op(0xBB); code.raw(_u2(pool.klass("java/lang/Error"))); code.op(0x59)
+            code.op(0x13); code.raw(_u2(pool.string(_TRAP_MESSAGE)))
+            code.op(0xB7); code.raw(_u2(pool.method("java/lang/Error", "<init>", "(Ljava/lang/String;)V"))); code.op(0xBF)
+            blob, frames = code.finish()
+            out.append(_Method(name, _method_descriptor(("I", *parameters), returns), blob, max(4, slot + 2), slot, frames, ("I", *parameters), ()))
+        return out
+
+    return _ClassContext(table, dispatchers), build
+
+
+def _int_constant(code: _Code, pool: _Pool, value: int) -> None:
+    if -1 <= value <= 5:
+        code.op(0x03 + value)
+    elif -128 <= value <= 127:
+        code.op(0x10, value & 0xFF)
+    elif -32768 <= value <= 32767:
+        code.op(0x11); code.raw(struct.pack(">h", value))
+    else:
+        code.op(0x13); code.raw(_u2(pool.integer(value)))
+
+
 def _initial_memory(functions: Sequence[SemanticObject], resolve) -> int:
     """Bytes for ``M`` at class initialization: every constant-size ``alloc`` site once, 16-aligned.
 
@@ -2268,7 +2539,8 @@ def _initial_memory(functions: Sequence[SemanticObject], resolve) -> int:
                 source = graph.blocks[size.block].nodes[size.index]
                 if source.operation == Operation.CONSTANT:
                     total = ((total + 15) & -16) + int(_decode_constant(source.entity, resolve)[1])
-    return max(_INITIAL_MEMORY, min(total, 1 << 30))
+    stack = any(node.operation == Operation.STACK_ALLOC for function in functions for block in parse_function_graph(function, resolve).blocks for node in block.nodes)
+    return max(_INITIAL_MEMORY, min(total + (STACK_BYTES if stack else 0), 1 << 30))
 
 
 def _shared_methods(pool: _Pool, shared: set[str], class_name: str) -> list[_Method]:
@@ -2326,7 +2598,9 @@ def _memory_methods(pool: _Pool, class_name: str, needs: set[str], initial: int 
     # <clinit>: M = new byte[64 KiB]; H = 16
     code = _Code("clinit")
     int_const(code, initial); code.op(0xBC, 8); put_static(code, M)
-    int_const(code, _HEAP_START); put_static(code, H)
+    if "stack" in needs:
+        int_const(code, _HEAP_START); put_static(code, pool.field(class_name, "S", "I"))
+    int_const(code, _HEAP_START + (STACK_BYTES if "stack" in needs else 0)); put_static(code, H)
     code.op(0xB1)
     method("<clinit>", "()V", code, (), 0)
 
@@ -2604,19 +2878,21 @@ def compile_jvm_bound_target(
         names[function.cid] = (name, _method_descriptor(parameters if name == "entry" else _internal_order(parameters), returns))
     pool = _Pool()
     needs: set[str] = set()
-    methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names, needs) for function in functions]
+    context, dispatch_methods = _indirect_calls(functions, entry.cid, names, resolve, pool, class_name)
+    methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names, needs, context) for function in functions]
+    methods.extend(dispatch_methods())
     shared = {item.split(":", 1)[1] for item in needs if item.startswith("shared:")}
     needs -= {f"shared:{item}" for item in shared}
-    if needs and target.identity != JVM_CLASSFILE_MEMORY_IDENTITY:
+    if needs and target.identity not in (JVM_CLASSFILE_MEMORY_IDENTITY, JVM_CLASSFILE_GENERAL_IDENTITY):
         fail("XAX.JVM.TARGET", target_object.cid.hex(), "JVM-MEMORY-PROFILE", JVM_CLASSFILE_MEMORY_IDENTITY.decode(), target.identity.decode("ascii", "replace"))
     methods.extend(_shared_methods(pool, shared, class_name))
     methods.extend(_memory_methods(pool, class_name, needs, _initial_memory(functions, resolve) if needs else _INITIAL_MEMORY))
-    threaded = process_entry and target.identity == JVM_CLASSFILE_MEMORY_IDENTITY
+    threaded = process_entry and target.identity in (JVM_CLASSFILE_MEMORY_IDENTITY, JVM_CLASSFILE_GENERAL_IDENTITY)
     if threaded:
         methods.extend(_threaded_launcher(pool, class_name, "entry"))
     elif process_entry:
         methods.append(_main_method(pool, class_name, "entry"))
-    fields = (("M", "[B"), ("H", "I")) if needs else ()
+    fields = ((("M", "[B"), ("H", "I")) if needs else ()) + ((("S", "I"),) if "stack" in needs else ())
     class_bytes, code_offsets = _class_file(class_name, methods, pool, fields, ("java/lang/Runnable",) if threaded else ())
     jar, class_offset = _jar(class_name, class_bytes, process_entry)
     entry_offset = class_offset + code_offsets["entry"]

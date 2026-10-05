@@ -938,3 +938,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - **Not met: 1.05× javac's class.** The remaining gap comes from the unchanged XAX program's shape, the same graph as on Linux. The parser is inlined into large functions, every call returns a packed (pos, out) state that is checked and unpacked, and every byte access goes through an explicit view. The line table maps each of 104 raising sites to its node (javac emits 98 entries for its statements).
 - Full suite: **1,111 passed, 5 skipped**.
 
+## JVM general profile (2026-10-05, ADR-159)
+
+- `jvm-classfile-general-v1` adds aggregates and sums (immutable flattened `long[]` values), stack allocations (a per-activation shadow stack in the linear memory), and indirect calls (a function table plus a generated dispatcher per contract). Recursion through stack storage and aggregates is exact.
+- EXECUTED against the reference executor (`tests/test_xax_jvm_general.py`), including the wrong-variant and shadow-stack overflow traps. The JVM row stays R4; the remaining operation gaps are atomics, links, and raw loads.
+- Full suite: **1,118 passed, 5 skipped**.
+

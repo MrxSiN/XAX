@@ -1162,6 +1162,26 @@ def jvm_classfile_memory_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
+# JVM class file, general profile (ADR-159): the memory profile plus aggregates
+# and sums (immutable flattened ``long[]`` values), stack allocations (a shadow
+# stack in the linear memory), and indirect calls (function-table indices).
+JVM_CLASSFILE_GENERAL_IDENTITY = b"jvm-classfile-general-v1"
+# stack alloc/end (7, 11), function address (41), indirect call (43), aggregates (51, 52), sums (53-55)
+JVM_GENERAL_OPERATIONS = (*JVM_MEMORY_OPERATIONS, 7, 11, 41, 43, 51, 52, 53, 54, 55)
+
+
+def jvm_classfile_general_target() -> SemanticObject:
+    """``jvm-classfile-memory-v1`` plus aggregates, sums, stack allocations, and indirect calls."""
+    operations = tuple(sorted(set(JVM_GENERAL_OPERATIONS)))
+    terminators = (1, 2, 3, 4)
+    body = bytearray(uleb(len(JVM_CLASSFILE_GENERAL_IDENTITY)) + JVM_CLASSFILE_GENERAL_IDENTITY)
+    for value in (1, JVM_ARCHITECTURE, JVM_ABI, JVM_JAR_FORMAT, 64, 64):
+        body.extend(uleb(value))
+    body.extend(uleb(len(operations)) + bytes(operations))
+    body.extend(uleb(len(terminators)) + bytes(terminators))
+    return SemanticObject.create(Kind.TARGET, bytes(body))
+
+
 # RISC-V RV64IM bare-metal raw image (ADR-113): LP64 integer convention,
 # position-independent code, no runtime.  The register convention is fixed by
 # the identity, so the profile carries no register lists.
