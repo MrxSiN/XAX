@@ -49,6 +49,7 @@ from typing import Callable, Sequence
 from xax_artifact import ArtifactSemanticRange
 from xax_compiler import parse_function_graph
 from xax_compiler import (
+    AtomicRmwKind,
     ForeignAllocatorContract,
     ForeignDeallocatorContract,
     JVM_CLASSFILE_MEMORY_IDENTITY,
@@ -310,6 +311,8 @@ def _jvm_type(resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str
         return "F" if decode_float_width(obj) == 32 else "D"
     elif form in (8, 9, 10):
         return FLAT  # an aggregate or sum: an immutable flattened long[] (ADR-159)
+    elif form == 11:
+        return "I"  # a link: a record's offset in the linear memory, 0 for null (ADR-160)
     elif form == 2:
         element, _permission, _alignment = _decode_pointer_type(obj, resolve)
         element_object = resolve(element)
@@ -367,7 +370,10 @@ def _kind_letter(descriptor: str) -> str:
 
 
 def _width(resolve: Callable[[bytes], SemanticObject], cid: bytes) -> int:
-    return decode_bits_width(resolve(cid))
+    obj = resolve(cid)
+    if obj.kind == Kind.TYPE and obj.body[:1] == b"\x0b":
+        return 32  # a link: a 32-bit record offset (ADR-160)
+    return decode_bits_width(obj)
 
 
 def _parse_method_descriptor(descriptor: str, where: str) -> tuple[tuple[str, ...], str]:
@@ -603,12 +609,13 @@ class _HookedCode(_Code):
 
 # Operations whose bytecode can raise a JVM exception or be a caller frame.
 _MAY_RAISE = frozenset({
-    Operation.CALL_INDIRECT, Operation.SUM_GET,
+    Operation.CALL_INDIRECT, Operation.SUM_GET, Operation.LINK_FOLLOW,
     Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.UDIV, Operation.UREM,
     Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE,
 })
 # Lowerings that place their own branch targets inside a node.
 _INTERNAL_LABELS = frozenset({
+    Operation.ATOMIC_CMPXCHG,
     Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT, Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC,
 })
 # Pure integer operations a single-use value may be evaluated from at its reader.
@@ -1536,7 +1543,7 @@ def _compile_method_pass(
     def memory_field() -> None:
         code.op(0xB2); code.raw(_u2(pool.field(class_name, "M", "[B")))
 
-    def memory_access(load: bool, size: int, value_cid: bytes, value_ref, push_address, result_ref) -> None:
+    def memory_access(load: bool, size: int, value_cid: bytes, value_ref, push_address, result_ref, push_value=None) -> None:
         """Little-endian access of ``size`` bytes at the pushed address (ADR-156)."""
         is_float = resolve(value_cid).body[:1] == b"\x07"
         if load:
@@ -1562,13 +1569,13 @@ def _compile_method_pass(
             return
         if size == 1:
             memory_field(); push_address()
-            if get(value_ref) == "J":
+            if (push_value() if push_value else get(value_ref)) == "J":
                 code.op(0x88)
             code.op(0x54)  # bastore keeps the low byte
             return
         needs.add(f"st{size}")
         push_address()
-        descriptor = get(value_ref)
+        descriptor = push_value() if push_value else get(value_ref)
         if descriptor == "F":
             code.op(0xB8); code.raw(_u2(pool.method("java/lang/Float", "floatToRawIntBits", "(F)I")))
         elif descriptor == "D":
@@ -2257,6 +2264,65 @@ def _compile_method_pass(
 
         elif operation == Operation.STACK_END:
             pass  # proof only: the frame is released when the activation returns
+
+        elif operation == Operation.LINK_MAKE:
+            get(node.operands[0]); put(result)  # a link is its record's offset (ADR-160)
+
+        elif operation == Operation.LINK_FOLLOW:
+            trap_used = True
+            get(node.operands[1]); code.branch(0x99, "trap")  # ifeq: following null traps
+            get(node.operands[1]); put(result)
+
+        elif operation in (Operation.LINK_TARGET, Operation.ATOMIC_FENCE):
+            pass  # proof only (one XAX thread: a fence orders nothing)
+
+        elif operation == Operation.RAW_LOAD_BITS_LE:
+            # The waived checks (alignment, initialization) need nothing here: the
+            # byte array is zero-filled and has no alignment.
+            needs.add("memory")
+            memory_access(True, node.attributes[0], node.results[0], None, lambda: get(node.operands[0]), result)
+
+        elif operation in (Operation.ATOMIC_LOAD, Operation.ATOMIC_STORE, Operation.ATOMIC_RMW, Operation.ATOMIC_CMPXCHG):
+            # One XAX thread runs on the JVM profiles (no thread creation, no callbacks), so
+            # each atomic is its sequential effect on the linear memory (ADR-160).
+            needs.add("memory")
+            pointer = node.operands[0]
+            element = _decode_pointer_type(resolve(node.operand_types[0]), resolve)[0]
+            size = (_width(resolve, element) + 7) // 8
+
+            def at() -> None:
+                get(pointer)
+
+            if operation == Operation.ATOMIC_LOAD:
+                memory_access(True, size, element, None, at, result)
+            elif operation == Operation.ATOMIC_STORE:
+                memory_access(False, size, element, node.operands[1], at, None)
+            elif operation == Operation.ATOMIC_RMW:
+                memory_access(True, size, element, None, at, result)
+                if AtomicRmwKind(node.attributes[0]) == AtomicRmwKind.EXCHANGE:
+                    memory_access(False, size, element, node.operands[1], at, None)
+                else:
+                    def added() -> str:
+                        descriptor = get(result); get(node.operands[1])
+                        code.op(_ARITHMETIC[Operation.ADD_WRAP][descriptor == "J"])
+                        mask(descriptor, _width(resolve, element))
+                        return descriptor
+                    memory_access(False, size, element, None, at, None, added)
+            else:
+                expected, desired = node.operands[1], node.operands[2]
+                memory_access(True, size, element, None, at, result)
+                unchanged = fresh()
+                if get(result) == "J":
+                    get(expected); code.op(0x94); code.branch(0x9A, unchanged)  # lcmp; ifne
+                else:
+                    get(expected); code.branch(0xA0, unchanged)  # if_icmpne
+                memory_access(False, size, element, desired, at, None)
+                code.mark(unchanged)
+                if get(result) == "J":
+                    get(expected); code.op(0x94); _compare_result(code, iconst, "eq")
+                else:
+                    get(expected); code.op(0x82, 0x59, 0x74, 0x80); iconst(31); code.op(0x7C); iconst(1); code.op(0x82)  # a == b
+                put(ValueRef.node_result(block_index, node_index, 1))
 
         elif operation in RESOURCE_EFFECT_OPERATIONS:
             pass  # proof values only: erased

@@ -1162,16 +1162,18 @@ def jvm_classfile_memory_target() -> SemanticObject:
     return SemanticObject.create(Kind.TARGET, bytes(body))
 
 
-# JVM class file, general profile (ADR-159): the memory profile plus aggregates
+# JVM class file, general profile (ADR-159/160): the memory profile plus aggregates
 # and sums (immutable flattened ``long[]`` values), stack allocations (a shadow
-# stack in the linear memory), and indirect calls (function-table indices).
+# stack in the linear memory), indirect calls (function-table indices), record
+# links, raw loads, and atomics (sequential: one XAX thread runs on the JVM).
 JVM_CLASSFILE_GENERAL_IDENTITY = b"jvm-classfile-general-v1"
-# stack alloc/end (7, 11), function address (41), indirect call (43), aggregates (51, 52), sums (53-55)
-JVM_GENERAL_OPERATIONS = (*JVM_MEMORY_OPERATIONS, 7, 11, 41, 43, 51, 52, 53, 54, 55)
+# stack alloc/end (7, 11), function address (41), indirect call (43), aggregates (51, 52),
+# sums (53-55); ADR-160: atomics (20-24), raw loads (40), links (74-76)
+JVM_GENERAL_OPERATIONS = (*JVM_MEMORY_OPERATIONS, 7, 11, 41, 43, 51, 52, 53, 54, 55, *range(20, 25), 40, 74, 75, 76)
 
 
 def jvm_classfile_general_target() -> SemanticObject:
-    """``jvm-classfile-memory-v1`` plus aggregates, sums, stack allocations, and indirect calls."""
+    """``jvm-classfile-memory-v1`` plus aggregates, sums, stack allocations, indirect calls, links, raw loads, and atomics."""
     operations = tuple(sorted(set(JVM_GENERAL_OPERATIONS)))
     terminators = (1, 2, 3, 4)
     body = bytearray(uleb(len(JVM_CLASSFILE_GENERAL_IDENTITY)) + JVM_CLASSFILE_GENERAL_IDENTITY)

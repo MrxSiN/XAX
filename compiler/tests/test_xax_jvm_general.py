@@ -15,6 +15,11 @@ import shutil
 import unittest
 
 from xax_compiler import (
+    AtomicOrder,
+    AtomicRmwKind,
+    AtomicScope,
+    CompareExchangeStrength,
+    EffectDomain,
     Block,
     FloatFormat,
     IntCompare,
@@ -29,7 +34,10 @@ from xax_compiler import (
     array_type,
     bits_type,
     call_contract,
+    effect_type,
     execute,
+    link_type,
+    null_link,
     float_type,
     graph_fragment,
     group_member_function,
@@ -226,6 +234,95 @@ def _recursive_stack_program():
     return function, (result, words, owner, effect, B1, B32, *graph.objects.values(), fragment, group, member, *outer.objects.values())
 
 
+def _atomic_program(width: int):
+    """``f(a, b)``: every atomic form on one stack cell, results folded into one value (ADR-160)."""
+    word = bits_type(width)
+    size = width // 8
+    cell = pointer_type(word, Permission.READ_WRITE, size)
+    owner, effect = stack_owner_type(), memory_effect_type()
+    order, scope = AtomicOrder.SEQ_CST, AtomicScope.SYSTEM
+    graph = GraphBuilder()
+    entry = graph.block(word, word)
+    a, b = entry.params
+    pointer, token, memory = entry.op(Operation.STACK_ALLOC, (), (cell, owner, effect), attributes=(size, size))
+    memory = entry.op1(Operation.ATOMIC_STORE, (pointer, a, memory), effect, attributes=(order, scope, size))
+    added, memory = entry.op(Operation.ATOMIC_RMW, (pointer, b, memory), (word, effect), attributes=(AtomicRmwKind.ADD_WRAP, order, scope, size))
+    swapped, memory = entry.op(Operation.ATOMIC_RMW, (pointer, a, memory), (word, effect), attributes=(AtomicRmwKind.EXCHANGE, order, scope, size))
+    first, first_ok, memory = entry.op(Operation.ATOMIC_CMPXCHG, (pointer, a, b, memory), (word, B1, effect), attributes=(order, order, scope, size, CompareExchangeStrength.STRONG))
+    second, second_ok, memory = entry.op(Operation.ATOMIC_CMPXCHG, (pointer, a, entry.const(word, 9), memory), (word, B1, effect), attributes=(order, order, scope, size, CompareExchangeStrength.STRONG))
+    final, memory = entry.op(Operation.ATOMIC_LOAD, (pointer, memory), (word, effect), attributes=(order, scope, size))
+    entry.nodes.append(Node(Operation.STACK_END, (token, memory), ()))
+    total = final
+    for value, rotation in ((added, 3), (swapped, 5), (first, 7), (second, 11)):
+        total = entry.op1(Operation.BIT_XOR, (entry.op1(Operation.ROTATE_RIGHT, (total,), word, attributes=(rotation,)), value), word)
+    for flag, shift in ((first_ok, 1), (second_ok, 2)):
+        total = entry.op1(Operation.ADD_WRAP, (total, entry.op1(Operation.MUL_WRAP, (entry.op1(Operation.INT_ZERO_EXTEND, (flag,), word), entry.const(word, 1 << shift)), word)), word)
+    entry.ret(total)
+    function = graph.function((word, word), (word,))
+    return function, (word, cell, owner, effect, B1, *graph.objects.values())
+
+
+LINK = link_type()
+RECORD = tuple_type((B32, B32, LINK))
+RECORDS = pointer_type(RECORD, Permission.READ_WRITE, 16)
+KEY = pointer_type(B32, Permission.READ_WRITE, 4)
+NEXT = pointer_type(LINK, Permission.READ_WRITE, 8)
+
+
+def _link_program(*, null_follow: bool = False):
+    """``f(a, b, c)``: three records linked in stack storage, walked with ``link_follow`` (ADR-160)."""
+    owner, effect = stack_owner_type(), memory_effect_type()
+    graph = GraphBuilder()
+    graph.track(owner, effect, B1, LINK, RECORD, RECORDS, KEY, NEXT)
+    entry = graph.block(B32, B32, B32)
+    keys = entry.params
+    view, token, memory = entry.op(Operation.STACK_ALLOC, (), (RECORDS, owner, effect), attributes=(48, 16))
+    records = [view if index == 0 else entry.op1(Operation.ADDRESS_OFFSET, (view,), RECORDS, attributes=(16 * index,)) for index in range(3)]
+    null = entry.op1(Operation.CONSTANT, (), LINK, entity=null_link())
+    for index, (record, key) in enumerate(zip(records, keys)):
+        following = entry.op1(Operation.LINK_MAKE, (records[index + 1],), LINK) if index < 2 else null
+        memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), KEY, attributes=(0,)), key, memory), effect, attributes=(4, 4))
+        memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), KEY, attributes=(4,)), entry.const(B32, 0), memory), effect, attributes=(4, 4))
+        memory = entry.op1(Operation.STORE_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (record,), NEXT, attributes=(8,)), following, memory), effect, attributes=(8, 8))
+    if null_follow:  # a loaded null link: verified, traps at run time
+        first, memory = entry.op(Operation.LOAD_BITS_LE, (entry.op1(Operation.ADDRESS_OFFSET, (records[-1],), NEXT, attributes=(8,)), memory), (LINK, effect), attributes=(8, 8))
+    else:
+        first = entry.op1(Operation.LINK_MAKE, (view,), LINK)
+    walk, step, done = graph.block(LINK, B32, owner, effect), graph.block(LINK, B32, owner, effect), graph.block(B32, owner, effect)
+    if null_follow:
+        entry.op1(Operation.LINK_FOLLOW, (view, first), RECORDS)
+    entry.br(walk, first, entry.const(B32, 0), token, memory)
+    cursor, total, token, memory = walk.params
+    test = walk.op1(Operation.INT_COMPARE, (cursor, walk.op1(Operation.CONSTANT, (), LINK, entity=null_link())), B1, attributes=(IntCompare.NE,))
+    walk.cbr(test, step, (cursor, total, token, memory), done, (total, token, memory))
+    cursor, total, token, memory = step.params
+    node = step.op1(Operation.LINK_FOLLOW, (view, cursor), RECORDS)
+    key, memory = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), KEY, attributes=(0,)), memory), (B32, effect), attributes=(4, 4))
+    following, memory = step.op(Operation.LOAD_BITS_LE, (step.op1(Operation.ADDRESS_OFFSET, (node,), NEXT, attributes=(8,)), memory), (LINK, effect), attributes=(8, 8))
+    step.br(walk, following, step.op1(Operation.ADD_WRAP, (total, key), B32), token, memory)
+    total, token, memory = done.params
+    done.nodes.append(Node(Operation.STACK_END, (token, memory), ()))
+    done.ret(total)
+    function = graph.function((B32, B32, B32), (B32,))
+    return function, (null_link(), *graph.objects.values())
+
+
+def _raw_load_program():
+    """A raw load whose initialization check is waived reads the zero-filled stack cell."""
+    pointer = pointer_type(B32, Permission.READ, 4)
+    owner, effect = stack_owner_type(), memory_effect_type()
+    unsafe = effect_type(EffectDomain.UNSAFE)
+    graph = GraphBuilder()
+    entry = graph.block(B32, unsafe)
+    a, token_unsafe = entry.params
+    cell, owner_value, memory = entry.op(Operation.STACK_ALLOC, (), (pointer, owner, effect), attributes=(4, 4))
+    loaded, memory, token_unsafe = entry.op(Operation.RAW_LOAD_BITS_LE, (cell, memory, token_unsafe), (B32, effect, unsafe), attributes=(4, 4, 2))
+    entry.nodes.append(Node(Operation.STACK_END, (owner_value, memory), ()))
+    entry.ret(entry.op1(Operation.ADD_WRAP, (loaded, a), B32), token_unsafe)
+    function = graph.function((B32, unsafe), (B32, unsafe))
+    return function, (pointer, owner, effect, unsafe, B32, *graph.objects.values())
+
+
 @unittest.skipUnless(JAVA, "requires java and javac")
 class JvmGeneralProfileTests(unittest.TestCase):
     def _check(self, program, calls, *, width=32):
@@ -279,6 +376,29 @@ class JvmGeneralProfileTests(unittest.TestCase):
         overflow = process(STACK_BYTES // frame * 2)
         self.assertEqual(overflow.returncode, 1)
         self.assertIn(b"java.lang.Error", overflow.stderr)
+
+
+    def test_atomics_on_one_thread_match_their_sequential_effect(self):
+        for width in (32, 64):
+            mask = (1 << width) - 1
+            values = (0, 1, 9, mask, 0x5A5A5A5A5A5A5A5A & mask)
+            with self.subTest(width=width):
+                self._check(_atomic_program(width), [(a, b) for a in values for b in values], width=width)
+
+    def test_linked_records_walk_and_a_null_follow_traps(self):
+        function, objects = _link_program()
+        _reader, image = _compile(function, objects)
+        calls = [(5, 7, 30), (0, 0, 0), ((1 << 32) - 1, 2, 3)]
+        self.assertEqual(run_jvm_calls(image, calls), tuple(sum(call) & 0xFFFFFFFF for call in calls))
+        function, objects = _link_program(null_follow=True)
+        _reader, image = _compile(function, objects)
+        self.assertEqual(run_jvm_calls(image, [(1, 2, 3)]), ("trap java.lang.Error",))
+
+    def test_a_raw_load_reads_zero_filled_stack_storage(self):
+        function, objects = _raw_load_program()
+        _reader, image = _compile(function, objects)
+        calls = [(0,), (41,), ((1 << 32) - 1,)]
+        self.assertEqual(run_jvm_calls(image, calls), tuple(a for (a,) in calls))  # 0 + a
 
 
 class JvmGeneralProfileRejectionTests(unittest.TestCase):

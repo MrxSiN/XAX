@@ -1187,6 +1187,10 @@ Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-g
 - **Aggregates and sums.** An aggregate or sum value lowers to an immutable `long[]` holding its flattened contents. Each scalar takes one element holding its raw bits (`int` values sign-extended, floats as raw bits). Nested aggregates are copied into place. A sum is its tag followed by the largest variant's slots. A `jvm-ref` value MUST NOT appear inside one (`JVM-AGGREGATE-SCALAR`). `sum.get` of another variant traps.
 - **Stack allocations.** These live in a shadow stack occupying `[16, 16 + 2^20)` of the linear memory; the heap starts above it. Each activation takes a frame, 16-aligned and sized for all of its allocations, from the static stack pointer on entry. Each allocation has a fixed offset in that frame and is zero-filled when it executes. Every return gives the frame back. Exhausting the region traps.
 - **Indirect calls.** A function pointer lowers to a nonzero `int` index of a function whose address the program takes. `call.indirect` calls a generated dispatcher for its contract, which invokes the addressed function of exactly the contract's types or traps.
+- **Links, raw loads, and atomics** (ADR-160). The profile also has `link.make/follow/target`, `raw.load.bits.le`, and the atomic operations.
+  - A link is its record's `int` offset (0 is null). It is stored as 8 bytes, zero-extended, and `link.follow` of null traps.
+  - A raw load is an ordinary load: the memory is zero-filled and has no alignment.
+  - Exactly one XAX thread runs on a JVM profile: the profiles create no threads and have no JVM-to-XAX callbacks. So each atomic operation is its sequential effect on the linear memory, and orderings and fences add nothing. A profile that admits a second XAX thread MUST lower atomics to JVM atomics instead.
 
 ### 21.9d RISC-V RV64 raw images
 

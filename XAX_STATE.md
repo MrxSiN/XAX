@@ -944,3 +944,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - EXECUTED against the reference executor (`tests/test_xax_jvm_general.py`), including the wrong-variant and shadow-stack overflow traps. The JVM row stays R4; the remaining operation gaps are atomics, links, and raw loads.
 - Full suite: **1,118 passed, 5 skipped**.
 
+## JVM links, raw loads, and atomics (2026-10-05, ADR-160)
+
+- The general profile now has record links (an `int` offset, stored as 8 bytes; null traps), raw loads, and atomics. Atomics are exact as sequential memory operations because exactly one XAX thread runs on the JVM profiles. The JVM now has every operation of the native general profiles.
+- EXECUTED (`tests/test_xax_jvm_general.py`): atomics match the reference executor at 32 and 64 bits; a linked list walk sums its keys; a null follow traps. JVM `atomics` field EXECUTED.
+- Full suite: **1,121 passed, 5 skipped**.
+
