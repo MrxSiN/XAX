@@ -369,7 +369,7 @@ Every current result (superseded sections excluded) with XAX above 1.05× the fa
 
 **Run time (or its emulated proxy):**
 1. **RISC-V RV64IM, `sum_to`** (§15.9, `riscv64_twin_evidence.json`): 1,216× clang `-O2` emulated instructions (17,030 vs 14). Clang turns the loop into a closed form; XAX runs it.
-2. **AArch64 Linux `filestat`** (§15.10, `linux_aarch64_filestat_evidence.json`): 7.18× `aarch64-linux-gnu-gcc -O2` qemu wall time (0.513 vs 0.072 s). The frame path keeps every value in memory; the register path (ADR-110) does not cover this workload.
+2. **AArch64 Linux `filestat`** (§15.10, `linux_aarch64_filestat_evidence.json`): 7.18× `aarch64-linux-gnu-gcc -O2` qemu wall time (0.513 vs 0.072 s). The frame path keeps every value in memory; the register path (ADR-110) does not cover this workload. *Done (ADR-168, §15.20): now the fastest arm, at 0.767× gcc and 0.924× clang.*
 3. **SPIR-V Collatz** (§15.11, `spirv_compute_evidence.json`): 6.88× glslang dispatch time on llvmpipe (74.3 vs 10.8 ms). The dispatch-loop lowering blocks vectorization; structured lowering of reducible CFGs is next.
 4. **RISC-V RV64IM, `collatz`** (§15.9): 3.72× clang `-O2` emulated instructions. No compare/branch fusion or copy coalescing yet.
 5. **JVM direct emission vs the native-bridge arm** (§15.19, `jvm_strategies_evidence.json`): XAX's own native-plus-JNI arm runs `jsonmin` in 0.68× the direct class's process time, so the direct arm is 1.47× it. Direct emission still beats `javac` (0.90×) and `kotlinc`. The gap is the 256 MiB entry thread and HotSpot interpreting before JIT. This is an XAX-vs-XAX comparison, outside §15.0a's `javac`/`kotlinc` baselines.

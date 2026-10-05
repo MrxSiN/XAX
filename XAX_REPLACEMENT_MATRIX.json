@@ -479,7 +479,8 @@
         ],
         "optimization": [
           "PROTOTYPE",
-          "compiler/benchmarks/linux_aarch64_filestat_evidence.json"
+          "compiler/benchmarks/linux_aarch64_filestat_evidence.json",
+          "compiler/tests/test_xax_aarch64_linux_regalloc.py"
         ],
         "real_execution": [
           "EXECUTED",
@@ -500,7 +501,7 @@
       },
       "blockers": [
         "executed only under qemu-aarch64 user mode, not hardware (OI-44); emulated times are not performance evidence",
-        "frame path keeps every value in memory: filestat is 6.6x gcc -O2 emulated wall time; the register path (ADR-110) covers only scalar arithmetic, compares, and calls",
+        "function-wide register allocation (ADR-168) covers integer and pointer functions: filestat runs at 0.767x gcc -O2 and 0.924x clang -O2 under qemu (emulated, not performance evidence); recursion groups, borrowed-view returns, floats, and aggregates still take the frame path",
         "no TLS, unwind/DWARF, argv/env, threads, atomics, or C-callable XAX entries on this profile; no peak-memory measurement"
       ]
     },

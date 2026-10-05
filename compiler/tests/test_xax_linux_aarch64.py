@@ -48,7 +48,7 @@ RUNNER = aarch64_runner() is not None
 SYSROOT_LIBC = os.path.exists(os.path.join(SYSROOT, "lib", "libc.so.6")) or not aarch64_runner()
 SYSROOT_LIBZ = os.path.exists(os.path.join(SYSROOT, "lib", "libz.so.1"))
 SIGTRAP = -5
-FRAME_BYTES = 240  # filestat entry frame with liveness-shared slots (ADR-123)
+FRAME_BYTES = 240  # filestat entry frame: liveness-shared slots (ADR-123), now register-allocated (ADR-168)
 
 
 def _status_program(compute, *, dynamic: bool = False, explicit_exit: bool = True):
@@ -182,7 +182,8 @@ class LinuxAarch64ProfileTests(unittest.TestCase):
         bundle = executable.bundle
         prologue = int.from_bytes(bundle.code[dict(bundle.function_offsets)[program.entry.cid]:][:4], "little")
         self.assertEqual(prologue & 0xFFC003FF, 0xD10003FF)  # sub sp, sp, #frame
-        # One slot per SSA value needed 4,848 bytes, past the 4 KiB frame limit.
+        # One slot per SSA value needed 4,848 bytes, past the 4 KiB frame limit;
+        # with ADR-168 registers the frame holds only saved registers.
         self.assertLessEqual((prologue >> 10) & 0xFFF, FRAME_BYTES)
         self.assertEqual(executable.data, compile_linux_aarch64_executable(program.reader, program.entry.cid, program.target.cid).data)
 
@@ -211,8 +212,8 @@ class LinuxAarch64ExecutionTests(unittest.TestCase):
                 self.assertEqual(status, execute(reader, value.cid, ())[0] & 0xFF)
 
     def test_every_compare_kind_on_the_frame_path(self):
-        # INT_ZERO_EXTEND keeps these functions off the register path, so the
-        # frame path's own condition encoding is what executes.
+        # On the Linux profiles these run through the ADR-168 allocator (the
+        # frame path's encodings are covered by the Android and board targets).
         for kind in IntCompare:
             for left, right in ((3, 5), (5, 5), (0xFFFFFFFE, 1)):
                 def compute(block, kind=kind, left=left, right=right):

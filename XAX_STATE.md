@@ -995,3 +995,10 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - `jvm-putstatic`. EXECUTED (`tests/test_xax_jvm_objects.py`) against a `javac`-compiled class on the class path, because no JDK module has a public mutable static field. Java code observes the XAX writes and XAX reads Java's.
 - The importer now imports static field writes; `tests/test_xax_jvm_import.py` reproduces the hand-built declarations byte for byte.
 - The JVM direct-emission gaps listed in OI-35 are all closed.
+
+## Linux AArch64 register allocation (2026-10-05, ADR-168)
+
+- `xax_aarch64_regalloc`: function-wide allocation for the Linux AArch64 profiles. Live ranges keep their holes, values are assigned hottest first, and constants are folded or hoisted. It adds compare/branch fusion, branch layout, proven bounds checks, a flag-free membership bit test, and `bic`. The range analysis is shared with x86-64 (`xax_ranges`).
+- EXECUTED: a random differential corpus against the reference executor (`tests/test_xax_aarch64_linux_regalloc.py`), plus the existing Linux AArch64 execution tests.
+- MEASURED-EMULATED (§15.20): `filestat` under qemu is the fastest of XAX, clang, rustc, and gcc. XAX takes 0.767× gcc `-O2`'s time (was 7.18×), with a 4,688-byte executable.
+- Full suite: **1,150 passed, 5 skipped**.

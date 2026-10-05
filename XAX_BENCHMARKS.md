@@ -745,6 +745,8 @@ Before register allocation (every value spilled), Collatz measured 15.9× instru
 
 ### 15.10 Linux AArch64 `filestat`: XAX vs `aarch64-linux-gnu-gcc -O2`, emulated (ADR-123; MEASURED-EMULATED, 2026-10-03)
 
+> Historical record. The current result is §15.20 (ADR-168), and `linux_aarch64_filestat_evidence.json` now holds that run.
+
 The unchanged U1.3 `filestat` graph, built with the Linux AArch64 platform package. Executor: qemu-aarch64 8.2.2 user mode on x86-64; baseline: `aarch64-linux-gnu-gcc` 13.3.0 `-O2`, stripped, linked against the same `libz.so.1` (zlib 1.3). Input: 4 MiB generated corpus; 7 runs after 1 warmup; both outputs equal the reference contract.
 
 | Arm | Artifact bytes | Emulated wall time (median) |
@@ -934,3 +936,31 @@ The native arm pays in:
 - managed interop: no Java objects or callbacks;
 - traps: a native trap aborts the JVM.
 
+### 15.20 Linux AArch64 `filestat` after ADR-168: XAX vs gcc, clang, and rustc, emulated (MEASURED-EMULATED, 2026-10-05)
+
+Same graph, input (4 MiB), and executor (qemu-aarch64 8.2.2 user mode on the x86-64 host) as §15.10. Every arm links the same `libz.so.1` (zlib 1.3) and is stripped. Every output equals `reference_filestat`. 31 timed interleaved rounds with rotating arm order, after 3 warmup rounds (`benchmarks/linux_aarch64_filestat.py`; evidence `linux_aarch64_filestat_evidence.json`, format v2).
+
+| Arm | Median wall (s) | Ratio vs fastest | Artifact bytes |
+|---|---:|---:|---:|
+| XAX (`aarch64-linux-elf-dynexec-v1`, ADR-168) | 0.0568 | 1.000 | 4,688 |
+| clang 18.1.3 `-O2` | 0.0615 | 1.082 | 67,704 |
+| rustc 1.97.0 `-C opt-level=3` | 0.0722 | 1.271 | 332,480 |
+| aarch64-linux-gnu-gcc 13.3.0 `-O2` | 0.0741 | 1.304 | 67,496 |
+
+**Ratios.** XAX / gcc is 0.767 in time (7.18 in §15.10) and 0.069 in bytes. The code is 3,688 bytes.
+
+**Start-up and loop measured separately** (9 runs each):
+- start-up (0-byte input): XAX 20–22 ms, gcc and clang 23–26 ms, rustc 35–37 ms;
+- 32 MiB input: XAX 298 ms, clang 315 ms.
+
+**The inner loop is 21 instructions with one backward branch.** It holds:
+- the byte load;
+- the newline test;
+- the flag-free whitespace bit test and the `bic` word start;
+- the scaled table update;
+- three counters;
+- FNV-1a;
+- the index step;
+- one copy and the fused compare.
+
+**qemu's costs are not hardware's.** A `cmp`/`ccmp` chain for the whitespace test was slower under qemu (395 vs 365 ms at 32 MiB) despite fewer instructions; the flag-free bit test beat both (298 ms). These are emulated times, so they are not performance evidence (§23.17, OI-44).

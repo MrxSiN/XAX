@@ -1,11 +1,18 @@
 {
   "evidence_label": "EXECUTED (outputs, sizes); MEASURED-EMULATED (times)",
-  "format": "xax-linux-aarch64-filestat-evidence-v1",
+  "format": "xax-linux-aarch64-filestat-evidence-v2",
   "host": {
     "baseline_compiler": "aarch64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
     "executor": "qemu-aarch64 -L aarch64-linux-gnu",
+    "flags": {
+      "clang-O2": "--target=aarch64-linux-gnu -B/usr/bin/aarch64-linux-gnu- --gcc-toolchain=/usr -O2",
+      "gcc-O2": "-O2",
+      "rustc-O3": "-C opt-level=3 -C panic=abort -C codegen-units=1 --target aarch64-unknown-linux-gnu -C linker=aarch64-linux-gnu-gcc"
+    },
     "machine": "x86_64",
     "qemu": "qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
     "zlib": "1.3"
   },
   "input": {
@@ -13,33 +20,49 @@
     "sha256": "74f65ca921d36a78a52e9d0f0a907f1911c6a9a63cb0eef9503c4b0dae18bdc9"
   },
   "method": {
-    "repetitions": 7,
+    "order": "interleaved rounds rotating by one",
+    "repetitions": 31,
     "timer": "time.perf_counter around the whole emulated process",
-    "warmup": 1
+    "warmup": 3
   },
   "output": "4194304 49453 608070 16914471643810082238 1494747281 32\n",
   "results": {
+    "clang-O2": {
+      "artifact_bytes": 67704,
+      "time_ratio_vs_fastest": 1.082,
+      "wall_seconds_median": 0.061465,
+      "wall_seconds_stdev": 0.009879
+    },
     "gcc-O2": {
       "artifact_bytes": 67496,
-      "wall_seconds_median": 0.071544,
-      "wall_seconds_stdev": 0.011881
+      "time_ratio_vs_fastest": 1.304,
+      "wall_seconds_median": 0.074107,
+      "wall_seconds_stdev": 0.006886
     },
     "ratio_xax_over_gcc": {
-      "artifact_bytes": 0.208,
-      "wall_seconds_median": 7.177
+      "artifact_bytes": 0.069,
+      "wall_seconds_median": 0.767
+    },
+    "rustc-O3": {
+      "artifact_bytes": 332480,
+      "time_ratio_vs_fastest": 1.271,
+      "wall_seconds_median": 0.072186,
+      "wall_seconds_stdev": 0.008188
     },
     "xax": {
-      "artifact_bytes": 14024,
-      "wall_seconds_median": 0.513484,
-      "wall_seconds_stdev": 0.018893
+      "artifact_bytes": 4688,
+      "performance_class": "meets-primary-target",
+      "time_ratio_vs_fastest": 1.0,
+      "wall_seconds_median": 0.056814,
+      "wall_seconds_stdev": 0.006754
     }
   },
   "workload": "U1.3 filestat graph (openat/read loop, counts, FNV-1a 64, zlib crc32 via libz.so.1, histogram, decimal write)",
   "xax": {
-    "artifact_bytes": 14024,
-    "artifact_sha256": "dedd61271d4ea4f818ace1459859476f59ceb524a3fd73d78fd2015c5aaf783c",
-    "code_bytes": 13024,
-    "codegen": "AAPCS64 frame path with liveness-shared value slots (ADR-123); no register allocation for this workload yet",
+    "artifact_bytes": 4688,
+    "artifact_sha256": "23332d71e123a3b002fa588564a319f8f48ab98318be7b13f1989c66bdebaae0",
+    "code_bytes": 3688,
+    "codegen": "function-wide register allocation for the Linux AArch64 profiles (ADR-168, xax_aarch64_regalloc)",
     "dt_needed": [
       "libz.so.1"
     ],
