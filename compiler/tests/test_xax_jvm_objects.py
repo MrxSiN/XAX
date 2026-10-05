@@ -11,13 +11,18 @@ including a comparator callback that takes objects (ADR-161) to sort an
 from __future__ import annotations
 
 import shutil
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
 from xax_compiler import (
+    EffectDomain,
     IntCompare,
     Operation,
     XaxError,
     bits_type,
+    effect_type,
     foreign_function_symbol,
     jvm_classfile_target,
     jvm_classfile_general_target,
@@ -312,6 +317,98 @@ class JvmObjectTests(unittest.TestCase):
         array = block.op1(Operation.CALL_FOREIGN, (block.const(B32, 4),), INTS, entity=NEW_INTS)
         block.ret(block.op1(Operation.CALL_FOREIGN, (array, n), B32, entity=LOAD_INT))
         self.assertEqual(run_jvm_calls(_compile(graph, (B32,), (B32,)), [(3,), (4,)]), (0, "trap java.lang.ArrayIndexOutOfBoundsException"))
+
+
+# A class on the class path with public mutable static fields: no JDK module has one (ADR-167).
+STATICS_SOURCE = """package xaxtest;
+public final class Statics {
+  public static int count;
+  public static long total;
+  public static byte small;
+  public static String label;
+  public static int bump() { return ++count; }
+}
+"""
+IO = effect_type(EffectDomain.IO, 0)
+B8, B64 = bits_type(8), bits_type(64)
+STATICS = b"xaxtest/Statics"
+
+
+def _field(abi: bytes, member: bytes, inputs, outputs):
+    """A static field access ordered by the I/O effect: shared mutable state."""
+    return foreign_function_symbol(STATICS, member, (*inputs, IO), (*outputs, IO), abi=abi)
+
+
+SET_COUNT = _field(b"jvm-putstatic", b"count:I", (B32,), ())
+GET_COUNT = _field(b"jvm-getstatic", b"count:I", (), (B32,))
+SET_TOTAL = _field(b"jvm-putstatic", b"total:J", (B64,), ())
+GET_TOTAL = _field(b"jvm-getstatic", b"total:J", (), (B64,))
+SET_SMALL = _field(b"jvm-putstatic", b"small:B", (B8,), ())
+GET_SMALL = _field(b"jvm-getstatic", b"small:B", (), (B8,))
+SET_LABEL = _field(b"jvm-putstatic", b"label:Ljava/lang/String;", (STRING,), ())
+GET_LABEL = _field(b"jvm-getstatic", b"label:Ljava/lang/String;", (), (STRING,))
+BUMP = foreign_function_symbol(STATICS, b"bump()I", (IO,), (B32, IO), abi=b"jvm-invokestatic")
+STATIC_DECLARATIONS = (SET_COUNT, GET_COUNT, SET_TOTAL, GET_TOTAL, SET_SMALL, GET_SMALL, SET_LABEL, GET_LABEL, BUMP)
+
+
+def _statics_classpath(directory: str) -> str:
+    source = Path(directory, "xaxtest", "Statics.java")
+    source.parent.mkdir()
+    source.write_text(STATICS_SOURCE)
+    subprocess.run(["javac", "-d", directory, str(source)], check=True, capture_output=True)
+    return directory
+
+
+def _static_program():
+    """``f(n)``: write ``count``, ``total``, ``small``, ``label``; Java's ``bump()`` sees the write; read them back."""
+    graph = GraphBuilder()
+    block = graph.block(B32, IO)
+    n, io = block.params
+    io = block.op1(Operation.CALL_FOREIGN, (n, io), IO, entity=SET_COUNT)
+    bumped, io = block.op(Operation.CALL_FOREIGN, (io,), (B32, IO), entity=BUMP)  # count = n + 1, written by Java
+    count, io = block.op(Operation.CALL_FOREIGN, (io,), (B32, IO), entity=GET_COUNT)
+    wide = block.op1(Operation.INT_ZERO_EXTEND, (n,), B64)
+    io = block.op1(Operation.CALL_FOREIGN, (block.op1(Operation.MUL_WRAP, (wide, wide), B64), io), IO, entity=SET_TOTAL)
+    total, io = block.op(Operation.CALL_FOREIGN, (io,), (B64, IO), entity=GET_TOTAL)
+    io = block.op1(Operation.CALL_FOREIGN, (block.op1(Operation.INT_TRUNCATE, (n,), B8), io), IO, entity=SET_SMALL)
+    small, io = block.op(Operation.CALL_FOREIGN, (io,), (B8, IO), entity=GET_SMALL)
+    io = block.op1(Operation.CALL_FOREIGN, (block.op1(Operation.CALL_FOREIGN, (), STRING, entity=PREFIX), io), IO, entity=SET_LABEL)
+    label, io = block.op(Operation.CALL_FOREIGN, (io,), (STRING, IO), entity=GET_LABEL)
+    length = block.op1(Operation.CALL_FOREIGN, (label,), B32, entity=STRING_LENGTH)
+    high = block.op1(Operation.INT_TRUNCATE, (block.op1(Operation.UDIV, (total, block.const(B64, 1 << 32)), B64),), B32)
+    low = block.op1(Operation.INT_TRUNCATE, (total,), B32)
+    result = block.op1(Operation.ADD_WRAP, (bumped, block.op1(Operation.MUL_WRAP, (count, block.const(B32, 1000)), B32)), B32)
+    for term in (high, low, block.op1(Operation.MUL_WRAP, (block.op1(Operation.INT_ZERO_EXTEND, (small,), B32), block.const(B32, 1 << 16)), B32), block.op1(Operation.MUL_WRAP, (length, block.const(B32, 1 << 24)), B32)):
+        result = block.op1(Operation.BIT_XOR, (result, term), B32)
+    block.ret(result, io)
+    return _compile(graph, (B32, IO), (B32, IO), (IO, B8, B64, *STATIC_DECLARATIONS))
+
+
+def _static_model(n: int) -> int:
+    total = (n * n) & (2 ** 64 - 1)
+    result = ((n + 1) + (n + 1) * 1000) & 0xFFFFFFFF
+    for term in (total >> 32, total & 0xFFFFFFFF, (n & 0xFF) << 16, len("value=") << 24):
+        result ^= term
+    return result & 0xFFFFFFFF
+
+
+@unittest.skipUnless(JAVA, "requires java and javac")
+class JvmStaticFieldTests(unittest.TestCase):
+    def test_static_fields_are_written_and_read(self):
+        calls = [(0,), (1,), (300,), (65536,), (2147483647,), (4294967295,)]
+        with tempfile.TemporaryDirectory() as directory:
+            results = run_jvm_calls(_static_program(), calls, result_width=32, classpath=(_statics_classpath(directory),))
+        self.assertEqual(results, tuple(_static_model(n) for (n,) in calls))
+
+    def test_a_static_write_takes_exactly_the_value(self):
+        wrong = foreign_function_symbol(STATICS, b"count:I", (B32, B32, IO), (IO,), abi=b"jvm-putstatic")
+        graph = GraphBuilder()
+        block = graph.block(B32, IO)
+        n, io = block.params
+        block.ret(n, block.op1(Operation.CALL_FOREIGN, (n, n, io), IO, entity=wrong))
+        with self.assertRaises(XaxError) as caught:
+            _compile(graph, (B32, IO), (B32, IO), (IO, wrong))
+        self.assertEqual(caught.exception.diagnostic.rule, "JVM-FOREIGN-ARITY")
 
 
 class JvmMultiArrayRejectionTests(unittest.TestCase):

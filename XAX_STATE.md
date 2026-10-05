@@ -989,3 +989,9 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
   - Declaration error rate is 0/30 (JVM) and 0/5 (C).
   - An import request costs 0.40× (JVM) and 0.23× (C) the tokens of the hand-built declaration (offline).
 - **OI-32 is closed.** The JVM row's importer blocker is removed.
+
+## JVM static field writes (2026-10-05, ADR-167)
+
+- `jvm-putstatic`. EXECUTED (`tests/test_xax_jvm_objects.py`) against a `javac`-compiled class on the class path, because no JDK module has a public mutable static field. Java code observes the XAX writes and XAX reads Java's.
+- The importer now imports static field writes; `tests/test_xax_jvm_import.py` reproduces the hand-built declarations byte for byte.
+- The JVM direct-emission gaps listed in OI-35 are all closed.

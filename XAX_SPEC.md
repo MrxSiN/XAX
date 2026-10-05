@@ -1187,6 +1187,7 @@ Objects and arrays use further ABIs (ADR-162):
 - `jvm-checkcast`: library is the target class or array descriptor; the input is one reference.
 - `jvm-getfield`, `jvm-putfield` (ADR-163): library is the class; name is `field:descriptor`; inputs are the object, plus the value for a store; a read results in the field's type.
 - `jvm-instanceof` (ADR-163): library is the class or array descriptor; the input is one reference; the result is `bits 1`.
+- `jvm-putstatic` (ADR-167): library is the class; name is `name:descriptor`; the input is the value; no result.
 - `jvm-multianewarray` (ADR-164): library is an array descriptor of rank ≥ 2; the inputs are 1 to rank 32-bit lengths, outermost first; the result is the array.
 
 Narrow array elements load zero-extended to their XAX width. A Java exception they raise (index, cast, negative size) terminates the program like a trap. The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
@@ -1215,7 +1216,7 @@ Narrow array elements load zero-extended to their XAX width. A Java exception th
 - For a process entry (`(env, class) -> bits<32>`, `JNI-PROCESS-ENTRY`), the bridge's `main` MUST call the method and pass its result to `System.exit`.
 - A trap in the native code faults in a JNI frame and ends the process abnormally.
 
-**Imported declarations** (ADR-166): `xax_jvm_import` derives these declarations from class files. An imported declaration MUST be byte-identical to the hand-built declaration with the same curated facts. A member MUST import only if it is a public member of a public class in a package its module exports unqualified. By default every member takes and returns the I/O effect, references are nullable `jvm-ref` pointers, and functional-interface parameters are plain references; purity, other effects, and callback parameters MUST be stated by the importer's caller.
+**Imported declarations** (ADR-166): `xax_jvm_import` derives these declarations from class files. An imported declaration MUST be byte-identical to the hand-built declaration with the same curated facts. A member MUST import only if it is a public member of a public class in a package its module exports unqualified. A non-final static field's write imports as `jvm-putstatic` (ADR-167). By default every member takes and returns the I/O effect, references are nullable `jvm-ref` pointers, and functional-interface parameters are plain references; purity, other effects, and callback parameters MUST be stated by the importer's caller.
 
 ### 21.9d RISC-V RV64 raw images
 

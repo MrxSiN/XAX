@@ -189,10 +189,32 @@ class JvmImportTests(unittest.TestCase):
         requests = class_requests(_classpath(), "java/lang/Math") + class_requests(_classpath(), "java/util/ArrayList")
         imported = import_jvm_members(_classpath(), requests)
         self.assertGreater(len(imported.declarations), 120)
-        self.assertTrue(set(imported.refused.values()) <= {"member not public", "final field", "static field write (no putstatic ABI)"})
+        self.assertTrue(set(imported.refused.values()) <= {"member not public", "final field"})
         again = import_jvm_members(_classpath(), reversed(requests))
         self.assertEqual([item.cid for item in again.objects], [item.cid for item in imported.objects])
         self.assertIn(jvm_static(b"java/lang/Math", b"abs(I)I", (B32, IO), (B32, IO)).cid, {item.cid for item in imported.objects})
+
+    def test_static_field_writes_import_as_putstatic(self):
+        import tempfile
+        import zipfile
+
+        from tests.test_xax_jvm_objects import STATIC_DECLARATIONS, _statics_classpath
+
+        with tempfile.TemporaryDirectory() as directory:
+            _statics_classpath(directory)
+            jar = Path(directory, "statics.jar")
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.write(Path(directory, "xaxtest", "Statics.class"), "xaxtest/Statics.class")
+            classpath = JvmClassPath.of(jar, JMODS / "java.base.jmod")
+        requests = [
+            "xaxtest/Statics.count:I=", "xaxtest/Statics.count:I", "xaxtest/Statics.total:J=", "xaxtest/Statics.total:J",
+            "xaxtest/Statics.small:B=", "xaxtest/Statics.small:B", "xaxtest/Statics.label:Ljava/lang/String;=",
+            "xaxtest/Statics.label:Ljava/lang/String;", "xaxtest/Statics.bump()I",
+        ]
+        imported = import_jvm_members(classpath, requests)
+        self.assertEqual(imported.refused, {})
+        self.assertEqual([imported.declarations[key].cid for key in requests], [item.cid for item in STATIC_DECLARATIONS])
+        self.assertEqual(set(class_requests(classpath, "xaxtest/Statics")) - set(requests), {"xaxtest/Statics.<init>()V"})
 
     @unittest.skipUnless(shutil.which("java"), "requires java")
     def test_a_program_over_imported_declarations_runs_on_hotspot(self):

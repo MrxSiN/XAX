@@ -55,6 +55,7 @@ from xax_compiler import (
     JVM_INVOKEVIRTUAL_ABI,
     JVM_NEW_ABI,
     JVM_PUTFIELD_ABI,
+    JVM_PUTSTATIC_ABI,
     EffectDomain,
     FloatFormat,
     SemanticObject,
@@ -312,7 +313,7 @@ class _Importer:
             if found.access_flags & ACC_FINAL:
                 raise _Refused("final field")
             if static:
-                raise _Refused("static field write (no putstatic ABI)")
+                return foreign_function_symbol(library, field_member.encode("ascii"), (value, *tail), tail, abi=JVM_PUTSTATIC_ABI)
             receiver = self._value(f"L{owner};", parameter=False)
             return foreign_function_symbol(library, field_member.encode("ascii"), (receiver, value, *tail), tail, abi=JVM_PUTFIELD_ABI)
         if static:

@@ -79,6 +79,7 @@ from xax_compiler import (
     JVM_NEW_ABI,
     JVM_NEWARRAY_ABI,
     JVM_MULTIANEWARRAY_ABI,
+    JVM_PUTSTATIC_ABI,
     JVM_ARRAYLOAD_ABI,
     JVM_ARRAYSTORE_ABI,
     JVM_ARRAYLENGTH_ABI,
@@ -461,14 +462,14 @@ class _ForeignMember:
     parameters: tuple[str, ...]  # JVM parameter descriptors in push order (receiver first)
     result: str  # JVM result descriptor, "V" for none
     interface: bool = False  # an InterfaceMethodref (ADR-161)
-    kind: str = "call"  # or new, newarray, arrayload, arraystore, arraylength, ldc, checkcast (ADR-162)
+    kind: str = "call"  # or an object kind (ADR-162-ADR-164, ADR-167): new, newarray, ..., getfield, putfield, putstatic
 
 
 _OBJECT_ABIS = {
     JVM_NEW_ABI: "new", JVM_NEWARRAY_ABI: "newarray", JVM_ARRAYLOAD_ABI: "arrayload", JVM_ARRAYSTORE_ABI: "arraystore",
     JVM_ARRAYLENGTH_ABI: "arraylength", JVM_LDC_ABI: "ldc", JVM_CHECKCAST_ABI: "checkcast",
     JVM_GETFIELD_ABI: "getfield", JVM_PUTFIELD_ABI: "putfield", JVM_INSTANCEOF_ABI: "instanceof",
-    JVM_MULTIANEWARRAY_ABI: "multianewarray",
+    JVM_MULTIANEWARRAY_ABI: "multianewarray", JVM_PUTSTATIC_ABI: "putstatic",
 }
 _ARRAY_LOAD = {"I": 0x2E, "J": 0x2F, "F": 0x30, "D": 0x31, "A": 0x32, "B": 0x33, "Z": 0x33, "C": 0x34, "S": 0x35}
 _NEWARRAY_TYPE = {"Z": 4, "C": 5, "F": 6, "D": 7, "B": 8, "S": 9, "I": 10, "J": 11}
@@ -504,11 +505,11 @@ def _object_member(declaration, library: str, member: str, inputs, outputs, reso
         if library != "java/lang/String" or not all(32 <= ord(character) < 127 for character in member):
             fail("XAX.JVM.DESCRIPTOR", where, "JVM-LDC-STRING", "printable ASCII java/lang/String constant", member)
         parameters, result, descriptor = (), "Ljava/lang/String;", ""
-    elif kind in ("getfield", "putfield"):
+    elif kind in ("getfield", "putfield", "putstatic"):
         if ":" not in member:
             fail("XAX.JVM.DESCRIPTOR", where, "JVM-FIELD-MEMBER", "name:descriptor", member)
         _name, descriptor = member.split(":", 1)
-        parameters = (f"L{library};", descriptor) if kind == "putfield" else (f"L{library};",)
+        parameters = {"getfield": (f"L{library};",), "putfield": (f"L{library};", descriptor), "putstatic": (descriptor,)}[kind]
         result = descriptor if kind == "getfield" else "V"
     else:  # checkcast / instanceof: any reference in
         source = _jvm_type(resolve, inputs[0], where) if len(inputs) == 1 else None
@@ -2323,9 +2324,9 @@ def _compile_method_pass(
                 code.op(0xBE)
             elif member.kind == "ldc":
                 ldc(pool.string(member.name))
-            elif member.kind in ("getfield", "putfield"):
+            elif member.kind in ("getfield", "putfield", "putstatic"):
                 field_name, field_descriptor = member.name.split(":", 1)
-                opcode = {"getfield": 0xB4, "putfield": 0xB5}[member.kind]
+                opcode = {"getfield": 0xB4, "putfield": 0xB5, "putstatic": 0xB3}[member.kind]
                 code.op(opcode); code.raw(_u2(pool.field(member.class_name, field_name, field_descriptor)))
                 if member.kind == "getfield" and member.result in ("B", "S"):
                     mask("I", _NARROW_WIDTH[member.result])  # read sign-extended
@@ -3325,12 +3326,14 @@ def _decode(text: str, kind: str, width: int) -> int | float | str:
 
 
 def run_jvm_calls(
-    image: JvmImage, calls: Sequence[Sequence[int | float]], *, method: str | None = None, result_width: int = 64
+    image: JvmImage, calls: Sequence[Sequence[int | float]], *, method: str | None = None, result_width: int = 64,
+    classpath: Sequence[str] = (),
 ) -> tuple[int | float | str, ...]:
     """Call one static method once per argument tuple in a single JVM; returns decoded results.
 
     A trap is reported as ``"trap <exception class>"``.  ``result_width``
-    masks integer results to the XAX width.
+    masks integer results to the XAX width.  ``classpath`` adds directories or
+    JARs the program's foreign members name (beside the JDK).
     """
     java = shutil.which("java")
     if not java:
@@ -3343,7 +3346,7 @@ def run_jvm_calls(
         kinds = image.parameter_kinds
         lines = "".join(" ".join(_encode(value, kind) for value, kind in zip(call, kinds)) + "\n" for call in calls)
         completed = subprocess.run(
-            [java, "-Xshare:auto", "-cp", harness, "XaxJvmHarness", jar, image.class_name.replace("/", "."), method or image.entry_method],
+            [java, "-Xshare:auto", "-cp", os.pathsep.join((harness, *classpath)), "XaxJvmHarness", jar, image.class_name.replace("/", "."), method or image.entry_method],
             input=lines, capture_output=True, text=True, check=False,
         )
     if completed.returncode:

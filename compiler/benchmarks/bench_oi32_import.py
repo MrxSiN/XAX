@@ -54,6 +54,7 @@ from xax_compiler import (
     JVM_INVOKEVIRTUAL_ABI,
     JVM_NEW_ABI,
     JVM_PUTFIELD_ABI,
+    JVM_PUTSTATIC_ABI,
     Kind,
     SemanticObject,
     bits_type,
@@ -67,7 +68,7 @@ EVIDENCE = HERE / "oi32_import_evidence.json"
 ENCODINGS = ("cl100k_base", "o200k_base")
 MEMBER_ABIS = {
     JVM_NEW_ABI, JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_INTERFACE_ABI,
-    JVM_GETSTATIC_ABI, JVM_GETFIELD_ABI, JVM_PUTFIELD_ABI,
+    JVM_GETSTATIC_ABI, JVM_GETFIELD_ABI, JVM_PUTFIELD_ABI, JVM_PUTSTATIC_ABI,
 }
 # Modules whose module-level objects hold the repository's hand-built JVM declarations.
 SOURCES = (
@@ -103,7 +104,7 @@ def _hand_built() -> dict[bytes, tuple[str, SemanticObject, dict[bytes, Semantic
             declaration = decode_foreign_function(item)
         except Exception:
             continue
-        if declaration.abi in MEMBER_ABIS and not declaration.library.startswith(b"xax/"):
+        if declaration.abi in MEMBER_ABIS and not declaration.library.startswith((b"xax/", b"xaxtest/")):  # JDK members only
             found.setdefault(item.cid, (where, item, types))
     return found
 
@@ -139,7 +140,7 @@ def _request(declaration: SemanticObject, objects: dict[bytes, SemanticObject]) 
     """The importer request and the curated facts a hand-built declaration states."""
     decoded = decode_foreign_function(declaration)
     library, name = decoded.library.decode(), decoded.name.decode()
-    key = f"{library}.{name}" + ("=" if decoded.abi == JVM_PUTFIELD_ABI else "")
+    key = f"{library}.{name}" + ("=" if decoded.abi in (JVM_PUTFIELD_ABI, JVM_PUTSTATIC_ABI) else "")
     proofs = [cid for cid in decoded.inputs if objects.get(cid) is not None and objects[cid].body[0] == 3]
     facts: dict = {}
     if not proofs:
