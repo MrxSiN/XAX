@@ -1185,6 +1185,8 @@ Objects and arrays use further ABIs (ADR-162):
 - `jvm-arrayload`, `jvm-arraystore`, `jvm-arraylength`: library is the array descriptor; inputs are the array and an index, plus the value for a store.
 - `jvm-ldc`: library is `java/lang/String`; name is the printable-ASCII literal.
 - `jvm-checkcast`: library is the target class or array descriptor; the input is one reference.
+- `jvm-getfield`, `jvm-putfield` (ADR-163): library is the class; name is `field:descriptor`; inputs are the object, plus the value for a store; a read results in the field's type.
+- `jvm-instanceof` (ADR-163): library is the class or array descriptor; the input is one reference; the result is `bits 1`.
 
 Narrow array elements load zero-extended to their XAX width. A Java exception they raise (index, cast, negative size) terminates the program like a trap. The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
 

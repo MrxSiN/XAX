@@ -198,8 +198,48 @@ def _comparator_model(n: int, seed: int) -> int:
     return sum(value * (i + 1) for i, value in enumerate(values)) & 0xFFFFFFFF
 
 
+POINT, POINT_ELEMENT = _reference(b"Ljava/awt/Point;")
+NEW_POINT = _object(b"jvm-new", b"java/awt/Point", b"<init>(II)V", (B32, B32), (POINT,))
+GET_X = _object(b"jvm-getfield", b"java/awt/Point", b"x:I", (POINT,), (B32,))
+GET_Y = _object(b"jvm-getfield", b"java/awt/Point", b"y:I", (POINT,), (B32,))
+PUT_Y = _object(b"jvm-putfield", b"java/awt/Point", b"y:I", (POINT, B32), ())
+TRANSLATE = jvm_virtual(b"java/awt/Point", b"translate(II)V", (POINT, B32, B32), ())
+POINT_AS_OBJECT = _object(b"jvm-checkcast", b"java/lang/Object", b"checkcast", (POINT,), (OBJECT,))
+IS_POINT2D = _object(b"jvm-instanceof", b"java/awt/geom/Point2D", b"instanceof", (OBJECT,), (B1,))
+IS_STRING = _object(b"jvm-instanceof", b"java/lang/String", b"instanceof", (OBJECT,), (B1,))
+
+
+def _field_program():
+    """``f(a, b)``: a ``Point(a, b)``; ``y = x * 3``; ``translate(1, 2)``; then fields and type tests."""
+    graph = GraphBuilder()
+    block = graph.block(B32, B32)
+    a, b = block.params
+    point = block.op1(Operation.CALL_FOREIGN, (a, b), POINT, entity=NEW_POINT)
+    x = block.op1(Operation.CALL_FOREIGN, (point,), B32, entity=GET_X)
+    block.op(Operation.CALL_FOREIGN, (point, block.op1(Operation.MUL_WRAP, (x, block.const(B32, 3)), B32)), (), entity=PUT_Y)
+    block.op(Operation.CALL_FOREIGN, (point, block.const(B32, 1), block.const(B32, 2)), (), entity=TRANSLATE)
+    as_object = block.op1(Operation.CALL_FOREIGN, (point,), OBJECT, entity=POINT_AS_OBJECT)
+    flags = block.op1(Operation.ADD_WRAP, (
+        block.op1(Operation.MUL_WRAP, (block.op1(Operation.INT_ZERO_EXTEND, (block.op1(Operation.CALL_FOREIGN, (as_object,), B1, entity=IS_POINT2D),), B32), block.const(B32, 1 << 20)), B32),
+        block.op1(Operation.MUL_WRAP, (block.op1(Operation.INT_ZERO_EXTEND, (block.op1(Operation.CALL_FOREIGN, (as_object,), B1, entity=IS_STRING),), B32), block.const(B32, 1 << 21)), B32),
+    ), B32)
+    fields = block.op1(Operation.ADD_WRAP, (block.op1(Operation.CALL_FOREIGN, (point,), B32, entity=GET_X), block.op1(Operation.MUL_WRAP, (block.op1(Operation.CALL_FOREIGN, (point,), B32, entity=GET_Y), block.const(B32, 1000)), B32)), B32)
+    block.ret(block.op1(Operation.ADD_WRAP, (fields, flags), B32))
+    extra = (POINT, POINT_ELEMENT, NEW_POINT, GET_X, GET_Y, PUT_Y, TRANSLATE, POINT_AS_OBJECT, IS_POINT2D, IS_STRING)
+    return _compile(graph, (B32, B32), (B32,), extra)
+
+
+def _field_model(a: int, b: int) -> int:
+    x, y = (a + 1) & 0xFFFFFFFF, (a * 3 + 2) & 0xFFFFFFFF
+    return (x + y * 1000 + (1 << 20)) & 0xFFFFFFFF
+
+
 @unittest.skipUnless(JAVA, "requires java and javac")
 class JvmObjectTests(unittest.TestCase):
+    def test_instance_fields_and_instanceof(self):
+        calls = [(0, 0), (5, 9), (1000, 7), ((1 << 32) - 1, 3)]
+        self.assertEqual(run_jvm_calls(_field_program(), calls), tuple(_field_model(*call) for call in calls))
+
     def test_int_arrays_are_created_filled_sorted_and_read(self):
         calls = [(0, 1), (1, 5), (17, 3), (1000, 0x9E3779B9)]
         self.assertEqual(run_jvm_calls(_int_array_program(), calls), tuple(_int_array_model(*call) for call in calls))

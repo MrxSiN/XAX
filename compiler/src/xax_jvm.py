@@ -83,6 +83,9 @@ from xax_compiler import (
     JVM_ARRAYLENGTH_ABI,
     JVM_LDC_ABI,
     JVM_CHECKCAST_ABI,
+    JVM_GETFIELD_ABI,
+    JVM_PUTFIELD_ABI,
+    JVM_INSTANCEOF_ABI,
     JVM_INTERFACE_ENTRY_PREFIX,
     Kind,
     Operation,
@@ -463,6 +466,7 @@ class _ForeignMember:
 _OBJECT_ABIS = {
     JVM_NEW_ABI: "new", JVM_NEWARRAY_ABI: "newarray", JVM_ARRAYLOAD_ABI: "arrayload", JVM_ARRAYSTORE_ABI: "arraystore",
     JVM_ARRAYLENGTH_ABI: "arraylength", JVM_LDC_ABI: "ldc", JVM_CHECKCAST_ABI: "checkcast",
+    JVM_GETFIELD_ABI: "getfield", JVM_PUTFIELD_ABI: "putfield", JVM_INSTANCEOF_ABI: "instanceof",
 }
 _ARRAY_LOAD = {"I": 0x2E, "J": 0x2F, "F": 0x30, "D": 0x31, "A": 0x32, "B": 0x33, "Z": 0x33, "C": 0x34, "S": 0x35}
 _NEWARRAY_TYPE = {"Z": 4, "C": 5, "F": 6, "D": 7, "B": 8, "S": 9, "I": 10, "J": 11}
@@ -493,11 +497,18 @@ def _object_member(declaration, library: str, member: str, inputs, outputs, reso
         if library != "java/lang/String" or not all(32 <= ord(character) < 127 for character in member):
             fail("XAX.JVM.DESCRIPTOR", where, "JVM-LDC-STRING", "printable ASCII java/lang/String constant", member)
         parameters, result, descriptor = (), "Ljava/lang/String;", ""
-    else:  # checkcast: any reference in, the target type out
+    elif kind in ("getfield", "putfield"):
+        if ":" not in member:
+            fail("XAX.JVM.DESCRIPTOR", where, "JVM-FIELD-MEMBER", "name:descriptor", member)
+        _name, descriptor = member.split(":", 1)
+        parameters = (f"L{library};", descriptor) if kind == "putfield" else (f"L{library};",)
+        result = descriptor if kind == "getfield" else "V"
+    else:  # checkcast / instanceof: any reference in
         source = _jvm_type(resolve, inputs[0], where) if len(inputs) == 1 else None
         if source is None or not _reference_descriptor(source):
             fail("XAX.JVM.FOREIGN", where, "JVM-CHECKCAST-INPUT", "one reference", source)
-        parameters, result, descriptor = (source,), library if library.startswith("[") else f"L{library};", ""
+        target = library if library.startswith("[") else f"L{library};"
+        parameters, result, descriptor = (source,), (target if kind == "checkcast" else "Z"), ""
     if len(inputs) != len(parameters) or len(outputs) != (result != "V"):
         fail("XAX.JVM.FOREIGN", where, "JVM-FOREIGN-ARITY", [list(parameters), result], [len(inputs), len(outputs)])
     for jvm, cid in (*zip(parameters, inputs), *((result, cid) for cid in outputs)):
@@ -2303,6 +2314,14 @@ def _compile_method_pass(
                 code.op(0xBE)
             elif member.kind == "ldc":
                 ldc(pool.string(member.name))
+            elif member.kind in ("getfield", "putfield"):
+                field_name, field_descriptor = member.name.split(":", 1)
+                opcode = {"getfield": 0xB4, "putfield": 0xB5}[member.kind]
+                code.op(opcode); code.raw(_u2(pool.field(member.class_name, field_name, field_descriptor)))
+                if member.kind == "getfield" and member.result in ("B", "S"):
+                    mask("I", _NARROW_WIDTH[member.result])  # read sign-extended
+            elif member.kind == "instanceof":
+                code.op(0xC1); code.raw(_u2(pool.klass(member.class_name)))
             else:  # checkcast
                 target_class = member.result[1:-1] if member.result.startswith("L") else member.result
                 code.op(0xC0); code.raw(_u2(pool.klass(target_class)))

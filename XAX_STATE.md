@@ -965,3 +965,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - The JVM row's object-construction blocker is closed.
 - Full suite: **1,129 passed, 5 skipped**.
 
+## JVM instance fields and `instanceof` (2026-10-05, ADR-163)
+
+- Three typed foreign ABIs: `jvm-getfield`, `jvm-putfield`, and `jvm-instanceof`. EXECUTED (`tests/test_xax_jvm_objects.py`): a `java.awt.Point` has its fields read and written and is type-tested as `Point2D` (true) and `String` (false).
+- `putstatic` is not added: there is no `java.base` field to execute it against.
+- Full suite: **1,130 passed, 5 skipped**.
