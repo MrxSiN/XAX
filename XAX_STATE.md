@@ -970,3 +970,13 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Three typed foreign ABIs: `jvm-getfield`, `jvm-putfield`, and `jvm-instanceof`. EXECUTED (`tests/test_xax_jvm_objects.py`): a `java.awt.Point` has its fields read and written and is type-tested as `Point2D` (true) and `String` (false).
 - `putstatic` is not added: there is no `java.base` field to execute it against.
 - Full suite: **1,130 passed, 5 skipped**.
+
+## JVM multi-dimensional arrays and the native-bridge arm (2026-10-05, ADR-164, ADR-165)
+
+- `jvm-multianewarray` (ADR-164). EXECUTED (`tests/test_xax_jvm_objects.py`): `int[a][b]` and a partial `long[b][a][]`.
+- Native code plus a generated bridge (ADR-165, `xax_jvm_bridge`). EXECUTED (`tests/test_xax_jvm_bridge.py`): `jsonmin` runs on HotSpot as an x86-64 JNI library behind a generated 352-byte bridge class, and Java code calls a native XAX kernel.
+- MEASURED (§15.19), native bridge over direct emission for `jsonmin`:
+  - 0.68× start-up and process time;
+  - 0.64× peak RSS;
+  - 2.86× artifact bytes.
+- **OI-35 is closed for the JVM.** The answer is per workload, defaulting to direct emission. CLR is not covered.

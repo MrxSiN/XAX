@@ -568,7 +568,7 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory and `jvm-classfile-general-v1` aggregates, sums, stack allocations, indirect calls, links, atomics, JDK-called callbacks, object and array construction, and instance fields; `jsonmin` on HotSpot runs fastest of XAX, `javac`, and `kotlinc` builds with the lowest peak RSS and a program class 0.99\u00d7 kotlinc's and 1.5\u00d7 javac's.",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory and `jvm-classfile-general-v1` aggregates, sums, stack allocations, indirect calls, links, atomics, JDK-called callbacks, object and array construction, and instance fields; a native-code-plus-JNI-bridge arm is measured against direct emission (OI-35); `jsonmin` on HotSpot runs fastest of XAX, `javac`, and `kotlinc` builds with the lowest peak RSS and a program class 0.99\u00d7 kotlinc's and 1.5\u00d7 javac's.",
       "level": "R4",
       "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
@@ -601,7 +601,8 @@
           "EXECUTED",
           "compiler/tests/test_xax_jvm.py",
           "compiler/tests/test_xax_jvm_callbacks.py",
-          "compiler/tests/test_xax_jvm_objects.py"
+          "compiler/tests/test_xax_jvm_objects.py",
+          "compiler/tests/test_xax_jvm_bridge.py"
         ],
         "dynamic_linking": [
           "EXECUTED",
@@ -626,7 +627,8 @@
         "performance": [
           "MEASURED",
           "compiler/benchmarks/jvm_twin_evidence.json",
-          "compiler/benchmarks/jvm_jsonmin_evidence.json"
+          "compiler/benchmarks/jvm_jsonmin_evidence.json",
+          "compiler/benchmarks/jvm_strategies_evidence.json"
         ],
         "memory": [
           "MEASURED",

@@ -375,7 +375,8 @@ def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
     h = helpers()
     group, index, group_objects = parser_group(h)
     value = group_member_function(group, index["value"])
-    proc = Proc((("proc", api.process_effect), ("fs", api.filesystem_effect), ("m1", MEM), ("m2", MEM)))
+    jni = arch == "jni"  # ADR-165: a JNI entry (env, class) that returns the status to its bridge
+    proc = Proc(((("env", B64), ("class", B64)) if jni else ()) + (("proc", api.process_effect), ("fs", api.filesystem_effect), ("m1", MEM), ("m2", MEM)))
 
     def mapping(memory: str, extent: int, view, name: str):
         raw, owner, effect = proc.op(Operation.CALL_FOREIGN, (proc.const(extent, B64), proc.drop(memory)), (api.bytes_rw, api.heap_owner, MEM), entity=api.mmap_anonymous)
@@ -462,6 +463,12 @@ def build_jsonmin(arch: str = "x86_64") -> JsonminProgram:
     proc.if_(proc.cmp(EQ, proc["code"], EXIT_OK), success, lambda p: p.if_(p.cmp(EQ, p["code"], EXIT_INVALID), invalid))
     for name, extent in (("i", INPUT_EXTENT), ("o", CAPACITY + 1)):
         _result, proc[name + "m"] = proc.op(Operation.CALL_FOREIGN, (proc[name + "p"], proc[name + "v"], proc[name + "m"]), (B64, MEM), entity=api.munmap_view(BYTES, extent))
+    if jni:
+        # The bridge's main ends the JVM with this status (System.exit).
+        proc.ret(proc["code"], proc["proc"], proc["fs"], proc["im"], proc["om"])
+        entry = proc.function((B32, api.process_effect, api.filesystem_effect, MEM, MEM))
+        reader = program_store(entry, target, (*api.types, *proc.graph.objects.values(), *group_objects, value, *h.objects, B64))
+        return JsonminProgram(reader, entry, target)
     process = proc.op1(Operation.CALL_FOREIGN, (proc["code"], proc["proc"]), api.process_effect, entity=api.exit_group)
     if arch == "jvm":
         # A JVM process entry returns only proof values; the status left with the exit call.

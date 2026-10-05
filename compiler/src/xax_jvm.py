@@ -78,6 +78,7 @@ from xax_compiler import (
     JVM_INVOKESTATIC_INTERFACE_ABI,
     JVM_NEW_ABI,
     JVM_NEWARRAY_ABI,
+    JVM_MULTIANEWARRAY_ABI,
     JVM_ARRAYLOAD_ABI,
     JVM_ARRAYSTORE_ABI,
     JVM_ARRAYLENGTH_ABI,
@@ -467,6 +468,7 @@ _OBJECT_ABIS = {
     JVM_NEW_ABI: "new", JVM_NEWARRAY_ABI: "newarray", JVM_ARRAYLOAD_ABI: "arrayload", JVM_ARRAYSTORE_ABI: "arraystore",
     JVM_ARRAYLENGTH_ABI: "arraylength", JVM_LDC_ABI: "ldc", JVM_CHECKCAST_ABI: "checkcast",
     JVM_GETFIELD_ABI: "getfield", JVM_PUTFIELD_ABI: "putfield", JVM_INSTANCEOF_ABI: "instanceof",
+    JVM_MULTIANEWARRAY_ABI: "multianewarray",
 }
 _ARRAY_LOAD = {"I": 0x2E, "J": 0x2F, "F": 0x30, "D": 0x31, "A": 0x32, "B": 0x33, "Z": 0x33, "C": 0x34, "S": 0x35}
 _NEWARRAY_TYPE = {"Z": 4, "C": 5, "F": 6, "D": 7, "B": 8, "S": 9, "I": 10, "J": 11}
@@ -486,6 +488,11 @@ def _object_member(declaration, library: str, member: str, inputs, outputs, reso
         result, descriptor = f"L{library};", member[len("<init>"):]
     elif kind == "newarray":
         parameters, result, descriptor = ("I",), "[" + library, ""
+    elif kind == "multianewarray":
+        rank = len(library) - len(library.lstrip("["))
+        if rank < 2 or not 1 <= len(inputs) <= min(rank, 255):
+            fail("XAX.JVM.DESCRIPTOR", where, "JVM-MULTIANEWARRAY", "[[element with 1..rank lengths", [library, len(inputs)])
+        parameters, result, descriptor = ("I",) * len(inputs), library, ""
     elif kind in ("arrayload", "arraystore", "arraylength"):
         if not library.startswith("["):
             fail("XAX.JVM.DESCRIPTOR", where, "JVM-ARRAY-DESCRIPTOR", "[element", library)
@@ -2302,6 +2309,8 @@ def _compile_method_pass(
                     code.op(0xBC, _NEWARRAY_TYPE[element])
                 else:
                     code.op(0xBD); code.raw(_u2(pool.klass(element[1:-1] if element.startswith("L") else element)))  # anewarray
+            elif member.kind == "multianewarray":
+                code.op(0xC5); code.raw(_u2(pool.klass(member.class_name))); code.op(len(member.parameters))
             elif member.kind == "arrayload":
                 element = member.class_name[1:]
                 code.op(_ARRAY_LOAD[element if element in _ARRAY_LOAD else "A"])
@@ -3083,6 +3092,8 @@ def _main_method(pool: _Pool, class_name: str, entry_name: str) -> _Method:
 
 
 def _serialize_method(method: _Method, pool: _Pool) -> bytes:
+    if method.access & 0x0100:  # ACC_NATIVE: no Code attribute (a JNI bridge, ADR-165)
+        return _u2(method.access) + _u2(pool.utf8(method.name)) + _u2(pool.utf8(method.descriptor)) + _u2(0)
     attributes = []
     if method.frames:
         entries = bytearray()

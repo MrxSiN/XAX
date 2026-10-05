@@ -16,6 +16,7 @@ import unittest
 from xax_compiler import (
     IntCompare,
     Operation,
+    XaxError,
     bits_type,
     foreign_function_symbol,
     jvm_classfile_target,
@@ -234,8 +235,60 @@ def _field_model(a: int, b: int) -> int:
     return (x + y * 1000 + (1 << 20)) & 0xFFFFFFFF
 
 
+GRID, GRID_ELEMENT = _reference(b"[[I")
+CUBE, CUBE_ELEMENT = _reference(b"[[[J")
+NEW_GRID = _object(b"jvm-multianewarray", b"[[I", b"multianewarray", (B32, B32), (GRID,))
+NEW_CUBE = _object(b"jvm-multianewarray", b"[[[J", b"multianewarray", (B32, B32), (CUBE,))
+ROW = _object(b"jvm-arrayload", b"[[I", b"load", (GRID, B32), (INTS,))
+GRID_LENGTH = _object(b"jvm-arraylength", b"[[I", b"length", (GRID,), (B32,))
+CUBE_LENGTH = _object(b"jvm-arraylength", b"[[[J", b"length", (CUBE,), (B32,))
+DEEP_HASH = jvm_static(b"java/util/Arrays", b"deepHashCode([Ljava/lang/Object;)I", (OBJECTS,), (B32,))
+GRID_AS_OBJECTS = _object(b"jvm-checkcast", b"[Ljava/lang/Object;", b"checkcast", (GRID,), (OBJECTS,))
+
+
+def _grid_program():
+    """``f(a, b)``: ``g = new int[a][b]``; ``g[a-1][b-1] = 7``; lengths, the stored value, ``deepHashCode``, and a partial cube."""
+    graph = GraphBuilder()
+    block = graph.block(B32, B32)
+    a, b = block.params
+    grid = block.op1(Operation.CALL_FOREIGN, (a, b), GRID, entity=NEW_GRID)
+    one = block.const(B32, 1)
+    row = block.op1(Operation.CALL_FOREIGN, (grid, block.op1(Operation.SUB_WRAP, (a, one), B32)), INTS, entity=ROW)
+    block.op(Operation.CALL_FOREIGN, (row, block.op1(Operation.SUB_WRAP, (b, one), B32), block.const(B32, 7)), (), entity=STORE_INT)
+    lengths = block.op1(Operation.ADD_WRAP, (
+        block.op1(Operation.MUL_WRAP, (block.op1(Operation.CALL_FOREIGN, (grid,), B32, entity=GRID_LENGTH), block.const(B32, 100)), B32),
+        block.op1(Operation.CALL_FOREIGN, (row,), B32, entity=LENGTH),
+    ), B32)
+    stored = block.op1(Operation.CALL_FOREIGN, (row, block.op1(Operation.SUB_WRAP, (b, one), B32)), B32, entity=LOAD_INT)
+    hashed = block.op1(Operation.CALL_FOREIGN, (block.op1(Operation.CALL_FOREIGN, (grid,), OBJECTS, entity=GRID_AS_OBJECTS),), B32, entity=DEEP_HASH)
+    cube = block.op1(Operation.CALL_FOREIGN, (b, a), CUBE, entity=NEW_CUBE)  # new long[b][a][]: two of three dimensions
+    total = block.op1(Operation.ADD_WRAP, (lengths, block.op1(Operation.MUL_WRAP, (stored, block.const(B32, 10000)), B32)), B32)
+    total = block.op1(Operation.ADD_WRAP, (total, block.op1(Operation.MUL_WRAP, (block.op1(Operation.CALL_FOREIGN, (cube,), B32, entity=CUBE_LENGTH), block.const(B32, 1 << 20)), B32)), B32)
+    block.ret(block.op1(Operation.BIT_XOR, (total, hashed), B32))
+    extra = (GRID, GRID_ELEMENT, CUBE, CUBE_ELEMENT, NEW_GRID, NEW_CUBE, ROW, GRID_LENGTH, CUBE_LENGTH, DEEP_HASH, GRID_AS_OBJECTS)
+    return _compile(graph, (B32, B32), (B32,), extra)
+
+
+def _grid_model(a: int, b: int) -> int:
+    rows = [[0] * b for _ in range(a)]
+    rows[a - 1][b - 1] = 7
+
+    def array_hash(values):  # java.util.Arrays.hashCode / deepHashCode
+        result = 1
+        for value in values:
+            result = (31 * result + value) & 0xFFFFFFFF
+        return result
+
+    hashed = array_hash(array_hash(row) for row in rows)
+    return ((a * 100 + b + 7 * 10000 + (b << 20)) ^ hashed) & 0xFFFFFFFF
+
+
 @unittest.skipUnless(JAVA, "requires java and javac")
 class JvmObjectTests(unittest.TestCase):
+    def test_multi_dimensional_arrays(self):
+        calls = [(1, 1), (2, 3), (5, 4), (17, 9)]
+        self.assertEqual(run_jvm_calls(_grid_program(), calls), tuple(_grid_model(a, b) for a, b in calls))
+
     def test_instance_fields_and_instanceof(self):
         calls = [(0, 0), (5, 9), (1000, 7), ((1 << 32) - 1, 3)]
         self.assertEqual(run_jvm_calls(_field_program(), calls), tuple(_field_model(*call) for call in calls))
@@ -259,6 +312,19 @@ class JvmObjectTests(unittest.TestCase):
         array = block.op1(Operation.CALL_FOREIGN, (block.const(B32, 4),), INTS, entity=NEW_INTS)
         block.ret(block.op1(Operation.CALL_FOREIGN, (array, n), B32, entity=LOAD_INT))
         self.assertEqual(run_jvm_calls(_compile(graph, (B32,), (B32,)), [(3,), (4,)]), (0, "trap java.lang.ArrayIndexOutOfBoundsException"))
+
+
+class JvmMultiArrayRejectionTests(unittest.TestCase):
+    def test_a_multi_dimensional_array_needs_rank_two_and_at_most_rank_lengths(self):
+        for library, inputs, result in ((b"[I", (B32,), INTS), (b"[[I", (B32, B32, B32), GRID)):
+            declaration = _object(b"jvm-multianewarray", library, b"multianewarray", inputs, (result,))
+            graph = GraphBuilder()
+            block = graph.block(B32)
+            block.op1(Operation.CALL_FOREIGN, tuple(block.params) * len(inputs), result, entity=declaration)
+            block.ret(*block.params)
+            with self.assertRaises(XaxError) as caught:
+                _compile(graph, (B32,), (B32,), (GRID, GRID_ELEMENT, declaration))
+            self.assertEqual(caught.exception.diagnostic.rule, "JVM-MULTIANEWARRAY")
 
 
 if __name__ == "__main__":

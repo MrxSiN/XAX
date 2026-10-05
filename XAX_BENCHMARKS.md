@@ -905,3 +905,32 @@ Same host, toolchains, rule (§15.0a), and protocol as §15.17: 2 warmup and 15 
 
 Ratios XAX / `javac`: kernel 0.91×, class bytes 0.95×, peak RSS 1.01×. The timings ran on a busier host than §15.17's (both arms slower).
 
+### 15.19 OI-35 on the JVM: direct emission vs native code plus a generated bridge (ADR-165; MEASURED, 2026-10-05)
+
+Same host as §15.18 (4 logical CPUs, Intel Xeon @ 2.10 GHz; OpenJDK 21; JVM defaults). `benchmarks/bench_jvm_strategies.py` ran 2 warmup and 15 timed interleaved rounds with rotating arm order. Each run is a fresh `java` process on `benchmark_document(8 MiB, seed=1)` (*process*) and on `[]` (*start-up*). Every output equals `reference_jsonmin`. Evidence: `compiler/benchmarks/jvm_strategies_evidence.json`.
+
+| Arm | Start-up median (s) | Process median (s) | Work (s) | Peak RSS (KiB) | Artifact bytes | Generated adapter bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| Direct (`jvm-classfile-memory-v1`, one class) | 0.0811 | 0.1323 | 0.0512 | 82,784 | 5,937 (JAR) | 462 |
+| Native + bridge (x86-64 JNI library + bridge JAR) | 0.0553 | 0.0902 | 0.0349 | 52,556 | 16,990 (16,296 `.so` + 694 JAR) | 372 (20 native adapter + 352 bridge class) |
+| `javac` twin (baseline) | 0.0797 | 0.1464 | 0.0667 | 93,124 | 2,647 | — |
+
+- *Work* is process minus start-up.
+- The direct arm's adapter bytes are its launcher (`main`, `run`, `<init>`), memory initializer (`<clinit>`), and memory package members, counted as `method_info` bytes.
+
+Native + bridge over direct:
+- 0.68× start-up, process time, and work;
+- 0.64× peak RSS;
+- 2.86× artifact bytes;
+- 0.81× generated adapter bytes.
+
+The direct arm pays for:
+- its 256 MiB entry thread (ADR-156);
+- the HotSpot interpreter and JIT warming over the parser.
+
+The native arm pays in:
+- portability: x86-64 Linux only;
+- deployment: two files;
+- managed interop: no Java objects or callbacks;
+- traps: a native trap aborts the JVM.
+

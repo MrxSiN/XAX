@@ -1187,6 +1187,7 @@ Objects and arrays use further ABIs (ADR-162):
 - `jvm-checkcast`: library is the target class or array descriptor; the input is one reference.
 - `jvm-getfield`, `jvm-putfield` (ADR-163): library is the class; name is `field:descriptor`; inputs are the object, plus the value for a store; a read results in the field's type.
 - `jvm-instanceof` (ADR-163): library is the class or array descriptor; the input is one reference; the result is `bits 1`.
+- `jvm-multianewarray` (ADR-164): library is an array descriptor of rank ≥ 2; the inputs are 1 to rank 32-bit lengths, outermost first; the result is the array.
 
 Narrow array elements load zero-extended to their XAX width. A Java exception they raise (index, cast, negative size) terminates the program like a trap. The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
 
@@ -1207,6 +1208,12 @@ Narrow array elements load zero-extended to their XAX width. A Java exception th
   - Its machine signature MUST equal the descriptor, where a `Z` result is a `bits<1>` result (`JVM-ENTRY-SIGNATURE`).
   - No stack allocation may be reachable from it, because the shadow stack belongs to the entry thread (`JVM-ENTRY-SHADOW-STACK`).
   - Java may call it on any thread.
+
+**Native code plus a generated bridge** (ADR-165) is the second JVM strategy. It is not a JVM profile: the code is compiled for `x86_64-linux-elf-exec-v1`. `xax_jvm_bridge` packages it as an x86-64 `ET_DYN` with one export, `Java_<class>_<method>` (JNI short-name mangling). That export is the generated SysV entry adapter (ADR-102). The library MUST have no relocations, `DT_NEEDED`, or executable stack, and the code MUST make no C imports (`JNI-NO-IMPORTS`).
+- The entry's machine parameters MUST be two `bits<64>` (the `JNIEnv*` and the `jclass`), then at most two integers. It returns at most one integer (`JNI-ENTRY-SIGNATURE`). Integers map to Z/B/S/I/J by width 1/8/16/32/64.
+- The generated bridge class declares the `public static native` method of that descriptor and loads `lib<name>.so` in `<clinit>`.
+- For a process entry (`(env, class) -> bits<32>`, `JNI-PROCESS-ENTRY`), the bridge's `main` MUST call the method and pass its result to `System.exit`.
+- A trap in the native code faults in a JNI frame and ends the process abnormally.
 
 ### 21.9d RISC-V RV64 raw images
 
