@@ -362,3 +362,37 @@ BLAKE3 compression is now the first real compiler hot path implemented as an ord
   - aliases (`canon`) go through one-predecessor block parameters and repeated loads.
 - `tests/test_xax_selfhost_riscv64.py::CrossTargetEncoderTests::test_encoder_lowered_to_the_jvm_agrees` is the largest JVM program in the suite. It caught both miscompiles found during ADR-157/158, so run it after any JVM backend change.
 
+
+## Next steps: benchmarks below the 1.05× target — 2026-10-05
+
+Every current result (superseded sections excluded) with XAX above 1.05× the fastest valid arm. Time misses come first, then size misses. Each item is a next step: profile, optimize, and rerun the full comparison (§15.0), without changing the workload or dropping a faster competitor.
+
+**Run time (or its emulated proxy):**
+1. **RISC-V RV64IM, `sum_to`** (§15.9, `riscv64_twin_evidence.json`): 1,216× clang `-O2` emulated instructions (17,030 vs 14). Clang turns the loop into a closed form; XAX runs it.
+2. **AArch64 Linux `filestat`** (§15.10, `linux_aarch64_filestat_evidence.json`): 7.18× `aarch64-linux-gnu-gcc -O2` qemu wall time (0.513 vs 0.072 s). The frame path keeps every value in memory; the register path (ADR-110) does not cover this workload.
+3. **SPIR-V Collatz** (§15.11, `spirv_compute_evidence.json`): 6.88× glslang dispatch time on llvmpipe (74.3 vs 10.8 ms). The dispatch-loop lowering blocks vectorization; structured lowering of reducible CFGs is next.
+4. **RISC-V RV64IM, `collatz`** (§15.9): 3.72× clang `-O2` emulated instructions. No compare/branch fusion or copy coalescing yet.
+5. **JVM direct emission vs the native-bridge arm** (§15.19, `jvm_strategies_evidence.json`): XAX's own native-plus-JNI arm runs `jsonmin` in 0.68× the direct class's process time, so the direct arm is 1.47× it. Direct emission still beats `javac` (0.90×) and `kotlinc`. The gap is the 256 MiB entry thread and HotSpot interpreting before JIT. This is an XAX-vs-XAX comparison, outside §15.0a's `javac`/`kotlinc` baselines.
+
+Items 1–4 are emulated or software-device results. They are not hardware performance evidence (§23.17), but they are the gaps those backends must close before a hardware run.
+
+**Code size:**
+6. **RISC-V code bytes** (§15.9): `sum_to` 2.93×, `collatz` 3.23× clang `-O2`.
+7. **Windows PE executable bytes** (§15.6, `windows_pe_c_wine_evidence.json`): 1.82× MinGW-w64 `-O2` (757 vs 416). gcc inlines and constant-folds `sum_to(10)` and the dispatch table; XAX does that work at run time. Wall time under Wine is 1.006×, but it is start-up bound.
+8. **SPIR-V module bytes** (§15.11): 1.81× glslang (3,132 vs 1,732).
+9. **JVM `jsonmin` program class** (§15.18): 1.49× `javac` (5,575 vs 3,730 bytes). It is 0.99× `kotlinc`. The rest of the gap is the program's shape: an inlined parser, packed results, and a checked view per access.
+10. **Android native callbacks** (§15.15): `xaxOnCreate` 1.33× and `xaxOnClick` 1.27× the NDK twin (128/168 vs 96/132 bytes).
+11. **Android DEX bytes**: counter app 1.19× (§15.15) and minimal Activity 1.17× (§15.7), from one DEX per class, an edit-locality choice.
+12. **Linux x86-64 `jsonmin` artifact** (§15.14): 1.07× clang `-O2`'s stripped dynamic binary (15,631 vs 14,552 bytes). It is static, with no libc. Time meets the target (1.029×).
+
+**Not yet measurable against a baseline** (unknown, not passing):
+- WebAssembly, WASI, and the browser: no Emscripten/Rust/wasi-sdk run.
+- Android start-up and memory: these need arm64 hardware.
+- Windows: no run-time-bound comparison on a Windows host.
+- .NET, Apple, RTOS/MCU, and BSD: no container yet.
+
+**Within 1.05×, for reference:**
+- Linux x86-64: `filestat` 1.017×, `chains` 1.000×, `jsonmin` 1.029× (§15.14).
+- JVM: `jsonmin` 1.000× vs `javac`/`kotlinc` (§15.18) and Collatz 0.91× `javac`.
+
+`chains`' other XAX link representations are slower: record links 1.185×, `pointer_rebase` 1.639×, checked index 2.119×. They are alternative encodings; the struct-of-arrays arm is the one that meets the target.
