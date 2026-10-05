@@ -2745,7 +2745,11 @@ AAPCS64_STATIC_C_ABI = b"aapcs64-c"
 JVM_INVOKESTATIC_ABI = b"jvm-invokestatic"
 JVM_INVOKEVIRTUAL_ABI = b"jvm-invokevirtual"
 JVM_GETSTATIC_ABI = b"jvm-getstatic"
-JVM_FOREIGN_ABIS = (JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_GETSTATIC_ABI)
+# Interface members (ADR-161): ``invokeinterface`` (receiver first) and static
+# methods declared on an interface (``invokestatic`` of an InterfaceMethodref).
+JVM_INVOKEINTERFACE_ABI = b"jvm-invokeinterface"
+JVM_INVOKESTATIC_INTERFACE_ABI = b"jvm-invokestatic-interface"
+JVM_FOREIGN_ABIS = (JVM_INVOKESTATIC_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_GETSTATIC_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_INTERFACE_ABI)
 FOREIGN_ABIS = (
     ANDROID_AAPCS64_C_ABI, b"win64-c", b"wasm32-import", LINUX_X86_64_SYSCALL_ABI, SYSV_X86_64_C_ABI, LINUX_X86_64_STARTUP_ABI,
     *JVM_FOREIGN_ABIS, LINUX_AARCH64_SYSCALL_ABI, AAPCS64_LINUX_C_ABI, AAPCS64_STATIC_C_ABI,
@@ -2762,6 +2766,21 @@ WASM32_BROWSER_EVENT_ABI = b"wasm32-browser-event"
 LEND_ENTRY_ABI = b"sysv-x86_64-c-lend"
 FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, ANDROID_AAPCS64_C_ABI, WASM32_BROWSER_EVENT_ABI, LEND_ENTRY_ABI)
 _CODE_ENTRY_PREFIX = b"code-entry:"
+# A JVM callback (ADR-161): an object implementing one interface method,
+# ``jvm-interface:<interface internal name>.<method name><descriptor>``.
+JVM_INTERFACE_ENTRY_PREFIX = b"jvm-interface:"
+
+
+def jvm_interface_entry_type(interface: bytes, method: bytes) -> SemanticObject:
+    """Type of a ``FUNCTION_ADDRESS`` that Java calls as ``interface.method``.
+
+    ``method`` is ``name(descriptor)``, for example
+    ``jvm_interface_entry_type(b"java/util/function/IntUnaryOperator", b"applyAsInt(I)I")``.
+    The value is an object of type ``L<interface>;``; the entry must be pure.
+    """
+    if not interface or b"(" not in method:
+        raise ValueError("a JVM interface entry names an interface and a name(descriptor) method")
+    return pointer_type(opaque_identity_type(_CODE_ENTRY_PREFIX + JVM_INTERFACE_ENTRY_PREFIX + interface + b"." + method), Permission.READ, 8)
 _LEND_ENTRY_PREFIX = _CODE_ENTRY_PREFIX + LEND_ENTRY_ABI + b":"
 
 
@@ -6847,11 +6866,12 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                                 _is_effect(resolve(cid)) and not _is_memory_effect(resolve(cid)) for cid in callee_parameters
                             )
                         else:
-                            # A C caller cannot supply or receive proof values, so an
-                            # entry with effects or resources would hide them (ADR-102).
-                            admissible = entry_abi in FOREIGN_ENTRY_ABIS and not any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns))
+                            # A C or Java caller cannot supply or receive proof values, so an
+                            # entry with effects or resources would hide them (ADR-102, ADR-161).
+                            known = entry_abi in FOREIGN_ENTRY_ABIS or entry_abi.startswith(JVM_INTERFACE_ENTRY_PREFIX)
+                            admissible = known and not any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns))
                         if not admissible:
-                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else", "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple"}, entry_abi.decode("ascii", "replace"))
+                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else", "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple", "jvm-interface:...": "no proof parameters or results"}, entry_abi.decode("ascii", "replace"))
                     elif not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                 elif node.operation == Operation.CALL_FOREIGN:

@@ -74,6 +74,9 @@ from xax_compiler import (
     JVM_GETSTATIC_ABI,
     JVM_INVOKESTATIC_ABI,
     JVM_INVOKEVIRTUAL_ABI,
+    JVM_INVOKEINTERFACE_ABI,
+    JVM_INVOKESTATIC_INTERFACE_ABI,
+    JVM_INTERFACE_ENTRY_PREFIX,
     Kind,
     Operation,
     Permission,
@@ -124,6 +127,16 @@ def jvm_static(class_name: bytes, member: bytes, inputs, outputs) -> SemanticObj
 def jvm_virtual(class_name: bytes, member: bytes, inputs, outputs) -> SemanticObject:
     """``invokevirtual``; the first machine input is the receiver of type ``L<class_name>;``."""
     return foreign_function_symbol(class_name, member, inputs, outputs, abi=JVM_INVOKEVIRTUAL_ABI)
+
+
+def jvm_interface(interface_name: bytes, member: bytes, inputs, outputs) -> SemanticObject:
+    """``invokeinterface``; the first machine input is the receiver of type ``L<interface_name>;`` (ADR-161)."""
+    return foreign_function_symbol(interface_name, member, inputs, outputs, abi=JVM_INVOKEINTERFACE_ABI)
+
+
+def jvm_interface_static(interface_name: bytes, member: bytes, inputs, outputs) -> SemanticObject:
+    """``invokestatic`` of a static method declared on an interface (ADR-161)."""
+    return foreign_function_symbol(interface_name, member, inputs, outputs, abi=JVM_INVOKESTATIC_INTERFACE_ABI)
 
 
 def jvm_static_field(class_name: bytes, field: bytes, inputs, outputs) -> SemanticObject:
@@ -320,6 +333,9 @@ def _jvm_type(resolve: Callable[[bytes], SemanticObject], cid: bytes, where: str
             identity = _decode_opaque_identity_type(element_object)
             if identity.startswith(REFERENCE_PREFIX):
                 return identity[len(REFERENCE_PREFIX):].decode("ascii")
+            entry = _interface_entry(identity)
+            if entry is not None:
+                return f"L{entry[0]};"  # a callback object implementing the interface (ADR-161)
         else:
             return "I"  # an offset into the linear memory (ADR-156)
     fail("XAX.JVM.VALUE", where, "JVM-VALUE-REPRESENTABLE", "bits<=64, f32, f64, jvm-ref, or memory pointer", cid.hex())
@@ -354,6 +370,19 @@ def _aggregate_fields(resolve: Callable[[bytes], SemanticObject], cid: bytes) ->
         return _decode_tuple_type(obj, resolve)
     element, count = _decode_array_type(obj, resolve)
     return (element,) * count
+
+
+def _interface_entry(identity: bytes) -> tuple[str, str, str] | None:
+    """(interface, method name, descriptor) of a ``code-entry:jvm-interface:`` identity."""
+    prefix = b"code-entry:" + JVM_INTERFACE_ENTRY_PREFIX
+    if not identity.startswith(prefix):
+        return None
+    text = identity[len(prefix):].decode("ascii")
+    head, paren, tail = text.partition("(")
+    interface, _, name = head.rpartition(".")
+    if not interface or not name or not paren:
+        fail("XAX.JVM.ENTRY", text, "JVM-INTERFACE-ENTRY", "interface.name(descriptor)", text)
+    return interface, name, "(" + tail
 
 
 def _signed32(value: int) -> int:
@@ -420,6 +449,7 @@ class _ForeignMember:
     descriptor: str
     parameters: tuple[str, ...]  # JVM parameter descriptors in push order (receiver first)
     result: str  # JVM result descriptor, "V" for none
+    interface: bool = False  # an InterfaceMethodref (ADR-161)
 
 
 def _foreign_member(carrier: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ForeignMember:
@@ -446,12 +476,16 @@ def _foreign_member(carrier: SemanticObject, resolve: Callable[[bytes], Semantic
         if declaration.abi == JVM_INVOKEVIRTUAL_ABI:
             parameters = (f"L{class_name};", *parameters)
             opcode = 0xB6
+        elif declaration.abi == JVM_INVOKEINTERFACE_ABI:
+            parameters = (f"L{class_name};", *parameters)
+            opcode = 0xB9
     if not name or len(inputs) != len(parameters) or len(outputs) != (result != "V"):
         fail("XAX.JVM.FOREIGN", where, "JVM-FOREIGN-ARITY", [list(parameters), result], [len(inputs), len(outputs)])
     for jvm, cid in (*zip(parameters, inputs), *((result, cid) for cid in outputs)):
         if not _descriptor_matches(jvm, resolve, cid, where):
             fail("XAX.JVM.FOREIGN", where, "JVM-FOREIGN-DESCRIPTOR-TYPE", jvm, cid.hex())
-    return _ForeignMember(opcode, class_name, name, descriptor, parameters, result)
+    interface = declaration.abi in (JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_INTERFACE_ABI)
+    return _ForeignMember(opcode, class_name, name, descriptor, parameters, result, interface)
 
 
 # ---------------------------------------------------------------- class file
@@ -508,6 +542,9 @@ class _Pool:
 
     def method(self, owner: str, name: str, descriptor: str) -> int:
         return self._add(("m", owner, name, descriptor), b"\x0a" + _u2(self.klass(owner)) + _u2(self.name_type(name, descriptor)))
+
+    def interface_method(self, owner: str, name: str, descriptor: str) -> int:
+        return self._add(("im", owner, name, descriptor), b"\x0b" + _u2(self.klass(owner)) + _u2(self.name_type(name, descriptor)))
 
     def field(self, owner: str, name: str, descriptor: str) -> int:
         return self._add(("fd", owner, name, descriptor), b"\x09" + _u2(self.klass(owner)) + _u2(self.name_type(name, descriptor)))
@@ -2188,9 +2225,11 @@ def _compile_method_pass(
                 if narrow is not None:
                     code.op(narrow)
             max_call_slots = max(max_call_slots, slots)
-            reference = (pool.field if member.opcode == 0xB2 else pool.method)(member.class_name, member.name, member.descriptor)
+            lookup = pool.field if member.opcode == 0xB2 else pool.interface_method if member.interface else pool.method
             code.op(member.opcode)
-            code.raw(_u2(reference))
+            code.raw(_u2(lookup(member.class_name, member.name, member.descriptor)))
+            if member.opcode == 0xB9:
+                code.raw(bytes((sum(_slots(parameter) for parameter in member.parameters), 0)))  # invokeinterface count, 0
             if member.result in ("B", "S"):
                 mask("I", _NARROW_WIDTH[member.result])  # the JVM returns these sign-extended
             _store_call_result(node, block_index, node_index, slot_of, keep)
@@ -2229,6 +2268,13 @@ def _compile_method_pass(
             get(node.operands[0]); iconst(0); code.op(0x2F, 0x88); iconst(node.attributes[0])
             code.branch(0xA0, "trap")  # if_icmpne: another variant
             load_field(node.operands[0], 1, node.results[0])
+            put(result)
+
+        elif operation == Operation.FUNCTION_ADDRESS and slot_of[result][1].startswith("L"):
+            # A callback (ADR-161): an instance of this class whose interface method calls the function.
+            code.op(0xBB); code.raw(_u2(pool.klass(class_name))); code.op(0x59)
+            iconst(context.table[node.entity.cid])
+            code.op(0xB7); code.raw(_u2(pool.method(class_name, "<init>", "(I)V")))
             put(result)
 
         elif operation == Operation.FUNCTION_ADDRESS:
@@ -2575,6 +2621,92 @@ def _indirect_calls(functions, entry_cid: bytes, names, resolve, pool: _Pool, cl
     return _ClassContext(table, dispatchers), build
 
 
+def _callbacks(functions, entry_cid: bytes, names, table: dict[bytes, int], resolve, pool: _Pool, class_name: str, process_entry: bool):
+    """JVM callbacks (ADR-161): ``FUNCTION_ADDRESS`` at a ``jvm-interface:`` entry type is
+    ``new P(k)``, where ``k`` is the function's table index; this class implements each
+    interface method used, and the method calls the function whose index ``k`` holds.
+
+    Entries are pure (the verifier's ADR-102 rule), so a callback never touches the
+    linear memory, even from another Java thread.  It may not use stack allocations:
+    the shadow stack belongs to the entry thread (``JVM-ENTRY-SHADOW-STACK``).
+    """
+    by_cid = {function.cid: function for function in functions}
+    groups: dict[tuple[str, str], list[bytes]] = {}
+    interfaces: list[str] = []
+    for function in functions:
+        for block in parse_function_graph(function, resolve).blocks:
+            for node in block.nodes:
+                if node.operation != Operation.FUNCTION_ADDRESS:
+                    continue
+                element = _decode_pointer_type(resolve(node.results[0]), resolve)[0]
+                if resolve(element).body[:1] != b"\x06":
+                    continue
+                entry = _interface_entry(_decode_opaque_identity_type(resolve(element)))
+                if entry is None:
+                    continue
+                interface, name, descriptor = entry
+                if interface not in interfaces:
+                    interfaces.append(interface)
+                targets = groups.setdefault((name, descriptor), [])
+                if node.entity.cid not in targets:
+                    targets.append(node.entity.cid)
+    if not groups:
+        return [], ()
+
+    def reachable(cid: bytes) -> set[bytes]:
+        seen, pending = set(), [cid]
+        while pending:
+            current = pending.pop()
+            if current in seen or current not in by_cid:
+                continue
+            seen.add(current)
+            for block in parse_function_graph(by_cid[current], resolve).blocks:
+                for node in block.nodes:
+                    if node.operation in (Operation.CALL_DIRECT, Operation.FUNCTION_ADDRESS) and node.entity is not None:
+                        pending.append(node.entity.cid)
+        return seen
+
+    this = f"L{class_name};"
+    out: list[_Method] = []
+    for (name, descriptor), targets in sorted(groups.items()):
+        parameters, result = _parse_method_descriptor(descriptor, f"{name}{descriptor}")
+        code = _Code(name)
+        slots, slot = [], 1
+        for parameter in parameters:
+            slots.append(slot)
+            slot += _slots(parameter)
+        for target_cid in sorted(targets, key=lambda cid: table[cid]):
+            function_parameters, function_returns = _signature(by_cid[target_cid], resolve)
+            returns_ok = (function_returns == ((result,) if result != "V" else ())) or (
+                result == "Z" and function_returns == ("I",) and _decode_function_interface(by_cid[target_cid], resolve)[2]
+                and decode_bits_width(resolve(_decode_function_interface(by_cid[target_cid], resolve)[2][0])) == 1
+            )
+            if tuple(function_parameters) != tuple(parameters) or not returns_ok:
+                fail("XAX.JVM.ENTRY", target_cid.hex(), "JVM-ENTRY-SIGNATURE", f"{name}{descriptor}", [list(function_parameters), list(function_returns)])
+            for reached in reachable(target_cid):
+                if any(node.operation == Operation.STACK_ALLOC for block in parse_function_graph(by_cid[reached], resolve).blocks for node in block.nodes):
+                    fail("XAX.JVM.ENTRY", target_cid.hex(), "JVM-ENTRY-SHADOW-STACK", "no stack allocation reachable from a callback", reached.hex())
+            callee, callee_descriptor = names[target_cid]
+            order = list(range(len(parameters))) if callee == "entry" else _internal_order(list(range(len(parameters))), list(parameters))
+            code.op(0x2A, 0xB4); code.raw(_u2(pool.field(class_name, "k", "I")))  # aload_0; getfield k
+            _int_constant(code, pool, table[target_cid]); code.branch(0xA0, ("next", target_cid))  # if_icmpne
+            for index in order:
+                opcode = _LOAD[_kind_letter(parameters[index])]
+                code.op(_SHORT_LOCAL[opcode] + slots[index]) if slots[index] <= 3 else code.op(opcode, slots[index])
+            code.op(0xB8); code.raw(_u2(pool.method(class_name, callee, callee_descriptor)))
+            code.op(0xAC if result == "Z" else _RETURN[_kind_letter(result)] if result != "V" else 0xB1)
+            code.mark(("next", target_cid))
+        code.op(0xBB); code.raw(_u2(pool.klass("java/lang/Error"))); code.op(0x59)
+        code.op(0x13); code.raw(_u2(pool.string(_TRAP_MESSAGE)))
+        code.op(0xB7); code.raw(_u2(pool.method("java/lang/Error", "<init>", "(Ljava/lang/String;)V"))); code.op(0xBF)
+        blob, frames = code.finish()
+        out.append(_Method(name, descriptor, blob, max(4, slot + 2), slot, frames, (this, *parameters), (), access=0x0001))
+    # new P(k): this.k = k
+    init = bytes((0x2A, 0xB7)) + _u2(pool.method("java/lang/Object", "<init>", "()V")) + bytes((0x2A, 0x1B, 0xB5)) + _u2(pool.field(class_name, "k", "I")) + bytes((0xB1,))
+    out.append(_Method("<init>", "(I)V", init, 2, 2, (), (), (), access=0x0001))
+    return out, tuple(interfaces)
+
+
 def _int_constant(code: _Code, pool: _Pool, value: int) -> None:
     if -1 <= value <= 5:
         code.op(0x03 + value)
@@ -2876,7 +3008,9 @@ def _class_file(
     ``fields`` are private static fields (name, descriptor)."""
     this_index = pool.klass(class_name)
     interface_indices = b"".join(_u2(pool.klass(name)) for name in interfaces)
-    field_blobs = [_u2(0x000A) + _u2(pool.utf8(name)) + _u2(pool.utf8(descriptor)) + _u2(0) for name, descriptor in fields]
+    field_blobs = [
+        _u2(field[2] if len(field) > 2 else 0x000A) + _u2(pool.utf8(field[0])) + _u2(pool.utf8(field[1])) + _u2(0) for field in fields
+    ]
     super_index = pool.klass("java/lang/Object")
     source_name = pool.utf8("SourceFile")
     source_value = pool.utf8("XAX")
@@ -2947,6 +3081,7 @@ def compile_jvm_bound_target(
     context, dispatch_methods = _indirect_calls(functions, entry.cid, names, resolve, pool, class_name)
     methods = [_compile_method(function, names[function.cid][0], resolve, pool, class_name, names, needs, context) for function in functions]
     methods.extend(dispatch_methods())
+    callbacks, callback_interfaces = _callbacks(functions, entry.cid, names, context.table, resolve, pool, class_name, process_entry)
     shared = {item.split(":", 1)[1] for item in needs if item.startswith("shared:")}
     needs -= {f"shared:{item}" for item in shared}
     if needs and target.identity not in (JVM_CLASSFILE_MEMORY_IDENTITY, JVM_CLASSFILE_GENERAL_IDENTITY):
@@ -2954,12 +3089,16 @@ def compile_jvm_bound_target(
     methods.extend(_shared_methods(pool, shared, class_name))
     methods.extend(_memory_methods(pool, class_name, needs, _initial_memory(functions, resolve) if needs else _INITIAL_MEMORY))
     threaded = process_entry and target.identity in (JVM_CLASSFILE_MEMORY_IDENTITY, JVM_CLASSFILE_GENERAL_IDENTITY)
+    if threaded and any(method.name == "run" and method.descriptor == "()V" for method in callbacks):
+        fail("XAX.JVM.ENTRY", class_name, "JVM-ENTRY-RUNNABLE", "no Runnable.run entry in a threaded process", "run()V")
+    methods.extend(callbacks)
     if threaded:
         methods.extend(_threaded_launcher(pool, class_name, "entry"))
     elif process_entry:
         methods.append(_main_method(pool, class_name, "entry"))
-    fields = ((("M", "[B"), ("H", "I")) if needs else ()) + ((("S", "I"),) if "stack" in needs else ())
-    class_bytes, code_offsets = _class_file(class_name, methods, pool, fields, ("java/lang/Runnable",) if threaded else ())
+    fields = ((("M", "[B"), ("H", "I")) if needs else ()) + ((("S", "I"),) if "stack" in needs else ()) + ((("k", "I", 0x0012),) if callbacks else ())
+    interfaces = (*callback_interfaces, *(("java/lang/Runnable",) if threaded and "java/lang/Runnable" not in callback_interfaces else ()))
+    class_bytes, code_offsets = _class_file(class_name, methods, pool, fields, interfaces)
     jar, class_offset = _jar(class_name, class_bytes, process_entry)
     entry_offset = class_offset + code_offsets["entry"]
     ranges: list[ArtifactSemanticRange] = []

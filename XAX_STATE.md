@@ -950,3 +950,8 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - EXECUTED (`tests/test_xax_jvm_general.py`): atomics match the reference executor at 32 and 64 bits; a linked list walk sums its keys; a null follow traps. JVM `atomics` field EXECUTED.
 - Full suite: **1,121 passed, 5 skipped**.
 
+## JVM callbacks (2026-10-05, ADR-161)
+
+- XAX functions become Java functional-interface objects (`jvm-interface:` code-entry types; the program class implements the interfaces). Two new foreign ABIs, `jvm-invokeinterface` and `jvm-invokestatic-interface`, call interface methods. EXECUTED: a JDK `IntStream` pipeline calls three XAX callbacks (`tests/test_xax_jvm_callbacks.py`). The self-hosted typing store was regenerated.
+- Full suite: **1,125 passed, 5 skipped**.
+

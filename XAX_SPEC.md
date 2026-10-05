@@ -1177,7 +1177,7 @@ Interoperability is mandatory. Deterministic importers SHOULD convert external m
 
 Bits up to 32 lower to `int` and up to 64 to `long`, kept zero-extended. Every observable result MUST equal the reference executor's, including traps. A trap MUST terminate the program abruptly and MUST NOT be catchable by XAX code.
 
-Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-getstatic`. The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
+Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, `jvm-getstatic`, `jvm-invokeinterface` (receiver first), and `jvm-invokestatic-interface` (a static method declared on an interface; ADR-161). The declaration's library is the class's internal name and its name is `member(descriptor)` or `field:descriptor`. Each descriptor component MUST match the declared machine type: Z/B/C/S/I/J ↔ `bits` 1/8/16/16/32/64, F/D ↔ f32/f64, and an object or array descriptor ↔ `ptr<opaque-identity "jvm-ref:" + descriptor>`. For `jvm-invokevirtual` the receiver comes first. A Java exception escaping a foreign member terminates the program like a trap.
 
 `JVM_EXECUTABLE_JAR` requires a proof-only entry. Its `Main-Class` is the generated `main(String[])` that calls the entry and returns (JVM exit status 0); any other status MUST be an explicit `java/lang/System.exit` call.
 
@@ -1190,7 +1190,12 @@ Foreign members use the ABIs `jvm-invokestatic`, `jvm-invokevirtual`, and `jvm-g
 - **Links, raw loads, and atomics** (ADR-160). The profile also has `link.make/follow/target`, `raw.load.bits.le`, and the atomic operations.
   - A link is its record's `int` offset (0 is null). It is stored as 8 bytes, zero-extended, and `link.follow` of null traps.
   - A raw load is an ordinary load: the memory is zero-filled and has no alignment.
-  - Exactly one XAX thread runs on a JVM profile: the profiles create no threads and have no JVM-to-XAX callbacks. So each atomic operation is its sequential effect on the linear memory, and orderings and fences add nothing. A profile that admits a second XAX thread MUST lower atomics to JVM atomics instead.
+  - Exactly one XAX thread runs on a JVM profile with access to the linear memory: the profiles create no threads, and callbacks (below) are pure, so they never touch it. So each atomic operation is its sequential effect on the linear memory, and orderings and fences add nothing. A profile that admits a second thread with memory access MUST lower atomics to JVM atomics instead.
+- **Callbacks** (ADR-161). On the general profile, `function.address` at `jvm_interface_entry_type(interface, "name(descriptor)")` (identity `code-entry:jvm-interface:<interface>.<name><descriptor>`) is an object of type `L<interface>;`. It is an instance of the program's class whose implementation of that interface method calls the function.
+  - As for C entries (ADR-102), the function MUST have no proof parameters or results (`GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY`).
+  - Its machine signature MUST equal the descriptor, where a `Z` result is a `bits<1>` result (`JVM-ENTRY-SIGNATURE`).
+  - No stack allocation may be reachable from it, because the shadow stack belongs to the entry thread (`JVM-ENTRY-SHADOW-STACK`).
+  - Java may call it on any thread.
 
 ### 21.9d RISC-V RV64 raw images
 
