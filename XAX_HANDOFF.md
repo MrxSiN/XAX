@@ -381,7 +381,7 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 7. **Windows PE executable bytes** (§15.6, `windows_pe_c_wine_evidence.json`): 1.82× MinGW-w64 `-O2` (757 vs 416). gcc inlines and constant-folds `sum_to(10)` and the dispatch table; XAX does that work at run time. Wall time under Wine is 1.006×, but it is start-up bound.
 8. **SPIR-V module bytes** (§15.11): 1.81× glslang (3,132 vs 1,732).
 9. **JVM `jsonmin` program class** (§15.18): 1.49× `javac` (5,575 vs 3,730 bytes). It is 0.99× `kotlinc`. The rest of the gap is the program's shape: an inlined parser, packed results, and a checked view per access.
-10. **Android native callbacks** (§15.15): `xaxOnCreate` 1.33× and `xaxOnClick` 1.27× the NDK twin (128/168 vs 96/132 bytes).
+10. **Android native callbacks** (§15.15): `xaxOnCreate` 1.33× and `xaxOnClick` 1.27× the NDK twin (128/168 vs 96/132 bytes). *Done (ADR-169, §15.21): 96/128 vs 96/132 bytes.*
 11. **Android DEX bytes**: counter app 1.19× (§15.15) and minimal Activity 1.17× (§15.7), from one DEX per class, an edit-locality choice.
 12. **Linux x86-64 `jsonmin` artifact** (§15.14): 1.07× clang `-O2`'s stripped dynamic binary (15,631 vs 14,552 bytes). It is static, with no libc. Time meets the target (1.029×).
 

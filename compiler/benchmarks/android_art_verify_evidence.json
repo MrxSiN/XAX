@@ -7,7 +7,7 @@
         "Lxax/counter/CounterClickListener;": "Verified"
       },
       "passed": true,
-      "sha256": "3f228494aedb7af4027ced20b663a77a24e22c03bb9ff476e0abf8eb9016c3bc"
+      "sha256": "d5a010956562da9d5741bd7901b4d261fe79a29ac37d941eb8e23ca222c877b5"
     },
     "android_libxposed_argument_fixture.apk": {
       "class_loader_context": "libxposed-api-102.0.0",

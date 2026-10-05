@@ -964,3 +964,17 @@ Same graph, input (4 MiB), and executor (qemu-aarch64 8.2.2 user mode on the x86
 - one copy and the fused compare.
 
 **qemu's costs are not hardware's.** A `cmp`/`ccmp` chain for the whitespace test was slower under qemu (395 vs 365 ms at 32 MiB) despite fewer instructions; the flag-free bit test beat both (298 ms). These are emulated times, so they are not performance evidence (§23.17, OI-44).
+
+### 15.21 Android counter callbacks after ADR-169 (MEASURED, 2026-10-05)
+
+Same twin, toolchains, and measurement as §15.15 (symbol sizes from `llvm-readelf`). Evidence: `android_counter_twin_evidence.json`.
+
+| Bytes | XAX | Java + NDK | XAX / twin |
+|---|---:|---:|---:|
+| `xaxOnCreate` | 96 (92 code + 4 padding) | 96 | 1.000 |
+| `xaxOnClick` | 128 | 132 | 0.970 |
+| Native library | 2,248 | 4,608 | 0.488 |
+| APK | 20,313 | 28,892 | 0.703 |
+
+Both callbacks keep their values in callee-saved registers saved by `stp`/`ldp` pairs, as clang's do. XAX's code also null-checks `malloc`'s result (a `cbz` to a shared `brk`), which the C twin does not.
+

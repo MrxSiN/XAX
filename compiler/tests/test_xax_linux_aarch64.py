@@ -181,10 +181,14 @@ class LinuxAarch64ProfileTests(unittest.TestCase):
         executable = compile_linux_aarch64_executable(program.reader, program.entry.cid, program.target.cid)
         bundle = executable.bundle
         prologue = int.from_bytes(bundle.code[dict(bundle.function_offsets)[program.entry.cid]:][:4], "little")
-        self.assertEqual(prologue & 0xFFC003FF, 0xD10003FF)  # sub sp, sp, #frame
-        # One slot per SSA value needed 4,848 bytes, past the 4 KiB frame limit;
-        # with ADR-168 registers the frame holds only saved registers.
-        self.assertLessEqual((prologue >> 10) & 0xFFF, FRAME_BYTES)
+        # One slot per SSA value needed 4,848 bytes, past the 4 KiB frame limit; with
+        # ADR-168 registers the frame holds saved registers, allocated by a pre-indexed stp.
+        if prologue & 0xFFC003FF == 0xD10003FF:  # sub sp, sp, #frame
+            frame = (prologue >> 10) & 0xFFF
+        else:
+            self.assertEqual(prologue & 0xFFC003E0, 0xA98003E0)  # stp xA, xB, [sp, #-frame]!
+            frame = -(((prologue >> 15) & 0x7F) - 128) * 8
+        self.assertLessEqual(frame, FRAME_BYTES)
         self.assertEqual(executable.data, compile_linux_aarch64_executable(program.reader, program.entry.cid, program.target.cid).data)
 
 

@@ -2,88 +2,13 @@
   "behavior_match": true,
   "decision": "ADR-153",
   "device": {
-    "arms": {
-      "java_ndk": {
-        "clicks_work": true,
-        "median_pss_kib": 34878.5,
-        "median_total_time_ms": 51442.5,
-        "median_wait_time_ms": 55071.5,
-        "samples": {
-          "pss_kib": [
-            34824,
-            34390,
-            34933,
-            35753
-          ],
-          "total_time_ms": [
-            52094,
-            57324,
-            50791,
-            49183
-          ],
-          "wait_time_ms": [
-            55974,
-            62184,
-            54169,
-            52010
-          ]
-        },
-        "stdev_pss_kib": 569.23,
-        "stdev_total_time_ms": 3524.51,
-        "stdev_wait_time_ms": 4377.47,
-        "time_ratio_vs_fastest": 1.0,
-        "untracked_launches": 0
-      },
-      "xax": {
-        "clicks_work": true,
-        "median_pss_kib": 34796.5,
-        "median_total_time_ms": 54939.5,
-        "median_wait_time_ms": 59665.5,
-        "samples": {
-          "pss_kib": [
-            34540,
-            35092,
-            34569,
-            35024
-          ],
-          "total_time_ms": [
-            73536,
-            50626,
-            47389,
-            59253
-          ],
-          "wait_time_ms": [
-            82209,
-            54161,
-            49246,
-            65170
-          ]
-        },
-        "stdev_pss_kib": 292.26,
-        "stdev_total_time_ms": 11684.02,
-        "stdev_wait_time_ms": 14613.08,
-        "time_ratio_vs_fastest": 1.068,
-        "untracked_launches": 0
-      }
-    },
-    "hardware": false,
-    "label": "EXECUTED",
-    "note": "emulator run: shows the harness works; not performance or memory evidence",
-    "passes": 2,
-    "runs": 4,
-    "target": {
-      "ro.boot.qemu": "1",
-      "ro.build.fingerprint": "google/sdk_gphone64_x86_64/emulator64_x86_64_arm64:12/SE1B.240122.005/11418786:userdebug/dev-keys",
-      "ro.kernel.qemu": "1",
-      "ro.product.cpu.abilist": "x86_64,arm64-v8a",
-      "ro.product.model": "sdk_gphone64_x86_64"
-    },
-    "warmup": 1
+    "label": "UNEXECUTED",
+    "note": "start-up time and memory need an arm64 hardware device (--device)"
   },
   "format": "xax-android-counter-twin-evidence-v1",
   "java_ndk": {
     "apk_bytes": 28892,
-    "apk_sha256": "aa4c67f03fc3b6de72b56b4241aa8c038a2abf088c4af7c6e5cf6e70568c06bf",
+    "apk_sha256": "5f07eecd6655f0d247803be2fbbafcdc20e2d5c87a2d5edfd515723305a944ed",
     "badging": [
       "package: name='xax.counter' versionCode='1' versionName=''",
       "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
@@ -111,8 +36,8 @@
     "ndk": "28.2.13676358"
   },
   "xax": {
-    "apk_bytes": 20393,
-    "apk_sha256": "3f228494aedb7af4027ced20b663a77a24e22c03bb9ff476e0abf8eb9016c3bc",
+    "apk_bytes": 20313,
+    "apk_sha256": "d5a010956562da9d5741bd7901b4d261fe79a29ac37d941eb8e23ca222c877b5",
     "badging": [
       "package: name='xax.counter' versionCode='1' versionName=''",
       "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
@@ -124,18 +49,18 @@
     ],
     "manifest_bytes": 1132,
     "native_function_bytes": {
-      "Java_xax_counter_CounterActivity_xaxOnCreate": 128,
-      "Java_xax_counter_CounterClickListener_xaxOnClick": 168
+      "Java_xax_counter_CounterActivity_xaxOnCreate": 96,
+      "Java_xax_counter_CounterClickListener_xaxOnClick": 128
     },
-    "native_library_bytes": 2328,
+    "native_library_bytes": 2248,
     "native_needed": [
       "libc.so"
     ]
   },
   "xax_over_java_ndk": {
-    "apk_bytes": 0.706,
+    "apk_bytes": 0.703,
     "dex_bytes": 1.188,
     "manifest_bytes": 0.652,
-    "native_library_bytes": 0.505
+    "native_library_bytes": 0.488
   }
 }

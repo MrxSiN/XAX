@@ -900,17 +900,16 @@ class _Lowering:
         used_callee = sorted({item.register for item in self.intervals.values() if item.register in _CALLEE})
         self.has_call = bool(self.calls_at)
         saved = used_callee + ([_LR] if self.has_call else [])
-        self.spill_base = 0
-        self.save_base = 8 * self.spill_slots
-        self.frame = (self.save_base + 8 * len(saved) + 15) & ~15
+        # Saved registers sit at the bottom of the frame (pairs, the first one
+        # allocating the frame with a pre-indexed ``stp``); spill slots follow.
+        self.save_base = 0
+        self.spill_base = 8 * len(saved)
+        self.frame = (self.spill_base + 8 * self.spill_slots + 15) & ~15
         if self.frame >= 4096:
             return None
         self.saved = saved
         asm = self.asm = _Assembler()
-        if self.frame:
-            asm.emit(0xD1000000 | (self.frame << 10) | (_SP << 5) | _SP)
-        for index, register in enumerate(saved):
-            asm.emit(_access(False, register, _SP, self.save_base + 8 * index, 8))
+        asm.emit(*self._prologue())
         self._entry_moves()
         if self.order[0] != self.graph.entry:
             asm.branch(0x14000000, ("block", self.graph.entry), 26)
@@ -929,6 +928,44 @@ class _Lowering:
             asm.emit(_brk(code))
         return asm.finish(), tuple(asm.calls), tuple(asm.foreign_calls), (), tuple(node_ranges)
 
+    def _prologue(self) -> list[int]:
+        frame, saved, words = self.frame, self.saved, []
+        pairs = [saved[index:index + 2] for index in range(0, len(saved), 2)]
+        if pairs and len(pairs[0]) == 2 and frame <= 504:
+            first, second = pairs[0]
+            words.append(0xA9800000 | (((-frame // 8) & 0x7F) << 15) | (second << 10) | (_SP << 5) | first)  # stp, pre-index
+            rest = pairs[1:]
+            offset = 16
+        else:
+            if frame:
+                words.append(0xD1000000 | (frame << 10) | (_SP << 5) | _SP)
+            rest, offset = pairs, 0
+        for pair in rest:
+            if len(pair) == 2:
+                words.append(0xA9000000 | ((offset // 8) << 15) | (pair[1] << 10) | (_SP << 5) | pair[0])  # stp
+            else:
+                words.append(_access(False, pair[0], _SP, offset, 8))
+            offset += 8 * len(pair)
+        return words
+
+    def _epilogue(self) -> list[int]:
+        frame, saved, words = self.frame, self.saved, []
+        pairs = [saved[index:index + 2] for index in range(0, len(saved), 2)]
+        folded = bool(pairs) and len(pairs[0]) == 2 and frame <= 504
+        offset = 16 if folded else 0
+        for pair in pairs[1:] if folded else pairs:
+            if len(pair) == 2:
+                words.append(0xA9400000 | ((offset // 8) << 15) | (pair[1] << 10) | (_SP << 5) | pair[0])  # ldp
+            else:
+                words.append(_access(True, pair[0], _SP, offset, 8))
+            offset += 8 * len(pair)
+        if folded:
+            first, second = pairs[0]
+            words.append(0xA8C00000 | ((frame // 8) << 15) | (second << 10) | (_SP << 5) | first)  # ldp, post-index
+        elif frame:
+            words.append(0x91000000 | (frame << 10) | (_SP << 5) | _SP)
+        return words
+
     def location(self, value: ValueRef):
         interval = self.intervals[value]
         if interval.register is not None:
@@ -945,29 +982,40 @@ class _Lowering:
         return self.traps.setdefault(code, ("trap", code))
 
     def _entry_moves(self) -> None:
-        moves = []
-        entry = self.graph.blocks[self.graph.entry]
-        machine_index = 0
-        masks = []
-        for index, cid in enumerate(entry.parameters):
-            parameter = ValueRef.parameter(self.graph.entry, index)
-            if parameter not in self.widths:
-                continue
+        moves = []  # (destination, source register, parameter)
+        for machine_index, parameter in enumerate(self._entry_parameters()):
             if parameter in self.intervals:
-                moves.append((self.location(parameter), ("reg", machine_index)))
-                if self.widths[parameter] < 64:
-                    masks.append(parameter)
-            machine_index += 1
-        self._parallel(moves)
-        for parameter in masks:
-            kind, where = self.location(parameter)
-            if kind == "reg":
-                self.asm.emit(*_mask(where, where, self.widths[parameter]))
+                moves.append((self.location(parameter), ("reg", machine_index), parameter))
+        narrow = {parameter for _d, _s, parameter in moves if self.widths[parameter] < 64}
+        # A narrow parameter moving register to register zero-extends in the move itself, after
+        # the other copies, when no other copy reads its destination or writes its source.
+        fused = []
+        for move in moves:
+            destination, source, parameter = move
+            others = [item for item in moves if item is not move]
+            if (
+                parameter in narrow and destination[0] == "reg" and destination != source
+                and destination not in {item[1] for item in others} and source not in {item[0] for item in others}
+            ):
+                fused.append(move)
+        self._parallel([(d, s) for d, s, parameter in moves if (d, s, parameter) not in fused])
+        for destination, source, parameter in fused:
+            self.asm.emit(*_mask(destination[1], source[1], self.widths[parameter]))
+        for destination, _source, parameter in moves:
+            if parameter not in narrow or (destination, _source, parameter) in fused:
+                continue
+            if destination[0] == "reg":
+                self.asm.emit(*_mask(destination[1], destination[1], self.widths[parameter]))
             else:
+                where = destination[1]
                 self.asm.emit(_access(True, _TRANSFER, _SP, where, 8), *_mask(_TRANSFER, _TRANSFER, self.widths[parameter]), _access(False, _TRANSFER, _SP, where, 8))
         for value in sorted(self.hoisted, key=lambda item: (item.block, item.index)):
             if value in self.intervals:
                 self._parallel([(self.location(value), ("const", self.constants[value]))])
+
+    def _entry_parameters(self) -> list[ValueRef]:
+        entry = self.graph.blocks[self.graph.entry]
+        return [ValueRef.parameter(self.graph.entry, index) for index in range(len(entry.parameters)) if ValueRef.parameter(self.graph.entry, index) in self.widths]
 
     def _transfer(self, destination, source, scratch: int) -> None:
         """One move between locations (``reg``/``slot``/``const``)."""
@@ -1340,7 +1388,7 @@ class _Lowering:
             _require_foreign_abi(declaration, self.target, self.graph_object)
             asm.foreign_calls.append((len(asm.code), declaration.library, declaration.name))
             asm.emit(0x94000000)
-        if result is not None:
+        if result is not None and self.read_counts[result]:  # an unread result needs no copy or mask
             width = self.widths[result]
             kind, where = self.location(result)
             register = where if kind == "reg" else _TRANSFER
@@ -1364,11 +1412,7 @@ class _Lowering:
             machine = [value for value, cid in zip(terminator.values, self.return_types) if _machine_width(self.resolve, cid) is not None]
             if machine:
                 self._parallel([(("reg", 0), self.source(machine[0]))])
-            for index, register in enumerate(self.saved):
-                asm.emit(_access(True, register, _SP, self.save_base + 8 * index, 8))
-            if self.frame:
-                asm.emit(0x91000000 | (self.frame << 10) | (_SP << 5) | _SP)
-            asm.emit(0xD65F03C0)
+            asm.emit(*self._epilogue(), 0xD65F03C0)
             return
         if terminator.kind == TerminatorKind.TRAP:
             reason, _ = decode_trap_payload(terminator.payload)

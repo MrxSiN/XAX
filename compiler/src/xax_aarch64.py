@@ -1689,8 +1689,9 @@ def _compile_function(
                     "backend-declared explicit assist",
                     capability.runtime_helper.hex() if capability.runtime_helper else "none",
                 )
-    if target.identity in AARCH64_LINUX_IDENTITIES:
-        # Linux profiles (ADR-168): function-wide register allocation first.
+    if target.identity in AARCH64_LINUX_IDENTITIES or target.identity == b"android-arm64-v8a-shared-v4":
+        # Linux profiles (ADR-168) and the Android general profile (ADR-169):
+        # function-wide register allocation first.
         from xax_aarch64_regalloc import compile_linux_function
 
         lowered = compile_linux_function(function, resolve, target)
