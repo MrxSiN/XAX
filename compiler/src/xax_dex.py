@@ -2438,6 +2438,102 @@ def inspect_dex(data: bytes) -> DexInspection:
     )
 
 
+@dataclass(frozen=True)
+class DexClassDef:
+    descriptor: str
+    superclass: str | None
+    interfaces: tuple[str, ...]
+    # (name, proto descriptor, access flags) for direct and virtual methods.
+    methods: tuple[tuple[str, str, int], ...]
+
+
+@dataclass(frozen=True)
+class DexReferences:
+    """Every class, method and field a DEX file defines or names.
+
+    Method and field references are ``(class, name, descriptor)`` triples with
+    JVM-style proto descriptors such as ``(Ljava/lang/String;)V``.
+    """
+
+    classes: tuple[DexClassDef, ...]
+    method_refs: tuple[tuple[str, str, str], ...]
+    field_refs: tuple[tuple[str, str, str], ...]
+    types: tuple[str, ...]
+    strings: tuple[str, ...]
+
+
+def inspect_dex_references(data: bytes) -> DexReferences:
+    """Read the reference tables of any DEX file, independent of the emitter."""
+
+    view_strings: list[str] = []
+    if len(data) < DEX_HEADER_SIZE or data[:4] != b"dex\n":
+        raise ValueError("not a DEX file")
+    (
+        string_ids_size, string_ids_off, type_ids_size, type_ids_off, proto_ids_size, proto_ids_off,
+        field_ids_size, field_ids_off, method_ids_size, method_ids_off, class_defs_size, class_defs_off,
+    ) = struct.unpack_from("<12I", data, 56)
+    for index in range(string_ids_size):
+        offset = struct.unpack_from("<I", data, string_ids_off + index * 4)[0]
+        units, cursor = _read_uleb(data, offset)
+        end = data.find(b"\x00", cursor)
+        if end < 0:
+            raise ValueError("unterminated DEX string_data_item")
+        view_strings.append(_mutf8_decode(data[cursor:end], units))
+    types = tuple(view_strings[struct.unpack_from("<I", data, type_ids_off + index * 4)[0]] for index in range(type_ids_size))
+
+    def type_list(offset: int) -> tuple[str, ...]:
+        if not offset:
+            return ()
+        count = struct.unpack_from("<I", data, offset)[0]
+        return tuple(types[index] for index in struct.unpack_from(f"<{count}H", data, offset + 4))
+
+    protos = []
+    for index in range(proto_ids_size):
+        _shorty, return_idx, parameters_off = struct.unpack_from("<III", data, proto_ids_off + index * 12)
+        protos.append("(" + "".join(type_list(parameters_off)) + ")" + types[return_idx])
+    field_refs = []
+    for index in range(field_ids_size):
+        class_idx, type_idx, name_idx = struct.unpack_from("<HHI", data, field_ids_off + index * 8)
+        field_refs.append((types[class_idx], view_strings[name_idx], types[type_idx]))
+    method_refs = []
+    for index in range(method_ids_size):
+        class_idx, proto_idx, name_idx = struct.unpack_from("<HHI", data, method_ids_off + index * 8)
+        method_refs.append((types[class_idx], view_strings[name_idx], protos[proto_idx]))
+
+    classes = []
+    no_index = 0xFFFFFFFF
+    for index in range(class_defs_size):
+        class_idx, _access, superclass_idx, interfaces_off, _source, _annotations, class_data_off, _static = (
+            struct.unpack_from("<8I", data, class_defs_off + index * 32)
+        )
+        methods: list[tuple[str, str, int]] = []
+        if class_data_off:
+            cursor = class_data_off
+            counts = []
+            for _ in range(4):
+                value, cursor = _read_uleb(data, cursor)
+                counts.append(value)
+            for _ in range(counts[0] + counts[1]):
+                _diff, cursor = _read_uleb(data, cursor)
+                _flags, cursor = _read_uleb(data, cursor)
+            for count in counts[2:]:
+                method_idx = 0
+                for _ in range(count):
+                    diff, cursor = _read_uleb(data, cursor)
+                    flags, cursor = _read_uleb(data, cursor)
+                    _code, cursor = _read_uleb(data, cursor)
+                    method_idx += diff
+                    _owner, name, proto = method_refs[method_idx]
+                    methods.append((name, proto, flags))
+        classes.append(DexClassDef(
+            types[class_idx],
+            None if superclass_idx == no_index else types[superclass_idx],
+            type_list(interfaces_off),
+            tuple(methods),
+        ))
+    return DexReferences(tuple(classes), tuple(method_refs), tuple(field_refs), types, tuple(view_strings))
+
+
 __all__ = [
     "ACC_NATIVE",
     "ACC_PRIVATE",
@@ -2458,7 +2554,9 @@ __all__ = [
     "DexLibxposedRemoteFilesSpec",
     "DexBridgeSpec",
     "DexForwardingOverride",
+    "DexClassDef",
     "DexInspection",
+    "DexReferences",
     "DexNativeMethod",
     "DexProto",
     "activity_bridge_spec",
@@ -2469,4 +2567,5 @@ __all__ = [
     "interface_callback_bridge_spec",
     "emit_dex039_bridge",
     "inspect_dex",
+    "inspect_dex_references",
 ]

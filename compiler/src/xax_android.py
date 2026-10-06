@@ -917,10 +917,13 @@ def write_modern_libxposed_fixture(
     library_name: str = "libxaxmodule.so",
     scope: str = "com.example.target",
 ) -> Path:
-    """Write a packaging-only modern libxposed Android fixture.
+    """Write a packaging-only Gradle fixture around a generated native library.
 
     Gradle packages the already generated native library.  It never compiles XAX
-    through CMake/ndk-build and carries no legacy assets/xposed_init metadata.
+    through CMake/ndk-build and carries no legacy Xposed init assets.  It is a
+    native-library packaging/dlopen oracle, not a loadable libxposed module: it
+    has no Java entry, so API 102 frameworks such as Vector ignore it (ADR-178).
+    The Vector-loadable native module is ``android_libxposed_native_fixture.apk``.
     """
     root = Path(directory)
     jni = root / "app" / "src" / "main" / "jniLibs" / "arm64-v8a"
