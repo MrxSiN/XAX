@@ -30,7 +30,22 @@ EVIDENCE_PATH = Path(__file__).with_name("android_libxposed_hook_evidence.json")
 APK_PATH = Path(__file__).with_name("android_libxposed_hook_fixture.apk")
 
 
-def build_fixture(*, lifetime_policy: str = "process", hot_reload: bool = False):
+def build_fixture(
+    *,
+    lifetime_policy: str = "process",
+    hot_reload: bool = False,
+    hook_id: str | None = None,
+    min_api_version: int | None = None,
+):
+    """Build the hook fixture; ``hook_id``/``min_api_version`` override the defaults.
+
+    A stable hook ID (``HookBuilder.setId``) is API-102-only, so the default
+    minimum is 102 whenever an ID is present.
+    """
+    if hook_id is None and hot_reload:
+        hook_id = "xax.primary"
+    if min_api_version is None:
+        min_api_version = 102 if hook_id is not None else 101
     ui = ui_activity_fixture()
     managed = _managed_callbacks()
     hooker = libxposed_hook_adapter_semantics(
@@ -45,10 +60,10 @@ def build_fixture(*, lifetime_policy: str = "process", hot_reload: bool = False)
             exception_mode="PROTECTIVE",
             failure_policy="propagate",
             lifetime_policy=lifetime_policy,
-            hook_id="xax.primary" if hot_reload else None,
+            hook_id=hook_id,
         )
     )
-    hot_reload_semantics = libxposed_hot_reload_semantics(LibxposedHotReloadDescription()) if hot_reload else None
+    hot_reload_semantics = libxposed_hot_reload_semantics(LibxposedHotReloadDescription(hook_id=hook_id)) if hot_reload else None
     manifest = android_manifest_semantics(
         AndroidManifestSpec(
             "xax.generated", "xax.generated.XaxActivity", min_sdk=28, target_sdk=35,
@@ -57,7 +72,7 @@ def build_fixture(*, lifetime_policy: str = "process", hot_reload: bool = False)
     )
     xposed = libxposed_module_semantics(
         LibxposedModuleDescription(
-            min_api_version=102 if hot_reload else 101,
+            min_api_version=min_api_version,
             target_api_version=102,
             static_scope=True,
             java_entries=("xax.generated.XaxModule",),

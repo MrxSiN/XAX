@@ -1,4 +1,9 @@
-"""Deterministic direct-APK evidence for the bounded modern libxposed native path."""
+"""Deterministic direct-APK evidence for the bounded modern libxposed native path.
+
+API 102 requires a Java entry, and Vector only calls ``native_init`` when the
+Java entry's ``System.loadLibrary`` opens a library named in native_init.list,
+so the native entry rides on the generated XposedModule (ADR-178).
+"""
 from __future__ import annotations
 
 import hashlib
@@ -8,6 +13,7 @@ from pathlib import Path
 import zipfile
 
 from benchmarks.bench_android_arm64 import libxposed_native_init_fixture
+from benchmarks.bench_android_libxposed_managed import _managed_callbacks
 from benchmarks.bench_android_managed_bridge import ui_activity_fixture
 from xax_android import inspect_android_elf
 from xax_apk import inspect_apk
@@ -23,6 +29,7 @@ APK_PATH = Path(__file__).with_name("android_libxposed_native_fixture.apk")
 
 def build_fixture():
     ui = ui_activity_fixture()
+    managed = _managed_callbacks()
     native_reader, _native_target, native_init, native_callback, _exports = libxposed_native_init_fixture()
     native_export = android_export_symbol(native_init, b"native_init")
     manifest = android_manifest_semantics(
@@ -40,6 +47,7 @@ def build_fixture():
             min_api_version=101,
             target_api_version=102,
             static_scope=True,
+            java_entries=("xax.generated.XaxModule",),
             native_entries=("libxaxapp.so",),
             scopes=("com.example.target",),
         )
@@ -47,9 +55,9 @@ def build_fixture():
     module = object_with_refs(
         Kind.MODULE,
         (
-            ui["activity_callback"], ui["listener_callback"], native_init, native_callback,
-            ui["activity_export"], ui["listener_export"], native_export,
-            ui["ui_semantics"], manifest, xposed,
+            ui["activity_callback"], ui["listener_callback"], native_init, native_callback, *managed["callbacks"],
+            ui["activity_export"], ui["listener_export"], native_export, *managed["exports"],
+            ui["ui_semantics"], manifest, xposed, managed["managed"],
         ),
     )
     app = package(b"android-libxposed-native", (module,), build_entries=((b"apk", ui["activity_callback"]),))
@@ -57,6 +65,7 @@ def build_fixture():
     request = build_request(app, b"apk", target, profile, requested_artifacts=(ArtifactKind.ANDROID_UNSIGNED_APK,))
     objects = (
         *tuple(ui["reader"].objects()), *tuple(native_reader.objects()),
+        *managed["types"], *managed["graphs"], *managed["callbacks"], *managed["exports"], managed["managed"],
         ui["activity_export"], ui["listener_export"], native_export, ui["ui_semantics"], manifest, xposed,
         module, app, target, profile, policy, request,
     )
@@ -78,16 +87,17 @@ def collect_evidence() -> dict[str, object]:
     with zipfile.ZipFile(io.BytesIO(result.artifact), "r") as archive:
         names = tuple(archive.namelist())
         module_prop = archive.read("META-INF/xposed/module.prop")
+        java_init_list = archive.read("META-INF/xposed/java_init.list")
         native_init_list = archive.read("META-INF/xposed/native_init.list")
         scope_list = archive.read("META-INF/xposed/scope.list")
         elf_bytes = archive.read("lib/arm64-v8a/libxaxapp.so")
     elf = inspect_android_elf(elf_bytes)
     return {
-        "schema": "xax-android-libxposed-native-evidence-v1",
+        "schema": "xax-android-libxposed-native-evidence-v2",
         "environment_note": (
-            "direct modern-libxposed metadata/native ELF structural evidence only; Xposed framework loading, "
-            "native_init invocation, hooks, and target-process execution are UNEXECUTED because no compatible "
-            "Android/libxposed environment is available"
+            "direct modern-libxposed metadata/native ELF structural evidence only; the native entry rides on the "
+            "generated Java entry as API 102 and Vector require (ADR-178). Vector loading, native_init invocation, "
+            "hooks, and target-process execution are UNEXECUTED here; see android_vector_runtime_evidence.json"
         ),
         "semantic_input": {
             "libxposed_carrier_cid": xposed.cid.hex(),
@@ -97,6 +107,7 @@ def collect_evidence() -> dict[str, object]:
             "min_api_version": 101,
             "target_api_version": 102,
             "static_scope": True,
+            "java_entries": ["xax.generated.XaxModule"],
             "native_entries": ["libxaxapp.so"],
             "scopes": ["com.example.target"],
         },
@@ -115,6 +126,7 @@ def collect_evidence() -> dict[str, object]:
         },
         "modern_metadata": {
             "module_prop_utf8": module_prop.decode("utf-8"),
+            "java_init_list_utf8": java_init_list.decode("utf-8"),
             "native_init_list_utf8": native_init_list.decode("utf-8"),
             "scope_list_utf8": scope_list.decode("utf-8"),
         },

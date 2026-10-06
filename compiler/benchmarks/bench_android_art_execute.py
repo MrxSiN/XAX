@@ -61,6 +61,8 @@ EXPECTED = {
         "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.setId, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
     "android_libxposed_managed_fixture.apk":
         "hooked=none services=[] calls=[]",
+    "android_libxposed_native_fixture.apk":
+        "hooked=none services=[] calls=[]",
     "android_libxposed_remote_files_fixture.apk":
         "hooked=none services=[nocap.files=null,nocap.open=null,cap.files=[config.json],cap.open=threw:FileNotFoundException] calls=[framework.getFrameworkProperties, framework.getFrameworkProperties, framework.getFrameworkProperties, framework.listRemoteFiles, framework.getFrameworkProperties, framework.openRemoteFile]",
     "android_libxposed_remote_preferences_fixture.apk":

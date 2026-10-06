@@ -1464,6 +1464,16 @@ def _build_android_unsigned_apk(
                 102,
                 libxposed_view.target_api_version,
             )
+        # HookBuilder.setId is API-102-only; minApiVersion=101 would advertise
+        # the module to an API-101 framework that lacks it.
+        if libxposed_hook_install_view.hook_id is not None and libxposed_view.min_api_version != 102:
+            fail(
+                "XAX.BUILD.ANDROID",
+                libxposed_carriers[0].cid.hex(),
+                "ANDROID-APK-LIBXPOSED-HOOK-ID-API",
+                102,
+                libxposed_view.min_api_version,
+            )
         if libxposed_hook_install_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name:
             fail(
                 "XAX.BUILD.ANDROID",

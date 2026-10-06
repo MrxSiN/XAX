@@ -171,7 +171,7 @@
       "signed": false
     },
     "android_libxposed_native_fixture.apk": {
-      "bytes": 34233,
+      "bytes": 34367,
       "checks": {
         "aapt2_badging": true,
         "classes.dex:d8_redex": true,
@@ -180,11 +180,14 @@
         "classes2.dex:d8_redex": true,
         "classes2.dex:dexdump_checksum": true,
         "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
         "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
         "zipalign_16k": true
       },
       "passed": true,
-      "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36",
+      "sha256": "62e08e683bee0aac9418aa2fe3bc1be9824849177779cb501dab462fa3a0c266",
       "signed": false
     },
     "android_libxposed_remote_files_fixture.apk": {

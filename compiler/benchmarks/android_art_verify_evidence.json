@@ -87,10 +87,11 @@
       "class_loader_context": "libxposed-api-102.0.0",
       "classes": {
         "Lxax/generated/XaxActivity;": "Verified",
+        "Lxax/generated/XaxModule;": "Verified",
         "Lxax/generated/XaxOnClickListener;": "Verified"
       },
       "passed": true,
-      "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36"
+      "sha256": "62e08e683bee0aac9418aa2fe3bc1be9824849177779cb501dab462fa3a0c266"
     },
     "android_libxposed_remote_files_fixture.apk": {
       "class_loader_context": "libxposed-api-102.0.0",

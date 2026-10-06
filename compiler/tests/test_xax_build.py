@@ -8,6 +8,7 @@ from blake3 import blake3
 
 from benchmarks.bench_android_managed_bridge import ui_activity_fixture
 from benchmarks.bench_android_arm64 import minimal_native_init_fixture
+from benchmarks.bench_android_libxposed_managed import _managed_callbacks
 from xax_android import android_activity_method_ui_semantics, android_activity_resource_ui_semantics
 from xax_android_components import android_application_semantics, android_broadcast_receiver_semantics, android_service_semantics
 
@@ -586,7 +587,12 @@ class PackageBuildTests(unittest.TestCase):
         self.assertEqual(caught.exception.diagnostic.rule, "ANDROID-APK-SERVICE-EXPORT")
 
     def test_android_unsigned_apk_packages_modern_native_libxposed_metadata(self):
+        # API 102 / Vector: native entries ride on a Java entry, whose
+        # onModuleLoaded System.loadLibrary is what triggers native_init.
+        with self.assertRaises(ValueError):
+            LibxposedModuleDescription(native_entries=("libxaxapp.so",), scopes=("com.example.target",))
         ui = ui_activity_fixture()
+        managed = _managed_callbacks()
         native_reader, _, native_init, native_callback, _ = minimal_native_init_fixture()
         native_export = android_export_symbol(native_init, b"native_init")
         manifest = android_manifest_semantics(
@@ -597,6 +603,7 @@ class PackageBuildTests(unittest.TestCase):
                 min_api_version=101,
                 target_api_version=102,
                 static_scope=True,
+                java_entries=("xax.generated.XaxModule",),
                 native_entries=("libxaxapp.so",),
                 scopes=("com.example.target",),
             )
@@ -604,9 +611,9 @@ class PackageBuildTests(unittest.TestCase):
         module = object_with_refs(
             Kind.MODULE,
             (
-                ui["activity_callback"], ui["listener_callback"], native_init, native_callback,
-                ui["activity_export"], ui["listener_export"], native_export,
-                ui["ui_semantics"], manifest, xposed,
+                ui["activity_callback"], ui["listener_callback"], native_init, native_callback, *managed["callbacks"],
+                ui["activity_export"], ui["listener_export"], native_export, *managed["exports"],
+                ui["ui_semantics"], manifest, xposed, managed["managed"],
             ),
         )
         app = package(b"android-xposed-native", (module,), build_entries=((b"apk", ui["activity_callback"]),))
@@ -615,6 +622,7 @@ class PackageBuildTests(unittest.TestCase):
         request = build_request(app, b"apk", target, profile, requested_artifacts=(ArtifactKind.ANDROID_UNSIGNED_APK,))
         objects = (
             *tuple(ui["reader"].objects()), *tuple(native_reader.objects()),
+            *managed["types"], *managed["graphs"], *managed["callbacks"], *managed["exports"], managed["managed"],
             ui["activity_export"], ui["listener_export"], native_export, ui["ui_semantics"], manifest, xposed,
             module, app, target, profile, policy, request,
         )
@@ -627,8 +635,10 @@ class PackageBuildTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(result.artifact), "r") as archive:
             names = set(archive.namelist())
             self.assertIn("META-INF/xposed/module.prop", names)
+            self.assertIn("META-INF/xposed/java_init.list", names)
             self.assertIn("META-INF/xposed/native_init.list", names)
             self.assertIn("META-INF/xposed/scope.list", names)
+            self.assertEqual(archive.read("META-INF/xposed/java_init.list"), b"xax.generated.XaxModule\n")
             self.assertNotIn("assets/xposed_init", names)
             self.assertEqual(
                 archive.read("META-INF/xposed/module.prop"),
@@ -642,9 +652,9 @@ class PackageBuildTests(unittest.TestCase):
         missing_module = object_with_refs(
             Kind.MODULE,
             (
-                ui["activity_callback"], ui["listener_callback"],
-                ui["activity_export"], ui["listener_export"],
-                ui["ui_semantics"], manifest, xposed,
+                ui["activity_callback"], ui["listener_callback"], *managed["callbacks"],
+                ui["activity_export"], ui["listener_export"], *managed["exports"],
+                ui["ui_semantics"], manifest, xposed, managed["managed"],
             ),
         )
         missing_app = package(
@@ -655,6 +665,7 @@ class PackageBuildTests(unittest.TestCase):
         )
         missing_objects = (
             *tuple(ui["reader"].objects()), ui["activity_export"], ui["listener_export"],
+            *managed["types"], *managed["graphs"], *managed["callbacks"], *managed["exports"], managed["managed"],
             ui["ui_semantics"], manifest, xposed, missing_module, missing_app, target, profile, policy, missing_request,
         )
         missing_resolution = resolve_packages(
