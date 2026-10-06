@@ -36,11 +36,14 @@ def build_fixture(
     hot_reload: bool = False,
     hook_id: str | None = None,
     min_api_version: int | None = None,
+    version_code: int = 1,
 ):
     """Build the hook fixture; ``hook_id``/``min_api_version`` override the defaults.
 
     A stable hook ID (``HookBuilder.setId``) is API-102-only, so the default
-    minimum is 102 whenever an ID is present.
+    minimum is 102 whenever an ID is present.  Vector hot-reloads a module on
+    update only when its ``versionCode`` changes, so a second generation passes
+    a new ``version_code``.
     """
     if hook_id is None and hot_reload:
         hook_id = "xax.primary"
@@ -67,7 +70,7 @@ def build_fixture(
     manifest = android_manifest_semantics(
         AndroidManifestSpec(
             "xax.generated", "xax.generated.XaxActivity", min_sdk=28, target_sdk=35,
-            version_code=1, launcher=True,
+            version_code=version_code, launcher=True,
         )
     )
     xposed = libxposed_module_semantics(
