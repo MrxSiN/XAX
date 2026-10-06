@@ -1,5 +1,8 @@
 """The replacement matrix may never claim a level its evidence does not support."""
 import copy
+import csv
+import hashlib
+import json
 import unittest
 from pathlib import Path
 
@@ -20,7 +23,7 @@ class ReplacementMatrixTests(unittest.TestCase):
         row["fields"]["simd"] = "EXECUTED"
         row["fields"]["memory"] = ["MEASURED", "no/such/file.json"]
         errors = validate(bad, ROOT)
-        self.assertIn("windows-x86_64-pe: claimed R4 but evidence supports R1", errors)
+        self.assertIn("windows-x86_64-pe: claimed R4 but evidence supports R2", errors)
         self.assertIn("windows-x86_64-pe.simd: bare label EXECUTED needs evidence", errors)
         self.assertIn("windows-x86_64-pe.memory: missing evidence no/such/file.json", errors)
 
@@ -46,7 +49,40 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertEqual(practical[0], "EXECUTED")
         # The benchmark-scale filestat utility alone is not the application.
         self.assertIn("compiler/benchmarks/jsonmin_evidence.json", practical)
-        self.assertEqual(derived_level(row), "R4")
+        # ADR-177: the R4 comparisons kept no raw samples, so the row stops at R3.
+        self.assertEqual(derived_level(row), "R3")
+
+    def test_summary_only_performance_cannot_be_measured_or_competitive(self):
+        bad = copy.deepcopy(MATRIX)
+        row = next(r for r in bad["platforms"] if r["id"] == "linux-x86_64")
+        row["fields"]["performance"][0] = "MEASURED"
+        row["competitive"][0] = True
+        row["level"] = "R4"
+        errors = validate(bad, ROOT)
+        self.assertIn("linux-x86_64.performance: MEASURED performance needs 5+ raw samples to recompute from", errors)
+        self.assertTrue(any(e.startswith("linux-x86_64.competitive: verdict True but recomputation") for e in errors), errors)
+        self.assertIn("linux-x86_64: claimed R4 but evidence supports R3", errors)
+
+    def test_android_runtime_has_one_baseline_and_stops_at_r3(self):
+        row = next(r for r in MATRIX["platforms"] if r["id"] == "android-arm64")
+        evidence = json.loads((ROOT / "compiler/benchmarks/android_counter_twin_evidence.json").read_text())
+        platform = json.loads((ROOT / "compiler/benchmarks/android_platform_runtime_probe_evidence.json").read_text())
+        self.assertEqual(derived_level(row), "R3")
+        self.assertEqual(set(evidence["device"]["arms"]), {"xax", "java_ndk"})  # one baseline arm
+        self.assertTrue(evidence["device"]["hardware"])
+        self.assertTrue(platform["runtime"]["hardware"])
+        self.assertTrue(platform["runtime"]["arm64_native"])
+        self.assertTrue(platform["runtime"]["executed"])
+
+    def test_documents_sources_and_images_alone_never_prove_execution(self):
+        bad = copy.deepcopy(MATRIX)
+        row = next(r for r in bad["platforms"] if r["id"] == "aarch64-baremetal")
+        row["fields"]["real_execution"] = ["EXECUTED", "XAX_STATE.md", "compiler/src/xax_board.py", "compiler/integration/android/activity_after_click.png"]
+        errors = validate(bad, ROOT)
+        self.assertIn("aarch64-baremetal.real_execution: EXECUTED cites only supporting files (documents, sources, scripts, images)", errors)
+        self.assertEqual(derived_level(row), "R0")
+        row["fields"]["code_size"] = ["MEASURED", "compiler/tests/test_xax_board.py"]
+        self.assertIn("aarch64-baremetal.code_size: MEASURED needs a recorded .json/.csv result", validate(bad, ROOT))
 
     def test_not_applicable_needs_a_justification_and_only_covers_dynamic_linking(self):
         bad = copy.deepcopy(MATRIX)
@@ -59,47 +95,74 @@ class ReplacementMatrixTests(unittest.TestCase):
         row["fields"]["ffi"] = "NOT_APPLICABLE"
         self.assertEqual(derived_level(row), "R1")
 
-    def test_measured_but_uncompetitive_rows_stop_at_r3(self):
-        row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64"))
-        self.assertTrue(all(row["fields"][field][0] == "MEASURED" for field in ("performance", "memory", "code_size")))
-        self.assertEqual(derived_level(row), "R4")
-        row["competitive"] = [False, "compiler/benchmarks/jsonmin_evidence.json"]
-        self.assertEqual(derived_level(row), "R3")
+    def test_competitive_verdict_must_equal_recomputation(self):
         bad = copy.deepcopy(MATRIX)
-        target = next(r for r in bad["platforms"] if r["id"] == "linux-x86_64")
-        target["competitive"] = [False, "compiler/benchmarks/jsonmin_evidence.json"]
-        self.assertIn("linux-x86_64: claimed R4 but evidence supports R3", validate(bad, ROOT))
+        target = next(r for r in bad["platforms"] if r["id"] == "jvm")
+        self.assertEqual(derived_level(target), "R4")
+        target["competitive"] = [False, "compiler/benchmarks/jvm_jsonmin_evidence.json"]
+        self.assertTrue(any(e.startswith("jvm.competitive: verdict False but recomputation") for e in validate(bad, ROOT)))
         target["competitive"] = [True]
-        self.assertIn("linux-x86_64.competitive: expected [bool, evidence...]", validate(bad, ROOT))
+        self.assertIn("jvm.competitive: expected [bool, evidence...]", validate(bad, ROOT))
 
-    def test_competitive_runtime_evidence_follows_the_multi_language_rule(self):
-        import json
+    def test_runtime_verdict_is_recomputed_from_raw_samples(self):
         import tempfile
 
-        from xax_replacement import _runtime_rule_errors
+        from xax_replacement import recompute_runtime_verdict
 
+        fast, slow = [1.0] * 5, [1.2] * 5
+        host = {"cpu": "x"}
+        arm = lambda samples, **extra: {"wall_seconds_samples": samples, **extra}  # noqa: E731
+        cases = {
+            "c_only.json": {"host": host, "results": {"xax": arm(fast), "gcc-O2": arm(fast), "clang-O2": arm(fast)}},
+            "slow.json": {"host": host, "results": {"xax": arm(slow, performance_class="meets-primary-target"), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
+            "good.json": {"host": host, "results": {"xax": arm(fast), "gcc-O2": arm(fast), "rustc-O3": arm(slow)}},
+            "lying.json": {"host": host, "results": {"xax": arm(fast, time_ratio_vs_fastest=0.8), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
+            "few.json": {"host": host, "results": {"xax": arm([1.0]), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
+            "nohost.json": {"results": {"xax": arm(fast), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
+            "javac_only.json": {"host": host, "results": {"xax": arm(fast), "javac": arm(fast), "javac-O": arm(fast)}},
+            "jvm.json": {"host": host, "results": {"xax": arm(fast), "javac": arm(fast), "kotlinc": arm(slow)}},
+        }
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            cases = {
-                "c_only.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "gcc-O2": {}}},
-                "slow.json": {"results": {"xax": {"performance_class": "competitive-below-primary-target"}, "gcc-O2": {}, "rustc-O3": {}}},
-                "good.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "gcc-O2": {}, "rustc-O3": {}}},
-                "javac_only.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "javac": {}}},
-                "jvm.json": {"results": {"xax": {"performance_class": "meets-primary-target"}, "javac": {}, "kotlinc": {}}},
-            }
             for name, body in cases.items():
                 (root / name).write_text(json.dumps(body))
-            self.assertEqual(_runtime_rule_errors("r", ["c_only.json"], root), ["r.competitive: c_only.json has no implementation outside C/C++"])
-            self.assertEqual(_runtime_rule_errors("r", ["slow.json"], root), ["r.competitive: slow.json has no XAX arm within 1.05x of the fastest"])
-            self.assertEqual(_runtime_rule_errors("r", ["good.json"], root), [])
-            # §15.0a: a JVM comparison needs javac and kotlinc, not a C/C++ or Rust arm.
-            self.assertEqual(_runtime_rule_errors("r", ["javac_only.json"], root), ["r.competitive: javac_only.json has no JVM baseline besides javac"])
-            self.assertEqual(_runtime_rule_errors("r", ["jvm.json"], root), [])
+            check = lambda name: recompute_runtime_verdict([name], root)  # noqa: E731
+            self.assertEqual(check("c_only.json"), ["c_only.json: baselines do not meet the 15.0/15.0a policy"])
+            # performance_class is never trusted: the samples say 1.2x.
+            self.assertEqual(check("slow.json"), ["slow.json: XAX median is 1.200x the fastest"])
+            self.assertEqual(check("good.json"), [])
+            self.assertEqual(check("lying.json"), ["lying.json: xax publishes ratio 0.8, raw samples give 1.000"])
+            self.assertEqual(check("few.json"), ["few.json: an arm lacks 5+ raw wall_seconds_samples"])
+            self.assertEqual(check("nohost.json"), ["nohost.json: no host/hardware identity"])
+            self.assertEqual(check("javac_only.json"), ["javac_only.json: baselines do not meet the 15.0/15.0a policy"])
+            self.assertEqual(check("jvm.json"), [])
+            self.assertEqual(recompute_runtime_verdict(["good.json"], root, emulated=True), ["emulated execution is never performance evidence"])
         self.assertEqual(validate(MATRIX, ROOT), [])
 
     def test_levels_are_cumulative(self):
         row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "ai_tokens": ["MEASURED", "x"]}}
         self.assertEqual(derived_level(row), "R0")  # R5 evidence cannot skip R1-R4
+
+    def test_jvm_r5_candidate_evidence_is_consistent(self):
+        row = next(r for r in MATRIX["platforms"] if r["id"] == "jvm")
+        evidence_path = ROOT / "compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json"
+        results_path = ROOT / "compiler/benchmarks/ai_native/jvm-r5-optimized-results.csv"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        with results_path.open(newline="", encoding="utf-8") as file:
+            rows = list(csv.DictReader(file))
+        self.assertEqual(derived_level(row), "R4")
+        self.assertEqual(row["fields"]["ai_tokens"][0], "PROTOTYPE")
+        self.assertEqual(len(rows), 10)
+        self.assertEqual({r["model"] for r in rows}, {"gpt-5.6-luna"})
+        self.assertEqual({r["reasoning"] for r in rows}, {"low"})
+        self.assertTrue(all(r["pass"] == "TRUE" and r["turns"] == "1" for r in rows))
+        totals = {arm: sum(int(r["total_tokens"]) for r in rows if r["arm"] == arm) for arm in ("C", "XAX-DIRECT")}
+        self.assertEqual(totals, {"C": 197252, "XAX-DIRECT": 98432})
+        self.assertEqual(evidence["results"]["c"]["total_tokens"], totals["C"])
+        self.assertEqual(evidence["results"]["xax"]["total_tokens"], totals["XAX-DIRECT"])
+        self.assertTrue(evidence["results"]["meets_50_percent_reduction_gate"])
+        self.assertLessEqual(evidence["results"]["xax_over_c_total_tokens"], 0.5)
+        self.assertEqual(hashlib.sha256(results_path.read_bytes()).hexdigest(), evidence["source"]["sha256"])
 
 
 if __name__ == "__main__":

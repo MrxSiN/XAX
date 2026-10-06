@@ -1,8 +1,8 @@
-import platform
 
 import pytest
 
 import blake3 as blake3_module
+import xax_native
 from xax_compiler import Operation, decode_native_target, execute
 from xax_native_blake3 import (
     build_blake3_compress_program,
@@ -72,7 +72,7 @@ def test_blake3_graph_uses_xor_rotate_and_normal_native_compile_path():
     assert Operation.ROTATE_RIGHT in supported
 
 
-@pytest.mark.skipif(platform.machine().lower() not in ("x86_64", "amd64"), reason="native x86-64 execution proof")
+@pytest.mark.skipif(xax_native.native_host() is not None, reason=f"UNAVAILABLE: {xax_native.native_host()}")
 def test_blake3_xax_graph_runs_natively_and_matches_python_leaf():
     native = native_blake3_compressor()
     cv, block, counter, block_len, flags = _args()

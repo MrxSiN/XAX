@@ -540,8 +540,11 @@ def _native_store_decoder():
         from xax_selfhost_store import NativeDecoder, native_decoder_usable
 
         _NATIVE_DECODER = NativeDecoder() if native_decoder_usable() else None
-    except (ImportError, OSError, RuntimeError, ValueError):
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         _NATIVE_DECODER = None
+        import xax_native
+
+        xax_native.fallback("store-decoder", f"native image failed to load: {error!r}")
     finally:
         _DECODER_BUILDING = False
     return _NATIVE_DECODER
@@ -2790,7 +2793,7 @@ WASM32_BROWSER_EVENT_ABI = b"wasm32-browser-event"
 # (ADR-115, OI-42).  The view's pointer and token types are part of the
 # entry type, so the call site can check that it lends exactly that view.
 LEND_ENTRY_ABI = b"sysv-x86_64-c-lend"
-FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, ANDROID_AAPCS64_C_ABI, WASM32_BROWSER_EVENT_ABI, LEND_ENTRY_ABI)
+FOREIGN_ENTRY_ABIS = (SYSV_X86_64_C_ABI, b"win64-c", ANDROID_AAPCS64_C_ABI, WASM32_BROWSER_EVENT_ABI, LEND_ENTRY_ABI)
 _CODE_ENTRY_PREFIX = b"code-entry:"
 # A JVM callback (ADR-161): an object implementing one interface method,
 # ``jvm-interface:<interface internal name>.<method name><descriptor>``.
@@ -6260,8 +6263,11 @@ def _native_graph_decoder():
         from xax_selfhost_graph import NativeGraphDecoder, native_graph_decoder_usable
 
         _NATIVE_GRAPH_DECODER = NativeGraphDecoder() if native_graph_decoder_usable() else None
-    except (ImportError, OSError, RuntimeError, ValueError):
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         _NATIVE_GRAPH_DECODER = None
+        import xax_native
+
+        xax_native.fallback("graph-decoder", f"native image failed to load: {error!r}")
     finally:
         _GRAPH_DECODER_BUILDING = False
     return _NATIVE_GRAPH_DECODER
@@ -6291,8 +6297,11 @@ def _native_cfg():
         from xax_selfhost_cfg import NativeCfg, native_cfg_usable
 
         _NATIVE_CFG = NativeCfg() if native_cfg_usable() else None
-    except (ImportError, OSError, RuntimeError, ValueError):
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         _NATIVE_CFG = None
+        import xax_native
+
+        xax_native.fallback("cfg", f"native image failed to load: {error!r}")
     finally:
         _CFG_BUILDING = False
     return _NATIVE_CFG
@@ -6322,8 +6331,11 @@ def _native_typing():
         from xax_selfhost_typing import NativeTyping, native_typing_usable
 
         _NATIVE_TYPING = NativeTyping() if native_typing_usable() else None
-    except (ImportError, OSError, RuntimeError, ValueError):
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         _NATIVE_TYPING = None
+        import xax_native
+
+        xax_native.fallback("typing", f"native image failed to load: {error!r}")
     finally:
         _TYPING_BUILDING = False
     return _NATIVE_TYPING
@@ -6897,7 +6909,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                             known = entry_abi in FOREIGN_ENTRY_ABIS or entry_abi.startswith(JVM_INTERFACE_ENTRY_PREFIX)
                             admissible = known and not any(_is_proof_type(resolve(cid)) for cid in (*callee_parameters, *callee_returns))
                         if not admissible:
-                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c": "no proof parameters or results", "android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else", "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple", "jvm-interface:...": "no proof parameters or results"}, entry_abi.decode("ascii", "replace"))
+                            fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", {"sysv-x86_64-c/win64-c/android-aapcs64-c": "no proof parameters or results", "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else", "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple", "jvm-interface:...": "no proof parameters or results"}, entry_abi.decode("ascii", "replace"))
                     elif not _is_opaque(resolve(element), OpaqueKind.FUNCTION):
                         fail("XAX.STRUCT.FUNCTION_ADDRESS", obj.cid.hex(), "GRAPH-FUNCTION-ADDRESS-TYPE", "ptr<opaque<function>> or a foreign entry type", node.results[0].hex())
                 elif node.operation == Operation.CALL_FOREIGN:
@@ -7443,6 +7455,11 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
             _XAX_GLUE_GRAPHS.add(obj.cid)  # S6b.4d: the graph's references and trap payloads are decided
         else:
             proven[obj.cid] = True
+    declined = sum(1 for position in range(len(listed)) if verdicts[position] != 1)
+    if declined:
+        import xax_native
+
+        xax_native.declined("store-verifier", declined)  # these objects are decided by the Python bootstrap
     return store_ok, proven
 
 

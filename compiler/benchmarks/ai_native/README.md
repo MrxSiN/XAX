@@ -69,6 +69,16 @@ Results append to the single human-readable `results.csv`. Duplicate task/arm/tr
 
 The summary reports every task plus passes, total tokens, median tokens per recorded task, and turns for C and XAX. With five tasks, inspect the raw rows; no significance test is implied.
 
+## Qualifying fixed-setting run (2026-10-06)
+
+`jvm-r5-results.csv` is the first run with explicit fixed model/reasoning metadata and balanced arm order. Ten fresh Codex CLI 0.160.0 sessions used `gpt-5.6-luna` with low reasoning. All five C and five XAX cells passed in one turn with no repair. C used 325,282 total tokens; XAX used 264,535 (0.813×, 18.675% fewer). `jvm-r5-evidence.json` records the aggregate, session IDs, CSV digest, protocol, and limits. The evidence is bounded to these five local edits; no significance or untested-task-class claim is made.
+
+## Direct semantic workflow (2026-10-06)
+
+`XAX-DIRECT` supplies the already-bounded local semantic view in the task and accepts one atomic `python xax.py apply CMD` operation. `apply` accepts either split arguments or one quoted command payload, then writes, verifies, commits, and exact-target-checks the transaction. The paired C arm now has a task-local `python c.py` exact-target checker.
+
+`jvm-r5-optimized-results.csv` records the controlled fixed-profile comparison. All ten cells passed in one turn with no repair. C used 197,252 total tokens; XAX-DIRECT used 98,432 (0.4990×, **50.098% fewer**). `jvm-r5-optimized-evidence.json` records the client profile, workflow distinction, session IDs, CSV digest, aggregate, and limits. This is five-edit workflow evidence, not complete JVM R5 evidence.
+
 ## Second confirmation run
 
 Run the same tasks from `runs-2/` in the opposite arm order—XAX first, then C—and save them separately:

@@ -10,8 +10,31 @@
   },
   "decision": "ADR-111",
   "device": {
-    "label": "UNEXECUTED",
-    "oracle": "integration/android/validate_counter_apk.sh"
+    "apk_sha256": "d5a010956562da9d5741bd7901b4d261fe79a29ac37d941eb8e23ca222c877b5",
+    "arm64_native": true,
+    "hardware": true,
+    "label": "EXECUTED",
+    "oracle": "integration/android/validate_counter_apk.sh",
+    "output": [
+      "ok: 0",
+      "ok: 1",
+      "ok: 2",
+      "ok: 3",
+      "ok: 3",
+      "ok: 4",
+      "note: state file not readable (non-debuggable build, no root)",
+      "XAX counter Activity validation passed: restore, increment, persistence across process death, file contents"
+    ],
+    "passed": true,
+    "target": {
+      "ro.boot.qemu": "",
+      "ro.build.fingerprint": "google/husky/husky:17/CP3A.260905.009/16091614:user/release-keys",
+      "ro.build.version.sdk": "37",
+      "ro.dalvik.vm.native.bridge": "0",
+      "ro.hw_timeout_multiplier": "",
+      "ro.kernel.qemu": "",
+      "ro.product.cpu.abilist": "arm64-v8a"
+    }
   },
   "format": "xax-android-counter-evidence-v1",
   "native_under_bionic": {

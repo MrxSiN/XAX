@@ -2,13 +2,165 @@
   "behavior_match": true,
   "decision": "ADR-153",
   "device": {
-    "label": "UNEXECUTED",
-    "note": "start-up time and memory need an arm64 hardware device (--device)"
+    "arms": {
+      "java_ndk": {
+        "clicks_work": true,
+        "median_pss_kib": 113411.5,
+        "median_total_time_ms": 223.5,
+        "median_wait_time_ms": 229.0,
+        "samples": {
+          "pss_kib": [
+            112347,
+            112579,
+            112355,
+            112319,
+            112375,
+            112331,
+            112383,
+            112287,
+            114752,
+            114369,
+            114414,
+            114362,
+            114378,
+            114414,
+            114244,
+            114562
+          ],
+          "total_time_ms": [
+            200,
+            180,
+            203,
+            163,
+            224,
+            184,
+            178,
+            187,
+            255,
+            264,
+            236,
+            252,
+            230,
+            263,
+            289,
+            223
+          ],
+          "wait_time_ms": [
+            202,
+            184,
+            208,
+            165,
+            229,
+            186,
+            182,
+            190,
+            258,
+            267,
+            239,
+            254,
+            236,
+            266,
+            400,
+            229
+          ]
+        },
+        "stdev_pss_kib": 1073.23,
+        "stdev_total_time_ms": 37.29,
+        "stdev_wait_time_ms": 55.67,
+        "time_ratio_vs_fastest": 1.0,
+        "untracked_launches": 0
+      },
+      "xax": {
+        "clicks_work": true,
+        "median_pss_kib": 112862.0,
+        "median_total_time_ms": 227.0,
+        "median_wait_time_ms": 229.5,
+        "samples": {
+          "pss_kib": [
+            111059,
+            111351,
+            111317,
+            110844,
+            110538,
+            110565,
+            110618,
+            110554,
+            114409,
+            114411,
+            114679,
+            114383,
+            114402,
+            114396,
+            114425,
+            114373
+          ],
+          "total_time_ms": [
+            148,
+            157,
+            156,
+            149,
+            181,
+            189,
+            152,
+            168,
+            315,
+            265,
+            320,
+            272,
+            350,
+            373,
+            272,
+            293
+          ],
+          "wait_time_ms": [
+            154,
+            166,
+            159,
+            152,
+            182,
+            191,
+            156,
+            170,
+            322,
+            268,
+            323,
+            278,
+            353,
+            378,
+            276,
+            299
+          ]
+        },
+        "stdev_pss_kib": 1864.4,
+        "stdev_total_time_ms": 80.25,
+        "stdev_wait_time_ms": 80.55,
+        "time_ratio_vs_fastest": 1.016,
+        "untracked_launches": 0
+      }
+    },
+    "hardware": true,
+    "label": "MEASURED",
+    "note": "performance and memory evidence",
+    "passes": 2,
+    "runs": 16,
+    "target": {
+      "kernel": "Linux localhost 6.1.162-android14-11-g2ec90535fa34-ab15810641 #1 SMP PREEMPT Wed Jul  8 11:53:29 UTC 2026 aarch64 Toybox",
+      "ro.boot.qemu": "",
+      "ro.build.fingerprint": "google/husky/husky:17/CP3A.260905.009/16091614:user/release-keys",
+      "ro.build.version.release": "17",
+      "ro.build.version.security_patch": "2026-09-05",
+      "ro.kernel.qemu": "",
+      "ro.product.cpu.abilist": "arm64-v8a",
+      "ro.product.model": "Pixel 8 Pro",
+      "ro.soc.manufacturer": "Google",
+      "ro.soc.model": "Tensor G3"
+    },
+    "warmup": 3
   },
   "format": "xax-android-counter-twin-evidence-v1",
   "java_ndk": {
     "apk_bytes": 28892,
-    "apk_sha256": "5f07eecd6655f0d247803be2fbbafcdc20e2d5c87a2d5edfd515723305a944ed",
+    "apk_sha256": "a7c11e22c7a842ea3220300cd0276c287929dc3eab09215cc5f4cf9be9e74ce5",
     "badging": [
       "package: name='xax.counter' versionCode='1' versionName=''",
       "launchable-activity: name='xax.counter.CounterActivity'  label='' icon=''"
@@ -22,7 +174,7 @@
       "Java_xax_counter_CounterActivity_xaxOnCreate": 96,
       "Java_xax_counter_CounterClickListener_xaxOnClick": 132
     },
-    "native_library_bytes": 4608,
+    "native_library_bytes": 4768,
     "native_needed": [
       "libc.so",
       "libdl.so"
@@ -30,9 +182,9 @@
   },
   "label": "MEASURED",
   "toolchain": {
-    "android_jar": "android-35",
-    "build_tools": "36.1.0",
-    "javac": "javac 21.0.11",
+    "android_jar": "android-37.0",
+    "build_tools": "37.0.0",
+    "javac": "javac 17.0.20.1",
     "ndk": "28.2.13676358"
   },
   "xax": {
@@ -61,6 +213,6 @@
     "apk_bytes": 0.703,
     "dex_bytes": 1.188,
     "manifest_bytes": 0.652,
-    "native_library_bytes": 0.488
+    "native_library_bytes": 0.471
   }
 }

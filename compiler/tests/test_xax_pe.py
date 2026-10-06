@@ -41,9 +41,11 @@ from xax_compiler import (
     write_store,
     x86_64_windows_general_target,
     x86_64_windows_pe_target,
+    x86_64_linux_dynamic_exec_target,
 )
 from xax_pe import emit_pe_executable
-from xax_platform import win32_kernel32_api
+from xax_graph_builder import GraphBuilder, program_store
+from xax_platform import win32_kernel32_api, win32_thread_api
 from xax_x86_64 import compile_native_bound_target, run_native
 
 R = ValueRef.node_result
@@ -241,6 +243,55 @@ def hosted_fixture(api=None, count=16):
     return StoreReader(write_store(root.cid, list({o.cid: o for o in objects}.values()))), entry, target
 
 
+def thread_callback_fixture():
+    api, threads = win32_kernel32_api(), win32_thread_api()
+    worker_graph = GraphBuilder()
+    worker_block = worker_graph.block(api.b64)
+    worker_block.ret(worker_block.const(api.b32, 37))
+    worker = worker_graph.function((api.b64,), (api.b32,))
+
+    graph = GraphBuilder()
+    block = graph.block(threads.thread_effect, api.process_effect)
+    thread_effect, process_effect = block.params
+    start = block.op1(Operation.FUNCTION_ADDRESS, (), threads.c_entry, entity=worker)
+    thread_id, thread_owner, thread_memory = block.op(
+        Operation.STACK_ALLOC, (), (api.u32_ptr_rw, stack_owner_type(), api.memory_effect), attributes=(4, 4)
+    )
+    zero64, zero32 = block.const(api.b64, 0), block.const(api.b32, 0)
+    handle, handle_owner, thread_effect, thread_memory = block.op(
+        Operation.CALL_FOREIGN,
+        (zero64, zero64, start, zero64, zero32, thread_id, thread_effect, thread_memory),
+        (api.b64, threads.thread_resource, threads.thread_effect, api.memory_effect), entity=threads.create_thread,
+    )
+    block.op(Operation.STACK_END, (thread_owner, thread_memory), ())
+    wait_status, handle_owner, thread_effect = block.op(
+        Operation.CALL_FOREIGN, (handle, handle_owner, block.const(api.b32, 0xFFFFFFFF), thread_effect),
+        (api.b32, threads.thread_resource, threads.thread_effect), entity=threads.wait_for_single_object,
+    )
+    exit_slot, exit_owner, exit_memory = block.op(
+        Operation.STACK_ALLOC, (), (api.u32_ptr_rw, stack_owner_type(), api.memory_effect), attributes=(4, 4)
+    )
+    exit_memory, = block.op(Operation.STORE_BITS_LE, (exit_slot, zero32, exit_memory), (api.memory_effect,), attributes=(4, 4))
+    ok, handle_owner, thread_effect, exit_memory = block.op(
+        Operation.CALL_FOREIGN, (handle, handle_owner, exit_slot, thread_effect, exit_memory),
+        (api.b32, threads.thread_resource, threads.thread_effect, api.memory_effect), entity=threads.get_exit_code_thread,
+    )
+    exit_code, exit_memory = block.op(Operation.LOAD_BITS_LE, (exit_slot, exit_memory), (api.b32, api.memory_effect), attributes=(4, 4))
+    block.op(Operation.STACK_END, (exit_owner, exit_memory), ())
+    closed, thread_effect = block.op(
+        Operation.CALL_FOREIGN, (handle, handle_owner, thread_effect), (api.b32, threads.thread_effect), entity=threads.close_handle,
+    )
+    status = block.op1(Operation.ADD_WRAP, (exit_code, wait_status), api.b32)
+    status = block.op1(Operation.ADD_WRAP, (status, ok), api.b32)
+    status = block.op1(Operation.ADD_WRAP, (status, closed), api.b32)
+    process_effect, = block.op(Operation.CALL_FOREIGN, (status, process_effect), (api.process_effect,), entity=api.exit_process)
+    block.ret(status, thread_effect, process_effect)
+    entry = graph.function(block.parameter_types, (api.b32, threads.thread_effect, api.process_effect))
+    target = x86_64_windows_pe_target()
+    objects = (*api.types, *api.symbols, *threads.objects, *worker_graph.objects.values(), *graph.objects.values())
+    return program_store(entry, target, objects), entry, target
+
+
 class HostedPeTests(unittest.TestCase):
     def test_pe_is_deterministic_and_binds_only_declared_imports(self):
         reader, entry, target = hosted_fixture()
@@ -267,6 +318,41 @@ class HostedPeTests(unittest.TestCase):
         self.assertEqual(completed.stdout, b"XAX\n")
         # sum_to(10) + WriteFile + HeapFree + (sum of i*i, i<16, through the heap array) + VirtualFree
         self.assertEqual(completed.returncode, 55 + 1 + 1 + 1240 + 1 + 41)  # + add1(10) + times3(10) via table
+
+    @unittest.skipUnless(WINDOWS_X64, "requires Windows x86-64 host")
+    def test_win64_thread_calls_back_into_xax_and_closes_its_handle(self):
+        reader, entry, target = thread_callback_fixture()
+        pe = emit_pe_executable(compile_native_bound_target(reader, entry.cid, target))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "xax_thread.exe"
+            path.write_bytes(pe)
+            completed = subprocess.run([str(path)], capture_output=True, timeout=30)
+        self.assertEqual(completed.returncode, 39)  # worker 37 + WAIT_OBJECT_0 + two successful BOOLs
+
+    def test_win64_thread_artifact_matches_executed_evidence(self):
+        import json
+
+        reader, entry, target = thread_callback_fixture()
+        pe = emit_pe_executable(compile_native_bound_target(reader, entry.cid, target))
+        evidence = json.loads((Path(__file__).parents[1] / "benchmarks" / "windows_pe_hosted_evidence.json").read_text())
+        self.assertEqual(hashlib.sha256(pe).hexdigest(), evidence["thread_callback"]["pe_sha256"])
+
+    def test_win64_entry_rejects_on_linux_profile(self):
+        api, threads = win32_kernel32_api(), win32_thread_api()
+        worker_graph = GraphBuilder()
+        worker_block = worker_graph.block(api.b64)
+        worker_block.ret(worker_block.const(api.b32, 0))
+        worker = worker_graph.function((api.b64,), (api.b32,))
+        graph = GraphBuilder()
+        block = graph.block()
+        block.op1(Operation.FUNCTION_ADDRESS, (), threads.c_entry, entity=worker)
+        block.ret(block.const(api.b32, 0))
+        entry = graph.function((), (api.b32,))
+        target = x86_64_linux_dynamic_exec_target()
+        reader = program_store(entry, target, (*threads.objects, *worker_graph.objects.values(), *graph.objects.values()))
+        with self.assertRaises(XaxError) as raised:
+            compile_native_bound_target(reader, entry.cid, target)
+        self.assertEqual(raised.exception.diagnostic.rule, "WIN64-ENTRY-TARGET")
 
     @unittest.skipUnless(WINDOWS_X64, "requires Windows x86-64 host")
     def test_out_of_bounds_heap_store_traps(self):

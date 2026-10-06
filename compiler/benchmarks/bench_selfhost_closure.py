@@ -146,8 +146,73 @@ def measure(include_b4: bool = True) -> dict:
     }
 
 
-if __name__ == "__main__":
+RERUN = "store changed since this entry executed; re-run the generator on Linux x86-64"
+
+
+def bind_to_committed_stores(evidence: dict, programs, reference_image) -> list[str]:
+    """Host-independent refresh: bind every B1 entry to the committed store it describes, or mark it stale.
+
+    An entry is current when its ``store_sha256`` is the committed store's, or (older entries without one) when the
+    deterministic bootstrap image of the committed store is the recorded image.  A stale entry gets the committed
+    store's identity and bootstrap image, and its executed fields become None with ``native_rerun_required``; so do
+    the verdict entries for that store.  Nothing here claims an execution this host did not perform."""
+    import xax_compiler as X
+
+    loaders, stale = dict(programs), []
+    for entry in evidence["b1_gen1_images"]:
+        module = importlib.import_module(entry["program"])
+        reader, function = getattr(module, loaders[entry["program"]])()
+        sha = hashlib.sha256(reader.data).hexdigest()
+        if entry.get("store_sha256") == sha:
+            continue
+        image = reference_image(reader, function)
+        image_sha = hashlib.sha256(image.code).hexdigest()
+        if "store_sha256" not in entry and entry["image_sha256"] == image_sha and entry["store_bytes"] == len(reader.data):
+            entry["store_sha256"] = sha
+            continue
+        stale.append(module.STORE_PATH.name)
+        entry.update(store_bytes=len(reader.data), store_sha256=sha, functions=len(image.function_offsets),
+                     code_bytes=len(image.code), image_sha256=image_sha, image_source="bootstrap reference generator",
+                     gen1_equals_bootstrap_reference=None, native_rerun_required=RERUN)
+        entry.pop("host_s_nonsemantic", None)
+    for key, items in evidence.items():
+        if not key.startswith("b3") or not isinstance(items, list):
+            continue
+        for item in items:
+            if item["store"] not in stale:
+                continue
+            reader = X.StoreReader((BOOTSTRAP / item["store"]).read_bytes())
+            for field in item:
+                if field not in ("store", "objects", "bytes"):
+                    item[field] = None
+            item["objects"] = len(list(reader.objects()))
+            if "bootstrap_accepts" in item:
+                try:
+                    X.verify_store(reader)
+                    item["bootstrap_accepts"] = True
+                except X.XaxError:
+                    item["bootstrap_accepts"] = False
+            item["native_rerun_required"] = RERUN
+    return stale
+
+
+def _riscv64_reference(reader, function):
+    import xax_compiler as X
+    import xax_riscv64 as R
+
+    return R.compile_riscv64_bound_target(reader, function.cid, X.riscv64_views_target(), backend="python")
+
+
+if __name__ == "__main__" and "--bind-committed" in sys.argv:
+    evidence = json.loads(EVIDENCE.read_text())
+    print("stale:", bind_to_committed_stores(evidence, PROGRAMS, _riscv64_reference))
+    EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n")
+elif __name__ == "__main__":
+    import os
+
+    os.environ["XAX_REQUIRE_NATIVE"] = "1"  # a Python fallback is an error here, never XAX evidence
     evidence = measure(include_b4="--no-b4" not in sys.argv)
+    evidence["authority"] = __import__("xax_native").AUTHORITY
     text = json.dumps(evidence, indent=2) + "\n"
     if "--write" in sys.argv:
         EVIDENCE.write_text(text)

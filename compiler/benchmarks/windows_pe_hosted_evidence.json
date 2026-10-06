@@ -1,10 +1,10 @@
 {
   "claim": "EXECUTED",
-  "target": "9c6224e5e314c60a1bbfd2dc54b28ccac19b570d5113ba2c70bb7686fbf67d1c",
+  "target": "d097451648daf413ae4bc8dd66d1276479cfc7216d1cd03c54786ff0c40c7252",
   "entry": "5dfd27886c034ef5bc1ec63df442df2f4dc73703e1fc09653c0b060b6746252c",
-  "pe_bytes": 2560,
-  "pe_sha256": "a5e017310316b735f58dc75b50280d78ab3ed41ddac3d899065bf595b490c630",
-  "code_bytes": 1269,
+  "pe_bytes": 2048,
+  "pe_sha256": "4b82c19a7611ae533321dea90fbb974f1167b46124f72e9be187905a3ab22bce",
+  "code_bytes": 636,
   "imports": [
     "kernel32.dll!ExitProcess",
     "kernel32.dll!GetProcessHeap",
@@ -29,11 +29,27 @@
     "exit_code": 1339,
     "runs": 20,
     "process_wall_ns": {
-      "median": 13567750,
-      "p95": 19674000,
-      "min": 12770400,
-      "max": 21339100
+      "median": 16117500,
+      "p95": 16472500,
+      "min": 15715500,
+      "max": 34401600
     },
     "note": "wall time includes CreateProcess/loader/pipe overhead measured from Python subprocess; not a code-quality claim"
+  },
+  "thread_callback": {
+    "claim": "EXECUTED",
+    "entry": "b4d7e8ce2379d6ec3410b9727b099cc7205fa5a9fd55c642daf7c18efdbbf86c",
+    "pe_bytes": 1536,
+    "pe_sha256": "7e1eb54a4d6b102f7ff8dff6aa9c47b88018d333e82018c9b69838b07be2f2a5",
+    "code_bytes": 176,
+    "imports": [
+      "kernel32.dll!CloseHandle",
+      "kernel32.dll!CreateThread",
+      "kernel32.dll!ExitProcess",
+      "kernel32.dll!GetExitCodeThread",
+      "kernel32.dll!WaitForSingleObject"
+    ],
+    "exit_code": 39,
+    "contract": "CreateThread -> pure XAX win64-c entry -> WaitForSingleObject -> GetExitCodeThread -> CloseHandle"
   }
 }

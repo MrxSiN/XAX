@@ -19,6 +19,7 @@ from xax_selfhost import (
     current_m14_readiness,
     execute_m14_recursive_evidence,
     readiness_from_recursive_evidence,
+    bootstrap_status,
 )
 
 from xax_compiler import (
@@ -151,13 +152,15 @@ class M14RecursiveSelfHostTests(unittest.TestCase):
         self.assertFalse(readiness.b6)
         self.assertNotIn("compile-time XAX cannot emit arbitrary canonical store/object/artifact bytes", readiness.blockers)
 
-    def test_recursive_semantic_image_build_reaches_b2_b5_but_not_b6(self):
+    def test_recursive_semantic_image_build_reaches_b2_b4_but_not_b5_b6(self):
         reader = create_m14_program_store()
         evidence = execute_m14_recursive_evidence(reader)
         self.assertTrue(evidence.b2)
         self.assertTrue(evidence.b3)
         self.assertTrue(evidence.b4)
-        self.assertTrue(evidence.b5)
+        # Verification, encoding, and materialization run as host (Python) META primitives: not toolchain closure.
+        self.assertEqual(evidence.host_substrate_operations, ("META_CANONICAL_STORE", "META_MATERIALIZE_PROGRAM", "META_VERIFY_SEMANTICS"))
+        self.assertFalse(evidence.b5)
         self.assertEqual(evidence.generation0_digest, evidence.generation1_digest)
         self.assertEqual(evidence.generation1_digest, evidence.generation2_digest)
         self.assertGreaterEqual(len(evidence.vectors), 4)
@@ -167,11 +170,16 @@ class M14RecursiveSelfHostTests(unittest.TestCase):
         self.assertTrue(readiness.b2)
         self.assertTrue(readiness.b3)
         self.assertTrue(readiness.b4)
-        self.assertTrue(readiness.b5)
+        self.assertFalse(readiness.b5)
         self.assertFalse(readiness.b6)
         self.assertEqual(
             readiness.blockers,
-            ("ordinary release/target evolution still requires maintained Python implementation code",),
+            (
+                "semantic verifier remains a live host-language service",
+                "target lowering/code generation remains a live host-language service",
+                "package/build/repository operations remain live host-language services",
+                "ordinary release/target evolution still requires maintained Python implementation code",
+            ),
         )
 
     def test_committed_m14_artifacts_match_executed_evidence(self):
@@ -192,11 +200,9 @@ class M14RecursiveSelfHostTests(unittest.TestCase):
             executed.generation1_digest.hex(),
             executed.generation2_digest.hex(),
         ])
-        self.assertTrue(evidence["b2_recursive_compilation"])
-        self.assertTrue(evidence["b3_semantic_equivalence"])
-        self.assertTrue(evidence["b4_deterministic_fixed_point"])
-        self.assertTrue(evidence["b5_semantic_image_toolchain_closure"])
-        self.assertTrue(evidence["b6_bootstrap_independence"])
+        # SELFHOST_EVIDENCE_DERIVED / NO_HAND_ASSERTED_B_STATUS: the committed B status is the derivation's output.
+        self.assertEqual(evidence["bootstrap_status"], bootstrap_status(executed))
+        self.assertFalse(any(key.startswith("b") and key[1:2].isdigit() for key in evidence))
 
     def test_committed_seed_runtime_reconstructs_without_repository_source_path(self):
         bootstrap = Path(__file__).resolve().parents[1] / "bootstrap"

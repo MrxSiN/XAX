@@ -79,7 +79,9 @@ IN_EXTENT, OUT_EXTENT = 64 << 20, 256 << 20  # S6c: the largest helper stores as
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)
 
-STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_op_typing.xax"
+from xax_native import bootstrap_dir  # noqa: E402
+
+STORE_PATH = bootstrap_dir() / "xax_op_typing.xax"
 ACCEPT, REJECT, DEFER = 0, 1, 2
 NOT_COVERED, PROVEN, NOT_PROVEN = 0, 1, 2
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
@@ -1039,9 +1041,9 @@ class NativeTyping:
         image.entry_offset = entry_offset
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + image.code
-        self._mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
-        self._mapping.write(code)
-        base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
+        from xax_native import executable_mapping
+
+        self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + image.entry_offset
         self.code_size = len(image.code)
@@ -1105,7 +1107,6 @@ class NativeTyping:
 
 
 def native_typing_usable() -> bool:
-    return (
-        sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
-        and os.environ.get("XAX_TYPING_PYTHON") != "1" and STORE_PATH.exists()
-    )
+    import xax_native
+
+    return xax_native.usable("typing", STORE_PATH, "XAX_TYPING_PYTHON")

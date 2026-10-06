@@ -1,7 +1,7 @@
 {
   "apk": {
     "blake3": "d2c8c022ef8f8708ddc9f7790eb1e28d89776dd65be07b746dc87f1c0311e707",
-    "build_key": "430dba9a938005a6fc8bc425ad1774a5b28952451e3174a102a258c496b45275",
+    "build_key": "a6e8652800fdc9dbd76debb6d396947ad91ca20bbc4d61caf83243e4e16f6e24",
     "bytes": 34347,
     "delta_bytes_vs_retained_non_hot_reload": 0,
     "entries": [
@@ -15,11 +15,11 @@
       "classes4.dex",
       "lib/arm64-v8a/libxaxapp.so"
     ],
-    "package_root": "e73855e2acf92599a7629ca84bc1c0df2743b502353aef69af0ceb9130ecf216",
+    "package_root": "f7cf67b721973e3fdd857bfbc12f3ea4b32b9afae7f72dd0fcbb4197131edee8",
     "repeat_identical": true,
-    "request_root": "7f7566dcb6832bf11807ee7d7527f7adb39200a0df103c2c617b0144df82c439",
+    "request_root": "456d05f581ededdedd40eaf8dc915ff5460a7f194e9957c64a618488311809c0",
     "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a",
-    "snapshot_root": "20ad901e463ad2aa360009174844c8428460396b1f25bdd5b1a8898d24a1eae2"
+    "snapshot_root": "4558d0841c78e541eca3cfafc3a01f1729ff6c16389174b57088bfca040b58ca"
   },
   "environment_note": "direct semantic/DEX/APK structural evidence only; framework hot-reload callback delivery, old HookHandle transfer, atomic replacement behavior, and target-process continuity are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
   "hooker_hot_path_regression": {
@@ -123,7 +123,7 @@
     "failure_policy": "propagate",
     "hook_adapter_cid": "363b83a457638749236b831cf60201284d8829af6a393edc7bf171b7adf7f367",
     "hook_id": "xax.primary",
-    "hook_installation_cid": "88b3fe746c09a50be1b422edfa86f7cf34488f8f3d031551d109d3902fcf0ac4",
+    "hook_installation_cid": "298c690c2c9af0312785cdf86a5643ec058a7ea4fabfadf2ca875ca72b47e864",
     "hot_reload_cid": "dcdeb6ec7017fa0e26372c8fd3828f564b80c6304c04cbcf9d8351c21a55bf09",
     "managed_entry_cid": "da363c57b3e3a465dc9604f41900f7221b8d07d0b7806bc91a32d9c451f035a4",
     "mismatch_policy": "skip-replacement",

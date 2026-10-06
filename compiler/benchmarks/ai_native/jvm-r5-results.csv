@@ -1,0 +1,11 @@
+task_id,task_family,arm,trial,model,reasoning,pass,input_tokens,output_tokens,total_tokens,turns,elapsed_seconds,failed_checks,repair_count,view_bytes,packet_bytes,semantic_entities,final_root,notes
+task-01,local-edit,C,1,gpt-5.6-luna,low,TRUE,51406,366,51772,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 1/10
+task-01,local-edit,XAX,1,gpt-5.6-luna,low,TRUE,49735,327,50062,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 2/10
+task-02,local-edit,XAX,1,gpt-5.6-luna,low,TRUE,49711,339,50050,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 3/10
+task-02,local-edit,C,1,gpt-5.6-luna,low,TRUE,62760,552,63312,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 4/10
+task-03,local-edit,C,1,gpt-5.6-luna,low,TRUE,64385,472,64857,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 5/10
+task-03,local-edit,XAX,1,gpt-5.6-luna,low,TRUE,50128,546,50674,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 6/10
+task-04,local-edit,XAX,1,gpt-5.6-luna,low,TRUE,49730,353,50083,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 7/10
+task-04,local-edit,C,1,gpt-5.6-luna,low,TRUE,67408,478,67886,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 8/10
+task-05,local-edit,C,1,gpt-5.6-luna,low,TRUE,76890,565,77455,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 9/10
+task-05,local-edit,XAX,1,gpt-5.6-luna,low,TRUE,63061,605,63666,1,,,,,,,,codex-cli 0.160.0; qualifying run cell 10/10

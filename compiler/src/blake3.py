@@ -126,12 +126,17 @@ def _native_compressor():
     _NATIVE_ATTEMPTED = True
     _NATIVE_BUILDING = True
     try:
-        from xax_native_blake3 import native_blake3_compressor
+        import xax_native
+        from xax_native_blake3 import load_blake3_compress_program, native_blake3_compressor
         _NATIVE_COMPRESSOR = native_blake3_compressor()
-    except (ImportError, OSError, RuntimeError, ValueError):
+        xax_native.loaded("blake3-compress", load_blake3_compress_program().reader.root_cid, _NATIVE_COMPRESSOR.image.code)
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         # Portability/bootstrap is never conditional on executable mappings or
-        # this optional accelerator being available.
+        # this optional accelerator being available; the fallback is recorded.
         _NATIVE_COMPRESSOR = None
+        import xax_native
+
+        xax_native.fallback("blake3-compress", f"native leaf unavailable: {error!r}", "XAX_BLAKE3_PYTHON_HASH")
     finally:
         _NATIVE_BUILDING = False
     return _NATIVE_COMPRESSOR
@@ -327,8 +332,11 @@ def _native_hasher():
     except ImportError:
         # A module on the hasher's path is still importing (its constants hash semantic objects); try again later.
         _NATIVE_HASHER, _HASHER_ATTEMPTED = None, False
-    except (OSError, RuntimeError, ValueError):
+    except (OSError, RuntimeError, ValueError) as error:
         _NATIVE_HASHER = None
+        import xax_native
+
+        xax_native.fallback("blake3-hash", f"native image failed to load: {error!r}")
     finally:
         _HASHER_BUILDING = False
     return _NATIVE_HASHER

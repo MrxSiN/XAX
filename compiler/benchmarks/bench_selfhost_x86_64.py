@@ -59,7 +59,7 @@ def measure() -> dict:
         reference = compile_x86_64_views(reader, entry.cid, target, backend="python")
         reference_seconds = time.perf_counter() - start
         images[module] = (reader, entry, gen1)
-        b1.append({"program": module, "store_bytes": len(reader.data), "functions": len(gen1.function_offsets), "code_bytes": len(gen1.code),
+        b1.append({"program": module, "store_bytes": len(reader.data), "store_sha256": hashlib.sha256(reader.data).hexdigest(), "functions": len(gen1.function_offsets), "code_bytes": len(gen1.code),
                    "image_sha256": hashlib.sha256(gen1.code).hexdigest(), "gen1_equals_bootstrap_reference": gen1 == reference,
                    "host_s_nonsemantic": {"gen1": round(gen1_seconds, 2), "bootstrap": round(reference_seconds, 2)}})
 
@@ -112,8 +112,25 @@ def measure() -> dict:
     }
 
 
-if __name__ == "__main__":
+def _x86_64_reference(reader, function):
+    import xax_compiler as X
+    from xax_x86_64_views import compile_x86_64_views
+
+    return compile_x86_64_views(reader, function.cid, X.x86_64_views_target(), backend="python")
+
+
+if __name__ == "__main__" and "--bind-committed" in sys.argv:
+    from bench_selfhost_closure import bind_to_committed_stores
+
+    evidence = json.loads(EVIDENCE.read_text())
+    print("stale:", bind_to_committed_stores(evidence, HELPERS, _x86_64_reference))
+    EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n")
+elif __name__ == "__main__":
+    import os
+
+    os.environ["XAX_REQUIRE_NATIVE"] = "1"  # a Python fallback is an error here, never XAX evidence
     evidence = measure()
+    evidence["authority"] = __import__("xax_native").AUTHORITY
     text = json.dumps(evidence, indent=2) + "\n"
     if "--write" in sys.argv:
         EVIDENCE.write_text(text)

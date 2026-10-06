@@ -1,0 +1,11 @@
+task_id,task_family,arm,trial,model,reasoning,pass,input_tokens,output_tokens,total_tokens,turns,elapsed_seconds,failed_checks,repair_count,view_bytes,packet_bytes,semantic_entities,final_root,notes
+task-01,local-edit,C,1,gpt-5.6-luna,low,TRUE,39166,353,39519,1,,,,,,,,controlled isolated profile
+task-01,local-edit,XAX-DIRECT,1,gpt-5.6-luna,low,TRUE,19491,213,19704,1,,,,,,,,controlled isolated profile
+task-02,local-edit,C,1,gpt-5.6-luna,low,TRUE,39048,308,39356,1,,,,,,,,controlled isolated profile
+task-02,local-edit,XAX-DIRECT,1,gpt-5.6-luna,low,TRUE,19425,179,19604,1,,,,,,,,controlled isolated profile
+task-03,local-edit,C,1,gpt-5.6-luna,low,TRUE,39165,339,39504,1,,,,,,,,controlled isolated profile
+task-03,local-edit,XAX-DIRECT,1,gpt-5.6-luna,low,TRUE,19478,226,19704,1,,,,,,,,controlled isolated profile
+task-04,local-edit,C,1,gpt-5.6-luna,low,TRUE,39071,323,39394,1,,,,,,,,controlled isolated profile
+task-04,local-edit,XAX-DIRECT,1,gpt-5.6-luna,low,TRUE,19478,236,19714,1,,,,,,,,controlled isolated profile
+task-05,local-edit,C,1,gpt-5.6-luna,low,TRUE,39132,347,39479,1,,,,,,,,controlled isolated profile
+task-05,local-edit,XAX-DIRECT,1,gpt-5.6-luna,low,TRUE,19485,221,19706,1,,,,,,,,controlled isolated profile

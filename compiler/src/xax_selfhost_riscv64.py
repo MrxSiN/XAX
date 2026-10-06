@@ -52,7 +52,9 @@ from xax_compiler import (
 )
 from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
 
-STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_riscv64_encoder.xax"
+from xax_native import bootstrap_dir  # noqa: E402
+
+STORE_PATH = bootstrap_dir() / "xax_riscv64_encoder.xax"
 B1, B64 = bits_type(1), bits_type(64)
 KIND_R, KIND_I, KIND_S, KIND_B, KIND_J, KIND_U, KIND_LI = range(7)
 _MASK64 = (1 << 64) - 1
@@ -307,9 +309,9 @@ class NativeEncoder:
         machine_code, entry_offset = host_image(*load_encoder_program(), "riscv64-encoder")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code
-        mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
-        mapping.write(code)
-        base = ctypes.addressof(ctypes.c_char.from_buffer(mapping))
+        from xax_native import executable_mapping
+
+        mapping, base = executable_mapping(code)
         call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         return cls(len(machine_code), mapping, call, base + len(thunk) + entry_offset, (ctypes.c_uint64 * 7)(), ctypes.c_uint64())
 
@@ -331,9 +333,8 @@ def native_encoder() -> NativeEncoder | None:
     bootstrap Python encoders.
     """
     if not _native:
-        usable = (
-            sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
-            and os.environ.get("XAX_RISCV64_PYTHON_ENCODER") != "1" and STORE_PATH.exists()
-        )
+        import xax_native
+
+        usable = xax_native.usable("riscv64-encoder", STORE_PATH, "XAX_RISCV64_PYTHON_ENCODER")
         _native.append(NativeEncoder.load() if usable else None)
     return _native[0]

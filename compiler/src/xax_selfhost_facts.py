@@ -2902,6 +2902,7 @@ def _linear_flow(tables):
 
 def build_engine():
     """The facts engine and its helpers: ``(engine function, every object)``."""
+    DECLINE_SITES.clear()  # decline codes are baked into the store: number them per build, not per process
     tables = None
     objects: list = []
 

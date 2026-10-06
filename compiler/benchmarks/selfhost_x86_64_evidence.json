@@ -14,7 +14,8 @@
       "host_s_nonsemantic": {
         "gen1": 2.81,
         "bootstrap": 0.03
-      }
+      },
+      "store_sha256": "cd89652e910f7a5b4fb2309585080aeeb326b621d61a35e2f29aedb03200c8b1"
     },
     {
       "program": "xax_selfhost_graph",
@@ -26,7 +27,8 @@
       "host_s_nonsemantic": {
         "gen1": 0.09,
         "bootstrap": 0.12
-      }
+      },
+      "store_sha256": "59febc8f3d9fb65711e09d09f00344f653d34b5abaa701b06c8f701911481d4d"
     },
     {
       "program": "xax_selfhost_riscv64",
@@ -38,7 +40,8 @@
       "host_s_nonsemantic": {
         "gen1": 0.01,
         "bootstrap": 0.01
-      }
+      },
+      "store_sha256": "344f0039bbdb2826caf4c78b565f984685339a7160a596e23d4b5b07e340e99a"
     },
     {
       "program": "xax_selfhost_store",
@@ -50,19 +53,19 @@
       "host_s_nonsemantic": {
         "gen1": 0.03,
         "bootstrap": 0.05
-      }
+      },
+      "store_sha256": "156ba9cae9bb312770d5fe5d0dfb86b682511d2914bef5fe853e4f0cef13960f"
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 2790635,
+      "store_bytes": 2840749,
       "functions": 46,
-      "code_bytes": 3396677,
-      "image_sha256": "26e9a3cdb20a68f0c1d9dbc556185c8ad178dda1037c69fb26dc06386f5981a7",
-      "gen1_equals_bootstrap_reference": true,
-      "host_s_nonsemantic": {
-        "gen1": 4.01,
-        "bootstrap": 7.52
-      }
+      "code_bytes": 3425339,
+      "image_sha256": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
+      "gen1_equals_bootstrap_reference": null,
+      "store_sha256": "c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02",
+      "image_source": "bootstrap reference generator",
+      "native_rerun_required": "store changed since this entry executed; re-run the generator on Linux x86-64"
     },
     {
       "program": "xax_selfhost_verify",
@@ -74,7 +77,8 @@
       "host_s_nonsemantic": {
         "gen1": 3.22,
         "bootstrap": 5.0
-      }
+      },
+      "store_sha256": "caca8f9328c50862b6dec2b05822de00612f03696d069d7c8a4c4cd09a0027a3"
     },
     {
       "program": "xax_selfhost_blake3",
@@ -86,7 +90,8 @@
       "host_s_nonsemantic": {
         "gen1": 0.02,
         "bootstrap": 0.04
-      }
+      },
+      "store_sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3"
     },
     {
       "program": "xax_selfhost_riscv64_backend",
@@ -98,7 +103,8 @@
       "host_s_nonsemantic": {
         "gen1": 1.14,
         "bootstrap": 2.48
-      }
+      },
+      "store_sha256": "2207f3a73cbe09dd3783ac6544acc226c7923a826faa184af0ce18b2bd845407"
     },
     {
       "program": "xax_selfhost_x86_64_backend",
@@ -110,7 +116,8 @@
       "host_s_nonsemantic": {
         "gen1": 1.53,
         "bootstrap": 3.17
-      }
+      },
+      "store_sha256": "6aa4ff4fb1b77249bec64a598f7ea786134b87cca8321737da51cbc21cf1d637"
     }
   ],
   "b3_native_verifier": [
@@ -166,9 +173,10 @@
     {
       "store": "xax_op_typing.xax",
       "objects": 836,
-      "store_verdict": true,
+      "store_verdict": null,
       "bootstrap_accepts": true,
-      "agrees": true
+      "agrees": null,
+      "native_rerun_required": "store changed since this entry executed; re-run the generator on Linux x86-64"
     },
     {
       "store": "xax_riscv64_backend.xax",

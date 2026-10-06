@@ -1,4 +1,5 @@
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -717,6 +718,7 @@ class EncodingTests(unittest.TestCase):
 
 
 class BuildTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("setuptools"), "UNAVAILABLE: setuptools is not installed, so the wheel cannot be built")
     def test_wheel_build_is_reproducible(self):
         project = Path(__file__).parents[1]
         environment = os.environ.copy()

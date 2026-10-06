@@ -81,7 +81,11 @@ def measure() -> dict:
 
 
 if __name__ == "__main__":
+    import os
+
+    os.environ["XAX_REQUIRE_NATIVE"] = "1"  # a Python fallback is an error here, never XAX evidence
     evidence = measure()
+    evidence["authority"] = __import__("xax_native").AUTHORITY
     text = json.dumps(evidence, indent=2) + "\n"
     if "--write" in sys.argv:
         EVIDENCE.write_text(text)

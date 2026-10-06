@@ -1,0 +1,213 @@
+{
+  "canonical_state": {
+    "all_stores_regenerate_identically": {
+      "xax_blake3_hash.xax": true,
+      "xax_cfg_analysis.xax": true,
+      "xax_graph_decoder.xax": true,
+      "xax_op_typing.xax": true,
+      "xax_riscv64_backend.xax": true,
+      "xax_riscv64_encoder.xax": true,
+      "xax_store_decoder.xax": true,
+      "xax_store_verifier.xax": true,
+      "xax_x86_64_backend.xax": true
+    },
+    "regeneration_identical": true,
+    "typing_bytes": 2840749,
+    "typing_digest_sha256": "c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02",
+    "typing_root": "4681e6c50bd88ba3d96ab87ddc45ea294a8a9ae3b0658868c8f0b77beb0383ce"
+  },
+  "documentation": {
+    "stale_documents": [],
+    "synchronized": true
+  },
+  "format": "xax-audit-remediation-evidence-v1",
+  "milestone": "evidence and canonical-state integrity (ADR-177)",
+  "native_execution": {
+    "authority_observable": true,
+    "authority_on_this_host": {
+      "blake3-compress": "python",
+      "blake3-hash": "python",
+      "cfg": "python",
+      "graph-decoder": "python",
+      "store-decoder": "python",
+      "store-verifier": "python",
+      "typing": "python"
+    },
+    "cache_authenticated": true,
+    "host_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)",
+    "host_runs_native_images": false,
+    "silent_fallback_possible": false
+  },
+  "packaging": {
+    "canonical_stores_included": true,
+    "installed_authority": "the clean-install test (tests/test_wheel_install.py) reports it per component; Python everywhere except Linux x86-64, where the packaged stores make the native images usable",
+    "missing_modules": [],
+    "module_closure": true,
+    "wheel_reproducible": true,
+    "wheel_sha256": "df558aeeda6fa675f8a28253808738e059f294d37246c3c51ca8ce88ae3a1ac0"
+  },
+  "replacement_matrix": {
+    "derived_equals_claimed": true,
+    "downgraded_rows": {
+      "android-arm64": [
+        "R4",
+        "R3"
+      ],
+      "linux-x86_64": [
+        "R4",
+        "R3"
+      ]
+    },
+    "evidence_failures": [],
+    "rows": {
+      "aarch64-baremetal": "R2",
+      "accelerator-simt-packet": "R0",
+      "android-arm64": "R3",
+      "browser-web": "R2",
+      "bsd-unix": "NONE",
+      "dotnet-clr": "NONE",
+      "gpu-spirv-cuda-metal-dxil": "R1",
+      "jvm": "R4",
+      "linux-aarch64": "R3",
+      "linux-x86_64": "R3",
+      "macos-ios-apple": "NONE",
+      "riscv64": "R1",
+      "rtos-embedded-mcu": "NONE",
+      "wasm32-core": "R1",
+      "wasm32-wasi": "R1",
+      "windows-x86_64-pe": "R2"
+    },
+    "validator_version": "xax-replacement-validator-v2"
+  },
+  "repository_revision": {
+    "head": "af65d1b10e1a59e33810d88b869dedd785dabf5e",
+    "working_tree_dirty": true
+  },
+  "seed": {
+    "contents_manifest": [
+      {
+        "bytes": 1271,
+        "name": "__main__.py",
+        "sha256": "d1066997cc00f6a7e3d90e13d53831ac27229c93ab5f23895430250f97e62511",
+        "zip_date_time": [
+          2026,
+          9,
+          30,
+          6,
+          15,
+          52
+        ]
+      },
+      {
+        "bytes": 8290,
+        "name": "blake3.py",
+        "sha256": "05539f1eb016935a46c4716521edf158268cffd44a941b1b0f8c164736ab34aa",
+        "zip_date_time": [
+          2026,
+          9,
+          30,
+          6,
+          10,
+          12
+        ]
+      },
+      {
+        "bytes": 202406,
+        "name": "xax_compiler.py",
+        "sha256": "44f027ab5fd80c59d15a07c220db9dbd5fa3d2b5951df7b665a9752bd932cdb2",
+        "zip_date_time": [
+          2026,
+          9,
+          30,
+          6,
+          11,
+          28
+        ]
+      },
+      {
+        "bytes": 19352,
+        "name": "xax_selfhost.py",
+        "sha256": "9e1c3aebe84e48a506084fd3dd3931939dd4f1ffb18f190609549d6c4a66e414",
+        "zip_date_time": [
+          2026,
+          9,
+          30,
+          6,
+          11,
+          54
+        ]
+      }
+    ],
+    "deterministic": true,
+    "digest_sha256": "4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52",
+    "kind": "python-zipapp",
+    "pinned": true,
+    "requires_python": true,
+    "routine_generation_mutates_seed": false,
+    "routine_generation_succeeded": true,
+    "seed_builder_revision": "47daff413d8e7c05b133961ef8a93420960a2f4ed2eb2384461d0b9cbc306912",
+    "size": 46255
+  },
+  "selfhost_claims": {
+    "committed_evidence_matches_derivation": true,
+    "derivation_source": "xax_selfhost.bootstrap_status",
+    "full_production_compiler": {
+      "B0": false,
+      "B1": false,
+      "B2": false,
+      "B3": false,
+      "B4": false,
+      "B5": false,
+      "B6": false
+    },
+    "hand_asserted_b_fields_in_committed_evidence": [],
+    "m14_semantic_image_wrapper": {
+      "B2": true,
+      "B3": true,
+      "B4": true,
+      "B5": false,
+      "B6": false
+    }
+  },
+  "tests": {
+    "command": "python -m pytest tests -n auto -rs",
+    "failed": 0,
+    "host": "win32 nt Python 3.12.10",
+    "passed": 975,
+    "skipped": 219,
+    "summary": "975 passed, 219 skipped, 805 subtests passed in 261.77s (0:04:21)",
+    "unavailable_environment": 219,
+    "unavailable_reasons": {
+      "UNAVAILABLE: POSIX ownership and permission bits": 1,
+      "UNAVAILABLE: javac and kotlinc are needed to check the textual arms": 1,
+      "UNAVAILABLE: native XAX helper images run on Linux x86-64 only (host: win32 AMD64)": 1,
+      "UNAVAILABLE: the Go toolchain is not installed, so the independent checker cannot be built": 10,
+      "UNAVAILABLE: this host has no fork start method (the shared-snapshot design relies on fork)": 3,
+      "host namespace sandbox unavailable": 2,
+      "readelf unavailable": 1,
+      "requires Android build-tools": 1,
+      "requires Node.js with Playwright and Chromium": 1,
+      "requires a JDK": 6,
+      "requires a JDK with jmods": 6,
+      "requires a JVM": 4,
+      "requires a Linux x86-64 host": 75,
+      "requires a Linux x86-64 host to execute ELF64 artifacts": 9,
+      "requires a Linux x86-64 host with glibc": 2,
+      "requires a Vulkan device (e.g. Mesa llvmpipe) and the vulkan Python bindings": 5,
+      "requires aarch64-linux-gnu-gcc": 4,
+      "requires an AArch64 Linux host or qemu-aarch64": 11,
+      "requires clang and the zlib/libc development headers": 4,
+      "requires explicit connected arm64 Android runtime": 1,
+      "requires java": 1,
+      "requires java and javac": 34,
+      "requires java and javac on x86-64 Linux": 2,
+      "requires qemu-aarch64 and the Android root from make_android_root.py": 4,
+      "requires spirv-val": 1,
+      "requires the Android NDK": 2,
+      "requires the NDK, qemu-aarch64, and an Android bionic root": 4,
+      "the native leaf runs on Linux x86-64": 20,
+      "wine64 and MinGW-w64 are required": 1,
+      "wine64 is not installed": 2
+    }
+  }
+}

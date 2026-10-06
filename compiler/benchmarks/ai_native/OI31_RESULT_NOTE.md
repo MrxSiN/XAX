@@ -40,3 +40,13 @@ This execution environment has no Codex Desktop control surface, no `codex` exec
 - `python -m pytest -q tests/test_ai_native_benchmark.py`: 16 passed, 1 skipped (`tiktoken` unavailable).
 
 A future qualifying run should write explicit model/reasoning metadata (or retain auditable Desktop session logs that establish it), use the required balanced/alternating order, and preserve failures rather than replacing rows.
+
+## Superseding qualifying run — 2026-10-06 (ADR-174)
+
+`jvm-r5-results.csv` records ten fresh Codex CLI 0.160.0 sessions under fixed `gpt-5.6-luna` low reasoning and balanced order. All cells passed in one turn with no repair. C-like text used 325,282 total tokens and XAX used 264,535 (0.813×; 18.675% fewer). Evidence and session IDs are in `jvm-r5-evidence.json`; the CSV SHA-256 is `893d7f44b74b73afdf4e43bb697a7bd0ca7f5e3189cc2a7c32e90b475d875363`.
+
+This closes OI-31 and supplies positive R5-candidate evidence in ADR-174. It is not sufficient for R5 because the §6.2 task-class corpus is incomplete; it does not erase the negative historical runs or claim coverage beyond five local edits, one model/setting, and one trial per cell.
+
+## Optimized direct-workflow follow-up — 2026-10-06 (ADR-175)
+
+`jvm-r5-optimized-results.csv` records ten fresh controlled-profile sessions with the same model/reasoning setting. The task-local C arm used 197,252 tokens; XAX-DIRECT used 98,432 (0.4990×; 50.098% fewer). All cells passed in one turn with no repair. `jvm-r5-optimized-evidence.json` records the exact client profile, workflow distinction, sessions, aggregate, limits, and CSV digest. The five-edit result remains R5-candidate evidence only.

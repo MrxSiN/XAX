@@ -1,0 +1,65 @@
+{
+  "format": "xax-ai-efficiency-evidence-v1",
+  "label": "MEASURED",
+  "date": "2026-10-06",
+  "scope": "Target-neutral XAX semantic transactions used by the JVM row, measured on five paired local structural edits against C-like textual source.",
+  "source": {
+    "results": "compiler/benchmarks/ai_native/jvm-r5-results.csv",
+    "sha256": "893d7f44b74b73afdf4e43bb697a7bd0ca7f5e3189cc2a7c32e90b475d875363"
+  },
+  "protocol": {
+    "client": "codex-cli 0.160.0",
+    "model": "gpt-5.6-luna",
+    "reasoning": "low",
+    "trials_per_cell": 1,
+    "fresh_session_per_cell": true,
+    "arm_order": [
+      "task-01:C", "task-01:XAX",
+      "task-02:XAX", "task-02:C",
+      "task-03:C", "task-03:XAX",
+      "task-04:XAX", "task-04:C",
+      "task-05:C", "task-05:XAX"
+    ],
+    "token_source": "final total_token_usage recorded by the Codex session",
+    "checker": "python -m benchmarks.ai_native check"
+  },
+  "results": {
+    "c": {
+      "passes": 5,
+      "attempts": 5,
+      "total_tokens": 325282,
+      "median_tokens": 64857,
+      "turns": 5,
+      "repairs": 0
+    },
+    "xax": {
+      "passes": 5,
+      "attempts": 5,
+      "total_tokens": 264535,
+      "median_tokens": 50083,
+      "turns": 5,
+      "repairs": 0
+    },
+    "xax_over_c_total_tokens": 0.8132481969491088,
+    "xax_token_reduction_percent": 18.67518030508912,
+    "xax_over_c_median_tokens": 0.7722065467104553
+  },
+  "sessions": [
+    "01a10f27-83a9-7df2-a2b8-f983dbe42ee3",
+    "01a10f28-3b83-7e90-8b28-49457c4ec702",
+    "01a10f29-0a54-7332-a9af-87606bbea3bc",
+    "01a10f29-94d9-7341-9c12-da9b1733d36b",
+    "01a10f2a-dfa2-72d2-8c52-6ebeadcc0906",
+    "01a10f2b-732f-76a3-b686-b61b02fa1856",
+    "01a10f2c-06c5-7b50-996b-ac9b656ac4e8",
+    "01a10f2c-86f4-7a81-84dc-452afda3e19d",
+    "01a10f2d-0b6e-7323-a78c-de93fcc2a1b7",
+    "01a10f2d-a4c7-7412-a46f-eda5903aa3af"
+  ],
+  "limits": [
+    "Five small local edits only; creation, control-flow, repair, stale-root, cross-function/API, context-scaling, and large-application task classes were not part of this run.",
+    "One model, one reasoning setting, and one trial per cell; no significance claim.",
+    "The textual arm is C-like source, not Java or Kotlin source; the measured XAX workspace protocol is target-neutral and no backend build occurs inside an edit cell.",
+    "A preflight session was excluded before the registered run because its sandbox denied every file-discovery command; it produced no completed turn or token record and left the first workspace unchanged."
+  ]
+}

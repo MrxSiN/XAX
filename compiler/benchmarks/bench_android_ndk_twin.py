@@ -35,8 +35,25 @@ EVIDENCE = HERE / "android_ndk_twin_evidence.json"
 NDK = Path(os.environ.get("ANDROID_NDK_HOME", "/opt/android/android-ndk-r28c"))
 BUILD_TOOLS = Path(os.environ.get("ANDROID_BUILD_TOOLS", "/opt/android/bt36/android-16"))
 ANDROID_JAR = Path(os.environ.get("ANDROID_JAR", "/opt/android/platform/android-35/android.jar"))
-LLVM = NDK / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+LLVM = NDK / "toolchains/llvm/prebuilt" / ("windows-x86_64" if os.name == "nt" else "linux-x86_64") / "bin"
 _ENV = {**os.environ, "JAVA_TOOL_OPTIONS": ""}
+
+
+def _llvm(name: str) -> Path:
+    """Resolve an NDK tool on Linux or Windows without involving a shell."""
+    for suffix in ((".cmd", ".exe", "") if os.name == "nt" else ("",)):
+        path = LLVM / f"{name}{suffix}"
+        if path.exists():
+            return path
+    return LLVM / name
+
+
+def _sdk(name: str) -> Path:
+    for suffix in ((".bat", ".exe", "") if os.name == "nt" else ("",)):
+        path = BUILD_TOOLS / f"{name}{suffix}"
+        if path.exists():
+            return path
+    return BUILD_TOOLS / name
 
 
 def _run(*command) -> str:
@@ -48,7 +65,7 @@ def _native_functions(library: bytes) -> dict[str, int]:
     with tempfile.NamedTemporaryFile(suffix=".so") as handle:
         handle.write(library)
         handle.flush()
-        lines = _run(LLVM / "llvm-readelf", "--dyn-syms", "-W", handle.name).splitlines()
+        lines = _run(_llvm("llvm-readelf"), "--dyn-syms", "-W", handle.name).splitlines()
     functions = {}
     for line in lines:
         fields = line.split()
@@ -77,7 +94,7 @@ def _measure(apk: Path) -> dict:
 
 def _badging(apk: Path) -> list[str]:
     """Package, SDK, and launchable activity; ``aapt2 link`` build-provenance attributes are dropped."""
-    lines = [line for line in _run(BUILD_TOOLS / "aapt2", "dump", "badging", apk).splitlines() if line.startswith(("package:", "launchable-activity:", "sdkVersion:"))]
+    lines = [line for line in _run(_sdk("aapt2"), "dump", "badging", apk).splitlines() if line.startswith(("package:", "launchable-activity:", "sdkVersion:"))]
     return [re.sub(r" (platformBuildVersion\w*|compileSdkVersion\w*)='[^']*'", "", line) for line in lines]
 
 
@@ -85,7 +102,7 @@ def _readelf_dynamic(library: bytes) -> list[str]:
     with tempfile.NamedTemporaryFile(suffix=".so") as handle:
         handle.write(library)
         handle.flush()
-        return _run(LLVM / "llvm-readelf", "-d", handle.name).splitlines()
+        return _run(_llvm("llvm-readelf"), "-d", handle.name).splitlines()
 
 
 def build_twin(work: Path, twin: Path = TWIN, library_name: str = "xaxapp") -> Path:
@@ -95,26 +112,26 @@ def build_twin(work: Path, twin: Path = TWIN, library_name: str = "xaxapp") -> P
     _run("javac", "--release", "11", "-cp", ANDROID_JAR, "-d", classes, *sources)
     dex = work / "dex"
     dex.mkdir()
-    _run(BUILD_TOOLS / "d8", "--release", "--min-api", "28", "--lib", ANDROID_JAR, "--output", dex, *sorted(classes.rglob("*.class")))
+    _run(_sdk("d8"), "--release", "--min-api", "28", "--lib", ANDROID_JAR, "--output", dex, *sorted(classes.rglob("*.class")))
     library = work / f"lib{library_name}.so"
-    _run(LLVM / "aarch64-linux-android28-clang", "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, twin / f"{library_name}.c")
-    _run(LLVM / "llvm-strip", "--strip-unneeded", library)
+    _run(_llvm("aarch64-linux-android28-clang"), "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, twin / f"{library_name}.c")
+    _run(_llvm("llvm-strip"), "--strip-unneeded", library)
     linked = work / "linked.apk"
-    _run(BUILD_TOOLS / "aapt2", "link", "--manifest", twin / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked)
+    _run(_sdk("aapt2"), "link", "--manifest", twin / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked)
     stored = work / "stored.apk"
     with zipfile.ZipFile(linked) as source, zipfile.ZipFile(stored, "w", zipfile.ZIP_STORED) as out:
         out.writestr("AndroidManifest.xml", source.read("AndroidManifest.xml"))
         out.write(dex / "classes.dex", "classes.dex")
         out.write(library, f"lib/arm64-v8a/lib{library_name}.so")
     aligned = work / "aligned.apk"
-    _run(BUILD_TOOLS / "zipalign", "-P", "16", "-f", "4", stored, aligned)
+    _run(_sdk("zipalign"), "-P", "16", "-f", "4", stored, aligned)
     keystore = work / "twin.jks"
     _run("keytool", "-genkeypair", "-keystore", keystore, "-storepass", "twin-pass", "-alias", "twin", "-keyalg", "RSA", "-keysize", "2048",
          "-validity", "10000", "-dname", "CN=XAX twin", "-noprompt")
     signed = work / "twin.apk"
-    _run(BUILD_TOOLS / "apksigner", "sign", "--ks", keystore, "--ks-pass", "pass:twin-pass", "--v1-signing-enabled", "false",
+    _run(_sdk("apksigner"), "sign", "--ks", keystore, "--ks-pass", "pass:twin-pass", "--v1-signing-enabled", "false",
          "--v2-signing-enabled", "true", "--v3-signing-enabled", "false", "--out", signed, aligned)
-    _run(BUILD_TOOLS / "apksigner", "verify", signed)
+    _run(_sdk("apksigner"), "verify", signed)
     return signed
 
 

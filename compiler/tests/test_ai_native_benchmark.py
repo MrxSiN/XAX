@@ -170,7 +170,10 @@ class TinyAINativeBenchmarkTests(unittest.TestCase):
                     instructions = (trial / "TASK.md").read_text()
                     self.assertIn(task.prompt, instructions)
                     self.assertTrue((trial / ("program.c" if arm == "C" else "transaction.txt")).is_file())
-                    if arm == "XAX":
+                    if arm == "C":
+                        self.assertIn("python c.py", instructions)
+                        self.assertTrue((trial / "c.py").is_file())
+                    else:
                         self.assertIn("python xax.py inspect", instructions)
                         self.assertTrue((trial / "xax.py").is_file())
 
@@ -201,6 +204,32 @@ class TinyAINativeBenchmarkTests(unittest.TestCase):
                     self.assertEqual(0, trial_main(task.task_id, trial, ["test"]))
                 passed, reason = check(task.task_id, "XAX", trial)
                 self.assertTrue(passed, (task.task_id, reason))
+
+    def test_direct_xax_arm_applies_and_checks_in_one_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trial = prepare("task-01", "XAX-DIRECT", Path(directory) / "task")
+            instructions = (trial / "TASK.md").read_text()
+            self.assertIn("N0 const 3", instructions)
+            self.assertIn("python xax.py apply", instructions)
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(0, trial_main("task-01", trial, ["apply", "set-constant", "N0", "7"], "XAX-DIRECT"))
+            self.assertEqual("PASS\n", output.getvalue())
+            self.assertEqual((True, ""), check("task-01", "XAX-DIRECT", trial))
+
+            (trial / "transaction.txt").write_text("TX R0.0\n# Add one mutation.\n")
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(0, trial_main("task-01", trial, ["apply", "set-constant N0 7"], "XAX-DIRECT"))
+            self.assertEqual("PASS\n", output.getvalue())
+
+    def test_direct_xax_arm_covers_extended_task_families(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for task in oi01_tasks()[5:]:
+                trial = prepare(task.task_id, "XAX-DIRECT", Path(directory) / task.task_id)
+                command = "; ".join(" ".join(parts) for parts in REFERENCE_EDITS[task.task_id])
+                with redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(0, trial_main(task.task_id, trial, ["apply", command], "XAX-DIRECT"))
+                self.assertEqual("PASS\n", output.getvalue(), task.task_id)
+                self.assertEqual((True, ""), check(task.task_id, "XAX-DIRECT", trial), task.task_id)
 
     def test_xax_inspect_is_local_and_failures_are_compact(self):
         with tempfile.TemporaryDirectory() as directory:

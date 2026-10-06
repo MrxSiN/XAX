@@ -26,7 +26,9 @@ from xax_selfhost_views_backend import (
     _node_info, _ok, _payload_uleb, _program, _result_fields, _target, _term_end, _translate, _value, collect_program_output,
 )
 
-STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_x86_64_backend.xax"
+from xax_native import bootstrap_dir  # noqa: E402
+
+STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
 T0, T1 = 10, 11
 ARGUMENTS = (RCX, RDX, 8, 9)
@@ -824,36 +826,52 @@ def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, 
     """``(code, entry offset)``: an XAX helper program lowered for this host by the XAX x86-64 backend (ADR-152).
 
     Where that backend cannot run, or while its own image is being made, the bootstrap generator gives the same
-    bytes (B1), so the result does not depend on which one ran.  With ``cache_name`` the image is cached on disk
-    under a key over the store, the generator sources, and the backend store (``XAX_NATIVE_CACHE``)."""
+    bytes (B1); which one lowered it is recorded in ``xax_native.AUTHORITY`` under ``lowering:<cache_name>``.  With
+    ``cache_name`` the image is cached on disk (``XAX_NATIVE_CACHE``) in an authenticated entry keyed by every input
+    that determines it: the cache schema, the helper store, its entry function, the target profile, the generator
+    sources, and the backend store.  A malformed or mismatching entry is ignored and rebuilt."""
     import hashlib
     import os
     import tempfile
 
-    from xax_compiler import x86_64_views_target
+    import xax_native
+    from xax_compiler import XaxError, x86_64_views_target
     from xax_x86_64_views import compile_x86_64_views
 
-    entry = None
-    if cache_name is not None:
+    target = x86_64_views_target()
+    path = key = None
+    directory = xax_native.cache_dir() if cache_name is not None else None
+    if directory is not None:
         sources = Path(__file__).resolve().parent
-        digest = hashlib.sha256(reader.data + function.cid)
+        digest = hashlib.sha256(xax_native.CACHE_MAGIC + reader.data + function.cid + target.cid)
         for name in _SOURCES:
             digest.update((sources / name).read_bytes())
         digest.update(STORE_PATH.read_bytes() if STORE_PATH.exists() else b"")
-        cache = Path(os.environ.get("XAX_NATIVE_CACHE", Path.home() / ".cache" / "xax-native"))
-        entry = cache / f"{cache_name}-{digest.hexdigest()}.bin"
+        key = digest.digest()
+        path = directory / f"{cache_name}-{key.hex()}.bin"
+        cached = xax_native.cache_read(path, key)
+        if cached is not None:
+            if cache_name is not None:
+                xax_native.loaded(cache_name, reader.root_cid, cached[0])
+            return cached
+    lowering = f"lowering:{cache_name}"
+    if _PROGRAM._building:  # the backend's own image: the bootstrap generator makes it by design
+        xax_native.fallback(lowering, "the XAX backend's own image is lowered by the bootstrap generator", requested="python")
+        image = compile_x86_64_views(reader, function.cid, target, backend="python")
+    else:
         try:
-            data = entry.read_bytes()
-            return data[8:], int.from_bytes(data[:8], "little")
-        except OSError:
-            pass
-    image = compile_x86_64_views(reader, function.cid, x86_64_views_target(), backend="auto")
-    if entry is not None:
+            image = compile_x86_64_views(reader, function.cid, target, backend="xax")
+            xax_native.loaded(lowering, reader.root_cid, image.code)
+        except XaxError as error:
+            xax_native.fallback(lowering, f"XAX x86-64 backend unavailable or declined ({error.diagnostic.code})")
+            image = compile_x86_64_views(reader, function.cid, target, backend="python")
+    if path is not None:
         try:
-            entry.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(dir=entry.parent, delete=False) as handle:
-                handle.write(image.entry_offset.to_bytes(8, "little") + image.code)
-            os.replace(handle.name, entry)
+            with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as handle:
+                handle.write(xax_native.cache_entry(key, image.code, image.entry_offset))
+            os.replace(handle.name, path)
         except OSError:
             pass  # an unwritable cache only costs the next process a recompile
+    if cache_name is not None:
+        xax_native.loaded(cache_name, reader.root_cid, image.code)
     return image.code, image.entry_offset

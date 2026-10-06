@@ -127,38 +127,25 @@ def _entries(seed_data: bytes) -> dict[str, tuple[bytes, int]]:
         return {info.filename: (archive.read(info.filename), info.external_attr >> 16) for info in archive.infolist()}
 
 
-def _local_epoch(year: int) -> float:
-    return time.mktime((year, 1, 1, 0, 0, 0, 0, 1, -1))
-
-
 def build_seed(entries: dict[str, tuple[bytes, int]], year: int) -> bytes:
     if tuple(entries) != EXPECTED_ENTRIES:
         raise ValueError("XAX.OI25.EMIT.ENTRIES")
-    with tempfile.TemporaryDirectory(prefix="xax-oi25-seed-") as directory:
-        stage = Path(directory) / "stage"
-        stage.mkdir()
-        epoch = _local_epoch(year)
-        for name in EXPECTED_ENTRIES:
-            payload, mode = entries[name]
-            path = stage / name
-            path.write_bytes(payload)
-            os.chmod(path, mode & 0o7777)
-            os.utime(path, (epoch, epoch))
-        return _create_archive(stage, EXPECTED_ENTRIES)
+    return _create_archive({name: entries[name] for name in EXPECTED_ENTRIES}, (year, 1, 1, 0, 0, 0))
 
 
-def _create_archive(stage: Path, names: tuple[str, ...]) -> bytes:
-    """``zipapp.create_archive`` output with entries in the declared order.
-
-    ``zipapp`` walks the directory with an unsorted ``rglob``, so its entry
-    order follows the host filesystem; this writes the same bytes
-    (shebang, deflated entries, file mtime and mode) in a fixed order.
-    """
+def _create_archive(entries: dict[str, tuple[bytes, int]], date_time: tuple[int, int, int, int, int, int]) -> bytes:
+    """The bytes ``zipapp.create_archive`` writes for these files on a POSIX host (shebang, deflated entries in the
+    given order, the zip timestamp, and the declared Unix mode), built in memory so that no host file system, umask,
+    clock, time zone, or OS (Windows keeps no Unix mode) reaches them (ADR-177)."""
     out = io.BytesIO()
     out.write(SHEBANG)
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name in names:
-            archive.write(stage / name, name)
+        for name, (payload, mode) in entries.items():
+            info = zipfile.ZipInfo(name, date_time)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = mode << 16
+            info.create_system = 3
+            archive.writestr(info, payload)
     return out.getvalue()
 
 
@@ -237,16 +224,7 @@ def _semantic_mutation(entries: dict[str, tuple[bytes, int]]) -> dict[str, tuple
 def _unknown_layout(entries: dict[str, tuple[bytes, int]]) -> bytes:
     expanded = dict(entries)
     expanded["extra.py"] = (b"x = 1\n", 0o100644)
-    with tempfile.TemporaryDirectory(prefix="xax-oi25-extra-") as directory:
-        stage = Path(directory) / "stage"
-        stage.mkdir()
-        epoch = _local_epoch(1980)
-        for name, (payload, mode) in expanded.items():
-            path = stage / name
-            path.write_bytes(payload)
-            os.chmod(path, mode & 0o7777)
-            os.utime(path, (epoch, epoch))
-        return _create_archive(stage, tuple(expanded))
+    return _create_archive(expanded, (1980, 1, 1, 0, 0, 0))
 
 
 def _stat(samples: list[int]) -> dict:

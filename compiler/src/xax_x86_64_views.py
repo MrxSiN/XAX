@@ -547,9 +547,9 @@ class NativeViewsImage:
 
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         blob = thunk + image.code
-        self._mapping = mmap.mmap(-1, len(blob), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
-        self._mapping.write(blob)
-        base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
+        from xax_native import executable_mapping
+
+        self._mapping, base = executable_mapping(blob)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + image.entry_offset
         self._slots = (ctypes.c_uint64 * 16)()

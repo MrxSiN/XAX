@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -107,7 +108,7 @@ class OI14CompileTimePolicyTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         command = [sys.executable, "-m", "benchmarks.bench_oi14_comptime_policy", "--deterministic-hash"]
         env = dict(__import__("os").environ)
-        env["PYTHONPATH"] = "src:."
+        env["PYTHONPATH"] = os.pathsep.join(("src", "."))
         hashes = [subprocess.check_output(command, cwd=root, env=env, text=True).strip() for _ in range(3)]
         self.assertEqual(len(set(hashes)), 1)
         self.assertEqual(hashes[0], deterministic_evidence()["deterministic_projection_sha256"])

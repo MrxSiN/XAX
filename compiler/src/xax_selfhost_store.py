@@ -54,7 +54,9 @@ from xax_compiler import (
 )
 from xax_graph_builder import GraphBuilder, program_store
 
-STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_store_decoder.xax"
+from xax_native import bootstrap_dir  # noqa: E402
+
+STORE_PATH = bootstrap_dir() / "xax_store_decoder.xax"
 DATA_EXTENT = 1 << 22
 OUT_EXTENT = 1 << 21
 # Per record: offset, length, CID offset, parsed flag, kind, reference count,
@@ -371,9 +373,9 @@ class NativeDecoder:
         machine_code, entry_offset = host_image(*load_decoder_program(), "store-decoder")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code
-        self._mapping = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
-        self._mapping.write(code)
-        base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
+        from xax_native import executable_mapping
+
+        self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self.code_size = len(machine_code)
@@ -402,7 +404,6 @@ class NativeDecoder:
 
 
 def native_decoder_usable() -> bool:
-    return (
-        sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
-        and os.environ.get("XAX_STORE_PYTHON_DECODER") != "1" and STORE_PATH.exists()
-    )
+    import xax_native
+
+    return xax_native.usable("store-decoder", STORE_PATH, "XAX_STORE_PYTHON_DECODER")

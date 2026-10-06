@@ -12,15 +12,31 @@ ABILIST="$(adb shell getprop ro.product.cpu.abilist | tr -d '\r')"
 # the run is then recorded as translated, not hardware (XAX_SPEC.md section 21.2).
 case ",$ABILIST," in *,arm64-v8a,*) ;; *) echo "requires an arm64-v8a device/emulator, got $ABILIST" >&2; exit 2;; esac
 python "$ROOT/benchmarks/bench_android_platform_runtime.py"
-CLANG="$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" -type f -name 'aarch64-linux-android24-clang' -print -quit)"
+CLANG_ARGS=()
+LOADER_OUT=""
+PROBE_PUSH="$PROBE"
+EVIDENCE_OUT="$EVIDENCE"
+case "$(uname -s)" in
+  MINGW*|MSYS*)
+    export MSYS_NO_PATHCONV=1
+    CLANG="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe"
+    CLANG_ARGS+=(--target=aarch64-linux-android24)
+    LOADER_SRC="$(cygpath -w "$LOADER_SRC")"
+    PROBE_PUSH="$(cygpath -w "$PROBE")"
+    EVIDENCE_OUT="$(cygpath -w "$EVIDENCE")"
+    ;;
+  *) CLANG="$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" -type f -name 'aarch64-linux-android24-clang' -print -quit)" ;;
+esac
 [ -n "$CLANG" ] || { echo "aarch64-linux-android24-clang not found in NDK" >&2; exit 2; }
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-"$CLANG" -O2 -fPIE -pie -pthread "$LOADER_SRC" -ldl -o "$TMP/xax_platform_runtime_loader"
+LOADER_OUT="$TMP/xax_platform_runtime_loader"
+[[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]] && LOADER_OUT="$(cygpath -w "$LOADER_OUT")"
+"$CLANG" "${CLANG_ARGS[@]}" -O2 -fPIE -pie -pthread "$LOADER_SRC" -ldl -o "$LOADER_OUT"
 REMOTE="/data/local/tmp/xax-platform-runtime-$$"
 adb shell "mkdir -p $REMOTE"
 trap 'adb shell "rm -rf '$REMOTE'" >/dev/null 2>&1 || true; rm -rf "$TMP"' EXIT
-adb push "$PROBE" "$REMOTE/libxax_platform_probe.so" >/dev/null
-adb push "$TMP/xax_platform_runtime_loader" "$REMOTE/xax_platform_runtime_loader" >/dev/null
+adb push "$PROBE_PUSH" "$REMOTE/libxax_platform_probe.so" >/dev/null
+adb push "$LOADER_OUT" "$REMOTE/xax_platform_runtime_loader" >/dev/null
 adb shell "chmod 755 $REMOTE/xax_platform_runtime_loader"
 OUTPUT="$(adb shell "cd $REMOTE && ./xax_platform_runtime_loader ./libxax_platform_probe.so" | tr -d '\r')"
 echo "$OUTPUT"
@@ -30,7 +46,7 @@ ANDROID_RELEASE="$(adb shell getprop ro.build.version.release | tr -d '\r')"
 ANDROID_API="$(adb shell getprop ro.build.version.sdk | tr -d '\r')"
 BRIDGE="$(adb shell getprop ro.dalvik.vm.native.bridge | tr -d '\r')"
 QEMU="$(adb shell getprop ro.kernel.qemu | tr -d '\r')"
-OUTPUT="$OUTPUT" DEVICE="$DEVICE" ABI="$ABI" ABILIST="$ABILIST" BRIDGE="$BRIDGE" QEMU="$QEMU" ANDROID_RELEASE="$ANDROID_RELEASE" ANDROID_API="$ANDROID_API" EVIDENCE="$EVIDENCE" python - <<'PY'
+OUTPUT="$OUTPUT" DEVICE="$DEVICE" ABI="$ABI" ABILIST="$ABILIST" BRIDGE="$BRIDGE" QEMU="$QEMU" ANDROID_RELEASE="$ANDROID_RELEASE" ANDROID_API="$ANDROID_API" EVIDENCE="$EVIDENCE_OUT" python - <<'PY'
 import json, os
 from pathlib import Path
 path=Path(os.environ['EVIDENCE'])

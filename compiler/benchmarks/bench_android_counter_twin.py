@@ -118,7 +118,12 @@ def _install(apk: Path, attempts: int = 3) -> None:
 
 def measure_device(apks: dict[str, Path]) -> dict:
     """Cold starts of every arm on the connected target, in alternating install-once passes."""
-    properties = {name: _adb("shell", "getprop", name).strip() for name in ("ro.build.fingerprint", "ro.product.model", "ro.product.cpu.abilist", "ro.kernel.qemu", "ro.boot.qemu")}
+    properties = {name: _adb("shell", "getprop", name).strip() for name in (
+        "ro.build.fingerprint", "ro.build.version.release", "ro.build.version.security_patch",
+        "ro.product.model", "ro.product.cpu.abilist", "ro.soc.manufacturer", "ro.soc.model",
+        "ro.kernel.qemu", "ro.boot.qemu",
+    )}
+    properties["kernel"] = _adb("shell", "uname", "-a").strip()
     samples: dict[str, dict[str, list[int | None]]] = {arm: {"total_time_ms": [], "wait_time_ms": [], "pss_kib": []} for arm in apks}
     clicks = {}
     for pass_index in range(PASSES):

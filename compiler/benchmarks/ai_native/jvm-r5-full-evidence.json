@@ -1,0 +1,36 @@
+{
+  "format": 1,
+  "status": "INCOMPLETE_NOT_R5",
+  "date": "2026-10-06",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "client": "Codex CLI 0.160.0",
+  "task_count": 15,
+  "arms": ["JAVA", "KOTLIN", "XAX"],
+  "attempts": 45,
+  "successful_cells": 42,
+  "failed_cells": [
+    {"task": "jvm-06", "arm": "JAVA", "reason": "usage limit before model turn"},
+    {"task": "jvm-06", "arm": "KOTLIN", "reason": "usage limit before model turn"},
+    {"task": "jvm-07", "arm": "XAX", "reason": "usage limit before model turn"}
+  ],
+  "successful_task_medians": {
+    "JAVA": 50342.5,
+    "KOTLIN": 50737.5,
+    "XAX": 38679.0
+  },
+  "successful_task_totals": {
+    "JAVA": 756496,
+    "KOTLIN": 799268,
+    "XAX": 660995
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 0.7683,
+  "r5_threshold": 0.5,
+  "source_csv": "jvm-r5-full-results.csv",
+  "source_sha256": "30DF47BA1AE3E9A7271274EC3A45189E190FD5EEED15529F52B32839296B0383",
+  "limits": [
+    "The three fresh retry cells were rejected by the account Codex usage limit before a model turn, so this is not a complete 15-by-3 corpus.",
+    "The completed cells' XAX median is 0.7683x the lowest textual median, above the 0.50 R5 gate.",
+    "The JVM matrix row remains R4 and ai_tokens remains PROTOTYPE."
+  ]
+}

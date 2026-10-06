@@ -363,6 +363,31 @@ class SetConstant:
 
 
 @dataclass(frozen=True)
+class SetResultType:
+    node: str
+    result: int
+    expected_type: str
+    value_type: str
+
+    def __post_init__(self) -> None:
+        if self.result < 0:
+            raise ValueError("result index must be nonnegative")
+
+
+@dataclass(frozen=True)
+class SetFunctionSignature:
+    function: str
+    expected_parameters: tuple[str, ...]
+    parameters: tuple[str, ...]
+    expected_returns: tuple[str, ...]
+    returns: tuple[str, ...]
+
+    @property
+    def node(self) -> str:
+        return self.function
+
+
+@dataclass(frozen=True)
 class ReplaceUse:
     node: str
     operand_index: int
@@ -502,6 +527,27 @@ class _ResolvedInsertPureNode:
 
 
 @dataclass(frozen=True)
+class _ResolvedSetResultType:
+    node: str
+    result: int
+    expected_type_cid: bytes
+    value_type_cid: bytes
+
+
+@dataclass(frozen=True)
+class _ResolvedSetFunctionSignature:
+    function: str
+    expected_parameter_cids: tuple[bytes, ...]
+    parameter_cids: tuple[bytes, ...]
+    expected_return_cids: tuple[bytes, ...]
+    return_cids: tuple[bytes, ...]
+
+    @property
+    def node(self) -> str:
+        return self.function
+
+
+@dataclass(frozen=True)
 class _ResolvedSpecializationArgument:
     parameter: int
     expected_type_cid: bytes
@@ -521,6 +567,8 @@ class _ResolvedSpecializeFunction:
 Mutation = (
     SetOperation
     | SetConstant
+    | SetResultType
+    | SetFunctionSignature
     | ReplaceUse
     | DeleteNode
     | InsertPureNode
@@ -763,6 +811,16 @@ class Workspace:
         self._type_bindings: dict[str, tuple[bytes, int]] = {}
         self._artifact_bindings: dict[str, tuple[MappableArtifact, bytes, int, ArtifactProvenanceBinding]] = {}
 
+    def _current_function_binding(self, handle: str) -> tuple[bytes, int] | None:
+        binding = self._function_bindings.get(handle)
+        if binding is not None and binding[1] == self.generation:
+            return binding
+        prefix = f"{handle}.B"
+        for node_handle, node_binding in self._node_bindings.items():
+            if node_handle.startswith(prefix) and node_binding[3] == self.generation:
+                return node_binding[0], self.generation
+        return None
+
     def _artifact_binding_current(
         self, binding: tuple[MappableArtifact, bytes, int, ArtifactProvenanceBinding]
     ) -> bool:
@@ -914,6 +972,8 @@ class Workspace:
         with self._lock:
             if generation != self.generation:
                 fail("XAX.WORKSPACE.STALE_QUERY", handle, "WORKSPACE-GENERATION", generation, self.generation)
+            if not page:
+                self._function_bindings[handle] = (function_cid, generation)
             for entity in page:
                 parts = entity.handle.split(".")
                 self._node_bindings[entity.handle] = (function_cid, int(parts[1][1:]), int(parts[2][1:]), generation)
@@ -2108,11 +2168,13 @@ class Workspace:
                     ),
                 )
             bindings = []
-            candidate_mutations: list[Mutation | _ResolvedInsertPureNode | _ResolvedSpecializeFunction] = []
+            candidate_mutations: list[
+                Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature | _ResolvedSpecializeFunction
+            ] = []
             for mutation in mutations:
                 if isinstance(mutation, SpecializeFunction):
-                    function_binding = self._function_bindings.get(mutation.function)
-                    if function_binding is None or function_binding[1] != self.generation:
+                    function_binding = self._current_function_binding(mutation.function)
+                    if function_binding is None:
                         return self._candidate_rejected(
                             size,
                             _diagnostic(
@@ -2146,6 +2208,34 @@ class Workspace:
                         _ResolvedSpecializeFunction(mutation.function, tuple(resolved_arguments))
                     )
                     bindings.append((function_binding[0], 0, 0))
+                    continue
+                if isinstance(mutation, SetFunctionSignature):
+                    function_binding = self._current_function_binding(mutation.function)
+                    if function_binding is None:
+                        return self._candidate_rejected(
+                            size,
+                            _diagnostic("XAX.WORKSPACE.HANDLE", mutation.function, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", ("R0",)),
+                        )
+                    type_groups = (
+                        mutation.expected_parameters,
+                        mutation.parameters,
+                        mutation.expected_returns,
+                        mutation.returns,
+                    )
+                    resolved_groups = []
+                    for group in type_groups:
+                        resolved = []
+                        for handle in group:
+                            type_binding = self._type_bindings.get(handle)
+                            if type_binding is None or type_binding[1] != self.generation:
+                                return self._candidate_rejected(
+                                    size,
+                                    _diagnostic("XAX.WORKSPACE.HANDLE", handle, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", (mutation.function,)),
+                                )
+                            resolved.append(type_binding[0])
+                        resolved_groups.append(tuple(resolved))
+                    candidate_mutations.append(_ResolvedSetFunctionSignature(mutation.function, *resolved_groups))
+                    bindings.append((function_binding[0], -1, -1))
                     continue
                 binding = self._node_bindings.get(mutation.node)
                 if binding is None or binding[3] != self.generation:
@@ -2203,7 +2293,17 @@ class Workspace:
                                 (mutation.node, mutation.destination),
                             ),
                         )
-                if isinstance(mutation, InsertPureNode):
+                if isinstance(mutation, SetResultType):
+                    expected_binding = self._type_bindings.get(mutation.expected_type)
+                    value_binding = self._type_bindings.get(mutation.value_type)
+                    stale = mutation.expected_type if expected_binding is None or expected_binding[1] != self.generation else mutation.value_type if value_binding is None or value_binding[1] != self.generation else None
+                    if stale is not None:
+                        return self._candidate_rejected(
+                            size,
+                            _diagnostic("XAX.WORKSPACE.HANDLE", stale, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", (mutation.node,)),
+                        )
+                    candidate_mutations.append(_ResolvedSetResultType(mutation.node, mutation.result, expected_binding[0], value_binding[0]))
+                elif isinstance(mutation, InsertPureNode):
                     type_binding = self._type_bindings.get(mutation.result_type)
                     if type_binding is None or type_binding[1] != self.generation:
                         return self._candidate_rejected(
@@ -2394,11 +2494,13 @@ class Workspace:
                     ),
                 )
             bindings = []
-            candidate_mutations: list[Mutation | _ResolvedInsertPureNode | _ResolvedSpecializeFunction] = []
+            candidate_mutations: list[
+                Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature | _ResolvedSpecializeFunction
+            ] = []
             for mutation in mutations:
                 if isinstance(mutation, SpecializeFunction):
-                    function_binding = self._function_bindings.get(mutation.function)
-                    if function_binding is None or function_binding[1] != self.generation:
+                    function_binding = self._current_function_binding(mutation.function)
+                    if function_binding is None:
                         return self._rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", mutation.function, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", ("R0",)))
                     resolved_arguments = []
                     for argument in mutation.arguments:
@@ -2422,6 +2524,28 @@ class Workspace:
                         _ResolvedSpecializeFunction(mutation.function, tuple(resolved_arguments))
                     )
                     bindings.append((function_binding[0], 0, 0))
+                    continue
+                if isinstance(mutation, SetFunctionSignature):
+                    function_binding = self._current_function_binding(mutation.function)
+                    if function_binding is None:
+                        return self._rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", mutation.function, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", ("R0",)))
+                    type_groups = (
+                        mutation.expected_parameters,
+                        mutation.parameters,
+                        mutation.expected_returns,
+                        mutation.returns,
+                    )
+                    resolved_groups = []
+                    for group in type_groups:
+                        resolved = []
+                        for handle in group:
+                            type_binding = self._type_bindings.get(handle)
+                            if type_binding is None or type_binding[1] != self.generation:
+                                return self._rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", handle, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", (mutation.function,)))
+                            resolved.append(type_binding[0])
+                        resolved_groups.append(tuple(resolved))
+                    candidate_mutations.append(_ResolvedSetFunctionSignature(mutation.function, *resolved_groups))
+                    bindings.append((function_binding[0], -1, -1))
                     continue
                 binding = self._node_bindings.get(mutation.node)
                 if binding is None or binding[3] != self.generation:
@@ -2469,7 +2593,14 @@ class Workspace:
                                 (mutation.node, mutation.destination),
                             ),
                         )
-                if isinstance(mutation, InsertPureNode):
+                if isinstance(mutation, SetResultType):
+                    expected_binding = self._type_bindings.get(mutation.expected_type)
+                    value_binding = self._type_bindings.get(mutation.value_type)
+                    stale = mutation.expected_type if expected_binding is None or expected_binding[1] != self.generation else mutation.value_type if value_binding is None or value_binding[1] != self.generation else None
+                    if stale is not None:
+                        return self._rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", stale, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", (mutation.node,)))
+                    candidate_mutations.append(_ResolvedSetResultType(mutation.node, mutation.result, expected_binding[0], value_binding[0]))
+                elif isinstance(mutation, InsertPureNode):
                     type_binding = self._type_bindings.get(mutation.result_type)
                     if type_binding is None or type_binding[1] != self.generation:
                         return self._rejected(
@@ -2639,6 +2770,23 @@ class Workspace:
                     translated_mutations.append(SetOperation(handle, mutation.expected, mutation.value))
                 elif isinstance(mutation, SetConstant):
                     translated_mutations.append(SetConstant(handle, mutation.expected, mutation.value))
+                elif isinstance(mutation, SetResultType):
+                    expected_type, value_type = translate(mutation.expected_type), translate(mutation.value_type)
+                    if expected_type is None or value_type is None:
+                        return reject(mutation.node, "WORKSPACE-REBASE-READ-UNCHANGED", "unchanged result types at current root", "changed, missing, or unbound")
+                    translated_mutations.append(SetResultType(handle, mutation.result, expected_type, value_type))
+                elif isinstance(mutation, SetFunctionSignature):
+                    translated_types = [translate(type_handle) for group in (mutation.expected_parameters, mutation.parameters, mutation.expected_returns, mutation.returns) for type_handle in group]
+                    if any(type_handle is None for type_handle in translated_types):
+                        return reject(mutation.function, "WORKSPACE-REBASE-READ-UNCHANGED", "unchanged signature types at current root", "changed, missing, or unbound")
+                    sizes = tuple(map(len, (mutation.expected_parameters, mutation.parameters, mutation.expected_returns, mutation.returns)))
+                    groups, offset = [], 0
+                    for count in sizes:
+                        groups.append(tuple(translated_types[offset:offset + count]))
+                        offset += count
+                    translated_mutations.append(
+                        SetFunctionSignature(handle, *groups)
+                    )
                 elif isinstance(mutation, ReplaceUse):
                     translated_mutations.append(
                         ReplaceUse(handle, mutation.operand_index, mutation.expected, mutation.value)
@@ -2788,6 +2936,10 @@ def _mutation_sort_key(mutation: Mutation) -> tuple[object, ...]:
             4,
             tuple((argument.parameter, argument.expected_type, argument.value) for argument in sorted(mutation.arguments, key=lambda item: item.parameter)),
         )
+    if isinstance(mutation, SetFunctionSignature):
+        return (mutation.function, 5, mutation.expected_parameters, mutation.parameters, mutation.expected_returns, mutation.returns)
+    if isinstance(mutation, SetResultType):
+        return (mutation.node, 6, mutation.result, mutation.expected_type, mutation.value_type)
     return (mutation.node, 2, type(mutation).__name__)
 
 
@@ -2838,6 +2990,17 @@ def _transaction_size(transaction: Transaction) -> int:
                 size += len(uleb(argument.parameter))
                 size += len(uleb(len(type_handle))) + len(type_handle)
                 size += len(uleb(zigzag(argument.value)))
+        elif isinstance(mutation, SetResultType):
+            size += len(uleb(mutation.result))
+            for type_handle in (mutation.expected_type, mutation.value_type):
+                encoded = type_handle.encode()
+                size += len(uleb(len(encoded))) + len(encoded)
+        elif isinstance(mutation, SetFunctionSignature):
+            for group in (mutation.expected_parameters, mutation.parameters, mutation.expected_returns, mutation.returns):
+                size += len(uleb(len(group)))
+                for type_handle in group:
+                    encoded = type_handle.encode()
+                    size += len(uleb(len(encoded))) + len(encoded)
         else:
             values = (int(mutation.expected), int(mutation.value))
             if isinstance(mutation, SetConstant):
@@ -2849,7 +3012,10 @@ def _transaction_size(transaction: Transaction) -> int:
 def _candidate(
     reader: StoreReader,
     bindings: tuple[tuple[bytes, int, int], ...],
-    mutations: tuple[Mutation | _ResolvedInsertPureNode | _ResolvedSpecializeFunction, ...],
+    mutations: tuple[
+        Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature | _ResolvedSpecializeFunction,
+        ...,
+    ],
     users: dict[bytes, tuple[bytes, ...]],
 ) -> tuple[StoreReader, tuple[bytes, ...], int, int, tuple[bytes, ...]]:
     specializations = tuple(mutation for mutation in mutations if isinstance(mutation, _ResolvedSpecializeFunction))
@@ -2866,7 +3032,10 @@ def _candidate(
         return _specialization_candidate(reader, bindings[0][0], specializations[0], users)
     objects = {obj.cid: obj for obj in reader.objects()}
     resolve = store_resolver(reader)
-    grouped: dict[bytes, list[tuple[tuple[bytes, int, int], Mutation | _ResolvedInsertPureNode]]] = {}
+    grouped: dict[
+        bytes,
+        list[tuple[tuple[bytes, int, int], Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature]],
+    ] = {}
     for binding, mutation in zip(bindings, mutations):
         grouped.setdefault(binding[0], []).append((binding, mutation))
     seeds = frozenset(grouped)
@@ -3166,7 +3335,13 @@ def _specialize_function(
 
 def _mutate_function(
     function_object: SemanticObject,
-    edits: tuple[tuple[tuple[bytes, int, int], Mutation | _ResolvedInsertPureNode], ...],
+    edits: tuple[
+        tuple[
+            tuple[bytes, int, int],
+            Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature,
+        ],
+        ...,
+    ],
     objects: dict[bytes, SemanticObject],
     resolve: Callable[[bytes], SemanticObject],
     external_replacements: dict[bytes, SemanticObject] | None = None,
@@ -3174,6 +3349,30 @@ def _mutate_function(
     external_replacements = external_replacements or {}
     graph_object, parameter_cids, return_cids = _decode_function_interface(function_object, resolve)
     graph = _parse_graph(graph_object, resolve)
+    signature_edits = [mutation for _binding, mutation in edits if isinstance(mutation, _ResolvedSetFunctionSignature)]
+    if signature_edits:
+        mutation = signature_edits[0]
+        if len(signature_edits) != 1:
+            fail("XAX.WORKSPACE.DUPLICATE_MUTATION", mutation.function, "WORKSPACE-FUNCTION-SIGNATURE-UNIQUE", 1, len(signature_edits), repair_neighborhood=(mutation.function,))
+        if parameter_cids != mutation.expected_parameter_cids or return_cids != mutation.expected_return_cids:
+            fail(
+                "XAX.WORKSPACE.ATTRIBUTE_CONFLICT",
+                mutation.function,
+                "WORKSPACE-FUNCTION-SIGNATURE-PRECONDITION",
+                {"parameters": [cid.hex() for cid in mutation.expected_parameter_cids], "returns": [cid.hex() for cid in mutation.expected_return_cids]},
+                {"parameters": [cid.hex() for cid in parameter_cids], "returns": [cid.hex() for cid in return_cids]},
+                repair_neighborhood=(mutation.function,),
+            )
+        if len(parameter_cids) != len(mutation.parameter_cids) or len(return_cids) != len(mutation.return_cids):
+            fail(
+                "XAX.WORKSPACE.UNSUPPORTED_MUTATION",
+                mutation.function,
+                "WORKSPACE-FUNCTION-SIGNATURE-ARITY-PRESERVED",
+                {"parameters": len(parameter_cids), "returns": len(return_cids)},
+                {"parameters": len(mutation.parameter_cids), "returns": len(mutation.return_cids)},
+                repair_neighborhood=(mutation.function,),
+            )
+        parameter_cids, return_cids = mutation.parameter_cids, mutation.return_cids
     replacements_by_node = {}
     deletions: set[tuple[int, int]] = set()
     insertions: dict[tuple[int, int], _ResolvedInsertPureNode] = {}
@@ -3226,6 +3425,8 @@ def _mutate_function(
         return inserted_value(value, entity) if isinstance(value, TransactionValueRef) else remap_value(value)
 
     for (_, target_block, target_node), mutation in edits:
+        if isinstance(mutation, _ResolvedSetFunctionSignature):
+            continue
         try:
             selected = graph.blocks[target_block].nodes[target_node]
         except IndexError:
@@ -3460,6 +3661,7 @@ def _mutate_function(
         replacement_entity = selected.entity
         replacement_operation = Operation(selected.operation)
         replacement_operands = selected.operands
+        replacement_results = selected.results
         if isinstance(mutation, SetOperation):
             if replacement_operation != mutation.expected:
                 fail("XAX.WORKSPACE.ATTRIBUTE_CONFLICT", mutation.node, "WORKSPACE-OP-PRECONDITION", mutation.expected.name, replacement_operation.name, repair_neighborhood=(mutation.node,))
@@ -3477,6 +3679,37 @@ def _mutate_function(
             except ValueError:
                 fail("XAX.WORKSPACE.INVALID_VALUE", mutation.node, "WORKSPACE-CONSTANT-RANGE", f"value fitting {type_cid.hex()}", mutation.value, repair_neighborhood=(mutation.node,))
             objects[replacement_entity.cid] = replacement_entity
+        elif isinstance(mutation, _ResolvedSetResultType):
+            if mutation.result >= len(selected.results):
+                fail(
+                    "XAX.WORKSPACE.RELATION_CONFLICT",
+                    mutation.node,
+                    "WORKSPACE-RESULT-INDEX",
+                    f"< {len(selected.results)}",
+                    mutation.result,
+                    repair_neighborhood=(mutation.node,),
+                )
+            if selected.results[mutation.result] != mutation.expected_type_cid:
+                fail(
+                    "XAX.WORKSPACE.ATTRIBUTE_CONFLICT",
+                    mutation.node,
+                    "WORKSPACE-RESULT-TYPE-PRECONDITION",
+                    mutation.expected_type_cid.hex(),
+                    selected.results[mutation.result].hex(),
+                    repair_neighborhood=(mutation.node,),
+                )
+            results = list(selected.results)
+            results[mutation.result] = mutation.value_type_cid
+            replacement_results = tuple(results)
+            if replacement_operation == Operation.CONSTANT:
+                if mutation.result != 0 or len(selected.results) != 1:
+                    fail("XAX.WORKSPACE.UNSUPPORTED_MUTATION", mutation.node, "WORKSPACE-CONSTANT-SINGLE-RESULT", 0, mutation.result, repair_neighborhood=(mutation.node,))
+                _old_type, value = _decode_constant(selected.entity, resolve)
+                try:
+                    replacement_entity = constant(resolve(mutation.value_type_cid), value)
+                except ValueError:
+                    fail("XAX.WORKSPACE.INVALID_VALUE", mutation.node, "WORKSPACE-CONSTANT-RANGE", f"value fitting {mutation.value_type_cid.hex()}", value, repair_neighborhood=(mutation.node,))
+                objects[replacement_entity.cid] = replacement_entity
         elif isinstance(mutation, ReplaceUse):
             if mutation.operand_index >= len(selected.operands):
                 fail(
@@ -3502,7 +3735,12 @@ def _mutate_function(
             replacement_operands = tuple(operands)
         else:
             raise AssertionError(f"unhandled mutation {type(mutation)!r}")
-        replacements_by_node[(target_block, target_node)] = (replacement_operation, replacement_entity, replacement_operands)
+        replacements_by_node[(target_block, target_node)] = (
+            replacement_operation,
+            replacement_entity,
+            replacement_operands,
+            replacement_results,
+        )
 
     if moves and (insertions or deletions):
         move = next(iter(moves.values()))
@@ -3585,9 +3823,9 @@ def _mutate_function(
                 )
             if (block_index, node_index) in deletions:
                 continue
-            operation, entity, operands = replacements_by_node.get(
+            operation, entity, operands, results = replacements_by_node.get(
                 (block_index, node_index),
-                (Operation(node.operation), node.entity, node.operands),
+                (Operation(node.operation), node.entity, node.operands, node.results),
             )
             if entity is not None:
                 entity = external_replacements.get(entity.cid, entity)
@@ -3595,7 +3833,7 @@ def _mutate_function(
                 Node(
                     operation,
                     tuple(remap_mutation_value(value, f"B{block_index}.N{node_index}") for value in operands),
-                    tuple(resolve(cid) for cid in node.results),
+                    tuple(resolve(cid) for cid in results),
                     node.member,
                     entity,
                     node.attributes,
@@ -3619,7 +3857,8 @@ def _mutate_function(
             tuple(remapped_edges),
             term.payload,
         )
-        blocks.append(Block(tuple(resolve(cid) for cid in block.parameters), tuple(nodes), remapped_term))
+        block_parameter_cids = parameter_cids if block_index == graph.entry else block.parameters
+        blocks.append(Block(tuple(resolve(cid) for cid in block_parameter_cids), tuple(nodes), remapped_term))
     new_graph = graph_fragment(blocks, graph.entry)
     new_function = function(new_graph, tuple(resolve(cid) for cid in parameter_cids), tuple(resolve(cid) for cid in return_cids))
     objects[new_graph.cid] = new_graph

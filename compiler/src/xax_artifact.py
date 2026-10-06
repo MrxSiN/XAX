@@ -44,6 +44,12 @@ ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1 = bytes.fromhex(
 )
 
 
+def container_lowering_identity(target_identity: bytes) -> bytes:
+    """Lowering identity of a hosted-container target profile (Linux ELF, PE32+, browser page, SPIR-V; ADR-177):
+    SHA-256 over a fixed domain prefix and the target profile's identity, so two containers never share one."""
+    return hashlib.sha256(b"xax-container-lowering-v1/" + target_identity).digest()
+
+
 def lowering_identity(architecture: int, image_format: int) -> bytes:
     """Return the explicit bootstrap lowering identity for a supported target path."""
 

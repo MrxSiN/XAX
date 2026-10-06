@@ -214,18 +214,12 @@ class NativeBlake3Compressor:
             raise RuntimeError(f"native XAX BLAKE3 requires x86-64 host, got {machine}")
         if image.parameter_widths != (32,) * 28 or image.return_kinds != ("a64",):
             raise RuntimeError(f"unexpected BLAKE3 XAX ABI: {image.parameter_widths!r} -> {image.return_kinds!r}")
-        if not hasattr(mmap, "PROT_EXEC"):
-            raise RuntimeError("host mmap does not expose executable mappings")
+        from xax_native import seal, writable_mapping
 
         # Allocate once, then place the ordinary XAX image followed by a host ABI
         # adapter.  The adapter only marshals arguments; it has no hash semantics.
         reserve = len(image.code) + 1024
-        self._mapping = mmap.mmap(
-            -1,
-            reserve,
-            prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC,
-        )
-        base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
+        self._mapping, base = writable_mapping(reserve)
         self._mapping[: len(image.code)] = image.code
         entry = base + image.entry_offset
         thunk = _sysv_to_win64_blake3_thunk(entry)
@@ -233,6 +227,7 @@ class NativeBlake3Compressor:
         if thunk_offset + len(thunk) > reserve:
             raise RuntimeError("BLAKE3 native thunk reserve exhausted")
         self._mapping[thunk_offset : thunk_offset + len(thunk)] = thunk
+        seal(base, reserve)
         prototype = ctypes.CFUNCTYPE(
             None,
             ctypes.POINTER(ctypes.c_uint32),

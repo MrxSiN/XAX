@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import shutil
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from benchmarks.bench_oi27_bootstrap_diversity import (
     build_checker, checker, experiment,
 )
 
+@unittest.skipUnless(shutil.which("go"), "UNAVAILABLE: the Go toolchain is not installed, so the independent checker cannot be built")
 class OI27BootstrapDiversityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

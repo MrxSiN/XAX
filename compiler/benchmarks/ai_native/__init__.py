@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import re
+import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -398,9 +399,9 @@ def _variant(arm: str) -> tuple[str, str] | None:
 
 def _arm(arm: str) -> str:
     arm = arm.upper()
-    if arm in {"C", "XAX"} or _variant(arm):
+    if arm in {"C", "XAX", "XAX-DIRECT"} or _variant(arm):
         return arm
-    raise ValueError("arm must be C, XAX, or XAX-<TYPED|UNIFIED>-<LINE|PIPE|JSON>")
+    raise ValueError("arm must be C, XAX, XAX-DIRECT, or XAX-<TYPED|UNIFIED>-<LINE|PIPE|JSON>")
 
 
 def _handle_order(task: Task | None) -> tuple[str, ...]:
@@ -529,8 +530,18 @@ def decode_packet(task: Task, framing: str, handles: str, text: str) -> Transact
 def _load_transaction(task: Task, arm: str, workspace_path: Path) -> Transaction:
     variant = _variant(arm)
     if variant is None:
+        if arm == "XAX-DIRECT" and task.fixture != "linear":
+            return _direct_transaction(task, (workspace_path / "direct.txt").read_text(encoding="utf-8"))
         return _transaction((workspace_path / "transaction.txt").read_text(encoding="utf-8"))
     return decode_packet(task, variant[1], variant[0], (workspace_path / "packet.txt").read_text(encoding="utf-8"))
+
+
+def _direct_transaction(task: Task, text: str) -> Transaction:
+    commands = [shlex.split(command.strip()) for command in text.split(";") if command.strip()]
+    if not commands:
+        raise ValueError("one or more semicolon-separated mutations required")
+    generation = int(task.reference_root.rsplit(".", 1)[1])
+    return Transaction(RootRef(generation), tuple(_transport_mutation(task, command) for command in commands))
 
 
 def _trial_script(task_id: str, arm: str) -> str:
@@ -543,10 +554,22 @@ def _trial_script(task_id: str, arm: str) -> str:
     )
 
 
+def _c_trial_script(task_id: str) -> str:
+    compiler = HERE.parents[1]
+    return (
+        "import sys\nfrom pathlib import Path\n"
+        f"sys.path[:0] = [{str(compiler / 'src')!r}, {str(compiler)!r}]\n"
+        "from benchmarks.ai_native import check\n"
+        f"passed, reason = check({task_id!r}, 'C', Path(__file__).parent)\n"
+        "print('PASS' if passed else f'FAIL {reason}')\n"
+        "raise SystemExit(0 if passed else 1)\n"
+    )
+
+
 def prepare(task_id: str, arm: str, output: Path | None = None) -> Path:
     task, arm = load_task(task_id), _arm(arm)
     variant = _variant(arm)
-    if task.fixture != "linear" and variant is None:
+    if task.fixture != "linear" and variant is None and arm != "XAX-DIRECT":
         raise ValueError("OI-01 extension tasks are transport-candidate trials only")
     output = output or RUNS / f"{task_id}-{arm.lower()}"
     output.mkdir(parents=True, exist_ok=False)
@@ -559,6 +582,12 @@ def prepare(task_id: str, arm: str, output: Path | None = None) -> Path:
     )
     if arm == "C":
         (output / "program.c").write_text(task.c_initial, encoding="utf-8")
+        (output / "c.py").write_text(_c_trial_script(task_id), encoding="utf-8")
+        (output / "TASK.md").write_text(
+            f"# {task_id} / C\n\nPaste this exact prompt into Codex Desktop:\n\n> {task.prompt}\n>\n"
+            "> Inspect and edit only `program.c`, then run `python c.py`. Stop when it prints `PASS`.\n",
+            encoding="utf-8",
+        )
     elif variant:
         handles, framing = variant
         (output / "xax.py").write_text(_trial_script(task_id, arm), encoding="utf-8")
@@ -573,11 +602,27 @@ def prepare(task_id: str, arm: str, output: Path | None = None) -> Path:
     else:
         (output / "xax.py").write_text(_trial_script(task_id, arm), encoding="utf-8")
         (output / "transaction.txt").write_text("TX R0.0\n# Add one mutation.\n", encoding="utf-8")
-        (output / "TASK.md").write_text(
-            f"# {task_id} / XAX\n\nPaste this exact prompt into Codex Desktop:\n\n> {task.prompt}\n>\n"
+        direct = arm == "XAX-DIRECT"
+        if direct and task.fixture != "linear":
+            (output / "direct.txt").write_text("", encoding="utf-8")
+        workflow = (
+            "> Complete local view: `"
+            + _workspace(task)[1].strip().replace("\n", "; ")
+            + "`.\n> Run one `python xax.py apply CMD` command (no function argument); it verifies and tests.\n"
+            if direct else
             "> Use `python xax.py inspect`, one `python xax.py mutate ...`, then `python xax.py test`.\n"
-            "> Mutations: `set-constant N VALUE`, `set-op N OP`, `replace-operand N INDEX VALUE`, "
-            "`delete N`, `move N before N`.\n",
+        )
+        commands = (
+            "`set-constant N V` | `set-op N OP` | `replace-operand N I V` | `delete N` | `move N before N`"
+            if task.fixture == "linear" else
+            "`insert-constant N ID V` | `replace-operand N I V` | `disconnect-edge N EDGE ARG V` | "
+            "`connect-edge N EDGE ARG V` | `set-op N OP` | `delete N`; N is a node anchor in the containing block, "
+            "EDGE and ARG are zero-based indices; separate multiple mutations with `;`"
+        )
+        (output / "TASK.md").write_text(
+            f"# {task_id} / {arm}\n\nPaste this exact prompt into Codex Desktop:\n\n> {task.prompt}\n>\n"
+            + workflow
+            + f"> `CMD`: {commands}. Quote a multi-mutation `CMD` as one shell argument. Stop after `PASS`.\n",
             encoding="utf-8",
         )
     return output
@@ -774,11 +819,22 @@ def _trial(task_id: str, workspace_path: Path, argv: list[str], arm: str) -> int
         if command in {"query", "inspect"} and (not args or args == ["f"]):
             print(_rename(_workspace(task)[1], handles, task), end="")
             return 0
-        if command == "mutate" and not variant:
-            line = _mutation_line(task, args)
-            (workspace_path / "transaction.txt").write_text(f"TX R0.0\n{line}\n", encoding="utf-8")
-            print("OK")
-            return 0
+        if command in {"mutate", "apply"} and not variant:
+            if command == "apply" and len(args) == 1:
+                if task.fixture != "linear":
+                    (workspace_path / "direct.txt").write_text(args[0], encoding="utf-8")
+                    args = []
+                else:
+                    args = shlex.split(args[0])
+            if task.fixture == "linear":
+                line = _mutation_line(task, args)
+                (workspace_path / "transaction.txt").write_text(f"TX R0.0\n{line}\n", encoding="utf-8")
+            elif command != "apply" or args:
+                raise ValueError("apply one semicolon-separated command string")
+            if command == "mutate":
+                print("OK")
+                return 0
+            command, args = "test", []
         if command in {"verify", "test"} and not args:
             workspace, _ = _workspace(task)
             transaction = _load_transaction(task, arm, workspace_path)
@@ -796,7 +852,7 @@ def _trial(task_id: str, workspace_path: Path, argv: list[str], arm: str) -> int
                 return 0
             print(json.dumps(["XAX.TEST.TARGET", "R0", expected_root.hex(), committed.root.hex(), ["R0"]], separators=(",", ":")))
             return 1
-        raise ValueError("query|inspect|verify|test" if variant else "query|inspect|mutate|verify|test")
+        raise ValueError("query|inspect|verify|test" if variant else "query|inspect|mutate|apply|verify|test")
     except (OSError, ValueError) as error:
         print(json.dumps(["XAX.CLI.INPUT", command or "-", "valid command", str(error), []], separators=(",", ":")))
         return 1

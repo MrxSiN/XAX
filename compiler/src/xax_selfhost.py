@@ -117,6 +117,9 @@ class M14RecursiveEvidence:
     semantic_generation_equivalence_executed: bool
     deterministic_fixed_point_executed: bool
     hosted_service_closure_executed: bool
+    # META operations on the compiler path that the host substrate (Python) executes, by operation name.  Each one is
+    # compiler work that is not XAX-hosted, so B5/B6 cannot hold while any remains.
+    host_substrate_operations: tuple[str, ...] = ()
 
     @property
     def b2(self) -> bool:
@@ -132,7 +135,7 @@ class M14RecursiveEvidence:
 
     @property
     def b5(self) -> bool:
-        return self.b4 and self.hosted_service_closure_executed
+        return self.b4 and self.hosted_service_closure_executed and not self.host_substrate_operations
 
 
 @dataclass(frozen=True)
@@ -426,6 +429,20 @@ def _hosted_service_closure(reader: StoreReader) -> bool:
     )
 
 
+HOST_SUBSTRATE_OPERATIONS = (Operation.META_MATERIALIZE_PROGRAM, Operation.META_VERIFY_SEMANTICS, Operation.META_CANONICAL_STORE)
+
+
+def _host_substrate_operations(reader: StoreReader) -> tuple[str, ...]:
+    """Names of the host-executed META operations in any graph of the compiler store (sorted, deduplicated)."""
+
+    found = set()
+    for obj in reader.objects():
+        if obj.kind == Kind.GRAPH_FRAGMENT:
+            graph = _parse_graph(obj, reader.get)
+            found.update(Operation(node.operation).name for block in graph.blocks for node in block.nodes if node.operation in HOST_SUBSTRATE_OPERATIONS)
+    return tuple(sorted(found))
+
+
 def m14_compile_own_generation(reader: StoreReader) -> bytes:
     return _semantic_image_compile(reader, _locate_m14_entry(reader))
 
@@ -483,6 +500,7 @@ def execute_m14_recursive_evidence(
         semantic_generation_equivalence_executed=equivalent,
         deterministic_fixed_point_executed=fixed_point,
         hosted_service_closure_executed=_hosted_service_closure(generation0) and _hosted_service_closure(generation1),
+        host_substrate_operations=_host_substrate_operations(generation0),
     )
 
 
@@ -490,17 +508,20 @@ def readiness_from_recursive_evidence(evidence: M14RecursiveEvidence) -> M14Clos
     """Combine executed B2-B4 evidence with the currently hosted service surface."""
 
     base = current_m14_readiness()
+    closure, host = evidence.hosted_service_closure_executed, set(evidence.host_substrate_operations)
     return M14ClosureReadiness(
         graph_introspection=base.graph_introspection,
         canonical_byte_emission=base.canonical_byte_emission,
-        verifier_hosted=evidence.hosted_service_closure_executed,
-        target_codegen_hosted=evidence.hosted_service_closure_executed,
-        object_link_hosted=evidence.hosted_service_closure_executed,
-        package_build_hosted=evidence.hosted_service_closure_executed,
+        # Each service is hosted only when the XAX path performs it rather than handing it to a host META primitive.
+        verifier_hosted=closure and Operation.META_VERIFY_SEMANTICS.name not in host,
+        target_codegen_hosted=closure and Operation.META_CANONICAL_STORE.name not in host,  # semantic-image codegen is encoding
+        object_link_hosted=closure,  # the link/finalize step is an XAX graph with no host operation
+        package_build_hosted=closure and Operation.META_MATERIALIZE_PROGRAM.name not in host,
         recursive_self_build_executed=evidence.b2,
         semantic_generation_equivalence_executed=evidence.b3,
         deterministic_fixed_point_executed=evidence.b4,
-        bootstrap_independence_proven=base.bootstrap_independence_proven,
+        # B6: no maintained second implementation; every host operation above is maintained Python code.
+        bootstrap_independence_proven=closure and not host,
     )
 
 
@@ -538,3 +559,37 @@ def current_m14_readiness() -> M14ClosureReadiness:
         deterministic_fixed_point_executed=False,
         bootstrap_independence_proven=False,
     )
+
+
+# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the driver,
+# program backends, object tables, image assembly, and rejection diagnostics are Python (S7b and later).
+FULL_COMPILER_STORE: Path | None = None
+
+M14_SCOPE = (
+    "xax-semantic-image-v1 META wrapper: an XAX graph that materializes, verifies, and canonically encodes a program "
+    "through host-executed META primitives; a scoped wrapper fixed point, not whole-compiler self-hosting"
+)
+
+
+def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
+    """The one derivation of B0-B6 (XAX_SPEC.md 16.2) for every declared scope.
+
+    ``m14_selfhost_evidence.json`` and the generated status blocks consume this; nothing else asserts a B level.
+    S-step component fixed points are not B milestones (16.5) and are not reported here."""
+
+    if FULL_COMPILER_STORE is not None:
+        raise NotImplementedError("derive whole-compiler B levels from executed evidence for FULL_COMPILER_STORE")
+    readiness = readiness_from_recursive_evidence(evidence)
+    return {
+        "derivation_source": "xax_selfhost.bootstrap_status",
+        "full_production_compiler": {
+            **{f"B{level}": False for level in range(7)},
+            "blocker": "no canonical XAX store implements the whole compiler; S7b and later steps are open",
+        },
+        "m14_semantic_image_wrapper": {
+            "scope": M14_SCOPE,
+            "B2": readiness.b2, "B3": readiness.b3, "B4": readiness.b4, "B5": readiness.b5, "B6": readiness.b6,
+            "host_substrate_operations": list(evidence.host_substrate_operations),
+            "blockers": list(readiness.blockers),
+        },
+    }

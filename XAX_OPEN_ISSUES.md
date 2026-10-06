@@ -469,6 +469,10 @@ Resolution is one manual pass through all ten task/arm workspaces using the same
 
 **Remaining to close.** Run one fresh ten-cell Codex Desktop pass under one explicitly recorded fixed model/reasoning setting and balanced/alternating arm order, preserving every failure/retry and importing exact session usage. A negative XAX result still closes the experiment.
 
+**Status: CLOSED (2026-10-06, ADR-174).** The status above is the historical record. A fresh ten-cell run used fixed `gpt-5.6-luna` low reasoning, one session per cell, and balanced alternating order. All cells passed in one turn with no repair. C-like text used 325,282 total tokens; XAX used 264,535 (0.813×, 18.675% fewer). Evidence is `compiler/benchmarks/ai_native/jvm-r5-evidence.json` and `jvm-r5-results.csv`. The run used the Codex CLI bundled with the desktop installation rather than manual UI chats; exact session usage and session IDs are retained, which satisfies the issue's fixed-model, fresh-session, balanced-order, failure-preservation, and exact-accounting intent. Broader §6.2 task classes and repeated trials are outside this closure.
+
+**Optimized follow-up (2026-10-06, ADR-175).** Under one controlled client profile for both arms, the task-local C workflow used 197,252 tokens and XAX-DIRECT used 98,432 across the same five edits (0.4990×; 50.098% fewer), with 10/10 passes and no repair. Evidence is `jvm-r5-optimized-evidence.json` and `jvm-r5-optimized-results.csv`. This supersedes the current bounded efficiency figure without changing the issue's closed status or completing the broader R5 corpus.
+
 ## OI-32 — Foreign metadata importer scope and representation
 
 **Question.** Which external interface sources should deterministic importers read first (C headers, curated API descriptions, Win32 metadata, JVM/DEX classfiles, .NET metadata, Web IDL, syscall tables), and what is the smallest typed-declaration package format that keeps ownership, nullability, callbacks, threading, and error conventions verifier-visible?
@@ -571,9 +575,9 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Progress (ADR-091, 2026-10-02).** The Linux allocator pins cross-block values used in loops to callee-saved registers, falls through on branches, and moves trap paths out of line. `chains` went from 1.80× to 1.06× the equivalent checked-index C, and from 3.49× to 1.91× `gcc -O2`. `filestat` measures 0.94× `gcc -O2` and 1.47× `clang -O2`. Remaining: convergence with the PE allocator, range-based redundant-check elimination, and LICM.
 
-**Progress (ADR-095).** PE now uses the Linux allocator first, with Win64 calls, stack storage, function addresses, and indirect calls. All six PE fixture functions take it (700 vs 1,269 code bytes), executed under Wine. Remaining: floats and aggregates (the last hosted uses of the ADR-083 path), range-based check elimination, LICM, and a Windows-host re-run.
+**Progress (ADR-095).** PE now uses the Linux allocator first, with Win64 calls, stack storage, function addresses, and indirect calls. All six PE fixture functions take it (700 vs 1,269 code bytes), executed under Wine. This historical step's Windows-host rerun is complete in ADR-170.
 
-**Progress (ADR-147/148, 2026-10-03).** Range-proven check elimination, a lowering view (leaf inlining, layout, folding), loop pass-through slots, hoisted wide constants, and call-surviving callee-saved registers. Against the fastest of gcc, clang, and rustc (interleaved harness), `filestat` is 1.017×, `chains` (struct-of-arrays arm) is the fastest, and `jsonmin` 1.029×: the ADR-147 primary target is met on all three. Remaining: floats and aggregates on this path, a global (cross-block) allocator to remove the remaining shuffles and home reloads, translation validation of the lowering view, and a Windows-host re-run of the PE fixture.
+**Progress (ADR-147/148, 2026-10-03).** Range-proven check elimination, a lowering view (leaf inlining, layout, folding), loop pass-through slots, hoisted wide constants, and call-surviving callee-saved registers. Against the fastest of gcc, clang, and rustc (interleaved harness), `filestat` is 1.017×, `chains` (struct-of-arrays arm) is the fastest, and `jsonmin` 1.029×: the ADR-147 primary target is met on all three. Remaining: floats and aggregates on this path, a global (cross-block) allocator to remove the remaining shuffles and home reloads, and translation validation of the lowering view. The PE fixture reran on Windows in ADR-170.
 
 **Evidence that closes it.** One allocator used by PE and Linux profiles, with the U1 Linux workload and the PE fixture both re-measured (no regression), the differential corpus green on both, and the gap to the fastest baseline reported.
 
@@ -632,3 +636,13 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 **Evidence that closes it.** One case where an emulator and hardware disagree on an XAX image (which would show that emulation is insufficient), or a documented hardware run on two ISA rows with no discrepancy against the emulator corpus.
 
 **Status.** OPEN. The riscv64, aarch64-baremetal, and linux-aarch64 (qemu-aarch64 user mode, ADR-123) rows are emulator-only. The Android row's R3 application ran only on an x86_64 emulator through ARM binary translation (ADR-155): a third kind of emulation, where the arm64 code is translated rather than interpreted by an ISA emulator. The matrix validator now rejects `performance` evidence on any row whose blockers say "not hardware" (conformance §23.17).
+
+## OI-45 — Re-executing native evidence after a canonical change
+
+**Question.** ADR-177 regenerated `xax_op_typing.xax` on a host that cannot run native XAX images, and withdrew R4 for Linux x86-64 and Android because their runtime evidence cannot be recomputed. What re-execution restores them, and how is staleness caught before it recurs?
+
+**Fixed constraints.** Evidence names the committed store it describes (`store_sha256`); an entry whose store changed carries `native_rerun_required` and null executed fields, never a carried-over verdict. Native evidence generators run with `XAX_REQUIRE_NATIVE=1`. R4 is derived only from raw per-arm samples under §15.0/§15.0a.
+
+**Evidence that closes it.** On Linux x86-64: `bench_selfhost_closure.py --write` and `bench_selfhost_x86_64.py --write` re-executed against the current stores (no `native_rerun_required` left), and the native self-hosting tests passing there. For R4: the Linux `filestat`, `chains`, and `jsonmin` comparisons re-run with `wall_seconds_samples` per arm, and the Android counter compared against a Kotlin or Java baseline as well as the Java + NDK twin, with the pass effect reported.
+
+**Status.** OPEN (2026-10-06, ADR-177).

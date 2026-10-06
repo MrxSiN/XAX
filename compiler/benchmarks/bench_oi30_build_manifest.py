@@ -78,7 +78,11 @@ def collect_evidence():
     try:
         os.environ.clear(); os.environ.update({"ZZ_BENIGN":"1","LC_ALL":"C","TZ":"UTC","SOURCE_DATE_EPOCH":"123"})
         with tempfile.TemporaryDirectory() as td:
-            os.chdir(td); r,s,q=_simple(); add("cwd_env_locale_timezone_source_date","ambient",r,s,q,"unchanged")
+            os.chdir(td)
+            try:
+                r,s,q=_simple(); add("cwd_env_locale_timezone_source_date","ambient",r,s,q,"unchanged")
+            finally:
+                os.chdir(cwd)  # leave the directory before it is removed (Windows cannot remove a working directory)
     finally:
         os.chdir(cwd); os.environ.clear(); os.environ.update(old)
     # Metadata/input ordering and scheduling.

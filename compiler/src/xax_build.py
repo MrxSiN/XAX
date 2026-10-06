@@ -12,6 +12,7 @@ from xax_artifact import (
     ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1,
     ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1,
     BOOTSTRAP_COMPILER_IDENTITY_V1,
+    container_lowering_identity,
     lowering_identity,
 )
 from xax_compiler import (
@@ -1572,6 +1573,12 @@ def _build_android_unsigned_apk(
                 "ANDROID-APK-LIBXPOSED-HOT-RELOAD-LIFETIME",
                 "retained-manual-unhook", libxposed_hook_install_view.lifetime_policy,
             )
+        if libxposed_hook_install_view.hook_id != libxposed_hot_reload_view.hook_id:
+            fail(
+                "XAX.BUILD.ANDROID", libxposed_hook_install_carriers[0].cid.hex(),
+                "ANDROID-APK-LIBXPOSED-HOT-RELOAD-ID",
+                libxposed_hot_reload_view.hook_id, libxposed_hook_install_view.hook_id,
+            )
 
     if libxposed_view is not None:
         if libxposed_view.java_entries:
@@ -1771,6 +1778,42 @@ def _build_android_unsigned_apk(
     )
 
 
+def _hosted_container(reader: StoreReader, function_root: bytes, target_object: SemanticObject, description) -> bytes | None:
+    """The artifact for a target profile that names its own container (ADR-177), else None.
+
+    Linux ELF executables (x86-64, AArch64), Windows PE32+, the browser page, and SPIR-V modules are built here like
+    every other artifact, so they carry canonical build provenance; the target profile, not the request, picks the
+    container, and the provenance names that target."""
+    from xax_compiler import (
+        AARCH64_LINUX_ELF_DYNAMIC_FORMAT, AARCH64_LINUX_ELF_EXEC_FORMAT, SPIRV_ARCHITECTURE, WASM32_BROWSER_IDENTITY,
+        X86_64_LINUX_ELF_DYNAMIC_FORMAT, X86_64_LINUX_ELF_EXEC_FORMAT,
+    )
+
+    if description.architecture == 1 and description.image_format in (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT):
+        from xax_linux import compile_linux_executable
+
+        return compile_linux_executable(reader, function_root, target_object.cid).data
+    if description.architecture == 3 and description.image_format in (AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT):
+        from xax_linux_aarch64 import compile_linux_aarch64_executable
+
+        return compile_linux_aarch64_executable(reader, function_root, target_object.cid).data
+    if description.architecture == 1 and description.identity == b"x86_64-windows-pe-v1":
+        from xax_pe import emit_pe_executable
+        from xax_x86_64 import compile_native_bound_target
+
+        return emit_pe_executable(compile_native_bound_target(reader, function_root, target_object))
+    if description.architecture == 2 and description.identity == WASM32_BROWSER_IDENTITY:
+        from xax_wasm import compile_wasm_bound_target
+        from xax_web import emit_browser_page
+
+        return emit_browser_page(compile_wasm_bound_target(reader, function_root, target_object))
+    if description.architecture == SPIRV_ARCHITECTURE:
+        from xax_spirv import compile_spirv_kernel
+
+        return compile_spirv_kernel(reader, function_root, target_object.cid).artifact_bytes
+    return None
+
+
 def build(
     reader: StoreReader,
     request_root: bytes,
@@ -1847,6 +1890,14 @@ def build(
                 )
             artifact = sign_apk_v2(artifact, signing_capability)
             lowering = ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1
+    elif (hosted := _hosted_container(reader, function_root, target_object, description)) is not None:
+        if request_view.requested_artifacts != (ArtifactKind.NATIVE_IMAGE,):
+            fail(
+                "XAX.BUILD.ARTIFACT", request.cid.hex(), "BUILD-ARTIFACT-SUPPORTED",
+                [ArtifactKind.NATIVE_IMAGE.name], [item.name for item in request_view.requested_artifacts],
+            )
+        artifact = hosted
+        lowering = container_lowering_identity(description.identity)
     elif description.architecture == 5:
         jar_kinds = ((ArtifactKind.JVM_LIBRARY_JAR,), (ArtifactKind.JVM_EXECUTABLE_JAR,))
         if request_view.requested_artifacts not in jar_kinds:

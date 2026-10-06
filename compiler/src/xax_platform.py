@@ -310,6 +310,51 @@ def win32_kernel32_api() -> Win32Kernel32Api:
     )
 
 
+WIN32_THREAD_RESOURCE_KIND = 0x103
+
+
+@dataclass(frozen=True)
+class Win32ThreadApi:
+    """Win64 callback and linear thread-handle contracts."""
+
+    c_entry_code: SemanticObject
+    c_entry: SemanticObject
+    thread_effect: SemanticObject
+    thread_resource: SemanticObject
+    create_thread: SemanticObject
+    wait_for_single_object: SemanticObject
+    get_exit_code_thread: SemanticObject
+    close_handle: SemanticObject
+
+    @property
+    def objects(self) -> tuple[SemanticObject, ...]:
+        return (
+            self.c_entry_code, self.c_entry, self.thread_effect, self.thread_resource,
+            self.create_thread, self.wait_for_single_object, self.get_exit_code_thread, self.close_handle,
+        )
+
+
+def win32_thread_api(api: "Win32Kernel32Api | None" = None) -> Win32ThreadApi:
+    api = api or win32_kernel32_api()
+    abi, k32 = b"win64-c", b"kernel32.dll"
+    code = foreign_entry_code_type(abi)
+    entry = foreign_entry_pointer_type(abi)
+    thread = effect_type(EffectDomain.SYSCALL, 1)
+    handle = resource_type(WIN32_THREAD_RESOURCE_KIND, 1, flags=ResourceFlags.LINEAR)
+    create = foreign_function_symbol(
+        k32, b"CreateThread",
+        (api.b64, api.b64, entry, api.b64, api.b32, api.u32_ptr_rw, thread, api.memory_effect),
+        (api.b64, handle, thread, api.memory_effect), abi=abi,
+    )
+    wait = foreign_function_symbol(k32, b"WaitForSingleObject", (api.b64, handle, api.b32, thread), (api.b32, handle, thread), abi=abi)
+    exit_code = foreign_function_symbol(
+        k32, b"GetExitCodeThread", (api.b64, handle, api.u32_ptr_rw, thread, api.memory_effect),
+        (api.b32, handle, thread, api.memory_effect), abi=abi,
+    )
+    close = foreign_function_symbol(k32, b"CloseHandle", (api.b64, handle, thread), (api.b32, thread), abi=abi)
+    return Win32ThreadApi(code, entry, thread, handle, create, wait, exit_code, close)
+
+
 @dataclass(frozen=True)
 class WasiPreview1Api:
     """Bounded ``wasi_snapshot_preview1`` imports (wasm32 linear-memory pointers)."""

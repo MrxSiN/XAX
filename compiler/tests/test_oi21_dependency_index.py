@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import multiprocessing
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,6 +9,8 @@ from pathlib import Path
 from benchmarks import bench_oi21_dependency_index as bench
 from xax_artifact import BOOTSTRAP_COMPILER_IDENTITY_V1
 from xax_compiler import DEFAULT_VERIFIER_IDENTITY, StoreReader, verify_store
+
+FORK = "fork" in multiprocessing.get_all_start_methods()
 
 
 class OI21DependencyIndexTests(unittest.TestCase):
@@ -112,6 +115,7 @@ class OI21DependencyIndexTests(unittest.TestCase):
             self.assertEqual(rebuilt.root_cid, before_root)
             self.assertEqual(StoreReader(self.base.store_bytes).root_cid, before_root)
 
+    @unittest.skipUnless(FORK, "UNAVAILABLE: this host has no fork start method (the shared-snapshot design relies on fork)")
     def test_parallel_serial_outputs_identical(self):
         payloads = [bench._independent_compile_payload(16, salt) for salt in range(4)]
         one = bench.run_process_pool(payloads, 1)
@@ -122,6 +126,7 @@ class OI21DependencyIndexTests(unittest.TestCase):
             hashlib.sha256(repr(two).encode()).digest(),
         )
 
+    @unittest.skipUnless(FORK, "UNAVAILABLE: this host has no fork start method (the shared-snapshot design relies on fork)")
     def test_parallel_diagnostics_identical(self):
         good = bench._independent_compile_payload(8, 0)
         bad = (good[0], b"\xff" * 32, good[2])
@@ -132,6 +137,7 @@ class OI21DependencyIndexTests(unittest.TestCase):
         self.assertEqual(one, (serial,))
         self.assertEqual(two, (serial,))
 
+    @unittest.skipUnless(FORK, "UNAVAILABLE: this host has no fork start method (the shared-snapshot design relies on fork)")
     def test_index_snapshot_is_shared_read_only_across_processes(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "deps.xdi"

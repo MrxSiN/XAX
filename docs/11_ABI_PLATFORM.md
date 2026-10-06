@@ -659,6 +659,10 @@ The PE entry point is the XAX entry function itself: it takes no machine paramet
 
 `heap_view` lowers to a null test plus `ud2` on failure, then stores the base. Static heap accesses fold the view offset into `[base+disp]`; checked accesses compare the dynamic offset against `extent - size` and trap with `ud2` before `[base+index+disp]`. `VirtualAlloc` is declared with a zero-filled, 4096-aligned allocator contract (committed pages are zero-filled by the platform), so checked loads over the whole view are initialization-proven; `VirtualFree(view, 0, MEM_RELEASE)` consumes the view.
 
+### 17.5 Win64 callbacks and thread handles
+
+A `win64-c` code-entry pointer names a pure XAX function with no proof parameters or results. Because the XAX Windows convention is already Win64, its address is the function entry; no adapter or runtime is emitted. `win32_thread_api` declares `CreateThread`, `WaitForSingleObject`, `GetExitCodeThread`, and `CloseHandle`. The returned thread handle travels with a linear proof resource through wait and result queries and is consumed by close. The committed Windows-host fixture executes that complete lifecycle and obtains the XAX callback's exit code (ADR-170).
+
 ## 18. wasm32 WASI slice (2026-10-02)
 
 Target `wasm32-wasi-v1` adds `call_foreign` under the `wasm32-import` ABI: a declaration's `library` is the wasm import module and its `name` the field. Value types follow the wasm32 general profile (pointers are i32 linear-memory addresses). The module exports `_start` and `memory`; the entry takes and returns no machine values; termination is the program's explicit `proc_exit`. The WASI host is a platform-required runtime (UR-002); no JavaScript glue is generated or required. Bounded package: `xax_platform.wasi_preview1_api` (`args_sizes_get`, `fd_write`, `proc_exit`). `fd_write` iovec buffer words are exposed addresses (`pointer_address`, ADR-081); its declaration takes the buffer storage's memory effect as a second memory input/output so the buffer cannot end before the call. APIs that need provenance-carrying pointers reloaded from memory wait on OI-37.

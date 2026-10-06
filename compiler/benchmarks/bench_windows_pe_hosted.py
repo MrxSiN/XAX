@@ -15,7 +15,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from tests.test_xax_pe import hosted_fixture
+from tests.test_xax_pe import hosted_fixture, thread_callback_fixture
 from xax_compiler import verify_store
 from xax_pe import emit_pe_executable
 from xax_x86_64 import compile_native_bound_target
@@ -56,6 +56,24 @@ def main() -> dict:
         "stdout": "XAX\n", "exit_code": 1339, "runs": RUNS,
         "process_wall_ns": {"median": int(statistics.median(samples)), "p95": samples[int(0.95 * (RUNS - 1))], "min": samples[0], "max": samples[-1]},
         "note": "wall time includes CreateProcess/loader/pipe overhead measured from Python subprocess; not a code-quality claim",
+    }
+    thread_reader, thread_entry, thread_target = thread_callback_fixture()
+    thread_image = compile_native_bound_target(thread_reader, thread_entry.cid, thread_target)
+    thread_pe = emit_pe_executable(thread_image)
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "xax_thread.exe"
+        path.write_bytes(thread_pe)
+        completed = subprocess.run([str(path)], capture_output=True, timeout=30)
+    assert completed.returncode == 39, completed
+    evidence["thread_callback"] = {
+        "claim": "EXECUTED",
+        "entry": thread_entry.cid.hex(),
+        "pe_bytes": len(thread_pe),
+        "pe_sha256": hashlib.sha256(thread_pe).hexdigest(),
+        "code_bytes": len(thread_image.code),
+        "imports": sorted({f"{lib.decode()}!{name.decode()}" for _, lib, name in thread_image.imports}),
+        "exit_code": completed.returncode,
+        "contract": "CreateThread -> pure XAX win64-c entry -> WaitForSingleObject -> GetExitCodeThread -> CloseHandle",
     }
     EVIDENCE_PATH.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     return evidence

@@ -532,7 +532,7 @@ The M13 `SOURCE_DATE_EPOCH=946684800` wheel built twice and matched byte-for-byt
 
 ## M14 recursive self-hosting/closure evidence — non-performance
 
-`compiler/bootstrap/m14_selfhost_evidence.json` is deterministic **bootstrap/conformance evidence**, not a performance benchmark. It records executed B2–B6 only for `xax-semantic-image-v1`.
+`compiler/bootstrap/m14_selfhost_evidence.json` is deterministic **bootstrap/conformance evidence**, not a performance benchmark. It records executed B2–B6 only for `xax-semantic-image-v1`. *(Superseded 2026-10-06, ADR-177: B5/B6 withdrawn; the file now records the derived `bootstrap_status`.)*
 
 The authoritative compiler image is **2,020 bytes**, program root `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`, entry function `4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc`, and SHA-256 `05eb15404836e9f77b2f2931489859c43c0f75dcb00c891504e9ddcdd427cd07`. Generation 0, generation 1, and generation 2 are byte-identical with BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`. Four independent function-CID generation vectors match **4/4**.
 
@@ -585,7 +585,7 @@ For each CPU/native runtime benchmark used to judge performance:
 - the fastest valid implementation by median execution time is the reference: XAX **meets the primary target** at ≤ 1.05× of it, is **competitive below the primary target** at ≤ 1.10× (further optimization required), and is **unmet** above 1.10× (profile, optimize, and rerun the full comparison; never weaken the workload or remove a faster valid competitor);
 - after performance-relevant compiler or backend changes, rerun the multi-language comparison instead of relying on earlier, published, or cross-machine results.
 
-Each implementation may choose its own data representation for the same observable contract (idiomatic for its language); diagnostic arms that restate another language's representation are not baselines. Evidence JSON records `time_ratio_vs_fastest` and `performance_class` for every XAX arm. Results before ADR-147 (§15.1–15.13) compare against C only and are historical.
+Each implementation may choose its own data representation for the same observable contract (idiomatic for its language); diagnostic arms that restate another language's representation are not baselines. Evidence JSON records `time_ratio_vs_fastest` and `performance_class` for every XAX arm. Results before ADR-147 (§15.1–15.13) compare against C only and are historical. Since ADR-177 every arm also records its raw `wall_seconds_samples`, and the matrix validator recomputes medians, the fastest arm, the published ratios, and the baseline policy from them; summary statistics alone (median/min/stdev) do not support MEASURED performance or an R4 verdict.
 
 **Workloads.** The U1 workloads (`XAX_IMPLEMENTATION_ROADMAP.md`): hosted native application, bare-metal program, WebAssembly/WASI or browser application, Android application, accelerator workload; later, representative per-domain workloads (server, database, compiler, game loop, HPC kernel, AI runtime operator) as the matrix grows. Workload definitions are fixed before XAX results are seen and are not tuned to favor XAX.
 
@@ -804,6 +804,8 @@ Unused exports (`contains`, `skip_spaces`, and the other instance's functions) a
 
 ### 15.14 Multi-language comparison after ADR-148 (MEASURED, 2026-10-03)
 
+> Re-evaluated 2026-10-06 (ADR-177): the evidence JSONs keep only median/min/stdev per arm, one run each, so the ratios below cannot be recomputed and no longer support R4 (row now R3, `performance` PROTOTYPE); `chains` met the target only with the `xax-soa` representation. Re-measurement with raw samples is OI-45.
+
 Host: Intel(R) Xeon(R) Processor @ 2.10GHz (Emerald Rapids, model 207), 4 logical CPUs, Linux 6.18.44 x86-64, shared. Toolchains: gcc 13.3.0, Ubuntu clang 18.1.3, rustc 1.97.0 (`-C opt-level=3 -C panic=abort -C codegen-units=1`). Rust twins: `compiler/benchmarks/rust_twins/{filestat,chains,jsonmin}.rs` (same contract; `filestat` links the same `libz.so.1`). Method: fork/exec/`wait4` runner, 3 warmup rounds and 31 interleaved rounds with rotating arm order; every output checked as before. Ratios are against the fastest valid arm; stripped bytes for C/Rust (dynamic unless `-static`), file bytes for XAX (no section table).
 
 | Workload | Fastest | XAX median | XAX / fastest | Class | Rust / fastest | XAX peak RSS (KiB) | XAX bytes |
@@ -815,6 +817,8 @@ Host: Intel(R) Xeon(R) Processor @ 2.10GHz (Emerald Rapids, model 207), 4 logica
 The first multi-language run, before ADR-148, measured XAX/fastest 1.566 (`filestat`), 1.183 (`chains`, record links), and 1.208 (`jsonmin`). In `chains`, the other XAX arms remain slower (record links 1.185, `pointer_rebase` 1.639, checked index 2.119): they encode different link representations of the same contract, and the struct-of-arrays arm mirrors the Rust twin's. Run-to-run stdev on this host is 4–15% of the median. Sources: `linux_filestat.py`, `linux_chains.py`, `jsonmin.py`; data: `u1_linux_filestat_evidence.json`, `oi37_chains_evidence.json`, `jsonmin_evidence.json`.
 
 ### 15.15 Android counter app: XAX vs Java + NDK twin, size only (ADR-153/154; MEASURED, 2026-10-04)
+
+> Historical record. The current Android hardware and size result is §15.23 (ADR-172); `android_counter_twin_evidence.json` now holds that run.
 
 The twin (`compiler/benchmarks/android_counter_twin/`) has the counter app's package, classes, native methods, state file, and behavior (read, increment, write, `fdatasync`, close). It is built with `javac --release 11` + `d8 --release --min-api 28`, NDK r28c `clang -O2 -fPIC -shared` + `llvm-strip`, `aapt2`, `zipalign -P 16`, and a v2-only `apksigner` signature (build-tools 36.1.0, `android-35`). Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`bench_android_counter_twin.py`).
 
@@ -967,6 +971,8 @@ Same graph, input (4 MiB), and executor (qemu-aarch64 8.2.2 user mode on the x86
 
 ### 15.21 Android counter callbacks after ADR-169 (MEASURED, 2026-10-05)
 
+> Historical size record. The current rebuilt twin and physical-device result is §15.23 (ADR-172).
+
 Same twin, toolchains, and measurement as §15.15 (symbol sizes from `llvm-readelf`). Evidence: `android_counter_twin_evidence.json`.
 
 | Bytes | XAX | Java + NDK | XAX / twin |
@@ -977,4 +983,55 @@ Same twin, toolchains, and measurement as §15.15 (symbol sizes from `llvm-reade
 | APK | 20,313 | 28,892 | 0.703 |
 
 Both callbacks keep their values in callee-saved registers saved by `stp`/`ldp` pairs, as clang's do. XAX's code also null-checks `malloc`'s result (a `cbz` to a shared `brk`), which the C twin does not.
+
+### 15.22 Windows Win64 callback and thread lifecycle (EXECUTED, 2026-10-05)
+
+`benchmarks/windows_pe_hosted_evidence.json` records two current PE artifacts executed on Windows 11 x86-64. The hosted fixture is 2,048 bytes (636 code bytes), imports eight declared kernel32 functions, writes `XAX\n`, and exits 1339 on 20/20 runs. Its 16.1 ms median is process start-up/loader/pipe time, not a code-quality claim.
+
+The thread fixture is 1,536 bytes (176 code bytes) and imports only `CreateThread`, `WaitForSingleObject`, `GetExitCodeThread`, `CloseHandle`, and `ExitProcess`. The Windows loader calls a pure XAX `win64-c` entry on the new thread; the callback returns 37, the parent retrieves it, closes the linearly tracked handle, and exits 39. This is execution evidence for R2 interoperability, not a performance comparison. No Windows-host C/Rust twin was available.
+
+### 15.23 Android counter on arm64 hardware: XAX vs Java + NDK (ADR-172; MEASURED, 2026-10-05)
+
+Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37, security patch 2026-09-05, kernel `6.1.162-android14-11-g2ec90535fa34-ab15810641`. Host: Windows 11 build 26200 x86-64. Toolchains: NDK r28c (`28.2.13676358`), build-tools 37.0.0, `android-37.0`, Microsoft OpenJDK `javac 17.0.20.1`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json`.
+
+The two APKs implement the same stateful counter contract and share package/class/native-method identities. Each arm passed its click check. The harness used two alternating install-once passes; per arm and pass it performed three warmups, then collected eight cold starts, for 16 measured starts per arm. `am start -W` supplied `TotalTime`; `dumpsys meminfo` supplied total PSS after each launch. All launches were tracked.
+
+| Arm | Median `TotalTime` (ms) | Stdev (ms) | Ratio vs fastest | Median PSS (KiB) | PSS stdev | APK bytes | Native `.so` bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| XAX | 227.0 | 80.25 | 1.016 | 112,862.0 | 1,864.40 | 20,313 | 2,248 |
+| Java + NDK | 223.5 | 37.29 | 1.000 | 113,411.5 | 1,073.23 | 28,892 | 4,768 |
+
+*(Re-evaluated 2026-10-06, ADR-177: one Java + NDK baseline arm does not meet the §15.0 baseline set, and the pooled median hides a pass effect — XAX/twin medians are 0.84× in pass 1 and 1.20× in pass 2 — so the Android row is R3; OI-45.)* XAX meets the primary runtime target because `1.016 <= 1.05`. It also uses 0.995× the twin's median PSS, 0.703× its APK bytes, and 0.471× its native-library bytes. Its two directly emitted DEX files remain 1.188× the twin's single DEX, the deliberate edit-locality tradeoff recorded in ADR-153. This advances the Android arm64 workload row to R4; the scope is this application on this device, not a universal Android performance claim.
+
+### 15.24 JVM R5-candidate semantic-edit trial (ADR-174; MEASURED, 2026-10-06)
+
+Evidence: `compiler/benchmarks/ai_native/jvm-r5-evidence.json` and `jvm-r5-results.csv` (SHA-256 `893d7f44b74b73afdf4e43bb697a7bd0ca7f5e3189cc2a7c32e90b475d875363`). The existing five paired structural edits ran in fresh Codex sessions with fixed `gpt-5.6-luna`, low reasoning, Codex CLI 0.160.0, and alternating order `C/XAX`, `XAX/C`, `C/XAX`, `XAX/C`, `C/XAX`. Every cell passed its external checker in one turn with no repair.
+
+| Arm | Passes | Total tokens | Median tokens/task | Turns | Repairs |
+|---|---:|---:|---:|---:|---:|
+| C-like text | 5/5 | 325,282 | 64,857 | 5 | 0 |
+| XAX semantic transaction | 5/5 | 264,535 | 50,083 | 5 | 0 |
+
+XAX used 0.813× the textual arm's total tokens, a reduction of 18.675%, and 0.772× its median task cost. This is positive target-neutral evidence relevant to the JVM row, but it does **not** meet R5: the §6.2/§15 corpus gate requires task classes absent here. It also does not claim Java/Kotlin editing evidence.
+
+Scope is deliberately narrow: five small local edits, one model/setting, and n=1 per cell. Before matrix promotion, run at least one cell per missing §6.2 task class with equivalent textual/XAX oracles, then repeat only if the difference is within run-to-run noise. A preflight session was excluded before registration because its sandbox denied every discovery command; it produced no completed turn/token record and left the workspace unchanged.
+
+### 15.25 Direct local semantic workflow (ADR-175; MEASURED, 2026-10-06)
+
+Evidence: `compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json` and `jvm-r5-optimized-results.csv` (SHA-256 `574c1769f27968decd4fce71192ac4bff947927a5b69eead0fc3721fe60c5568`). The five §15.24 edits were rerun in fresh sessions with fixed Codex CLI 0.160.0, `gpt-5.6-luna`, low reasoning, and the same isolated client/tool profile for both arms. The C arm inspected and edited only `program.c`, then ran a task-local exact-target checker. `XAX-DIRECT` received the complete bounded semantic view and invoked one atomic `apply` operation that wrote, verified, committed, and target-checked its transaction.
+
+| Arm | Passes | Total tokens | Median tokens/task | Turns | Repairs |
+|---|---:|---:|---:|---:|---:|
+| C-like text | 5/5 | 197,252 | 39,479 | 5 | 0 |
+| XAX-DIRECT | 5/5 | 98,432 | 19,704 | 5 | 0 |
+
+XAX-DIRECT used 0.4990× the C arm's aggregate tokens: **50.098% fewer**. Its median task cost was 0.4991× C. This clears the requested 50% aggregate target for this corpus without weakening either exact-target oracle.
+
+This is still R5-candidate evidence, not JVM R5. It covers five small local edits, one model/setting, and one trial per cell; it is a workflow comparison rather than syntax density, and one cell need not individually clear 50%. The remaining §6.2 task classes, a Java/Kotlin textual arm, and repeated trials remain required before matrix promotion. Exploratory sessions used to tune the interface are excluded and remain present in the local Codex logs.
+
+### 15.26 JVM R5 full-corpus attempt (ADR-176; INCOMPLETE, 2026-10-06)
+
+Evidence: `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json` and `jvm-r5-full-results.csv` (SHA-256 `30df47ba1ae3e9a7271274ec3a45189e190fd5eeed15529f52b32839296b0383`). The expanded 15-task corpus prepared Java, Kotlin, and XAX arms under the fixed `gpt-5.6-luna`/low profile. Forty-two of 45 cells completed and passed; the three fresh creation/control-flow retries were rejected by the account usage limit before a model turn and carry no token record.
+
+Among completed cells, Java and Kotlin medians were 50,342.5 and 50,737.5 tokens; XAX was 38,679 (0.7683× the lowest textual median), above the 0.50 R5 gate. The JVM row therefore remains R4/PROTOTYPE. No promotion is claimed from this incomplete run.
 

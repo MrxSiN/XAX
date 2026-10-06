@@ -1496,13 +1496,15 @@ class NativeProgram:
         if self._building:
             return None  # its own image is being made: the bootstrap generator lowers it
         if not self._native:
-            usable = (sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
-                      and os.environ.get(opt_out) != "1" and self.store_path.exists())
+            import xax_native
+
+            usable = xax_native.usable(self.cache_name, self.store_path, opt_out)
             self._building = True
             try:
                 self._native.append(_NativeRunner(*self.image()) if usable else None)
-            except (OSError, RuntimeError, ValueError):
+            except (OSError, RuntimeError, ValueError) as error:
                 self._native.append(None)
+                xax_native.fallback(self.cache_name, f"native image failed to load: {error!r}")
             finally:
                 self._building = False
         return self._native[0]
@@ -1521,9 +1523,9 @@ class _NativeRunner:
 
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         blob = thunk + code
-        self._mapping = mmap.mmap(-1, len(blob), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
-        self._mapping.write(blob)
-        base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
+        from xax_native import executable_mapping
+
+        self._mapping, base = executable_mapping(blob)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self._in = (ctypes.c_uint64 * IN_WORDS)()

@@ -69,16 +69,15 @@ class OI25BootstrapProjectionTests(unittest.TestCase):
             self.assertTrue(result["byte_identical_to_input"])
 
     def test_production_generator_normalizes_zip_timestamp(self):
+        """A seed rotation (the only path that writes a seed, ADR-177) packs fixed time and mode on every host."""
         path = BOOTSTRAP / "generate_m14.py"
         spec = importlib.util.spec_from_file_location("xax_generate_m14_oi25", path)
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(module)
-        with tempfile.TemporaryDirectory(prefix="xax-oi25-generator-") as directory:
-            target = Path(directory) / "seed.pyz"
-            module._build_seed_archive(target)
-            with zipfile.ZipFile(target, "r") as archive:
-                self.assertTrue(all(i.date_time == (1980, 1, 1, 0, 0, 0) for i in archive.infolist()))
+        with zipfile.ZipFile(io.BytesIO(module.rotation_seed()), "r") as archive:
+            self.assertTrue(all(i.date_time == (1980, 1, 1, 0, 0, 0) for i in archive.infolist()))
+            self.assertTrue(all(i.external_attr >> 16 == 0o100644 for i in archive.infolist()))
 
     def test_evidence_closure_shape(self):
         evidence, _ = build_evidence(False)

@@ -886,8 +886,9 @@ class LibxposedMetadataTests(unittest.TestCase):
 
         managed = libxposed_managed_entry_semantics(LibxposedManagedEntryDescription())
         installation = libxposed_hook_installation_semantics(
-            LibxposedHookInstallationDescription(lifetime_policy="retained-manual-unhook")
+            LibxposedHookInstallationDescription(lifetime_policy="retained-manual-unhook", hook_id="xax.primary")
         )
+        self.assertEqual(decode_libxposed_hook_installation(installation).hook_id, "xax.primary")
         hot_reload = libxposed_hot_reload_semantics(LibxposedHotReloadDescription())
         self.assertEqual(
             decode_libxposed_hot_reload(hot_reload).policy,
@@ -940,6 +941,13 @@ class LibxposedMetadataTests(unittest.TestCase):
             lower_libxposed_managed_entry(managed, process_install, hot_reload=hot_reload)
         with self.assertRaises(ValueError):
             lower_libxposed_managed_entry(managed, None, hot_reload=hot_reload)
+        mismatched_install = libxposed_hook_installation_semantics(
+            LibxposedHookInstallationDescription(lifetime_policy="retained-manual-unhook", hook_id="xax.other")
+        )
+        with self.assertRaises(ValueError):
+            lower_libxposed_managed_entry(managed, mismatched_install, hot_reload=hot_reload)
+        with self.assertRaises(ValueError):
+            LibxposedHookInstallationDescription(hook_id="xax.process")
         with self.assertRaises(ValueError):
             LibxposedHotReloadDescription(policy="multi-hook")
         with self.assertRaises(ValueError):

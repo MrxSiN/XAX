@@ -18,13 +18,19 @@ The seed still owns canonical-store decoding/verification, package/build resolut
 
 ## M14 semantic-image closure artifacts
 
+### Seed immutability and rotation (ADR-177)
+
+`generate_m14.py` regenerates the compiler store and its evidence. It reads `m14_seed_runtime.pyz`, stops if its SHA-256 and size are not the pinned `SEED_SHA256`/`SEED_SIZE`, and never writes it (`tests/test_audit_remediation.py` runs it on a copy and checks). `pack_seed` reproduces the committed seed from its own entries and their recorded zip metadata; the committed seed keeps the wall-clock zip timestamps it was first packed with. The only writer is `python bootstrap/generate_m14.py rotate-seed`, which packs the current seed sources with fixed metadata (1980-01-01, mode 0644, no host file system) and prints the new digest. A rotation is a reviewed change: review the new seed contents, then pin the printed digest and size; the tests fail until then. The seed is a Python zipapp: bootstrapping requires Python.
+
 `m14_selfhost_compiler.xax` is the authoritative compiler program for the declared `xax-semantic-image-v1` closure target. Its entry graph wraps a function into a canonical program, invokes verifier-facing and canonical-image encoding functions, and performs finalization/build orchestration in XAX. Verification and canonical-store formation terminate in explicit trusted META substrate operations.
 
-`m14_selfhost_evidence.json` records executed B2–B6 evidence for that target only. Compiler root is `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`; entry function is `4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc`; generations 0/1/2 are byte-identical with BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`; and 4/4 fixed-policy function vectors match.
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S7b and later steps are open); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+
+`m14_selfhost_evidence.json` records the executed generations and the B status derived by `xax_selfhost.bootstrap_status` (ADR-177): B2–B4 for this META wrapper; B5/B6 are not held because verification, encoding, and materialization are host-executed META primitives. *(It recorded B2–B6 until ADR-177.)* Compiler root is `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`; entry function is `4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc`; generations 0/1/2 are byte-identical with BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`; and 4/4 fixed-policy function vectors match.
 
 `m14_seed_runtime.pyz` is the approved immutable seed artifact for ordinary semantic-image release reconstruction. It is 46,255 bytes with SHA-256 `4e0c64d6f360359cc263c39817ec8cbe4cc3069edf20823755755c4d2707fe52`. Validation executes it from a temporary working directory with repository `PYTHONPATH` removed and requires byte-identical compiler reconstruction. The archive internally contains Python modules and requires a Python interpreter. B6 therefore means that the declared ordinary release path does not require importing or editing repository Python implementation sources; it does not mean the seed contains no Python, eliminate the interpreter, or provide diverse-double-compilation trust.
 
-The M14 B5/B6 claim explicitly excludes the legacy x86-64, AArch64, WebAssembly, and accelerator lowerers. Those remain removable bootstrap/reference implementations until separately closed.
+The withdrawn M14 B5/B6 claim explicitly excluded the legacy x86-64, AArch64, WebAssembly, and accelerator lowerers. Those remain removable bootstrap/reference implementations until separately closed.
 
 ### OI-26 seed minimization
 
@@ -38,7 +44,7 @@ For trust-sensitive `xax-semantic-image-v1` releases, the primary OI-26 seed rec
 
 ## Self-hosted compiler stores (S ladder)
 
-Each store is canonical XAX semantic state for one compiler component on the production path (`XAX_IMPLEMENTATION_ROADMAP.md`, S ladder). The Python module next to each one builds the graph, checks the committed bytes, and loads the native leaf; it is seed material, not XAX source.
+Each store is canonical XAX semantic state for one compiler component on the production path (`XAX_IMPLEMENTATION_ROADMAP.md`, S ladder). The Python module next to each one builds the graph, checks the committed bytes, and loads the native leaf; it is seed material, not XAX source. In practice the builder is where a component is still edited, which is why `tests/test_store_regeneration.py` checks, on every host and twice per process, that each committed store is exactly what its builder makes (ADR-177). The native image of a store runs only on Linux x86-64; `xax_native.AUTHORITY` records which implementation ran.
 
 | Store | Component | Builder |
 |---|---|---|

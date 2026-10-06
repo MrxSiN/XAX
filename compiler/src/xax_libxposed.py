@@ -519,7 +519,7 @@ def lower_libxposed_managed_entry(
             install.failure_policy,
             install.lifetime_policy,
             deoptimize_before_hook,
-            hook_id=reload_description.hook_id if reload_description is not None else None,
+            hook_id=install.hook_id,
         )
     elif deoptimization is not None:
         raise ValueError("bounded libxposed deoptimization currently requires a hook installation target")
@@ -547,6 +547,8 @@ def lower_libxposed_managed_entry(
             raise ValueError("bounded libxposed hot reload requires one hook installation")
         if hook_install.lifetime_policy != "retained-manual-unhook":
             raise ValueError("bounded libxposed hot reload requires retained-manual-unhook lifetime")
+        if hook_install.hook_id != reload_description.hook_id:
+            raise ValueError("bounded libxposed hot reload requires the installation's matching stable hook ID")
         hot_reload_spec = DexLibxposedHotReloadSpec(
             hook_install.hooker_class_descriptor,
             reload_description.policy,
@@ -994,7 +996,8 @@ class LibxposedHookInstallationDescription:
     The current implementation intentionally supports only a zero-argument target
     method resolved during ``onPackageReady``.  Resolution uses the package-ready
     ClassLoader once; the generated hot interceptor contains no lookup/reflection.
-    Installation failure is explicit ``propagate`` behavior.
+    Installation failure is explicit ``propagate`` behavior. A retained hook's
+    optional stable ID is part of this installation's canonical identity.
     """
 
     target_class_name: str = "android.app.Activity"
@@ -1004,6 +1007,7 @@ class LibxposedHookInstallationDescription:
     exception_mode: str = "PROTECTIVE"
     failure_policy: str = "propagate"
     lifetime_policy: str = "process"
+    hook_id: str | None = None
 
     def __post_init__(self) -> None:
         for label, value in (("target class", self.target_class_name), ("hooker class", self.hooker_class_name)):
@@ -1018,6 +1022,12 @@ class LibxposedHookInstallationDescription:
             raise ValueError("bounded libxposed hook installation currently supports only explicit propagate failure policy")
         if self.lifetime_policy not in ("process", "retained-manual-unhook"):
             raise ValueError("bounded libxposed hook installation supports process or retained-manual-unhook lifetime")
+        if self.hook_id is not None and (
+            self.lifetime_policy != "retained-manual-unhook"
+            or not self.hook_id
+            or any(ch in self.hook_id for ch in "\x00\r\n")
+        ):
+            raise ValueError("libxposed hook ID requires retained lifetime and nonempty single-line text")
 
 
 def libxposed_hook_installation_semantics(
@@ -1031,6 +1041,9 @@ def libxposed_hook_installation_semantics(
         raw = value.encode("utf-8")
         identity.extend(uleb(len(raw)) + raw)
     _put_texts(identity, description.parameter_type_names)
+    if description.hook_id is not None:
+        raw = description.hook_id.encode("utf-8")
+        identity.extend(uleb(len(raw)) + raw)
     return target(bytes(identity))
 
 
@@ -1054,6 +1067,7 @@ def decode_libxposed_hook_installation(obj: SemanticObject) -> LibxposedHookInst
         failure_policy = cursor.byte_string().decode("utf-8")
         lifetime_policy = cursor.byte_string().decode("utf-8")
         parameter_type_names = _get_texts(cursor)
+        hook_id = cursor.byte_string().decode("utf-8") if cursor.remaining else None
         description = LibxposedHookInstallationDescription(
             target_class_name,
             target_method_name,
@@ -1062,6 +1076,7 @@ def decode_libxposed_hook_installation(obj: SemanticObject) -> LibxposedHookInst
             exception_mode,
             failure_policy,
             lifetime_policy,
+            hook_id,
         )
         cursor.end("LIBXPOSED-HOOK-INSTALL-IDENTITY")
     except (UnicodeDecodeError, ValueError) as error:

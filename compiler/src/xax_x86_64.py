@@ -924,8 +924,12 @@ def _function_closure(
                 if node.operation not in target.supported_operations:
                     fail("XAX.NATIVE.UNSUPPORTED_OPERATION", graph_object.cid.hex(), "NATIVE-OP-TARGET-SUPPORTED", list(target.supported_operations), node.operation)
                 entry_abi = foreign_entry_abi(resolve(node.results[0]), resolve) if node.operation == Operation.FUNCTION_ADDRESS else None
-                if entry_abi is not None and (entry_abi not in (SYSV_X86_64_C_ABI, LEND_ENTRY_ABI) or target.abi != X86_64_LINUX_ABI):
+                if entry_abi in (SYSV_X86_64_C_ABI, LEND_ENTRY_ABI) and target.abi != X86_64_LINUX_ABI:
                     fail("XAX.NATIVE.FOREIGN_ENTRY", graph_object.cid.hex(), "SYSV-ENTRY-TARGET", [SYSV_X86_64_C_ABI.decode(), X86_64_LINUX_ABI], [entry_abi.decode("ascii", "replace"), target.abi])
+                if entry_abi == b"win64-c" and target.abi == X86_64_LINUX_ABI:
+                    fail("XAX.NATIVE.FOREIGN_ENTRY", graph_object.cid.hex(), "WIN64-ENTRY-TARGET", "x86-64 Windows ABI", target.abi)
+                if entry_abi not in (None, SYSV_X86_64_C_ABI, LEND_ENTRY_ABI, b"win64-c"):
+                    fail("XAX.NATIVE.FOREIGN_ENTRY", graph_object.cid.hex(), "SYSV-ENTRY-TARGET", "x86-64 foreign entry ABI", entry_abi.decode("ascii", "replace"))
                 if node.operation in (Operation.CALL_DIRECT, Operation.FUNCTION_ADDRESS):
                     if node.entity is not None and node.entity.kind == Kind.FUNCTION and not _is_erased_proof_function(node.entity, resolve):
                         visit(node.entity)

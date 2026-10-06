@@ -45,6 +45,7 @@ def build_fixture(*, lifetime_policy: str = "process", hot_reload: bool = False)
             exception_mode="PROTECTIVE",
             failure_policy="propagate",
             lifetime_policy=lifetime_policy,
+            hook_id="xax.primary" if hot_reload else None,
         )
     )
     hot_reload_semantics = libxposed_hot_reload_semantics(LibxposedHotReloadDescription()) if hot_reload else None

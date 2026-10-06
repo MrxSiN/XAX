@@ -1,0 +1,66 @@
+{
+  "format": "xax-ai-efficiency-evidence-v1",
+  "label": "MEASURED",
+  "date": "2026-10-06",
+  "scope": "Five paired local structural edits comparing a controlled C-like source workflow with XAX local semantic views and atomic apply/verify/test transactions.",
+  "source": {
+    "results": "compiler/benchmarks/ai_native/jvm-r5-optimized-results.csv",
+    "sha256": "574c1769f27968decd4fce71192ac4bff947927a5b69eead0fc3721fe60c5568"
+  },
+  "protocol": {
+    "client": "codex-cli 0.160.0",
+    "model": "gpt-5.6-luna",
+    "reasoning": "low",
+    "trials_per_cell": 1,
+    "fresh_session_per_cell": true,
+    "same_client_profile_for_both_arms": true,
+    "client_profile": "ignore user configuration; disable unrelated apps, browser, computer-use, goals, image, multi-agent, plugin, skill-search, tool-suggest, and workspace-dependency features; unrestricted task-local execution",
+    "developer_instruction": "Controlled benchmark trial. Work only in the current directory. Follow the user protocol exactly. Do not inspect TASK.md, helper scripts, parent directories, repository documentation, or implementation code. Inspect only the user-named editable context, execute the minimum commands needed, and stop after PASS.",
+    "c_workflow": "inspect and edit only program.c, then run the task-local exact-target checker with python c.py",
+    "xax_workflow": "consume the complete local semantic view supplied with the task, then run one python xax.py apply CMD command that atomically writes, verifies, commits, and checks the exact target",
+    "token_source": "final total_token_usage recorded by the Codex session",
+    "checker": "the same benchmarks.ai_native exact-target oracle through task-local c.py/xax.py wrappers"
+  },
+  "results": {
+    "c": {
+      "passes": 5,
+      "attempts": 5,
+      "total_tokens": 197252,
+      "median_tokens": 39479,
+      "turns": 5,
+      "repairs": 0
+    },
+    "xax": {
+      "arm": "XAX-DIRECT",
+      "passes": 5,
+      "attempts": 5,
+      "total_tokens": 98432,
+      "median_tokens": 19704,
+      "turns": 5,
+      "repairs": 0
+    },
+    "xax_over_c_total_tokens": 0.4990164865248515,
+    "xax_token_reduction_percent": 50.09835134751486,
+    "xax_over_c_median_tokens": 0.4991007877605816,
+    "meets_50_percent_reduction_gate": true
+  },
+  "sessions": [
+    "01a10fe2-a6c8-7211-947e-55fd4259d33f",
+    "01a10fe5-998c-7183-85a7-cf755ea10047",
+    "01a10fe6-951e-7592-85d7-fd49c214725a",
+    "01a10fe6-9629-7ba0-a2ce-cc8af0713d0a",
+    "01a10fe7-13e8-7892-9d07-30d5b9f7d0dd",
+    "01a10fe7-14e6-7132-af03-aa7baa00f94c",
+    "01a10fe7-9fc8-7852-b2f8-71680e55e5bc",
+    "01a10fe7-a0b6-7db1-ae8a-d1ce595d01fe",
+    "01a10fe8-32ab-7430-8bdf-fcb9f9abbd1c",
+    "01a10fe8-31ac-7b82-b3c2-1e480e5abed5"
+  ],
+  "limits": [
+    "The aggregate clears 50%; individual cells are not claimed to each clear 50%.",
+    "Five small local edits only, with one model, one reasoning setting, and one trial per cell; no significance claim.",
+    "The textual arm is C-like source, not Java or Kotlin source; this remains target-neutral candidate evidence rather than JVM R5 completion.",
+    "The measured advantage is the end-to-end local semantic workflow, including XAX delivering a complete local view and atomic apply/verification, not syntax density alone.",
+    "Exploratory XAX protocol-tuning sessions were excluded before the registered cells; they remain in the local Codex session log and are not represented as benchmark attempts."
+  ]
+}

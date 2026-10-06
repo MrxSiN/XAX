@@ -7,12 +7,22 @@ evidence does not support is rejected, so the matrix cannot overclaim.
 Field value: ``"UNIMPLEMENTED"`` / ``"NOT_APPLICABLE"`` (no evidence), or
 ``[LABEL, evidence_path, ...]`` where every path must exist in the repository.
 Missing fields mean UNIMPLEMENTED.
+
+Labels are checked against what the cited files can show (v2, ADR-177): a
+Markdown page, source file, script, or picture alone never shows that something
+EXECUTED, MEASURED, or was PROVEN; MEASURED needs a recorded .json/.csv result;
+MEASURED performance needs raw samples; and an R4 runtime verdict is recomputed
+from raw samples under the baseline policy instead of trusting stored ratios or
+``performance_class``.
 """
 from __future__ import annotations
 
 import json
+import statistics
 from pathlib import Path
 
+VALIDATOR_VERSION = "xax-replacement-validator-v2"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 LABELS = ("PROVEN", "EXECUTED", "MEASURED", "STRUCTURAL", "PROTOTYPE", "UNIMPLEMENTED")
 FIELDS = (
     "semantic_expressibility", "code_generation", "abi", "artifact_format", "platform_apis", "ffi",
@@ -33,11 +43,18 @@ REQUIREMENTS: tuple[tuple[str, tuple[str, ...], frozenset[str]], ...] = (
     ("R6", ("autonomous_maintenance",), frozenset(_RUN)),
 )
 
-
 # Fields a platform may genuinely lack, satisfied by NOT_APPLICABLE only with a
 # written justification in the row's ``not_applicable`` map (ADR-129): a
 # platform without a loader has nothing to load.
 NOT_APPLICABLE_SATISFIES = frozenset({"dynamic_linking"})
+
+# Files that can document or reproduce evidence but cannot by themselves show that something ran or was measured.
+SUPPORTING_SUFFIXES = frozenset({".md", ".png", ".jpg", ".svg", ".sh"})
+SUPPORTING_PREFIXES = ("compiler/src/", "compiler/integration/", "compiler/benchmarks/bench_", "XAX_")
+RECORDED_SUFFIXES = frozenset({".json", ".csv"})
+MIN_SAMPLES = 5
+PRIMARY_TARGET = 1.05
+C_FAMILY = ("gcc", "clang", "msvc", "c-", "cpp", "c++")
 
 
 def label(row: dict, field: str) -> str:
@@ -52,50 +69,131 @@ def _satisfied(row: dict, field: str, accepted: frozenset[str]) -> bool:
     return value in accepted
 
 
-def competitive(row: dict) -> bool:
-    """R4 needs a measured *and* competitive result (XAX_SPEC.md §21.2).
+def _supporting(path: str) -> bool:
+    return Path(path).suffix in SUPPORTING_SUFFIXES or path.startswith(SUPPORTING_PREFIXES)
 
-    A MEASURED label only says a comparison exists; the row's ``competitive``
-    verdict, which must cite evidence, says it favours XAX or is at parity.
-    """
+
+def _json(path: str, repo_root: Path):
+    try:
+        return json.loads((repo_root / path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _numbers(value) -> bool:
+    return isinstance(value, list) and bool(value) and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in value)
+
+
+def _sample_lists(value) -> list[list]:
+    """Every list of numbers stored under a key naming samples, anywhere in a JSON value."""
+    found: list[list] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if "samples" in key and _numbers(item):
+                found.append(item)
+            elif "samples" in key and isinstance(item, dict):
+                found.extend(v for v in item.values() if _numbers(v))
+            else:
+                found.extend(_sample_lists(item))
+    elif isinstance(value, list):
+        for item in value:
+            found.extend(_sample_lists(item))
+    return found
+
+
+def _emulated(row: dict) -> bool:
+    return any("not hardware" in blocker for blocker in row.get("blockers", ()))
+
+
+def recompute_runtime_verdict(paths, repo_root: Path = REPO_ROOT, emulated: bool = False) -> list[str]:
+    """Reasons the cited evidence does not establish an R4 runtime verdict (empty: it does).
+
+    XAX_BENCHMARKS.md 15.0/15.0a, recomputed from raw samples.  Every cited JSON must name its host and hold per-arm
+    ``wall_seconds_samples`` (MIN_SAMPLES or more each) for an XAX arm and at least two baselines; the baselines follow
+    the policy (``javac`` and ``kotlinc`` on the JVM, otherwise a C/C++ arm and an arm outside C/C++); and the best XAX
+    median is within PRIMARY_TARGET of the fastest median.  A published ratio must match the recomputation;
+    ``performance_class`` is never read."""
+    if emulated:
+        return ["emulated execution is never performance evidence"]
+    reasons = []
+    for path in paths:
+        data = _json(path, repo_root)
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, dict):
+            reasons.append(f"{path}: no per-arm results")
+            continue
+        if not isinstance(data.get("host"), dict):
+            reasons.append(f"{path}: no host/hardware identity")
+            continue
+        samples = {arm: item.get("wall_seconds_samples") for arm, item in results.items() if isinstance(item, dict)}
+        if not all(_numbers(v) and len(v) >= MIN_SAMPLES for v in samples.values()):
+            reasons.append(f"{path}: an arm lacks {MIN_SAMPLES}+ raw wall_seconds_samples")
+            continue
+        medians = {arm: statistics.median(values) for arm, values in samples.items()}
+        xax = [arm for arm in medians if arm.startswith("xax")]
+        baselines = [arm for arm in medians if not arm.startswith("xax")]
+        if not xax or len(baselines) < 2:
+            reasons.append(f"{path}: needs an XAX arm and at least two baseline arms")
+            continue
+        if any(arm.startswith("javac") for arm in baselines):
+            policy = any(arm.startswith("kotlinc") for arm in baselines)
+        else:
+            c_family = [arm for arm in baselines if arm.lower().startswith(C_FAMILY)]
+            policy = bool(c_family) and len(c_family) < len(baselines)
+        if not policy:
+            reasons.append(f"{path}: baselines do not meet the 15.0/15.0a policy")
+            continue
+        fastest = min(medians.values())
+        for arm in xax:
+            published = results[arm].get("time_ratio_vs_fastest")
+            if published is not None and abs(published - medians[arm] / fastest) > 0.005:
+                reasons.append(f"{path}: {arm} publishes ratio {published}, raw samples give {medians[arm] / fastest:.3f}")
+        best = min(medians[arm] for arm in xax) / fastest
+        if best > PRIMARY_TARGET:
+            reasons.append(f"{path}: XAX median is {best:.3f}x the fastest")
+    return reasons
+
+
+def competitive(row: dict, repo_root: Path = REPO_ROOT) -> bool:
+    """R4 needs a measured *and* competitive result (XAX_SPEC.md §21.2), recomputed from the cited raw samples.
+
+    The row's ``competitive`` entry names the evidence; its boolean must equal this recomputation (``validate``)."""
     verdict = row.get("competitive")
-    return isinstance(verdict, list) and len(verdict) >= 2 and verdict[0] is True
+    if not (isinstance(verdict, list) and len(verdict) >= 2):
+        return False
+    return not recompute_runtime_verdict(verdict[1:], repo_root, _emulated(row))
 
 
-def derived_level(row: dict) -> str:
+def label_errors(row: dict, fields=FIELDS, repo_root: Path = REPO_ROOT) -> list[str]:
+    """Evidence too weak for its label (see the module docstring)."""
+    errors = []
+    for field in fields:
+        value = row.get("fields", {}).get(field)
+        if not isinstance(value, list) or not value or value[0] not in ("EXECUTED", "MEASURED", "PROVEN"):
+            continue
+        paths = value[1:]
+        if all(_supporting(path) for path in paths):
+            errors.append(f"{row.get('id')}.{field}: {value[0]} cites only supporting files (documents, sources, scripts, images)")
+        if value[0] == "MEASURED":
+            recorded = [path for path in paths if Path(path).suffix in RECORDED_SUFFIXES]
+            if not recorded:
+                errors.append(f"{row.get('id')}.{field}: MEASURED needs a recorded .json/.csv result")
+            elif field == "performance" and not any(
+                any(len(samples) >= MIN_SAMPLES for samples in _sample_lists(_json(path, repo_root))) for path in recorded
+            ):
+                errors.append(f"{row.get('id')}.{field}: MEASURED performance needs {MIN_SAMPLES}+ raw samples to recompute from")
+    return errors
+
+
+def derived_level(row: dict, repo_root: Path = REPO_ROOT) -> str:
     level = "NONE"
     for name, fields, accepted in REQUIREMENTS:
-        if not all(_satisfied(row, field, accepted) for field in fields):
+        if not all(_satisfied(row, field, accepted) for field in fields) or label_errors(row, fields, repo_root):
             break
-        if name == "R4" and not competitive(row):
+        if name == "R4" and not competitive(row, repo_root):
             break
         level = name
     return level
-
-
-def _runtime_rule_errors(rid: str, paths, repo_root: Path) -> list[str]:
-    """XAX_BENCHMARKS.md §15.0 (ADR-147): a competitive runtime verdict cites multi-language results that meet it.
-
-    A JVM comparison (any ``javac`` arm) follows §15.0a (ADR-157) instead: the
-    platform's own compilers, ``javac`` and ``kotlinc``, are the baselines.
-    """
-    import json
-
-    errors = []
-    for path in paths:
-        if not str(path).endswith(".json") or not (repo_root / path).exists():
-            continue
-        results = json.loads((repo_root / path).read_text()).get("results")
-        if not isinstance(results, dict):
-            continue
-        if any(arm.startswith("javac") for arm in results):
-            if not any(arm.startswith("kotlinc") for arm in results):
-                errors.append(f"{rid}.competitive: {path} has no JVM baseline besides javac")
-        elif not any(arm.startswith("rustc") for arm in results):
-            errors.append(f"{rid}.competitive: {path} has no implementation outside C/C++")
-        if not any(arm.startswith("xax") and item.get("performance_class") == "meets-primary-target" for arm, item in results.items()):
-            errors.append(f"{rid}.competitive: {path} has no XAX arm within 1.05x of the fastest")
-    return errors
 
 
 def validate(matrix: dict, repo_root: Path) -> list[str]:
@@ -118,23 +216,26 @@ def validate(matrix: dict, repo_root: Path) -> list[str]:
             else:
                 errors.extend(f"{rid}.{field}: missing evidence {path}" for path in value[1:] if not (repo_root / path).exists())
         # Conformance §23.17: an emulator-only row cannot cite performance.
-        if any("not hardware" in blocker for blocker in row.get("blockers", ())) and label(row, "performance") in ("MEASURED", "PROVEN"):
+        if _emulated(row) and label(row, "performance") in ("MEASURED", "PROVEN"):
             errors.append(f"{rid}.performance: emulator-only row cannot claim performance evidence")
         for field, value in row.get("fields", {}).items():
             if value == "NOT_APPLICABLE" and not str(row.get("not_applicable", {}).get(field, "")).strip():
                 errors.append(f"{rid}.{field}: NOT_APPLICABLE needs a justification in not_applicable")
+        errors.extend(label_errors(row, FIELDS, repo_root))
         verdict = row.get("competitive")
         if verdict is not None:
             if not isinstance(verdict, list) or len(verdict) < 2 or not isinstance(verdict[0], bool):
                 errors.append(f"{rid}.competitive: expected [bool, evidence...]")
             else:
                 errors.extend(f"{rid}.competitive: missing evidence {path}" for path in verdict[1:] if not (repo_root / path).exists())
-                if verdict[0] is True:
-                    errors.extend(_runtime_rule_errors(rid, verdict[1:], repo_root))
+                reasons = recompute_runtime_verdict(verdict[1:], repo_root, _emulated(row))
+                if verdict[0] != (not reasons):
+                    detail = f" ({'; '.join(reasons)})" if reasons else ""
+                    errors.append(f"{rid}.competitive: verdict {verdict[0]} but recomputation from raw samples gives {not reasons}{detail}")
         if row.get("level") not in LEVELS:
             errors.append(f"{rid}: unknown level {row.get('level')}")
-        elif row["level"] != derived_level(row):
-            errors.append(f"{rid}: claimed {row['level']} but evidence supports {derived_level(row)}")
+        elif row["level"] != derived_level(row, repo_root):
+            errors.append(f"{rid}: claimed {row['level']} but evidence supports {derived_level(row, repo_root)}")
     return errors
 
 

@@ -47,7 +47,9 @@ from xax_workspace import (
     ReplaceUse,
     RootRef,
     SetConstant,
+    SetFunctionSignature,
     SetOperation,
+    SetResultType,
     SpecializationArgument,
     SpecializeFunction,
     Transaction,
@@ -462,6 +464,36 @@ def type_fixture(extra_value=None):
 
 
 class WorkspaceTests(unittest.TestCase):
+    def test_result_type_and_function_signature_change_atomically(self):
+        b8, b16 = bits_type(8), bits_type(16)
+        c8, c16 = constant(b8, 7), constant(b16, 1)
+        graph8 = graph_fragment([Block((), (Node(Operation.CONSTANT, (), (b8,), entity=c8),), Terminator.return_((ValueRef.node_result(0, 0),)))])
+        graph16 = graph_fragment([Block((), (Node(Operation.CONSTANT, (), (b16,), entity=c16),), Terminator.return_((ValueRef.node_result(0, 0),)))])
+        entry8, helper16 = function(graph8, (), (b8,)), function(graph16, (), (b16,))
+        module = object_with_refs(Kind.MODULE, (entry8, helper16))
+        root = object_with_refs(Kind.PROGRAM_ROOT, (module,))
+        reader = StoreReader(write_store(root.cid, (b8, b16, c8, c16, graph8, graph16, entry8, helper16, module, root)))
+        workspace = Workspace(reader)
+        node8 = workspace.function_nodes(entry8.cid, 1).entities[0]
+        node16 = workspace.function_nodes(helper16.cid, 1).entities[0]
+        type8 = next(item.type_handle for item in workspace.neighborhood(node8.handle, 4).entities if "result" in item.relations)
+        type16 = next(item.type_handle for item in workspace.neighborhood(node16.handle, 4).entities if "result" in item.relations)
+        function8 = node8.handle.split(".", 1)[0]
+        transaction = Transaction(
+            RootRef(0),
+            (
+                SetResultType(node8.handle, 0, type8, type16),
+                SetFunctionSignature(function8, (), (), (type8,), (type16,)),
+            ),
+        )
+
+        verified = workspace.verify(transaction)
+        committed = workspace.commit(transaction)
+
+        self.assertTrue(verified.verified)
+        self.assertTrue(committed.committed)
+        self.assertEqual(execute(workspace.reader, committed.changed_entity, ()), (7,))
+
     def test_x86_artifact_mapping_is_exact_bounded_and_classifies_unavailable(self):
         reader, entry = type_fixture()
         workspace = Workspace(reader, x86_64_windows_target())

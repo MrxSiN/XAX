@@ -54,7 +54,9 @@ from xax_selfhost_views_backend import (
 )
 from xax_selfhost_views_backend import _target as _views_target
 
-STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_riscv64_backend.xax"
+from xax_native import bootstrap_dir  # noqa: E402
+
+STORE_PATH = bootstrap_dir() / "xax_riscv64_backend.xax"
 ZERO, RA, SP, T0, T1, T2, A0, T3 = 0, 1, 2, 5, 6, 7, 10, 28
 UNIMP = 0xC0001073
 ALLOCATABLE = (9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27)

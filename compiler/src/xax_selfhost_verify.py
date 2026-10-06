@@ -51,7 +51,9 @@ from xax_graph_builder import program_store
 from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, HEADER, NONE, _function, _uleb
 from xax_selfhost_typing import IN_WORDS, OUT_WORDS
 
-STORE_PATH = Path(__file__).resolve().parents[1] / "bootstrap" / "xax_store_verifier.xax"
+from xax_native import bootstrap_dir  # noqa: E402
+
+STORE_PATH = bootstrap_dir() / "xax_store_verifier.xax"
 VERDICTS_AT, GRAPHS_AT, ARENA_AT = 1 << 20, 6 << 20, 12 << 20
 OK = 1
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
@@ -1634,6 +1636,7 @@ def _program(tables):
 
 
 def build_verifier_program():
+    DECLINE_SITES.clear()  # decline codes are baked into the store: number them per build, not per process
     tables = None
     objects: list = []
 
@@ -1701,9 +1704,9 @@ class NativeStoreVerifier:
         code, entry_offset = _native_image()
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         blob = thunk + code
-        self._mapping = mmap.mmap(-1, len(blob), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC)
-        self._mapping.write(blob)
-        base = ctypes.addressof(ctypes.c_char.from_buffer(self._mapping))
+        from xax_native import executable_mapping
+
+        self._mapping, base = executable_mapping(blob)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self._in = (ctypes.c_uint64 * IN_WORDS)()
@@ -1778,13 +1781,15 @@ def native_store_verifier():
     if _BUILDING:
         return None
     if not _NATIVE:
-        usable = (sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
-                  and os.environ.get("XAX_VERIFY_PYTHON") != "1" and STORE_PATH.exists())
+        import xax_native
+
+        usable = xax_native.usable("store-verifier", STORE_PATH, "XAX_VERIFY_PYTHON")
         _BUILDING.append(True)
         try:
             _NATIVE.append(NativeStoreVerifier() if usable else None)
-        except (OSError, RuntimeError, ValueError):
+        except (OSError, RuntimeError, ValueError) as error:
             _NATIVE.append(None)
+            xax_native.fallback("store-verifier", f"native image failed to load: {error!r}")
         finally:
             _BUILDING.clear()
     return _NATIVE[0]

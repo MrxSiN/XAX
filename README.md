@@ -49,7 +49,7 @@ XAX has **no canonical human-written source syntax**. Human-readable views exist
 - **Concurrency** — portable atomics with explicit order/scope, target capability queries, and real-time rejection profiles.
 - **Compile-time execution** — deterministic, capability-gated specialization and metaprogramming over ordinary XAX graphs.
 - **Reproducible builds** — canonical package, trust, provenance, and signature objects with exact offline closure.
-- **Self-hosting** — a semantic-image compiler path reaching byte-identical generation 0/1/2.
+- **Self-hosting, in progress** — compiler components (hashing, store and graph decoding, typing, the store verifier, two views backends) are canonical XAX stores with component fixed points; the whole production compiler is not self-hosted (S7b is open, see [Project status](#project-status)).
 
 ## Targets
 
@@ -58,16 +58,16 @@ Each platform's replacement level is derived from cited evidence in [`XAX_REPLAC
 <!-- xax-status:targets -->
 | Target | Matrix id | Level | Status |
 |---|---|---|---|
-| x86-64 Linux | `linux-x86_64` | R4 | Direct ELF64 executables via syscalls, optionally with declared shared-library imports; executed and measured within 1.05× of the fastest of gcc, clang, and rustc on three workloads; the views profile is lowered by the XAX-hosted backend (native B1–B4). |
-| JVM | `jvm` | R4 | Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory and `jvm-classfile-general-v1` aggregates, sums, stack allocations, indirect calls, links, atomics, JDK-called callbacks, object and array construction, and instance fields; a native-code-plus-JNI-bridge arm is measured against direct emission (OI-35), and declarations import from JDK class files (OI-32); `jsonmin` on HotSpot runs fastest of XAX, `javac`, and `kotlinc` builds with the lowest peak RSS and a program class 0.99× kotlinc's and 1.5× javac's. |
-| Android (arm64-v8a) | `android-arm64` | R3 | Direct DEX, manifest, resources, signed APKs, JNI shared objects, and libxposed modules; minimal Activity executed on a device; the stateful counter app (state, file I/O, lifecycle) passed its UI oracle on an Android 12L x86_64 emulator through ARM translation, not yet on arm64 hardware. |
+| JVM | `jvm` | R4 | Direct class files in a deterministic JAR with typed JDK member calls; the `jvm-classfile-memory-v1` profile adds linear memory and `jvm-classfile-general-v1` aggregates, sums, stack allocations, indirect calls, links, atomics, JDK-called callbacks, object and array construction, and instance fields; a native-code-plus-JNI-bridge arm is measured against direct emission (OI-35), and declarations import from JDK class files (OI-32); `jsonmin` on HotSpot is performance-competitive, AI efficiency is not R5: a five-edit controlled workflow used 0.499x C-like text's tokens (ADR-175), but the 15-family Java/Kotlin corpus measured 0.768x the lowest textual median, missing the 0.50 gate (ADR-176). |
+| Android (arm64-v8a) | `android-arm64` | R3 | Direct DEX, manifest, resources, signed APKs, JNI shared objects, and libxposed modules; the stateful counter app executes on Pixel 8 Pro arm64 hardware. Cold start was measured against one Java + NDK twin only, so R4 awaits a second baseline and a per-pass-robust result (ADR-177). |
+| x86-64 Linux | `linux-x86_64` | R3 | Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Earlier runs reported 1.017x, 1.000x, and 1.029x the fastest of gcc, clang, and rustc, but the evidence keeps only summary statistics, so R4 awaits a re-run with raw samples (ADR-177). |
 | AArch64 Linux | `linux-aarch64` | R3 | Static and dynamic ELF executables; a file-processing application executed under `qemu-aarch64` user mode only (no hardware, so no performance level). |
+| x86-64 Windows | `windows-x86_64-pe` | R2 | Direct PE32+ executables executed on Windows 11; Win64 calls and callbacks, linear thread-handle lifecycle, and kernel32 loader imports. |
 | AArch64 bare metal | `aarch64-baremetal` | R2 | AAPCS64 images with a QEMU `virt` board package (reset/fault stubs, vector table, one interrupt source); executed under QEMU only. |
 | Browser (WebAssembly + generated glue) | `browser-web` | R2 | wasm32 page whose JavaScript glue is compiler-generated from imported `xax-web-v1` declarations; four DOM bindings executed. |
-| x86-64 Windows | `windows-x86_64-pe` | R1 | Direct PE32+ executables, Win64 ABI, kernel32 imports; current bytes executed under Wine, not yet on a Windows host. |
 | WebAssembly (wasm32) | `wasm32-core` | R1 | Direct module emission with no imports; executed in a host WebAssembly engine. |
 | WebAssembly + WASI | `wasm32-wasi` | R1 | wasm32 modules with three WASI imports (args, `fd_write`, exit); executed under Node.js `node:wasi`. |
-| RISC-V (RV64IM) | `riscv64` | R1 | Raw position-independent images, LP64 integer calls; executed under the Unicorn emulator; the self-hosted XAX backend and store verifier reach B1–B4 here. |
+| RISC-V (RV64IM) | `riscv64` | R1 | Raw position-independent images, LP64 integer calls; executed under the Unicorn emulator; the XAX-hosted RISC-V backend and store verifier reach component fixed points here (S-steps, not B milestones). |
 | GPU (SPIR-V/Vulkan; PTX, Metal, DXIL planned) | `gpu-spirv-cuda-metal-dxil` | R1 | Direct SPIR-V compute modules executed on Mesa llvmpipe (a CPU Vulkan driver), not GPU hardware; integer words only. |
 | SIMT accelerator packet | `accelerator-simt-packet` | R0 | Synthetic deployment-packet format checked by conformance tests only; no execution. |
 | macOS / iOS / iPadOS / watchOS / tvOS / visionOS | `macos-ios-apple` | — | Not started: no Mach-O container, Apple ABI package, or Objective-C runtime contract. |
@@ -111,7 +111,7 @@ XAX/
 
 ## Getting started
 
-Requires Python 3.11+. The compiler has no third-party runtime dependencies.
+Requires Python 3.11+. The compiler has no third-party runtime dependencies. The wheel carries the canonical compiler stores (`share/xax/bootstrap`), so an installed compiler behaves like a source checkout: XAX-hosted components run natively on Linux x86-64 and the Python bootstrap runs elsewhere.
 
 ```bash
 cd compiler
@@ -152,7 +152,11 @@ AI agents working in this repository should read [`docs/09_AI_PROTOCOL.md`](docs
 
 ## Project status
 
-XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices; the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json) (summary under [Targets](#targets)). On one shared Linux x86-64 host, XAX is within 1.05× of the fastest of gcc, clang, and rustc on `filestat` (1.017×), `chains` (fastest), and `jsonmin` (1.029×) ([`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) §15.14); on the JVM, `jsonmin` runs fastest of XAX, `javac`, and `kotlinc` builds with a class 0.99× kotlinc's and 1.5× javac's (§15.18), and a Collatz kernel at 0.91× the `javac` twin's time. Part of the compiler is now XAX: hashing, store decoding, verification, and RISC-V and x86-64 code generation for the views profile run as XAX programs, reach B1–B4 on RV64 (emulated) and natively on x86-64, and every native helper is lowered by the XAX x86-64 backend (ADR-150–ADR-152). The program backends (Linux, Windows, Android, JVM, WebAssembly) and the driver are still Python.
+XAX is a **research prototype**. Milestones M1–M14 are complete for their declared prototype slices (M14's B5/B6 claim was withdrawn in ADR-177: its semantic-image compiler hands verification and encoding to Python META primitives); the universal-replacement milestone U1 is in progress — see [`XAX_STATE.md`](XAX_STATE.md) for exact scope and limits, and [`XAX_OPEN_ISSUES.md`](XAX_OPEN_ISSUES.md) for what remains open. Replacement levels are derived from evidence in [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json) (summary under [Targets](#targets)); since ADR-177 an R4 runtime verdict is recomputed from raw samples, so the earlier Linux x86-64 runs (reported 1.017×, 1.000×, and 1.029× the fastest of gcc, clang, and rustc, summary statistics only) and the Android cold-start run (one Java + NDK baseline) no longer support R4. On the JVM, `jsonmin` runs fastest of XAX, `javac`, and `kotlinc` builds (raw samples recomputed) with a class 0.99× kotlinc's and 1.5× javac's (§15.18).
+
+Part of the compiler is XAX: hashing, store and graph decoding, CFG and typing checks, the store verifier, and RISC-V and x86-64 code generation for the views profile are canonical XAX stores, and on Linux x86-64 they run as native code inside the Python driver. They decide inputs they accept; every rejection, every diagnostic, the object table and image assembly (S7b), the program backends (Linux, Windows, Android, JVM, WebAssembly), and the driver are Python, and on every other host the whole compiler is Python. `xax_native.AUTHORITY` records which implementation ran each component. Their fixed points are component fixed points, not B milestones (`XAX_SPEC.md` §16.5):
+
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S7b and later steps are open); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Performance and AI-efficiency claims are made only where recorded evidence exists. See [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md) for methodology; no result is fabricated.
 
