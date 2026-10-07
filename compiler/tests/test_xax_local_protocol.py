@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from xax_compiler import Block, Kind, Node, Operation, StoreReader, Terminator, ValueRef, bits_type, constant, function, graph_fragment, object_with_refs, write_store
-from xax_local_protocol import LocalMutationSession, construct_program
+from xax_local_protocol import LocalMutationSession, construct_program, edit_grammar, edit_grammar_id
 from xax_workspace import RootRef, SetConstant, Transaction, Workspace
 
 
@@ -21,6 +21,24 @@ def fixture():
 
 
 class LocalProtocolTests(unittest.TestCase):
+    def test_shared_edit_grammar_replaces_per_request_help_and_rejects_stale_identity(self):
+        workspace, cid = fixture()
+        session = LocalMutationSession.for_function(workspace, cid)
+        for compact in (True, False):
+            grammar = edit_grammar(compact=compact).splitlines()
+            # Every applicable per-request form is covered by the shared grammar.
+            for line in session.instructions(compact=compact).splitlines():
+                if line.startswith("- "):
+                    self.assertTrue(any(form.startswith(line) for form in grammar), line)
+            self.assertEqual(session.instructions(compact=compact, shared=edit_grammar_id(compact=compact)), "")
+        # Request-independent: identical for another snapshot and generation.
+        self.assertTrue(session.commit("const N0 9").committed)
+        self.assertEqual(edit_grammar_id(), edit_grammar_id())
+        self.assertNotEqual(edit_grammar_id(), edit_grammar_id(compact=False))
+        for stale in ("xax-edit-000000000000", edit_grammar_id(compact=False)):
+            with self.assertRaisesRegex(ValueError, "stale shared edit grammar"):
+                session.instructions(shared=stale)
+
     def test_bound_fields_use_ordinary_transactions_and_preserve_freshness(self):
         for verb, node, fields in (("const", "N0", "23"), ("op", "N1", "mul.wrap"),
                                    ("operand", "N1", "1 P0"), ("move", "N1", "before N0")):

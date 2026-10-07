@@ -6,6 +6,7 @@ all omitted preconditions come from one immutable workspace snapshot.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import shlex
 
@@ -19,6 +20,43 @@ from xax_workspace import (
 BATCH_HELP = (
     "Separate edits with ;. Handles bind the pre-batch snapshot; insertion result @ID uses ID>=0."
 )
+
+# The complete, request-independent edit grammar (ADR-200). A client sends it
+# once as shared context (system prompt, cached prefix, tool description) and
+# then presents its identity instead of receiving per-request edit help.
+_GRAMMAR_FORMS = (
+    ("set-constant", "N INTEGER"),
+    ("set-op", "N OP (OP: add.wrap, sub.wrap or mul.wrap)"),
+    ("replace-operand", "N INDEX VALUE"),
+    ("delete", "N"),
+    ("prune-dead", "N (unused pure root and dead pure dependencies)"),
+    ("move", "N before ANCHOR"),
+    ("insert-constant", "ANCHOR ID INTEGER"),
+    ("set-edge", "ANCHOR INTEGER_EDGE_INDEX INTEGER_ARG_INDEX VALUE"),
+    ("set-type", "N NEW_TYPE (single-result node, or an entry parameter P)"),
+    ("set-type", "N INTEGER_RESULT_INDEX NEW_TYPE"),
+    ("set-type", "OLD_TYPE NEW_TYPE (every use of OLD_TYPE in the shown functions)"),
+    ("set-type", "F OLD_TYPE NEW_TYPE (every use of OLD_TYPE in function F)"),
+    ("set-signature", "F PARAM_TYPES RETURN_TYPES"),
+)
+_GRAMMAR_NOTES = (
+    "Only handles shown in the snapshot are valid; a form that does not apply to them rejects.",
+    "Values: N means result 0; N.Rk means result k; P0.. are parameters.",
+    "Edge/argument indices start at 0; ANCHOR is the shown node in the source block.",
+    "Type lists: comma-separated, - means empty. sig also retypes F's entry-block parameters.",
+)
+
+
+def edit_grammar(*, compact: bool = True) -> str:
+    """The shared edit grammar. Deterministic: no snapshot, task or generation."""
+    aliases = {verb: alias for alias, verb in COMPACT_VERBS.items()}
+    forms = [f"- {aliases.get(verb, verb) if compact else verb} {fields}" for verb, fields in _GRAMMAR_FORMS]
+    return "\n".join(["Edit forms (UPPERCASE words are values you supply):", *forms, *_GRAMMAR_NOTES, BATCH_HELP])
+
+
+def edit_grammar_id(*, compact: bool = True) -> str:
+    """Identity a client presents for the shared grammar it already holds."""
+    return "xax-edit-" + hashlib.sha256(edit_grammar(compact=compact).encode()).hexdigest()[:12]
 
 COMPACT_VERBS = {"const": "set-constant", "op": "set-op", "operand": "replace-operand",
                  "edge": "set-edge", "type": "set-type", "sig": "set-signature", "prune": "prune-dead"}
@@ -396,8 +434,16 @@ class LocalMutationSession:
             raise ValueError(f"return only {BOUND_FIELDS[verb]}")
         return self.commit(shlex.join((verb, node, *fields)))
 
-    def instructions(self, *, compact: bool = True) -> str:
-        """Advertise mutation carriers applicable to the exposed neighborhood."""
+    def instructions(self, *, compact: bool = True, shared: str | None = None) -> str:
+        """Advertise mutation carriers applicable to the exposed neighborhood.
+
+        With `shared`, the client states that it already holds the shared
+        grammar of that identity: the per-request help is then empty. A stale
+        or foreign identity rejects instead of silently mixing grammars."""
+        if shared is not None:
+            if shared != edit_grammar_id(compact=compact):
+                raise ValueError(f"stale shared edit grammar {shared}; current is {edit_grammar_id(compact=compact)}")
+            return ""
         from xax_compiler import Cursor
         nodes = [self._node(handle)[3] for handle in self.snapshot.node_bindings]
         operations = {node.operation for node in nodes}
