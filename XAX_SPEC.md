@@ -1352,7 +1352,14 @@ Modern libxposed support is likewise an ordinary Android platform package.  The
 bounded API-102 managed profile uses a content-addressed module-entry carrier, hook
 adapter carrier, and hook-installation carrier plus current `META-INF/xposed/*`
 metadata.  The generated Java entry subclasses `io.github.libxposed.api.XposedModule`;
-framework attachment is external platform behavior.  A hook installation MUST name
+framework attachment is external platform behavior.  The runtime contract is
+XAX -> libxposed API-102 module -> framework -> ART: generated modules MUST reference
+only the public `io.github.libxposed.api` surface (never a framework implementation
+package, bundled API classes, or the legacy `de.robv.android.xposed` API), and Vector
+(pinned in `compiler/integration/android/vector/vector_runtime_pin.json`) is the
+tested reference framework (ADR-178).  A module MUST declare at least one Java entry;
+native entries are loaded by that entry and initialized by the framework.  A module
+that names any API-102-only member MUST declare `minApiVersion=102`.  A hook installation MUST name
 its target class/method, generated Hooker class, parameter types, exception policy,
 failure policy, and lifetime policy explicitly.  The current bounded profiles accept
 either a zero-argument method or exactly one `java.lang.String` parameter,
@@ -1439,8 +1446,9 @@ contain no target lookup, reflection, Hooker allocation, Java/Kotlin source, or
 generic runtime.  Installation-time reflection and allocation MUST remain visible in
 the generated artifact/evidence and MUST NOT be described as hot-path work.  Managed
 hook installation/interception is a runtime claim and requires execution under a
-compatible current libxposed implementation; structural DEX/APK evidence alone does
-not establish that claim.
+compatible current libxposed implementation (Vector, through
+`compiler/integration/android/vector/vector_harness.py`); structural DEX/APK
+evidence and the ART stand-in framework alone do not establish that claim.
 
 Hook mutation policy is a separate content-addressed semantic carrier and MUST NOT
 silently change Hooker identity.  The bounded result policy currently accepts only a

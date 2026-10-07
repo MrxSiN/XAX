@@ -570,6 +570,14 @@ The sample module exports exactly `native_init` and returns an internal
 `NativeOnModuleLoaded` function address. No registration table, adapter object,
 allocator, or runtime dispatcher is emitted.
 
+This layout and the `native_init(const NativeAPIEntries *) -> NativeOnModuleLoaded`
+signature match Vector v2.2 (`native/include/core/native_api.h` at commit
+`88f8e1fa`), the tested reference framework (ADR-178). Vector calls `native_init`
+from its `do_dlopen` hook when a library whose path ends with a
+`native_init.list` name is opened, so the module's Java entry must load the
+library; Vector never opens native entries itself, and a module without a Java
+entry is not loaded at all.
+
 ### 16.3 JNI bounded ABI slice
 
 JNI is represented as borrowed opaque pointers and fixed table loads. The

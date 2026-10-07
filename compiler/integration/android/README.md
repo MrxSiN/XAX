@@ -6,7 +6,11 @@ CMake or ndk-build.
 
 Modern libxposed metadata is under `app/src/main/resources/META-INF/xposed/`.
 The fixture intentionally has no legacy `assets/xposed_init` or
-`assets/native_init` entry.
+`assets/native_init` entry. It is a native-library packaging and `dlopen` oracle,
+not a loadable module: it has no Java entry, and libxposed API 102 frameworks such
+as Vector ignore an APK without `java_init.list` and never open native entries on
+their own (ADR-178). The Vector-loadable native module is the directly emitted
+`compiler/benchmarks/android_libxposed_native_fixture.apk`.
 
 `validate_on_device.sh` is an integration oracle for a connected arm64 Android
 device/emulator. It needs `adb` and `ANDROID_NDK_HOME`; the C loader exists only
@@ -34,7 +38,19 @@ Set `XAX_ANDROID_APK=/path/to.apk` to validate another emitted artifact. Set
 This script requires `adb` and an arm64-v8a Android target. It is validation-only
 and does not make Android runtime claims until its output is actually recorded.
 
-## Modern libxposed API-102 controlled runtime pair
+## Vector runtime harness (libxposed API 102)
+
+The automated framework oracle is `vector/` (see `vector/README.md`): it pins
+Vector v2.2 and the libxposed API/service revisions it builds against, installs
+signed XAX profiles on a rooted device running Vector, enables and scopes them
+through Vector's CLI, and records 27 runtime checks in
+`compiler/benchmarks/android_vector_runtime_evidence.json`. That file is the
+UNEXECUTED plan until the harness runs on such a device.
+
+## Modern libxposed API-102 controlled runtime pair (manual oracle)
+
+The automated harness above supersedes this script for Vector; it remains a
+framework-neutral manual check.
 
 `validate_libxposed_combined.sh` is the validation-only oracle for the paired
 controlled target and generated modern-libxposed module. The repository emits
@@ -48,9 +64,9 @@ and test-signs two deterministic installable inputs:
   API-102 Hooker replaces argument 0, proceeds exactly once, captures the
   original result, and returns `HookedResult`.
 
-Framework module enablement/scope configuration is intentionally not automated:
-that operation belongs to the installed libxposed/Xposed manager and is not a
-portable Android platform API. After installing/enabling the module and scoping
+Framework module enablement/scope configuration is not automated here: that
+operation belongs to the installed framework's manager and is not a portable
+Android platform API (the Vector harness uses Vector's own CLI for it). After installing/enabling the module and scoping
 it to `com.example.target`, set `XAX_LIBXPOSED_PREPARED=1` and run the script.
 It installs/replaces both APKs, launches the target Activity, checks process
 survival, and requires visible text `HookedResult`. If `OriginalArg` is visible,
