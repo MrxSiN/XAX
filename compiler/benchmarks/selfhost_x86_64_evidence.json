@@ -2,37 +2,38 @@
   "format": "xax-selfhost-x86-64-evidence-v1",
   "label": "EXECUTED",
   "target_cid": "16661fd8f16cd9625a329827cde2dfd2107305c48ae23160cf02528dd5085447",
-  "host_nonsemantic": "Linux x86_64 Python 3.11.15",
+  "host_nonsemantic": "Linux x86_64 Python 3.13.16",
   "b1_gen1_images": [
     {
       "program": "xax_selfhost_cfg",
       "store_bytes": 15478,
+      "store_sha256": "cd89652e910f7a5b4fb2309585080aeeb326b621d61a35e2f29aedb03200c8b1",
       "functions": 1,
       "code_bytes": 9642,
       "image_sha256": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 2.81,
+        "gen1": 0.02,
         "bootstrap": 0.03
-      },
-      "store_sha256": "cd89652e910f7a5b4fb2309585080aeeb326b621d61a35e2f29aedb03200c8b1"
+      }
     },
     {
       "program": "xax_selfhost_graph",
       "store_bytes": 71275,
+      "store_sha256": "59febc8f3d9fb65711e09d09f00344f653d34b5abaa701b06c8f701911481d4d",
       "functions": 1,
       "code_bytes": 47417,
       "image_sha256": "2822ff4ac1af1db1a272eb6f80dfe7b85b7505b515497b8f2492b61be5d9d7f4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.09,
-        "bootstrap": 0.12
-      },
-      "store_sha256": "59febc8f3d9fb65711e09d09f00344f653d34b5abaa701b06c8f701911481d4d"
+        "gen1": 0.18,
+        "bootstrap": 0.18
+      }
     },
     {
       "program": "xax_selfhost_riscv64",
       "store_bytes": 10129,
+      "store_sha256": "344f0039bbdb2826caf4c78b565f984685339a7160a596e23d4b5b07e340e99a",
       "functions": 1,
       "code_bytes": 3894,
       "image_sha256": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
@@ -40,84 +41,85 @@
       "host_s_nonsemantic": {
         "gen1": 0.01,
         "bootstrap": 0.01
-      },
-      "store_sha256": "344f0039bbdb2826caf4c78b565f984685339a7160a596e23d4b5b07e340e99a"
+      }
     },
     {
       "program": "xax_selfhost_store",
       "store_bytes": 29910,
+      "store_sha256": "156ba9cae9bb312770d5fe5d0dfb86b682511d2914bef5fe853e4f0cef13960f",
       "functions": 1,
       "code_bytes": 19644,
       "image_sha256": "da537d44bc3d2b85299a725a4cd3be20adc8e36666baa7bd98c492a293b8239f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.03,
-        "bootstrap": 0.05
-      },
-      "store_sha256": "156ba9cae9bb312770d5fe5d0dfb86b682511d2914bef5fe853e4f0cef13960f"
+        "gen1": 0.04,
+        "bootstrap": 0.07
+      }
     },
     {
       "program": "xax_selfhost_typing",
       "store_bytes": 2840749,
+      "store_sha256": "c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02",
       "functions": 46,
       "code_bytes": 3425339,
       "image_sha256": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
-      "gen1_equals_bootstrap_reference": null,
-      "store_sha256": "c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02",
-      "image_source": "bootstrap reference generator",
-      "native_rerun_required": "store changed since this entry executed; re-run the generator on Linux x86-64"
+      "gen1_equals_bootstrap_reference": true,
+      "host_s_nonsemantic": {
+        "gen1": 6.28,
+        "bootstrap": 8.67
+      }
     },
     {
       "program": "xax_selfhost_verify",
       "store_bytes": 1957449,
+      "store_sha256": "caca8f9328c50862b6dec2b05822de00612f03696d069d7c8a4c4cd09a0027a3",
       "functions": 16,
       "code_bytes": 2993128,
       "image_sha256": "e2eb1e46d927c84a79082ddc10af890c0384497393b20858d7671bc7b9d67952",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.22,
-        "bootstrap": 5.0
-      },
-      "store_sha256": "caca8f9328c50862b6dec2b05822de00612f03696d069d7c8a4c4cd09a0027a3"
+        "gen1": 3.49,
+        "bootstrap": 6.37
+      }
     },
     {
       "program": "xax_selfhost_blake3",
       "store_bytes": 34025,
+      "store_sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3",
       "functions": 2,
       "code_bytes": 20661,
       "image_sha256": "56a0356d74ca76b052cee6b2b11e7a750c6276c6303d5b4f5aa44a77fb50347c",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.02,
-        "bootstrap": 0.04
-      },
-      "store_sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3"
+        "bootstrap": 0.05
+      }
     },
     {
       "program": "xax_selfhost_riscv64_backend",
       "store_bytes": 902679,
+      "store_sha256": "2207f3a73cbe09dd3783ac6544acc226c7923a826faa184af0ce18b2bd845407",
       "functions": 19,
       "code_bytes": 1764222,
       "image_sha256": "f8fb468403c56f36180aa9ddfe1e8cc03bc45f9a5f03c3ff2eb672695aff2f0a",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.14,
-        "bootstrap": 2.48
-      },
-      "store_sha256": "2207f3a73cbe09dd3783ac6544acc226c7923a826faa184af0ce18b2bd845407"
+        "gen1": 1.69,
+        "bootstrap": 3.14
+      }
     },
     {
       "program": "xax_selfhost_x86_64_backend",
       "store_bytes": 974862,
+      "store_sha256": "6aa4ff4fb1b77249bec64a598f7ea786134b87cca8321737da51cbc21cf1d637",
       "functions": 25,
       "code_bytes": 1835317,
       "image_sha256": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.53,
-        "bootstrap": 3.17
-      },
-      "store_sha256": "6aa4ff4fb1b77249bec64a598f7ea786134b87cca8321737da51cbc21cf1d637"
+        "gen1": 1.76,
+        "bootstrap": 3.44
+      }
     }
   ],
   "b3_native_verifier": [
@@ -173,10 +175,9 @@
     {
       "store": "xax_op_typing.xax",
       "objects": 836,
-      "store_verdict": null,
+      "store_verdict": true,
       "bootstrap_accepts": true,
-      "agrees": null,
-      "native_rerun_required": "store changed since this entry executed; re-run the generator on Linux x86-64"
+      "agrees": true
     },
     {
       "store": "xax_riscv64_backend.xax",
@@ -219,15 +220,15 @@
     "code_bytes": 1835317,
     "sha256": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
     "gen3_equals_gen2": true,
-    "host_s_nonsemantic": 0.95
+    "host_s_nonsemantic": 1.64
   },
   "runtime_vs_optimizing_bootstrap": [
     {
       "program": "xax_selfhost_verify",
       "input": "xax_op_typing.xax",
-      "xax_backend_s": 0.3544,
-      "optimizing_bootstrap_s": 0.2784,
-      "ratio": 1.273,
+      "xax_backend_s": 0.6225,
+      "optimizing_bootstrap_s": 0.4809,
+      "ratio": 1.295,
       "code_bytes": {
         "xax_backend": 2993128,
         "optimizing_bootstrap": 659575
@@ -236,9 +237,9 @@
     {
       "program": "xax_selfhost_verify",
       "input": "xax_store_verifier.xax",
-      "xax_backend_s": 0.1906,
-      "optimizing_bootstrap_s": 0.1774,
-      "ratio": 1.075,
+      "xax_backend_s": 0.3729,
+      "optimizing_bootstrap_s": 0.3156,
+      "ratio": 1.182,
       "code_bytes": {
         "xax_backend": 2993128,
         "optimizing_bootstrap": 659575
@@ -247,13 +248,151 @@
     {
       "program": "xax_selfhost_verify",
       "input": "xax_riscv64_backend.xax",
-      "xax_backend_s": 0.1152,
-      "optimizing_bootstrap_s": 0.0874,
-      "ratio": 1.318,
+      "xax_backend_s": 0.1768,
+      "optimizing_bootstrap_s": 0.147,
+      "ratio": 1.203,
       "code_bytes": {
         "xax_backend": 2993128,
         "optimizing_bootstrap": 659575
       }
     }
-  ]
+  ],
+  "authority": {
+    "blake3-compress": {
+      "component": "blake3-compress",
+      "semantic_root": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+      "native_artifact_digest": "bfaf9a6c4b3347f00c053e8192f6b3c7860c9f47bab7c07ee2731debb52caa13",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:blake3-hash": {
+      "component": "lowering:blake3-hash",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
+    },
+    "blake3-hash": {
+      "component": "blake3-hash",
+      "semantic_root": "3d8e9a8b0381806c32764e097ae9f35e744eb23c9fc23ac4e88155e9db02e2be",
+      "native_artifact_digest": "56a0356d74ca76b052cee6b2b11e7a750c6276c6303d5b4f5aa44a77fb50347c",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:store-decoder": {
+      "component": "lowering:store-decoder",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
+    },
+    "store-decoder": {
+      "component": "store-decoder",
+      "semantic_root": "b04475e500f109097022b1fa26763197714c03d6ae66ad4f3970cda27b0575cc",
+      "native_artifact_digest": "da537d44bc3d2b85299a725a4cd3be20adc8e36666baa7bd98c492a293b8239f",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:graph-decoder": {
+      "component": "lowering:graph-decoder",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
+    },
+    "graph-decoder": {
+      "component": "graph-decoder",
+      "semantic_root": "0c9a1bce931f6c28d08666adf4362d37d6370836064377112030a5da31e4dbbf",
+      "native_artifact_digest": "2822ff4ac1af1db1a272eb6f80dfe7b85b7505b515497b8f2492b61be5d9d7f4",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:x86-64-views-backend": {
+      "component": "lowering:x86-64-views-backend",
+      "semantic_root": null,
+      "native_artifact_digest": null,
+      "requested_authority": "python",
+      "actual_authority": "python",
+      "fallback_occurred": false,
+      "fallback_reason": "the XAX backend's own image is lowered by the bootstrap generator"
+    },
+    "x86-64-views-backend": {
+      "component": "x86-64-views-backend",
+      "semantic_root": "b07f663044b103dc67993c141c728af8c6525efef4f5839676347d10fe58b7f2",
+      "native_artifact_digest": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:cfg": {
+      "component": "lowering:cfg",
+      "semantic_root": "0f24251e706100f7896f4a03d6f50fba05ebb192f683485f3146f4b85b22dca1",
+      "native_artifact_digest": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "cfg": {
+      "component": "cfg",
+      "semantic_root": "0f24251e706100f7896f4a03d6f50fba05ebb192f683485f3146f4b85b22dca1",
+      "native_artifact_digest": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:typing": {
+      "component": "lowering:typing",
+      "semantic_root": "4681e6c50bd88ba3d96ab87ddc45ea294a8a9ae3b0658868c8f0b77beb0383ce",
+      "native_artifact_digest": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "typing": {
+      "component": "typing",
+      "semantic_root": "4681e6c50bd88ba3d96ab87ddc45ea294a8a9ae3b0658868c8f0b77beb0383ce",
+      "native_artifact_digest": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:store-verifier": {
+      "component": "lowering:store-verifier",
+      "semantic_root": "2a6183c2d15ad3c018927db2168de257cc8983e9b614de2ba723adef178155bd",
+      "native_artifact_digest": "e2eb1e46d927c84a79082ddc10af890c0384497393b20858d7671bc7b9d67952",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "store-verifier": {
+      "component": "store-verifier",
+      "semantic_root": "2a6183c2d15ad3c018927db2168de257cc8983e9b614de2ba723adef178155bd",
+      "native_artifact_digest": "e2eb1e46d927c84a79082ddc10af890c0384497393b20858d7671bc7b9d67952",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null,
+      "declined_inputs": 11572
+    }
+  }
 }

@@ -822,6 +822,24 @@ def image_from_backend_output(reader, target_object, result):
 _SOURCES = ("xax_compiler.py", "xax_views_lowering.py", "xax_x86_64_views.py")
 
 
+def _bootstrap_order() -> str | None:
+    """Why the bootstrap generator must lower the image being made now, or None when the XAX backend can.
+
+    The backend's own image precedes it by construction.  So do the images made while the BLAKE3 hash, the store
+    decoder, or the graph decoder is being built: the backend reads graph-decoder streams, which cannot load then."""
+    import sys
+
+    import xax_compiler
+
+    if _PROGRAM._building:
+        return "the XAX backend's own image is lowered by the bootstrap generator"
+    hashing = sys.modules.get("blake3")
+    hash_building = hashing is not None and (getattr(hashing, "_HASHER_BUILDING", False) or getattr(hashing, "_NATIVE_BUILDING", False))
+    if hash_building or xax_compiler._DECODER_BUILDING or xax_compiler._GRAPH_DECODER_BUILDING:
+        return "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
+    return None
+
+
 def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, int]:
     """``(code, entry offset)``: an XAX helper program lowered for this host by the XAX x86-64 backend (ADR-152).
 
@@ -855,8 +873,9 @@ def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, 
                 xax_native.loaded(cache_name, reader.root_cid, cached[0])
             return cached
     lowering = f"lowering:{cache_name}"
-    if _PROGRAM._building:  # the backend's own image: the bootstrap generator makes it by design
-        xax_native.fallback(lowering, "the XAX backend's own image is lowered by the bootstrap generator", requested="python")
+    bootstrap_order = _bootstrap_order()
+    if bootstrap_order is not None:  # the bootstrap generator makes these images by design
+        xax_native.fallback(lowering, bootstrap_order, requested="python")
         image = compile_x86_64_views(reader, function.cid, target, backend="python")
     else:
         try:

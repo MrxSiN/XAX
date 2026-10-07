@@ -439,3 +439,11 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - First job on a Linux x86-64 host (OI-45): `PYTHONPATH=src python benchmarks/bench_selfhost_closure.py --write` and `benchmarks/bench_selfhost_x86_64.py --write` (they set `XAX_REQUIRE_NATIVE=1`), then the native self-hosting tests. Without Linux, `--bind-committed` refreshes only the host-independent fields and marks changed stores `native_rerun_required`.
 - New modules and tests: `src/xax_native.py` (authority, W^X, cache, `bootstrap_dir`), `tests/test_store_regeneration.py`, `tests/test_audit_remediation.py`, `tests/test_wheel_install.py`, `tests/test_hosted_build_provenance.py`.
 - Windows host: run tests with `PYTHONPATH=src;.;..` (semicolons). Skips are environment-only; none hides a failure.
+
+## OI-45 self-hosting re-runs — 2026-10-07
+
+- Done on Linux x86-64: `selfhost_closure_evidence.json` and `selfhost_x86_64_evidence.json` were regenerated under `XAX_REQUIRE_NATIVE=1`; no `native_rerun_required` entry is left. Native self-hosting tests pass: 97, plus 7 with `XAX_FIXED_POINT=1`.
+- Still open in OI-45: the Linux and Android R4 re-measurements.
+- Run evidence generators from a clean worktree at the revision you are recording. The closure generator takes about 22 minutes here.
+- Cold-cache fix: with an empty `XAX_NATIVE_CACHE`, `XAX_REQUIRE_NATIVE=1` used to fail. Images made while the BLAKE3 hash, the store decoder, or the graph decoder is being built cannot be lowered by the XAX backend, because it reads graph-decoder streams. `host_image` now records them as Python lowering by design (`requested_authority: python`), like the backend's own image (`_bootstrap_order`). Earlier warm-cache evidence is unaffected: the cache key does not depend on which generator lowered an image, and gen1 equals the bootstrap reference byte for byte.
+
