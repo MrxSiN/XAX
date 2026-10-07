@@ -1,0 +1,16 @@
+................................................................... [ 58%]
+.................................F.............                          [100%]
+================================== FAILURES ===================================
+_ JvmResponseTests.test_corpus_contains_real_application_and_rejected_candidates _
+
+self = <test_jvm_r5_response.JvmResponseTests testMethod=test_corpus_contains_real_application_and_rejected_candidates>
+
+    def test_corpus_contains_real_application_and_rejected_candidates(self):
+        large = SemanticTrial("jvm-15")
+>       self.assertEqual(len(large.workspace._function_handles), 162)
+E       AssertionError: 161 != 162
+
+tests\test_jvm_r5_response.py:32: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_jvm_r5_response.py::JvmResponseTests::test_corpus_contains_real_application_and_rejected_candidates
+1 failed, 113 passed, 5 subtests passed in 125.75s (0:02:05)

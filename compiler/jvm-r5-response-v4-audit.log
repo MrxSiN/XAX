@@ -1,0 +1,145 @@
+{
+  "format": "xax-jvm-response-independent-audit-v1",
+  "source_csv": "jvm-r5-response-v4-results.csv",
+  "source_sha256": "108a1d5567367dea4185be5a5a656723274668f2a8d4207f7321325a0d7c824e",
+  "manifest_sha256": "7c94ba6e76666e23d07ff18fe07fd32c0c2f7cb511b11fa1d6bba96782a3c365",
+  "attempts": 137,
+  "successful_cells": 134,
+  "required_cells": 135,
+  "complete": false,
+  "errors": [],
+  "medians_including_all_attempt_costs": {
+    "JAVA": 21869,
+    "KOTLIN": 21928.0,
+    "XAX": 10970
+  },
+  "live_sources_checked": true,
+  "live_source_drift": [],
+  "ratio_vs_lowest_textual_median": 0.5016233023915131,
+  "total_recorded_tokens_by_arm": {
+    "JAVA": 1156512,
+    "KOTLIN": 1299022,
+    "XAX": 611376
+  },
+  "repair_responses_by_arm": {
+    "JAVA": 4,
+    "KOTLIN": 11,
+    "XAX": 9
+  },
+  "failed_attempts": 3,
+  "numeric_gate": false,
+  "instruction_context_sha256": [
+    "186f514c94536dbc7240300b27a3aab69a5d6c87e36173dbdb05e9a8952d34ad"
+  ],
+  "profile_sha256": [
+    "7c94ba6e76666e23d07ff18fe07fd32c0c2f7cb511b11fa1d6bba96782a3c365"
+  ],
+  "commands_requiring_context_review": [
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-ChildItem -Force | Select-Object Name,Length; rg --files -g '\"'!*target*'\"' -g '\"'!*.class'\"'\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content D:\\\\xax\\\\compiler\\\\benchmarks\\\\ai_native\\\\runs-jvm-r5-response-v4\\\\jvm-06-java-1-1\\\\Program.java; '---'; Get-Content D:\\\\xax\\\\compiler\\\\benchmarks\\\\ai_native\\\\runs-jvm-r5-response-v4\\\\jvm-06-java-2-1\\\\Program.java; '---'; Get-Content D:\\\\xax\\\\compiler\\\\benchmarks\\\\ai_native\\\\runs-jvm-r5-response-v4\\\\jvm-05-java-3-1\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"rg -n --glob '*.java' \\\"class Program|new Program|Callable|i32|defineFunction|function\\\" D:\\\\xax\\\\compiler\\\\src D:\\\\xax\\\\compiler\\\\benchmarks | Select-Object -First 120\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-ChildItem -Force | Select-Object Name,Length; if (Test-Path Program.java) { Get-Content Program.java }'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-ChildItem -Force; if (Test-Path Program.java) { Get-Content -Raw Program.java }'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.java -Raw'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.java'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.java'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content TASK.md; Get-Content check.py; Get-Content request-1.json'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content TASK.md; Get-Content request-1.json; Get-Content check.py'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content attempt.json; Get-Content model-events-1.jsonl; Get-Content model-stderr-1.txt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-ChildItem -Force | Select-Object Name,Length; if (Test-Path .\\\\Program.kt) { Get-Content .\\\\Program.kt -Raw }\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-ChildItem -Force; if (Test-Path .\\\\Program.kt) { Get-Content .\\\\Program.kt -Raw }\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.kt\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content .\\\\TASK.md -Raw; Get-Content .\\\\request-1.json -Raw; Get-Content .\\\\check.py -Raw\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content .\\\\TASK.md; Get-Content .\\\\request-1.json; Get-Content .\\\\check.py\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content .\\\\attempt.json -Raw; Get-Content .\\\\model-events-1.jsonl -Raw; Get-Content .\\\\model-stderr-1.txt -Raw\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content .\\\\model-stderr-1.txt; Get-Content .\\\\attempt.json; Get-Content .\\\\model-events-1.jsonl\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-ChildItem -Force | Select-Object Name,Length; if (Test-Path Program.kt) { Get-Content -Raw Program.kt }'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.kt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw -LiteralPath Program.kt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.kt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw TASK.md; Get-Content -Raw request-1.json; Get-Content -Raw check.py'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw model-events-1.jsonl; Get-Content -Raw model-stderr-1.txt; Get-Content -Raw attempt.json'"
+    }
+  ],
+  "scope": "Raw usage/digests/completeness audit; task equivalence and context commands require human review. No matrix promotion."
+}
+

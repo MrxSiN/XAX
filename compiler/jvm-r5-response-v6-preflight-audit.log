@@ -1,0 +1,75 @@
+{
+  "format": "xax-jvm-response-independent-audit-v1",
+  "source_csv": "jvm-r5-response-v6-results.csv",
+  "source_sha256": "971e4808def82454fa580a9e3bf3b07f08f19112befbbe267723ae00a13bc75a",
+  "manifest_sha256": "f37c0def74e1b47121a891489ef24eab934e3ae0dca37b827c2a7a8fe9d316ef",
+  "attempts": 9,
+  "successful_cells": 8,
+  "required_cells": 135,
+  "complete": false,
+  "errors": [],
+  "medians_including_all_attempt_costs": {
+    "JAVA": 21607.0,
+    "KOTLIN": 21551,
+    "XAX": 10801
+  },
+  "live_sources_checked": true,
+  "live_source_drift": [],
+  "ratio_vs_lowest_textual_median": 0.5011832397568559,
+  "total_recorded_tokens_by_arm": {
+    "JAVA": 109117,
+    "KOTLIN": 64810,
+    "XAX": 43624
+  },
+  "repair_responses_by_arm": {
+    "JAVA": 2,
+    "KOTLIN": 0,
+    "XAX": 1
+  },
+  "failed_attempts": 1,
+  "per_task_diagnostics_not_the_gate_aggregation": {
+    "jvm-01": {
+      "successful_trials": {
+        "JAVA": 2,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21607.0,
+        "KOTLIN": 21551,
+        "XAX": 10801
+      }
+    }
+  },
+  "numeric_gate": false,
+  "instruction_context_sha256": [
+    "228fb0fecfc6cfcd2190c2b2cbe3a3a79e860a165ab40e58cede7328f1fba9b2"
+  ],
+  "profile_sha256": [
+    "f37c0def74e1b47121a891489ef24eab934e3ae0dca37b827c2a7a8fe9d316ef"
+  ],
+  "commands_requiring_context_review": [
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.java'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.java'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.kt\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.kt'"
+    }
+  ],
+  "scope": "Raw usage/digests/completeness audit; task equivalence and context commands require human review. No matrix promotion."
+}
+

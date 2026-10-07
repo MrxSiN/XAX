@@ -1,0 +1,10 @@
+jvm-03 XAX trial=1 attempt=1: FALSE 32880 tokens repairs=3
+jvm-03 JAVA trial=1 attempt=1: TRUE 21908 tokens repairs=0
+jvm-03 KOTLIN trial=1 attempt=1: TRUE 21818 tokens repairs=0
+jvm-04 JAVA trial=1 attempt=1: TRUE 21792 tokens repairs=0
+jvm-04 KOTLIN trial=1 attempt=1: TRUE 21813 tokens repairs=0
+jvm-04 XAX trial=1 attempt=1: TRUE 10908 tokens repairs=0
+jvm-05 KOTLIN trial=1 attempt=1: TRUE 21797 tokens repairs=0
+jvm-05 XAX trial=1 attempt=1: TRUE 10940 tokens repairs=0
+jvm-05 JAVA trial=1 attempt=1: TRUE 21829 tokens repairs=0
+jvm-06 XAX trial=1 attempt=1: TRUE 10895 tokens repairs=0

@@ -1,0 +1,15 @@
+jvm-01 XAX trial=1 attempt=1: TRUE 10937 tokens repairs=0
+jvm-02 XAX trial=1 attempt=1: TRUE 10906 tokens repairs=0
+jvm-03 XAX trial=1 attempt=1: TRUE 10946 tokens repairs=0
+jvm-04 XAX trial=1 attempt=1: TRUE 10897 tokens repairs=0
+jvm-05 XAX trial=1 attempt=1: TRUE 10936 tokens repairs=0
+jvm-06 XAX trial=1 attempt=1: TRUE 10887 tokens repairs=0
+jvm-07 XAX trial=1 attempt=1: FALSE 33958 tokens repairs=3
+jvm-08 XAX trial=1 attempt=1: TRUE 11020 tokens repairs=0
+jvm-09 XAX trial=1 attempt=1: TRUE 35073 tokens repairs=2
+jvm-10 XAX trial=1 attempt=1: FALSE 33353 tokens repairs=3
+jvm-11 XAX trial=1 attempt=1: FALSE 10931 tokens repairs=1
+jvm-12 XAX trial=1 attempt=1: TRUE 33265 tokens repairs=2
+jvm-13 XAX trial=1 attempt=1: TRUE 10933 tokens repairs=0
+jvm-14 XAX trial=1 attempt=1: FALSE 33797 tokens repairs=3
+jvm-15 XAX trial=1 attempt=1: TRUE 11076 tokens repairs=0

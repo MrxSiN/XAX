@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\xax\compiler\benchmarks\run_jvm_r5_response.py", line 258, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "D:\xax\compiler\benchmarks\run_jvm_r5_response.py", line 249, in main
+    row = run_cell(results, runs, profile, settings, *cell)
+  File "D:\xax\compiler\benchmarks\run_jvm_r5_response.py", line 129, in run_cell
+    raise ValueError(f"unrecorded attempt present: {workspace}; recover its traces before continuing")
+ValueError: unrecorded attempt present: D:\xax\compiler\benchmarks\ai_native\runs-jvm-r5-response\jvm-01-xax-2-1; recover its traces before continuing

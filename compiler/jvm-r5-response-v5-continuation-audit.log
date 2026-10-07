@@ -1,0 +1,261 @@
+{
+  "format": "xax-jvm-response-independent-audit-v1",
+  "source_csv": "jvm-r5-response-v5-results.csv",
+  "source_sha256": "920278473b2d793dc380c1262104695192a8b045ba316716d18bb247ad702be2",
+  "manifest_sha256": "d49d5f0a2336530edcab11f3a39cb82f9f683d13ea052746aef6667c4c311c00",
+  "attempts": 60,
+  "successful_cells": 60,
+  "required_cells": 135,
+  "complete": false,
+  "errors": [
+    "unrecorded attempt: jvm-06-java-2-1"
+  ],
+  "medians_including_all_attempt_costs": {
+    "JAVA": 21872.5,
+    "KOTLIN": 21845.0,
+    "XAX": 10929.5
+  },
+  "live_sources_checked": true,
+  "live_source_drift": [],
+  "ratio_vs_lowest_textual_median": 0.5003204394598306,
+  "total_recorded_tokens_by_arm": {
+    "JAVA": 473146,
+    "KOTLIN": 461927,
+    "XAX": 242280
+  },
+  "repair_responses_by_arm": {
+    "JAVA": 2,
+    "KOTLIN": 2,
+    "XAX": 2
+  },
+  "failed_attempts": 0,
+  "per_task_diagnostics_not_the_gate_aggregation": {
+    "jvm-01": {
+      "successful_trials": {
+        "JAVA": 2,
+        "KOTLIN": 2,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 22016.0,
+        "KOTLIN": 21926.5,
+        "XAX": 16580.0
+      }
+    },
+    "jvm-02": {
+      "successful_trials": {
+        "JAVA": 2,
+        "KOTLIN": 2,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21804.0,
+        "KOTLIN": 21800.0,
+        "XAX": 10910.5
+      }
+    },
+    "jvm-03": {
+      "successful_trials": {
+        "JAVA": 2,
+        "KOTLIN": 2,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21852.5,
+        "KOTLIN": 21780.0,
+        "XAX": 10933.5
+      }
+    },
+    "jvm-04": {
+      "successful_trials": {
+        "JAVA": 2,
+        "KOTLIN": 2,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21796.0,
+        "KOTLIN": 21822.0,
+        "XAX": 10852.5
+      }
+    },
+    "jvm-05": {
+      "successful_trials": {
+        "JAVA": 2,
+        "KOTLIN": 2,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21880.5,
+        "KOTLIN": 21815.0,
+        "XAX": 10870.0
+      }
+    },
+    "jvm-06": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 10811,
+        "KOTLIN": 21800,
+        "XAX": 10905
+      }
+    },
+    "jvm-07": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21805,
+        "KOTLIN": 21816,
+        "XAX": 10973
+      }
+    },
+    "jvm-08": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 43897,
+        "KOTLIN": 22065,
+        "XAX": 10925
+      }
+    },
+    "jvm-09": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21949,
+        "KOTLIN": 21936,
+        "XAX": 12110
+      }
+    },
+    "jvm-10": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 44237,
+        "KOTLIN": 44310,
+        "XAX": 22139
+      }
+    },
+    "jvm-11": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21883,
+        "KOTLIN": 21879,
+        "XAX": 10910
+      }
+    },
+    "jvm-12": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21851,
+        "KOTLIN": 21889,
+        "XAX": 10875
+      }
+    },
+    "jvm-13": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21796,
+        "KOTLIN": 21843,
+        "XAX": 10958
+      }
+    },
+    "jvm-14": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 21923,
+        "KOTLIN": 21999,
+        "XAX": 11102
+      }
+    },
+    "jvm-15": {
+      "successful_trials": {
+        "JAVA": 1,
+        "KOTLIN": 1,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 24296,
+        "KOTLIN": 24103,
+        "XAX": 11090
+      }
+    }
+  },
+  "numeric_gate": false,
+  "instruction_context_sha256": [
+    "186f514c94536dbc7240300b27a3aab69a5d6c87e36173dbdb05e9a8952d34ad"
+  ],
+  "profile_sha256": [
+    "d49d5f0a2336530edcab11f3a39cb82f9f683d13ea052746aef6667c4c311c00"
+  ],
+  "commands_requiring_context_review": [
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath 'Program.java'\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.java'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.java'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath .\\\\Program.kt\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.kt\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.kt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\User\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.kt'"
+    }
+  ],
+  "scope": "Raw usage/digests/completeness audit; task equivalence and context commands require human review. No matrix promotion."
+}
+

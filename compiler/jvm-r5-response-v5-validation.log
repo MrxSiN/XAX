@@ -1,0 +1,22 @@
+................................................................... [ 47%]
+......................................................F....................                                                    [100%]
+================================== FAILURES ===================================
+_ JvmR5AITests.test_direct_views_bind_intent_names_and_explain_inserted_results _
+
+self = <test_jvm_r5_ai.JvmR5AITests testMethod=test_direct_views_bind_intent_names_and_explain_inserted_results>
+
+    def test_direct_views_bind_intent_names_and_explain_inserted_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            move = prepare_xax_task("jvm-05", root / "move")
+            self.assertIn("a=N0, b=N1", (move / "TASK.md").read_text())
+            creation = prepare_xax_task("jvm-06", root / "creation")
+            text = (creation / "TASK.md").read_text()
+            self.assertIn("@ID", text)
+>           self.assertIn("pre-batch snapshot", text)
+E           AssertionError: 'pre-batch snapshot' not found in "# task-06 / XAX-DIRECT\n\nPaste this exact prompt into Codex Desktop:\n\n> Create Program with a callable f(i32)->i32 such that f(x) = x + 7. Preserve any supplied scaffold and create a new constant for 7.\n>\n> Complete local view: `R0.0 f(P0:u32)->u32; N0 const 0; N1 const 1; N2 add.wrap P0 N0; return N2`.\n> Run `python xax.py apply 'CMD'` with the entire mutation batch quoted as ONE argument; it verifies, commits, and tests.\n> Intent bindings: `x=P0, placeholder=N0, anchor=N1, result=N2`.\n> Use ; between edits. Snapshot handles stay fixed; insertion result @ID uses ID>=0. The complete view and bindings above require no file reads.\n> `CMD`: `insert-constant N ID V` | `replace-operand N I V` | `disconnect-edge N EDGE ARG V` | `connect-edge N EDGE ARG V` | `set-op N OP` | `delete N`; N is a node anchor in the containing block, EDGE and ARG are zero-based indices; separate multiple mutations with `;`. Quote a multi-mutation `CMD` as one shell argument. Stop after `PASS`.\n"
+
+tests\test_jvm_r5_ai.py:19: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_jvm_r5_ai.py::JvmR5AITests::test_direct_views_bind_intent_names_and_explain_inserted_results
+1 failed, 141 passed, 1 deselected, 167 subtests passed in 82.91s (0:01:22)

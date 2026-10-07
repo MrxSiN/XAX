@@ -1,0 +1,6 @@
+jvm-10 XAX trial=2 attempt=2: TRUE 21692 tokens repairs=1
+jvm-12 KOTLIN trial=2 attempt=2: TRUE 21581 tokens repairs=0
+jvm-07 KOTLIN trial=3 attempt=2: TRUE 21505 tokens repairs=0
+jvm-10 KOTLIN trial=3 attempt=2: TRUE 44266 tokens repairs=1
+jvm-12 KOTLIN trial=3 attempt=2: TRUE 21621 tokens repairs=0
+jvm-14 XAX trial=3 attempt=2: TRUE 21919 tokens repairs=1
