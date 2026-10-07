@@ -475,3 +475,9 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - `NativeDecoder.decode_object(envelope, cid_of)` runs the two object passes on one envelope. `StoreReader._decode_object_native` uses it for natively decoded stores and builds the object from the program's fields.
 - Next (S8b.2): graph bodies. The S3c decoder (`xax_selfhost_graph.py`, its own `_GraphDecoder` over a 64-bit stream) rejects without a diagnostic, and `_parse_graph` then re-parses with the bootstrap. Give it the same site table and shared diagnostic block, and keep the bootstrap's order, including the deferred value checks that `_parse_graph` makes while it walks the stream.
 
+## S8b.2 graph-body rejections — 2026-10-07 (ADR-185)
+
+- Decoder rejection sites share `_SiteDiagnostics` (`xax_selfhost_store.py`). A decoder supplies `SITES`, `ENTITIES`, `block_state`, `diagnostic_block`, `begin_record`/`put`/`finish_reject`, and optionally `d_custom`.
+- In the graph decoder (`xax_selfhost_graph.py`), decide a value with `read` before you `emit` it: the stream prefix up to a rejection is walked by `_graph_syntax_from_stream(..., prefix=True)`, which must never see an undecided value.
+- Next (S8c): what `_graph_syntax_from_stream` and the verifier still decide in Python: resolution, `_verify_type`, trap payloads, typing and facts declines, and object-level verification declines.
+

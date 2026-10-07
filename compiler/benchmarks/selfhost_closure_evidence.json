@@ -12,21 +12,21 @@
       "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 4.88,
+        "gen1": 4.93,
         "bootstrap": 0.04
       }
     },
     {
       "program": "xax_selfhost_graph",
-      "store_bytes": 71275,
-      "store_sha256": "59febc8f3d9fb65711e09d09f00344f653d34b5abaa701b06c8f701911481d4d",
+      "store_bytes": 148177,
+      "store_sha256": "3da3fed07bec537038e245ebeaf0db7c6a54d6e94ee0c3c6cfa7850109866e62",
       "functions": 1,
-      "code_bytes": 36516,
-      "image_sha256": "56ee5c460a62ff5d6620e2623be0722faec2b71f36804c87c690070d8999f202",
+      "code_bytes": 91476,
+      "image_sha256": "d26f6af2a4f3fbcf257896e98bc3b94603660ee875a7ddfe8f983d99e9711a8f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.14,
-        "bootstrap": 0.18
+        "gen1": 0.27,
+        "bootstrap": 0.38
       }
     },
     {
@@ -44,15 +44,15 @@
     },
     {
       "program": "xax_selfhost_store",
-      "store_bytes": 273370,
-      "store_sha256": "d46676a34abbca614324b3ca61b92fc4cec3f234836230ed43f0992016c48108",
+      "store_bytes": 274243,
+      "store_sha256": "72c503c558a7e1d1c9c454d9a9484358ee11085c7d95372b634245b82ad4bc6c",
       "functions": 1,
-      "code_bytes": 204428,
-      "image_sha256": "f4e837b004654700c9aa6faf2721a4a3b7baa438aeeb56c3e3c81690b2d2806b",
+      "code_bytes": 206504,
+      "image_sha256": "9df980975640067ab2d05fab38d7e13746568d859c650b50bf0b438e89f129e4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.49,
-        "bootstrap": 0.69
+        "gen1": 0.46,
+        "bootstrap": 0.76
       }
     },
     {
@@ -64,8 +64,8 @@
       "image_sha256": "0cd34705a3b5d28d78615d1b59c84a688d959341f129264e8baf095d0fa2395f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 6.47,
-        "bootstrap": 12.5
+        "gen1": 5.99,
+        "bootstrap": 11.33
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "49ad0a2b513689e6fd4b8f46c573f085fbf036539db3a8f8886277ea713b7b27",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.71,
-        "bootstrap": 9.71
+        "gen1": 3.67,
+        "bootstrap": 9.72
       }
     },
     {
@@ -91,7 +91,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.03,
-        "bootstrap": 0.08
+        "bootstrap": 0.06
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "09e0f896d9b3159ddce5b95486093e9aa5bff498e7663c5c12664a5563e7e699",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.39,
-        "bootstrap": 7.7
+        "gen1": 3.41,
+        "bootstrap": 7.86
       }
     }
   ],
@@ -117,7 +117,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.0,
+        "native": 0.001,
         "emulated": 0.4
       }
     },
@@ -154,7 +154,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.002,
-        "emulated": 0.5
+        "emulated": 0.4
       }
     },
     {
@@ -166,7 +166,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.004,
-        "emulated": 0.8
+        "emulated": 0.7
       }
     },
     {
@@ -183,14 +183,14 @@
     },
     {
       "store": "xax_graph_decoder.xax",
-      "objects": 71,
+      "objects": 140,
       "store_proven": true,
       "objects_proven": 5,
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.015,
-        "emulated": 1.8
+        "native": 0.027,
+        "emulated": 3.7
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 4000000000,
       "host_s_nonsemantic": {
-        "native": 0.586,
-        "emulated": 64.1
+        "native": 0.63,
+        "emulated": 62.8
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.25,
-        "emulated": 28.5
+        "native": 0.24,
+        "emulated": 26.2
       }
     },
     {
@@ -237,8 +237,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.049,
-        "emulated": 6.7
+        "native": 0.056,
+        "emulated": 6.6
       }
     },
     {
@@ -249,8 +249,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.399,
-        "emulated": 42.0
+        "native": 0.521,
+        "emulated": 40.3
       }
     },
     {
@@ -261,8 +261,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.281,
-        "emulated": 29.8
+        "native": 0.348,
+        "emulated": 28.5
       }
     }
   ],
@@ -305,9 +305,9 @@
     },
     {
       "store": "xax_graph_decoder.xax",
-      "bytes": 71275,
+      "bytes": 148177,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.05
+      "host_s_nonsemantic": 0.1
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -317,9 +317,9 @@
     },
     {
       "store": "xax_store_decoder.xax",
-      "bytes": 273370,
+      "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.17
+      "host_s_nonsemantic": 0.16
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -329,7 +329,7 @@
     "sha256": "49ad0a2b513689e6fd4b8f46c573f085fbf036539db3a8f8886277ea713b7b27",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 82000000000,
-    "host_s_nonsemantic": 1256.0
+    "host_s_nonsemantic": 1235.2
   },
   "authority": {
     "blake3-compress": {
@@ -352,8 +352,8 @@
     },
     "store-decoder": {
       "component": "store-decoder",
-      "semantic_root": "75490eae0938ad1eb9d86ce912fecdfede3ec8a303c129ed9970da85dd328f7f",
-      "native_artifact_digest": "6c3e7cd81a537e27cdc9fffe5b560b9763a8c93abd32f14ec6e711778b05e1f6",
+      "semantic_root": "5f3e5a1c28e99f4deb350fff40e179294c3d5e6910a6cb71c5b2c77f8c6ae0bc",
+      "native_artifact_digest": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -361,8 +361,8 @@
     },
     "graph-decoder": {
       "component": "graph-decoder",
-      "semantic_root": "0c9a1bce931f6c28d08666adf4362d37d6370836064377112030a5da31e4dbbf",
-      "native_artifact_digest": "2822ff4ac1af1db1a272eb6f80dfe7b85b7505b515497b8f2492b61be5d9d7f4",
+      "semantic_root": "05ba650dc678a359093ac0f4d3e1b2520ddfd6737954e04622e22634baba04a6",
+      "native_artifact_digest": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -394,7 +394,7 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 7036
+      "declined_inputs": 7243
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",

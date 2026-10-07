@@ -6177,15 +6177,27 @@ def _graph_syntax_bootstrap(obj: SemanticObject, resolve: Callable[[bytes], Sema
     return entry, blocks, used_references, member_spans
 
 
-def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], words) -> tuple:
+class _StreamPrefixEnd(Exception):
+    """The end of a rejected body's stream prefix (S8b.2): the decoder's syntax rejection comes next."""
+
+
+def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], words, prefix: bool = False) -> tuple:
     """Rebuild the bootstrap parse from the XAX decoder's stream (S3c, ADR-120).
 
     The stream is syntactically valid, so only resolution, type verification,
     and trap payloads can fail, and they are checked here in body order, exactly
-    where the bootstrap parser checks them.
+    where the bootstrap parser checks them.  With ``prefix`` the words end where
+    the decoder rejected the body, and running out raises ``_StreamPrefixEnd``.
     """
     stream = iter(words)
-    take = stream.__next__
+    if prefix:
+        def take():
+            try:
+                return next(stream)
+            except StopIteration:
+                raise _StreamPrefixEnd from None
+    else:
+        take = stream.__next__
     references = obj.references
     block_count, entry = take(), take()
     blocks: list[_ParsedBlock] = []
@@ -6380,9 +6392,17 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     decoder = _native_graph_decoder()
     parsed = None
     if decoder is not None and len(obj.body) <= decoder.capacity:
-        status, words = decoder.decode(obj.body, len(obj.references))
+        status, words, diagnostic = decoder.decode_with_diagnostic(obj.body, len(obj.references), obj.cid)
         if status == 0:
             parsed = _graph_syntax_from_stream(obj, resolve, words)
+        elif diagnostic is not None:
+            # S8b.2 (ADR-185): the XAX decoder decided a syntax rejection.  What precedes it in body order (reference
+            # resolution, type verification, trap payloads) is checked first, exactly where the bootstrap checks it.
+            try:
+                _graph_syntax_from_stream(obj, resolve, words, prefix=True)
+            except _StreamPrefixEnd:
+                pass
+            raise XaxError(diagnostic)
     entry, blocks, used_references, member_spans = parsed or _graph_syntax_bootstrap(obj, resolve)
     if used_references != set(obj.references) and not (parsed is not None and obj.cid in _XAX_GLUE_GRAPHS):
         fail(

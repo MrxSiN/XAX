@@ -73,21 +73,26 @@ MODE_NONE, MODE_HASH, MODE_VERIFY = 0, 1, 2  # no digest check; report the diges
 # S8b.1 (ADR-184): the data is one record envelope; report the CID's hashed span, then decide with the CID after it.
 MODE_OBJECT_HASH, MODE_OBJECT_VERIFY = 3, 4
 
-# S8a (ADR-183): every container rejection of ``StoreReader``: code, rule, expected, actual.  A value form names the
-# site's values v0..v3: ("int", i), ("wide", low, high), ("hex", start, length) with start a value index or
-# ("const", n) and length a constant or ("value", i), "available" (the truncation text over v0/v1), "after" ("> " and
-# the CID at v0), "minimal" (the minimal ULEB of v0), ("index", table).
-_TRUNCATED = ("XAX.CANON.TRUNCATED", ("available",), ("int", 2))
+# S8a (ADR-183): every container rejection of ``StoreReader``: code, rule, expected, actual (value forms: ``_SiteDiagnostics``).
+MAX_KIND = 11  # Kind.CALL_CONTRACT
+_AVAILABLE = ("format", "{} available bytes", ("wide", 0, 1))
+# The sites every ``Cursor``-shaped decoder shares (ULEB rules and truncation).
+CURSOR_SITES = {
+    "ULEB_OVERFLOW": ("XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED", "at most 10 bytes", "more than 10 bytes"),
+    "ULEB_UNTERMINATED": ("XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED", "terminating byte", "end of input"),
+    "ULEB_NON_MINIMAL": ("XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL", ("minimal", 0), ("hex", 1, ("value", 2))),
+    "TRUNCATED": ("XAX.CANON.TRUNCATED", "SER-BOUNDS", _AVAILABLE, ("int", 2)),
+}
 SITES = {
-    "TRUNCATED": (_TRUNCATED[0], "SER-BOUNDS", *_TRUNCATED[1:]),
-    "TRUNCATED_RECORD": (_TRUNCATED[0], "SER-RECORD-LENGTH", *_TRUNCATED[1:]),
-    "TRUNCATED_INDEX": (_TRUNCATED[0], "SER-INDEX-LENGTH", *_TRUNCATED[1:]),
+    **CURSOR_SITES,
+    "TRUNCATED_RECORD": ("XAX.CANON.TRUNCATED", "SER-RECORD-LENGTH", _AVAILABLE, ("int", 2)),
+    "TRUNCATED_INDEX": ("XAX.CANON.TRUNCATED", "SER-INDEX-LENGTH", _AVAILABLE, ("int", 2)),
     "MAGIC": ("XAX.CONTAINER.MAGIC", "SER-HEADER-MAGIC", MAGIC.hex(), ("hex", ("const", 0), len(MAGIC))),
     "MAJOR": ("XAX.CONTAINER.MAJOR", "SER-MAJOR-SUPPORTED", CONTAINER_MAJOR, ("wide", 0, 1)),
     "HASH_SUITE": ("XAX.CONTAINER.HASH_SUITE", "SER-HASH-SUPPORTED", HASH_SUITE, ("wide", 0, 1)),
     "FEATURE": ("XAX.CONTAINER.FEATURE", "SER-FEATURE-SUPPORTED", 0, ("wide", 0, 1)),
     "RECORD_SHORT": ("XAX.CANON.RECORD_SHORT", "SER-RECORD-ENVELOPE", CID_BYTES, ("int", 0)),
-    "RECORD_ORDER": ("XAX.CANON.RECORD_ORDER", "SER-RECORDS-SORTED-UNIQUE", ("after",), ("hex", 1, CID_BYTES)),
+    "RECORD_ORDER": ("XAX.CANON.RECORD_ORDER", "SER-RECORDS-SORTED-UNIQUE", ("format", "> {}", ("hex", 0, CID_BYTES)), ("hex", 1, CID_BYTES)),
     "TRAILING_NONSEMANTIC": ("XAX.CANON.TRAILING_BYTES", "SER-NONSEMANTIC-LENGTH", 0, ("int", 0)),
     "TRAILING_STORE": ("XAX.CANON.TRAILING_BYTES", "SER-STORE-LENGTH", 0, ("int", 0)),
     "TRAILING_INDEX": ("XAX.CANON.TRAILING_BYTES", "SER-INDEX-COUNT", 0, ("int", 0)),
@@ -96,23 +101,19 @@ SITES = {
     "STORE_DIGEST": ("XAX.INTEGRITY.STORE_DIGEST", "SER-STORE-DIGEST", ("hex", 0, CID_BYTES), ("hex", 1, CID_BYTES)),
     "INDEX": ("XAX.CANON.INDEX", "SER-INDEX-MATCHES-RECORDS", ("index", "records"), ("index", "index")),
     "ROOT_MISSING": ("XAX.IDENTITY.ROOT_MISSING", "ID-ROOT-PRESENT", ("hex", 0, CID_BYTES), "missing"),
-    "ULEB_OVERFLOW": ("XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED", "at most 10 bytes", "more than 10 bytes"),
-    "ULEB_UNTERMINATED": ("XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED", "terminating byte", "end of input"),
-    "ULEB_NON_MINIMAL": ("XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL", ("minimal",), ("hex", 1, ("value", 2))),
     # S8b.1: ``decode_object``.
-    "KIND": ("XAX.SCHEMA.KIND", "SER-KIND-SUPPORTED", ("kinds",), ("wide", 0, 1)),
+    "KIND": ("XAX.SCHEMA.KIND", "SER-KIND-SUPPORTED", ("list", *(("kind", value) for value in range(1, MAX_KIND + 1))), ("wide", 0, 1)),
     "VERSION": ("XAX.SCHEMA.VERSION", "SER-SCHEMA-SUPPORTED", 1, ("wide", 0, 1)),
     "REFERENCE_TABLE": ("XAX.CANON.REFERENCE_TABLE", "SER-REFS-SORTED-UNIQUE", "strict unsigned lexicographic order", ("references",)),
     "TRAILING_OBJECT": ("XAX.CANON.TRAILING_BYTES", "SER-OBJECT-BODY-LENGTH", 0, ("int", 0)),
     "CID_MISMATCH": ("XAX.IDENTITY.CID_MISMATCH", "ID-CID-INTEGRITY", ("hex", 0, CID_BYTES), ("hex", 1, CID_BYTES)),
 }
-SITE_INDEX = {name: index for index, name in enumerate(SITES)}
-# (name, template, what fills it: the entity number as an integer, or the 32 bytes at that offset as hex)
+# (name, template, fill): fill None is the name itself, "int" the template over the number, "cid" the template over the
+# 32 bytes at that offset as hex, "hex" those bytes as hex alone
 ENTITIES = (("store", None, None), ("index", None, None), ("record", "record:{}", "int"), ("metadata", "metadata:{}", "int"),
-            ("object", "object:{}", "hex"))
+            ("object", "object:{}", "cid"))
 ENTITY_STORE, ENTITY_INDEX = (0, 0), (1, 0)
-DIAGNOSTIC_ARGUMENTS = 7  # site, entity kind, entity number, v0..v3
-MAX_KIND = 11  # Kind.CALL_CONTRACT
+DIAGNOSTIC_ARGUMENTS = 8  # site, entity kind, entity number, v0..v3, context
 
 B1, B8, B32, B64 = bits_type(1), bits_type(8), bits_type(32), bits_type(64)
 MEM = memory_effect_type()
@@ -266,23 +267,21 @@ class _Decoder:
         return self.add(position, len(expected))
 
 
-class _ContainerDecoder(_Decoder):
-    """S8a (ADR-183): the container decoder with its rejections.  It adds a digest mode parameter and one shared
-    diagnostic block; every check names its failure (a ``SITES`` entry through ``fail_unless``, or the defer block)."""
+class _SiteDiagnostics:
+    """Rejection sites with exact diagnostics for a decoder program (S8a, S8b; ADR-183, ADR-184, ADR-185).
 
-    def __init__(self) -> None:
-        self.g = GraphBuilder()
-        entry = self.g.block(DATA_POINTER, DATA_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM, B64, B64)
-        self.data, data_view, data_mem, self.out, out_view, out_mem, self.length, self.mode = entry.params
-        self.cur = entry
-        self.state = (data_view, data_mem, out_view, out_mem)
-        self.defer_block = self.g.block(*STATE)
-        self.diagnostic_block = self.g.block(*(B64,) * DIAGNOSTIC_ARGUMENTS, *STATE)
+    A decoder supplies ``SITES`` (name -> code, rule, expected form, actual form), ``ENTITIES`` (kind -> name,
+    template, fill), ``block_state`` (the types its views thread through every block), ``diagnostic_block`` (a block
+    taking ``DIAGNOSTIC_ARGUMENTS`` words then ``block_state``), ``put(word)`` (append one 64-bit record word), and
+    ``finish_reject(context)`` (set the status and return).  A failing check branches, with its values, to the one
+    shared diagnostic block, which writes each site's text once.
 
-    def check(self, condition, failure):
-        """Continue when ``condition`` holds, else go to ``failure`` (there is no anonymous reject here)."""
-        super().check(condition, failure)
+    A value form is a text, an integer constant, or a tuple: ("int", i), ("wide", low, high), ("hex", start, length)
+    with start a value index or ("const", n) and length a constant or ("value", i), ("format", template, *forms),
+    ("list", *forms), ("terminator", n), ("kind", n), ("minimal", i) (the minimal ULEB of value i); anything else is
+    passed to ``d_custom``.  Values are v0..v3 of the failing check."""
 
+    # -- conditions --------------------------------------------------------------------------------
     def both(self, *conditions):
         result = self.cur.op1(Operation.INT_ZERO_EXTEND, (conditions[0],), B64)
         for condition in conditions[1:]:
@@ -295,24 +294,17 @@ class _ContainerDecoder(_Decoder):
             result = self.op(Operation.BIT_OR, result, self.cur.op1(Operation.INT_ZERO_EXTEND, (condition,), B64))
         return self.cmp(IntCompare.NE, result, 0)
 
-    def set_out64(self, index, value):
-        self.set_out(index, value)
-        self.set_out(self.add(index, 1), self.op(Operation.UDIV, value, self.c(1 << 32)))
+    def when(self, condition, body):
+        """Run ``body`` (emitting into the current block) only when ``condition`` holds."""
+        then, join = self.g.block(*self.block_state), self.g.block(*self.block_state)
+        self.cur.cbr(condition, then, self.state, join, self.state)
+        self.cur, self.state = then, tuple(then.params)
+        body()
+        if self.cur is not None:
+            self.cur.br(join, *self.state)
+        self.cur, self.state = join, tuple(join.params)
 
-    def out64(self, index):
-        return self.add(self.out_word(index), self.mul(self.out_word(self.add(index, 1)), 1 << 32))
-
-    def ret(self):
-        data_view, data_mem, out_view, out_mem = self.state
-        self.cur.ret(self.data, data_view, data_mem, self.out, out_view, out_mem)
-        self.cur = None
-
-    # S8a (ADR-183): the diagnostic record (``xax_selfhost_diagnostics`` value tags) in (low, high) word pairs.
-    def put(self, value):
-        cursor = self.out_word(self.c(DIAG_AT))
-        self.set_out64(cursor, value if not isinstance(value, int) else self.c(value))
-        self.set_out(self.c(DIAG_AT), self.add(cursor, 2))
-
+    # -- record values ---------------------------------------------------------------------------
     def d_text(self, value: str):
         data = value.encode("ascii")
         self.put(D.T_STR)
@@ -328,13 +320,6 @@ class _ContainerDecoder(_Decoder):
         self.put(D.T_WIDE)
         self.put(low)
         self.put(high)
-
-    def d_format(self, template: str, *values):
-        self.put(D.T_FORMAT)
-        self.d_text(template)
-        self.put(len(values))
-        for value in values:
-            value()
 
     def d_hex(self, start, length):
         """HEX of data[start : start + length], packed eight bytes per word."""
@@ -361,68 +346,13 @@ class _ContainerDecoder(_Decoder):
         for k in range(9):
             low = self.op(Operation.BIT_AND, self.op(Operation.UDIV, value, self.c(1 << (7 * k))), self.c(0x7F))
             more = self.flag(IntCompare.UGE, value, 1 << (7 * (k + 1))) if k < 8 else self.c(0)
-            byte = self.add(low, self.mul(more, 0x80))
-            words[k // 8] = self.add(words[k // 8], self.mul(byte, 1 << (8 * (k % 8))))
+            words[k // 8] = self.add(words[k // 8], self.mul(self.add(low, self.mul(more, 0x80)), 1 << (8 * (k % 8))))
         self.put(D.T_HEX)
         self.put(groups)
         self.put(words[0])
-        self.d_hex_second(groups, words[1])
-
-    def d_hex_second(self, groups, word):
-        nine, done = self.g.block(*STATE), self.g.block(*STATE)
-        self.cur.cbr(self.cmp(IntCompare.UGT, groups, 8), nine, self.state, done, self.state)
-        self.enter(nine)
-        self.put(word)
-        self.cur.br(done, *self.state)
-        self.enter(done)
-
-    def when(self, condition, body):
-        """Run ``body`` (emitting into the current block) only when ``condition`` holds."""
-        then, join = self.g.block(*STATE), self.g.block(*STATE)
-        self.cur.cbr(condition, then, self.state, join, self.state)
-        self.enter(then)
-        body()
-        if self.cur is not None:
-            self.cur.br(join, *self.state)
-        self.enter(join)
-
-    def fail_unless(self, condition, site: str, entity=ENTITY_STORE, values=()):
-        """Continue when ``condition`` holds, else write the diagnostic of ``site`` (``SITES``) on ``entity`` (a kind
-        from ``ENTITIES`` and its number) with ``values`` and return REJECT.  Every site's text is written once, in
-        the shared ``diagnostic_block``."""
-        kind, number = entity
-        arguments = [self.c(SITE_INDEX[site]), self.c(kind), number if not isinstance(number, int) else self.c(number)]
-        arguments += [value if not isinstance(value, int) else self.c(value) for value in values]
-        arguments += [self.c(0)] * (DIAGNOSTIC_ARGUMENTS - len(arguments))
-        following = self.g.block(*STATE)
-        self.cur.cbr(condition, following, self.state, self.diagnostic_block, (*arguments, *self.state))
-        self.cur, self.state = following, tuple(following.params)
-
-    def write_diagnostics(self):
-        """The shared reject block: ``SITES[site]`` on the entity with values v0..v3."""
-        self.enter(self.diagnostic_block)
-        site, kind, number, *values = self.diagnostic_block.params[:DIAGNOSTIC_ARGUMENTS]
-        self.state = tuple(self.diagnostic_block.params[DIAGNOSTIC_ARGUMENTS:])
-        self.set_out(self.c(DIAG_AT), self.c(DIAG_AT + 1))
-        for index, (code, _rule, _expected, _actual) in enumerate(SITES.values()):
-            self.when(self.cmp(IntCompare.EQ, site, index), lambda code=code: self.d_text(code))
-        for index, (name, template, fill) in enumerate(ENTITIES):
-            def entity(name=name, template=template, fill=fill):
-                if template is None:
-                    self.d_text(name)
-                elif fill == "int":
-                    self.d_format(template, lambda: self.d_int(number))
-                else:
-                    self.d_format(template, lambda: self.d_hex(number, self.c(CID_BYTES)))
-            self.when(self.cmp(IntCompare.EQ, kind, index), entity)
-        for index, (_code, rule, expected, actual) in enumerate(SITES.values()):
-            self.when(self.cmp(IntCompare.EQ, site, index), lambda rule=rule, expected=expected, actual=actual: (
-                self.d_text(rule), self.d_value(expected, values), self.d_value(actual, values)))
-        self.set_out(self.c(0), self.c(REJECT))
-        self.ret()
+        self.when(self.cmp(IntCompare.UGT, groups, 8), lambda: self.put(words[1]))
 
     def d_value(self, form, values):
-        """One expected or actual value of a site: a text, an integer, or a form over the site's values."""
         if isinstance(form, str):
             self.d_text(form)
         elif isinstance(form, int):
@@ -433,32 +363,161 @@ class _ContainerDecoder(_Decoder):
                 self.d_int(values[arguments[0]])
             elif kind == "wide":
                 self.d_wide(values[arguments[0]], values[arguments[1]])
-            elif kind == "hex":  # start: a value index or ("const", n); length: a constant or ("value", index)
+            elif kind == "hex":
                 start, length = arguments
                 self.d_hex(self.c(start[1]) if isinstance(start, tuple) else values[start],
                            values[length[1]] if isinstance(length, tuple) else self.c(length))
-            elif kind == "available":
-                self.d_format("{} available bytes", lambda: self.d_wide(values[0], values[1]))
-            elif kind == "after":
-                self.d_format("> {}", lambda: self.d_hex(values[0], self.c(CID_BYTES)))
+            elif kind == "format":
+                template, *forms = arguments
+                self.put(D.T_FORMAT)
+                self.d_text(template)
+                self.put(len(forms))
+                for item in forms:
+                    self.d_value(item, values)
+            elif kind == "list":
+                self.put(D.T_LIST)
+                self.put(len(arguments))
+                for item in arguments:
+                    self.d_value(item, values)
+            elif kind in ("terminator", "kind"):
+                self.put(D.T_TERMINATOR if kind == "terminator" else D.T_KIND)
+                self.put(arguments[0])
             elif kind == "minimal":
-                self.d_hex_uleb(values[0])
-            elif kind == "kinds":
-                self.put(D.T_LIST)
-                self.put(MAX_KIND)
-                for value in range(1, MAX_KIND + 1):
-                    self.put(D.T_KIND)
-                    self.put(value)
-            elif kind == "references":
-                self.put(D.T_LIST)
-                self.put(values[1])
-                header, (r,) = self.loop_header((self.c(0),))
-                done = self.branch_loop(header, self.cmp(IntCompare.ULT, r, values[1]))
-                self.d_hex(self.add(values[0], self.mul(r, CID_BYTES)), self.c(CID_BYTES))
-                self.back(header, (self.add(r, 1),))
-                self.enter(done)
+                self.d_hex_uleb(values[arguments[0]])
             else:
-                self.index_lists(values[0], arguments[0])
+                self.d_custom(form, values)
+
+    # -- sites -------------------------------------------------------------------------------------
+    def fail_unless(self, condition, site: str, entity=(0, 0), values=(), context=0):
+        """Continue when ``condition`` holds, else write ``site``'s diagnostic on ``entity`` (an ``ENTITIES`` kind and
+        its number) with ``values`` (v0..v3); ``context`` is handed to ``finish_reject``."""
+        kind, number = entity
+        names = list(self.SITES)
+        arguments = [self.c(names.index(site)), self.c(kind), number if not isinstance(number, int) else self.c(number)]
+        arguments += [value if not isinstance(value, int) else self.c(value) for value in values]
+        arguments += [self.c(0)] * (DIAGNOSTIC_ARGUMENTS - 1 - len(arguments))
+        arguments.append(context if not isinstance(context, int) else self.c(context))
+        following = self.g.block(*self.block_state)
+        self.cur.cbr(condition, following, self.state, self.diagnostic_block, (*arguments, *self.state))
+        self.cur, self.state = following, tuple(following.params)
+
+    def write_diagnostics(self):
+        """The shared reject block: ``SITES[site]`` on the entity with values v0..v3."""
+        self.cur = self.diagnostic_block
+        site, kind, number, *values, context = self.diagnostic_block.params[:DIAGNOSTIC_ARGUMENTS]
+        self.state = tuple(self.diagnostic_block.params[DIAGNOSTIC_ARGUMENTS:])
+        self.begin_record()
+        for index, (code, _rule, _expected, _actual) in enumerate(self.SITES.values()):
+            self.when(self.cmp(IntCompare.EQ, site, index), lambda code=code: self.d_text(code))
+        for index, (name, template, fill) in enumerate(self.ENTITIES):
+            def entity(name=name, template=template, fill=fill):
+                if fill is None:
+                    self.d_text(name)
+                elif fill == "hex":
+                    self.d_hex(number, self.c(CID_BYTES))
+                else:
+                    self.d_value(("format", template, ("int", 0) if fill == "int" else ("hex", 0, CID_BYTES)), [number])  # "cid"
+            self.when(self.cmp(IntCompare.EQ, kind, index), entity)
+        for index, (_code, rule, expected, actual) in enumerate(self.SITES.values()):
+            self.when(self.cmp(IntCompare.EQ, site, index), lambda rule=rule, expected=expected, actual=actual: (
+                self.d_text(rule), self.d_value(expected, values), self.d_value(actual, values)))
+        self.finish_reject(context)
+
+    # -- the bootstrap ``Cursor`` with its diagnostics -------------------------------------------
+    def uleb_d(self, position, limit, entity, context=0):
+        """``Cursor.uleb`` with its diagnostics: ``(low 64 bits, high bits, big, next)``; ``big`` marks a value at or
+        above 2**35.  A ULEB carries at most 70 bits, so the value is ``high * 2**64 + low``."""
+        header, (pos, value, high, group, big) = self.loop_header((position, self.c(0), self.c(0), self.c(0), self.c(0)))
+        self.fail_unless(self.cmp(IntCompare.ULT, group, 10), "ULEB_OVERFLOW", entity, context=context)
+        self.fail_unless(self.cmp(IntCompare.ULT, pos, limit), "ULEB_UNTERMINATED", entity, context=context)
+        byte = self.load8(pos)
+        low = self.op(Operation.BIT_AND, byte, self.c(0x7F))
+        scale = self.c(0)
+        for index in range(10):
+            scale = self.add(scale, self.mul(self.flag(IntCompare.EQ, group, index), (128 ** index) % (1 << 64)))
+        value = self.add(value, self.mul(low, scale))  # wraps: the low 64 bits
+        high = self.add(high, self.mul(self.flag(IntCompare.EQ, group, 9), self.op(Operation.UDIV, low, self.c(2))))
+        upper = self.mul(self.flag(IntCompare.NE, low, 0), self.flag(IntCompare.UGE, group, 5))
+        big = self.op(Operation.BIT_OR, big, upper)
+        following = self.add(pos, 1)
+        more = self.cmp(IntCompare.NE, self.op(Operation.BIT_AND, byte, self.c(0x80)), 0)
+        again, done = self.g.block(*self.block_state), self.g.block(*self.block_state)
+        self.cur.cbr(more, again, self.state, done, self.state)
+        self.cur, self.state = again, tuple(again.params)
+        self.back(header, (following, value, high, self.add(group, 1), big))
+        self.cur, self.state = done, tuple(done.params)
+        self.fail_unless(self.either(self.cmp(IntCompare.NE, byte, 0), self.cmp(IntCompare.EQ, group, 0)), "ULEB_NON_MINIMAL", entity,
+                         (value, position, self.op(Operation.SUB_WRAP, following, position)), context)
+        return value, high, big, following
+
+    def take(self, position, count, limit, entity, site="TRUNCATED", context=0):
+        """``Cursor.take(count, rule)`` on a cursor ending at ``limit``: the end; ``count`` is a value or a ``uleb_d``
+        ``(low, high, big)``; ``site`` names the rule."""
+        low, high, big = count if isinstance(count, tuple) else (count, self.c(0), self.c(0))
+        end = self.add(position, low)
+        self.fail_unless(self.both(self.cmp(IntCompare.EQ, big, 0), self.cmp(IntCompare.ULE, end, limit)), site, entity,
+                         (low, high, self.op(Operation.SUB_WRAP, limit, position)), context)
+        return end
+
+
+class _ContainerDecoder(_SiteDiagnostics, _Decoder):
+    """S8a (ADR-183): the container decoder with its rejections.  It adds a digest mode parameter and one shared
+    diagnostic block; every check names its failure (a ``SITES`` entry through ``fail_unless``, or the defer block)."""
+
+    SITES = SITES
+    ENTITIES = ENTITIES
+    block_state = STATE
+
+    def __init__(self) -> None:
+        self.g = GraphBuilder()
+        entry = self.g.block(DATA_POINTER, DATA_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM, B64, B64)
+        self.data, data_view, data_mem, self.out, out_view, out_mem, self.length, self.mode = entry.params
+        self.cur = entry
+        self.state = (data_view, data_mem, out_view, out_mem)
+        self.defer_block = self.g.block(*STATE)
+        self.diagnostic_block = self.g.block(*(B64,) * DIAGNOSTIC_ARGUMENTS, *STATE)
+
+    def check(self, condition, failure):
+        """Continue when ``condition`` holds, else go to ``failure`` (there is no anonymous reject here)."""
+        super().check(condition, failure)
+
+    def set_out64(self, index, value):
+        self.set_out(index, value)
+        self.set_out(self.add(index, 1), self.op(Operation.UDIV, value, self.c(1 << 32)))
+
+    def out64(self, index):
+        return self.add(self.out_word(index), self.mul(self.out_word(self.add(index, 1)), 1 << 32))
+
+    def ret(self):
+        data_view, data_mem, out_view, out_mem = self.state
+        self.cur.ret(self.data, data_view, data_mem, self.out, out_view, out_mem)
+        self.cur = None
+
+    # The record in (low, high) 32-bit pairs after the cursor at DIAG_AT.
+    def begin_record(self):
+        self.set_out(self.c(DIAG_AT), self.c(DIAG_AT + 1))
+
+    def put(self, value):
+        cursor = self.out_word(self.c(DIAG_AT))
+        self.set_out64(cursor, value if not isinstance(value, int) else self.c(value))
+        self.set_out(self.c(DIAG_AT), self.add(cursor, 2))
+
+    def finish_reject(self, _context):
+        self.set_out(self.c(0), self.c(REJECT))
+        self.ret()
+
+    def d_custom(self, form, values):
+        kind, *arguments = form
+        if kind == "references":
+            self.put(D.T_LIST)
+            self.put(values[1])
+            header, (r,) = self.loop_header((self.c(0),))
+            done = self.branch_loop(header, self.cmp(IntCompare.ULT, r, values[1]))
+            self.d_hex(self.add(values[0], self.mul(r, CID_BYTES)), self.c(CID_BYTES))
+            self.back(header, (self.add(r, 1),))
+            self.enter(done)
+        else:
+            self.index_lists(values[0], arguments[0])
 
     def index_lists(self, objects, table: str):
         """``XAX.CANON.INDEX`` values: the records (or the parsed index) as a list of (CID hex, offset, length);
@@ -483,41 +542,6 @@ class _ContainerDecoder(_Decoder):
             self.d_wide(self.out64(self.add(entry, 6)), self.out64(self.add(entry, 8)))
         self.back(header, (self.add(k, 1),))
         self.enter(done)
-
-    def uleb_d(self, position, limit, entity):
-        """``Cursor.uleb`` with its diagnostics: ``(low 64 bits, high bits, big, next)``; ``big`` marks a value at or
-        above 2**35.  A ULEB carries at most 70 bits, so the value is ``high * 2**64 + low``."""
-        header, (pos, value, high, group, big) = self.loop_header((position, self.c(0), self.c(0), self.c(0), self.c(0)))
-        self.fail_unless(self.cmp(IntCompare.ULT, group, 10), "ULEB_OVERFLOW", entity)
-        self.fail_unless(self.cmp(IntCompare.ULT, pos, limit), "ULEB_UNTERMINATED", entity)
-        byte = self.load8(pos)
-        low = self.op(Operation.BIT_AND, byte, self.c(0x7F))
-        scale = self.c(0)
-        for index in range(10):
-            scale = self.add(scale, self.mul(self.flag(IntCompare.EQ, group, index), (128 ** index) % (1 << 64)))
-        value = self.add(value, self.mul(low, scale))  # wraps: the low 64 bits
-        high = self.add(high, self.mul(self.flag(IntCompare.EQ, group, 9), self.op(Operation.UDIV, low, self.c(2))))
-        upper = self.mul(self.flag(IntCompare.NE, low, 0), self.flag(IntCompare.UGE, group, 5))
-        big = self.op(Operation.BIT_OR, big, upper)
-        following = self.add(pos, 1)
-        more = self.cmp(IntCompare.NE, self.op(Operation.BIT_AND, byte, self.c(0x80)), 0)
-        again, done = self.g.block(*STATE), self.g.block(*STATE)
-        self.cur.cbr(more, again, self.state, done, self.state)
-        self.enter(again)
-        self.back(header, (following, value, high, self.add(group, 1), big))
-        self.enter(done)
-        self.fail_unless(self.either(self.cmp(IntCompare.NE, byte, 0), self.cmp(IntCompare.EQ, group, 0)), "ULEB_NON_MINIMAL", entity,
-                         (value, position, self.op(Operation.SUB_WRAP, following, position)))
-        return value, high, big, following
-
-    def take(self, position, count, limit, entity, site="TRUNCATED"):
-        """``Cursor.take(count, rule)`` on a cursor ending at ``limit``: the end; ``count`` is a value or a ``uleb_d``
-        ``(low, high, big)``; ``site`` names the rule."""
-        low, high, big = count if isinstance(count, tuple) else (count, self.c(0), self.c(0))
-        end = self.add(position, low)
-        self.fail_unless(self.both(self.cmp(IntCompare.EQ, big, 0), self.cmp(IntCompare.ULE, end, limit)), site, entity,
-                         (low, high, self.op(Operation.SUB_WRAP, limit, position)))
-        return end
 
 
 def _decode_object(d: _ContainerDecoder):

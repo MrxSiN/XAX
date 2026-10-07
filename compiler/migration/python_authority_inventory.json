@@ -412,14 +412,14 @@
       "recommended_step": "S9"
     },
     "store-decoding": {
-      "python_authority": "xax_compiler.StoreReader: OBJECT_MISSING lookups, deferred containers (minor >= 2**32, > 116,507 records), and graph bodies (S8b.2); container rejections (S8a) and object envelopes with their CID check (S8b.1) are XAX",
-      "xax_hosted": "xax_store_decoder.xax (container and object-envelope acceptance and rejections, ADR-183, ADR-184), xax_graph_decoder.xax (accept path)",
+      "python_authority": "xax_compiler.StoreReader and _parse_graph: OBJECT_MISSING lookups, deferred inputs (minor >= 2**32, > 116,507 records, bodies over 1 MiB, accepted values >= 2**35); container (S8a), object-envelope (S8b.1), and graph-syntax (S8b.2) rejections are XAX",
+      "xax_hosted": "xax_store_decoder.xax and xax_graph_decoder.xax: acceptance and rejections with exact diagnostics (ADR-183 to ADR-185)",
       "target_dependency": "none",
-      "prerequisite": "S3",
-      "differential_oracle": "malformed-store corpus diagnostics",
+      "prerequisite": "S3, S3c",
+      "differential_oracle": "constructed per-rule inputs and mutation corpora against the bootstrap parsers",
       "fixed_point_relevance": "every compiler input",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S8b.2"
+      "recommended_step": "S8c"
     },
     "verifier-acceptance": {
       "python_authority": "xax_compiler.verify_store (off Linux x86-64 and on declines)",
@@ -432,7 +432,7 @@
       "recommended_step": "S8"
     },
     "verifier-rejection-diagnostics": {
-      "python_authority": "xax_compiler fail() sites in verification (about 500 sites)",
+      "python_authority": "xax_compiler fail() sites in verification: graph resolution and type verification while walking streams, typing, facts, and object verification (S8c); store container, object envelopes, and graph syntax are XAX since S8a/S8b",
       "xax_hosted": null,
       "target_dependency": "none",
       "prerequisite": "S7b.1 record mechanism",
