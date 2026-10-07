@@ -652,20 +652,22 @@ class StoreReader:
         self.nonsemantic_records = tuple(metadata)
 
     def _decode_native(self, data: bytes, verify_digest: bool) -> bool:
-        """Self-hosting S3 (ADR-118): the XAX container decoder decides acceptance and builds the index.
+        """Self-hosting S3 (ADR-118) and S8a (ADR-183): the XAX container decoder decides acceptance, every
+        container rejection with its exact diagnostic, and the digest comparison (the digest itself is the XAX hash,
+        S2), and builds the index.
 
-        Any reject, defer, or digest mismatch returns False, and the bootstrap
-        parser below then raises the exact diagnostic.
+        A defer (a value or table beyond the program's 32-bit words) returns False, and the bootstrap parser below
+        decides.
         """
         decoder = _native_store_decoder()
         if decoder is None or not isinstance(data, (bytes, bytearray)) or len(data) > decoder.capacity:
             return False
-        status, header, records = decoder.decode(data)
+        status, header, records, diagnostic = decoder.decode(data, verify_digest, lambda prefix: blake3(prefix).digest())
+        if diagnostic is not None:
+            raise XaxError(diagnostic)
         if status != 0:
             return False
-        minor, _objects, metadata_count, metadata_start, _metadata_end, digest_end, root_at = header
-        if verify_digest and blake3(data[:digest_end]).digest() != data[digest_end:digest_end + CID_SIZE]:
-            return False
+        minor, _objects, metadata_count, metadata_start, _metadata_end, _digest_end, root_at = header
         self.minor = minor
         self.root_cid = bytes(data[root_at:root_at + CID_SIZE])
         self._index = {}

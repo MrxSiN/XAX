@@ -464,3 +464,9 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - Both views families opt into diagnostics. `_legal(..., deferred=True)` exists for checks the bootstrap makes after layout. It records the first failure in `G_PENDING`, and `_program` rejects only after patching succeeds. Keep that order if a family gains layout-time rejections.
 - Next is S8: verifier totality. Start with the store container (`xax_selfhost_store.py`): one reject site per bootstrap check, two record value types (FORMAT for templated text such as `"{} available bytes"` and `"record:{}"`, HEX for byte strings), and a two-pass digest protocol (the decoder finds `digest_end`, the XAX hash computes the digest, a second pass decides the comparison and the index and root checks that follow it in the bootstrap's order).
 
+## S8a store-container rejections — 2026-10-07 (ADR-183)
+
+- Add a container rule by adding a `SITES` entry (code, rule, value forms over v0–v3) and a `fail_unless(condition, site, entity, values)` at the bootstrap's point in `build_decoder_program`. Keep the bootstrap's order: trailer and end, then the digest, then the index, then the root.
+- `NativeDecoder.decode(data, verify_digest, digest)` runs the two digest passes. `MODE_*`, `NEED_DIGEST`, and the out layout (`INDEX_AT`, `DIAG_AT`) are at the top of the module. The record is in (low, high) 32-bit pairs, read with `xax_selfhost_diagnostics.decode_record`.
+- Next (S8b): object envelopes (`decode_object`, reached through `StoreReader.get`; the S3b parse marks bad envelopes unparsed today) and graph bodies (the S3c decoder rejects without a diagnostic). Use the same site-table pattern.
+

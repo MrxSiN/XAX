@@ -412,14 +412,14 @@
       "recommended_step": "S9"
     },
     "store-decoding": {
-      "python_authority": "xax_compiler.StoreReader (rejections and diagnostics)",
-      "xax_hosted": "xax_store_decoder.xax, xax_graph_decoder.xax (accept path)",
+      "python_authority": "xax_compiler.StoreReader: object-envelope rejections (decode_object, S8b) and deferred containers (minor >= 2**32, > 116,507 records); container rejections are XAX since S8a",
+      "xax_hosted": "xax_store_decoder.xax (acceptance and every container rejection, ADR-183), xax_graph_decoder.xax (accept path)",
       "target_dependency": "none",
       "prerequisite": "S3",
       "differential_oracle": "malformed-store corpus diagnostics",
       "fixed_point_relevance": "every compiler input",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S8"
+      "recommended_step": "S8b"
     },
     "verifier-acceptance": {
       "python_authority": "xax_compiler.verify_store (off Linux x86-64 and on declines)",
