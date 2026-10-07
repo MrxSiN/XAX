@@ -1,0 +1,35 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-5.6-luna",
+      "low",
+      "codex-cli 0.162.0-alpha.2"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 3,
+  "attempts": 16,
+  "successful_cells": 15,
+  "required_cells": 135,
+  "complete": false,
+  "accounting_complete": true,
+  "successful_task_medians_including_retries": {
+    "JAVA": 52950,
+    "KOTLIN": 50277,
+    "XAX": 25034
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 0.49792151480796387,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-local-results.csv",
+  "source_sha256": "c3f813ed2f0d3818541b05c4a1b4b0dbec4731cc0f9f9921905bd18b9bae3180",
+  "limits": [
+    "No automatic matrix promotion: semantic equivalence and corpus representativeness require review.",
+    "Creation retains the existing XAX scaffold; Java/Kotlin begin with an empty file.",
+    "Historical ADR-176 rows are not combined with this client/protocol run."
+  ]
+}

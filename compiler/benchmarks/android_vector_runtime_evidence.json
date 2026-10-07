@@ -1,0 +1,249 @@
+{
+  "checks": [
+    {
+      "detail": "modules ls lists xax.generated",
+      "id": "discovery",
+      "oracle": "vector-cli modules ls lists the module package",
+      "profile": "managed",
+      "status": "PASS",
+      "title": "Vector discovers the generated module"
+    },
+    {
+      "detail": "Vector: Loaded module xax.generated successfully",
+      "id": "module_prop",
+      "oracle": "Vector logs 'Loaded module <pkg> successfully' in the target",
+      "profile": "managed",
+      "status": "PASS",
+      "title": "META-INF/xposed/module.prop is accepted"
+    },
+    {
+      "detail": "heap: 1 XaxModule class(es) loaded in the target",
+      "id": "java_init",
+      "oracle": "heap dump: xax.generated.XaxModule is loaded in the target",
+      "profile": "managed",
+      "status": "PASS",
+      "title": "java_init.list is loaded"
+    },
+    {
+      "detail": "native_init log=True, mapped=True",
+      "id": "native_init",
+      "oracle": "Vector logs 'Initialized native module' for libxaxapp.so; maps show it",
+      "profile": "native",
+      "status": "PASS",
+      "title": "native_init.list is loaded"
+    },
+    {
+      "detail": "scope ls: {\n  \"data\": [\n    {\n      \"APP_PACKAGE\": \"com.example.target\",\n      \"USER_ID\": 0\n    }\n  ],\n  \"isFdAttached\": false,\n  \"success\": true\n}",
+      "id": "scope",
+      "oracle": "vector-cli scope ls lists the target and the module loads there",
+      "profile": "managed",
+      "status": "PASS",
+      "title": "scope configuration works"
+    },
+    {
+      "detail": "heap: 1 XaxModule instance(s)",
+      "id": "instantiated",
+      "oracle": "heap dump: one live XaxModule instance in the target",
+      "profile": "managed",
+      "status": "PASS",
+      "title": "the generated XposedModule is instantiated"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "package_callbacks",
+      "oracle": "JDWP from am start -D: XaxModule.onPackageReady hit once for the target; onPackageLoaded is the API default",
+      "profile": "managed",
+      "status": "UNEXECUTED",
+      "title": "onPackageLoaded/onPackageReady are delivered"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "class_loader",
+      "oracle": "the hook installed through PackageReadyParam.getClassLoader() intercepts",
+      "profile": "hook",
+      "status": "UNEXECUTED",
+      "title": "the target ClassLoader is usable"
+    },
+    {
+      "detail": "heap: 1 XaxHooker class(es) loaded by Vector in the target",
+      "id": "hook_installed",
+      "oracle": "heap dump: XaxHooker loaded in the target after onPackageReady",
+      "profile": "hook",
+      "status": "PASS",
+      "title": "a generated hook is installed by Vector"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "intercepted",
+      "oracle": "JDWP breakpoint in XaxHooker.intercept hits on relaunch",
+      "profile": "hook",
+      "status": "UNEXECUTED",
+      "title": "the target method is intercepted"
+    },
+    {
+      "detail": "text=True, resumed=True, alive=True",
+      "id": "pass_through",
+      "oracle": "Activity resumes (super.onResume ran), text OriginalArg, process alive",
+      "profile": "hook",
+      "status": "PASS",
+      "title": "pass-through reaches the original method"
+    },
+    {
+      "detail": "text 'Hooked' shown=True, alive=True",
+      "id": "result_replacement",
+      "oracle": "visible text Hooked instead of Original",
+      "profile": "result",
+      "status": "PASS",
+      "title": "result replacement works"
+    },
+    {
+      "detail": "text 'HookedArg' shown=True, alive=True",
+      "id": "argument_replacement",
+      "oracle": "visible text HookedArg instead of OriginalArg",
+      "profile": "argument",
+      "status": "PASS",
+      "title": "argument replacement works"
+    },
+    {
+      "detail": "text 'HookedResult' shown=True, alive=True",
+      "id": "combined_replacement",
+      "oracle": "visible text HookedResult",
+      "profile": "combined",
+      "status": "PASS",
+      "title": "combined argument + result replacement works"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "deopt_order",
+      "oracle": "JDWP from am start -D: deoptimize() then hook() from XaxModule.onPackageReady",
+      "profile": "deopt",
+      "status": "UNEXECUTED",
+      "title": "deoptimization is invoked before hooking"
+    },
+    {
+      "detail": "heap: retained handle object(s) ['Lk2;']",
+      "id": "retained_handle",
+      "oracle": "heap dump: XaxModule.xaxHookHandle holds a live framework HookHandle",
+      "profile": "unhook",
+      "status": "PASS",
+      "title": "the retained HookHandle works"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "manual_unhook",
+      "oracle": "JDWP: after xaxUnhook() the intercept breakpoint no longer hits",
+      "profile": "unhook",
+      "status": "UNEXECUTED",
+      "title": "manual unhook stops interception"
+    },
+    {
+      "detail": "log=True, generations=2, old handle ids=[['xax.generated', 'xax.primary']], new generation={'loader_is_target': True, 'handle_null': False, 'handle_ids': ['xax.generated', 'xax.primary'], 'hooker': ['new']}, old generation hooker=[['old']]",
+      "id": "stable_hook_id",
+      "oracle": "heap dumps: the handle's framework record carries ID xax.primary before and after reload",
+      "profile": "hot_reload",
+      "status": "PASS",
+      "title": "stable hook IDs round-trip"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "module_services",
+      "oracle": "JDWP: xaxFrameworkName() is Vector; xaxFrameworkVersion() is non-empty",
+      "profile": "services",
+      "status": "UNEXECUTED",
+      "title": "framework/module services work"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "remote_preferences",
+      "oracle": "JDWP: preferences are non-null under PROP_CAP_REMOTE; absent keys return defaults",
+      "profile": "remote_preferences",
+      "status": "UNEXECUTED",
+      "title": "remote preferences capability and reads work"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "remote_files",
+      "oracle": "JDWP: a seeded file is listed and opens with its size",
+      "profile": "remote_files",
+      "status": "UNEXECUTED",
+      "title": "remote file capability/list/open works"
+    },
+    {
+      "detail": "log=True, generations=2, old handle ids=[['xax.generated', 'xax.primary']], new generation={'loader_is_target': True, 'handle_null': False, 'handle_ids': ['xax.generated', 'xax.primary'], 'hooker': ['new']}, old generation hooker=[['old']]",
+      "id": "hot_reload_callbacks",
+      "oracle": "versionCode bump: Vector logs 'Hot reloaded'; heap dump: a second XaxModule generation holds the target ClassLoader",
+      "profile": "hot_reload",
+      "status": "PASS",
+      "title": "API-102 hot reload callbacks are delivered"
+    },
+    {
+      "detail": "log=True, generations=2, old handle ids=[['xax.generated', 'xax.primary']], new generation={'loader_is_target': True, 'handle_null': False, 'handle_ids': ['xax.generated', 'xax.primary'], 'hooker': ['new']}, old generation hooker=[['old']]",
+      "id": "saved_state",
+      "oracle": "heap dump: the new XaxModule.xaxReloadClassLoader is the target Activity's ClassLoader",
+      "profile": "hot_reload",
+      "status": "PASS",
+      "title": "saved state is transferred"
+    },
+    {
+      "detail": "log=True, generations=2, old handle ids=[['xax.generated', 'xax.primary']], new generation={'loader_is_target': True, 'handle_null': True, 'handle_ids': [], 'hooker': []}, old generation hooker=[['old']]",
+      "id": "stable_id_validation",
+      "oracle": "heap dump: the new generation keeps no handle; the old handle's record still holds the old XaxHooker",
+      "profile": "hot_reload_id_mismatch",
+      "status": "PASS",
+      "title": "stable-ID validation skips a mismatched handle"
+    },
+    {
+      "detail": "log=True, generations=2, old handle ids=[['xax.generated', 'xax.primary']], new generation={'loader_is_target': True, 'handle_null': False, 'handle_ids': ['xax.generated', 'xax.primary'], 'hooker': ['new']}, old generation hooker=[['old']]",
+      "id": "replace_hook",
+      "oracle": "heap dump: the framework record behind the new generation's handle holds the new-generation XaxHooker",
+      "profile": "hot_reload",
+      "status": "PASS",
+      "title": "replaceHook() swaps the hook atomically"
+    },
+    {
+      "detail": "profiles run=14, died=[]",
+      "id": "process_survives",
+      "oracle": "pidof is unchanged through each profile",
+      "profile": "*",
+      "status": "PASS",
+      "title": "the target survives every successful profile"
+    },
+    {
+      "detail": "heap oracle: needs a breakpoint or a call, which only JDWP provides",
+      "id": "protective",
+      "oracle": "JDWP throws inside intercept before proceed: original OriginalArg shown, process alive",
+      "profile": "protective",
+      "status": "UNEXECUTED",
+      "title": "PROTECTIVE exception handling"
+    }
+  ],
+  "debuggable_route": "android:debuggable target",
+  "environment": {
+    "abi_list": "arm64-v8a",
+    "android_release": "17",
+    "android_sdk": "37",
+    "debuggable": false,
+    "emulator": false,
+    "fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "kernelsu": "ksud 3.1.2",
+    "magisk": null,
+    "model": "Pixel 8 Pro",
+    "root_uid0": true,
+    "vector_cli_status": "{\n  \"data\": {\n    \"Framework Version\": \"2.2\",\n    \"Version Code\": 3080,\n    \"API Version\": 102,\n    \"Enabled Modules\": 25,\n    \"Status Notification\": false\n  },\n  \"isFdAttached\": false,\n  \"success\": true\n}",
+    "vector_module_prop": "id=zygisk_vector\nname=Vector\nversion=v2.2 (3080-88f8e1fa-JingMatrix-Vector)\nversionCode=3080\nauthor=JingMatrix\ndescription=A modern, Xposed-compatible framework for Android application hooking. (Android 8.1 ~ 17)\nupdateJson=https://raw.githubusercontent.com/JingMatrix/Vector/master/zygisk/update.json",
+    "vector_zip_sha256": null,
+    "zygisk": "zygisksu: version=1.5.0 (843-5217106-release)"
+  },
+  "label": "EXECUTED",
+  "missing_requirement": null,
+  "oracle": "heap",
+  "pin": {
+    "libxposed_api_commit": "39cac0845771547c9c67a3e3ce255af110a54a0e",
+    "libxposed_service_commit": "3318940876192e29cf6ab07637e899e22a87ebf0",
+    "vector_commit": "88f8e1faa8b4e7ce20aefabe9c295cd746ea038e",
+    "vector_release": "v2.2"
+  },
+  "profiles_evidence": "benchmarks/android_vector_profiles_evidence.json",
+  "runtime_contract": "XAX -> libxposed API 102 module -> Vector -> ART",
+  "schema": "xax-android-vector-runtime-evidence-v1"
+}

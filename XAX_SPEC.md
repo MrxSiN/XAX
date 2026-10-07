@@ -646,6 +646,25 @@ Readers MUST fail deterministically on invalid header/trailer magic, unsupported
 
 ## 10. AI workspace, queries, transactions, and diagnostics
 
+The normal AI-facing language/protocol and query/mutation workflow MUST be
+designed to minimize total model tokens per successful semantic change. The
+R5 design target is no more than 0.50× the lowest valid textual median among
+at least two relevant textual-language workflows under equivalent model,
+task, context, tool, and success conditions; strictly lower usage is preferred.
+The owner-approved acceptance threshold is 0.55× (ADR-195): a result in
+(0.50, 0.55] satisfies R5 as accepted within tolerance, never as the target.
+All retries, repairs, cached input, diagnostics, and retransmitted context
+count. Benchmark-only encodings or hidden preloaded task knowledge do not
+satisfy this requirement. Measurement verifies this property; byte count alone
+does not establish it (`XAX_BENCHMARKS.md` §6 and §15).
+
+Clients MAY apply a model's final construction or mutation request directly
+through normal compiler tooling and return diagnostics only on rejection.
+Successful verification does not require another model acknowledgement.
+Construction-tool argument records and local mutation transports are erased
+before canonical identity; neither constitutes alternative program source.
+The same verification, freshness and atomicity requirements apply (ADR-187).
+
 ### 10.1 Workspace model
 
 A workspace binds a canonical base root, optional target/platform/configuration identities, verifier/compiler versions, local handle tables, derived facts, and transaction state.
@@ -1026,7 +1045,8 @@ The bootstrap compiler moves into XAX one component at a time. Steps `S1`, `S2`,
 1. its authoritative logic is a committed canonical XAX store that regenerates byte-identically and verifies on load;
 2. the production compiler path executes that logic as code lowered by an XAX backend, not by the reference executor;
 3. any remaining bootstrap implementation is only a fallback and reference, and is differentially checked against the XAX component on committed vectors; and
-4. its outputs on the production path are byte-identical to the bootstrap reference's.
+4. its outputs on the production path are byte-identical to the bootstrap reference's; and
+5. its rejections are decided on the production path by the XAX component, which produces the exact stable diagnostic (code, entity, rule, expected, actual) that the reference produces (ADR-180). A component that accepts in XAX but declines invalid input to the bootstrap, so that the bootstrap decides the rejection, is migrated **for acceptance only**.
 
 A migration step is not a B-milestone. B1–B6 still require the whole compiler (§16.2).
 
@@ -1094,7 +1114,7 @@ Levels are cumulative; a level is held only when every lower level is held.
 | R2 | Platform interoperability | Required ABI, system APIs, libraries, callbacks, dynamic loading, resources, and platform lifecycle EXECUTED. |
 | R3 | Practical application | A nontrivial real application/workload EXECUTED successfully. |
 | R4 | Performance competitiveness | Runtime, memory, and binary size MEASURED against the platform's established toolchains under `XAX_BENCHMARKS.md`. |
-| R5 | AI efficiency | Total tokens per successful change and repair rate MEASURED against textual-source workflows on real model trials. |
+| R5 | AI efficiency | Repeated real-model trials measure median total successful-task tokens at no more than 0.50× (target) or 0.55× (owner-approved acceptance, ADR-195) the lowest valid baseline among at least two relevant textual-language workflows, including failed attempts and repairs under equivalent conditions. |
 | R6 | Autonomous maintenance | Query, modify, verify, benchmark, rebuild, and commit of the application EXECUTED through semantic transactions without whole-source regeneration. |
 
 A negative R4/R5 measurement is valid evidence and MUST be reported; the level is held only when the measured result is competitive. For CPU/native runtime, competitive means `XAX_BENCHMARKS.md` §15.0: against an optimized C/C++ baseline and at least one implementation outside C/C++, XAX's median is at most 1.05× the fastest valid implementation's (ADR-147). On the JVM the baselines are the platform's own compilers, `javac` and `kotlinc`, under the same 1.05× rule (`XAX_BENCHMARKS.md` §15.0a, ADR-157).
@@ -1352,7 +1372,14 @@ Modern libxposed support is likewise an ordinary Android platform package.  The
 bounded API-102 managed profile uses a content-addressed module-entry carrier, hook
 adapter carrier, and hook-installation carrier plus current `META-INF/xposed/*`
 metadata.  The generated Java entry subclasses `io.github.libxposed.api.XposedModule`;
-framework attachment is external platform behavior.  A hook installation MUST name
+framework attachment is external platform behavior.  The runtime contract is
+XAX -> libxposed API-102 module -> framework -> ART: generated modules MUST reference
+only the public `io.github.libxposed.api` surface (never a framework implementation
+package, bundled API classes, or the legacy `de.robv.android.xposed` API), and Vector
+(pinned in `compiler/integration/android/vector/vector_runtime_pin.json`) is the
+tested reference framework (ADR-178).  A module MUST declare at least one Java entry;
+native entries are loaded by that entry and initialized by the framework.  A module
+that names any API-102-only member MUST declare `minApiVersion=102`.  A hook installation MUST name
 its target class/method, generated Hooker class, parameter types, exception policy,
 failure policy, and lifetime policy explicitly.  The current bounded profiles accept
 either a zero-argument method or exactly one `java.lang.String` parameter,
@@ -1439,8 +1466,9 @@ contain no target lookup, reflection, Hooker allocation, Java/Kotlin source, or
 generic runtime.  Installation-time reflection and allocation MUST remain visible in
 the generated artifact/evidence and MUST NOT be described as hot-path work.  Managed
 hook installation/interception is a runtime claim and requires execution under a
-compatible current libxposed implementation; structural DEX/APK evidence alone does
-not establish that claim.
+compatible current libxposed implementation (Vector, through
+`compiler/integration/android/vector/vector_harness.py`); structural DEX/APK
+evidence and the ART stand-in framework alone do not establish that claim.
 
 Hook mutation policy is a separate content-addressed semantic carrier and MUST NOT
 silently change Hooker identity.  The bounded result policy currently accepts only a
@@ -1500,3 +1528,38 @@ than be approximated. Pending-exception state is verifier-visible in the bounded
 profile above, but the implementation MUST NOT describe that as complete Java
 exception handling until conditional `ExceptionCheck`/`ExceptionOccurred` control
 refinement and corresponding runtime evidence exist.
+
+### Declarative Surface Activity profile (2026-10-07)
+
+`android-surface-activity-v1` is an identity-only ordinary platform carrier with
+two length-prefixed canonical UTF-8 fields: an Activity class descriptor and an
+accessible content description. Its bounded lowering calls Activity.onCreate,
+constructs one platform SurfaceView, sets the description and attaches the view.
+It introduces no JNI/native implementation, Surface consumer or runtime dependency.
+The ordinary APK build service MUST reject nonempty build-selector functions,
+additional module policy/logic and mismatched manifest Activity identity for this
+profile; it MUST NOT silently discard them. The empty selector is build metadata
+and emits no runtime method. The current DEX 039 profile requires minSdk >= 28.
+Surface lifetime remains owned by Android while there is no application consumer.
+MediaCodec or other consumers require separately verified SurfaceHolder callback
+and destruction synchronization contracts before use. This profile demonstrates
+an Activity/display surface only, not video decoding or protocol interoperability.
+See `compiler/integration/android/SURFACE_ACTIVITY.md` and
+`compiler/tests/test_xax_android_surface.py`.
+
+
+## Platform carrier replacement v1 (2026-10-07)
+
+Workspace exposes bind_object(cid, byte_budget=...) and ReplaceTarget(handle,
+expected_old_cid, new_identity_only_target). Transactions require RootRef and
+current generation handles; old CIDs are exact preconditions. Canonical
+constructors rebuild supported acyclic MODULE/PACKAGE/REQUEST/SNAPSHOT ancestors.
+The new frontier passes ordinary verification, and affected Android APK requests
+lower privately before final generation/root/read comparison. Verify/rollback
+publish nothing. Machine targets, duplicate handles, stale rebase and rebuilding
+signature/provenance objects reject. Renew signatures/evidence separately.
+Capabilities, policy, resolver identity and external digests are preserved.
+This tooling contract adds no kernel opcode or textual program authority.
+Platform-specific checking outside an affected Android request is not promised.
+See compiler/integration/android/CARRIER_TRANSACTIONS.md and
+compiler/tests/test_xax_workspace_targets.py.

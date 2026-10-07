@@ -27,6 +27,9 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from benchmarks import android_art_device as device
+from benchmarks.bench_android_ndk_twin import _sdk
+
 HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "android_art_execute_evidence.json"
 HARNESS = HERE.parent / "integration/android/art_libxposed_harness/java"
@@ -61,6 +64,8 @@ EXPECTED = {
         "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.setId, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
     "android_libxposed_managed_fixture.apk":
         "hooked=none services=[] calls=[]",
+    "android_libxposed_native_fixture.apk":
+        "hooked=none services=[] calls=[]",
     "android_libxposed_remote_files_fixture.apk":
         "hooked=none services=[nocap.files=null,nocap.open=null,cap.files=[config.json],cap.open=threw:FileNotFoundException] calls=[framework.getFrameworkProperties, framework.getFrameworkProperties, framework.getFrameworkProperties, framework.listRemoteFiles, framework.getFrameworkProperties, framework.openRemoteFile]",
     "android_libxposed_remote_preferences_fixture.apk":
@@ -87,16 +92,34 @@ def available() -> bool:
     return QEMU is not None and (ROOT / "apex/com.android.art/bin/dalvikvm64").exists() and (ROOT / "linkerconfig/ld.config.txt").exists()
 
 
-def build_harness(work: Path) -> Path:
+def build_harness(work: Path, android_jar: Path = ANDROID_JAR, api_classes: Path = API_CLASSES, d8: Path = BUILD_TOOLS / "d8") -> Path:
     """Compile the harness against android.jar and the libxposed API, then dex it."""
     quiet = {**os.environ, "JAVA_TOOL_OPTIONS": ""}
     classes, dex = work / "classes", work / "dex"
     dex.mkdir(parents=True)
     sources = sorted(str(path) for path in HARNESS.rglob("*.java"))
-    subprocess.run(["javac", "--release", "11", "-cp", f"{ANDROID_JAR}:{API_CLASSES}", "-d", str(classes), *sources], check=True, capture_output=True, env=quiet)
-    subprocess.run([str(BUILD_TOOLS / "d8"), "--release", "--min-api", "28", "--lib", str(ANDROID_JAR), "--classpath", str(API_CLASSES),
+    subprocess.run(["javac", "--release", "11", "-cp", f"{android_jar}{os.pathsep}{api_classes}", "-d", str(classes), *sources], check=True, capture_output=True, env=quiet)
+    subprocess.run([str(d8), "--release", "--min-api", "28", "--lib", str(android_jar), "--classpath", str(api_classes),
                     "--output", str(dex), *sorted(str(path) for path in classes.rglob("*.class"))], check=True, capture_output=True, env=quiet)
     return dex / "classes.dex"
+
+
+def run_module_on_device(apk: Path, harness: Path, api_dex: Path) -> subprocess.CompletedProcess:
+    """The same run on the device's own dalvikvm64 and boot image."""
+    work = WORK.as_posix()
+    device.root_sh(f"rm -rf {work}; mkdir -p {work}/lib; chmod -R 777 {work}")
+    for local, name in ((harness, "harness.dex"), (api_dex, "api.jar"), (apk, "module.apk")):
+        device.push(local, f"{work}/{name}")
+    with tempfile.TemporaryDirectory() as directory, zipfile.ZipFile(apk) as archive:
+        for name in archive.namelist():
+            if name.startswith("lib/arm64-v8a/"):
+                library = Path(directory) / Path(name).name
+                library.write_bytes(archive.read(name))
+                device.push(library, f"{work}/lib/{library.name}")
+    return device.root_sh(
+        f"cd {work} && ANDROID_DATA={work} {device.ART_BIN}/dalvikvm64 -Djava.library.path={work}/lib "
+        f"-cp {work}/harness.dex:{work}/api.jar:{work}/module.apk xax.harness.Main\n"
+    )
 
 
 def run_module(apk: Path, harness: Path) -> subprocess.CompletedProcess:
@@ -119,10 +142,16 @@ def run_module(apk: Path, harness: Path) -> subprocess.CompletedProcess:
 
 def evidence() -> dict:
     with tempfile.TemporaryDirectory() as directory:
-        harness = build_harness(Path(directory))
+        if device.requested():
+            api_classes, api_dex = device.libxposed_api(Path(directory))
+            harness = build_harness(Path(directory), Path(os.environ["ANDROID_JAR"]), api_classes, _sdk("d8"))
+            run = lambda apk: run_module_on_device(apk, harness, api_dex)  # noqa: E731
+        else:
+            harness = build_harness(Path(directory))
+            run = lambda apk: run_module(apk, harness)  # noqa: E731
         runs = {}
         for name, expected in EXPECTED.items():
-            completed = run_module(HERE / name, harness)
+            completed = run(HERE / name)
             observed = next((line.removeprefix("XAX_LIBXPOSED_ART ") for line in completed.stdout.splitlines() if line.startswith("XAX_LIBXPOSED_ART ")), None)
             runs[name] = {
                 "sha256": hashlib.sha256((HERE / name).read_bytes()).hexdigest(),
@@ -133,7 +162,7 @@ def evidence() -> dict:
         "format": "xax-android-art-execute-evidence-v1",
         "label": "EXECUTED",
         "note": "ART dalvikvm64 runs the unmodified module APK with its XAX native library; the libxposed framework is a recording stand-in",
-        "environment": {
+        "environment": {**device.environment("dalvikvm64"), "libxposed_api": "io.github.libxposed:api:102.0.0"} if device.requested() else {
             "art": "dalvikvm64 from the Android 14 arm64 system image (arm64-v8a-34_r04), under qemu-aarch64 user mode",
             "boot_image": "/system/framework/boot.art (precompiled arm64)",
             "libxposed_api": "io.github.libxposed:api:102.0.0",

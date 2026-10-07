@@ -1,0 +1,11 @@
+{
+  "format": "xax-jvm-response-interruption-v1",
+  "profile_sha256": "d49d5f0a2336530edcab11f3a39cb82f9f683d13ea052746aef6667c4c311c00",
+  "successful_cells": 60,
+  "required_cells": 135,
+  "unrecorded_attempts": [
+    "jvm-06-java-2-1\\attempt.json"
+  ],
+  "usage_complete": false,
+  "reason": "Transferred interrupted attempt jvm-06-java-2-1 has turn.started but no turn.completed usage; no zero cost is assumed. Current host CLI and checker toolchain differ. Preserve the CSV, traces and source snapshot; use a fresh profile."
+}

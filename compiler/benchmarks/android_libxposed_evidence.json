@@ -1,27 +1,30 @@
 {
-  "environment_note": "direct modern-libxposed metadata/native ELF structural evidence only; Xposed framework loading, native_init invocation, hooks, and target-process execution are UNEXECUTED because no compatible Android/libxposed environment is available",
+  "environment_note": "direct modern-libxposed metadata/native ELF structural evidence only; the native entry rides on the generated Java entry as API 102 and Vector require (ADR-178). Vector loading, native_init invocation, hooks, and target-process execution are UNEXECUTED here; see android_vector_runtime_evidence.json",
   "generic_apk": {
-    "blake3": "69bbaeb6554204b10f7e4e9aa0c34f4ba85e658825d835f7368ec716d02f4db9",
-    "build_key": "188c3b70c77125f61d1746d7b696247405023169ae3822b6b67aad12e393d203",
-    "bytes": 34233,
+    "blake3": "25dc83bd924a6bbee745c442741b8851ce524f2c733961184129aaead636eb32",
+    "build_key": "97ade4c5261d6089ac41f02b575b1d3690a27c7fbcd952342d056c4e6e94c22e",
+    "bytes": 34367,
     "entries": [
       "AndroidManifest.xml",
+      "META-INF/xposed/java_init.list",
       "META-INF/xposed/module.prop",
       "META-INF/xposed/native_init.list",
       "META-INF/xposed/scope.list",
       "classes.dex",
       "classes2.dex",
+      "classes3.dex",
       "lib/arm64-v8a/libxaxapp.so"
     ],
     "legacy_assets_native_init_present": false,
     "legacy_assets_xposed_init_present": false,
-    "package_root": "dd5d6f9c4a794b7f9a13610359aa89270c984f9014b801406335d473e141e1a2",
+    "package_root": "a2d644e28c0ac0f2c63057fd1acb558922d385c2e9947fe5d3bb71e8407a62bf",
     "repeat_identical": true,
-    "request_root": "7a941892e9134c8e6accd5f23e999324675a7dc3a4ec98eb369109beba104a94",
-    "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36",
-    "snapshot_root": "ca641c3f14bdca6e6fd050b368764737dccae51b449adde1775af6e55dffc10e"
+    "request_root": "9ea40c8c5fe98b9f678ce631437eab4f059d0a63130013004f7f46b3d216e708",
+    "sha256": "62e08e683bee0aac9418aa2fe3bc1be9824849177779cb501dab462fa3a0c266",
+    "snapshot_root": "705856c84c099bd0bef4735c2c9a89646391dcbd8df2dcea13d25325e81ac896"
   },
   "modern_metadata": {
+    "java_init_list_utf8": "xax.generated.XaxModule\n",
     "module_prop_utf8": "minApiVersion=101\ntargetApiVersion=102\nstaticScope=true\n",
     "native_init_list_utf8": "libxaxapp.so\n",
     "scope_list_utf8": "com.example.target\n"
@@ -30,6 +33,8 @@
     "bytes": 17352,
     "exports": [
       "Java_xax_generated_XaxActivity_xaxOnCreate",
+      "Java_xax_generated_XaxModule_xaxOnModuleLoaded",
+      "Java_xax_generated_XaxModule_xaxOnPackageReady",
       "Java_xax_generated_XaxOnClickListener_xaxOnClick",
       "native_init"
     ],
@@ -37,7 +42,7 @@
     "native_init_exported": true,
     "needed": [],
     "relocations": 0,
-    "sha256": "df6188bd86eb3d5a53479e6c26fc82367497c5f1c2f3d1b0f78fa34664abe954"
+    "sha256": "4f8c2f7bcde5383cbf7e484db0e0f354d540d3212a230c69f60d4714f87e4fd5"
   },
   "production_dependencies": {
     "c_cpp_bridge_source_files": 0,
@@ -54,9 +59,12 @@
     "native_init_invocation": "UNEXECUTED",
     "native_unhook": "UNEXECUTED"
   },
-  "schema": "xax-android-libxposed-native-evidence-v1",
+  "schema": "xax-android-libxposed-native-evidence-v2",
   "semantic_input": {
-    "libxposed_carrier_cid": "81abb43f3cf9f3a3208134996815b427ca6896474463cbb4d38d30e56aba9265",
+    "java_entries": [
+      "xax.generated.XaxModule"
+    ],
+    "libxposed_carrier_cid": "c971c4d085ab3a3563f88d6fa147b34651a461c4fb2a7ad53e374f932cfdbd3a",
     "manifest_carrier_cid": "2344bfd3c551d67cd1d1eca5dfb43982934429b5a05b89958c730440378f59f0",
     "min_api_version": 101,
     "native_entries": [

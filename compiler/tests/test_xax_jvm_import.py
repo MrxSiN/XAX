@@ -188,7 +188,11 @@ class JvmImportTests(unittest.TestCase):
     def test_whole_classes_import_with_reasons_for_the_rest(self):
         requests = class_requests(_classpath(), "java/lang/Math") + class_requests(_classpath(), "java/util/ArrayList")
         imported = import_jvm_members(_classpath(), requests)
-        self.assertGreater(len(imported.declarations), 120)
+        # Public JDK members differ between supported JDK releases. Require
+        # complete, disjoint accounting of the actual metadata instead.
+        self.assertEqual(set(imported.declarations) | set(imported.refused), set(requests))
+        self.assertFalse(set(imported.declarations) & set(imported.refused))
+        self.assertTrue(imported.declarations)
         self.assertTrue(set(imported.refused.values()) <= {"member not public", "final field"})
         again = import_jvm_members(_classpath(), reversed(requests))
         self.assertEqual([item.cid for item in again.objects], [item.cid for item in imported.objects])

@@ -652,20 +652,22 @@ class StoreReader:
         self.nonsemantic_records = tuple(metadata)
 
     def _decode_native(self, data: bytes, verify_digest: bool) -> bool:
-        """Self-hosting S3 (ADR-118): the XAX container decoder decides acceptance and builds the index.
+        """Self-hosting S3 (ADR-118) and S8a (ADR-183): the XAX container decoder decides acceptance, every
+        container rejection with its exact diagnostic, and the digest comparison (the digest itself is the XAX hash,
+        S2), and builds the index.
 
-        Any reject, defer, or digest mismatch returns False, and the bootstrap
-        parser below then raises the exact diagnostic.
+        A defer (a value or table beyond the program's 32-bit words) returns False, and the bootstrap parser below
+        decides.
         """
         decoder = _native_store_decoder()
         if decoder is None or not isinstance(data, (bytes, bytearray)) or len(data) > decoder.capacity:
             return False
-        status, header, records = decoder.decode(data)
+        status, header, records, diagnostic = decoder.decode(data, verify_digest, lambda prefix: blake3(prefix).digest())
+        if diagnostic is not None:
+            raise XaxError(diagnostic)
         if status != 0:
             return False
-        minor, _objects, metadata_count, metadata_start, _metadata_end, digest_end, root_at = header
-        if verify_digest and blake3(data[:digest_end]).digest() != data[digest_end:digest_end + CID_SIZE]:
-            return False
+        minor, _objects, metadata_count, metadata_start, _metadata_end, _digest_end, root_at = header
         self.minor = minor
         self.root_cid = bytes(data[root_at:root_at + CID_SIZE])
         self._index = {}
@@ -730,12 +732,10 @@ class StoreReader:
             offset, length = self._index[cid]
         except KeyError:
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
-        parsed = getattr(self, "_parsed", {}).get(cid)
-        if parsed is not None:
-            obj = self._object_from_parse(cid, parsed)
-            if obj is not None:
-                self._decoded[cid] = obj
-                return obj
+        obj = self._decode_object_native(offset, length)
+        if obj is not None:
+            self._decoded[cid] = obj
+            return obj
         cursor = Cursor(self.data[offset:], f"object:{cid.hex()}")
         actual_length = cursor.uleb()
         if actual_length != length:
@@ -745,19 +745,27 @@ class StoreReader:
         self._decoded[cid] = obj
         return obj
 
-    def _object_from_parse(self, cid: bytes, parsed: tuple[int, ...]) -> SemanticObject | None:
-        """Build an object from the XAX decoder's parse (S3b, ADR-119) and check its CID.
+    def _decode_object_native(self, offset: int, length: int) -> SemanticObject | None:
+        """Self-hosting S8b.1 (ADR-184): the XAX decoder decides the object envelope at ``offset``, every
+        ``decode_object`` rejection with its exact diagnostic, and the CID comparison (the CID itself is the XAX hash).
 
-        With minimal ULEBs the payload after the stored CID *is* the canonical
-        content, so the CID is the hash of the domain plus those bytes.  A
-        mismatch returns None, and the bootstrap decoder reports it.
+        Only for stores the XAX decoder accepted (whose envelopes have minimal ULEB lengths).  None when the decoder
+        cannot run or defers; the bootstrap decoder then decides.
         """
-        cid_at, kind, reference_count, references_at, body_at, body_length = parsed
-        data = self.data
-        if blake3(SEMANTIC_DOMAIN + data[cid_at + CID_SIZE : body_at + body_length]).digest() != cid:
+        decoder = _native_store_decoder() if hasattr(self, "_parsed") else None
+        if decoder is None:
             return None
-        references = tuple(bytes(data[at:at + CID_SIZE]) for at in range(references_at, references_at + CID_SIZE * reference_count, CID_SIZE))
-        obj = SemanticObject(Kind(kind), 1, references, bytes(data[body_at:body_at + body_length]), cid)
+        envelope = self.data[offset : offset + len(uleb(length)) + length]
+        if len(envelope) > decoder.capacity:
+            return None
+        fields, diagnostic = decoder.decode_object(envelope, lambda span: blake3(SEMANTIC_DOMAIN + span).digest())
+        if diagnostic is not None:
+            raise XaxError(diagnostic)
+        if fields is None:
+            return None
+        cid_at, kind, reference_count, references_at, body_at, body_length = fields
+        references = tuple(bytes(envelope[at:at + CID_SIZE]) for at in range(references_at, references_at + CID_SIZE * reference_count, CID_SIZE))
+        obj = SemanticObject(Kind(kind), 1, references, bytes(envelope[body_at:body_at + body_length]), bytes(envelope[cid_at:cid_at + CID_SIZE]))
         object.__setattr__(obj, "cid_checked", True)
         return obj
 
@@ -6169,15 +6177,27 @@ def _graph_syntax_bootstrap(obj: SemanticObject, resolve: Callable[[bytes], Sema
     return entry, blocks, used_references, member_spans
 
 
-def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], words) -> tuple:
+class _StreamPrefixEnd(Exception):
+    """The end of a rejected body's stream prefix (S8b.2): the decoder's syntax rejection comes next."""
+
+
+def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], words, prefix: bool = False) -> tuple:
     """Rebuild the bootstrap parse from the XAX decoder's stream (S3c, ADR-120).
 
     The stream is syntactically valid, so only resolution, type verification,
     and trap payloads can fail, and they are checked here in body order, exactly
-    where the bootstrap parser checks them.
+    where the bootstrap parser checks them.  With ``prefix`` the words end where
+    the decoder rejected the body, and running out raises ``_StreamPrefixEnd``.
     """
     stream = iter(words)
-    take = stream.__next__
+    if prefix:
+        def take():
+            try:
+                return next(stream)
+            except StopIteration:
+                raise _StreamPrefixEnd from None
+    else:
+        take = stream.__next__
     references = obj.references
     block_count, entry = take(), take()
     blocks: list[_ParsedBlock] = []
@@ -6372,9 +6392,17 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     decoder = _native_graph_decoder()
     parsed = None
     if decoder is not None and len(obj.body) <= decoder.capacity:
-        status, words = decoder.decode(obj.body, len(obj.references))
+        status, words, diagnostic = decoder.decode_with_diagnostic(obj.body, len(obj.references), obj.cid)
         if status == 0:
             parsed = _graph_syntax_from_stream(obj, resolve, words)
+        elif diagnostic is not None:
+            # S8b.2 (ADR-185): the XAX decoder decided a syntax rejection.  What precedes it in body order (reference
+            # resolution, type verification, trap payloads) is checked first, exactly where the bootstrap checks it.
+            try:
+                _graph_syntax_from_stream(obj, resolve, words, prefix=True)
+            except _StreamPrefixEnd:
+                pass
+            raise XaxError(diagnostic)
     entry, blocks, used_references, member_spans = parsed or _graph_syntax_bootstrap(obj, resolve)
     if used_references != set(obj.references) and not (parsed is not None and obj.cid in _XAX_GLUE_GRAPHS):
         fail(

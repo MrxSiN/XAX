@@ -3,10 +3,11 @@ import copy
 import csv
 import hashlib
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
-from xax_replacement import derived_level, load, validate
+from xax_replacement import derived_level, load, recompute_runtime_verdict, validate
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX = load(ROOT / "XAX_REPLACEMENT_MATRIX.json")
@@ -63,12 +64,17 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertTrue(any(e.startswith("linux-x86_64.competitive: verdict True but recomputation") for e in errors), errors)
         self.assertIn("linux-x86_64: claimed R4 but evidence supports R3", errors)
 
-    def test_android_runtime_has_one_baseline_and_stops_at_r3(self):
+    def test_android_runtime_r4_needs_c_and_non_c_hardware_baselines(self):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "android-arm64")
         evidence = json.loads((ROOT / "compiler/benchmarks/android_counter_twin_evidence.json").read_text())
         platform = json.loads((ROOT / "compiler/benchmarks/android_platform_runtime_probe_evidence.json").read_text())
-        self.assertEqual(derived_level(row), "R3")
-        self.assertEqual(set(evidence["device"]["arms"]), {"xax", "java_ndk"})  # one baseline arm
+        self.assertEqual(derived_level(row), "R4")  # ADR-198
+        self.assertEqual(set(evidence["results"]), {"xax", "clang_ndk_java", "java_d8"})
+        self.assertEqual(len(evidence["device"]["xax_pass_ratios_vs_fastest"]), evidence["device"]["passes"])
+        without_java = {**evidence, "results": {k: v for k, v in evidence["results"].items() if k != "java_d8"}}
+        with tempfile.TemporaryDirectory() as directory:  # a single C-family baseline stops at R3 again
+            (Path(directory) / "one.json").write_text(json.dumps(without_java))
+            self.assertTrue(recompute_runtime_verdict(["one.json"], Path(directory)))
         self.assertTrue(evidence["device"]["hardware"])
         self.assertTrue(platform["runtime"]["hardware"])
         self.assertTrue(platform["runtime"]["arm64_native"])

@@ -77,19 +77,20 @@ def _native_functions(library: bytes) -> dict[str, int]:
 def _measure(apk: Path) -> dict:
     with zipfile.ZipFile(apk) as archive:
         entries = {item.filename: archive.read(item.filename) for item in archive.infolist()}
-    library = next(data for name, data in entries.items() if name.startswith("lib/arm64-v8a/"))
-    functions = _native_functions(library)
-    return {
+    library = next((data for name, data in entries.items() if name.startswith("lib/arm64-v8a/")), None)
+    measured = {
         "apk_bytes": apk.stat().st_size,
         "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
         "dex_bytes": sum(len(data) for name, data in entries.items() if name.endswith(".dex")),
         "dex_files": sorted(name for name in entries if name.endswith(".dex")),
         "manifest_bytes": len(entries["AndroidManifest.xml"]),
-        "native_library_bytes": len(library),
-        "native_function_bytes": functions,
-        "native_needed": sorted(line.split("[")[1].rstrip("]") for line in _readelf_dynamic(library) if "(NEEDED)" in line),
+        "native_library_bytes": len(library or b""),
         "badging": _badging(apk),
     }
+    if library is not None:  # a pure Java twin has none
+        measured["native_function_bytes"] = _native_functions(library)
+        measured["native_needed"] = sorted(line.split("[")[1].rstrip("]") for line in _readelf_dynamic(library) if "(NEEDED)" in line)
+    return measured
 
 
 def _badging(apk: Path) -> list[str]:
@@ -114,15 +115,18 @@ def build_twin(work: Path, twin: Path = TWIN, library_name: str = "xaxapp") -> P
     dex.mkdir()
     _run(_sdk("d8"), "--release", "--min-api", "28", "--lib", ANDROID_JAR, "--output", dex, *sorted(classes.rglob("*.class")))
     library = work / f"lib{library_name}.so"
-    _run(_llvm("aarch64-linux-android28-clang"), "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, twin / f"{library_name}.c")
-    _run(_llvm("llvm-strip"), "--strip-unneeded", library)
+    native = (twin / f"{library_name}.c").exists()  # a pure Java twin has no native library
+    if native:
+        _run(_llvm("aarch64-linux-android28-clang"), "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, twin / f"{library_name}.c")
+        _run(_llvm("llvm-strip"), "--strip-unneeded", library)
     linked = work / "linked.apk"
     _run(_sdk("aapt2"), "link", "--manifest", twin / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked)
     stored = work / "stored.apk"
     with zipfile.ZipFile(linked) as source, zipfile.ZipFile(stored, "w", zipfile.ZIP_STORED) as out:
         out.writestr("AndroidManifest.xml", source.read("AndroidManifest.xml"))
         out.write(dex / "classes.dex", "classes.dex")
-        out.write(library, f"lib/arm64-v8a/lib{library_name}.so")
+        if native:
+            out.write(library, f"lib/arm64-v8a/lib{library_name}.so")
     aligned = work / "aligned.apk"
     _run(_sdk("zipalign"), "-P", "16", "-f", "4", stored, aligned)
     keystore = work / "twin.jks"

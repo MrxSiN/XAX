@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import random
 import re
 import shutil
@@ -360,7 +361,7 @@ class JvmPlatformTests(unittest.TestCase):
         _reader, image = _compile(entry, objects, process_entry=True)
         completed = run_jvm_jar(image)
         self.assertEqual(completed.returncode, 7, completed.stderr)
-        self.assertEqual(completed.stdout, b"42\n55\n1.4142135623730951\n8\nZ")
+        self.assertEqual(completed.stdout, os.linesep.encode().join((b"42", b"55", b"1.4142135623730951", b"8", b"Z")))
         self.assertEqual(completed.stderr, b"")
 
     def test_artifact_is_deterministic(self):
@@ -376,7 +377,7 @@ class JvmPlatformTests(unittest.TestCase):
         _reader, image = _compile(entry, objects, process_entry=True)
         completed = run_jvm_jar(image)
         self.assertNotEqual(completed.returncode, 0)
-        self.assertEqual(completed.stdout, b"42\n")  # the program stops at the trap
+        self.assertEqual(completed.stdout, b"42" + os.linesep.encode())  # the program stops at the trap
         stderr = completed.stderr.decode()
         self.assertIn("java.lang.ArithmeticException", stderr)
         line = int(re.search(r"\.entry\(XAX:(\d+)\)", stderr).group(1))

@@ -50,9 +50,10 @@ from xax_selfhost_views_backend import (
     _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, G_FAR, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT,
     S_BLOCK_LABELS, S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_LEVELS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP,
     S_TRAP_USED, S_WIDTH, WORDS_AT, WORDS_LIMIT, _aggregate, _borrowed, _call, _compile_function, _copy_edge, _erased,
-    NativeProgram, _field, _frontend, _g, _interface, _node_info, _ok, _ors, _program, _result_fields, _sar, _shl, _term_end, _translate, _value, _xor, collect_program_output,
+    NativeProgram, _diagnostic, _field, _find, _frontend, _g, _interface, _node_info, _ok, _ors, _program, _result_fields, _sar, _shl, _term_end, _translate, _value, _xor, collect_program_output,
 )
 from xax_selfhost_views_backend import _target as _views_target
+from xax_views_lowering import LOWERED_OPERATIONS
 
 from xax_native import bootstrap_dir  # noqa: E402
 
@@ -570,6 +571,9 @@ class RISCV64:
     """RV64 views profile: LP64 registers, ``[out] ra``, then the saved registers; word-sized code."""
 
     ARCHITECTURE = RISCV64_ARCHITECTURE
+    DIAGNOSTICS = "RISCV64"  # S7b.3 (ADR-182): this program decides target legality and writes the rejection diagnostics
+    LOWERED = LOWERED_OPERATIONS
+    LOWERED_NAME = "riscv64 integer subset"
     ALLOCATABLE = ALLOCATABLE
     ARGUMENT_REGISTERS = ARGUMENT_REGISTERS
     T0 = T0
@@ -676,6 +680,8 @@ def build_backend_program():
         _FN[name] = function
         return function
 
+    add("find", _find(tables))
+    add("diagnostic", _diagnostic(tables, RISCV64))
     add("li", _li(tables))
     add("frame", _frame_access(tables))
     add("read", _read(tables))
@@ -690,8 +696,8 @@ def build_backend_program():
     add("erased", _erased(tables))
     add("borrowed", _borrowed(tables))
     add("aggregate", _aggregate(tables))
-    add("result_fields", _result_fields(tables))
-    add("translate", _translate(tables))
+    add("result_fields", _result_fields(tables, RISCV64))
+    add("translate", _translate(tables, RISCV64))
     add("frontend", _frontend(tables, RISCV64))
     compile_function = add("function", _compile_function(tables, RISCV64))
     program = add("program", _program(tables, compile_function, RISCV64))
@@ -710,14 +716,17 @@ class NativeBackend:
         self._runner = runner
 
     def compile(self, words: list[int]):
-        """``(code words, function order, function word offsets, node ranges, entry parameter widths, entry return
-        widths)``, or None when the program declines."""
-        return self._runner.run(words, collect_output)
+        """``(collect_program_output or None when the program declines, the Diagnostic it wrote or None)``; both None
+        when the words do not fit."""
+        from xax_selfhost_diagnostics import decode_diagnostic
+
+        outcome = self._runner.run(words, lambda read: (collect_output(read), decode_diagnostic(read)))
+        return (None, None) if outcome is None else outcome
 
 
 def collect_output(read):
-    """The program's result from its output view, read as ``read(start word, count)``: ``(code words, function
-    order, function word offsets, node ranges, entry parameter widths, entry return widths)``, or None (declined)."""
+    """The program's result from its output view, read as ``read(start word, count)`` (``collect_program_output``),
+    or None (declined)."""
     return collect_program_output(read)
 
 

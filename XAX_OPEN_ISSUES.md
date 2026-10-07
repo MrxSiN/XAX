@@ -645,4 +645,32 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Evidence that closes it.** On Linux x86-64: `bench_selfhost_closure.py --write` and `bench_selfhost_x86_64.py --write` re-executed against the current stores (no `native_rerun_required` left), and the native self-hosting tests passing there. For R4: the Linux `filestat`, `chains`, and `jsonmin` comparisons re-run with `wall_seconds_samples` per arm, and the Android counter compared against a Kotlin or Java baseline as well as the Java + NDK twin, with the pass effect reported.
 
-**Status.** OPEN (2026-10-06, ADR-177).
+**Status.** OPEN (2026-10-06, ADR-177). *Self-hosting half EXECUTED (2026-10-07):* on Linux x86-64 (Python 3.13.16) `bench_selfhost_closure.py --write` and `bench_selfhost_x86_64.py --write` re-ran under `XAX_REQUIRE_NATIVE=1` against the committed stores, with no `native_rerun_required` entry left. The typing store's gen1 image equals the bootstrap reference (4,728,348 RV64 code bytes), its emulated verdict equals the native one (95 objects proven), and every component reports `actual_authority: xax`. The native self-hosting tests pass there: 97 passed, and the opt-in fixed-point tests (`XAX_FIXED_POINT=1`) pass too: 7 tests, 31 subtests, 31 minutes. The R4 half (Linux raw-sample re-runs, the Android second baseline) is still open. *Android R4 half closed (2026-10-07, ADR-198):* the counter was re-measured on Pixel 8 Pro against a Java + NDK twin and a pure Java twin, in four rotated passes with equal AOT compilation. XAX is 1.007× the fastest median, with per-pass ratios 1.00/1.053/1.06/1.00 (§15.29). Still open: the Linux `filestat`, `chains` and `jsonmin` R4 re-measurements.
+
+## OI-46 — Fixed client overhead in R5 token measurement
+
+**Question.** In the same-prefill JVM comparison (ADR-195), every arm makes one request through the pinned Codex client. That client adds about 10,000 input tokens per request with its default instructions, and about 6,900 even with one-line base instructions. This floor is common to all arms and dominates edits that cost a few hundred task tokens, so a 0.50–0.55× ratio cannot be reached. Which measurement keeps "same model, same tools, equivalent context" and still measures the language and protocol?
+
+**Fixed constraints.** All arms use the same client, model, instructions and tool surface, and every token the model receives or emits is counted, including retries. No benchmark-only XAX shortcut, no weakened textual workflow, and no removal of a lower-token competitor are allowed. Historical profiles are never re-scored.
+
+**Options.** (a) A minimal client or direct API with identical, minimal instructions and no tool schemas for every arm. (b) A corpus whose textual context is legitimately larger: real multi-file repositories where a named-symbol excerpt is not available as cheaply as the XAX neighborhood. (c) Record R5 as unreachable for single-edit tasks under agent clients with a fixed overhead.
+
+**Evidence that closes it.** An owner-approved measurement design, then a complete three-trial v10 or successor run under it, independently audited.
+
+**Status.** OPEN (2026-10-07, ADR-195). *Option (a) measured (ADR-196):* the minimal Codex client still has a fixed floor of 3,501 input tokens per request. Floor-adjusted medians were XAX 200 and Kotlin 201 (0.995×), so removing client overhead does not make the gate reachable on this corpus. Closing this issue needs option (b), a corpus with legitimately larger textual context, or an owner decision to record R5 as unreachable for single small edits. *Option (b) measured (ADR-197):* on a multi-file corpus XAX is 0.35× whole-file textual workflows but 1.68× an IDE-style excerpt of the same call hierarchy, which the rules require as a valid lower-token competitor. The remaining gap is the fixed edit-form help in every request and lower model reliability on XAX.
+
+## JVM R5 follow-up to ADR-176 (2026-10-07, ADR-186)
+
+ADR-176 remains valid negative historical evidence: 0.7683 of the lowest textual median, with three missing cells. The ordinary local mutation adapter now removes task-specific decoding and prevents implicit precondition refresh. Repeated Java/Kotlin/XAX trials are recorded separately by `run_jvm_r5_ai.py`; they do not replace or merge historical rows.
+
+R5 remains unresolved until complete reproducible model evidence clears 0.50 with equivalent semantics and context. In particular, the existing creation task gives XAX a scaffold while textual creation starts empty; this must be resolved before promotion, even if the numeric gate passes. Unknown usage and incomplete trials remain blockers.
+
+### Host-response follow-up (2026-10-07, ADR-187/188)
+
+The response corpus resolves the scaffold limitation: all three creation arms
+start empty, and behavioral probes include wraparound inputs. It also contains
+real helpers and concurrent updates. Snapshot-derived compound edits are normal
+tooling, with exact-target equivalence and negative vectors. The outstanding
+review covers the complete repeated numeric result, restrictive target oracles,
+synthetic application representativeness and the abstract resource contract.
+Historical profiles and their failed or unknown costs remain separately recorded.

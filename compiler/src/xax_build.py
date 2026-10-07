@@ -897,6 +897,51 @@ def resolve_packages(
     return Resolution(package_objects, used_signatures, snapshot_object)
 
 
+def rebuild_package_object(obj: SemanticObject, resolve: Resolver, replacement: Callable[[bytes], SemanticObject]) -> SemanticObject:
+    """Rebind dependency CIDs through the canonical constructors, never raw body edits.
+
+    Signatures and artifact provenance require new authority/evidence and reject.
+    Unchanged capabilities, policy, external digests and resolver identity survive.
+    """
+    if obj.kind == Kind.PACKAGE:
+        view = decode_package(obj, resolve)
+        return package(
+            view.logical_identity, tuple(replacement(cid) for cid in view.modules),
+            dependencies=tuple(DependencyRequirement.exact(replacement(item.exact_root)) if item.exact_root is not None else item for item in view.dependencies),
+            build_entries=tuple((name, replacement(cid)) for name, cid in view.build_entries),
+            feature_types=tuple((name, replacement(cid)) for name, cid in view.feature_types),
+            configuration_types=tuple((name, replacement(cid)) for name, cid in view.configuration_types),
+            capabilities=view.capabilities,
+        )
+    if obj.kind == Kind.BUILD and _build_form(obj) == BuildForm.REQUEST:
+        view = decode_request(obj, resolve)
+        return build_request(
+            replacement(view.package_root), view.build_entry, replacement(view.target_root), replacement(view.profile_root),
+            features=tuple(TypedBinding(name, replacement(cid)) for name, cid in view.features),
+            configuration=tuple(TypedBinding(name, replacement(cid)) for name, cid in view.configuration),
+            requested_artifacts=view.requested_artifacts,
+        )
+    if obj.kind == Kind.BUILD and _build_form(obj) == BuildForm.SNAPSHOT:
+        view = decode_snapshot(obj, resolve)
+        return snapshot(
+            replacement(view.request_root), view.resolver_identity, replacement(view.trust_policy_root),
+            tuple(replacement(cid) for cid in view.package_roots),
+            signatures=tuple(replacement(cid) for cid in view.signature_roots), external_digests=view.external_digests,
+        )
+    fail("XAX.WORKSPACE.TOPOLOGY", obj.cid.hex(), "WORKSPACE-BUILD-REBUILD", "package, request or snapshot; re-sign/rebuild evidence separately", obj.kind.name)
+
+
+def verify_android_build_request(reader: StoreReader, obj: SemanticObject) -> None:
+    """Check private Android package lowering without signing or publishing bytes."""
+    if obj.kind != Kind.BUILD or _build_form(obj) != BuildForm.REQUEST:
+        return
+    view = decode_request(obj, reader.get)
+    if view.requested_artifacts not in ((ArtifactKind.ANDROID_UNSIGNED_APK,), (ArtifactKind.ANDROID_SIGNED_APK,)):
+        return
+    package_view = decode_package(reader.get(view.package_root), reader.get)
+    _build_android_unsigned_apk(reader, package_view, reader.get(view.target_root), dict(package_view.build_entries)[view.build_entry])
+
+
 def snapshot_store(resolution: Resolution, objects: Iterable[SemanticObject]) -> StoreReader:
     by_cid = {item.cid: item for item in (*tuple(objects), *resolution.packages, *resolution.signatures, resolution.snapshot)}
     reachable: set[bytes] = set()
@@ -1020,6 +1065,9 @@ def _build_android_unsigned_apk(
     )
     from xax_apk import build_unsigned_apk
     from xax_android_components import (
+        ANDROID_SURFACE_ACTIVITY_PREFIX,
+        decode_android_surface_activity,
+        lower_android_surface_activity,
         ANDROID_APPLICATION_PREFIX,
         ANDROID_BROADCAST_RECEIVER_PREFIX,
         ANDROID_SERVICE_PREFIX,
@@ -1073,7 +1121,8 @@ def _build_android_unsigned_apk(
     from xax_compiler import ANDROID_EXPORT_PREFIX, decode_android_export
 
     description = decode_native_target(target_object)
-    if description.identity != ANDROID_TARGET_IDENTITY:
+    # The managed-class profile (ADR-199) also takes the general v4 target; the others stay on v3.
+    if description.identity not in (ANDROID_TARGET_IDENTITY, b"android-arm64-v8a-shared-v4"):
         fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
 
     ui_carriers: list[SemanticObject] = []
@@ -1095,6 +1144,8 @@ def _build_android_unsigned_apk(
     libxposed_remote_files_carriers: list[SemanticObject] = []
     libxposed_hot_reload_carriers: list[SemanticObject] = []
     export_carriers: list[SemanticObject] = []
+    managed_carriers: list[SemanticObject] = []
+    from xax_android_managed import ANDROID_MANAGED_CLASS_PREFIX
     for module_cid in package_view.modules:
         module = reader.get(module_cid)
         for cid in module.references:
@@ -1108,6 +1159,7 @@ def _build_android_unsigned_apk(
                 ANDROID_ACTIVITY_RESOURCE_UI_PREFIX,
                 ANDROID_ACTIVITY_METHOD_UI_PREFIX,
                 ANDROID_ACTIVITY_ARGUMENT_METHOD_UI_PREFIX,
+                ANDROID_SURFACE_ACTIVITY_PREFIX,
             )):
                 ui_carriers.append(child)
             elif identity.startswith(ANDROID_MANIFEST_PREFIX):
@@ -1146,6 +1198,21 @@ def _build_android_unsigned_apk(
                 libxposed_hot_reload_carriers.append(child)
             elif identity.startswith(ANDROID_EXPORT_PREFIX):
                 export_carriers.append(child)
+            elif identity.startswith(ANDROID_MANAGED_CLASS_PREFIX):
+                managed_carriers.append(child)
+
+    if managed_carriers:
+        # General managed classes (ADR-199) are their own APK profile: every component is one.
+        others = (ui_carriers, application_carriers, receiver_carriers, service_carriers, libxposed_carriers,
+                  libxposed_managed_entry_carriers, libxposed_hook_adapter_carriers, libxposed_hook_install_carriers)
+        if any(others) or len(manifest_carriers) != 1 or len(resource_carriers) > 1:
+            fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-MANAGED-PROFILE",
+                 "managed classes + one manifest + 0..1 resources + exports",
+                 {"other_carriers": sum(len(item) for item in others), "manifest": len(manifest_carriers), "resources": len(resource_carriers)})
+        return _build_android_managed_apk(reader, package_view, target_object, build_entry_function,
+                                          manifest_carriers[0], managed_carriers, resource_carriers, export_carriers)
+    if description.identity != ANDROID_TARGET_IDENTITY:
+        fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
 
     if (
         len(ui_carriers) != 1
@@ -1196,6 +1263,26 @@ def _build_android_unsigned_apk(
 
     ui_identity_cursor = Cursor(ui_carriers[0].body, ui_carriers[0].cid.hex())
     ui_identity = ui_identity_cursor.byte_string()
+    if ui_identity.startswith(ANDROID_SURFACE_ACTIVITY_PREFIX):
+        # A declarative view needs no native runtime. The required package entry
+        # is only a build selector; reject executable logic rather than erase it.
+        from xax_compiler import Block, Terminator, function, graph_fragment
+        selector = function(graph_fragment((Block((), (), Terminator.return_(())),)), (), ())
+        descriptor, _description = decode_android_surface_activity(ui_carriers[0])
+        manifest_view = decode_android_manifest_semantics(manifest_carriers[0])
+        allowed = {ui_carriers[0].cid, manifest_carriers[0].cid, build_entry_function}
+        module_children = {cid for module in package_view.modules for cid in reader.get(module).references}
+        if build_entry_function != selector.cid or module_children != allowed:
+            fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "SURFACE-DECLARATIVE-CLOSURE", "surface + manifest + empty build selector only", sorted(cid.hex() for cid in module_children))
+        if manifest_view.activity_class != descriptor[1:-1].replace("/", "."):
+            fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", descriptor, manifest_view.activity_class)
+        # DEX 039 is the existing emitter's profile, supported from Android 9.
+        if manifest_view.min_sdk < 28:
+            fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "SURFACE-DEX039-MINSDK", ">= 28", manifest_view.min_sdk)
+        return build_unsigned_apk(
+            emit_binary_manifest_with_components_from_semantics(manifest_carriers[0]),
+            emit_dex039_bridge(lower_android_surface_activity(ui_carriers[0])),
+        )
     if ui_identity.startswith(ANDROID_ACTIVITY_RESOURCE_UI_PREFIX):
         ui_view = decode_android_activity_resource_ui(ui_carriers[0])
         if len(resource_carriers) != 1:
@@ -1463,6 +1550,16 @@ def _build_android_unsigned_apk(
                 "ANDROID-APK-LIBXPOSED-HOOK-API",
                 102,
                 libxposed_view.target_api_version,
+            )
+        # HookBuilder.setId is API-102-only; minApiVersion=101 would advertise
+        # the module to an API-101 framework that lacks it.
+        if libxposed_hook_install_view.hook_id is not None and libxposed_view.min_api_version != 102:
+            fail(
+                "XAX.BUILD.ANDROID",
+                libxposed_carriers[0].cid.hex(),
+                "ANDROID-APK-LIBXPOSED-HOOK-ID-API",
+                102,
+                libxposed_view.min_api_version,
             )
         if libxposed_hook_install_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name:
             fail(
@@ -1776,6 +1873,50 @@ def _build_android_unsigned_apk(
         native_libraries={"libxaxapp.so": shared.data},
         extra_entries=extra_entries,
     )
+
+
+def _build_android_managed_apk(reader, package_view, target_object, build_entry_function, manifest_carrier,
+                               managed_carriers, resource_carriers, export_carriers) -> bytes:
+    """An APK whose managed side is only ``android-managed-class-v1`` classes (ADR-199).
+
+    The manifest's Activity must be one of them; every forwarded method must have a JNI export whose ABI signature
+    matches; the build entry must be one of the Activity's exports.  One DEX per class, the Activity first."""
+    from xax_android import compile_android_shared
+    from xax_apk import build_unsigned_apk
+    from xax_android_managed import check_export_signature, decode_android_managed_class, lower_android_managed_class
+    from xax_compiler import decode_android_export
+    from xax_dex import emit_dex039_bridge
+    from xax_manifest import decode_android_manifest_semantics, emit_binary_manifest_from_semantics
+    from xax_resources import emit_resources_arsc_from_semantics
+
+    where = package_view.logical_identity.hex()
+    classes = {carrier.cid: decode_android_managed_class(carrier) for carrier in managed_carriers}
+    if len({item.class_descriptor for item in classes.values()}) != len(classes):
+        fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-CLASS-UNIQUE", "distinct class descriptors", sorted(item.class_descriptor for item in classes.values()))
+    manifest = decode_android_manifest_semantics(manifest_carrier)
+    if manifest.min_sdk < 28:  # DEX 039
+        fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-MANAGED-DEX039-MINSDK", ">= 28", manifest.min_sdk)
+    activity = next((cid for cid, item in classes.items() if item.java_name == manifest.activity_class), None)
+    if activity is None:
+        fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", sorted(item.java_name for item in classes.values()), manifest.activity_class)
+    exports = {view.name: view for view in (decode_android_export(carrier) for carrier in export_carriers)}
+    for item in classes.values():
+        for symbol, method in item.symbols().items():
+            if symbol not in exports:
+                fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-EXPORT", symbol.decode(), sorted(name.decode("ascii", "replace") for name in exports))
+            reason = check_export_signature(method, item.class_descriptor, reader.get(exports[symbol].function_cid), reader.get)
+            if reason is not None:
+                fail("XAX.BUILD.ANDROID", exports[symbol].function_cid.hex(), "ANDROID-MANAGED-JNI-SIGNATURE", f"{item.java_name}.{method.name}{method.descriptor}", reason)
+    if build_entry_function not in {exports[symbol].function_cid for symbol in classes[activity].symbols()}:
+        fail("XAX.BUILD.ANDROID", where, "ANDROID-APK-BUILD-ENTRY", "an export of the manifest Activity", build_entry_function.hex())
+    shared = compile_android_shared(reader, tuple(export_carriers), target_object=target_object, soname=b"libxaxapp.so")
+    ordered = [activity, *sorted((cid for cid in classes if cid != activity), key=lambda cid: classes[cid].class_descriptor)]
+    dex = [emit_dex039_bridge(lower_android_managed_class(reader.get(cid))) for cid in ordered]
+    extra = {f"classes{index}.dex": data for index, data in enumerate(dex[1:], start=2)}
+    if resource_carriers:
+        extra["resources.arsc"] = emit_resources_arsc_from_semantics(resource_carriers[0])
+    return build_unsigned_apk(emit_binary_manifest_from_semantics(manifest_carrier), dex[0],
+                              native_libraries={"libxaxapp.so": shared.data}, extra_entries=extra)
 
 
 def _hosted_container(reader: StoreReader, function_root: bytes, target_object: SemanticObject, description) -> bytes | None:

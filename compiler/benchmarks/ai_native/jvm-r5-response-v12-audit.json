@@ -1,0 +1,221 @@
+{
+  "format": "xax-jvm-response-independent-audit-v1",
+  "source_csv": "jvm-r5-response-v12-results.csv",
+  "source_sha256": "c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac",
+  "manifest_sha256": "fcfbee14035d6ff34419d489f037f5db061d165aac62024bf35596e476fba82c",
+  "attempts": 151,
+  "successful_cells": 123,
+  "required_cells": 135,
+  "complete": false,
+  "errors": [],
+  "medians_including_all_attempt_costs": {
+    "JAVA": 3710,
+    "KOTLIN": 3702.0,
+    "XAX": 3701.0
+  },
+  "live_sources_checked": true,
+  "live_source_drift": [],
+  "ratio_vs_lowest_textual_median": 0.9997298757428417,
+  "total_recorded_tokens_by_arm": {
+    "JAVA": 200712,
+    "KOTLIN": 283035,
+    "XAX": 322843
+  },
+  "repair_responses_by_arm": {
+    "JAVA": 7,
+    "KOTLIN": 26,
+    "XAX": 32
+  },
+  "failed_attempts": 28,
+  "per_task_diagnostics_not_the_gate_aggregation": {
+    "jvm-01": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3710,
+        "KOTLIN": 3747,
+        "XAX": 3701
+      }
+    },
+    "jvm-02": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3694,
+        "KOTLIN": 3685,
+        "XAX": 3684
+      }
+    },
+    "jvm-03": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3703,
+        "KOTLIN": 3697,
+        "XAX": 7417
+      }
+    },
+    "jvm-04": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3697,
+        "KOTLIN": 3690,
+        "XAX": 3697
+      }
+    },
+    "jvm-05": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3714,
+        "KOTLIN": 3702,
+        "XAX": 3701
+      }
+    },
+    "jvm-06": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3592,
+        "KOTLIN": 3581,
+        "XAX": 3681
+      }
+    },
+    "jvm-07": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3699,
+        "KOTLIN": 3702,
+        "XAX": 5641.5
+      }
+    },
+    "jvm-08": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3724,
+        "KOTLIN": 7514,
+        "XAX": 3754
+      }
+    },
+    "jvm-09": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 0
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3788,
+        "KOTLIN": 3774
+      }
+    },
+    "jvm-10": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 7544,
+        "KOTLIN": 7511,
+        "XAX": 7547
+      }
+    },
+    "jvm-11": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3713,
+        "KOTLIN": 3702,
+        "XAX": 3719
+      }
+    },
+    "jvm-12": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 0,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3681,
+        "XAX": 3686
+      }
+    },
+    "jvm-13": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 3
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3706,
+        "KOTLIN": 3697,
+        "XAX": 3697
+      }
+    },
+    "jvm-14": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 1,
+        "XAX": 2
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3724,
+        "KOTLIN": 3748,
+        "XAX": 9387.0
+      }
+    },
+    "jvm-15": {
+      "successful_trials": {
+        "JAVA": 3,
+        "KOTLIN": 3,
+        "XAX": 1
+      },
+      "medians_including_attempt_costs": {
+        "JAVA": 3734,
+        "KOTLIN": 3716,
+        "XAX": 7657
+      }
+    }
+  },
+  "numeric_gate": false,
+  "acceptance_gate": false,
+  "instruction_context_sha256": [
+    "d7211e78427f6f66b6cdfa2ba0f23864373829a531c7157a33f867c16aae87de"
+  ],
+  "profile_sha256": [
+    "fcfbee14035d6ff34419d489f037f5db061d165aac62024bf35596e476fba82c"
+  ],
+  "commands_requiring_context_review": [],
+  "scope": "Raw usage/digests/completeness audit; task equivalence and context commands require human review. No matrix promotion."
+}
+

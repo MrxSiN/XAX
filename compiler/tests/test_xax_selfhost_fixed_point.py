@@ -61,7 +61,7 @@ class SelfhostFixedPointTests(unittest.TestCase):
 
         python = compile_riscv64_bound_target(self.reader, self.entry.cid, self.views, backend="python")
         self.assertEqual(self.gen2, python)
-        self.assertEqual(len(self.gen2.function_offsets), 19)  # every backend function is in the closure (ADR-151 adds two)
+        self.assertEqual(len(self.gen2.function_offsets), 21)  # every backend function is in the closure (ADR-151 adds two, ADR-181 and ADR-182 one each)
 
     @unittest.skipUnless(HAVE_UNICORN, "requires the unicorn emulator")
     def test_b3_gen2_agrees_with_gen1_on_a_corpus(self):

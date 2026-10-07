@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Sequence
 
 from xax_compiler import (
+    RESOURCE_EFFECT_OPERATIONS,
     Kind,
     Operation,
     SemanticObject,
@@ -29,6 +30,12 @@ from xax_compiler import (
 )
 
 MAX_FIELDS = 255  # an aggregate's fields are addressed with 12-bit (RISC-V) or 8-bit-scaled doubleword offsets
+# Every operation both views generators lower; any other one in a closure rejects with ``<isa>-OP-LOWERED``.
+LOWERED_OPERATIONS = tuple(sorted({int(op) for op in (
+    Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_OR, Operation.BIT_AND, Operation.UDIV,
+    Operation.UREM, Operation.ROTATE_RIGHT, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.CONSTANT, Operation.INT_COMPARE,
+    Operation.CALL_DIRECT, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.AGGREGATE_GET, Operation.AGGREGATE_MAKE,
+    *RESOURCE_EFFECT_OPERATIONS)}))
 
 
 def function_closure(entry: SemanticObject, resolve, operations, terminators, isa: str) -> tuple[SemanticObject, ...]:

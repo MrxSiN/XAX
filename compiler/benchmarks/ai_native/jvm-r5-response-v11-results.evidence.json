@@ -1,0 +1,62 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-6-luna",
+      "low",
+      "codex-cli 0.160.0"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 3,
+  "attempts": 133,
+  "successful_cells": 113,
+  "required_cells": 135,
+  "complete": false,
+  "accounting_complete": true,
+  "successful_task_medians_including_retries": {
+    "JAVA": 3710,
+    "KOTLIN": 3702.0,
+    "XAX": 3701.5
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 0.9975124378109452,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-response-v11-results.csv",
+  "source_sha256": "e32b478d5719e1868f92929833835f597e76fb6a075ef8fd36f65315d5055f95",
+  "limits": [
+    "Exact semantic-root XAX targets and compiled-instruction textual checks remain more restrictive than behavioral equivalence.",
+    "Source-only textual targets (move, unused constant) still require the exact normalized source, as XAX requires the exact root.",
+    "jvm-09 XAX resource effects are proof values erased by the JVM lowering; textual arms execute a runtime resource tracker.",
+    "The client's fixed base instructions and tool schemas are common to every arm and counted in every total.",
+    "One JVM host and one requested model identifier; no separate provider weights digest.",
+    "Prior interrupted/exploratory profiles remain separately reported; no unknown-cost profile can satisfy the gate.",
+    "semantic_entities counts supplied root/function/block/parameter/node/type definitions and valid construction entities, per submitted response round, not canonical store objects.",
+    "transmitted_bytes counts submitted prompts plus streamed JSON event bytes; provider framing is unavailable.",
+    "unexpected_context_commands flags commands whose named files need manual context review."
+  ],
+  "unrecorded_attempts": [],
+  "profile_sha256": [
+    "aff8e381a799cc306ba9e0ac1bf8c57a8874f19873f135687b31ec745c9d9fe1"
+  ],
+  "instruction_context_sha256": [
+    "d7211e78427f6f66b6cdfa2ba0f23864373829a531c7157a33f867c16aae87de"
+  ],
+  "instruction_context_complete": true,
+  "raw_xax_ratio_vs_lowest_textual_median": 0.9998649378714208,
+  "client_floor_input_tokens": 3501,
+  "task_token_medians_excluding_client_floor": {
+    "JAVA": 209,
+    "KOTLIN": 201.0,
+    "XAX": 200.5
+  },
+  "r5_acceptance_threshold": 0.55,
+  "meets_token_target": false,
+  "host_applied_responses": true,
+  "creation_empty_for_all_arms": true,
+  "large_application_helpers_per_arm": 160,
+  "status_note": "stopped (STOP file) for the ADR-196 jvm-14 adapter fix; superseded by response-v12"
+}

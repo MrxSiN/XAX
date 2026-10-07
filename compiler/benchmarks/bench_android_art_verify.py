@@ -23,9 +23,12 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 import zlib
 from pathlib import Path
+
+from benchmarks import android_art_device as device
 
 HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "android_art_verify_evidence.json"
@@ -64,17 +67,23 @@ def verify(path: Path, class_loader_context: str | None = None) -> dict[str, str
     """``{class descriptor: ART class status}`` for a DEX or APK at ``path`` (under ``WORK``)."""
     odex = path.with_suffix(".odex")
     arguments = [
-        f"--runtime-arg", f"-Xbootclasspath:{BOOT_CLASSPATH}", "--runtime-arg", f"-Xbootclasspath-locations:{BOOT_CLASSPATH}",
-        "--boot-image=/system/framework/boot.art", f"--dex-file={path}", f"--dex-location={path}", f"--oat-file={odex}",
+        f"--dex-file={path.as_posix()}", f"--dex-location={path.as_posix()}", f"--oat-file={odex.as_posix()}",
         "--compiler-filter=verify", "--instruction-set=arm64",
     ]
     if class_loader_context:
         arguments.append(f"--class-loader-context={class_loader_context}")
-    compiled = _art("dex2oat64", *arguments)
+    if device.requested():  # the device's own bootclasspath and boot image
+        script = f"{device.ART_BIN}/dex2oat64 {' '.join(arguments)} >&2 || exit 9\n{device.ART_BIN}/oatdump --oat-file={odex.as_posix()} --no-disassemble\n"
+        compiled = dumped = device.root_sh(script)
+    else:
+        boot = [f"--runtime-arg", f"-Xbootclasspath:{BOOT_CLASSPATH}", "--runtime-arg", f"-Xbootclasspath-locations:{BOOT_CLASSPATH}",
+                "--boot-image=/system/framework/boot.art"]
+        compiled = _art("dex2oat64", *boot, *arguments)
+        dumped = None if compiled.returncode else _art("oatdump", f"--oat-file={odex}", "--no-disassemble")
     if compiled.returncode:
         raise RuntimeError(f"dex2oat64 failed for {path.name}: {compiled.stderr.strip()[-400:]}")
     statuses = {}
-    for line in _art("oatdump", f"--oat-file={odex}", "--no-disassemble").stdout.splitlines():
+    for line in dumped.stdout.splitlines():
         if "(type_idx=" in line:
             descriptor = line.split(": ", 1)[1].split(" ", 1)[0]
             statuses[descriptor] = line.rsplit("(", 2)[-2].rstrip(") ")
@@ -92,14 +101,30 @@ def _ill_typed_listener() -> bytes:
 
 
 def evidence() -> dict:
-    shutil.rmtree(WORK, ignore_errors=True)
-    WORK.mkdir(parents=True)
-    shutil.copy(LIBXPOSED_API, WORK / "libxposed-api.jar")
-    context = f"PCL[{WORK / 'libxposed-api.jar'}]"
+    with tempfile.TemporaryDirectory() as directory:
+        if device.requested():
+            device.root_sh(f"rm -rf {WORK.as_posix()}; mkdir -p {WORK.as_posix()}; chmod 777 {WORK.as_posix()}")
+            api = device.libxposed_api(Path(directory))[1]
+
+            def stage(local: Path, name: str) -> None:
+                device.push(local, f"{WORK.as_posix()}/{name}")
+        else:
+            shutil.rmtree(WORK, ignore_errors=True)
+            WORK.mkdir(parents=True)
+            api = LIBXPOSED_API
+
+            def stage(local: Path, name: str) -> None:
+                shutil.copy(local, WORK / name)
+        return _evidence(api, stage, Path(directory))
+
+
+def _evidence(api: Path, stage, scratch: Path) -> dict:
+    stage(api, "libxposed-api.jar")
+    context = f"PCL[{(WORK / 'libxposed-api.jar').as_posix()}]"
     apks = {}
     for apk in sorted(HERE.glob("*.apk")):
         copy = WORK / apk.name
-        shutil.copy(apk, copy)
+        stage(apk, apk.name)
         libxposed = any(name.startswith("META-INF/xposed/") for name in zipfile.ZipFile(apk).namelist())
         statuses = verify(copy, context if libxposed else None)
         apks[apk.name] = {
@@ -108,18 +133,20 @@ def evidence() -> dict:
             "classes": statuses,
             "passed": bool(statuses) and all(status == "Verified" for status in statuses.values()),
         }
-    control = WORK / "ill_typed_listener.dex"
+    control = scratch / "ill_typed_listener.dex"
     control.write_bytes(_ill_typed_listener())
-    control_status = verify(control)
+    stage(control, control.name)
+    control_status = verify(WORK / control.name)
+    libxposed_api = "io.github.libxposed:api:102.0.0 (Maven Central, SHA-256 423484a6e1807e7a423c4b88fcd8176d104318259d91791877fed88fe91479d0)"
     return {
         "format": "xax-android-art-verify-evidence-v1",
         "label": "EXECUTED",
         "note": "ART dex2oat verify-only compilation and oatdump class status; no class is initialized or run",
-        "environment": {
+        "environment": {**device.environment("dex2oat64/oatdump"), "libxposed_api": libxposed_api} if device.requested() else {
             "art": "dex2oat64/oatdump from the Android 14 arm64 system image (arm64-v8a-34_r04), under qemu-aarch64 user mode",
             "boot_classpath": BOOT_CLASSPATH,
             "boot_image": "/system/framework/boot.art (precompiled arm64, from the system image)",
-            "libxposed_api": "io.github.libxposed:api:102.0.0 (Maven Central, SHA-256 423484a6e1807e7a423c4b88fcd8176d104318259d91791877fed88fe91479d0)",
+            "libxposed_api": libxposed_api,
         },
         "apks": apks,
         "negative_control": {"patch": "listener check-cast -> nop nop", "classes": control_status,

@@ -8,6 +8,24 @@ from benchmarks.jvm_r5_ai import check_source, check_xax, prepare_source, prepar
 
 
 class JvmR5AITests(unittest.TestCase):
+    def test_direct_views_bind_intent_names_and_explain_inserted_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            move = prepare_xax_task("jvm-05", root / "move")
+            self.assertIn("a=N0, b=N1", (move / "TASK.md").read_text())
+            creation = prepare_xax_task("jvm-06", root / "creation")
+            text = (creation / "TASK.md").read_text()
+            self.assertIn("@ID", text)
+            self.assertIn("pre-batch snapshot", text)
+            self.assertIn("placeholder=N0", text)
+
+    @unittest.skipUnless(shutil.which("javac"), "UNAVAILABLE: javac")
+    def test_creation_oracle_rejects_a_single_point_impostor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = prepare_source("jvm-06", "JAVA", Path(directory) / "java")
+            (workspace / "Program.java").write_text("public final class Program { static int f(int x) { return 12; } }\n")
+            passed, _reason = check_source("jvm-06", "JAVA", workspace)
+            self.assertFalse(passed)
     def test_corpus_covers_every_required_family(self):
         families = {item.family for item in tasks()}
         self.assertTrue({

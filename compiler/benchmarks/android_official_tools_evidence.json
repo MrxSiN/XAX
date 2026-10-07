@@ -147,7 +147,7 @@
         "zipalign_16k": true
       },
       "passed": true,
-      "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a",
+      "sha256": "fce798a1a84a13616b345e64f4c239710e0d440c119b2591ab2723726ecb5d72",
       "signed": false
     },
     "android_libxposed_managed_fixture.apk": {
@@ -171,7 +171,7 @@
       "signed": false
     },
     "android_libxposed_native_fixture.apk": {
-      "bytes": 34233,
+      "bytes": 34367,
       "checks": {
         "aapt2_badging": true,
         "classes.dex:d8_redex": true,
@@ -180,11 +180,14 @@
         "classes2.dex:d8_redex": true,
         "classes2.dex:dexdump_checksum": true,
         "classes2.dex:dexdump_code": true,
+        "classes3.dex:d8_redex": true,
+        "classes3.dex:dexdump_checksum": true,
+        "classes3.dex:dexdump_code": true,
         "lib/arm64-v8a/libxaxapp.so:llvm_readelf": true,
         "zipalign_16k": true
       },
       "passed": true,
-      "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36",
+      "sha256": "62e08e683bee0aac9418aa2fe3bc1be9824849177779cb501dab462fa3a0c266",
       "signed": false
     },
     "android_libxposed_remote_files_fixture.apk": {
@@ -429,10 +432,10 @@
       "signed": false
     }
   },
-  "build_tools": "36.1.0",
+  "build_tools": "36.0.0",
   "format": "xax-android-official-tools-evidence-v1",
   "label": "STRUCTURAL",
-  "llvm_readelf": "Optimized build.",
+  "llvm_readelf": "LLVM version 19.0.1 (/mnt/disks/build-disk/src/android/llvm-r530567/out/llvm-project/llvm 97a699bf4812a18fb657c2779f5296a4ab2694d2)",
   "note": "format validation by Google's build tools; not ART verification or execution",
   "passed": 21,
   "total": 21

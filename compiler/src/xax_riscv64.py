@@ -61,6 +61,7 @@ from xax_compiler import (
     _is_proof_type,
     decode_bits_width,
     decode_native_target,
+    XaxError,
     fail,
     store_resolver,
     verify_store,
@@ -593,31 +594,29 @@ def compile_riscv64_bound_target(
 _NONE = 0xFFFFFFFF
 
 
-def _table_objects(reader: StoreReader, target_object: SemanticObject) -> list[SemanticObject]:
-    """The store's objects in store order, then the bound target when the store does not hold it."""
-    objects = list(reader.objects())
-    return objects if any(obj.cid == target_object.cid for obj in objects) else [*objects, target_object]
+def _cid_words(cid: bytes) -> list[int]:
+    return [int.from_bytes(cid[offset:offset + 8], "big") for offset in range(0, 32, 8)]
 
 
 def _object_table(reader: StoreReader, entry: SemanticObject, target_object: SemanticObject) -> list[int] | None:
-    """S5b (ADR-141): every store object as the XAX backend program reads it (see ``xax_selfhost_riscv64_backend``).
+    """S7b.2 (ADR-181): the input of the XAX backend programs (see ``xax_selfhost_views_backend._frontend``).
 
-    No object is selected or interpreted here: each one's kind, reference indices, CID, and payload (its body bytes,
-    or for a graph fragment the S3c XAX graph-decoder stream) are copied in store order.  None when a graph body
-    cannot be streamed (the bootstrap generator then runs)."""
+    The store's objects in store order, then the bound target: each one's kind, its references and its own identity
+    as CID words, and its payload (for a graph fragment the S3c XAX graph-decoder stream, else its body bytes).
+    Nothing is selected, resolved, or interpreted here: the program picks the target, finds the entry, and resolves
+    every reference.  None when a graph body cannot be streamed (the bootstrap generator then runs)."""
     from xax_compiler import _native_graph_decoder
 
     decoder = _native_graph_decoder()
     if decoder is None:
         return None
-    objects = _table_objects(reader, target_object)
-    index = {obj.cid: position for position, obj in enumerate(objects)}
-    if entry.cid not in index:
-        return None
-    words = [len(objects), index[entry.cid], index[target_object.cid]]
-    for obj in objects:
-        words += [int(obj.kind), len(obj.references), *(index.get(cid, _NONE) for cid in obj.references)]
-        words += [int.from_bytes(obj.cid[offset:offset + 8], "big") for offset in range(0, 32, 8)]
+    objects = list(reader.objects())
+    words = [len(objects), *_cid_words(entry.cid)]
+    for obj in (*objects, target_object):
+        words += [int(obj.kind), len(obj.references)]
+        for cid in obj.references:
+            words += _cid_words(cid)
+        words += _cid_words(obj.cid)
         if obj.kind == Kind.GRAPH_FRAGMENT:
             if len(obj.body) > decoder.capacity:
                 return None
@@ -625,12 +624,21 @@ def _object_table(reader: StoreReader, entry: SemanticObject, target_object: Sem
             if status != 0:
                 return None
             payload = list(stream)
-        elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET):
-            payload = list(obj.body)
         else:
-            payload = []
+            payload = list(obj.body)
         words += [len(payload), *payload]
     return words
+
+
+def image_record(result, unit: int) -> tuple[Sequence[int], dict[bytes, int], list[ArtifactSemanticRange]]:
+    """``(code units, function offsets in bytes by CID, semantic ranges)`` rendered from a views backend program's
+    collected output (``collect_program_output``): the program decided every field (S7b.2); ``unit`` is the bytes per
+    code unit."""
+    code_units, cids, spans, ranges, _parameters, _returns = result
+    offsets = {cid: unit * start for cid, (start, _end) in zip(cids, spans)}
+    function_ranges = [ArtifactSemanticRange(cid, None, None, unit * start, unit * end) for cid, (start, end) in zip(cids, spans)]
+    node_ranges = [ArtifactSemanticRange(cids[f], block, node, start, end) for f, block, node, start, end in ranges]
+    return code_units, offsets, [*function_ranges, *node_ranges]
 
 
 def _compile_riscv64(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, backend: str = "python") -> Riscv64Image:
@@ -678,7 +686,9 @@ def _compile_with_xax(reader: StoreReader, entry, function_cid: bytes, target_ob
 
     native = native_backend()
     words = None if native is None else _object_table(reader, entry, target_object)
-    result = None if words is None else native.compile(words)
+    result, diagnostic = (None, None) if words is None else native.compile(words)
+    if diagnostic is not None:  # S7b.3: the program decided the rejection and wrote its diagnostic
+        raise XaxError(diagnostic)
     if result is None:
         if required:
             fail("XAX.RISCV64.BACKEND", function_cid.hex(), "RISCV64-XAX-BACKEND", "accepted by the XAX backend program", "unavailable or declined")
@@ -688,17 +698,9 @@ def _compile_with_xax(reader: StoreReader, entry, function_cid: bytes, target_ob
 
 def image_from_backend_output(reader: StoreReader, target_object: SemanticObject, result) -> Riscv64Image:
     """The ``Riscv64Image`` of the XAX backend program's collected output (``collect_output``), wherever it ran."""
-    code_words, order, word_offsets, ranges, parameter_widths, return_widths = result
-    objects = _table_objects(reader, target_object)
-    functions = [objects[position] for position in order]
+    code_words, offsets, ranges = image_record(result, 4)
     code = b"".join(word.to_bytes(4, "little") for word in code_words)
-    offsets = {function.cid: 4 * offset for function, offset in zip(functions, word_offsets)}
-    function_ranges = []
-    for position, function in enumerate(functions):
-        end = offsets[functions[position + 1].cid] if position + 1 < len(functions) else len(code)
-        function_ranges.append(ArtifactSemanticRange(function.cid, None, None, offsets[function.cid], end))
-    node_ranges = [ArtifactSemanticRange(functions[f].cid, block, node, start, end) for f, block, node, start, end in ranges]
-    return Riscv64Image(code, 0, tuple(sorted(offsets.items())), parameter_widths, return_widths, target_object.cid, (*function_ranges, *node_ranges))
+    return Riscv64Image(code, 0, tuple(sorted(offsets.items())), result[4], result[5], target_object.cid, tuple(ranges))
 
 
 def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes, *, encoder: str = "auto", backend: str = "auto") -> Riscv64Image:

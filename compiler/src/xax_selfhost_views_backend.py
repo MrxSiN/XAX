@@ -22,6 +22,7 @@ from __future__ import annotations
 from xax_compiler import Operation, RESOURCE_EFFECT_OPERATIONS, TerminatorKind
 from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, HEADER, NONE, _function
 from xax_selfhost_typing import IN_WORDS
+import xax_selfhost_diagnostics as D
 
 # Output regions (word indices of the output view).
 WORDS_AT, WORDS_LIMIT = 1 << 20, 4 << 20  # code: one word per RISC-V instruction, eight bytes per word on x86-64
@@ -80,6 +81,63 @@ def _sar(e: E, value, amount: int):
 def _ok(e: E, condition):
     """Decline (NONE) unless ``condition``."""
     e.if_(e.not_(condition), lambda: e.give(NONE))
+
+
+def _diagnostics(isa) -> str | None:
+    """The ISA's diagnostic family (``XAX.<family>.*`` codes, ``<family>-*`` rules) when its program decides target
+    legality and writes rejection diagnostics (S7b, ADR-179); None when it declines instead."""
+    return getattr(isa, "DIAGNOSTICS", None)
+
+
+# The views lowering's rejection rules (S7b): ``<family>-<rule>`` with code ``XAX.<family>.<code>``.
+VIEWS_RULES = (
+    ("OP-TARGET-SUPPORTED", "UNSUPPORTED_OPERATION"), ("TERMINATOR-TARGET-SUPPORTED", "UNSUPPORTED_TERMINATOR"), ("VALUE-BITS", "VALUE"),
+    ("AGGREGATE-RESULT", "ABI"), ("AGGREGATE-VALUE", "UNSUPPORTED_OPERATION"), ("AGGREGATE-USE", "UNSUPPORTED_OPERATION"),
+    ("SINGLE-RESULT", "ABI"), ("CHECKED-ACCESS", "UNSUPPORTED_OPERATION"), ("OP-LOWERED", "UNSUPPORTED_OPERATION"),
+)
+_RULE_SITES = {rule: site for site, (rule, _code) in enumerate(VIEWS_RULES)}
+
+
+def _legal(e: E, isa, condition, rule: str, entity, expected, actual, deferred: bool = False):
+    """A target-legality check.  With a diagnostic family the program rejects under ``rule`` (``VIEWS_RULES``) on
+    ``entity`` (an object index) with the values ``expected()`` and ``actual()`` write; without one it declines,
+    exactly as ``_ok``.  A ``deferred`` check records only the first failure and lets lowering go on: ``_program``
+    rejects with it after the code is laid out, where the bootstrap makes that check (after its layout limits)."""
+    if _diagnostics(isa) is None:
+        _ok(e, condition)
+        return
+
+    def write():
+        e.call(_FN["diagnostic"], _RULE_SITES[rule], entity)
+        expected()
+        actual()
+
+    if not deferred:
+        D.reject_unless(e, condition, write)
+        return
+
+    def record():
+        D.begin(e)
+        write()
+        e.st(GLOBALS + G_PENDING, 1)
+
+    e.if_(e.both(e.not_(condition), e.eq(_g(e, G_PENDING), 0)), record)
+
+
+def _diagnostic(tables, isa):
+    """The record's code, entity CID, and rule for rule ``site`` on object ``entity``: one copy of each text."""
+    family = _diagnostics(isa)
+
+    def build(e: E):
+        p = e.p
+        for part in ("code", "rule"):
+            for site, (rule, code) in enumerate(VIEWS_RULES):
+                value = f"XAX.{family}.{code}" if part == "code" else f"{family}-{rule}"
+                e.if_(e.eq(p["site"], site), lambda value=value: D.text(e, value))
+            if part == "code":
+                D.cid(e, _cid_words(e, p["entity"]))
+        e.give(1)
+    return _function(("site", "entity"), build, tables)
 
 
 _FN: dict = {}
@@ -517,7 +575,9 @@ def _copy_edge(tables, isa):
 # stream (``xax_selfhost_graph``); other kinds have none.
 
 GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
-(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR) = range(15)
+(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR, G_SUP_AT, G_SUPT_AT, G_S,
+ G_REFS, G_PENDING) = range(20)
+CID_WORDS = 4
 NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
 ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
@@ -533,12 +593,58 @@ def _at(e: E, table: int, index):
 
 
 def _reference(e: E, obj, k):
-    """Object index of ``obj``'s ``k``-th reference (NONE when that object is not listed)."""
-    return e.rd(e.add(e.add(_at(e, G_REC, obj), 2), k))
+    """Object index of ``obj``'s ``k``-th reference (NONE when that object is not listed), resolved by ``_find``."""
+    return e.ld(e.add(_at(e, G_REFS, obj), k))
+
+
+def _cid_at(e: E, obj):
+    """The input position of object ``obj``'s own CID words (after its kind, reference count, and reference CIDs)."""
+    record = _at(e, G_REC, obj)
+    return e.add(e.add(record, 2), e.mul(e.rd(e.add(record, 1)), CID_WORDS))
+
+
+def _cid_less(e: E, x_at, y_at):
+    """The CID at input position ``x_at`` sorts before the one at ``y_at`` (four big-endian words)."""
+    result, equal = e.c(0), e.c(1)
+    for k in range(CID_WORDS):
+        wx, wy = e.rd(e.add(x_at, k)), e.rd(e.add(y_at, k))
+        result = e.or_(result, e.flag(e.both(e.ne(equal, 0), e.lt(wx, wy))))
+        equal = e.flag(e.both(e.ne(equal, 0), e.eq(wx, wy)))
+    return e.ne(result, 0)
+
+
+def _cid_equal(e: E, x_at, y_at):
+    return e.both(*(e.eq(e.rd(e.add(x_at, k)), e.rd(e.add(y_at, k))) for k in range(CID_WORDS)))
+
+
+def _find(tables):
+    """S7b.2: the object index whose CID is the one at input position ``at``, or NONE.  Store objects are in CID
+    order (a verified store), so they are searched by bisection; the bound target follows them when the store does
+    not hold it."""
+    def build(e: E):
+        p = e.p
+        e.var("lo", 0)
+        e.var("hi", _g(e, G_S))
+
+        def halve():
+            e.var("mid", e.udiv(e.add(p["lo"], p["hi"]), 2))
+            e.if_(_cid_less(e, _cid_at(e, p["mid"]), p["at"]), lambda: e.set("lo", e.add(p["mid"], 1)), lambda: e.set("hi", p["mid"]))
+
+        e.while_(lambda: e.lt(p["lo"], p["hi"]), halve)
+        e.if_(e.lt(p["lo"], _g(e, G_S)), lambda: e.if_(_cid_equal(e, _cid_at(e, p["lo"]), p["at"]), lambda: e.give(p["lo"])))
+        appended = e.both(e.lt(_g(e, G_S), _g(e, G_O)), _cid_equal(e, _cid_at(e, _g(e, G_S)), p["at"]))
+        e.give(e.sel(appended, _g(e, G_S), NONE))
+    return _function(("at",), build, tables)
 
 
 def _kind(e: E, obj):
     return e.rd(_at(e, G_REC, obj))
+
+
+def _cid_words(e: E, obj):
+    """The four big-endian CID words of object ``obj``."""
+    at = _cid_at(e, obj)
+    return [e.rd(e.add(at, k)) for k in range(CID_WORDS)]
 
 
 def _in_set(e: E, value, codes):
@@ -821,9 +927,9 @@ def _aggregate(tables):
     return _function(("t",), build, tables)
 
 
-def _result_fields(tables):
+def _result_fields(tables, isa=None):
     """``_result_fields``: the field count when function ``f`` returns an aggregate (its only non-proof result), 0 when
-    it returns none; declines on any other mix."""
+    it returns none; rejects (or, without diagnostics, declines) on any other mix."""
     def build(e: E):
         p = e.p
         iface = _call(e, "interface", p["f"])
@@ -840,9 +946,23 @@ def _result_fields(tables):
                   lambda: e.if_(e.ne(_type_width(e, p["rf_t"]), 0), lambda: e.set("rf_machine", 1)))
 
         e.for_("q", 0, e.ld(p["rf_at"]), each)
-        _ok(e, e.either(e.eq(p["rf_n"], 0), e.both(e.eq(p["rf_n"], 1), e.eq(p["rf_machine"], 0))))
+        _legal(e, isa, e.either(e.eq(p["rf_n"], 0), e.both(e.eq(p["rf_n"], 1), e.eq(p["rf_machine"], 0))), "AGGREGATE-RESULT", p["f"],
+               lambda: D.text(e, "one aggregate and proof values only"), lambda: D.integer(e, e.ld(p["rf_at"])))
         e.give(p["rf"])
     return _function(("f",), build, tables)
+
+
+VALUE_BITS = "bits<N <= 64> or a proof value"
+
+
+def _target_list(e: E, slot: int):
+    """The target's operation (or terminator) list, in its payload order, as a diagnostic LIST of INTs."""
+    p = e.p
+    e.var("dg_at", _g(e, slot))
+    e.var("dg_n", _payload_uleb(e, "dg_at"))
+    D.put(e, D.T_LIST)
+    D.put(e, p["dg_n"])
+    e.for_("dg_q", 0, p["dg_n"], lambda: D.integer(e, _payload_uleb(e, "dg_at")))
 
 
 def _emit_out(e: E, value):
@@ -851,8 +971,229 @@ def _emit_out(e: E, value):
     e.st(GLOBALS + G_OUT, e.add(at, 1))
 
 
-def _translate(tables):
-    """One closure function into the internal stream (the S5a format) at ``G_OUT``."""
+def _legality(e: E, isa, f, stream, raw_value_id, value_id):
+    """S7b (ADR-179): every target-legality check the bootstrap generator makes for function ``f`` once its closure
+    is accepted, in the bootstrap's order (``xax_views_lowering.result_fields`` and ``Aggregates``, ``machine_width``
+    over the values, then the lowering's checks in block order), so the first rejection is the bootstrap's.
+
+    Reads ``_translate``'s analysis: value bases (``base``, ``first``, ``node_base``), view extents (``ext``),
+    aliases (``alias``), ``aggregate.make`` operand lists (``made``), and aggregate values (``aggv``)."""
+    p = e.p
+    where = p["graph"]
+
+    def made_aggregate(value):
+        return e.both(e.ne(e.ld(e.add(p["made"], value)), NONE), e.ne(e.ld(e.add(p["aggv"], value)), 0))
+
+    def type_at(position):
+        return _reference(e, p["graph"], e.rd(position))
+
+    # Block positions in the decoder stream.
+    e.var("lg_pos", e.alloc(e.add(p["B"], 1)))
+    _ok(e, e.ne(p["lg_pos"], NONE))
+    e.var("lg_at", e.add(stream, 2))
+
+    def locate():
+        e.st(e.add(p["lg_pos"], p["lg_b"]), p["lg_at"])
+        e.set("lg_at", e.add(e.add(p["lg_at"], 1), e.rd(p["lg_at"])))
+        e.var("lg_nc", e.rd(p["lg_at"]))
+        e.set("lg_at", e.add(p["lg_at"], 1))
+        e.for_("lg_m", 0, p["lg_nc"], lambda: e.set("lg_at", _call(e, "node_info", p["lg_at"])))
+        e.set("lg_at", _call(e, "term_end", p["lg_at"]))
+
+    e.for_("lg_b", 0, p["B"], locate)
+
+    def visit(block, on_parameter=None, on_node=None, on_terminator=None):
+        """Walk block ``block``: ``on_parameter(type position, value id)``, ``on_node()`` with the node's fields in
+        ``lg_op``, ``lg_entity``, ``lg_ops``, ``lg_results``, ``lg_attrs``, ``lg_id``, and ``on_terminator(position)``."""
+        e.var("lg_at", e.ld(e.add(p["lg_pos"], block)))
+        e.var("lg_pc", e.rd(p["lg_at"]))
+        if on_parameter is not None:
+            e.for_("lg_q", 0, p["lg_pc"], lambda: on_parameter(e.add(e.add(p["lg_at"], 1), p["lg_q"]), e.add(e.ld(e.add(p["base"], block)), p["lg_q"])))
+        e.set("lg_at", e.add(e.add(p["lg_at"], 1), p["lg_pc"]))
+        e.var("lg_nc", e.rd(p["lg_at"]))
+        e.set("lg_at", e.add(p["lg_at"], 1))
+        e.var("lg_node", e.ld(e.add(p["first"], block)))
+
+        def node():
+            e.var("lg_next", _call(e, "node_info", p["lg_at"]))
+            ni = _g(e, G_NI)  # read every field first: helpers below reuse the scratch words
+            for name, field in (("lg_op", NI_OP), ("lg_entity", NI_ENTITY), ("lg_ops", NI_OPERANDS), ("lg_results", NI_RESULTS), ("lg_attrs", NI_ATTRIBUTES)):
+                e.var(name, e.ld(e.add(ni, field)))
+            e.var("lg_id", e.ld(e.add(p["node_base"], p["lg_node"])))
+            if on_node is not None:
+                on_node()
+            e.set("lg_at", p["lg_next"])
+            e.set("lg_node", e.add(p["lg_node"], 1))
+
+        e.for_("lg_k", 0, p["lg_nc"], node)
+        if on_terminator is not None:
+            on_terminator(p["lg_at"])
+
+    def each_block(body):
+        e.for_("lg_block", 0, p["B"], lambda: body(p["lg_block"]))
+
+    def operands_each(body):
+        """``body(raw value id)`` for every operand of the current node."""
+        e.var("lg_oa", e.add(p["lg_ops"], 1))
+        e.for_("lg_o", 0, e.rd(p["lg_ops"]), lambda: body(raw_value_id("lg_oa")))
+
+    def callee():
+        return _reference(e, p["graph"], p["lg_entity"])
+
+    def kept_call():
+        """The current node is a direct call whose callee is not an erased proof function."""
+        e.var("lg_kept", 0)
+        e.if_(e.eq(p["lg_op"], int(Operation.CALL_DIRECT)), lambda: e.set("lg_kept", e.flag(e.eq(_call(e, "erased", callee()), 0))))
+        return e.ne(p["lg_kept"], 0)
+
+    def aggregate_value(actual):
+        return lambda: (D.text(e, "made or call-returned aggregate"), actual())
+
+    def aggregate_use(actual):
+        return lambda: (D.text(e, "aggregate.get or a return"), actual())
+
+    # (a) ``result_fields`` of the function itself.
+    e.var("lg_own", _call(e, "result_fields", f))
+    e.var("lg_borrowed", _call(e, "borrowed", f))
+
+    # (b) ``Aggregates``, first loop: aggregate block parameters and aggregate results.
+    def aggregate_parameter(position, _value):
+        _legal(e, isa, e.eq(_call(e, "aggregate", type_at(position)), 0), "AGGREGATE-VALUE", where,
+               aggregate_value(lambda: D.text(e, "block parameter")), lambda: None)
+
+    def aggregate_result():
+        def result():
+            def aggregate():
+                e.if_(e.eq(p["lg_op"], int(Operation.AGGREGATE_MAKE)), lambda: None, lambda: e.if_(
+                    kept_call(), lambda: _call(e, "result_fields", callee()),
+                    lambda: _legal(e, isa, e.eq(0, 1), "AGGREGATE-VALUE", where,
+                                   aggregate_value(lambda: D.integer(e, p["lg_op"])), lambda: None)))
+
+            e.if_(e.ne(e.ld(e.add(p["aggv"], e.add(p["lg_id"], p["lg_r"]))), 0), aggregate)
+
+        e.for_("lg_r", 0, e.rd(p["lg_results"]), result)
+
+    each_block(lambda block: visit(block, on_parameter=aggregate_parameter, on_node=aggregate_result))
+
+    # (b) second loop: every other use of an aggregate.
+    def aggregate_operand():
+        def other():
+            operands_each(lambda value: _legal(e, isa, e.eq(e.ld(e.add(p["aggv"], value)), 0), "AGGREGATE-USE", where,
+                                               aggregate_use(lambda: D.integer(e, p["lg_op"])), lambda: None))
+
+        e.if_(e.either(e.eq(p["lg_op"], int(Operation.AGGREGATE_GET)), e.eq(p["lg_op"], int(Operation.AGGREGATE_MAKE))), lambda: None, other)
+
+    def aggregate_terminator(at):
+        e.var("lg_ta", e.add(at, 1))
+        e.var("lg_kind", e.rd(at))
+        e.var("lg_bad", 0)
+
+        def argument(value):
+            e.if_(e.ne(e.ld(e.add(p["aggv"], value)), 0), lambda: e.set("lg_bad", 1))
+
+        def edge_values():
+            e.set("lg_ta", e.add(p["lg_ta"], 1))  # past the target block
+            count = e.rd(p["lg_ta"])
+            e.var("lg_ec", count)
+            e.set("lg_ta", e.add(p["lg_ta"], 1))
+            e.for_("lg_v", 0, p["lg_ec"], lambda: argument(raw_value_id("lg_ta")))
+
+        def returned():
+            e.var("lg_rc", e.rd(p["lg_ta"]))
+            e.set("lg_ta", e.add(p["lg_ta"], 1))
+
+            def value(v):
+                e.var("lg_rv", v)
+                aggregate = e.ne(e.ld(e.add(p["aggv"], p["lg_rv"])), 0)
+                made = e.ne(e.ld(e.add(p["made"], p["lg_rv"])), NONE)
+                e.if_(e.both(aggregate, e.either(e.not_(made), e.eq(p["lg_own"], 0))), lambda: e.set("lg_bad", 1))
+
+            e.for_("lg_v", 0, p["lg_rc"], lambda: value(raw_value_id("lg_ta")))
+
+        e.if_(e.eq(p["lg_kind"], int(TerminatorKind.BRANCH)), edge_values, lambda: e.if_(
+            e.eq(p["lg_kind"], int(TerminatorKind.CONDITIONAL_BRANCH)), lambda: (argument(raw_value_id("lg_ta")), edge_values(), edge_values()),
+            lambda: e.if_(e.eq(p["lg_kind"], int(TerminatorKind.RETURN)), returned)))
+        _legal(e, isa, e.eq(p["lg_bad"], 0), "AGGREGATE-USE", where,
+               aggregate_use(lambda: D.tagged(e, D.T_TERMINATOR, p["lg_kind"])), lambda: None)
+
+    each_block(lambda block: visit(block, on_node=aggregate_operand, on_terminator=aggregate_terminator))
+
+    # (c) ``machine_width`` of every block parameter and every result that is not elided.
+    def elided(r):
+        """Result ``r`` of the current node is elided: an aggregate, a borrowed view a call gives back, or an
+        ``aggregate.get`` of a made aggregate."""
+        e.var("lg_el", e.flag(e.ne(e.ld(e.add(p["aggv"], e.add(p["lg_id"], r))), 0)))
+        e.if_(e.both(e.eq(p["lg_op"], int(Operation.CALL_DIRECT)), e.ne(e.ld(e.add(p["alias"], e.add(p["lg_id"], r))), NONE)), lambda: e.set("lg_el", 1))
+
+        def get():
+            e.var("lg_ga", e.add(p["lg_ops"], 1))
+            e.if_(made_aggregate(raw_value_id("lg_ga")), lambda: e.set("lg_el", 1))
+
+        e.if_(e.eq(p["lg_op"], int(Operation.AGGREGATE_GET)), get)
+        return e.ne(p["lg_el"], 0)
+
+    def width(position):
+        e.var("lg_wt", type_at(position))
+        _legal(e, isa, e.ne(_type_width(e, p["lg_wt"]), NONE), "VALUE-BITS", where, lambda: D.text(e, VALUE_BITS),
+               lambda: D.cid(e, _cid_words(e, p["lg_wt"])))
+
+    def result_widths():
+        e.for_("lg_r", 0, e.rd(p["lg_results"]), lambda: e.if_(elided(p["lg_r"]), lambda: None,
+                                                                 lambda: width(e.add(e.add(p["lg_results"], 1), p["lg_r"]))))
+
+    each_block(lambda block: visit(block, on_parameter=lambda position, _value: width(position), on_node=result_widths))
+
+    # (d) The lowering's checks, in block order: the entry block, then the others.
+    def lowered():
+        def call():
+            e.var("lg_mr", 0)
+            e.for_("lg_r", 0, e.rd(p["lg_results"]), lambda: e.if_(elided(p["lg_r"]), lambda: None, lambda: e.if_(
+                e.ne(_type_width(e, type_at(e.add(e.add(p["lg_results"], 1), p["lg_r"]))), 0), lambda: e.set("lg_mr", e.add(p["lg_mr"], 1)))))
+            _legal(e, isa, e.le(p["lg_mr"], 1), "SINGLE-RESULT", where, lambda: D.integer(e, 1), lambda: D.integer(e, p["lg_mr"]))
+
+        def checked():
+            e.var("lg_size", e.rd(e.add(p["lg_attrs"], 1)))
+            e.var("lg_pa", e.add(p["lg_ops"], 1))
+            e.var("lg_ext", e.ld(e.add(p["ext"], value_id("lg_pa"))))
+            size_ok = e.either(*(e.eq(p["lg_size"], size) for size in (1, 2, 4, 8)))
+
+            def actual():
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                D.integer(e, p["lg_size"])
+                e.if_(e.eq(p["lg_ext"], 0), lambda: D.none(e), lambda: D.integer(e, p["lg_ext"]))
+
+            _legal(e, isa, e.both(size_ok, e.ne(p["lg_ext"], 0)), "CHECKED-ACCESS", where,
+                   lambda: D.text(e, "1/2/4/8-byte access through a view pointer"), actual)
+
+        def other():
+            _legal(e, isa, _in_set(e, p["lg_op"], isa.LOWERED), "OP-LOWERED", where,
+                   lambda: D.text(e, isa.LOWERED_NAME), lambda: D.integer(e, p["lg_op"]))
+
+        checked_access = e.either(e.eq(p["lg_op"], int(Operation.CHECKED_LOAD_BITS_LE)), e.eq(p["lg_op"], int(Operation.CHECKED_STORE_BITS_LE)))
+        e.if_(e.eq(p["lg_op"], int(Operation.CALL_DIRECT)), lambda: e.if_(kept_call(), call), lambda: e.if_(checked_access, checked, other))
+
+    def single_return(at):
+        def returned():
+            e.var("lg_mr", 0)
+            iface = _call(e, "interface", f)
+            e.var("lg_rt", e.add(e.add(iface, 2), e.ld(e.add(iface, 1))))
+            e.for_("lg_q", 0, e.rd(e.add(at, 1)), lambda: e.if_(e.both(
+                e.ne(_type_width(e, e.ld(e.add(e.add(p["lg_rt"], 1), p["lg_q"]))), 0), e.eq(e.ld(e.add(p["lg_borrowed"], p["lg_q"])), NONE)),
+                lambda: e.set("lg_mr", e.add(p["lg_mr"], 1))))
+            _legal(e, isa, e.le(p["lg_mr"], 1), "SINGLE-RESULT", where, lambda: D.integer(e, 1), lambda: D.integer(e, p["lg_mr"]))
+
+        e.if_(e.both(e.eq(e.rd(at), int(TerminatorKind.RETURN)), e.eq(p["lg_own"], 0)), returned)
+
+    entry_block = e.rd(e.add(stream, 1))
+    e.var("lg_entry", entry_block)
+    visit(p["lg_entry"], on_node=lowered, on_terminator=single_return)
+    each_block(lambda block: e.if_(e.ne(block, p["lg_entry"]), lambda: visit(block, on_node=lowered, on_terminator=single_return)))
+
+
+def _translate(tables, isa=None):
+    """One closure function into the internal stream (the S5a format) at ``G_OUT``; with a diagnostic family it first
+    decides the function's target legality (``_legality``)."""
     from xax_compiler import Kind
 
     def build(e: E):
@@ -1037,6 +1378,9 @@ def _translate(tables):
 
             e.for_("vv", 0, count, each)
             return count
+
+        if _diagnostics(isa):
+            _legality(e, isa, f, stream, raw_value_id, value_id)
 
         # Pass B: the stream.
         e.set("pa", e.add(stream, 2))
@@ -1230,10 +1574,13 @@ def _frontend(tables, isa):
 
     def build(e: E):
         p = e.p
-        O = e.rd(0)
-        e.st(GLOBALS + G_O, O)
-        for slot in (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_ORDER):
-            table = e.alloc(e.add(O, 1))
+        # S7b.2: the store's objects in store order, then the bound target; references and identities are CIDs.
+        if _diagnostics(isa):
+            e.st(GLOBALS + G_PENDING, 0)
+        S = e.rd(0)
+        e.st(GLOBALS + G_S, S)
+        for slot in (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_ORDER, G_REFS):
+            table = e.alloc(e.add(S, 2))
             _ok(e, e.ne(table, NONE))
             e.st(GLOBALS + slot, table)
         for slot, size in ((G_SUP, 256), (G_SUPT, 8), (G_NI, 8)):
@@ -1241,23 +1588,39 @@ def _frontend(tables, isa):
             _ok(e, e.ne(table, NONE))
             e.st(GLOBALS + slot, table)
             e.for_("q", 0, size, lambda table=table: e.st(e.add(table, p["q"]), 0))
-        e.var("ra", 3)
+        e.var("ra", 1 + CID_WORDS)
 
         def record():
             o = p["o"]
             e.st(e.add(_g(e, G_REC), o), p["ra"])
             references = e.rd(e.add(p["ra"], 1))
-            payload_at = e.add(e.add(e.add(p["ra"], 2), references), 4)
+            payload_at = e.add(e.add(e.add(p["ra"], 2), e.mul(references, CID_WORDS)), CID_WORDS)
             e.st(e.add(_g(e, G_PAY), o), e.add(payload_at, 1))
             for slot in (G_FIDX, G_ERASED, G_IFACE):
                 e.st(e.add(_g(e, slot), o), NONE)
             e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
 
-        e.for_("o", 0, O, record)
+        e.for_("o", 0, e.add(S, 1), record)
         _ok(e, e.le(p["ra"], IN_WORDS))
-        entry, target = e.rd(1), e.rd(2)
-        e.var("entry", entry)
-        _ok(e, e.both(e.lt(p["entry"], O), e.eq(_kind(e, p["entry"]), int(Kind.FUNCTION)), e.lt(target, O)))
+        # The bound target is the store's object of that CID, else the record after the store's objects.
+        e.st(GLOBALS + G_O, S)  # ``_find`` over the store's objects only
+        e.var("target", e.call(_FN["find"], _cid_at(e, S)))
+        e.if_(e.eq(p["target"], NONE), lambda: (e.set("target", S), e.st(GLOBALS + G_O, e.add(S, 1))))
+        O = _g(e, G_O)
+        e.var("entry", e.call(_FN["find"], 1))
+        _ok(e, e.both(e.ne(p["entry"], NONE), e.eq(_kind(e, p["entry"]), int(Kind.FUNCTION))))
+
+        def resolve():
+            o = p["o"]
+            count = e.rd(e.add(_at(e, G_REC, o), 1))
+            e.var("refs", e.alloc(e.add(count, 1)))
+            _ok(e, e.ne(p["refs"], NONE))
+            e.st(e.add(_g(e, G_REFS), o), p["refs"])
+            first = e.add(_at(e, G_REC, o), 2)
+            e.for_("k", 0, count, lambda: e.st(e.add(p["refs"], p["k"]), e.call(_FN["find"], e.add(first, e.mul(p["k"], CID_WORDS)))))
+
+        e.for_("o", 0, O, resolve)
+        target = p["target"]
         # The target's operation and terminator sets (a verified package of the ISA's architecture).
         e.var("ta", _at(e, G_PAY, target))
         identity = _payload_uleb(e, "ta")
@@ -1267,6 +1630,8 @@ def _frontend(tables, isa):
         _ok(e, e.eq(p["arch"], isa.ARCHITECTURE))
         isa.skip_target_machine(e)
         for table in (G_SUP, G_SUPT):
+            if _diagnostics(isa):
+                e.st(GLOBALS + (G_SUP_AT if table == G_SUP else G_SUPT_AT), p["ta"])  # the list a rejection quotes
             count = _payload_uleb(e, "ta")
             e.var("tcount", count)
             e.for_("q", 0, p["tcount"], lambda table=table: (lambda value: (_ok(e, e.lt(value, 256 if table == G_SUP else 8)), e.st(e.add(_g(e, table), value), 1)))(
@@ -1305,7 +1670,9 @@ def _frontend(tables, isa):
                         e.set("wa", _call(e, "node_info", p["wa"]))
                         ni = _g(e, G_NI)
                         operation = e.ld(e.add(ni, NI_OP))
-                        _ok(e, e.both(e.lt(operation, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(operation, 256), operation, 0)), 0)))
+                        _legal(e, isa, e.both(e.lt(operation, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(operation, 256), operation, 0)), 0)),
+                               "OP-TARGET-SUPPORTED", p["cg"], lambda: _target_list(e, G_SUP_AT),
+                               lambda: D.integer(e, operation))
 
                         def callee():
                             e.var("cc", _reference(e, p["cg"], e.ld(e.add(ni, NI_ENTITY))))
@@ -1317,7 +1684,9 @@ def _frontend(tables, isa):
 
                     e.for_("m", 0, count, node)
                     kind = e.rd(p["wa"])
-                    _ok(e, e.both(e.lt(kind, 8), e.ne(_at(e, G_SUPT, e.sel(e.lt(kind, 8), kind, 0)), 0)))
+                    _legal(e, isa, e.both(e.lt(kind, 8), e.ne(_at(e, G_SUPT, e.sel(e.lt(kind, 8), kind, 0)), 0)),
+                           "TERMINATOR-TARGET-SUPPORTED", p["cg"], lambda: _target_list(e, G_SUPT_AT),
+                           lambda: D.tagged(e, D.T_TERMINATOR, kind))
                     e.set("wa", _call(e, "term_end", p["wa"]))
 
                 e.for_("b", 0, e.rd(stream), block)
@@ -1331,16 +1700,7 @@ def _frontend(tables, isa):
             e.st(e.add(order, p["q"]), e.ld(order)), e.st(order, p["entry"]))))
 
         def cid_before(x, y):
-            def word(obj, k):
-                record = _at(e, G_REC, obj)
-                return e.rd(e.add(e.add(e.add(record, 2), e.rd(e.add(record, 1))), k))
-            result = e.c(0)
-            equal = e.c(1)
-            for k in range(4):
-                wx, wy = word(x, k), word(y, k)
-                result = e.or_(result, e.flag(e.both(e.ne(equal, 0), e.lt(wx, wy))))
-                equal = e.flag(e.both(e.ne(equal, 0), e.eq(wx, wy)))
-            return e.ne(result, 0)
+            return _cid_less(e, _cid_at(e, x), _cid_at(e, y))
 
         def insert():
             e.var("item", e.ld(e.add(order, p["s"])))
@@ -1374,7 +1734,10 @@ def _frontend(tables, isa):
                 def each():
                     width = _type_width(e, e.ld(e.add(e.add(at, 1), p["q"])))
                     e.var("ew", width)
-                    _ok(e, e.ne(p["ew"], NONE))
+                    if _diagnostics(isa):  # ``machine_width`` of the entry's interface (S7b)
+                        e.var("ew_type", e.ld(e.add(e.add(at, 1), p["q"])))
+                    _legal(e, isa, e.ne(p["ew"], NONE), "VALUE-BITS", p["entry"], lambda: D.text(e, VALUE_BITS),
+                           lambda: D.cid(e, _cid_words(e, p["ew_type"])), deferred=True)
                     e.if_(e.ne(p["ew"], 0), lambda: (e.st(e.add(widths, p["wc"]), p["ew"]), e.set("wc", e.add(p["wc"], 1)), e.set("machine", e.add(p["machine"], 1))))
 
                 e.for_("q", 0, e.ld(at), each)
@@ -1416,10 +1779,24 @@ def _program(tables, compile_function, isa):
 
         e.for_("f", 0, functions, each)
         isa.patch(e)
+        # S7b.2: the image record -- each function's CID and code range, in layout order.
+        e.var("image", e.alloc(e.mul(functions, CID_WORDS + 1)))
+        _ok(e, e.ne(p["image"], NONE))
+
+        def describe():
+            at = e.add(p["image"], e.mul(p["f"], CID_WORDS + 1))
+            for k, word in enumerate(_cid_words(e, e.ld(e.add(_g(e, G_ORDER), p["f"])))):
+                e.st(e.add(at, k), word)
+            last = e.eq(e.add(p["f"], 1), functions)
+            e.st(e.add(at, CID_WORDS), e.sel(last, e.hd(S_COUNT), e.ld(e.add(offsets, e.sel(last, 0, e.add(p["f"], 1))))))
+
+        e.for_("f", 0, functions, describe)
+        if _diagnostics(isa):  # a deferred rejection (``_legal``) wins over the finished image
+            e.if_(e.ne(_g(e, G_PENDING), 0), lambda: (e.st(0, D.REJECT), e.give(NONE)))
         e.st(1, e.hd(S_COUNT))
         e.st(2, e.hd(S_RANGES))
         e.st(3, offsets)
-        e.st(4, _g(e, G_ORDER))
+        e.st(4, p["image"])
         e.st(5, _g(e, G_WIDTHS))
         e.st(0, OK)
         e.give(1)
@@ -1430,22 +1807,25 @@ def _program(tables, compile_function, isa):
 
 def collect_program_output(read):
     """A backend program's result from its output view, read as ``read(start word, count)`` wherever it ran:
-    ``(code units, function order, function offsets in code units, node ranges, entry parameter widths, entry return
-    widths)``, or None (declined).  A code unit is a RISC-V instruction word or an x86-64 byte."""
-    status, count, ranges, offsets_at, order_at, widths_at = read(0, 6)
+    ``(code units, function CIDs in layout order, their start and end offsets in code units, node ranges by layout
+    position, entry parameter widths, entry return widths)``, or None (declined).  A code unit is a RISC-V instruction
+    word or an x86-64 byte.  Every field is the program's (S7b.2); this only reads words."""
+    status, count, ranges, offsets_at, image_at, widths_at = read(0, 6)
     if status != OK:
         return None
     (functions,) = read(STREAM_AT, 1)
     code = read(WORDS_AT, count)
-    order = read(order_at, functions)
-    offsets = read(offsets_at, functions)
+    image = read(image_at, functions * (CID_WORDS + 1))
+    records = [image[k:k + CID_WORDS + 1] for k in range(0, len(image), CID_WORDS + 1)]
+    cids = [b"".join(word.to_bytes(8, "big") for word in record[:CID_WORDS]) for record in records]
+    offsets = list(zip(read(offsets_at, functions), (record[CID_WORDS] for record in records)))
     flat = read(RANGES_AT, 5 * ranges)
     (parameters,) = read(widths_at, 1)
     parameter_widths = tuple(read(widths_at + 1, parameters))
     returns_at = widths_at + 1 + parameters
     (returns,) = read(returns_at, 1)
     return_widths = tuple(read(returns_at + 1, returns))
-    return code, order, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
+    return code, cids, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
 
 
 class NativeProgram:

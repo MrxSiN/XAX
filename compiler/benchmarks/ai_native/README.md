@@ -162,3 +162,162 @@ All 30 trials reached `PASS`. The five-task harness-reported token totals were 2
 Reliability separated the framings more clearly: `line` produced 0 failed `verify`/`test` checks across 10 trials, `pipe` produced 2 across 10 trials, and `json` produced 14 across 10 trials. Nine of the ten JSON trials had at least one failed check, usually because the model emitted the required flat packet as separate or nested arrays. By handle namespace, typed arms had 9 failed checks and unified arms had 7; all were attributable to framing rather than handle confusion.
 
 Offline tokenizer accounting still favors unified handles and `pipe`: unified views save 15 tokens over typed views across the original five tasks under both `cl100k_base` and `o200k_base`, and unified/pipe has the smallest combined view+packet total at 237 tokens under either encoding. The model trial does **not** select a canonical transport. The missing task families now have deterministic corpus/checker coverage, but no new model run is attached to that extension. `line` remains the observed reliability leader on the earlier Claude run, flat-array JSON is disfavored there, typed versus unified handles is unresolved, and OI-01 remains open pending repeated OpenAI/Codex-family trials, a smaller second-family confirmation if available, and tokenizer-native integration.
+
+### JVM snapshot-bound follow-up (2026-10-07, ADR-186)
+
+Direct mutation batches now use the normal `xax_local_protocol.LocalMutationSession` adapter. Quote the entire batch as one shell argument. No benchmark task identity or expected target is available to that adapter.
+
+After non-token checks, from `compiler/` with `src` and `.` on `PYTHONPATH`, run:
+
+```powershell
+py -3.13 -m benchmarks.run_jvm_r5_ai --repetitions 3
+```
+
+The default output is `jvm-r5-bound-results.csv`, its `.evidence.json` summary, and fresh workspaces under `runs-jvm-r5-bound/`. Every attempt retains `model-events.jsonl` and its SHA-256; all completed-turn input/output tokens, including cached input, count. Retry costs accumulate within a task/arm/trial cell. The default sequential runner stops on a pre-inference client failure. Reinvocation resumes successful cells without repeating them and creates a fresh attempt for failures.
+
+`--summarize-only` recomputes the gate without inference. No historical CSV is edited. A complete three-trial numeric gate is still subject to task-equivalence review; the inherited XAX creation scaffold currently prevents an unconditional R5 claim.
+
+The exploratory `jvm-r5-local-*` profile remains archived with its exact source snapshot and every model attempt. The bound profile supplies role-to-handle facts already available as names in textual source, explains pre-batch handles and `@ID`, and strengthens creation probes to nine inputs. Filtered `--tasks`/`--arms` runs are preflights only; summaries still require the entire corpus. A `--stop-file` stops safely between cells.
+
+### Current JVM host-applied response comparison (ADR-187–192)
+
+After non-token checks, use `py -3.13 -m benchmarks.run_jvm_r5_response --repetitions 3`
+from `compiler/`, with `src;.;..` on `PYTHONPATH` and Java/Kotlin tools available.
+Default artifacts are `jvm-r5-response-v9-results.csv`, its `.evidence.json`,
+and `runs-jvm-r5-response-v9/`. `--summarize-only` performs no inference.
+`--tasks` and `--arms` are preflight filters; they never relax the full gate.
+
+All arms return final requests which the host applies and checks. Java/Kotlin
+read their named program and return an ordinary context patch. XAX returns a
+snapshot-bound mutation batch, or an ordinary construction request when empty.
+Creation starts empty in every arm. The conditional task executes both branches;
+stale conflicts are real and require repair; the large fixture contains 160
+actual helpers and its target/assertion functions. Abstract resource effects
+are verified against their exact target, with no JVM execution claim.
+
+Each attempt streams event files, records start/result markers and preserves
+every response, diagnostic and token cost. Sources are copied and hashed in
+`manifest.json`; resume refuses source/profile drift. Shared CLI flags disable
+unrelated plugin/skill injection, and the common instruction context is saved
+and hashed for every response. Unknown costs, unrecorded attempts or differing
+instruction contexts block the gate. Create `runs-jvm-r5-response-v9/STOP` to
+stop after the active cell; remove that file to resume. Never interrupt a model
+and silently discard its usage.
+
+The bound profile was interrupted before one final usage record. The first
+response preflight had unequal injected skill catalogs. Response-v2 preserved
+a failed operand-edit cell that motivated normal typed-field prefix elision
+and collision-safe function projection. All these profiles remain historical
+evidence, not rows to mix into the current source/client comparison. Numeric
+success is scoped to this synthetic corpus and still requires review.
+
+Response-v3's 11/15 XAX preflight motivated exact normal edge/type/signature
+setters and dead-closure pruning. Response-v4 retained 137 attempts and 134/135
+successes at a partial 0.501623 ratio; one Kotlin cell remained blocked by an
+overly strict literal-conversion check. Its independent audit preserves the
+raw costs and source hashes. Response-v5 accepts that spelling only after equal
+compiled JVM instructions and behavioral checks, and rejects overload changes.
+It measures normal compact aliases/help in a fresh profile. Graph context is
+host-projected; textual edits inspect the named file, an explicit review limit.
+
+Independently audit the current artifacts without inference:
+
+```powershell
+python -m benchmarks.audit_jvm_r5_response benchmarks/ai_native/jvm-r5-response-v9-results.csv benchmarks/ai_native/runs-jvm-r5-response-v9 --output benchmarks/ai_native/jvm-r5-response-v9-audit.json
+```
+
+Use `--archived` only to audit an older frozen snapshot after intentional live
+source changes; its report still records the live drift. Current-run audits
+check both live and copied sources.
+
+### Transferred-host continuation (ADR-190)
+
+The current runner defaults to response-v6. Response-v5 remains incomplete at
+60/135 successful cells, partial ratio 0.5003204395, with an interrupted Java
+creation turn whose final usage was not transferred. Its interruption record
+and continuation audit preserve that blocker. No old row is imported.
+
+Response-v6 declares uniform node result types once per function and pins
+Python/JDK/Kotlin checker versions before model requests. Missing or broken
+tools and version changes reject before inference. Use the pinned CLI on PATH
+and JAVA_HOME, Java/javac/javap/kotlinc on PATH; run from compiler/ with
+`PYTHONPATH=src;.;..`. All comparisons retain failed-response/attempt costs.
+Audit jvm-r5-response-v6-results.csv against runs-jvm-r5-response-v6/ before
+reporting a numeric gate. Numeric success still requires corpus review.
+
+### Bound-field comparison (ADR-191)
+
+Current defaults are response-v7. Ordinary clients may call session.bind(verb,
+node) before inference and commit_bound(response) with only the remaining fields.
+Kinds/targets are caller-selected, never replacement values. The adapter knows
+no task identity or expected result; stale roots and alias drift reject.
+
+Response-v6 is preserved as complete negative evidence: 142 attempts, all
+135 cells successful, ratio 0.5002551375, and zero independent audit errors.
+Response-v7 runs all Java/Kotlin/XAX cells fresh; no old row is imported. Its
+manifest explicitly records the bound-target versus named-file context limit.
+
+### Immutable scalar comparison (ADR-192)
+
+Current defaults are response-v8. A binding cannot change kind or target while
+a response is outstanding. Bound constant/arithmetic queries expose only the
+selected node's old value/operation and width; operand, move and edge queries
+keep their selected candidates. Ordinary exact commit and stale checks remain.
+Response-v7 stopped between cells after 11 successes, with complete accounting
+and a clean audit, before this guard and view change. No earlier row is imported.
+
+## Matching bound commands and ordinary repair (2026-10-07, ADR-193)
+
+Response-v8 stopped between cells at 71/135 successes in 74 attempts. All costs are known and its independent audit has zero errors. Field-only responses caused unnecessary format repairs. Response-v9 accepts ordinary commands only when kind and target match the immutable binding, uses ordinary movement batches, and switches rejected bound requests to ordinary full-batch repair. It starts all 135 cells fresh. Validation: 146 tests and 167 subtests passed.
+
+## Response-v9 completed numeric gate (2026-10-07, ADR-194)
+
+*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
+
+135/135 successful cells in 142 attempts; all seven failures and cached input costs count. Medians: Java 21,564, Kotlin 21,566, XAX 10,748. Ratio **0.4984232980894083** meets the median 0.50 gate. Aggregate ratio is 0.747651; the 50.1577% reduction refers to the median only. Independent `jvm-r5-response-v9-audit.json` reports zero errors and no live-source drift. The agent context-command review found only named Java/Kotlin program reads. No runner remains active. Keep the frozen artifacts; the next task is corpus/context equivalence review before R5 promotion. JVM remains R4/PROTOTYPE.
+
+## Response-v10 same-prefill pilot (2026-10-07, ADR-195)
+
+*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
+
+Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
+
+Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
+
+The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
+
+## Response-v12 minimal-client run (2026-10-07, ADR-196)
+
+*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
+
+The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
+
+Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
+
+Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
+
+R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
+
+## Multi-file corpus v5 (2026-10-08, ADR-197)
+
+`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
+
+Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
+
+| Arm | Median |
+|---|---|
+| Kotlin excerpt | 286 |
+| Java excerpt | 306 |
+| XAX | 481 |
+| Kotlin files | 1,315 |
+| Java files | 1,391 |
+
+XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
+
+Normal-protocol work from this corpus:
+- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
+- Exact `type OLD NEW` and `type F OLD NEW` retypes.
+- Removal of edits the batch already implies.
+- Kind-specific node diagnostics.
+
+R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.

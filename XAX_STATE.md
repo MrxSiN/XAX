@@ -32,18 +32,18 @@ M14 — full self-hosting transition: **complete for the declared `xax-semantic-
 
 **Correction (ADR-177, 2026-10-06):** the B5/B6 part of the M14 statement above is withdrawn. Its verifier-facing and encoding services are single `META_VERIFY_SEMANTICS`/`META_CANONICAL_STORE` nodes executed by the Python reference executor, so they are not XAX-hosted, and the repository's own readiness derivation always reported B6 false. B levels are now derived by `xax_selfhost.bootstrap_status` and generated below; the M14 result is a scoped META-wrapper fixed point (B2–B4), not whole-compiler self-hosting.
 
-Post-roadmap AI-native experiment: **the controlled direct semantic workflow measures XAX at 0.4990× C-like text's total tokens over five paired local edits—50.098% fewer (10/10 pass, fixed model/setting and client profile; ADR-175)**. It improves ADR-174 and closes the requested aggregate reduction target, but is not R5 because the required §6.2 task-class corpus is incomplete. Historical Codex Desktop rows remain preserved and negative for XAX. The OI-01 transport-candidate arms have one 30-trial Claude Code run (30/30 completed; details below and in `XAX_OPEN_ISSUES.md`). See `compiler/benchmarks/ai_native/README.md` and `jvm-r5-optimized-evidence.json`.
+Post-roadmap AI-native experiment: ADR-194's response-v9 (median ratio 0.4984232981, 135/135 cells) was rejected as R5 evidence by ADR-195's corpus review. Each textual edit cell needed an extra file-read request, and XAX received an out-of-band edit target. The same-prefill response-v10 pilot (`compiler/benchmarks/ai_native/jvm-r5-response-v10-pilot-results.csv`) measures XAX at about 1.0× the textual arms. R5 is 0.50 (target) or 0.55 (owner-accepted). ADR-196's minimal-client run (response-v12, `gpt-6-luna`, calibrated client floor removed) measures 0.995×, with 123/135 cells and a clean audit. ADR-197's multi-file corpus measures 1.68× against IDE-style excerpts (0.35× against whole files). R5 remains unmet, and JVM stays R4/PROTOTYPE.
 
 
 Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm; R3: android-arm64, linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: android-arm64, jvm; R3: linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). Open (S7b): the driver's lowering structures and the exact rejection diagnostics, which still run in Python. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence must be re-run on Linux x86-64 (OI-45).
+S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S7b and later steps are open); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -323,7 +323,7 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 ## Current blockers
 
 - **S7b** (object table, image assembly, and XAX-produced rejection diagnostics) is the next compiler migration step; it starts from the ADR-177 baseline.
-- **OI-45:** the typing-store entries of `selfhost_closure_evidence.json` and `selfhost_x86_64_evidence.json` are marked `native_rerun_required`; re-run `bench_selfhost_closure.py --write` and `bench_selfhost_x86_64.py --write` on Linux x86-64 (they now run with `XAX_REQUIRE_NATIVE=1`). Linux x86-64 and Android R4 need re-measurement with raw samples and the full baseline set before the matrix can derive R4 again.
+- **OI-45:** the self-hosting re-runs were executed on Linux x86-64 on 2026-10-07; no `native_rerun_required` entry is left (see the dated section below). Linux x86-64 and Android R4 still need re-measurement with raw samples and the full baseline set before the matrix can derive R4 again.
 - External conformance fixtures still do not exist; current evidence remains implementation-local.
 - No B milestone is established for the whole production compiler; the M14 semantic-image META wrapper holds B2–B4 only (generated status above).
 - Calibrated target cost models, broader optimizer/search organization, stronger transformation proof systems, recursive general effect-summary fixed points, broader META construction, richer package constraints/actions, cross-target atomics, durable timing proofs, a normative atomic litmus corpus, changed-entity semantic merge, and multi-process workspace coordination remain explicit future extensions, not silently claimed behavior.
@@ -382,7 +382,7 @@ constructors, and 0 TLS entries. Its `native_init` hot path is two AArch64
 instructions (`ADR x0,<callback>; RET`) with no stack frame. A trivial exported
 add remains exactly `ADD w0,w0,w1; RET`.
 
-The modern libxposed fixture is at
+*(2026-10-06, ADR-178: this Gradle fixture has no Java entry, so Vector and other API-102 frameworks do not load it; it remains a packaging/dlopen oracle. See "Vector as the libxposed runtime" below.)* The modern libxposed fixture is at
 `compiler/integration/android/libxposed_fixture`; it packages the generated
 `.so` from `jniLibs/arm64-v8a` and uses `META-INF/xposed/native_init.list`,
 `module.prop`, and `scope.list`. A device/emulator validation script is included.
@@ -519,7 +519,7 @@ Remote-resource capability policy is now explicit rather than delegated to excep
 
 Bounded API-102 hot reload is also implemented structurally. `libxposed-hot-reload-v1` accepts only `single-retained-hook-id-guarded-atomic-replace` with `propagate` framework-failure policy, stable ID `xax.primary`, explicit `skip-replacement` transfer-mismatch policy, `package-ready-class-loader` saved-state policy, and `reject-reload` when package-ready state was never captured. Build closure requires exactly one Java entry, exact min/target API 102, and exactly one `retained-manual-unhook` generated hook. Metadata adds `autoHotReload=true`; initial package-ready installation calls `HookBuilder.setId("xax.primary")` and stores the target/app ClassLoader. The generated 11-code-unit `onHotReloading` rejects a missing loader or saves only that host-owned ClassLoader through `setSavedInstanceState`. The 51-code-unit `onHotReloaded` restores the loader, rejects absent/empty transfer state, verifies `HookHandle.getId()` with `String.equals`, skips mismatched state, then creates one replacement Hooker, calls atomic `HookHandle.replaceHook(...)`, and stores the returned handle; it emits no unhook/install gap, target-member reflection, array allocation, module-defined saved object, or hidden serialization runtime. `android_libxposed_hot_reload_evidence.json` records a deterministic 34,347-byte APK and 2,920-byte managed DEX; the Hooker remains byte-identical to the retained baseline.
 
-This does **not** establish working managed hooking on Android. Module discovery, framework attachment, package-ready delivery, class-loader resolution, hook installation, interception, argument/result mutation, original invocation, exception-mode behavior, retained-handle behavior, actual unhook/idempotence, ART deoptimization result, remote capability/value behavior, preference/file operations, hot-reload callback delivery, saved target-ClassLoader transfer, stable-ID transfer/mismatch behavior, atomic replacement, ART allocation counts, and process survival remain UNEXECUTED because no compatible Android/libxposed runtime is available on this host. Broader method signatures/boxing, remote-file-descriptor consumption, preference writes/listeners, multi-hook stable-identity reload, package/process/resource/listener/thread migration, and measured runtime latency remain unimplemented or unproven.
+*(2026-10-06, ADR-178: the runtime target is now Vector; the harness exists but is UNEXECUTED. See "Vector as the libxposed runtime" below.)* This does **not** establish working managed hooking on Android. Module discovery, framework attachment, package-ready delivery, class-loader resolution, hook installation, interception, argument/result mutation, original invocation, exception-mode behavior, retained-handle behavior, actual unhook/idempotence, ART deoptimization result, remote capability/value behavior, preference/file operations, hot-reload callback delivery, saved target-ClassLoader transfer, stable-ID transfer/mismatch behavior, atomic replacement, ART allocation counts, and process survival remain UNEXECUTED because no compatible Android/libxposed runtime is available on this host. Broader method signatures/boxing, remote-file-descriptor consumption, preference writes/listeners, multi-hook stable-identity reload, package/process/resource/listener/thread migration, and measured runtime latency remain unimplemented or unproven.
 
 ## Native XAX compiler leaf — BLAKE3 compression (2026-10-02)
 
@@ -1072,3 +1072,199 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - **Matrix**: validator v2. Linux x86-64 R4→R3 and Android arm64 R4→R3; no other level changed.
 - **Provenance**: Linux ELF (x86-64, AArch64), PE32+, browser pages, and SPIR-V build through `xax_build.build`.
 - Full suite on Windows 11 x86-64, Python 3.12.10: **975 passed, 0 failed, 219 skipped**; every skip names an unavailable host tool (75 Linux x86-64, 34 Java, 20 native leaf, 10 Go, …). Native-host behaviour of the new mechanisms is UNVERIFIED until run on Linux x86-64.
+
+## Vector as the libxposed runtime (2026-10-06, ADR-178)
+
+- **Contract**: XAX -> libxposed API-102 module -> Vector -> ART. Generated modules link only `io.github.libxposed.api`; Vector v2.2 (commit `88f8e1fa`) with libxposed-api `39cac084` and libxposed-service `33189408` is pinned in `compiler/integration/android/vector/vector_runtime_pin.json`, together with the API-102 member table from the SHA-256-pinned `api-102.0.0` AAR.
+- **Corrected**: a module needs at least one Java entry (Vector ignores native-only APKs and never opens native entries itself); the native fixture now carries the generated `XposedModule` and its APK, ART verify/execute (13/13) and official-tools evidence were regenerated by running the tools. A stable hook ID now requires `minApiVersion=102`.
+- **Kept**: every other emitted descriptor, lifecycle override, hook/Chain/HookHandle call, capability constant, hot-reload path and native ABI already matched API 102 as Vector implements it.
+- **Layer 1 (STRUCTURAL)**: `xax_vector.check_vector_module_apk` accepts all 13 module fixtures; `tests/test_xax_vector_contract.py` pins exact descriptor sets and rejects native-only, API-102-behind-101, legacy, implementation and bundled-API modules.
+- **Layer 4 (Vector runtime)**: `compiler/integration/android/vector/vector_harness.py` - 27 checks over 14 signed profiles (`android_vector_profiles_evidence.json`). **UNEXECUTED**: no rooted arm64 device with Zygisk and Vector v2.2+ on this host; `android_vector_runtime_evidence.json` records the plan.
+- Full suite (Linux x86-64, Python 3.13, `/opt/android` built by `make_android_root.py`, pip setuptools): **1184 passed, 36 skipped, 1 failed**. The failure, `test_jvm_r5_candidate_evidence_is_consistent` (a JVM AI-token CSV SHA-256 mismatch), fails identically on the pre-change tree (clean baseline: 1144 passed, 47 skipped, 3 failed; the other two were wheel builds under Debian's patched setuptools).
+
+## Native self-hosting evidence re-executed on Linux x86-64 (2026-10-07, OI-45)
+
+- Host: Linux x86-64, Python 3.13.16. `bench_selfhost_closure.py --write` (22 min) and `bench_selfhost_x86_64.py --write` (3.5 min) were run against the committed stores at `5e0fd93`, both under `XAX_REQUIRE_NATIVE=1`. Every component in both evidence files records `actual_authority: xax` with no fallback.
+- The typing store (`xax_op_typing.xax`, SHA-256 `c3395d39…`), stale until ADR-177, now has executed entries again: its gen1 RV64 image equals the bootstrap reference (46 functions, 4,728,348 code bytes, image SHA-256 `0cd34705…`); the verifier's emulated verdict on it equals the native one (95 objects proven); and its x86-64 image matches its bootstrap reference with the native verifier agreeing. No `native_rerun_required` entry is left in either file.
+- Native self-hosting tests at that revision with `XAX_REQUIRE_NATIVE=1`: 97 passed (2 opt-in skips). The opt-in fixed-point tests (`XAX_FIXED_POINT=1`) also passed: 7 tests, 31 subtests, 31 minutes, two workers.
+- A cold image cache exposed a bootstrap-order bug: `XAX_REQUIRE_NATIVE=1` failed when the XAX backend could not yet lower the hash and decoder images. Those images are now recorded as Python lowering by design (`lowering:<component>` entries in `xax_native.AUTHORITY`). The x86-64 evidence was regenerated from a cold cache: its content is identical apart from timings, and it now records the lowering authority of each image.
+- Still open in OI-45: the Linux x86-64 R4 re-runs with raw samples, and the Android second baseline. The matrix is unchanged.
+
+## S7b.1: x86-64 views rejections decided by XAX (2026-10-07, ADR-179, ADR-180)
+
+- EXECUTED on Linux x86-64: the XAX x86-64 views program decides every target-legality check of the bootstrap lowering, in the bootstrap's order, and writes the diagnostic record (code, entity CID, rule, expected, actual). `compile_with_xax` raises it, and no Python check decides an x86-64 views rejection there. `tests/test_xax_selfhost_diagnostics.py`: 14 rejection programs covering every reachable rule, with `Diagnostic` equal in every field and in repr. Accepted programs, the helpers, and the native fixed point are unchanged byte for byte.
+- Store `xax_x86_64_backend.xax`: 1,369,383 bytes (S7a: 974,862). The RISC-V store is unchanged.
+- ADR-180: `compiler/migration/python_authority_inventory.json` classifies all 67 compiler modules (35 A, 5 B, 6 C, 4 D, 1 E, 2 F, 14 G; 26 components). `XAX_SPEC.md` §16.5 gains condition 5 (rejections migrate too). The roadmap gains S7b.1–S7b.3 and S8–S15. Migration level: SH1. `FULL_PRODUCTION_SELF_HOSTED`: NO.
+
+## S7b.2: object table and image record decided by XAX (2026-10-07, ADR-181)
+
+- EXECUTED on Linux x86-64: the views backend programs take the store objects (and the bound target) with references and identities as CID words, and their payloads unselected. A new program function, `find`, bisects the CID-ordered objects; with it the program places the target, finds the entry, and resolves every reference. After patching, the program writes the image record: each function's CID and code range in layout order. Python only copies words in (`_object_table`) and renders the record (`image_record`).
+- Images are unchanged byte for byte on both backends; the native x86-64 and emulated RV64 component evidence was regenerated. Stores: x86-64 1,384,123 bytes, RISC-V 917,236 bytes.
+
+## S7b.3: RISC-V views rejections decided by XAX; S7b complete (2026-10-07, ADR-182)
+
+- EXECUTED on Linux x86-64: the RISC-V views program opts into the legality pass (`DIAGNOSTICS = "RISCV64"`), and `_compile_with_xax` raises the diagnostic it writes. Both generators share `LOWERED_OPERATIONS` (`xax_views_lowering`). The entry-interface width check is deferred in both programs until the code is laid out, which is where the bootstrap makes it, after its RISC-V range limits.
+- `tests/test_xax_selfhost_diagnostics.py`: 14 rejection programs × 2 families, all equal to the bootstrap in every field and repr; production rejections record `actual_authority: xax`. Images and component fixed points are unchanged.
+- S7b is complete for the views profiles: their legality, diagnostics, object table, and image record are XAX decisions on Linux x86-64, except RISC-V range rejections, which only images over ±1 MiB reach. Migration level remains SH1. `FULL_PRODUCTION_SELF_HOSTED`: NO.
+
+## S8a: store-container rejections decided by XAX (2026-10-07, ADR-183)
+
+- EXECUTED on Linux x86-64: the XAX store decoder makes every `StoreReader` container check in the bootstrap's order and writes the exact diagnostic (16 codes across 20 sites). That includes the digest comparison: two passes, with the digest computed by the XAX hash and compared by the decoder. `StoreReader` raises the program's diagnostic; the bootstrap parser now runs only for deferred containers and off Linux x86-64.
+- `tests/test_xax_selfhost_store.py`: 31 constructed stores, one per rule including 70-bit ULEB values, and 1,200 mutations, all equal to the bootstrap in every field and repr.
+- Store `xax_store_decoder.xax`: 212,454 bytes (was 29,910); the rule table is written once in a shared diagnostic block.
+- Full suite on this host (Linux x86-64, Python 3.13): 1,177 passed, 49 skipped, 5 failed in the first run. Three were fixed before commit: the graph-decoder store had drifted through the shared `_Decoder` base, now restored, with the S8a machinery in a `_ContainerDecoder` subclass; and the evidence binding, after regeneration. One was environmental (`tiktoken` missing, now installed). The fifth is the JVM R5 CSV digest test, which already fails on the pre-change tree (ADR-178). The affected suites were re-run green (122 passed).
+
+## S8b.1: object envelopes decided by XAX (2026-10-07, ADR-184)
+
+- EXECUTED on Linux x86-64: `StoreReader.get` hands each object's envelope to the XAX decoder's object mode, which makes every `decode_object` check in its order and compares the CID, which the XAX hash computes over the span the program reports. The program writes the exact diagnostic (five new sites; entity `object:<CID hex>`). The Python CID comparison (`_object_from_parse`) is gone.
+- `tests/test_xax_selfhost_store.py`: 13 malformed-object stores match the bootstrap in every field and repr; every object of 600 mutated stores matches the bootstrap reader.
+
+## S8b.2: graph-body syntax rejections decided by XAX (2026-10-07, ADR-185)
+
+- EXECUTED on Linux x86-64: the S3c graph decoder decides every syntax rule of a graph body (entry block, reference index, value tag, terminator kind, trailing bytes, ULEB rules, trap truncation), deciding each value before it enters the stream and keeping all 70 bits of the decisive ones. On a rejection it reports the stream prefix; `_parse_graph_uncached` walks it (resolution and type checks, still Python) before raising the program's diagnostic, so the bootstrap's order holds.
+- The S8a site machinery is now a mixin, `_SiteDiagnostics`, shared by the container and graph decoders.
+- `tests/test_xax_selfhost_graph.py`: 18 constructed bodies are rejected by the XAX decoder with exact diagnostics, the resolution-first case holds, and 1,500 mutated bodies match the bootstrap.
+
+
+## JVM snapshot-bound token workflow (2026-10-07, ADR-186)
+
+*Superseded workflow: the current host-response comparison is described in
+the ADR-187–189 follow-up below; retain this section as historical evidence.*
+
+EXECUTED: `LocalMutationSession` is normal compiler tooling, shared by direct edit arms. It binds the queried generation, derives exact old attributes, and delegates atomic verification/publication to `Workspace`. Deterministic semantic evidence is `compiler/benchmarks/local_protocol_evidence.json`. No JVM backend runtime claim changes.
+
+Validation: the affected JVM/workspace/protocol/evidence suites passed 204 tests with 3 host-unavailable skips and 276 subtests before the role-binding follow-up. The follow-up corpus/protocol suites passed 38 tests; targeted diagnostic regressions passed 37 tests with one textual-compilation case deselected (that case passed in the corpus run). The wider Windows attempt had 992 passes, 178 skips, 6 failures and 3 import errors; the inventory omission, JDK-specific member count, and two JVM line-ending failures were then fixed and rerun. Remaining broad-run issues are unrelated provenance/memory evidence and host/import/emulator availability. Unicorn crashed during RISC-V emulation on this Windows host; this is not passing execution evidence.
+
+The exploratory local profile stopped at 16 attempts: 15 successes, with a failed creation cell costing 208,350 tokens and a move cell costing 92,165. All costs and raw events remain archived, with the source snapshot. Explicit role bindings and snapshot/insertion help were then added; two fresh XAX preflights passed (move 26,518; creation 38,463 including one repair). The separate full three-trial Java/Kotlin/XAX comparison is recorded in `jvm-r5-bound-results.evidence.json`. JVM stays R4/PROTOTYPE; incomplete data and unresolved corpus-equivalence limits cannot establish R5.
+
+The historical ADR-175 CSV's CRLF bytes were restored to its original recorded SHA-256, without changing any measurement; `.gitattributes` prevents future newline normalization of result CSVs.
+
+## JVM host-response follow-up (2026-10-07, ADR-187–189)
+
+Normal snapshot setters, dead-chain pruning, compact aliases and multi-result
+help are implemented. A redundant Kotlin literal conversion is admitted only
+with matching compiled instructions; an overload-changing conversion rejects.
+Affected validation: 142 tests and 167 subtests passed on Windows/JDK 17.
+
+Response-v4 remains separate incomplete negative evidence: 137 attempts,
+134/135 successful cells, all costs known, partial ratio 0.501623. Its checker
+falsely rejected an equivalent explicit Kotlin literal conversion. The source
+snapshot and independent raw-usage audit are retained unchanged.
+
+The current response-v5 comparison runs three trials for each of the 15
+Java/Kotlin/XAX task families. Use its CSV, evidence JSON, manifest and streamed
+traces under `compiler/benchmarks/ai_native`; do not import older cells. Source
+bytes are frozen during inference. Resume with `benchmarks.run_jvm_r5_response`
+only after ensuring no runner is active; never start a second CSV writer.
+A `runs-jvm-r5-response-v5/STOP` file stops safely between cells. Every failed
+response/attempt remains in successful-cell cost. Independently audit using
+`benchmarks.audit_jvm_r5_response` before reporting a complete numeric result.
+
+JVM stays R4/PROTOTYPE pending the complete result and corpus review. The graph
+is host-projected while textual edits inspect a named file; the large fixture
+is synthetic and resource effects are abstract verifier contracts. This work
+makes no JVM backend-speed or native self-hosting claim.
+
+## JVM median token gate achieved (2026-10-07, ADR-194)
+
+*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
+
+Response-v9 completed 135/135 cells in 142 attempts. Medians including all failed-response/attempt costs: Java 21,564; Kotlin 21,566; XAX 10,748. Ratio 0.4984232980894083 meets 0.50, a 50.1577% median reduction against the lowest textual median. The independent audit reports zero errors, no live-source drift and complete accounting. Recorded aggregate XAX cost is 772,632 versus Java 1,033,413 and Kotlin 1,175,166; the aggregate ratio is 0.747651, so the measured 50% reduction is specifically the median gate. Validation: 146 tests and 167 subtests, plus regenerated-status checks. JVM stays R4 until corpus/context equivalence review; no runtime-speed claim changes.
+
+## JVM R5 corpus review and same-prefill profile (2026-10-07, ADR-195)
+
+*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
+
+Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
+
+Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
+
+The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
+
+## JVM minimal-client run: R5 unmet at 0.995× (2026-10-07, ADR-196)
+
+*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
+
+The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
+
+Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
+
+Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
+
+R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
+
+## Declarative Android Surface Activity (2026-10-07)
+
+General `android-surface-activity-v1` carrier in `xax_android_components` generates
+an Activity with one platform-owned SurfaceView using the existing DEX assembler.
+The standard package/build/signing path emits a manifest and DEX only, rejecting
+extra executable policies, a nonempty build selector, mismatched Activity names
+and minSdk below 28. No handwritten Android code, native runtime, media consumer,
+network or timer is introduced. Existing UI lowering remains unchanged.
+
+Windows checks: 166 passed / 10 environment-dependent skipped across Android,
+APK, DEX, manifest and build tests, followed by 12/12 focused surface tests after
+adding the nonempty-selector rejection case. AutoHead's verified canonical store
+produces two identical 3,727-byte development APKs with 924-byte DEX. Google
+apksigner, zipalign and aapt2 pass; Windows dexdump 36.0.0 has an anonymous-mmap
+tool failure and is not claimed as passing. Physical original Pixel/API 35 runtime
+evidence is recorded separately by AutoHead's explicit-device oracle. No Android
+Auto projection/media/wireless capability or replacement-level promotion is claimed.
+
+The AutoHead oracle subsequently passed on physical original Pixel (`sailfish`,
+API 35, arm64-v8a): install, real SurfaceView compositor layer and three process
+recreation cycles. This APK is DEX-only; it does not demonstrate native pipeline
+or codec execution. AutoHead retains exact store/APK hashes, raw launch samples,
+accessible hierarchy and screenshot in its evidence directory. The initial secure
+lock-screen attempts and oracle corrections are not counted as runtime passes.
+
+## Android hardware: Vector runtime and R4 restored (2026-10-07, ADR-197, ADR-198)
+
+- Vector v2.2 on a rooted Pixel 8 Pro (Android 17/API 37) loads and runs the generated libxposed API-102 modules. `android_vector_runtime_evidence.json` has 18 PASS, 0 FAIL and 9 UNEXECUTED (breakpoint/invocation checks). Attaching JDWP aborts Vector-hosted ART on this build, so the harness uses heap dumps.
+- The run found and fixed a codegen bug: `onHotReloading` passed `{ClassLoader, HotReloadingParam}` to `setSavedInstanceState` in the wrong order. API-102 hot reload with stable IDs now works on hardware.
+- ART verify (21/21) and ART execute (13/13) now run on the device's own ART (`XAX_ART_DEVICE=1`). The official-tools check runs on Windows.
+- Android counter R4 (§15.29): XAX 1.007× the fastest of Java + NDK and pure Java twins, with per-pass ratios 1.00/1.053/1.06/1.00. The Android row is R4 again.
+
+## Android general managed classes (2026-10-07, ADR-199)
+
+- `android-managed-class-v1` declares any DEX class whose methods forward to XAX JNI exports: lifecycle overrides, callback interfaces, and value-returning callbacks. The range form adds non-void results, `long` parameters and five or more registers; existing DEX bytes are unchanged.
+- The build checks each export's ABI against the Java descriptor. Pixel 8 Pro: ART verifies all classes, the XAX `jboolean` result consumes VOLUME_UP (with a control), and `call_super` lifecycle survives pause/resume (`android_managed_evidence.json`).
+
+
+## Exact platform carrier maintenance (2026-10-07)
+
+Platform-carrier-replacement-v1 rebuilds package/build ancestors transactionally
+under generation, handle/read and exact-CID preconditions. Private Android APK
+lowering rejects incompatible carriers before publication. Rollback, durable
+save/reopen, multi-carrier changes, provenance rejection and ABA race tests pass.
+AutoHead changed its existing manifest versionCode from 1 to 2: five frontier
+objects verified, six reused, DEX identical. Two signed builds are identical;
+original Pixel API35 installation, actual SurfaceView and three relaunches pass.
+This closes a tooling maintenance blocker; it adds no protocol/media/wireless
+behavior or replacement-level promotion. Recovery patch and exact roots/hashes
+are retained in AutoHead. Upstream ADR-199 managed callback forwarding is reused
+as the starting point for subsequent lifecycle work.
+
+## JVM multi-file corpus: 1.68× vs IDE excerpts (2026-10-08, ADR-197)
+
+`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
+
+Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
+
+| Arm | Median |
+|---|---|
+| Kotlin excerpt | 286 |
+| Java excerpt | 306 |
+| XAX | 481 |
+| Kotlin files | 1,315 |
+| Java files | 1,391 |
+
+XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
+
+Normal-protocol work from this corpus:
+- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
+- Exact `type OLD NEW` and `type F OLD NEW` retypes.
+- Removal of edits the batch already implies.
+- Kind-specific node diagnostics.
+
+R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.

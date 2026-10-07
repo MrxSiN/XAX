@@ -593,7 +593,7 @@ Each implementation may choose its own data representation for the same observab
 
 **Record per result.** Exact hardware; OS/build; compiler/toolchain versions and flags; optimization/build policy; workload and input; warmup; repetitions; median, p95/p99 where meaningful, and dispersion (MAD/IQR); binary size; peak memory; execution time; startup where relevant; generated instruction/code properties when useful; platform-required runtime and generated adapters. Unavailable baselines are recorded as unavailable with the reason; they are never estimated.
 
-**AI token trials.** For the same workloads, run the §6 task classes with real models and record §6.3 metrics. Per the current work order, token trials run only after the replacement upgrade lands, using the smallest corpus that exercises each task class once (n=1 per cell first, extended only when differences exceed run-to-run noise).
+**AI token trials.** For the same workloads, run the §6 task classes with real models and record §6.3 metrics. Token trials run only after non-token implementation and validation. An n=1 preflight may diagnose tooling but cannot establish R5. Use at least three fresh trials per cell for a claim, with the same repetition policy, model/version, reasoning, tools, success criteria, and equivalent repository context for XAX and at least two relevant textual languages. Include failed attempts, repairs, diagnostics, cached input, and retransmitted context in successful-task costs. The lowest valid textual baseline is the arm with the lowest median total successful-task cost. R5 requires XAX's corresponding median to be ≤ 0.50× that baseline; prefer strictly below 0.50. Missing cells, altered workloads, benchmark-only shortcuts, and selective retries cannot satisfy the gate.
 
 **Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.
 
@@ -992,6 +992,8 @@ The thread fixture is 1,536 bytes (176 code bytes) and imports only `CreateThrea
 
 ### 15.23 Android counter on arm64 hardware: XAX vs Java + NDK (ADR-172; MEASURED, 2026-10-05)
 
+> Historical record. The current Android result is §15.29 (ADR-198).
+
 Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37, security patch 2026-09-05, kernel `6.1.162-android14-11-g2ec90535fa34-ab15810641`. Host: Windows 11 build 26200 x86-64. Toolchains: NDK r28c (`28.2.13676358`), build-tools 37.0.0, `android-37.0`, Microsoft OpenJDK `javac 17.0.20.1`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json`.
 
 The two APKs implement the same stateful counter contract and share package/class/native-method identities. Each arm passed its click check. The harness used two alternating install-once passes; per arm and pass it performed three warmups, then collected eight cold starts, for 16 measured starts per arm. `am start -W` supplied `TotalTime`; `dumpsys meminfo` supplied total PSS after each launch. All launches were tracked.
@@ -1035,3 +1037,166 @@ Evidence: `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json` and `jvm-r5-
 
 Among completed cells, Java and Kotlin medians were 50,342.5 and 50,737.5 tokens; XAX was 38,679 (0.7683× the lowest textual median), above the 0.50 R5 gate. The JVM row therefore remains R4/PROTOTYPE. No promotion is claimed from this incomplete run.
 
+
+### 15.27 JVM local protocol profiling and bound-role follow-up (ADR-186, 2026-10-07)
+
+The normal snapshot-bound adapter is shared by direct arms, with unchanged canonical semantics and target-root oracles. `local_protocol_evidence.json` is deterministic EXECUTED semantic evidence, with no runtime or token-performance claim. The new runner retains all model events and their digests, counts every completed turn and retry, rotates Java/Kotlin/XAX order, and requires three trials per cell for a numeric gate.
+
+Exploratory profile: `ai_native/jvm-r5-local-results.csv`, its evidence and manifest, and `runs-jvm-r5-local/source-snapshot`. It stopped after 16 attempts (15 successes). Move used 92,165 tokens because role names were not bound to handles. Creation failed after 208,350 tokens; the prompt omitted insertion-result and snapshot-numbering facts. These costs are retained rather than selected away.
+
+Bound-role profile: `ai_native/jvm-r5-bound-results.csv`, its `.evidence.json` and bound manifest. Role metadata supplies the same names available in textual source, without conveying the answer; ordinary session aliases and batch help are available outside the benchmark. Creation targets are retained and Java/Kotlin probes are strengthened to nine inputs, including wraparound. Two preflight XAX cells pass: move 26,518 tokens; creation 38,463, including one repair. These observations are not a complete comparison or R5 evidence. The full three-trial comparison is recorded separately under this unchanged profile.
+
+The runner's `transmitted_bytes` counts the supplied prompt plus retained JSON event transport; provider framing is unavailable. Failed-command and diagnostic counters are proxies retained beside raw traces, not a proof that every failure was a semantic verifier rejection. The inherited creation scaffold, repair candidate representation, and large-application context require equivalence review before any R5 claim. No numeric gate automatically promotes the matrix.
+
+### 15.28 JVM host-applied responses and exact compound edits (ADR-187/188, 2026-10-07)
+
+The new corpus uses final responses in every arm: normal context patches for
+Java/Kotlin and ordinary snapshot-bound requests for XAX. Successful requests
+need no model acknowledgement of PASS. All creation arms start empty. The
+conditional executes both branches, the stale task performs a real concurrent
+update, and every large-application arm contains 160 helpers plus its target
+and assertion. Fourteen XAX targets execute on the JVM; the abstract resource
+contract uses verifier and exact-root checks. These changes do not alter JVM
+runtime-performance evidence or the historical ADR-176 rows.
+
+Each frozen profile has its own source snapshot, manifest, CSV and streamed
+events under `compiler/benchmarks/ai_native`. The fixed client/model is Codex
+CLI 0.162.0-alpha.2, `gpt-5.6-luna`, low reasoning. Shared client flags disable
+unrelated plugin/skill injection; saved common instruction hashes must match.
+Every completed-turn input/output cost counts, including cached input, failed
+responses and earlier attempts for the same successful task/arm/trial cell.
+The comparison requires three trials for all 15 families in all three arms.
+
+| Profile | Outcome and reason for the next revision |
+|---|---|
+| bound | Interrupted attempt lacked final usage; its retained rollout gives a lower bound only. Ineligible for a numeric gate. |
+| response | Initial host-response preflight discovered unequal injected plugin instruction catalogs. Ineligible for a numeric gate. |
+| response-v2 | Stable common instructions and ordinary context patches; exposed numeric-alias and multi-function projection failures. Costs retained. |
+| response-v3 | XAX preflight passed 11/15 cells; edge/type/signature ambiguity and incomplete dead-chain deletion motivated normal compound carriers and explicit type facts. Costs retained. |
+| response-v4 | Full repeated comparison of snapshot-derived setters and dead-chain pruning. Consult its evidence JSON for completeness and numeric outcome. |
+| response-v5 | Compact public spellings/help and artifact-checked redundant Kotlin literal conversions; fresh repeated comparison, with no imported earlier cells. |
+
+`benchmarks.audit_jvm_r5_response` independently recomputes raw usage and pooled
+attempt costs and checks live/snapshot source hashes, trace hashes, common
+instructions, CSV/result agreement and successful host checks. Model context
+commands require separate review. Creation attempts sometimes inspect local
+task/checker-launcher/trace metadata; these expose no target implementation,
+and their costs remain counted.
+
+Exact-root and whitespace-normalized textual targets are more restrictive
+than behavioral equivalence. The large fixture is synthetic; resource effects
+are abstract. Numeric success therefore remains subject to corpus review and
+does not automatically promote JVM beyond R4/PROTOTYPE.
+
+Response-v4 stopped after its scheduled comparison and retained retries:
+137 attempts, 134/135 successful cells, all usage known. Successful-cell medians
+including earlier costs were Java 21,869, Kotlin 21,928 and XAX 10,970, a
+**partial** 0.501623 ratio. One Kotlin API cell remained unsuccessful: its
+checker rejected an explicit literal conversion that compiled equivalently.
+This is incomplete negative evidence, not a gate result. The independent
+`jvm-r5-response-v4-audit.json` reproduces its totals and hashes without errors.
+
+Response-v5 corrects that false rejection without dropping the semantic target:
+only literal-conversion spelling differences qualify, and compiled instructions,
+resolved operands, descriptors and behavioral execution must agree. A distinct
+overload-selection case rejects. Its manifest also explicitly records the
+host-prefilled graph versus named-file inspection workflow; a same-prefill
+comparison has not been measured. Current artifacts use the response-v5 prefix.
+
+### 15.29 Android counter on arm64 hardware: XAX vs Java + NDK and pure Java (ADR-198; MEASURED, 2026-10-07)
+
+Supersedes §15.23 as the current Android result. Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05, kernel `6.1.162-android14-11-g9dd05ae3a1de`, on AC power, Battery Saver off. Host: Windows 11 x86-64. Toolchains: NDK r28c (`28.2.13676358`) `clang -O2`, build-tools 36.0.0, `android-36`, Temurin `javac 17.0.20.1`, `d8 --release --min-api 28`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`results` holds raw `wall_seconds_samples` per arm).
+
+Arms share the package, Activity/listener classes, state file, and observable behaviour; each passed its click check. `clang_ndk_java` is the ADR-153 Java + NDK twin. `java_d8` is a new pure Java twin (`benchmarks/android_counter_java_twin/`): `FileChannel` read of the 8-byte little-endian count, write, and `force(false)` (fdatasync). Protocol: four passes; the arm order rotates by one each pass. Every pass reinstalls each arm and compiles it with `cmd package compile -f -m speed`, runs three warmups, then four cold starts (`am force-stop`, `am start -W` `TotalTime`, total PSS from `dumpsys meminfo`). That gives 16 tracked starts per arm, with no untracked launch.
+
+| Arm | Median `TotalTime` (ms) | Stdev (ms) | Ratio vs fastest | Pass medians (ms) | Median PSS (KiB) | APK bytes | DEX bytes | Native `.so` bytes |
+|---|---:|---:|---:|---|---:|---:|---:|---:|
+| XAX | 277.0 | 62.90 | 1.007 | 147.5 / 278.0 / 302.0 / 277.0 | 107,168.0 | 20,313 | 2,936 | 2,248 |
+| Java + NDK (`clang -O2`) | 275.0 | 48.86 | 1.000 | 177.0 / 264.0 / 285.0 / 302.0 | 107,161.5 | 28,892 | 2,472 | 4,768 |
+| Java (`javac` + `d8`) | 286.5 | 131.71 | 1.042 | 209.0 / 274.0 / 334.0 / 301.0 | 107,050.0 | 12,432 | 3,088 | 0 |
+
+XAX meets the §15.0 primary target: 1.007 is at most 1.05 against the fastest valid arm, and `xax_replacement.recompute_runtime_verdict` reproduces the verdict from the raw samples. XAX against the fastest arm of each pass is 1.00, 1.053, 1.06 and 1.00, so no pass exceeds 1.10. Every arm slows across the run (pass 1 to 4 medians rise by about 100–150 ms), and the pooled margin is within that drift. Median PSS is equal within 0.11% across arms. XAX's APK is 0.703× the NDK twin's and 1.634× the pure Java twin's, which has no native library. XAX's DEX is 0.951× the Java twin's. The row returns to R4; the scope is this application on this device. No Kotlin arm was run.
+
+## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
+
+All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and
+142 retained attempts. Including failed-attempt/response costs, successful-cell
+medians are Java 21,565, Kotlin 21,557 and XAX 10,784 tokens. The ratio is
+0.5002551375423296, above 0.50; this is complete negative gate evidence.
+Total recorded costs are Java 1,099,050, Kotlin 1,306,465 and XAX 706,714 tokens.
+The independent raw-usage/source/digest audit reports zero errors. CSV bytes,
+source snapshots and traces remain unchanged after this result.
+
+Normal bound-field requests now omit a caller-selected kind/target and the
+unneeded full command menu; all remaining fields come from the model. They
+expand through the same snapshot-bound transaction machinery. A fresh response-v7
+comparison measures them without importing earlier rows. Numeric success still
+requires corpus review; named semantic targets versus named textual files,
+strict source targets, synthetic application helpers and abstract resources
+remain explicit limits. No JVM runtime-speed claim is made.
+
+## JVM response-v9 median token gate met (2026-10-07, ADR-194)
+
+*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
+
+All 135 cells passed: 15 task families × Java/Kotlin/XAX × three fresh trials, across 142 attempts. Codex CLI 0.160.0, gpt-5.6-luna/low, Temurin JDK 17 and Kotlin 2.1.0 are pinned in the manifest. Every completed response and failed attempt, including cached input, is counted. Seven failed attempts remain in successful-cell costs.
+
+| Arm | Successful cells | Median tokens including retries | Total recorded tokens | Repair responses |
+|---|---:|---:|---:|---:|
+| Java | 45/45 | 21,564 | 1,033,413 | 4 |
+| Kotlin | 45/45 | 21,566 | 1,175,166 | 11 |
+| XAX | 45/45 | 10,748 | 772,632 | 20 |
+
+The median ratio is 10,748 / min(21,564, 21,566) = **0.4984232980894083**, meeting ADR-176's 0.50 gate (50.1577% fewer median tokens). The aggregate ratio is **0.7476507456360623** (25.2349% fewer total tokens than Java); this is not a 50% aggregate reduction. The median clears the threshold by 34 tokens; one fixed-profile run does not establish a robust margin or statistical significance.
+
+Evidence: `compiler/benchmarks/ai_native/jvm-r5-response-v9-results.csv`, `.evidence.json`, `jvm-r5-response-v9-audit.json`, `jvm-r5-response-v9-context-review.json`, and the frozen manifest/source snapshots/raw events under `runs-jvm-r5-response-v9/`. CSV SHA-256: `a2e678fb689910fac1cd9844ad5834f8ab7876d8eb72e54a0d290f056b0c93ce`; manifest SHA-256: `8b90953f14fc6d57978d2973e0348add97ba9389e31f249eb68e6bc8076b34e2`. The independent audit has zero errors, checks live sources without drift and confirms complete usage and common instruction context. The agent reviewed all 15 distinct context commands: only named `Program.java`/`Program.kt` reads, with no unexpected context commands.
+
+Normal tooling uses lossless uniform result-type defaults, immutable caller-selected bindings, minimum scalar views, matching ordinary command acceptance and ordinary full-batch repair. No remaining semantic field is supplied from a reference answer. Earlier profiles remain separately preserved. Response-v7/v8 stopped safely with complete accounting; transferred v5 retains its unknown usage marker.
+
+Validation: 146 focused tests and 167 subtests passed; status/matrix checks pass after regeneration. JVM remains **R4/PROTOTYPE** pending corpus/context equivalence review: host-projected semantic context and named-file inspection differ, exact oracles are restrictive, the large fixture is synthetic and abstract resource effects do not execute on the JVM. Numeric success alone does not promote R5 or change runtime/backend performance claims.
+
+## JVM response-v10 same-prefill pilot (2026-10-07, ADR-195)
+
+*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
+
+Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
+
+Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
+
+The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
+
+## JVM response-v12 minimal-client same-prefill run (2026-10-07, ADR-196)
+
+*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
+
+The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
+
+Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
+
+Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
+
+R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
+
+## JVM multi-file R5 corpus v5 (2026-10-08, ADR-197)
+
+`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
+
+Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
+
+| Arm | Median |
+|---|---|
+| Kotlin excerpt | 286 |
+| Java excerpt | 306 |
+| XAX | 481 |
+| Kotlin files | 1,315 |
+| Java files | 1,391 |
+
+XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
+
+Normal-protocol work from this corpus:
+- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
+- Exact `type OLD NEW` and `type F OLD NEW` retypes.
+- Removal of edits the batch already implies.
+- Kind-specific node diagnostics.
+
+R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.

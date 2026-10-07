@@ -561,8 +561,8 @@ def current_m14_readiness() -> M14ClosureReadiness:
     )
 
 
-# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the driver,
-# program backends, object tables, image assembly, and rejection diagnostics are Python (S7b and later).
+# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the driver, the
+# verifier's rejections, store writing, program backends, and build orchestration are Python (S8-S15, ADR-180).
 FULL_COMPILER_STORE: Path | None = None
 
 M14_SCOPE = (
@@ -584,7 +584,7 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "no canonical XAX store implements the whole compiler; S7b and later steps are open",
+            "blocker": "no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)",
         },
         "m14_semantic_image_wrapper": {
             "scope": M14_SCOPE,

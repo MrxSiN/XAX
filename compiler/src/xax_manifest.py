@@ -42,6 +42,7 @@ def _semantic_bytes(value: str, name: str) -> bytes:
 # an explicit target-profile table, not guessed dynamically at runtime.
 ANDROID_ATTR_NAME = 0x01010003
 ANDROID_ATTR_HAS_CODE = 0x0101000C
+ANDROID_ATTR_DEBUGGABLE = 0x0101000F
 ANDROID_ATTR_EXPORTED = 0x01010010
 ANDROID_ATTR_MIN_SDK_VERSION = 0x0101020C
 ANDROID_ATTR_VERSION_CODE = 0x0101021B
@@ -65,6 +66,9 @@ class AndroidManifestSpec:
     target_sdk: int = 35
     version_code: int = 1
     launcher: bool = True
+    # Explicit platform semantics: JDWP and run-as on user builds.  Off by default;
+    # when off the identity has no trailing byte, so existing manifest CIDs are unchanged.
+    debuggable: bool = False
 
     def __post_init__(self) -> None:
         if not self.package_name or any(part == "" for part in self.package_name.split(".")):
@@ -119,6 +123,8 @@ def android_manifest_semantics(spec: AndroidManifestSpec) -> SemanticObject:
         identity.extend(uleb(len(value)) + value)
     identity.extend(uleb(spec.min_sdk) + uleb(spec.target_sdk) + uleb(spec.version_code))
     identity.extend(bytes((1 if spec.launcher else 0,)))
+    if spec.debuggable:
+        identity.append(1)
     return target(bytes(identity))
 
 
@@ -135,6 +141,7 @@ def decode_android_manifest_semantics(obj: SemanticObject) -> AndroidManifestSpe
     activity_raw = cursor.byte_string()
     min_sdk, target_sdk, version_code = cursor.uleb(), cursor.uleb(), cursor.uleb()
     launcher = cursor.boolean()
+    debuggable = cursor.boolean() if cursor.remaining else False  # a 0 byte fails the canonical check below
     cursor.end("ANDROID-MANIFEST-IDENTITY")
     try:
         spec = AndroidManifestSpec(
@@ -144,6 +151,7 @@ def decode_android_manifest_semantics(obj: SemanticObject) -> AndroidManifestSpe
             target_sdk=target_sdk,
             version_code=version_code,
             launcher=launcher,
+            debuggable=debuggable,
         )
     except (UnicodeDecodeError, ValueError) as error:
         fail("XAX.ANDROID.MANIFEST", obj.cid.hex(), "ANDROID-MANIFEST-FIELDS", "valid canonical manifest fields", str(error))
@@ -377,6 +385,8 @@ def _tree_from_spec(
         for service in sorted(services, key=lambda item: item.class_name.encode("utf-8"))
     ]
     application_attributes = [_Attribute(android, "hasCode", TYPE_INT_BOOLEAN, True, ANDROID_ATTR_HAS_CODE)]
+    if spec.debuggable:
+        application_attributes.append(_Attribute(android, "debuggable", TYPE_INT_BOOLEAN, True, ANDROID_ATTR_DEBUGGABLE))
     if application is not None:
         application_attributes.append(_Attribute(android, "name", TYPE_STRING, application.class_name, ANDROID_ATTR_NAME))
     application_element = _Element(
@@ -403,7 +413,9 @@ def emit_binary_manifest(
     application: AndroidManifestApplication | None = None,
 ) -> bytes:
     tree = _tree_from_spec(spec, receivers, services, application)
-    resource_names = tuple(name for name, _id in sorted(ANDROID_ATTR_IDS.items(), key=lambda item: item[1]))
+    # debuggable joins the resource map only when used, so other manifests keep their bytes.
+    attribute_ids = {**ANDROID_ATTR_IDS, "debuggable": ANDROID_ATTR_DEBUGGABLE} if spec.debuggable else ANDROID_ATTR_IDS
+    resource_names = tuple(name for name, _id in sorted(attribute_ids.items(), key=lambda item: item[1]))
     strings: set[str] = {ANDROID_NS_PREFIX, ANDROID_NS_URI, *resource_names}
 
     def collect(element: _Element) -> None:
@@ -422,7 +434,7 @@ def emit_binary_manifest(
     tail = tuple(sorted(strings.difference(resource_names), key=lambda value: value.encode("utf-8")))
     ordered = resource_names + tail
     indices = {value: index for index, value in enumerate(ordered)}
-    resource_map = tuple(ANDROID_ATTR_IDS[name] for name in resource_names)
+    resource_map = tuple(attribute_ids[name] for name in resource_names)
 
     chunks = bytearray()
     chunks.extend(_string_pool(ordered))

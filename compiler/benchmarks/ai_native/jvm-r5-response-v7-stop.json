@@ -1,0 +1,7 @@
+{
+  "format": "xax-jvm-response-safe-stop-v1",
+  "successful_cells": 11,
+  "attempts": 11,
+  "accounting_complete": true,
+  "reason": "Stopped between cells before fixing immutable bound-target selection and adding minimal bound scalar views. CSV, snapshot and traces retained. No rows imported into v8."
+}

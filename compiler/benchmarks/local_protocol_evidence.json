@@ -1,0 +1,15 @@
+{
+  "format": "xax-local-protocol-evidence-v1",
+  "label": "EXECUTED",
+  "authority": "bootstrap Python workspace verifier and transaction interface",
+  "base_root": "b4a94494343f56896de40f5d8437a47b722839ea3325f9ec6258ac49a5cae1de",
+  "target_root": "d844d6322be6a475364e27ffd8ef71811a5a723495ad1cb47b29bd93593b6319",
+  "batch_expands_to_exact_transaction": true,
+  "stale_snapshot_diagnostic": "XAX.WORKSPACE.STALE_ROOT",
+  "invalid_batch_diagnostic": "XAX.WORKSPACE.DUPLICATE_MUTATION",
+  "invalid_batch_preserves_root": true,
+  "limits": [
+    "No model/token or JVM runtime-performance measurement.",
+    "No XAX-hosted compiler execution claim."
+  ]
+}

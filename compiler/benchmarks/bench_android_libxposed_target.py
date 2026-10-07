@@ -26,7 +26,7 @@ HOOK_METHOD = "hookTarget"
 HOOK_DESCRIPTOR = "()Ljava/lang/String;"
 
 
-def build_fixture():
+def build_fixture(debuggable: bool = False):
     target = android_arm64_shared_target()
     ui_semantics = android_activity_method_ui_semantics(
         activity_class_descriptor=ACTIVITY_CLASS,
@@ -43,6 +43,7 @@ def build_fixture():
             target_sdk=35,
             version_code=1,
             launcher=True,
+            debuggable=debuggable,
         )
     )
 

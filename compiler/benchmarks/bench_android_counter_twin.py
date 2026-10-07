@@ -40,13 +40,17 @@ from benchmarks.bench_android_ndk_twin import _measure, build_twin
 
 HERE = Path(__file__).resolve().parent
 TWIN = HERE / "android_counter_twin"
+JAVA_TWIN = HERE / "android_counter_java_twin"  # pure Java: the non-C/C++ baseline (OI-45)
 EVIDENCE = HERE / "android_counter_twin_evidence.json"
 PACKAGE, COMPONENT = "xax.counter", "xax.counter/.CounterActivity"
 # Defaults are the hardware protocol; the overrides exist to check the harness on slow
 # targets (an emulator run is never performance evidence).
 WARMUP = int(os.environ.get("XAX_TWIN_WARMUP", 3))
 RUNS = int(os.environ.get("XAX_TWIN_RUNS", 16))
-PASSES = 2
+PASSES = int(os.environ.get("XAX_TWIN_PASSES", 4))
+# Every arm is AOT-compiled the same way after install, so no arm's start-up depends on
+# where background dexopt happened to be (the ADR-172 pass effect).
+COMPILER_FILTER = os.environ.get("XAX_TWIN_COMPILER_FILTER", "speed")
 UI_TIMEOUT = int(os.environ.get("XAX_UI_TIMEOUT", 60))
 TAP_RETRY = int(os.environ.get("XAX_TAP_RETRY", 0))  # as in validate_counter_apk.sh
 SIZE_KEYS = ("apk_bytes", "dex_bytes", "manifest_bytes", "native_library_bytes")
@@ -124,11 +128,13 @@ def measure_device(apks: dict[str, Path]) -> dict:
         "ro.kernel.qemu", "ro.boot.qemu",
     )}
     properties["kernel"] = _adb("shell", "uname", "-a").strip()
-    samples: dict[str, dict[str, list[int | None]]] = {arm: {"total_time_ms": [], "wait_time_ms": [], "pss_kib": []} for arm in apks}
+    samples: dict[str, dict[str, list[int | None]]] = {arm: {"total_time_ms": [], "wait_time_ms": [], "pss_kib": [], "pass": []} for arm in apks}
     clicks = {}
     for pass_index in range(PASSES):
-        for arm in (list(apks) if pass_index % 2 == 0 else list(reversed(apks))):
+        names = list(apks)
+        for arm in names[pass_index % len(names):] + names[:pass_index % len(names)]:  # order rotates each pass
             _install(apks[arm])
+            _adb("shell", "cmd", "package", "compile", "-f", "-m", COMPILER_FILTER, PACKAGE)
             for _ in range(WARMUP):
                 _cold_start()
             if pass_index == 0:
@@ -136,6 +142,7 @@ def measure_device(apks: dict[str, Path]) -> dict:
             for _ in range(RUNS // PASSES):
                 for key, value in _cold_start().items():
                     samples[arm][key].append(value)
+                samples[arm]["pass"].append(pass_index)
     subprocess.run(["adb", "uninstall", PACKAGE], capture_output=True, timeout=300)
     emulated = "1" in (properties["ro.kernel.qemu"], properties["ro.boot.qemu"])
     def stats(values: list[int | None]) -> tuple[float | None, float | None]:
@@ -146,8 +153,9 @@ def measure_device(apks: dict[str, Path]) -> dict:
         arm: {
             "clicks_work": clicks[arm],
             "untracked_launches": rows["total_time_ms"].count(None),
-            **{f"median_{key}": stats(values)[0] for key, values in rows.items()},
-            **{f"stdev_{key}": stats(values)[1] for key, values in rows.items()},
+            **{f"median_{key}": stats(values)[0] for key, values in rows.items() if key != "pass"},
+            **{f"stdev_{key}": stats(values)[1] for key, values in rows.items() if key != "pass"},
+            "pass_median_total_time_ms": [stats([v for v, p in zip(rows["total_time_ms"], rows["pass"]) if p == index])[0] for index in range(PASSES)],
             "samples": rows,
         }
         for arm, rows in samples.items()
@@ -157,6 +165,9 @@ def measure_device(apks: dict[str, Path]) -> dict:
     fastest = min(item["median_total_time_ms"] for item in summary.values()) if tracked else None
     for item in summary.values():
         item["time_ratio_vs_fastest"] = round(item["median_total_time_ms"] / fastest, 3) if tracked else None
+    # Pass effect: the XAX arm against the fastest arm of the same pass.
+    pass_ratios = [round(summary["xax"]["pass_median_total_time_ms"][index] / min(item["pass_median_total_time_ms"][index] for item in summary.values()), 3)
+                   for index in range(PASSES)] if tracked else None
     return {
         "label": "MEASURED" if not emulated else "EXECUTED",
         "hardware": not emulated,
@@ -165,6 +176,9 @@ def measure_device(apks: dict[str, Path]) -> dict:
         "warmup": WARMUP,
         "runs": RUNS,
         "passes": PASSES,
+        "compiler_filter": COMPILER_FILTER,
+        "pass_order": "arms rotate by one each pass; each pass reinstalls and recompiles every arm",
+        "xax_pass_ratios_vs_fastest": pass_ratios,
         "arms": summary,
     }
 
@@ -173,17 +187,21 @@ def evidence(device: dict | None = None) -> dict:
     from benchmarks.bench_android_ndk_twin import ANDROID_JAR, BUILD_TOOLS, NDK, _ENV
 
     with tempfile.TemporaryDirectory() as directory:
-        twin_apk = build_twin(Path(directory), TWIN, "xaxcounter")
-        twin = _measure(twin_apk)
+        for name in ("ndk", "java"):
+            (Path(directory) / name).mkdir()
+        twin_apk = build_twin(Path(directory) / "ndk", TWIN, "xaxcounter")
+        java_apk = build_twin(Path(directory) / "java", JAVA_TWIN, "xaxcounter")
+        twin, java = _measure(twin_apk), _measure(java_apk)
         xax = _measure(app.APK)
         if device is None and "--device" in sys.argv[1:]:
-            device = measure_device({"xax": app.APK, "java_ndk": twin_apk})
+            device = measure_device({"xax": app.APK, "clang_ndk_java": twin_apk, "java_d8": java_apk})
     if device is None and EVIDENCE.exists():
         committed = json.loads(EVIDENCE.read_text(encoding="utf-8"))
-        if committed.get("xax", {}).get("apk_sha256") == xax["apk_sha256"]:
+        if committed.get("xax", {}).get("apk_sha256") == xax["apk_sha256"] and "java_d8" in committed.get("device", {}).get("arms", {}):
             device = committed.get("device")
+    hardware = bool(device and device.get("hardware"))
     return {
-        "format": "xax-android-counter-twin-evidence-v1",
+        "format": "xax-android-counter-twin-evidence-v2",
         "decision": "ADR-153",
         "label": "MEASURED",
         "toolchain": {
@@ -196,6 +214,19 @@ def evidence(device: dict | None = None) -> dict:
         "xax": xax,
         "java_ndk": twin,
         "xax_over_java_ndk": {key: round(xax[key] / twin[key], 3) for key in SIZE_KEYS},
+        "java": java,
+        "java_behavior_match": xax["badging"] == java["badging"],
+        "xax_over_java": {key: round(xax[key] / java[key], 3) for key in SIZE_KEYS if java[key]},
+        # The section 15.0 verdict input (xax_replacement.recompute_runtime_verdict): cold-start TotalTime per arm.
+        "host": device["target"] if hardware else None,
+        "results": {
+            arm: {
+                "wall_seconds_samples": [value / 1000 for value in row["samples"]["total_time_ms"] if value is not None],
+                "time_ratio_vs_fastest": row["time_ratio_vs_fastest"],
+                "median_pss_kib": row["median_pss_kib"],
+            }
+            for arm, row in device["arms"].items()
+        } if hardware else None,
         "device": device or {"label": "UNEXECUTED", "note": "start-up time and memory need an arm64 hardware device (--device)"},
     }
 

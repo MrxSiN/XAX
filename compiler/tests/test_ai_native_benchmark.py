@@ -260,8 +260,8 @@ class TinyAINativeBenchmarkTests(unittest.TestCase):
                 self.assertEqual(1, trial_main("task-01", trial, ["test"]))
             diagnostic = json.loads(output.getvalue())
             self.assertEqual(["XAX.TEST.TARGET", "R0"], diagnostic[:2])
-            self.assertEqual(64, len(diagnostic[2]))
-            self.assertEqual(64, len(diagnostic[3]))
+            self.assertEqual("requested semantic target", diagnostic[2])
+            self.assertEqual("candidate differs", diagnostic[3])
             self.assertEqual(["R0"], diagnostic[4])
 
     def test_xax_checker_rejects_empty_and_wrong_transactions(self):

@@ -631,6 +631,7 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 12e. **libxposed modules on ART (ADR-109).** Every generated libxposed module with managed code MUST, on ART with a stand-in API-102 framework, produce exactly its declared observation: hook target, exception mode, framework and builder call order, the number of `proceed` calls and their arguments, the returned value, unhook through a retained handle, and capability-gated service behaviour. Vectors: `test_xax_android_art_execute.py` (the combined module live, plus a patched-literal control).
 12f. **AArch64 register path (ADR-110).** A general-target function MUST take the register path only when all its values are 32/64-bit integers, pointers, or compare results, all its operations are in the register-path subset, and its calls have at most eight machine arguments. Every value used across blocks MUST be written to its home at its definition before any other block reads it. v3 output MUST stay byte-identical. Vectors: `test_xax_aarch64_regalloc_differential.py` (288 results under bionic).
 12g. **Stateful Android app (ADR-111).** The counter's native functions MUST restore the count from the state file, increment and persist it on click, and close the descriptor they receive. Assembled DEX instructions MUST reject unknown mnemonics, more than five invoke registers, and malformed operands. Existing DEX output MUST stay byte-identical. Vectors: `test_xax_android_counter.py`.
+12h. **Android managed classes (ADR-199).** An `android-managed-class-v1` carrier MUST decode only from its canonical identity, and its methods MUST have distinct names. A method MUST be rejected if it uses `float`/`double`, combines `call_super` with a non-void result, or is private, static or a constructor. Each method MUST forward exactly its arguments to the `xax<Name>` native and return its result, after `invoke-super` when `call_super` is set. Void methods with at most three one-register parameters MUST keep the original 35c bytes. A managed-class APK MUST reject other UI/component/libxposed carriers, a manifest Activity that is not a managed class, a missing export, and an export whose non-proof ABI does not match the JNI signature (`tests/test_xax_android_managed.py`).
 12c. **Android C entries (ADR-107).** An `android-aapcs64-c` entry MUST be pure and MUST reject narrow parameters, more than eight parameters, or a non-integer result (`AARCH64-ENTRY-SIGNATURE`). AArch64 MUST reject other entry ABIs (`AARCH64-FOREIGN-ENTRY-TARGET`), and x86-64 MUST reject this one. The lowered address MUST be the function's own entry. Vectors: `test_xax_android_c_entry.py`; execution: four concurrent bionic threads with XAX start routines (`bench_android_bionic.py`).
 12a. **Foreign entries (ADR-102).** `FUNCTION_ADDRESS` with a `code-entry:<abi>` result type MUST reject an ABI outside `FOREIGN_ENTRY_ABIS` and a target function with proof parameters or results (`GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY`), except for the separately constrained browser and lend entries. Passing an internal `ptr<opaque<function>>` where a declaration names a foreign entry type MUST reject (`FOREIGN-CALL-CONTRACT`), as MUST `CALL_INDIRECT` through a foreign entry address (`INDIRECT-CALL-TARGET-TYPE`). The x86-64 SysV adapter MUST zero-extend narrow arguments, keep RSP 16-byte aligned at the internal call, and reject more than four parameters or non-integer classes (`SYSV-ENTRY-SIGNATURE`) and non-Linux profiles (`SYSV-ENTRY-TARGET`); every backend MUST reject entry ABIs it does not own. Vectors: `compiler/tests/test_xax_c_interop.py` (libc `tsearch`/`tfind` with an XAX comparator exits 31; a constant comparator exits 78; libm SSE-class calls exit 68).
 13. **Linux startup reads (ADR-094).** `linux-x86_64-startup-v1` declarations MUST be rejected outside the process entry function (`LINUX-STARTUP-PROCESS-ENTRY`) and on non-Linux targets (ABI ownership). Out-of-range `argv`/`envp` indexes MUST trap. Copies MUST NOT write past the destination view's static extent and MUST return the bytes copied. Vectors: `compiler/tests/test_xax_linux_startup.py`.
@@ -661,3 +662,59 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 37. **Win64 foreign entries and thread resources (ADR-170).** A `win64-c` entry MUST have no proof parameters or results, MUST lower to the XAX function's own Win64 entry, and MUST reject on an x86-64 Linux profile (`WIN64-ENTRY-TARGET`). A thread handle returned by `CreateThread` MUST remain a linear resource through `WaitForSingleObject` and `GetExitCodeThread` and MUST be consumed by `CloseHandle`. Vector: `compiler/tests/test_xax_pe.py::HostedPeTests::test_win64_thread_calls_back_into_xax_and_closes_its_handle`; evidence: `compiler/benchmarks/windows_pe_hosted_evidence.json`.
 38. **JVM R5 candidate evidence (ADR-174/175).** An R5 claim MUST cite real-model rows with a fixed model/reasoning/client profile, fresh sessions, exact token accounting, explicit workflow mechanics, external semantic checks, preserved failures, and every task class required by `XAX_BENCHMARKS.md` §6.2. `jvm-r5-optimized-results.csv` MUST aggregate to `jvm-r5-optimized-evidence.json` (XAX-DIRECT 98,432 tokens versus C 197,252, at least 50% fewer), but this five-edit corpus MUST remain PROTOTYPE in the matrix until the missing task classes run. Vector: `compiler/tests/test_replacement_matrix.py::ReplacementMatrixTests::test_jvm_r5_candidate_evidence_is_consistent`.
 39. **Evidence and canonical-state integrity (ADR-177).** Every committed self-hosting store MUST equal its builder's output on every host and on a repeated build in the same process. A committed B level MUST equal `xax_selfhost.bootstrap_status`, and no evidence file MAY carry a hand-written B field. Routine generation MUST NOT write the pinned seed. A component that claims XAX-hosted execution under `XAX_REQUIRE_NATIVE=1` MUST fail rather than fall back to Python. A native image cache entry MUST be rejected unless its key, length, and code digest match. The wheel MUST contain every compiler module and canonical store. Matrix validator v2 MUST reject EXECUTED/MEASURED/PROVEN fields that cite only documents, sources, scripts, or images, MEASURED fields without a recorded .json/.csv, MEASURED performance without raw samples, and a competitive verdict that differs from its recomputation from raw per-arm samples under §15.0/§15.0a (`tests/test_audit_remediation.py`, `tests/test_store_regeneration.py`, `tests/test_wheel_install.py`, `tests/test_replacement_matrix.py`).
+
+## 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
+
+The normal local adapter MUST preserve snapshot preconditions, reject stale generations including restored identical roots, reject unexposed or cross-function values, and publish a batch atomically. Bounded function binding MUST reject truncation. Vectors: `compiler/tests/test_xax_local_protocol.py`.
+
+The JVM runner MUST sum all completed model turns, include cached input and every failed attempt in eventual successful-task costs, retain raw events with SHA-256, use fresh workspaces per attempt, and resume successful cells only. Missing cells, unknown usage, fewer than three trials per cell, mixed client profiles, or a ratio above 0.55 MUST prevent a token-gate verdict; a ratio in (0.50, 0.55] MUST be reported as accepted within tolerance, not as the 0.50 target (ADR-195). Comparisons MUST give every arm equivalent context in the same number of client requests. Passing the numeric gate alone MUST NOT promote the matrix without equivalent-task and corpus review. Vectors: `compiler/tests/test_jvm_r5_runner.py`.
+
+Host-applied responses (ADR-187) MUST use the ordinary snapshot-bound session,
+return actual rejection diagnostics, preserve failed-response costs and reject
+stale snapshots before refreshing. Empty construction MUST verify canonical
+state; construction aliases MUST NOT affect its identity. Pure batch deletion
+MUST accept a fully dead dependency chain while rejecting any surviving use.
+The JVM response corpus MUST execute both conditional branches, preserve real
+concurrent changes, and retain its application's actual helper functions.
+Vectors: `compiler/tests/test_xax_local_protocol.py`,
+`compiler/tests/test_jvm_r5_response.py`.
+
+The trial client MUST stream raw events to durable files before checking a
+response, record attempt start/result markers, pin source bytes and client
+flags, and refuse to mix profiles on resume. Missing final usage, unrecorded
+attempts or differing common instruction contexts MUST block the gate.
+Disabling unrelated plugins is a shared client setting for every arm, not a
+language-specific exemption. Textual arms MAY use the ordinary context-patch
+format without line counts; all context and exact-target checks still apply.
+
+Snapshot-derived compound setters (ADR-188) MUST expand to the same exact
+workspace transaction as explicit old/new fields. Dead-closure pruning MUST
+preserve dependencies with surviving uses and MUST reject unexposed closure
+members. These carriers MUST have no task identifier or reference target.
+`benchmarks.audit_jvm_r5_response` independently checks saved source snapshots,
+raw usage totals, trace/instruction hashes, result rows and pooled retry costs;
+its numeric audit does not establish task equivalence or promote the matrix.
+
+Compact mutation spellings (ADR-189) MUST preserve exact transaction payloads,
+arity checks, exposure, ownership and generation guards. Both spellings remain
+accepted. Textual literal-conversion normalization is only an eligibility
+filter: a differing source spelling MUST also match compiled JVM instructions,
+resolved operands and descriptors. Selecting a different overload MUST reject.
+Vectors: `compiler/tests/test_jvm_r5_response.py`.
+
+
+## Platform carrier replacement v1 (2026-10-07)
+
+Workspace exposes bind_object(cid, byte_budget=...) and ReplaceTarget(handle,
+expected_old_cid, new_identity_only_target). Transactions require RootRef and
+current generation handles; old CIDs are exact preconditions. Canonical
+constructors rebuild supported acyclic MODULE/PACKAGE/REQUEST/SNAPSHOT ancestors.
+The new frontier passes ordinary verification, and affected Android APK requests
+lower privately before final generation/root/read comparison. Verify/rollback
+publish nothing. Machine targets, duplicate handles, stale rebase and rebuilding
+signature/provenance objects reject. Renew signatures/evidence separately.
+Capabilities, policy, resolver identity and external digests are preserved.
+This tooling contract adds no kernel opcode or textual program authority.
+Platform-specific checking outside an affected Android request is not promised.
+See compiler/integration/android/CARRIER_TRANSACTIONS.md and
+compiler/tests/test_xax_workspace_targets.py.

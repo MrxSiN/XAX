@@ -1,6 +1,6 @@
 {
   "apk": {
-    "blake3": "d2c8c022ef8f8708ddc9f7790eb1e28d89776dd65be07b746dc87f1c0311e707",
+    "blake3": "b1beb91232aa9063792e93f720875b42593f62de6eb0e120623d5962d3e80fd7",
     "build_key": "a6e8652800fdc9dbd76debb6d396947ad91ca20bbc4d61caf83243e4e16f6e24",
     "bytes": 34347,
     "delta_bytes_vs_retained_non_hot_reload": 0,
@@ -18,7 +18,7 @@
     "package_root": "f7cf67b721973e3fdd857bfbc12f3ea4b32b9afae7f72dd0fcbb4197131edee8",
     "repeat_identical": true,
     "request_root": "456d05f581ededdedd40eaf8dc915ff5460a7f194e9957c64a618488311809c0",
-    "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a",
+    "sha256": "fce798a1a84a13616b345e64f4c239710e0d440c119b2591ab2723726ecb5d72",
     "snapshot_root": "4558d0841c78e541eca3cfafc3a01f1729ff6c16389174b57088bfca040b58ca"
   },
   "environment_note": "direct semantic/DEX/APK structural evidence only; framework hot-reload callback delivery, old HookHandle transfer, atomic replacement behavior, and target-process continuity are UNEXECUTED because no compatible Android/libxposed API-102 runtime is available",
@@ -92,7 +92,7 @@
         "0x0007",
         "0x2072",
         "0x000a",
-        "0x0020",
+        "0x0002",
         "0x1012",
         "0x000f",
         "0x0012",
@@ -100,7 +100,7 @@
       ]
     },
     "required_symbols_present": true,
-    "sha256": "6df8b8cf8d4368a96400b28c5ad51cd539c96d964b06ed640c265ec7e73a2f94",
+    "sha256": "25ec5aa53275e6a7ca524739e1f85158628d12b7350d3cb7d3f6692aeec549d4",
     "signature_valid": true
   },
   "metadata": {

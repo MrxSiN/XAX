@@ -1,0 +1,7 @@
+{
+  "format": "xax-jvm-response-safe-stop-v1",
+  "successful_cells": 71,
+  "attempts": 74,
+  "accounting_complete": true,
+  "reason": "Stopped between cells before accepting matching full bound commands and reusing ordinary movement/full-batch repair. CSV, source snapshot and traces retained; no rows imported into v9."
+}

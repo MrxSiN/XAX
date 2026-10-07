@@ -71,7 +71,7 @@
         "Lxax/generated/XaxOnClickListener;": "Verified"
       },
       "passed": true,
-      "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a"
+      "sha256": "fce798a1a84a13616b345e64f4c239710e0d440c119b2591ab2723726ecb5d72"
     },
     "android_libxposed_managed_fixture.apk": {
       "class_loader_context": "libxposed-api-102.0.0",
@@ -87,10 +87,11 @@
       "class_loader_context": "libxposed-api-102.0.0",
       "classes": {
         "Lxax/generated/XaxActivity;": "Verified",
+        "Lxax/generated/XaxModule;": "Verified",
         "Lxax/generated/XaxOnClickListener;": "Verified"
       },
       "passed": true,
-      "sha256": "40d2915c9bdd71763f3129b8322cb36e14ad300af724cad9f695f9fa578bca36"
+      "sha256": "62e08e683bee0aac9418aa2fe3bc1be9824849177779cb501dab462fa3a0c266"
     },
     "android_libxposed_remote_files_fixture.apk": {
       "class_loader_context": "libxposed-api-102.0.0",
@@ -213,10 +214,12 @@
     }
   },
   "environment": {
-    "art": "dex2oat64/oatdump from the Android 14 arm64 system image (arm64-v8a-34_r04), under qemu-aarch64 user mode",
-    "boot_classpath": "/apex/com.android.art/javalib/core-oj.jar:/apex/com.android.art/javalib/core-libart.jar:/apex/com.android.art/javalib/okhttp.jar:/apex/com.android.art/javalib/bouncycastle.jar:/apex/com.android.art/javalib/apache-xml.jar:/system/framework/framework.jar:/system/framework/framework-graphics.jar:/system/framework/ext.jar:/system/framework/telephony-common.jar:/system/framework/voip-common.jar:/system/framework/ims-common.jar:/apex/com.android.i18n/javalib/core-icu4j.jar",
-    "boot_image": "/system/framework/boot.art (precompiled arm64, from the system image)",
-    "libxposed_api": "io.github.libxposed:api:102.0.0 (Maven Central, SHA-256 423484a6e1807e7a423c4b88fcd8176d104318259d91791877fed88fe91479d0)"
+    "art": "dex2oat64/oatdump on the device (its own boot image), as root over adb",
+    "art_apex": "com.google.android.art 372767600",
+    "device": "Pixel 8 Pro",
+    "fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "libxposed_api": "io.github.libxposed:api:102.0.0 (Maven Central, SHA-256 423484a6e1807e7a423c4b88fcd8176d104318259d91791877fed88fe91479d0)",
+    "sdk": "37"
   },
   "format": "xax-android-art-verify-evidence-v1",
   "label": "EXECUTED",

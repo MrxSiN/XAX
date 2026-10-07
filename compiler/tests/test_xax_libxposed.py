@@ -58,6 +58,7 @@ class LibxposedMetadataTests(unittest.TestCase):
                 min_api_version=101,
                 target_api_version=102,
                 static_scope=True,
+                java_entries=("xax.generated.XaxModule",),
                 native_entries=("libxaxapp.so", "libxaxapp.so"),
                 scopes=("com.example.z", "com.example.a", "com.example.z"),
             )
@@ -67,6 +68,7 @@ class LibxposedMetadataTests(unittest.TestCase):
                 min_api_version=101,
                 target_api_version=102,
                 static_scope=True,
+                java_entries=("xax.generated.XaxModule",),
                 native_entries=("libxaxapp.so",),
                 scopes=("com.example.a", "com.example.z"),
             )
@@ -79,6 +81,7 @@ class LibxposedMetadataTests(unittest.TestCase):
             emit_libxposed_metadata(first),
             {
                 "META-INF/xposed/module.prop": b"minApiVersion=101\ntargetApiVersion=102\nstaticScope=true\n",
+                "META-INF/xposed/java_init.list": b"xax.generated.XaxModule\n",
                 "META-INF/xposed/native_init.list": b"libxaxapp.so\n",
                 "META-INF/xposed/scope.list": b"com.example.a\ncom.example.z\n",
             },
@@ -89,6 +92,7 @@ class LibxposedMetadataTests(unittest.TestCase):
                 min_api_version=101,
                 target_api_version=103,
                 static_scope=True,
+                java_entries=("xax.generated.XaxModule",),
                 native_entries=("libxaxapp.so",),
                 scopes=("com.example.a", "com.example.z"),
             )
@@ -137,11 +141,14 @@ class LibxposedMetadataTests(unittest.TestCase):
             LibxposedManagedEntryDescription(java_class_name="bad/name")
 
     def test_invalid_metadata_rejects(self):
+        java = {"java_entries": ("xax.generated.XaxModule",)}
         for kwargs in (
-            {"min_api_version": 103, "target_api_version": 102, "native_entries": ("libxaxapp.so",)},
-            {"native_entries": ("lib/arm64-v8a/libxaxapp.so",)},
+            {**java, "min_api_version": 103, "target_api_version": 102, "native_entries": ("libxaxapp.so",)},
+            {**java, "native_entries": ("lib/arm64-v8a/libxaxapp.so",)},
+            {**java, "native_entries": ("libxaxapp.so\nother",)},
+            # API 102 requires a Java entry; Vector ignores an APK without java_init.list.
+            {"native_entries": ("libxaxapp.so",)},
             {"native_entries": ()},
-            {"native_entries": ("libxaxapp.so\nother",)},
         ):
             with self.subTest(kwargs=kwargs):
                 with self.assertRaises(ValueError):
@@ -912,6 +919,9 @@ class LibxposedMetadataTests(unittest.TestCase):
         self.assertEqual(methods["onHotReloading"][0], 11)
         pre_opcodes = _instruction_opcodes(methods["onHotReloading"][1])
         self.assertEqual(pre_opcodes, (0x54, 0x38, 0x72, 0x12, 0x0F, 0x12, 0x0F))
+        # invoke-interface {v2=HotReloadingParam, v0=ClassLoader}: the receiver is the param.
+        # {v0, v2} passed ART verification and threw IncompatibleClassChangeError under Vector.
+        self.assertEqual(methods["onHotReloading"][1][6], 0x0002)
         self.assertEqual(methods["onHotReloaded"][0], 51)
         opcodes = _instruction_opcodes(methods["onHotReloaded"][1])
         self.assertEqual(

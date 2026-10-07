@@ -120,6 +120,7 @@ class Task:
     prefill: tuple[tuple[str, ...], ...] = ()
     prefill_root: str = "R0.0"
     reference_root: str = "R0.0"
+    role_bindings: tuple[tuple[str, str], ...] = ()
 
 
 def _c(body: str) -> str:
@@ -187,12 +188,14 @@ def oi01_tasks() -> tuple[Task, ...]:
             "Complete the supplied semantic scaffold so f uses a newly created constant 7 as the second operand of its add. Keep the placeholder and anchor nodes unchanged.",
             "", "", empty_specs, empty_specs, "",
             family="creation", fixture="creation", semantic_entities=4,
+            role_bindings=(("x", "P0"), ("placeholder", "N0"), ("anchor", "N1"), ("result", "N2")),
         ),
         Task(
             "task-07",
             "Change only B0's branch argument from P0 to P1. Preserve the branch target, block parameter, and all other semantics.",
             "", "", empty_specs, empty_specs, "",
             family="control-flow", fixture="control", semantic_entities=4,
+            role_bindings=(("x", "P0"), ("y", "P1"), ("selected", "P2")),
         ),
         Task(
             "task-08",
@@ -200,6 +203,7 @@ def oi01_tasks() -> tuple[Task, ...]:
             "", "", empty_specs, empty_specs, "",
             family="type-repair", fixture="type-repair", semantic_entities=5,
             prefill=(("replace-operand", "N0", "1", "P2"),),
+            role_bindings=(("x", "P0"), ("old", "P1"), ("bad", "P2"), ("y", "P3")),
         ),
         Task(
             "task-09",
@@ -530,18 +534,16 @@ def decode_packet(task: Task, framing: str, handles: str, text: str) -> Transact
 def _load_transaction(task: Task, arm: str, workspace_path: Path) -> Transaction:
     variant = _variant(arm)
     if variant is None:
-        if arm == "XAX-DIRECT" and task.fixture != "linear":
+        if arm == "XAX-DIRECT" and (task.fixture != "linear" or (workspace_path / "direct.txt").exists()):
             return _direct_transaction(task, (workspace_path / "direct.txt").read_text(encoding="utf-8"))
         return _transaction((workspace_path / "transaction.txt").read_text(encoding="utf-8"))
     return decode_packet(task, variant[1], variant[0], (workspace_path / "packet.txt").read_text(encoding="utf-8"))
 
 
 def _direct_transaction(task: Task, text: str) -> Transaction:
-    commands = [shlex.split(command.strip()) for command in text.split(";") if command.strip()]
-    if not commands:
-        raise ValueError("one or more semicolon-separated mutations required")
-    generation = int(task.reference_root.rsplit(".", 1)[1])
-    return Transaction(RootRef(generation), tuple(_transport_mutation(task, command) for command in commands))
+    from xax_local_protocol import LocalMutationSession
+    workspace, _view, function_cid = _workspace_state(task)
+    return LocalMutationSession.for_function(workspace, function_cid).transaction(text)
 
 
 def _trial_script(task_id: str, arm: str) -> str:
@@ -603,12 +605,18 @@ def prepare(task_id: str, arm: str, output: Path | None = None) -> Path:
         (output / "xax.py").write_text(_trial_script(task_id, arm), encoding="utf-8")
         (output / "transaction.txt").write_text("TX R0.0\n# Add one mutation.\n", encoding="utf-8")
         direct = arm == "XAX-DIRECT"
+        from xax_local_protocol import BATCH_HELP
+        bindings = task.role_bindings or tuple((spec[0], f"N{i}") for i, spec in enumerate(task.initial))
+        intent_context = (
+            "> Intent bindings: `" + ", ".join(f"{name}={handle}" for name, handle in bindings) + "`.\n"
+            if direct and bindings else ""
+        )
         if direct and task.fixture != "linear":
             (output / "direct.txt").write_text("", encoding="utf-8")
         workflow = (
             "> Complete local view: `"
             + _workspace(task)[1].strip().replace("\n", "; ")
-            + "`.\n> Run one `python xax.py apply CMD` command (no function argument); it verifies and tests.\n"
+            + "`.\n> Run `python xax.py apply 'CMD'` with the entire mutation batch quoted as ONE argument; it verifies, commits, and tests.\n"
             if direct else
             "> Use `python xax.py inspect`, one `python xax.py mutate ...`, then `python xax.py test`.\n"
         )
@@ -622,6 +630,8 @@ def prepare(task_id: str, arm: str, output: Path | None = None) -> Path:
         (output / "TASK.md").write_text(
             f"# {task_id} / {arm}\n\nPaste this exact prompt into Codex Desktop:\n\n> {task.prompt}\n>\n"
             + workflow
+            + intent_context
+            + (f"> {BATCH_HELP} The complete view and bindings above require no file reads.\n" if direct else "")
             + f"> `CMD`: {commands}. Quote a multi-mutation `CMD` as one shell argument. Stop after `PASS`.\n",
             encoding="utf-8",
         )
@@ -820,13 +830,13 @@ def _trial(task_id: str, workspace_path: Path, argv: list[str], arm: str) -> int
             print(_rename(_workspace(task)[1], handles, task), end="")
             return 0
         if command in {"mutate", "apply"} and not variant:
-            if command == "apply" and len(args) == 1:
-                if task.fixture != "linear":
-                    (workspace_path / "direct.txt").write_text(args[0], encoding="utf-8")
-                    args = []
-                else:
-                    args = shlex.split(args[0])
-            if task.fixture == "linear":
+            if command == "apply" and arm == "XAX-DIRECT":
+                batch = args[0] if len(args) == 1 else shlex.join(args)
+                (workspace_path / "direct.txt").write_text(batch, encoding="utf-8")
+                args = []
+            elif command == "apply" and len(args) == 1:
+                args = shlex.split(args[0])
+            if task.fixture == "linear" and not (command == "apply" and arm == "XAX-DIRECT"):
                 line = _mutation_line(task, args)
                 (workspace_path / "transaction.txt").write_text(f"TX R0.0\n{line}\n", encoding="utf-8")
             elif command != "apply" or args:
@@ -850,7 +860,7 @@ def _trial(task_id: str, workspace_path: Path, argv: list[str], arm: str) -> int
             if committed.committed and committed.root == expected_root:
                 print("PASS")
                 return 0
-            print(json.dumps(["XAX.TEST.TARGET", "R0", expected_root.hex(), committed.root.hex(), ["R0"]], separators=(",", ":")))
+            print(json.dumps(["XAX.TEST.TARGET", "R0", "requested semantic target", "candidate differs", ["R0"]], separators=(",", ":")))
             return 1
         raise ValueError("query|inspect|verify|test" if variant else "query|inspect|mutate|apply|verify|test")
     except (OSError, ValueError) as error:

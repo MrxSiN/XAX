@@ -1,0 +1,60 @@
+{
+  "apk_bytes": 34068,
+  "apk_sha256": "21f639d588d987840f5fdf72a0d2ff62c8b550e1cf6fbc9e9d7ca68673b20357",
+  "carrier_cids": [
+    "21de6a2a92d6d83c16b1805252704e8ad3db2d75ea6f5eb592f0edab43b1d9c0",
+    "7108db5dfa60f6fbca9bef1d4a02fe1a0ae5ea52e7a6619537a1a8c4dc53d522",
+    "cb6ddf85730b8ed4ddfe5b5898d329ec48a3352b3efc5c49fda51b0a81cede6c"
+  ],
+  "decision": "ADR-199",
+  "device": {
+    "checks": {
+      "control_volume_key_reaches_platform": true,
+      "no_fatal_exception": true,
+      "pause_resume_cycles_same_process": 3,
+      "resumed": true,
+      "volume_key_consumed_by_xax_result": true
+    },
+    "device": {
+      "ro.build.fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+      "ro.build.version.sdk": "37",
+      "ro.product.model": "Pixel 8 Pro"
+    },
+    "hardware": true,
+    "label": "EXECUTED",
+    "passed": true
+  },
+  "dex": {
+    "classes.dex": {
+      "bytes": 1112,
+      "classes": null
+    },
+    "classes2.dex": {
+      "bytes": 1048,
+      "classes": null
+    },
+    "classes3.dex": {
+      "bytes": 720,
+      "classes": null
+    }
+  },
+  "entries": [
+    "AndroidManifest.xml",
+    "classes.dex",
+    "classes2.dex",
+    "classes3.dex",
+    "lib/arm64-v8a/libxaxapp.so"
+  ],
+  "jni_exports": [
+    "Java_xax_managed_MainActivity_xaxOnCreate",
+    "Java_xax_managed_MainActivity_xaxOnKeyDown",
+    "Java_xax_managed_MainActivity_xaxOnPause",
+    "Java_xax_managed_MainActivity_xaxOnResume",
+    "Java_xax_managed_SurfaceCallback_xaxSurfaceChanged",
+    "Java_xax_managed_SurfaceCallback_xaxSurfaceCreated",
+    "Java_xax_managed_SurfaceCallback_xaxSurfaceDestroyed",
+    "Java_xax_managed_WideProbe_xaxStamp"
+  ],
+  "label": "STRUCTURAL",
+  "schema": "xax-android-managed-evidence-v1"
+}

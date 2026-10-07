@@ -1,0 +1,50 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-5.6-luna",
+      "low",
+      "codex-cli 0.162.0-alpha.2"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 1,
+  "attempts": 15,
+  "successful_cells": 11,
+  "required_cells": 45,
+  "complete": false,
+  "accounting_complete": true,
+  "successful_task_medians_including_retries": {
+    "JAVA": null,
+    "KOTLIN": null,
+    "XAX": 10937
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": null,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-response-v3-results.csv",
+  "source_sha256": "6d68b85760fedc483a7525114a30295f59c7e4cde04394873f1d06f28cb0864a",
+  "limits": [
+    "Exact semantic-root XAX targets and textual normalization checks remain more restrictive than behavioral equivalence.",
+    "Abstract resource effects are verifier/exact-target checked, not executed on the JVM.",
+    "One JVM host and one requested model identifier; no separate provider weights digest.",
+    "Prior interrupted/exploratory profiles remain separately reported; no unknown-cost profile can satisfy the gate.",
+    "semantic_entities counts supplied root/function/block/parameter/node/type definitions and valid construction entities, per submitted response round, not canonical store objects.",
+    "transmitted_bytes counts submitted prompts plus streamed JSON event bytes; provider framing is unavailable.",
+    "unexpected_context_commands flags commands whose named files need manual context review."
+  ],
+  "unrecorded_attempts": [],
+  "profile_sha256": [
+    "926b055b8bea7836f060018c4506db8fcf291dce76f35abc4940e1a2fb5049c4"
+  ],
+  "instruction_context_sha256": [
+    "186f514c94536dbc7240300b27a3aab69a5d6c87e36173dbdb05e9a8952d34ad"
+  ],
+  "instruction_context_complete": true,
+  "host_applied_responses": true,
+  "creation_empty_for_all_arms": true,
+  "large_application_helpers_per_arm": 160
+}

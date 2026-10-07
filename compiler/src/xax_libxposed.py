@@ -53,8 +53,12 @@ class LibxposedModuleDescription:
         java_entries = _canonical_text(self.java_entries, "java entry")
         native_entries = _canonical_text(self.native_entries, "native entry")
         scopes = _canonical_text(self.scopes, "scope")
-        if not java_entries and not native_entries:
-            raise ValueError("libxposed module requires at least one Java or native entry")
+        # API 102 (libxposed-api 39cac084, pinned by Vector v2.2) requires a Java
+        # entry, and Vector neither discovers an APK without java_init.list nor
+        # dlopens native entries itself: the Java entry's System.loadLibrary is
+        # what makes the framework call native_init.
+        if not java_entries:
+            raise ValueError("libxposed module requires at least one Java entry")
         for value in native_entries:
             if "/" in value or "\\" in value:
                 raise ValueError("libxposed native entry must be an APK-local library base name")

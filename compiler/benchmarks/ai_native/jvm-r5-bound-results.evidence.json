@@ -1,0 +1,37 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-5.6-luna",
+      "low",
+      "codex-cli 0.162.0-alpha.2"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 3,
+  "attempts": 9,
+  "successful_cells": 9,
+  "required_cells": 135,
+  "complete": false,
+  "accounting_complete": false,
+  "successful_task_medians_including_retries": {
+    "JAVA": 51873.0,
+    "KOTLIN": 45217.5,
+    "XAX": 26460
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 0.5851716702604081,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-bound-results.csv",
+  "source_sha256": "44f534fc4ad38a52815314e2b411e3204de90a9afc28a178fa561d3cf78f7a54",
+  "limits": [
+    "No automatic matrix promotion: semantic equivalence and corpus representativeness require review.",
+    "Creation retains the existing XAX scaffold; Java/Kotlin begin with an empty file.",
+    "Historical ADR-176 rows are not combined with this client/protocol run.",
+    "The next Java cell was interrupted before final usage; the retained last token count is only a lower bound."
+  ],
+  "interrupted_attempt": "jvm-r5-bound-interruption.json"
+}

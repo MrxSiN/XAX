@@ -93,10 +93,14 @@ class DexForwardingOverride:
         _validate_member_name(self.native_target)
         if self.access_flags & (ACC_STATIC | ACC_NATIVE | ACC_PRIVATE):
             raise ValueError("forwarding override must be a non-static managed virtual method")
-        if self.proto.return_type != "V":
-            raise ValueError("forwarding override currently requires void result")
-        if any(item in {"J", "D"} for item in self.proto.parameters):
-            raise ValueError("forwarding override currently supports only one-register parameters")
+        if self.call_super and self.proto.return_type != "V":
+            raise ValueError("a super-calling forwarding override must be void")
+
+    @property
+    def compact(self) -> bool:
+        """The original 35c form: void, one-register parameters, at most four registers (``register_word``
+        packs C..F only; a fifth register would belong in the first unit's G field)."""
+        return self.proto.return_type == "V" and not any(item in {"J", "D"} for item in self.proto.parameters) and len(self.proto.parameters) <= 3
 
 
 @dataclass(frozen=True, order=True)
@@ -1479,6 +1483,33 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         code_item_offsets.append(code_off)
         native_index = method_idx[(spec.class_descriptor, item.native_target, item.proto)]
         register_count = 1 + len(item.proto.parameters)
+        if not item.compact:
+            # Range form (ADR-199): ins = this + parameters (J/D take two registers), below them
+            # one or two result registers.  invoke-super/range when calling super (void only),
+            # invoke-direct/range to the native, move-result*, return*.
+            ins = 1 + sum(2 if parameter in {"J", "D"} else 1 for parameter in item.proto.parameters)
+            result = item.proto.return_type
+            width = 0 if result == "V" else 2 if result in {"J", "D"} else 1
+            if ins + width > 0xFFFF or native_index > 0xFFFF:
+                raise ValueError("forwarding override exceeds DEX range-invoke capacity")
+            units = []
+            if item.call_super:
+                super_index = method_idx[(spec.superclass_descriptor, item.name, item.proto)]
+                if super_index > 0xFFFF:
+                    raise ValueError("forwarding override superclass method index exceeds 16-bit DEX capacity")
+                units += [0x0075 | (ins << 8), super_index, width]   # invoke-super/range {v[width]..}
+            units += [0x0076 | (ins << 8), native_index, width]       # invoke-direct/range {v[width]..}, native
+            if result == "V":
+                units.append(0x000E)                                     # return-void
+            elif width == 2:
+                units += [0x000B, 0x0010]                                # move-result-wide v0; return-wide v0
+            elif result.startswith(("L", "[")):
+                units += [0x000C, 0x0011]                                # move-result-object v0; return-object v0
+            else:
+                units += [0x000A, 0x000F]                                # move-result v0; return v0
+            data.extend(struct.pack("<HHHHII", ins + width, ins, ins, 0, 0, len(units)))
+            data.extend(struct.pack(f"<{len(units)}H", *units))
+            continue
         if register_count > 5:
             raise ValueError("forwarding override exceeds DEX format 35c register capacity")
         if native_index > 0xFFFF:
@@ -2049,7 +2080,7 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
         units = (
             0x1054, reload_loader_field,            # iget-object v0, v1(this), xaxReloadClassLoader
             0x0038, 0x0007,                        # if-eqz v0, reject reload
-            0x2072, set_saved_state_method, 0x0020, # invoke-interface {v2,v0}, setSavedInstanceState
+            0x2072, set_saved_state_method, 0x0002, # invoke-interface {v2,v0}, setSavedInstanceState
             0x1012,                                # const/4 v0, #1
             0x000F,                                # return v0
             0x0012,                                # const/4 v0, #0
@@ -2438,6 +2469,102 @@ def inspect_dex(data: bytes) -> DexInspection:
     )
 
 
+@dataclass(frozen=True)
+class DexClassDef:
+    descriptor: str
+    superclass: str | None
+    interfaces: tuple[str, ...]
+    # (name, proto descriptor, access flags) for direct and virtual methods.
+    methods: tuple[tuple[str, str, int], ...]
+
+
+@dataclass(frozen=True)
+class DexReferences:
+    """Every class, method and field a DEX file defines or names.
+
+    Method and field references are ``(class, name, descriptor)`` triples with
+    JVM-style proto descriptors such as ``(Ljava/lang/String;)V``.
+    """
+
+    classes: tuple[DexClassDef, ...]
+    method_refs: tuple[tuple[str, str, str], ...]
+    field_refs: tuple[tuple[str, str, str], ...]
+    types: tuple[str, ...]
+    strings: tuple[str, ...]
+
+
+def inspect_dex_references(data: bytes) -> DexReferences:
+    """Read the reference tables of any DEX file, independent of the emitter."""
+
+    view_strings: list[str] = []
+    if len(data) < DEX_HEADER_SIZE or data[:4] != b"dex\n":
+        raise ValueError("not a DEX file")
+    (
+        string_ids_size, string_ids_off, type_ids_size, type_ids_off, proto_ids_size, proto_ids_off,
+        field_ids_size, field_ids_off, method_ids_size, method_ids_off, class_defs_size, class_defs_off,
+    ) = struct.unpack_from("<12I", data, 56)
+    for index in range(string_ids_size):
+        offset = struct.unpack_from("<I", data, string_ids_off + index * 4)[0]
+        units, cursor = _read_uleb(data, offset)
+        end = data.find(b"\x00", cursor)
+        if end < 0:
+            raise ValueError("unterminated DEX string_data_item")
+        view_strings.append(_mutf8_decode(data[cursor:end], units))
+    types = tuple(view_strings[struct.unpack_from("<I", data, type_ids_off + index * 4)[0]] for index in range(type_ids_size))
+
+    def type_list(offset: int) -> tuple[str, ...]:
+        if not offset:
+            return ()
+        count = struct.unpack_from("<I", data, offset)[0]
+        return tuple(types[index] for index in struct.unpack_from(f"<{count}H", data, offset + 4))
+
+    protos = []
+    for index in range(proto_ids_size):
+        _shorty, return_idx, parameters_off = struct.unpack_from("<III", data, proto_ids_off + index * 12)
+        protos.append("(" + "".join(type_list(parameters_off)) + ")" + types[return_idx])
+    field_refs = []
+    for index in range(field_ids_size):
+        class_idx, type_idx, name_idx = struct.unpack_from("<HHI", data, field_ids_off + index * 8)
+        field_refs.append((types[class_idx], view_strings[name_idx], types[type_idx]))
+    method_refs = []
+    for index in range(method_ids_size):
+        class_idx, proto_idx, name_idx = struct.unpack_from("<HHI", data, method_ids_off + index * 8)
+        method_refs.append((types[class_idx], view_strings[name_idx], protos[proto_idx]))
+
+    classes = []
+    no_index = 0xFFFFFFFF
+    for index in range(class_defs_size):
+        class_idx, _access, superclass_idx, interfaces_off, _source, _annotations, class_data_off, _static = (
+            struct.unpack_from("<8I", data, class_defs_off + index * 32)
+        )
+        methods: list[tuple[str, str, int]] = []
+        if class_data_off:
+            cursor = class_data_off
+            counts = []
+            for _ in range(4):
+                value, cursor = _read_uleb(data, cursor)
+                counts.append(value)
+            for _ in range(counts[0] + counts[1]):
+                _diff, cursor = _read_uleb(data, cursor)
+                _flags, cursor = _read_uleb(data, cursor)
+            for count in counts[2:]:
+                method_idx = 0
+                for _ in range(count):
+                    diff, cursor = _read_uleb(data, cursor)
+                    flags, cursor = _read_uleb(data, cursor)
+                    _code, cursor = _read_uleb(data, cursor)
+                    method_idx += diff
+                    _owner, name, proto = method_refs[method_idx]
+                    methods.append((name, proto, flags))
+        classes.append(DexClassDef(
+            types[class_idx],
+            None if superclass_idx == no_index else types[superclass_idx],
+            type_list(interfaces_off),
+            tuple(methods),
+        ))
+    return DexReferences(tuple(classes), tuple(method_refs), tuple(field_refs), types, tuple(view_strings))
+
+
 __all__ = [
     "ACC_NATIVE",
     "ACC_PRIVATE",
@@ -2458,7 +2585,9 @@ __all__ = [
     "DexLibxposedRemoteFilesSpec",
     "DexBridgeSpec",
     "DexForwardingOverride",
+    "DexClassDef",
     "DexInspection",
+    "DexReferences",
     "DexNativeMethod",
     "DexProto",
     "activity_bridge_spec",
@@ -2469,4 +2598,5 @@ __all__ = [
     "interface_callback_bridge_spec",
     "emit_dex039_bridge",
     "inspect_dex",
+    "inspect_dex_references",
 ]

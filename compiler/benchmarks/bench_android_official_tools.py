@@ -28,6 +28,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from benchmarks.bench_android_ndk_twin import _sdk  # BUILD_TOOLS tool on Linux or Windows
+
 HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "android_official_tools_evidence.json"
 BUILD_TOOLS = Path(os.environ.get("ANDROID_BUILD_TOOLS", "/opt/android/bt36/android-16"))
@@ -49,20 +51,20 @@ def validate_apk(path: Path) -> dict:
     # An APK Signing Block (v2+) or JAR signature files (v1); META-INF/ alone is not a signature.
     signed = b"APK Sig Block 42" in path.read_bytes() or any(name.startswith("META-INF/") and name.endswith((".RSA", ".EC", ".DSA")) for name in names)
     if signed:
-        checks["apksigner"] = _run(BUILD_TOOLS / "apksigner", "verify", path).returncode == 0
-    checks["zipalign_16k"] = _run(BUILD_TOOLS / "zipalign", "-c", "-P", "16", "4", path).returncode == 0
+        checks["apksigner"] = _run(_sdk("apksigner"), "verify", path).returncode == 0
+    checks["zipalign_16k"] = _run(_sdk("zipalign"), "-c", "-P", "16", "4", path).returncode == 0
     if "AndroidManifest.xml" in names:
-        checks["aapt2_badging"] = _run(BUILD_TOOLS / "aapt2", "dump", "badging", path).returncode == 0
+        checks["aapt2_badging"] = _run(_sdk("aapt2"), "dump", "badging", path).returncode == 0
     with tempfile.TemporaryDirectory() as directory:
         zipfile.ZipFile(path).extractall(directory)
         for name in sorted(item for item in names if item.endswith(".dex")):
             dex = Path(directory) / name
-            checks[f"{name}:dexdump_checksum"] = _run(BUILD_TOOLS / "dexdump", "-c", dex).returncode == 0
-            walk = _run(BUILD_TOOLS / "dexdump", "-d", dex)
+            checks[f"{name}:dexdump_checksum"] = _run(_sdk("dexdump"), "-c", dex).returncode == 0
+            walk = _run(_sdk("dexdump"), "-d", dex)
             checks[f"{name}:dexdump_code"] = walk.returncode == 0 and "Failure" not in walk.stderr
             output = Path(directory) / f"d8-{name}"
             output.mkdir()
-            checks[f"{name}:d8_redex"] = _run(BUILD_TOOLS / "d8", "--release", "--min-api", "28", "--output", output, dex).returncode == 0
+            checks[f"{name}:d8_redex"] = _run(_sdk("d8"), "--release", "--min-api", "28", "--output", output, dex).returncode == 0
         for name in sorted(item for item in names if item.endswith(".so")):
             readelf = _run(shutil.which("llvm-readelf") or "llvm-readelf", "-h", "-l", "-d", "--dyn-syms", Path(directory) / name)
             checks[f"{name}:llvm_readelf"] = readelf.returncode == 0 and not readelf.stderr.strip()

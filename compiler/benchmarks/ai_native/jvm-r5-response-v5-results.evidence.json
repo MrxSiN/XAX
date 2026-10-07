@@ -1,0 +1,54 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-5.6-luna",
+      "low",
+      "codex-cli 0.162.0-alpha.2"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 3,
+  "attempts": 60,
+  "successful_cells": 60,
+  "required_cells": 135,
+  "complete": false,
+  "accounting_complete": false,
+  "successful_task_medians_including_retries": {
+    "JAVA": 21872.5,
+    "KOTLIN": 21845.0,
+    "XAX": 10929.5
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 0.5003204394598306,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-response-v5-results.csv",
+  "source_sha256": "920278473b2d793dc380c1262104695192a8b045ba316716d18bb247ad702be2",
+  "limits": [
+    "Exact semantic-root XAX targets and textual normalization checks remain more restrictive than behavioral equivalence.",
+    "Redundant Kotlin literal conversions require equal compiled JVM instructions; source normalization alone cannot admit them.",
+    "XAX receives a host-projected semantic view; textual edits inspect a named file. This is not a same-prefill comparison.",
+    "Abstract resource effects are verifier/exact-target checked, not executed on the JVM.",
+    "One JVM host and one requested model identifier; no separate provider weights digest.",
+    "Prior interrupted/exploratory profiles remain separately reported; no unknown-cost profile can satisfy the gate.",
+    "semantic_entities counts supplied root/function/block/parameter/node/type definitions and valid construction entities, per submitted response round, not canonical store objects.",
+    "transmitted_bytes counts submitted prompts plus streamed JSON event bytes; provider framing is unavailable.",
+    "unexpected_context_commands flags commands whose named files need manual context review."
+  ],
+  "unrecorded_attempts": [
+    "jvm-06-java-2-1\\attempt.json"
+  ],
+  "profile_sha256": [
+    "d49d5f0a2336530edcab11f3a39cb82f9f683d13ea052746aef6667c4c311c00"
+  ],
+  "instruction_context_sha256": [
+    "186f514c94536dbc7240300b27a3aab69a5d6c87e36173dbdb05e9a8952d34ad"
+  ],
+  "instruction_context_complete": true,
+  "host_applied_responses": true,
+  "creation_empty_for_all_arms": true,
+  "large_application_helpers_per_arm": 160
+}

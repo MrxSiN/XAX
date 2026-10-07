@@ -19,6 +19,60 @@ from xax_dex import (
 ANDROID_BROADCAST_RECEIVER_PREFIX = b"android-broadcast-receiver-v1"
 ANDROID_SERVICE_PREFIX = b"android-service-v1"
 ANDROID_APPLICATION_PREFIX = b"android-application-v1"
+ANDROID_SURFACE_ACTIVITY_PREFIX = b"android-surface-activity-v1"
+
+
+def android_surface_activity_semantics(
+    *, class_descriptor: str, content_description: str,
+) -> SemanticObject:
+    """Declarative Activity containing one platform-owned SurfaceView, without JNI."""
+    from xax_dex import DexProto
+
+    DexProto(class_descriptor)  # use the existing descriptor validator
+    if not class_descriptor.startswith("L") or "\x00" in class_descriptor:
+        raise ValueError("Surface Activity needs a class descriptor")
+    if not content_description or "\x00" in content_description:
+        raise ValueError("Surface description must be nonempty and NUL-free")
+    fields = (class_descriptor.encode("utf-8"), content_description.encode("utf-8"))
+    return target(ANDROID_SURFACE_ACTIVITY_PREFIX + b"".join(uleb(len(value)) + value for value in fields))
+
+
+def decode_android_surface_activity(obj: SemanticObject) -> tuple[str, str]:
+    if obj.kind != Kind.TARGET or obj.references:
+        fail("XAX.ANDROID.SURFACE", obj.cid.hex(), "SURFACE-CARRIER", "identity-only TARGET", obj.kind.name)
+    outer = Cursor(obj.body, obj.cid.hex())
+    identity = outer.byte_string()
+    outer.end("SURFACE-CARRIER")
+    if not identity.startswith(ANDROID_SURFACE_ACTIVITY_PREFIX):
+        fail("XAX.ANDROID.SURFACE", obj.cid.hex(), "SURFACE-IDENTITY", ANDROID_SURFACE_ACTIVITY_PREFIX, identity)
+    cursor = Cursor(identity[len(ANDROID_SURFACE_ACTIVITY_PREFIX):], obj.cid.hex())
+    try:
+        fields = (cursor.byte_string().decode("utf-8"), cursor.byte_string().decode("utf-8"))
+        cursor.end("SURFACE-FIELDS")
+        canonical = android_surface_activity_semantics(class_descriptor=fields[0], content_description=fields[1])
+    except (UnicodeDecodeError, ValueError) as error:
+        fail("XAX.ANDROID.SURFACE", obj.cid.hex(), "SURFACE-FIELDS", "valid UTF-8 fields", str(error))
+    if canonical.cid != obj.cid:
+        fail("XAX.ANDROID.SURFACE", obj.cid.hex(), "SURFACE-CANONICAL", canonical.cid.hex(), obj.cid.hex())
+    return fields
+
+
+def lower_android_surface_activity(obj: SemanticObject) -> DexBridgeSpec:
+    """The platform owns the view/surface; no consumer, worker or codec is created."""
+    from xax_dex import DexAssembledMethod, DexInstruction as I, DexMethodRef as M
+
+    descriptor, description = decode_android_surface_activity(obj)
+    proto = DexProto("V", ("Landroid/os/Bundle;",))
+    instructions = (
+        I("invoke-super", (2, 3), M("Landroid/app/Activity;", "onCreate", proto)),
+        I("new-instance", (0,), "Landroid/view/SurfaceView;"),
+        I("invoke-direct", (0, 2), M("Landroid/view/SurfaceView;", "<init>", DexProto("V", ("Landroid/content/Context;",)))),
+        I("const-string", (1,), description),
+        I("invoke-virtual", (0, 1), M("Landroid/view/View;", "setContentDescription", DexProto("V", ("Ljava/lang/CharSequence;",)))),
+        I("invoke-virtual", (2, 0), M("Landroid/app/Activity;", "setContentView", DexProto("V", ("Landroid/view/View;",)))),
+        I("return-void"),
+    )
+    return DexBridgeSpec(descriptor, "Landroid/app/Activity;", assembled_methods=(DexAssembledMethod("onCreate", proto, 4, instructions),))
 
 
 @dataclass(frozen=True)

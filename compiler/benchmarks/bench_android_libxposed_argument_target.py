@@ -27,7 +27,7 @@ HOOK_DESCRIPTOR = "(Ljava/lang/String;)Ljava/lang/String;"
 ORIGINAL_ARGUMENT = "OriginalArg"
 
 
-def build_fixture():
+def build_fixture(debuggable: bool = False):
     target = android_arm64_shared_target()
     ui_semantics = android_activity_argument_method_ui_semantics(
         activity_class_descriptor=ACTIVITY_CLASS,
@@ -37,7 +37,7 @@ def build_fixture():
         click_button_text="Clicked",
     )
     manifest = android_manifest_semantics(
-        AndroidManifestSpec(PACKAGE_NAME, "com.example.target.XaxActivity", min_sdk=28, target_sdk=35, version_code=1, launcher=True)
+        AndroidManifestSpec(PACKAGE_NAME, "com.example.target.XaxActivity", min_sdk=28, target_sdk=35, version_code=1, launcher=True, debuggable=debuggable)
     )
 
     env = jni_env_pointer_type()

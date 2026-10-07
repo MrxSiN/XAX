@@ -1,0 +1,305 @@
+{
+  "profiles": {
+    "argument": {
+      "expected_text": "HookedArg",
+      "module": {
+        "file": "argument.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "9650e424701ae2adc6a8e34d59521b1136b30fb6933e35d27c0b5dd6b2432372",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "com.example.module",
+      "target": "string"
+    },
+    "combined": {
+      "expected_text": "HookedResult",
+      "module": {
+        "file": "combined.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "11bbd2545d095e182ffaffb69ad999cad34aa6f0868812b50792301120291630",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "com.example.module",
+      "target": "string"
+    },
+    "deopt": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "deopt.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "6c73843dfaf92448826d2309d575556c750ea0edd6a0c8c9cc7f791a3e219fdd",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "hook": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "hook.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "8d21eb5ee3bf239761533855b6ae65abb55a2f92fe1716fbd0257ffd18aaba6d",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "hot_reload": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "hot_reload.apk",
+        "module_prop": {
+          "autoHotReload": "true",
+          "minApiVersion": "102",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 102,
+        "sha256": "c8b61ed8697c7fba9c8571613f91b0800c2dae2cecbc1e8ab5f2f9bfc85945df",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "reload": {
+        "file": "hot_reload.reload.apk",
+        "module_prop": {
+          "autoHotReload": "true",
+          "minApiVersion": "102",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 102,
+        "sha256": "b983454b1c7765a9395a1425b5cdf8cd193f67c0764db1561f1d97a62b9d1d10",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": true
+      },
+      "target": "string"
+    },
+    "hot_reload_id_mismatch": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "hot_reload_id_mismatch.apk",
+        "module_prop": {
+          "autoHotReload": "true",
+          "minApiVersion": "102",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 102,
+        "sha256": "c8b61ed8697c7fba9c8571613f91b0800c2dae2cecbc1e8ab5f2f9bfc85945df",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "reload": {
+        "file": "hot_reload_id_mismatch.reload.apk",
+        "module_prop": {
+          "autoHotReload": "true",
+          "minApiVersion": "102",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 102,
+        "sha256": "eafcb486512254027b072798bddb1a0eedcd79cb94166fb8b98887ddc8923c2c",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": true
+      },
+      "target": "string"
+    },
+    "managed": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "managed.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "bda03dc762a44ec054beaafcf44ac24e931c1dc6658283261ce1e1b32eec2928",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "native": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "native.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "6e4114c7fd86fc31248282d115b6051db31096b7c877ccc69b244f2b14c02d7e",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "protective": {
+      "expected_text": "HookedResult",
+      "module": {
+        "file": "protective.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "11bbd2545d095e182ffaffb69ad999cad34aa6f0868812b50792301120291630",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "com.example.module",
+      "target": "string"
+    },
+    "remote_files": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "remote_files.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "5aa230a9df7d63c6704762ffae294fceb16bdf2d7f4358eb5e30d45aa04f5e1e",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "remote_preferences": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "remote_preferences.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "753997d39ad8bbc3b2bfb32bcf158a7e78d4d798d3fc9b8184d53c5c0485ba56",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "result": {
+      "expected_text": "Hooked",
+      "module": {
+        "file": "result.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "13ce152bd44c1d0743f1eb78ac1c0c8a8191406ee8a697186190d38885341814",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "com.example.module",
+      "target": "zero"
+    },
+    "services": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "services.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "81d82b4928183a65c86e708623d9354ad82490266aa0bf86c67b30ffeb745c9d",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    },
+    "unhook": {
+      "expected_text": "OriginalArg",
+      "module": {
+        "file": "unhook.apk",
+        "module_prop": {
+          "minApiVersion": "101",
+          "staticScope": "true",
+          "targetApiVersion": "102"
+        },
+        "required_api": 101,
+        "sha256": "80f875c80cc64413191edf6b9e7b1c6b487c45ad99693177ac854158cc13ec2f",
+        "vector_accepted": true,
+        "vector_violations": [],
+        "version_code_bumped": false
+      },
+      "package": "xax.generated",
+      "target": "string"
+    }
+  },
+  "purpose": "validation-only signed inputs for the Vector runtime harness; no runtime result is claimed",
+  "schema": "xax-android-vector-profiles-v1",
+  "signer_identity_sha256": "630536dd2294653f10dc127531202ffa0de9ecce911bfd27abf61213e3f4ef68",
+  "targets": {
+    "string": {
+      "activity": "com.example.target.XaxActivity",
+      "file": "target-string.apk",
+      "package": "com.example.target",
+      "sha256": "f7590ab022248cbaf1196c0ed0eb8ff14caeebb594e18bc0e09728a7af990b48",
+      "unhooked_text": "OriginalArg"
+    },
+    "zero": {
+      "activity": "com.example.target.XaxActivity",
+      "file": "target-zero.apk",
+      "package": "com.example.target",
+      "sha256": "d280833569e9a50200f2de2ade2201413a42e54b83884ee83c8e95cc15b69a99",
+      "unhooked_text": "Original"
+    }
+  }
+}

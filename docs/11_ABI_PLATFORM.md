@@ -570,6 +570,14 @@ The sample module exports exactly `native_init` and returns an internal
 `NativeOnModuleLoaded` function address. No registration table, adapter object,
 allocator, or runtime dispatcher is emitted.
 
+This layout and the `native_init(const NativeAPIEntries *) -> NativeOnModuleLoaded`
+signature match Vector v2.2 (`native/include/core/native_api.h` at commit
+`88f8e1fa`), the tested reference framework (ADR-178). Vector calls `native_init`
+from its `do_dlopen` hook when a library whose path ends with a
+`native_init.list` name is opened, so the module's Java entry must load the
+library; Vector never opens native entries itself, and a module without a Java
+entry is not loaded at all.
+
 ### 16.3 JNI bounded ABI slice
 
 JNI is represented as borrowed opaque pointers and fixed table loads. The
@@ -638,6 +646,14 @@ existing retained field.  No native ABI changes are introduced.  There is no
 unhook/install window, no generated target-member lookup in the reload callback, and no
 implicit state/resource migration.  Multiple-hook matching and saved-instance-state are
 not ABI commitments of this bounded profile.
+
+### 16.7 General managed classes (`android-managed-class-v1`, ADR-199)
+
+One identity-only carrier declares a DEX class: descriptor, superclass, sorted interfaces, native library, and methods `(name, JVM descriptor, public|protected, call_super)`. Each method forwards its exact arguments to a private native method named `xax<Name>`, bound by JNI short name to an `android-aapcs64-c` export, and returns the export's result. `call_super` (void only) first runs `invoke-super` with the same registers. The class always gets a no-argument constructor calling the superclass constructor and a `<clinit>` that loads the library.
+
+DEX forms: a void method with at most three one-register parameters keeps the original `invoke-direct` (35c) form byte for byte. Any other method uses `invoke-*/range` (3rc): `ins = this + parameters` (J/D take two registers), with one or two result registers below them, `move-result{,-wide,-object}` and the matching `return`.
+
+The export's non-proof ABI must be `(JNIEnv*, borrowed this, arguments...)` with JNI widths (`Z`/`B` 8 bits, `C`/`S` 16, `I` 32, `J` 64, references as borrowed JNI references of the exact class). Its non-proof results must be empty for `V`, the JNI width for primitives, or a local or borrowed reference of the exact class. The build checks this per method (`ANDROID-MANAGED-JNI-SIGNATURE`). `F`/`D` are rejected until the JNI layer has an exact float carrier. A managed-class APK contains only these carriers, one manifest whose Activity is one of them, optional resources, and exports. It accepts the v3 or the general v4 Android target and needs `minSdk >= 28` (DEX 039).
 
 ## 17. Windows x86-64 hosted PE slice (2026-10-02)
 

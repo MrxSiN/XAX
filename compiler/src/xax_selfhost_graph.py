@@ -59,6 +59,17 @@ BODY_EXTENT = 1 << 20
 OUT_EXTENT = 1 << 24  # S6c: a stream word per body byte for the largest (1 MiB) bodies, with room to spare
 OUT_WORDS = OUT_EXTENT // 8
 ACCEPT, REJECT, DEFER = 0, 1, 2
+# S8b.2 (ADR-185): the diagnostic record (64-bit words) after its cursor at DIAG_AT, below the stream's end; on reject
+# out[1] is the stream prefix's end, so the caller can walk what precedes the rejection in body order.
+DIAG_AT = OUT_WORDS - 4096
+GRAPH_SITES = {
+    **store.CURSOR_SITES,
+    "ENTRY_BLOCK": ("XAX.STRUCT.ENTRY_BLOCK", "GRAPH-ENTRY", ("format", "block < {}", ("wide", 0, 1)), ("wide", 2, 3)),
+    "REF_INDEX": ("XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", ("format", "< {}", ("int", 2)), ("wide", 0, 1)),
+    "VALUE_TAG": ("XAX.STRUCT.VALUE_TAG", "GRAPH-VALUE-TAG", ("list", 0, 1), ("wide", 0, 1)),
+    "TERMINATOR": ("XAX.STRUCT.TERMINATOR", "GRAPH-TERMINATOR-KIND", ("list", *(("terminator", kind) for kind in (1, 2, 3, 4))), ("wide", 0, 1)),
+    "TRAILING": ("XAX.CANON.TRAILING_BYTES", "GRAPH-BODY", 0, ("int", 0)),
+}
 
 B1, B8, B64 = bits_type(1), bits_type(8), bits_type(64)
 MEM = store.MEM
@@ -68,8 +79,13 @@ BODY_VIEW, OUT_VIEW = heap_view_type(BODY_EXTENT), heap_view_type(OUT_EXTENT)
 STATE = (BODY_VIEW, MEM, OUT_VIEW, MEM)
 
 
-class _GraphDecoder(store._Decoder):
-    """The S3 construction helpers over a 64-bit output stream with a running cursor."""
+class _GraphDecoder(store._SiteDiagnostics, store._Decoder):
+    """The S3 construction helpers over a 64-bit output stream with a running cursor, and (S8b.2) the graph body's
+    rejection sites: the graph's CID follows the body in the input, so the program renders its own entity."""
+
+    SITES = GRAPH_SITES
+    ENTITIES = (("graph", None, "hex"),)
+    block_state = STATE
 
     def __init__(self) -> None:
         self.g = GraphBuilder()
@@ -77,16 +93,16 @@ class _GraphDecoder(store._Decoder):
         self.data, data_view, data_mem, self.out, out_view, out_mem, self.length, self.references = entry.params
         self.cur = entry
         self.state = (data_view, data_mem, out_view, out_mem)
-        self.reject_block = self.g.block(*STATE)
         self.defer_block = self.g.block(*STATE)
+        self.diagnostic_block = self.g.block(*(B64,) * store.DIAGNOSTIC_ARGUMENTS, *STATE)
 
     def g_block(self, *types):
         return self.g.block(*types, *STATE)
 
     # The S3 helpers create blocks with the S3 state types; rebind them to this decoder's views.
-    def check(self, condition, failure=None):
+    def check(self, condition, failure):
         following = self.g.block(*STATE)
-        self.cur.cbr(condition, following, self.state, failure or self.reject_block, self.state)
+        self.cur.cbr(condition, following, self.state, failure, self.state)
         self.cur, self.state = following, tuple(following.params)
 
     def loop_header(self, values):
@@ -101,40 +117,56 @@ class _GraphDecoder(store._Decoder):
         self.cur, self.state = body, tuple(body.params)
         return exit_block
 
-    def uleb(self, position, limit=None, failure=None):
-        limit = limit if limit is not None else self.length
-        header, (pos, value, group, big) = self.loop_header((position, self.c(0), self.c(0), self.c(0)))
-        self.check(self.cmp(IntCompare.ULT, group, 10), failure)
-        self.check(self.cmp(IntCompare.ULT, pos, limit), failure)
-        byte = self.load8(pos)
-        low = self.op(Operation.BIT_AND, byte, self.c(0x7F))
-        scale = self.c(0)
-        for index in range(5):
-            scale = self.add(scale, self.mul(self.flag(IntCompare.EQ, group, index), 128 ** index))
-        value = self.add(value, self.mul(low, scale))
-        big = self.op(Operation.BIT_OR, big, self.mul(self.flag(IntCompare.NE, low, 0), self.flag(IntCompare.UGE, group, 5)))
-        following = self.add(pos, 1)
-        more = self.cmp(IntCompare.NE, self.op(Operation.BIT_AND, byte, self.c(0x80)), 0)
-        again, done = self.g.block(*STATE), self.g.block(*STATE)
-        self.cur.cbr(more, again, self.state, done, self.state)
-        self.enter(again)
-        self.back(header, (following, value, self.add(group, 1), big))
-        self.enter(done)
-        self.check(self.cmp(IntCompare.NE, self.op(Operation.BIT_OR, self.flag(IntCompare.NE, byte, 0), self.flag(IntCompare.EQ, group, 0)), 0), failure)
-        return value, big, following
+    def store64(self, index, value):
+        data_view, data_mem, out_view, out_mem = self.state
+        offset = self.cur.op1(Operation.INT_TRUNCATE, (self.mul(index, 8),), bits_type(32))
+        out_mem = self.cur.op1(Operation.CHECKED_STORE_BITS_LE, (self.out, offset, value, out_mem), MEM, attributes=(8, 1))
+        self.state = (data_view, data_mem, out_view, out_mem)
+
+    def load64(self, index):
+        data_view, data_mem, out_view, out_mem = self.state
+        offset = self.cur.op1(Operation.INT_TRUNCATE, (self.mul(index, 8),), bits_type(32))
+        value, out_mem = self.cur.op(Operation.CHECKED_LOAD_BITS_LE, (self.out, offset, out_mem), (B64, MEM), attributes=(8, 1))
+        self.state = (data_view, data_mem, out_view, out_mem)
+        return value
+
+    def ret(self):
+        data_view, data_mem, out_view, out_mem = self.state
+        self.cur.ret(self.data, data_view, data_mem, self.out, out_view, out_mem)
+        self.cur = None
+
+    # ``_SiteDiagnostics`` hooks: the record in 64-bit words after the cursor at DIAG_AT.
+    def begin_record(self):
+        self.store64(self.c(DIAG_AT), self.c(DIAG_AT + 1))
+
+    def put(self, value):
+        cursor = self.load64(self.c(DIAG_AT))
+        self.store64(cursor, value if not isinstance(value, int) else self.c(value))
+        self.store64(self.c(DIAG_AT), self.add(cursor, 1))
+
+    def finish_reject(self, context):
+        self.store64(self.c(1), context)
+        self.store64(self.c(0), self.c(REJECT))
+        self.ret()
 
     def emit(self, cursor, value):
         """out[cursor] = value; returns cursor + 1 (defers when the stream would overflow)."""
-        self.check(self.cmp(IntCompare.ULT, cursor, OUT_WORDS), self.defer_block)
+        self.check(self.cmp(IntCompare.ULT, cursor, DIAG_AT), self.defer_block)
         data_view, data_mem, out_view, out_mem = self.state
         offset = self.cur.op1(Operation.INT_TRUNCATE, (self.mul(cursor, 8),), bits_type(32))
         out_mem = self.cur.op1(Operation.CHECKED_STORE_BITS_LE, (self.out, offset, value, out_mem), MEM, attributes=(8, 1))
         self.state = (data_view, data_mem, out_view, out_mem)
         return self.add(cursor, 1)
 
+    def read(self, position, cursor):
+        """Decode one ULEB with its diagnostics (S8b.2): ``(low, high, big, position)``; nothing is emitted, so a
+        check on the value comes before the value enters the stream."""
+        return self.uleb_d(position, self.length, (0, self.length), cursor)
+
     def word(self, position, cursor):
-        """Decode one ULEB, defer if it may exceed 2^35, emit it: (value, position, cursor)."""
-        value, big, position = self.uleb(position)
+        """Decode one ULEB, defer if it may exceed 2^35 (an accepted value too wide for the stream), emit it:
+        (value, position, cursor)."""
+        value, _high, big, position = self.read(position, cursor)
         self.check(self.cmp(IntCompare.EQ, big, 0), self.defer_block)
         return value, position, self.emit(cursor, value)
 
@@ -145,23 +177,27 @@ class _GraphDecoder(store._Decoder):
         return hit
 
     def counted(self, position, cursor, element):
-        """A ULEB count followed by ``count`` elements; ``element(position, cursor)`` returns both."""
-        count, position, cursor = self.word(position, cursor)
+        """A ULEB count followed by ``count`` elements; ``element(position, cursor)`` returns both.  A count too large
+        for the body runs until an element fails, as the bootstrap's loop does."""
+        count, _high, big, position = self.read(position, cursor)
+        cursor = self.emit(cursor, count)
         header, (index, position, cursor) = self.loop_header((self.c(0), position, cursor))
-        done = self.branch_loop(header, self.cmp(IntCompare.ULT, index, count))
+        done = self.branch_loop(header, self.either(self.cmp(IntCompare.NE, big, 0), self.cmp(IntCompare.ULT, index, count)))
         next_position, next_cursor = element(position, cursor)
         self.back(header, (self.add(index, 1), next_position, next_cursor))
         self.enter(done)
         return position, cursor
 
     def reference(self, position, cursor):
-        index, position, cursor = self.word(position, cursor)
-        self.check(self.cmp(IntCompare.ULT, index, self.references))
-        return position, cursor
+        index, high, big, position = self.read(position, cursor)
+        self.fail_unless(self.both(self.cmp(IntCompare.EQ, big, 0), self.cmp(IntCompare.ULT, index, self.references)), "REF_INDEX",
+                         (0, self.length), (index, high, self.references), cursor)
+        return position, self.emit(cursor, index)
 
     def value(self, position, cursor):
-        tag, position, cursor = self.word(position, cursor)
-        self.check(self.cmp(IntCompare.ULE, tag, 1))
+        tag, high, big, position = self.read(position, cursor)
+        self.fail_unless(self.both(self.cmp(IntCompare.EQ, big, 0), self.cmp(IntCompare.ULE, tag, 1)), "VALUE_TAG", (0, self.length), (tag, high), cursor)
+        cursor = self.emit(cursor, tag)
         _block, position, cursor = self.word(position, cursor)
         _index, position, cursor = self.word(position, cursor)
         node_value, plain = self.g.block(B64, B64, *STATE), self.g.block(B64, B64, *STATE)
@@ -194,11 +230,14 @@ class _GraphDecoder(store._Decoder):
 
 def build_graph_decoder_program() -> tuple[StoreReader, SemanticObject]:
     d = _GraphDecoder()
+    graph = (0, d.length)  # the CID follows the body
     position, cursor = d.c(0), d.c(2)
-    block_count, position, cursor = d.word(position, cursor)
-    entry, position, cursor = d.word(position, cursor)
-    d.check(d.cmp(IntCompare.NE, block_count, 0))
-    d.check(d.cmp(IntCompare.ULT, entry, block_count))
+    block_count, count_high, count_big, position = d.read(position, cursor)
+    entry, entry_high, _entry_big, position = d.read(position, cursor)
+    nonzero = d.either(d.cmp(IntCompare.NE, block_count, 0), d.cmp(IntCompare.NE, count_high, 0))
+    below = d.either(d.cmp(IntCompare.ULT, entry_high, count_high), d.both(d.cmp(IntCompare.EQ, entry_high, count_high), d.cmp(IntCompare.ULT, entry, block_count)))
+    d.fail_unless(d.both(nonzero, below), "ENTRY_BLOCK", graph, (block_count, count_high, entry, entry_high), cursor)
+    cursor = d.emit(d.emit(cursor, block_count), entry)
 
     def edge(position, cursor):
         _target, position, cursor = d.word(position, cursor)
@@ -224,9 +263,10 @@ def build_graph_decoder_program() -> tuple[StoreReader, SemanticObject]:
     def block(position, cursor):
         position, cursor = d.counted(position, cursor, d.reference)
         position, cursor = d.counted(position, cursor, node)
-        kind, position, cursor = d.word(position, cursor)
-        d.check(d.cmp(IntCompare.UGE, kind, 1))
-        d.check(d.cmp(IntCompare.ULE, kind, 4))
+        kind, high, big, position = d.read(position, cursor)
+        d.fail_unless(d.both(d.cmp(IntCompare.EQ, big, 0), d.cmp(IntCompare.UGE, kind, 1), d.cmp(IntCompare.ULE, kind, 4)), "TERMINATOR", graph,
+                      (kind, high), cursor)
+        cursor = d.emit(cursor, kind)
         position, cursor = d.guarded(d.cmp(IntCompare.EQ, kind, 1), position, cursor, edge)
 
         def conditional(position, cursor):
@@ -238,27 +278,26 @@ def build_graph_decoder_program() -> tuple[StoreReader, SemanticObject]:
         position, cursor = d.guarded(d.cmp(IntCompare.EQ, kind, 3), position, cursor, lambda p, c: d.counted(p, c, d.value))
 
         def trap(position, cursor):
-            size, position, cursor = d.word(position, cursor)
-            cursor = d.emit(cursor, position)
-            return d.need(position, size), cursor
+            size, high, big, position = d.read(position, cursor)
+            cursor = d.emit(cursor, size)
+            end = d.take(position, (size, high, big), d.length, graph, context=cursor)  # the offset follows only in bounds
+            return end, d.emit(cursor, position)
 
         return d.guarded(d.cmp(IntCompare.EQ, kind, 4), position, cursor, trap)
 
     header, (b, position, cursor) = d.loop_header((d.c(0), position, cursor))
-    done = d.branch_loop(header, d.cmp(IntCompare.ULT, b, block_count))
+    done = d.branch_loop(header, d.either(d.cmp(IntCompare.NE, count_big, 0), d.cmp(IntCompare.ULT, b, block_count)))
     next_position, next_cursor = block(position, cursor)
     d.back(header, (d.add(b, 1), next_position, next_cursor))
     d.enter(done)
-    d.check(d.cmp(IntCompare.EQ, position, d.length))
+    d.fail_unless(d.cmp(IntCompare.EQ, position, d.length), "TRAILING", graph, (d.op(Operation.SUB_WRAP, d.length, position),), cursor)
     d.emit(d.c(1), cursor)
     d.emit(d.c(0), d.c(ACCEPT))
-    view_b, mem_b, view_o, mem_o = d.state
-    d.cur.ret(d.data, view_b, mem_b, d.out, view_o, mem_o)
-    for failure, status in ((d.reject_block, REJECT), (d.defer_block, DEFER)):
-        d.enter(failure)
-        data_view, data_mem, out_view, out_mem = d.state
-        out_mem = d.cur.op1(Operation.CHECKED_STORE_BITS_LE, (d.out, d.cur.const(bits_type(32), 0), d.c(status), out_mem), MEM, attributes=(8, 1))
-        d.cur.ret(d.data, data_view, data_mem, d.out, out_view, out_mem)
+    d.ret()
+    d.write_diagnostics()
+    d.enter(d.defer_block)
+    d.store64(d.c(0), d.c(DEFER))
+    d.ret()
     triples = (BODY_POINTER, BODY_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
     function = d.g.function((*triples, B64, B64), triples)
     return program_store(function, x86_64_linux_exec_target(), tuple(d.g.objects.values())), function
@@ -305,19 +344,31 @@ class NativeGraphDecoder:
         self._slots = (ctypes.c_uint64 * 4)()
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
-        self.capacity = BODY_EXTENT
+        self.capacity = BODY_EXTENT - 32  # the graph's CID follows the body
 
     def decode(self, body: bytes, reference_count: int):
         """``(status, words)``: the decoded stream on accept, else ``()``."""
+        status, words, _diagnostic = self.decode_with_diagnostic(body, reference_count, bytes(32))
+        return status, words if status == ACCEPT else ()
+
+    def decode_with_diagnostic(self, body: bytes, reference_count: int, cid: bytes):
+        """``(status, words, diagnostic)`` (S8b.2): on accept the stream; on reject the stream prefix that precedes the
+        rejection in body order and the ``Diagnostic`` the program wrote on the graph ``cid``."""
+        from xax_selfhost_diagnostics import decode_record
+
         with self._lock:
             ctypes.memmove(self._body, body, len(body))
+            ctypes.memmove(ctypes.addressof(self._body) + len(body), cid, 32)
             slots = self._slots
             slots[0], slots[1], slots[2], slots[3] = ctypes.addressof(self._body), ctypes.addressof(self._out), len(body), reference_count
             self._call(self._entry, ctypes.addressof(slots), 4, ctypes.addressof(self._xmm))
-            status = self._out[0]
-            if status != ACCEPT:
-                return status, ()
-            return status, self._out[2:self._out[1]]
+            out = self._out
+            status = out[0]
+            if status == ACCEPT:
+                return status, out[2:out[1]], None
+            if status == REJECT:
+                return status, out[2:out[1]], decode_record(out[DIAG_AT + 1:out[DIAG_AT]])
+            return status, (), None
 
 
 def native_graph_decoder_usable() -> bool:

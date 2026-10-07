@@ -1,0 +1,46 @@
+{
+  "format": "xax-jvm-r5-local-manifest-v1",
+  "date": "2026-10-07",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "client": "codex-cli 0.162.0-alpha.2",
+  "repetitions": 3,
+  "task_ids": [
+    "jvm-01",
+    "jvm-02",
+    "jvm-03",
+    "jvm-04",
+    "jvm-05",
+    "jvm-06",
+    "jvm-07",
+    "jvm-08",
+    "jvm-09",
+    "jvm-10",
+    "jvm-11",
+    "jvm-12",
+    "jvm-13",
+    "jvm-14",
+    "jvm-15"
+  ],
+  "arms": [
+    "JAVA",
+    "KOTLIN",
+    "XAX"
+  ],
+  "source_sha256": {
+    "compiler/src/xax_compiler.py": "d697cd78ce27e117ec99d3148dede907c46b7ff404f75d0501a32b21090e3921",
+    "compiler/src/xax_workspace.py": "83c3dc5cc08a420b89b3ce9e88041abdfcf6655f8bd69789f1f4563175d9f8c8",
+    "compiler/src/xax_local_protocol.py": "ec651fcdd47900c52ac9f5cda53bee3cc07c62392e9d80c386f245ec82af192e",
+    "compiler/benchmarks/ai_native/__init__.py": "149679873e98f97c90f39395ade6605e49f3b1fda3a86e1a13d83eb880b379ce",
+    "compiler/benchmarks/jvm_r5_ai.py": "acee8ffe743a3c11de5eb88cf81c2e2491ef87aa61b0fc42ef055c5c44ac6400",
+    "compiler/benchmarks/run_jvm_r5_ai.py": "12dc95df43a307475f4a998d804f159be0a60c9228c9c34101136d0b5579326c",
+    "docs/09_AI_PROTOCOL.md": "e02851077338e78be4275aa6bb5df58789137765a387efb2a46fa101b98bb3ab"
+  },
+  "limits": [
+    "Model identity is the client-requested model identifier; the provider does not expose a separate weights digest.",
+    "transmitted_bytes in CSV counts the supplied prompt plus retained JSON event transport, not inaccessible provider framing.",
+    "The existing creation scaffold and tiny XAX large-application fixture require equivalence review; no unconditional R5 promotion."
+  ],
+  "purpose": "Explicit intent-role bindings and snapshot/insertion-result help; move/creation XAX preflight cells may be reused only under this unchanged profile.",
+  "success_criteria": "Same exact semantic target roots and textual targets; creation textual probes strengthened to nine inputs including wraparound."
+}

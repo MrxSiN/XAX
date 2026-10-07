@@ -1,0 +1,46 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-5.6-luna",
+      "low",
+      "codex-cli 0.162.0-alpha.2"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 3,
+  "attempts": 7,
+  "successful_cells": 6,
+  "required_cells": 135,
+  "complete": false,
+  "accounting_complete": true,
+  "successful_task_medians_including_retries": {
+    "JAVA": 64575.5,
+    "KOTLIN": 24992.5,
+    "XAX": 13284.0
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 0.531519455836751,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-response-results.csv",
+  "source_sha256": "a99abc77fd6a92d2f1d5d19e7677e307165a14ecd28002a3b9d80b9e15aaf822",
+  "limits": [
+    "Exact semantic-root XAX targets and textual normalization checks remain more restrictive than behavioral equivalence.",
+    "Abstract resource effects are verifier/exact-target checked, not executed on the JVM.",
+    "One JVM host and one requested model identifier; no separate provider weights digest.",
+    "Prior interrupted/exploratory profiles remain separately reported; no unknown-cost profile can satisfy the gate.",
+    "A post-run context audit found unequal injected plugin-skill catalogs; the profile is ineligible for R5."
+  ],
+  "unrecorded_attempts": [],
+  "profile_sha256": [
+    "b91c164a7e28b11b8c2bf4dac5fc2ffd9e5d3381ee5d362fab2521575fd21f80"
+  ],
+  "host_applied_responses": true,
+  "creation_empty_for_all_arms": true,
+  "large_application_helpers_per_arm": 160,
+  "instruction_context_consistent": false,
+  "instruction_context_audit": "jvm-r5-response-context-audit.json"
+}

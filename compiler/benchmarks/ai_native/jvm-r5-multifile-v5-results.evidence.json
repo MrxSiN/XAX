@@ -1,0 +1,62 @@
+{
+  "format": "xax-jvm-r5-multifile-evidence-v1",
+  "status": "NOT_R5",
+  "model": "gpt-6-luna",
+  "reasoning": "low",
+  "attempts": 48,
+  "successful_cells": 42,
+  "required_cells": 45,
+  "complete": false,
+  "accounting_complete": true,
+  "profile_sha256": [
+    "86486ea06bc83480c09a5003cc7b6caf32438baa2f7c2c9443de2470df396c5d"
+  ],
+  "client_floor_input_tokens": 3501,
+  "task_token_medians_excluding_client_floor": {
+    "JAVA": 1391,
+    "JAVA-EXCERPT": 306,
+    "KOTLIN": 1315,
+    "KOTLIN-EXCERPT": 286,
+    "XAX": 481.0
+  },
+  "successful_task_medians_including_retries": {
+    "JAVA": 4892,
+    "JAVA-EXCERPT": 3807,
+    "KOTLIN": 4816,
+    "KOTLIN-EXCERPT": 3787,
+    "XAX": 3982.0
+  },
+  "lowest_textual_arm": "KOTLIN-EXCERPT",
+  "xax_ratio_vs_lowest_textual_median": 1.6818181818181819,
+  "raw_xax_ratio_vs_lowest_textual_median": 1.0514919461315024,
+  "r5_threshold": 0.5,
+  "r5_acceptance_threshold": 0.55,
+  "total_recorded_tokens_by_arm": {
+    "JAVA": 46734,
+    "JAVA-EXCERPT": 34122,
+    "KOTLIN": 45894,
+    "KOTLIN-EXCERPT": 33919,
+    "XAX": 62310
+  },
+  "failed_attempts_by_arm": {
+    "JAVA": 0,
+    "JAVA-EXCERPT": 0,
+    "KOTLIN": 0,
+    "KOTLIN-EXCERPT": 0,
+    "XAX": 6
+  },
+  "source_csv": "jvm-r5-multifile-v5-results.csv",
+  "source_sha256": "9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa",
+  "limits": [
+    "Exact semantic-root XAX targets and compiled-instruction textual checks remain more restrictive than behavioral equivalence.",
+    "Source-only textual targets (move, unused constant) still require the exact normalized source, as XAX requires the exact root.",
+    "jvm-09 XAX resource effects are proof values erased by the JVM lowering; textual arms execute a runtime resource tracker.",
+    "The client's fixed base instructions and tool schemas are common to every arm and counted in every total.",
+    "One JVM host and one requested model identifier; no separate provider weights digest.",
+    "Prior interrupted/exploratory profiles remain separately reported; no unknown-cost profile can satisfy the gate.",
+    "semantic_entities counts supplied root/function/block/parameter/node/type definitions and valid construction entities, per submitted response round, not canonical store objects.",
+    "transmitted_bytes counts submitted prompts plus streamed JSON event bytes; provider framing is unavailable.",
+    "unexpected_context_commands flags commands whose named files need manual context review.",
+    "Generated projects: helper chains are synthetic; three task families."
+  ]
+}

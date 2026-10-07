@@ -2767,6 +2767,39 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(unsupported.diagnostic.rule, "WORKSPACE-SPECIALIZE-PURE-SUBSET")
         self.assertEqual(workspace.root, reader.root_cid)
 
+    def test_edited_transitive_caller_calls_the_rebuilt_middle_function(self):
+        # ADR-197: editing rate and c1 (c1 -> fee -> rate) in one batch left c1
+        # calling the stale fee. The result must equal building the edit directly.
+        from xax_compiler import IntCompare
+        from xax_graph_builder import GraphBuilder
+        from xax_local_protocol import LocalMutationSession
+
+        def program(rate_value, expected):
+            b32, b1 = bits_type(32), bits_type(1)
+            rate, fee, check = GraphBuilder(), GraphBuilder(), GraphBuilder()
+            block = rate.block()
+            block.ret(block.const(b32, rate_value))
+            rate_fn = rate.function((), (b32,))
+            block = fee.block(b32)
+            block.ret(block.op1(Operation.MUL_WRAP, (block.params[0], block.op1(Operation.CALL_DIRECT, (), b32, entity=rate_fn)), b32))
+            fee_fn = fee.function((b32,), (b32,))
+            block = check.block()
+            called = block.op1(Operation.CALL_DIRECT, (block.const(b32, 4),), b32, entity=fee_fn)
+            block.ret(block.op1(Operation.INT_COMPARE, (called, block.const(b32, expected)), b1, attributes=(IntCompare.EQ,)))
+            check_fn = check.function((), (b1,))
+            objects = {obj.cid: obj for graph in (rate, fee, check) for obj in graph.objects.values()}
+            module = object_with_refs(Kind.MODULE, (rate_fn, fee_fn, check_fn))
+            root = object_with_refs(Kind.PROGRAM_ROOT, (module,))
+            return StoreReader(write_store(root.cid, (*objects.values(), module, root))), rate_fn.cid, check_fn.cid
+
+        reader, rate_cid, check_cid = program(5, 20)
+        workspace = Workspace(reader)
+        aliases = dict(LocalMutationSession.for_function(workspace, rate_cid).aliases)
+        aliases.update({"A" + key[1:]: value for key, value in LocalMutationSession.for_function(workspace, check_cid).aliases.items()})
+        result = LocalMutationSession(workspace, aliases).commit("const N0 7; const A2 28")
+        self.assertTrue(result.committed)
+        self.assertEqual(workspace.root, program(7, 28)[0].root_cid)
+
 
 if __name__ == "__main__":
     unittest.main()

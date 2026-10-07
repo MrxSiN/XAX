@@ -1,0 +1,1114 @@
+{
+  "api_classes": [
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$Chain;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(I)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "getArg",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/util/List;",
+          "internal": false,
+          "kind": "method",
+          "name": "getArgs",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/reflect/Executable;",
+          "internal": false,
+          "kind": "method",
+          "name": "getExecutable",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "getThisObject",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "proceed",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "([Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "proceed",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "proceedWith",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "proceedWith",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$CtorInvoker;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedInterface$Invoker;"
+      ],
+      "members": [
+        {
+          "descriptor": "([Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "newInstance",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Class;[Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "newInstanceSpecial",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$ExceptionMode;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "Lio/github/libxposed/api/XposedInterface$ExceptionMode;",
+          "internal": false,
+          "kind": "field",
+          "name": "DEFAULT",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "Lio/github/libxposed/api/XposedInterface$ExceptionMode;",
+          "internal": false,
+          "kind": "field",
+          "name": "PASSTHROUGH",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "Lio/github/libxposed/api/XposedInterface$ExceptionMode;",
+          "internal": false,
+          "kind": "field",
+          "name": "PROTECTIVE",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "(Ljava/lang/String;)Lio/github/libxposed/api/XposedInterface$ExceptionMode;",
+          "internal": false,
+          "kind": "method",
+          "name": "valueOf",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "()[Lio/github/libxposed/api/XposedInterface$ExceptionMode;",
+          "internal": false,
+          "kind": "method",
+          "name": "values",
+          "since": 101,
+          "static": true
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Enum;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedInterface$Hooker;)Lio/github/libxposed/api/XposedInterface$HookHandle;",
+          "internal": false,
+          "kind": "method",
+          "name": "intercept",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedInterface$ExceptionMode;)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "setExceptionMode",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "setId",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "(I)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "setPriority",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$HookHandle;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "()Ljava/lang/reflect/Executable;",
+          "internal": false,
+          "kind": "method",
+          "name": "getExecutable",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getId",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedInterface$Hooker;)Lio/github/libxposed/api/XposedInterface$HookHandle;",
+          "internal": false,
+          "kind": "method",
+          "name": "replaceHook",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "()V",
+          "internal": false,
+          "kind": "method",
+          "name": "unhook",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$Hooker;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedInterface$Chain;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "intercept",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$Invoker$Type$Chain;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedInterface$Invoker$Type;"
+      ],
+      "members": [
+        {
+          "descriptor": "Lio/github/libxposed/api/XposedInterface$Invoker$Type$Chain;",
+          "internal": false,
+          "kind": "field",
+          "name": "FULL",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "(I)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Object;)Z",
+          "internal": false,
+          "kind": "method",
+          "name": "equals",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()I",
+          "internal": false,
+          "kind": "method",
+          "name": "hashCode",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()I",
+          "internal": false,
+          "kind": "method",
+          "name": "maxPriority",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "toString",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Record;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$Invoker$Type$Origin;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedInterface$Invoker$Type;"
+      ],
+      "members": [
+        {
+          "descriptor": "()V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Object;)Z",
+          "internal": false,
+          "kind": "method",
+          "name": "equals",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()I",
+          "internal": false,
+          "kind": "method",
+          "name": "hashCode",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "toString",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Record;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$Invoker$Type;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "Lio/github/libxposed/api/XposedInterface$Invoker$Type$Origin;",
+          "internal": false,
+          "kind": "field",
+          "name": "ORIGIN",
+          "since": 101,
+          "static": true
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface$Invoker;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "invoke",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "invokeSpecial",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedInterface$Invoker$Type;)Lio/github/libxposed/api/XposedInterface$Invoker;",
+          "internal": false,
+          "kind": "method",
+          "name": "setType",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterface;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "I",
+          "internal": false,
+          "kind": "field",
+          "name": "API_101",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "I",
+          "internal": false,
+          "kind": "field",
+          "name": "API_102",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "I",
+          "internal": false,
+          "kind": "field",
+          "name": "LIB_API",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "I",
+          "internal": false,
+          "kind": "field",
+          "name": "PRIORITY_DEFAULT",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "I",
+          "internal": false,
+          "kind": "field",
+          "name": "PRIORITY_HIGHEST",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "I",
+          "internal": false,
+          "kind": "field",
+          "name": "PRIORITY_LOWEST",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "J",
+          "internal": false,
+          "kind": "field",
+          "name": "PROP_CAP_REMOTE",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "J",
+          "internal": false,
+          "kind": "field",
+          "name": "PROP_CAP_SYSTEM",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "J",
+          "internal": false,
+          "kind": "field",
+          "name": "PROP_RT_API_PROTECTION",
+          "since": 101,
+          "static": true
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Executable;)Z",
+          "internal": false,
+          "kind": "method",
+          "name": "deoptimize",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()I",
+          "internal": false,
+          "kind": "method",
+          "name": "getApiVersion",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkName",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()J",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkProperties",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkVersion",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()J",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkVersionCode",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Constructor;)Lio/github/libxposed/api/XposedInterface$CtorInvoker;",
+          "internal": false,
+          "kind": "method",
+          "name": "getInvoker",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Method;)Lio/github/libxposed/api/XposedInterface$Invoker;",
+          "internal": false,
+          "kind": "method",
+          "name": "getInvoker",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Landroid/content/pm/ApplicationInfo;",
+          "internal": false,
+          "kind": "method",
+          "name": "getModuleApplicationInfo",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;)Landroid/content/SharedPreferences;",
+          "internal": false,
+          "kind": "method",
+          "name": "getRemotePreferences",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Executable;)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "hook",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Class;)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "hookClassInitializer",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()[Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "listRemoteFiles",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(ILjava/lang/String;Ljava/lang/String;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "log",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "log",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;",
+          "internal": false,
+          "kind": "method",
+          "name": "openRemoteFile",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedInterfaceWrapper;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedInterface;"
+      ],
+      "members": [
+        {
+          "descriptor": "()V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedInterface;Ljava/lang/Runnable;)V",
+          "internal": true,
+          "kind": "method",
+          "name": "attachFramework",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Executable;)Z",
+          "internal": false,
+          "kind": "method",
+          "name": "deoptimize",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()V",
+          "internal": false,
+          "kind": "method",
+          "name": "detach",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "()I",
+          "internal": false,
+          "kind": "method",
+          "name": "getApiVersion",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkName",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()J",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkProperties",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkVersion",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()J",
+          "internal": false,
+          "kind": "method",
+          "name": "getFrameworkVersionCode",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Constructor;)Lio/github/libxposed/api/XposedInterface$CtorInvoker;",
+          "internal": false,
+          "kind": "method",
+          "name": "getInvoker",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Method;)Lio/github/libxposed/api/XposedInterface$Invoker;",
+          "internal": false,
+          "kind": "method",
+          "name": "getInvoker",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Landroid/content/pm/ApplicationInfo;",
+          "internal": false,
+          "kind": "method",
+          "name": "getModuleApplicationInfo",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;)Landroid/content/SharedPreferences;",
+          "internal": false,
+          "kind": "method",
+          "name": "getRemotePreferences",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/reflect/Executable;)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "hook",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Class;)Lio/github/libxposed/api/XposedInterface$HookBuilder;",
+          "internal": false,
+          "kind": "method",
+          "name": "hookClassInitializer",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()[Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "listRemoteFiles",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(ILjava/lang/String;Ljava/lang/String;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "log",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "log",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;",
+          "internal": false,
+          "kind": "method",
+          "name": "openRemoteFile",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModule;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedModuleInterface;"
+      ],
+      "members": [
+        {
+          "descriptor": "()V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Lio/github/libxposed/api/XposedInterfaceWrapper;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface$HotReloadedParam;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedModuleInterface$ModuleLoadedParam;"
+      ],
+      "members": [
+        {
+          "descriptor": "()Landroid/os/Bundle;",
+          "internal": false,
+          "kind": "method",
+          "name": "getExtras",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/util/List;",
+          "internal": false,
+          "kind": "method",
+          "name": "getOldHookHandles",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/Object;",
+          "internal": false,
+          "kind": "method",
+          "name": "getSavedInstanceState",
+          "since": 102,
+          "static": false
+        }
+      ],
+      "since": 102,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface$HotReloadingParam;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "()Landroid/os/Bundle;",
+          "internal": false,
+          "kind": "method",
+          "name": "getExtras",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Object;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "setSavedInstanceState",
+          "since": 102,
+          "static": false
+        }
+      ],
+      "since": 102,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface$ModuleLoadedParam;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getProcessName",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Z",
+          "internal": false,
+          "kind": "method",
+          "name": "isSystemServer",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface$PackageLoadedParam;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "()Landroid/content/pm/ApplicationInfo;",
+          "internal": false,
+          "kind": "method",
+          "name": "getApplicationInfo",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/ClassLoader;",
+          "internal": false,
+          "kind": "method",
+          "name": "getDefaultClassLoader",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/String;",
+          "internal": false,
+          "kind": "method",
+          "name": "getPackageName",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Z",
+          "internal": false,
+          "kind": "method",
+          "name": "isFirstPackage",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface$PackageReadyParam;",
+      "interfaces": [
+        "Lio/github/libxposed/api/XposedModuleInterface$PackageLoadedParam;"
+      ],
+      "members": [
+        {
+          "descriptor": "()Landroid/app/AppComponentFactory;",
+          "internal": false,
+          "kind": "method",
+          "name": "getAppComponentFactory",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "()Ljava/lang/ClassLoader;",
+          "internal": false,
+          "kind": "method",
+          "name": "getClassLoader",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface$SystemServerStartingParam;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "()Ljava/lang/ClassLoader;",
+          "internal": false,
+          "kind": "method",
+          "name": "getClassLoader",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/XposedModuleInterface;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedModuleInterface$HotReloadedParam;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "onHotReloaded",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedModuleInterface$HotReloadingParam;)Z",
+          "internal": false,
+          "kind": "method",
+          "name": "onHotReloading",
+          "since": 102,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedModuleInterface$ModuleLoadedParam;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "onModuleLoaded",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedModuleInterface$PackageLoadedParam;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "onPackageLoaded",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedModuleInterface$PackageReadyParam;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "onPackageReady",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Lio/github/libxposed/api/XposedModuleInterface$SystemServerStartingParam;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "onSystemServerStarting",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Object;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/error/HookFailedError;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(Ljava/lang/String;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;Ljava/lang/Throwable;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Throwable;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Lio/github/libxposed/api/error/XposedFrameworkError;"
+    },
+    {
+      "descriptor": "Lio/github/libxposed/api/error/XposedFrameworkError;",
+      "interfaces": [],
+      "members": [
+        {
+          "descriptor": "(Ljava/lang/String;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/String;Ljava/lang/Throwable;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        },
+        {
+          "descriptor": "(Ljava/lang/Throwable;)V",
+          "internal": false,
+          "kind": "method",
+          "name": "<init>",
+          "since": 101,
+          "static": false
+        }
+      ],
+      "since": 101,
+      "superclass": "Ljava/lang/Error;"
+    }
+  ],
+  "api_table_sha256": "73dc6290ec57ce9979f8fb387c60d8dada25495fc683f2046693a6ebb0c8e8c3",
+  "libxposed_api": {
+    "aar_sha256": "423484a6e1807e7a423c4b88fcd8176d104318259d91791877fed88fe91479d0",
+    "aar_url": "https://repo1.maven.org/maven2/io/github/libxposed/api/102.0.0/api-102.0.0.aar",
+    "classes_jar_sha256": "a515dd7a53cd7a47c05e101dff77d61acb3091a97b20a885b9ea3494412db985",
+    "commit": "39cac0845771547c9c67a3e3ce255af110a54a0e",
+    "commits_after_tag": [
+      "39cac0845771547c9c67a3e3ce255af110a54a0e Specify requirement for at least one Java entry (#65)"
+    ],
+    "lib_api": 102,
+    "maven": "io.github.libxposed:api:102.0.0",
+    "nearest_tag": "102.0.0",
+    "repository": "https://github.com/JingMatrix/libxposed-api",
+    "source_sha256": {
+      "api/src/main/java/io/github/libxposed/api/XposedInterface.java": "e9e79d6c6dd22c9ea4dc6ab24f01bdbc3c7b5a8f05ff47e63a1f7a7d5f6080a4",
+      "api/src/main/java/io/github/libxposed/api/XposedInterfaceWrapper.java": "59956c1a629cdd3d695adb776bd3260cc23f8bc7aea62640264bb47381507723",
+      "api/src/main/java/io/github/libxposed/api/XposedModule.java": "c843e75ee90e994aee48135ae0a0ef0107a52a0212834762a2e43f2272587d71",
+      "api/src/main/java/io/github/libxposed/api/XposedModuleInterface.java": "ce800c651ba8c0b7b847569b0de8225fcf261078c6e6ef6a478a6fba6150b530"
+    },
+    "submodule_path": "xposed/libxposed",
+    "tag_commit": "45e7c5cfe54725b6d828d8b7be65e22ce60c67e4"
+  },
+  "libxposed_service": {
+    "aar_sha256": "a665e4af4638924047f5d5cb610553e15bc2c0ea2ce64a27afb6dee257ff014c",
+    "aidl_sha256": {
+      "interface/src/main/aidl/io/github/libxposed/service/IXposedService.aidl": "41d543a403ce8c843291efab72384e832e15b24e8ca164900a2a0ac270c8b8d0"
+    },
+    "commit": "3318940876192e29cf6ab07637e899e22a87ebf0",
+    "framework_properties": {
+      "PROP_CAP_REMOTE": 2,
+      "PROP_CAP_SYSTEM": 1,
+      "PROP_RT_API_PROTECTION": 4
+    },
+    "maven": "io.github.libxposed:service:102.0.0",
+    "repository": "https://github.com/JingMatrix/libxposed-service",
+    "submodule_path": "services/libxposed",
+    "tag": "102.0.0"
+  },
+  "schema": "xax-vector-runtime-pin-v1",
+  "vector": {
+    "commit": "88f8e1faa8b4e7ce20aefabe9c295cd746ea038e",
+    "framework_name": "Vector",
+    "magisk_module_id": "zygisk_vector",
+    "minimum_release": "v2.2",
+    "release": "v2.2",
+    "repository": "https://github.com/JingMatrix/Vector",
+    "tag_object": "8b8fa04dbd58f73bd5187fc6af02b65459b890cc"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "format": 2,
+  "status": "NOT_R5",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "profiles": [
+    [
+      "gpt-5.6-luna",
+      "low",
+      "codex-cli 0.160.0"
+    ]
+  ],
+  "task_count": 15,
+  "repetitions": 1,
+  "attempts": 6,
+  "successful_cells": 6,
+  "required_cells": 45,
+  "complete": false,
+  "accounting_complete": true,
+  "successful_task_medians_including_retries": {
+    "JAVA": 10738.0,
+    "KOTLIN": 10742.5,
+    "XAX": 16399.5
+  },
+  "partial_xax_ratio_vs_lowest_textual_median": 1.5272397094430992,
+  "r5_threshold": 0.5,
+  "meets_token_gate": false,
+  "source_csv": "jvm-r5-response-v10-pilot-results.csv",
+  "source_sha256": "f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23",
+  "limits": [
+    "Exact semantic-root XAX targets and compiled-instruction textual checks remain more restrictive than behavioral equivalence.",
+    "Source-only textual targets (move, unused constant) still require the exact normalized source, as XAX requires the exact root.",
+    "jvm-09 XAX resource effects are proof values erased by the JVM lowering; textual arms execute a runtime resource tracker.",
+    "The client's fixed base instructions and tool schemas are common to every arm and counted in every total.",
+    "One JVM host and one requested model identifier; no separate provider weights digest.",
+    "Prior interrupted/exploratory profiles remain separately reported; no unknown-cost profile can satisfy the gate.",
+    "semantic_entities counts supplied root/function/block/parameter/node/type definitions and valid construction entities, per submitted response round, not canonical store objects.",
+    "transmitted_bytes counts submitted prompts plus streamed JSON event bytes; provider framing is unavailable.",
+    "unexpected_context_commands flags commands whose named files need manual context review."
+  ],
+  "unrecorded_attempts": [],
+  "profile_sha256": [
+    "7e1dcec23d4515302ec83ee441c7e1c19931ea4a72ca408ea29d7e586ac9f542"
+  ],
+  "instruction_context_sha256": [
+    "93e6b35a144cd0e805d028ff625906987fdde5f1a96c242686b5f8371f97af33"
+  ],
+  "instruction_context_complete": true,
+  "r5_acceptance_threshold": 0.55,
+  "meets_token_target": false,
+  "host_applied_responses": true,
+  "creation_empty_for_all_arms": true,
+  "large_application_helpers_per_arm": 160
+}

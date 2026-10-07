@@ -1,0 +1,73 @@
+{
+  "format": "xax-jvm-response-context-review-v1",
+  "reviewer": "Codex agent",
+  "audit_sha256": "f30f14336b4d96ededa4aebc213a9887e600b88a9fcd91124f295064b6843834",
+  "source_csv_sha256": "a2e678fb689910fac1cd9844ad5834f8ab7876d8eb72e54a0d290f056b0c93ce",
+  "reviewed_unique_commands": [
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath 'Program.java'\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.java\""
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.java -Raw'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.java'"
+    },
+    {
+      "arm": "JAVA",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.java'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath 'Program.kt'\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath .\\\\Program.kt -Raw\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath .\\\\Program.kt\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath 'Program.kt'\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command \"Get-Content -Raw -LiteralPath .\\\\Program.kt\""
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.kt -Raw'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -LiteralPath Program.kt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw -LiteralPath Program.kt'"
+    },
+    {
+      "arm": "KOTLIN",
+      "command": "\"C:\\\\Users\\\\SiN\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -Command 'Get-Content -Raw Program.kt'"
+    }
+  ],
+  "conclusion": "All 15 distinct recorded commands read only Program.java or Program.kt with Get-Content. No unexpected context commands are recorded; XAX uses the supplied semantic projection.",
+  "limits": [
+    "This command review does not establish task/corpus equivalence or remove context asymmetry.",
+    "JVM remains R4/PROTOTYPE pending separate corpus/context equivalence review."
+  ]
+}

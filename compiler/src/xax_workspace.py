@@ -349,6 +349,19 @@ class ArtifactMapPage:
 
 
 @dataclass(frozen=True)
+class ReplaceTarget:
+    """Replace one identity-only platform carrier under an exact old CID."""
+
+    node: str
+    expected: bytes
+    value: SemanticObject
+
+    def __post_init__(self) -> None:
+        if len(self.expected) != 32 or self.value.kind != Kind.TARGET or self.value.references:
+            raise ValueError("target replacement requires an old CID and an identity-only TARGET")
+
+
+@dataclass(frozen=True)
 class SetOperation:
     node: str
     expected: Operation
@@ -565,7 +578,8 @@ class _ResolvedSpecializeFunction:
 
 
 Mutation = (
-    SetOperation
+    ReplaceTarget
+    | SetOperation
     | SetConstant
     | SetResultType
     | SetFunctionSignature
@@ -1908,6 +1922,18 @@ class Workspace:
             self._account_query(view, 1)
         return view
 
+    def bind_object(self, cid: bytes, *, byte_budget: int | None = None) -> ObjectView:
+        """Bind an exactly selected existing object without dumping the store."""
+        with self._lock:
+            handle = self._object_handles.get(cid)
+            if handle is None:
+                fail("XAX.WORKSPACE.HANDLE", "R0", "WORKSPACE-OBJECT-EXISTS", "object at current root", cid.hex())
+            view = ObjectView(handle, self._reader.get(cid).kind)
+            view = self._enforce_response_budget("bind_object", view, byte_budget)
+            self._object_bindings[handle] = (cid, self.generation)
+            self._account_query(view, 1)
+            return view
+
     def entity(self, handle: str, *, byte_budget: int | None = None) -> EntityView:
         with self._lock:
             generation = self.generation
@@ -2172,6 +2198,15 @@ class Workspace:
                 Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature | _ResolvedSpecializeFunction
             ] = []
             for mutation in mutations:
+                if isinstance(mutation, ReplaceTarget):
+                    if not isinstance(expected, RootRef):
+                        return self._candidate_rejected(size, _diagnostic("XAX.WORKSPACE.UNSUPPORTED_MUTATION", mutation.node, "WORKSPACE-TARGET-GENERATION-ROOT", "RootRef", "raw root", ("R0",)))
+                    binding = self._object_bindings.get(mutation.node)
+                    if binding is None or binding[1] != self.generation:
+                        return self._candidate_rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", mutation.node, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", ("R0",)))
+                    candidate_mutations.append(mutation)
+                    bindings.append((binding[0], -1, -1))
+                    continue
                 if isinstance(mutation, SpecializeFunction):
                     function_binding = self._current_function_binding(mutation.function)
                     if function_binding is None:
@@ -2341,6 +2376,10 @@ class Workspace:
             for cid in frontier:
                 verified += 1
                 verify_object(candidate.get(cid), resolve)
+            if any(isinstance(mutation, ReplaceTarget) for mutation in mutations):
+                from xax_build import verify_android_build_request
+                for cid in frontier:
+                    verify_android_build_request(candidate, candidate.get(cid))
         except XaxError as error:
             with self._lock:
                 return self._candidate_rejected(size, error.diagnostic, verified)
@@ -2498,6 +2537,15 @@ class Workspace:
                 Mutation | _ResolvedInsertPureNode | _ResolvedSetResultType | _ResolvedSetFunctionSignature | _ResolvedSpecializeFunction
             ] = []
             for mutation in mutations:
+                if isinstance(mutation, ReplaceTarget):
+                    if not isinstance(expected, RootRef):
+                        return self._rejected(size, _diagnostic("XAX.WORKSPACE.UNSUPPORTED_MUTATION", mutation.node, "WORKSPACE-TARGET-GENERATION-ROOT", "RootRef", "raw root", ("R0",)))
+                    binding = self._object_bindings.get(mutation.node)
+                    if binding is None or binding[1] != self.generation:
+                        return self._rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", mutation.node, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", ("R0",)))
+                    candidate_mutations.append(mutation)
+                    bindings.append((binding[0], -1, -1))
+                    continue
                 if isinstance(mutation, SpecializeFunction):
                     function_binding = self._current_function_binding(mutation.function)
                     if function_binding is None:
@@ -2636,6 +2684,10 @@ class Workspace:
             for cid in frontier:
                 verified += 1
                 verify_object(candidate.get(cid), resolve)
+            if any(isinstance(mutation, ReplaceTarget) for mutation in mutations):
+                from xax_build import verify_android_build_request
+                for cid in frontier:
+                    verify_android_build_request(candidate, candidate.get(cid))
         except XaxError as error:
             with self._lock:
                 return self._rejected(size, error.diagnostic, verified)
@@ -2706,6 +2758,9 @@ class Workspace:
             return self.commit(transaction)
 
         size = _transaction_size(transaction)
+        if any(isinstance(mutation, ReplaceTarget) for mutation in transaction.mutations):
+            with self._lock:
+                return self._rejected(size, _diagnostic("XAX.WORKSPACE.REBASE_CONFLICT", "R0", "WORKSPACE-TARGET-REQUERY", "fresh generation-bound carrier query", "stale replacement", ("R0",)))
         with self._lock:
             def reject(entity: str, rule: str, expected: object, actual: object) -> TransactionResult:
                 self.accounting.mutations += 1
@@ -2958,7 +3013,9 @@ def _transaction_size(transaction: Transaction) -> int:
     for mutation in mutations:
         handle = mutation.node.encode()
         size += 1 + len(uleb(len(handle))) + len(handle)
-        if isinstance(mutation, ReplaceUse):
+        if isinstance(mutation, ReplaceTarget):
+            size += 32 + len(uleb(len(mutation.value.body))) + len(mutation.value.body)
+        elif isinstance(mutation, ReplaceUse):
             size += len(uleb(mutation.operand_index))
             size += value_size(mutation.expected) + value_size(mutation.value)
         elif isinstance(mutation, DeleteNode):
@@ -3043,39 +3100,56 @@ def _candidate(
     replacements = {}
     seed_dependencies = {}
     for function_cid in seeds:
+        mutation = grouped[function_cid][0][1]
+        if isinstance(mutation, ReplaceTarget):
+            old = resolve(function_cid)
+            if old.cid != mutation.expected:
+                fail("XAX.WORKSPACE.ATTRIBUTE_CONFLICT", mutation.node, "WORKSPACE-TARGET-EXPECTED", mutation.expected.hex(), old.cid.hex(), repair_neighborhood=(mutation.node,))
+            if old.kind != Kind.TARGET or old.references:
+                fail("XAX.WORKSPACE.UNSUPPORTED_MUTATION", mutation.node, "WORKSPACE-TARGET-IDENTITY-ONLY", "identity-only TARGET", old.kind.name, repair_neighborhood=(mutation.node,))
+            for carrier in (old, mutation.value):
+                try:
+                    decode_native_target(carrier)
+                except XaxError:
+                    pass
+                else:
+                    fail("XAX.WORKSPACE.UNSUPPORTED_MUTATION", mutation.node, "WORKSPACE-PLATFORM-CARRIER-ONLY", "platform carrier; machine target unchanged", "machine target", repair_neighborhood=(mutation.node,))
+            seed_dependencies[function_cid] = set()
+            continue
         graph_object, _, _ = _decode_function_interface(resolve(function_cid), resolve)
         graph = _parse_graph(graph_object, resolve)
         seed_dependencies[function_cid] = {
             node.entity.cid
             for block in graph.blocks
             for node in block.nodes
-            if node.operation == Operation.CALL_DIRECT and node.entity.cid in seeds
+            # Any affected callee, not only an edited one: an edited caller of an
+            # unedited function whose own callee changed must call the rebuilt
+            # function, never the stale one (ADR-197).
+            if node.operation == Operation.CALL_DIRECT and node.entity.cid in affected
         }
-    remaining_seeds = set(seeds)
-    while remaining_seeds:
-        ready = sorted(cid for cid in remaining_seeds if seed_dependencies[cid] <= replacements.keys())
-        if not ready:
-            fail("XAX.WORKSPACE.TOPOLOGY", mutations[0].node, "WORKSPACE-EDITED-FUNCTION-DAG", "acyclic edited functions", "cycle", repair_neighborhood=(mutations[0].node,))
-        for function_cid in ready:
-            replacement = _mutate_function(resolve(function_cid), tuple(grouped[function_cid]), objects, resolve, replacements)
-            replacements[function_cid] = replacement
-            objects[replacement.cid] = replacement
-            remaining_seeds.remove(function_cid)
 
-    remaining = affected - seeds
+    def dependencies(cid: bytes) -> set[bytes]:
+        if cid in seeds:
+            return seed_dependencies[cid]
+        return {reference for reference in resolve(cid).references if reference in affected}
+
+    # Edited functions and rebuilt users share one dependency order.
+    remaining = set(affected)
     while remaining:
-        ready = sorted(
-            cid
-            for cid in remaining
-            if all(reference not in affected or reference in replacements for reference in resolve(cid).references)
-        )
+        ready = sorted(cid for cid in remaining if dependencies(cid) <= replacements.keys())
         if not ready:
-            fail("XAX.WORKSPACE.TOPOLOGY", mutations[0].node, "WORKSPACE-AFFECTED-DAG", "acyclic affected users", "cycle", repair_neighborhood=(mutations[0].node,))
-        for user_cid in ready:
-            replacement = _rebuild_user(resolve(user_cid), replacements, resolve, mutations[0].node)
-            replacements[user_cid] = replacement
+            edited = bool(remaining & seeds)
+            fail("XAX.WORKSPACE.TOPOLOGY", mutations[0].node, "WORKSPACE-EDITED-FUNCTION-DAG" if edited else "WORKSPACE-AFFECTED-DAG",
+                 "acyclic edited functions" if edited else "acyclic affected users", "cycle", repair_neighborhood=(mutations[0].node,))
+        for cid in ready:
+            if cid in seeds:
+                mutation = grouped[cid][0][1]
+                replacement = mutation.value if isinstance(mutation, ReplaceTarget) else _mutate_function(resolve(cid), tuple(grouped[cid]), objects, resolve, replacements)
+            else:
+                replacement = _rebuild_user(resolve(cid), replacements, resolve, mutations[0].node)
+            replacements[cid] = replacement
             objects[replacement.cid] = replacement
-            remaining.remove(user_cid)
+            remaining.remove(cid)
     try:
         new_root = replacements[reader.root_cid]
     except KeyError:
@@ -3375,6 +3449,7 @@ def _mutate_function(
         parameter_cids, return_cids = mutation.parameter_cids, mutation.return_cids
     replacements_by_node = {}
     deletions: set[tuple[int, int]] = set()
+    planned_deletions = {(binding[1], binding[2]) for binding, mutation in edits if isinstance(mutation, DeleteNode)}
     insertions: dict[tuple[int, int], _ResolvedInsertPureNode] = {}
     insertion_by_local: dict[int, tuple[int, int]] = {}
     edge_disconnects: dict[tuple[int, int, int], DisconnectEdgeArgument] = {}
@@ -3622,8 +3697,13 @@ def _mutate_function(
                     Operation(selected.operation).name,
                     repair_neighborhood=(mutation.node,),
                 )
-            for block in graph.blocks:
-                for node in block.nodes:
+            for block_index, block in enumerate(graph.blocks):
+                for node_index, node in enumerate(block.nodes):
+                    # Uses in another member of this atomic pure-deletion batch
+                    # do not survive publication. Terminator and surviving-node
+                    # uses still reject, and every deleted operation is checked.
+                    if (block_index, node_index) in planned_deletions:
+                        continue
                     for operand in node.operands:
                         if uses_deleted(operand, target_block, target_node):
                             fail(
@@ -3881,8 +3961,8 @@ def _affected_users(
                 user = resolve(user_cid)
                 if user.kind == Kind.RECURSION_GROUP:
                     fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-RECURSION-REBUILD", "non-recursive direct-call users", Kind.RECURSION_GROUP.name, repair_neighborhood=(entity,))
-                if user.kind not in (Kind.GRAPH_FRAGMENT, Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT):
-                    fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-SUPPORTED-USER", [Kind.GRAPH_FRAGMENT.name, Kind.FUNCTION.name, Kind.MODULE.name, Kind.PROGRAM_ROOT.name], user.kind.name, repair_neighborhood=(entity,))
+                if user.kind not in (Kind.GRAPH_FRAGMENT, Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.PACKAGE, Kind.BUILD):
+                    fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-SUPPORTED-USER", [Kind.GRAPH_FRAGMENT.name, Kind.FUNCTION.name, Kind.MODULE.name, Kind.PROGRAM_ROOT.name, Kind.PACKAGE.name, Kind.BUILD.name], user.kind.name, repair_neighborhood=(entity,))
                 affected.add(user_cid)
                 if user_cid not in seen:
                     seen.add(user_cid)
@@ -3921,6 +4001,9 @@ def _rebuild_user(
         return function(replacement(graph.cid), tuple(replacement(cid) for cid in parameters), tuple(replacement(cid) for cid in returns))
     if user.kind in (Kind.MODULE, Kind.PROGRAM_ROOT):
         return object_with_refs(user.kind, tuple(replacement(cid) for cid in user.references))
+    if user.kind in (Kind.PACKAGE, Kind.BUILD):
+        from xax_build import rebuild_package_object
+        return rebuild_package_object(user, resolve, replacement)
     if user.kind == Kind.RECURSION_GROUP:
         fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-RECURSION-REBUILD", "non-recursive direct-call users", Kind.RECURSION_GROUP.name, repair_neighborhood=(entity,))
-    fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-SUPPORTED-USER", [Kind.GRAPH_FRAGMENT.name, Kind.FUNCTION.name, Kind.MODULE.name, Kind.PROGRAM_ROOT.name], user.kind.name, repair_neighborhood=(entity,))
+    fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-SUPPORTED-USER", [Kind.GRAPH_FRAGMENT.name, Kind.FUNCTION.name, Kind.MODULE.name, Kind.PROGRAM_ROOT.name, Kind.PACKAGE.name, Kind.BUILD.name], user.kind.name, repair_neighborhood=(entity,))

@@ -1,0 +1,46 @@
+{
+  "format": "xax-jvm-r5-local-manifest-v1",
+  "date": "2026-10-07",
+  "model": "gpt-5.6-luna",
+  "reasoning": "low",
+  "client": "codex-cli 0.162.0-alpha.2",
+  "repetitions": 3,
+  "task_ids": [
+    "jvm-01",
+    "jvm-02",
+    "jvm-03",
+    "jvm-04",
+    "jvm-05",
+    "jvm-06",
+    "jvm-07",
+    "jvm-08",
+    "jvm-09",
+    "jvm-10",
+    "jvm-11",
+    "jvm-12",
+    "jvm-13",
+    "jvm-14",
+    "jvm-15"
+  ],
+  "arms": [
+    "JAVA",
+    "KOTLIN",
+    "XAX"
+  ],
+  "source_sha256": {
+    "compiler/src/xax_compiler.py": "d697cd78ce27e117ec99d3148dede907c46b7ff404f75d0501a32b21090e3921",
+    "compiler/src/xax_workspace.py": "83c3dc5cc08a420b89b3ce9e88041abdfcf6655f8bd69789f1f4563175d9f8c8",
+    "compiler/src/xax_local_protocol.py": "06b7594609e1c9e7ca64ce4cfc917980b6fe9f342167c629e9f211198fa0e109",
+    "compiler/benchmarks/ai_native/__init__.py": "aa955ce265f646ce44148fd0fe3203c0885c3050419842f80d6006348be1c4a4",
+    "compiler/benchmarks/jvm_r5_ai.py": "67e1f192849eb5ea045dca8e571d83987879516911f50807de13adad2d2e9d63",
+    "compiler/benchmarks/run_jvm_r5_ai.py": "cd659e72b594f3f8ad31a2b716c39e42ddf95ec6f35ee538160344007055f8db",
+    "docs/09_AI_PROTOCOL.md": "4a4b447c42fca7ca3b81b1b3f74964eda5d0a30a4e12246867a22ead30916576"
+  },
+  "limits": [
+    "Model identity is the client-requested model identifier; the provider does not expose a separate weights digest.",
+    "transmitted_bytes in CSV counts the supplied prompt plus retained JSON event transport, not inaccessible provider framing.",
+    "The existing creation scaffold and tiny XAX large-application fixture require equivalence review; no unconditional R5 promotion."
+  ],
+  "purpose": "Preserved exploratory profile; stopped after active cell to repair missing role bindings and transaction-local insertion help.",
+  "source_snapshot": "runs-jvm-r5-local/source-snapshot"
+}

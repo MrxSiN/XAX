@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +34,7 @@ class JvmTask:
     xax_command: str
     custom_xax: bool = False
     unrelated_files: int = 0
+    xax_binding: tuple[str, str] | None = None
 
 
 def _java(methods: str, assertion: str) -> str:
@@ -74,7 +76,7 @@ def tasks() -> tuple[JvmTask, ...]:
                 _java("    static int f(int x) { final int b = 9; final int a = 2; return x + a + b; }", "f(1) == 12"),
                 _kotlin("    fun f(x: Int): Int { val a = 2; val b = 9; return x + a + b }", "f(1) == 12"),
                 _kotlin("    fun f(x: Int): Int { val b = 9; val a = 2; return x + a + b }", "f(1) == 12"), "task-05", "move N1 before N0"),
-        JvmTask("jvm-06", "creation", "Create Program with a callable f(i32)->i32 such that f(x) = x + 7.",
+        JvmTask("jvm-06", "creation", "Create Program with a callable f(i32)->i32 such that f(x) = x + 7. Preserve any supplied scaffold and create a new constant for 7.",
                 "", _java("    static int f(int x) { return x + 7; }", "f(5) == 12"),
                 "", _kotlin("    fun f(x: Int) = x + 7", "f(5) == 12"), "task-06", "insert-constant N1 0 7; replace-operand N2 1 @0"),
         JvmTask("jvm-07", "control-flow", "Change only the selected branch result from x to y.",
@@ -130,6 +132,64 @@ def _normalize(source: str) -> str:
     return re.sub(r"\s+", "", re.sub(r"/\*.*?\*/|//[^\n]*", "", source, flags=re.S))
 
 
+def _literal_coercion_shape(source: str) -> str:
+    # This is only an eligibility filter. Equal compiled instructions are
+    # required separately; removing a conversion here never proves equivalence.
+    return re.sub(r"(\b[0-9]+)\.to(?:Byte|Short|Int|Long)\(\)", r"\1", _normalize(source))
+
+
+def _same_jvm_instructions(left: Path, right: Path) -> bool:
+    """Equal javap instructions for Program* classes in a JAR or class directory."""
+    def classes(path):
+        if path.is_dir():
+            return sorted(item.stem for item in path.glob('Program*.class'))
+        with zipfile.ZipFile(path) as archive:
+            return sorted(name[:-6].replace('/', '.') for name in archive.namelist()
+                          if name.startswith('Program') and name.endswith('.class'))
+    names = classes(left)
+    if not names or names != classes(right):
+        return False
+    javap = shutil.which("javap")
+    if not javap:
+        raise ValueError("javap required to check a redundant literal conversion")
+    def instructions(jar):
+        result = subprocess.run([javap, "-classpath", str(jar), "-c", "-p", "-s", "-constants", *names], capture_output=True, text=True)
+        if result.returncode:
+            raise ValueError(result.stderr.strip())
+        lines = []
+        for line in result.stdout.splitlines():
+            if line.startswith("Compiled from "):
+                continue
+            code, separator, comment = line.partition('//')
+            # Pool ordering is non-semantic; resolved operands and literal
+            # values in javap's comments remain exact, including embedded '#'.
+            lines.append(re.sub(r"#\d+", "#", code) + separator + comment)
+        return '\n'.join(lines)
+    return instructions(left) == instructions(right)
+
+
+def _compile_reference(arm: str, source: str, directory: Path) -> Path:
+    directory.mkdir()
+    path = directory / ("Program.java" if arm == "JAVA" else "Program.kt")
+    path.write_text(source, encoding="utf-8")
+    output = directory if arm == "JAVA" else directory / "program.jar"
+    command = [_compiler(arm), "-d", output, path] if arm == "JAVA" else [_compiler(arm), path, "-include-runtime", "-d", output]
+    compiled = subprocess.run(command, capture_output=True, text=True)
+    if compiled.returncode:
+        raise ValueError(f"reference {arm.lower()} source failed to compile: " + compiled.stderr.strip())
+    return output
+
+
+def _equivalent(arm: str, actual: Path, target: str, initial: str, scratch: Path) -> bool:
+    """Compiled instructions equal the target's and, when an initial program is
+    given, differ from it: a source-only target (move, unused constant) then
+    still needs the exact source, so an unchanged program never passes."""
+    scratch.mkdir()
+    if not _same_jvm_instructions(actual, _compile_reference(arm, target, scratch / "target")):
+        return False
+    return not initial or not _same_jvm_instructions(actual, _compile_reference(arm, initial, scratch / "initial"))
+
+
 def _compiler(arm: str) -> Path:
     if arm == "JAVA":
         found = shutil.which("javac")
@@ -140,13 +200,19 @@ def _compiler(arm: str) -> Path:
     return Path(found)
 
 
-def check_source(task_id: str, arm: str, workspace: Path) -> tuple[bool, str]:
-    item, arm = task(task_id), arm.upper()
+def check_source(task_id: str, arm: str, workspace: Path, *, item: JvmTask | None = None,
+                 compiled_equivalence: bool = False) -> tuple[bool, str]:
+    item, arm = item or task(task_id), arm.upper()
     name, expected = ("Program.java", item.java_target) if arm == "JAVA" else ("Program.kt", item.kotlin_target)
     path = workspace / name
     if not path.is_file():
         return False, f"{name} is missing"
-    if item.family != "creation" and _normalize(path.read_text(encoding="utf-8")) != _normalize(expected):
+    actual_source = path.read_text(encoding="utf-8")
+    source_mismatch = item.family != "creation" and _normalize(actual_source) != _normalize(expected)
+    # A non-exact source is admitted only by equal compiled instructions
+    # (ADR-195): Kotlin redundant literal conversions in the historical
+    # profiles, any equivalent Java/Kotlin form when compiled_equivalence is set.
+    if source_mismatch and not (compiled_equivalence or arm == "KOTLIN" and _literal_coercion_shape(actual_source) == _literal_coercion_shape(expected)):
         return False, f"{name} does not match the requested semantic target"
     with tempfile.TemporaryDirectory() as directory:
         build = Path(directory)
@@ -155,26 +221,30 @@ def check_source(task_id: str, arm: str, workspace: Path) -> tuple[bool, str]:
             entry = "Program"
             if item.family == "creation":
                 probe = build / "Probe.java"
-                probe.write_text("public final class Probe { public static void main(String[] a) { if (Program.f(5) != 12) throw new AssertionError(); } }\n")
+                probe.write_text("public final class Probe { public static void main(String[] a) { for (int x : new int[]{0,1,-1,5,127,-128,2147483647,-2147483648,123456789}) if (Program.f(x) != x + 7) throw new AssertionError(); } }\n")
                 sources.append(probe)
                 entry = "Probe"
             compiled = subprocess.run([_compiler(arm), "-d", build, *sources], capture_output=True, text=True)
             if compiled.returncode:
                 return False, compiled.stderr.strip()
+            if source_mismatch and not _equivalent(arm, build, expected, item.java_initial, build / "reference"):
+                return False, f"{name} does not match the compiled semantic target"
             ran = subprocess.run([shutil.which("java") or "java", "-cp", build, entry], capture_output=True, text=True)
         else:
             jar = build / "program.jar"
             sources = [path]
             if item.family == "creation":
                 probe = build / "Probe.kt"
-                probe.write_text("fun main() { check(Program.f(5) == 12) }\n")
+                probe.write_text("fun main() { for (x in intArrayOf(0,1,-1,5,127,-128,2147483647,-2147483648,123456789)) check(Program.f(x) == x + 7) }\n")
                 sources.append(probe)
             compiled = subprocess.run([_compiler(arm), *sources, "-include-runtime", "-d", jar], capture_output=True, text=True)
             if compiled.returncode and item.family == "creation":
-                probe.write_text("fun main() { check(f(5) == 12) }\n")
+                probe.write_text("fun main() { for (x in intArrayOf(0,1,-1,5,127,-128,2147483647,-2147483648,123456789)) check(f(x) == x + 7) }\n")
                 compiled = subprocess.run([_compiler(arm), *sources, "-include-runtime", "-d", jar], capture_output=True, text=True)
             if compiled.returncode:
                 return False, compiled.stderr.strip()
+            if source_mismatch and not _equivalent(arm, jar, expected, item.kotlin_initial if compiled_equivalence else "", build / "reference"):
+                return False, f"{name} does not match the compiled semantic target"
             entry = "ProbeKt" if item.family == "creation" else None
             ran = subprocess.run(
                 ([shutil.which("java") or "java", "-cp", jar, entry] if entry else [shutil.which("java") or "java", "-jar", jar]),
@@ -184,13 +254,15 @@ def check_source(task_id: str, arm: str, workspace: Path) -> tuple[bool, str]:
         return ran.returncode == 0, ran.stderr.strip() or ran.stdout.strip()
 
 
-def _checker_script(task_id: str, arm: str) -> str:
+def _checker_script(task_id: str, arm: str, *, response: bool = False) -> str:
     compiler = HERE.parent
     return (
         "import sys\nfrom pathlib import Path\n"
         f"sys.path[:0] = [{str(compiler / 'src')!r}, {str(compiler)!r}]\n"
         "from benchmarks.jvm_r5_ai import check_source\n"
-        f"ok, why = check_source({task_id!r}, {arm!r}, Path(__file__).parent)\n"
+        + ("from benchmarks.jvm_r5_response import response_task\n" if response else "")
+        + f"ok, why = check_source({task_id!r}, {arm!r}, Path(__file__).parent" + (f", item=response_task({task_id!r})" if response else "") + ")\n"
+        +
         "print('PASS' if ok else f'FAIL {why}')\nraise SystemExit(0 if ok else 1)\n"
     )
 
@@ -204,13 +276,14 @@ def _unrelated(output: Path, count: int) -> None:
         (root / f"part-{index:04}.txt").write_text((f"unrelated-{index}\n" * 8), encoding="utf-8")
 
 
-def prepare_source(task_id: str, arm: str, output: Path) -> Path:
-    item, arm = task(task_id), arm.upper()
+def prepare_source(task_id: str, arm: str, output: Path, *, item: JvmTask | None = None) -> Path:
+    response = item is not None
+    item, arm = item or task(task_id), arm.upper()
     output.mkdir(parents=True, exist_ok=False)
     name, initial = ("Program.java", item.java_initial) if arm == "JAVA" else ("Program.kt", item.kotlin_initial)
     if initial:
         (output / name).write_text(initial, encoding="utf-8")
-    (output / "check.py").write_text(_checker_script(task_id, arm), encoding="utf-8")
+    (output / "check.py").write_text(_checker_script(task_id, arm, response=response), encoding="utf-8")
     (output / "TASK.md").write_text(
         f"# {task_id} / {arm}\n\n> {item.prompt}\n>\n> Inspect and edit only `{name}`, then run `python check.py`. Stop after `PASS`.\n",
         encoding="utf-8",
@@ -275,21 +348,9 @@ def _type_list(field: str, aliases: dict[str, str]) -> tuple[str, ...]:
 
 
 def _custom_transaction(task_id: str, command: str) -> tuple[Workspace, Transaction]:
+    from xax_local_protocol import LocalMutationSession
     workspace, _view, functions, nodes, types = _custom_workspace(task_id)
-    mutations = []
-    for record in command.split(";"):
-        parts = record.split()
-        if not parts:
-            continue
-        if parts[0] == "result-type" and len(parts) == 5:
-            mutations.append(SetResultType(nodes[parts[1]], int(parts[2]), types[parts[3]], types[parts[4]]))
-        elif parts[0] == "signature" and len(parts) == 6:
-            mutations.append(SetFunctionSignature(functions[parts[1]], *(_type_list(field, types) for field in parts[2:])))
-        else:
-            raise ValueError("result-type N I OLD NEW | signature F OLD_PARAMS NEW_PARAMS OLD_RETURNS NEW_RETURNS")
-    if not mutations:
-        raise ValueError("empty transaction")
-    return workspace, Transaction(RootRef(0), tuple(mutations))
+    return workspace, LocalMutationSession(workspace, functions | nodes | types).transaction(command)
 
 
 def check_xax(task_id: str, workspace_path: Path) -> tuple[bool, str]:
@@ -343,6 +404,8 @@ def prepare_xax_task(task_id: str, output: Path) -> Path:
         (output / "xax.py").write_text(_custom_script(task_id), encoding="utf-8")
         (output / "TASK.md").write_text(
             f"# {task_id} / XAX\n\n> {item.prompt}\n>\n> Complete local view: `{view}`.\n"
+            + ("> Function bindings: `call=F0, inc=F1`.\n" if task_id == "jvm-14" else "> Function binding: `f=F0`.\n")
+            +
             "> Run one quoted `python xax.py apply CMD`; it atomically verifies, commits, and target-checks.\n"
             "> `CMD`: `result-type N I OLD NEW` | `signature F OLD_PARAMS NEW_PARAMS OLD_RETURNS NEW_RETURNS`; use `-` for an empty type list and `;` between mutations. Stop after `PASS`.\n",
             encoding="utf-8",

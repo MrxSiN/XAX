@@ -22,11 +22,12 @@ from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_views_backend import (
     _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
-    WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _copy_edge, _erased, _field, _frontend, _interface,
+    WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
     _node_info, _ok, _payload_uleb, _program, _result_fields, _target, _term_end, _translate, _value, collect_program_output,
 )
 
 from xax_native import bootstrap_dir  # noqa: E402
+from xax_x86_64_views import ISA, LOWERED_OPERATIONS  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -326,6 +327,9 @@ class X86_64:
     On this ISA the frame record's first field (``A_OUT``) holds where the saved registers start."""
 
     ARCHITECTURE = 1
+    DIAGNOSTICS = ISA  # S7b (ADR-179): this program decides target legality and writes the rejection diagnostics
+    LOWERED = LOWERED_OPERATIONS
+    LOWERED_NAME = "x86-64 views subset"
     ALLOCATABLE = ALLOCATABLE
     ARGUMENT_REGISTERS = len(ARGUMENTS)
     T0 = T0
@@ -740,6 +744,8 @@ def build_backend_program():
         _FN[name] = function
         return function
 
+    add("find", _find(tables))
+    add("diagnostic", _diagnostic(tables, X86_64))
     add("emit", _emit_n(tables))
     add("rr", _reg_reg(tables))
     add("stack", _stack(tables))
@@ -760,8 +766,8 @@ def build_backend_program():
     add("erased", _erased(tables))
     add("borrowed", _borrowed(tables))
     add("aggregate", _aggregate(tables))
-    add("result_fields", _result_fields(tables))
-    add("translate", _translate(tables))
+    add("result_fields", _result_fields(tables, X86_64))
+    add("translate", _translate(tables, X86_64))
     add("frontend", _frontend(tables, X86_64))
     compile_function = add("function", _compile_function(tables, X86_64))
     program = add("program", _program(tables, compile_function, X86_64))
@@ -774,13 +780,12 @@ write_backend_store = _PROGRAM.write
 
 
 def collect_output(read):
-    """``(code bytes, function order, function byte offsets, node ranges, entry parameter widths, entry return
-    widths)`` from the program's output view (``read(start word, count)``), or None (declined)."""
+    """``collect_program_output`` with the code units as bytes, or None (declined)."""
     result = collect_program_output(read)
     if result is None:
         return None
-    words, order, offsets, ranges, parameters, returns = result
-    return bytes(words), order, offsets, ranges, parameters, returns
+    words, *rest = result
+    return (bytes(words), *rest)
 
 
 def native_backend():
@@ -789,13 +794,20 @@ def native_backend():
 
 
 def compile_with_xax(reader, entry, target_object, required: bool):
-    """The ``X86ViewsImage`` from the XAX backend program, or None (the bootstrap generator then runs)."""
-    from xax_compiler import fail
+    """The ``X86ViewsImage`` from the XAX backend program, or None (the bootstrap generator then runs).
+
+    S7b (ADR-179): when the program rejects the closure, the ``XaxError`` carries the diagnostic it wrote; no Python
+    check decides it."""
+    from xax_compiler import XaxError, fail
     from xax_riscv64 import _object_table
+    from xax_selfhost_diagnostics import decode_diagnostic
 
     native = native_backend()
     words = None if native is None else _object_table(reader, entry, target_object)
-    result = None if words is None else native.run(words, collect_output)
+    outcome = None if words is None else native.run(words, lambda read: (collect_output(read), decode_diagnostic(read)))
+    result, diagnostic = outcome if outcome is not None else (None, None)
+    if diagnostic is not None:
+        raise XaxError(diagnostic)
     if result is None:
         if required:
             fail("XAX.X86_64_VIEWS.BACKEND", entry.cid.hex(), "X86_64_VIEWS-XAX-BACKEND", "accepted by the XAX backend program", "unavailable or declined")
@@ -804,22 +816,35 @@ def compile_with_xax(reader, entry, target_object, required: bool):
 
 
 def image_from_backend_output(reader, target_object, result):
-    from xax_artifact import ArtifactSemanticRange
-    from xax_riscv64 import _table_objects
-    from xax_x86_64_views import X86ViewsImage, _function_ranges
+    """The ``X86ViewsImage`` of the program's collected output (``collect_output``); every field is the program's."""
+    from xax_riscv64 import image_record
+    from xax_x86_64_views import X86ViewsImage
 
-    code, order, byte_offsets, ranges, parameter_widths, return_widths = result
-    objects = _table_objects(reader, target_object)
-    functions = [objects[position] for position in order]
-    offsets = {function.cid: offset for function, offset in zip(functions, byte_offsets)}
-    node_ranges = [ArtifactSemanticRange(functions[f].cid, block, node, start, end) for f, block, node, start, end in ranges]
-    return X86ViewsImage(code, 0, tuple(sorted(offsets.items())), parameter_widths, return_widths, target_object.cid,
-                         (*_function_ranges(functions, offsets, len(code)), *node_ranges))
+    code, offsets, ranges = image_record(result, 1)
+    return X86ViewsImage(code, 0, tuple(sorted(offsets.items())), result[4], result[5], target_object.cid, tuple(ranges))
 
 
 # -- helper programs for this host -------------------------------------------------------------------
 
 _SOURCES = ("xax_compiler.py", "xax_views_lowering.py", "xax_x86_64_views.py")
+
+
+def _bootstrap_order() -> str | None:
+    """Why the bootstrap generator must lower the image being made now, or None when the XAX backend can.
+
+    The backend's own image precedes it by construction.  So do the images made while the BLAKE3 hash, the store
+    decoder, or the graph decoder is being built: the backend reads graph-decoder streams, which cannot load then."""
+    import sys
+
+    import xax_compiler
+
+    if _PROGRAM._building:
+        return "the XAX backend's own image is lowered by the bootstrap generator"
+    hashing = sys.modules.get("blake3")
+    hash_building = hashing is not None and (getattr(hashing, "_HASHER_BUILDING", False) or getattr(hashing, "_NATIVE_BUILDING", False))
+    if hash_building or xax_compiler._DECODER_BUILDING or xax_compiler._GRAPH_DECODER_BUILDING:
+        return "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
+    return None
 
 
 def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, int]:
@@ -855,8 +880,9 @@ def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, 
                 xax_native.loaded(cache_name, reader.root_cid, cached[0])
             return cached
     lowering = f"lowering:{cache_name}"
-    if _PROGRAM._building:  # the backend's own image: the bootstrap generator makes it by design
-        xax_native.fallback(lowering, "the XAX backend's own image is lowered by the bootstrap generator", requested="python")
+    bootstrap_order = _bootstrap_order()
+    if bootstrap_order is not None:  # the bootstrap generator makes these images by design
+        xax_native.fallback(lowering, bootstrap_order, requested="python")
         image = compile_x86_64_views(reader, function.cid, target, backend="python")
     else:
         try:

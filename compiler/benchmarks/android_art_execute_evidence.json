@@ -1,13 +1,16 @@
 {
   "environment": {
-    "art": "dalvikvm64 from the Android 14 arm64 system image (arm64-v8a-34_r04), under qemu-aarch64 user mode",
-    "boot_image": "/system/framework/boot.art (precompiled arm64)",
-    "libxposed_api": "io.github.libxposed:api:102.0.0"
+    "art": "dalvikvm64 on the device (its own boot image), as root over adb",
+    "art_apex": "com.google.android.art 372767600",
+    "device": "Pixel 8 Pro",
+    "fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "libxposed_api": "io.github.libxposed:api:102.0.0",
+    "sdk": "37"
   },
   "format": "xax-android-art-execute-evidence-v1",
   "label": "EXECUTED",
   "note": "ART dalvikvm64 runs the unmodified module APK with its XAX native library; the libxposed framework is a recording stand-in",
-  "passed": 12,
+  "passed": 13,
   "runs": {
     "android_libxposed_argument_fixture.apk": {
       "exit": 0,
@@ -42,7 +45,7 @@
       "expected": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.setId, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
       "observed": "hooked=android.app.Activity.onResume/0 mode=PROTECTIVE hooker=xax.generated.XaxHooker calls=[framework.hook, builder.setExceptionMode, builder.setId, builder.intercept, handle.unhook, module.xaxUnhook] proceeds=1 proceed_args=[] original=null result=null receiver=simulated",
       "passed": true,
-      "sha256": "6a84fb95d9a0f0dca2c98910c69ca4d23c371ce3409d14ed69be676687c4ca3a"
+      "sha256": "fce798a1a84a13616b345e64f4c239710e0d440c119b2591ab2723726ecb5d72"
     },
     "android_libxposed_managed_fixture.apk": {
       "exit": 0,
@@ -50,6 +53,13 @@
       "observed": "hooked=none services=[] calls=[]",
       "passed": true,
       "sha256": "906086fd79ae50805da35938fbdebdaa28458a0eff1cf6ad0e9eed224e973682"
+    },
+    "android_libxposed_native_fixture.apk": {
+      "exit": 0,
+      "expected": "hooked=none services=[] calls=[]",
+      "observed": "hooked=none services=[] calls=[]",
+      "passed": true,
+      "sha256": "62e08e683bee0aac9418aa2fe3bc1be9824849177779cb501dab462fa3a0c266"
     },
     "android_libxposed_remote_files_fixture.apk": {
       "exit": 0,
@@ -94,5 +104,5 @@
       "sha256": "6056ebd0a75ec626a1ae07da0b837a709247c907695a2cb349a9c946eaee7eda"
     }
   },
-  "total": 12
+  "total": 13
 }

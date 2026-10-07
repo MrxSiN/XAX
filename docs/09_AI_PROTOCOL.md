@@ -597,3 +597,172 @@ This design should be reconsidered if implementation and benchmarking show any o
 12. Artifact/source mapping cannot remain deterministic enough to support targeted diagnostics, optimization feedback, and emitted-code inspection.
 
 The architecture remains valid only if the workspace enables precise local reasoning, transactions prevent partial or stale mutation, diagnostics support machine repair, and measured protocol cost materially benefits from semantic locality.
+
+## 15. Snapshot-bound local mutation adapter (ADR-186)
+
+When every node in a projected function has the same single result type, the
+view declares `node results=(TYPE)` once for that function and omits repeated
+node result annotations. Function signatures and block parameter types remain
+explicit. Mixed result types, zero-result nodes and multiple results retain
+their exact per-node result lists. This is a lossless tooling view; canonical
+types, transaction preconditions and verification are unchanged.
+
+`session.bind(verb, node)` MAY bind a caller-selected mutation kind and exposed
+node before requesting model output. It returns help for the remaining fields;
+`session.commit_bound(response)` accepts those fields or an ordinary full command
+whose kind and resolved target exactly match the binding, and expands them
+through the ordinary exact transaction parser. Supported bindings are constant
+and operation setters, operand replacement, movement, and edge-argument
+replacement. No replacement value, operand, destination, or edge index is
+selected by the binding adapter. Mutations with no remaining fields are not
+offered as model requests in this mode.
+
+Binding MUST retain the queried snapshot and target identity. A full command
+with a different kind or target MUST reject. Extra commands,
+wrong field counts, unexposed targets, and alias changes MUST reject. Stale
+generations, including identical restored roots, MUST reject through ordinary
+commit. A client may explicitly bind a fresh session only after reporting the
+conflict and returning fresh context. The adapter has no benchmark task identity
+or expected target; this is the out-of-band field elision allowed by §8.2.
+
+An established binding MUST NOT be retargeted or change mutation kind while
+awaiting a response. Repeating the identical binding is permitted; a different
+binding requires a new session. `view(bound=True)` MAY expose only the selected
+node's old value/operation and integer width for bound constant/arithmetic
+setters: all operands, uses and other nodes remain immutable under that bound
+request. Operand, movement and edge requests retain their full selected view
+because the model must choose among exposed values or destinations. Every view
+continues to read the captured snapshot, never a newer canonical root.
+
+After reporting a rejected bound request, clients MAY query a fresh local
+session and request the established full-batch carrier for repair. Token
+measurements MUST include the rejected response. If field-only movement
+requests cause more repairs, clients SHOULD retain the ordinary movement batch
+rather than requiring redundant format repair. No parser may guess a different
+mutation kind, target or replacement value to make a response pass.
+
+`compiler/src/xax_local_protocol.py` supplies `LocalMutationSession` for ordinary
+workspaces. A session MUST be constructed from the same queried generation as
+the supplied model view. It retains that snapshot and expands omitted old
+operation, constant, operand, and containment preconditions from it. Submission
+MUST NOT refresh the snapshot implicitly. Commit uses the existing transaction
+verifier and final generation check, including rejection after an intervening
+change restores identical root bytes.
+
+The semicolon-separated command batch is a fallback transport, never semantic
+source. Aliases abbreviate exposed handles only. `N` used as a value means
+result zero; other results require an exposed value handle. `@I` denotes an
+existing transaction-local insertion result. Cross-function value references,
+unexposed handles, malformed batches, and incomplete bounded function queries
+MUST reject. Multiple mutations publish together or do not publish.
+
+`LocalMutationSession.for_function(workspace, function_cid, limit=64)` binds a
+selected function's nodes and parameters with dense local aliases; it rejects
+truncation. `session.commit(command)` submits the batch without a separate
+candidate verification round trip. External behavioral checks remain required
+when a task needs more than semantic verification. Neither the session nor its
+aliases constitute a canonical program or a benchmark-specific operation.
+
+Optional intent roles (for example, a caller's names for two values) MAY bind
+to exposed handles through ordinary session aliases. A model view that uses
+such roles in its intent MUST supply those bindings explicitly rather than
+expecting the model to infer them from numeric values. All handles in a batch
+refer to the pre-batch snapshot; insertion does not change their meaning.
+`BATCH_HELP` exposes this rule and `@ID` insertion-result addressing to clients.
+
+A client MAY treat the model's final response as a mutation request and call
+the bound session's `commit` itself. Successful host verification requires no
+additional model acknowledgement. On failure the client MUST retain the failed
+request and usage, return the diagnostic and required repair neighborhood, and
+obtain a new request. A stale snapshot MUST be rejected before any refresh;
+refreshing is a separate query bound to a new session. This interaction is
+ordinary tooling, available independently of benchmark tasks.
+
+`session.view()` projects exposed functions from the captured snapshot,
+including parameter/result types, nodes, operands, attributes, and control
+edges. It rejects an incomplete node projection. Request-local result aliases
+such as `N0.R1` abbreviate exposed results, including effect values.
+
+For empty-program construction, `construct_program(request, limit=64)` decodes
+a bounded construction-tool request into one verified straight-line integer
+function and its canonical store. `parameters` and `returns` contain bit
+widths; `nodes` contain ordinary operation/result-type/operand constructor
+arguments; `return` contains result references. Parameter aliases `P0...` and
+prior node-result aliases `@0...` are request-local and are erased before
+semantic identity. This is a transport adapter over `GraphBuilder`, not an
+alternative source language or a task-aware function template. General CFG,
+effect and multi-function construction continues to use the existing semantic
+constructors. Unknown values, invalid types, malformed requests and verifier
+failures MUST reject before a canonical store is returned.
+
+An atomic batch MAY delete an entire dead dependency chain of supported pure
+nodes. Uses inside that same deletion set do not survive publication. Any use
+in a surviving node, terminator or control edge MUST still reject deletion;
+each deleted operation remains subject to the ordinary purity checks.
+
+`session.instructions()` advertises transport carriers from the exposed node
+operations, types and control edges. It contains no task identity or expected
+edit. Clients SHOULD send this applicable schema instead of retransmitting
+unrelated mutation forms for every local request.
+
+An exposed node alias `N0...` MAY omit its `N` prefix when the carrier field
+expects a node or node-result value. Resolution is through the session's
+existing `N` alias, never through a new global index; parameter aliases retain
+`P`. Type and function fields MAY likewise omit `T` or `F` when the corresponding
+alias or exposed handle is already bound. Field kinds make this resolution
+unambiguous; it never constructs a type or selects an unexposed function.
+This shorthand preserves the
+same generation, exposure and function-ownership checks.
+
+`view(functions=(...))` selects an already exposed function subset; an
+unexposed function or ambiguous projected function alias MUST reject.
+`diagnostic_view` returns the actual verifier code, rule, expected/actual facts
+and repair neighborhood using exposed local identities where available.
+
+Normal setters MAY reconstruct unique old fields from the captured snapshot:
+`set-edge ANCHOR EDGE_INDEX ARG_INDEX VALUE` expands to the exact matching
+disconnect/connect pair; the projection supplies a source-block anchor and
+zero-based indices. `set-type NODE NEW_TYPE` requires one result; its indexed
+variant requires an explicit result index. `set-signature FUNCTION PARAM_TYPES
+RETURN_TYPES` derives the old interface. The ordinary carriers still check all
+old attributes and the final generation. `edge0`, `arg0`, and `R0` MAY abbreviate
+the corresponding integer-index fields; they never select unexposed state.
+
+`prune-dead NODE` requires an unused supported pure root and computes its dead
+pure dependency closure within the exposed function neighborhood. Dependencies
+with any surviving use or effect MUST remain. Expansion uses ordinary exact
+deletions; missing exposure, malformed requests, stale generations or verifier
+rejection MUST publish nothing. This is deterministic construction of existing
+mutations, not a task-aware optimization template.
+
+Resource and effect types in a projection MUST identify their forms and
+contracts sufficiently to distinguish resource values from effect values;
+opaque type labels alone are inadequate for a resource-flow repair.
+
+Ordinary sessions accept compact verb aliases: `const` = `set-constant`,
+`op` = `set-op`, `operand` = `replace-operand`, `edge` = `set-edge`,
+`type` = `set-type`, `sig` = `set-signature`, and `prune` = `prune-dead`.
+Arguments and all exact snapshot preconditions are identical. These are
+tool-transport aliases, erased before transaction verification; they introduce
+no new semantic operation. `instructions()` advertises the compact forms by
+default; `instructions(compact=False)` advertises the accepted long forms.
+Applicable help SHOULD state result-index notation for multi-result nodes
+and omit redundant optional spelling rules. A rejected pending request is
+not applied to the projected snapshot.
+
+
+## Platform carrier replacement v1 (2026-10-07)
+
+Workspace exposes bind_object(cid, byte_budget=...) and ReplaceTarget(handle,
+expected_old_cid, new_identity_only_target). Transactions require RootRef and
+current generation handles; old CIDs are exact preconditions. Canonical
+constructors rebuild supported acyclic MODULE/PACKAGE/REQUEST/SNAPSHOT ancestors.
+The new frontier passes ordinary verification, and affected Android APK requests
+lower privately before final generation/root/read comparison. Verify/rollback
+publish nothing. Machine targets, duplicate handles, stale rebase and rebuilding
+signature/provenance objects reject. Renew signatures/evidence separately.
+Capabilities, policy, resolver identity and external digests are preserved.
+This tooling contract adds no kernel opcode or textual program authority.
+Platform-specific checking outside an affected Android request is not promised.
+See compiler/integration/android/CARRIER_TRANSACTIONS.md and
+compiler/tests/test_xax_workspace_targets.py.

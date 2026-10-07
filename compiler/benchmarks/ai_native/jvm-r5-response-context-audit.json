@@ -1,0 +1,34 @@
+{
+  "instruction_contexts": {
+    "jvm-01-JAVA-1-1": [
+      "793499484438fdfd38bb572233548a2d646ef1bbe1b3d08343c9bbc53dec5632",
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007",
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007"
+    ],
+    "jvm-01-KOTLIN-1-1": [
+      "793499484438fdfd38bb572233548a2d646ef1bbe1b3d08343c9bbc53dec5632"
+    ],
+    "jvm-01-XAX-1-1": [
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007"
+    ],
+    "jvm-02-KOTLIN-1-1": [
+      "793499484438fdfd38bb572233548a2d646ef1bbe1b3d08343c9bbc53dec5632"
+    ],
+    "jvm-02-XAX-1-1": [
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007"
+    ],
+    "jvm-02-JAVA-1-1": [
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007",
+      "793499484438fdfd38bb572233548a2d646ef1bbe1b3d08343c9bbc53dec5632"
+    ],
+    "jvm-01-KOTLIN-2-1": [
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007",
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007",
+      "dae3b41f7368d0cb691ce5318d52a2ca730d1097717aa2f598d93f184bcb9007"
+    ]
+  },
+  "consistent": false,
+  "limits": [
+    "The common skill catalog differed between arms despite equal requested model/reasoning/client. This preflight is ineligible for R5."
+  ]
+}

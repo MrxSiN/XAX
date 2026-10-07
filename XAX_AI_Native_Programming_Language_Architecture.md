@@ -781,6 +781,22 @@ There are no hidden scheduler interactions.
 
 ## 32. Token-efficiency rule
 
+This is a normal language/protocol design constraint: representative successful
+semantic changes target at most 0.50× the lowest valid textual median among at
+least two relevant languages, with the same model, task, success criteria, and
+equivalent tool/repository context. Count retries, repairs, diagnostics,
+cached input, and retransmission. Prefer strictly below 0.50; up to 0.55 is
+accepted within the owner's tolerance (ADR-195). Benchmark-only
+shortcuts cannot establish this property. The snapshot-bound adapter
+(`docs/09_AI_PROTOCOL.md` §15, ADR-186) is ordinary workspace tooling; measured
+evidence and unresolved task-equivalence limits remain in the matrix.
+
+Ordinary clients can apply a final model request through the snapshot-bound
+session and involve the model again only for a diagnostic repair (ADR-187).
+Applicable carrier schemas come from the exposed neighborhood, and empty
+programs use ordinary semantic construction instead of an answer-bearing
+scaffold. These facilities are compiler tooling, independent of task checkers.
+
 The metric is not source characters.
 
 The primary metric is:
@@ -896,7 +912,7 @@ Replacement is claimed per platform and workload, at cumulative evidence-gated l
 | R2 | platform interoperability: ABI, system APIs, libraries, callbacks, dynamic loading, resources, lifecycle work |
 | R3 | practical application: a nontrivial real workload ran |
 | R4 | performance competitiveness: runtime, memory, binary size measured competitive with established toolchains |
-| R5 | AI efficiency: tokens per successful change and repair rate measured better than textual-source workflows |
+| R5 | AI efficiency: repeated real-model trials use ≤ 0.50× (target; ≤ 0.55× accepted, ADR-195) the lowest valid textual median among at least two relevant languages, including all retries and repairs under equivalent conditions |
 | R6 | autonomous maintenance: query, modify, verify, benchmark, rebuild, commit through semantic transactions |
 
 Every implementation claim carries one label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, or UNIMPLEMENTED. No platform or language is "replaced" until the required evidence exists.
@@ -1039,7 +1055,7 @@ The goal is not "faster than assembly"; it is:
     minimize selected target cost
     subject to exact semantics
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm; R3: android-arm64, linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: android-arm64, jvm; R3: linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 History: Linux x86-64 reached R3 with `jsonmin`, a validating JSON minifier that recurses through a recursion group (ADR-126), and R4 after ADR-147/148, when all three Linux workloads came within 1.05× of the fastest of gcc, clang, and rustc on one shared host (`XAX_BENCHMARKS.md` §15.14). ADR-177 withdrew that R4: its evidence kept no raw samples. R4 now needs a `competitive` verdict that the validator recomputes from raw per-arm samples under the multi-language baseline policy. Emulator and software-device execution (QEMU, Unicorn, llvmpipe) count as EXECUTED for correctness, never as performance evidence, and each such row lists "not hardware" as a blocker (ADR-114).
 
