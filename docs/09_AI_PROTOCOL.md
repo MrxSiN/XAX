@@ -705,6 +705,20 @@ operations, types and control edges. It contains no task identity or expected
 edit. Clients SHOULD send this applicable schema instead of retransmitting
 unrelated mutation forms for every local request.
 
+The edit grammar is also available as shared context (ADR-200).
+`edit_grammar(compact=...)` is the complete carrier grammar. It is a pure
+function of the protocol version, with no snapshot, task, generation or handle,
+and `edit_grammar_id(compact=...)` is its content identity. A client SHOULD
+send the grammar once per conversation or session as shared context (system
+instructions, a cached prefix or a tool description) and then call
+`session.instructions(shared=ID)`, which returns no per-request help. An ID
+that does not match the session's current grammar MUST reject; the session
+never silently falls back or mixes grammars. Holding the shared grammar changes
+no acceptance rule: every carrier still checks exposure, the snapshot
+generation, exact old fields and verification, and a form that does not apply
+to the shown handles rejects with the ordinary diagnostic. Every form that
+`instructions()` advertises for a neighborhood is covered by the shared grammar.
+
 An exposed node alias `N0...` MAY omit its `N` prefix when the carrier field
 expects a node or node-result value. Resolution is through the session's
 existing `N` alias, never through a new global index; parameter aliases retain

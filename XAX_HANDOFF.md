@@ -633,8 +633,14 @@ Normal-protocol work from this corpus:
 R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
 
 Next options, which are the owner's decision:
-- Reduce or cache the per-request edit-form help as shared context: a protocol design question, and it must apply to normal use.
+- Reduce or cache the per-request edit-form help as shared context: a protocol design question, and it must apply to normal use. *Implemented in ADR-200 (2026-10-08); see the shared edit grammar section below.*
 - A stronger reasoning setting for all arms.
 - Record R5 as unmet for this model class.
 
 Rerun with `python -m benchmarks.run_jvm_r5_multifile` from `compiler/`, using the ADR-190 toolchain setup and a new profile name after any source change.
+
+## Shared edit grammar (2026-10-08, ADR-200)
+
+The per-request edit-form help is now optional in the normal protocol. `edit_grammar()` is the complete, request-independent carrier grammar, and `edit_grammar_id()` is its identity. A client sends the grammar once as shared context, and `session.instructions(shared=ID)` then adds nothing per request. A stale ID rejects, and acceptance rules don't change. The protocol is specified in `docs/09_AI_PROTOCOL.md`.
+
+There is no model measurement yet. In the existing one-request-per-cell profiles the grammar would still be sent with every request, and the full grammar (about 1 KB) is larger than the filtered help. The saving needs multi-request sessions or prompt caching. A new R5 profile has to pin the grammar as shared context, count it, and leave its accounting against textual arms to the owner. R5 is still unmet and JVM stays R4.
