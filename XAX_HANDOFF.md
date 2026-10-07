@@ -453,3 +453,9 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - Record format and renderer: `xax_selfhost_diagnostics.py`. Differential: `tests/test_xax_selfhost_diagnostics.py` (`backend="xax"` must equal `backend="python"`). Add a case there for every new rule.
 - Next: S7b.2 (object table and image record from XAX), S7b.3 (RISC-V family), then S8 (verifier rejections). `compiler/migration/python_authority_inventory.json` lists what remains; update it when a component moves.
 
+## S7b.2 object table and image record — 2026-10-07 (ADR-181)
+
+- Input of both views programs: `[S, entry CID words]`, then S store records in store order and the bound target record: `[kind, reference count, reference CIDs..., own CID, payload length, payload...]`. `G_REFS` holds the resolved indices; use `_reference` and `_cid_at`/`_cid_words`, and never read reference indices from the input.
+- Output: words 1–5 are code count, range count, offsets, image record (`CID_WORDS + 1` words per function: CID, end), and widths. Read it with `collect_program_output`.
+- A pinned closure size in `test_xax_selfhost_fixed_point.py` counts the backend's functions; adding a program function changes it.
+

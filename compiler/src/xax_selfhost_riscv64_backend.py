@@ -50,7 +50,7 @@ from xax_selfhost_views_backend import (
     _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, G_FAR, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT,
     S_BLOCK_LABELS, S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_LEVELS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP,
     S_TRAP_USED, S_WIDTH, WORDS_AT, WORDS_LIMIT, _aggregate, _borrowed, _call, _compile_function, _copy_edge, _erased,
-    NativeProgram, _field, _frontend, _g, _interface, _node_info, _ok, _ors, _program, _result_fields, _sar, _shl, _term_end, _translate, _value, _xor, collect_program_output,
+    NativeProgram, _field, _find, _frontend, _g, _interface, _node_info, _ok, _ors, _program, _result_fields, _sar, _shl, _term_end, _translate, _value, _xor, collect_program_output,
 )
 from xax_selfhost_views_backend import _target as _views_target
 
@@ -676,6 +676,7 @@ def build_backend_program():
         _FN[name] = function
         return function
 
+    add("find", _find(tables))
     add("li", _li(tables))
     add("frame", _frame_access(tables))
     add("read", _read(tables))
@@ -710,14 +711,13 @@ class NativeBackend:
         self._runner = runner
 
     def compile(self, words: list[int]):
-        """``(code words, function order, function word offsets, node ranges, entry parameter widths, entry return
-        widths)``, or None when the program declines."""
+        """``collect_program_output``, or None when the program declines."""
         return self._runner.run(words, collect_output)
 
 
 def collect_output(read):
-    """The program's result from its output view, read as ``read(start word, count)``: ``(code words, function
-    order, function word offsets, node ranges, entry parameter widths, entry return widths)``, or None (declined)."""
+    """The program's result from its output view, read as ``read(start word, count)`` (``collect_program_output``),
+    or None (declined)."""
     return collect_program_output(read)
 
 

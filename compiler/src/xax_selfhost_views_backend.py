@@ -565,7 +565,9 @@ def _copy_edge(tables, isa):
 # stream (``xax_selfhost_graph``); other kinds have none.
 
 GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
-(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR, G_SUP_AT, G_SUPT_AT) = range(17)
+(G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR, G_SUP_AT, G_SUPT_AT, G_S,
+ G_REFS) = range(19)
+CID_WORDS = 4
 NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
 ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
@@ -581,8 +583,48 @@ def _at(e: E, table: int, index):
 
 
 def _reference(e: E, obj, k):
-    """Object index of ``obj``'s ``k``-th reference (NONE when that object is not listed)."""
-    return e.rd(e.add(e.add(_at(e, G_REC, obj), 2), k))
+    """Object index of ``obj``'s ``k``-th reference (NONE when that object is not listed), resolved by ``_find``."""
+    return e.ld(e.add(_at(e, G_REFS, obj), k))
+
+
+def _cid_at(e: E, obj):
+    """The input position of object ``obj``'s own CID words (after its kind, reference count, and reference CIDs)."""
+    record = _at(e, G_REC, obj)
+    return e.add(e.add(record, 2), e.mul(e.rd(e.add(record, 1)), CID_WORDS))
+
+
+def _cid_less(e: E, x_at, y_at):
+    """The CID at input position ``x_at`` sorts before the one at ``y_at`` (four big-endian words)."""
+    result, equal = e.c(0), e.c(1)
+    for k in range(CID_WORDS):
+        wx, wy = e.rd(e.add(x_at, k)), e.rd(e.add(y_at, k))
+        result = e.or_(result, e.flag(e.both(e.ne(equal, 0), e.lt(wx, wy))))
+        equal = e.flag(e.both(e.ne(equal, 0), e.eq(wx, wy)))
+    return e.ne(result, 0)
+
+
+def _cid_equal(e: E, x_at, y_at):
+    return e.both(*(e.eq(e.rd(e.add(x_at, k)), e.rd(e.add(y_at, k))) for k in range(CID_WORDS)))
+
+
+def _find(tables):
+    """S7b.2: the object index whose CID is the one at input position ``at``, or NONE.  Store objects are in CID
+    order (a verified store), so they are searched by bisection; the bound target follows them when the store does
+    not hold it."""
+    def build(e: E):
+        p = e.p
+        e.var("lo", 0)
+        e.var("hi", _g(e, G_S))
+
+        def halve():
+            e.var("mid", e.udiv(e.add(p["lo"], p["hi"]), 2))
+            e.if_(_cid_less(e, _cid_at(e, p["mid"]), p["at"]), lambda: e.set("lo", e.add(p["mid"], 1)), lambda: e.set("hi", p["mid"]))
+
+        e.while_(lambda: e.lt(p["lo"], p["hi"]), halve)
+        e.if_(e.lt(p["lo"], _g(e, G_S)), lambda: e.if_(_cid_equal(e, _cid_at(e, p["lo"]), p["at"]), lambda: e.give(p["lo"])))
+        appended = e.both(e.lt(_g(e, G_S), _g(e, G_O)), _cid_equal(e, _cid_at(e, _g(e, G_S)), p["at"]))
+        e.give(e.sel(appended, _g(e, G_S), NONE))
+    return _function(("at",), build, tables)
 
 
 def _kind(e: E, obj):
@@ -591,9 +633,8 @@ def _kind(e: E, obj):
 
 def _cid_words(e: E, obj):
     """The four big-endian CID words of object ``obj``."""
-    record = _at(e, G_REC, obj)
-    at = e.add(e.add(record, 2), e.rd(e.add(record, 1)))
-    return [e.rd(e.add(at, k)) for k in range(4)]
+    at = _cid_at(e, obj)
+    return [e.rd(e.add(at, k)) for k in range(CID_WORDS)]
 
 
 def _in_set(e: E, value, codes):
@@ -1523,10 +1564,11 @@ def _frontend(tables, isa):
 
     def build(e: E):
         p = e.p
-        O = e.rd(0)
-        e.st(GLOBALS + G_O, O)
-        for slot in (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_ORDER):
-            table = e.alloc(e.add(O, 1))
+        # S7b.2: the store's objects in store order, then the bound target; references and identities are CIDs.
+        S = e.rd(0)
+        e.st(GLOBALS + G_S, S)
+        for slot in (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_ORDER, G_REFS):
+            table = e.alloc(e.add(S, 2))
             _ok(e, e.ne(table, NONE))
             e.st(GLOBALS + slot, table)
         for slot, size in ((G_SUP, 256), (G_SUPT, 8), (G_NI, 8)):
@@ -1534,23 +1576,39 @@ def _frontend(tables, isa):
             _ok(e, e.ne(table, NONE))
             e.st(GLOBALS + slot, table)
             e.for_("q", 0, size, lambda table=table: e.st(e.add(table, p["q"]), 0))
-        e.var("ra", 3)
+        e.var("ra", 1 + CID_WORDS)
 
         def record():
             o = p["o"]
             e.st(e.add(_g(e, G_REC), o), p["ra"])
             references = e.rd(e.add(p["ra"], 1))
-            payload_at = e.add(e.add(e.add(p["ra"], 2), references), 4)
+            payload_at = e.add(e.add(e.add(p["ra"], 2), e.mul(references, CID_WORDS)), CID_WORDS)
             e.st(e.add(_g(e, G_PAY), o), e.add(payload_at, 1))
             for slot in (G_FIDX, G_ERASED, G_IFACE):
                 e.st(e.add(_g(e, slot), o), NONE)
             e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
 
-        e.for_("o", 0, O, record)
+        e.for_("o", 0, e.add(S, 1), record)
         _ok(e, e.le(p["ra"], IN_WORDS))
-        entry, target = e.rd(1), e.rd(2)
-        e.var("entry", entry)
-        _ok(e, e.both(e.lt(p["entry"], O), e.eq(_kind(e, p["entry"]), int(Kind.FUNCTION)), e.lt(target, O)))
+        # The bound target is the store's object of that CID, else the record after the store's objects.
+        e.st(GLOBALS + G_O, S)  # ``_find`` over the store's objects only
+        e.var("target", e.call(_FN["find"], _cid_at(e, S)))
+        e.if_(e.eq(p["target"], NONE), lambda: (e.set("target", S), e.st(GLOBALS + G_O, e.add(S, 1))))
+        O = _g(e, G_O)
+        e.var("entry", e.call(_FN["find"], 1))
+        _ok(e, e.both(e.ne(p["entry"], NONE), e.eq(_kind(e, p["entry"]), int(Kind.FUNCTION))))
+
+        def resolve():
+            o = p["o"]
+            count = e.rd(e.add(_at(e, G_REC, o), 1))
+            e.var("refs", e.alloc(e.add(count, 1)))
+            _ok(e, e.ne(p["refs"], NONE))
+            e.st(e.add(_g(e, G_REFS), o), p["refs"])
+            first = e.add(_at(e, G_REC, o), 2)
+            e.for_("k", 0, count, lambda: e.st(e.add(p["refs"], p["k"]), e.call(_FN["find"], e.add(first, e.mul(p["k"], CID_WORDS)))))
+
+        e.for_("o", 0, O, resolve)
+        target = p["target"]
         # The target's operation and terminator sets (a verified package of the ISA's architecture).
         e.var("ta", _at(e, G_PAY, target))
         identity = _payload_uleb(e, "ta")
@@ -1630,16 +1688,7 @@ def _frontend(tables, isa):
             e.st(e.add(order, p["q"]), e.ld(order)), e.st(order, p["entry"]))))
 
         def cid_before(x, y):
-            def word(obj, k):
-                record = _at(e, G_REC, obj)
-                return e.rd(e.add(e.add(e.add(record, 2), e.rd(e.add(record, 1))), k))
-            result = e.c(0)
-            equal = e.c(1)
-            for k in range(4):
-                wx, wy = word(x, k), word(y, k)
-                result = e.or_(result, e.flag(e.both(e.ne(equal, 0), e.lt(wx, wy))))
-                equal = e.flag(e.both(e.ne(equal, 0), e.eq(wx, wy)))
-            return e.ne(result, 0)
+            return _cid_less(e, _cid_at(e, x), _cid_at(e, y))
 
         def insert():
             e.var("item", e.ld(e.add(order, p["s"])))
@@ -1718,10 +1767,22 @@ def _program(tables, compile_function, isa):
 
         e.for_("f", 0, functions, each)
         isa.patch(e)
+        # S7b.2: the image record -- each function's CID and code range, in layout order.
+        e.var("image", e.alloc(e.mul(functions, CID_WORDS + 1)))
+        _ok(e, e.ne(p["image"], NONE))
+
+        def describe():
+            at = e.add(p["image"], e.mul(p["f"], CID_WORDS + 1))
+            for k, word in enumerate(_cid_words(e, e.ld(e.add(_g(e, G_ORDER), p["f"])))):
+                e.st(e.add(at, k), word)
+            last = e.eq(e.add(p["f"], 1), functions)
+            e.st(e.add(at, CID_WORDS), e.sel(last, e.hd(S_COUNT), e.ld(e.add(offsets, e.sel(last, 0, e.add(p["f"], 1))))))
+
+        e.for_("f", 0, functions, describe)
         e.st(1, e.hd(S_COUNT))
         e.st(2, e.hd(S_RANGES))
         e.st(3, offsets)
-        e.st(4, _g(e, G_ORDER))
+        e.st(4, p["image"])
         e.st(5, _g(e, G_WIDTHS))
         e.st(0, OK)
         e.give(1)
@@ -1732,22 +1793,25 @@ def _program(tables, compile_function, isa):
 
 def collect_program_output(read):
     """A backend program's result from its output view, read as ``read(start word, count)`` wherever it ran:
-    ``(code units, function order, function offsets in code units, node ranges, entry parameter widths, entry return
-    widths)``, or None (declined).  A code unit is a RISC-V instruction word or an x86-64 byte."""
-    status, count, ranges, offsets_at, order_at, widths_at = read(0, 6)
+    ``(code units, function CIDs in layout order, their start and end offsets in code units, node ranges by layout
+    position, entry parameter widths, entry return widths)``, or None (declined).  A code unit is a RISC-V instruction
+    word or an x86-64 byte.  Every field is the program's (S7b.2); this only reads words."""
+    status, count, ranges, offsets_at, image_at, widths_at = read(0, 6)
     if status != OK:
         return None
     (functions,) = read(STREAM_AT, 1)
     code = read(WORDS_AT, count)
-    order = read(order_at, functions)
-    offsets = read(offsets_at, functions)
+    image = read(image_at, functions * (CID_WORDS + 1))
+    records = [image[k:k + CID_WORDS + 1] for k in range(0, len(image), CID_WORDS + 1)]
+    cids = [b"".join(word.to_bytes(8, "big") for word in record[:CID_WORDS]) for record in records]
+    offsets = list(zip(read(offsets_at, functions), (record[CID_WORDS] for record in records)))
     flat = read(RANGES_AT, 5 * ranges)
     (parameters,) = read(widths_at, 1)
     parameter_widths = tuple(read(widths_at + 1, parameters))
     returns_at = widths_at + 1 + parameters
     (returns,) = read(returns_at, 1)
     return_widths = tuple(read(returns_at + 1, returns))
-    return code, order, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
+    return code, cids, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
 
 
 class NativeProgram:
