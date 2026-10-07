@@ -337,7 +337,7 @@
     },
     "xax_views_lowering.py": {
       "class": "C",
-      "note": "Shared analysis of the views bootstrap references; on Linux x86-64 the S7b XAX program decides x86-64 views legality."
+      "note": "Shared analysis of the views bootstrap references and the single LOWERED_OPERATIONS list; on Linux x86-64 the XAX programs decide views legality for both families (S7b.1, S7b.3)."
     },
     "xax_wasm.py": {
       "class": "A",
@@ -377,7 +377,7 @@
     },
     "xax_x86_64_views.py": {
       "class": "C",
-      "note": "Bootstrap reference for the S7 XAX x86-64 backend; differential oracle for code and (S7b.1) diagnostics."
+      "note": "Bootstrap reference for the S7 XAX x86-64 backend; differential oracle for code and diagnostics."
     }
   },
   "components": {

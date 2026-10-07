@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm; R3: android-arm64, linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S7b and later steps are open); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -458,4 +458,9 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - Input of both views programs: `[S, entry CID words]`, then S store records in store order and the bound target record: `[kind, reference count, reference CIDs..., own CID, payload length, payload...]`. `G_REFS` holds the resolved indices; use `_reference` and `_cid_at`/`_cid_words`, and never read reference indices from the input.
 - Output: words 1–5 are code count, range count, offsets, image record (`CID_WORDS + 1` words per function: CID, end), and widths. Read it with `collect_program_output`.
 - A pinned closure size in `test_xax_selfhost_fixed_point.py` counts the backend's functions; adding a program function changes it.
+
+## S7b.3 and S7b complete — 2026-10-07 (ADR-182)
+
+- Both views families opt into diagnostics. `_legal(..., deferred=True)` exists for checks the bootstrap makes after layout. It records the first failure in `G_PENDING`, and `_program` rejects only after patching succeeds. Keep that order if a family gains layout-time rejections.
+- Next is S8: verifier totality. Start with the store container (`xax_selfhost_store.py`): one reject site per bootstrap check, two record value types (FORMAT for templated text such as `"{} available bytes"` and `"record:{}"`, HEX for byte strings), and a two-pass digest protocol (the decoder finds `digest_end`, the XAX hash computes the digest, a second pass decides the comparison and the index and root checks that follow it in the bootstrap's order).
 

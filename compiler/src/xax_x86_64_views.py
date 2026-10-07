@@ -52,7 +52,8 @@ from xax_compiler import (
     store_resolver,
     verify_store,
 )
-from xax_views_lowering import (
+from xax_views_lowering import (  # noqa: F401  (LOWERED_OPERATIONS is part of this module's interface)
+    LOWERED_OPERATIONS,
     Aggregates,
     allocate_registers,
     apply_aliases,

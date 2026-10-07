@@ -61,6 +61,7 @@ from xax_compiler import (
     _is_proof_type,
     decode_bits_width,
     decode_native_target,
+    XaxError,
     fail,
     store_resolver,
     verify_store,
@@ -685,7 +686,9 @@ def _compile_with_xax(reader: StoreReader, entry, function_cid: bytes, target_ob
 
     native = native_backend()
     words = None if native is None else _object_table(reader, entry, target_object)
-    result = None if words is None else native.compile(words)
+    result, diagnostic = (None, None) if words is None else native.compile(words)
+    if diagnostic is not None:  # S7b.3: the program decided the rejection and wrote its diagnostic
+        raise XaxError(diagnostic)
     if result is None:
         if required:
             fail("XAX.RISCV64.BACKEND", function_cid.hex(), "RISCV64-XAX-BACKEND", "accepted by the XAX backend program", "unavailable or declined")

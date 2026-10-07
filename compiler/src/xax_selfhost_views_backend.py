@@ -98,10 +98,11 @@ VIEWS_RULES = (
 _RULE_SITES = {rule: site for site, (rule, _code) in enumerate(VIEWS_RULES)}
 
 
-def _legal(e: E, isa, condition, rule: str, entity, expected, actual):
+def _legal(e: E, isa, condition, rule: str, entity, expected, actual, deferred: bool = False):
     """A target-legality check.  With a diagnostic family the program rejects under ``rule`` (``VIEWS_RULES``) on
     ``entity`` (an object index) with the values ``expected()`` and ``actual()`` write; without one it declines,
-    exactly as ``_ok``."""
+    exactly as ``_ok``.  A ``deferred`` check records only the first failure and lets lowering go on: ``_program``
+    rejects with it after the code is laid out, where the bootstrap makes that check (after its layout limits)."""
     if _diagnostics(isa) is None:
         _ok(e, condition)
         return
@@ -111,7 +112,16 @@ def _legal(e: E, isa, condition, rule: str, entity, expected, actual):
         expected()
         actual()
 
-    D.reject_unless(e, condition, write)
+    if not deferred:
+        D.reject_unless(e, condition, write)
+        return
+
+    def record():
+        D.begin(e)
+        write()
+        e.st(GLOBALS + G_PENDING, 1)
+
+    e.if_(e.both(e.not_(condition), e.eq(_g(e, G_PENDING), 0)), record)
 
 
 def _diagnostic(tables, isa):
@@ -566,7 +576,7 @@ def _copy_edge(tables, isa):
 
 GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
 (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR, G_SUP_AT, G_SUPT_AT, G_S,
- G_REFS) = range(19)
+ G_REFS, G_PENDING) = range(20)
 CID_WORDS = 4
 NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
@@ -1565,6 +1575,8 @@ def _frontend(tables, isa):
     def build(e: E):
         p = e.p
         # S7b.2: the store's objects in store order, then the bound target; references and identities are CIDs.
+        if _diagnostics(isa):
+            e.st(GLOBALS + G_PENDING, 0)
         S = e.rd(0)
         e.st(GLOBALS + G_S, S)
         for slot in (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_ORDER, G_REFS):
@@ -1725,7 +1737,7 @@ def _frontend(tables, isa):
                     if _diagnostics(isa):  # ``machine_width`` of the entry's interface (S7b)
                         e.var("ew_type", e.ld(e.add(e.add(at, 1), p["q"])))
                     _legal(e, isa, e.ne(p["ew"], NONE), "VALUE-BITS", p["entry"], lambda: D.text(e, VALUE_BITS),
-                           lambda: D.cid(e, _cid_words(e, p["ew_type"])))
+                           lambda: D.cid(e, _cid_words(e, p["ew_type"])), deferred=True)
                     e.if_(e.ne(p["ew"], 0), lambda: (e.st(e.add(widths, p["wc"]), p["ew"]), e.set("wc", e.add(p["wc"], 1)), e.set("machine", e.add(p["machine"], 1))))
 
                 e.for_("q", 0, e.ld(at), each)
@@ -1779,6 +1791,8 @@ def _program(tables, compile_function, isa):
             e.st(e.add(at, CID_WORDS), e.sel(last, e.hd(S_COUNT), e.ld(e.add(offsets, e.sel(last, 0, e.add(p["f"], 1))))))
 
         e.for_("f", 0, functions, describe)
+        if _diagnostics(isa):  # a deferred rejection (``_legal``) wins over the finished image
+            e.if_(e.ne(_g(e, G_PENDING), 0), lambda: (e.st(0, D.REJECT), e.give(NONE)))
         e.st(1, e.hd(S_COUNT))
         e.st(2, e.hd(S_RANGES))
         e.st(3, offsets)
