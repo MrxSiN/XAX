@@ -22,11 +22,12 @@ from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_views_backend import (
     _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
-    WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _copy_edge, _erased, _field, _frontend, _interface,
+    WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _copy_edge, _erased, _field, _frontend, _interface,
     _node_info, _ok, _payload_uleb, _program, _result_fields, _target, _term_end, _translate, _value, collect_program_output,
 )
 
 from xax_native import bootstrap_dir  # noqa: E402
+from xax_x86_64_views import ISA, LOWERED_OPERATIONS  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -326,6 +327,9 @@ class X86_64:
     On this ISA the frame record's first field (``A_OUT``) holds where the saved registers start."""
 
     ARCHITECTURE = 1
+    DIAGNOSTICS = ISA  # S7b (ADR-179): this program decides target legality and writes the rejection diagnostics
+    LOWERED = LOWERED_OPERATIONS
+    LOWERED_NAME = "x86-64 views subset"
     ALLOCATABLE = ALLOCATABLE
     ARGUMENT_REGISTERS = len(ARGUMENTS)
     T0 = T0
@@ -740,6 +744,7 @@ def build_backend_program():
         _FN[name] = function
         return function
 
+    add("diagnostic", _diagnostic(tables, X86_64))
     add("emit", _emit_n(tables))
     add("rr", _reg_reg(tables))
     add("stack", _stack(tables))
@@ -760,8 +765,8 @@ def build_backend_program():
     add("erased", _erased(tables))
     add("borrowed", _borrowed(tables))
     add("aggregate", _aggregate(tables))
-    add("result_fields", _result_fields(tables))
-    add("translate", _translate(tables))
+    add("result_fields", _result_fields(tables, X86_64))
+    add("translate", _translate(tables, X86_64))
     add("frontend", _frontend(tables, X86_64))
     compile_function = add("function", _compile_function(tables, X86_64))
     program = add("program", _program(tables, compile_function, X86_64))
@@ -789,13 +794,20 @@ def native_backend():
 
 
 def compile_with_xax(reader, entry, target_object, required: bool):
-    """The ``X86ViewsImage`` from the XAX backend program, or None (the bootstrap generator then runs)."""
-    from xax_compiler import fail
+    """The ``X86ViewsImage`` from the XAX backend program, or None (the bootstrap generator then runs).
+
+    S7b (ADR-179): when the program rejects the closure, the ``XaxError`` carries the diagnostic it wrote; no Python
+    check decides it."""
+    from xax_compiler import XaxError, fail
     from xax_riscv64 import _object_table
+    from xax_selfhost_diagnostics import decode_diagnostic
 
     native = native_backend()
     words = None if native is None else _object_table(reader, entry, target_object)
-    result = None if words is None else native.run(words, collect_output)
+    outcome = None if words is None else native.run(words, lambda read: (collect_output(read), decode_diagnostic(read)))
+    result, diagnostic = outcome if outcome is not None else (None, None)
+    if diagnostic is not None:
+        raise XaxError(diagnostic)
     if result is None:
         if required:
             fail("XAX.X86_64_VIEWS.BACKEND", entry.cid.hex(), "X86_64_VIEWS-XAX-BACKEND", "accepted by the XAX backend program", "unavailable or declined")

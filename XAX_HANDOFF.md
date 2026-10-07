@@ -447,3 +447,9 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - Run evidence generators from a clean worktree at the revision you are recording. The closure generator takes about 22 minutes here.
 - Cold-cache fix: with an empty `XAX_NATIVE_CACHE`, `XAX_REQUIRE_NATIVE=1` used to fail. Images made while the BLAKE3 hash, the store decoder, or the graph decoder is being built cannot be lowered by the XAX backend, because it reads graph-decoder streams. `host_image` now records them as Python lowering by design (`requested_authority: python`), like the backend's own image (`_bootstrap_order`). Earlier warm-cache evidence is unaffected: the cache key does not depend on which generator lowered an image, and gen1 equals the bootstrap reference byte for byte.
 
+## S7b.1 rejection diagnostics — 2026-10-07 (ADR-179, ADR-180)
+
+- A views ISA opts in with `DIAGNOSTICS = "<family>"`, `LOWERED`, and `LOWERED_NAME` (`X86_64` does; `RISCV64` does not, so `_legal` emits exactly `_ok` there and its store is unchanged). Each check is `_legal(e, isa, condition, rule, entity, expected, actual)`. Rules and codes live only in `VIEWS_RULES`. The per-function checks are in `_legality`, which runs inside `_translate` before the stream is written and keeps the bootstrap's order. Do not add a rejection anywhere else.
+- Record format and renderer: `xax_selfhost_diagnostics.py`. Differential: `tests/test_xax_selfhost_diagnostics.py` (`backend="xax"` must equal `backend="python"`). Add a case there for every new rule.
+- Next: S7b.2 (object table and image record from XAX), S7b.3 (RISC-V family), then S8 (verifier rejections). `compiler/migration/python_authority_inventory.json` lists what remains; update it when a component moves.
+

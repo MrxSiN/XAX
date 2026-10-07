@@ -406,7 +406,7 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 
 ## S — Compiler migration ladder (after M14; runs alongside U1)
 
-M14's semantic-image META wrapper reached B2–B4 for the small `xax-semantic-image-v1` target (its B5/B6 claim was withdrawn in ADR-177). The working compiler (verification, lowering, encoding, emission) is still Python. The S ladder moves it into XAX component by component under the rule in `XAX_SPEC.md` §16.5. Each step must be on the production path with byte-identical output, and the bootstrap code stays only as a checked fallback. A step's self-compilation result is a *component fixed point*, not a B milestone (ADR-177 renamed the earlier "B1–B4" labels below).
+Steps S3–S7a are migrated for acceptance only: their XAX components decline invalid input to the bootstrap, which decides the rejection (`XAX_SPEC.md` §16.5 condition 5, ADR-180). Migration is reported with the SH0–SH8 labels of ADR-180; current: SH1. M14's semantic-image META wrapper reached B2–B4 for the small `xax-semantic-image-v1` target (its B5/B6 claim was withdrawn in ADR-177). The working compiler (verification, lowering, encoding, emission) is still Python. The S ladder moves it into XAX component by component under the rule in `XAX_SPEC.md` §16.5. Each step must be on the production path with byte-identical output, and the bootstrap code stays only as a checked fallback. A step's self-compilation result is a *component fixed point*, not a B milestone (ADR-177 renamed the earlier "B1–B4" labels below).
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S7b and later steps are open); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
@@ -440,7 +440,18 @@ M14's semantic-image META wrapper reached B2–B4 for the small `xax-semantic-im
 | S6 | The full verifier, then component fixed points for the compiler components on at least one target | S4–S5 | EXECUTED for RV64 (ADR-150, ADR-151): S6a–S6c; component fixed points for the RISC-V backend (ADR-145) and the store verifier (ADR-150); BLAKE3 through both RISC-V generators with aggregates and stack arguments (ADR-151). The x86-64 backend and a component fixed point on a second target followed in S7a; the driver's lowering structures and exact rejection diagnostics are S7b |
 | S6d | Aggregates (`aggregate.make/get`) and stack arguments in the views profile, so BLAKE3 closes on RV64 | S6c | EXECUTED (ADR-151): both generators byte-identical; the emulated BLAKE3 image gives production digests; gen2 reproduces it |
 | S7a | The x86-64 backend that lowers the helpers, as an XAX program (x86-64 views profile); a component fixed point on a second target, natively | S6d | EXECUTED (ADR-152): byte-identical to its bootstrap reference on every helper, itself included; native fixed point in about a second; every production helper except its own image is lowered by it (1.08–1.32× the optimizing backend's run time) |
-| S7b | The driver's lowering structures (the object table, image assembly) and the exact rejection diagnostics produced by XAX | S7a, EI | Open; starts from the EI baseline |
+| S7b | The driver's lowering structures (the object table, image assembly) and the exact rejection diagnostics produced by XAX | S7a, EI | In progress: S7b.1 EXECUTED; S7b.2 and S7b.3 open |
+| S7b.1 | Target legality of the x86-64 views lowering decided by the XAX program, which writes the exact diagnostic record | S7a | EXECUTED (ADR-179): every x86-64 views rejection rule is decided in XAX, in the bootstrap's order, with an identical `Diagnostic` |
+| S7b.2 | The object table (store objects and graph streams) and the image record (order, offsets, ranges) produced by XAX from store bytes | S7b.1, S3, S3c | Open |
+| S7b.3 | The same legality pass and record for the RISC-V views family | S7b.1 | Open |
+| S8 | Verifier totality: the store decoder, graph decoder, typing/facts, and store verifier reject with the bootstrap's exact diagnostics (`XAX_SPEC.md` §16.5 condition 5) | S7b.1 record | UNIMPLEMENTED (ADR-180) |
+| S9 | Canonical store writing (object encoding, CID, container) in XAX | S2, S3 | UNIMPLEMENTED |
+| S10 | The driver as an XAX program in a native Linux x86-64 process: explicit platform file I/O, target-package interpretation, verify → lower → assemble → write | S7b, S8, S9 | UNIMPLEMENTED |
+| S11 | ELF64 executable container for views images, so the S10 driver is a standalone executable | S10 | UNIMPLEMENTED |
+| S12 | General x86-64 program lowering (the optimizing backend's decisions) for ordinary programs | S10 | UNIMPLEMENTED |
+| S13 | Build/package/provenance and the minimal command surface (`verify`, `build`, `inspect`) | S9, S10 | UNIMPLEMENTED |
+| S14 | Full-compiler generations C1 → C2 → C3 on Linux x86-64 with positive/negative equivalence and identity records (full-compiler B2–B4) | S10–S13 | UNIMPLEMENTED |
+| S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | UNIMPLEMENTED |
 
 ## EI — Evidence and canonical-state integrity (ADR-177; before S7b)
 

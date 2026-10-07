@@ -26,8 +26,8 @@
       "image_sha256": "2822ff4ac1af1db1a272eb6f80dfe7b85b7505b515497b8f2492b61be5d9d7f4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.18,
-        "bootstrap": 0.18
+        "gen1": 0.14,
+        "bootstrap": 0.15
       }
     },
     {
@@ -52,8 +52,8 @@
       "image_sha256": "da537d44bc3d2b85299a725a4cd3be20adc8e36666baa7bd98c492a293b8239f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.04,
-        "bootstrap": 0.07
+        "gen1": 0.05,
+        "bootstrap": 0.06
       }
     },
     {
@@ -65,8 +65,8 @@
       "image_sha256": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 6.28,
-        "bootstrap": 8.67
+        "gen1": 6.3,
+        "bootstrap": 8.6
       }
     },
     {
@@ -78,8 +78,8 @@
       "image_sha256": "e2eb1e46d927c84a79082ddc10af890c0384497393b20858d7671bc7b9d67952",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.49,
-        "bootstrap": 6.37
+        "gen1": 3.47,
+        "bootstrap": 6.12
       }
     },
     {
@@ -104,21 +104,21 @@
       "image_sha256": "f8fb468403c56f36180aa9ddfe1e8cc03bc45f9a5f03c3ff2eb672695aff2f0a",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.69,
-        "bootstrap": 3.14
+        "gen1": 1.75,
+        "bootstrap": 3.22
       }
     },
     {
       "program": "xax_selfhost_x86_64_backend",
-      "store_bytes": 974862,
-      "store_sha256": "6aa4ff4fb1b77249bec64a598f7ea786134b87cca8321737da51cbc21cf1d637",
-      "functions": 25,
-      "code_bytes": 1835317,
-      "image_sha256": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+      "store_bytes": 1369383,
+      "store_sha256": "bde66d740f35bfb837eb7a7b471dff804091d22a7d5e3a1818f7c579c232b5ec",
+      "functions": 26,
+      "code_bytes": 2688885,
+      "image_sha256": "e666bc9108c4bd006d112d2437dc12b8e8f8918570853caa195c974218b22f08",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.76,
-        "bootstrap": 3.44
+        "gen1": 3.65,
+        "bootstrap": 4.76
       }
     }
   ],
@@ -209,7 +209,7 @@
     },
     {
       "store": "xax_x86_64_backend.xax",
-      "objects": 240,
+      "objects": 305,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -217,18 +217,18 @@
   ],
   "b4_native_fixed_point": {
     "compiler": "gen2: the backend's x86-64 image, native",
-    "code_bytes": 1835317,
-    "sha256": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+    "code_bytes": 2688885,
+    "sha256": "e666bc9108c4bd006d112d2437dc12b8e8f8918570853caa195c974218b22f08",
     "gen3_equals_gen2": true,
-    "host_s_nonsemantic": 1.64
+    "host_s_nonsemantic": 3.17
   },
   "runtime_vs_optimizing_bootstrap": [
     {
       "program": "xax_selfhost_verify",
       "input": "xax_op_typing.xax",
-      "xax_backend_s": 0.6225,
-      "optimizing_bootstrap_s": 0.4809,
-      "ratio": 1.295,
+      "xax_backend_s": 0.5357,
+      "optimizing_bootstrap_s": 0.4422,
+      "ratio": 1.211,
       "code_bytes": {
         "xax_backend": 2993128,
         "optimizing_bootstrap": 659575
@@ -237,9 +237,9 @@
     {
       "program": "xax_selfhost_verify",
       "input": "xax_store_verifier.xax",
-      "xax_backend_s": 0.3729,
-      "optimizing_bootstrap_s": 0.3156,
-      "ratio": 1.182,
+      "xax_backend_s": 0.3583,
+      "optimizing_bootstrap_s": 0.304,
+      "ratio": 1.179,
       "code_bytes": {
         "xax_backend": 2993128,
         "optimizing_bootstrap": 659575
@@ -248,9 +248,9 @@
     {
       "program": "xax_selfhost_verify",
       "input": "xax_riscv64_backend.xax",
-      "xax_backend_s": 0.1768,
-      "optimizing_bootstrap_s": 0.147,
-      "ratio": 1.203,
+      "xax_backend_s": 0.1779,
+      "optimizing_bootstrap_s": 0.1507,
+      "ratio": 1.18,
       "code_bytes": {
         "xax_backend": 2993128,
         "optimizing_bootstrap": 659575
@@ -266,15 +266,6 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null
-    },
-    "lowering:blake3-hash": {
-      "component": "lowering:blake3-hash",
-      "semantic_root": null,
-      "native_artifact_digest": null,
-      "requested_authority": "python",
-      "actual_authority": "python",
-      "fallback_occurred": false,
-      "fallback_reason": "lowered before the graph decoder the XAX backend reads can load (bootstrap order)"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -321,19 +312,10 @@
       "fallback_occurred": false,
       "fallback_reason": null
     },
-    "lowering:x86-64-views-backend": {
-      "component": "lowering:x86-64-views-backend",
-      "semantic_root": null,
-      "native_artifact_digest": null,
-      "requested_authority": "python",
-      "actual_authority": "python",
-      "fallback_occurred": false,
-      "fallback_reason": "the XAX backend's own image is lowered by the bootstrap generator"
-    },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
-      "semantic_root": "b07f663044b103dc67993c141c728af8c6525efef4f5839676347d10fe58b7f2",
-      "native_artifact_digest": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+      "semantic_root": "0890ba48a696391bc3db7b517b035bbd5ae4198b2986dbd0504b53ffcec78dc5",
+      "native_artifact_digest": "e666bc9108c4bd006d112d2437dc12b8e8f8918570853caa195c974218b22f08",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -392,7 +374,7 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 11572
+      "declined_inputs": 11824
     }
   }
 }

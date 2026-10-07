@@ -78,6 +78,11 @@ SETCC = {IntCompare.EQ: 0x94, IntCompare.NE: 0x95, IntCompare.ULT: 0x92, IntComp
 # ``op r/m64, r64`` opcodes; multiplication is ``imul r64, r/m64``.
 ALU = {Operation.ADD_WRAP: 0x01, Operation.SUB_WRAP: 0x29, Operation.BIT_XOR: 0x31, Operation.BIT_OR: 0x09, Operation.BIT_AND: 0x21}
 COMMUTATIVE = frozenset({Operation.ADD_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_OR, Operation.BIT_AND})
+# Every operation ``_compile_function`` lowers; any other one in a closure rejects with ``OP-LOWERED``.
+LOWERED_OPERATIONS = tuple(sorted({*map(int, ALU), int(Operation.MUL_WRAP), int(Operation.UDIV), int(Operation.UREM), int(Operation.ROTATE_RIGHT),
+                                   int(Operation.INT_TRUNCATE), int(Operation.INT_ZERO_EXTEND), int(Operation.CONSTANT), int(Operation.INT_COMPARE),
+                                   int(Operation.CALL_DIRECT), int(Operation.CHECKED_LOAD_BITS_LE), int(Operation.CHECKED_STORE_BITS_LE),
+                                   int(Operation.AGGREGATE_GET), int(Operation.AGGREGATE_MAKE), *map(int, RESOURCE_EFFECT_OPERATIONS)}))
 
 
 @dataclass(frozen=True)

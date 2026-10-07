@@ -12,7 +12,7 @@
       "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 8.02,
+        "gen1": 8.89,
         "bootstrap": 0.04
       }
     },
@@ -26,7 +26,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.13,
-        "bootstrap": 0.57
+        "bootstrap": 0.17
       }
     },
     {
@@ -39,7 +39,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.01,
-        "bootstrap": 0.02
+        "bootstrap": 0.01
       }
     },
     {
@@ -51,8 +51,8 @@
       "image_sha256": "6a6bc6fb392bc96e42e1d165b155ab93299faab61cecee865dc3e691941b7074",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.05,
-        "bootstrap": 0.09
+        "gen1": 0.04,
+        "bootstrap": 0.53
       }
     },
     {
@@ -64,8 +64,8 @@
       "image_sha256": "0cd34705a3b5d28d78615d1b59c84a688d959341f129264e8baf095d0fa2395f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 6.47,
-        "bootstrap": 11.52
+        "gen1": 5.94,
+        "bootstrap": 11.35
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "49ad0a2b513689e6fd4b8f46c573f085fbf036539db3a8f8886277ea713b7b27",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.67,
-        "bootstrap": 9.03
+        "gen1": 3.9,
+        "bootstrap": 8.62
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "d386840508ca9c0eb382930c187c2b84f62d6a5299f1a1316f904d47028a01ff",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.67,
-        "bootstrap": 4.38
+        "gen1": 1.76,
+        "bootstrap": 5.23
       }
     }
   ],
@@ -154,7 +154,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.002,
-        "emulated": 0.4
+        "emulated": 0.5
       }
     },
     {
@@ -178,7 +178,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.003,
-        "emulated": 0.5
+        "emulated": 0.6
       }
     },
     {
@@ -190,7 +190,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.013,
-        "emulated": 1.7
+        "emulated": 1.8
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 4000000000,
       "host_s_nonsemantic": {
-        "native": 0.524,
-        "emulated": 62.7
+        "native": 0.6,
+        "emulated": 65.0
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.159,
-        "emulated": 18.1
+        "native": 0.173,
+        "emulated": 19.4
       }
     },
     {
@@ -237,7 +237,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.005,
+        "native": 0.006,
         "emulated": 0.9
       }
     },
@@ -249,20 +249,20 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.374,
-        "emulated": 41.8
+        "native": 0.389,
+        "emulated": 42.7
       }
     },
     {
       "store": "xax_x86_64_backend.xax",
-      "objects": 240,
+      "objects": 305,
       "store_proven": true,
-      "objects_proven": 53,
+      "objects_proven": 55,
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.199,
-        "emulated": 20.5
+        "native": 0.286,
+        "emulated": 28.9
       }
     }
   ],
@@ -313,25 +313,19 @@
       "store": "xax_riscv64_backend.xax",
       "bytes": 902679,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.51
+      "host_s_nonsemantic": 0.55
     },
     {
       "store": "xax_riscv64_encoder.xax",
       "bytes": 10129,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "xax_store_decoder.xax",
       "bytes": 29910,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.02
-    },
-    {
-      "store": "xax_x86_64_backend.xax",
-      "bytes": 974862,
-      "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.57
+      "host_s_nonsemantic": 0.03
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -341,7 +335,7 @@
     "sha256": "49ad0a2b513689e6fd4b8f46c573f085fbf036539db3a8f8886277ea713b7b27",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 76000000000,
-    "host_s_nonsemantic": 1109.4
+    "host_s_nonsemantic": 1106.3
   },
   "authority": {
     "blake3-compress": {
@@ -406,12 +400,12 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 6697
+      "declined_inputs": 6760
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
-      "semantic_root": "b07f663044b103dc67993c141c728af8c6525efef4f5839676347d10fe58b7f2",
-      "native_artifact_digest": "95d6184c49ed2db8d309348fab93cdeb99b7aa1a7e95e9a9064ab7561f52cf35",
+      "semantic_root": "0890ba48a696391bc3db7b517b035bbd5ae4198b2986dbd0504b53ffcec78dc5",
+      "native_artifact_digest": "e666bc9108c4bd006d112d2437dc12b8e8f8918570853caa195c974218b22f08",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
