@@ -127,6 +127,37 @@ def _rule_cases(seed: bytes) -> dict[str, bytes]:
     return cases
 
 
+def _object_cases() -> dict[str, tuple[bytes, bytes]]:
+    """``(store, CID)`` per ``decode_object`` rule: a valid container whose one record is the malformed object."""
+    cid = bytes(range(1, 33))
+    low, high = bytes(32), bytes([0xFF] * 32)
+    wide = bytes([0xFF] * 9 + [0x7F])
+
+    def store(payload: bytes) -> bytes:
+        record = uleb(len(payload)) + payload
+        return _container({"root": payload[:32], "records": [record], "metadata": []})
+
+    def envelope(kind=uleb(3), version=uleb(1), references=uleb(0), body=uleb(0)):
+        return cid + kind + version + references + body
+
+    payloads = {
+        "kind-0": envelope(kind=uleb(0)),
+        "kind-12": envelope(kind=uleb(12)),
+        "kind-70-bit": envelope(kind=wide),
+        "kind-unterminated": cid + bytes([0x83]),
+        "version": envelope(version=uleb(2)),
+        "version-70-bit": envelope(version=wide),
+        "references-truncated": envelope(references=uleb(1 << 40) + low),
+        "references-unsorted": envelope(references=uleb(2) + high + low),
+        "references-duplicate": envelope(references=uleb(3) + low + high + high),
+        "body-truncated": envelope(body=uleb(1 << 33) + b"xy"),
+        "body-non-minimal": envelope(body=bytes([0x82, 0x00]) + b"xy"),
+        "trailing": envelope(body=uleb(1) + b"xy"),
+        "cid": envelope(),
+    }
+    return {name: (store(payload), payload[:32]) for name, payload in payloads.items()}
+
+
 class DecoderStoreTests(unittest.TestCase):
     def test_committed_store_regenerates_and_verifies(self):
         building = xax_compiler._DECODER_BUILDING
@@ -249,6 +280,28 @@ class NativeDecoderTests(unittest.TestCase):
             "XAX.CANON.ULEB_OVERFLOW", "XAX.CANON.ULEB_UNTERMINATED", "XAX.CANON.ULEB_NON_MINIMAL", "XAX.CANON.RECORD_SHORT",
             "XAX.CANON.RECORD_ORDER", "XAX.CANON.TRAILING_BYTES", "XAX.CANON.NONSEMANTIC_ORDER", "XAX.CONTAINER.TRAILER",
             "XAX.INTEGRITY.STORE_DIGEST", "XAX.CANON.INDEX", "XAX.IDENTITY.ROOT_MISSING"})
+
+    def test_every_object_envelope_rule_is_decided_by_xax(self):
+        """S8b.1: a valid container holding one malformed object; ``get`` raises the bootstrap's exact diagnostic."""
+        seen = set()
+        for name, (data, cid) in _object_cases().items():
+            ok, _index, bootstrap = _bootstrap(data)
+            self.assertTrue(ok, name)
+            reader = StoreReader(data)
+            outcomes = []
+            for source in (reader, bootstrap):
+                try:
+                    source.get(cid)
+                    outcomes.append(None)
+                except XaxError as error:
+                    outcomes.append(error.diagnostic)
+            with self.subTest(case=name):
+                self.assertIsNotNone(outcomes[1])
+                self.assertEqual(outcomes[0], outcomes[1])
+                self.assertEqual(repr(outcomes[0]), repr(outcomes[1]))
+            seen.add(outcomes[1].rule)
+        self.assertTrue({"SER-KIND-SUPPORTED", "SER-SCHEMA-SUPPORTED", "SER-REFS-SORTED-UNIQUE", "SER-OBJECT-BODY-LENGTH", "ID-CID-INTEGRITY",
+                         "SER-BOUNDS", "SER-ULEB-MINIMAL", "SER-ULEB-TERMINATED"} <= seen, seen)
 
     def test_production_reader_raises_the_xax_diagnostic(self):
         import xax_native

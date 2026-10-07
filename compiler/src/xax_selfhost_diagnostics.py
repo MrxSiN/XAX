@@ -11,7 +11,8 @@ Record layout (output-view words): ``DIAG_AT`` holds the cursor (the word after 
 record); the record follows as ``code, entity, rule, expected, actual``, where a value is
 
     INT n | STR length packed-bytes... | LIST count values... | NONE | CID w0 w1 w2 w3 | TERMINATOR n |
-    WIDE low high | FORMAT template-STR count values... | HEX length packed-bytes... | TUPLE count values...
+    WIDE low high | FORMAT template-STR count values... | HEX length packed-bytes... | TUPLE count values... |
+    KIND n
 
 Text and HEX bytes are packed eight per word, little-endian; a CID is four big-endian 64-bit words; WIDE is the
 integer ``high * 2**64 + low`` (a ULEB can carry 70 bits); FORMAT is ``template.format(*values)`` -- the program
@@ -20,12 +21,12 @@ chooses the template and the values, the host only renders; HEX renders bytes as
 
 from __future__ import annotations
 
-from xax_compiler import Diagnostic, TerminatorKind
+from xax_compiler import Diagnostic, Kind, TerminatorKind
 from xax_selfhost_facts import E, NONE
 
 REJECT = 2
 DIAG_AT = 11 << 20
-T_INT, T_STR, T_LIST, T_NONE, T_CID, T_TERMINATOR, T_WIDE, T_FORMAT, T_HEX, T_TUPLE = range(10)
+T_INT, T_STR, T_LIST, T_NONE, T_CID, T_TERMINATOR, T_WIDE, T_FORMAT, T_HEX, T_TUPLE, T_KIND = range(11)
 
 
 # -- XAX side: builders that emit the record-writing nodes --------------------------------------
@@ -130,7 +131,7 @@ def decode_record(words) -> Diagnostic:
             return template.format(*(value() for _ in range(count)))
         number = words[position]
         position += 1
-        return {T_INT: int, T_TERMINATOR: TerminatorKind}[tag](number)
+        return {T_INT: int, T_TERMINATOR: TerminatorKind, T_KIND: Kind}[tag](number)
 
     code, entity, rule, expected, actual = (value() for _ in range(5))
     if position != len(words):

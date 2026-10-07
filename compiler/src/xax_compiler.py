@@ -732,12 +732,10 @@ class StoreReader:
             offset, length = self._index[cid]
         except KeyError:
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
-        parsed = getattr(self, "_parsed", {}).get(cid)
-        if parsed is not None:
-            obj = self._object_from_parse(cid, parsed)
-            if obj is not None:
-                self._decoded[cid] = obj
-                return obj
+        obj = self._decode_object_native(offset, length)
+        if obj is not None:
+            self._decoded[cid] = obj
+            return obj
         cursor = Cursor(self.data[offset:], f"object:{cid.hex()}")
         actual_length = cursor.uleb()
         if actual_length != length:
@@ -747,19 +745,27 @@ class StoreReader:
         self._decoded[cid] = obj
         return obj
 
-    def _object_from_parse(self, cid: bytes, parsed: tuple[int, ...]) -> SemanticObject | None:
-        """Build an object from the XAX decoder's parse (S3b, ADR-119) and check its CID.
+    def _decode_object_native(self, offset: int, length: int) -> SemanticObject | None:
+        """Self-hosting S8b.1 (ADR-184): the XAX decoder decides the object envelope at ``offset``, every
+        ``decode_object`` rejection with its exact diagnostic, and the CID comparison (the CID itself is the XAX hash).
 
-        With minimal ULEBs the payload after the stored CID *is* the canonical
-        content, so the CID is the hash of the domain plus those bytes.  A
-        mismatch returns None, and the bootstrap decoder reports it.
+        Only for stores the XAX decoder accepted (whose envelopes have minimal ULEB lengths).  None when the decoder
+        cannot run or defers; the bootstrap decoder then decides.
         """
-        cid_at, kind, reference_count, references_at, body_at, body_length = parsed
-        data = self.data
-        if blake3(SEMANTIC_DOMAIN + data[cid_at + CID_SIZE : body_at + body_length]).digest() != cid:
+        decoder = _native_store_decoder() if hasattr(self, "_parsed") else None
+        if decoder is None:
             return None
-        references = tuple(bytes(data[at:at + CID_SIZE]) for at in range(references_at, references_at + CID_SIZE * reference_count, CID_SIZE))
-        obj = SemanticObject(Kind(kind), 1, references, bytes(data[body_at:body_at + body_length]), cid)
+        envelope = self.data[offset : offset + len(uleb(length)) + length]
+        if len(envelope) > decoder.capacity:
+            return None
+        fields, diagnostic = decoder.decode_object(envelope, lambda span: blake3(SEMANTIC_DOMAIN + span).digest())
+        if diagnostic is not None:
+            raise XaxError(diagnostic)
+        if fields is None:
+            return None
+        cid_at, kind, reference_count, references_at, body_at, body_length = fields
+        references = tuple(bytes(envelope[at:at + CID_SIZE]) for at in range(references_at, references_at + CID_SIZE * reference_count, CID_SIZE))
+        obj = SemanticObject(Kind(kind), 1, references, bytes(envelope[body_at:body_at + body_length]), bytes(envelope[cid_at:cid_at + CID_SIZE]))
         object.__setattr__(obj, "cid_checked", True)
         return obj
 

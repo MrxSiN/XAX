@@ -70,6 +70,8 @@ MAX_RECORDS = (INDEX_AT - HEADER_WORDS) // RECORD_WORDS
 ACCEPT, REJECT, DEFER, NEED_DIGEST = 0, 1, 2, 3
 CID_BYTES = 32
 MODE_NONE, MODE_HASH, MODE_VERIFY = 0, 1, 2  # no digest check; report the digest's end; the digest follows the data
+# S8b.1 (ADR-184): the data is one record envelope; report the CID's hashed span, then decide with the CID after it.
+MODE_OBJECT_HASH, MODE_OBJECT_VERIFY = 3, 4
 
 # S8a (ADR-183): every container rejection of ``StoreReader``: code, rule, expected, actual.  A value form names the
 # site's values v0..v3: ("int", i), ("wide", low, high), ("hex", start, length) with start a value index or
@@ -97,9 +99,17 @@ SITES = {
     "ULEB_OVERFLOW": ("XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED", "at most 10 bytes", "more than 10 bytes"),
     "ULEB_UNTERMINATED": ("XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED", "terminating byte", "end of input"),
     "ULEB_NON_MINIMAL": ("XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL", ("minimal",), ("hex", 1, ("value", 2))),
+    # S8b.1: ``decode_object``.
+    "KIND": ("XAX.SCHEMA.KIND", "SER-KIND-SUPPORTED", ("kinds",), ("wide", 0, 1)),
+    "VERSION": ("XAX.SCHEMA.VERSION", "SER-SCHEMA-SUPPORTED", 1, ("wide", 0, 1)),
+    "REFERENCE_TABLE": ("XAX.CANON.REFERENCE_TABLE", "SER-REFS-SORTED-UNIQUE", "strict unsigned lexicographic order", ("references",)),
+    "TRAILING_OBJECT": ("XAX.CANON.TRAILING_BYTES", "SER-OBJECT-BODY-LENGTH", 0, ("int", 0)),
+    "CID_MISMATCH": ("XAX.IDENTITY.CID_MISMATCH", "ID-CID-INTEGRITY", ("hex", 0, CID_BYTES), ("hex", 1, CID_BYTES)),
 }
 SITE_INDEX = {name: index for index, name in enumerate(SITES)}
-ENTITIES = (("store", None), ("index", None), ("record", "record:{}"), ("metadata", "metadata:{}"))
+# (name, template, what fills it: the entity number as an integer, or the 32 bytes at that offset as hex)
+ENTITIES = (("store", None, None), ("index", None, None), ("record", "record:{}", "int"), ("metadata", "metadata:{}", "int"),
+            ("object", "object:{}", "hex"))
 ENTITY_STORE, ENTITY_INDEX = (0, 0), (1, 0)
 DIAGNOSTIC_ARGUMENTS = 7  # site, entity kind, entity number, v0..v3
 MAX_KIND = 11  # Kind.CALL_CONTRACT
@@ -396,12 +406,14 @@ class _ContainerDecoder(_Decoder):
         self.set_out(self.c(DIAG_AT), self.c(DIAG_AT + 1))
         for index, (code, _rule, _expected, _actual) in enumerate(SITES.values()):
             self.when(self.cmp(IntCompare.EQ, site, index), lambda code=code: self.d_text(code))
-        for index, (name, template) in enumerate(ENTITIES):
-            def entity(name=name, template=template):
-                if template:
+        for index, (name, template, fill) in enumerate(ENTITIES):
+            def entity(name=name, template=template, fill=fill):
+                if template is None:
+                    self.d_text(name)
+                elif fill == "int":
                     self.d_format(template, lambda: self.d_int(number))
                 else:
-                    self.d_text(name)
+                    self.d_format(template, lambda: self.d_hex(number, self.c(CID_BYTES)))
             self.when(self.cmp(IntCompare.EQ, kind, index), entity)
         for index, (_code, rule, expected, actual) in enumerate(SITES.values()):
             self.when(self.cmp(IntCompare.EQ, site, index), lambda rule=rule, expected=expected, actual=actual: (
@@ -431,6 +443,20 @@ class _ContainerDecoder(_Decoder):
                 self.d_format("> {}", lambda: self.d_hex(values[0], self.c(CID_BYTES)))
             elif kind == "minimal":
                 self.d_hex_uleb(values[0])
+            elif kind == "kinds":
+                self.put(D.T_LIST)
+                self.put(MAX_KIND)
+                for value in range(1, MAX_KIND + 1):
+                    self.put(D.T_KIND)
+                    self.put(value)
+            elif kind == "references":
+                self.put(D.T_LIST)
+                self.put(values[1])
+                header, (r,) = self.loop_header((self.c(0),))
+                done = self.branch_loop(header, self.cmp(IntCompare.ULT, r, values[1]))
+                self.d_hex(self.add(values[0], self.mul(r, CID_BYTES)), self.c(CID_BYTES))
+                self.back(header, (self.add(r, 1),))
+                self.enter(done)
             else:
                 self.index_lists(values[0], arguments[0])
 
@@ -494,11 +520,61 @@ class _ContainerDecoder(_Decoder):
         return end
 
 
+def _decode_object(d: _ContainerDecoder):
+    """S8b.1 (ADR-184): ``decode_object`` on one record envelope (the data), in its order: the stored CID, kind,
+    schema version, references (each in bounds, then strictly ascending), body, exact end; then the CID, which the
+    caller computes with the XAX hash over the span this reports (MODE_OBJECT_HASH) and passes after the data
+    (MODE_OBJECT_VERIFY).  On accept, out[1..6] = CID offset, kind, reference count, references offset, body offset,
+    body length."""
+    L = d.length
+    _length, _high, _big, payload = d.uleb_d(d.c(0), L, ENTITY_STORE)  # the container checked the envelope's length
+    obj = (4, payload)  # "object:<CID hex>"
+    after_cid = d.take(payload, d.c(CID_BYTES), L, obj)
+    kind, kind_hi, kind_big, pos = d.uleb_d(after_cid, L, obj)
+    d.fail_unless(d.both(d.cmp(IntCompare.EQ, kind_big, 0), d.cmp(IntCompare.UGE, kind, 1), d.cmp(IntCompare.ULE, kind, MAX_KIND)), "KIND", obj,
+                  (kind, kind_hi))
+    version, version_hi, _version_big, pos = d.uleb_d(pos, L, obj)
+    d.fail_unless(d.both(d.cmp(IntCompare.EQ, version, 1), d.cmp(IntCompare.EQ, version_hi, 0)), "VERSION", obj, (version, version_hi))
+    count, _count_hi, count_big, references = d.uleb_d(pos, L, obj)
+    header, (r, rpos, ascending) = d.loop_header((d.c(0), references, d.c(1)))
+    done = d.branch_loop(header, d.either(d.cmp(IntCompare.NE, count_big, 0), d.cmp(IntCompare.ULT, r, count)))
+    following = d.take(rpos, d.c(CID_BYTES), L, obj)
+    first = d.flag(IntCompare.EQ, r, 0)
+    previous = d.op(Operation.SUB_WRAP, rpos, d.mul(d.op(Operation.SUB_WRAP, d.c(1), first), CID_BYTES))
+    less, _equal = d.compare(previous, d.c(CID_BYTES), rpos, d.c(CID_BYTES))
+    in_order = d.op(Operation.BIT_OR, first, less)
+    d.back(header, (d.add(r, 1), following, d.op(Operation.BIT_AND, ascending, in_order)))
+    d.enter(done)
+    d.fail_unless(d.cmp(IntCompare.NE, ascending, 0), "REFERENCE_TABLE", obj, (references, count))
+    body_length, body_hi, body_big, body = d.uleb_d(rpos, L, obj)
+    body_end = d.take(body, (body_length, body_hi, body_big), L, obj)
+    d.fail_unless(d.cmp(IntCompare.EQ, body_end, L), "TRAILING_OBJECT", obj, (d.op(Operation.SUB_WRAP, L, body_end),))
+    verify, need = d.g.block(*STATE), d.g.block(*STATE)
+    d.cur.cbr(d.cmp(IntCompare.EQ, d.mode, MODE_OBJECT_VERIFY), verify, d.state, need, d.state)
+    d.enter(need)
+    d.set_out(d.c(0), d.c(NEED_DIGEST))
+    d.set_out(d.c(1), after_cid)
+    d.set_out(d.c(2), L)
+    d.ret()
+    d.enter(verify)
+    _less, equal = d.compare(payload, d.c(CID_BYTES), L, d.c(CID_BYTES))  # the stored CID, then the computed one
+    d.fail_unless(d.cmp(IntCompare.NE, equal, 0), "CID_MISMATCH", obj, (payload, L))
+    for word, value in enumerate((d.c(ACCEPT), payload, kind, count, references, body, body_length)):
+        d.set_out(d.c(word), value)
+    d.ret()
+
+
 def build_decoder_program() -> tuple[StoreReader, SemanticObject]:
-    """S3/S3b, and S8a (ADR-183): every container check ``StoreReader`` makes, in its order, with its diagnostic."""
+    """S3/S3b, S8a (ADR-183), and S8b.1 (ADR-184): every container check ``StoreReader`` makes, in its order, with
+    its diagnostic; in the object modes, every ``decode_object`` check."""
     d = _ContainerDecoder()
     L = d.length
     store, index = ENTITY_STORE, ENTITY_INDEX
+    objects_mode, container = d.g.block(*STATE), d.g.block(*STATE)
+    d.cur.cbr(d.cmp(IntCompare.UGE, d.mode, MODE_OBJECT_HASH), objects_mode, d.state, container, d.state)
+    d.enter(objects_mode)
+    _decode_object(d)
+    d.enter(container)
 
     # Header.
     magic_end = d.take(d.c(0), d.c(len(MAGIC)), L, store)
@@ -728,6 +804,27 @@ class NativeDecoder:
             count = header[1]
             flat = out[HEADER_WORDS:HEADER_WORDS + RECORD_WORDS * count]
             return status, header, tuple(tuple(flat[index:index + RECORD_WORDS]) for index in range(0, len(flat), RECORD_WORDS)), None
+
+    def decode_object(self, envelope: bytes, cid_of):
+        """``(fields or None, diagnostic or None)`` for one record envelope (S8b.1): fields are (CID offset, kind,
+        reference count, references offset, body offset, body length) within ``envelope``; ``cid_of(span)`` is the XAX
+        hash of the domain and the span."""
+        from xax_selfhost_diagnostics import decode_record
+
+        with self._lock:
+            ctypes.memmove(self._data, envelope, len(envelope))
+            status = self._run(len(envelope), MODE_OBJECT_HASH)
+            if status == NEED_DIGEST:
+                start, end = self._out[1], self._out[2]
+                ctypes.memmove(ctypes.addressof(self._data) + len(envelope), cid_of(bytes(envelope[start:end])), CID_BYTES)
+                status = self._run(len(envelope), MODE_OBJECT_VERIFY)
+            out = self._out
+            if status == REJECT:
+                pairs = out[DIAG_AT + 1:out[DIAG_AT]]
+                return None, decode_record([pairs[k] | pairs[k + 1] << 32 for k in range(0, len(pairs), 2)])
+            if status != ACCEPT:
+                return None, None
+            return tuple(out[1:7]), None
 
 
 def native_decoder_usable() -> bool:

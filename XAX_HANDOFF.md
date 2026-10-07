@@ -470,3 +470,8 @@ Items 1–4 are emulated or software-device results. They are not hardware perfo
 - `NativeDecoder.decode(data, verify_digest, digest)` runs the two digest passes. `MODE_*`, `NEED_DIGEST`, and the out layout (`INDEX_AT`, `DIAG_AT`) are at the top of the module. The record is in (low, high) 32-bit pairs, read with `xax_selfhost_diagnostics.decode_record`.
 - Next (S8b): object envelopes (`decode_object`, reached through `StoreReader.get`; the S3b parse marks bad envelopes unparsed today) and graph bodies (the S3c decoder rejects without a diagnostic). Use the same site-table pattern.
 
+## S8b.1 object envelopes — 2026-10-07 (ADR-184)
+
+- `NativeDecoder.decode_object(envelope, cid_of)` runs the two object passes on one envelope. `StoreReader._decode_object_native` uses it for natively decoded stores and builds the object from the program's fields.
+- Next (S8b.2): graph bodies. The S3c decoder (`xax_selfhost_graph.py`, its own `_GraphDecoder` over a 64-bit stream) rejects without a diagnostic, and `_parse_graph` then re-parses with the bootstrap. Give it the same site table and shared diagnostic block, and keep the bootstrap's order, including the deferred value checks that `_parse_graph` makes while it walks the stream.
+
