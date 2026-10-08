@@ -355,7 +355,7 @@ def _all_types(api):
     for item in (api.builder, api.builder_token, api.stream, api.stream_token, bits_type(8), bits_type(32), bits_type(64),
                  effect_type(EffectDomain.DEVICE, 0), memory_effect_type(),
                  pointer_type(bits_type(8), Permission.READ, 1, space=2), pointer_type(bits_type(8), Permission.READ_WRITE, 1, space=2),
-                 opaque_identity_type(b"android.ndk.AAudioStreamBuilder"), opaque_identity_type(b"android.ndk.AAudioStream")):
+                 pointer_type(bits_type(64), Permission.READ_WRITE, 8)):
         candidates[item.cid] = item
     while pending:
         cid = pending.pop()

@@ -1,6 +1,6 @@
 # Android Platform Capabilities
 
-Status: 2026-10-08, after ADR-202 to ADR-205. This page tracks the Android surface that the AutoHead capability audit (2026-10-07) listed as partial or unsupported. The audit table is the AutoHead project's historical record; this page is XAX's current status for the same rows.
+Status: 2026-10-08, after ADR-202 to ADR-206. This page tracks the Android surface that the AutoHead capability audit (2026-10-07) listed as partial or unsupported. The audit table is the AutoHead project's historical record; this page is XAX's current status for the same rows.
 
 Labels follow the repository evidence rule. **STRUCTURAL** means canonical contracts, verifier rules and deterministic lowering are tested on the host, but nothing ran on a device. **EXECUTED** means device evidence exists. No row was upgraded to EXECUTED by this work, and no replacement level changed.
 
@@ -10,7 +10,7 @@ Labels follow the repository evidence rule. **STRUCTURAL** means canonical contr
 | Services | partial | STRUCTURAL | Declared Service components with `foregroundServiceType`; FGS permission rules; `startForeground`/`stopForeground`/notification members | Device run; Android background-start rules are runtime behaviour |
 | Broadcast callbacks | insufficiently tested | STRUCTURAL | Declared receivers with intent actions; `BOOT_COMPLETED` needs `RECEIVE_BOOT_COMPLETED`; `onReceive` is required | Delivery on the chosen device |
 | Permissions | unsupported | STRUCTURAL | `uses-permission` with `maxSdkVersion`/`neverForLocation`; `checkSelfPermission`, `requestPermissions`, `onRequestPermissionsResult` (managed callback); build rejects reachable members whose permissions are missing | Runtime grant/deny/revoke on a device |
-| Network sockets | partial | STRUCTURAL | Owned socket descriptors (linear), `accept4`, `SOCK_NONBLOCK`, `poll` readiness with deadlines, `eventfd` cancellation, `SO_ERROR`, byte-count partial I/O; `INTERNET` enforced | Device run |
+| Network sockets | partial | STRUCTURAL; owned socket create/shutdown/close EXECUTED under Unicorn (ADR-206) | Owned socket descriptors (linear), `accept4`, `SOCK_NONBLOCK`, `poll` readiness with deadlines, `eventfd` cancellation, `SO_ERROR`, byte-count partial I/O; `INTERNET` enforced | Device run |
 | TLS | unsupported | STRUCTURAL | `SSLContext`/`SSLEngine` members (wrap/unwrap/handshake status/delegated tasks/close) with `INTERNET`; direct buffers via `NewDirectByteBuffer` | Handshake evidence; exception paths |
 | Bluetooth | unsupported | STRUCTURAL | Adapter, paired devices, discovery with target/device-level permission rules (`BLUETOOTH_CONNECT`/`SCAN` vs legacy) | Device run |
 | RFCOMM | unsupported | STRUCTURAL | Client and server members, stream read/write, release pairs | Device run; path-exact release (OI-47) |
@@ -18,9 +18,9 @@ Labels follow the repository evidence rule. **STRUCTURAL** means canonical contr
 | Wi-Fi | unsupported | STRUCTURAL | Network callbacks/requests, `hasTransport`, `getNetworkHandle`; `NetworkCallback` is a managed superclass | Device run |
 | Wi-Fi Direct | unsupported | STRUCTURAL | `initialize`/`createGroup`/`removeGroup`/`requestGroupInfo`/`Channel.close`, listener abstract methods, `NEARBY_WIFI_DEVICES` rules | Device run |
 | Hotspot control | unsupported | STRUCTURAL (local-only only) | `startLocalOnlyHotspot`, reservation `close`, API 30 gate | Device run; arbitrary tethering is not an app capability |
-| MediaCodec | unsupported | STRUCTURAL | NDK `AMediaCodec`/`AMediaFormat` with linear tokens (imports verified in the ELF); Java members and `MediaCodec.Callback` abstract methods | Bounds-proven input buffers (OI-47); decode loop on a device |
+| MediaCodec | unsupported | STRUCTURAL; NDK lifecycle EXECUTED under Unicorn (ADR-206) | NDK `AMediaCodec`/`AMediaFormat` with linear tokens (imports verified in the ELF); Java members and `MediaCodec.Callback` abstract methods | Bounds-proven input buffers (OI-47); decode loop on a device |
 | Surface rendering | partial | STRUCTURAL | `SurfaceHolder.Callback` completeness; `ANativeWindow` from a Surface, borrowed by geometry calls, released once | NULL-window path (OI-47); device run |
-| AudioTrack | unsupported | STRUCTURAL | AAudio output stream (write-only by type); Java AudioTrack members; audio focus pair | Device run |
+| AudioTrack | unsupported | STRUCTURAL; AAudio output stream EXECUTED under Unicorn (ADR-206) | AAudio output stream (write-only by type); Java AudioTrack members; audio focus pair | Device run |
 | AudioRecord | unsupported | STRUCTURAL | AAudio input stream (read-only by type) and Java AudioRecord; both require `RECORD_AUDIO` | Device run with grant and denial |
 | Touch input | unsupported | STRUCTURAL; `getX` float return EXECUTED under Unicorn (ADR-205) | Exact `float` JNI results: `getX`/`getY`/`getAxisValue`, pointers, action, time; `OnTouchListener` | Device run |
 | Hardware keys | unsupported | STRUCTURAL (EXECUTED for `onKeyDown`, ADR-199) | `KeyEvent` action/code/repeat/meta/time; `OnKeyListener`; rotary through `getAxisValue` | Rotary device run |
