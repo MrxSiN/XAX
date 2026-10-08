@@ -311,6 +311,16 @@ class SelfhostHeapViewFactsTests(unittest.TestCase):
 def _typed_program(variant: str):
     """A one-block program whose single fault is ``variant`` (each a different bootstrap memory rule)."""
     graph = GraphBuilder()
+    if variant == "return_order":
+        # S8c.11 (ADR-228): two borrowed views of one type given back swapped.
+        view = heap_view_type(EXTENT, initialized=True)
+        graph.track(view, VIEW_POINTER, B32, MEM, B8)
+        triple = (VIEW_POINTER, view, MEM)
+        entry = graph.block(B32, *triple, *triple)
+        seed, *rest = entry.params
+        entry.ret(seed, *rest[3:], *rest[:3])
+        function = graph.function((B32, *triple, *triple), (B32, *triple, *triple))
+        return function, tuple(graph.objects.values())
     if variant.startswith("rebase"):
         # S8c.10 (ADR-227): rebase windows.
         view = heap_view_type(EXTENT, initialized=True)
@@ -375,7 +385,7 @@ class SelfhostTypedAccessTests(unittest.TestCase):
         rules = {}
         try:
             for variant in ("load_type", "store_type", "store_effect_type", "checked_alignment", "checked_offset", "checked_load_type",
-                            "checked_store_type", "checked_effect_type", "rebase_width", "rebase_authority", "rebase_extent", "rebase_alignment"):
+                            "checked_store_type", "checked_effect_type", "rebase_width", "rebase_authority", "rebase_extent", "rebase_alignment", "return_order"):
                 function, objects = _typed_program(variant)
                 baseline = _outcome(None, function, objects)
                 decided.clear()

@@ -2224,3 +2224,11 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Decision | `pointer.rebase` joins the ADR-221 mechanism in the bootstrap's order: contract, view pointer provenance and lifetime, address width (`MEMORY-REBASE-ADDRESS-WIDTH`), authority (`MEMORY-REBASE-NO-AUTHORITY-GAIN`), extent (`MEMORY-REBASE-EXTENT`), and alignment (`MEMORY-REBASE-ALIGNMENT`). An address type the program did not decode as `bits`, undecoded pointer types, and the record-stride check still decline. |
 | Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: one constructed program per rule (4) matches the bootstrap's full diagnostic and is engine-decided; the eight-seed corpus gives 822 engine-decided rejections out of 824 (the two left are `HEAP-VIEW-RETURN-WHOLE`), with no mismatch. Both self-hosting evidence files re-run natively. |
 | Limits | Returned views, heap-view construction, foreign and view-passing calls, atomics, links, and stored-pointer provenance still decline. Object verification remains Python. |
+
+## ADR-228 — S8c.11: returned-view rejections decided by the facts engine
+
+| Field | Record |
+|---|---|
+| Decision | `_return_views` rejects with the bootstrap's diagnostics: `HEAP-VIEW-RETURN-WHOLE` (owner, pointer, and frontier of a returned view; any of its conditions), `HEAP-VIEW-RETURN-INITIALIZED`, `MEMORY-LINK-RETURN-TARGET`, and `HEAP-VIEW-RETURN-ORDER`. These are exact only in a graph without a resource entry contract (the bootstrap checks that contract first), and only when every storage the diagnostic quotes can be rendered. Otherwise the engine still declines. |
+| Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: the eight-seed memory corpus now has every one of its 824 rejections decided by the engine, with no mismatch; a constructed swapped-return program matches `HEAP-VIEW-RETURN-ORDER` exactly. Both self-hosting evidence files re-run natively. |
+| Limits | Heap-view construction, foreign and view-passing calls, atomics, links, stored-pointer provenance, and the decode and contract checks noted per handler still decline. Object verification remains Python. |

@@ -110,6 +110,10 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: returned views (`_return_views`, `HEAP-VIEW-RETURN-*`), heap-view construction (`_heap_view_node`), then calls, atomics, links; then object verification. Another session also commits to `main`: fetch before pushing and take the next free ADR number.
 
+## S8c.11 returned-view rejections — 2026-10-08 (ADR-228)
+
+- The corpus is fully engine-decided; extend it before converting more handlers (heap-view construction, foreign and view calls, atomics, links), each with a constructed case per rule as in `SelfhostTypedAccessTests`.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

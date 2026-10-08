@@ -121,6 +121,10 @@ Checked accesses and the type checks of loads and stores are now rejected by the
 
 `pointer.rebase` rejections are now decided by the XAX facts engine; 822 of 824 corpus rejections are engine-decided.
 
+## S8c.11 returned-view rejections — 2026-10-08 (ADR-228)
+
+Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.
