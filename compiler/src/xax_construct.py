@@ -18,7 +18,10 @@ or ``{"ptr": [ELEMENT, "r"|"rw", ALIGNMENT, SPACE]}``.
 ``BLOCK``: ``{"params": [TYPE...], "nodes": [NODE...], "end": TERMINATOR}``.  ``NODE`` is
 ``[OPERATION, [OPERAND...], [RESULT_TYPE...], EXTRA?]`` with ``OPERATION`` an operation name (``"add.wrap"``,
 ``"int.compare"``, ...), or ``["const", TYPE, INTEGER]``.  ``EXTRA`` may hold ``"attrs"`` (integers; compare kinds
-by name) and ``"entity"`` (``"linux.<symbol>"``, ``{"linux.munmap_view": [TYPE, EXTENT]}``, ``{"fn": NAME}``).
+by name) and ``"entity"`` (``"linux.<symbol>"``, ``"linux.startup.<symbol>"``, ``{"linux.munmap_view": [TYPE, EXTENT]}``,
+``{"fn": NAME}``).  ``linux.startup.*`` are the ``linux-x86_64-startup-v1`` reads of the initial process stack (``argc``,
+``arg_length``, ``arg_copy``, ``envc``, ``env_length``, ``env_copy``, ``auxv_value``; ADR-094); like every startup read
+they are valid only in the process entry function, and a build rejects them elsewhere (ADR-223).
 Operands name values: ``"p<i>"``/``"n<i>"``/``"n<i>.r<k>"`` in the current block, or ``"B<b>.p<i>"`` and
 ``"B<b>.n<i>[.r<k>]"`` in a dominating block.  A literal operand ``[TYPE, INTEGER]`` is a constant.
 ``TERMINATOR``: ``["ret", [V...]]``, ``["br", B, [V...]]``, ``["cbr", V, B, [V...], B, [V...]]``.
@@ -59,13 +62,14 @@ def _error(message: str) -> ValueError:
 
 class _Builder:
     def __init__(self, request: dict):
-        from xax_linux import linux_api
+        from xax_linux import linux_api, linux_startup_api
 
         if request.get("format") != FORMAT:
             raise _error(f"format must be {FORMAT}")
         if request.get("platform") not in _PLATFORMS:
             raise _error(f"platform must be one of {_PLATFORMS}")
         self.api = linux_api()
+        self.startup = linux_startup_api(self.api)
         self.target = x86_64_linux_exec_target()
         self.aliases = dict(request.get("types", {}))
         self.functions: dict[str, SemanticObject] = {}
@@ -94,6 +98,11 @@ class _Builder:
         raise _error(f"bad type {spec!r}")
 
     def entity(self, spec) -> SemanticObject:
+        if isinstance(spec, str) and spec.startswith("linux.startup."):
+            name = spec[len("linux.startup."):]
+            if name in self.startup.__dataclass_fields__:
+                return getattr(self.startup, name)
+            raise _error(f"unknown entity {spec!r}")
         if isinstance(spec, str) and spec.startswith("linux."):
             value = getattr(self.api, spec[6:], None)
             if isinstance(value, SemanticObject) and value.kind != Kind.TYPE:

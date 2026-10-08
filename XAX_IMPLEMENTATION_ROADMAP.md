@@ -480,7 +480,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S8c.6 | Constant and direct-call target rejections | S8c.5 | EXECUTED (ADR-219) |
 | S8c.7 | Direct-call contract rejections (graph-fragment callees) | S8c.6 | EXECUTED (ADR-220) |
 | S8c.8 | Stack-memory fact rejections decided by the XAX facts engine | S8c.7 | EXECUTED (ADR-221) |
-| S8c.9 | Checked-access and access-type rejections decided by the facts engine | S8c.8 | EXECUTED (ADR-222) |
+| S8c.9 | Checked-access and access-type rejections decided by the facts engine | S8c.8 | EXECUTED (ADR-226) |
 | S9 | Canonical store writing (object encoding, CID, container) in XAX | S2, S3 | UNIMPLEMENTED |
 | S10 | The driver as an XAX program in a native Linux x86-64 process: explicit platform file I/O, target-package interpretation, verify → lower → assemble → write | S7b, S8, S9 | UNIMPLEMENTED |
 | S11 | ELF64 executable container for views images, so the S10 driver is a standalone executable | S10 | UNIMPLEMENTED |

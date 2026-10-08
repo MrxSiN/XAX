@@ -306,7 +306,7 @@ class SelfhostHeapViewFactsTests(unittest.TestCase):
         self.assertGreater(outcomes["reject"], 60)
 
 
-# -- S8c.9 (ADR-222): the type and continuation checks of plain and checked accesses -----------------------------
+# -- S8c.9 (ADR-226): the type and continuation checks of plain and checked accesses -----------------------------
 
 def _typed_program(variant: str):
     """A one-block program whose single fault is ``variant`` (each a different bootstrap memory rule)."""
