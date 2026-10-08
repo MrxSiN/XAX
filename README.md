@@ -80,6 +80,12 @@ AI agents: read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.
 
 Research prototype. Part of the compiler (hashing, decoding, typing, the store verifier, and two code generators) is itself XAX; the rest is Python.
 
+Recent results (one shared x86-64 host; details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md)):
+
+- **Faster than clang** on `filestat` (0.88×) and `jsonmin` (0.97×); `chains` ties rustc, so Linux is still R3.
+- **JVM is R5**: `jsonmin` runs 0.88× javac, and an AI changed it through one semantic transaction, then rebuilt, tested, and benchmarked it.
+- **First XAX-only app**: `xb64`, a base64 tool whose code, tests, and build are all XAX, matches coreutils `base64` and shipped a second release through one transaction.
+
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 ## Docs
