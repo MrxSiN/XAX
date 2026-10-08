@@ -718,3 +718,87 @@ class SelfhostAtomicTests(unittest.TestCase):
             "result_type": ("ATOMIC-RESULT-TYPE", True), "value_type": ("ATOMIC-VALUE-TYPE", True), "cmpxchg_result": ("ATOMIC-CMPXCHG-RESULT", True),
             "fence_effect": ("ATOMIC-FENCE-EFFECT", True), "fence_forked": ("MEMORY-EFFECT-LINEAR", True),
         })
+
+
+# -- S8c.17 (ADR-235): links ------------------------------------------------------------------------------------------
+
+def _record_program(variant: str):
+    """Stack records ``(key: bits<64>, next: link)``: make a link to record 0 and follow it; ``variant`` breaks one rule."""
+    from xax_compiler import link_type, tuple_type
+
+    link = link_type()
+    record = tuple_type((B64, link))
+    records = pointer_type(record, Permission.READ_WRITE, 16)
+    reader = pointer_type(record, Permission.READ, 8)
+    words = pointer_type(B64, Permission.READ_WRITE, 8)
+    slots = pointer_type(words, Permission.READ_WRITE, 8)
+    graph = GraphBuilder()
+    graph.track(link, record, records, reader, words, slots, OWNER, MEM, B64, B32)
+    block = graph.block(B32)
+    (seed,) = block.params
+    if variant == "link_record_only":
+        block.op(Operation.STACK_ALLOC, (), (pointer_type(link, Permission.READ_WRITE, 8), OWNER, MEM), attributes=(8, 8))
+    p, owner, memory = block.op(Operation.STACK_ALLOC, (), (records, OWNER, MEM), attributes=(24 if variant == "record_extent" else 32, 16))
+    if variant == "pointer_store_local":
+        w, w_owner, w_memory = block.op(Operation.STACK_ALLOC, (), (words, OWNER, MEM), attributes=(8, 8))
+        q, q_owner, q_memory = block.op(Operation.STACK_ALLOC, (), (slots, OWNER, MEM), attributes=(8, 8))
+        block.op1(Operation.STORE_BITS_LE, (q, w, q_memory), MEM, attributes=(8, 8))
+    if variant == "link_make_record":
+        w, _w_owner, _w_memory = block.op(Operation.STACK_ALLOC, (), (words, OWNER, MEM), attributes=(8, 8))
+        block.op1(Operation.LINK_MAKE, (w,), link)
+    made = block.op1(Operation.LINK_MAKE, (p,), B64 if variant == "link_make_type" else link)
+    if variant == "follow_authority":
+        view = block.op1(Operation.POINTER_CAST, (p,), reader)
+        block.op1(Operation.LINK_FOLLOW, (view, made), pointer_type(record, Permission.READ_WRITE, 8))
+    elif variant == "follow_alignment":
+        block.op1(Operation.LINK_FOLLOW, (p, made), pointer_type(record, Permission.READ, 32))
+    else:
+        block.op1(Operation.LINK_FOLLOW, (p, made), records)
+    block.op(Operation.STACK_END, (owner, memory), ())
+    block.ret(seed)
+    function = graph.function((B32,), (B32,))
+    return function, tuple(graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostLinkTests(unittest.TestCase):
+    def test_link_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+        import test_xax_links as links
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        programs = {mutation: links.program(mutation) for mutation in (None, *links.LinkVerifierTests.REJECTIONS)}
+        programs["declare_on_offset"] = links.table_calling_program(callee_options=dict(declare_on="offset"))
+        programs["undeclared"] = links.table_calling_program(callee_options=dict(declare=False))
+        for variant in ("valid", "link_record_only", "record_extent", "pointer_store_local", "link_make_record", "link_make_type",
+                        "follow_authority", "follow_alignment"):
+            function, objects = _record_program(variant)
+            programs[variant] = (function, None, objects)
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            for mutation, (function, _target, objects) in programs.items():
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, mutation)
+                rules[mutation] = (baseline[2] if baseline[0] == "reject" else "accept", any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        # Record field offsets and strides, byte-addressable values, released-storage dependents, and foreign writes
+        # into link-bearing storage still decline to the bootstrap.
+        python_decided = {"wrong-field-offset", "record-stride", "checked-record-store", "target-ends-first", "foreign-write"}
+        self.assertEqual({mutation for mutation, (rule, decided_) in rules.items() if rule != "accept" and not decided_}, python_decided)
+        self.assertEqual(rules["valid"], ("accept", False))
+        self.assertEqual({rules[name][0] for name in ("link_record_only", "record_extent", "pointer_store_local", "link_make_record", "link_make_type",
+                                                       "follow_authority", "follow_alignment", "declare_on_offset", "undeclared", "foreign-table-link")}, {
+            "MEMORY-LINK-RECORD-ONLY", "MEMORY-RECORD-EXTENT", "MEMORY-POINTER-STORE-LOCAL-PROVENANCE", "MEMORY-LINK-MAKE-RECORD", "MEMORY-LINK-MAKE-TYPE",
+            "MEMORY-LINK-FOLLOW-NO-AUTHORITY-GAIN", "MEMORY-LINK-FOLLOW-ALIGNMENT", "MEMORY-LINK-TARGET-DECLARATION", "MEMORY-LINK-FOLLOW-PROVENANCE",
+            "MEMORY-LINK-STORE-PROVENANCE"})

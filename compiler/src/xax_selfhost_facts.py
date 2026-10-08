@@ -83,6 +83,10 @@ MEMORY_SITES = (
     # S8c.16 (ADR-234): atomics (order, kind, and scope enums still decline: the bootstrap names no graph there).
     "ATOMIC_MEMORY_EFFECT", "ATOMIC_WRITE_PERMISSION", "ATOMIC_READ_PERMISSION", "ATOMIC_VALUE_TYPE", "ATOMIC_RESULT_TYPE",
     "ATOMIC_CMPXCHG_RESULT", "ATOMIC_REBASE", "ATOMIC_LINK", "ATOMIC_INITIALIZED", "ATOMIC_FENCE_EFFECT",
+    # S8c.17 (ADR-235): links (``link_make``, ``link_follow``, ``link_target``) and stored links/pointers.
+    "LINK_MAKE_RECORD", "LINK_MAKE_START", "LINK_MAKE_TYPE", "LINK_FOLLOW_ROOT", "LINK_FOLLOW_PROVENANCE", "LINK_FOLLOW_AUTHORITY",
+    "LINK_FOLLOW_ALIGNMENT", "LINK_TARGET_PARAMETERS", "LINK_TARGET_RECORDS", "LINK_STORE_PROVENANCE", "POINTER_STORE_LOCAL",
+    "LINK_RECORD_ONLY", "RECORD_EXTENT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -886,17 +890,20 @@ def _stored_provenance(e: E, stored, destination):
 
     def link_field():
         target = e.both(e.eq(e.value(PST, stored), e.value(PLT, destination)), e.eq(e.value(PREC, stored), e.value(PLR, destination)))
-        _require(e, e.both(current, e.eq(e.value(PK, stored), LINK), e.either(e.eq(e.value(PST, stored), NONE), target)))
+        link = e.both(current, e.eq(e.value(PK, stored), LINK))
+        _reject(e, e.both(link, e.either(e.eq(e.value(PST, stored), NONE), target)), M["LINK_STORE_PROVENANCE"], e.flag(link), e.value(PST, stored),
+                renderable=e.either(e.not_(link), e.eq(e.value(PST, stored), NONE), _renderable(e, e.value(PST, stored))))
 
     e.if_(e.ne(e.table(_T.LINK, e.value(PEL, destination)), 0), link_field,
-          lambda: _require(e, e.not_(e.both(current, e.eq(e.value(PK, stored), POINTER)))))
+          lambda: _reject(e, e.not_(e.both(current, e.eq(e.value(PK, stored), POINTER))), M["POINTER_STORE_LOCAL"], e.value(PST, stored),
+                          renderable=_renderable(e, e.value(PST, stored))))
 
 
 def _view_record(e: E, element, extent):
     """``view_record``: no link element; a record view spans whole records."""
-    _require(e, e.eq(e.table(_T.LINK, element), 0))
+    _reject(e, e.eq(e.table(_T.LINK, element), 0), M["LINK_RECORD_ONLY"], element)
     stride = _record_bytes(e, element)
-    _require(e, e.eq(_mod(e, extent, stride), 0))
+    _reject(e, e.eq(_mod(e, extent, stride), 0), M["RECORD_EXTENT"], stride, extent)
 
 
 def _stack_alloc(tables):
@@ -909,9 +916,9 @@ def _stack_alloc(tables):
         element, permission = e.table(_T.PELEM, pointer_type), e.table(_T.PPERM, pointer_type)
         _reject(e, e.le(e.table(_T.PALIGN, pointer_type), alignment), M["ALLOCATION_ALIGNMENT"], alignment, e.table(_T.PALIGN, pointer_type))
         _require(e, e.both(e.ne(e.table(_T.STACKOWNER, n.rtid(1)), 0), e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0)))
-        _view_record(e, element, extent)
         site = n.site
         _require(e, e.not_(e.both(e.ne(e.ld(_site_word(e, 0, site)), 0), e.not_(_ended(e, site)))))
+        _view_record(e, element, extent)  # after the re-allocation check, as the bootstrap orders them
         e.st(_site_word(e, 0, site), 1)
         e.st(_site_word(e, 1, site), 0)
         _set_pointer(e, n.base, {PK: POINTER, PST: site, PEL: element, PPERM: permission, POFF: 0, PEXT: extent, PALIGN: alignment, PALIAS: site, PWIN: 0, PREC: element, PLT: site, PLR: element})
@@ -2009,15 +2016,16 @@ def _link_make(tables):
     """``link_make``: a link names one whole record of its storage."""
     def build(e: E):
         n = _Node(e)
-        _require(e, n.shape(1, 1, 0))
+        _reject(e, n.shape(1, 1, 0), M["OP_CONTRACT"], n.no, n.nr, n.na)
         source = n.vid(0)
-        _pointer(e, source)
+        _pointer(e, source, exact=True)
         element = e.value(PEL, source)
         stride = _record_bytes(e, element)
-        _require(e, e.both(e.ne(stride, 0), e.eq(element, e.value(PREC, source))))
-        _require(e, e.both(e.eq(_mod(e, e.value(POFF, source), stride), 0), e.le(stride, e.value(PEXT, source)),
-                           e.either(e.eq(e.value(PWIN, source), 0), e.eq(_mod(e, e.value(PALIGN, source), stride), 0))))
-        _require(e, e.ne(e.table(_T.LINK, n.rtid(0)), 0))
+        _reject(e, e.both(e.ne(stride, 0), e.eq(element, e.value(PREC, source))), M["LINK_MAKE_RECORD"], element)
+        _reject(e, e.both(e.eq(_mod(e, e.value(POFF, source), stride), 0), e.le(stride, e.value(PEXT, source)),
+                          e.either(e.eq(e.value(PWIN, source), 0), e.eq(_mod(e, e.value(PALIGN, source), stride), 0))),
+                M["LINK_MAKE_START"], stride, e.value(POFF, source), e.value(PWIN, source), e.value(PALIGN, source))
+        _reject(e, e.ne(e.table(_T.LINK, n.rtid(0)), 0), M["LINK_MAKE_TYPE"], n.rtid(0))
         _link_fact(e, n.base, e.value(PST, source), e.value(PREC, source))
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
@@ -2027,21 +2035,27 @@ def _link_follow(tables):
     """``link_follow``: a non-null link of this storage reloads one record, with no range check."""
     def build(e: E):
         n = _Node(e)
-        _require(e, n.shape(2, 1, 0))
+        _reject(e, n.shape(2, 1, 0), M["OP_CONTRACT"], n.no, n.nr, n.na)
         view, link = n.vid(0), n.vid(1)
-        _pointer(e, view)
+        _pointer(e, view, exact=True)
         element_of_view = e.value(PEL, view)
         stride = _record_bytes(e, element_of_view)
-        _require(e, e.both(e.ne(stride, 0), e.eq(element_of_view, e.value(PREC, view)), e.eq(e.value(POFF, view), 0), e.eq(e.value(PWIN, view), 0)))
-        _require(e, e.both(e.eq(e.value(PSTAMP, link), e.hd(H_PASS)), e.eq(e.value(PK, link), LINK),
-                           e.eq(e.value(PST, link), e.value(PST, view)), e.eq(e.value(PREC, link), e.value(PREC, view))))
+        _reject(e, e.both(e.ne(stride, 0), e.eq(element_of_view, e.value(PREC, view)), e.eq(e.value(POFF, view), 0), e.eq(e.value(PWIN, view), 0)),
+                M["LINK_FOLLOW_ROOT"], e.value(POFF, view), e.value(PWIN, view))
+        link_fact = e.both(e.eq(e.value(PSTAMP, link), e.hd(H_PASS)), e.eq(e.value(PK, link), LINK))
+        _reject(e, e.both(link_fact, e.eq(e.value(PST, link), e.value(PST, view)), e.eq(e.value(PREC, link), e.value(PREC, view))),
+                M["LINK_FOLLOW_PROVENANCE"], e.value(PST, view), e.flag(link_fact), e.value(PST, link),
+                renderable=e.both(_renderable(e, e.value(PST, view)), e.either(e.not_(link_fact), e.eq(e.value(PST, link), NONE),
+                                                                           _renderable(e, e.value(PST, link)))))
         view_type, result_type = n.tid(0), n.rtid(0)
         _require(e, e.both(e.ne(e.table(_T.PTR, view_type), 0), e.ne(e.table(_T.PTR, result_type), 0)))
         element, permission, alignment = e.table(_T.PELEM, result_type), e.table(_T.PPERM, result_type), e.table(_T.PALIGN, result_type)
         record_alignment = e.and_(stride, e.sub(0, stride))  # the largest power of two dividing the stride
         actual = e.sel(e.lt(e.value(PALIGN, view), record_alignment), e.value(PALIGN, view), record_alignment)
-        _require(e, e.both(e.eq(e.table(_T.PSPACE, view_type), e.table(_T.PSPACE, result_type)), e.eq(element, element_of_view),
-                           e.eq(e.and_(permission, e.value(PPERM, view)), permission), e.le(alignment, actual)))
+        _reject(e, e.both(e.eq(e.table(_T.PSPACE, view_type), e.table(_T.PSPACE, result_type)), e.eq(element, element_of_view),
+                          e.eq(e.and_(permission, e.value(PPERM, view)), permission)),
+                M["LINK_FOLLOW_AUTHORITY"], element_of_view, e.value(PPERM, view), element, permission)
+        _reject(e, e.le(alignment, actual), M["LINK_FOLLOW_ALIGNMENT"], actual, alignment)
         fields = {word: e.value(word, view) for word in range(POINTER_WORDS)}
         fields.update({PEL: element, PPERM: permission, POFF: 0, PEXT: stride, PALIGN: actual, PWIN: e.sub(e.value(PEXT, view), stride)})
         _set_pointer(e, n.base, fields)
@@ -2054,17 +2068,17 @@ def _link_target(tables):
     def build(e: E):
         p = e.p
         n = _Node(e)
-        _require(e, n.shape(2, 0, 0))
+        _reject(e, n.shape(2, 0, 0), M["OP_CONTRACT"], n.no, n.nr, n.na)
         view, target = n.vid(0), n.vid(1)
-        _pointer(e, view)
-        _pointer(e, target)
+        _pointer(e, view, exact=True)
+        _pointer(e, target, exact=True)
         params_at = e.ld(_block_word(e, p["block"], B_PARAMS))
         base, count = e.rd(params_at), e.rd(e.add(params_at, 1))
         own = lambda value: e.both(e.eq(e.value(DEF, value), NONE), e.le(base, value), e.lt(value, e.add(base, count)))  # noqa: E731
         borrowed = lambda value: e.eq(e.rd(e.add(e.hd(H_KINDS), e.value(PST, value))), SITE_BORROWED)  # noqa: E731
-        _require(e, e.both(own(view), own(target), borrowed(view), borrowed(target)))
-        _require(e, e.both(e.ne(_has_link(e, e.value(PREC, view)), 0), e.ne(_record_bytes(e, e.value(PREC, target)), 0),
-                           e.eq(e.value(PLT, view), e.value(PST, target))))
+        _reject(e, e.both(own(view), own(target), borrowed(view), borrowed(target)), M["LINK_TARGET_PARAMETERS"], view, target)
+        _reject(e, e.both(e.ne(_has_link(e, e.value(PREC, view)), 0), e.ne(_record_bytes(e, e.value(PREC, target)), 0),
+                          e.eq(e.value(PLT, view), e.value(PST, target))), M["LINK_TARGET_RECORDS"], e.value(PREC, view), e.value(PREC, target))
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -3259,6 +3273,34 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.ATOMIC.CONTRACT", "ATOMIC-FENCE-EFFECT", "one matching effect frontier", [(cids[x],), (cids[y],)]
     if name == "ATOMIC_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "ATOMIC-INITIALIZED", [x, x + y], intervals(z)
+    if name == "LINK_MAKE_RECORD":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-MAKE-RECORD", "pointer to a storage record", h(x)
+    if name == "LINK_MAKE_START":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-MAKE-RECORD-START", f"record start (stride {x})", [y, z, w]
+    if name == "LINK_MAKE_TYPE":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-MAKE-TYPE", "link", h(x)
+    if name == "LINK_FOLLOW_ROOT":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-FOLLOW-ROOT-VIEW", "the storage's whole record view", [x, y]
+    if name == "LINK_FOLLOW_PROVENANCE":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-FOLLOW-PROVENANCE", storages[x], (None if z == NONE else storages[z]) if y else None
+    if name == "LINK_FOLLOW_AUTHORITY":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-FOLLOW-NO-AUTHORITY-GAIN", [h(x), y], [h(z), w]
+    if name == "LINK_FOLLOW_ALIGNMENT":
+        return "XAX.MEMORY.ALIGNMENT", "MEMORY-LINK-FOLLOW-ALIGNMENT", f"<= {x}", y
+    if name == "LINK_TARGET_PARAMETERS":
+        return ("XAX.MEMORY.LINK", "MEMORY-LINK-TARGET-DECLARATION", "two borrowed view parameters of the entry block",
+                [[refs[v].tag, refs[v].block, refs[v].index] for v in (x, y)])
+    if name == "LINK_TARGET_RECORDS":
+        return ("XAX.MEMORY.LINK", "MEMORY-LINK-TARGET-DECLARATION", "a link-bearing view and a record view",
+                [None if x == NONE else h(x), None if y == NONE else h(y)])
+    if name == "LINK_STORE_PROVENANCE":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-STORE-PROVENANCE", "null or a link into this storage", (None if y == NONE else storages[y]) if x else None
+    if name == "POINTER_STORE_LOCAL":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-POINTER-STORE-LOCAL-PROVENANCE", "provenance-free pointer", list(storages[x][:2])
+    if name == "LINK_RECORD_ONLY":
+        return "XAX.MEMORY.RECORD", "MEMORY-LINK-RECORD-ONLY", "record element with link fields", h(x)
+    if name == "RECORD_EXTENT":
+        return "XAX.MEMORY.RECORD", "MEMORY-RECORD-EXTENT", f"multiple of {x}", y
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":
