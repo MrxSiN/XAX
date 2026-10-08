@@ -31,6 +31,10 @@ The authoritative M14 closure target is `xax-semantic-image-v1`. Its XAX entry g
 
 *(Corrected 2026-10-06, ADR-177: B5/B6 are withdrawn for this target; the evidence now records the derived status below. Historical wording kept.)* Executed evidence in `compiler/bootstrap/m14_selfhost_evidence.json` records B2–B6 for that target: compiler root `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`; entry function `4300342f92f9ba32bcefbb45af4aad117a3bbf3699bd66266b25cefdc874b6fc`; generation 0/1/2 BLAKE3-256 `6340c903f5da3e8aaf4d8ae886694a0d858687fc5c5520662a018518693f4788`; and 4/4 fixed-policy function vectors matching. The committed 46,255-byte seed runtime reconstructs the compiler byte-identically with repository `PYTHONPATH` removed. It is an immutable bootstrap artifact that internally contains Python modules; B6 does not claim interpreter elimination or diverse-trust proof.
 
+## Replacement levels v3 — 2026-10-08 (ADR-207)
+
+R4 = leadership (≤ 0.9999× the fastest non-XAX median, significant); R5 = autonomous maintenance; R6 = XAX-only application. AI-token work is deferred: do not run token trials. JVM is R4, Android is R3. Next task is U2 (`XAX_IMPLEMENTATION_ROADMAP.md`): re-run the Linux workloads with raw samples (U2.1), then optimize toward ≤ 0.9999× (U2.2), then the Android re-run with a Kotlin arm (U2.3). Items in "Exact next task" that cite the 1.05× target or the token gate are superseded by this section.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.
