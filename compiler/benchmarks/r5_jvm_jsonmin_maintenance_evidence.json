@@ -6,7 +6,7 @@
     "name": "jsonmin",
     "platform_row": "jvm",
     "target": "7c47ed4321a4072e452ebba3b27cea1cc97cce467fa4b838e4cfa7980dae83b1",
-    "original_root": "dcab605a196f3cb4c44e0d0469a7aa1df8a3137a0e778b82f10400b265e2c84e"
+    "original_root": "3e3cdfdec985f7ca1e7d4b9e4563eeef67c304639f5aa4c45ccfbf0f35d06363"
   },
   "request": "Accept JSON nested up to 1024 levels instead of 512; everything else unchanged.",
   "agent": {
@@ -15,7 +15,7 @@
     "author": "Claude (AI coding agent), Claude Code session of 2026-10-08, after reading the projection excerpt below",
     "projection_excerpt": [
       "N3 constant 512 -> (T2)",
-      "N4 int.compare P0 N3 -> (T7) attributes=(5,)"
+      "N4 int.compare P0 N3 -> (T8) attributes=(5,)"
     ],
     "replayed_by": "this harness, deterministically against the pinned original root"
   },
@@ -23,10 +23,6 @@
     {
       "query": "callees",
       "response_bytes": 182
-    },
-    {
-      "query": "callees",
-      "response_bytes": 66
     },
     {
       "query": "callees",
@@ -45,20 +41,16 @@
       "response_bytes": 66
     },
     {
-      "query": "function_nodes",
-      "response_bytes": 28642
+      "query": "callees",
+      "response_bytes": 66
     },
     {
       "query": "function_nodes",
-      "response_bytes": 3416
+      "response_bytes": 28646
     },
     {
       "query": "function_nodes",
       "response_bytes": 11935
-    },
-    {
-      "query": "function_nodes",
-      "response_bytes": 34558
     },
     {
       "query": "function_nodes",
@@ -69,6 +61,14 @@
       "response_bytes": 31586
     },
     {
+      "query": "function_nodes",
+      "response_bytes": 34558
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 3416
+    },
+    {
       "query": "projection",
       "response_bytes": 6926
     }
@@ -77,33 +77,33 @@
     "generation_before": 0,
     "generation_after": 1,
     "committed": true,
-    "new_root": "44f303d1895696feabceddc13a87abf1156c67e837d8fe90d0123c2abd9ead7c",
+    "new_root": "fbe1f0ad82674522cf42337a44e3dc1ce37fcf7d8fdc5bbdf1f6a53286e5d3b9",
     "changed_entities": [
-      "b7f9922405c09bbba453970367f46498ce04492788a6cd7ef3c1d14fdbd831a7"
+      "083c26ad321ab15238e1bee580da8b9d4df79df783ef0cf6fb7cc6696d6d2c78"
     ],
     "transaction_bytes": 19,
     "touched_objects": 8,
     "reused_objects": 119,
     "verified_objects": 8,
-    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.8', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.9', change='added', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.10', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative')), truncated=False, continuation=None)",
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.8', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.9', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.10', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative')), truncated=False, continuation=None)",
     "whole_source_regenerated": false
   },
   "workspace_accounting": {
     "queries": 91,
     "entities_exposed": 1185,
-    "query_bytes": 148033,
+    "query_bytes": 148037,
     "mutations": 1,
     "rejected_transactions": 0
   },
   "rebuild": {
     "before": {
-      "jar_sha256": "706b0bc3b0af1cfd5003a63293b453357d7e30ebc335d754fd2e67b6d995404a",
+      "jar_sha256": "e7a3d935900dd4f8cb296da7959512121391429d836136102d8d0c46a9233372",
       "class_bytes": 5603
     },
     "after": {
-      "jar_sha256": "9a8956b2bfd97d2cb5a3ba8faab120b627219ae899a0a5bc0258917c10d7aa07",
+      "jar_sha256": "0ac8987ee2746697abfc5b02f47b70464777698ca9dd27f1306b10ee0785cedd",
       "class_bytes": 5603,
-      "entry_function": "9de1fe9be931a6bf17bcfa2fc9d3d5b82da64355b2def6bfce09ea481378598b"
+      "entry_function": "01e39f90ca415ad29f29ecef5d720b9e44eb4dc8c6b3d07522ed3c45e8629039"
     }
   },
   "tests": {
@@ -235,52 +235,52 @@
     "results": {
       "before": {
         "wall_seconds_samples": [
-          0.105139,
-          0.088899,
-          0.100459,
-          0.097475,
-          0.105439,
-          0.104614,
-          0.09505,
-          0.09237,
-          0.104364,
-          0.111257,
-          0.094479,
-          0.097237,
-          0.10313,
-          0.102511,
-          0.101788
+          0.116386,
+          0.119863,
+          0.099401,
+          0.107394,
+          0.103158,
+          0.112581,
+          0.106487,
+          0.101472,
+          0.103356,
+          0.11384,
+          0.111644,
+          0.122922,
+          0.123202,
+          0.121872,
+          0.112088
         ],
-        "wall_seconds_median": 0.101788
+        "wall_seconds_median": 0.112088
       },
       "after": {
         "wall_seconds_samples": [
-          0.104386,
-          0.094478,
-          0.107737,
-          0.096542,
-          0.107779,
-          0.094697,
-          0.105287,
-          0.08597,
-          0.094236,
-          0.109494,
-          0.108234,
-          0.096866,
-          0.10663,
-          0.101581,
-          0.118672
+          0.107734,
+          0.104686,
+          0.111196,
+          0.110592,
+          0.100758,
+          0.111865,
+          0.118597,
+          0.107282,
+          0.099524,
+          0.103649,
+          0.102952,
+          0.10142,
+          0.115835,
+          0.117338,
+          0.123468
         ],
-        "wall_seconds_median": 0.104386
+        "wall_seconds_median": 0.107734
       }
     },
-    "after_over_before_median": 1.025524
+    "after_over_before_median": 0.961156
   },
   "persisted": {
     "store": "jsonmin-jvm-gen1.xax (canonical workspace save)",
-    "store_sha256": "ceeec61a19a3921a64835343daf866b6a102680778fba702a5508ad851d4caca",
-    "store_bytes": 47617,
-    "root": "44f303d1895696feabceddc13a87abf1156c67e837d8fe90d0123c2abd9ead7c"
+    "store_sha256": "b56a37073173bb9333497a213aae39b61860104ca597abe7282da2a0f8056d0c",
+    "store_bytes": 47608,
+    "root": "fbe1f0ad82674522cf42337a44e3dc1ce37fcf7d8fdc5bbdf1f6a53286e5d3b9"
   },
   "host": {
     "machine": "x86_64",

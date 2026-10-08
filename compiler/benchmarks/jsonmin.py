@@ -50,7 +50,7 @@ from xax_structured import B1, B8, B32, B64, Proc
 CAPACITY = 16 << 20
 MAX_DEPTH = 512
 EXIT_OK, EXIT_INVALID, EXIT_TOO_LARGE = 0, 1, 2
-CHUNK = 65536
+CHUNK = 1 << 20  # read window; the C twin requests the whole remaining capacity
 MESSAGE = b"jsonmin: invalid JSON at byte "
 ERROR = 0xFFFFFFFF  # high half of a failed state
 

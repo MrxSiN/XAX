@@ -355,8 +355,8 @@
     {
       "id": "linux-x86_64",
       "name": "x86-64 Linux",
-      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Re-run after ADR-211 (next-iteration prefetch, edge sinking): filestat 0.896x clang and chains 0.943x rustc lead significantly; jsonmin's unchanged binary measured 1.029x clang (0.968x in the ADR-208 run), so its lead is inside run-to-run variation and R4 is withheld. R6 evidence exists (xb64, ADR-210) but levels are cumulative, so the row stays R3 until R4 and R5 hold.",
-      "level": "R3",
+      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. R4 (ADR-212 run): filestat 0.852x and jsonmin 0.959x clang -O2, chains 0.911x rustc -O3, all significant on one shared host; jsonmin's margin is small (an earlier binary measured 0.968x and 1.029x in two runs). R6 evidence exists (xb64, ADR-210); R5 needs an executed maintenance record for this row.",
+      "level": "R4",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
         "semantic_expressibility": [
@@ -449,13 +449,13 @@
         ]
       },
       "blockers": [
-        "R4 (ADR-211 run, one shared 4-vCPU Xeon host, 31 interleaved runs per arm): filestat 0.896075x clang -O2 (p=2.5e-5) and chains (xax-soa) 0.943346x rustc -O3 (p=0.019) lead; jsonmin is 1.029472x clang -O2 (p=0.63) with a byte-identical binary that measured 0.967682x in the ADR-208 run, so its margin is within this host's run-to-run variation and needs a larger real advantage. jsonmin's stripped binary is 1.21x clang's (17,615 vs 14,552 bytes). Float/aggregate functions still fall back to the older paths (OI-38)",
+        "R4 scope (ADR-212 run, one shared 4-vCPU Xeon host, 31 interleaved runs per arm): filestat 0.851851x clang -O2 (p=3.4e-7), jsonmin 0.959479x clang -O2 (p=0.031), chains (xax-soa) 0.911278x rustc -O3 (p=0.0094). jsonmin's lead is small: its previous binary measured 0.967682x and 1.029472x in two runs (§15.30, §15.32), so a re-run on another host may withhold R4 again. jsonmin's stripped binary is 1.21x clang's (17,616 vs 14,552 bytes). Float/aggregate functions still fall back to the older paths (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
         "jsonmin writes its output with one write call (no partial-write loop)",
         "R5/R6: xb64 (ADR-210) is a complete XAX-only application with XAX tests, canonical build definitions, two reproducible releases, and one XAX-only maintenance cycle; it counts once R4 (chains) and an executed R5 benchmark-inclusive maintenance record exist for this row"
       ],
       "competitive": [
-        false,
+        true,
         "compiler/benchmarks/u1_linux_filestat_evidence.json",
         "compiler/benchmarks/oi37_chains_evidence.json",
         "compiler/benchmarks/jsonmin_evidence.json"
@@ -597,7 +597,7 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.884x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (re-run after ADR-208's program change). R5 for one maintenance cycle (ADR-209): an AI agent raised jsonmin's depth limit through one semantic transaction, then the JAR was rebuilt, tested, benchmarked, and the store committed. The former AI-token trials are historical (ADR-207).",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.865x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (re-run after ADR-212). R5 for one maintenance cycle (ADR-209): an AI agent raised jsonmin's depth limit through one semantic transaction, then the JAR was rebuilt, tested, benchmarked, and the store committed. The former AI-token trials are historical (ADR-207).",
       "level": "R5",
       "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
