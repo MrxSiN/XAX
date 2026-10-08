@@ -3,6 +3,9 @@
 Same minimal client, model, calibration and accounting as response-v12
 (`run_jvm_r5_response`). Every arm gets its whole context inline, in one
 request per response, and no tools.
+
+Profile v6 (ADR-201): the XAX arm holds the shared edit grammar (ADR-200) in
+its client base instructions and receives no per-request edit help.
 """
 from __future__ import annotations
 
@@ -18,23 +21,32 @@ from pathlib import Path
 from benchmarks import run_jvm_r5_response as base
 from benchmarks.jvm_r5_multifile import ARMS, TEXTUAL, XaxTrial, apply_multi_patch, check_textual, sources, task, tasks, textual_context
 from benchmarks.jvm_r5_response import unwrap_response
+from xax_local_protocol import edit_grammar, edit_grammar_id
 
 HERE = Path(__file__).resolve().parent
-RESULTS = HERE / "ai_native/jvm-r5-multifile-v5-results.csv"
-RUNS = HERE / "ai_native/runs-jvm-r5-multifile-v5"
+RESULTS = HERE / "ai_native/jvm-r5-multifile-v6-results.csv"
+RUNS = HERE / "ai_native/runs-jvm-r5-multifile-v6"
 SOURCES = (*base.SOURCES, "compiler/benchmarks/jvm_r5_multifile.py", "compiler/benchmarks/run_jvm_r5_multifile.py")
 FIELDS = base.FIELDS
+# Shared context of the XAX arm: sent as base instructions on every request,
+# where the client may cache it, never inside the per-request prompt.
+XAX_BASE = base.BASE + "\n\n" + edit_grammar()
+XAX_CALIBRATION = "calibration-xax"
+LIMITS = ["Generated projects: helper chains are synthetic; three task families.",
+          "The gate counts the XAX shared grammar in every request (its recorded input tokens). The informational ratios "
+          "count it once per attempt or not at all; they bracket the owner's accounting decision and never set the status."]
 
 
 def manifest():
     current = base.manifest()
-    current.update(format="xax-jvm-r5-multifile-v5", required_cells=len(tasks()) * len(ARMS) * 3,
+    current.update(format="xax-jvm-r5-multifile-v6", xax_base_instructions=XAX_BASE, shared_grammar_id=edit_grammar_id(), required_cells=len(tasks()) * len(ARMS) * 3,
                    sources={name: base.digest((base.REPO / name).read_bytes()) for name in SOURCES},
                    method=("Multi-file projects generated from one spec per task. XAX receives the target and its transitive callers "
                            "from the workspace callers query. Textual workflows per language: whole files containing that call hierarchy, "
                            "or an IDE-style excerpt of exactly its methods. All context is inline, one request per response, no tools. "
-                           "The gate compares XAX with the lowest textual median after removing the calibrated client floor."))
-    current["limits"] = current["limits"] + ["Generated projects: helper chains are synthetic; three task families."]
+                           "The gate compares XAX with the lowest textual median after removing the calibrated client floor. "
+                           "XAX holds the shared edit grammar in its base instructions and gets no per-request edit help."))
+    current["limits"] = current["limits"] + LIMITS
     return current
 
 
@@ -83,7 +95,8 @@ def run_cell(results, runs, profile, settings, task_id, arm, trial, max_response
     events, traces, failures, transmitted, contexts = [], [], [], 0, []
     passed, complete, reason = False, True, ""
     for round_index in range(1, max_responses + 1):
-        code, new_events, response, trace, count, context = base._model(workspace, prompt, round_index)
+        code, new_events, response, trace, count, context = base._model(workspace, prompt, round_index,
+                                                                        base=XAX_BASE if semantic else None)
         contexts.append(context)
         events.extend(new_events)
         traces.append(trace)
@@ -154,6 +167,9 @@ def summarize(results, runs, repetitions=3):
     rows = _rows(results)
     calibration = json.loads((runs / "calibration.json").read_text(encoding="utf-8"))
     floor = calibration["client_floor_input_tokens"]
+    shared = runs / f"{XAX_CALIBRATION}.json"
+    # Grammar cost per request: the XAX floor minus the common floor.
+    grammar = json.loads(shared.read_text(encoding="utf-8"))["client_floor_input_tokens"] - floor if shared.exists() else None
     cells = {}
     for row in rows:
         cells.setdefault((row["task_id"], row["arm"], int(row["trial"])), []).append(row)
@@ -165,6 +181,14 @@ def summarize(results, runs, repetitions=3):
         raw[key[1]].append(sum(int(r["total_tokens"] or 0) for r in group))
         adjusted[key[1]].append(sum(int(r["total_tokens"] or 0) - floor * int(r["response_count"] or 0) for r in group))
     medians = {arm: statistics.median(v) if v else None for arm, v in adjusted.items()}
+    def xax_ratio(per_attempt):
+        """XAX median with the grammar removed from all but `per_attempt` requests per attempt."""
+        if grammar is None or not textual:
+            return None
+        values = [sum(int(r["total_tokens"] or 0) - (floor + grammar) * int(r["response_count"] or 0)
+                      + grammar * min(per_attempt, int(r["response_count"] or 0)) for r in cells[key])
+                  for key in successes if key[1] == "XAX"]
+        return statistics.median(values) / textual[lowest] if values else None
     raw_medians = {arm: statistics.median(v) if v else None for arm, v in raw.items()}
     textual = {arm: medians[arm] for arm in TEXTUAL if medians[arm]}
     lowest = min(textual, key=textual.get) if textual else None
@@ -180,14 +204,16 @@ def summarize(results, runs, repetitions=3):
     return {"format": "xax-jvm-r5-multifile-evidence-v1", "status": status, "model": base.MODEL, "reasoning": base.REASONING,
             "attempts": len(rows), "successful_cells": len(successes & expected), "required_cells": len(expected),
             "complete": complete, "accounting_complete": accounting, "profile_sha256": sorted(profiles),
-            "client_floor_input_tokens": floor,
+            "client_floor_input_tokens": floor, "shared_grammar_input_tokens_per_request": grammar,
             "task_token_medians_excluding_client_floor": medians, "successful_task_medians_including_retries": raw_medians,
             "lowest_textual_arm": lowest, "xax_ratio_vs_lowest_textual_median": ratio, "raw_xax_ratio_vs_lowest_textual_median": raw_ratio,
+            "informational_xax_ratio_grammar_once_per_attempt": xax_ratio(1),
+            "informational_xax_ratio_grammar_excluded": xax_ratio(0),
             "r5_threshold": base.R5_TARGET, "r5_acceptance_threshold": base.R5_ACCEPTANCE,
             "total_recorded_tokens_by_arm": {arm: sum(int(r["total_tokens"] or 0) for r in rows if r["arm"] == arm) for arm in ARMS},
             "failed_attempts_by_arm": {arm: sum(r["pass"] != "TRUE" for r in rows if r["arm"] == arm) for arm in ARMS},
             "source_csv": results.name, "source_sha256": base.digest(results.read_bytes()) if results.exists() else None,
-            "limits": manifest()["limits"]}
+            "limits": LIMITS}
 
 
 def main(argv=None):
@@ -203,6 +229,7 @@ def main(argv=None):
         return 0
     profile, settings = pin_profile(runs)
     base.calibrate(runs)
+    base.calibrate(runs, base=XAX_BASE, name=XAX_CALIBRATION)
     completed = {(r["task_id"], r["arm"], int(r["trial"])) for r in _rows(results) if r["pass"] == "TRUE"}
     for cell in schedule(args.repetitions):
         if cell in completed:

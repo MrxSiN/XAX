@@ -23,7 +23,7 @@ from benchmarks.jvm_r5_response import _apply_context_patch, unwrap_response
 from xax_compiler import (IntCompare, Kind, Operation, StoreReader, bits_type, jvm_classfile_target,
                           object_with_refs, verify_store, write_store)
 from xax_graph_builder import GraphBuilder
-from xax_local_protocol import LocalMutationSession
+from xax_local_protocol import LocalMutationSession, edit_grammar_id
 from xax_workspace import Workspace
 
 ARMS = ("JAVA", "JAVA-EXCERPT", "KOTLIN", "KOTLIN-EXCERPT", "XAX")
@@ -387,7 +387,7 @@ class XaxTrial:
         view = self.session.view(functions=tuple(self.selected))
         self.entities += self.session.last_view_entities
         return (self.item.prompt + "\nSnapshot:\n" + view +
-                "\nReturn only the edits. No tools.\n" + self.session.instructions())
+                "\nReturn only the edits, in the shared edit grammar. No tools." + self.session.instructions(shared=edit_grammar_id()))
 
     def apply(self, response):
         result = self.session.commit(unwrap_response(response))

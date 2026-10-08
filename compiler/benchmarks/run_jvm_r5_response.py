@@ -72,18 +72,19 @@ def manifest():
                        "unexpected_context_commands flags commands whose named files need manual context review."]}
 
 
-def calibrate(runs, samples=3):
+def calibrate(runs, samples=3, *, base=None, name="calibration"):
     """Measure the fixed per-request client floor F: the input tokens of a
     request whose user prompt is a single character, under the same flags,
-    model and instructions. Every sample must agree; the result is pinned."""
-    path = runs / "calibration.json"
+    model and instructions. Every sample must agree; the result is pinned.
+    `base` overrides the base instructions (ADR-200: an arm's shared context)."""
+    path = runs / f"{name}.json"
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     values, traces = [], []
     for index in range(samples):
-        workspace = runs / "calibration" / str(index)
+        workspace = runs / name / str(index)
         workspace.mkdir(parents=True)
-        code, events, _response, trace, _count, _context = _model(workspace, CALIBRATION_PROMPT, 1)
+        code, events, _response, trace, _count, _context = _model(workspace, CALIBRATION_PROMPT, 1, base=base)
         usage = accounting.aggregate_usage(events)
         if code or not usage:
             raise ValueError("calibration request failed; inspect " + str(trace))
@@ -92,7 +93,7 @@ def calibrate(runs, samples=3):
     if len(set(values)) != 1:
         raise ValueError(f"client floor is not stable: {values}")
     result = {"client_floor_input_tokens": values[0], "samples": values, "trace_sha256": traces,
-              "prompt": CALIBRATION_PROMPT, "model": MODEL, "reasoning": REASONING}
+              "prompt": CALIBRATION_PROMPT, "model": MODEL, "reasoning": REASONING, "base_instructions_sha256": digest((base or BASE).encode())}
     path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     return result
 
@@ -141,7 +142,7 @@ def _context(item, path):
     return text
 
 
-def _model(workspace, prompt, round_index):
+def _model(workspace, prompt, round_index, *, base=None):
     trace = workspace / f"model-events-{round_index}.jsonl"
     stderr = workspace / f"model-stderr-{round_index}.txt"
     command = [shutil.which("codex") or "codex", "exec", *CLIENT_FLAGS, "--ignore-user-config", "--ignore-rules", "--skip-git-repo-check",
@@ -150,7 +151,7 @@ def _model(workspace, prompt, round_index):
                "-c", f'developer_instructions={json.dumps(DEVELOPER)}',
                "-c", f'model_instructions_file={json.dumps((workspace / "base-instructions.txt").as_posix())}',
                "-C", str(workspace), "--json", prompt]
-    (workspace / "base-instructions.txt").write_text(BASE, encoding="utf-8")
+    (workspace / "base-instructions.txt").write_text(base or BASE, encoding="utf-8")
     environment = dict(os.environ)
     environment["PATH"] = str(Path(sys.executable).parent) + os.pathsep + environment.get("PATH", "")
     (workspace / f"request-{round_index}.json").write_text(json.dumps({"prompt": prompt, "model": MODEL,
