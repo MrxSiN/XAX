@@ -88,6 +88,7 @@ NOT_COVERED, PROVEN, NOT_PROVEN = 0, 1, 2
 # S8c.1 (ADR-214): XAX rejects the node; its diagnostic record is the four words at DIAGNOSTICS + 4 * node.
 REJECTED = 3
 DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
+PASS_NODES_AT = DIAGNOSTICS - 1  # the node stream position, for the rejection pass (ADR-218)
 # Rejection sites, in each family's bootstrap check order: (code, rule) and the record's payload meaning.
 (SITE_NONE, SITE_OP_ARITY, SITE_OP_TYPE, SITE_INT_WIDTH_CONTRACT, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS,
  SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT,
@@ -103,6 +104,10 @@ DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
  # S8c.4 (ADR-217): meta operations; META-OP-ARITY has one site per operation (its expected counts), from SITE_META_ARITY.
  SITE_META_OPERAND_TYPE, SITE_META_RESULT_TYPE, SITE_META_VERIFY_RESULT, SITE_META_TARGET_SUPPORT_RESULT, SITE_META_TARGET_OPERATION,
  SITE_META_ARITY) = range(46)
+# S8c.5 (ADR-218): resource and effect operations, after the per-operation META-OP-ARITY sites.
+(SITE_RES_NO_ATTRIBUTES, SITE_RES_STEP_MATCH, SITE_RES_EXPECT_EFFECT, SITE_RES_EFFECT_UNIQUE, SITE_RES_COUNTS, SITE_RES_CONTINUATION,
+ SITE_RES_EXPECT_RESOURCE, SITE_RES_ACQUIRE_ALLOWED, SITE_RES_RELEASE_ALLOWED, SITE_RES_DISCARD_ALLOWED, SITE_RES_JOIN_MATCH,
+ SITE_RES_JOIN_PARTITIONABLE, SITE_RES_TRANSFER_SAME, SITE_RES_TRANSITION, SITE_RES_SPLIT) = range(SITE_META_ARITY + 14, SITE_META_ARITY + 29)
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
@@ -156,7 +161,7 @@ META_RULES = {
 # S8c.2: the families whose rejections XAX decides; the rest stay NOT_PROVEN for the bootstrap.
 DECIDED_FAMILIES = frozenset({*INTEGER_FAMILIES, *FLOAT_BINARY, Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE,
                               Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.SUM_GET,
-                              *META_RULES})
+                              *META_RULES, *RESOURCE_COUNTS, Operation.EFFECT_STEP})
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
      Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES,
@@ -261,6 +266,7 @@ class _Typing:
 
 
 _ENGINE: list = []
+_PASS: list = []
 
 
 def build_typing_program() -> tuple[StoreReader, SemanticObject]:
@@ -268,6 +274,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
 
     engine, engine_objects = build_engine()
     _ENGINE[:] = [engine, engine_objects]
+    _PASS[:] = build_rejection_pass()
     b = _Builder(IN_EXTENT, OUT_EXTENT)
     count = b.read(b.c(0))
     t = _Typing(b, count)
@@ -286,10 +293,17 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(b.mul(nodes, 4), DIAGNOSTICS), TABLE), b.defer_block)
     blocks_at, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
+    # S8c (ADR-218): the rejection pass, a separate function.
+    b.put(b.c(PASS_NODES_AT), nodes_at)
+    in_view, in_mem, out_view, out_mem = b.state
+    triples = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
+    _status, _inp, in_view, in_mem, _out, out_view, out_mem = b.cur.op(
+        Operation.CALL_DIRECT, (b.inp, in_view, in_mem, b.out, out_view, out_mem), (B64, *triples), entity=_PASS[0])
+    b.state = (in_view, in_mem, out_view, out_mem)
     # S4d.1: terminator typing, one verdict per block after the node verdicts.
     blocks = b.read(blocks_at)
     places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
-    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 3), DIAGNOSTICS), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 4), DIAGNOSTICS), b.defer_block)
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
@@ -318,7 +332,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
         b.cur.ret(b.inp, in_view, in_mem, b.out, out_view, out_mem)
     triples = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
     function = b.g.function(triples, triples)
-    return program_store(function, x86_64_linux_exec_target(), (*b.g.objects.values(), *engine_objects)), function
+    return program_store(function, x86_64_linux_exec_target(), (*b.g.objects.values(), *engine_objects, *_PASS[1])), function
 
 
 def _value_element(t: _Typing, element):
@@ -832,19 +846,66 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
-    site, payload = _rejection(b, t, operation, shape, (operands, results, attributes), attribute, kind_in, result, first, second,
-                               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids)
-    rejected = t.all(t.not_(ok), t.nonzero(site))
-    verdict = b.add(b.add(covered, b.sub(covered, ok)), rejected)  # 0 outside, 1 proven, 2 not proven, 3 rejected
+    verdict = b.add(covered, b.sub(covered, ok))  # 0 outside, 1 proven, 2 not proven (the rejection pass may make it 3)
     b.put(b.add(b.c(2), index), verdict)
-    record = b.add(b.c(DIAGNOSTICS), b.mul(index, 4))
-    for k, word in enumerate((b.mul(rejected, site), *payload)):
-        b.put(b.add(record, k), word)
     return b.add(extra_at, extra), b.add(proven, ok)
 
 
+def build_rejection_pass():
+    """S8c (ADR-218): the rejection pass, its own XAX function so the typing program's main function stays within the
+    XAX backends' per-function arena.  After the node verdicts, it walks the node stream again and turns each
+    NOT_PROVEN node whose first failing bootstrap check it identifies into REJECTED with its diagnostic record.
+    It reads the node stream position from ``PASS_NODES_AT``."""
+    b = _Builder(IN_EXTENT, OUT_EXTENT)
+    t = _Typing(b, b.read(b.c(0)))
+    nodes_at = b.get(b.c(PASS_NODES_AT))
+    nodes = b.read(nodes_at)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.mul(nodes, 4), DIAGNOSTICS), TABLE), b.defer_block)  # main checked it too
+    b.for_range(b.c(0), nodes, lambda index, carried: _rejection_entry(b, t, index, carried), (b.add(nodes_at, 1),))
+    for block in (None, b.reject_block, b.defer_block):  # neither failure happens here: main read the same words
+        if block is not None:
+            b.enter(block)
+        in_view, in_mem, out_view, out_mem = b.state
+        b.cur.ret(b.c(0), b.inp, in_view, in_mem, b.out, out_view, out_mem)
+    # The facts engine's signature: a status word, then the views (the backends lower calls of this shape).
+    triples = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
+    return b.g.function(triples, (B64, *triples)), tuple(b.g.objects.values())
+
+
+def _rejection_entry(b: _Builder, t: _Typing, index, carried):
+    """One node of the rejection pass: the same fields ``_node_entry`` reads, then ``_rejection``."""
+    (position,) = carried
+    operation, operands, results, attributes, attribute, extra = (b.read(b.add(position, k)) for k in range(6))
+    ids = b.add(position, 6)
+    extra_at = b.add(ids, b.add(operands, results))
+    first, second, result = b.read(ids), b.read(b.add(ids, 1)), b.read(b.add(ids, operands))
+    width, first_width = t.lookup(WIDTH, result), t.lookup(WIDTH, first)
+    is_bits, first_bits = t.nonzero(width), t.nonzero(first_width)
+    is_float, first_float = t.nonzero(t.lookup(FORMAT, result)), t.nonzero(t.lookup(FORMAT, first))
+
+    def shape(count_in: int, count_out: int, count_attributes: int):
+        return t.all(t.eq(operands, count_in), t.eq(results, count_out), t.eq(attributes, count_attributes))
+
+    kind_in = lambda limit: t.all(t.le(b.c(1), attribute), t.le(attribute, limit))  # noqa: E731
+    verdict_at = b.add(b.c(2), index)
+    verdict = b.get(verdict_at)
+    ok = t.eq(verdict, PROVEN)
+    # sum.tag: the bit length of (variant count - 1), as ``_node_entry`` computes it.
+    _rest, needed = b.loop((b.sub(t.lookup(COUNT, first), 1), b.c(0)), lambda v: b.cmp(IntCompare.NE, v[0], 0),
+                           lambda v: (b.op(Operation.UDIV, v[0], 2), b.add(v[1], 1)))
+    site, payload = _rejection(b, t, operation, shape, (operands, results, attributes), attribute, kind_in, result, first, second,
+                               width, first_width, is_bits, first_bits, is_float, first_float, t.lookup(LINK, first), ok, position, needed,
+                               ids, extra_at)
+    rejected = t.all(t.eq(verdict, NOT_PROVEN), t.nonzero(site))
+    b.put(verdict_at, b.add(verdict, rejected))
+    record = b.add(b.c(DIAGNOSTICS), b.mul(index, 4))
+    for k, word in enumerate((b.mul(rejected, site), *payload)):
+        b.put(b.add(record, k), word)
+    return (b.add(extra_at, extra),)
+
+
 def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kind_in, result, first, second,
-               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids):
+               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids, extra_at):
     """S8c.1/S8c.2: the site and payload of the bootstrap's first failing typing check for a scalar-family node.
 
     Each family lists its checks in the bootstrap's order.  A step with site 0 leaves the node to the bootstrap:
@@ -946,6 +1007,7 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
             (clamped, *none),
             (t.not_(ok), SITE_SUM_GET_VARIANT, (first, attribute, result)),
         )),
+        *((is_(member), _resource_steps(b, t, member, counts, attribute, ids, position, ok, clamped, none)) for member in (*RESOURCE_COUNTS, Operation.EFFECT_STEP)),
         *((is_(meta), _meta_steps(b, t, index_, meta, counts, attribute, ids, result, width, is_bits, clamped, none))
           for index_, meta in enumerate(META_RULES)),
         (is_(Operation.INT_COMPARE), (
@@ -1000,6 +1062,62 @@ def _meta_steps(b: _Builder, t: _Typing, index, meta, counts, attribute, ids, re
     return tuple(steps)
 
 
+def _resource_steps(b: _Builder, t: _Typing, operation, counts, attribute, ids, position, ok, clamped, none):
+    """S8c.5: ``_verify_resource_effect_node``'s checks in order.  ``effect(cid)`` and ``resource(cid)`` reject a type
+    whose body does not start with form 3 or 4; a type of that form the program did not decode defers."""
+    operands, results, attributes = counts
+    zero = b.c(0)
+    operand = lambda k: b.read(b.add(ids, k))  # noqa: E731
+    result = lambda k: b.read(b.add(b.add(ids, operands), k))  # noqa: E731
+    flagged = lambda value, bit: t.nonzero(b.op(Operation.BIT_AND, t.lookup(RFLAGS, value), bit))  # noqa: E731
+
+    def proof(value, form, table, site):
+        return [(t.not_(t.eq(t.lookup(FORMB, value), form)), site, (value, zero, zero)), (t.not_(t.nonzero(t.lookup(table, value))), *none)]
+
+    effect = lambda value: proof(value, 3, EFFECT, SITE_RES_EXPECT_EFFECT)  # noqa: E731
+    resource = lambda value: proof(value, 4, RESOURCE, SITE_RES_EXPECT_RESOURCE)  # noqa: E731
+    # Attributes: the record quotes the whole tuple, so only a single unclamped attribute is decided.
+    steps = [(t.all(t.nonzero(attributes), t.any(t.not_(t.eq(attributes, 1)), clamped)), *none),
+             (t.nonzero(attributes), SITE_RES_NO_ATTRIBUTES, (attribute, zero, zero))]
+    if operation == Operation.EFFECT_STEP:
+        paired = t.all(t.nonzero(operands), t.eq(operands, results))
+        (matching,) = b.for_range(zero, b.mul(paired, operands), lambda k, c: (t.all(c[0], t.eq(operand(k), result(k))),), (paired,))
+
+        def first_bad(k, carried):
+            found, form_bad, at = carried
+            value = operand(k)
+            bad = t.any(t.not_(t.eq(t.lookup(FORMB, value), 3)), t.not_(t.nonzero(t.lookup(EFFECT, value))))
+            fresh = t.all(t.not_(found), bad)
+            return (t.any(found, bad), t.pick(fresh, t.not_(t.eq(t.lookup(FORMB, value), 3)), form_bad), t.pick(fresh, value, at))
+
+        found, form_bad, at = b.for_range(zero, operands, first_bad, (zero, zero, zero))
+        return (*steps, (t.not_(matching), SITE_RES_STEP_MATCH, (position, zero, zero)),
+                (t.all(found, t.not_(form_bad)), *none), (found, SITE_RES_EXPECT_EFFECT, (at, zero, zero)),
+                (t.not_(ok), SITE_RES_EFFECT_UNIQUE, (position, zero, zero)))
+    count_in, count_out = RESOURCE_COUNTS[operation]
+    steps.append((t.not_(t.all(t.eq(operands, count_in), t.eq(results, count_out))), SITE_RES_COUNTS, (operands, results, b.c(int(operation)))))
+    last_in, last_out = operand(count_in - 1), result(count_out - 1)
+    steps += [*effect(last_in), (t.not_(t.eq(last_in, last_out)), SITE_RES_CONTINUATION, (last_in, last_out, zero))]
+    if operation == Operation.RESOURCE_ACQUIRE:
+        return (*steps, *resource(result(0)), (t.not_(flagged(result(0), ACQUIRABLE)), SITE_RES_ACQUIRE_ALLOWED, (zero,) * 3))
+    source = operand(0)
+    steps += resource(source)
+    if operation == Operation.RESOURCE_RELEASE:
+        steps.append((t.not_(flagged(source, RELEASABLE)), SITE_RES_RELEASE_ALLOWED, (source, zero, zero)))
+    elif operation == Operation.RESOURCE_DISCARD:
+        steps.append((t.not_(flagged(source, AFFINE)), SITE_RES_DISCARD_ALLOWED, (source, zero, zero)))
+    elif operation == Operation.RESOURCE_JOIN:
+        steps += [(t.not_(t.all(t.eq(operand(1), source), t.eq(result(0), source))), SITE_RES_JOIN_MATCH, (position, zero, zero)),
+                  (t.not_(flagged(source, PARTITIONABLE)), SITE_RES_JOIN_PARTITIONABLE, (zero,) * 3)]
+    elif operation == Operation.RESOURCE_TRANSFER:
+        steps.append((t.not_(t.eq(result(0), source)), SITE_RES_TRANSFER_SAME, (source, result(0), zero)))
+    elif operation == Operation.RESOURCE_TRANSITION:
+        steps += [*resource(result(0)), (t.not_(ok), SITE_RES_TRANSITION, (source, result(0), zero))]
+    else:  # split
+        steps.append((t.not_(ok), SITE_RES_SPLIT, (source, result(0), result(1))))
+    return tuple(steps)
+
+
 def _render_sites():
     # Each renderer takes ``(r, x, y, z)``: ``r`` is the rendering context (``r.h`` a type index's CID hex, ``r.items``
     # a decoded aggregate or sum's element indices from the program's tables, ``r.operands`` a node's operand type
@@ -1051,6 +1169,34 @@ def _render_sites():
         SITE_META_TARGET_SUPPORT_RESULT: ("XAX.META.CONTRACT", "META-TARGET-SUPPORT-RESULT", lambda r, x, y, z: "bits<1>", lambda r, x, y, z: f"bits<{x}>"),
         SITE_META_TARGET_OPERATION: ("XAX.META.CONTRACT", "META-TARGET-OPERATION", lambda r, x, y, z: list(Operation), lambda r, x, y, z: x),
     })
+    from xax_compiler import EffectDomain, _EffectType
+
+    resource_contract = "XAX.RESOURCE.CONTRACT", "RESOURCE-EFFECT-OP-CONTRACT"
+    sites.update({
+        SITE_RES_NO_ATTRIBUTES: (*resource_contract, lambda r, x, y, z: "no attributes", lambda r, x, y, z: (x,)),
+        SITE_RES_STEP_MATCH: (*resource_contract, lambda r, x, y, z: "one or more matching effect inputs/results",
+                              lambda r, x, y, z: [tuple(r.cids[i] for i in r.operands(x)), tuple(r.cids[i] for i in r.results(x))]),
+        SITE_RES_EXPECT_EFFECT: (*resource_contract, lambda r, x, y, z: "effect<D>", lambda r, x, y, z: r.h(x)),
+        SITE_RES_EFFECT_UNIQUE: ("XAX.EFFECT.FORK", "EFFECT-DOMAIN-INSTANCE-UNIQUE", lambda r, x, y, z: "distinct domain instances",
+                                 lambda r, x, y, z: tuple(_EffectType(EffectDomain(r.field(EDOMAIN, i)), r.field(EINST, i)) for i in r.operands(x))),
+        SITE_RES_COUNTS: (*resource_contract, lambda r, x, y, z: RESOURCE_COUNTS[Operation(z)], lambda r, x, y, z: (x, y)),
+        SITE_RES_CONTINUATION: (*resource_contract, lambda r, x, y, z: "matching effect continuation", lambda r, x, y, z: [r.h(x), r.h(y)]),
+        SITE_RES_EXPECT_RESOURCE: (*resource_contract, lambda r, x, y, z: "resource<K,state>", lambda r, x, y, z: r.h(x)),
+        SITE_RES_ACQUIRE_ALLOWED: ("XAX.RESOURCE.ACQUIRE_STATE", "RESOURCE-ACQUIRE-ALLOWED", lambda r, x, y, z: True, lambda r, x, y, z: False),
+        SITE_RES_RELEASE_ALLOWED: ("XAX.RESOURCE.RELEASE_STATE", "RESOURCE-TERMINAL-ALLOWED", lambda r, x, y, z: "releasable",
+                                   lambda r, x, y, z: r.field(RFLAGS, x)),
+        SITE_RES_DISCARD_ALLOWED: ("XAX.RESOURCE.DISCARD_LINEAR", "RESOURCE-TERMINAL-ALLOWED", lambda r, x, y, z: "affine",
+                                   lambda r, x, y, z: r.field(RFLAGS, x)),
+        SITE_RES_JOIN_MATCH: (*resource_contract, lambda r, x, y, z: "two matching pieces and one matching joined resource",
+                              lambda r, x, y, z: [tuple(r.cids[i] for i in r.operands(x)), tuple(r.cids[i] for i in r.results(x))]),
+        SITE_RES_JOIN_PARTITIONABLE: ("XAX.RESOURCE.JOIN", "RESOURCE-PARTITIONABLE", lambda r, x, y, z: True, lambda r, x, y, z: False),
+        SITE_RES_TRANSFER_SAME: (*resource_contract, lambda r, x, y, z: "same resource type", lambda r, x, y, z: [r.h(x), r.h(y)]),
+        SITE_RES_TRANSITION: ("XAX.RESOURCE.INVALID_TRANSITION", "RESOURCE-STATE-TRANSITION",
+                              lambda r, x, y, z: {"kind": r.field(RKIND, x), "from": r.field(RSTATE, x), "to": r.transitions(x)},
+                              lambda r, x, y, z: {"kind": r.field(RKIND, y), "state": r.field(RSTATE, y)}),
+        SITE_RES_SPLIT: ("XAX.RESOURCE.SPLIT", "RESOURCE-PARTITION-CONTRACT", lambda r, x, y, z: "partitionable resource -> two matching pieces",
+                         lambda r, x, y, z: [r.field(RFLAGS, x), r.h(y), r.h(z)]),
+    })
     for index, (kinds, result_count, attribute_count, _rule) in enumerate(META_RULES.values()):
         expected = (len(kinds), result_count, attribute_count)
         sites[SITE_META_ARITY + index] = ("XAX.META.CONTRACT", "META-OP-ARITY", lambda r, x, y, z, e=expected: e, lambda r, x, y, z: (x, y, z))
@@ -1063,24 +1209,25 @@ def _render_sites():
 
 
 class _Rendering:
-    def __init__(self, cids, items=None, operands=None):
-        self.cids, self.items, self.operands = cids, items, operands
+    def __init__(self, cids, items=None, operands=None, results=None, field=None, transitions=None):
+        self.cids, self.items, self.operands, self.results, self.field, self.transitions = cids, items, operands, results, field, transitions
 
     def h(self, index):
         return self.cids[index].hex()
 
 
-def rejection(record, cids, items=None, operands=None):
+def rejection(record, cids, items=None, operands=None, results=None, field=None, transitions=None):
     """The bootstrap diagnostic ``(code, rule, expected, actual)`` for an XAX rejection record ``[site, a, b, c]``.
 
     Rendering only: XAX decided the site and its values.  ``cids`` maps the stream's type indices to CIDs;
     ``items(type)`` reads a decoded aggregate's or sum's element indices from the program's tables and
-    ``operands(position)`` a node's operand type indices from the input stream (``NativeTyping.rejection``)."""
+    ``operands(position)``/``results(position)`` a node's operand/result type indices from the input stream;
+    ``field(table, type)`` and ``transitions(type)`` read the program's per-type tables (``NativeTyping.rejection``)."""
     site, x, y, z = record
     if site not in _SITES:
         raise ValueError(f"unknown typing rejection site {site}")
     code, rule, expected, actual = _SITES[site]
-    context = _Rendering(cids, items, operands)
+    context = _Rendering(cids, items, operands, results, field, transitions)
     return code, rule, expected(context, x, y, z), actual(context, x, y, z)
 
 
@@ -1362,7 +1509,18 @@ class NativeTyping:
         def operands(position):
             return words[position + 6 : position + 6 + words[position + 1]]
 
-        return rejection(self.rejection_record(node), cids, items, operands)
+        def results(position):
+            start = position + 6 + words[position + 1]
+            return words[start : start + words[position + 2]]
+
+        def field(table, owner):
+            return self._out[TABLE + count * table + owner]
+
+        def transitions(owner):
+            start = field(TSTART, owner)
+            return list(self._out[start : start + field(TCOUNT, owner)])
+
+        return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions)
 
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""
