@@ -401,7 +401,7 @@ class SelfhostTypedAccessTests(unittest.TestCase):
 
 def _heap_program(variant: str):
     """mmap one page and view it; ``variant`` makes the view (or a second one) break one bootstrap rule."""
-    from xax_linux import linux_api
+    from xax_linux import c_function, linux_api
 
     api = linux_api()
     graph = GraphBuilder()
@@ -415,7 +415,20 @@ def _heap_program(variant: str):
     pointer, view, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (api.bytes_rw, token_type, effect_type), attributes=(extent, alignment))
     if variant == "view_owner":
         block.op(Operation.HEAP_VIEW, (raw, owner, memory), (api.bytes_rw, heap_view_type(4096), api.memory_effect), attributes=(4096, 1))
-    _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, api.memory_effect), entity=api.munmap_view(api.bytes_rw, 4096))
+    # S8c.13 (ADR-230): foreign-call faults.
+    munmap = api.munmap_view(api.bytes_rw, 4096)
+    released = block.op1(Operation.ADDRESS_OFFSET, (pointer,), api.bytes_rw, attributes=(8,)) if variant == "dealloc_offset" else pointer
+    if variant == "foreign_fork":
+        touch = c_function(b"libc.so.6", b"touch", (api.bytes_rw, api.memory_effect), (B64, api.memory_effect))
+        block.op(Operation.CALL_FOREIGN, (pointer, memory), (B64, api.memory_effect), entity=touch)
+        block.op(Operation.CALL_FOREIGN, (pointer, memory), (B64, api.memory_effect), entity=touch)
+    _result, after = block.op(Operation.CALL_FOREIGN, (released, view, memory), (B64, api.memory_effect), entity=munmap)
+    memory = after
+    if variant == "dealloc_twice":
+        _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, api.memory_effect), entity=munmap)
+    if variant == "use_after_free":
+        touch = c_function(b"libc.so.6", b"touch", (api.bytes_rw, api.memory_effect), (B64, api.memory_effect))
+        _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, memory), (B64, api.memory_effect), entity=touch)
     block.ret(process, memory)
     function = graph.function((api.process_effect, api.memory_effect), (api.process_effect, api.memory_effect))
     return function, (*api.types, *graph.objects.values())
@@ -438,7 +451,8 @@ class SelfhostHeapViewConstructionTests(unittest.TestCase):
         typing_module.NativeTyping.memory_rejection = deciding
         rules = {}
         try:
-            for variant in ("view_bounds", "view_alignment", "view_token_type", "view_effect_type", "view_owner"):
+            for variant in ("view_bounds", "view_alignment", "view_token_type", "view_effect_type", "view_owner",
+                            "dealloc_offset", "dealloc_twice", "foreign_fork", "use_after_free"):
                 function, objects = _heap_program(variant)
                 baseline = _outcome(None, function, objects)
                 decided.clear()

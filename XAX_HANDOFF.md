@@ -118,6 +118,10 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - `_heap_program` (tests) builds mmap-then-view programs for constructed cases. Next: foreign calls (`_call_foreign`), view-passing calls (`_view_call`), atomics, links, then object verification.
 
+## S8c.13 foreign-call memory rejections — 2026-10-08 (ADR-230)
+
+- Next: view-passing direct calls (`_view_call`, `_verify_heap_view_call`), indirect calls, atomics, links; then object verification (`verify_object`).
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.
