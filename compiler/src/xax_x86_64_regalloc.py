@@ -109,6 +109,8 @@ WIN64_C_ABI = b"win64-c"
 PINNABLE = (RBX, RBP, 12, 13, 14, 15)
 _CYCLE_WEIGHT = 8
 LOOP_ALIGNMENT = 16
+# Set-membership values of a subject below this bound use a byte lookup table (ADR-208).
+MEMBER_TABLE_LIMIT = 256
 # Intel SDM recommended NOP encodings, 1 to 9 bytes.
 _NOPS = (
     b"\x90", b"\x66\x90", b"\x0f\x1f\x00", b"\x0f\x1f\x40\x00", b"\x0f\x1f\x44\x00\x00",
@@ -365,6 +367,37 @@ _ROTATABLE = frozenset({
     Operation.ADDRESS_OFFSET, Operation.LOAD_BITS_LE, Operation.CHECKED_LOAD_BITS_LE,
 })
 _ROTATE_LIMIT = 16
+
+
+_TABLE_OPERATIONS = frozenset({
+    Operation.INT_COMPARE, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_AND, Operation.BIT_OR,
+    Operation.BIT_XOR, Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE,
+})
+_TABLE_MIN_OPERATIONS = 3
+
+
+def _evaluate_table_node(node, values: list[int], width: int, operand_width: int) -> int:
+    """Exact value of one table-evaluable node (wrapping arithmetic at ``width``)."""
+    mask = (1 << width) - 1
+    operation = node.operation
+    if operation == Operation.INT_COMPARE:
+        left, right = values
+        kind = IntCompare(node.attributes[0])
+        if kind in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE):
+            half = 1 << (operand_width - 1)
+            left, right = (left ^ half) - half, (right ^ half) - half
+        return int({
+            IntCompare.EQ: left == right, IntCompare.NE: left != right, IntCompare.ULT: left < right, IntCompare.ULE: left <= right,
+            IntCompare.UGT: left > right, IntCompare.UGE: left >= right, IntCompare.SLT: left < right, IntCompare.SLE: left <= right,
+            IntCompare.SGT: left > right, IntCompare.SGE: left >= right,
+        }[kind])
+    if operation in (Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE):
+        return values[0] & mask
+    left, right = values
+    return {
+        Operation.ADD_WRAP: left + right, Operation.SUB_WRAP: left - right, Operation.MUL_WRAP: left * right,
+        Operation.BIT_AND: left & right, Operation.BIT_OR: left | right, Operation.BIT_XOR: left ^ right,
+    }[operation] & mask
 
 
 def _rotatable(header) -> bool:
@@ -625,12 +658,86 @@ def compile_register_resident(
         if node.operation == Operation.INT_COMPARE and consumers == 0:
             fused[block_index] = condition.index
 
+    # A boolean computed only from one value below MEMBER_TABLE_LIMIT and constants, by at least
+    # _TABLE_MIN_OPERATIONS compares/arithmetic nodes whose results have no other use, is read from a
+    # byte table instead (ADR-208): the table is the expression evaluated exactly for every value.
+    early_uses = Counter(operand for block in graph.blocks for node in block.nodes for operand in node.operands)
+    early_uses.update(value for block in graph.blocks for value in block.terminator.values)
+    early_uses.update(value for block in graph.blocks for _target, arguments in block.terminator.edges for value in arguments)
+
+    def predicate_table(block_index: int, root: ValueRef) -> tuple[ValueRef, bytes, frozenset[int]] | None:
+        def local(value: ValueRef):
+            node = definition.get(value) if value.tag == 1 and value.block == block_index and value.result == 0 else None
+            return node if node is not None and node.operation in _TABLE_OPERATIONS and value in widths else None
+
+        nodes: dict[ValueRef, object] = {}
+        leaves: set[ValueRef] = set()
+
+        def expand(start: ValueRef, shared: bool) -> None:
+            pending = [start]
+            while pending:
+                value = pending.pop()
+                if value in nodes or value in constants:
+                    continue
+                node = local(value)
+                if node is not None and (value == start or shared or early_uses[value] == 1):
+                    leaves.discard(value)
+                    nodes[value] = node
+                    pending.extend(node.operands)
+                else:
+                    leaves.add(value)
+
+        if local(root) is None:
+            return None
+        expand(root, False)
+        # A test shared with other code (computed anyway) is walked through too; it is kept, not erased.
+        while len(leaves) > 1:
+            expandable = [value for value in leaves if local(value) is not None]
+            if not expandable:
+                return None
+            expand(max(expandable, key=lambda value: value.index), False)
+        if len(leaves) != 1 or sum(node.operation != Operation.INT_ZERO_EXTEND for node in nodes.values()) < _TABLE_MIN_OPERATIONS:
+            return None
+        (subject,) = leaves
+        bound = maximum(subject)
+        if subject not in widths or bound is None or bound >= MEMBER_TABLE_LIMIT:
+            return None
+        order = sorted(nodes, key=lambda value: value.index)  # operands precede their uses within a block
+        entries = bytearray()
+        for x in range(bound + 1):
+            values = {subject: x}
+            for value in order:
+                node = nodes[value]
+                operands = [values[operand] if operand in values else constants[operand] for operand in node.operands]
+                operand_width = widths.get(node.operands[0], widths.get(node.operands[-1], 64))
+                values[value] = _evaluate_table_node(node, operands, widths[value], operand_width)
+            if values[root] not in (0, 1):
+                return None
+            entries.append(values[root])
+        # Erase exactly the nodes all of whose uses are erased nodes (the root's users read the table).
+        erased = {root}
+        for value in reversed(order):
+            if value != root and sum(operand == value for user in erased for operand in nodes[user].operands) == early_uses[value]:
+                erased.add(value)
+        return subject, bytes(entries), frozenset(value.index for value in erased)
+
+    branch_tables: dict[int, tuple[ValueRef, bytes, frozenset[int]]] = {}
+    for block_index, block in enumerate(graph.blocks):
+        terminator = block.terminator
+        if terminator.kind != TerminatorKind.CONDITIONAL_BRANCH or block_index in fused:
+            continue
+        condition = terminator.values[0]
+        if condition.tag == 1 and condition.block == block_index and early_uses[condition] == 1:
+            found = predicate_table(block_index, condition)
+            if found is not None:
+                branch_tables[block_index] = found
+
     # A branch on an OR tree of ``x == c`` tests of one bits<32> value against
     # constants spanning at most 63 values becomes one bit test against a mask.
     membership: dict[int, tuple[ValueRef, int, int, frozenset[int]]] = {}
     for block_index, block in enumerate(graph.blocks):
         terminator = block.terminator
-        if terminator.kind != TerminatorKind.CONDITIONAL_BRANCH or block_index in fused:
+        if terminator.kind != TerminatorKind.CONDITIONAL_BRANCH or block_index in fused or block_index in branch_tables:
             continue
         condition = terminator.values[0]
         if condition.tag != 1 or condition.block != block_index or block.nodes[condition.index].operation != Operation.BIT_OR:
@@ -745,12 +852,27 @@ def compile_register_resident(
     # A value that is an OR tree of ``x == c`` tests (optionally zero-extended)
     # of one value below 2^32 against constants spanning at most 63 values is
     # one bit test (ADR-131 applied to values).  Tests with other uses stay.
+    value_tables: dict[ValueRef, tuple[ValueRef, bytes]] = {}
+    table_erased: set[ValueRef] = set()
+    for block_index, block in enumerate(graph.blocks):
+        tree = branch_tables[block_index][2] if block_index in branch_tables else frozenset()
+        for node_index in range(len(block.nodes) - 1, -1, -1):
+            root = ValueRef.node_result(block_index, node_index)
+            if root in table_erased or root not in widths or node_index in tree or block.nodes[node_index].operation not in _TABLE_OPERATIONS:
+                continue
+            found = predicate_table(block_index, root)
+            if found is not None:
+                subject, table, indices = found
+                value_tables[root] = (subject, table)
+                table_erased.update(ValueRef.node_result(block_index, index) for index in indices if index != node_index)
+    erased_index_nodes |= table_erased
+
     member_values: dict[ValueRef, tuple[ValueRef, int, int]] = {}
     member_erased: set[ValueRef] = set()
     for block_index, block in enumerate(graph.blocks):
         for node_index in range(len(block.nodes) - 1, -1, -1):
             root = ValueRef.node_result(block_index, node_index)
-            if block.nodes[node_index].operation != Operation.BIT_OR or root in member_erased or root not in widths:
+            if block.nodes[node_index].operation != Operation.BIT_OR or root in member_erased or root not in widths or root in table_erased or root in value_tables:
                 continue
             if block_index in membership and node_index in membership[block_index][3]:
                 continue
@@ -806,7 +928,7 @@ def compile_register_resident(
             size = load.attributes[0] if load.attributes else 0
             if size not in (4, 8) or widths.get(candidate) != 8 * size or other not in widths or immediate(other, widths[candidate]) is not None:
                 continue
-            if any(node.operation in _WRITES for node in block.nodes[candidate.index + 1:]) or candidate in rmw_erased or candidate in member_erased:
+            if any(node.operation in _WRITES for node in block.nodes[candidate.index + 1:]) or candidate in rmw_erased or candidate in member_erased or candidate in table_erased:
                 continue
             if load.operation == Operation.LOAD_BITS_LE:
                 base, displacement = folded.get(load.operands[0], (load.operands[0], 0))
@@ -818,6 +940,8 @@ def compile_register_resident(
 
     def operands_of(block_index: int, node_index: int, node) -> tuple[ValueRef, ...]:
         root = ValueRef.node_result(block_index, node_index)
+        if root in value_tables:
+            return (value_tables[root][0],)
         return (member_values[root][0],) if root in member_values else node.operands
 
     def through_fold(value: ValueRef) -> ValueRef:
@@ -852,7 +976,10 @@ def compile_register_resident(
                     if operand in widths:
                         uses.setdefault(operand, []).append(position)
                 continue
-            use_position = position if fused.get(block_index) == node_index or node_index in membership.get(block_index, (None, 0, 0, frozenset()))[3] else node_index
+            use_position = position if (
+                fused.get(block_index) == node_index or node_index in membership.get(block_index, (None, 0, 0, frozenset()))[3]
+                or node_index in branch_tables.get(block_index, (None, b"", frozenset()))[2]
+            ) else node_index
             for operand in (item for value in map(through_fold, operands_of(block_index, node_index, node)) for item in with_aliases(value)):
                 if operand in widths and operand not in rmw_erased and operand not in compare_load:
                     uses.setdefault(operand, []).append(use_position)
@@ -949,6 +1076,7 @@ def compile_register_resident(
         return _rotatable(graph.blocks[target_block])
 
     closed = {"at": 0}  # code length right after the last unconditional transfer
+    tables: dict[bytes, str] = {}  # read-only lookup tables placed after the code, by contents
 
     def lower_block(block_index: int, assembler: _Assembler | None, ranges: list | None, used_registers: set[int], epilogue: bytes, stubs: list, traps: dict, copy_tag: str = "", copy_following: int | None = None) -> int:
         """Lower one block; with ``copy_tag`` emit an inline copy (no label) followed by ``copy_following``."""
@@ -995,6 +1123,17 @@ def compile_register_resident(
         def label(name: str) -> None:
             if assembler is not None:
                 assembler.label(name)
+
+        def table_address(table: bytes) -> None:
+            """``lea r11, [rip + table]``; the table is placed after the code (ADR-208).  r11 is the scratch register,
+            so the subject's register and the destination may coincide."""
+            name = tables.setdefault(table, f"table-{len(tables)}")
+            if capture:
+                fail("XAX.NATIVE.TABLE", function.cid.hex(), "NATIVE-TABLE-NOT-IN-EDGE-COPY", "no table read in edge copies", name)
+            if assembler is not None:
+                assembler.emit(b"\x4c\x8d\x1d")
+                assembler.branches.append((len(assembler.code), name))
+                assembler.emit(bytes(4))
 
         def trap_if(condition_code: int, trap: bytes) -> None:
             """Jump to the shared out-of-line stub executing ``trap`` when the condition holds."""
@@ -1357,6 +1496,8 @@ def compile_register_resident(
         for node_index, node in enumerate(block.nodes):
             if block_index in membership and node_index in membership[block_index][3]:
                 continue  # emitted as a bit test by the terminator
+            if block_index in branch_tables and node_index in branch_tables[block_index][2]:
+                continue  # read from a table by the terminator
             start = len(assembler.code) if assembler is not None else 0
             result = ValueRef.node_result(block_index, node_index)
             if result in erased_index_nodes or result in rmw_erased or result in compare_load:
@@ -1364,6 +1505,18 @@ def compile_register_resident(
             hint["value"] = result
             operation = node.operation
             machine_operands = tuple(operand for operand in node.operands if operand in widths)
+
+            if result in value_tables:
+                subject, table = value_tables[result]
+                register = ensure(subject, node_index)
+                retire(node_index, subject)
+                destination = acquire(node_index, {subject} if subject in register_for else set())
+                table_address(table)
+                emit(_scaled_load(destination, _SCRATCH, register, 1, 1))  # movzx destination, byte [r11 + subject]
+                define(result, destination)
+                if assembler is not None and ranges is not None:
+                    ranges.append(ArtifactSemanticRange(function.cid, block_index, node_index, start, len(assembler.code)))
+                continue
 
             if result in member_values:
                 subject, low, mask = member_values[result]
@@ -1784,6 +1937,12 @@ def compile_register_resident(
                 compare = block.nodes[fused[block_index]]
                 emit_compare(position, *compare.operands)
                 if_false = _JUMP_IF_FALSE[IntCompare(compare.attributes[0])]
+            elif block_index in branch_tables:
+                subject, table, _tree = branch_tables[block_index]
+                register = ensure(subject, position)
+                table_address(table)
+                emit(_scaled_access(b"\x80", 7, _SCRATCH, register, 1, 1) + b"\x00")  # cmp byte [r11 + subject], 0
+                if_false = 0x84  # je: the table says false
             elif block_index in membership:
                 # Out of the mask's span branches straight to the false edge (through a stub
                 # carrying its copies); in span, one bit test decides: no clamp needed.
@@ -1897,6 +2056,11 @@ def compile_register_resident(
     for trap, name in traps.items():
         assembler.label(name)
         assembler.emit(trap)
+    if tables:  # data after the last instruction is never executed; int3 padding keeps it so
+        assembler.emit(b"\xcc" * (-len(assembler.code) % 16))
+        for table, name in tables.items():
+            assembler.label(name)
+            assembler.emit(table)
     code, calls = assembler.finish()
     return code, calls, tuple(ranges)
 

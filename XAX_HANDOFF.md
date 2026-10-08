@@ -35,6 +35,10 @@ The authoritative M14 closure target is `xax-semantic-image-v1`. Its XAX entry g
 
 R4 = leadership (≤ 0.9999× the fastest non-XAX median, significant); R5 = autonomous maintenance; R6 = XAX-only application. AI-token work is deferred: do not run token trials. JVM is R4, Android is R3. Next task is U2 (`XAX_IMPLEMENTATION_ROADMAP.md`): re-run the Linux workloads with raw samples (U2.1), then optimize toward ≤ 0.9999× (U2.2), then the Android re-run with a Kotlin arm (U2.3). Items in "Exact next task" that cite the 1.05× target or the token gate are superseded by this section.
 
+## Linux R4 progress — 2026-10-08 (ADR-208)
+
+`filestat` and `jsonmin` lead clang (0.882x, 0.968x); `chains` ties rustc (0.984x, not significant), so Linux stays R3. Next for R4: `chains` (look at the walk loop: `found + 1` is recomputed every step, extra moves; memory latency dominates), then the Android re-run with a Kotlin arm (U2.3). Profile with `valgrind --tool=callgrind --dump-instr=yes` on the image; XAX images have no symbols, so group costs by address.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

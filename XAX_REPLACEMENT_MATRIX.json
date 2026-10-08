@@ -355,7 +355,7 @@
     {
       "id": "linux-x86_64",
       "name": "x86-64 Linux",
-      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Earlier runs reported 1.017x, 1.000x, and 1.029x the fastest of gcc, clang, and rustc, but the evidence keeps only summary statistics, so R4 awaits a re-run with raw samples (ADR-177).",
+      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Raw-sample re-run (ADR-208): filestat 0.882x and jsonmin 0.968x the fastest non-XAX arm (clang -O2), both significant; chains is 0.984x rustc but within noise, so R4 is withheld.",
       "level": "R3",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
@@ -421,10 +421,9 @@
           "compiler/benchmarks/jsonmin_evidence.json"
         ],
         "performance": [
-          "PROTOTYPE",
+          "MEASURED",
           "compiler/benchmarks/u1_linux_filestat_evidence.json",
           "compiler/benchmarks/oi37_chains_evidence.json",
-          "compiler/benchmarks/oi41_links_evidence.json",
           "compiler/benchmarks/jsonmin_evidence.json"
         ],
         "memory": [
@@ -443,7 +442,7 @@
         ]
       },
       "blockers": [
-        "R4 (ADR-177): the filestat, chains, and jsonmin comparisons (ADR-147/148) recorded only median/min/stdev per arm, one run each on a shared host; without raw samples the ratios cannot be recomputed, so performance is PROTOTYPE until a re-run records wall_seconds_samples. chains met the target only with the xax-soa representation. Float/aggregate functions still fall back to the older paths (OI-38)",
+        "R4 (ADR-208, one shared 4-vCPU Xeon host, 31 interleaved runs per arm): filestat 0.881962x clang -O2 (p<1e-7) and jsonmin 0.967682x clang -O2 (p=0.008) lead; chains (xax-soa, the best XAX representation) is 0.983564x rustc -O3 with p=0.29, inside the noise of a memory-latency-bound walk, so the row's verdict stays false. jsonmin's stripped binary is 1.21x clang's (17,615 vs 14,552 bytes); filestat's is 0.29x. Float/aggregate functions still fall back to the older paths (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
         "jsonmin writes its output with one write call (no partial-write loop)"
       ],

@@ -805,7 +805,7 @@ Unused exports (`contains`, `skip_spaces`, and the other instance's functions) a
 
 ### 15.14 Multi-language comparison after ADR-148 (MEASURED, 2026-10-03)
 
-> Re-evaluated 2026-10-06 (ADR-177): the evidence JSONs keep only median/min/stdev per arm, one run each, so the ratios below cannot be recomputed and no longer support R4 (row now R3, `performance` PROTOTYPE); `chains` met the target only with the `xax-soa` representation. Re-measurement with raw samples is OI-45.
+> Re-evaluated 2026-10-06 (ADR-177): the evidence JSONs keep only median/min/stdev per arm, one run each, so the ratios below cannot be recomputed and no longer support R4 (row now R3, `performance` PROTOTYPE); `chains` met the target only with the `xax-soa` representation. Re-measurement with raw samples is OI-45; the re-run is §15.30 (ADR-208).
 
 Host: Intel(R) Xeon(R) Processor @ 2.10GHz (Emerald Rapids, model 207), 4 logical CPUs, Linux 6.18.44 x86-64, shared. Toolchains: gcc 13.3.0, Ubuntu clang 18.1.3, rustc 1.97.0 (`-C opt-level=3 -C panic=abort -C codegen-units=1`). Rust twins: `compiler/benchmarks/rust_twins/{filestat,chains,jsonmin}.rs` (same contract; `filestat` links the same `libz.so.1`). Method: fork/exec/`wait4` runner, 3 warmup rounds and 31 interleaved rounds with rotating arm order; every output checked as before. Ratios are against the fastest valid arm; stripped bytes for C/Rust (dynamic unless `-static`), file bytes for XAX (no section table).
 
@@ -1117,6 +1117,18 @@ Arms share the package, Activity/listener classes, state file, and observable be
 | Java (`javac` + `d8`) | 286.5 | 131.71 | 1.042 | 209.0 / 274.0 / 334.0 / 301.0 | 107,050.0 | 12,432 | 3,088 | 0 |
 
 XAX meets the §15.0 primary target: 1.007 is at most 1.05 against the fastest valid arm, and `xax_replacement.recompute_runtime_verdict` reproduces the verdict from the raw samples. XAX against the fastest arm of each pass is 1.00, 1.053, 1.06 and 1.00, so no pass exceeds 1.10. Every arm slows across the run (pass 1 to 4 medians rise by about 100–150 ms), and the pooled margin is within that drift. Median PSS is equal within 0.11% across arms. XAX's APK is 0.703× the NDK twin's and 1.634× the pure Java twin's, which has no native library. XAX's DEX is 0.951× the Java twin's. The row returns to R4; the scope is this application on this device. No Kotlin arm was run.
+
+### 15.30 Linux x86-64 raw-sample re-run after predicate tables (ADR-208; MEASURED, 2026-10-08)
+
+Supersedes the ratios of §15.14. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs (shared cloud VM), Linux 6.18.44, gcc 13.3.0, clang 18.1.3, rustc stable; harness `compiler/benchmarks/linux_harness.py` (fork/exec/`wait4`, interleaved rounds with rotating arm order), 31 repetitions per arm, raw `wall_seconds_samples` recorded. Ratios are XAX's median over the fastest non-XAX median; p is the one-sided Mann–Whitney test of §15.0.
+
+| Workload | Fastest non-XAX | XAX median / competitor | p | Stripped bytes XAX / competitor | Peak RSS KiB XAX / competitor |
+|---|---|---:|---:|---:|---:|
+| `filestat` (32 MiB) | clang -O2 | 0.881962 | < 1e-7 | 4,296 / 14,576 | 1,188 / 1,932 |
+| `jsonmin` (8 MiB) | clang -O2 | 0.967682 | 0.008 | 17,615 / 14,552 | 12,416 / 13,796 |
+| `chains` (`xax-soa`) | rustc -O3 | 0.983564 | 0.29 | 1,302 / 342,376 | 12,544 / 14,764 |
+
+`filestat` and `jsonmin` meet R4; `chains` does not (its margin is inside the noise of a memory-latency-bound pointer walk), so the Linux row stays R3. What changed: (1) a boolean computed from one value below 256 by three or more compare/arithmetic nodes is read from a byte table that the compiler evaluates exactly for every value (ADR-208): `filestat`'s whitespace test went from eight instructions to two, and `jsonmin`'s hex-digit and escape tests from 17 to three; (2) `jsonmin`'s string loop now has the C twin's shape (test the current byte, exit at the closing quote). Instruction counts under callgrind: `jsonmin` 188 M → 154 M (clang 145 M). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`, `jsonmin_evidence.json`, `oi37_chains_evidence.json`. One shared host and three workloads; not a general claim.
 
 ## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 

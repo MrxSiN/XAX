@@ -56,8 +56,9 @@ class ReplacementMatrixTests(unittest.TestCase):
     def test_summary_only_performance_cannot_be_measured_or_competitive(self):
         bad = copy.deepcopy(MATRIX)
         row = next(r for r in bad["platforms"] if r["id"] == "linux-x86_64")
-        row["fields"]["performance"][0] = "MEASURED"
-        row["competitive"][0] = True
+        summary_only = "compiler/benchmarks/oi41_links_evidence.json"  # median/min/stdev only (pre-ADR-177)
+        row["fields"]["performance"] = ["MEASURED", summary_only]
+        row["competitive"] = [True, summary_only]
         row["level"] = "R4"
         errors = validate(bad, ROOT)
         self.assertIn("linux-x86_64.performance: MEASURED performance needs 5+ raw samples to recompute from", errors)
