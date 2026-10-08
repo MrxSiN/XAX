@@ -735,6 +735,10 @@ A declaration imports a C symbol from the shared library named by its soname (`l
 
 As on Windows (§17.3), the container emits no code: `e_entry` is the XAX entry function, which takes no machine parameters, returns at most one integer (`XAX.LINUX.ENTRY`), and ends the process with an explicit `exit_group`. Linux starts a process with RSP 16-byte aligned and no return address, so the entry function is lowered as a process entry. Its frame uses that alignment, it saves no callee-saved registers, and its `ret` lowers to `ud2`, so returning traps instead of exiting or jumping to an unknown address. argv/env/auxv, TLS, signals, and unwind data are absent until explicit contracts require them (OI-33).
 
+### 19.4 `linux-x86_64-process-v1` (ADR-223, 2026-10-08)
+
+`xax_linux.process_contract()` states, as versioned data, what a host may rely on when it runs a Linux x86-64 XAX executable. It describes behaviour §19.1–§19.3 already define and adds no runner or runtime. Container: ELF64 `ET_EXEC` whose `e_entry` is the XAX entry function. Runtime: none. Entry: §19.3. Inputs: fd 0 through `linux.read`, and argc/argv/envp/auxv only through §19.2a reads in the entry function (this supersedes the last sentence of §19.3 for argv/env/auxv). Outputs: fds 1 and 2 through `linux.write`. Termination: only an explicit `exit_group`, whose `b32` argument modulo 256 is the exit status; a failed check or a return from the entry executes `ud2`, so the process receives `SIGILL`. System calls: exactly the declared syscall imports the program reaches. Confinement is the host's concern. `tests/test_xax_linux_process_contract.py` exercises every clause; changing a clause requires a new identity.
+
 ## 20. JVM slice (`jvm-classfile-v1`, ADR-112, 2026-10-03)
 
 The JVM is a target; no Java semantics enter the kernel. One class file (major version 61) holds every reachable function as a `public static` method and is packaged in a stored, byte-deterministic JAR.

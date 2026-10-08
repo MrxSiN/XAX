@@ -2167,3 +2167,36 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Decision | For a direct call whose callee is a graph-fragment function, the rejection pass decodes the callee's interface as `_decode_function_interface` does (graph reference, parameter and return type references, exact end, every type one the program decoded) and writes it to a list area after the diagnostic records (`[n, parameters..., m, returns...]`). When it decodes and differs from the node's types, the node is rejected with `GRAPH-CALL-CONTRACT`, rendered from that list and the input stream. Recursion-group member callees, types the program did not decode, and lists that would not fit below the type tables stay with the bootstrap. |
 | Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: constructed mismatches against every fragment callee in the test pool match the bootstrap exactly; 216 random call nodes over seven seeds give 51 XAX rejections and no mismatch; the four-seed 6,000-node run finds 1,687 rejections and no mismatch. Both self-hosting evidence files re-run natively. |
 | Limits | Group-member call contracts and the call branch's later checks (resource call contracts, view effects), the facts engine's declines, and object verification remain Python. |
+
+## ADR-221 — Component-store verification is memoized in the native image cache
+
+| Field | Record |
+|---|---|
+| Decision | `xax_native.verify_component_store(reader, name)` replaces the unconditional `verify_store` in the loaders of the committed compiler-component stores (hash, store decoder, graph decoder, CFG, typing, store verifier, RISC-V encoder, x86-64 views backend). The first process to verify given store bytes with a given verifier writes `verified-<name>-<key>.bin` (magic plus key) into `XAX_NATIVE_CACHE`. Later processes that find the exact record skip re-verification. The key is sha256 over a schema tag, `verifier_identity()` (every compiler module — `xax_*.py` and `blake3.py` — and canonical bootstrap store, by name and content hash), and the store bytes. Any compiler change therefore invalidates every record (XAX_SPEC §13.3: conservative over-invalidation, never under-invalidation). A failed verification writes nothing. Without a private cache directory, or with `XAX_NATIVE_REVERIFY=1`, the store is verified every time. Memoized loads appear in `xax_native.AUTHORITY` as `verification:<name>`. |
+| Trust | The record adds no authority: `cache_dir()` returns only a private, owner-only directory that already supplies the native machine-code images this process maps and executes. Anyone able to forge a record could already replace the code. |
+| Evidence | MEASURED on the reference Linux x86-64 host, first `construct` in a fresh process with a populated image cache: 21.9 s before, 2.7 s after (the rest is the native store verifier's table setup and BLAKE3 CID checks). `tests/test_verified_component_store.py` checks first verification, reuse, binding to the store bytes, name and verifier identity, corrupt records, the opt-out, refusal of a group-writable cache, and that a failed verification writes no record. Full suite (Linux x86-64, `-n 4`): 1353 passed, 53 skipped. |
+| Limits | The 3.4 s remainder and the cold case (an empty cache still lowers every image) are unchanged. Evidence that must show the XAX verifier running on component stores should set `XAX_NATIVE_REVERIFY=1`. |
+
+## ADR-222 — `linux.startup.*` entities in `xax-construct-v1`
+
+| Field | Record |
+|---|---|
+| Decision | The construction carrier names the `linux-x86_64-startup-v1` reads (ADR-094) as `linux.startup.<name>`: `argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`, `auxv_value`. Unknown names reject. The carrier adds no semantics: the entities are the existing `linux_startup_api()` declarations, still valid only in the process entry function (`LINUX-STARTUP-PROCESS-ENTRY` at build). Requests that do not use them produce byte-identical stores, so the xb64 generation-0 reconstruction is unchanged. |
+| Evidence | EXECUTED on Linux x86-64: a constructed program echoes argv[1] (clamped to its 64-byte view) and exits with argc; a startup read in a non-entry function fails the build with `XAX.NATIVE.STARTUP` (`tests/test_xax_construct.py`). |
+| Limits | Linux x86-64 only, like the carrier. |
+
+## ADR-223 — `linux-x86_64-process-v1`: the host-facing process contract
+
+| Field | Record |
+|---|---|
+| Decision | `xax_linux.process_contract()` publishes, as versioned data, what a host may rely on when it runs a Linux x86-64 XAX executable: the container and empty runtime, the entry contract, inputs (fd 0; argv/env/auxv only through startup reads), outputs (fds 1 and 2), termination (explicit `exit_group`, status modulo 256; a failed check or an entry return executes `ud2`, giving SIGILL), and system calls (exactly the declared imports reached). It describes existing behaviour (ABI §19.4) and adds no runner: `run_linux_executable` stays a test harness, and confinement stays the host's concern. Changing a clause requires a new identity. |
+| Evidence | EXECUTED: `tests/test_xax_linux_process_contract.py` checks every clause against built executables (exit statuses 0, 7, 255, 265 → 9; SIGILL on entry return and on an out-of-bounds checked load chosen at run time; fds 1 and 2; entry-contract rejection). |
+| Limits | Static and dynamic Linux x86-64 profiles. Other platforms' process lifecycles keep their own sections (OI-33). |
+
+## ADR-224 — `xax-host-contract-v1`: a versioned integration surface
+
+| Field | Record |
+|---|---|
+| Decision | `xax_contract` lists the module names external integrations may depend on (construction, workspace and local edits, build and provenance, target facts, Linux APIs and the process contract, compiler identity, and the authority record and component verification) and the formats they produce. It carries `HOST_CONTRACT = "xax-host-contract-v1"` and `HOST_CONTRACT_MINOR` (additions bump the minor revision; removals or meaning changes need a new identity). The `xax-compiler` distribution version keeps its meaning (none), and no release tag is created. |
+| Evidence | `tests/test_xax_contract.py`: every listed name exists, and the format identities equal the constants of the modules that define them. First consumer: XAX-MCP (`MrxSiN/XAX-MCP`), which checks `missing()` at startup. |
+| Limits | The contract covers names and formats, not internal signatures beyond those its tests exercise. Interfaces outside the list may change without notice. |

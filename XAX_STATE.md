@@ -105,6 +105,10 @@ Constant targets and contracts and direct-call targets are now rejected by XAX. 
 
 Direct-call contract mismatches against graph-fragment callees are now rejected by XAX. Still Python in S8c: group-member call contracts, facts declines, object verification.
 
+## Host integration contracts and component-verification memo — 2026-10-08 (ADR-221 to ADR-224)
+
+Component stores are verified once per store bytes and compiler version (`verify_component_store`, ADR-221). A first `construct` in a fresh process with a populated image cache dropped from 21.9 s to 2.7 s. The construction carrier reaches argv/env/auxv through `linux.startup.*` (ADR-222). `linux-x86_64-process-v1` (ADR-223) and `xax-host-contract-v1` (ADR-224) give integrations a versioned surface. First consumer: XAX-MCP.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.
