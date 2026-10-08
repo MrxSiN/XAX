@@ -87,6 +87,9 @@ MEMORY_SITES = (
     "LINK_MAKE_RECORD", "LINK_MAKE_START", "LINK_MAKE_TYPE", "LINK_FOLLOW_ROOT", "LINK_FOLLOW_PROVENANCE", "LINK_FOLLOW_AUTHORITY",
     "LINK_FOLLOW_ALIGNMENT", "LINK_TARGET_PARAMETERS", "LINK_TARGET_RECORDS", "LINK_STORE_PROVENANCE", "POINTER_STORE_LOCAL",
     "LINK_RECORD_ONLY", "RECORD_EXTENT",
+    # S8c.18 (ADR-236): address offsets into records, and elements an access cannot size.
+    "RECORD_FIELD_OFFSET", "RECORD_OFFSET_STRIDE", "ADDRESS_AUTHORITY", "ADDRESS_ALIGNMENT", "BYTE_ADDRESSABLE",
+    "LINK_STORAGE_FOREIGN", "LINK_TARGET_OUTLIVES",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -687,7 +690,10 @@ def _access_size(e: E, element, size):
     pointer_element = e.ne(e.table(_T.PTR, element), 0)
     expected = _element_size(e, element, 0)
     _reject(e, e.either(e.not_(pointer_element), e.eq(size, 4), e.eq(size, 8)), M["POINTER_ELEMENT_SIZE"], size)
-    _require(e, e.either(pointer_element, e.ne(expected, 0)))
+    # A float format the tables do not know declines; any other element that is not a pointer, link, float, or
+    # whole-byte bits is the bootstrap's ``MEMORY-BYTE-ADDRESSABLE-VALUE``.
+    _require(e, e.either(pointer_element, e.ne(expected, 0), e.ne(e.table(_T.FORMB, element), 7)))
+    _reject(e, e.either(pointer_element, e.ne(expected, 0)), M["BYTE_ADDRESSABLE"], element)
     _reject(e, e.either(pointer_element, e.eq(size, expected)), M["ACCESS_SIZE"], expected, size)
 
 
@@ -787,24 +793,34 @@ def _has_link(e: E, record):
 
 
 def _dependents_function(tables):
-    """``_check_link_dependents``: no live storage still links into ``storage`` (1), else NONE."""
+    """``_check_link_dependents``: no live storage still links into ``storage`` (1), else NONE.
+
+    The bootstrap quotes the first dependent in its fact order; the rejection is exact only when every dependent lies in
+    one storage (and
+    ``exact``: the caller's own order is the bootstrap's)."""
     def build(e: E):
         p = e.p
         storage = p["storage"]
+        e.var("dependent_storage", NONE)
+        e.var("mixed", 0)  # dependents in more than one storage
 
         def each():
             v = p["v"]
             dependent = e.both(e.eq(e.value(PSTAMP, v), e.hd(H_PASS)), e.eq(e.value(PK, v), POINTER), e.eq(e.value(PLT, v), storage),
-                               e.ne(e.value(PST, v), storage))
-            e.if_(dependent, lambda: _require(e, _ended(e, e.value(PST, v))))
+                               e.ne(e.value(PST, v), storage), e.not_(_ended(e, e.value(PST, v))))
+            first = e.eq(p["dependent_storage"], NONE)
+            e.if_(dependent, lambda: e.if_(first, lambda: e.set("dependent_storage", e.value(PST, v)),
+                                          lambda: e.if_(e.ne(p["dependent_storage"], e.value(PST, v)), lambda: e.set("mixed", 1))))
 
         e.for_("v", 0, e.hd(H_V), each)
+        _reject(e, e.eq(p["dependent_storage"], NONE), M["LINK_TARGET_OUTLIVES"], p["dependent_storage"], storage,
+                renderable=e.both(e.ne(p["exact"], 0), e.eq(p["mixed"], 0), _renderable(e, p["dependent_storage"]), _renderable(e, storage)))
         e.give(1)
-    return _function(("storage",), build, tables)
+    return _function(("storage", "exact"), build, tables)
 
 
-def _check_dependents(e: E, storage):
-    _require(e, e.ne(e.call(_DEPENDENTS[0], storage), NONE))
+def _check_dependents(e: E, storage, exact=None):
+    _require(e, e.ne(e.call(_DEPENDENTS[0], storage, e.c(1) if exact is None else exact), NONE))
 
 
 def _window_function(tables, covers):
@@ -979,14 +995,28 @@ def _address_offset(tables):
                 e.if_(e.both(e.eq(at, offset), e.eq(e.ld(e.add(items, e.p["fi"])), element)), lambda: e.set("field_found", 1))
 
             e.for_("fi", 0, e.table(_T.COUNT, source_element), each)
-            _require(e, e.ne(e.p["field_found"], 0))
+
+            def offsets():
+                # The bootstrap quotes every field as [offset, type]: [count, (offset, type) pairs].
+                count = e.table(_T.COUNT, source_element)
+                e.var("field_list", e.alloc(e.add(e.mul(count, 2), 1)))
+                _require(e, e.ne(e.p["field_list"], NONE))
+                e.st(e.p["field_list"], count)
+                e.for_("fi", 0, count, lambda: (
+                    e.st(e.add(e.p["field_list"], e.add(1, e.mul(e.p["fi"], 2))), e.call(_LAYOUT[0], source_element, e.p["fi"])),
+                    e.st(e.add(e.p["field_list"], e.add(2, e.mul(e.p["fi"], 2))), e.ld(e.add(items, e.p["fi"])))))
+                _reject(e, e.ne(e.p["field_found"], 0), M["RECORD_FIELD_OFFSET"], e.p["field_list"], offset, element)
+
+            e.if_(e.eq(e.p["field_found"], 0), offsets)
             e.set("remaining", _field_layout(e, element)[0])
 
-        e.if_(e.both(e.ne(stride, 0), e.ne(element, source_element)), field, lambda: e.if_(
-            e.ne(stride, 0), lambda: _require(e, e.eq(_mod(e, offset, stride), 0)), lambda: _require(e, e.eq(element, source_element))))
         source_permission = e.value(PPERM, source)
-        _require(e, e.eq(e.and_(permission, source_permission), permission))
-        _require(e, e.le(alignment, actual))
+        authority = (M["ADDRESS_AUTHORITY"], source_element, source_permission, element, permission)
+        e.if_(e.both(e.ne(stride, 0), e.ne(element, source_element)), field, lambda: e.if_(
+            e.ne(stride, 0), lambda: _reject(e, e.eq(_mod(e, offset, stride), 0), M["RECORD_OFFSET_STRIDE"], stride, offset),
+            lambda: _reject(e, e.eq(element, source_element), *authority)))
+        _reject(e, e.eq(e.and_(permission, source_permission), permission), *authority)
+        _reject(e, e.le(alignment, actual), M["ADDRESS_ALIGNMENT"], actual, alignment)
         fields = {word: e.value(word, source) for word in range(POINTER_WORDS)}
         fields.update({PEL: element, PPERM: permission, POFF: e.add(e.value(POFF, source), offset), PEXT: e.p["remaining"], PALIGN: actual})
         _set_pointer(e, n.base, fields)
@@ -1559,7 +1589,8 @@ def _call_foreign(tables, declaration, end_views):
                     e.for_("v", 0, e.hd(H_V), lambda: e.if_(e.both(
                         e.eq(e.value(PSTAMP, p["v"]), pass_id), e.eq(e.value(PK, p["v"]), POINTER), e.eq(e.value(PST, p["v"]), storage)), lambda: e.if_(
                         e.ne(_has_link(e, e.value(PREC, p["v"])), 0), lambda: e.set("linked", 1))))
-                    _require(e, e.either(e.eq(p["linked"], 0), e.eq(storage, p["released"])))
+                    _reject(e, e.either(e.eq(p["linked"], 0), e.eq(storage, p["released"])), M["LINK_STORAGE_FOREIGN"], storage,
+                            renderable=_renderable(e, storage))
 
                 e.if_(e.both(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.tids_at, p["j"]))), 0), e.eq(e.value(ESTAMP, value), visit)), reached)
 
@@ -1749,7 +1780,11 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
     released = lambda: e.eq(e.ld(e.add(e.add(p["passed"], e.mul(p["m"], PASSED)), 3)), 0)  # noqa: E731
     storage_of = lambda: e.ld(e.add(e.add(p["passed"], e.mul(p["m"], PASSED)), 1))  # noqa: E731
     e.for_("m", 0, p["passed_n"], lambda: e.if_(released(), lambda: e.st(_site_word(e, 1, storage_of()), 1)))
-    e.for_("m", 0, p["passed_n"], lambda: e.if_(released(), lambda: _check_dependents(e, storage_of())))
+    # The bootstrap checks released storages in set order: exact only when one storage was released.
+    e.var("released_n", 0)
+    e.for_("m", 0, p["passed_n"], lambda: e.if_(released(), lambda: e.set("released_n", e.add(p["released_n"], 1))))
+    e.for_("m", 0, p["passed_n"], lambda: e.if_(released(), lambda: _check_dependents(
+        e, storage_of(), e.flag(gate(e.eq(p["released_n"], 1))))))
 
 
 def _view_slot(e: E, count, at, position):
@@ -3301,6 +3336,20 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.RECORD", "MEMORY-LINK-RECORD-ONLY", "record element with link fields", h(x)
     if name == "RECORD_EXTENT":
         return "XAX.MEMORY.RECORD", "MEMORY-RECORD-EXTENT", f"multiple of {x}", y
+    if name == "RECORD_FIELD_OFFSET":
+        return ("XAX.MEMORY.RECORD", "MEMORY-RECORD-FIELD-OFFSET", [[read(x + 1 + 2 * k), h(read(x + 2 + 2 * k))] for k in range(read(x))], [y, h(z)])
+    if name == "RECORD_OFFSET_STRIDE":
+        return "XAX.MEMORY.RECORD", "MEMORY-RECORD-OFFSET-STRIDE", f"multiple of {x}", y
+    if name == "ADDRESS_AUTHORITY":
+        return "XAX.MEMORY.PERMISSION", "MEMORY-ADDRESS-NO-AUTHORITY-GAIN", [h(x), y], [h(z), w]
+    if name == "ADDRESS_ALIGNMENT":
+        return "XAX.MEMORY.ALIGNMENT", "MEMORY-ADDRESS-ALIGNMENT", f"<= {x}", y
+    if name == "BYTE_ADDRESSABLE":
+        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-BYTE-ADDRESSABLE-VALUE", "bits or float scalar with whole-byte width", h(x)
+    if name == "LINK_STORAGE_FOREIGN":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-STORAGE-FOREIGN", "deallocation only", storages[x]
+    if name == "LINK_TARGET_OUTLIVES":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-TARGET-OUTLIVES", "dependent storage ended first", [storages[x], storages[y]]
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":
