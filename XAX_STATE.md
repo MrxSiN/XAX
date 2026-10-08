@@ -109,6 +109,10 @@ Direct-call contract mismatches against graph-fragment callees are now rejected 
 
 The XAX facts engine now decides the stack-memory rejections (lifetime, bounds, alignment, permission, frontier linearity, uninitialized loads, leaks) with the bootstrap's exact diagnostic: over 90% of the memory corpus's rejections. Still Python: heap-view, checked-access, call, atomic, and link memory rejections; object verification.
 
+## Host integration contracts and component-verification memo — 2026-10-08 (ADR-222 to ADR-225)
+
+Component stores are verified once per store bytes and compiler version (`verify_component_store`, ADR-222). A first `construct` in a fresh process with a populated image cache dropped from 21.9 s to 2.7 s. The construction carrier reaches argv/env/auxv through `linux.startup.*` (ADR-223). `linux-x86_64-process-v1` (ADR-224) and `xax-host-contract-v1` (ADR-225) give integrations a versioned surface. First consumer: XAX-MCP.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

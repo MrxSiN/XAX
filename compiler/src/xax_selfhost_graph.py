@@ -46,7 +46,6 @@ from xax_compiler import (
     bits_type,
     heap_view_type,
     pointer_type,
-    verify_store,
     x86_64_linux_exec_target,
 )
 from xax_graph_builder import GraphBuilder, program_store
@@ -304,8 +303,10 @@ def build_graph_decoder_program() -> tuple[StoreReader, SemanticObject]:
 
 
 def load_graph_decoder_program() -> tuple[StoreReader, SemanticObject]:
+    from xax_native import verify_component_store
+
     reader = StoreReader(STORE_PATH.read_bytes())
-    verify_store(reader)
+    verify_component_store(reader, "graph-decoder")
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, function

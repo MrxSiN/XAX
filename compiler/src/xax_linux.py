@@ -202,6 +202,35 @@ def linux_startup_api(api: LinuxApi | None = None) -> LinuxStartupApi:
     )
 
 
+# -- process contract (ADR-224) ------------------------------------------------------------------------------------
+
+LINUX_X86_64_PROCESS_CONTRACT = "linux-x86_64-process-v1"
+
+
+def process_contract() -> dict:
+    """``linux-x86_64-process-v1``: what a host may rely on when it runs a Linux x86-64 XAX executable.
+
+    A description of behaviour this package already implements, versioned so integrators (build services, test
+    harnesses, tool servers) can depend on it instead of on ``run_linux_executable``, which stays a test harness.
+    It adds no runner and no runtime: confining the process is the host's concern.  Every clause is exercised by
+    ``tests/test_xax_linux_process_contract.py``; changing a clause requires a new contract identity."""
+    return {
+        "identity": LINUX_X86_64_PROCESS_CONTRACT,
+        "target_profiles": ["x86_64-linux-elf-exec-v1", "x86_64-linux-elf-dynexec-v1"],
+        "container": "ELF64 ET_EXEC; e_entry is the XAX entry function; no code runs before it",
+        "runtime": "none: no libc, allocator, unwinder or runtime library (the dynamic profile adds only the declared "
+                   "DT_NEEDED libraries and the system loader)",
+        "entry": "fn(proof...) -> (bits<N>?, proof...) (validate_process_entry); no machine parameters",
+        "inputs": {"stdin": "fd 0 through linux.read",
+                   "startup": "argc/argv/envp/auxv through linux-x86_64-startup-v1 reads, in the entry function only",
+                   "environment": "only as startup reads; nothing is read implicitly"},
+        "outputs": {"stdout": "fd 1 through linux.write", "stderr": "fd 2 through linux.write"},
+        "termination": {"exit": "only an explicit linux.exit_group call; the status is its b32 argument modulo 256",
+                        "trap": "a failed check or a return from the entry executes ud2 (the process receives SIGILL)"},
+        "system_calls": "exactly the declared linux-x86_64-syscall-v1 imports reached by the program",
+    }
+
+
 _BASE_ADDRESS = 0x400000
 _ELF_HEADER_SIZE = 64
 _PROGRAM_HEADER_SIZE = 56
