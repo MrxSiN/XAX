@@ -25,13 +25,15 @@ from xax_selfhost_typing import IN_WORDS
 import xax_selfhost_diagnostics as D
 
 # Output regions (word indices of the output view).
-WORDS_AT, WORDS_LIMIT = 1 << 20, 4 << 20  # code: one word per RISC-V instruction, eight bytes per word on x86-64
-JUMPS_AT, JUMPS_LIMIT = 5 << 20, 2 << 20  # 3 words per jump
-RANGES_AT, RANGES_LIMIT = 7 << 20, 4 << 20  # 5 words per range
-META_AT = 11 << 20  # entry machine parameter and return widths; the function order
-STREAM_AT, STREAM_END = 12 << 20, 16 << 20  # the front end's internal stream (S5a format), read by the code generator
+# ADR-218: regions resized from measured use (the typing program: 3.5M code words, 19k jumps, 179k ranges) so the
+# arena, which the largest function's liveness bitsets nearly filled, gains 3M words.
+WORDS_AT, WORDS_LIMIT = 1 << 20, 5 << 20  # code: one word per RISC-V instruction or x86-64 byte
+JUMPS_AT, JUMPS_LIMIT = 6 << 20, 1 << 19  # 3 words per jump
+RANGES_AT, RANGES_LIMIT = (6 << 20) + (1 << 19), 2 << 20  # 5 words per range
+META_AT = (8 << 20) + (1 << 19)  # entry machine parameter and return widths; the function order
+STREAM_AT, STREAM_END = 9 << 20, 13 << 20  # the front end's internal stream (S5a format), read by the code generator
 # S6c: the arena takes the rest; each function's scratch is reclaimed after it is lowered.
-ARENA_AT, ARENA_END = 16 << 20, HEADER - 1
+ARENA_AT, ARENA_END = 13 << 20, HEADER - 1
 # Backend state in the header (after the argument words).
 (S_COUNT, S_JUMPS, S_RANGES, S_FN, S_OFFSETS, S_REG, S_SLOT, S_WIDTH, S_TRAP, S_TRAP_USED, S_POW, S_FRAME, S_TEMPS,
  S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS, S_AGG) = range(44, 64)

@@ -444,6 +444,48 @@ class SelfhostTypingTests(unittest.TestCase):
             "META-TARGET-SUPPORT-RESULT": (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B8,), (1,)),
             "META-TARGET-OPERATION": (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B1,), (9999,)),
         }
+        # S8c.5 (ADR-218): resource and effect operations; several sites share RESOURCE-EFFECT-OP-CONTRACT.
+        resource_cases = [
+            (Operation.EFFECT_STEP, (IO, TIME), (TIME, IO), ()),
+            (Operation.EFFECT_STEP, (IO, B8), (IO, B8), ()),
+            (Operation.EFFECT_STEP, (IO, IO), (IO, IO), ()),
+            (Operation.RESOURCE_RELEASE, (R2,), (IO,), ()),
+            (Operation.RESOURCE_RELEASE, (R2, B8), (B8,), ()),
+            (Operation.RESOURCE_RELEASE, (R2, IO), (IO2,), ()),
+            (Operation.RESOURCE_ACQUIRE, (IO,), (B8, IO), ()),
+            (Operation.RESOURCE_ACQUIRE, (IO,), (R2, IO), ()),
+            (Operation.RESOURCE_RELEASE, (R_AFFINE, IO), (IO,), ()),
+            (Operation.RESOURCE_DISCARD, (R1, IO), (IO,), ()),
+            (Operation.RESOURCE_JOIN, (R_PART, R1, IO), (R_PART, IO), ()),
+            (Operation.RESOURCE_JOIN, (R1, R1, IO), (R1, IO), ()),
+            (Operation.RESOURCE_TRANSFER, (R1, IO), (R2, IO), ()),
+            (Operation.RESOURCE_TRANSITION, (R2, IO), (R3, IO), ()),
+            (Operation.RESOURCE_SPLIT, (R1, IO), (R1, R1, IO), ()),
+        ]
+        rules = set()
+        for sample in resource_cases:
+            status, verdicts = _native_verdicts(self.native, [sample])
+            self.assertEqual((status, verdicts[0]), (0, REJECTED), sample)
+            baseline = _outcome(None, *sample)
+            self.assertIsNotNone(baseline, sample)
+            self.assertEqual(_outcome(self.native, *sample), baseline, sample)
+            rules.add(baseline[1])
+        self.assertEqual(len(rules), 7)
+        # Attributes on a resource node: the graph builder refuses them, so check the node check directly.
+        from xax_compiler import XaxError, _verify_resource_effect_node
+        from xax_selfhost_typing import marshal, type_info_from
+
+        objects = {item.cid: item for item in POOL}
+        node = SimpleNamespace(operation=Operation.RESOURCE_ACQUIRE, operands=(ValueRef.parameter(0, 0),), results=(R1.cid, IO.cid),
+                               attributes=(3,), entity=None, operand_types=(IO.cid,))
+        cids: list[bytes] = []
+        words, keys = marshal([SimpleNamespace(nodes=[node])], lambda _block, _node: (IO.cid,), type_info_from(objects.__getitem__), cids=cids)
+        status, verdicts = self.native.check(words, len(keys))
+        self.assertEqual((status, verdicts), (0, [REJECTED]))
+        with self.assertRaises(XaxError) as raised:
+            _verify_resource_effect_node(SimpleNamespace(cid=bytes(32)), objects.__getitem__, node)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual(self.native.rejection(0, cids, words), (diagnostic.code, diagnostic.rule, diagnostic.expected, diagnostic.actual))
         status, verdicts = _native_verdicts(self.native, list(cases.values()))
         self.assertEqual(status, 0)
         for index, (rule, sample) in enumerate(cases.items()):

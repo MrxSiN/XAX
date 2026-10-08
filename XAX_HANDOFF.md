@@ -76,6 +76,12 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - `_meta_steps` builds each meta operation's checks from `META_RULES`. Undecoded `bits` and form-5 types defer; other non-opaque types reject.
 - Next (S8c.5): resource/effect (`_verify_resource_effect_node`). Its diagnostics quote raw CID tuples, `_EffectType` reprs, flags, and transition lists; render them from the input stream and the program's tables (`EDOMAIN`, `EINST`, `RKIND`, `RSTATE`, `RFLAGS`, `TSTART`/`TCOUNT`).
 
+## S8c.5 resource/effect typing rejections — 2026-10-08 (ADR-218)
+
+- Rejection logic lives in `build_rejection_pass` / `_rejection_entry` (its own function). Keep new rejection code there, not in `_node_entry`.
+- If the XAX backends decline a helper program (`X86_64_VIEWS-XAX-BACKEND`), check the views backend's arena first: the largest function needs about 5 x blocks x values / 64 words for liveness. The region layout is in `xax_selfhost_views_backend.py`.
+- Next (S8c.6): constants and call targets, then call contracts (they need the callee interface lists decoded separately from the comparison).
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.
