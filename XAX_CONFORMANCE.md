@@ -665,6 +665,8 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 
 40. **Replacement levels v3 (ADR-207).** The validator MUST derive R4 only from a recomputed leadership verdict (ratio against the fastest non-XAX arm ≤ 0.9999, unrounded, significant), R5 only from EXECUTED/PROVEN `autonomous_maintenance`, and R6 only from EXECUTED/PROVEN `xax_only_application` that cites more than documents or sources. `ai_tokens` evidence MUST NOT raise any level. A published `time_ratio_vs_fastest` or `time_ratio_vs_fastest_competitor` MUST equal the recomputation at its stored precision. Vectors: `compiler/tests/test_replacement_matrix.py` (`test_r5_is_maintenance_r6_is_xax_only_application_and_tokens_gate_nothing`, `test_r4_margin_is_exact_and_noise_is_not_leadership`).
 
+41. **Predicate tables (ADR-208).** A boolean of one value proven below 256 that the x86-64 register path reads from a table MUST equal the expression for every value of the subject, in value and branch form; tests shared with other code MUST still be computed for their other uses. Vectors: `compiler/tests/test_x86_64_optimizations.py::PredicateTableTests`, `::RangeEliminationTests::test_membership_value_matches_every_byte`.
+
 ## 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
 
 The normal local adapter MUST preserve snapshot preconditions, reject stale generations including restored identical roots, reject unexposed or cross-function values, and publish a batch atomically. Bounded function binding MUST reject truncation. Vectors: `compiler/tests/test_xax_local_protocol.py`.

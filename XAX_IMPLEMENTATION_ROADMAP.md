@@ -418,13 +418,13 @@ Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not sc
 
 **Ordered sequence**
 
-| Step | Work | Unblocks |
-|---|---|---|
-| U2.1 | Re-run Linux `filestat`, `chains`, and `jsonmin` with raw samples (the harness records them since ADR-207) | Linux R4 verdict |
-| U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 |
-| U2.3 | Android cold-start re-run with a Kotlin arm and more passes | Android R4 verdict |
-| U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 |
-| U2.5 | XAX-only application with XAX test and build definitions | R6 |
+| Step | Work | Unblocks | Status |
+|---|---|---|---|
+| U2.1 | Re-run Linux `filestat`, `chains`, and `jsonmin` with raw samples (the harness records them since ADR-207) | Linux R4 verdict | MEASURED (ADR-208, §15.30): `filestat` 0.882x and `jsonmin` 0.968x clang lead; `chains` 0.984x rustc is within noise |
+| U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 | In progress: predicate tables (ADR-208). Next: `chains` (memory-latency bound; loop-invariant code motion of the exit-edge `found + 1`, fewer moves) |
+| U2.3 | Android cold-start re-run with a Kotlin arm and more passes | Android R4 verdict | Open |
+| U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 | Open |
+| U2.5 | XAX-only application with XAX test and build definitions | R6 | Open |
 
 ## S — Compiler migration ladder (after M14; runs alongside U1)
 

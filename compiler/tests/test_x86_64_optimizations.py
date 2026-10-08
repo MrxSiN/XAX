@@ -75,6 +75,48 @@ def _classify():
     return _program(body)
 
 
+# Predicates over one byte (ADR-208): each is (name, builder, reference).  Builders get the Proc and the byte.
+def _in_range(p: Proc, value, low: int, high: int):
+    return p.cmp(IntCompare.ULE, p.bin(Operation.SUB_WRAP, value, low), high - low)
+
+
+PREDICATES = (
+    ("hex digit", lambda p, b: p.any_of(_in_range(p, b, 0x30, 0x39), _in_range(p, b, 0x41, 0x46), _in_range(p, b, 0x61, 0x66)),
+     lambda b: chr(b) in "0123456789ABCDEFabcdef"),
+    ("signed and masked", lambda p, b: p.all_of(
+        p.cmp(IntCompare.SLT, p.bin(Operation.SUB_WRAP, b, 0x40), 0x10), p.cmp(IntCompare.NE, p.bin(Operation.BIT_AND, b, 3), 1)),
+     lambda b: ((b - 0x40) & 0xFFFFFFFF) - ((b - 0x40) & 0x80000000) * 2 < 0x10 and b & 3 != 1),
+    ("wrapping product", lambda p, b: p.any_of(
+        p.cmp(IntCompare.UGT, p.bin(Operation.MUL_WRAP, b, 0x01010101), 0x7F000000), p.cmp(IntCompare.EQ, p.bin(Operation.BIT_XOR, b, 0x5A), 0)),
+     lambda b: (b * 0x01010101) & 0xFFFFFFFF > 0x7F000000 or b == 0x5A),
+)
+
+
+def _predicate_program(predicate, branch: bool, result: str):
+    """Loop over the bytes 0..255; ``result`` 'count' returns how many satisfy ``predicate``, 'xor' their XOR.
+    ``branch`` uses the predicate as a branch condition, otherwise as a value."""
+    def body(proc: Proc):
+        proc.let("b", B32, proc.const(0))
+        proc.let("acc", B32, proc.const(0))
+
+        def step(p: Proc):
+            b = p["b"]
+            flag = predicate(p, b)
+            if branch:
+                def hit(q: Proc):
+                    q["acc"] = q.bin(Operation.ADD_WRAP, q["acc"], 1) if result == "count" else q.bin(Operation.BIT_XOR, q["acc"], q["b"])
+                p.if_(flag, hit)
+            else:
+                wide = p.widen(flag)
+                p["acc"] = p.bin(Operation.ADD_WRAP, p["acc"], wide) if result == "count" else p.bin(
+                    Operation.BIT_XOR, p["acc"], p.bin(Operation.MUL_WRAP, wide, b))
+            p["b"] = p.bin(Operation.ADD_WRAP, p["b"], 1)
+
+        proc.while_(lambda p: p.cmp(IntCompare.ULT, p["b"], 256), step)
+        return proc.bin(Operation.BIT_AND, proc["acc"], 0xFF)
+    return _program(body)
+
+
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
 class RangeEliminationTests(unittest.TestCase):
     def test_proven_loop_index_runs(self):
@@ -89,6 +131,33 @@ class RangeEliminationTests(unittest.TestCase):
         reader, entry, target = _classify()
         expected = (4 * 100 + 0x20 + 0x09 + 0x0A + 0x0D) % 256
         self.assertEqual(run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid).data).returncode, expected)
+
+
+class PredicateTableTests(unittest.TestCase):
+    """ADR-208: a boolean of one byte-ranged value read from a table equals the expression for every byte."""
+
+    def test_tables_are_emitted_for_value_and_branch_forms(self):
+        for name, predicate, reference in PREDICATES:
+            for branch in (False, True):
+                with self.subTest(name=name, branch=branch):
+                    reader, entry, target = _predicate_program(predicate, branch, "count")
+                    code = compile_linux_executable(reader, entry.cid, target.cid).data
+                    self.assertIn(bytes(int(reference(b)) for b in range(256)), code)
+                    self.assertIn(b"\x4c\x8d\x1d", code)  # lea r11, [rip + table]
+
+    @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+    def test_tables_execute_exactly(self):
+        for name, predicate, reference in PREDICATES:
+            members = [b for b in range(256) if reference(b)]
+            xor = 0
+            for b in members:
+                xor ^= b
+            for branch in (False, True):
+                for result, expected in (("count", len(members) & 0xFF), ("xor", xor)):
+                    with self.subTest(name=name, branch=branch, result=result):
+                        reader, entry, target = _predicate_program(predicate, branch, result)
+                        completed = run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid).data)
+                        self.assertEqual(completed.returncode, expected)
 
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")

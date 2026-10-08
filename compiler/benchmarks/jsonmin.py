@@ -173,10 +173,14 @@ def whitespace_function():
 
 
 def string_function():
-    """At an opening quote: copy the string through its closing quote."""
+    """At an opening quote: copy the string through its closing quote (the C twin's loop shape)."""
     proc = _new()
     _copy(proc)
-    proc.let("byte", B32, _current(proc))
+    proc.let("byte", B32, proc.const(0))
+
+    def more(p: Proc):
+        p["byte"] = _current(p)
+        return p.cmp(NE, p["byte"], 0x22)
 
     def body(p: Proc):
         byte = p["byte"]
@@ -202,16 +206,10 @@ def string_function():
             q.if_(q.cmp(EQ, escaped, 0x75), unicode, simple)
 
         p.if_(p.cmp(EQ, byte, 0x5C), escape)
-        p["byte"] = _current(p)
 
-    # Loop until the byte just copied was the closing quote.
-    proc.let("last", B32, proc.const(0))
-
-    def step(p: Proc):
-        p["last"] = p["byte"]
-        body(p)
-
-    proc.while_(lambda p: p.cmp(NE, p["last"], 0x22), step)
+    proc.while_(more, body)
+    _emit(proc, 0x22)  # the closing quote
+    _advance(proc)
     _finish(proc)
     return _done(proc)
 
