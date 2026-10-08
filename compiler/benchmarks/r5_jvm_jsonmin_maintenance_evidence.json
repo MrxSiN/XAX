@@ -1,0 +1,294 @@
+{
+  "format": "xax-r5-maintenance-evidence-v1",
+  "decision": "ADR-209",
+  "label": "EXECUTED",
+  "application": {
+    "name": "jsonmin",
+    "platform_row": "jvm",
+    "target": "7c47ed4321a4072e452ebba3b27cea1cc97cce467fa4b838e4cfa7980dae83b1",
+    "original_root": "dcab605a196f3cb4c44e0d0469a7aa1df8a3137a0e778b82f10400b265e2c84e"
+  },
+  "request": "Accept JSON nested up to 1024 levels instead of 512; everything else unchanged.",
+  "agent": {
+    "authored_input": "const N3 1024",
+    "authored_input_bytes": 13,
+    "author": "Claude (AI coding agent), Claude Code session of 2026-10-08, after reading the projection excerpt below",
+    "projection_excerpt": [
+      "N3 constant 512 -> (T2)",
+      "N4 int.compare P0 N3 -> (T7) attributes=(5,)"
+    ],
+    "replayed_by": "this harness, deterministically against the pinned original root"
+  },
+  "queries": [
+    {
+      "query": "callees",
+      "response_bytes": 182
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "callees",
+      "response_bytes": 300
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 28642
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 3416
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 11935
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 34558
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 20672
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 31586
+    },
+    {
+      "query": "projection",
+      "response_bytes": 6926
+    }
+  ],
+  "transaction": {
+    "generation_before": 0,
+    "generation_after": 1,
+    "committed": true,
+    "new_root": "44f303d1895696feabceddc13a87abf1156c67e837d8fe90d0123c2abd9ead7c",
+    "changed_entities": [
+      "b7f9922405c09bbba453970367f46498ce04492788a6cd7ef3c1d14fdbd831a7"
+    ],
+    "transaction_bytes": 19,
+    "touched_objects": 8,
+    "reused_objects": 119,
+    "verified_objects": 8,
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.8', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.9', change='added', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.10', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative')), truncated=False, continuation=None)",
+    "whole_source_regenerated": false
+  },
+  "workspace_accounting": {
+    "queries": 91,
+    "entities_exposed": 1185,
+    "query_bytes": 148033,
+    "mutations": 1,
+    "rejected_transactions": 0
+  },
+  "rebuild": {
+    "before": {
+      "jar_sha256": "706b0bc3b0af1cfd5003a63293b453357d7e30ebc335d754fd2e67b6d995404a",
+      "class_bytes": 5603
+    },
+    "after": {
+      "jar_sha256": "9a8956b2bfd97d2cb5a3ba8faab120b627219ae899a0a5bc0258917c10d7aa07",
+      "class_bytes": 5603,
+      "entry_function": "9de1fe9be931a6bf17bcfa2fc9d3d5b82da64355b2def6bfce09ea481378598b"
+    }
+  },
+  "tests": {
+    "cases": [
+      {
+        "input_sha256": "c45e910f51eae64d0a3074c2501a3e0a3dc24b486b17677a90b78293c1bf0826",
+        "input_bytes": 55,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "input_bytes": 2,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+        "input_bytes": 1,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "76a877bda060f5f70c131d89f71a1b3ad0c0717a12586e0e1b6906fecae95627",
+        "input_bytes": 18,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "b2d3da6f524e2498194717d153a5621e2618d7643c1b23dbbcb2ebe52fa7933e",
+        "input_bytes": 3,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "aa99a5ce3eb0dd8355f0bfb15376ea1d862ad75d0d278af1f8c280ca8c02c640",
+        "input_bytes": 8,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "8e955b12c5bd485a2f5ad9ec07f09bf0cd19d368b6fed043e8049f6dc17cc899",
+        "input_bytes": 4,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "a2bca62ab7e7f14c7d3990aa49b00f9f55700ff69e1131ca08534c8345828334",
+        "input_bytes": 3,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "d3a45e75e1f7d2fce20af13f1908bde85957c73408a85584e7e8ed6962505904",
+        "input_bytes": 8,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89",
+        "input_bytes": 1,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "674cf3304bf7104f5ef200c1bb17b24a9b1da199f47cc76bcdc7fd030da23491",
+        "input_bytes": 1024,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "a9ecae6c77e13ad7240afd2d6c8aa7603375874dd33cf982251d2d533db6d32b",
+        "input_bytes": 1026,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "c3ef522e5b94c7464f45e3c3e90bdbab0554957a4a76d4db58c61769d875bef5",
+        "input_bytes": 2048,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": true
+      },
+      {
+        "input_sha256": "94f71e5ad4bf8bc1a8042b35e94317f69c25b8f21d8cc0726ac175333abda9be",
+        "input_bytes": 2050,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": true
+      },
+      {
+        "input_sha256": "c2c5e6579b4a4e1c3963a4c1729dc92a2d080154585433de07334ea36068af30",
+        "input_bytes": 3133,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": true
+      },
+      {
+        "input_sha256": "348694dbe30db095a5109b3bf2e861faf2ca45938a8c384d04341af21aadf615",
+        "input_bytes": 70897,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      }
+    ],
+    "all_passed": true
+  },
+  "benchmark": {
+    "document": {
+      "bytes": 4194304,
+      "generator": "benchmark_document(size, seed=1)"
+    },
+    "warmup_rounds": 2,
+    "repetitions": 15,
+    "order": "interleaved, alternating",
+    "timer": "time.perf_counter around a fresh java -jar",
+    "results": {
+      "before": {
+        "wall_seconds_samples": [
+          0.105139,
+          0.088899,
+          0.100459,
+          0.097475,
+          0.105439,
+          0.104614,
+          0.09505,
+          0.09237,
+          0.104364,
+          0.111257,
+          0.094479,
+          0.097237,
+          0.10313,
+          0.102511,
+          0.101788
+        ],
+        "wall_seconds_median": 0.101788
+      },
+      "after": {
+        "wall_seconds_samples": [
+          0.104386,
+          0.094478,
+          0.107737,
+          0.096542,
+          0.107779,
+          0.094697,
+          0.105287,
+          0.08597,
+          0.094236,
+          0.109494,
+          0.108234,
+          0.096866,
+          0.10663,
+          0.101581,
+          0.118672
+        ],
+        "wall_seconds_median": 0.104386
+      }
+    },
+    "after_over_before_median": 1.025524
+  },
+  "persisted": {
+    "store": "jsonmin-jvm-gen1.xax (canonical workspace save)",
+    "store_sha256": "ceeec61a19a3921a64835343daf866b6a102680778fba702a5508ad851d4caca",
+    "store_bytes": 47617,
+    "root": "44f303d1895696feabceddc13a87abf1156c67e837d8fe90d0123c2abd9ead7c"
+  },
+  "host": {
+    "machine": "x86_64",
+    "python": "3.13.16",
+    "java": [
+      "openjdk version \"21.0.12.1\" 2026-08-18",
+      "OpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)",
+      "OpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)"
+    ]
+  }
+}

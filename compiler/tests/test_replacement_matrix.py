@@ -107,7 +107,7 @@ class ReplacementMatrixTests(unittest.TestCase):
     def test_competitive_verdict_must_equal_recomputation(self):
         bad = copy.deepcopy(MATRIX)
         target = next(r for r in bad["platforms"] if r["id"] == "jvm")
-        self.assertEqual(derived_level(target), "R4")
+        self.assertEqual(derived_level(target), "R5")
         target["competitive"] = [False, "compiler/benchmarks/jvm_jsonmin_evidence.json"]
         self.assertTrue(any(e.startswith("jvm.competitive: verdict False but recomputation") for e in validate(bad, ROOT)))
         target["competitive"] = [True]
@@ -180,6 +180,8 @@ class ReplacementMatrixTests(unittest.TestCase):
     def test_r5_is_maintenance_r6_is_xax_only_application_and_tokens_gate_nothing(self):
         """ADR-207: AI-token evidence is historical; R5 needs executed maintenance, R6 an executed XAX-only application."""
         row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "jvm"))
+        self.assertEqual(derived_level(row), "R5")  # ADR-209
+        del row["fields"]["autonomous_maintenance"]
         self.assertEqual(derived_level(row), "R4")
         row["fields"]["ai_tokens"] = ["MEASURED", "compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json"]
         self.assertEqual(derived_level(row), "R4")
@@ -199,7 +201,7 @@ class ReplacementMatrixTests(unittest.TestCase):
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         with results_path.open(newline="", encoding="utf-8") as file:
             rows = list(csv.DictReader(file))
-        self.assertEqual(derived_level(row), "R4")  # historical AI-token evidence (ADR-207) gates no level
+        self.assertEqual(derived_level(row), "R5")  # ADR-209; historical AI-token evidence (ADR-207) gates no level
         self.assertEqual(row["fields"]["ai_tokens"][0], "PROTOTYPE")
         self.assertEqual(len(rows), 10)
         self.assertEqual({r["model"] for r in rows}, {"gpt-5.6-luna"})

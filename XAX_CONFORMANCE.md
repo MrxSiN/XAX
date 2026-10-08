@@ -667,6 +667,8 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 
 41. **Predicate tables (ADR-208).** A boolean of one value proven below 256 that the x86-64 register path reads from a table MUST equal the expression for every value of the subject, in value and branch form; tests shared with other code MUST still be computed for their other uses. Vectors: `compiler/tests/test_x86_64_optimizations.py::PredicateTableTests`, `::RangeEliminationTests::test_membership_value_matches_every_byte`.
 
+42. **Recursion-group member edits (ADR-209).** A committed edit of a group member MUST produce a verified store whose group is in canonical member order with group-local call indices renumbered to it, whose member function identities all name the new group, and whose execution equals the edited semantics; an edited member that calls a rebuilt non-member function MUST reject with `WORKSPACE-RECURSION-EDIT-CALLEES`. Vectors: `compiler/tests/test_workspace_recursion_edit.py`.
+
 ## 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
 
 The normal local adapter MUST preserve snapshot preconditions, reject stale generations including restored identical roots, reject unexposed or cross-function values, and publish a batch atomically. Bounded function binding MUST reject truncation. Vectors: `compiler/tests/test_xax_local_protocol.py`.
