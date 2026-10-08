@@ -304,3 +304,68 @@ class SelfhostHeapViewFactsTests(unittest.TestCase):
             typing_module.NativeTyping.facts = original
         self.assertGreater(outcomes["accept"], 60)
         self.assertGreater(outcomes["reject"], 60)
+
+
+# -- S8c.9 (ADR-222): the type and continuation checks of plain and checked accesses -----------------------------
+
+def _typed_program(variant: str):
+    """A one-block program whose single fault is ``variant`` (each a different bootstrap memory rule)."""
+    graph = GraphBuilder()
+    if variant.startswith("checked"):
+        view = heap_view_type(EXTENT, initialized=True)
+        graph.track(view, VIEW_POINTER, B64, B8, B32)
+        entry = graph.block(B32, VIEW_POINTER, view, MEM)
+        seed, pointer, token, memory = entry.params
+        offset = entry.const(B64 if variant == "checked_offset" else B32, 1)
+        alignment = 2 if variant == "checked_alignment" else 1
+        if variant == "checked_store_type":
+            memory = entry.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, offset, entry.const(B32, 5), memory), MEM, attributes=(1, 1))
+        elif variant == "checked_effect_type":
+            memory = entry.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, offset, entry.const(B8, 5), memory), B8, attributes=(1, 1))
+        else:
+            result = B32 if variant == "checked_load_type" else B8
+            value, memory = entry.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, offset, memory), (result, MEM), attributes=(1, alignment))
+        entry.ret(seed, pointer, token, memory)
+        function = graph.function((B32, VIEW_POINTER, view, MEM), (B32, VIEW_POINTER, view, MEM))
+        return function, tuple(graph.objects.values())
+    pointer = pointer_type(B32, Permission.READ_WRITE, 4)
+    graph.track(pointer, OWNER, MEM, B32, B8)
+    entry = graph.block(B32)
+    (seed,) = entry.params
+    p, owner, memory = entry.op(Operation.STACK_ALLOC, (), (pointer, OWNER, MEM), attributes=(4, 4))
+    stored = entry.const(B8 if variant == "store_type" else B32, 7)
+    memory = entry.op1(Operation.STORE_BITS_LE, (p, stored, memory), B32 if variant == "store_effect_type" else MEM, attributes=(4, 4))
+    loaded, memory = entry.op(Operation.LOAD_BITS_LE, (p, memory), (B8 if variant == "load_type" else B32, MEM), attributes=(4, 4))
+    entry.op(Operation.STACK_END, (owner, memory), ())
+    entry.ret(seed)
+    return graph.function((B32,), (B32,)), tuple(graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostTypedAccessTests(unittest.TestCase):
+    def test_access_type_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            for variant in ("load_type", "store_type", "store_effect_type", "checked_alignment", "checked_offset", "checked_load_type",
+                            "checked_store_type", "checked_effect_type"):
+                function, objects = _typed_program(variant)
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, variant)
+                self.assertEqual(baseline[0], "reject", variant)
+                rules[variant] = (baseline[2], any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertTrue(all(decided_ for _rule, decided_ in rules.values()), rules)

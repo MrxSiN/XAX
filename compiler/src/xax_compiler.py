@@ -6543,6 +6543,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 memory_reject = typing.memory_rejection(
                     value_refs, facts_storages(blocks, entry),
                     lambda block_index, node_index: blocks[block_index].nodes[node_index].operation if node_index < len(blocks[block_index].nodes) else None,
+                    type_cids,
                 )
             linear_proven = typing.linear_flow()
             if accepted and len(proven_terminators) == len(blocks):

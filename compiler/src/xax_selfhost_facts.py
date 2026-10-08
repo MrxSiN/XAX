@@ -62,6 +62,9 @@ MEMORY_SITES = (
     "PROVENANCE_PROVEN", "LIFETIME_LIVE", "OP_CONTRACT", "ACCESS_SIZE", "POINTER_ELEMENT_SIZE", "ALIGNMENT", "BOUNDS",
     "READ_PERMISSION", "WRITE_PERMISSION", "EFFECT_PROVEN", "EFFECT_LINEAR", "EFFECT_PROVENANCE", "INITIALIZED",
     "ADDRESS_BOUNDS", "LIFETIME_LEAK", "OWNER_PROVEN", "OWNER_LIVE", "ALLOCATION_ALIGNMENT",
+    # S8c.9 (ADR-222): checked accesses, and the type checks of loads and stores.
+    "LOAD_TYPE", "STORE_TYPE", "STORE_EFFECT_TYPE", "CHECKED_ALIGNMENT", "CHECKED_OFFSET", "CHECKED_LOAD_TYPE", "CHECKED_STORE_TYPE",
+    "CHECKED_EFFECT_TYPE", "CHECKED_INITIALIZED",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -656,16 +659,20 @@ def _element_size(e: E, element, attribute_size):
     return e.sel(e.ne(e.table(_T.PTR, element), 0), pointer_size, size)
 
 
+def _access_size(e: E, element, size):
+    """``element_size`` and the access-size check.  A non-pointer element the program cannot size makes the bootstrap
+    raise its own element diagnostic: that only declines."""
+    pointer_element = e.ne(e.table(_T.PTR, element), 0)
+    expected = _element_size(e, element, 0)
+    _reject(e, e.either(e.not_(pointer_element), e.eq(size, 4), e.eq(size, 8)), M["POINTER_ELEMENT_SIZE"], size)
+    _require(e, e.either(pointer_element, e.ne(expected, 0)))
+    _reject(e, e.either(pointer_element, e.eq(size, expected)), M["ACCESS_SIZE"], expected, size)
+
+
 def _access(e: E, value_id, size, alignment, exact: bool = False):
     element, extent = e.value(PEL, value_id), e.value(PEXT, value_id)
     if exact:
-        # ``element_size`` then the size, alignment, and bounds checks.  A non-pointer element the program cannot size
-        # makes the bootstrap raise its own element diagnostic: only declined.
-        pointer_element = e.ne(e.table(_T.PTR, element), 0)
-        expected = _element_size(e, element, 0)
-        _reject(e, e.either(e.not_(pointer_element), e.eq(size, 4), e.eq(size, 8)), M["POINTER_ELEMENT_SIZE"], size)
-        _require(e, e.either(pointer_element, e.ne(expected, 0)))
-        _reject(e, e.either(pointer_element, e.eq(size, expected)), M["ACCESS_SIZE"], expected, size)
+        _access_size(e, element, size)
         offset = e.value(POFF, value_id)
         _reject(e, e.both(e.power_of_two(alignment), e.le(alignment, e.value(PALIGN, value_id)), e.eq(e.urem(offset, e.sel(e.eq(alignment, 0), 1, alignment)), 0)),
                 M["ALIGNMENT"], alignment, offset)
@@ -973,7 +980,8 @@ def _load(tables, covers):
         _reject(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.READ)), 0), M["READ_PERMISSION"], e.value(PPERM, source))
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(1), storage, exact=True)
-        _require(e, e.both(e.eq(n.rtid(0), e.value(PEL, source)), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.eq(n.rtid(1), n.tid(1))))
+        _reject(e, e.both(e.eq(n.rtid(0), e.value(PEL, source)), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.eq(n.rtid(1), n.tid(1))),
+                M["LOAD_TYPE"], e.value(PEL, source), n.tid(1), n.rtid(0), n.rtid(1))
         _reject(e, e.eq(e.call(_WINDOW[0], intervals, source, size), 1), M["INITIALIZED"], e.value(POFF, source), e.value(PWIN, source), size, intervals)
         _loaded_link(e, source, n.base)
         _set_effect(e, e.add(n.base, 1), storage, intervals)
@@ -990,11 +998,11 @@ def _store(tables, insert):
         size = n.attr(0)
         _access(e, source, size, n.attr(1), exact=True)
         _reject(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.WRITE)), 0), M["WRITE_PERMISSION"], e.value(PPERM, source))
-        _require(e, e.eq(n.tid(1), e.value(PEL, source)))
+        _reject(e, e.eq(n.tid(1), e.value(PEL, source)), M["STORE_TYPE"], e.value(PEL, source), n.tid(1))
         _stored_provenance(e, n.vid(1), source)
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(2), storage, exact=True)
-        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0), e.eq(n.rtid(0), n.tid(2))))
+        _reject(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0), e.eq(n.rtid(0), n.tid(2))), M["STORE_EFFECT_TYPE"], n.rtid(0))
         start = e.value(POFF, source)
         e.var("merged", intervals)  # a windowed store initializes an unknown position: nothing new
 
@@ -1109,28 +1117,34 @@ def _checked(tables, covers, load: bool):
     def build(e: E):
         n = _Node(e)
         source = n.vid(0)
-        _pointer(e, source)
-        _require(e, n.shape(3, 2, 2) if load else n.shape(4, 1, 2))
+        _pointer(e, source, exact=True)
+        _reject(e, n.shape(3, 2, 2) if load else n.shape(4, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
         element = e.value(PEL, source)
         size = n.attr(0)
-        _require(e, e.both(e.ne(size, 0), e.eq(size, _element_size(e, element, size)), e.eq(n.attr(1), 1)))
-        _require(e, e.eq(e.table(_T.WIDTH, n.tid(1)), 32))
+        _access_size(e, element, size)
+        _reject(e, e.eq(n.attr(1), 1), M["CHECKED_ALIGNMENT"], n.attr(1))
+        offset_width = e.table(_T.WIDTH, n.tid(1))
+        _require(e, e.ne(offset_width, 0))  # not bits: the bootstrap raises its own decode diagnostic
+        _reject(e, e.eq(offset_width, 32), M["CHECKED_OFFSET"], offset_width)
         permission = e.value(PPERM, source)
         if load:
-            _require(e, e.both(e.ne(e.and_(permission, int(Permission.READ)), 0), e.eq(n.rtid(0), element)))
+            _reject(e, e.ne(e.and_(permission, int(Permission.READ)), 0), M["READ_PERMISSION"], permission)
+            _reject(e, e.eq(n.rtid(0), element), M["CHECKED_LOAD_TYPE"], element, n.rtid(0))
             effect_index = 2
         else:
-            _require(e, e.both(e.ne(e.and_(permission, int(Permission.WRITE)), 0), e.eq(n.tid(2), element)))
+            _reject(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0), M["WRITE_PERMISSION"], permission)
+            _reject(e, e.eq(n.tid(2), element), M["CHECKED_STORE_TYPE"], element, n.tid(2))
             _stored_provenance(e, n.vid(2), source)
             effect_index = 3
         storage = e.value(PST, source)
-        intervals = _consume_effect(e, n.vid(effect_index), storage)
+        intervals = _consume_effect(e, n.vid(effect_index), storage, exact=True)
         effect_type = n.tid(effect_index)
-        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, effect_type), 0), e.eq(n.rtid(1 if load else 0), effect_type)))
+        _reject(e, e.both(e.ne(e.table(_T.MEMEFFECT, effect_type), 0), e.eq(n.rtid(1 if load else 0), effect_type)),
+                M["CHECKED_EFFECT_TYPE"], n.nr, n.rtid(0), n.rtid(1))
         if load:
             start = e.value(POFF, source)
             view_end = e.add(e.add(start, e.value(PWIN, source)), e.value(PEXT, source))
-            _require(e, e.ne(e.call(covers, intervals, start, view_end), 0))
+            _reject(e, e.ne(e.call(covers, intervals, start, view_end), 0), M["CHECKED_INITIALIZED"], start, view_end, intervals)
             _loaded_link(e, source, n.base)
         _set_effect(e, e.add(n.base, 1 if load else 0), storage, intervals)
         e.give(n.next)
@@ -3007,15 +3021,18 @@ def facts_storages(blocks, entry):
 _CONTRACTS = {
     Operation.LOAD_BITS_LE: (2, 2, 2), Operation.STORE_BITS_LE: (3, 1, 2), Operation.ADDRESS_OFFSET: (1, 1, 1),
     Operation.STACK_END: (2, 0, 0), Operation.STACK_ALLOC: (0, 3, 2),
+    Operation.CHECKED_LOAD_BITS_LE: (3, 2, 2), Operation.CHECKED_STORE_BITS_LE: (4, 1, 2),
 }
 
 
-def memory_diagnostic(site: int, payload, operation, refs, storages, read):
+def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=()):
     """S8c.8: the bootstrap's ``(code, rule, expected, actual)`` for an engine rejection record.  Rendering only: the
     engine decided the check and its values; ``refs``/``storages`` map its value and site ids to the bootstrap's
     ``ValueRef``s and storage tuples, and ``read(word)`` reads its output view."""
     name = MEMORY_SITES[site - 1]
     x, y, z, w = payload[:4]
+    h = lambda index: cids[index].hex()  # noqa: E731
+    intervals = lambda at: tuple((read(at + 1 + 2 * k), read(at + 2 + 2 * k)) for k in range(read(at)))  # noqa: E731
     ref = lambda value: [refs[value].block, refs[value].index, refs[value].result]  # noqa: E731
     if name == "PROVENANCE_PROVEN":
         return "XAX.MEMORY.PROVENANCE", "MEMORY-PROVENANCE-PROVEN", "local stack pointer", ref(x)
@@ -3044,9 +3061,25 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read):
     if name == "EFFECT_PROVENANCE":
         return "XAX.MEMORY.PROVENANCE", "MEMORY-EFFECT-PROVENANCE", storages[x], storages[y]
     if name == "INITIALIZED":
-        count = read(w)
-        intervals = tuple((read(w + 1 + 2 * k), read(w + 2 + 2 * k)) for k in range(count))
-        return "XAX.MEMORY.UNINITIALIZED", "MEMORY-INITIALIZED", [x, x + y + z], intervals
+        return "XAX.MEMORY.UNINITIALIZED", "MEMORY-INITIALIZED", [x, x + y + z], intervals(w)
+    if name == "LOAD_TYPE":
+        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-LOAD-TYPE", [h(x), h(y)], [h(z), h(w)]
+    if name == "STORE_TYPE":
+        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-STORE-TYPE", h(x), h(y)
+    if name == "STORE_EFFECT_TYPE":
+        return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "one matching effect<memory> result", [h(x)]
+    if name == "CHECKED_ALIGNMENT":
+        return "XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, x
+    if name == "CHECKED_OFFSET":
+        return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", 32, x
+    if name == "CHECKED_LOAD_TYPE":
+        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-LOAD-TYPE", h(x), h(y)
+    if name == "CHECKED_STORE_TYPE":
+        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-STORE-TYPE", h(x), h(y)
+    if name == "CHECKED_EFFECT_TYPE":
+        return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "matching effect<memory> continuation", [h(item) for item in (y, z)[:x]]
+    if name == "CHECKED_INITIALIZED":
+        return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":
         return "XAX.MEMORY.BOUNDS", "MEMORY-ADDRESS-BOUNDS", f"<= {x}", y
     if name == "LIFETIME_LEAK":
