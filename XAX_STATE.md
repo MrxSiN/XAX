@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8c.14 view-passing call rejections — 2026-10-08 (ADR-232)
+
+View borrowing at direct and group-member calls (owner, base, link target, effect provenance, liveness, forks, initialization) and group-call memory slots are now decided by the XAX facts engine. Still Python: link dependents of released views, indirect calls, atomics, links; object verification.
+
 ## S8c.13 foreign-call memory rejections — 2026-10-08 (ADR-230)
 
 Foreign-call memory rejections (release, use after release, frontier forks) are now decided by the XAX facts engine. Still Python: view-passing and indirect calls, atomics, links; object verification.

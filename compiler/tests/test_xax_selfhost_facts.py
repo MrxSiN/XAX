@@ -462,3 +462,115 @@ class SelfhostHeapViewConstructionTests(unittest.TestCase):
         finally:
             typing_module.NativeTyping.memory_rejection = original
         self.assertTrue(all(decided_ for _rule, decided_ in rules.values()), rules)
+
+
+# -- S8c.14 (ADR-232): view-passing direct and group-member calls ----------------------------------------------------
+
+def _view_call_program(variant: str):
+    """mmap two pages, view them, and pass a view to an identity callee; ``variant`` breaks one call rule."""
+    from xax_linux import linux_api
+
+    api = linux_api()
+    mem = api.memory_effect
+    triple = (api.bytes_rw, heap_view_type(4096), mem)
+    callee_graph = GraphBuilder()
+    entry = callee_graph.block(*triple)
+    entry.ret(*entry.params)
+    callee = callee_graph.function(triple, triple)
+    frontier_graph = GraphBuilder()
+    entry = frontier_graph.block(mem)
+    entry.ret(*entry.params)
+    frontier = frontier_graph.function((mem,), (mem,))
+    graph = GraphBuilder()
+    block = graph.block(api.process_effect, mem, mem)
+    process, memory, other_memory = block.params
+
+    def view(memory):
+        raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 4096), memory), (api.bytes_rw, api.heap_owner, mem), entity=api.mmap_anonymous)
+        return block.op(Operation.HEAP_VIEW, (raw, owner, memory), triple, attributes=(4096, 1))
+
+    pointer, token, memory = view(memory)
+    other, other_token, other_memory = view(other_memory)
+    if variant == "call_base":
+        pointer = block.op1(Operation.ADDRESS_OFFSET, (pointer,), api.bytes_rw, attributes=(8,))
+    if variant == "call_effect_provenance":
+        memory, other_memory = other_memory, memory
+    if variant == "call_effect_fork":
+        block.op1(Operation.STORE_BITS_LE, (pointer, block.const(B8, 7), memory), mem, attributes=(1, 1))
+    if variant == "frontier_fork":
+        block.op1(Operation.CALL_DIRECT, (other_memory,), mem, entity=frontier)
+        other_memory = block.op1(Operation.CALL_DIRECT, (other_memory,), mem, entity=frontier)
+    pointer, after, memory = block.op(Operation.CALL_DIRECT, (pointer, token, memory), triple, entity=callee)
+    if variant == "call_owner":  # the first call took the token
+        pointer, after, memory = block.op(Operation.CALL_DIRECT, (pointer, token, memory), triple, entity=callee)
+    if variant == "call_effect_provenance":
+        memory, other_memory = other_memory, memory
+    memory = block.op(Operation.CALL_FOREIGN, (pointer, after, memory), (B64, mem), entity=api.munmap_view(api.bytes_rw, 4096))[1]
+    other_memory = block.op(Operation.CALL_FOREIGN, (other, other_token, other_memory), (B64, mem), entity=api.munmap_view(api.bytes_rw, 4096))[1]
+    block.ret(process, memory, other_memory)
+    function = graph.function((api.process_effect, mem, mem), (api.process_effect, mem, mem))
+    return function, (*api.types, *graph.objects.values(), *callee_graph.objects.values(), callee, *frontier_graph.objects.values(), frontier)
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostViewCallTests(unittest.TestCase):
+    def test_view_call_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+        from test_xax_links import calling_program, table_calling_program
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        programs = {variant: _view_call_program(variant) for variant in ("call_base", "call_owner", "call_effect_provenance", "call_effect_fork", "frontier_fork")}
+        for name, (function, _target, objects) in (("self_target", calling_program(pass_table=True)), ("declared_target", table_calling_program(wrong_arena=True))):
+            programs[name] = (function, objects)
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            function, objects = _view_call_program("valid")
+            self.assertEqual(_outcome(native, function, objects), _outcome(None, function, objects))
+            self.assertEqual(_outcome(None, function, objects)[0], "accept")
+            for variant, (function, objects) in programs.items():
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, variant)
+                self.assertEqual(baseline[0], "reject", variant)
+                rules[variant] = (baseline[2], any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertEqual({variant: rule for variant, (rule, _decided) in rules.items()}, {
+            "call_base": "HEAP-VIEW-CALL-BASE", "call_owner": "HEAP-VIEW-CALL-OWNER", "call_effect_provenance": "MEMORY-EFFECT-PROVENANCE",
+            "call_effect_fork": "MEMORY-EFFECT-LINEAR", "frontier_fork": "MEMORY-EFFECT-LINEAR",
+            "self_target": "MEMORY-LINK-CALL-TARGET", "declared_target": "MEMORY-LINK-CALL-TARGET",
+        })
+        self.assertTrue(all(decided_ for _rule, decided_ in rules.values()), rules)
+
+    def test_group_call_memory_rejection_is_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+        from test_xax_recursion import RecursionOverMemoryTests
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result)
+            return result
+
+        case = RecursionOverMemoryTests("test_bare_memory_frontier_through_a_group_call_rejects")
+        typing_module.NativeTyping.memory_rejection = deciding
+        try:
+            with _engine(native):
+                result = unittest.TestResult()
+                case.run(result)
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertEqual((result.failures, result.errors), ([], []))
+        self.assertEqual([item[3][1] for item in decided if item is not None], ["GROUP-CALL-MEMORY-VIEWS-ONLY"])

@@ -74,6 +74,9 @@ MEMORY_SITES = (
     "VIEW_BOUNDS", "VIEW_ALIGNMENT", "VIEW_TOKEN_TYPE", "VIEW_EFFECT_TYPE",
     # S8c.13 (ADR-230): foreign calls (``_verify_foreign_heap_call``).
     "DEALLOCATE_OWNER", "DEALLOCATE_VIEW_BASE", "DEALLOCATE_OWNER_TYPE", "DEALLOCATE_ALLOCATION", "FOREIGN_EFFECT_LINEAR",
+    # S8c.14 (ADR-232): view-passing direct and group-member calls (``_verify_heap_view_call``).
+    "VIEW_CALL_OWNER", "VIEW_CALL_BASE", "VIEW_CALL_DECLARED_TARGET", "VIEW_CALL_SELF_TARGET", "VIEW_CALL_EFFECT_PROVENANCE",
+    "CALL_EFFECT_LINEAR", "VIEW_CALL_INITIALIZED", "GROUP_CALL_VIEWS_ONLY",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1619,12 +1622,14 @@ def _call_foreign(tables, declaration, end_views):
 PASSED = 5  # passed-view slot: token type, storage, link record, used, link target
 
 
-def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect=None, declared_at=None):
+def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect=None, declared_at=None, exact=None):
     """``_verify_heap_view_call``: borrow whole views across the call and re-establish returned ones.
 
     ``declared_at``: the callee's entry ``link_target`` declarations ``[count, (view, target) pairs]``
-    (NONE when they could not be read), or None (no declarations)."""
+    (NONE when they could not be read), or None (no declarations).  ``exact``: the bootstrap reaches these checks
+    (every earlier check of the node passed), so a failure is its rejection."""
     p = e.p
+    gate = (lambda *conditions: e.both(*conditions)) if exact is None else (lambda *conditions: e.both(exact, *conditions))  # noqa: E731
     visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
     _triples_valid(e, count, types_at)
     _triples_valid(e, result_count, results_at)
@@ -1641,29 +1646,41 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
             pointer_ref, token_ref, effect_ref = (e.rd(e.add(n.vids_at, e.add(index, d))) for d in (-1, 0, 1))
             view_type = e.rd(e.add(types_at, index))
             extent = e.table(_T.RINSTANCE, view_type)
-            _require(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)))
-            owner = e.value(OST, token_ref)
-            _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
-                               e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)))
             _require(e, e.ne(declared_count, NONE))
+            _reject(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)), M["VIEW_CALL_OWNER"], token_ref,
+                    renderable=exact)
+            owner = e.value(OST, token_ref)
+            fact = e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.ne(e.value(PK, pointer_ref), NO_POINTER))
+            pointer = e.both(fact, e.eq(e.value(PK, pointer_ref), POINTER))
+            _reject(e, e.both(pointer, e.eq(e.value(PST, pointer_ref), owner), e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)),
+                    M["VIEW_CALL_BASE"], owner, e.flag(fact), e.value(PST, pointer_ref), e.value(POFF, pointer_ref),
+                    renderable=gate(e.either(e.not_(fact), pointer), _renderable(e, owner),
+                                      e.either(e.not_(fact), _renderable(e, e.value(PST, pointer_ref)))))
             e.var("declared_target", NONE)
             if declared_at is not None:
                 e.for_("dk", 0, declared_count, lambda: e.if_(e.eq(e.rd(e.add(declared_at, e.add(1, e.mul(p["dk"], 2)))), e.sub(index, 1)), lambda: e.set(
                     "declared_target", e.rd(e.add(declared_at, e.add(2, e.mul(p["dk"], 2)))))))
+            link_target = e.value(PLT, pointer_ref)
+            target_renderable = gate(e.either(e.eq(link_target, NONE), _renderable(e, link_target)))
 
             def declared():
                 _require(e, e.lt(p["declared_target"], n.no))
                 target = e.rd(e.add(n.vids_at, p["declared_target"]))
-                _require(e, e.both(e.eq(e.value(PSTAMP, target), pass_id), e.eq(e.value(PK, target), POINTER),
-                                   e.eq(e.value(PLT, pointer_ref), e.value(PST, target)), e.eq(e.value(PLR, pointer_ref), e.value(PREC, target))))
+                _reject(e, e.both(e.eq(e.value(PSTAMP, target), pass_id), e.eq(e.value(PK, target), POINTER),
+                                  e.eq(link_target, e.value(PST, target)), e.eq(e.value(PLR, pointer_ref), e.value(PREC, target))),
+                        M["VIEW_CALL_DECLARED_TARGET"], link_target, renderable=target_renderable)
 
-            e.if_(e.ne(p["declared_target"], NONE), declared, lambda: _require(e, e.either(
-                e.eq(_has_link(e, e.value(PREC, pointer_ref)), 0), e.eq(e.value(PLT, pointer_ref), e.value(PST, pointer_ref)))))
-            _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), owner)))
-            _require(e, e.not_(_ended(e, owner)))
-            _require(e, e.ne(e.value(ECON, effect_ref), visit))
+            e.if_(e.ne(p["declared_target"], NONE), declared, lambda: _reject(e, e.either(
+                e.eq(_has_link(e, e.value(PREC, pointer_ref)), 0), e.eq(link_target, e.value(PST, pointer_ref))),
+                M["VIEW_CALL_SELF_TARGET"], link_target, renderable=target_renderable))
+            effect = e.eq(e.value(ESTAMP, effect_ref), visit)
+            _reject(e, e.both(effect, e.eq(e.value(EST, effect_ref), owner)), M["VIEW_CALL_EFFECT_PROVENANCE"], owner, e.flag(effect), e.value(EST, effect_ref),
+                    renderable=gate(_renderable(e, owner), e.either(e.not_(effect), _renderable(e, e.value(EST, effect_ref)))))
+            _reject(e, e.not_(_ended(e, owner)), M["LIFETIME_LIVE"], owner, renderable=gate(_renderable(e, owner)))
+            _reject(e, e.ne(e.value(ECON, effect_ref), visit), M["CALL_EFFECT_LINEAR"], renderable=exact)
             initialized = e.eq(e.table(_T.RSTATE, view_type), 1)
-            e.if_(initialized, lambda: _require(e, e.ne(e.call(insert_effect, e.value(EIV, effect_ref), 0, extent), 0)))
+            e.if_(initialized, lambda: _reject(e, e.ne(e.call(insert_effect, e.value(EIV, effect_ref), 0, extent), 0), M["VIEW_CALL_INITIALIZED"],
+                                               extent, e.value(EIV, effect_ref), renderable=exact))
             e.set_value(OCON, token_ref, visit)
             _consumed(e, effect_ref)
             slot = e.add(p["passed"], e.mul(p["passed_n"], PASSED))
@@ -1741,6 +1758,9 @@ def _call_direct(tables, covers):
     def build(e: E):
         p = e.p
         n = _Node(e)
+        # The bootstrap checks the call's target and contract first: its memory checks are reached only when the
+        # typing function covers (and so proved) the node.
+        typed = e.ne(n.key, NONE)
         e.var("resource", 0)
         e.var("stack", 0)
 
@@ -1764,7 +1784,7 @@ def _call_direct(tables, covers):
                 value = e.rd(e.add(n.vids_at, p["j"]))
 
                 def consume():
-                    _require(e, e.ne(e.value(ECON, value), visit))
+                    _reject(e, e.ne(e.value(ECON, value), visit), M["CALL_EFFECT_LINEAR"], renderable=typed)
                     _consumed(e, value)
 
                 e.if_(e.both(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.tids_at, p["j"]))), 0), e.eq(e.value(ESTAMP, value), visit)), consume)
@@ -1774,7 +1794,7 @@ def _call_direct(tables, covers):
         e.if_(e.both(e.ne(p["resource"], 0), e.eq(p["stack"], 0)), frontier)
         # Aux words: [count, summary blocks, operation count, operations, declaration count, pairs] (or [0]).
         declared_at = e.sel(e.eq(e.rd(n.aux_at), 0), n.aux_at, e.add(e.add(n.aux_at, 3), e.rd(e.add(n.aux_at, 2))))
-        _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers, declared_at)
+        _view_call(e, n, n.tids_at, n.no, n.rt_at, n.nr, covers, declared_at, exact=typed)
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -1847,7 +1867,7 @@ def _call_group(tables, covers):
             def each():
                 cid = e.rd(e.add(at, p["j"]))
                 memory = e.either(e.ne(e.table(_T.STACKOWNER, cid), 0), e.ne(e.table(_T.MEMEFFECT, cid), 0), e.eq(e.table(_T.FORMB, cid), 2))
-                e.if_(memory, lambda: _require(e, e.ne(_view_slot(e, count, at, p["j"]), 0)))
+                e.if_(memory, lambda: _reject(e, e.ne(_view_slot(e, count, at, p["j"]), 0), M["GROUP_CALL_VIEWS_ONLY"], cid))
             e.for_("j", 0, count, each)
 
         check(n.no, n.tids_at)
@@ -3177,6 +3197,21 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.PROVENANCE", "HEAP-DEALLOCATE-ALLOCATION", storages[x], None if y == NONE else storages[y]
     if name == "FOREIGN_EFFECT_LINEAR":
         return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_FOREIGN.name
+    if name == "VIEW_CALL_OWNER":
+        return "XAX.MEMORY.OWNER", "HEAP-VIEW-CALL-OWNER", "live heap view", ref(x)
+    if name == "VIEW_CALL_BASE":
+        return "XAX.MEMORY.PROVENANCE", "HEAP-VIEW-CALL-BASE", storages[x], [storages[z], w] if y else None
+    if name in ("VIEW_CALL_DECLARED_TARGET", "VIEW_CALL_SELF_TARGET"):
+        expected = "the declared target view" if name == "VIEW_CALL_DECLARED_TARGET" else "a view whose links point into itself"
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-CALL-TARGET", expected, None if x == NONE else storages[x]
+    if name == "VIEW_CALL_EFFECT_PROVENANCE":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-EFFECT-PROVENANCE", storages[x], storages[z] if y else None
+    if name == "CALL_EFFECT_LINEAR":
+        return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_DIRECT.name
+    if name == "VIEW_CALL_INITIALIZED":
+        return "XAX.MEMORY.UNINITIALIZED", "HEAP-VIEW-CALL-INITIALIZED", [0, x], intervals(y)
+    if name == "GROUP_CALL_VIEWS_ONLY":
+        return "XAX.MEMORY.GROUP_CALL", "GROUP-CALL-MEMORY-VIEWS-ONLY", "memory only as whole heap-view triples", h(x)
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":

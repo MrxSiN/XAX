@@ -120,7 +120,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.13 foreign-call memory rejections — 2026-10-08 (ADR-230)
 
-- Next: view-passing direct calls (`_view_call`, `_verify_heap_view_call`), indirect calls, atomics, links; then object verification (`verify_object`).
+- Next: view-passing direct calls (`_view_call`, `_verify_heap_view_call`), indirect calls, atomics, links; then object verification (`verify_object`). Superseded by S8c.14 below.
+
+## S8c.14 view-passing call rejections — 2026-10-08 (ADR-232)
+
+- Next: released-view link dependents (`MEMORY-LINK-TARGET-OUTLIVES` at calls), indirect calls, atomics, links; then object verification (`verify_object`).
 
 ## Validation state at M14 (historical)
 
