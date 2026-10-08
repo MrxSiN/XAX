@@ -117,6 +117,10 @@ Component stores are verified once per store bytes and compiler version (`verify
 
 Checked accesses and the type checks of loads and stores are now rejected by the XAX facts engine; 820 of 824 corpus rejections are engine-decided.
 
+## S8c.10 rebase-window rejections — 2026-10-08 (ADR-227)
+
+`pointer.rebase` rejections are now decided by the XAX facts engine; 822 of 824 corpus rejections are engine-decided.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

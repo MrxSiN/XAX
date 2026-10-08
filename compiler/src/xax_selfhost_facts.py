@@ -65,6 +65,8 @@ MEMORY_SITES = (
     # S8c.9 (ADR-226): checked accesses, and the type checks of loads and stores.
     "LOAD_TYPE", "STORE_TYPE", "STORE_EFFECT_TYPE", "CHECKED_ALIGNMENT", "CHECKED_OFFSET", "CHECKED_LOAD_TYPE", "CHECKED_STORE_TYPE",
     "CHECKED_EFFECT_TYPE", "CHECKED_INITIALIZED",
+    # S8c.10 (ADR-227): rebase windows.
+    "REBASE_ADDRESS_WIDTH", "REBASE_AUTHORITY", "REBASE_EXTENT", "REBASE_ALIGNMENT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1230,21 +1232,23 @@ def _pointer_address(tables):
 def _pointer_rebase(tables):
     def build(e: E):
         n = _Node(e)
-        _require(e, n.shape(2, 1, 1))
+        _reject(e, n.shape(2, 1, 1), M["OP_CONTRACT"], n.no, n.nr, n.na)
         view = n.vid(0)
-        _pointer(e, view)
+        _pointer(e, view, exact=True)
         extent = n.attr(0)
         width = e.table(_T.WIDTH, n.tid(1))
-        _require(e, e.either(e.eq(width, 32), e.eq(width, 64)))
+        _require(e, e.ne(width, 0))  # not bits: the bootstrap's own decode diagnostic
+        _reject(e, e.either(e.eq(width, 32), e.eq(width, 64)), M["REBASE_ADDRESS_WIDTH"], width)
         view_type, result_type = n.tid(0), n.rtid(0)
         _require(e, e.both(e.ne(e.table(_T.PTR, view_type), 0), e.ne(e.table(_T.PTR, result_type), 0)))
         element, permission, alignment = e.table(_T.PELEM, result_type), e.table(_T.PPERM, result_type), e.table(_T.PALIGN, result_type)
         view_extent = e.value(PEXT, view)
-        _require(e, e.both(
+        _reject(e, e.both(
             e.eq(e.table(_T.PSPACE, view_type), e.table(_T.PSPACE, result_type)), e.eq(element, e.value(PEL, view)),
             e.eq(e.and_(permission, e.value(PPERM, view)), permission),
-        ))
-        _require(e, e.both(e.ne(extent, 0), e.le(extent, view_extent), e.le(alignment, e.value(PALIGN, view))))
+        ), M["REBASE_AUTHORITY"], e.value(PEL, view), e.value(PPERM, view), element, permission)
+        _reject(e, e.both(e.ne(extent, 0), e.le(extent, view_extent)), M["REBASE_EXTENT"], view_extent, extent)
+        _reject(e, e.le(alignment, e.value(PALIGN, view)), M["REBASE_ALIGNMENT"], e.value(PALIGN, view), alignment)
         stride = _record_bytes(e, element)
         _require(e, e.both(e.eq(_mod(e, alignment, stride), 0), e.eq(_mod(e, e.value(POFF, view), stride), 0)))
         fields = {word: e.value(word, view) for word in range(POINTER_WORDS)}
@@ -3021,7 +3025,7 @@ def facts_storages(blocks, entry):
 _CONTRACTS = {
     Operation.LOAD_BITS_LE: (2, 2, 2), Operation.STORE_BITS_LE: (3, 1, 2), Operation.ADDRESS_OFFSET: (1, 1, 1),
     Operation.STACK_END: (2, 0, 0), Operation.STACK_ALLOC: (0, 3, 2),
-    Operation.CHECKED_LOAD_BITS_LE: (3, 2, 2), Operation.CHECKED_STORE_BITS_LE: (4, 1, 2),
+    Operation.CHECKED_LOAD_BITS_LE: (3, 2, 2), Operation.CHECKED_STORE_BITS_LE: (4, 1, 2), Operation.POINTER_REBASE: (2, 1, 1),
 }
 
 
@@ -3078,6 +3082,14 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-STORE-TYPE", h(x), h(y)
     if name == "CHECKED_EFFECT_TYPE":
         return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "matching effect<memory> continuation", [h(item) for item in (y, z)[:x]]
+    if name == "REBASE_ADDRESS_WIDTH":
+        return "XAX.MEMORY.REBASE", "MEMORY-REBASE-ADDRESS-WIDTH", [32, 64], x
+    if name == "REBASE_AUTHORITY":
+        return "XAX.MEMORY.REBASE", "MEMORY-REBASE-NO-AUTHORITY-GAIN", [h(x), y], [h(z), w]
+    if name == "REBASE_EXTENT":
+        return "XAX.MEMORY.BOUNDS", "MEMORY-REBASE-EXTENT", f"1..{x}", y
+    if name == "REBASE_ALIGNMENT":
+        return "XAX.MEMORY.ALIGNMENT", "MEMORY-REBASE-ALIGNMENT", f"<= {x}", y
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":
