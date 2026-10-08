@@ -97,6 +97,10 @@ Meta operations are now rejected by XAX too. Still Python in S8c: resource/effec
 
 Resource and effect nodes are now rejected by XAX too. The rejection logic is its own XAX function, and the views backends' output regions were resized so the typing program still lowers natively. Still Python in S8c: constant and call typing; facts declines; object verification.
 
+## S8c.6 constant and call-target rejections — 2026-10-08 (ADR-219)
+
+Constant targets and contracts and direct-call targets are now rejected by XAX. Still Python in S8c: call contracts, facts declines, object verification.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

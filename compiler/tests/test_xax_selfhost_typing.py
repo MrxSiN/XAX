@@ -379,7 +379,7 @@ class SelfhostTypingTests(unittest.TestCase):
             (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B1,), (9999,)),
             (Operation.META_VERIFY_SEMANTICS, (OPAQUES[6],), (B8,), ()),
             *((Operation.CONSTANT, (), (next((item for item in (*POOL, link_type()) if item.cid == entity.references[0]), B8),), (), entity) for entity in BAD_CONSTANTS),
-            (Operation.CONSTANT, (), (B32,), (), constant(B8, 1)),
+            (Operation.CONSTANT, (), (B32,), (), GOOD_CONSTANTS[0]),
         ]
         status, verdicts = _native_verdicts(self.native, good + bad)
         self.assertEqual(status, 0)
@@ -471,6 +471,14 @@ class SelfhostTypingTests(unittest.TestCase):
             self.assertEqual(_outcome(self.native, *sample), baseline, sample)
             rules.add(baseline[1])
         self.assertEqual(len(rules), 7)
+        # S8c.6 (ADR-219): constants and direct-call targets.
+        for sample in [(Operation.CONSTANT, (), (B32,), (), GOOD_CONSTANTS[0]), (Operation.CONSTANT, (B8,), (B8,), (), GOOD_CONSTANTS[0]),
+                       (Operation.CONSTANT, (), (B8,), (), B8), (Operation.CALL_DIRECT, (B8,), (B8,), (), B8)]:
+            status, verdicts = _native_verdicts(self.native, [sample])
+            self.assertEqual((status, verdicts[0]), (0, REJECTED), sample)
+            baseline = _outcome(None, *sample)
+            self.assertIsNotNone(baseline, sample)
+            self.assertEqual(_outcome(self.native, *sample), baseline, sample)
         # Attributes on a resource node: the graph builder refuses them, so check the node check directly.
         from xax_compiler import XaxError, _verify_resource_effect_node
         from xax_selfhost_typing import marshal, type_info_from
