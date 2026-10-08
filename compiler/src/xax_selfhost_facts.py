@@ -80,6 +80,9 @@ MEMORY_SITES = (
     # S8c.15 (ADR-233): the stack proof of an indirect call.
     "INDIRECT_STACK_POINTERS", "INDIRECT_STACK_OWNERS", "INDIRECT_POINTER_LIVE", "INDIRECT_STACK_EFFECT_INPUT", "INDIRECT_STACK_EFFECT_OUTPUT",
     "INDIRECT_STACK_PROVENANCE", "INDIRECT_EFFECT_LINEAR",
+    # S8c.16 (ADR-234): atomics (order, kind, and scope enums still decline: the bootstrap names no graph there).
+    "ATOMIC_MEMORY_EFFECT", "ATOMIC_WRITE_PERMISSION", "ATOMIC_READ_PERMISSION", "ATOMIC_VALUE_TYPE", "ATOMIC_RESULT_TYPE",
+    "ATOMIC_CMPXCHG_RESULT", "ATOMIC_REBASE", "ATOMIC_LINK", "ATOMIC_INITIALIZED", "ATOMIC_FENCE_EFFECT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1907,8 +1910,8 @@ def _atomic(tables, covers, insert, operation):
         p = e.p
         n = _Node(e)
         source = n.vid(0)
-        _pointer(e, source)
-        _require(e, n.shape(operands, results, attributes))
+        _pointer(e, source, exact=True)
+        _reject(e, n.shape(operands, results, attributes), M["OP_CONTRACT"], n.no, n.nr, n.na)
         if operation == Operation.ATOMIC_RMW:
             kind, order, scope, alignment = (n.attr(k) for k in range(4))
             _require(e, e.both(_one_of(e, kind, (1, 2)), _one_of(e, order, ATOMIC_ORDERS[operation])))
@@ -1923,28 +1926,33 @@ def _atomic(tables, covers, insert, operation):
         _require(e, _one_of(e, scope, SCOPES))
         element = e.value(PEL, source)
         width = e.table(_T.WIDTH, element)
-        _require(e, e.ne(width, 0))
+        _require(e, e.ne(width, 0))  # not bits: the bootstrap's own decode diagnostic
         size = e.udiv(e.add(width, 7), 8)
-        _access(e, source, size, alignment)
+        _access(e, source, size, alignment, exact=True)
         storage = e.value(PST, source)
-        intervals = _consume_effect(e, n.vid(effect_index), storage)
+        intervals = _consume_effect(e, n.vid(effect_index), storage, exact=True)
         effect_type = n.tid(effect_index)
-        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, effect_type), 0), e.eq(n.rtid(results - 1), effect_type)))
+        _reject(e, e.both(e.ne(e.table(_T.MEMEFFECT, effect_type), 0), e.eq(n.rtid(results - 1), effect_type)), M["ATOMIC_MEMORY_EFFECT"],
+                effect_type, n.rtid(results - 1))
         permission = e.value(PPERM, source)
         if operation != Operation.ATOMIC_LOAD:
-            _require(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0))
+            _reject(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0), M["ATOMIC_WRITE_PERMISSION"], permission)
         if operation != Operation.ATOMIC_STORE:
-            _require(e, e.ne(e.and_(permission, int(Permission.READ)), 0))
-        for index in range(1, effect_index):
-            _require(e, e.eq(n.tid(index), element))
+            _reject(e, e.ne(e.and_(permission, int(Permission.READ)), 0), M["ATOMIC_READ_PERMISSION"], permission)
+        inputs = tuple(n.tid(index) for index in range(1, effect_index))
+        if inputs:
+            _reject(e, e.both(*(e.eq(item, element) for item in inputs)), M["ATOMIC_VALUE_TYPE"], element, len(inputs), *inputs)
         if operation in (Operation.ATOMIC_LOAD, Operation.ATOMIC_RMW):
-            _require(e, e.eq(n.rtid(0), element))
+            _reject(e, e.eq(n.rtid(0), element), M["ATOMIC_RESULT_TYPE"], element, n.rtid(0))
         if operation == Operation.ATOMIC_CMPXCHG:
-            _require(e, e.both(e.eq(n.rtid(0), element), e.eq(e.table(_T.WIDTH, n.rtid(1)), 1)))
-        _require(e, e.both(e.eq(e.value(PWIN, source), 0), e.eq(e.table(_T.LINK, element), 0)))
+            # ``decode_bits_width`` of the flag type raises its own diagnostic for a non-bits flag.
+            _reject(e, e.both(e.eq(n.rtid(0), element), e.eq(e.table(_T.WIDTH, n.rtid(1)), 1)), M["ATOMIC_CMPXCHG_RESULT"], element, n.rtid(0), n.rtid(1),
+                    renderable=e.either(e.ne(n.rtid(0), element), e.ne(e.table(_T.WIDTH, n.rtid(1)), 0)))
+        _reject(e, e.eq(e.value(PWIN, source), 0), M["ATOMIC_REBASE"], e.value(PWIN, source))
+        _reject(e, e.eq(e.table(_T.LINK, element), 0), M["ATOMIC_LINK"], element)
         start = e.value(POFF, source)
         if operation != Operation.ATOMIC_STORE:
-            _require(e, e.ne(e.call(covers, intervals, start, e.add(start, size)), 0))
+            _reject(e, e.ne(e.call(covers, intervals, start, e.add(start, size)), 0), M["ATOMIC_INITIALIZED"], start, size, intervals)
         e.var("next_list", e.call(insert, intervals, start, e.add(start, size)))
         _require(e, e.ne(p["next_list"], NONE))
         _set_effect(e, e.add(n.base, results - 1), storage, p["next_list"])
@@ -1955,14 +1963,14 @@ def _atomic(tables, covers, insert, operation):
 def _atomic_fence(tables):
     def build(e: E):
         n = _Node(e)
-        _require(e, n.shape(1, 1, 2))
+        _reject(e, n.shape(1, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
         _require(e, e.both(_one_of(e, n.attr(0), FENCE_ORDERS), _one_of(e, n.attr(1), SCOPES)))
-        _require(e, e.both(e.eq(e.table(_T.FORMB, n.tid(0)), 3), e.eq(n.rtid(0), n.tid(0))))
+        _reject(e, e.both(e.eq(e.table(_T.FORMB, n.tid(0)), 3), e.eq(n.rtid(0), n.tid(0))), M["ATOMIC_FENCE_EFFECT"], n.tid(0), n.rtid(0))
         frontier = n.vid(0)
 
         def carry():
             storage = e.value(EST, frontier)
-            intervals = _consume_effect(e, frontier, storage)
+            intervals = _consume_effect(e, frontier, storage, exact=True)
             _set_effect(e, n.base, storage, intervals)
 
         e.if_(e.eq(e.value(ESTAMP, frontier), e.hd(H_VISIT)), carry)
@@ -3232,6 +3240,25 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.PROVENANCE", "INDIRECT-CALL-STACK-PROVENANCE", storages[x], storages[z] if y else None
     if name == "INDIRECT_EFFECT_LINEAR":
         return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_INDIRECT.name
+    if name == "ATOMIC_MEMORY_EFFECT":
+        return "XAX.ATOMIC.CONTRACT", "ATOMIC-MEMORY-EFFECT", "matching effect<memory> continuation", [h(x), h(y)]
+    if name in ("ATOMIC_WRITE_PERMISSION", "ATOMIC_READ_PERMISSION"):
+        kind = "write" if name == "ATOMIC_WRITE_PERMISSION" else "read"
+        return "XAX.MEMORY.PERMISSION", f"ATOMIC-{kind.upper()}-PERMISSION", kind, x
+    if name == "ATOMIC_VALUE_TYPE":
+        return "XAX.ATOMIC.CONTRACT", "ATOMIC-VALUE-TYPE", h(x), [h(item) for item in payload[2:2 + y]]
+    if name == "ATOMIC_RESULT_TYPE":
+        return "XAX.ATOMIC.CONTRACT", "ATOMIC-RESULT-TYPE", h(x), [h(y)]
+    if name == "ATOMIC_CMPXCHG_RESULT":
+        return "XAX.ATOMIC.CONTRACT", "ATOMIC-CMPXCHG-RESULT", [h(x), "bits<1>"], [h(y), h(z)]
+    if name == "ATOMIC_REBASE":
+        return "XAX.MEMORY.REBASE", "MEMORY-REBASE-STATIC-ONLY", "statically positioned pointer", x
+    if name == "ATOMIC_LINK":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-NO-ATOMICS", "non-link element", h(x)
+    if name == "ATOMIC_FENCE_EFFECT":
+        return "XAX.ATOMIC.CONTRACT", "ATOMIC-FENCE-EFFECT", "one matching effect frontier", [(cids[x],), (cids[y],)]
+    if name == "ATOMIC_INITIALIZED":
+        return "XAX.MEMORY.UNINITIALIZED", "ATOMIC-INITIALIZED", [x, x + y], intervals(z)
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":

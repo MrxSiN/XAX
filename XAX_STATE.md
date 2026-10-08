@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8c.16 atomic memory rejections — 2026-10-08 (ADR-234)
+
+Atomic load/store/read-modify-write/compare-exchange and fence rejections (contract, access, frontier, permission, value types, initialization) are now decided by the XAX facts engine. Still Python: atomic order and scope enum diagnostics, link dependents of released views, links; object verification.
+
 ## S8c.15 indirect-call stack-proof rejections — 2026-10-08 (ADR-233)
 
 The stack proof of an indirect call (one local pointer, its owner and frontier crossing the call) is now rejected by the XAX facts engine. Still Python: link dependents of released views, atomics, links; object verification.
