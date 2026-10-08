@@ -77,6 +77,9 @@ MEMORY_SITES = (
     # S8c.14 (ADR-232): view-passing direct and group-member calls (``_verify_heap_view_call``).
     "VIEW_CALL_OWNER", "VIEW_CALL_BASE", "VIEW_CALL_DECLARED_TARGET", "VIEW_CALL_SELF_TARGET", "VIEW_CALL_EFFECT_PROVENANCE",
     "CALL_EFFECT_LINEAR", "VIEW_CALL_INITIALIZED", "GROUP_CALL_VIEWS_ONLY",
+    # S8c.15 (ADR-233): the stack proof of an indirect call.
+    "INDIRECT_STACK_POINTERS", "INDIRECT_STACK_OWNERS", "INDIRECT_POINTER_LIVE", "INDIRECT_STACK_EFFECT_INPUT", "INDIRECT_STACK_EFFECT_OUTPUT",
+    "INDIRECT_STACK_PROVENANCE", "INDIRECT_EFFECT_LINEAR",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -2390,7 +2393,7 @@ def _call_indirect(tables):
         e.for_("j", 0, e.ld(inputs), find_pointer)
 
         def proof():
-            _require(e, e.eq(p["pointers"], 1))
+            _reject(e, e.eq(p["pointers"], 1), M["INDIRECT_STACK_POINTERS"], p["pointers"])
             owners_in, owners_out = e.c(0), e.c(0)
             e.var("owner_in", NONE)
             e.var("owner_out", NONE)
@@ -2401,9 +2404,10 @@ def _call_indirect(tables):
             e.for_("j", 0, e.ld(outputs), lambda: e.if_(e.ne(e.table(_T.STACKOWNER, e.ld(e.add(outputs, e.add(p["j"], 1)))), 0), lambda: (
                 e.set("owners_out", e.add(p["owners_out"], 1)), e.set("owner_out", p["j"]))))
             del owners_in, owners_out
-            _require(e, e.both(e.eq(p["owners_in"], 1), e.eq(p["owners_out"], 1)))
+            _reject(e, e.both(e.eq(p["owners_in"], 1), e.eq(p["owners_out"], 1)), M["INDIRECT_STACK_OWNERS"],
+                    p["owners_in"], p["owner_in"], p["owners_out"], p["owner_out"], renderable=e.both(e.le(p["owners_in"], 1), e.le(p["owners_out"], 1)))
             storage = e.value(PST, p["pointer_value"])
-            _require(e, e.not_(_ended(e, storage)))
+            _reject(e, e.not_(_ended(e, storage)), M["INDIRECT_POINTER_LIVE"], p["pointer_value"])
             owner_ref = e.rd(e.add(n.vids_at, e.add(p["owner_in"], 1)))
             e.var("effects", 0)
             e.var("effect_in", NONE)
@@ -2415,16 +2419,18 @@ def _call_indirect(tables):
                     e.set("effects", e.add(p["effects"], 1)), e.set("effect_in", p["j"])))
 
             e.for_("j", 0, e.ld(inputs), find_effect)
-            _require(e, e.eq(p["effects"], 1))
+            _reject(e, e.eq(p["effects"], 1), M["INDIRECT_STACK_EFFECT_INPUT"], renderable=e.eq(p["effects"], 0))
             effect_type = e.ld(e.add(inputs, e.add(p["effect_in"], 1)))
             effect_ref = e.rd(e.add(n.vids_at, e.add(p["effect_in"], 1)))
             e.var("effect_outs", 0)
             e.var("effect_out", NONE)
             e.for_("j", 0, e.ld(outputs), lambda: e.if_(e.both(e.eq(e.ld(e.add(outputs, e.add(p["j"], 1))), effect_type), e.ne(e.table(_T.MEMEFFECT, effect_type), 0)), lambda: (
                 e.set("effect_outs", e.add(p["effect_outs"], 1)), e.set("effect_out", p["j"]))))
-            _require(e, e.eq(p["effect_outs"], 1))
-            _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.eq(e.value(OST, owner_ref), storage)))
-            _require(e, e.both(e.ne(e.value(OCON, owner_ref), visit), e.ne(e.value(ECON, effect_ref), visit)))
+            _reject(e, e.eq(p["effect_outs"], 1), M["INDIRECT_STACK_EFFECT_OUTPUT"], renderable=e.eq(p["effect_outs"], 0))
+            owner = e.eq(e.value(OSTAMP, owner_ref), visit)
+            _reject(e, e.both(owner, e.eq(e.value(OST, owner_ref), storage)), M["INDIRECT_STACK_PROVENANCE"], storage, e.flag(owner), e.value(OST, owner_ref),
+                    renderable=e.both(_renderable(e, storage), e.either(e.not_(owner), _renderable(e, e.value(OST, owner_ref)))))
+            _reject(e, e.both(e.ne(e.value(OCON, owner_ref), visit), e.ne(e.value(ECON, effect_ref), visit)), M["INDIRECT_EFFECT_LINEAR"])
             e.set_value(OCON, owner_ref, visit)
             _consumed(e, effect_ref)
             e.set_value(OST, e.add(n.base, p["owner_out"]), storage)
@@ -3212,6 +3218,20 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.UNINITIALIZED", "HEAP-VIEW-CALL-INITIALIZED", [0, x], intervals(y)
     if name == "GROUP_CALL_VIEWS_ONLY":
         return "XAX.MEMORY.GROUP_CALL", "GROUP-CALL-MEMORY-VIEWS-ONLY", "memory only as whole heap-view triples", h(x)
+    if name == "INDIRECT_STACK_POINTERS":
+        return "XAX.CALL.INDIRECT", "INDIRECT-CALL-STACK-POINTERS", 1, x
+    if name == "INDIRECT_STACK_OWNERS":
+        return "XAX.CALL.INDIRECT", "INDIRECT-CALL-STACK-PROOF", "one stack owner input and matching output", [[y] if x else [], [w] if z else []]
+    if name == "INDIRECT_POINTER_LIVE":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-PROVENANCE-PROVEN", "live local stack pointer", ref(x)
+    if name == "INDIRECT_STACK_EFFECT_INPUT":
+        return "XAX.CALL.INDIRECT", "INDIRECT-CALL-STACK-PROOF", "one provenance-matching stack effect input", []
+    if name == "INDIRECT_STACK_EFFECT_OUTPUT":
+        return "XAX.CALL.INDIRECT", "INDIRECT-CALL-STACK-PROOF", "one matching stack effect output", []
+    if name == "INDIRECT_STACK_PROVENANCE":
+        return "XAX.MEMORY.PROVENANCE", "INDIRECT-CALL-STACK-PROVENANCE", storages[x], storages[z] if y else None
+    if name == "INDIRECT_EFFECT_LINEAR":
+        return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_INDIRECT.name
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":

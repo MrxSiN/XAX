@@ -574,3 +574,75 @@ class SelfhostViewCallTests(unittest.TestCase):
             typing_module.NativeTyping.memory_rejection = original
         self.assertEqual((result.failures, result.errors), ([], []))
         self.assertEqual([item[3][1] for item in decided if item is not None], ["GROUP-CALL-MEMORY-VIEWS-ONLY"])
+
+
+# -- S8c.15 (ADR-233): the stack proof of an indirect call ------------------------------------------------------------
+
+def _indirect_program(variant: str):
+    """A local stack pointer, its owner, and its frontier cross an indirect call; ``variant`` breaks the proof."""
+    from xax_compiler import OpaqueKind, call_contract, function_pointer_type, opaque_type
+
+    pointer = pointer_type(B64, Permission.READ_WRITE, 8)
+    graph = GraphBuilder()
+    graph.track(pointer, OWNER, MEM, B64, B32, function_pointer_type(), opaque_type(OpaqueKind.FUNCTION))
+    block = graph.block(function_pointer_type(), B32)
+    target, seed = block.params
+    p, owner, memory = block.op(Operation.STACK_ALLOC, (), (pointer, OWNER, MEM), attributes=(8, 8))
+    other, other_owner, other_memory = block.op(Operation.STACK_ALLOC, (), (pointer, OWNER, MEM), attributes=(8, 8))
+    stored = block.op1(Operation.STORE_BITS_LE, (p, block.const(B64, 7), memory), MEM, attributes=(8, 8))
+    inputs, outputs, operands = (pointer, OWNER, MEM), (OWNER, MEM), [p, owner, stored]
+    if variant == "two_pointers":
+        inputs, operands = (pointer, pointer, OWNER, MEM), [p, p, owner, stored]
+    elif variant == "no_owner":
+        inputs, outputs, operands = (pointer, MEM), (MEM,), [p, stored]
+    elif variant == "no_effect_input":
+        inputs, outputs, operands = (pointer, OWNER), (OWNER,), [p, owner]
+    elif variant == "no_effect_output":
+        outputs = (OWNER,)
+    elif variant == "wrong_owner":
+        operands[1] = other_owner
+    elif variant == "forked":
+        operands[2] = memory
+    elif variant == "ended":
+        block.op(Operation.STACK_END, (owner, stored), ())
+    contract = call_contract(inputs, outputs, may_return=True, may_trap=False)
+    graph.track(contract)
+    results = block.op(Operation.CALL_INDIRECT, (target, *operands), outputs, entity=contract)
+    if variant not in ("no_owner", "no_effect_input", "no_effect_output", "ended"):
+        block.op(Operation.STACK_END, (results[0], results[1]), ())
+    block.op(Operation.STACK_END, (other_owner if variant != "wrong_owner" else owner, other_memory), ())
+    block.ret(seed)
+    function = graph.function((function_pointer_type(), B32), (B32,))
+    return function, tuple(graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostIndirectCallTests(unittest.TestCase):
+    def test_indirect_stack_proof_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            for variant in ("valid", "two_pointers", "no_owner", "no_effect_input", "no_effect_output", "wrong_owner", "forked", "ended"):
+                function, objects = _indirect_program(variant)
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, variant)
+                rules[variant] = (baseline[2] if baseline[0] == "reject" else "accept", any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertEqual(rules, {
+            "valid": ("accept", False), "two_pointers": ("INDIRECT-CALL-STACK-POINTERS", True), "no_owner": ("INDIRECT-CALL-STACK-PROOF", True),
+            "no_effect_input": ("INDIRECT-CALL-STACK-PROOF", True), "no_effect_output": ("INDIRECT-CALL-STACK-PROOF", True),
+            "wrong_owner": ("INDIRECT-CALL-STACK-PROVENANCE", True), "forked": ("MEMORY-EFFECT-LINEAR", True), "ended": ("MEMORY-PROVENANCE-PROVEN", True),
+        })
