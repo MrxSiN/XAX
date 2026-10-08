@@ -68,7 +68,9 @@ class ReplacementMatrixTests(unittest.TestCase):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "android-arm64")
         evidence = json.loads((ROOT / "compiler/benchmarks/android_counter_twin_evidence.json").read_text())
         platform = json.loads((ROOT / "compiler/benchmarks/android_platform_runtime_probe_evidence.json").read_text())
-        self.assertEqual(derived_level(row), "R4")  # ADR-198
+        # ADR-207: 1.007x the fastest non-XAX arm is above the 0.9999x R4 target.
+        self.assertEqual(derived_level(row), "R3")
+        self.assertIn("1.007273x the fastest non-XAX arm", recompute_runtime_verdict(row["competitive"][1:])[0])
         self.assertEqual(set(evidence["results"]), {"xax", "clang_ndk_java", "java_d8"})
         self.assertEqual(len(evidence["device"]["xax_pass_ratios_vs_fastest"]), evidence["device"]["passes"])
         without_java = {**evidence, "results": {k: v for k, v in evidence["results"].items() if k != "java_d8"}}
@@ -115,18 +117,20 @@ class ReplacementMatrixTests(unittest.TestCase):
 
         from xax_replacement import recompute_runtime_verdict
 
-        fast, slow = [1.0] * 5, [1.2] * 5
+        faster, fast, slow = [0.8] * 5, [1.0] * 5, [1.2] * 5
         host = {"cpu": "x"}
         arm = lambda samples, **extra: {"wall_seconds_samples": samples, **extra}  # noqa: E731
         cases = {
             "c_only.json": {"host": host, "results": {"xax": arm(fast), "gcc-O2": arm(fast), "clang-O2": arm(fast)}},
             "slow.json": {"host": host, "results": {"xax": arm(slow, performance_class="meets-primary-target"), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
-            "good.json": {"host": host, "results": {"xax": arm(fast), "gcc-O2": arm(fast), "rustc-O3": arm(slow)}},
-            "lying.json": {"host": host, "results": {"xax": arm(fast, time_ratio_vs_fastest=0.8), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
+            "tie.json": {"host": host, "results": {"xax": arm(fast), "gcc-O2": arm(fast), "rustc-O3": arm(slow)}},
+            "good.json": {"host": host, "results": {"xax": arm(faster, time_ratio_vs_fastest_competitor=0.8), "gcc-O2": arm(fast), "rustc-O3": arm(slow)}},
+            "lying.json": {"host": host, "results": {"xax": arm(faster, time_ratio_vs_fastest=0.8), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
+            "lying_competitor.json": {"host": host, "results": {"xax": arm(faster, time_ratio_vs_fastest_competitor=0.5), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
             "few.json": {"host": host, "results": {"xax": arm([1.0]), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
             "nohost.json": {"results": {"xax": arm(fast), "gcc-O2": arm(fast), "rustc-O3": arm(fast)}},
             "javac_only.json": {"host": host, "results": {"xax": arm(fast), "javac": arm(fast), "javac-O": arm(fast)}},
-            "jvm.json": {"host": host, "results": {"xax": arm(fast), "javac": arm(fast), "kotlinc": arm(slow)}},
+            "jvm.json": {"host": host, "results": {"xax": arm(faster), "javac": arm(fast), "kotlinc": arm(slow)}},
         }
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -135,9 +139,12 @@ class ReplacementMatrixTests(unittest.TestCase):
             check = lambda name: recompute_runtime_verdict([name], root)  # noqa: E731
             self.assertEqual(check("c_only.json"), ["c_only.json: baselines do not meet the 15.0/15.0a policy"])
             # performance_class is never trusted: the samples say 1.2x.
-            self.assertEqual(check("slow.json"), ["slow.json: XAX median is 1.200x the fastest"])
+            self.assertEqual(check("slow.json"), ["slow.json: XAX median is 1.200000x the fastest non-XAX arm (gcc-O2); R4 needs <= 0.9999x"])
+            # ADR-207: equal to the fastest competitor is not leadership.
+            self.assertEqual(check("tie.json"), ["tie.json: XAX median is 1.000000x the fastest non-XAX arm (gcc-O2); R4 needs <= 0.9999x"])
             self.assertEqual(check("good.json"), [])
-            self.assertEqual(check("lying.json"), ["lying.json: xax publishes ratio 0.8, raw samples give 1.000"])
+            self.assertEqual(check("lying.json"), ["lying.json: xax publishes ratio 0.8, raw samples give 1.000000"])
+            self.assertEqual(check("lying_competitor.json"), ["lying_competitor.json: xax publishes competitor ratio 0.5, raw samples give 0.800000"])
             self.assertEqual(check("few.json"), ["few.json: an arm lacks 5+ raw wall_seconds_samples"])
             self.assertEqual(check("nohost.json"), ["nohost.json: no host/hardware identity"])
             self.assertEqual(check("javac_only.json"), ["javac_only.json: baselines do not meet the 15.0/15.0a policy"])
@@ -145,9 +152,44 @@ class ReplacementMatrixTests(unittest.TestCase):
             self.assertEqual(recompute_runtime_verdict(["good.json"], root, emulated=True), ["emulated execution is never performance evidence"])
         self.assertEqual(validate(MATRIX, ROOT), [])
 
+    def test_r4_margin_is_exact_and_noise_is_not_leadership(self):
+        """ADR-207: 0.9999x is compared unrounded, and a margin inside the noise withholds R4."""
+        host = {"cpu": "x"}
+        base = [1.0, 1.01, 0.99, 1.02, 0.98, 1.0, 1.01, 0.99]
+        cases = {
+            # 0.99995x: within 0.0001 of parity, so above the target even though it rounds to 1.000.
+            "margin.json": {"xax": [v * 0.99995 for v in base], "gcc-O2": base, "rustc-O3": [v * 1.2 for v in base]},
+            # 0.99x median but samples overlap the competitor's spread: not significant.
+            "noisy.json": {"xax": [0.70, 1.30, 0.99, 0.60, 1.40, 0.99, 1.2, 0.8], "gcc-O2": base, "rustc-O3": [v * 1.2 for v in base]},
+            # 0.9x with tight samples: significant leadership.
+            "lead.json": {"xax": [v * 0.9 for v in base], "gcc-O2": base, "rustc-O3": [v * 1.2 for v in base]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, arms in cases.items():
+                (root / name).write_text(json.dumps({"host": host, "results": {a: {"wall_seconds_samples": v} for a, v in arms.items()}}))
+            self.assertIn("R4 needs <= 0.9999x", recompute_runtime_verdict(["margin.json"], root)[0])
+            self.assertIn("within noise", recompute_runtime_verdict(["noisy.json"], root)[0])
+            self.assertEqual(recompute_runtime_verdict(["lead.json"], root), [])
+
     def test_levels_are_cumulative(self):
-        row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "ai_tokens": ["MEASURED", "x"]}}
+        row = {"fields": {"semantic_expressibility": ["STRUCTURAL", "x"], "autonomous_maintenance": ["EXECUTED", "x"]}}
         self.assertEqual(derived_level(row), "R0")  # R5 evidence cannot skip R1-R4
+
+    def test_r5_is_maintenance_r6_is_xax_only_application_and_tokens_gate_nothing(self):
+        """ADR-207: AI-token evidence is historical; R5 needs executed maintenance, R6 an executed XAX-only application."""
+        row = copy.deepcopy(next(r for r in MATRIX["platforms"] if r["id"] == "jvm"))
+        self.assertEqual(derived_level(row), "R4")
+        row["fields"]["ai_tokens"] = ["MEASURED", "compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json"]
+        self.assertEqual(derived_level(row), "R4")
+        row["fields"]["autonomous_maintenance"] = ["EXECUTED", "compiler/benchmarks/m6_workspace_smoke.json"]
+        self.assertEqual(derived_level(row), "R5")
+        row["fields"]["xax_only_application"] = ["STRUCTURAL", "compiler/benchmarks/m6_workspace_smoke.json"]
+        self.assertEqual(derived_level(row), "R5")
+        row["fields"]["xax_only_application"] = ["EXECUTED", "XAX_STATE.md"]
+        self.assertEqual(derived_level(row), "R5")  # a document alone never shows execution
+        row["fields"]["xax_only_application"] = ["EXECUTED", "compiler/benchmarks/m6_workspace_smoke.json"]
+        self.assertEqual(derived_level(row), "R6")
 
     def test_jvm_r5_candidate_evidence_is_consistent(self):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "jvm")
@@ -156,7 +198,7 @@ class ReplacementMatrixTests(unittest.TestCase):
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         with results_path.open(newline="", encoding="utf-8") as file:
             rows = list(csv.DictReader(file))
-        self.assertEqual(derived_level(row), "R4")
+        self.assertEqual(derived_level(row), "R4")  # historical AI-token evidence (ADR-207) gates no level
         self.assertEqual(row["fields"]["ai_tokens"][0], "PROTOTYPE")
         self.assertEqual(len(rows), 10)
         self.assertEqual({r["model"] for r in rows}, {"gpt-5.6-luna"})

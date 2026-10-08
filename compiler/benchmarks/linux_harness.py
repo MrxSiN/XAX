@@ -27,16 +27,13 @@ BASELINES = (
 )
 RUST_TWINS = HERE / "rust_twins"
 RUST_FLAGS = ("-C", "opt-level=3", "-C", "panic=abort", "-C", "codegen-units=1")
-# XAX_BENCHMARKS.md §15.0: primary target <= 1.05x the fastest valid arm; <= 1.10x competitive.
-PRIMARY_TARGET, COMPETITIVE = 1.05, 1.10
+# XAX_BENCHMARKS.md §15.0 (ADR-207): R4 needs XAX median <= 0.9999x the fastest non-XAX median.
+# The label is informational; xax_replacement recomputes the verdict (with a noise test) from raw samples.
+R4_TARGET = 0.9999
 
 
-def classify(ratio_vs_fastest: float) -> str:
-    if ratio_vs_fastest <= PRIMARY_TARGET:
-        return "meets-primary-target"
-    if ratio_vs_fastest <= COMPETITIVE:
-        return "competitive-below-primary-target"
-    return "unmet"
+def classify(ratio_vs_fastest_competitor: float) -> str:
+    return "meets-r4-target" if ratio_vs_fastest_competitor <= R4_TARGET else "unmet"
 
 
 def tool_version(command: list[str]) -> str:
@@ -118,6 +115,7 @@ def measure_arms(
             "wall_seconds_median": round(statistics.median(times), 6),
             "wall_seconds_min": round(min(times), 6),
             "wall_seconds_stdev": round(statistics.stdev(times), 6) if len(times) > 1 else 0.0,
+            "wall_seconds_samples": times,
             "peak_rss_kib_max": max(item[1] for item in samples[arm]),
         }
     if len(outputs) != 1:
@@ -130,7 +128,10 @@ def measure_arms(
         item["time_ratio_vs_best_baseline"] = round(item["wall_seconds_median"] / best, 3)
         item["time_ratio_vs_fastest"] = round(item["wall_seconds_median"] / fastest, 3)
         if arm.startswith("xax"):
-            item["performance_class"] = classify(item["wall_seconds_median"] / fastest)
+            exact = statistics.median(item["wall_seconds_samples"]) / min(
+                statistics.median(other["wall_seconds_samples"]) for name, other in results.items() if not name.startswith("xax"))
+            item["time_ratio_vs_fastest_competitor"] = round(exact, 6)
+            item["performance_class"] = classify(exact)
     return results, outputs.pop(), reference_rss
 
 
@@ -158,5 +159,5 @@ def method_info(warmup: int, repetitions: int, reference_rss: int, link: str = "
         "rss_note": "ru_maxrss of the exec'd image; the dynamically linked /bin/true reference shows loader+libc residency under the same runner",
         "c_flags": {arm: f"{compiler} {' '.join(flags)}{' ... ' + link if link else ''}" for arm, compiler, flags in BASELINES},
         "rust_flags": {"rustc-O3": "rustc " + " ".join(RUST_FLAGS)},
-        "performance_rule": "XAX_BENCHMARKS.md §15.0: fastest valid arm by median; <=1.05x meets the primary target, <=1.10x competitive, else unmet",
+        "performance_rule": "XAX_BENCHMARKS.md §15.0 (ADR-207): XAX median over the fastest non-XAX median; R4 needs <= 0.9999x and a significant advantage, recomputed from wall_seconds_samples",
     }

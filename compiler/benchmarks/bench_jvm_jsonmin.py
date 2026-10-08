@@ -385,7 +385,9 @@ def measure() -> dict:
     for name, item in results.items():
         item["time_ratio_vs_fastest"] = round(item["wall_seconds_median"] / fastest, 3)
         if name == "xax":
-            item["performance_class"] = classify(item["wall_seconds_median"] / fastest)
+            competitor = min(other["wall_seconds_median"] for key, other in results.items() if key != "xax")
+            item["time_ratio_vs_fastest_competitor"] = round(item["wall_seconds_median"] / competitor, 6)
+            item["performance_class"] = classify(item["wall_seconds_median"] / competitor)
     xax = results["xax"]
     return {
         "format": "xax-jvm-jsonmin-evidence-v2",

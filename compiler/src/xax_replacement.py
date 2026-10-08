@@ -14,21 +14,28 @@ EXECUTED, MEASURED, or was PROVEN; MEASURED needs a recorded .json/.csv result;
 MEASURED performance needs raw samples; and an R4 runtime verdict is recomputed
 from raw samples under the baseline policy instead of trusting stored ratios or
 ``performance_class``.
+
+v3 (ADR-207): R4 is performance leadership -- the XAX median is at most
+R4_TARGET (0.9999x) of the fastest valid non-XAX median, and a one-sided
+Mann-Whitney test says the advantage is not noise.  R5 is autonomous
+maintenance (formerly R6) and R6 is a proven 100% XAX-developed application.
+``ai_tokens`` is historical/future-milestone evidence and gates no level.
 """
 from __future__ import annotations
 
 import json
+import math
 import statistics
 from pathlib import Path
 
-VALIDATOR_VERSION = "xax-replacement-validator-v2"
+VALIDATOR_VERSION = "xax-replacement-validator-v3"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LABELS = ("PROVEN", "EXECUTED", "MEASURED", "STRUCTURAL", "PROTOTYPE", "UNIMPLEMENTED")
 FIELDS = (
     "semantic_expressibility", "code_generation", "abi", "artifact_format", "platform_apis", "ffi",
     "concurrency", "atomics", "simd", "dynamic_linking", "debugging", "optimization",
     "real_execution", "practical_application", "performance", "memory", "code_size",
-    "ai_tokens", "autonomous_maintenance",
+    "ai_tokens", "autonomous_maintenance", "xax_only_application",
 )
 LEVELS = ("NONE", "R0", "R1", "R2", "R3", "R4", "R5", "R6")
 _RUN = {"PROVEN", "EXECUTED"}
@@ -39,8 +46,8 @@ REQUIREMENTS: tuple[tuple[str, tuple[str, ...], frozenset[str]], ...] = (
     ("R2", ("abi", "platform_apis", "ffi", "dynamic_linking"), frozenset(_RUN)),
     ("R3", ("practical_application",), frozenset(_RUN)),
     ("R4", ("performance", "memory", "code_size"), frozenset({"MEASURED", "PROVEN"})),
-    ("R5", ("ai_tokens",), frozenset({"MEASURED", "PROVEN"})),
-    ("R6", ("autonomous_maintenance",), frozenset(_RUN)),
+    ("R5", ("autonomous_maintenance",), frozenset(_RUN)),
+    ("R6", ("xax_only_application",), frozenset(_RUN)),
 )
 
 # Fields a platform may genuinely lack, satisfied by NOT_APPLICABLE only with a
@@ -53,7 +60,10 @@ SUPPORTING_SUFFIXES = frozenset({".md", ".png", ".jpg", ".svg", ".sh"})
 SUPPORTING_PREFIXES = ("compiler/src/", "compiler/integration/", "compiler/benchmarks/bench_", "XAX_")
 RECORDED_SUFFIXES = frozenset({".json", ".csv"})
 MIN_SAMPLES = 5
-PRIMARY_TARGET = 1.05
+# R4 (ADR-207): XAX median / fastest non-XAX median, compared without rounding.
+R4_TARGET = 0.9999
+# One-sided Mann-Whitney U (normal approximation) significance for "XAX is faster than the competitor".
+R4_ALPHA = 0.05
 C_FAMILY = ("gcc", "clang", "msvc", "c-", "cpp", "c++")
 
 
@@ -105,13 +115,49 @@ def _emulated(row: dict) -> bool:
     return any("not hardware" in blocker for blocker in row.get("blockers", ()))
 
 
+def _decimals(value: float) -> int:
+    text = repr(float(value))
+    return len(text.split(".")[1]) if "." in text and "e" not in text else 6
+
+
+def _published_matches(published, exact: float) -> bool:
+    """A stored ratio agrees with the recomputation to the precision it was stored with (never coarser than 1e-3)."""
+    if not isinstance(published, (int, float)) or isinstance(published, bool):
+        return False
+    places = max(_decimals(published), 3)
+    return abs(published - exact) <= 0.5 * 10 ** -places + 1e-12
+
+
+def faster_p_value(xax: list[float], competitor: list[float]) -> float:
+    """One-sided Mann-Whitney U p-value for 'XAX samples are smaller', normal approximation with tie correction."""
+    n, m = len(xax), len(competitor)
+    u = sum(1.0 if a < b else 0.5 if a == b else 0.0 for a in xax for b in competitor)
+    pooled = sorted(xax + competitor)
+    ties = 0
+    i = 0
+    while i < len(pooled):
+        j = i
+        while j < len(pooled) and pooled[j] == pooled[i]:
+            j += 1
+        t = j - i
+        ties += t ** 3 - t
+        i = j
+    total = n + m
+    variance = n * m / 12.0 * ((total + 1) - ties / (total * (total - 1)))
+    if variance <= 0:
+        return 1.0
+    z = (u - n * m / 2.0 - 0.5) / math.sqrt(variance)  # continuity correction toward the null
+    return 1.0 - statistics.NormalDist().cdf(z)
+
+
 def recompute_runtime_verdict(paths, repo_root: Path = REPO_ROOT, emulated: bool = False) -> list[str]:
     """Reasons the cited evidence does not establish an R4 runtime verdict (empty: it does).
 
     XAX_BENCHMARKS.md 15.0/15.0a, recomputed from raw samples.  Every cited JSON must name its host and hold per-arm
     ``wall_seconds_samples`` (MIN_SAMPLES or more each) for an XAX arm and at least two baselines; the baselines follow
-    the policy (``javac`` and ``kotlinc`` on the JVM, otherwise a C/C++ arm and an arm outside C/C++); and the best XAX
-    median is within PRIMARY_TARGET of the fastest median.  A published ratio must match the recomputation;
+    the policy (``javac`` and ``kotlinc`` on the JVM, otherwise a C/C++ arm and an arm outside C/C++).  The ratio is the
+    best XAX median over the fastest *non-XAX* median; it must be at most R4_TARGET and the advantage over that
+    competitor must be significant (``faster_p_value`` < R4_ALPHA).  A published ratio must match the recomputation;
     ``performance_class`` is never read."""
     if emulated:
         return ["emulated execution is never performance evidence"]
@@ -144,18 +190,28 @@ def recompute_runtime_verdict(paths, repo_root: Path = REPO_ROOT, emulated: bool
             reasons.append(f"{path}: baselines do not meet the 15.0/15.0a policy")
             continue
         fastest = min(medians.values())
+        competitor = min(baselines, key=lambda arm: (medians[arm], arm))
         for arm in xax:
-            published = results[arm].get("time_ratio_vs_fastest")
-            if published is not None and abs(published - medians[arm] / fastest) > 0.005:
-                reasons.append(f"{path}: {arm} publishes ratio {published}, raw samples give {medians[arm] / fastest:.3f}")
-        best = min(medians[arm] for arm in xax) / fastest
-        if best > PRIMARY_TARGET:
-            reasons.append(f"{path}: XAX median is {best:.3f}x the fastest")
+            item = results[arm]
+            legacy = item.get("time_ratio_vs_fastest")
+            if legacy is not None and not _published_matches(legacy, medians[arm] / fastest):
+                reasons.append(f"{path}: {arm} publishes ratio {legacy}, raw samples give {medians[arm] / fastest:.6f}")
+            published = item.get("time_ratio_vs_fastest_competitor")
+            if published is not None and not _published_matches(published, medians[arm] / medians[competitor]):
+                reasons.append(f"{path}: {arm} publishes competitor ratio {published}, raw samples give {medians[arm] / medians[competitor]:.6f}")
+        best = min(xax, key=lambda arm: (medians[arm], arm))
+        ratio = medians[best] / medians[competitor]
+        if ratio > R4_TARGET:
+            reasons.append(f"{path}: XAX median is {ratio:.6f}x the fastest non-XAX arm ({competitor}); R4 needs <= {R4_TARGET}x")
+            continue
+        p_value = faster_p_value(samples[best], samples[competitor])
+        if p_value >= R4_ALPHA:
+            reasons.append(f"{path}: XAX advantage over {competitor} ({ratio:.6f}x) is within noise (one-sided Mann-Whitney p={p_value:.4f})")
     return reasons
 
 
 def competitive(row: dict, repo_root: Path = REPO_ROOT) -> bool:
-    """R4 needs a measured *and* competitive result (XAX_SPEC.md §21.2), recomputed from the cited raw samples.
+    """R4 needs a measured *and* leading result (XAX_SPEC.md §21.2), recomputed from the cited raw samples.
 
     The row's ``competitive`` entry names the evidence; its boolean must equal this recomputation (``validate``)."""
     verdict = row.get("competitive")
