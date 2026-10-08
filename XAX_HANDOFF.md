@@ -91,6 +91,12 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - `_call_interface` decodes a fragment callee's interface into the pass's list area (after the records; overflow goes to `PASS_SINK` and defers). `NativeTyping.rejection` reads it back through `r.interface`.
 - Next: the facts engine's declines (`xax_selfhost_facts`, `DECLINE_SITES`), which are the memory-fact rejections in `_parse_graph_uncached`; then object verification (`verify_object`).
 
+## Host integration contracts — 2026-10-08 (ADR-221 to ADR-224)
+
+- `xax_native.verify_component_store` memoizes component-store verification in `XAX_NATIVE_CACHE`. Set `XAX_NATIVE_REVERIFY=1` when evidence must show the verifier running on component stores.
+- `xax_construct` accepts `linux.startup.*`. `xax_linux.process_contract()` and `xax_contract` are the versioned host surface: when one of their names or clauses changes, bump `HOST_CONTRACT_MINOR` or the identity, and tell XAX-MCP (`MrxSiN/XAX-MCP`, `src/xax_mcp/compat.py`).
+- Wide checked loads on byte views (proposal P4 from XAX-MCP) are not implemented: they would change the checked-access rule in the verifier, the XAX-hosted typing program, and every backend, which needs its own decision.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

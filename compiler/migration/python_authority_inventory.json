@@ -406,6 +406,10 @@
       ],
       "note": "xax-construct-v1 carrier (ADR-210): decodes one construction request into a verified build snapshot store; the store, not the request, is authoritative."
     },
+    "xax_contract.py": {
+      "class": "E",
+      "note": "xax-host-contract-v1 (ADR-224): names and format identities external integrations may depend on; no compiler logic."
+    },
     "xax_prefetch.py": {
       "class": "A",
       "components": [
