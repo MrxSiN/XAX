@@ -1288,3 +1288,7 @@ This follows the AutoHead capability audit of 2026-10-07, whose rows were partia
 - **Capability contracts (ADR-204).** POSIX owned sockets, readiness, deadlines, cancellation, locks and atomic replacement; NDK `ANativeWindow`, `AMediaCodec`/`AMediaFormat` and direction-typed AAudio with linear tokens; an SDK capability table (permissions, Bluetooth, RFCOMM/SDP, network callbacks, Wi-Fi Direct, local-only hotspot, `SSLEngine`, MediaCodec, SurfaceHolder, AudioTrack/AudioRecord, audio focus, touch, keys) that the managed-APK build enforces.
 
 Tests: `compiler/tests/test_xax_jni_float.py`, `compiler/tests/test_xax_android_platform.py`. The per-capability status is in `docs/ANDROID_PLATFORM_CAPABILITIES.md`. Open gaps: OI-47 (path-exact ownership for buffers, NULL windows and JNI-held SDK objects) and device evidence for every new contract.
+
+## Emulated JNI float execution (2026-10-08, ADR-205)
+
+The ADR-202 float carriers and typed-record packs now run: the compiled arm64 code executes under Unicorn with a mock `JNIEnv`, and the call receives the exact `jvalue[]` bytes and returns a float in `s0` (`compiler/tests/test_xax_jni_float.py`). This is emulated execution, not device evidence (OI-44).
