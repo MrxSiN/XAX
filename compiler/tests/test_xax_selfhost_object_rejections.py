@@ -13,8 +13,9 @@ import sys
 import unittest
 
 from xax_compiler import (
-    Kind, SemanticObject, StoreReader, XaxError, bits_type, call_contract, object_with_refs, ref_body, uleb, verify_store, write_store,
+    Kind, Operation, SemanticObject, StoreReader, XaxError, bits_type, call_contract, object_with_refs, ref_body, uleb, verify_store, write_store,
 )
+from xax_graph_builder import GraphBuilder
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 B8, B32, B64 = bits_type(8), bits_type(32), bits_type(64)
@@ -55,6 +56,38 @@ def _contract(body_of=None, extra=()):
     return SemanticObject.create(Kind.CALL_CONTRACT, body, references)
 
 
+def _function(variant: str):
+    """``(function, objects)``: ``(b32) -> b32`` adding one; ``variant`` rewrites the function object's body."""
+    graph = GraphBuilder()
+    block = graph.block(B32)
+    (x,) = block.params
+    block.ret(block.op1(Operation.ADD_WRAP, (x, block.const(B32, 1)), B32))
+    function = graph.function((B32,), (B32,))
+    objects = [item for item in graph.objects.values() if item.cid != function.cid]
+    fragment = next(item for item in objects if item.kind == Kind.GRAPH_FRAGMENT)
+    references = tuple(sorted({fragment.cid, B32.cid, *((B64.cid,) if variant in ("function_entry", "function_return", "function_unused") else ())}))
+    at = {cid: index for index, cid in enumerate(references)}
+    parameters, returns = [B32], [B32]
+    if variant == "function_entry":
+        parameters = [B64]
+    if variant == "function_return":
+        returns = [B64]
+    if variant == "function_carrier":
+        references = (B32.cid,)
+        at = {B32.cid: 0, fragment.cid: 0}
+    body = (uleb(at[fragment.cid]) + uleb(len(parameters)) + b"".join(uleb(at[item.cid]) for item in parameters)
+            + uleb(len(returns)) + b"".join(uleb(at[item.cid]) for item in returns))
+    if variant == "function_ref_index":
+        body = uleb(7) + body[1:]
+    elif variant == "function_type_index":
+        body = uleb(at[fragment.cid]) + uleb(1) + uleb(9) + uleb(0)
+    elif variant == "function_trailing":
+        body += b"\x00"
+    if variant.startswith("function_") and variant != "function_valid":
+        function = SemanticObject.create(Kind.FUNCTION, body, references)
+    return function, objects
+
+
 def _store(variant: str):
     """``(root, objects)``: a root, one module holding three types and a contract; ``variant`` breaks one object."""
     types = (B8, B32, B64)
@@ -70,7 +103,9 @@ def _store(variant: str):
         contract = _contract(extra=(B8,))
     else:
         contract = _contract()
-    children = (*types, contract)
+    function, function_objects = _function(variant if variant.startswith("function_") else "function_valid")
+    children = (*types, contract, function)
+    supporting = tuple(item for item in function_objects if item.kind != Kind.TYPE)  # reached through the function
     module = object_with_refs(Kind.MODULE, children)
     count = len(module.references)
     bodies = {
@@ -82,7 +117,7 @@ def _store(variant: str):
     if variant in bodies:
         module = SemanticObject.create(Kind.MODULE, bodies[variant], module.references)
     root = object_with_refs(Kind.PROGRAM_ROOT, (module,))
-    objects = [*children, module]
+    objects = [*children, *supporting, module]
     if variant == "root_child_kind":
         root = SemanticObject.create(Kind.PROGRAM_ROOT, ref_body(range(2)), tuple(sorted((module.cid, B8.cid))))
     return root, (*objects, root)
@@ -93,6 +128,10 @@ VARIANTS = {
     "module_short": "SER-REF-BODY-CANONICAL", "root_child_kind": "GRAPH-CHILD-KIND",
     "contract_ref_index": "GRAPH-REF-INDEX", "contract_truncated": "SER-BOUNDS", "contract_bool": "SER-BOOL-CANONICAL",
     "contract_trailing": "CALL-CONTRACT-BODY", "contract_unused": "SER-REFS-DIRECT-ONLY",
+    # S8c.20 (ADR-238): functions.
+    "function_ref_index": "GRAPH-REF-INDEX", "function_type_index": "GRAPH-REF-INDEX", "function_carrier": "GRAPH-FUNCTION-CARRIER",
+    "function_trailing": "FUNCTION-BODY", "function_entry": "GRAPH-ENTRY-CONTRACT", "function_return": "GRAPH-RETURN-CONTRACT",
+    "function_unused": "SER-REFS-DIRECT-ONLY",
 }
 
 

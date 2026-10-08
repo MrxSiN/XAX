@@ -7513,7 +7513,10 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
     proven: dict[bytes, object] = {}
     for position, record in rejections.items():
         # S8c.19 (ADR-237): XAX decided this object's rejection; ``verify_object`` raises it at the bootstrap's point.
-        proven[listed[position].cid] = _XaxRejection(object_diagnostic(listed[position], record))
+        from xax_selfhost_verify import AFTER_PARSE, OBJECT_SITES
+
+        graph = listed[record[1][0]] if OBJECT_SITES[record[0] - 1] in AFTER_PARSE else None
+        proven[listed[position].cid] = _XaxRejection((*object_diagnostic(listed[position], record, listed), graph))
     for position, obj in enumerate(listed):
         if verdicts[position] != 1:
             continue
@@ -7535,7 +7538,8 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
 
 
 class _XaxRejection(tuple):
-    """S8c.19 (ADR-237): an object rejection the XAX store verifier decided: ``(code, rule, expected, actual)``."""
+    """S8c.19 (ADR-237): an object rejection the XAX store verifier decided: ``(code, rule, expected, actual, graph)``;
+    ``graph`` (S8c.20) is the graph the bootstrap parses before reaching the check, or None."""
 
 
 def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], proven: object = None) -> None:
@@ -7545,7 +7549,9 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
     for cid in obj.references:
         resolve(cid)
     if isinstance(proven, _XaxRejection):
-        code, rule, expected_value, actual = proven
+        code, rule, expected_value, actual, graph = proven
+        if graph is not None:
+            _parse_graph(graph, resolve)  # an invalid graph fails first, as in the bootstrap
         fail(code, obj.cid.hex(), rule, expected_value, actual)
     if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD):
         # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs

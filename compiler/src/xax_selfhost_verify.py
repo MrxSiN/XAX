@@ -64,7 +64,7 @@ ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
 MODULE_CHILDREN = (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT)
 # Globals (the first arena words): table pointers.
 GLOBALS = ARENA_AT
-G_REC, G_O, G_TYPEOK, G_MARK = range(4)
+G_REC, G_O, G_TYPEOK, G_MARK, G_LIST = range(5)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
 _FN: dict = {}
 
 
@@ -112,7 +112,12 @@ def _no(e: E, condition):
 # S8c.19 (ADR-237): object rejections the bootstrap's ``verify_object`` raises, in its order, once the object's own
 # references all resolve (its OBJECT_MISSING checks come first).
 OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_CHILD_KIND",
-                "CONTRACT_REF_INDEX", "CONTRACT_TRUNCATED", "CONTRACT_BOOL", "CONTRACT_TRAILING", "CONTRACT_UNUSED")
+                "CONTRACT_REF_INDEX", "CONTRACT_TRUNCATED", "CONTRACT_BOOL", "CONTRACT_TRAILING", "CONTRACT_UNUSED",
+                # S8c.20 (ADR-238): functions.  The last three come after the bootstrap parses the graph (payload word 0:
+                # the graph object), so the host parses it first.
+                "FUNCTION_REF_INDEX", "FUNCTION_MEMBER_TRAILING", "FUNCTION_MEMBER_RANGE", "FUNCTION_CARRIER", "FUNCTION_TRAILING",
+                "FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
+AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
 
 
@@ -171,11 +176,15 @@ def _all_marked(e: E, count):
     return p["marked"]
 
 
-def _type_reference(e: E, obj, name: str, end):
-    """A reference index read at ``p[name]`` naming a proven type; marks it and returns the object."""
+def _type_reference(e: E, obj, name: str, end, reject_site=None):
+    """A reference index read at ``p[name]`` naming a proven type; marks it and returns the object.
+
+    ``reject_site``: an index out of range is that rejection (``GRAPH-REF-INDEX``) instead of a decline."""
     p = e.p
     index = _read(e, name, end)
     e.var(f"{name}_index", index)
+    if reject_site is not None:
+        _reject(e, e.le(_references(e, obj), p[f"{name}_index"]), obj, reject_site, _references(e, obj), p[f"{name}_index"])
     _no(e, e.le(_references(e, obj), p[f"{name}_index"]))
     target = _reference(e, obj, p[f"{name}_index"])
     e.var(f"{name}_target", target)
@@ -209,7 +218,7 @@ def _skip_values(e: E, name: str):
     e.for_("sv", 0, count, lambda: e.set(name, e.add(e.add(p[name], 3), e.flag(e.eq(e.rd(p[name]), 1)))))
 
 
-def _interface(e: E, obj, name: str, end):
+def _interface(e: E, obj, name: str, end, reject_site=None):
     """Parameter and return types read at ``p[name]`` into a new ``[P, types, R, types]`` record."""
     p = e.p
     e.var(f"{name}_if", e.alloc(e.add(e.sub(end, p[name]), 3)))  # at most one type per body byte
@@ -217,10 +226,10 @@ def _interface(e: E, obj, name: str, end):
     record = p[f"{name}_if"]
     e.var(f"{name}_np", _read(e, name, end))
     e.st(record, p[f"{name}_np"])
-    e.for_("q", 0, p[f"{name}_np"], lambda: e.st(e.add(e.add(p[f"{name}_if"], 1), p["q"]), _type_reference(e, obj, name, end)))
+    e.for_("q", 0, p[f"{name}_np"], lambda: e.st(e.add(e.add(p[f"{name}_if"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site)))
     e.var(f"{name}_rt", e.add(e.add(p[f"{name}_if"], 1), p[f"{name}_np"]))
     e.st(p[f"{name}_rt"], _read(e, name, end))
-    e.for_("q", 0, e.ld(p[f"{name}_rt"]), lambda: e.st(e.add(e.add(p[f"{name}_rt"], 1), p["q"]), _type_reference(e, obj, name, end)))
+    e.for_("q", 0, e.ld(p[f"{name}_rt"]), lambda: e.st(e.add(e.add(p[f"{name}_rt"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site)))
     return p[f"{name}_if"]
 
 
@@ -229,6 +238,7 @@ def _function_ok(tables):
     def build(e: E):
         p = e.p
         f = p["f"]
+        _no(e, e.eq(_resolved(e, f), 0))
         references = _references(e, f)
         e.var("refs", references)
         e.var("fa", _payload(e, f))
@@ -237,26 +247,32 @@ def _function_ok(tables):
         _clear_marks(e, p["refs"])
         graph_index = _read(e, "fa", p["fend"])
         e.var("gi", graph_index)
-        _no(e, e.le(p["refs"], p["gi"]))
+        _reject(e, e.le(p["refs"], p["gi"]), f, S["FUNCTION_REF_INDEX"], p["refs"], p["gi"])
         e.var("graph", _reference(e, f, p["gi"]))
         _no(e, e.eq(p["graph"], NONE))
 
         def member_function():
             # ``decode_group_member_function``: [group, member], the group proven (S6b.3), member < its size.
             e.var("member", _read(e, "fa", p["fend"]))
-            _no(e, e.ne(p["fa"], p["fend"]))
+            _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_MEMBER_TRAILING"], e.sub(p["fend"], p["fa"]))
             _no(e, e.ne(e.ld(e.add(VERDICTS_AT, p["graph"])), 1))
-            _no(e, e.le(e.ld(e.ld(e.add(GRAPHS_AT, p["graph"]))), p["member"]))
+            size = e.ld(e.ld(e.add(GRAPHS_AT, p["graph"])))
+            _reject(e, e.le(size, p["member"]), f, S["FUNCTION_MEMBER_RANGE"], size, p["member"])
             e.st(e.add(GRAPHS_AT, f), NONE)
             e.give(1)
 
         e.if_(e.both(e.eq(p["refs"], 1), e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP))), member_function)
-        _no(e, e.ne(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT)))
+        _no(e, e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP)))
+        _reject(e, e.ne(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT)), f, S["FUNCTION_CARRIER"], _kind(e, p["graph"]))
         _mark(e, p["gi"])
-        e.var("iface", _interface(e, f, "fa", p["fend"]))
-        _no(e, e.ne(p["fa"], p["fend"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
-        _no(e, e.ne(e.call(_FN["graph"], p["graph"], p["iface"], NONE, NONE), 1))
+        e.var("iface", _interface(e, f, "fa", p["fend"], S["FUNCTION_REF_INDEX"]))
+        _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_TRAILING"], e.sub(p["fend"], p["fa"]))
+        # After the bootstrap's graph parse: the graph contract, then the references used.
+        e.var("contract", e.call(_FN["graph"], p["graph"], p["iface"], NONE, NONE))
+        _reject(e, e.eq(p["contract"], 3), f, S["FUNCTION_ENTRY_CONTRACT"], p["graph"], _g(e, G_LIST))
+        _reject(e, e.eq(p["contract"], 4), f, S["FUNCTION_RETURN_CONTRACT"], p["graph"], _g(e, G_LIST))
+        _no(e, e.ne(p["contract"], 1))
+        _reject(e, e.eq(_all_marked(e, p["refs"]), 0), f, S["FUNCTION_UNUSED"], p["graph"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
         e.st(e.add(GRAPHS_AT, f), p["graph"])
         e.give(1)
     return _function(("f",), build, tables)
@@ -320,10 +336,26 @@ def _graph_ok(tables):
                 e.eq(kind, 3), lambda: _skip_values(e, "ga"), lambda: e.set("ga", e.add(p["ga"], 2)))))
 
         e.for_("b", 0, p["B"], place)
-        # Entry parameters: exactly the interface's parameter types.
+        # Entry parameters: exactly the interface's parameter types (3, with [P, interface types, E, entry types] in
+        # G_LIST, when they differ).
         entry_at = e.ld(e.add(p["blocks"], p["entry"]))
-        _no(e, e.ne(e.rd(entry_at), p["np"]))
-        e.for_("q", 0, p["np"], lambda: _no(e, e.ne(_reference(e, g, e.rd(e.add(e.add(entry_at, 1), p["q"]))), e.ld(e.add(p["lists"], p["q"])))))
+        e.var("entry_n", e.rd(entry_at))
+        e.var("entry_ok", e.flag(e.eq(p["entry_n"], p["np"])))
+        e.for_("q", 0, p["entry_n"], lambda: e.if_(e.both(e.lt(p["q"], p["np"]), e.ne(_reference(e, g, e.rd(e.add(e.add(entry_at, 1), p["q"]))), e.ld(e.add(p["lists"], p["q"])))),
+                                                  lambda: e.set("entry_ok", 0)))
+
+        def entry_mismatch():
+            quoted = e.alloc(e.add(e.add(p["np"], p["entry_n"]), 2))
+            e.var("quoted", quoted)
+            _no(e, e.eq(p["quoted"], NONE))
+            e.st(p["quoted"], p["np"])
+            e.for_("q", 0, p["np"], lambda: e.st(e.add(e.add(p["quoted"], 1), p["q"]), e.ld(e.add(p["lists"], p["q"]))))
+            e.st(e.add(e.add(p["quoted"], 1), p["np"]), p["entry_n"])
+            e.for_("q", 0, p["entry_n"], lambda: e.st(e.add(e.add(e.add(p["quoted"], 2), p["np"]), p["q"]), _reference(e, g, e.rd(e.add(e.add(entry_at, 1), p["q"])))))
+            e.st(GLOBALS + G_LIST, p["quoted"])
+            e.give(3)
+
+        e.if_(e.eq(p["entry_ok"], 0), entry_mismatch)
 
         def value_type(name: str):
             """The type object of the value at ``p[name]`` (advanced past it)."""
@@ -354,10 +386,25 @@ def _graph_ok(tables):
             e.var("ra", e.ld(e.add(p["term_at"], p["b"])))
 
             def returning():
+                # 4, with [R, interface types, K, returned types] in G_LIST, when a return's types differ.
                 e.set("ra", e.add(p["ra"], 1))
-                _no(e, e.ne(e.rd(p["ra"]), p["nr"]))
+                e.var("rk", e.rd(p["ra"]))
                 e.set("ra", e.add(p["ra"], 1))
-                e.for_("q", 0, p["nr"], lambda: _no(e, e.ne(value_type("ra"), e.ld(e.add(p["returns"], p["q"])))))
+                e.var("rquoted", e.alloc(e.add(e.add(p["nr"], p["rk"]), 2)))
+                _no(e, e.eq(p["rquoted"], NONE))
+                e.st(p["rquoted"], p["nr"])
+                e.for_("q", 0, p["nr"], lambda: e.st(e.add(e.add(p["rquoted"], 1), p["q"]), e.ld(e.add(p["returns"], p["q"]))))
+                e.st(e.add(e.add(p["rquoted"], 1), p["nr"]), p["rk"])
+                e.var("rsame", e.flag(e.eq(p["rk"], p["nr"])))
+
+                def each_returned():
+                    e.var("rt_type", value_type("ra"))
+                    e.st(e.add(e.add(e.add(p["rquoted"], 2), p["nr"]), p["q"]), p["rt_type"])
+                    e.if_(e.either(e.le(p["nr"], p["q"]), e.ne(p["rt_type"], e.ld(e.add(p["returns"], e.sel(e.lt(p["q"], p["nr"]), p["q"], 0))))),
+                          lambda: e.set("rsame", 0))
+
+                e.for_("q", 0, p["rk"], each_returned)
+                e.if_(e.eq(p["rsame"], 0), lambda: (e.st(GLOBALS + G_LIST, p["rquoted"]), e.give(4)))
 
             e.if_(e.eq(e.rd(p["ra"]), int(TerminatorKind.RETURN)), returning)
 
@@ -1805,7 +1852,8 @@ def collect_verdicts(read, count: int, groups=()):
     return store == 1, verdicts, graphs, members
 
 
-LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED")  # the second payload word is a [count, words] list
+LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED")  # a payload word is a [count, words] list
+PAIR_SITES = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT")  # payload word 1 is [n, words, m, words]
 
 
 def collect_rejections(read, verdicts):
@@ -1816,18 +1864,40 @@ def collect_rejections(read, verdicts):
             continue
         site, *payload = read(REJECTS_AT + REJECT_WORDS * o, REJECT_WORDS)
         listed = None
-        if 0 < site <= len(OBJECT_SITES) and OBJECT_SITES[site - 1] in LIST_SITES:
-            at = payload[1] if OBJECT_SITES[site - 1] != "CONTRACT_UNUSED" else payload[0]
+        name = OBJECT_SITES[site - 1] if 0 < site <= len(OBJECT_SITES) else None
+        if name in LIST_SITES:
+            at = payload[0] if name == "CONTRACT_UNUSED" else payload[1]
             listed = read(at + 1, read(at, 1)[0])
+        elif name in PAIR_SITES:
+            first = read(payload[1], 1)[0]
+            second = read(payload[1] + 1 + first, 1)[0]
+            listed = read(payload[1], first + second + 2)
         rejections[o] = (site, payload, listed)
     return rejections
 
 
-def object_diagnostic(obj, record):
+def object_diagnostic(obj, record, objects=()):
     """S8c.19: the bootstrap's ``(code, rule, expected, actual)`` for a rejected object (rendering only: the verifier
-    decided the check and its values)."""
+    decided the check and its values).  ``objects``: the object table, for quoted object indices."""
     site, (x, y, _z), listed = record
     name = OBJECT_SITES[site - 1]
+    hexes = lambda indices: [objects[index].cid.hex() for index in indices]  # noqa: E731
+    if name in ("FUNCTION_REF_INDEX", "FUNCTION_MEMBER_RANGE"):
+        rule = "GRAPH-REF-INDEX" if name == "FUNCTION_REF_INDEX" else "GRAPH-RECURSION-MEMBER"
+        return ("XAX.STRUCT.REF_INDEX" if name == "FUNCTION_REF_INDEX" else "XAX.STRUCT.RECURSION_MEMBER"), rule, f"< {x}", y
+    if name in ("FUNCTION_MEMBER_TRAILING", "FUNCTION_TRAILING"):
+        return "XAX.CANON.TRAILING_BYTES", "FUNCTION-GROUP-MEMBER-BODY" if name == "FUNCTION_MEMBER_TRAILING" else "FUNCTION-BODY", 0, x
+    if name == "FUNCTION_CARRIER":
+        return "XAX.STRUCT.FUNCTION_GRAPH", "GRAPH-FUNCTION-CARRIER", Kind.GRAPH_FRAGMENT.name, Kind(x).name
+    if name in ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT"):
+        first = listed[1:1 + listed[0]]
+        second = listed[2 + listed[0]:2 + listed[0] + listed[1 + listed[0]]]
+        if name == "FUNCTION_ENTRY_CONTRACT":
+            return "XAX.STRUCT.ENTRY_CONTRACT", "GRAPH-ENTRY-CONTRACT", hexes(first), hexes(second)
+        return "XAX.STRUCT.RETURN_CONTRACT", "GRAPH-RETURN-CONTRACT", hexes(first), hexes(second)
+    if name == "FUNCTION_UNUSED":
+        used = {obj.references[k].hex() for k, marked in enumerate(listed) if marked}
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", sorted(cid.hex() for cid in obj.references), sorted(used)
     if name == "LIST_TRAILING":
         return "XAX.CANON.TRAILING_BYTES", "SCHEMA-BODY", 0, x
     if name == "LIST_REF_INDEX":

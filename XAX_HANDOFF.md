@@ -144,7 +144,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.19 object rejections: reference lists and call contracts — 2026-10-08 (ADR-237)
 
-- Next: object rejections for functions (`_verify_function`), recursion groups, types, constants, targets, packages, and builds; the remaining memory declines.
+- Next: object rejections for functions (`_verify_function`), recursion groups, types, constants, targets, packages, and builds; the remaining memory declines. Superseded by S8c.20 below.
+
+## S8c.20 function object rejections — 2026-10-08 (ADR-238)
+
+- Next: object rejections for recursion groups, types, constants, targets, packages, and builds; the remaining memory declines.
 
 ## Validation state at M14 (historical)
 
