@@ -1520,11 +1520,12 @@ semantic descriptor, optional imported superclass/interface proof for subtyping,
 and any required defining-loader identity. Converting such a reference to the
 `jvalue.l` machine word MUST be an explicit target ABI operation, not an unchecked
 core pointer cast. Owned local/global references MUST thread their linear owner
-proof through that projection and through the JNI call. Weak-global references,
-mixed narrow integers, or unproved subtype/loader combinations MUST reject.
-Until exact float carriers and AAPCS64 floating-point lowering exist,
-`float`/`double` JNI member paths MUST reject rather
-than be approximated. Pending-exception state is verifier-visible in the bounded
+proof through that projection and through the JNI call. Weak-global references
+and unproved subtype/loader combinations MUST reject. `jfloat`/`jdouble` are the
+`f32`/`f64` kernel types (ADR-202). Any other argument shape (floats, or narrow
+integers mixed with other slots) MUST use the typed-record pack: one record per
+`jvalue[]` whose fields store each exact value at its 8-byte slot offset followed
+by explicit zero padding, with no conversion or bit cast. Pending-exception state is verifier-visible in the bounded
 profile above, but the implementation MUST NOT describe that as complete Java
 exception handling until conditional `ExceptionCheck`/`ExceptionOccurred` control
 refinement and corresponding runtime evidence exist.
@@ -1547,6 +1548,29 @@ an Activity/display surface only, not video decoding or protocol interoperabilit
 See `compiler/integration/android/SURFACE_ACTIVITY.md` and
 `compiler/tests/test_xax_android_surface.py`.
 
+
+### Platform declarations and capability contracts (2026-10-08, ADR-203/204)
+
+`android-platform-declarations-v1` is an identity-only carrier listing
+`uses-permission`, `uses-feature` and Service/BroadcastReceiver components (with
+`foregroundServiceType` flags and intent actions). Only the managed-class APK
+profile accepts it; other profiles MUST reject it. A manifest without
+declarations MUST keep its exact bytes. The build MUST reject: a foreground
+service without `FOREGROUND_SERVICE`, or at `targetSdk >= 34` without its
+per-type permission and declarable prerequisite; a `BOOT_COMPLETED` receiver
+without `RECEIVE_BOOT_COMPLETED`; a declared component that is not a managed
+class extending `android.app.Service`/`android.content.BroadcastReceiver`.
+
+For every managed-class APK the build MUST also reject, from the JNI method
+identities and NDK symbols reachable from its exports and the capability table in
+`xax_android_platform`: a missing permission (honouring target and device
+levels and `maxSdkVersion`), a member above `minSdk`, an acquiring member whose
+release member is unreachable, a managed class that omits an abstract method of
+a listed callback type, and an `Activity` lifecycle override without `call_super`.
+These are manifest and structure facts; runtime permission grants remain runtime
+observations. NDK window, codec, format and AAudio objects and POSIX descriptors
+carry linear tokens that the ordinary resource rules consume exactly once; the
+AAudio direction is part of the token type. Open gaps are recorded in OI-47.
 
 ## Platform carrier replacement v1 (2026-10-07)
 

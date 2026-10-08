@@ -57,6 +57,12 @@
         "android-backend"
       ]
     },
+    "xax_android_platform.py": {
+      "class": "A",
+      "components": [
+        "android-backend"
+      ]
+    },
     "xax_android_sdk.py": {
       "class": "A",
       "components": [

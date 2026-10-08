@@ -27,9 +27,13 @@ from xax_compiler import (
     ValueRef,
     android_jni_invoke_operation,
     android_jni_native_operation,
+    FloatFormat,
     bits_type,
     call_contract,
     constant,
+    float_constant,
+    float_type,
+    tuple_type,
     effect_type,
     memory_effect_type,
     function_pointer_type,
@@ -254,6 +258,11 @@ class JniArgumentPackPlan:
     fully_initialized: bool = True
     mode: str = "homogeneous_integer"
     reference_arguments: tuple["JniReferenceArgumentSpec | None", ...] = ()
+    # ``typed_record`` mode: the pack is one record whose fields are each slot's
+    # exact value (or reference word) followed by zero padding to 8 bytes.
+    record_fields: tuple[SemanticObject, ...] = ()
+    record_offsets: tuple[int, ...] = ()
+    record_slots: tuple[int, ...] = ()  # slot index of each field's value, -1 for padding
 
 
 @dataclass(frozen=True)
@@ -900,8 +909,11 @@ def _jni_value_type(descriptor: str, *, reference_kind: JniReferenceKind = JniRe
         return bits_type(32)
     if descriptor == "J":
         return bits_type(64)
-    if descriptor in {"F", "D"}:
-        raise ValueError("prototype XAX type system has no implemented float carrier for exact JNI F/D semantics")
+    # jfloat/jdouble are IEEE binary32/binary64 (JNI 1.6); the XAX float types are exact carriers.
+    if descriptor == "F":
+        return float_type(FloatFormat.BINARY32)
+    if descriptor == "D":
+        return float_type(FloatFormat.BINARY64)
     if descriptor.startswith(("L", "[")):
         return jni_reference_type(reference_kind, _jni_reference_family(descriptor))
     raise ValueError(f"unsupported JNI JVM descriptor: {descriptor!r}")
@@ -946,13 +958,20 @@ def jni_argument_pack_plan(
     produced only by the explicit Android target ABI projection above; actual
     Java reference descriptors are checked against the expected method
     descriptor, optional imported SDK hierarchy, and optional defining-loader
-    identity. Narrow mixed integers and F/D remain hard rejection.
+    identity.
+
+    Every other shape (narrow integers mixed with other slots, ``jfloat``,
+    ``jdouble``) uses ``typed_record``: the pack is one record whose fields
+    hold each exact value at its slot offset, followed by explicit zero
+    padding to 8 bytes.  Floats are stored as their IEEE bits; nothing is
+    converted or widened.
     """
     parameters, _result = parse_jvm_method_descriptor(descriptor)
     if not parameters:
         raise ValueError("zero-argument JNI A calls do not require a stack jvalue pack")
     integer_widths = {"Z": 8, "B": 8, "C": 16, "S": 16, "I": 32, "J": 64}
     if reference_arguments is None and len(set(parameters)) == 1 and parameters[0] in integer_widths:
+        # Unchanged homogeneous integer form (identities predate the record form).
         width = integer_widths[parameters[0]]
         value = bits_type(width)
         pointer = pointer_type(value, Permission.READ_WRITE, 8)
@@ -990,25 +1009,56 @@ def jni_argument_pack_plan(
         else:
             if spec is not None:
                 raise ValueError(f"JNI primitive parameter {index} cannot carry a reference argument specification")
-            if expected != "J":
-                raise ValueError(
-                    "current JNI stack jvalue pack supports homogeneous integer Z/B/C/S/I/J "
-                    "or mixed jlong plus strong references only"
-                )
-            value_types.append(bits_type(64))
+            value_types.append(_jni_value_type(expected))
             normalized_refs.append(None)
     word = bits_type(64)
+    if all(item == "J" or item.startswith(("L", "[")) for item in parameters):
+        # Unchanged pre-float form: every slot is one 64-bit word.
+        return JniArgumentPackPlan(
+            descriptor,
+            parameters,
+            pointer_type(word, Permission.READ_WRITE, 8),
+            tuple(value_types),
+            8,
+            8 * len(parameters),
+            8,
+            mode="mixed_word",
+            reference_arguments=tuple(normalized_refs),
+        )
+    # Narrow integers, jfloat and jdouble: one exact record field per value,
+    # explicit zero padding to the 8-byte jvalue slot, no hidden conversion.
+    fields: list[SemanticObject] = []
+    offsets: list[int] = []
+    slots: list[int] = []
+    for slot, item in enumerate(parameters):
+        width = _JVALUE_WIDTH.get(item, 8)
+        fields.append(word if item.startswith(("L", "[")) else _jni_value_type(item))
+        offsets.append(8 * slot)
+        slots.append(slot)
+        offset = width
+        while offset < 8:
+            fields.append(bits_type(8 * offset))
+            offsets.append(8 * slot + offset)
+            slots.append(-1)
+            offset *= 2
+    record = tuple_type(tuple(fields))
     return JniArgumentPackPlan(
         descriptor,
         parameters,
-        pointer_type(word, Permission.READ_WRITE, 8),
+        pointer_type(record, Permission.READ_WRITE, 8),
         tuple(value_types),
         8,
         8 * len(parameters),
         8,
-        mode="mixed_word",
+        mode="typed_record",
         reference_arguments=tuple(normalized_refs),
+        record_fields=tuple(fields),
+        record_offsets=tuple(offsets),
+        record_slots=tuple(slots),
     )
+
+
+_JVALUE_WIDTH = {"Z": 1, "B": 1, "C": 2, "S": 2, "I": 4, "F": 4, "J": 8, "D": 8}
 
 
 def jni_argument_pack_nodes(
@@ -1034,6 +1084,8 @@ def jni_argument_pack_nodes(
         raise ValueError("JNI jvalue reference-owner count does not match descriptor")
     if plan.mode == "mixed_word" and target is None:
         raise ValueError("mixed/reference JNI jvalue packing requires the explicit target ABI package")
+    if plan.mode == "typed_record":
+        return _typed_record_pack_nodes(plan, values, owner_inputs, target, block_index, start_node_index)
     nodes: list[Node] = []
     semantic_objects: dict[bytes, SemanticObject] = {}
     pointer = plan.pointer_type
@@ -1122,6 +1174,79 @@ def jni_argument_pack_nodes(
     )
 
 
+def _typed_record_pack_nodes(
+    plan: JniArgumentPackPlan,
+    values: tuple[ValueRef, ...],
+    owner_inputs: tuple[ValueRef | None, ...],
+    target: SemanticObject | None,
+    block_index: int,
+    start_node_index: int,
+) -> JniArgumentPackNodes:
+    """Stack ``jvalue[]`` as one record: every field is addressed and stored exactly once."""
+    if any(spec is not None for spec in plan.reference_arguments) and target is None:
+        raise ValueError("reference JNI jvalue packing requires the explicit target ABI package")
+    owner_type, effect_type_obj = stack_owner_type(), memory_effect_type()
+    semantic_objects: dict[bytes, SemanticObject] = {
+        obj.cid: obj for obj in (plan.pointer_type, tuple_type(plan.record_fields), *plan.value_types, *plan.record_fields, owner_type, effect_type_obj)
+    }
+    nodes: list[Node] = [Node(Operation.STACK_ALLOC, (), (plan.pointer_type, owner_type, effect_type_obj), attributes=(plan.total_bytes, 8))]
+    base = ValueRef.node_result(block_index, start_node_index, 0)
+    owner = ValueRef.node_result(block_index, start_node_index, 1)
+    effect = ValueRef.node_result(block_index, start_node_index, 2)
+    next_index = start_node_index + 1
+
+    def emit(node: Node) -> ValueRef:
+        nonlocal next_index
+        nodes.append(node)
+        next_index += 1
+        return ValueRef.node_result(block_index, next_index - 1, 0)
+
+    zeros: dict[bytes, ValueRef] = {}
+    continued: list[ValueRef | None] = [None] * len(values)
+    for field, offset, slot in zip(plan.record_fields, plan.record_offsets, plan.record_slots):
+        size = _field_bytes(field)
+        if slot < 0:
+            if field.cid not in zeros:
+                zero = constant(field, 0)
+                semantic_objects[zero.cid] = zero
+                zeros[field.cid] = emit(Node(Operation.CONSTANT, (), (field,), entity=zero))
+            stored = zeros[field.cid]
+        else:
+            stored = values[slot]
+            spec = plan.reference_arguments[slot] if plan.reference_arguments else None
+            if spec is not None:
+                assert target is not None
+                identity = opaque_identity_type(
+                    _jni_reference_identity(spec.kind, _jni_reference_family(spec.descriptor), spec.loader_domain, spec.nullable)
+                )
+                semantic_objects[identity.cid] = identity
+                stored = emit(jni_reference_word_node(target, values[slot], spec, owner=owner_inputs[slot]))
+                if spec.kind != JniReferenceKind.BORROWED:
+                    continued[slot] = ValueRef.node_result(block_index, next_index - 1, 1)
+                    semantic_objects[jni_reference_owner_type(spec.kind).cid] = jni_reference_owner_type(spec.kind)
+            elif owner_inputs[slot] is not None:
+                raise ValueError("JNI primitive jvalue slot must not receive a reference owner token")
+        field_pointer = pointer_type(field, Permission.READ_WRITE, size)
+        semantic_objects[field_pointer.cid] = field_pointer
+        address = emit(Node(Operation.ADDRESS_OFFSET, (base,), (field_pointer,), attributes=(offset,)))
+        effect = emit(Node(Operation.STORE_BITS_LE, (address, stored, effect), (effect_type_obj,), attributes=(size, size)))
+    return JniArgumentPackNodes(
+        tuple(nodes), base, owner, effect,
+        tuple(semantic_objects[cid] for cid in sorted(semantic_objects)), tuple(continued),
+    )
+
+
+def _field_bytes(field: SemanticObject) -> int:
+    if field == float_type(FloatFormat.BINARY32):
+        return 4
+    if field == float_type(FloatFormat.BINARY64):
+        return 8
+    for width in (8, 16, 32, 64):
+        if field == bits_type(width):
+            return width // 8
+    raise ValueError("unsupported jvalue record field")
+
+
 def jni_stack_method_call_contract(
     plan: JniMethodCallPlan,
     pack: JniArgumentPackPlan,
@@ -1142,7 +1267,7 @@ def jni_stack_method_call_contract(
         raise ValueError("JNI method plan and stack argument pack disagree")
     if pack.mode == "homogeneous_integer" and tuple(plan.parameter_types) != tuple(pack.value_types):
         raise ValueError("JNI method plan and stack argument pack disagree")
-    if pack.mode == "mixed_word" and len(plan.parameter_types) != len(pack.value_types):
+    if pack.mode in ("mixed_word", "typed_record") and len(plan.parameter_types) != len(pack.value_types):
         raise ValueError("JNI method plan and stack argument pack disagree")
     env = jni_env_pointer_type()
     threaded: list[SemanticObject] = []
@@ -1217,10 +1342,7 @@ def jni_method_call_plan(
     suffix = _jni_call_suffix(result)
     if not suffix:
         raise ValueError("unsupported JNI result descriptor")
-    # F/D are named by JNI but exact XAX float carriers are not implemented yet.
     parameter_types = tuple(_jni_value_type(item) for item in parameters)
-    if result in {"F", "D"}:
-        _jni_value_type(result)  # raises exact unsupported diagnostic
 
     loader_domain = _loader_domain(loader_domain)
     env, memory = jni_env_pointer_type(), jni_memory_effect_type()
