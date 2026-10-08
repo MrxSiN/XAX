@@ -1130,7 +1130,12 @@ def _checked(tables, covers, load: bool):
         _reject(e, n.shape(3, 2, 2) if load else n.shape(4, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
         element = e.value(PEL, source)
         size = n.attr(0)
-        _access_size(e, element, size)
+        # Byte-view widening (ADR-231): on a bits<8> element (the width table holds only canonical bits types, so
+        # width 8 is exactly that CID) the size may be 1, 2, 4, or 8 and the value type is bits<8*size>.
+        byte_view = e.eq(e.table(_T.WIDTH, element), 8)
+        e.if_(byte_view, lambda: _reject(e, _one_of(e, size, (1, 2, 4, 8)), M["ACCESS_SIZE"], NONE, size),
+              lambda: _access_size(e, element, size))
+        value_ok = lambda type_index: e.sel(byte_view, e.flag(e.eq(e.table(_T.WIDTH, type_index), e.mul(size, 8))), e.flag(e.eq(type_index, element)))  # noqa: E731
         _reject(e, e.eq(n.attr(1), 1), M["CHECKED_ALIGNMENT"], n.attr(1))
         offset_width = e.table(_T.WIDTH, n.tid(1))
         _require(e, e.ne(offset_width, 0))  # not bits: the bootstrap raises its own decode diagnostic
@@ -1138,11 +1143,11 @@ def _checked(tables, covers, load: bool):
         permission = e.value(PPERM, source)
         if load:
             _reject(e, e.ne(e.and_(permission, int(Permission.READ)), 0), M["READ_PERMISSION"], permission)
-            _reject(e, e.eq(n.rtid(0), element), M["CHECKED_LOAD_TYPE"], element, n.rtid(0))
+            _reject(e, e.ne(value_ok(n.rtid(0)), 0), M["CHECKED_LOAD_TYPE"], element, n.rtid(0), size, e.flag(byte_view))
             effect_index = 2
         else:
             _reject(e, e.ne(e.and_(permission, int(Permission.WRITE)), 0), M["WRITE_PERMISSION"], permission)
-            _reject(e, e.eq(n.tid(2), element), M["CHECKED_STORE_TYPE"], element, n.tid(2))
+            _reject(e, e.ne(value_ok(n.tid(2)), 0), M["CHECKED_STORE_TYPE"], element, n.tid(2), size, e.flag(byte_view))
             _stored_provenance(e, n.vid(2), source)
             effect_index = 3
         storage = e.value(PST, source)
@@ -3088,7 +3093,9 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
     if name == "OP_CONTRACT":
         return "XAX.MEMORY.CONTRACT", "MEMORY-OP-CONTRACT", _contract_expected(operation, (x, y, z)), (x, y, z)
     if name == "ACCESS_SIZE":
-        return "XAX.MEMORY.ACCESS_SIZE", "MEMORY-ACCESS-SIZE", x, y
+        from xax_compiler import CHECKED_BYTE_VIEW_WIDTHS
+
+        return "XAX.MEMORY.ACCESS_SIZE", "MEMORY-ACCESS-SIZE", list(CHECKED_BYTE_VIEW_WIDTHS) if x == NONE else x, y
     if name == "POINTER_ELEMENT_SIZE":
         return "XAX.MEMORY.ACCESS_SIZE", "MEMORY-POINTER-ELEMENT-SIZE", [4, 8], x
     if name == "ALIGNMENT":
@@ -3117,10 +3124,11 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.CHECKED_ALIGNMENT", "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, x
     if name == "CHECKED_OFFSET":
         return "XAX.MEMORY.CHECKED_OFFSET", "MEMORY-CHECKED-OFFSET-BITS", 32, x
-    if name == "CHECKED_LOAD_TYPE":
-        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-LOAD-TYPE", h(x), h(y)
-    if name == "CHECKED_STORE_TYPE":
-        return "XAX.MEMORY.VALUE_TYPE", "MEMORY-CHECKED-STORE-TYPE", h(x), h(y)
+    if name in ("CHECKED_LOAD_TYPE", "CHECKED_STORE_TYPE"):
+        from xax_compiler import bits_type
+
+        expected = bits_type(8 * z).cid.hex() if w else h(x)  # byte-view widening: bits<8*size>
+        return "XAX.MEMORY.VALUE_TYPE", f"MEMORY-{name.replace('_', '-')}", expected, h(y)
     if name == "CHECKED_EFFECT_TYPE":
         return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "matching effect<memory> continuation", [h(item) for item in (y, z)[:x]]
     if name == "REBASE_ADDRESS_WIDTH":

@@ -16,13 +16,17 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 1  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1
+HOST_CONTRACT_MINOR = 2  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+# 2: byte-view widening of checked accesses (ADR-231)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)
     "linux_process": "linux-x86_64-process-v1",     # xax_linux.process_contract() (ADR-224)
     "linux_startup_abi": "linux-x86_64-startup-v1",  # ADR-094
     "local_edit_grammar": "ADR-200",                 # xax_local_protocol.edit_grammar(), identified by edit_grammar_id()
+    # ADR-231: checked.load/store.bits.le sizes on a bits<8> view (the value type is bits<8*size>); a JSON list so the
+    # description stays plain data.  RISC-V and SPIR-V reject sizes above 1 on byte views.
+    "checked_byte_view_widths": [1, 2, 4, 8],       # xax_compiler.CHECKED_BYTE_VIEW_WIDTHS
 }
 
 INTERFACES = {

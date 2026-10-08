@@ -1382,3 +1382,7 @@ The ADR-202 float carriers and typed-record packs now run: the compiled arm64 co
 ## Emulated NDK and POSIX contract programs (2026-10-08, ADR-206)
 
 Codec lifecycle, an AAudio output stream (build, configure, open, start, write, stop, close) and an owned nonblocking socket run under Unicorn through their real ELF import slots (`compiler/tests/test_xax_android_platform_emulated.py`, `compiler/benchmarks/android_elf_emulator.py`). AAudio handles are now 64-bit words loaded from stack out-cells. Emulated execution, not device evidence.
+
+## Byte-view widening — 2026-10-08 (ADR-231)
+
+A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one little-endian integer (a `u64` from a `bytes_rw` view is one node instead of eight). Every proof obligation is unchanged. x86-64, AArch64, JVM, and wasm run it; RISC-V rejects it (`RISCV64-CHECKED-BYTE-VIEW-WIDTH`); SPIR-V kernels take word views only. The XAX facts engine decides these accesses itself. Host contract minor 2.

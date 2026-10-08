@@ -572,6 +572,7 @@ class RISCV64:
 
     ARCHITECTURE = RISCV64_ARCHITECTURE
     DIAGNOSTICS = "RISCV64"  # S7b.3 (ADR-182): this program decides target legality and writes the rejection diagnostics
+    BYTE_VIEW_WIDENING = False  # ADR-231: wide checked access on a byte view is rejected (misaligned lh/lw/ld may trap)
     LOWERED = LOWERED_OPERATIONS
     LOWERED_NAME = "riscv64 integer subset"
     ALLOCATABLE = ALLOCATABLE

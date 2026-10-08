@@ -125,6 +125,8 @@ Lowering preserves the semantic distinction on two materially different memory m
 
 **Decision.** Precise object-backed provenance is represented by storage-object/allocation identity and verifier-derived range/permission/alias facts; no second serialized local alias-class ID is carried. Conservative mappings MAY carry an explicit compact class ID only when exact object identity is unavailable. Dynamic scalar checked load/store deserve kernel status because their failure behavior is semantic, compact (+1 token-native atom in these fixtures), and lowers directly on both frame-relative native memory and WebAssembly linear memory. Statically proven accesses remain ordinary load/store and need no checked wrapper; higher-level slicing/indexing libraries should specialize to those ordinary forms when they can discharge the proof. Raw access remains a distinct explicit waiver form with an unsafe effect; the bounded prototype intentionally does not provide a general provenance-forging cast, borrow checker, ownership language, or bounds-waiving raw pointer primitive.
 
+**Note (2026-10-08, ADR-231).** Checked access gained byte-view widening: on a `bits<8>` view a checked load/store may move 1, 2, 4, or 8 bytes as one `bits<8*size>` integer, with every proof obligation unchanged (`docs/04_MEMORY_RESOURCES.md` §5.2.1). Other element types keep the element-size rule. RISC-V rejects widened byte-view access; SPIR-V kernels take word views only.
+
 ## OI-07 — DMA resource-state vocabulary
 
 **Question.** Which common DMA ownership/mapping/cache states should be standardized across targets?
