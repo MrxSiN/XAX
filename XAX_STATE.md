@@ -101,6 +101,10 @@ Resource and effect nodes are now rejected by XAX too. The rejection logic is it
 
 Constant targets and contracts and direct-call targets are now rejected by XAX. Still Python in S8c: call contracts, facts declines, object verification.
 
+## S8c.7 call-contract rejections — 2026-10-08 (ADR-220)
+
+Direct-call contract mismatches against graph-fragment callees are now rejected by XAX. Still Python in S8c: group-member call contracts, facts declines, object verification.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

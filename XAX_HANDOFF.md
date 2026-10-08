@@ -86,6 +86,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - `_entity_steps` covers both entity checks. Next (S8c.7): `GRAPH-CALL-CONTRACT` needs the callee interface lists decoded apart from the comparison (`_call_rule` fuses them); then the facts engine's declines and object verification.
 
+## S8c.7 call-contract rejections — 2026-10-08 (ADR-220)
+
+- `_call_interface` decodes a fragment callee's interface into the pass's list area (after the records; overflow goes to `PASS_SINK` and defers). `NativeTyping.rejection` reads it back through `r.interface`.
+- Next: the facts engine's declines (`xax_selfhost_facts`, `DECLINE_SITES`), which are the memory-fact rejections in `_parse_graph_uncached`; then object verification (`verify_object`).
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.
