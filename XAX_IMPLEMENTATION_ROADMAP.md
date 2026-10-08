@@ -421,7 +421,7 @@ Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not sc
 | Step | Work | Unblocks | Status |
 |---|---|---|---|
 | U2.1 | Re-run Linux `filestat`, `chains`, and `jsonmin` with raw samples (the harness records them since ADR-207) | Linux R4 verdict | MEASURED (ADR-208, §15.30): `filestat` 0.882x and `jsonmin` 0.968x clang lead; `chains` 0.984x rustc is within noise |
-| U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 | In progress: predicate tables (ADR-208). Next: `chains` (memory-latency bound; loop-invariant code motion of the exit-edge `found + 1`, fewer moves) |
+| U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 | In progress: predicate tables (ADR-208); next-iteration prefetch and edge sinking (ADR-211) made `chains` lead. Next: a larger real `jsonmin` margin (its 0.97–1.03x is within this host's run-to-run variation) |
 | U2.3 | Android cold-start re-run with a Kotlin arm and more passes | Android R4 verdict | Open |
 | U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 | EXECUTED for the JVM (ADR-209): one cycle of `jsonmin`; the workspace now edits recursion-group members |
 | U2.5 | XAX-only application with XAX test and build definitions | R6 | EXECUTED for `xb64` on Linux x86-64 (ADR-210); the row stays R3 until its R4/R5 hold |

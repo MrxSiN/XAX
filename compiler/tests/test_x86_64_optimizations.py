@@ -160,6 +160,93 @@ class PredicateTableTests(unittest.TestCase):
                         self.assertEqual(completed.returncode, expected)
 
 
+def _exit_edge_sum(start: int, width):
+    """``x`` counts up from ``start`` until a wrapping ``+1`` reaches 0; ``found + 0xFF`` is computed in the loop
+    block but only its exit edge passes it (an ADR-211 sink).  Exit status: ``(found + 0xFF + x) & 0xFF``."""
+    from xax_graph_builder import GraphBuilder
+
+    api = linux_api()
+    graph = GraphBuilder()
+    effects = (api.process_effect, api.filesystem_effect, MEM)
+    entry, loop, done = graph.block(*effects), graph.block(*effects, width, width), graph.block(*effects, width, width)
+    entry.br(loop, *entry.params, entry.const(width, start), entry.const(width, 0))
+    process, fs, memory, x, found = loop.params
+    following = loop.op1(Operation.ADD_WRAP, (x, loop.const(width, 1)), width)
+    exit_found = loop.op1(Operation.ADD_WRAP, (found, loop.const(width, 0xFF)), width)
+    at_zero = loop.op1(Operation.INT_COMPARE, (following, loop.const(width, 0)), bits_type(1), attributes=(IntCompare.EQ,))
+    loop.cbr(at_zero, done, (process, fs, memory, following, exit_found), loop, (process, fs, memory, following, found))
+    process, fs, memory, x, found = done.params
+    low = lambda value: value if width is B32 else done.op1(Operation.INT_TRUNCATE, (value,), B32)  # noqa: E731
+    total = done.op1(Operation.ADD_WRAP, (low(found), low(x)), B32)
+    status = done.op1(Operation.BIT_AND, (total, done.const(B32, 0xFF)), B32)
+    process = done.op1(Operation.CALL_FOREIGN, (status, process), api.process_effect, entity=api.exit_group)
+    done.ret(status, process, fs, memory)
+    function = graph.function(effects, (B32, *effects))
+    target = x86_64_linux_exec_target()
+    return program_store(function, target, (*api.types, *graph.objects.values())), function, target
+
+
+class EdgeSinkAndPrefetchTests(unittest.TestCase):
+    """ADR-211: exit-only arithmetic moves onto its edge; next-iteration prefetches never change results."""
+
+    @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+    def test_sunk_edge_arithmetic_wraps_exactly(self):
+        for width, start in ((B32, 0xFFFFFFF0), (B64, 0xFFFFFFFFFFFFFFF0)):
+            with self.subTest(width=width):
+                reader, entry, target = _exit_edge_sum(start, width)
+                self.assertEqual(run_linux_executable(compile_linux_executable(reader, entry.cid, target.cid).data).returncode, 0xFF)
+
+    def test_chains_lookup_gets_a_proven_prefetch_and_others_do_not(self):
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from benchmarks.linux_chains import build_chains_program
+        from xax_compiler import parse_function_graph
+        from xax_prefetch import prefetch_next_iteration
+
+        program = build_chains_program(links="soa")
+        view, marks = prefetch_next_iteration(inline_leaf_calls(parse_function_graph(program.entry, program.reader.get), program.reader.get), program.reader.get)
+        self.assertEqual(len(marks), 1)
+        (hints,) = marks.values()
+        self.assertEqual(sorted(scale for _pointer, scale in hints), [4, 8])
+        reader, entry, _target = _fill(EXTENT)
+        plain = inline_leaf_calls(parse_function_graph(entry, reader.get), reader.get)
+        self.assertEqual(prefetch_next_iteration(plain, reader.get)[1], {})
+
+    @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+    def test_chains_with_prefetch_keeps_its_output(self):
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from benchmarks.linux_chains import compile_chains
+
+        _program_, executable = compile_chains(nodes=1 << 12, buckets=1 << 8, links="soa")
+        self.assertIn(b"\x0f\x18", executable.data)  # prefetcht0
+        completed = run_linux_executable(executable.data)
+        self.assertEqual(completed.returncode, 0)
+        x, keys, heads, nxt = 0x9E3779B97F4A7C15, [0] * ((1 << 12) + 1), [0] * (1 << 8), [0] * ((1 << 12) + 1)
+        mask = (1 << 64) - 1
+        def step(v):
+            v ^= (v << 13) & mask
+            v ^= v >> 7
+            return v ^ ((v << 17) & mask)
+        for i in range(1 << 12):
+            x = step(x)
+            b = x >> 56
+            keys[i + 1], nxt[i + 1], heads[b] = x, heads[b], i + 1
+        x, found, steps = 0x9E3779B97F4A7C15, 0, 0
+        for _ in range(1 << 12):
+            x = step(x)
+            cur = heads[x >> 56]
+            while cur and cur <= 1 << 12:
+                steps += 1
+                if keys[cur] == x:
+                    found += 1
+                    break
+                cur = nxt[cur]
+        self.assertEqual(completed.stdout, f"{found} {steps}\n".encode())
+
+
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
 class LoweringViewTests(unittest.TestCase):
     def test_jsonmin_inlines_leaf_helpers_and_keeps_results(self):

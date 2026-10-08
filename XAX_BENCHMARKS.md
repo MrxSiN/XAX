@@ -1134,6 +1134,18 @@ Supersedes the ratios of §15.14. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs (s
 
 ADR-208 changed `jsonmin`'s string loop, so the JVM comparison of §15.17/§15.18 was re-run on the same kind of host (Xeon @ 2.10 GHz, 4 vCPUs), OpenJDK 21.0.12.1, javac `--release 17`, kotlinc 2.1.0 `-include-runtime`, 15 fresh-JVM runs per arm after 2 warmup rounds: XAX 126.3 ms, javac 142.8 ms, kotlinc 157.0 ms median. XAX is 0.884x javac (p = 2e-5), so the JVM row keeps R4. Program class 5,603 bytes (1.50x javac's, 0.99x kotlinc's); peak RSS 0.89x javac's. Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json`.
 
+### 15.32 Linux x86-64 re-run after next-iteration prefetch (ADR-211; MEASURED, 2026-10-08)
+
+Same host and harness as §15.30, 31 interleaved runs per arm.
+
+| Workload | Fastest non-XAX | XAX median / competitor | p | XAX / competitor median (ms) |
+|---|---|---:|---:|---|
+| `filestat` | clang -O2 | 0.896075 | 2.5e-5 | 57.30 / 63.95 |
+| `jsonmin` | clang -O2 | 1.029472 | 0.63 | 24.66 / 23.96 |
+| `chains` (`xax-soa`) | rustc -O3 | 0.943346 | 0.019 | 212.22 / 224.97 |
+
+`chains` now leads: the walk loop is the same as rustc's, and the next lookup's first node is prefetched while the current chain is walked. `jsonmin`'s binary is byte-identical to §15.30's, which measured 0.967682x; on this shared host a ~6% swing between runs of the same binaries is possible, so `jsonmin`'s lead is not established and the Linux row stays R3. Evidence: `u1_linux_filestat_evidence.json`, `jsonmin_evidence.json`, `oi37_chains_evidence.json`.
+
 ## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 
 All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and

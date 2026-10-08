@@ -405,6 +405,13 @@
         "graph-construction-tooling"
       ],
       "note": "xax-construct-v1 carrier (ADR-210): decodes one construction request into a verified build snapshot store; the store, not the request, is authoritative."
+    },
+    "xax_prefetch.py": {
+      "class": "A",
+      "components": [
+        "x86-64-program-backend"
+      ],
+      "note": "Lowering-view next-iteration prefetch (ADR-211): pure index copy, proven-in-bounds load, prefetch hints; canonical program unchanged."
     }
   },
   "components": {

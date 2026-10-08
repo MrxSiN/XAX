@@ -45,7 +45,7 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "�
 |---|---|---|---|
 | JVM | `jvm` | R5 | Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.884x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (re-run after ADR-208's program change). R5 for one maintenance cycle (ADR-209): an AI agent raised jsonmin's depth limit through one semantic transaction, then the JAR was rebuilt, tested, benchmarked, and the store committed. The former AI-token trials are historical (ADR-207). |
 | Android (arm64-v8a) | `android-arm64` | R3 | Direct DEX, manifest, resources, signed APKs, JNI shared objects, and libxposed API-102 modules executed under Vector v2.2; the stateful counter app's cold start on Pixel 8 Pro is 1.007x the fastest non-XAX twin (Java + NDK), above the 0.9999x R4 target (ADR-207), so the row is R3. |
-| x86-64 Linux | `linux-x86_64` | R3 | Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Raw-sample re-run (ADR-208): filestat 0.882x and jsonmin 0.968x the fastest non-XAX arm (clang -O2), both significant; chains is 0.984x rustc but within noise, so R4 is withheld. R6 evidence exists (xb64, ADR-210) but levels are cumulative, so the row stays R3 until R4 and R5 hold. |
+| x86-64 Linux | `linux-x86_64` | R3 | Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Re-run after ADR-211 (next-iteration prefetch, edge sinking): filestat 0.896x clang and chains 0.943x rustc lead significantly; jsonmin's unchanged binary measured 1.029x clang (0.968x in the ADR-208 run), so its lead is inside run-to-run variation and R4 is withheld. R6 evidence exists (xb64, ADR-210) but levels are cumulative, so the row stays R3 until R4 and R5 hold. |
 | AArch64 Linux | `linux-aarch64` | R3 | Static and dynamic ELF executables; a file-processing application executed under `qemu-aarch64` user mode only (no hardware, so no performance level). |
 | x86-64 Windows | `windows-x86_64-pe` | R2 | Direct PE32+ executables executed on Windows 11; Win64 calls and callbacks, linear thread-handle lifecycle, and kernel32 loader imports. |
 | AArch64 bare metal | `aarch64-baremetal` | R2 | AAPCS64 images with a QEMU `virt` board package (reset/fault stubs, vector table, one interrupt source); executed under QEMU only. |
@@ -82,7 +82,7 @@ Research prototype. Part of the compiler (hashing, decoding, typing, the store v
 
 Recent results (one shared x86-64 host; details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md)):
 
-- **Faster than clang** on `filestat` (0.88×) and `jsonmin` (0.97×); `chains` ties rustc, so Linux is still R3.
+- **Faster than the fastest C/Rust build** on `filestat` (0.90× clang) and `chains` (0.94× rustc); `jsonmin` swings between 0.97× and 1.03× clang across runs, so Linux is still R3.
 - **JVM is R5**: `jsonmin` runs 0.88× javac, and an AI changed it through one semantic transaction, then rebuilt, tested, and benchmarked it.
 - **First XAX-only app**: `xb64`, a base64 tool whose code, tests, and build are all XAX, matches coreutils `base64` and shipped a second release through one transaction.
 
