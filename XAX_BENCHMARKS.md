@@ -1130,6 +1130,10 @@ Supersedes the ratios of §15.14. Host: Intel Xeon @ 2.10 GHz, 4 logical CPUs (s
 
 `filestat` and `jsonmin` meet R4; `chains` does not (its margin is inside the noise of a memory-latency-bound pointer walk), so the Linux row stays R3. What changed: (1) a boolean computed from one value below 256 by three or more compare/arithmetic nodes is read from a byte table that the compiler evaluates exactly for every value (ADR-208): `filestat`'s whitespace test went from eight instructions to two, and `jsonmin`'s hex-digit and escape tests from 17 to three; (2) `jsonmin`'s string loop now has the C twin's shape (test the current byte, exit at the closing quote). Instruction counts under callgrind: `jsonmin` 188 M → 154 M (clang 145 M). Evidence: `compiler/benchmarks/u1_linux_filestat_evidence.json`, `jsonmin_evidence.json`, `oi37_chains_evidence.json`. One shared host and three workloads; not a general claim.
 
+### 15.31 JVM `jsonmin` re-run after the string-loop change (MEASURED, 2026-10-08)
+
+ADR-208 changed `jsonmin`'s string loop, so the JVM comparison of §15.17/§15.18 was re-run on the same kind of host (Xeon @ 2.10 GHz, 4 vCPUs), OpenJDK 21.0.12.1, javac `--release 17`, kotlinc 2.1.0 `-include-runtime`, 15 fresh-JVM runs per arm after 2 warmup rounds: XAX 126.3 ms, javac 142.8 ms, kotlinc 157.0 ms median. XAX is 0.884x javac (p = 2e-5), so the JVM row keeps R4. Program class 5,603 bytes (1.50x javac's, 0.99x kotlinc's); peak RSS 0.89x javac's. Evidence: `compiler/benchmarks/jvm_jsonmin_evidence.json`.
+
 ## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 
 All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and

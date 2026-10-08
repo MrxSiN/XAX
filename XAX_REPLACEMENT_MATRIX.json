@@ -589,7 +589,7 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.835x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (ADR-158, ADR-207). R5 (autonomous maintenance) has no executed evidence yet; the former AI-token trials are historical (ADR-207).",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.884x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (re-run after ADR-208's program change). R5 (autonomous maintenance) has no executed evidence yet; the former AI-token trials are historical (ADR-207).",
       "level": "R4",
       "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
