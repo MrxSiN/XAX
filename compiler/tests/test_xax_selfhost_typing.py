@@ -312,7 +312,7 @@ class SelfhostTypingTests(unittest.TestCase):
         self.assertGreater(rejected, 40)
 
     def test_each_family_proves_its_well_typed_node(self):
-        from xax_selfhost_typing import INTEGER_FAMILIES, NOT_COVERED, NOT_PROVEN, PROVEN, REJECTED
+        from xax_selfhost_typing import DECIDED_FAMILIES, NOT_COVERED, NOT_PROVEN, PROVEN, REJECTED
 
         good = [
             (Operation.ADD_WRAP, (B32, B32), (B32,), ()),
@@ -387,9 +387,11 @@ class SelfhostTypingTests(unittest.TestCase):
             self.assertEqual(verdicts[index], PROVEN, sample)
             self.assertTrue(_bootstrap_accepts(*sample), sample)
         for index, sample in enumerate(bad, start=len(good)):
-            # S8c.1: XAX rejects the integer families itself; the rest stay with the bootstrap.
-            self.assertEqual(verdicts[index], REJECTED if sample[0] in INTEGER_FAMILIES and sample[1] != (OVERLONG, OVERLONG) else NOT_PROVEN, sample)
+            # S8c.1/S8c.2: XAX rejects the decided families itself (a type it cannot decode stays with the bootstrap).
+            self.assertIn(verdicts[index], (REJECTED, NOT_PROVEN) if sample[0] in DECIDED_FAMILIES else (NOT_PROVEN,), sample)
             self.assertFalse(_bootstrap_accepts(*sample), sample)
+            if verdicts[index] == REJECTED:
+                self.assertEqual(_outcome(self.native, *sample), _outcome(None, *sample), sample)
         self.assertNotIn(NOT_COVERED, verdicts.values())
 
     def test_integer_rejections_are_decided_by_xax(self):
@@ -405,6 +407,42 @@ class SelfhostTypingTests(unittest.TestCase):
             "INT-ROTATE-CONTRACT": (Operation.ROTATE_RIGHT, (B64, B64), (B64,), (1,)),
             "INT-ROTATE-TYPE": (Operation.ROTATE_RIGHT, (B32,), (B64,), (3,)),
             "INT-ROTATE-AMOUNT": (Operation.ROTATE_RIGHT, (B64,), (B64,), (64,)),
+            # S8c.2 (ADR-215)
+            "FLOAT-BINARY-CONTRACT": (Operation.FLOAT_MUL, (F64, F64, F64), (F64,), ()),
+            "FLOAT-BINARY-TYPE": (Operation.FLOAT_SUB, (F64, F32), (F64,), ()),
+            "FLOAT-COMPARE-CONTRACT": (Operation.FLOAT_COMPARE, (F32, F32, F32), (B1,), (1,)),
+            "FLOAT-COMPARE-OPERANDS": (Operation.FLOAT_COMPARE, (F32, F64), (B1,), (1,)),
+            "FLOAT-COMPARE-RESULT": (Operation.FLOAT_COMPARE, (F32, F32), (B8,), (1,)),
+            "FLOAT-COMPARE-KIND": (Operation.FLOAT_COMPARE, (F32, F32), (B1,), (7,)),
+            "UINT-TO-FLOAT-CONTRACT": (Operation.UINT_TO_FLOAT, (B32, B32), (F64,), ()),
+            "SINT-TO-FLOAT-WIDTH": (Operation.SINT_TO_FLOAT, (B100,), (F64,), ()),
+            "FLOAT-TO-SINT-CONTRACT": (Operation.FLOAT_TO_SINT_TRUNC, (F64, F64), (B32,), ()),
+            "FLOAT-TO-UINT-WIDTH": (Operation.FLOAT_TO_UINT_TRUNC, (F64,), (B100,), ()),
+            "FLOAT-CONVERT-CONTRACT": (Operation.FLOAT_CONVERT, (F32, F32), (F64,), ()),
+            "INT-COMPARE-CONTRACT": (Operation.INT_COMPARE, (B8, B8, B8), (B1,), (1,)),
+            "INT-COMPARE-LINK-EQUALITY": (Operation.INT_COMPARE, (link_type(), link_type()), (B1,), (3,)),
+            "INT-COMPARE-TYPE": (Operation.INT_COMPARE, (B8, B32), (B1,), (1,)),
+            "INT-COMPARE-KIND": (Operation.INT_COMPARE, (B8, B8), (B1,), (11,)),
+            # S8c.3 (ADR-216)
+            "AGGREGATE-MAKE-CONTRACT": (Operation.AGGREGATE_MAKE, (B8, F64, B8), (TRIPLE, TRIPLE), ()),
+            "AGGREGATE-MAKE-TYPE": (Operation.AGGREGATE_MAKE, (B8,), (SUM3,), ()),
+            "AGGREGATE-MAKE-ELEMENTS": (Operation.AGGREGATE_MAKE, (B32, B32), (ARRAY3,), ()),
+            "AGGREGATE-GET-CONTRACT": (Operation.AGGREGATE_GET, (TRIPLE, TRIPLE), (F64,), (1,)),
+            "AGGREGATE-GET-TYPE": (Operation.AGGREGATE_GET, (B32,), (B8,), (0,)),
+            "AGGREGATE-GET-INDEX": (Operation.AGGREGATE_GET, (TRIPLE,), (B8,), (1,)),
+            "SUM-MAKE-CONTRACT": (Operation.SUM_MAKE, (B8, B8), (SUM3,), (0,)),
+            "SUM-MAKE-VARIANT": (Operation.SUM_MAKE, (B8,), (SUM3,), (3,)),
+            "SUM-TAG-CONTRACT": (Operation.SUM_TAG, (SUM3, SUM3), (B8,), ()),
+            "SUM-TAG-WIDTH": (Operation.SUM_TAG, (SUM3,), (B1,), ()),
+            "SUM-GET-CONTRACT": (Operation.SUM_GET, (SUM3, SUM3), (F64,), (2,)),
+            "SUM-GET-VARIANT": (Operation.SUM_GET, (SUM3,), (B8,), (2,)),
+            # S8c.4 (ADR-217)
+            "META-OP-ARITY": (Operation.META_FUNCTION_GRAPH, (OPAQUES[3], OPAQUES[3]), (OPAQUES[5],), ()),
+            "META-OPERAND-TYPE": (Operation.META_GRAPH_NODE_COUNT, (OPAQUES[4], B32), (B64,), ()),
+            "META-RESULT-TYPE": (Operation.META_FUNCTION_GRAPH, (OPAQUES[3],), (B8,), ()),
+            "META-VERIFY-RESULT": (Operation.META_VERIFY_SEMANTICS, (OPAQUES[6],), (B8,), ()),
+            "META-TARGET-SUPPORT-RESULT": (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B8,), (1,)),
+            "META-TARGET-OPERATION": (Operation.META_TARGET_SUPPORTS, (OPAQUES[4],), (B1,), (9999,)),
         }
         status, verdicts = _native_verdicts(self.native, list(cases.values()))
         self.assertEqual(status, 0)

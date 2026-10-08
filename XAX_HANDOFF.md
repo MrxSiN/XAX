@@ -60,6 +60,22 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - `_node_entry` (`xax_selfhost_typing.py`) calls `_integer_rejection`, which returns the first failing bootstrap check as a site and three payload words. The verdict becomes `REJECTED` and the record lands at `DIAGNOSTICS + 4 * node`; `rejection(record, cids)` renders it. Site 0 means "leave it to the bootstrap".
 - Next (S8c.2): the float, compare, aggregate/sum, resource, meta, constant, and call families, same pattern; keep deferring every case whose bootstrap check would first raise a decode diagnostic. Then facts declines and object verification.
 
+## S8c.2 float and compare typing rejections — 2026-10-08 (ADR-215)
+
+- `_rejection` holds one step list per family, in the bootstrap's check order; `_SITES` renders. Add a family by adding its steps and its site renderers.
+- Next (S8c.3): aggregate and sum families. Their diagnostics quote element lists: render them from the program's `ITEMS`/`COUNT` tables (pass the owner's type index), not from Python decoding.
+
+## S8c.3 aggregate and sum typing rejections — 2026-10-08 (ADR-216)
+
+- Renderers take a context `r`: `r.h` (CID hex), `r.items(type)` (program tables), `r.operands(position)` (input stream). Lists in a diagnostic must come from these, not from Python decoding.
+- A changed typing store invalidates `selfhost_x86_64_evidence.json` and `selfhost_closure_evidence.json` (`test_audit_remediation`); re-run both benches with `--write` on Linux x86-64.
+- Next (S8c.4): resource/effect and meta families, then constants and calls.
+
+## S8c.4 meta typing rejections — 2026-10-08 (ADR-217)
+
+- `_meta_steps` builds each meta operation's checks from `META_RULES`. Undecoded `bits` and form-5 types defer; other non-opaque types reject.
+- Next (S8c.5): resource/effect (`_verify_resource_effect_node`). Its diagnostics quote raw CID tuples, `_EffectType` reprs, flags, and transition lists; render them from the input stream and the program's tables (`EDOMAIN`, `EINST`, `RKIND`, `RSTATE`, `RFLAGS`, `TSTART`/`TCOUNT`).
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

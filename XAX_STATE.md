@@ -81,6 +81,18 @@ A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance
 
 On Linux x86-64 the XAX typing program now rejects integer-family nodes (arity, type, width, rotate amount) with the bootstrap's exact diagnostic; `verify_store` raises it at the node's own position. The rest of S8c (other typing families, facts, object verification) is still Python. Migration stays SH1.
 
+## S8c.2 float and compare typing rejections — 2026-10-08 (ADR-215)
+
+The XAX typing program also rejects float, conversion, and integer-compare nodes with the bootstrap's exact diagnostic. Still Python in S8c: aggregate, sum, resource, meta, constant, and call typing; facts declines; object verification.
+
+## S8c.3 aggregate and sum typing rejections — 2026-10-08 (ADR-216)
+
+Aggregate and sum nodes are now rejected by XAX too. Still Python in S8c: resource, meta, constant, and call typing; facts declines; object verification.
+
+## S8c.4 meta typing rejections — 2026-10-08 (ADR-217)
+
+Meta operations are now rejected by XAX too. Still Python in S8c: resource/effect, constant, and call typing; facts declines; object verification.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

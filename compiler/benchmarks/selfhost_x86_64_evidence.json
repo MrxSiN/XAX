@@ -13,8 +13,8 @@
       "image_sha256": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 4.86,
-        "bootstrap": 0.03
+        "gen1": 5.77,
+        "bootstrap": 0.05
       }
     },
     {
@@ -26,8 +26,8 @@
       "image_sha256": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.27,
-        "bootstrap": 0.82
+        "gen1": 0.3,
+        "bootstrap": 0.38
       }
     },
     {
@@ -52,21 +52,21 @@
       "image_sha256": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.49,
-        "bootstrap": 0.63
+        "gen1": 0.56,
+        "bootstrap": 0.61
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 2840749,
-      "store_sha256": "c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02",
+      "store_bytes": 2918386,
+      "store_sha256": "61f6507e787898ffadf8128dfe3a3b0438661423e3c92da83e5605953339c07f",
       "functions": 46,
-      "code_bytes": 3425339,
-      "image_sha256": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
+      "code_bytes": 3481147,
+      "image_sha256": "8be5989b90b858f5fdd95ecfcf8327fdf2f6b967086d4cddcce3ba01e2c351dc",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 5.76,
-        "bootstrap": 8.75
+        "gen1": 7.4,
+        "bootstrap": 9.85
       }
     },
     {
@@ -78,8 +78,8 @@
       "image_sha256": "e2eb1e46d927c84a79082ddc10af890c0384497393b20858d7671bc7b9d67952",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.72,
-        "bootstrap": 6.8
+        "gen1": 3.6,
+        "bootstrap": 7.72
       }
     },
     {
@@ -92,7 +92,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.03,
-        "bootstrap": 0.05
+        "bootstrap": 0.06
       }
     },
     {
@@ -104,8 +104,8 @@
       "image_sha256": "68f0397e0434a3006db132c22e8fb6da6d1aad870fa598ad4bb7202e609a7634",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.2,
-        "bootstrap": 4.46
+        "gen1": 3.04,
+        "bootstrap": 4.9
       }
     },
     {
@@ -117,8 +117,8 @@
       "image_sha256": "8af45b016d71727ac8dc5a716ccb3231eb4944a85dbb59c0bc7eb74718912f59",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 3.59,
-        "bootstrap": 4.89
+        "gen1": 3.28,
+        "bootstrap": 5.89
       }
     }
   ],
@@ -174,7 +174,7 @@
     },
     {
       "store": "xax_op_typing.xax",
-      "objects": 836,
+      "objects": 837,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -220,40 +220,40 @@
     "code_bytes": 2708117,
     "sha256": "8af45b016d71727ac8dc5a716ccb3231eb4944a85dbb59c0bc7eb74718912f59",
     "gen3_equals_gen2": true,
-    "host_s_nonsemantic": 2.74
+    "host_s_nonsemantic": 2.67
   },
   "runtime_vs_optimizing_bootstrap": [
     {
       "program": "xax_selfhost_verify",
       "input": "xax_op_typing.xax",
-      "xax_backend_s": 0.5246,
-      "optimizing_bootstrap_s": 0.4358,
-      "ratio": 1.204,
+      "xax_backend_s": 0.5295,
+      "optimizing_bootstrap_s": 0.4688,
+      "ratio": 1.13,
       "code_bytes": {
         "xax_backend": 2993128,
-        "optimizing_bootstrap": 659575
+        "optimizing_bootstrap": 656055
       }
     },
     {
       "program": "xax_selfhost_verify",
       "input": "xax_store_verifier.xax",
-      "xax_backend_s": 0.3443,
-      "optimizing_bootstrap_s": 0.3333,
-      "ratio": 1.033,
+      "xax_backend_s": 0.3403,
+      "optimizing_bootstrap_s": 0.272,
+      "ratio": 1.251,
       "code_bytes": {
         "xax_backend": 2993128,
-        "optimizing_bootstrap": 659575
+        "optimizing_bootstrap": 656055
       }
     },
     {
       "program": "xax_selfhost_verify",
       "input": "xax_riscv64_backend.xax",
-      "xax_backend_s": 0.2526,
-      "optimizing_bootstrap_s": 0.2212,
-      "ratio": 1.142,
+      "xax_backend_s": 0.2828,
+      "optimizing_bootstrap_s": 0.2325,
+      "ratio": 1.216,
       "code_bytes": {
         "xax_backend": 2993128,
-        "optimizing_bootstrap": 659575
+        "optimizing_bootstrap": 656055
       }
     }
   ],
@@ -305,8 +305,8 @@
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "4681e6c50bd88ba3d96ab87ddc45ea294a8a9ae3b0658868c8f0b77beb0383ce",
-      "native_artifact_digest": "f981b3ae2e9bb32b907001d7f1cb08120e75df3c18049b6ca0b7316c25f70539",
+      "semantic_root": "6fbcc9e61c553847ee867a9f933a67d17a291992856e350bda2eaaf6591e10c9",
+      "native_artifact_digest": "8be5989b90b858f5fdd95ecfcf8327fdf2f6b967086d4cddcce3ba01e2c351dc",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -320,7 +320,7 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 13249
+      "declined_inputs": 13253
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",

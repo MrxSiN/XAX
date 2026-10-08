@@ -60,6 +60,7 @@ import threading
 from pathlib import Path
 
 from xax_compiler import (
+    OpaqueKind,
     TerminatorKind,
     FloatCompare,
     IntCompare,
@@ -89,7 +90,19 @@ REJECTED = 3
 DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
 # Rejection sites, in each family's bootstrap check order: (code, rule) and the record's payload meaning.
 (SITE_NONE, SITE_OP_ARITY, SITE_OP_TYPE, SITE_INT_WIDTH_CONTRACT, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS,
- SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT) = range(9)
+ SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT,
+ # S8c.2 (ADR-215): float and integer-compare families.
+ SITE_FLOAT_BINARY_CONTRACT, SITE_FLOAT_BINARY_TYPE, SITE_FLOAT_COMPARE_CONTRACT, SITE_FLOAT_COMPARE_OPERANDS, SITE_FLOAT_COMPARE_RESULT,
+ SITE_FLOAT_COMPARE_KIND, SITE_UINT_TO_FLOAT_CONTRACT, SITE_SINT_TO_FLOAT_CONTRACT, SITE_UINT_TO_FLOAT_WIDTH, SITE_SINT_TO_FLOAT_WIDTH,
+ SITE_FLOAT_TO_UINT_CONTRACT, SITE_FLOAT_TO_SINT_CONTRACT, SITE_FLOAT_TO_UINT_WIDTH, SITE_FLOAT_TO_SINT_WIDTH, SITE_FLOAT_CONVERT_CONTRACT,
+ SITE_INT_COMPARE_CONTRACT, SITE_INT_COMPARE_LINK_EQUALITY, SITE_INT_COMPARE_TYPE, SITE_INT_COMPARE_KIND,
+ # S8c.3 (ADR-216): aggregates and sums.
+ SITE_AGGREGATE_MAKE_CONTRACT, SITE_AGGREGATE_MAKE_TYPE, SITE_AGGREGATE_MAKE_ELEMENTS, SITE_AGGREGATE_GET_CONTRACT, SITE_AGGREGATE_GET_TYPE,
+ SITE_AGGREGATE_GET_INDEX, SITE_SUM_MAKE_CONTRACT, SITE_SUM_MAKE_VARIANT, SITE_SUM_TAG_CONTRACT, SITE_SUM_TAG_WIDTH, SITE_SUM_GET_CONTRACT,
+ SITE_SUM_GET_VARIANT,
+ # S8c.4 (ADR-217): meta operations; META-OP-ARITY has one site per operation (its expected counts), from SITE_META_ARITY.
+ SITE_META_OPERAND_TYPE, SITE_META_RESULT_TYPE, SITE_META_VERIFY_RESULT, SITE_META_TARGET_SUPPORT_RESULT, SITE_META_TARGET_OPERATION,
+ SITE_META_ARITY) = range(46)
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
@@ -140,6 +153,10 @@ META_RULES = {
     Operation.META_FUNCTION_PARAMETER_COUNT: ((3,), 1, 0, "bits"),
     Operation.META_FUNCTION_RETURN_COUNT: ((3,), 1, 0, "bits"),
 }
+# S8c.2: the families whose rejections XAX decides; the rest stay NOT_PROVEN for the bootstrap.
+DECIDED_FAMILIES = frozenset({*INTEGER_FAMILIES, *FLOAT_BINARY, Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE,
+                              Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.SUM_GET,
+                              *META_RULES})
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
      Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES,
@@ -815,8 +832,8 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
-    site, payload = _integer_rejection(b, t, operation, shape, operands, results, attributes, attribute, width, first_width,
-                                       is_bits, first_bits, same_first, same_second, first, second, result)
+    site, payload = _rejection(b, t, operation, shape, (operands, results, attributes), attribute, kind_in, result, first, second,
+                               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids)
     rejected = t.all(t.not_(ok), t.nonzero(site))
     verdict = b.add(b.add(covered, b.sub(covered, ok)), rejected)  # 0 outside, 1 proven, 2 not proven, 3 rejected
     b.put(b.add(b.c(2), index), verdict)
@@ -826,76 +843,248 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
     return b.add(extra_at, extra), b.add(proven, ok)
 
 
-def _integer_rejection(b: _Builder, t: _Typing, operation, shape, operands, results, attributes, attribute, width, first_width,
-                       is_bits, first_bits, same_first, same_second, first, second, result):
-    """S8c.1: the site and payload of the bootstrap's first failing check for an integer-family node.
+def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kind_in, result, first, second,
+               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids):
+    """S8c.1/S8c.2: the site and payload of the bootstrap's first failing typing check for a scalar-family node.
 
-    Site 0 leaves the node to the bootstrap: a type that is not decodable here as ``bits`` (the bootstrap
-    raises its own decode diagnostic) or a clamped attribute.  The checks follow the bootstrap's order.
+    Each family lists its checks in the bootstrap's order.  A step with site 0 leaves the node to the bootstrap:
+    a type the program does not decode as the expected ``bits`` or ``float`` (the bootstrap raises its own decode
+    diagnostic there) or a clamped attribute (the diagnostic would quote its exact value).  S8c.3: an aggregate or
+    sum type is decided only when the program decoded it (its AGGREGATE table entry); a type whose single-byte
+    form is neither tuple nor array is rejected by form.  ``ok`` is the node's rule: once a family's earlier
+    steps pass, its last check fails exactly when ``ok`` does.
     """
-    binary = t.one_of(operation, BINARY_INTEGER)
-    truncate, extend = t.eq(operation, int(Operation.INT_TRUNCATE)), t.eq(operation, int(Operation.INT_ZERO_EXTEND))
-    rotate = t.eq(operation, int(Operation.ROTATE_RIGHT))
-    counts = (operands, results, attributes)
+    zero = b.c(0)
+    none = (SITE_NONE, (zero,) * 3)
+    is_ = lambda code: t.eq(operation, int(code))  # noqa: E731
+    clamped = t.eq(attribute, ATTRIBUTE_LIMIT)
+    fp_binary, compare_f, to_float, from_float = t.one_of(operation, FLOAT_BINARY), is_(Operation.FLOAT_COMPARE), t.one_of(operation, TO_FLOAT), t.one_of(operation, FROM_FLOAT)
+    truncate, extend, rotate = is_(Operation.INT_TRUNCATE), is_(Operation.INT_ZERO_EXTEND), is_(Operation.ROTATE_RIGHT)
+    unsigned_to, unsigned_from = is_(Operation.UINT_TO_FLOAT), is_(Operation.FLOAT_TO_UINT_TRUNC)
+    same_first, same_second, same_operands = t.eq(first, result), t.eq(second, result), t.eq(second, first)
+    code = lambda flag, if_true, if_false: t.pick(flag, b.c(if_true), b.c(if_false))  # noqa: E731
+    payload = lambda *words: tuple((*words, zero, zero, zero)[:3])  # noqa: E731
+    link_kind = t.one_of(attribute, LINK_COMPARE_KINDS)
+    result_shape, first_shape = t.lookup(AGGREGATE, result), t.lookup(AGGREGATE, first)
+    result_form, first_form = t.lookup(FORMB, result), t.lookup(FORMB, first)
+    tuple_like = lambda shape_: t.any(t.eq(shape_, TUPLE), t.eq(shape_, ARRAY))  # noqa: E731
 
-    def first_of(*steps):
-        """The first ``(applies, site, payload)`` step that applies; ``(0, (0, 0, 0))`` when none does."""
-        site, payload = b.c(SITE_NONE), (b.c(0),) * 3
-        for applies, code, words in reversed(steps):
-            site = t.pick(applies, b.c(code) if isinstance(code, int) else code, site)
-            payload = tuple(t.pick(applies, word, prior) for word, prior in zip(words, payload))
-        return site, payload
-
-    width_site = t.pick(truncate, b.c(SITE_INT_TRUNCATE_NARROWS), b.c(SITE_INT_ZERO_EXTEND_WIDENS))
-    width_bad = t.pick(truncate, t.le(first_width, width), t.le(width, first_width))
-    amount_known = t.lt(attribute, b.c(ATTRIBUTE_LIMIT))
+    def other_form(form, site):
+        """A type whose one-byte form is known and neither tuple nor array is rejected by form; else deferred."""
+        known = t.all(t.nonzero(form), t.lt(form, 128), t.not_(t.one_of(form, (TUPLE, ARRAY))))
+        return t.pick(known, b.c(site), b.c(SITE_NONE)), payload(form)
     families = (
-        (binary, first_of(
+        (t.one_of(operation, BINARY_INTEGER), (
             (t.not_(shape(2, 1, 0)), SITE_OP_ARITY, counts),
-            (t.not_(is_bits), SITE_NONE, (b.c(0),) * 3),
+            (t.not_(is_bits), *none),
             (t.not_(t.all(same_first, same_second)), SITE_OP_TYPE, (result, first, second)),
         )),
-        (t.any(truncate, extend), first_of(
+        (t.any(truncate, extend), (
             (t.not_(shape(1, 1, 0)), SITE_INT_WIDTH_CONTRACT, counts),
-            (t.not_(t.all(first_bits, is_bits)), SITE_NONE, (b.c(0),) * 3),
-            (width_bad, width_site, (first_width, width, b.c(0))),
+            (t.not_(t.all(first_bits, is_bits)), *none),
+            (t.pick(truncate, t.le(first_width, width), t.le(width, first_width)),
+             code(truncate, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS), payload(first_width, width)),
         )),
-        (rotate, first_of(
+        (rotate, (
             (t.not_(shape(1, 1, 1)), SITE_ROTATE_CONTRACT, counts),
-            (t.not_(is_bits), SITE_NONE, (b.c(0),) * 3),
-            (t.not_(same_first), SITE_ROTATE_TYPE, (result, first, b.c(0))),
-            (t.all(t.le(width, attribute), amount_known), SITE_ROTATE_AMOUNT, (width, attribute, b.c(0))),
+            (t.not_(is_bits), *none),
+            (t.not_(same_first), SITE_ROTATE_TYPE, payload(result, first)),
+            (t.all(t.le(width, attribute), clamped), *none),
+            (t.le(width, attribute), SITE_ROTATE_AMOUNT, payload(width, attribute)),
+        )),
+        (fp_binary, (
+            (t.not_(shape(2, 1, 0)), SITE_FLOAT_BINARY_CONTRACT, counts),
+            (t.not_(is_float), *none),
+            (t.not_(t.all(same_first, same_second)), SITE_FLOAT_BINARY_TYPE, (result, first, second)),
+        )),
+        (compare_f, (
+            (t.not_(shape(2, 1, 1)), SITE_FLOAT_COMPARE_CONTRACT, counts),
+            (t.not_(same_operands), SITE_FLOAT_COMPARE_OPERANDS, payload(first, second)),
+            (t.not_(t.all(first_float, is_bits)), *none),
+            (t.not_(t.eq(width, 1)), SITE_FLOAT_COMPARE_RESULT, payload(result)),
+            (clamped, *none),
+            (t.not_(kind_in(FLOAT_COMPARE_KINDS)), SITE_FLOAT_COMPARE_KIND, payload(attribute)),
+        )),
+        (to_float, (
+            (t.not_(shape(1, 1, 0)), code(unsigned_to, SITE_UINT_TO_FLOAT_CONTRACT, SITE_SINT_TO_FLOAT_CONTRACT), counts),
+            (t.not_(first_bits), *none),
+            (t.lt(b.c(64), first_width), code(unsigned_to, SITE_UINT_TO_FLOAT_WIDTH, SITE_SINT_TO_FLOAT_WIDTH), payload(first)),
+        )),
+        (from_float, (
+            (t.not_(shape(1, 1, 0)), code(unsigned_from, SITE_FLOAT_TO_UINT_CONTRACT, SITE_FLOAT_TO_SINT_CONTRACT), counts),
+            (t.not_(t.all(first_float, is_bits)), *none),
+            (t.lt(b.c(64), width), code(unsigned_from, SITE_FLOAT_TO_UINT_WIDTH, SITE_FLOAT_TO_SINT_WIDTH), payload(result)),
+        )),
+        (is_(Operation.FLOAT_CONVERT), (
+            (t.not_(shape(1, 1, 0)), SITE_FLOAT_CONVERT_CONTRACT, counts),
+        )),
+        (is_(Operation.AGGREGATE_MAKE), (
+            (t.not_(t.all(t.eq(counts[2], 0), t.eq(counts[1], 1))), SITE_AGGREGATE_MAKE_CONTRACT, counts),
+            (t.not_(tuple_like(result_shape)), *other_form(result_form, SITE_AGGREGATE_MAKE_TYPE)),
+            (t.not_(ok), SITE_AGGREGATE_MAKE_ELEMENTS, payload(result, position)),
+        )),
+        (is_(Operation.AGGREGATE_GET), (
+            (t.not_(shape(1, 1, 1)), SITE_AGGREGATE_GET_CONTRACT, counts),
+            (t.not_(tuple_like(first_shape)), *other_form(first_form, SITE_AGGREGATE_GET_TYPE)),
+            (clamped, *none),
+            (t.not_(ok), SITE_AGGREGATE_GET_INDEX, (first, attribute, result)),
+        )),
+        (is_(Operation.SUM_MAKE), (
+            (t.not_(shape(1, 1, 1)), SITE_SUM_MAKE_CONTRACT, counts),
+            (t.not_(t.eq(result_shape, SUM)), *none),
+            (clamped, *none),
+            (t.not_(ok), SITE_SUM_MAKE_VARIANT, (result, attribute, first)),
+        )),
+        (is_(Operation.SUM_TAG), (
+            (t.not_(shape(1, 1, 0)), SITE_SUM_TAG_CONTRACT, counts),
+            (t.not_(t.all(t.eq(first_shape, SUM), is_bits)), *none),
+            (t.not_(ok), SITE_SUM_TAG_WIDTH, payload(t.pick(t.nonzero(needed), needed, b.c(1)), width)),
+        )),
+        (is_(Operation.SUM_GET), (
+            (t.not_(shape(1, 1, 1)), SITE_SUM_GET_CONTRACT, counts),
+            (t.not_(t.eq(first_shape, SUM)), *none),
+            (clamped, *none),
+            (t.not_(ok), SITE_SUM_GET_VARIANT, (first, attribute, result)),
+        )),
+        *((is_(meta), _meta_steps(b, t, index_, meta, counts, attribute, ids, result, width, is_bits, clamped, none))
+          for index_, meta in enumerate(META_RULES)),
+        (is_(Operation.INT_COMPARE), (
+            (t.not_(shape(2, 1, 1)), SITE_INT_COMPARE_CONTRACT, counts),
+            (t.all(first_link, t.not_(link_kind), clamped), *none),
+            (t.all(first_link, t.not_(link_kind)), SITE_INT_COMPARE_LINK_EQUALITY, payload(attribute)),
+            (t.all(t.not_(first_link), t.not_(first_bits)), *none),
+            (t.not_(same_operands), SITE_INT_COMPARE_TYPE, (first, second, result)),
+            (t.not_(is_bits), *none),
+            (t.not_(t.eq(width, 1)), SITE_INT_COMPARE_TYPE, (first, second, result)),
+            (clamped, *none),
+            (t.not_(kind_in(INT_COMPARE_KINDS)), SITE_INT_COMPARE_KIND, payload(attribute)),
         )),
     )
-    site, payload = b.c(SITE_NONE), (b.c(0),) * 3
-    for member, (family_site, family_payload) in families:
+    site, words = b.c(SITE_NONE), (zero,) * 3
+    for member, steps in families:
+        # The first applying step of this family, folded from the last.
+        family_site, family_words = b.c(SITE_NONE), (zero,) * 3
+        for applies, step_site, step_words in reversed(steps):
+            family_site = t.pick(applies, b.c(step_site) if isinstance(step_site, int) else step_site, family_site)
+            family_words = tuple(t.pick(applies, word, prior) for word, prior in zip(step_words, family_words))
         site = t.pick(member, family_site, site)
-        payload = tuple(t.pick(member, word, prior) for word, prior in zip(family_payload, payload))
-    return site, payload
+        words = tuple(t.pick(member, word, prior) for word, prior in zip(family_words, words))
+    return site, words
 
 
-def rejection(record, cids):
-    """The bootstrap diagnostic ``(code, rule, expected, actual)`` for an XAX rejection record ``[site, a, b, c]``;
-    ``cids`` maps the stream's type indices to CIDs (rendering only: XAX decided the site and its values)."""
+def _meta_steps(b: _Builder, t: _Typing, index, meta, counts, attribute, ids, result, width, is_bits, clamped, none):
+    """S8c.4: ``_verify_meta_node``'s checks in order: arity, each operand's kind, the result rule, the target operation."""
+    kinds, result_count, attribute_count, result_rule = META_RULES[meta]
+    operands, results, attributes = counts
+
+    def opaque(value, kind, site):
+        # ``_is_opaque`` is False for a type whose body does not start with form 5 (a rejection); a form-5 type the
+        # program did not decode as an opaque type makes the bootstrap raise its own decode diagnostic (deferred).
+        undecoded = t.all(t.eq(t.lookup(FORMB, value), 5), t.eq(t.lookup(OPAQUE, value), 0))
+        return [(undecoded, *none), (t.not_(t.eq(t.lookup(OPAQUE, value), kind)), site, (b.c(kind), value, b.c(0)))]
+
+    steps = [(t.not_(t.all(t.eq(operands, len(kinds)), t.eq(results, result_count), t.eq(attributes, attribute_count))),
+              SITE_META_ARITY + index, counts)]
+    for position_, kind in enumerate(kinds):
+        value = b.read(b.add(ids, position_))
+        steps += [(t.not_(t.nonzero(t.lookup(WIDTH, value))), *none)] if kind is None else opaque(value, kind, SITE_META_OPERAND_TYPE)
+    if isinstance(result_rule, int):
+        steps += opaque(result, result_rule, SITE_META_RESULT_TYPE)
+    else:
+        steps.append((t.not_(is_bits), *none))
+        if result_rule == "bit":
+            site = SITE_META_TARGET_SUPPORT_RESULT if meta == Operation.META_TARGET_SUPPORTS else SITE_META_VERIFY_RESULT
+            steps.append((t.not_(t.eq(width, 1)), site, (width if site == SITE_META_TARGET_SUPPORT_RESULT else result, b.c(0), b.c(0))))
+    if meta == Operation.META_TARGET_SUPPORTS:
+        steps += [(clamped, *none), (t.not_(t.one_of(attribute, tuple(Operation))), SITE_META_TARGET_OPERATION, (attribute, b.c(0), b.c(0)))]
+    return tuple(steps)
+
+
+def _render_sites():
+    # Each renderer takes ``(r, x, y, z)``: ``r`` is the rendering context (``r.h`` a type index's CID hex, ``r.items``
+    # a decoded aggregate or sum's element indices from the program's tables, ``r.operands`` a node's operand type
+    # indices from the input stream), then the record's three payload words.
+    contract = lambda code, rule, expected: (code, rule, lambda r, x, y, z: expected, lambda r, x, y, z: [x, y, z])  # noqa: E731
+    listing = lambda r, owner: [len(r.items(owner)), [r.h(item) for item in r.items(owner)]]  # noqa: E731
+    sites = {
+        SITE_OP_ARITY: contract("XAX.STRUCT.OP_ARITY", "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes"),
+        SITE_OP_TYPE: ("XAX.STRUCT.OP_TYPE", "GRAPH-OP-TYPE", lambda r, x, y, z: [r.h(x), r.h(x)], lambda r, x, y, z: [r.h(y), r.h(z)]),
+        SITE_INT_WIDTH_CONTRACT: contract("XAX.INT.WIDTH", "INT-WIDTH-CONTRACT", [1, 1, 0]),
+        SITE_INT_TRUNCATE_NARROWS: ("XAX.INT.WIDTH", "INT-TRUNCATE-NARROWS", lambda r, x, y, z: f"result < {x}", lambda r, x, y, z: y),
+        SITE_INT_ZERO_EXTEND_WIDENS: ("XAX.INT.WIDTH", "INT-ZERO-EXTEND-WIDENS", lambda r, x, y, z: f"result > {x}", lambda r, x, y, z: y),
+        SITE_ROTATE_CONTRACT: contract("XAX.INT.ROTATE", "INT-ROTATE-CONTRACT", [1, 1, 1]),
+        SITE_ROTATE_TYPE: ("XAX.INT.ROTATE", "INT-ROTATE-TYPE", lambda r, x, y, z: r.h(x), lambda r, x, y, z: [r.h(y)]),
+        SITE_ROTATE_AMOUNT: ("XAX.INT.ROTATE", "INT-ROTATE-AMOUNT", lambda r, x, y, z: f"0..{x - 1}", lambda r, x, y, z: y),
+        SITE_FLOAT_BINARY_CONTRACT: contract("XAX.FLOAT.CONTRACT", "FLOAT-BINARY-CONTRACT", [2, 1, 0]),
+        SITE_FLOAT_BINARY_TYPE: ("XAX.FLOAT.TYPE", "FLOAT-BINARY-TYPE", lambda r, x, y, z: [r.h(x), r.h(x)], lambda r, x, y, z: [r.h(y), r.h(z)]),
+        SITE_FLOAT_COMPARE_CONTRACT: contract("XAX.FLOAT.CONTRACT", "FLOAT-COMPARE-CONTRACT", [2, 1, 1]),
+        SITE_FLOAT_COMPARE_OPERANDS: ("XAX.FLOAT.TYPE", "FLOAT-COMPARE-OPERANDS", lambda r, x, y, z: "matching float types", lambda r, x, y, z: [r.h(x), r.h(y)]),
+        SITE_FLOAT_COMPARE_RESULT: ("XAX.FLOAT.TYPE", "FLOAT-COMPARE-RESULT", lambda r, x, y, z: "bits<1>", lambda r, x, y, z: r.h(x)),
+        SITE_FLOAT_COMPARE_KIND: ("XAX.FLOAT.COMPARE", "FLOAT-COMPARE-KIND", lambda r, x, y, z: [item.value for item in FloatCompare], lambda r, x, y, z: x),
+        SITE_INT_COMPARE_CONTRACT: contract("XAX.INT.COMPARE", "INT-COMPARE-CONTRACT", [2, 1, 1]),
+        SITE_INT_COMPARE_LINK_EQUALITY: ("XAX.INT.COMPARE", "INT-COMPARE-LINK-EQUALITY", lambda r, x, y, z: [IntCompare.EQ, IntCompare.NE], lambda r, x, y, z: x),
+        SITE_INT_COMPARE_TYPE: ("XAX.INT.COMPARE", "INT-COMPARE-TYPE", lambda r, x, y, z: [r.h(x), "bits<1>"], lambda r, x, y, z: [[r.h(x), r.h(y)], r.h(z)]),
+        SITE_INT_COMPARE_KIND: ("XAX.INT.COMPARE", "INT-COMPARE-KIND", lambda r, x, y, z: [item.value for item in IntCompare], lambda r, x, y, z: x),
+        SITE_FLOAT_CONVERT_CONTRACT: contract("XAX.FLOAT.CONTRACT", "FLOAT-CONVERT-CONTRACT", [1, 1, 0]),
+    }
+    sites.update({
+        SITE_AGGREGATE_MAKE_CONTRACT: ("XAX.AGGREGATE.CONTRACT", "AGGREGATE-MAKE-CONTRACT", lambda r, x, y, z: "operands -> one aggregate result",
+                                       lambda r, x, y, z: [x, y, z]),
+        SITE_AGGREGATE_MAKE_TYPE: ("XAX.AGGREGATE.TYPE", "AGGREGATE-MAKE-TYPE", lambda r, x, y, z: ["tuple", "array"], lambda r, x, y, z: x),
+        SITE_AGGREGATE_MAKE_ELEMENTS: ("XAX.AGGREGATE.TYPE", "AGGREGATE-MAKE-ELEMENTS", lambda r, x, y, z: [r.h(item) for item in r.items(x)],
+                                       lambda r, x, y, z: [r.h(item) for item in r.operands(y)]),
+        SITE_AGGREGATE_GET_CONTRACT: contract("XAX.AGGREGATE.CONTRACT", "AGGREGATE-GET-CONTRACT", [1, 1, 1]),
+        SITE_AGGREGATE_GET_TYPE: ("XAX.AGGREGATE.TYPE", "AGGREGATE-GET-TYPE", lambda r, x, y, z: ["tuple", "array"], lambda r, x, y, z: x),
+        SITE_AGGREGATE_GET_INDEX: ("XAX.AGGREGATE.INDEX", "AGGREGATE-GET-INDEX", lambda r, x, y, z: listing(r, x), lambda r, x, y, z: [y, r.h(z)]),
+        SITE_SUM_MAKE_CONTRACT: contract("XAX.SUM.CONTRACT", "SUM-MAKE-CONTRACT", [1, 1, 1]),
+        SITE_SUM_MAKE_VARIANT: ("XAX.SUM.VARIANT", "SUM-MAKE-VARIANT", lambda r, x, y, z: listing(r, x), lambda r, x, y, z: [y, r.h(z)]),
+        SITE_SUM_TAG_CONTRACT: contract("XAX.SUM.CONTRACT", "SUM-TAG-CONTRACT", [1, 1, 0]),
+        SITE_SUM_TAG_WIDTH: ("XAX.SUM.TAG", "SUM-TAG-WIDTH", lambda r, x, y, z: f">= {x} bits", lambda r, x, y, z: y),
+        SITE_SUM_GET_CONTRACT: contract("XAX.SUM.CONTRACT", "SUM-GET-CONTRACT", [1, 1, 1]),
+        SITE_SUM_GET_VARIANT: ("XAX.SUM.VARIANT", "SUM-GET-VARIANT", lambda r, x, y, z: listing(r, x), lambda r, x, y, z: [y, r.h(z)]),
+    })
+    opaque_name = lambda kind: f"opaque<{OpaqueKind(kind).name.lower()}>"  # noqa: E731
+    sites.update({
+        SITE_META_OPERAND_TYPE: ("XAX.META.CONTRACT", "META-OPERAND-TYPE", lambda r, x, y, z: opaque_name(x), lambda r, x, y, z: r.h(y)),
+        SITE_META_RESULT_TYPE: ("XAX.META.CONTRACT", "META-RESULT-TYPE", lambda r, x, y, z: opaque_name(x), lambda r, x, y, z: r.h(y)),
+        SITE_META_VERIFY_RESULT: ("XAX.META.CONTRACT", "META-VERIFY-RESULT", lambda r, x, y, z: "bits<1>", lambda r, x, y, z: r.h(x)),
+        SITE_META_TARGET_SUPPORT_RESULT: ("XAX.META.CONTRACT", "META-TARGET-SUPPORT-RESULT", lambda r, x, y, z: "bits<1>", lambda r, x, y, z: f"bits<{x}>"),
+        SITE_META_TARGET_OPERATION: ("XAX.META.CONTRACT", "META-TARGET-OPERATION", lambda r, x, y, z: list(Operation), lambda r, x, y, z: x),
+    })
+    for index, (kinds, result_count, attribute_count, _rule) in enumerate(META_RULES.values()):
+        expected = (len(kinds), result_count, attribute_count)
+        sites[SITE_META_ARITY + index] = ("XAX.META.CONTRACT", "META-OP-ARITY", lambda r, x, y, z, e=expected: e, lambda r, x, y, z: (x, y, z))
+    for name in ("UINT", "SINT"):
+        sites[globals()[f"SITE_{name}_TO_FLOAT_CONTRACT"]] = contract("XAX.FLOAT.CONTRACT", f"{name}-TO-FLOAT-CONTRACT", [1, 1, 0])
+        sites[globals()[f"SITE_{name}_TO_FLOAT_WIDTH"]] = ("XAX.FLOAT.CONVERT", f"{name}-TO-FLOAT-WIDTH", lambda r, x, y, z: "bits<=64", lambda r, x, y, z: r.h(x))
+        sites[globals()[f"SITE_FLOAT_TO_{name}_CONTRACT"]] = contract("XAX.FLOAT.CONTRACT", f"FLOAT-TO-{name}-CONTRACT", [1, 1, 0])
+        sites[globals()[f"SITE_FLOAT_TO_{name}_WIDTH"]] = ("XAX.FLOAT.CONVERT", f"FLOAT-TO-{name}-WIDTH", lambda r, x, y, z: "bits<=64", lambda r, x, y, z: r.h(x))
+    return sites
+
+
+class _Rendering:
+    def __init__(self, cids, items=None, operands=None):
+        self.cids, self.items, self.operands = cids, items, operands
+
+    def h(self, index):
+        return self.cids[index].hex()
+
+
+def rejection(record, cids, items=None, operands=None):
+    """The bootstrap diagnostic ``(code, rule, expected, actual)`` for an XAX rejection record ``[site, a, b, c]``.
+
+    Rendering only: XAX decided the site and its values.  ``cids`` maps the stream's type indices to CIDs;
+    ``items(type)`` reads a decoded aggregate's or sum's element indices from the program's tables and
+    ``operands(position)`` a node's operand type indices from the input stream (``NativeTyping.rejection``)."""
     site, x, y, z = record
-    hexes = lambda *indices: [cids[index].hex() for index in indices]  # noqa: E731
-    if site == SITE_OP_ARITY:
-        return "XAX.STRUCT.OP_ARITY", "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes", [x, y, z]
-    if site == SITE_OP_TYPE:
-        return "XAX.STRUCT.OP_TYPE", "GRAPH-OP-TYPE", hexes(x, x), hexes(y, z)
-    if site == SITE_INT_WIDTH_CONTRACT:
-        return "XAX.INT.WIDTH", "INT-WIDTH-CONTRACT", [1, 1, 0], [x, y, z]
-    if site == SITE_INT_TRUNCATE_NARROWS:
-        return "XAX.INT.WIDTH", "INT-TRUNCATE-NARROWS", f"result < {x}", y
-    if site == SITE_INT_ZERO_EXTEND_WIDENS:
-        return "XAX.INT.WIDTH", "INT-ZERO-EXTEND-WIDENS", f"result > {x}", y
-    if site == SITE_ROTATE_CONTRACT:
-        return "XAX.INT.ROTATE", "INT-ROTATE-CONTRACT", [1, 1, 1], [x, y, z]
-    if site == SITE_ROTATE_TYPE:
-        return "XAX.INT.ROTATE", "INT-ROTATE-TYPE", cids[x].hex(), hexes(y)
-    if site == SITE_ROTATE_AMOUNT:
-        return "XAX.INT.ROTATE", "INT-ROTATE-AMOUNT", f"0..{x - 1}", y
-    raise ValueError(f"unknown typing rejection site {site}")
+    if site not in _SITES:
+        raise ValueError(f"unknown typing rejection site {site}")
+    code, rule, expected, actual = _SITES[site]
+    context = _Rendering(cids, items, operands)
+    return code, rule, expected(context, x, y, z), actual(context, x, y, z)
+
+
+_SITES = _render_sites()
 
 
 def load_typing_program() -> tuple[StoreReader, SemanticObject]:
@@ -1161,6 +1350,19 @@ class NativeTyping:
     def rejection_record(self, node: int) -> tuple[int, int, int, int]:
         """After an accepted ``check``: S8c.1, node ``node``'s rejection record ``(site, a, b, c)``."""
         return tuple(self._out[DIAGNOSTICS + 4 * node : DIAGNOSTICS + 4 * node + 4])
+
+    def rejection(self, node: int, cids: list[bytes], words: list[int]):
+        """After an accepted ``check`` of ``words``: node ``node``'s rejection as a bootstrap diagnostic tuple."""
+        count = words[0]
+
+        def items(owner):
+            shape, length, at = (self._out[TABLE + count * table + owner] for table in (AGGREGATE, COUNT, ITEMS))
+            return [self._out[at]] * length if shape == ARRAY else list(self._out[at : at + length])
+
+        def operands(position):
+            return words[position + 6 : position + 6 + words[position + 1]]
+
+        return rejection(self.rejection_record(node), cids, items, operands)
 
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""

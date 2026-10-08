@@ -6509,7 +6509,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
     typing = _native_typing() if checked_uses else None
     if typing is not None:
-        from xax_selfhost_typing import PROVEN, REJECTED, marshal, rejection, type_info_from
+        from xax_selfhost_typing import PROVEN, REJECTED, marshal, type_info_from
 
         type_cids: list[bytes] = []
         words, keys, value_refs = marshal(
@@ -6522,7 +6522,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         )
         status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
         if status == 0:
-            rejected_nodes = {key: rejection(typing.rejection_record(index), type_cids)
+            rejected_nodes = {key: typing.rejection(index, type_cids, words)
                               for index, (key, verdict) in enumerate(zip(keys, verdicts)) if verdict == REJECTED}
             proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
             proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
