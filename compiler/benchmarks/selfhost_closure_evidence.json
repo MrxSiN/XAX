@@ -12,8 +12,8 @@
       "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 2.11,
-        "bootstrap": 0.03
+        "gen1": 2.67,
+        "bootstrap": 0.05
       }
     },
     {
@@ -25,8 +25,8 @@
       "image_sha256": "d26f6af2a4f3fbcf257896e98bc3b94603660ee875a7ddfe8f983d99e9711a8f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.59,
-        "bootstrap": 0.33
+        "gen1": 0.71,
+        "bootstrap": 0.45
       }
     },
     {
@@ -38,7 +38,7 @@
       "image_sha256": "4c19dd0eb2db997d9ec0e49f56df8635d76fae8a61642b30f62d5f5b8be15bc8",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.02,
+        "gen1": 0.03,
         "bootstrap": 0.02
       }
     },
@@ -51,21 +51,21 @@
       "image_sha256": "9df980975640067ab2d05fab38d7e13746568d859c650b50bf0b438e89f129e4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.84,
-        "bootstrap": 0.75
+        "gen1": 1.32,
+        "bootstrap": 0.67
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 3153047,
-      "store_sha256": "2e73cc50220077087f045748efb0b79eff2573958d0d2d939f5077632dfc42c3",
+      "store_bytes": 3170417,
+      "store_sha256": "44a12b8cda4f949689e2dcdf75feffeaf244d3cc2ff9c55f1fef6bdd9797fa2f",
       "functions": 47,
-      "code_bytes": 4951736,
-      "image_sha256": "fbdd9b3c0f1df6fef58498dc7910f8fa2b4e25beb939e4909de784f624ba5f30",
+      "code_bytes": 4977044,
+      "image_sha256": "52a5ff464f3281120bc2aaea09ebadc17814c3cd983d156719ac2210ad630825",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 14.69,
-        "bootstrap": 14.57
+        "gen1": 16.22,
+        "bootstrap": 16.12
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "49ad0a2b513689e6fd4b8f46c573f085fbf036539db3a8f8886277ea713b7b27",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 8.39,
-        "bootstrap": 10.02
+        "gen1": 8.8,
+        "bootstrap": 11.94
       }
     },
     {
@@ -91,7 +91,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.06,
-        "bootstrap": 0.09
+        "bootstrap": 0.06
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "94d1526c8115b1e18c9c035e2559a7bf2306ada568a010e30c9ec05984886483",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 6.98,
-        "bootstrap": 7.17
+        "gen1": 9.12,
+        "bootstrap": 9.09
       }
     }
   ],
@@ -166,7 +166,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.004,
-        "emulated": 0.7
+        "emulated": 0.9
       }
     },
     {
@@ -177,7 +177,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.003,
+        "native": 0.002,
         "emulated": 0.6
       }
     },
@@ -189,8 +189,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.027,
-        "emulated": 3.3
+        "native": 0.022,
+        "emulated": 3.5
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 0.684,
-        "emulated": 69.7
+        "native": 0.725,
+        "emulated": 73.6
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.218,
-        "emulated": 26.4
+        "native": 0.205,
+        "emulated": 28.4
       }
     },
     {
@@ -225,8 +225,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.001,
-        "emulated": 0.4
+        "native": 0.002,
+        "emulated": 0.3
       }
     },
     {
@@ -237,8 +237,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.047,
-        "emulated": 6.8
+        "native": 0.042,
+        "emulated": 6.2
       }
     },
     {
@@ -249,8 +249,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.398,
-        "emulated": 41.0
+        "native": 0.403,
+        "emulated": 40.5
       }
     },
     {
@@ -261,7 +261,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.293,
+        "native": 0.278,
         "emulated": 27.5
       }
     }
@@ -319,7 +319,7 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.15
+      "host_s_nonsemantic": 0.21
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -329,7 +329,7 @@
     "sha256": "49ad0a2b513689e6fd4b8f46c573f085fbf036539db3a8f8886277ea713b7b27",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 82000000000,
-    "host_s_nonsemantic": 1133.7
+    "host_s_nonsemantic": 1109.8
   },
   "authority": {
     "blake3-compress": {
@@ -344,7 +344,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-a1b43ad50e04fefc65fa43f87f22f501feef40848dfea4b3cc7eae79aef94ba9.bin"
+      "record": "verified-hash-e04b019d56308cc9ab30f445293240a0045aa168f5063a511c6e371458aee463.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -358,7 +358,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-80815ab0cb5351537225a6a5c1bf56ae624262eafeb4ab07d79f203bf9605511.bin"
+      "record": "verified-store-decoder-7b89c2abf7df7d184d15b2b09b7e2ace1d71b51f5f6f717a67b92d135a02e692.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -372,12 +372,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-6800c766a18317aca2cc9dd10e0ca88795de456d15666a6e3a7b7bba5a87821c.bin"
+      "record": "verified-cfg-20f1b0aad9674060b9b8ee4c3e5cf7d419cfd6a516e92c3d389fdbe4c2d376b8.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-894c34a8ea36d326ba5caff01e1c3f4306e4f1ada69521cf4d24e70d06d7b9d3.bin"
+      "record": "verified-riscv64-encoder-1beb0e3eb21eeecb34bf5aab917d7c8de96e8ac238c37e7709b155a39940dec8.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -391,12 +391,12 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-68ffebc41df37c6c28f0ba4a9b20ef2532f1608f485f3acd58e8d13c70f450cb.bin"
+      "record": "verified-typing-3b1771fa05f39041cedd021d76c96752db6f4546533caa0a7aa487dbceeddf30.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "5306dc4c01c3e6ffd299e376772ccd927f5624cc348e35fdf4dc24eea9db647c",
-      "native_artifact_digest": "c8163bd16c4db2ae2eeebb01d14ea44e8d8e78992cd8eeaa81e6f0ef0486c723",
+      "semantic_root": "4bb86cf56a4d26eabe52bc4cfc86aedc091af19552425310e926cd76e460f6ce",
+      "native_artifact_digest": "efaeb9fbfe2bf73f2158b87b8ff5dd1a2646b56c9c1ddba672ed09c0ba9419fe",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -405,7 +405,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-e491032293c324d8e0e631f3a15167fff16ab7955573731a414a59655489b2ae.bin"
+      "record": "verified-store-verifier-38cb069290023d73402b81e655554077b04ae436d21f9e53c8cd028cb07acc02.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -420,7 +420,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-269195b4307b9e0729d1e6bd8b16b4a32d475234c044c9fa1d0c83e950061e09.bin"
+      "record": "verified-graph-decoder-32a0528dd913570aba483f4d2e82fb52756d58c9ed3bb4b75261ac340f5ab82c.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -443,7 +443,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-314310c781db78c2115f9264e73357731a9fdcfe10d1f94bef1d9db2415d55aa.bin"
+      "record": "verified-xax_riscv64_backend-a747d8f881ea35f7c43882680d6403581b7e84b342273671ac8c97815ebe63c3.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",

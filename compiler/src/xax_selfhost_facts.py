@@ -67,6 +67,8 @@ MEMORY_SITES = (
     "CHECKED_EFFECT_TYPE", "CHECKED_INITIALIZED",
     # S8c.10 (ADR-227): rebase windows.
     "REBASE_ADDRESS_WIDTH", "REBASE_AUTHORITY", "REBASE_EXTENT", "REBASE_ALIGNMENT",
+    # S8c.11 (ADR-228): returned views.
+    "RETURN_WHOLE", "RETURN_INITIALIZED", "LINK_RETURN_TARGET", "RETURN_ORDER",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -2449,13 +2451,17 @@ def _return_views(e: E, term, values, covers):
             pointer_ref, token_ref, effect_ref = (e.rd(e.add(ids_at, e.add(index, d))) for d in (-1, 0, 1))
             view_type = e.rd(e.add(types_at, index))
             extent = e.table(_T.RINSTANCE, view_type)
-            _require(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)))
+            # S8c.11: exact only without a resource entry contract (the bootstrap checks that contract first).
+            plain = e.eq(e.hd(H_RENTRY), R_NONE)
+            whole = (M["RETURN_WHOLE"], token_ref, pointer_ref, effect_ref)
+            _reject(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)), *whole, renderable=plain)
             owner = e.value(OST, token_ref)
-            _require(e, e.not_(_ended(e, owner)))
-            _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
-                               e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0), e.eq(e.value(PEXT, pointer_ref), extent)))
-            _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), owner), e.ne(e.value(ECON, effect_ref), visit)))
-            e.if_(e.eq(e.table(_T.RSTATE, view_type), 1), lambda: _require(e, e.ne(e.call(covers, e.value(EIV, effect_ref), 0, extent), 0)))
+            _reject(e, e.not_(_ended(e, owner)), *whole, renderable=plain)
+            _reject(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
+                              e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0), e.eq(e.value(PEXT, pointer_ref), extent)), *whole, renderable=plain)
+            _reject(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), owner), e.ne(e.value(ECON, effect_ref), visit)), *whole, renderable=plain)
+            e.if_(e.eq(e.table(_T.RSTATE, view_type), 1), lambda: _reject(
+                e, e.ne(e.call(covers, e.value(EIV, effect_ref), 0, extent), 0), M["RETURN_INITIALIZED"], extent, e.value(EIV, effect_ref), renderable=plain))
             # Order: the next borrowed view of this type, else not a borrowed view at all.
             e.var("expected", NONE)
             e.var("borrowed", 0)
@@ -2468,9 +2474,14 @@ def _return_views(e: E, term, values, covers):
                       lambda: (e.set("expected", g), e.st(e.add(p["given"], g), 1)))
 
             e.for_("g", 0, entry_count, scan)
-            e.if_(e.eq(p["borrowed"], 0), lambda: _require(e, e.either(
-                e.eq(_has_link(e, e.value(PREC, pointer_ref)), 0), e.eq(e.value(PLT, pointer_ref), owner))))
-            e.if_(e.ne(p["expected"], NONE), lambda: _require(e, e.eq(owner, e.add(1, p["expected"]))), lambda: _require(e, e.eq(p["borrowed"], 0)))
+            target = e.value(PLT, pointer_ref)
+            e.if_(e.eq(p["borrowed"], 0), lambda: _reject(e, e.either(
+                e.eq(_has_link(e, e.value(PREC, pointer_ref)), 0), e.eq(target, owner)), M["LINK_RETURN_TARGET"], target,
+                renderable=e.both(plain, _renderable(e, target))))
+            expected = e.sel(e.ne(p["expected"], NONE), e.add(1, p["expected"]), NONE)
+            order = (M["RETURN_ORDER"], expected, owner)
+            e.if_(e.ne(p["expected"], NONE), lambda: _reject(e, e.eq(owner, e.add(1, p["expected"])), *order, renderable=e.both(plain, _renderable(e, owner))),
+                  lambda: _reject(e, e.eq(p["borrowed"], 0), *order, renderable=e.both(plain, _renderable(e, owner))))
 
         e.if_(_heap_view(e, e.rd(e.add(types_at, index))), check)
 
@@ -3090,6 +3101,14 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.BOUNDS", "MEMORY-REBASE-EXTENT", f"1..{x}", y
     if name == "REBASE_ALIGNMENT":
         return "XAX.MEMORY.ALIGNMENT", "MEMORY-REBASE-ALIGNMENT", f"<= {x}", y
+    if name == "RETURN_WHOLE":
+        return "XAX.MEMORY.HEAP_VIEW", "HEAP-VIEW-RETURN-WHOLE", "live base pointer, view, and matching effect", [refs[x].index, refs[y].index, refs[z].index]
+    if name == "RETURN_INITIALIZED":
+        return "XAX.MEMORY.UNINITIALIZED", "HEAP-VIEW-RETURN-INITIALIZED", [0, x], intervals(y)
+    if name == "LINK_RETURN_TARGET":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-RETURN-TARGET", "a new view returned must link into itself", storages[x]
+    if name == "RETURN_ORDER":
+        return "XAX.MEMORY.HEAP_VIEW", "HEAP-VIEW-RETURN-ORDER", None if x == NONE else storages[x], storages[y]
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":
