@@ -34,6 +34,8 @@ class MultiFileCorpusTests(unittest.TestCase):
         for item in tasks():
             trial = XaxTrial(item)
             self.assertNotRegex(trial.prompt(), r"\.B\d+\.P\d+")
+            # ADR-201: the edit grammar is shared context, never per-request help.
+            self.assertNotIn("Edit forms", trial.prompt())
             self.assertEqual(trial.apply(_reference(trial)), (True, ""), item.task_id)
             if shutil.which("java"):
                 self.assertTrue(trial.check_jvm()[0], item.task_id)
@@ -119,6 +121,7 @@ class MultiFileSummaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "calibration.json").write_text('{"client_floor_input_tokens": 10}')
+            (root / "calibration-xax.json").write_text('{"client_floor_input_tokens": 30}')
             path = root / "results.csv"
             with path.open("w", newline="") as file:
                 writer = csv.DictWriter(file, fieldnames=runner.FIELDS)
@@ -132,6 +135,16 @@ class MultiFileSummaryTests(unittest.TestCase):
         self.assertEqual(evidence["lowest_textual_arm"], "JAVA-EXCERPT")
         self.assertEqual(evidence["xax_ratio_vs_lowest_textual_median"], 0.5)
         self.assertEqual(evidence["status"], "TARGET_MET")
+        # The gate keeps the 20-token grammar in every XAX request; the bracket does not set the status.
+        self.assertEqual(evidence["shared_grammar_input_tokens_per_request"], 20)
+        self.assertEqual(evidence["informational_xax_ratio_grammar_once_per_attempt"], 0.5)
+        self.assertEqual(evidence["informational_xax_ratio_grammar_excluded"], 35 / 110)
+
+    def test_xax_arm_holds_the_current_shared_grammar_in_its_base_instructions(self):
+        from benchmarks import run_jvm_r5_multifile as runner
+        from xax_local_protocol import edit_grammar
+        self.assertTrue(runner.XAX_BASE.endswith(edit_grammar()))
+        self.assertTrue(runner.XAX_BASE.startswith(runner.base.BASE))
 
 
 if __name__ == "__main__":
