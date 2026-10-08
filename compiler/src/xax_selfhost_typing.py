@@ -1580,7 +1580,7 @@ class NativeTyping:
         base = TABLE + count * OBJOK
         return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
 
-    def memory_rejection(self, refs, storages, operation_of):
+    def memory_rejection(self, refs, storages, operation_of, cids=()):
         """After ``facts`` declined: S8c.8 (ADR-221), the engine's exact memory rejection as ``(pass, block, node,
         (code, rule, expected, actual))``, or None when it declined without one."""
         from xax_selfhost_facts import ACCEPTED, H_REJECT, H_RBLOCK, H_RNODE, H_RPASS, H_RPAY, H_STATUS, HEADER, memory_diagnostic
@@ -1591,7 +1591,10 @@ class NativeTyping:
         where = tuple(self._out[HEADER + field] for field in (H_RPASS, H_RBLOCK, H_RNODE))
         payload = list(self._out[HEADER + H_RPAY : HEADER + H_RPAY + 6])
         operation = operation_of(where[1], where[2])
-        return (*where, memory_diagnostic(site, payload, operation, refs, storages, lambda word: self._out[word]))
+        try:
+            return (*where, memory_diagnostic(site, payload, operation, refs, storages, lambda word: self._out[word], cids))
+        except (IndexError, KeyError, ValueError):  # a value the host cannot render (an unindexed type): the bootstrap decides
+            return None
 
     def rejection_record(self, node: int) -> tuple[int, int, int, int]:
         """After an accepted ``check``: S8c.1, node ``node``'s rejection record ``(site, a, b, c)``."""
