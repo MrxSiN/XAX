@@ -106,6 +106,10 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - `_access_size` is shared by plain and checked accesses. Next: rebase windows (`_pointer_rebase`), heap-view construction (`_heap_view_node`), returned views (`_return_views`), then calls, atomics, and links; then object verification.
 
+## S8c.10 rebase-window rejections — 2026-10-08 (ADR-227)
+
+- Next: returned views (`_return_views`, `HEAP-VIEW-RETURN-*`), heap-view construction (`_heap_view_node`), then calls, atomics, links; then object verification. Another session also commits to `main`: fetch before pushing and take the next free ADR number.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

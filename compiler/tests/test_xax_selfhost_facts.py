@@ -311,6 +311,22 @@ class SelfhostHeapViewFactsTests(unittest.TestCase):
 def _typed_program(variant: str):
     """A one-block program whose single fault is ``variant`` (each a different bootstrap memory rule)."""
     graph = GraphBuilder()
+    if variant.startswith("rebase"):
+        # S8c.10 (ADR-227): rebase windows.
+        view = heap_view_type(EXTENT, initialized=True)
+        result = {"rebase_authority": pointer_type(B32, Permission.READ_WRITE, 1, space=2),
+                  "rebase_alignment": pointer_type(B8, Permission.READ_WRITE, 2, space=2)}.get(variant, VIEW_POINTER)
+        graph.track(view, VIEW_POINTER, result, B64, B8, B32)
+        entry = graph.block(B32, VIEW_POINTER, view, MEM)
+        seed, pointer, token, memory = entry.params
+        address = entry.op1(Operation.POINTER_ADDRESS, (pointer,), B64, attributes=(1,))
+        if variant == "rebase_width":
+            address = entry.op1(Operation.INT_TRUNCATE, (address,), B8)
+        width = EXTENT + 1 if variant == "rebase_extent" else 4
+        entry.op1(Operation.POINTER_REBASE, (pointer, address), result, attributes=(width,))
+        entry.ret(seed, pointer, token, memory)
+        function = graph.function((B32, VIEW_POINTER, view, MEM), (B32, VIEW_POINTER, view, MEM))
+        return function, tuple(graph.objects.values())
     if variant.startswith("checked"):
         view = heap_view_type(EXTENT, initialized=True)
         graph.track(view, VIEW_POINTER, B64, B8, B32)
@@ -359,7 +375,7 @@ class SelfhostTypedAccessTests(unittest.TestCase):
         rules = {}
         try:
             for variant in ("load_type", "store_type", "store_effect_type", "checked_alignment", "checked_offset", "checked_load_type",
-                            "checked_store_type", "checked_effect_type"):
+                            "checked_store_type", "checked_effect_type", "rebase_width", "rebase_authority", "rebase_extent", "rebase_alignment"):
                 function, objects = _typed_program(variant)
                 baseline = _outcome(None, function, objects)
                 decided.clear()

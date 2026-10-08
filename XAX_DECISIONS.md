@@ -2216,3 +2216,11 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Decision | The ADR-221 mechanism extends to `checked.load/store.bits.le` (pointer provenance and lifetime, contract, element size, the bootstrap's alignment-1 rule, the 32-bit offset, permission, value type, frontier, effect continuation, and the whole-view initialization of checked loads) and to the type and continuation checks of plain loads and stores (`MEMORY-LOAD-TYPE`, `MEMORY-STORE-TYPE`, `MEMORY-EFFECT-TYPE`). Type CIDs are rendered from the typing stream's indices. An offset type the program did not decode as `bits` still declines, and a record the host cannot render makes `memory_rejection` return None, so the bootstrap decides. |
 | Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: one constructed program per new rule (8) matches the bootstrap's full diagnostic and is decided by the engine; the eight-seed corpus run gives 820 engine-decided rejections out of 824, with no mismatch. Both self-hosting evidence files re-run natively. |
 | Limits | Still declined to the bootstrap: heap-view construction, rebase windows, returned views, foreign and view-passing calls, atomics, links, and stored-pointer provenance. Object verification remains Python. |
+
+## ADR-227 — S8c.10: rebase-window rejections decided by the facts engine
+
+| Field | Record |
+|---|---|
+| Decision | `pointer.rebase` joins the ADR-221 mechanism in the bootstrap's order: contract, view pointer provenance and lifetime, address width (`MEMORY-REBASE-ADDRESS-WIDTH`), authority (`MEMORY-REBASE-NO-AUTHORITY-GAIN`), extent (`MEMORY-REBASE-EXTENT`), and alignment (`MEMORY-REBASE-ALIGNMENT`). An address type the program did not decode as `bits`, undecoded pointer types, and the record-stride check still decline. |
+| Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: one constructed program per rule (4) matches the bootstrap's full diagnostic and is engine-decided; the eight-seed corpus gives 822 engine-decided rejections out of 824 (the two left are `HEAP-VIEW-RETURN-WHOLE`), with no mismatch. Both self-hosting evidence files re-run natively. |
+| Limits | Returned views, heap-view construction, foreign and view-passing calls, atomics, links, and stored-pointer provenance still decline. Object verification remains Python. |
