@@ -84,6 +84,12 @@ from xax_native import bootstrap_dir  # noqa: E402
 STORE_PATH = bootstrap_dir() / "xax_op_typing.xax"
 ACCEPT, REJECT, DEFER = 0, 1, 2
 NOT_COVERED, PROVEN, NOT_PROVEN = 0, 1, 2
+# S8c.1 (ADR-214): XAX rejects the node; its diagnostic record is the four words at DIAGNOSTICS + 4 * node.
+REJECTED = 3
+DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
+# Rejection sites, in each family's bootstrap check order: (code, rule) and the record's payload meaning.
+(SITE_NONE, SITE_OP_ARITY, SITE_OP_TYPE, SITE_INT_WIDTH_CONTRACT, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS,
+ SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT) = range(9)
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
@@ -106,6 +112,7 @@ MARKS = 128  # scratch marks for reference use, after the tables; at most this m
 TUPLE, ARRAY, SUM = 8, 9, 10
 
 BINARY_INTEGER = (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR, Operation.UDIV, Operation.UREM)
+INTEGER_FAMILIES = frozenset({*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT})  # S8c.1
 FLOAT_BINARY = (Operation.FLOAT_ADD, Operation.FLOAT_SUB, Operation.FLOAT_MUL, Operation.FLOAT_DIV)
 TO_FLOAT = (Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT)
 FROM_FLOAT = (Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC)
@@ -260,12 +267,12 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
         b.for_range(b.c(0), count, lambda index, carried: _aggregate_entry(b, t, index, carried), (items,))
     b.for_range(b.c(0), count, lambda index, carried: _object_entry(b, t, index) or (), ())
     nodes = b.read(nodes_at)
-    b.check(b.cmp(IntCompare.ULE, b.add(nodes, 2), TABLE), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.mul(nodes, 4), DIAGNOSTICS), TABLE), b.defer_block)
     blocks_at, proven = b.for_range(b.c(0), nodes, lambda index, carried: _node_entry(b, t, index, carried), (b.add(nodes_at, 1), b.c(0)))
     # S4d.1: terminator typing, one verdict per block after the node verdicts.
     blocks = b.read(blocks_at)
     places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
-    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 3), TABLE), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 3), DIAGNOSTICS), b.defer_block)
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
@@ -808,9 +815,87 @@ def _node_entry(b: _Builder, t: _Typing, index, carried):
     )
     covered = t.any(*(member for member, _ok in families))
     ok = t.any(*(t.all(member, condition) for member, condition in families))
-    verdict = b.add(covered, b.sub(covered, ok))  # 0 outside, 1 proven, 2 not proven
+    site, payload = _integer_rejection(b, t, operation, shape, operands, results, attributes, attribute, width, first_width,
+                                       is_bits, first_bits, same_first, same_second, first, second, result)
+    rejected = t.all(t.not_(ok), t.nonzero(site))
+    verdict = b.add(b.add(covered, b.sub(covered, ok)), rejected)  # 0 outside, 1 proven, 2 not proven, 3 rejected
     b.put(b.add(b.c(2), index), verdict)
+    record = b.add(b.c(DIAGNOSTICS), b.mul(index, 4))
+    for k, word in enumerate((b.mul(rejected, site), *payload)):
+        b.put(b.add(record, k), word)
     return b.add(extra_at, extra), b.add(proven, ok)
+
+
+def _integer_rejection(b: _Builder, t: _Typing, operation, shape, operands, results, attributes, attribute, width, first_width,
+                       is_bits, first_bits, same_first, same_second, first, second, result):
+    """S8c.1: the site and payload of the bootstrap's first failing check for an integer-family node.
+
+    Site 0 leaves the node to the bootstrap: a type that is not decodable here as ``bits`` (the bootstrap
+    raises its own decode diagnostic) or a clamped attribute.  The checks follow the bootstrap's order.
+    """
+    binary = t.one_of(operation, BINARY_INTEGER)
+    truncate, extend = t.eq(operation, int(Operation.INT_TRUNCATE)), t.eq(operation, int(Operation.INT_ZERO_EXTEND))
+    rotate = t.eq(operation, int(Operation.ROTATE_RIGHT))
+    counts = (operands, results, attributes)
+
+    def first_of(*steps):
+        """The first ``(applies, site, payload)`` step that applies; ``(0, (0, 0, 0))`` when none does."""
+        site, payload = b.c(SITE_NONE), (b.c(0),) * 3
+        for applies, code, words in reversed(steps):
+            site = t.pick(applies, b.c(code) if isinstance(code, int) else code, site)
+            payload = tuple(t.pick(applies, word, prior) for word, prior in zip(words, payload))
+        return site, payload
+
+    width_site = t.pick(truncate, b.c(SITE_INT_TRUNCATE_NARROWS), b.c(SITE_INT_ZERO_EXTEND_WIDENS))
+    width_bad = t.pick(truncate, t.le(first_width, width), t.le(width, first_width))
+    amount_known = t.lt(attribute, b.c(ATTRIBUTE_LIMIT))
+    families = (
+        (binary, first_of(
+            (t.not_(shape(2, 1, 0)), SITE_OP_ARITY, counts),
+            (t.not_(is_bits), SITE_NONE, (b.c(0),) * 3),
+            (t.not_(t.all(same_first, same_second)), SITE_OP_TYPE, (result, first, second)),
+        )),
+        (t.any(truncate, extend), first_of(
+            (t.not_(shape(1, 1, 0)), SITE_INT_WIDTH_CONTRACT, counts),
+            (t.not_(t.all(first_bits, is_bits)), SITE_NONE, (b.c(0),) * 3),
+            (width_bad, width_site, (first_width, width, b.c(0))),
+        )),
+        (rotate, first_of(
+            (t.not_(shape(1, 1, 1)), SITE_ROTATE_CONTRACT, counts),
+            (t.not_(is_bits), SITE_NONE, (b.c(0),) * 3),
+            (t.not_(same_first), SITE_ROTATE_TYPE, (result, first, b.c(0))),
+            (t.all(t.le(width, attribute), amount_known), SITE_ROTATE_AMOUNT, (width, attribute, b.c(0))),
+        )),
+    )
+    site, payload = b.c(SITE_NONE), (b.c(0),) * 3
+    for member, (family_site, family_payload) in families:
+        site = t.pick(member, family_site, site)
+        payload = tuple(t.pick(member, word, prior) for word, prior in zip(family_payload, payload))
+    return site, payload
+
+
+def rejection(record, cids):
+    """The bootstrap diagnostic ``(code, rule, expected, actual)`` for an XAX rejection record ``[site, a, b, c]``;
+    ``cids`` maps the stream's type indices to CIDs (rendering only: XAX decided the site and its values)."""
+    site, x, y, z = record
+    hexes = lambda *indices: [cids[index].hex() for index in indices]  # noqa: E731
+    if site == SITE_OP_ARITY:
+        return "XAX.STRUCT.OP_ARITY", "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes", [x, y, z]
+    if site == SITE_OP_TYPE:
+        return "XAX.STRUCT.OP_TYPE", "GRAPH-OP-TYPE", hexes(x, x), hexes(y, z)
+    if site == SITE_INT_WIDTH_CONTRACT:
+        return "XAX.INT.WIDTH", "INT-WIDTH-CONTRACT", [1, 1, 0], [x, y, z]
+    if site == SITE_INT_TRUNCATE_NARROWS:
+        return "XAX.INT.WIDTH", "INT-TRUNCATE-NARROWS", f"result < {x}", y
+    if site == SITE_INT_ZERO_EXTEND_WIDENS:
+        return "XAX.INT.WIDTH", "INT-ZERO-EXTEND-WIDENS", f"result > {x}", y
+    if site == SITE_ROTATE_CONTRACT:
+        return "XAX.INT.ROTATE", "INT-ROTATE-CONTRACT", [1, 1, 1], [x, y, z]
+    if site == SITE_ROTATE_TYPE:
+        return "XAX.INT.ROTATE", "INT-ROTATE-TYPE", cids[x].hex(), hexes(y)
+    if site == SITE_ROTATE_AMOUNT:
+        return "XAX.INT.ROTATE", "INT-ROTATE-AMOUNT", f"0..{x - 1}", y
+    raise ValueError(f"unknown typing rejection site {site}")
 
 
 def load_typing_program() -> tuple[StoreReader, SemanticObject]:
@@ -859,7 +944,7 @@ def type_info_from(resolve):
     return info
 
 
-def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None, objects=()):
+def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None, objects=(), cids=None):
     """Input words for the covered nodes of parsed ``blocks`` and their (block, node) keys.
 
     ``operand_types_of(block, node)`` gives a node's operand type CIDs (or None
@@ -867,7 +952,8 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None,
     references, body)`` or None when the object cannot be resolved.  The
     objects an object references are listed too (transitively).  With
     ``value_type_of(block, value)``, every block's parameters and terminator
-    follow (S4d.1); otherwise the block section is empty.
+    follow (S4d.1); otherwise the block section is empty.  A ``cids`` list receives
+    the type CIDs in stream index order (S8c.1: rendering XAX rejection records).
     """
     types: dict[bytes, int] = {}
     entries: list[list] = []
@@ -926,6 +1012,8 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None,
     facts_section, refs = _facts_section(blocks, facts, keys, type_index, value_type_of) if facts is not None else ([0], None)
     if facts is not None:
         facts_section += _cid_words([cid for cid, _index in sorted(types.items(), key=lambda item: item[1])])
+    if cids is not None:
+        cids[:] = sorted(types, key=types.__getitem__)
     # Serialized last: the block and facts sections can add types.
     words = [len(entries)]
     for kind, references, body in entries:
@@ -1069,6 +1157,10 @@ class NativeTyping:
         count = words[0]
         base = TABLE + count * OBJOK
         return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
+
+    def rejection_record(self, node: int) -> tuple[int, int, int, int]:
+        """After an accepted ``check``: S8c.1, node ``node``'s rejection record ``(site, a, b, c)``."""
+        return tuple(self._out[DIAGNOSTICS + 4 * node : DIAGNOSTICS + 4 * node + 4])
 
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""

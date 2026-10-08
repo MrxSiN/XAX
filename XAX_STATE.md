@@ -77,6 +77,10 @@ Next-iteration prefetch and edge sinking: `chains` 0.943x rustc (p = 0.019), `fi
 
 A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance_evidence.json`) joins the R4 run (§15.33) and `xb64` (R6, ADR-210): the validator derives R6 for `linux-x86_64`. Each level rests on one run or one cycle; see the row's blockers.
 
+## S8c.1 integer typing rejections — 2026-10-08 (ADR-214)
+
+On Linux x86-64 the XAX typing program now rejects integer-family nodes (arity, type, width, rotate amount) with the bootstrap's exact diagnostic; `verify_store` raises it at the node's own position. The rest of S8c (other typing families, facts, object verification) is still Python. Migration stays SH1.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

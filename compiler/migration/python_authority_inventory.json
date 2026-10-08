@@ -466,8 +466,8 @@
       "recommended_step": "S8"
     },
     "verifier-rejection-diagnostics": {
-      "python_authority": "xax_compiler fail() sites in verification: graph resolution and type verification while walking streams, typing, facts, and object verification (S8c); store container, object envelopes, and graph syntax are XAX since S8a/S8b",
-      "xax_hosted": null,
+      "python_authority": "xax_compiler fail() sites in verification: graph resolution and type verification while walking streams, non-integer typing families, facts, and object verification (S8c.2 onward); store container, object envelopes, and graph syntax are XAX since S8a/S8b",
+      "xax_hosted": "integer-family typing rejections: xax_op_typing.xax (S8c.1, ADR-214)",
       "target_dependency": "none",
       "prerequisite": "S7b.1 record mechanism",
       "differential_oracle": "negative conformance corpus, per-rule",
