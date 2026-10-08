@@ -653,7 +653,15 @@ One identity-only carrier declares a DEX class: descriptor, superclass, sorted i
 
 DEX forms: a void method with at most three one-register parameters keeps the original `invoke-direct` (35c) form byte for byte. Any other method uses `invoke-*/range` (3rc): `ins = this + parameters` (J/D take two registers), with one or two result registers below them, `move-result{,-wide,-object}` and the matching `return`.
 
-The export's non-proof ABI must be `(JNIEnv*, borrowed this, arguments...)` with JNI widths (`Z`/`B` 8 bits, `C`/`S` 16, `I` 32, `J` 64, references as borrowed JNI references of the exact class). Its non-proof results must be empty for `V`, the JNI width for primitives, or a local or borrowed reference of the exact class. The build checks this per method (`ANDROID-MANAGED-JNI-SIGNATURE`). `F`/`D` are rejected until the JNI layer has an exact float carrier. A managed-class APK contains only these carriers, one manifest whose Activity is one of them, optional resources, and exports. It accepts the v3 or the general v4 Android target and needs `minSdk >= 28` (DEX 039).
+The export's non-proof ABI must be `(JNIEnv*, borrowed this, arguments...)` with JNI widths (`Z`/`B` 8 bits, `C`/`S` 16, `I` 32, `J` 64, `F` `f32`, `D` `f64`, references as borrowed JNI references of the exact class). Its non-proof results must be empty for `V`, the JNI width for primitives, or a local or borrowed reference of the exact class. The build checks this per method (`ANDROID-MANAGED-JNI-SIGNATURE`). `F`/`D` are exact IEEE carriers since ADR-202. A managed-class APK contains only these carriers, one manifest whose Activity is one of them, optional resources, optional platform declarations (§16.8), and exports. It accepts the v3 or the general v4 Android target and needs `minSdk >= 28` (DEX 039).
+
+### 16.8 Platform declarations and capability contracts (ADR-202 to ADR-204)
+
+**JNI floats.** `jfloat`/`jdouble` are `f32`/`f64`. `jvalue[]` packs that are not homogeneous integers or `jlong`-plus-references are one record (`typed_record`): each slot's value at offset `8 * slot`, then zero padding fields (`b8`, `b16`, `b32` as needed) to 8 bytes. A reference slot holds its `jvalue.l` word.
+
+**Declarations.** `android-platform-declarations-v1` (`xax_manifest.AndroidPlatformDeclarations`) emits `uses-permission` (`maxSdkVersion` `0x01010271`, `usesPermissionFlags` `0x01010644` = `neverForLocation` `0x10000`), `uses-feature` (`required` `0x0101028e`), and `service`/`receiver` elements (`foregroundServiceType` `0x01010599`, `TYPE_INT_HEX`). These IDs join the resource map only when used.
+
+**Contracts.** `xax_platform.posix_async_api` (owned sockets, `accept4`, `poll`, `timerfd_*`, `eventfd`, pthread mutex/condition, `rename`/`fsync`/`unlink`) and `xax_android_platform` (`native_window_api`, `media_codec_api`, `aaudio_api(direction)`) are typed `android-aapcs64-c` declarations; their libraries become `DT_NEEDED` entries and their tokens and effects erase. `CAPABILITIES` lists exact SDK members with permission rules, release pairs and minimum API; `CALLBACK_ABSTRACT_METHODS` lists the methods each callback type requires. The managed-APK build applies them (`ANDROID-PLATFORM-RULES`, `ANDROID-DECLARATIONS-RULES`).
 
 ## 17. Windows x86-64 hosted PE slice (2026-10-02)
 

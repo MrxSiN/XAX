@@ -487,7 +487,7 @@ AArch64 uses exact byte/halfword/word/dword stores. The bounded mixed path suppo
 compatibility or imported superclass/interface evidence and may require an exact
 defining-loader domain; weak globals and mixed narrow integers still reject.
 Float/double JNI plans still hard-reject until exact float carriers and AAPCS64 FP
-lowering exist. Committed deterministic SDK/JNI evidence is
+lowering exist. *(Superseded 2026-10-08 by ADR-202: see "Android platform capability contracts" below.)* Committed deterministic SDK/JNI evidence is
 `compiler/benchmarks/android_sdk_import_evidence.json` and
 `compiler/benchmarks/android_jni_platform_evidence.json`.
 
@@ -1278,3 +1278,13 @@ There is no model measurement yet. In the existing one-request-per-cell profiles
 ## Multi-file profile v6 with the shared grammar (2026-10-08, ADR-201)
 
 `python -m benchmarks.run_jvm_r5_multifile` from `compiler/` now runs profile v6. The XAX arm holds the shared edit grammar in its client base instructions and gets no per-request edit help. The runner calibrates the common floor and the XAX floor (`calibration-xax.json`); their difference is the grammar's cost per request. The gate counts that cost in every XAX request. The evidence JSON also reports informational ratios with the grammar counted once per attempt and excluded, for the owner's accounting decision. No inference has been run. Use the ADR-190 toolchain setup with one writer, `--repetitions 3`, and keep every failed attempt. R5 is still unmet and JVM stays R4.
+
+## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
+
+This follows the AutoHead capability audit of 2026-10-07, whose rows were partial or unsupported. All new work is STRUCTURAL with verified lowering; nothing here ran on a device, and no replacement level changes.
+
+- **JNI floats (ADR-202).** `jfloat`/`jdouble` are exact `f32`/`f64` carriers for calls, fields and managed callbacks. Narrow-integer and float argument packs use a typed-record `jvalue[]`. Touch coordinates, axis values and `MediaCodec.queueInputBuffer(IIIJI)V` now verify and lower.
+- **Platform declarations (ADR-203).** Permissions, features, foreground-service types and Service/BroadcastReceiver components for the managed-class APK profile, with build-time platform rules. Manifests without declarations are byte-identical.
+- **Capability contracts (ADR-204).** POSIX owned sockets, readiness, deadlines, cancellation, locks and atomic replacement; NDK `ANativeWindow`, `AMediaCodec`/`AMediaFormat` and direction-typed AAudio with linear tokens; an SDK capability table (permissions, Bluetooth, RFCOMM/SDP, network callbacks, Wi-Fi Direct, local-only hotspot, `SSLEngine`, MediaCodec, SurfaceHolder, AudioTrack/AudioRecord, audio focus, touch, keys) that the managed-APK build enforces.
+
+Tests: `compiler/tests/test_xax_jni_float.py`, `compiler/tests/test_xax_android_platform.py`. The per-capability status is in `docs/ANDROID_PLATFORM_CAPABILITIES.md`. Open gaps: OI-47 (path-exact ownership for buffers, NULL windows and JNI-held SDK objects) and device evidence for every new contract.

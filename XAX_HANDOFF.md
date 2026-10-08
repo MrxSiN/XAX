@@ -648,3 +648,7 @@ There is no model measurement yet. In the existing one-request-per-cell profiles
 ## Multi-file profile v6 with the shared grammar (2026-10-08, ADR-201)
 
 `python -m benchmarks.run_jvm_r5_multifile` from `compiler/` now runs profile v6. The XAX arm holds the shared edit grammar in its client base instructions and gets no per-request edit help. The runner calibrates the common floor and the XAX floor (`calibration-xax.json`); their difference is the grammar's cost per request. The gate counts that cost in every XAX request. The evidence JSON also reports informational ratios with the grammar counted once per attempt and excluded, for the owner's accounting decision. No inference has been run. Use the ADR-190 toolchain setup with one writer, `--repetitions 3`, and keep every failed attempt. R5 is still unmet and JVM stays R4.
+
+## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
+
+JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarations-v1` carrier, and `xax_android_platform` plus `xax_platform.posix_async_api` give ownership-typed NDK/POSIX contracts and an SDK capability table that the managed build enforces. Per-capability status: `docs/ANDROID_PLATFORM_CAPABILITIES.md`. Everything is STRUCTURAL. Next, on the authorized device: run a managed APK that forwards `onTouchEvent` and reads `getX`/`getY`, a SurfaceHolder callback that acquires and releases an `ANativeWindow`, an AMediaCodec decode loop, an AAudio output stream, and an RFCOMM connect/close; then close OI-47's gaps.

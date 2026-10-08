@@ -399,3 +399,109 @@ def wasi_preview1_api() -> WasiPreview1Api:
             (b32, memory, memory), abi=abi,
         ),
     )
+
+
+@dataclass(frozen=True)
+class PosixAsyncApi:
+    """Owned sockets, readiness, deadlines, cancellation, locks and atomic replacement (ADR-204).
+
+    Every descriptor-returning call hands over the ADR-153 linear ``descriptor``
+    token, so ``close`` (filesystem) or ``close_socket`` (network) must consume
+    it exactly once.  A failed call returns -1 with the token; ``close(-1)`` is
+    defined (EBADF, no effect), so the obligation stays sound, as with
+    ``free(NULL)``.  Nonblocking mode is requested with ``SOCK_NONBLOCK`` /
+    ``TFD_NONBLOCK`` / ``EFD_NONBLOCK`` flags at creation, which avoids the
+    variadic ``fcntl``.  Partial reads and writes are the byte counts that
+    ``read``/``write``/``send``/``recv`` already return; nothing retries.
+    ``pthread_mutex_t``/``pthread_cond_t`` storage is caller-owned bytes
+    (bionic LP64: 40 and 48 bytes).
+    """
+
+    descriptor: SemanticObject
+    socket: SemanticObject
+    bind: SemanticObject
+    listen: SemanticObject
+    accept4: SemanticObject
+    shutdown: SemanticObject
+    setsockopt: SemanticObject
+    getsockopt: SemanticObject
+    close_socket: SemanticObject
+    poll: SemanticObject
+    timerfd_create: SemanticObject
+    timerfd_settime: SemanticObject
+    eventfd: SemanticObject
+    close: SemanticObject
+    rename: SemanticObject
+    fsync: SemanticObject
+    unlink: SemanticObject
+    pthread_mutex_init: SemanticObject
+    pthread_mutex_lock: SemanticObject
+    pthread_mutex_unlock: SemanticObject
+    pthread_mutex_destroy: SemanticObject
+    pthread_cond_init: SemanticObject
+    pthread_cond_wait: SemanticObject
+    pthread_cond_timedwait: SemanticObject
+    pthread_cond_signal: SemanticObject
+    pthread_cond_broadcast: SemanticObject
+    pthread_cond_destroy: SemanticObject
+
+    @property
+    def symbols(self) -> tuple[SemanticObject, ...]:
+        return tuple(getattr(self, name) for name in self.__dataclass_fields__ if name != "descriptor")
+
+
+# Exact bionic/Linux constants the contracts are used with (asm-generic, arm64).
+SOCK_NONBLOCK = 0o4000
+SOCK_CLOEXEC = 0o2000000
+POLLIN, POLLOUT, POLLERR, POLLHUP = 0x1, 0x4, 0x8, 0x10
+CLOCK_MONOTONIC = 1
+TFD_NONBLOCK, TFD_CLOEXEC = 0o4000, 0o2000000
+EFD_NONBLOCK, EFD_CLOEXEC = 0o4000, 0o2000000
+SHUT_RDWR = 2
+PTHREAD_MUTEX_T_BYTES, PTHREAD_COND_T_BYTES = 40, 48
+
+
+def posix_async_api(api: "PosixAndroidApi | None" = None) -> PosixAsyncApi:
+    api = api or posix_android_api()
+    d = posix_descriptor_api(api).descriptor
+    libc = b"libc.so"
+    b32, b64, rd, rw = api.b32, api.b64, api.byte_ptr_read, api.byte_ptr_rw
+    net, fs, time, thread, memory = api.network_effect, api.filesystem_effect, api.time_effect, api.thread_effect, api.memory_effect
+
+    def sym(name, inputs, outputs):
+        return foreign_function_symbol(libc, name, inputs, outputs)
+
+    return PosixAsyncApi(
+        d,
+        sym(b"socket", (b32, b32, b32, net), (b32, d, net)),
+        sym(b"bind", (b32, rd, b32, net), (b32, net)),
+        sym(b"listen", (b32, b32, net), (b32, net)),
+        # accept4(fd, addr, addrlen*, flags): the peer address and its length are written.
+        sym(b"accept4", (b32, rw, rw, b32, net, memory), (b32, d, net, memory)),
+        sym(b"shutdown", (b32, b32, net), (b32, net)),
+        sym(b"setsockopt", (b32, b32, b32, rd, b32, net), (b32, net)),
+        # getsockopt(fd, SOL_SOCKET, SO_ERROR, ...) completes a nonblocking connect.
+        sym(b"getsockopt", (b32, b32, b32, rw, rw, net, memory), (b32, net, memory)),
+        sym(b"close", (b32, d, net), (b32, net)),
+        # poll(fds, nfds, timeout_ms): readiness with a deadline; revents are written.
+        sym(b"poll", (rw, b64, b32, time, memory), (b32, time, memory)),
+        sym(b"timerfd_create", (b32, b32, time), (b32, d, time)),
+        # timerfd_settime(fd, flags, new, old): ``old`` may be the null pointer word 0.
+        sym(b"timerfd_settime", (b32, b32, rd, b64, time), (b32, time)),
+        # eventfd(initval, flags): a write from any thread wakes a poll (cancellation).
+        sym(b"eventfd", (b32, b32, thread), (b32, d, thread)),
+        posix_descriptor_api(api).close,
+        sym(b"rename", (rd, rd, fs), (b32, fs)),
+        sym(b"fsync", (b32, fs), (b32, fs)),
+        sym(b"unlink", (rd, fs), (b32, fs)),
+        sym(b"pthread_mutex_init", (rw, b64, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_mutex_lock", (rw, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_mutex_unlock", (rw, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_mutex_destroy", (rw, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_cond_init", (rw, b64, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_cond_wait", (rw, rw, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_cond_timedwait", (rw, rw, rd, thread, time, memory), (b32, thread, time, memory)),
+        sym(b"pthread_cond_signal", (rw, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_cond_broadcast", (rw, thread, memory), (b32, thread, memory)),
+        sym(b"pthread_cond_destroy", (rw, thread, memory), (b32, thread, memory)),
+    )

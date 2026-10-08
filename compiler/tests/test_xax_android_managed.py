@@ -46,7 +46,7 @@ class ManagedClassTests(unittest.TestCase):
 
     def test_rejections(self):
         for build in (
-            lambda: AndroidManagedMethod("onTouch", "(Landroid/view/View;F)Z"),         # no exact JNI float carrier
+            lambda: AndroidManagedMethod("onTouch", "(Landroid/view/View;Q)Z"),         # not a JVM descriptor
             lambda: AndroidManagedMethod("onKeyDown", "(ILandroid/view/KeyEvent;)Z", call_super=True),  # super only for void
             lambda: AndroidManagedMethod("<init>", "()V"),
             lambda: AndroidManagedMethod("run", "()V", "private"),
@@ -55,6 +55,10 @@ class ManagedClassTests(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 build()
+
+    def test_float_callbacks_are_accepted(self):
+        # ADR-202: jfloat/jdouble are exact carriers (was a rejection under ADR-199).
+        self.assertEqual(AndroidManagedMethod("onScroll", "(FF)Z").proto.parameters, ("F", "F"))
 
     def test_dex_forms(self):
         cls = AndroidManagedClass("Lxax/t/B;", "Ljava/lang/Object;", ("Landroid/view/SurfaceHolder$Callback;",), (

@@ -24,12 +24,14 @@ NO_INDEX = 0xFFFFFFFF
 
 TYPE_STRING = 0x03
 TYPE_INT_DEC = 0x10
+TYPE_INT_HEX = 0x11
 TYPE_INT_BOOLEAN = 0x12
 
 ANDROID_NS_PREFIX = "android"
 ANDROID_NS_URI = "http://schemas.android.com/apk/res/android"
 
 ANDROID_MANIFEST_PREFIX = b"android-manifest-v1"
+ANDROID_PLATFORM_DECLARATIONS_PREFIX = b"android-platform-declarations-v1\0"
 
 
 def _semantic_bytes(value: str, name: str) -> bytes:
@@ -47,6 +49,18 @@ ANDROID_ATTR_EXPORTED = 0x01010010
 ANDROID_ATTR_MIN_SDK_VERSION = 0x0101020C
 ANDROID_ATTR_VERSION_CODE = 0x0101021B
 ANDROID_ATTR_TARGET_SDK_VERSION = 0x01010270
+# Platform-declaration attributes (ADR-203).  Like ``debuggable`` they join the
+# resource map only when used, so manifests without declarations keep their bytes.
+ANDROID_ATTR_MAX_SDK_VERSION = 0x01010271
+ANDROID_ATTR_REQUIRED = 0x0101028E
+ANDROID_ATTR_FOREGROUND_SERVICE_TYPE = 0x01010599
+ANDROID_ATTR_USES_PERMISSION_FLAGS = 0x01010644
+DECLARATION_ATTR_IDS = {
+    "maxSdkVersion": ANDROID_ATTR_MAX_SDK_VERSION,
+    "required": ANDROID_ATTR_REQUIRED,
+    "foregroundServiceType": ANDROID_ATTR_FOREGROUND_SERVICE_TYPE,
+    "usesPermissionFlags": ANDROID_ATTR_USES_PERMISSION_FLAGS,
+}
 
 ANDROID_ATTR_IDS = {
     "name": ANDROID_ATTR_NAME,
@@ -113,6 +127,203 @@ class AndroidManifestApplication:
             raise ValueError("Application class must use Java binary-name notation")
 
 
+# ---------------------------------------------------------------------------
+# Platform declarations (ADR-203): permissions, features and extra components.
+# ---------------------------------------------------------------------------
+
+# ``android:foregroundServiceType`` flag -> the API 34 permission that type needs.
+# ``shortService`` needs none.  ``specialUse`` needs a <property> element and is
+# deliberately not offered.
+FOREGROUND_SERVICE_TYPES = {
+    "dataSync": (0x1, "android.permission.FOREGROUND_SERVICE_DATA_SYNC"),
+    "mediaPlayback": (0x2, "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"),
+    "phoneCall": (0x4, "android.permission.FOREGROUND_SERVICE_PHONE_CALL"),
+    "location": (0x8, "android.permission.FOREGROUND_SERVICE_LOCATION"),
+    "connectedDevice": (0x10, "android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"),
+    "mediaProjection": (0x20, "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"),
+    "camera": (0x40, "android.permission.FOREGROUND_SERVICE_CAMERA"),
+    "microphone": (0x80, "android.permission.FOREGROUND_SERVICE_MICROPHONE"),
+    "health": (0x100, "android.permission.FOREGROUND_SERVICE_HEALTH"),
+    "remoteMessaging": (0x200, "android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING"),
+    "systemExempted": (0x400, "android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"),
+    "shortService": (0x800, None),
+    "mediaProcessing": (0x2000, "android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING"),
+}
+# Manifest-declarable prerequisites of a type (API 34): one of the set must be declared.
+# Whether the user granted the runtime ones is a runtime fact, not a manifest fact.
+FOREGROUND_SERVICE_PREREQUISITES = {
+    "microphone": ("android.permission.RECORD_AUDIO",),
+    "camera": ("android.permission.CAMERA",),
+    "location": ("android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"),
+    "connectedDevice": (
+        "android.permission.BLUETOOTH_ADVERTISE", "android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_SCAN",
+        "android.permission.CHANGE_NETWORK_STATE", "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.CHANGE_WIFI_STATE", "android.permission.NFC", "android.permission.TRANSMIT_IR",
+        "android.permission.UWB_RANGING",
+    ),
+}
+USES_PERMISSION_NEVER_FOR_LOCATION = 0x10000
+BOOT_COMPLETED_ACTION = "android.intent.action.BOOT_COMPLETED"
+
+
+def _binary_name(value: str, what: str) -> None:
+    if not value or "/" in value or ";" in value or "\x00" in value or any(part == "" for part in value.split(".")):
+        raise ValueError(f"{what} must use Java binary-name notation")
+
+
+@dataclass(frozen=True, order=True)
+class AndroidUsesPermission:
+    name: str
+    max_sdk: int = 0  # 0: no maxSdkVersion
+    never_for_location: bool = False
+
+    def __post_init__(self) -> None:
+        _binary_name(self.name, "permission")
+        if not 0 <= self.max_sdk <= 0x7FFFFFFF:
+            raise ValueError("maxSdkVersion must be a positive signed 32-bit integer")
+
+
+@dataclass(frozen=True, order=True)
+class AndroidUsesFeature:
+    name: str
+    required: bool = True
+
+    def __post_init__(self) -> None:
+        _binary_name(self.name, "feature")
+
+
+@dataclass(frozen=True, order=True)
+class AndroidDeclaredComponent:
+    """A Service or BroadcastReceiver whose class is an ``android-managed-class-v1`` class."""
+
+    kind: str  # "service" | "receiver"
+    class_name: str
+    exported: bool = False
+    foreground_types: tuple[str, ...] = ()
+    actions: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.kind not in ("service", "receiver"):
+            raise ValueError("declared component kind must be service or receiver")
+        _binary_name(self.class_name, "component class")
+        object.__setattr__(self, "foreground_types", tuple(sorted(set(self.foreground_types))))
+        object.__setattr__(self, "actions", tuple(sorted(set(self.actions))))
+        unknown = [item for item in self.foreground_types if item not in FOREGROUND_SERVICE_TYPES]
+        if unknown:
+            raise ValueError(f"unsupported foreground service type(s) {unknown}")
+        if self.foreground_types and self.kind != "service":
+            raise ValueError("only a service has a foreground service type")
+        for action in self.actions:
+            if not action or "\x00" in action:
+                raise ValueError("intent action must be nonempty and NUL-free")
+
+    @property
+    def foreground_flags(self) -> int:
+        flags = 0
+        for item in self.foreground_types:
+            flags |= FOREGROUND_SERVICE_TYPES[item][0]
+        return flags
+
+
+@dataclass(frozen=True)
+class AndroidPlatformDeclarations:
+    permissions: tuple[AndroidUsesPermission, ...] = ()
+    features: tuple[AndroidUsesFeature, ...] = ()
+    components: tuple[AndroidDeclaredComponent, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "permissions", tuple(sorted(set(self.permissions))))
+        object.__setattr__(self, "features", tuple(sorted(set(self.features))))
+        object.__setattr__(self, "components", tuple(sorted(set(self.components), key=lambda item: item.class_name)))
+        for items, key, what in (
+            (self.permissions, lambda item: item.name, "permission"),
+            (self.features, lambda item: item.name, "feature"),
+            (self.components, lambda item: item.class_name, "component class"),
+        ):
+            names = [key(item) for item in items]
+            if len(set(names)) != len(names):
+                raise ValueError(f"each {what} is declared once")
+
+    @property
+    def permission_names(self) -> frozenset[str]:
+        return frozenset(item.name for item in self.permissions)
+
+
+def _decl_text(value: str) -> bytes:
+    raw = value.encode("utf-8")
+    return uleb(len(raw)) + raw
+
+
+def android_platform_declarations_semantics(declarations: AndroidPlatformDeclarations) -> SemanticObject:
+    identity = bytearray(ANDROID_PLATFORM_DECLARATIONS_PREFIX)
+    identity += uleb(len(declarations.permissions))
+    for item in declarations.permissions:
+        identity += _decl_text(item.name) + uleb(item.max_sdk) + bytes((int(item.never_for_location),))
+    identity += uleb(len(declarations.features))
+    for item in declarations.features:
+        identity += _decl_text(item.name) + bytes((int(item.required),))
+    identity += uleb(len(declarations.components))
+    for item in declarations.components:
+        identity += _decl_text(item.kind) + _decl_text(item.class_name) + bytes((int(item.exported),))
+        identity += uleb(len(item.foreground_types)) + b"".join(_decl_text(value) for value in item.foreground_types)
+        identity += uleb(len(item.actions)) + b"".join(_decl_text(value) for value in item.actions)
+    return target(bytes(identity))
+
+
+def decode_android_platform_declarations(obj: SemanticObject) -> AndroidPlatformDeclarations:
+    where = obj.cid.hex()
+    if obj.kind != Kind.TARGET or obj.references:
+        fail("XAX.ANDROID.MANIFEST", where, "ANDROID-DECLARATIONS-CARRIER", Kind.TARGET.name, obj.kind.name)
+    outer = Cursor(obj.body, where)
+    identity = outer.byte_string()
+    outer.end("ANDROID-DECLARATIONS-CARRIER")
+    if not identity.startswith(ANDROID_PLATFORM_DECLARATIONS_PREFIX):
+        fail("XAX.ANDROID.MANIFEST", where, "ANDROID-DECLARATIONS-IDENTITY", ANDROID_PLATFORM_DECLARATIONS_PREFIX.decode(), identity[:40].hex())
+    cursor = Cursor(identity[len(ANDROID_PLATFORM_DECLARATIONS_PREFIX):], where)
+    try:
+        text = lambda: cursor.byte_string().decode("utf-8")  # noqa: E731
+        permissions = tuple(AndroidUsesPermission(text(), cursor.uleb(), cursor.boolean()) for _ in range(cursor.uleb()))
+        features = tuple(AndroidUsesFeature(text(), cursor.boolean()) for _ in range(cursor.uleb()))
+        components = []
+        for _ in range(cursor.uleb()):
+            kind, class_name, exported = text(), text(), cursor.boolean()
+            types = tuple(text() for _ in range(cursor.uleb()))
+            actions = tuple(text() for _ in range(cursor.uleb()))
+            components.append(AndroidDeclaredComponent(kind, class_name, exported, types, actions))
+        cursor.end("ANDROID-DECLARATIONS-IDENTITY")
+        declarations = AndroidPlatformDeclarations(permissions, features, tuple(components))
+    except (UnicodeDecodeError, ValueError) as error:
+        fail("XAX.ANDROID.MANIFEST", where, "ANDROID-DECLARATIONS-FIELDS", "valid platform declarations", str(error))
+    canonical = android_platform_declarations_semantics(declarations)
+    if canonical.cid != obj.cid:
+        fail("XAX.ANDROID.MANIFEST", where, "ANDROID-DECLARATIONS-CANONICAL", canonical.cid.hex(), obj.cid.hex())
+    return declarations
+
+
+def platform_declaration_violations(spec: AndroidManifestSpec, declarations: AndroidPlatformDeclarations) -> tuple[str, ...]:
+    """Manifest-level platform rules a declaration set breaks (empty when it is admissible)."""
+    declared = declarations.permission_names
+    problems: list[str] = []
+    for component in declarations.components:
+        if component.foreground_types and "android.permission.FOREGROUND_SERVICE" not in declared:
+            problems.append(f"{component.class_name}: foreground service needs android.permission.FOREGROUND_SERVICE")
+        for kind in component.foreground_types:
+            needed = FOREGROUND_SERVICE_TYPES[kind][1]
+            if spec.target_sdk >= 34 and needed is not None and needed not in declared:
+                problems.append(f"{component.class_name}: foregroundServiceType {kind} needs {needed} (targetSdk >= 34)")
+            options = FOREGROUND_SERVICE_PREREQUISITES.get(kind, ())
+            if spec.target_sdk >= 34 and options and not declared.intersection(options):
+                problems.append(f"{component.class_name}: foregroundServiceType {kind} needs one of {list(options)}")
+        if BOOT_COMPLETED_ACTION in component.actions and "android.permission.RECEIVE_BOOT_COMPLETED" not in declared:
+            problems.append(f"{component.class_name}: {BOOT_COMPLETED_ACTION} needs android.permission.RECEIVE_BOOT_COMPLETED")
+        if component.class_name == spec.activity_class:
+            problems.append(f"{component.class_name}: already the manifest Activity")
+    for permission in declarations.permissions:
+        if permission.max_sdk and permission.max_sdk < spec.min_sdk:
+            problems.append(f"{permission.name}: maxSdkVersion {permission.max_sdk} is below minSdk {spec.min_sdk} (never requested)")
+    return tuple(problems)
+
+
 def android_manifest_semantics(spec: AndroidManifestSpec) -> SemanticObject:
     """Create content-addressed Android manifest semantics as a target carrier."""
 
@@ -161,8 +372,16 @@ def decode_android_manifest_semantics(obj: SemanticObject) -> AndroidManifestSpe
     return spec
 
 
-def emit_binary_manifest_from_semantics(obj: SemanticObject) -> bytes:
-    return emit_binary_manifest(decode_android_manifest_semantics(obj))
+def emit_binary_manifest_from_semantics(obj: SemanticObject, declarations: SemanticObject | None = None) -> bytes:
+    """The manifest, plus the platform declarations carrier when one is given (ADR-203)."""
+    if declarations is None:
+        return emit_binary_manifest(decode_android_manifest_semantics(obj))
+    spec = decode_android_manifest_semantics(obj)
+    decoded = decode_android_platform_declarations(declarations)
+    problems = platform_declaration_violations(spec, decoded)
+    if problems:
+        fail("XAX.ANDROID.MANIFEST", declarations.cid.hex(), "ANDROID-DECLARATIONS-RULES", "no platform-rule violations", list(problems))
+    return emit_binary_manifest(spec, declarations=decoded)
 
 
 def emit_binary_manifest_with_receivers_from_semantics(
@@ -301,6 +520,9 @@ def _start_element(name_idx: int, attributes: tuple[_Attribute, ...], indices: d
         elif item.type_ == TYPE_INT_BOOLEAN:
             raw_idx = NO_INDEX
             typed = _typed_value(TYPE_INT_BOOLEAN, 1 if bool(item.value) else 0)
+        elif item.type_ == TYPE_INT_HEX:
+            raw_idx = NO_INDEX
+            typed = _typed_value(TYPE_INT_HEX, int(item.value))
         else:
             raise ValueError("unsupported manifest attribute type")
         attr_blob.extend(struct.pack("<III", ns_idx, attr_name_idx, raw_idx) + typed)
@@ -319,6 +541,7 @@ def _tree_from_spec(
     receivers: tuple[AndroidManifestReceiver, ...] = (),
     services: tuple[AndroidManifestService, ...] = (),
     application: AndroidManifestApplication | None = None,
+    declarations: AndroidPlatformDeclarations | None = None,
 ) -> _Element:
     android = ANDROID_NS_URI
     children: list[_Element] = [
@@ -330,6 +553,33 @@ def _tree_from_spec(
             ),
         )
     ]
+    declared_components: list[_Element] = []
+    if declarations is not None:
+        for permission in declarations.permissions:
+            attributes = [_Attribute(android, "name", TYPE_STRING, permission.name, ANDROID_ATTR_NAME)]
+            if permission.max_sdk:
+                attributes.append(_Attribute(android, "maxSdkVersion", TYPE_INT_DEC, permission.max_sdk, ANDROID_ATTR_MAX_SDK_VERSION))
+            if permission.never_for_location:
+                attributes.append(_Attribute(android, "usesPermissionFlags", TYPE_INT_HEX, USES_PERMISSION_NEVER_FOR_LOCATION, ANDROID_ATTR_USES_PERMISSION_FLAGS))
+            children.append(_Element("uses-permission", tuple(attributes)))
+        for feature in declarations.features:
+            children.append(_Element("uses-feature", (
+                _Attribute(android, "name", TYPE_STRING, feature.name, ANDROID_ATTR_NAME),
+                _Attribute(android, "required", TYPE_INT_BOOLEAN, feature.required, ANDROID_ATTR_REQUIRED),
+            )))
+        for component in declarations.components:
+            attributes = [
+                _Attribute(android, "name", TYPE_STRING, component.class_name, ANDROID_ATTR_NAME),
+                _Attribute(android, "exported", TYPE_INT_BOOLEAN, component.exported, ANDROID_ATTR_EXPORTED),
+            ]
+            if component.foreground_types:
+                attributes.append(_Attribute(android, "foregroundServiceType", TYPE_INT_HEX, component.foreground_flags, ANDROID_ATTR_FOREGROUND_SERVICE_TYPE))
+            filters: tuple[_Element, ...] = ()
+            if component.actions:
+                filters = (_Element("intent-filter", children=tuple(
+                    _Element("action", (_Attribute(android, "name", TYPE_STRING, action, ANDROID_ATTR_NAME),)) for action in component.actions
+                )),)
+            declared_components.append(_Element(component.kind, tuple(attributes), filters))
     activity_children: tuple[_Element, ...] = ()
     if spec.launcher:
         activity_children = (
@@ -392,7 +642,7 @@ def _tree_from_spec(
     application_element = _Element(
         "application",
         tuple(application_attributes),
-        (activity, *receiver_elements, *service_elements),
+        (activity, *receiver_elements, *service_elements, *declared_components),
     )
     children.append(application_element)
     return _Element(
@@ -411,10 +661,20 @@ def emit_binary_manifest(
     receivers: tuple[AndroidManifestReceiver, ...] = (),
     services: tuple[AndroidManifestService, ...] = (),
     application: AndroidManifestApplication | None = None,
+    declarations: AndroidPlatformDeclarations | None = None,
 ) -> bytes:
-    tree = _tree_from_spec(spec, receivers, services, application)
-    # debuggable joins the resource map only when used, so other manifests keep their bytes.
-    attribute_ids = {**ANDROID_ATTR_IDS, "debuggable": ANDROID_ATTR_DEBUGGABLE} if spec.debuggable else ANDROID_ATTR_IDS
+    tree = _tree_from_spec(spec, receivers, services, application, declarations)
+    # debuggable and declaration attributes join the resource map only when used,
+    # so other manifests keep their bytes.
+    attribute_ids = {**ANDROID_ATTR_IDS, "debuggable": ANDROID_ATTR_DEBUGGABLE} if spec.debuggable else dict(ANDROID_ATTR_IDS)
+
+    def used(element: _Element) -> set[str]:
+        names = {item.name for item in element.attributes}
+        for child in element.children:
+            names |= used(child)
+        return names
+
+    attribute_ids.update({name: value for name, value in DECLARATION_ATTR_IDS.items() if name in used(tree)})
     resource_names = tuple(name for name, _id in sorted(attribute_ids.items(), key=lambda item: item[1]))
     strings: set[str] = {ANDROID_NS_PREFIX, ANDROID_NS_URI, *resource_names}
 
@@ -530,7 +790,7 @@ def inspect_binary_manifest(data: bytes) -> BinaryManifestInspection:
                     value: str | int | bool = strings[value_data]
                     if raw_idx != value_data:
                         raise ValueError("manifest string raw/typed index mismatch")
-                elif value_type == TYPE_INT_DEC:
+                elif value_type in (TYPE_INT_DEC, TYPE_INT_HEX):
                     value = value_data
                 elif value_type == TYPE_INT_BOOLEAN:
                     value = bool(value_data)
@@ -554,6 +814,15 @@ def inspect_binary_manifest(data: bytes) -> BinaryManifestInspection:
 
 
 __all__ = [
+    "ANDROID_PLATFORM_DECLARATIONS_PREFIX",
+    "AndroidDeclaredComponent",
+    "AndroidPlatformDeclarations",
+    "AndroidUsesFeature",
+    "AndroidUsesPermission",
+    "FOREGROUND_SERVICE_TYPES",
+    "android_platform_declarations_semantics",
+    "decode_android_platform_declarations",
+    "platform_declaration_violations",
     "ANDROID_ATTR_EXPORTED",
     "ANDROID_ATTR_HAS_CODE",
     "ANDROID_ATTR_MIN_SDK_VERSION",

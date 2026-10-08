@@ -659,6 +659,18 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Status.** OPEN (2026-10-07, ADR-195). *Option (a) measured (ADR-196):* the minimal Codex client still has a fixed floor of 3,501 input tokens per request. Floor-adjusted medians were XAX 200 and Kotlin 201 (0.995×), so removing client overhead does not make the gate reachable on this corpus. Closing this issue needs option (b), a corpus with legitimately larger textual context, or an owner decision to record R5 as unreachable for single small edits. *Option (b) measured (ADR-197):* on a multi-file corpus XAX is 0.35× whole-file textual workflows but 1.68× an IDE-style excerpt of the same call hierarchy, which the rules require as a valid lower-token competitor. The remaining gap is the fixed edit-form help in every request and lower model reliability on XAX. *Shared grammar (ADR-200):* the edit-form help can now be sent once as shared context (`edit_grammar`, `instructions(shared=ID)`). This has not been measured. Its effect depends on multi-request sessions or prompt caching, and on how the owner accounts the shared block.
 
+## OI-47 — Path-exact ownership for Android platform objects
+
+**Question.** ADR-204 gives NDK objects linear tokens, but three gaps remain: `AMediaCodec_getInputBuffer` returns a platform buffer whose capacity is written at run time, so it is not a bounds-proven view; `ANativeWindow_fromSurface` can return NULL and releasing NULL is undefined, so the token should exist only on the non-null path; and JNI references to SDK objects (`BluetoothSocket`, `MediaCodec`, `AudioRecord`) are checked for release only by reachability, not per path. How are these made exact without new kernel concepts?
+
+**Fixed constraints.** No hidden runtime checks, no kernel object model, no wrapper library. Existing linear-resource and heap-view rules are reused where possible.
+
+**Options.** (a) A sum-typed result (`SUM_MAKE`) whose non-null variant carries the token. (b) A `HEAP_VIEW`-style foreign view contract whose extent comes from the written size cell, checked once. (c) Capability-specific owner tokens on JNI local/global references produced by acquiring members and consumed by their release members.
+
+**Evidence that closes it.** Verifier tests for each option, then a device run of a decode loop (configure, queue, dequeue, release) and an RFCOMM connect/close with no leaks under StrictMode.
+
+**Status.** OPEN (2026-10-08, ADR-204).
+
 ## JVM R5 follow-up to ADR-176 (2026-10-07, ADR-186)
 
 ADR-176 remains valid negative historical evidence: 0.7683 of the lowest textual median, with three missing cells. The ordinary local mutation adapter now removes task-specific decoding and prevents implicit precondition refresh. Repeated Java/Kotlin/XAX trials are recorded separately by `run_jvm_r5_ai.py`; they do not replace or merge historical rows.

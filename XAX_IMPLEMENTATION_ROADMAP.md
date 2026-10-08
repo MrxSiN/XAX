@@ -511,3 +511,7 @@ These implementation steps are complete. The pinned repeated model comparison,
 independent raw-usage audit and corpus review determine the remaining token
 gate and promotion work. The large application is synthetic, and the abstract
 resource task is verifier checked rather than executed on the JVM.
+
+## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
+
+Done (STRUCTURAL): exact JNI floats and typed-record argument packs, platform declarations for the managed-class APK, POSIX async/ownership contracts, NDK window/codec/AAudio contracts, and the SDK capability table enforced at build time (`docs/ANDROID_PLATFORM_CAPABILITIES.md`). Next: device execution of each new contract on the authorized device, then OI-47 (path-exact ownership for media buffers, NULL windows and JNI-held SDK objects).

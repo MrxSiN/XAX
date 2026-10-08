@@ -16,8 +16,8 @@ behaviour is the XAX export's.  It replaces per-API carriers: an Activity's
 ``View.OnTouchListener.onTouch`` are all instances of it.  The export's
 non-proof parameters must be ``(JNIEnv*, this, arguments...)`` with exact JNI
 widths, and its non-proof results must match the Java result
-(``check_export_signature``).  ``float``/``double`` are rejected because the JNI
-layer has no exact float carrier yet.
+(``check_export_signature``).  ``float``/``double`` travel as exact IEEE
+binary32/binary64 values in V registers (AAPCS64), like every other XAX float.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ from xax_jni import JniReferenceKind, _jni_reference_family, _jni_value_type, jn
 
 ANDROID_MANAGED_CLASS_PREFIX = b"android-managed-class-v1\0"
 ACCESS = {"public": ACC_PUBLIC, "protected": ACC_PROTECTED}
-_PRIMITIVES = frozenset("ZBCSIJ")
+_PRIMITIVES = frozenset("ZBCSIJFD")
 
 
 @dataclass(frozen=True, order=True)
@@ -67,8 +67,6 @@ class AndroidManagedMethod:
             raise ValueError("managed method name must be a Java identifier")
         parameters, result = parse_jvm_method_descriptor(self.descriptor)
         for item in (*parameters, result):
-            if item in ("F", "D"):
-                raise ValueError("float/double callbacks need an exact JNI float carrier (unsupported)")
             if item != "V" and item not in _PRIMITIVES and not item.startswith(("L", "[")):
                 raise ValueError(f"unsupported descriptor component {item!r}")
         if self.access not in ACCESS:

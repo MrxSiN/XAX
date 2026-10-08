@@ -282,13 +282,12 @@ def test_descriptor_driven_field_plans_select_exact_get_set_variants():
     assert len(get_object.call_contract.references) >= 4
 
 
-def test_float_jni_plan_rejects_until_exact_float_type_exists():
+def test_float_jni_plans_are_exact_since_adr_202():
     from xax_jni import jni_method_call_plan, jni_field_access_plan
 
-    with pytest.raises(ValueError, match="no implemented float carrier"):
-        jni_method_call_plan("fixture/api/Example", "f", "(F)I")
-    with pytest.raises(ValueError, match="no implemented float carrier"):
-        jni_field_access_plan("fixture/api/Example", "d", "D")
+    # Before ADR-202 these were hard rejections; tests/test_xax_jni_float.py covers them.
+    assert jni_method_call_plan("fixture/api/Example", "f", "(F)I").function_name == "CallIntMethodA"
+    assert jni_field_access_plan("fixture/api/Example", "d", "D").function_name == "GetDoubleField"
 
 
 def test_stack_jvalue_pack_initializes_full_jint_slot_and_rejects_unsupported_shapes():
@@ -319,10 +318,9 @@ def test_stack_jvalue_pack_initializes_full_jint_slot_and_rejects_unsupported_sh
     assert short.store_bytes == 2
     assert len(short_stores) == 4
     assert all(node.attributes == (2, 2) for node in short_stores)
-    with pytest.raises(ValueError, match="homogeneous integer"):
+    with pytest.raises(ValueError, match="explicit reference argument"):
         jni_argument_pack_plan("(ILjava/lang/String;)V")
-    with pytest.raises(ValueError, match="homogeneous integer"):
-        jni_argument_pack_plan("(F)V")
+    assert jni_argument_pack_plan("(F)V").mode == "typed_record"
 
 
 def test_mixed_reference_jvalue_pack_checks_type_loader_nullability_and_sdk_subtyping():
@@ -362,12 +360,12 @@ def test_mixed_reference_jvalue_pack_checks_type_loader_nullability_and_sdk_subt
             reference_arguments=(runnable, None),
             expected_reference_loader_domains=(b"app:fixture", None),
         )
-    with pytest.raises(ValueError, match="mixed jlong"):
-        jni_argument_pack_plan(
-            "(Ljava/lang/Runnable;I)Z",
-            reference_arguments=(runnable, None),
-            expected_reference_loader_domains=(boot, None),
-        )
+    # Narrow integers beside references use the exact typed-record pack (ADR-202).
+    assert jni_argument_pack_plan(
+        "(Ljava/lang/Runnable;I)Z",
+        reference_arguments=(runnable, None),
+        expected_reference_loader_domains=(boot, None),
+    ).mode == "typed_record"
     with pytest.raises(ValueError, match="weak-global"):
         JniReferenceArgumentSpec(
             "Ljava/lang/Runnable;", JniReferenceKind.WEAK_GLOBAL, boot

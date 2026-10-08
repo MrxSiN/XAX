@@ -1145,7 +1145,9 @@ def _build_android_unsigned_apk(
     libxposed_hot_reload_carriers: list[SemanticObject] = []
     export_carriers: list[SemanticObject] = []
     managed_carriers: list[SemanticObject] = []
+    declaration_carriers: list[SemanticObject] = []
     from xax_android_managed import ANDROID_MANAGED_CLASS_PREFIX
+    from xax_manifest import ANDROID_PLATFORM_DECLARATIONS_PREFIX
     for module_cid in package_view.modules:
         module = reader.get(module_cid)
         for cid in module.references:
@@ -1200,17 +1202,25 @@ def _build_android_unsigned_apk(
                 export_carriers.append(child)
             elif identity.startswith(ANDROID_MANAGED_CLASS_PREFIX):
                 managed_carriers.append(child)
+            elif identity.startswith(ANDROID_PLATFORM_DECLARATIONS_PREFIX):
+                declaration_carriers.append(child)
 
     if managed_carriers:
         # General managed classes (ADR-199) are their own APK profile: every component is one.
         others = (ui_carriers, application_carriers, receiver_carriers, service_carriers, libxposed_carriers,
                   libxposed_managed_entry_carriers, libxposed_hook_adapter_carriers, libxposed_hook_install_carriers)
-        if any(others) or len(manifest_carriers) != 1 or len(resource_carriers) > 1:
+        if any(others) or len(manifest_carriers) != 1 or len(resource_carriers) > 1 or len(declaration_carriers) > 1:
             fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-MANAGED-PROFILE",
-                 "managed classes + one manifest + 0..1 resources + exports",
-                 {"other_carriers": sum(len(item) for item in others), "manifest": len(manifest_carriers), "resources": len(resource_carriers)})
+                 "managed classes + one manifest + 0..1 resources + 0..1 platform declarations + exports",
+                 {"other_carriers": sum(len(item) for item in others), "manifest": len(manifest_carriers),
+                  "resources": len(resource_carriers), "declarations": len(declaration_carriers)})
         return _build_android_managed_apk(reader, package_view, target_object, build_entry_function,
-                                          manifest_carriers[0], managed_carriers, resource_carriers, export_carriers)
+                                          manifest_carriers[0], managed_carriers, resource_carriers, export_carriers,
+                                          declaration_carriers[0] if declaration_carriers else None)
+    if declaration_carriers:
+        # Platform declarations register managed components (ADR-203); other profiles have none.
+        fail("XAX.BUILD.ANDROID", declaration_carriers[0].cid.hex(), "ANDROID-DECLARATIONS-PROFILE",
+             "the managed-class profile", "a pre-managed APK profile")
     if description.identity != ANDROID_TARGET_IDENTITY:
         fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
 
@@ -1876,7 +1886,7 @@ def _build_android_unsigned_apk(
 
 
 def _build_android_managed_apk(reader, package_view, target_object, build_entry_function, manifest_carrier,
-                               managed_carriers, resource_carriers, export_carriers) -> bytes:
+                               managed_carriers, resource_carriers, export_carriers, declarations_carrier=None) -> bytes:
     """An APK whose managed side is only ``android-managed-class-v1`` classes (ADR-199).
 
     The manifest's Activity must be one of them; every forwarded method must have a JNI export whose ABI signature
@@ -1909,13 +1919,15 @@ def _build_android_managed_apk(reader, package_view, target_object, build_entry_
                 fail("XAX.BUILD.ANDROID", exports[symbol].function_cid.hex(), "ANDROID-MANAGED-JNI-SIGNATURE", f"{item.java_name}.{method.name}{method.descriptor}", reason)
     if build_entry_function not in {exports[symbol].function_cid for symbol in classes[activity].symbols()}:
         fail("XAX.BUILD.ANDROID", where, "ANDROID-APK-BUILD-ENTRY", "an export of the manifest Activity", build_entry_function.hex())
+    from xax_android_platform import check_managed_platform_usage
+    check_managed_platform_usage(reader, manifest, declarations_carrier, classes, exports)
     shared = compile_android_shared(reader, tuple(export_carriers), target_object=target_object, soname=b"libxaxapp.so")
     ordered = [activity, *sorted((cid for cid in classes if cid != activity), key=lambda cid: classes[cid].class_descriptor)]
     dex = [emit_dex039_bridge(lower_android_managed_class(reader.get(cid))) for cid in ordered]
     extra = {f"classes{index}.dex": data for index, data in enumerate(dex[1:], start=2)}
     if resource_carriers:
         extra["resources.arsc"] = emit_resources_arsc_from_semantics(resource_carriers[0])
-    return build_unsigned_apk(emit_binary_manifest_from_semantics(manifest_carrier), dex[0],
+    return build_unsigned_apk(emit_binary_manifest_from_semantics(manifest_carrier, declarations_carrier), dex[0],
                               native_libraries={"libxaxapp.so": shared.data}, extra_entries=extra)
 
 
