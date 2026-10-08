@@ -55,6 +55,11 @@ Linux x86-64 is R4 (§15.33). Next for this row: an R5 maintenance record (`benc
 
 Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-runs on another host (`jsonmin`'s margin is small), a maintenance cycle with a structural edit, and an XAX-only application larger than `xb64`, ideally built by an independent agent.
 
+## S8c.1 integer typing rejections — 2026-10-08 (ADR-214)
+
+- `_node_entry` (`xax_selfhost_typing.py`) calls `_integer_rejection`, which returns the first failing bootstrap check as a site and three payload words. The verdict becomes `REJECTED` and the record lands at `DIAGNOSTICS + 4 * node`; `rejection(record, cids)` renders it. Site 0 means "leave it to the bootstrap".
+- Next (S8c.2): the float, compare, aggregate/sum, resource, meta, constant, and call families, same pattern; keep deferring every case whose bootstrap check would first raise a decode diagnostic. Then facts declines and object verification.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

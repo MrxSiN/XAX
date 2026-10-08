@@ -6503,22 +6503,27 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     proven_nodes: frozenset[tuple[int, int]] = frozenset()
     proven_constants: frozenset[tuple[int, int]] = frozenset()
     proven_terminators: frozenset[int] = frozenset()
+    rejected_nodes: dict[tuple[int, int], tuple] = {}  # S8c.1 (ADR-214): XAX's rejection diagnostics
     fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
     linear_proven = False  # S6a (ADR-142): XAX proved resource and effect linearity
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
     typing = _native_typing() if checked_uses else None
     if typing is not None:
-        from xax_selfhost_typing import PROVEN, marshal, type_info_from
+        from xax_selfhost_typing import PROVEN, REJECTED, marshal, rejection, type_info_from
 
+        type_cids: list[bytes] = []
         words, keys, value_refs = marshal(
             blocks,
             lambda block_index, node_index: tuple(value_type(value, block_index, node_index) for value in blocks[block_index].nodes[node_index].operands),
             type_info_from(resolve),
             lambda block_index, value: value_type(value, block_index, len(blocks[block_index].nodes)),
             facts=(entry, order, lambda node: _callee_summary(node, resolve), lambda node: _callee_links(node, resolve)),
+            cids=type_cids,
         )
         status, verdicts = typing.check(words, len(keys) + len(blocks) + 1)
         if status == 0:
+            rejected_nodes = {key: rejection(typing.rejection_record(index), type_cids)
+                              for index, (key, verdict) in enumerate(zip(keys, verdicts)) if verdict == REJECTED}
             proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
             proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
             # A direct call's contract is proven, but its branch also borrows views and resources: it is skipped only in fact-free graphs.
@@ -6646,6 +6651,10 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 node.operand_types = operand_types
                 if (block_index, node_index) in proven_nodes:
                     pass  # S4 (ADR-132): typed by the XAX rules
+                elif (block_index, node_index) in rejected_nodes:
+                    # S8c.1 (ADR-214): XAX decided this node's rejection; the bootstrap check is not run.
+                    code, rule, expected, actual = rejected_nodes[(block_index, node_index)]
+                    fail(code, obj.cid.hex(), rule, expected, actual)
                 elif node.operation in BINARY_INTEGER_OPERATIONS:
                     if len(node.operands) != 2 or len(node.results) != 1 or node.attributes:
                         fail("XAX.STRUCT.OP_ARITY", obj.cid.hex(), "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes", [len(node.operands), len(node.results), len(node.attributes)])

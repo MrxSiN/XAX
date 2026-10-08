@@ -124,7 +124,8 @@ def _outcome(native, operation, operand_types, result_types, attributes, entity=
             entry = graph.function(tuple(operand_types), tuple(result_types))
             program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *POOL, *CONSTANTS, *CALLEE_OBJECTS))
         except XaxError as error:
-            return error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity
+            diagnostic = error.diagnostic
+            return diagnostic.code, diagnostic.rule, diagnostic.entity, repr(diagnostic.expected), repr(diagnostic.actual)
         except ValueError as error:
             return "ValueError", str(error), None
         return None
@@ -278,12 +279,12 @@ class SelfhostTypingTests(unittest.TestCase):
         cls.native = NativeTyping()
 
     def test_proven_nodes_are_accepted_by_the_bootstrap(self):
-        from xax_selfhost_typing import PROVEN
+        from xax_selfhost_typing import PROVEN, REJECTED
 
         samples = _samples(2000)
         status, verdicts = _native_verdicts(self.native, samples)
         self.assertEqual(status, 0)
-        proven = accepted = aggregates = proofs = 0
+        proven = accepted = aggregates = proofs = rejected = 0
         for index, sample in enumerate(samples):
             baseline = _outcome(None, *sample)
             accepts = baseline is None
@@ -296,6 +297,11 @@ class SelfhostTypingTests(unittest.TestCase):
                 self.assertEqual(_outcome(self.native, *sample), baseline, sample)
                 if not accepts:
                     self.assertNotIn(baseline[1], TYPING_RULES, sample)
+            elif verdicts[index] == REJECTED:
+                # S8c.1 (ADR-214): XAX's rejection is the bootstrap's exact diagnostic.
+                rejected += 1
+                self.assertIsNotNone(baseline, sample)
+                self.assertEqual(_outcome(self.native, *sample), baseline, sample)
             # Every accepted sample is proven unless it involves a nested aggregate.
             elif accepts and NESTED not in (*sample[1], *sample[2]):
                 self.fail(f"accepted but not proven: {sample}")
@@ -303,9 +309,10 @@ class SelfhostTypingTests(unittest.TestCase):
         self.assertGreater(proven, 150)
         self.assertGreater(aggregates, 30)
         self.assertGreater(proofs, 60)
+        self.assertGreater(rejected, 40)
 
     def test_each_family_proves_its_well_typed_node(self):
-        from xax_selfhost_typing import NOT_COVERED, NOT_PROVEN, PROVEN
+        from xax_selfhost_typing import INTEGER_FAMILIES, NOT_COVERED, NOT_PROVEN, PROVEN, REJECTED
 
         good = [
             (Operation.ADD_WRAP, (B32, B32), (B32,), ()),
@@ -380,9 +387,38 @@ class SelfhostTypingTests(unittest.TestCase):
             self.assertEqual(verdicts[index], PROVEN, sample)
             self.assertTrue(_bootstrap_accepts(*sample), sample)
         for index, sample in enumerate(bad, start=len(good)):
-            self.assertEqual(verdicts[index], NOT_PROVEN, sample)
+            # S8c.1: XAX rejects the integer families itself; the rest stay with the bootstrap.
+            self.assertEqual(verdicts[index], REJECTED if sample[0] in INTEGER_FAMILIES and sample[1] != (OVERLONG, OVERLONG) else NOT_PROVEN, sample)
             self.assertFalse(_bootstrap_accepts(*sample), sample)
         self.assertNotIn(NOT_COVERED, verdicts.values())
+
+    def test_integer_rejections_are_decided_by_xax(self):
+        """S8c.1 (ADR-214): every integer-family rejection site, with the bootstrap's exact diagnostic."""
+        from xax_selfhost_typing import REJECTED, rejection
+
+        cases = {
+            "GRAPH-OP-ARITY": (Operation.ADD_WRAP, (B32, B32, B32), (B32,), ()),
+            "GRAPH-OP-TYPE": (Operation.UREM, (B32, B64), (B32,), ()),
+            "INT-WIDTH-CONTRACT": (Operation.INT_TRUNCATE, (B64, B64), (B8,), ()),
+            "INT-TRUNCATE-NARROWS": (Operation.INT_TRUNCATE, (B8,), (B32,), ()),
+            "INT-ZERO-EXTEND-WIDENS": (Operation.INT_ZERO_EXTEND, (B32,), (B32,), ()),
+            "INT-ROTATE-CONTRACT": (Operation.ROTATE_RIGHT, (B64, B64), (B64,), (1,)),
+            "INT-ROTATE-TYPE": (Operation.ROTATE_RIGHT, (B32,), (B64,), (3,)),
+            "INT-ROTATE-AMOUNT": (Operation.ROTATE_RIGHT, (B64,), (B64,), (64,)),
+        }
+        status, verdicts = _native_verdicts(self.native, list(cases.values()))
+        self.assertEqual(status, 0)
+        for index, (rule, sample) in enumerate(cases.items()):
+            self.assertEqual(verdicts[index], REJECTED, rule)
+            baseline = _outcome(None, *sample)
+            self.assertEqual(baseline[1], rule)
+            self.assertEqual(_outcome(self.native, *sample), baseline, rule)
+        # Undecodable types and clamped attributes stay with the bootstrap.
+        status, verdicts = _native_verdicts(self.native, [(Operation.ADD_WRAP, (OVERLONG, OVERLONG), (OVERLONG,), ()),
+                                                          (Operation.ROTATE_RIGHT, (B64,), (B64,), ((1 << 64) - 1,))])
+        self.assertEqual(list(verdicts.values()), [2, 2])
+        with self.assertRaises(ValueError):
+            rejection((99, 0, 0, 0), [])
 
     def test_terminator_typing(self):
         """S4d.1: branch conditions are bits<1>; edge arguments match the target's parameters."""
