@@ -109,7 +109,8 @@ def _verify(reader, use_xax: bool):
         xax_compiler.verify_store(reader)
         return ("accept",)
     except XaxError as error:
-        return ("reject", error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity)
+        d = error.diagnostic
+        return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual))
     finally:
         xax_compiler._xax_verify_store = saved
 
@@ -120,7 +121,7 @@ class SelfhostStoreVerifierTests(unittest.TestCase):
         import xax_compiler
 
         rng = random.Random(144)
-        valid = proven_valid = rejected = 0
+        valid = proven_valid = rejected = decided = 0
         for trial in range(160):
             mutation = MUTATIONS[trial % len(MUTATIONS)]
             reader = _store(rng, mutation)
@@ -134,7 +135,13 @@ class SelfhostStoreVerifierTests(unittest.TestCase):
                 if bootstrap[0] == "reject":
                     rejected += 1
                     failing = bytes.fromhex(bootstrap[3]) if len(bootstrap[3]) == 64 else None
-                    self.assertNotIn(failing, proven, "XAX proved the object the bootstrap rejects")
+                    verdict = proven.get(failing)
+                    if isinstance(verdict, xax_compiler._XaxRejection):
+                        # S8c.19 (ADR-237): XAX rejected the object itself, with the bootstrap's diagnostic.
+                        decided += 1
+                        self.assertEqual((verdict[0], verdict[1], repr(verdict[2]), repr(verdict[3])), (bootstrap[1], bootstrap[2], *bootstrap[4:]))
+                    else:
+                        self.assertNotIn(failing, proven, "XAX proved the object the bootstrap rejects")
                     if bootstrap[2] in ("ID-ROOTED-STORE", "ID-MERKLE-ACYCLIC"):
                         self.assertFalse(store_ok)
                 else:
@@ -143,6 +150,7 @@ class SelfhostStoreVerifierTests(unittest.TestCase):
                     proven_valid += store_ok and expected <= set(proven)
         self.assertGreater(valid, 40)
         self.assertGreater(rejected, 30)
+        self.assertGreater(decided, 10)
         self.assertEqual(proven_valid, valid)
 
 

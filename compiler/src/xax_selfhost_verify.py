@@ -55,7 +55,9 @@ from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_store_verifier.xax"
 VERDICTS_AT, GRAPHS_AT, ARENA_AT = 1 << 20, 6 << 20, 12 << 20
+REJECTS_AT, REJECT_WORDS = 3 << 20, 4  # S8c.19 (ADR-237): a rejected object's record: site, three payload words
 OK = 1
+REJECTED = 2  # an object verdict: the bootstrap rejects this object with the recorded diagnostic
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
 ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
                    61, 63, 64, 65, 66, 73, 74, 75, 76)
@@ -105,6 +107,41 @@ def _no(e: E, condition):
     code = len(DECLINE_SITES) + 1
     DECLINE_SITES.append(f"{frame.function}:{frame.lineno}")
     e.if_(condition, lambda: (e.st(2, code), e.give(0)))
+
+
+# S8c.19 (ADR-237): object rejections the bootstrap's ``verify_object`` raises, in its order, once the object's own
+# references all resolve (its OBJECT_MISSING checks come first).
+OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_CHILD_KIND",
+                "CONTRACT_REF_INDEX", "CONTRACT_TRUNCATED", "CONTRACT_BOOL", "CONTRACT_TRAILING", "CONTRACT_UNUSED")
+S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
+
+
+def _reject(e: E, condition, obj, site: int, *payload):
+    """Verdict REJECTED (with the record) when ``condition``."""
+    def record():
+        at = e.add(REJECTS_AT, e.mul(obj, REJECT_WORDS))
+        e.st(at, site)
+        for index, word in enumerate(payload):
+            e.st(e.add(at, index + 1), word)
+        e.give(REJECTED)
+
+    e.if_(condition, record)
+
+
+def _resolved(e: E, obj):
+    """1 when every reference of ``obj`` names a stored object."""
+    p = e.p
+    e.var("resolved", 1)
+    e.for_("rq", 0, _references(e, obj), lambda: e.if_(e.eq(_reference(e, obj, p["rq"]), NONE), lambda: e.set("resolved", 0)))
+    return p["resolved"]
+
+
+def _list_copy(e: E, count, word):
+    """``[count, word(0) .. word(count - 1)]`` in the arena (a rejection quotes it); NONE when it cannot."""
+    p = e.p
+    e.var("copy", e.alloc(e.add(count, 1)))
+    e.if_(e.ne(p["copy"], NONE), lambda: (e.st(p["copy"], count), e.for_("cq", 0, count, lambda: e.st(e.add(p["copy"], e.add(p["cq"], 1)), word(p["cq"])))))
+    return p["copy"]
 
 
 def _read(e: E, name: str, end):
@@ -1482,19 +1519,30 @@ def _list_ok(tables, allowed):
     def build(e: E):
         p = e.p
         o = p["o"]
+        _no(e, e.eq(_resolved(e, o), 0))
+        refs = _references(e, o)
+        e.var("lrefs", refs)
         e.var("la", _payload(e, o))
         end = e.add(p["la"], e.rd(e.sub(p["la"], 1)))
         e.var("lend", end)
         count = _read(e, "la", p["lend"])
         e.var("lcount", count)
-        _no(e, e.ne(p["lcount"], _references(e, o)))
-        e.for_("q", 0, p["lcount"], lambda: _no(e, e.ne(_read(e, "la", p["lend"]), p["q"])))
-        _no(e, e.ne(p["la"], p["lend"]))
+        # The indices (as the bootstrap reads them, before its end check), kept for the diagnostics.
+        e.var("lindices", e.alloc(e.add(p["lcount"], 1)))
+        _no(e, e.eq(p["lindices"], NONE))
+        e.st(p["lindices"], p["lcount"])
+        e.for_("q", 0, p["lcount"], lambda: e.st(e.add(p["lindices"], e.add(p["q"], 1)), _read(e, "la", p["lend"])))
+        _reject(e, e.ne(p["la"], p["lend"]), o, S["LIST_TRAILING"], e.sub(p["lend"], p["la"]))
+        e.var("lout", 0)
+        e.for_("q", 0, p["lcount"], lambda: e.if_(e.le(p["lrefs"], e.ld(e.add(p["lindices"], e.add(p["q"], 1)))), lambda: e.set("lout", 1)))
+        _reject(e, e.ne(p["lout"], 0), o, S["LIST_REF_INDEX"], p["lrefs"], p["lindices"])
+        e.var("lorder", e.flag(e.eq(p["lcount"], p["lrefs"])))
+        e.for_("q", 0, p["lcount"], lambda: e.if_(e.ne(e.ld(e.add(p["lindices"], e.add(p["q"], 1))), p["q"]), lambda: e.set("lorder", 0)))
+        _reject(e, e.eq(p["lorder"], 0), o, S["LIST_REFERENCE_BODY"], p["lrefs"], p["lindices"])
 
         def child():
             target = _reference(e, o, p["q"])
-            _no(e, e.eq(target, NONE))
-            _no(e, e.not_(e.either(*(e.eq(_kind(e, target), int(kind)) for kind in allowed))))
+            _reject(e, e.not_(e.either(*(e.eq(_kind(e, target), int(kind)) for kind in allowed))), o, S["LIST_CHILD_KIND"], _kind(e, target))
 
         e.for_("q", 0, p["lcount"], child)
         e.give(1)
@@ -1506,20 +1554,29 @@ def _contract_ok(tables):
     def build(e: E):
         p = e.p
         o = p["o"]
+        _no(e, e.eq(_resolved(e, o), 0))
         e.var("refs", _references(e, o))
         e.var("ca", _payload(e, o))
         end = e.add(p["ca"], e.rd(e.sub(p["ca"], 1)))
         e.var("cend", end)
         _clear_marks(e, p["refs"])
+
+        def type_reference():
+            index = _read(e, "ca", p["cend"])
+            e.var("ca_index", index)
+            _reject(e, e.le(p["refs"], p["ca_index"]), o, S["CONTRACT_REF_INDEX"], p["refs"], p["ca_index"])
+            _no(e, e.not_(_type_ok(e, _reference(e, o, p["ca_index"]))))  # the bootstrap verifies the type itself
+            _mark(e, p["ca_index"])
+
         for _part in range(2):
             e.var("ccount", _read(e, "ca", p["cend"]))
-            e.for_("q", 0, p["ccount"], lambda: _type_reference(e, o, "ca", p["cend"]))
+            e.for_("q", 0, p["ccount"], type_reference)
         for _flag in range(2):
-            _no(e, e.le(p["cend"], p["ca"]))
-            _no(e, e.lt(1, e.rd(p["ca"])))
+            _reject(e, e.le(p["cend"], p["ca"]), o, S["CONTRACT_TRUNCATED"])
+            _reject(e, e.lt(1, e.rd(p["ca"])), o, S["CONTRACT_BOOL"], e.rd(p["ca"]))
             e.set("ca", e.add(p["ca"], 1))
-        _no(e, e.ne(p["ca"], p["cend"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        _reject(e, e.ne(p["ca"], p["cend"]), o, S["CONTRACT_TRAILING"], e.sub(p["cend"], p["ca"]))
+        _reject(e, e.eq(_all_marked(e, p["refs"]), 0), o, S["CONTRACT_UNUSED"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
         e.give(1)
     return _function(("o",), build, tables)
 
@@ -1570,7 +1627,7 @@ def _program(tables):
                 e.if_(e.eq(kind, int(Kind.BUILD)), lambda: e.set("verdict", e.call(_FN["build"], o)))
                 e.if_(e.eq(kind, int(Kind.GRAPH_FRAGMENT)), lambda: e.set("verdict", e.call(_FN["glue"], o)))
             this_pass = e.eq(kind, int(Kind.RECURSION_GROUP)) if groups else e.ne(kind, int(Kind.RECURSION_GROUP))
-            e.if_(this_pass, lambda: e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(p["verdict"], 1), 1, 0)))
+            e.if_(this_pass, lambda: e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(p["verdict"], 1), 1, e.sel(e.eq(p["verdict"], REJECTED), REJECTED, 0))))
 
         e.for_("o", 0, p["O"], lambda: verdict(True))
         e.for_("o", 0, p["O"], lambda: verdict(False))
@@ -1721,14 +1778,20 @@ class NativeStoreVerifier:
         """``(store verdict, per-object verdicts, per-object graph words, {group: member graphs})``, or None when it
         cannot run.  A proven function's graph word is its graph object (NONE for a group member function); a proven
         group's (``groups`` lists their positions) points at ``[count, member graphs]``."""
+        return self.verify_with_rejections(words, count, groups)[0]
+
+    def verify_with_rejections(self, words: list[int], count: int, groups=()):
+        """``verify``'s result and the rejected objects' records (``collect_rejections``)."""
         if len(words) > IN_WORDS or any(not 0 <= word < 1 << 64 for word in words):
-            return None
+            return None, {}
         with self._lock:
             self._in[: len(words)] = words
             self._slots[0], self._slots[1] = ctypes.addressof(self._in), ctypes.addressof(self._out)
             self._call(self._entry, ctypes.addressof(self._slots), 4, ctypes.addressof(self._xmm))
             out = self._out
-            return collect_verdicts(lambda start, length: list(out[start : start + length]), count, groups)
+            read = lambda start, length: list(out[start : start + length])  # noqa: E731
+            result = collect_verdicts(read, count, groups)
+            return result, ({} if result is None else collect_rejections(read, result[1]))
 
 
 def collect_verdicts(read, count: int, groups=()):
@@ -1740,6 +1803,52 @@ def collect_verdicts(read, count: int, groups=()):
     verdicts, graphs = read(VERDICTS_AT, count), read(GRAPHS_AT, count)
     members = {o: tuple(read(graphs[o] + 1, read(graphs[o], 1)[0])) for o in groups if verdicts[o] == 1}
     return store == 1, verdicts, graphs, members
+
+
+LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED")  # the second payload word is a [count, words] list
+
+
+def collect_rejections(read, verdicts):
+    """``{object: (site, payload words, quoted list or None)}`` for every REJECTED verdict."""
+    rejections = {}
+    for o, verdict in enumerate(verdicts):
+        if verdict != REJECTED:
+            continue
+        site, *payload = read(REJECTS_AT + REJECT_WORDS * o, REJECT_WORDS)
+        listed = None
+        if 0 < site <= len(OBJECT_SITES) and OBJECT_SITES[site - 1] in LIST_SITES:
+            at = payload[1] if OBJECT_SITES[site - 1] != "CONTRACT_UNUSED" else payload[0]
+            listed = read(at + 1, read(at, 1)[0])
+        rejections[o] = (site, payload, listed)
+    return rejections
+
+
+def object_diagnostic(obj, record):
+    """S8c.19: the bootstrap's ``(code, rule, expected, actual)`` for a rejected object (rendering only: the verifier
+    decided the check and its values)."""
+    site, (x, y, _z), listed = record
+    name = OBJECT_SITES[site - 1]
+    if name == "LIST_TRAILING":
+        return "XAX.CANON.TRAILING_BYTES", "SCHEMA-BODY", 0, x
+    if name == "LIST_REF_INDEX":
+        return "XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {x}", tuple(listed)
+    if name == "LIST_REFERENCE_BODY":
+        return "XAX.CANON.REFERENCE_BODY", "SER-REF-BODY-CANONICAL", tuple(range(x)), tuple(listed)
+    if name == "LIST_CHILD_KIND":
+        allowed = MODULE_CHILDREN if obj.kind == Kind.MODULE else (Kind.MODULE,)
+        return "XAX.STRUCT.CHILD_KIND", "GRAPH-CHILD-KIND", sorted(kind.name for kind in allowed), Kind(x).name
+    if name == "CONTRACT_REF_INDEX":
+        return "XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {x}", y
+    if name == "CONTRACT_TRUNCATED":
+        return "XAX.CANON.TRUNCATED", "SER-BOUNDS", "1 available bytes", 0
+    if name == "CONTRACT_BOOL":
+        return "XAX.CANON.BOOL", "SER-BOOL-CANONICAL", "00 or 01", f"{x:02x}"
+    if name == "CONTRACT_TRAILING":
+        return "XAX.CANON.TRAILING_BYTES", "CALL-CONTRACT-BODY", 0, x
+    if name == "CONTRACT_UNUSED":
+        used = sorted(obj.references[k].hex() for k, marked in enumerate(listed) if marked)
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", sorted(cid.hex() for cid in obj.references), used
+    raise ValueError(f"unknown object rejection site {site}")
 
 
 def object_table(objects, head: list[int]) -> list[int] | None:
