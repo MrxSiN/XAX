@@ -72,6 +72,8 @@ MEMORY_SITES = (
     # S8c.12 (ADR-229): heap-view construction.
     "LINK_TARGET_ROOT", "VIEW_ALLOCATION", "VIEW_OWNER", "VIEW_ALLOCATOR_EFFECT", "VIEW_ALLOCATOR_EFFECT_PROVEN", "VIEW_STATIC_SIZE",
     "VIEW_BOUNDS", "VIEW_ALIGNMENT", "VIEW_TOKEN_TYPE", "VIEW_EFFECT_TYPE",
+    # S8c.13 (ADR-230): foreign calls (``_verify_foreign_heap_call``).
+    "DEALLOCATE_OWNER", "DEALLOCATE_VIEW_BASE", "DEALLOCATE_OWNER_TYPE", "DEALLOCATE_ALLOCATION", "FOREIGN_EFFECT_LINEAR",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1473,10 +1475,16 @@ def _call_foreign(tables, declaration, end_views):
             e.if_(e.ne(view, NONE), lent)
 
         e.for_("j", 0, inputs, lend_check)
-        # Operands naming ended storage reject.
-        e.for_("j", 0, inputs, lambda: _require(e, e.not_(e.both(
+        # Operands naming ended storage reject (exactly, when no operand carries a link fact, which the bootstrap
+        # checks the same way but this engine does not model here).
+        e.var("link_operand", 0)
+        e.for_("j", 0, inputs, lambda: e.if_(e.both(
+            e.eq(e.value(PSTAMP, e.rd(e.add(n.vids_at, p["j"]))), pass_id), e.eq(e.value(PK, e.rd(e.add(n.vids_at, p["j"]))), LINK)),
+            lambda: e.set("link_operand", 1)))
+        e.for_("j", 0, inputs, lambda: _reject(e, e.not_(e.both(
             e.eq(e.value(PSTAMP, e.rd(e.add(n.vids_at, p["j"]))), pass_id), e.eq(e.value(PK, e.rd(e.add(n.vids_at, p["j"]))), POINTER),
-            _ended(e, e.value(PST, e.rd(e.add(n.vids_at, p["j"]))))))))
+            _ended(e, e.value(PST, e.rd(e.add(n.vids_at, p["j"])))))), M["LIFETIME_LIVE"], e.value(PST, e.rd(e.add(n.vids_at, p["j"]))),
+            renderable=e.both(e.eq(p["link_operand"], 0), _renderable(e, e.value(PST, e.rd(e.add(n.vids_at, p["j"])))))))
         allocator_at = e.add(e.add(outputs_at, 1), outputs)
         sizes = e.ld(e.add(allocator_at, 1))
         has_allocator = e.ne(e.ld(allocator_at), 0)
@@ -1488,17 +1496,22 @@ def _call_foreign(tables, declaration, end_views):
             token_index = e.ld(e.add(deallocator_at, 2))
             token_ref = e.rd(e.add(n.vids_at, token_index))
             token_type = e.rd(e.add(n.tids_at, token_index))
-            _require(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)))
+            _reject(e, e.both(e.eq(e.value(OSTAMP, token_ref), visit), e.ne(e.value(OCON, token_ref), visit)), M["DEALLOCATE_OWNER"], token_ref)
             owner = e.value(OST, token_ref)
 
             def view():
-                _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.eq(e.value(PK, pointer_ref), POINTER), e.eq(e.value(PST, pointer_ref), owner),
-                                   e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)))
+                fact = e.both(e.eq(e.value(PSTAMP, pointer_ref), pass_id), e.ne(e.value(PK, pointer_ref), NO_POINTER))
+                pointer = e.both(fact, e.eq(e.value(PK, pointer_ref), POINTER))
+                _reject(e, e.both(pointer, e.eq(e.value(PST, pointer_ref), owner), e.eq(e.value(POFF, pointer_ref), 0), e.eq(e.value(PWIN, pointer_ref), 0)),
+                        M["DEALLOCATE_VIEW_BASE"], owner, e.flag(fact), e.value(PST, pointer_ref), e.value(POFF, pointer_ref),
+                        renderable=e.both(e.either(e.not_(fact), pointer), _renderable(e, owner), e.either(e.not_(fact), _renderable(e, e.value(PST, pointer_ref)))))
                 e.set("released", owner)
 
             def heap():
-                _require(e, _heap_owner(e, token_type))
-                _require(e, e.both(e.eq(e.value(HSTAMP, pointer_ref), pass_id), e.eq(e.value(HST, pointer_ref), owner)))
+                _reject(e, _heap_owner(e, token_type), M["DEALLOCATE_OWNER_TYPE"], token_type)
+                allocation = e.eq(e.value(HSTAMP, pointer_ref), pass_id)
+                _reject(e, e.both(allocation, e.eq(e.value(HST, pointer_ref), owner)), M["DEALLOCATE_ALLOCATION"], owner, e.sel(allocation, e.value(HST, pointer_ref), NONE),
+                        renderable=e.both(_renderable(e, owner), e.either(e.not_(allocation), _renderable(e, e.value(HST, pointer_ref)))))
 
             e.if_(_heap_view(e, token_type), view, heap)
             e.set_value(OCON, token_ref, visit)
@@ -1541,7 +1554,7 @@ def _call_foreign(tables, declaration, end_views):
 
             def frontier():
                 def with_fact():
-                    _require(e, e.ne(e.value(ECON, value), visit))
+                    _reject(e, e.ne(e.value(ECON, value), visit), M["FOREIGN_EFFECT_LINEAR"])
                     _consumed(e, value)
 
                     # The k-th memory output: scan results for it.
@@ -3146,6 +3159,16 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.HEAP_VIEW", "HEAP-VIEW-TOKEN-TYPE", [x, bool(y)], h(z)
     if name == "VIEW_EFFECT_TYPE":
         return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "effect<memory>", h(x)
+    if name == "DEALLOCATE_OWNER":
+        return "XAX.MEMORY.OWNER", "HEAP-DEALLOCATE-OWNER-PROVEN", "live heap owner or heap view", ref(x)
+    if name == "DEALLOCATE_VIEW_BASE":
+        return "XAX.MEMORY.PROVENANCE", "HEAP-DEALLOCATE-VIEW-BASE", storages[x], [storages[z], w] if y else None
+    if name == "DEALLOCATE_OWNER_TYPE":
+        return "XAX.MEMORY.OWNER", "HEAP-DEALLOCATE-OWNER-TYPE", "heap owner or heap view", h(x)
+    if name == "DEALLOCATE_ALLOCATION":
+        return "XAX.MEMORY.PROVENANCE", "HEAP-DEALLOCATE-ALLOCATION", storages[x], None if y == NONE else storages[y]
+    if name == "FOREIGN_EFFECT_LINEAR":
+        return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_FOREIGN.name
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":
