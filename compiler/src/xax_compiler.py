@@ -7487,7 +7487,7 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
     A function's verdict is its graph object (still parsed here, so failures keep their order); other
     proven objects map to True."""
     try:
-        from xax_selfhost_verify import NONE as NONE_WORD, native_store_verifier, object_table
+        from xax_selfhost_verify import NONE as NONE_WORD, REJECTED, native_store_verifier, object_diagnostic, object_table
     except ImportError:
         return False, {}  # a module it needs is still importing (e.g. hashing at import time); the bootstrap verifies
     hashing = sys.modules.get("blake3")
@@ -7506,11 +7506,14 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
         return False, {}
     words += [int(obj.cid in _XAX_VALID_OBJECTS) for obj in listed]
     groups = [position for position, obj in enumerate(listed) if obj.kind == Kind.RECURSION_GROUP]
-    result = verifier.verify(words, len(listed), groups)
+    result, rejections = verifier.verify_with_rejections(words, len(listed), groups)
     if result is None:
         return False, {}
     store_ok, verdicts, graphs, members = result
     proven: dict[bytes, object] = {}
+    for position, record in rejections.items():
+        # S8c.19 (ADR-237): XAX decided this object's rejection; ``verify_object`` raises it at the bootstrap's point.
+        proven[listed[position].cid] = _XaxRejection(object_diagnostic(listed[position], record))
     for position, obj in enumerate(listed):
         if verdicts[position] != 1:
             continue
@@ -7523,12 +7526,16 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
             _XAX_GLUE_GRAPHS.add(obj.cid)  # S6b.4d: the graph's references and trap payloads are decided
         else:
             proven[obj.cid] = True
-    declined = sum(1 for position in range(len(listed)) if verdicts[position] != 1)
+    declined = sum(1 for position in range(len(listed)) if verdicts[position] not in (1, REJECTED))
     if declined:
         import xax_native
 
         xax_native.declined("store-verifier", declined)  # these objects are decided by the Python bootstrap
     return store_ok, proven
+
+
+class _XaxRejection(tuple):
+    """S8c.19 (ADR-237): an object rejection the XAX store verifier decided: ``(code, rule, expected, actual)``."""
 
 
 def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], proven: object = None) -> None:
@@ -7537,6 +7544,9 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         fail("XAX.IDENTITY.CID_MISMATCH", obj.cid.hex(), "ID-CID-INTEGRITY", expected.hex(), obj.cid.hex())
     for cid in obj.references:
         resolve(cid)
+    if isinstance(proven, _XaxRejection):
+        code, rule, expected_value, actual = proven
+        fail(code, obj.cid.hex(), rule, expected_value, actual)
     if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD):
         # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs
         # in member order, are still parsed (cached) so that an invalid graph fails exactly where the bootstrap would.

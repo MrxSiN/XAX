@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8c.19 object rejections: reference lists and call contracts — 2026-10-08 (ADR-237)
+
+The XAX store verifier now rejects malformed program-root and module reference lists and call contracts with the bootstrap's diagnostics. Still Python: rejections of functions, groups, types, constants, targets, packages, and builds; the remaining memory declines.
+
 ## S8c.18 address, record, and link-lifetime rejections — 2026-10-08 (ADR-236)
 
 Address offsets into records (field offset, stride, authority, alignment), unsized access elements, foreign writes to link-bearing storage, and storage ending before its link dependents are now rejected by the XAX facts engine. Still Python: atomic enum diagnostics, invalid record fields, ambiguous link dependents; object verification.
