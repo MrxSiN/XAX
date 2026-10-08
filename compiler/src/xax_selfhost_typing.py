@@ -1580,6 +1580,19 @@ class NativeTyping:
         base = TABLE + count * OBJOK
         return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
 
+    def memory_rejection(self, refs, storages, operation_of):
+        """After ``facts`` declined: S8c.8 (ADR-221), the engine's exact memory rejection as ``(pass, block, node,
+        (code, rule, expected, actual))``, or None when it declined without one."""
+        from xax_selfhost_facts import ACCEPTED, H_REJECT, H_RBLOCK, H_RNODE, H_RPASS, H_RPAY, H_STATUS, HEADER, memory_diagnostic
+
+        site = self._out[HEADER + H_REJECT]
+        if self._out[HEADER + H_STATUS] == ACCEPTED or site == 0:
+            return None
+        where = tuple(self._out[HEADER + field] for field in (H_RPASS, H_RBLOCK, H_RNODE))
+        payload = list(self._out[HEADER + H_RPAY : HEADER + H_RPAY + 6])
+        operation = operation_of(where[1], where[2])
+        return (*where, memory_diagnostic(site, payload, operation, refs, storages, lambda word: self._out[word]))
+
     def rejection_record(self, node: int) -> tuple[int, int, int, int]:
         """After an accepted ``check``: S8c.1, node ``node``'s rejection record ``(site, a, b, c)``."""
         return tuple(self._out[DIAGNOSTICS + 4 * node : DIAGNOSTICS + 4 * node + 4])

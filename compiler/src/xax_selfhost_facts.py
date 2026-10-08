@@ -53,11 +53,23 @@ ACCEPTED = 1
 # two of which are the view pointers); a callee reads them before anything else.
 H_ARG = 32
 REGISTER_ARGUMENTS = 2
+# S8c.8 (ADR-221): exact memory rejections.  The engine records the first failing check that is one of the
+# bootstrap's own memory checks (``MEMORY_SITES``), where it fails (pass, block, node; the node count for the
+# terminator), and its payload; production raises that diagnostic at the same point of its fact passes.
+H_CUROP, H_MNODE, H_CURBLOCK, H_REJECT, H_RPASS, H_RBLOCK, H_RNODE = range(34, 41)
+H_RPAY = 41  # payload words H_RPAY .. H_RPAY + 5
+MEMORY_SITES = (
+    "PROVENANCE_PROVEN", "LIFETIME_LIVE", "OP_CONTRACT", "ACCESS_SIZE", "POINTER_ELEMENT_SIZE", "ALIGNMENT", "BOUNDS",
+    "READ_PERMISSION", "WRITE_PERMISSION", "EFFECT_PROVEN", "EFFECT_LINEAR", "EFFECT_PROVENANCE", "INITIALIZED",
+    "ADDRESS_BOUNDS", "LIFETIME_LEAK", "OWNER_PROVEN", "OWNER_LIVE", "ALLOCATION_ALIGNMENT",
+)
+M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
 (PK, PST, PEL, PPERM, POFF, PEXT, PALIGN, PALIAS, PWIN, PREC, PLT, PLR, PSTAMP, OST, OSTAMP, EST, EIV, ESTAMP, ECON, OCON) = range(20)
 # S4d.2c: heap allocation facts (pass-stamped), and each value's defining node record (NONE: a parameter).
 (HSTAMP, HST, HSIZE, HZERO, HALIGN, DEF) = range(20, 26)
-VALUE_FIELDS = 26
+ECOP = 26  # S8c.8: the operation that consumed a frontier (``effect_consumers``), set with ECON
+VALUE_FIELDS = 27
 POINTER_WORDS = 12  # PK..PLR
 SLOT = POINTER_WORDS + 3  # pointer fact, owner storage, effect storage, effect intervals
 NO_POINTER, POINTER, LINK = 0, 1, 2
@@ -557,18 +569,67 @@ def _require(e: E, condition):
     e.if_(e.not_(condition), decline)
 
 
-def _pointer(e: E, value_id):
-    """``pointer()``: a live local pointer fact (declines otherwise)."""
-    p = e.p
-    _require(e, e.both(e.eq(e.value(PSTAMP, value_id), e.hd(H_PASS)), e.eq(e.value(PK, value_id), POINTER)))
-    _require(e, e.not_(_ended(e, e.value(PST, value_id))))
+def _reject(e: E, condition, site: int, *payload, renderable=None):
+    """``_require`` for a check that is exactly one of the bootstrap's memory checks, in its order: on failure the engine
+    also records the rejection (site, position, payload) unless an earlier check already failed.  A failure whose
+    diagnostic would quote something the host cannot render (``renderable`` false) only declines."""
+    import inspect
+
+    frame = inspect.stack()[1]
+    code = len(DECLINE_SITES)
+    DECLINE_SITES.append(f"{frame.function}:{frame.lineno}")
+
+    def record():
+        e.set_hd(H_REASON, code + 1)
+        e.set_hd(H_REJECT, site)
+        for field, value in ((H_RPASS, e.hd(H_PASS)), (H_RBLOCK, e.hd(H_CURBLOCK)), (H_RNODE, e.hd(H_MNODE))):
+            e.set_hd(field, value)
+        for index, word in enumerate(payload):
+            e.set_hd(H_RPAY + index, word)
+
+    def reject():
+        first = e.eq(e.hd(H_REASON), 0)
+        e.if_(first if renderable is None else e.both(first, renderable), record,
+              lambda: e.if_(first, lambda: e.set_hd(H_REASON, code + 1)))
+        _decline(e)
+
+    e.if_(e.not_(condition), reject)
 
 
-def _consume_effect(e: E, value_id, storage):
+def _renderable(e: E, site):
+    """A storage the host renders as the bootstrap's storage tuple (call-result storages are not)."""
+    return e.ne(e.rd(e.add(e.hd(H_KINDS), site)), SITE_CALL)
+
+
+def _consumed(e: E, value_id):
+    """Mark a frontier consumed by the current node (``effect_consumers[value] = operation``)."""
+    e.set_value(ECON, value_id, e.hd(H_VISIT))
+    e.set_value(ECOP, value_id, e.hd(H_CUROP))
+
+
+def _pointer(e: E, value_id, exact: bool = False):
+    """``pointer()``: a live local pointer fact (declines otherwise; ``exact``: rejects as the bootstrap does)."""
+    if not exact:
+        _require(e, e.both(e.eq(e.value(PSTAMP, value_id), e.hd(H_PASS)), e.eq(e.value(PK, value_id), POINTER)))
+        _require(e, e.not_(_ended(e, e.value(PST, value_id))))
+        return
+    _reject(e, e.both(e.eq(e.value(PSTAMP, value_id), e.hd(H_PASS)), e.eq(e.value(PK, value_id), POINTER)), M["PROVENANCE_PROVEN"], value_id)
+    storage = e.value(PST, value_id)
+    _reject(e, e.not_(_ended(e, storage)), M["LIFETIME_LIVE"], storage, renderable=_renderable(e, storage))
+
+
+def _consume_effect(e: E, value_id, storage, exact: bool = False):
     """``consume_effect()``: this block's unconsumed frontier of ``storage``; returns its intervals."""
     visit = e.hd(H_VISIT)
-    _require(e, e.both(e.eq(e.value(ESTAMP, value_id), visit), e.ne(e.value(ECON, value_id), visit), e.eq(e.value(EST, value_id), storage)))
-    e.set_value(ECON, value_id, visit)
+    if exact:
+        _reject(e, e.eq(e.value(ESTAMP, value_id), visit), M["EFFECT_PROVEN"], value_id)
+        _reject(e, e.ne(e.value(ECON, value_id), visit), M["EFFECT_LINEAR"], e.value(ECOP, value_id), e.hd(H_CUROP))
+        fact = e.value(EST, value_id)
+        _reject(e, e.eq(fact, storage), M["EFFECT_PROVENANCE"], storage, fact,
+                renderable=e.both(_renderable(e, storage), _renderable(e, fact)))
+    else:
+        _require(e, e.both(e.eq(e.value(ESTAMP, value_id), visit), e.ne(e.value(ECON, value_id), visit), e.eq(e.value(EST, value_id), storage)))
+    _consumed(e, value_id)
     return e.value(EIV, value_id)
 
 
@@ -595,8 +656,21 @@ def _element_size(e: E, element, attribute_size):
     return e.sel(e.ne(e.table(_T.PTR, element), 0), pointer_size, size)
 
 
-def _access(e: E, value_id, size, alignment):
+def _access(e: E, value_id, size, alignment, exact: bool = False):
     element, extent = e.value(PEL, value_id), e.value(PEXT, value_id)
+    if exact:
+        # ``element_size`` then the size, alignment, and bounds checks.  A non-pointer element the program cannot size
+        # makes the bootstrap raise its own element diagnostic: only declined.
+        pointer_element = e.ne(e.table(_T.PTR, element), 0)
+        expected = _element_size(e, element, 0)
+        _reject(e, e.either(e.not_(pointer_element), e.eq(size, 4), e.eq(size, 8)), M["POINTER_ELEMENT_SIZE"], size)
+        _require(e, e.either(pointer_element, e.ne(expected, 0)))
+        _reject(e, e.either(pointer_element, e.eq(size, expected)), M["ACCESS_SIZE"], expected, size)
+        offset = e.value(POFF, value_id)
+        _reject(e, e.both(e.power_of_two(alignment), e.le(alignment, e.value(PALIGN, value_id)), e.eq(e.urem(offset, e.sel(e.eq(alignment, 0), 1, alignment)), 0)),
+                M["ALIGNMENT"], alignment, offset)
+        _reject(e, e.le(size, extent), M["BOUNDS"], size, extent)
+        return
     _require(e, e.eq(size, _element_size(e, element, size)))
     _require(e, e.both(e.ne(size, 0), e.power_of_two(alignment), e.le(alignment, e.value(PALIGN, value_id)), e.eq(e.urem(e.value(POFF, value_id), alignment), 0)))
     _require(e, e.le(size, extent))
@@ -803,12 +877,12 @@ def _view_record(e: E, element, extent):
 def _stack_alloc(tables):
     def build(e: E):
         n = _Node(e)
-        _require(e, n.shape(0, 3, 2))
+        _reject(e, n.shape(0, 3, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
         extent, alignment = n.attr(0), n.attr(1)
         pointer_type = n.rtid(0)
         _require(e, e.both(e.ne(extent, 0), e.power_of_two(alignment), e.ne(e.table(_T.PTR, pointer_type), 0), e.eq(e.table(_T.PSPACE, pointer_type), 1)))
         element, permission = e.table(_T.PELEM, pointer_type), e.table(_T.PPERM, pointer_type)
-        _require(e, e.le(e.table(_T.PALIGN, pointer_type), alignment))
+        _reject(e, e.le(e.table(_T.PALIGN, pointer_type), alignment), M["ALLOCATION_ALIGNMENT"], alignment, e.table(_T.PALIGN, pointer_type))
         _require(e, e.both(e.ne(e.table(_T.STACKOWNER, n.rtid(1)), 0), e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0)))
         _view_record(e, element, extent)
         site = n.site
@@ -831,13 +905,13 @@ def _stack_end(tables):
     def build(e: E):
         n = _Node(e)
         visit = e.hd(H_VISIT)
-        _require(e, n.shape(2, 0, 0))
+        _reject(e, n.shape(2, 0, 0), M["OP_CONTRACT"], n.no, n.nr, n.na)
         owner = n.vid(0)
-        _require(e, e.both(e.eq(e.value(OSTAMP, owner), visit), e.ne(e.value(OCON, owner), visit)))
+        _reject(e, e.eq(e.value(OSTAMP, owner), visit), M["OWNER_PROVEN"], owner)
         storage = e.value(OST, owner)
-        _require(e, e.not_(_ended(e, storage)))
+        _reject(e, e.both(e.ne(e.value(OCON, owner), visit), e.not_(_ended(e, storage))), M["OWNER_LIVE"], storage, renderable=_renderable(e, storage))
         _require(e, e.both(e.ne(e.table(_T.STACKOWNER, n.tid(0)), 0), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0)))
-        _consume_effect(e, n.vid(1), storage)
+        _consume_effect(e, n.vid(1), storage, exact=True)
         e.set_value(OCON, owner, visit)
         _check_dependents(e, storage)
         e.st(_site_word(e, 1, storage), 1)
@@ -849,10 +923,10 @@ def _address_offset(tables):
     def build(e: E):
         n = _Node(e)
         source = n.vid(0)
-        _pointer(e, source)
-        _require(e, n.shape(1, 1, 1))
+        _pointer(e, source, exact=True)
+        _reject(e, n.shape(1, 1, 1), M["OP_CONTRACT"], n.no, n.nr, n.na)
         offset, extent = n.attr(0), e.value(PEXT, source)
-        _require(e, e.le(offset, extent))
+        _reject(e, e.le(offset, extent), M["ADDRESS_BOUNDS"], extent, offset)
         result_type = n.rtid(0)
         _require(e, e.ne(e.table(_T.PTR, result_type), 0))
         element, permission, alignment = e.table(_T.PELEM, result_type), e.table(_T.PPERM, result_type), e.table(_T.PALIGN, result_type)
@@ -892,15 +966,15 @@ def _load(tables, covers):
     def build(e: E):
         n = _Node(e)
         source = n.vid(0)
-        _pointer(e, source)
-        _require(e, n.shape(2, 2, 2))
+        _pointer(e, source, exact=True)
+        _reject(e, n.shape(2, 2, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
         size = n.attr(0)
-        _access(e, source, size, n.attr(1))
-        _require(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.READ)), 0))
+        _access(e, source, size, n.attr(1), exact=True)
+        _reject(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.READ)), 0), M["READ_PERMISSION"], e.value(PPERM, source))
         storage = e.value(PST, source)
-        intervals = _consume_effect(e, n.vid(1), storage)
+        intervals = _consume_effect(e, n.vid(1), storage, exact=True)
         _require(e, e.both(e.eq(n.rtid(0), e.value(PEL, source)), e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.eq(n.rtid(1), n.tid(1))))
-        _require(e, e.eq(e.call(_WINDOW[0], intervals, source, size), 1))
+        _reject(e, e.eq(e.call(_WINDOW[0], intervals, source, size), 1), M["INITIALIZED"], e.value(POFF, source), e.value(PWIN, source), size, intervals)
         _loaded_link(e, source, n.base)
         _set_effect(e, e.add(n.base, 1), storage, intervals)
         e.give(n.next)
@@ -911,15 +985,15 @@ def _store(tables, insert):
     def build(e: E):
         n = _Node(e)
         source = n.vid(0)
-        _pointer(e, source)
-        _require(e, n.shape(3, 1, 2))
+        _pointer(e, source, exact=True)
+        _reject(e, n.shape(3, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
         size = n.attr(0)
-        _access(e, source, size, n.attr(1))
-        _require(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.WRITE)), 0))
+        _access(e, source, size, n.attr(1), exact=True)
+        _reject(e, e.ne(e.and_(e.value(PPERM, source), int(Permission.WRITE)), 0), M["WRITE_PERMISSION"], e.value(PPERM, source))
         _require(e, e.eq(n.tid(1), e.value(PEL, source)))
         _stored_provenance(e, n.vid(1), source)
         storage = e.value(PST, source)
-        intervals = _consume_effect(e, n.vid(2), storage)
+        intervals = _consume_effect(e, n.vid(2), storage, exact=True)
         _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0), e.eq(n.rtid(0), n.tid(2))))
         start = e.value(POFF, source)
         e.var("merged", intervals)  # a windowed store initializes an unknown position: nothing new
@@ -1438,7 +1512,7 @@ def _call_foreign(tables, declaration, end_views):
             def frontier():
                 def with_fact():
                     _require(e, e.ne(e.value(ECON, value), visit))
-                    e.set_value(ECON, value, visit)
+                    _consumed(e, value)
 
                     # The k-th memory output: scan results for it.
                     e.var("seen", 0)
@@ -1543,7 +1617,7 @@ def _view_call(e: E, n, types_at, count, results_at, result_count, insert_effect
             initialized = e.eq(e.table(_T.RSTATE, view_type), 1)
             e.if_(initialized, lambda: _require(e, e.ne(e.call(insert_effect, e.value(EIV, effect_ref), 0, extent), 0)))
             e.set_value(OCON, token_ref, visit)
-            e.set_value(ECON, effect_ref, visit)
+            _consumed(e, effect_ref)
             slot = e.add(p["passed"], e.mul(p["passed_n"], PASSED))
             e.st(slot, view_type)
             e.st(e.add(slot, 1), owner)
@@ -1643,7 +1717,7 @@ def _call_direct(tables, covers):
 
                 def consume():
                     _require(e, e.ne(e.value(ECON, value), visit))
-                    e.set_value(ECON, value, visit)
+                    _consumed(e, value)
 
                 e.if_(e.both(e.ne(e.table(_T.MEMEFFECT, e.rd(e.add(n.tids_at, p["j"]))), 0), e.eq(e.value(ESTAMP, value), visit)), consume)
 
@@ -1699,7 +1773,7 @@ def _resource_call(e: E, n):
         e, e.ne(e.call(_COVERS[0], p["intervals"], p["offset"], e.add(p["offset"], p["size"])), 0)))
     _require(e, e.ne(e.value(ECON, effect_ref), visit))
     e.set_value(OCON, owner_ref, visit)
-    e.set_value(ECON, effect_ref, visit)
+    _consumed(e, effect_ref)
     e.set_value(OST, e.add(n.base, owner_result), storage)
     e.set_value(OSTAMP, e.add(n.base, owner_result), visit)
 
@@ -2284,7 +2358,7 @@ def _call_indirect(tables):
             _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.eq(e.value(OST, owner_ref), storage)))
             _require(e, e.both(e.ne(e.value(OCON, owner_ref), visit), e.ne(e.value(ECON, effect_ref), visit)))
             e.set_value(OCON, owner_ref, visit)
-            e.set_value(ECON, effect_ref, visit)
+            _consumed(e, effect_ref)
             e.set_value(OST, e.add(n.base, p["owner_out"]), storage)
             e.set_value(OSTAMP, e.add(n.base, p["owner_out"]), visit)
             _set_effect(e, e.add(n.base, p["effect_out"]), storage, e.value(EIV, effect_ref))
@@ -2321,6 +2395,7 @@ def _node_dispatch(tables, handlers, end_views):
         cursor = p["cursor"]
         operation, key = e.rd(cursor), e.rd(e.add(cursor, 1))
         e.set_hd(H_NODE, cursor)  # diagnosis: the node being modelled
+        e.set_hd(H_CUROP, operation)
         # A node the typing function covers must be proven by it.
         e.if_(e.ne(key, NONE), lambda: _require(e, e.eq(e.ld(e.add(2, key)), _T.PROVEN)))
         e.var("next", NONE)
@@ -2443,16 +2518,30 @@ def _block(tables, merge, empty, node, covers):
         nodes_at = e.ld(_block_word(e, block, B_NODES))
         e.var("cursor", e.add(nodes_at, 1))
 
+        e.set_hd(H_CURBLOCK, block)
+
         def each_node():
+            e.set_hd(H_MNODE, p["m"])
             e.set("cursor", e.call(node, p["cursor"], block))
             _require(e, e.ne(p["cursor"], NONE))
 
         e.for_("m", 0, e.rd(nodes_at), each_node)
+        e.set_hd(H_MNODE, e.rd(nodes_at))
         # Terminator: no live storage at a return or trap; returned views; then every edge's exit facts.
         term = e.ld(_block_word(e, block, B_TERM))
         kind, values = e.rd(term), e.rd(e.add(term, 1))
         leaving = e.either(e.eq(kind, int(TerminatorKind.RETURN)), e.eq(kind, int(TerminatorKind.TRAP)))
-        e.for_("s", 0, e.hd(H_S), lambda: _require(e, e.not_(e.both(leaving, e.ne(e.ld(_site_word(e, 0, p["s"])), 0), e.not_(_ended(e, p["s"]))))))
+        # S8c.8: a leak rejects when every storage either list names is one the host renders.
+        e.var("leak", 0)
+        e.var("plain", 1)
+
+        def each_site():
+            listed = e.either(e.ne(e.ld(_site_word(e, 0, p["s"])), 0), _ended(e, p["s"]))
+            e.if_(e.both(e.ne(e.ld(_site_word(e, 0, p["s"])), 0), e.not_(_ended(e, p["s"]))), lambda: e.set("leak", 1))
+            e.if_(e.both(listed, e.not_(_renderable(e, p["s"]))), lambda: e.set("plain", 0))
+
+        e.for_("s", 0, e.hd(H_S), each_site)
+        _reject(e, e.not_(e.both(leaving, e.ne(p["leak"], 0))), M["LIFETIME_LEAK"], renderable=e.ne(p["plain"], 0))
         e.if_(e.eq(kind, int(TerminatorKind.RETURN)), lambda: _return_views(e, term, values, covers))
         e.if_(e.ne(e.hd(H_RENTRY), R_NONE), lambda: _return_resource_entry(e, term, values))
         edges_count_at = e.add(e.add(term, 2), e.mul(values, 2))
@@ -2619,6 +2708,7 @@ def _engine(tables, block, empty, record_equal):
         p = e.p
         e.set_hd(H_STATUS, 0)
         e.set_hd(H_REASON, 0)
+        e.set_hd(H_REJECT, 0)
         e.set_hd(H_LINEAR, 0)
         _require(e, e.ne(e.rd(e.hd(H_FACTS_AT)), 0))  # no facts section: nothing to decide
         at = e.add(e.hd(H_FACTS_AT), 1)
@@ -2898,6 +2988,76 @@ def _linear_flow(tables):
         e.for_("b", 0, B, joins)
         e.give(1)
     return _function((), build, tables)
+
+
+def facts_storages(blocks, entry):
+    """S8c.8: the bootstrap's storage tuple for each engine site, in ``_facts_section``'s order (None: a call result)."""
+    from xax_compiler import Operation as Op
+
+    storages = [(-1, 0), *((-2, index) for index in range(len(blocks[entry].parameters)))]
+    for block_index, block in enumerate(blocks):
+        for node_index, node in enumerate(block.nodes):
+            if node.operation in (Op.STACK_ALLOC, Op.HEAP_VIEW, Op.CALL_FOREIGN):
+                storages.append((block_index, node_index))
+            elif node.operation in (Op.CALL_DIRECT, Op.CALL_GROUP_MEMBER):
+                storages.extend([None] * len(node.results))
+    return storages
+
+
+_CONTRACTS = {
+    Operation.LOAD_BITS_LE: (2, 2, 2), Operation.STORE_BITS_LE: (3, 1, 2), Operation.ADDRESS_OFFSET: (1, 1, 1),
+    Operation.STACK_END: (2, 0, 0), Operation.STACK_ALLOC: (0, 3, 2),
+}
+
+
+def memory_diagnostic(site: int, payload, operation, refs, storages, read):
+    """S8c.8: the bootstrap's ``(code, rule, expected, actual)`` for an engine rejection record.  Rendering only: the
+    engine decided the check and its values; ``refs``/``storages`` map its value and site ids to the bootstrap's
+    ``ValueRef``s and storage tuples, and ``read(word)`` reads its output view."""
+    name = MEMORY_SITES[site - 1]
+    x, y, z, w = payload[:4]
+    ref = lambda value: [refs[value].block, refs[value].index, refs[value].result]  # noqa: E731
+    if name == "PROVENANCE_PROVEN":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-PROVENANCE-PROVEN", "local stack pointer", ref(x)
+    if name == "LIFETIME_LIVE":
+        return "XAX.MEMORY.USE_AFTER_LIFETIME", "MEMORY-LIFETIME-LIVE", "live storage", storages[x]
+    if name == "OWNER_LIVE":
+        return "XAX.MEMORY.USE_AFTER_LIFETIME", "MEMORY-LIFETIME-LIVE", "live storage owner", storages[x]
+    if name == "OP_CONTRACT":
+        return "XAX.MEMORY.CONTRACT", "MEMORY-OP-CONTRACT", _CONTRACTS[Operation(operation)], (x, y, z)
+    if name == "ACCESS_SIZE":
+        return "XAX.MEMORY.ACCESS_SIZE", "MEMORY-ACCESS-SIZE", x, y
+    if name == "POINTER_ELEMENT_SIZE":
+        return "XAX.MEMORY.ACCESS_SIZE", "MEMORY-POINTER-ELEMENT-SIZE", [4, 8], x
+    if name == "ALIGNMENT":
+        return "XAX.MEMORY.ALIGNMENT", "MEMORY-ALIGNMENT", f"aligned to {x}", y
+    if name == "BOUNDS":
+        return "XAX.MEMORY.BOUNDS", "MEMORY-BOUNDS", f"at least {x} bytes", y
+    if name in ("READ_PERMISSION", "WRITE_PERMISSION"):
+        kind = "read" if name == "READ_PERMISSION" else "write"
+        return "XAX.MEMORY.PERMISSION", f"MEMORY-{kind.upper()}-PERMISSION", kind, x
+    if name == "EFFECT_PROVEN":
+        return "XAX.MEMORY.EFFECT", "MEMORY-EFFECT-PROVEN", "local memory frontier", ref(x)
+    if name == "EFFECT_LINEAR":
+        code = "XAX.MEMORY.USE_AFTER_LIFETIME" if x == Operation.STACK_END else "XAX.MEMORY.EFFECT_FORK"
+        return code, "MEMORY-EFFECT-LINEAR", "one consumer", Operation(y).name
+    if name == "EFFECT_PROVENANCE":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-EFFECT-PROVENANCE", storages[x], storages[y]
+    if name == "INITIALIZED":
+        count = read(w)
+        intervals = tuple((read(w + 1 + 2 * k), read(w + 2 + 2 * k)) for k in range(count))
+        return "XAX.MEMORY.UNINITIALIZED", "MEMORY-INITIALIZED", [x, x + y + z], intervals
+    if name == "ADDRESS_BOUNDS":
+        return "XAX.MEMORY.BOUNDS", "MEMORY-ADDRESS-BOUNDS", f"<= {x}", y
+    if name == "LIFETIME_LEAK":
+        sites, count = read(HEADER + H_SITES), read(HEADER + H_S)
+        listed = lambda which: sorted(storages[k] for k in range(count) if read(sites + count * which + k))  # noqa: E731
+        return "XAX.MEMORY.LIFETIME_LEAK", "MEMORY-LIFETIME-EXPLICIT-END", listed(0), listed(1)
+    if name == "OWNER_PROVEN":
+        return "XAX.MEMORY.OWNER", "MEMORY-OWNER-PROVEN", "local stack owner", ref(x)
+    if name == "ALLOCATION_ALIGNMENT":
+        return "XAX.MEMORY.ALIGNMENT", "MEMORY-ALIGNMENT", f"<= {x}", y
+    raise ValueError(f"unknown memory rejection site {site}")
 
 
 def build_engine():

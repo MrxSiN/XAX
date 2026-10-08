@@ -122,7 +122,8 @@ def _outcome(native, function, objects):
         try:
             reader = program_store(function, x86_64_linux_exec_target(), objects)
         except XaxError as error:
-            return ("reject", error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity)
+            d = error.diagnostic
+            return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual))
         resolve = store_resolver(reader)
         parsed = _parse_graph(_decode_function_interface(function, resolve)[0], resolve)
         return ("accept", parsed.pointer_extents, parsed.returns)
@@ -147,19 +148,34 @@ class SelfhostFactsTests(unittest.TestCase):
             accepted.append(result[0])
             return result
 
+        # S8c.8 (ADR-221): rejections the engine decided itself (the bootstrap check was not run).
+        decided = []
+        original_rejection = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original_rejection(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
         rng = random.Random(137)
         outcomes = {"accept": 0, "reject": 0}
         typing_module.NativeTyping.facts = counting
+        typing_module.NativeTyping.memory_rejection = deciding
+        xax_decided = 0
         try:
             for _ in range(300):
                 mutation = rng.choice(MUTATIONS)
                 function, objects = _program(rng, mutation)
                 baseline = _outcome(None, function, objects)
+                decided.clear()
                 with_engine = _outcome(self.native, function, objects)
-                self.assertEqual(with_engine, baseline, mutation)
+                self.assertEqual(with_engine, baseline, mutation)  # full diagnostic: code, rule, entity, expected, actual
                 outcomes[baseline[0]] += 1
+                xax_decided += baseline[0] == "reject" and any(decided)
         finally:
             typing_module.NativeTyping.facts = original
+            typing_module.NativeTyping.memory_rejection = original_rejection
+        self.assertGreater(xax_decided, outcomes["reject"] * 9 // 10)
         self.assertGreater(outcomes["accept"], 60)
         self.assertGreater(outcomes["reject"], 60)
         # The engine itself accepted many graphs (not only fallbacks to the bootstrap).
