@@ -43,6 +43,10 @@ R4 = leadership (≤ 0.9999× the fastest non-XAX median, significant); R5 = aut
 
 JVM is R5 for one cycle (`benchmarks.bench_r5_maintenance`). Next for R5 breadth: a structural edit (insert/delete nodes) and an interface change maintained the same way, and a second platform row (Linux x86-64 `jsonmin` after its R4). Next level: R6 (U2.5), a complete application whose logic, tests, and build definitions are all XAX.
 
+## R6 groundwork — 2026-10-08 (ADR-210)
+
+New applications are created with `xax_construct.construct` (one request) and then changed only through workspace transactions on the committed store. `xb64` is the first; rerun its record with `python -m benchmarks.bench_r6_xb64`. For an R6 row, the row also needs R4 and R5: Linux needs `chains` to lead; the JVM has R5 but no XAX-only application (the carrier has only the Linux platform surface).
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

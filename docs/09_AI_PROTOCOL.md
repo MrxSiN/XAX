@@ -690,10 +690,17 @@ widths; `nodes` contain ordinary operation/result-type/operand constructor
 arguments; `return` contains result references. Parameter aliases `P0...` and
 prior node-result aliases `@0...` are request-local and are erased before
 semantic identity. This is a transport adapter over `GraphBuilder`, not an
-alternative source language or a task-aware function template. General CFG,
-effect and multi-function construction continues to use the existing semantic
-constructors. Unknown values, invalid types, malformed requests and verifier
-failures MUST reject before a canonical store is returned.
+alternative source language or a task-aware function template. Unknown values,
+invalid types, malformed requests and verifier failures MUST reject before a
+canonical store is returned.
+
+General construction uses the `xax-construct-v1` carrier (`xax_construct.construct`,
+ADR-210): one request carries type aliases, multi-block functions (block
+parameters, nodes with attributes and platform or function entities, `ret`/`br`/
+`cbr` ends), and a package with named build entries. It returns a verified build
+snapshot store. Value names (`p0`, `n3.r1`, `B0.n1`) are request-local and erased.
+The request is a transport record: once the store exists it is authoritative, and
+every later change is a workspace transaction on it, never a re-sent request.
 
 An atomic batch MAY delete an entire dead dependency chain of supported pure
 nodes. Uses inside that same deletion set do not survive publication. Any use

@@ -1,0 +1,114 @@
+{
+  "format": "xax-r6-evidence-v1",
+  "decision": "ADR-210",
+  "label": "EXECUTED",
+  "application": {
+    "name": "xb64",
+    "kind": "command-line base64 encoder (stdin to stdout, GNU-compatible line wrapping)",
+    "platform_row": "linux-x86_64",
+    "functions": [
+      "encode_full",
+      "finish",
+      "main",
+      "selftest",
+      "sextet_char"
+    ],
+    "entries": {
+      "app": "main",
+      "test": "selftest"
+    }
+  },
+  "construction": {
+    "request": "construction_request.json",
+    "request_sha256": "71d731bd24a4fc2dd54b20c4bcde6ad137e712e7c657aeae202b4c7b7e1d5f81",
+    "format": "xax-construct-v1",
+    "author": "Claude (AI coding agent), Claude Code session of 2026-10-08",
+    "reconstructs_generation_0": true
+  },
+  "maintenance": {
+    "request": "Release 2: emit PEM-style 64-column lines (base64 -w 64) and keep the XAX tests in step.",
+    "authored_edit": "const F2.B2.N52 64; const F1.B8.N13 64; const F1.B8.N21 78; const F1.B9.N5 64",
+    "function_queries": 5,
+    "generation_before": 0,
+    "generation_after": 1,
+    "committed": true,
+    "transaction_bytes": 64,
+    "touched_objects": 10,
+    "reused_objects": 89,
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.8', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.9', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.10', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.16', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.17', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.18', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.19', change='added', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.20', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative')), truncated=False, continuation=None)",
+    "whole_program_regenerated": false,
+    "test_guard": {
+      "edit": "const F2.B2.N52 64",
+      "committed": true,
+      "selftest_exit_status": 8
+    }
+  },
+  "releases": [
+    {
+      "generation": 0,
+      "store": "xb64-gen0.xax",
+      "store_sha256": "26e908ab8428440abf2ede0cefdfd8b0de1467a7022b3d62a8417cd86eb943bd",
+      "root": "e245d976dbfeb85211192ee8532444e004c209b1d2c69177f1757dd246b7d539",
+      "builds": {
+        "app": {
+          "artifact_sha256": "65980458c442eb3c4f4b68755e80cfe2c6a7b3d83954bf3aaca80a985eb413fb",
+          "artifact_bytes": 2318,
+          "provenance": "d0d24e7dd3120b6051e4ed8ce9d5fb05b8492c106d5938ef276dab65bc9f0247",
+          "request": "66b50c404c67a6d4bf4699af9436a04c1d0e7f6c1b7e83a29d2724edb62bd1f2",
+          "reproducible": true
+        },
+        "test": {
+          "artifact_sha256": "4c244d405cb7adec384a50d48b5a1c0532af3d21926571fc0f2c3b2fc84887d1",
+          "artifact_bytes": 4430,
+          "provenance": "dd3a26d291ea0879a24d13a74b448988e1b6b736f577e4113738f97e08569e5f",
+          "request": "24e6bccc2f3f8a499795637da37fa06adf1fe51e94bced0a237fa81f27254242",
+          "reproducible": true
+        }
+      },
+      "deployment": {
+        "installed_path": "prefix/bin/xb64",
+        "selftest_exit_status": 0,
+        "oracle": "coreutils base64 -w 76",
+        "cases": 40,
+        "matching": 40,
+        "all_match": true
+      }
+    },
+    {
+      "generation": 1,
+      "store": "xb64-gen1.xax",
+      "store_sha256": "84303c94f495af1e6b4609deba3c23971c133c39e70c270e1f634c84a0302090",
+      "root": "07acda162ac62267a24397fd822f8f3adc9517765f6f2eecf8ae4c6ce05f09ba",
+      "builds": {
+        "app": {
+          "artifact_sha256": "4200cad9e14a8d50b4cd1181715e0d51ba5c95970286f0d2a05da8d6de4f6204",
+          "artifact_bytes": 2318,
+          "provenance": "272de7df40556b967b34d191e32d4b3eaeff022bd84434f5476949ad22b1c200",
+          "request": "02029449d0d5e3e4f2ce6601aa77df66d763112cf4c741f4d5fb99f77b3b60b8",
+          "reproducible": true
+        },
+        "test": {
+          "artifact_sha256": "3f5f1f77ea0c1e055a00175bbe4ce955799efb6e412629368b63cd1e819a681d",
+          "artifact_bytes": 4430,
+          "provenance": "d8a22b7a3535118ac521159516835946bb77aa28056544a5346075e74a5f2e19",
+          "request": "12790f819217d776f763f812f526708476d5a050f56c590698ea4fac9432fe2c",
+          "reproducible": true
+        }
+      },
+      "deployment": {
+        "installed_path": "prefix/bin/xb64",
+        "selftest_exit_status": 0,
+        "oracle": "coreutils base64 -w 64",
+        "cases": 40,
+        "matching": 40,
+        "all_match": true
+      }
+    }
+  ],
+  "non_xax_components": [
+    "Python bootstrap compiler and build service (xax_build.build); no application logic",
+    "this harness: runs builds, installs the executable, compares it with coreutils base64 (external oracle)",
+    "Linux kernel (platform)",
+    "the test build request is derived from the package's declared 'test' entry"
+  ]
+}
