@@ -116,7 +116,9 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 # S8c.20 (ADR-238): functions.  The last three come after the bootstrap parses the graph (payload word 0:
                 # the graph object), so the host parses it first.
                 "FUNCTION_REF_INDEX", "FUNCTION_MEMBER_TRAILING", "FUNCTION_MEMBER_RANGE", "FUNCTION_CARRIER", "FUNCTION_TRAILING",
-                "FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
+                "FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED",
+                # S8c.21 (ADR-239): recursion-group member lists (``_decode_recursion_group``, before any member parses).
+                "GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED")
 AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
 
@@ -465,8 +467,9 @@ def _group_ok(tables):
         end = e.add(p["ga"], e.rd(e.sub(p["ga"], 1)))
         e.var("gend", end)
         _clear_marks(e, p["refs"])
+        _no(e, e.eq(_resolved(e, o), 0))
         e.var("count", _read(e, "ga", p["gend"]))
-        _no(e, e.eq(p["count"], 0))
+        _reject(e, e.eq(p["count"], 0), o, S["GROUP_EMPTY"])
         e.var("table", e.alloc(e.add(p["count"], 1)))  # [count, interface records]
         e.var("graphs", e.alloc(e.add(p["count"], 1)))  # [count, graph objects]
         e.var("callsof", e.alloc(e.add(p["count"], 1)))
@@ -476,16 +479,17 @@ def _group_ok(tables):
 
         def member():
             e.var("gi", _read(e, "ga", p["gend"]))
-            _no(e, e.le(p["refs"], p["gi"]))
+            _reject(e, e.le(p["refs"], p["gi"]), o, S["GROUP_REF_INDEX"], p["refs"], p["gi"])
             e.var("mg", _reference(e, o, p["gi"]))
-            _no(e, e.either(e.eq(p["mg"], NONE), e.ne(_kind(e, p["mg"]), int(Kind.GRAPH_FRAGMENT))))
+            _no(e, e.eq(p["mg"], NONE))
+            _reject(e, e.ne(_kind(e, p["mg"]), int(Kind.GRAPH_FRAGMENT)), o, S["GROUP_CARRIER"], _kind(e, p["mg"]))
             _mark(e, p["gi"])
             e.st(e.add(e.add(p["graphs"], 1), p["i"]), p["mg"])
-            e.st(e.add(e.add(p["table"], 1), p["i"]), _interface(e, o, "ga", p["gend"]))
+            e.st(e.add(e.add(p["table"], 1), p["i"]), _interface(e, o, "ga", p["gend"], S["GROUP_REF_INDEX"]))
 
         e.for_("i", 0, p["count"], member)
-        _no(e, e.ne(p["ga"], p["gend"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        _reject(e, e.ne(p["ga"], p["gend"]), o, S["GROUP_TRAILING"], e.sub(p["gend"], p["ga"]))
+        _reject(e, e.eq(_all_marked(e, p["refs"]), 0), o, S["GROUP_UNUSED"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
 
         def contract():
             g = e.ld(e.add(e.add(p["graphs"], 1), p["i"]))
@@ -1852,7 +1856,7 @@ def collect_verdicts(read, count: int, groups=()):
     return store == 1, verdicts, graphs, members
 
 
-LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED")  # a payload word is a [count, words] list
+LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED", "GROUP_UNUSED")  # a payload word is a [count, words] list
 PAIR_SITES = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT")  # payload word 1 is [n, words, m, words]
 
 
@@ -1866,7 +1870,7 @@ def collect_rejections(read, verdicts):
         listed = None
         name = OBJECT_SITES[site - 1] if 0 < site <= len(OBJECT_SITES) else None
         if name in LIST_SITES:
-            at = payload[0] if name == "CONTRACT_UNUSED" else payload[1]
+            at = payload[0] if name in ("CONTRACT_UNUSED", "GROUP_UNUSED") else payload[1]
             listed = read(at + 1, read(at, 1)[0])
         elif name in PAIR_SITES:
             first = read(payload[1], 1)[0]
@@ -1882,6 +1886,17 @@ def object_diagnostic(obj, record, objects=()):
     site, (x, y, _z), listed = record
     name = OBJECT_SITES[site - 1]
     hexes = lambda indices: [objects[index].cid.hex() for index in indices]  # noqa: E731
+    if name == "GROUP_EMPTY":
+        return "XAX.STRUCT.RECURSION_GROUP_EMPTY", "GRAPH-RECURSION-GROUP-NONEMPTY", ">= 1", 0
+    if name == "GROUP_REF_INDEX":
+        return "XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {x}", y
+    if name == "GROUP_CARRIER":
+        return "XAX.STRUCT.FUNCTION_GRAPH", "GRAPH-FUNCTION-CARRIER", Kind.GRAPH_FRAGMENT.name, Kind(x).name
+    if name == "GROUP_TRAILING":
+        return "XAX.CANON.TRAILING_BYTES", "RECURSION-GROUP-BODY", 0, x
+    if name == "GROUP_UNUSED":
+        used = {obj.references[k].hex() for k, marked in enumerate(listed) if marked}
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", sorted(cid.hex() for cid in obj.references), sorted(used)
     if name in ("FUNCTION_REF_INDEX", "FUNCTION_MEMBER_RANGE"):
         rule = "GRAPH-REF-INDEX" if name == "FUNCTION_REF_INDEX" else "GRAPH-RECURSION-MEMBER"
         return ("XAX.STRUCT.REF_INDEX" if name == "FUNCTION_REF_INDEX" else "XAX.STRUCT.RECURSION_MEMBER"), rule, f"< {x}", y

@@ -88,6 +88,35 @@ def _function(variant: str):
     return function, objects
 
 
+def _group(variant: str):
+    """``(group, member function, objects)``: the factorial group and its member function; ``variant`` rewrites one."""
+    from test_xax_recursion import factorial_group
+    from xax_compiler import group_member_function
+
+    group, objects = factorial_group()
+    objects = tuple(item for item in objects if item.cid != group.cid)
+    fragment = next(item for item in objects if item.kind == Kind.GRAPH_FRAGMENT)
+    references = tuple(sorted({fragment.cid, B32.cid, *((B64.cid,) if variant == "group_unused" else ())}))
+    at = {cid: index for index, cid in enumerate(references)}
+    body = uleb(1) + uleb(at[fragment.cid]) + uleb(1) + uleb(at[B32.cid]) + uleb(1) + uleb(at[B32.cid])
+    bodies = {
+        "group_empty": uleb(0),
+        "group_ref_index": uleb(1) + uleb(7) + body[2:],
+        "group_carrier": uleb(1) + uleb(at[B32.cid]) + body[2:],
+        "group_type_index": uleb(1) + uleb(at[fragment.cid]) + uleb(1) + uleb(9) + uleb(0),
+        "group_trailing": body + b"\x00",
+        "group_unused": body,
+    }
+    if variant in bodies:
+        group = SemanticObject.create(Kind.RECURSION_GROUP, bodies[variant], references)
+    member = group_member_function(group, 0)
+    if variant == "member_trailing":
+        member = SemanticObject.create(Kind.FUNCTION, uleb(0) + uleb(0) + b"\x00", (group.cid,))
+    elif variant == "member_range":
+        member = SemanticObject.create(Kind.FUNCTION, uleb(0) + uleb(5), (group.cid,))
+    return group, member, objects
+
+
 def _store(variant: str):
     """``(root, objects)``: a root, one module holding three types and a contract; ``variant`` breaks one object."""
     types = (B8, B32, B64)
@@ -104,8 +133,10 @@ def _store(variant: str):
     else:
         contract = _contract()
     function, function_objects = _function(variant if variant.startswith("function_") else "function_valid")
-    children = (*types, contract, function)
-    supporting = tuple(item for item in function_objects if item.kind != Kind.TYPE)  # reached through the function
+    group, member, group_objects = _group(variant)
+    with_member = not variant.startswith("group_")  # a member function of a broken group fails with the group's diagnostic
+    children = (*types, contract, function, group, *((member,) if with_member else ()))
+    supporting = (*function_objects, *group_objects)  # reached through references
     module = object_with_refs(Kind.MODULE, children)
     count = len(module.references)
     bodies = {
@@ -117,7 +148,7 @@ def _store(variant: str):
     if variant in bodies:
         module = SemanticObject.create(Kind.MODULE, bodies[variant], module.references)
     root = object_with_refs(Kind.PROGRAM_ROOT, (module,))
-    objects = [*children, *supporting, module]
+    objects = list({item.cid: item for item in (*children, *supporting, module)}.values())
     if variant == "root_child_kind":
         root = SemanticObject.create(Kind.PROGRAM_ROOT, ref_body(range(2)), tuple(sorted((module.cid, B8.cid))))
     return root, (*objects, root)
@@ -132,6 +163,10 @@ VARIANTS = {
     "function_ref_index": "GRAPH-REF-INDEX", "function_type_index": "GRAPH-REF-INDEX", "function_carrier": "GRAPH-FUNCTION-CARRIER",
     "function_trailing": "FUNCTION-BODY", "function_entry": "GRAPH-ENTRY-CONTRACT", "function_return": "GRAPH-RETURN-CONTRACT",
     "function_unused": "SER-REFS-DIRECT-ONLY",
+    "member_trailing": "FUNCTION-GROUP-MEMBER-BODY", "member_range": "GRAPH-RECURSION-MEMBER",
+    # S8c.21 (ADR-239): recursion-group member lists.
+    "group_empty": "GRAPH-RECURSION-GROUP-NONEMPTY", "group_ref_index": "GRAPH-REF-INDEX", "group_carrier": "GRAPH-FUNCTION-CARRIER",
+    "group_type_index": "GRAPH-REF-INDEX", "group_trailing": "RECURSION-GROUP-BODY", "group_unused": "SER-REFS-DIRECT-ONLY",
 }
 
 
