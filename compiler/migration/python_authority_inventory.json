@@ -398,6 +398,13 @@
     "xax_x86_64_views.py": {
       "class": "C",
       "note": "Bootstrap reference for the S7 XAX x86-64 backend; differential oracle for code and diagnostics."
+    },
+    "xax_construct.py": {
+      "class": "B",
+      "components": [
+        "graph-construction-tooling"
+      ],
+      "note": "xax-construct-v1 carrier (ADR-210): decodes one construction request into a verified build snapshot store; the store, not the request, is authoritative."
     }
   },
   "components": {
@@ -632,7 +639,7 @@
       "recommended_step": "S14"
     },
     "graph-construction-tooling": {
-      "python_authority": "xax_graph_builder, xax_structured, xax_local_protocol",
+      "python_authority": "xax_graph_builder, xax_structured, xax_local_protocol, xax_construct",
       "xax_hosted": null,
       "target_dependency": "none",
       "prerequisite": "workspace transactions in XAX",

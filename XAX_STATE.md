@@ -61,6 +61,10 @@ Predicate tables on the x86-64 register path; `jsonmin`'s string loop in the C t
 
 The workspace now edits recursion-group members. One maintenance cycle of the JVM `jsonmin` application (depth limit 512 → 1024) ran through query, one 13-byte agent edit, verified commit, rebuild, contract tests (16/16), a before/after benchmark (no measurable change), and a canonical save: `compiler/benchmarks/r5_jvm_jsonmin_maintenance_evidence.json`. The JVM row derives R5. No row has R6 evidence.
 
+## First XAX-only application — 2026-10-08 (ADR-210)
+
+`xax_construct` builds general programs from one typed request. `xb64` (base64 encoder) was constructed that way, tested by its own XAX `selftest`, built through the canonical build service, deployed, and maintained by one workspace transaction (release 2: 64-column lines); both releases match coreutils `base64`. Evidence: `compiler/benchmarks/r6_xb64_evidence.json`. The Linux row cites it but stays R3 (R4 not met).
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

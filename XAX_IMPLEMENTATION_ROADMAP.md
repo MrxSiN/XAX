@@ -424,7 +424,7 @@ Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not sc
 | U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 | In progress: predicate tables (ADR-208). Next: `chains` (memory-latency bound; loop-invariant code motion of the exit-edge `found + 1`, fewer moves) |
 | U2.3 | Android cold-start re-run with a Kotlin arm and more passes | Android R4 verdict | Open |
 | U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 | EXECUTED for the JVM (ADR-209): one cycle of `jsonmin`; the workspace now edits recursion-group members |
-| U2.5 | XAX-only application with XAX test and build definitions | R6 | Open |
+| U2.5 | XAX-only application with XAX test and build definitions | R6 | EXECUTED for `xb64` on Linux x86-64 (ADR-210); the row stays R3 until its R4/R5 hold |
 
 ## S — Compiler migration ladder (after M14; runs alongside U1)
 

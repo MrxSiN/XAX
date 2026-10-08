@@ -355,7 +355,7 @@
     {
       "id": "linux-x86_64",
       "name": "x86-64 Linux",
-      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Raw-sample re-run (ADR-208): filestat 0.882x and jsonmin 0.968x the fastest non-XAX arm (clang -O2), both significant; chains is 0.984x rustc but within noise, so R4 is withheld.",
+      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. Raw-sample re-run (ADR-208): filestat 0.882x and jsonmin 0.968x the fastest non-XAX arm (clang -O2), both significant; chains is 0.984x rustc but within noise, so R4 is withheld. R6 evidence exists (xb64, ADR-210) but levels are cumulative, so the row stays R3 until R4 and R5 hold.",
       "level": "R3",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
@@ -439,12 +439,20 @@
         "ai_tokens": [
           "PROTOTYPE",
           "compiler/benchmarks/ai_native/OI31_RESULT_NOTE.md"
+        ],
+        "xax_only_application": [
+          "EXECUTED",
+          "compiler/benchmarks/r6_xb64_evidence.json",
+          "compiler/benchmarks/r6_xb64/xb64-gen0.xax",
+          "compiler/benchmarks/r6_xb64/xb64-gen1.xax",
+          "compiler/tests/test_xax_construct.py"
         ]
       },
       "blockers": [
         "R4 (ADR-208, one shared 4-vCPU Xeon host, 31 interleaved runs per arm): filestat 0.881962x clang -O2 (p<1e-7) and jsonmin 0.967682x clang -O2 (p=0.008) lead; chains (xax-soa, the best XAX representation) is 0.983564x rustc -O3 with p=0.29, inside the noise of a memory-latency-bound walk, so the row's verdict stays false. jsonmin's stripped binary is 1.21x clang's (17,615 vs 14,552 bytes); filestat's is 0.29x. Float/aggregate functions still fall back to the older paths (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
-        "jsonmin writes its output with one write call (no partial-write loop)"
+        "jsonmin writes its output with one write call (no partial-write loop)",
+        "R5/R6: xb64 (ADR-210) is a complete XAX-only application with XAX tests, canonical build definitions, two reproducible releases, and one XAX-only maintenance cycle; it counts once R4 (chains) and an executed R5 benchmark-inclusive maintenance record exist for this row"
       ],
       "competitive": [
         false,
