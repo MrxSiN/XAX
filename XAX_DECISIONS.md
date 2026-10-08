@@ -2035,3 +2035,11 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Decision | Add host-emulated execution evidence for ADR-202 instead of waiting for a device: the compiled Android arm64 function text runs in Unicorn's AArch64 CPU against a mock `JNIEnv` whose table slot points at a stub that captures `x0..x3` and the `jvalue[]` bytes and returns a value in `s0`. The emulator is a test tool, not part of the artifact. |
 | Evidence | EXECUTED under Unicorn (not hardware, OI-44): `compiler/tests/test_xax_jni_float.py::test_emulated_*`. `MotionEvent.getX(I)F` passes env/receiver/method ID unchanged, packs the `jint` with zero padding and returns the stub's 1.5f from `s0`; `View.setAlpha(F)V` stores 0.25f as its exact IEEE bits plus zero padding; `MediaCodec.queueInputBuffer(IIIJI)V` produces the exact 40-byte `jvalue[]` layout. |
 | Limits | No ART; the stub stands in for the JNI implementation. Device execution remains open. |
+
+## ADR-206 — Emulated execution of NDK and POSIX contract programs; AAudio handles are words
+
+| Field | Record |
+|---|---|
+| Decision | `compiler/benchmarks/android_elf_emulator.py` maps an XAX Android arm64 shared object's `PT_LOAD` segments in Unicorn, points every `R_AARCH64_GLOB_DAT` import slot at a recording stub, and runs one export. AAudio returns its builder and stream through out-parameters, so `aaudio_api` now types those handles as 64-bit words loaded from caller stack cells (`ptr<b64>`, space 1); the direction-typed linear tokens still carry the object type and direction. |
+| Evidence | EXECUTED under Unicorn (not hardware, OI-44): `compiler/tests/test_xax_android_platform_emulated.py`. A codec program calls create → start → stop → delete through `libmediandk.so` slots with the handle the platform returned; an AAudio output program builds, configures (48 kHz, stereo), opens, starts, writes 240 frames with a 10 ms timeout, stops and closes, passing the handles the stubs wrote into its stack cells; an owned socket is created nonblocking, shut down and closed with the same descriptor. |
+| Limits | Stubs stand in for Android's libraries; ordering and argument flow are proven, platform behaviour is not. |

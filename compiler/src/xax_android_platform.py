@@ -230,7 +230,10 @@ def aaudio_api(direction: int = AAUDIO_OUTPUT) -> AAudioApi:
     b8, b32, b64 = bits_type(8), bits_type(32), bits_type(64)
     rw = pointer_type(b8, Permission.READ_WRITE, 1, space=2)
     rd = pointer_type(b8, Permission.READ, 1, space=2)
-    builder, stream = _handle(b"android.ndk.AAudioStreamBuilder"), _handle(b"android.ndk.AAudioStream")
+    # AAudio hands its handles back through out-parameters, so a handle is the 64-bit word the
+    # program loads from its own stack cell; the linear token carries the object's type.
+    builder = stream = b64
+    cell = pointer_type(b64, Permission.READ_WRITE, 8)
     builder_token = resource_type(AAUDIO_BUILDER_RESOURCE_KIND, 1, flags=ResourceFlags.LINEAR, instance=direction)
     stream_token = resource_type(AAUDIO_STREAM_RESOURCE_KIND, 1, flags=ResourceFlags.LINEAR, instance=direction)
     device, memory = effect_type(EffectDomain.DEVICE, 0), memory_effect_type()
@@ -249,13 +252,13 @@ def aaudio_api(direction: int = AAUDIO_OUTPUT) -> AAudioApi:
     return AAudioApi(
         direction, builder, builder_token, stream, stream_token,
         # AAudio_createStreamBuilder(&builder) writes the handle; the program loads it.
-        sym(b"AAudio_createStreamBuilder", (rw, device, memory), (b32, builder_token, device, memory)),
+        sym(b"AAudio_createStreamBuilder", (cell, device, memory), (b32, builder_token, device, memory)),
         setter(b"AAudioStreamBuilder_setDirection"),
         setter(b"AAudioStreamBuilder_setSampleRate"),
         setter(b"AAudioStreamBuilder_setChannelCount"),
         setter(b"AAudioStreamBuilder_setFormat"),
         setter(b"AAudioStreamBuilder_setPerformanceMode"),
-        sym(b"AAudioStreamBuilder_openStream", (builder, rw, builder_token, device, memory), (b32, builder_token, stream_token, device, memory)),
+        sym(b"AAudioStreamBuilder_openStream", (builder, cell, builder_token, device, memory), (b32, builder_token, stream_token, device, memory)),
         sym(b"AAudioStreamBuilder_delete", (builder, builder_token, device), (b32, device)),
         sym(b"AAudioStream_requestStart", (stream, stream_token, device), (b32, stream_token, device)),
         sym(b"AAudioStream_requestStop", (stream, stream_token, device), (b32, stream_token, device)),
@@ -274,8 +277,8 @@ def ndk_type_objects() -> tuple[SemanticObject, ...]:
         pointer_type(bits_type(8), Permission.READ, 1, space=2), pointer_type(bits_type(8), Permission.READ_WRITE, 1, space=2),
         window.window, window.token, *jni_type_objects(((JniReferenceKind.BORROWED, b"android.view.Surface", b"android.boot"),)),
     ]
-    for identity in (b"android.ndk.ANativeWindow", b"android.ndk.AMediaCodec", b"android.ndk.AMediaFormat",
-                     b"android.ndk.AAudioStreamBuilder", b"android.ndk.AAudioStream"):
+    items.append(pointer_type(bits_type(64), Permission.READ_WRITE, 8))
+    for identity in (b"android.ndk.ANativeWindow", b"android.ndk.AMediaCodec", b"android.ndk.AMediaFormat"):
         items += [opaque_identity_type(identity), _handle(identity)]
     codec = media_codec_api(window)
     items += [codec.codec_token, codec.format_token]
