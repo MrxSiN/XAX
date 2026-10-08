@@ -355,8 +355,8 @@
     {
       "id": "linux-x86_64",
       "name": "x86-64 Linux",
-      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. R4 (ADR-212 run): filestat 0.852x and jsonmin 0.959x clang -O2, chains 0.911x rustc -O3, all significant on one shared host; jsonmin's margin is small (an earlier binary measured 0.968x and 1.029x in two runs). R6 evidence exists (xb64, ADR-210); R5 needs an executed maintenance record for this row.",
-      "level": "R4",
+      "summary": "Direct ELF64 executables via syscalls, optionally with declared shared-library imports; jsonmin executes as the R3 application. R4 (ADR-212 run): filestat 0.852x and jsonmin 0.959x clang -O2, chains 0.911x rustc -O3, all significant on one shared host; jsonmin's margin is small (an earlier binary measured 0.968x and 1.029x in two runs). R5: one jsonmin maintenance cycle through semantic transactions (ADR-213). R6: xb64, an application developed and maintained only in XAX (ADR-210).",
+      "level": "R6",
       "runtime_requirement": "none for the static profile; the dynexec profile requests ld.so explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
         "semantic_expressibility": [
@@ -446,13 +446,18 @@
           "compiler/benchmarks/r6_xb64/xb64-gen0.xax",
           "compiler/benchmarks/r6_xb64/xb64-gen1.xax",
           "compiler/tests/test_xax_construct.py"
+        ],
+        "autonomous_maintenance": [
+          "EXECUTED",
+          "compiler/benchmarks/r5_linux_jsonmin_maintenance_evidence.json",
+          "compiler/tests/test_workspace_recursion_edit.py"
         ]
       },
       "blockers": [
         "R4 scope (ADR-212 run, one shared 4-vCPU Xeon host, 31 interleaved runs per arm): filestat 0.851851x clang -O2 (p=3.4e-7), jsonmin 0.959479x clang -O2 (p=0.031), chains (xax-soa) 0.911278x rustc -O3 (p=0.0094). jsonmin's lead is small: its previous binary measured 0.967682x and 1.029472x in two runs (§15.30, §15.32), so a re-run on another host may withhold R4 again. jsonmin's stripped binary is 1.21x clang's (17,616 vs 14,552 bytes). Float/aggregate functions still fall back to the older paths (OI-38)",
         "no threads, signals, sockets, clocks packages; no DWARF",
         "jsonmin writes its output with one write call (no partial-write loop)",
-        "R5/R6: xb64 (ADR-210) is a complete XAX-only application with XAX tests, canonical build definitions, two reproducible releases, and one XAX-only maintenance cycle; it counts once R4 (chains) and an executed R5 benchmark-inclusive maintenance record exist for this row"
+        "R5/R6 scope: one jsonmin maintenance cycle (one constant edit, ADR-213) and one small XAX-only application (xb64, ADR-210), both by the session's agent; not yet repeated by an independent agent or on a larger application"
       ],
       "competitive": [
         true,

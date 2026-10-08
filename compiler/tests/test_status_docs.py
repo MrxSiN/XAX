@@ -20,7 +20,7 @@ class StatusDocsTests(unittest.TestCase):
             page.write_text("# Page\n\n<!-- xax-status:levels -->R6: everything<!-- /xax-status:levels -->\n")
             self.assertEqual(sync(write=False, repo=root), [page])
             self.assertEqual(sync(write=True, repo=root), [page])
-            self.assertRegex(page.read_text(), r"R4: [^;]*linux-x86_64")
+            self.assertRegex(page.read_text(), r"R6: [^;]*linux-x86_64")
             self.assertEqual(sync(write=False, repo=root), [])
 
     def test_targets_table_lists_every_platform_with_its_level(self):
@@ -31,7 +31,7 @@ class StatusDocsTests(unittest.TestCase):
             page.write_text("# Page\n\n<!-- xax-status:targets --><!-- /xax-status:targets -->\n")
             self.assertEqual(sync(write=True, repo=root), [page])
             text = page.read_text(encoding="utf-8")
-            self.assertIn("| x86-64 Linux | `linux-x86_64` | R4 |", text)
+            self.assertIn("| x86-64 Linux | `linux-x86_64` | R6 |", text)
             self.assertIn("| .NET CLI/CLR | `dotnet-clr` | \N{EM DASH} |", text)
             self.assertLess(text.index("`linux-x86_64`"), text.index("`dotnet-clr`"))
 

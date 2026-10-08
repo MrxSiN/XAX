@@ -19,7 +19,8 @@ The cycle runs only through the ordinary XAX workspace interface:
 6. benchmark: original and rebuilt JARs run interleaved on the same document (fresh JVM per run);
 7. persist: the committed canonical store is saved and its digest recorded.
 
-Run ``PYTHONPATH=src:.:.. python -m benchmarks.bench_r5_maintenance [--write]`` from ``compiler/`` (needs ``java``).
+Run ``PYTHONPATH=src:.:.. python -m benchmarks.bench_r5_maintenance [--row=jvm|linux-x86_64] [--write]`` from ``compiler/``
+(the JVM row needs ``java``; the Linux row, ADR-213, a Linux x86-64 host).
 """
 
 from __future__ import annotations
@@ -37,6 +38,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 EVIDENCE = HERE / "r5_jvm_jsonmin_maintenance_evidence.json"
+# Per platform row: (jsonmin build arch, evidence file).  The cycle is the same on each (ADR-209, ADR-213).
+PLATFORMS = {
+    "jvm": ("jvm", EVIDENCE),
+    "linux-x86_64": ("x86_64", HERE / "r5_linux_jsonmin_maintenance_evidence.json"),
+}
 REQUEST = "Accept JSON nested up to 1024 levels instead of 512; everything else unchanged."
 NEW_DEPTH = 1024
 # Written by the agent after reading the projection of the function that compares the depth with 512.
@@ -62,12 +68,20 @@ def _cases(old_depth: int, new_depth: int) -> list[bytes]:
     ]
 
 
-def _run_jar(java: str, jar: Path, document: bytes) -> tuple[int, bytes, bytes, float]:
+def _run_jvm(java: str, jar: Path, document: bytes) -> tuple[int, bytes, bytes, float]:
     import time
 
     env = {key: value for key, value in os.environ.items() if key != "JAVA_TOOL_OPTIONS"}
     start = time.perf_counter()
     completed = subprocess.run([java, "-jar", str(jar)], input=document, capture_output=True, env=env, check=False)
+    return completed.returncode, completed.stdout, completed.stderr, time.perf_counter() - start
+
+
+def _run_elf(path: Path, document: bytes) -> tuple[int, bytes, bytes, float]:
+    import time
+
+    start = time.perf_counter()
+    completed = subprocess.run([str(path)], input=document, capture_output=True, check=False)
     return completed.returncode, completed.stdout, completed.stderr, time.perf_counter() - start
 
 
@@ -82,17 +96,18 @@ def _reference(document: bytes, depth: int) -> tuple[int, bytes, bytes]:
         jsonmin.MAX_DEPTH = saved
 
 
-def maintain() -> dict:
+def maintain(row: str = "jvm") -> dict:
     from benchmarks.jsonmin import MAX_DEPTH, benchmark_document, build_jsonmin
     from xax_compiler import Kind, store_resolver
     from xax_jvm import compile_jvm_bound_target
     from xax_local_protocol import LocalMutationSession
     from xax_workspace import Workspace
 
+    arch = PLATFORMS[row][0]
     java = shutil.which("java")
-    if java is None:
+    if arch == "jvm" and java is None:
         raise RuntimeError("UNAVAILABLE: java")
-    program = build_jsonmin("jvm")
+    program = build_jsonmin(arch)
     workspace = Workspace(program.reader, program.target)
     original_root = workspace.root
     queries = []
@@ -134,15 +149,27 @@ def maintain() -> dict:
         raise AssertionError("unexpected root layout")
     (entry_cid,) = (cid for cid in module.references if resolve(cid).kind == Kind.FUNCTION)
 
-    # 4. rebuild both JARs from their canonical stores.
-    before = compile_jvm_bound_target(program.reader, program.entry.cid, program.target, process_entry=True)
-    after = compile_jvm_bound_target(workspace.reader, entry_cid, program.target, process_entry=True)
+    # 4. rebuild both artifacts from their canonical stores.
+    if arch == "jvm":
+        before = compile_jvm_bound_target(program.reader, program.entry.cid, program.target, process_entry=True).jar
+        after = compile_jvm_bound_target(workspace.reader, entry_cid, program.target, process_entry=True).jar
+    else:
+        from xax_linux import compile_linux_executable
+
+        before = compile_linux_executable(program.reader, program.entry.cid, program.target.cid).data
+        after = compile_linux_executable(workspace.reader, entry_cid, program.target.cid).data
 
     with tempfile.TemporaryDirectory(prefix="xax-r5-") as directory:
         work = Path(directory)
-        jars = {"before": work / "before.jar", "after": work / "after.jar"}
-        jars["before"].write_bytes(before.jar)
-        jars["after"].write_bytes(after.jar)
+        suffix = ".jar" if arch == "jvm" else ""
+        jars = {"before": work / f"before{suffix}", "after": work / f"after{suffix}"}
+        jars["before"].write_bytes(before)
+        jars["after"].write_bytes(after)
+        for path in jars.values():
+            path.chmod(0o755)
+
+        def _run_jar(_java, path: Path, document: bytes):
+            return _run_jvm(java, path, document) if arch == "jvm" else _run_elf(path, document)
 
         # 5. test at the new limit; the original keeps the old one.
         tests = []
@@ -171,7 +198,7 @@ def maintain() -> dict:
                 samples[name].append(round(wall, 6))
 
         # 7. persist the committed canonical store.
-        store_path = work / "jsonmin-jvm-gen1.xax"
+        store_path = work / f"jsonmin-{arch}-gen1.xax"
         workspace.save(store_path)
         store_bytes = store_path.read_bytes()
 
@@ -179,9 +206,9 @@ def maintain() -> dict:
     accounting = workspace.accounting
     return {
         "format": "xax-r5-maintenance-evidence-v1",
-        "decision": "ADR-209",
+        "decision": "ADR-209" if arch == "jvm" else "ADR-213",
         "label": "EXECUTED",
-        "application": {"name": "jsonmin", "platform_row": "jvm", "target": program.target.cid.hex(), "original_root": original_root.hex()},
+        "application": {"name": "jsonmin", "platform_row": row, "target": program.target.cid.hex(), "original_root": original_root.hex()},
         "request": REQUEST,
         "agent": {
             "authored_input": AGENT_MUTATION,
@@ -206,26 +233,27 @@ def maintain() -> dict:
         },
         "workspace_accounting": {key: getattr(accounting, key) for key in ("queries", "entities_exposed", "query_bytes", "mutations", "rejected_transactions")},
         "rebuild": {
-            "before": {"jar_sha256": _sha(before.jar), "class_bytes": len(before.class_bytes)},
-            "after": {"jar_sha256": _sha(after.jar), "class_bytes": len(after.class_bytes), "entry_function": entry_cid.hex()},
+            "before": {"artifact_sha256": _sha(before), "artifact_bytes": len(before)},
+            "after": {"artifact_sha256": _sha(after), "artifact_bytes": len(after), "entry_function": entry_cid.hex()},
         },
         "tests": {"cases": tests, "all_passed": all(t["after_matches_new_contract"] and t["before_matches_old_contract"] for t in tests)},
         "benchmark": {
             "document": {"bytes": BENCH_SIZE, "generator": "benchmark_document(size, seed=1)"},
-            "warmup_rounds": 2, "repetitions": REPETITIONS, "order": "interleaved, alternating", "timer": "time.perf_counter around a fresh java -jar",
+            "warmup_rounds": 2, "repetitions": REPETITIONS, "order": "interleaved, alternating", "timer": "time.perf_counter around a fresh process" + (" (java -jar)" if arch == "jvm" else ""),
             "results": {name: {"wall_seconds_samples": values, "wall_seconds_median": round(medians[name], 6)} for name, values in samples.items()},
             "after_over_before_median": round(medians["after"] / medians["before"], 6),
         },
-        "persisted": {"store": "jsonmin-jvm-gen1.xax (canonical workspace save)", "store_sha256": _sha(store_bytes), "store_bytes": len(store_bytes), "root": workspace.root.hex()},
-        "host": {"machine": platform.machine(), "python": platform.python_version(), "java": subprocess.run([java, "-version"], capture_output=True, text=True).stderr.splitlines()[-3:]},
+        "persisted": {"store": f"jsonmin-{arch}-gen1.xax (canonical workspace save)", "store_sha256": _sha(store_bytes), "store_bytes": len(store_bytes), "root": workspace.root.hex()},
+        "host": {"machine": platform.machine(), "python": platform.python_version(), "java": subprocess.run([java, "-version"], capture_output=True, text=True).stderr.splitlines()[-3:] if java else None},
     }
 
 
 def main(argv: list[str]) -> int:
-    evidence = maintain()
+    row = next((item.split("=", 1)[1] for item in argv if item.startswith("--row=")), "jvm")
+    evidence = maintain(row)
     text = json.dumps(evidence, indent=2) + "\n"
     if "--write" in argv:
-        EVIDENCE.write_text(text)
+        PLATFORMS[row][1].write_text(text)
     print(json.dumps({key: evidence[key] for key in ("transaction", "tests", "benchmark")}, indent=1)[:4000])
     return 0 if evidence["tests"]["all_passed"] else 1
 

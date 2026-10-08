@@ -39,7 +39,7 @@ Repository: repository root. Compiler: `compiler/`.
 
 U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_IMPLEMENTATION_ROADMAP.md` U1; the dated sections below are the history of each step.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R5: jvm; R4: linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: linux-x86_64; R5: jvm; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
@@ -72,6 +72,10 @@ Next-iteration prefetch and edge sinking: `chains` 0.943x rustc (p = 0.019), `fi
 ## Linux x86-64 reaches R4 — 2026-10-08 (ADR-212)
 
 `filestat` 0.852x and `jsonmin` 0.959x clang, `chains` 0.911x rustc, all significant in one run on one shared host (§15.33); the row derives R4. `jsonmin`'s margin is small (its previous binary measured 0.968x and 1.029x). JVM stays R5 (0.865x javac; R5 record re-recorded).
+
+## Linux x86-64 derives R6 — 2026-10-08 (ADR-213)
+
+A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance_evidence.json`) joins the R4 run (§15.33) and `xb64` (R6, ADR-210): the validator derives R6 for `linux-x86_64`. Each level rests on one run or one cycle; see the row's blockers.
 
 ## Implemented
 

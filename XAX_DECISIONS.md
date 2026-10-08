@@ -2103,3 +2103,11 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Evidence | MEASURED (§15.33): `filestat` 0.851851x clang -O2 (p = 3.4e-7), `jsonmin` 0.959479x clang -O2 (p = 0.031), `chains` 0.911278x rustc -O3 (p = 0.0094); the validator derives R4 for `linux-x86_64`. `jsonmin` instructions 154.0 M → 151.0 M (callgrind). JVM `jsonmin` re-run: 0.865214x javac (p = 0.0012), JVM stays R5; the R5 record was re-recorded against the changed program (16/16 cases, after/before 0.961). EXECUTED: `compiler/tests/test_x86_64_optimizations.py::LoweringViewTests::test_single_edge_block_reads_its_own_parameter`; the full suite passes except the host wheel tests. |
 | Consequences | `linux-x86_64` is R4. It is not R5 or R6 yet: R5 needs an executed maintenance record for this row; `xb64` (ADR-210) already supplies R6 evidence. |
 | Limits | One shared host, one run per workload; `jsonmin`'s margin (p = 0.031) is small and its previous binary measured both 0.968x and 1.029x, so R4 on this row is not robust to host variation. |
+
+## ADR-213 — R5 maintenance record for Linux x86-64; the row derives R6
+
+| Field | Record |
+|---|---|
+| Decision | `bench_r5_maintenance` takes a platform row (`--row=jvm|linux-x86_64`) and runs the same cycle on the Linux x86-64 build of `jsonmin`: queries, the projection, one local mutation bound to the queried generation, verified commit, ELF rebuild, contract tests, interleaved before/after benchmark, canonical save. |
+| Evidence | EXECUTED: `compiler/benchmarks/r5_linux_jsonmin_maintenance_evidence.json`. The Linux projection shows the same `N3 constant 512` / `N4 int.compare P0 N3` lines the agent read for the JVM (ADR-209), and the same 13-byte edit `const N3 1024` commits as a 19-byte transaction (8 objects touched, 119 reused); 16/16 contract cases pass (3 change behaviour as intended); after/before median 1.019 (no measurable change). With R4 (ADR-212) and the R6 evidence of `xb64` (ADR-210), the validator derives R6 for `linux-x86_64`. |
+| Limits | The Linux edit is the agent's JVM edit applied to the Linux store after checking the Linux projection, not a separately reasoned change. R4 rests on one run with a small `jsonmin` margin (ADR-212). R5 and R6 each rest on one cycle by the session's agent. |

@@ -13,7 +13,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R5: jvm; R4: linux-x86_64; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: linux-x86_64; R5: jvm; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
@@ -50,6 +50,10 @@ New applications are created with `xax_construct.construct` (one request) and th
 ## Linux R4 — 2026-10-08 (ADR-212)
 
 Linux x86-64 is R4 (§15.33). Next for this row: an R5 maintenance record (`benchmarks.bench_r5_maintenance` is JVM-only; add a Linux variant with a before/after benchmark), after which `xb64` (R6 evidence, ADR-210) can lift it to R6. Keep `jsonmin`'s margin in view: re-run all three after any backend change and report the result whatever it is.
+
+## Linux R6 — 2026-10-08 (ADR-213)
+
+Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-runs on another host (`jsonmin`'s margin is small), a maintenance cycle with a structural edit, and an XAX-only application larger than `xb64`, ideally built by an independent agent.
 
 ## Validation state at M14 (historical)
 
