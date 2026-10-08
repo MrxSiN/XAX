@@ -589,8 +589,8 @@
     {
       "id": "jvm",
       "name": "JVM",
-      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.884x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (re-run after ADR-208's program change). R5 (autonomous maintenance) has no executed evidence yet; the former AI-token trials are historical (ADR-207).",
-      "level": "R4",
+      "summary": "Direct class files in a deterministic JAR with typed JDK member calls; linear memory, aggregates, sums, stack allocations, indirect calls, links, atomics, callbacks, object/array construction, and fields; native-plus-JNI strategy and JDK metadata imports. R4 for one workload: jsonmin's median is 0.884x the fastest non-XAX arm (javac), significant over 15 interleaved fresh-JVM runs per arm (re-run after ADR-208's program change). R5 for one maintenance cycle (ADR-209): an AI agent raised jsonmin's depth limit through one semantic transaction, then the JAR was rebuilt, tested, benchmarked, and the store committed. The former AI-token trials are historical (ADR-207).",
+      "level": "R5",
       "runtime_requirement": "platform-required JVM (HotSpot 21 in current evidence); the JAR's Main-Class is a compiler-generated main(String[]) that calls the proof-only XAX entry (ADR-112; on the memory profile on a thread with a 256 MiB stack, ADR-156); linear memory and stream I/O are generated static members of the program's own class; no XAX runtime classes",
       "fields": {
         "semantic_expressibility": [
@@ -695,13 +695,18 @@
           "compiler/benchmarks/ai_native/jvm-r5-response-v9-results.evidence.json",
           "compiler/benchmarks/ai_native/jvm-r5-response-v9-audit.json",
           "compiler/benchmarks/ai_native/jvm-r5-response-v9-context-review.json"
+        ],
+        "autonomous_maintenance": [
+          "EXECUTED",
+          "compiler/benchmarks/r5_jvm_jsonmin_maintenance_evidence.json",
+          "compiler/tests/test_workspace_recursion_edit.py"
         ]
       },
       "blockers": [
         "R4 scope: one application (jsonmin) on one shared x86-64 host, OpenJDK 21 defaults, whole-process time of a fresh JVM; baselines javac and kotlinc (XAX_BENCHMARKS.md section 15.0a, ADR-157/158); one workload does not establish universal leadership",
         "code size: jsonmin's program class is 1.49x javac's and 0.99x kotlinc's (5,575 vs 3,730 and 5,649 bytes, ADR-158); its JAR is 2.2x javac's one-class JAR, 0.001x the kotlinc JAR with the Kotlin runtime; the rest of the javac gap is the program's shape (inlined parser, packed results, a checked view per access), not the lowering",
         "linear memory (ADR-156) is one byte[] with int offsets: freed blocks are never reused, at most 2^31 - 1 bytes; the general profile (ADR-159) has a fixed 1 MiB shadow stack; atomics are sequential because one XAX thread runs (ADR-160), so a profile with JVM-to-XAX callbacks from other threads needs real JVM atomics",
-        "R5 (autonomous maintenance, ADR-207): no executed record of an AI querying, modifying, verifying, benchmarking, rebuilding, and committing a JVM application through semantic transactions. The former AI-token R5 trials (ADR-176 to ADR-201; best fair result 0.995x, multi-file 1.68x) are historical evidence for the deferred AI-efficiency milestone, not current R5 evidence",
+        "R5 scope (ADR-209): one maintenance cycle of one application (jsonmin's depth limit, a one-constant edit inside a recursion group) by the session's AI agent; the harness replays the agent's edit against the pinned root, so the record is reproducible but the agent's choice is not re-made. No multi-edit, structural, or interface change has been maintained this way yet. The former AI-token trials (ADR-176 to ADR-201; best fair result 0.995x, multi-file 1.68x) are historical evidence for the deferred AI-efficiency milestone",
         "R6: no complete deployable application developed and maintained 100% in XAX"
       ],
       "competitive": [

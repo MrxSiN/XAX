@@ -13,7 +13,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm; R3: android-arm64, linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R5: jvm; R3: android-arm64, linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
@@ -38,6 +38,10 @@ R4 = leadership (≤ 0.9999× the fastest non-XAX median, significant); R5 = aut
 ## Linux R4 progress — 2026-10-08 (ADR-208)
 
 `filestat` and `jsonmin` lead clang (0.882x, 0.968x); `chains` ties rustc (0.984x, not significant), so Linux stays R3. Next for R4: `chains` (look at the walk loop: `found + 1` is recomputed every step, extra moves; memory latency dominates), then the Android re-run with a Kotlin arm (U2.3). Profile with `valgrind --tool=callgrind --dump-instr=yes` on the image; XAX images have no symbols, so group costs by address.
+
+## R5 record — 2026-10-08 (ADR-209)
+
+JVM is R5 for one cycle (`benchmarks.bench_r5_maintenance`). Next for R5 breadth: a structural edit (insert/delete nodes) and an interface change maintained the same way, and a second platform row (Linux x86-64 `jsonmin` after its R4). Next level: R6 (U2.5), a complete application whose logic, tests, and build definitions are all XAX.
 
 ## Validation state at M14 (historical)
 

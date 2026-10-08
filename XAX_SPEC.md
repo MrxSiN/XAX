@@ -737,6 +737,8 @@ Read sets MAY contain proof-dependency handles returned by `proof`. Commit MUST 
 
 Semantic rebase is permitted only after revalidating targets, attributes/relations, read-set assumptions, handles, and local preconditions. Blind replay is forbidden.
 
+A transaction MAY edit a recursion-group member. The implementation rebuilds the group with the edited member graph in canonical member order, renumbering group-local call indices when the order changes, and replaces every member function identity of the old group (ADR-209).
+
 ### 10.4 Conflict classes
 
 At minimum the system distinguishes root/identity, attribute, relation, delete/use, containment, proof-dependency, and artifact-dependency conflicts. Disjoint transactions SHOULD merge only when dependency analysis proves compatibility.

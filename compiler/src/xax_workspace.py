@@ -31,6 +31,12 @@ from xax_compiler import (
     XaxError,
     _decode_constant,
     _decode_function_interface,
+    _decode_recursion_group,
+    RecursionMember,
+    canonical_recursion_order,
+    decode_group_member_function,
+    group_member_function,
+    recursion_group,
     _decode_effect_type,
     _decode_opaque_identity_type,
     _decode_opaque_type,
@@ -3096,11 +3102,29 @@ def _candidate(
     for binding, mutation in zip(bindings, mutations):
         grouped.setdefault(binding[0], []).append((binding, mutation))
     seeds = frozenset(grouped)
-    affected = _affected_users(seeds, users, resolve, mutations[0].node)
+    # Edited recursion-group members (ADR-209): the group is rebuilt with the edited member graphs, and every
+    # member function identity of the old group is replaced; their users are rebuilt like any other.
+    member_edits = {}
+    for function_cid in seeds:
+        if not isinstance(grouped[function_cid][0][1], ReplaceTarget):
+            decoded = decode_group_member_function(resolve(function_cid), resolve)
+            if decoded is not None:
+                member_edits[function_cid] = decoded
+    precomputed = _rebuild_groups(member_edits, grouped, objects, resolve, mutations[0].node) if member_edits else {}
+    precomputed = {cid: replacement for cid, replacement in precomputed.items() if cid in users}
+    affected = _affected_users(seeds | frozenset(precomputed), users, resolve, mutations[0].node)
     replacements = {}
     seed_dependencies = {}
     for function_cid in seeds:
         mutation = grouped[function_cid][0][1]
+        if function_cid in member_edits:
+            graph_object, _, _ = _decode_function_interface(resolve(function_cid), resolve)
+            if any(node.operation == Operation.CALL_DIRECT and node.entity.cid in affected
+                   for block in _parse_graph(graph_object, resolve).blocks for node in block.nodes):
+                fail("XAX.WORKSPACE.TOPOLOGY", mutations[0].node, "WORKSPACE-RECURSION-EDIT-CALLEES",
+                     "an edited group member calls no rebuilt function", "rebuilt callee", repair_neighborhood=(mutations[0].node,))
+            seed_dependencies[function_cid] = set()
+            continue
         if isinstance(mutation, ReplaceTarget):
             old = resolve(function_cid)
             if old.cid != mutation.expected:
@@ -3131,6 +3155,8 @@ def _candidate(
     def dependencies(cid: bytes) -> set[bytes]:
         if cid in seeds:
             return seed_dependencies[cid]
+        if cid in precomputed:
+            return set()
         return {reference for reference in resolve(cid).references if reference in affected}
 
     # Edited functions and rebuilt users share one dependency order.
@@ -3142,7 +3168,9 @@ def _candidate(
             fail("XAX.WORKSPACE.TOPOLOGY", mutations[0].node, "WORKSPACE-EDITED-FUNCTION-DAG" if edited else "WORKSPACE-AFFECTED-DAG",
                  "acyclic edited functions" if edited else "acyclic affected users", "cycle", repair_neighborhood=(mutations[0].node,))
         for cid in ready:
-            if cid in seeds:
+            if cid in precomputed:
+                replacement = precomputed[cid]
+            elif cid in seeds:
                 mutation = grouped[cid][0][1]
                 replacement = mutation.value if isinstance(mutation, ReplaceTarget) else _mutate_function(resolve(cid), tuple(grouped[cid]), objects, resolve, replacements)
             else:
@@ -3943,6 +3971,63 @@ def _mutate_function(
     new_function = function(new_graph, tuple(resolve(cid) for cid in parameter_cids), tuple(resolve(cid) for cid in return_cids))
     objects[new_graph.cid] = new_graph
     return new_function
+
+
+def _rebuild_groups(
+    member_edits: dict[bytes, tuple[SemanticObject, int]],
+    grouped: dict,
+    objects: dict[bytes, SemanticObject],
+    resolve: Callable[[bytes], SemanticObject],
+    entity: str,
+) -> dict[bytes, SemanticObject]:
+    """Old member function CID -> new member function, for every member of every group with an edited member.
+
+    Each edited member graph comes from the ordinary function mutation; the group is then put back in canonical
+    member order (an edit can change it), renumbering ``call.group_member`` indices when the order moves."""
+    def lookup(cid: bytes) -> SemanticObject:
+        return objects[cid] if cid in objects else resolve(cid)
+
+    by_group: dict[bytes, tuple[SemanticObject, dict[int, bytes]]] = {}
+    for function_cid, (group, member) in member_edits.items():
+        by_group.setdefault(group.cid, (group, {}))[1][member] = function_cid
+    result: dict[bytes, SemanticObject] = {}
+    for group, edited in by_group.values():
+        members = [tuple(member) for member in _decode_recursion_group(group, resolve)]
+        for member, function_cid in edited.items():
+            plain = _mutate_function(resolve(function_cid), tuple(grouped[function_cid]), objects, resolve)
+            members[member] = _decode_function_interface(plain, lookup)
+        built = [RecursionMember(lookup(graph.cid), tuple(lookup(cid) for cid in parameters), tuple(lookup(cid) for cid in returns))
+                 for graph, parameters, returns in members]
+        try:
+            order = canonical_recursion_order(built, lookup)
+        except ValueError as error:
+            fail("XAX.WORKSPACE.TOPOLOGY", entity, "WORKSPACE-RECURSION-SCC", "edited members still form one recursive SCC", str(error), repair_neighborhood=(entity,))
+        position = {old: new for new, old in enumerate(order)}
+        if any(position[index] != index for index in range(len(built))):
+            built = [RecursionMember(_renumber_group_calls(built[old].graph, position, lookup, objects), built[old].parameters, built[old].returns) for old in order]
+        new_group = recursion_group(built)
+        objects[new_group.cid] = new_group
+        for old in range(len(built)):
+            replacement = group_member_function(new_group, position[old])
+            objects[replacement.cid] = replacement
+            result[group_member_function(group, old).cid] = replacement
+    return result
+
+
+def _renumber_group_calls(graph_object: SemanticObject, position: dict[int, int], lookup, objects: dict[bytes, SemanticObject]) -> SemanticObject:
+    graph = _parse_graph(graph_object, lookup)
+    blocks = []
+    for block in graph.blocks:
+        nodes = tuple(
+            Node(Operation(node.operation), node.operands, tuple(lookup(cid) for cid in node.results),
+                 position[node.member] if node.operation == Operation.CALL_GROUP_MEMBER else node.member,
+                 lookup(node.entity.cid) if node.entity is not None else None, node.attributes)
+            for node in block.nodes
+        )
+        blocks.append(Block(tuple(lookup(cid) for cid in block.parameters), nodes, block.terminator))
+    renumbered = graph_fragment(blocks, graph.entry)
+    objects[renumbered.cid] = renumbered
+    return renumbered
 
 
 def _affected_users(
