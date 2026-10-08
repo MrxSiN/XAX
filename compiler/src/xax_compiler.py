@@ -6507,6 +6507,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
     linear_proven = False  # S6a (ADR-142): XAX proved resource and effect linearity
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
+    memory_reject = None  # S8c.8 (ADR-221): the engine's exact memory rejection (pass, block, node, diagnostic)
     typing = _native_typing() if checked_uses else None
     if typing is not None:
         from xax_selfhost_typing import PROVEN, REJECTED, marshal, type_info_from
@@ -6536,6 +6537,13 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 and len(proven_terminators) == len(blocks)
             )
             accepted, extents = typing.facts(len(value_refs))
+            if not accepted:
+                from xax_selfhost_facts import facts_storages
+
+                memory_reject = typing.memory_rejection(
+                    value_refs, facts_storages(blocks, entry),
+                    lambda block_index, node_index: blocks[block_index].nodes[node_index].operation if node_index < len(blocks[block_index].nodes) else None,
+                )
             linear_proven = typing.linear_flow()
             if accepted and len(proven_terminators) == len(blocks):
                 # The engine modelled every node (or found it typing-proven) and its passes converged.
@@ -6649,6 +6657,9 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     fail("XAX.STRUCT.OPERATION", obj.cid.hex(), "GRAPH-OP-SUPPORTED", list(Operation), node.operation)
                 operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
                 node.operand_types = operand_types
+                if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, node_index):
+                    # S8c.8 (ADR-221): the XAX facts engine decided this node's memory rejection.
+                    fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
                 if (block_index, node_index) in proven_nodes:
                     pass  # S4 (ADR-132): typed by the XAX rules
                 elif (block_index, node_index) in rejected_nodes:
@@ -7129,6 +7140,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         expected,
                         [node.operation for node in block.nodes],
                     )
+            if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, len(block.nodes)):
+                fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])  # S8c.8: the engine's terminator rejection
             live = allocations - ended
             if live and block.terminator.kind in (TerminatorKind.RETURN, TerminatorKind.TRAP):
                 fail(
@@ -7213,6 +7226,9 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     else:
         if not skip_passes:
             fail("XAX.MEMORY.FACT_FIXPOINT", obj.cid.hex(), "MEMORY-FACT-FIXPOINT", 2 * len(blocks) + 2, "not converged")
+    if memory_reject is not None:
+        # S8c.8: XAX decided the rejection; the bootstrap passes never reached its point (the tests require they do).
+        fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
     returns = [item for _block, item in sorted(returns_by_block, key=lambda pair: pair[0])]
     pointer_extents = engine_extents if engine_extents is not None else [(ref, fact.extent) for ref, fact in global_pointers.items() if isinstance(fact, _PointerFact)]
     parsed = _ParsedGraph(

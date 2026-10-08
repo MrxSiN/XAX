@@ -105,6 +105,10 @@ Constant targets and contracts and direct-call targets are now rejected by XAX. 
 
 Direct-call contract mismatches against graph-fragment callees are now rejected by XAX. Still Python in S8c: group-member call contracts, facts declines, object verification.
 
+## S8c.8 stack-memory rejections — 2026-10-08 (ADR-221)
+
+The XAX facts engine now decides the stack-memory rejections (lifetime, bounds, alignment, permission, frontier linearity, uninitialized loads, leaks) with the bootstrap's exact diagnostic: over 90% of the memory corpus's rejections. Still Python: heap-view, checked-access, call, atomic, and link memory rejections; object verification.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

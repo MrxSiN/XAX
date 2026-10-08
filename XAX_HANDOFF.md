@@ -91,6 +91,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - `_call_interface` decodes a fragment callee's interface into the pass's list area (after the records; overflow goes to `PASS_SINK` and defers). `NativeTyping.rejection` reads it back through `r.interface`.
 - Next: the facts engine's declines (`xax_selfhost_facts`, `DECLINE_SITES`), which are the memory-fact rejections in `_parse_graph_uncached`; then object verification (`verify_object`).
 
+## S8c.8 stack-memory rejections — 2026-10-08 (ADR-221)
+
+- Use `_reject(e, condition, M[site], payload..., renderable=...)` only where the engine check is exactly the bootstrap's check in its order; add the renderer in `memory_diagnostic`. `_pointer`, `_consume_effect`, and `_access` take `exact=True` in the handlers already verified (load, store, address offset, stack end).
+- Next: heap views and checked accesses (`_heap_view_node`, `_checked`), whose corpus mutations still fall back; then calls, atomics, links; then object verification.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.
