@@ -574,18 +574,19 @@ Generated x86-64/AArch64 code is byte-identical before/after; M14 compiler root,
 
 ## 15. Universal-replacement benchmarks
 
-Replacement levels R4/R5 (`XAX_SPEC.md` §21.2) are earned only through this section.
+Replacement level R4 (`XAX_SPEC.md` §21.2) is earned only through this section. AI-token trials belong to the deferred AI-efficiency milestone (ADR-207) and earn no level.
 
-### 15.0 Multi-language runtime rule (normative, ADR-147)
+### 15.0 Multi-language runtime rule (normative, ADR-147, ADR-207)
 
 For each CPU/native runtime benchmark used to judge performance:
 
 - benchmark XAX, an optimized C or C++ baseline, and at least one additional relevant language/toolchain outside C/C++ (Rust, Zig, Fortran, or another established implementation of the workload);
 - run all implementations with identical observable semantics, inputs, hardware, OS conditions, measurement harness, warmup policy, and repetition policy; the Linux harness (`compiler/benchmarks/linux_harness.py`) interleaves repetitions, each round running every arm once with the order rotating by one;
-- the fastest valid implementation by median execution time is the reference: XAX **meets the primary target** at ≤ 1.05× of it, is **competitive below the primary target** at ≤ 1.10× (further optimization required), and is **unmet** above 1.10× (profile, optimize, and rerun the full comparison; never weaken the workload or remove a faster valid competitor);
+- the reference is the fastest valid **non-XAX** implementation by median execution time; the XAX ratio is XAX's median divided by that competitor's median (XAX is never in the denominator). R4 needs a ratio ≤ 0.9999× (strictly below preferred), compared unrounded, and a one-sided Mann–Whitney test on the raw samples of XAX and that competitor with p < 0.05, so a margin inside measurement noise withholds R4. Above 0.9999× the target is unmet: profile, optimize, and rerun the full comparison; never weaken the workload or remove a faster valid competitor. The former 1.05×/1.10× bands (ADR-147) confer no level (ADR-207);
+- record memory footprint and binary size for every arm and disclose tradeoffs; neither is claimed superior without evidence;
 - after performance-relevant compiler or backend changes, rerun the multi-language comparison instead of relying on earlier, published, or cross-machine results.
 
-Each implementation may choose its own data representation for the same observable contract (idiomatic for its language); diagnostic arms that restate another language's representation are not baselines. Evidence JSON records `time_ratio_vs_fastest` and `performance_class` for every XAX arm. Results before ADR-147 (§15.1–15.13) compare against C only and are historical. Since ADR-177 every arm also records its raw `wall_seconds_samples`, and the matrix validator recomputes medians, the fastest arm, the published ratios, and the baseline policy from them; summary statistics alone (median/min/stdev) do not support MEASURED performance or an R4 verdict.
+Each implementation may choose its own data representation for the same observable contract (idiomatic for its language); diagnostic arms that restate another language's representation are not baselines. Evidence JSON records `time_ratio_vs_fastest` (legacy, against the fastest arm of all), `time_ratio_vs_fastest_competitor` (ADR-207), and an informational `performance_class` for every XAX arm; the validator checks each published ratio at the precision it was stored with. Results before ADR-147 (§15.1–15.13) compare against C only and are historical. Since ADR-177 every arm also records its raw `wall_seconds_samples`, and the matrix validator recomputes medians, the fastest arm, the published ratios, and the baseline policy from them; summary statistics alone (median/min/stdev) do not support MEASURED performance or an R4 verdict.
 
 **Workloads.** The U1 workloads (`XAX_IMPLEMENTATION_ROADMAP.md`): hosted native application, bare-metal program, WebAssembly/WASI or browser application, Android application, accelerator workload; later, representative per-domain workloads (server, database, compiler, game loop, HPC kernel, AI runtime operator) as the matrix grows. Workload definitions are fixed before XAX results are seen and are not tuned to favor XAX.
 
@@ -593,13 +594,13 @@ Each implementation may choose its own data representation for the same observab
 
 **Record per result.** Exact hardware; OS/build; compiler/toolchain versions and flags; optimization/build policy; workload and input; warmup; repetitions; median, p95/p99 where meaningful, and dispersion (MAD/IQR); binary size; peak memory; execution time; startup where relevant; generated instruction/code properties when useful; platform-required runtime and generated adapters. Unavailable baselines are recorded as unavailable with the reason; they are never estimated.
 
-**AI token trials.** For the same workloads, run the §6 task classes with real models and record §6.3 metrics. Token trials run only after non-token implementation and validation. An n=1 preflight may diagnose tooling but cannot establish R5. Use at least three fresh trials per cell for a claim, with the same repetition policy, model/version, reasoning, tools, success criteria, and equivalent repository context for XAX and at least two relevant textual languages. Include failed attempts, repairs, diagnostics, cached input, and retransmitted context in successful-task costs. The lowest valid textual baseline is the arm with the lowest median total successful-task cost. R5 requires XAX's corresponding median to be ≤ 0.50× that baseline; prefer strictly below 0.50. Missing cells, altered workloads, benchmark-only shortcuts, and selective retries cannot satisfy the gate.
+**AI token trials (deferred, ADR-207).** Token trials are not run in R4–R6 work. When the separate AI-efficiency milestone starts, run the §6 task classes with real models and record §6.3 metrics: at least three fresh trials per cell, the same model/version, reasoning, tools, success criteria, and equivalent repository context for XAX and at least two relevant textual languages, counting failed attempts, repairs, diagnostics, cached input, and retransmitted context. Its target is XAX's median ≤ 0.50× the lowest valid textual median. Earlier trials (ADR-176 to ADR-201) are historical and are never current R5 evidence.
 
 **Current status.** `compiler/benchmarks/windows_pe_hosted_evidence.json` is EXECUTED evidence for the hosted Windows PE fixture (current fixture: 2,560-byte executable, 1,269 code bytes after the PE register path (2,181 before), eight kernel32 imports, heap-array round trip and function-pointer dispatch table; 20/20 runs; process wall time includes CreateProcess and pipe overhead). `compiler/benchmarks/wasi_command_evidence.json` is EXECUTED evidence for the WASI command module (635 bytes, stdout via `fd_write`, Node v26.7.0, 10/10 runs). It is not an R4 result: no C/Rust baseline toolchain exists on the measuring host and the code is from the spill-every-value frame lowering. `compiler/benchmarks/windows_c_reference/hosted.c` is the fixed semantic twin for the baseline run. `compiler/benchmarks/x86_register_path_evidence.json` is MEASURED intra-XAX evidence: the register path runs `sum_to(200,000,000)` 8.02x faster than the frame path (92.1 vs 738.7 ms median, 7 runs); it is not a cross-toolchain claim.
 
 ### 15.0a JVM runtime rule (normative, ADR-157)
 
-A JVM performance comparison applies §15.0 with the platform's own compilers as the baselines: a Java twin built by `javac` and a Kotlin twin built by `kotlinc`, each written the way a programmer of that language would write it, and run the same way as the XAX artifact (`java -jar`, the same HotSpot, flags, input, interleaving, warmup, and repetitions). XAX meets the primary target at ≤ 1.05× the fastest valid arm's median, as in §15.0. Each arm deploys as its toolchain builds it, so the Kotlin JAR carries the Kotlin runtime (`-include-runtime`). Program class bytes, JAR bytes, and peak RSS are recorded for every arm, and a code-size or memory gap is stated in the row's blockers. Evidence JSON has a `results` map with `javac*` and `kotlinc*` arms; `xax_replacement.py` rejects a competitive JVM verdict without both.
+A JVM performance comparison applies §15.0 with the platform's own compilers as the baselines: a Java twin built by `javac` and a Kotlin twin built by `kotlinc`, each written the way a programmer of that language would write it, and run the same way as the XAX artifact (`java -jar`, the same HotSpot, flags, input, interleaving, warmup, and repetitions). R4 needs XAX's median ≤ 0.9999× the faster of the `javac` and `kotlinc` medians with a significant advantage, as in §15.0 (ADR-207). Each arm deploys as its toolchain builds it, so the Kotlin JAR carries the Kotlin runtime (`-include-runtime`). Program class bytes, JAR bytes, and peak RSS are recorded for every arm, and a code-size or memory gap is stated in the row's blockers. Evidence JSON has a `results` map with `javac*` and `kotlinc*` arms; `xax_replacement.py` rejects a competitive JVM verdict without both.
 
 ### 15.1 U1.3 Linux `filestat` (MEASURED, 2026-10-02)
 
@@ -1200,3 +1201,25 @@ Normal-protocol work from this corpus:
 - Kind-specific node diagnostics.
 
 R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
+
+## Host setup for the full test and benchmark suite
+
+Tests that need a host tool skip when it is absent; skipped is not passed. The complete host environment on Ubuntu 24.04 x86-64:
+
+```bash
+pip install -U --ignore-installed setuptools wheel   # Debian's patched setuptools fails the wheel test
+pip install vulkan
+# busybox must be the dynamic build, not busybox-static (the OI-24 sandbox test resolves its shared libraries)
+sudo apt-get install qemu-user qemu-user-static qemu-system-arm gcc-aarch64-linux-gnu \
+    libc6-dev-arm64-cross spirv-tools glslang-tools mesa-vulkan-drivers libvulkan1 \
+    wine64 mingw-w64 busybox zlib1g-dev e2fsprogs unzip curl time \
+    clang llvm lld default-jdk-headless nodejs
+# arm64 zlib for the qemu-aarch64 sysroot (filestat's libz.so.1 crc32 import)
+curl -sSfLO http://ports.ubuntu.com/ubuntu-ports/pool/main/z/zlib/zlib1g_1.3.dfsg-3.1ubuntu2_arm64.deb
+dpkg-deb -x zlib1g_*_arm64.deb zlib-arm64 && sudo cp -a zlib-arm64/usr/lib/aarch64-linux-gnu/libz.so* /usr/aarch64-linux-gnu/lib/
+# Android 14 system image, NDK r28c, build-tools, platform, libxposed API (pinned, ~1 GB) into /opt/android
+sudo python compiler/integration/android/make_android_root.py
+curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y   # rustc twins for the multi-language benchmark rule
+```
+
+`..` must be on `PYTHONPATH` because some tests import `compiler.benchmarks.*`. What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest). The Android device oracles in [`compiler/integration/android/`](compiler/integration/android/README.md) need `adb` and a device or an x86_64 Android emulator image with ARM translation. Emulator runs are correctness evidence only.

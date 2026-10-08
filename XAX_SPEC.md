@@ -647,16 +647,15 @@ Readers MUST fail deterministically on invalid header/trailer magic, unsupported
 ## 10. AI workspace, queries, transactions, and diagnostics
 
 The normal AI-facing language/protocol and query/mutation workflow MUST be
-designed to minimize total model tokens per successful semantic change. The
-R5 design target is no more than 0.50× the lowest valid textual median among
-at least two relevant textual-language workflows under equivalent model,
-task, context, tool, and success conditions; strictly lower usage is preferred.
-The owner-approved acceptance threshold is 0.55× (ADR-195): a result in
-(0.50, 0.55] satisfies R5 as accepted within tolerance, never as the target.
-All retries, repairs, cached input, diagnostics, and retransmitted context
-count. Benchmark-only encodings or hidden preloaded task knowledge do not
-satisfy this requirement. Measurement verifies this property; byte count alone
-does not establish it (`XAX_BENCHMARKS.md` §6 and §15).
+designed to minimize total model tokens per successful semantic change. This is
+a long-term design objective, not a current replacement level (ADR-207): the
+historical ambition of no more than 0.50× the lowest valid textual median
+(0.55× owner-approved acceptance, ADR-195) belongs to a separately scheduled
+future AI-efficiency milestone and gates none of R0–R6. When that milestone
+runs, all retries, repairs, cached input, diagnostics, and retransmitted context
+count, and benchmark-only encodings or hidden preloaded task knowledge do not
+satisfy it (`XAX_BENCHMARKS.md` §6 and §15). Existing query/mutation behavior
+and AI generation reliability MUST keep working meanwhile.
 
 Clients MAY apply a model's final construction or mutation request directly
 through normal compiler tooling and return diagnostics only on rejection.
@@ -1113,11 +1112,13 @@ Levels are cumulative; a level is held only when every lower level is held.
 | R1 | Executable lowering | XAX directly produces a valid executable representation that EXECUTED on the target (a harness, emulator, or device must be named). Emulated execution counts for correctness only, never as performance evidence; an emulator-only row lists "not hardware" as a blocker (ADR-114, OI-44). |
 | R2 | Platform interoperability | Required ABI, system APIs, libraries, callbacks, dynamic loading, resources, and platform lifecycle EXECUTED. |
 | R3 | Practical application | A nontrivial real application/workload EXECUTED successfully. |
-| R4 | Performance competitiveness | Runtime, memory, and binary size MEASURED against the platform's established toolchains under `XAX_BENCHMARKS.md`. |
-| R5 | AI efficiency | Repeated real-model trials measure median total successful-task tokens at no more than 0.50× (target) or 0.55× (owner-approved acceptance, ADR-195) the lowest valid baseline among at least two relevant textual-language workflows, including failed attempts and repairs under equivalent conditions. |
-| R6 | Autonomous maintenance | Query, modify, verify, benchmark, rebuild, and commit of the application EXECUTED through semantic transactions without whole-source regeneration. |
+| R4 | Performance leadership | Runtime, memory, and binary size MEASURED against the platform's established toolchains under `XAX_BENCHMARKS.md`, and XAX's median execution time is at most 0.9999× the fastest valid non-XAX implementation of the identical workload on the same hardware, with an advantage that the raw samples show is not noise. |
+| R5 | Autonomous maintenance | Query, modify, verify, benchmark, rebuild, and commit of the application EXECUTED through semantic transactions without whole-source regeneration. (Formerly R6.) |
+| R6 | Proven 100% XAX-developed application | A complete, nontrivial, deployable application was designed, implemented, tested, built, deployed, and then maintained with XAX as the sole authoritative language for all application-owned logic, tests, and build definitions, with reproducible build provenance, an auditable semantic graph and change history, executed functional tests, and at least one verified XAX-only maintenance/release cycle. Compiler-generated adapters, external system libraries, platform-required runtimes, and existing non-XAX compiler/bootstrap tools are permitted only when disclosed and free of hand-authored application logic. R6 does not claim the compiler is self-hosted. |
 
-A negative R4/R5 measurement is valid evidence and MUST be reported; the level is held only when the measured result is competitive. For CPU/native runtime, competitive means `XAX_BENCHMARKS.md` §15.0: against an optimized C/C++ baseline and at least one implementation outside C/C++, XAX's median is at most 1.05× the fastest valid implementation's (ADR-147). On the JVM the baselines are the platform's own compilers, `javac` and `kotlinc`, under the same 1.05× rule (`XAX_BENCHMARKS.md` §15.0a, ADR-157).
+A negative R4 measurement is valid evidence and MUST be reported; the level is held only when the measured result leads (ADR-207). The ratio is XAX's median divided by the median of the fastest valid **non-XAX** arm — XAX is never in the denominator — compared unrounded against 0.9999, and a one-sided Mann–Whitney test on the raw `wall_seconds_samples` of XAX and that arm must give p < 0.05. For CPU/native runtime the arms are an optimized C/C++ baseline and at least one implementation outside C/C++ (`XAX_BENCHMARKS.md` §15.0); on the JVM they are `javac` and `kotlinc` builds (§15.0a). The former 1.05×/1.10× competitiveness bands (ADR-147, ADR-157) confer no level. One workload never establishes universal leadership: a row's R4 is scoped to the workloads its evidence names.
+
+The former R5 (AI token efficiency, 0.50× the lowest textual baseline) is a separately scheduled future AI-efficiency milestone outside R0–R6 (ADR-207). Its trials (ADR-176 to ADR-201) remain historical evidence in the matrix's `ai_tokens` field, which gates no level; they are never current R5 evidence.
 
 ### 21.3 Evidence labels
 
@@ -1136,7 +1137,7 @@ A stronger label requires stronger evidence. Host-unavailable executions remain 
 
 ### 21.4 Universal Replacement Matrix
 
-`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. A field may be `NOT_APPLICABLE` only with a written justification in the row's `not_applicable` map, and only `dynamic_linking` is satisfied that way (a platform with no loader, ADR-129). Because a MEASURED label only says that a comparison exists, R4 additionally requires the row's `competitive` verdict `[true, evidence...]`; a row with `[false, ...]` or no verdict derives at most R3 (ADR-126). An emulator-only row cannot cite performance evidence (§21.2). Every row also carries a `name` and a one-sentence `summary`, from which `compiler/src/xax_status_docs.py` generates the README Targets table and every other current-level summary; a platform with no evidence yet keeps a row at level `NONE` so that unstarted platforms stay visible. The matrix records evidence; it never defines requirements.
+`XAX_REPLACEMENT_MATRIX.json` is the machine-maintained per-platform evidence record. Its levels are derived from cited evidence by `compiler/src/xax_replacement.py` and checked by `compiler/tests/test_replacement_matrix.py`; a claimed level above the derived level, an uncited label, or a missing evidence path is rejected. A field may be `NOT_APPLICABLE` only with a written justification in the row's `not_applicable` map, and only `dynamic_linking` is satisfied that way (a platform with no loader, ADR-129). Because a MEASURED label only says that a comparison exists, R4 additionally requires the row's `competitive` verdict `[true, evidence...]` (the recomputed R4 leadership verdict, §21.2); a row with `[false, ...]` or no verdict derives at most R3 (ADR-126). An emulator-only row cannot cite performance evidence (§21.2). Every row also carries a `name` and a one-sentence `summary`, from which `compiler/src/xax_status_docs.py` generates the README Targets table and every other current-level summary; a platform with no evidence yet keeps a row at level `NONE` so that unstarted platforms stay visible. The matrix records evidence; it never defines requirements.
 
 ### 21.5 Kernel admission rule
 

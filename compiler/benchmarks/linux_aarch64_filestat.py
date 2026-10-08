@@ -112,7 +112,8 @@ def run_benchmark(size: int, repetitions: int, warmup: int) -> dict:
     fastest = min(item["wall_seconds_median"] for item in results.values())
     for arm, item in results.items():
         item["time_ratio_vs_fastest"] = round(item["wall_seconds_median"] / fastest, 3)
-    results["xax"]["performance_class"] = classify(results["xax"]["wall_seconds_median"] / fastest)
+    competitor = min(item["wall_seconds_median"] for arm, item in results.items() if arm != "xax")
+    results["xax"]["performance_class"] = classify(results["xax"]["wall_seconds_median"] / competitor)
     results["ratio_xax_over_gcc"] = {
         "artifact_bytes": round(results["xax"]["artifact_bytes"] / results["gcc-O2"]["artifact_bytes"], 3),
         "wall_seconds_median": round(results["xax"]["wall_seconds_median"] / results["gcc-O2"]["wall_seconds_median"], 3),
