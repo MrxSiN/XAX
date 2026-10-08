@@ -82,6 +82,7 @@ from xax_x86_64 import (
     _is_aggregate_cid,
     _is_float_cid,
     _lea,
+    _modrm_base,
     _load,
     _load_exact,
     PE_HOSTED_IDENTITY,
@@ -544,8 +545,12 @@ def compile_register_resident(
     resolve: Callable[[bytes], SemanticObject],
     target: NativeTargetDescription,
     process_entry: bool = False,
+    prefetches: dict | None = None,
 ):
     """Return ``(code, calls, ranges)`` or ``None`` when ineligible.
+
+    ``prefetches`` (ADR-211, ``xax_prefetch``) maps a load result to ``((pointer, scale), ...)``: after that load
+    the backend emits ``prefetcht0 [pointer + result * scale]`` for each, and nothing else reads the result.
 
     Foreign C calls are recorded in ``calls`` against their declaration CID;
     the native image turns them into ``imports`` for the container emitter.
@@ -938,6 +943,30 @@ def compile_register_resident(
                 compare_load[candidate] = (load.operands[0], index, scale, 0)
             break
 
+    # An add/sub of an immediate whose only use is one argument of its block's conditional-branch edge is computed
+    # on that edge, as ``lea``, instead of on every path (ADR-211): a loop's exit-only ``found + 1`` leaves the loop.
+    edge_sunk: dict[ValueRef, tuple[ValueRef, int]] = {}
+    for block_index, block in enumerate(graph.blocks):
+        terminator = block.terminator
+        if terminator.kind != TerminatorKind.CONDITIONAL_BRANCH:
+            continue
+        edge_arguments = Counter(value for _target, arguments in terminator.edges for value in arguments)
+        for node_index, node in enumerate(block.nodes):
+            value = ValueRef.node_result(block_index, node_index)
+            width = widths.get(value)
+            if node.operation not in (Operation.ADD_WRAP, Operation.SUB_WRAP) or width not in (32, 64) or value in erased_index_nodes:
+                continue
+            left, right = node.operands
+            if right not in constants or left in constants or widths.get(left) != width:
+                continue
+            amount = (constants[right] if node.operation == Operation.ADD_WRAP else -constants[right]) % (1 << width)
+            amount = amount - (1 << width) if amount >= 1 << (width - 1) else amount
+            if not -(1 << 31) <= amount < 1 << 31:
+                continue
+            if use_count[value] == 1 and edge_arguments[value] == 1 and value not in terminator.values:
+                edge_sunk[value] = (left, amount)
+    erased_index_nodes |= set(edge_sunk)
+
     def operands_of(block_index: int, node_index: int, node) -> tuple[ValueRef, ...]:
         root = ValueRef.node_result(block_index, node_index)
         if root in value_tables:
@@ -983,11 +1012,13 @@ def compile_register_resident(
             for operand in (item for value in map(through_fold, operands_of(block_index, node_index, node)) for item in with_aliases(value)):
                 if operand in widths and operand not in rmw_erased and operand not in compare_load:
                     uses.setdefault(operand, []).append(use_position)
+            for pointer, _scale in (prefetches or {}).get(ValueRef.node_result(block_index, node_index), ()):
+                uses.setdefault(pointer, []).append(node_index)  # read by the prefetches after the load
             if node.operation == Operation.CALL_DIRECT:  # aliased operands are read again after the call
                 for result, operand in call_aliases.items():
                     if result.block == block_index and result.index == node_index and operand in widths:
                         uses.setdefault(operand, []).append(node_index + 1)
-        for value in (item for value in (*block.terminator.values, *(value for _target, arguments in block.terminator.edges for value in arguments)) for item in with_aliases(value)):
+        for value in (item for value in (*block.terminator.values, *(edge_sunk.get(value, (value,))[0] for _target, arguments in block.terminator.edges for value in arguments)) for item in with_aliases(value)):
             if value in widths:
                 uses.setdefault(value, []).append(position)
         uses_by_block[block_index] = {value: tuple(sorted(items)) for value, items in uses.items()}
@@ -1267,18 +1298,20 @@ def compile_register_resident(
             emit(_move_register(register, source_register, 64))
             return register
 
-        def parallel_moves(assignments: list[tuple[int, int, int]]) -> None:
-            pending = [(dst, src, width) for dst, src, width in assignments if dst != src]
+        def parallel_moves(assignments: list[tuple]) -> None:
+            """Register moves ``(dst, src, width[, offset])``; an offset makes the move ``lea dst, [src + offset]``."""
+            pending = [(item[0], item[1], item[2], item[3] if len(item) > 3 else 0) for item in assignments]
+            pending = [item for item in pending if item[0] != item[1] or item[3]]
             while pending:
-                sources = {src for _, src, _ in pending}
-                safe = next((i for i, (dst, _, _) in enumerate(pending) if dst not in sources), None)
+                sources = {src for _, src, _, _ in pending}
+                safe = next((i for i, (dst, src, _, offset) in enumerate(pending) if dst not in sources or (dst == src and offset and sum(s == dst for _, s, _, _ in pending) == 1)), None)
                 if safe is not None:
-                    dst, src, width = pending.pop(safe)
-                    emit(_move_register(dst, src, 64))
+                    dst, src, width, offset = pending.pop(safe)
+                    emit(_rex(width == 64, dst, src) + b"\x8d" + _modrm_base(dst, src, offset) if offset else _move_register(dst, src, 64))
                     continue
-                dst, src, width = pending[0]
+                dst, src, width, offset = pending[0]
                 emit(_move_register(_SCRATCH, src, 64))
-                pending = [(d, _SCRATCH if s == src else s, w) for d, s, w in pending]
+                pending = [(d, _SCRATCH if s == src else s, w, o) for d, s, w, o in pending]
 
         def location(value: ValueRef) -> tuple[str, int]:
             if value in pinned:
@@ -1415,6 +1448,12 @@ def compile_register_resident(
                 dead = destination not in uses_by_block[target_block] and destination not in home_offset and destination not in pinned
                 if argument in widths and destination in widths and not dead:
                     pairs.append((argument, destinations.index(destination), destination))
+            sunk = {}
+            for position, (source, index, destination) in enumerate(pairs):
+                if source in edge_sunk:
+                    operand, amount = edge_sunk[source]
+                    sunk[destination] = amount
+                    pairs[position] = (operand, index, destination)
             for source, index, destination in pairs:
                 if destination in parameter_slot:
                     destination_offset = parameter_slot[destination]
@@ -1423,7 +1462,11 @@ def compile_register_resident(
                 else:
                     destination_offset = edge_spill_base + (index - len(allocatable)) * 8
                 kind, source_location = location(source)
-                if kind == "reg":
+                if destination in sunk:
+                    emit(_move_register(_SCRATCH, source_location, 64) if kind == "reg" else _load(_SCRATCH, source_location, width_bytes(source)))
+                    emit(_rex(widths[destination] == 64, _SCRATCH, _SCRATCH) + b"\x8d" + _modrm_base(_SCRATCH, _SCRATCH, sunk[destination]))
+                    emit(_store(_SCRATCH, destination_offset, 8))
+                elif kind == "reg":
                     emit(_store(source_location, destination_offset, 8))
                 elif kind in ("const", "stack"):
                     emit(_load_constant(_SCRATCH, source_location) if kind == "const" else _lea(_SCRATCH, 4, source_location))
@@ -1443,12 +1486,14 @@ def compile_register_resident(
                     continue
                 kind, source_location = location(source)
                 if kind == "reg":
-                    moves.append((register, source_location, widths[destination]))
+                    moves.append((register, source_location, widths[destination], sunk.get(destination, 0)))
                 else:
-                    delayed.append((register, kind, source_location, width_bytes(source)))
+                    delayed.append((register, kind, source_location, width_bytes(source), sunk.get(destination, 0), widths[destination]))
             parallel_moves(moves)
-            for register, kind, where, width in delayed:
+            for register, kind, where, width, offset, value_width in delayed:
                 emit(_load_constant(register, where) if kind == "const" else _lea(register, 4, where) if kind == "stack" else _load(register, where, width))
+                if offset:
+                    emit(_rex(value_width == 64, register, register) + b"\x8d" + _modrm_base(register, register, offset))
 
         def edge_code(target_block: int, arguments: tuple[ValueRef, ...]) -> bytes:
             capture.append(bytearray())
@@ -1818,6 +1863,14 @@ def compile_register_resident(
                             register = acquire(node_index, {pointer, index_value})
                         emit(_scaled_load(register, base, index, scale, size))
                         retire(node_index, pointer, index_value)
+                        hints = (prefetches or {}).get(result, ())
+                        if hints:
+                            bind(result, register)
+                            for array, array_scale in hints:
+                                array_register = ensure(array, node_index, {result})
+                                emit(_scaled_access(b"\x0f\x18", 1, array_register, register, array_scale, 4))  # prefetcht0
+                                retire(node_index, array)
+                            unbind(result)
                         define(result, register)
                     else:
                         value = node.operands[2]

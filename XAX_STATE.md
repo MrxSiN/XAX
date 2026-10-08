@@ -65,6 +65,10 @@ The workspace now edits recursion-group members. One maintenance cycle of the JV
 
 `xax_construct` builds general programs from one typed request. `xb64` (base64 encoder) was constructed that way, tested by its own XAX `selftest`, built through the canonical build service, deployed, and maintained by one workspace transaction (release 2: 64-column lines); both releases match coreutils `base64`. Evidence: `compiler/benchmarks/r6_xb64_evidence.json`. The Linux row cites it but stays R3 (R4 not met).
 
+## chains leads; jsonmin inside noise — 2026-10-08 (ADR-211)
+
+Next-iteration prefetch and edge sinking: `chains` 0.943x rustc (p = 0.019), `filestat` 0.896x clang. `jsonmin`'s unchanged binary measured 1.029x clang this run (0.968x before), so Linux stays R3 until `jsonmin` has a margin larger than run-to-run variation (§15.32).
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

@@ -671,6 +671,8 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 
 43. **Construction carrier (ADR-210).** `xax_construct.construct` MUST return a verified store or reject; a malformed request (unknown format, operation, type, entity, unbound value, duplicate function, missing release entry) MUST raise, and a verifier failure MUST surface before a store exists. The same request MUST produce identical store bytes. Vectors: `compiler/tests/test_xax_construct.py`.
 
+44. **Next-iteration prefetch and edge sinking (ADR-211).** A prefetch transform MUST add only pure nodes, division only by nonzero constants, and loads proven in bounds; its loaded values MUST feed only `prefetcht0` hints. A sunk edge value MUST equal the wrapped add/sub at its width. Vectors: `compiler/tests/test_x86_64_optimizations.py::EdgeSinkAndPrefetchTests`.
+
 ## 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
 
 The normal local adapter MUST preserve snapshot preconditions, reject stale generations including restored identical roots, reject unexposed or cross-function values, and publish a batch atomically. Bounded function binding MUST reject truncation. Vectors: `compiler/tests/test_xax_local_protocol.py`.
