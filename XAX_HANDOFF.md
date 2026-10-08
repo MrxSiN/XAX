@@ -82,6 +82,10 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - If the XAX backends decline a helper program (`X86_64_VIEWS-XAX-BACKEND`), check the views backend's arena first: the largest function needs about 5 x blocks x values / 64 words for liveness. The region layout is in `xax_selfhost_views_backend.py`.
 - Next (S8c.6): constants and call targets, then call contracts (they need the callee interface lists decoded separately from the comparison).
 
+## S8c.6 constant and call-target rejections — 2026-10-08 (ADR-219)
+
+- `_entity_steps` covers both entity checks. Next (S8c.7): `GRAPH-CALL-CONTRACT` needs the callee interface lists decoded apart from the comparison (`_call_rule` fuses them); then the facts engine's declines and object verification.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

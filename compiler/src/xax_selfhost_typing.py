@@ -108,6 +108,9 @@ PASS_NODES_AT = DIAGNOSTICS - 1  # the node stream position, for the rejection p
 (SITE_RES_NO_ATTRIBUTES, SITE_RES_STEP_MATCH, SITE_RES_EXPECT_EFFECT, SITE_RES_EFFECT_UNIQUE, SITE_RES_COUNTS, SITE_RES_CONTINUATION,
  SITE_RES_EXPECT_RESOURCE, SITE_RES_ACQUIRE_ALLOWED, SITE_RES_RELEASE_ALLOWED, SITE_RES_DISCARD_ALLOWED, SITE_RES_JOIN_MATCH,
  SITE_RES_JOIN_PARTITIONABLE, SITE_RES_TRANSFER_SAME, SITE_RES_TRANSITION, SITE_RES_SPLIT) = range(SITE_META_ARITY + 14, SITE_META_ARITY + 29)
+# S8c.6 (ADR-219): constant targets and contracts, direct-call targets.
+(SITE_CONSTANT_TARGET_NONE, SITE_CONSTANT_TARGET_KIND, SITE_CONSTANT_CONTRACT, SITE_CALL_TARGET_NONE,
+ SITE_CALL_TARGET_KIND) = range(SITE_META_ARITY + 29, SITE_META_ARITY + 34)
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
@@ -161,7 +164,7 @@ META_RULES = {
 # S8c.2: the families whose rejections XAX decides; the rest stay NOT_PROVEN for the bootstrap.
 DECIDED_FAMILIES = frozenset({*INTEGER_FAMILIES, *FLOAT_BINARY, Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE,
                               Operation.AGGREGATE_MAKE, Operation.AGGREGATE_GET, Operation.SUM_MAKE, Operation.SUM_TAG, Operation.SUM_GET,
-                              *META_RULES, *RESOURCE_COUNTS, Operation.EFFECT_STEP})
+                              *META_RULES, *RESOURCE_COUNTS, Operation.EFFECT_STEP, Operation.CONSTANT, Operation.CALL_DIRECT})
 COVERED = frozenset(
     {*BINARY_INTEGER, Operation.INT_TRUNCATE, Operation.INT_ZERO_EXTEND, Operation.ROTATE_RIGHT, *FLOAT_BINARY,
      Operation.FLOAT_COMPARE, *TO_FLOAT, *FROM_FLOAT, Operation.FLOAT_CONVERT, Operation.INT_COMPARE, *AGGREGATES,
@@ -895,7 +898,7 @@ def _rejection_entry(b: _Builder, t: _Typing, index, carried):
                            lambda v: (b.op(Operation.UDIV, v[0], 2), b.add(v[1], 1)))
     site, payload = _rejection(b, t, operation, shape, (operands, results, attributes), attribute, kind_in, result, first, second,
                                width, first_width, is_bits, first_bits, is_float, first_float, t.lookup(LINK, first), ok, position, needed,
-                               ids, extra_at)
+                               ids, extra_at, (extra, *_constant_object(b, t, b.read(extra_at))))
     rejected = t.all(t.eq(verdict, NOT_PROVEN), t.nonzero(site))
     b.put(verdict_at, b.add(verdict, rejected))
     record = b.add(b.c(DIAGNOSTICS), b.mul(index, 4))
@@ -905,7 +908,7 @@ def _rejection_entry(b: _Builder, t: _Typing, index, carried):
 
 
 def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kind_in, result, first, second,
-               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids, extra_at):
+               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids, extra_at, constant):
     """S8c.1/S8c.2: the site and payload of the bootstrap's first failing typing check for a scalar-family node.
 
     Each family lists its checks in the bootstrap's order.  A step with site 0 leaves the node to the bootstrap:
@@ -1007,6 +1010,11 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
             (clamped, *none),
             (t.not_(ok), SITE_SUM_GET_VARIANT, (first, attribute, result)),
         )),
+        (is_(Operation.CONSTANT), _entity_steps(b, t, constant[0], extra_at, Kind.CONSTANT, SITE_CONSTANT_TARGET_NONE, none) + (
+            (t.not_(constant[1]), *none),
+            (t.not_(ok), SITE_CONSTANT_CONTRACT, (constant[2], position, zero)),
+        )),
+        (is_(Operation.CALL_DIRECT), _entity_steps(b, t, constant[0], extra_at, Kind.FUNCTION, SITE_CALL_TARGET_NONE, none)),
         *((is_(member), _resource_steps(b, t, member, counts, attribute, ids, position, ok, clamped, none)) for member in (*RESOURCE_COUNTS, Operation.EFFECT_STEP)),
         *((is_(meta), _meta_steps(b, t, index_, meta, counts, attribute, ids, result, width, is_bits, clamped, none))
           for index_, meta in enumerate(META_RULES)),
@@ -1060,6 +1068,19 @@ def _meta_steps(b: _Builder, t: _Typing, index, meta, counts, attribute, ids, re
     if meta == Operation.META_TARGET_SUPPORTS:
         steps += [(clamped, *none), (t.not_(t.one_of(attribute, tuple(Operation))), SITE_META_TARGET_OPERATION, (attribute, b.c(0), b.c(0)))]
     return tuple(steps)
+
+
+def _entity_steps(b: _Builder, t: _Typing, extra, extra_at, kind, site_none, none):
+    """S8c.6: a constant's or direct call's entity check: absent, or of another kind (an entry whose references did not
+    resolve has kind 0 in the stream and stays with the bootstrap).  ``site_none + 1`` is the wrong-kind site."""
+    entity = b.read(extra_at)
+    valid = t.lt(entity, t.count)
+    entity_kind = b.mul(valid, b.read(b.get(t.slot(POSITION, t.pick(valid, entity, b.c(0))))))
+    return (
+        (t.eq(extra, 0), site_none, (b.c(0),) * 3),
+        (t.eq(entity_kind, 0), *none),
+        (t.not_(t.eq(entity_kind, int(kind))), site_none + 1, (entity_kind, b.c(0), b.c(0))),
+    )
 
 
 def _resource_steps(b: _Builder, t: _Typing, operation, counts, attribute, ids, position, ok, clamped, none):
@@ -1197,6 +1218,16 @@ def _render_sites():
         SITE_RES_SPLIT: ("XAX.RESOURCE.SPLIT", "RESOURCE-PARTITION-CONTRACT", lambda r, x, y, z: "partitionable resource -> two matching pieces",
                          lambda r, x, y, z: [r.field(RFLAGS, x), r.h(y), r.h(z)]),
     })
+    hexes = lambda r, indices: [r.h(item) for item in indices]  # noqa: E731
+    sites.update({
+        SITE_CONSTANT_TARGET_NONE: ("XAX.STRUCT.CONSTANT_TARGET", "GRAPH-CONSTANT-TARGET", lambda r, x, y, z: Kind.CONSTANT.name, lambda r, x, y, z: None),
+        SITE_CONSTANT_TARGET_KIND: ("XAX.STRUCT.CONSTANT_TARGET", "GRAPH-CONSTANT-TARGET", lambda r, x, y, z: Kind.CONSTANT.name,
+                                    lambda r, x, y, z: Kind(x).name),
+        SITE_CONSTANT_CONTRACT: ("XAX.STRUCT.CONSTANT_CONTRACT", "GRAPH-CONSTANT-CONTRACT", lambda r, x, y, z: [[], [r.h(x)]],
+                                 lambda r, x, y, z: [hexes(r, r.operands(y)), hexes(r, r.results(y))]),
+        SITE_CALL_TARGET_NONE: ("XAX.STRUCT.CALL_TARGET", "GRAPH-CALL-TARGET", lambda r, x, y, z: Kind.FUNCTION.name, lambda r, x, y, z: None),
+        SITE_CALL_TARGET_KIND: ("XAX.STRUCT.CALL_TARGET", "GRAPH-CALL-TARGET", lambda r, x, y, z: Kind.FUNCTION.name, lambda r, x, y, z: Kind(x).name),
+    })
     for index, (kinds, result_count, attribute_count, _rule) in enumerate(META_RULES.values()):
         expected = (len(kinds), result_count, attribute_count)
         sites[SITE_META_ARITY + index] = ("XAX.META.CONTRACT", "META-OP-ARITY", lambda r, x, y, z, e=expected: e, lambda r, x, y, z: (x, y, z))
@@ -1329,6 +1360,8 @@ def marshal(blocks, operand_types_of, type_info, value_type_of=None, facts=None,
                 extra = [values.setdefault(value, len(values)) for value in node.operands]
             elif node.operation in (Operation.CONSTANT, Operation.CALL_DIRECT):
                 entity = None if node.entity is None else type_index(node.entity.cid)
+                if node.entity is not None and entity is None:
+                    continue  # S8c.6: no entity word must mean no entity
                 extra = [] if entity is None else [entity]
             else:
                 extra = []
