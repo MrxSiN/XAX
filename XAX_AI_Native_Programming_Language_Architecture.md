@@ -911,9 +911,11 @@ Replacement is claimed per platform and workload, at cumulative evidence-gated l
 | R1 | executable lowering: XAX directly produces an executable representation that ran |
 | R2 | platform interoperability: ABI, system APIs, libraries, callbacks, dynamic loading, resources, lifecycle work |
 | R3 | practical application: a nontrivial real workload ran |
-| R4 | performance competitiveness: runtime, memory, binary size measured competitive with established toolchains |
-| R5 | AI efficiency: repeated real-model trials use ≤ 0.50× (target; ≤ 0.55× accepted, ADR-195) the lowest valid textual median among at least two relevant languages, including all retries and repairs under equivalent conditions |
-| R6 | autonomous maintenance: query, modify, verify, benchmark, rebuild, commit through semantic transactions |
+| R4 | performance leadership (primary development focus): median time ≤ 0.9999× the fastest valid non-XAX implementation on the same hardware, with an advantage the raw samples show is not noise; memory and binary size measured and reported |
+| R5 | autonomous maintenance: query, modify, verify, benchmark, rebuild, commit through semantic transactions without whole-source regeneration |
+| R6 | proven 100% XAX-developed application: a complete deployable application designed, implemented, tested, built, deployed, and maintained with XAX as the sole authoritative language, with reproducible provenance and one verified XAX-only release cycle |
+
+AI token efficiency (≤ 0.50× the lowest textual workflow) is a separately scheduled future milestone outside R0–R6 (ADR-207); earlier token trials are historical evidence only.
 
 Every implementation claim carries one label: PROVEN, EXECUTED, MEASURED, STRUCTURAL, PROTOTYPE, or UNIMPLEMENTED. No platform or language is "replaced" until the required evidence exists.
 
@@ -1048,7 +1050,7 @@ Production use requires observability through derived, non-authoritative views: 
 
 `XAX_REPLACEMENT_MATRIX.json` tracks each platform: semantic expressibility, code generation, ABI, artifact format, platform APIs, FFI, concurrency, atomics, SIMD, dynamic linking, debugging, optimization maturity, runtime requirement, real execution, performance/memory/code-size/AI-token evidence, blockers, and replacement level. Levels are derived from cited evidence by a validator; unchecked boxes never become claims.
 
-Replacement benchmarks compare XAX against the platform's established toolchains (optimized C/C++, Rust, platform-native compilers, WebAssembly toolchains, GPU toolchains, hand-written assembly where credible), recording hardware, OS, toolchain versions, settings, workload, warmup, repetitions, variance, binary size, peak memory, and time. Benchmark definitions are never tuned to favor XAX. A CPU/native runtime comparison that judges performance includes an optimized C/C++ baseline and at least one implementation outside C/C++; XAX meets the performance target only within 1.05× of the fastest valid implementation's median (`XAX_BENCHMARKS.md` §15.0, ADR-147). AI benchmarks measure total successful-task tokens and repair counts on real models; repository size should have as little relationship as possible to task context size.
+Replacement benchmarks compare XAX against the platform's established toolchains (optimized C/C++, Rust, platform-native compilers, WebAssembly toolchains, GPU toolchains, hand-written assembly where credible), recording hardware, OS, toolchain versions, settings, workload, warmup, repetitions, variance, binary size, peak memory, and time. Benchmark definitions are never tuned to favor XAX. A CPU/native runtime comparison that judges performance includes an optimized C/C++ baseline and at least one implementation outside C/C++; R4 needs XAX's median at most 0.9999× the fastest valid non-XAX median, with a significant advantage (`XAX_BENCHMARKS.md` §15.0, ADR-207). AI token benchmarks belong to the future AI-efficiency milestone and measure total successful-task tokens and repair counts on real models; repository size should have as little relationship as possible to task context size.
 
 The goal is not "faster than assembly"; it is:
 
@@ -1057,7 +1059,7 @@ The goal is not "faster than assembly"; it is:
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R4: jvm; R3: android-arm64, linux-aarch64, linux-x86_64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-History: Linux x86-64 reached R3 with `jsonmin`, a validating JSON minifier that recurses through a recursion group (ADR-126), and R4 after ADR-147/148, when all three Linux workloads came within 1.05× of the fastest of gcc, clang, and rustc on one shared host (`XAX_BENCHMARKS.md` §15.14). ADR-177 withdrew that R4: its evidence kept no raw samples. R4 now needs a `competitive` verdict that the validator recomputes from raw per-arm samples under the multi-language baseline policy. Emulator and software-device execution (QEMU, Unicorn, llvmpipe) count as EXECUTED for correctness, never as performance evidence, and each such row lists "not hardware" as a blocker (ADR-114).
+History: Linux x86-64 reached R3 with `jsonmin`, a validating JSON minifier that recurses through a recursion group (ADR-126), and R4 after ADR-147/148, when all three Linux workloads came within 1.05× of the fastest of gcc, clang, and rustc on one shared host (`XAX_BENCHMARKS.md` §15.14). ADR-177 withdrew that R4: its evidence kept no raw samples. R4 now needs a `competitive` verdict that the validator recomputes from raw per-arm samples under the multi-language baseline policy; since ADR-207 that verdict is leadership (≤ 0.9999× the fastest non-XAX arm), so the Android counter app (1.007×) is R3 and the JVM keeps R4 on `jsonmin` (0.835× `javac`). Emulator and software-device execution (QEMU, Unicorn, llvmpipe) count as EXECUTED for correctness, never as performance evidence, and each such row lists "not hardware" as a blocker (ADR-114).
 
 The first replacement milestone (U1) is a hosted native application, a bare-metal program, a WebAssembly/WASI or browser application, an Android application, and an accelerator workload, all from XAX semantics, measured against established implementations.
 

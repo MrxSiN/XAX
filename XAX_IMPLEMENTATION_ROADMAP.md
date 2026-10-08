@@ -365,6 +365,8 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 
 **Progress (2026-10-05)**: the Windows x86-64 row holds R2. Current PE bytes execute on Windows 11, and a second artifact exercises a loader-bound `CreateThread` call into a pure XAX `win64-c` entry, then waits, reads the callback result, and closes its linearly tracked handle (ADR-170).
 
+**Progress (2026-10-08)**: ADR-207 redefines R4 as leadership (≤ 0.9999× the fastest non-XAX median, significant), R5 as autonomous maintenance, and R6 as a proven XAX-only application. The JVM keeps R4 (`jsonmin` 0.835× `javac`); Android drops to R3 (1.007×). The next milestone is U2 below.
+
 **Required workloads** (all originate from verified XAX semantics; no human-authored program in another language):
 
 1. **Hosted native application** on a mainstream OS performing real allocation, filesystem or network I/O, at least one dynamic/external library call, nontrivial control flow, and a data structure, with no hidden language runtime.
@@ -391,7 +393,7 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 | U1.3 | ELF64 executable container + SysV foreign ABI (x86-64, AArch64 Linux) | Linux rows; reuses Android ELF writer | **x86-64 EXECUTED/MEASURED**: static and explicit-loader ELF64 `ET_EXEC` (ADR-086/087), `linux-x86_64-syscall-v1` (ADR-085), `sysv-x86_64-c` imports of register-passed INTEGER and SSE scalars (`libz.so.1` `crc32`; libm `ldexp`/`pow`/`sqrtf`), pure C-to-XAX callbacks through generated adapters (libc `tsearch`/`tfind`, ADR-102), explicit `exit_group`; Linux row at R2 then, now R4 (U1.8). **AArch64 EXECUTED under qemu-aarch64** (ADR-123): static and explicit-loader ELF64, `linux-aarch64-syscall-v1`, `aapcs64-linux-c` imports (glibc `strlen`, `libz.so.1` `crc32`), the unchanged `filestat` graph; linux-aarch64 row R2 then (emulated; frame path 6.6× gcc), now R3 with `jsonmin` (ADR-126). Remaining SysV breadth is OI-40, effectful callbacks OI-42, and TLS/unwind OI-33. |
 | U1.4 | wasm32 imports + WASI and generated browser bindings | workload 3 | WASI EXECUTED (`wasi_command_evidence.json`); browser EXECUTED in headless Chromium (ADR-103/104, `browser_fib_evidence.json`: generated page, URL in, DOM out, XAX click entries; browser row R2). |
 | U1.4a | Android workload evidence without a device | workload 4 | EXECUTED under Android's `linker64`/bionic via qemu-user (ADR-106, 31 runs, including C→XAX thread callbacks, ADR-107); every APK passes ART's verifier (ADR-108); libxposed modules EXECUTED on ART with a stand-in framework (ADR-109); packed ELF container (ADR-105); size MEASURED against a Java + NDK twin (packed APK 0.79×). Device run of the packed APK, and start-up/memory, UNEXECUTED. |
-| U1.4b | Android app with state, I/O, lifecycle (workload 4) | Android R4 | `xax.counter` (ADR-111): XAX owns state, file I/O, and descriptor lifetime. ART-verified; persistence EXECUTED under bionic and on Pixel 8 Pro arm64 hardware (ADR-172). Current (ADR-198, §15.29): XAX cold-start median is 1.007× the fastest of a Java + NDK twin and a pure Java twin (four rotated passes, equal `speed` compilation, per-pass 1.00–1.06×), median PSS equal within 0.11%, APK 0.703× the NDK twin; Android row R4. libxposed modules execute under Vector v2.2 on the same device (ADR-197). Descriptor ownership and durable writes (`fdatasync`) remain verifier-visible (ADR-153). |
+| U1.4b | Android app with state, I/O, lifecycle (workload 4) | Android R4 | `xax.counter` (ADR-111): XAX owns state, file I/O, and descriptor lifetime. ART-verified; persistence EXECUTED under bionic and on Pixel 8 Pro arm64 hardware (ADR-172). Current (ADR-198, §15.29): XAX cold-start median is 1.007× the fastest of a Java + NDK twin and a pure Java twin (four rotated passes, equal `speed` compilation, per-pass 1.00–1.06×), median PSS equal within 0.11%, APK 0.703× the NDK twin; Android row R4 then, R3 since ADR-207 (1.007× is above the 0.9999× leadership target). libxposed modules execute under Vector v2.2 on the same device (ADR-197). Descriptor ownership and durable writes (`fdatasync`) remain verifier-visible (ADR-153). |
 | U1.5 | Deterministic foreign metadata importer (OI-32) | every platform API package | C headers EXECUTED (ADR-127: clang AST → declarations, byte-identical to hand-built ones, imported stdio program runs; 855 of 1,084 functions in four headers import); Android classfiles PROTOTYPE |
 | U1.6 | Bare-metal board package: vector table, sections, MMIO, interrupt entry | workload 2 | EXECUTED on QEMU `virt` (ADR-128): board profile, GICv2 and timer interrupt through a contract-checked XAX handler, UART MMIO, PSCI power-off, 5,420-byte image. Static linking of freestanding C objects EXECUTED (ADR-129: XAX calls a linked C CRC and a C allocator); aarch64-baremetal row R2 (emulated). Hardware is OI-44. |
 | U1.7 | Real GPU target package and device execution (OI-34) | workload 5 | SPIR-V/Vulkan package EXECUTED on Mesa llvmpipe (ADR-124; GPU row R1; matches the reference executor, traps included). Next: structured lowering of reducible CFGs (6.9× glslang today), floats and workgroup memory, an XAX host program driving Vulkan (R2), and a physical-GPU run with a throughput baseline (closes OI-34). |
@@ -402,7 +404,27 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 
 **Dependencies**: M4/M5 backends, M7 resources/effects, M10 build/provenance, M13 accelerator scopes.
 
-**Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`); AI token trials on the same workloads once U1 applications exist (R5).
+**Benchmarks now valid**: replacement-workload runtime/memory/size comparisons (§15 of `XAX_BENCHMARKS.md`). AI token trials are deferred to the future AI-efficiency milestone (ADR-207).
+
+## U2 — Performance leadership, autonomous maintenance, XAX-only application (after U1)
+
+Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not scheduled here.
+
+**Exit criteria**
+
+1. **R4 on hardware rows.** Linux x86-64 and Android arm64 each hold R4: XAX median ≤ 0.9999× the fastest non-XAX arm (C/C++ plus Rust or another non-C language; Java + NDK and Kotlin on Android), significant over interleaved raw samples, rerun after every performance-relevant backend change. Memory and binary size are reported for every arm.
+2. **R5 on one row.** An agent queries, modifies, verifies, benchmarks, rebuilds, and commits an R4 application through `LocalMutationSession` transactions with no whole-source regeneration; the run is recorded as EXECUTED `autonomous_maintenance` evidence.
+3. **R6 on one row.** One complete deployable application (logic, tests, build definitions all XAX) is built reproducibly, deployed, functionally tested on its target, and taken through one XAX-only maintenance/release cycle; the record cites provenance, graph history, and test results as EXECUTED `xax_only_application`.
+
+**Ordered sequence**
+
+| Step | Work | Unblocks |
+|---|---|---|
+| U2.1 | Re-run Linux `filestat`, `chains`, and `jsonmin` with raw samples (the harness records them since ADR-207) | Linux R4 verdict |
+| U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 |
+| U2.3 | Android cold-start re-run with a Kotlin arm and more passes | Android R4 verdict |
+| U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 |
+| U2.5 | XAX-only application with XAX test and build definitions | R6 |
 
 ## S — Compiler migration ladder (after M14; runs alongside U1)
 

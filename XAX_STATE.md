@@ -47,6 +47,12 @@ S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (na
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
+## Replacement levels v3 — 2026-10-08 (ADR-207)
+
+R4 is now performance leadership: XAX's median must be at most 0.9999× the fastest non-XAX median, compared unrounded, with a significant one-sided Mann–Whitney advantage on raw samples (validator `xax-replacement-validator-v3`). R5 is autonomous maintenance; R6 is a proven 100% XAX-developed application (new field `xax_only_application`). AI-token trials are a deferred milestone and gate no level. Effect: JVM keeps R4 (`jsonmin` 0.835× `javac`, p ≈ 3e-5); `android-arm64` drops from R4 to R3 (1.007273× `clang_ndk_java`). No row has R5 or R6 evidence. Earlier dated statements that Android holds R4, or that R5 means AI tokens, are superseded by this section. Next milestone: U2 in `XAX_IMPLEMENTATION_ROADMAP.md`.
+
+Test state on this host (Python 3.13, x86-64, no QEMU/Wine/JDK/Android tools): 1,305 passed, 74 skipped, and 4 failed for host reasons (wheel build and install without a working setuptools; two AArch64 execution tests without `qemu-aarch64`), with `unicorn` and `tiktoken` installed.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

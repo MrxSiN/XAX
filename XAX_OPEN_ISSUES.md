@@ -649,6 +649,8 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 ## OI-46 — Fixed client overhead in R5 token measurement
 
+*Deferred (2026-10-08, ADR-207):* token efficiency is no longer R5; this issue belongs to the future AI-efficiency milestone and stays open but unscheduled.
+
 **Question.** In the same-prefill JVM comparison (ADR-195), every arm makes one request through the pinned Codex client. That client adds about 10,000 input tokens per request with its default instructions, and about 6,900 even with one-line base instructions. This floor is common to all arms and dominates edits that cost a few hundred task tokens, so a 0.50–0.55× ratio cannot be reached. Which measurement keeps "same model, same tools, equivalent context" and still measures the language and protocol?
 
 **Fixed constraints.** All arms use the same client, model, instructions and tool surface, and every token the model receives or emits is counted, including retries. No benchmark-only XAX shortcut, no weakened textual workflow, and no removal of a lower-token competitor are allowed. Historical profiles are never re-scored.
