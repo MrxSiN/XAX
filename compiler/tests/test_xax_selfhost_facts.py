@@ -395,3 +395,56 @@ class SelfhostTypedAccessTests(unittest.TestCase):
         finally:
             typing_module.NativeTyping.memory_rejection = original
         self.assertTrue(all(decided_ for _rule, decided_ in rules.values()), rules)
+
+
+# -- S8c.12 (ADR-229): heap-view construction -----------------------------------------------------------------------
+
+def _heap_program(variant: str):
+    """mmap one page and view it; ``variant`` makes the view (or a second one) break one bootstrap rule."""
+    from xax_linux import linux_api
+
+    api = linux_api()
+    graph = GraphBuilder()
+    block = graph.block(api.process_effect, api.memory_effect)
+    process, memory = block.params
+    raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 4096), memory), (api.bytes_rw, api.heap_owner, api.memory_effect), entity=api.mmap_anonymous)
+    extent = {"view_bounds": 8192}.get(variant, 4096)
+    alignment = 3 if variant == "view_alignment" else 1
+    token_type = heap_view_type(2048 if variant == "view_token_type" else extent)
+    effect_type = api.process_effect if variant == "view_effect_type" else api.memory_effect
+    pointer, view, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (api.bytes_rw, token_type, effect_type), attributes=(extent, alignment))
+    if variant == "view_owner":
+        block.op(Operation.HEAP_VIEW, (raw, owner, memory), (api.bytes_rw, heap_view_type(4096), api.memory_effect), attributes=(4096, 1))
+    _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, api.memory_effect), entity=api.munmap_view(api.bytes_rw, 4096))
+    block.ret(process, memory)
+    function = graph.function((api.process_effect, api.memory_effect), (api.process_effect, api.memory_effect))
+    return function, (*api.types, *graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostHeapViewConstructionTests(unittest.TestCase):
+    def test_heap_view_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            for variant in ("view_bounds", "view_alignment", "view_token_type", "view_effect_type", "view_owner"):
+                function, objects = _heap_program(variant)
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, variant)
+                self.assertEqual(baseline[0], "reject", variant)
+                rules[variant] = (baseline[2], any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertTrue(all(decided_ for _rule, decided_ in rules.values()), rules)
