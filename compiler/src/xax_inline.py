@@ -341,6 +341,46 @@ def _store_truncations(blocks: list[_Block], resolve) -> bool:
     return changed
 
 
+def _local_parameters(blocks: list[_Block], entry: _Block) -> bool:
+    """In a block entered by exactly one edge from another block, a value that edge passes as an argument is read
+    through the block's own parameter (the same value), so it is not also live across the edge (ADR-212)."""
+    incoming: dict[int, list[tuple[_Block, list[_Value]]]] = {}
+    for block in blocks:
+        for target, arguments in block.edges:
+            incoming.setdefault(id(target), []).append((block, arguments))
+    changed = False
+    for block in blocks:
+        edges = incoming.get(id(block), [])
+        if block is entry or len(edges) != 1 or edges[0][0] is block:
+            continue
+        mapping: dict[int, _Value] = {}
+        for parameter, argument in zip(block.inputs, edges[0][1]):
+            if argument is not parameter and id(argument) not in mapping:
+                mapping[id(argument)] = parameter
+        if not mapping:
+            continue
+
+        def local(values: list[_Value]) -> list[_Value]:
+            return [mapping.get(id(value), value) for value in values]
+
+        for item in block.nodes:
+            rewritten = local(item.operands)
+            if any(new is not old for new, old in zip(rewritten, item.operands)):
+                item.operands, changed = rewritten, True
+        values = local(block.values)
+        if any(new is not old for new, old in zip(values, block.values)):
+            block.values, changed = values, True
+        new_edges = []
+        for target, arguments in block.edges:
+            rewritten = local(arguments)
+            changed = changed or any(new is not old for new, old in zip(rewritten, arguments))
+            new_edges.append((target, rewritten))
+        block.edges = new_edges
+        for parameter, argument in zip(block.inputs, edges[0][1]):
+            _carry_extent(argument, parameter)  # the parameter now stands for the argument
+    return changed
+
+
 def _dead_code(blocks: list[_Block]) -> bool:
     used: set[int] = set()
     for block in blocks:
@@ -429,7 +469,7 @@ def inline_leaf_calls(graph, resolve: Callable[[bytes], SemanticObject]):
     """The lowering view: small leaf callees inlined, then a fall-through block layout."""
     blocks, entry = _lift(graph)
     if not any(_inline_candidate(node, resolve) is not None for block in graph.blocks for node in block.nodes if node.operation == Operation.CALL_DIRECT):
-        while _merge_blocks(blocks, entry) or _thread_jumps(blocks, entry) or _store_truncations(blocks, resolve) or _dead_code(blocks):
+        while _merge_blocks(blocks, entry) or _thread_jumps(blocks, entry) or _store_truncations(blocks, resolve) or _local_parameters(blocks, entry) or _dead_code(blocks):
             pass
         return _lower(graph, _layout(blocks, entry), entry)
     changed = True
@@ -444,6 +484,6 @@ def inline_leaf_calls(graph, resolve: Callable[[bytes], SemanticObject]):
                     break
             if changed:
                 break
-    while _merge_blocks(blocks, entry) or _thread_jumps(blocks, entry) or _fold_pack(blocks, resolve) or _store_truncations(blocks, resolve) or _dead_code(blocks):
+    while _merge_blocks(blocks, entry) or _thread_jumps(blocks, entry) or _fold_pack(blocks, resolve) or _store_truncations(blocks, resolve) or _local_parameters(blocks, entry) or _dead_code(blocks):
         pass
     return _lower(graph, _layout(blocks, entry), entry)

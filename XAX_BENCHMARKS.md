@@ -1146,6 +1146,19 @@ Same host and harness as §15.30, 31 interleaved runs per arm.
 
 `chains` now leads: the walk loop is the same as rustc's, and the next lookup's first node is prefetched while the current chain is walked. `jsonmin`'s binary is byte-identical to §15.30's, which measured 0.967682x; on this shared host a ~6% swing between runs of the same binaries is possible, so `jsonmin`'s lead is not established and the Linux row stays R3. Evidence: `u1_linux_filestat_evidence.json`, `jsonmin_evidence.json`, `oi37_chains_evidence.json`.
 
+### 15.33 Linux x86-64 and JVM re-run after ADR-212 (MEASURED, 2026-10-08)
+
+Same host and harnesses as §15.30–15.32 (31 interleaved runs per Linux arm; 15 fresh-JVM runs per JVM arm).
+
+| Workload | Fastest non-XAX | XAX median / competitor | p | XAX / competitor median (ms) |
+|---|---|---:|---:|---|
+| `filestat` | clang -O2 | 0.851851 | 3.4e-7 | 58.71 / 68.92 |
+| `jsonmin` | clang -O2 | 0.959479 | 0.031 | 22.30 / 23.24 |
+| `chains` (`xax-soa`) | rustc -O3 | 0.911278 | 0.0094 | 197.25 / 216.45 |
+| JVM `jsonmin` | javac | 0.865214 | 0.0012 | 127.1 / 146.9 |
+
+All Linux workloads lead, so the Linux x86-64 row derives R4. Caveat: `jsonmin`'s margin is small; its previous binary measured 0.967682x (§15.30) and 1.029472x (§15.32) on this host, so these numbers are one run, not a robust bound. Memory and size: XAX's peak RSS is below every competitor's on all three; `jsonmin`'s stripped binary is 1.21x clang's, `filestat`'s 0.29x, `chains`' far smaller than rustc's.
+
 ## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 
 All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and

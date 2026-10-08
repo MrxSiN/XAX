@@ -249,6 +249,24 @@ class EdgeSinkAndPrefetchTests(unittest.TestCase):
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
 class LoweringViewTests(unittest.TestCase):
+    def test_single_edge_block_reads_its_own_parameter(self):
+        """ADR-212: a value passed on a block's only incoming edge is read through that block's parameter."""
+        from xax_compiler import ValueRef, function, graph_fragment, parse_function_graph
+        from xax_graph_builder import GraphBuilder
+
+        graph = GraphBuilder()
+        b1 = bits_type(1)
+        entry, then, other = graph.block(B32), graph.block(B32), graph.block()
+        (x,) = entry.params
+        entry.cbr(entry.op1(Operation.INT_COMPARE, (x, entry.const(B32, 0)), b1, attributes=(IntCompare.EQ,)), then, (x,), other, ())
+        then.ret(then.op1(Operation.ADD_WRAP, (x, then.const(B32, 1)), B32))  # reads the entry's x by dominance
+        other.ret(other.const(B32, 7))
+        callee = graph.function((B32,), (B32,))
+        resolve = {item.cid: item for item in graph.objects.values()}.__getitem__
+        view = inline_leaf_calls(parse_function_graph(callee, resolve), resolve)
+        reads = [operand for block in view.blocks for node in block.nodes if node.operation == Operation.ADD_WRAP for operand in node.operands]
+        self.assertIn(ValueRef.parameter(next(i for i, block in enumerate(view.blocks) if any(n.operation == Operation.ADD_WRAP for n in block.nodes)), 0), reads)
+
     def test_jsonmin_inlines_leaf_helpers_and_keeps_results(self):
         from pathlib import Path
 

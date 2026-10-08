@@ -50,8 +50,8 @@ class ReplacementMatrixTests(unittest.TestCase):
         self.assertEqual(practical[0], "EXECUTED")
         # The benchmark-scale filestat utility alone is not the application.
         self.assertIn("compiler/benchmarks/jsonmin_evidence.json", practical)
-        # ADR-177: the R4 comparisons kept no raw samples, so the row stops at R3.
-        self.assertEqual(derived_level(row), "R3")
+        # ADR-212: all three raw-sample comparisons lead (R4); no R5 maintenance record yet.
+        self.assertEqual(derived_level(row), "R4")
 
     def test_summary_only_performance_cannot_be_measured_or_competitive(self):
         bad = copy.deepcopy(MATRIX)
