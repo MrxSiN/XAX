@@ -406,6 +406,10 @@
       ],
       "note": "xax-construct-v1 carrier (ADR-210): decodes one construction request into a verified build snapshot store; the store, not the request, is authoritative."
     },
+    "xax_contract.py": {
+      "class": "E",
+      "note": "xax-host-contract-v1 (ADR-225): names and format identities external integrations may depend on; no compiler logic."
+    },
     "xax_prefetch.py": {
       "class": "A",
       "components": [
@@ -467,7 +471,7 @@
     },
     "verifier-rejection-diagnostics": {
       "python_authority": "xax_compiler fail() sites in verification: graph resolution and type verification while walking streams, group-member call contracts, heap-view/rebase/call/atomic/link memory facts, and object verification (S8c.10 onward); store container, object envelopes, and graph syntax are XAX since S8a/S8b",
-      "xax_hosted": "integer, float, compare, aggregate, sum, meta, resource/effect, constant, call-target, and fragment call-contract typing rejections, and stack-memory and checked-access fact rejections: xax_op_typing.xax (S8c.1-S8c.9, ADR-214 to ADR-222)",
+      "xax_hosted": "integer, float, compare, aggregate, sum, meta, resource/effect, constant, call-target, and fragment call-contract typing rejections, and stack-memory and checked-access fact rejections: xax_op_typing.xax (S8c.1-S8c.9, ADR-214 to ADR-221, ADR-226)",
       "target_dependency": "none",
       "prerequisite": "S7b.1 record mechanism",
       "differential_oracle": "negative conformance corpus, per-rule",

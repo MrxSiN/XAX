@@ -96,7 +96,13 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - Use `_reject(e, condition, M[site], payload..., renderable=...)` only where the engine check is exactly the bootstrap's check in its order; add the renderer in `memory_diagnostic`. `_pointer`, `_consume_effect`, and `_access` take `exact=True` in the handlers already verified (load, store, address offset, stack end).
 - Next: heap views and checked accesses (`_heap_view_node`, `_checked`), whose corpus mutations still fall back; then calls, atomics, links; then object verification.
 
-## S8c.9 checked-access rejections — 2026-10-08 (ADR-222)
+## Host integration contracts — 2026-10-08 (ADR-222 to ADR-225)
+
+- `xax_native.verify_component_store` memoizes component-store verification in `XAX_NATIVE_CACHE`. Set `XAX_NATIVE_REVERIFY=1` when evidence must show the verifier running on component stores.
+- `xax_construct` accepts `linux.startup.*`. `xax_linux.process_contract()` and `xax_contract` are the versioned host surface: when one of their names or clauses changes, bump `HOST_CONTRACT_MINOR` or the identity, and tell XAX-MCP (`MrxSiN/XAX-MCP`, `src/xax_mcp/compat.py`).
+- Wide checked loads on byte views (proposal P4 from XAX-MCP) are not implemented: they would change the checked-access rule in the verifier, the XAX-hosted typing program, and every backend, which needs its own decision.
+
+## S8c.9 checked-access rejections — 2026-10-08 (ADR-226)
 
 - `_access_size` is shared by plain and checked accesses. Next: rebase windows (`_pointer_rebase`), heap-view construction (`_heap_view_node`), returned views (`_return_views`), then calls, atomics, and links; then object verification.
 

@@ -47,7 +47,6 @@ from xax_compiler import (
     SemanticObject,
     StoreReader,
     bits_type,
-    verify_store,
     x86_64_linux_exec_target,
 )
 from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
@@ -267,8 +266,10 @@ def build_encoder_program() -> tuple[StoreReader, SemanticObject]:
 
 def load_encoder_program() -> tuple[StoreReader, SemanticObject]:
     """The committed canonical store, verified on load."""
+    from xax_native import verify_component_store
+
     reader = StoreReader(STORE_PATH.read_bytes())
-    verify_store(reader)
+    verify_component_store(reader, "riscv64-encoder")
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     encode = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, encode

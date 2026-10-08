@@ -1841,12 +1841,14 @@ class NativeProgram:
 
     def load(self):
         """``(reader, function)``: the committed store (or a fresh build when it is absent) and its entry."""
-        from xax_compiler import Kind, StoreReader, verify_store
+        from xax_compiler import Kind, StoreReader
 
         if not self.store_path.exists():
             return self.build()
+        from xax_native import verify_component_store
+
         reader = StoreReader(self.store_path.read_bytes())
-        verify_store(reader)
+        verify_component_store(reader, self.store_path.stem)
         module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
         function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
         return reader, function
