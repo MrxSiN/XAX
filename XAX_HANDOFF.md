@@ -128,7 +128,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.15 indirect-call stack-proof rejections — 2026-10-08 (ADR-233)
 
-- Next: released-view link dependents (`MEMORY-LINK-TARGET-OUTLIVES` at calls), atomics, links; then object verification (`verify_object`).
+- Next: released-view link dependents (`MEMORY-LINK-TARGET-OUTLIVES` at calls), atomics, links; then object verification (`verify_object`). Superseded by S8c.16 below.
+
+## S8c.16 atomic memory rejections — 2026-10-08 (ADR-234)
+
+- Next: released-view link dependents (`MEMORY-LINK-TARGET-OUTLIVES` at calls), links; then object verification (`verify_object`).
 
 ## Validation state at M14 (historical)
 

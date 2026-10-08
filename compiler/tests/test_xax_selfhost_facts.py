@@ -646,3 +646,75 @@ class SelfhostIndirectCallTests(unittest.TestCase):
             "no_effect_input": ("INDIRECT-CALL-STACK-PROOF", True), "no_effect_output": ("INDIRECT-CALL-STACK-PROOF", True),
             "wrong_owner": ("INDIRECT-CALL-STACK-PROVENANCE", True), "forked": ("MEMORY-EFFECT-LINEAR", True), "ended": ("MEMORY-PROVENANCE-PROVEN", True),
         })
+
+
+# -- S8c.16 (ADR-234): atomics ----------------------------------------------------------------------------------------
+
+def _atomic_program(variant: str):
+    """Atomic store, load, read-modify-write, and compare-exchange on a stack word; ``variant`` breaks one rule."""
+    from xax_compiler import AtomicOrder, AtomicRmwKind, AtomicScope, CompareExchangeStrength
+
+    pointer = pointer_type(B32, Permission.READ_WRITE, 4)
+    read_only = pointer_type(B32, Permission.READ, 4)
+    graph = GraphBuilder()
+    graph.track(pointer, read_only, OWNER, MEM, B32, B64, B1)
+    block = graph.block(B32)
+    (seed,) = block.params
+    p, owner, memory = block.op(Operation.STACK_ALLOC, (), (pointer, OWNER, MEM), attributes=(4, 4))
+    system = AtomicScope.SYSTEM
+    if variant == "uninitialized":
+        _value, memory = block.op(Operation.ATOMIC_LOAD, (p, memory), (B32, MEM), attributes=(AtomicOrder.ACQUIRE, system, 4))
+    target = block.op1(Operation.POINTER_CAST, (p,), read_only) if variant == "read_only" else p
+    stored = block.op1(Operation.ATOMIC_STORE, (target, seed, memory), MEM, attributes=(AtomicOrder.RELEASE, system, 3 if variant == "misaligned" else 4))
+    if variant == "forked":
+        block.op1(Operation.ATOMIC_STORE, (p, seed, memory), MEM, attributes=(AtomicOrder.RELEASE, system, 4))
+    memory = stored
+    load_types = {"effect_type": (B32, B32), "result_type": (B64, MEM)}.get(variant, (B32, MEM))
+    loaded, memory = block.op(Operation.ATOMIC_LOAD, (p, memory), load_types, attributes=(AtomicOrder.ACQUIRE, system, 4))
+    addend = block.const(B64, 1) if variant == "value_type" else seed
+    _old, memory = block.op(Operation.ATOMIC_RMW, (p, addend, memory), (B32, MEM), attributes=(AtomicRmwKind.ADD_WRAP, AtomicOrder.ACQ_REL, system, 4))
+    fenced = block.op1(Operation.ATOMIC_FENCE, (memory,), B32 if variant == "fence_effect" else MEM, attributes=(AtomicOrder.SEQ_CST, system))
+    if variant == "fence_forked":
+        block.op1(Operation.ATOMIC_FENCE, (memory,), MEM, attributes=(AtomicOrder.SEQ_CST, system))
+    memory = memory if variant == "fence_effect" else fenced
+    flag = B32 if variant == "cmpxchg_result" else B1
+    _seen, _ok, memory = block.op(Operation.ATOMIC_CMPXCHG, (p, seed, seed, memory), (B32, flag, MEM),
+                                  attributes=(AtomicOrder.SEQ_CST, AtomicOrder.ACQUIRE, system, 4, CompareExchangeStrength.STRONG))
+    block.op(Operation.STACK_END, (owner, memory), ())
+    block.ret(seed)
+    function = graph.function((B32,), (B32,))
+    return function, tuple(graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostAtomicTests(unittest.TestCase):
+    def test_atomic_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            for variant in ("valid", "uninitialized", "read_only", "misaligned", "forked", "effect_type", "result_type", "value_type", "cmpxchg_result",
+                            "fence_effect", "fence_forked"):
+                function, objects = _atomic_program(variant)
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, variant)
+                rules[variant] = (baseline[2] if baseline[0] == "reject" else "accept", any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertEqual(rules, {
+            "valid": ("accept", False), "uninitialized": ("ATOMIC-INITIALIZED", True), "read_only": ("ATOMIC-WRITE-PERMISSION", True),
+            "misaligned": ("MEMORY-ALIGNMENT", True), "forked": ("MEMORY-EFFECT-LINEAR", True), "effect_type": ("ATOMIC-MEMORY-EFFECT", True),
+            "result_type": ("ATOMIC-RESULT-TYPE", True), "value_type": ("ATOMIC-VALUE-TYPE", True), "cmpxchg_result": ("ATOMIC-CMPXCHG-RESULT", True),
+            "fence_effect": ("ATOMIC-FENCE-EFFECT", True), "fence_forked": ("MEMORY-EFFECT-LINEAR", True),
+        })
