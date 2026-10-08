@@ -792,9 +792,8 @@ class SelfhostLinkTests(unittest.TestCase):
                 rules[mutation] = (baseline[2] if baseline[0] == "reject" else "accept", any(decided))
         finally:
             typing_module.NativeTyping.memory_rejection = original
-        # Record field offsets and strides, byte-addressable values, released-storage dependents, and foreign writes
-        # into link-bearing storage still decline to the bootstrap.
-        python_decided = {"wrong-field-offset", "record-stride", "checked-record-store", "target-ends-first", "foreign-write"}
+        # Every link fault is engine-decided since S8c.18 (ADR-236).
+        python_decided = set()
         self.assertEqual({mutation for mutation, (rule, decided_) in rules.items() if rule != "accept" and not decided_}, python_decided)
         self.assertEqual(rules["valid"], ("accept", False))
         self.assertEqual({rules[name][0] for name in ("link_record_only", "record_extent", "pointer_store_local", "link_make_record", "link_make_type",
@@ -802,3 +801,51 @@ class SelfhostLinkTests(unittest.TestCase):
             "MEMORY-LINK-RECORD-ONLY", "MEMORY-RECORD-EXTENT", "MEMORY-POINTER-STORE-LOCAL-PROVENANCE", "MEMORY-LINK-MAKE-RECORD", "MEMORY-LINK-MAKE-TYPE",
             "MEMORY-LINK-FOLLOW-NO-AUTHORITY-GAIN", "MEMORY-LINK-FOLLOW-ALIGNMENT", "MEMORY-LINK-TARGET-DECLARATION", "MEMORY-LINK-FOLLOW-PROVENANCE",
             "MEMORY-LINK-STORE-PROVENANCE"})
+
+
+# -- S8c.18 (ADR-236): address offsets ---------------------------------------------------------------------------------
+
+def _address_program(variant: str):
+    """Offset into a stack word array; ``variant`` asks for more authority or alignment than the source has."""
+    words = pointer_type(B64, Permission.READ, 8)
+    graph = GraphBuilder()
+    graph.track(words, OWNER, MEM, B64, B32)
+    block = graph.block(B32)
+    (seed,) = block.params
+    p, owner, memory = block.op(Operation.STACK_ALLOC, (), (words, OWNER, MEM), attributes=(32, 8))
+    result = {"authority": pointer_type(B64, Permission.READ_WRITE, 8), "element": pointer_type(B32, Permission.READ, 4),
+              "alignment": pointer_type(B64, Permission.READ, 16)}.get(variant, words)
+    block.op1(Operation.ADDRESS_OFFSET, (p,), result, attributes=(8,))
+    block.op(Operation.STACK_END, (owner, memory), ())
+    block.ret(seed)
+    function = graph.function((B32,), (B32,))
+    return function, tuple(graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class SelfhostAddressTests(unittest.TestCase):
+    def test_address_rejections_are_decided_by_the_engine(self):
+        import xax_selfhost_typing as typing_module
+
+        native = typing_module.NativeTyping()
+        decided = []
+        original = typing_module.NativeTyping.memory_rejection
+
+        def deciding(self_, *arguments):
+            result = original(self_, *arguments)
+            decided.append(result is not None)
+            return result
+
+        typing_module.NativeTyping.memory_rejection = deciding
+        rules = {}
+        try:
+            for variant in ("valid", "authority", "element", "alignment"):
+                function, objects = _address_program(variant)
+                baseline = _outcome(None, function, objects)
+                decided.clear()
+                self.assertEqual(_outcome(native, function, objects), baseline, variant)
+                rules[variant] = (baseline[2] if baseline[0] == "reject" else "accept", any(decided))
+        finally:
+            typing_module.NativeTyping.memory_rejection = original
+        self.assertEqual(rules, {"valid": ("accept", False), "authority": ("MEMORY-ADDRESS-NO-AUTHORITY-GAIN", True),
+                                 "element": ("MEMORY-ADDRESS-NO-AUTHORITY-GAIN", True), "alignment": ("MEMORY-ADDRESS-ALIGNMENT", True)})

@@ -136,7 +136,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.17 link memory rejections — 2026-10-08 (ADR-235)
 
-- Next: the remaining memory declines (record field offsets and strides, byte-addressable values, link dependents of ended storage, foreign writes to link-bearing storage, atomic enums); then object verification (`verify_object`).
+- Next: the remaining memory declines (record field offsets and strides, byte-addressable values, link dependents of ended storage, foreign writes to link-bearing storage, atomic enums); then object verification (`verify_object`). Superseded by S8c.18 below.
+
+## S8c.18 address, record, and link-lifetime rejections — 2026-10-08 (ADR-236)
+
+- Next: the remaining declines (atomic enum diagnostics, invalid record fields, ambiguous link dependents); then object verification (`verify_object`).
 
 ## Validation state at M14 (historical)
 
