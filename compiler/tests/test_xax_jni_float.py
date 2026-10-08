@@ -185,3 +185,78 @@ def test_managed_float_callbacks_lower_and_check_exact_signatures():
         objects[item.cid] = item
     assert check_export_signature(method, "Lxax/t/F;", fn, objects.__getitem__) is None
     assert check_export_signature(method, "Lxax/t/F;", *export((env, this, bits_type(32), F64), (F32,))) is not None
+
+
+# --- emulated execution (Unicorn AArch64, host tool; not device evidence) ------------------------
+
+import struct  # noqa: E402
+
+from xax_aarch64 import compile_aarch64_bundle_bound_target  # noqa: E402
+from xax_jni import JNI_NATIVE_SLOT_BY_NAME  # noqa: E402
+
+
+def _emulate_jni_call(owner, name, descriptor, arguments, gprs, fprs, stub_result_bits=0):
+    """Run the compiled fixture with a mock JNIEnv; return (call x0..x3, jvalue bytes, s0/x0 result)."""
+    import unicorn
+    from unicorn import arm64_const as arm
+
+    argument_types = tuple(arguments)
+    reader, target_object, fn = _stack_call_fixture(owner, name, descriptor, argument_types)
+    shared = compile_android_shared(reader, (AndroidExport(b"probe", fn.cid),), target_object=target_object)
+    bundle = compile_aarch64_bundle_bound_target(reader, (fn.cid,), target_object)
+    span = next(item for item in bundle.semantic_ranges if item.function_cid == fn.cid and item.block_index is None)
+    code = shared.data[shared.text_offset + span.start:shared.text_offset + span.end]
+    plan = jni_method_call_plan(owner, name, descriptor, loader_domain=BOOT)
+    code_base, data, stub, sentinel, stack_top = 0x10000, 0x200000, 0x300000, 0x400000, 0x900000
+    emulator = unicorn.Uc(unicorn.UC_ARCH_ARM64, unicorn.UC_MODE_ARM)
+    emulator.mem_map(code_base, 0x10000)
+    emulator.mem_write(code_base, code)
+    for base in (data, stub, sentinel):
+        emulator.mem_map(base, 0x10000)
+    emulator.mem_map(stack_top - 0x100000, 0x100000)
+    table = data + 0x1000
+    emulator.mem_write(data, struct.pack("<Q", table))                       # *env = JNINativeInterface*
+    emulator.mem_write(table + 8 * JNI_NATIVE_SLOT_BY_NAME[plan.function_name], struct.pack("<Q", stub))
+    emulator.mem_write(stub, struct.pack("<I", 0xD65F03C0))                  # ret
+    seen = {}
+
+    def on_stub(uc, address, size, user):
+        seen["x"] = [uc.reg_read(arm.UC_ARM64_REG_X0 + index) for index in range(4)]
+        seen["pack"] = bytes(uc.mem_read(seen["x"][3], 8 * len(argument_types)))
+        uc.reg_write(arm.UC_ARM64_REG_Q0, stub_result_bits)
+        uc.reg_write(arm.UC_ARM64_REG_X0, stub_result_bits)
+
+    emulator.hook_add(unicorn.UC_HOOK_CODE, on_stub, begin=stub, end=stub)
+    emulator.reg_write(arm.UC_ARM64_REG_CPACR_EL1, 3 << 20)  # enable FP/SIMD
+    emulator.reg_write(arm.UC_ARM64_REG_SP, stack_top)
+    emulator.reg_write(arm.UC_ARM64_REG_LR, sentinel)
+    for index, value in enumerate((data, 0x7001, 0x7002, *gprs)):
+        emulator.reg_write(arm.UC_ARM64_REG_X0 + index, value)
+    for index, value in enumerate(fprs):
+        emulator.reg_write(arm.UC_ARM64_REG_Q0 + index, value)
+    emulator.emu_start(code_base, sentinel, count=100_000)
+    assert emulator.reg_read(arm.UC_ARM64_REG_PC) == sentinel
+    return seen, emulator.reg_read(arm.UC_ARM64_REG_Q0) & 0xFFFFFFFF
+
+
+def _f32(value: float) -> int:
+    return struct.unpack("<I", struct.pack("<f", value))[0]
+
+
+def test_emulated_float_result_returns_in_s0():
+    seen, s0 = _emulate_jni_call("android/view/MotionEvent", "getX", "(I)F", (bits_type(32),), (3,), (), stub_result_bits=_f32(1.5))
+    assert seen["x"][:3] == [0x200000, 0x7001, 0x7002]
+    assert seen["pack"] == struct.pack("<II", 3, 0)  # jint in the low word, explicit zero padding
+    assert s0 == _f32(1.5)
+
+
+def test_emulated_float_argument_is_stored_as_exact_ieee_bits():
+    seen, _ = _emulate_jni_call("android/view/View", "setAlpha", "(F)V", (F32,), (), (_f32(0.25),))
+    assert seen["pack"] == struct.pack("<II", _f32(0.25), 0)
+
+
+def test_emulated_mixed_narrow_pack_matches_jvalue_layout():
+    arguments = (bits_type(32),) * 3 + (bits_type(64), bits_type(32))
+    seen, _ = _emulate_jni_call("android/media/MediaCodec", "queueInputBuffer", "(IIIJI)V", arguments,
+                                (7, 0, 4096, 0x1122334455667788, 4), ())
+    assert seen["pack"] == struct.pack("<IIIIIIQII", 7, 0, 0, 0, 4096, 0, 0x1122334455667788, 4, 0)
