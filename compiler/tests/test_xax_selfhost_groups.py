@@ -136,7 +136,8 @@ def _verify(reader, use_xax: bool):
         X.verify_store(reader)
         return ("accept",)
     except XaxError as error:
-        return ("reject", error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity)
+        d = error.diagnostic
+        return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual))
     finally:
         X._xax_verify_store = saved
 
@@ -172,7 +173,12 @@ class SelfhostGroupTests(unittest.TestCase):
                     rejected += 1
                     rules.add(bootstrap[2])
                     failing = bytes.fromhex(bootstrap[3]) if len(bootstrap[3]) == 64 else None
-                    self.assertNotIn(failing, proven, "XAX proved the object the bootstrap rejects")
+                    verdict = proven.get(failing)
+                    if isinstance(verdict, X._XaxRejection):
+                        # S8c.19-S8c.20: XAX rejected the object itself, with the bootstrap's diagnostic.
+                        self.assertEqual((verdict[0], verdict[1], repr(verdict[2]), repr(verdict[3])), (bootstrap[1], bootstrap[2], *bootstrap[4:]))
+                    else:
+                        self.assertNotIn(failing, proven, "XAX proved the object the bootstrap rejects")
                     continue
                 valid += 1
                 for item in objects.values():
