@@ -743,3 +743,8 @@ There is no model measurement yet. In the existing one-request-per-cell profiles
 ## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
 JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarations-v1` carrier, and `xax_android_platform` plus `xax_platform.posix_async_api` give ownership-typed NDK/POSIX contracts and an SDK capability table that the managed build enforces. Per-capability status: `docs/ANDROID_PLATFORM_CAPABILITIES.md`. Everything is STRUCTURAL. Next, on the authorized device: run a managed APK that forwards `onTouchEvent` and reads `getX`/`getY`, a SurfaceHolder callback that acquires and releases an `ANativeWindow`, an AMediaCodec decode loop, an AAudio output stream, and an RFCOMM connect/close; then close OI-47's gaps.
+
+## Byte-view widening — 2026-10-08 (ADR-231)
+
+- The rule is in `_verify_memory_node` (`BYTE_ELEMENT_CID`, `CHECKED_BYTE_VIEW_WIDTHS` in `xax_compiler.py`) and mirrored in the facts engine's `_checked`. A backend that cannot do unaligned wide access sets `BYTE_VIEW_WIDENING = False` on its ISA class (views backends) and rejects in its Python lowering with the same text (`BYTE_VIEW_WIDTH_EXPECTED`).
+- In the XAX views backend, `value_id` advances the stream cursor: read an operand's id once and keep it.

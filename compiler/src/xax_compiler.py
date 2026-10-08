@@ -2044,6 +2044,11 @@ def bits_type(width: int) -> SemanticObject:
     return SemanticObject.create(Kind.TYPE, uleb(1) + uleb(width))
 
 
+# Byte-view widening (ADR-231): the element of a byte view, and the checked access sizes it admits.
+CHECKED_BYTE_VIEW_WIDTHS = (1, 2, 4, 8)
+BYTE_ELEMENT_CID = bits_type(8).cid
+
+
 class FloatFormat(IntEnum):
     BINARY32 = 1
     BINARY64 = 2
@@ -5094,9 +5099,18 @@ def _verify_memory_node(
         is_load = operation == Operation.CHECKED_LOAD_BITS_LE
         contract(3 if is_load else 4, 2 if is_load else 1, 2)
         size, alignment = node.attributes
-        expected_size = element_size(pointer_fact.element)
-        if size != expected_size:
-            fail("XAX.MEMORY.ACCESS_SIZE", graph.cid.hex(), "MEMORY-ACCESS-SIZE", expected_size, size)
+        # Byte-view widening: on a view of exactly bits<8>, a checked access reads or writes 1, 2, 4, or 8 consecutive
+        # bytes as one little-endian bits<8*size> integer; every other element keeps size == element size.
+        byte_view = pointer_fact.element == BYTE_ELEMENT_CID
+        if byte_view:
+            if size not in CHECKED_BYTE_VIEW_WIDTHS:
+                fail("XAX.MEMORY.ACCESS_SIZE", graph.cid.hex(), "MEMORY-ACCESS-SIZE", list(CHECKED_BYTE_VIEW_WIDTHS), size)
+            value_type = bits_type(8 * size).cid
+        else:
+            expected_size = element_size(pointer_fact.element)
+            if size != expected_size:
+                fail("XAX.MEMORY.ACCESS_SIZE", graph.cid.hex(), "MEMORY-ACCESS-SIZE", expected_size, size)
+            value_type = pointer_fact.element
         if alignment != 1:
             fail("XAX.MEMORY.CHECKED_ALIGNMENT", graph.cid.hex(), "MEMORY-CHECKED-ALIGNMENT-BOOTSTRAP", 1, alignment)
         offset_type = node.operand_types[1]
@@ -5107,13 +5121,13 @@ def _verify_memory_node(
             if not pointer_fact.permission & Permission.READ:
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-READ-PERMISSION", "read", int(pointer_fact.permission))
             effect_index = 2
-            if node.results[0] != pointer_fact.element:
-                fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-LOAD-TYPE", pointer_fact.element.hex(), node.results[0].hex())
+            if node.results[0] != value_type:
+                fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-LOAD-TYPE", value_type.hex(), node.results[0].hex())
         else:
             if not pointer_fact.permission & Permission.WRITE:
                 fail("XAX.MEMORY.PERMISSION", graph.cid.hex(), "MEMORY-WRITE-PERMISSION", "write", int(pointer_fact.permission))
-            if node.operand_types[2] != pointer_fact.element:
-                fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-STORE-TYPE", pointer_fact.element.hex(), node.operand_types[2].hex())
+            if node.operand_types[2] != value_type:
+                fail("XAX.MEMORY.VALUE_TYPE", graph.cid.hex(), "MEMORY-CHECKED-STORE-TYPE", value_type.hex(), node.operand_types[2].hex())
             stored_pointer_provenance(node.operands[2], pointer_fact)
             effect_index = 3
         effect = consume_effect(node.operands[effect_index], pointer_fact.storage)
@@ -8565,8 +8579,8 @@ def _execute_graph(
                 absolute = pointer.offset + dynamic_offset
                 if dynamic_offset < 0 or dynamic_offset + size > len(pointer.storage.data) - pointer.offset or absolute % alignment:
                     raise XaxTrap(b"memory-check")
-                element, _permission, _alignment = _decode_pointer_type(resolve(node.operand_types[0]), resolve)
-                value = _runtime_scalar_from_bytes(bytes(pointer.storage.data[absolute : absolute + size]), resolve(element))
+                # The result type, not the element: they differ for a widened access on a byte view.
+                value = _runtime_scalar_from_bytes(bytes(pointer.storage.data[absolute : absolute + size]), resolve(node.results[0]))
                 results = (value, _RuntimeEffect(effect.storage))
             elif node.operation == Operation.CHECKED_STORE_BITS_LE:
                 pointer, dynamic_offset, value, effect = operands
@@ -8574,8 +8588,10 @@ def _execute_graph(
                 absolute = pointer.offset + dynamic_offset
                 if dynamic_offset < 0 or dynamic_offset + size > len(pointer.storage.data) - pointer.offset or absolute % alignment:
                     raise XaxTrap(b"memory-check")
-                element, _permission, _alignment = _decode_pointer_type(resolve(node.operand_types[0]), resolve)
-                pointer.storage.data[absolute : absolute + size] = _runtime_scalar_bytes(value, resolve(element))
+                data = _runtime_scalar_bytes(value, resolve(node.operand_types[2]))  # the value's own type and width
+                if len(data) != size:
+                    raise AssertionError("checked store width differs from its verified size")
+                pointer.storage.data[absolute : absolute + size] = data
                 results = (_RuntimeEffect(effect.storage),)
             elif node.operation == Operation.RAW_LOAD_BITS_LE:
                 pointer, effect, unsafe_effect = operands

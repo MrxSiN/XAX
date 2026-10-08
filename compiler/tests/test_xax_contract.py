@@ -19,6 +19,10 @@ class HostContractTests(unittest.TestCase):
         self.assertEqual(formats["construct_carrier"], FORMAT)
         self.assertEqual(formats["linux_process"], LINUX_X86_64_PROCESS_CONTRACT)
         self.assertEqual(formats["linux_startup_abi"].encode(), LINUX_X86_64_STARTUP_ABI)
+        from xax_compiler import CHECKED_BYTE_VIEW_WIDTHS
+
+        self.assertEqual(tuple(formats["checked_byte_view_widths"]), CHECKED_BYTE_VIEW_WIDTHS)
+        self.assertGreaterEqual(xax_contract.HOST_CONTRACT_MINOR, 2)  # byte-view widening (ADR-231)
 
     def test_description_is_plain_data(self):
         import json

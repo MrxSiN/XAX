@@ -96,7 +96,10 @@ VIEWS_RULES = (
     ("OP-TARGET-SUPPORTED", "UNSUPPORTED_OPERATION"), ("TERMINATOR-TARGET-SUPPORTED", "UNSUPPORTED_TERMINATOR"), ("VALUE-BITS", "VALUE"),
     ("AGGREGATE-RESULT", "ABI"), ("AGGREGATE-VALUE", "UNSUPPORTED_OPERATION"), ("AGGREGATE-USE", "UNSUPPORTED_OPERATION"),
     ("SINGLE-RESULT", "ABI"), ("CHECKED-ACCESS", "UNSUPPORTED_OPERATION"), ("OP-LOWERED", "UNSUPPORTED_OPERATION"),
+    ("CHECKED-BYTE-VIEW-WIDTH", "UNSUPPORTED_OPERATION"),  # ADR-231: an ISA without byte-view widening
 )
+# ADR-231: the expected value of ``<ISA>-CHECKED-BYTE-VIEW-WIDTH`` (an ISA whose wide loads may fault when misaligned).
+BYTE_VIEW_WIDTH_EXPECTED = "1-byte checked access on a byte view (no misaligned wide access on this target)"
 _RULE_SITES = {rule: site for site, (rule, _code) in enumerate(VIEWS_RULES)}
 
 
@@ -1156,7 +1159,8 @@ def _legality(e: E, isa, f, stream, raw_value_id, value_id):
         def checked():
             e.var("lg_size", e.rd(e.add(p["lg_attrs"], 1)))
             e.var("lg_pa", e.add(p["lg_ops"], 1))
-            e.var("lg_ext", e.ld(e.add(p["ext"], value_id("lg_pa"))))
+            e.var("lg_pv", value_id("lg_pa"))  # the pointer's value id (``value_id`` advances past it)
+            e.var("lg_ext", e.ld(e.add(p["ext"], p["lg_pv"])))
             size_ok = e.either(*(e.eq(p["lg_size"], size) for size in (1, 2, 4, 8)))
 
             def actual():
@@ -1167,6 +1171,11 @@ def _legality(e: E, isa, f, stream, raw_value_id, value_id):
 
             _legal(e, isa, e.both(size_ok, e.ne(p["lg_ext"], 0)), "CHECKED-ACCESS", where,
                    lambda: D.text(e, "1/2/4/8-byte access through a view pointer"), actual)
+            if not getattr(isa, "BYTE_VIEW_WIDENING", True):
+                # ADR-231: a wide checked access on a byte view (bits<8> element) would be a possibly misaligned load.
+                wide = e.both(e.ne(e.ld(e.add(p["bv"], p["lg_pv"])), 0), e.lt(1, p["lg_size"]))
+                _legal(e, isa, e.not_(wide), "CHECKED-BYTE-VIEW-WIDTH", where,
+                       lambda: D.text(e, BYTE_VIEW_WIDTH_EXPECTED), lambda: D.integer(e, p["lg_size"]))
 
         def other():
             _legal(e, isa, _in_set(e, p["lg_op"], isa.LOWERED), "OP-LOWERED", where,
@@ -1261,7 +1270,9 @@ def _translate(tables, isa=None):
         # ADR-151: an ``aggregate.make`` result's operand list (input position), and which values are aggregates.
         e.var("made", e.alloc(e.add(p["id"], 1)))
         e.var("aggv", e.alloc(e.add(p["id"], 1)))
-        _ok(e, e.both(e.ne(p["ext"], NONE), e.ne(p["alias"], NONE), e.ne(p["made"], NONE), e.ne(p["aggv"], NONE)))
+        e.var("bv", e.alloc(e.add(p["id"], 1)))  # ADR-231: the view pointer's element is bits<8>
+        _ok(e, e.both(e.ne(p["ext"], NONE), e.ne(p["alias"], NONE), e.ne(p["made"], NONE), e.ne(p["aggv"], NONE), e.ne(p["bv"], NONE)))
+        e.for_("q", 0, p["id"], lambda: e.st(e.add(p["bv"], p["q"]), 0))
         e.for_("q", 0, p["id"], lambda: (e.st(e.add(p["ext"], p["q"]), 0), e.st(e.add(p["alias"], p["q"]), NONE),
                                          e.st(e.add(p["made"], p["q"]), NONE), e.st(e.add(p["aggv"], p["q"]), 0)))
 
@@ -1273,8 +1284,20 @@ def _translate(tables, isa=None):
             def pair():
                 extent = _view_extent(e, _reference(e, p["graph"], e.rd(e.add(e.add(p["sc_at"], p["k"]), 1))))
                 e.var("sc_ext", extent)
-                pointer = e.eq(_type_form(e, _reference(e, p["graph"], e.rd(e.add(p["sc_at"], p["k"])))), 2)
-                e.if_(e.both(e.ne(p["sc_ext"], 0), pointer), lambda: e.st(e.add(p["ext"], e.add(p["sc_id"], p["k"])), p["sc_ext"]))
+                e.var("sc_ptr", _reference(e, p["graph"], e.rd(e.add(p["sc_at"], p["k"]))))
+                pointer = e.eq(_type_form(e, p["sc_ptr"]), 2)
+
+                def view_pointer():
+                    e.st(e.add(p["ext"], e.add(p["sc_id"], p["k"])), p["sc_ext"])
+                    e.var("sc_el", _reference(e, p["sc_ptr"], 0))
+
+                    def byte_element():
+                        e.if_(e.both(e.eq(_type_form(e, p["sc_el"]), 1), e.eq(_type_width(e, p["sc_el"]), 8)),
+                              lambda: e.st(e.add(p["bv"], e.add(p["sc_id"], p["k"])), 1))
+
+                    e.if_(e.ne(p["sc_el"], NONE), byte_element)
+
+                e.if_(e.both(e.ne(p["sc_ext"], 0), pointer), view_pointer)
 
             e.for_("k", 0, e.sub(e.add(count, e.flag(e.eq(count, 0))), 1), pair)
 

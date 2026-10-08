@@ -45,6 +45,7 @@ from xax_views_lowering import (
 )
 from xax_compiler import parse_function_graph
 from xax_compiler import (
+    BYTE_ELEMENT_CID,
     IntCompare,
     Kind,
     Operation,
@@ -519,6 +520,11 @@ def _compile_function(function: SemanticObject, resolve, emitter: _Emitter) -> l
                 extent = extents.get(node.operands[0])
                 if funct3 is None or extent is None:
                     fail("XAX.RISCV64.UNSUPPORTED_OPERATION", where, "RISCV64-CHECKED-ACCESS", "1/2/4/8-byte access through a view pointer", [size, extent])
+                if size > 1 and resolve(node.operand_types[0]).references[:1] == (BYTE_ELEMENT_CID,):
+                    # ADR-231: byte-view widening would be a possibly misaligned lh/lw/ld; RISC-V rejects it.
+                    from xax_selfhost_views_backend import BYTE_VIEW_WIDTH_EXPECTED
+
+                    fail("XAX.RISCV64.UNSUPPORTED_OPERATION", where, "RISCV64-CHECKED-BYTE-VIEW-WIDTH", BYTE_VIEW_WIDTH_EXPECTED, size)
                 pointer = read(node.operands[0], T0)
                 offset = read(node.operands[1], T1)
                 e.li(T3, (extent - size) & ((1 << 64) - 1) if extent >= size else 0)
