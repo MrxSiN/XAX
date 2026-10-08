@@ -69,6 +69,9 @@ MEMORY_SITES = (
     "REBASE_ADDRESS_WIDTH", "REBASE_AUTHORITY", "REBASE_EXTENT", "REBASE_ALIGNMENT",
     # S8c.11 (ADR-228): returned views.
     "RETURN_WHOLE", "RETURN_INITIALIZED", "LINK_RETURN_TARGET", "RETURN_ORDER",
+    # S8c.12 (ADR-229): heap-view construction.
+    "LINK_TARGET_ROOT", "VIEW_ALLOCATION", "VIEW_OWNER", "VIEW_ALLOCATOR_EFFECT", "VIEW_ALLOCATOR_EFFECT_PROVEN", "VIEW_STATIC_SIZE",
+    "VIEW_BOUNDS", "VIEW_ALIGNMENT", "VIEW_TOKEN_TYPE", "VIEW_EFFECT_TYPE",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1165,33 +1168,40 @@ def _heap_view_node(tables):
 
         def targeted():
             target = n.vid(3)
-            _pointer(e, target)
+            _pointer(e, target, exact=True)
             target_element = e.value(PEL, target)
-            _require(e, e.ne(_record_bytes(e, target_element), 0))
-            _require(e, e.both(e.eq(target_element, e.value(PREC, target)), e.eq(e.value(POFF, target), 0), e.eq(e.value(PWIN, target), 0)))
+            _reject(e, e.both(e.ne(_record_bytes(e, target_element), 0), e.eq(target_element, e.value(PREC, target)), e.eq(e.value(POFF, target), 0),
+                              e.eq(e.value(PWIN, target), 0)), M["LINK_TARGET_ROOT"], e.value(POFF, target), e.value(PWIN, target))
             e.set("link_target", e.value(PST, target))
             e.set("link_record", e.value(PREC, target))
 
         e.if_(e.eq(n.no, 4), targeted)
-        _require(e, e.either(n.shape(3, 3, 2), n.shape(4, 3, 2)))
+        e.if_(e.ne(n.no, 4), lambda: _reject(e, n.shape(3, 3, 2), M["OP_CONTRACT"], n.no, n.nr, n.na),
+              lambda: _reject(e, n.shape(4, 3, 2), M["OP_CONTRACT"], n.no, n.nr, n.na))
         extent, alignment = n.attr(0), n.attr(1)
         raw, token, allocation_effect = n.vid(0), n.vid(1), n.vid(2)
         visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
-        _require(e, e.eq(e.value(HSTAMP, raw), pass_id))
+        _reject(e, e.eq(e.value(HSTAMP, raw), pass_id), M["VIEW_ALLOCATION"], raw)
         site, size = e.value(HST, raw), e.value(HSIZE, raw)
-        _require(e, e.both(e.eq(e.value(OSTAMP, token), visit), e.eq(e.value(OST, token), site), e.ne(e.value(OCON, token), visit), _heap_owner(e, n.tid(1))))
-        _require(e, e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0))
-        _require(e, e.both(e.ne(e.value(DEF, raw), NONE), e.eq(e.value(DEF, allocation_effect), e.value(DEF, raw))))
-        _require(e, e.both(e.ne(size, NONE), e.ne(extent, 0), e.le(extent, size)))
-        _require(e, e.both(e.power_of_two(alignment), e.le(alignment, e.value(HALIGN, raw))))
+        present = e.eq(e.value(OSTAMP, token), visit)
+        owner_site = e.sel(present, e.value(OST, token), NONE)
+        _reject(e, e.both(present, e.eq(e.value(OST, token), site), e.ne(e.value(OCON, token), visit), _heap_owner(e, n.tid(1))),
+                M["VIEW_OWNER"], site, owner_site, renderable=e.both(_renderable(e, site), e.either(e.not_(present), _renderable(e, e.value(OST, token)))))
+        _reject(e, e.ne(e.table(_T.MEMEFFECT, n.tid(2)), 0), M["VIEW_ALLOCATOR_EFFECT"], n.tid(2))
+        _reject(e, e.both(e.ne(e.value(DEF, raw), NONE), e.eq(e.value(DEF, allocation_effect), e.value(DEF, raw))),
+                M["VIEW_ALLOCATOR_EFFECT_PROVEN"], raw, allocation_effect)
+        _reject(e, e.ne(size, NONE), M["VIEW_STATIC_SIZE"])
+        _reject(e, e.both(e.ne(extent, 0), e.le(extent, size)), M["VIEW_BOUNDS"], size, extent)
+        _reject(e, e.both(e.power_of_two(alignment), e.le(alignment, e.value(HALIGN, raw))), M["VIEW_ALIGNMENT"], e.value(HALIGN, raw), alignment)
         pointer_type = n.rtid(0)
         _require(e, e.both(e.ne(e.table(_T.PTR, pointer_type), 0), e.eq(e.table(_T.PSPACE, pointer_type), 2)))
         element, permission = e.table(_T.PELEM, pointer_type), e.table(_T.PPERM, pointer_type)
-        _require(e, e.le(e.table(_T.PALIGN, pointer_type), alignment))
+        _reject(e, e.le(e.table(_T.PALIGN, pointer_type), alignment), M["ALLOCATION_ALIGNMENT"], alignment, e.table(_T.PALIGN, pointer_type))
         view = n.rtid(1)
         zeroed = e.value(HZERO, raw)
-        _require(e, e.both(_heap_view(e, view), e.eq(e.table(_T.RINSTANCE, view), extent), e.eq(e.flag(e.eq(e.table(_T.RSTATE, view), 1)), zeroed)))
-        _require(e, e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0))
+        _reject(e, e.both(_heap_view(e, view), e.eq(e.table(_T.RINSTANCE, view), extent), e.eq(e.flag(e.eq(e.table(_T.RSTATE, view), 1)), zeroed)),
+                M["VIEW_TOKEN_TYPE"], extent, zeroed, view)
+        _reject(e, e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0), M["VIEW_EFFECT_TYPE"], n.rtid(2))
         _view_record(e, element, extent)
         storage = n.site
         e.st(_site_word(e, 1, storage), 0)
@@ -3040,6 +3050,13 @@ _CONTRACTS = {
 }
 
 
+def _contract_expected(operation, counts):
+    """The ``contract()`` call the bootstrap made for this node (``heap.view`` depends on its operand count)."""
+    if operation == Operation.HEAP_VIEW:
+        return (4, 3, 2) if counts[0] == 4 else (3, 3, 2)
+    return _CONTRACTS[Operation(operation)]
+
+
 def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=()):
     """S8c.8: the bootstrap's ``(code, rule, expected, actual)`` for an engine rejection record.  Rendering only: the
     engine decided the check and its values; ``refs``/``storages`` map its value and site ids to the bootstrap's
@@ -3056,7 +3073,7 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
     if name == "OWNER_LIVE":
         return "XAX.MEMORY.USE_AFTER_LIFETIME", "MEMORY-LIFETIME-LIVE", "live storage owner", storages[x]
     if name == "OP_CONTRACT":
-        return "XAX.MEMORY.CONTRACT", "MEMORY-OP-CONTRACT", _CONTRACTS[Operation(operation)], (x, y, z)
+        return "XAX.MEMORY.CONTRACT", "MEMORY-OP-CONTRACT", _contract_expected(operation, (x, y, z)), (x, y, z)
     if name == "ACCESS_SIZE":
         return "XAX.MEMORY.ACCESS_SIZE", "MEMORY-ACCESS-SIZE", x, y
     if name == "POINTER_ELEMENT_SIZE":
@@ -3109,6 +3126,26 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.LINK", "MEMORY-LINK-RETURN-TARGET", "a new view returned must link into itself", storages[x]
     if name == "RETURN_ORDER":
         return "XAX.MEMORY.HEAP_VIEW", "HEAP-VIEW-RETURN-ORDER", None if x == NONE else storages[x], storages[y]
+    if name == "LINK_TARGET_ROOT":
+        return "XAX.MEMORY.LINK", "MEMORY-LINK-TARGET-ROOT-VIEW", "a whole record view", [x, y]
+    if name == "VIEW_ALLOCATION":
+        return "XAX.MEMORY.PROVENANCE", "HEAP-VIEW-ALLOCATION-PROVEN", "foreign allocator pointer result", ref(x)
+    if name == "VIEW_OWNER":
+        return "XAX.MEMORY.OWNER", "HEAP-VIEW-OWNER-PROVEN", storages[x], None if y == NONE else storages[y]
+    if name == "VIEW_ALLOCATOR_EFFECT":
+        return "XAX.MEMORY.EFFECT_TYPE", "HEAP-VIEW-ALLOCATOR-EFFECT", "effect<memory>", h(x)
+    if name == "VIEW_ALLOCATOR_EFFECT_PROVEN":
+        return "XAX.MEMORY.PROVENANCE", "HEAP-VIEW-ALLOCATOR-EFFECT-PROVEN", ref(x)[:2], ref(y)[:2]
+    if name == "VIEW_STATIC_SIZE":
+        return "XAX.MEMORY.BOUNDS", "HEAP-VIEW-STATIC-SIZE", "constant allocator size", None
+    if name == "VIEW_BOUNDS":
+        return "XAX.MEMORY.BOUNDS", "HEAP-VIEW-BOUNDS", f"1..{x}", y
+    if name == "VIEW_ALIGNMENT":
+        return "XAX.MEMORY.ALIGNMENT", "HEAP-VIEW-ALIGNMENT", f"power of two <= {x}", y
+    if name == "VIEW_TOKEN_TYPE":
+        return "XAX.MEMORY.HEAP_VIEW", "HEAP-VIEW-TOKEN-TYPE", [x, bool(y)], h(z)
+    if name == "VIEW_EFFECT_TYPE":
+        return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "effect<memory>", h(x)
     if name == "CHECKED_INITIALIZED":
         return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CHECKED-LOAD-INITIALIZED-VIEW", [x, y], intervals(z)
     if name == "ADDRESS_BOUNDS":

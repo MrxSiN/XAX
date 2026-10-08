@@ -125,6 +125,10 @@ Checked accesses and the type checks of loads and stores are now rejected by the
 
 Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
 
+## S8c.12 heap-view construction rejections — 2026-10-08 (ADR-229)
+
+`heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
+
 ## Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.

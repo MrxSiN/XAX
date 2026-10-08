@@ -2232,3 +2232,11 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Decision | `_return_views` rejects with the bootstrap's diagnostics: `HEAP-VIEW-RETURN-WHOLE` (owner, pointer, and frontier of a returned view; any of its conditions), `HEAP-VIEW-RETURN-INITIALIZED`, `MEMORY-LINK-RETURN-TARGET`, and `HEAP-VIEW-RETURN-ORDER`. These are exact only in a graph without a resource entry contract (the bootstrap checks that contract first), and only when every storage the diagnostic quotes can be rendered. Otherwise the engine still declines. |
 | Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: the eight-seed memory corpus now has every one of its 824 rejections decided by the engine, with no mismatch; a constructed swapped-return program matches `HEAP-VIEW-RETURN-ORDER` exactly. Both self-hosting evidence files re-run natively. |
 | Limits | Heap-view construction, foreign and view-passing calls, atomics, links, stored-pointer provenance, and the decode and contract checks noted per handler still decline. Object verification remains Python. |
+
+## ADR-229 — S8c.12: heap-view construction rejections decided by the facts engine
+
+| Field | Record |
+|---|---|
+| Decision | `heap.view` joins the ADR-221 mechanism in the bootstrap's order: the optional link target (pointer provenance, then `MEMORY-LINK-TARGET-ROOT-VIEW`), the contract (three or four operands), `HEAP-VIEW-ALLOCATION-PROVEN`, `HEAP-VIEW-OWNER-PROVEN`, `HEAP-VIEW-ALLOCATOR-EFFECT`, `HEAP-VIEW-ALLOCATOR-EFFECT-PROVEN`, `HEAP-VIEW-STATIC-SIZE`, `HEAP-VIEW-BOUNDS`, `HEAP-VIEW-ALIGNMENT`, the pointer alignment (`MEMORY-ALIGNMENT`), `HEAP-VIEW-TOKEN-TYPE`, and the result effect type. An undecoded result pointer type and the record checks of the viewed element still decline. |
+| Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: constructed mmap-then-view programs for five rules (bounds, alignment, token type, effect type, a second view of a consumed owner) match the bootstrap's full diagnostic and are engine-decided; the memory corpus stays fully engine-decided with no mismatch. Both self-hosting evidence files re-run natively. |
+| Limits | Foreign and view-passing calls, atomics, links, stored-pointer provenance, and the element and record checks still decline. Object verification remains Python. |
