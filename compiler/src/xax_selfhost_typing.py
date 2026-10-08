@@ -68,7 +68,6 @@ from xax_compiler import (
     Operation,
     SemanticObject,
     StoreReader,
-    verify_store,
     x86_64_linux_exec_target,
 )
 from xax_graph_builder import program_store
@@ -1321,8 +1320,10 @@ _SITES = _render_sites()
 def load_typing_program() -> tuple[StoreReader, SemanticObject]:
     if not STORE_PATH.exists():
         return build_typing_program()
+    from xax_native import verify_component_store
+
     reader = StoreReader(STORE_PATH.read_bytes())
-    verify_store(reader)
+    verify_component_store(reader, "typing")
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, function

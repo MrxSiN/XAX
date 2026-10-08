@@ -22,6 +22,7 @@ import platform
 import stat
 import sys
 import sysconfig
+import tempfile
 from pathlib import Path
 
 AUTHORITY: dict[str, dict] = {}
@@ -148,3 +149,59 @@ def cache_read(path: Path, key: bytes) -> tuple[bytes, int] | None:
 
 def cache_entry(key: bytes, code: bytes, entry_offset: int) -> bytes:
     return CACHE_MAGIC + key + entry_offset.to_bytes(8, "little") + len(code).to_bytes(8, "little") + hashlib.sha256(code).digest() + code
+
+
+# -- verified component stores (ADR-222) -----------------------------------------------------------------------
+
+VERIFIED_MAGIC = b"XAXVS1\0\0"
+_VERIFIER_IDENTITY: bytes | None = None
+
+
+def verifier_identity() -> bytes:
+    """sha256 over every compiler source module and canonical bootstrap store: everything ``verify_store`` reads.
+
+    A verified-store record is valid only for the exact verifier that produced it; any source or store change
+    (including a regenerated helper store) changes this identity, so stale records are never consulted."""
+    global _VERIFIER_IDENTITY
+    if _VERIFIER_IDENTITY is None:
+        digest = hashlib.sha256(VERIFIED_MAGIC)
+        here = Path(__file__).resolve().parent
+        sources = sorted({*here.glob("xax_*.py"), *here.glob("blake3.py")})  # the compiler's modules (pyproject py-modules)
+        stores = sorted(bootstrap_dir().glob("*.xax"))
+        for path in (*sources, *stores):
+            digest.update(path.name.encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())
+        _VERIFIER_IDENTITY = digest.digest()
+    return _VERIFIER_IDENTITY
+
+
+def verify_component_store(reader, name: str) -> None:
+    """``verify_store(reader)`` for a committed compiler-component store, memoized in the native image cache.
+
+    The first process to verify these exact store bytes with this exact verifier writes an authenticated record
+    (``verified-<name>-<key>.bin``) next to the component's native image; later processes find it and skip the
+    re-verification, which dominated cold start (ADR-222).  The record grants nothing the cache does not already
+    hold: ``cache_dir`` only returns a private directory that already supplies executable images.  Without a
+    usable cache, or with ``XAX_NATIVE_REVERIFY=1``, the store is verified every time."""
+    from xax_compiler import verify_store
+
+    directory = cache_dir() if os.environ.get("XAX_NATIVE_REVERIFY") != "1" else None
+    if directory is None:
+        verify_store(reader)
+        return
+    key = hashlib.sha256(VERIFIED_MAGIC + verifier_identity() + hashlib.sha256(reader.data).digest()).digest()
+    path = directory / f"verified-{name}-{key.hex()}.bin"
+    record = VERIFIED_MAGIC + key
+    try:
+        if path.read_bytes() == record:
+            entry = AUTHORITY.setdefault(f"verification:{name}", {"component": f"verification:{name}"})
+            entry.update(store_verification="memoized", record=path.name)
+            return
+    except OSError:
+        pass
+    verify_store(reader)
+    try:
+        with tempfile.NamedTemporaryFile(dir=directory, delete=False) as handle:
+            handle.write(record)
+        os.replace(handle.name, path)
+    except OSError:
+        pass  # an unwritable cache only costs the next process a re-verification

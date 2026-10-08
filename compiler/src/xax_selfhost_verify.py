@@ -1679,12 +1679,14 @@ def write_verifier_store() -> bytes:
 
 
 def load_verifier_program():
-    from xax_compiler import StoreReader, verify_store
+    from xax_compiler import StoreReader
 
     if not STORE_PATH.exists():
         return build_verifier_program()
+    from xax_native import verify_component_store
+
     reader = StoreReader(STORE_PATH.read_bytes())
-    verify_store(reader)
+    verify_component_store(reader, "store-verifier")
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, function
