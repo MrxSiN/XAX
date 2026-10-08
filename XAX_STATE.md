@@ -55,7 +55,7 @@ Test state on this host (Python 3.13, x86-64, no QEMU/Wine/JDK/Android tools): 1
 
 ## Linux x86-64 raw-sample re-run — 2026-10-08 (ADR-208)
 
-Predicate tables on the x86-64 register path; `jsonmin`'s string loop in the C twin's shape. Re-run with 31 raw samples per arm (`XAX_BENCHMARKS.md` §15.30): `filestat` 0.882x and `jsonmin` 0.968x clang -O2 (significant), `chains` 0.984x rustc -O3 (p = 0.29). Linux x86-64 stays R3; `performance` is MEASURED; OI-45 closed. Full suite on this host: 1,332 passed, 51 skipped, 2 failed for host reasons (wheel build and install without a working setuptools).
+Predicate tables on the x86-64 register path; `jsonmin`'s string loop in the C twin's shape. Re-run with 31 raw samples per arm (`XAX_BENCHMARKS.md` §15.30): `filestat` 0.882x and `jsonmin` 0.968x clang -O2 (significant), `chains` 0.984x rustc -O3 (p = 0.29). Linux x86-64 stays R3; `performance` is MEASURED; OI-45 closed. The program change also re-ran the JVM comparison (§15.31): XAX 0.884x javac, JVM keeps R4. Full suite on this host: 1,332 passed, 51 skipped, 2 failed for host reasons (wheel build and install without a working setuptools).
 
 ## Implemented
 
