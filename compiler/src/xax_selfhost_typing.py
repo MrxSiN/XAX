@@ -89,6 +89,7 @@ NOT_COVERED, PROVEN, NOT_PROVEN = 0, 1, 2
 REJECTED = 3
 DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
 PASS_NODES_AT = DIAGNOSTICS - 1  # the node stream position, for the rejection pass (ADR-218)
+PASS_SINK = DIAGNOSTICS - 2  # S8c.7: where list words go that do not fit below TABLE (never read)
 # Rejection sites, in each family's bootstrap check order: (code, rule) and the record's payload meaning.
 (SITE_NONE, SITE_OP_ARITY, SITE_OP_TYPE, SITE_INT_WIDTH_CONTRACT, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS,
  SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT,
@@ -111,6 +112,7 @@ PASS_NODES_AT = DIAGNOSTICS - 1  # the node stream position, for the rejection p
 # S8c.6 (ADR-219): constant targets and contracts, direct-call targets.
 (SITE_CONSTANT_TARGET_NONE, SITE_CONSTANT_TARGET_KIND, SITE_CONSTANT_CONTRACT, SITE_CALL_TARGET_NONE,
  SITE_CALL_TARGET_KIND) = range(SITE_META_ARITY + 29, SITE_META_ARITY + 34)
+SITE_CALL_CONTRACT = SITE_META_ARITY + 34  # S8c.7 (ADR-220)
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
@@ -306,7 +308,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     # S4d.1: terminator typing, one verdict per block after the node verdicts.
     blocks = b.read(blocks_at)
     places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
-    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 4), DIAGNOSTICS), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 5), DIAGNOSTICS), b.defer_block)
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
@@ -864,7 +866,9 @@ def build_rejection_pass():
     nodes_at = b.get(b.c(PASS_NODES_AT))
     nodes = b.read(nodes_at)
     b.check(b.cmp(IntCompare.ULE, b.add(b.mul(nodes, 4), DIAGNOSTICS), TABLE), b.defer_block)  # main checked it too
-    b.for_range(b.c(0), nodes, lambda index, carried: _rejection_entry(b, t, index, carried), (b.add(nodes_at, 1),))
+    # S8c.7: decoded callee interfaces go to a list area after the records.
+    lists = b.add(b.mul(nodes, 4), DIAGNOSTICS)
+    b.for_range(b.c(0), nodes, lambda index, carried: _rejection_entry(b, t, index, carried), (b.add(nodes_at, 1), lists))
     for block in (None, b.reject_block, b.defer_block):  # neither failure happens here: main read the same words
         if block is not None:
             b.enter(block)
@@ -877,13 +881,14 @@ def build_rejection_pass():
 
 def _rejection_entry(b: _Builder, t: _Typing, index, carried):
     """One node of the rejection pass: the same fields ``_node_entry`` reads, then ``_rejection``."""
-    (position,) = carried
+    position, lists = carried
     operation, operands, results, attributes, attribute, extra = (b.read(b.add(position, k)) for k in range(6))
     ids = b.add(position, 6)
     extra_at = b.add(ids, b.add(operands, results))
     first, second, result = b.read(ids), b.read(b.add(ids, 1)), b.read(b.add(ids, operands))
     width, first_width = t.lookup(WIDTH, result), t.lookup(WIDTH, first)
     is_bits, first_bits = t.nonzero(width), t.nonzero(first_width)
+    interface_decoded, next_lists = _call_interface(b, t, operation, extra, extra_at, lists)
     is_float, first_float = t.nonzero(t.lookup(FORMAT, result)), t.nonzero(t.lookup(FORMAT, first))
 
     def shape(count_in: int, count_out: int, count_attributes: int):
@@ -898,17 +903,59 @@ def _rejection_entry(b: _Builder, t: _Typing, index, carried):
                            lambda v: (b.op(Operation.UDIV, v[0], 2), b.add(v[1], 1)))
     site, payload = _rejection(b, t, operation, shape, (operands, results, attributes), attribute, kind_in, result, first, second,
                                width, first_width, is_bits, first_bits, is_float, first_float, t.lookup(LINK, first), ok, position, needed,
-                               ids, extra_at, (extra, *_constant_object(b, t, b.read(extra_at))))
+                               ids, extra_at, (extra, *_constant_object(b, t, b.read(extra_at))), (interface_decoded, lists))
     rejected = t.all(t.eq(verdict, NOT_PROVEN), t.nonzero(site))
     b.put(verdict_at, b.add(verdict, rejected))
     record = b.add(b.c(DIAGNOSTICS), b.mul(index, 4))
     for k, word in enumerate((b.mul(rejected, site), *payload)):
         b.put(b.add(record, k), word)
-    return (b.add(extra_at, extra),)
+    return b.add(extra_at, extra), next_lists
+
+
+def _call_interface(b: _Builder, t: _Typing, operation, extra, extra_at, lists):
+    """S8c.7: a direct call's callee interface as ``_decode_function_interface`` reads a graph-fragment function, written
+    at ``lists`` as ``[n, parameter types..., m, return types...]``.  ``(decoded, next free word)``; decoded is 0 for a
+    group member, a type the program did not decode, or a body the bootstrap would reject (it then decides)."""
+    entity = b.read(extra_at)
+    valid = t.all(t.eq(operation, int(Operation.CALL_DIRECT)), t.eq(extra, 1), t.lt(entity, t.count))
+    position = b.get(t.slot(POSITION, t.pick(valid, entity, b.c(0))))
+    kind, references, length = (b.read(b.add(position, k)) for k in range(3))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    graph, size, graph_ok = t.uleb(base)
+    graph_inside = t.all(graph_ok, t.lt(graph, references))
+    graph_entry = b.read(b.add(end, t.pick(graph_inside, graph, b.c(0))))
+    graph_valid = t.lt(graph_entry, t.count)
+    graph_kind = b.mul(graph_valid, b.read(b.get(t.slot(POSITION, t.pick(graph_valid, graph_entry, b.c(0))))))
+    fragment = t.all(valid, t.eq(kind, int(Kind.FUNCTION)), graph_inside, t.eq(graph_kind, int(Kind.GRAPH_FRAGMENT)))
+    sink = b.c(PASS_SINK)
+
+    def walk(start, slot, ok):
+        count, count_size, count_ok = t.uleb(start)
+        bounded = t.all(ok, count_ok, t.le(count, length))
+        steps = t.pick(bounded, count, b.c(0))
+        fits = t.le(b.add(b.add(slot, 1), steps), b.c(TABLE))
+        b.put(t.pick(fits, slot, sink), steps)
+
+        def item(k, carried):
+            at, good = carried
+            reference, width, reference_ok = t.uleb(at)
+            inside = t.all(reference_ok, t.lt(reference, references), t.le(b.add(at, width), end))
+            declared = b.read(b.add(end, t.pick(inside, reference, b.c(0))))
+            b.put(t.pick(fits, b.add(b.add(slot, 1), k), sink), declared)
+            return b.add(at, width), t.all(good, inside, _known(t, declared))
+
+        after, good = b.for_range(b.c(0), steps, item, (b.add(start, count_size), t.all(bounded, fits)))
+        return after, good, b.add(b.add(slot, 1), steps)
+
+    after_parameters, parameters_ok, returns_slot = walk(b.add(base, size), lists, fragment)
+    after_returns, returns_ok, after_slot = walk(after_parameters, returns_slot, parameters_ok)
+    decoded = t.all(returns_ok, t.eq(after_returns, end))
+    return decoded, t.pick(decoded, after_slot, lists)
 
 
 def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kind_in, result, first, second,
-               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids, extra_at, constant):
+               width, first_width, is_bits, first_bits, is_float, first_float, first_link, ok, position, needed, ids, extra_at, constant, call):
     """S8c.1/S8c.2: the site and payload of the bootstrap's first failing typing check for a scalar-family node.
 
     Each family lists its checks in the bootstrap's order.  A step with site 0 leaves the node to the bootstrap:
@@ -1014,7 +1061,10 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
             (t.not_(constant[1]), *none),
             (t.not_(ok), SITE_CONSTANT_CONTRACT, (constant[2], position, zero)),
         )),
-        (is_(Operation.CALL_DIRECT), _entity_steps(b, t, constant[0], extra_at, Kind.FUNCTION, SITE_CALL_TARGET_NONE, none)),
+        (is_(Operation.CALL_DIRECT), _entity_steps(b, t, constant[0], extra_at, Kind.FUNCTION, SITE_CALL_TARGET_NONE, none) + (
+            (t.not_(call[0]), *none),
+            (t.not_(ok), SITE_CALL_CONTRACT, (call[1], position, zero)),
+        )),
         *((is_(member), _resource_steps(b, t, member, counts, attribute, ids, position, ok, clamped, none)) for member in (*RESOURCE_COUNTS, Operation.EFFECT_STEP)),
         *((is_(meta), _meta_steps(b, t, index_, meta, counts, attribute, ids, result, width, is_bits, clamped, none))
           for index_, meta in enumerate(META_RULES)),
@@ -1227,6 +1277,8 @@ def _render_sites():
                                  lambda r, x, y, z: [hexes(r, r.operands(y)), hexes(r, r.results(y))]),
         SITE_CALL_TARGET_NONE: ("XAX.STRUCT.CALL_TARGET", "GRAPH-CALL-TARGET", lambda r, x, y, z: Kind.FUNCTION.name, lambda r, x, y, z: None),
         SITE_CALL_TARGET_KIND: ("XAX.STRUCT.CALL_TARGET", "GRAPH-CALL-TARGET", lambda r, x, y, z: Kind.FUNCTION.name, lambda r, x, y, z: Kind(x).name),
+        SITE_CALL_CONTRACT: ("XAX.STRUCT.CALL_CONTRACT", "GRAPH-CALL-CONTRACT", lambda r, x, y, z: [hexes(r, items) for items in r.interface(x)],
+                             lambda r, x, y, z: [hexes(r, r.operands(y)), hexes(r, r.results(y))]),
     })
     for index, (kinds, result_count, attribute_count, _rule) in enumerate(META_RULES.values()):
         expected = (len(kinds), result_count, attribute_count)
@@ -1240,14 +1292,15 @@ def _render_sites():
 
 
 class _Rendering:
-    def __init__(self, cids, items=None, operands=None, results=None, field=None, transitions=None):
+    def __init__(self, cids, items=None, operands=None, results=None, field=None, transitions=None, interface=None):
         self.cids, self.items, self.operands, self.results, self.field, self.transitions = cids, items, operands, results, field, transitions
+        self.interface = interface
 
     def h(self, index):
         return self.cids[index].hex()
 
 
-def rejection(record, cids, items=None, operands=None, results=None, field=None, transitions=None):
+def rejection(record, cids, items=None, operands=None, results=None, field=None, transitions=None, interface=None):
     """The bootstrap diagnostic ``(code, rule, expected, actual)`` for an XAX rejection record ``[site, a, b, c]``.
 
     Rendering only: XAX decided the site and its values.  ``cids`` maps the stream's type indices to CIDs;
@@ -1258,7 +1311,7 @@ def rejection(record, cids, items=None, operands=None, results=None, field=None,
     if site not in _SITES:
         raise ValueError(f"unknown typing rejection site {site}")
     code, rule, expected, actual = _SITES[site]
-    context = _Rendering(cids, items, operands, results, field, transitions)
+    context = _Rendering(cids, items, operands, results, field, transitions, interface)
     return code, rule, expected(context, x, y, z), actual(context, x, y, z)
 
 
@@ -1553,7 +1606,12 @@ class NativeTyping:
             start = field(TSTART, owner)
             return list(self._out[start : start + field(TCOUNT, owner)])
 
-        return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions)
+        def interface(at):
+            parameters = list(self._out[at + 1 : at + 1 + self._out[at]])
+            returns_at = at + 1 + len(parameters)
+            return parameters, list(self._out[returns_at + 1 : returns_at + 1 + self._out[returns_at]])
+
+        return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions, interface)
 
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""

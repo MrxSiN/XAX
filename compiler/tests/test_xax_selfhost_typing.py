@@ -20,7 +20,7 @@ from xax_compiler import (
     IntCompare, Terminator, ValueRef, constant, float_constant, float_type, null_link, opaque_type, resource_type, sum_type, tuple_type,
     uleb, x86_64_linux_exec_target,
 )
-from xax_compiler import link_type
+from xax_compiler import decode_group_member_function, link_type
 from xax_graph_builder import GraphBuilder, program_store
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -479,6 +479,25 @@ class SelfhostTypingTests(unittest.TestCase):
             baseline = _outcome(None, *sample)
             self.assertIsNotNone(baseline, sample)
             self.assertEqual(_outcome(self.native, *sample), baseline, sample)
+        # S8c.7 (ADR-220): call contracts against a graph-fragment callee.
+        from xax_compiler import _decode_function_interface
+
+        objects = {item.cid: item for item in (*CALLEE_OBJECTS, *POOL)}
+        contracts = 0
+        for function, _objects in CALLEES:
+            if decode_group_member_function(function, objects.__getitem__) is not None:
+                continue
+            _graph, parameters, returns = _decode_function_interface(function, objects.__getitem__)
+            wrong = tuple(B200 for _ in parameters) or (B200,)
+            sample = (Operation.CALL_DIRECT, wrong, tuple(objects[cid] for cid in returns), (), function)
+            status, verdicts = _native_verdicts(self.native, [sample])
+            if verdicts.get(0) != REJECTED:
+                continue
+            contracts += 1
+            baseline = _outcome(None, *sample)
+            self.assertEqual(baseline[1], "GRAPH-CALL-CONTRACT", sample)
+            self.assertEqual(_outcome(self.native, *sample), baseline, sample)
+        self.assertGreater(contracts, 0)
         # Attributes on a resource node: the graph builder refuses them, so check the node check directly.
         from xax_compiler import XaxError, _verify_resource_effect_node
         from xax_selfhost_typing import marshal, type_info_from
