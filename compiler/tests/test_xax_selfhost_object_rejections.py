@@ -88,12 +88,42 @@ def _function(variant: str):
     return function, objects
 
 
+GROUP_GRAPHS = ("group_entry", "group_return", "group_member_range", "group_call_contract", "group_scc")
+
+
+def _group_variant(variant: str):
+    """A one-member group whose member graph (or interface) breaks a check made after the graph parses."""
+    from test_xax_recursion import _graph, _group_call
+    from xax_compiler import IntCompare, RecursionMember, recursion_group
+
+    graph = GraphBuilder()
+    entry = graph.block(B32)
+    base, recurse = graph.block(), graph.block(B32)
+    (n,) = entry.params
+    entry.cbr(entry.op1(Operation.INT_COMPARE, (n, entry.const(B32, 0)), bits_type(1), attributes=(IntCompare.EQ,)), base, (), recurse, (n,))
+    base.ret(base.const(B32, 1))
+    (m,) = recurse.params
+    if variant == "group_scc":
+        recurse.ret(m)  # no member call: not recursive
+    else:
+        member = 3 if variant == "group_member_range" else 0
+        results = (B64,) if variant == "group_call_contract" else (B32,)
+        (inner,) = _group_call(recurse, member, (recurse.op1(Operation.SUB_WRAP, (m, recurse.const(B32, 1)), B32),), results)
+        recurse.ret(m if variant == "group_call_contract" else inner)
+    graph.track(B64)
+    fragment = _graph(graph)
+    parameters = (B64,) if variant == "group_entry" else (B32,)
+    returns = (B64,) if variant == "group_return" else (B32,)
+    group = recursion_group([RecursionMember(fragment, parameters, returns)])
+    return group, (*graph.objects.values(), fragment, group)
+
+
 def _group(variant: str):
     """``(group, member function, objects)``: the factorial group and its member function; ``variant`` rewrites one."""
     from test_xax_recursion import factorial_group
     from xax_compiler import group_member_function
 
-    group, objects = factorial_group()
+    group, objects = factorial_group() if variant not in GROUP_GRAPHS else _group_variant(variant)
     objects = tuple(item for item in objects if item.cid != group.cid)
     fragment = next(item for item in objects if item.kind == Kind.GRAPH_FRAGMENT)
     references = tuple(sorted({fragment.cid, B32.cid, *((B64.cid,) if variant == "group_unused" else ())}))
@@ -167,6 +197,9 @@ VARIANTS = {
     # S8c.21 (ADR-239): recursion-group member lists.
     "group_empty": "GRAPH-RECURSION-GROUP-NONEMPTY", "group_ref_index": "GRAPH-REF-INDEX", "group_carrier": "GRAPH-FUNCTION-CARRIER",
     "group_type_index": "GRAPH-REF-INDEX", "group_trailing": "RECURSION-GROUP-BODY", "group_unused": "SER-REFS-DIRECT-ONLY",
+    # S8c.22 (ADR-240): group checks after the member graphs parse.
+    "group_entry": "GRAPH-ENTRY-CONTRACT", "group_return": "GRAPH-RETURN-CONTRACT", "group_member_range": "GRAPH-RECURSION-MEMBER",
+    "group_call_contract": "GRAPH-CALL-CONTRACT", "group_scc": "GRAPH-RECURSION-SCC",
 }
 
 

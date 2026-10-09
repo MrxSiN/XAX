@@ -7516,6 +7516,8 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
         from xax_selfhost_verify import AFTER_PARSE, OBJECT_SITES
 
         graph = listed[record[1][0]] if OBJECT_SITES[record[0] - 1] in AFTER_PARSE else None
+        if len(record) > 3:  # S8c.22: a group check after its first member graphs parse
+            graph = tuple(listed[index] for index in record[3])
         proven[listed[position].cid] = _XaxRejection((*object_diagnostic(listed[position], record, listed), graph))
     for position, obj in enumerate(listed):
         if verdicts[position] != 1:
@@ -7539,7 +7541,8 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
 
 class _XaxRejection(tuple):
     """S8c.19 (ADR-237): an object rejection the XAX store verifier decided: ``(code, rule, expected, actual, graph)``;
-    ``graph`` (S8c.20) is the graph the bootstrap parses before reaching the check, or None."""
+    ``graph`` (S8c.20) is the graph the bootstrap parses before reaching the check (S8c.22: a tuple of group member
+    graphs, in member order), or None."""
 
 
 def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], proven: object = None) -> None:
@@ -7550,8 +7553,8 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         resolve(cid)
     if isinstance(proven, _XaxRejection):
         code, rule, expected_value, actual, graph = proven
-        if graph is not None:
-            _parse_graph(graph, resolve)  # an invalid graph fails first, as in the bootstrap
+        for parsed in (graph if isinstance(graph, tuple) else (graph,) if graph is not None else ()):
+            _parse_graph(parsed, resolve)  # an invalid graph fails first, as in the bootstrap
         fail(code, obj.cid.hex(), rule, expected_value, actual)
     if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD):
         # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs
