@@ -85,6 +85,7 @@ Recent results (one shared x86-64 host; details in [`XAX_BENCHMARKS.md`](XAX_BEN
 - **Linux x86-64 is R6**: faster than the fastest C/Rust build on `filestat` (0.85× clang), `jsonmin` (0.96× clang, a small margin) and `chains` (0.91× rustc); maintained through a semantic transaction; and `xb64` below is 100% XAX.
 - **JVM is R5**: `jsonmin` runs 0.87× javac, and an AI changed it through one semantic transaction, then rebuilt, tested, and benchmarked it.
 - **First XAX-only app**: `xb64`, a base64 tool whose code, tests, and build are all XAX, matches coreutils `base64` and shipped a second release through one transaction.
+- **The verifier rejects in XAX**: on Linux x86-64, every rejection in the test suite is decided by XAX code, with the same message the Python verifier gives (S8).
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S8 and later steps are open (ADR-180)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 

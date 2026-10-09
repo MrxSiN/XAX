@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8 verifier totality — 2026-10-09 (ADR-248)
+
+S8 is complete: on Linux x86-64 every verifier rejection the suite reaches is decided by an XAX program with the bootstrap's exact diagnostic. The full-suite trace (`compiler/migration/s8_rejection_trace.py`) reports 0 bootstrap-decided rejection sites, and the differential plugin (`compiler/migration/s8_differential.py`) matched 4,681 live rejections to the bootstrap's with 0 differences. Python still decides off Linux x86-64 and where an XAX program declines (oversized or unmodelled inputs); it remains the differential oracle. Next: S9 (canonical store writing in XAX).
+
 ## S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
 
-The XAX typing program now rejects constants with an out-of-range type index, a truncated value, or trailing bytes. Still Python: resource transitions, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+The XAX typing program now rejects constants with an out-of-range type index, a truncated value, or trailing bytes. Still Python: resource transitions, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines. Superseded by S8 above.
 
 ## S8c.28 pointer element and opaque identity rejections — 2026-10-09 (ADR-246)
 

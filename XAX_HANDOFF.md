@@ -184,7 +184,15 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
 
-- Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines.
+- Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
+
+## S8 verifier totality — 2026-10-09 (ADR-248)
+
+- Done: every rejection the suite reaches on Linux x86-64 is XAX-decided (trace: 0 bootstrap sites; differential: 4,681 rejections, 0 differences). To re-check after a verifier change, from `compiler`: `S8_TRACE_OUT=/tmp/s8 PYTHONPATH=src:tests:migration:.:.. python -m pytest -s -n 3 -p s8_rejection_trace -p s8_differential tests`, then `python migration/s8_rejection_trace.py /tmp/s8` (expect an empty report) and grep `DIFF ` (expect none).
+- New checks go into the XAX program first, as exact `_reject` records in the bootstrap's order; a `_require` only declines (Python then decides). Keep each XAX function inside the views backend's limits (5 MiB of code, the per-function arena): `test_xax_selfhost_x86_64_backend` fails otherwise, and `target.op`'s target parse was split into `_target_contract` for this reason.
+- Graph decoder rejections keep their stream prefix in the store verifier's object table (a flag word follows the body bytes); graphs with an invalid use are typed over a trimmed copy. Both paths count a rejection only where the bootstrap would reach it first.
+- The two wheel tests fail on this host for an environment reason (Debian setuptools: `AttributeError: install_layout` under `pip wheel --no-build-isolation`), not a code one.
+- Next: S9 (canonical store writing in XAX).
 
 ## Validation state at M14 (historical)
 

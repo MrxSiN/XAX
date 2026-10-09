@@ -457,7 +457,7 @@
       "differential_oracle": "constructed per-rule inputs and mutation corpora against the bootstrap parsers",
       "fixed_point_relevance": "every compiler input",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S8c"
+      "recommended_step": "done (S8)"
     },
     "verifier-acceptance": {
       "python_authority": "xax_compiler.verify_store (off Linux x86-64 and on declines)",
@@ -467,17 +467,17 @@
       "differential_oracle": "suite-wide verdict agreement (ADR-150)",
       "fixed_point_relevance": "verifier closes over itself (component fixed point)",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S8"
+      "recommended_step": "done (S8); declines stay Python"
     },
     "verifier-rejection-diagnostics": {
-      "python_authority": "xax_compiler fail() sites in verification: graph resolution and type verification while walking streams, group-member call contracts, atomic order/scope enums, invalid record fields, ambiguous link dependents, and object verification of the group member order, target register lists and profile sections, resource transitions, packages, and builds (S8c.27 onward); store container, object envelopes, and graph syntax are XAX since S8a/S8b",
-      "xax_hosted": "integer, float, compare, aggregate, sum, meta, resource/effect, constant, call-target, and fragment call-contract typing rejections, and stack-memory, checked-access, rebase, returned-view, heap-view, foreign-call, view-passing call, indirect-call stack-proof, atomic, link, address/record, and link-lifetime fact rejections, and constant value, scalar type, compound type, tuple/sum item, pointer element, opaque identity, and malformed constant body rejections: xax_op_typing.xax (S8c.1-S8c.18, S8c.24-S8c.29, ADR-214 to ADR-221, ADR-226 to ADR-230, ADR-232 to ADR-236, ADR-242 to ADR-247); program-root, module, call-contract, function, recursion-group, and target object rejections: xax_store_verifier.xax (S8c.19-S8c.23, ADR-237 to ADR-241)",
+      "python_authority": "none on the production path (S8, ADR-248): off Linux x86-64 and where an XAX program declines (oversized or unmodelled inputs), xax_compiler's fail() sites decide; they remain the differential oracle",
+      "xax_hosted": "integer, float, compare, aggregate, sum, meta, resource/effect, constant, call-target, and fragment call-contract typing rejections, and stack-memory, checked-access, rebase, returned-view, heap-view, foreign-call, view-passing call, indirect-call stack-proof, atomic, link, address/record, and link-lifetime fact rejections, and constant value, scalar type, compound type, tuple/sum item, pointer element, opaque identity, and malformed constant body rejections: xax_op_typing.xax (S8c.1-S8c.18, S8c.24-S8c.29, ADR-214 to ADR-221, ADR-226 to ADR-230, ADR-232 to ADR-236, ADR-242 to ADR-247); program-root, module, call-contract, function, recursion-group, and target object rejections: xax_store_verifier.xax (S8c.19-S8c.23, ADR-237 to ADR-241); S8 (ADR-248): every remaining rejection: target register lists, profile sections, and enums, the group order, resource transitions, packages and builds, objects read as types, ULEB and store faults, use validity, branch targets, linear flow, atomic attributes, foreign and lend entries, foreign and indirect calls, resource-call and resource-entry contracts, raw loads, address exposure, target.op, the operation vocabulary, decoder-rejected graph prefixes, and checks before an invalid use: xax_op_typing.xax, xax_store_verifier.xax, xax_cfg_analysis.xax",
       "target_dependency": "none",
       "prerequisite": "S7b.1 record mechanism",
-      "differential_oracle": "negative conformance corpus, per-rule",
+      "differential_oracle": "full-suite trace (migration/s8_rejection_trace.py) and live-versus-bootstrap differential (migration/s8_differential.py), per-rule mutation corpora",
       "fixed_point_relevance": "B3 negative-vector equivalence",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S8"
+      "recommended_step": "done (S8)"
     },
     "target-package-interpretation": {
       "python_authority": "xax_compiler.decode_native_target and target constructors",
