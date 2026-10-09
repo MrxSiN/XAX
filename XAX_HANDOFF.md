@@ -186,6 +186,10 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines.
 
+## Lazily zeroed component views — 2026-10-09 (ADR-248)
+
+- Allocate any view of 1 MiB or more with `xax_native.zeroed_array(element, count)`, never `(element * count)()`; keep the returned array (it owns its mapping). Contents start zero and are never re-zeroed between calls, exactly as before.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

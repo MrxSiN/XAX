@@ -296,14 +296,14 @@ class NativeHasher:
         machine_code, entry_offset = host_image(*load_hash_program(), "blake3-hash")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code
-        from xax_native import executable_mapping
+        from xax_native import executable_mapping, zeroed_array
 
         self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self.code_size = len(machine_code)
         # Word arrays: the views are declared 4-aligned.
-        self._input = (ctypes.c_uint32 * (INPUT_EXTENT // 4))()
+        self._input = zeroed_array(ctypes.c_uint32, INPUT_EXTENT // 4)
         self._scratch = (ctypes.c_uint32 * (SCRATCH_EXTENT // 4))()
         self._lock = threading.Lock()
         self.capacity = INPUT_EXTENT

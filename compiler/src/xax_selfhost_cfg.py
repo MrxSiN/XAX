@@ -386,14 +386,14 @@ class NativeCfg:
         machine_code, entry_offset = host_image(*load_cfg_program(), "cfg")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code
-        from xax_native import executable_mapping
+        from xax_native import executable_mapping, zeroed_array
 
         self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self.code_size = len(machine_code)
-        self._in = (ctypes.c_uint64 * IN_WORDS)()
-        self._out = (ctypes.c_uint64 * OUT_WORDS)()
+        self._in = zeroed_array(ctypes.c_uint64, IN_WORDS)
+        self._out = zeroed_array(ctypes.c_uint64, OUT_WORDS)
         self._slots = (ctypes.c_uint64 * 4)()
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
