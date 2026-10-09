@@ -135,7 +135,14 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 "TARGET_PLATFORM_OPERATIONS", "TARGET_PLATFORM_CONTRACT", "TARGET_OPERATIONS", "TARGET_TERMINATORS",
                 "TARGET_ATOMIC_WIDTHS", "TARGET_ATOMIC_CAPABILITIES", "TARGET_HANDLER_ORDER", "TARGET_HANDLER",
                 # S8: a reference naming no stored object (payload: the reference's index).
-                "OBJECT_MISSING")
+                "OBJECT_MISSING",
+                # S8: cursor faults in any body (take: size, available; bool: the byte; trailing: rule, bytes left), build
+                # references (count, index), build enums (enum, value), and build rules (rule, recorded words, their count,
+                # item, extra).
+                "BODY_TAKE", "BODY_BOOL", "BODY_TRAILING", "BUILD_REF_INDEX", "BUILD_ENUM", "BUILD_RULE",
+                # S8: ``_build_form`` of another object (payload: the object): its BUILD-KIND diagnostic, or its own form
+                # rejection.
+                "BUILD_KIND_OF", "OTHER_OBJECT")
 AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
 GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
@@ -1346,98 +1353,205 @@ def _capability(e: E, name: str, end, prefix: str):
     e.var(f"{prefix}_cl", length)
 
 
+def _recorder(e: E, obj, at: str, end, start):
+    """S8 (ADR-248): ``Cursor`` reads of ``obj``'s body at ``p[at]`` that reject exactly where the cursor fails and
+    record what they read (a rejection quotes the words: values, string offsets, reference indices)."""
+    p = e.p
+    e.var("rw", e.alloc(e.add(e.mul(e.sub(end, p[at]), 2), 4)))
+    _no(e, e.eq(p["rw"], NONE))
+    e.var("rn", 0)
+
+    def record(value):
+        e.st(e.add(p["rw"], p["rn"]), value)
+        e.set("rn", e.add(p["rn"], 1))
+
+    def read():
+        e.var("rd_", _read(e, at, end, obj, start))
+        record(p["rd_"])
+        return p["rd_"]
+
+    def string():
+        """``byte_string``: ``(input position, length)``; records the length and the body offset."""
+        e.var("sl_", read())
+        e.if_(e.lt(e.sub(end, p[at]), p["sl_"]), lambda: _reject(e, None, obj, S["BODY_TAKE"], p["sl_"], e.sub(end, p[at])))
+        record(e.sub(p[at], start))
+        e.var("ss_", p[at])
+        e.set(at, e.add(p[at], p["sl_"]))
+        return p["ss_"], p["sl_"]
+
+    def reference():
+        """``_reference``: the named object (recorded: the index); marks it."""
+        e.var("ri_", read())
+        _reject(e, e.le(_references(e, obj), p["ri_"]), obj, S["BUILD_REF_INDEX"], _references(e, obj), p["ri_"])
+        e.var("ro_", _reference(e, obj, p["ri_"]))
+        _no(e, e.eq(p["ro_"], NONE))
+        _mark(e, p["ri_"])
+        return p["ro_"]
+
+    def byte():
+        e.if_(e.le(end, p[at]), lambda: _reject(e, None, obj, S["BODY_TAKE"], 1, 0))
+        e.var("rb_", e.rd(p[at]))
+        e.set(at, e.add(p[at], 1))
+        record(p["rb_"])
+        return p["rb_"]
+
+    def boolean():
+        e.var("bo_", byte())
+        _reject(e, e.lt(1, p["bo_"]), obj, S["BODY_BOOL"], p["bo_"])
+        return p["bo_"]
+
+    def take(size):
+        e.if_(e.lt(e.sub(end, p[at]), size), lambda: _reject(e, None, obj, S["BODY_TAKE"], size, e.sub(end, p[at])))
+        record(e.sub(p[at], start))
+        e.set(at, e.add(p[at], size))
+
+    def enum(high, which):
+        """``_enum``: a value in 1..high, else ``XAX.BUILD.ENUM`` (``which``: the enum)."""
+        e.var("en_", read())
+        _reject(e, e.either(e.eq(p["en_"], 0), e.lt(high, p["en_"])), obj, S["BUILD_ENUM"], which, p["en_"])
+        return p["en_"]
+
+    def rule(code, condition=None, item=0, extra=0, entity=NONE, more=0):
+        """A build rule broken: rejects quoting the recorded words (``entity``: the object the diagnostic names, when
+        it is not ``obj``)."""
+        _reject(e, condition, obj, S["BUILD_RULE"], code, p["rw"], p["rn"], item, extra, entity, more)
+
+    def finish(body_rule):
+        """``_finish``: no trailing bytes (``body_rule``), every reference used."""
+        _reject(e, e.ne(p[at], end), obj, S["BODY_TRAILING"], body_rule, e.sub(end, p[at]))
+        e.if_(e.eq(_all_marked(e, _references(e, obj)), 0),
+              lambda: rule(BUILD_REFS_EXACT, None, _list_copy(e, _references(e, obj), lambda k: e.ld(e.add(_g(e, G_MARK), k)))))
+
+    return dict(read=read, string=string, reference=reference, byte=byte, boolean=boolean, take=take, enum=enum, rule=rule, finish=finish)
+
+
+# S8 (ADR-248): build rules (``BUILD_RULE`` payload word 0), the bodies' trailing-byte rules, and the enums.
+(BUILD_IDENTITY, BUILD_MODULES, BUILD_MODULE_KIND, BUILD_MODULES_CANONICAL, BUILD_EXACT_KIND, BUILD_DEPENDENCY_FORM,
+ BUILD_DEPENDENCIES_CANONICAL, BUILD_NAMED_REFERENCE, BUILD_NAMES_CANONICAL, BUILD_CAPABILITIES_CANONICAL, BUILD_REFS_EXACT,
+ BUILD_GRANTS_CANONICAL, BUILD_ALGORITHMS_CANONICAL, BUILD_SIGNERS_CANONICAL, BUILD_TRUST_NONEMPTY, BUILD_TRUST_REQUIRED,
+ BUILD_SIGNATURE_NONEMPTY, BUILD_OPT_REFERENCES,
+ BUILD_REQUEST_KINDS, BUILD_ENTRY_DECLARED, BUILD_BINDINGS_CANONICAL, BUILD_BINDINGS_COMPLETE, BUILD_TYPED_VALUE, BUILD_CONSTANT_TYPE,
+ BUILD_BINDING_TYPE, BUILD_ARTIFACTS_CANONICAL, BUILD_ARTIFACT_REQUIRED, BUILD_SNAPSHOT_HEADER, BUILD_SNAPSHOT_PACKAGE_KIND,
+ BUILD_SNAPSHOT_SIGNATURE_KIND, BUILD_SNAPSHOT_PACKAGES_CANONICAL, BUILD_SNAPSHOT_SIGNATURES_CANONICAL, BUILD_SNAPSHOT_EXTERNAL_CANONICAL,
+ BUILD_SNAPSHOT_ROOT, BUILD_RESOLVE_EXACT, BUILD_RESOLVE_LOGICAL, BUILD_SNAPSHOT_CLOSURE, BUILD_GRANT_DECLARED, BUILD_SIGNATURE_PACKAGE,
+ BUILD_SIGNATURE_COVERAGE, BUILD_PROVENANCE_KINDS, BUILD_PROVENANCE_CLOSURE) = range(1, 43)
+BODY_RULES = ("BUILD-BODY", "BUILD-OPTIMIZATION-POLICY-BODY", "TARGET-NATIVE-BODY")
+BUILD_ENUMS = ("BuildForm", "BuildMode", "BuildCapabilityKind", "ArtifactKind", "OptimizationObjective")
+
+
 def _package_ok(tables):
-    """``decode_package``: identity, canonical modules, dependencies, named build entries and schemas,
-    capabilities, exact end and exact reference use."""
+    """``decode_package``, decided in full (S8): identity, canonical modules, dependencies, named build entries and
+    schemas, capabilities, exact end and exact reference use."""
     def build(e: E):
         p = e.p
         o = p["o"]
         e.var("refs", _references(e, o))
         e.var("pa", _payload(e, o))
+        e.var("pbody", p["pa"])
         e.var("pend", e.add(p["pa"], e.rd(e.sub(p["pa"], 1))))
         _clear_marks(e, p["refs"])
-        start, length = _string(e, "pa", p["pend"])
+        _no(e, e.eq(_resolved(e, o), 0))
+        r = _recorder(e, o, "pa", p["pend"], p["pbody"])
+        start, length = r["string"]()
         e.var("p_is", start)
         e.var("p_il", length)
-        _no(e, e.eq(p["p_il"], 0))
-        e.var("mcount", _read(e, "pa", p["pend"]))
-        _no(e, e.eq(p["mcount"], 0))
-
-        def module():
-            e.var("mobj", _object_reference(e, o, "pa", p["pend"], int(Kind.MODULE)))
-            e.if_(e.ne(p["mq"], 0), lambda: _no(e, e.ne(e.call(_FN["cid_less"], p["mprev"], p["mobj"]), 1)))
-            e.var("mprev", p["mobj"])
-
-        e.var("mprev", 0)
-        e.for_("mq", 0, p["mcount"], module)
+        r["rule"](BUILD_IDENTITY, e.eq(p["p_il"], 0))
+        e.var("mcount", r["read"]())
+        e.var("mlist", e.alloc(e.add(e.sel(e.lt(p["mcount"], e.sub(p["pend"], p["pa"])), p["mcount"], e.sub(p["pend"], p["pa"])), 1)))
+        _no(e, e.eq(p["mlist"], NONE))
+        e.for_("mq", 0, p["mcount"], lambda: e.st(e.add(p["mlist"], p["mq"]), r["reference"]()))
+        r["rule"](BUILD_MODULES, e.eq(p["mcount"], 0))
+        e.var("mbad", NONE)
+        e.for_("mq", 0, p["mcount"], lambda: e.if_(e.both(e.eq(p["mbad"], NONE), e.ne(_kind(e, e.ld(e.add(p["mlist"], p["mq"]))), int(Kind.MODULE))),
+                                                   lambda: e.set("mbad", p["mq"])))
+        e.if_(e.ne(p["mbad"], NONE), lambda: r["rule"](BUILD_MODULE_KIND, None, p["mbad"], _kind(e, e.ld(e.add(p["mlist"], p["mbad"])))))
+        e.var("mok", 1)
+        e.for_("mq", 1, p["mcount"], lambda: e.if_(e.ne(e.call(_FN["cid_less"], e.ld(e.add(p["mlist"], e.sub(p["mq"], 1))), e.ld(e.add(p["mlist"], p["mq"]))), 1),
+                                                   lambda: e.set("mok", 0)))
+        r["rule"](BUILD_MODULES_CANONICAL, e.eq(p["mok"], 0))
         # Dependencies sort by key: exact (0x01 + root CID) before logical (0x02 + ULEB length + identity).
         e.var("p_deps", p["pa"])
-        e.var("dcount", _read(e, "pa", p["pend"]))
+        e.var("dcount", r["read"]())
         e.var("dform", 0)  # the previous form; 0 before the first
         e.var("dobj", 0)
         e.var("dps", 0)
         e.var("dpl", 0)
+        e.var("dok", 1)
 
         def dependency():
-            e.var("form", _read(e, "pa", p["pend"]))
-            _no(e, e.both(e.ne(p["form"], 1), e.ne(p["form"], 2)))
-            _no(e, e.lt(p["form"], p["dform"]))
+            e.var("form", r["read"]())
 
             def exact():
-                e.var("dnew", _object_reference(e, o, "pa", p["pend"], int(Kind.PACKAGE)))
-                e.if_(e.eq(p["dform"], 1), lambda: _no(e, e.ne(e.call(_FN["cid_less"], p["dobj"], p["dnew"]), 1)))
+                e.var("dnew", r["reference"]())
+                e.if_(e.ne(_kind(e, p["dnew"]), int(Kind.PACKAGE)), lambda: r["rule"](BUILD_EXACT_KIND, None, 0, _kind(e, p["dnew"])))
+                e.if_(e.eq(p["dform"], 2), lambda: e.set("dok", 0))
+                e.if_(e.both(e.eq(p["dform"], 1), e.ne(e.call(_FN["cid_less"], p["dobj"], p["dnew"]), 1)), lambda: e.set("dok", 0))
                 e.set("dobj", p["dnew"])
 
             def logical():
                 e.var("dkey", p["pa"])  # the key is the encoded string: ULEB length, then bytes
-                _ds, dl = _string(e, "pa", p["pend"])
-                _no(e, e.eq(dl, 0))
+                _ds, dl = r["string"]()
+                _no(e, e.eq(dl, 0))  # ``DependencyRequirement`` raises ValueError: left to the bootstrap
                 e.var("dklen", e.sub(p["pa"], p["dkey"]))
-                e.if_(e.eq(p["dform"], 2), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p["dps"], p["dkey"], p["dpl"], p["dklen"]), 1)))
+                e.if_(e.both(e.eq(p["dform"], 2), e.ne(e.call(_FN["bytes_less"], p["dps"], p["dkey"], p["dpl"], p["dklen"]), 1)), lambda: e.set("dok", 0))
                 e.set("dps", p["dkey"])
                 e.set("dpl", p["dklen"])
 
+            e.if_(e.both(e.ne(p["form"], 1), e.ne(p["form"], 2)), lambda: r["rule"](BUILD_DEPENDENCY_FORM, None, 0, p["form"]))
             e.if_(e.eq(p["form"], 1), exact, logical)
             e.set("dform", p["form"])
 
         e.for_("dq", 0, p["dcount"], dependency)
+        r["rule"](BUILD_DEPENDENCIES_CANONICAL, e.eq(p["dok"], 0))
         e.var("p_entries", p["pa"])
-        for collection, kind in (("ce", Kind.FUNCTION), ("cf", Kind.TYPE), ("cc", Kind.TYPE)):
-            e.var(f"{collection}_count", _read(e, "pa", p["pend"]))
+        for number, (collection, kind) in enumerate((("ce", Kind.FUNCTION), ("cf", Kind.TYPE), ("cc", Kind.TYPE))):
+            e.var(f"{collection}_count", r["read"]())
+            e.var(f"{collection}_ok", 1)
 
-            def entry(collection=collection, kind=kind):
-                start, length = _string(e, "pa", p["pend"])
+            def entry(collection=collection, kind=kind, number=number):
+                start, length = r["string"]()
                 e.var(f"{collection}_ns", start)
                 e.var(f"{collection}_nl", length)
-                _no(e, e.eq(p[f"{collection}_nl"], 0))
-                _object_reference(e, o, "pa", p["pend"], int(kind))
-                _strictly_after(e, collection, p[f"{collection}_ns"], p[f"{collection}_nl"], e.eq(p[f"{collection}_q"], 0))
+                e.var("child", r["reference"]())
+                e.if_(e.either(e.eq(p[f"{collection}_nl"], 0), e.ne(_kind(e, p["child"]), int(kind))),
+                      lambda: r["rule"](BUILD_NAMED_REFERENCE, None, number, p[f"{collection}_q"]))
+                e.if_(e.both(e.ne(p[f"{collection}_q"], 0),
+                             e.ne(e.call(_FN["bytes_less"], p[f"{collection}_ps"], p[f"{collection}_ns"], p[f"{collection}_pl"], p[f"{collection}_nl"]), 1)),
+                      lambda: e.set(f"{collection}_ok", 0))
+                e.set(f"{collection}_ps", p[f"{collection}_ns"])
+                e.set(f"{collection}_pl", p[f"{collection}_nl"])
 
             e.var(f"{collection}_ps", 0)
             e.var(f"{collection}_pl", 0)
             e.for_(f"{collection}_q", 0, p[f"{collection}_count"], entry)
+            r["rule"](BUILD_NAMES_CANONICAL, e.eq(p[f"{collection}_ok"], 0), number)
         e.var("p_caps", p["pa"])
-        e.var("kcount", _read(e, "pa", p["pend"]))
+        e.var("kcount", r["read"]())
         e.var("kprev", 0)
+        e.var("kok", 1)
 
         def capability():
             # (kind, scope) strictly increasing.
-            _capability(e, "pa", p["pend"], "k")
+            e.var("k_kind", r["enum"](9, 3))
+            start, length = r["string"]()
+            e.var("k_cs", start)
+            e.var("k_cl", length)
 
             def ordered():
-                _no(e, e.lt(p["k_kind"], p["kprev"]))
-                e.if_(e.eq(p["kprev"], p["k_kind"]), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p["kps"], p["k_cs"], p["kpl"], p["k_cl"]), 1)))
+                e.if_(e.lt(p["k_kind"], p["kprev"]), lambda: e.set("kok", 0))
+                e.if_(e.both(e.eq(p["kprev"], p["k_kind"]), e.ne(e.call(_FN["bytes_less"], p["kps"], p["k_cs"], p["kpl"], p["k_cl"]), 1)),
+                      lambda: e.set("kok", 0))
 
             e.if_(e.ne(p["kq"], 0), ordered)
             e.set("kprev", p["k_kind"])
-            e.var("kps", p["k_cs"])
-            e.var("kpl", p["k_cl"])
+            e.set("kps", p["k_cs"])
+            e.set("kpl", p["k_cl"])
 
         e.var("kps", 0)
         e.var("kpl", 0)
         e.for_("kq", 0, p["kcount"], capability)
-        _no(e, e.ne(p["pa"], p["pend"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        r["rule"](BUILD_CAPABILITIES_CANONICAL, e.eq(p["kok"], 0))
+        r["finish"](0)
         # For requests and snapshots: [identity start, identity length, dependencies, entries, capabilities].
         e.var("prec", e.alloc(5))
         _no(e, e.eq(p["prec"], NONE))
@@ -1449,53 +1563,58 @@ def _package_ok(tables):
 
 
 def _build_ok(tables):
-    """The leaf build forms: profile (``decode_profile``), trust policy, signature, and optimization policy.
-    Requests, snapshots, and provenance give 0 here: later passes decide them (S6b.4b)."""
+    """``_build_form`` and the leaf build forms, decided in full (S8): profile (``decode_profile``), trust policy,
+    signature, and optimization policy.  Requests, snapshots, and provenance give 0 here: later passes decide them
+    (S6b.4b)."""
     def build(e: E):
         p = e.p
         o = p["o"]
         e.var("refs", _references(e, o))
         e.var("ba", _payload(e, o))
+        e.var("bbody", p["ba"])
         e.var("bend", e.add(p["ba"], e.rd(e.sub(p["ba"], 1))))
         _clear_marks(e, p["refs"])
-        e.var("form", _read(e, "ba", p["bend"]))
+        _no(e, e.eq(_resolved(e, o), 0))
+        r = _recorder(e, o, "ba", p["bend"], p["bbody"])
+        e.var("form", r["enum"](7, 1))
+        e.if_(e.either(e.eq(p["form"], 2), e.eq(p["form"], 3), e.eq(p["form"], 5)), lambda: e.give(0))  # later passes
 
         def finish():
-            _no(e, e.ne(p["ba"], p["bend"]))
-            _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+            r["finish"](0)
             e.give(1)
 
         def profile():
-            e.var("mode", _read(e, "ba", p["bend"]))
-            _no(e, e.either(e.lt(p["mode"], 1), e.lt(3, p["mode"])))
-            _read(e, "ba", p["bend"])  # optimization level
-            _read(e, "ba", p["bend"])  # verification level
+            r["enum"](3, 2)  # the build mode
+            r["read"]()  # optimization level
+            r["read"]()  # verification level
             e.st(e.add(GRAPHS_AT, o), p["ba"])  # for snapshots: where the grants start
-            e.var("gcount", _read(e, "ba", p["bend"]))
-            e.var("gis", 0)
-            e.var("gil", 0)
-            e.var("gkind", 0)
-            e.var("gcs", 0)
-            e.var("gcl", 0)
+            e.var("gcount", r["read"]())
+            for name in ("gis", "gil", "gkind", "gcs", "gcl"):
+                e.var(name, 0)
+            e.var("gok", 1)
 
             def grant():
-                start, length = _string(e, "ba", p["bend"])
+                start, length = r["string"]()
                 e.var("nis", start)
                 e.var("nil", length)
-                _no(e, e.eq(p["nil"], 0))
-                _capability(e, "ba", p["bend"], "g")
+                e.var("g_kind", r["enum"](9, 3))
+                start, length = r["string"]()
+                e.var("g_cs", start)
+                e.var("g_cl", length)
+                _no(e, e.eq(p["nil"], 0))  # ``CapabilityGrant`` raises ValueError: left to the bootstrap
 
                 def ordered():
                     # (identity, kind, scope) strictly increasing.
                     e.var("gless", e.call(_FN["bytes_less"], p["gis"], p["nis"], p["gil"], p["nil"]))
                     e.var("gmore", e.call(_FN["bytes_less"], p["nis"], p["gis"], p["nil"], p["gil"]))
-                    _no(e, e.ne(p["gmore"], 0))
+                    e.if_(e.ne(p["gmore"], 0), lambda: e.set("gok", 0))
 
                     def same_identity():
-                        _no(e, e.lt(p["g_kind"], p["gkind"]))
-                        e.if_(e.eq(p["g_kind"], p["gkind"]), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], p["gcs"], p["g_cs"], p["gcl"], p["g_cl"]), 1)))
+                        e.if_(e.lt(p["g_kind"], p["gkind"]), lambda: e.set("gok", 0))
+                        e.if_(e.both(e.eq(p["g_kind"], p["gkind"]), e.ne(e.call(_FN["bytes_less"], p["gcs"], p["g_cs"], p["gcl"], p["g_cl"]), 1)),
+                              lambda: e.set("gok", 0))
 
-                    e.if_(e.eq(p["gless"], 0), same_identity)
+                    e.if_(e.both(e.eq(p["gless"], 0), e.eq(p["gmore"], 0)), same_identity)
 
                 e.if_(e.ne(p["gq"], 0), ordered)
                 e.set("gis", p["nis"])
@@ -1505,48 +1624,55 @@ def _build_ok(tables):
                 e.set("gcl", p["g_cl"])
 
             e.for_("gq", 0, p["gcount"], grant)
+            r["rule"](BUILD_GRANTS_CANONICAL, e.eq(p["gok"], 0))
             finish()
 
         def trust():
-            for flag in ("rp", "rv"):
-                _no(e, e.le(p["bend"], p["ba"]))
-                e.var(flag, e.rd(p["ba"]))
-                _no(e, e.lt(1, p[flag]))
-                e.set("ba", e.add(p["ba"], 1))
+            e.var("rp", r["boolean"]())
+            e.var("rv", r["boolean"]())
+            e.var("tempty", 0)
             for name in ("al", "si"):
-                e.var(f"{name}_count", _read(e, "ba", p["bend"]))
+                e.var(f"{name}_count", r["read"]())
+                e.var(f"{name}_ok", 1)
 
                 def item(name=name):
-                    start, length = _string(e, "ba", p["bend"])
+                    start, length = r["string"]()
                     e.var(f"{name}_s", start)
                     e.var(f"{name}_l", length)
-                    _no(e, e.eq(p[f"{name}_l"], 0))
-                    _strictly_after(e, name, p[f"{name}_s"], p[f"{name}_l"], e.eq(p[f"{name}_q"], 0))
+                    e.if_(e.eq(p[f"{name}_l"], 0), lambda: e.set("tempty", 1))
+                    e.if_(e.both(e.ne(p[f"{name}_q"], 0), e.ne(e.call(_FN["bytes_less"], p[f"{name}_ps"], p[f"{name}_s"], p[f"{name}_pl"], p[f"{name}_l"]), 1)),
+                          lambda: e.set(f"{name}_ok", 0))
+                    e.set(f"{name}_ps", p[f"{name}_s"])
+                    e.set(f"{name}_pl", p[f"{name}_l"])
 
                 e.var(f"{name}_ps", 0)
                 e.var(f"{name}_pl", 0)
                 e.for_(f"{name}_q", 0, p[f"{name}_count"], item)
-            e.st(e.add(GRAPHS_AT, o), p["rp"])  # for snapshots: package signatures required
+            r["rule"](BUILD_ALGORITHMS_CANONICAL, e.eq(p["al_ok"], 0))
+            r["rule"](BUILD_SIGNERS_CANONICAL, e.eq(p["si_ok"], 0))
+            r["rule"](BUILD_TRUST_NONEMPTY, e.ne(p["tempty"], 0))
             required = e.either(e.ne(p["rp"], 0), e.ne(p["rv"], 0))
-            _no(e, e.both(required, e.either(e.eq(p["al_count"], 0), e.eq(p["si_count"], 0))))
+            r["rule"](BUILD_TRUST_REQUIRED, e.both(required, e.either(e.eq(p["al_count"], 0), e.eq(p["si_count"], 0))))
+            e.st(e.add(GRAPHS_AT, o), p["rp"])  # for snapshots: package signatures required
             finish()
 
         def signature():
-            e.st(e.add(GRAPHS_AT, o), _object_reference(e, o, "ba", p["bend"], None))  # the signed object
+            e.st(e.add(GRAPHS_AT, o), r["reference"]())  # the signed object
+            e.var("sempty", 0)
             for _field in range(3):
-                _start, length = _string(e, "ba", p["bend"])
-                _no(e, e.eq(length, 0))
+                _start, length = r["string"]()
+                e.if_(e.eq(length, 0), lambda: e.set("sempty", 1))
+            r["rule"](BUILD_SIGNATURE_NONEMPTY, e.ne(p["sempty"], 0))
             finish()
 
         def optimization():
-            _no(e, e.ne(_read(e, "ba", p["bend"]), 1))  # objective: code size
+            r["enum"](1, 5)  # objective: code size
             for _value in range(8):
-                _read(e, "ba", p["bend"])
-            _no(e, e.le(p["bend"], p["ba"]))
-            _no(e, e.lt(1, e.rd(p["ba"])))
-            e.set("ba", e.add(p["ba"], 1))
-            _no(e, e.ne(p["refs"], 0))
-            finish()
+                r["read"]()
+            r["boolean"]()
+            _reject(e, e.ne(p["ba"], p["bend"]), o, S["BODY_TRAILING"], 1, e.sub(p["bend"], p["ba"]))
+            r["rule"](BUILD_OPT_REFERENCES, e.ne(p["refs"], 0))
+            e.give(1)
 
         e.if_(e.eq(p["form"], 1), profile)
         e.if_(e.eq(p["form"], 4), trust)
@@ -1575,28 +1701,63 @@ def _same_bytes(e: E, a, a_len, b, b_len):
     return e.both(e.eq(a_len, b_len), e.eq(e.call(_FN["bytes_less"], a, b, a_len, b_len), 0), e.eq(e.call(_FN["bytes_less"], b, a, b_len, a_len), 0))
 
 
+def _listed(e: E, items, count, obj):
+    """The position of ``obj`` in the ``count`` words at ``items``, or NONE."""
+    p = e.p
+    e.var("ls_at", NONE)
+    e.for_("ls_q", 0, count, lambda: e.if_(e.eq(e.ld(e.add(items, p["ls_q"])), obj), lambda: e.set("ls_at", p["ls_q"])))
+    return p["ls_at"]
+
+
+def _form_site(e: E, x):
+    """1 when ``x`` (a BUILD object) is rejected for its form (``_build_form`` raises its diagnostic): the form enum or
+    a malformed form ULEB."""
+    at = e.add(REJECTS_AT, e.mul(x, REJECT_WORDS))
+    site, first, second = e.ld(at), e.ld(e.add(at, 1)), e.ld(e.add(at, 2))
+    return e.both(e.eq(_verdict(e, x), REJECTED), e.either(e.both(e.eq(site, S["BUILD_ENUM"]), e.eq(first, 1)),
+                                                             e.both(e.eq(site, S["BODY_ULEB"]), e.eq(second, 0))))
+
+
+def _build_form_of(e: E, o, x, name: str):
+    """``_build_form(x)`` called while verifying ``o``: rejects ``o`` with x's BUILD-KIND diagnostic, or with x's own
+    form rejection (``OTHER_OBJECT``); otherwise the form (a single canonical byte 1..7), or a decline."""
+    p = e.p
+    _reject(e, e.ne(_kind(e, x), int(Kind.BUILD)), o, S["BUILD_KIND_OF"], x)
+    e.if_(_form_site(e, x), lambda: _reject(e, None, o, S["OTHER_OBJECT"], x))
+    e.var(name, _form_of(e, x))
+    _no(e, e.either(e.eq(p[name], 0), e.lt(7, p[name])))  # a form the verifier has no verdict for: left to the bootstrap
+    return p[name]
+
+
 def _request_ok(tables):
-    """``decode_request``: a proven package with the entry, target, profile, bindings matching the package's
-    schemas name for name with constants of the schema types, canonical artifacts, exact use."""
+    """``decode_request``, decided in full (S8): the header and its reference kinds, a proven package declaring the
+    entry, bindings matching the package's schemas name for name with constants of the schema types, canonical
+    artifacts, exact end and use.  A rejected package or binding value whose own diagnostic the bootstrap raises
+    (in a nested decoder) is left to that object's rejection."""
     def build(e: E):
         p = e.p
         o = p["o"]
         e.var("refs", _references(e, o))
         e.var("ra", _payload(e, o))
+        e.var("rbody", p["ra"])
         e.var("rend", e.add(p["ra"], e.rd(e.sub(p["ra"], 1))))
         _clear_marks(e, p["refs"])
-        _no(e, e.ne(_read(e, "ra", p["rend"]), 2))
-        e.var("pkg", _object_reference(e, o, "ra", p["rend"], int(Kind.PACKAGE)))
-        _no(e, e.ne(_verdict(e, p["pkg"]), 1))
-        start, length = _string(e, "ra", p["rend"])
+        _no(e, e.eq(_resolved(e, o), 0))
+        r = _recorder(e, o, "ra", p["rend"], p["rbody"])
+        _no(e, e.ne(r["enum"](7, 1), 2))
+        e.var("pkg", r["reference"]())
+        start, length = r["string"]()
         e.var("es", start)
         e.var("el", length)
-        e.var("tgt", _object_reference(e, o, "ra", p["rend"], int(Kind.TARGET)))
-        e.var("prof", _object_reference(e, o, "ra", p["rend"], int(Kind.BUILD)))
-        _no(e, e.ne(_form_of(e, p["prof"]), 1))
+        e.var("tgt", r["reference"]())
+        e.var("prof", r["reference"]())
+        e.var("pform", _build_form_of(e, o, p["prof"], "pform"))
+        r["rule"](BUILD_REQUEST_KINDS, e.either(e.ne(_kind(e, p["pkg"]), int(Kind.PACKAGE)), e.ne(_kind(e, p["tgt"]), int(Kind.TARGET)), e.ne(p["pform"], 1)),
+                  _kind(e, p["pkg"]), _kind(e, p["tgt"]), NONE, p["pform"])
+        _no(e, e.ne(_verdict(e, p["pkg"]), 1))  # ``decode_package``: a rejected package raises its own diagnostic
         # The package (proven) lists its entries, feature schemas, and configuration schemas from p_entries on.
         e.var("q", e.ld(e.add(_aux(e, p["pkg"]), 3)))
-        e.var("qend", e.add(e.add(_payload(e, p["pkg"]), e.rd(e.sub(_payload(e, p["pkg"]), 1))), 0))
+        e.var("qend", e.add(_payload(e, p["pkg"]), e.rd(e.sub(_payload(e, p["pkg"]), 1))))
         e.var("found", 0)
 
         def entry():
@@ -1608,44 +1769,70 @@ def _request_ok(tables):
 
         e.var("entries", _read(e, "q", p["qend"]))
         e.for_("eq_", 0, p["entries"], entry)
-        _no(e, e.eq(p["found"], 0))
-        for schema in ("feature", "configuration"):
-            e.var("scount", _read(e, "q", p["qend"]))
-            e.var("bcount", _read(e, "ra", p["rend"]))
-            _no(e, e.ne(p["scount"], p["bcount"]))
+        r["rule"](BUILD_ENTRY_DECLARED, e.eq(p["found"], 0))
+        for number, schema in enumerate(("feature", "configuration")):
+            e.var("bcount", r["read"]())
+            e.var("blist", e.alloc(e.add(e.mul(e.sel(e.lt(p["bcount"], e.sub(p["rend"], p["ra"])), p["bcount"], e.sub(p["rend"], p["ra"])), 3), 1)))
+            _no(e, e.eq(p["blist"], NONE))
+            e.var("bok", 1)
 
             def binding():
-                start, length = _string(e, "ra", p["rend"])
+                at = e.add(p["blist"], e.mul(p["bq"], 3))
+                start, length = r["string"]()
                 e.var("bs", start)
                 e.var("bl", length)
-                e.var("value", _object_reference(e, o, "ra", p["rend"], None))
+                e.st(at, p["bs"])
+                e.st(e.add(at, 1), p["bl"])
+                e.st(e.add(at, 2), r["reference"]())
+                e.if_(e.both(e.ne(p["bq"], 0), e.ne(e.call(_FN["bytes_less"], e.ld(e.sub(at, 3)), p["bs"], e.ld(e.sub(at, 2)), p["bl"]), 1)),
+                      lambda: e.set("bok", 0))
+
+            e.for_("bq", 0, p["bcount"], binding)
+            r["rule"](BUILD_BINDINGS_CANONICAL, e.eq(p["bok"], 0), number)
+            # Complete: the same (sorted, unique) names as the package's schema; then each value's type.
+            e.var("scount", _read(e, "q", p["qend"]))
+            e.var("sstart", p["q"])
+            e.var("same", e.flag(e.eq(p["scount"], p["bcount"])))
+
+            def compare():
                 start, length = _string(e, "q", p["qend"])
                 e.var("ss", start)
                 e.var("sl", length)
+                _read(e, "q", p["qend"])
+                at = e.add(p["blist"], e.mul(p["cq_"], 3))
+                e.if_(e.not_(_same_bytes(e, e.ld(at), e.ld(e.add(at, 1)), p["ss"], p["sl"])), lambda: e.set("same", 0))
+
+            e.if_(e.ne(p["same"], 0), lambda: e.for_("cq_", 0, p["scount"], compare))
+            r["rule"](BUILD_BINDINGS_COMPLETE, e.eq(p["same"], 0), number)
+            e.set("q", p["sstart"])
+
+            def typed():
+                e.var("value", e.ld(e.add(e.add(p["blist"], e.mul(p["tq"], 3)), 2)))
+                start, length = _string(e, "q", p["qend"])
                 e.var("si", _read(e, "q", p["qend"]))
                 e.var("stype", _reference(e, p["pkg"], p["si"]))
-                _no(e, e.not_(_same_bytes(e, p["bs"], p["bl"], p["ss"], p["sl"])))
-                # ``_constant_type``: the value is a constant whose type reference is the schema's type.
-                _no(e, e.ne(_kind(e, p["value"]), int(Kind.CONSTANT)))
+                # ``_constant_type``: a constant whose first ULEB names its type reference.
+                r["rule"](BUILD_TYPED_VALUE, e.ne(_kind(e, p["value"]), int(Kind.CONSTANT)), _kind(e, p["value"]), 0, p["value"])
                 e.var("ca", _payload(e, p["value"]))
                 e.var("cend", e.add(p["ca"], e.rd(e.sub(p["ca"], 1))))
-                e.var("ct", _read(e, "ca", p["cend"]))
-                _no(e, e.le(_references(e, p["value"]), p["ct"]))
-                _no(e, e.ne(_reference(e, p["value"], p["ct"]), p["stype"]))
+                e.var("ct", _read(e, "ca", p["cend"]))  # a malformed index: the constant's own cursor diagnostic (left to the bootstrap)
+                r["rule"](BUILD_CONSTANT_TYPE, e.le(_references(e, p["value"]), p["ct"]), _references(e, p["value"]), p["ct"], p["value"])
+                r["rule"](BUILD_BINDING_TYPE, e.ne(_reference(e, p["value"], p["ct"]), p["stype"]), p["stype"], _reference(e, p["value"], p["ct"]))
 
-            e.for_(f"b_{schema}", 0, p["bcount"], binding)
-        e.var("acount", _read(e, "ra", p["rend"]))
-        _no(e, e.eq(p["acount"], 0))
+            e.for_("tq", 0, p["bcount"], typed)
+        e.var("acount", r["read"]())
         e.var("aprev", 0)
+        e.var("aok", 1)
 
         def artifact():
-            e.var("art", _read(e, "ra", p["rend"]))
-            _no(e, e.either(e.lt(p["art"], 1), e.lt(6, p["art"]), e.le(p["art"], p["aprev"])))
+            e.var("art", r["enum"](6, 4))
+            e.if_(e.le(p["art"], p["aprev"]), lambda: e.set("aok", 0))
             e.set("aprev", p["art"])
 
         e.for_("aq", 0, p["acount"], artifact)
-        _no(e, e.ne(p["ra"], p["rend"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        r["rule"](BUILD_ARTIFACTS_CANONICAL, e.eq(p["aok"], 0))
+        r["rule"](BUILD_ARTIFACT_REQUIRED, e.eq(p["acount"], 0))
+        r["finish"](0)
         e.var("rrec", e.alloc(3))  # [package, target, profile]
         _no(e, e.eq(p["rrec"], NONE))
         e.st(p["rrec"], p["pkg"])
@@ -1656,118 +1843,141 @@ def _request_ok(tables):
     return _function(("o",), build, tables)
 
 
-def _listed(e: E, items, count, obj):
-    """The position of ``obj`` in the ``count`` words at ``items``, or NONE."""
-    p = e.p
-    e.var("ls_at", NONE)
-    e.for_("ls_q", 0, count, lambda: e.if_(e.eq(e.ld(e.add(items, p["ls_q"])), obj), lambda: e.set("ls_at", p["ls_q"])))
-    return p["ls_at"]
-
-
 def _snapshot_ok(tables):
-    """``decode_snapshot``: header kinds, canonical package, signature, and digest lists, exact use; a proven
-    request whose package is listed, an exact dependency closure, declared grants, and signature coverage."""
+    """``decode_snapshot``, decided in full (S8): the header (resolver identity, request and trust-policy forms), the
+    package, signature, and digest lists (kinds, then canonical order), exact end and use; then, over the proven
+    request, packages, profile, policy, and signatures: the root package, the dependency closure (in the bootstrap's
+    depth-first order, naming the package whose dependency does not resolve), declared grants, and signatures."""
     def build(e: E):
         p = e.p
         o = p["o"]
         e.var("refs", _references(e, o))
         e.var("sa", _payload(e, o))
+        e.var("sbody", p["sa"])
         e.var("send", e.add(p["sa"], e.rd(e.sub(p["sa"], 1))))
         _clear_marks(e, p["refs"])
-        _no(e, e.ne(_read(e, "sa", p["send"]), 3))
-        e.var("req", _object_reference(e, o, "sa", p["send"], int(Kind.BUILD)))
-        _no(e, e.ne(_form_of(e, p["req"]), 2))
-        _start, length = _string(e, "sa", p["send"])
-        _no(e, e.eq(length, 0))
-        e.var("pol", _object_reference(e, o, "sa", p["send"], int(Kind.BUILD)))
-        _no(e, e.ne(_form_of(e, p["pol"]), 4))
-        for name, kind, form in (("pk", Kind.PACKAGE, None), ("sg", Kind.BUILD, 6)):
-            e.var(f"{name}_count", _read(e, "sa", p["send"]))
-            e.var(f"{name}_items", e.alloc(e.add(p[f"{name}_count"], 1)))
+        _no(e, e.eq(_resolved(e, o), 0))
+        r = _recorder(e, o, "sa", p["send"], p["sbody"])
+        _no(e, e.ne(r["enum"](7, 1), 3))
+        e.var("req", r["reference"]())
+        _start, length = r["string"]()
+        e.var("rid", length)
+        e.var("pol", r["reference"]())
+
+        def header():
+            e.var("qform", _build_form_of(e, o, p["req"], "qform"))
+            r["rule"](BUILD_SNAPSHOT_HEADER, e.ne(p["qform"], 2), _kind(e, p["req"]), _kind(e, p["pol"]))
+            e.var("lform", _build_form_of(e, o, p["pol"], "lform"))
+            r["rule"](BUILD_SNAPSHOT_HEADER, e.ne(p["lform"], 4), _kind(e, p["req"]), _kind(e, p["pol"]))
+
+        e.if_(e.eq(p["rid"], 0), lambda: r["rule"](BUILD_SNAPSHOT_HEADER, None, _kind(e, p["req"]), _kind(e, p["pol"])), header)
+        for name in ("pk", "sg"):
+            e.var(f"{name}_count", r["read"]())
+            e.var(f"{name}_items", e.alloc(e.add(e.sel(e.lt(p[f"{name}_count"], e.sub(p["send"], p["sa"])), p[f"{name}_count"], e.sub(p["send"], p["sa"])), 1)))
             _no(e, e.eq(p[f"{name}_items"], NONE))
+            e.for_(f"{name}_q", 0, p[f"{name}_count"], lambda name=name: e.st(e.add(p[f"{name}_items"], p[f"{name}_q"]), r["reference"]()))
+        e.var("dcount", r["read"]())
+        e.var("dstart", p["sa"])
+        e.for_("dq", 0, p["dcount"], lambda: r["take"](32))
+        e.var("kbad", 0)
+        e.for_("pk_q", 0, p["pk_count"], lambda: e.if_(e.ne(_kind(e, e.ld(e.add(p["pk_items"], p["pk_q"]))), int(Kind.PACKAGE)), lambda: e.set("kbad", 1)))
+        r["rule"](BUILD_SNAPSHOT_PACKAGE_KIND, e.ne(p["kbad"], 0))
+        # ``_build_form`` of every signature, in order: the first that raises does; else any other form rejects.
+        e.var("fbad", 0)
 
-            def item(name=name, kind=kind, form=form):
-                e.var(f"{name}_obj", _object_reference(e, o, "sa", p["send"], int(kind)))
-                if form is not None:
-                    _no(e, e.ne(_form_of(e, p[f"{name}_obj"]), form))
-                _no(e, e.ne(_verdict(e, p[f"{name}_obj"]), 1))
-                e.if_(e.ne(p[f"{name}_q"], 0), lambda: _no(e, e.ne(e.call(_FN["cid_less"], e.ld(e.add(p[f"{name}_items"], e.sub(p[f"{name}_q"], 1))), p[f"{name}_obj"]), 1)))
-                e.st(e.add(p[f"{name}_items"], p[f"{name}_q"]), p[f"{name}_obj"])
+        def signature_form():
+            e.var("sgx", e.ld(e.add(p["sg_items"], p["sg_q"])))
+            _build_form_of(e, o, p["sgx"], "sgform")
+            e.if_(e.ne(p["sgform"], 6), lambda: e.set("fbad", 1))
 
-            e.for_(f"{name}_q", 0, p[f"{name}_count"], item)
-        e.var("dcount", _read(e, "sa", p["send"]))
-
-        def digest():
-            _no(e, e.lt(e.sub(p["send"], p["sa"]), 32))
-            e.if_(e.ne(p["dq"], 0), lambda: _no(e, e.ne(e.call(_FN["bytes_less"], e.sub(p["sa"], 32), p["sa"], 32, 32), 1)))
-            e.set("sa", e.add(p["sa"], 32))
-
-        e.for_("dq", 0, p["dcount"], digest)
-        _no(e, e.ne(p["sa"], p["send"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        e.for_("sg_q", 0, p["sg_count"], signature_form)
+        r["rule"](BUILD_SNAPSHOT_SIGNATURE_KIND, e.ne(p["fbad"], 0))
+        for name, rule in (("pk", BUILD_SNAPSHOT_PACKAGES_CANONICAL), ("sg", BUILD_SNAPSHOT_SIGNATURES_CANONICAL)):
+            e.var("cok", 1)
+            e.for_(f"{name}_q", 1, p[f"{name}_count"], lambda name=name: e.if_(
+                e.ne(e.call(_FN["cid_less"], e.ld(e.add(p[f"{name}_items"], e.sub(p[f"{name}_q"], 1))), e.ld(e.add(p[f"{name}_items"], p[f"{name}_q"]))), 1),
+                lambda: e.set("cok", 0)))
+            r["rule"](rule, e.eq(p["cok"], 0))
+        e.var("cok", 1)
+        e.for_("dq", 1, p["dcount"], lambda: e.if_(
+            e.ne(e.call(_FN["bytes_less"], e.add(p["dstart"], e.mul(e.sub(p["dq"], 1), 32)), e.add(p["dstart"], e.mul(p["dq"], 32)), 32, 32), 1),
+            lambda: e.set("cok", 0)))
+        r["rule"](BUILD_SNAPSHOT_EXTERNAL_CANONICAL, e.eq(p["cok"], 0))
+        r["finish"](0)
+        # Nested decoders: a rejected request or package raises its own diagnostic (left to its rejection).
         _no(e, e.ne(_verdict(e, p["req"]), 1))
-        _no(e, e.ne(_verdict(e, p["pol"]), 1))
+        e.for_("pk_q", 0, p["pk_count"], lambda: _no(e, e.ne(_verdict(e, e.ld(e.add(p["pk_items"], p["pk_q"]))), 1)))
         e.var("rrec", _aux(e, p["req"]))
         e.var("root", e.ld(p["rrec"]))
         e.var("prof", e.ld(e.add(p["rrec"], 2)))
-        _no(e, e.ne(_verdict(e, p["prof"]), 1))
-        _no(e, e.eq(_listed(e, p["pk_items"], p["pk_count"], p["root"]), NONE))
-        # The dependency closure from the request's package is exactly the listed packages.
+        e.var("rootpos", _listed(e, p["pk_items"], p["pk_count"], p["root"]))
+        r["rule"](BUILD_SNAPSHOT_ROOT, e.eq(p["rootpos"], NONE), 0, 0, NONE, p["root"])
+        # The dependency closure, in ``decode_snapshot``'s order: a stack of packages, each package's dependencies in
+        # order (a dependency that does not resolve rejects, naming its package).
         e.var("seen", e.alloc(e.add(p["pk_count"], 1)))
-        e.var("queue", e.alloc(e.add(p["pk_count"], 1)))
-        _no(e, e.either(e.eq(p["seen"], NONE), e.eq(p["queue"], NONE)))
+        e.var("stack", e.alloc(e.add(e.mul(p["pk_count"], e.add(e.mul(p["pk_count"], 2), 1)), 2)))  # each package's dependencies once
+        e.var("matches_at", e.alloc(e.add(p["pk_count"], 1)))
+        _no(e, e.either(e.eq(p["seen"], NONE), e.eq(p["stack"], NONE), e.eq(p["matches_at"], NONE)))
         e.for_("z", 0, p["pk_count"], lambda: e.st(e.add(p["seen"], p["z"]), 0))
-        e.var("head", 0)
-        e.var("tail", 0)
-
-        def enqueue(position):
-            e.var("eqp", position)
-            e.if_(e.eq(e.ld(e.add(p["seen"], p["eqp"])), 0), lambda: (
-                e.st(e.add(p["seen"], p["eqp"]), 1),
-                e.st(e.add(p["queue"], p["tail"]), p["eqp"]),
-                e.set("tail", e.add(p["tail"], 1)),
-            ))
-
-        enqueue(_listed(e, p["pk_items"], p["pk_count"], p["root"]))
+        e.var("depth", 1)
+        e.st(p["stack"], p["rootpos"])
 
         def visit():
-            e.var("cur", e.ld(e.add(p["pk_items"], e.ld(e.add(p["queue"], p["head"])))))
-            e.set("head", e.add(p["head"], 1))
-            e.var("crec", _aux(e, p["cur"]))
-            e.var("w", e.ld(e.add(p["crec"], 2)))
-            e.var("wend", e.add(_payload(e, p["cur"]), e.rd(e.sub(_payload(e, p["cur"]), 1))))
-            e.var("deps", _read(e, "w", p["wend"]))
+            e.set("depth", e.sub(p["depth"], 1))
+            e.var("curpos", e.ld(e.add(p["stack"], p["depth"])))
 
-            def dependency():
-                e.var("dform", _read(e, "w", p["wend"]))
+            def expand():
+                e.st(e.add(p["seen"], p["curpos"]), 1)
+                e.var("cur", e.ld(e.add(p["pk_items"], p["curpos"])))
+                e.var("crec", _aux(e, p["cur"]))
+                e.var("w", e.ld(e.add(p["crec"], 2)))
+                e.var("wend", e.add(_payload(e, p["cur"]), e.rd(e.sub(_payload(e, p["cur"]), 1))))
+                e.var("deps", _read(e, "w", p["wend"]))
 
-                def exact():
-                    e.var("dpos", _listed(e, p["pk_items"], p["pk_count"], _reference(e, p["cur"], _read(e, "w", p["wend"]))))
-                    _no(e, e.eq(p["dpos"], NONE))
-                    enqueue(p["dpos"])
+                def dependency():
+                    e.var("dform", _read(e, "w", p["wend"]))
 
-                def logical():
-                    start, length = _string(e, "w", p["wend"])
-                    e.var("lis", start)
-                    e.var("lil", length)
-                    e.var("matches", 0)
-                    e.var("match", 0)
+                    def exact():
+                        e.var("dobj", _reference(e, p["cur"], _read(e, "w", p["wend"])))
+                        e.var("dpos", _listed(e, p["pk_items"], p["pk_count"], p["dobj"]))
+                        r["rule"](BUILD_RESOLVE_EXACT, e.eq(p["dpos"], NONE), p["dobj"], 0, p["cur"])
+                        e.st(e.add(p["stack"], p["depth"]), p["dpos"])
+                        e.set("depth", e.add(p["depth"], 1))
 
-                    def candidate():
-                        e.var("other", _aux(e, e.ld(e.add(p["pk_items"], p["mq"]))))
-                        e.if_(_same_bytes(e, e.ld(p["other"]), e.ld(e.add(p["other"], 1)), p["lis"], p["lil"]),
-                              lambda: (e.set("matches", e.add(p["matches"], 1)), e.set("match", p["mq"])))
+                    def logical():
+                        start, length = _string(e, "w", p["wend"])
+                        e.var("lis", start)
+                        e.var("lil", length)
+                        e.var("matches", 0)
+                        e.var("match", 0)
 
-                    e.for_("mq", 0, p["pk_count"], candidate)
-                    _no(e, e.ne(p["matches"], 1))
-                    enqueue(p["match"])
+                        def candidate():
+                            e.var("other", _aux(e, e.ld(e.add(p["pk_items"], p["mq"]))))
 
-                e.if_(e.eq(p["dform"], 1), exact, logical)
+                            def matched():
+                                e.st(e.add(p["matches_at"], e.add(p["matches"], 1)), e.ld(e.add(p["pk_items"], p["mq"])))
+                                e.set("matches", e.add(p["matches"], 1))
+                                e.set("match", p["mq"])
 
-            e.for_("dk", 0, p["deps"], dependency)
+                            e.if_(_same_bytes(e, e.ld(p["other"]), e.ld(e.add(p["other"], 1)), p["lis"], p["lil"]), matched)
 
-        e.while_(lambda: e.lt(p["head"], p["tail"]), visit)
-        _no(e, e.ne(p["tail"], p["pk_count"]))
+                        e.for_("mq", 0, p["pk_count"], candidate)
+                        e.st(p["matches_at"], p["matches"])
+                        r["rule"](BUILD_RESOLVE_LOGICAL, e.ne(p["matches"], 1), p["matches_at"], 0, p["cur"])
+                        e.st(e.add(p["stack"], p["depth"]), p["match"])
+                        e.set("depth", e.add(p["depth"], 1))
+
+                    e.if_(e.eq(p["dform"], 1), exact, logical)
+
+                e.for_("dk", 0, p["deps"], dependency)
+
+            e.if_(e.eq(e.ld(e.add(p["seen"], p["curpos"])), 0), expand)
+
+        e.while_(lambda: e.ne(p["depth"], 0), visit)
+        e.var("reached", 0)
+        e.for_("z", 0, p["pk_count"], lambda: e.set("reached", e.add(p["reached"], e.ld(e.add(p["seen"], p["z"])))))
+        r["rule"](BUILD_SNAPSHOT_CLOSURE, e.ne(p["reached"], p["pk_count"]), _list_copy(e, p["pk_count"], lambda k: e.ld(e.add(p["seen"], k))))
+        _no(e, e.either(e.ne(_verdict(e, p["prof"]), 1), e.ne(_verdict(e, p["pol"]), 1)))  # ``decode_profile``, ``decode_trust_policy``
         # Every profile grant names listed packages, each declaring the capability.
         e.var("g", _aux(e, p["prof"]))
         e.var("gend", e.add(_payload(e, p["prof"]), e.rd(e.sub(_payload(e, p["prof"]), 1))))
@@ -1782,6 +1992,7 @@ def _snapshot_ok(tables):
             e.var("gcs", start)
             e.var("gcl", length)
             e.var("gfound", 0)
+            e.var("gmissing", 0)
 
             def package_view():
                 e.var("pv", e.ld(e.add(p["pk_items"], p["pq"])))
@@ -1802,55 +2013,69 @@ def _snapshot_ok(tables):
                         e.if_(e.both(e.eq(p["ck"], p["gkind"]), _same_bytes(e, p["cs"], p["cl"], p["gcs"], p["gcl"])), lambda: e.set("has", 1))
 
                     e.for_("cq", 0, p["caps"], capability)
-                    _no(e, e.eq(p["has"], 0))
+                    e.if_(e.eq(p["has"], 0), lambda: e.set("gmissing", 1))
 
                 e.if_(_same_bytes(e, e.ld(p["pvr"]), e.ld(e.add(p["pvr"], 1)), p["gis"], p["gil"]), declared)
 
             e.for_("pq", 0, p["pk_count"], package_view)
-            _no(e, e.eq(p["gfound"], 0))
+            r["rule"](BUILD_GRANT_DECLARED, e.either(e.eq(p["gfound"], 0), e.ne(p["gmissing"], 0)), p["gq"], 0, NONE, p["prof"])
 
         e.for_("gq", 0, p["grants"], grant)
+        e.for_("sg_q", 0, p["sg_count"], lambda: _no(e, e.ne(_verdict(e, e.ld(e.add(p["sg_items"], p["sg_q"]))), 1)))  # ``decode_signature``
         # Signatures sign listed packages; a policy requiring package signatures covers every one.
         e.var("signed", e.alloc(e.add(p["pk_count"], 1)))
         _no(e, e.eq(p["signed"], NONE))
         e.for_("z", 0, p["pk_count"], lambda: e.st(e.add(p["signed"], p["z"]), 0))
+        e.var("unsigned", 0)
 
         def signature():
             e.var("spos", _listed(e, p["pk_items"], p["pk_count"], _aux(e, e.ld(e.add(p["sg_items"], p["sq"])))))
-            _no(e, e.eq(p["spos"], NONE))
-            e.st(e.add(p["signed"], p["spos"]), 1)
+            e.if_(e.eq(p["spos"], NONE), lambda: e.set("unsigned", 1), lambda: e.st(e.add(p["signed"], p["spos"]), 1))
 
         e.for_("sq", 0, p["sg_count"], signature)
-        e.if_(e.ne(_aux(e, p["pol"]), 0), lambda: e.for_("z", 0, p["pk_count"], lambda: _no(e, e.eq(e.ld(e.add(p["signed"], p["z"])), 0))))
+        r["rule"](BUILD_SIGNATURE_PACKAGE, e.ne(p["unsigned"], 0))
+        e.var("uncovered", 0)
+        e.if_(e.ne(_aux(e, p["pol"]), 0), lambda: e.for_("z", 0, p["pk_count"], lambda: e.if_(e.eq(e.ld(e.add(p["signed"], p["z"])), 0), lambda: e.set("uncovered", 1))))
+        r["rule"](BUILD_SIGNATURE_COVERAGE, e.ne(p["uncovered"], 0))
         e.st(e.add(GRAPHS_AT, o), p["req"])
         e.give(1)
     return _function(("o",), build, tables)
 
 
 def _provenance_ok(tables):
-    """``decode_provenance``: snapshot, request, target, profile; three digests and a producer; the exact closure."""
+    """``decode_provenance``, decided in full (S8): snapshot, request, target, profile (their forms and kinds); three
+    digests and a producer; exact end and use; then, over the proven snapshot and request, the exact closure."""
     def build(e: E):
         p = e.p
         o = p["o"]
         e.var("refs", _references(e, o))
         e.var("va", _payload(e, o))
+        e.var("vbody", p["va"])
         e.var("vend", e.add(p["va"], e.rd(e.sub(p["va"], 1))))
         _clear_marks(e, p["refs"])
-        _no(e, e.ne(_read(e, "va", p["vend"]), 5))
-        e.var("snap", _object_reference(e, o, "va", p["vend"], int(Kind.BUILD)))
-        e.var("req", _object_reference(e, o, "va", p["vend"], int(Kind.BUILD)))
-        e.var("tgt", _object_reference(e, o, "va", p["vend"], int(Kind.TARGET)))
-        e.var("prof", _object_reference(e, o, "va", p["vend"], int(Kind.BUILD)))
-        _no(e, e.either(e.ne(_form_of(e, p["snap"]), 3), e.ne(_form_of(e, p["req"]), 2), e.ne(_form_of(e, p["prof"]), 1)))
-        _no(e, e.lt(e.sub(p["vend"], p["va"]), 96))
-        e.set("va", e.add(p["va"], 96))
-        _string(e, "va", p["vend"])
-        _no(e, e.ne(p["va"], p["vend"]))
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
-        _no(e, e.either(e.ne(_verdict(e, p["snap"]), 1), e.ne(_verdict(e, p["req"]), 1)))
-        _no(e, e.ne(_aux(e, p["snap"]), p["req"]))
+        _no(e, e.eq(_resolved(e, o), 0))
+        r = _recorder(e, o, "va", p["vend"], p["vbody"])
+        _no(e, e.ne(r["enum"](7, 1), 5))
+        for name in ("snap", "req", "tgt", "prof"):
+            e.var(name, r["reference"]())
+        kinds = lambda: r["rule"](BUILD_PROVENANCE_KINDS, None)  # noqa: E731
+
+        def request_form():
+            e.var("qform", _build_form_of(e, o, p["req"], "qform"))
+            e.if_(e.ne(p["qform"], 2), kinds, lambda: e.if_(e.ne(_kind(e, p["tgt"]), int(Kind.TARGET)), kinds, lambda: (
+                e.var("fform", _build_form_of(e, o, p["prof"], "fform")), e.if_(e.ne(p["fform"], 1), kinds))))
+
+        e.var("sform", _build_form_of(e, o, p["snap"], "sform"))
+        e.if_(e.ne(p["sform"], 3), kinds, request_form)
+        for _digest in range(3):
+            r["take"](32)
+        r["string"]()
+        r["finish"](0)
+        _no(e, e.either(e.ne(_verdict(e, p["snap"]), 1), e.ne(_verdict(e, p["req"]), 1)))  # ``decode_snapshot``, ``decode_request``
         e.var("rrec", _aux(e, p["req"]))
-        _no(e, e.either(e.ne(e.ld(e.add(p["rrec"], 1)), p["tgt"]), e.ne(e.ld(e.add(p["rrec"], 2)), p["prof"])))
+        r["rule"](BUILD_PROVENANCE_CLOSURE, e.either(e.ne(_aux(e, p["snap"]), p["req"]), e.ne(e.ld(e.add(p["rrec"], 1)), p["tgt"]),
+                                                     e.ne(e.ld(e.add(p["rrec"], 2)), p["prof"])),
+                  _aux(e, p["snap"]), e.ld(e.add(p["rrec"], 1)), NONE, e.ld(e.add(p["rrec"], 2)))
         e.give(1)
     return _function(("o",), build, tables)
 
@@ -1928,6 +2153,7 @@ def _program(tables):
         e.st(0, 0)
         e.st(1, 0)
         e.st(STORE_FAULT, 0)
+        e.st(STORE_FAULT + 2, 0)
         e.set_hd(H_ARENA, ARENA_AT + 16)
         e.set_hd(H_ARENA_END, HEADER - 1)
         O = e.rd(0)
@@ -1974,13 +2200,36 @@ def _program(tables):
         e.for_("o", 0, p["O"], lambda: verdict(True))
         e.for_("o", 0, p["O"], lambda: verdict(False))
 
+        # Requests, then snapshots, then provenance: each reads the verdicts and records of the ones before.
+        for form, name in ((2, "request"), (3, "snapshot"), (5, "provenance")):
+            def later(form=form, name=name):
+                o = p["o"]
+                def decide():
+                    e.var("later", e.call(_FN[name], o))
+                    e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(p["later"], 1), 1, e.sel(e.eq(p["later"], REJECTED), REJECTED, 0)))
+
+                e.if_(e.both(e.eq(_kind(e, o), int(Kind.BUILD)), e.eq(_form_of(e, o), form)), decide)
+
+            e.for_("o", 0, p["O"], later)
         # S8 (ADR-248): an object naming a missing object (``verify_object`` resolves its references, in order,
         # right after the CID check): rejected with that reference.
+        # Every missing reference is listed too, ``[n, (object, reference index) ...]`` at word STORE_FAULT + 2: the
+        # bootstrap resolves references from many decoders, and each such resolution fails on a listed one.
+        e.var("missing_list", e.alloc(e.add(e.mul(p["O"], 2), 1)))
+        e.var("missing_n", 0)
+
         def missing():
             o = p["o"]
             e.var("first_missing", NONE)
-            e.for_("mk", 0, _references(e, o), lambda: e.if_(e.both(e.eq(_reference(e, o, p["mk"]), NONE), e.eq(p["first_missing"], NONE)),
-                                                             lambda: e.set("first_missing", p["mk"])))
+
+            def note():
+                e.if_(e.eq(p["first_missing"], NONE), lambda: e.set("first_missing", p["mk"]))
+                e.if_(e.both(e.ne(p["missing_list"], NONE), e.lt(p["missing_n"], p["O"])), lambda: (
+                    e.st(e.add(p["missing_list"], e.add(e.mul(p["missing_n"], 2), 1)), o),
+                    e.st(e.add(p["missing_list"], e.add(e.mul(p["missing_n"], 2), 2)), p["mk"]),
+                    e.set("missing_n", e.add(p["missing_n"], 1))))
+
+            e.for_("mk", 0, _references(e, o), lambda: e.if_(e.eq(_reference(e, o, p["mk"]), NONE), note))
 
             def reject():
                 at = e.add(REJECTS_AT, e.mul(o, REJECT_WORDS))
@@ -1991,13 +2240,7 @@ def _program(tables):
             e.if_(e.ne(p["first_missing"], NONE), reject)
 
         e.for_("o", 0, p["O"], missing)
-        # Requests, then snapshots, then provenance: each reads the verdicts and records of the ones before.
-        for form, name in ((2, "request"), (3, "snapshot"), (5, "provenance")):
-            def later(form=form, name=name):
-                o = p["o"]
-                e.if_(e.both(e.eq(_kind(e, o), int(Kind.BUILD)), e.eq(_form_of(e, o), form)), lambda: e.st(e.add(VERDICTS_AT, o), e.sel(e.eq(e.call(_FN[name], o), 1), 1, 0)))
-
-            e.for_("o", 0, p["O"], later)
+        e.if_(e.ne(p["missing_list"], NONE), lambda: (e.st(p["missing_list"], p["missing_n"]), e.st(STORE_FAULT + 2, p["missing_list"])))
         # The store: everything reachable from the root, no cycle (iterative depth-first search).
         root = e.rd(1)
         e.var("root", root)
@@ -2162,6 +2405,10 @@ class NativeStoreVerifier:
             store = store_rejection(read, count)
             if store is not None:
                 rejections["store"] = store
+            at = read(STORE_FAULT + 2, 1)[0]
+            if at:  # S8: every missing reference, as (object, reference index)
+                pairs = read(at + 1, 2 * read(at, 1)[0])
+                rejections["missing"] = tuple(zip(pairs[::2], pairs[1::2]))
             return result, rejections
 
 
@@ -2240,6 +2487,10 @@ def collect_rejections(read, verdicts):
             continue
         elif name in TARGET_WORD_SITES:
             listed = read(payload[0], payload[1])
+        elif name == "BUILD_RULE":
+            listed = read(payload[1], payload[2])
+            if payload[0] in (BUILD_REFS_EXACT, BUILD_RESOLVE_LOGICAL, BUILD_SNAPSHOT_CLOSURE):
+                listed = (listed, read(payload[3] + 1, read(payload[3], 1)[0]))
         elif name is not None and name.startswith("TARGET_") and name not in TARGET_SCALAR_SITES:
             listed = read(payload[0], 7)
         elif name in PAIR_SITES:
@@ -2445,6 +2696,204 @@ def _target_rule_diagnostic(name, words, item, check, sub):
             [entry.allowed_effect_domains, entry.stack_bound])
 
 
+def object_entity(obj, record, objects):
+    """S8: the CID a rejection's diagnostic names when it is not ``obj`` (a missing reference, another object's
+    ``_build_form``, a build rule about another object), else None.  ``OTHER_OBJECT`` takes that object's diagnostic."""
+    site, payload = record[0], record[1]
+    name = OBJECT_SITES[site - 1]
+    if name == "OBJECT_MISSING":
+        return obj.references[payload[0]]
+    if name in ("BUILD_KIND_OF", "OTHER_OBJECT"):
+        return objects[payload[0]].cid
+    if name == "BUILD_RULE" and payload[5] != NONE:
+        return objects[payload[5]].cid
+    return None
+
+
+def _build_rule_diagnostic(obj, rule, words, item, extra, objects, more=0):
+    """The bootstrap's diagnostic for a build rule the verifier found broken, quoting the values it read (``words``:
+    read order; strings as length and body offset, references as indices)."""
+    from xax_build import BuildCapability, BuildCapabilityKind
+    from xax_compiler import uleb
+
+    if rule == BUILD_REFS_EXACT:
+        _words, marks = words
+        return ("XAX.CANON.UNUSED_REFERENCE", "BUILD-REFS-EXACT", tuple(range(len(obj.references))),
+                tuple(k for k, marked in enumerate(marks) if marked))
+    if rule >= BUILD_REQUEST_KINDS:
+        return _composite_rule_diagnostic(obj, rule, words, item, extra, objects, more)
+    stream = iter(words)
+    take = stream.__next__
+    kind_of = {item.cid: item.kind for item in objects}
+
+    def string():
+        length, at = take(), take()
+        return bytes(obj.body[at:at + length])
+
+    def strings():
+        return tuple(string() for _ in range(take()))
+
+    if obj.kind == Kind.BUILD:
+        take()  # the form
+    if rule == BUILD_IDENTITY:
+        return "XAX.PACKAGE.IDENTITY", "PACKAGE-LOGICAL-IDENTITY", "nonempty bytes", "empty"
+    if rule == BUILD_MODULES:
+        return "XAX.PACKAGE.MODULE", "PACKAGE-MODULES", ">= 1", 0
+    if rule == BUILD_MODULE_KIND:
+        return "XAX.PACKAGE.MODULE", "PACKAGE-MODULE-KIND", Kind.MODULE.name, Kind(extra).name
+    if rule == BUILD_EXACT_KIND:
+        return "XAX.PACKAGE.DEPENDENCY", "PACKAGE-EXACT-KIND", Kind.PACKAGE.name, Kind(extra).name
+    if rule == BUILD_DEPENDENCY_FORM:
+        return "XAX.PACKAGE.DEPENDENCY", "PACKAGE-DEPENDENCY-FORM", [1, 2], extra
+    canonical = lambda name, keys: ("XAX.BUILD.CANONICAL", name, "sorted unique values", tuple(keys))  # noqa: E731
+    if obj.kind == Kind.PACKAGE:
+        string()  # the logical identity
+        modules = tuple(obj.references[take()] for _ in range(take()))
+        if rule == BUILD_MODULES_CANONICAL:
+            return canonical("PACKAGE-MODULES-CANONICAL", modules)
+        keys = []
+        for _ in range(take()):
+            form = take()
+            keys.append(b"\x01" + obj.references[take()] if form == 1 else b"\x02" + (lambda value: uleb(len(value)) + value)(string()))
+        if rule == BUILD_DEPENDENCIES_CANONICAL:
+            return canonical("PACKAGE-DEPENDENCIES-CANONICAL", keys)
+        for number, expected_kind in enumerate((Kind.FUNCTION, Kind.TYPE, Kind.TYPE)):
+            names = []
+            for position in range(take()):
+                name, child = string(), obj.references[take()]
+                if rule == BUILD_NAMED_REFERENCE and (number, position) == (item, extra):
+                    return ("XAX.PACKAGE.SCHEMA", "PACKAGE-NAMED-REFERENCE", ["nonempty", expected_kind.name], [name.hex(), kind_of[child].name])
+                names.append(name)
+            if rule == BUILD_NAMES_CANONICAL and number == item:
+                return canonical("PACKAGE-NAMES-CANONICAL", names)
+        capabilities = []
+        for _ in range(take()):
+            kind = take()
+            capabilities.append(BuildCapability(BuildCapabilityKind(kind), string()))
+        return canonical("PACKAGE-CAPABILITIES-CANONICAL", capabilities)
+    if rule == BUILD_GRANTS_CANONICAL:
+        take(), take(), take()  # mode, optimization, verification
+        keys = []
+        for _ in range(take()):
+            identity, kind = string(), BuildCapabilityKind(take())
+            keys.append((identity, kind, string()))
+        return canonical("BUILD-GRANTS-CANONICAL", keys)
+    if rule in (BUILD_ALGORITHMS_CANONICAL, BUILD_SIGNERS_CANONICAL, BUILD_TRUST_NONEMPTY, BUILD_TRUST_REQUIRED):
+        take(), take()  # the two flags
+        algorithms, signers = strings(), strings()
+        if rule == BUILD_ALGORITHMS_CANONICAL:
+            return canonical("TRUST-ALGORITHMS-CANONICAL", algorithms)
+        if rule == BUILD_SIGNERS_CANONICAL:
+            return canonical("TRUST-SIGNERS-CANONICAL", signers)
+        if rule == BUILD_TRUST_NONEMPTY:
+            return "XAX.TRUST.EMPTY", "TRUST-IDENTITY-NONEMPTY", "nonempty identities", "empty"
+        return "XAX.TRUST.EMPTY", "TRUST-REQUIRED-SETS", "accepted algorithms and signers", [algorithms, signers]
+    if rule == BUILD_SIGNATURE_NONEMPTY:
+        take()  # the signed object
+        return "XAX.TRUST.SIGNATURE", "TRUST-SIGNATURE-NONEMPTY", "nonempty fields", [string().hex() for _ in range(3)]
+    if rule == BUILD_OPT_REFERENCES:
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", [], [cid.hex() for cid in obj.references]
+    raise ValueError(f"unknown build rule {rule}")
+
+
+def _composite_rule_diagnostic(obj, rule, words, item, extra, objects, more):
+    """S8: requests, snapshots, and provenance (``_build_rule_diagnostic``).  Values the verifier read are quoted from
+    its words; lists it read from proven packages, profiles, and signatures are quoted from their decoded views."""
+    import xax_build as B
+
+    listed, quoted = words if isinstance(words, tuple) else (words, None)
+    by_cid = {item_.cid: item_ for item_ in objects}
+    resolve = by_cid.__getitem__
+    h = lambda index: objects[index].cid.hex()  # noqa: E731
+    stream = iter(listed)
+    take = stream.__next__
+
+    def string():
+        length, at = take(), take()
+        return bytes(obj.body[at:at + length])
+
+    canonical = lambda name, keys: ("XAX.BUILD.CANONICAL", name, "sorted unique values", tuple(keys))  # noqa: E731
+    if rule == BUILD_REQUEST_KINDS:
+        return ("XAX.BUILD.REQUEST", "BUILD-REQUEST-REFERENCE-KINDS", [Kind.PACKAGE.name, Kind.TARGET.name, B.BuildForm.PROFILE.name],
+                [Kind(item).name, Kind(extra).name, B.BuildForm(more).name])
+    if rule == BUILD_TYPED_VALUE:
+        return "XAX.BUILD.VALUE", "BUILD-TYPED-VALUE", Kind.CONSTANT.name, Kind(item).name
+    if rule == BUILD_CONSTANT_TYPE:
+        return "XAX.STRUCT.REF_INDEX", "BUILD-CONSTANT-TYPE", f"< {item}", extra
+    if rule == BUILD_BINDING_TYPE:
+        return "XAX.BUILD.VALUE_TYPE", "BUILD-BINDING-TYPE", h(item), h(extra)
+    if rule == BUILD_ARTIFACT_REQUIRED:
+        return "XAX.BUILD.ARTIFACT", "BUILD-ARTIFACT-REQUIRED", ">= 1", 0
+    if rule in (BUILD_ENTRY_DECLARED, BUILD_BINDINGS_CANONICAL, BUILD_BINDINGS_COMPLETE, BUILD_ARTIFACTS_CANONICAL):
+        take()  # the form
+        package_object = resolve(obj.references[take()])
+        entry = string()
+        take(), take()  # target, profile
+        view = B.decode_package(package_object, resolve)
+        if rule == BUILD_ENTRY_DECLARED:
+            return "XAX.BUILD.ENTRY", "BUILD-ENTRY-DECLARED", [name.hex() for name, _ in view.build_entries], entry.hex()
+        for number, schema in enumerate((view.feature_types, view.configuration_types)):
+            names = []
+            for _ in range(take()):
+                names.append(string())
+                take()  # the value
+            if rule == BUILD_BINDINGS_CANONICAL and number == item:
+                return canonical("BUILD-BINDINGS-CANONICAL", names)
+            if rule == BUILD_BINDINGS_COMPLETE and number == item:
+                return ("XAX.BUILD.INPUT_CLOSURE", "BUILD-BINDINGS-COMPLETE", sorted(name.hex() for name in dict(schema)),
+                        sorted(name.hex() for name in names))
+        return canonical("BUILD-ARTIFACTS-CANONICAL", (B.ArtifactKind(take()) for _ in range(take())))
+    if rule in (BUILD_PROVENANCE_KINDS, BUILD_PROVENANCE_CLOSURE):
+        take()  # the form
+        snapshot, request, target, profile = (resolve(obj.references[take()]) for _ in range(4))
+        if rule == BUILD_PROVENANCE_KINDS:
+            return ("XAX.PROVENANCE.REFERENCE", "PROVENANCE-REFERENCE-KINDS", "snapshot/request/target/profile",
+                    [snapshot.kind.name, request.kind.name, target.kind.name, profile.kind.name])
+        return ("XAX.PROVENANCE.CLOSURE", "PROVENANCE-EXACT-CLOSURE", [h(item), h(extra), h(more)],
+                [request.cid.hex(), target.cid.hex(), profile.cid.hex()])
+    # Snapshots.
+    take()  # the form
+    request = resolve(obj.references[take()])
+    identity = string()
+    policy = resolve(obj.references[take()])
+    if rule == BUILD_SNAPSHOT_HEADER:
+        return "XAX.SNAPSHOT.HEADER", "SNAPSHOT-HEADER", "request, resolver identity, trust policy", [request.kind.name, identity.hex(), policy.kind.name]
+    if rule == BUILD_RESOLVE_EXACT:
+        return "XAX.RESOLVE.MISSING", "RESOLVE-EXACT-ROOT", h(item), "missing"
+    if rule == BUILD_RESOLVE_LOGICAL:
+        matches = sorted(objects[index].cid for index in quoted)
+        return ("XAX.RESOLVE.AMBIGUOUS" if matches else "XAX.RESOLVE.MISSING", "RESOLVE-LOGICAL-IDENTITY", "exactly one candidate",
+                [cid.hex() for cid in matches])
+    packages = tuple(resolve(obj.references[take()]) for _ in range(take()))
+    signatures = tuple(resolve(obj.references[take()]) for _ in range(take()))
+    if rule == BUILD_SNAPSHOT_PACKAGE_KIND:
+        return "XAX.SNAPSHOT.PACKAGE", "SNAPSHOT-PACKAGE-KIND", Kind.PACKAGE.name, [item_.kind.name for item_ in packages]
+    if rule == BUILD_SNAPSHOT_SIGNATURE_KIND:
+        return ("XAX.SNAPSHOT.SIGNATURE", "SNAPSHOT-SIGNATURE-KIND", B.BuildForm.SIGNATURE.name,
+                [B.BuildForm(item_.body[0]).name for item_ in signatures])
+    if rule == BUILD_SNAPSHOT_PACKAGES_CANONICAL:
+        return canonical("SNAPSHOT-PACKAGES-CANONICAL", (item_.cid for item_ in packages))
+    if rule == BUILD_SNAPSHOT_SIGNATURES_CANONICAL:
+        return canonical("SNAPSHOT-SIGNATURES-CANONICAL", (item_.cid for item_ in signatures))
+    if rule == BUILD_SNAPSHOT_EXTERNAL_CANONICAL:
+        return canonical("SNAPSHOT-EXTERNAL-CANONICAL", (bytes(obj.body[at:at + 32]) for at in (take() for _ in range(take()))))
+    if rule == BUILD_SNAPSHOT_ROOT:
+        return "XAX.SNAPSHOT.ROOT", "SNAPSHOT-ROOT-PACKAGE", h(more), "missing"
+    if rule == BUILD_SNAPSHOT_CLOSURE:
+        reached = [item_ for item_, seen in zip(packages, quoted) if seen]
+        return "XAX.SNAPSHOT.CLOSURE", "SNAPSHOT-EXACT-CLOSURE", sorted(item_.cid.hex() for item_ in reached), sorted(item_.cid.hex() for item_ in packages)
+    if rule == BUILD_GRANT_DECLARED:
+        grant = B.decode_profile(objects[more]).grants[item]
+        identities = list(dict.fromkeys(B.decode_package(item_, resolve).logical_identity for item_ in packages))
+        return "XAX.BUILD.CAPABILITY", "BUILD-GRANT-DECLARED", [identity_.hex() for identity_ in identities], [grant.logical_identity.hex(), grant.capability]
+    signed = [B.decode_signature(item_, resolve).signed_root.hex() for item_ in signatures]
+    if rule == BUILD_SIGNATURE_PACKAGE:
+        return "XAX.TRUST.SNAPSHOT", "TRUST-SIGNATURE-PACKAGE", [item_.cid.hex() for item_ in packages], signed
+    if rule == BUILD_SIGNATURE_COVERAGE:
+        return "XAX.TRUST.REQUIRED", "TRUST-SNAPSHOT-COVERAGE", [item_.cid.hex() for item_ in packages], signed
+    raise ValueError(f"unknown build rule {rule}")
+
+
 def object_diagnostic(obj, record, objects=()):
     """S8c.19: the bootstrap's ``(code, rule, expected, actual)`` for a rejected object (rendering only: the verifier
     decided the check and its values).  ``objects``: the object table, for quoted object indices."""
@@ -2453,6 +2902,24 @@ def object_diagnostic(obj, record, objects=()):
     name = OBJECT_SITES[site - 1]
     if name == "OBJECT_MISSING":
         return "XAX.IDENTITY.OBJECT_MISSING", "ID-REFERENCE-RESOLVED", "stored object", "missing"
+    if name == "BODY_TAKE":
+        return "XAX.CANON.TRUNCATED", "SER-BOUNDS", f"{x} available bytes", y
+    if name == "BODY_BOOL":
+        return "XAX.CANON.BOOL", "SER-BOOL-CANONICAL", "00 or 01", f"{x:02x}"
+    if name == "BODY_TRAILING":
+        return "XAX.CANON.TRAILING_BYTES", BODY_RULES[x], 0, y
+    if name == "BUILD_REF_INDEX":
+        return "XAX.STRUCT.REF_INDEX", "BUILD-REF-INDEX", f"< {x}", y
+    if name == "BUILD_ENUM":
+        import xax_build
+
+        enum = getattr(xax_build, BUILD_ENUMS[x - 1])
+        rule = ("BUILD-FORM", "BUILD-MODE", "BUILD-CAPABILITY-KIND", "BUILD-ARTIFACT-KIND", "OPT-OBJECTIVE")[x - 1]
+        return "XAX.BUILD.ENUM", rule, sorted(item.value for item in enum), y
+    if name == "BUILD_RULE":
+        return _build_rule_diagnostic(obj, x, listed, payload[3], payload[4], objects, payload[6])
+    if name == "BUILD_KIND_OF":
+        return "XAX.BUILD.KIND", "BUILD-KIND", Kind.BUILD.name, objects[x].kind.name
     if name == "BODY_ULEB":
         return _uleb_diagnostic(obj, x, y, payload[2])
     if name in TARGET_WORD_SITES:

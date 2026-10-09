@@ -17,6 +17,7 @@ from xax_artifact import (
 )
 from xax_compiler import (
     Cursor,
+    _xax_decoder_rejection,
     Kind,
     SemanticObject,
     StoreReader,
@@ -516,6 +517,7 @@ def _check_canonical(obj: SemanticObject, rule: str, items: Sequence, key: Calla
 def _build_form(obj: SemanticObject) -> BuildForm:
     if obj.kind != Kind.BUILD:
         fail("XAX.BUILD.KIND", obj.cid.hex(), "BUILD-KIND", Kind.BUILD.name, obj.kind.name)
+    _xax_decoder_rejection(obj, "build_form")  # S8 (ADR-248)
     cursor = Cursor(obj.body, obj.cid.hex())
     return _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM")
 
@@ -523,6 +525,7 @@ def _build_form(obj: SemanticObject) -> BuildForm:
 def decode_package(obj: SemanticObject, resolve: Resolver) -> PackageView:
     if obj.kind != Kind.PACKAGE:
         fail("XAX.PACKAGE.KIND", obj.cid.hex(), "PACKAGE-KIND", Kind.PACKAGE.name, obj.kind.name)
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     logical_identity = cursor.byte_string()
     if not logical_identity:
@@ -577,6 +580,7 @@ def decode_package(obj: SemanticObject, resolve: Resolver) -> PackageView:
 
 
 def decode_profile(obj: SemanticObject) -> ProfileView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.PROFILE:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-PROFILE-FORM", BuildForm.PROFILE.value, "other")
@@ -589,6 +593,7 @@ def decode_profile(obj: SemanticObject) -> ProfileView:
 
 
 def decode_trust_policy(obj: SemanticObject) -> TrustPolicyView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.TRUST_POLICY:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-TRUST-FORM", BuildForm.TRUST_POLICY.value, "other")
@@ -606,6 +611,7 @@ def decode_trust_policy(obj: SemanticObject) -> TrustPolicyView:
 
 
 def decode_signature(obj: SemanticObject, resolve: Resolver) -> SignatureView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.SIGNATURE:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-SIGNATURE-FORM", BuildForm.SIGNATURE.value, "other")
@@ -628,6 +634,7 @@ def _constant_type(obj: SemanticObject, resolve: Resolver) -> bytes:
 
 
 def decode_request(obj: SemanticObject, resolve: Resolver) -> RequestView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.REQUEST:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-REQUEST-FORM", BuildForm.REQUEST.value, "other")
@@ -666,6 +673,7 @@ def decode_request(obj: SemanticObject, resolve: Resolver) -> RequestView:
 
 
 def decode_optimization_policy(obj: SemanticObject) -> OptimizationPolicyView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor = Cursor(obj.body, obj.cid.hex())
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.OPTIMIZATION_POLICY:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-OPTIMIZATION-POLICY-FORM", BuildForm.OPTIMIZATION_POLICY.value, "other")
@@ -679,6 +687,7 @@ def decode_optimization_policy(obj: SemanticObject) -> OptimizationPolicyView:
 
 
 def decode_provenance(obj: SemanticObject, resolve: Resolver) -> ProvenanceView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.PROVENANCE:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-PROVENANCE-FORM", BuildForm.PROVENANCE.value, "other")
@@ -723,6 +732,7 @@ def _resolved_dependency(
 
 
 def decode_snapshot(obj: SemanticObject, resolve: Resolver) -> SnapshotView:
+    _xax_decoder_rejection(obj, "build")  # S8 (ADR-248): XAX decided this object's rejection
     cursor, used = Cursor(obj.body, obj.cid.hex()), set()
     if _enum(BuildForm, cursor.uleb(), obj, "BUILD-FORM") != BuildForm.SNAPSHOT:
         fail("XAX.BUILD.FORM", obj.cid.hex(), "BUILD-SNAPSHOT-FORM", BuildForm.SNAPSHOT.value, "other")

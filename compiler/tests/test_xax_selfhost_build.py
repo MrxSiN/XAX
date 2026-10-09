@@ -288,8 +288,8 @@ class SelfhostClosureTests(unittest.TestCase):
                 stored = {item.cid: item for item in reader.objects()}
                 _store_ok, proven = X._xax_verify_store(reader, stored)
                 # A verdict is a claim about one object: the bootstrap must accept that object on its own.
-                for cid in proven:
-                    if stored[cid].kind == Kind.BUILD:
+                for cid, verdict in proven.items():
+                    if cid in stored and stored[cid].kind == Kind.BUILD and not isinstance(verdict, X._XaxRejection):
                         X.verify_object(stored[cid], reader.get)
                 if bootstrap[0] != "accept":
                     rejected += 1
