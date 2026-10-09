@@ -55,8 +55,9 @@ from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_store_verifier.xax"
 VERDICTS_AT, GRAPHS_AT, ARENA_AT = 1 << 20, 6 << 20, 12 << 20
-REJECTS_AT, REJECT_WORDS = 3 << 20, 4  # S8c.19 (ADR-237): a rejected object's record: site, three payload words
+REJECTS_AT, REJECT_WORDS = 3 << 20, 8  # S8c.19 (ADR-237): a rejected object's record: site, payload words
 OK = 1
+STORE_FAULT = 5  # S8 (ADR-248): the store's own rejection: 1 a cycle (word 6: the object re-entered), 2 unreachable objects (word 6: the colours)
 REJECTED = 2  # an object verdict: the bootstrap rejects this object with the recorded diagnostic
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
 ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
@@ -64,7 +65,7 @@ ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
 MODULE_CHILDREN = (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT)
 # Globals (the first arena words): table pointers.
 GLOBALS = ARENA_AT
-G_REC, G_O, G_TYPEOK, G_MARK, G_LIST = range(5)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
+G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE = range(7)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
 _FN: dict = {}
 
 
@@ -126,7 +127,15 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 "TARGET_PROFILE", "TARGET_X86_64", "TARGET_RISCV64", "TARGET_SPIRV", "TARGET_JVM", "TARGET_WASM32", "TARGET_AARCH64",
                 "TARGET_ANDROID", "TARGET_AARCH64_LINUX", "TARGET_BAREMETAL", "TARGET_BOARD", "TARGET_ACCELERATOR",
                 # S8 (ADR-248): per-graph glue (raised inside the graph parse, wherever it is first reached).
-                "GRAPH_TRAP_PAYLOAD", "GRAPH_UNUSED")
+                "GRAPH_TRAP_PAYLOAD", "GRAPH_UNUSED",
+                # S8 (ADR-248): any body's malformed ULEB (status, body offset, size); a target section's ENUM diagnostic
+                # (section, kind, value); target canonical rules (payload: the recorded words, their count, item, check, sub).
+                "BODY_ULEB", "TARGET_SECTION", "TARGET_X86_REGISTERS", "TARGET_AAPCS64_REGISTERS", "TARGET_ACC_TOPOLOGY",
+                "TARGET_ACC_SCOPES", "TARGET_ACC_SPACES", "TARGET_ACC_SPACE", "TARGET_ACC_OPERATIONS", "TARGET_ACC_CONTRACT",
+                "TARGET_PLATFORM_OPERATIONS", "TARGET_PLATFORM_CONTRACT", "TARGET_OPERATIONS", "TARGET_TERMINATORS",
+                "TARGET_ATOMIC_WIDTHS", "TARGET_ATOMIC_CAPABILITIES", "TARGET_HANDLER_ORDER", "TARGET_HANDLER",
+                # S8: a reference naming no stored object (payload: the reference's index).
+                "OBJECT_MISSING")
 AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
 GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
@@ -163,9 +172,18 @@ def _list_copy(e: E, count, word):
     return p["copy"]
 
 
-def _read(e: E, name: str, end):
-    """A canonical ULEB at ``p[name]``, inside ``end``; advances it (verdict 0 otherwise)."""
+def _read(e: E, name: str, end, obj=None, start=None):
+    """A canonical ULEB at ``p[name]``, inside ``end``; advances it (verdict 0 otherwise).  S8 (ADR-248): with ``obj``
+    and its body ``start``, a malformed ULEB rejects ``obj`` as ``Cursor.uleb`` does (``BODY_ULEB``)."""
     p = e.p
+    if obj is not None:
+        e.var(f"{name}_value", e.call(_FN["uleb10"], p[name], end))
+        e.var(f"{name}_rs", _g(e, G_ULEB_STATUS))
+        e.var(f"{name}_rz", _g(e, G_ULEB_SIZE))
+        _no(e, e.eq(p[f"{name}_rs"], 4))  # a ten-byte value: left to the bootstrap
+        e.if_(e.ne(p[f"{name}_rs"], 0), lambda: _reject(e, None, obj, S["BODY_ULEB"], p[f"{name}_rs"], e.sub(p[name], start), p[f"{name}_rz"]))
+        e.set(name, e.add(p[name], p[f"{name}_rz"]))
+        return p[f"{name}_value"]
     value, size, ok = _uleb(e, p[name])
     _no(e, e.not_(ok))
     e.set(name, e.add(p[name], size))
@@ -190,12 +208,12 @@ def _all_marked(e: E, count):
     return p["marked"]
 
 
-def _type_reference(e: E, obj, name: str, end, reject_site=None):
+def _type_reference(e: E, obj, name: str, end, reject_site=None, start=None):
     """A reference index read at ``p[name]`` naming a proven type; marks it and returns the object.
 
     ``reject_site``: an index out of range is that rejection (``GRAPH-REF-INDEX``) instead of a decline."""
     p = e.p
-    index = _read(e, name, end)
+    index = _read(e, name, end, obj if start is not None else None, start)
     e.var(f"{name}_index", index)
     if reject_site is not None:
         _reject(e, e.le(_references(e, obj), p[f"{name}_index"]), obj, reject_site, _references(e, obj), p[f"{name}_index"])
@@ -232,18 +250,21 @@ def _skip_values(e: E, name: str):
     e.for_("sv", 0, count, lambda: e.set(name, e.add(e.add(p[name], 3), e.flag(e.eq(e.rd(p[name]), 1)))))
 
 
-def _interface(e: E, obj, name: str, end, reject_site=None):
+def _interface(e: E, obj, name: str, end, reject_site=None, start=None):
     """Parameter and return types read at ``p[name]`` into a new ``[P, types, R, types]`` record."""
     p = e.p
     e.var(f"{name}_if", e.alloc(e.add(e.sub(end, p[name]), 3)))  # at most one type per body byte
     _no(e, e.eq(p[f"{name}_if"], NONE))
     record = p[f"{name}_if"]
-    e.var(f"{name}_np", _read(e, name, end))
+    strict = obj if start is not None else None
+    e.var(f"{name}_np", _read(e, name, end, strict, start))
+    _no(e, e.lt(e.sub(end, p[name]), p[f"{name}_np"]))  # more types than bytes: a read fails first (left to the bootstrap)
     e.st(record, p[f"{name}_np"])
-    e.for_("q", 0, p[f"{name}_np"], lambda: e.st(e.add(e.add(p[f"{name}_if"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site)))
+    e.for_("q", 0, p[f"{name}_np"], lambda: e.st(e.add(e.add(p[f"{name}_if"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site, start)))
     e.var(f"{name}_rt", e.add(e.add(p[f"{name}_if"], 1), p[f"{name}_np"]))
-    e.st(p[f"{name}_rt"], _read(e, name, end))
-    e.for_("q", 0, e.ld(p[f"{name}_rt"]), lambda: e.st(e.add(e.add(p[f"{name}_rt"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site)))
+    e.st(p[f"{name}_rt"], _read(e, name, end, strict, start))
+    _no(e, e.lt(e.sub(end, p[name]), e.ld(p[f"{name}_rt"])))
+    e.for_("q", 0, e.ld(p[f"{name}_rt"]), lambda: e.st(e.add(e.add(p[f"{name}_rt"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site, start)))
     return p[f"{name}_if"]
 
 
@@ -256,10 +277,11 @@ def _function_ok(tables):
         references = _references(e, f)
         e.var("refs", references)
         e.var("fa", _payload(e, f))
+        e.var("fbody", p["fa"])
         end = e.add(p["fa"], e.rd(e.sub(p["fa"], 1)))
         e.var("fend", end)
         _clear_marks(e, p["refs"])
-        graph_index = _read(e, "fa", p["fend"])
+        graph_index = _read(e, "fa", p["fend"], f, p["fbody"])
         e.var("gi", graph_index)
         _reject(e, e.le(p["refs"], p["gi"]), f, S["FUNCTION_REF_INDEX"], p["refs"], p["gi"])
         e.var("graph", _reference(e, f, p["gi"]))
@@ -267,7 +289,7 @@ def _function_ok(tables):
 
         def member_function():
             # ``decode_group_member_function``: [group, member], the group proven (S6b.3), member < its size.
-            e.var("member", _read(e, "fa", p["fend"]))
+            e.var("member", _read(e, "fa", p["fend"], f, p["fbody"]))
             _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_MEMBER_TRAILING"], e.sub(p["fend"], p["fa"]))
             _no(e, e.ne(e.ld(e.add(VERDICTS_AT, p["graph"])), 1))
             size = e.ld(e.ld(e.add(GRAPHS_AT, p["graph"])))
@@ -279,7 +301,7 @@ def _function_ok(tables):
         _no(e, e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP)))
         _reject(e, e.ne(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT)), f, S["FUNCTION_CARRIER"], _kind(e, p["graph"]))
         _mark(e, p["gi"])
-        e.var("iface", _interface(e, f, "fa", p["fend"], S["FUNCTION_REF_INDEX"]))
+        e.var("iface", _interface(e, f, "fa", p["fend"], S["FUNCTION_REF_INDEX"], p["fbody"]))
         _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_TRAILING"], e.sub(p["fend"], p["fa"]))
         # After the bootstrap's graph parse: the graph contract, then the references used.
         e.var("contract", e.call(_FN["graph"], p["graph"], p["iface"], NONE, NONE))
@@ -508,12 +530,14 @@ def _group_ok(tables):
         o = p["o"]
         e.var("refs", _references(e, o))
         e.var("ga", _payload(e, o))
+        e.var("gbody", p["ga"])
         end = e.add(p["ga"], e.rd(e.sub(p["ga"], 1)))
         e.var("gend", end)
         _clear_marks(e, p["refs"])
         _no(e, e.eq(_resolved(e, o), 0))
-        e.var("count", _read(e, "ga", p["gend"]))
+        e.var("count", _read(e, "ga", p["gend"], o, p["gbody"]))
         _reject(e, e.eq(p["count"], 0), o, S["GROUP_EMPTY"])
+        _no(e, e.lt(e.sub(p["gend"], p["ga"]), p["count"]))  # more members than bytes: a read fails first (left to the bootstrap)
         e.var("table", e.alloc(e.add(p["count"], 1)))  # [count, interface records]
         e.var("graphs", e.alloc(e.add(p["count"], 1)))  # [count, graph objects]
         e.var("callsof", e.alloc(e.add(p["count"], 1)))
@@ -522,14 +546,14 @@ def _group_ok(tables):
         e.st(p["graphs"], p["count"])
 
         def member():
-            e.var("gi", _read(e, "ga", p["gend"]))
+            e.var("gi", _read(e, "ga", p["gend"], o, p["gbody"]))
             _reject(e, e.le(p["refs"], p["gi"]), o, S["GROUP_REF_INDEX"], p["refs"], p["gi"])
             e.var("mg", _reference(e, o, p["gi"]))
             _no(e, e.eq(p["mg"], NONE))
             _reject(e, e.ne(_kind(e, p["mg"]), int(Kind.GRAPH_FRAGMENT)), o, S["GROUP_CARRIER"], _kind(e, p["mg"]))
             _mark(e, p["gi"])
             e.st(e.add(e.add(p["graphs"], 1), p["i"]), p["mg"])
-            e.st(e.add(e.add(p["table"], 1), p["i"]), _interface(e, o, "ga", p["gend"], S["GROUP_REF_INDEX"]))
+            e.st(e.add(e.add(p["table"], 1), p["i"]), _interface(e, o, "ga", p["gend"], S["GROUP_REF_INDEX"], p["gbody"]))
 
         e.for_("i", 0, p["count"], member)
         _reject(e, e.ne(p["ga"], p["gend"]), o, S["GROUP_TRAILING"], e.sub(p["gend"], p["ga"]))
@@ -725,10 +749,55 @@ def _sorted_list(e: E, name: str, end, low: int, high):
     e.for_("sl_q", 0, p["sl_count"], item)
 
 
+def _uleb10_fn(tables):
+    """S8 (ADR-248): ``Cursor.uleb`` at input word ``at`` inside ``end``: the value, with G_ULEB_STATUS 0 (canonical),
+    1 (unterminated: the body ends first), 2 (non-minimal), 3 (more than ten bytes), or 4 (a ten-byte value, which
+    may not fit a word) and G_ULEB_SIZE (the bytes read)."""
+    def build(e: E):
+        p = e.p
+        e.var("u_value", 0)
+        e.var("u_scale", 1)
+        e.var("u_status", 3)
+        e.var("u_size", 10)
+        e.var("u_k", 0)
+        e.var("u_go", 1)
+
+        def step():
+            position = e.add(p["at"], p["u_k"])
+
+            def inside():
+                e.var("u_byte", e.rd(position))
+                e.set("u_value", e.add(p["u_value"], e.mul(e.and_(p["u_byte"], 127), p["u_scale"])))
+                e.set("u_scale", e.mul(p["u_scale"], 128))
+
+                def ends():
+                    e.set("u_status", e.sel(e.both(e.eq(p["u_byte"], 0), e.ne(p["u_k"], 0)), 2, e.sel(e.eq(p["u_k"], 9), 4, 0)))
+                    e.set("u_size", e.add(p["u_k"], 1))
+                    e.set("u_go", 0)
+
+                e.if_(e.lt(p["u_byte"], 128), ends)
+
+            def outside():
+                e.set("u_status", 1)
+                e.set("u_size", p["u_k"])
+                e.set("u_go", 0)
+
+            e.if_(e.lt(position, p["end"]), inside, outside)
+            e.set("u_k", e.add(p["u_k"], 1))
+
+        e.while_(lambda: e.both(e.ne(p["u_go"], 0), e.lt(p["u_k"], 10)), step)
+        e.st(GLOBALS + G_ULEB_STATUS, p["u_status"])
+        e.st(GLOBALS + G_ULEB_SIZE, p["u_size"])
+        e.give(p["u_value"])
+    return _function(("at", "end"), build, tables)
+
+
 def _target_ok(tables):
-    """``decode_native_target(allow_carrier=True)``: identity-only carriers; general (1), concurrency (2), and
-    platform (4) targets of every supported architecture; accelerator (3) targets of the accelerator
-    architecture; and AArch64 board (5) targets.  An accelerator profile on another architecture gives 0."""
+    """``decode_native_target(allow_carrier=True)``, decided in full (S8, ADR-248): the body is read in the
+    bootstrap's order, every value recorded in a word list (a rejection quotes it); a malformed field rejects where
+    the cursor fails (inside a concurrency, accelerator, or platform section, with that section's ENUM diagnostic,
+    as the bootstrap's ``except ValueError`` reports it); the canonical rules are then checked in the bootstrap's
+    order."""
     from xax_compiler import (
         AARCH64_BOARD_ELF_FORMAT, ANDROID_ELF_FORMAT, ANDROID_ELF_PACKED_FORMAT, AtomicFamily, AtomicScope, BOARD_PROFILE, EffectDomain, JVM_ABI,
         JVM_ARCHITECTURE, JVM_JAR_FORMAT, RISCV64_ARCHITECTURE, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE, SPIRV_MODULE_FORMAT,
@@ -740,8 +809,13 @@ def _target_ok(tables):
     assert operations == list(range(1, len(operations) + 1)) and terminators == list(range(1, len(terminators) + 1))
     scopes, domains, constraint_kinds = len(AtomicScope), len(EffectDomain), len(TargetValueConstraintKind)
     assert [int(item) for item in AtomicScope] == list(range(1, scopes + 1)) and [int(item) for item in EffectDomain] == list(range(1, domains + 1))
+    assert [int(item) for item in AtomicFamily] == list(range(1, len(AtomicFamily) + 1))
+    assert [int(item) for item in TargetValueConstraintKind] == list(range(1, constraint_kinds + 1))
 
     known_architectures = (1, 2, 3, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE, SPIRV_ARCHITECTURE)
+    state = ("region", "words", "wn", "rv", "rs", "rz", "bv", "prev", "bad", "count", "regs_bad", "topo_bad", "ascope_bad", "accmask",
+             "spaces", "space_ids", "sid_bad", "space_bad", "opid_bad", "contract_bad", "contract_check", "contract_sub", "ops_bad",
+             "terms_bad", "widths_bad", "caps_bad", "event_bad", "handler_bad", "stack", "shadow", "lane", "groups")
 
     def build(e: E):
         p = e.p
@@ -749,180 +823,287 @@ def _target_ok(tables):
         _no(e, e.eq(_resolved(e, o), 0))
         _reject(e, e.ne(_references(e, o), 0), o, S["TARGET_REFERENCES"])
         e.var("ta", _payload(e, o))
-        end = e.add(p["ta"], e.rd(e.sub(p["ta"], 1)))
-        e.var("tend", end)
-        e.var("ilen", _read(e, "ta", p["tend"]))
+        e.var("tbody", p["ta"])
+        e.var("tend", e.add(p["ta"], e.rd(e.sub(p["ta"], 1))))
+        for name in state:
+            e.var(name, 0)
+        for name in ("space_bad", "contract_bad", "handler_bad"):
+            e.set(name, NONE)
+        e.set("words", e.alloc(e.add(e.sub(p["tend"], p["ta"]), 4)))
+        _no(e, e.eq(p["words"], NONE))
+
+        def record(value):
+            e.st(e.add(p["words"], p["wn"]), value)
+            e.set("wn", e.add(p["wn"], 1))
+
+        def read():
+            """The next ULEB (recorded); a malformed one rejects."""
+            e.set("rv", e.call(_FN["uleb10"], p["ta"], p["tend"]))
+            e.set("rs", _g(e, G_ULEB_STATUS))
+            e.set("rz", _g(e, G_ULEB_SIZE))
+            _no(e, e.eq(p["rs"], 4))  # a ten-byte value: left to the bootstrap
+            e.if_(e.both(e.ne(p["rs"], 0), e.ne(p["region"], 0)), lambda: _reject(e, None, o, S["TARGET_SECTION"], p["region"], p["rs"], 0))
+            e.if_(e.ne(p["rs"], 0), lambda: _reject(e, None, o, S["BODY_ULEB"], p["rs"], e.sub(p["ta"], p["tbody"]), p["rz"]))
+            e.set("ta", e.add(p["ta"], p["rz"]))
+            record(p["rv"])
+            return p["rv"]
+
+        def enum(name, high, kind):
+            """``Enum(read())`` inside a section: an unknown value rejects with the enum's message."""
+            e.var(name, read())
+            e.if_(e.either(e.eq(p[name], 0), e.lt(high, p[name])), lambda: _reject(e, None, o, S["TARGET_SECTION"], p["region"], kind, p[name]))
+            return p[name]
+
+        def take_byte(name):
+            e.if_(e.le(p["tend"], p["ta"]), lambda: _reject(e, None, o, S["TARGET_SECTION"], p["region"], 5, 0))
+            e.var(name, e.rd(p["ta"]))
+            e.set("ta", e.add(p["ta"], 1))
+            record(p[name])
+
+        def flags():
+            """Two ``take(1)`` flags, then the section's BOOL check (reported as its ENUM diagnostic)."""
+            take_byte("flag_a")
+            take_byte("flag_b")
+            e.if_(e.either(e.lt(1, p["flag_a"]), e.lt(1, p["flag_b"])), lambda: _reject(e, None, o, S["TARGET_SECTION"], p["region"], 6, 0))
+
+        def byte_string():
+            e.var("blen", read())
+            e.if_(e.lt(e.sub(p["tend"], p["ta"]), p["blen"]), lambda: _reject(e, None, o, S["TARGET_SECTION"], p["region"], 5, 0))
+            e.set("ta", e.add(p["ta"], p["blen"]))
+            return p["blen"]
+
+        def increasing(name, value, low=None):
+            """Track a strictly increasing list in ``prev`` (value + 1); set ``name`` when it is not (or below ``low``)."""
+            bad = e.both(e.ne(p["prev"], 0), e.le(e.add(value, 1), p["prev"]))
+            if low is not None:
+                bad = e.either(bad, e.lt(value, low))
+            e.if_(bad, lambda: e.set(name, 1))
+            e.set("prev", e.add(value, 1))
+
+        e.var("ilen", read())
         _reject(e, e.lt(e.sub(p["tend"], p["ta"]), p["ilen"]), o, S["TARGET_IDENTITY_TRUNCATED"], p["ilen"], e.sub(p["tend"], p["ta"]))
         _reject(e, e.eq(p["ilen"], 0), o, S["TARGET_IDENTITY_EMPTY"])
         e.set("ta", e.add(p["ta"], p["ilen"]))
         e.if_(e.eq(p["ta"], p["tend"]), lambda: e.give(1))  # an identity-only carrier
-        e.var("profile", _read(e, "ta", p["tend"]))
-        for name in ("arch", "abi", "format", "word", "pointer"):
-            e.var(name, _read(e, "ta", p["tend"]))
+        for name in ("profile", "arch", "abi", "format", "word", "pointer"):
+            e.var(name, read())
         _reject(e, e.not_(e.either(*(e.eq(p["arch"], code) for code in known_architectures))), o, S["TARGET_ARCHITECTURE"], p["arch"])
-        _no(e, e.both(e.eq(p["profile"], 3), e.ne(p["arch"], 4)))  # accelerator fields elsewhere: left to the bootstrap
-        e.var("stack", 1)
-        e.var("shadow", 0)
+        e.set("stack", 1)
 
         def registers(arguments, scratch):
-            e.set("stack", _read(e, "ta", p["tend"]))
-            e.set("shadow", _read(e, "ta", p["tend"]))
-            _no(e, e.ne(_read(e, "ta", p["tend"]), len(arguments)))
-            for register in arguments:
-                _no(e, e.ne(_read(e, "ta", p["tend"]), register))
-            _no(e, e.ne(_read(e, "ta", p["tend"]), 0))  # the result register
-            _no(e, e.ne(_read(e, "ta", p["tend"]), len(scratch)))
-            for register in scratch:
-                _no(e, e.ne(_read(e, "ta", p["tend"]), register))
+            e.set("stack", read())
+            e.set("shadow", read())
+
+            def exact(name, expected):
+                """``tuple(cursor.uleb() for _ in range(cursor.uleb()))``: ``regs_bad`` unless it is ``expected``."""
+                e.var(f"{name}_n", read())
+                e.if_(e.ne(p[f"{name}_n"], len(expected)), lambda: e.set("regs_bad", 1))
+
+                def item():
+                    e.var("rg", read())
+                    wanted = e.c(NONE)
+                    for k in reversed(range(len(expected))):
+                        wanted = e.sel(e.eq(p[f"{name}_q"], k), expected[k], wanted)
+                    e.if_(e.ne(p["rg"], wanted), lambda: e.set("regs_bad", 1))
+
+                e.for_(f"{name}_q", 0, p[f"{name}_n"], item)
+
+            exact("ra", arguments)
+            e.if_(e.ne(read(), 0), lambda: e.set("regs_bad", 1))  # the result register
+            exact("rsc", scratch)
 
         e.if_(e.eq(p["arch"], 1), lambda: registers((1, 2, 8, 9), (10, 11)))
         e.if_(e.eq(p["arch"], 3), lambda: registers(tuple(range(8)), (9, 10)))
-        _sorted_list(e, "ta", p["tend"], 1, len(operations))  # sorted, unique, known operation codes (1..n)
-        _sorted_list(e, "ta", p["tend"], 1, len(terminators))
+
+        def plain_list(flag, high, low=1):
+            """``tuple(cursor.uleb() for _ in range(cursor.uleb()))``: ``flag`` set unless strictly increasing in low..high."""
+            e.set("count", read())
+            e.set("prev", 0)
+
+            def item():
+                e.var("li", read())
+                increasing(flag, p["li"], low)
+                if high is not None:
+                    e.if_(e.lt(high, p["li"]), lambda: e.set(flag, 1))
+
+            e.for_("lq", 0, p["count"], item)
+
+        plain_list("ops_bad", len(operations))
+        plain_list("terms_bad", len(terminators))
 
         def concurrency():
-            _sorted_list(e, "ta", p["tend"], 1, NONE)  # atomic widths
-            _sorted_list(e, "ta", p["tend"], 1, scopes)
-            _sorted_list(e, "ta", p["tend"], 1, len(AtomicFamily))
-            e.var("handlers", _read(e, "ta", p["tend"]))
-            e.var("event", 0)  # the previous event kind + 1
+            plain_list("widths_bad", None)
+            e.set("region", 1)
+            for kind, high in ((7, scopes), (8, len(AtomicFamily))):
+                e.set("count", read())
+                e.set("prev", 0)
+                e.for_(f"cq{kind}", 0, p["count"], lambda kind=kind, high=high: increasing("caps_bad", enum("cv", high, kind)))
+            e.var("handlers", read())
+            e.var("event_prev", 0)
 
             def handler():
-                e.var("kind", _read(e, "ta", p["tend"]))
-                _no(e, e.both(e.ne(p["event"], 0), e.le(e.add(p["kind"], 1), p["event"])))  # sorted unique event kinds
-                e.set("event", e.add(p["kind"], 1))
+                e.var("hkind", read())
+                e.if_(e.both(e.ne(p["event_prev"], 0), e.le(e.add(p["hkind"], 1), p["event_prev"])), lambda: e.set("event_bad", 1))
+                e.set("event_prev", e.add(p["hkind"], 1))
                 for _field in range(6):
-                    _read(e, "ta", p["tend"])
-                _sorted_list(e, "ta", p["tend"], 1, domains)
-                _no(e, e.eq(_read(e, "ta", p["tend"]), 0))  # stack bound
-                _read(e, "ta", p["tend"])
+                    read()
+                e.set("bad", 0)
+                e.set("count", read())
+                e.set("prev", 0)
+                e.for_("dq", 0, p["count"], lambda: increasing("bad", enum("dv", domains, 9)))
+                e.if_(e.eq(read(), 0), lambda: e.set("bad", 1))  # the stack bound
+                read()
+                e.if_(e.both(e.ne(p["bad"], 0), e.eq(p["handler_bad"], NONE)), lambda: e.set("handler_bad", p["h"]))
 
             e.for_("h", 0, p["handlers"], handler)
+            e.set("region", 0)
 
-        def flag_byte():
-            _no(e, e.le(p["tend"], p["ta"]))
-            _no(e, e.lt(1, e.rd(p["ta"])))
-            e.set("ta", e.add(p["ta"], 1))
-
-        def contracts(strict: bool, accelerator: bool):
-            """Target-operation contracts; ``strict`` adds the platform or accelerator canonical rules."""
-            e.var("ccount", _read(e, "ta", p["tend"]))
-            if strict:
-                _no(e, e.eq(p["ccount"], 0))
+        def contracts(section: int):
+            """Target-operation contracts: section 2 accelerator, 3 platform, 4 board (no canonical rules)."""
+            e.set("region", 2 if section == 2 else 3)
+            e.var("ccount", read())
             e.var("cprev", 0)
+            if section != 4:
+                e.if_(e.eq(p["ccount"], 0), lambda: e.set("opid_bad", 1))
+
+            def fault(check, sub=0):
+                def mark():
+                    e.set("contract_bad", p["ci"])
+                    e.set("contract_check", check)
+                    e.set("contract_sub", sub)
+                return lambda: e.if_(e.eq(p["contract_bad"], NONE), mark)
 
             def contract():
-                e.var("cid_", _read(e, "ta", p["tend"]))
-                if strict:
-                    _no(e, e.le(e.add(p["cid_"], 1), p["cprev"]))
-                    e.set("cprev", e.add(p["cid_"], 1))
-                e.var("csem", _read(e, "ta", p["tend"]))
-                e.var("cenc", _read(e, "ta", p["tend"]))
-                if strict:
-                    _no(e, e.eq(p["csem"], 0))
-                if strict and accelerator:
-                    _no(e, e.lt(255, p["cenc"]))
+                e.var("cop", read())
+                e.if_(e.both(e.ne(p["cprev"], 0), e.le(e.add(p["cop"], 1), p["cprev"])), lambda: e.set("opid_bad", 1))
+                e.set("cprev", e.add(p["cop"], 1))
+                e.var("csem", read())
+                e.var("cenc", read())
+                if section == 2:
+                    e.if_(e.either(e.eq(p["csem"], 0), e.lt(255, p["cenc"])), fault(1))
+                e.var("cn_index", 0)
+                e.var("cn_bad", NONE)
                 for _signature in range(2):
-                    e.var("vcount", _read(e, "ta", p["tend"]))
+                    e.var("vcount", read())
 
                     def constraint():
-                        e.var("vk", _read(e, "ta", p["tend"]))
-                        e.var("vp", _read(e, "ta", p["tend"]))
-                        e.var("vs", _read(e, "ta", p["tend"]))
-                        _no(e, e.either(e.lt(p["vk"], 1), e.lt(constraint_kinds, p["vk"])))
-                        if strict:
-                            bad = e.either(
-                                e.both(e.eq(p["vk"], 1), e.either(e.eq(p["vp"], 0), e.ne(p["vs"], 0))),
-                                e.both(e.eq(p["vk"], 2), e.either(e.eq(p["vp"], 0), e.eq(p["vs"], 0))),
-                                e.both(e.eq(p["vk"], 3), e.either(e.eq(p["vp"], 0), e.lt(domains, p["vp"]))),
-                                e.both(e.lt(3, p["vk"]), e.either(e.ne(p["vp"], 0), e.ne(p["vs"], 0))),
-                            )
-                            _no(e, bad)
+                        e.var("vk", enum("vk_", constraint_kinds, 10))
+                        e.var("vp", read())
+                        e.var("vs", read())
+                        bad = e.either(
+                            e.both(e.eq(p["vk"], 1), e.either(e.eq(p["vp"], 0), e.ne(p["vs"], 0))),
+                            e.both(e.eq(p["vk"], 2), e.either(e.eq(p["vp"], 0), e.eq(p["vs"], 0))),
+                            e.both(e.eq(p["vk"], 3), e.either(e.eq(p["vp"], 0), e.lt(domains, p["vp"]))),
+                            e.both(e.lt(3, p["vk"]), e.either(e.ne(p["vp"], 0), e.ne(p["vs"], 0))),
+                        )
+                        e.if_(e.both(bad, e.eq(p["cn_bad"], NONE)), lambda: e.set("cn_bad", p["cn_index"]))
+                        e.set("cn_index", e.add(p["cn_index"], 1))
 
                     e.for_("vq", 0, p["vcount"], constraint)
-                if strict:
-                    _no(e, e.eq(e.rd(p["ta"]), 0))  # nonempty scopes
-                    e.var("csl", p["ta"])
-                    _sorted_list(e, "ta", p["tend"], 1, scopes)
-                    if accelerator:
-                        # A subset of the accelerator's scopes.
-                        e.var("cn", _read(e, "csl", p["tend"]))
-                        e.for_("cq", 0, p["cn"], lambda: _no(e, e.eq(e.and_(p["accmask"], e.sel(e.eq(_read(e, "csl", p["tend"]), 1), 1, e.sel(e.eq(p["csl_value"], 2), 2, 4))), 0)))
-                else:
-                    e.var("sc2", _read(e, "ta", p["tend"]))
-                    e.for_("sq2", 0, p["sc2"], lambda: _no(e, e.either(e.lt(_read(e, "ta", p["tend"]), 1), e.lt(scopes, p["ta_value"]))))
-                e.var("csrc", _read(e, "ta", p["tend"]))
-                e.var("cdst", _read(e, "ta", p["tend"]))
-                if strict and accelerator:
+                e.set("bad", 0)
+                e.set("count", read())
+                e.if_(e.eq(p["count"], 0), lambda: e.set("bad", 1))
+                e.set("prev", 0)
+                e.var("csub", 0)  # 1 when a scope is not one of the accelerator's
+
+                def scope():
+                    e.var("sv", enum("sv_", scopes, 7))
+                    increasing("bad", p["sv"])
+                    e.if_(e.eq(e.and_(p["accmask"], e.sel(e.eq(p["sv"], 1), 1, e.sel(e.eq(p["sv"], 2), 2, 4))), 0), lambda: e.set("csub", 1))
+
+                e.for_("csq", 0, p["count"], scope)
+                e.var("csrc", read())
+                e.var("cdst", read())
+                flags()
+                e.var("cdep", byte_string())
+                dependency = e.both(e.ne(p["cdep"], 0), e.ne(p["cdep"], 32))
+                if section == 2:
+                    e.if_(e.either(e.ne(p["bad"], 0), e.ne(p["csub"], 0)), fault(2))
                     for name in ("csrc", "cdst"):
                         e.var("member", 0)
                         e.for_("mq", 0, p["spaces"], lambda name=name: e.if_(e.eq(e.ld(e.add(p["space_ids"], p["mq"])), p[name]), lambda: e.set("member", 1)))
-                        _no(e, e.eq(p["member"], 0))
-                flag_byte()
-                flag_byte()
-                _start, length = _string(e, "ta", p["tend"])
-                if strict:
-                    _no(e, e.both(e.ne(length, 0), e.ne(length, 32)))
+                        e.if_(e.eq(p["member"], 0), fault(3))
+                    e.if_(e.ne(p["cn_bad"], NONE), lambda: fault(4, p["cn_bad"])())
+                    e.if_(dependency, fault(5))
+                elif section == 3:
+                    e.if_(e.either(e.eq(p["csem"], 0), e.ne(p["bad"], 0)), fault(1))
+                    e.if_(e.ne(p["cn_bad"], NONE), lambda: fault(2, p["cn_bad"])())
+                    e.if_(dependency, fault(3))
 
-            e.for_("cq_", 0, p["ccount"], contract)
+            e.for_("ci", 0, p["ccount"], contract)
+            e.set("region", 0)
 
         def accelerator():
-            for name in ("lane", "groups"):
-                e.var(name, _read(e, "ta", p["tend"]))
-                _no(e, e.eq(p[name], 0))
-            # Accelerator scopes: strictly increasing, nonempty; their bit mask for the contract subset rule.
-            _no(e, e.eq(e.rd(p["ta"]), 0))
-            e.var("asl", p["ta"])
-            _sorted_list(e, "ta", p["tend"], 1, scopes)
-            e.var("accmask", 0)
-            e.var("an", _read(e, "asl", p["tend"]))
-            e.for_("aq", 0, p["an"], lambda: e.set("accmask", e.or_(p["accmask"], e.sel(e.eq(_read(e, "asl", p["tend"]), 1), 1, e.sel(e.eq(p["asl_value"], 2), 2, 4)))))
-            e.var("spaces", _read(e, "ta", p["tend"]))
-            _no(e, e.eq(p["spaces"], 0))
-            e.var("space_ids", e.alloc(e.add(p["spaces"], 1)))
+            e.set("lane", read())
+            e.set("groups", read())
+            e.if_(e.either(e.eq(p["lane"], 0), e.eq(p["groups"], 0)), lambda: e.set("topo_bad", 1))
+            e.set("region", 2)
+            e.set("count", read())
+            e.if_(e.eq(p["count"], 0), lambda: e.set("ascope_bad", 1))
+            e.set("prev", 0)
+
+            def scope():
+                e.var("av", enum("av_", scopes, 7))
+                increasing("ascope_bad", p["av"])
+                e.set("accmask", e.or_(p["accmask"], e.sel(e.eq(p["av"], 1), 1, e.sel(e.eq(p["av"], 2), 2, 4))))
+
+            e.for_("aq", 0, p["count"], scope)
+            e.set("spaces", read())
+            e.if_(e.eq(p["spaces"], 0), lambda: e.set("sid_bad", 1))
+            e.set("space_ids", e.alloc(e.add(e.sel(e.lt(p["spaces"], e.sub(p["tend"], p["ta"])), p["spaces"], e.sub(p["tend"], p["ta"])), 1)))
             _no(e, e.eq(p["space_ids"], NONE))
             e.var("sprev", 0)
 
             def space():
-                e.var("sid", _read(e, "ta", p["tend"]))
-                _no(e, e.le(e.add(p["sid"], 1), p["sprev"]))
+                e.var("sid", read())
+                e.if_(e.both(e.ne(p["sprev"], 0), e.le(e.add(p["sid"], 1), p["sprev"])), lambda: e.set("sid_bad", 1))
                 e.set("sprev", e.add(p["sid"], 1))
                 e.st(e.add(p["space_ids"], p["spq"]), p["sid"])
+                e.set("bad", 0)
                 for name in ("abits", "ubits", "align"):
-                    e.var(name, _read(e, "ta", p["tend"]))
-                    _no(e, e.eq(p[name], 0))
-                _no(e, e.not_(e.power_of_two(p["align"])))
-                _sorted_list(e, "ta", p["tend"], 1, NONE)  # access widths
-                _sorted_list(e, "ta", p["tend"], 1, scopes)  # visibility scopes
-                flag_byte()
-                flag_byte()
+                    e.var(name, read())
+                    e.if_(e.eq(p[name], 0), lambda: e.set("bad", 1))
+                e.if_(e.not_(e.power_of_two(p["align"])), lambda: e.set("bad", 1))
+                e.set("count", read())
+                e.set("prev", 0)
+                e.for_("wq", 0, p["count"], lambda: increasing("bad", read(), 1))  # access widths
+                e.set("count", read())
+                e.set("prev", 0)
+                e.for_("vq_", 0, p["count"], lambda: increasing("bad", enum("vv", scopes, 7)))  # visibility scopes
+                flags()
+                e.if_(e.both(e.ne(p["bad"], 0), e.eq(p["space_bad"], NONE)), lambda: e.set("space_bad", p["spq"]))
 
             e.for_("spq", 0, p["spaces"], space)
-            contracts(True, True)
+            contracts(2)
 
         e.if_(e.either(e.eq(p["profile"], 2), e.eq(p["profile"], BOARD_PROFILE)), concurrency)
         e.if_(e.eq(p["profile"], 3), accelerator)
-        e.if_(e.eq(p["profile"], 4), lambda: contracts(True, False))
-        e.if_(e.eq(p["profile"], BOARD_PROFILE), lambda: contracts(False, False))
+        e.if_(e.eq(p["profile"], 4), lambda: contracts(3))
+        e.if_(e.eq(p["profile"], BOARD_PROFILE), lambda: contracts(4))
         _reject(e, e.ne(p["ta"], p["tend"]), o, S["TARGET_TRAILING"], e.sub(p["tend"], p["ta"]))
         _reject(e, e.either(e.lt(p["profile"], 1), e.lt(BOARD_PROFILE, p["profile"])), o, S["TARGET_PROFILE"], p["profile"])
+
+        def quoted(site, index=0, check=0, sub=0):
+            """Reject at ``site`` quoting the recorded words (and the failing item)."""
+            return lambda: _reject(e, None, o, S[site], p["words"], p["wn"], index, check, sub)
 
         def machine(abi, image_format, word, pointer):
             return e.both(e.eq(p["abi"], abi), e.eq(p["format"], image_format), e.eq(p["word"], word), e.eq(p["pointer"], pointer))
 
         def fields(site):
             """Reject at ``site`` quoting the machine record (profile, abi, format, word, pointer, stack, shadow)."""
-            def record():
+            def record_machine():
                 e.var("mq", e.alloc(8))
                 _no(e, e.eq(p["mq"], NONE))
                 for k, name in enumerate(("profile", "abi", "format", "word", "pointer", "stack", "shadow")):
                     e.st(e.add(p["mq"], k), p[name])
                 _reject(e, None, o, S[site], p["mq"])
-            return record
+            return record_machine
 
         def x86_64():
             allowed = e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in X86_64_MACHINES))
             e.if_(e.not_(e.both(allowed, e.eq(p["stack"], 16), e.eq(p["shadow"], 32))), fields("TARGET_X86_64"))
+            e.if_(e.ne(p["regs_bad"], 0), quoted("TARGET_X86_REGISTERS"))
 
         def aarch64():
             machines = (*AARCH64_MACHINES, (4, ANDROID_ELF_FORMAT), (4, ANDROID_ELF_PACKED_FORMAT), (3, AARCH64_BOARD_ELF_FORMAT))
@@ -932,23 +1113,41 @@ def _target_ok(tables):
             e.if_(e.both(e.eq(p["abi"], 5), e.ne(p["profile"], 1)), fields("TARGET_AARCH64_LINUX"))  # aarch64 Linux: profile 1
             e.if_(e.both(e.eq(p["abi"], 3), e.ne(p["profile"], 1), e.ne(p["profile"], 2), e.ne(p["profile"], BOARD_PROFILE)), fields("TARGET_BAREMETAL"))
             e.if_(e.ne(e.flag(e.eq(p["format"], AARCH64_BOARD_ELF_FORMAT)), e.flag(e.eq(p["profile"], BOARD_PROFILE))), fields("TARGET_BOARD"))
+            e.if_(e.ne(p["regs_bad"], 0), quoted("TARGET_AAPCS64_REGISTERS"))
 
         def five(site, profile, abi, image_format, word, pointer):
             return lambda: e.if_(e.either(e.ne(p["profile"], profile), e.not_(machine(abi, image_format, word, pointer))), fields(site))
+
+        def accelerator_rules():
+            five("TARGET_ACCELERATOR", 3, 4, 3, 32, 64)()
+            e.if_(e.ne(p["topo_bad"], 0), quoted("TARGET_ACC_TOPOLOGY"))
+            e.if_(e.ne(p["ascope_bad"], 0), quoted("TARGET_ACC_SCOPES"))
+            e.if_(e.ne(p["sid_bad"], 0), quoted("TARGET_ACC_SPACES"))
+            e.if_(e.ne(p["space_bad"], NONE), quoted("TARGET_ACC_SPACE", p["space_bad"]))
+            e.if_(e.ne(p["opid_bad"], 0), quoted("TARGET_ACC_OPERATIONS"))
+            e.if_(e.ne(p["contract_bad"], NONE), quoted("TARGET_ACC_CONTRACT", p["contract_bad"], p["contract_check"], p["contract_sub"]))
 
         known = {
             1: x86_64,
             3: aarch64,
             2: lambda: e.if_(e.not_(machine(2, 2, 64, 32)), fields("TARGET_WASM32")),
-            4: five("TARGET_ACCELERATOR", 3, 4, 3, 32, 64),
+            4: accelerator_rules,
             RISCV64_ARCHITECTURE: five("TARGET_RISCV64", 1, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64),
             SPIRV_ARCHITECTURE: five("TARGET_SPIRV", 1, SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32),
             JVM_ARCHITECTURE: five("TARGET_JVM", 1, JVM_ABI, JVM_JAR_FORMAT, 64, 64),
         }
-        e.var("decided", 0)
         for architecture, check in known.items():
-            e.if_(e.eq(p["arch"], architecture), lambda check=check: (check(), e.set("decided", 1)))
-        _no(e, e.eq(p["decided"], 0))  # an unsupported architecture
+            e.if_(e.eq(p["arch"], architecture), check)
+
+        def platform_rules():
+            e.if_(e.ne(p["opid_bad"], 0), quoted("TARGET_PLATFORM_OPERATIONS"))
+            e.if_(e.ne(p["contract_bad"], NONE), quoted("TARGET_PLATFORM_CONTRACT", p["contract_bad"], p["contract_check"], p["contract_sub"]))
+
+        e.if_(e.eq(p["profile"], 4), platform_rules)
+        for flag, site in (("ops_bad", "TARGET_OPERATIONS"), ("terms_bad", "TARGET_TERMINATORS"), ("widths_bad", "TARGET_ATOMIC_WIDTHS"),
+                           ("caps_bad", "TARGET_ATOMIC_CAPABILITIES"), ("event_bad", "TARGET_HANDLER_ORDER")):
+            e.if_(e.ne(p[flag], 0), quoted(site))
+        e.if_(e.ne(p["handler_bad"], NONE), quoted("TARGET_HANDLER", p["handler_bad"]))
         e.give(1)
     return _function(("o",), build, tables)
 
@@ -1728,6 +1927,7 @@ def _program(tables):
         p = e.p
         e.st(0, 0)
         e.st(1, 0)
+        e.st(STORE_FAULT, 0)
         e.set_hd(H_ARENA, ARENA_AT + 16)
         e.set_hd(H_ARENA_END, HEADER - 1)
         O = e.rd(0)
@@ -1773,6 +1973,24 @@ def _program(tables):
 
         e.for_("o", 0, p["O"], lambda: verdict(True))
         e.for_("o", 0, p["O"], lambda: verdict(False))
+
+        # S8 (ADR-248): an object naming a missing object (``verify_object`` resolves its references, in order,
+        # right after the CID check): rejected with that reference.
+        def missing():
+            o = p["o"]
+            e.var("first_missing", NONE)
+            e.for_("mk", 0, _references(e, o), lambda: e.if_(e.both(e.eq(_reference(e, o, p["mk"]), NONE), e.eq(p["first_missing"], NONE)),
+                                                             lambda: e.set("first_missing", p["mk"])))
+
+            def reject():
+                at = e.add(REJECTS_AT, e.mul(o, REJECT_WORDS))
+                e.st(at, S["OBJECT_MISSING"])
+                e.st(e.add(at, 1), p["first_missing"])
+                e.st(e.add(VERDICTS_AT, o), REJECTED)
+
+            e.if_(e.ne(p["first_missing"], NONE), reject)
+
+        e.for_("o", 0, p["O"], missing)
         # Requests, then snapshots, then provenance: each reads the verdicts and records of the ones before.
         for form, name in ((2, "request"), (3, "snapshot"), (5, "provenance")):
             def later(form=form, name=name):
@@ -1807,7 +2025,8 @@ def _program(tables):
 
                 def visit():
                     state = e.ld(e.add(p["colour"], p["st"]))
-                    e.if_(e.eq(state, 1), lambda: e.set("store_ok", 0))
+                    # S8 (ADR-248): a cycle, re-entering this object (the bootstrap's ``visit`` order).
+                    e.if_(e.eq(state, 1), lambda: (e.set("store_ok", 0), e.st(STORE_FAULT, 1), e.st(STORE_FAULT + 1, p["st"])))
 
                     def push():
                         e.st(e.add(p["colour"], p["st"]), 1)
@@ -1827,7 +2046,10 @@ def _program(tables):
             e.if_(e.lt(child, _references(e, p["sn"])), descend, finish)
 
         e.while_(lambda: e.both(e.ne(p["depth"], 0), e.ne(p["store_ok"], 0)), step)
+        e.var("searched", p["store_ok"])
         e.for_("o", 0, p["O"], lambda: e.if_(e.ne(e.ld(e.add(p["colour"], p["o"])), 2), lambda: e.set("store_ok", 0)))
+        # S8: unreachable objects (the reachable ones are coloured 2).
+        e.if_(e.both(e.ne(p["searched"], 0), e.eq(p["store_ok"], 0)), lambda: (e.st(STORE_FAULT, 2), e.st(STORE_FAULT + 1, p["colour"])))
         e.st(1, p["store_ok"])
         e.st(0, OK)
         e.give(1)
@@ -1845,6 +2067,7 @@ def build_verifier_program():
         _FN[name] = function
         return function
 
+    add("uleb10", _uleb10_fn(tables))
     add("graph", _graph_ok(tables))
     add("group", _group_ok(tables))
     add("function", _function_ok(tables))
@@ -1933,7 +2156,24 @@ class NativeStoreVerifier:
             out = self._out
             read = lambda start, length: list(out[start : start + length])  # noqa: E731
             result = collect_verdicts(read, count, groups)
-            return result, ({} if result is None else collect_rejections(read, result[1]))
+            if result is None:
+                return None, {}
+            rejections = collect_rejections(read, result[1])
+            store = store_rejection(read, count)
+            if store is not None:
+                rejections["store"] = store
+            return result, rejections
+
+
+def store_rejection(read, count: int):
+    """S8 (ADR-248): the store rejection the program decided: ``("cycle", object)``, ``("unreachable", reachable
+    objects)``, or None."""
+    fault, at = read(STORE_FAULT, 2)
+    if fault == 1:
+        return "cycle", at
+    if fault == 2:
+        return "unreachable", tuple(o for o, colour in enumerate(read(at, count)) if colour == 2)
+    return None
 
 
 def collect_verdicts(read, count: int, groups=()):
@@ -1952,6 +2192,13 @@ TRAP_ERRORS = ("non-canonical trap reason ULEB", "portable trap reason exceeds 1
 LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED", "GROUP_UNUSED", "GRAPH_UNUSED")  # a payload word is a [count, words] list
 TARGET_SCALAR_SITES = ("TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
                        "TARGET_PROFILE")  # the other target sites quote the machine record at payload word 0
+TARGET_SCALAR_SITES += ("TARGET_SECTION",)
+TARGET_WORD_SITES = ("TARGET_X86_REGISTERS", "TARGET_AAPCS64_REGISTERS", "TARGET_ACC_TOPOLOGY", "TARGET_ACC_SCOPES", "TARGET_ACC_SPACES",
+                     "TARGET_ACC_SPACE", "TARGET_ACC_OPERATIONS", "TARGET_ACC_CONTRACT", "TARGET_PLATFORM_OPERATIONS", "TARGET_PLATFORM_CONTRACT",
+                     "TARGET_OPERATIONS", "TARGET_TERMINATORS", "TARGET_ATOMIC_WIDTHS", "TARGET_ATOMIC_CAPABILITIES", "TARGET_HANDLER_ORDER",
+                     "TARGET_HANDLER")  # payload: the target's recorded words (quoted), their count, item, check, sub
+ULEB_FAULTS = (("XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED"), ("XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL"),
+               ("XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED"))
 PAIR_SITES = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT")  # payload word 1 is [n, words, m, words]
 
 
@@ -1991,6 +2238,8 @@ def collect_rejections(read, verdicts):
                 listed = words
             rejections[o] = (site, payload, listed, graphs)
             continue
+        elif name in TARGET_WORD_SITES:
+            listed = read(payload[0], payload[1])
         elif name is not None and name.startswith("TARGET_") and name not in TARGET_SCALAR_SITES:
             listed = read(payload[0], 7)
         elif name in PAIR_SITES:
@@ -2047,11 +2296,169 @@ def _target_diagnostic(obj, name, x, y, machine):
     return "XAX.TARGET.MACHINE", rule, expected, [profile, abi, image_format, word, pointer]
 
 
+def _uleb_diagnostic(obj, status, at, size):
+    """``Cursor.uleb``'s diagnostic for the ULEB the verifier found malformed (status 1 unterminated, 2 non-minimal,
+    3 more than ten bytes) at body offset ``at``."""
+    from xax_compiler import uleb
+
+    code, rule = ULEB_FAULTS[status - 1]
+    if status == 1:
+        return code, rule, "terminating byte", "end of input"
+    if status == 3:
+        return code, rule, "at most 10 bytes", "more than 10 bytes"
+    encoded = bytes(obj.body[at:at + size])
+    value = sum((byte & 0x7F) << (7 * k) for k, byte in enumerate(encoded))
+    return code, rule, uleb(value).hex(), encoded.hex()
+
+
+SECTIONS = (("XAX.TARGET.CONCURRENCY", "TARGET-CONCURRENCY-ENUM", "known atomic/handler values"),
+            ("XAX.TARGET.ACCELERATOR", "TARGET-ACCELERATOR-ENUM", "known scope/value-constraint values"),
+            ("XAX.TARGET.PLATFORM", "TARGET-PLATFORM-ENUM", "known scope/value-constraint values"))
+
+
+def _target_section_diagnostic(section, kind, value):
+    """A fault inside a target section: the bootstrap's ``except ValueError`` reports ``str(error)``: a cursor
+    diagnostic's code (kinds 1-3 ULEB, 5 truncated), the section's own BOOL code (6), or an enum's message (7-10)."""
+    from xax_compiler import AtomicFamily, AtomicScope, EffectDomain, TargetValueConstraintKind
+
+    code, rule, expected = SECTIONS[section - 1]
+    if kind <= 3:
+        actual = ULEB_FAULTS[kind - 1][0]
+    elif kind == 5:
+        actual = "XAX.CANON.TRUNCATED"
+    elif kind == 6:
+        actual = code
+    else:
+        enum = (AtomicScope, AtomicFamily, EffectDomain, TargetValueConstraintKind)[kind - 7]
+        actual = f"{value} is not a valid {enum.__qualname__}"
+    return code, rule, expected, actual
+
+
+def target_fields(words):
+    """The target's fields from the verifier's recorded words (in read order, identity length first): a structuring
+    of values the verifier read, for quoting."""
+    from xax_compiler import (
+        AcceleratorMemorySpace, AtomicFamily, AtomicScope, BOARD_PROFILE, EffectDomain, HandlerEntryContract, TargetValueConstraint,
+        TargetValueConstraintKind,
+    )
+
+    stream = iter(words[1:])
+    take = stream.__next__
+
+    def many(make=lambda value: value):
+        return tuple(make(take()) for _ in range(take()))
+
+    f = {"profile": take(), "arch": take(), "abi": take(), "format": take(), "word": take(), "pointer": take()}
+    f.update(args=(), result=None, scratch=(), widths=(), scopes=(), families=(), handlers=(), lane=0, groups=0, acc_scopes=(), spaces=(),
+             contracts=())
+    if f["arch"] in (1, 3):
+        f.update(stack=take(), shadow=take(), args=many())
+        f.update(result=take(), scratch=many())
+    f.update(operations=many(), terminators=many())
+
+    def contracts():
+        items = []
+        for _ in range(take()):
+            operation_id, semantic, encoding = take(), take(), take()
+            operands, results = (tuple(TargetValueConstraint(TargetValueConstraintKind(take()), take(), take()) for _ in range(take())) for _signature in range(2))
+            scopes_ = many(AtomicScope)
+            source, destination, synchronizes, may_block, dependency = take(), take(), take(), take(), take()
+            items.append({"id": operation_id, "semantic": semantic, "encoding": encoding, "constraints": (*operands, *results), "scopes": scopes_,
+                          "source": source, "destination": destination, "dependency": dependency})
+        return tuple(items)
+
+    if f["profile"] in (2, BOARD_PROFILE):
+        f.update(widths=many(), scopes=many(AtomicScope), families=many(AtomicFamily))
+        handlers = []
+        for _ in range(take()):
+            fields = tuple(take() for _ in range(7))
+            domains = many(EffectDomain)
+            handlers.append(HandlerEntryContract(*fields, domains, take(), take()))
+        f["handlers"] = tuple(handlers)
+    if f["profile"] == 3:
+        f.update(lane=take(), groups=take(), acc_scopes=many(AtomicScope))
+        spaces = []
+        for _ in range(take()):
+            identity, address_bits, unit_bits, alignment = take(), take(), take(), take()
+            widths, visibility = many(), many(AtomicScope)
+            spaces.append(AcceleratorMemorySpace(identity, address_bits, unit_bits, alignment, widths, visibility, bool(take()), bool(take())))
+        f.update(spaces=tuple(spaces), contracts=contracts())
+    if f["profile"] in (4, BOARD_PROFILE):
+        f["contracts"] = contracts()
+    return f
+
+
+def _target_rule_diagnostic(name, words, item, check, sub):
+    """The bootstrap's diagnostic for a canonical target rule the verifier found broken (``item``: the failing space,
+    contract, or handler; ``check``/``sub``: which contract check, and which constraint)."""
+    f = target_fields(words)
+    if name == "TARGET_X86_REGISTERS":
+        return "XAX.TARGET.ABI", "TARGET-WINDOWS-X64-REGISTERS", [[1, 2, 8, 9], 0, [10, 11]], [list(f["args"]), f["result"], list(f["scratch"])]
+    if name == "TARGET_AAPCS64_REGISTERS":
+        return "XAX.TARGET.ABI", "TARGET-AAPCS64-REGISTERS", [list(range(8)), 0, [9, 10]], [list(f["args"]), f["result"], list(f["scratch"])]
+    if name == "TARGET_ACC_TOPOLOGY":
+        return "XAX.TARGET.ACCELERATOR", "TARGET-ACCELERATOR-TOPOLOGY", "positive lane width and max groups", [f["lane"], f["groups"]]
+    if name == "TARGET_ACC_SCOPES":
+        return "XAX.TARGET.ACCELERATOR", "TARGET-ACCELERATOR-SCOPES-CANONICAL", "sorted unique nonempty scopes", f["acc_scopes"]
+    space_ids = tuple(space.identity for space in f["spaces"])
+    if name == "TARGET_ACC_SPACES":
+        return "XAX.TARGET.MEMORY_SPACE", "TARGET-MEMORY-SPACES-CANONICAL", "sorted unique nonempty memory spaces", space_ids
+    if name == "TARGET_ACC_SPACE":
+        return ("XAX.TARGET.MEMORY_SPACE", "TARGET-MEMORY-SPACE-CONTRACT", "positive widths, power-of-two alignment, canonical widths/scopes",
+                f["spaces"][item])
+    operation_ids = tuple(contract["id"] for contract in f["contracts"])
+    if name in ("TARGET_ACC_OPERATIONS", "TARGET_PLATFORM_OPERATIONS"):
+        if name == "TARGET_ACC_OPERATIONS":
+            return "XAX.TARGET.OPERATION", "TARGET-OPERATIONS-CONTRACT-CANONICAL", "sorted unique nonempty target operation IDs", operation_ids
+        return "XAX.TARGET.PLATFORM", "TARGET-PLATFORM-OPERATIONS-CANONICAL", "sorted unique nonempty target operation IDs", operation_ids
+    if name in ("TARGET_ACC_CONTRACT", "TARGET_PLATFORM_CONTRACT"):
+        contract = f["contracts"][item]
+        accelerator = name == "TARGET_ACC_CONTRACT"
+        code = "XAX.TARGET.OPERATION" if accelerator else "XAX.TARGET.PLATFORM"
+        prefix = "TARGET-OPERATION" if accelerator else "TARGET-PLATFORM"
+        check = check if accelerator else (1, 4, 5)[check - 1]  # platform checks: contract, constraint, dependency
+        if check == 1:
+            if accelerator:
+                return code, "TARGET-OPERATION-ENCODING", "positive semantic code and byte opcode", [contract["semantic"], contract["encoding"]]
+            return code, "TARGET-PLATFORM-OPERATION-CONTRACT", "positive semantic code and canonical scopes", contract["id"]
+        if check == 2:
+            return code, "TARGET-OPERATION-SCOPES", f["acc_scopes"], contract["scopes"]
+        if check == 3:
+            return code, "TARGET-OPERATION-MEMORY-SPACES", sorted(set(space_ids)), [contract["source"], contract["destination"]]
+        if check == 4:
+            constraint = contract["constraints"][sub]
+            return (code, f"{prefix}-VALUE-CONSTRAINT", "canonical bits/resource/effect constraint",
+                    [constraint.kind.value, constraint.primary, constraint.secondary])
+        return code, f"{prefix}-RUNTIME-DEPENDENCY", "empty or 32-byte identity", contract["dependency"]
+    if name == "TARGET_OPERATIONS":
+        return "XAX.TARGET.OPERATIONS", "TARGET-OPERATIONS-CANONICAL", "sorted supported operation IDs", f["operations"]
+    if name == "TARGET_TERMINATORS":
+        return "XAX.TARGET.TERMINATORS", "TARGET-TERMINATORS-CANONICAL", "sorted supported terminator IDs", f["terminators"]
+    if name == "TARGET_ATOMIC_WIDTHS":
+        return "XAX.TARGET.ATOMICS", "TARGET-ATOMIC-WIDTHS-CANONICAL", "sorted positive widths", f["widths"]
+    if name == "TARGET_ATOMIC_CAPABILITIES":
+        return "XAX.TARGET.ATOMICS", "TARGET-ATOMIC-CAPABILITIES-CANONICAL", "sorted unique scopes/families", [f["scopes"], f["families"]]
+    if name == "TARGET_HANDLER_ORDER":
+        return "XAX.TARGET.HANDLER", "TARGET-HANDLER-ENTRIES-CANONICAL", "sorted unique event kinds", [entry.event_kind for entry in f["handlers"]]
+    entry = f["handlers"][item]
+    return ("XAX.TARGET.HANDLER", "TARGET-HANDLER-CONTRACT", "sorted unique effect domains and positive stack bound",
+            [entry.allowed_effect_domains, entry.stack_bound])
+
+
 def object_diagnostic(obj, record, objects=()):
     """S8c.19: the bootstrap's ``(code, rule, expected, actual)`` for a rejected object (rendering only: the verifier
     decided the check and its values).  ``objects``: the object table, for quoted object indices."""
-    site, (x, y, _z), listed = record[:3]
+    site, payload, listed = record[:3]
+    x, y = payload[:2]
     name = OBJECT_SITES[site - 1]
+    if name == "OBJECT_MISSING":
+        return "XAX.IDENTITY.OBJECT_MISSING", "ID-REFERENCE-RESOLVED", "stored object", "missing"
+    if name == "BODY_ULEB":
+        return _uleb_diagnostic(obj, x, y, payload[2])
+    if name in TARGET_WORD_SITES:
+        return _target_rule_diagnostic(name, listed, *payload[2:5])
+    if name == "TARGET_SECTION":
+        return _target_section_diagnostic(x, y, payload[2])
     if name.startswith("TARGET_"):
         return _target_diagnostic(obj, name, x, y, listed)
     if name in ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT"):

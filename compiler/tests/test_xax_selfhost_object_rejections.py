@@ -496,5 +496,38 @@ class XaxGlueRejectionTests(unittest.TestCase):
             xax_compiler._xax_fail = original
 
 
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class XaxStoreRejectionTests(unittest.TestCase):
+    """S8 (ADR-248): an unreachable object and a missing reference are decided by the store verifier."""
+
+    def test_store_rejections_are_decided_by_xax(self):
+        import xax_compiler
+
+        root, objects = _store("valid")
+        stray = bits_type(23)
+        module = object_with_refs(Kind.MODULE, (B8, bits_type(29)))  # bits<29> is not stored
+        missing_root = object_with_refs(Kind.PROGRAM_ROOT, (module,))
+        cases = {"ID-ROOTED-STORE": (root, (*objects, stray)), "ID-REFERENCE-RESOLVED": (missing_root, (B8, module, missing_root))}
+        raised = []
+        original = xax_compiler._xax_fail
+
+        def recording(*arguments):
+            raised.append(arguments[2])
+            return original(*arguments)
+
+        xax_compiler._xax_fail = recording
+        try:
+            for rule, (case_root, case_objects) in cases.items():
+                with self.subTest(rule=rule):
+                    baseline = _outcome(False, case_root, case_objects)
+                    raised.clear()
+                    self.assertEqual(_outcome(True, case_root, case_objects), baseline)
+                    self.assertEqual(baseline[:1] + baseline[2:3], ("reject", rule))
+                    self.assertIn(rule, raised)
+        finally:
+            xax_compiler._xax_fail = original
+
+
 if __name__ == "__main__":
     unittest.main()
