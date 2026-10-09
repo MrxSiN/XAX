@@ -12,8 +12,8 @@
       "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 2.7,
-        "bootstrap": 0.04
+        "gen1": 2.56,
+        "bootstrap": 0.05
       }
     },
     {
@@ -25,8 +25,8 @@
       "image_sha256": "d26f6af2a4f3fbcf257896e98bc3b94603660ee875a7ddfe8f983d99e9711a8f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.65,
-        "bootstrap": 0.45
+        "gen1": 0.71,
+        "bootstrap": 0.43
       }
     },
     {
@@ -51,21 +51,21 @@
       "image_sha256": "9df980975640067ab2d05fab38d7e13746568d859c650b50bf0b438e89f129e4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.13,
-        "bootstrap": 0.8
+        "gen1": 1.09,
+        "bootstrap": 0.82
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 3564164,
-      "store_sha256": "d5e94ea50b809f1cc7485e2030e73005f8e75411fc57115a89909d7cbbfe1ffa",
+      "store_bytes": 3565503,
+      "store_sha256": "be6f060333f0e585c3b0053bd5f95357dca96019dd08d6b1548cd81dd214680e",
       "functions": 47,
-      "code_bytes": 5268268,
-      "image_sha256": "5102f50c1502acdbbb25a62fd3dc3fc003619df4671020c13a7b74f20f739f98",
+      "code_bytes": 5269428,
+      "image_sha256": "ad2a946631a3721e8e124b1e7d88c78a1ff0332643e2d1c9ed66900950ed3fca",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 18.0,
-        "bootstrap": 17.14
+        "gen1": 18.38,
+        "bootstrap": 18.39
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 10.34,
-        "bootstrap": 12.23
+        "gen1": 10.45,
+        "bootstrap": 12.51
       }
     },
     {
@@ -90,7 +90,7 @@
       "image_sha256": "5dcc3086447fcad87d059b1646cf1c5ead722fae8bb54e7a7344572992c6868a",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.1,
+        "gen1": 0.07,
         "bootstrap": 0.08
       }
     },
@@ -103,7 +103,7 @@
       "image_sha256": "fd4263a668a2964c1054a65aac6b388d6e5516340e3c1d763a5184a4085e1c2f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 9.11,
+        "gen1": 8.92,
         "bootstrap": 9.66
       }
     }
@@ -142,7 +142,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.2
+        "emulated": 0.1
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 0.956,
-        "emulated": 91.4
+        "native": 0.882,
+        "emulated": 91.8
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.387,
-        "emulated": 33.1
+        "native": 0.375,
+        "emulated": 33.0
       }
     },
     {
@@ -226,7 +226,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.002,
-        "emulated": 0.4
+        "emulated": 0.5
       }
     },
     {
@@ -237,8 +237,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.072,
-        "emulated": 7.1
+        "native": 0.06,
+        "emulated": 7.8
       }
     },
     {
@@ -249,7 +249,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.45,
+        "native": 0.442,
         "emulated": 49.7
       }
     },
@@ -261,8 +261,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.339,
-        "emulated": 33.5
+        "native": 0.375,
+        "emulated": 34.7
       }
     }
   ],
@@ -283,7 +283,7 @@
       "store": "m14_selfhost_compiler.xax",
       "bytes": 2020,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.02
+      "host_s_nonsemantic": 0.01
     },
     {
       "store": "xax_blake3_compress.xax",
@@ -307,7 +307,7 @@
       "store": "xax_graph_decoder.xax",
       "bytes": 148177,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.16
+      "host_s_nonsemantic": 0.15
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -319,7 +319,7 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.3
+      "host_s_nonsemantic": 0.37
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -329,7 +329,7 @@
     "sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 101000000000,
-    "host_s_nonsemantic": 1858.6
+    "host_s_nonsemantic": 1909.6
   },
   "authority": {
     "blake3-compress": {
@@ -344,7 +344,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-7fd8cb4f8c20410c249d0225780daa77c194cbb4fa08559d66b37513cc639e60.bin"
+      "record": "verified-hash-1bcb250b01f74fb1d2829947372e451216a7989c63356f71cbbcd95bc7ff27c4.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -358,7 +358,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-a1d433e8fa484613a78ac9cbf4c127e19563e4099e9df3fa06b17e83a1c6bc34.bin"
+      "record": "verified-store-decoder-9f20142799b26335178736de5bf4a3a53ffab6d81fef6e8b20c5cf359f1a5451.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -372,12 +372,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-19b1f2654d93af47adba276c3a4f04fbdfa11da85390a273bc64bb9737e7df2f.bin"
+      "record": "verified-cfg-d4db887f6cfb9450c9971ff6edc4e250f12707dae0c8ee1f19ca0a0323cb90c4.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-60958bf94e069b23af19062f998f8574593cd1c07baff91083fe99438abf36c3.bin"
+      "record": "verified-riscv64-encoder-706b0f4f864860f1d999db13d259a92cef6fd267ab5138c4f92df7ad22159a1f.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -391,12 +391,12 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-92ec773055363f8f3868645ac42e981628144d188ccab33ce5861e4bf1e142f0.bin"
+      "record": "verified-typing-f96e9a8e3b238d5dd29e916da3b030f1173b417642d4f0707e67c9fb9bbd952c.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "e2839a1831a096cc86c793e13adebe71a037437dd7c24ce0e8347dbad279302f",
-      "native_artifact_digest": "dd6fef5daf1ba6586ef88f5a48dcb5039c6d6dbacc414f10667760ae78d6a494",
+      "semantic_root": "5ddccd2122069b3c0bee64030dd72d107ce7a00cde4e464e4932b8891f3914cf",
+      "native_artifact_digest": "e5ac323cf0f34f82c6632467a772ad2bdca1aaa6188d5697a1cf33df67b51c18",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -405,7 +405,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-81aec2b1aa413a1c5fb95ae2308be2d8ffb14b04e7d9d887cafc7bac19ed17e6.bin"
+      "record": "verified-store-verifier-86c5c4336f197513b38f9c009f2593e059063f329126f1d0ee8f7c2575ba23ea.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -420,7 +420,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-40503f3b86ff3880332bb338d0dd80bd21becc262105608d762420adb228a1aa.bin"
+      "record": "verified-graph-decoder-16c6bda0c0d8ca3864e481dd77489dfd7d40445f6cf4fb415a52788a5dec3678.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -443,7 +443,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-7964eb5d5076dec5c25f67eba368723c1eed55453d8def52025ebd66e3aeb427.bin"
+      "record": "verified-xax_riscv64_backend-0e3a1403b4153cb97dba3146e290ac4aa3f1b27ec894481bf9e85d3703cbf798.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",
