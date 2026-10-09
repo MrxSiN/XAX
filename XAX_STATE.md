@@ -129,6 +129,19 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## Fast first start: `xax_native.prepare` — 2026-10-09 (ADR-250)
+
+`xax_native.prepare(parallel=True)` readies every component image and verified-store record in child processes (host contract minor 3); cache entries are published by atomic rename; lowering no longer re-verifies a store its loader just verified. First construct of the warm-up carrier, `XAX_REQUIRE_NATIVE=1`, this host:
+
+| | Before (4e16e32) | After P6 (ADR-248) | After P6+P7 (ADR-249) | After P6+P7+P8 (ADR-250) |
+|---|---|---|---|---|
+| Warm cache, wall (median of 5) | 2.235 s | 1.962 s | 0.528 s | 0.523 s |
+| Warm cache, added peak RSS | +764.7 MB | +43.3 MB | +45.0 MB | +44.9 MB |
+| Empty cache, sequential | 47.3 / 47.0 s, +1.36 GB | 46.0 / 47.3 s, +694 MB | 45.5 / 45.0 s, +697 MB | 47.4 / 44.5 s, +703 MB |
+| Empty cache, `prepare(parallel=True)` + construct | — | — | — | 25.5 / 25.7 s |
+
+The constructed store (root `70cff343…`), every image, and every CID are unchanged except the regenerated BLAKE3 hash store (ADR-249). Prebuilt images are not shipped (ADR-250).
+
 ## One-call BLAKE3 up to 16 MiB — 2026-10-09 (ADR-249)
 
 The XAX BLAKE3 hash lends a 16 MiB input view (`xax_blake3_hash.xax` regenerated; its CID is the only one that changes), so every committed store hashes in one native call; the per-block driver reuses its argument buffers. Warm first construct: 1.96 s → 0.53 s, +45 MB peak RSS. Digests are unchanged.
