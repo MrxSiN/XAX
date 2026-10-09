@@ -97,8 +97,9 @@ MEMORY_SITES = (
     # S8 (ADR-248): atomic attributes (``_atomic_order`` names the family or "atomic", not the graph).
     "ATOMIC_RMW_KIND", "ATOMIC_ORDER_ENUM", "ATOMIC_ORDER_LEGAL", "ATOMIC_FAILURE_ORDER", "ATOMIC_FAILURE_STRONGER", "ATOMIC_CMPXCHG_STRENGTH",
     "ATOMIC_SCOPE_ENUM",
-    # S8 (ADR-248): a foreign (C, JVM) or browser-event code entry whose callee the ABI does not admit.
-    "FOREIGN_ENTRY",
+    # S8 (ADR-248): a foreign (C, JVM) or browser-event code entry whose callee the ABI does not admit; a foreign call's
+    # ABI and contract (payload: the declaration).
+    "FOREIGN_ENTRY", "FOREIGN_ABI", "FOREIGN_CONTRACT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1374,7 +1375,7 @@ def _foreign_declaration(tables):
             for offset, byte in enumerate(abi):
                 same = e.both(same, e.eq(e.rd(e.add(abi_start, offset)), byte))
             known = same if known is None else e.either(known, same)
-        _require(e, known)
+        e.var("abi_known", e.flag(known))  # S8: checked once the whole declaration decodes, as the bootstrap does
         blob()  # library
         blob()  # name
         e.var("record", e.alloc(e.add(length, 16)))
@@ -1451,6 +1452,7 @@ def _foreign_declaration(tables):
         contract(1, allocator)
         contract(2, deallocator)
         _require(e, e.eq(p["at"], end))
+        _reject(e, e.ne(p["abi_known"], 0), M["FOREIGN_ABI"], entity)
         e.give(p["record"])
     return _function(("entity",), build, tables)
 
@@ -1500,9 +1502,12 @@ def _call_foreign(tables, declaration, end_views):
         inputs = e.ld(decl)
         outputs_at = e.add(e.add(decl, 1), inputs)
         outputs = e.ld(outputs_at)
-        _require(e, e.both(e.eq(n.no, inputs), e.eq(n.nr, outputs)))
-        e.for_("j", 0, inputs, lambda: _require(e, e.eq(n.tid(0) if False else e.rd(e.add(n.tids_at, p["j"])), e.ld(e.add(e.add(decl, 1), p["j"])))))
-        e.for_("j", 0, outputs, lambda: _require(e, e.eq(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(e.add(outputs_at, 1), p["j"])))))
+        # S8 (ADR-248): the operand and result types are exactly the declaration's (FOREIGN-CALL-CONTRACT).
+        e.var("fc_same", e.flag(e.both(e.eq(n.no, inputs), e.eq(n.nr, outputs))))
+        e.if_(e.ne(p["fc_same"], 0), lambda: (
+            e.for_("j", 0, inputs, lambda: e.if_(e.ne(e.rd(e.add(n.tids_at, p["j"])), e.ld(e.add(e.add(decl, 1), p["j"]))), lambda: e.set("fc_same", 0))),
+            e.for_("j", 0, outputs, lambda: e.if_(e.ne(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(e.add(outputs_at, 1), p["j"]))), lambda: e.set("fc_same", 0)))))
+        _reject(e, e.ne(p["fc_same"], 0), M["FOREIGN_CONTRACT"], n.entity)
         # ``_verify_lend_entries``: a lend entry goes only to a sysv call lending it a whole initialized view
         # of its extent with that storage's frontier, and returning a memory frontier.
         e.var("memory_out", 0)
@@ -3235,6 +3240,7 @@ def _atomic_attribute_diagnostic(name: str, x: int, y: int):
     return "XAX.ATOMIC.ORDER", "ATOMIC-CMPXCHG-FAILURE-NOT-STRONGER", AtomicOrder(x).name.lower(), AtomicOrder(y).name.lower(), "cmpxchg"
 
 
+NODE_TYPES = "node operand and result types"  # quoted by the host from the rejected node: ``[[operand types], [result types]]``
 FOREIGN_ENTRY_EXPECTED = {"sysv-x86_64-c/win64-c/android-aapcs64-c": "no proof parameters or results",
                           "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else",
                           "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple",
@@ -3372,6 +3378,14 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.PROVENANCE", "INDIRECT-CALL-STACK-PROVENANCE", storages[x], storages[z] if y else None
     if name == "INDIRECT_EFFECT_LINEAR":
         return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_INDIRECT.name
+    if name in ("FOREIGN_ABI", "FOREIGN_CONTRACT"):
+        from xax_compiler import FOREIGN_ABIS, decode_foreign_function
+
+        declaration = decode_foreign_function(resolve(cids[x]))
+        if name == "FOREIGN_ABI":
+            return "XAX.FOREIGN.ABI", "FOREIGN-CALL-ABI", [abi.decode() for abi in FOREIGN_ABIS], declaration.abi.decode("ascii", "replace")
+        return ("XAX.FOREIGN.CALL", "FOREIGN-CALL-CONTRACT", [[cid.hex() for cid in declaration.inputs], [cid.hex() for cid in declaration.outputs]],
+                NODE_TYPES)
     if name == "FOREIGN_ENTRY":
         from xax_compiler import foreign_entry_abi
 

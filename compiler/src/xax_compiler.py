@@ -6788,7 +6788,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 node.operand_types = operand_types
                 if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, node_index):
                     # S8c.8 (ADR-221): the XAX facts engine decided this node's memory rejection.
-                    _xax_memory_fail(obj, memory_reject[3])
+                    _xax_memory_fail(obj, memory_reject[3], (operand_types, node.results))
                 if (block_index, node_index) in proven_nodes:
                     pass  # S4 (ADR-132): typed by the XAX rules
                 elif (block_index, node_index) in rejected_nodes:
@@ -7402,9 +7402,14 @@ def _join_origins(parsed: "_ParsedGraph", block_index: int, node_index: int) -> 
     return origin(node.operands[0]), origin(node.operands[1])
 
 
-def _xax_memory_fail(obj: SemanticObject, diagnostic: tuple) -> None:
-    """S8c.8: raise the facts engine's rejection; a fifth element (S8, ADR-248) is the entity it names instead of the graph."""
+def _xax_memory_fail(obj: SemanticObject, diagnostic: tuple, node_types=None) -> None:
+    """S8c.8: raise the facts engine's rejection; a fifth element (S8, ADR-248) is the entity it names instead of the graph,
+    and an actual of ``NODE_TYPES`` quotes the node's operand and result types."""
+    from xax_selfhost_facts import NODE_TYPES
+
     code, rule, expected, actual, *entity = diagnostic
+    if actual == NODE_TYPES and node_types is not None:
+        actual = [[cid.hex() for cid in node_types[0]], [cid.hex() for cid in node_types[1]]]
     _xax_fail(code, entity[0] if entity else obj.cid.hex(), rule, expected, actual)
 
 
