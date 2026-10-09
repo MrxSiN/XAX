@@ -6490,6 +6490,23 @@ def _callee_summary(node: "_ParsedNode", resolve: Callable[[bytes], SemanticObje
     return len(parsed.blocks), operations
 
 
+def _cfg_uses(blocks: Sequence["_ParsedBlock"]) -> list[tuple]:
+    """The CFG analysis input's uses: ``(block, node or node count for the terminator, tag, block, index, result)``."""
+    uses = []
+    for block_index, block in enumerate(blocks):
+        for node_index, node in enumerate(block.nodes):
+            uses.extend((block_index, node_index, value.tag, value.block, value.index, value.result) for value in node.operands)
+        term = block.terminator
+        end = len(block.nodes)
+        terminator_values = [*term.values, *(argument for _target, arguments in term.edges for argument in arguments)]
+        uses.extend((block_index, end, value.tag, value.block, value.index, value.result) for value in terminator_values)
+    return uses
+
+
+def _cfg_tables(blocks: Sequence["_ParsedBlock"]) -> list[tuple]:
+    return [(len(block.parameters), tuple(len(node.results) for node in block.nodes)) for block in blocks]
+
+
 def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> _ParsedGraph:
     decoder = _native_graph_decoder()
     parsed = None
@@ -6525,16 +6542,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     native_order, uses_valid = None, False
     use_codes: dict[tuple, int] = {}
     if analysis is not None:
-        uses = []
-        for block_index, block in enumerate(blocks):
-            for node_index, node in enumerate(block.nodes):
-                uses.extend((block_index, node_index, value.tag, value.block, value.index, value.result) for value in node.operands)
-            term = block.terminator
-            end = len(block.nodes)
-            terminator_values = [*term.values, *(argument for _target, arguments in term.edges for argument in arguments)]
-            uses.extend((block_index, end, value.tag, value.block, value.index, value.result) for value in terminator_values)
-        tables = [(len(block.parameters), tuple(len(node.results) for node in block.nodes)) for block in blocks]
-        status, native_order, dominators, uses_valid = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks], (tables, uses))
+        uses = _cfg_uses(blocks)
+        status, native_order, dominators, uses_valid = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks], (_cfg_tables(blocks), uses))
         if status == 1 and analysis.rejected_target is not None:
             # S8 (ADR-248): the XAX analysis found the first branch target out of range.
             _xax_fail("XAX.STRUCT.BRANCH_TARGET", obj.cid.hex(), "GRAPH-BRANCH-TARGET", f"< {len(blocks)}", analysis.rejected_target)
@@ -6677,6 +6686,67 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             if accepted and len(proven_terminators) == len(blocks):
                 # The engine modelled every node (or found it typing-proven) and its passes converged.
                 engine_extents = [(ref, extent - 1) for ref, extent in zip(value_refs, extents) if extent]
+    elif native_order is not None and not uses_valid and analysis is not None:
+        # S8 (ADR-248): a graph with an invalid use.  The bootstrap raises whatever fails before that use in its
+        # first pass; XAX decides those checks over the graph trimmed at each invalid use (a block ends there in a
+        # trap, again until the XAX analysis finds every use valid), and a rejection counts only before the use.
+        position = {block: index for index, block in enumerate(native_order)}
+        first = min((position[use[0]], use[1]) for use, code in use_codes.items() if code)
+        trimmed = list(blocks)
+        trimmed_order = None
+        for _round in range(len(blocks) + 1):
+            trimmed_uses = _cfg_uses(trimmed)
+            trim_status, trimmed_order, _dominators, trim_valid = analysis.analyze(
+                entry, [[target for target, _ in block.terminator.edges] for block in trimmed], (_cfg_tables(trimmed), trimmed_uses))
+            if trim_status != 0:
+                trimmed_order = None
+                break
+            if trim_valid:
+                break
+            cuts: dict[int, int] = {}
+            for use, code in zip(trimmed_uses, analysis.use_codes):
+                if code:
+                    cuts[use[0]] = min(cuts.get(use[0], use[1]), use[1])
+            for block_index, keep in cuts.items():
+                trimmed[block_index] = _ParsedBlock(trimmed[block_index].parameters, trimmed[block_index].nodes[:keep], Terminator(TerminatorKind.TRAP))
+        else:
+            trimmed_order = None
+        cut_blocks = {index for index, block in enumerate(trimmed) if block is not blocks[index]}
+        partial = _native_typing() if trimmed_order is not None and trimmed_order[:first[0]] == native_order[:first[0]] else None
+        if partial is not None:
+            from xax_selfhost_typing import REJECTED, marshal, type_info_from
+
+            def trimmed_type(value: ValueRef) -> bytes:
+                source = trimmed[value.block]
+                return source.parameters[value.index] if value.tag == 0 else source.nodes[value.index].results[value.result]
+
+            type_cids = []
+            words, keys, value_refs = marshal(
+                trimmed,
+                lambda block_index, node_index: tuple(trimmed_type(value) for value in trimmed[block_index].nodes[node_index].operands),
+                type_info_from(resolve),
+                lambda _block_index, value: trimmed_type(value),
+                facts=(entry, trimmed_order, lambda node: _callee_summary(node, resolve), lambda node: _callee_links(node, resolve)),
+                cids=type_cids,
+            )
+            trim_status, verdicts = partial.check(words, len(keys) + len(trimmed) + 1)
+            before = lambda block_index, node_index: (position[block_index], node_index) < first  # noqa: E731
+            if trim_status == 0:
+                rejected_nodes = {key: partial.rejection(index, type_cids, words)
+                                  for index, (key, verdict) in enumerate(zip(keys, verdicts)) if verdict == REJECTED and before(*key)}
+                rejected_terminators = {block: record for block in range(len(trimmed)) if block not in cut_blocks
+                                        and before(block, len(trimmed[block].nodes)) and (record := partial.terminator_rejection(len(keys), block))[0]}
+                accepted, _extents = partial.facts(len(value_refs))
+                if not accepted:
+                    from xax_selfhost_facts import facts_storages
+
+                    trimmed_reject = partial.memory_rejection(
+                        value_refs, facts_storages(trimmed, entry),
+                        lambda block_index, node_index: trimmed[block_index].nodes[node_index].operation if node_index < len(trimmed[block_index].nodes) else None,
+                        type_cids, resolve,
+                    )
+                    if trimmed_reject is not None and trimmed_reject[0] == 1 and before(trimmed_reject[1], trimmed_reject[2]):
+                        memory_reject = trimmed_reject
 
     # Memory facts flow only along explicit block parameters.  Blocks are
     # verified in reverse postorder; a back edge first contributes nothing
