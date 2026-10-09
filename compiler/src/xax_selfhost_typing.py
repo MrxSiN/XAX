@@ -1027,7 +1027,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
     # (a decoded type, the first proof type rejects), then every reference used.
     listy = t.any(t.eq(form, 8), t.eq(form, 10))
     marks = t.slot(TABLES, b.c(0))
-    listable = t.all(kind_is_type := t.eq(kind, int(Kind.TYPE)), listy, second_ok, t.le(references, MARKS), t.le(second, length))
+    listable = t.all(kind_is_type := t.not_(t.any(t.eq(kind, int(Kind.CONSTANT)), t.eq(kind, 0))), listy, second_ok, t.le(references, MARKS), t.le(second, length))
     list_unreadable = t.all(listy, t.not_(second_ok))
     steps = t.pick(listable, second, b.c(0))
     b.for_range(b.c(0), t.pick(listable, references, b.c(0)), lambda k, c: (b.put(b.add(marks, k), 0),) and (), ())
@@ -1068,7 +1068,9 @@ def _object_entry(b: _Builder, t: _Typing, index):
     type_third = t.pick(listy, list_third, t.pick(t.eq(form, 6), identity_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
         t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, transitions_end), third), t.pick(t.eq(form, 9), array_third, left)))))))
     b.put(t.slot(C5, index), fifth)
-    a_type = t.eq(kind, int(Kind.TYPE))
+    # S8 (ADR-248): any object but a constant is read as a type when a type reference names it (``_verify_type`` has no
+    # kind check); kind 0 is an entry whose references did not resolve.
+    a_type = t.not_(t.any(t.eq(kind, int(Kind.CONSTANT)), t.eq(kind, 0)))
     type_site = t.pick(t.eq(statuses[0], 0), type_site, first_bad(0))
     uleb_site = t.any(*(t.eq(type_site, b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))) for name in uleb_codes.values()))
     b.put(t.slot(C4, index), t.pick(uleb_site, t.pick(transition_uleb, transition_fault_at, first_bad_at(5)), t.pick(listy, used_mask, fourth)))
@@ -2159,7 +2161,7 @@ class NativeTyping:
                 rejected[cid] = ("XAX.CONSTANT.TYPE", "CONST-SCALAR-TYPE", ["bits<N>", "float<F>", "link (null)"], type_hex, (), ())
         return rejected
 
-    def memory_rejection(self, refs, storages, operation_of, cids=()):
+    def memory_rejection(self, refs, storages, operation_of, cids=(), resolve=None):
         """After ``facts`` declined: S8c.8 (ADR-221), the engine's exact memory rejection as ``(pass, block, node,
         (code, rule, expected, actual))``, or None when it declined without one."""
         from xax_selfhost_facts import ACCEPTED, H_REJECT, H_RBLOCK, H_RNODE, H_RPASS, H_RPAY, H_STATUS, HEADER, memory_diagnostic
@@ -2171,8 +2173,8 @@ class NativeTyping:
         payload = list(self._out[HEADER + H_RPAY : HEADER + H_RPAY + 6])
         operation = operation_of(where[1], where[2])
         try:
-            return (*where, memory_diagnostic(site, payload, operation, refs, storages, lambda word: self._out[word], cids))
-        except (IndexError, KeyError, ValueError):  # a value the host cannot render (an unindexed type): the bootstrap decides
+            return (*where, memory_diagnostic(site, payload, operation, refs, storages, lambda word: self._out[word], cids, resolve))
+        except (IndexError, KeyError, ValueError, TypeError, AttributeError):  # a value the host cannot render (an unindexed type): the bootstrap decides
             return None
 
     def terminator_rejection(self, nodes: int, block: int) -> tuple[int, int, int]:

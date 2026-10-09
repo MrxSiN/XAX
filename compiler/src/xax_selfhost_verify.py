@@ -2135,15 +2135,17 @@ def _list_ok(tables, allowed):
         refs = _references(e, o)
         e.var("lrefs", refs)
         e.var("la", _payload(e, o))
+        e.var("lbody", p["la"])
         end = e.add(p["la"], e.rd(e.sub(p["la"], 1)))
         e.var("lend", end)
-        count = _read(e, "la", p["lend"])
+        count = _read(e, "la", p["lend"], o, p["lbody"])
         e.var("lcount", count)
-        # The indices (as the bootstrap reads them, before its end check), kept for the diagnostics.
-        e.var("lindices", e.alloc(e.add(p["lcount"], 1)))
+        # The indices (as the bootstrap reads them, before its end check), kept for the diagnostics; at most one per
+        # body byte (a larger count fails on a read first).
+        e.var("lindices", e.alloc(e.add(e.sel(e.lt(p["lcount"], e.sub(p["lend"], p["la"])), p["lcount"], e.sub(p["lend"], p["la"])), 1)))
         _no(e, e.eq(p["lindices"], NONE))
         e.st(p["lindices"], p["lcount"])
-        e.for_("q", 0, p["lcount"], lambda: e.st(e.add(p["lindices"], e.add(p["q"], 1)), _read(e, "la", p["lend"])))
+        e.for_("q", 0, p["lcount"], lambda: e.st(e.add(p["lindices"], e.add(p["q"], 1)), _read(e, "la", p["lend"], o, p["lbody"])))
         _reject(e, e.ne(p["la"], p["lend"]), o, S["LIST_TRAILING"], e.sub(p["lend"], p["la"]))
         e.var("lout", 0)
         e.for_("q", 0, p["lcount"], lambda: e.if_(e.le(p["lrefs"], e.ld(e.add(p["lindices"], e.add(p["q"], 1)))), lambda: e.set("lout", 1)))
@@ -2169,19 +2171,20 @@ def _contract_ok(tables):
         _no(e, e.eq(_resolved(e, o), 0))
         e.var("refs", _references(e, o))
         e.var("ca", _payload(e, o))
+        e.var("cbody", p["ca"])
         end = e.add(p["ca"], e.rd(e.sub(p["ca"], 1)))
         e.var("cend", end)
         _clear_marks(e, p["refs"])
 
         def type_reference():
-            index = _read(e, "ca", p["cend"])
+            index = _read(e, "ca", p["cend"], o, p["cbody"])
             e.var("ca_index", index)
             _reject(e, e.le(p["refs"], p["ca_index"]), o, S["CONTRACT_REF_INDEX"], p["refs"], p["ca_index"])
             _no(e, e.not_(_type_ok(e, _reference(e, o, p["ca_index"]))))  # the bootstrap verifies the type itself
             _mark(e, p["ca_index"])
 
         for _part in range(2):
-            e.var("ccount", _read(e, "ca", p["cend"]))
+            e.var("ccount", _read(e, "ca", p["cend"], o, p["cbody"]))
             e.for_("q", 0, p["ccount"], type_reference)
         for _flag in range(2):
             _reject(e, e.le(p["cend"], p["ca"]), o, S["CONTRACT_TRUNCATED"])
