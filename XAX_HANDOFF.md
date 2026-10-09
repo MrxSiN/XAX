@@ -190,6 +190,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Allocate any view of 1 MiB or more with `xax_native.zeroed_array(element, count)`, never `(element * count)()`; keep the returned array (it owns its mapping). Contents start zero and are never re-zeroed between calls, exactly as before.
 
+## One-call BLAKE3 up to 16 MiB — 2026-10-09 (ADR-249)
+
+- Regenerate the hash store with `XAX_BLAKE3_PYTHON_HASH=1 PYTHONPATH=src python -c "import xax_selfhost_blake3 as m; m.write_hash_store()"`: the running hash image was lowered for the old extent and traps on larger inputs, so build it on the Python driver.
+- When only one helper store changes, `PYTHONPATH=src python benchmarks/refresh_selfhost_store.py <module> --write` re-executes that program's entries in both self-hosting evidence files.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.
