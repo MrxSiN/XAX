@@ -20,6 +20,8 @@ import sys
 
 OUT = os.environ.get("S8_TRACE_OUT", "/tmp/s8_trace")
 _HITS: collections.Counter = collections.Counter()
+_TESTS: dict = {}  # site -> a few test node ids that reached it
+_CURRENT = [""]
 _GENERIC = ("take", "uleb", "boolean", "end", "byte_string", "zigzag", "<genexpr>", "_reference", "_type_reference", "decode_bits_width",
             "decode_float_format", "_read_value")
 # Lines that raise a diagnostic an XAX program decided (its rejection records), by function.
@@ -55,7 +57,11 @@ def _install() -> None:
                 while caller is not None and caller.f_code.co_name in _GENERIC:
                     caller = caller.f_back
                 name = f"{name}<{caller.f_code.co_name if caller else '?'}:{caller.f_lineno if caller else 0}>"
-            _HITS[(os.path.basename(frame.f_code.co_filename), name, frame.f_lineno, rule)] += 1
+            key = (os.path.basename(frame.f_code.co_filename), name, frame.f_lineno, rule)
+            _HITS[key] += 1
+            tests = _TESTS.setdefault(key, [])
+            if len(tests) < 3 and _CURRENT[0] not in tests:
+                tests.append(_CURRENT[0])
         return original(code, entity, rule, *rest, **kw)
 
     xax_compiler.fail = traced
@@ -68,12 +74,19 @@ def pytest_configure(config):  # noqa: ARG001 - pytest hook
     _install()
 
 
+def pytest_runtest_setup(item):  # pytest hook: the test whose rejections are traced
+    _CURRENT[0] = item.nodeid
+
+
 @atexit.register
 def _dump() -> None:
     if _HITS:
         with open(f"{OUT}.{os.getpid()}", "w") as handle:
             for (path, function, line, rule), count in _HITS.items():
                 handle.write(f"{path}\t{function}\t{line}\t{rule}\t{count}\n")
+        with open(f"{OUT}.tests.{os.getpid()}", "w") as handle:
+            for (path, function, line, rule), tests in _TESTS.items():
+                handle.write(f"{path}:{line}\t{rule}\t{' '.join(tests)}\n")
 
 
 def report(prefix: str) -> list[tuple[str, str, int, str, int]]:
@@ -82,6 +95,8 @@ def report(prefix: str) -> list[tuple[str, str, int, str, int]]:
 
     merged: collections.Counter = collections.Counter()
     for path in glob.glob(f"{prefix}.*"):
+        if ".tests." in path:
+            continue
         for line in open(path):
             file, function, number, rule, count = line.rstrip("\n").split("\t")
             merged[(file, function, int(number), rule)] += int(count)

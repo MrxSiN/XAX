@@ -94,6 +94,9 @@ MEMORY_SITES = (
     # S8c.18 (ADR-236): address offsets into records, and elements an access cannot size.
     "RECORD_FIELD_OFFSET", "RECORD_OFFSET_STRIDE", "ADDRESS_AUTHORITY", "ADDRESS_ALIGNMENT", "BYTE_ADDRESSABLE",
     "LINK_STORAGE_FOREIGN", "LINK_TARGET_OUTLIVES",
+    # S8 (ADR-248): atomic attributes (``_atomic_order`` names the family or "atomic", not the graph).
+    "ATOMIC_RMW_KIND", "ATOMIC_ORDER_ENUM", "ATOMIC_ORDER_LEGAL", "ATOMIC_FAILURE_ORDER", "ATOMIC_FAILURE_STRONGER", "ATOMIC_CMPXCHG_STRENGTH",
+    "ATOMIC_SCOPE_ENUM",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -1949,6 +1952,17 @@ def _one_of(e: E, value, codes):
     return e.either(*(e.eq(value, code) for code in codes))
 
 
+def _atomic_orders(e: E, family: int, order, failure=None):
+    """S8 (ADR-248): ``_atomic_order``'s enum checks (the order, then a compare-exchange's failure order), then the
+    family's legal orders."""
+    _reject(e, _one_of(e, order, (1, 2, 3, 4, 5)), M["ATOMIC_ORDER_ENUM"], order)
+    if failure is not None:
+        _reject(e, _one_of(e, failure, (1, 2, 3, 4, 5)), M["ATOMIC_ORDER_ENUM"], failure)
+    legal = FENCE_ORDERS if family == 5 else ATOMIC_ORDERS[{1: Operation.ATOMIC_LOAD, 2: Operation.ATOMIC_STORE, 3: Operation.ATOMIC_RMW,
+                                                            4: Operation.ATOMIC_CMPXCHG}[family]]
+    _reject(e, _one_of(e, order, legal), M["ATOMIC_ORDER_LEGAL"], family, order)
+
+
 def _atomic(tables, covers, insert, operation):
     operands, results, attributes, effect_index = ATOMIC_SHAPES[operation]
 
@@ -1958,18 +1972,22 @@ def _atomic(tables, covers, insert, operation):
         source = n.vid(0)
         _pointer(e, source, exact=True)
         _reject(e, n.shape(operands, results, attributes), M["OP_CONTRACT"], n.no, n.nr, n.na)
+        family = {Operation.ATOMIC_LOAD: 1, Operation.ATOMIC_STORE: 2, Operation.ATOMIC_RMW: 3, Operation.ATOMIC_CMPXCHG: 4}[operation]
         if operation == Operation.ATOMIC_RMW:
             kind, order, scope, alignment = (n.attr(k) for k in range(4))
-            _require(e, e.both(_one_of(e, kind, (1, 2)), _one_of(e, order, ATOMIC_ORDERS[operation])))
+            _reject(e, _one_of(e, kind, (1, 2)), M["ATOMIC_RMW_KIND"], kind)
+            _atomic_orders(e, family, order)
         elif operation == Operation.ATOMIC_CMPXCHG:
             success, failure, scope, alignment, strength = (n.attr(k) for k in range(5))
-            _require(e, e.both(_one_of(e, success, ATOMIC_ORDERS[operation]), _one_of(e, failure, (1, 2, 5)), _one_of(e, strength, (1, 2))))
+            _atomic_orders(e, family, success, failure)
+            _reject(e, _one_of(e, failure, (1, 2, 5)), M["ATOMIC_FAILURE_ORDER"], failure)
             strength_of = lambda order: e.add(e.flag(e.either(e.eq(order, 2), e.eq(order, 4))), e.mul(e.flag(e.eq(order, 5)), 2))  # noqa: E731
-            _require(e, e.le(strength_of(failure), strength_of(success)))
+            _reject(e, e.le(strength_of(failure), strength_of(success)), M["ATOMIC_FAILURE_STRONGER"], success, failure)
+            _reject(e, _one_of(e, strength, (1, 2)), M["ATOMIC_CMPXCHG_STRENGTH"], strength)
         else:
             order, scope, alignment = (n.attr(k) for k in range(3))
-            _require(e, _one_of(e, order, ATOMIC_ORDERS[operation]))
-        _require(e, _one_of(e, scope, SCOPES))
+            _atomic_orders(e, family, order)
+        _reject(e, _one_of(e, scope, SCOPES), M["ATOMIC_SCOPE_ENUM"], scope)
         element = e.value(PEL, source)
         width = e.table(_T.WIDTH, element)
         _require(e, e.ne(width, 0))  # not bits: the bootstrap's own decode diagnostic
@@ -2010,7 +2028,8 @@ def _atomic_fence(tables):
     def build(e: E):
         n = _Node(e)
         _reject(e, n.shape(1, 1, 2), M["OP_CONTRACT"], n.no, n.nr, n.na)
-        _require(e, e.both(_one_of(e, n.attr(0), FENCE_ORDERS), _one_of(e, n.attr(1), SCOPES)))
+        _atomic_orders(e, 5, n.attr(0))
+        _reject(e, _one_of(e, n.attr(1), SCOPES), M["ATOMIC_SCOPE_ENUM"], n.attr(1))
         _reject(e, e.both(e.eq(e.table(_T.FORMB, n.tid(0)), 3), e.eq(n.rtid(0), n.tid(0))), M["ATOMIC_FENCE_EFFECT"], n.tid(0), n.rtid(0))
         frontier = n.vid(0)
 
@@ -3188,6 +3207,28 @@ def _contract_expected(operation, counts):
     return _CONTRACTS[Operation(operation)]
 
 
+def _atomic_attribute_diagnostic(name: str, x: int, y: int):
+    """S8 (ADR-248): an atomic attribute's diagnostic.  ``_atomic_order``'s name the family (or "atomic") as their entity:
+    those return ``(code, rule, expected, actual, entity)``; the others name the graph."""
+    from xax_compiler import _ATOMIC_ORDERS, AtomicFamily, AtomicOrder, AtomicRmwKind, AtomicScope, CompareExchangeStrength
+
+    if name == "ATOMIC_RMW_KIND":
+        return "XAX.ATOMIC.RMW", "ATOMIC-RMW-KIND", list(AtomicRmwKind), f"{x} is not a valid AtomicRmwKind"
+    if name == "ATOMIC_CMPXCHG_STRENGTH":
+        return "XAX.ATOMIC.CMPXCHG", "ATOMIC-CMPXCHG-STRENGTH", list(CompareExchangeStrength), f"{x} is not a valid CompareExchangeStrength"
+    if name == "ATOMIC_SCOPE_ENUM":
+        return "XAX.ATOMIC.SCOPE", "ATOMIC-SCOPE-ENUM", list(AtomicScope), f"{x} is not a valid AtomicScope"
+    if name == "ATOMIC_ORDER_ENUM":
+        return "XAX.ATOMIC.ORDER", "ATOMIC-ORDER-ENUM", "portable atomic family/order", f"{x} is not a valid AtomicOrder", "atomic"
+    if name == "ATOMIC_ORDER_LEGAL":
+        family = AtomicFamily(x)
+        return ("XAX.ATOMIC.ORDER", "ATOMIC-ORDER-LEGAL", [item.name.lower() for item in _ATOMIC_ORDERS[family]], AtomicOrder(y).name.lower(),
+                family.name.lower())
+    if name == "ATOMIC_FAILURE_ORDER":
+        return "XAX.ATOMIC.ORDER", "ATOMIC-CMPXCHG-FAILURE-ORDER", ["relaxed", "acquire", "seq_cst"], AtomicOrder(x).name.lower(), "cmpxchg"
+    return "XAX.ATOMIC.ORDER", "ATOMIC-CMPXCHG-FAILURE-NOT-STRONGER", AtomicOrder(x).name.lower(), AtomicOrder(y).name.lower(), "cmpxchg"
+
+
 def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=()):
     """S8c.8: the bootstrap's ``(code, rule, expected, actual)`` for an engine rejection record.  Rendering only: the
     engine decided the check and its values; ``refs``/``storages`` map its value and site ids to the bootstrap's
@@ -3319,6 +3360,8 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.PROVENANCE", "INDIRECT-CALL-STACK-PROVENANCE", storages[x], storages[z] if y else None
     if name == "INDIRECT_EFFECT_LINEAR":
         return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_INDIRECT.name
+    if name.startswith(("ATOMIC_RMW_KIND", "ATOMIC_ORDER", "ATOMIC_FAILURE", "ATOMIC_CMPXCHG_STRENGTH", "ATOMIC_SCOPE_ENUM")):
+        return _atomic_attribute_diagnostic(name, x, y)
     if name == "ATOMIC_MEMORY_EFFECT":
         return "XAX.ATOMIC.CONTRACT", "ATOMIC-MEMORY-EFFECT", "matching effect<memory> continuation", [h(x), h(y)]
     if name in ("ATOMIC_WRITE_PERMISSION", "ATOMIC_READ_PERMISSION"):

@@ -665,21 +665,27 @@ def _atomic_program(variant: str):
     if variant == "uninitialized":
         _value, memory = block.op(Operation.ATOMIC_LOAD, (p, memory), (B32, MEM), attributes=(AtomicOrder.ACQUIRE, system, 4))
     target = block.op1(Operation.POINTER_CAST, (p,), read_only) if variant == "read_only" else p
-    stored = block.op1(Operation.ATOMIC_STORE, (target, seed, memory), MEM, attributes=(AtomicOrder.RELEASE, system, 3 if variant == "misaligned" else 4))
+    store_order = {"order_enum": 9, "order_legal": AtomicOrder.ACQUIRE}.get(variant, AtomicOrder.RELEASE)
+    stored = block.op1(Operation.ATOMIC_STORE, (target, seed, memory), MEM, attributes=(store_order, 7 if variant == "scope_enum" else system,
+                                                                                        3 if variant == "misaligned" else 4))
     if variant == "forked":
         block.op1(Operation.ATOMIC_STORE, (p, seed, memory), MEM, attributes=(AtomicOrder.RELEASE, system, 4))
     memory = stored
     load_types = {"effect_type": (B32, B32), "result_type": (B64, MEM)}.get(variant, (B32, MEM))
     loaded, memory = block.op(Operation.ATOMIC_LOAD, (p, memory), load_types, attributes=(AtomicOrder.ACQUIRE, system, 4))
     addend = block.const(B64, 1) if variant == "value_type" else seed
-    _old, memory = block.op(Operation.ATOMIC_RMW, (p, addend, memory), (B32, MEM), attributes=(AtomicRmwKind.ADD_WRAP, AtomicOrder.ACQ_REL, system, 4))
-    fenced = block.op1(Operation.ATOMIC_FENCE, (memory,), B32 if variant == "fence_effect" else MEM, attributes=(AtomicOrder.SEQ_CST, system))
+    _old, memory = block.op(Operation.ATOMIC_RMW, (p, addend, memory), (B32, MEM), attributes=(5 if variant == "rmw_kind" else AtomicRmwKind.ADD_WRAP,
+                                                                                               AtomicOrder.ACQ_REL, system, 4))
+    fence_order = AtomicOrder.RELAXED if variant == "fence_order" else AtomicOrder.SEQ_CST
+    fenced = block.op1(Operation.ATOMIC_FENCE, (memory,), B32 if variant == "fence_effect" else MEM, attributes=(fence_order, system))
     if variant == "fence_forked":
         block.op1(Operation.ATOMIC_FENCE, (memory,), MEM, attributes=(AtomicOrder.SEQ_CST, system))
     memory = memory if variant == "fence_effect" else fenced
     flag = B32 if variant == "cmpxchg_result" else B1
     _seen, _ok, memory = block.op(Operation.ATOMIC_CMPXCHG, (p, seed, seed, memory), (B32, flag, MEM),
-                                  attributes=(AtomicOrder.SEQ_CST, AtomicOrder.ACQUIRE, system, 4, CompareExchangeStrength.STRONG))
+                                  attributes=(AtomicOrder.RELAXED if variant == "cmpxchg_stronger" else AtomicOrder.SEQ_CST,
+                                              {"cmpxchg_failure": AtomicOrder.RELEASE, "cmpxchg_failure_enum": 8}.get(variant, AtomicOrder.ACQUIRE), system, 4,
+                                              3 if variant == "cmpxchg_strength" else CompareExchangeStrength.STRONG))
     block.op(Operation.STACK_END, (owner, memory), ())
     block.ret(seed)
     function = graph.function((B32,), (B32,))
@@ -704,7 +710,8 @@ class SelfhostAtomicTests(unittest.TestCase):
         rules = {}
         try:
             for variant in ("valid", "uninitialized", "read_only", "misaligned", "forked", "effect_type", "result_type", "value_type", "cmpxchg_result",
-                            "fence_effect", "fence_forked"):
+                            "fence_effect", "fence_forked", "order_enum", "order_legal", "scope_enum", "rmw_kind", "fence_order", "cmpxchg_stronger",
+                            "cmpxchg_failure", "cmpxchg_failure_enum", "cmpxchg_strength"):
                 function, objects = _atomic_program(variant)
                 baseline = _outcome(None, function, objects)
                 decided.clear()
@@ -717,6 +724,11 @@ class SelfhostAtomicTests(unittest.TestCase):
             "misaligned": ("MEMORY-ALIGNMENT", True), "forked": ("MEMORY-EFFECT-LINEAR", True), "effect_type": ("ATOMIC-MEMORY-EFFECT", True),
             "result_type": ("ATOMIC-RESULT-TYPE", True), "value_type": ("ATOMIC-VALUE-TYPE", True), "cmpxchg_result": ("ATOMIC-CMPXCHG-RESULT", True),
             "fence_effect": ("ATOMIC-FENCE-EFFECT", True), "fence_forked": ("MEMORY-EFFECT-LINEAR", True),
+            # S8 (ADR-248): atomic attributes.
+            "order_enum": ("ATOMIC-ORDER-ENUM", True), "order_legal": ("ATOMIC-ORDER-LEGAL", True), "scope_enum": ("ATOMIC-SCOPE-ENUM", True),
+            "rmw_kind": ("ATOMIC-RMW-KIND", True), "fence_order": ("ATOMIC-ORDER-LEGAL", True), "cmpxchg_stronger": ("ATOMIC-CMPXCHG-FAILURE-NOT-STRONGER", True),
+            "cmpxchg_failure": ("ATOMIC-CMPXCHG-FAILURE-ORDER", True), "cmpxchg_failure_enum": ("ATOMIC-ORDER-ENUM", True),
+            "cmpxchg_strength": ("ATOMIC-CMPXCHG-STRENGTH", True),
         })
 
 
