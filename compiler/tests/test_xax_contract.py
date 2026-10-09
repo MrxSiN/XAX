@@ -24,6 +24,16 @@ class HostContractTests(unittest.TestCase):
         self.assertEqual(tuple(formats["checked_byte_view_widths"]), CHECKED_BYTE_VIEW_WIDTHS)
         self.assertGreaterEqual(xax_contract.HOST_CONTRACT_MINOR, 2)  # byte-view widening (ADR-231)
 
+    def test_prepare_is_on_the_host_surface(self):
+        """ADR-250: ``xax_native.prepare`` joined the surface in minor 3."""
+        import xax_native
+
+        self.assertGreaterEqual(xax_contract.HOST_CONTRACT_MINOR, 3)
+        self.assertIn("prepare", xax_contract.INTERFACES["xax_native"])
+        self.assertTrue(callable(xax_native.prepare))
+        self.assertEqual(set(xax_native.PREPARE_COMPONENTS),
+                         {"blake3-hash", "store-decoder", "graph-decoder", "cfg", "x86-64-views-backend", "typing", "store-verifier"})
+
     def test_description_is_plain_data(self):
         import json
 

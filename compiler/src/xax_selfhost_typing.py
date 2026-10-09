@@ -89,7 +89,7 @@ REJECTED = 3
 DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
 PASS_NODES_AT = DIAGNOSTICS - 1  # the node stream position, for the rejection pass (ADR-218)
 PASS_SINK = DIAGNOSTICS - 2  # S8c.7: where list words go that do not fit below TABLE (never read)
-TERMINATOR_RECORDS = PASS_SINK - 4  # S8 (ADR-248): block b's terminator record at TERMINATOR_RECORDS - 4 * b
+TERMINATOR_RECORDS = PASS_SINK - 4  # S8 (ADR-251): block b's terminator record at TERMINATOR_RECORDS - 4 * b
 # Rejection sites, in each family's bootstrap check order: (code, rule) and the record's payload meaning.
 (SITE_NONE, SITE_OP_ARITY, SITE_OP_TYPE, SITE_INT_WIDTH_CONTRACT, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS,
  SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT,
@@ -113,7 +113,7 @@ TERMINATOR_RECORDS = PASS_SINK - 4  # S8 (ADR-248): block b's terminator record 
 (SITE_CONSTANT_TARGET_NONE, SITE_CONSTANT_TARGET_KIND, SITE_CONSTANT_CONTRACT, SITE_CALL_TARGET_NONE,
  SITE_CALL_TARGET_KIND) = range(SITE_META_ARITY + 29, SITE_META_ARITY + 34)
 SITE_CALL_CONTRACT = SITE_META_ARITY + 34  # S8c.7 (ADR-220)
-# S8 (ADR-248): a node's type decoded as ``bits`` or ``float`` that the decoder rejects (payload: the type); the
+# S8 (ADR-251): a node's type decoded as ``bits`` or ``float`` that the decoder rejects (payload: the type); the
 # diagnostic is the decoder's own, for the type (its per-type XSTAT/XA/XB outcome).
 SITE_CROSS_BITS, SITE_CROSS_FLOAT = SITE_META_ARITY + 35, SITE_META_ARITY + 36
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
@@ -131,13 +131,13 @@ OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a cons
 # and the type's width (bits) or float width.
 CREJ, COFF, CLEN, CWIDTH = 28, 29, 30, 31
 C4, C5 = 32, 33  # S8c.26 (ADR-244): a resource type's flags and instance
-# S8 (ADR-248): the type's body read as ``decode_bits_width``/``decode_float_format`` read it: XSTAT 0 (form and value
+# S8 (ADR-251): the type's body read as ``decode_bits_width``/``decode_float_format`` read it: XSTAT 0 (form and value
 # read, nothing left: XA the form, XB the value), 1-3 a malformed ULEB (XA its body offset, XB its size), 4 deferred
 # (a value over five bytes, or a type the stream does not resolve), 5 trailing bytes (XA how many), 6 not a type (XA
 # its kind).
 XSTAT, XA, XB = 34, 35, 36
 C6 = 37  # S8: a resource type's transition-count body offset
-# S8 (ADR-248): the type's body read as ``_decode_pointer_type`` reads it before its element: XP 0 (a pointer shape, or
+# S8 (ADR-251): the type's body read as ``_decode_pointer_type`` reads it before its element: XP 0 (a pointer shape, or
 # not decided), 1-3 a malformed ULEB (XPA its offset), 4 deferred, 5 trailing bytes (XPA), 6 element index out of range
 # (XPA), 7 unknown permission (XPA), 8 not a pointer shape (XPA form, XPB space, XPC alignment).
 XP, XPA, XPB, XPC = 38, 39, 40, 41
@@ -156,7 +156,7 @@ TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "
               "TYPE_RESOURCE_STACK_OWNER", "TYPE_RESOURCE_CANONICAL", "TYPE_ARRAY_ELEMENT",
               # S8c.27 (ADR-245): tuple and sum items (C4: the used-reference bit mask).
               "TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT", "TYPE_LIST_UNUSED",
-              # S8 (ADR-248): malformed ULEB fields (C4: the field's offset in the body).
+              # S8 (ADR-251): malformed ULEB fields (C4: the field's offset in the body).
               "TYPE_ULEB_UNTERMINATED", "TYPE_ULEB_MINIMAL", "TYPE_ULEB_BOUNDED",
               # S8c.28 (ADR-246): pointer elements and opaque identity types.
               "TYPE_POINTER_ELEMENT", "TYPE_POINTER_UNUSED", "TYPE_IDENTITY_TRUNCATED", "TYPE_IDENTITY_CANONICAL")
@@ -247,7 +247,7 @@ def _uleb_bytes(t, data):
 
 
 def _uleb_status(t, at, end):
-    """S8 (ADR-248): ``Cursor.uleb``'s outcome at ``at`` inside a body ending at ``end``: ``(status, size)`` with status
+    """S8 (ADR-251): ``Cursor.uleb``'s outcome at ``at`` inside a body ending at ``end``: ``(status, size)`` with status
     0 (canonical, at most five bytes), 1 (unterminated: the body ends first), 2 (non-minimal), 3 (more than ten
     bytes), or 4 (canonical but longer than five bytes: a deferred value)."""
     b = t.b
@@ -371,7 +371,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
-    # S8 (ADR-248): block terminator rejection records sit below PASS_SINK, one four-word record per block going down
+    # S8 (ADR-251): block terminator rejection records sit below PASS_SINK, one four-word record per block going down
     # (the node records and the rejection pass's lists sit above DIAGNOSTICS).
     b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, b.mul(blocks, 5)), 8), DIAGNOSTICS), b.defer_block)
     records = b.c(TERMINATOR_RECORDS)
@@ -428,7 +428,7 @@ def _scalar_entry(b: _Builder, t: _Typing, index, carried):
     b.put(t.slot(LINK, index), link_ok)
     b.put(t.slot(POSITION, index), position)
     b.put(t.slot(FORMB, index), b.mul(t.all(t.eq(kind, int(Kind.TYPE)), t.nonzero(length)), first))
-    # S8 (ADR-248): the cross-form read (two ULEBs, then the end) for nodes that decode this type as bits or float.
+    # S8 (ADR-251): the cross-form read (two ULEBs, then the end) for nodes that decode this type as bits or float.
     end = b.add(base, length)
     form_status, form_size = _uleb_status(t, base, end)
     form_value, _size, _ok = t.uleb(base)
@@ -780,7 +780,7 @@ def _block_place(b: _Builder, index, carried, places):
 def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdicts, records):
     """A block's terminator: a ``bits<1>`` branch condition, and edge argument types equal to the target's parameters.
 
-    S8 (ADR-248): a terminator the bootstrap rejects gets a record ``[site, a, condition, 0]`` at ``records - 4 * index``:
+    S8 (ADR-251): a terminator the bootstrap rejects gets a record ``[site, a, condition, 0]`` at ``records - 4 * index``:
     site 1 a bits condition of another width (``GRAPH-CBR-CONDITION``), site 2 edge ``a``'s argument types
     (``GRAPH-BLOCK-PARAMETERS``).  A non-bits condition (the bootstrap's width decoder rejects it) gives no record."""
     position = b.get(b.add(places, index))
@@ -904,7 +904,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
     second, second_size, second_ok = t.uleb(b.add(base, form_size))
     after = b.add(b.add(base, form_size), second_size)
     second_ok = t.all(second_ok, t.le(after, end), t.le(b.add(base, form_size), end))
-    # S8 (ADR-248): each field's ``Cursor.uleb`` outcome, so a malformed field rejects as the bootstrap's cursor does.
+    # S8 (ADR-251): each field's ``Cursor.uleb`` outcome, so a malformed field rejects as the bootstrap's cursor does.
     statuses, starts = [], []
     field_at = base
     for _field in range(6):
@@ -992,7 +992,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
     unknown_flags = t.nonzero(b.op(Operation.BIT_AND, fourth, ~15 & ((1 << 64) - 1)))
     plain_owner = t.all(t.eq(second, 1), t.eq(third, 1), t.eq(fourth, 4), t.eq(fifth, 0))
     long_bad = t.any(t.nonzero(references), t.eq(second, 0), t.eq(third, 0), unknown_flags, plain_owner)
-    # S8 (ADR-248): the transitions, each a ULEB as the cursor reads it: strictly increasing, positive, not the state.
+    # S8 (ADR-251): the transitions, each a ULEB as the cursor reads it: strictly increasing, positive, not the state.
     steps = t.pick(t.all(sixth_ok, t.le(sixth, length)), sixth, t.pick(sixth_ok, length, b.c(0)))
 
     def transition(k, carried):
@@ -1068,14 +1068,14 @@ def _object_entry(b: _Builder, t: _Typing, index):
     type_third = t.pick(listy, list_third, t.pick(t.eq(form, 6), identity_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
         t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, transitions_end), third), t.pick(t.eq(form, 9), array_third, left)))))))
     b.put(t.slot(C5, index), fifth)
-    # S8 (ADR-248): any object but a constant is read as a type when a type reference names it (``_verify_type`` has no
+    # S8 (ADR-251): any object but a constant is read as a type when a type reference names it (``_verify_type`` has no
     # kind check); kind 0 is an entry whose references did not resolve.
     a_type = t.not_(t.any(t.eq(kind, int(Kind.CONSTANT)), t.eq(kind, 0)))
     type_site = t.pick(t.eq(statuses[0], 0), type_site, first_bad(0))
     uleb_site = t.any(*(t.eq(type_site, b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))) for name in uleb_codes.values()))
     b.put(t.slot(C4, index), t.pick(uleb_site, t.pick(transition_uleb, transition_fault_at, first_bad_at(5)), t.pick(listy, used_mask, fourth)))
     b.put(t.slot(C6, index), b.sub(after5, base))  # S8: a resource type's transition count offset (its canonical rejection quotes them)
-    # S8 (ADR-248): ``_decode_pointer_type``'s reading of any type, up to its shape check.
+    # S8 (ADR-251): ``_decode_pointer_type``'s reading of any type, up to its shape check.
     shape_bad = t.any(t.not_(t.eq(form, 2)), t.eq(second, 0), t.eq(fifth, 0), t.not_(power))
     xp, xpa = t.pick(shape_bad, b.c(8), b.c(0)), form
     xp, xpa = t.pick(t.one_of(fourth, (1, 2, 3)), xp, b.c(7)), t.pick(t.one_of(fourth, (1, 2, 3)), xpa, fourth)
@@ -1426,7 +1426,7 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
 
 
 def _cross(b: _Builder, t: _Typing, type_, decoder: int):
-    """S8 (ADR-248): ``decode_bits_width`` (1) or ``decode_float_format`` (7) of ``type_`` fails: the decoder's diagnostic
+    """S8 (ADR-251): ``decode_bits_width`` (1) or ``decode_float_format`` (7) of ``type_`` fails: the decoder's diagnostic
     (site 0 when it would succeed, or the outcome is deferred)."""
     stat, xa, xb = t.lookup(XSTAT, type_), t.lookup(XA, type_), t.lookup(XB, type_)
     references = b.read(b.add(t.lookup(POSITION, type_), 1))
@@ -1644,7 +1644,7 @@ class _Rendering:
         return self.cids[index].hex()
 
 
-# S8 (ADR-248): the decoders that check only the form before reading on: form -> (code, rule, expected).  Key 0 is
+# S8 (ADR-251): the decoders that check only the form before reading on: form -> (code, rule, expected).  Key 0 is
 # ``_decode_pointer_space`` (form 2, then the space).
 FORM_CHECKS = {
     3: ("XAX.TYPE.EFFECT", "TYPE-EFFECT", "effect type"),
@@ -1658,7 +1658,7 @@ FORM_CHECKS = {
 
 
 def pointer_cross_diagnostic(stat: int, xa: int, xb: int, xc: int, obj):
-    """S8 (ADR-248): ``_decode_pointer_type``'s diagnostic for a type by the program's reading (XP/XPA/XPB/XPC), as
+    """S8 (ADR-251): ``_decode_pointer_type``'s diagnostic for a type by the program's reading (XP/XPA/XPB/XPC), as
     ``(code, rule, expected, actual, entity)``; None when it reads a pointer shape or the outcome is deferred."""
     from xax_compiler import Permission
 
@@ -1681,7 +1681,7 @@ def pointer_cross_diagnostic(stat: int, xa: int, xb: int, xc: int, obj):
 
 
 def cross_diagnostic(bits: bool, stat: int, xa: int, xb: int, cid: bytes, body: bytes):
-    """S8 (ADR-248): ``decode_bits_width`` (``bits``) or ``decode_float_format`` of a type, by the program's outcome for
+    """S8 (ADR-251): ``decode_bits_width`` (``bits``) or ``decode_float_format`` of a type, by the program's outcome for
     it: ``(code, rule, expected, actual, entity)`` (the entity is the type).  ``body``: the type's body (for the
     malformed ULEB the outcome locates)."""
     from xax_compiler import uleb
@@ -1754,7 +1754,7 @@ def write_typing_store() -> bytes:
 
 BODY_LIMIT = 64  # longer bodies are passed as "other" (never proven)
 TARGET_BODY_LIMIT = 4096  # foreign-function carriers embed their interface CIDs
-NATIVE_TARGET_LIMIT = 1 << 16  # S8 (ADR-248): a platform target lists hundreds of operation contracts
+NATIVE_TARGET_LIMIT = 1 << 16  # S8 (ADR-251): a platform target lists hundreds of operation contracts
 
 
 def type_info_from(resolve):
@@ -2053,14 +2053,14 @@ class NativeTyping:
         image.entry_offset = entry_offset
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + image.code
-        from xax_native import executable_mapping
+        from xax_native import executable_mapping, zeroed_array
 
         self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + image.entry_offset
         self.code_size = len(image.code)
-        self._in = (ctypes.c_uint64 * IN_WORDS)()
-        self._out = (ctypes.c_uint64 * OUT_WORDS)()
+        self._in = zeroed_array(ctypes.c_uint64, IN_WORDS)
+        self._out = zeroed_array(ctypes.c_uint64, OUT_WORDS)
         self._slots = (ctypes.c_uint64 * 4)()
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
@@ -2084,7 +2084,7 @@ class NativeTyping:
         return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
 
     def object_cross(self, listed: dict, objects: dict) -> dict:
-        """After ``object_verdicts``: S8 (ADR-248), ``{cid: {form: diagnostic}}`` for the types whose body
+        """After ``object_verdicts``: S8 (ADR-251), ``{cid: {form: diagnostic}}`` for the types whose body
         ``decode_bits_width`` (1), ``decode_float_format`` (7), or ``_decode_pointer_type`` (2) rejects, by the program's
         reading of each body (``cross_diagnostic``, ``pointer_cross_diagnostic``)."""
         count = getattr(self, "_object_count", None)
@@ -2136,7 +2136,7 @@ class NativeTyping:
             obj = objects[cid]
             offset, length, width = table(COFF, index), table(CLEN, index), table(CWIDTH, index)
             if site > TYPE_SITE_BASE:
-                # The form (S8, ADR-248): a type decoder of the same form raises this same diagnostic.
+                # The form (S8, ADR-251): a type decoder of the same form raises this same diagnostic.
                 rejected[cid] = (*_type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index), table(C6, index)), offset)
                 continue
             value = obj.body[offset:offset + length]
@@ -2180,7 +2180,7 @@ class NativeTyping:
             return None
 
     def terminator_rejection(self, nodes: int, block: int) -> tuple[int, int, int]:
-        """After an accepted ``check``: S8 (ADR-248), block ``block``'s terminator record ``(site, edge, condition type)``
+        """After an accepted ``check``: S8 (ADR-251), block ``block``'s terminator record ``(site, edge, condition type)``
         (site 0: none; 1: ``GRAPH-CBR-CONDITION``; 2: ``GRAPH-BLOCK-PARAMETERS`` at that edge)."""
         at = TERMINATOR_RECORDS - 4 * block
         return tuple(self._out[at : at + 3])
@@ -2223,7 +2223,7 @@ class NativeTyping:
         return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions, interface, body)
 
     def linear_rejection(self):
-        """After an accepted ``check``: S8 (ADR-248), ``(code, a, b)`` for the linear-flow check XAX found failing
+        """After an accepted ``check``: S8 (ADR-251), ``(code, a, b)`` for the linear-flow check XAX found failing
         (``LINEAR_SITES[code - 1]``), or None."""
         from xax_selfhost_facts import H_LA, H_LB, H_LREJ, HEADER
 

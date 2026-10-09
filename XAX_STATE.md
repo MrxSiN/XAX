@@ -43,7 +43,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S9 and later steps are open (ADR-180, ADR-248)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S9 and later steps are open (ADR-180, ADR-251)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -129,9 +129,29 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
-## S8 verifier totality — 2026-10-09 (ADR-248)
+## S8 verifier totality — 2026-10-09 (ADR-251)
 
 S8 is complete: on Linux x86-64 every verifier rejection the suite reaches is decided by an XAX program with the bootstrap's exact diagnostic. The full-suite trace (`compiler/migration/s8_rejection_trace.py`) reports 0 bootstrap-decided rejection sites, and the differential plugin (`compiler/migration/s8_differential.py`) matched 4,681 live rejections to the bootstrap's with 0 differences. Python still decides off Linux x86-64 and where an XAX program declines (oversized or unmodelled inputs); it remains the differential oracle. Next: S9 (canonical store writing in XAX).
+## Fast first start: `xax_native.prepare` — 2026-10-09 (ADR-250)
+
+`xax_native.prepare(parallel=True)` readies every component image and verified-store record in child processes (host contract minor 3); cache entries are published by atomic rename; lowering no longer re-verifies a store its loader just verified. First construct of the warm-up carrier, `XAX_REQUIRE_NATIVE=1`, this host:
+
+| | Before (4e16e32) | After P6 (ADR-248) | After P6+P7 (ADR-249) | After P6+P7+P8 (ADR-250) |
+|---|---|---|---|---|
+| Warm cache, wall (median of 5) | 2.235 s | 1.962 s | 0.528 s | 0.523 s |
+| Warm cache, added peak RSS | +764.7 MB | +43.3 MB | +45.0 MB | +44.9 MB |
+| Empty cache, sequential | 47.3 / 47.0 s, +1.36 GB | 46.0 / 47.3 s, +694 MB | 45.5 / 45.0 s, +697 MB | 47.4 / 44.5 s, +703 MB |
+| Empty cache, `prepare(parallel=True)` + construct | — | — | — | 25.5 / 25.7 s |
+
+The constructed store (root `70cff343…`), every image, and every CID are unchanged except the regenerated BLAKE3 hash store (ADR-249). Prebuilt images are not shipped (ADR-250).
+
+## One-call BLAKE3 up to 16 MiB — 2026-10-09 (ADR-249)
+
+The XAX BLAKE3 hash lends a 16 MiB input view (`xax_blake3_hash.xax` regenerated; its CID is the only one that changes), so every committed store hashes in one native call; the per-block driver reuses its argument buffers. Warm first construct: 1.96 s → 0.53 s, +45 MB peak RSS. Digests are unchanged.
+
+## Lazily zeroed component views — 2026-10-09 (ADR-248)
+
+The XAX-hosted components' views are lazily zeroed anonymous mappings. Warm first construct: 2.24 s and +765 MB peak RSS before, 1.96 s and +43 MB after; no change to any store, CID, or artifact.
 
 ## S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
 

@@ -52,6 +52,20 @@ class NativeHashTests(unittest.TestCase):
             with self.subTest(size=size):
                 self.assertEqual(self.hasher.digest(data), blake3._Blake3(data).digest())
 
+    def test_component_stores_over_one_mib_hash_in_one_call(self):
+        """ADR-249: the stores the old 1 MiB view sent through the per-block driver hash in one call, bit-identically."""
+        from xax_native import bootstrap_dir
+
+        stores = [path for path in sorted(bootstrap_dir().glob("*.xax")) if path.stat().st_size > 1 << 20]
+        self.assertGreaterEqual(len(stores), 2)
+        for path in stores:
+            data = path.read_bytes()
+            with self.subTest(store=path.name):
+                self.assertLessEqual(len(data), self.hasher.capacity)
+                self.assertEqual(self.hasher.digest(data), blake3._Blake3(data).digest())
+                self.assertEqual(type(blake3.blake3(data)).__name__, "_OneShot")
+                self.assertEqual(blake3.blake3(data).digest(), blake3._Blake3(data).digest())
+
     def test_stale_buffer_bytes_never_leak_into_the_digest(self):
         self.hasher.digest(b"\xff" * 5000)
         self.assertEqual(self.hasher.digest(b"abc").hex(), VECTORS[b"abc"])

@@ -520,7 +520,7 @@ class SelfhostTypingTests(unittest.TestCase):
             baseline = _outcome(None, *sample)
             self.assertEqual(baseline[1], rule)
             self.assertEqual(_outcome(self.native, *sample), baseline, rule)
-        # S8 (ADR-248): a type the node decodes as bits that its decoder rejects (an overlong width) is decided by XAX
+        # S8 (ADR-251): a type the node decodes as bits that its decoder rejects (an overlong width) is decided by XAX
         # with the decoder's diagnostic; a clamped attribute stays with the bootstrap.
         overlong = (Operation.ADD_WRAP, (OVERLONG, OVERLONG), (OVERLONG,), ())
         status, verdicts = _native_verdicts(self.native, [overlong, (Operation.ROTATE_RIGHT, (B64,), (B64,), ((1 << 64) - 1,))])

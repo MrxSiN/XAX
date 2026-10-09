@@ -80,6 +80,20 @@ def test_blake3_xax_graph_runs_natively_and_matches_python_leaf():
     assert native.compress(cv, block, counter, block_len, flags) == expected
 
 
+@pytest.mark.skipif(xax_native.native_host() is not None, reason=f"UNAVAILABLE: {xax_native.native_host()}")
+def test_preallocated_leaf_buffers_carry_no_state_between_calls():
+    """ADR-249: one argument and one result array per compressor; every call still returns its own exact words."""
+    import random
+
+    native = native_blake3_compressor()
+    rng = random.Random(7)
+    calls = [(tuple(rng.getrandbits(32) for _ in range(8)), tuple(rng.getrandbits(32) for _ in range(16)),
+              rng.getrandbits(64), rng.randrange(65), rng.randrange(16)) for _ in range(64)]
+    results = [native.compress(*call) for call in calls]
+    assert results == [blake3_module._compress_python(*call) for call in calls]
+    assert native.compress(*_args()) == blake3_module._compress_python(*_args())
+
+
 def test_public_blake3_digest_matches_bootstrap_leaf_with_native_acceleration():
     payload = bytes(range(256)) * 20
     accelerated = blake3_module.blake3(payload).digest()

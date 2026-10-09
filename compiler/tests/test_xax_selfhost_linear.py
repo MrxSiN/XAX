@@ -110,7 +110,7 @@ def _outcome(function, objects, use_proof: bool, native):
 
     original_rejection = type(native).linear_rejection
 
-    def rejection(self):  # S8 (ADR-248): the bootstrap alone decides when the proof is off
+    def rejection(self):  # S8 (ADR-251): the bootstrap alone decides when the proof is off
         return original_rejection(self) if use_proof else None
 
     type(native).linear_flow = recording

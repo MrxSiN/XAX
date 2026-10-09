@@ -143,7 +143,7 @@ def _verify(reader, use_xax: bool):
 
 
 def _general_or_concurrency(target) -> bool:
-    """The targets XAX decides: every target (S8, ADR-248: accelerator fields on any architecture too)."""
+    """The targets XAX decides: every target (S8, ADR-251: accelerator fields on any architecture too)."""
     return True
 
 

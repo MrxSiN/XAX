@@ -57,7 +57,7 @@ STORE_PATH = bootstrap_dir() / "xax_store_verifier.xax"
 VERDICTS_AT, GRAPHS_AT, ARENA_AT = 1 << 20, 6 << 20, 12 << 20
 REJECTS_AT, REJECT_WORDS = 3 << 20, 8  # S8c.19 (ADR-237): a rejected object's record: site, payload words
 OK = 1
-STORE_FAULT = 5  # S8 (ADR-248): the store's own rejection: 1 a cycle (word 6: the object re-entered), 2 unreachable objects (word 6: the colours)
+STORE_FAULT = 5  # S8 (ADR-251): the store's own rejection: 1 a cycle (word 6: the object re-entered), 2 unreachable objects (word 6: the colours)
 REJECTED = 2  # an object verdict: the bootstrap rejects this object with the recorded diagnostic
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
 ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 48, 52, 53, 55, 56, 57,
@@ -94,7 +94,7 @@ def _payload(e: E, obj):
 
 
 def _graph_rejected(e: E, graph):
-    """S8 (ADR-248): the XAX graph decoder rejected this graph's body; its payload is the stream prefix before the
+    """S8 (ADR-251): the XAX graph decoder rejected this graph's body; its payload is the stream prefix before the
     rejection (the word after the body bytes)."""
     stream = _payload(e, graph)
     body_len_at = e.add(stream, e.rd(e.sub(stream, 1)))
@@ -126,21 +126,21 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 # the graph object), so the host parses it first.
                 "FUNCTION_REF_INDEX", "FUNCTION_MEMBER_TRAILING", "FUNCTION_MEMBER_RANGE", "FUNCTION_CARRIER", "FUNCTION_TRAILING",
                 "FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED",
-                # S8 (ADR-248): a member call in an ordinary function's graph (payload: the graph).
+                # S8 (ADR-251): a member call in an ordinary function's graph (payload: the graph).
                 "FUNCTION_GROUP_CONTEXT",
                 # S8c.21 (ADR-239): recursion-group member lists (``_decode_recursion_group``, before any member parses).
                 "GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED",
                 # S8c.22 (ADR-240): after member graphs parse (payload: graphs to parse first, quoted list, [count, graphs]).
                 "GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC",
-                # S8 (ADR-248): the canonical member order (payload: count, the canonical order, graphs).
+                # S8 (ADR-251): the canonical member order (payload: count, the canonical order, graphs).
                 "GROUP_ORDER",
                 # S8c.23 (ADR-241): targets (``decode_native_target``).
                 "TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
                 "TARGET_PROFILE", "TARGET_X86_64", "TARGET_RISCV64", "TARGET_SPIRV", "TARGET_JVM", "TARGET_WASM32", "TARGET_AARCH64",
                 "TARGET_ANDROID", "TARGET_AARCH64_LINUX", "TARGET_BAREMETAL", "TARGET_BOARD", "TARGET_ACCELERATOR",
-                # S8 (ADR-248): per-graph glue (raised inside the graph parse, wherever it is first reached).
+                # S8 (ADR-251): per-graph glue (raised inside the graph parse, wherever it is first reached).
                 "GRAPH_TRAP_PAYLOAD", "GRAPH_UNUSED",
-                # S8 (ADR-248): any body's malformed ULEB (status, body offset, size); a target section's ENUM diagnostic
+                # S8 (ADR-251): any body's malformed ULEB (status, body offset, size); a target section's ENUM diagnostic
                 # (section, kind, value); target canonical rules (payload: the recorded words, their count, item, check, sub).
                 "BODY_ULEB", "TARGET_SECTION", "TARGET_X86_REGISTERS", "TARGET_AAPCS64_REGISTERS", "TARGET_ACC_TOPOLOGY",
                 "TARGET_ACC_SCOPES", "TARGET_ACC_SPACES", "TARGET_ACC_SPACE", "TARGET_ACC_OPERATIONS", "TARGET_ACC_CONTRACT",
@@ -192,7 +192,7 @@ def _list_copy(e: E, count, word):
 
 
 def _read(e: E, name: str, end, obj=None, start=None):
-    """A canonical ULEB at ``p[name]``, inside ``end``; advances it (verdict 0 otherwise).  S8 (ADR-248): with ``obj``
+    """A canonical ULEB at ``p[name]``, inside ``end``; advances it (verdict 0 otherwise).  S8 (ADR-251): with ``obj``
     and its body ``start``, a malformed ULEB rejects ``obj`` as ``Cursor.uleb`` does (``BODY_ULEB``)."""
     p = e.p
     if obj is not None:
@@ -302,7 +302,7 @@ def _function_ok(tables):
             # ``decode_group_member_function``: [group, member], the group proven (S6b.3), member < its size.
             e.var("member", _read(e, "fa", p["fend"], f, p["fbody"]))
             _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_MEMBER_TRAILING"], e.sub(p["fend"], p["fa"]))
-            # S8 (ADR-248): ``_decode_recursion_group`` is all the bootstrap runs here (the group verifies itself).
+            # S8 (ADR-251): ``_decode_recursion_group`` is all the bootstrap runs here (the group verifies itself).
             size = e.ld(e.add(_g(e, G_GROUP_SIZE), p["graph"]))
             _no(e, e.eq(size, NONE))
             _reject(e, e.le(size, p["member"]), f, S["FUNCTION_MEMBER_RANGE"], size, p["member"])
@@ -364,7 +364,7 @@ def _graph_ok(tables):
 
             def node():
                 e.st(e.add(p["node_at"], p["nodes"]), p["ga"])
-                # S8 (ADR-248): a member call outside a group: ``_verify_function``'s GROUP-CALL-CONTEXT (code 7).
+                # S8 (ADR-251): a member call outside a group: ``_verify_function``'s GROUP-CALL-CONTEXT (code 7).
                 e.if_(e.both(e.eq(p["members"], NONE), e.eq(e.rd(p["ga"]), int(Operation.CALL_GROUP_MEMBER))), lambda: e.set("context", 1))
                 e.set("ga", _node_end(e, p["ga"]))
                 e.st(e.add(p["results_at"], p["nodes"]), p["ne_results"])
@@ -642,7 +642,7 @@ def _group_ok(tables):
             e.while_(lambda: e.lt(p["bk"], p["found"]), visit)
             e.if_(e.ne(p["found"], p["count"]), scc)  # some start reaches only part of the group
 
-        # S8 (ADR-248): the canonical order is the smallest descriptor over every start (the first start on a tie);
+        # S8 (ADR-251): the canonical order is the smallest descriptor over every start (the first start on a tie);
         # start 0's order and positions are the first best.
         e.var("bestord", e.alloc(e.add(p["count"], 1)))
         e.var("bestpos", e.alloc(e.add(p["count"], 1)))
@@ -789,7 +789,7 @@ def _sorted_list(e: E, name: str, end, low: int, high):
 
 
 def _uleb10_fn(tables):
-    """S8 (ADR-248): ``Cursor.uleb`` at input word ``at`` inside ``end``: the value, with G_ULEB_STATUS 0 (canonical),
+    """S8 (ADR-251): ``Cursor.uleb`` at input word ``at`` inside ``end``: the value, with G_ULEB_STATUS 0 (canonical),
     1 (unterminated: the body ends first), 2 (non-minimal), 3 (more than ten bytes), or 4 (a ten-byte value, which
     may not fit a word) and G_ULEB_SIZE (the bytes read)."""
     def build(e: E):
@@ -832,7 +832,7 @@ def _uleb10_fn(tables):
 
 
 def _strict_read_fn(tables):
-    """S8 (ADR-248): ``Cursor.uleb`` of object ``o``'s body at ``at`` (inside ``end``, the body starting at ``start``),
+    """S8 (ADR-251): ``Cursor.uleb`` of object ``o``'s body at ``at`` (inside ``end``, the body starting at ``start``),
     the value stored at ``slot``.  G_EXIT is 1 to go on, or the caller's verdict: REJECTED with the record written
     (``BODY_ULEB``, or inside target section ``region`` its ``TARGET_SECTION``), or 0 (a ten-byte value: declined).
     G_ULEB_SIZE: the bytes read."""
@@ -865,7 +865,7 @@ def _strict(e: E, name: str, end, obj, start, region=0, slot=None):
 
 
 def _target_ok(tables):
-    """``decode_native_target(allow_carrier=True)``, decided in full (S8, ADR-248): the body is read in the
+    """``decode_native_target(allow_carrier=True)``, decided in full (S8, ADR-251): the body is read in the
     bootstrap's order, every value recorded in a word list (a rejection quotes it); a malformed field rejects where
     the cursor fails (inside a concurrency, accelerator, or platform section, with that section's ENUM diagnostic,
     as the bootstrap's ``except ValueError`` reports it); the canonical rules are then checked in the bootstrap's
@@ -1235,7 +1235,7 @@ def _glue_ok(tables):
         e.var("body_at", e.add(p["body_len_at"], 1))
         e.var("prefix", e.flag(_graph_rejected(e, g)))
         e.var("gend", e.add(p["gs"], e.rd(e.sub(p["gs"], 1))))
-        # S8 (ADR-248): over a rejected graph's prefix, the checks run until the prefix ends (the decoder's
+        # S8 (ADR-251): over a rejected graph's prefix, the checks run until the prefix ends (the decoder's
         # rejection follows in body order); the stream of an accepted graph never ends early.
         need = lambda words: e.if_(e.lt(p["gend"], e.add(p["ga"], words)), lambda: e.give(0))  # noqa: E731
         e.var("ga", p["gs"])
@@ -1432,7 +1432,7 @@ def _capability(e: E, name: str, end, prefix: str):
 
 
 def _recorder(e: E, obj, at: str, end, start):
-    """S8 (ADR-248): ``Cursor`` reads of ``obj``'s body at ``p[at]`` that reject exactly where the cursor fails and
+    """S8 (ADR-251): ``Cursor`` reads of ``obj``'s body at ``p[at]`` that reject exactly where the cursor fails and
     record what they read (a rejection quotes the words: values, string offsets, reference indices)."""
     p = e.p
     e.var("rw", e.alloc(e.add(e.mul(e.sub(end, p[at]), 2), 4)))
@@ -1503,7 +1503,7 @@ def _recorder(e: E, obj, at: str, end, start):
     return dict(read=read, string=string, reference=reference, byte=byte, boolean=boolean, take=take, enum=enum, rule=rule, finish=finish)
 
 
-# S8 (ADR-248): build rules (``BUILD_RULE`` payload word 0), the bodies' trailing-byte rules, and the enums.
+# S8 (ADR-251): build rules (``BUILD_RULE`` payload word 0), the bodies' trailing-byte rules, and the enums.
 (BUILD_IDENTITY, BUILD_MODULES, BUILD_MODULE_KIND, BUILD_MODULES_CANONICAL, BUILD_EXACT_KIND, BUILD_DEPENDENCY_FORM,
  BUILD_DEPENDENCIES_CANONICAL, BUILD_NAMED_REFERENCE, BUILD_NAMES_CANONICAL, BUILD_CAPABILITIES_CANONICAL, BUILD_REFS_EXACT,
  BUILD_GRANTS_CANONICAL, BUILD_ALGORITHMS_CANONICAL, BUILD_SIGNERS_CANONICAL, BUILD_TRUST_NONEMPTY, BUILD_TRUST_REQUIRED,
@@ -2244,7 +2244,7 @@ def _program(tables):
             table = e.alloc(e.add(size, 1))
             e.if_(e.eq(table, NONE), lambda: e.give(NONE))
             e.st(GLOBALS + slot, table)
-        # S8 (ADR-248): a recursion group's member count once its member list decodes (NONE before or without that).
+        # S8 (ADR-251): a recursion group's member count once its member list decodes (NONE before or without that).
         e.for_("o", 0, p["O"], lambda: e.st(e.add(_g(e, G_GROUP_SIZE), p["o"]), NONE))
         e.var("ra", 2)
 
@@ -2294,7 +2294,7 @@ def _program(tables):
                 e.if_(e.both(e.eq(_kind(e, o), int(Kind.BUILD)), e.eq(_form_of(e, o), form)), decide)
 
             e.for_("o", 0, p["O"], later)
-        # S8 (ADR-248): an object naming a missing object (``verify_object`` resolves its references, in order,
+        # S8 (ADR-251): an object naming a missing object (``verify_object`` resolves its references, in order,
         # right after the CID check): rejected with that reference.
         # Every missing reference is listed too, ``[n, (object, reference index) ...]`` at word STORE_FAULT + 2: the
         # bootstrap resolves references from many decoders, and each such resolution fails on a listed one.
@@ -2351,7 +2351,7 @@ def _program(tables):
 
                 def visit():
                     state = e.ld(e.add(p["colour"], p["st"]))
-                    # S8 (ADR-248): a cycle, re-entering this object (the bootstrap's ``visit`` order).
+                    # S8 (ADR-251): a cycle, re-entering this object (the bootstrap's ``visit`` order).
                     e.if_(e.eq(state, 1), lambda: (e.set("store_ok", 0), e.st(STORE_FAULT, 1), e.st(STORE_FAULT + 1, p["st"])))
 
                     def push():
@@ -2455,13 +2455,13 @@ class NativeStoreVerifier:
         code, entry_offset = _native_image()
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         blob = thunk + code
-        from xax_native import executable_mapping
+        from xax_native import executable_mapping, zeroed_array
 
         self._mapping, base = executable_mapping(blob)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
-        self._in = (ctypes.c_uint64 * IN_WORDS)()
-        self._out = (ctypes.c_uint64 * OUT_WORDS)()
+        self._in = zeroed_array(ctypes.c_uint64, IN_WORDS)
+        self._out = zeroed_array(ctypes.c_uint64, OUT_WORDS)
         self._slots = (ctypes.c_uint64 * 4)()
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
@@ -2497,7 +2497,7 @@ class NativeStoreVerifier:
 
 
 def store_rejection(read, count: int):
-    """S8 (ADR-248): the store rejection the program decided: ``("cycle", object)``, ``("unreachable", reachable
+    """S8 (ADR-251): the store rejection the program decided: ``("cycle", object)``, ``("unreachable", reachable
     objects)``, or None."""
     fault, at = read(STORE_FAULT, 2)
     if fault == 1:
@@ -3104,7 +3104,7 @@ def object_table(objects, head: list[int]) -> list[int] | None:
             status, stream, diagnostic = decoder.decode_with_diagnostic(obj.body, len(obj.references), obj.cid)
             if status != 0 and diagnostic is None:
                 return None
-            payload = list(stream)  # S8 (ADR-248): a rejected body's stream prefix, flagged after the body bytes
+            payload = list(stream)  # S8 (ADR-251): a rejected body's stream prefix, flagged after the body bytes
             words += [len(payload), *payload, len(obj.body), *obj.body, int(status != 0)]  # the body bytes (recursion-group keys)
             continue
         elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP,

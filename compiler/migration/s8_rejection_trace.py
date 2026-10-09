@@ -1,4 +1,4 @@
-"""S8 (ADR-248): which verifier rejections the Python bootstrap still decides while every XAX program is live.
+"""S8 (ADR-251): which verifier rejections the Python bootstrap still decides while every XAX program is live.
 
 Run as a pytest plugin over the suite::
 

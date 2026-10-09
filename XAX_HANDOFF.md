@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: linux-x86_64; R5: jvm; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S9 and later steps are open (ADR-180, ADR-248)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S9 and later steps are open (ADR-180, ADR-251)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,13 +186,28 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
-## S8 verifier totality — 2026-10-09 (ADR-248)
+## S8 verifier totality — 2026-10-09 (ADR-251)
 
 - Done: every rejection the suite reaches on Linux x86-64 is XAX-decided (trace: 0 bootstrap sites; differential: 4,681 rejections, 0 differences). To re-check after a verifier change, from `compiler`: `S8_TRACE_OUT=/tmp/s8 PYTHONPATH=src:tests:migration:.:.. python -m pytest -s -n 3 -p s8_rejection_trace -p s8_differential tests`, then `python migration/s8_rejection_trace.py /tmp/s8` (expect an empty report) and grep `DIFF ` (expect none).
 - New checks go into the XAX program first, as exact `_reject` records in the bootstrap's order; a `_require` only declines (Python then decides). Keep each XAX function inside the views backend's limits (5 MiB of code, the per-function arena): `test_xax_selfhost_x86_64_backend` fails otherwise, and `target.op`'s target parse was split into `_target_contract` for this reason.
 - Graph decoder rejections keep their stream prefix in the store verifier's object table (a flag word follows the body bytes); graphs with an invalid use are typed over a trimmed copy. Both paths count a rejection only where the bootstrap would reach it first.
 - The two wheel tests fail on this host for an environment reason (Debian setuptools: `AttributeError: install_layout` under `pip wheel --no-build-isolation`), not a code one.
 - Next: S9 (canonical store writing in XAX).
+
+## Lazily zeroed component views — 2026-10-09 (ADR-248)
+
+- Allocate any view of 1 MiB or more with `xax_native.zeroed_array(element, count)`, never `(element * count)()`; keep the returned array (it owns its mapping). Contents start zero and are never re-zeroed between calls, exactly as before.
+
+## One-call BLAKE3 up to 16 MiB — 2026-10-09 (ADR-249)
+
+- Regenerate the hash store with `XAX_BLAKE3_PYTHON_HASH=1 PYTHONPATH=src python -c "import xax_selfhost_blake3 as m; m.write_hash_store()"`: the running hash image was lowered for the old extent and traps on larger inputs, so build it on the Python driver.
+- When only one helper store changes, `PYTHONPATH=src python benchmarks/refresh_selfhost_store.py <module> --write` re-executes that program's entries in both self-hosting evidence files.
+
+## Fast first start: `xax_native.prepare` — 2026-10-09 (ADR-250)
+
+- Hosts: call `xax_native.prepare(parallel=True)` once (install or start-up) before the first verification; it returns per-component status and timings and never raises on fallback. Sequential `prepare()` loads the components into the calling process instead.
+- A new XAX-hosted component that verification loads goes into `PREPARE_COMPONENTS`, `_load_component`, `_STORE_NAMES`, and a stage in `_PREPARE_STAGES` (give it an opt-out in `_PREPARE_OPT_OUTS` if other components could load it while being lowered).
+- Write cache files only with `xax_native.cache_write`.
 
 ## Validation state at M14 (historical)
 

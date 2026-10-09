@@ -81,7 +81,7 @@ def fail(
     )
 
 
-_XAX_RAISING = False  # S8 (ADR-248): set while a diagnostic an XAX program decided is raised
+_XAX_RAISING = False  # S8 (ADR-251): set while a diagnostic an XAX program decided is raised
 
 
 def _xax_fail(code: str, entity: str, rule: str, expected: object, actual: object, dependencies: Iterable[str] = (),
@@ -3468,7 +3468,7 @@ def recursion_group(members: Sequence[RecursionMember]) -> SemanticObject:
 
 
 def _xax_type_rejection(obj: SemanticObject, form: int) -> None:
-    """S8 (ADR-248): a type decoder of ``form`` called on a type XAX rejected raises that diagnostic (the decoder is the
+    """S8 (ADR-251): a type decoder of ``form`` called on a type XAX rejected raises that diagnostic (the decoder is the
     one ``_verify_type`` runs for the form, so the bootstrap's check would produce it)."""
     record = _XAX_REJECTED_OBJECTS.get(obj.cid)
     if record is not None and len(record) > 6 and record[6] == form and obj.kind != Kind.CONSTANT:
@@ -3859,12 +3859,12 @@ def _decode_opaque_identity_type(obj: SemanticObject) -> bytes:
 # function of the CID (bodies and references are content-addressed), so the set is process-wide.
 _XAX_VALID_OBJECTS: set[bytes] = set()
 _XAX_REJECTED_OBJECTS: dict[bytes, tuple] = {}  # S8c.24 (ADR-242): CID -> the bootstrap's diagnostic, decided by XAX
-# S8 (ADR-248): CID -> {form: diagnostic} for the bits (1), float (7), and pointer (2) decoders XAX found reject the type.
+# S8 (ADR-251): CID -> {form: diagnostic} for the bits (1), float (7), and pointer (2) decoders XAX found reject the type.
 _XAX_CROSS: dict[bytes, dict] = {}
 
 
 def _xax_cross(obj: "SemanticObject", form: int) -> None:
-    """S8 (ADR-248): a decoder of ``form`` called on a type whose body XAX found it rejects raises that diagnostic."""
+    """S8 (ADR-251): a decoder of ``form`` called on a type whose body XAX found it rejects raises that diagnostic."""
     if _NATIVE_TYPING is None:
         return  # the bootstrap alone decides
     outcomes = _XAX_CROSS.get(obj.cid)
@@ -3885,12 +3885,12 @@ def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
     _XAX_VALID_OBJECTS.update(typing.object_verdicts(words, listed))
     # S8c.24 (ADR-242): constants XAX rejects, with the bootstrap's diagnostic.
     _XAX_REJECTED_OBJECTS.update(typing.object_rejections(listed, objects))
-    # S8 (ADR-248): each type's reading by the bits, float, and pointer decoders.
+    # S8 (ADR-251): each type's reading by the bits, float, and pointer decoders.
     _XAX_CROSS.update(typing.object_cross(listed, objects))
 
 
 def _xax_prove_as_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
-    """S8 (ADR-248): the XAX typing program's reading of ``obj`` (not a type or constant) as a type, on demand."""
+    """S8 (ADR-251): the XAX typing program's reading of ``obj`` (not a type or constant) as a type, on demand."""
     typing = _native_typing()
     if typing is None:
         return
@@ -3909,7 +3909,7 @@ def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]
     if obj.cid in _XAX_VALID_OBJECTS:
         return  # S6b: the XAX type decoders accepted it
     if obj.kind not in (Kind.TYPE, Kind.CONSTANT) and obj.cid not in _XAX_REJECTED_OBJECTS:
-        _xax_prove_as_type(obj, resolve)  # S8 (ADR-248): another kind of object named as a type
+        _xax_prove_as_type(obj, resolve)  # S8 (ADR-251): another kind of object named as a type
     if obj.cid in _XAX_REJECTED_OBJECTS and obj.kind != Kind.CONSTANT:
         # S8c.25 (ADR-243): XAX decided this type's rejection.
         code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid][:6]
@@ -6303,7 +6303,7 @@ def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], Se
     member_spans: list[tuple[int, int]] = []
 
     glued = obj.cid in _XAX_GLUE_GRAPHS  # S6b.4d: XAX decided the types, reference use, and trap payloads
-    rejected = _XAX_GLUE_REJECTIONS.get(obj.cid)  # S8 (ADR-248): XAX rejected the glue (types before it are proven)
+    rejected = _XAX_GLUE_REJECTIONS.get(obj.cid)  # S8 (ADR-251): XAX rejected the glue (types before it are proven)
     glued = glued or rejected is not None
 
     def type_reference() -> bytes:
@@ -6525,7 +6525,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     entry, blocks, used_references, member_spans = parsed or _graph_syntax_bootstrap(obj, resolve)
     if parsed is not None and obj.cid in _XAX_GLUE_REJECTIONS:
         code, rule, expected_value, actual, _block = _XAX_GLUE_REJECTIONS[obj.cid]
-        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual)  # S8 (ADR-248): an unused reference
+        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual)  # S8 (ADR-251): an unused reference
     if used_references != set(obj.references) and not (parsed is not None and obj.cid in _XAX_GLUE_GRAPHS):
         fail(
             "XAX.CANON.UNUSED_REFERENCE",
@@ -6545,7 +6545,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         uses = _cfg_uses(blocks)
         status, native_order, dominators, uses_valid = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks], (_cfg_tables(blocks), uses))
         if status == 1 and analysis.rejected_target is not None:
-            # S8 (ADR-248): the XAX analysis found the first branch target out of range.
+            # S8 (ADR-251): the XAX analysis found the first branch target out of range.
             _xax_fail("XAX.STRUCT.BRANCH_TARGET", obj.cid.hex(), "GRAPH-BRANCH-TARGET", f"< {len(blocks)}", analysis.rejected_target)
         if status != 0:
             native_order = None
@@ -6582,7 +6582,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             return source.parameters[value.index] if value.tag == 0 else source.nodes[value.index].results[value.result]
         code = use_codes.get((use_block, use_node, value.tag, value.block, value.index, value.result), 0)
         if code:
-            # S8 (ADR-248): the XAX analysis decided this use is invalid; its diagnostic, as ``value_type`` raises it.
+            # S8 (ADR-251): the XAX analysis decided this use is invalid; its diagnostic, as ``value_type`` raises it.
             if code == 1:
                 _xax_fail("XAX.STRUCT.VALUE_BLOCK", obj.cid.hex(), "GRAPH-VALUE-DEFINED", f"< {len(blocks)}", value.block)
             if code == 2:
@@ -6637,10 +6637,10 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     proven_constants: frozenset[tuple[int, int]] = frozenset()
     proven_terminators: frozenset[int] = frozenset()
     rejected_nodes: dict[tuple[int, int], tuple] = {}  # S8c.1 (ADR-214): XAX's rejection diagnostics
-    rejected_terminators: dict[int, tuple[int, int, int]] = {}  # S8 (ADR-248): XAX's terminator rejections
+    rejected_terminators: dict[int, tuple[int, int, int]] = {}  # S8 (ADR-251): XAX's terminator rejections
     fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
     linear_proven = False  # S6a (ADR-142): XAX proved resource and effect linearity
-    linear_reject = None  # S8 (ADR-248): XAX's linear-flow rejection (code, a, b)
+    linear_reject = None  # S8 (ADR-251): XAX's linear-flow rejection (code, a, b)
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
     memory_reject = None  # S8c.8 (ADR-221): the engine's exact memory rejection (pass, block, node, diagnostic)
     typing = _native_typing() if checked_uses else None
@@ -6687,7 +6687,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 # The engine modelled every node (or found it typing-proven) and its passes converged.
                 engine_extents = [(ref, extent - 1) for ref, extent in zip(value_refs, extents) if extent]
     elif native_order is not None and not uses_valid and analysis is not None:
-        # S8 (ADR-248): a graph with an invalid use.  The bootstrap raises whatever fails before that use in its
+        # S8 (ADR-251): a graph with an invalid use.  The bootstrap raises whatever fails before that use in its
         # first pass; XAX decides those checks over the graph trimmed at each invalid use (a block ends there in a
         # trap, again until the XAX analysis finds every use valid), and a rejection counts only before the use.
         position = {block: index for index, block in enumerate(native_order)}
@@ -6853,7 +6853,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     )
             for node_index, node in enumerate(block.nodes):
                 if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, node_index) and memory_reject[3][1] == "GRAPH-OP-SUPPORTED":
-                    _xax_memory_fail(obj, memory_reject[3])  # S8 (ADR-248): the facts engine decided the operation code
+                    _xax_memory_fail(obj, memory_reject[3])  # S8 (ADR-251): the facts engine decided the operation code
                 if node.operation not in Operation._value2member_map_:
                     fail("XAX.STRUCT.OPERATION", obj.cid.hex(), "GRAPH-OP-SUPPORTED", list(Operation), node.operation)
                 operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
@@ -7310,7 +7310,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     _verify_target_node(obj, resolve, node)
                 if node.operation not in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.HEAP_VIEW):
                     _end_heap_views(node.operands, operand_types, owners, owner_consumers, ended, resolve)
-            # S8 (ADR-248): the engine's terminator rejection; a stack-owner entry's return checks are raised where the
+            # S8 (ADR-251): the engine's terminator rejection; a stack-owner entry's return checks are raised where the
             # bootstrap makes them (after the terminator's typing), the rest here.
             terminal_reject = memory_reject[3] if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, len(block.nodes)) else None
             late_reject = terminal_reject is not None and (terminal_reject[1] == "MEMORY-ENTRY-STORE-LOAD-RESULT" or (
@@ -7341,7 +7341,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         expected = expected_bodies
                     from xax_selfhost_facts import ENTRY_BODY
 
-                    # S8 (ADR-248): the facts engine decided that the body selects no contract; this quotes the candidates.
+                    # S8 (ADR-251): the facts engine decided that the body selects no contract; this quotes the candidates.
                     (_xax_fail if terminal_reject is not None and terminal_reject[1] == ENTRY_BODY else fail)(
                         "XAX.MEMORY.ENTRY_CONTRACT",
                         obj.cid.hex(),
@@ -7365,7 +7365,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 fail("XAX.MEMORY.RESOURCE_DROP", obj.cid.hex(), "MEMORY-RESOURCE-TRANSFER", "explicit owner/effect return", term.kind.name)
             typed_terminator = block_index in proven_terminators  # S4d.1: XAX proved condition and edge types
             if block_index in rejected_terminators:
-                # S8 (ADR-248): XAX decided this terminator's rejection (a condition width or an edge's argument types).
+                # S8 (ADR-251): XAX decided this terminator's rejection (a condition width or an edge's argument types).
                 site, edge_index, condition_index = rejected_terminators[block_index]
                 if site == 1:
                     _xax_fail("XAX.STRUCT.CONDITION_TYPE", obj.cid.hex(), "GRAPH-CBR-CONDITION", "bits<1>", type_cids[condition_index].hex())
@@ -7488,7 +7488,7 @@ def _join_origins(parsed: "_ParsedGraph", block_index: int, node_index: int) -> 
 
 
 def _xax_memory_fail(obj: SemanticObject, diagnostic: tuple, node_types=None) -> None:
-    """S8c.8: raise the facts engine's rejection; a fifth element (S8, ADR-248) is the entity it names instead of the graph,
+    """S8c.8: raise the facts engine's rejection; a fifth element (S8, ADR-251) is the entity it names instead of the graph,
     and an actual of ``NODE_TYPES`` (``NODE_ARGUMENT_TYPES``) quotes the node's operand (argument) and result types."""
     from xax_selfhost_facts import NODE_ARGUMENT_TYPES, NODE_TYPES
 
@@ -7499,7 +7499,7 @@ def _xax_memory_fail(obj: SemanticObject, diagnostic: tuple, node_types=None) ->
 
 
 def _linear_diagnostic(graph: SemanticObject, parsed: "_ParsedGraph", resolve, record, value_refs) -> tuple:
-    """S8 (ADR-248): ``_verify_linear_flow``'s diagnostic for the check XAX found failing (rendering: XAX decided the
+    """S8 (ADR-251): ``_verify_linear_flow``'s diagnostic for the check XAX found failing (rendering: XAX decided the
     check and its value; the lists quote that value's uses in the parsed graph)."""
     code, a, b = record
     entity = graph.cid.hex()
@@ -7755,7 +7755,7 @@ def _verify_reference_list(
             )
 
 
-# S8 (ADR-248): every object rejection the XAX store verifier decided, by CID: ``(site name, diagnostic)``.  A decoder
+# S8 (ADR-251): every object rejection the XAX store verifier decided, by CID: ``(site name, diagnostic)``.  A decoder
 # called on the object from anywhere (a node's callee, a member's group, ...) raises it when the site is one of that
 # decoder's own checks (``_xax_decoder_rejection``); validity is a function of the CID, so the map only grows.
 _XAX_OBJECT_REJECTIONS: dict[bytes, tuple] = {}
@@ -7768,7 +7768,7 @@ _DECODER_SITES = {
 
 
 def _xax_decoder_rejection(obj: SemanticObject, decoder: str) -> None:
-    """S8 (ADR-248): raise the XAX rejection of ``obj`` when ``decoder`` (its own decoder) makes that check.  ``build``:
+    """S8 (ADR-251): raise the XAX rejection of ``obj`` when ``decoder`` (its own decoder) makes that check.  ``build``:
     a build object's whole decoder; ``build_form``: ``_build_form``, which reads only the form."""
     record = _XAX_OBJECT_REJECTIONS.get(obj.cid)
     if record is None:
@@ -7789,7 +7789,7 @@ def _xax_decoder_rejection(obj: SemanticObject, decoder: str) -> None:
 # S6b.4d (ADR-149): graph CIDs whose per-graph glue (type references, entity resolution, reference use, trap
 # payloads) the XAX store verifier decided.  A CID's validity is permanent, so the set only grows.
 _XAX_GLUE_GRAPHS: set[bytes] = set()
-# S8 (ADR-248): graph CIDs whose glue XAX rejected: ``(code, rule, expected, actual, trap block or None)``.  Raised
+# S8 (ADR-251): graph CIDs whose glue XAX rejected: ``(code, rule, expected, actual, trap block or None)``.  Raised
 # inside the parse (``_graph_syntax_from_stream``/``_parse_graph_uncached``), wherever the graph is first parsed.
 _XAX_GLUE_REJECTIONS: dict[bytes, tuple] = {}
 
@@ -7827,7 +7827,7 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
     for o, k in rejections.pop("missing", ()):
         _XAX_MISSING.add(listed[o].references[k])  # S8: decided missing by XAX (resolving it raises its diagnostic)
     store = rejections.pop("store", None)
-    if store is not None:  # S8 (ADR-248): the store's own rejection (raised once every object verifies)
+    if store is not None:  # S8 (ADR-251): the store's own rejection (raised once every object verifies)
         kind, value = store
         if kind == "cycle":
             proven["store"] = ("XAX.IDENTITY.CID_CYCLE", listed[value].cid.hex(), "ID-MERKLE-ACYCLIC", "acyclic references", "cycle")
@@ -7983,7 +7983,7 @@ def verify_store(
         try:
             return objects[cid]
         except KeyError:
-            if cid in _XAX_MISSING:  # S8 (ADR-248): the XAX store verifier found this reference missing
+            if cid in _XAX_MISSING:  # S8 (ADR-251): the XAX store verifier found this reference missing
                 _xax_fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
 
@@ -8015,7 +8015,7 @@ def verify_store(
         reachable.add(cid)
 
     if not store_proven and "store" in proven_objects:
-        _xax_fail(*proven_objects["store"])  # S8 (ADR-248): XAX decided the cycle or the unreachable objects
+        _xax_fail(*proven_objects["store"])  # S8 (ADR-251): XAX decided the cycle or the unreachable objects
     if not store_proven:  # S6b.2: the XAX store verifier proved rootedness and acyclicity
         visit(reader.root_cid)
     if not store_proven and reachable != set(objects):

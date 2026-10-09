@@ -5,14 +5,14 @@
   "b1_gen1_images": [
     {
       "program": "xax_selfhost_cfg",
-      "store_bytes": 16296,
-      "store_sha256": "4873077434b67def08e87bde6f996d9a15825f7b1a411ca5fd5675a132cc4fa5",
+      "store_bytes": 15478,
+      "store_sha256": "cd89652e910f7a5b4fb2309585080aeeb326b621d61a35e2f29aedb03200c8b1",
       "functions": 1,
-      "code_bytes": 10080,
-      "image_sha256": "a86020a8f2ad57f26df46b055a71f90103dbc63670be89c10773cf345b85eddf",
+      "code_bytes": 9584,
+      "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 2.63,
+        "gen1": 2.56,
         "bootstrap": 0.05
       }
     },
@@ -26,7 +26,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 0.71,
-        "bootstrap": 0.62
+        "bootstrap": 0.43
       }
     },
     {
@@ -51,47 +51,47 @@
       "image_sha256": "9df980975640067ab2d05fab38d7e13746568d859c650b50bf0b438e89f129e4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.32,
-        "bootstrap": 0.93
+        "gen1": 1.09,
+        "bootstrap": 0.82
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 3826889,
-      "store_sha256": "7a340dcb604139951b2f568c56b2488468ea5470cdd9c0f9edbaa0177b6c8e58",
-      "functions": 48,
-      "code_bytes": 5403056,
-      "image_sha256": "a1c478991e69642648d099a6745794293a651b7be36563f78623dfb6c363705d",
+      "store_bytes": 3565503,
+      "store_sha256": "be6f060333f0e585c3b0053bd5f95357dca96019dd08d6b1548cd81dd214680e",
+      "functions": 47,
+      "code_bytes": 5269428,
+      "image_sha256": "ad2a946631a3721e8e124b1e7d88c78a1ff0332643e2d1c9ed66900950ed3fca",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 19.14,
-        "bootstrap": 18.86
+        "gen1": 18.38,
+        "bootstrap": 18.39
       }
     },
     {
       "program": "xax_selfhost_verify",
-      "store_bytes": 1792310,
-      "store_sha256": "c030ec1e9628df99e2492df19b82e723b680ae98f777c542ee624cb3e0be887f",
-      "functions": 18,
-      "code_bytes": 8451120,
-      "image_sha256": "7c4d80dd74be6f78c29f4727d4b3e1941e11a86eb65bbdc2a3079d28d3d2f578",
+      "store_bytes": 2085288,
+      "store_sha256": "38a35bf2d3bd6334251248b6c422f808a43b9438aa11efc33b0f679fb5429af4",
+      "functions": 16,
+      "code_bytes": 5180188,
+      "image_sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 11.29,
-        "bootstrap": 16.81
+        "gen1": 10.45,
+        "bootstrap": 12.51
       }
     },
     {
       "program": "xax_selfhost_blake3",
-      "store_bytes": 34025,
-      "store_sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3",
+      "store_bytes": 34035,
+      "store_sha256": "1c93d66b39598ae74f55c4ed41ab64af65c674234320cbf4a2c262e38c47cdac",
       "functions": 2,
       "code_bytes": 18844,
-      "image_sha256": "5dcc3086447fcad87d059b1646cf1c5ead722fae8bb54e7a7344572992c6868a",
+      "image_sha256": "7f449e99b6e20a0503efffa22a44c16e3048b928def96851d4a5e7c08bf82b36",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.08,
-        "bootstrap": 0.08
+        "gen1": 6.02,
+        "bootstrap": 0.07
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "fd4263a668a2964c1054a65aac6b388d6e5516340e3c1d763a5184a4085e1c2f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 9.12,
-        "bootstrap": 10.29
+        "gen1": 8.92,
+        "bootstrap": 9.66
       }
     }
   ],
@@ -118,7 +118,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.8
+        "emulated": 0.5
       }
     },
     {
@@ -142,7 +142,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.2
+        "emulated": 0.1
       }
     },
     {
@@ -154,7 +154,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.003,
-        "emulated": 0.8
+        "emulated": 0.5
       }
     },
     {
@@ -165,8 +165,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.006,
-        "emulated": 1.2
+        "emulated": 1.0
       }
     },
     {
@@ -177,8 +176,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.006,
-        "emulated": 1.0
+        "native": 0.003,
+        "emulated": 0.6
       }
     },
     {
@@ -189,20 +188,20 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.037,
-        "emulated": 5.2
+        "native": 0.032,
+        "emulated": 3.8
       }
     },
     {
       "store": "xax_op_typing.xax",
-      "objects": 934,
+      "objects": 911,
       "store_proven": true,
-      "objects_proven": 99,
+      "objects_proven": 97,
       "emulated_equals_native": true,
-      "emulated_instructions_upper_bound": 7000000000,
+      "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 1.028,
-        "emulated": 132.0
+        "native": 0.882,
+        "emulated": 91.8
       }
     },
     {
@@ -211,10 +210,10 @@
       "store_proven": true,
       "objects_proven": 45,
       "emulated_equals_native": true,
-      "emulated_instructions_upper_bound": 3000000000,
+      "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.36,
-        "emulated": 45.4
+        "native": 0.375,
+        "emulated": 33.0
       }
     },
     {
@@ -225,8 +224,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.003,
-        "emulated": 0.8
+        "native": 0.002,
+        "emulated": 0.5
       }
     },
     {
@@ -237,20 +236,20 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.085,
-        "emulated": 9.5
+        "native": 0.06,
+        "emulated": 7.8
       }
     },
     {
       "store": "xax_store_verifier.xax",
-      "objects": 279,
+      "objects": 891,
       "store_proven": true,
-      "objects_proven": 39,
+      "objects_proven": 35,
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.46,
-        "emulated": 59.0
+        "native": 0.442,
+        "emulated": 49.7
       }
     },
     {
@@ -259,10 +258,10 @@
       "store_proven": true,
       "objects_proven": 57,
       "emulated_equals_native": true,
-      "emulated_instructions_upper_bound": 3000000000,
+      "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.448,
-        "emulated": 45.5
+        "native": 0.375,
+        "emulated": 34.7
       }
     }
   ],
@@ -271,43 +270,55 @@
       "store": "m11_bootstrap_bundle.xax",
       "bytes": 1566,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "m11_compiler_subset.xax",
       "bytes": 820,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "m14_selfhost_compiler.xax",
       "bytes": 2020,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "xax_blake3_compress.xax",
       "bytes": 11827,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.02
+      "host_s_nonsemantic": 0.03
     },
     {
       "store": "xax_blake3_hash.xax",
-      "bytes": 34025,
+      "bytes": 34035,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.04
+      "host_s_nonsemantic": 0.06
     },
     {
       "store": "xax_cfg_analysis.xax",
-      "bytes": 16296,
+      "bytes": 15478,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.02
+      "host_s_nonsemantic": 0.03
     },
     {
       "store": "xax_graph_decoder.xax",
       "bytes": 148177,
       "emulated_equals_production": true,
       "host_s_nonsemantic": 0.15
+    },
+    {
+      "store": "xax_op_typing.xax",
+      "bytes": 3565503,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 3.52
+    },
+    {
+      "store": "xax_riscv64_backend.xax",
+      "bytes": 1366059,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 1.39
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -319,17 +330,29 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.27
+      "host_s_nonsemantic": 0.26
+    },
+    {
+      "store": "xax_store_verifier.xax",
+      "bytes": 2085288,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 2.0
+    },
+    {
+      "store": "xax_x86_64_backend.xax",
+      "bytes": 1425157,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 1.58
     }
   ],
   "b4_gen2_compiles_verifier": {
     "compiler": "gen2: the backend's RISC-V image, emulated",
     "input": "xax_store_verifier.xax",
-    "code_bytes": 8451120,
-    "sha256": "7c4d80dd74be6f78c29f4727d4b3e1941e11a86eb65bbdc2a3079d28d3d2f578",
+    "code_bytes": 5180188,
+    "sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
     "equals_gen1_verifier_image": true,
-    "emulated_instructions_upper_bound": 92000000000,
-    "host_s_nonsemantic": 1767.0
+    "emulated_instructions_upper_bound": 101000000000,
+    "host_s_nonsemantic": 1909.6
   },
   "authority": {
     "blake3-compress": {
@@ -344,7 +367,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-9f4bccdc68ef20649218584362bcb7edf85801bc4e4f0598fe8c2b8020988a10.bin"
+      "record": "verified-hash-1bcb250b01f74fb1d2829947372e451216a7989c63356f71cbbcd95bc7ff27c4.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -358,7 +381,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-f4d4acc81ecc08c316f2dbbdd0dfa8e28064f0ebb729843e648d03aab867a5ba.bin"
+      "record": "verified-store-decoder-9f20142799b26335178736de5bf4a3a53ffab6d81fef6e8b20c5cf359f1a5451.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -372,12 +395,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-5b57d59f72404657c3a14d32f3b8e823bea2dd66566b67afff0f4702d6c74627.bin"
+      "record": "verified-cfg-d4db887f6cfb9450c9971ff6edc4e250f12707dae0c8ee1f19ca0a0323cb90c4.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-f6db1efdf5cb24eae8d457898c7f206b635ba05225b26af525d4eba9d7d7ad77.bin"
+      "record": "verified-riscv64-encoder-706b0f4f864860f1d999db13d259a92cef6fd267ab5138c4f92df7ad22159a1f.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -391,12 +414,12 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-303000a520bff823bcb98ef3e4ee7b812313aa7b0b09a1db89f4ff4db5686976.bin"
+      "record": "verified-typing-f96e9a8e3b238d5dd29e916da3b030f1173b417642d4f0707e67c9fb9bbd952c.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "16f7eeefa5d79b53b952043b5df722ea0eeafd371e3b210dfef5738f0dfa054e",
-      "native_artifact_digest": "572c8c0539cdc4f7c473a18cf765379c21fe51ba64e47e7b46dcd0789d20b282",
+      "semantic_root": "5ddccd2122069b3c0bee64030dd72d107ce7a00cde4e464e4932b8891f3914cf",
+      "native_artifact_digest": "e5ac323cf0f34f82c6632467a772ad2bdca1aaa6188d5697a1cf33df67b51c18",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -405,22 +428,22 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-281aba41d0400e382818269a5c0df44bee0359ab2299c7aa7f26487ae2a3e4d7.bin"
+      "record": "verified-store-verifier-86c5c4336f197513b38f9c009f2593e059063f329126f1d0ee8f7c2575ba23ea.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
-      "semantic_root": "f72dce9ef4ac4fe5d88d89b63a1c8b6fd45568fecef60a31ded649691eb28adf",
-      "native_artifact_digest": "8a78a18341757b3b0d936b5217c3b3596ba70b049a2971cb147fa39fb06282c9",
+      "semantic_root": "2738ba198f37a47b269d2cf5ed8c5c1ac91cbb4e09e82dd8a16a3350dc6cc75b",
+      "native_artifact_digest": "12d011c232cf33d3c77f3f775ca634f1252e9227bfb14026075255bae2e234b5",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 3582
+      "declined_inputs": 4772
     },
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-a1bf5e1d791fb6b0f3b17eadf29fe6ff4e5fad6900694387c25336da3ba8c99d.bin"
+      "record": "verified-graph-decoder-16c6bda0c0d8ca3864e481dd77489dfd7d40445f6cf4fb415a52788a5dec3678.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -433,8 +456,8 @@
     },
     "cfg": {
       "component": "cfg",
-      "semantic_root": "66d42ef0298b00e21b40906d2073dc21eef4957109bf6e5948006b75ded5c884",
-      "native_artifact_digest": "e178c633ab77fe926b0eb76f8573e1aed2720b9ca5daabc4576e5de916bb42a3",
+      "semantic_root": "0f24251e706100f7896f4a03d6f50fba05ebb192f683485f3146f4b85b22dca1",
+      "native_artifact_digest": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -443,7 +466,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-7d8e40b3deaa9b26ee9f01b80d3ce42c9b47bd5e4898462552c24fb7fcb1412d.bin"
+      "record": "verified-xax_riscv64_backend-0e3a1403b4153cb97dba3146e290ac4aa3f1b27ec894481bf9e85d3703cbf798.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",
@@ -453,6 +476,115 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null
+    }
+  },
+  "refreshed": {
+    "program": "xax_selfhost_blake3",
+    "store": "xax_blake3_hash.xax",
+    "store_sha256": "1c93d66b39598ae74f55c4ed41ab64af65c674234320cbf4a2c262e38c47cdac",
+    "reason": "ADR-249: only this store changed; its entries were re-executed natively",
+    "authority": {
+      "blake3-compress": {
+        "component": "blake3-compress",
+        "semantic_root": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+        "native_artifact_digest": "bfaf9a6c4b3347f00c053e8192f6b3c7860c9f47bab7c07ee2731debb52caa13",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "blake3-hash": {
+        "component": "blake3-hash",
+        "semantic_root": "ec668facd92aa066226428ee8685cd9f6aaca4d8a67507b49fbf54d3e6fe4328",
+        "native_artifact_digest": "a1ba499f179c341455d676814c7d4b7ded072706bc6ee211c3bce6b3a6351ac5",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "store-decoder": {
+        "component": "store-decoder",
+        "semantic_root": "5f3e5a1c28e99f4deb350fff40e179294c3d5e6910a6cb71c5b2c77f8c6ae0bc",
+        "native_artifact_digest": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "graph-decoder": {
+        "component": "graph-decoder",
+        "semantic_root": "05ba650dc678a359093ac0f4d3e1b2520ddfd6737954e04622e22634baba04a6",
+        "native_artifact_digest": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "cfg": {
+        "component": "cfg",
+        "semantic_root": "0f24251e706100f7896f4a03d6f50fba05ebb192f683485f3146f4b85b22dca1",
+        "native_artifact_digest": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "typing": {
+        "component": "typing",
+        "semantic_root": "5ddccd2122069b3c0bee64030dd72d107ce7a00cde4e464e4932b8891f3914cf",
+        "native_artifact_digest": "e5ac323cf0f34f82c6632467a772ad2bdca1aaa6188d5697a1cf33df67b51c18",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "store-verifier": {
+        "component": "store-verifier",
+        "semantic_root": "2738ba198f37a47b269d2cf5ed8c5c1ac91cbb4e09e82dd8a16a3350dc6cc75b",
+        "native_artifact_digest": "12d011c232cf33d3c77f3f775ca634f1252e9227bfb14026075255bae2e234b5",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null,
+        "declined_inputs": 1852
+      },
+      "verification:hash": {
+        "component": "verification:hash",
+        "store_verification": "memoized",
+        "record": "verified-hash-f1b8dd835f69807d566d5c4d863ddb17decd4655e0faf8d9cf34f020ed720f6d.bin"
+      },
+      "riscv64-encoder": {
+        "component": "riscv64-encoder",
+        "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
+        "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "riscv64-backend": {
+        "component": "riscv64-backend",
+        "semantic_root": "6c4b5955e09d77df3c79ddda5d6e56d56f8b9981429fc48e127d4580e6097de9",
+        "native_artifact_digest": "e6959e1a43953c5811856552b5e02bd83a7bb843391a1c8af36362e79261368e",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "verification:store-verifier": {
+        "component": "verification:store-verifier",
+        "store_verification": "memoized",
+        "record": "verified-store-verifier-03e8fd0d86a7e916ff01381221d4f4454a8de4970660dd668e001520b86c51d5.bin"
+      },
+      "x86-64-views-backend": {
+        "component": "x86-64-views-backend",
+        "semantic_root": "1770b76304de6b5793c0987ebade24c705240f75187237a88d14b41986619e72",
+        "native_artifact_digest": "6861b4cf0d080ab1341fd36345c89edd92cf92e7c80825aa65feaec85810b127",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      }
     }
   }
 }

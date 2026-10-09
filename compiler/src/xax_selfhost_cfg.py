@@ -195,7 +195,7 @@ def build_cfg_program() -> tuple[StoreReader, SemanticObject]:
     # S3e: every value use is defined and dominates its use.
     uses_at = b.for_range(b.c(0), n, lambda block, carried: _value_table(b, block, carried, tables, n), (values_at,))[0]
     use_count = b.read(uses_at)
-    codes = b.add(tables, b.mul(n, 3))  # S8 (ADR-248): each use's ``value_type`` outcome
+    codes = b.add(tables, b.mul(n, 3))  # S8 (ADR-251): each use's ``value_type`` outcome
     b.check(b.cmp(IntCompare.ULE, b.add(codes, use_count), OUT_WORDS), b.defer_block)
     (valid,) = b.for_range(b.c(0), use_count, lambda i, carried: _check_use(b, b.add(b.add(uses_at, 1), b.mul(i, 6)), carried, tables, n, dom, words, power,
                                                                             b.add(codes, i)), (b.c(1),))
@@ -219,7 +219,7 @@ def _edge_list(b, n, block, carried, succ_start, succ_count):
     count = b.read(position)
     b.put(b.add(succ_start, block), b.add(position, 1))
     b.put(b.add(succ_count, block), count)
-    # S8 (ADR-248): ``out[1]`` holds the target being checked, so a rejection names the first one out of range.
+    # S8 (ADR-251): ``out[1]`` holds the target being checked, so a rejection names the first one out of range.
     b.for_range(b.c(0), count, lambda e, c: (b.put(b.c(1), b.read(b.add(b.add(position, 1), e))),
                                               b.check(b.cmp(IntCompare.ULT, b.read(b.add(b.add(position, 1), e)), n), b.reject_block)) and (), ())
     return b.add(b.add(position, 1), count), b.add(total, count)
@@ -237,7 +237,7 @@ def _value_table(b, block, carried, tables, n):
 
 def _check_use(b, at, carried, tables, n, dom, words, power, code_at):
     """A use (block, node position, tag, value block, index, result): the bootstrap's
-    ``value_type`` conditions, branch-free; out-of-range indices are clamped before lookup.  S8 (ADR-248): the
+    ``value_type`` conditions, branch-free; out-of-range indices are clamped before lookup.  S8 (ADR-251): the
     first failing condition, in ``value_type``'s order, goes to ``code_at``: 0 valid, 1 no such block, 2 no such
     parameter, 3 no such node result, 4 a node result not before its use, 5 a block not dominating the use."""
     (valid,) = carried
@@ -400,14 +400,14 @@ class NativeCfg:
         machine_code, entry_offset = host_image(*load_cfg_program(), "cfg")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code
-        from xax_native import executable_mapping
+        from xax_native import executable_mapping, zeroed_array
 
         self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self.code_size = len(machine_code)
-        self._in = (ctypes.c_uint64 * IN_WORDS)()
-        self._out = (ctypes.c_uint64 * OUT_WORDS)()
+        self._in = zeroed_array(ctypes.c_uint64, IN_WORDS)
+        self._out = zeroed_array(ctypes.c_uint64, OUT_WORDS)
         self._slots = (ctypes.c_uint64 * 4)()
         self._xmm = ctypes.c_uint64()
         self._lock = threading.Lock()
@@ -443,7 +443,7 @@ class NativeCfg:
             n, width, valid = len(successors), self._out[1], bool(self._out[2])
             order = list(self._out[3 : 3 + n])
             flat = self._out[3 + n : 3 + n + n * width]
-            # S8 (ADR-248): each use's outcome, after the layout ``build_cfg_program`` fixes.
+            # S8 (ADR-251): each use's outcome, after the layout ``build_cfg_program`` fixes.
             codes = 3 + n + n * width + 5 * n + 64 + 2 * n + width + IN_WORDS + 3 * n
             self.use_codes = list(self._out[codes : codes + len(uses)])
         dominators = []
