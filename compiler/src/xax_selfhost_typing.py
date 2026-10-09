@@ -89,6 +89,7 @@ REJECTED = 3
 DIAGNOSTICS = OUT_WORDS // 4  # below TABLE, above every verdict
 PASS_NODES_AT = DIAGNOSTICS - 1  # the node stream position, for the rejection pass (ADR-218)
 PASS_SINK = DIAGNOSTICS - 2  # S8c.7: where list words go that do not fit below TABLE (never read)
+TERMINATOR_RECORDS = PASS_SINK - 4  # S8 (ADR-248): block b's terminator record at TERMINATOR_RECORDS - 4 * b
 # Rejection sites, in each family's bootstrap check order: (code, rule) and the record's payload meaning.
 (SITE_NONE, SITE_OP_ARITY, SITE_OP_TYPE, SITE_INT_WIDTH_CONTRACT, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS,
  SITE_ROTATE_CONTRACT, SITE_ROTATE_TYPE, SITE_ROTATE_AMOUNT,
@@ -357,9 +358,10 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
-    # S8 (ADR-248): block terminator rejection records follow the node records.
-    b.check(b.cmp(IntCompare.ULE, b.add(b.c(DIAGNOSTICS), b.mul(b.add(nodes, blocks), 4)), TABLE), b.defer_block)
-    records = b.add(b.c(DIAGNOSTICS), b.mul(nodes, 4))
+    # S8 (ADR-248): block terminator rejection records sit below PASS_SINK, one four-word record per block going down
+    # (the node records and the rejection pass's lists sit above DIAGNOSTICS).
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, b.mul(blocks, 5)), 8), DIAGNOSTICS), b.defer_block)
+    records = b.c(TERMINATOR_RECORDS)
     b.for_range(b.c(0), blocks, lambda index, carried: _block_entry(b, t, index, carried, blocks, places, verdicts, records), ())
     # S4d.2a: the graph is memory-free when every type object is decoded and none is one the fact system tracks.
     (memory_free,) = b.for_range(b.c(0), count, lambda index, carried: (t.all(carried[0], _fact_free_type(b, t, index)),), (b.c(1),))
@@ -746,7 +748,7 @@ def _block_place(b: _Builder, index, carried, places):
 def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdicts, records):
     """A block's terminator: a ``bits<1>`` branch condition, and edge argument types equal to the target's parameters.
 
-    S8 (ADR-248): a terminator the bootstrap rejects gets a record ``[site, a, 0, 0]`` at ``records + 4 * index``:
+    S8 (ADR-248): a terminator the bootstrap rejects gets a record ``[site, a, condition, 0]`` at ``records - 4 * index``:
     site 1 a bits condition of another width (``GRAPH-CBR-CONDITION``), site 2 edge ``a``'s argument types
     (``GRAPH-BLOCK-PARAMETERS``).  A non-bits condition (the bootstrap's width decoder rejects it) gives no record."""
     position = b.get(b.add(places, index))
@@ -778,7 +780,7 @@ def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdi
     bad_condition = t.all(t.eq(kind, CONDITIONAL_BRANCH), t.nonzero(width), t.not_(t.eq(width, 1)))
     non_bits = t.all(t.eq(kind, CONDITIONAL_BRANCH), t.eq(width, 0))
     site = t.pick(t.not_(t.nonzero(known)), b.c(0), t.pick(bad_condition, b.c(1), t.pick(non_bits, b.c(0), t.pick(edges_ok, b.c(0), b.c(2)))))
-    record = b.add(records, b.mul(index, 4))
+    record = b.sub(records, b.mul(index, 4))
     b.put(record, site)
     b.put(b.add(record, 1), first_edge)
     b.put(b.add(record, 2), condition)
@@ -1979,7 +1981,7 @@ class NativeTyping:
     def terminator_rejection(self, nodes: int, block: int) -> tuple[int, int, int]:
         """After an accepted ``check``: S8 (ADR-248), block ``block``'s terminator record ``(site, edge, condition type)``
         (site 0: none; 1: ``GRAPH-CBR-CONDITION``; 2: ``GRAPH-BLOCK-PARAMETERS`` at that edge)."""
-        at = DIAGNOSTICS + 4 * (nodes + block)
+        at = TERMINATOR_RECORDS - 4 * block
         return tuple(self._out[at : at + 3])
 
     def rejection_record(self, node: int) -> tuple[int, int, int, int]:
