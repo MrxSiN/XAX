@@ -234,6 +234,18 @@ def _constant(variant: str):
 
         effect = memory_effect_type()
         return SemanticObject.create(Kind.TYPE, uleb(9) + uleb(0) + uleb(4), (effect.cid,)), (effect,)
+    lists = {  # S8c.27 (ADR-245): tuple (8) and sum (10) items over references (b32, b64) or a memory effect
+        "type_tuple_index": (8, (0, 5), False), "type_tuple_trailing": (8, (0, 1), False), "type_sum_variant": (10, (0, 1), True),
+        "type_tuple_element": (8, (1, 0), True), "type_tuple_unused": (8, (0,), False),
+    }
+    if variant in lists:
+        from xax_compiler import memory_effect_type
+
+        form, indices, effect = lists[variant]
+        extra = memory_effect_type() if effect else B64
+        references = tuple(sorted((B32.cid, extra.cid)))
+        body = uleb(form) + uleb(len(indices)) + b"".join(uleb(item) for item in indices) + (b"\x00" if variant == "type_tuple_trailing" else b"")
+        return SemanticObject.create(Kind.TYPE, body, references), ((extra,) if effect else ())
     if variant == "type_array_index":
         return SemanticObject.create(Kind.TYPE, uleb(9) + uleb(3) + uleb(4), (B32.cid,)), ()
     if variant == "type_opaque_refs":
@@ -325,6 +337,9 @@ VARIANTS = {
     # S8c.26 (ADR-244): resource and array forms.
     "type_resource_owner": "TYPE-RESOURCE-STACK-OWNER", "type_resource_plain": "TYPE-RESOURCE-CANONICAL", "type_resource_flags": "TYPE-RESOURCE-CANONICAL",
     "type_resource_trailing": "TYPE-BODY", "type_array_proof": "TYPE-ARRAY-VALUE-ELEMENT", "type_array_index": "GRAPH-REF-INDEX",
+    # S8c.27 (ADR-245): tuple and sum items.
+    "type_tuple_index": "GRAPH-REF-INDEX", "type_tuple_trailing": "TYPE-BODY", "type_sum_variant": "TYPE-SUM-VALUE-VARIANT",
+    "type_tuple_element": "TYPE-TUPLE-VALUE-ELEMENT", "type_tuple_unused": "SER-REFS-DIRECT-ONLY",
 }
 
 
