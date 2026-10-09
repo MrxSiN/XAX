@@ -12,8 +12,8 @@
       "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 2.57,
-        "bootstrap": 0.05
+        "gen1": 2.7,
+        "bootstrap": 0.04
       }
     },
     {
@@ -25,8 +25,8 @@
       "image_sha256": "d26f6af2a4f3fbcf257896e98bc3b94603660ee875a7ddfe8f983d99e9711a8f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.68,
-        "bootstrap": 0.43
+        "gen1": 0.65,
+        "bootstrap": 0.45
       }
     },
     {
@@ -51,21 +51,21 @@
       "image_sha256": "9df980975640067ab2d05fab38d7e13746568d859c650b50bf0b438e89f129e4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.12,
+        "gen1": 1.13,
         "bootstrap": 0.8
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 3559989,
-      "store_sha256": "3b7a67c4f34dafe657595aeab6bc650c5d16a032e9bd1c773fbf612ecb137bee",
+      "store_bytes": 3564164,
+      "store_sha256": "d5e94ea50b809f1cc7485e2030e73005f8e75411fc57115a89909d7cbbfe1ffa",
       "functions": 47,
-      "code_bytes": 5265392,
-      "image_sha256": "4b9906de3650725bdb7859e9889a4c4ec0f3ef16be00dd082b89019effaf574d",
+      "code_bytes": 5268268,
+      "image_sha256": "5102f50c1502acdbbb25a62fd3dc3fc003619df4671020c13a7b74f20f739f98",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 17.62,
-        "bootstrap": 16.48
+        "gen1": 18.0,
+        "bootstrap": 17.14
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 10.9,
-        "bootstrap": 12.15
+        "gen1": 10.34,
+        "bootstrap": 12.23
       }
     },
     {
@@ -90,8 +90,8 @@
       "image_sha256": "5dcc3086447fcad87d059b1646cf1c5ead722fae8bb54e7a7344572992c6868a",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.07,
-        "bootstrap": 0.07
+        "gen1": 0.1,
+        "bootstrap": 0.08
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "fd4263a668a2964c1054a65aac6b388d6e5516340e3c1d763a5184a4085e1c2f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 8.78,
-        "bootstrap": 9.5
+        "gen1": 9.11,
+        "bootstrap": 9.66
       }
     }
   ],
@@ -142,7 +142,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.1
+        "emulated": 0.2
       }
     },
     {
@@ -154,7 +154,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.003,
-        "emulated": 0.6
+        "emulated": 0.5
       }
     },
     {
@@ -165,8 +165,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.011,
-        "emulated": 0.9
+        "native": 0.005,
+        "emulated": 0.8
       }
     },
     {
@@ -178,7 +178,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.003,
-        "emulated": 0.7
+        "emulated": 0.6
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 0.823,
-        "emulated": 89.6
+        "native": 0.956,
+        "emulated": 91.4
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.341,
-        "emulated": 32.3
+        "native": 0.387,
+        "emulated": 33.1
       }
     },
     {
@@ -237,7 +237,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.066,
+        "native": 0.072,
         "emulated": 7.1
       }
     },
@@ -249,8 +249,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.447,
-        "emulated": 48.8
+        "native": 0.45,
+        "emulated": 49.7
       }
     },
     {
@@ -261,8 +261,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.33,
-        "emulated": 33.6
+        "native": 0.339,
+        "emulated": 33.5
       }
     }
   ],
@@ -283,7 +283,7 @@
       "store": "m14_selfhost_compiler.xax",
       "bytes": 2020,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "xax_blake3_compress.xax",
@@ -295,7 +295,7 @@
       "store": "xax_blake3_hash.xax",
       "bytes": 34025,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.04
+      "host_s_nonsemantic": 0.05
     },
     {
       "store": "xax_cfg_analysis.xax",
@@ -307,7 +307,7 @@
       "store": "xax_graph_decoder.xax",
       "bytes": 148177,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.15
+      "host_s_nonsemantic": 0.16
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -319,7 +319,7 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.27
+      "host_s_nonsemantic": 0.3
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -329,7 +329,7 @@
     "sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 101000000000,
-    "host_s_nonsemantic": 1853.0
+    "host_s_nonsemantic": 1858.6
   },
   "authority": {
     "blake3-compress": {
@@ -344,7 +344,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-d69c3e1d4166d02deeb71ddb9816f983bbd30e0d20c9495430ad1fa762966a98.bin"
+      "record": "verified-hash-7fd8cb4f8c20410c249d0225780daa77c194cbb4fa08559d66b37513cc639e60.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -358,7 +358,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-06ba9ab188a2487f532515fcb874d37e55236a6fa4f35829a2c886fa3e8119a4.bin"
+      "record": "verified-store-decoder-a1d433e8fa484613a78ac9cbf4c127e19563e4099e9df3fa06b17e83a1c6bc34.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -372,12 +372,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-19e6433b610caf057275feed5182385908f2da2e34ba42ab75a489bf406a5594.bin"
+      "record": "verified-cfg-19b1f2654d93af47adba276c3a4f04fbdfa11da85390a273bc64bb9737e7df2f.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-be00fd3c805b7cc676b11f93e44acf95807faf56a79cb7eede7683f8a3e63f21.bin"
+      "record": "verified-riscv64-encoder-60958bf94e069b23af19062f998f8574593cd1c07baff91083fe99438abf36c3.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -391,12 +391,12 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-74fafa211d6e861dc14000e6354514debbb2ec9a2ea7738c27310abadae66a85.bin"
+      "record": "verified-typing-92ec773055363f8f3868645ac42e981628144d188ccab33ce5861e4bf1e142f0.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "5b4182d55fb992c925642f33a9ad00cae688c6b04ee926346b41b60f125c679d",
-      "native_artifact_digest": "9a4ee8caebcf4cf8ca43350dd1a8d8995cc084b4942a83a3526d72c80c0747f8",
+      "semantic_root": "e2839a1831a096cc86c793e13adebe71a037437dd7c24ce0e8347dbad279302f",
+      "native_artifact_digest": "dd6fef5daf1ba6586ef88f5a48dcb5039c6d6dbacc414f10667760ae78d6a494",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -405,7 +405,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-b26cbdcce1a686eee3b3a528c945bc8952bd7d423678cb35da5007f22cf3eb79.bin"
+      "record": "verified-store-verifier-81aec2b1aa413a1c5fb95ae2308be2d8ffb14b04e7d9d887cafc7bac19ed17e6.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -420,7 +420,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-349cbc6e84bb2a399b09c9c69ca3e37e9fd634553ee7fed0f19b46e110e51022.bin"
+      "record": "verified-graph-decoder-40503f3b86ff3880332bb338d0dd80bd21becc262105608d762420adb228a1aa.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -443,7 +443,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-ae38e49d90703cb22b223ee19e5cb68b2f6e53efb74b0f8bfc32094aa9878675.bin"
+      "record": "verified-xax_riscv64_backend-7964eb5d5076dec5c25f67eba368723c1eed55453d8def52025ebd66e3aeb427.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",

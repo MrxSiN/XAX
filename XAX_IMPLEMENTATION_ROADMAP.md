@@ -466,7 +466,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S7b.1 | Target legality of the x86-64 views lowering decided by the XAX program, which writes the exact diagnostic record | S7a | EXECUTED (ADR-179): every x86-64 views rejection rule is decided in XAX, in the bootstrap's order, with an identical `Diagnostic` |
 | S7b.2 | The object table (store objects and graph streams) and the image record (order, offsets, ranges) decided by XAX | S7b.1, S3, S3c | EXECUTED (ADR-181): references, target placement, and the entry are resolved by CID in XAX; the image record (function CIDs and code ranges) comes from the program |
 | S7b.3 | The same legality pass and record for the RISC-V views family | S7b.1 | EXECUTED (ADR-182): both families decide their rejections in XAX; the entry-interface check is deferred to keep the bootstrap's order |
-| S8 | Verifier totality: the store decoder, graph decoder, typing/facts, and store verifier reject with the bootstrap's exact diagnostics (`XAX_SPEC.md` §16.5 condition 5) | S7b.1 record | In progress: S8a and S8b EXECUTED; S8c.1–S8c.27 EXECUTED, rest of S8c open |
+| S8 | Verifier totality: the store decoder, graph decoder, typing/facts, and store verifier reject with the bootstrap's exact diagnostics (`XAX_SPEC.md` §16.5 condition 5) | S7b.1 record | In progress: S8a and S8b EXECUTED; S8c.1–S8c.28 EXECUTED, rest of S8c open |
 | S8a | Store-container rejections (header, records, non-semantic records, index, digest, trailer, root) decided by XAX with exact diagnostics | S3, S7b.1 record | EXECUTED (ADR-183): every container rule, in the bootstrap's order, digest comparison included |
 | S8b | Object-envelope rejections (`decode_object`) and graph-body rejections (S3c decoder) | S8a | EXECUTED (ADR-184, ADR-185) |
 | S8b.1 | Object-envelope rejections and the CID comparison decided by XAX on `get` | S8a | EXECUTED (ADR-184) |
@@ -499,6 +499,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S8c.25 | Scalar type rejections decided by the typing program | S8c.24 | EXECUTED (ADR-243) |
 | S8c.26 | Compound type rejections decided by the typing program | S8c.25 | EXECUTED (ADR-244) |
 | S8c.27 | Tuple and sum item rejections decided by the typing program | S8c.26 | EXECUTED (ADR-245) |
+| S8c.28 | Pointer element and opaque identity rejections decided by the typing program | S8c.27 | EXECUTED (ADR-246) |
 | S9 | Canonical store writing (object encoding, CID, container) in XAX | S2, S3 | UNIMPLEMENTED |
 | S10 | The driver as an XAX program in a native Linux x86-64 process: explicit platform file I/O, target-package interpretation, verify → lower → assemble → write | S7b, S8, S9 | UNIMPLEMENTED |
 | S11 | ELF64 executable container for views images, so the S10 driver is a standalone executable | S10 | UNIMPLEMENTED |

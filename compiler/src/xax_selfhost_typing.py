@@ -139,7 +139,9 @@ TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "
               # S8c.26 (ADR-244): resource and array forms.
               "TYPE_RESOURCE_STACK_OWNER", "TYPE_RESOURCE_CANONICAL", "TYPE_ARRAY_ELEMENT",
               # S8c.27 (ADR-245): tuple and sum items (C4: the used-reference bit mask).
-              "TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT", "TYPE_LIST_UNUSED")
+              "TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT", "TYPE_LIST_UNUSED",
+              # S8c.28 (ADR-246): pointer elements and opaque identity types.
+              "TYPE_POINTER_ELEMENT", "TYPE_POINTER_UNUSED", "TYPE_IDENTITY_TRUNCATED", "TYPE_IDENTITY_CANONICAL")
 TYPE_SITE_BASE = 16
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
@@ -866,6 +868,17 @@ def _object_entry(b: _Builder, t: _Typing, index):
             t.any(t.eq(second, 0), t.eq(fifth, 0), t.not_(power)), code("TYPE_POINTER"), b.c(0)))))))
     pointer_third = t.pick(t.le(references, third), third, t.pick(t.nonzero(pointer_left), pointer_left, t.pick(
         t.not_(t.all(t.nonzero(fourth), t.le(fourth, 3))), fourth, fifth)))
+    # S8c.28: a well-formed pointer's element, when the tables decoded it: not a proof type, the only reference.
+    pointee = b.read(b.add(end, t.pick(t.lt(third, references), third, b.c(0))))
+    pointee_proof = t.any(t.lookup(EFFECT, pointee), t.lookup(RESOURCE, pointee))
+    pointer_site = t.pick(t.all(t.eq(pointer_site, 0), fifth_ok, t.lt(third, references), _known(t, pointee)), t.pick(
+        pointee_proof, code("TYPE_POINTER_ELEMENT"), t.pick(t.eq(references, 1), b.c(0), code("TYPE_POINTER_UNUSED"))), pointer_site)
+    pointer_third = t.pick(t.any(t.eq(pointer_site, code("TYPE_POINTER_ELEMENT")), t.eq(pointer_site, code("TYPE_POINTER_UNUSED"))), third, pointer_third)
+    # opaque identity (6): a byte string (truncated, trailing, or empty / with references).
+    identity_end = b.add(after, second)
+    identity_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.lt(end, identity_end), code("TYPE_IDENTITY_TRUNCATED"), t.pick(
+        t.lt(identity_end, end), code("TYPE_TRAILING"), t.pick(t.any(t.eq(second, 0), t.nonzero(references)), code("TYPE_IDENTITY_CANONICAL"), b.c(0)))))
+    identity_third = t.pick(t.lt(end, identity_end), left, b.sub(end, t.pick(t.lt(end, identity_end), end, identity_end)))
     # resource (4): the stack-owner short form, or the long form with no transitions.
     sixth, sixth_size, sixth_ok = t.uleb(after5)
     sixth_ok = t.all(fifth_ok, sixth_ok, t.le(b.add(after5, sixth_size), end))
@@ -924,11 +937,11 @@ def _object_entry(b: _Builder, t: _Typing, index):
                 t.eq(used_count, references), b.c(0), t.pick(t.le(references, 64), code("TYPE_LIST_UNUSED"), b.c(0))))))))))
     list_third = t.pick(t.not_(t.eq(bad, none_word)), bad, t.pick(t.nonzero(list_left), list_left, which))
     del kind_is_type
-    type_site = t.pick(listy, list_site, type_site)
+    type_site = t.pick(listy, list_site, t.pick(t.eq(form, 6), identity_site, type_site))
     type_site = t.pick(t.eq(form, 5), opaque_site, t.pick(t.eq(form, 3), effect_site, t.pick(t.eq(form, 2), pointer_site, t.pick(
         t.eq(form, 4), resource_site, t.pick(t.eq(form, 9), array_site, type_site)))))
-    type_third = t.pick(listy, list_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
-        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left))))))
+    type_third = t.pick(listy, list_third, t.pick(t.eq(form, 6), identity_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
+        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left)))))))
     b.put(t.slot(C4, index), t.pick(listy, used_mask, fourth))
     b.put(t.slot(C5, index), fifth)
     a_type = t.all(t.eq(kind, int(Kind.TYPE)), form_ok, t.le(b.add(base, form_size), end))
@@ -1712,6 +1725,16 @@ def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
         return "XAX.TYPE.EFFECT", "TYPE-EFFECT-CANONICAL", "domain plus optional positive instance", obj.body.hex(), (), ()
     if name == "TYPE_SUM_NONEMPTY":
         return "XAX.TYPE.SUM", "TYPE-SUM-NONEMPTY", ">= 1", 0, (), ()
+    if name == "TYPE_POINTER_ELEMENT":
+        return "XAX.TYPE.POINTER", "TYPE-POINTER-VALUE-ELEMENT", "non-proof value type", obj.references[left].hex(), (), ()
+    if name == "TYPE_POINTER_UNUSED":
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", [obj.references[left].hex()], [cid.hex() for cid in obj.references], (), ()
+    if name == "TYPE_IDENTITY_TRUNCATED":
+        return "XAX.CANON.TRUNCATED", "SER-BOUNDS", f"{second} available bytes", left, (), ()
+    if name == "TYPE_IDENTITY_CANONICAL":
+        identity = obj.body[len(obj.body) - second:] if second else b""
+        return ("XAX.TYPE.OPAQUE_IDENTITY", "TYPE-OPAQUE-IDENTITY-CANONICAL", "nonempty identity and no references",
+                [identity.hex(), len(obj.references)], (), ())
     if name in ("TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT"):
         if name == "TYPE_TUPLE_ELEMENT":
             return "XAX.TYPE.TUPLE", "TYPE-TUPLE-VALUE-ELEMENT", "non-proof value type", obj.references[left].hex(), (), ()

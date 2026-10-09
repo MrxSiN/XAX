@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8c.28 pointer element and opaque identity rejections — 2026-10-09 (ADR-246)
+
+The XAX typing program now rejects pointers to proof types or with extra references, and malformed opaque identity types. Still Python: resource transitions, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
 ## S8c.27 tuple and sum item rejections — 2026-10-09 (ADR-245)
 
 The XAX typing program now rejects tuple and sum types with an item index out of range, trailing bytes, a proof-type item, or an unused reference. Still Python: pointer element checks, resource transitions, opaque identity types, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.

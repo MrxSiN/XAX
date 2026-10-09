@@ -220,6 +220,10 @@ def _constant(variant: str):
         "type_resource_plain": uleb(4) + uleb(1) + uleb(1) + uleb(4) + uleb(0) + uleb(0),
         "type_resource_flags": uleb(4) + uleb(3) + uleb(1) + uleb(64) + uleb(0) + uleb(0),
         "type_resource_trailing": uleb(4) + uleb(3) + uleb(1) + uleb(4) + uleb(0) + uleb(0) + b"\x00",
+        # S8c.28 (ADR-246): opaque identity types.
+        "type_identity_truncated": uleb(6) + uleb(9) + b"ab",
+        "type_identity_trailing": uleb(6) + uleb(2) + b"abc",
+        "type_identity_empty": uleb(6) + uleb(0),
     }
     if variant in types:
         return SemanticObject.create(Kind.TYPE, types[variant]), ()
@@ -246,6 +250,15 @@ def _constant(variant: str):
         references = tuple(sorted((B32.cid, extra.cid)))
         body = uleb(form) + uleb(len(indices)) + b"".join(uleb(item) for item in indices) + (b"\x00" if variant == "type_tuple_trailing" else b"")
         return SemanticObject.create(Kind.TYPE, body, references), ((extra,) if effect else ())
+    if variant == "type_identity_refs":
+        return SemanticObject.create(Kind.TYPE, uleb(6) + uleb(2) + b"ab", (B8.cid,)), ()
+    if variant in ("type_pointer_proof", "type_pointer_unused"):
+        from xax_compiler import memory_effect_type
+
+        element = memory_effect_type() if variant == "type_pointer_proof" else B32
+        references = (element.cid,) if variant == "type_pointer_proof" else tuple(sorted((B32.cid, B64.cid)))
+        body = uleb(2) + uleb(1) + uleb(references.index(element.cid)) + uleb(3) + uleb(4)
+        return SemanticObject.create(Kind.TYPE, body, references), ((element,) if variant == "type_pointer_proof" else ())
     if variant == "type_array_index":
         return SemanticObject.create(Kind.TYPE, uleb(9) + uleb(3) + uleb(4), (B32.cid,)), ()
     if variant == "type_opaque_refs":
@@ -340,6 +353,10 @@ VARIANTS = {
     # S8c.27 (ADR-245): tuple and sum items.
     "type_tuple_index": "GRAPH-REF-INDEX", "type_tuple_trailing": "TYPE-BODY", "type_sum_variant": "TYPE-SUM-VALUE-VARIANT",
     "type_tuple_element": "TYPE-TUPLE-VALUE-ELEMENT", "type_tuple_unused": "SER-REFS-DIRECT-ONLY",
+    # S8c.28 (ADR-246): pointer elements and opaque identity types.
+    "type_pointer_proof": "TYPE-POINTER-VALUE-ELEMENT", "type_pointer_unused": "SER-REFS-DIRECT-ONLY",
+    "type_identity_truncated": "SER-BOUNDS", "type_identity_trailing": "TYPE-BODY", "type_identity_empty": "TYPE-OPAQUE-IDENTITY-CANONICAL",
+    "type_identity_refs": "TYPE-OPAQUE-IDENTITY-CANONICAL",
 }
 
 
