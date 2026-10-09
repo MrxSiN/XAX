@@ -3813,6 +3813,7 @@ def _decode_opaque_identity_type(obj: SemanticObject) -> bytes:
 # S6b (ADR-143): CIDs of types and constants the XAX typing program proved valid.  Validity is a
 # function of the CID (bodies and references are content-addressed), so the set is process-wide.
 _XAX_VALID_OBJECTS: set[bytes] = set()
+_XAX_REJECTED_OBJECTS: dict[bytes, tuple] = {}  # S8c.24 (ADR-242): CID -> the bootstrap's diagnostic, decided by XAX
 
 
 def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
@@ -3825,6 +3826,8 @@ def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
 
     words, listed = marshal([], lambda *_args: None, type_info_from(resolve), objects=pending)
     _XAX_VALID_OBJECTS.update(typing.object_verdicts(words, listed))
+    # S8c.24 (ADR-242): constants XAX rejects, with the bootstrap's diagnostic.
+    _XAX_REJECTED_OBJECTS.update(typing.object_rejections(listed, objects))
 
 
 def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
@@ -7570,6 +7573,9 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         _verify_type(obj, resolve)
         return
     if obj.kind == Kind.CONSTANT:
+        if obj.cid in _XAX_REJECTED_OBJECTS:
+            code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid]
+            fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
         if obj.cid not in _XAX_VALID_OBJECTS:
             _decode_constant(obj, resolve)
         return

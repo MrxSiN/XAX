@@ -23,15 +23,28 @@ B8, B32, B64 = bits_type(8), bits_type(32), bits_type(64)
 
 @contextlib.contextmanager
 def _verifier(native: bool):
+    import xax_compiler
     import xax_selfhost_verify
 
     saved = list(xax_selfhost_verify._NATIVE)
-    if not native:
+    saved_typing = (xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED)
+    saved_objects = (set(xax_compiler._XAX_VALID_OBJECTS), dict(xax_compiler._XAX_REJECTED_OBJECTS))
+    xax_compiler._XAX_VALID_OBJECTS.clear()
+    xax_compiler._XAX_REJECTED_OBJECTS.clear()
+    xax_compiler._PARSED_GRAPHS.clear()
+    if not native:  # the bootstrap alone: no store verifier, no typing program (S8c.24: constants)
         xax_selfhost_verify._NATIVE[:] = [None]
+        xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED = None, True
     try:
         yield
     finally:
         xax_selfhost_verify._NATIVE[:] = saved
+        xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED = saved_typing
+        xax_compiler._XAX_VALID_OBJECTS.clear()
+        xax_compiler._XAX_VALID_OBJECTS.update(saved_objects[0])
+        xax_compiler._XAX_REJECTED_OBJECTS.clear()
+        xax_compiler._XAX_REJECTED_OBJECTS.update(saved_objects[1])
+        xax_compiler._PARSED_GRAPHS.clear()
 
 
 def _outcome(native: bool, root: SemanticObject, objects):
@@ -40,7 +53,7 @@ def _outcome(native: bool, root: SemanticObject, objects):
             verify_store(StoreReader(write_store(root.cid, tuple(objects))))
         except XaxError as error:
             d = error.diagnostic
-            return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual))
+            return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual), d.dependencies, d.repair_neighborhood)
         return ("accept",)
 
 
@@ -178,6 +191,28 @@ def _target(variant: str):
     return None
 
 
+def _constant(variant: str):
+    """A constant object breaking one value rule of ``_decode_constant`` (None for other variants)."""
+    from xax_compiler import float_type, tuple_type
+
+    cases = {
+        "constant_bits_length": (B32, b"\x01\x02\x03"),
+        "constant_bits_high": (bits_type(4), b"\x30"),
+        "constant_float_width": (float_type(1), bytes(8)),
+        "constant_float_nan": (float_type(1), (0x7FC00001).to_bytes(4, "little")),
+        "constant_link": (None, b"\x01" + bytes(7)),
+        "constant_scalar": (tuple_type((B32,)), b"\x00"),
+    }
+    if variant not in cases:
+        return None, ()
+    from xax_compiler import link_type
+
+    value_type, value = cases[variant]
+    value_type = value_type if value_type is not None else link_type()
+    return SemanticObject.create(Kind.CONSTANT, uleb(0) + uleb(len(value)) + value, (value_type.cid,)), (value_type, *(
+        (B32,) if variant == "constant_scalar" else ()))
+
+
 def _store(variant: str):
     """``(root, objects)``: a root, one module holding three types and a contract; ``variant`` breaks one object."""
     types = (B8, B32, B64)
@@ -197,7 +232,9 @@ def _store(variant: str):
     group, member, group_objects = _group(variant)
     with_member = not variant.startswith("group_")  # a member function of a broken group fails with the group's diagnostic
     target_object = _target(variant)
-    children = (*types, contract, function, group, *((member,) if with_member else ()), *((target_object,) if target_object else ()))
+    constant_object, constant_types = _constant(variant)
+    children = (*types, contract, function, group, *((member,) if with_member else ()), *((target_object,) if target_object else ()),
+                *((constant_object,) if constant_object else ()), *constant_types)
     supporting = (*function_objects, *group_objects)  # reached through references
     module = object_with_refs(Kind.MODULE, children)
     count = len(module.references)
@@ -237,6 +274,9 @@ VARIANTS = {
     "target_trailing": "TARGET-NATIVE-BODY", "target_architecture": "TARGET-ARCHITECTURE-SUPPORTED", "target_profile": "TARGET-PROFILE-SUPPORTED",
     "target_x86": "TARGET-X86-64-PROFILE", "target_riscv": "TARGET-RISCV64-RAW", "target_wasm": "TARGET-WASM32-CORE", "target_jvm": "TARGET-JVM-CLASSFILE",
     "target_spirv": "TARGET-SPIRV-COMPUTE", "target_aarch64": "TARGET-AARCH64-PROFILE",
+    # S8c.24 (ADR-242): constants (decided by the XAX typing program).
+    "constant_bits_length": "CONST-BITS-WIDTH", "constant_bits_high": "CONST-BITS-WIDTH", "constant_float_width": "CONST-FLOAT-WIDTH",
+    "constant_float_nan": "CONST-FLOAT-CANONICAL-NAN", "constant_link": "CONST-LINK-NULL-ONLY", "constant_scalar": "CONST-SCALAR-TYPE",
 }
 
 
@@ -253,7 +293,17 @@ class XaxObjectRejectionTests(unittest.TestCase):
             decided.append(bool(result[1]))
             return result
 
+        import xax_selfhost_typing
+
+        original_constants = xax_selfhost_typing.NativeTyping.object_rejections
+
+        def deciding_constants(self_, *arguments):
+            result = original_constants(self_, *arguments)
+            decided.append(bool(result))
+            return result
+
         xax_selfhost_verify.NativeStoreVerifier.verify_with_rejections = deciding
+        xax_selfhost_typing.NativeTyping.object_rejections = deciding_constants
         try:
             root, objects = _store("valid")
             self.assertEqual(_outcome(True, root, objects), ("accept",))
@@ -268,6 +318,7 @@ class XaxObjectRejectionTests(unittest.TestCase):
                     self.assertTrue(any(decided), variant)
         finally:
             xax_selfhost_verify.NativeStoreVerifier.verify_with_rejections = original
+            xax_selfhost_typing.NativeTyping.object_rejections = original_constants
 
 
 if __name__ == "__main__":
