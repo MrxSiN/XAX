@@ -118,13 +118,16 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 "FUNCTION_REF_INDEX", "FUNCTION_MEMBER_TRAILING", "FUNCTION_MEMBER_RANGE", "FUNCTION_CARRIER", "FUNCTION_TRAILING",
                 "FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED",
                 # S8c.21 (ADR-239): recursion-group member lists (``_decode_recursion_group``, before any member parses).
-                "GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED")
+                "GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED",
+                # S8c.22 (ADR-240): after member graphs parse (payload: graphs to parse first, quoted list, [count, graphs]).
+                "GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
 AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
+GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
 
 
 def _reject(e: E, condition, obj, site: int, *payload):
-    """Verdict REJECTED (with the record) when ``condition``."""
+    """Verdict REJECTED (with the record) when ``condition`` (None: unconditionally)."""
     def record():
         at = e.add(REJECTS_AT, e.mul(obj, REJECT_WORDS))
         e.st(at, site)
@@ -132,7 +135,10 @@ def _reject(e: E, condition, obj, site: int, *payload):
             e.st(e.add(at, index + 1), word)
         e.give(REJECTED)
 
-    e.if_(condition, record)
+    if condition is None:
+        record()
+    else:
+        e.if_(condition, record)
 
 
 def _resolved(e: E, obj):
@@ -421,19 +427,51 @@ def _graph_ok(tables):
                 e.var("mc_at", at)
 
                 def group_call():
+                    # 5 (G_LIST: the member) for a member out of range; 6 (G_LIST: [P, parameters, R, returns, A, operand types,
+                    # K, result types]) for a call whose types differ from the member's interface.
                     e.var("gm", e.rd(e.add(p["mc_at"], 1)))
-                    _no(e, e.le(e.ld(p["members"]), p["gm"]))
+                    e.if_(e.le(e.ld(p["members"]), p["gm"]), lambda: (e.st(GLOBALS + G_LIST, p["gm"]), e.give(5)))
                     e.var("gm_if", e.ld(e.add(e.add(p["members"], 1), p["gm"])))
                     e.var("gm_np", e.ld(p["gm_if"]))
-                    e.var("ma", e.add(p["mc_at"], 4))
-                    _no(e, e.ne(e.rd(p["ma"]), p["gm_np"]))
-                    e.set("ma", e.add(p["ma"], 1))
-                    e.for_("q", 0, p["gm_np"], lambda: _no(e, e.ne(value_type("ma"), e.ld(e.add(e.add(p["gm_if"], 1), p["q"])))))
                     e.var("gm_rt", e.add(e.add(p["gm_if"], 1), p["gm_np"]))
                     e.var("gm_results", e.ld(e.add(p["results_at"], p["nn"])))
-                    _no(e, e.ne(e.rd(p["gm_results"]), e.ld(p["gm_rt"])))
-                    e.for_("q", 0, e.ld(p["gm_rt"]), lambda: _no(e, e.ne(_reference(e, g, e.rd(e.add(e.add(p["gm_results"], 1), p["q"]))),
-                                                                          e.ld(e.add(e.add(p["gm_rt"], 1), p["q"])))))
+                    e.var("ma", e.add(p["mc_at"], 4))
+                    e.var("gm_na", e.rd(p["ma"]))
+                    e.set("ma", e.add(p["ma"], 1))
+                    e.var("gm_nk", e.rd(p["gm_results"]))
+                    e.var("gm_nr", e.ld(p["gm_rt"]))
+                    e.var("cq", e.alloc(e.add(e.add(e.add(p["gm_np"], p["gm_nr"]), e.add(p["gm_na"], p["gm_nk"])), 4)))
+                    _no(e, e.eq(p["cq"], NONE))
+                    e.var("cw", p["cq"])
+
+                    def put(word):
+                        e.st(p["cw"], word)
+                        e.set("cw", e.add(p["cw"], 1))
+
+                    put(p["gm_np"])
+                    e.for_("q", 0, p["gm_np"], lambda: put(e.ld(e.add(e.add(p["gm_if"], 1), p["q"]))))
+                    put(p["gm_nr"])
+                    e.for_("q", 0, p["gm_nr"], lambda: put(e.ld(e.add(e.add(p["gm_rt"], 1), p["q"]))))
+                    put(p["gm_na"])
+                    e.var("gm_same", e.flag(e.both(e.eq(p["gm_na"], p["gm_np"]), e.eq(p["gm_nk"], p["gm_nr"]))))
+
+                    def operand():
+                        e.var("gm_t", value_type("ma"))
+                        put(p["gm_t"])
+                        e.if_(e.either(e.le(p["gm_np"], p["q"]), e.ne(p["gm_t"], e.ld(e.add(e.add(p["gm_if"], 1), e.sel(e.lt(p["q"], p["gm_np"]), p["q"], 0))))),
+                              lambda: e.set("gm_same", 0))
+
+                    e.for_("q", 0, p["gm_na"], operand)
+                    put(p["gm_nk"])
+
+                    def result():
+                        e.var("gm_r", _reference(e, g, e.rd(e.add(e.add(p["gm_results"], 1), p["q"]))))
+                        put(p["gm_r"])
+                        e.if_(e.either(e.le(p["gm_nr"], p["q"]), e.ne(p["gm_r"], e.ld(e.add(e.add(p["gm_rt"], 1), e.sel(e.lt(p["q"], p["gm_nr"]), p["q"], 0))))),
+                              lambda: e.set("gm_same", 0))
+
+                    e.for_("q", 0, p["gm_nk"], result)
+                    e.if_(e.eq(p["gm_same"], 0), lambda: (e.st(GLOBALS + G_LIST, p["cq"]), e.give(6)))
                     slot = e.add(e.add(p["calls"], 1), e.mul(p["mc"], 3))
                     e.st(slot, p["gm"])
                     e.st(e.add(slot, 1), e.rd(e.add(p["mc_at"], 2)))
@@ -497,11 +535,31 @@ def _group_ok(tables):
             e.var("buffer", e.alloc(e.add(e.rd(e.sub(_payload(e, p["cg"]), 1)), 1)))  # at most one call per stream word
             _no(e, e.eq(p["buffer"], NONE))
             e.st(e.add(p["callsof"], p["i"]), p["buffer"])
-            _no(e, e.ne(e.call(_FN["graph"], p["cg"], e.ld(e.add(e.add(p["table"], 1), p["i"])), p["table"], p["buffer"]), 1))
+            e.var("gcode", e.call(_FN["graph"], p["cg"], e.ld(e.add(e.add(p["table"], 1), p["i"])), p["table"], p["buffer"]))
+            parsed = e.add(p["i"], 1)  # the bootstrap parses member graphs one by one, checking each before the next
+            for code, site in ((3, "GROUP_ENTRY_CONTRACT"), (4, "GROUP_RETURN_CONTRACT"), (5, "GROUP_MEMBER_RANGE"), (6, "GROUP_CALL_CONTRACT")):
+                _reject(e, e.eq(p["gcode"], code), o, S[site], parsed, _g(e, G_LIST), p["graphs"])
+            _no(e, e.ne(p["gcode"], 1))
 
         e.for_("i", 0, p["count"], contract)
+
+        def scc():
+            """``GRAPH-RECURSION-SCC`` quoting every member's callees: ``[count, (n, callees) per member]``."""
+            e.var("sccq", e.alloc(e.add(e.rd(e.sub(_payload(e, o), 1)), e.add(e.mul(p["count"], 2), 2))))
+            _no(e, e.eq(p["sccq"], NONE))
+            e.st(p["sccq"], p["count"])
+            e.var("sw", e.add(p["sccq"], 1))
+
+            def member_calls(member):
+                calls = e.ld(e.add(p["callsof"], member))
+                e.st(p["sw"], e.ld(calls))
+                e.set("sw", e.add(p["sw"], 1))
+                e.for_("sc", 0, e.ld(calls), lambda: (e.st(p["sw"], e.ld(e.add(e.add(calls, 1), e.mul(p["sc"], 3)))), e.set("sw", e.add(p["sw"], 1))))
+
+            e.for_("sm", 0, p["count"], lambda: member_calls(p["sm"]))
+            _reject(e, None, o, S["GROUP_SCC"], p["count"], p["sccq"], p["graphs"])
         # ``_canonical_recursion_order``: breadth-first discovery from every start reaches every member.
-        _no(e, e.both(e.eq(p["count"], 1), e.eq(e.ld(e.ld(p["callsof"])), 0)))
+        e.if_(e.both(e.eq(p["count"], 1), e.eq(e.ld(e.ld(p["callsof"])), 0)), scc)
         e.var("order0", e.alloc(e.add(p["count"], 1)))
         e.var("order", e.alloc(e.add(p["count"], 1)))
         e.var("position", e.alloc(e.add(p["count"], 1)))
@@ -531,7 +589,7 @@ def _group_ok(tables):
                 e.set("bk", e.add(p["bk"], 1))
 
             e.while_(lambda: e.lt(p["bk"], p["found"]), visit)
-            _no(e, e.ne(p["found"], p["count"]))
+            e.if_(e.ne(p["found"], p["count"]), scc)  # some start reaches only part of the group
 
         # The stored order must be the discovery order from member 0 (otherwise its descriptor is not the identity's).
         discover(0, p["order0"])
@@ -1872,6 +1930,30 @@ def collect_rejections(read, verdicts):
         if name in LIST_SITES:
             at = payload[0] if name in ("CONTRACT_UNUSED", "GROUP_UNUSED") else payload[1]
             listed = read(at + 1, read(at, 1)[0])
+        elif name in GROUP_AFTER_PARSE:
+            graphs = read(payload[2] + 1, payload[0])
+            if name in ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT"):
+                first = read(payload[1], 1)[0]
+                second = read(payload[1] + 1 + first, 1)[0]
+                listed = read(payload[1], first + second + 2)
+            elif name == "GROUP_MEMBER_RANGE":
+                listed = [read(payload[2], 1)[0]]
+            elif name == "GROUP_CALL_CONTRACT":
+                words, at = [], payload[1]
+                for _part in range(4):
+                    n = read(at, 1)[0]
+                    words.append(read(at + 1, n))
+                    at += n + 1
+                listed = words
+            elif name == "GROUP_SCC":
+                words, at = [], payload[1] + 1
+                for _member in range(read(payload[1], 1)[0]):
+                    n = read(at, 1)[0]
+                    words.append(read(at + 1, n))
+                    at += n + 1
+                listed = words
+            rejections[o] = (site, payload, listed, graphs)
+            continue
         elif name in PAIR_SITES:
             first = read(payload[1], 1)[0]
             second = read(payload[1] + 1 + first, 1)[0]
@@ -1883,8 +1965,22 @@ def collect_rejections(read, verdicts):
 def object_diagnostic(obj, record, objects=()):
     """S8c.19: the bootstrap's ``(code, rule, expected, actual)`` for a rejected object (rendering only: the verifier
     decided the check and its values).  ``objects``: the object table, for quoted object indices."""
-    site, (x, y, _z), listed = record
+    site, (x, y, _z), listed = record[:3]
     name = OBJECT_SITES[site - 1]
+    if name in ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT"):
+        first = listed[1:1 + listed[0]]
+        second = listed[2 + listed[0]:2 + listed[0] + listed[1 + listed[0]]]
+        if name == "GROUP_ENTRY_CONTRACT":
+            return "XAX.STRUCT.ENTRY_CONTRACT", "GRAPH-ENTRY-CONTRACT", [objects[i].cid.hex() for i in first], [objects[i].cid.hex() for i in second]
+        return "XAX.STRUCT.RETURN_CONTRACT", "GRAPH-RETURN-CONTRACT", [objects[i].cid.hex() for i in first], [objects[i].cid.hex() for i in second]
+    if name == "GROUP_MEMBER_RANGE":
+        return "XAX.STRUCT.RECURSION_MEMBER", "GRAPH-RECURSION-MEMBER", f"< {listed[0]}", y
+    if name == "GROUP_CALL_CONTRACT":
+        quote = lambda indices: [objects[i].cid.hex() for i in indices]  # noqa: E731
+        parameters, returns, operands, results = listed
+        return ("XAX.STRUCT.CALL_CONTRACT", "GRAPH-CALL-CONTRACT", [quote(parameters), quote(returns)], [quote(operands), quote(results)])
+    if name == "GROUP_SCC":
+        return "XAX.STRUCT.RECURSION_SCC", "GRAPH-RECURSION-SCC", "one recursive strongly connected component", [list(calls) for calls in listed]
     hexes = lambda indices: [objects[index].cid.hex() for index in indices]  # noqa: E731
     if name == "GROUP_EMPTY":
         return "XAX.STRUCT.RECURSION_GROUP_EMPTY", "GRAPH-RECURSION-GROUP-NONEMPTY", ">= 1", 0
