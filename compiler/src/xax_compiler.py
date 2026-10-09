@@ -7404,12 +7404,12 @@ def _join_origins(parsed: "_ParsedGraph", block_index: int, node_index: int) -> 
 
 def _xax_memory_fail(obj: SemanticObject, diagnostic: tuple, node_types=None) -> None:
     """S8c.8: raise the facts engine's rejection; a fifth element (S8, ADR-248) is the entity it names instead of the graph,
-    and an actual of ``NODE_TYPES`` quotes the node's operand and result types."""
-    from xax_selfhost_facts import NODE_TYPES
+    and an actual of ``NODE_TYPES`` (``NODE_ARGUMENT_TYPES``) quotes the node's operand (argument) and result types."""
+    from xax_selfhost_facts import NODE_ARGUMENT_TYPES, NODE_TYPES
 
     code, rule, expected, actual, *entity = diagnostic
-    if actual == NODE_TYPES and node_types is not None:
-        actual = [[cid.hex() for cid in node_types[0]], [cid.hex() for cid in node_types[1]]]
+    if actual in (NODE_TYPES, NODE_ARGUMENT_TYPES) and node_types is not None:
+        actual = [[cid.hex() for cid in node_types[0][actual == NODE_ARGUMENT_TYPES:]], [cid.hex() for cid in node_types[1]]]
     _xax_fail(code, entity[0] if entity else obj.cid.hex(), rule, expected, actual)
 
 
