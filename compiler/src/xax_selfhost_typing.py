@@ -136,7 +136,12 @@ C4, C5 = 32, 33  # S8c.26 (ADR-244): a resource type's flags and instance
 # (a value over five bytes, or a type the stream does not resolve), 5 trailing bytes (XA how many), 6 not a type (XA
 # its kind).
 XSTAT, XA, XB = 34, 35, 36
-TABLES = 37
+C6 = 37  # S8: a resource type's transition-count body offset
+# S8 (ADR-248): the type's body read as ``_decode_pointer_type`` reads it before its element: XP 0 (a pointer shape, or
+# not decided), 1-3 a malformed ULEB (XPA its offset), 4 deferred, 5 trailing bytes (XPA), 6 element index out of range
+# (XPA), 7 unknown permission (XPA), 8 not a pointer shape (XPA form, XPB space, XPC alignment).
+XP, XPA, XPB, XPC = 38, 39, 40, 41
+TABLES = 42
 CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE",
                   # S8c.29 (ADR-247): malformed bodies (COFF: the index, CLEN: the value length, CWIDTH: bytes available or left).
                   "CONST_REF_INDEX", "CONST_TRUNCATED", "CONST_TRAILING")
@@ -842,7 +847,7 @@ def _constant_object(b: _Builder, t: _Typing, entity, parts: dict | None = None)
     limit = b.c(256)
     for bits_ in range(1, 8):
         limit = t.pick(t.eq(spare, bits_), b.c(1 << bits_), limit)
-    last = b.read(b.add(data, t.pick(t.nonzero(count), b.sub(count, 1), b.c(0))))
+    last = b.read(b.add(data, t.pick(t.all(t.nonzero(count), t.le(count, length)), b.sub(count, 1), b.c(0))))  # clamped: any body
     bits_ok = t.all(t.nonzero(width), t.eq(count, b.op(Operation.UDIV, b.add(width, 7), 8)), t.lt(last, limit))
     # float and link values: at most eight little-endian bytes.
     small = t.le(count, 8)
@@ -987,9 +992,29 @@ def _object_entry(b: _Builder, t: _Typing, index):
     unknown_flags = t.nonzero(b.op(Operation.BIT_AND, fourth, ~15 & ((1 << 64) - 1)))
     plain_owner = t.all(t.eq(second, 1), t.eq(third, 1), t.eq(fourth, 4), t.eq(fifth, 0))
     long_bad = t.any(t.nonzero(references), t.eq(second, 0), t.eq(third, 0), unknown_flags, plain_owner)
+    # S8 (ADR-248): the transitions, each a ULEB as the cursor reads it: strictly increasing, positive, not the state.
+    steps = t.pick(t.all(sixth_ok, t.le(sixth, length)), sixth, t.pick(sixth_ok, length, b.c(0)))
+
+    def transition(k, carried):
+        at, fault, fault_at, bad, prev = carried
+        status_, size_ = _uleb_status(t, at, end)
+        value, _size, _ok = t.uleb(at)
+        live = t.eq(fault, 0)
+        faulted = t.all(live, t.not_(t.eq(status_, 0)))
+        good = t.all(live, t.eq(status_, 0))
+        wrong = t.any(t.eq(value, 0), t.eq(value, third), t.all(t.nonzero(prev), t.le(b.add(value, 1), prev)))
+        return (t.pick(good, b.add(at, size_), at), t.pick(faulted, status_, fault), t.pick(faulted, b.sub(at, base), fault_at),
+                t.pick(t.all(good, wrong), b.c(1), bad), t.pick(good, b.add(value, 1), prev))
+
+    transitions_end, transition_fault, transition_fault_at, transitions_bad, _prev = b.for_range(
+        b.c(0), steps, transition, (after6, b.c(0), b.c(0), b.c(0), b.c(0)))
+    uleb_code = lambda status_: t.pick(t.eq(status_, 1), code("TYPE_ULEB_UNTERMINATED"), t.pick(  # noqa: E731
+        t.eq(status_, 2), code("TYPE_ULEB_MINIMAL"), t.pick(t.eq(status_, 3), code("TYPE_ULEB_BOUNDED"), b.c(0))))
     resource_site = t.pick(t.not_(third_ok), first_bad(2), t.pick(short, t.pick(owner_bad, code("TYPE_RESOURCE_STACK_OWNER"), b.c(0)), t.pick(
-        t.not_(sixth_ok), first_bad(5), t.pick(t.not_(t.eq(sixth, 0)), b.c(0), t.pick(t.nonzero(b.sub(end, after6)), code("TYPE_TRAILING"), t.pick(
-            long_bad, code("TYPE_RESOURCE_CANONICAL"), b.c(0)))))))
+        t.not_(sixth_ok), first_bad(5), t.pick(t.nonzero(transition_fault), uleb_code(transition_fault), t.pick(
+            t.nonzero(b.sub(end, transitions_end)), code("TYPE_TRAILING"), t.pick(
+                t.any(long_bad, t.nonzero(transitions_bad)), code("TYPE_RESOURCE_CANONICAL"), b.c(0)))))))
+    transition_uleb = t.all(t.eq(form, 4), t.nonzero(transition_fault))
     # array (9): element index in range, count, end, then a decoded element that is a proof type or not the only reference.
     element = b.read(b.add(end, t.pick(t.lt(second, references), second, b.c(0))))
     proof = t.any(t.lookup(EFFECT, element), t.lookup(RESOURCE, element))
@@ -1041,12 +1066,28 @@ def _object_entry(b: _Builder, t: _Typing, index):
     type_site = t.pick(t.eq(form, 5), opaque_site, t.pick(t.eq(form, 3), effect_site, t.pick(t.eq(form, 2), pointer_site, t.pick(
         t.eq(form, 4), resource_site, t.pick(t.eq(form, 9), array_site, type_site)))))
     type_third = t.pick(listy, list_third, t.pick(t.eq(form, 6), identity_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
-        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left)))))))
+        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, transitions_end), third), t.pick(t.eq(form, 9), array_third, left)))))))
     b.put(t.slot(C5, index), fifth)
     a_type = t.eq(kind, int(Kind.TYPE))
     type_site = t.pick(t.eq(statuses[0], 0), type_site, first_bad(0))
     uleb_site = t.any(*(t.eq(type_site, b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))) for name in uleb_codes.values()))
-    b.put(t.slot(C4, index), t.pick(uleb_site, first_bad_at(5), t.pick(listy, used_mask, fourth)))
+    b.put(t.slot(C4, index), t.pick(uleb_site, t.pick(transition_uleb, transition_fault_at, first_bad_at(5)), t.pick(listy, used_mask, fourth)))
+    b.put(t.slot(C6, index), b.sub(after5, base))  # S8: a resource type's transition count offset (its canonical rejection quotes them)
+    # S8 (ADR-248): ``_decode_pointer_type``'s reading of any type, up to its shape check.
+    shape_bad = t.any(t.not_(t.eq(form, 2)), t.eq(second, 0), t.eq(fifth, 0), t.not_(power))
+    xp, xpa = t.pick(shape_bad, b.c(8), b.c(0)), form
+    xp, xpa = t.pick(t.one_of(fourth, (1, 2, 3)), xp, b.c(7)), t.pick(t.one_of(fourth, (1, 2, 3)), xpa, fourth)
+    xp, xpa = t.pick(t.nonzero(pointer_left), b.c(5), xp), t.pick(t.nonzero(pointer_left), pointer_left, xpa)
+    for k in (4, 3):
+        xp, xpa = t.pick(t.eq(statuses[k], 0), xp, statuses[k]), t.pick(t.eq(statuses[k], 0), xpa, b.sub(starts[k], base))
+    xp, xpa = t.pick(t.le(references, third), b.c(6), xp), t.pick(t.le(references, third), third, xpa)
+    for k in (2, 1, 0):
+        xp, xpa = t.pick(t.eq(statuses[k], 0), xp, statuses[k]), t.pick(t.eq(statuses[k], 0), xpa, b.sub(starts[k], base))
+    xp = t.pick(t.eq(kind, int(Kind.TYPE)), xp, b.c(4))
+    b.put(t.slot(XP, index), xp)
+    b.put(t.slot(XPA, index), xpa)
+    b.put(t.slot(XPB, index), second)
+    b.put(t.slot(XPC, index), fifth)
     # S8c.29 (ADR-247): a malformed constant body, in ``_decode_constant``'s order: the type index, the value length,
     # trailing bytes (each ULEB canonical and inside the body, else the bootstrap's cursor decides).
     c_end, c_data, c_refs, c_index = parts["end"], parts["data"], parts["references"], parts["reference"]
@@ -1601,6 +1642,42 @@ class _Rendering:
         return self.cids[index].hex()
 
 
+# S8 (ADR-248): the decoders that check only the form before reading on: form -> (code, rule, expected).  Key 0 is
+# ``_decode_pointer_space`` (form 2, then the space).
+FORM_CHECKS = {
+    3: ("XAX.TYPE.EFFECT", "TYPE-EFFECT", "effect type"),
+    4: ("XAX.TYPE.RESOURCE", "TYPE-RESOURCE", "resource type"),
+    5: ("XAX.TYPE.OPAQUE", "TYPE-OPAQUE", "opaque semantic type"),
+    6: ("XAX.TYPE.OPAQUE_IDENTITY", "TYPE-OPAQUE-IDENTITY", "identity-qualified opaque ABI type"),
+    8: ("XAX.TYPE.TUPLE", "TYPE-TUPLE", "tuple type"),
+    9: ("XAX.TYPE.ARRAY", "TYPE-ARRAY", "array type"),
+    10: ("XAX.TYPE.SUM", "TYPE-SUM", "sum type"),
+}
+
+
+def pointer_cross_diagnostic(stat: int, xa: int, xb: int, xc: int, obj):
+    """S8 (ADR-248): ``_decode_pointer_type``'s diagnostic for a type by the program's reading (XP/XPA/XPB/XPC), as
+    ``(code, rule, expected, actual, entity)``; None when it reads a pointer shape or the outcome is deferred."""
+    from xax_compiler import Permission
+
+    entity = obj.cid.hex()
+    if stat == 1:
+        return "XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED", "terminating byte", "end of input", entity
+    if stat == 2:
+        return ("XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL", *_non_minimal(obj.body, xa), entity)
+    if stat == 3:
+        return "XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED", "at most 10 bytes", "more than 10 bytes", entity
+    if stat == 5:
+        return "XAX.CANON.TRAILING_BYTES", "TYPE-BODY", 0, xa, entity
+    if stat == 6:
+        return "XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {len(obj.references)}", xa, entity
+    if stat == 7:
+        return "XAX.TYPE.POINTER_PERMISSION", "TYPE-POINTER-PERMISSION", list(Permission), xa, entity
+    if stat == 8:
+        return "XAX.TYPE.POINTER", "TYPE-POINTER", "form=2,positive address space,power-of-two alignment", [xa, xb, xc], entity
+    return None
+
+
 def cross_diagnostic(bits: bool, stat: int, xa: int, xb: int, cid: bytes, body: bytes):
     """S8 (ADR-248): ``decode_bits_width`` (``bits``) or ``decode_float_format`` of a type, by the program's outcome for
     it: ``(code, rule, expected, actual, entity)`` (the entity is the type).  ``body``: the type's body (for the
@@ -1885,7 +1962,15 @@ def _non_minimal(body: bytes, start: int) -> tuple[str, str]:
     return uleb(value).hex(), body[start:end].hex()
 
 
-def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
+def _transitions(obj, at):
+    """A resource type's transitions, read at body offset ``at`` (the count) where the program verified them."""
+    from xax_compiler import Cursor
+
+    cursor = Cursor(obj.body[at:], obj.cid.hex())
+    return [cursor.uleb() for _ in range(cursor.uleb())]
+
+
+def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0, sixth=0):
     """S8c.25 (ADR-243): ``_verify_type``'s diagnostic ``(code, rule, expected, actual, dependencies, repair)``."""
     import xax_compiler as X
 
@@ -1928,7 +2013,7 @@ def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
         return "XAX.TYPE.RESOURCE", "TYPE-RESOURCE-STACK-OWNER", "resource<stack-storage,live>", [second, left], (), ()
     if name == "TYPE_RESOURCE_CANONICAL":
         return ("XAX.TYPE.RESOURCE", "TYPE-RESOURCE-CANONICAL", "positive kind/state, canonical flags/instance/transitions",
-                [second, left, fourth, fifth, []], (), ())
+                [second, left, fourth, fifth, _transitions(obj, sixth) if len(obj.body) > sixth else []], (), ())
     if name == "TYPE_ARRAY_ELEMENT":
         return ("XAX.TYPE.ARRAY", "TYPE-ARRAY-VALUE-ELEMENT", "one non-proof value element",
                 [obj.references[second].hex(), [cid.hex() for cid in obj.references]], (), ())
@@ -1994,6 +2079,42 @@ class NativeTyping:
         base = TABLE + count * OBJOK
         return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
 
+    def object_cross(self, listed: dict, objects: dict) -> dict:
+        """After ``object_verdicts``: S8 (ADR-248), ``{cid: {form: diagnostic}}`` for the types whose body
+        ``decode_bits_width`` (1), ``decode_float_format`` (7), or ``_decode_pointer_type`` (2) rejects, by the program's
+        reading of each body (``cross_diagnostic``, ``pointer_cross_diagnostic``)."""
+        count = getattr(self, "_object_count", None)
+        if count is None:
+            return {}
+        table = lambda field, index: self._out[TABLE + count * field + index]  # noqa: E731
+        crossed = {}
+        for cid, index in listed.items():
+            obj = objects.get(cid)
+            if index is None or obj is None or obj.kind != Kind.TYPE:
+                continue
+            outcomes = {}
+            stat, xa, xb = table(XSTAT, index), table(XA, index), table(XB, index)
+            plain = stat == 0 and not obj.references
+            if stat != 4 and not (plain and xa == 1 and xb >= 1):
+                outcomes[1] = cross_diagnostic(True, stat, xa, xb, cid, obj.body)
+            if stat != 4 and not (plain and xa == 7 and xb in (1, 2)):
+                outcomes[7] = cross_diagnostic(False, stat, xa, xb, cid, obj.body)
+            # The other decoders read the form first: a malformed form ULEB, or another form.
+            formb = table(FORMB, index)
+            form_fault = stat in (1, 2, 3) and xa == 0
+            if formb:
+                for form, (code, rule, expected) in FORM_CHECKS.items():
+                    if form_fault:
+                        outcomes[form] = cross_diagnostic(True, stat, xa, xb, cid, obj.body)
+                    elif formb != form:
+                        outcomes[form] = (code, rule, expected, "different type form", cid.hex())
+            pointer = pointer_cross_diagnostic(table(XP, index), table(XPA, index), table(XPB, index), table(XPC, index), obj)
+            if pointer is not None:
+                outcomes[2] = pointer
+            if outcomes:
+                crossed[cid] = outcomes
+        return crossed
+
     def object_rejections(self, listed: dict, objects: dict) -> dict:
         """After ``object_verdicts``: S8c.24 (ADR-242), ``{cid: (code, rule, expected, actual, dependencies, repair)}`` for
         the constants XAX rejects (``objects``: CID -> object, for quoting the value bytes)."""
@@ -2012,7 +2133,7 @@ class NativeTyping:
             offset, length, width = table(COFF, index), table(CLEN, index), table(CWIDTH, index)
             if site > TYPE_SITE_BASE:
                 # The form (S8, ADR-248): a type decoder of the same form raises this same diagnostic.
-                rejected[cid] = (*_type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index)), offset)
+                rejected[cid] = (*_type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index), table(C6, index)), offset)
                 continue
             value = obj.body[offset:offset + length]
             name = CONSTANT_SITES[site - 1]

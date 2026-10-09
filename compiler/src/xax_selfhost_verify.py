@@ -65,7 +65,7 @@ ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
 MODULE_CHILDREN = (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT)
 # Globals (the first arena words): table pointers.
 GLOBALS = ARENA_AT
-G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE = range(7)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
+G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE, G_EXIT, G_SINK = range(9)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
 _FN: dict = {}
 
 
@@ -118,10 +118,14 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 # the graph object), so the host parses it first.
                 "FUNCTION_REF_INDEX", "FUNCTION_MEMBER_TRAILING", "FUNCTION_MEMBER_RANGE", "FUNCTION_CARRIER", "FUNCTION_TRAILING",
                 "FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED",
+                # S8 (ADR-248): a member call in an ordinary function's graph (payload: the graph).
+                "FUNCTION_GROUP_CONTEXT",
                 # S8c.21 (ADR-239): recursion-group member lists (``_decode_recursion_group``, before any member parses).
                 "GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED",
                 # S8c.22 (ADR-240): after member graphs parse (payload: graphs to parse first, quoted list, [count, graphs]).
                 "GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC",
+                # S8 (ADR-248): the canonical member order (payload: count, the canonical order, graphs).
+                "GROUP_ORDER",
                 # S8c.23 (ADR-241): targets (``decode_native_target``).
                 "TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
                 "TARGET_PROFILE", "TARGET_X86_64", "TARGET_RISCV64", "TARGET_SPIRV", "TARGET_JVM", "TARGET_WASM32", "TARGET_AARCH64",
@@ -143,8 +147,8 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 # S8: ``_build_form`` of another object (payload: the object): its BUILD-KIND diagnostic, or its own form
                 # rejection.
                 "BUILD_KIND_OF", "OTHER_OBJECT")
-AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
-GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
+AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED", "FUNCTION_GROUP_CONTEXT")
+GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC", "GROUP_ORDER")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
 
 
@@ -184,13 +188,7 @@ def _read(e: E, name: str, end, obj=None, start=None):
     and its body ``start``, a malformed ULEB rejects ``obj`` as ``Cursor.uleb`` does (``BODY_ULEB``)."""
     p = e.p
     if obj is not None:
-        e.var(f"{name}_value", e.call(_FN["uleb10"], p[name], end))
-        e.var(f"{name}_rs", _g(e, G_ULEB_STATUS))
-        e.var(f"{name}_rz", _g(e, G_ULEB_SIZE))
-        _no(e, e.eq(p[f"{name}_rs"], 4))  # a ten-byte value: left to the bootstrap
-        e.if_(e.ne(p[f"{name}_rs"], 0), lambda: _reject(e, None, obj, S["BODY_ULEB"], p[f"{name}_rs"], e.sub(p[name], start), p[f"{name}_rz"]))
-        e.set(name, e.add(p[name], p[f"{name}_rz"]))
-        return p[f"{name}_value"]
+        return _strict(e, name, end, obj, start)
     value, size, ok = _uleb(e, p[name])
     _no(e, e.not_(ok))
     e.set(name, e.add(p[name], size))
@@ -265,12 +263,10 @@ def _interface(e: E, obj, name: str, end, reject_site=None, start=None):
     record = p[f"{name}_if"]
     strict = obj if start is not None else None
     e.var(f"{name}_np", _read(e, name, end, strict, start))
-    _no(e, e.lt(e.sub(end, p[name]), p[f"{name}_np"]))  # more types than bytes: a read fails first (left to the bootstrap)
     e.st(record, p[f"{name}_np"])
     e.for_("q", 0, p[f"{name}_np"], lambda: e.st(e.add(e.add(p[f"{name}_if"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site, start)))
     e.var(f"{name}_rt", e.add(e.add(p[f"{name}_if"], 1), p[f"{name}_np"]))
     e.st(p[f"{name}_rt"], _read(e, name, end, strict, start))
-    _no(e, e.lt(e.sub(end, p[name]), e.ld(p[f"{name}_rt"])))
     e.for_("q", 0, e.ld(p[f"{name}_rt"]), lambda: e.st(e.add(e.add(p[f"{name}_rt"], 1), p["q"]), _type_reference(e, obj, name, end, reject_site, start)))
     return p[f"{name}_if"]
 
@@ -312,6 +308,7 @@ def _function_ok(tables):
         _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_TRAILING"], e.sub(p["fend"], p["fa"]))
         # After the bootstrap's graph parse: the graph contract, then the references used.
         e.var("contract", e.call(_FN["graph"], p["graph"], p["iface"], NONE, NONE))
+        _reject(e, e.eq(p["contract"], 7), f, S["FUNCTION_GROUP_CONTEXT"], p["graph"])
         _reject(e, e.eq(p["contract"], 3), f, S["FUNCTION_ENTRY_CONTRACT"], p["graph"], _g(e, G_LIST))
         _reject(e, e.eq(p["contract"], 4), f, S["FUNCTION_RETURN_CONTRACT"], p["graph"], _g(e, G_LIST))
         _no(e, e.ne(p["contract"], 1))
@@ -356,7 +353,8 @@ def _graph_ok(tables):
 
             def node():
                 e.st(e.add(p["node_at"], p["nodes"]), p["ga"])
-                _no(e, e.both(e.eq(p["members"], NONE), e.eq(e.rd(p["ga"]), int(Operation.CALL_GROUP_MEMBER))))
+                # S8 (ADR-248): a member call outside a group: ``_verify_function``'s GROUP-CALL-CONTEXT (code 7).
+                e.if_(e.both(e.eq(p["members"], NONE), e.eq(e.rd(p["ga"]), int(Operation.CALL_GROUP_MEMBER))), lambda: e.set("context", 1))
                 e.set("ga", _node_end(e, p["ga"]))
                 e.st(e.add(p["results_at"], p["nodes"]), p["ne_results"])
                 e.set("nodes", e.add(p["nodes"], 1))
@@ -378,7 +376,9 @@ def _graph_ok(tables):
             e.if_(e.eq(kind, 1), edge, lambda: e.if_(e.eq(kind, 2), conditional, lambda: e.if_(
                 e.eq(kind, 3), lambda: _skip_values(e, "ga"), lambda: e.set("ga", e.add(p["ga"], 2)))))
 
+        e.var("context", 0)
         e.for_("b", 0, p["B"], place)
+        e.if_(e.ne(p["context"], 0), lambda: e.give(7))
         # Entry parameters: exactly the interface's parameter types (3, with [P, interface types, E, entry types] in
         # G_LIST, when they differ).
         entry_at = e.ld(e.add(p["blocks"], p["entry"]))
@@ -544,10 +544,11 @@ def _group_ok(tables):
         _no(e, e.eq(_resolved(e, o), 0))
         e.var("count", _read(e, "ga", p["gend"], o, p["gbody"]))
         _reject(e, e.eq(p["count"], 0), o, S["GROUP_EMPTY"])
-        _no(e, e.lt(e.sub(p["gend"], p["ga"]), p["count"]))  # more members than bytes: a read fails first (left to the bootstrap)
-        e.var("table", e.alloc(e.add(p["count"], 1)))  # [count, interface records]
-        e.var("graphs", e.alloc(e.add(p["count"], 1)))  # [count, graph objects]
-        e.var("callsof", e.alloc(e.add(p["count"], 1)))
+        # At most one member per body byte: a larger count faults on a read first.
+        e.var("cap", e.add(e.sel(e.lt(p["count"], e.sub(p["gend"], p["ga"])), p["count"], e.sub(p["gend"], p["ga"])), 1))
+        e.var("table", e.alloc(p["cap"]))  # [count, interface records]
+        e.var("graphs", e.alloc(p["cap"]))  # [count, graph objects]
+        e.var("callsof", e.alloc(p["cap"]))
         _no(e, e.either(e.eq(p["table"], NONE), e.eq(p["graphs"], NONE), e.eq(p["callsof"], NONE)))
         e.st(p["table"], p["count"])
         e.st(p["graphs"], p["count"])
@@ -628,9 +629,15 @@ def _group_ok(tables):
             e.while_(lambda: e.lt(p["bk"], p["found"]), visit)
             e.if_(e.ne(p["found"], p["count"]), scc)  # some start reaches only part of the group
 
-        # The stored order must be the discovery order from member 0 (otherwise its descriptor is not the identity's).
+        # S8 (ADR-248): the canonical order is the smallest descriptor over every start (the first start on a tie);
+        # start 0's order and positions are the first best.
+        e.var("bestord", e.alloc(e.add(p["count"], 1)))
+        e.var("bestpos", e.alloc(e.add(p["count"], 1)))
+        e.var("candpos", e.alloc(e.add(p["count"], 1)))
+        _no(e, e.either(e.eq(p["bestord"], NONE), e.eq(p["bestpos"], NONE), e.eq(p["candpos"], NONE)))
         discover(0, p["order0"])
-        e.for_("k", 0, p["count"], lambda: _no(e, e.ne(e.ld(e.add(p["order0"], p["k"])), p["k"])))
+        e.for_("k", 0, p["count"], lambda: (e.st(e.add(p["bestord"], p["k"]), e.ld(e.add(p["order0"], p["k"]))),
+                                            e.st(e.add(p["bestpos"], p["k"]), e.ld(e.add(p["position"], p["k"])))))
 
         # Erased member graphs (``_recursion_shape``): body bytes without the member-call spans.
         e.var("erased", e.alloc(e.add(p["count"], 1)))
@@ -712,27 +719,39 @@ def _group_ok(tables):
             e.if_(e.eq(p["kd"], 0), lambda: lexicographic(e.ld(p["ira"]), e.ld(p["irb"]), lambda k: e.ld(e.add(e.add(p["ira"], 1), k)),
                                                           lambda k: e.ld(e.add(e.add(p["irb"], 1), k)), True))
 
-        def start():
-            discover(p["s"], p["order"])
-            # This start's descriptor must not be below the identity's (member 0's): compare position by position.
-            e.var("cmp", 0)
+        def compare(order_a, position_a, order_b, position_b):
+            """``kd`` for two candidate orders' descriptors (``position_*``: member -> its position in that order)."""
+            e.var("kd", 0)
 
             def position():
-                e.var("pa", e.ld(e.add(p["order"], p["k"])))
-                e.var("kd", 0)
-                e.if_(e.ne(p["pa"], p["k"]), lambda: key_compare(p["pa"], p["k"]))
+                e.var("pa", e.ld(e.add(order_a, p["k"])))
+                e.var("pb", e.ld(e.add(order_b, p["k"])))
+                e.if_(e.ne(p["pa"], p["pb"]), lambda: key_compare(p["pa"], p["pb"]))
                 e.var("pba", e.ld(e.add(p["callsof"], p["pa"])))
-                e.var("pbb", e.ld(e.add(p["callsof"], p["k"])))
-                # Then the renumbered callees: this start's positions against the identity's (the member indices).
+                e.var("pbb", e.ld(e.add(p["callsof"], p["pb"])))
+                # Then the renumbered callees.
                 e.if_(e.eq(p["kd"], 0), lambda: lexicographic(
-                    e.ld(p["pba"]), e.ld(p["pbb"]), lambda c: e.ld(e.add(p["position"], e.ld(e.add(e.add(p["pba"], 1), e.mul(c, 3))))),
-                    lambda c: e.ld(e.add(e.add(p["pbb"], 1), e.mul(c, 3))), False))
-                _no(e, e.eq(p["kd"], 1))  # a smaller descriptor: the bootstrap rejects the order
-                e.if_(e.eq(p["kd"], 2), lambda: e.set("cmp", 1))
+                    e.ld(p["pba"]), e.ld(p["pbb"]), lambda c: position_a(e.ld(e.add(e.add(p["pba"], 1), e.mul(c, 3)))),
+                    lambda c: position_b(e.ld(e.add(e.add(p["pbb"], 1), e.mul(c, 3)))), False))
 
-            e.for_("k", 0, p["count"], lambda: e.if_(e.eq(p["cmp"], 0), position))
+            e.for_("k", 0, p["count"], lambda: e.if_(e.eq(p["kd"], 0), position))
+            return p["kd"]
+
+        def start():
+            discover(p["s"], p["order"])
+            e.for_("k", 0, p["count"], lambda: e.st(e.add(p["candpos"], p["k"]), e.ld(e.add(p["position"], p["k"]))))
+            compare(p["order"], lambda m: e.ld(e.add(p["candpos"], m)), p["bestord"], lambda m: e.ld(e.add(p["bestpos"], m)))
+            e.if_(e.eq(p["kd"], 1), lambda: e.for_("k", 0, p["count"], lambda: (
+                e.st(e.add(p["bestord"], p["k"]), e.ld(e.add(p["order"], p["k"]))),
+                e.st(e.add(p["bestpos"], p["k"]), e.ld(e.add(p["candpos"], p["k"]))))))
 
         e.for_("s", 1, p["count"], start)
+        # The stored order's descriptor (the identity's) must be the canonical one.
+        e.var("identity", e.alloc(e.add(p["count"], 1)))
+        _no(e, e.eq(p["identity"], NONE))
+        e.for_("k", 0, p["count"], lambda: e.st(e.add(p["identity"], p["k"]), p["k"]))
+        compare(p["bestord"], lambda m: e.ld(e.add(p["bestpos"], m)), p["identity"], lambda m: m)
+        _reject(e, e.ne(p["kd"], 0), o, S["GROUP_ORDER"], p["count"], _list_copy(e, p["count"], lambda k: e.ld(e.add(p["bestord"], k))), p["graphs"])
         e.st(e.add(GRAPHS_AT, o), p["graphs"])
         e.give(1)
     return _function(("o",), build, tables)
@@ -799,6 +818,39 @@ def _uleb10_fn(tables):
     return _function(("at", "end"), build, tables)
 
 
+def _strict_read_fn(tables):
+    """S8 (ADR-248): ``Cursor.uleb`` of object ``o``'s body at ``at`` (inside ``end``, the body starting at ``start``),
+    the value stored at ``slot``.  G_EXIT is 1 to go on, or the caller's verdict: REJECTED with the record written
+    (``BODY_ULEB``, or inside target section ``region`` its ``TARGET_SECTION``), or 0 (a ten-byte value: declined).
+    G_ULEB_SIZE: the bytes read."""
+    def build(e: E):
+        p = e.p
+        e.var("sv", e.call(_FN["uleb10"], p["at"], p["end"]))
+        e.var("ss", _g(e, G_ULEB_STATUS))
+        e.st(p["slot"], p["sv"])
+        e.st(GLOBALS + G_EXIT, e.sel(e.eq(p["ss"], 0), 1, e.sel(e.eq(p["ss"], 4), 0, REJECTED)))
+
+        def record():
+            at = e.add(REJECTS_AT, e.mul(p["o"], REJECT_WORDS))
+            e.if_(e.eq(p["region"], 0), lambda: (e.st(at, S["BODY_ULEB"]), e.st(e.add(at, 1), p["ss"]), e.st(e.add(at, 2), e.sub(p["at"], p["start"])),
+                                                 e.st(e.add(at, 3), _g(e, G_ULEB_SIZE))),
+                  lambda: (e.st(at, S["TARGET_SECTION"]), e.st(e.add(at, 1), p["region"]), e.st(e.add(at, 2), p["ss"]), e.st(e.add(at, 3), 0)))
+
+        e.if_(e.both(e.ne(p["ss"], 0), e.ne(p["ss"], 4)), record)
+        e.give(p["sv"])
+    return _function(("o", "at", "end", "start", "region", "slot"), build, tables)
+
+
+def _strict(e: E, name: str, end, obj, start, region=0, slot=None):
+    """A strict ``Cursor.uleb`` at ``p[name]`` through ``_strict_read_fn``: the value (also stored at ``slot``); a
+    malformed ULEB returns the caller's verdict."""
+    p = e.p
+    e.var(f"{name}_value", e.call(_FN["tread"], obj, p[name], end, start, region, GLOBALS + G_SINK if slot is None else slot))
+    e.if_(e.ne(_g(e, G_EXIT), 1), lambda: e.give(_g(e, G_EXIT)))
+    e.set(name, e.add(p[name], _g(e, G_ULEB_SIZE)))
+    return p[f"{name}_value"]
+
+
 def _target_ok(tables):
     """``decode_native_target(allow_carrier=True)``, decided in full (S8, ADR-248): the body is read in the
     bootstrap's order, every value recorded in a word list (a rejection quotes it); a malformed field rejects where
@@ -845,14 +897,8 @@ def _target_ok(tables):
 
         def read():
             """The next ULEB (recorded); a malformed one rejects."""
-            e.set("rv", e.call(_FN["uleb10"], p["ta"], p["tend"]))
-            e.set("rs", _g(e, G_ULEB_STATUS))
-            e.set("rz", _g(e, G_ULEB_SIZE))
-            _no(e, e.eq(p["rs"], 4))  # a ten-byte value: left to the bootstrap
-            e.if_(e.both(e.ne(p["rs"], 0), e.ne(p["region"], 0)), lambda: _reject(e, None, o, S["TARGET_SECTION"], p["region"], p["rs"], 0))
-            e.if_(e.ne(p["rs"], 0), lambda: _reject(e, None, o, S["BODY_ULEB"], p["rs"], e.sub(p["ta"], p["tbody"]), p["rz"]))
-            e.set("ta", e.add(p["ta"], p["rz"]))
-            record(p["rv"])
+            e.set("rv", _strict(e, "ta", p["tend"], o, p["tbody"], p["region"], e.add(p["words"], p["wn"])))
+            e.set("wn", e.add(p["wn"], 1))
             return p["rv"]
 
         def enum(name, high, kind):
@@ -1366,8 +1412,8 @@ def _recorder(e: E, obj, at: str, end, start):
         e.set("rn", e.add(p["rn"], 1))
 
     def read():
-        e.var("rd_", _read(e, at, end, obj, start))
-        record(p["rd_"])
+        e.var("rd_", _strict(e, at, end, obj, start, 0, e.add(p["rw"], p["rn"])))
+        e.set("rn", e.add(p["rn"], 1))
         return p["rd_"]
 
     def string():
@@ -2311,6 +2357,7 @@ def build_verifier_program():
         return function
 
     add("uleb10", _uleb10_fn(tables))
+    add("tread", _strict_read_fn(tables))
     add("graph", _graph_ok(tables))
     add("group", _group_ok(tables))
     add("function", _function_ok(tables))
@@ -2469,6 +2516,8 @@ def collect_rejections(read, verdicts):
                 listed = read(payload[1], first + second + 2)
             elif name == "GROUP_MEMBER_RANGE":
                 listed = [read(payload[2], 1)[0]]
+            elif name == "GROUP_ORDER":
+                listed = read(payload[1] + 1, read(payload[1], 1)[0])
             elif name == "GROUP_CALL_CONTRACT":
                 words, at = [], payload[1]
                 for _part in range(4):
@@ -2940,6 +2989,8 @@ def object_diagnostic(obj, record, objects=()):
         quote = lambda indices: [objects[i].cid.hex() for i in indices]  # noqa: E731
         parameters, returns, operands, results = listed
         return ("XAX.STRUCT.CALL_CONTRACT", "GRAPH-CALL-CONTRACT", [quote(parameters), quote(returns)], [quote(operands), quote(results)])
+    if name == "GROUP_ORDER":
+        return "XAX.CANON.RECURSION_ORDER", "GRAPH-RECURSION-ORDER", list(listed), list(range(len(listed)))
     if name == "GROUP_SCC":
         return "XAX.STRUCT.RECURSION_SCC", "GRAPH-RECURSION-SCC", "one recursive strongly connected component", [list(calls) for calls in listed]
     hexes = lambda indices: [objects[index].cid.hex() for index in indices]  # noqa: E731
@@ -2969,6 +3020,8 @@ def object_diagnostic(obj, record, objects=()):
         if name == "FUNCTION_ENTRY_CONTRACT":
             return "XAX.STRUCT.ENTRY_CONTRACT", "GRAPH-ENTRY-CONTRACT", hexes(first), hexes(second)
         return "XAX.STRUCT.RETURN_CONTRACT", "GRAPH-RETURN-CONTRACT", hexes(first), hexes(second)
+    if name == "FUNCTION_GROUP_CONTEXT":
+        return "XAX.STRUCT.GROUP_CALL_CONTEXT", "GRAPH-GROUP-CALL-CONTEXT", Kind.RECURSION_GROUP.name, Kind.FUNCTION.name
     if name == "FUNCTION_UNUSED":
         used = {obj.references[k].hex() for k, marked in enumerate(listed) if marked}
         return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", sorted(cid.hex() for cid in obj.references), sorted(used)

@@ -3480,6 +3480,7 @@ def decode_bits_width(obj: SemanticObject) -> int:
     if obj.kind != Kind.TYPE:
         fail("XAX.TYPE.EXPECTED", obj.cid.hex(), "TYPE-BITS", Kind.TYPE.name, obj.kind.name)
     _xax_type_rejection(obj, 1)
+    _xax_cross(obj, 1)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     width = cursor.uleb()
@@ -3493,6 +3494,7 @@ def decode_float_format(obj: SemanticObject) -> FloatFormat:
     if obj.kind != Kind.TYPE:
         fail("XAX.TYPE.EXPECTED", obj.cid.hex(), "TYPE-FLOAT", Kind.TYPE.name, obj.kind.name)
     _xax_type_rejection(obj, 7)
+    _xax_cross(obj, 7)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     value = cursor.uleb()
@@ -3512,6 +3514,7 @@ def decode_float_width(obj: SemanticObject) -> int:
 
 def _decode_tuple_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, ...]:
     _xax_type_rejection(obj, 8)
+    _xax_cross(obj, 8)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 8:
         fail("XAX.TYPE.TUPLE", obj.cid.hex(), "TYPE-TUPLE", "tuple type", "different type form")
@@ -3529,6 +3532,7 @@ def _decode_tuple_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticO
 
 def _decode_array_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, int]:
     _xax_type_rejection(obj, 9)
+    _xax_cross(obj, 9)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 9:
         fail("XAX.TYPE.ARRAY", obj.cid.hex(), "TYPE-ARRAY", "array type", "different type form")
@@ -3543,6 +3547,7 @@ def _decode_array_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticO
 
 def _decode_sum_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, ...]:
     _xax_type_rejection(obj, 10)
+    _xax_cross(obj, 10)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 10:
         fail("XAX.TYPE.SUM", obj.cid.hex(), "TYPE-SUM", "sum type", "different type form")
@@ -3715,6 +3720,7 @@ def _decode_pointer_type(
     if obj.kind != Kind.TYPE:
         fail("XAX.TYPE.EXPECTED", obj.cid.hex(), "TYPE-POINTER", Kind.TYPE.name, obj.kind.name)
     _xax_type_rejection(obj, 2)
+    _xax_cross(obj, 2)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     space = cursor.uleb()
@@ -3762,6 +3768,7 @@ class _ResourceType:
 
 def _decode_effect_type(obj: SemanticObject) -> _EffectType:
     _xax_type_rejection(obj, 3)
+    _xax_cross(obj, 3)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 3:
         fail("XAX.TYPE.EFFECT", obj.cid.hex(), "TYPE-EFFECT", "effect type", "different type form")
@@ -3779,6 +3786,7 @@ def _decode_effect_type(obj: SemanticObject) -> _EffectType:
 
 def _decode_resource_type(obj: SemanticObject) -> _ResourceType:
     _xax_type_rejection(obj, 4)
+    _xax_cross(obj, 4)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 4:
         fail("XAX.TYPE.RESOURCE", obj.cid.hex(), "TYPE-RESOURCE", "resource type", "different type form")
@@ -3813,6 +3821,7 @@ def _decode_resource_type(obj: SemanticObject) -> _ResourceType:
 
 def _decode_opaque_type(obj: SemanticObject) -> OpaqueKind:
     _xax_type_rejection(obj, 5)
+    _xax_cross(obj, 5)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 5:
         fail("XAX.TYPE.OPAQUE", obj.cid.hex(), "TYPE-OPAQUE", "opaque semantic type", "different type form")
@@ -3829,6 +3838,7 @@ def _decode_opaque_type(obj: SemanticObject) -> OpaqueKind:
 
 def _decode_opaque_identity_type(obj: SemanticObject) -> bytes:
     _xax_type_rejection(obj, 6)
+    _xax_cross(obj, 6)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 6:
         fail("XAX.TYPE.OPAQUE_IDENTITY", obj.cid.hex(), "TYPE-OPAQUE-IDENTITY", "identity-qualified opaque ABI type", "different type form")
@@ -3849,6 +3859,18 @@ def _decode_opaque_identity_type(obj: SemanticObject) -> bytes:
 # function of the CID (bodies and references are content-addressed), so the set is process-wide.
 _XAX_VALID_OBJECTS: set[bytes] = set()
 _XAX_REJECTED_OBJECTS: dict[bytes, tuple] = {}  # S8c.24 (ADR-242): CID -> the bootstrap's diagnostic, decided by XAX
+# S8 (ADR-248): CID -> {form: diagnostic} for the bits (1), float (7), and pointer (2) decoders XAX found reject the type.
+_XAX_CROSS: dict[bytes, dict] = {}
+
+
+def _xax_cross(obj: "SemanticObject", form: int) -> None:
+    """S8 (ADR-248): a decoder of ``form`` called on a type whose body XAX found it rejects raises that diagnostic."""
+    if _NATIVE_TYPING is None:
+        return  # the bootstrap alone decides
+    outcomes = _XAX_CROSS.get(obj.cid)
+    if outcomes and form in outcomes:
+        code, rule, expected, actual, entity = outcomes[form]
+        _xax_fail(code, entity, rule, expected, actual)
 
 
 def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
@@ -3863,6 +3885,8 @@ def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
     _XAX_VALID_OBJECTS.update(typing.object_verdicts(words, listed))
     # S8c.24 (ADR-242): constants XAX rejects, with the bootstrap's diagnostic.
     _XAX_REJECTED_OBJECTS.update(typing.object_rejections(listed, objects))
+    # S8 (ADR-248): each type's reading by the bits, float, and pointer decoders.
+    _XAX_CROSS.update(typing.object_cross(listed, objects))
 
 
 def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
