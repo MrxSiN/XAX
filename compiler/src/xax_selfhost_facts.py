@@ -60,6 +60,8 @@ H_CUROP, H_MNODE, H_CURBLOCK, H_REJECT, H_RPASS, H_RBLOCK, H_RNODE = range(34, 4
 H_RPAY = 41  # payload words H_RPAY .. H_RPAY + 5
 # S8 (ADR-248): the linear-flow rejection: its code (``LINEAR_SITES``), then two words (a block or value id, a count).
 H_LREJ, H_LA, H_LB = 47, 48, 49
+# S8 (ADR-248): a stack-owner entry whose body selects no unique contract (rejected at its terminator).
+H_RENTRY_BAD = 50
 LINEAR_SITES = ("UNREACHABLE_PARAMETER", "BLOCK_ARGUMENT", "NODE_AND_TERMINATOR", "SAME_BLOCK_CONSUMER", "EXPLICIT_BLOCK_PARAMETER",
                 "EACH_CONTROL_PATH", "TRAP_END", "ONE_CONTINUATION", "JOIN_SIBLINGS")
 MEMORY_SITES = (
@@ -102,6 +104,19 @@ MEMORY_SITES = (
     "FOREIGN_ENTRY", "FOREIGN_ABI", "FOREIGN_CONTRACT",
     # S8 (ADR-248): an indirect call's target operand, its type, and its bounded contract (payload: the contract).
     "INDIRECT_TARGET", "INDIRECT_TARGET_TYPE", "INDIRECT_BOUNDED_CONTRACT",
+    # S8 (ADR-248): a direct call through a stack resource contract (its pointer, owner, and frontier).
+    "CALL_POINTER_PROVEN", "CALL_REBASE_STATIC", "CALL_POINTER_BOUNDS", "CALL_PERMISSION", "CALL_OWNER_PROVEN", "CALL_POINTER_PROVENANCE",
+    "CALL_EFFECT_PROVENANCE", "CALL_INITIALIZED",
+    # S8 (ADR-248): a stack-owner entry's body contract and its returned owner, frontier, and final load.
+    "ENTRY_BODY", "ENTRY_TRANSFER_RETURN", "ENTRY_TRANSFER_COUNT", "ENTRY_LOAD_RESULT", "ENTRY_TRANSFER_PAIR",
+    # S8 (ADR-248): stack allocation result types, address exposure, and raw loads.
+    "STACK_OWNER_TYPE", "STACK_EFFECT_TYPE", "ADDRESS_WAIVER", "ADDRESS_WIDTH", "RAW_WAIVER", "RAW_UNSAFE_EFFECT", "RAW_EFFECT_CONTINUATION",
+    # S8 (ADR-248): an operation code outside the vocabulary.
+    "OP_SUPPORTED",
+    # S8 (ADR-248): a ``target.op`` node against its target's operation contract (``_verify_target_node``).
+    "TARGET_ATTRIBUTES", "TARGET_DEFINED", "TARGET_SCOPE_ENUM", "TARGET_SCOPE_SUPPORTED", "TARGET_SPACES", "TARGET_ARITY", "TARGET_TYPE",
+    # S8 (ADR-248): a lend entry passed to a call that lends it no view (payload: its extent and the declaration).
+    "LEND_VIEW_LENT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -943,7 +958,8 @@ def _stack_alloc(tables):
         _require(e, e.both(e.ne(extent, 0), e.power_of_two(alignment), e.ne(e.table(_T.PTR, pointer_type), 0), e.eq(e.table(_T.PSPACE, pointer_type), 1)))
         element, permission = e.table(_T.PELEM, pointer_type), e.table(_T.PPERM, pointer_type)
         _reject(e, e.le(e.table(_T.PALIGN, pointer_type), alignment), M["ALLOCATION_ALIGNMENT"], alignment, e.table(_T.PALIGN, pointer_type))
-        _require(e, e.both(e.ne(e.table(_T.STACKOWNER, n.rtid(1)), 0), e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0)))
+        _reject(e, e.ne(e.table(_T.STACKOWNER, n.rtid(1)), 0), M["STACK_OWNER_TYPE"], n.rtid(1))
+        _reject(e, e.ne(e.table(_T.MEMEFFECT, n.rtid(2)), 0), M["STACK_EFFECT_TYPE"], n.rtid(2))
         site = n.site
         _require(e, e.not_(e.both(e.ne(e.ld(_site_word(e, 0, site)), 0), e.not_(_ended(e, site)))))
         _view_record(e, element, extent)  # after the re-allocation check, as the bootstrap orders them
@@ -1296,12 +1312,14 @@ def _pointer_address(tables):
     def build(e: E):
         n = _Node(e)
         _require(e, n.shape(1, 1, 1))
-        _require(e, e.both(e.eq(n.attr(0), 1), e.ne(e.table(_T.PTR, n.tid(0)), 0)))
+        _reject(e, e.eq(n.attr(0), 1), M["ADDRESS_WAIVER"], n.attr(0))
+        _require(e, e.ne(e.table(_T.PTR, n.tid(0)), 0))
         width = e.table(_T.WIDTH, n.rtid(0))
-        _require(e, e.either(e.eq(width, 32), e.eq(width, 64)))
+        _reject(e, e.either(e.eq(width, 32), e.eq(width, 64)), M["ADDRESS_WIDTH"], width, renderable=e.ne(width, 0))
         source = n.vid(0)
         live = e.both(e.eq(e.value(PSTAMP, source), e.hd(H_PASS)), e.eq(e.value(PK, source), POINTER))
-        e.if_(live, lambda: _require(e, e.not_(_ended(e, e.value(PST, source)))))
+        e.if_(live, lambda: _reject(e, e.not_(_ended(e, e.value(PST, source))), M["LIFETIME_LIVE"], e.value(PST, source),
+                                    renderable=_renderable(e, e.value(PST, source))))
         e.give(n.next)
     return _function(("cursor", "block"), build, tables)
 
@@ -1537,7 +1555,7 @@ def _call_foreign(tables, declaration, end_views):
                           lambda: e.for_("m", 0, inputs, pointer_operand))
 
                 e.if_(e.both(e.ne(sysv, 0), e.ne(p["memory_out"], 0)), lambda: e.for_("k", 0, inputs, effect_operand))
-                _require(e, e.ne(p["lent"], 0))
+                _reject(e, e.ne(p["lent"], 0), M["LEND_VIEW_LENT"], extent, n.entity)
 
             e.if_(e.ne(view, NONE), lent)
 
@@ -1883,27 +1901,34 @@ def _resource_call(e: E, n):
     e.var("offset", 0)
 
     def with_pointer():
-        _require(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), e.hd(H_PASS)), e.eq(e.value(PK, pointer_ref), POINTER)))
-        _require(e, e.both(e.not_(_ended(e, e.value(PST, pointer_ref))), e.eq(e.value(PWIN, pointer_ref), 0)))
+        # S8 (ADR-248): each check is the bootstrap's, in its order (``_parse_graph_uncached``'s resource call).
+        _reject(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), e.hd(H_PASS)), e.eq(e.value(PK, pointer_ref), POINTER)), M["CALL_POINTER_PROVEN"], pointer_ref)
+        pointer_storage = e.value(PST, pointer_ref)
+        _reject(e, e.not_(_ended(e, pointer_storage)), M["LIFETIME_LIVE"], pointer_storage, renderable=_renderable(e, pointer_storage))
+        _reject(e, e.eq(e.value(PWIN, pointer_ref), 0), M["CALL_REBASE_STATIC"], e.value(PWIN, pointer_ref))
         width = e.table(_T.WIDTH, e.value(PEL, pointer_ref))
         _require(e, e.ne(width, 0))
         e.set("size", e.udiv(e.add(width, 7), 8))
         e.set("offset", e.value(POFF, pointer_ref))
-        _require(e, e.le(p["size"], e.value(PEXT, pointer_ref)))
-        _require(e, e.eq(e.and_(e.value(PPERM, pointer_ref), permission), permission))
+        _reject(e, e.le(p["size"], e.value(PEXT, pointer_ref)), M["CALL_POINTER_BOUNDS"], p["size"], e.value(PEXT, pointer_ref))
+        _reject(e, e.eq(e.and_(e.value(PPERM, pointer_ref), permission), permission), M["CALL_PERMISSION"], permission, e.value(PPERM, pointer_ref))
 
     e.if_(e.ne(p["has_pointer"], 0), with_pointer)
     owner_ref = e.rd(e.add(n.vids_at, owner_operand))
     effect_ref = e.rd(e.add(n.vids_at, effect_operand))
-    _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.ne(e.value(OCON, owner_ref), visit)))
+    _reject(e, e.eq(e.value(OSTAMP, owner_ref), visit), M["CALL_OWNER_PROVEN"], owner_ref)
     storage = e.value(OST, owner_ref)
-    _require(e, e.not_(_ended(e, storage)))
-    e.if_(e.ne(p["has_pointer"], 0), lambda: _require(e, e.eq(e.value(PST, pointer_ref), storage)))
-    _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), storage)))
+    _reject(e, e.both(e.ne(e.value(OCON, owner_ref), visit), e.not_(_ended(e, storage))), M["OWNER_LIVE"], storage, renderable=_renderable(e, storage))
+    e.if_(e.ne(p["has_pointer"], 0), lambda: _reject(e, e.eq(e.value(PST, pointer_ref), storage), M["CALL_POINTER_PROVENANCE"], storage,
+                                                     e.value(PST, pointer_ref), renderable=e.both(_renderable(e, storage), _renderable(e, e.value(PST, pointer_ref)))))
+    effect_storage = e.sel(e.eq(e.value(ESTAMP, effect_ref), visit), e.value(EST, effect_ref), NONE)
+    _reject(e, e.eq(effect_storage, storage), M["CALL_EFFECT_PROVENANCE"], storage, effect_storage,
+            renderable=e.both(_renderable(e, storage), e.either(e.eq(effect_storage, NONE), _renderable(e, effect_storage))))
     e.var("intervals", e.value(EIV, effect_ref))
-    e.if_(e.both(e.ne(p["has_pointer"], 0), e.ne(requires_initialized, 0)), lambda: _require(
-        e, e.ne(e.call(_COVERS[0], p["intervals"], p["offset"], e.add(p["offset"], p["size"])), 0)))
-    _require(e, e.ne(e.value(ECON, effect_ref), visit))
+    e.if_(e.both(e.ne(p["has_pointer"], 0), e.ne(requires_initialized, 0)), lambda: _reject(
+        e, e.ne(e.call(_COVERS[0], p["intervals"], p["offset"], e.add(p["offset"], p["size"])), 0), M["CALL_INITIALIZED"], p["offset"], p["size"],
+        p["intervals"]))
+    _reject(e, e.ne(e.value(ECON, effect_ref), visit), M["CALL_EFFECT_LINEAR"])
     e.set_value(OCON, owner_ref, visit)
     _consumed(e, effect_ref)
     e.set_value(OST, e.add(n.base, owner_result), storage)
@@ -2059,7 +2084,7 @@ def _raw_load(tables, covers):
         _pointer(e, source)
         _require(e, n.shape(3, 3, 3))
         size, alignment, waivers = n.attr(0), n.attr(1), n.attr(2)
-        _require(e, e.both(e.ne(waivers, 0), e.eq(e.and_(waivers, ~3 & ((1 << 64) - 1)), 0)))
+        _reject(e, e.both(e.ne(waivers, 0), e.eq(e.and_(waivers, ~3 & ((1 << 64) - 1)), 0)), M["RAW_WAIVER"], waivers)
         element = e.value(PEL, source)
         _require(e, e.both(e.ne(size, 0), e.eq(size, _element_size(e, element, size)), e.le(size, e.value(PEXT, source))))
         _require(e, e.both(e.ne(e.and_(e.value(PPERM, source), int(Permission.READ)), 0), e.eq(n.rtid(0), element)))
@@ -2068,8 +2093,9 @@ def _raw_load(tables, covers):
         storage = e.value(PST, source)
         intervals = _consume_effect(e, n.vid(1), storage)
         unsafe = n.tid(2)
-        _require(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.ne(e.table(_T.EFFECT, unsafe), 0), e.eq(e.table(_T.EDOMAIN, unsafe), UNSAFE_DOMAIN)))
-        _require(e, e.both(e.eq(n.rtid(1), n.tid(1)), e.eq(n.rtid(2), unsafe)))
+        _reject(e, e.both(e.ne(e.table(_T.MEMEFFECT, n.tid(1)), 0), e.ne(e.table(_T.EFFECT, unsafe), 0), e.eq(e.table(_T.EDOMAIN, unsafe), UNSAFE_DOMAIN)),
+                M["RAW_UNSAFE_EFFECT"], n.tid(1), unsafe)
+        _reject(e, e.both(e.eq(n.rtid(1), n.tid(1)), e.eq(n.rtid(2), unsafe)), M["RAW_EFFECT_CONTINUATION"], n.tid(1), unsafe, n.rtid(1), n.rtid(2))
         start = e.value(POFF, source)
         e.if_(e.eq(e.and_(waivers, 2), 0), lambda: _require(e, e.ne(e.call(covers, intervals, start, e.add(e.add(start, e.value(PWIN, source)), size)), 0)))
         _set_effect(e, e.add(n.base, 1), storage, intervals)
@@ -2191,7 +2217,7 @@ def _body_shape(e: E, operation_at, count):
     return all_stores, all_loads, mixed, first_load
 
 
-def _resource_contract(e: E, parameters_at, parameters, returns_at, returns, single_block, body):
+def _resource_contract(e: E, parameters_at, parameters, returns_at, returns, single_block, body, shape: bool = False):
     """The unique summarized contract: ``(kind, required permission, requires initialized, initializes)``.
 
     ``returns_at`` None matches any returns (entry contracts); ``body`` is ``_body_shape``'s result.
@@ -2222,11 +2248,15 @@ def _resource_contract(e: E, parameters_at, parameters, returns_at, returns, sin
     )
     e.var("contract", R_NONE)
     e.var("contracts", 0)
+    e.var("shape", R_NONE)  # the bootstrap's first candidate for these parameters (its seed when no body matches)
     for kind, candidate, matches in candidates:
         e.if_(e.both(candidate, e.ne(single_block, 0), e.ne(matches, 0)), lambda kind=kind: (e.set("contract", kind), e.set("contracts", e.add(p["contracts"], 1))))
+        e.if_(e.both(candidate, e.eq(p["shape"], R_NONE)), lambda kind=kind: e.set("shape", kind))
     e.if_(e.ne(p["contracts"], 1), lambda: e.set("contract", R_NONE))
     permission = e.sel(e.ne(all_stores, 0), int(Permission.WRITE), e.sel(e.ne(all_loads, 0), int(Permission.READ), int(Permission.READ_WRITE)))
     initializes = e.flag(e.ne(p["stores"], 0))
+    if shape:
+        return p["contract"], permission, first_load, initializes, p["shape"]
     return p["contract"], permission, first_load, initializes
 
 
@@ -2377,14 +2407,26 @@ def _function_address(tables, interface):
                 params = e.add(p["iface"], 1)
                 returns_at = e.add(e.add(params, count), 1)
                 param = lambda k: e.ld(e.add(params, k))  # noqa: E731
-                _require(e, e.le(3, count))
-                _require(e, e.both(e.eq(param(e.sub(count, 3)), p["lv_pointer"]), e.eq(param(e.sub(count, 2)), view), e.ne(e.table(_T.MEMEFFECT, param(e.sub(count, 1))), 0)))
-                _require(e, e.both(_heap_view(e, view), e.eq(e.table(_T.RSTATE, view), 1), e.ne(e.table(_T.PTR, p["lv_pointer"]), 0), e.eq(e.table(_T.PPERM, p["lv_pointer"]), 1)))
-                e.for_("j", 0, e.sub(count, 3), lambda: _require(e, e.not_(_one_of(e, e.table(_T.FORMB, param(p["j"])), (3, 4)))))
-                _require(e, e.eq(e.ld(e.sub(returns_at, 1)), 4))
-                for k in range(3):
-                    _require(e, e.eq(e.ld(e.add(returns_at, 1 + k)), param(e.add(e.sub(count, 3), k))))
-                _require(e, e.eq(e.table(_T.FORMB, e.ld(returns_at)), 1))
+                # S8 (ADR-248): an inadmissible callee is GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY.
+                e.var("lend_ok", e.flag(e.le(3, count)))
+                refuse = lambda: e.set("lend_ok", 0)  # noqa: E731
+
+                def admissible():
+                    e.if_(e.not_(e.both(e.eq(param(e.sub(count, 3)), p["lv_pointer"]), e.eq(param(e.sub(count, 2)), view),
+                                        e.ne(e.table(_T.MEMEFFECT, param(e.sub(count, 1))), 0))), refuse)
+                    e.if_(e.not_(e.both(_heap_view(e, view), e.eq(e.table(_T.RSTATE, view), 1), e.ne(e.table(_T.PTR, p["lv_pointer"]), 0),
+                                        e.eq(e.table(_T.PPERM, p["lv_pointer"]), 1))), refuse)
+                    e.for_("j", 0, e.sub(count, 3), lambda: e.if_(_one_of(e, e.table(_T.FORMB, param(p["j"])), (3, 4)), refuse))
+
+                    def returns():
+                        for k in range(3):
+                            e.if_(e.ne(e.ld(e.add(returns_at, 1 + k)), param(e.add(e.sub(count, 3), k))), refuse)
+                        e.if_(e.ne(e.table(_T.FORMB, e.ld(returns_at)), 1), refuse)
+
+                    e.if_(e.eq(e.ld(e.sub(returns_at, 1)), 4), returns, refuse)
+
+                e.if_(e.ne(p["lend_ok"], 0), admissible)
+                _reject(e, e.ne(p["lend_ok"], 0), M["FOREIGN_ENTRY"], result_type)
 
             def code():
                 _require(e, e.ne(p["iface"], NONE))
@@ -2566,6 +2608,8 @@ def _node_dispatch(tables, handlers, end_views):
         operation, key = e.rd(cursor), e.rd(e.add(cursor, 1))
         e.set_hd(H_NODE, cursor)  # diagnosis: the node being modelled
         e.set_hd(H_CUROP, operation)
+        # S8 (ADR-248): the vocabulary is the contiguous codes 1..max (GRAPH-OP-SUPPORTED).
+        _reject(e, e.both(e.ne(operation, 0), e.le(operation, max(int(code) for code in Operation))), M["OP_SUPPORTED"], operation)
         # A node the typing function covers must be proven by it.
         e.if_(e.ne(key, NONE), lambda: _require(e, e.eq(e.ld(e.add(2, key)), _T.PROVEN)))
         e.var("next", NONE)
@@ -2720,9 +2764,10 @@ def _block(tables, merge, empty, node, covers):
             e.if_(e.both(listed, e.not_(_renderable(e, p["s"]))), lambda: e.set("plain", 0))
 
         e.for_("s", 0, e.hd(H_S), each_site)
+        e.if_(e.ne(e.hd(H_RENTRY), R_NONE), lambda: _reject(e, e.eq(e.hd(H_RENTRY_BAD), 0), M["ENTRY_BODY"]))
         _reject(e, e.not_(e.both(leaving, e.ne(p["leak"], 0))), M["LIFETIME_LEAK"], renderable=e.ne(p["plain"], 0))
-        e.if_(e.eq(kind, int(TerminatorKind.RETURN)), lambda: _return_views(e, term, values, covers))
         e.if_(e.ne(e.hd(H_RENTRY), R_NONE), lambda: _return_resource_entry(e, term, values))
+        e.if_(e.eq(kind, int(TerminatorKind.RETURN)), lambda: _return_views(e, term, values, covers))
         edges_count_at = e.add(e.add(term, 2), e.mul(values, 2))
         e.var("edge_at", e.add(edges_count_at, 1))
 
@@ -2836,10 +2881,15 @@ def _entry_contract(e: E, entry_params, entry_count):
 
     e.for_("c", 0, count, each)
     body = _body_shape(e, lambda k: e.ld(e.add(p["operations"], k)), count)
-    kind, _permission, requires_initialized, _initializes = _resource_contract(e, e.add(entry_params, 2), entry_count, None, None, e.c(1), body)
-    _require(e, e.ne(kind, R_NONE))
-    e.set_hd(H_RENTRY, kind)
-    e.set_hd(H_RENTRY_SEED_INIT, requires_initialized)
+    kind, _permission, requires_initialized, _initializes, shape = _resource_contract(
+        e, e.add(entry_params, 2), entry_count, None, None, e.c(1), body, shape=True)
+    _require(e, e.ne(shape, R_NONE))
+    # S8 (ADR-248): a body that selects no unique contract rejects at the terminator, after the node checks, which see
+    # the bootstrap's seed (its first candidate: the parameter shape).
+    bad = e.eq(kind, R_NONE)
+    e.set_hd(H_RENTRY_BAD, e.flag(bad))
+    e.set_hd(H_RENTRY, e.sel(bad, shape, kind))
+    e.set_hd(H_RENTRY_SEED_INIT, e.sel(bad, e.flag(e.eq(shape, R_LOAD)), requires_initialized))
     e.set_hd(H_RENTRY_LAST, p["last_base"])
 
 
@@ -2873,12 +2923,16 @@ def _return_resource_entry(e: E, term, values):
     visit = e.hd(H_VISIT)
     ids_at = e.add(term, 2)
     count = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 2, 3)
-    _require(e, e.both(e.eq(e.rd(term), int(TerminatorKind.RETURN)), e.eq(values, count)))
+    # S8 (ADR-248): the bootstrap's checks in its order (the body contract was decided before the leak check).
+    _reject(e, e.eq(e.rd(term), int(TerminatorKind.RETURN)), M["ENTRY_TRANSFER_RETURN"], e.rd(term))
+    _reject(e, e.eq(values, count), M["ENTRY_TRANSFER_COUNT"], count, values)
     owner_result = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 0, 1)
     owner_ref, effect_ref = e.rd(e.add(ids_at, owner_result)), e.rd(e.add(ids_at, e.add(owner_result, 1)))
-    e.if_(e.eq(kind, R_MIXED), lambda: _require(e, e.both(e.ne(e.hd(H_RENTRY_LAST), NONE), e.eq(e.rd(ids_at), e.hd(H_RENTRY_LAST)))))
-    _require(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.eq(e.value(OST, owner_ref), 0), e.ne(e.value(OCON, owner_ref), visit)))
-    _require(e, e.both(e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), 0), e.ne(e.value(ECON, effect_ref), visit)))
+    e.if_(e.eq(kind, R_MIXED), lambda: _reject(e, e.eq(e.rd(ids_at), e.hd(H_RENTRY_LAST)), M["ENTRY_LOAD_RESULT"], e.rd(ids_at),
+                                               renderable=e.ne(e.hd(H_RENTRY_LAST), NONE)))
+    _reject(e, e.both(e.eq(e.value(OSTAMP, owner_ref), visit), e.eq(e.value(OST, owner_ref), 0), e.ne(e.value(OCON, owner_ref), visit),
+                      e.eq(e.value(ESTAMP, effect_ref), visit), e.eq(e.value(EST, effect_ref), 0), e.ne(e.value(ECON, effect_ref), visit)),
+            M["ENTRY_TRANSFER_PAIR"])
 
 
 def _engine(tables, block, empty, record_equal):
@@ -2951,6 +3005,7 @@ def _engine(tables, block, empty, record_equal):
         entry_params = e.ld(_block_word(e, e.hd(H_ENTRY), B_PARAMS))
         entry_count = e.rd(e.add(entry_params, 1))
         e.set_hd(H_RENTRY, R_NONE)
+        e.set_hd(H_RENTRY_BAD, 0)
         e.var("stack_entry", 0)
         e.for_("i", 0, entry_count, lambda: e.if_(e.ne(e.table(_T.STACKOWNER, e.rd(e.add(e.add(entry_params, 2), p["i"]))), 0), lambda: e.set("stack_entry", 1)))
         e.if_(e.ne(p["stack_entry"], 0), lambda: _entry_contract(e, entry_params, entry_count))
@@ -3246,11 +3301,35 @@ def _atomic_attribute_diagnostic(name: str, x: int, y: int):
 
 
 NODE_TYPES = "node operand and result types"  # quoted by the host from the rejected node: ``[[operand types], [result types]]``
+ENTRY_BODY = "resource entry body"  # the host renders the bootstrap's entry-contract rule from its candidates
+ENTRY_LOAD_RESULT = "the final load's result"  # the host quotes ``[last node, 0]``
 NODE_ARGUMENT_TYPES = "node argument and result types"  # the same without the first operand (an indirect call's target)
 FOREIGN_ENTRY_EXPECTED = {"sysv-x86_64-c/win64-c/android-aapcs64-c": "no proof parameters or results",
                           "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else",
                           "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple",
                           "jvm-interface:...": "no proof parameters or results"}
+
+
+def _target_diagnostic(name: str, payload, h, resolve, cids):
+    from xax_compiler import AtomicScope, TargetValueConstraintKind, decode_native_target
+
+    x, y, z, w = payload[:4]
+    if name == "TARGET_ATTRIBUTES":
+        return "XAX.TARGET.OPERATION", "TARGET-OPERATION-ATTRIBUTES", 4, x
+    if name == "TARGET_SCOPE_ENUM":
+        return "XAX.TARGET.OPERATION", "TARGET-OPERATION-SCOPE-ENUM", [item.value for item in AtomicScope], x
+    if name == "TARGET_ARITY":
+        return "XAX.TARGET.OPERATION", "TARGET-OPERATION-ARITY", [x, y], [z, w]
+    if name == "TARGET_TYPE":
+        return ("XAX.TARGET.OPERATION", "TARGET-OPERATION-TYPE", [("operand", "result")[x], y, TargetValueConstraintKind(z).name.lower(), w, payload[4]],
+                h(payload[5]))
+    operations = decode_native_target(resolve(cids[x])).target_operations
+    if name == "TARGET_DEFINED":
+        return "XAX.TARGET.OPERATION", "TARGET-OPERATION-DEFINED", [item.operation_id for item in operations], y
+    contract = next(item for item in operations if item.operation_id == y)
+    if name == "TARGET_SCOPE_SUPPORTED":
+        return "XAX.TARGET.OPERATION", "TARGET-OPERATION-SCOPE-SUPPORTED", [item.name.lower() for item in contract.supported_scopes], AtomicScope(z).name.lower()
+    return "XAX.TARGET.OPERATION", "TARGET-OPERATION-MEMORY-SPACES", [contract.source_space, contract.destination_space], [z, w]
 
 
 def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=(), resolve=None):
@@ -3392,6 +3471,55 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
             return "XAX.FOREIGN.ABI", "FOREIGN-CALL-ABI", [abi.decode() for abi in FOREIGN_ABIS], declaration.abi.decode("ascii", "replace")
         return ("XAX.FOREIGN.CALL", "FOREIGN-CALL-CONTRACT", [[cid.hex() for cid in declaration.inputs], [cid.hex() for cid in declaration.outputs]],
                 NODE_TYPES)
+    if name.startswith("TARGET_"):
+        return _target_diagnostic(name, payload, h, resolve, cids)
+    if name == "LEND_VIEW_LENT":
+        from xax_compiler import decode_foreign_function
+
+        return ("XAX.FOREIGN.LEND", "LEND-ENTRY-VIEW-LENT", f"a sysv-x86_64-c call lending a whole initialized {x}-byte view and returning its memory effect",
+                decode_foreign_function(resolve(cids[y])).name.decode("ascii", "replace"))
+    if name == "OP_SUPPORTED":
+        return "XAX.STRUCT.OPERATION", "GRAPH-OP-SUPPORTED", list(Operation), x
+    if name == "STACK_OWNER_TYPE":
+        return "XAX.MEMORY.OWNER_TYPE", "MEMORY-OWNER-TYPE", "resource<stack-storage,live>", h(x)
+    if name == "STACK_EFFECT_TYPE":
+        return "XAX.MEMORY.EFFECT_TYPE", "MEMORY-EFFECT-TYPE", "effect<memory>", h(x)
+    if name == "ADDRESS_WAIVER":
+        return "XAX.MEMORY.ADDRESS_EXPOSE", "MEMORY-ADDRESS-EXPOSE-WAIVER", 1, x
+    if name == "ADDRESS_WIDTH":
+        return "XAX.MEMORY.ADDRESS_EXPOSE", "MEMORY-ADDRESS-WIDTH", [32, 64], x
+    if name == "RAW_WAIVER":
+        return "XAX.MEMORY.RAW_WAIVER", "MEMORY-RAW-WAIVER", "nonzero subset of alignment|initialization", x
+    if name == "RAW_UNSAFE_EFFECT":
+        return "XAX.MEMORY.RAW_EFFECT", "MEMORY-RAW-UNSAFE-EFFECT", ["effect<memory>", "effect<unsafe>"], [h(x), h(y)]
+    if name == "RAW_EFFECT_CONTINUATION":
+        return "XAX.MEMORY.RAW_EFFECT", "MEMORY-RAW-EFFECT-CONTINUATION", [h(x), h(y)], [h(z), h(w)]
+    if name == "ENTRY_BODY":
+        return "XAX.MEMORY.ENTRY_CONTRACT", ENTRY_BODY, None, None  # the host quotes its candidates' bodies
+    if name == "ENTRY_TRANSFER_RETURN":
+        return "XAX.MEMORY.RESOURCE_DROP", "MEMORY-RESOURCE-TRANSFER", "explicit owner/effect return", TerminatorKind(x).name
+    if name == "ENTRY_TRANSFER_COUNT":
+        return "XAX.MEMORY.RESOURCE_DROP", "MEMORY-RESOURCE-TRANSFER", "value, owner, and effect return" if x == 3 else "owner and effect return", y
+    if name == "ENTRY_LOAD_RESULT":
+        return "XAX.MEMORY.ENTRY_CONTRACT", "MEMORY-ENTRY-STORE-LOAD-RESULT", ENTRY_LOAD_RESULT, [refs[x].index, refs[x].result]
+    if name == "ENTRY_TRANSFER_PAIR":
+        return "XAX.MEMORY.RESOURCE_DROP", "MEMORY-RESOURCE-TRANSFER", "one live owner/effect pair", "dropped, duplicated, or mismatched"
+    if name == "CALL_POINTER_PROVEN":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-PROVENANCE-PROVEN", "live local stack pointer", ref(x)
+    if name == "CALL_REBASE_STATIC":
+        return "XAX.MEMORY.REBASE", "MEMORY-REBASE-STATIC-ONLY", "statically positioned pointer", x
+    if name == "CALL_POINTER_BOUNDS":
+        return "XAX.MEMORY.BOUNDS", "MEMORY-CALL-POINTER-BOUNDS", f"at least {x} bytes", y
+    if name == "CALL_PERMISSION":
+        return "XAX.MEMORY.PERMISSION", "MEMORY-CALL-PERMISSION", x, y
+    if name == "CALL_OWNER_PROVEN":
+        return "XAX.MEMORY.OWNER", "MEMORY-OWNER-PROVEN", "live stack owner", ref(x)
+    if name == "CALL_POINTER_PROVENANCE":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-CALL-POINTER-PROVENANCE", storages[x], storages[y]
+    if name == "CALL_EFFECT_PROVENANCE":
+        return "XAX.MEMORY.PROVENANCE", "MEMORY-EFFECT-PROVENANCE", storages[x], None if y == NONE else storages[y]
+    if name == "CALL_INITIALIZED":
+        return "XAX.MEMORY.UNINITIALIZED", "MEMORY-CALL-INITIALIZED", [x, x + y], intervals(z)
     if name == "INDIRECT_TARGET":
         return "XAX.CALL.INDIRECT", "INDIRECT-CALL-TARGET", "function pointer operand", 0
     if name == "INDIRECT_TARGET_TYPE":
@@ -3534,9 +3662,9 @@ def build_engine():
         Operation.RAW_LOAD_BITS_LE: add(_raw_load(tables, covers)),
         **{operation: add(_atomic(tables, covers, insert, operation)) for operation in ATOMIC_SHAPES},
     }
-    from xax_selfhost_target import _target_op
+    from xax_selfhost_target import _target_contract, _target_op
 
-    handlers[Operation.TARGET_OP] = add(_target_op(tables))
+    handlers[Operation.TARGET_OP] = add(_target_op(tables, add(_target_contract(tables))))
     handlers[Operation.LINK_MAKE] = add(_link_make(tables))
     handlers[Operation.LINK_FOLLOW] = add(_link_follow(tables))
     handlers[Operation.LINK_TARGET] = add(_link_target(tables))

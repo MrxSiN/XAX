@@ -6782,6 +6782,8 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         storage, ((0, pointer_extent),) if seed.requires_initialized else ()
                     )
             for node_index, node in enumerate(block.nodes):
+                if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, node_index) and memory_reject[3][1] == "GRAPH-OP-SUPPORTED":
+                    _xax_memory_fail(obj, memory_reject[3])  # S8 (ADR-248): the facts engine decided the operation code
                 if node.operation not in Operation._value2member_map_:
                     fail("XAX.STRUCT.OPERATION", obj.cid.hex(), "GRAPH-OP-SUPPORTED", list(Operation), node.operation)
                 operand_types = tuple(value_type(value, block_index, node_index) for value in node.operands)
@@ -7238,6 +7240,11 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     _verify_target_node(obj, resolve, node)
                 if node.operation not in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.HEAP_VIEW):
                     _end_heap_views(node.operands, operand_types, owners, owner_consumers, ended, resolve)
+            # S8 (ADR-248): the engine's terminator rejection; a stack-owner entry's return checks are raised where the
+            # bootstrap makes them (after the terminator's typing), the rest here.
+            terminal_reject = memory_reject[3] if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, len(block.nodes)) else None
+            late_reject = terminal_reject is not None and (terminal_reject[1] == "MEMORY-ENTRY-STORE-LOAD-RESULT" or (
+                terminal_reject[1] == "MEMORY-RESOURCE-TRANSFER" and terminal_reject[2] != "explicit owner/effect return"))
             resource_entry_contract = None
             if resource_candidates:
                 body_operations = tuple(Operation(node.operation) for node in block.nodes)
@@ -7262,15 +7269,18 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     else:
                         rule = "MEMORY-ENTRY-CONTRACT"
                         expected = expected_bodies
-                    fail(
+                    from xax_selfhost_facts import ENTRY_BODY
+
+                    # S8 (ADR-248): the facts engine decided that the body selects no contract; this quotes the candidates.
+                    (_xax_fail if terminal_reject is not None and terminal_reject[1] == ENTRY_BODY else fail)(
                         "XAX.MEMORY.ENTRY_CONTRACT",
                         obj.cid.hex(),
                         rule,
                         expected,
                         [node.operation for node in block.nodes],
                     )
-            if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, len(block.nodes)):
-                _xax_memory_fail(obj, memory_reject[3])  # S8c.8: the engine's terminator rejection
+            if terminal_reject is not None and not late_reject:
+                _xax_memory_fail(obj, terminal_reject)  # S8c.8: the engine's terminator rejection
             live = allocations - ended
             if live and block.terminator.kind in (TerminatorKind.RETURN, TerminatorKind.TRAP):
                 fail(
@@ -7309,6 +7319,11 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         [cid.hex() for cid in actual],
                     )
             if term.kind == TerminatorKind.RETURN:
+                if late_reject:
+                    from xax_selfhost_facts import ENTRY_LOAD_RESULT
+
+                    code, rule, expected, actual = terminal_reject
+                    _xax_memory_fail(obj, (code, rule, [len(block.nodes) - 1, 0] if expected == ENTRY_LOAD_RESULT else expected, actual))
                 if resource_entry_contract is not None:
                     expected_return_count = len(resource_entry_contract.returns)
                     if len(term.values) != expected_return_count:

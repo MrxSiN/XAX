@@ -1754,6 +1754,7 @@ def write_typing_store() -> bytes:
 
 BODY_LIMIT = 64  # longer bodies are passed as "other" (never proven)
 TARGET_BODY_LIMIT = 4096  # foreign-function carriers embed their interface CIDs
+NATIVE_TARGET_LIMIT = 1 << 16  # S8 (ADR-248): a platform target lists hundreds of operation contracts
 
 
 def type_info_from(resolve):
@@ -1764,7 +1765,8 @@ def type_info_from(resolve):
             item = resolve(cid)
         except Exception:  # noqa: BLE001 - any resolution failure leaves the node to the bootstrap
             return None
-        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT, Kind.TYPE) and len(item.body) <= TARGET_BODY_LIMIT:
+        limit = NATIVE_TARGET_LIMIT if item.kind == Kind.TARGET else TARGET_BODY_LIMIT
+        if item.kind in (Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT, Kind.TYPE) and len(item.body) <= limit:
             # S4d.2c: foreign declarations, recursion groups; S4d.2d: identity types embedding CIDs (lend entries).
             return int(item.kind), tuple(item.references), item.body
         if len(item.body) > BODY_LIMIT or item.kind not in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION):
