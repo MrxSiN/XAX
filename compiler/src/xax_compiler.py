@@ -7542,6 +7542,7 @@ def _verify_reference_list(
 # called on the object from anywhere (a node's callee, a member's group, ...) raises it when the site is one of that
 # decoder's own checks (``_xax_decoder_rejection``); validity is a function of the CID, so the map only grows.
 _XAX_OBJECT_REJECTIONS: dict[bytes, tuple] = {}
+_XAX_MISSING: set[bytes] = set()  # S8: CIDs this store does not hold, found by the XAX store verifier
 _DECODER_SITES = {
     "function": frozenset(("FUNCTION_REF_INDEX", "FUNCTION_MEMBER_TRAILING", "FUNCTION_MEMBER_RANGE", "FUNCTION_CARRIER", "FUNCTION_TRAILING", "BODY_ULEB")),
     "group": frozenset(("GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED", "BODY_ULEB")),
@@ -7550,10 +7551,22 @@ _DECODER_SITES = {
 
 
 def _xax_decoder_rejection(obj: SemanticObject, decoder: str) -> None:
-    """S8 (ADR-248): raise the XAX rejection of ``obj`` when ``decoder`` (its own decoder) makes that check."""
+    """S8 (ADR-248): raise the XAX rejection of ``obj`` when ``decoder`` (its own decoder) makes that check.  ``build``:
+    a build object's whole decoder; ``build_form``: ``_build_form``, which reads only the form."""
     record = _XAX_OBJECT_REJECTIONS.get(obj.cid)
-    if record is not None and (decoder == "target" and record[0].startswith("TARGET_") or record[0] in _DECODER_SITES.get(decoder, ())):
-        _xax_fail(record[1][0], obj.cid.hex(), *record[1][1:4])
+    if record is None:
+        return
+    name, diagnostic, payload, entity = record
+    if decoder == "target":
+        decides = name.startswith("TARGET_") or name == "BODY_ULEB"
+    elif decoder == "build":
+        decides = name.startswith(("BODY_", "BUILD_")) or name == "OTHER_OBJECT"
+    elif decoder == "build_form":
+        decides = diagnostic[1] == "BUILD-FORM" or (name == "BODY_ULEB" and payload[1] == 0)
+    else:
+        decides = name in _DECODER_SITES.get(decoder, ())
+    if decides:
+        _xax_fail(diagnostic[0], entity or obj.cid.hex(), *diagnostic[1:4])
 
 
 # S6b.4d (ADR-149): graph CIDs whose per-graph glue (type references, entity resolution, reference use, trap
@@ -7570,7 +7583,7 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
     A function's verdict is its graph object (still parsed here, so failures keep their order); other
     proven objects map to True."""
     try:
-        from xax_selfhost_verify import NONE as NONE_WORD, REJECTED, native_store_verifier, object_diagnostic, object_table
+        from xax_selfhost_verify import NONE as NONE_WORD, REJECTED, native_store_verifier, object_diagnostic, object_entity, object_table
     except ImportError:
         return False, {}  # a module it needs is still importing (e.g. hashing at import time); the bootstrap verifies
     hashing = sys.modules.get("blake3")
@@ -7594,6 +7607,8 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
         return False, {}
     store_ok, verdicts, graphs, members = result
     proven: dict[bytes, object] = {}
+    for o, k in rejections.pop("missing", ()):
+        _XAX_MISSING.add(listed[o].references[k])  # S8: decided missing by XAX (resolving it raises its diagnostic)
     store = rejections.pop("store", None)
     if store is not None:  # S8 (ADR-248): the store's own rejection (raised once every object verifies)
         kind, value = store
@@ -7613,16 +7628,31 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
             continue
         if name == "OBJECT_MISSING":  # S8: raised right after the CID check, naming the missing object
             rejection = _XaxRejection((*object_diagnostic(listed[position], record, listed), None))
-            rejection.entity = listed[position].references[record[1][0]].hex()
+            rejection.entity, rejection.early = listed[position].references[record[1][0]].hex(), True
             proven[listed[position].cid] = rejection
             continue
+        if name == "OTHER_OBJECT":
+            continue  # below, once the other object's diagnostic is known
         graph = listed[record[1][0]] if name in AFTER_PARSE else None
         if len(record) > 3:  # S8c.22: a group check after its first member graphs parse
             graph = tuple(listed[index] for index in record[3])
         diagnostic = object_diagnostic(listed[position], record, listed)
-        proven[listed[position].cid] = _XaxRejection((*diagnostic, graph))
-        if name == "BODY_ULEB" or listed[position].kind == Kind.TARGET or graph is None:
-            _XAX_OBJECT_REJECTIONS[listed[position].cid] = (name, diagnostic)
+        rejection = _XaxRejection((*diagnostic, graph))
+        entity = object_entity(listed[position], record, listed)
+        rejection.entity = None if entity is None else entity.hex()
+        proven[listed[position].cid] = rejection
+        if graph is None:
+            _XAX_OBJECT_REJECTIONS[listed[position].cid] = (name, diagnostic, record[1], rejection.entity)
+    for position, record in rejections.items():
+        if OBJECT_SITES[record[0] - 1] == "OTHER_OBJECT":
+            # S8: ``_build_form`` of another object raises that object's own (form) rejection.
+            other = listed[record[1][0]]
+            source = proven.get(other.cid)
+            if isinstance(source, _XaxRejection):
+                rejection = _XaxRejection((*source[:4], None))
+                rejection.entity = other.cid.hex() if source.entity is None else source.entity
+                proven[listed[position].cid] = rejection
+                _XAX_OBJECT_REJECTIONS[listed[position].cid] = ("OTHER_OBJECT", tuple(source[:4]), record[1], rejection.entity)
     for position, obj in enumerate(listed):
         if verdicts[position] != 1:
             continue
@@ -7646,16 +7676,18 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
 class _XaxRejection(tuple):
     """S8c.19 (ADR-237): an object rejection the XAX store verifier decided: ``(code, rule, expected, actual, graph)``;
     ``graph`` (S8c.20) is the graph the bootstrap parses before reaching the check (S8c.22: a tuple of group member
-    graphs, in member order), or None.  ``entity`` (S8): the diagnostic's entity when it is not the object."""
+    graphs, in member order), or None.  ``entity`` (S8): the diagnostic's entity when it is not the object; ``early``:
+    raised right after the CID check (a missing reference)."""
 
     entity = None
+    early = False
 
 
 def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject], proven: object = None) -> None:
     expected = semantic_cid(obj.kind, obj.schema_version, obj.references, obj.body)
     if obj.cid != expected:
         fail("XAX.IDENTITY.CID_MISMATCH", obj.cid.hex(), "ID-CID-INTEGRITY", expected.hex(), obj.cid.hex())
-    if isinstance(proven, _XaxRejection) and proven.entity is not None:
+    if isinstance(proven, _XaxRejection) and proven.early:
         _xax_fail(proven[0], proven.entity, *proven[1:4])  # S8: a missing reference, decided by XAX
     for cid in obj.references:
         resolve(cid)
@@ -7663,7 +7695,7 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         code, rule, expected_value, actual, graph = proven
         for parsed in (graph if isinstance(graph, tuple) else (graph,) if graph is not None else ()):
             _parse_graph(parsed, resolve)  # an invalid graph fails first, as in the bootstrap
-        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual)
+        _xax_fail(code, proven.entity or obj.cid.hex(), rule, expected_value, actual)
     if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD):
         # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs
         # in member order, are still parsed (cached) so that an invalid graph fails exactly where the bootstrap would.
@@ -7734,10 +7766,13 @@ def verify_store(
         try:
             return objects[cid]
         except KeyError:
+            if cid in _XAX_MISSING:  # S8 (ADR-248): the XAX store verifier found this reference missing
+                _xax_fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
             fail("XAX.IDENTITY.OBJECT_MISSING", cid.hex(), "ID-REFERENCE-RESOLVED", "stored object", "missing")
 
     _xax_prove_objects(objects, resolve)
     _XAX_OBJECT_REJECTIONS.clear()  # S8: this store's XAX rejections only (a bootstrap-only run sees none)
+    _XAX_MISSING.clear()
     _XAX_GLUE_REJECTIONS.clear()
     store_proven, proven_objects = _xax_verify_store(reader, objects)
     for obj in objects.values():
