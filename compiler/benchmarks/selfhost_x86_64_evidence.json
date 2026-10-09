@@ -13,7 +13,7 @@
       "image_sha256": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 2.48,
+        "gen1": 2.49,
         "bootstrap": 0.04
       }
     },
@@ -26,8 +26,8 @@
       "image_sha256": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.78,
-        "bootstrap": 0.39
+        "gen1": 0.62,
+        "bootstrap": 0.37
       }
     },
     {
@@ -52,21 +52,21 @@
       "image_sha256": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.14,
-        "bootstrap": 0.77
+        "gen1": 1.05,
+        "bootstrap": 0.66
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 3516418,
-      "store_sha256": "73a92155d987b2b88147e4213f6139338f9106d5a832236908d8bc0081e2815e",
+      "store_bytes": 3519217,
+      "store_sha256": "76c872a5448a0349c97bd5d2bc537ddbb0cd7449fae3cb1f6809dd0da99b070b",
       "functions": 47,
-      "code_bytes": 3930220,
-      "image_sha256": "7b5e70aa68db9bac2ea7fc3b955fd5c58594d3adfced194b7c8b82fd25edbd2c",
+      "code_bytes": 3932140,
+      "image_sha256": "fd37a18c8964214662f140f0abba96b19f0d6b273fb5cb0e0eb17c112b80cbf2",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 17.93,
-        "bootstrap": 12.47
+        "gen1": 17.43,
+        "bootstrap": 12.45
       }
     },
     {
@@ -78,8 +78,8 @@
       "image_sha256": "12d011c232cf33d3c77f3f775ca634f1252e9227bfb14026075255bae2e234b5",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 10.79,
-        "bootstrap": 7.88
+        "gen1": 10.15,
+        "bootstrap": 7.94
       }
     },
     {
@@ -105,7 +105,7 @@
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
         "gen1": 4.22,
-        "bootstrap": 5.59
+        "bootstrap": 5.64
       }
     },
     {
@@ -117,8 +117,8 @@
       "image_sha256": "6861b4cf0d080ab1341fd36345c89edd92cf92e7c80825aa65feaec85810b127",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 9.2,
-        "bootstrap": 5.97
+        "gen1": 8.95,
+        "bootstrap": 5.59
       }
     }
   ],
@@ -220,15 +220,15 @@
     "code_bytes": 2799470,
     "sha256": "6861b4cf0d080ab1341fd36345c89edd92cf92e7c80825aa65feaec85810b127",
     "gen3_equals_gen2": true,
-    "host_s_nonsemantic": 4.01
+    "host_s_nonsemantic": 3.87
   },
   "runtime_vs_optimizing_bootstrap": [
     {
       "program": "xax_selfhost_verify",
       "input": "xax_op_typing.xax",
-      "xax_backend_s": 0.8423,
-      "optimizing_bootstrap_s": 0.6885,
-      "ratio": 1.223,
+      "xax_backend_s": 0.8142,
+      "optimizing_bootstrap_s": 0.6281,
+      "ratio": 1.296,
       "code_bytes": {
         "xax_backend": 3345906,
         "optimizing_bootstrap": 707395
@@ -237,9 +237,9 @@
     {
       "program": "xax_selfhost_verify",
       "input": "xax_store_verifier.xax",
-      "xax_backend_s": 0.471,
-      "optimizing_bootstrap_s": 0.3998,
-      "ratio": 1.178,
+      "xax_backend_s": 0.4634,
+      "optimizing_bootstrap_s": 0.3796,
+      "ratio": 1.221,
       "code_bytes": {
         "xax_backend": 3345906,
         "optimizing_bootstrap": 707395
@@ -248,9 +248,9 @@
     {
       "program": "xax_selfhost_verify",
       "input": "xax_riscv64_backend.xax",
-      "xax_backend_s": 0.3172,
-      "optimizing_bootstrap_s": 0.254,
-      "ratio": 1.249,
+      "xax_backend_s": 0.3033,
+      "optimizing_bootstrap_s": 0.2526,
+      "ratio": 1.2,
       "code_bytes": {
         "xax_backend": 3345906,
         "optimizing_bootstrap": 707395
@@ -270,7 +270,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-e82b91e41a39a606812bb2478a5549a5fd5d5ad3bb9d0a6b9a7f771cc608339e.bin"
+      "record": "verified-hash-f17ac9995669afd2b9fe2aad5481e025ff98a314caa58d45969ae10ec547c2d7.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -284,7 +284,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-9f1de0068485faced0be4bc0438395767fd23de15ca99a046e49daf05d1ffaa4.bin"
+      "record": "verified-store-decoder-b632254f21f95466ec4335f99fc70fd12ad8a1d2ea3c53c11953df9b4fb5aa19.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -298,17 +298,17 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-5c9f5c90a5937bb0d57b1598d52750a38f3064e766d0e5b7d11771c3aff2056f.bin"
+      "record": "verified-cfg-eebb7b9db7a9ca46c44797999235a919c5f26339442c565ca0a303d4031c825e.bin"
     },
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-2ec06ddf4a5c16118bd642c6ee9e510d55955995a92a7b72da39b2b5a8416893.bin"
+      "record": "verified-typing-763ba9c7a6bc11decc5255adfe6d39237c7f0ba8b3f2c7dd25b7a1afc2646345.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "0f29a2f9c60b4cd8f9d5585d438bd61aa968545b1c0282b98cbfa08ac4f95d73",
-      "native_artifact_digest": "7b5e70aa68db9bac2ea7fc3b955fd5c58594d3adfced194b7c8b82fd25edbd2c",
+      "semantic_root": "089b78b71d5bc38969a2c1cdc6b24cb3cc3ac29a135b49bf20febc056f1bdf79",
+      "native_artifact_digest": "fd37a18c8964214662f140f0abba96b19f0d6b273fb5cb0e0eb17c112b80cbf2",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -317,7 +317,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-83f367a1bca81bf1c28ec5436c64d981a32bd0f3ab536b5a18cb639e4f46b1bd.bin"
+      "record": "verified-store-verifier-02667f13a26b343a71e924583a9ba0cf39a79f4f6f79cc0a7fd782a3c7d82141.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -332,7 +332,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-f1921b8ed18b16d722db606e709a149cce6756d2c82377c09b6bae9053082141.bin"
+      "record": "verified-graph-decoder-3fb4ae6923648340d98bec638a3fbe961f05a896c3b8e1da7bf084cbd99322ea.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -355,7 +355,7 @@
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-e5109cc4248f111fc6e55eafe6369fb9adfca3c7d77a0c4cd60320cd0623d1ad.bin"
+      "record": "verified-xax_x86_64_backend-4457661aea42b15df20e1463e978df4944c9ad3e7897ef50614294d2ad6d2067.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",

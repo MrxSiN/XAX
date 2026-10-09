@@ -123,7 +123,11 @@ FORMB = 24  # S4d.2c: a type's raw first body byte (its form when single-byte), 
 OPID = 25  # S4d.2d: an opaque identity type (form 6): 1 when ``_decode_opaque_identity_type`` accepts it
 EINST = 26  # S4d.2d: an effect type's instance (0 when absent)
 OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a constant ``_decode_constant`` accepts
-TABLES = 28
+# S8c.24 (ADR-242): a well-formed constant ``_decode_constant`` rejects: its site, value offset in the body, value bytes,
+# and the type's width (bits) or float width.
+CREJ, COFF, CLEN, CWIDTH = 28, 29, 30, 31
+TABLES = 32
+CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE")
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -731,8 +735,9 @@ def _constant_rule(b: _Builder, t: _Typing, operands, results, extra, extra_at, 
     return t.all(ok, t.eq(extra, 1), t.eq(operands, 0), t.eq(results, 1), t.eq(result, value_type))
 
 
-def _constant_object(b: _Builder, t: _Typing, entity):
-    """``(ok, value type)``: entry ``entity`` is a constant object ``_decode_constant`` accepts."""
+def _constant_object(b: _Builder, t: _Typing, entity, parts: dict | None = None):
+    """``(ok, value type)``: entry ``entity`` is a constant object ``_decode_constant`` accepts (``parts``: filled with
+    the values a rejection quotes)."""
     position = t.pick(t.lt(entity, t.count), b.get(t.slot(POSITION, t.pick(t.lt(entity, t.count), entity, b.c(0)))), b.c(0))
     kind, references, length = (b.read(b.add(position, k)) for k in range(3))
     base = b.add(position, 3)
@@ -770,15 +775,37 @@ def _constant_object(b: _Builder, t: _Typing, entity):
     f32 = t.all(t.eq(form, 1), t.eq(count, 4), t.any(t.not_(nan(23, 0xFF, (1 << 23) - 1)), t.eq(raw, F32_QUIET_NAN)))
     f64 = t.all(t.eq(form, 2), t.eq(count, 8), t.any(t.not_(nan(52, 0x7FF, (1 << 52) - 1)), t.eq(raw, F64_QUIET_NAN)))
     link_ok = t.all(link, t.eq(count, 8), zero)
+    if parts is not None:
+        parts.update(shape=shape, base=base, data=data, count=count, width=width, form=form, raw=raw, zero=zero, small=small, nan=nan,
+                     value_type=value_type, bits_ok=bits_ok)
     return t.all(shape, t.any(bits_ok, f32, f64, link_ok)), value_type
 
 
 def _object_entry(b: _Builder, t: _Typing, index):
     """S6b (ADR-143): the entry's object verdict: a valid type (``_known``) or a valid constant."""
     kind = b.read(b.get(t.slot(POSITION, index)))
-    constant_ok, _value_type = _constant_object(b, t, index)
+    parts: dict = {}
+    constant_ok, _value_type = _constant_object(b, t, index, parts)
     verdict = t.any(t.all(t.eq(kind, int(Kind.TYPE)), _known(t, index)), t.all(t.eq(kind, int(Kind.CONSTANT)), constant_ok))
     b.put(t.slot(OBJOK, index), verdict)
+    # S8c.24 (ADR-242): ``_decode_constant``'s value rejection for a well-formed constant (one reference, used once,
+    # exact length), by the value type's form byte.  A bits type the tables cannot size, or a float format they do
+    # not know, declines (the bootstrap's own type decoders decide).
+    value_type, count, width, form, raw = parts["value_type"], parts["count"], parts["width"], parts["form"], parts["raw"]
+    formb = t.lookup(FORMB, value_type)
+    float_width = t.pick(t.eq(form, 1), b.c(32), t.pick(t.eq(form, 2), b.c(64), b.c(0)))
+    nan = t.pick(t.eq(form, 1), parts["nan"](23, 0xFF, (1 << 23) - 1), parts["nan"](52, 0x7FF, (1 << 52) - 1))
+    quiet = t.pick(t.eq(form, 1), b.c(F32_QUIET_NAN), b.c(F64_QUIET_NAN))
+    bits_site = t.pick(t.all(t.nonzero(width), t.not_(parts["bits_ok"])), b.c(1), b.c(0))
+    float_site = t.pick(t.eq(float_width, 0), b.c(0), t.pick(t.not_(t.eq(count, b.op(Operation.UDIV, float_width, 8))), b.c(2),
+                                                         t.pick(t.all(nan, t.not_(t.eq(raw, quiet))), b.c(3), b.c(0))))
+    link_site = t.pick(t.all(t.eq(count, 8), parts["zero"]), b.c(0), b.c(4))
+    site = t.pick(t.eq(formb, 1), bits_site, t.pick(t.eq(formb, 7), float_site, t.pick(t.eq(formb, 11), link_site, b.c(5))))
+    constant = t.all(t.eq(kind, int(Kind.CONSTANT)), parts["shape"], t.lt(value_type, t.count))
+    b.put(t.slot(CREJ, index), t.pick(constant, site, b.c(0)))
+    b.put(t.slot(COFF, index), b.sub(parts["data"], parts["base"]))
+    b.put(t.slot(CLEN, index), count)
+    b.put(t.slot(CWIDTH, index), t.pick(t.eq(formb, 7), float_width, width))
 
 
 def _node_entry(b: _Builder, t: _Typing, index, carried):
@@ -1575,11 +1602,42 @@ class NativeTyping:
     def object_verdicts(self, words: list[int], listed: dict) -> set[bytes]:
         """S6b (ADR-143): the CIDs among ``listed`` (CID -> entry index) that XAX proves valid types or constants."""
         status, _verdicts = self.check(words, 0)
+        self._object_count = words[0] if status == ACCEPT else None
         if status != ACCEPT:
             return set()
         count = words[0]
         base = TABLE + count * OBJOK
         return {cid for cid, index in listed.items() if index is not None and self._out[base + index] == 1}
+
+    def object_rejections(self, listed: dict, objects: dict) -> dict:
+        """After ``object_verdicts``: S8c.24 (ADR-242), ``{cid: (code, rule, expected, actual, dependencies, repair)}`` for
+        the constants XAX rejects (``objects``: CID -> object, for quoting the value bytes)."""
+        count = getattr(self, "_object_count", None)
+        if count is None:
+            return {}
+        table = lambda field, index: self._out[TABLE + count * field + index]  # noqa: E731
+        rejected = {}
+        for cid, index in listed.items():
+            if index is None:
+                continue
+            site = table(CREJ, index)
+            if not site:
+                continue
+            obj = objects[cid]
+            offset, length, width = table(COFF, index), table(CLEN, index), table(CWIDTH, index)
+            value = obj.body[offset:offset + length]
+            type_hex, name = obj.references[0].hex(), CONSTANT_SITES[site - 1]
+            if name == "BITS_WIDTH":
+                rejected[cid] = ("XAX.CONSTANT.WIDTH", "CONST-BITS-WIDTH", f"{width} canonical bits", value.hex(), [type_hex], [cid.hex(), type_hex])
+            elif name == "FLOAT_WIDTH":
+                rejected[cid] = ("XAX.CONSTANT.WIDTH", "CONST-FLOAT-WIDTH", width // 8, length, (), ())
+            elif name == "FLOAT_NAN":
+                rejected[cid] = ("XAX.CONSTANT.FLOAT_NAN", "CONST-FLOAT-CANONICAL-NAN", "canonical quiet NaN", value.hex(), (), ())
+            elif name == "LINK_NULL":
+                rejected[cid] = ("XAX.CONSTANT.LINK", "CONST-LINK-NULL-ONLY", bytes(8).hex(), value.hex(), (), ())
+            else:
+                rejected[cid] = ("XAX.CONSTANT.TYPE", "CONST-SCALAR-TYPE", ["bits<N>", "float<F>", "link (null)"], type_hex, (), ())
+        return rejected
 
     def memory_rejection(self, refs, storages, operation_of, cids=()):
         """After ``facts`` declined: S8c.8 (ADR-221), the engine's exact memory rejection as ``(pass, block, node,
