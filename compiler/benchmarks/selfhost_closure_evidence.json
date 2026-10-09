@@ -83,15 +83,15 @@
     },
     {
       "program": "xax_selfhost_blake3",
-      "store_bytes": 34025,
-      "store_sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3",
+      "store_bytes": 34035,
+      "store_sha256": "1c93d66b39598ae74f55c4ed41ab64af65c674234320cbf4a2c262e38c47cdac",
       "functions": 2,
       "code_bytes": 18844,
-      "image_sha256": "5dcc3086447fcad87d059b1646cf1c5ead722fae8bb54e7a7344572992c6868a",
+      "image_sha256": "7f449e99b6e20a0503efffa22a44c16e3048b928def96851d4a5e7c08bf82b36",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.07,
-        "bootstrap": 0.08
+        "gen1": 6.02,
+        "bootstrap": 0.07
       }
     },
     {
@@ -165,8 +165,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.005,
-        "emulated": 0.8
+        "emulated": 1.0
       }
     },
     {
@@ -271,31 +270,31 @@
       "store": "m11_bootstrap_bundle.xax",
       "bytes": 1566,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "m11_compiler_subset.xax",
       "bytes": 820,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "m14_selfhost_compiler.xax",
       "bytes": 2020,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.01
+      "host_s_nonsemantic": 0.02
     },
     {
       "store": "xax_blake3_compress.xax",
       "bytes": 11827,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.02
+      "host_s_nonsemantic": 0.03
     },
     {
       "store": "xax_blake3_hash.xax",
-      "bytes": 34025,
+      "bytes": 34035,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.05
+      "host_s_nonsemantic": 0.06
     },
     {
       "store": "xax_cfg_analysis.xax",
@@ -310,6 +309,18 @@
       "host_s_nonsemantic": 0.15
     },
     {
+      "store": "xax_op_typing.xax",
+      "bytes": 3565503,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 3.52
+    },
+    {
+      "store": "xax_riscv64_backend.xax",
+      "bytes": 1366059,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 1.39
+    },
+    {
       "store": "xax_riscv64_encoder.xax",
       "bytes": 10129,
       "emulated_equals_production": true,
@@ -319,7 +330,19 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.37
+      "host_s_nonsemantic": 0.26
+    },
+    {
+      "store": "xax_store_verifier.xax",
+      "bytes": 2085288,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 2.0
+    },
+    {
+      "store": "xax_x86_64_backend.xax",
+      "bytes": 1425157,
+      "emulated_equals_production": true,
+      "host_s_nonsemantic": 1.58
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -453,6 +476,115 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null
+    }
+  },
+  "refreshed": {
+    "program": "xax_selfhost_blake3",
+    "store": "xax_blake3_hash.xax",
+    "store_sha256": "1c93d66b39598ae74f55c4ed41ab64af65c674234320cbf4a2c262e38c47cdac",
+    "reason": "ADR-249: only this store changed; its entries were re-executed natively",
+    "authority": {
+      "blake3-compress": {
+        "component": "blake3-compress",
+        "semantic_root": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+        "native_artifact_digest": "bfaf9a6c4b3347f00c053e8192f6b3c7860c9f47bab7c07ee2731debb52caa13",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "blake3-hash": {
+        "component": "blake3-hash",
+        "semantic_root": "ec668facd92aa066226428ee8685cd9f6aaca4d8a67507b49fbf54d3e6fe4328",
+        "native_artifact_digest": "a1ba499f179c341455d676814c7d4b7ded072706bc6ee211c3bce6b3a6351ac5",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "store-decoder": {
+        "component": "store-decoder",
+        "semantic_root": "5f3e5a1c28e99f4deb350fff40e179294c3d5e6910a6cb71c5b2c77f8c6ae0bc",
+        "native_artifact_digest": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "graph-decoder": {
+        "component": "graph-decoder",
+        "semantic_root": "05ba650dc678a359093ac0f4d3e1b2520ddfd6737954e04622e22634baba04a6",
+        "native_artifact_digest": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "cfg": {
+        "component": "cfg",
+        "semantic_root": "0f24251e706100f7896f4a03d6f50fba05ebb192f683485f3146f4b85b22dca1",
+        "native_artifact_digest": "e72da309045091db8be0d691cfefa8ae30391787e030a4488868ad8a559f967f",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "typing": {
+        "component": "typing",
+        "semantic_root": "5ddccd2122069b3c0bee64030dd72d107ce7a00cde4e464e4932b8891f3914cf",
+        "native_artifact_digest": "e5ac323cf0f34f82c6632467a772ad2bdca1aaa6188d5697a1cf33df67b51c18",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "store-verifier": {
+        "component": "store-verifier",
+        "semantic_root": "2738ba198f37a47b269d2cf5ed8c5c1ac91cbb4e09e82dd8a16a3350dc6cc75b",
+        "native_artifact_digest": "12d011c232cf33d3c77f3f775ca634f1252e9227bfb14026075255bae2e234b5",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null,
+        "declined_inputs": 1852
+      },
+      "verification:hash": {
+        "component": "verification:hash",
+        "store_verification": "memoized",
+        "record": "verified-hash-f1b8dd835f69807d566d5c4d863ddb17decd4655e0faf8d9cf34f020ed720f6d.bin"
+      },
+      "riscv64-encoder": {
+        "component": "riscv64-encoder",
+        "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
+        "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "riscv64-backend": {
+        "component": "riscv64-backend",
+        "semantic_root": "6c4b5955e09d77df3c79ddda5d6e56d56f8b9981429fc48e127d4580e6097de9",
+        "native_artifact_digest": "e6959e1a43953c5811856552b5e02bd83a7bb843391a1c8af36362e79261368e",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "verification:store-verifier": {
+        "component": "verification:store-verifier",
+        "store_verification": "memoized",
+        "record": "verified-store-verifier-03e8fd0d86a7e916ff01381221d4f4454a8de4970660dd668e001520b86c51d5.bin"
+      },
+      "x86-64-views-backend": {
+        "component": "x86-64-views-backend",
+        "semantic_root": "1770b76304de6b5793c0987ebade24c705240f75187237a88d14b41986619e72",
+        "native_artifact_digest": "6861b4cf0d080ab1341fd36345c89edd92cf92e7c80825aa65feaec85810b127",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      }
     }
   }
 }

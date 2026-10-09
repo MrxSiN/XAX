@@ -13,6 +13,7 @@ from __future__ import annotations
 import ctypes
 import mmap
 import platform
+import threading
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -236,6 +237,15 @@ class NativeBlake3Compressor:
         self._call = prototype(base + thunk_offset)
         self.image = image
         self.thunk_size = len(thunk)
+        # ADR-249: the 28 argument words and the aligned 16-word result are allocated once, not per block.  The
+        # Win64 aggregate-return contract expects suitably aligned caller storage; ctypes only promises the element
+        # alignment for a c_uint32 array, so over-allocate and align the result explicitly.
+        self._inputs = (ctypes.c_uint32 * 28)()
+        self._output_storage = (ctypes.c_uint8 * (64 + 15))()
+        output_address = (ctypes.addressof(self._output_storage) + 15) & ~15
+        self._output = (ctypes.c_uint32 * 16).from_address(output_address)
+        self._output_pointer = ctypes.cast(output_address, ctypes.POINTER(ctypes.c_uint32))
+        self._lock = threading.Lock()
 
     def compress(
         self,
@@ -247,22 +257,13 @@ class NativeBlake3Compressor:
     ) -> tuple[int, ...]:
         if len(chaining_value) != 8 or len(block_words) != 16:
             raise ValueError("BLAKE3 compression expects 8 CV words and 16 block words")
-        inputs = (ctypes.c_uint32 * 28)(
-            *(int(word) & _MASK32 for word in chaining_value),
-            *(int(word) & _MASK32 for word in block_words),
-            counter & _MASK32,
-            (counter >> 32) & _MASK32,
-            block_len & _MASK32,
-            flags & _MASK32,
-        )
-        # The Win64 aggregate-return contract expects suitably aligned caller
-        # storage.  ctypes only promises the element alignment for a c_uint32
-        # array, so over-allocate and align this transient result explicitly.
-        output_storage = (ctypes.c_uint8 * (64 + 15))()
-        output_address = (ctypes.addressof(output_storage) + 15) & ~15
-        output = ctypes.cast(output_address, ctypes.POINTER(ctypes.c_uint32))
-        self._call(output, inputs)
-        return tuple(int(output[index]) for index in range(16))
+        with self._lock:
+            inputs = self._inputs
+            inputs[0:8] = [word & _MASK32 for word in chaining_value]
+            inputs[8:24] = [word & _MASK32 for word in block_words]
+            inputs[24:28] = [counter & _MASK32, (counter >> 32) & _MASK32, block_len & _MASK32, flags & _MASK32]
+            self._call(self._output_pointer, inputs)
+            return tuple(self._output)
 
 
 _native_singleton: NativeBlake3Compressor | None = None
