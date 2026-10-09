@@ -156,7 +156,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.22 recursion-group member-graph rejections — 2026-10-08 (ADR-240)
 
-- Next: the canonical member order (`GRAPH-RECURSION-ORDER`), types, constants, targets, packages, and builds; the remaining memory declines.
+- Next: the canonical member order (`GRAPH-RECURSION-ORDER`), types, constants, targets, packages, and builds; the remaining memory declines. Superseded by S8c.23 below.
+
+## S8c.23 target object rejections — 2026-10-09 (ADR-241)
+
+- Next: target register lists and profile sections, the canonical group order, types, constants, packages, and builds; the remaining memory declines.
 
 ## Validation state at M14 (historical)
 

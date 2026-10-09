@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8c.23 target object rejections — 2026-10-09 (ADR-241)
+
+The XAX store verifier now rejects malformed target objects (references, identity, architecture, trailing bytes, profile, and each architecture's machine and profile rules) with the bootstrap's diagnostics. Still Python: target register lists and profile sections, the canonical group order, types, constants, packages, builds; the remaining memory declines.
+
 ## S8c.22 recursion-group member-graph rejections — 2026-10-08 (ADR-240)
 
 The XAX store verifier now rejects recursion groups whose member graphs break the member interface, call a member out of range or with the wrong types, or do not form one recursive component. Still Python: the canonical member order, types, constants, targets, packages, builds; the remaining memory declines.

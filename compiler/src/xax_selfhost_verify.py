@@ -120,7 +120,11 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 # S8c.21 (ADR-239): recursion-group member lists (``_decode_recursion_group``, before any member parses).
                 "GROUP_EMPTY", "GROUP_REF_INDEX", "GROUP_CARRIER", "GROUP_TRAILING", "GROUP_UNUSED",
                 # S8c.22 (ADR-240): after member graphs parse (payload: graphs to parse first, quoted list, [count, graphs]).
-                "GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
+                "GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC",
+                # S8c.23 (ADR-241): targets (``decode_native_target``).
+                "TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
+                "TARGET_PROFILE", "TARGET_X86_64", "TARGET_RISCV64", "TARGET_SPIRV", "TARGET_JVM", "TARGET_WASM32", "TARGET_AARCH64",
+                "TARGET_ANDROID", "TARGET_AARCH64_LINUX", "TARGET_BAREMETAL", "TARGET_BOARD", "TARGET_ACCELERATOR")
 AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
 GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
@@ -735,22 +739,25 @@ def _target_ok(tables):
     scopes, domains, constraint_kinds = len(AtomicScope), len(EffectDomain), len(TargetValueConstraintKind)
     assert [int(item) for item in AtomicScope] == list(range(1, scopes + 1)) and [int(item) for item in EffectDomain] == list(range(1, domains + 1))
 
+    known_architectures = (1, 2, 3, 4, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE, SPIRV_ARCHITECTURE)
+
     def build(e: E):
         p = e.p
         o = p["o"]
-        _no(e, e.ne(_references(e, o), 0))
+        _no(e, e.eq(_resolved(e, o), 0))
+        _reject(e, e.ne(_references(e, o), 0), o, S["TARGET_REFERENCES"])
         e.var("ta", _payload(e, o))
         end = e.add(p["ta"], e.rd(e.sub(p["ta"], 1)))
         e.var("tend", end)
         e.var("ilen", _read(e, "ta", p["tend"]))
-        _no(e, e.eq(p["ilen"], 0))
-        _no(e, e.lt(e.sub(p["tend"], p["ta"]), p["ilen"]))
+        _reject(e, e.lt(e.sub(p["tend"], p["ta"]), p["ilen"]), o, S["TARGET_IDENTITY_TRUNCATED"], p["ilen"], e.sub(p["tend"], p["ta"]))
+        _reject(e, e.eq(p["ilen"], 0), o, S["TARGET_IDENTITY_EMPTY"])
         e.set("ta", e.add(p["ta"], p["ilen"]))
         e.if_(e.eq(p["ta"], p["tend"]), lambda: e.give(1))  # an identity-only carrier
         e.var("profile", _read(e, "ta", p["tend"]))
-        _no(e, e.either(e.lt(p["profile"], 1), e.lt(BOARD_PROFILE, p["profile"])))
         for name in ("arch", "abi", "format", "word", "pointer"):
             e.var(name, _read(e, "ta", p["tend"]))
+        _reject(e, e.not_(e.either(*(e.eq(p["arch"], code) for code in known_architectures))), o, S["TARGET_ARCHITECTURE"], p["arch"])
         _no(e, e.both(e.eq(p["profile"], 3), e.ne(p["arch"], 4)))  # accelerator fields elsewhere: left to the bootstrap
         e.var("stack", 1)
         e.var("shadow", 0)
@@ -895,32 +902,46 @@ def _target_ok(tables):
         e.if_(e.eq(p["profile"], 3), accelerator)
         e.if_(e.eq(p["profile"], 4), lambda: contracts(True, False))
         e.if_(e.eq(p["profile"], BOARD_PROFILE), lambda: contracts(False, False))
-        _no(e, e.ne(p["ta"], p["tend"]))
+        _reject(e, e.ne(p["ta"], p["tend"]), o, S["TARGET_TRAILING"], e.sub(p["tend"], p["ta"]))
+        _reject(e, e.either(e.lt(p["profile"], 1), e.lt(BOARD_PROFILE, p["profile"])), o, S["TARGET_PROFILE"], p["profile"])
 
         def machine(abi, image_format, word, pointer):
             return e.both(e.eq(p["abi"], abi), e.eq(p["format"], image_format), e.eq(p["word"], word), e.eq(p["pointer"], pointer))
 
+        def fields(site):
+            """Reject at ``site`` quoting the machine record (profile, abi, format, word, pointer, stack, shadow)."""
+            def record():
+                e.var("mq", e.alloc(8))
+                _no(e, e.eq(p["mq"], NONE))
+                for k, name in enumerate(("profile", "abi", "format", "word", "pointer", "stack", "shadow")):
+                    e.st(e.add(p["mq"], k), p[name])
+                _reject(e, None, o, S[site], p["mq"])
+            return record
+
         def x86_64():
-            _no(e, e.not_(e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in X86_64_MACHINES))))
-            _no(e, e.either(e.ne(p["stack"], 16), e.ne(p["shadow"], 32)))
+            allowed = e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in X86_64_MACHINES))
+            e.if_(e.not_(e.both(allowed, e.eq(p["stack"], 16), e.eq(p["shadow"], 32))), fields("TARGET_X86_64"))
 
         def aarch64():
             machines = (*AARCH64_MACHINES, (4, ANDROID_ELF_FORMAT), (4, ANDROID_ELF_PACKED_FORMAT), (3, AARCH64_BOARD_ELF_FORMAT))
-            _no(e, e.not_(e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in machines))))
-            _no(e, e.both(e.eq(p["abi"], 4), e.ne(p["profile"], 4)))  # Android: profile 4
-            _no(e, e.both(e.eq(p["abi"], 5), e.ne(p["profile"], 1)))  # aarch64 Linux: profile 1
-            _no(e, e.both(e.eq(p["abi"], 3), e.ne(p["profile"], 1), e.ne(p["profile"], 2), e.ne(p["profile"], BOARD_PROFILE)))
-            _no(e, e.ne(e.flag(e.eq(p["format"], AARCH64_BOARD_ELF_FORMAT)), e.flag(e.eq(p["profile"], BOARD_PROFILE))))
-            _no(e, e.either(e.ne(p["stack"], 16), e.ne(p["shadow"], 0)))
+            allowed = e.either(*(machine(abi, image_format, 64, 64) for abi, image_format in machines))
+            e.if_(e.not_(e.both(allowed, e.eq(p["stack"], 16), e.eq(p["shadow"], 0))), fields("TARGET_AARCH64"))
+            e.if_(e.both(e.eq(p["abi"], 4), e.ne(p["profile"], 4)), fields("TARGET_ANDROID"))  # Android: profile 4
+            e.if_(e.both(e.eq(p["abi"], 5), e.ne(p["profile"], 1)), fields("TARGET_AARCH64_LINUX"))  # aarch64 Linux: profile 1
+            e.if_(e.both(e.eq(p["abi"], 3), e.ne(p["profile"], 1), e.ne(p["profile"], 2), e.ne(p["profile"], BOARD_PROFILE)), fields("TARGET_BAREMETAL"))
+            e.if_(e.ne(e.flag(e.eq(p["format"], AARCH64_BOARD_ELF_FORMAT)), e.flag(e.eq(p["profile"], BOARD_PROFILE))), fields("TARGET_BOARD"))
+
+        def five(site, profile, abi, image_format, word, pointer):
+            return lambda: e.if_(e.either(e.ne(p["profile"], profile), e.not_(machine(abi, image_format, word, pointer))), fields(site))
 
         known = {
             1: x86_64,
             3: aarch64,
-            2: lambda: _no(e, e.not_(machine(2, 2, 64, 32))),
-            4: lambda: _no(e, e.either(e.ne(p["profile"], 3), e.not_(machine(4, 3, 32, 64)))),
-            RISCV64_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64)))),
-            SPIRV_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32)))),
-            JVM_ARCHITECTURE: lambda: _no(e, e.either(e.ne(p["profile"], 1), e.not_(machine(JVM_ABI, JVM_JAR_FORMAT, 64, 64)))),
+            2: lambda: e.if_(e.not_(machine(2, 2, 64, 32)), fields("TARGET_WASM32")),
+            4: five("TARGET_ACCELERATOR", 3, 4, 3, 32, 64),
+            RISCV64_ARCHITECTURE: five("TARGET_RISCV64", 1, RISCV64_LP64_ABI, RISCV64_RAW_FORMAT, 64, 64),
+            SPIRV_ARCHITECTURE: five("TARGET_SPIRV", 1, SPIRV_VULKAN_ABI, SPIRV_MODULE_FORMAT, 32, 32),
+            JVM_ARCHITECTURE: five("TARGET_JVM", 1, JVM_ABI, JVM_JAR_FORMAT, 64, 64),
         }
         e.var("decided", 0)
         for architecture, check in known.items():
@@ -1915,6 +1936,8 @@ def collect_verdicts(read, count: int, groups=()):
 
 
 LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED", "GROUP_UNUSED")  # a payload word is a [count, words] list
+TARGET_SCALAR_SITES = ("TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
+                       "TARGET_PROFILE")  # the other target sites quote the machine record at payload word 0
 PAIR_SITES = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT")  # payload word 1 is [n, words, m, words]
 
 
@@ -1954,6 +1977,8 @@ def collect_rejections(read, verdicts):
                 listed = words
             rejections[o] = (site, payload, listed, graphs)
             continue
+        elif name is not None and name.startswith("TARGET_") and name not in TARGET_SCALAR_SITES:
+            listed = read(payload[0], 7)
         elif name in PAIR_SITES:
             first = read(payload[1], 1)[0]
             second = read(payload[1] + 1 + first, 1)[0]
@@ -1962,11 +1987,59 @@ def collect_rejections(read, verdicts):
     return rejections
 
 
+def _target_diagnostic(obj, name, x, y, machine):
+    """S8c.23: ``decode_native_target``'s diagnostics (``machine``: profile, abi, format, word, pointer, stack, shadow)."""
+    import xax_compiler as X
+
+    if name == "TARGET_REFERENCES":
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", [], [cid.hex() for cid in obj.references]
+    if name == "TARGET_IDENTITY_TRUNCATED":
+        return "XAX.CANON.TRUNCATED", "SER-BOUNDS", f"{x} available bytes", y
+    if name == "TARGET_IDENTITY_EMPTY":
+        return "XAX.STRUCT.TARGET_IDENTITY", "TARGET-IDENTITY-NONEMPTY", ">= 1 byte", 0
+    if name == "TARGET_ARCHITECTURE":
+        return ("XAX.TARGET.ARCHITECTURE", "TARGET-ARCHITECTURE-SUPPORTED",
+                [1, 2, 3, 4, X.JVM_ARCHITECTURE, X.RISCV64_ARCHITECTURE, X.SPIRV_ARCHITECTURE], x)
+    if name == "TARGET_TRAILING":
+        return "XAX.CANON.TRAILING_BYTES", "TARGET-NATIVE-BODY", 0, x
+    if name == "TARGET_PROFILE":
+        return "XAX.TARGET.PROFILE", "TARGET-PROFILE-SUPPORTED", [1, 2, 3, 4, X.BOARD_PROFILE], x
+    profile, abi, image_format, word, pointer, stack, shadow = machine
+    if name == "TARGET_X86_64":
+        allowed = ((1, 1, 64, 64, 16, 32), (X.X86_64_LINUX_ABI, X.X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+                   (X.X86_64_LINUX_ABI, X.X86_64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 32))
+        return "XAX.TARGET.MACHINE", "TARGET-X86-64-PROFILE", [list(item) for item in allowed], [abi, image_format, word, pointer, stack, shadow]
+    if name == "TARGET_AARCH64":
+        allowed = ((3, 1, 64, 64, 16, 0), (4, X.ANDROID_ELF_FORMAT, 64, 64, 16, 0), (4, X.ANDROID_ELF_PACKED_FORMAT, 64, 64, 16, 0),
+                   (X.AARCH64_LINUX_ABI, X.AARCH64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 0), (X.AARCH64_LINUX_ABI, X.AARCH64_LINUX_ELF_DYNAMIC_FORMAT, 64, 64, 16, 0),
+                   (3, X.AARCH64_BOARD_ELF_FORMAT, 64, 64, 16, 0))
+        return "XAX.TARGET.MACHINE", "TARGET-AARCH64-PROFILE", [list(item) for item in allowed], [abi, image_format, word, pointer, stack, shadow]
+    if name == "TARGET_ANDROID":
+        return "XAX.TARGET.MACHINE", "TARGET-ANDROID-PROFILE", 4, profile
+    if name == "TARGET_AARCH64_LINUX":
+        return "XAX.TARGET.MACHINE", "TARGET-AARCH64-LINUX-PROFILE", 1, profile
+    if name == "TARGET_BAREMETAL":
+        return "XAX.TARGET.MACHINE", "TARGET-AARCH64-BAREMETAL-PROFILE", [1, 2, X.BOARD_PROFILE], profile
+    if name == "TARGET_BOARD":
+        return "XAX.TARGET.MACHINE", "TARGET-AARCH64-BOARD-PROFILE", "board format with board profile", [image_format, profile]
+    if name == "TARGET_WASM32":
+        return "XAX.TARGET.MACHINE", "TARGET-WASM32-CORE", [2, 2, 64, 32], [abi, image_format, word, pointer]
+    rule, expected = {
+        "TARGET_RISCV64": ("TARGET-RISCV64-RAW", [1, X.RISCV64_LP64_ABI, X.RISCV64_RAW_FORMAT, 64, 64]),
+        "TARGET_SPIRV": ("TARGET-SPIRV-COMPUTE", [1, X.SPIRV_VULKAN_ABI, X.SPIRV_MODULE_FORMAT, 32, 32]),
+        "TARGET_JVM": ("TARGET-JVM-CLASSFILE", [1, X.JVM_ABI, X.JVM_JAR_FORMAT, 64, 64]),
+        "TARGET_ACCELERATOR": ("TARGET-ACCELERATOR-PROFILE", [3, 4, 3, 32, 64]),
+    }[name]
+    return "XAX.TARGET.MACHINE", rule, expected, [profile, abi, image_format, word, pointer]
+
+
 def object_diagnostic(obj, record, objects=()):
     """S8c.19: the bootstrap's ``(code, rule, expected, actual)`` for a rejected object (rendering only: the verifier
     decided the check and its values).  ``objects``: the object table, for quoted object indices."""
     site, (x, y, _z), listed = record[:3]
     name = OBJECT_SITES[site - 1]
+    if name.startswith("TARGET_"):
+        return _target_diagnostic(obj, name, x, y, listed)
     if name in ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT"):
         first = listed[1:1 + listed[0]]
         second = listed[2 + listed[0]:2 + listed[0] + listed[1 + listed[0]]]

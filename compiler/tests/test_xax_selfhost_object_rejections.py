@@ -147,6 +147,37 @@ def _group(variant: str):
     return group, member, objects
 
 
+def _target(variant: str):
+    """A target object; ``variant`` rewrites one field of a known target's body (``None`` when it keeps none)."""
+    import xax_compiler as X
+
+    bases = {"target_riscv": X.riscv64_baremetal_target, "target_wasm": X.wasm32_target, "target_jvm": X.jvm_classfile_target,
+             "target_spirv": X.spirv_vulkan_compute_target, "target_aarch64": X.aarch64_baremetal_target,
+             "target_profile": X.riscv64_baremetal_target}
+    base = bases.get(variant, X.x86_64_linux_exec_target)()
+    body = base.body
+    cursor = X.Cursor(body, "test")
+    identity = cursor.byte_string()
+    head = [cursor.uleb() for _ in range(6)]  # profile, architecture, abi, format, word, pointer
+    rest = body[cursor.pos:]
+    encode = lambda identity_, head_, rest_: uleb(len(identity_)) + identity_ + b"".join(uleb(item) for item in head_) + rest_  # noqa: E731
+    if variant == "target_refs":
+        return SemanticObject.create(Kind.TARGET, body, (B8.cid,))
+    if variant == "target_identity_empty":
+        return SemanticObject.create(Kind.TARGET, encode(b"", head, rest))
+    if variant == "target_truncated":
+        return SemanticObject.create(Kind.TARGET, uleb(200) + b"short")
+    if variant == "target_trailing":
+        return SemanticObject.create(Kind.TARGET, body + b"\x00")
+    changes = {"target_architecture": (1, 9), "target_profile": (0, 9), "target_x86": (2, 7), "target_riscv": (2, 9), "target_wasm": (4, 32),
+               "target_jvm": (2, 9), "target_spirv": (5, 64), "target_aarch64": (2, 7)}
+    if variant in changes:
+        index, value = changes[variant]
+        head[index] = value
+        return SemanticObject.create(Kind.TARGET, encode(identity, head, rest))
+    return None
+
+
 def _store(variant: str):
     """``(root, objects)``: a root, one module holding three types and a contract; ``variant`` breaks one object."""
     types = (B8, B32, B64)
@@ -165,7 +196,8 @@ def _store(variant: str):
     function, function_objects = _function(variant if variant.startswith("function_") else "function_valid")
     group, member, group_objects = _group(variant)
     with_member = not variant.startswith("group_")  # a member function of a broken group fails with the group's diagnostic
-    children = (*types, contract, function, group, *((member,) if with_member else ()))
+    target_object = _target(variant)
+    children = (*types, contract, function, group, *((member,) if with_member else ()), *((target_object,) if target_object else ()))
     supporting = (*function_objects, *group_objects)  # reached through references
     module = object_with_refs(Kind.MODULE, children)
     count = len(module.references)
@@ -200,6 +232,11 @@ VARIANTS = {
     # S8c.22 (ADR-240): group checks after the member graphs parse.
     "group_entry": "GRAPH-ENTRY-CONTRACT", "group_return": "GRAPH-RETURN-CONTRACT", "group_member_range": "GRAPH-RECURSION-MEMBER",
     "group_call_contract": "GRAPH-CALL-CONTRACT", "group_scc": "GRAPH-RECURSION-SCC",
+    # S8c.23 (ADR-241): targets.
+    "target_refs": "SER-REFS-DIRECT-ONLY", "target_identity_empty": "TARGET-IDENTITY-NONEMPTY", "target_truncated": "SER-BOUNDS",
+    "target_trailing": "TARGET-NATIVE-BODY", "target_architecture": "TARGET-ARCHITECTURE-SUPPORTED", "target_profile": "TARGET-PROFILE-SUPPORTED",
+    "target_x86": "TARGET-X86-64-PROFILE", "target_riscv": "TARGET-RISCV64-RAW", "target_wasm": "TARGET-WASM32-CORE", "target_jvm": "TARGET-JVM-CLASSFILE",
+    "target_spirv": "TARGET-SPIRV-COMPUTE", "target_aarch64": "TARGET-AARCH64-PROFILE",
 }
 
 
