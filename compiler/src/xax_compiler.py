@@ -81,6 +81,20 @@ def fail(
     )
 
 
+_XAX_RAISING = False  # S8 (ADR-248): set while a diagnostic an XAX program decided is raised
+
+
+def _xax_fail(code: str, entity: str, rule: str, expected: object, actual: object, dependencies: Iterable[str] = (),
+              repair_neighborhood: Iterable[str] = ()) -> None:
+    """Raise a diagnostic an XAX program decided (its rejection record); the bootstrap check is not run."""
+    global _XAX_RAISING
+    _XAX_RAISING = True
+    try:
+        fail(code, entity, rule, expected, actual, dependencies, repair_neighborhood)
+    finally:
+        _XAX_RAISING = False
+
+
 def uleb(value: int) -> bytes:
     if value < 0:
         raise ValueError("ULEB128 value must be nonnegative")
@@ -3451,9 +3465,19 @@ def recursion_group(members: Sequence[RecursionMember]) -> SemanticObject:
     return SemanticObject.create(Kind.RECURSION_GROUP, bytes(body), references)
 
 
+def _xax_type_rejection(obj: SemanticObject, form: int) -> None:
+    """S8 (ADR-248): a type decoder of ``form`` called on a type XAX rejected raises that diagnostic (the decoder is the
+    one ``_verify_type`` runs for the form, so the bootstrap's check would produce it)."""
+    record = _XAX_REJECTED_OBJECTS.get(obj.cid)
+    if record is not None and len(record) > 6 and record[6] == form and obj.kind == Kind.TYPE:
+        code, rule, expected_value, actual, dependencies, repair = record[:6]
+        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
+
+
 def decode_bits_width(obj: SemanticObject) -> int:
     if obj.kind != Kind.TYPE:
         fail("XAX.TYPE.EXPECTED", obj.cid.hex(), "TYPE-BITS", Kind.TYPE.name, obj.kind.name)
+    _xax_type_rejection(obj, 1)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     width = cursor.uleb()
@@ -3466,6 +3490,7 @@ def decode_bits_width(obj: SemanticObject) -> int:
 def decode_float_format(obj: SemanticObject) -> FloatFormat:
     if obj.kind != Kind.TYPE:
         fail("XAX.TYPE.EXPECTED", obj.cid.hex(), "TYPE-FLOAT", Kind.TYPE.name, obj.kind.name)
+    _xax_type_rejection(obj, 7)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     value = cursor.uleb()
@@ -3484,6 +3509,7 @@ def decode_float_width(obj: SemanticObject) -> int:
 
 
 def _decode_tuple_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, ...]:
+    _xax_type_rejection(obj, 8)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 8:
         fail("XAX.TYPE.TUPLE", obj.cid.hex(), "TYPE-TUPLE", "tuple type", "different type form")
@@ -3500,6 +3526,7 @@ def _decode_tuple_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticO
 
 
 def _decode_array_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, int]:
+    _xax_type_rejection(obj, 9)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 9:
         fail("XAX.TYPE.ARRAY", obj.cid.hex(), "TYPE-ARRAY", "array type", "different type form")
@@ -3513,6 +3540,7 @@ def _decode_array_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticO
 
 
 def _decode_sum_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> tuple[bytes, ...]:
+    _xax_type_rejection(obj, 10)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 10:
         fail("XAX.TYPE.SUM", obj.cid.hex(), "TYPE-SUM", "sum type", "different type form")
@@ -3684,6 +3712,7 @@ def _decode_pointer_type(
 ) -> tuple[bytes, Permission, int]:
     if obj.kind != Kind.TYPE:
         fail("XAX.TYPE.EXPECTED", obj.cid.hex(), "TYPE-POINTER", Kind.TYPE.name, obj.kind.name)
+    _xax_type_rejection(obj, 2)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     space = cursor.uleb()
@@ -3730,6 +3759,7 @@ class _ResourceType:
 
 
 def _decode_effect_type(obj: SemanticObject) -> _EffectType:
+    _xax_type_rejection(obj, 3)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 3:
         fail("XAX.TYPE.EFFECT", obj.cid.hex(), "TYPE-EFFECT", "effect type", "different type form")
@@ -3746,6 +3776,7 @@ def _decode_effect_type(obj: SemanticObject) -> _EffectType:
 
 
 def _decode_resource_type(obj: SemanticObject) -> _ResourceType:
+    _xax_type_rejection(obj, 4)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 4:
         fail("XAX.TYPE.RESOURCE", obj.cid.hex(), "TYPE-RESOURCE", "resource type", "different type form")
@@ -3779,6 +3810,7 @@ def _decode_resource_type(obj: SemanticObject) -> _ResourceType:
 
 
 def _decode_opaque_type(obj: SemanticObject) -> OpaqueKind:
+    _xax_type_rejection(obj, 5)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 5:
         fail("XAX.TYPE.OPAQUE", obj.cid.hex(), "TYPE-OPAQUE", "opaque semantic type", "different type form")
@@ -3794,6 +3826,7 @@ def _decode_opaque_type(obj: SemanticObject) -> OpaqueKind:
 
 
 def _decode_opaque_identity_type(obj: SemanticObject) -> bytes:
+    _xax_type_rejection(obj, 6)
     cursor = Cursor(obj.body, obj.cid.hex())
     if cursor.uleb() != 6:
         fail("XAX.TYPE.OPAQUE_IDENTITY", obj.cid.hex(), "TYPE-OPAQUE-IDENTITY", "identity-qualified opaque ABI type", "different type form")
@@ -3835,8 +3868,8 @@ def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]
         return  # S6b: the XAX type decoders accepted it
     if obj.cid in _XAX_REJECTED_OBJECTS and obj.kind == Kind.TYPE:
         # S8c.25 (ADR-243): XAX decided this type's rejection.
-        code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid]
-        fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
+        code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid][:6]
+        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     if form == 1:
@@ -6681,13 +6714,13 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 node.operand_types = operand_types
                 if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, node_index):
                     # S8c.8 (ADR-221): the XAX facts engine decided this node's memory rejection.
-                    fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
+                    _xax_fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
                 if (block_index, node_index) in proven_nodes:
                     pass  # S4 (ADR-132): typed by the XAX rules
                 elif (block_index, node_index) in rejected_nodes:
                     # S8c.1 (ADR-214): XAX decided this node's rejection; the bootstrap check is not run.
                     code, rule, expected, actual = rejected_nodes[(block_index, node_index)]
-                    fail(code, obj.cid.hex(), rule, expected, actual)
+                    _xax_fail(code, obj.cid.hex(), rule, expected, actual)
                 elif node.operation in BINARY_INTEGER_OPERATIONS:
                     if len(node.operands) != 2 or len(node.results) != 1 or node.attributes:
                         fail("XAX.STRUCT.OP_ARITY", obj.cid.hex(), "GRAPH-OP-ARITY", "2 inputs, 1 result, 0 attributes", [len(node.operands), len(node.results), len(node.attributes)])
@@ -7163,7 +7196,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         [node.operation for node in block.nodes],
                     )
             if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, len(block.nodes)):
-                fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])  # S8c.8: the engine's terminator rejection
+                _xax_fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])  # S8c.8: the engine's terminator rejection
             live = allocations - ended
             if live and block.terminator.kind in (TerminatorKind.RETURN, TerminatorKind.TRAP):
                 fail(
@@ -7250,7 +7283,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             fail("XAX.MEMORY.FACT_FIXPOINT", obj.cid.hex(), "MEMORY-FACT-FIXPOINT", 2 * len(blocks) + 2, "not converged")
     if memory_reject is not None:
         # S8c.8: XAX decided the rejection; the bootstrap passes never reached its point (the tests require they do).
-        fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
+        _xax_fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
     returns = [item for _block, item in sorted(returns_by_block, key=lambda pair: pair[0])]
     pointer_extents = engine_extents if engine_extents is not None else [(ref, fact.extent) for ref, fact in global_pointers.items() if isinstance(fact, _PointerFact)]
     parsed = _ParsedGraph(
@@ -7562,7 +7595,7 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         code, rule, expected_value, actual, graph = proven
         for parsed in (graph if isinstance(graph, tuple) else (graph,) if graph is not None else ()):
             _parse_graph(parsed, resolve)  # an invalid graph fails first, as in the bootstrap
-        fail(code, obj.cid.hex(), rule, expected_value, actual)
+        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual)
     if proven is not None and obj.kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD):
         # S6b.2/S6b.3: the XAX store verifier decided this object; a function's graph, or a group's member graphs
         # in member order, are still parsed (cached) so that an invalid graph fails exactly where the bootstrap would.
@@ -7578,8 +7611,8 @@ def verify_object(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject
         return
     if obj.kind == Kind.CONSTANT:
         if obj.cid in _XAX_REJECTED_OBJECTS:
-            code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid]
-            fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
+            code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid][:6]
+            _xax_fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
         if obj.cid not in _XAX_VALID_OBJECTS:
             _decode_constant(obj, resolve)
         return
