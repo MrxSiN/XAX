@@ -6558,6 +6558,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     proven_constants: frozenset[tuple[int, int]] = frozenset()
     proven_terminators: frozenset[int] = frozenset()
     rejected_nodes: dict[tuple[int, int], tuple] = {}  # S8c.1 (ADR-214): XAX's rejection diagnostics
+    rejected_terminators: dict[int, tuple[int, int, int]] = {}  # S8 (ADR-248): XAX's terminator rejections
     fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
     linear_proven = False  # S6a (ADR-142): XAX proved resource and effect linearity
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
@@ -6579,6 +6580,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         if status == 0:
             rejected_nodes = {key: typing.rejection(index, type_cids, words)
                               for index, (key, verdict) in enumerate(zip(keys, verdicts)) if verdict == REJECTED}
+            rejected_terminators = {block: record for block in range(len(blocks)) if (record := typing.terminator_rejection(len(keys), block))[0]}
             proven = [key for key, verdict in zip(keys, verdicts) if verdict == PROVEN]
             proven_constants = frozenset(key for key in proven if blocks[key[0]].nodes[key[1]].operation == Operation.CONSTANT)
             # A direct call's contract is proven, but its branch also borrows views and resources: it is skipped only in fact-free graphs.
@@ -7210,6 +7212,15 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             if resource_candidates and term.kind != TerminatorKind.RETURN:
                 fail("XAX.MEMORY.RESOURCE_DROP", obj.cid.hex(), "MEMORY-RESOURCE-TRANSFER", "explicit owner/effect return", term.kind.name)
             typed_terminator = block_index in proven_terminators  # S4d.1: XAX proved condition and edge types
+            if block_index in rejected_terminators:
+                # S8 (ADR-248): XAX decided this terminator's rejection (a condition width or an edge's argument types).
+                site, edge_index, condition_index = rejected_terminators[block_index]
+                if site == 1:
+                    _xax_fail("XAX.STRUCT.CONDITION_TYPE", obj.cid.hex(), "GRAPH-CBR-CONDITION", "bits<1>", type_cids[condition_index].hex())
+                target, arguments = term.edges[edge_index]
+                actual = tuple(value_type(value, block_index, len(block.nodes)) for value in arguments)
+                _xax_fail("XAX.STRUCT.BRANCH_ARGUMENTS", obj.cid.hex(), "GRAPH-BLOCK-PARAMETERS", [cid.hex() for cid in blocks[target].parameters],
+                          [cid.hex() for cid in actual])
             if term.kind == TerminatorKind.CONDITIONAL_BRANCH and not typed_terminator:
                 condition_type = resolve(value_type(term.values[0], block_index, len(block.nodes)))
                 if decode_bits_width(condition_type) != 1:

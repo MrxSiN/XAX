@@ -357,7 +357,10 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
     verdicts = b.add(b.c(2), nodes)
-    b.for_range(b.c(0), blocks, lambda index, carried: _block_entry(b, t, index, carried, blocks, places, verdicts), ())
+    # S8 (ADR-248): block terminator rejection records follow the node records.
+    b.check(b.cmp(IntCompare.ULE, b.add(b.c(DIAGNOSTICS), b.mul(b.add(nodes, blocks), 4)), TABLE), b.defer_block)
+    records = b.add(b.c(DIAGNOSTICS), b.mul(nodes, 4))
+    b.for_range(b.c(0), blocks, lambda index, carried: _block_entry(b, t, index, carried, blocks, places, verdicts, records), ())
     # S4d.2a: the graph is memory-free when every type object is decoded and none is one the fact system tracks.
     (memory_free,) = b.for_range(b.c(0), count, lambda index, carried: (t.all(carried[0], _fact_free_type(b, t, index)),), (b.c(1),))
     b.put(b.add(verdicts, blocks), memory_free)
@@ -740,8 +743,12 @@ def _block_place(b: _Builder, index, carried, places):
     return (end,)
 
 
-def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdicts):
-    """A block's terminator: a ``bits<1>`` branch condition, and edge argument types equal to the target's parameters."""
+def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdicts, records):
+    """A block's terminator: a ``bits<1>`` branch condition, and edge argument types equal to the target's parameters.
+
+    S8 (ADR-248): a terminator the bootstrap rejects gets a record ``[site, a, 0, 0]`` at ``records + 4 * index``:
+    site 1 a bits condition of another width (``GRAPH-CBR-CONDITION``), site 2 edge ``a``'s argument types
+    (``GRAPH-BLOCK-PARAMETERS``).  A non-bits condition (the bootstrap's width decoder rejects it) gives no record."""
     position = b.get(b.add(places, index))
     known = b.read(position)  # 0 when some value type was not marshalled
     parameters = b.read(b.add(position, 1))
@@ -749,8 +756,8 @@ def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdi
     kind, condition, edges = b.read(at), b.read(b.add(at, 1)), b.read(b.add(at, 2))
     condition_ok = t.any(t.not_(t.eq(kind, CONDITIONAL_BRANCH)), t.eq(t.lookup(WIDTH, condition), 1))
 
-    def edge(_k, carried):
-        cursor, ok = carried
+    def edge(k, carried):
+        cursor, ok, first = carried
         target, count = b.read(cursor), b.read(b.add(cursor, 1))
         inside = t.lt(target, blocks)
         target_at = b.get(b.add(places, t.pick(inside, target, b.c(0))))
@@ -762,11 +769,19 @@ def _block_entry(b: _Builder, t: _Typing, index, _carried, blocks, places, verdi
             return (t.all(match, t.eq(b.read(b.add(b.add(cursor, 2), j)), b.read(b.add(b.add(target_at, 2), j)))),)
 
         (match,) = b.for_range(b.c(0), b.mul(same_count, count), argument, (same_count,))
-        return b.add(b.add(cursor, 2), count), t.all(ok, match)
+        return b.add(b.add(cursor, 2), count), t.all(ok, match), t.pick(t.all(ok, t.not_(match)), k, first)
 
-    _end, edges_ok = b.for_range(b.c(0), edges, edge, (b.add(at, 3), b.c(1)))
+    _end, edges_ok, first_edge = b.for_range(b.c(0), edges, edge, (b.add(at, 3), b.c(1), b.c(0)))
     ok = t.all(t.nonzero(known), condition_ok, edges_ok)
     b.put(b.add(verdicts, index), b.sub(b.c(NOT_PROVEN), ok))
+    width = t.lookup(WIDTH, condition)
+    bad_condition = t.all(t.eq(kind, CONDITIONAL_BRANCH), t.nonzero(width), t.not_(t.eq(width, 1)))
+    non_bits = t.all(t.eq(kind, CONDITIONAL_BRANCH), t.eq(width, 0))
+    site = t.pick(t.not_(t.nonzero(known)), b.c(0), t.pick(bad_condition, b.c(1), t.pick(non_bits, b.c(0), t.pick(edges_ok, b.c(0), b.c(2)))))
+    record = b.add(records, b.mul(index, 4))
+    b.put(record, site)
+    b.put(b.add(record, 1), first_edge)
+    b.put(b.add(record, 2), condition)
     return ()
 
 
@@ -1960,6 +1975,12 @@ class NativeTyping:
             return (*where, memory_diagnostic(site, payload, operation, refs, storages, lambda word: self._out[word], cids))
         except (IndexError, KeyError, ValueError):  # a value the host cannot render (an unindexed type): the bootstrap decides
             return None
+
+    def terminator_rejection(self, nodes: int, block: int) -> tuple[int, int, int]:
+        """After an accepted ``check``: S8 (ADR-248), block ``block``'s terminator record ``(site, edge, condition type)``
+        (site 0: none; 1: ``GRAPH-CBR-CONDITION``; 2: ``GRAPH-BLOCK-PARAMETERS`` at that edge)."""
+        at = DIAGNOSTICS + 4 * (nodes + block)
+        return tuple(self._out[at : at + 3])
 
     def rejection_record(self, node: int) -> tuple[int, int, int, int]:
         """After an accepted ``check``: S8c.1, node ``node``'s rejection record ``(site, a, b, c)``."""
