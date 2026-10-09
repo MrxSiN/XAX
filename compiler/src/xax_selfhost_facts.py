@@ -100,6 +100,8 @@ MEMORY_SITES = (
     # S8 (ADR-248): a foreign (C, JVM) or browser-event code entry whose callee the ABI does not admit; a foreign call's
     # ABI and contract (payload: the declaration).
     "FOREIGN_ENTRY", "FOREIGN_ABI", "FOREIGN_CONTRACT",
+    # S8 (ADR-248): an indirect call's target operand, its type, and its bounded contract (payload: the contract).
+    "INDIRECT_TARGET", "INDIRECT_TARGET_TYPE", "INDIRECT_BOUNDED_CONTRACT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -2429,7 +2431,7 @@ def _call_indirect(tables):
         p = e.p
         n = _Node(e)
         visit, pass_id = e.hd(H_VISIT), e.hd(H_PASS)
-        _require(e, e.both(e.ne(n.entity, NONE), e.eq(_object_kind(e, n.entity), int(Kind.CALL_CONTRACT)), e.ne(n.no, 0)))
+        _require(e, e.both(e.ne(n.entity, NONE), e.eq(_object_kind(e, n.entity), int(Kind.CALL_CONTRACT))))
         position = _object_position(e, n.entity)
         references, length = e.rd(e.add(position, 1)), e.rd(e.add(position, 2))
         base = e.add(position, 3)
@@ -2467,11 +2469,14 @@ def _call_indirect(tables):
 
         e.for_("r", 0, references, referenced)
         inputs, outputs = p["list0"], p["list1"]
+        _reject(e, e.ne(n.no, 0), M["INDIRECT_TARGET"])
         callee = n.tid(0)
-        _require(e, e.both(e.ne(e.table(_T.PTR, callee), 0), e.eq(e.table(_T.OPAQUE, e.table(_T.PELEM, callee)), 3)))
-        _require(e, e.both(e.eq(e.sub(n.no, 1), e.ld(inputs)), e.eq(n.nr, e.ld(outputs))))
-        e.for_("j", 0, e.ld(inputs), lambda: _require(e, e.eq(e.rd(e.add(n.tids_at, e.add(p["j"], 1))), e.ld(e.add(inputs, e.add(p["j"], 1))))))
-        e.for_("j", 0, e.ld(outputs), lambda: _require(e, e.eq(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(outputs, e.add(p["j"], 1))))))
+        _reject(e, e.both(e.ne(e.table(_T.PTR, callee), 0), e.eq(e.table(_T.OPAQUE, e.table(_T.PELEM, callee)), 3)), M["INDIRECT_TARGET_TYPE"], callee)
+        e.var("ic_same", e.flag(e.both(e.eq(e.sub(n.no, 1), e.ld(inputs)), e.eq(n.nr, e.ld(outputs)))))
+        e.if_(e.ne(p["ic_same"], 0), lambda: (
+            e.for_("j", 0, e.ld(inputs), lambda: e.if_(e.ne(e.rd(e.add(n.tids_at, e.add(p["j"], 1))), e.ld(e.add(inputs, e.add(p["j"], 1)))), lambda: e.set("ic_same", 0))),
+            e.for_("j", 0, e.ld(outputs), lambda: e.if_(e.ne(e.rd(e.add(n.rt_at, p["j"])), e.ld(e.add(outputs, e.add(p["j"], 1)))), lambda: e.set("ic_same", 0)))))
+        _reject(e, e.ne(p["ic_same"], 0), M["INDIRECT_BOUNDED_CONTRACT"], n.entity)
         # The stack proof: one local pointer, its owner, and its frontier cross the call together.
         e.var("pointers", 0)
         e.var("pointer_value", NONE)
@@ -3241,6 +3246,7 @@ def _atomic_attribute_diagnostic(name: str, x: int, y: int):
 
 
 NODE_TYPES = "node operand and result types"  # quoted by the host from the rejected node: ``[[operand types], [result types]]``
+NODE_ARGUMENT_TYPES = "node argument and result types"  # the same without the first operand (an indirect call's target)
 FOREIGN_ENTRY_EXPECTED = {"sysv-x86_64-c/win64-c/android-aapcs64-c": "no proof parameters or results",
                           "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else",
                           "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple",
@@ -3386,6 +3392,16 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
             return "XAX.FOREIGN.ABI", "FOREIGN-CALL-ABI", [abi.decode() for abi in FOREIGN_ABIS], declaration.abi.decode("ascii", "replace")
         return ("XAX.FOREIGN.CALL", "FOREIGN-CALL-CONTRACT", [[cid.hex() for cid in declaration.inputs], [cid.hex() for cid in declaration.outputs]],
                 NODE_TYPES)
+    if name == "INDIRECT_TARGET":
+        return "XAX.CALL.INDIRECT", "INDIRECT-CALL-TARGET", "function pointer operand", 0
+    if name == "INDIRECT_TARGET_TYPE":
+        return "XAX.CALL.INDIRECT", "INDIRECT-CALL-TARGET-TYPE", "ptr<opaque<function>>", h(x)
+    if name == "INDIRECT_BOUNDED_CONTRACT":
+        from xax_compiler import _decode_call_contract
+
+        contract = _decode_call_contract(resolve(cids[x]), resolve)
+        return ("XAX.CALL.INDIRECT", "INDIRECT-CALL-BOUNDED-CONTRACT", [[cid.hex() for cid in contract.inputs], [cid.hex() for cid in contract.outputs]],
+                NODE_ARGUMENT_TYPES)
     if name == "FOREIGN_ENTRY":
         from xax_compiler import foreign_entry_abi
 

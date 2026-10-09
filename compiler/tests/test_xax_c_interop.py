@@ -77,6 +77,20 @@ class ForeignEntryVerifierTests(unittest.TestCase):
             program_store(entry, x86_64_linux_dynamic_exec_target(), (*api.types, *callee_graph.objects.values(), *graph.objects.values()))
         self.assertEqual(caught.exception.diagnostic.rule, "INDIRECT-CALL-TARGET-TYPE")
 
+    def test_indirect_call_arguments_must_match_its_contract(self):
+        callee_graph, callee = _pure((B64, B64))
+        graph = GraphBuilder()
+        block = graph.block()
+        pointer = block.op1(Operation.FUNCTION_ADDRESS, (), function_pointer_type(), entity=callee)
+        contract = call_contract((B64, B64), (B32,), may_return=True, may_trap=False)
+        block.ret(block.op1(Operation.CALL_INDIRECT, (pointer, block.const(B64, 1)), B32, entity=contract))
+        entry = graph.function((), (B32,))
+        with self.assertRaises(XaxError) as caught:
+            program_store(entry, x86_64_linux_dynamic_exec_target(), (
+                contract, function_pointer_type(), opaque_type(OpaqueKind.FUNCTION), B32, B64, *callee_graph.objects.values(), *graph.objects.values()))
+        self.assertEqual(caught.exception.diagnostic.rule, "INDIRECT-CALL-BOUNDED-CONTRACT")
+        self.assertEqual(caught.exception.diagnostic.actual, [[B64.cid.hex()], [B32.cid.hex()]])
+
     def test_internal_address_cannot_be_passed_as_a_c_callback(self):
         api = linux_api()
         tsearch = c_function(b"libc.so.6", b"tsearch", (B64, B64, api.c_callback, api.memory_effect), (B64, api.memory_effect))
