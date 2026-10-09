@@ -1842,7 +1842,8 @@ class NativeTyping:
             obj = objects[cid]
             offset, length, width = table(COFF, index), table(CLEN, index), table(CWIDTH, index)
             if site > TYPE_SITE_BASE:
-                rejected[cid] = _type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index))
+                # The form (S8, ADR-248): a type decoder of the same form raises this same diagnostic.
+                rejected[cid] = (*_type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index)), offset)
                 continue
             value = obj.body[offset:offset + length]
             name = CONSTANT_SITES[site - 1]
