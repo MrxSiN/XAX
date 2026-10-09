@@ -142,6 +142,8 @@ TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "
               "TYPE_RESOURCE_STACK_OWNER", "TYPE_RESOURCE_CANONICAL", "TYPE_ARRAY_ELEMENT",
               # S8c.27 (ADR-245): tuple and sum items (C4: the used-reference bit mask).
               "TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT", "TYPE_LIST_UNUSED",
+              # S8 (ADR-248): malformed ULEB fields (C4: the field's offset in the body).
+              "TYPE_ULEB_UNTERMINATED", "TYPE_ULEB_MINIMAL", "TYPE_ULEB_BOUNDED",
               # S8c.28 (ADR-246): pointer elements and opaque identity types.
               "TYPE_POINTER_ELEMENT", "TYPE_POINTER_UNUSED", "TYPE_IDENTITY_TRUNCATED", "TYPE_IDENTITY_CANONICAL")
 TYPE_SITE_BASE = 16
@@ -228,6 +230,29 @@ def _uleb_bytes(t, data):
         ok = b.op(Operation.BIT_OR, ok, ends)
         continuing = t.all(continuing, t.le(b.c(128), last), t.lt(last, 256))
     return value, size, ok
+
+
+def _uleb_status(t, at, end):
+    """S8 (ADR-248): ``Cursor.uleb``'s outcome at ``at`` inside a body ending at ``end``: ``(status, size)`` with status
+    0 (canonical, at most five bytes), 1 (unterminated: the body ends first), 2 (non-minimal), 3 (more than ten
+    bytes), or 4 (canonical but longer than five bytes: a deferred value)."""
+    b = t.b
+    status, size, found, continuing = b.c(0), b.c(0), b.c(0), b.c(1)
+    for k in range(10):
+        position = b.add(at, k)
+        inside = t.lt(position, end)
+        byte = b.read(position)
+        here = t.all(continuing, t.not_(found))
+        ended = t.all(here, t.not_(inside))
+        status = t.pick(ended, b.c(1), status)
+        found = t.any(found, ended)
+        terminates = t.all(here, inside, t.lt(byte, 128))
+        code = t.pick(t.eq(byte, 0), b.c(2), b.c(4 if k >= 5 else 0)) if k else b.c(0)
+        status = t.pick(terminates, code, status)
+        size = t.pick(terminates, b.c(k + 1), size)
+        found = t.any(found, terminates)
+        continuing = t.all(continuing, inside, t.le(b.c(128), byte))
+    return t.pick(found, status, b.c(3)), size
 
 
 class _Typing:
@@ -830,6 +855,32 @@ def _object_entry(b: _Builder, t: _Typing, index):
     second, second_size, second_ok = t.uleb(b.add(base, form_size))
     after = b.add(b.add(base, form_size), second_size)
     second_ok = t.all(second_ok, t.le(after, end), t.le(b.add(base, form_size), end))
+    # S8 (ADR-248): each field's ``Cursor.uleb`` outcome, so a malformed field rejects as the bootstrap's cursor does.
+    statuses, starts = [], []
+    field_at = base
+    for _field in range(6):
+        status_, size_ = _uleb_status(t, field_at, end)
+        statuses.append(status_)
+        starts.append(field_at)
+        field_at = b.add(field_at, size_)
+    uleb_codes = {1: "TYPE_ULEB_UNTERMINATED", 2: "TYPE_ULEB_MINIMAL", 3: "TYPE_ULEB_BOUNDED"}
+
+    def first_bad(upto: int):
+        """The site of the first malformed field among fields 0..upto (0 when none is, or the first is deferred)."""
+        site_ = b.c(0)
+        for k in reversed(range(upto + 1)):
+            bad_code = t.pick(t.eq(statuses[k], 1), b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(uleb_codes[1])), t.pick(
+                t.eq(statuses[k], 2), b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(uleb_codes[2])), t.pick(
+                    t.eq(statuses[k], 3), b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(uleb_codes[3])), b.c(0))))
+            site_ = t.pick(t.eq(statuses[k], 0), site_, bad_code)
+        return site_
+
+    def first_bad_at(upto: int):
+        """The body offset and size of that field (for ``SER-ULEB-MINIMAL``)."""
+        offset_, size_ = b.c(0), b.c(0)
+        for k in reversed(range(upto + 1)):
+            offset_ = t.pick(t.eq(statuses[k], 0), offset_, b.sub(starts[k], base))
+        return offset_
     left = b.sub(end, after)
     scalar = t.one_of(form, (1, 7))
     trailing = t.all(scalar, second_ok, t.nonzero(left))
@@ -840,6 +891,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
     unknown = t.any(t.eq(form, 0), t.not_(t.le(form, 11)))
     type_site = t.pick(trailing, b.c(TYPE_SITE_BASE + 1), t.pick(bits, b.c(TYPE_SITE_BASE + 2), t.pick(float_format, b.c(TYPE_SITE_BASE + 3), t.pick(
         float_refs, b.c(TYPE_SITE_BASE + 4), t.pick(link, b.c(TYPE_SITE_BASE + 5), t.pick(unknown, b.c(TYPE_SITE_BASE + 6), b.c(0)))))))
+    type_site = t.pick(t.all(scalar, t.not_(second_ok)), first_bad(1), type_site)
     code = lambda name: b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))  # noqa: E731
     # Values after the second: a ULEB chain from ``after`` (each canonical and inside the body, else the chain stops).
     third, third_size, third_ok = t.uleb(after)
@@ -852,21 +904,21 @@ def _object_entry(b: _Builder, t: _Typing, index):
     fifth_ok = t.all(fourth_ok, fifth_ok, t.le(b.add(at5, fifth_size), end))
     after5 = b.add(at5, fifth_size)
     # opaque (5): trailing, kind, references.
-    opaque_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.nonzero(left), code("TYPE_TRAILING"), t.pick(
+    opaque_site = t.pick(t.not_(second_ok), first_bad(1), t.pick(t.nonzero(left), code("TYPE_TRAILING"), t.pick(
         t.not_(t.all(t.nonzero(second), t.le(second, 7))), code("TYPE_OPAQUE_KIND"), t.pick(t.nonzero(references), code("TYPE_OPAQUE_CANONICAL"), b.c(0)))))
     # effect (3): the domain, then an optional instance, trailing bytes, and the canonical body.
     has_instance = t.nonzero(left)
     effect_left = t.pick(has_instance, b.sub(end, at4), b.c(0))
     effect_canonical = t.any(t.nonzero(references), t.all(has_instance, t.eq(third, 0)))
-    effect_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.not_(t.all(t.nonzero(second), t.le(second, 11))), code("TYPE_EFFECT_DOMAIN"), t.pick(
-        t.all(has_instance, t.not_(third_ok)), b.c(0), t.pick(t.nonzero(effect_left), code("TYPE_TRAILING"), t.pick(
+    effect_site = t.pick(t.not_(second_ok), first_bad(1), t.pick(t.not_(t.all(t.nonzero(second), t.le(second, 11))), code("TYPE_EFFECT_DOMAIN"), t.pick(
+        t.all(has_instance, t.not_(third_ok)), first_bad(2), t.pick(t.nonzero(effect_left), code("TYPE_TRAILING"), t.pick(
             effect_canonical, code("TYPE_EFFECT_CANONICAL"), b.c(0))))))
     # sum (10): at least one variant.
-    sum_site = t.pick(t.all(second_ok, t.eq(second, 0)), code("TYPE_SUM_NONEMPTY"), b.c(0))
+    sum_site = t.pick(t.all(second_ok, t.eq(second, 0)), code("TYPE_SUM_NONEMPTY"), t.pick(second_ok, b.c(0), first_bad(1)))
     # pointer (2): space, element index (in range), permission, alignment, end, permission value, shape.
     pointer_left = b.sub(end, after5)
     power = t.eq(b.op(Operation.BIT_AND, fifth, b.sub(fifth, 1)), 0)
-    pointer_site = t.pick(t.not_(third_ok), b.c(0), t.pick(t.le(references, third), code("TYPE_REF_INDEX"), t.pick(t.not_(fifth_ok), b.c(0), t.pick(
+    pointer_site = t.pick(t.not_(third_ok), first_bad(2), t.pick(t.le(references, third), code("TYPE_REF_INDEX"), t.pick(t.not_(fifth_ok), first_bad(4), t.pick(
         t.nonzero(pointer_left), code("TYPE_TRAILING"), t.pick(t.not_(t.all(t.nonzero(fourth), t.le(fourth, 3))), code("TYPE_POINTER_PERMISSION"), t.pick(
             t.any(t.eq(second, 0), t.eq(fifth, 0), t.not_(power)), code("TYPE_POINTER"), b.c(0)))))))
     pointer_third = t.pick(t.le(references, third), third, t.pick(t.nonzero(pointer_left), pointer_left, t.pick(
@@ -879,7 +931,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
     pointer_third = t.pick(t.any(t.eq(pointer_site, code("TYPE_POINTER_ELEMENT")), t.eq(pointer_site, code("TYPE_POINTER_UNUSED"))), third, pointer_third)
     # opaque identity (6): a byte string (truncated, trailing, or empty / with references).
     identity_end = b.add(after, second)
-    identity_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.lt(end, identity_end), code("TYPE_IDENTITY_TRUNCATED"), t.pick(
+    identity_site = t.pick(t.not_(second_ok), first_bad(1), t.pick(t.lt(end, identity_end), code("TYPE_IDENTITY_TRUNCATED"), t.pick(
         t.lt(identity_end, end), code("TYPE_TRAILING"), t.pick(t.any(t.eq(second, 0), t.nonzero(references)), code("TYPE_IDENTITY_CANONICAL"), b.c(0)))))
     identity_third = t.pick(t.lt(end, identity_end), left, b.sub(end, t.pick(t.lt(end, identity_end), end, identity_end)))
     # resource (4): the stack-owner short form, or the long form with no transitions.
@@ -891,14 +943,14 @@ def _object_entry(b: _Builder, t: _Typing, index):
     unknown_flags = t.nonzero(b.op(Operation.BIT_AND, fourth, ~15 & ((1 << 64) - 1)))
     plain_owner = t.all(t.eq(second, 1), t.eq(third, 1), t.eq(fourth, 4), t.eq(fifth, 0))
     long_bad = t.any(t.nonzero(references), t.eq(second, 0), t.eq(third, 0), unknown_flags, plain_owner)
-    resource_site = t.pick(t.not_(third_ok), b.c(0), t.pick(short, t.pick(owner_bad, code("TYPE_RESOURCE_STACK_OWNER"), b.c(0)), t.pick(
-        t.not_(t.all(sixth_ok, t.eq(sixth, 0))), b.c(0), t.pick(t.nonzero(b.sub(end, after6)), code("TYPE_TRAILING"), t.pick(
-            long_bad, code("TYPE_RESOURCE_CANONICAL"), b.c(0))))))
+    resource_site = t.pick(t.not_(third_ok), first_bad(2), t.pick(short, t.pick(owner_bad, code("TYPE_RESOURCE_STACK_OWNER"), b.c(0)), t.pick(
+        t.not_(sixth_ok), first_bad(5), t.pick(t.not_(t.eq(sixth, 0)), b.c(0), t.pick(t.nonzero(b.sub(end, after6)), code("TYPE_TRAILING"), t.pick(
+            long_bad, code("TYPE_RESOURCE_CANONICAL"), b.c(0)))))))
     # array (9): element index in range, count, end, then a decoded element that is a proof type or not the only reference.
     element = b.read(b.add(end, t.pick(t.lt(second, references), second, b.c(0))))
     proof = t.any(t.lookup(EFFECT, element), t.lookup(RESOURCE, element))
     array_left = b.sub(end, b.add(after, third_size))
-    array_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.le(references, second), code("TYPE_REF_INDEX"), t.pick(t.not_(third_ok), b.c(0), t.pick(
+    array_site = t.pick(t.not_(second_ok), first_bad(1), t.pick(t.le(references, second), code("TYPE_REF_INDEX"), t.pick(t.not_(third_ok), first_bad(2), t.pick(
         t.nonzero(array_left), code("TYPE_TRAILING"), t.pick(t.not_(_known(t, element)), b.c(0), t.pick(
             t.any(proof, t.not_(t.eq(references, 1))), code("TYPE_ARRAY_ELEMENT"), b.c(0)))))))
     array_third = t.pick(t.le(references, second), second, array_left)
@@ -907,6 +959,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
     listy = t.any(t.eq(form, 8), t.eq(form, 10))
     marks = t.slot(TABLES, b.c(0))
     listable = t.all(kind_is_type := t.eq(kind, int(Kind.TYPE)), listy, second_ok, t.le(references, MARKS), t.le(second, length))
+    list_unreadable = t.all(listy, t.not_(second_ok))
     steps = t.pick(listable, second, b.c(0))
     b.for_range(b.c(0), t.pick(listable, references, b.c(0)), lambda k, c: (b.put(b.add(marks, k), 0),) and (), ())
     none_word = b.c((1 << 64) - 1)
@@ -940,14 +993,16 @@ def _object_entry(b: _Builder, t: _Typing, index):
                 t.eq(used_count, references), b.c(0), t.pick(t.le(references, 64), code("TYPE_LIST_UNUSED"), b.c(0))))))))))
     list_third = t.pick(t.not_(t.eq(bad, none_word)), bad, t.pick(t.nonzero(list_left), list_left, which))
     del kind_is_type
-    type_site = t.pick(listy, list_site, t.pick(t.eq(form, 6), identity_site, type_site))
+    type_site = t.pick(list_unreadable, first_bad(1), t.pick(listy, list_site, t.pick(t.eq(form, 6), identity_site, type_site)))
     type_site = t.pick(t.eq(form, 5), opaque_site, t.pick(t.eq(form, 3), effect_site, t.pick(t.eq(form, 2), pointer_site, t.pick(
         t.eq(form, 4), resource_site, t.pick(t.eq(form, 9), array_site, type_site)))))
     type_third = t.pick(listy, list_third, t.pick(t.eq(form, 6), identity_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
         t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left)))))))
-    b.put(t.slot(C4, index), t.pick(listy, used_mask, fourth))
     b.put(t.slot(C5, index), fifth)
-    a_type = t.all(t.eq(kind, int(Kind.TYPE)), form_ok, t.le(b.add(base, form_size), end))
+    a_type = t.eq(kind, int(Kind.TYPE))
+    type_site = t.pick(t.eq(statuses[0], 0), type_site, first_bad(0))
+    uleb_site = t.any(*(t.eq(type_site, b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))) for name in uleb_codes.values()))
+    b.put(t.slot(C4, index), t.pick(uleb_site, first_bad_at(5), t.pick(listy, used_mask, fourth)))
     # S8c.29 (ADR-247): a malformed constant body, in ``_decode_constant``'s order: the type index, the value length,
     # trailing bytes (each ULEB canonical and inside the body, else the bootstrap's cursor decides).
     c_end, c_data, c_refs, c_index = parts["end"], parts["data"], parts["references"], parts["reference"]
@@ -1722,6 +1777,21 @@ def _native_image() -> tuple[bytes, int]:
     return host_image(*load_typing_program(), "typing")
 
 
+def _non_minimal(body: bytes, start: int) -> tuple[str, str]:
+    """``SER-ULEB-MINIMAL``'s expected and actual: the minimal and the given encoding of the ULEB at ``start``."""
+    from xax_compiler import uleb
+
+    value, shift, end = 0, 0, start
+    while True:
+        byte = body[end]
+        value |= (byte & 0x7F) << shift
+        end += 1
+        shift += 7
+        if not byte & 0x80:
+            break
+    return uleb(value).hex(), body[start:end].hex()
+
+
 def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
     """S8c.25 (ADR-243): ``_verify_type``'s diagnostic ``(code, rule, expected, actual, dependencies, repair)``."""
     import xax_compiler as X
@@ -1738,6 +1808,12 @@ def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
         return "XAX.TYPE.EFFECT", "TYPE-EFFECT-CANONICAL", "domain plus optional positive instance", obj.body.hex(), (), ()
     if name == "TYPE_SUM_NONEMPTY":
         return "XAX.TYPE.SUM", "TYPE-SUM-NONEMPTY", ">= 1", 0, (), ()
+    if name == "TYPE_ULEB_UNTERMINATED":
+        return "XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED", "terminating byte", "end of input", (), ()
+    if name == "TYPE_ULEB_BOUNDED":
+        return "XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED", "at most 10 bytes", "more than 10 bytes", (), ()
+    if name == "TYPE_ULEB_MINIMAL":
+        return ("XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL") + _non_minimal(obj.body, fourth) + ((), ())
     if name == "TYPE_POINTER_ELEMENT":
         return "XAX.TYPE.POINTER", "TYPE-POINTER-VALUE-ELEMENT", "non-proof value type", obj.references[left].hex(), (), ()
     if name == "TYPE_POINTER_UNUSED":

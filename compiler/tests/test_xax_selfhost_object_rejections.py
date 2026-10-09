@@ -224,6 +224,14 @@ def _constant(variant: str):
         "type_identity_truncated": uleb(6) + uleb(9) + b"ab",
         "type_identity_trailing": uleb(6) + uleb(2) + b"abc",
         "type_identity_empty": uleb(6) + uleb(0),
+        # S8 (ADR-248): malformed ULEB fields.
+        "type_uleb_empty": b"",
+        "type_uleb_form_minimal": b"\x81\x00",
+        "type_uleb_width_minimal": uleb(1) + b"\xa0\x00",
+        "type_uleb_width_unterminated": uleb(1) + b"\x80",
+        "type_uleb_bounded": uleb(1) + b"\x80" * 11,
+        "type_uleb_pointer_unterminated": uleb(2) + uleb(1),
+        "type_uleb_effect_instance": uleb(3) + uleb(1) + b"\x85",
     }
     if variant in types:
         return SemanticObject.create(Kind.TYPE, types[variant]), ()
@@ -365,6 +373,10 @@ VARIANTS = {
     "type_identity_refs": "TYPE-OPAQUE-IDENTITY-CANONICAL",
     # S8c.29 (ADR-247): malformed constant bodies.
     "constant_ref_index": "GRAPH-REF-INDEX", "constant_truncated": "SER-BOUNDS", "constant_trailing": "CONST-BODY",
+    # S8 (ADR-248): malformed ULEB fields in types.
+    "type_uleb_empty": "SER-ULEB-TERMINATED", "type_uleb_form_minimal": "SER-ULEB-MINIMAL", "type_uleb_width_minimal": "SER-ULEB-MINIMAL",
+    "type_uleb_width_unterminated": "SER-ULEB-TERMINATED", "type_uleb_bounded": "SER-ULEB-BOUNDED",
+    "type_uleb_pointer_unterminated": "SER-ULEB-TERMINATED", "type_uleb_effect_instance": "SER-ULEB-TERMINATED",
 }
 
 
