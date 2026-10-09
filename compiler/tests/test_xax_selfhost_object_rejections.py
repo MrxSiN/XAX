@@ -203,6 +203,17 @@ def _constant(variant: str):
         "constant_link": (None, b"\x01" + bytes(7)),
         "constant_scalar": (tuple_type((B32,)), b"\x00"),
     }
+    types = {  # S8c.25 (ADR-243): malformed types, held as a module child
+        "type_trailing": uleb(1) + uleb(32) + b"\x00",
+        "type_bits_zero": uleb(1) + uleb(0),
+        "type_float_format": uleb(7) + uleb(9),
+        "type_link_body": uleb(11) + b"\x00",
+        "type_form": uleb(40),
+    }
+    if variant in types:
+        return SemanticObject.create(Kind.TYPE, types[variant]), ()
+    if variant == "type_bits_refs":
+        return SemanticObject.create(Kind.TYPE, uleb(1) + uleb(8), (B8.cid,)), ()
     if variant not in cases:
         return None, ()
     from xax_compiler import link_type
@@ -277,6 +288,9 @@ VARIANTS = {
     # S8c.24 (ADR-242): constants (decided by the XAX typing program).
     "constant_bits_length": "CONST-BITS-WIDTH", "constant_bits_high": "CONST-BITS-WIDTH", "constant_float_width": "CONST-FLOAT-WIDTH",
     "constant_float_nan": "CONST-FLOAT-CANONICAL-NAN", "constant_link": "CONST-LINK-NULL-ONLY", "constant_scalar": "CONST-SCALAR-TYPE",
+    # S8c.25 (ADR-243): types.
+    "type_trailing": "TYPE-BODY", "type_bits_zero": "TYPE-BITS", "type_float_format": "TYPE-FLOAT-FORMAT", "type_link_body": "TYPE-LINK-CANONICAL",
+    "type_form": "TYPE-FORM-SUPPORTED", "type_bits_refs": "TYPE-BITS",
 }
 
 

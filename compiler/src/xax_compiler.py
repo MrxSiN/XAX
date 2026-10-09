@@ -3833,6 +3833,10 @@ def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
 def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
     if obj.cid in _XAX_VALID_OBJECTS:
         return  # S6b: the XAX type decoders accepted it
+    if obj.cid in _XAX_REJECTED_OBJECTS and obj.kind == Kind.TYPE:
+        # S8c.25 (ADR-243): XAX decided this type's rejection.
+        code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid]
+        fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
     cursor = Cursor(obj.body, obj.cid.hex())
     form = cursor.uleb()
     if form == 1:
