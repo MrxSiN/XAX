@@ -97,6 +97,8 @@ MEMORY_SITES = (
     # S8 (ADR-248): atomic attributes (``_atomic_order`` names the family or "atomic", not the graph).
     "ATOMIC_RMW_KIND", "ATOMIC_ORDER_ENUM", "ATOMIC_ORDER_LEGAL", "ATOMIC_FAILURE_ORDER", "ATOMIC_FAILURE_STRONGER", "ATOMIC_CMPXCHG_STRENGTH",
     "ATOMIC_SCOPE_ENUM",
+    # S8 (ADR-248): a foreign (C, JVM) or browser-event code entry whose callee the ABI does not admit.
+    "FOREIGN_ENTRY",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
 # Per-value fields (each an array of V words).
@@ -2344,7 +2346,7 @@ def _lend_view(e: E, pointer_type, name: str):
 
 
 def _function_address(tables, interface):
-    from xax_compiler import FOREIGN_ENTRY_ABIS, WASM32_BROWSER_EVENT_ABI, _CODE_ENTRY_PREFIX, _LEND_ENTRY_PREFIX, Kind
+    from xax_compiler import FOREIGN_ENTRY_ABIS, JVM_INTERFACE_ENTRY_PREFIX, WASM32_BROWSER_EVENT_ABI, _CODE_ENTRY_PREFIX, _LEND_ENTRY_PREFIX, Kind
 
     def build(e: E):
         p = e.p
@@ -2386,22 +2388,26 @@ def _function_address(tables, interface):
                 abi_start, abi_length = e.add(start, len(_CODE_ENTRY_PREFIX)), e.sub(length, len(_CODE_ENTRY_PREFIX))
                 browser = e.both(e.eq(abi_length, len(WASM32_BROWSER_EVENT_ABI)), _prefixed(e, abi_start, abi_length, WASM32_BROWSER_EVENT_ABI))
 
+                # S8 (ADR-248): an entry the ABI does not admit is GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY.
+                e.var("admitted", 1)
+                refuse = lambda: e.set("admitted", 0)  # noqa: E731
+
                 def host():
-                    _require(e, e.eq(count, returns_count))
-                    e.for_("j", 0, count, lambda: _require(e, e.both(
+                    e.if_(e.ne(count, returns_count), refuse)
+                    e.for_("j", 0, e.sel(e.lt(count, returns_count), count, returns_count), lambda: e.if_(e.not_(e.both(
                         e.eq(e.ld(e.add(params, p["j"])), e.ld(e.add(returns_at, p["j"]))), e.ne(e.table(_T.EFFECT, e.ld(e.add(params, p["j"]))), 0),
-                        e.eq(e.table(_T.MEMEFFECT, e.ld(e.add(params, p["j"]))), 0))))
+                        e.eq(e.table(_T.MEMEFFECT, e.ld(e.add(params, p["j"]))), 0))), refuse))
 
                 def foreign():
-                    known = None
+                    known = _prefixed(e, abi_start, abi_length, JVM_INTERFACE_ENTRY_PREFIX)
                     for abi in FOREIGN_ENTRY_ABIS:
-                        same = e.both(e.eq(abi_length, len(abi)), _prefixed(e, abi_start, abi_length, abi))
-                        known = same if known is None else e.either(known, same)
-                    _require(e, known)
-                    e.for_("j", 0, count, lambda: _require(e, e.not_(_one_of(e, e.table(_T.FORMB, e.ld(e.add(params, p["j"]))), (3, 4)))))
-                    e.for_("j", 0, returns_count, lambda: _require(e, e.not_(_one_of(e, e.table(_T.FORMB, e.ld(e.add(returns_at, p["j"]))), (3, 4)))))
+                        known = e.either(known, e.both(e.eq(abi_length, len(abi)), _prefixed(e, abi_start, abi_length, abi)))
+                    e.if_(e.not_(known), refuse)
+                    e.for_("j", 0, count, lambda: e.if_(_one_of(e, e.table(_T.FORMB, e.ld(e.add(params, p["j"]))), (3, 4)), refuse))
+                    e.for_("j", 0, returns_count, lambda: e.if_(_one_of(e, e.table(_T.FORMB, e.ld(e.add(returns_at, p["j"]))), (3, 4)), refuse))
 
                 e.if_(browser, host, foreign)
+                _reject(e, e.ne(p["admitted"], 0), M["FOREIGN_ENTRY"], result_type)
 
             e.if_(_prefixed(e, start, length, _LEND_ENTRY_PREFIX), lend, lambda: e.if_(_prefixed(e, start, length, _CODE_ENTRY_PREFIX), code, lambda: _decline(e)))
 
@@ -3229,7 +3235,13 @@ def _atomic_attribute_diagnostic(name: str, x: int, y: int):
     return "XAX.ATOMIC.ORDER", "ATOMIC-CMPXCHG-FAILURE-NOT-STRONGER", AtomicOrder(x).name.lower(), AtomicOrder(y).name.lower(), "cmpxchg"
 
 
-def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=()):
+FOREIGN_ENTRY_EXPECTED = {"sysv-x86_64-c/win64-c/android-aapcs64-c": "no proof parameters or results",
+                          "wasm32-browser-event": "non-memory effect parameters returned unchanged, nothing else",
+                          "sysv-x86_64-c-lend": "scalars, then the entry's read-only initialized view triple; returns one integer and the triple",
+                          "jvm-interface:...": "no proof parameters or results"}
+
+
+def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=(), resolve=None):
     """S8c.8: the bootstrap's ``(code, rule, expected, actual)`` for an engine rejection record.  Rendering only: the
     engine decided the check and its values; ``refs``/``storages`` map its value and site ids to the bootstrap's
     ``ValueRef``s and storage tuples, and ``read(word)`` reads its output view."""
@@ -3360,6 +3372,11 @@ def memory_diagnostic(site: int, payload, operation, refs, storages, read, cids=
         return "XAX.MEMORY.PROVENANCE", "INDIRECT-CALL-STACK-PROVENANCE", storages[x], storages[z] if y else None
     if name == "INDIRECT_EFFECT_LINEAR":
         return "XAX.MEMORY.EFFECT_FORK", "MEMORY-EFFECT-LINEAR", "one consumer", Operation.CALL_INDIRECT.name
+    if name == "FOREIGN_ENTRY":
+        from xax_compiler import foreign_entry_abi
+
+        return ("XAX.STRUCT.FUNCTION_ADDRESS", "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", FOREIGN_ENTRY_EXPECTED,
+                foreign_entry_abi(resolve(cids[x]), resolve).decode("ascii", "replace"))
     if name.startswith(("ATOMIC_RMW_KIND", "ATOMIC_ORDER", "ATOMIC_FAILURE", "ATOMIC_CMPXCHG_STRENGTH", "ATOMIC_SCOPE_ENUM")):
         return _atomic_attribute_diagnostic(name, x, y)
     if name == "ATOMIC_MEMORY_EFFECT":

@@ -3471,7 +3471,7 @@ def _xax_type_rejection(obj: SemanticObject, form: int) -> None:
     """S8 (ADR-248): a type decoder of ``form`` called on a type XAX rejected raises that diagnostic (the decoder is the
     one ``_verify_type`` runs for the form, so the bootstrap's check would produce it)."""
     record = _XAX_REJECTED_OBJECTS.get(obj.cid)
-    if record is not None and len(record) > 6 and record[6] == form and obj.kind == Kind.TYPE:
+    if record is not None and len(record) > 6 and record[6] == form and obj.kind != Kind.CONSTANT:
         code, rule, expected_value, actual, dependencies, repair = record[:6]
         _xax_fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
 
@@ -3889,10 +3889,28 @@ def _xax_prove_objects(objects: dict[bytes, "SemanticObject"], resolve) -> None:
     _XAX_CROSS.update(typing.object_cross(listed, objects))
 
 
+def _xax_prove_as_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
+    """S8 (ADR-248): the XAX typing program's reading of ``obj`` (not a type or constant) as a type, on demand."""
+    typing = _native_typing()
+    if typing is None:
+        return
+    from xax_selfhost_typing import marshal, type_info_from
+
+    others = type_info_from(resolve)
+    info = lambda cid: (int(obj.kind), tuple(obj.references), obj.body) if cid == obj.cid else others(cid)  # noqa: E731
+    if len(obj.body) > 1 << 16:
+        return  # a body the reading would not fit: the bootstrap decides
+    words, listed = marshal([], lambda *_args: None, info, objects=[obj.cid])
+    typing.object_verdicts(words, listed)
+    _XAX_REJECTED_OBJECTS.update(typing.object_rejections(listed, {obj.cid: obj}))
+
+
 def _verify_type(obj: SemanticObject, resolve: Callable[[bytes], SemanticObject]) -> None:
     if obj.cid in _XAX_VALID_OBJECTS:
         return  # S6b: the XAX type decoders accepted it
-    if obj.cid in _XAX_REJECTED_OBJECTS and obj.kind == Kind.TYPE:
+    if obj.kind not in (Kind.TYPE, Kind.CONSTANT) and obj.cid not in _XAX_REJECTED_OBJECTS:
+        _xax_prove_as_type(obj, resolve)  # S8 (ADR-248): another kind of object named as a type
+    if obj.cid in _XAX_REJECTED_OBJECTS and obj.kind != Kind.CONSTANT:
         # S8c.25 (ADR-243): XAX decided this type's rejection.
         code, rule, expected_value, actual, dependencies, repair = _XAX_REJECTED_OBJECTS[obj.cid][:6]
         _xax_fail(code, obj.cid.hex(), rule, expected_value, actual, dependencies, repair)
@@ -6652,7 +6670,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 memory_reject = typing.memory_rejection(
                     value_refs, facts_storages(blocks, entry),
                     lambda block_index, node_index: blocks[block_index].nodes[node_index].operation if node_index < len(blocks[block_index].nodes) else None,
-                    type_cids,
+                    type_cids, resolve,
                 )
             linear_proven = typing.linear_flow()
             linear_reject = None if linear_proven else typing.linear_rejection()
