@@ -193,7 +193,12 @@ class SelfhostBuildObjectTests(unittest.TestCase):
                 if bootstrap[0] != "accept":
                     rejected += 1
                     rules.add(bootstrap[2] if bootstrap[0] == "reject" else "ValueError")
-                    self.assertNotIn(subject.cid, proven, "XAX proved the object the bootstrap rejects")
+                    verdict = proven.get(subject.cid)
+                    if isinstance(verdict, X._XaxRejection):
+                        # S8 (ADR-248): XAX rejected the object itself, with the bootstrap's diagnostic.
+                        self.assertEqual((verdict[0], verdict[1], repr(verdict[2]), repr(verdict[3])), (bootstrap[1], bootstrap[2], *bootstrap[4:]))
+                    else:
+                        self.assertNotIn(subject.cid, proven, "XAX proved the object the bootstrap rejects")
                     continue
                 valid += 1
                 for item in stored.values():

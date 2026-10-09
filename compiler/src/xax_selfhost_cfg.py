@@ -195,7 +195,10 @@ def build_cfg_program() -> tuple[StoreReader, SemanticObject]:
     # S3e: every value use is defined and dominates its use.
     uses_at = b.for_range(b.c(0), n, lambda block, carried: _value_table(b, block, carried, tables, n), (values_at,))[0]
     use_count = b.read(uses_at)
-    (valid,) = b.for_range(b.c(0), use_count, lambda i, carried: _check_use(b, b.add(b.add(uses_at, 1), b.mul(i, 6)), carried, tables, n, dom, words, power), (b.c(1),))
+    codes = b.add(tables, b.mul(n, 3))  # S8 (ADR-248): each use's ``value_type`` outcome
+    b.check(b.cmp(IntCompare.ULE, b.add(codes, use_count), OUT_WORDS), b.defer_block)
+    (valid,) = b.for_range(b.c(0), use_count, lambda i, carried: _check_use(b, b.add(b.add(uses_at, 1), b.mul(i, 6)), carried, tables, n, dom, words, power,
+                                                                            b.add(codes, i)), (b.c(1),))
     b.put(b.c(2), valid)
     b.put(b.c(1), words)
     b.put(b.c(0), ACCEPT)
@@ -216,7 +219,9 @@ def _edge_list(b, n, block, carried, succ_start, succ_count):
     count = b.read(position)
     b.put(b.add(succ_start, block), b.add(position, 1))
     b.put(b.add(succ_count, block), count)
-    b.for_range(b.c(0), count, lambda e, c: b.check(b.cmp(IntCompare.ULT, b.read(b.add(b.add(position, 1), e)), n), b.reject_block) or (), ())
+    # S8 (ADR-248): ``out[1]`` holds the target being checked, so a rejection names the first one out of range.
+    b.for_range(b.c(0), count, lambda e, c: (b.put(b.c(1), b.read(b.add(b.add(position, 1), e))),
+                                              b.check(b.cmp(IntCompare.ULT, b.read(b.add(b.add(position, 1), e)), n), b.reject_block)) and (), ())
     return b.add(b.add(position, 1), count), b.add(total, count)
 
 
@@ -230,9 +235,11 @@ def _value_table(b, block, carried, tables, n):
     return (b.add(b.add(position, 2), nodes),)
 
 
-def _check_use(b, at, carried, tables, n, dom, words, power):
+def _check_use(b, at, carried, tables, n, dom, words, power, code_at):
     """A use (block, node position, tag, value block, index, result): the bootstrap's
-    ``value_type`` conditions, branch-free; out-of-range indices are clamped before lookup."""
+    ``value_type`` conditions, branch-free; out-of-range indices are clamped before lookup.  S8 (ADR-248): the
+    first failing condition, in ``value_type``'s order, goes to ``code_at``: 0 valid, 1 no such block, 2 no such
+    parameter, 3 no such node result, 4 a node result not before its use, 5 a block not dominating the use."""
     (valid,) = carried
     use_block, use_node, tag, value_block, index, result = (b.read(b.add(at, k)) for k in range(6))
     flag = lambda condition: b.cur.op1(Operation.INT_ZERO_EXTEND, (condition,), B64)
@@ -249,6 +256,13 @@ def _check_use(b, at, carried, tables, n, dom, words, power):
     word = b.get(b.add(dom, b.add(b.mul(use_block, words), b.op(Operation.UDIV, source, 64))))
     dominated = flag(b.cmp(IntCompare.NE, b.op(Operation.BIT_AND, word, b.get(b.add(power, b.op(Operation.UREM, source, 64)))), 0))
     ok = b.mul(b.mul(flag(in_range), defined), b.op(Operation.BIT_OR, same, dominated))
+    exists = b.mul(flag(node_ok), flag(b.cmp(IntCompare.ULT, result, result_count)))
+    code = b.select(b.cmp(IntCompare.EQ, b.op(Operation.BIT_OR, same, dominated), 0), b.c(5), b.c(0))
+    code = b.select(b.cmp(IntCompare.EQ, tag, 0),
+                    b.select(b.cmp(IntCompare.EQ, parameter_ok, 0), b.c(2), code),
+                    b.select(b.cmp(IntCompare.EQ, exists, 0), b.c(3),
+                             b.select(b.cmp(IntCompare.NE, b.mul(same, flag(b.cmp(IntCompare.ULE, use_node, index))), 0), b.c(4), code)))
+    b.put(code_at, b.select(in_range, code, b.c(1)))
     return (b.op(Operation.BIT_AND, valid, ok),)
 
 
@@ -404,6 +418,7 @@ class NativeCfg:
         ``values`` is ``(per-block (parameter count, result counts per node), uses)``
         where each use is (use block, use node position, tag, block, index, result).
         """
+        self.rejected_target, self.use_codes = None, []
         words = [len(successors), entry]
         for targets in successors:
             words.append(len(targets))
@@ -422,11 +437,15 @@ class NativeCfg:
             slots[0], slots[1] = ctypes.addressof(self._in), ctypes.addressof(self._out)
             self._call(self._entry, ctypes.addressof(slots), 4, ctypes.addressof(self._xmm))
             status = self._out[0]
+            self.rejected_target = self._out[1] if status == REJECT else None  # S8: the first branch target out of range
             if status != ACCEPT:
                 return status, None, None, False
             n, width, valid = len(successors), self._out[1], bool(self._out[2])
             order = list(self._out[3 : 3 + n])
             flat = self._out[3 + n : 3 + n + n * width]
+            # S8 (ADR-248): each use's outcome, after the layout ``build_cfg_program`` fixes.
+            codes = 3 + n + n * width + 5 * n + 64 + 2 * n + width + IN_WORDS + 3 * n
+            self.use_codes = list(self._out[codes : codes + len(uses)])
         dominators = []
         for block in range(n):
             bits = 0

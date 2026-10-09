@@ -6481,6 +6481,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     # computes them (and raises the exact branch-target diagnostic).
     analysis = _native_cfg()
     native_order, uses_valid = None, False
+    use_codes: dict[tuple, int] = {}
     if analysis is not None:
         uses = []
         for block_index, block in enumerate(blocks):
@@ -6492,8 +6493,14 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             uses.extend((block_index, end, value.tag, value.block, value.index, value.result) for value in terminator_values)
         tables = [(len(block.parameters), tuple(len(node.results) for node in block.nodes)) for block in blocks]
         status, native_order, dominators, uses_valid = analysis.analyze(entry, [[target for target, _ in block.terminator.edges] for block in blocks], (tables, uses))
+        if status == 1 and analysis.rejected_target is not None:
+            # S8 (ADR-248): the XAX analysis found the first branch target out of range.
+            _xax_fail("XAX.STRUCT.BRANCH_TARGET", obj.cid.hex(), "GRAPH-BRANCH-TARGET", f"< {len(blocks)}", analysis.rejected_target)
         if status != 0:
             native_order = None
+        else:
+            for use, code in zip(uses, analysis.use_codes):  # S8: each use's outcome, decided by XAX
+                use_codes.setdefault(use, code)
     checked_uses = native_order is not None and uses_valid
     if native_order is None:
         predecessors = [set() for _ in blocks]
@@ -6522,6 +6529,18 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             # S3e (ADR-122): the XAX analysis proved every use defined and dominated.
             source = blocks[value.block]
             return source.parameters[value.index] if value.tag == 0 else source.nodes[value.index].results[value.result]
+        code = use_codes.get((use_block, use_node, value.tag, value.block, value.index, value.result), 0)
+        if code:
+            # S8 (ADR-248): the XAX analysis decided this use is invalid; its diagnostic, as ``value_type`` raises it.
+            if code == 1:
+                _xax_fail("XAX.STRUCT.VALUE_BLOCK", obj.cid.hex(), "GRAPH-VALUE-DEFINED", f"< {len(blocks)}", value.block)
+            if code == 2:
+                _xax_fail("XAX.STRUCT.VALUE_INDEX", obj.cid.hex(), "GRAPH-VALUE-DEFINED", f"< {len(blocks[value.block].parameters)}", value.index)
+            if code == 3:
+                _xax_fail("XAX.STRUCT.VALUE_INDEX", obj.cid.hex(), "GRAPH-VALUE-DEFINED", "existing node result", [value.index, value.result])
+            if code == 4:
+                _xax_fail("XAX.STRUCT.SSA_DOMINANCE", obj.cid.hex(), "GRAPH-SSA-DOMINANCE", f"node < {use_node}", value.index)
+            _xax_fail("XAX.STRUCT.SSA_DOMINANCE", obj.cid.hex(), "GRAPH-SSA-DOMINANCE", sorted(dominators[use_block]), value.block)
         if value.block >= len(blocks):
             fail("XAX.STRUCT.VALUE_BLOCK", obj.cid.hex(), "GRAPH-VALUE-DEFINED", f"< {len(blocks)}", value.block)
         source = blocks[value.block]

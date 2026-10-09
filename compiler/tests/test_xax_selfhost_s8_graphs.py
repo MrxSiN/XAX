@@ -10,7 +10,7 @@ import platform
 import sys
 import unittest
 
-from xax_compiler import FloatCompare, IntCompare, Kind, Operation, SemanticObject, bits_type, float_type
+from xax_compiler import FloatCompare, IntCompare, Kind, Operation, SemanticObject, ValueRef, bits_type, float_type
 from xax_graph_builder import GraphBuilder
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
@@ -92,6 +92,42 @@ class TerminatorRejectionTests(unittest.TestCase):
                 self.assertEqual(bootstrap[:1] + bootstrap[2:3], ("reject", rule))
                 self.assertIn(rule, raised)
 
+
+
+USES = {"block": "GRAPH-VALUE-DEFINED", "parameter": "GRAPH-VALUE-DEFINED", "result": "GRAPH-VALUE-DEFINED", "later": "GRAPH-SSA-DOMINANCE",
+        "dominance": "GRAPH-SSA-DOMINANCE", "target": "GRAPH-BRANCH-TARGET"}
+
+
+def _use(variant: str):
+    """``(x: b32) -> b32``: two branches joining; ``variant`` makes one use invalid (or a branch target)."""
+    from xax_compiler import Terminator
+
+    graph = GraphBuilder()
+    graph.track(B1, B32)
+    entry = graph.block(B32)
+    then, other = graph.block(), graph.block()
+    (x,) = entry.params
+    condition = entry.op1(Operation.INT_COMPARE, (x, entry.const(B32, 0)), B1, attributes=(IntCompare.EQ,))
+    entry.cbr(condition, then, (), other, ())
+    late = then.op1(Operation.ADD_WRAP, (x, x), B32)
+    bad = {"block": ValueRef.parameter(9, 0), "parameter": ValueRef.parameter(0, 3), "result": ValueRef.node_result(1, 0, 2),
+           "later": ValueRef.node_result(1, 1, 0), "dominance": late}.get(variant)
+    then.ret(then.op1(Operation.ADD_WRAP, (x, bad if variant != "target" else late), B32))
+    other.ret(x if variant != "dominance" else bad)
+    if variant == "target":
+        other.terminator = Terminator.branch(7, ())
+    return graph.function((B32,), (B32,)), tuple(graph.objects.values())
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class UseRejectionTests(unittest.TestCase):
+    def test_invalid_uses_are_decided_by_xax(self):
+        for variant, rule in USES.items():
+            with self.subTest(variant=variant):
+                native, bootstrap, raised = _decided(*_use(variant))
+                self.assertEqual(native, bootstrap)
+                self.assertEqual(bootstrap[:1] + bootstrap[2:3], ("reject", rule))
+                self.assertIn(rule, raised)
 
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
