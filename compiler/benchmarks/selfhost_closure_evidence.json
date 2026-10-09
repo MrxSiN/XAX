@@ -12,8 +12,8 @@
       "image_sha256": "932a151515ecb1f66ebd1df62ef0b0a0571f088be4781402b1de0ead2cb4f3ed",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 11.17,
-        "bootstrap": 0.04
+        "gen1": 11.88,
+        "bootstrap": 0.05
       }
     },
     {
@@ -25,8 +25,8 @@
       "image_sha256": "d26f6af2a4f3fbcf257896e98bc3b94603660ee875a7ddfe8f983d99e9711a8f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.73,
-        "bootstrap": 0.45
+        "gen1": 0.81,
+        "bootstrap": 0.51
       }
     },
     {
@@ -51,21 +51,21 @@
       "image_sha256": "9df980975640067ab2d05fab38d7e13746568d859c650b50bf0b438e89f129e4",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 1.19,
-        "bootstrap": 0.93
+        "gen1": 1.45,
+        "bootstrap": 0.91
       }
     },
     {
       "program": "xax_selfhost_typing",
-      "store_bytes": 3519217,
-      "store_sha256": "76c872a5448a0349c97bd5d2bc537ddbb0cd7449fae3cb1f6809dd0da99b070b",
+      "store_bytes": 3527005,
+      "store_sha256": "8e87dd65cabad049467532ef858a68e36ac52fd043292d7587d7cc877e0214b8",
       "functions": 47,
-      "code_bytes": 5236628,
-      "image_sha256": "26d5c83d609c77c8359d2c5ee0543281dbe5a895afae94d01a9c6148ac1f026c",
+      "code_bytes": 5241996,
+      "image_sha256": "32a2d4e5c076c708d13adf610431fff6844eaf5c86b875aa6c87f284e5f3a8bf",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 17.22,
-        "bootstrap": 16.57
+        "gen1": 20.07,
+        "bootstrap": 18.09
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 10.52,
-        "bootstrap": 12.3
+        "gen1": 11.38,
+        "bootstrap": 12.39
       }
     },
     {
@@ -90,8 +90,8 @@
       "image_sha256": "5dcc3086447fcad87d059b1646cf1c5ead722fae8bb54e7a7344572992c6868a",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.07,
-        "bootstrap": 0.07
+        "gen1": 0.08,
+        "bootstrap": 0.08
       }
     },
     {
@@ -103,8 +103,8 @@
       "image_sha256": "fd4263a668a2964c1054a65aac6b388d6e5516340e3c1d763a5184a4085e1c2f",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 4.26,
-        "bootstrap": 9.25
+        "gen1": 4.3,
+        "bootstrap": 10.15
       }
     }
   ],
@@ -118,7 +118,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.6
+        "emulated": 0.5
       }
     },
     {
@@ -142,7 +142,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.1
+        "emulated": 0.2
       }
     },
     {
@@ -165,8 +165,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.006,
-        "emulated": 0.8
+        "native": 0.005,
+        "emulated": 0.9
       }
     },
     {
@@ -178,7 +178,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.003,
-        "emulated": 0.6
+        "emulated": 0.7
       }
     },
     {
@@ -189,8 +189,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.031,
-        "emulated": 3.7
+        "native": 0.035,
+        "emulated": 3.8
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 0.885,
-        "emulated": 87.2
+        "native": 0.779,
+        "emulated": 92.8
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.3,
-        "emulated": 32.9
+        "native": 0.306,
+        "emulated": 33.3
       }
     },
     {
@@ -237,7 +237,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.067,
+        "native": 0.062,
         "emulated": 7.1
       }
     },
@@ -249,8 +249,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.48,
-        "emulated": 49.0
+        "native": 0.478,
+        "emulated": 51.2
       }
     },
     {
@@ -261,8 +261,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.333,
-        "emulated": 34.1
+        "native": 0.312,
+        "emulated": 34.2
       }
     }
   ],
@@ -301,13 +301,13 @@
       "store": "xax_cfg_analysis.xax",
       "bytes": 15478,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.02
+      "host_s_nonsemantic": 0.03
     },
     {
       "store": "xax_graph_decoder.xax",
       "bytes": 148177,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.18
+      "host_s_nonsemantic": 0.15
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -319,7 +319,7 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274243,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.27
+      "host_s_nonsemantic": 0.26
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -329,7 +329,7 @@
     "sha256": "aafc72596938ea7d13ed1cfd14271e261f661484b5165a98e6bf2da40c6dcdcb",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 101000000000,
-    "host_s_nonsemantic": 1843.3
+    "host_s_nonsemantic": 1839.8
   },
   "authority": {
     "blake3-compress": {
@@ -344,7 +344,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-f17ac9995669afd2b9fe2aad5481e025ff98a314caa58d45969ae10ec547c2d7.bin"
+      "record": "verified-hash-2b89eab14797327eba8f24fd69d5ae24c4e9bb87369bc220b3106f9e62ab31fa.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -358,7 +358,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-b632254f21f95466ec4335f99fc70fd12ad8a1d2ea3c53c11953df9b4fb5aa19.bin"
+      "record": "verified-store-decoder-72a1fc3aed00d40bb4632622ced4f7f4e7007feea6c293dddfd0d8644970778e.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -372,22 +372,22 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-eebb7b9db7a9ca46c44797999235a919c5f26339442c565ca0a303d4031c825e.bin"
+      "record": "verified-cfg-495a441eb7108f8b051d7c90c1a731848f3ad22aea163606e42afb24aadf6797.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-554721e64ceacadb0a6bf9a8077aaa09dd9abefa0ca8d01fad7fd463016b87e1.bin"
+      "record": "verified-riscv64-encoder-a2098820c0f2c8b37123d94fbbf0f93a70cffe43dfd3caba53db4091b28da406.bin"
     },
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-763ba9c7a6bc11decc5255adfe6d39237c7f0ba8b3f2c7dd25b7a1afc2646345.bin"
+      "record": "verified-typing-6b01cba0b04c0805fe45bc2ea4730fc8deec302f3464cfddee160d7e86d09b8e.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "089b78b71d5bc38969a2c1cdc6b24cb3cc3ac29a135b49bf20febc056f1bdf79",
-      "native_artifact_digest": "fd37a18c8964214662f140f0abba96b19f0d6b273fb5cb0e0eb17c112b80cbf2",
+      "semantic_root": "096a9427d81d5a66af48310eed3c31970a5f1d35da8cd545c4e0ea3d2fc5d971",
+      "native_artifact_digest": "21d3f230d5cc5f73e998855d930e64be96eb258f8c9a4fceaf99a34431d3c966",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -396,7 +396,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-02667f13a26b343a71e924583a9ba0cf39a79f4f6f79cc0a7fd782a3c7d82141.bin"
+      "record": "verified-store-verifier-5db3d2ecf02bf26a56ade3cd187afbcce22c3b0c75770b1101b18f337eeb2219.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -411,7 +411,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-3fb4ae6923648340d98bec638a3fbe961f05a896c3b8e1da7bf084cbd99322ea.bin"
+      "record": "verified-graph-decoder-47b6a519771c68a4b4e7612f0a455e24795a6f004db5df14d5f1303a283e526e.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -434,7 +434,7 @@
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-4457661aea42b15df20e1463e978df4944c9ad3e7897ef50614294d2ad6d2067.bin"
+      "record": "verified-xax_x86_64_backend-01893c627cdfa6d1fd60000cc2b0e5203fbfbbaa680d30690acfdd752e909bd5.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
@@ -466,7 +466,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-1ce549aec42b0522c0a9be30ca52738b39114c67856cb1d5e310770f8f5ad83b.bin"
+      "record": "verified-xax_riscv64_backend-de31383929ccc310b9dbf52665a85ddda6dc856087d103b7ccca378f1b377041.bin"
     },
     "lowering:riscv64-backend": {
       "component": "lowering:riscv64-backend",

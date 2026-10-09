@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S8c.25 scalar type rejections — 2026-10-09 (ADR-243)
+
+The XAX typing program now rejects malformed bits, float, and link types and unsupported type forms with the bootstrap's diagnostics. Still Python: compound type rejections, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
 ## S8c.24 constant object rejections — 2026-10-09 (ADR-242)
 
 The XAX typing program now rejects constants whose value does not fit their type (bits width or spare bits, float width, non-canonical NaN, non-null link, non-scalar type) with the bootstrap's diagnostics. Still Python: malformed constant bodies, types, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.

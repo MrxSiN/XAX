@@ -128,6 +128,10 @@ OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a cons
 CREJ, COFF, CLEN, CWIDTH = 28, 29, 30, 31
 TABLES = 32
 CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE")
+# S8c.25 (ADR-243): ``_verify_type`` rejections of scalar and unknown forms, in the same tables (COFF: the form, CLEN:
+# the second body value, CWIDTH: the bytes left after it).
+TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "TYPE_LINK", "TYPE_FORM")
+TYPE_SITE_BASE = 16
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
 FACT_RESOURCE_KINDS = (1, 0x100, 0x101)  # stack storage, heap owner, heap view
@@ -802,10 +806,31 @@ def _object_entry(b: _Builder, t: _Typing, index):
     link_site = t.pick(t.all(t.eq(count, 8), parts["zero"]), b.c(0), b.c(4))
     site = t.pick(t.eq(formb, 1), bits_site, t.pick(t.eq(formb, 7), float_site, t.pick(t.eq(formb, 11), link_site, b.c(5))))
     constant = t.all(t.eq(kind, int(Kind.CONSTANT)), parts["shape"], t.lt(value_type, t.count))
-    b.put(t.slot(CREJ, index), t.pick(constant, site, b.c(0)))
-    b.put(t.slot(COFF, index), b.sub(parts["data"], parts["base"]))
-    b.put(t.slot(CLEN, index), count)
-    b.put(t.slot(CWIDTH, index), t.pick(t.eq(formb, 7), float_width, width))
+    # S8c.25 (ADR-243): ``_verify_type`` for bits (1), float (7), link (11), and unsupported forms.  The second value
+    # (width or float format) must be a canonical ULEB inside the body, else the bootstrap's cursor decides.
+    position = b.get(t.slot(POSITION, index))
+    references, length = b.read(b.add(position, 1)), b.read(b.add(position, 2))
+    base = b.add(position, 3)
+    end = b.add(base, length)
+    form, form_size, form_ok = t.uleb(base)
+    second, second_size, second_ok = t.uleb(b.add(base, form_size))
+    after = b.add(b.add(base, form_size), second_size)
+    second_ok = t.all(second_ok, t.le(after, end), t.le(b.add(base, form_size), end))
+    left = b.sub(end, after)
+    scalar = t.one_of(form, (1, 7))
+    trailing = t.all(scalar, second_ok, t.nonzero(left))
+    bits = t.all(t.eq(form, 1), second_ok, t.any(t.nonzero(references), t.eq(second, 0)))
+    float_format = t.all(t.eq(form, 7), second_ok, t.not_(t.one_of(second, (1, 2))))
+    float_refs = t.all(t.eq(form, 7), second_ok, t.nonzero(references))
+    link = t.all(t.eq(form, 11), t.any(t.nonzero(references), t.not_(t.eq(length, 1))))
+    unknown = t.any(t.eq(form, 0), t.not_(t.le(form, 11)))
+    type_site = t.pick(trailing, b.c(TYPE_SITE_BASE + 1), t.pick(bits, b.c(TYPE_SITE_BASE + 2), t.pick(float_format, b.c(TYPE_SITE_BASE + 3), t.pick(
+        float_refs, b.c(TYPE_SITE_BASE + 4), t.pick(link, b.c(TYPE_SITE_BASE + 5), t.pick(unknown, b.c(TYPE_SITE_BASE + 6), b.c(0)))))))
+    a_type = t.all(t.eq(kind, int(Kind.TYPE)), form_ok, t.le(b.add(base, form_size), end))
+    b.put(t.slot(CREJ, index), t.pick(constant, site, t.pick(a_type, type_site, b.c(0))))
+    b.put(t.slot(COFF, index), t.pick(constant, b.sub(parts["data"], parts["base"]), form))
+    b.put(t.slot(CLEN, index), t.pick(constant, count, second))
+    b.put(t.slot(CWIDTH, index), t.pick(constant, t.pick(t.eq(formb, 7), float_width, width), left))
 
 
 def _node_entry(b: _Builder, t: _Typing, index, carried):
@@ -1566,6 +1591,21 @@ def _native_image() -> tuple[bytes, int]:
     return host_image(*load_typing_program(), "typing")
 
 
+def _type_diagnostic(obj, name, form, second, left):
+    """S8c.25 (ADR-243): ``_verify_type``'s diagnostic ``(code, rule, expected, actual, dependencies, repair)``."""
+    if name == "TYPE_TRAILING":
+        return "XAX.CANON.TRAILING_BYTES", "TYPE-BODY", 0, left, (), ()
+    if name == "TYPE_BITS":
+        return "XAX.TYPE.BITS", "TYPE-BITS", "form=1,width>=1", [form, second], (), ()
+    if name == "TYPE_FLOAT_FORMAT":
+        return "XAX.TYPE.FLOAT", "TYPE-FLOAT-FORMAT", [1, 2], second, (), ()
+    if name == "TYPE_FLOAT":
+        return "XAX.TYPE.FLOAT", "TYPE-FLOAT", "form=7,known format", [form, second], (), ()
+    if name == "TYPE_LINK":
+        return "XAX.TYPE.LINK", "TYPE-LINK-CANONICAL", "empty link body", obj.body.hex(), (), ()
+    return "XAX.TYPE.FORM", "TYPE-FORM-SUPPORTED", list(range(1, 12)), form, (), ()
+
+
 class NativeTyping:
     def __init__(self) -> None:
         from xax_x86_64 import _SYSV_TO_WIN64_THUNK
@@ -1625,6 +1665,9 @@ class NativeTyping:
                 continue
             obj = objects[cid]
             offset, length, width = table(COFF, index), table(CLEN, index), table(CWIDTH, index)
+            if site > TYPE_SITE_BASE:
+                rejected[cid] = _type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width)
+                continue
             value = obj.body[offset:offset + length]
             type_hex, name = obj.references[0].hex(), CONSTANT_SITES[site - 1]
             if name == "BITS_WIDTH":
