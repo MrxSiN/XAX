@@ -168,7 +168,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.25 scalar type rejections — 2026-10-09 (ADR-243)
 
-- Next: compound types (pointer, effect, resource, opaque, tuple, array, sum), malformed constant bodies, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines.
+- Next: compound types (pointer, effect, resource, opaque, tuple, array, sum), malformed constant bodies, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8c.26 below.
+
+## S8c.26 compound type rejections — 2026-10-09 (ADR-244)
+
+- Next: tuple and sum element checks, pointer element checks, resource transitions, opaque identity types, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines.
 
 ## Validation state at M14 (historical)
 

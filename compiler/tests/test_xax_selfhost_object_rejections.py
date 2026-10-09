@@ -209,9 +209,35 @@ def _constant(variant: str):
         "type_float_format": uleb(7) + uleb(9),
         "type_link_body": uleb(11) + b"\x00",
         "type_form": uleb(40),
+        # S8c.26 (ADR-244): opaque, effect, sum, pointer.
+        "type_opaque_trailing": uleb(5) + uleb(1) + b"\x00",
+        "type_opaque_kind": uleb(5) + uleb(9),
+        "type_effect_domain": uleb(3) + uleb(40),
+        "type_effect_zero_instance": uleb(3) + uleb(1) + uleb(0),
+        "type_sum_empty": uleb(10) + uleb(0),
+        # S8c.26 (ADR-244): resource forms.
+        "type_resource_owner": uleb(4) + uleb(1) + uleb(2),
+        "type_resource_plain": uleb(4) + uleb(1) + uleb(1) + uleb(4) + uleb(0) + uleb(0),
+        "type_resource_flags": uleb(4) + uleb(3) + uleb(1) + uleb(64) + uleb(0) + uleb(0),
+        "type_resource_trailing": uleb(4) + uleb(3) + uleb(1) + uleb(4) + uleb(0) + uleb(0) + b"\x00",
     }
     if variant in types:
         return SemanticObject.create(Kind.TYPE, types[variant]), ()
+    pointers = {  # [space, element index, permission, alignment] over one reference (b32)
+        "type_pointer_index": (1, 4, 3, 4), "type_pointer_permission": (1, 0, 7, 4), "type_pointer_alignment": (1, 0, 3, 3),
+        "type_pointer_space": (0, 0, 3, 4),
+    }
+    if variant in pointers:
+        return SemanticObject.create(Kind.TYPE, uleb(2) + b"".join(uleb(item) for item in pointers[variant]), (B32.cid,)), ()
+    if variant == "type_array_proof":
+        from xax_compiler import memory_effect_type
+
+        effect = memory_effect_type()
+        return SemanticObject.create(Kind.TYPE, uleb(9) + uleb(0) + uleb(4), (effect.cid,)), (effect,)
+    if variant == "type_array_index":
+        return SemanticObject.create(Kind.TYPE, uleb(9) + uleb(3) + uleb(4), (B32.cid,)), ()
+    if variant == "type_opaque_refs":
+        return SemanticObject.create(Kind.TYPE, uleb(5) + uleb(1), (B8.cid,)), ()
     if variant == "type_bits_refs":
         return SemanticObject.create(Kind.TYPE, uleb(1) + uleb(8), (B8.cid,)), ()
     if variant not in cases:
@@ -291,6 +317,14 @@ VARIANTS = {
     # S8c.25 (ADR-243): types.
     "type_trailing": "TYPE-BODY", "type_bits_zero": "TYPE-BITS", "type_float_format": "TYPE-FLOAT-FORMAT", "type_link_body": "TYPE-LINK-CANONICAL",
     "type_form": "TYPE-FORM-SUPPORTED", "type_bits_refs": "TYPE-BITS",
+    # S8c.26 (ADR-244): compound forms before their element types.
+    "type_opaque_trailing": "TYPE-BODY", "type_opaque_kind": "TYPE-OPAQUE-KIND", "type_opaque_refs": "TYPE-OPAQUE-CANONICAL",
+    "type_effect_domain": "TYPE-EFFECT-DOMAIN", "type_effect_zero_instance": "TYPE-EFFECT-CANONICAL", "type_sum_empty": "TYPE-SUM-NONEMPTY",
+    "type_pointer_index": "GRAPH-REF-INDEX", "type_pointer_permission": "TYPE-POINTER-PERMISSION", "type_pointer_alignment": "TYPE-POINTER",
+    "type_pointer_space": "TYPE-POINTER",
+    # S8c.26 (ADR-244): resource and array forms.
+    "type_resource_owner": "TYPE-RESOURCE-STACK-OWNER", "type_resource_plain": "TYPE-RESOURCE-CANONICAL", "type_resource_flags": "TYPE-RESOURCE-CANONICAL",
+    "type_resource_trailing": "TYPE-BODY", "type_array_proof": "TYPE-ARRAY-VALUE-ELEMENT", "type_array_index": "GRAPH-REF-INDEX",
 }
 
 
