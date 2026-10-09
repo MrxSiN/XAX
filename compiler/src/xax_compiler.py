@@ -6613,6 +6613,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
     rejected_terminators: dict[int, tuple[int, int, int]] = {}  # S8 (ADR-248): XAX's terminator rejections
     fact_free = False  # S4d.2a (ADR-136): no memory facts to track; every check above proven
     linear_proven = False  # S6a (ADR-142): XAX proved resource and effect linearity
+    linear_reject = None  # S8 (ADR-248): XAX's linear-flow rejection (code, a, b)
     engine_extents: list[tuple[ValueRef, int]] | None = None  # S4d.2b (ADR-137): the XAX facts engine accepted
     memory_reject = None  # S8c.8 (ADR-221): the engine's exact memory rejection (pass, block, node, diagnostic)
     typing = _native_typing() if checked_uses else None
@@ -6654,6 +6655,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                     type_cids,
                 )
             linear_proven = typing.linear_flow()
+            linear_reject = None if linear_proven else typing.linear_rejection()
             if accepted and len(proven_terminators) == len(blocks):
                 # The engine modelled every node (or found it typing-proven) and its passes converged.
                 engine_extents = [(ref, extent - 1) for ref, extent in zip(value_refs, extents) if extent]
@@ -7353,9 +7355,67 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
         entry, tuple(blocks), tuple(returns), tuple(member_spans),
         tuple(sorted(pointer_extents, key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))),
     )
+    if linear_reject is not None:
+        _xax_fail(*_linear_diagnostic(obj, parsed, resolve, linear_reject, value_refs))
     if not linear_proven:
         _verify_linear_flow(obj, parsed, resolve)
     return parsed
+
+
+def _join_origins(parsed: "_ParsedGraph", block_index: int, node_index: int) -> tuple:
+    """S8: the origins ``_verify_linear_flow`` quotes for the join XAX rejected (its pieces' walks back through
+    transfers, transitions, and splits; XAX checked that they meet no non-entry block parameter)."""
+    def origin(value: ValueRef) -> tuple:
+        if value.tag == 0:
+            return ("parameter", value.index)
+        node = parsed.blocks[value.block].nodes[value.index]
+        operation = Operation(node.operation)
+        if operation == Operation.RESOURCE_ACQUIRE:
+            return ("acquire", value.block, value.index)
+        if operation in (Operation.RESOURCE_TRANSFER, Operation.RESOURCE_TRANSITION):
+            return origin(node.operands[0])
+        if operation == Operation.RESOURCE_SPLIT:
+            return ("split", value.block, value.index, value.result, origin(node.operands[0]))
+        if operation == Operation.RESOURCE_JOIN:
+            return ("join", value.block, value.index)
+        return ("opaque", value.block, value.index, value.result)
+
+    node = parsed.blocks[block_index].nodes[node_index]
+    return origin(node.operands[0]), origin(node.operands[1])
+
+
+def _linear_diagnostic(graph: SemanticObject, parsed: "_ParsedGraph", resolve, record, value_refs) -> tuple:
+    """S8 (ADR-248): ``_verify_linear_flow``'s diagnostic for the check XAX found failing (rendering: XAX decided the
+    check and its value; the lists quote that value's uses in the parsed graph)."""
+    code, a, b = record
+    entity = graph.cid.hex()
+    if code == 9:
+        left, right = _join_origins(parsed, a, b)
+        return "XAX.RESOURCE.JOIN", entity, "RESOURCE-JOIN-SIBLINGS", "two pieces from one split", [left, right]
+    if code == 1:
+        return "XAX.RESOURCE.UNREACHABLE_PARAMETER", entity, "RESOURCE-BLOCK-PREDECESSOR", "at least one", 0
+    if code == 2:
+        return "XAX.RESOURCE.BLOCK_FLOW", entity, "RESOURCE-BLOCK-ARGUMENT", a, b
+    value = value_refs[a]
+    if code == 3:
+        return "XAX.RESOURCE.DUPLICATE", entity, "RESOURCE-LINEAR-CONTINUATION", "one continuation", "node and terminator"
+    if code == 4:
+        uses = [(block_index, node_index) for block_index, block in enumerate(parsed.blocks)
+                for node_index, node in enumerate(block.nodes) for operand in node.operands if operand == value]
+        return "XAX.RESOURCE.DUPLICATE", entity, "RESOURCE-LINEAR-CONTINUATION", "one same-block consumer", uses
+    terms = []
+    for block_index, block in enumerate(parsed.blocks):
+        terms += [(block_index, edge_index) for edge_index, (_target, arguments) in enumerate(block.terminator.edges) for argument in arguments if argument == value]
+        terms += [(block_index, -1) for item in block.terminator.values if item == value]
+    if code == 5:
+        return "XAX.RESOURCE.BLOCK_FLOW", entity, "RESOURCE-EXPLICIT-BLOCK-PARAMETER", value.block, terms
+    local = [use for use in terms if use[0] == value.block]
+    if code == 6:
+        return "XAX.RESOURCE.DROP", entity, "RESOURCE-EACH-CONTROL-PATH", [1, 1], [sum(use == (value.block, edge) for use in local) for edge in range(2)]
+    if code == 7:
+        return "XAX.EFFECT.FORK", entity, "EFFECT-TRAP-END", 0, len(local)
+    type_object = resolve(parsed.blocks[value.block].parameters[value.index] if value.tag == 0 else parsed.blocks[value.block].nodes[value.index].results[value.result])
+    return ("XAX.RESOURCE.DROP" if _is_resource(type_object) else "XAX.EFFECT.FORK"), entity, "RESOURCE-LINEAR-CONTINUATION", 1, len(local)
 
 
 def _decode_function_interface(

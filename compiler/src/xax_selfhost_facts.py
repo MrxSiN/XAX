@@ -58,6 +58,10 @@ REGISTER_ARGUMENTS = 2
 # terminator), and its payload; production raises that diagnostic at the same point of its fact passes.
 H_CUROP, H_MNODE, H_CURBLOCK, H_REJECT, H_RPASS, H_RBLOCK, H_RNODE = range(34, 41)
 H_RPAY = 41  # payload words H_RPAY .. H_RPAY + 5
+# S8 (ADR-248): the linear-flow rejection: its code (``LINEAR_SITES``), then two words (a block or value id, a count).
+H_LREJ, H_LA, H_LB = 47, 48, 49
+LINEAR_SITES = ("UNREACHABLE_PARAMETER", "BLOCK_ARGUMENT", "NODE_AND_TERMINATOR", "SAME_BLOCK_CONSUMER", "EXPLICIT_BLOCK_PARAMETER",
+                "EACH_CONTROL_PATH", "TRAP_END", "ONE_CONTINUATION", "JOIN_SIBLINGS")
 MEMORY_SITES = (
     "PROVENANCE_PROVEN", "LIFETIME_LIVE", "OP_CONTRACT", "ACCESS_SIZE", "POINTER_ELEMENT_SIZE", "ALIGNMENT", "BOUNDS",
     "READ_PERMISSION", "WRITE_PERMISSION", "EFFECT_PROVEN", "EFFECT_LINEAR", "EFFECT_PROVENANCE", "INITIALIZED",
@@ -2850,6 +2854,7 @@ def _engine(tables, block, empty, record_equal):
         e.set_hd(H_REASON, 0)
         e.set_hd(H_REJECT, 0)
         e.set_hd(H_LINEAR, 0)
+        e.set_hd(H_LREJ, 0)
         _require(e, e.ne(e.rd(e.hd(H_FACTS_AT)), 0))  # no facts section: nothing to decide
         at = e.add(e.hd(H_FACTS_AT), 1)
         for field, offset in ((H_V, 0), (H_S, 1), (H_E, 2), (H_B, 3), (H_ENTRY, 4)):
@@ -2974,6 +2979,13 @@ def _linear_flow(tables):
         cell = lambda name, value: e.add(p[name], value)  # noqa: E731
         bump = lambda name, value: e.st(cell(name, value), e.add(e.ld(cell(name, value)), 1))  # noqa: E731
 
+        def linear_reject(code, a, b_):
+            """S8 (ADR-248): ``_verify_linear_flow``'s first failing check (``LINEAR_SITES``), then 0."""
+            e.set_hd(H_LREJ, code)
+            e.set_hd(H_LA, a)
+            e.set_hd(H_LB, b_)
+            e.give(0)
+
         # Types, defining blocks, and use counts.
         def each_block():
             b = p["b"]
@@ -3029,8 +3041,9 @@ def _linear_flow(tables):
 
             def parameter():
                 def check():
-                    e.if_(e.eq(predecessors, 0), lambda: e.give(0))
-                    e.for_("k", 0, predecessors, lambda: e.if_(e.le(e.ld(cell("eargs", e.rd(e.add(incoming, e.add(1, p["k"]))))), p["q"]), lambda: e.give(0)))
+                    e.if_(e.eq(predecessors, 0), lambda: linear_reject(1, b, 0))
+                    e.for_("k", 0, predecessors, lambda: e.if_(e.le(e.ld(cell("eargs", e.rd(e.add(incoming, e.add(1, p["k"]))))), p["q"]),
+                                                               lambda: linear_reject(2, p["q"], e.ld(cell("eargs", e.rd(e.add(incoming, e.add(1, p["k"]))))))))
 
                 e.if_(proof(e.rd(e.add(e.add(params_at, 2), p["q"]))), check)
 
@@ -3045,18 +3058,19 @@ def _linear_flow(tables):
             uses, total, local = e.ld(cell("nuse", v)), e.ld(cell("ttotal", v)), e.ld(cell("tlocal", v))
 
             def check():
-                e.if_(e.both(e.ne(uses, 0), e.ne(total, 0)), lambda: e.give(0))
+                e.if_(e.both(e.ne(uses, 0), e.ne(total, 0)), lambda: linear_reject(3, v, 0))
 
                 def by_node():
-                    e.if_(e.either(e.ne(uses, 1), e.ne(e.ld(cell("nbad", v)), 0)), lambda: e.give(0))
+                    e.if_(e.either(e.ne(uses, 1), e.ne(e.ld(cell("nbad", v)), 0)), lambda: linear_reject(4, v, 0))
 
                 def by_terminator():
-                    e.if_(e.ne(local, total), lambda: e.give(0))
+                    e.if_(e.ne(local, total), lambda: linear_reject(5, v, 0))
                     kind = e.rd(e.ld(_block_word(e, e.ld(cell("vblock", v)), B_TERM)))
                     conditional = e.eq(kind, int(TerminatorKind.CONDITIONAL_BRANCH))
                     effect_trap = e.both(e.eq(kind, int(TerminatorKind.TRAP)), e.eq(e.table(_T.FORMB, type_index), 3))
-                    e.if_(conditional, lambda: e.if_(e.either(e.ne(e.ld(cell("tedge0", v)), 1), e.ne(e.ld(cell("tedge1", v)), 1)), lambda: e.give(0)),
-                          lambda: e.if_(effect_trap, lambda: e.if_(e.ne(local, 0), lambda: e.give(0)), lambda: e.if_(e.ne(local, 1), lambda: e.give(0))))
+                    e.if_(conditional, lambda: e.if_(e.either(e.ne(e.ld(cell("tedge0", v)), 1), e.ne(e.ld(cell("tedge1", v)), 1)), lambda: linear_reject(6, v, 0)),
+                          lambda: e.if_(effect_trap, lambda: e.if_(e.ne(local, 0), lambda: linear_reject(7, v, local)),
+                                        lambda: e.if_(e.ne(local, 1), lambda: linear_reject(8, v, local))))
 
                 e.if_(e.ne(uses, 0), by_node, by_terminator)
 
@@ -3107,17 +3121,32 @@ def _linear_flow(tables):
                     e.if_(e.lt(n.no, 2), lambda: e.give(0))
                     e.var("left", n.vid(0))
                     e.var("right", n.vid(1))
+                    # A piece reached through a non-entry block parameter has a path-dependent origin: undecided.
                     e.if_(e.eq(trace("left", False), 0), lambda: e.give(0))
                     e.if_(e.eq(trace("right", False), 0), lambda: e.give(0))
                     left_record, right_record = defining(p["left"]), defining(p["right"])
-                    e.if_(e.either(e.eq(left_record, NONE), e.ne(left_record, right_record)), lambda: e.give(0))
-                    e.if_(e.ne(e.rd(left_record), int(Operation.RESOURCE_SPLIT)), lambda: e.give(0))
-                    base = e.rd(e.add(left_record, 4))
-                    pieces = e.add(e.sub(p["left"], base), e.sub(p["right"], base))
-                    e.if_(e.either(e.ne(pieces, 1), e.eq(p["left"], p["right"])), lambda: e.give(0))
-                    na = e.rd(e.add(left_record, 5))
-                    e.var("inner", e.rd(e.add(e.add(left_record, 7), na)))
-                    e.if_(e.eq(trace("inner", True), 0), lambda: e.give(0))
+                    e.var("lrec", left_record)
+                    e.var("rrec", right_record)
+                    split = e.both(e.ne(p["lrec"], NONE), e.eq(p["lrec"], p["rrec"]), e.eq(e.rd(p["lrec"]), int(Operation.RESOURCE_SPLIT)))
+
+                    def pieces_ok():
+                        base = e.rd(e.add(p["lrec"], 4))
+                        return e.both(e.eq(e.add(e.sub(p["left"], base), e.sub(p["right"], base)), 1), e.ne(p["left"], p["right"]))
+
+                    e.var("sibling", 0)
+                    e.if_(split, lambda: e.if_(pieces_ok(), lambda: e.set("sibling", 1)))
+                    # S8 (ADR-248): not two pieces of one split: RESOURCE-JOIN-SIBLINGS at this node.
+                    def not_siblings():
+                        # The quoted origins walk through splits too: they must meet no non-entry parameter either.
+                        e.var("lw", n.vid(0))
+                        e.var("rw", n.vid(1))
+                        e.if_(e.either(e.eq(trace("lw", True), 0), e.eq(trace("rw", True), 0)), lambda: e.give(0))
+                        linear_reject(9, b, p["m"])
+
+                    e.if_(e.eq(p["sibling"], 0), not_siblings)
+                    na = e.rd(e.add(p["lrec"], 5))
+                    e.var("inner", e.rd(e.add(e.add(p["lrec"], 7), na)))
+                    e.if_(e.eq(trace("inner", True), 0), lambda: e.set("undecided", 1))
 
                 e.if_(e.eq(n.op, int(Operation.RESOURCE_JOIN)), join)
                 e.set("cursor", n.next)
@@ -3125,8 +3154,9 @@ def _linear_flow(tables):
             e.for_("m", 0, e.rd(nodes_at), node)
 
         e.var("cursor", 0)
+        e.var("undecided", 0)  # a valid join whose origins the walk cannot compare: the bootstrap decides acceptance
         e.for_("b", 0, B, joins)
-        e.give(1)
+        e.give(e.sel(e.eq(p["undecided"], 0), 1, 0))
     return _function((), build, tables)
 
 

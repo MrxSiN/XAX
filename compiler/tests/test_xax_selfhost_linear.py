@@ -108,15 +108,23 @@ def _outcome(function, objects, use_proof: bool, native):
         proven.append(original(self))
         return proven[-1] if use_proof else False
 
+    original_rejection = type(native).linear_rejection
+
+    def rejection(self):  # S8 (ADR-248): the bootstrap alone decides when the proof is off
+        return original_rejection(self) if use_proof else None
+
     type(native).linear_flow = recording
+    type(native).linear_rejection = rejection
     table = {item.cid: item for item in (*objects, function)}
     try:
         parsed = _parse_graph(_decode_function_interface(function, table.__getitem__)[0], table.__getitem__)
         return ("accept", parsed.returns), bool(proven and proven[-1])
     except XaxError as error:
-        return ("reject", error.diagnostic.code, error.diagnostic.rule), bool(proven and proven[-1])
+        d = error.diagnostic
+        return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual)), bool(proven and proven[-1])
     finally:
         type(native).linear_flow = original
+        type(native).linear_rejection = original_rejection
         xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED = saved
         xax_compiler._PARSED_GRAPHS.clear()
 

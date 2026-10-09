@@ -2218,6 +2218,14 @@ class NativeTyping:
 
         return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions, interface, body)
 
+    def linear_rejection(self):
+        """After an accepted ``check``: S8 (ADR-248), ``(code, a, b)`` for the linear-flow check XAX found failing
+        (``LINEAR_SITES[code - 1]``), or None."""
+        from xax_selfhost_facts import H_LA, H_LB, H_LREJ, HEADER
+
+        code = self._out[HEADER + H_LREJ]
+        return (code, self._out[HEADER + H_LA], self._out[HEADER + H_LB]) if code else None
+
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""
         from xax_selfhost_facts import H_LINEAR, HEADER
