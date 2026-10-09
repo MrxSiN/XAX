@@ -153,7 +153,8 @@ def _verify(reader, use_xax: bool):
         X.verify_store(reader)
         return ("accept",)
     except XaxError as error:
-        return ("reject", error.diagnostic.code, error.diagnostic.rule, error.diagnostic.entity)
+        d = error.diagnostic
+        return ("reject", d.code, d.rule, d.entity, repr(d.expected), repr(d.actual))
     except ValueError as error:  # constructor-level rules (empty identities) raise ValueError in the bootstrap
         return ("value-error", str(error))
     finally:
@@ -338,11 +339,17 @@ class SelfhostTargetProfileTests(unittest.TestCase):
                 except XaxError:
                     valid = False
                 with self.subTest(target=maker.__name__, trial=trial):
-                    self.assertEqual(_verify(reader, True), _verify(reader, False))
+                    bootstrap = _verify(reader, False)
+                    self.assertEqual(_verify(reader, True), bootstrap)
                     _store_ok, proven = X._xax_verify_store(reader, {item.cid: item for item in reader.objects()})
                     if not valid:
                         rejected += 1
-                        self.assertNotIn(target.cid, proven)
+                        verdict = proven.get(target.cid)
+                        if isinstance(verdict, X._XaxRejection):
+                            # S8c.23 (ADR-241): XAX rejected the target itself, with the bootstrap's diagnostic.
+                            self.assertEqual((verdict[0], verdict[1], repr(verdict[2]), repr(verdict[3])), (bootstrap[1], bootstrap[2], *bootstrap[4:]))
+                        else:
+                            self.assertNotIn(target.cid, proven)
                     else:
                         accepted += 1
                         self.assertIn(target.cid, proven)
