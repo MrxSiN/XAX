@@ -6770,7 +6770,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 node.operand_types = operand_types
                 if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, node_index):
                     # S8c.8 (ADR-221): the XAX facts engine decided this node's memory rejection.
-                    _xax_fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
+                    _xax_memory_fail(obj, memory_reject[3])
                 if (block_index, node_index) in proven_nodes:
                     pass  # S4 (ADR-132): typed by the XAX rules
                 elif (block_index, node_index) in rejected_nodes:
@@ -7252,7 +7252,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                         [node.operation for node in block.nodes],
                     )
             if memory_reject is not None and memory_reject[:3] == (_fact_pass + 1, block_index, len(block.nodes)):
-                _xax_fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])  # S8c.8: the engine's terminator rejection
+                _xax_memory_fail(obj, memory_reject[3])  # S8c.8: the engine's terminator rejection
             live = allocations - ended
             if live and block.terminator.kind in (TerminatorKind.RETURN, TerminatorKind.TRAP):
                 fail(
@@ -7348,7 +7348,7 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
             fail("XAX.MEMORY.FACT_FIXPOINT", obj.cid.hex(), "MEMORY-FACT-FIXPOINT", 2 * len(blocks) + 2, "not converged")
     if memory_reject is not None:
         # S8c.8: XAX decided the rejection; the bootstrap passes never reached its point (the tests require they do).
-        _xax_fail(memory_reject[3][0], obj.cid.hex(), *memory_reject[3][1:])
+        _xax_memory_fail(obj, memory_reject[3])
     returns = [item for _block, item in sorted(returns_by_block, key=lambda pair: pair[0])]
     pointer_extents = engine_extents if engine_extents is not None else [(ref, fact.extent) for ref, fact in global_pointers.items() if isinstance(fact, _PointerFact)]
     parsed = _ParsedGraph(
@@ -7382,6 +7382,12 @@ def _join_origins(parsed: "_ParsedGraph", block_index: int, node_index: int) -> 
 
     node = parsed.blocks[block_index].nodes[node_index]
     return origin(node.operands[0]), origin(node.operands[1])
+
+
+def _xax_memory_fail(obj: SemanticObject, diagnostic: tuple) -> None:
+    """S8c.8: raise the facts engine's rejection; a fifth element (S8, ADR-248) is the entity it names instead of the graph."""
+    code, rule, expected, actual, *entity = diagnostic
+    _xax_fail(code, entity[0] if entity else obj.cid.hex(), rule, expected, actual)
 
 
 def _linear_diagnostic(graph: SemanticObject, parsed: "_ParsedGraph", resolve, record, value_refs) -> tuple:
