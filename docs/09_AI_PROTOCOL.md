@@ -708,6 +708,10 @@ entities (`argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`,
 build of a program that reads them elsewhere rejects (`LINUX-STARTUP-PROCESS-ENTRY`).
 Integrations depend on the carrier through `xax-host-contract-v1` (`xax_contract`,
 ADR-225), not on the distribution version.
+A host MAY call `xax_native.prepare(parallel=True)` (contract minor 3, ADR-250)
+before its first verification: it lowers every missing XAX-hosted component image
+and verified-store record into the image cache, in child processes, and returns
+per-component status and timings. It is tooling: no store, CID or artifact changes.
 
 An atomic batch MAY delete an entire dead dependency chain of supported pure
 nodes. Uses inside that same deletion set do not survive publication. Any use

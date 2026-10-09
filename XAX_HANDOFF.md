@@ -195,6 +195,12 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - Regenerate the hash store with `XAX_BLAKE3_PYTHON_HASH=1 PYTHONPATH=src python -c "import xax_selfhost_blake3 as m; m.write_hash_store()"`: the running hash image was lowered for the old extent and traps on larger inputs, so build it on the Python driver.
 - When only one helper store changes, `PYTHONPATH=src python benchmarks/refresh_selfhost_store.py <module> --write` re-executes that program's entries in both self-hosting evidence files.
 
+## Fast first start: `xax_native.prepare` — 2026-10-09 (ADR-250)
+
+- Hosts: call `xax_native.prepare(parallel=True)` once (install or start-up) before the first verification; it returns per-component status and timings and never raises on fallback. Sequential `prepare()` loads the components into the calling process instead.
+- A new XAX-hosted component that verification loads goes into `PREPARE_COMPONENTS`, `_load_component`, `_STORE_NAMES`, and a stage in `_PREPARE_STAGES` (give it an opt-out in `_PREPARE_OPT_OUTS` if other components could load it while being lowered).
+- Write cache files only with `xax_native.cache_write`.
+
 ## Validation state at M14 (historical)
 
 - Syntax/import compilation: passed.

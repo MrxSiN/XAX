@@ -856,8 +856,6 @@ def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, 
     that determines it: the cache schema, the helper store, its entry function, the target profile, the generator
     sources, and the backend store.  A malformed or mismatching entry is ignored and rebuilt."""
     import hashlib
-    import os
-    import tempfile
 
     import xax_native
     from xax_compiler import XaxError, x86_64_views_target
@@ -880,24 +878,20 @@ def host_image(reader, function, cache_name: str | None = None) -> tuple[bytes, 
                 xax_native.loaded(cache_name, reader.root_cid, cached[0])
             return cached
     lowering = f"lowering:{cache_name}"
+    verified = xax_native.component_store_verified(reader)  # its loader just verified it (ADR-250)
     bootstrap_order = _bootstrap_order()
     if bootstrap_order is not None:  # the bootstrap generator makes these images by design
         xax_native.fallback(lowering, bootstrap_order, requested="python")
-        image = compile_x86_64_views(reader, function.cid, target, backend="python")
+        image = compile_x86_64_views(reader, function.cid, target, backend="python", verified=verified)
     else:
         try:
-            image = compile_x86_64_views(reader, function.cid, target, backend="xax")
+            image = compile_x86_64_views(reader, function.cid, target, backend="xax", verified=verified)
             xax_native.loaded(lowering, reader.root_cid, image.code)
         except XaxError as error:
             xax_native.fallback(lowering, f"XAX x86-64 backend unavailable or declined ({error.diagnostic.code})")
-            image = compile_x86_64_views(reader, function.cid, target, backend="python")
-    if path is not None:
-        try:
-            with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as handle:
-                handle.write(xax_native.cache_entry(key, image.code, image.entry_offset))
-            os.replace(handle.name, path)
-        except OSError:
-            pass  # an unwritable cache only costs the next process a recompile
+            image = compile_x86_64_views(reader, function.cid, target, backend="python", verified=verified)
+    if path is not None:  # atomic (ADR-250); an unwritable cache only costs the next process a recompile
+        xax_native.cache_write(path, xax_native.cache_entry(key, image.code, image.entry_offset))
     if cache_name is not None:
         xax_native.loaded(cache_name, reader.root_cid, image.code)
     return image.code, image.entry_offset
