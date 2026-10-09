@@ -113,6 +113,9 @@ TERMINATOR_RECORDS = PASS_SINK - 4  # S8 (ADR-248): block b's terminator record 
 (SITE_CONSTANT_TARGET_NONE, SITE_CONSTANT_TARGET_KIND, SITE_CONSTANT_CONTRACT, SITE_CALL_TARGET_NONE,
  SITE_CALL_TARGET_KIND) = range(SITE_META_ARITY + 29, SITE_META_ARITY + 34)
 SITE_CALL_CONTRACT = SITE_META_ARITY + 34  # S8c.7 (ADR-220)
+# S8 (ADR-248): a node's type decoded as ``bits`` or ``float`` that the decoder rejects (payload: the type); the
+# diagnostic is the decoder's own, for the type (its per-type XSTAT/XA/XB outcome).
+SITE_CROSS_BITS, SITE_CROSS_FLOAT = SITE_META_ARITY + 35, SITE_META_ARITY + 36
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
@@ -128,7 +131,12 @@ OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a cons
 # and the type's width (bits) or float width.
 CREJ, COFF, CLEN, CWIDTH = 28, 29, 30, 31
 C4, C5 = 32, 33  # S8c.26 (ADR-244): a resource type's flags and instance
-TABLES = 34
+# S8 (ADR-248): the type's body read as ``decode_bits_width``/``decode_float_format`` read it: XSTAT 0 (form and value
+# read, nothing left: XA the form, XB the value), 1-3 a malformed ULEB (XA its body offset, XB its size), 4 deferred
+# (a value over five bytes, or a type the stream does not resolve), 5 trailing bytes (XA how many), 6 not a type (XA
+# its kind).
+XSTAT, XA, XB = 34, 35, 36
+TABLES = 37
 CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE",
                   # S8c.29 (ADR-247): malformed bodies (COFF: the index, CLEN: the value length, CWIDTH: bytes available or left).
                   "CONST_REF_INDEX", "CONST_TRUNCATED", "CONST_TRAILING")
@@ -415,6 +423,25 @@ def _scalar_entry(b: _Builder, t: _Typing, index, carried):
     b.put(t.slot(LINK, index), link_ok)
     b.put(t.slot(POSITION, index), position)
     b.put(t.slot(FORMB, index), b.mul(t.all(t.eq(kind, int(Kind.TYPE)), t.nonzero(length)), first))
+    # S8 (ADR-248): the cross-form read (two ULEBs, then the end) for nodes that decode this type as bits or float.
+    end = b.add(base, length)
+    form_status, form_size = _uleb_status(t, base, end)
+    form_value, _size, _ok = t.uleb(base)
+    value_at = b.add(base, form_size)
+    value_status, value_size = _uleb_status(t, value_at, end)
+    value_value, _size, _ok = t.uleb(value_at)
+    left = b.sub(end, b.add(value_at, value_size))
+    xstat = t.pick(t.nonzero(left), b.c(5), b.c(0))
+    xa, xb = t.pick(t.nonzero(left), left, form_value), value_value
+    xstat, xa, xb = (t.pick(t.eq(value_status, 0), xstat, value_status), t.pick(t.eq(value_status, 0), xa, form_size),
+                     t.pick(t.eq(value_status, 0), xb, value_size))
+    xstat, xa, xb = (t.pick(t.eq(form_status, 0), xstat, form_status), t.pick(t.eq(form_status, 0), xa, b.c(0)),
+                     t.pick(t.eq(form_status, 0), xb, form_size))
+    xstat, xa = t.pick(t.eq(kind, int(Kind.TYPE)), xstat, b.c(6)), t.pick(t.eq(kind, int(Kind.TYPE)), xa, kind)
+    xstat = t.pick(t.eq(kind, 0), b.c(4), xstat)  # a type with an unresolved reference: the bootstrap decides
+    b.put(t.slot(XSTAT, index), xstat)
+    b.put(t.slot(XA, index), xa)
+    b.put(t.slot(XB, index), xb)
     return (b.add(b.add(base, length), references),)
 
 
@@ -1234,6 +1261,8 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
     result_form, first_form = t.lookup(FORMB, result), t.lookup(FORMB, first)
     tuple_like = lambda shape_: t.any(t.eq(shape_, TUPLE), t.eq(shape_, ARRAY))  # noqa: E731
 
+    cross = lambda type_, decoder: _cross(b, t, type_, decoder)  # noqa: E731
+
     def other_form(form, site):
         """A type whose one-byte form is known and neither tuple nor array is rejected by form; else deferred."""
         known = t.all(t.nonzero(form), t.lt(form, 128), t.not_(t.one_of(form, (TUPLE, ARRAY))))
@@ -1241,47 +1270,53 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
     families = (
         (t.one_of(operation, BINARY_INTEGER), (
             (t.not_(shape(2, 1, 0)), SITE_OP_ARITY, counts),
-            (t.not_(is_bits), *none),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.not_(t.all(same_first, same_second)), SITE_OP_TYPE, (result, first, second)),
         )),
         (t.any(truncate, extend), (
             (t.not_(shape(1, 1, 0)), SITE_INT_WIDTH_CONTRACT, counts),
-            (t.not_(t.all(first_bits, is_bits)), *none),
+            (t.not_(first_bits), *cross(first, 1)),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.pick(truncate, t.le(first_width, width), t.le(width, first_width)),
              code(truncate, SITE_INT_TRUNCATE_NARROWS, SITE_INT_ZERO_EXTEND_WIDENS), payload(first_width, width)),
         )),
         (rotate, (
             (t.not_(shape(1, 1, 1)), SITE_ROTATE_CONTRACT, counts),
-            (t.not_(is_bits), *none),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.not_(same_first), SITE_ROTATE_TYPE, payload(result, first)),
             (t.all(t.le(width, attribute), clamped), *none),
             (t.le(width, attribute), SITE_ROTATE_AMOUNT, payload(width, attribute)),
         )),
         (fp_binary, (
             (t.not_(shape(2, 1, 0)), SITE_FLOAT_BINARY_CONTRACT, counts),
-            (t.not_(is_float), *none),
+            (t.not_(is_float), *cross(result, 7)),
             (t.not_(t.all(same_first, same_second)), SITE_FLOAT_BINARY_TYPE, (result, first, second)),
         )),
         (compare_f, (
             (t.not_(shape(2, 1, 1)), SITE_FLOAT_COMPARE_CONTRACT, counts),
             (t.not_(same_operands), SITE_FLOAT_COMPARE_OPERANDS, payload(first, second)),
-            (t.not_(t.all(first_float, is_bits)), *none),
+            (t.not_(first_float), *cross(first, 7)),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.not_(t.eq(width, 1)), SITE_FLOAT_COMPARE_RESULT, payload(result)),
             (clamped, *none),
             (t.not_(kind_in(FLOAT_COMPARE_KINDS)), SITE_FLOAT_COMPARE_KIND, payload(attribute)),
         )),
         (to_float, (
             (t.not_(shape(1, 1, 0)), code(unsigned_to, SITE_UINT_TO_FLOAT_CONTRACT, SITE_SINT_TO_FLOAT_CONTRACT), counts),
-            (t.not_(first_bits), *none),
+            (t.not_(first_bits), *cross(first, 1)),
             (t.lt(b.c(64), first_width), code(unsigned_to, SITE_UINT_TO_FLOAT_WIDTH, SITE_SINT_TO_FLOAT_WIDTH), payload(first)),
+            (t.not_(is_float), *cross(result, 7)),
         )),
         (from_float, (
             (t.not_(shape(1, 1, 0)), code(unsigned_from, SITE_FLOAT_TO_UINT_CONTRACT, SITE_FLOAT_TO_SINT_CONTRACT), counts),
-            (t.not_(t.all(first_float, is_bits)), *none),
+            (t.not_(first_float), *cross(first, 7)),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.lt(b.c(64), width), code(unsigned_from, SITE_FLOAT_TO_UINT_WIDTH, SITE_FLOAT_TO_SINT_WIDTH), payload(result)),
         )),
         (is_(Operation.FLOAT_CONVERT), (
             (t.not_(shape(1, 1, 0)), SITE_FLOAT_CONVERT_CONTRACT, counts),
+            (t.not_(first_float), *cross(first, 7)),
+            (t.not_(is_float), *cross(result, 7)),
         )),
         (is_(Operation.AGGREGATE_MAKE), (
             (t.not_(t.all(t.eq(counts[2], 0), t.eq(counts[1], 1))), SITE_AGGREGATE_MAKE_CONTRACT, counts),
@@ -1302,7 +1337,8 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
         )),
         (is_(Operation.SUM_TAG), (
             (t.not_(shape(1, 1, 0)), SITE_SUM_TAG_CONTRACT, counts),
-            (t.not_(t.all(t.eq(first_shape, SUM), is_bits)), *none),
+            (t.not_(t.eq(first_shape, SUM)), *none),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.not_(ok), SITE_SUM_TAG_WIDTH, payload(t.pick(t.nonzero(needed), needed, b.c(1)), width)),
         )),
         (is_(Operation.SUM_GET), (
@@ -1326,9 +1362,9 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
             (t.not_(shape(2, 1, 1)), SITE_INT_COMPARE_CONTRACT, counts),
             (t.all(first_link, t.not_(link_kind), clamped), *none),
             (t.all(first_link, t.not_(link_kind)), SITE_INT_COMPARE_LINK_EQUALITY, payload(attribute)),
-            (t.all(t.not_(first_link), t.not_(first_bits)), *none),
+            (t.all(t.not_(first_link), t.not_(first_bits)), *cross(first, 1)),
             (t.not_(same_operands), SITE_INT_COMPARE_TYPE, (first, second, result)),
-            (t.not_(is_bits), *none),
+            (t.not_(is_bits), *cross(result, 1)),
             (t.not_(t.eq(width, 1)), SITE_INT_COMPARE_TYPE, (first, second, result)),
             (clamped, *none),
             (t.not_(kind_in(INT_COMPARE_KINDS)), SITE_INT_COMPARE_KIND, payload(attribute)),
@@ -1346,6 +1382,17 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
     return site, words
 
 
+def _cross(b: _Builder, t: _Typing, type_, decoder: int):
+    """S8 (ADR-248): ``decode_bits_width`` (1) or ``decode_float_format`` (7) of ``type_`` fails: the decoder's diagnostic
+    (site 0 when it would succeed, or the outcome is deferred)."""
+    stat, xa, xb = t.lookup(XSTAT, type_), t.lookup(XA, type_), t.lookup(XB, type_)
+    references = b.read(b.add(t.lookup(POSITION, type_), 1))
+    plain = t.all(t.eq(stat, 0), t.eq(references, 0), t.eq(xa, decoder))
+    decodes = t.all(plain, t.nonzero(xb)) if decoder == 1 else t.all(plain, t.one_of(xb, (1, 2)))
+    site = t.pick(t.any(decodes, t.eq(stat, 4)), b.c(SITE_NONE), b.c(SITE_CROSS_BITS if decoder == 1 else SITE_CROSS_FLOAT))
+    return site, (type_, b.c(0), b.c(0))
+
+
 def _meta_steps(b: _Builder, t: _Typing, index, meta, counts, attribute, ids, result, width, is_bits, clamped, none):
     """S8c.4: ``_verify_meta_node``'s checks in order: arity, each operand's kind, the result rule, the target operation."""
     kinds, result_count, attribute_count, result_rule = META_RULES[meta]
@@ -1361,11 +1408,11 @@ def _meta_steps(b: _Builder, t: _Typing, index, meta, counts, attribute, ids, re
               SITE_META_ARITY + index, counts)]
     for position_, kind in enumerate(kinds):
         value = b.read(b.add(ids, position_))
-        steps += [(t.not_(t.nonzero(t.lookup(WIDTH, value))), *none)] if kind is None else opaque(value, kind, SITE_META_OPERAND_TYPE)
+        steps += [(t.not_(t.nonzero(t.lookup(WIDTH, value))), *_cross(b, t, value, 1))] if kind is None else opaque(value, kind, SITE_META_OPERAND_TYPE)
     if isinstance(result_rule, int):
         steps += opaque(result, result_rule, SITE_META_RESULT_TYPE)
     else:
-        steps.append((t.not_(is_bits), *none))
+        steps.append((t.not_(is_bits), *_cross(b, t, result, 1)))
         if result_rule == "bit":
             site = SITE_META_TARGET_SUPPORT_RESULT if meta == Operation.META_TARGET_SUPPORTS else SITE_META_VERIFY_RESULT
             steps.append((t.not_(t.eq(width, 1)), site, (width if site == SITE_META_TARGET_SUPPORT_RESULT else result, b.c(0), b.c(0))))
@@ -1554,7 +1601,34 @@ class _Rendering:
         return self.cids[index].hex()
 
 
-def rejection(record, cids, items=None, operands=None, results=None, field=None, transitions=None, interface=None):
+def cross_diagnostic(bits: bool, stat: int, xa: int, xb: int, cid: bytes, body: bytes):
+    """S8 (ADR-248): ``decode_bits_width`` (``bits``) or ``decode_float_format`` of a type, by the program's outcome for
+    it: ``(code, rule, expected, actual, entity)`` (the entity is the type).  ``body``: the type's body (for the
+    malformed ULEB the outcome locates)."""
+    from xax_compiler import uleb
+
+    rule = "TYPE-BITS" if bits else "TYPE-FLOAT"
+    entity = cid.hex()
+    if stat == 6:
+        return "XAX.TYPE.EXPECTED", rule, Kind.TYPE.name, Kind(xa).name, entity
+    if stat == 1:
+        return "XAX.CANON.ULEB_UNTERMINATED", "SER-ULEB-TERMINATED", "terminating byte", "end of input", entity
+    if stat == 3:
+        return "XAX.CANON.ULEB_OVERFLOW", "SER-ULEB-BOUNDED", "at most 10 bytes", "more than 10 bytes", entity
+    if stat == 2:
+        encoded = bytes(body[xa:xa + xb])
+        value = sum((byte & 0x7F) << (7 * k) for k, byte in enumerate(encoded))
+        return "XAX.CANON.ULEB_NON_MINIMAL", "SER-ULEB-MINIMAL", uleb(value).hex(), encoded.hex(), entity
+    if stat == 5:
+        return "XAX.CANON.TRAILING_BYTES", "TYPE-BODY", 0, xa, entity
+    if bits:
+        return "XAX.TYPE.BITS", "TYPE-BITS", "form=1,width>=1", [xa, xb], entity
+    if xb not in (1, 2):
+        return "XAX.TYPE.FLOAT", "TYPE-FLOAT-FORMAT", [1, 2], xb, entity
+    return "XAX.TYPE.FLOAT", "TYPE-FLOAT", "form=7,known format", [xa, xb], entity
+
+
+def rejection(record, cids, items=None, operands=None, results=None, field=None, transitions=None, interface=None, body=None):
     """The bootstrap diagnostic ``(code, rule, expected, actual)`` for an XAX rejection record ``[site, a, b, c]``.
 
     Rendering only: XAX decided the site and its values.  ``cids`` maps the stream's type indices to CIDs;
@@ -1562,6 +1636,8 @@ def rejection(record, cids, items=None, operands=None, results=None, field=None,
     ``operands(position)``/``results(position)`` a node's operand/result type indices from the input stream;
     ``field(table, type)`` and ``transitions(type)`` read the program's per-type tables (``NativeTyping.rejection``)."""
     site, x, y, z = record
+    if site in (SITE_CROSS_BITS, SITE_CROSS_FLOAT):
+        return cross_diagnostic(site == SITE_CROSS_BITS, field(XSTAT, x), field(XA, x), field(XB, x), cids[x], body(x) if body else b"")
     if site not in _SITES:
         raise ValueError(f"unknown typing rejection site {site}")
     code, rule, expected, actual = _SITES[site]
@@ -2015,7 +2091,11 @@ class NativeTyping:
             returns_at = at + 1 + len(parameters)
             return parameters, list(self._out[returns_at + 1 : returns_at + 1 + self._out[returns_at]])
 
-        return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions, interface)
+        def body(owner):
+            position = field(POSITION, owner)
+            return bytes(words[position + 3 : position + 3 + words[position + 2]])
+
+        return rejection(self.rejection_record(node), cids, items, operands, results, field, transitions, interface, body)
 
     def linear_flow(self) -> bool:
         """After an accepted ``check``: S6a (ADR-142), whether XAX proved ``_verify_linear_flow``."""

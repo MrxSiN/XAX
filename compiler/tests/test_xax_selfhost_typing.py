@@ -520,10 +520,14 @@ class SelfhostTypingTests(unittest.TestCase):
             baseline = _outcome(None, *sample)
             self.assertEqual(baseline[1], rule)
             self.assertEqual(_outcome(self.native, *sample), baseline, rule)
-        # Undecodable types and clamped attributes stay with the bootstrap.
-        status, verdicts = _native_verdicts(self.native, [(Operation.ADD_WRAP, (OVERLONG, OVERLONG), (OVERLONG,), ()),
-                                                          (Operation.ROTATE_RIGHT, (B64,), (B64,), ((1 << 64) - 1,))])
-        self.assertEqual(list(verdicts.values()), [2, 2])
+        # S8 (ADR-248): a type the node decodes as bits that its decoder rejects (an overlong width) is decided by XAX
+        # with the decoder's diagnostic; a clamped attribute stays with the bootstrap.
+        overlong = (Operation.ADD_WRAP, (OVERLONG, OVERLONG), (OVERLONG,), ())
+        status, verdicts = _native_verdicts(self.native, [overlong, (Operation.ROTATE_RIGHT, (B64,), (B64,), ((1 << 64) - 1,))])
+        self.assertEqual(list(verdicts.values()), [REJECTED, 2])
+        baseline = _outcome(None, *overlong)
+        self.assertEqual(baseline[1], "SER-ULEB-MINIMAL")
+        self.assertEqual(_outcome(self.native, *overlong), baseline)
         with self.assertRaises(ValueError):
             rejection((99, 0, 0, 0), [])
 

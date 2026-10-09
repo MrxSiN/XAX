@@ -143,13 +143,8 @@ def _verify(reader, use_xax: bool):
 
 
 def _general_or_concurrency(target) -> bool:
-    """The targets XAX decides: identity-only carriers, every profile, except accelerator fields on a
-    non-accelerator architecture (S6b.4c, ADR-149)."""
-    length, at = target.body[0], 1
-    if len(target.body) == at + length:
-        return True
-    profile, architecture = target.body[at + length], target.body[at + length + 1]
-    return profile in (1, 2, 4, 5) or (profile, architecture) == (3, 4)
+    """The targets XAX decides: every target (S8, ADR-248: accelerator fields on any architecture too)."""
+    return True
 
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
