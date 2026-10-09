@@ -16,7 +16,7 @@ from __future__ import annotations
 import xax_compiler as _X
 import xax_selfhost_typing as _T
 from xax_compiler import Kind, Operation, TerminatorKind
-from xax_selfhost_facts import E, NONE, H_COUNT, _Node, _function, _require, _uleb
+from xax_selfhost_facts import E, M, NONE, H_COUNT, _Node, _function, _reject, _require, _uleb
 
 SCOPES = (1, 3)  # AtomicScope values
 FAMILIES = (1, 5)  # AtomicFamily values
@@ -101,14 +101,18 @@ def _scope_bit(e: E, scope):
     return e.sel(e.eq(scope, 1), 2, e.sel(e.eq(scope, 2), 4, e.sel(e.eq(scope, 3), 8, 0)))
 
 
-def _target_op(tables):
-    """``_verify_target_node`` for one ``target.op`` node; the next node cursor, or NONE."""
+NO_CONTRACT = NONE - 1  # ``_target_contract``: a valid target that declares no contract for the operation
+
+
+def _target_contract(tables):
+    """``decode_native_target`` over a target object: the input position of the contract for operation ``wanted``,
+    ``NO_CONTRACT``, or NONE (a target the bootstrap rejects, or one with no contracts).  S8 (ADR-248): a helper
+    of its own, so ``target.op`` stays within the backend's per-function limits."""
 
     def build(e: E):
         p = e.p
-        n = _Node(e)
         member = lambda value, bounds: e.both(e.le(bounds[0], value), e.le(value, bounds[1]))  # noqa: E731
-        entity = n.entity
+        entity = p["entity"]
         _require(e, e.lt(entity, e.hd(H_COUNT)))
         position = e.table(_T.POSITION, entity)
         _require(e, e.both(e.eq(e.rd(position), int(Kind.TARGET)), e.eq(e.rd(e.add(position, 1)), 0)))
@@ -202,7 +206,7 @@ def _target_op(tables):
                 identity = r.uleb("operation_id")
                 _require(e, e.either(e.not_(checked()), e.eq(p["c"], 0), e.lt(p["id_previous"], identity)))
                 e.set("id_previous", p["operation_id"])
-                e.if_(e.both(e.eq(p["match"], NONE), e.eq(p["operation_id"], n.attr(0))), lambda: e.set("match", p["contract_start"]))
+                e.if_(e.both(e.eq(p["match"], NONE), e.eq(p["operation_id"], p["wanted"])), lambda: e.set("match", p["contract_start"]))
                 _require(e, e.either(e.not_(checked()), e.ne(r.uleb("semantic"), 0)))
                 _require(e, e.either(e.ne(p["profile"], 3), e.le(r.uleb("opcode"), 255)))
                 for signature in ("operand", "result"):
@@ -270,23 +274,53 @@ def _target_op(tables):
             e.both(e.eq(arch, 4), one_of(five, ((3, 4, 3, 32, 64),))),
         ]
         _require(e, e.either(*rules))
-        # The node against its contract.
         _require(e, e.ne(p["contracts"], 0))
-        _require(e, e.eq(n.na, 4))
+        e.give(e.sel(e.eq(p["match"], NONE), NO_CONTRACT, p["match"]))
+
+    return _function(("entity", "wanted"), build, tables)
+
+
+def _target_op(tables, contract):
+    """``_verify_target_node`` for one ``target.op`` node; the next node cursor, or NONE."""
+
+    def build(e: E):
+        p = e.p
+        n = _Node(e)
+        member = lambda value, bounds: e.both(e.le(bounds[0], value), e.le(value, bounds[1]))  # noqa: E731
+        entity = n.entity
+        e.var("match", e.call(contract, entity, n.attr(0)))
         _require(e, e.ne(p["match"], NONE))
+        position = e.table(_T.POSITION, entity)
+        e.var("t_at", p["match"])
+        e.var("t_end", e.add(e.add(position, 3), e.rd(e.add(position, 2))))
+        r = _Reader(e, "t_at", "t_end")
+        # S8 (ADR-248): each check below is ``_verify_target_node``'s, in its order, with its exact rejection.
+        _reject(e, e.eq(n.na, 4), M["TARGET_ATTRIBUTES"], n.na)
+        _reject(e, e.ne(p["match"], NO_CONTRACT), M["TARGET_DEFINED"], entity, n.attr(0))
         scope = n.attr(1)
         e.set("t_at", p["match"])
         for name in ("operation_id", "semantic", "opcode"):
             r.uleb(name)
-        kinds = {}
-        for signature, count, type_of in (("operand", n.no, n.tid), ("result", n.nr, n.rtid)):
+        for signature in ("operand", "result"):  # skipped here: scope and spaces come first
             r.uleb(f"{signature}_constraints")
-            _require(e, e.eq(p[f"{signature}_constraints"], count))
+            e.var(f"{signature}_at", p["t_at"])
+            e.for_(f"{signature}_skip", 0, p[f"{signature}_constraints"], lambda: [r.uleb(f"skip{k}") for k in range(3)])
+        e.var("scope_supported", 0)
+        r.listing("contract_scope", each=lambda value, k: e.if_(e.eq(value, scope), lambda: e.set("scope_supported", 1)))
+        _reject(e, member(scope, SCOPES), M["TARGET_SCOPE_ENUM"], scope)
+        _reject(e, e.ne(p["scope_supported"], 0), M["TARGET_SCOPE_SUPPORTED"], entity, n.attr(0), scope)
+        _reject(e, e.both(e.eq(r.uleb("source_space"), n.attr(2)), e.eq(r.uleb("destination_space"), n.attr(3))), M["TARGET_SPACES"],
+                entity, n.attr(0), n.attr(2), n.attr(3))
+        _reject(e, e.both(e.eq(p["operand_constraints"], n.no), e.eq(p["result_constraints"], n.nr)), M["TARGET_ARITY"],
+                p["operand_constraints"], p["result_constraints"], n.no, n.nr)
+        kinds = {}
+        for label, (signature, count, type_of) in enumerate((("operand", n.no, n.tid), ("result", n.nr, n.rtid))):
+            e.set("t_at", p[f"{signature}_at"])
             kinds[signature] = e.alloc(e.add(count, 1))
             e.var(f"{signature}_kinds", kinds[signature])
             _require(e, e.ne(p[f"{signature}_kinds"], NONE))
 
-            def matches(signature=signature, type_of=type_of):
+            def matches(signature=signature, type_of=type_of, label=label):
                 k = p[f"{signature}_k"]
                 kind, primary, secondary = (r.uleb(f"{signature}_{field}") for field in ("kind", "primary", "secondary"))
                 e.st(e.add(p[f"{signature}_kinds"], k), kind)
@@ -294,19 +328,15 @@ def _target_op(tables):
                 element = e.table(_T.PELEM, type_index)
                 pointer = e.ne(e.table(_T.PTR, type_index), 0)
                 width = e.table(_T.WIDTH, type_index)
-                _require(e, e.either(
+                _reject(e, e.either(
                     e.both(e.eq(kind, BITS), e.ne(width, 0), e.eq(width, primary), e.eq(secondary, 0)),
                     e.both(e.eq(kind, RESOURCE), e.ne(e.table(_T.RESOURCE, type_index), 0), e.eq(e.table(_T.RKIND, type_index), primary), e.eq(e.table(_T.RSTATE, type_index), secondary)),
                     e.both(e.eq(kind, EFFECT), e.ne(e.table(_T.EFFECT, type_index), 0), e.eq(e.table(_T.EDOMAIN, type_index), primary), e.eq(e.table(_T.EINST, type_index), secondary)),
                     e.both(e.eq(kind, FUNCTION_POINTER), e.eq(primary, 0), e.eq(secondary, 0), pointer, e.eq(e.table(_T.OPAQUE, element), OPAQUE_FUNCTION)),
                     e.both(e.eq(kind, POINTER), e.eq(primary, 0), e.eq(secondary, 0), pointer),
-                ))
+                ), M["TARGET_TYPE"], label, k, kind, primary, secondary, type_index)
 
             e.for_(f"{signature}_k", 0, count, matches)
-        e.var("scope_supported", 0)
-        r.listing("contract_scope", each=lambda value, k: e.if_(e.eq(value, scope), lambda: e.set("scope_supported", 1)))
-        _require(e, e.both(member(scope, SCOPES), e.ne(p["scope_supported"], 0)))
-        _require(e, e.both(e.eq(r.uleb("source_space"), n.attr(2)), e.eq(r.uleb("destination_space"), n.attr(3))))
 
         # Resource transitions between same-kind, same-instance operand and result resources.
         def transitions():
