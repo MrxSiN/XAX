@@ -126,11 +126,18 @@ OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a cons
 # S8c.24 (ADR-242): a well-formed constant ``_decode_constant`` rejects: its site, value offset in the body, value bytes,
 # and the type's width (bits) or float width.
 CREJ, COFF, CLEN, CWIDTH = 28, 29, 30, 31
-TABLES = 32
+C4, C5 = 32, 33  # S8c.26 (ADR-244): a resource type's flags and instance
+TABLES = 34
 CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE")
 # S8c.25 (ADR-243): ``_verify_type`` rejections of scalar and unknown forms, in the same tables (COFF: the form, CLEN:
 # the second body value, CWIDTH: the bytes left after it).
-TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "TYPE_LINK", "TYPE_FORM")
+TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "TYPE_LINK", "TYPE_FORM",
+              # S8c.26 (ADR-244): opaque, effect, sum, and pointer forms, before any element type is verified (CWIDTH: the
+              # quoted third value: bytes left, an index, a permission, or an alignment).
+              "TYPE_OPAQUE_KIND", "TYPE_OPAQUE_CANONICAL", "TYPE_EFFECT_DOMAIN", "TYPE_EFFECT_CANONICAL", "TYPE_SUM_NONEMPTY",
+              "TYPE_REF_INDEX", "TYPE_POINTER_PERMISSION", "TYPE_POINTER",
+              # S8c.26 (ADR-244): resource and array forms.
+              "TYPE_RESOURCE_STACK_OWNER", "TYPE_RESOURCE_CANONICAL", "TYPE_ARRAY_ELEMENT")
 TYPE_SITE_BASE = 16
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
@@ -826,11 +833,68 @@ def _object_entry(b: _Builder, t: _Typing, index):
     unknown = t.any(t.eq(form, 0), t.not_(t.le(form, 11)))
     type_site = t.pick(trailing, b.c(TYPE_SITE_BASE + 1), t.pick(bits, b.c(TYPE_SITE_BASE + 2), t.pick(float_format, b.c(TYPE_SITE_BASE + 3), t.pick(
         float_refs, b.c(TYPE_SITE_BASE + 4), t.pick(link, b.c(TYPE_SITE_BASE + 5), t.pick(unknown, b.c(TYPE_SITE_BASE + 6), b.c(0)))))))
+    code = lambda name: b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))  # noqa: E731
+    # Values after the second: a ULEB chain from ``after`` (each canonical and inside the body, else the chain stops).
+    third, third_size, third_ok = t.uleb(after)
+    third_ok = t.all(second_ok, third_ok, t.le(b.add(after, third_size), end))
+    at4 = b.add(after, third_size)
+    fourth, fourth_size, fourth_ok = t.uleb(at4)
+    fourth_ok = t.all(third_ok, fourth_ok, t.le(b.add(at4, fourth_size), end))
+    at5 = b.add(at4, fourth_size)
+    fifth, fifth_size, fifth_ok = t.uleb(at5)
+    fifth_ok = t.all(fourth_ok, fifth_ok, t.le(b.add(at5, fifth_size), end))
+    after5 = b.add(at5, fifth_size)
+    # opaque (5): trailing, kind, references.
+    opaque_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.nonzero(left), code("TYPE_TRAILING"), t.pick(
+        t.not_(t.all(t.nonzero(second), t.le(second, 7))), code("TYPE_OPAQUE_KIND"), t.pick(t.nonzero(references), code("TYPE_OPAQUE_CANONICAL"), b.c(0)))))
+    # effect (3): the domain, then an optional instance, trailing bytes, and the canonical body.
+    has_instance = t.nonzero(left)
+    effect_left = t.pick(has_instance, b.sub(end, at4), b.c(0))
+    effect_canonical = t.any(t.nonzero(references), t.all(has_instance, t.eq(third, 0)))
+    effect_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.not_(t.all(t.nonzero(second), t.le(second, 11))), code("TYPE_EFFECT_DOMAIN"), t.pick(
+        t.all(has_instance, t.not_(third_ok)), b.c(0), t.pick(t.nonzero(effect_left), code("TYPE_TRAILING"), t.pick(
+            effect_canonical, code("TYPE_EFFECT_CANONICAL"), b.c(0))))))
+    # sum (10): at least one variant.
+    sum_site = t.pick(t.all(second_ok, t.eq(second, 0)), code("TYPE_SUM_NONEMPTY"), b.c(0))
+    # pointer (2): space, element index (in range), permission, alignment, end, permission value, shape.
+    pointer_left = b.sub(end, after5)
+    power = t.eq(b.op(Operation.BIT_AND, fifth, b.sub(fifth, 1)), 0)
+    pointer_site = t.pick(t.not_(third_ok), b.c(0), t.pick(t.le(references, third), code("TYPE_REF_INDEX"), t.pick(t.not_(fifth_ok), b.c(0), t.pick(
+        t.nonzero(pointer_left), code("TYPE_TRAILING"), t.pick(t.not_(t.all(t.nonzero(fourth), t.le(fourth, 3))), code("TYPE_POINTER_PERMISSION"), t.pick(
+            t.any(t.eq(second, 0), t.eq(fifth, 0), t.not_(power)), code("TYPE_POINTER"), b.c(0)))))))
+    pointer_third = t.pick(t.le(references, third), third, t.pick(t.nonzero(pointer_left), pointer_left, t.pick(
+        t.not_(t.all(t.nonzero(fourth), t.le(fourth, 3))), fourth, fifth)))
+    # resource (4): the stack-owner short form, or the long form with no transitions.
+    sixth, sixth_size, sixth_ok = t.uleb(after5)
+    sixth_ok = t.all(fifth_ok, sixth_ok, t.le(b.add(after5, sixth_size), end))
+    after6 = b.add(after5, sixth_size)
+    short = t.all(third_ok, t.eq(b.add(after, third_size), end))
+    owner_bad = t.any(t.nonzero(references), t.not_(t.eq(second, 1)), t.not_(t.eq(third, 1)))
+    unknown_flags = t.nonzero(b.op(Operation.BIT_AND, fourth, ~15 & ((1 << 64) - 1)))
+    plain_owner = t.all(t.eq(second, 1), t.eq(third, 1), t.eq(fourth, 4), t.eq(fifth, 0))
+    long_bad = t.any(t.nonzero(references), t.eq(second, 0), t.eq(third, 0), unknown_flags, plain_owner)
+    resource_site = t.pick(t.not_(third_ok), b.c(0), t.pick(short, t.pick(owner_bad, code("TYPE_RESOURCE_STACK_OWNER"), b.c(0)), t.pick(
+        t.not_(t.all(sixth_ok, t.eq(sixth, 0))), b.c(0), t.pick(t.nonzero(b.sub(end, after6)), code("TYPE_TRAILING"), t.pick(
+            long_bad, code("TYPE_RESOURCE_CANONICAL"), b.c(0))))))
+    # array (9): element index in range, count, end, then a decoded element that is a proof type or not the only reference.
+    element = b.read(b.add(end, t.pick(t.lt(second, references), second, b.c(0))))
+    proof = t.any(t.lookup(EFFECT, element), t.lookup(RESOURCE, element))
+    array_left = b.sub(end, b.add(after, third_size))
+    array_site = t.pick(t.not_(second_ok), b.c(0), t.pick(t.le(references, second), code("TYPE_REF_INDEX"), t.pick(t.not_(third_ok), b.c(0), t.pick(
+        t.nonzero(array_left), code("TYPE_TRAILING"), t.pick(t.not_(_known(t, element)), b.c(0), t.pick(
+            t.any(proof, t.not_(t.eq(references, 1))), code("TYPE_ARRAY_ELEMENT"), b.c(0)))))))
+    array_third = t.pick(t.le(references, second), second, array_left)
+    type_site = t.pick(t.eq(form, 5), opaque_site, t.pick(t.eq(form, 3), effect_site, t.pick(t.eq(form, 10), sum_site, t.pick(t.eq(form, 2), pointer_site, t.pick(
+        t.eq(form, 4), resource_site, t.pick(t.eq(form, 9), array_site, type_site))))))
+    type_third = t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
+        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left)))))
+    b.put(t.slot(C4, index), fourth)
+    b.put(t.slot(C5, index), fifth)
     a_type = t.all(t.eq(kind, int(Kind.TYPE)), form_ok, t.le(b.add(base, form_size), end))
     b.put(t.slot(CREJ, index), t.pick(constant, site, t.pick(a_type, type_site, b.c(0))))
     b.put(t.slot(COFF, index), t.pick(constant, b.sub(parts["data"], parts["base"]), form))
     b.put(t.slot(CLEN, index), t.pick(constant, count, second))
-    b.put(t.slot(CWIDTH, index), t.pick(constant, t.pick(t.eq(formb, 7), float_width, width), left))
+    b.put(t.slot(CWIDTH, index), t.pick(constant, t.pick(t.eq(formb, 7), float_width, width), type_third))
 
 
 def _node_entry(b: _Builder, t: _Typing, index, carried):
@@ -1591,10 +1655,38 @@ def _native_image() -> tuple[bytes, int]:
     return host_image(*load_typing_program(), "typing")
 
 
-def _type_diagnostic(obj, name, form, second, left):
+def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
     """S8c.25 (ADR-243): ``_verify_type``'s diagnostic ``(code, rule, expected, actual, dependencies, repair)``."""
+    import xax_compiler as X
+
     if name == "TYPE_TRAILING":
         return "XAX.CANON.TRAILING_BYTES", "TYPE-BODY", 0, left, (), ()
+    if name == "TYPE_OPAQUE_KIND":
+        return "XAX.TYPE.OPAQUE", "TYPE-OPAQUE-KIND", list(X.OpaqueKind), second, (), ()
+    if name == "TYPE_OPAQUE_CANONICAL":
+        return "XAX.TYPE.OPAQUE", "TYPE-OPAQUE-CANONICAL", "no references", len(obj.references), (), ()
+    if name == "TYPE_EFFECT_DOMAIN":
+        return "XAX.TYPE.EFFECT", "TYPE-EFFECT-DOMAIN", list(X.EffectDomain), second, (), ()
+    if name == "TYPE_EFFECT_CANONICAL":
+        return "XAX.TYPE.EFFECT", "TYPE-EFFECT-CANONICAL", "domain plus optional positive instance", obj.body.hex(), (), ()
+    if name == "TYPE_SUM_NONEMPTY":
+        return "XAX.TYPE.SUM", "TYPE-SUM-NONEMPTY", ">= 1", 0, (), ()
+    if name == "TYPE_RESOURCE_STACK_OWNER":
+        return "XAX.TYPE.RESOURCE", "TYPE-RESOURCE-STACK-OWNER", "resource<stack-storage,live>", [second, left], (), ()
+    if name == "TYPE_RESOURCE_CANONICAL":
+        return ("XAX.TYPE.RESOURCE", "TYPE-RESOURCE-CANONICAL", "positive kind/state, canonical flags/instance/transitions",
+                [second, left, fourth, fifth, []], (), ())
+    if name == "TYPE_ARRAY_ELEMENT":
+        return ("XAX.TYPE.ARRAY", "TYPE-ARRAY-VALUE-ELEMENT", "one non-proof value element",
+                [obj.references[second].hex(), [cid.hex() for cid in obj.references]], (), ())
+    if name == "TYPE_REF_INDEX" and form == 9:
+        return "XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {len(obj.references)}", second, (), ()
+    if name == "TYPE_REF_INDEX":
+        return "XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {len(obj.references)}", left, (), ()
+    if name == "TYPE_POINTER_PERMISSION":
+        return "XAX.TYPE.POINTER_PERMISSION", "TYPE-POINTER-PERMISSION", list(X.Permission), left, (), ()
+    if name == "TYPE_POINTER":
+        return ("XAX.TYPE.POINTER", "TYPE-POINTER", "form=2,positive address space,power-of-two alignment", [form, second, left], (), ())
     if name == "TYPE_BITS":
         return "XAX.TYPE.BITS", "TYPE-BITS", "form=1,width>=1", [form, second], (), ()
     if name == "TYPE_FLOAT_FORMAT":
@@ -1666,7 +1758,7 @@ class NativeTyping:
             obj = objects[cid]
             offset, length, width = table(COFF, index), table(CLEN, index), table(CWIDTH, index)
             if site > TYPE_SITE_BASE:
-                rejected[cid] = _type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width)
+                rejected[cid] = _type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index))
                 continue
             value = obj.body[offset:offset + length]
             type_hex, name = obj.references[0].hex(), CONSTANT_SITES[site - 1]
