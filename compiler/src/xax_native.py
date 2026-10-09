@@ -105,6 +105,21 @@ def seal(address: int, size: int) -> None:
         raise OSError(ctypes.get_errno(), "mprotect(PROT_READ | PROT_EXEC) failed")
 
 
+def zeroed_array(element, count: int):
+    """A ctypes array of ``count`` zero ``element``s backed by an anonymous private mapping (ADR-248).
+
+    ``(element * count)()`` zero-fills its whole extent eagerly and keeps every page resident; the component views
+    are hundreds of MiB, most of which a call never touches.  The kernel zero-fills a mapped page on first touch
+    instead, so the contents every caller sees are identical (all zero until written, never re-zeroed between
+    calls, as before) while untouched pages cost neither time nor resident memory.  The array keeps its mapping
+    alive (``_mapping``; ``from_buffer`` also holds an export, so the mapping cannot be closed under it)."""
+    flags = {"flags": mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS} if hasattr(mmap, "MAP_ANONYMOUS") else {}
+    mapping = mmap.mmap(-1, max(count * ctypes.sizeof(element), 1), **flags)
+    array = (element * count).from_buffer(mapping)
+    array._mapping = mapping
+    return array
+
+
 def executable_mapping(code: bytes) -> tuple[mmap.mmap, int]:
     """``(mapping, address)`` of ``code`` in sealed read+execute memory.  Keep ``mapping`` alive while calling."""
     mapping, address = writable_mapping(len(code))

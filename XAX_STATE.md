@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## Lazily zeroed component views — 2026-10-09 (ADR-248)
+
+The XAX-hosted components' views are lazily zeroed anonymous mappings. Warm first construct: 2.24 s and +765 MB peak RSS before, 1.96 s and +43 MB after; no change to any store, CID, or artifact.
+
 ## S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
 
 The XAX typing program now rejects constants with an out-of-range type index, a truncated value, or trailing bytes. Still Python: resource transitions, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
