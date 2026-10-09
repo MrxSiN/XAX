@@ -65,7 +65,7 @@ ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
 MODULE_CHILDREN = (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT)
 # Globals (the first arena words): table pointers.
 GLOBALS = ARENA_AT
-G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE, G_EXIT, G_SINK = range(9)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
+G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE, G_EXIT, G_SINK, G_GROUP_SIZE = range(10)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
 _FN: dict = {}
 
 
@@ -91,6 +91,14 @@ def _reference(e: E, obj, k):
 
 def _payload(e: E, obj):
     return e.add(e.add(e.add(_rec(e, obj), 2), _references(e, obj)), 5)
+
+
+def _graph_rejected(e: E, graph):
+    """S8 (ADR-248): the XAX graph decoder rejected this graph's body; its payload is the stream prefix before the
+    rejection (the word after the body bytes)."""
+    stream = _payload(e, graph)
+    body_len_at = e.add(stream, e.rd(e.sub(stream, 1)))
+    return e.ne(e.rd(e.add(e.add(body_len_at, 1), e.rd(body_len_at))), 0)
 
 
 def _type_ok(e: E, obj):
@@ -294,8 +302,9 @@ def _function_ok(tables):
             # ``decode_group_member_function``: [group, member], the group proven (S6b.3), member < its size.
             e.var("member", _read(e, "fa", p["fend"], f, p["fbody"]))
             _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_MEMBER_TRAILING"], e.sub(p["fend"], p["fa"]))
-            _no(e, e.ne(e.ld(e.add(VERDICTS_AT, p["graph"])), 1))
-            size = e.ld(e.ld(e.add(GRAPHS_AT, p["graph"])))
+            # S8 (ADR-248): ``_decode_recursion_group`` is all the bootstrap runs here (the group verifies itself).
+            size = e.ld(e.add(_g(e, G_GROUP_SIZE), p["graph"]))
+            _no(e, e.eq(size, NONE))
             _reject(e, e.le(size, p["member"]), f, S["FUNCTION_MEMBER_RANGE"], size, p["member"])
             e.st(e.add(GRAPHS_AT, f), NONE)
             e.give(1)
@@ -306,7 +315,9 @@ def _function_ok(tables):
         _mark(e, p["gi"])
         e.var("iface", _interface(e, f, "fa", p["fend"], S["FUNCTION_REF_INDEX"], p["fbody"]))
         _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_TRAILING"], e.sub(p["fend"], p["fa"]))
-        # After the bootstrap's graph parse: the graph contract, then the references used.
+        # After the bootstrap's graph parse: the graph contract, then the references used.  A graph the decoder
+        # rejected raises in that parse (its glue decides what precedes the rejection).
+        _no(e, _graph_rejected(e, p["graph"]))
         e.var("contract", e.call(_FN["graph"], p["graph"], p["iface"], NONE, NONE))
         _reject(e, e.eq(p["contract"], 7), f, S["FUNCTION_GROUP_CONTEXT"], p["graph"])
         _reject(e, e.eq(p["contract"], 3), f, S["FUNCTION_ENTRY_CONTRACT"], p["graph"], _g(e, G_LIST))
@@ -566,10 +577,12 @@ def _group_ok(tables):
         e.for_("i", 0, p["count"], member)
         _reject(e, e.ne(p["ga"], p["gend"]), o, S["GROUP_TRAILING"], e.sub(p["gend"], p["ga"]))
         _reject(e, e.eq(_all_marked(e, p["refs"]), 0), o, S["GROUP_UNUSED"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
+        e.st(e.add(_g(e, G_GROUP_SIZE), o), p["count"])  # ``_decode_recursion_group`` accepts
 
         def contract():
             g = e.ld(e.add(e.add(p["graphs"], 1), p["i"]))
             e.var("cg", g)
+            _no(e, _graph_rejected(e, p["cg"]))
             e.var("buffer", e.alloc(e.add(e.rd(e.sub(_payload(e, p["cg"]), 1)), 1)))  # at most one call per stream word
             _no(e, e.eq(p["buffer"], NONE))
             e.st(e.add(p["callsof"], p["i"]), p["buffer"])
@@ -1220,12 +1233,20 @@ def _glue_ok(tables):
         e.var("gs", _payload(e, g))
         e.var("body_len_at", e.add(p["gs"], e.rd(e.sub(p["gs"], 1))))
         e.var("body_at", e.add(p["body_len_at"], 1))
+        e.var("prefix", e.flag(_graph_rejected(e, g)))
+        e.var("gend", e.add(p["gs"], e.rd(e.sub(p["gs"], 1))))
+        # S8 (ADR-248): over a rejected graph's prefix, the checks run until the prefix ends (the decoder's
+        # rejection follows in body order); the stream of an accepted graph never ends early.
+        need = lambda words: e.if_(e.lt(p["gend"], e.add(p["ga"], words)), lambda: e.give(0))  # noqa: E731
+        e.var("ga", p["gs"])
+        need(2)
         e.var("B", e.rd(p["gs"]))
-        e.var("ga", e.add(p["gs"], 2))
+        e.set("ga", e.add(p["gs"], 2))
         for name in ("ti", "tobj", "pc", "nc", "opc", "ei", "oc", "rc", "kind", "ac", "vc", "tsize", "tat", "b0", "b1", "b2", "aq", "aq_stop", "vq", "vq_stop", "trap_error"):
             e.var(name, 0)
 
         def type_reference():
+            need(1)
             e.var("ti", e.rd(p["ga"]))
             e.set("ga", e.add(p["ga"], 1))
             _no(e, e.le(p["refs"], p["ti"]))
@@ -1238,18 +1259,22 @@ def _glue_ok(tables):
             e.set("ga", e.add(e.add(p["ga"], 3), e.flag(e.eq(e.rd(p["ga"]), 1))))
 
         def block():
+            need(1)
             e.var("pc", e.rd(p["ga"]))
             e.set("ga", e.add(p["ga"], 1))
             e.for_("pq", 0, p["pc"], type_reference)
+            need(1)
             e.var("nc", e.rd(p["ga"]))
             e.set("ga", e.add(p["ga"], 1))
 
             def node():
+                need(1)
                 e.var("opc", e.rd(p["ga"]))
                 e.set("ga", e.add(p["ga"], 1))
                 e.if_(e.eq(p["opc"], int(Operation.CALL_GROUP_MEMBER)), lambda: e.set("ga", e.add(p["ga"], 3)))
 
                 def entity():
+                    need(1)
                     e.var("ei", e.rd(p["ga"]))
                     e.set("ga", e.add(p["ga"], 1))
                     _no(e, e.le(p["refs"], p["ei"]))
@@ -1257,25 +1282,30 @@ def _glue_ok(tables):
                     _mark(e, p["ei"])
 
                 e.if_(e.either(*(e.eq(p["opc"], code) for code in ENTITY_CODES)), entity)
+                need(1)
                 e.var("oc", e.rd(p["ga"]))
                 e.set("ga", e.add(p["ga"], 1))
                 e.for_("oq", 0, p["oc"], skip_value)
+                need(1)
                 e.var("rc", e.rd(p["ga"]))
                 e.set("ga", e.add(p["ga"], 1))
                 e.for_("rq", 0, p["rc"], type_reference)
                 e.if_(e.either(*(e.eq(p["opc"], code) for code in ATTRIBUTE_CODES)), lambda: e.set("ga", e.add(e.add(p["ga"], 1), e.rd(p["ga"]))))
 
             e.for_("nq", 0, p["nc"], node)
+            need(1)
             e.var("kind", e.rd(p["ga"]))
             e.set("ga", e.add(p["ga"], 1))
 
             def edge():
+                need(2)
                 e.set("ga", e.add(p["ga"], 1))
                 e.var("ac", e.rd(p["ga"]))
                 e.set("ga", e.add(p["ga"], 1))
                 e.for_("aq", 0, p["ac"], skip_value)
 
             def trap():
+                need(2)
                 e.var("tsize", e.rd(p["ga"]))
                 e.var("tat", e.add(p["body_at"], e.rd(e.add(p["ga"], 1))))
                 e.set("ga", e.add(p["ga"], 2))
@@ -1303,6 +1333,7 @@ def _glue_ok(tables):
             e.if_(e.eq(p["kind"], 1), edge)
             e.if_(e.eq(p["kind"], 2), lambda: (skip_value(), edge(), edge()))
             def returning():
+                need(1)
                 e.set("vc", e.rd(p["ga"]))
                 e.set("ga", e.add(p["ga"], 1))
                 e.for_("vq", 0, p["vc"], skip_value)
@@ -1311,6 +1342,7 @@ def _glue_ok(tables):
             e.if_(e.eq(p["kind"], 4), trap)
 
         e.for_("b", 0, p["B"], block)
+        _no(e, e.ne(p["prefix"], 0))  # the decoder's rejection, not reference use, comes next
         _no(e, e.eq(p["all_resolved"], 0))
         _reject(e, e.eq(_all_marked(e, p["refs"]), 0), g, S["GRAPH_UNUSED"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
         e.give(1)
@@ -2208,10 +2240,12 @@ def _program(tables):
         O = e.rd(0)
         e.var("O", O)
         e.st(GLOBALS + G_O, p["O"])
-        for slot, size in ((G_REC, p["O"]), (G_MARK, 1 << 16)):
+        for slot, size in ((G_REC, p["O"]), (G_MARK, 1 << 16), (G_GROUP_SIZE, p["O"])):
             table = e.alloc(e.add(size, 1))
             e.if_(e.eq(table, NONE), lambda: e.give(NONE))
             e.st(GLOBALS + slot, table)
+        # S8 (ADR-248): a recursion group's member count once its member list decodes (NONE before or without that).
+        e.for_("o", 0, p["O"], lambda: e.st(e.add(_g(e, G_GROUP_SIZE), p["o"]), NONE))
         e.var("ra", 2)
 
         def record():
@@ -2221,7 +2255,7 @@ def _program(tables):
             payload_at = e.add(e.add(e.add(p["ra"], 2), references), 4)
             e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
             e.if_(e.eq(_kind(e, p["o"]), int(Kind.GRAPH_FRAGMENT)),
-                  lambda: e.set("ra", e.add(e.add(p["ra"], 1), e.rd(p["ra"]))))  # [body length, body bytes]
+                  lambda: e.set("ra", e.add(e.add(p["ra"], 2), e.rd(p["ra"]))))  # [body length, body bytes, decoder rejected]
 
         e.for_("o", 0, p["O"], record)
         e.if_(e.lt(IN_WORDS, e.add(p["ra"], p["O"])), lambda: e.give(NONE))
@@ -3067,11 +3101,11 @@ def object_table(objects, head: list[int]) -> list[int] | None:
         if obj.kind == Kind.GRAPH_FRAGMENT:
             if len(obj.body) > decoder.capacity:
                 return None
-            status, stream = decoder.decode(obj.body, len(obj.references))
-            if status != 0:
+            status, stream, diagnostic = decoder.decode_with_diagnostic(obj.body, len(obj.references), obj.cid)
+            if status != 0 and diagnostic is None:
                 return None
-            payload = list(stream)
-            words += [len(payload), *payload, len(obj.body), *obj.body]  # the body bytes (recursion-group keys)
+            payload = list(stream)  # S8 (ADR-248): a rejected body's stream prefix, flagged after the body bytes
+            words += [len(payload), *payload, len(obj.body), *obj.body, int(status != 0)]  # the body bytes (recursion-group keys)
             continue
         elif obj.kind in (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP,
                           Kind.PACKAGE, Kind.BUILD):
