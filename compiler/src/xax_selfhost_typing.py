@@ -137,7 +137,9 @@ TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "
               "TYPE_OPAQUE_KIND", "TYPE_OPAQUE_CANONICAL", "TYPE_EFFECT_DOMAIN", "TYPE_EFFECT_CANONICAL", "TYPE_SUM_NONEMPTY",
               "TYPE_REF_INDEX", "TYPE_POINTER_PERMISSION", "TYPE_POINTER",
               # S8c.26 (ADR-244): resource and array forms.
-              "TYPE_RESOURCE_STACK_OWNER", "TYPE_RESOURCE_CANONICAL", "TYPE_ARRAY_ELEMENT")
+              "TYPE_RESOURCE_STACK_OWNER", "TYPE_RESOURCE_CANONICAL", "TYPE_ARRAY_ELEMENT",
+              # S8c.27 (ADR-245): tuple and sum items (C4: the used-reference bit mask).
+              "TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT", "TYPE_LIST_UNUSED")
 TYPE_SITE_BASE = 16
 # S4d.2a: types the memory-fact system tracks (besides pointers and other undecoded forms).
 MEMORY_EFFECT_DOMAIN = 1
@@ -884,11 +886,50 @@ def _object_entry(b: _Builder, t: _Typing, index):
         t.nonzero(array_left), code("TYPE_TRAILING"), t.pick(t.not_(_known(t, element)), b.c(0), t.pick(
             t.any(proof, t.not_(t.eq(references, 1))), code("TYPE_ARRAY_ELEMENT"), b.c(0)))))))
     array_third = t.pick(t.le(references, second), second, array_left)
-    type_site = t.pick(t.eq(form, 5), opaque_site, t.pick(t.eq(form, 3), effect_site, t.pick(t.eq(form, 10), sum_site, t.pick(t.eq(form, 2), pointer_site, t.pick(
-        t.eq(form, 4), resource_site, t.pick(t.eq(form, 9), array_site, type_site))))))
-    type_third = t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
-        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left)))))
-    b.put(t.slot(C4, index), fourth)
+    # tuple (8) and sum (10): every item index in order (the first out of range rejects), the end, then each item
+    # (a decoded type, the first proof type rejects), then every reference used.
+    listy = t.any(t.eq(form, 8), t.eq(form, 10))
+    marks = t.slot(TABLES, b.c(0))
+    listable = t.all(kind_is_type := t.eq(kind, int(Kind.TYPE)), listy, second_ok, t.le(references, MARKS), t.le(second, length))
+    steps = t.pick(listable, second, b.c(0))
+    b.for_range(b.c(0), t.pick(listable, references, b.c(0)), lambda k, c: (b.put(b.add(marks, k), 0),) and (), ())
+    none_word = b.c((1 << 64) - 1)
+
+    def read_item(k, carried):
+        at, ok, bad = carried
+        value, size, value_ok = t.uleb(at)
+        good = t.all(ok, value_ok, t.le(b.add(at, size), end))
+        first_bad = t.all(good, t.eq(bad, none_word), t.le(references, value))
+        b.put(b.add(marks, t.pick(t.all(good, t.lt(value, references)), value, b.c(0))), t.pick(t.all(good, t.lt(value, references)), b.c(1), b.get(b.add(marks, b.c(0)))))
+        return b.add(at, size), t.all(good, t.not_(first_bad)), t.pick(first_bad, value, bad)
+
+    items_end, items_ok, bad = b.for_range(b.c(0), steps, read_item, (after, b.c(1), none_word))
+
+    def check_item(k, carried):
+        at, state, which = carried
+        value, size, _ok = t.uleb(at)
+        item = b.read(b.add(end, t.pick(t.lt(value, references), value, b.c(0))))
+        searching = t.eq(state, 0)
+        known, proof = _known(t, item), t.any(t.lookup(EFFECT, item), t.lookup(RESOURCE, item))
+        state_ = t.pick(searching, t.pick(t.not_(known), b.c(2), t.pick(proof, b.c(1), b.c(0))), state)
+        return b.add(at, size), state_, t.pick(t.all(searching, known, proof), value, which)
+
+    _at, item_state, which = b.for_range(b.c(0), t.pick(items_ok, steps, b.c(0)), check_item, (after, b.c(0), b.c(0)))
+    (used_mask, _power, used_count) = b.for_range(b.c(0), t.pick(listable, references, b.c(0)), lambda k, c: (
+        b.add(c[0], b.mul(b.get(b.add(marks, k)), c[1])), b.mul(c[1], 2), b.add(c[2], b.get(b.add(marks, k)))), (b.c(0), b.c(1), b.c(0)))
+    list_left = b.sub(end, items_end)
+    list_site = t.pick(t.not_(listable), b.c(0), t.pick(t.all(t.eq(form, 10), t.eq(second, 0)), code("TYPE_SUM_NONEMPTY"), t.pick(
+        t.not_(t.eq(bad, none_word)), code("TYPE_REF_INDEX"), t.pick(t.not_(items_ok), b.c(0), t.pick(t.nonzero(list_left), code("TYPE_TRAILING"), t.pick(
+            t.eq(item_state, 2), b.c(0), t.pick(t.eq(item_state, 1), t.pick(t.eq(form, 8), code("TYPE_TUPLE_ELEMENT"), code("TYPE_SUM_VARIANT")), t.pick(
+                t.eq(used_count, references), b.c(0), t.pick(t.le(references, 64), code("TYPE_LIST_UNUSED"), b.c(0))))))))))
+    list_third = t.pick(t.not_(t.eq(bad, none_word)), bad, t.pick(t.nonzero(list_left), list_left, which))
+    del kind_is_type
+    type_site = t.pick(listy, list_site, type_site)
+    type_site = t.pick(t.eq(form, 5), opaque_site, t.pick(t.eq(form, 3), effect_site, t.pick(t.eq(form, 2), pointer_site, t.pick(
+        t.eq(form, 4), resource_site, t.pick(t.eq(form, 9), array_site, type_site)))))
+    type_third = t.pick(listy, list_third, t.pick(t.eq(form, 5), left, t.pick(t.eq(form, 3), effect_left, t.pick(t.eq(form, 2), pointer_third, t.pick(
+        t.eq(form, 4), t.pick(t.eq(resource_site, code("TYPE_TRAILING")), b.sub(end, after6), third), t.pick(t.eq(form, 9), array_third, left))))))
+    b.put(t.slot(C4, index), t.pick(listy, used_mask, fourth))
     b.put(t.slot(C5, index), fifth)
     a_type = t.all(t.eq(kind, int(Kind.TYPE)), form_ok, t.le(b.add(base, form_size), end))
     b.put(t.slot(CREJ, index), t.pick(constant, site, t.pick(a_type, type_site, b.c(0))))
@@ -1671,6 +1712,13 @@ def _type_diagnostic(obj, name, form, second, left, fourth=0, fifth=0):
         return "XAX.TYPE.EFFECT", "TYPE-EFFECT-CANONICAL", "domain plus optional positive instance", obj.body.hex(), (), ()
     if name == "TYPE_SUM_NONEMPTY":
         return "XAX.TYPE.SUM", "TYPE-SUM-NONEMPTY", ">= 1", 0, (), ()
+    if name in ("TYPE_TUPLE_ELEMENT", "TYPE_SUM_VARIANT"):
+        if name == "TYPE_TUPLE_ELEMENT":
+            return "XAX.TYPE.TUPLE", "TYPE-TUPLE-VALUE-ELEMENT", "non-proof value type", obj.references[left].hex(), (), ()
+        return "XAX.TYPE.SUM", "TYPE-SUM-VALUE-VARIANT", "non-proof value type", obj.references[left].hex(), (), ()
+    if name == "TYPE_LIST_UNUSED":
+        used = sorted(cid.hex() for k, cid in enumerate(obj.references) if fourth >> k & 1)
+        return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", used, sorted(cid.hex() for cid in obj.references), (), ()
     if name == "TYPE_RESOURCE_STACK_OWNER":
         return "XAX.TYPE.RESOURCE", "TYPE-RESOURCE-STACK-OWNER", "resource<stack-storage,live>", [second, left], (), ()
     if name == "TYPE_RESOURCE_CANONICAL":
