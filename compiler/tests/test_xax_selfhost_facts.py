@@ -724,7 +724,7 @@ class SelfhostAtomicTests(unittest.TestCase):
             "misaligned": ("MEMORY-ALIGNMENT", True), "forked": ("MEMORY-EFFECT-LINEAR", True), "effect_type": ("ATOMIC-MEMORY-EFFECT", True),
             "result_type": ("ATOMIC-RESULT-TYPE", True), "value_type": ("ATOMIC-VALUE-TYPE", True), "cmpxchg_result": ("ATOMIC-CMPXCHG-RESULT", True),
             "fence_effect": ("ATOMIC-FENCE-EFFECT", True), "fence_forked": ("MEMORY-EFFECT-LINEAR", True),
-            # S8 (ADR-248): atomic attributes.
+            # S8 (ADR-251): atomic attributes.
             "order_enum": ("ATOMIC-ORDER-ENUM", True), "order_legal": ("ATOMIC-ORDER-LEGAL", True), "scope_enum": ("ATOMIC-SCOPE-ENUM", True),
             "rmw_kind": ("ATOMIC-RMW-KIND", True), "fence_order": ("ATOMIC-ORDER-LEGAL", True), "cmpxchg_stronger": ("ATOMIC-CMPXCHG-FAILURE-NOT-STRONGER", True),
             "cmpxchg_failure": ("ATOMIC-CMPXCHG-FAILURE-ORDER", True), "cmpxchg_failure_enum": ("ATOMIC-ORDER-ENUM", True),

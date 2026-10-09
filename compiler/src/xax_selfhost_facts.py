@@ -58,9 +58,9 @@ REGISTER_ARGUMENTS = 2
 # terminator), and its payload; production raises that diagnostic at the same point of its fact passes.
 H_CUROP, H_MNODE, H_CURBLOCK, H_REJECT, H_RPASS, H_RBLOCK, H_RNODE = range(34, 41)
 H_RPAY = 41  # payload words H_RPAY .. H_RPAY + 5
-# S8 (ADR-248): the linear-flow rejection: its code (``LINEAR_SITES``), then two words (a block or value id, a count).
+# S8 (ADR-251): the linear-flow rejection: its code (``LINEAR_SITES``), then two words (a block or value id, a count).
 H_LREJ, H_LA, H_LB = 47, 48, 49
-# S8 (ADR-248): a stack-owner entry whose body selects no unique contract (rejected at its terminator).
+# S8 (ADR-251): a stack-owner entry whose body selects no unique contract (rejected at its terminator).
 H_RENTRY_BAD = 50
 LINEAR_SITES = ("UNREACHABLE_PARAMETER", "BLOCK_ARGUMENT", "NODE_AND_TERMINATOR", "SAME_BLOCK_CONSUMER", "EXPLICIT_BLOCK_PARAMETER",
                 "EACH_CONTROL_PATH", "TRAP_END", "ONE_CONTINUATION", "JOIN_SIBLINGS")
@@ -96,26 +96,26 @@ MEMORY_SITES = (
     # S8c.18 (ADR-236): address offsets into records, and elements an access cannot size.
     "RECORD_FIELD_OFFSET", "RECORD_OFFSET_STRIDE", "ADDRESS_AUTHORITY", "ADDRESS_ALIGNMENT", "BYTE_ADDRESSABLE",
     "LINK_STORAGE_FOREIGN", "LINK_TARGET_OUTLIVES",
-    # S8 (ADR-248): atomic attributes (``_atomic_order`` names the family or "atomic", not the graph).
+    # S8 (ADR-251): atomic attributes (``_atomic_order`` names the family or "atomic", not the graph).
     "ATOMIC_RMW_KIND", "ATOMIC_ORDER_ENUM", "ATOMIC_ORDER_LEGAL", "ATOMIC_FAILURE_ORDER", "ATOMIC_FAILURE_STRONGER", "ATOMIC_CMPXCHG_STRENGTH",
     "ATOMIC_SCOPE_ENUM",
-    # S8 (ADR-248): a foreign (C, JVM) or browser-event code entry whose callee the ABI does not admit; a foreign call's
+    # S8 (ADR-251): a foreign (C, JVM) or browser-event code entry whose callee the ABI does not admit; a foreign call's
     # ABI and contract (payload: the declaration).
     "FOREIGN_ENTRY", "FOREIGN_ABI", "FOREIGN_CONTRACT",
-    # S8 (ADR-248): an indirect call's target operand, its type, and its bounded contract (payload: the contract).
+    # S8 (ADR-251): an indirect call's target operand, its type, and its bounded contract (payload: the contract).
     "INDIRECT_TARGET", "INDIRECT_TARGET_TYPE", "INDIRECT_BOUNDED_CONTRACT",
-    # S8 (ADR-248): a direct call through a stack resource contract (its pointer, owner, and frontier).
+    # S8 (ADR-251): a direct call through a stack resource contract (its pointer, owner, and frontier).
     "CALL_POINTER_PROVEN", "CALL_REBASE_STATIC", "CALL_POINTER_BOUNDS", "CALL_PERMISSION", "CALL_OWNER_PROVEN", "CALL_POINTER_PROVENANCE",
     "CALL_EFFECT_PROVENANCE", "CALL_INITIALIZED",
-    # S8 (ADR-248): a stack-owner entry's body contract and its returned owner, frontier, and final load.
+    # S8 (ADR-251): a stack-owner entry's body contract and its returned owner, frontier, and final load.
     "ENTRY_BODY", "ENTRY_TRANSFER_RETURN", "ENTRY_TRANSFER_COUNT", "ENTRY_LOAD_RESULT", "ENTRY_TRANSFER_PAIR",
-    # S8 (ADR-248): stack allocation result types, address exposure, and raw loads.
+    # S8 (ADR-251): stack allocation result types, address exposure, and raw loads.
     "STACK_OWNER_TYPE", "STACK_EFFECT_TYPE", "ADDRESS_WAIVER", "ADDRESS_WIDTH", "RAW_WAIVER", "RAW_UNSAFE_EFFECT", "RAW_EFFECT_CONTINUATION",
-    # S8 (ADR-248): an operation code outside the vocabulary.
+    # S8 (ADR-251): an operation code outside the vocabulary.
     "OP_SUPPORTED",
-    # S8 (ADR-248): a ``target.op`` node against its target's operation contract (``_verify_target_node``).
+    # S8 (ADR-251): a ``target.op`` node against its target's operation contract (``_verify_target_node``).
     "TARGET_ATTRIBUTES", "TARGET_DEFINED", "TARGET_SCOPE_ENUM", "TARGET_SCOPE_SUPPORTED", "TARGET_SPACES", "TARGET_ARITY", "TARGET_TYPE",
-    # S8 (ADR-248): a lend entry passed to a call that lends it no view (payload: its extent and the declaration).
+    # S8 (ADR-251): a lend entry passed to a call that lends it no view (payload: its extent and the declaration).
     "LEND_VIEW_LENT",
 )
 M = {name: index + 1 for index, name in enumerate(MEMORY_SITES)}
@@ -1522,7 +1522,7 @@ def _call_foreign(tables, declaration, end_views):
         inputs = e.ld(decl)
         outputs_at = e.add(e.add(decl, 1), inputs)
         outputs = e.ld(outputs_at)
-        # S8 (ADR-248): the operand and result types are exactly the declaration's (FOREIGN-CALL-CONTRACT).
+        # S8 (ADR-251): the operand and result types are exactly the declaration's (FOREIGN-CALL-CONTRACT).
         e.var("fc_same", e.flag(e.both(e.eq(n.no, inputs), e.eq(n.nr, outputs))))
         e.if_(e.ne(p["fc_same"], 0), lambda: (
             e.for_("j", 0, inputs, lambda: e.if_(e.ne(e.rd(e.add(n.tids_at, p["j"])), e.ld(e.add(e.add(decl, 1), p["j"]))), lambda: e.set("fc_same", 0))),
@@ -1901,7 +1901,7 @@ def _resource_call(e: E, n):
     e.var("offset", 0)
 
     def with_pointer():
-        # S8 (ADR-248): each check is the bootstrap's, in its order (``_parse_graph_uncached``'s resource call).
+        # S8 (ADR-251): each check is the bootstrap's, in its order (``_parse_graph_uncached``'s resource call).
         _reject(e, e.both(e.eq(e.value(PSTAMP, pointer_ref), e.hd(H_PASS)), e.eq(e.value(PK, pointer_ref), POINTER)), M["CALL_POINTER_PROVEN"], pointer_ref)
         pointer_storage = e.value(PST, pointer_ref)
         _reject(e, e.not_(_ended(e, pointer_storage)), M["LIFETIME_LIVE"], pointer_storage, renderable=_renderable(e, pointer_storage))
@@ -1987,7 +1987,7 @@ def _one_of(e: E, value, codes):
 
 
 def _atomic_orders(e: E, family: int, order, failure=None):
-    """S8 (ADR-248): ``_atomic_order``'s enum checks (the order, then a compare-exchange's failure order), then the
+    """S8 (ADR-251): ``_atomic_order``'s enum checks (the order, then a compare-exchange's failure order), then the
     family's legal orders."""
     _reject(e, _one_of(e, order, (1, 2, 3, 4, 5)), M["ATOMIC_ORDER_ENUM"], order)
     if failure is not None:
@@ -2407,7 +2407,7 @@ def _function_address(tables, interface):
                 params = e.add(p["iface"], 1)
                 returns_at = e.add(e.add(params, count), 1)
                 param = lambda k: e.ld(e.add(params, k))  # noqa: E731
-                # S8 (ADR-248): an inadmissible callee is GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY.
+                # S8 (ADR-251): an inadmissible callee is GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY.
                 e.var("lend_ok", e.flag(e.le(3, count)))
                 refuse = lambda: e.set("lend_ok", 0)  # noqa: E731
 
@@ -2437,7 +2437,7 @@ def _function_address(tables, interface):
                 abi_start, abi_length = e.add(start, len(_CODE_ENTRY_PREFIX)), e.sub(length, len(_CODE_ENTRY_PREFIX))
                 browser = e.both(e.eq(abi_length, len(WASM32_BROWSER_EVENT_ABI)), _prefixed(e, abi_start, abi_length, WASM32_BROWSER_EVENT_ABI))
 
-                # S8 (ADR-248): an entry the ABI does not admit is GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY.
+                # S8 (ADR-251): an entry the ABI does not admit is GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY.
                 e.var("admitted", 1)
                 refuse = lambda: e.set("admitted", 0)  # noqa: E731
 
@@ -2608,7 +2608,7 @@ def _node_dispatch(tables, handlers, end_views):
         operation, key = e.rd(cursor), e.rd(e.add(cursor, 1))
         e.set_hd(H_NODE, cursor)  # diagnosis: the node being modelled
         e.set_hd(H_CUROP, operation)
-        # S8 (ADR-248): the vocabulary is the contiguous codes 1..max (GRAPH-OP-SUPPORTED).
+        # S8 (ADR-251): the vocabulary is the contiguous codes 1..max (GRAPH-OP-SUPPORTED).
         _reject(e, e.both(e.ne(operation, 0), e.le(operation, max(int(code) for code in Operation))), M["OP_SUPPORTED"], operation)
         # A node the typing function covers must be proven by it.
         e.if_(e.ne(key, NONE), lambda: _require(e, e.eq(e.ld(e.add(2, key)), _T.PROVEN)))
@@ -2884,7 +2884,7 @@ def _entry_contract(e: E, entry_params, entry_count):
     kind, _permission, requires_initialized, _initializes, shape = _resource_contract(
         e, e.add(entry_params, 2), entry_count, None, None, e.c(1), body, shape=True)
     _require(e, e.ne(shape, R_NONE))
-    # S8 (ADR-248): a body that selects no unique contract rejects at the terminator, after the node checks, which see
+    # S8 (ADR-251): a body that selects no unique contract rejects at the terminator, after the node checks, which see
     # the bootstrap's seed (its first candidate: the parameter shape).
     bad = e.eq(kind, R_NONE)
     e.set_hd(H_RENTRY_BAD, e.flag(bad))
@@ -2923,7 +2923,7 @@ def _return_resource_entry(e: E, term, values):
     visit = e.hd(H_VISIT)
     ids_at = e.add(term, 2)
     count = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 2, 3)
-    # S8 (ADR-248): the bootstrap's checks in its order (the body contract was decided before the leak check).
+    # S8 (ADR-251): the bootstrap's checks in its order (the body contract was decided before the leak check).
     _reject(e, e.eq(e.rd(term), int(TerminatorKind.RETURN)), M["ENTRY_TRANSFER_RETURN"], e.rd(term))
     _reject(e, e.eq(values, count), M["ENTRY_TRANSFER_COUNT"], count, values)
     owner_result = e.sel(e.either(e.eq(kind, R_PASS), e.eq(kind, R_STORE)), 0, 1)
@@ -3070,7 +3070,7 @@ def _linear_flow(tables):
         bump = lambda name, value: e.st(cell(name, value), e.add(e.ld(cell(name, value)), 1))  # noqa: E731
 
         def linear_reject(code, a, b_):
-            """S8 (ADR-248): ``_verify_linear_flow``'s first failing check (``LINEAR_SITES``), then 0."""
+            """S8 (ADR-251): ``_verify_linear_flow``'s first failing check (``LINEAR_SITES``), then 0."""
             e.set_hd(H_LREJ, code)
             e.set_hd(H_LA, a)
             e.set_hd(H_LB, b_)
@@ -3225,7 +3225,7 @@ def _linear_flow(tables):
 
                     e.var("sibling", 0)
                     e.if_(split, lambda: e.if_(pieces_ok(), lambda: e.set("sibling", 1)))
-                    # S8 (ADR-248): not two pieces of one split: RESOURCE-JOIN-SIBLINGS at this node.
+                    # S8 (ADR-251): not two pieces of one split: RESOURCE-JOIN-SIBLINGS at this node.
                     def not_siblings():
                         # The quoted origins walk through splits too: they must meet no non-entry parameter either.
                         e.var("lw", n.vid(0))
@@ -3279,7 +3279,7 @@ def _contract_expected(operation, counts):
 
 
 def _atomic_attribute_diagnostic(name: str, x: int, y: int):
-    """S8 (ADR-248): an atomic attribute's diagnostic.  ``_atomic_order``'s name the family (or "atomic") as their entity:
+    """S8 (ADR-251): an atomic attribute's diagnostic.  ``_atomic_order``'s name the family (or "atomic") as their entity:
     those return ``(code, rule, expected, actual, entity)``; the others name the graph."""
     from xax_compiler import _ATOMIC_ORDERS, AtomicFamily, AtomicOrder, AtomicRmwKind, AtomicScope, CompareExchangeStrength
 

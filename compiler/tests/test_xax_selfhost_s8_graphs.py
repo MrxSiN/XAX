@@ -1,4 +1,4 @@
-"""S8 (ADR-248): graph-level rejections the XAX programs decide with the bootstrap's exact diagnostics.
+"""S8 (ADR-251): graph-level rejections the XAX programs decide with the bootstrap's exact diagnostics.
 
 Each case is a small function that breaks one rule; the outcome with the XAX programs equals the bootstrap's
 alone, and the diagnostic was raised from an XAX rejection record (``_xax_fail``).
@@ -18,7 +18,7 @@ B1, B8, B32, B64 = (bits_type(width) for width in (1, 8, 32, 64))
 F32, F64 = float_type(1), float_type(2)
 TRAILING = SemanticObject.create(Kind.TYPE, b"\x01\x20\x00")  # bits<32> with a trailing byte
 LINK = SemanticObject.create(Kind.TYPE, b"\x0b")
-# S8 (ADR-248): ``(parameter, operation, operand count, result, attribute)``: one node decoding a type of another form.
+# S8 (ADR-251): ``(parameter, operation, operand count, result, attribute)``: one node decoding a type of another form.
 CROSS = {
     "add_float_result": (B32, Operation.ADD_WRAP, 2, F32, None, "TYPE-BITS"),
     "truncate_float_source": (F32, Operation.INT_TRUNCATE, 1, B8, None, "TYPE-BITS"),

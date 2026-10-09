@@ -231,7 +231,7 @@ def _constant(variant: str):
         "type_identity_truncated": uleb(6) + uleb(9) + b"ab",
         "type_identity_trailing": uleb(6) + uleb(2) + b"abc",
         "type_identity_empty": uleb(6) + uleb(0),
-        # S8 (ADR-248): malformed ULEB fields.
+        # S8 (ADR-251): malformed ULEB fields.
         "type_uleb_empty": b"",
         "type_uleb_form_minimal": b"\x81\x00",
         "type_uleb_width_minimal": uleb(1) + b"\xa0\x00",
@@ -380,7 +380,7 @@ VARIANTS = {
     "type_identity_refs": "TYPE-OPAQUE-IDENTITY-CANONICAL",
     # S8c.29 (ADR-247): malformed constant bodies.
     "constant_ref_index": "GRAPH-REF-INDEX", "constant_truncated": "SER-BOUNDS", "constant_trailing": "CONST-BODY",
-    # S8 (ADR-248): malformed ULEB fields in types.
+    # S8 (ADR-251): malformed ULEB fields in types.
     "type_uleb_empty": "SER-ULEB-TERMINATED", "type_uleb_form_minimal": "SER-ULEB-MINIMAL", "type_uleb_width_minimal": "SER-ULEB-MINIMAL",
     "type_uleb_width_unterminated": "SER-ULEB-TERMINATED", "type_uleb_bounded": "SER-ULEB-BOUNDED",
     "type_uleb_pointer_unterminated": "SER-ULEB-TERMINATED", "type_uleb_effect_instance": "SER-ULEB-TERMINATED",
@@ -499,7 +499,7 @@ class XaxGlueRejectionTests(unittest.TestCase):
 
 @unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
 class XaxStoreRejectionTests(unittest.TestCase):
-    """S8 (ADR-248): an unreachable object and a missing reference are decided by the store verifier."""
+    """S8 (ADR-251): an unreachable object and a missing reference are decided by the store verifier."""
 
     def test_store_rejections_are_decided_by_xax(self):
         import xax_compiler

@@ -3,27 +3,66 @@
   "component": "BLAKE3-256 hash (chunking, padding, chaining-value tree) over lent views",
   "store": {
     "path": "compiler/bootstrap/xax_blake3_hash.xax",
-    "bytes": 34025,
-    "sha256": "ab857a2a5820514ff233059fc1c8a06a810e3d8d0d6784c5c13b3241c5be97a3",
-    "root_cid": "3d8e9a8b0381806c32764e097ae9f35e744eb23c9fc23ac4e88155e9db02e2be",
-    "hash_cid": "8578b942796a9dac1610130ddc202a08305cb0f48d1dbf5b40bfba99f8eb63a1"
+    "bytes": 34035,
+    "sha256": "1c93d66b39598ae74f55c4ed41ab64af65c674234320cbf4a2c262e38c47cdac",
+    "root_cid": "ec668facd92aa066226428ee8685cd9f6aaca4d8a67507b49fbf54d3e6fe4328",
+    "hash_cid": "c50b72114f1bc33e9bf318a7795164add174ca95d732e0ab901a4a65b89f9cf2"
   },
-  "native_leaf_bytes": 44387,
+  "native_leaf_bytes": 20661,
   "agreement_with_python_driver": [
     3000,
     3000
   ],
   "host_cost_nonsemantic": {
-    "host": "Linux x86_64 Python 3.11.15",
+    "host": "Linux x86_64 Python 3.13.16",
     "objects": 3000,
     "object_hashing_ms": {
-      "xax_hash": 49.15,
-      "python_driver_with_s0_leaf": 568.0,
-      "speedup": 11.56
+      "xax_hash": 24.92,
+      "python_driver_with_s0_leaf": 451.69,
+      "speedup": 18.12
     },
     "one_mib_ms": {
-      "xax_hash": 17.65,
-      "python_driver_with_s0_leaf": 216.73
+      "xax_hash": 6.14,
+      "python_driver_with_s0_leaf": 180.97
+    }
+  },
+  "authority": {
+    "blake3-compress": {
+      "component": "blake3-compress",
+      "semantic_root": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+      "native_artifact_digest": "bfaf9a6c4b3347f00c053e8192f6b3c7860c9f47bab7c07ee2731debb52caa13",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:hash": {
+      "component": "verification:hash",
+      "store_verification": "memoized",
+      "record": "verified-hash-f1b8dd835f69807d566d5c4d863ddb17decd4655e0faf8d9cf34f020ed720f6d.bin"
+    },
+    "blake3-hash": {
+      "component": "blake3-hash",
+      "semantic_root": "ec668facd92aa066226428ee8685cd9f6aaca4d8a67507b49fbf54d3e6fe4328",
+      "native_artifact_digest": "a1ba499f179c341455d676814c7d4b7ded072706bc6ee211c3bce6b3a6351ac5",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:store-decoder": {
+      "component": "verification:store-decoder",
+      "store_verification": "memoized",
+      "record": "verified-store-decoder-2f8f67476de41a8eaa27b9e14970751ed70cf01547908e843872d12544e4cdd3.bin"
+    },
+    "store-decoder": {
+      "component": "store-decoder",
+      "semantic_root": "5f3e5a1c28e99f4deb350fff40e179294c3d5e6910a6cb71c5b2c77f8c6ae0bc",
+      "native_artifact_digest": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
     }
   }
 }

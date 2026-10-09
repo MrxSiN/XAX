@@ -1,4 +1,4 @@
-"""S8 (ADR-248): the XAX store verifier decides every target object, valid or not, with the bootstrap's diagnostic.
+"""S8 (ADR-251): the XAX store verifier decides every target object, valid or not, with the bootstrap's diagnostic.
 
 Every built-in target is mutated (a byte set, removed, inserted, swapped, or the body cut short); each mutated
 target is either proven or rejected by XAX itself, and the outcome equals the Python bootstrap's alone.

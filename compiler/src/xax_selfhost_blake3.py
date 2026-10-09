@@ -19,7 +19,9 @@ itself is the committed S0 function, called directly.
 This is the first migrated component that passes buffers across the leaf
 boundary.  The Python driver in ``blake3.py`` remains the reference and the
 fallback for inputs over ``INPUT_EXTENT`` and for hosts that cannot run the
-leaf.
+leaf.  ``INPUT_EXTENT`` is 16 MiB (ADR-249; 1 MiB before), so every committed
+component store hashes in one call; the lent buffer is lazily zeroed, so the
+extent costs resident memory only for the bytes a hash copies in.
 """
 
 from __future__ import annotations
@@ -50,7 +52,7 @@ from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
 from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_blake3_hash.xax"
-INPUT_EXTENT = 1 << 20
+INPUT_EXTENT = 1 << 24  # ADR-249: every committed component store hashes in one call (the largest is about 3.6 MB)
 STACK_OFFSET, STACK_ENTRIES = 0, 54
 DIGEST_OFFSET = STACK_OFFSET + 32 * STACK_ENTRIES  # 1728
 SCRATCH_EXTENT = 2048
@@ -293,17 +295,20 @@ class NativeHasher:
         from xax_selfhost_x86_64_backend import host_image
         from xax_x86_64 import _SYSV_TO_WIN64_THUNK
 
-        machine_code, entry_offset = host_image(*load_hash_program(), "blake3-hash")
+        reader, function = load_hash_program()
+        if INPUT_VIEW.cid not in function.references:  # a store built for another extent would trap past its view
+            raise RuntimeError("committed hash store does not lend the INPUT_EXTENT view; regenerate it with write_hash_store")
+        machine_code, entry_offset = host_image(reader, function, "blake3-hash")
         thunk = _SYSV_TO_WIN64_THUNK + bytes(-len(_SYSV_TO_WIN64_THUNK) % 16)
         code = thunk + machine_code
-        from xax_native import executable_mapping
+        from xax_native import executable_mapping, zeroed_array
 
         self._mapping, base = executable_mapping(code)
         self._call = ctypes.CFUNCTYPE(ctypes.c_uint64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p)(base)
         self._entry = base + len(thunk) + entry_offset
         self.code_size = len(machine_code)
         # Word arrays: the views are declared 4-aligned.
-        self._input = (ctypes.c_uint32 * (INPUT_EXTENT // 4))()
+        self._input = zeroed_array(ctypes.c_uint32, INPUT_EXTENT // 4)
         self._scratch = (ctypes.c_uint32 * (SCRATCH_EXTENT // 4))()
         self._lock = threading.Lock()
         self.capacity = INPUT_EXTENT

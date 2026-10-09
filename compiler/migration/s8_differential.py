@@ -1,4 +1,4 @@
-"""S8 (ADR-248): every rejection the live verifier raises is the bootstrap's own, diagnostic for diagnostic.
+"""S8 (ADR-251): every rejection the live verifier raises is the bootstrap's own, diagnostic for diagnostic.
 
 Run as a pytest plugin beside ``s8_rejection_trace``::
 

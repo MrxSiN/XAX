@@ -496,10 +496,13 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
     return ranges
 
 
-def compile_x86_64_views(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, *, backend: str = "python") -> X86ViewsImage:
+def compile_x86_64_views(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, *, backend: str = "python",
+                         verified: bool = False) -> X86ViewsImage:
     """``backend``: ``"python"`` (this bootstrap generator), ``"xax"`` (the XAX program; fails where it cannot run or
-    declines), or ``"auto"`` (the XAX program where it runs)."""
-    verify_store(reader)
+    declines), or ``"auto"`` (the XAX program where it runs).  ``verified``: ``verify_store`` already accepted exactly
+    ``reader``'s bytes in this process (``xax_native.component_store_verified``), so it is not run again (ADR-250)."""
+    if not verified:
+        verify_store(reader)
     resolve = store_resolver(reader)
     entry = resolve(function_cid)
     if entry.kind != Kind.FUNCTION:

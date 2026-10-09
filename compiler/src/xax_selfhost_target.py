@@ -106,7 +106,7 @@ NO_CONTRACT = NONE - 1  # ``_target_contract``: a valid target that declares no 
 
 def _target_contract(tables):
     """``decode_native_target`` over a target object: the input position of the contract for operation ``wanted``,
-    ``NO_CONTRACT``, or NONE (a target the bootstrap rejects, or one with no contracts).  S8 (ADR-248): a helper
+    ``NO_CONTRACT``, or NONE (a target the bootstrap rejects, or one with no contracts).  S8 (ADR-251): a helper
     of its own, so ``target.op`` stays within the backend's per-function limits."""
 
     def build(e: E):
@@ -294,7 +294,7 @@ def _target_op(tables, contract):
         e.var("t_at", p["match"])
         e.var("t_end", e.add(e.add(position, 3), e.rd(e.add(position, 2))))
         r = _Reader(e, "t_at", "t_end")
-        # S8 (ADR-248): each check below is ``_verify_target_node``'s, in its order, with its exact rejection.
+        # S8 (ADR-251): each check below is ``_verify_target_node``'s, in its order, with its exact rejection.
         _reject(e, e.eq(n.na, 4), M["TARGET_ATTRIBUTES"], n.na)
         _reject(e, e.ne(p["match"], NO_CONTRACT), M["TARGET_DEFINED"], entity, n.attr(0))
         scope = n.attr(1)

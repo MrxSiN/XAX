@@ -16,8 +16,8 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 2  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
-# 2: byte-view widening of checked accesses (ADR-231)
+HOST_CONTRACT_MINOR = 3  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+# 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)
@@ -39,7 +39,7 @@ INTERFACES = {
                      "x86_64_linux_exec_target", "X86_64_LINUX_ABI", "X86_64_LINUX_ELF_EXEC_FORMAT"),
     "xax_linux": ("linux_api", "linux_startup_api", "process_contract", "LINUX_X86_64_PROCESS_CONTRACT"),
     "xax_artifact": ("BOOTSTRAP_COMPILER_IDENTITY_V1",),
-    "xax_native": ("AUTHORITY", "verify_component_store"),
+    "xax_native": ("AUTHORITY", "verify_component_store", "prepare", "PREPARE_COMPONENTS"),
 }
 
 
