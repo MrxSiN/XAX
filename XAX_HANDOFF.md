@@ -180,7 +180,11 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 ## S8c.28 pointer element and opaque identity rejections — 2026-10-09 (ADR-246)
 
-- Next: resource transitions, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines.
+- Next: resource transitions, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8c.29 below.
+
+## S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
+
+- Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines.
 
 ## Validation state at M14 (historical)
 

@@ -250,6 +250,12 @@ def _constant(variant: str):
         references = tuple(sorted((B32.cid, extra.cid)))
         body = uleb(form) + uleb(len(indices)) + b"".join(uleb(item) for item in indices) + (b"\x00" if variant == "type_tuple_trailing" else b"")
         return SemanticObject.create(Kind.TYPE, body, references), ((extra,) if effect else ())
+    bodies = {  # S8c.29 (ADR-247): malformed constant bodies over one b32 reference
+        "constant_ref_index": uleb(3) + uleb(4) + bytes(4), "constant_truncated": uleb(0) + uleb(9) + bytes(4),
+        "constant_trailing": uleb(0) + uleb(4) + bytes(5),
+    }
+    if variant in bodies:
+        return SemanticObject.create(Kind.CONSTANT, bodies[variant], (B32.cid,)), ()
     if variant == "type_identity_refs":
         return SemanticObject.create(Kind.TYPE, uleb(6) + uleb(2) + b"ab", (B8.cid,)), ()
     if variant in ("type_pointer_proof", "type_pointer_unused"):
@@ -357,6 +363,8 @@ VARIANTS = {
     "type_pointer_proof": "TYPE-POINTER-VALUE-ELEMENT", "type_pointer_unused": "SER-REFS-DIRECT-ONLY",
     "type_identity_truncated": "SER-BOUNDS", "type_identity_trailing": "TYPE-BODY", "type_identity_empty": "TYPE-OPAQUE-IDENTITY-CANONICAL",
     "type_identity_refs": "TYPE-OPAQUE-IDENTITY-CANONICAL",
+    # S8c.29 (ADR-247): malformed constant bodies.
+    "constant_ref_index": "GRAPH-REF-INDEX", "constant_truncated": "SER-BOUNDS", "constant_trailing": "CONST-BODY",
 }
 
 

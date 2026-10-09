@@ -128,7 +128,9 @@ OBJOK = 27  # S6b: 1 when the entry is a type ``_verify_type`` accepts or a cons
 CREJ, COFF, CLEN, CWIDTH = 28, 29, 30, 31
 C4, C5 = 32, 33  # S8c.26 (ADR-244): a resource type's flags and instance
 TABLES = 34
-CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE")
+CONSTANT_SITES = ("BITS_WIDTH", "FLOAT_WIDTH", "FLOAT_NAN", "LINK_NULL", "SCALAR_TYPE",
+                  # S8c.29 (ADR-247): malformed bodies (COFF: the index, CLEN: the value length, CWIDTH: bytes available or left).
+                  "CONST_REF_INDEX", "CONST_TRUNCATED", "CONST_TRAILING")
 # S8c.25 (ADR-243): ``_verify_type`` rejections of scalar and unknown forms, in the same tables (COFF: the form, CLEN:
 # the second body value, CWIDTH: the bytes left after it).
 TYPE_SITES = ("TYPE_TRAILING", "TYPE_BITS", "TYPE_FLOAT_FORMAT", "TYPE_FLOAT", "TYPE_LINK", "TYPE_FORM",
@@ -792,7 +794,8 @@ def _constant_object(b: _Builder, t: _Typing, entity, parts: dict | None = None)
     link_ok = t.all(link, t.eq(count, 8), zero)
     if parts is not None:
         parts.update(shape=shape, base=base, data=data, count=count, width=width, form=form, raw=raw, zero=zero, small=small, nan=nan,
-                     value_type=value_type, bits_ok=bits_ok)
+                     value_type=value_type, bits_ok=bits_ok, kind=kind, references=references, end=end, reference=reference,
+                     reference_ok=reference_ok, count_ok=count_ok, reference_size=size)
     return t.all(shape, t.any(bits_ok, f32, f64, link_ok)), value_type
 
 
@@ -945,10 +948,20 @@ def _object_entry(b: _Builder, t: _Typing, index):
     b.put(t.slot(C4, index), t.pick(listy, used_mask, fourth))
     b.put(t.slot(C5, index), fifth)
     a_type = t.all(t.eq(kind, int(Kind.TYPE)), form_ok, t.le(b.add(base, form_size), end))
-    b.put(t.slot(CREJ, index), t.pick(constant, site, t.pick(a_type, type_site, b.c(0))))
-    b.put(t.slot(COFF, index), t.pick(constant, b.sub(parts["data"], parts["base"]), form))
-    b.put(t.slot(CLEN, index), t.pick(constant, count, second))
-    b.put(t.slot(CWIDTH, index), t.pick(constant, t.pick(t.eq(formb, 7), float_width, width), type_third))
+    # S8c.29 (ADR-247): a malformed constant body, in ``_decode_constant``'s order: the type index, the value length,
+    # trailing bytes (each ULEB canonical and inside the body, else the bootstrap's cursor decides).
+    c_end, c_data, c_refs, c_index = parts["end"], parts["data"], parts["references"], parts["reference"]
+    c_index_ok = t.all(t.eq(parts["kind"], int(Kind.CONSTANT)), parts["reference_ok"], t.le(b.add(parts["base"], parts["reference_size"]), c_end))
+    c_count_ok = t.all(c_index_ok, parts["count_ok"], t.le(c_data, c_end))
+    c_value_end = b.add(c_data, count)
+    malformed_site = t.pick(t.not_(c_index_ok), b.c(0), t.pick(t.le(c_refs, c_index), b.c(6), t.pick(t.not_(c_count_ok), b.c(0), t.pick(
+        t.lt(c_end, c_value_end), b.c(7), t.pick(t.lt(c_value_end, c_end), b.c(8), b.c(0))))))
+    malformed_left = t.pick(t.lt(c_end, c_value_end), b.sub(c_end, c_data), b.sub(c_end, t.pick(t.lt(c_end, c_value_end), c_end, c_value_end)))
+    malformed = t.nonzero(malformed_site)
+    b.put(t.slot(CREJ, index), t.pick(constant, site, t.pick(malformed, malformed_site, t.pick(a_type, type_site, b.c(0)))))
+    b.put(t.slot(COFF, index), t.pick(constant, b.sub(parts["data"], parts["base"]), t.pick(malformed, c_index, form)))
+    b.put(t.slot(CLEN, index), t.pick(constant, count, t.pick(malformed, count, second)))
+    b.put(t.slot(CWIDTH, index), t.pick(constant, t.pick(t.eq(formb, 7), float_width, width), t.pick(malformed, malformed_left, type_third)))
 
 
 def _node_entry(b: _Builder, t: _Typing, index, carried):
@@ -1832,7 +1845,17 @@ class NativeTyping:
                 rejected[cid] = _type_diagnostic(obj, TYPE_SITES[site - TYPE_SITE_BASE - 1], offset, length, width, table(C4, index), table(C5, index))
                 continue
             value = obj.body[offset:offset + length]
-            type_hex, name = obj.references[0].hex(), CONSTANT_SITES[site - 1]
+            name = CONSTANT_SITES[site - 1]
+            if name == "CONST_REF_INDEX":
+                rejected[cid] = ("XAX.STRUCT.REF_INDEX", "GRAPH-REF-INDEX", f"< {len(obj.references)}", offset, (), ())
+                continue
+            if name == "CONST_TRUNCATED":
+                rejected[cid] = ("XAX.CANON.TRUNCATED", "SER-BOUNDS", f"{length} available bytes", width, (), ())
+                continue
+            if name == "CONST_TRAILING":
+                rejected[cid] = ("XAX.CANON.TRAILING_BYTES", "CONST-BODY", 0, width, (), ())
+                continue
+            type_hex = obj.references[0].hex()
             if name == "BITS_WIDTH":
                 rejected[cid] = ("XAX.CONSTANT.WIDTH", "CONST-BITS-WIDTH", f"{width} canonical bits", value.hex(), [type_hex], [cid.hex(), type_hex])
             elif name == "FLOAT_WIDTH":

@@ -2376,3 +2376,11 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Decision | For a pointer type whose own fields are canonical, the typing program records `_decode_pointer_type`'s element rejections once the tables decoded the element: a proof-type element (`TYPE-POINTER-VALUE-ELEMENT`) and references beyond the element (`SER-REFS-DIRECT-ONLY`). For opaque identity types it records `_decode_opaque_identity_type`'s: a truncated identity (`SER-BOUNDS`), trailing bytes (`TYPE-BODY`), and an empty identity or references (`TYPE-OPAQUE-IDENTITY-CANONICAL`, quoting the identity bytes, the body's tail). An element the tables did not decode still declines. |
 | Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: six constructed faults give the bootstrap's full diagnostic against the bootstrap alone and are rejected by the XAX program, beside the earlier object faults (81 in all). Both self-hosting evidence files re-run natively. |
 | Limits | Resource transitions, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, and builds are still Python. |
+
+## ADR-247 — S8c.29: malformed constant body rejections decided by the typing program
+
+| Field | Record |
+|---|---|
+| Decision | The typing program's object pass records `_decode_constant`'s body rejections in its order: a type index out of range (`GRAPH-REF-INDEX`), a value longer than the body (`SER-BOUNDS`), and trailing bytes (`CONST-BODY`). Each ULEB must be canonical and inside the body, else the bootstrap's cursor decides. A constant whose type index is in range but which has further references still declines (its value checks use another type). |
+| Evidence | EXECUTED on Linux x86-64 with the natively lowered typing image: three constructed constants give the bootstrap's full diagnostic against the bootstrap alone and are rejected by the XAX program, beside the earlier object faults (84 in all). Both self-hosting evidence files re-run natively. |
+| Limits | Constants with several references, resource transitions, target register lists and profile sections, the canonical group order, packages, and builds are still Python. |
