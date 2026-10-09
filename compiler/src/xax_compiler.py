@@ -6259,6 +6259,8 @@ def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], Se
     member_spans: list[tuple[int, int]] = []
 
     glued = obj.cid in _XAX_GLUE_GRAPHS  # S6b.4d: XAX decided the types, reference use, and trap payloads
+    rejected = _XAX_GLUE_REJECTIONS.get(obj.cid)  # S8 (ADR-248): XAX rejected the glue (types before it are proven)
+    glued = glued or rejected is not None
 
     def type_reference() -> bytes:
         type_object = resolve(references[take()])
@@ -6303,6 +6305,8 @@ def _graph_syntax_from_stream(obj: SemanticObject, resolve: Callable[[bytes], Se
         else:
             size, at = take(), take()
             trap_bytes = obj.body[at:at + size]
+            if rejected is not None and rejected[4] == len(blocks):
+                _xax_fail(rejected[0], obj.cid.hex(), *rejected[1:4])
             if not glued:
                 try:
                     decode_trap_payload(trap_bytes)
@@ -6458,6 +6462,9 @@ def _parse_graph_uncached(obj: SemanticObject, resolve: Callable[[bytes], Semant
                 pass
             raise XaxError(diagnostic)
     entry, blocks, used_references, member_spans = parsed or _graph_syntax_bootstrap(obj, resolve)
+    if parsed is not None and obj.cid in _XAX_GLUE_REJECTIONS:
+        code, rule, expected_value, actual, _block = _XAX_GLUE_REJECTIONS[obj.cid]
+        _xax_fail(code, obj.cid.hex(), rule, expected_value, actual)  # S8 (ADR-248): an unused reference
     if used_references != set(obj.references) and not (parsed is not None and obj.cid in _XAX_GLUE_GRAPHS):
         fail(
             "XAX.CANON.UNUSED_REFERENCE",
@@ -7530,6 +7537,9 @@ def _verify_reference_list(
 # S6b.4d (ADR-149): graph CIDs whose per-graph glue (type references, entity resolution, reference use, trap
 # payloads) the XAX store verifier decided.  A CID's validity is permanent, so the set only grows.
 _XAX_GLUE_GRAPHS: set[bytes] = set()
+# S8 (ADR-248): graph CIDs whose glue XAX rejected: ``(code, rule, expected, actual, trap block or None)``.  Raised
+# inside the parse (``_graph_syntax_from_stream``/``_parse_graph_uncached``), wherever the graph is first parsed.
+_XAX_GLUE_REJECTIONS: dict[bytes, tuple] = {}
 
 
 def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObject"]) -> tuple[bool, dict[bytes, object]]:
@@ -7566,7 +7576,12 @@ def _xax_verify_store(reader: "StoreReader", objects: dict[bytes, "SemanticObjec
         # S8c.19 (ADR-237): XAX decided this object's rejection; ``verify_object`` raises it at the bootstrap's point.
         from xax_selfhost_verify import AFTER_PARSE, OBJECT_SITES
 
-        graph = listed[record[1][0]] if OBJECT_SITES[record[0] - 1] in AFTER_PARSE else None
+        name = OBJECT_SITES[record[0] - 1]
+        if name in ("GRAPH_TRAP_PAYLOAD", "GRAPH_UNUSED"):
+            block = record[1][1] if name == "GRAPH_TRAP_PAYLOAD" else None
+            _XAX_GLUE_REJECTIONS[listed[position].cid] = (*object_diagnostic(listed[position], record, listed), block)
+            continue
+        graph = listed[record[1][0]] if name in AFTER_PARSE else None
         if len(record) > 3:  # S8c.22: a group check after its first member graphs parse
             graph = tuple(listed[index] for index in record[3])
         proven[listed[position].cid] = _XaxRejection((*object_diagnostic(listed[position], record, listed), graph))

@@ -29,8 +29,11 @@ def _verifier(native: bool):
     saved = list(xax_selfhost_verify._NATIVE)
     saved_typing = (xax_compiler._NATIVE_TYPING, xax_compiler._TYPING_ATTEMPTED)
     saved_objects = (set(xax_compiler._XAX_VALID_OBJECTS), dict(xax_compiler._XAX_REJECTED_OBJECTS))
+    saved_glue = (set(xax_compiler._XAX_GLUE_GRAPHS), dict(xax_compiler._XAX_GLUE_REJECTIONS))
     xax_compiler._XAX_VALID_OBJECTS.clear()
     xax_compiler._XAX_REJECTED_OBJECTS.clear()
+    xax_compiler._XAX_GLUE_GRAPHS.clear()
+    xax_compiler._XAX_GLUE_REJECTIONS.clear()
     xax_compiler._PARSED_GRAPHS.clear()
     if not native:  # the bootstrap alone: no store verifier, no typing program (S8c.24: constants)
         xax_selfhost_verify._NATIVE[:] = [None]
@@ -44,6 +47,10 @@ def _verifier(native: bool):
         xax_compiler._XAX_VALID_OBJECTS.update(saved_objects[0])
         xax_compiler._XAX_REJECTED_OBJECTS.clear()
         xax_compiler._XAX_REJECTED_OBJECTS.update(saved_objects[1])
+        xax_compiler._XAX_GLUE_GRAPHS.clear()
+        xax_compiler._XAX_GLUE_GRAPHS.update(saved_glue[0])
+        xax_compiler._XAX_GLUE_REJECTIONS.clear()
+        xax_compiler._XAX_GLUE_REJECTIONS.update(saved_glue[1])
         xax_compiler._PARSED_GRAPHS.clear()
 
 
@@ -419,6 +426,74 @@ class XaxObjectRejectionTests(unittest.TestCase):
         finally:
             xax_selfhost_verify.NativeStoreVerifier.verify_with_rejections = original
             xax_selfhost_typing.NativeTyping.object_rejections = original_constants
+
+
+def _glue(variant: str):
+    """``(root, objects)``: a module holding ``(b32) -> b32`` whose graph traps with a payload, or names an unused
+    reference (one whose CID sorts last, so the body's indices stay valid)."""
+    from xax_compiler import function
+
+    graph = GraphBuilder()
+    block = graph.block(B32)
+    payloads = {"trap_noncanonical": b"\x81\x00", "trap_wide": b"\xff\xff\x04", "trap_zero": b"\x00",
+                "trap_unterminated": b"\x80\x80\x80\x01", "trap_short": b"\x80", "trap_target": b"\x05ab"}
+    payload = payloads.get(variant, b"")
+    placeholder = bytes((0x05, 0x07, 0x09, 0x0B)[:len(payload)])  # a canonical payload of the same length
+    block.trap(placeholder if variant.startswith("trap_") else payload)
+    graph.function((B32,), (B32,))
+    fragment = next(item for item in graph.objects.values() if item.kind == Kind.GRAPH_FRAGMENT)
+    if variant.startswith("trap_"):  # the encoder refuses a bad payload: patch the body
+        assert fragment.body.count(placeholder) == 1
+        fragment = SemanticObject.create(Kind.GRAPH_FRAGMENT, fragment.body.replace(placeholder, payload), fragment.references)
+    if variant == "graph_unused":
+        extra = max((bits_type(width) for width in range(2, 64)), key=lambda item: item.cid)
+        assert extra.cid > max(fragment.references)
+        fragment = SemanticObject.create(Kind.GRAPH_FRAGMENT, fragment.body, (*fragment.references, extra.cid))
+        graph.track(extra)
+    entry = function(fragment, (B32,), (B32,))
+    module = object_with_refs(Kind.MODULE, (entry,))
+    root = object_with_refs(Kind.PROGRAM_ROOT, (module,))
+    objects = {item.cid: item for item in (*graph.objects.values(), fragment, entry, module, root)}
+    reachable, pending = {}, [root.cid]
+    while pending:
+        cid = pending.pop()
+        if cid not in reachable:
+            reachable[cid] = objects[cid]
+            pending.extend(reachable[cid].references)
+    return root, tuple(reachable.values())
+
+
+GLUE_VARIANTS = {"trap_noncanonical": "TRAP-PAYLOAD-CANONICAL", "trap_wide": "TRAP-PAYLOAD-CANONICAL", "trap_zero": "TRAP-PAYLOAD-CANONICAL",
+                 "trap_unterminated": "TRAP-PAYLOAD-CANONICAL", "trap_short": "TRAP-PAYLOAD-CANONICAL", "graph_unused": "SER-REFS-DIRECT-ONLY"}
+
+
+@unittest.skipUnless(LINUX_X86_64, "requires a Linux x86-64 host")
+class XaxGlueRejectionTests(unittest.TestCase):
+    def test_graph_glue_rejections_are_decided_by_xax(self):
+        import xax_compiler
+
+        raised = []
+        original = xax_compiler._xax_fail
+
+        def recording(*arguments):
+            raised.append(arguments[2])
+            return original(*arguments)
+
+        for variant in ("trap_target", "valid"):
+            root, objects = _glue(variant)
+            self.assertEqual(_outcome(True, root, objects), ("accept",))
+        xax_compiler._xax_fail = recording
+        try:
+            for variant, rule in GLUE_VARIANTS.items():
+                with self.subTest(variant=variant):
+                    root, objects = _glue(variant)
+                    baseline = _outcome(False, root, objects)
+                    raised.clear()
+                    self.assertEqual(_outcome(True, root, objects), baseline)
+                    self.assertEqual(baseline[:1] + baseline[2:3], ("reject", rule))
+                    self.assertIn(rule, raised)
+        finally:
+            xax_compiler._xax_fail = original
 
 
 if __name__ == "__main__":

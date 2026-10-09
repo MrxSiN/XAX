@@ -124,7 +124,9 @@ OBJECT_SITES = ("LIST_TRAILING", "LIST_REF_INDEX", "LIST_REFERENCE_BODY", "LIST_
                 # S8c.23 (ADR-241): targets (``decode_native_target``).
                 "TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
                 "TARGET_PROFILE", "TARGET_X86_64", "TARGET_RISCV64", "TARGET_SPIRV", "TARGET_JVM", "TARGET_WASM32", "TARGET_AARCH64",
-                "TARGET_ANDROID", "TARGET_AARCH64_LINUX", "TARGET_BAREMETAL", "TARGET_BOARD", "TARGET_ACCELERATOR")
+                "TARGET_ANDROID", "TARGET_AARCH64_LINUX", "TARGET_BAREMETAL", "TARGET_BOARD", "TARGET_ACCELERATOR",
+                # S8 (ADR-248): per-graph glue (raised inside the graph parse, wherever it is first reached).
+                "GRAPH_TRAP_PAYLOAD", "GRAPH_UNUSED")
 AFTER_PARSE = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT", "FUNCTION_UNUSED")
 GROUP_AFTER_PARSE = ("GROUP_ENTRY_CONTRACT", "GROUP_RETURN_CONTRACT", "GROUP_MEMBER_RANGE", "GROUP_CALL_CONTRACT", "GROUP_SCC")
 S = {name: index + 1 for index, name in enumerate(OBJECT_SITES)}
@@ -962,12 +964,13 @@ def _glue_ok(tables):
         g = p["g"]
         e.var("refs", _references(e, g))
         _clear_marks(e, p["refs"])
+        e.var("all_resolved", _resolved(e, g))  # a rejection needs every reference stored (the parse resolves them)
         e.var("gs", _payload(e, g))
         e.var("body_len_at", e.add(p["gs"], e.rd(e.sub(p["gs"], 1))))
         e.var("body_at", e.add(p["body_len_at"], 1))
         e.var("B", e.rd(p["gs"]))
         e.var("ga", e.add(p["gs"], 2))
-        for name in ("ti", "tobj", "pc", "nc", "opc", "ei", "oc", "rc", "kind", "ac", "vc", "tsize", "tat", "b0", "b1", "b2", "aq", "aq_stop", "vq", "vq_stop"):
+        for name in ("ti", "tobj", "pc", "nc", "opc", "ei", "oc", "rc", "kind", "ac", "vc", "tsize", "tat", "b0", "b1", "b2", "aq", "aq_stop", "vq", "vq_stop", "trap_error"):
             e.var(name, 0)
 
         def type_reference():
@@ -1034,8 +1037,16 @@ def _glue_ok(tables):
                 two = e.both(e.le(128, p["b0"]), e.lt(1, p["tsize"]), e.lt(p["b1"], 128), e.ne(p["b1"], 0))
                 three = e.both(e.le(128, p["b0"]), e.le(128, p["b1"]), e.lt(2, p["tsize"]), e.lt(p["b2"], 128), e.ne(p["b2"], 0),
                                e.le(e.add(e.add(e.sub(p["b0"], 128), e.mul(e.sub(p["b1"], 128), 128)), e.mul(p["b2"], 16384)), 0xFFFF))
-                zero_alone = e.both(e.eq(p["tsize"], 1), e.eq(p["b0"], 0))
-                e.if_(e.ne(p["tsize"], 0), lambda: _no(e, e.either(e.not_(e.either(one, two, three)), zero_alone)))
+                # decode_trap_payload's messages, in its order: 1 non-canonical ULEB, 2 over 16 bits, 3 zero alone,
+                # 4 unterminated.
+                e.set("trap_error", 0)
+                e.if_(e.both(e.lt(p["b0"], 128), e.eq(p["tsize"], 1), e.eq(p["b0"], 0)), lambda: e.set("trap_error", 3))
+                e.if_(e.both(e.le(128, p["b0"]), e.lt(1, p["tsize"]), e.lt(p["b1"], 128), e.eq(p["b1"], 0)), lambda: e.set("trap_error", 1))
+                e.if_(e.both(e.le(128, p["b0"]), e.le(128, p["b1"]), e.lt(2, p["tsize"]), e.lt(p["b2"], 128)),
+                      lambda: e.if_(e.eq(p["b2"], 0), lambda: e.set("trap_error", 1), lambda: e.if_(e.not_(three), lambda: e.set("trap_error", 2))))
+                e.if_(e.not_(e.either(one, two, three, e.eq(p["trap_error"], 1), e.eq(p["trap_error"], 2))), lambda: e.set("trap_error", 4))
+                e.if_(e.both(e.ne(p["tsize"], 0), e.ne(p["trap_error"], 0)),
+                      lambda: (_no(e, e.eq(p["all_resolved"], 0)), _reject(e, None, g, S["GRAPH_TRAP_PAYLOAD"], p["trap_error"], p["b"])))
 
             e.if_(e.eq(p["kind"], 1), edge)
             e.if_(e.eq(p["kind"], 2), lambda: (skip_value(), edge(), edge()))
@@ -1048,7 +1059,8 @@ def _glue_ok(tables):
             e.if_(e.eq(p["kind"], 4), trap)
 
         e.for_("b", 0, p["B"], block)
-        _no(e, e.eq(_all_marked(e, p["refs"]), 0))
+        _no(e, e.eq(p["all_resolved"], 0))
+        _reject(e, e.eq(_all_marked(e, p["refs"]), 0), g, S["GRAPH_UNUSED"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
         e.give(1)
     return _function(("g",), build, tables)
 
@@ -1935,7 +1947,9 @@ def collect_verdicts(read, count: int, groups=()):
     return store == 1, verdicts, graphs, members
 
 
-LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED", "GROUP_UNUSED")  # a payload word is a [count, words] list
+TRAP_ERRORS = ("non-canonical trap reason ULEB", "portable trap reason exceeds 16 bits",
+               "zero trap reason uses the empty canonical payload", "unterminated or oversized portable trap reason")  # decode_trap_payload
+LIST_SITES = ("LIST_REF_INDEX", "LIST_REFERENCE_BODY", "CONTRACT_UNUSED", "FUNCTION_UNUSED", "GROUP_UNUSED", "GRAPH_UNUSED")  # a payload word is a [count, words] list
 TARGET_SCALAR_SITES = ("TARGET_REFERENCES", "TARGET_IDENTITY_TRUNCATED", "TARGET_IDENTITY_EMPTY", "TARGET_ARCHITECTURE", "TARGET_TRAILING",
                        "TARGET_PROFILE")  # the other target sites quote the machine record at payload word 0
 PAIR_SITES = ("FUNCTION_ENTRY_CONTRACT", "FUNCTION_RETURN_CONTRACT")  # payload word 1 is [n, words, m, words]
@@ -1951,7 +1965,7 @@ def collect_rejections(read, verdicts):
         listed = None
         name = OBJECT_SITES[site - 1] if 0 < site <= len(OBJECT_SITES) else None
         if name in LIST_SITES:
-            at = payload[0] if name in ("CONTRACT_UNUSED", "GROUP_UNUSED") else payload[1]
+            at = payload[0] if name in ("CONTRACT_UNUSED", "GROUP_UNUSED", "GRAPH_UNUSED") else payload[1]
             listed = read(at + 1, read(at, 1)[0])
         elif name in GROUP_AFTER_PARSE:
             graphs = read(payload[2] + 1, payload[0])
@@ -2063,7 +2077,9 @@ def object_diagnostic(obj, record, objects=()):
         return "XAX.STRUCT.FUNCTION_GRAPH", "GRAPH-FUNCTION-CARRIER", Kind.GRAPH_FRAGMENT.name, Kind(x).name
     if name == "GROUP_TRAILING":
         return "XAX.CANON.TRAILING_BYTES", "RECURSION-GROUP-BODY", 0, x
-    if name == "GROUP_UNUSED":
+    if name == "GRAPH_TRAP_PAYLOAD":
+        return "XAX.CONTROL.TRAP_PAYLOAD", "TRAP-PAYLOAD-CANONICAL", "empty or canonical u16 ULEB reason with optional target bytes", TRAP_ERRORS[x - 1]
+    if name in ("GROUP_UNUSED", "GRAPH_UNUSED"):
         used = {obj.references[k].hex() for k, marked in enumerate(listed) if marked}
         return "XAX.CANON.UNUSED_REFERENCE", "SER-REFS-DIRECT-ONLY", sorted(cid.hex() for cid in obj.references), sorted(used)
     if name in ("FUNCTION_REF_INDEX", "FUNCTION_MEMBER_RANGE"):
