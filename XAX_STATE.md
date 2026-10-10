@@ -1487,3 +1487,8 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 - `jsonmin` on the Pixel 8 Pro (§15.35): 0.956x NDK `clang -O2 -static` (Cortex-X3, p < 1e-6; 0.924x on a Cortex-A715 core), ahead of `rustc -O3`; the lowest peak RSS. The Linux AArch64 row derives R4 for this one workload.
 
 - Second AArch64 device (§15.36): on an original Pixel (Snapdragon 821) the same `jsonmin` image is 0.898x NDK `clang -O2 -static`, and the AArch64 runtime tests pass. A OnePlus One is ARMv7-only: no XAX target runs there.
+
+## Android R5 maintenance record — 2026-10-10 (ADR-255)
+
+- One maintenance cycle of the Android counter app: cap the count at 9999 in three semantic transactions (insert compare and extension, retarget the add, delete the old constant); the rebuilt APK passes the device oracle, and the library behaves at the cap on Pixel 8 Pro; no cold-start change (p = 0.14). The Android row records R5 evidence but stays R3 until R4 holds.
+- Workspace transactions can insert compares, extensions, truncations, and bitwise nodes, with `bits<N>` result types the store need not hold yet. New Android profile `android-arm64-v8a-shared-v5` (v4 plus the full integer set).

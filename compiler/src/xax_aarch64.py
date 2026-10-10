@@ -28,6 +28,7 @@ from xax_compiler import (
     AtomicLegalizationPolicy,
     AtomicOrder,
     AtomicSupport,
+    ANDROID_ARM64_GENERAL_IDENTITIES,
     ANDROID_ARM64_SHARED_IDENTITIES,
     ANDROID_JNI_REFERENCE_WORD_BORROWED_OPERATION,
     ANDROID_JNI_REFERENCE_WORD_GLOBAL_OPERATION,
@@ -1689,7 +1690,7 @@ def _compile_function(
                     "backend-declared explicit assist",
                     capability.runtime_helper.hex() if capability.runtime_helper else "none",
                 )
-    if target.identity in AARCH64_LINUX_IDENTITIES or target.identity == b"android-arm64-v8a-shared-v4":
+    if target.identity in AARCH64_LINUX_IDENTITIES or target.identity in ANDROID_ARM64_GENERAL_IDENTITIES:
         # Linux profiles (ADR-168) and the Android general profile (ADR-169):
         # function-wide register allocation first.
         from xax_aarch64_regalloc import compile_linux_function
