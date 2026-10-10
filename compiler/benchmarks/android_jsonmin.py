@@ -203,10 +203,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--size", type=int, default=8 << 20)
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--output", type=Path, help="evidence path for --write (another device or core); default: the cited file")
     arguments = parser.parse_args(argv)
     evidence = run(arguments.rounds, arguments.warmup, arguments.size)
     if arguments.write:
-        EVIDENCE.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (arguments.output or EVIDENCE).write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     summary = {arm: {key: item[key] for key in ("wall_seconds_median", "time_ratio_vs_fastest", "peak_rss_kib_max", "stripped_bytes")} for arm, item in evidence["results"].items()}
     print(json.dumps({"summary": summary, "xax_vs_competitor": evidence["results"]["xax"]["time_ratio_vs_fastest_competitor"],
                       "p": evidence["results"]["xax"]["faster_p_value_vs_competitor"], "thermal": evidence["method"]["thermal_status_before_after"]}, indent=2))

@@ -51,6 +51,9 @@ class ReplacementMatrixTests(unittest.TestCase):
         evidence = json.loads((ROOT / cited).read_text())
         self.assertEqual(derived_level(row), "R4")
         self.assertEqual(recompute_runtime_verdict([cited]), [])
+        # A second device (original Pixel, ADR-254) is cited too, and leads on its own.
+        self.assertIn("compiler/benchmarks/android_jsonmin_pixel1_evidence.json", row["competitive"])
+        self.assertEqual(recompute_runtime_verdict(row["competitive"][1:]), [])
         self.assertTrue(evidence["hardware"])
         self.assertEqual(set(evidence["results"]), {"xax", "clang-O2", "clang-O2-static", "rustc-O3"})
         without_rust = {**evidence, "results": {k: v for k, v in evidence["results"].items() if k != "rustc-O3"}}

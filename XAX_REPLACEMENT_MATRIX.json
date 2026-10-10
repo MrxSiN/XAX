@@ -472,7 +472,7 @@
     {
       "id": "linux-aarch64",
       "name": "AArch64 Linux",
-      "summary": "Static and dynamic ELF executables. The static jsonmin image runs on Pixel 8 Pro hardware (Tensor G3, the Android device's Linux kernel): 0.956x NDK clang -O2 -static, the fastest non-XAX arm, and ahead of rustc -O3, over 101 interleaved pinned rounds (ADR-254). Dynamic images and the filestat application run only under qemu-aarch64 (Android has no glibc loader).",
+      "summary": "Static and dynamic ELF executables. The static jsonmin image runs on two phones' Android kernels: on Pixel 8 Pro (Tensor G3) 0.956x NDK clang -O2 -static, the fastest non-XAX arm, and on the original Pixel (Snapdragon 821) 0.898x, ahead of rustc -O3 on both, over 101 interleaved pinned rounds each (ADR-254). Dynamic images and the filestat application run only under qemu-aarch64 (Android has no glibc loader).",
       "level": "R4",
       "runtime_requirement": "none for the static profile; the dynexec profile requests /lib/ld-linux-aarch64.so.1 explicitly and loads only declared DT_NEEDED libraries",
       "fields": {
@@ -532,28 +532,32 @@
         ],
         "performance": [
           "MEASURED",
-          "compiler/benchmarks/android_jsonmin_evidence.json"
+          "compiler/benchmarks/android_jsonmin_evidence.json",
+          "compiler/benchmarks/android_jsonmin_pixel1_evidence.json"
         ],
         "code_size": [
           "MEASURED",
           "compiler/benchmarks/linux_aarch64_filestat_evidence.json",
-          "compiler/benchmarks/android_jsonmin_evidence.json"
+          "compiler/benchmarks/android_jsonmin_evidence.json",
+          "compiler/benchmarks/android_jsonmin_pixel1_evidence.json"
         ],
         "ai_tokens": "UNIMPLEMENTED",
         "memory": [
           "MEASURED",
-          "compiler/benchmarks/android_jsonmin_evidence.json"
+          "compiler/benchmarks/android_jsonmin_evidence.json",
+          "compiler/benchmarks/android_jsonmin_pixel1_evidence.json"
         ]
       },
       "blockers": [
-        "R4 scope (ADR-254): one workload (jsonmin, static profile) on one device, a Pixel 8 Pro whose Android kernel runs the Linux AArch64 image; baselines are the NDK's clang -O2 (bionic, dynamic and static) and rustc -O3 for aarch64-linux-android, since a glibc toolchain's dynamic images cannot load there; a cross-check pinned to a Cortex-A715 core gives 0.924x (android_jsonmin_cpu80_evidence.json). Dynamic images and filestat (zlib through glibc's loader) are executed only under qemu-aarch64 user mode (OI-44)",
+        "R4 scope (ADR-254): one workload (jsonmin, static profile) on two devices, a Pixel 8 Pro and an original Pixel (android_jsonmin_pixel1_evidence.json: Snapdragon 821, kernel 4.4, 0.898444x), whose Android kernels run the Linux AArch64 image; baselines are the NDK's clang -O2 (bionic, dynamic and static) and rustc -O3 for aarch64-linux-android, since a glibc toolchain's dynamic images cannot load there; a cross-check pinned to a Cortex-A715 core gives 0.924x (android_jsonmin_cpu80_evidence.json). Dynamic images and filestat (zlib through glibc's loader) are executed only under qemu-aarch64 user mode (OI-44)",
         "code size: the jsonmin image is 18,044 bytes, 2.4x the dynamically linked clang binary (7,480 bytes stripped, plus bionic's libc.so) and 0.043x the static one; small leaf callees are inlined into the lowering view (ADR-254)",
         "the register path covers integer and pointer functions, recursion groups, and borrowed-view returns (ADR-254); floats and aggregates still take the frame path",
         "no TLS, unwind/DWARF, argv/env, threads, atomics, or C-callable XAX entries on this profile; R5: no maintenance record on this row"
       ],
       "competitive": [
         true,
-        "compiler/benchmarks/android_jsonmin_evidence.json"
+        "compiler/benchmarks/android_jsonmin_evidence.json",
+        "compiler/benchmarks/android_jsonmin_pixel1_evidence.json"
       ]
     },
     {
