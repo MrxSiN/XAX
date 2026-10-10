@@ -180,7 +180,7 @@ class CarrierTests(unittest.TestCase):
 
     @unittest.skipUnless(WINDOWS_X86_64, "requires a Windows x86-64 host")
     def test_windows_integer_completion_operations_run(self):
-        """ADR-253: exit((n udiv 4) | ((n urem 5) & 3)) over the runtime byte count n, so nothing folds at build time."""
+        """ADR-256: exit((n udiv 4) | ((n urem 5) & 3)) over the runtime byte count n, so nothing folds at build time."""
         import subprocess
         import tempfile
 

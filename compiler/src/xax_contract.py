@@ -16,9 +16,10 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 4  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+HOST_CONTRACT_MINOR = 5  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
 # 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250);
-# 4: the windows-x86_64 construct platform and its win32.* carrier names (ADR-252)
+# 4: the windows-x86_64 construct platform and its win32.* carrier names (ADR-252); 5: integer-completion operations
+# (bit.and/or, udiv/urem, int.truncate, int.zero.extend) on the windows-x86_64 platform (ADR-256)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)

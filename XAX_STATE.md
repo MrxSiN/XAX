@@ -1492,3 +1492,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 
 - One maintenance cycle of the Android counter app: cap the count at 9999 in three semantic transactions (insert compare and extension, retarget the add, delete the old constant); the rebuilt APK passes the device oracle, and the library behaves at the cap on Pixel 8 Pro; no cold-start change (p = 0.14). The Android row records R5 evidence but stays R3 until R4 holds.
 - Workspace transactions can insert compares, extensions, truncations, and bitwise nodes, with `bits<N>` result types the store need not hold yet. New Android profile `android-arm64-v8a-shared-v5` (v4 plus the full integer set).
+
+## Windows PE integer-completion operations — 2026-10-10 (ADR-256)
+
+`x86_64-windows-pe-v1` declares bit and/or, udiv/urem, truncate, and zero-extend (as Linux x86-64), so constructed Windows programs can use them; a program over the runtime stdin length runs on Windows. Host contract minor 5.
