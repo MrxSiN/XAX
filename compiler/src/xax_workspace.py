@@ -10,7 +10,10 @@ from pathlib import Path
 from threading import Lock
 from typing import Callable
 
+import re
+
 from xax_compiler import (
+    bits_type,
     store_resolver,
     ATOMIC_OPERATIONS,
     DEFAULT_VERIFIER_IDENTITY,
@@ -441,6 +444,21 @@ class TransactionValueRef:
             raise ValueError("transaction-local value indices must be nonnegative")
 
 
+def _literal_type(handle: str) -> SemanticObject | None:
+    """``bits<N>`` names the canonical bits type of that width directly (ADR-255): an inserted node may
+    produce a type the store does not hold yet (a compare's ``bits<1>``), which no query could have exposed."""
+    match = re.fullmatch(r"bits<([1-9][0-9]{0,4})>", handle)
+    return bits_type(int(match.group(1))) if match else None
+
+
+# Pure integer operations a transaction may insert (ADR-255); the store verifier checks each one's
+# operand types, result type, and attributes exactly as for any other node.
+_INSERTABLE = (
+    Operation.CONSTANT, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_AND, Operation.BIT_OR,
+    Operation.BIT_XOR, Operation.INT_COMPARE, Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE,
+)
+
+
 @dataclass(frozen=True)
 class InsertPureNode:
     """Insert one verifier-safe pure node immediately before an existing anchor."""
@@ -453,10 +471,13 @@ class InsertPureNode:
     operands: tuple[ValueRef | TransactionValueRef, ...]
     result_type: str
     constant_value: int | None = None
+    attributes: tuple[int, ...] = ()  # e.g. the compare kind of an int.compare (ADR-255)
 
     def __post_init__(self) -> None:
         if self.expected_block < 0 or self.expected_index < 0 or self.local_id < 0:
             raise ValueError("insertion indices must be nonnegative")
+        if any(value < 0 for value in self.attributes):
+            raise ValueError("insertion attributes must be nonnegative")
 
 
 @dataclass(frozen=True)
@@ -543,6 +564,8 @@ class _ResolvedInsertPureNode:
     operands: tuple[ValueRef | TransactionValueRef, ...]
     result_type_cid: bytes
     constant_value: int | None = None
+    attributes: tuple[int, ...] = ()
+    result_type_object: SemanticObject | None = None  # a structural type the store may not hold yet
 
 
 @dataclass(frozen=True)
@@ -2345,7 +2368,8 @@ class Workspace:
                         )
                     candidate_mutations.append(_ResolvedSetResultType(mutation.node, mutation.result, expected_binding[0], value_binding[0]))
                 elif isinstance(mutation, InsertPureNode):
-                    type_binding = self._type_bindings.get(mutation.result_type)
+                    literal = _literal_type(mutation.result_type)
+                    type_binding = (literal.cid, self.generation) if literal is not None else self._type_bindings.get(mutation.result_type)
                     if type_binding is None or type_binding[1] != self.generation:
                         return self._candidate_rejected(
                             size,
@@ -2368,6 +2392,8 @@ class Workspace:
                             mutation.operands,
                             type_binding[0],
                             mutation.constant_value,
+                            mutation.attributes,
+                            literal,
                         )
                     )
                 else:
@@ -2655,7 +2681,8 @@ class Workspace:
                         return self._rejected(size, _diagnostic("XAX.WORKSPACE.HANDLE", stale, "WORKSPACE-HANDLE-GENERATION", self.generation, "unbound or stale", (mutation.node,)))
                     candidate_mutations.append(_ResolvedSetResultType(mutation.node, mutation.result, expected_binding[0], value_binding[0]))
                 elif isinstance(mutation, InsertPureNode):
-                    type_binding = self._type_bindings.get(mutation.result_type)
+                    literal = _literal_type(mutation.result_type)
+                    type_binding = (literal.cid, self.generation) if literal is not None else self._type_bindings.get(mutation.result_type)
                     if type_binding is None or type_binding[1] != self.generation:
                         return self._rejected(
                             size,
@@ -2678,6 +2705,8 @@ class Workspace:
                             mutation.operands,
                             type_binding[0],
                             mutation.constant_value,
+                            mutation.attributes,
+                            literal,
                         )
                     )
                 else:
@@ -3045,6 +3074,8 @@ def _transaction_size(transaction: Transaction) -> int:
             size += 1
             if mutation.constant_value is not None:
                 size += len(uleb(zigzag(mutation.constant_value)))
+            if mutation.attributes:
+                size += len(uleb(len(mutation.attributes))) + sum(len(uleb(value)) for value in mutation.attributes)
         elif isinstance(mutation, SpecializeFunction):
             arguments = tuple(sorted(mutation.arguments, key=lambda argument: argument.parameter))
             size += len(uleb(len(arguments)))
@@ -3683,12 +3714,12 @@ def _mutate_function(
                     actual_containment,
                     repair_neighborhood=(mutation.node,),
                 )
-            if mutation.operation not in (Operation.CONSTANT, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP):
+            if mutation.operation not in _INSERTABLE:
                 fail(
                     "XAX.WORKSPACE.UNSUPPORTED_MUTATION",
                     mutation.node,
                     "WORKSPACE-INSERT-PURE-NODE",
-                    [Operation.CONSTANT.name, Operation.ADD_WRAP.name, Operation.SUB_WRAP.name, Operation.MUL_WRAP.name],
+                    [operation.name for operation in _INSERTABLE],
                     mutation.operation.name,
                     repair_neighborhood=(mutation.node,),
                 )
@@ -3888,7 +3919,8 @@ def _mutate_function(
             insertion = insertions.get((block_index, node_index))
             if insertion is not None:
                 result_type_cid = insertion.result_type_cid
-                result_type = resolve(result_type_cid)
+                result_type = insertion.result_type_object or resolve(result_type_cid)
+                objects[result_type.cid] = result_type
                 entity = None
                 if insertion.operation == Operation.CONSTANT:
                     if insertion.constant_value is None:
@@ -3927,6 +3959,7 @@ def _mutate_function(
                         tuple(remap_mutation_value(value, insertion.node) for value in insertion.operands),
                         (result_type,),
                         entity=entity,
+                        attributes=insertion.attributes,
                     )
                 )
             if (block_index, node_index) in deletions:

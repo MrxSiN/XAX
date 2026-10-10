@@ -261,13 +261,13 @@ def jni_symbols(description: CounterActivityDescription) -> tuple[bytes, bytes]:
     )
 
 
-def counter_library(description: CounterActivityDescription, *, packed: bool = True, soname: bytes = b"libxaxapp.so") -> bytes:
-    """The native library exporting both JNI methods (general target: heap views need it)."""
-    from xax_android import AndroidExport, compile_android_shared
-    from xax_compiler import android_arm64_shared_general_target, write_store, object_with_refs, StoreReader, verify_store
+def counter_store(description: CounterActivityDescription, *, packed: bool = True):
+    """``(reader, target object, onCreate cid, onClick cid)``: the verified canonical store of both JNI methods."""
+    from xax_compiler import android_arm64_shared_integer_target, write_store, object_with_refs, StoreReader, verify_store
 
     native = counter_native(description)
-    target_object = android_arm64_shared_general_target(packed=packed)
+    # The full-integer profile (ADR-255): the same code as v4 for these functions, and room for maintenance edits.
+    target_object = android_arm64_shared_integer_target(packed=packed)
     functions = (native.on_create, native.on_click)
     available = {item.cid: item for item in (*native.objects, *functions, target_object)}
     module = object_with_refs(Kind.MODULE, [*functions, target_object])
@@ -281,6 +281,19 @@ def counter_library(description: CounterActivityDescription, *, packed: bool = T
             pending.extend(reachable[cid].references)
     reader = StoreReader(write_store(root.cid, tuple(reachable.values())))
     verify_store(reader)
+    return reader, target_object, native.on_create.cid, native.on_click.cid
+
+
+def compile_counter_library(reader, target_object: SemanticObject, on_create: bytes, on_click: bytes, description: CounterActivityDescription, *, soname: bytes = b"libxaxapp.so") -> bytes:
+    """The native library exporting both JNI methods from a counter store (general target: heap views need it)."""
+    from xax_android import AndroidExport, compile_android_shared
+
     create_symbol, click_symbol = jni_symbols(description)
-    exports = (AndroidExport(create_symbol, native.on_create.cid), AndroidExport(click_symbol, native.on_click.cid))
+    exports = (AndroidExport(create_symbol, on_create), AndroidExport(click_symbol, on_click))
     return compile_android_shared(reader, exports, target_object=target_object, soname=soname).data
+
+
+def counter_library(description: CounterActivityDescription, *, packed: bool = True, soname: bytes = b"libxaxapp.so") -> bytes:
+    """The native library exporting both JNI methods (general target: heap views need it)."""
+    reader, target_object, on_create, on_click = counter_store(description, packed=packed)
+    return compile_counter_library(reader, target_object, on_create, on_click, description, soname=soname)

@@ -154,6 +154,18 @@ class CounterApkTests(unittest.TestCase):
         # Start-up time and memory count only from hardware (XAX_SPEC.md section 21.2).
         self.assertTrue(device["label"] != "MEASURED" or device["hardware"] is True)
 
+    def test_r5_maintenance_transactions_replay_to_the_recorded_roots(self):
+        """ADR-255: the agent's three transactions commit again to the roots the device-tested record names."""
+        from benchmarks import bench_r5_android_counter as r5
+
+        evidence = json.loads(r5.EVIDENCE.read_text(encoding="utf-8"))
+        edited = r5.edit_store()
+        self.assertEqual(edited["original_root"].hex(), evidence["application"]["original_root"])
+        self.assertEqual([result.root.hex() for result in edited["results"]], [item["new_root"] for item in evidence["transactions"]])
+        self.assertEqual(edited["clicked"].hex(), evidence["rebuild"]["after"]["on_click"])
+        self.assertTrue(evidence["tests"]["all_passed"] and evidence["tests"]["change_took_effect"])
+        self.assertEqual(evidence["host"]["ro.kernel.qemu"], "")  # a hardware run
+
     @unittest.skipUnless(bionic.QEMU and (bionic.ROOT / "system/bin/linker64").exists() and bionic.JNI_H.exists(), "requires the NDK, qemu-aarch64, and an Android bionic root")
     def test_native_state_survives_restart_under_bionic(self):
         self.assertEqual(app.run_native(app.APK), app.EXPECTED_NATIVE)

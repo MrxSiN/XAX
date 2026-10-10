@@ -1522,6 +1522,38 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(results[0].root, results[1].root)
         self.assertEqual(results[0].transaction_bytes, results[1].transaction_bytes)
 
+    def test_inserted_compare_and_extension_with_a_new_bits_type(self):
+        """ADR-255: a compare produces ``bits<1>``, which the store need not hold yet; its extension feeds the add."""
+        from xax_compiler import IntCompare
+
+        reader, entry = workspace_fixture()
+        workspace = Workspace(reader)
+        nodes = workspace.function_nodes(entry.cid, 3).entities
+        type_handle = workspace.neighborhood(nodes[0].handle, 1).entities[0].type_handle
+        value = lambda index: ValueRef.node_result(0, index)  # noqa: E731
+        inserted = workspace.commit(Transaction(RootRef(0), (
+            InsertPureNode(nodes[2].handle, 0, 2, 0, Operation.INT_COMPARE, (value(0), value(1)), "bits<1>", attributes=(int(IntCompare.ULT),)),
+        )))
+        self.assertTrue(inserted.committed, inserted.diagnostic)
+        nodes = workspace.function_nodes(inserted.changed_entity, 4).entities
+        self.assertEqual([node.operation for node in nodes], [Operation.CONSTANT, Operation.CONSTANT, Operation.INT_COMPARE, Operation.ADD_WRAP])
+        type_handle = workspace.neighborhood(nodes[0].handle, 1).entities[0].type_handle  # handles are per generation
+        extended = workspace.commit(Transaction(RootRef(1), (
+            InsertPureNode(nodes[3].handle, 0, 3, 0, Operation.INT_ZERO_EXTEND, (value(2),), type_handle),
+        )))
+        self.assertTrue(extended.committed, extended.diagnostic)
+        nodes = workspace.function_nodes(extended.changed_entity, 5).entities
+        replaced = workspace.commit(Transaction(RootRef(2), (ReplaceUse(nodes[4].handle, 1, value(1), value(3)),)))
+        self.assertTrue(replaced.committed, replaced.diagnostic)
+        self.assertEqual(execute(workspace.reader, replaced.changed_entity, ()), (3,))  # 2 + (2 < 3)
+        first = workspace.function_nodes(replaced.changed_entity, 1).entities[0]
+        type_handle = workspace.neighborhood(first.handle, 1).entities[0].type_handle
+        rejected = workspace.commit(Transaction(RootRef(3), (
+            InsertPureNode(first.handle, 0, 0, 0, Operation.UDIV, (value(0), value(1)), type_handle),
+        )))
+        self.assertFalse(rejected.committed)
+        self.assertEqual(rejected.diagnostic.rule, "WORKSPACE-INSERT-PURE-NODE")
+
     def test_inserted_result_is_transaction_local_and_can_feed_later_mutation(self):
         reader, entry = workspace_fixture()
         workspace = Workspace(reader)

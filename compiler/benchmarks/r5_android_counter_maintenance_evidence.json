@@ -1,0 +1,317 @@
+{
+  "format": "xax-r5-maintenance-evidence-v1",
+  "decision": "ADR-255",
+  "label": "EXECUTED",
+  "application": {
+    "name": "xax.counter",
+    "platform_row": "android-arm64",
+    "target": "7c7c3c250ccb2358a87dc3dbe50410f16c991cfd3a5f2538291709ea1c9ce8f5",
+    "original_root": "1af56d76c8b1ad3e0d475602683eec0357129379dd2e51807b875cb3c146f778"
+  },
+  "request": "The button shows at most four digits: a tap never raises the count past 9999; a stored count above 9999 stays as it is.",
+  "agent": {
+    "authored_input": [
+      "T1 @R0: insert-before F.N8 #0 constant bits<64> 9999; insert-before F.N9 #1 int.compare.ult N8 #0 -> bits<1>; insert-before F.N10 #2 int.zero_extend #1 -> bits<64>",
+      "T2 @R1: replace-operand ADD 1 (was the constant 1) <- the zero_extend",
+      "T3 @R2: delete the constant 1, now unused"
+    ],
+    "author": "Claude (AI coding agent), Claude Code session of 2026-10-10, after reading the projection excerpt below",
+    "projection_excerpt": [
+      "N8 load.bits.le N2 N7.R2 -> (T9,T3) attributes=(8, 8)",
+      "N9 constant 1 -> (T9)",
+      "N10 add.wrap N8 N9 -> (T9)"
+    ],
+    "replayed_by": "this harness, deterministically against the pinned original store"
+  },
+  "queries": [
+    {
+      "query": "function_nodes",
+      "response_bytes": 1727
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 2642
+    },
+    {
+      "query": "projection",
+      "response_bytes": 1340
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 2642
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 3107
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 3107
+    }
+  ],
+  "transactions": [
+    {
+      "generation_after": 1,
+      "committed": true,
+      "new_root": "7afa744bc69cf741e4d5b478318d47cb84d96da9a5bc519f93b2edd59df86dd6",
+      "changed_entities": [
+        "0423a26646ef2a319900af85072680a07008e7300a4dfc53f49fe8920b07a62c"
+      ],
+      "transaction_bytes": 95,
+      "touched_objects": 6,
+      "reused_objects": 32,
+      "verified_objects": 6
+    },
+    {
+      "generation_after": 2,
+      "committed": true,
+      "new_root": "318ef84ae3092d0abf169f62a5d83d615c91f5d267c1ac6981b9a42020c7b30f",
+      "changed_entities": [
+        "c7d71a615e714509f7c7e44654fe843b908ec20294edf9b7e31a4d9028b8ad11"
+      ],
+      "transaction_bytes": 25,
+      "touched_objects": 4,
+      "reused_objects": 34,
+      "verified_objects": 4
+    },
+    {
+      "generation_after": 3,
+      "committed": true,
+      "new_root": "065d1ca1bef1199436f37bbdaa84d4addd91113a2b1ca0bd0bb62d1563a61dc1",
+      "changed_entities": [
+        "29b93642897805d5f86392acc63f22f27702f737eb032e1958d0fb06899de99c"
+      ],
+      "transaction_bytes": 18,
+      "touched_objects": 4,
+      "reused_objects": 33,
+      "verified_objects": 4
+    }
+  ],
+  "semantic_diff": "DiffPage(entities=(DiffView(handle='D3.0', change='removed', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D3.1', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D3.2', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D3.3', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D3.4', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D3.5', change='added', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D3.6', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D3.7', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D3.8', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D3.9', change='added', kind=<Kind.TYPE: 4>, classification='authoritative'), DiffView(handle='D3.10', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative')), truncated=False, continuation=None)",
+  "whole_source_regenerated": false,
+  "workspace_accounting": {
+    "queries": 24,
+    "entities_exposed": 176,
+    "query_bytes": 21542,
+    "mutations": 3,
+    "rejected_transactions": 0
+  },
+  "rebuild": {
+    "before": {
+      "library_sha256": "00c077a7add378ebb903209708be76618e37020a779db8ee27e55edf358c58c4",
+      "library_bytes": 2248,
+      "apk_sha256": "d5a010956562da9d5741bd7901b4d261fe79a29ac37d941eb8e23ca222c877b5"
+    },
+    "after": {
+      "library_sha256": "d9fd8232d6769106bcbfb0aabff46096a26c88e81c80dc3ac4bae8789c157ad8",
+      "library_bytes": 2264,
+      "apk_sha256": "a511b7a5716edba0bc5e63299ecb1742a98195d2c44937083d69fedfca584ac1",
+      "apk_bytes": 20329,
+      "on_click": "29b93642897805d5f86392acc63f22f27702f737eb032e1958d0fb06899de99c"
+    }
+  },
+  "tests": {
+    "native": [
+      {
+        "library": "after",
+        "initial": null,
+        "expected": "XAX_COUNTER seen=0,1,2,3,3,4 file_bytes=8 stored=4 fds_closed=1",
+        "observed": "XAX_COUNTER seen=0,1,2,3,3,4 file_bytes=8 stored=4 fds_closed=1",
+        "passed": true
+      },
+      {
+        "library": "after",
+        "initial": 9997,
+        "expected": "XAX_COUNTER seen=9997,9998,9999,9999,9999,9999 file_bytes=8 stored=9999 fds_closed=1",
+        "observed": "XAX_COUNTER seen=9997,9998,9999,9999,9999,9999 file_bytes=8 stored=9999 fds_closed=1",
+        "passed": true
+      },
+      {
+        "library": "after",
+        "initial": 20000,
+        "expected": "XAX_COUNTER seen=20000,20000,20000,20000,20000,20000 file_bytes=8 stored=20000 fds_closed=1",
+        "observed": "XAX_COUNTER seen=20000,20000,20000,20000,20000,20000 file_bytes=8 stored=20000 fds_closed=1",
+        "passed": true
+      },
+      {
+        "library": "before",
+        "initial": null,
+        "expected": "XAX_COUNTER seen=0,1,2,3,3,4 file_bytes=8 stored=4 fds_closed=1",
+        "observed": "XAX_COUNTER seen=0,1,2,3,3,4 file_bytes=8 stored=4 fds_closed=1",
+        "passed": true
+      },
+      {
+        "library": "before",
+        "initial": 9997,
+        "expected": "XAX_COUNTER seen=9997,9998,9999,10000,10000,10001 file_bytes=8 stored=10001 fds_closed=1",
+        "observed": "XAX_COUNTER seen=9997,9998,9999,10000,10000,10001 file_bytes=8 stored=10001 fds_closed=1",
+        "passed": true
+      }
+    ],
+    "apk": {
+      "oracle": "integration/android/validate_counter_apk.sh",
+      "output": [
+        "ok: 0",
+        "ok: 1",
+        "ok: 2",
+        "ok: 3",
+        "ok: 3",
+        "ok: 4",
+        "XAX counter Activity validation passed: restore, increment, persistence across process death, file contents"
+      ],
+      "passed": true
+    },
+    "change_took_effect": true,
+    "all_passed": true
+  },
+  "benchmark": {
+    "protocol": "6 blocks; each installs both APKs in turn (order alternating), compiles with speed, 3 warmup starts, then 10 cold starts",
+    "results": {
+      "after": {
+        "total_time_ms_samples": [
+          150,
+          143,
+          152,
+          151,
+          145,
+          161,
+          154,
+          136,
+          131,
+          145,
+          213,
+          186,
+          189,
+          207,
+          199,
+          205,
+          196,
+          195,
+          191,
+          180,
+          194,
+          234,
+          180,
+          192,
+          200,
+          197,
+          206,
+          210,
+          199,
+          183,
+          265,
+          274,
+          247,
+          243,
+          253,
+          270,
+          235,
+          216,
+          241,
+          247,
+          245,
+          227,
+          224,
+          262,
+          242,
+          410,
+          239,
+          231,
+          270,
+          246,
+          267,
+          302,
+          255,
+          246,
+          240,
+          244,
+          243,
+          253,
+          244,
+          255
+        ],
+        "median_total_time_ms": 220.0
+      },
+      "before": {
+        "total_time_ms_samples": [
+          158,
+          157,
+          157,
+          159,
+          268,
+          169,
+          190,
+          180,
+          154,
+          167,
+          175,
+          173,
+          175,
+          175,
+          192,
+          277,
+          173,
+          180,
+          183,
+          184,
+          228,
+          259,
+          222,
+          219,
+          316,
+          224,
+          239,
+          226,
+          233,
+          225,
+          250,
+          286,
+          228,
+          244,
+          254,
+          350,
+          239,
+          231,
+          244,
+          235,
+          277,
+          346,
+          265,
+          257,
+          251,
+          308,
+          250,
+          229,
+          240,
+          259,
+          274,
+          240,
+          242,
+          210,
+          240,
+          477,
+          243,
+          245,
+          230,
+          231
+        ],
+        "median_total_time_ms": 232.0
+      }
+    },
+    "after_over_before_median": 0.948276,
+    "p_after_faster": 0.139771,
+    "p_before_faster": 0.861393
+  },
+  "persisted": {
+    "store": "counter-gen3.xax (canonical workspace save)",
+    "store_sha256": "080adbbedde7147d2a7dabc37427b914dea86228d42acf11f63ebae69ee76ee5",
+    "store_bytes": 14023,
+    "root": "065d1ca1bef1199436f37bbdaa84d4addd91113a2b1ca0bd0bb62d1563a61dc1"
+  },
+  "host": {
+    "ro.product.model": "Pixel 8 Pro",
+    "ro.soc.model": "Tensor G3",
+    "ro.build.fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "ro.kernel.qemu": ""
+  }
+}

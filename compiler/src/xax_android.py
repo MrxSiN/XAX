@@ -90,6 +90,7 @@ R_AARCH64_GLOB_DAT = 1025
 
 ANDROID_TARGET_IDENTITY = b"android-arm64-v8a-shared-v3"
 ANDROID_GENERAL_TARGET_IDENTITY = b"android-arm64-v8a-shared-v4"
+ANDROID_INTEGER_TARGET_IDENTITY = b"android-arm64-v8a-shared-v5"  # v4 plus the full integer set (ADR-255)
 
 ANDROID_ACTIVITY_UI_PREFIX = b"android-activity-ui-v1"
 ANDROID_ACTIVITY_RESOURCE_UI_PREFIX = b"android-activity-resource-ui-v1"
@@ -823,10 +824,10 @@ def compile_android_shared(
             normalized_exports.append(AndroidExport(decoded.name, decoded.function_cid))
     exports = tuple(normalized_exports)
     description = decode_native_target(target_object)
-    if description.identity not in (ANDROID_TARGET_IDENTITY, ANDROID_GENERAL_TARGET_IDENTITY) or (description.architecture, description.abi) != (3, 4) or description.image_format not in (ANDROID_ELF_FORMAT, ANDROID_ELF_PACKED_FORMAT):
+    if description.identity not in (ANDROID_TARGET_IDENTITY, ANDROID_GENERAL_TARGET_IDENTITY, ANDROID_INTEGER_TARGET_IDENTITY) or (description.architecture, description.abi) != (3, 4) or description.image_format not in (ANDROID_ELF_FORMAT, ANDROID_ELF_PACKED_FORMAT):
         fail(
             "XAX.ANDROID.TARGET", target_object.cid.hex(), "ANDROID-ARM64-SHARED-TARGET",
-            [ANDROID_TARGET_IDENTITY.decode(), ANDROID_GENERAL_TARGET_IDENTITY.decode()],
+            [ANDROID_TARGET_IDENTITY.decode(), ANDROID_GENERAL_TARGET_IDENTITY.decode(), ANDROID_INTEGER_TARGET_IDENTITY.decode()],
             description.identity.decode("ascii", "replace"),
         )
     function_cids = tuple(dict.fromkeys(item.function_cid for item in exports))

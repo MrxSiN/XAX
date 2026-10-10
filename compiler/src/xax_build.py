@@ -1132,7 +1132,7 @@ def _build_android_unsigned_apk(
 
     description = decode_native_target(target_object)
     # The managed-class profile (ADR-199) also takes the general v4 target; the others stay on v3.
-    if description.identity not in (ANDROID_TARGET_IDENTITY, b"android-arm64-v8a-shared-v4"):
+    if description.identity not in (ANDROID_TARGET_IDENTITY, b"android-arm64-v8a-shared-v4", b"android-arm64-v8a-shared-v5"):
         fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
 
     ui_carriers: list[SemanticObject] = []

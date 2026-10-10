@@ -1513,10 +1513,28 @@ def android_arm64_shared_general_target(*, packed: bool = False) -> SemanticObje
     )
 
 
+def android_arm64_shared_integer_target(*, packed: bool = False) -> SemanticObject:
+    """v4 plus the integer operations the Linux AArch64 profiles have (ADR-255): bitwise logic, rotation,
+    zero extension, truncation, unsigned division, and pointer address/rebase.
+
+    v4 stays byte-identical so existing Android artifacts keep their identity."""
+    return _android_arm64_shared_target(
+        b"android-arm64-v8a-shared-v5",
+        (
+            1, 2, 3, *range(5, 20), Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT,
+            Operation.TARGET_OP, *AARCH64_GENERAL_OPERATIONS, Operation.HEAP_VIEW, *AARCH64_INTEGER_COMPLETION_OPERATIONS,
+            Operation.POINTER_ADDRESS, Operation.POINTER_REBASE,
+        ),
+        ANDROID_ELF_PACKED_FORMAT if packed else ANDROID_ELF_FORMAT,
+    )
+
+
 ANDROID_ARM64_SHARED_IDENTITIES = (
     b"android-arm64-v8a-shared-v1", b"android-arm64-v8a-shared-v2",
-    b"android-arm64-v8a-shared-v3", b"android-arm64-v8a-shared-v4",
+    b"android-arm64-v8a-shared-v3", b"android-arm64-v8a-shared-v4", b"android-arm64-v8a-shared-v5",
 )
+# The general Android profiles: the register path and foreign-heap views (v4, ADR-169; v5, ADR-255).
+ANDROID_ARM64_GENERAL_IDENTITIES = (b"android-arm64-v8a-shared-v4", b"android-arm64-v8a-shared-v5")
 
 
 def _android_arm64_shared_target(identity: bytes, operations: Sequence[int], image_format: int = ANDROID_ELF_FORMAT) -> SemanticObject:
