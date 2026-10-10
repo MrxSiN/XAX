@@ -1097,7 +1097,8 @@ def x86_64_windows_general_target() -> SemanticObject:
 def x86_64_windows_pe_target() -> SemanticObject:
     """v5 plus explicit Win64 foreign calls; v5 stays byte-identical.
 
-    Only the PE container binds foreign calls (import slots); raw load images reject them.
+    Only the PE container binds foreign calls (import slots); raw load images reject them.  The integer-completion
+    operations (bit and/or, udiv/urem, truncate, zero-extend) match the Linux x86-64 profile (ADR-253).
     """
     return _x86_64_windows_target(
         b"x86_64-windows-pe-v1",
@@ -1106,6 +1107,8 @@ def x86_64_windows_pe_target() -> SemanticObject:
             Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE,
             Operation.FUNCTION_ADDRESS, Operation.CALL_FOREIGN, Operation.CALL_INDIRECT, *range(44, 62),
             Operation.BIT_XOR, Operation.ROTATE_RIGHT, Operation.POINTER_ADDRESS,
+            Operation.BIT_AND, Operation.BIT_OR, Operation.UDIV, Operation.UREM, Operation.INT_TRUNCATE,
+            Operation.INT_ZERO_EXTEND,
             Operation.POINTER_REBASE, Operation.LINK_MAKE, Operation.LINK_FOLLOW, Operation.LINK_TARGET,
         ),
     )
