@@ -174,6 +174,26 @@ class JvmIntegerDifferentialTests(unittest.TestCase):
             with self.subTest(width=width):
                 self.assertEqual(run_jvm_calls(image, calls, result_width=width), tuple(_reference(reader, entry.cid, call) for call in calls))
 
+    def test_deep_long_expression_trees_get_their_stack(self):
+        """ADR-257: single-use nodes are evaluated in place (ADR-157), so a balanced tree of 64-bit values holds one
+        long per level on the operand stack; max_stack must cover it (the old fixed bound of 8 did not)."""
+        b64 = bits_type(64)
+        graph = GraphBuilder()
+        block = graph.block(b64, b64, b64, b64)
+        operations = (Operation.ADD_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.SUB_WRAP, Operation.BIT_OR)
+
+        def tree(depth: int, at: int):
+            if depth == 0:
+                return block.params[at % 4]
+            left, right = tree(depth - 1, 2 * at), tree(depth - 1, 2 * at + 1)
+            return block.op1(operations[(depth + at) % len(operations)], (left, right), b64)
+
+        block.ret(tree(6, 0))
+        entry = graph.function((b64, b64, b64, b64), (b64,))
+        reader, image = _compile(entry, tuple(graph.objects.values()))
+        calls = [(1, 2, 3, 4), (0, (1 << 64) - 1, 1 << 63, 12345), tuple(random.Random(7).getrandbits(64) for _ in range(4))]
+        self.assertEqual(run_jvm_calls(image, calls, result_width=64), tuple(_reference(reader, entry.cid, call) for call in calls))
+
     def test_subtraction_of_a_value_left_on_the_stack(self):
         # ADR-157: a value read once right after its definition stays on the operand
         # stack; only commutative operations may read it first.

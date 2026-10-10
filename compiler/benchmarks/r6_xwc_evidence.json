@@ -1,0 +1,117 @@
+{
+  "format": "xax-r6-evidence-v1",
+  "decision": "ADR-257",
+  "label": "EXECUTED",
+  "application": {
+    "name": "xwc",
+    "kind": "command-line word counter (stdin to stdout, GNU wc-compatible counts and layout)",
+    "platform_row": "jvm",
+    "functions": [
+      "count_lines",
+      "count_words",
+      "main",
+      "put_count",
+      "selftest"
+    ],
+    "entries": {
+      "app": "main",
+      "test": "selftest"
+    }
+  },
+  "construction": {
+    "request": "r6_xwc/construction_request.json",
+    "request_sha256": "d0e274b188184fa6ab5f84b4dc78e52b468f78b2ebca9d44c63735f9ca08c7ff",
+    "format": "xax-construct-v1",
+    "author": "Claude (AI coding agent), Claude Code session of 2026-10-10, written by hand",
+    "reconstructs_generation_0": true
+  },
+  "maintenance": {
+    "request": "Release 2: count words in UTF-8 text as wc does in a UTF-8 locale (bytes 0x80-0xFF are word bytes), and keep the XAX tests in step.",
+    "authored_edit": "F4.B2: insert-before N13 #0 constant bits<32> 128; insert-before N14 #1 int.compare.uge N1 #0 -> bits<1>; insert-before N15 #2 int.zero.extend #1 -> bits<64>; insert-before N16 #3 bit.or N15 #2 -> bits<64>; replace-operand N26 0 <- #3; F2.B0: set-constant N82 1",
+    "queries": 2,
+    "generation_before": 0,
+    "generation_after": 1,
+    "committed": true,
+    "transaction_bytes": 161,
+    "touched_objects": 10,
+    "reused_objects": 63,
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.8', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.9', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.10', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.16', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.17', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.18', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.19', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative')), truncated=False, continuation=None)",
+    "whole_program_regenerated": false,
+    "test_guard": {
+      "edit": "the same count_words edit without the selftest expectation",
+      "committed": true,
+      "selftest_exit_status": 8
+    }
+  },
+  "releases": [
+    {
+      "generation": 0,
+      "store": "xwc-gen0.xax",
+      "store_sha256": "ecb00f285540b81abcfeb12026719fe73277d184375b116da1efc4fae387cdd2",
+      "root": "91490bfcb3b3efc805b31aaf3df1a0a0af30ea9ea110e8dc424c205ec37d6e8e",
+      "builds": {
+        "app": {
+          "artifact_sha256": "d3ba613054045f4cd9086c9bab4dcb28bb33d6ee87c1cf8eb01bbea09fec73ef",
+          "artifact_bytes": 3254,
+          "provenance": "ef9e832896f0c9f86a198cb08b81575233cfedf8e43993dd10ab4a777a746395",
+          "request": "8717d774341179127efee149f5eba6733d848f8c7949874b76301cc73522dfa3",
+          "reproducible": true
+        },
+        "test": {
+          "artifact_sha256": "5418dec70e71681ffacd6cf2732113fb45ee2ab09cd3d6aec68e8a8d08fff13a",
+          "artifact_bytes": 3051,
+          "provenance": "96517909390069bef83a2968258351223cd678dcfdad1df18f57e6752047dfe0",
+          "request": "3990931e297f0c7c3c17535b04e68ed990e477090efeaa36eca68e82dc6acda1",
+          "reproducible": true
+        }
+      },
+      "deployment": {
+        "installed_path": "prefix/lib/xwc.jar",
+        "selftest_exit_status": 0,
+        "oracle": "wc (GNU coreutils) 8.32, LC_ALL=C",
+        "cases": 22,
+        "matching": 22,
+        "all_match": true
+      }
+    },
+    {
+      "generation": 1,
+      "store": "xwc-gen1.xax",
+      "store_sha256": "d12c9956e2d8149fd38cc6cdfae851beff02f7ee86fdc1f7f7d241ebb91cfb59",
+      "root": "ee6bd8e3321de04cb5f3b7c2db31634385d77222e641186afdf8866676b6d1fd",
+      "builds": {
+        "app": {
+          "artifact_sha256": "881f10987a89920789278744e64d19c737cddbf78dbafb43423d524124859f11",
+          "artifact_bytes": 3281,
+          "provenance": "4702804356398a8ddd75235b23c8b0440dc662e2d09190fe2ae53d7f2c820d57",
+          "request": "ac033bed6ebe28c1ac3cb8997d7d9e58be86ffcfe1613d041491df11bc3f7d07",
+          "reproducible": true
+        },
+        "test": {
+          "artifact_sha256": "d95d1c6eeec3d20b62e4468d409b9d980b807a77bb68de7be8e2e36c0ab816af",
+          "artifact_bytes": 3078,
+          "provenance": "3a4ef7f00f217c99c18eb4a7b8dc4938a0708186e75c0b53f4e6b5bbfa9c1bde",
+          "request": "241ef5f6b437054987ce2de3a8f55c05030bfaabdcba2c2eddd1b8674dec0c22",
+          "reproducible": true
+        }
+      },
+      "deployment": {
+        "installed_path": "prefix/lib/xwc.jar",
+        "selftest_exit_status": 0,
+        "oracle": "wc (GNU coreutils) 8.32, LC_ALL=C.UTF-8",
+        "cases": 11,
+        "matching": 11,
+        "all_match": true
+      }
+    }
+  ],
+  "host": {
+    "java": "openjdk version \"25.0.3\" 2026-04-21"
+  },
+  "non_xax_components": [
+    "Python bootstrap compiler and build service (xax_build.build); no application logic",
+    "this harness: runs builds, installs the JARs, runs them, compares the release with GNU wc (external oracle)",
+    "the JVM (platform)",
+    "the test build request is derived from the package's declared 'test' entry"
+  ]
+}
