@@ -706,6 +706,10 @@ The carrier also names the `linux-x86_64-startup-v1` reads as `linux.startup.<na
 entities (`argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`,
 `auxv_value`; ADR-223). They are valid only in the process entry function, so a
 build of a program that reads them elsewhere rejects (`LINUX-STARTUP-PROCESS-ENTRY`).
+With `"platform": "windows-x86_64"` (contract minor 4, ADR-252) the carrier builds an
+`x86_64-windows-pe-v1` PE32+ executable and names kernel32 contracts as `win32.<name>`
+(`read_file`/`write_file` over heap views, `exit_process`, `virtual_alloc`,
+`{"win32.virtual_free_view": [TYPE, EXTENT]}`); it has no startup reads.
 Integrations depend on the carrier through `xax-host-contract-v1` (`xax_contract`,
 ADR-225), not on the distribution version.
 A host MAY call `xax_native.prepare(parallel=True)` (contract minor 3, ADR-250)

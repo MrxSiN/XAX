@@ -356,6 +356,46 @@ def win32_thread_api(api: "Win32Kernel32Api | None" = None) -> Win32ThreadApi:
 
 
 @dataclass(frozen=True)
+class Win32StdioApi:
+    """Console/pipe I/O over heap views (ADR-252): ``ReadFile``/``WriteFile`` whose buffer and byte-count pointers are
+    space-2 heap pointers, so a program that holds only heap views (``VirtualAlloc`` + ``heap.view``) can move bytes
+    through its standard handles.  Same kernel32 imports as ``Win32Kernel32Api.write_file``; only the pointer
+    contracts differ."""
+
+    bytes_rw: SemanticObject
+    bytes_read: SemanticObject
+    u32_rw: SemanticObject
+    read_file: SemanticObject
+    write_file: SemanticObject
+
+    @property
+    def types(self) -> tuple[SemanticObject, ...]:
+        return (self.bytes_rw, self.bytes_read, self.u32_rw)
+
+    @property
+    def symbols(self) -> tuple[SemanticObject, ...]:
+        return (self.read_file, self.write_file)
+
+
+def win32_stdio_api(api: "Win32Kernel32Api | None" = None) -> Win32StdioApi:
+    api = api or win32_kernel32_api()
+    abi, k32 = b"win64-c", b"kernel32.dll"
+    bytes_rw = pointer_type(api.b8, Permission.READ_WRITE, 1, space=2)
+    bytes_read = pointer_type(api.b8, Permission.READ, 1, space=2)
+    u32_rw = pointer_type(api.b32, Permission.READ_WRITE, 4, space=2)
+    # ReadFile/WriteFile(handle, buffer, count, &transferred, overlapped=0) -> BOOL
+    read = foreign_function_symbol(
+        k32, b"ReadFile", (api.b64, bytes_rw, api.b32, u32_rw, api.b64, api.filesystem_effect, api.memory_effect),
+        (api.b32, api.filesystem_effect, api.memory_effect), abi=abi,
+    )
+    write = foreign_function_symbol(
+        k32, b"WriteFile", (api.b64, bytes_read, api.b32, u32_rw, api.b64, api.filesystem_effect, api.memory_effect),
+        (api.b32, api.filesystem_effect, api.memory_effect), abi=abi,
+    )
+    return Win32StdioApi(bytes_rw, bytes_read, u32_rw, read, write)
+
+
+@dataclass(frozen=True)
 class WasiPreview1Api:
     """Bounded ``wasi_snapshot_preview1`` imports (wasm32 linear-memory pointers)."""
     b32: SemanticObject

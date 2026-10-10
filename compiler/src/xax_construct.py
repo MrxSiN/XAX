@@ -7,7 +7,7 @@ identity.  After construction the store is authoritative and is changed only thr
 Request (JSON-compatible)::
 
     {"format": "xax-construct-v1",
-     "platform": "linux-x86_64",
+     "platform": "linux-x86_64" | "windows-x86_64",
      "types": {"alias": TYPE, ...},
      "functions": [{"name": N, "params": [TYPE...], "returns": [TYPE...], "blocks": [BLOCK...]}, ...],
      "package": {"name": NAME, "entries": {"app": FUNCTION_NAME, ...}, "release": "app"}}
@@ -26,6 +26,11 @@ Operands name values: ``"p<i>"``/``"n<i>"``/``"n<i>.r<k>"`` in the current block
 ``"B<b>.n<i>[.r<k>]"`` in a dominating block.  A literal operand ``[TYPE, INTEGER]`` is a constant.
 ``TERMINATOR``: ``["ret", [V...]]``, ``["br", B, [V...]]``, ``["cbr", V, B, [V...], B, [V...]]``.
 
+Platform ``windows-x86_64`` (ADR-252) builds an ``x86_64-windows-pe-v1`` PE32+ executable instead.  Its platform names
+use the ``win32.`` prefix in place of ``linux.``: the types and symbols of ``xax_platform.win32_kernel32_api`` and
+``win32_stdio_api`` (the stdio ``read_file``/``write_file`` take heap-view pointers), plus
+``{"win32.virtual_free_view": [TYPE, EXTENT]}``.  There are no startup reads; the entry ends with ``win32.exit_process``.
+
 Functions are listed callees first.  The result store's root is the build snapshot of the ``release`` entry; the
 package declares every entry (``app``, ``test``, ...) so every build is a canonical request against it.
 """
@@ -37,12 +42,12 @@ from dataclasses import dataclass
 
 from xax_compiler import (
     IntCompare, Kind, Operation, Permission, SemanticObject, StoreReader, ValueRef, bits_type, heap_view_type,
-    object_with_refs, pointer_type, x86_64_linux_exec_target,
+    object_with_refs, pointer_type, x86_64_linux_exec_target, x86_64_windows_pe_target,
 )
 from xax_graph_builder import GraphBuilder
 
 FORMAT = "xax-construct-v1"
-_PLATFORMS = ("linux-x86_64",)
+_PLATFORMS = ("linux-x86_64", "windows-x86_64")
 
 
 @dataclass(frozen=True)
@@ -63,14 +68,24 @@ def _error(message: str) -> ValueError:
 class _Builder:
     def __init__(self, request: dict):
         from xax_linux import linux_api, linux_startup_api
+        from xax_platform import win32_kernel32_api, win32_stdio_api
 
         if request.get("format") != FORMAT:
             raise _error(f"format must be {FORMAT}")
         if request.get("platform") not in _PLATFORMS:
             raise _error(f"platform must be one of {_PLATFORMS}")
-        self.api = linux_api()
-        self.startup = linux_startup_api(self.api)
-        self.target = x86_64_linux_exec_target()
+        if request["platform"] == "linux-x86_64":
+            self.api = linux_api()
+            self.prefix, self.namespaces, self.platform_types = "linux.", (self.api,), self.api.types
+            self.startup = linux_startup_api(self.api)
+            self.target = x86_64_linux_exec_target()
+        else:
+            self.api = win32_kernel32_api()
+            stdio = win32_stdio_api(self.api)
+            # stdio first: its heap-pointer write_file is the one a carrier program can call.
+            self.prefix, self.namespaces, self.platform_types = "win32.", (stdio, self.api), (*self.api.types, *stdio.types)
+            self.startup = None
+            self.target = x86_64_windows_pe_target()
         self.aliases = dict(request.get("types", {}))
         self.functions: dict[str, SemanticObject] = {}
         self.objects: dict[bytes, SemanticObject] = {}
@@ -83,10 +98,8 @@ class _Builder:
                 return self.type(self.aliases[spec], (*seen, spec))
             if re.fullmatch(r"b[1-9][0-9]*", spec):
                 return bits_type(int(spec[1:]))
-            if spec.startswith("linux."):
-                value = getattr(self.api, spec[6:], None)
-                if isinstance(value, SemanticObject) and value.kind == Kind.TYPE:
-                    return value
+            if spec.startswith(self.prefix) and (value := self._platform(spec)) is not None and value.kind == Kind.TYPE:
+                return value
             raise _error(f"unknown type {spec!r}")
         if isinstance(spec, dict) and set(spec) == {"view"} and type(spec["view"]) is int and spec["view"] > 0:
             return heap_view_type(spec["view"])
@@ -98,22 +111,32 @@ class _Builder:
         raise _error(f"bad type {spec!r}")
 
     def entity(self, spec) -> SemanticObject:
-        if isinstance(spec, str) and spec.startswith("linux.startup."):
+        if isinstance(spec, str) and self.startup is not None and spec.startswith("linux.startup."):
             name = spec[len("linux.startup."):]
             if name in self.startup.__dataclass_fields__:
                 return getattr(self.startup, name)
             raise _error(f"unknown entity {spec!r}")
-        if isinstance(spec, str) and spec.startswith("linux."):
-            value = getattr(self.api, spec[6:], None)
-            if isinstance(value, SemanticObject) and value.kind != Kind.TYPE:
+        if isinstance(spec, str) and spec.startswith(self.prefix):
+            value = self._platform(spec)
+            if value is not None and value.kind != Kind.TYPE:
                 return value
         if isinstance(spec, dict) and len(spec) == 1:
             (key, value), = spec.items()
             if key == "fn" and value in self.functions:
                 return self.functions[value]
-            if key == "linux.munmap_view" and isinstance(value, list) and len(value) == 2 and type(value[1]) is int:
-                return self.api.munmap_view(self.type(value[0]), value[1])
+            if isinstance(value, list) and len(value) == 2 and type(value[1]) is int:
+                if key == "linux.munmap_view" and self.prefix == "linux.":
+                    return self.api.munmap_view(self.type(value[0]), value[1])
+                if key == "win32.virtual_free_view" and self.prefix == "win32.":
+                    return self.api.virtual_free_view(heap_view_type(value[1]), self.type(value[0]))
         raise _error(f"unknown entity {spec!r}")
+
+    def _platform(self, spec: str) -> SemanticObject | None:
+        for namespace in self.namespaces:
+            value = getattr(namespace, spec[len(self.prefix):], None)
+            if isinstance(value, SemanticObject):
+                return value
+        return None
 
     def function(self, record: dict) -> SemanticObject:
         if set(record) != {"name", "params", "returns", "blocks"} or not record["blocks"]:
@@ -204,6 +227,6 @@ def construct(request: dict) -> Constructed:
     app = package(spec["name"].encode(), (module,), build_entries=entries)
     profile, policy = build_profile(), trust_policy()
     request_object = build_request(app, spec["release"].encode(), builder.target, profile, requested_artifacts=(ArtifactKind.NATIVE_IMAGE,))
-    everything = (*builder.objects.values(), *builder.api.types, module, app, builder.target, profile, policy, request_object)
+    everything = (*builder.objects.values(), *builder.platform_types, module, app, builder.target, profile, policy, request_object)
     reader = snapshot_store(resolve_packages(request_object, everything, policy, b"xax-construct-v1"), everything)
     return Constructed(reader, app, builder.target, profile, policy, dict(builder.functions), request_object)

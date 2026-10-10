@@ -16,6 +16,7 @@ from xax_local_protocol import LocalMutationSession  # noqa: E402
 from xax_workspace import Workspace  # noqa: E402
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
+WINDOWS_X86_64 = sys.platform == "win32" and platform.machine().lower() in ("x86_64", "amd64")
 XB64 = json.loads(REQUEST.read_text(encoding="utf-8"))
 
 
@@ -57,6 +58,37 @@ def _echo_argument() -> dict:
                            ["call.foreign", ["n7", "p0"], ["linux.process_effect"], {"entity": "linux.exit_group"}]],
                         "end": ["ret", ["n7", "n8", "n4.r1", "n5.r1"]]}]}],
         "package": {"name": "echo1", "entries": {"app": "main"}, "release": "app"}}
+
+
+def _windows_echo() -> dict:
+    """ADR-252: copy up to 4 KiB of stdin to stdout through the heap-view stdio contracts; exit with the byte count."""
+    alloc = lambda effect: ["call.foreign", [["b64", 0], ["b64", 4096], ["b32", 0x3000], ["b32", 4], effect],  # noqa: E731
+                            ["win32.heap_ptr_rw", "win32.heap_resource", "mem"], {"entity": "win32.virtual_alloc"}]
+    free = lambda view, extent, ptr, effect: ["call.foreign", [view, ["b64", 0], ["b32", 0x8000], f"{view}.r1", effect],  # noqa: E731
+                                              ["b32", "mem"], {"entity": {"win32.virtual_free_view": [ptr, extent]}}]
+    return {
+        "format": "xax-construct-v1", "platform": "windows-x86_64",
+        "types": {"buf": {"view": 4096}, "cnt": {"view": 4}, "mem": "win32.memory_effect"},
+        "functions": [{"name": "main", "params": ["win32.process_effect", "win32.filesystem_effect", "mem"],
+                       "returns": ["b32", "win32.process_effect", "win32.filesystem_effect", "mem"],
+                       "blocks": [{"params": ["win32.process_effect", "win32.filesystem_effect", "mem"], "nodes": [
+                           ["call.foreign", [["b32", 0xFFFFFFF6], "p0"], ["b64", "win32.process_effect"], {"entity": "win32.get_std_handle"}],
+                           ["call.foreign", [["b32", 0xFFFFFFF5], "n0.r1"], ["b64", "win32.process_effect"], {"entity": "win32.get_std_handle"}],
+                           alloc("p2"),
+                           ["heap.view", ["n2", "n2.r1", "n2.r2"], ["win32.bytes_rw", "buf", "mem"], {"attrs": [4096, 1]}],
+                           alloc("n3.r2"),
+                           ["heap.view", ["n4", "n4.r1", "n4.r2"], ["win32.u32_rw", "cnt", "mem"], {"attrs": [4, 4]}],
+                           ["call.foreign", ["n0", "n3", ["b32", 4096], "n5", ["b64", 0], "p1", "n5.r2"],
+                            ["b32", "win32.filesystem_effect", "mem"], {"entity": "win32.read_file"}],
+                           ["checked.load.bits.le", ["n5", ["b32", 0], "n6.r2"], ["b32", "mem"], {"attrs": [4, 1]}],
+                           ["pointer.cast", ["n3"], ["win32.bytes_read"]],
+                           ["call.foreign", ["n1", "n8", "n7", "n5", ["b64", 0], "n6.r1", "n7.r1"],
+                            ["b32", "win32.filesystem_effect", "mem"], {"entity": "win32.write_file"}],
+                           free("n3", 4096, "win32.bytes_rw", "n9.r2"),
+                           free("n5", 4, "win32.u32_rw", "n10.r1"),
+                           ["call.foreign", ["n7", "n1.r1"], ["win32.process_effect"], {"entity": "win32.exit_process"}]],
+                        "end": ["ret", ["n7", "n12", "n9.r1", "n11.r1"]]}]}],
+        "package": {"name": "echo", "entries": {"app": "main"}, "release": "app"}}
 
 
 class CarrierTests(unittest.TestCase):
@@ -121,6 +153,44 @@ class CarrierTests(unittest.TestCase):
         for name, request in cases.items():
             with self.subTest(name), self.assertRaises(ValueError):
                 construct(request)
+
+    def test_windows_platform_builds_a_pe_from_stdio_contracts(self):
+        from xax_build import build
+        from xax_compiler import decode_native_target, x86_64_windows_pe_target
+
+        constructed = construct(_windows_echo())
+        self.assertEqual(constructed.reader.canonical_bytes(), construct(_windows_echo()).reader.canonical_bytes())
+        self.assertEqual(constructed.target.cid, x86_64_windows_pe_target().cid)
+        artifact = build(constructed.reader, constructed.release_request.cid).artifact
+        self.assertEqual(artifact[:2], b"MZ")
+        for name in (b"GetStdHandle", b"ReadFile", b"WriteFile", b"VirtualAlloc", b"VirtualFree", b"ExitProcess"):
+            self.assertIn(name, artifact)
+        self.assertEqual(decode_native_target(constructed.target).identity, b"x86_64-windows-pe-v1")
+
+    def test_platform_names_do_not_cross_platforms(self):
+        windows = _windows_echo()
+        windows["functions"][0]["blocks"][0]["nodes"][12][3]["entity"] = "linux.exit_group"
+        linux = _hello()
+        linux["functions"][0]["blocks"][0]["nodes"][0][3]["entity"] = "win32.virtual_alloc"
+        startup = _windows_echo()
+        startup["functions"][0]["blocks"][0]["nodes"][0][3]["entity"] = "linux.startup.argc"
+        for request in (windows, linux, startup):
+            with self.subTest(platform=request["platform"]), self.assertRaises(ValueError):
+                construct(request)
+
+    @unittest.skipUnless(WINDOWS_X86_64, "requires a Windows x86-64 host")
+    def test_windows_program_runs(self):
+        import subprocess
+        import tempfile
+
+        from xax_build import build
+
+        constructed = construct(_windows_echo())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory, "echo.exe")
+            path.write_bytes(build(constructed.reader, constructed.release_request.cid).artifact)
+            completed = subprocess.run([str(path)], input=b"meaning is source\n", capture_output=True, timeout=30)
+        self.assertEqual((completed.returncode, completed.stdout), (18, b"meaning is source\n"))
 
     def test_verifier_rejects_semantic_errors(self):
         from xax_compiler import XaxError

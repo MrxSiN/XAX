@@ -1474,3 +1474,7 @@ Codec lifecycle, an AAudio output stream (build, configure, open, start, write, 
 ## Byte-view widening — 2026-10-08 (ADR-231)
 
 A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one little-endian integer (a `u64` from a `bytes_rw` view is one node instead of eight). Every proof obligation is unchanged. x86-64, AArch64, JVM, and wasm run it; RISC-V rejects it (`RISCV64-CHECKED-BYTE-VIEW-WIDTH`); SPIR-V kernels take word views only. The XAX facts engine decides these accesses itself. Host contract minor 2.
+
+## Windows construct platform — 2026-10-10 (ADR-252)
+
+`xax-construct-v1` now builds Windows programs: `"platform": "windows-x86_64"` targets `x86_64-windows-pe-v1`, and the build service emits a PE32+ executable. The carrier names kernel32 contracts as `win32.*`; the new `win32_stdio_api()` gives `ReadFile`/`WriteFile` heap-view pointers, so a constructed program can read stdin and write stdout. EXECUTED on Windows 11 x86-64: a constructed stdin echo (1,536-byte PE) returns its input and exits with the byte count. Linux stores are byte-identical. Host contract minor 4. Open: Windows startup reads (command line) and a published Windows process contract.
