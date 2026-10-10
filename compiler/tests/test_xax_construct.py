@@ -315,3 +315,42 @@ class XwcTests(unittest.TestCase):
             self.assertTrue(self.xwc.maintain(workspace, constructed.functions, with_test=False)[0].committed)
             jar.write_bytes(self.xwc._builds(workspace.reader)["test"]["artifact"])
             self.assertEqual(self.xwc._run_jar(jar).returncode, 8)  # the 0x80 check, bit 3
+
+
+class XcksumTests(unittest.TestCase):
+    """ADR-258: the Linux AArch64 row's XAX-only application; the committed stores are the application."""
+
+    @classmethod
+    def setUpClass(cls):
+        from benchmarks import bench_r6_xcksum as xcksum
+
+        cls.xcksum = xcksum
+        cls.request = json.loads(xcksum.REQUEST.read_text(encoding="utf-8"))
+
+    def test_request_reconstructs_generation_0(self):
+        self.assertEqual(construct(self.request).reader.canonical_bytes(), self.xcksum.STORES[0].read_bytes())
+
+    def test_generation_1_is_the_maintenance_transaction(self):
+        constructed = construct(self.request)
+        workspace, result, _generation, _queries = self.xcksum.maintain(
+            StoreReader(self.xcksum.STORES[0].read_bytes()), constructed, self.xcksum.MAINTENANCE_EDIT)
+        self.assertTrue(result.committed, result.diagnostic)
+        self.assertEqual(workspace.reader.canonical_bytes(), self.xcksum.STORES[1].read_bytes())
+
+    def test_aarch64_target_is_built(self):
+        from xax_compiler import aarch64_linux_exec_target
+
+        self.assertEqual(construct(self.request).target.cid, aarch64_linux_exec_target().cid)
+
+    @unittest.skipUnless(__import__("xax_linux_aarch64").aarch64_runner() is not None, "requires an AArch64 Linux runner")
+    def test_releases_match_posix_cksum_and_the_selftest_catches_a_logic_only_edit(self):
+        from xax_linux_aarch64 import run_linux_aarch64_executable as run
+
+        for generation, line in ((0, b"1219131554 3\n"), (1, b"48aa78a2 3\n")):
+            builds = self.xcksum._builds(StoreReader(self.xcksum.STORES[generation].read_bytes()))
+            self.assertEqual(run(builds["test"]["artifact"]).returncode, 0)
+            self.assertEqual(run(builds["app"]["artifact"], stdin=b"abc").stdout, line)
+        workspace, result, _generation, _queries = self.xcksum.maintain(
+            StoreReader(self.xcksum.STORES[0].read_bytes()), construct(self.request), self.xcksum.INCOMPLETE_EDIT)
+        self.assertTrue(result.committed)
+        self.assertEqual(run(self.xcksum._builds(workspace.reader)["test"]["artifact"]).returncode, 44)  # bits 2, 3, 5

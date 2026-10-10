@@ -13,7 +13,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-x86_64; R4: linux-aarch64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S9 and later steps are open (ADR-180, ADR-251)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
@@ -853,3 +853,10 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - `python -m benchmarks.bench_r6_xwc --write` needs `java` and GNU `wc` (Git Bash has coreutils 8.32); about 15 seconds. It rewrites both stores and the evidence; the tests in `test_xax_construct.py::XwcTests` fail if the request, the transaction, or the stores drift.
 - Carrier on the JVM: the process entry returns only proof values (`proc`, `fs`, memory effects); exit through `jvm.exit_group`. Projection node numbers are function-wide, workspace handles count per block.
 - XAX-MCP (`MrxSiN/XAX-MCP`, `compat.py`) should learn host contract minor 5 (Windows PE integer operations) and 6 (`jvm` construct platform).
+
+## Linux AArch64 R5 and R6 — 2026-10-10 (ADR-258)
+
+- `python -m benchmarks.bench_r5_maintenance --row=linux-aarch64 --write` needs one AArch64 device on `adb` (`ANDROID_SERIAL` with several), `XAX_AARCH64_ADB=1`, and `ANDROID_NDK_HOME` (status helper and `runner.c`); about one minute. The default pin (`XAX_JSONMIN_CPU_MASK=100`) is a Pixel 8 Pro core.
+- `python -m benchmarks.bench_r6_xcksum --write` deploys to every attached device whose `uname -m` is `aarch64` (or `XAX_R6_SERIALS`); about 25 seconds for two phones. The oracle is the device's toybox `cksum`.
+- Put the SDK `platform-tools` directory on `PATH`; the harnesses call `adb` by name.
+- XAX-MCP (`compat.py`) should learn host contract minor 7 (`linux-aarch64` construct platform).

@@ -7,7 +7,7 @@ identity.  After construction the store is authoritative and is changed only thr
 Request (JSON-compatible)::
 
     {"format": "xax-construct-v1",
-     "platform": "linux-x86_64" | "windows-x86_64" | "jvm",
+     "platform": "linux-x86_64" | "linux-aarch64" | "windows-x86_64" | "jvm",
      "types": {"alias": TYPE, ...},
      "functions": [{"name": N, "params": [TYPE...], "returns": [TYPE...], "blocks": [BLOCK...]}, ...],
      "package": {"name": NAME, "entries": {"app": FUNCTION_NAME, ...}, "release": "app"}}
@@ -25,6 +25,9 @@ they are valid only in the process entry function, and a build rejects them else
 Operands name values: ``"p<i>"``/``"n<i>"``/``"n<i>.r<k>"`` in the current block, or ``"B<b>.p<i>"`` and
 ``"B<b>.n<i>[.r<k>]"`` in a dominating block.  A literal operand ``[TYPE, INTEGER]`` is a constant.
 ``TERMINATOR``: ``["ret", [V...]]``, ``["br", B, [V...]]``, ``["cbr", V, B, [V...], B, [V...]]``.
+
+Platform ``linux-aarch64`` (ADR-258) builds an ``aarch64-linux-elf-exec-v1`` static executable from the same ``linux.``
+names, resolved in ``xax_linux_aarch64.linux_aarch64_api`` (same names and shapes); it has no startup reads.
 
 Platform ``windows-x86_64`` (ADR-252) builds an ``x86_64-windows-pe-v1`` PE32+ executable instead.  Its platform names
 use the ``win32.`` prefix in place of ``linux.``: the types and symbols of ``xax_platform.win32_kernel32_api`` and
@@ -46,13 +49,13 @@ import re
 from dataclasses import dataclass
 
 from xax_compiler import (
-    IntCompare, Kind, Operation, Permission, SemanticObject, StoreReader, ValueRef, bits_type, heap_view_type,
+    IntCompare, Kind, Operation, Permission, SemanticObject, StoreReader, ValueRef, aarch64_linux_exec_target, bits_type, heap_view_type,
     jvm_classfile_memory_target, object_with_refs, pointer_type, x86_64_linux_exec_target, x86_64_windows_pe_target,
 )
 from xax_graph_builder import GraphBuilder
 
 FORMAT = "xax-construct-v1"
-_PLATFORMS = ("linux-x86_64", "windows-x86_64", "jvm")
+_PLATFORMS = ("linux-x86_64", "linux-aarch64", "windows-x86_64", "jvm")
 
 
 @dataclass(frozen=True)
@@ -95,6 +98,13 @@ class _Builder:
             self.prefix, self.namespaces, self.platform_types = "linux.", (self.api,), self.api.types
             self.startup = linux_startup_api(self.api)
             self.target = x86_64_linux_exec_target()
+        elif request["platform"] == "linux-aarch64":
+            from xax_linux_aarch64 import linux_aarch64_api
+
+            self.api = linux_aarch64_api()
+            self.prefix, self.namespaces, self.platform_types = "linux.", (self.api,), self.api.types
+            self.startup = None
+            self.target = aarch64_linux_exec_target()
         else:
             self.api = win32_kernel32_api()
             stdio = win32_stdio_api(self.api)

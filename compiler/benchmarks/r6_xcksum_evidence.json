@@ -1,0 +1,166 @@
+{
+  "format": "xax-r6-evidence-v1",
+  "decision": "ADR-258",
+  "label": "EXECUTED",
+  "application": {
+    "name": "xcksum",
+    "kind": "command-line POSIX cksum (stdin to stdout; release 2: cksum -H)",
+    "platform_row": "linux-aarch64",
+    "functions": [
+      "crc_buffer",
+      "crc_byte",
+      "crc_length",
+      "crc_step",
+      "main",
+      "put_number",
+      "render",
+      "selftest"
+    ],
+    "entries": {
+      "app": "main",
+      "test": "selftest"
+    }
+  },
+  "construction": {
+    "request": "construction_request.json",
+    "request_sha256": "232db70a2777e5e19cd6f2f06b1665b80e2e54c01e667b4bd2407cd3ebb4731c",
+    "format": "xax-construct-v1",
+    "platform": "linux-aarch64",
+    "author": "Claude (AI coding agent), Claude Code session of 2026-10-10, by hand",
+    "reconstructs_generation_0": true
+  },
+  "maintenance": {
+    "request": "Release 2: print the checksum in zero-padded hexadecimal (cksum -H) and keep the XAX tests in step.",
+    "authored_edit": "const F7.B0.N1 16; const F7.B0.N2 8; const F4.B0.N33 11; const F4.B0.N40 52; const F4.B0.N44 56; const F4.B0.N60 48",
+    "function_queries": 8,
+    "generation_before": 0,
+    "generation_after": 1,
+    "committed": true,
+    "transaction_bytes": 81,
+    "touched_objects": 15,
+    "reused_objects": 63,
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.8', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.9', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.10', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.11', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.12', change='removed', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.13', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.16', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.17', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.18', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.19', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.20', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.21', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.22', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.23', change='added', kind=<Kind.PACKAGE: 9>, classification='authoritative'), DiffView(handle='D1.24', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.25', change='added', kind=<Kind.BUILD: 10>, classification='authoritative'), DiffView(handle='D1.26', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.27', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.28', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative')), truncated=False, continuation=None)",
+    "whole_program_regenerated": false,
+    "test_guard": {
+      "edit": "const F7.B0.N1 16; const F7.B0.N2 8",
+      "committed": true,
+      "selftest_exit_status": 44
+    }
+  },
+  "releases": [
+    {
+      "generation": 0,
+      "store": "xcksum-gen0.xax",
+      "store_sha256": "73152a64770de10e3b5d53faf521e947425c20e55cb2a9f81e449b929ef37514",
+      "root": "145a19396edf29fb13e32ab5efebec5a675ddb20d5b680ea63229e494e372665",
+      "builds": {
+        "app": {
+          "artifact_sha256": "4f5b8becf1812f5368b0113ef1c4815513199c5698b54ccd1f069cd797f278b6",
+          "artifact_bytes": 1976,
+          "provenance": "82bd9fa645487e14094e54a1c72b47b806d6ca72f5ba077ce428fd45c04d8351",
+          "request": "4b33f526141acc8817c2857256de91e4a6c2ab36c770746046fef53b420bf3cc",
+          "reproducible": true
+        },
+        "test": {
+          "artifact_sha256": "810d151c921b62a52c9cf6f35851391318a0baef900ebcf7dbc31ad59b570050",
+          "artifact_bytes": 2056,
+          "provenance": "a3fee58168286bd2ea24728d6f6354b176f7f50bd0a663eb19e205d35e9a927e",
+          "request": "bdccd0dab88f2d6be36576243cce395e01a0dbdbbfd0d7167fc14a572c80257a",
+          "reproducible": true
+        }
+      },
+      "deployments": [
+        {
+          "device": {
+            "model": "Pixel 8 Pro",
+            "soc": "Tensor G3",
+            "android": "17",
+            "kernel": "Linux 6.1.162-android14-11-g9dd05ae3a1de-ab16261587"
+          },
+          "installed_path": "prefix/bin/xcksum",
+          "selftest_exit_status": 0,
+          "oracle": "toybox 0.8.13-android cksum",
+          "cases": 26,
+          "matching": 26,
+          "all_match": true,
+          "largest_input_output": "3788010234 1048576"
+        },
+        {
+          "device": {
+            "model": "Pixel",
+            "soc": "MSM8996",
+            "android": "15",
+            "kernel": "Linux 4.4.302+"
+          },
+          "installed_path": "prefix/bin/xcksum",
+          "selftest_exit_status": 0,
+          "oracle": "toybox 0.8.11-android cksum",
+          "cases": 26,
+          "matching": 26,
+          "all_match": true,
+          "largest_input_output": "3788010234 1048576"
+        }
+      ]
+    },
+    {
+      "generation": 1,
+      "store": "xcksum-gen1.xax",
+      "store_sha256": "278a4c1106d894ca617f3e5eeab5f21c8ca352864128a89cddcc14f7cfb9e6fc",
+      "root": "d08811b60a7067c6c5af8e43aeaac6b2a7ffe2e67c059f0851a642f1adec18d9",
+      "builds": {
+        "app": {
+          "artifact_sha256": "37d9a9ff7e0fab5fb1196d1d0e44b64e15c8593512abe69351083ee3a3a8edaa",
+          "artifact_bytes": 1964,
+          "provenance": "337144c00cca009ea9bb159b008369175bc01e462a2e882a6b76d7a4627cf343",
+          "request": "46ed010341cb211703af48f1426333820a358055abbe9b7876e50122b79fdfee",
+          "reproducible": true
+        },
+        "test": {
+          "artifact_sha256": "aa374704850fbd87231f5dfa3b25824240897b2d87b2c011017040c17c891add",
+          "artifact_bytes": 2036,
+          "provenance": "5a0746cc6c8a9cbe97d9cacc0667ee7a0ba2b99240d8d5a06ecec6cd9dac90d3",
+          "request": "8fa06599dd588f23c4a3a27d9f57386462fe1cc97d818e4be3cce3b7680bd823",
+          "reproducible": true
+        }
+      },
+      "deployments": [
+        {
+          "device": {
+            "model": "Pixel 8 Pro",
+            "soc": "Tensor G3",
+            "android": "17",
+            "kernel": "Linux 6.1.162-android14-11-g9dd05ae3a1de-ab16261587"
+          },
+          "installed_path": "prefix/bin/xcksum",
+          "selftest_exit_status": 0,
+          "oracle": "toybox 0.8.13-android cksum -H",
+          "cases": 26,
+          "matching": 26,
+          "all_match": true,
+          "largest_input_output": "e1c872fa 1048576"
+        },
+        {
+          "device": {
+            "model": "Pixel",
+            "soc": "MSM8996",
+            "android": "15",
+            "kernel": "Linux 4.4.302+"
+          },
+          "installed_path": "prefix/bin/xcksum",
+          "selftest_exit_status": 0,
+          "oracle": "toybox 0.8.11-android cksum -H",
+          "cases": 26,
+          "matching": 26,
+          "all_match": true,
+          "largest_input_output": "e1c872fa 1048576"
+        }
+      ]
+    }
+  ],
+  "non_xax_components": [
+    "Python bootstrap compiler and build service (xax_build.build); no application logic",
+    "this harness: runs builds, installs the executable on each phone over adb, compares it there with toybox cksum (external oracle)",
+    "adb and the phones' Linux kernels (platform); the image is static: no libc, loader, or allocator",
+    "the test build request is derived from the package's declared 'test' entry"
+  ]
+}
