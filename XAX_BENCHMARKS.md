@@ -1106,7 +1106,7 @@ comparison has not been measured. Current artifacts use the response-v5 prefix.
 
 ### 15.29 Android counter on arm64 hardware: XAX vs Java + NDK and pure Java (ADR-198; MEASURED, 2026-10-07)
 
-Supersedes §15.23 as the current Android result. Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05, kernel `6.1.162-android14-11-g9dd05ae3a1de`, on AC power, Battery Saver off. Host: Windows 11 x86-64. Toolchains: NDK r28c (`28.2.13676358`) `clang -O2`, build-tools 36.0.0, `android-36`, Temurin `javac 17.0.20.1`, `d8 --release --min-api 28`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`results` holds raw `wall_seconds_samples` per arm).
+*(Superseded by §15.34, ADR-253: this install-per-pass protocol let device drift fall on whichever arm a pass held.)* Supersedes §15.23 as the current Android result. Hardware: Pixel 8 Pro, Google Tensor G3, `arm64-v8a`; Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05, kernel `6.1.162-android14-11-g9dd05ae3a1de`, on AC power, Battery Saver off. Host: Windows 11 x86-64. Toolchains: NDK r28c (`28.2.13676358`) `clang -O2`, build-tools 36.0.0, `android-36`, Temurin `javac 17.0.20.1`, `d8 --release --min-api 28`. Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (`results` holds raw `wall_seconds_samples` per arm).
 
 Arms share the package, Activity/listener classes, state file, and observable behaviour; each passed its click check. `clang_ndk_java` is the ADR-153 Java + NDK twin. `java_d8` is a new pure Java twin (`benchmarks/android_counter_java_twin/`): `FileChannel` read of the 8-byte little-endian count, write, and `force(false)` (fdatasync). Protocol: four passes; the arm order rotates by one each pass. Every pass reinstalls each arm and compiles it with `cmd package compile -f -m speed`, runs three warmups, then four cold starts (`am force-stop`, `am start -W` `TotalTime`, total PSS from `dumpsys meminfo`). That gives 16 tracked starts per arm, with no untracked launch.
 
@@ -1158,6 +1158,34 @@ Same host and harnesses as §15.30–15.32 (31 interleaved runs per Linux arm; 1
 | JVM `jsonmin` | javac | 0.865214 | 0.0012 | 127.1 / 146.9 |
 
 All Linux workloads lead, so the Linux x86-64 row derives R4. Caveat: `jsonmin`'s margin is small; its previous binary measured 0.967682x (§15.30) and 1.029472x (§15.32) on this host, so these numbers are one run, not a robust bound. Memory and size: XAX's peak RSS is below every competitor's on all three; `jsonmin`'s stripped binary is 1.21x clang's, `filestat`'s 0.29x, `chains`' far smaller than rustc's.
+
+### 15.34 Android counter cold start: side-by-side arms, fresh-install blocks, and a Kotlin arm (ADR-253; MEASURED, 2026-10-10)
+
+Supersedes §15.29. Hardware: Pixel 8 Pro, Google Tensor G3, Android 17/API 37 (`CP3A.261005.005`), security patch 2026-10-05. Host: Windows 11 x86-64. Toolchains: NDK `28.2.13676358` `clang -O2`, build-tools 36.0.0, `android-36`, `javac 25.0.3 --release 11` + `d8 --release --min-api 28`, Kotlin `2.3.10` + R8 8.10 (over the program and `kotlin-stdlib`). Evidence: `compiler/benchmarks/android_counter_twin_evidence.json` (raw `TotalTime` per arm in `results`).
+
+Protocol: every arm is installed at once (the twins under renamed application packages; classes, state file, and behaviour unchanged) and compiled with `cmd package compile -f -m speed`. Six blocks, each a fresh install of every arm (install order rotating) and three warmup starts per arm, then 15 rounds; each round cold-starts every arm once (`am force-stop`, `am start -W`), the order rotating by one. 90 tracked starts per arm, none untracked; every arm's click path works.
+
+| Arm | Median `TotalTime` (ms) | Stdev (ms) | Ratio vs fastest | Median PSS (KiB) | APK bytes | DEX bytes | Native `.so` bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| XAX | 202.5 | 25.26 | 1.0125 | 104,258.5 | 20,313 | 2,936 | 2,248 |
+| Java + NDK (`clang -O2`) | 205.0 | 34.20 | 1.0250 | 104,248.0 | 28,892 | 2,472 | 4,768 |
+| Java (`javac` + `d8`) | 200.0 | 28.20 | 1.0000 | 104,176.0 | 12,432 | 3,088 | 0 |
+| Kotlin (`kotlinc` + R8) | 202.0 | 25.55 | 1.0100 | 104,178.5 | 12,432 | 5,436 | 0 |
+
+A tie: no arm is significantly faster than another (one-sided Mann–Whitney; XAX against Java + NDK p = 0.24, Java against XAX p = 0.22). XAX is 1.0125x the fastest arm, above the 0.9999x R4 target, so the Android row stays R3. Start-up is framework-bound; each arm's own work is a JNI library load or a `FileChannel` open and an 8-byte read. Why blocks: in an exploratory probe, the XAX classes as two DEX files started 17 ms faster than the same classes merged into one DEX by d8 (p = 6e-5), so placement of one install can outweigh any code difference. Median PSS differs by under 0.1%.
+
+### 15.35 `jsonmin` on AArch64 hardware: Linux AArch64 static image on a Pixel 8 Pro (ADR-254; MEASURED, 2026-10-10)
+
+The XAX arm is the `aarch64-linux-elf-exec-v1` image (raw syscalls, no libc or loader); it runs unchanged on the phone's Linux kernel (`6.1.162-android14-11`). Baselines: `jsonmin_c/jsonmin.c` by the NDK's `aarch64-linux-android28-clang -O2` (bionic, dynamically linked PIE) and `-O2 -static`, and `rust_twins/jsonmin.rs` by `rustc 1.99.0 -C opt-level=3 -C panic=abort -C codegen-units=1 --target aarch64-linux-android`. Harness: `compiler/benchmarks/android_jsonmin.py`. Every arm's output on the 8 MiB benchmark document equals the reference before timing. Three warmup rounds, then 101 rounds; each round runs every arm once, the order rotating; every run is pinned with `taskset`, timed by `runner.c` (fork/exec/`wait4`, CLOCK_MONOTONIC, `ru_maxrss`). Evidence: `compiler/benchmarks/android_jsonmin_evidence.json` (Cortex-X3 core, cited) and `android_jsonmin_cpu80_evidence.json` (Cortex-A715 core, cross-check).
+
+| Arm | Median (ms), X3 | Ratio, X3 | Median (ms), A715 | Ratio, A715 | Peak RSS (KiB) | Stripped bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| XAX | 58.58 | 1.000 | 63.63 | 1.000 | 12,428 | 18,044 |
+| clang -O2 -static | 61.26 | 1.046 | 68.88 | 1.083 | 13,112 | 419,936 |
+| clang -O2 (dynamic) | 68.11 | 1.163 | 76.73 | 1.206 | 16,032 | 7,480 + `libc.so` |
+| rustc -O3 | 75.34 | 1.286 | 82.27 | 1.293 | 16,228 | 331,792 |
+
+XAX is 0.956284x the fastest non-XAX arm on the X3 core and 0.923764x on the A715 core, p < 1e-6 in both runs, so the Linux AArch64 row derives R4 for this workload. The Android row cites the same file but keeps R3 (§15.34). User-mode instructions per run (`simpleperf stat`, X3): XAX 128.2 M, clang static 138.6 M, rustc 161.7 M. Before ADR-254 every `jsonmin` function took the AArch64 frame path (246.0 M instructions); the steps and their counts are in ADR-254. Scope: one workload, one device and session; the C baselines link bionic, not glibc.
 
 ## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 
@@ -1264,3 +1292,5 @@ curl --proto '=https' -sSf https://sh.rustup.rs | sh -s -- -y   # rustc twins fo
 ```
 
 `..` must be on `PYTHONPATH` because some tests import `compiler.benchmarks.*`. What still cannot run on such a host: the Windows-host PE execution test (Wine covers the rest). The Android device oracles in [`compiler/integration/android/`](compiler/integration/android/README.md) need `adb` and a device or an x86_64 Android emulator image with ARM translation. Emulator runs are correctness evidence only.
+
+With an arm64 Android device on `adb` (ADR-253, ADR-254): `XAX_AARCH64_ADB=1` runs the Linux AArch64 runtime tests on the device's kernel (static images only; needs `ANDROID_NDK_HOME` for the exit-status helper); `python -m benchmarks.android_jsonmin --write` needs the NDK and `rustc` with the `aarch64-linux-android` target (`RUSTC` names it); `python -m benchmarks.bench_android_counter_twin --device` also needs `KOTLIN_HOME` (a kotlinc distribution: `lib/kotlin-compiler.jar`, `lib/kotlin-stdlib.jar`) and a JDK with `javac` and `keytool`. On Windows, Git Bash rewrites `/data/...` arguments unless `MSYS_NO_PATHCONV=1` is set.

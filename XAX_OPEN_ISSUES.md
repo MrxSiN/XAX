@@ -637,7 +637,7 @@ Check-free reloads, which remove the per-link check (1.5× in C on `chains`), ar
 
 **Evidence that closes it.** One case where an emulator and hardware disagree on an XAX image (which would show that emulation is insufficient), or a documented hardware run on two ISA rows with no discrepancy against the emulator corpus.
 
-**Status.** OPEN. The riscv64, aarch64-baremetal, and linux-aarch64 (qemu-aarch64 user mode, ADR-123) rows are emulator-only. The Android row's R3 application ran only on an x86_64 emulator through ARM binary translation (ADR-155): a third kind of emulation, where the arm64 code is translated rather than interpreted by an ISA emulator. The matrix validator now rejects `performance` evidence on any row whose blockers say "not hardware" (conformance §23.17).
+**Status.** OPEN. *(2026-10-10, ADR-254: the Linux AArch64 static profile now runs on hardware, a Pixel 8 Pro's kernel through `adb`, and its runtime tests pass there as they do under qemu: the first hardware ISA run, no discrepancy. One more ISA row is needed; dynamic Linux AArch64 images still run only under qemu.)* The riscv64 and aarch64-baremetal rows are emulator-only. The Android row's application, first run only on an x86_64 emulator through ARM binary translation (ADR-155), has run on Pixel 8 Pro hardware since ADR-198. The matrix validator now rejects `performance` evidence on any row whose blockers say "not hardware" (conformance §23.17).
 
 ## OI-45 — Re-executing native evidence after a canonical change
 

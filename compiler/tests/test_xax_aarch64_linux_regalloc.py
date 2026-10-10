@@ -216,6 +216,33 @@ class LinuxAArch64AllocatorDifferentialTests(unittest.TestCase):
         with self.assertRaises(unicorn.UcError):
             _run(reader, function, target, (17, 0))
 
+    def test_byte_predicates_read_a_table(self):
+        """ADR-254 (ADR-208 on AArch64): a byte-bounded predicate, as a value and as a branch, is one table load."""
+        b64 = bits_type(64)
+        graph = GraphBuilder()
+        entry = graph.block(b64)
+        yes, no = graph.block(), graph.block()
+        (x,) = entry.params
+        byte = entry.op1(Operation.BIT_AND, (x, entry.const(b64, 0xFF)), b64)
+
+        def equal(value):
+            return entry.op1(Operation.INT_COMPARE, (byte, entry.const(b64, value)), B1, attributes=(IntCompare.EQ,))
+
+        member = entry.op1(Operation.INT_ZERO_EXTEND, (entry.op1(Operation.BIT_OR, (entry.op1(Operation.BIT_OR, (equal(32), equal(10)), B1), entry.op1(Operation.BIT_OR, (equal(9), equal(13)), B1)), B1),), b64)
+        control = entry.op1(Operation.INT_COMPARE, (byte, entry.const(b64, 32)), B1, attributes=(IntCompare.ULT,))
+        stop = entry.op1(Operation.BIT_OR, (entry.op1(Operation.BIT_OR, (equal(34), equal(92)), B1), control), B1)
+        entry.cbr(stop, yes, (), no, ())
+        yes.ret(yes.op1(Operation.ADD_WRAP, (member, yes.const(b64, 100)), b64))
+        no.ret(no.op1(Operation.ADD_WRAP, (member, no.const(b64, 200)), b64))
+        function = graph.function((b64,), (b64,))
+        target = aarch64_linux_exec_target()
+        reader = program_store(function, target, (B1, *graph.objects.values()))
+        code = compile_linux_function(function, store_resolver(reader), decode_native_target(target))[0]
+        self.assertIn(bytes(int(value in (32, 10, 9, 13)) for value in range(256)), code)
+        self.assertIn(bytes(int(value in (34, 92) or value < 32) for value in range(256)), code)
+        for value in (*range(256), 256 + 32, 1 << 40 | 92, (1 << 64) - 1):
+            self.assertEqual(_run(reader, function, target, (value,)), execute(reader, function.cid, (value,)), value)
+
 
 if __name__ == "__main__":
     unittest.main()

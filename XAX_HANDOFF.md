@@ -13,7 +13,7 @@
 
 ## Current repository state
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: linux-x86_64; R5: jvm; R3: android-arm64, linux-aarch64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: linux-x86_64; R5: jvm; R4: linux-aarch64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S9 and later steps are open (ADR-180, ADR-251)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
@@ -835,3 +835,9 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 
 - The rule is in `_verify_memory_node` (`BYTE_ELEMENT_CID`, `CHECKED_BYTE_VIEW_WIDTHS` in `xax_compiler.py`) and mirrored in the facts engine's `_checked`. A backend that cannot do unaligned wide access sets `BYTE_VIEW_WIDENING = False` on its ISA class (views backends) and rejects in its Python lowering with the same text (`BYTE_VIEW_WIDTH_EXPECTED`).
 - In the XAX views backend, `value_id` advances the stream cursor: read an operand's id once and keep it.
+
+## Android cold start and AArch64 on hardware — 2026-10-10 (ADR-253, ADR-254)
+
+- Android R4 is blocked by a framework-bound tie, not by XAX code: re-runs of `bench_android_counter_twin --device` need about 40 minutes and every arm stays within ±2.5%. Do not expect a code change in the app to move it; a workload whose own work is visible (as `jsonmin`) is where the backend shows.
+- Device runs on Windows: put `adb` and a JDK on `PATH`, set `ANDROID_NDK_HOME`, `ANDROID_BUILD_TOOLS`, `ANDROID_JAR`, `KOTLIN_HOME`, and `RUSTC`, and `MSYS_NO_PATHCONV=1` in Git Bash. `XAX_AARCH64_ADB=1` runs the AArch64 Linux runtime tests on the device; `simpleperf stat -e instructions:u` and `simpleperf record --sort vaddr_in_file` work on it from `adb shell` (user-mode events only). The XAX image has no symbols: wrap it with `.inst` words to disassemble with the NDK's `llvm-objdump`.
+- Next for Linux AArch64: a second hardware workload (`chains` has no AArch64 build yet; `filestat` needs zlib through glibc's loader, absent on Android, so a static zlib-free variant or a glibc host is needed), floats and aggregates on the register path, and an R5 maintenance record. Next for Android: keep the cold-start evidence current; R4 there needs a start-up path the app controls.

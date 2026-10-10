@@ -64,7 +64,7 @@ from xax_compiler import (
     fail,
     pointer_extent_from_graph,
 )
-from xax_ranges import upper_bounds
+from xax_ranges import TABLE_OPERATIONS as _TABLE_OPERATIONS, predicate_table as shared_predicate_table, upper_bounds
 from xax_x86_64 import (
     RAX,
     RDX,
@@ -370,37 +370,6 @@ _ROTATABLE = frozenset({
 _ROTATE_LIMIT = 16
 
 
-_TABLE_OPERATIONS = frozenset({
-    Operation.INT_COMPARE, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_AND, Operation.BIT_OR,
-    Operation.BIT_XOR, Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE,
-})
-_TABLE_MIN_OPERATIONS = 3
-
-
-def _evaluate_table_node(node, values: list[int], width: int, operand_width: int) -> int:
-    """Exact value of one table-evaluable node (wrapping arithmetic at ``width``)."""
-    mask = (1 << width) - 1
-    operation = node.operation
-    if operation == Operation.INT_COMPARE:
-        left, right = values
-        kind = IntCompare(node.attributes[0])
-        if kind in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE):
-            half = 1 << (operand_width - 1)
-            left, right = (left ^ half) - half, (right ^ half) - half
-        return int({
-            IntCompare.EQ: left == right, IntCompare.NE: left != right, IntCompare.ULT: left < right, IntCompare.ULE: left <= right,
-            IntCompare.UGT: left > right, IntCompare.UGE: left >= right, IntCompare.SLT: left < right, IntCompare.SLE: left <= right,
-            IntCompare.SGT: left > right, IntCompare.SGE: left >= right,
-        }[kind])
-    if operation in (Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE):
-        return values[0] & mask
-    left, right = values
-    return {
-        Operation.ADD_WRAP: left + right, Operation.SUB_WRAP: left - right, Operation.MUL_WRAP: left * right,
-        Operation.BIT_AND: left & right, Operation.BIT_OR: left | right, Operation.BIT_XOR: left ^ right,
-    }[operation] & mask
-
-
 def _rotatable(header) -> bool:
     """A small test-and-branch header that can be copied into a jumping predecessor (loop rotation)."""
     return (
@@ -671,60 +640,7 @@ def compile_register_resident(
     early_uses.update(value for block in graph.blocks for _target, arguments in block.terminator.edges for value in arguments)
 
     def predicate_table(block_index: int, root: ValueRef) -> tuple[ValueRef, bytes, frozenset[int]] | None:
-        def local(value: ValueRef):
-            node = definition.get(value) if value.tag == 1 and value.block == block_index and value.result == 0 else None
-            return node if node is not None and node.operation in _TABLE_OPERATIONS and value in widths else None
-
-        nodes: dict[ValueRef, object] = {}
-        leaves: set[ValueRef] = set()
-
-        def expand(start: ValueRef, shared: bool) -> None:
-            pending = [start]
-            while pending:
-                value = pending.pop()
-                if value in nodes or value in constants:
-                    continue
-                node = local(value)
-                if node is not None and (value == start or shared or early_uses[value] == 1):
-                    leaves.discard(value)
-                    nodes[value] = node
-                    pending.extend(node.operands)
-                else:
-                    leaves.add(value)
-
-        if local(root) is None:
-            return None
-        expand(root, False)
-        # A test shared with other code (computed anyway) is walked through too; it is kept, not erased.
-        while len(leaves) > 1:
-            expandable = [value for value in leaves if local(value) is not None]
-            if not expandable:
-                return None
-            expand(max(expandable, key=lambda value: value.index), False)
-        if len(leaves) != 1 or sum(node.operation != Operation.INT_ZERO_EXTEND for node in nodes.values()) < _TABLE_MIN_OPERATIONS:
-            return None
-        (subject,) = leaves
-        bound = maximum(subject)
-        if subject not in widths or bound is None or bound >= MEMBER_TABLE_LIMIT:
-            return None
-        order = sorted(nodes, key=lambda value: value.index)  # operands precede their uses within a block
-        entries = bytearray()
-        for x in range(bound + 1):
-            values = {subject: x}
-            for value in order:
-                node = nodes[value]
-                operands = [values[operand] if operand in values else constants[operand] for operand in node.operands]
-                operand_width = widths.get(node.operands[0], widths.get(node.operands[-1], 64))
-                values[value] = _evaluate_table_node(node, operands, widths[value], operand_width)
-            if values[root] not in (0, 1):
-                return None
-            entries.append(values[root])
-        # Erase exactly the nodes all of whose uses are erased nodes (the root's users read the table).
-        erased = {root}
-        for value in reversed(order):
-            if value != root and sum(operand == value for user in erased for operand in nodes[user].operands) == early_uses[value]:
-                erased.add(value)
-        return subject, bytes(entries), frozenset(value.index for value in erased)
+        return shared_predicate_table(graph, block_index, root, definition, widths, constants, maximum, early_uses)
 
     branch_tables: dict[int, tuple[ValueRef, bytes, frozenset[int]]] = {}
     for block_index, block in enumerate(graph.blocks):

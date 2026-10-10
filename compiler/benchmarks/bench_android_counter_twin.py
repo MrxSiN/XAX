@@ -1,11 +1,14 @@
-"""Android row R4 baseline: the XAX counter app against a conventional Java + NDK twin (ADR-153).
+"""Android row R4 baseline: the XAX counter app against Java + NDK, Java, and Kotlin twins (ADR-153, ADR-253).
 
 The twin (``android_counter_twin/``) has the same package, classes, native methods,
 state file, and behavior as ``android_counter_activity.apk`` (ADR-111): Java opens
 the state file and detaches the descriptor, C reads the count, increments, writes,
 and ``fdatasync``s it, and closes the descriptor.  It is built like
 ``bench_android_ndk_twin.py`` builds the minimal-Activity twin (``javac`` + ``d8``,
-NDK ``clang -O2``, ``aapt2``, ``zipalign``, ``apksigner``).
+NDK ``clang -O2``, ``aapt2``, ``zipalign``, ``apksigner``).  The pure Java twin
+(``android_counter_java_twin/``) and the pure Kotlin twin (``android_counter_kotlin_twin/``:
+``kotlinc``, then R8 over the program and ``kotlin-stdlib`` as a release build does) do
+the file work with ``FileChannel`` and no native code.
 
 Two measurements:
 
@@ -13,12 +16,18 @@ Two measurements:
 * **device** (``--device``): on the connected ``adb`` target, each APK is installed
   and, after warm-up launches, cold-started (``am force-stop``, then ``am start -W``:
   ``TotalTime``), with the process's total PSS from ``dumpsys meminfo`` after each
-  start; each app's click path is checked once.  Both apps share one package name,
-  so they cannot be installed together: the arms alternate in install-once passes
-  (A then B, then B then A), ``RUNS`` samples per arm in all.  The result is performance and memory evidence only
-  when ``hardware`` is true; an emulator run only shows that the harness works.
+  start; each app's click path is checked once.  Every arm is installed once, side by
+  side: the twins' application package is renamed (``xax.counter.<arm>``; classes keep
+  their names), and every arm is AOT-compiled the same way.  Then ``RUNS`` rounds each
+  cold-start every arm once, in an order that rotates by one each round, so drift on
+  the device (temperature, background work) falls on every arm alike (ADR-253;
+  ADR-198's install-per-pass protocol let it fall on whichever arm a pass held).  This
+  repeats for ``BLOCKS`` fresh installs of every arm, because one install of an APK can
+  start 15-20 ms faster or slower than another install of the same classes.  The
+  result is performance and memory evidence only when ``hardware`` is true; an
+  emulator run only shows that the harness works.
 
-Set ``ANDROID_NDK_HOME``, ``ANDROID_BUILD_TOOLS``, and ``ANDROID_JAR`` as for
+Set ``ANDROID_NDK_HOME``, ``ANDROID_BUILD_TOOLS``, ``ANDROID_JAR``, and ``KOTLIN_HOME`` as for
 ``bench_android_ndk_twin.py``; run ``python -m benchmarks.bench_android_counter_twin [--device]``
 from ``compiler/``.
 """
@@ -41,13 +50,20 @@ from benchmarks.bench_android_ndk_twin import _measure, build_twin
 HERE = Path(__file__).resolve().parent
 TWIN = HERE / "android_counter_twin"
 JAVA_TWIN = HERE / "android_counter_java_twin"  # pure Java: the non-C/C++ baseline (OI-45)
+KOTLIN_TWIN = HERE / "android_counter_kotlin_twin"
 EVIDENCE = HERE / "android_counter_twin_evidence.json"
-PACKAGE, COMPONENT = "xax.counter", "xax.counter/.CounterActivity"
+PACKAGE, ACTIVITY = "xax.counter", "xax.counter.CounterActivity"
+# arm -> (twin directory, native library name, side-by-side package)
+TWINS = {
+    "clang_ndk_java": (TWIN, "xaxcounter", "xax.counter.ndk"),
+    "java_d8": (JAVA_TWIN, "xaxcounter", "xax.counter.java"),
+    "kotlin_r8": (KOTLIN_TWIN, "xaxcounter", "xax.counter.kotlin"),
+}
 # Defaults are the hardware protocol; the overrides exist to check the harness on slow
 # targets (an emulator run is never performance evidence).
 WARMUP = int(os.environ.get("XAX_TWIN_WARMUP", 3))
-RUNS = int(os.environ.get("XAX_TWIN_RUNS", 16))
-PASSES = int(os.environ.get("XAX_TWIN_PASSES", 4))
+BLOCKS = int(os.environ.get("XAX_TWIN_BLOCKS", 6))  # fresh installs of every arm
+RUNS = int(os.environ.get("XAX_TWIN_RUNS", 15))  # rounds per block: one cold start per arm per round
 # Every arm is AOT-compiled the same way after install, so no arm's start-up depends on
 # where background dexopt happened to be (the ADR-172 pass effect).
 COMPILER_FILTER = os.environ.get("XAX_TWIN_COMPILER_FILTER", "speed")
@@ -60,15 +76,15 @@ def _adb(*arguments: str, timeout: int = 600) -> str:
     return subprocess.run(["adb", *arguments], check=True, capture_output=True, text=True, timeout=timeout).stdout.replace("\r", "")
 
 
-def _cold_start() -> dict[str, int | None]:
+def _cold_start(package: str) -> dict[str, int | None]:
     """One cold start: ``TotalTime`` (``None`` when Android did not track the launch),
     ``WaitTime``, and the total PSS (KiB) of the started process."""
-    _adb("shell", "am", "force-stop", PACKAGE)
-    output = _adb("shell", "am", "start", "-W", "-n", COMPONENT)
+    _adb("shell", "am", "force-stop", package)
+    output = _adb("shell", "am", "start", "-W", "-n", f"{package}/{ACTIVITY}")
     if "Status: ok" not in output:
         raise RuntimeError(f"launch failed:\n{output}")
     total = re.search(r"^TotalTime: (\d+)$", output, re.M)
-    memory = _adb("shell", "dumpsys", "-t", "600", "meminfo", PACKAGE)  # dumpsys's own limit is 10 s
+    memory = _adb("shell", "dumpsys", "-t", "600", "meminfo", package)  # dumpsys's own limit is 10 s
     return {
         "total_time_ms": int(total.group(1)) if total else None,
         "wait_time_ms": int(re.search(r"^WaitTime: (\d+)$", output, re.M).group(1)),
@@ -109,10 +125,10 @@ def _clicks_work() -> bool:
     return False
 
 
-def _install(apk: Path, attempts: int = 3) -> None:
-    """Replace whichever arm is installed (both use one package) with ``apk``."""
+def _install(apk: Path, package: str, attempts: int = 3) -> None:
+    """A fresh install of ``apk`` as ``package`` (an earlier install is removed first)."""
     for attempt in range(attempts):
-        subprocess.run(["adb", "uninstall", PACKAGE], capture_output=True, text=True, timeout=300)
+        subprocess.run(["adb", "uninstall", package], capture_output=True, text=True, timeout=300)
         completed = subprocess.run(["adb", "install", "-t", str(apk)], capture_output=True, text=True, timeout=900)
         if completed.returncode == 0 and "Success" in completed.stdout:
             return
@@ -120,42 +136,46 @@ def _install(apk: Path, attempts: int = 3) -> None:
     raise RuntimeError(f"adb install {apk.name} failed {attempts} times: {completed.stdout}{completed.stderr}")
 
 
-def measure_device(apks: dict[str, Path]) -> dict:
-    """Cold starts of every arm on the connected target, in alternating install-once passes."""
+def measure_device(apks: dict[str, tuple[str, Path]]) -> dict:
+    """Cold starts of every arm (``arm -> (package, apk)``) on the connected target, in rotating rounds."""
     properties = {name: _adb("shell", "getprop", name).strip() for name in (
         "ro.build.fingerprint", "ro.build.version.release", "ro.build.version.security_patch",
         "ro.product.model", "ro.product.cpu.abilist", "ro.soc.manufacturer", "ro.soc.model",
         "ro.kernel.qemu", "ro.boot.qemu",
     )}
     properties["kernel"] = _adb("shell", "uname", "-a").strip()
-    samples: dict[str, dict[str, list[int | None]]] = {arm: {"total_time_ms": [], "wait_time_ms": [], "pss_kib": [], "pass": []} for arm in apks}
     clicks = {}
-    for pass_index in range(PASSES):
-        names = list(apks)
-        for arm in names[pass_index % len(names):] + names[:pass_index % len(names)]:  # order rotates each pass
-            _install(apks[arm])
-            _adb("shell", "cmd", "package", "compile", "-f", "-m", COMPILER_FILTER, PACKAGE)
+    samples: dict[str, dict[str, list[int | None]]] = {arm: {"total_time_ms": [], "wait_time_ms": [], "pss_kib": [], "round": []} for arm in apks}
+    names = list(apks)
+    for block in range(BLOCKS):  # a fresh install of every arm per block: one install's placement does not decide an arm
+        for arm in names[block % len(names):] + names[:block % len(names)]:
+            package, apk = apks[arm]
+            _install(apk, package)
+            _adb("shell", "cmd", "package", "compile", "-f", "-m", COMPILER_FILTER, package)
             for _ in range(WARMUP):
-                _cold_start()
-            if pass_index == 0:
+                _cold_start(package)
+            if block == 0:
                 clicks[arm] = _clicks_work()
-            for _ in range(RUNS // PASSES):
-                for key, value in _cold_start().items():
+        for index in range(block * RUNS, (block + 1) * RUNS):
+            for arm in names[index % len(names):] + names[:index % len(names)]:  # order rotates each round
+                for key, value in _cold_start(apks[arm][0]).items():
                     samples[arm][key].append(value)
-                samples[arm]["pass"].append(pass_index)
-    subprocess.run(["adb", "uninstall", PACKAGE], capture_output=True, timeout=300)
+                samples[arm]["round"].append(index)
+    for package, _ in apks.values():
+        subprocess.run(["adb", "uninstall", package], capture_output=True, timeout=300)
     emulated = "1" in (properties["ro.kernel.qemu"], properties["ro.boot.qemu"])
+
     def stats(values: list[int | None]) -> tuple[float | None, float | None]:
         present = [value for value in values if value is not None]
         return (statistics.median(present) if present else None, round(statistics.stdev(present), 2) if len(present) > 1 else None)
 
     summary = {
         arm: {
+            "package": apks[arm][0],
             "clicks_work": clicks[arm],
             "untracked_launches": rows["total_time_ms"].count(None),
-            **{f"median_{key}": stats(values)[0] for key, values in rows.items() if key != "pass"},
-            **{f"stdev_{key}": stats(values)[1] for key, values in rows.items() if key != "pass"},
-            "pass_median_total_time_ms": [stats([v for v, p in zip(rows["total_time_ms"], rows["pass"]) if p == index])[0] for index in range(PASSES)],
+            **{f"median_{key}": stats(values)[0] for key, values in rows.items() if key != "round"},
+            **{f"stdev_{key}": stats(values)[1] for key, values in rows.items() if key != "round"},
             "samples": rows,
         }
         for arm, rows in samples.items()
@@ -163,51 +183,54 @@ def measure_device(apks: dict[str, Path]) -> dict:
     # TotalTime is the comparison; an arm with any untracked launch gets no ratio.
     tracked = all(item["untracked_launches"] == 0 for item in summary.values())
     fastest = min(item["median_total_time_ms"] for item in summary.values()) if tracked else None
+    competitor = min((arm for arm in summary if arm != "xax"), key=lambda arm: summary[arm]["median_total_time_ms"]) if tracked else None
     for item in summary.values():
-        item["time_ratio_vs_fastest"] = round(item["median_total_time_ms"] / fastest, 3) if tracked else None
-    # Pass effect: the XAX arm against the fastest arm of the same pass.
-    pass_ratios = [round(summary["xax"]["pass_median_total_time_ms"][index] / min(item["pass_median_total_time_ms"][index] for item in summary.values()), 3)
-                   for index in range(PASSES)] if tracked else None
+        item["time_ratio_vs_fastest"] = round(item["median_total_time_ms"] / fastest, 6) if tracked else None
+    if tracked:
+        summary["xax"]["time_ratio_vs_fastest_competitor"] = round(summary["xax"]["median_total_time_ms"] / summary[competitor]["median_total_time_ms"], 6)
     return {
         "label": "MEASURED" if not emulated else "EXECUTED",
         "hardware": not emulated,
         "note": "performance and memory evidence" if not emulated else "emulator run: shows the harness works; not performance or memory evidence",
         "target": properties,
         "warmup": WARMUP,
-        "runs": RUNS,
-        "passes": PASSES,
+        "blocks": BLOCKS,
+        "runs_per_block": RUNS,
         "compiler_filter": COMPILER_FILTER,
-        "pass_order": "arms rotate by one each pass; each pass reinstalls and recompiles every arm",
-        "xax_pass_ratios_vs_fastest": pass_ratios,
+        "protocol": "every arm installed side by side (twins under renamed packages); each block reinstalls every arm (install order rotating), then each round cold-starts every arm once, the order rotating by one",
+        "fastest_competitor": competitor,
         "arms": summary,
     }
 
 
 def evidence(device: dict | None = None) -> dict:
-    from benchmarks.bench_android_ndk_twin import ANDROID_JAR, BUILD_TOOLS, NDK, _ENV
+    from benchmarks.bench_android_ndk_twin import ANDROID_JAR, BUILD_TOOLS, KOTLIN_HOME, NDK, _ENV
 
     with tempfile.TemporaryDirectory() as directory:
-        for name in ("ndk", "java"):
-            (Path(directory) / name).mkdir()
-        twin_apk = build_twin(Path(directory) / "ndk", TWIN, "xaxcounter")
-        java_apk = build_twin(Path(directory) / "java", JAVA_TWIN, "xaxcounter")
-        twin, java = _measure(twin_apk), _measure(java_apk)
+        def built(arm: str, side_by_side: bool) -> Path:
+            source, library, package = TWINS[arm]
+            work = Path(directory) / (arm + ("-side" if side_by_side else ""))
+            work.mkdir()
+            return build_twin(work, source, library, package if side_by_side else None)
+
+        twin, java, kotlin = (_measure(built(arm, False)) for arm in TWINS)
         xax = _measure(app.APK)
         if device is None and "--device" in sys.argv[1:]:
-            device = measure_device({"xax": app.APK, "clang_ndk_java": twin_apk, "java_d8": java_apk})
+            device = measure_device({"xax": (PACKAGE, app.APK), **{arm: (TWINS[arm][2], built(arm, True)) for arm in TWINS}})
     if device is None and EVIDENCE.exists():
         committed = json.loads(EVIDENCE.read_text(encoding="utf-8"))
-        if committed.get("xax", {}).get("apk_sha256") == xax["apk_sha256"] and "java_d8" in committed.get("device", {}).get("arms", {}):
+        if committed.get("xax", {}).get("apk_sha256") == xax["apk_sha256"] and "kotlin_r8" in committed.get("device", {}).get("arms", {}):
             device = committed.get("device")
     hardware = bool(device and device.get("hardware"))
     return {
         "format": "xax-android-counter-twin-evidence-v2",
-        "decision": "ADR-153",
+        "decision": "ADR-153, ADR-253",
         "label": "MEASURED",
         "toolchain": {
             "ndk": (NDK / "source.properties").read_text(encoding="utf-8").split("Pkg.Revision = ")[1].split()[0],
             "build_tools": (BUILD_TOOLS / "source.properties").read_text(encoding="utf-8").split("Pkg.Revision=")[1].split()[0],
             "javac": subprocess.run(["javac", "-version"], capture_output=True, text=True, env=_ENV).stdout.strip(),
+            "kotlinc": (KOTLIN_HOME / "build.txt").read_text(encoding="utf-8").strip(),
             "android_jar": ANDROID_JAR.parent.name,
         },
         "behavior_match": xax["badging"] == twin["badging"] and set(xax["native_function_bytes"]) == set(twin["native_function_bytes"]),
@@ -217,12 +240,16 @@ def evidence(device: dict | None = None) -> dict:
         "java": java,
         "java_behavior_match": xax["badging"] == java["badging"],
         "xax_over_java": {key: round(xax[key] / java[key], 3) for key in SIZE_KEYS if java[key]},
+        "kotlin": kotlin,
+        "kotlin_behavior_match": xax["badging"] == kotlin["badging"],
+        "xax_over_kotlin": {key: round(xax[key] / kotlin[key], 3) for key in SIZE_KEYS if kotlin[key]},
         # The section 15.0 verdict input (xax_replacement.recompute_runtime_verdict): cold-start TotalTime per arm.
         "host": device["target"] if hardware else None,
         "results": {
             arm: {
                 "wall_seconds_samples": [value / 1000 for value in row["samples"]["total_time_ms"] if value is not None],
                 "time_ratio_vs_fastest": row["time_ratio_vs_fastest"],
+                "time_ratio_vs_fastest_competitor": row.get("time_ratio_vs_fastest_competitor"),
                 "median_pss_kib": row["median_pss_kib"],
             }
             for arm, row in device["arms"].items()
@@ -237,7 +264,7 @@ def main() -> int:
     print(json.dumps({key: result[key] for key in ("behavior_match", "xax_over_java_ndk")}, indent=2))
     device = result["device"]
     print("device:", device["label"], {arm: {key: value for key, value in row.items() if key.startswith(("median", "time", "clicks", "untracked"))} for arm, row in device.get("arms", {}).items()})
-    return 0 if result["behavior_match"] else 1
+    return 0 if result["behavior_match"] and result["java_behavior_match"] and result["kotlin_behavior_match"] else 1
 
 
 if __name__ == "__main__":

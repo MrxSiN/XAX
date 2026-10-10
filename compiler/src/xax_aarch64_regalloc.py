@@ -56,7 +56,8 @@ from xax_compiler import (
     parse_function_graph,
     pointer_extent_from_graph,
 )
-from xax_ranges import upper_bounds
+from xax_compiler import AARCH64_LINUX_ABI
+from xax_ranges import TABLE_OPERATIONS, predicate_table, upper_bounds
 
 _CALLER = tuple(range(0, 14))  # x0-x13
 _CALLEE = tuple(range(19, 30))  # x19-x29
@@ -76,6 +77,8 @@ _SUPPORTED = _PURE | frozenset({
     Operation.CHECKED_STORE_BITS_LE, Operation.POINTER_REBASE, Operation.STACK_END, *RESOURCE_EFFECT_OPERATIONS,
 })
 _CALLS = (Operation.CALL_DIRECT, Operation.CALL_FOREIGN)
+_DUPLICATE_LIMIT = 4  # code-emitting nodes of a test block copied into a jumping predecessor
+_NO_CODE = frozenset({Operation.CONSTANT, Operation.POINTER_CAST, Operation.POINTER_ADDRESS, Operation.INT_ZERO_EXTEND, Operation.STACK_END})
 _COND = {
     IntCompare.EQ: 0, IntCompare.NE: 1, IntCompare.UGE: 2, IntCompare.ULT: 3, IntCompare.UGT: 8, IntCompare.ULE: 9,
     IntCompare.SGE: 10, IntCompare.SLT: 11, IntCompare.SGT: 12, IntCompare.SLE: 13,
@@ -250,6 +253,9 @@ class _Assembler:
             word = int.from_bytes(self.code[position:position + 4], "little")
             if bits == 26:
                 word |= displacement & 0x3FFFFFF
+            elif bits == 21:  # adr: a byte displacement, immlo in bits 29-30 and immhi in bits 5-23
+                offset = self.labels[label] - position
+                word |= ((offset & 3) << 29) | (((offset >> 2) & 0x7FFFF) << 5)
             else:
                 word |= (displacement & 0x7FFFF) << 5
             self.code[position:position + 4] = word.to_bytes(4, "little")
@@ -279,6 +285,10 @@ def compile_linux_function(function: SemanticObject, resolve: Callable[[bytes], 
     """``(code, calls, foreign_calls, addresses, node_ranges)``, or ``None`` when the function is ineligible."""
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph = parse_function_graph(function, resolve)
+    if target.abi == AARCH64_LINUX_ABI:  # small leaf callees inline into the lowering view (as on x86-64; ADR-254)
+        from xax_inline import inline_leaf_calls
+
+        graph = inline_leaf_calls(graph, resolve)
     lowering = _Lowering(function, graph_object, graph, parameter_types, return_types, resolve, target)
     return lowering.run() if lowering.eligible() else None
 
@@ -330,11 +340,14 @@ class _Lowering:
         graph, resolve = self.graph, self.resolve
         widths: dict[ValueRef, int] = {}
         machine_parameters = [cid for cid in self.parameter_types if _machine_width(resolve, cid) is not None]
-        machine_returns = [cid for cid in self.return_types if _machine_width(resolve, cid) is not None]
+        # Borrowed views given back are the lent pointers (ADR-101): not returned in registers.
+        self.own_elided = borrowed_view_returns(self.parameter_types, self.return_types, resolve)
+        machine_returns = [cid for index, cid in enumerate(self.return_types) if _machine_width(resolve, cid) is not None and index not in self.own_elided]
         if any(_machine_width(resolve, cid) is False for cid in (*machine_parameters, *machine_returns)):
             return False
-        if len(machine_parameters) > 8 or len(machine_returns) > 1 or borrowed_view_returns(self.parameter_types, self.return_types, resolve):
+        if len(machine_parameters) > 8 or len(machine_returns) > 1:
             return False
+        self.call_elided: dict[ValueRef, ValueRef] = {}  # a call's given-back view -> the operand it lent
         for block_index, block in enumerate(graph.blocks):
             for index, cid in enumerate(block.parameters):
                 width = _machine_width(resolve, cid)
@@ -362,9 +375,10 @@ class _Lowering:
                     if node.operation == Operation.CALL_DIRECT and _is_erased_proof_function(node.entity, resolve):
                         continue
                     machine_operands = [cid for cid in node.operand_types if _machine_width(resolve, cid) is not None]
-                    if len(machine_operands) > 8 or len(machine_results) > 1:
-                        return False
-                    if node.operation == Operation.CALL_DIRECT and borrowed_view_returns(node.operand_types, node.results, resolve):
+                    elided = borrowed_view_returns(node.operand_types, node.results, resolve) if node.operation == Operation.CALL_DIRECT else {}
+                    for result_index, parameter_index in elided.items():
+                        self.call_elided[ValueRef.node_result(block_index, node_index, result_index)] = node.operands[parameter_index]
+                    if len(machine_operands) > 8 or len(machine_results) - len(elided) > 1:
                         return False
                 if node.operation in (Operation.LOAD_BITS_LE, Operation.RAW_LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
                     if node.attributes[0] not in (1, 2, 4, 8):
@@ -399,6 +413,25 @@ class _Lowering:
                     bound = self.maximum(node.operands[0])
                     if bound is not None and bound < 1 << widths[result]:
                         self.alias[result] = node.operands[0]
+        # A view a call gives back is a copy of the operand, which therefore stays live across the call.
+        self.alias.update(self.call_elided)
+        # A block parameter whose every incoming argument is one value (or the parameter itself, through
+        # other such parameters) is that value: loop-invariant values passed around a loop need no copies.
+        incoming: dict[ValueRef, list[ValueRef]] = {}
+        for block in graph.blocks:
+            for target, arguments in block.terminator.edges:
+                for index, argument in enumerate(arguments):
+                    incoming.setdefault(ValueRef.parameter(target, index), []).append(argument)
+        changed = True
+        while changed:
+            changed = False
+            for parameter, arguments in incoming.items():
+                if parameter.block == graph.entry or parameter not in widths or parameter in self.alias:
+                    continue
+                sources = {self.canon(argument) for argument in arguments} - {parameter}
+                if len(sources) == 1:
+                    self.alias[parameter] = sources.pop()
+                    changed = True
         # Fused compares: consumed only by their block's conditional branch.
         uses = Counter(self.canon(operand) for block in graph.blocks for node in block.nodes for operand in node.operands)
         uses.update(self.canon(value) for block in graph.blocks for value in block.terminator.values)
@@ -412,6 +445,30 @@ class _Lowering:
             if condition.tag == 1 and condition.block == block_index and condition.result == 0 and uses[condition] == 1:
                 if block.nodes[condition.index].operation == Operation.INT_COMPARE:
                     self.fused[block_index] = condition.index
+        # Predicate tables (ADR-208, ADR-254): a boolean of one byte-bounded value read from a byte table.
+        # The table's address is a synthetic value (result 2 of the root) hoisted to the entry.
+        raw_uses = Counter(operand for block in graph.blocks for node in block.nodes for operand in node.operands)
+        raw_uses.update(value for block in graph.blocks for value in block.terminator.values)
+        raw_uses.update(value for block in graph.blocks for _target, arguments in block.terminator.edges for value in arguments)
+        self.tables: dict[ValueRef, tuple[ValueRef, ValueRef]] = {}  # root -> (subject, table address)
+        self.table_data: dict[ValueRef, bytes] = {}
+        table_internal: set[ValueRef] = set()
+        for block_index, block in enumerate(graph.blocks):
+            for node_index in reversed(range(len(block.nodes))):
+                root = ValueRef.node_result(block_index, node_index)
+                node = block.nodes[node_index]
+                if (
+                    root in table_internal or root not in widths or root in self.alias or node_index == self.fused.get(block_index)
+                    or node.operation not in TABLE_OPERATIONS or node.operation in (Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE)
+                ):
+                    continue
+                found = predicate_table(graph, block_index, root, self.definition, widths, self.constants, self.maximum, raw_uses)
+                if found is not None:
+                    subject, table, indices = found
+                    address = ValueRef.node_result(block_index, node_index, 2)
+                    self.widths[address] = 64
+                    self.tables[root], self.table_data[address] = (subject, address), table
+                    table_internal.update(ValueRef.node_result(block_index, index) for index in indices)
         # Loops: blocks on a CFG cycle, and each block's natural-loop nesting depth.
         successors = {index: [t for t, _a in block.terminator.edges] for index, block in enumerate(graph.blocks)}
         self.in_loop = {index for index in successors if self._reaches(successors, index, index)}
@@ -424,7 +481,7 @@ class _Lowering:
             for node_index in reversed(range(len(block.nodes))):
                 root = ValueRef.node_result(block_index, node_index)
                 node = block.nodes[node_index]
-                if node.operation == Operation.BIT_OR and root in widths and root not in internal:
+                if node.operation == Operation.BIT_OR and root in widths and root not in internal and root not in table_internal:
                     found = self._membership(block_index, root, uses)
                     if found is not None:
                         tests, inner = found
@@ -618,6 +675,8 @@ class _Lowering:
         result = ValueRef.node_result(block_index, node_index)
         if op == Operation.INT_TRUNCATE and result in self.alias:
             return ()
+        if result in self.tables:
+            return tuple(value for value in (self._located(item) for item in self.tables[result]) if value is not None)
         if result in self.member:
             subject, _low, mask = self.member[result]
             return tuple(value for value in (self._located(subject), self._located(mask)) if value is not None)
@@ -632,6 +691,8 @@ class _Lowering:
                 picked.append(node.operands[1])
             if op == Operation.CHECKED_STORE_BITS_LE and not self._folds(node, 2):
                 picked.append(node.operands[2])
+            if (block_index, node_index) in self.check_bound:
+                picked.append(self.check_bound[(block_index, node_index)])
             return tuple(value for value in (self._located(operand) for operand in picked) if value is not None)
         machine = [(index, operand) for index, (operand, cid) in enumerate(zip(node.operands, node.operand_types)) if _machine_width(self.resolve, cid) is not None]
         if op == Operation.CALL_DIRECT and _is_erased_proof_function(node.entity, self.resolve):
@@ -642,7 +703,7 @@ class _Lowering:
     def _located(self, operand: ValueRef) -> ValueRef | None:
         """The canonical value to read, or None for a constant materialized at its use."""
         value = self.canon(operand)
-        if value in self.constants and value not in self.hoisted:
+        if (value in self.constants or value in self.table_data) and value not in self.hoisted:
             return None
         return value
 
@@ -650,6 +711,7 @@ class _Lowering:
         if node.operation == Operation.CONSTANT:
             return None
         machine = [ValueRef.node_result(block_index, node_index, index) for index, cid in enumerate(node.results) if _machine_width(self.resolve, cid) is not None]
+        machine = [value for value in machine if value not in self.call_elided]
         if not machine or node_index == self.fused.get(block_index) or machine[0] in self.alias:
             return None
         return machine[0]
@@ -658,7 +720,8 @@ class _Lowering:
         terminator = self.graph.blocks[block_index].terminator
         values: list[ValueRef] = []
         if terminator.kind == TerminatorKind.RETURN:
-            machine = [value for value, cid in zip(terminator.values, self.return_types) if _machine_width(self.resolve, cid) is not None]
+            machine = [value for index, (value, cid) in enumerate(zip(terminator.values, self.return_types))
+                       if _machine_width(self.resolve, cid) is not None and index not in self.own_elided]
             values.extend(machine)
         elif terminator.kind == TerminatorKind.CONDITIONAL_BRANCH:
             if block_index in self.fused:
@@ -668,14 +731,31 @@ class _Lowering:
                 values.append(terminator.values[0])
         for target, arguments in terminator.edges:
             for index, argument in enumerate(arguments):
-                if ValueRef.parameter(target, index) in self.widths:
+                if ValueRef.parameter(target, index) in self.widths and ValueRef.parameter(target, index) not in self.alias:
                     values.append(argument)
         return tuple(value for value in (self._located(item) for item in values) if value is not None)
 
     # -- liveness, intervals, allocation -------------------------------------------------
     def _plan(self) -> None:
         graph = self.graph
-        self.hoisted: set[ValueRef] = set()
+        # Table addresses used in a loop, and the bounds of loop checks a compare cannot encode, live in registers.
+        self.hoisted: set[ValueRef] = {address for root, (_subject, address) in self.tables.items() if root.block in self.in_loop}
+        self.check_bound: dict[tuple[int, int], ValueRef] = {}
+        bound_values: dict[int, ValueRef] = {}
+        for block_index in sorted(self.in_loop):
+            for node_index, node in enumerate(graph.blocks[block_index].nodes):
+                if node.operation not in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
+                    continue
+                if self.const(node.operands[1]) is not None or self._scaled(node) is not None or self._proven(node):
+                    continue
+                bound = pointer_extent_from_graph(graph, node.operands[0], self.resolve) - node.attributes[0]
+                if bound < 0 or _addsub_immediate(bound) is not None:
+                    continue
+                if bound not in bound_values:
+                    value = bound_values[bound] = ValueRef.node_result(block_index, node_index, 3)
+                    self.constants[value], self.widths[value] = bound, 64
+                    self.hoisted.add(value)
+                self.check_bound[(block_index, node_index)] = bound_values[bound]
         # Hoist expensive constants used (unfolded) inside loops.
         for block_index, block in enumerate(graph.blocks):
             if block_index not in self.in_loop:
@@ -737,7 +817,7 @@ class _Lowering:
         uses_up: dict[int, set] = {}
         defs: dict[int, set] = {}
         for block_index, block in enumerate(graph.blocks):
-            defined = {ValueRef.parameter(block_index, index) for index in range(len(block.parameters)) if ValueRef.parameter(block_index, index) in self.widths}
+            defined = {ValueRef.parameter(block_index, index) for index in range(len(block.parameters)) if ValueRef.parameter(block_index, index) in self.widths and ValueRef.parameter(block_index, index) not in self.alias}
             if block_index == graph.entry:
                 defined |= self.hoisted
             upward = set()
@@ -780,7 +860,7 @@ class _Lowering:
             first: dict[ValueRef, int] = {}
             last: dict[ValueRef, int] = {}
             start = self.block_start[block_index]
-            defined_at_start = [ValueRef.parameter(block_index, index) for index in range(len(block.parameters)) if ValueRef.parameter(block_index, index) in self.widths]
+            defined_at_start = [ValueRef.parameter(block_index, index) for index in range(len(block.parameters)) if ValueRef.parameter(block_index, index) in self.widths and ValueRef.parameter(block_index, index) not in self.alias]
             if block_index == graph.entry:
                 defined_at_start += sorted(self.hoisted, key=lambda value: (value.block, value.index))
             for value in defined_at_start:
@@ -825,6 +905,7 @@ class _Lowering:
         graph = self.graph
         # Phi groups: a block parameter and its arguments prefer one register.
         parent: dict[ValueRef, ValueRef] = {}
+        partners: dict[ValueRef, list[ValueRef]] = {}  # direct edge copies: parameter <-> argument
 
         def find(value: ValueRef) -> ValueRef:
             while parent.get(value, value) != value:
@@ -837,6 +918,8 @@ class _Lowering:
                     parameter = ValueRef.parameter(target, index)
                     source = self.canon(argument)
                     if parameter in self.intervals and source in self.intervals:
+                        partners.setdefault(parameter, []).append(source)
+                        partners.setdefault(source, []).append(parameter)
                         a, b = find(parameter), find(source)
                         if a != b:
                             parent[a] = b
@@ -867,7 +950,9 @@ class _Lowering:
             conflicts = {register: [item for item in assigned.get(register, ()) if item.overlaps(interval)] for register in classes}
             free = [register for register in classes if not conflicts[register]]
             chosen = None
-            for register in (group_register.get(group), hint.get(interval.value)):
+            # A copy partner's register, when free, removes that edge's move.
+            partner_registers = [self.intervals[other].register for other in partners.get(interval.value, ())]
+            for register in (group_register.get(group), *partner_registers, hint.get(interval.value)):
                 if register is not None and register in free:
                     chosen = register
                     break
@@ -926,6 +1011,12 @@ class _Lowering:
         for code, label in sorted(self.traps.items(), key=lambda item: item[0]):
             asm.label(label)
             asm.emit(_brk(code))
+        referenced = {label for _position, label, _kind in asm.fixups}
+        for address in sorted(self.table_data, key=lambda item: (item.block, item.index)):
+            if ("table", address) in referenced:
+                asm.label(("table", address))
+                asm.code.extend(self.table_data[address])
+        asm.code.extend(bytes(-len(asm.code) % 4))
         return asm.finish(), tuple(asm.calls), tuple(asm.foreign_calls), (), tuple(node_ranges)
 
     def _prologue(self) -> list[int]:
@@ -976,6 +1067,8 @@ class _Lowering:
         value = self.canon(operand)
         if value in self.constants and value not in self.hoisted:
             return ("const", self.constants[value])
+        if value in self.table_data and value not in self.hoisted:
+            return ("table", value)
         return self.location(value)
 
     def _trap(self, code: int) -> object:
@@ -1009,8 +1102,16 @@ class _Lowering:
             else:
                 where = destination[1]
                 self.asm.emit(_access(True, _TRANSFER, _SP, where, 8), *_mask(_TRANSFER, _TRANSFER, self.widths[parameter]), _access(False, _TRANSFER, _SP, where, 8))
-        for value in sorted(self.hoisted, key=lambda item: (item.block, item.index)):
-            if value in self.intervals:
+        for value in sorted(self.hoisted, key=lambda item: (item.block, item.index, item.result)):
+            if value not in self.intervals:
+                continue
+            if value in self.table_data:
+                kind, where = self.location(value)
+                register = where if kind == "reg" else _TRANSFER
+                self.asm.branch(0x10000000 | register, ("table", value), 21)  # adr
+                if kind == "slot":
+                    self.asm.emit(_access(False, register, _SP, where, 8))
+            else:
                 self._parallel([(self.location(value), ("const", self.constants[value]))])
 
     def _entry_parameters(self) -> list[ValueRef]:
@@ -1069,6 +1170,8 @@ class _Lowering:
         register = self._scratch()
         if kind == "slot":
             self.asm.emit(_access(True, register, _SP, where, 8))
+        elif kind == "table":
+            self.asm.branch(0x10000000 | register, ("table", where), 21)  # adr
         elif where == 0:
             self.free_scratch.insert(0, register)
             return _ZR
@@ -1122,6 +1225,13 @@ class _Lowering:
             source = self.read(node.operands[0])
             destination = self.target_register(result)
             asm.emit(*_mask(destination, source, self.widths[result]))
+            self.commit(result, destination)
+            return
+        if result in self.tables:
+            subject, address = self.tables[result]
+            index, table = self.read(subject), self.read(address)
+            destination = self.target_register(result)
+            asm.emit(_indexed(True, destination, table, index, 1, False))  # ldrb destination, [table, subject]
             self.commit(result, destination)
             return
         if result in self.member:
@@ -1362,7 +1472,10 @@ class _Lowering:
             index, shifted = self.read(scaled[0]), True
         else:
             index, shifted = self.read(node.operands[1]), False
-            if not self._proven(node):
+            if (block_index, node_index) in self.check_bound:
+                asm.emit(_cmp_reg(True, index, self.read(self.check_bound[(block_index, node_index)])))
+                asm.branch(0x54000000 | 8, self._trap(_BRK_MEMORY_CHECK), 19)  # b.hi
+            elif not self._proven(node):
                 self._compare_constant(index, bound)
                 asm.branch(0x54000000 | 8, self._trap(_BRK_MEMORY_CHECK), 19)  # b.hi
         if load:
@@ -1409,7 +1522,8 @@ class _Lowering:
         asm, terminator = self.asm, self.graph.blocks[block_index].terminator
         following = self.following
         if terminator.kind == TerminatorKind.RETURN:
-            machine = [value for value, cid in zip(terminator.values, self.return_types) if _machine_width(self.resolve, cid) is not None]
+            machine = [value for index, (value, cid) in enumerate(zip(terminator.values, self.return_types))
+                       if _machine_width(self.resolve, cid) is not None and index not in self.own_elided]
             if machine:
                 self._parallel([(("reg", 0), self.source(machine[0]))])
             asm.emit(*self._epilogue(), 0xD65F03C0)
@@ -1422,22 +1536,47 @@ class _Lowering:
             target, moves = self._edge_moves(block_index, 0)
             self._parallel(moves)
             if target != following and target != block_index and self._duplicable(target):
+                # The target is a short test (a loop header, typically): run it here, so a loop
+                # ends in its own conditional branch instead of a jump back to the test.
+                for node_index, node in enumerate(self.graph.blocks[target].nodes):
+                    if (target, node_index) not in self.dead:
+                        self._begin()
+                        self._node(target, node_index, node)
                 self._begin()
-                self._conditional(target, following)  # the target is only a test: run it here
+                self._conditional(target, following)
             elif target != following:
                 asm.branch(0x14000000, ("block", target), 26)
             return
         self._conditional(block_index, following)
 
     def _duplicable(self, block_index: int) -> bool:
-        """A block that is only a fused compare and its conditional branch."""
+        """A conditional block of at most _DUPLICATE_LIMIT code-emitting nodes and no calls."""
         block = self.graph.blocks[block_index]
-        if block.terminator.kind != TerminatorKind.CONDITIONAL_BRANCH or block_index not in self.fused:
+        if block.terminator.kind != TerminatorKind.CONDITIONAL_BRANCH:
             return False
-        return all(
-            index == self.fused[block_index] or (block_index, index) in self.dead or node.operation in (Operation.CONSTANT, Operation.STACK_END) or node.operation in RESOURCE_EFFECT_OPERATIONS
-            for index, node in enumerate(block.nodes)
-        )
+        emitting = [
+            node for index, node in enumerate(block.nodes)
+            if index != self.fused.get(block_index) and (block_index, index) not in self.dead
+            and node.operation not in _NO_CODE and node.operation not in RESOURCE_EFFECT_OPERATIONS
+        ]
+        return len(emitting) <= _DUPLICATE_LIMIT and not any(node.operation in _CALLS for node in emitting)
+
+    def _through(self, target: int) -> int:
+        """Where a branch to ``target`` can go directly: past blocks that emit nothing and branch on without copies."""
+        seen = set()
+        while target not in seen:
+            seen.add(target)
+            block = self.graph.blocks[target]
+            if block.terminator.kind != TerminatorKind.BRANCH or not all(
+                (target, index) in self.dead or node.operation in _NO_CODE or node.operation in RESOURCE_EFFECT_OPERATIONS
+                for index, node in enumerate(block.nodes)
+            ):
+                break
+            successor, moves = self._edge_moves(target, 0)
+            if moves:
+                break
+            target = successor
+        return target
 
     def _conditional(self, block_index: int, following) -> None:
         asm, terminator = self.asm, self.graph.blocks[block_index].terminator
@@ -1472,7 +1611,7 @@ class _Lowering:
 
         def stub(target: int, moves) -> object:
             if not moves:
-                return ("block", target)
+                return ("block", self._through(target))
             label = ("stub", block_index, target, len(self.stubs), len(asm.code))
             self.stubs.append((label, moves, target))
             return label
