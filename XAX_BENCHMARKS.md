@@ -1187,6 +1187,19 @@ The XAX arm is the `aarch64-linux-elf-exec-v1` image (raw syscalls, no libc or l
 
 XAX is 0.956284x the fastest non-XAX arm on the X3 core and 0.923764x on the A715 core, p < 1e-6 in both runs, so the Linux AArch64 row derives R4 for this workload. The Android row cites the same file but keeps R3 (§15.34). User-mode instructions per run (`simpleperf stat`, X3): XAX 128.2 M, clang static 138.6 M, rustc 161.7 M. Before ADR-254 every `jsonmin` function took the AArch64 frame path (246.0 M instructions); the steps and their counts are in ADR-254. Scope: one workload, one device and session; the C baselines link bionic, not glibc.
 
+### 15.36 `jsonmin` on a second AArch64 device: original Pixel (ADR-254; MEASURED, 2026-10-10)
+
+Same harness, arms, and XAX image (`049cf5ee…`) as §15.35, on an original Google Pixel (`sailfish`): Qualcomm Snapdragon 821 (Kryo), LineageOS (Android 15), kernel `4.4.302`, every run pinned to cpu 3 (2.15 GHz Kryo core, `XAX_JSONMIN_CPU_MASK=8`), 101 rounds after 3 warmup rounds. Evidence: `compiler/benchmarks/android_jsonmin_pixel1_evidence.json`. All AArch64 Linux runtime tests also pass on this device (`XAX_AARCH64_ADB=1`).
+
+| Arm | Median (ms) | Ratio | Peak RSS (KiB) |
+|---|---:|---:|---:|
+| XAX | 55.01 | 1.000 | 12,412 |
+| clang -O2 -static | 61.23 | 1.113 | 12,876 |
+| clang -O2 (dynamic) | 68.76 | 1.250 | 14,408 |
+| rustc -O3 | 82.97 | 1.508 | 14,468 |
+
+XAX is 0.898444x the fastest non-XAX arm, p < 1e-6: the lead holds on a second microarchitecture and kernel. A OnePlus One (`bacon`, Snapdragon 801) was also tried: it is 32-bit ARMv7 (`armeabi-v7a` only), so the AArch64 image gets `Exec format error`; XAX has no 32-bit ARM target.
+
 ## JVM response-v6 complete token result (2026-10-07, ADR-190/191)
 
 All 135 Java/Kotlin/XAX cells eventually passed across three fresh trials and

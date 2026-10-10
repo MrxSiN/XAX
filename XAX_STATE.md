@@ -1485,3 +1485,5 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 - Linux AArch64 static images run on hardware: the Pixel 8 Pro's Android kernel runs them through `adb` (`XAX_AARCH64_ADB=1`), and the Linux AArch64 runtime tests pass there (first hardware AArch64 run, OI-44).
 - The AArch64 register path now covers borrowed-view returns and recursion groups, and has predicate tables (analysis shared with x86-64 in `xax_ranges`), hoisted loop check bounds, redundant block-parameter removal, copy-partner register preference, jump threading, small-header loop rotation, and leaf inlining on the Linux profiles. `jsonmin` on AArch64: 246 M → 128 M user instructions per run.
 - `jsonmin` on the Pixel 8 Pro (§15.35): 0.956x NDK `clang -O2 -static` (Cortex-X3, p < 1e-6; 0.924x on a Cortex-A715 core), ahead of `rustc -O3`; the lowest peak RSS. The Linux AArch64 row derives R4 for this one workload.
+
+- Second AArch64 device (§15.36): on an original Pixel (Snapdragon 821) the same `jsonmin` image is 0.898x NDK `clang -O2 -static`, and the AArch64 runtime tests pass. A OnePlus One is ARMv7-only: no XAX target runs there.
