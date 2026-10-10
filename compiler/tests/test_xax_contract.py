@@ -34,6 +34,13 @@ class HostContractTests(unittest.TestCase):
         self.assertEqual(set(xax_native.PREPARE_COMPONENTS),
                          {"blake3-hash", "store-decoder", "graph-decoder", "cfg", "x86-64-views-backend", "typing", "store-verifier"})
 
+    def test_windows_construct_platform_is_on_the_host_surface(self):
+        """ADR-252: the windows-x86_64 carrier platform joined the surface in minor 4."""
+        from xax_construct import _PLATFORMS
+
+        self.assertGreaterEqual(xax_contract.HOST_CONTRACT_MINOR, 4)
+        self.assertEqual(tuple(xax_contract.FORMATS["construct_platforms"]), _PLATFORMS)
+
     def test_description_is_plain_data(self):
         import json
 

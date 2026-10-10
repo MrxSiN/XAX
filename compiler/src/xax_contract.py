@@ -16,11 +16,13 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 3  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
-# 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250)
+HOST_CONTRACT_MINOR = 4  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+# 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250);
+# 4: the windows-x86_64 construct platform and its win32.* carrier names (ADR-252)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)
+    "construct_platforms": ["linux-x86_64", "windows-x86_64"],  # xax_construct._PLATFORMS (ADR-252)
     "linux_process": "linux-x86_64-process-v1",     # xax_linux.process_contract() (ADR-224)
     "linux_startup_abi": "linux-x86_64-startup-v1",  # ADR-094
     "local_edit_grammar": "ADR-200",                 # xax_local_protocol.edit_grammar(), identified by edit_grammar_id()
@@ -36,8 +38,10 @@ INTERFACES = {
     "xax_build": ("build", "build_request", "resolve_packages", "snapshot_store", "decode_snapshot", "decode_request",
                   "decode_package", "decode_provenance", "ArtifactKind", "BuildResult"),
     "xax_compiler": ("StoreReader", "XaxError", "Diagnostic", "Kind", "Operation", "verify_store", "decode_native_target",
-                     "x86_64_linux_exec_target", "X86_64_LINUX_ABI", "X86_64_LINUX_ELF_EXEC_FORMAT"),
+                     "x86_64_linux_exec_target", "X86_64_LINUX_ABI", "X86_64_LINUX_ELF_EXEC_FORMAT",
+                     "x86_64_windows_pe_target"),
     "xax_linux": ("linux_api", "linux_startup_api", "process_contract", "LINUX_X86_64_PROCESS_CONTRACT"),
+    "xax_platform": ("win32_kernel32_api", "win32_stdio_api"),
     "xax_artifact": ("BOOTSTRAP_COMPILER_IDENTITY_V1",),
     "xax_native": ("AUTHORITY", "verify_component_store", "prepare", "PREPARE_COMPONENTS"),
 }
