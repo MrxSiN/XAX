@@ -179,6 +179,34 @@ class CarrierTests(unittest.TestCase):
                 construct(request)
 
     @unittest.skipUnless(WINDOWS_X86_64, "requires a Windows x86-64 host")
+    def test_windows_integer_completion_operations_run(self):
+        """ADR-253: exit((n udiv 4) | ((n urem 5) & 3)) over the runtime byte count n, so nothing folds at build time."""
+        import subprocess
+        import tempfile
+
+        from xax_build import build
+
+        request = _windows_echo()
+        block = request["functions"][0]["blocks"][0]
+        block["nodes"][12:] = [
+            ["int.zero.extend", ["n7"], ["b64"]],
+            ["udiv", ["n12", ["b64", 4]], ["b64"]],
+            ["urem", ["n12", ["b64", 5]], ["b64"]],
+            ["bit.and", ["n14", ["b64", 3]], ["b64"]],
+            ["bit.or", ["n13", "n15"], ["b64"]],
+            ["int.truncate", ["n16"], ["b32"]],
+            ["call.foreign", ["n17", "n1.r1"], ["win32.process_effect"], {"entity": "win32.exit_process"}]]
+        block["end"] = ["ret", ["n17", "n18", "n9.r1", "n11.r1"]]
+        constructed = construct(request)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory, "arith.exe")
+            path.write_bytes(build(constructed.reader, constructed.release_request.cid).artifact)
+            for data in (b"meaning is source\n", b"x" * 1001):
+                with self.subTest(length=len(data)):
+                    completed = subprocess.run([str(path)], input=data, capture_output=True, timeout=30)
+                    self.assertEqual((completed.returncode, completed.stdout), ((len(data) // 4) | (len(data) % 5 & 3), data))
+
+    @unittest.skipUnless(WINDOWS_X86_64, "requires a Windows x86-64 host")
     def test_windows_program_runs(self):
         import subprocess
         import tempfile
