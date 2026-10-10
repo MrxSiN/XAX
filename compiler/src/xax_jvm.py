@@ -632,6 +632,100 @@ class _Pool:
         return b"\x07" + _u2(self.klass(name))
 
 
+def _descriptor_slots(descriptor: str) -> tuple[int, int]:
+    """Operand-stack slots of a method descriptor's parameters and of its return value."""
+    slots, index, close = 0, 1, descriptor.index(")")
+    while index < close:
+        start = index
+        while descriptor[index] == "[":
+            index += 1
+        if descriptor[index] == "L":
+            index = descriptor.index(";", index)
+        slots += 2 if index == start and descriptor[index] in "JD" else 1
+        index += 1
+    result = descriptor[close + 1:]
+    return slots, 0 if result == "V" else 2 if result in ("J", "D") else 1
+
+
+# Stack effect (pops, pushes) and length of every fixed-form JVM instruction (JVMS 6.5); the
+# forms that read the constant pool or have variable length are decoded in _operand_stack_depth.
+_STACK_EFFECT: dict[int, tuple[int, int, int]] = {}
+for _op, _pops, _pushes in (
+    (0x00, 0, 0), (0x01, 0, 1), *((op, 0, 1) for op in range(0x02, 0x09)), (0x09, 0, 2), (0x0A, 0, 2),
+    (0x0B, 0, 1), (0x0C, 0, 1), (0x0D, 0, 1), (0x0E, 0, 2), (0x0F, 0, 2),
+    *((op, 0, 1) for op in range(0x1A, 0x1E)), *((op, 0, 2) for op in range(0x1E, 0x22)), *((op, 0, 1) for op in range(0x22, 0x26)),
+    *((op, 0, 2) for op in range(0x26, 0x2A)), *((op, 0, 1) for op in range(0x2A, 0x2E)),
+    (0x2E, 2, 1), (0x2F, 2, 2), (0x30, 2, 1), (0x31, 2, 2), (0x32, 2, 1), (0x33, 2, 1), (0x34, 2, 1), (0x35, 2, 1),
+    *((op, 1, 0) for op in range(0x3B, 0x3F)), *((op, 2, 0) for op in range(0x3F, 0x43)), *((op, 1, 0) for op in range(0x43, 0x47)),
+    *((op, 2, 0) for op in range(0x47, 0x4B)), *((op, 1, 0) for op in range(0x4B, 0x4F)),
+    (0x4F, 3, 0), (0x50, 4, 0), (0x51, 3, 0), (0x52, 4, 0), (0x53, 3, 0), (0x54, 3, 0), (0x55, 3, 0), (0x56, 3, 0),
+    (0x57, 1, 0), (0x58, 2, 0), (0x59, 1, 2), (0x5A, 2, 3), (0x5B, 3, 4), (0x5C, 2, 4), (0x5D, 3, 5), (0x5E, 4, 6), (0x5F, 2, 2),
+    *((base + kind, (2, 4, 2, 4)[kind], (1, 2, 1, 2)[kind]) for base in (0x60, 0x64, 0x68, 0x6C, 0x70) for kind in range(4)),
+    (0x74, 1, 1), (0x75, 2, 2), (0x76, 1, 1), (0x77, 2, 2),
+    (0x78, 2, 1), (0x79, 3, 2), (0x7A, 2, 1), (0x7B, 3, 2), (0x7C, 2, 1), (0x7D, 3, 2),
+    (0x7E, 2, 1), (0x7F, 4, 2), (0x80, 2, 1), (0x81, 4, 2), (0x82, 2, 1), (0x83, 4, 2),
+    (0x85, 1, 2), (0x86, 1, 1), (0x87, 1, 2), (0x88, 2, 1), (0x89, 2, 1), (0x8A, 2, 2), (0x8B, 1, 1), (0x8C, 1, 2),
+    (0x8D, 1, 2), (0x8E, 2, 1), (0x8F, 2, 2), (0x90, 2, 1), (0x91, 1, 1), (0x92, 1, 1), (0x93, 1, 1),
+    (0x94, 4, 1), (0x95, 2, 1), (0x96, 2, 1), (0x97, 4, 1), (0x98, 4, 1),
+    (0xAC, 1, 0), (0xAD, 2, 0), (0xAE, 1, 0), (0xAF, 2, 0), (0xB0, 1, 0), (0xB1, 0, 0),
+    (0xBE, 1, 1), (0xBF, 1, 0), (0xC2, 1, 0), (0xC3, 1, 0),
+):
+    _STACK_EFFECT[_op] = (1, _pops, _pushes)
+for _op, _pops, _pushes in ((0x10, 0, 1), (0x12, 0, 1), (0xBC, 1, 1), *((op, 0, 1) for op in (0x15, 0x17, 0x19)), (0x16, 0, 2), (0x18, 0, 2),
+                            (0x36, 1, 0), (0x37, 2, 0), (0x38, 1, 0), (0x39, 2, 0), (0x3A, 1, 0)):
+    _STACK_EFFECT[_op] = (2, _pops, _pushes)
+for _op, _pops, _pushes in ((0x11, 0, 1), (0x13, 0, 1), (0x14, 0, 2), (0x84, 0, 0), *((op, 1, 0) for op in range(0x99, 0x9F)),
+                            *((op, 2, 0) for op in range(0x9F, 0xA7)), (0xA7, 0, 0), (0xBB, 0, 1), (0xBD, 1, 1), (0xC0, 1, 1),
+                            (0xC1, 1, 1), (0xC6, 1, 0), (0xC7, 1, 0)):
+    _STACK_EFFECT[_op] = (3, _pops, _pushes)
+_STACK_EFFECT[0xC8] = (5, 0, 0)
+
+
+def _operand_stack_depth(code: bytes, frames: Sequence[int], pool: "_Pool") -> int:
+    """The deepest operand stack ``code`` reaches (JVMS 4.10.1).  Every frame this backend writes has an empty
+    stack, so one pass in code order, restarting at each frame and after an instruction that never falls through,
+    gives the exact depth."""
+    entries = {index: key for key, index in pool.index.items()}
+
+    def descriptor(index: int) -> str:
+        return entries[index][-1]
+
+    restart = set(frames)
+    depth = deepest = pc = 0
+    while pc < len(code):
+        if pc in restart:
+            depth = 0
+        opcode = code[pc]
+        if opcode in (0xB2, 0xB3, 0xB4, 0xB5):  # getstatic, putstatic, getfield, putfield
+            size = 2 if descriptor(struct.unpack_from(">H", code, pc + 1)[0]) in ("J", "D") else 1
+            length, pops, pushes = 3, (0, size, 1, 1 + size)[opcode - 0xB2], (size, 0, size, 0)[opcode - 0xB2]
+        elif opcode in (0xB6, 0xB7, 0xB8, 0xB9):  # invokevirtual, invokespecial, invokestatic, invokeinterface
+            arguments, result = _descriptor_slots(descriptor(struct.unpack_from(">H", code, pc + 1)[0]))
+            length, pops, pushes = 5 if opcode == 0xB9 else 3, arguments + (opcode != 0xB8), result
+        elif opcode == 0xC4:  # wide
+            inner = code[pc + 1]
+            length = 6 if inner == 0x84 else 4
+            _length, pops, pushes = _STACK_EFFECT[inner]
+        elif opcode in (0xAA, 0xAB):  # tableswitch, lookupswitch
+            base = (pc + 4) & ~3
+            if opcode == 0xAA:
+                low, high = struct.unpack_from(">ii", code, base + 4)
+                length = base + 12 + 4 * (high - low + 1) - pc
+            else:
+                length = base + 8 + 8 * struct.unpack_from(">i", code, base + 4)[0] - pc
+            pops, pushes = 1, 0
+        elif opcode == 0xC5:  # multianewarray
+            length, pops, pushes = 4, code[pc + 3], 1
+        else:
+            length, pops, pushes = _STACK_EFFECT[opcode]
+        depth += pushes - pops
+        deepest = max(deepest, depth)
+        if opcode in _NO_FALLTHROUGH:
+            depth = 0
+        pc += length
+    return deepest
+
+
 @dataclass
 class _Method:
     name: str
@@ -2627,7 +2721,8 @@ def _compile_method_pass(
             deduplicated.append((start, number))
     lines = deduplicated
     blob, frames = code.finish()
-    max_stack = max(8, max_call_slots + 2)
+    # The established bound, or the code's own depth when deeper (nested long expression trees).
+    max_stack = max(8, max_call_slots + 2, _operand_stack_depth(blob, frames, pool))
     return _Method(
         name, _method_descriptor(parameters, returns), blob, max_stack, max_locals[0],
         frames, tuple(frame_types), tuple(lines), tuple(node_ranges), function.cid,

@@ -1,4 +1,4 @@
-"""ADR-210: the xax-construct-v1 carrier, and the XAX-only xb64 application built from it."""
+"""ADR-210, ADR-257: the xax-construct-v1 carrier, and the XAX-only applications built from it (xb64, xwc)."""
 from __future__ import annotations
 
 import copy
@@ -273,3 +273,45 @@ class Xb64Tests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class XwcTests(unittest.TestCase):
+    """ADR-257: the JVM row's XAX-only application; the committed stores are the application."""
+
+    @classmethod
+    def setUpClass(cls):
+        from benchmarks import bench_r6_xwc as xwc
+
+        cls.xwc = xwc
+        cls.request = json.loads(xwc.REQUEST.read_text(encoding="utf-8"))
+
+    def test_request_reconstructs_generation_0(self):
+        self.assertEqual(construct(self.request).reader.canonical_bytes(), self.xwc.STORES[0].read_bytes())
+
+    def test_generation_1_is_the_maintenance_transaction(self):
+        constructed = construct(self.request)
+        workspace = Workspace(StoreReader(self.xwc.STORES[0].read_bytes()), constructed.target)
+        result, _queries = self.xwc.maintain(workspace, constructed.functions)
+        self.assertTrue(result.committed, result.diagnostic)
+        self.assertEqual(workspace.reader.canonical_bytes(), self.xwc.STORES[1].read_bytes())
+
+    def test_jvm_names_do_not_cross_platforms(self):
+        request = copy.deepcopy(self.request)
+        request["functions"][3]["blocks"][1]["nodes"][0][3]["entity"] = "linux.read"
+        with self.assertRaises(ValueError):
+            construct(request)
+
+    @unittest.skipUnless(__import__("shutil").which("java"), "requires java")
+    def test_xax_selftest_passes_on_both_releases_and_catches_a_logic_only_edit(self):
+        with __import__("tempfile").TemporaryDirectory() as directory:
+            jar = Path(directory, "selftest.jar")
+            for generation in (0, 1):
+                builds = self.xwc._builds(StoreReader(self.xwc.STORES[generation].read_bytes()))
+                jar.write_bytes(builds["test"]["artifact"])
+                self.assertEqual(self.xwc._run_jar(jar).returncode, 0)
+                self.assertTrue(builds["app"]["reproducible"] and builds["test"]["reproducible"])
+            constructed = construct(self.request)
+            workspace = Workspace(StoreReader(self.xwc.STORES[0].read_bytes()), constructed.target)
+            self.assertTrue(self.xwc.maintain(workspace, constructed.functions, with_test=False)[0].committed)
+            jar.write_bytes(self.xwc._builds(workspace.reader)["test"]["artifact"])
+            self.assertEqual(self.xwc._run_jar(jar).returncode, 8)  # the 0x80 check, bit 3

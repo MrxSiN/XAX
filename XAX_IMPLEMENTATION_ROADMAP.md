@@ -355,7 +355,7 @@ M1–M14 establish a compiler-architecture prototype. U1 is the first milestone 
 
 **Entry criteria**: M14 complete; replacement matrix and validator present.
 
-<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: linux-x86_64; R5: jvm; R4: linux-aarch64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-x86_64; R4: linux-aarch64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
 **Progress (2026-10-03)**: workload 1 holds R4 on Linux x86-64 (ADR-147/148: `filestat`, `chains`, and `jsonmin` within 1.05× of the fastest of gcc, clang, and rustc, `XAX_BENCHMARKS.md` §15.14) and its R3 application is `jsonmin` (ADR-126; allocation, stdin/stdout I/O, recursion over borrowed memory, nontrivial control flow; the dynamic library call is `filestat`'s `libz` `crc32` on the same row), and Linux AArch64 runs the same graph (emulated). Workload 3 is at R2 (browser) and workload 5 at R1 (SPIR-V on llvmpipe, ADR-124). Workload 2 holds R2 on QEMU `virt` (ADR-128/129: MMIO, GIC timer interrupt, statically linked C). Workload 4 is unchanged (R2; the device run is queued).
 
@@ -424,7 +424,7 @@ Priority order (ADR-207): R4, then R5, then R6. The AI-token milestone is not sc
 | U2.2 | Profile the gaps and optimize: allocator convergence for float/aggregate functions (OI-38), loop unrolling, LICM | Linux and Android R4 | In progress: predicate tables (ADR-208); next-iteration prefetch and edge sinking (ADR-211) made `chains` lead; single-edge parameters and 1 MiB reads (ADR-212): Linux derives R4 (§15.33). Next: a wider `jsonmin` margin |
 | U2.3 | Android cold-start re-run with a Kotlin arm and more passes | Android R4 verdict | MEASURED (ADR-253, §15.34): side-by-side arms over six fresh-install blocks; a tie (XAX 1.0125x the fastest arm, no significant difference), so Android stays R3. The AArch64 backend leads on hardware instead (ADR-254, §15.35): Linux AArch64 `jsonmin` 0.956x NDK clang, R4 |
 | U2.4 | Maintenance harness: scripted semantic-transaction cycle with verification, benchmark, rebuild, and commit recorded | R5 | EXECUTED for the JVM (ADR-209) and Linux x86-64 (ADR-213): one cycle of `jsonmin` each; Android (ADR-255): a structural edit of the counter app, device-tested (the row needs R4 before it derives R5) |
-| U2.5 | XAX-only application with XAX test and build definitions | R6 | EXECUTED for `xb64` on Linux x86-64 (ADR-210); the row derives R6 (ADR-213) |
+| U2.5 | XAX-only application with XAX test and build definitions | R6 | EXECUTED for `xb64` on Linux x86-64 (ADR-210); the row derives R6 (ADR-213). JVM: `xwc` (ADR-257), the row derives R6 |
 
 ## S — Compiler migration ladder (after M14; runs alongside U1)
 

@@ -7,7 +7,7 @@ identity.  After construction the store is authoritative and is changed only thr
 Request (JSON-compatible)::
 
     {"format": "xax-construct-v1",
-     "platform": "linux-x86_64" | "windows-x86_64",
+     "platform": "linux-x86_64" | "windows-x86_64" | "jvm",
      "types": {"alias": TYPE, ...},
      "functions": [{"name": N, "params": [TYPE...], "returns": [TYPE...], "blocks": [BLOCK...]}, ...],
      "package": {"name": NAME, "entries": {"app": FUNCTION_NAME, ...}, "release": "app"}}
@@ -31,6 +31,11 @@ use the ``win32.`` prefix in place of ``linux.``: the types and symbols of ``xax
 ``win32_stdio_api`` (the stdio ``read_file``/``write_file`` take heap-view pointers), plus
 ``{"win32.virtual_free_view": [TYPE, EXTENT]}``.  There are no startup reads; the entry ends with ``win32.exit_process``.
 
+Platform ``jvm`` (ADR-257) builds an executable JAR (``jvm-classfile-memory``: one linear memory and the standard
+streams as generated members of the program's own class).  Its names use the ``jvm.`` prefix: the types and symbols of
+``xax_jvm.jvm_memory_api`` (``read``, ``write``, ``mmap_anonymous``, ``exit_group``, ...), the same names and shapes as
+the Linux ones, plus ``{"jvm.munmap_view": [TYPE, EXTENT]}``.  There are no startup reads.
+
 Functions are listed callees first.  The result store's root is the build snapshot of the ``release`` entry; the
 package declares every entry (``app``, ``test``, ...) so every build is a canonical request against it.
 """
@@ -42,12 +47,12 @@ from dataclasses import dataclass
 
 from xax_compiler import (
     IntCompare, Kind, Operation, Permission, SemanticObject, StoreReader, ValueRef, bits_type, heap_view_type,
-    object_with_refs, pointer_type, x86_64_linux_exec_target, x86_64_windows_pe_target,
+    jvm_classfile_memory_target, object_with_refs, pointer_type, x86_64_linux_exec_target, x86_64_windows_pe_target,
 )
 from xax_graph_builder import GraphBuilder
 
 FORMAT = "xax-construct-v1"
-_PLATFORMS = ("linux-x86_64", "windows-x86_64")
+_PLATFORMS = ("linux-x86_64", "windows-x86_64", "jvm")
 
 
 @dataclass(frozen=True)
@@ -74,7 +79,18 @@ class _Builder:
             raise _error(f"format must be {FORMAT}")
         if request.get("platform") not in _PLATFORMS:
             raise _error(f"platform must be one of {_PLATFORMS}")
-        if request["platform"] == "linux-x86_64":
+        from xax_build import ArtifactKind
+
+        self.artifact = ArtifactKind.NATIVE_IMAGE
+        if request["platform"] == "jvm":
+            from xax_jvm import jvm_memory_api
+
+            self.api = jvm_memory_api()
+            self.prefix, self.namespaces, self.platform_types = "jvm.", (self.api,), self.api.types
+            self.startup = None
+            self.target = jvm_classfile_memory_target()
+            self.artifact = ArtifactKind.JVM_EXECUTABLE_JAR
+        elif request["platform"] == "linux-x86_64":
             self.api = linux_api()
             self.prefix, self.namespaces, self.platform_types = "linux.", (self.api,), self.api.types
             self.startup = linux_startup_api(self.api)
@@ -125,7 +141,7 @@ class _Builder:
             if key == "fn" and value in self.functions:
                 return self.functions[value]
             if isinstance(value, list) and len(value) == 2 and type(value[1]) is int:
-                if key == "linux.munmap_view" and self.prefix == "linux.":
+                if (key, self.prefix) in (("linux.munmap_view", "linux."), ("jvm.munmap_view", "jvm.")):
                     return self.api.munmap_view(self.type(value[0]), value[1])
                 if key == "win32.virtual_free_view" and self.prefix == "win32.":
                     return self.api.virtual_free_view(heap_view_type(value[1]), self.type(value[0]))
@@ -226,7 +242,7 @@ def construct(request: dict) -> Constructed:
     module = object_with_refs(Kind.MODULE, tuple(builder.functions.values()))
     app = package(spec["name"].encode(), (module,), build_entries=entries)
     profile, policy = build_profile(), trust_policy()
-    request_object = build_request(app, spec["release"].encode(), builder.target, profile, requested_artifacts=(ArtifactKind.NATIVE_IMAGE,))
+    request_object = build_request(app, spec["release"].encode(), builder.target, profile, requested_artifacts=(builder.artifact,))
     everything = (*builder.objects.values(), *builder.platform_types, module, app, builder.target, profile, policy, request_object)
     reader = snapshot_store(resolve_packages(request_object, everything, policy, b"xax-construct-v1"), everything)
     return Constructed(reader, app, builder.target, profile, policy, dict(builder.functions), request_object)
