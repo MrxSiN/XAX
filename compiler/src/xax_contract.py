@@ -16,15 +16,15 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 6  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+HOST_CONTRACT_MINOR = 7  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
 # 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250);
 # 4: the windows-x86_64 construct platform and its win32.* carrier names (ADR-252); 5: integer-completion operations
 # (bit.and/or, udiv/urem, int.truncate, int.zero.extend) on the windows-x86_64 platform (ADR-256); 6: the jvm construct
-# platform and its jvm.* carrier names (ADR-257)
+# platform and its jvm.* carrier names (ADR-257); 7: the linux-aarch64 construct platform (ADR-258)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)
-    "construct_platforms": ["linux-x86_64", "windows-x86_64", "jvm"],  # xax_construct._PLATFORMS (ADR-252, ADR-257)
+    "construct_platforms": ["linux-x86_64", "linux-aarch64", "windows-x86_64", "jvm"],  # xax_construct._PLATFORMS (ADR-252, ADR-257, ADR-258)
     "linux_process": "linux-x86_64-process-v1",     # xax_linux.process_contract() (ADR-224)
     "linux_startup_abi": "linux-x86_64-startup-v1",  # ADR-094
     "local_edit_grammar": "ADR-200",                 # xax_local_protocol.edit_grammar(), identified by edit_grammar_id()

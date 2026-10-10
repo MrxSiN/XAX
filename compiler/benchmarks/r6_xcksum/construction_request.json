@@ -1,0 +1,189 @@
+{
+  "format": "xax-construct-v1",
+  "platform": "linux-aarch64",
+  "types": {
+    "ptr": "linux.bytes_rw",
+    "rptr": "linux.bytes_read",
+    "mem": "linux.memory_effect",
+    "proc": "linux.process_effect",
+    "fs": "linux.filesystem_effect",
+    "in": {"view": 65536},
+    "out": {"view": 64}
+  },
+  "functions": [
+    {"name": "crc_step", "params": ["b32"], "returns": ["b32"], "blocks": [
+      {"params": ["b32"], "nodes": [
+        ["int.compare", ["p0", ["b32", 2147483648]], ["b1"], {"attrs": ["uge"]}],
+        ["int.zero.extend", ["n0"], ["b32"]],
+        ["mul.wrap", ["n1", ["b32", 79764919]], ["b32"]],
+        ["mul.wrap", ["p0", ["b32", 2]], ["b32"]],
+        ["bit.xor", ["n3", "n2"], ["b32"]]
+      ], "end": ["ret", ["n4"]]}
+    ]},
+    {"name": "crc_byte", "params": ["b32", "b32"], "returns": ["b32"], "blocks": [
+      {"params": ["b32", "b32"], "nodes": [
+        ["mul.wrap", ["p1", ["b32", 16777216]], ["b32"]],
+        ["bit.xor", ["p0", "n0"], ["b32"]],
+        ["call.direct", ["n1"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n2"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n3"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n4"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n5"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n6"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n7"], ["b32"], {"entity": {"fn": "crc_step"}}],
+        ["call.direct", ["n8"], ["b32"], {"entity": {"fn": "crc_step"}}]
+      ], "end": ["ret", ["n9"]]}
+    ]},
+    {"name": "crc_buffer", "params": ["b32", "b32", "ptr", "in", "mem"], "returns": ["b32", "ptr", "in", "mem"], "blocks": [
+      {"params": ["b32", "b32", "ptr", "in", "mem"], "nodes": [],
+       "end": ["br", 1, ["p0", ["b32", 0], "p1", "p2", "p3", "p4"]]},
+      {"params": ["b32", "b32", "b32", "ptr", "in", "mem"], "nodes": [
+        ["int.compare", ["p1", "p2"], ["b1"], {"attrs": ["ult"]}]
+      ], "end": ["cbr", "n0", 2, ["p0", "p1", "p2", "p3", "p4", "p5"], 3, ["p0", "p1", "p2", "p3", "p4", "p5"]]},
+      {"params": ["b32", "b32", "b32", "ptr", "in", "mem"], "nodes": [
+        ["checked.load.bits.le", ["p3", "p1", "p5"], ["b8", "mem"], {"attrs": [1, 1]}],
+        ["int.zero.extend", ["n0"], ["b32"]],
+        ["call.direct", ["p0", "n1"], ["b32"], {"entity": {"fn": "crc_byte"}}],
+        ["add.wrap", ["p1", ["b32", 1]], ["b32"]]
+      ], "end": ["br", 1, ["n2", "n3", "p2", "p3", "p4", "n0.r1"]]},
+      {"params": ["b32", "b32", "b32", "ptr", "in", "mem"], "nodes": [],
+       "end": ["ret", ["p0", "p3", "p4", "p5"]]}
+    ]},
+    {"name": "crc_length", "params": ["b32", "b64"], "returns": ["b32"], "blocks": [
+      {"params": ["b32", "b64"], "nodes": [], "end": ["br", 1, ["p0", "p1"]]},
+      {"params": ["b32", "b64"], "nodes": [
+        ["int.compare", ["p1", ["b64", 0]], ["b1"], {"attrs": ["eq"]}]
+      ], "end": ["cbr", "n0", 3, ["p0"], 2, ["p0", "p1"]]},
+      {"params": ["b32", "b64"], "nodes": [
+        ["int.truncate", ["p1"], ["b32"]],
+        ["bit.and", ["n0", ["b32", 255]], ["b32"]],
+        ["call.direct", ["p0", "n1"], ["b32"], {"entity": {"fn": "crc_byte"}}],
+        ["udiv", ["p1", ["b64", 256]], ["b64"]]
+      ], "end": ["br", 1, ["n2", "n3"]]},
+      {"params": ["b32"], "nodes": [
+        ["bit.xor", ["p0", ["b32", 4294967295]], ["b32"]]
+      ], "end": ["ret", ["n0"]]}
+    ]},
+    {"name": "put_number", "params": ["b64", "b64", "b64", "b32", "ptr", "out", "mem"], "returns": ["b32", "ptr", "out", "mem"], "blocks": [
+      {"params": ["b64", "b64", "b64", "b32", "ptr", "out", "mem"], "nodes": [],
+       "end": ["br", 1, ["p0", "p1", "p2", ["b64", 1], ["b64", 1], "p3", "p4", "p5", "p6"]]},
+      {"params": ["b64", "b64", "b64", "b64", "b64", "b32", "ptr", "out", "mem"], "nodes": [
+        ["udiv", ["p0", "p3"], ["b64"]],
+        ["int.compare", ["n0", "p1"], ["b1"], {"attrs": ["uge"]}],
+        ["int.compare", ["p4", "p2"], ["b1"], {"attrs": ["ult"]}],
+        ["bit.or", ["n1", "n2"], ["b1"]]
+      ], "end": ["cbr", "n3", 2, ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"], 3, ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"]]},
+      {"params": ["b64", "b64", "b64", "b64", "b64", "b32", "ptr", "out", "mem"], "nodes": [
+        ["mul.wrap", ["p3", "p1"], ["b64"]],
+        ["add.wrap", ["p4", ["b64", 1]], ["b64"]]
+      ], "end": ["br", 1, ["p0", "p1", "p2", "n0", "n1", "p5", "p6", "p7", "p8"]]},
+      {"params": ["b64", "b64", "b64", "b64", "b64", "b32", "ptr", "out", "mem"], "nodes": [
+        ["udiv", ["p0", "p3"], ["b64"]],
+        ["urem", ["n0", "p1"], ["b64"]],
+        ["int.truncate", ["n1"], ["b32"]],
+        ["int.compare", ["n2", ["b32", 10]], ["b1"], {"attrs": ["uge"]}],
+        ["int.zero.extend", ["n3"], ["b32"]],
+        ["mul.wrap", ["n4", ["b32", 39]], ["b32"]],
+        ["add.wrap", ["n2", ["b32", 48]], ["b32"]],
+        ["add.wrap", ["n6", "n5"], ["b32"]],
+        ["int.truncate", ["n7"], ["b8"]],
+        ["checked.store.bits.le", ["p6", "p5", "n8", "p8"], ["mem"], {"attrs": [1, 1]}],
+        ["add.wrap", ["p5", ["b32", 1]], ["b32"]],
+        ["udiv", ["p3", "p1"], ["b64"]],
+        ["int.compare", ["n11", ["b64", 0]], ["b1"], {"attrs": ["eq"]}]
+      ], "end": ["cbr", "n12", 4, ["n10", "p6", "p7", "n9"], 3, ["p0", "p1", "p2", "n11", "p4", "n10", "p6", "p7", "n9"]]},
+      {"params": ["b32", "ptr", "out", "mem"], "nodes": [], "end": ["ret", ["p0", "p1", "p2", "p3"]]}
+    ]},
+    {"name": "render", "params": ["b32", "b64", "ptr", "out", "mem"], "returns": ["b32", "ptr", "out", "mem"], "blocks": [
+      {"params": ["b32", "b64", "ptr", "out", "mem"], "nodes": [
+        ["int.zero.extend", ["p0"], ["b64"]],
+        ["call.direct", ["n0", ["b64", 10], ["b64", 1], ["b32", 0], "p2", "p3", "p4"], ["b32", "ptr", "out", "mem"], {"entity": {"fn": "put_number"}}],
+        ["checked.store.bits.le", ["n1.r1", "n1", ["b8", 32], "n1.r3"], ["mem"], {"attrs": [1, 1]}],
+        ["add.wrap", ["n1", ["b32", 1]], ["b32"]],
+        ["call.direct", ["p1", ["b64", 10], ["b64", 1], "n3", "n1.r1", "n1.r2", "n2"], ["b32", "ptr", "out", "mem"], {"entity": {"fn": "put_number"}}],
+        ["checked.store.bits.le", ["n4.r1", "n4", ["b8", 10], "n4.r3"], ["mem"], {"attrs": [1, 1]}],
+        ["add.wrap", ["n4", ["b32", 1]], ["b32"]]
+      ], "end": ["ret", ["n6", "n4.r1", "n4.r2", "n5"]]}
+    ]},
+    {"name": "main", "params": ["proc", "fs", "mem", "mem"], "returns": ["b32", "proc", "fs", "mem", "mem"], "blocks": [
+      {"params": ["proc", "fs", "mem", "mem"], "nodes": [
+        ["call.foreign", [["b64", 65536], "p2"], ["ptr", "linux.heap_owner", "mem"], {"entity": "linux.mmap_anonymous"}],
+        ["heap.view", ["n0", "n0.r1", "n0.r2"], ["ptr", "in", "mem"], {"attrs": [65536, 1]}],
+        ["call.foreign", [["b64", 64], "p3"], ["ptr", "linux.heap_owner", "mem"], {"entity": "linux.mmap_anonymous"}],
+        ["heap.view", ["n2", "n2.r1", "n2.r2"], ["ptr", "out", "mem"], {"attrs": [64, 1]}]
+      ], "end": ["br", 1, ["p0", "p1", "n1", "n1.r1", "n1.r2", "n3", "n3.r1", "n3.r2", ["b32", 0], ["b64", 0]]]},
+      {"params": ["proc", "fs", "ptr", "in", "mem", "ptr", "out", "mem", "b32", "b64"], "nodes": [
+        ["call.foreign", [["b32", 0], "p2", ["b64", 65536], "p1", "p4"], ["b64", "fs", "mem"], {"entity": "linux.read"}],
+        ["int.compare", ["n0", ["b64", 0]], ["b1"], {"attrs": ["eq"]}]
+      ], "end": ["cbr", "n1", 3, ["p0", "n0.r1", "p2", "p3", "n0.r2", "p5", "p6", "p7", "p8", "p9"], 2, ["p0", "n0.r1", "p2", "p3", "n0.r2", "p5", "p6", "p7", "p8", "p9", "n0"]]},
+      {"params": ["proc", "fs", "ptr", "in", "mem", "ptr", "out", "mem", "b32", "b64", "b64"], "nodes": [
+        ["int.compare", ["p10", ["b64", 65536]], ["b1"], {"attrs": ["ugt"]}]
+      ], "end": ["cbr", "n0", 4, ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", ["b32", 1]], 5, ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"]]},
+      {"params": ["proc", "fs", "ptr", "in", "mem", "ptr", "out", "mem", "b32", "b64"], "nodes": [
+        ["call.direct", ["p8", "p9"], ["b32"], {"entity": {"fn": "crc_length"}}],
+        ["call.direct", ["n0", "p9", "p5", "p6", "p7"], ["b32", "ptr", "out", "mem"], {"entity": {"fn": "render"}}],
+        ["pointer.cast", ["n1.r1"], ["rptr"]],
+        ["int.zero.extend", ["n1"], ["b64"]],
+        ["call.foreign", [["b32", 1], "n2", "n3", "p1", "n1.r3"], ["b64", "fs", "mem"], {"entity": "linux.write"}],
+        ["int.compare", ["n4", "n3"], ["b1"], {"attrs": ["eq"]}]
+      ], "end": ["cbr", "n5", 4, ["p0", "n4.r1", "p2", "p3", "p4", "n1.r1", "n1.r2", "n4.r2", ["b32", 0]], 4, ["p0", "n4.r1", "p2", "p3", "p4", "n1.r1", "n1.r2", "n4.r2", ["b32", 1]]]},
+      {"params": ["proc", "fs", "ptr", "in", "mem", "ptr", "out", "mem", "b32"], "nodes": [
+        ["call.foreign", ["p2", "p3", "p4"], ["b64", "mem"], {"entity": {"linux.munmap_view": ["ptr", 65536]}}],
+        ["call.foreign", ["p5", "p6", "p7"], ["b64", "mem"], {"entity": {"linux.munmap_view": ["ptr", 64]}}],
+        ["call.foreign", ["p8", "p0"], ["proc"], {"entity": "linux.exit_group"}]
+      ], "end": ["ret", ["p8", "n2", "p1", "n0.r1", "n1.r1"]]},
+      {"params": ["proc", "fs", "ptr", "in", "mem", "ptr", "out", "mem", "b32", "b64", "b64"], "nodes": [
+        ["int.truncate", ["p10"], ["b32"]],
+        ["call.direct", ["p8", "n0", "p2", "p3", "p4"], ["b32", "ptr", "in", "mem"], {"entity": {"fn": "crc_buffer"}}],
+        ["add.wrap", ["p9", "p10"], ["b64"]]
+      ], "end": ["br", 1, ["p0", "p1", "n1.r1", "n1.r2", "n1.r3", "p5", "p6", "p7", "n1", "n2"]]}
+    ]},
+    {"name": "selftest", "params": ["proc", "fs", "mem", "mem"], "returns": ["b32", "proc", "fs", "mem", "mem"], "blocks": [
+      {"params": ["proc", "fs", "mem", "mem"], "nodes": [
+        ["call.foreign", [["b64", 65536], "p2"], ["ptr", "linux.heap_owner", "mem"], {"entity": "linux.mmap_anonymous"}],
+        ["heap.view", ["n0", "n0.r1", "n0.r2"], ["ptr", "in", "mem"], {"attrs": [65536, 1]}],
+        ["call.foreign", [["b64", 64], "p3"], ["ptr", "linux.heap_owner", "mem"], {"entity": "linux.mmap_anonymous"}],
+        ["heap.view", ["n2", "n2.r1", "n2.r2"], ["ptr", "out", "mem"], {"attrs": [64, 1]}],
+        ["checked.store.bits.le", ["n1", ["b32", 0], ["b8", 97], "n1.r2"], ["mem"], {"attrs": [1, 1]}],
+        ["checked.store.bits.le", ["n1", ["b32", 1], ["b8", 98], "n4"], ["mem"], {"attrs": [1, 1]}],
+        ["checked.store.bits.le", ["n1", ["b32", 2], ["b8", 99], "n5"], ["mem"], {"attrs": [1, 1]}],
+        ["call.direct", [["b32", 0], ["b32", 3], "n1", "n1.r1", "n6"], ["b32", "ptr", "in", "mem"], {"entity": {"fn": "crc_buffer"}}],
+        ["call.direct", ["n7", ["b64", 3]], ["b32"], {"entity": {"fn": "crc_length"}}],
+        ["int.compare", ["n8", ["b32", 1219131554]], ["b1"], {"attrs": ["ne"]}],
+        ["int.zero.extend", ["n9"], ["b32"]],
+        ["call.direct", [["b32", 0], ["b64", 0]], ["b32"], {"entity": {"fn": "crc_length"}}],
+        ["int.compare", ["n11", ["b32", 4294967295]], ["b1"], {"attrs": ["ne"]}],
+        ["int.zero.extend", ["n12"], ["b32"]],
+        ["mul.wrap", ["n13", ["b32", 2]], ["b32"]],
+        ["call.direct", ["n8", ["b64", 3], "n3", "n3.r1", "n3.r2"], ["b32", "ptr", "out", "mem"], {"entity": {"fn": "render"}}],
+        ["int.compare", ["n15", ["b32", 13]], ["b1"], {"attrs": ["ne"]}],
+        ["int.zero.extend", ["n16"], ["b32"]],
+        ["mul.wrap", ["n17", ["b32", 4]], ["b32"]],
+        ["checked.load.bits.le", ["n15.r1", ["b32", 0], "n15.r3"], ["b8", "mem"], {"attrs": [1, 1]}],
+        ["int.compare", ["n19", ["b8", 49]], ["b1"], {"attrs": ["ne"]}],
+        ["checked.load.bits.le", ["n15.r1", ["b32", 1], "n19.r1"], ["b8", "mem"], {"attrs": [1, 1]}],
+        ["int.compare", ["n21", ["b8", 50]], ["b1"], {"attrs": ["ne"]}],
+        ["bit.or", ["n20", "n22"], ["b1"]],
+        ["int.zero.extend", ["n23"], ["b32"]],
+        ["mul.wrap", ["n24", ["b32", 8]], ["b32"]],
+        ["call.direct", [["b32", 69083669], ["b64", 2], "n15.r1", "n15.r2", "n21.r1"], ["b32", "ptr", "out", "mem"], {"entity": {"fn": "render"}}],
+        ["int.compare", ["n26", ["b32", 11]], ["b1"], {"attrs": ["ne"]}],
+        ["int.zero.extend", ["n27"], ["b32"]],
+        ["mul.wrap", ["n28", ["b32", 16]], ["b32"]],
+        ["checked.load.bits.le", ["n26.r1", ["b32", 0], "n26.r3"], ["b8", "mem"], {"attrs": [1, 1]}],
+        ["int.compare", ["n30", ["b8", 54]], ["b1"], {"attrs": ["ne"]}],
+        ["int.zero.extend", ["n31"], ["b32"]],
+        ["mul.wrap", ["n32", ["b32", 32]], ["b32"]],
+        ["bit.or", ["n10", "n14"], ["b32"]],
+        ["bit.or", ["n34", "n18"], ["b32"]],
+        ["bit.or", ["n35", "n25"], ["b32"]],
+        ["bit.or", ["n36", "n29"], ["b32"]],
+        ["bit.or", ["n37", "n33"], ["b32"]],
+        ["call.foreign", ["n7.r1", "n7.r2", "n7.r3"], ["b64", "mem"], {"entity": {"linux.munmap_view": ["ptr", 65536]}}],
+        ["call.foreign", ["n26.r1", "n26.r2", "n30.r1"], ["b64", "mem"], {"entity": {"linux.munmap_view": ["ptr", 64]}}],
+        ["call.foreign", ["n38", "p0"], ["proc"], {"entity": "linux.exit_group"}]
+      ], "end": ["ret", ["n38", "n41", "p1", "n39.r1", "n40.r1"]]}
+    ]}
+  ],
+  "package": {"name": "xcksum", "entries": {"app": "main", "test": "selftest"}, "release": "app"}
+}

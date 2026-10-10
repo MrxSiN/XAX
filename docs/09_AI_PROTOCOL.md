@@ -710,6 +710,9 @@ With `"platform": "windows-x86_64"` (contract minor 4, ADR-252) the carrier buil
 `x86_64-windows-pe-v1` PE32+ executable and names kernel32 contracts as `win32.<name>`
 (`read_file`/`write_file` over heap views, `exit_process`, `virtual_alloc`,
 `{"win32.virtual_free_view": [TYPE, EXTENT]}`); it has no startup reads.
+With `"platform": "linux-aarch64"` (contract minor 7, ADR-258) it builds an
+`aarch64-linux-elf-exec-v1` static image from the same `linux.` names (resolved in
+`linux_aarch64_api`); it has no startup reads.
 With `"platform": "jvm"` (contract minor 6, ADR-257) it builds an executable JAR for
 `jvm-classfile-memory` and names `xax_jvm.jvm_memory_api` as `jvm.<name>` (`read`, `write`,
 `mmap_anonymous`, `exit_group`, `{"jvm.munmap_view": [TYPE, EXTENT]}`); the process entry returns

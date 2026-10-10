@@ -1,0 +1,302 @@
+{
+  "format": "xax-r5-maintenance-evidence-v1",
+  "decision": "ADR-258",
+  "label": "EXECUTED",
+  "application": {
+    "name": "jsonmin",
+    "platform_row": "linux-aarch64",
+    "target": "8f83462908b2b5436495cc42a51a5cf5dbca53f4484171cdfbaf4e163303e1a1",
+    "original_root": "d236e0ef4129cf8738d552a48442b1c09c34f9387e44817d15da1839187a0a48"
+  },
+  "request": "Accept JSON nested up to 1024 levels instead of 512; everything else unchanged.",
+  "agent": {
+    "authored_input": "const N3 1024",
+    "authored_input_bytes": 13,
+    "author": "Claude (AI coding agent), Claude Code session of 2026-10-08, after reading the projection excerpt below",
+    "projection_excerpt": [
+      "N3 constant 512 -> (T2)",
+      "N4 int.compare P0 N3 -> (T8) attributes=(5,)"
+    ],
+    "replayed_by": "this harness, deterministically against the pinned original root"
+  },
+  "queries": [
+    {
+      "query": "callees",
+      "response_bytes": 182
+    },
+    {
+      "query": "callees",
+      "response_bytes": 300
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "callees",
+      "response_bytes": 66
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 28646
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 11935
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 20672
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 31586
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 34558
+    },
+    {
+      "query": "function_nodes",
+      "response_bytes": 3416
+    },
+    {
+      "query": "projection",
+      "response_bytes": 6926
+    }
+  ],
+  "transaction": {
+    "generation_before": 0,
+    "generation_after": 1,
+    "committed": true,
+    "new_root": "3d1301e513597acf9cae3fe4a90d075a54338016c5b03ef83554b285c7bc1f3e",
+    "changed_entities": [
+      "083c26ad321ab15238e1bee580da8b9d4df79df783ef0cf6fb7cc6696d6d2c78"
+    ],
+    "transaction_bytes": 19,
+    "touched_objects": 8,
+    "reused_objects": 119,
+    "verified_objects": 8,
+    "semantic_diff": "DiffPage(entities=(DiffView(handle='D1.0', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.1', change='removed', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.2', change='removed', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.3', change='removed', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.4', change='removed', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.5', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.6', change='removed', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.7', change='removed', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.8', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.9', change='added', kind=<Kind.PROGRAM_ROOT: 1>, classification='authoritative'), DiffView(handle='D1.10', change='added', kind=<Kind.MODULE: 2>, classification='authoritative'), DiffView(handle='D1.11', change='added', kind=<Kind.RECURSION_GROUP: 8>, classification='authoritative'), DiffView(handle='D1.12', change='added', kind=<Kind.CONSTANT: 5>, classification='authoritative'), DiffView(handle='D1.13', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative'), DiffView(handle='D1.14', change='added', kind=<Kind.FUNCTION: 3>, classification='authoritative'), DiffView(handle='D1.15', change='added', kind=<Kind.GRAPH_FRAGMENT: 7>, classification='authoritative')), truncated=False, continuation=None)",
+    "whole_source_regenerated": false
+  },
+  "workspace_accounting": {
+    "queries": 91,
+    "entities_exposed": 1185,
+    "query_bytes": 148037,
+    "mutations": 1,
+    "rejected_transactions": 0
+  },
+  "rebuild": {
+    "before": {
+      "artifact_sha256": "049cf5ee1612b6e911bd83356d14cde1c4cd2b67993062e7643715cb97f21afb",
+      "artifact_bytes": 18044
+    },
+    "after": {
+      "artifact_sha256": "7ca57aab9273c0e61e9560cad92dd968aa9e49699443ae343e1a479ee74854ca",
+      "artifact_bytes": 18040,
+      "entry_function": "7a2023a26ca59bad6b9bd4cf6b87f7e0e124097fb71a149dbfe63f30d83c6504"
+    }
+  },
+  "tests": {
+    "cases": [
+      {
+        "input_sha256": "c45e910f51eae64d0a3074c2501a3e0a3dc24b486b17677a90b78293c1bf0826",
+        "input_bytes": 55,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "input_bytes": 2,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+        "input_bytes": 1,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "76a877bda060f5f70c131d89f71a1b3ad0c0717a12586e0e1b6906fecae95627",
+        "input_bytes": 18,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "b2d3da6f524e2498194717d153a5621e2618d7643c1b23dbbcb2ebe52fa7933e",
+        "input_bytes": 3,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "aa99a5ce3eb0dd8355f0bfb15376ea1d862ad75d0d278af1f8c280ca8c02c640",
+        "input_bytes": 8,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "8e955b12c5bd485a2f5ad9ec07f09bf0cd19d368b6fed043e8049f6dc17cc899",
+        "input_bytes": 4,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "a2bca62ab7e7f14c7d3990aa49b00f9f55700ff69e1131ca08534c8345828334",
+        "input_bytes": 3,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "d3a45e75e1f7d2fce20af13f1908bde85957c73408a85584e7e8ed6962505904",
+        "input_bytes": 8,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89",
+        "input_bytes": 1,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "674cf3304bf7104f5ef200c1bb17b24a9b1da199f47cc76bcdc7fd030da23491",
+        "input_bytes": 1024,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "a9ecae6c77e13ad7240afd2d6c8aa7603375874dd33cf982251d2d533db6d32b",
+        "input_bytes": 1026,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      },
+      {
+        "input_sha256": "c3ef522e5b94c7464f45e3c3e90bdbab0554957a4a76d4db58c61769d875bef5",
+        "input_bytes": 2048,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": true
+      },
+      {
+        "input_sha256": "94f71e5ad4bf8bc1a8042b35e94317f69c25b8f21d8cc0726ac175333abda9be",
+        "input_bytes": 2050,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": true
+      },
+      {
+        "input_sha256": "c2c5e6579b4a4e1c3963a4c1729dc92a2d080154585433de07334ea36068af30",
+        "input_bytes": 3133,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": true
+      },
+      {
+        "input_sha256": "348694dbe30db095a5109b3bf2e861faf2ca45938a8c384d04341af21aadf615",
+        "input_bytes": 70897,
+        "after_matches_new_contract": true,
+        "before_matches_old_contract": true,
+        "behavior_changed": false
+      }
+    ],
+    "all_passed": true
+  },
+  "benchmark": {
+    "document": {
+      "bytes": 4194304,
+      "generator": "benchmark_document(size, seed=1)"
+    },
+    "warmup_rounds": 2,
+    "repetitions": 15,
+    "order": "interleaved, alternating",
+    "timer": "CLOCK_MONOTONIC around fork/exec/wait4 on the device (runner.c), pinned, one adb shell session",
+    "results": {
+      "before": {
+        "wall_seconds_samples": [
+          0.034775024,
+          0.034250447,
+          0.03335376,
+          0.032952108,
+          0.03461849,
+          0.044503988,
+          0.029924398,
+          0.032254395,
+          0.033511271,
+          0.032122274,
+          0.034393352,
+          0.034058635,
+          0.033707479,
+          0.033393432,
+          0.033905843
+        ],
+        "wall_seconds_median": 0.033707
+      },
+      "after": {
+        "wall_seconds_samples": [
+          0.034304851,
+          0.033663574,
+          0.034090861,
+          0.032804606,
+          0.032230184,
+          0.031267496,
+          0.035020101,
+          0.033496216,
+          0.03195105,
+          0.032307169,
+          0.033876058,
+          0.034993205,
+          0.033097087,
+          0.033875448,
+          0.032743409
+        ],
+        "wall_seconds_median": 0.033496
+      }
+    },
+    "after_over_before_median": 0.993732
+  },
+  "persisted": {
+    "store": "jsonmin-aarch64-gen1.xax (canonical workspace save)",
+    "store_sha256": "f7a20a62782aaa9dde6c99a548bac709c62719a8e5ee1c465e2dd36987a319d6",
+    "store_bytes": 47682,
+    "root": "3d1301e513597acf9cae3fe4a90d075a54338016c5b03ef83554b285c7bc1f3e"
+  },
+  "device": {
+    "ro.product.model": "Pixel 8 Pro",
+    "ro.soc.model": "Tensor G3",
+    "ro.build.fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "ro.build.version.release": "17",
+    "ro.product.cpu.abilist": "arm64-v8a",
+    "ro.kernel.qemu": "",
+    "ro.boot.qemu": "",
+    "kernel": "Linux localhost 6.1.162-android14-11-g9dd05ae3a1de-ab16261587 #1 SMP PREEMPT Thu Sep  3 03:59:00 UTC 2026 aarch64 Toybox",
+    "cpu_mask": "100",
+    "pinned_cpu_max_khz": "2914000"
+  },
+  "host": {
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "java": null
+  }
+}

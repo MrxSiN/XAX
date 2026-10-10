@@ -49,7 +49,9 @@ class ReplacementMatrixTests(unittest.TestCase):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "linux-aarch64")
         cited = "compiler/benchmarks/android_jsonmin_evidence.json"
         evidence = json.loads((ROOT / cited).read_text())
-        self.assertEqual(derived_level(row), "R4")
+        self.assertEqual(derived_level(row), "R6")  # ADR-258: R5 and R6 rest on R4
+        fields = {k: v for k, v in row["fields"].items() if k not in ("autonomous_maintenance", "xax_only_application")}
+        self.assertEqual(derived_level({**row, "fields": fields}), "R4")
         self.assertEqual(recompute_runtime_verdict([cited]), [])
         # A second device (original Pixel, ADR-254) is cited too, and leads on its own.
         self.assertIn("compiler/benchmarks/android_jsonmin_pixel1_evidence.json", row["competitive"])

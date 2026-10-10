@@ -20,7 +20,9 @@ The cycle runs only through the ordinary XAX workspace interface:
 7. persist: the committed canonical store is saved and its digest recorded.
 
 Run ``PYTHONPATH=src:.:.. python -m benchmarks.bench_r5_maintenance [--row=jvm|linux-x86_64] [--write]`` from ``compiler/``
-(the JVM row needs ``java``; the Linux row, ADR-213, a Linux x86-64 host).
+(the JVM row needs ``java``; the Linux row, ADR-213, a Linux x86-64 host; the ``linux-aarch64`` row, ADR-258, an
+AArch64 Android device on ``adb`` with ``XAX_AARCH64_ADB=1`` and ``ANDROID_NDK_HOME``: the tests run through
+``run_linux_aarch64_executable`` and the benchmark through ``android_jsonmin.measure``, timed on the device).
 """
 
 from __future__ import annotations
@@ -42,7 +44,9 @@ EVIDENCE = HERE / "r5_jvm_jsonmin_maintenance_evidence.json"
 PLATFORMS = {
     "jvm": ("jvm", EVIDENCE),
     "linux-x86_64": ("x86_64", HERE / "r5_linux_jsonmin_maintenance_evidence.json"),
+    "linux-aarch64": ("aarch64", HERE / "r5_linux_aarch64_jsonmin_maintenance_evidence.json"),
 }
+DECISIONS = {"jvm": "ADR-209", "x86_64": "ADR-213", "aarch64": "ADR-258"}
 REQUEST = "Accept JSON nested up to 1024 levels instead of 512; everything else unchanged."
 NEW_DEPTH = 1024
 # Written by the agent after reading the projection of the function that compares the depth with 512.
@@ -153,6 +157,11 @@ def maintain(row: str = "jvm") -> dict:
     if arch == "jvm":
         before = compile_jvm_bound_target(program.reader, program.entry.cid, program.target, process_entry=True).jar
         after = compile_jvm_bound_target(workspace.reader, entry_cid, program.target, process_entry=True).jar
+    elif arch == "aarch64":
+        from xax_linux_aarch64 import compile_linux_aarch64_executable
+
+        before = compile_linux_aarch64_executable(program.reader, program.entry.cid, program.target.cid).data
+        after = compile_linux_aarch64_executable(workspace.reader, entry_cid, program.target.cid).data
     else:
         from xax_linux import compile_linux_executable
 
@@ -169,6 +178,11 @@ def maintain(row: str = "jvm") -> dict:
             path.chmod(0o755)
 
         def _run_jar(_java, path: Path, document: bytes):
+            if arch == "aarch64":
+                from xax_linux_aarch64 import run_linux_aarch64_executable
+
+                done = run_linux_aarch64_executable(path.read_bytes(), stdin=document, timeout=300)
+                return done.returncode, done.stdout, done.stderr, None
             return _run_jvm(java, path, document) if arch == "jvm" else _run_elf(path, document)
 
         # 5. test at the new limit; the original keeps the old one.
@@ -187,10 +201,23 @@ def maintain(row: str = "jvm") -> dict:
         document = benchmark_document(BENCH_SIZE, seed=1)
         expected = _reference(document, NEW_DEPTH)
         samples = {"before": [], "after": []}
-        for _ in range(2):
+        device = None
+        if arch == "aarch64":
+            # Timed on the device (runner.c: fork/exec/wait4, pinned), not through adb's round trips.
+            from benchmarks.android_jsonmin import _device, measure
+            from benchmarks.bench_android_ndk_twin import _llvm
+
+            subprocess.run([str(_llvm("aarch64-linux-android28-clang")), "-O2", "-o", str(work / "runner"),
+                            str(HERE / "linux_filestat_c" / "runner.c")], check=True)
+            arms = {"xax": work / "xax", "before": jars["before"]}  # measure runs ./<arm>
+            arms["xax"].write_bytes(after)
+            device = _device()
+            measured, _method = measure(arms, document, expected[1], REPETITIONS, 2)
+            samples = {"before": measured["before"]["wall_seconds_samples"], "after": measured["xax"]["wall_seconds_samples"]}
+        for _ in range(2 if arch != "aarch64" else 0):
             for name in samples:
                 _run_jar(java, jars[name], document)
-        for repetition in range(REPETITIONS):
+        for repetition in range(REPETITIONS if arch != "aarch64" else 0):
             for name in (("before", "after") if repetition % 2 == 0 else ("after", "before")):
                 status, stdout, stderr, wall = _run_jar(java, jars[name], document)
                 if name == "after" and (status, stdout, stderr) != expected:
@@ -206,7 +233,7 @@ def maintain(row: str = "jvm") -> dict:
     accounting = workspace.accounting
     return {
         "format": "xax-r5-maintenance-evidence-v1",
-        "decision": "ADR-209" if arch == "jvm" else "ADR-213",
+        "decision": DECISIONS[arch],
         "label": "EXECUTED",
         "application": {"name": "jsonmin", "platform_row": row, "target": program.target.cid.hex(), "original_root": original_root.hex()},
         "request": REQUEST,
@@ -239,11 +266,13 @@ def maintain(row: str = "jvm") -> dict:
         "tests": {"cases": tests, "all_passed": all(t["after_matches_new_contract"] and t["before_matches_old_contract"] for t in tests)},
         "benchmark": {
             "document": {"bytes": BENCH_SIZE, "generator": "benchmark_document(size, seed=1)"},
-            "warmup_rounds": 2, "repetitions": REPETITIONS, "order": "interleaved, alternating", "timer": "time.perf_counter around a fresh process" + (" (java -jar)" if arch == "jvm" else ""),
+            "warmup_rounds": 2, "repetitions": REPETITIONS, "order": "interleaved, alternating", "timer": ("CLOCK_MONOTONIC around fork/exec/wait4 on the device (runner.c), pinned, one adb shell session" if arch == "aarch64"
+                      else "time.perf_counter around a fresh process" + (" (java -jar)" if arch == "jvm" else "")),
             "results": {name: {"wall_seconds_samples": values, "wall_seconds_median": round(medians[name], 6)} for name, values in samples.items()},
             "after_over_before_median": round(medians["after"] / medians["before"], 6),
         },
         "persisted": {"store": f"jsonmin-{arch}-gen1.xax (canonical workspace save)", "store_sha256": _sha(store_bytes), "store_bytes": len(store_bytes), "root": workspace.root.hex()},
+        "device": device,
         "host": {"machine": platform.machine(), "python": platform.python_version(), "java": subprocess.run([java, "-version"], capture_output=True, text=True).stderr.splitlines()[-3:] if java else None},
     }
 
