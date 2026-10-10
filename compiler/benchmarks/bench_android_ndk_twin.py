@@ -35,6 +35,7 @@ EVIDENCE = HERE / "android_ndk_twin_evidence.json"
 NDK = Path(os.environ.get("ANDROID_NDK_HOME", "/opt/android/android-ndk-r28c"))
 BUILD_TOOLS = Path(os.environ.get("ANDROID_BUILD_TOOLS", "/opt/android/bt36/android-16"))
 ANDROID_JAR = Path(os.environ.get("ANDROID_JAR", "/opt/android/platform/android-35/android.jar"))
+KOTLIN_HOME = Path(os.environ.get("KOTLIN_HOME", "/opt/kotlinc"))  # the kotlinc distribution: lib/kotlin-compiler.jar, lib/kotlin-stdlib.jar
 LLVM = NDK / "toolchains/llvm/prebuilt" / ("windows-x86_64" if os.name == "nt" else "linux-x86_64") / "bin"
 _ENV = {**os.environ, "JAVA_TOOL_OPTIONS": ""}
 
@@ -106,21 +107,30 @@ def _readelf_dynamic(library: bytes) -> list[str]:
         return _run(_llvm("llvm-readelf"), "-d", handle.name).splitlines()
 
 
-def build_twin(work: Path, twin: Path = TWIN, library_name: str = "xaxapp") -> Path:
-    """Build a Java + NDK twin directory (``java/``, ``<library_name>.c``, ``AndroidManifest.xml``) into a signed APK."""
+def build_twin(work: Path, twin: Path = TWIN, library_name: str = "xaxapp", package: str | None = None) -> Path:
+    """Build a twin directory (``java/`` or ``kotlin/``, optional ``<library_name>.c``, ``AndroidManifest.xml``) into a signed APK.
+
+    ``package`` renames the application package (classes keep their names), so several twins can be installed side by side."""
     classes = work / "classes"
-    sources = sorted(str(path) for path in (twin / "java").rglob("*.java"))
-    _run("javac", "--release", "11", "-cp", ANDROID_JAR, "-d", classes, *sources)
     dex = work / "dex"
     dex.mkdir()
-    _run(_sdk("d8"), "--release", "--min-api", "28", "--lib", ANDROID_JAR, "--output", dex, *sorted(classes.rglob("*.class")))
+    if (twin / "kotlin").exists():  # Kotlin: kotlinc, then R8 over the program and kotlin-stdlib, as a release build does
+        sources = sorted(str(path) for path in (twin / "kotlin").rglob("*.kt"))
+        _run("java", "-cp", KOTLIN_HOME / "lib/kotlin-compiler.jar", "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler", "-no-stdlib", "-no-reflect",
+             "-jvm-target", "11", "-cp", os.pathsep.join(map(str, (ANDROID_JAR, KOTLIN_HOME / "lib/kotlin-stdlib.jar"))), "-d", classes, *sources)
+        _run("java", "-cp", BUILD_TOOLS / "lib/d8.jar", "com.android.tools.r8.R8", "--release", "--min-api", "28", "--lib", ANDROID_JAR,
+             "--pg-conf", twin / "proguard-rules.pro", "--output", dex, *sorted(classes.rglob("*.class")), KOTLIN_HOME / "lib/kotlin-stdlib.jar")
+    else:
+        sources = sorted(str(path) for path in (twin / "java").rglob("*.java"))
+        _run("javac", "--release", "11", "-cp", ANDROID_JAR, "-d", classes, *sources)
+        _run(_sdk("d8"), "--release", "--min-api", "28", "--lib", ANDROID_JAR, "--output", dex, *sorted(classes.rglob("*.class")))
     library = work / f"lib{library_name}.so"
     native = (twin / f"{library_name}.c").exists()  # a pure Java twin has no native library
     if native:
         _run(_llvm("aarch64-linux-android28-clang"), "-O2", "-fPIC", "-shared", "-Wl,-z,max-page-size=16384", "-Wl,--gc-sections", "-o", library, twin / f"{library_name}.c")
         _run(_llvm("llvm-strip"), "--strip-unneeded", library)
     linked = work / "linked.apk"
-    _run(_sdk("aapt2"), "link", "--manifest", twin / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked)
+    _run(_sdk("aapt2"), "link", "--manifest", twin / "AndroidManifest.xml", "-I", ANDROID_JAR, "-o", linked, *(("--rename-manifest-package", package) if package else ()))
     stored = work / "stored.apk"
     with zipfile.ZipFile(linked) as source, zipfile.ZipFile(stored, "w", zipfile.ZIP_STORED) as out:
         out.writestr("AndroidManifest.xml", source.read("AndroidManifest.xml"))

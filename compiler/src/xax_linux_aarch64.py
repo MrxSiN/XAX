@@ -337,11 +337,66 @@ SYSROOT = "/usr/aarch64-linux-gnu"
 
 
 def aarch64_runner() -> list[str] | None:
-    """Native execution on an AArch64 Linux host, else ``qemu-aarch64`` user mode, else ``None``."""
+    """Native execution on an AArch64 Linux host, else ``qemu-aarch64`` user mode, else ``None``.
+
+    ``XAX_AARCH64_ADB=1`` selects the connected ``adb`` device instead (``adb shell``): an
+    AArch64 Android device runs static images on its Linux kernel (ADR-254).  Dynamic images
+    need glibc's loader, which Android does not have."""
+    if os.environ.get("XAX_AARCH64_ADB"):
+        return ["adb", "shell"]
     if platform.machine() in ("aarch64", "arm64"):
         return []
     qemu = shutil.which("qemu-aarch64")
     return [qemu, "-L", SYSROOT] if qemu else None
+
+
+_ADB_STATUS = "/data/local/tmp/xax-exec-status"
+
+
+def _adb_status_helper(timeout: float) -> str:
+    """Build and push ``integration/android/exec_status.c`` once (NDK clang, ``ANDROID_NDK_HOME``)."""
+    if subprocess.run(["adb", "shell", "test", "-x", _ADB_STATUS], capture_output=True, timeout=timeout).returncode:
+        from pathlib import Path
+
+        source = Path(__file__).resolve().parents[1] / "integration/android/exec_status.c"
+        llvm = Path(os.environ["ANDROID_NDK_HOME"]) / "toolchains/llvm/prebuilt" / ("windows-x86_64" if os.name == "nt" else "linux-x86_64") / "bin"
+        clang = next(path for path in (llvm / f"aarch64-linux-android28-clang{suffix}" for suffix in (".cmd", "")) if path.exists())
+        with tempfile.TemporaryDirectory() as directory:
+            output = os.path.join(directory, "exec-status")
+            subprocess.run([str(clang), "-O2", "-o", output, str(source)], check=True, capture_output=True, timeout=timeout)
+            subprocess.run(["adb", "push", output, _ADB_STATUS], check=True, capture_output=True, timeout=timeout)
+        subprocess.run(["adb", "shell", "chmod", "755", _ADB_STATUS], check=True, capture_output=True, timeout=timeout)
+    return _ADB_STATUS
+
+
+def _run_on_adb_device(data: bytes, stdin: bytes, timeout: float, arguments: tuple[str, ...]) -> subprocess.CompletedProcess:
+    """Push the image and its stdin to the device's ``/data/local/tmp``, run it there, and remove them.
+
+    The streams go through files on the device and come back with ``adb exec-out``, so
+    they are byte-exact (``adb shell`` on Windows rewrites line endings); the status
+    helper reports a signal apart from an exit status (the shell's ``$?`` cannot)."""
+    import hashlib
+    import shlex
+
+    helper = _adb_status_helper(timeout)
+    remote = f"/data/local/tmp/xax-{hashlib.sha256(data).hexdigest()[:16]}"
+    with tempfile.TemporaryDirectory() as directory:
+        for suffix, content in (("", data), (".in", stdin)):
+            path = os.path.join(directory, "file" + suffix)
+            with open(path, "wb") as handle:
+                handle.write(content)
+            subprocess.run(["adb", "push", path, remote + suffix], check=True, capture_output=True, timeout=timeout)
+    command = " ".join(shlex.quote(item) for item in (helper, remote, *arguments))
+    try:
+        subprocess.run(
+            ["adb", "shell", f"chmod 755 {remote} && cd /data/local/tmp && {command} <{remote}.in >{remote}.out 2>{remote}.err 3>{remote}.status"],
+            capture_output=True, timeout=timeout, check=True)
+        stdout, stderr, status = (subprocess.run(["adb", "exec-out", "cat", remote + suffix], capture_output=True, timeout=timeout, check=True).stdout
+                                  for suffix in (".out", ".err", ".status"))
+        kind, number = status.split()
+        return subprocess.CompletedProcess([remote, *arguments], -int(number) if kind == b"signal" else int(number), stdout, stderr)
+    finally:
+        subprocess.run(["adb", "shell", "rm", "-f", *(remote + suffix for suffix in ("", ".in", ".out", ".err", ".status"))], capture_output=True, timeout=timeout)
 
 
 def run_linux_aarch64_executable(
@@ -356,6 +411,10 @@ def run_linux_aarch64_executable(
     runner = aarch64_runner()
     if runner is None:
         raise RuntimeError("no AArch64 Linux execution host (native or qemu-aarch64)")
+    if runner[:1] == ["adb"]:
+        if cwd is not None:
+            raise RuntimeError("adb execution has no host working directory")
+        return _run_on_adb_device(data, stdin, timeout, arguments)
     with tempfile.TemporaryDirectory() as directory:
         path = os.path.join(directory, "xax-program")
         with open(path, "wb") as handle:

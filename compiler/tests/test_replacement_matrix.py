@@ -39,10 +39,24 @@ class ReplacementMatrixTests(unittest.TestCase):
 
     def test_emulator_only_rows_cannot_cite_performance(self):
         bad = copy.deepcopy(MATRIX)
-        row = next(r for r in bad["platforms"] if r["id"] == "linux-aarch64")
+        row = next(r for r in bad["platforms"] if r["id"] == "riscv64")
         self.assertTrue(any("not hardware" in blocker for blocker in row["blockers"]))
-        row["fields"]["performance"] = ["MEASURED", "compiler/benchmarks/linux_aarch64_filestat_evidence.json"]
-        self.assertIn("linux-aarch64.performance: emulator-only row cannot claim performance evidence", validate(bad, ROOT))
+        row["fields"]["performance"] = ["MEASURED", "compiler/benchmarks/riscv64_twin_evidence.json"]
+        self.assertIn("riscv64.performance: emulator-only row cannot claim performance evidence", validate(bad, ROOT))
+
+    def test_linux_aarch64_r4_is_hardware_jsonmin_against_clang_and_rustc(self):
+        """ADR-254: the static image ran on a phone's Linux kernel; the verdict needs the Rust arm too."""
+        row = next(r for r in MATRIX["platforms"] if r["id"] == "linux-aarch64")
+        cited = "compiler/benchmarks/android_jsonmin_evidence.json"
+        evidence = json.loads((ROOT / cited).read_text())
+        self.assertEqual(derived_level(row), "R4")
+        self.assertEqual(recompute_runtime_verdict([cited]), [])
+        self.assertTrue(evidence["hardware"])
+        self.assertEqual(set(evidence["results"]), {"xax", "clang-O2", "clang-O2-static", "rustc-O3"})
+        without_rust = {**evidence, "results": {k: v for k, v in evidence["results"].items() if k != "rustc-O3"}}
+        with tempfile.TemporaryDirectory() as directory:  # C-family baselines alone do not meet the policy
+            (Path(directory) / "c.json").write_text(json.dumps(without_rust))
+            self.assertTrue(recompute_runtime_verdict(["c.json"], Path(directory)))
 
     def test_linux_application_is_the_cited_r3_evidence(self):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "linux-x86_64")
@@ -70,11 +84,12 @@ class ReplacementMatrixTests(unittest.TestCase):
         row = next(r for r in MATRIX["platforms"] if r["id"] == "android-arm64")
         evidence = json.loads((ROOT / "compiler/benchmarks/android_counter_twin_evidence.json").read_text())
         platform = json.loads((ROOT / "compiler/benchmarks/android_platform_runtime_probe_evidence.json").read_text())
-        # ADR-207: 1.007x the fastest non-XAX arm is above the 0.9999x R4 target.
+        # ADR-253: the cold start ties (1.0125x the fastest non-XAX arm), above the 0.9999x R4 target.
         self.assertEqual(derived_level(row), "R3")
-        self.assertIn("1.007273x the fastest non-XAX arm", recompute_runtime_verdict(row["competitive"][1:])[0])
-        self.assertEqual(set(evidence["results"]), {"xax", "clang_ndk_java", "java_d8"})
-        self.assertEqual(len(evidence["device"]["xax_pass_ratios_vs_fastest"]), evidence["device"]["passes"])
+        self.assertIn("1.012500x the fastest non-XAX arm (java_d8)", recompute_runtime_verdict(row["competitive"][1:])[0])
+        self.assertEqual(set(evidence["results"]), {"xax", "clang_ndk_java", "java_d8", "kotlin_r8"})
+        device = evidence["device"]
+        self.assertEqual({len(arm["samples"]["total_time_ms"]) for arm in device["arms"].values()}, {device["blocks"] * device["runs_per_block"]})
         without_java = {**evidence, "results": {k: v for k, v in evidence["results"].items() if k != "java_d8"}}
         with tempfile.TemporaryDirectory() as directory:  # a single C-family baseline stops at R3 again
             (Path(directory) / "one.json").write_text(json.dumps(without_java))
