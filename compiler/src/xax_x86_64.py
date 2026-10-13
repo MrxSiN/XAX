@@ -859,6 +859,22 @@ def _sysv_entry_adapter(function: SemanticObject, resolve: Callable[[bytes], Sem
     return bytes(code), call
 
 
+def _win64_foreign_call(node, graph_object) -> bytes | None:
+    """Bytes that call a ``win64-c`` declaration after the arguments are placed: ``None`` for an import (the assembler
+    binds ``call [rip+slot]``), or ``mov rax, [rcx]; call [rax+8k]`` for COM method slot k (ADR-260)."""
+    from xax_compiler import com_method_slot
+
+    declaration = decode_foreign_function(node.entity)
+    if declaration.abi != b"win64-c":
+        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", "win64-c", declaration.abi.decode("ascii", "replace"))
+    slot = com_method_slot(declaration)
+    if slot is None:
+        return None
+    if slot < 0:
+        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "WIN64-COM-METHOD", "vtable:<k> and a bits<64> interface pointer first", declaration.name.decode("ascii", "replace"))
+    return b"\x48\x8b\x01\xff\x90" + (8 * slot).to_bytes(4, "little")
+
+
 def _linux_syscall(node, resolve, target: NativeTargetDescription, value_slot, graph_object) -> bytes:
     declaration = decode_foreign_function(node.entity)
     if declaration.abi != LINUX_X86_64_SYSCALL_ABI or target.abi != X86_64_LINUX_ABI:
@@ -1302,8 +1318,7 @@ def _compile_register_resident_function(
                 define(result, register)
 
             elif node.operation == Operation.CALL_FOREIGN or (node.operation == Operation.CALL_DIRECT and not _is_erased_proof_function(node.entity, resolve)):
-                if node.operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).abi != b"win64-c":
-                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", "win64-c", decode_foreign_function(node.entity).abi.decode("ascii", "replace"))
+                com_call = _win64_foreign_call(node, graph_object) if node.operation == Operation.CALL_FOREIGN else None
                 operands = tuple(operand for operand in node.operands if operand in widths)
                 results = tuple(
                     ValueRef.node_result(block_index, node_index, result_index)
@@ -1311,7 +1326,9 @@ def _compile_register_resident_function(
                     if ValueRef.node_result(block_index, node_index, result_index) in widths
                 )
                 live_after = prepare_call(node_index, operands)
-                if assembler is not None:
+                if com_call is not None:
+                    emit(com_call)
+                elif assembler is not None:
                     if node.operation == Operation.CALL_FOREIGN:
                         assembler.call_import(node.entity.cid)
                     else:
@@ -2011,8 +2028,7 @@ def _compile_function(
             elif node.operation in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE) and node.attributes[0] not in (4, 8) and node.operands[0] in pointers:
                 _emit_dynamic_memory(assembler, node, target, value_slot, result_ref, block_index, node_index, pointer_extent=pointer_extents[node.operands[0]], static_base=pointers[node.operands[0]])
             elif node.operation in (Operation.CALL_DIRECT, Operation.CALL_INDIRECT, Operation.CALL_FOREIGN):
-                if node.operation == Operation.CALL_FOREIGN and decode_foreign_function(node.entity).abi != b"win64-c":
-                    fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", "win64-c", decode_foreign_function(node.entity).abi.decode("ascii", "replace"))
+                com_call = _win64_foreign_call(node, graph_object) if node.operation == Operation.CALL_FOREIGN else None
                 operand_pairs = tuple(
                     (operand, cid, operand_index)
                     for operand_index, (operand, cid) in enumerate(zip(node.operands, node.operand_types))
@@ -2063,6 +2079,8 @@ def _compile_function(
                         assembler.emit(_store(target.scratch_registers[0], outgoing))
                 if node.operation == Operation.CALL_INDIRECT:
                     assembler.emit(_call_register(target.scratch_registers[1]))
+                elif com_call is not None:
+                    assembler.emit(com_call)
                 elif node.operation == Operation.CALL_FOREIGN:
                     assembler.call_import(node.entity.cid)
                 elif not _is_erased_proof_function(node.entity, resolve):

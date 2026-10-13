@@ -3091,6 +3091,36 @@ def foreign_function_symbol(
     return target(bytes(identity))
 
 
+# COM interface methods (ADR-260): a ``win64-c`` declaration whose library is ``com:<Interface>`` (a colon cannot occur
+# in a Windows file name, so it never names a DLL) and whose name is ``vtable:<k>``.  Input 0 is the ``bits<64>`` interface
+# pointer, passed as ``this``; the callee is ``(*(void***)this)[k]``.  No code address ever becomes an XAX value.
+COM_LIBRARY_PREFIX = b"com:"
+
+
+def win64_com_method(interface: bytes, slot: int, inputs: Sequence[SemanticObject], outputs: Sequence[SemanticObject]) -> SemanticObject:
+    """Declaration of method ``slot`` of COM interface ``interface`` (ADR-260); ``inputs[0]`` must be ``bits<64>``."""
+    if not interface or not 0 <= slot < 1 << 24 or not inputs or inputs[0] != bits_type(64):
+        raise ValueError("COM method needs an interface name, slot in [0, 2^24) and a bits<64> interface pointer as input 0")
+    return foreign_function_symbol(COM_LIBRARY_PREFIX + interface, b"vtable:%d" % slot, inputs, outputs, abi=b"win64-c")
+
+
+def decode_com_slot(name: bytes) -> int | None:
+    """The vtable slot of a COM method name, or ``None`` when it is not canonical ``vtable:<k>``."""
+    digits = name[len(b"vtable:"):] if name.startswith(b"vtable:") else b""
+    if not digits.isdigit() or (digits != b"0" and digits.startswith(b"0")) or int(digits) >= 1 << 24:
+        return None
+    return int(digits)
+
+
+def com_method_slot(declaration: "ForeignFunctionDescription") -> int | None:
+    """``None`` for an ordinary import; the slot of a well-formed COM method; ``-1`` for a malformed one."""
+    if declaration.abi != b"win64-c" or not declaration.library.startswith(COM_LIBRARY_PREFIX):
+        return None
+    slot = decode_com_slot(declaration.name)
+    well_formed = slot is not None and len(declaration.library) > len(COM_LIBRARY_PREFIX) and declaration.inputs[:1] == (bits_type(64).cid,)
+    return slot if well_formed else -1
+
+
 def decode_foreign_function(obj: SemanticObject) -> ForeignFunctionDescription:
     if obj.kind != Kind.TARGET or obj.references:
         fail("XAX.FOREIGN.KIND", obj.cid.hex(), "FOREIGN-FUNCTION-CARRIER", Kind.TARGET.name, obj.kind.name)

@@ -59,6 +59,7 @@ from xax_compiler import (
     borrowed_view_returns,
     _is_erased_proof_function,
     _is_proof_type,
+    com_method_slot,
     decode_foreign_function,
     decode_trap_payload,
     fail,
@@ -1820,6 +1821,10 @@ def compile_register_resident(
                 owned = (WIN64_C_ABI,) if windows else (SYSV_X86_64_C_ABI, LINUX_X86_64_SYSCALL_ABI, LINUX_X86_64_STARTUP_ABI)
                 if declaration.abi not in owned:
                     fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "NATIVE-FOREIGN-ABI", [abi.decode() for abi in owned], declaration.abi.decode("ascii", "replace"))
+                com_slot = com_method_slot(declaration)
+                if com_slot is not None:
+                    if com_slot < 0:
+                        fail("XAX.FOREIGN.ABI", graph_object.cid.hex(), "WIN64-COM-METHOD", "vtable:<k> and a bits<64> interface pointer first", declaration.name.decode("ascii", "replace"))
                 if declaration.abi == WIN64_C_ABI:
                     # Win64: integer arguments in rcx, rdx, r8, r9; the frame
                     # reserves the 32-byte shadow space for every call.
@@ -1833,7 +1838,9 @@ def compile_register_resident(
                             emit(_load_constant(_SCRATCH, where) if kind == "const" else _lea(_SCRATCH, 4, where) if kind == "stack" else _load(_SCRATCH, where, width_bytes(operand)))
                             emit(_store(_SCRATCH, slot, 8))
                     place_arguments(node_index, machine_operands[:registers], target.argument_registers)
-                    if assembler is not None:
+                    if com_slot is not None:
+                        emit(b"\x48\x8b\x01\xff\x90" + (8 * com_slot).to_bytes(4, "little"))  # mov rax, [rcx]; call [rax + 8k]
+                    elif assembler is not None:
                         assembler.call_import(node.entity.cid)
                 elif declaration.abi == SYSV_X86_64_C_ABI:
                     require_sysv_profile(target, graph_object)

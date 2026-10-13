@@ -36,6 +36,10 @@ use the ``win32.`` prefix in place of ``linux.``: the types and symbols of ``xax
 A ``windows-x86_64`` package may add ``"exports": {"ExportName": FUNCTION_NAME, ...}`` (ADR-259): the build is then a
 PE32+ DLL named ``<package name>.dll`` that exports those functions under ``win64-c`` and has no DllMain; the release
 entry must be one of the exported functions.
+On ``windows-x86_64`` an entity may also declare a foreign call by its exact typed interface (ADR-260):
+``{"win32.import": [DLL, SYMBOL, [TYPE...], [TYPE...]]}`` is a ``win64-c`` import (``DLL`` a bare file name), and
+``{"win32.com": [INTERFACE, SLOT, [TYPE...], [TYPE...]]}`` is method ``SLOT`` of a COM interface (a ``win64-c`` declaration on ``com:INTERFACE``): input 0
+is the ``b64`` interface pointer and the callee is read from its vtable at the call.
 
 Platform ``jvm`` (ADR-257) builds an executable JAR (``jvm-classfile-memory``: one linear memory and the standard
 streams as generated members of the program's own class).  Its names use the ``jvm.`` prefix: the types and symbols of
@@ -153,12 +157,35 @@ class _Builder:
             (key, value), = spec.items()
             if key == "fn" and value in self.functions:
                 return self.functions[value]
+            if key in ("win32.import", "win32.com") and self.prefix == "win32." and isinstance(value, list) and len(value) == 4:
+                return self._win32_declaration(key, *value)
             if isinstance(value, list) and len(value) == 2 and type(value[1]) is int:
                 if (key, self.prefix) in (("linux.munmap_view", "linux."), ("jvm.munmap_view", "jvm.")):
                     return self.api.munmap_view(self.type(value[0]), value[1])
                 if key == "win32.virtual_free_view" and self.prefix == "win32.":
                     return self.api.virtual_free_view(heap_view_type(value[1]), self.type(value[0]))
         raise _error(f"unknown entity {spec!r}")
+
+    def _win32_declaration(self, key: str, owner, member, inputs, outputs) -> SemanticObject:
+        """ADR-260: a ``win64-c`` import ``[DLL, SYMBOL, INPUTS, OUTPUTS]`` or a COM method
+        ``[INTERFACE, SLOT, INPUTS, OUTPUTS]``; the exact typed interface is the declaration's identity."""
+        from xax_compiler import foreign_function_symbol, win64_com_method
+
+        if not isinstance(inputs, list) or not isinstance(outputs, list):
+            raise _error(f"{key} needs input and output type lists")
+        types = (tuple(self.type(spec) for spec in inputs), tuple(self.type(spec) for spec in outputs))
+        if key == "win32.import":
+            # A bare module file name: the Windows loader resolves it (KnownDLLs/System32 first for system DLLs).
+            if not isinstance(owner, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}\.dll", owner, re.IGNORECASE) \
+                    or not isinstance(member, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,127}", member):
+                raise _error(f"win32.import needs a bare DLL file name and a C symbol: {owner!r} {member!r}")
+            return foreign_function_symbol(owner.encode(), member.encode(), *types, abi=b"win64-c")
+        if not isinstance(owner, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,127}", owner) or type(member) is not int:
+            raise _error(f"win32.com needs an interface name and an integer slot: {owner!r} {member!r}")
+        try:
+            return win64_com_method(owner.encode(), member, *types)
+        except ValueError as error:
+            raise _error(f"win32.com {owner}: {error}") from None
 
     def _platform(self, spec: str) -> SemanticObject | None:
         for namespace in self.namespaces:

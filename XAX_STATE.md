@@ -1510,3 +1510,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 ## Windows PE32+ DLLs — 2026-10-13 (ADR-259)
 
 `xax-construct-v1` on `windows-x86_64` accepts `package.exports`; the build is then a PE32+ DLL (`ArtifactKind.WINDOWS_DLL`) with a `win64-c` export directory and no DllMain. EXECUTED on Windows 11 x86-64: a constructed DLL loads with `LoadLibrary` and its exports return the expected values (`tests/test_xax_pe_dll.py`). Host contract minor 8. Executable bytes are unchanged.
+
+## Windows imports and COM calls — 2026-10-13 (ADR-260)
+
+`xax-construct-v1` on `windows-x86_64` declares any `win64-c` import (`win32.import`) and any COM method (`win32.com`: a `win64-c` declaration on library `com:<Interface>`, called through vtable slot k of a `b64` interface pointer). EXECUTED on Windows 11 x86-64: an XAX DLL reads the DXGI local-memory budget through `CreateDXGIFactory1` and four interface methods, and the value matches an independent reading (`tests/test_xax_pe_dll.py`). Host contract minor 9.
