@@ -2972,6 +2972,44 @@ def decode_android_export(obj: SemanticObject) -> AndroidExportDescription:
     return AndroidExportDescription(abi, visibility, name, function_cid)
 
 
+WINDOWS_EXPORT_PREFIX = b"windows-pe-export-v1"
+
+
+@dataclass(frozen=True)
+class WindowsExportDescription:
+    name: bytes
+    function_cid: bytes
+
+
+def windows_export_symbol(function_object: SemanticObject, name: bytes) -> SemanticObject:
+    """Content-addressed ``win64-c`` PE DLL export declaration (ADR-259), the Windows twin of ``android_export_symbol``.
+
+    A module member: the PE DLL emitter compiles the closure of every exported function and names it in the export
+    directory.  The function CID is part of the declaration identity."""
+    if function_object.kind != Kind.FUNCTION:
+        raise ValueError("Windows export target must be a function")
+    if not name or b"\x00" in name or not name.isascii():
+        raise ValueError("Windows export name must be nonempty NUL-free ASCII")
+    return target(WINDOWS_EXPORT_PREFIX + uleb(len(name)) + name + function_object.cid)
+
+
+def decode_windows_export(obj: SemanticObject) -> WindowsExportDescription:
+    if obj.kind != Kind.TARGET or obj.references:
+        fail("XAX.WINDOWS.EXPORT", obj.cid.hex(), "WINDOWS-EXPORT-CARRIER", Kind.TARGET.name, obj.kind.name)
+    outer = Cursor(obj.body, obj.cid.hex())
+    identity = outer.byte_string()
+    outer.end("WINDOWS-EXPORT-CARRIER")
+    if not identity.startswith(WINDOWS_EXPORT_PREFIX):
+        fail("XAX.WINDOWS.EXPORT", obj.cid.hex(), "WINDOWS-EXPORT-IDENTITY", WINDOWS_EXPORT_PREFIX.decode(), identity[:32].hex())
+    cursor = Cursor(identity[len(WINDOWS_EXPORT_PREFIX):], obj.cid.hex())
+    name = cursor.byte_string()
+    function_cid = cursor.take(CID_SIZE)
+    cursor.end("WINDOWS-EXPORT-IDENTITY")
+    if not name or b"\x00" in name or not name.isascii():
+        fail("XAX.WINDOWS.EXPORT", obj.cid.hex(), "WINDOWS-EXPORT-NAME", "nonempty NUL-free ASCII", name)
+    return WindowsExportDescription(name, function_cid)
+
+
 @dataclass(frozen=True)
 class ForeignAllocatorContract:
     """The call returns either null or a fresh heap block of ``product(sizes)`` bytes."""

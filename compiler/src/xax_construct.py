@@ -33,6 +33,9 @@ Platform ``windows-x86_64`` (ADR-252) builds an ``x86_64-windows-pe-v1`` PE32+ e
 use the ``win32.`` prefix in place of ``linux.``: the types and symbols of ``xax_platform.win32_kernel32_api`` and
 ``win32_stdio_api`` (the stdio ``read_file``/``write_file`` take heap-view pointers), plus
 ``{"win32.virtual_free_view": [TYPE, EXTENT]}``.  There are no startup reads; the entry ends with ``win32.exit_process``.
+A ``windows-x86_64`` package may add ``"exports": {"ExportName": FUNCTION_NAME, ...}`` (ADR-259): the build is then a
+PE32+ DLL named ``<package name>.dll`` that exports those functions under ``win64-c`` and has no DllMain; the release
+entry must be one of the exported functions.
 
 Platform ``jvm`` (ADR-257) builds an executable JAR (``jvm-classfile-memory``: one linear memory and the standard
 streams as generated members of the program's own class).  Its names use the ``jvm.`` prefix: the types and symbols of
@@ -244,15 +247,26 @@ def construct(request: dict) -> Constructed:
     for record in request.get("functions", []):
         builder.function(record)
     spec = request.get("package")
-    if not isinstance(spec, dict) or set(spec) != {"name", "entries", "release"} or not spec["entries"]:
+    if not isinstance(spec, dict) or set(spec) - {"exports"} != {"name", "entries", "release"} or not spec["entries"]:
         raise _error("package needs name, entries, release")
+    exports = ()
+    if "exports" in spec:
+        from xax_build import ArtifactKind
+        from xax_compiler import windows_export_symbol
+
+        if request["platform"] != "windows-x86_64" or not spec["exports"] or any(f not in builder.functions for f in spec["exports"].values()):
+            raise _error("exports need windows-x86_64 and must name constructed functions")
+        if spec["entries"][spec["release"]] not in spec["exports"].values():
+            raise _error("the release entry of a DLL must be exported")
+        exports = tuple(windows_export_symbol(builder.functions[f], name.encode()) for name, f in sorted(spec["exports"].items()))
+        builder.artifact = ArtifactKind.WINDOWS_DLL
     entries = tuple((name.encode(), builder.functions[function]) for name, function in sorted(spec["entries"].items()) if function in builder.functions)
     if len(entries) != len(spec["entries"]) or spec["release"] not in spec["entries"]:
         raise _error("package entries must name constructed functions, and release must be an entry")
-    module = object_with_refs(Kind.MODULE, tuple(builder.functions.values()))
+    module = object_with_refs(Kind.MODULE, (*builder.functions.values(), *exports))
     app = package(spec["name"].encode(), (module,), build_entries=entries)
     profile, policy = build_profile(), trust_policy()
     request_object = build_request(app, spec["release"].encode(), builder.target, profile, requested_artifacts=(builder.artifact,))
-    everything = (*builder.objects.values(), *builder.platform_types, module, app, builder.target, profile, policy, request_object)
+    everything = (*builder.objects.values(), *builder.platform_types, *exports, module, app, builder.target, profile, policy, request_object)
     reader = snapshot_store(resolve_packages(request_object, everything, policy, b"xax-construct-v1"), everything)
     return Constructed(reader, app, builder.target, profile, policy, dict(builder.functions), request_object)

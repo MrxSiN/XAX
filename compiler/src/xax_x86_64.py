@@ -2283,6 +2283,7 @@ def _compile_native_with_target(
     realtime_profile: RealtimeProfile | None = None,
     atomic_policy: AtomicLegalizationPolicy = AtomicLegalizationPolicy(),
     process_entry: bool = False,
+    extra_roots: tuple[bytes, ...] = (),
 ) -> NativeImage:
     verify_store(reader)
     resolve = store_resolver(reader)
@@ -2291,6 +2292,11 @@ def _compile_native_with_target(
         fail("XAX.NATIVE.FUNCTION", function_cid.hex(), "NATIVE-ENTRY-FUNCTION", Kind.FUNCTION.name, entry.kind.name)
     description = decode_native_target(target_object)
     functions = _function_closure(entry, resolve, description)
+    # DLL exports (ADR-259): further roots, appended in the caller's order after the entry's closure.
+    for root in extra_roots:
+        if resolve(root).kind != Kind.FUNCTION:
+            fail("XAX.NATIVE.FUNCTION", root.hex(), "NATIVE-ENTRY-FUNCTION", Kind.FUNCTION.name, resolve(root).kind.name)
+        functions = (*functions, *(item for item in _function_closure(resolve(root), resolve, description) if item.cid not in {f.cid for f in functions}))
     fragments: dict[bytes, tuple[bytes, tuple[tuple[int, bytes], ...], tuple[ArtifactSemanticRange, ...]]] = {
         function.cid: _compile_function(function, resolve, description, atomic_policy, process_entry and function.cid == entry.cid)
         for function in functions
@@ -2369,9 +2375,10 @@ def compile_native_bound_target(
     target_object: SemanticObject,
     realtime_profile: RealtimeProfile | None = None,
     atomic_policy: AtomicLegalizationPolicy = AtomicLegalizationPolicy(),
+    extra_roots: tuple[bytes, ...] = (),
 ) -> NativeImage:
     """Compile against an explicitly bound target package that need not be stored under the program root."""
-    return _compile_native_with_target(reader, function_cid, target_object, realtime_profile, atomic_policy)
+    return _compile_native_with_target(reader, function_cid, target_object, realtime_profile, atomic_policy, extra_roots=extra_roots)
 
 
 def _ctype(kind: str):

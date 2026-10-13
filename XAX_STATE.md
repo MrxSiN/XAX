@@ -1506,3 +1506,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 
 - R5: the `jsonmin` depth-limit cycle (one local mutation) ran on the AArch64 store; the rebuilt static image passes every contract case on a Pixel 8 Pro and runs at 0.994x the original there.
 - R6: `xcksum`, a POSIX `cksum`, is the row's XAX-only application: one hand-written `xax-construct-v1` request (new platform `linux-aarch64`), an XAX selftest, canonical package and builds, and a second release (`cksum -H`) made by one workspace transaction. Both releases match toybox `cksum` on every test input on a Pixel 8 Pro and an original Pixel; the row derives R6. Host contract minor 7.
+
+## Windows PE32+ DLLs — 2026-10-13 (ADR-259)
+
+`xax-construct-v1` on `windows-x86_64` accepts `package.exports`; the build is then a PE32+ DLL (`ArtifactKind.WINDOWS_DLL`) with a `win64-c` export directory and no DllMain. EXECUTED on Windows 11 x86-64: a constructed DLL loads with `LoadLibrary` and its exports return the expected values (`tests/test_xax_pe_dll.py`). Host contract minor 8. Executable bytes are unchanged.

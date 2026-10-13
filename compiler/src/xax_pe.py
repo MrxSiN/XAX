@@ -14,6 +14,7 @@ from xax_compiler import fail
 from xax_x86_64 import NativeImage
 
 IMAGE_BASE = 0x140000000
+DLL_IMAGE_BASE = 0x180000000
 SECTION_ALIGNMENT = 0x1000
 FILE_ALIGNMENT = 0x200
 HEADERS_SIZE = 0x200
@@ -70,6 +71,25 @@ def _import_section(rva: int, imports: tuple[tuple[int, bytes, bytes], ...]) -> 
     return body, slots, iat_rva, thunk_bytes
 
 
+def _export_section(rva: int, dll_name: bytes, exports: tuple[tuple[bytes, int], ...]) -> bytes:
+    """IMAGE_EXPORT_DIRECTORY + address/name/ordinal tables; names sorted (the loader binary-searches them)."""
+    names = sorted(exports)
+    count = len(names)
+    functions_rva = rva + 40
+    names_rva = functions_rva + 4 * count
+    ordinals_rva = names_rva + 4 * count
+    strings_rva = ordinals_rva + 2 * count
+    strings = bytearray(dll_name + b"\0")
+    name_rvas = []
+    for name, _ in names:
+        name_rvas.append(strings_rva + len(strings))
+        strings += name + b"\0"
+    directory = struct.pack("<IIHHIIIIIII", 0, 0, 0, 0, strings_rva, 1, count, count, functions_rva, names_rva, ordinals_rva)
+    return (directory + b"".join(struct.pack("<I", code_rva) for _, code_rva in names)
+            + b"".join(struct.pack("<I", item) for item in name_rvas)
+            + b"".join(struct.pack("<H", index) for index in range(count)) + bytes(strings))
+
+
 def emit_pe_executable(image: NativeImage) -> bytes:
     """Wrap a parameterless entry as a console PE32+ executable.
 
@@ -81,35 +101,61 @@ def emit_pe_executable(image: NativeImage) -> bytes:
         fail("XAX.PE.ENTRY", image.target_cid.hex(), "PE-ENTRY-NO-PARAMETERS", 0, len(image.parameter_widths))
     if any(not kind.startswith("u") for kind in image.return_kinds):
         fail("XAX.PE.ENTRY", image.target_cid.hex(), "PE-ENTRY-INTEGER-RESULT", "u<bits>", list(image.return_kinds))
+    return _emit(image, None, ())
+
+
+def emit_pe_dll(image: NativeImage, dll_name: bytes, exports: tuple[tuple[bytes, bytes], ...]) -> bytes:
+    """Wrap compiled functions as a PE32+ DLL exporting ``(name, function CID)`` pairs under ``win64-c`` (ADR-259).
+
+    AddressOfEntryPoint is 0: the image has no DllMain, so nothing XAX-generated runs under the loader lock.  A host
+    calls the exports after ``LoadLibrary`` returns."""
+    offsets = dict(image.function_offsets)
+    if not exports or len({name for name, _ in exports}) != len(exports):
+        fail("XAX.PE.EXPORT", image.target_cid.hex(), "PE-EXPORT-UNIQUE", "one or more distinct names", [name for name, _ in exports])
+    for name, cid in exports:
+        if cid not in offsets:
+            fail("XAX.PE.EXPORT", cid.hex(), "PE-EXPORT-COMPILED", "an exported function in the image", name)
+    if not dll_name or b"\0" in dll_name:
+        fail("XAX.PE.EXPORT", image.target_cid.hex(), "PE-EXPORT-DLL-NAME", "nonempty NUL-free", dll_name)
+    return _emit(image, dll_name, tuple((name, offsets[cid]) for name, cid in exports))
+
+
+def _emit(image: NativeImage, dll_name: bytes | None, exports: tuple[tuple[bytes, int], ...]) -> bytes:
+    dll = dll_name is not None
     text_rva = SECTION_ALIGNMENT
     code = bytearray(image.code)
     text_raw = _align(len(code), FILE_ALIGNMENT)
-    idata_rva = text_rva + _align(len(code), SECTION_ALIGNMENT)
+    next_rva = text_rva + _align(len(code), SECTION_ALIGNMENT)
     sections = [(b".text", len(code), text_rva, text_raw, 0x60000020)]
-    idata = b""
-    import_dir = iat_dir = (0, 0)
+    payloads = [bytes()]
+    directories = [(0, 0)] * 16
     if image.imports:
-        idata, slots, iat_rva, iat_size = _import_section(idata_rva, image.imports)
+        idata, slots, iat_rva, iat_size = _import_section(next_rva, image.imports)
         for position, library, name in image.imports:
             displacement = slots[(library, name)] - (text_rva + position + 4)
             code[position : position + 4] = displacement.to_bytes(4, "little", signed=True)
-        sections.append((b".idata", len(idata), idata_rva, _align(len(idata), FILE_ALIGNMENT), 0xC0000040))
-        import_dir = (idata_rva, 20 * (len({lib for _, lib, _ in image.imports}) + 1))
-        iat_dir = (iat_rva, iat_size)
+        sections.append((b".idata", len(idata), next_rva, _align(len(idata), FILE_ALIGNMENT), 0xC0000040))
+        payloads.append(idata)
+        directories[1] = (next_rva, 20 * (len({lib for _, lib, _ in image.imports}) + 1))
+        directories[12] = (iat_rva, iat_size)
+        next_rva += _align(len(idata), SECTION_ALIGNMENT)
+    if dll:
+        edata = _export_section(next_rva, dll_name, tuple((name, text_rva + offset) for name, offset in exports))
+        sections.append((b".edata", len(edata), next_rva, _align(len(edata), FILE_ALIGNMENT), 0x40000040))
+        payloads.append(edata)
+        directories[0] = (next_rva, len(edata))
+    payloads[0] = bytes(code)
     size_of_image = sections[-1][2] + _align(sections[-1][1], SECTION_ALIGNMENT)
-    directories = [(0, 0)] * 16
-    directories[1] = import_dir
-    directories[12] = iat_dir
     optional = struct.pack(
         "<HBBIIIIIQIIHHHHHHIIIIHHQQQQII",
         0x20B, 0, 0, text_raw, sum(s[3] for s in sections[1:]), 0,
-        text_rva + image.entry_offset, text_rva, IMAGE_BASE, SECTION_ALIGNMENT, FILE_ALIGNMENT,
+        0 if dll else text_rva + image.entry_offset, text_rva, DLL_IMAGE_BASE if dll else IMAGE_BASE, SECTION_ALIGNMENT, FILE_ALIGNMENT,
         6, 0, 0, 0, 6, 0, 0, size_of_image, HEADERS_SIZE, 0,
-        3,  # IMAGE_SUBSYSTEM_WINDOWS_CUI
-        0x8160,  # TERMINAL_SERVER_AWARE | NX_COMPAT | DYNAMIC_BASE | HIGH_ENTROPY_VA
+        2 if dll else 3,  # IMAGE_SUBSYSTEM_WINDOWS_GUI for a DLL, WINDOWS_CUI for an executable
+        0x0160 if dll else 0x8160,  # NX_COMPAT | DYNAMIC_BASE | HIGH_ENTROPY_VA (+ TERMINAL_SERVER_AWARE for an EXE)
         STACK_RESERVE, STACK_COMMIT, 0x100000, 0x1000, 0, 16,
     ) + b"".join(struct.pack("<II", *entry) for entry in directories)
-    coff = struct.pack("<HHIIIHH", 0x8664, len(sections), 0, 0, 0, len(optional), 0x0022)
+    coff = struct.pack("<HHIIIHH", 0x8664, len(sections), 0, 0, 0, len(optional), 0x2022 if dll else 0x0022)
     headers = bytearray(b"MZ" + bytes(0x3A) + struct.pack("<I", 0x40) + b"PE\0\0" + coff + optional)
     raw_offset = HEADERS_SIZE
     for name, virtual_size, rva, raw_size, flags in sections:
@@ -117,7 +163,6 @@ def emit_pe_executable(image: NativeImage) -> bytes:
         raw_offset += raw_size
     if len(headers) > HEADERS_SIZE:
         fail("XAX.PE.HEADERS", image.target_cid.hex(), "PE-HEADERS-FIT", HEADERS_SIZE, len(headers))
-    out = bytes(headers).ljust(HEADERS_SIZE, b"\0") + bytes(code).ljust(text_raw, b"\0")
-    if idata:
-        out += idata.ljust(_align(len(idata), FILE_ALIGNMENT), b"\0")
-    return out
+    return bytes(headers).ljust(HEADERS_SIZE, b"\0") + b"".join(
+        payload.ljust(section[3], b"\0") for payload, section in zip(payloads, sections)
+    )

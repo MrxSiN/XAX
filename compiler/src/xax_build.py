@@ -71,6 +71,8 @@ class ArtifactKind(IntEnum):
     # proof-only process entry.  The request names which; it is never inferred.
     JVM_LIBRARY_JAR = 5
     JVM_EXECUTABLE_JAR = 6
+    # Windows PE32+ DLL (ADR-259): the package's ``windows-pe-export-v1`` module members are its exports.
+    WINDOWS_DLL = 7
 
 
 class OptimizationObjective(IntEnum):
@@ -1941,6 +1943,30 @@ def _build_android_managed_apk(reader, package_view, target_object, build_entry_
                               native_libraries={"libxaxapp.so": shared.data}, extra_entries=extra)
 
 
+def _build_windows_dll(reader: StoreReader, package_view, target_object: SemanticObject, description, function_root: bytes) -> bytes:
+    """A PE32+ DLL (ADR-259) exporting every ``windows-pe-export-v1`` member of the package's modules.  The build entry
+    must be one of the exports; the DLL name is the package logical identity plus ``.dll``."""
+    from xax_compiler import WINDOWS_EXPORT_PREFIX, decode_windows_export
+    from xax_pe import emit_pe_dll
+    from xax_x86_64 import compile_native_bound_target
+
+    where = package_view.logical_identity.hex()
+    if description.architecture != 1 or description.identity != b"x86_64-windows-pe-v1":
+        fail("XAX.BUILD.ARTIFACT", where, "WINDOWS-DLL-TARGET", "x86_64-windows-pe-v1", description.identity)
+    exports = []
+    for module_cid in package_view.modules:
+        for cid in reader.get(module_cid).references:
+            child = reader.get(cid)
+            if child.kind == Kind.TARGET and not child.references and Cursor(child.body, cid.hex()).byte_string().startswith(WINDOWS_EXPORT_PREFIX):
+                view = decode_windows_export(child)
+                exports.append((view.name, view.function_cid))
+    exports.sort()
+    if function_root not in {cid for _, cid in exports}:
+        fail("XAX.BUILD.ARTIFACT", where, "WINDOWS-DLL-ENTRY-EXPORTED", "the build entry is an export", function_root.hex())
+    image = compile_native_bound_target(reader, function_root, target_object, extra_roots=tuple(cid for _, cid in exports))
+    return emit_pe_dll(image, package_view.logical_identity + b".dll", tuple(exports))
+
+
 def _hosted_container(reader: StoreReader, function_root: bytes, target_object: SemanticObject, description) -> bytes | None:
     """The artifact for a target profile that names its own container (ADR-177), else None.
 
@@ -2053,6 +2079,9 @@ def build(
                 )
             artifact = sign_apk_v2(artifact, signing_capability)
             lowering = ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1
+    elif request_view.requested_artifacts == (ArtifactKind.WINDOWS_DLL,):
+        artifact = _build_windows_dll(reader, package_view, target_object, description, function_root)
+        lowering = container_lowering_identity(b"x86_64-windows-pe-dll-v1")
     elif (hosted := _hosted_container(reader, function_root, target_object, description)) is not None:
         if request_view.requested_artifacts != (ArtifactKind.NATIVE_IMAGE,):
             fail(
