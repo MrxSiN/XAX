@@ -34,8 +34,10 @@ use the ``win32.`` prefix in place of ``linux.``: the types and symbols of ``xax
 ``win32_stdio_api`` (the stdio ``read_file``/``write_file`` take heap-view pointers), plus
 ``{"win32.virtual_free_view": [TYPE, EXTENT]}``.  There are no startup reads; the entry ends with ``win32.exit_process``.
 A ``windows-x86_64`` package may add ``"exports": {"ExportName": FUNCTION_NAME, ...}`` (ADR-259): the build is then a
-PE32+ DLL named ``<package name>.dll`` that exports those functions under ``win64-c`` and has no DllMain; the release
-entry must be one of the exported functions.
+PE32+ DLL named ``<package name>.dll`` that exports those functions under ``win64-c``; the release entry must be one of the
+exported functions.  With exports, ``"forwards": {"ExportName": "module.Symbol"}`` adds loader forwards and
+``"dll_main": FUNCTION_NAME`` sets the entry point, ``fn(b64, b32, b64, proof...) -> (b32, proof...)``, whose calls must stay
+within the build's loader-lock allowlist (ADR-261); without it the DLL has no DllMain.
 On ``windows-x86_64`` an entity may also declare a foreign call by its exact typed interface (ADR-260):
 ``{"win32.import": [DLL, SYMBOL, [TYPE...], [TYPE...]]}`` is a ``win64-c`` import (``DLL`` a bare file name), and
 ``{"win32.com": [INTERFACE, SLOT, [TYPE...], [TYPE...]]}`` is method ``SLOT`` of a COM interface (a ``win64-c`` declaration on ``com:INTERFACE``): input 0
@@ -274,7 +276,7 @@ def construct(request: dict) -> Constructed:
     for record in request.get("functions", []):
         builder.function(record)
     spec = request.get("package")
-    if not isinstance(spec, dict) or set(spec) - {"exports"} != {"name", "entries", "release"} or not spec["entries"]:
+    if not isinstance(spec, dict) or set(spec) - {"exports", "forwards", "dll_main"} != {"name", "entries", "release"} or not spec["entries"]:
         raise _error("package needs name, entries, release")
     exports = ()
     if "exports" in spec:
@@ -287,6 +289,17 @@ def construct(request: dict) -> Constructed:
             raise _error("the release entry of a DLL must be exported")
         exports = tuple(windows_export_symbol(builder.functions[f], name.encode()) for name, f in sorted(spec["exports"].items()))
         builder.artifact = ArtifactKind.WINDOWS_DLL
+        try:
+            from xax_compiler import windows_dllmain_symbol, windows_forward_symbol
+
+            exports += tuple(windows_forward_symbol(name.encode(), target_name.encode())
+                             for name, target_name in sorted(spec.get("forwards", {}).items()))
+            if "dll_main" in spec:
+                exports += (windows_dllmain_symbol(builder.functions[spec["dll_main"]]),)
+        except (ValueError, KeyError, AttributeError) as error:
+            raise _error(f"bad forwards or dll_main: {error}") from None
+    elif set(spec) & {"forwards", "dll_main"}:
+        raise _error("forwards and dll_main need exports")
     entries = tuple((name.encode(), builder.functions[function]) for name, function in sorted(spec["entries"].items()) if function in builder.functions)
     if len(entries) != len(spec["entries"]) or spec["release"] not in spec["entries"]:
         raise _error("package entries must name constructed functions, and release must be an entry")

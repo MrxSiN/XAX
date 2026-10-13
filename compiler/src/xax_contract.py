@@ -16,13 +16,14 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 9  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+HOST_CONTRACT_MINOR = 10  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
 # 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250);
 # 4: the windows-x86_64 construct platform and its win32.* carrier names (ADR-252); 5: integer-completion operations
 # (bit.and/or, udiv/urem, int.truncate, int.zero.extend) on the windows-x86_64 platform (ADR-256); 6: the jvm construct
 # platform and its jvm.* carrier names (ADR-257); 7: the linux-aarch64 construct platform (ADR-258); 8: package.exports on
 # windows-x86_64, building a PE32+ DLL (ArtifactKind.WINDOWS_DLL, windows_export_symbol; ADR-259); 9: win32.import and
 # win32.com carrier entities, COM methods as com:<Interface> win64-c declarations (win64_com_method; ADR-260)
+# 10: package.forwards and package.dll_main on windows-x86_64 DLLs (windows_forward_symbol, windows_dllmain_symbol; ADR-261)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)
@@ -43,7 +44,8 @@ INTERFACES = {
                   "decode_package", "decode_provenance", "ArtifactKind", "BuildResult"),
     "xax_compiler": ("StoreReader", "XaxError", "Diagnostic", "Kind", "Operation", "verify_store", "decode_native_target",
                      "x86_64_linux_exec_target", "X86_64_LINUX_ABI", "X86_64_LINUX_ELF_EXEC_FORMAT",
-                     "x86_64_windows_pe_target", "windows_export_symbol", "win64_com_method"),
+                     "x86_64_windows_pe_target", "windows_export_symbol", "win64_com_method",
+                     "windows_forward_symbol", "windows_dllmain_symbol"),
     "xax_linux": ("linux_api", "linux_startup_api", "process_contract", "LINUX_X86_64_PROCESS_CONTRACT"),
     "xax_platform": ("win32_kernel32_api", "win32_stdio_api"),
     "xax_artifact": ("BOOTSTRAP_COMPILER_IDENTITY_V1",),

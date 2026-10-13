@@ -71,8 +71,10 @@ def _import_section(rva: int, imports: tuple[tuple[int, bytes, bytes], ...]) -> 
     return body, slots, iat_rva, thunk_bytes
 
 
-def _export_section(rva: int, dll_name: bytes, exports: tuple[tuple[bytes, int], ...]) -> bytes:
-    """IMAGE_EXPORT_DIRECTORY + address/name/ordinal tables; names sorted (the loader binary-searches them)."""
+def _export_section(rva: int, dll_name: bytes, exports: tuple[tuple[bytes, int | bytes], ...]) -> bytes:
+    """IMAGE_EXPORT_DIRECTORY + address/name/ordinal tables; names sorted (the loader binary-searches them).  An export
+    whose target is bytes is a forwarder: its address entry points at the ``module.Symbol`` string inside this
+    directory, which is how the loader recognizes a forward (ADR-261)."""
     names = sorted(exports)
     count = len(names)
     functions_rva = rva + 40
@@ -80,12 +82,17 @@ def _export_section(rva: int, dll_name: bytes, exports: tuple[tuple[bytes, int],
     ordinals_rva = names_rva + 4 * count
     strings_rva = ordinals_rva + 2 * count
     strings = bytearray(dll_name + b"\0")
-    name_rvas = []
-    for name, _ in names:
+    name_rvas, address_rvas = [], []
+    for name, target in names:
         name_rvas.append(strings_rva + len(strings))
         strings += name + b"\0"
+        if isinstance(target, bytes):
+            address_rvas.append(strings_rva + len(strings))
+            strings += target + b"\0"
+        else:
+            address_rvas.append(target)
     directory = struct.pack("<IIHHIIIIIII", 0, 0, 0, 0, strings_rva, 1, count, count, functions_rva, names_rva, ordinals_rva)
-    return (directory + b"".join(struct.pack("<I", code_rva) for _, code_rva in names)
+    return (directory + b"".join(struct.pack("<I", item) for item in address_rvas)
             + b"".join(struct.pack("<I", item) for item in name_rvas)
             + b"".join(struct.pack("<H", index) for index in range(count)) + bytes(strings))
 
@@ -104,23 +111,33 @@ def emit_pe_executable(image: NativeImage) -> bytes:
     return _emit(image, None, ())
 
 
-def emit_pe_dll(image: NativeImage, dll_name: bytes, exports: tuple[tuple[bytes, bytes], ...]) -> bytes:
-    """Wrap compiled functions as a PE32+ DLL exporting ``(name, function CID)`` pairs under ``win64-c`` (ADR-259).
+def emit_pe_dll(
+    image: NativeImage,
+    dll_name: bytes,
+    exports: tuple[tuple[bytes, bytes], ...],
+    forwards: tuple[tuple[bytes, bytes], ...] = (),
+    dll_main: bytes | None = None,
+) -> bytes:
+    """Wrap compiled functions as a PE32+ DLL exporting ``(name, function CID)`` pairs under ``win64-c`` (ADR-259), plus
+    loader forwards ``(name, b"module.Symbol")`` and an optional DllMain function CID (ADR-261).
 
-    AddressOfEntryPoint is 0: the image has no DllMain, so nothing XAX-generated runs under the loader lock.  A host
-    calls the exports after ``LoadLibrary`` returns."""
+    Without ``dll_main`` AddressOfEntryPoint is 0 and nothing XAX-generated runs under the loader lock."""
     offsets = dict(image.function_offsets)
-    if not exports or len({name for name, _ in exports}) != len(exports):
-        fail("XAX.PE.EXPORT", image.target_cid.hex(), "PE-EXPORT-UNIQUE", "one or more distinct names", [name for name, _ in exports])
+    names = [name for name, _ in (*exports, *forwards)]
+    if not names or len(set(names)) != len(names):
+        fail("XAX.PE.EXPORT", image.target_cid.hex(), "PE-EXPORT-UNIQUE", "one or more distinct names", names)
     for name, cid in exports:
         if cid not in offsets:
             fail("XAX.PE.EXPORT", cid.hex(), "PE-EXPORT-COMPILED", "an exported function in the image", name)
+    if dll_main is not None and dll_main not in offsets:
+        fail("XAX.PE.EXPORT", dll_main.hex(), "PE-DLLMAIN-COMPILED", "the DllMain function in the image", None)
     if not dll_name or b"\0" in dll_name:
         fail("XAX.PE.EXPORT", image.target_cid.hex(), "PE-EXPORT-DLL-NAME", "nonempty NUL-free", dll_name)
-    return _emit(image, dll_name, tuple((name, offsets[cid]) for name, cid in exports))
+    entries = (*((name, offsets[cid]) for name, cid in exports), *forwards)
+    return _emit(image, dll_name, entries, None if dll_main is None else offsets[dll_main])
 
 
-def _emit(image: NativeImage, dll_name: bytes | None, exports: tuple[tuple[bytes, int], ...]) -> bytes:
+def _emit(image: NativeImage, dll_name: bytes | None, exports: tuple[tuple[bytes, int | bytes], ...], dll_entry: int | None = None) -> bytes:
     dll = dll_name is not None
     text_rva = SECTION_ALIGNMENT
     code = bytearray(image.code)
@@ -140,7 +157,7 @@ def _emit(image: NativeImage, dll_name: bytes | None, exports: tuple[tuple[bytes
         directories[12] = (iat_rva, iat_size)
         next_rva += _align(len(idata), SECTION_ALIGNMENT)
     if dll:
-        edata = _export_section(next_rva, dll_name, tuple((name, text_rva + offset) for name, offset in exports))
+        edata = _export_section(next_rva, dll_name, tuple((name, target if isinstance(target, bytes) else text_rva + target) for name, target in exports))
         sections.append((b".edata", len(edata), next_rva, _align(len(edata), FILE_ALIGNMENT), 0x40000040))
         payloads.append(edata)
         directories[0] = (next_rva, len(edata))
@@ -149,7 +166,7 @@ def _emit(image: NativeImage, dll_name: bytes | None, exports: tuple[tuple[bytes
     optional = struct.pack(
         "<HBBIIIIIQIIHHHHHHIIIIHHQQQQII",
         0x20B, 0, 0, text_raw, sum(s[3] for s in sections[1:]), 0,
-        0 if dll else text_rva + image.entry_offset, text_rva, DLL_IMAGE_BASE if dll else IMAGE_BASE, SECTION_ALIGNMENT, FILE_ALIGNMENT,
+        (0 if dll_entry is None else text_rva + dll_entry) if dll else text_rva + image.entry_offset, text_rva, DLL_IMAGE_BASE if dll else IMAGE_BASE, SECTION_ALIGNMENT, FILE_ALIGNMENT,
         6, 0, 0, 0, 6, 0, 0, size_of_image, HEADERS_SIZE, 0,
         2 if dll else 3,  # IMAGE_SUBSYSTEM_WINDOWS_GUI for a DLL, WINDOWS_CUI for an executable
         0x0160 if dll else 0x8160,  # NX_COMPAT | DYNAMIC_BASE | HIGH_ENTROPY_VA (+ TERMINAL_SERVER_AWARE for an EXE)

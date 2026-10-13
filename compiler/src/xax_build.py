@@ -1943,28 +1943,81 @@ def _build_android_managed_apk(reader, package_view, target_object, build_entry_
                               native_libraries={"libxaxapp.so": shared.data}, extra_entries=extra)
 
 
+# ADR-261: DllMain runs under the loader lock, so everything it can reach may call only these kernel32 functions
+# (no LoadLibrary, no waits, no user32): it allocates scratch memory, resolves one of its own exports, and starts a thread.
+DLLMAIN_FOREIGN_ALLOWLIST = frozenset((b"VirtualAlloc", b"VirtualFree", b"GetProcAddress", b"CreateThread", b"CloseHandle", b"DisableThreadLibraryCalls"))
+
+
+def _check_dllmain(reader: StoreReader, function_cid: bytes, where: str) -> None:
+    """DllMain is ``fn(b64, b32, b64, proof...) -> (b32, proof...)`` and its call closure stays inside the allowlist."""
+    from xax_compiler import (
+        Operation, _decode_function_interface, _is_proof_type, bits_type, decode_foreign_function, parse_function_graph, store_resolver,
+    )
+
+    resolve = store_resolver(reader)
+    _, parameters, returns = _decode_function_interface(resolve(function_cid), resolve)
+    machine = lambda cids: [cid for cid in cids if not _is_proof_type(resolve(cid))]  # noqa: E731
+    expected = ([bits_type(64).cid, bits_type(32).cid, bits_type(64).cid], [bits_type(32).cid])
+    if (machine(parameters), machine(returns)) != expected:
+        fail("XAX.BUILD.ARTIFACT", function_cid.hex(), "WINDOWS-DLLMAIN-SIGNATURE", "fn(b64, b32, b64, proof...) -> (b32, proof...)", None)
+    seen, pending = set(), [function_cid]
+    while pending:
+        cid = pending.pop()
+        if cid in seen:
+            continue
+        seen.add(cid)
+        for block in parse_function_graph(resolve(cid), resolve).blocks:
+            for node in block.nodes:
+                if node.operation == Operation.CALL_DIRECT:
+                    pending.append(node.entity.cid)
+                elif node.operation == Operation.CALL_INDIRECT:
+                    fail("XAX.BUILD.ARTIFACT", cid.hex(), "WINDOWS-DLLMAIN-LOADER-LOCK", "no indirect calls from DllMain", None)
+                elif node.operation == Operation.CALL_FOREIGN:
+                    declaration = decode_foreign_function(node.entity)
+                    if declaration.library.lower() != b"kernel32.dll" or declaration.name not in DLLMAIN_FOREIGN_ALLOWLIST:
+                        fail("XAX.BUILD.ARTIFACT", cid.hex(), "WINDOWS-DLLMAIN-LOADER-LOCK",
+                             sorted(item.decode() for item in DLLMAIN_FOREIGN_ALLOWLIST),
+                             f"{declaration.library.decode('ascii', 'replace')}!{declaration.name.decode('ascii', 'replace')}")
+
+
 def _build_windows_dll(reader: StoreReader, package_view, target_object: SemanticObject, description, function_root: bytes) -> bytes:
-    """A PE32+ DLL (ADR-259) exporting every ``windows-pe-export-v1`` member of the package's modules.  The build entry
-    must be one of the exports; the DLL name is the package logical identity plus ``.dll``."""
-    from xax_compiler import WINDOWS_EXPORT_PREFIX, decode_windows_export
+    """A PE32+ DLL (ADR-259) exporting every ``windows-pe-export-v1`` member of the package's modules, forwarding every
+    ``windows-pe-forward-v1`` member, and entering at an optional ``windows-pe-dllmain-v1`` member (ADR-261).  The build
+    entry must be one of the exports; the DLL name is the package logical identity plus ``.dll``."""
+    from xax_compiler import (
+        WINDOWS_DLLMAIN_PREFIX, WINDOWS_EXPORT_PREFIX, WINDOWS_FORWARD_PREFIX, decode_windows_dllmain, decode_windows_export,
+        decode_windows_forward,
+    )
     from xax_pe import emit_pe_dll
     from xax_x86_64 import compile_native_bound_target
 
     where = package_view.logical_identity.hex()
     if description.architecture != 1 or description.identity != b"x86_64-windows-pe-v1":
         fail("XAX.BUILD.ARTIFACT", where, "WINDOWS-DLL-TARGET", "x86_64-windows-pe-v1", description.identity)
-    exports = []
+    exports, forwards, mains = [], [], []
     for module_cid in package_view.modules:
         for cid in reader.get(module_cid).references:
             child = reader.get(cid)
-            if child.kind == Kind.TARGET and not child.references and Cursor(child.body, cid.hex()).byte_string().startswith(WINDOWS_EXPORT_PREFIX):
+            if child.kind != Kind.TARGET or child.references:
+                continue
+            identity = Cursor(child.body, cid.hex()).byte_string()
+            if identity.startswith(WINDOWS_EXPORT_PREFIX):
                 view = decode_windows_export(child)
                 exports.append((view.name, view.function_cid))
+            elif identity.startswith(WINDOWS_FORWARD_PREFIX):
+                forwards.append(decode_windows_forward(child))
+            elif identity.startswith(WINDOWS_DLLMAIN_PREFIX):
+                mains.append(decode_windows_dllmain(child))
     exports.sort()
+    forwards.sort()
     if function_root not in {cid for _, cid in exports}:
         fail("XAX.BUILD.ARTIFACT", where, "WINDOWS-DLL-ENTRY-EXPORTED", "the build entry is an export", function_root.hex())
-    image = compile_native_bound_target(reader, function_root, target_object, extra_roots=tuple(cid for _, cid in exports))
-    return emit_pe_dll(image, package_view.logical_identity + b".dll", tuple(exports))
+    if len(mains) > 1:
+        fail("XAX.BUILD.ARTIFACT", where, "WINDOWS-DLLMAIN-UNIQUE", "at most one DllMain", len(mains))
+    for main in mains:
+        _check_dllmain(reader, main, where)
+    image = compile_native_bound_target(reader, function_root, target_object, extra_roots=(*(cid for _, cid in exports), *mains))
+    return emit_pe_dll(image, package_view.logical_identity + b".dll", tuple(exports), tuple(forwards), mains[0] if mains else None)
 
 
 def _hosted_container(reader: StoreReader, function_root: bytes, target_object: SemanticObject, description) -> bytes | None:

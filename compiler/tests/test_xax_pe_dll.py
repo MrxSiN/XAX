@@ -221,5 +221,74 @@ class PeDllTests(unittest.TestCase):
                 ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(library._handle))
 
 
+def _dll_with_main(attach_result: int = 1, extra_node=None) -> dict:
+    """ADR-261: a forward to kernelbase plus a DllMain that returns ``attach_result`` for DLL_PROCESS_ATTACH, else 1."""
+    request = _dll()
+    nodes = [["int.compare", ["p1", ["b32", 1]], ["b1"], {"attrs": ["eq"]}]]
+    if extra_node is not None:
+        nodes.append(extra_node)
+    effect = "p3" if extra_node is None else "n1.r1"
+    request["functions"].append({"name": "main", "params": ["b64", "b32", "b64", MEM], "returns": ["b32", MEM], "blocks": [
+        {"params": ["b64", "b32", "b64", MEM], "nodes": nodes, "end": ["cbr", "n0", 1, [effect], 2, [effect]]},
+        {"params": [MEM], "nodes": [], "end": ["ret", [["b32", attach_result], "p0"]]},
+        {"params": [MEM], "nodes": [], "end": ["ret", [["b32", 1], "p0"]]}]})
+    request["package"].update(dll_main="main", forwards={"Ticks": "kernelbase.GetTickCount64"})
+    return request
+
+
+class PeDllEntryTests(unittest.TestCase):
+    def test_structure_and_rejections(self):
+        image = build(construct(_dll_with_main()).reader, construct(_dll_with_main()).release_request.cid).artifact
+        pe = struct.unpack_from("<I", image, 0x3C)[0]
+        self.assertNotEqual(struct.unpack_from("<I", image, pe + 24 + 16)[0], 0)  # DllMain is the entry point
+        self.assertEqual(_export_names(image), [b"Add3", b"Answer", b"Ticks"])
+        self.assertIn(b"kernelbase.GetTickCount64\0", image)
+        from xax_compiler import XaxError
+
+        user32 = ["call.foreign", [["b64", 0], "p3"], ["b32", MEM],
+                  {"entity": {"win32.import": ["user32.dll", "GetForegroundWindow", ["b64", MEM], ["b32", MEM]]}}]
+        constructed = construct(_dll_with_main(extra_node=user32))
+        with self.assertRaises(XaxError) as raised:
+            build(constructed.reader, constructed.release_request.cid)
+        self.assertEqual(raised.exception.diagnostic.rule, "WINDOWS-DLLMAIN-LOADER-LOCK")
+        bad = _dll_with_main()
+        bad["functions"][-1]["params"][1] = bad["functions"][-1]["blocks"][0]["params"][1] = "b64"
+        bad["functions"][-1]["blocks"][0]["nodes"][0][1][1] = ["b64", 1]
+        constructed = construct(bad)
+        with self.assertRaises(XaxError) as raised:
+            build(constructed.reader, constructed.release_request.cid)
+        self.assertEqual(raised.exception.diagnostic.rule, "WINDOWS-DLLMAIN-SIGNATURE")
+        for mutate in (lambda r: r["package"].update(forwards={"X": "C:/x.dll.F"}),
+                       lambda r: r["package"].update(dll_main="missing"),
+                       lambda r: r["package"].pop("exports")):
+            request = _dll_with_main()
+            mutate(request)
+            with self.subTest(), self.assertRaises(ValueError):
+                construct(request)
+
+    @unittest.skipUnless(WINDOWS_X86_64, "requires a Windows x86-64 host")
+    def test_loader_runs_dllmain_and_resolves_forwards(self):
+        import ctypes
+        import tempfile
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetProcAddress.restype = ctypes.c_void_p
+        kernel32.GetProcAddress.argtypes = (ctypes.c_void_p, ctypes.c_char_p)
+        with tempfile.TemporaryDirectory() as directory:
+            for attach, name in ((1, "accept.dll"), (0, "refuse.dll")):
+                constructed = construct(_dll_with_main(attach))
+                Path(directory, name).write_bytes(build(constructed.reader, constructed.release_request.cid).artifact)
+            library = ctypes.WinDLL(str(Path(directory, "accept.dll")))
+            try:
+                self.assertEqual(kernel32.GetProcAddress(library._handle, b"Ticks"),
+                                 kernel32.GetProcAddress(ctypes.WinDLL("kernelbase")._handle, b"GetTickCount64"))
+                library.Answer.restype = ctypes.c_uint32
+                self.assertEqual(library.Answer(), 42)
+            finally:
+                kernel32.FreeLibrary(ctypes.c_void_p(library._handle))
+            with self.assertRaises(OSError):  # DllMain returned FALSE for DLL_PROCESS_ATTACH
+                ctypes.WinDLL(str(Path(directory, "refuse.dll")))
+
+
 if __name__ == "__main__":
     unittest.main()

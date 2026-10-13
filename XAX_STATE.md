@@ -1514,3 +1514,7 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 ## Windows imports and COM calls — 2026-10-13 (ADR-260)
 
 `xax-construct-v1` on `windows-x86_64` declares any `win64-c` import (`win32.import`) and any COM method (`win32.com`: a `win64-c` declaration on library `com:<Interface>`, called through vtable slot k of a `b64` interface pointer). EXECUTED on Windows 11 x86-64: an XAX DLL reads the DXGI local-memory budget through `CreateDXGIFactory1` and four interface methods, and the value matches an independent reading (`tests/test_xax_pe_dll.py`). Host contract minor 9.
+
+## Windows DLL forwards and DllMain — 2026-10-13 (ADR-261)
+
+A Windows XAX DLL may forward exports to another module (`package.forwards`) and have a DllMain (`package.dll_main`) whose reachable calls the build limits to a loader-lock-safe kernel32 allowlist. EXECUTED on Windows 11 x86-64: an XAX DllMain's result governs `LoadLibrary`, forwards resolve to kernelbase, and a `version.dll` proxy built from XAX loads from a game-style executable's directory and starts a thread (`tests/test_xax_pe_dll.py`, VRAMBoost `tools/proxy_check.py`). Host contract minor 10.

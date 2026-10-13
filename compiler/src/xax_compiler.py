@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import struct
 import sys
 from dataclasses import asdict, dataclass, field, replace
@@ -3008,6 +3009,44 @@ def decode_windows_export(obj: SemanticObject) -> WindowsExportDescription:
     if not name or b"\x00" in name or not name.isascii():
         fail("XAX.WINDOWS.EXPORT", obj.cid.hex(), "WINDOWS-EXPORT-NAME", "nonempty NUL-free ASCII", name)
     return WindowsExportDescription(name, function_cid)
+
+
+# ADR-261: an export the loader forwards to ``module.Symbol`` (no code in this image), and the optional DLL entry point.
+WINDOWS_FORWARD_PREFIX = b"windows-pe-forward-v1"
+WINDOWS_DLLMAIN_PREFIX = b"windows-pe-dllmain-v1"
+_FORWARD_TARGET = re.compile(rb"[A-Za-z0-9_-]{1,64}\.[A-Za-z_][A-Za-z0-9_]{0,127}")
+
+
+def windows_forward_symbol(name: bytes, target_name: bytes) -> SemanticObject:
+    """Export ``name`` forwarded by the Windows loader to ``target_name`` = ``module.Symbol`` (a bare module name, no
+    path or extension; API-set names allowed)."""
+    if not name or b"\x00" in name or not name.isascii() or _FORWARD_TARGET.fullmatch(target_name) is None:
+        raise ValueError("Windows forward needs an ASCII export name and a module.Symbol target")
+    return target(WINDOWS_FORWARD_PREFIX + uleb(len(name)) + name + uleb(len(target_name)) + target_name)
+
+
+def decode_windows_forward(obj: SemanticObject) -> tuple[bytes, bytes]:
+    identity = Cursor(obj.body, obj.cid.hex()).byte_string()
+    cursor = Cursor(identity[len(WINDOWS_FORWARD_PREFIX):], obj.cid.hex())
+    name, target_name = cursor.byte_string(), cursor.byte_string()
+    cursor.end("WINDOWS-FORWARD-IDENTITY")
+    if not identity.startswith(WINDOWS_FORWARD_PREFIX) or not name or _FORWARD_TARGET.fullmatch(target_name) is None:
+        fail("XAX.WINDOWS.EXPORT", obj.cid.hex(), "WINDOWS-FORWARD-IDENTITY", "name and module.Symbol", [name, target_name])
+    return name, target_name
+
+
+def windows_dllmain_symbol(function_object: SemanticObject) -> SemanticObject:
+    """The DLL entry point (ADR-261): ``fn(b64 hinst, b32 reason, b64 reserved, proof...) -> (b32, proof...)``."""
+    if function_object.kind != Kind.FUNCTION:
+        raise ValueError("DllMain must be a function")
+    return target(WINDOWS_DLLMAIN_PREFIX + function_object.cid)
+
+
+def decode_windows_dllmain(obj: SemanticObject) -> bytes:
+    identity = Cursor(obj.body, obj.cid.hex()).byte_string()
+    if not identity.startswith(WINDOWS_DLLMAIN_PREFIX) or len(identity) != len(WINDOWS_DLLMAIN_PREFIX) + CID_SIZE:
+        fail("XAX.WINDOWS.EXPORT", obj.cid.hex(), "WINDOWS-DLLMAIN-IDENTITY", "prefix + function CID", identity[:32].hex())
+    return identity[len(WINDOWS_DLLMAIN_PREFIX):]
 
 
 @dataclass(frozen=True)
