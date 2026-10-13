@@ -697,8 +697,8 @@ Historical profiles and their failed or unknown costs remain separately recorded
 
 **Status: OPEN (2026-10-13).** VRAMBoost DX12 (`D:\GitHub\VRAMBoost`) is an XAX-only DirectX 12 memory tool that loads as a DLL inside game processes. ADR-259 (PE DLL exports) unblocked its first module. Its register `D:\GitHub\VRAMBoost\XAX_CAPABILITY_REQUESTS.md` records the remaining requests with failing examples and acceptance tests:
 
-- CR-002: calling foreign code pointers (COM vtable slots) under a declared `win64-c` contract. The spec currently forbids `CALL_INDIRECT` on code entries, and no operation reads foreign memory.
-- CR-003: carrier-declared `win64-c` imports beyond the fixed kernel32/stdio set (`dxgi.dll`, `d3d12.dll`, `LoadLibraryExW`, `GetProcAddress`, `QueryPerformanceCounter`).
+- CR-002 and CR-003: **resolved by ADR-260** (2026-10-13): typed `win64-c` imports and COM methods on `com:<Interface>` declarations, EXECUTED against DXGI and D3D12.
+- CR-011: calling a bare code address (`GetProcAddress` result) under a declared signature, needed for a `version.dll` pass-through proxy.
 - CR-005: module state that persists across export calls.
 - CR-006: checked views over caller-supplied `(address, length)` buffers at a DLL boundary.
 - CR-007: a non-trapping failure policy for code inside a host process (`ud2` would kill the game).
