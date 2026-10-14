@@ -873,7 +873,7 @@ def collect_order(read) -> list[bytes] | None:
     return [b"".join(word.to_bytes(8, "big") for word in words[k:k + CID_WORDS]) for k in range(0, len(words), CID_WORDS)]
 
 
-def general_object_table(reader, entry_cid: bytes, target_object):
+def general_object_table(reader, entry_cid: bytes, target_object, audit: bool = False):
     """``(words, member functions)``: the views backends' object table (``object_table_words``), then the count and
     records of every recursion group member function (``group_member_function``) the store does not hold, so the
     program can name each group member a ``call.group_member`` reaches; None when a graph cannot be streamed.  The
@@ -909,20 +909,21 @@ def general_object_table(reader, entry_cid: bytes, target_object):
         words += [*_cid_words(obj.cid), len(extents)]
         for ref, extent in extents:
             words += [ref.tag, ref.block, ref.index, ref.result, extent]
+    words.append(int(audit))  # S12c.1: write every value's range bound (tests)
     return words, {obj.cid: obj for obj in extras}
 
 
-def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
-    """S12a/S12b: ``(closure, views)`` as the XAX program decides them for a verified store: the entry's closure in
-    image order and, per function CID, its lowering view (``xax_inline.inline_leaf_calls``) rebuilt from the program's
-    words.  It raises the ``XaxError`` the program wrote when it rejects.  None when the program cannot run or
+def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = False, audit: bool = False):
+    """S12a-S12c.1: ``(closure, views, prefetches)`` as the XAX program decides them for a verified store: the entry's
+    closure in image order and, per function CID, its lowering view (``xax_inline.inline_leaf_calls``, then the
+    prefetch rewrite) rebuilt from the program's words, and its prefetch marks (absent where the host selects them).  It raises the ``XaxError`` the program wrote when it rejects.  None when the program cannot run or
     declines (the bootstrap then decides), unless ``required``."""
     import xax_native
     from xax_compiler import XaxError, fail, store_resolver
     from xax_selfhost_diagnostics import decode_diagnostic
 
     native = native_general()
-    table = None if native is None else general_object_table(reader, entry_cid, target_object)
+    table = None if native is None else general_object_table(reader, entry_cid, target_object, audit)
     words, members = table if table is not None else (None, {})
 
     def collect(read):
@@ -942,7 +943,8 @@ def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = F
         return None
     resolve = store_resolver(reader)
     closure = tuple(members[cid] if cid in members else resolve(cid) for cid in order)
-    return closure, rebuild_views(view_words, closure, resolve)
+    views, prefetches, bounds = rebuild_views(view_words, closure, resolve, audit)
+    return (closure, views, prefetches, bounds) if audit else (closure, views, prefetches)
 
 
 def closure_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
@@ -960,7 +962,7 @@ def _view_words(read) -> list[int]:
     return read(VIEW_AT, end - VIEW_AT)
 
 
-def rebuild_views(words, closure, resolve) -> dict:
+def rebuild_views(words, closure, resolve, audit: bool = False):
     """Each function's lowering view from the program's view words (``xax_selfhost_general_view``): nodes and blocks
     are taken from the graphs they came from and given the program's operands, as ``xax_inline._lower`` does.  The
     host decides nothing here."""
@@ -986,7 +988,7 @@ def rebuild_views(words, closure, resolve) -> dict:
         tag, block, index, result = take(4)
         return ValueRef(tag, block, index, result)
 
-    views = {}
+    views, prefetches, bounds = {}, {}, {}
     while position < len(words):
         (fidx, entry, count) = take(3)
         blocks = []
@@ -1008,7 +1010,21 @@ def rebuild_views(words, closure, resolve) -> dict:
             blocks.append(type(origin)(tuple(parameters), tuple(nodes), Terminator(TerminatorKind(kind), values, tuple(edges), payload)))
         extents = tuple((value(), take()[0]) for _ in range(take()[0]))
         views[closure[fidx].cid] = replace(graph(fidx), entry=entry, blocks=tuple(blocks), member_spans=(), pointer_extents=extents)
-    return views
+        # S12c.1: the prefetch marks the program selected (absent: the host selects them).
+        (decided, count) = take(2)
+        marks = {}
+        for _ in range(count):
+            head = value()
+            marks[head] = tuple((value(), take()[0]) for _ in range(take()[0]))
+        if decided:
+            prefetches[closure[fidx].cid] = marks
+        if audit and take()[0]:  # every value's bound (None for none), in view order
+            view = views[closure[fidx].cid]
+            refs = [ref for b, block in enumerate(view.blocks) for ref in (
+                *(ValueRef.parameter(b, k) for k in range(len(block.parameters))),
+                *(ValueRef.node_result(b, n, r) for n, node in enumerate(block.nodes) for r in range(len(node.results))))]
+            bounds[closure[fidx].cid] = {ref: (None if none else bound) for ref, (none, bound) in zip(refs, (take(2) for _ in refs))}
+    return views, prefetches, bounds
 
 
 __all__ = ["RULES", "build_general_program", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general", "write_general_store"]

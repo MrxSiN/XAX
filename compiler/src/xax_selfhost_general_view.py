@@ -47,15 +47,18 @@ MAX_HOPS = 8
 # Globals (``GLOBALS + slot``), after the front end's.
 (G_VEXT, G_VTYPE, G_VPROD, G_VREAD, G_VMULTI, G_VFWD, G_VPARAM, G_VSTAMP, G_VPOS, G_VCOUNT, G_STAMP, G_BLIST, G_BCOUNT, G_BENTRY,
  G_GEXT, G_CIDX, G_CAND, G_FKEYS, G_FKEYN, G_LIFT_ENTRY, G_VIEW_OUT, G_VSTAMP2) = range(36, 58)
-assert G_VSTAMP2 < 64
+G_AUDIT = 59  # (58 is ``xax_selfhost_general_ranges.G_MORE``)
+assert G_AUDIT < 64
 
 # Node record: origin, stream positions, counts, then operand and output value ids.
 N_FN, N_B, N_N, N_OP, N_ATTR, N_NOPS, N_NRES, N_OPSAT, N_GRAPH = range(9)
 N_HDR = 9
 # Block record.
 (B_KIND0, B_FN, B_BB, B_NN, B_NP, B_INPUTS, B_NODES, B_NNODES, B_KIND, B_PFN, B_PB, B_VALUES, B_NVALUES, B_EDGES, B_NEDGES, B_TERM,
- B_POS, B_PLACED, B_INCOMING, B_MARK, B_DIST, B_GRAPH) = range(22)
-B_WORDS = 22
+ B_POS, B_PLACED, B_INCOMING, B_MARK, B_DIST, B_GRAPH, B_SNAP_SRC, B_SNAP_ARGS) = range(24)
+B_WORDS = 24
+# Scratch fields every new block record starts with cleared (the output view is reused between runs).
+B_SCRATCH = (B_POS, B_PLACED, B_INCOMING, B_MARK, B_DIST, B_SNAP_SRC, B_SNAP_ARGS)
 EDGE = 3  # target block, argument count, arguments
 CALLS = (int(Operation.CALL_GROUP_MEMBER), int(Operation.CALL_DIRECT), int(Operation.CALL_FOREIGN), int(Operation.CALL_INDIRECT))
 PURE = tuple(int(op) for op in (
@@ -167,7 +170,7 @@ def _lift(tables):
             _ok(e, e.ne(p["lb"], NONE))
             e.st(e.add(p["la"], p["bq"]), p["lb"])
             for field, value in ((B_KIND0, 0), (B_FN, p["fidx"]), (B_BB, p["bq"]), (B_NN, NONE), (B_PFN, p["fidx"]), (B_PB, p["bq"]),
-                                 (B_GRAPH, p["lg"])):
+                                 (B_GRAPH, p["lg"]), *((field, 0) for field in B_SCRATCH)):
                 _set(e, p["lb"], field, value)
             e.var("lnp", e.rd(p["lat"]))
             e.set("lat", e.add(p["lat"], 1))
@@ -430,7 +433,7 @@ def _splice(tables):
         _ok(e, e.ne(p["scont"], NONE))
         cont = p["scont"]
         for field, value in ((B_KIND0, 1), (B_FN, _f(e, item, N_FN)), (B_BB, _f(e, item, N_B)), (B_NN, _f(e, item, N_N)), (B_NP, p["snres"]),
-                             (B_GRAPH, _f(e, p["b"], B_GRAPH))):
+                             (B_GRAPH, _f(e, p["b"], B_GRAPH)), *((field, 0) for field in B_SCRATCH)):
             _set(e, cont, field, value)
         e.var("sin", e.alloc(e.add(p["snres"], 1)))
         _ok(e, e.ne(p["sin"], NONE))
@@ -891,7 +894,7 @@ def _stores(tables):
 def _locals(tables):
     """``_local_parameters`` (ADR-212): in a block entered by exactly one edge from another block, values that edge
     passes are read through the block's own parameters.  Edge argument arrays are never changed in place here, so the
-    incoming edge seen at the start (source in ``B_MARK``, arguments in ``B_DIST``) keeps its arguments."""
+    incoming edge seen at the start (``B_SNAP_SRC``, ``B_SNAP_ARGS``) keeps its arguments."""
     def build(e: E):
         p = e.p
         e.var("lp_changed", 0)
@@ -904,7 +907,8 @@ def _locals(tables):
             def edge():
                 e.var("lp_e", e.add(_f(e, p["lp_b"], B_EDGES), e.mul(p["lp_k"], EDGE)))
                 e.var("lp_t", _f(e, p["lp_e"], 0))
-                e.if_(e.eq(_f(e, p["lp_t"], B_INCOMING), 1), lambda: (_set(e, p["lp_t"], B_MARK, p["lp_b"]), _set(e, p["lp_t"], B_DIST, _f(e, p["lp_e"], 2))))
+                e.if_(e.eq(_f(e, p["lp_t"], B_INCOMING), 1), lambda: (_set(e, p["lp_t"], B_SNAP_SRC, p["lp_b"]),
+                                                                        _set(e, p["lp_t"], B_SNAP_ARGS, _f(e, p["lp_e"], 2))))
 
             e.for_("lp_k", 0, _f(e, p["lp_b"], B_NEDGES), edge)
 
@@ -916,8 +920,8 @@ def _locals(tables):
             single = e.both(e.ne(b, _g(e, G_BENTRY)), e.eq(_f(e, b, B_INCOMING), 1))
 
             def local():
-                e.var("lp_src", _f(e, b, B_MARK))
-                e.var("lp_args", _f(e, b, B_DIST))
+                e.var("lp_src", _f(e, b, B_SNAP_SRC))
+                e.var("lp_args", _f(e, b, B_SNAP_ARGS))
 
                 def mapped():
                     # Mapping: argument -> parameter (first occurrence; an argument that is its own parameter skipped).
@@ -1196,8 +1200,8 @@ def _out_value(e: E, value):
     _out(e, e.and_(pos, (1 << 16) - 1))
 
 
-def _lower(tables):
-    """``xax_inline._lower``: positions in the final block order, then the view's words (module docstring)."""
+def _positions(tables):
+    """``xax_inline._lower``'s positions: every value's (tag, block, index, result) in the final block order."""
     def build(e: E):
         p = e.p
         e.for_("lw_v", 0, _g(e, G_VCOUNT), lambda: _set_vf(e, G_VPOS, p["lw_v"], NONE))
@@ -1218,6 +1222,15 @@ def _lower(tables):
             e.for_("lw_m", 0, _f(e, p["lw_b"], B_NNODES), node)
 
         e.for_("lw_q", 0, _g(e, G_BCOUNT), position)
+        e.give(1)
+    return _function((), build, tables)
+
+
+def _lower(tables):
+    """``xax_inline._lower``: positions in the final block order, then the view's words (module docstring)."""
+    def build(e: E):
+        p = e.p
+        _call(e, "positions")
         _out(e, _f(e, _g(e, G_BENTRY), B_POS))
         _out(e, _g(e, G_BCOUNT))
 
@@ -1366,10 +1379,73 @@ def _view(tables):
 
         e.if_(e.ne(p["vw_any"], 0), inline, lambda: _simplify(e, False))
         _call(e, "layout")
+        # S12c.1 (ADR-270): prefetch selection on the laid-out view, when its values are all bounded exactly.
+        _call(e, "positions")
+        e.var("vw_facts", e.call(_FN["value_facts"]))
+        e.if_(e.ne(p["vw_facts"], NONE), lambda: _call(e, "prefetch"))
         _out(e, p["fidx"])
         _call(e, "lower")
+        _write_marks(e, e.ne(p["vw_facts"], NONE))
+        e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _write_audit(e, e.ne(p["vw_facts"], NONE)))
         e.give(1)
     return _function(("f", "fidx"), build, tables)
+
+
+def _write_audit(e: E, decided):
+    """S12c.1 audit (tests only): whether the bounds were computed, then for every value of the final view (per block
+    in order: parameters, then node outputs) its ``upper_bounds`` with bits widths: a none flag and the bound."""
+    from xax_selfhost_general_ranges import G2_RNONE, G2_WBITS, G2_WIDTHS, _g2, _set_g2
+
+    p = e.p
+    e.var("au_decided", e.flag(decided))
+    _out(e, p["au_decided"])
+
+    def audit():
+        _set_g2(e, G2_WIDTHS, _g2(e, G2_WBITS))
+        _call(e, "bounds")
+
+        def value(v):
+            e.var("au_v", v)
+            e.var("au_b", e.call(_FN["maximum0"], p["au_v"]))
+            _out(e, _g2(e, G2_RNONE))
+            _out(e, p["au_b"])
+
+        def block():
+            e.var("au_blk", e.ld(e.add(_g(e, G_BLIST), p["au_q"])))
+            e.for_("au_k", 0, _f(e, p["au_blk"], B_NP), lambda: value(e.ld(e.add(_f(e, p["au_blk"], B_INPUTS), p["au_k"]))))
+
+            def node():
+                e.var("au_n", e.ld(e.add(_f(e, p["au_blk"], B_NODES), p["au_m"])))
+                e.for_("au_r", 0, _f(e, p["au_n"], N_NRES), lambda: value(_output(e, p["au_n"], p["au_r"])))
+
+            e.for_("au_m", 0, _f(e, p["au_blk"], B_NNODES), node)
+
+        e.for_("au_q", 0, _g(e, G_BCOUNT), block)
+
+    e.if_(e.ne(p["au_decided"], 0), audit)
+
+
+def _write_marks(e: E, decided):
+    """After a view: whether the prefetch was decided here (else the host selects it), then the marks: the appended
+    load's result, and its (array pointer, scale) prefetches."""
+    from xax_selfhost_general_ranges import G2_MARKS, G2_NMARKS, MARK_WORDS, _g2
+
+    p = e.p
+    e.var("wm_decided", e.flag(decided))
+    _out(e, p["wm_decided"])
+    e.var("wm_n", e.mul(p["wm_decided"], _g2(e, G2_NMARKS)))
+    _out(e, p["wm_n"])
+
+    def mark():
+        e.var("wm_at", e.add(_g2(e, G2_MARKS), e.mul(p["wm_q"], MARK_WORDS)))
+        _out_value(e, e.ld(p["wm_at"]))
+        e.var("wm_list", e.ld(e.add(p["wm_at"], 1)))
+        e.var("wm_count", e.ld(e.add(p["wm_at"], 2)))
+        _out(e, p["wm_count"])
+        e.for_("wm_k", 0, p["wm_count"], lambda: (_out_value(e, e.ld(e.add(p["wm_list"], e.mul(p["wm_k"], 2)))),
+                                                   _out(e, e.ld(e.add(p["wm_list"], e.add(e.mul(p["wm_k"], 2), 1))))))
+
+    e.for_("wm_q", 0, p["wm_n"], mark)
 
 
 def add_view_functions(add, tables):
@@ -1389,7 +1465,11 @@ def add_view_functions(add, tables):
     add("dead", _dead(tables))
     add("distance", _distance(tables))
     add("layout", _layout(tables))
+    add("positions", _positions(tables))
     add("lower", _lower(tables))
+    from xax_selfhost_general_ranges import add_range_functions
+
+    add_range_functions(add, tables)
     add("view", _view(tables))
 
 
@@ -1424,7 +1504,12 @@ def views_prologue(e: E, total, order, members):
         e.set("vp_at", e.add(e.add(p["vp_at"], 1), e.mul(e.rd(p["vp_at"]), 5)))
 
     e.for_("vp_k", 0, p["vp_n"], graph)
+    # S12c.1: an audit flag follows the extents (1: also write every value's range bound after each view).
+    _globals(e, G_AUDIT, e.rd(p["vp_at"]))
     _globals(e, G_VIEW_OUT, VIEW_AT)
+    from xax_selfhost_general_ranges import ranges_prologue
+
+    ranges_prologue(e)
 
     def each():
         e.var("vp_mark", e.hd(H_ARENA))  # every allocation of a view is dead once it is written

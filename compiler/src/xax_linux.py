@@ -409,15 +409,42 @@ def _frontend_outcome(decide):
         return error.diagnostic
 
 
-def _check_views(views, order, resolve) -> None:
-    """``XAX_GENERAL_FRONTEND_DIFF=1``: every S12b view equals ``inline_leaf_calls`` of its function."""
+def reference_view(function, resolve, decided: bool):
+    """The bootstrap's lowering view of ``function`` (``inline_leaf_calls``), and with ``decided`` its prefetch rewrite:
+    ``(view, marks)`` (marks None when the prefetch is not part of the comparison)."""
     from xax_compiler import parse_function_graph
     from xax_inline import inline_leaf_calls
+    from xax_prefetch import prefetch_next_iteration
+
+    view = inline_leaf_calls(parse_function_graph(function, resolve), resolve)
+    return prefetch_next_iteration(view, resolve) if decided else (view, None)
+
+
+def _check_views(views, prefetches, order, resolve) -> None:
+    """``XAX_GENERAL_FRONTEND_DIFF=1``: every S12b view equals ``inline_leaf_calls`` of its function, and where the
+    program selected the prefetch (S12c.1), the view and marks equal ``prefetch_next_iteration``'s."""
+    for function in order:
+        decided = function.cid in prefetches
+        view, marks = reference_view(function, resolve, decided)
+        if views.get(function.cid) != view or (decided and prefetches[function.cid] != marks):
+            raise AssertionError(f"S12b/S12c.1 lowering views disagree for {function.cid.hex()}: xax {views.get(function.cid)!r} "
+                                 f"{prefetches.get(function.cid)!r} reference {view!r} {marks!r}")
+
+
+def check_bounds(views, bounds, order, resolve) -> None:
+    """S12c.1 audit: every value's range bound the program computed equals ``xax_ranges.upper_bounds`` on the same view
+    (bits widths and constants, as the prefetch bounds them)."""
+    from xax_prefetch import _widths_and_constants
+    from xax_ranges import upper_bounds
 
     for function in order:
-        reference = inline_leaf_calls(parse_function_graph(function, resolve), resolve)
-        if views.get(function.cid) != reference:
-            raise AssertionError(f"S12b lowering views disagree for {function.cid.hex()}: xax {views.get(function.cid)!r} reference {reference!r}")
+        if function.cid not in bounds:
+            continue
+        view = views[function.cid]
+        maximum = upper_bounds(view, *_widths_and_constants(view, resolve))
+        wrong = {ref: (got, maximum(ref)) for ref, got in bounds[function.cid].items() if maximum(ref) != got}
+        if wrong:
+            raise AssertionError(f"S12c.1 value ranges disagree for {function.cid.hex()}: (xax, reference) {wrong!r}")
 
 
 def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "auto") -> LinuxExecutable:
@@ -431,7 +458,7 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
     verify_store(reader)
     resolve = store_resolver(reader)
     target_object = resolve(target_cid)
-    order = views = None
+    order = views = prefetches = None
     if frontend != "python":
         from xax_selfhost_x86_64_general import closure_with_xax, general_with_xax
 
@@ -440,15 +467,18 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
             reference = _frontend_outcome(lambda: linux_closure(reader, entry_cid, target_object))
             if xax != reference:
                 raise AssertionError(f"S12a front ends disagree: xax {xax!r} reference {reference!r}")
-        decided = general_with_xax(reader, entry_cid, target_object, required=frontend == "xax")
+        audit = os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
+        decided = general_with_xax(reader, entry_cid, target_object, required=frontend == "xax", audit=audit)
         if decided is not None:
-            order, views = decided
-            if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
-                _check_views(views, order, resolve)
+            order, views, prefetches = decided[:3]
+            if audit:
+                _check_views(views, prefetches, order, resolve)
+                check_bounds(views, decided[3], order, resolve)
     if order is None:
         order = linux_closure(reader, entry_cid, target_object)
     description = decode_native_target(target_object)
-    image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True, views=views)
+    image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True, views=views,
+                           prefetches=prefetches)
     data, image_offset, needed = emit_linux_elf_executable(image, dynamic_loader=description.image_format == X86_64_LINUX_ELF_DYNAMIC_FORMAT)
     ranges = tuple(
         ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, image_offset + item.start, image_offset + item.end)

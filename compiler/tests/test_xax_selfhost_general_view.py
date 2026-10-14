@@ -1,9 +1,12 @@
-"""S12b (ADR-269): the general x86-64 backend's lowering view decided by an XAX program.
+"""S12b and S12c.1 (ADR-269, ADR-270): the general x86-64 backend's lowering view, value ranges, and prefetch
+selection decided by an XAX program.
 
 ``general_with_xax(required=True)`` fails rather than fall back; the views it returns are rebuilt from the program's
 words (origins and operands), so equality with ``xax_inline.inline_leaf_calls`` -- every block, node, operand,
 terminator, entry, and pointer extent -- proves the XAX program made every inlining, simplification, and layout
-decision.  The suites that build Linux programs also check every view with ``XAX_GENERAL_FRONTEND_DIFF=1``.
+decision.  Where the program selected the prefetch, the view and marks equal ``prefetch_next_iteration``'s; with
+``audit=True`` the program also writes every value's range bound, which must equal ``xax_ranges.upper_bounds``.
+The suites that build Linux programs check all of it with ``XAX_GENERAL_FRONTEND_DIFF=1``.
 """
 
 from __future__ import annotations
@@ -24,7 +27,7 @@ from xax_compiler import (
 )
 from xax_graph_builder import GraphBuilder, program_store
 from xax_inline import inline_leaf_calls
-from xax_linux import compile_linux_executable, linux_api
+from xax_linux import check_bounds, compile_linux_executable, linux_api, reference_view
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -62,12 +65,16 @@ class GeneralViewTests(unittest.TestCase):
         from xax_selfhost_x86_64_general import general_with_xax
 
         resolve = store_resolver(reader)
-        closure, views = general_with_xax(reader, entry.cid, self.target, required=True)
+        closure, views, prefetches, bounds = general_with_xax(reader, entry.cid, self.target, required=True, audit=True)
+        check_bounds(views, bounds, closure, resolve)  # S12c.1: every value's range bound
         changed = 0
         for function in closure:
             graph = parse_function_graph(function, resolve)
-            reference = inline_leaf_calls(graph, resolve)
+            decided = function.cid in prefetches
+            reference, marks = reference_view(function, resolve, decided)
             self.assertEqual(views[function.cid], reference, function.cid.hex())
+            if decided:
+                self.assertEqual(prefetches[function.cid], marks)
             changed += reference.blocks != graph.blocks
         return changed
 
@@ -154,14 +161,44 @@ class GeneralViewTests(unittest.TestCase):
         self.assertEqual(checked, 40)
         self.assertGreater(changed, 20)
 
+    def test_chains_prefetch(self):
+        """S12c.1: the chains benchmark's lookup gets the next iteration's head load and its prefetches from the XAX
+        program (soa: two arrays, scales 4 and 8); the other layouts get none.  Executables are byte-identical."""
+        from benchmarks.linux_chains import build_chains_program
+        from xax_selfhost_x86_64_general import general_with_xax
+
+        for links in ("index", "pointer", "link", "soa"):
+            with self.subTest(links=links):
+                program = build_chains_program(links=links)
+                resolve = store_resolver(program.reader)
+                closure, views, prefetches, bounds = general_with_xax(program.reader, program.entry.cid, program.target, required=True, audit=True)
+                check_bounds(views, bounds, closure, resolve)
+                marks = {}
+                for function in closure:
+                    self.assertIn(function.cid, prefetches)
+                    reference, expected = reference_view(function, resolve, True)
+                    self.assertEqual(views[function.cid], reference)
+                    self.assertEqual(prefetches[function.cid], expected)
+                    marks.update(expected)
+                self.assertEqual(len(marks), 1 if links == "soa" else 0)
+                if links == "soa":
+                    self.assertEqual(sorted(scale for _pointer, scale in next(iter(marks.values()))), [4, 8])
+                xax = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="xax")
+                python = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="python")
+                self.assertEqual(xax.data, python.data)
+
     def test_jsonmin(self):
         from benchmarks.jsonmin import build_jsonmin
 
         program = build_jsonmin()
-        closure, views = __import__("xax_selfhost_x86_64_general").general_with_xax(program.reader, program.entry.cid, program.target, required=True)
+        closure, views, prefetches, bounds = __import__("xax_selfhost_x86_64_general").general_with_xax(
+            program.reader, program.entry.cid, program.target, required=True, audit=True)
         resolve = store_resolver(program.reader)
+        check_bounds(views, bounds, closure, resolve)
         for function in closure:
-            self.assertEqual(views[function.cid], inline_leaf_calls(parse_function_graph(function, resolve), resolve))
+            reference, marks = reference_view(function, resolve, function.cid in prefetches)
+            self.assertEqual(views[function.cid], reference)
+            self.assertEqual(prefetches.get(function.cid, marks), marks)
         xax = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="xax")
         python = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="python")
         self.assertEqual(xax.data, python.data)

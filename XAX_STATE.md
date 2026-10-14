@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
+
+S12c is cut into S12c.1 (ranges and prefetch) and S12c.2 (the register-resident analyses). S12c.1 is complete on Linux x86-64. The general backend program bounds values exactly as `upper_bounds` does: 81,492 audited bounds over jsonmin, chains, and 550 random programs agree, and so do all Linux test compiles. It selects the next-iteration prefetch on the view (the chains lookup's mark included), byte-identical executables. Closure, views, and prefetch together take 73.5 ms in XAX against 163 ms in Python on jsonmin. Next: S12c.2.
+
 ## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
 
-S12b is complete on Linux x86-64. The general backend program now also decides each closure function's lowering view: leaf inlining, the simplification fixed point, and the fall-through block layout. Every view of every Linux test compile, and of 340 random programs, equals `inline_leaf_calls`. The XAX path (closure and views) is about 2.6x faster than Python on jsonmin. Prefetch selection moved to S12c with value ranges. Code generation is still Python. Next: S12c.
+S12b is complete on Linux x86-64. The general backend program now also decides each closure function's lowering view: leaf inlining, the simplification fixed point, and the fall-through block layout. Every view of every Linux test compile, and of 340 random programs, equals `inline_leaf_calls`. The XAX path (closure and views) is about 2.6x faster than Python on jsonmin. Prefetch selection moved to S12c with value ranges. Code generation is still Python. Next: S12c. S12c.1: see above.
 
 ## S12a the general backend's front end — 2026-10-14 (ADR-268)
 

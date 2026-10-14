@@ -186,12 +186,19 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
+
+- Done: `compiler/src/xax_selfhost_general_ranges.py` (value facts, `maximum0`-`maximum9`, `edge_bound`, `bounds`, `extent`, `cycle`, `prefetch_load`, `prefetch`; second globals table `G_MORE`/`_g2`), the view now runs `positions`, `value_facts`, and `prefetch` before `lower`, and writes marks (and, with the input's audit flag, every value's bound). `general_with_xax(..., audit=True)` returns `(closure, views, prefetches, bounds)`; `xax_linux.check_bounds` and `reference_view` are the references.
+- Ranges take a width table (`G2_WIDTHS`): S12c.2 must point it at the register lowering's machine widths (`_eligible`), which include pointers, unlike the prefetch's bits widths.
+- Stamps: every stamp word must be cleared when its value or block is created (`_clear_stamps`, `B_SCRATCH`), because rounds restart per run and the native runner reuses its output view.
+- Next: S12c.2. Instrument `compile_register_resident` to export its analyses (a test-only hook), port them in the same order, and audit them value by value like the ranges.
+
 ## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
 
 - Done: `compiler/src/xax_selfhost_general_view.py` (17 functions, linked into `xax_x86_64_general.xax` by `add_view_functions`; `views_prologue` runs after the closure), `general_with_xax` → `(closure, views)`, `rebuild_views`, `_compile_function(view=)`. Tests: `tests/test_xax_selfhost_general_view.py`.
 - Debugging a decline: build the program in memory with `_ok` replaced by a recorder of `inspect` sites that stores the first failing site in an output word, then lower it with `host_image(reader, function, None)` and run it with `_NativeRunner`. The two bugs found this way were helpers that returned NONE for "no" (use `NOT_CALL`, since `_call` treats NONE as a decline).
 - Arena records: values are indices into `G_V*` tables (capacity `VCAP`); nodes and blocks are arena records (`N_*`, `B_*`). The arena is reset after each view (`views_prologue`), so everything a view needs from caches (interfaces, erased flags) must be filled during the closure.
-- Next: S12c. Port `xax_ranges.upper_bounds` and the predicate tables, then `prefetch_next_iteration` (it rewrites the view, so add it after `_layout`/`_lower` or rebuild positions), then `compile_register_resident`'s analyses.
+- Next: S12c. Port `xax_ranges.upper_bounds` and the predicate tables, then `prefetch_next_iteration` (it rewrites the view, so add it after `_layout`/`_lower` or rebuild positions), then `compile_register_resident`'s analyses. S12c.1: see above.
 
 ## S12a the general backend's front end — 2026-10-14 (ADR-268)
 
