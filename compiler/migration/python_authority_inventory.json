@@ -130,6 +130,12 @@
         "android-backend"
       ]
     },
+    "xax_dex_jvm.py": {
+      "class": "A",
+      "components": [
+        "android-backend"
+      ]
+    },
     "xax_elf.py": {
       "class": "A",
       "components": [
@@ -315,6 +321,10 @@
       ],
       "note": "Builder of the canonical S7 store; image_from_backend_output renders the program's image record (S7b.2)."
     },
+    "xax_selfhost_writer.py": {
+      "class": "G",
+      "note": "Builder of the canonical S9 store (ADR-262)."
+    },
     "xax_spirv.py": {
       "class": "A",
       "components": [
@@ -440,14 +450,14 @@
       "recommended_step": "S7b.2 (EXECUTED, ADR-181)"
     },
     "store-codec": {
-      "python_authority": "xax_compiler.StoreWriter, SemanticObject.create",
-      "xax_hosted": null,
+      "python_authority": "none on the production path (S9, ADR-262): off Linux x86-64 and for inputs the writer's batch cannot carry or its capacity exceeds (a CID or reference not 32 bytes, a field outside 0..2^64, over 65,536 objects, 4,096 records, or a 16 MiB store), xax_compiler._bootstrap_store_contents and _bootstrap_emit_store decide; they remain the differential oracle. SemanticObject.create still proposes each object's CID in Python (preimage encoding; the hash is S2 XAX), which the writer re-derives before it accepts the object",
+      "xax_hosted": "xax_store_writer.xax: schema version, reference order, CID re-derivation (the S2 hash graph over the writer's own view), duplicate CIDs, root presence, record order and duplicates, the container (header, CID-ordered envelopes, metadata envelopes, index, digest, trailer), and the bootstrap's exact rejection messages (ADR-262)",
       "target_dependency": "none",
       "prerequisite": "S2 hash",
-      "differential_oracle": "byte-identical stores for every committed builder",
+      "differential_oracle": "byte-identical stores for every committed store in shuffled order, random stores, and every rejection with its precedence (tests/test_xax_selfhost_writer.py)",
       "fixed_point_relevance": "required to write the next compiler root",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S9"
+      "recommended_step": "done (S9)"
     },
     "store-decoding": {
       "python_authority": "xax_compiler.StoreReader and _parse_graph: OBJECT_MISSING lookups, deferred inputs (minor >= 2**32, > 116,507 records, bodies over 1 MiB, accepted values >= 2**35); container (S8a), object-envelope (S8b.1), and graph-syntax (S8b.2) rejections are XAX",

@@ -468,8 +468,12 @@ def write_store(
     objects: Iterable[SemanticObject],
     nonsemantic_records: Iterable[NonsemanticRecord] = (),
 ) -> bytes:
-    ordered, metadata = _store_contents(root_cid, objects, nonsemantic_records)
-    return _emit_store(root_cid, ordered.values(), metadata)
+    objects, nonsemantic_records = tuple(objects), tuple(nonsemantic_records)
+    written = _xax_write(root_cid, objects, nonsemantic_records, check_only=False)
+    if written is not None:
+        return written
+    ordered, metadata = _bootstrap_store_contents(root_cid, objects, nonsemantic_records)
+    return _bootstrap_emit_store(root_cid, ordered.values(), metadata)
 
 
 def _store_contents(
@@ -477,7 +481,23 @@ def _store_contents(
     objects: Iterable[SemanticObject],
     nonsemantic_records: Iterable[NonsemanticRecord],
 ) -> tuple[dict[bytes, SemanticObject], tuple[NonsemanticRecord, ...]]:
-    """Validate store contents; return objects in canonical CID order and sorted metadata."""
+    """Validate store contents; return objects in canonical CID order and sorted metadata.
+
+    S9 (ADR-262): the XAX store writer decides validity (every CID re-derived); the bootstrap decides only where
+    it cannot run or declines."""
+    objects, nonsemantic_records = tuple(objects), tuple(nonsemantic_records)
+    if _xax_write(root_cid, objects, nonsemantic_records, check_only=True) is None:
+        return _bootstrap_store_contents(root_cid, objects, nonsemantic_records)
+    ordered = sorted(objects, key=lambda obj: obj.cid)
+    return {obj.cid: obj for obj in ordered}, tuple(sorted(nonsemantic_records, key=lambda record: record.envelope()))
+
+
+def _bootstrap_store_contents(
+    root_cid: bytes,
+    objects: Iterable[SemanticObject],
+    nonsemantic_records: Iterable[NonsemanticRecord],
+) -> tuple[dict[bytes, SemanticObject], tuple[NonsemanticRecord, ...]]:
+    """The bootstrap's validation: the reference and fallback for the S9 writer."""
     by_cid: dict[bytes, SemanticObject] = {}
     for obj in objects:
         if obj.schema_version != 1 or (
@@ -497,6 +517,14 @@ def _store_contents(
 
 
 def _emit_store(root_cid: bytes, ordered: Iterable[SemanticObject], metadata: tuple[NonsemanticRecord, ...]) -> bytes:
+    """The container for already validated contents: written by the XAX store writer (S9, ADR-262) where it runs."""
+    ordered = tuple(ordered)
+    written = _xax_write(root_cid, ordered, metadata, check_only=False)
+    return written if written is not None else _bootstrap_emit_store(root_cid, ordered, metadata)
+
+
+def _bootstrap_emit_store(root_cid: bytes, ordered: Iterable[SemanticObject], metadata: tuple[NonsemanticRecord, ...]) -> bytes:
+    """The bootstrap's container emission: the reference and fallback for the S9 writer."""
     ordered = tuple(ordered)
     out = bytearray(
         MAGIC
@@ -525,6 +553,65 @@ def _emit_store(root_cid: bytes, ordered: Iterable[SemanticObject], metadata: tu
     out.extend(blake3(out).digest())
     out.extend(TRAILER_MAGIC)
     return bytes(out)
+
+
+# Self-hosting S9 (ADR-262): canonical store writing is an XAX function, loaded on first use.  Loading it reads
+# and verifies its own store, and lowering it may write stores, so those writes take the bootstrap path.
+_NATIVE_WRITER = None
+_WRITER_ATTEMPTED = False
+_WRITER_BUILDING = False
+
+
+def _native_store_writer():
+    global _NATIVE_WRITER, _WRITER_ATTEMPTED, _WRITER_BUILDING
+    if _WRITER_BUILDING:
+        return None
+    if _WRITER_ATTEMPTED:
+        return _NATIVE_WRITER
+    hashing = sys.modules.get("blake3")
+    if _DECODER_BUILDING or (hashing is not None and (getattr(hashing, "_NATIVE_BUILDING", False) or getattr(hashing, "_HASHER_BUILDING", False))):
+        return None  # a component this one loads through is being built; decide later
+    partial = sys.modules.get("xax_selfhost_writer")
+    if partial is not None and not hasattr(partial, "native_writer_usable"):
+        return None
+    _WRITER_ATTEMPTED = True
+    _WRITER_BUILDING = True
+    try:
+        from xax_selfhost_writer import NativeWriter, native_writer_usable
+
+        _NATIVE_WRITER = NativeWriter() if native_writer_usable() else None
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
+        _NATIVE_WRITER = None
+        import xax_native
+
+        xax_native.fallback("store-writer", f"native image failed to load: {error!r}")
+    finally:
+        _WRITER_BUILDING = False
+    return _NATIVE_WRITER
+
+
+def _xax_write(
+    root_cid: bytes,
+    objects: Sequence[SemanticObject],
+    nonsemantic_records: Sequence[NonsemanticRecord],
+    check_only: bool,
+) -> bytes | None:
+    """S9 (ADR-262): the XAX store writer's decision.  The store bytes (``b""`` with ``check_only``) when it accepts;
+    the bootstrap's exact ``ValueError`` when it rejects; None when it cannot run or declines (the bootstrap decides)."""
+    writer = _native_store_writer()
+    if writer is None:
+        return None
+    from xax_selfhost_writer import ACCEPT, MODE_CHECK, MODE_WRITE, REASONS, REJECT
+
+    status, reason, _index, data = writer.run(root_cid, objects, nonsemantic_records, MODE_CHECK if check_only else MODE_WRITE)
+    if status == REJECT:
+        raise ValueError(REASONS[reason])
+    if status != ACCEPT:
+        import xax_native
+
+        xax_native.declined("store-writer", 1)
+        return None
+    return b"" if check_only else data
 
 
 # Self-hosting S3 (ADR-118): the store container decoder is an XAX function,

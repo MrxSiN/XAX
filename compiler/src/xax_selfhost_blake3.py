@@ -133,7 +133,13 @@ class _Ops:
         return memory
 
 
-def build_hash_program() -> tuple[StoreReader, SemanticObject]:
+def hash_function(input_pointer=INPUT_POINTER, input_view=INPUT_VIEW, based: bool = False) -> tuple[SemanticObject, tuple[SemanticObject, ...]]:
+    """The hash function over an input view of ``input_pointer``/``input_view`` and the objects it needs.
+
+    The committed hash (``build_hash_program``) reads a word view from offset 0.  ``based`` adds a ``base: bits<64>``
+    parameter before ``length`` and hashes ``input[base : base + length]``, so another XAX program (the S9 store
+    writer, ADR-262) can hash a span of its own byte view (``bits<8>`` elements, read four bytes at a time by
+    byte-view widening) with the same graph."""
     from xax_native_blake3 import load_blake3_compress_program
 
     compress_program = load_blake3_compress_program()
@@ -141,11 +147,11 @@ def build_hash_program() -> tuple[StoreReader, SemanticObject]:
     resolve = compress_program.reader.get
     ctx = {"compress": compress, "tuple": next(resolve(cid) for cid in compress.references if resolve(cid).kind == Kind.TYPE and resolve(cid).body[:1] == b"\x08")}
     graph = GraphBuilder()
-    entry = graph.block(INPUT_POINTER, INPUT_VIEW, MEM, SCRATCH_POINTER, SCRATCH_VIEW, MEM, B64)
-    inp, in_view, mi, scr, scr_view, ms, length = entry.params
+    entry = graph.block(input_pointer, input_view, MEM, SCRATCH_POINTER, SCRATCH_VIEW, MEM, *((B64,) if based else ()), B64)
+    inp, in_view, mi, scr, scr_view, ms, *base, length = entry.params
     # Both views travel as (token, memory) pairs through every block, so their
     # ownership and effect facts follow the control flow (ADR-099).
-    views = (INPUT_VIEW, MEM, SCRATCH_VIEW, MEM)
+    views = (input_view, MEM, SCRATCH_VIEW, MEM)
     cv8 = (B32,) * 8
     chunk = graph.block(B64, B64, *views)                    # ci, stack length
     block = graph.block(B64, *cv8, *views)                   # bi, cv
@@ -181,6 +187,8 @@ def build_hash_program() -> tuple[StoreReader, SemanticObject]:
     cv, (iv, mi, sv, ms) = rest[:8], rest[8:]
     ops = _Ops(block, ctx)
     block_offset = ops.add(chunk_start, ops.mul(bi, ops.c64(64)))
+    if based:
+        block_offset = ops.add(base[0], block_offset)
     block_len = ops.min(ops.sub(chunk_len, ops.mul(bi, ops.c64(64))), ops.c64(64))
     words = []
     for index in range(16):
@@ -244,10 +252,14 @@ def build_hash_program() -> tuple[StoreReader, SemanticObject]:
     ms = ops.store_words(scr, ops.c64(DIGEST_OFFSET), result, ms)
     digest.ret(inp, iv, mi, scr, sv, ms)
 
-    triples = (INPUT_POINTER, INPUT_VIEW, MEM, SCRATCH_POINTER, SCRATCH_VIEW, MEM)
-    function = graph.function((*triples, B64), triples)
+    triples = (input_pointer, input_view, MEM, SCRATCH_POINTER, SCRATCH_VIEW, MEM)
+    function = graph.function((*triples, *((B64,) if based else ()), B64), triples)
     objects = (*graph.objects.values(), *compress_program.reader.objects())
-    objects = tuple(item for item in objects if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET))
+    return function, tuple(item for item in objects if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET))
+
+
+def build_hash_program() -> tuple[StoreReader, SemanticObject]:
+    function, objects = hash_function()
     return program_store(function, x86_64_linux_exec_target(), objects), function
 
 

@@ -186,6 +186,14 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S9 canonical store writing — 2026-10-14 (ADR-262)
+
+- Done: the XAX writer decides every store write on Linux x86-64 (`compiler/src/xax_selfhost_writer.py`; tests `tests/test_xax_selfhost_writer.py`). Opt out with `XAX_STORE_PYTHON_WRITER=1`; `_bootstrap_store_contents`/`_bootstrap_emit_store` are the oracle.
+- After changing the writer builder or the hash builder, run `write_writer_store()` (and `write_hash_store()` if the hash graph changed); `tests/test_store_regeneration.py` covers both. Keep `hash_function()`'s defaults producing the committed hash graph.
+- A writer rejection is a reason code mapped to the bootstrap's `ValueError` text (`REASONS`); add a new writer check to the XAX program first, in the bootstrap's order.
+- The batch is a host marshal (fixed 64-bit fields), not a format. S10 should build objects and call the writer from XAX directly, the way the writer calls the hash (view-passing direct call).
+- Next: S10 (the driver as a native Linux x86-64 XAX program: platform file I/O, target-package interpretation, verify → lower → assemble → write).
+
 ## S8 verifier totality — 2026-10-09 (ADR-251)
 
 - Done: every rejection the suite reaches on Linux x86-64 is XAX-decided (trace: 0 bootstrap sites; differential: 4,685 rejections, 0 differences). To re-check after a verifier change, from `compiler`: `S8_TRACE_OUT=/tmp/s8 PYTHONPATH=src:tests:migration:.:.. python -m pytest -s -n 3 -p s8_rejection_trace -p s8_differential tests`, then `python migration/s8_rejection_trace.py /tmp/s8` (expect an empty report) and grep `DIFF ` (expect none).

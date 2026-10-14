@@ -29,7 +29,7 @@ HELPERS = (
     ("xax_selfhost_riscv64", "load_encoder_program"), ("xax_selfhost_store", "load_decoder_program"),
     ("xax_selfhost_typing", "load_typing_program"), ("xax_selfhost_verify", "load_verifier_program"),
     ("xax_selfhost_blake3", "load_hash_program"), ("xax_selfhost_riscv64_backend", "load_backend_program"),
-    ("xax_selfhost_x86_64_backend", "load_backend_program"),
+    ("xax_selfhost_x86_64_backend", "load_backend_program"), ("xax_selfhost_writer", "load_writer_program"),
 )
 
 

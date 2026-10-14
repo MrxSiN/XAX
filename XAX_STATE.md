@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S9 canonical store writing — 2026-10-14 (ADR-262)
+
+S9 is complete on Linux x86-64: `write_store`, `StoreReader.from_objects`, and lazy serialization run the XAX store writer (`xax_store_writer.xax`). It re-derives every object's CID with the S2 hash graph over its own view, decides schema versions, reference order, duplicate CIDs, the root, and record order and duplicates in the bootstrap's precedence, and emits the container with its digest. Committed stores (shuffled), 150 random stores, and every rejection with its precedence match the bootstrap writer exactly; the writer writes its own store byte for byte. Python still decides off Linux x86-64 and for inputs over the writer's capacity, and `SemanticObject.create` still proposes CIDs in Python (re-derived at write). Next: S10 (the driver as a native XAX program).
+
 ## S8 verifier totality — 2026-10-09 (ADR-251)
 
 S8 is complete: on Linux x86-64 every verifier rejection the suite reaches is decided by an XAX program with the bootstrap's exact diagnostic. The full-suite trace (`compiler/migration/s8_rejection_trace.py`) reports 0 bootstrap-decided rejection sites, and the differential plugin (`compiler/migration/s8_differential.py`) matched 4,685 live rejections to the bootstrap's with 0 differences. Python still decides off Linux x86-64 and where an XAX program declines (oversized or unmodelled inputs); it remains the differential oracle. Next: S9 (canonical store writing in XAX).
