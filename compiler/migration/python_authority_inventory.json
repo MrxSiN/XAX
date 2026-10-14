@@ -333,6 +333,10 @@
       "class": "G",
       "note": "Builder of the canonical S12 general x86-64 backend store; S12a front end (ADR-268)."
     },
+    "xax_selfhost_general_view.py": {
+      "class": "G",
+      "note": "Builder of the S12b lowering view in the general x86-64 backend store (ADR-269)."
+    },
     "xax_selfhost_writer.py": {
       "class": "G",
       "note": "Builder of the canonical S9 store (ADR-262)."
@@ -552,8 +556,8 @@
       "recommended_step": "S13"
     },
     "x86-64-program-backend": {
-      "python_authority": "xax_x86_64, xax_x86_64_regalloc, xax_inline, xax_ranges, xax_linux",
-      "xax_hosted": "views subset (xax_x86_64_backend.xax); S12a front end for the Linux executable profiles: target, process entry, closure legality and order (xax_x86_64_general.xax, ADR-268)",
+      "python_authority": "xax_x86_64, xax_x86_64_regalloc, xax_prefetch, xax_ranges, xax_linux (code generation and image); xax_inline is the S12b reference",
+      "xax_hosted": "views subset (xax_x86_64_backend.xax); for the Linux executable profiles the S12a front end (target, process entry, closure legality and order, ADR-268) and the S12b lowering view (leaf inlining, simplifications, layout, ADR-269) (xax_x86_64_general.xax)",
       "target_dependency": "x86-64",
       "prerequisite": "S10, S11",
       "differential_oracle": "byte-identical images per program",

@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
+
+S12b is complete on Linux x86-64. The general backend program now also decides each closure function's lowering view: leaf inlining, the simplification fixed point, and the fall-through block layout. Every view of every Linux test compile, and of 340 random programs, equals `inline_leaf_calls`. The XAX path (closure and views) is about 2.6x faster than Python on jsonmin. Prefetch selection moved to S12c with value ranges. Code generation is still Python. Next: S12c.
+
 ## S12a the general backend's front end — 2026-10-14 (ADR-268)
 
-S12 is cut into S12a-S12f by measurement: every function the Linux test corpus lowers for `x86_64-linux-elf-exec-v1` takes the inlining → register-resident path, so that path is ported next and the frame lowering last. S12a is complete on Linux x86-64. `xax_x86_64_general.xax` decides the target and process-entry checks, the general backend's function closure in the bootstrap's depth-first order with every pre-codegen rejection (arity, ABI layouts computed in XAX, operations, terminators, foreign entries), recursion-group members, and the image order. `compile_linux_executable` now verifies first and takes the closure from that program. Both front ends agree on all 160 compiles of the Linux test suites. Code generation is still Python. Next: S12b (the lowering view).
+S12 is cut into S12a-S12f by measurement: every function the Linux test corpus lowers for `x86_64-linux-elf-exec-v1` takes the inlining → register-resident path, so that path is ported next and the frame lowering last. S12a is complete on Linux x86-64. `xax_x86_64_general.xax` decides the target and process-entry checks, the general backend's function closure in the bootstrap's depth-first order with every pre-codegen rejection (arity, ABI layouts computed in XAX, operations, terminators, foreign entries), recursion-group members, and the image order. `compile_linux_executable` now verifies first and takes the closure from that program. Both front ends agree on all 160 compiles of the Linux test suites. Code generation is still Python. Next: S12b (the lowering view). S12b: see above.
 
 ## S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
 

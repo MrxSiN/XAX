@@ -186,12 +186,19 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
+
+- Done: `compiler/src/xax_selfhost_general_view.py` (17 functions, linked into `xax_x86_64_general.xax` by `add_view_functions`; `views_prologue` runs after the closure), `general_with_xax` → `(closure, views)`, `rebuild_views`, `_compile_function(view=)`. Tests: `tests/test_xax_selfhost_general_view.py`.
+- Debugging a decline: build the program in memory with `_ok` replaced by a recorder of `inspect` sites that stores the first failing site in an output word, then lower it with `host_image(reader, function, None)` and run it with `_NativeRunner`. The two bugs found this way were helpers that returned NONE for "no" (use `NOT_CALL`, since `_call` treats NONE as a decline).
+- Arena records: values are indices into `G_V*` tables (capacity `VCAP`); nodes and blocks are arena records (`N_*`, `B_*`). The arena is reset after each view (`views_prologue`), so everything a view needs from caches (interfaces, erased flags) must be filled during the closure.
+- Next: S12c. Port `xax_ranges.upper_bounds` and the predicate tables, then `prefetch_next_iteration` (it rewrites the view, so add it after `_layout`/`_lower` or rebuild positions), then `compile_register_resident`'s analyses.
+
 ## S12a the general backend's front end — 2026-10-14 (ADR-268)
 
 - Done: `compiler/src/xax_selfhost_x86_64_general.py` (store `xax_x86_64_general.xax`, `write_general_store`), `xax_linux.linux_closure` (the reference), `compile_linux_executable(frontend="auto"|"xax"|"python")`, `compile_native(closure=, verified=)`, `xax_riscv64.object_table_words`. Tests: `tests/test_xax_selfhost_general.py`; differential: run the Linux suites with `XAX_GENERAL_FRONTEND_DIFF=1`.
 - The program grows into the whole general backend: add S12b-S12e as further functions of this store, as the views backend grew. Its globals extend the views front end's (`G_*` from slot 21) and reuse its readers (`_find`, `_node_info`, `_term_end`, `_erased`, `_borrowed`); `interface` is the group-aware `_group_interface`.
 - Builder pitfalls hit here: never name a variable `ip`/`iv`/`im`/`op`/`ov`/`om` (the view triples), and read a ULEB before using the cursor it advances (`e.add(p["ta"], _payload_uleb(e, "ta"))` reads the old cursor).
-- Next: S12b. Port `xax_inline.inline_leaf_calls` and `xax_prefetch.prefetch_next_iteration` as a rewrite of the graph stream. Check it word for word against a marshal of the Python view, then S12c/S12d (`xax_x86_64_regalloc`).
+- Next: S12b. Port `xax_inline.inline_leaf_calls` and `xax_prefetch.prefetch_next_iteration` as a rewrite of the graph stream. Check it word for word against a marshal of the Python view, then S12c/S12d (`xax_x86_64_regalloc`). S12b: see above (prefetch moved to S12c).
 
 ## S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
 

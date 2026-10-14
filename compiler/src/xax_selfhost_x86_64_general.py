@@ -33,6 +33,7 @@ from xax_graph_builder import program_store
 from xax_native import bootstrap_dir
 from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, NONE, _function
 import xax_selfhost_diagnostics as D
+from xax_selfhost_general_view import add_view_functions, views_prologue
 from xax_selfhost_views_backend import (
     _FN, ARENA_AT, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
     G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ATTRIBUTES, NI_ENTITY, NI_OP, NI_RESULTS, NativeProgram, _at, _borrowed, _call,
@@ -600,6 +601,7 @@ def _frontend(tables):
 
         e.set("ra", 1 + CID_WORDS)
         e.for_("o", 0, total, record)
+        e.var("ext_at", p["ra"])  # S12b: the verifier's pointer extents per graph follow the object records
         from xax_selfhost_typing import IN_WORDS
 
         _ok(e, e.le(p["ra"], IN_WORDS))
@@ -814,6 +816,8 @@ def _frontend(tables):
                 e.st(e.add(e.add(ORDER_AT, e.mul(p["q"], CID_WORDS)), k), word)
 
         e.for_("q", 0, p["members"], out)
+        # S12b: the lowering view of every closure function, in image order.
+        views_prologue(e, total, order, p["members"])
         e.st(0, OK)
         e.give(1)
     return _function((), build, tables)
@@ -843,6 +847,7 @@ def build_general_program():
     add("entry_abi", _entry_abi(tables))
     add("prologue", _prologue(tables))
     add("node", _node(tables))
+    add_view_functions(add, tables)
     program = add("frontend", _frontend(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
 
@@ -893,23 +898,39 @@ def general_object_table(reader, entry_cid: bytes, target_object):
         for cid in obj.references:
             words += _cid_words(cid)
         words += [*_cid_words(obj.cid), len(obj.body), *obj.body]
+    # S12b: the verifier's pointer extents of every graph fragment (``_parse_graph(...).pointer_extents``).
+    from xax_compiler import _parse_graph, store_resolver
+
+    resolve = store_resolver(reader)
+    graphs = [obj for obj in reader.objects() if obj.kind == Kind.GRAPH_FRAGMENT]
+    words.append(len(graphs))
+    for obj in graphs:
+        extents = _parse_graph(obj, resolve).pointer_extents
+        words += [*_cid_words(obj.cid), len(extents)]
+        for ref, extent in extents:
+            words += [ref.tag, ref.block, ref.index, ref.result, extent]
     return words, {obj.cid: obj for obj in extras}
 
 
-def closure_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
-    """S12a: the functions of the entry's closure in image order, as the XAX program decides them for a verified
-    store; it raises the ``XaxError`` the program wrote when it rejects.  None when the program cannot run or declines
-    (the bootstrap then decides), unless ``required``."""
+def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
+    """S12a/S12b: ``(closure, views)`` as the XAX program decides them for a verified store: the entry's closure in
+    image order and, per function CID, its lowering view (``xax_inline.inline_leaf_calls``) rebuilt from the program's
+    words.  It raises the ``XaxError`` the program wrote when it rejects.  None when the program cannot run or
+    declines (the bootstrap then decides), unless ``required``."""
     import xax_native
-    from xax_compiler import XaxError, fail
-    from xax_compiler import store_resolver
+    from xax_compiler import XaxError, fail, store_resolver
     from xax_selfhost_diagnostics import decode_diagnostic
 
     native = native_general()
     table = None if native is None else general_object_table(reader, entry_cid, target_object)
     words, members = table if table is not None else (None, {})
-    outcome = None if words is None else native.run(words, lambda read: (collect_order(read), decode_diagnostic(read)))
-    order, diagnostic = outcome if outcome is not None else (None, None)
+
+    def collect(read):
+        order = collect_order(read)
+        return order, (None if order is None else _view_words(read)), decode_diagnostic(read)
+
+    outcome = None if words is None else native.run(words, collect)
+    order, view_words, diagnostic = outcome if outcome is not None else (None, None, None)
     if diagnostic is not None:
         raise XaxError(diagnostic)
     if order is None:
@@ -920,7 +941,74 @@ def closure_with_xax(reader, entry_cid: bytes, target_object, required: bool = F
                  "unavailable or declined")
         return None
     resolve = store_resolver(reader)
-    return tuple(members[cid] if cid in members else resolve(cid) for cid in order)
+    closure = tuple(members[cid] if cid in members else resolve(cid) for cid in order)
+    return closure, rebuild_views(view_words, closure, resolve)
 
 
-__all__ = ["RULES", "build_general_program", "closure_with_xax", "load_general_program", "native_general", "write_general_store"]
+def closure_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
+    """S12a: the functions of the entry's closure in image order (``general_with_xax``), or None."""
+    result = general_with_xax(reader, entry_cid, target_object, required)
+    return None if result is None else result[0]
+
+
+def _view_words(read) -> list[int]:
+    """The view region the program wrote (up to its cursor)."""
+    from xax_selfhost_general_view import G_VIEW_OUT, VIEW_AT
+    from xax_selfhost_views_backend import GLOBALS
+
+    (end,) = read(GLOBALS + G_VIEW_OUT, 1)
+    return read(VIEW_AT, end - VIEW_AT)
+
+
+def rebuild_views(words, closure, resolve) -> dict:
+    """Each function's lowering view from the program's view words (``xax_selfhost_general_view``): nodes and blocks
+    are taken from the graphs they came from and given the program's operands, as ``xax_inline._lower`` does.  The
+    host decides nothing here."""
+    from dataclasses import replace
+
+    from xax_compiler import Terminator, TerminatorKind, ValueRef, parse_function_graph
+
+    graphs: dict[int, object] = {}
+
+    def graph(index: int):
+        if index not in graphs:
+            graphs[index] = parse_function_graph(closure[index], resolve)
+        return graphs[index]
+
+    position = 0
+
+    def take(count: int = 1):
+        nonlocal position
+        position += count
+        return words[position - count:position]
+
+    def value():
+        tag, block, index, result = take(4)
+        return ValueRef(tag, block, index, result)
+
+    views = {}
+    while position < len(words):
+        (fidx, entry, count) = take(3)
+        blocks = []
+        for _ in range(count):
+            kind0, fn, bb, nn, node_count = take(5)
+            origin = graph(fn).blocks[bb]
+            parameters = origin.parameters if kind0 == 0 else origin.nodes[nn].results
+            nodes = []
+            for _ in range(node_count):
+                nf, nb, nn2, operand_count = take(4)
+                nodes.append(replace(graph(nf).blocks[nb].nodes[nn2], operands=tuple(value() for _ in range(operand_count))))
+            kind, pfn, pb, value_count = take(4)
+            values = tuple(value() for _ in range(value_count))
+            edges = []
+            for _ in range(take()[0]):
+                target, argument_count = take(2)
+                edges.append((target, tuple(value() for _ in range(argument_count))))
+            payload = b"" if pfn == NONE else graph(pfn).blocks[pb].terminator.payload
+            blocks.append(type(origin)(tuple(parameters), tuple(nodes), Terminator(TerminatorKind(kind), values, tuple(edges), payload)))
+        extents = tuple((value(), take()[0]) for _ in range(take()[0]))
+        views[closure[fidx].cid] = replace(graph(fidx), entry=entry, blocks=tuple(blocks), member_spans=(), pointer_extents=extents)
+    return views
+
+
+__all__ = ["RULES", "build_general_program", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general", "write_general_store"]

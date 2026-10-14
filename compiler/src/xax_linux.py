@@ -409,29 +409,46 @@ def _frontend_outcome(decide):
         return error.diagnostic
 
 
+def _check_views(views, order, resolve) -> None:
+    """``XAX_GENERAL_FRONTEND_DIFF=1``: every S12b view equals ``inline_leaf_calls`` of its function."""
+    from xax_compiler import parse_function_graph
+    from xax_inline import inline_leaf_calls
+
+    for function in order:
+        reference = inline_leaf_calls(parse_function_graph(function, resolve), resolve)
+        if views.get(function.cid) != reference:
+            raise AssertionError(f"S12b lowering views disagree for {function.cid.hex()}: xax {views.get(function.cid)!r} reference {reference!r}")
+
+
 def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "auto") -> LinuxExecutable:
-    """``frontend``: who decides the target, the process entry, and the function closure (S12a, ADR-268): ``"xax"``
+    """``frontend``: who decides the target, the process entry, the function closure (S12a, ADR-268), and each
+    function's lowering view (S12b, ADR-269): ``"xax"``
     (the XAX general front end; fails where it cannot run or declines), ``"python"`` (the bootstrap reference), or
-    ``"auto"`` (the XAX program where it runs).  With ``XAX_GENERAL_FRONTEND_DIFF=1`` both decide and must agree.
+    ``"auto"`` (the XAX program where it runs).  With ``XAX_GENERAL_FRONTEND_DIFF=1`` both decide and must agree
+    (closure, order, rejection, and every view).
 
     The store is verified first, as every other backend does; the target and entry checks follow (ADR-268)."""
     verify_store(reader)
     resolve = store_resolver(reader)
     target_object = resolve(target_cid)
-    order = None
+    order = views = None
     if frontend != "python":
-        from xax_selfhost_x86_64_general import closure_with_xax
+        from xax_selfhost_x86_64_general import closure_with_xax, general_with_xax
 
         if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
             xax = _frontend_outcome(lambda: closure_with_xax(reader, entry_cid, target_object, required=True))
             reference = _frontend_outcome(lambda: linux_closure(reader, entry_cid, target_object))
             if xax != reference:
                 raise AssertionError(f"S12a front ends disagree: xax {xax!r} reference {reference!r}")
-        order = closure_with_xax(reader, entry_cid, target_object, required=frontend == "xax")
+        decided = general_with_xax(reader, entry_cid, target_object, required=frontend == "xax")
+        if decided is not None:
+            order, views = decided
+            if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+                _check_views(views, order, resolve)
     if order is None:
         order = linux_closure(reader, entry_cid, target_object)
     description = decode_native_target(target_object)
-    image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True)
+    image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True, views=views)
     data, image_offset, needed = emit_linux_elf_executable(image, dynamic_loader=description.image_format == X86_64_LINUX_ELF_DYNAMIC_FORMAT)
     ranges = tuple(
         ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, image_offset + item.start, image_offset + item.end)

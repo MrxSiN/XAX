@@ -1507,6 +1507,7 @@ def _compile_function(
     target: NativeTargetDescription,
     atomic_policy: AtomicLegalizationPolicy,
     process_entry: bool = False,
+    view=None,
 ) -> tuple[bytes, tuple[tuple[int, bytes], ...], tuple[ArtifactSemanticRange, ...]]:
     """Lower one function.
 
@@ -1544,7 +1545,8 @@ def _compile_function(
         from xax_prefetch import prefetch_next_iteration
         from xax_x86_64_regalloc import compile_register_resident
 
-        view, prefetches = prefetch_next_iteration(inline_leaf_calls(graph, resolve), resolve)
+        # ``view``: the lowering view the XAX general backend decided (S12b, ADR-269), else the bootstrap's.
+        view, prefetches = prefetch_next_iteration(view if view is not None else inline_leaf_calls(graph, resolve), resolve)
         allocated = compile_register_resident(function, graph_object, view, parameter_types, return_types, resolve, target, process_entry, prefetches)
         if allocated is not None:
             return allocated
@@ -2304,9 +2306,11 @@ def _compile_native_with_target(
     extra_roots: tuple[bytes, ...] = (),
     closure: tuple[SemanticObject, ...] | None = None,
     verified: bool = False,
+    views: dict | None = None,
 ) -> NativeImage:
     """``closure``: the entry's function closure in image order when a caller's front end already decided it (S12a,
-    ADR-268); ``verified``: ``verify_store`` already accepted ``reader`` in this call chain."""
+    ADR-268); ``verified``: ``verify_store`` already accepted ``reader`` in this call chain; ``views``: each function's
+    lowering view by CID, when decided by the XAX general backend (S12b, ADR-269)."""
     if not verified:
         verify_store(reader)
     resolve = store_resolver(reader)
@@ -2321,7 +2325,8 @@ def _compile_native_with_target(
             fail("XAX.NATIVE.FUNCTION", root.hex(), "NATIVE-ENTRY-FUNCTION", Kind.FUNCTION.name, resolve(root).kind.name)
         functions = (*functions, *(item for item in _function_closure(resolve(root), resolve, description) if item.cid not in {f.cid for f in functions}))
     fragments: dict[bytes, tuple[bytes, tuple[tuple[int, bytes], ...], tuple[ArtifactSemanticRange, ...]]] = {
-        function.cid: _compile_function(function, resolve, description, atomic_policy, process_entry and function.cid == entry.cid)
+        function.cid: _compile_function(function, resolve, description, atomic_policy, process_entry and function.cid == entry.cid,
+                                        (views or {}).get(function.cid))
         for function in functions
     }
     if realtime_profile is not None:
@@ -2389,10 +2394,11 @@ def compile_native(
     process_entry: bool = False,
     closure: tuple[SemanticObject, ...] | None = None,
     verified: bool = False,
+    views: dict | None = None,
 ) -> NativeImage:
     resolve = store_resolver(reader)
     return _compile_native_with_target(reader, function_cid, resolve(target_cid), realtime_profile, atomic_policy, process_entry,
-                                       closure=closure, verified=verified)
+                                       closure=closure, verified=verified, views=views)
 
 
 def compile_native_bound_target(
