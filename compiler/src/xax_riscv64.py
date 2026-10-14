@@ -611,13 +611,18 @@ def _object_table(reader: StoreReader, entry: SemanticObject, target_object: Sem
     as CID words, and its payload (for a graph fragment the S3c XAX graph-decoder stream, else its body bytes).
     Nothing is selected, resolved, or interpreted here: the program picks the target, finds the entry, and resolves
     every reference.  None when a graph body cannot be streamed (the bootstrap generator then runs)."""
+    return object_table_words(reader, entry.cid, target_object)
+
+
+def object_table_words(reader: StoreReader, entry_cid: bytes, target_object: SemanticObject) -> list[int] | None:
+    """``_object_table`` for an entry named only by its CID (S12a: the program decides what kind of object it is)."""
     from xax_compiler import _native_graph_decoder
 
     decoder = _native_graph_decoder()
     if decoder is None:
         return None
     objects = list(reader.objects())
-    words = [len(objects), *_cid_words(entry.cid)]
+    words = [len(objects), *_cid_words(entry_cid)]
     for obj in (*objects, target_object):
         words += [int(obj.kind), len(obj.references)]
         for cid in obj.references:

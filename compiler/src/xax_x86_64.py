@@ -2302,14 +2302,19 @@ def _compile_native_with_target(
     atomic_policy: AtomicLegalizationPolicy = AtomicLegalizationPolicy(),
     process_entry: bool = False,
     extra_roots: tuple[bytes, ...] = (),
+    closure: tuple[SemanticObject, ...] | None = None,
+    verified: bool = False,
 ) -> NativeImage:
-    verify_store(reader)
+    """``closure``: the entry's function closure in image order when a caller's front end already decided it (S12a,
+    ADR-268); ``verified``: ``verify_store`` already accepted ``reader`` in this call chain."""
+    if not verified:
+        verify_store(reader)
     resolve = store_resolver(reader)
     entry = resolve(function_cid)
     if entry.kind != Kind.FUNCTION:
         fail("XAX.NATIVE.FUNCTION", function_cid.hex(), "NATIVE-ENTRY-FUNCTION", Kind.FUNCTION.name, entry.kind.name)
     description = decode_native_target(target_object)
-    functions = _function_closure(entry, resolve, description)
+    functions = closure if closure is not None else _function_closure(entry, resolve, description)
     # DLL exports (ADR-259): further roots, appended in the caller's order after the entry's closure.
     for root in extra_roots:
         if resolve(root).kind != Kind.FUNCTION:
@@ -2382,9 +2387,12 @@ def compile_native(
     atomic_policy: AtomicLegalizationPolicy = AtomicLegalizationPolicy(),
     *,
     process_entry: bool = False,
+    closure: tuple[SemanticObject, ...] | None = None,
+    verified: bool = False,
 ) -> NativeImage:
     resolve = store_resolver(reader)
-    return _compile_native_with_target(reader, function_cid, resolve(target_cid), realtime_profile, atomic_policy, process_entry)
+    return _compile_native_with_target(reader, function_cid, resolve(target_cid), realtime_profile, atomic_policy, process_entry,
+                                       closure=closure, verified=verified)
 
 
 def compile_native_bound_target(

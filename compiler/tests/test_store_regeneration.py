@@ -22,6 +22,7 @@ BUILDERS = (
     ("xax_selfhost_verify", "build_verifier_program"),
     ("xax_selfhost_riscv64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_backend", "build_backend_program"),
+    ("xax_selfhost_x86_64_general", "build_general_program"),
 )
 
 

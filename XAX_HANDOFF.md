@@ -186,13 +186,20 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12a the general backend's front end — 2026-10-14 (ADR-268)
+
+- Done: `compiler/src/xax_selfhost_x86_64_general.py` (store `xax_x86_64_general.xax`, `write_general_store`), `xax_linux.linux_closure` (the reference), `compile_linux_executable(frontend="auto"|"xax"|"python")`, `compile_native(closure=, verified=)`, `xax_riscv64.object_table_words`. Tests: `tests/test_xax_selfhost_general.py`; differential: run the Linux suites with `XAX_GENERAL_FRONTEND_DIFF=1`.
+- The program grows into the whole general backend: add S12b-S12e as further functions of this store, as the views backend grew. Its globals extend the views front end's (`G_*` from slot 21) and reuse its readers (`_find`, `_node_info`, `_term_end`, `_erased`, `_borrowed`); `interface` is the group-aware `_group_interface`.
+- Builder pitfalls hit here: never name a variable `ip`/`iv`/`im`/`op`/`ov`/`om` (the view triples), and read a ULEB before using the cursor it advances (`e.add(p["ta"], _payload_uleb(e, "ta"))` reads the old cursor).
+- Next: S12b. Port `xax_inline.inline_leaf_calls` and `xax_prefetch.prefetch_next_iteration` as a rewrite of the graph stream. Check it word for word against a marshal of the Python view, then S12c/S12d (`xax_x86_64_regalloc`).
+
 ## S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
 
 - Done: `x86_64_views_exec_target()`, `xax_x86_64_views.views_executable(image)`; the driver store's entry is the process entry, and `NativeDriver(image).run(...)` runs the executable as a subprocess (the exit status is the driver status). Tests: `tests/test_xax_selfhost_process.py`, `tests/test_xax_selfhost_driver.py` (self-build loop).
 - Lower the driver with the exec target only: under v1/v2 its startup reads reject. Helpers keep v1.
 - Process-only backend work is gated on the ISA class's `PROCESS` (the identity; the front end distinguishes it by length, so keep `IDENTITIES` lengths distinct from it) and reads `G_PROCESS`; the RISC-V store must stay unchanged.
 - A function cannot pass memory effects without views to a callee (`MEMORY-CALL-PASS-THROUGH`), so the process entry cannot wrap a separate driver function. The driver function is the entry.
-- Next: S12 (the optimizing x86-64 backend's decisions for ordinary programs), then S13 and S14.
+- Next: S12 (the optimizing x86-64 backend's decisions for ordinary programs), then S13 and S14. S12a: see above.
 
 ## S10e semantic verification in the driver — 2026-10-14 (ADR-266)
 

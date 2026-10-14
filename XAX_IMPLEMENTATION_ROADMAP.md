@@ -509,8 +509,14 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S10d | The driver streams graphs, reads the target package, builds the object table, lowers with the XAX backend, and writes the image or the diagnostic | S10c | EXECUTED (ADR-265): equal to `compile_x86_64_views` on every committed store; lowers its own store to its own image |
 | S10e | Semantic verification orchestrated by the driver: type and constant verdicts, per-graph typing and facts, object and store verification | S10d, S8 | EXECUTED (ADR-266): marshals word-identical to `verify_store`'s; a store `verify_store` rejects never yields an image; the driver verifies and lowers itself |
 | S11 | ELF64 executable container for views images, so the S10 driver is a standalone executable | S10 | EXECUTED (ADR-267): process entries in both views generators; the driver writes and runs as a static ELF64 executable; gen1 = gen2 = gen3 as processes |
-| S12 | General x86-64 program lowering (the optimizing backend's decisions) for ordinary programs | S10 | UNIMPLEMENTED |
-| S13 | Build/package/provenance and the minimal command surface (`verify`, `build`, `inspect`) | S9, S10 | UNIMPLEMENTED |
+| S12 | General x86-64 program lowering (the optimizing backend's decisions) for ordinary programs | S10 | In progress (ADR-268): S12a executed |
+| S12a | The general backend's front end for the Linux executable profiles: target, process entry, the function closure with its exact rejections (arity, ABI layouts, operations, terminators, foreign entries), recursion-group members, and the image order | S10 | EXECUTED (ADR-268): equal to the bootstrap on every Linux test compile; `compile_linux_executable` verifies first |
+| S12b | The lowering view: leaf inlining, the exact simplifications, fall-through layout, and prefetch selection as an XAX rewrite of the graph stream | S12a | UNIMPLEMENTED |
+| S12c | The register-resident lowering's analyses and per-function rejections (atomic capability, encodability) | S12b | UNIMPLEMENTED |
+| S12d | Register-resident code emission, byte-identical per function | S12c | UNIMPLEMENTED |
+| S12e | Image assembly and the static ELF container, so the S11 driver lowers ordinary `x86_64-linux-elf-exec-v1` programs | S12d, S11 | UNIMPLEMENTED |
+| S12f | The remaining fallbacks on that profile (legacy register path, frame lowering) and the dynamic-loader profile | S12e | UNIMPLEMENTED |
+| S13 | Build/package/provenance and the minimal command surface (`verify`, `build`, `inspect`) | S9, S10, S12e | UNIMPLEMENTED |
 | S14 | Full-compiler generations C1 → C2 → C3 on Linux x86-64 with positive/negative equivalence and identity records (full-compiler B2–B4) | S10–S13 | UNIMPLEMENTED |
 | S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | UNIMPLEMENTED |
 

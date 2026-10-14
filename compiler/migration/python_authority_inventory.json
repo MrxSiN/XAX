@@ -329,6 +329,10 @@
       ],
       "note": "Builder of the canonical S7 store; image_from_backend_output renders the program's image record (S7b.2)."
     },
+    "xax_selfhost_x86_64_general.py": {
+      "class": "G",
+      "note": "Builder of the canonical S12 general x86-64 backend store; S12a front end (ADR-268)."
+    },
     "xax_selfhost_writer.py": {
       "class": "G",
       "note": "Builder of the canonical S9 store (ADR-262)."
@@ -549,13 +553,13 @@
     },
     "x86-64-program-backend": {
       "python_authority": "xax_x86_64, xax_x86_64_regalloc, xax_inline, xax_ranges, xax_linux",
-      "xax_hosted": "views subset only (xax_x86_64_backend.xax)",
+      "xax_hosted": "views subset (xax_x86_64_backend.xax); S12a front end for the Linux executable profiles: target, process entry, closure legality and order (xax_x86_64_general.xax, ADR-268)",
       "target_dependency": "x86-64",
-      "prerequisite": "S7b, S10",
+      "prerequisite": "S10, S11",
       "differential_oracle": "byte-identical images per program",
       "fixed_point_relevance": "required for the compiler to emit itself as an ELF executable",
       "runtime_relevance": "generated code quality (R4)",
-      "recommended_step": "S11"
+      "recommended_step": "S12"
     },
     "artifact-containers": {
       "python_authority": "xax_elf, xax_elf_link, xax_linux, xax_linux_aarch64, xax_pe",

@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12a the general backend's front end — 2026-10-14 (ADR-268)
+
+S12 is cut into S12a-S12f by measurement: every function the Linux test corpus lowers for `x86_64-linux-elf-exec-v1` takes the inlining → register-resident path, so that path is ported next and the frame lowering last. S12a is complete on Linux x86-64. `xax_x86_64_general.xax` decides the target and process-entry checks, the general backend's function closure in the bootstrap's depth-first order with every pre-codegen rejection (arity, ABI layouts computed in XAX, operations, terminators, foreign entries), recursion-group members, and the image order. `compile_linux_executable` now verifies first and takes the closure from that program. Both front ends agree on all 160 compiles of the Linux test suites. Code generation is still Python. Next: S12b (the lowering view).
+
 ## S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
 
-S11 is complete on Linux x86-64. The views profile has a process-entry variant (`x86_64-linux-views-exec-v1`: aligned entry frame, `argc`/`arg_copy`, `ud2` on return). Both generators lower it identically, and images package as a static ELF64 executable that adds no code. The compiler driver is that executable: it takes its three paths from argv, does all its work, and exits with its status. The executable rebuilds itself through three generations byte for byte as plain processes (about 25 s each). This is a component fixed point of the views-profile compiler path, not a whole-compiler B milestone. Next: S12 (general x86-64 lowering in XAX).
+S11 is complete on Linux x86-64. The views profile has a process-entry variant (`x86_64-linux-views-exec-v1`: aligned entry frame, `argc`/`arg_copy`, `ud2` on return). Both generators lower it identically, and images package as a static ELF64 executable that adds no code. The compiler driver is that executable: it takes its three paths from argv, does all its work, and exits with its status. The executable rebuilds itself through three generations byte for byte as plain processes (about 25 s each). This is a component fixed point of the views-profile compiler path, not a whole-compiler B milestone. Next: S12 (general x86-64 lowering in XAX). S12a: see above.
 
 ## S10e semantic verification in the driver — 2026-10-14 (ADR-266)
 

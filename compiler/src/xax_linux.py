@@ -56,6 +56,8 @@ from xax_compiler import (
     memory_effect_type,
     pointer_type,
     store_resolver,
+    verify_store,
+    XaxError,
 )
 from xax_elf import c_string_table, dynamic, hash_section, program_header, rela, symbol
 from xax_x86_64 import NativeImage, compile_native, encode_syscall_name
@@ -383,14 +385,53 @@ def validate_process_entry(reader: StoreReader, entry_cid: bytes) -> None:
         )
 
 
-def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes) -> LinuxExecutable:
+LINUX_ELF_FORMATS = (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT)
+
+
+def linux_closure(reader: StoreReader, entry_cid: bytes, target_object: SemanticObject) -> tuple[SemanticObject, ...]:
+    """The bootstrap reference for S12a (ADR-268): the target and process-entry checks, then the general backend's
+    function closure, of a verified store; the functions in image order."""
     resolve = store_resolver(reader)
-    description = decode_native_target(resolve(target_cid))
-    formats = (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT)
-    if description.abi != X86_64_LINUX_ABI or description.image_format not in formats:
-        fail("XAX.LINUX.TARGET", target_cid.hex(), "LINUX-ELF-EXEC-TARGET", [X86_64_LINUX_ABI, list(formats)], [description.abi, description.image_format])
+    description = decode_native_target(target_object)
+    if description.abi != X86_64_LINUX_ABI or description.image_format not in LINUX_ELF_FORMATS:
+        fail("XAX.LINUX.TARGET", target_object.cid.hex(), "LINUX-ELF-EXEC-TARGET", [X86_64_LINUX_ABI, list(LINUX_ELF_FORMATS)],
+             [description.abi, description.image_format])
     validate_process_entry(reader, entry_cid)
-    image = compile_native(reader, entry_cid, target_cid, process_entry=True)
+    from xax_x86_64 import _function_closure
+
+    return _function_closure(resolve(entry_cid), resolve, description)
+
+
+def _frontend_outcome(decide):
+    try:
+        return tuple(function.cid for function in decide())
+    except XaxError as error:
+        return error.diagnostic
+
+
+def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "auto") -> LinuxExecutable:
+    """``frontend``: who decides the target, the process entry, and the function closure (S12a, ADR-268): ``"xax"``
+    (the XAX general front end; fails where it cannot run or declines), ``"python"`` (the bootstrap reference), or
+    ``"auto"`` (the XAX program where it runs).  With ``XAX_GENERAL_FRONTEND_DIFF=1`` both decide and must agree.
+
+    The store is verified first, as every other backend does; the target and entry checks follow (ADR-268)."""
+    verify_store(reader)
+    resolve = store_resolver(reader)
+    target_object = resolve(target_cid)
+    order = None
+    if frontend != "python":
+        from xax_selfhost_x86_64_general import closure_with_xax
+
+        if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+            xax = _frontend_outcome(lambda: closure_with_xax(reader, entry_cid, target_object, required=True))
+            reference = _frontend_outcome(lambda: linux_closure(reader, entry_cid, target_object))
+            if xax != reference:
+                raise AssertionError(f"S12a front ends disagree: xax {xax!r} reference {reference!r}")
+        order = closure_with_xax(reader, entry_cid, target_object, required=frontend == "xax")
+    if order is None:
+        order = linux_closure(reader, entry_cid, target_object)
+    description = decode_native_target(target_object)
+    image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True)
     data, image_offset, needed = emit_linux_elf_executable(image, dynamic_loader=description.image_format == X86_64_LINUX_ELF_DYNAMIC_FORMAT)
     ranges = tuple(
         ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, image_offset + item.start, image_offset + item.end)
