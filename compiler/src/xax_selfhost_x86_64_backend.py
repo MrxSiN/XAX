@@ -45,10 +45,30 @@ JMP, JZ, JA, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0xE8, 1)  # opcode byt
 
 # -- byte emission and encoders (``xax_x86_64_views``) ---------------------------------------------
 
+# ADR-266: code bytes are packed eight to an output word (little-endian), and a node range takes three words, so one
+# program (the S10 driver with its verifier components) fits: 40 MiB of code, 699,050 ranges.
+CODE_BYTES = WORDS_LIMIT * 8
+RANGE_WORDS = 3
+
+
+def _byte_weight(e: E, position):
+    """``256 ** (position mod 8)``: the weight of byte ``position`` within its word."""
+    return e.ld(e.add(e.hd(S_POW), e.mul(e.and_(position, 7), 8)))
+
+
 def _emit(e: E, byte):
     count = e.hd(S_COUNT)
-    e.st(e.add(WORDS_AT, count), byte)
+    word = e.add(WORDS_AT, e.udiv(count, 8))
+    first = e.eq(e.and_(count, 7), 0)
+    e.st(word, e.add(e.mul(e.sel(first, 0, 1), e.ld(word)), e.mul(byte, _byte_weight(e, count))))  # a new word starts clear
     e.set_hd(S_COUNT, e.add(count, 1))
+
+
+def _patch_byte(e: E, position, byte):
+    word = e.add(WORDS_AT, e.udiv(position, 8))
+    weight = _byte_weight(e, position)
+    old = e.and_(e.udiv(e.ld(word), weight), 0xFF)
+    e.st(word, e.add(e.sub(e.ld(word), e.mul(old, weight)), e.mul(byte, weight)))
 
 
 def _emit_n(tables):
@@ -337,7 +357,7 @@ class X86_64:
     ALLOCATABLE = ALLOCATABLE
     ARGUMENT_REGISTERS = len(ARGUMENTS)
     T0 = T0
-    CODE_LIMIT = WORDS_LIMIT
+    CODE_LIMIT = CODE_BYTES
 
     @staticmethod
     def declare(e: E, p) -> None:
@@ -408,9 +428,9 @@ class X86_64:
             position, label = e.ld(at), e.ld(e.ld(e.add(at, 1)))
             _ok(e, e.ne(label, NONE))
             e.var("delta", e.and_(e.sub(label, e.add(position, 4)), 0xFFFFFFFF))
-            e.var("rel_at", e.add(WORDS_AT, position))
+            e.var("rel_at", position)
             for k in range(4):
-                e.st(e.add(p["rel_at"], k), _field(e, p["delta"], 8 * k, 8))
+                _patch_byte(e, e.add(p["rel_at"], k), _field(e, p["delta"], 8 * k, 8))
 
         e.for_("j", 0, e.hd(S_JUMPS), patch)
 
@@ -696,9 +716,9 @@ def _block(tables):
 
             def record():
                 count = e.hd(S_RANGES)
-                _ok(e, e.lt(count, RANGES_LIMIT // 5))
-                at = e.add(RANGES_AT, e.mul(count, 5))
-                for k, value in enumerate((e.hd(S_FN), b, p["m"], p["start"], e.hd(S_COUNT))):
+                _ok(e, e.lt(count, RANGES_LIMIT // RANGE_WORDS))
+                at = e.add(RANGES_AT, e.mul(count, RANGE_WORDS))
+                for k, value in enumerate((e.add(e.mul(e.hd(S_FN), 1 << 32), b), p["m"], e.add(e.mul(p["start"], 1 << 32), e.hd(S_COUNT)))):
                     e.st(e.add(at, k), value)
                 e.set_hd(S_RANGES, e.add(count, 1))
 
@@ -824,12 +844,16 @@ write_backend_store = _PROGRAM.write
 
 
 def collect_output(read):
-    """``collect_program_output`` with the code units as bytes, or None (declined)."""
-    result = collect_program_output(read)
-    if result is None:
-        return None
-    words, *rest = result
-    return (bytes(words), *rest)
+    """``collect_program_output`` with the packed code as bytes and the packed range records unpacked, or None
+    (declined)."""
+    def code(count):
+        return b"".join(word.to_bytes(8, "little") for word in read(WORDS_AT, (count + 7) // 8))[:count]
+
+    def ranges(count):
+        flat = read(RANGES_AT, RANGE_WORDS * count)
+        return [(a >> 32, a & 0xFFFFFFFF, node, c >> 32, c & 0xFFFFFFFF) for a, node, c in zip(flat[0::3], flat[1::3], flat[2::3])]
+
+    return collect_program_output(read, read_code=code, read_ranges=ranges)
 
 
 def native_backend():

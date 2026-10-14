@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S10e, S11, and later steps are open (ADR-180, ADR-265)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S11 and later steps are open (ADR-180, ADR-266)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,12 +186,19 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S10e semantic verification in the driver — 2026-10-14 (ADR-266)
+
+- Done: `compiler/src/xax_selfhost_semantic.py` (seven marshal functions, workspace layout at the top) is linked into the driver store; tests `tests/test_xax_selfhost_semantic.py` (word equality) and `tests/test_xax_selfhost_driver.py` (semantic rejections).
+- Capacities are shared: changing `xax_selfhost_typing.IN_EXTENT/OUT_EXTENT`, the store decoder's `DATA_EXTENT`, or the views stream region regenerates the typing, verifier, decoder, both backend, and driver stores. Keep `IN_WORDS <= (OUT_WORDS - TABLE) // 2` (asserted): otherwise the typing program defers every stream and Python silently decides.
+- Debugging a driver decline: give `stop(DECLINED)` a distinct status per call site temporarily (status `2 + 16 * site`) and rebuild the driver in memory; nothing else reports where it declined.
+- Next: S11 (process entry in the views profile, the ELF64 container written by the driver, a self-build loop of processes).
+
 ## S10 the compiler driver as XAX — 2026-10-14 (ADR-265)
 
 - Done: `compiler/src/xax_selfhost_driver.py` builds `xax_compiler_driver.xax`; `NativeDriver(image).run(store, target_package, output)` runs it in-process (statuses: 0 image, 1 rejected with a diagnostic record, 2 declined, 3 I/O failure). Tests: `tests/test_xax_selfhost_driver.py`; evidence: `benchmarks/bench_selfhost_driver.py --write`.
 - The driver store contains the decoder, graph decoder, hash, and backend stores' objects. Rebuild it (`write_driver_store()`) after any of them changes; `tests/test_store_regeneration.py` fails otherwise.
 - Lower the driver with `x86_64_views_syscall_target()` (v2). Helpers keep v1.
-- Next: S10e (port `verify_store`'s orchestration: the typing marshal and fact sections, `verifier_input`, and the precedence logic) and S11 (wrap the driver image in an ELF64 executable with an explicit process entry, so no host process remains).
+- Next: S10e (port `verify_store`'s orchestration: the typing marshal and fact sections, `verifier_input`, and the precedence logic) and S11 (wrap the driver image in an ELF64 executable with an explicit process entry, so no host process remains). S10e: see above.
 
 ## S10a Linux syscalls in the views profile — 2026-10-14 (ADR-264)
 

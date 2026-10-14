@@ -5,7 +5,9 @@ CID, and every graph's syntax with the XAX decoders, builds the backend's object
 backend, and writes the image (or the first rejection's diagnostic record) to a file.  Differential: on every
 committed store its output equals ``compile_x86_64_views`` (code bytes, or the exact ``Diagnostic``); mutated
 stores reject with the bootstrap's container and envelope diagnostics and the graph decoder's; the driver lowers
-its own store to its own image (a component fixed point).
+its own store to its own image (a component fixed point).  S10e (ADR-266): the driver verifies the store semantically
+with the XAX typing, store-verifier, CFG, and facts programs over inputs it builds itself
+(``xax_selfhost_semantic``): a store ``verify_store`` rejects never yields an image.
 """
 
 from __future__ import annotations
@@ -166,6 +168,71 @@ class DriverTests(unittest.TestCase):
             # Graph fragments before it in store order decode cleanly, so its rejection is the first.
             with self.subTest(cut=cut):
                 self.assertEqual(self.run_driver(data), ("rejected", diagnostic))
+
+    def test_semantic_rejections(self):
+        """Random function stores and their semantic mutations (``test_xax_selfhost_verify``): where ``verify_store``
+        accepts, the driver's outcome is ``compile_x86_64_views``'s; where it rejects, the driver writes its
+        verification record (``XAX.DRIVER.VERIFY``) and no image."""
+        from test_xax_selfhost_verify import MUTATIONS, _store
+
+        rng = random.Random(266)
+        rules, accepted = set(), 0
+        for trial in range(160):
+            mutation = MUTATIONS[trial % len(MUTATIONS)]
+            reader = _store(rng, mutation)
+            if reader is None:
+                continue
+            X._PARSED_GRAPHS.clear()
+            try:
+                X.verify_store(reader)
+                verified = True
+            except X.XaxError:
+                verified = False
+            with self.subTest(trial=trial, mutation=mutation):
+                outcome = self.run_driver(reader.data)
+                if verified:
+                    self.assertEqual(outcome, _reference(reader.data, X.x86_64_views_target()))
+                    accepted += 1
+                elif outcome[0] == "rejected":
+                    self.assertEqual(outcome[1].code, "XAX.DRIVER.VERIFY")
+                    rules.add(outcome[1].rule)
+                else:
+                    self.assertEqual(outcome[0], "declined")  # no claim; never an image
+        self.assertGreaterEqual(accepted, 40)
+        self.assertEqual(rules, {"DRIVER-VERIFY-OBJECT", "DRIVER-VERIFY-STORE"})
+
+    def test_type_and_graph_rejections(self):
+        """A constant the typing program rejects (DRIVER-VERIFY-TYPE) and an operation whose operand or result types
+        are wrong (DRIVER-VERIFY-GRAPH); ``verify_store`` rejects each."""
+        from xax_compiler import Operation, SemanticObject, bits_type, object_with_refs, write_store
+        from xax_graph_builder import GraphBuilder
+
+        b8, b32 = bits_type(8), bits_type(32)
+
+        def store(build, parameters, results, extra=()):
+            graph = GraphBuilder()
+            graph.track(b8, b32)
+            entry = graph.block(*parameters)
+            entry.ret(build(entry))
+            function = graph.function(parameters, results)
+            module = object_with_refs(X.Kind.MODULE, [function])
+            root = object_with_refs(X.Kind.PROGRAM_ROOT, [module])
+            return write_store(root.cid, list({item.cid: item for item in (*graph.objects.values(), *extra, function, module, root)}.values()))
+
+        cases = [(store(lambda e: e.op1(Operation.ADD_WRAP, e.params, b32), (b32, b8), (b32,)), "DRIVER-VERIFY-GRAPH"),
+                 (store(lambda e: e.op1(Operation.ADD_WRAP, e.params, b8), (b32, b32), (b8,)), "DRIVER-VERIFY-GRAPH")]
+        for body in (b"\x00\x02\x01\xff", b"\x00\x01\x01\x00", b"\x00\x01"):
+            bad = SemanticObject.create(X.Kind.CONSTANT, body, [b8.cid])
+            build = lambda e, bad=bad: e.op1(Operation.ADD_WRAP, (e.params[0], e.op1(Operation.CONSTANT, (), b8, entity=bad)), b8)
+            cases.append((store(build, (b8,), (b8,), (bad, b8)), "DRIVER-VERIFY-TYPE"))
+        for data, rule in cases:
+            with self.subTest(rule=rule):
+                X._PARSED_GRAPHS.clear()
+                with self.assertRaises(X.XaxError):
+                    X.verify_store(X.StoreReader(data))
+                outcome = self.run_driver(data)
+                self.assertEqual(outcome[0], "rejected")
+                self.assertEqual((outcome[1].code, outcome[1].rule), ("XAX.DRIVER.VERIFY", rule))
 
     def test_target_profile_rejection(self):
         from xax_selfhost_driver import target_package

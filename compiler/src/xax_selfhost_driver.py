@@ -26,6 +26,7 @@ an input beyond a component's capacity or one a component defers; ``FAILED`` an 
 
 from __future__ import annotations
 
+
 import ctypes
 from pathlib import Path
 
@@ -171,6 +172,11 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     from xax_linux import linux_api
 
     H, G, S, X, VIEW_TYPES = _components()
+    import xax_selfhost_cfg as CF
+    import xax_selfhost_facts as FA
+    import xax_selfhost_semantic as SM
+    import xax_selfhost_typing as TY
+    import xax_selfhost_verify as VF
     api = linux_api()
     B32 = api.b32
     MEM = D_MEM = api.memory_effect
@@ -191,9 +197,14 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         "image": (out_pointer, out_view_extent(out_view), 8),
         "chunk": (bytes_rw, CHUNK, 1),
         "path": (bytes_rw, ARGUMENTS_EXTENT, 1),
+        # S10e (ADR-266): the store verifier's object table, the semantic marshals' workspace, the CFG program's views.
+        "vtable": (backend_in_rw, in_view_extent(in_view), 8),
+        "work": (out_pointer, out_view_extent(out_view), 8),
+        "cfgin": (backend_in_rw, CF.IN_EXTENT, 8),
+        "cfgout": (CF.OUT_POINTER, CF.OUT_EXTENT, 8),
     }
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
-             "table": "ip", "image": "op", "chunk": "cp", "path": "pp"}
+             "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp"}
     views = {"arguments": ("ap", "av", "am", 1)}
     for name, pointer_name in names.items():
         stem = pointer_name[0]
@@ -428,6 +439,263 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     when(choose_entry)
 
+    # -- S10e (ADR-266): semantic verification, every decision by an XAX component -------------------------------
+    semantic, semantic_objects = SM.build_functions()
+    typing_reader, typing_program = TY.load_typing_program()
+    verifier_reader, verifier_program = VF.load_verifier_program()
+    cfg_reader, cfg_program = CF.load_cfg_program()
+    t_limit = in_view_extent(in_view) // 8
+    t_words = w.let("t_words", 2)
+
+    def t_put(value):
+        w.if_(w.lt(w[t_words], t_limit), lambda: w.store("vtable", w.mul(w[t_words], 8), value, 8), lambda: stop(DECLINED))
+        w.set(t_words, w.add(w[t_words], 1))
+
+    def work_word(index):
+        return w.load("work", w.mul(index, 8), 8)
+
+    def set_work(index, value):
+        w.store("work", w.mul(index, 8), value, 8)
+
+    def verify_reject(position, rule: str, actual):
+        D.begin(w)
+        D.text(w, "XAX.DRIVER.VERIFY")
+        D.cid(w, [w.cid_word("data", record_word(position, 2), word) for word in range(4)])
+        D.text(w, rule)
+        D.text(w, "proven by the XAX verifier components")
+        D.integer(w, actual)
+        stop(REJECTED)
+
+    def graph_stream(position, on_rejected):
+        """The graph decoder's stream of record ``position`` in ``stream`` (status word 0); ``on_rejected()`` copies
+        its rejection record; a defer declines."""
+        body_at, body_length = record_word(position, 7), record_word(position, 8)
+        e_at, e_length = w.let("g_at", body_at), w.let("g_length", body_length)
+        w.if_(w.lt(G.BODY_EXTENT - CID_SIZE, w[e_length]), lambda: stop(DECLINED))
+
+        def decode_graph():
+            w.copy("data", w[e_at], "body", 0, w[e_length])
+            w.copy("data", record_word(position, 2), "body", w[e_length], CID_SIZE)
+            results = proc.op(Operation.CALL_DIRECT, (*w.triple("body", w.narrowed("body", G.BODY_POINTER)), *w.triple("stream"), w[e_length],
+                                                      record_word(position, 5)), (G.BODY_POINTER, G.BODY_VIEW, MEM, G.OUT_POINTER, G.OUT_VIEW, MEM),
+                              entity=graph_decoder)
+            w.take("body", results[:3])
+            w.take("stream", results[3:])
+            code = w.let("gs_status", w.load("stream", 0, 8))
+            w.if_(w.eq(w[code], 1), on_rejected, lambda: w.if_(w.ne(w[code], 0), lambda: stop(DECLINED)))
+
+        when(decode_graph)
+
+    def graph_rejected():
+        end = w.let("graph_end", w.load("stream", 8 * G.DIAG_AT, 8))
+        q, n = w.let("gq", G.DIAG_AT + 1), w.let("gn", D.DIAG_AT + 1)
+        w.while_(lambda: w.lt(w[q], w[end]), lambda: (w.st(w[n], w.load("stream", w.mul(w[q], 8), 8)), w.set(q, w.add(w[q], 1)), w.set(n, w.add(w[n], 1))))
+        w.st(D.DIAG_AT, w[n])
+        stop(REJECTED)
+
+    def object_table():
+        """``xax_selfhost_verify.object_table(store objects, [root])``."""
+        w.store("vtable", 0, w[objects], 8)
+        root = find(w.load("decoded", 4 * 7, 4))
+        w.store("vtable", 8, w[root], 8)
+        w.if_(w.eq(w[root], w[objects]), lambda: stop(DECLINED))
+        position = w.let("t_object", 0)
+
+        def each():
+            kind, references = w.let("t_kind", record_word(w[position], 4)), w.let("t_refs", record_word(w[position], 5))
+            t_put(w[kind])
+            t_put(w[references])
+            r = w.let("t_ref", 0)
+
+            def reference():
+                found = find(w.add(record_word(w[position], 6), w.mul(w[r], CID_SIZE)))
+                t_put(w.sel(w.eq(w[found], w[objects]), FA.NONE, w[found]))
+                w.set(r, w.add(w[r], 1))
+
+            w.while_(lambda: w.lt(w[r], w[references]), reference)
+            put_words = [w.cid_word("data", record_word(w[position], 2), word) for word in range(4)]
+            for word in put_words:
+                t_put(word)
+            body_at, body_length = w.let("t_body_at", record_word(w[position], 7)), w.let("t_body_length", record_word(w[position], 8))
+
+            def graph():
+                graph_stream(w[position], graph_rejected)
+
+                def stream():
+                    count = w.let("t_stream", w.sub(w.load("stream", 8, 8), 2))
+                    t_put(w[count])
+                    q = w.let("q", 0)
+                    w.while_(lambda: w.both(w.lt(w[q], w[count]), running()), lambda: (t_put(w.load("stream", w.mul(w.add(w[q], 2), 8), 8)), w.set(q, w.add(w[q], 1))))
+                    t_put(w[body_length])
+                    q2 = w.let("q", 0)
+                    w.while_(lambda: w.both(w.lt(w[q2], w[body_length]), running()), lambda: (t_put(w.load("data", w.add(w[body_at], w[q2]))), w.set(q2, w.add(w[q2], 1))))
+                    t_put(0)  # accepted by the graph decoder
+
+                when(stream)
+
+            def plain():
+                t_put(w[body_length])
+                q = w.let("q", 0)
+                w.while_(lambda: w.both(w.lt(w[q], w[body_length]), running()), lambda: (t_put(w.load("data", w.add(w[body_at], w[q]))), w.set(q, w.add(w[q], 1))))
+
+            w.if_(w.eq(w[kind], int(Kind.GRAPH_FRAGMENT)), graph, plain)
+            w.set(position, w.add(w[position], 1))
+
+        w.while_(lambda: w.both(w.lt(w[position], w[objects]), running()), each)
+
+    def helper(name: str):
+        results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("work")), (B64, *VIEW_TYPES),
+                          entity=semantic[name])
+        w.take("vtable", results[1:4])
+        w.take("work", results[4:])
+        w.if_(w.ne(work_word(SM.CTRL + SM.C_STATUS), SM.OK), lambda: stop(DECLINED))
+
+    def typing():
+        """The typing program over the workspace's marshal, copied to ``table``; its output in ``image``."""
+        count = w.let("m_count", work_word(SM.CTRL + SM.C_LENGTH))
+        w.if_(w.lt(t_limit, w[count]), lambda: stop(DECLINED))
+        q = w.let("q", 0)
+        w.while_(lambda: w.both(w.lt(w[q], w[count]), running()), lambda: (w.store("table", w.mul(w[q], 8), work_word(w.add(SM.MARSHAL_AT, w[q])), 8),
+                                                                           w.set(q, w.add(w[q], 1))))
+
+        def run():
+            results = proc.op(Operation.CALL_DIRECT, (*w.triple("table", w.narrowed("table", in_pointer)), *w.triple("image")), VIEW_TYPES,
+                              entity=typing_program)
+            w.take("table", results[:3])
+            w.take("image", results[3:])
+            w.if_(w.ne(w.ld(0), TY.ACCEPT), lambda: stop(DECLINED))
+
+        when(run)
+
+    def object_verdicts():
+        """``_xax_prove_objects``: every type and constant proven; the verdict flags follow the object table."""
+        helper("index_objects")
+        when(lambda: helper("objects_marshal"))
+        when(typing)
+        entries = w.let("entries", work_word(SM.MARSHAL_AT))
+        o = w.let("flag_object", 0)
+
+        def flag():
+            listed = w.let("listed", work_word(w.add(SM.LISTED, w[o])))
+            proven = w.let("proven", 0)
+            w.if_(w.ne(w[listed], FA.NONE), lambda: w.set(proven, w.flag(w.eq(w.ld(w.add(w.add(TY.TABLE, w.mul(w[entries], TY.OBJOK)), w[listed])), 1))))
+            t_put(w[proven])
+            kind = record_word(w[o], 4)
+
+            def unproven():
+                site = w.ld(w.add(w.add(TY.TABLE, w.mul(w[entries], TY.CREJ)), w[listed]))
+                w.if_(w.ne(site, 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-TYPE", site), lambda: stop(DECLINED))
+
+            w.if_(w.both(w.either(w.eq(kind, int(Kind.TYPE)), w.eq(kind, int(Kind.CONSTANT))), w.eq(w[proven], 0), running()), unproven)
+            w.set(o, w.add(w[o], 1))
+
+        w.while_(lambda: w.lt(w[o], w[objects]), flag)
+
+    structural = tuple(int(kind) for kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET,
+                                              Kind.PACKAGE, Kind.BUILD, Kind.GRAPH_FRAGMENT))
+
+    def store_verdicts():
+        """``_xax_verify_store``: every object of these kinds and the store proven by the XAX store verifier."""
+        results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("image")), (B64, *VIEW_TYPES),
+                          entity=verifier_program)
+        w.take("vtable", results[1:4])
+        w.take("image", results[4:])
+        w.if_(w.ne(w.ld(0), VF.OK), lambda: stop(DECLINED))
+        o = w.let("verdict_object", 0)
+
+        def verdict():
+            value = w.let("verdict", w.ld(w.add(VF.VERDICTS_AT, w[o])))
+            kind = record_word(w[o], 4)
+            unproven = w.both(w.either(*(w.eq(kind, k) for k in structural)), w.ne(w[value], 1))
+            w.if_(unproven, lambda: w.if_(w.eq(w[value], VF.REJECTED), lambda: verify_reject(w[o], "DRIVER-VERIFY-OBJECT", w[value]), lambda: stop(DECLINED)))
+            w.set(o, w.add(w[o], 1))
+
+        w.while_(lambda: w.both(w.lt(w[o], w[objects]), running()), verdict)
+
+        def store():
+            fault = w.let("fault", w.ld(VF.STORE_FAULT))
+            root = find(w.load("decoded", 4 * 7, 4))
+            w.if_(w.either(w.eq(w[fault], 1), w.eq(w[fault], 2)), lambda: verify_reject(w[root], "DRIVER-VERIFY-STORE", w[fault]), lambda: stop(DECLINED))
+
+        w.if_(w.both(running(), w.ne(w.ld(1), 1)), store)
+
+    def graph_verdicts():
+        """``_parse_graph`` for every graph: CFG (branch targets, uses), then typing, facts, and linear flow."""
+        o = w.let("graph_object", 0)
+
+        def each():
+            def graph():
+                set_work(SM.CTRL + SM.C_GRAPH, w[o])
+                helper("parse_graph")
+                when(lambda: helper("cfg_input"))
+
+                def cfg():
+                    count = w.let("c_count", work_word(SM.CTRL + SM.C_CFG_LENGTH))
+                    q = w.let("q", 0)
+                    w.while_(lambda: w.lt(w[q], w[count]), lambda: (w.store("cfgin", w.mul(w[q], 8), work_word(w.add(SM.CFG_AT, w[q])), 8), w.set(q, w.add(w[q], 1))))
+                    results = proc.op(Operation.CALL_DIRECT, (*w.triple("cfgin", w.narrowed("cfgin", in_pointer)), *w.triple("cfgout")),
+                                      (in_pointer, CF.IN_VIEW, MEM, CF.OUT_POINTER, CF.OUT_VIEW, MEM), entity=cfg_program)
+                    w.take("cfgin", results[:3])
+                    w.take("cfgout", results[3:])
+                    status_word = w.let("c_status", w.load("cfgout", 0, 8))
+                    w.if_(w.eq(w[status_word], CF.REJECT), lambda: verify_reject(w[o], "DRIVER-VERIFY-BRANCH", w.load("cfgout", 8, 8)), lambda: w.if_(
+                        w.ne(w[status_word], CF.ACCEPT), lambda: stop(DECLINED), lambda: w.if_(
+                            w.eq(w.load("cfgout", 16, 8), 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-USE", 0))))
+
+                    def order():
+                        blocks = w.let("c_blocks", work_word(SM.CTRL + SM.C_BLOCKS))
+                        q2 = w.let("q", 0)
+                        w.while_(lambda: w.lt(w[q2], w[blocks]), lambda: (set_work(w.add(SM.ORDER, w[q2]), w.load("cfgout", w.mul(w.add(w[q2], 3), 8), 8)),
+                                                                          w.set(q2, w.add(w[q2], 1))))
+
+                    when(order)
+
+                when(cfg)
+                when(lambda: helper("graph_marshal"))
+                when(typing)
+
+                def verdicts():
+                    keys, blocks, nodes = (w.let(name, work_word(SM.CTRL + field)) for name, field in
+                                           (("v_keys", SM.C_KEYS), ("v_blocks", SM.C_BLOCKS), ("v_nodes", SM.C_NODES)))
+                    rejected, proven, terminators = w.let("v_rejected", 0), w.let("v_proven", 0), w.let("v_terms", 0)
+                    q = w.let("q", 0)
+
+                    def key():
+                        value = w.ld(w.add(2, w[q]))
+                        w.set(rejected, w.or_(w[rejected], w.flag(w.eq(value, TY.REJECTED))))
+                        w.set(proven, w.add(w[proven], w.flag(w.eq(value, TY.PROVEN))))
+                        w.set(q, w.add(w[q], 1))
+
+                    w.while_(lambda: w.lt(w[q], w[keys]), key)
+                    q2 = w.let("q", 0)
+
+                    def block():
+                        w.set(terminators, w.add(w[terminators], w.flag(w.eq(w.ld(w.add(w.add(2, w[keys]), w[q2])), TY.PROVEN))))
+                        w.set(rejected, w.or_(w[rejected], w.flag(w.ne(w.ld(w.sub(TY.TERMINATOR_RECORDS, w.mul(4, w[q2]))), 0))))
+                        w.set(q2, w.add(w[q2], 1))
+
+                    w.while_(lambda: w.lt(w[q2], w[blocks]), block)
+                    header = FA.HEADER
+                    facts = w.eq(w.ld(header + FA.H_STATUS), FA.ACCEPTED)
+                    linear = w.eq(w.ld(header + FA.H_LINEAR), 1)
+                    w.set(rejected, w.or_(w[rejected], w.or_(w.flag(w.ne(w.ld(header + FA.H_REJECT), 0)), w.flag(w.ne(w.ld(header + FA.H_LREJ), 0)))))
+                    fact_free = w.both(w.eq(w.ld(w.add(w.add(2, w[keys]), w[blocks])), 1), w.eq(w[proven], w[nodes]), w.eq(w[keys], w[nodes]))
+                    accepted = w.both(w.eq(w[terminators], w[blocks]), w.either(facts, fact_free), linear)
+                    w.if_(w.not_(accepted), lambda: w.if_(w.ne(w[rejected], 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-GRAPH", w[rejected]),
+                                                          lambda: stop(DECLINED)))
+
+                when(verdicts)
+
+            w.if_(w.eq(record_word(w[o], 4), int(Kind.GRAPH_FRAGMENT)), graph)
+            w.set(o, w.add(w[o], 1))
+
+        w.while_(lambda: w.both(w.lt(w[o], w[objects]), running()), each)
+
+    when(object_table)
+    when(object_verdicts)
+    when(store_verdicts)
+    when(graph_verdicts)
+
     # -- the backend's object table (``xax_riscv64._object_table``) -----------------------------------------------
     words = w.let("words", 1 + 4)
     table_limit = in_view_extent(in_view) // 8
@@ -576,22 +844,20 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     when(lower)
 
     # -- the output ------------------------------------------------------------------------------------------
-    def emit(first_word, count, bytes_per_word: int):
-        """Write ``count`` words of the backend output from ``first_word`` as bytes (one per word) or as 64-bit words."""
+    def emit(first_word, byte_count):
+        """Write ``byte_count`` bytes of the backend output from word ``first_word`` (little-endian words: the packed
+        code, ADR-266, or a diagnostic record)."""
         fd = open_path(2, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
 
         def write_all():
             done = w.let("done", 0)
-            total = w.let("total", w.mul(count, bytes_per_word))
+            total = w.let("total", byte_count)
 
             def step():
                 piece = w.let("piece", w.sel(w.lt(w.sub(w[total], w[done]), CHUNK), w.sub(w[total], w[done]), CHUNK))
                 q = w.let("q", 0)
-                if bytes_per_word == 1:
-                    w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.add(w[done], w[q])))), w.set(q, w.add(w[q], 1))))
-                else:
-                    w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.udiv(w.add(w[done], w[q]), 8))), 8),
-                                                                    w.set(q, w.add(w[q], 8))))
+                w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.udiv(w.add(w[done], w[q]), 8))), 8),
+                                                                w.set(q, w.add(w[q], 8))))
                 written, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(WRITE_RW, (fd32(fd), w.p[views["chunk"][0]], w[piece], w.p["fs"], w.p[views["chunk"][2]]),
                                                                        (B64, FS, MEM))
                 w.if_(w.ne(written, w[piece]), lambda: (stop(FAILED), w.set(done, w[total])), lambda: w.set(done, w.add(w[done], w[piece])))
@@ -605,8 +871,8 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     final = w.let("final", 0)
     w.set(final, w[status])
-    w.if_(w.eq(w[status], IMAGE), lambda: emit(WORDS_AT, w.ld(1), 1),
-          lambda: w.if_(w.eq(w[status], REJECTED), lambda: emit(D.DIAG_AT + 1, w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8)))
+    w.if_(w.eq(w[status], IMAGE), lambda: emit(WORDS_AT, w.ld(1)),
+          lambda: w.if_(w.eq(w[status], REJECTED), lambda: emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8))))
     w.if_(w.eq(w[status], FAILED), lambda: w.set(final, FAILED))
 
     # Every view released (``munmap`` of the whole view: the deallocator contract).
@@ -617,9 +883,10 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         released.append(memory)
     proc.ret(proc["ap"], proc["av"], proc["am"], proc["fs"], *released, w[final])
     function = proc.function((api.bytes_read, heap_view_type(ARGUMENTS_EXTENT), MEM, FS, *(MEM,) * len(buffers), B64))
-    component_objects = [item for reader in (decoder_reader, graph_reader, backend_reader) for item in reader.objects()
+    readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader)
+    component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
-    objects_ = (*proc.graph.objects.values(), *hash_objects, *component_objects, *api.types, WRITE_RW)
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *component_objects, *api.types, WRITE_RW)
     return program_store(function, x86_64_linux_exec_target(), objects_), function
 
 

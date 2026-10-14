@@ -75,7 +75,7 @@ from xax_compiler import heap_view_type
 from xax_selfhost_cfg import B64, IN_POINTER, MEM, OUT_POINTER, _Builder
 
 # The typing-and-facts program's own views: large graphs need room for their streams and fact tables.
-IN_EXTENT, OUT_EXTENT = 64 << 20, 256 << 20  # S6c: the largest helper stores as one verifier object table
+IN_EXTENT, OUT_EXTENT = 128 << 20, 512 << 20  # S6c; S10e (ADR-266): the driver store as one object table, its stream
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)
 
@@ -117,6 +117,9 @@ SITE_CALL_CONTRACT = SITE_META_ARITY + 34  # S8c.7 (ADR-220)
 # diagnostic is the decoder's own, for the type (its per-type XSTAT/XA/XB outcome).
 SITE_CROSS_BITS, SITE_CROSS_FLOAT = SITE_META_ARITY + 35, SITE_META_ARITY + 36
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
+# The tables and the block positions after them hold a copy-sized region of the input (``places``): an input view
+# more than half the space above TABLE defers every stream (ADR-266).
+assert IN_WORDS <= (OUT_WORDS - TABLE) // 2
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
 WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)

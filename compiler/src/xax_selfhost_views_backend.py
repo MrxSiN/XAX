@@ -31,9 +31,10 @@ WORDS_AT, WORDS_LIMIT = 1 << 20, 5 << 20  # code: one word per RISC-V instructio
 JUMPS_AT, JUMPS_LIMIT = 6 << 20, 1 << 19  # 3 words per jump
 RANGES_AT, RANGES_LIMIT = (6 << 20) + (1 << 19), 2 << 20  # 5 words per range
 META_AT = (8 << 20) + (1 << 19)  # entry machine parameter and return widths; the function order
-STREAM_AT, STREAM_END = 9 << 20, 13 << 20  # the front end's internal stream (S5a format), read by the code generator
+# ADR-266: the stream holds the compiler driver's closure (5M words); the output view doubled to 64M words.
+STREAM_AT, STREAM_END = 9 << 20, 17 << 20  # the front end's internal stream (S5a format), read by the code generator
 # S6c: the arena takes the rest; each function's scratch is reclaimed after it is lowered.
-ARENA_AT, ARENA_END = 13 << 20, HEADER - 1
+ARENA_AT, ARENA_END = 17 << 20, HEADER - 1
 # Backend state in the header (after the argument words).
 (S_COUNT, S_JUMPS, S_RANGES, S_FN, S_OFFSETS, S_REG, S_SLOT, S_WIDTH, S_TRAP, S_TRAP_USED, S_POW, S_FRAME, S_TEMPS,
  S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS, S_AGG) = range(44, 64)
@@ -2024,27 +2025,32 @@ def _program(tables, compile_function, isa):
 
 # -- outputs and native execution ---------------------------------------------------------------------
 
-def collect_program_output(read):
+def collect_program_output(read, read_code=None, read_ranges=None):
     """A backend program's result from its output view, read as ``read(start word, count)`` wherever it ran:
     ``(code units, function CIDs in layout order, their start and end offsets in code units, node ranges by layout
     position, entry parameter widths, entry return widths)``, or None (declined).  A code unit is a RISC-V instruction
-    word or an x86-64 byte.  Every field is the program's (S7b.2); this only reads words."""
+    word or an x86-64 byte.  Every field is the program's (S7b.2); this only reads words.  ``read_code(count)`` and
+    ``read_ranges(count)`` read an ISA's packed encodings (ADR-266: the x86-64 program packs both)."""
     status, count, ranges, offsets_at, image_at, widths_at = read(0, 6)
     if status != OK:
         return None
     (functions,) = read(STREAM_AT, 1)
-    code = read(WORDS_AT, count)
+    code = read(WORDS_AT, count) if read_code is None else read_code(count)
     image = read(image_at, functions * (CID_WORDS + 1))
     records = [image[k:k + CID_WORDS + 1] for k in range(0, len(image), CID_WORDS + 1)]
     cids = [b"".join(word.to_bytes(8, "big") for word in record[:CID_WORDS]) for record in records]
     offsets = list(zip(read(offsets_at, functions), (record[CID_WORDS] for record in records)))
-    flat = read(RANGES_AT, 5 * ranges)
+    if read_ranges is None:
+        flat = read(RANGES_AT, 5 * ranges)
+        node_ranges = [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)]
+    else:
+        node_ranges = read_ranges(ranges)
     (parameters,) = read(widths_at, 1)
     parameter_widths = tuple(read(widths_at + 1, parameters))
     returns_at = widths_at + 1 + parameters
     (returns,) = read(returns_at, 1)
     return_widths = tuple(read(returns_at + 1, returns))
-    return code, cids, offsets, [tuple(flat[k : k + 5]) for k in range(0, len(flat), 5)], parameter_widths, return_widths
+    return code, cids, offsets, node_ranges, parameter_widths, return_widths
 
 
 class NativeProgram:

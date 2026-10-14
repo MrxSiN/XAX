@@ -1,10 +1,10 @@
-"""S10 evidence (ADR-265): the XAX compiler driver, run natively, against the in-process Python-orchestrated path.
+"""S10 evidence (ADR-265, ADR-266): the XAX compiler driver, run natively, against the in-process Python-orchestrated path.
 
 For every committed store: the driver's outcome (image or diagnostic) and whether it equals
 ``compile_x86_64_views`` (the bootstrap generator, after the bootstrap verifier); the driver's wall time (file read,
-decoding, object table, lowering, file write) against the in-process path doing the same work (``StoreReader`` and
-``compile_x86_64_views(..., backend="xax", verified=True)``, Python orchestrating the same XAX components; neither
-runs semantic verification), median of five.  Also:
+decoding, semantic verification, object table, lowering, file write) against the in-process path doing the same work
+(``StoreReader`` and ``compile_x86_64_views(..., backend="xax")``, whose ``verify_store`` asks the same XAX components
+with Python orchestrating them), median of five.  Also:
 the driver image is the bootstrap generator's (B1-like), and the driver lowers its own store to its own image
 (component fixed point).  Host timings are non-semantic.  Runs with ``XAX_REQUIRE_NATIVE=1``.
 Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_driver.py [--write]``.
@@ -64,7 +64,9 @@ def measure() -> dict:
         store = X.StoreReader(data)
         module = next(item for item in store.objects() if item.kind == X.Kind.MODULE)
         entry = next(store.get(cid) for cid in module.references if store.get(cid).kind == X.Kind.FUNCTION)
-        return compile_x86_64_views(store, entry.cid, target, backend="xax", verified=True)  # the same work: no semantic verification
+        X._PARSED_GRAPHS.clear()
+        X._XAX_VALID_OBJECTS.clear()
+        return compile_x86_64_views(store, entry.cid, target, backend="xax")  # the same work: semantic verification included
 
     rows = []
     for path in sorted(BOOTSTRAP.glob("*.xax")):
@@ -95,7 +97,7 @@ def measure() -> dict:
 
     status, produced = drive(Path(X.__file__).resolve().parents[1] / "bootstrap" / "xax_compiler_driver.xax", "v2")
     return {
-        "format": "xax-selfhost-driver-evidence-v1",
+        "format": "xax-selfhost-driver-evidence-v2",
         "label": "EXECUTED",
         "host_nonsemantic": f"{platform.system()} {platform.machine()} Python {platform.python_version()}",
         "driver": {"store_sha256": hashlib.sha256(reader.data).hexdigest(), "semantic_root": reader.root_cid.hex(),
