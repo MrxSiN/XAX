@@ -111,7 +111,7 @@ def refresh(module_name: str) -> dict:
 
     for evidence in refreshed.values():
         evidence["refreshed"] = {"program": module_name, "store": store.name, "store_sha256": hashlib.sha256(reader.data).hexdigest(),
-                                 "reason": "ADR-249: only this store changed; its entries were re-executed natively",
+                                 "reason": "only this store changed since the last full run; its entries were re-executed natively",
                                  "authority": xax_native.AUTHORITY}
     return refreshed
 

@@ -1812,6 +1812,8 @@ def _request_ok(tables):
     entry, bindings matching the package's schemas name for name with constants of the schema types, canonical
     artifacts, exact end and use.  A rejected package or binding value whose own diagnostic the bootstrap raises
     (in a nested decoder) is left to that object's rejection."""
+    from xax_build import ArtifactKind
+
     def build(e: E):
         p = e.p
         o = p["o"]
@@ -1903,7 +1905,7 @@ def _request_ok(tables):
         e.var("aok", 1)
 
         def artifact():
-            e.var("art", r["enum"](6, 4))
+            e.var("art", r["enum"](max(ArtifactKind), BUILD_ENUMS.index("ArtifactKind") + 1))
             e.if_(e.le(p["art"], p["aprev"]), lambda: e.set("aok", 0))
             e.set("aprev", p["art"])
 

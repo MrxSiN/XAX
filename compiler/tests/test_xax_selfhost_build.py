@@ -275,7 +275,7 @@ class SelfhostClosureTests(unittest.TestCase):
         valid = rejected = 0
         decided = {2: [0, 0], 3: [0, 0], 5: [0, 0]}
         rules = set()
-        for trial in range(176):
+        for trial in range(220):
             broken = CLOSURE_BREAKS[trial % len(CLOSURE_BREAKS)]
             try:
                 root, objects, closure = _closure_store(rng, broken)
