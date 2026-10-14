@@ -1162,11 +1162,12 @@ def x86_64_views_target() -> SemanticObject:
 
 
 def x86_64_views_syscall_target() -> SemanticObject:
-    """S10a (ADR-264): the x86-64 views profile plus explicit Linux syscalls (``call.foreign`` of a
-    ``linux-x86_64-syscall-v1`` declaration without heap contracts), so an XAX views program performs its own I/O."""
+    """S10a/S10b (ADR-264, ADR-265): the x86-64 views profile plus explicit Linux syscalls (``call.foreign`` of a
+    ``linux-x86_64-syscall-v1`` declaration) and owned memory (``heap.view`` over an ``mmap`` allocation,
+    ``pointer.cast``), so an XAX views program performs its own I/O and owns the views it lends."""
     return _x86_64_windows_target(
         b"x86_64-linux-views-v2",
-        tuple(sorted({*views_operations(), int(Operation.CALL_FOREIGN)})),
+        tuple(sorted({*views_operations(), int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), int(Operation.POINTER_CAST)})),
         machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
     )
 

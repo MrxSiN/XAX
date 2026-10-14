@@ -274,6 +274,10 @@
       "class": "G",
       "note": "Builder of the canonical S3d store."
     },
+    "xax_selfhost_driver.py": {
+      "class": "G",
+      "note": "Builder of the canonical S10 driver store (ADR-265)."
+    },
     "xax_selfhost_diagnostics.py": {
       "class": "G",
       "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing."
@@ -520,14 +524,14 @@
       "recommended_step": "S12"
     },
     "driver": {
-      "python_authority": "xax_compiler/xax_x86_64_views/xax_build call sequences",
-      "xax_hosted": "S10a (ADR-264): explicit Linux syscalls lowered in the x86-64 views profile by the XAX backend program (the driver's I/O mechanism); no driver logic is XAX yet",
+      "python_authority": "xax_compiler.verify_store / _parse_graph orchestration of semantic verification (S10e); xax_compiler/xax_build call sequences for other targets; the host process that maps the driver image (S11)",
+      "xax_hosted": "xax_compiler_driver.xax (S10a-S10d, ADR-264, ADR-265): file I/O and owned memory through explicit Linux syscalls, container/digest/object-CID decoding, graph streams, the object table, target-package reading and profile check, XAX backend lowering, image or diagnostic output; equal to compile_x86_64_views on every committed store and a fixed point on its own store",
       "target_dependency": "host x86-64 Linux",
       "prerequisite": "S7b, S8, S9, platform I/O contracts",
-      "differential_oracle": "artifacts and diagnostics of the Python driver",
+      "differential_oracle": "compile_x86_64_views on every committed store, the bootstrap container parser and object decoder on mutated stores (tests/test_xax_selfhost_driver.py)",
       "fixed_point_relevance": "the self-build entry point",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S10b-S10d (ADR-264)"
+      "recommended_step": "S10e (semantic verification), S11 (ELF64 executable)"
     },
     "cli": {
       "python_authority": "xax_compiler.main (xaxc)",

@@ -1,0 +1,323 @@
+{
+  "format": "xax-selfhost-driver-evidence-v1",
+  "label": "EXECUTED",
+  "host_nonsemantic": "Linux x86_64 Python 3.13.16",
+  "driver": {
+    "store_sha256": "c1d04693a90cdf2d84b9742acd35dbc99ffae9a6fbd4bab027d5fcb79a5b649c",
+    "semantic_root": "56052aa12af57031ba6c2da22855d3826472130acd3993222fc6ae4b86271879",
+    "target_cid": "41b21115deb8899133c650053138cb3472bec43af85bdddde2f873a7bb1f03c0",
+    "code_bytes": 4101312,
+    "image_sha256": "515810abeeda11229881a3f95d0beae78958500817975f60bcc1c0918e130b07",
+    "xax_backend_equals_bootstrap_generator": true
+  },
+  "stores": [
+    {
+      "store": "m11_bootstrap_bundle.xax",
+      "store_bytes": 1566,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "7b919f80067ea0a277127e5b6262d62abd78f208049f0b7b4c23e52e93a626a6",
+      "image_bytes": 150,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.0005,
+        "python_orchestrated_xax_components": 0.0007
+      }
+    },
+    {
+      "store": "m11_compiler_subset.xax",
+      "store_bytes": 820,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "7b919f80067ea0a277127e5b6262d62abd78f208049f0b7b4c23e52e93a626a6",
+      "image_bytes": 150,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.0006,
+        "python_orchestrated_xax_components": 0.0005
+      }
+    },
+    {
+      "store": "m14_selfhost_compiler.xax",
+      "store_bytes": 2020,
+      "outcome": "rejected",
+      "equals_bootstrap": true,
+      "diagnostic": {
+        "code": "XAX.X86_64_VIEWS.UNSUPPORTED_OPERATION",
+        "rule": "X86_64_VIEWS-OP-TARGET-SUPPORTED"
+      }
+    },
+    {
+      "store": "xax_blake3_compress.xax",
+      "store_bytes": 11827,
+      "outcome": "rejected",
+      "equals_bootstrap": true,
+      "diagnostic": {
+        "code": "XAX.X86_64_VIEWS.VALUE",
+        "rule": "X86_64_VIEWS-VALUE-BITS"
+      }
+    },
+    {
+      "store": "xax_blake3_hash.xax",
+      "store_bytes": 34035,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "a1ba499f179c341455d676814c7d4b7ded072706bc6ee211c3bce6b3a6351ac5",
+      "image_bytes": 20661,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.0157,
+        "python_orchestrated_xax_components": 0.03
+      }
+    },
+    {
+      "store": "xax_cfg_analysis.xax",
+      "store_bytes": 16296,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "e178c633ab77fe926b0eb76f8573e1aed2720b9ca5daabc4576e5de916bb42a3",
+      "image_bytes": 10200,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.0123,
+        "python_orchestrated_xax_components": 0.0147
+      }
+    },
+    {
+      "store": "xax_compiler_driver.xax",
+      "store_bytes": 2372926,
+      "outcome": "rejected",
+      "equals_bootstrap": true,
+      "diagnostic": {
+        "code": "XAX.X86_64_VIEWS.UNSUPPORTED_OPERATION",
+        "rule": "X86_64_VIEWS-OP-TARGET-SUPPORTED"
+      }
+    },
+    {
+      "store": "xax_graph_decoder.xax",
+      "store_bytes": 148177,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
+      "image_bytes": 108036,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.2131,
+        "python_orchestrated_xax_components": 0.2361
+      }
+    },
+    {
+      "store": "xax_op_typing.xax",
+      "store_bytes": 3826889,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "572c8c0539cdc4f7c473a18cf765379c21fe51ba64e47e7b46dcd0789d20b282",
+      "image_bytes": 4153637,
+      "host_s_nonsemantic": {
+        "xax_driver": 4.5262,
+        "python_orchestrated_xax_components": 5.7175
+      }
+    },
+    {
+      "store": "xax_riscv64_backend.xax",
+      "store_bytes": 1366059,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "e6959e1a43953c5811856552b5e02bd83a7bb843391a1c8af36362e79261368e",
+      "image_bytes": 2739368,
+      "host_s_nonsemantic": {
+        "xax_driver": 2.7883,
+        "python_orchestrated_xax_components": 2.9938
+      }
+    },
+    {
+      "store": "xax_riscv64_encoder.xax",
+      "store_bytes": 10129,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+      "image_bytes": 3894,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.0043,
+        "python_orchestrated_xax_components": 0.0057
+      }
+    },
+    {
+      "store": "xax_store_decoder.xax",
+      "store_bytes": 274243,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
+      "image_bytes": 190326,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.416,
+        "python_orchestrated_xax_components": 0.3833
+      }
+    },
+    {
+      "store": "xax_store_verifier.xax",
+      "store_bytes": 1792310,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "e765f97e25d2318dc0419e8cf6951570178b4d12bcbad71c424bae8cc0305941",
+      "image_bytes": 4797068,
+      "host_s_nonsemantic": {
+        "xax_driver": 2.8064,
+        "python_orchestrated_xax_components": 3.2506
+      }
+    },
+    {
+      "store": "xax_store_writer.xax",
+      "store_bytes": 133869,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "0f1c75b9a40b9721515a26831ec45a411fc49ac002201a5e0b53e7d985944ee0",
+      "image_bytes": 310848,
+      "host_s_nonsemantic": {
+        "xax_driver": 0.1583,
+        "python_orchestrated_xax_components": 0.1821
+      }
+    },
+    {
+      "store": "xax_x86_64_backend.xax",
+      "store_bytes": 1691629,
+      "outcome": "image",
+      "equals_bootstrap": true,
+      "image_sha256": "18a1c6deb400c9365112b7f416db69c8b559dc20206e4d8e2612fc3b4355afd9",
+      "image_bytes": 3298638,
+      "host_s_nonsemantic": {
+        "xax_driver": 3.7356,
+        "python_orchestrated_xax_components": 4.0182
+      }
+    }
+  ],
+  "fixed_point": {
+    "compiler": "the driver image, native, with the v2 target package",
+    "status": 0,
+    "output_equals_driver_image": true
+  },
+  "authority": {
+    "blake3-compress": {
+      "component": "blake3-compress",
+      "semantic_root": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+      "native_artifact_digest": "bfaf9a6c4b3347f00c053e8192f6b3c7860c9f47bab7c07ee2731debb52caa13",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:hash": {
+      "component": "verification:hash",
+      "store_verification": "memoized",
+      "record": "verified-hash-6414affa2d27a216a0ae69fda10e74b7b27b2a8c1ebb9a3f13dd1a76d47b419e.bin"
+    },
+    "blake3-hash": {
+      "component": "blake3-hash",
+      "semantic_root": "ec668facd92aa066226428ee8685cd9f6aaca4d8a67507b49fbf54d3e6fe4328",
+      "native_artifact_digest": "a1ba499f179c341455d676814c7d4b7ded072706bc6ee211c3bce6b3a6351ac5",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:store-decoder": {
+      "component": "verification:store-decoder",
+      "store_verification": "memoized",
+      "record": "verified-store-decoder-43871e764cae67b6eab03d4e7ad6c1e9f46d0b899e8595426230ba13ce54ea88.bin"
+    },
+    "store-decoder": {
+      "component": "store-decoder",
+      "semantic_root": "5f3e5a1c28e99f4deb350fff40e179294c3d5e6910a6cb71c5b2c77f8c6ae0bc",
+      "native_artifact_digest": "d8d37f7057eb107552bee04780e840e3ef6206a1be58efcf7148716d3e7be9d4",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:compiler-driver": {
+      "component": "verification:compiler-driver",
+      "store_verification": "memoized",
+      "record": "verified-compiler-driver-5678198ae35284c37f9880092da57cfcb5581f0ff7b9eac7fb01b927c302513a.bin"
+    },
+    "verification:typing": {
+      "component": "verification:typing",
+      "store_verification": "memoized",
+      "record": "verified-typing-24ceb32fc4c1c200862b13f303052ac9e8c640d767ab0b5f91c5eb4b49013dfc.bin"
+    },
+    "typing": {
+      "component": "typing",
+      "semantic_root": "16f7eeefa5d79b53b952043b5df722ea0eeafd371e3b210dfef5738f0dfa054e",
+      "native_artifact_digest": "572c8c0539cdc4f7c473a18cf765379c21fe51ba64e47e7b46dcd0789d20b282",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:store-verifier": {
+      "component": "verification:store-verifier",
+      "store_verification": "memoized",
+      "record": "verified-store-verifier-e5e029d23de5e8807382a70b894631a37131c8a4c2c8779829ebbfa54477b231.bin"
+    },
+    "store-verifier": {
+      "component": "store-verifier",
+      "semantic_root": "4e0038cc94311af347a32ab8d5cd3744a86cfa53df2dca880dc6da7fe66ac8e9",
+      "native_artifact_digest": "e765f97e25d2318dc0419e8cf6951570178b4d12bcbad71c424bae8cc0305941",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null,
+      "declined_inputs": 3817
+    },
+    "verification:graph-decoder": {
+      "component": "verification:graph-decoder",
+      "store_verification": "memoized",
+      "record": "verified-graph-decoder-465c3d7a27fe757b6ebe9ee930ac02e0c6a138d6d98991ef440eb9caa3811652.bin"
+    },
+    "graph-decoder": {
+      "component": "graph-decoder",
+      "semantic_root": "05ba650dc678a359093ac0f4d3e1b2520ddfd6737954e04622e22634baba04a6",
+      "native_artifact_digest": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:cfg": {
+      "component": "verification:cfg",
+      "store_verification": "memoized",
+      "record": "verified-cfg-7e179975fc8b88675f0964b6b68f8d7ec59498cb44e24a530a0137c0c651e1e9.bin"
+    },
+    "cfg": {
+      "component": "cfg",
+      "semantic_root": "66d42ef0298b00e21b40906d2073dc21eef4957109bf6e5948006b75ded5c884",
+      "native_artifact_digest": "e178c633ab77fe926b0eb76f8573e1aed2720b9ca5daabc4576e5de916bb42a3",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_x86_64_backend": {
+      "component": "verification:xax_x86_64_backend",
+      "store_verification": "memoized",
+      "record": "verified-xax_x86_64_backend-96e9e229a44e7a52bbfa659556b9c36ddf5534ccd1819dde176cc88eb23929cd.bin"
+    },
+    "x86-64-views-backend": {
+      "component": "x86-64-views-backend",
+      "semantic_root": "af8922f0e75e9eb642d323b5038fd901f8c5316511ebc3c3783be9feb311566d",
+      "native_artifact_digest": "18a1c6deb400c9365112b7f416db69c8b559dc20206e4d8e2612fc3b4355afd9",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:store-writer": {
+      "component": "verification:store-writer",
+      "store_verification": "memoized",
+      "record": "verified-store-writer-84b71b5852ff6101e60fca2087ef44e21d9eb678f275dd679cbc5c2989858c80.bin"
+    },
+    "store-writer": {
+      "component": "store-writer",
+      "semantic_root": "444d4279f9656cf1cfdc97f1f7dfed7b72e1a00e43a1eeacb12f6c7964e6a6a1",
+      "native_artifact_digest": "0f1c75b9a40b9721515a26831ec45a411fc49ac002201a5e0b53e7d985944ee0",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    }
+  }
+}

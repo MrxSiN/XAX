@@ -1,0 +1,690 @@
+"""Self-hosting step S10 (ADR-264, ADR-265): the compiler driver as one XAX program.
+
+``xax_x86_64_views.compile_x86_64_views`` turns a program store into machine code: Python reads the store, the XAX
+decoders check it, Python builds the backend's object table (``xax_riscv64._object_table``), and the XAX backend
+lowers it.  This module makes that whole path one XAX function on the ``x86_64-linux-views-v2`` profile:
+
+    drive(arguments: ptr<b8,READ,space 2>, heap_view<ARGUMENTS_EXTENT>, memory, filesystem, memory x BUFFERS)
+        -> (the same values, bits<64> status)
+
+``arguments`` holds three NUL-terminated paths: the program store, a target-package store (its root is the target
+object), and the output file.  The driver owns every buffer (``mmap`` and ``heap.view``, released with ``munmap``),
+does its own file I/O (``openat``, ``read``, ``write``, ``close``), and calls the committed XAX components directly:
+
+* the store decoder (S3/S8a) and the S2 hash decide the container, its digest, and each object envelope and CID
+  (S8b.1), in store order, as ``StoreReader`` and ``get`` do;
+* the graph decoder (S3c/S8b.2) streams each graph fragment;
+* the target package's root must be a target whose identity is a views profile (the check
+  ``compile_x86_64_views`` makes, with its diagnostic);
+* the XAX x86-64 backend (S7) lowers the root module's first function with the target, deciding its legality.
+
+The output file receives the image's code (status ``IMAGE``) or the first rejection's diagnostic record as
+little-endian 64-bit words (status ``REJECTED``, ``xax_selfhost_diagnostics.decode_record``).  ``DECLINED`` means
+an input beyond a component's capacity or one a component defers; ``FAILED`` an I/O error.  Semantic verification
+(typing, facts, and object verification, orchestrated by ``verify_store``) is not part of this driver: S10e.
+"""
+
+from __future__ import annotations
+
+import ctypes
+from pathlib import Path
+
+from xax_compiler import (
+    CID_SIZE,
+    SEMANTIC_DOMAIN,
+    Kind,
+    Operation,
+    Permission,
+    SemanticObject,
+    StoreReader,
+    bits_type,
+    heap_view_type,
+    pointer_type,
+    x86_64_linux_exec_target,
+)
+from xax_graph_builder import program_store
+from xax_native import bootstrap_dir
+from xax_selfhost_facts import E
+from xax_structured import B64, Proc
+import xax_selfhost_diagnostics as D
+
+STORE_PATH = bootstrap_dir() / "xax_compiler_driver.xax"
+IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
+ARGUMENTS_EXTENT = 4096
+CHUNK = 1 << 16
+VIEWS_IDENTITIES = (b"x86_64-linux-views-v1", b"x86_64-linux-views-v2")
+AT_FDCWD = 0xFFFFFF9C
+O_OUTPUT = 0x241  # O_WRONLY | O_CREAT | O_TRUNC
+MODE_OUTPUT = 0o644
+
+
+def _components():
+    """The committed components and their interface types."""
+    import xax_selfhost_blake3 as H
+    import xax_selfhost_graph as G
+    import xax_selfhost_store as S
+    import xax_selfhost_x86_64_backend as X
+    from xax_selfhost_facts import VIEW_TYPES
+
+    return H, G, S, X, VIEW_TYPES
+
+
+class _Driver(E):
+    """Arithmetic and control from the facts engine's helper; ``op``/``ov``/``om`` are the backend's output view, so
+    ``E.ld``/``E.st`` and the ``xax_selfhost_diagnostics`` writers address it."""
+
+    def __init__(self, proc: Proc, views: dict[str, tuple[str, str, str, int]]):
+        super().__init__(proc, None)
+        self.views = views  # name -> (pointer, token, memory, element bytes)
+        self._names = 0
+
+    def let(self, stem: str, value=0) -> str:
+        self._names += 1
+        name = f"{stem}_{self._names}"
+        self.var(name, value)
+        return name
+
+    def __getitem__(self, name: str):
+        return self.p[name]
+
+    def _at(self, offset):
+        return self.p.op1(Operation.INT_TRUNCATE, (self.v(offset),), bits_type(32))
+
+    def load(self, view: str, offset, size: int = 1):
+        """``size`` bytes at byte ``offset`` of ``view`` (a byte view reads 1, 4, or 8; a word view its word)."""
+        pointer, _token, memory, _element = self.views[view]
+        p = self.p
+        value, p[memory] = p.op(Operation.CHECKED_LOAD_BITS_LE, (p[pointer], self._at(offset), p[memory]), (bits_type(8 * size), D_MEM),
+                                attributes=(size, 1))
+        return value if size == 8 else p.op1(Operation.INT_ZERO_EXTEND, (value,), B64)
+
+    def store(self, view: str, offset, value, size: int = 1):
+        pointer, _token, memory, _element = self.views[view]
+        p = self.p
+        value = self.v(value)
+        if size != 8:
+            value = p.op1(Operation.INT_TRUNCATE, (value,), bits_type(8 * size))
+        p[memory] = p.op1(Operation.CHECKED_STORE_BITS_LE, (p[pointer], self._at(offset), value, p[memory]), D_MEM, attributes=(size, 1))
+
+    def triple(self, view: str, pointer=None):
+        names = self.views[view]
+        return (self.p[names[0]] if pointer is None else pointer, self.p[names[1]], self.p[names[2]])
+
+    def take(self, view: str, values):
+        """A callee gave back ``view``'s token and memory (its pointer is the one this driver holds)."""
+        _pointer, token, memory, _element = self.views[view]
+        self.p[token], self.p[memory] = values[1], values[2]
+
+    def narrowed(self, view: str, pointer_type_):
+        """``pointer.cast`` of ``view``'s pointer to the read-only pointer a component takes."""
+        return self.p.op1(Operation.POINTER_CAST, (self.p[self.views[view][0]],), pointer_type_)
+
+    def syscall(self, declaration, operands, results):
+        return self.p.op(Operation.CALL_FOREIGN, tuple(self.v(item) for item in operands), results, entity=declaration)
+
+    def copy(self, source: str, source_at, target: str, target_at, count):
+        """Copy ``count`` bytes between byte views (eight at a time, then one)."""
+        src, dst, left = self.let("from", source_at), self.let("to", target_at), self.let("left", count)
+
+        def chunk(size: int):
+            def step():
+                self.store(target, self[dst], self.load(source, self[src], size), size)
+                self.set(src, self.add(self[src], size))
+                self.set(dst, self.add(self[dst], size))
+                self.set(left, self.sub(self[left], size))
+            return step
+
+        self.while_(lambda: self.le(8, self[left]), chunk(8))
+        self.while_(lambda: self.ne(self[left], 0), chunk(1))
+
+    def uleb_size(self, value):
+        size, rest = self.let("size", 1), self.let("rest", value)
+        self.while_(lambda: self.le(128, self[rest]), lambda: (self.set(rest, self.udiv(self[rest], 128)), self.set(size, self.add(self[size], 1))))
+        return self[size]
+
+    def cid_word(self, view: str, at, word: int):
+        """Bytes ``8 word .. 8 word + 8`` of the CID at ``at`` as one big-endian word (``xax_riscv64._cid_words``)."""
+        value = self.c(0)
+        for k in range(8):
+            value = self.add(self.mul(value, 256), self.load(view, self.add(at, 8 * word + k)))
+        return value
+
+    def same_constant(self, view: str, at, data: bytes):
+        """1 when ``view`` holds ``data`` at ``at``."""
+        same = self.let("same", 1)
+        for k, byte in enumerate(data):
+            self.set(same, self.and_(self[same], self.flag(self.eq(self.load(view, self.add(at, k)), byte))))
+        return self[same]
+
+    def same_bytes(self, x_view: str, x_at, y_view: str, y_at, count: int):
+        same = self.let("same", 1)
+        for k in range(count):
+            self.set(same, self.and_(self[same], self.flag(self.eq(self.load(x_view, self.add(x_at, k)), self.load(y_view, self.add(y_at, k))))))
+        return self[same]
+
+
+D_MEM = None  # the memory effect type, bound by ``build_driver_program``
+
+
+def build_driver_program() -> tuple[StoreReader, SemanticObject]:
+    global D_MEM
+    from xax_linux import linux_api
+
+    H, G, S, X, VIEW_TYPES = _components()
+    api = linux_api()
+    B32 = api.b32
+    MEM = D_MEM = api.memory_effect
+    FS = api.filesystem_effect
+    bytes_rw = api.bytes_rw
+    in_pointer, in_view, _m, out_pointer, out_view, _m2 = VIEW_TYPES
+    backend_in_rw = pointer_type(bits_type(64), Permission.READ_WRITE, 8, space=2)
+    # name -> (pointer type the driver holds, extent, alignment)
+    buffers = {
+        "data": (bytes_rw, S.DATA_EXTENT, 1),             # the store file; decoded through a read-only cast
+        "object": (bytes_rw, S.DATA_EXTENT, 1),           # one envelope, its digest, and its CID preimage
+        "decoded": (S.OUT_POINTER, S.OUT_EXTENT, 4),      # the container decoder's output
+        "envelope": (S.OUT_POINTER, S.OUT_EXTENT, 4),     # the object decoder's output
+        "scratch": (H.SCRATCH_POINTER, H.SCRATCH_EXTENT, 4),
+        "body": (bytes_rw, G.BODY_EXTENT, 1),
+        "stream": (G.OUT_POINTER, G.OUT_EXTENT, 8),
+        "table": (backend_in_rw, in_view_extent(in_view), 8),
+        "image": (out_pointer, out_view_extent(out_view), 8),
+        "chunk": (bytes_rw, CHUNK, 1),
+        "path": (bytes_rw, ARGUMENTS_EXTENT, 1),
+    }
+    names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
+             "table": "ip", "image": "op", "chunk": "cp", "path": "pp"}
+    views = {"arguments": ("ap", "av", "am", 1)}
+    for name, pointer_name in names.items():
+        stem = pointer_name[0]
+        views[name] = (pointer_name, f"{stem}v", f"{stem}m", 1 if buffers[name][0] == bytes_rw else 8)
+    parameters = [("ap", api.bytes_read), ("av", heap_view_type(ARGUMENTS_EXTENT)), ("am", MEM), ("fs", FS)]
+    parameters += [(f"mem_{name}", MEM) for name in buffers]
+    proc = Proc(parameters)
+    w = _Driver(proc, views)
+
+    # Owned memory: one mapping and one view per buffer, each on its own memory effect.
+    for name, (pointer_type_, extent, alignment) in buffers.items():
+        pointer_name, token_name, memory_name, _element = views[name]
+        raw, owner, memory = w.syscall(api.mmap_anonymous, (w.p.const(extent, B64), proc[f"mem_{name}"]), (bytes_rw, api.heap_owner, MEM))
+        pointer, token, memory = proc.op(Operation.HEAP_VIEW, (raw, owner, memory), (pointer_type_, heap_view_type(extent), MEM),
+                                         attributes=(extent, 4096))
+        proc.drop(f"mem_{name}")
+        proc.let(pointer_name, pointer_type_, pointer)
+        proc.let(token_name, heap_view_type(extent), token)
+        proc.let(memory_name, MEM, memory)
+
+    status = w.let("status", IMAGE)
+
+    def running():
+        return w.eq(w[status], IMAGE)
+
+    def when(body):
+        w.if_(running(), body)
+
+    def stop(code):
+        w.set(status, code)
+
+    # -- paths ---------------------------------------------------------------------------------------------------
+    def path(index: int):
+        """Copy argument ``index`` (NUL-terminated) to the path buffer; FAILED when it does not end in the view."""
+        at, k = w.let("argument", 0), w.let("skip", 0)
+
+        def skip():
+            w.while_(lambda: w.both(w.lt(w[at], ARGUMENTS_EXTENT), w.ne(w.load("arguments", w[at]), 0)), lambda: w.set(at, w.add(w[at], 1)))
+            w.set(at, w.add(w[at], 1))
+            w.set(k, w.add(w[k], 1))
+
+        w.while_(lambda: w.both(w.lt(w[k], index), w.lt(w[at], ARGUMENTS_EXTENT)), skip)
+        n = w.let("n", 0)
+        w.while_(lambda: w.both(w.lt(w.add(w[at], w[n]), ARGUMENTS_EXTENT), w.ne(w.load("arguments", w.add(w[at], w[n])), 0)),
+                 lambda: w.set(n, w.add(w[n], 1)))
+        w.if_(w.lt(w.add(w[at], w[n]), ARGUMENTS_EXTENT), lambda: (w.copy("arguments", w[at], "path", 0, w[n]), w.store("path", w[n], 0)),
+              lambda: stop(FAILED))
+
+    def open_path(index: int, flags: int, mode: int, guard=None) -> str:
+        """``openat`` of argument ``index`` while ``guard()`` holds (default: still running); the descriptor's name."""
+        path(index)
+        fd = w.let("fd", 0)
+
+        def opened():
+            pointer, token, memory = w.triple("path")
+            narrowed = w.narrowed("path", api.bytes_read)
+            result, w.p["fs"], w.p[views["path"][2]] = w.syscall(api.openat, (w.p.const(AT_FDCWD, B32), narrowed, w.p.const(flags, B32),
+                                                                             w.p.const(mode, B32), w.p["fs"], memory), (B64, FS, MEM))
+            w.set(fd, result)
+            w.if_(w.le(1 << 63, w[fd]), lambda: stop(FAILED))
+
+        w.if_(running() if guard is None else guard(), opened)
+        return fd
+
+    def fd32(fd: str):
+        return w.p.op1(Operation.INT_TRUNCATE, (w[fd],), B32)
+
+    def close(fd: str):
+        _result, w.p["fs"] = w.syscall(api.close, (fd32(fd), w.p["fs"]), (B64, FS))
+
+    # -- reading a store into ``data`` ---------------------------------------------------------------------------
+    read_rw = api.read
+    length = w.let("length", 0)
+    limit = S.DATA_EXTENT - 2 * CID_SIZE - 64  # the digest after the data, and the hash's block reads past its end
+
+    def read_store(index: int):
+        fd = open_path(index, 0, 0)
+
+        def read_all():
+            w.set(length, 0)
+            going = w.let("going", 1)
+
+            def step():
+                count = w.let("count", 0)
+                result, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(read_rw, (fd32(fd), w.p[views["chunk"][0]], w.p.const(CHUNK, B64), w.p["fs"],
+                                                                                w.p[views["chunk"][2]]), (B64, FS, MEM))
+                w.set(count, result)
+                w.if_(w.le(1 << 63, w[count]), lambda: (stop(FAILED), w.set(going, 0)), lambda: w.if_(
+                    w.eq(w[count], 0), lambda: w.set(going, 0), lambda: w.if_(
+                        w.lt(limit, w.add(w[length], w[count])), lambda: (stop(DECLINED), w.set(going, 0)), lambda: (
+                            w.copy("chunk", 0, "data", w[length], w[count]), w.set(length, w.add(w[length], w[count]))))))
+
+            w.while_(lambda: w.ne(w[going], 0), step)
+            close(fd)
+
+        when(read_all)
+
+    # -- the components ------------------------------------------------------------------------------------------
+    decoder_reader, decoder = S.load_decoder_program()
+    graph_reader, graph_decoder = G.load_graph_decoder_program()
+    backend_reader, backend = X.load_backend_program()
+    hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
+    decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
+
+    def decode(source: str, output: str, count, mode: int):
+        """The store decoder over ``source`` (``count`` bytes) into ``output``; its status word."""
+        results = proc.op(Operation.CALL_DIRECT, (*w.triple(source, w.narrowed(source, S.DATA_POINTER)), *w.triple(output), w.v(count),
+                                                  w.p.const(mode, B64)), decoder_triples, entity=decoder)
+        w.take(source, results[:3])
+        w.take(output, results[3:])
+        return w.load(output, 0, 4)
+
+    def hash_span(source: str, base, count):
+        """The S2 hash of ``source[base : base + count]``; the digest is at ``scratch[DIGEST_OFFSET]``."""
+        results = proc.op(Operation.CALL_DIRECT, (*w.triple(source), *w.triple("scratch"), w.v(base), w.v(count)),
+                          (bytes_rw, heap_view_type(S.DATA_EXTENT), MEM, H.SCRATCH_POINTER, H.SCRATCH_VIEW, MEM), entity=hash_at)
+        w.take(source, results[:3])
+        w.take("scratch", results[3:])
+
+    def digest_to(target: str, at):
+        for word in range(CID_SIZE // 4):
+            w.store(target, w.add(at, 4 * word), w.load("scratch", H.DIGEST_OFFSET + 4 * word, 4), 4)
+
+    def record_from_decoder(output: str):
+        """The decoder's rejection record (32-bit word pairs) as the driver's record (64-bit words at ``D.DIAG_AT``)."""
+        end = w.let("end", w.load(output, 4 * S.DIAG_AT, 4))
+        k, n = w.let("pair", S.DIAG_AT + 1), w.let("put", D.DIAG_AT + 1)
+
+        def step():
+            low, high = w.load(output, w.mul(w[k], 4), 4), w.load(output, w.mul(w.add(w[k], 1), 4), 4)
+            w.st(w[n], w.add(low, w.mul(high, 1 << 32)))
+            w.set(k, w.add(w[k], 2))
+            w.set(n, w.add(w[n], 1))
+
+        w.while_(lambda: w.lt(w[k], w[end]), step)
+        w.st(D.DIAG_AT, w[n])
+        stop(REJECTED)
+
+    def outcome(code, output: str, declined_codes=(2,)):
+        """Map a decoder status word: REJECT (1) copies its record; any other status but ACCEPT declines."""
+        w.if_(w.eq(code, 1), lambda: record_from_decoder(output), lambda: w.if_(w.ne(code, 0), lambda: stop(DECLINED)))
+
+    def decode_container():
+        """``StoreReader``: the container with its digest (S8a), or the rejection."""
+        first = w.let("first", decode("data", "decoded", w[length], S.MODE_HASH))
+
+        def digest():
+            hash_span("data", 0, w.load("decoded", 4, 4))
+            digest_to("data", w[length])
+            w.set(first, decode("data", "decoded", w[length], S.MODE_VERIFY))
+
+        w.if_(w.eq(w[first], S.NEED_DIGEST), digest)
+        outcome(w[first], "decoded")
+
+    def record_word(position, field: int):
+        return w.load("decoded", w.mul(w.add(S.HEADER_WORDS, w.add(w.mul(position, S.RECORD_WORDS), field)), 4), 4)
+
+    def check_object(position):
+        """``StoreReader.get`` (S8b.1): record ``position``'s envelope, its CID re-derived; the rejection on failure."""
+        record_at, record_length = record_word(position, 0), record_word(position, 1)
+        envelope = w.let("envelope", w.add(w.uleb_size(record_length), record_length))
+        offset = w.let("offset", record_at)
+        w.if_(w.eq(record_word(position, 3), 0), lambda: stop(DECLINED))  # an envelope the container pass left to the bootstrap
+        w.if_(w.lt(S.DATA_EXTENT - 4 * CID_SIZE, w.mul(w[envelope], 2)), lambda: stop(DECLINED))  # the envelope and its preimage
+
+        def checked():
+            w.copy("data", w[offset], "object", 0, w[envelope])
+            code = w.let("code", decode("object", "envelope", w[envelope], S.MODE_OBJECT_HASH))
+
+            def digest():
+                start, end = w.let("start", w.load("envelope", 4, 4)), w.let("stop", w.load("envelope", 8, 4))
+                stage = w.let("stage", w.add(w[envelope], 2 * CID_SIZE))
+                for k, byte in enumerate(SEMANTIC_DOMAIN):
+                    w.store("object", w.add(w[stage], k), byte)
+                w.copy("object", w[start], "object", w.add(w[stage], len(SEMANTIC_DOMAIN)), w.sub(w[end], w[start]))
+                hash_span("object", w[stage], w.add(len(SEMANTIC_DOMAIN), w.sub(w[end], w[start])))
+                digest_to("object", w[envelope])
+                w.set(code, decode("object", "envelope", w[envelope], S.MODE_OBJECT_VERIFY))
+
+            w.if_(w.eq(w[code], S.NEED_DIGEST), digest)
+            outcome(w[code], "envelope")
+
+        when(checked)
+
+    # -- the program store ---------------------------------------------------------------------------------------
+    read_store(0)
+    when(decode_container)
+    objects = w.let("objects", 0)
+    when(lambda: w.set(objects, w.load("decoded", 8, 4)))
+    k = w.let("checked", 0)
+    w.while_(lambda: w.both(w.lt(w[k], w[objects]), running()), lambda: (check_object(w[k]), w.set(k, w.add(w[k], 1))))
+
+    def find(cid_at):
+        """The record whose CID is the one at ``data[cid_at]`` (NONE-like: ``objects`` when absent)."""
+        found, j = w.let("found", w[objects]), w.let("search", 0)
+
+        def step():
+            same = w.same_bytes("data", cid_at, "data", record_word(w[j], 2), CID_SIZE)
+            w.if_(w.ne(same, 0), lambda: w.set(found, w[j]))
+            w.set(j, w.add(w[j], 1))
+
+        w.while_(lambda: w.both(w.lt(w[j], w[objects]), w.eq(w[found], w[objects])), step)
+        return found
+
+    # The entry: the first module in store order, then its first function reference (``load_*_program``,
+    # ``host_image``).
+    entry = w.let("entry", 0)
+
+    def choose_entry():
+        module_record, j = w.let("module", w[objects]), w.let("scan", 0)
+
+        def scan():
+            w.if_(w.eq(record_word(w[j], 4), int(Kind.MODULE)), lambda: w.set(module_record, w[j]))
+            w.set(j, w.add(w[j], 1))
+
+        w.while_(lambda: w.both(w.lt(w[j], w[objects]), w.eq(w[module_record], w[objects])), scan)
+
+        def function():
+            w.set(entry, w[objects])
+            r = w.let("reference", 0)
+
+            def step():
+                candidate = find(w.add(record_word(w[module_record], 6), w.mul(w[r], CID_SIZE)))
+                w.if_(w.both(w.lt(w[candidate], w[objects]), w.eq(record_word(w[candidate], 4), int(Kind.FUNCTION))),
+                      lambda: w.set(entry, w[candidate]))
+                w.set(r, w.add(w[r], 1))
+
+            w.while_(lambda: w.both(w.lt(w[r], record_word(w[module_record], 5)), w.eq(w[entry], w[objects])), step)
+            w.if_(w.eq(w[entry], w[objects]), lambda: stop(DECLINED))
+
+        w.if_(w.lt(w[module_record], w[objects]), function, lambda: stop(DECLINED))
+
+    when(choose_entry)
+
+    # -- the backend's object table (``xax_riscv64._object_table``) -----------------------------------------------
+    words = w.let("words", 1 + 4)
+    table_limit = in_view_extent(in_view) // 8
+
+    def put(value):
+        w.if_(w.lt(w[words], table_limit), lambda: w.store("table", w.mul(w[words], 8), value, 8), lambda: stop(DECLINED))
+        w.set(words, w.add(w[words], 1))
+
+    def put_cid(view: str, at):
+        for word in range(4):
+            put(w.cid_word(view, at, word))
+
+    def table_header():
+        w.store("table", 0, w[objects], 8)
+        for word in range(4):
+            w.store("table", 8 * (1 + word), w.cid_word("data", record_word(w[entry], 2), word), 8)
+
+    when(table_header)
+
+    def table_object(position):
+        kind, references = w.let("kind", record_word(position, 4)), w.let("references", record_word(position, 5))
+        put(w[kind])
+        put(w[references])
+        r = w.let("ref", 0)
+        w.while_(lambda: w.lt(w[r], w[references]), lambda: (put_cid("data", w.add(record_word(position, 6), w.mul(w[r], CID_SIZE))), w.set(r, w.add(w[r], 1))))
+        put_cid("data", record_word(position, 2))
+        body_at, body_length = w.let("body_at", record_word(position, 7)), w.let("body_length", record_word(position, 8))
+
+        def graph():
+            w.if_(w.lt(G.BODY_EXTENT - CID_SIZE, w[body_length]), lambda: stop(DECLINED))
+
+            def stream():
+                w.copy("data", w[body_at], "body", 0, w[body_length])
+                w.copy("data", record_word(position, 2), "body", w[body_length], CID_SIZE)
+                results = proc.op(Operation.CALL_DIRECT, (*w.triple("body", w.narrowed("body", G.BODY_POINTER)), *w.triple("stream"), w[body_length],
+                                                          w[references]), (G.BODY_POINTER, G.BODY_VIEW, MEM, G.OUT_POINTER, G.OUT_VIEW, MEM),
+                                  entity=graph_decoder)
+                w.take("body", results[:3])
+                w.take("stream", results[3:])
+                code = w.let("graph_status", w.load("stream", 0, 8))
+
+                def accepted():
+                    count = w.let("stream_words", w.sub(w.load("stream", 8, 8), 2))
+                    put(w[count])
+                    q = w.let("q", 0)
+                    w.while_(lambda: w.both(w.lt(w[q], w[count]), running()), lambda: (put(w.load("stream", w.mul(w.add(w[q], 2), 8), 8)), w.set(q, w.add(w[q], 1))))
+
+                def rejected():
+                    end = w.let("graph_end", w.load("stream", 8 * G.DIAG_AT, 8))
+                    q, n = w.let("gq", G.DIAG_AT + 1), w.let("gn", D.DIAG_AT + 1)
+                    w.while_(lambda: w.lt(w[q], w[end]), lambda: (w.st(w[n], w.load("stream", w.mul(w[q], 8), 8)), w.set(q, w.add(w[q], 1)),
+                                                                 w.set(n, w.add(w[n], 1))))
+                    w.st(D.DIAG_AT, w[n])
+                    stop(REJECTED)
+
+                w.if_(w.eq(w[code], 0), accepted, lambda: w.if_(w.eq(w[code], 1), rejected, lambda: stop(DECLINED)))
+
+            when(stream)
+
+        def plain():
+            put(w[body_length])
+            q = w.let("q", 0)
+            w.while_(lambda: w.both(w.lt(w[q], w[body_length]), running()), lambda: (put(w.load("data", w.add(w[body_at], w[q]))), w.set(q, w.add(w[q], 1))))
+
+        w.if_(w.eq(w[kind], int(Kind.GRAPH_FRAGMENT)), graph, plain)
+
+    k2 = w.let("listed", 0)
+    w.while_(lambda: w.both(w.lt(w[k2], w[objects]), running()), lambda: (table_object(w[k2]), w.set(k2, w.add(w[k2], 1))))
+
+    # -- the target package: its root object, checked like any object, then appended ----------------------------
+    read_store(1)
+    when(decode_container)
+    when(lambda: w.set(objects, w.load("decoded", 8, 4)))
+    target = w.let("target", 0)
+
+    def target_record():
+        w.set(target, w[find(w.load("decoded", 4 * 7, 4))])
+        w.if_(w.eq(w[target], w[objects]), lambda: stop(DECLINED))
+        when(lambda: check_object(w[target]))
+
+    when(target_record)
+
+    def target_profile():
+        """``compile_x86_64_views``: a target object whose identity is a views profile, else ``X86_64_VIEWS-TARGET-PROFILE``."""
+        w.if_(w.ne(record_word(w[target], 4), int(Kind.TARGET)), lambda: stop(DECLINED))
+        body = w.let("target_body", record_word(w[target], 7))
+        size = w.let("identity", w.load("data", w[body]))  # one ULEB byte: identities are shorter than 128 bytes
+        w.if_(w.le(128, w[size]), lambda: stop(DECLINED))
+        start = w.let("identity_at", w.add(w[body], 1))
+        known = w.let("known", 0)
+        for identity in VIEWS_IDENTITIES:
+            w.if_(w.eq(w[size], len(identity)), lambda identity=identity: w.set(known, w.or_(w[known], w.same_constant("data", w[start], identity))))
+        printable = w.let("printable", 1)
+        q = w.let("q", 0)
+        w.while_(lambda: w.lt(w[q], w[size]), lambda: (w.set(printable, w.and_(w[printable], w.flag(w.both(
+            w.le(32, w.load("data", w.add(w[start], w[q]))), w.lt(w.load("data", w.add(w[start], w[q])), 127))))), w.set(q, w.add(w[q], 1))))
+
+        def reject():
+            D.begin(w)
+            D.text(w, "XAX.X86_64_VIEWS.TARGET")
+            D.cid(w, [w.cid_word("data", record_word(w[target], 2), word) for word in range(4)])
+            D.text(w, "X86_64_VIEWS-TARGET-PROFILE")
+            D.text(w, VIEWS_IDENTITIES[0].decode())
+            D.put(w, D.T_STR)
+            D.put(w, w[size])
+            packed = w.let("packed", 0)
+            q2 = w.let("byte", 0)
+
+            def pack():
+                shift = w.let("shift", 1)
+                r = w.let("r", 0)
+                w.while_(lambda: w.lt(w[r], w.urem(w[q2], 8)), lambda: (w.set(shift, w.mul(w[shift], 256)), w.set(r, w.add(w[r], 1))))
+                w.set(packed, w.add(w[packed], w.mul(w.load("data", w.add(w[start], w[q2])), w[shift])))
+                w.if_(w.either(w.eq(w.urem(w[q2], 8), 7), w.eq(w.add(w[q2], 1), w[size])), lambda: (D.put(w, w[packed]), w.set(packed, 0)))
+                w.set(q2, w.add(w[q2], 1))
+
+            w.while_(lambda: w.lt(w[q2], w[size]), pack)
+            stop(REJECTED)
+
+        w.if_(w.ne(w[known], 0), lambda: None, lambda: w.if_(w.ne(w[printable], 0), reject, lambda: stop(DECLINED)))
+
+    when(target_profile)
+
+    def target_entry():
+        position = w[target]
+        put(record_word(position, 4))
+        put(record_word(position, 5))
+        r = w.let("target_ref", 0)
+        w.while_(lambda: w.lt(w[r], record_word(position, 5)), lambda: (put_cid("data", w.add(record_word(position, 6), w.mul(w[r], CID_SIZE))), w.set(r, w.add(w[r], 1))))
+        put_cid("data", record_word(position, 2))
+        body_at, body_length = w.let("tbody_at", record_word(position, 7)), w.let("tbody_length", record_word(position, 8))
+        put(w[body_length])
+        q = w.let("q", 0)
+        w.while_(lambda: w.lt(w[q], w[body_length]), lambda: (put(w.load("data", w.add(w[body_at], w[q]))), w.set(q, w.add(w[q], 1))))
+
+    when(target_entry)
+
+    # -- the backend -------------------------------------------------------------------------------------------
+    def lower():
+        results = proc.op(Operation.CALL_DIRECT, (*w.triple("table", w.narrowed("table", in_pointer)), *w.triple("image")), (B64, *VIEW_TYPES), entity=backend)
+        w.take("table", results[1:4])
+        w.take("image", results[4:])
+        code = w.let("backend_status", w.ld(0))
+        w.if_(w.eq(w[code], 1), lambda: None, lambda: w.if_(w.eq(w[code], D.REJECT), lambda: stop(REJECTED), lambda: stop(DECLINED)))
+
+    when(lower)
+
+    # -- the output ------------------------------------------------------------------------------------------
+    def emit(first_word, count, bytes_per_word: int):
+        """Write ``count`` words of the backend output from ``first_word`` as bytes (one per word) or as 64-bit words."""
+        fd = open_path(2, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
+
+        def write_all():
+            done = w.let("done", 0)
+            total = w.let("total", w.mul(count, bytes_per_word))
+
+            def step():
+                piece = w.let("piece", w.sel(w.lt(w.sub(w[total], w[done]), CHUNK), w.sub(w[total], w[done]), CHUNK))
+                q = w.let("q", 0)
+                if bytes_per_word == 1:
+                    w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.add(w[done], w[q])))), w.set(q, w.add(w[q], 1))))
+                else:
+                    w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.udiv(w.add(w[done], w[q]), 8))), 8),
+                                                                    w.set(q, w.add(w[q], 8))))
+                written, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(WRITE_RW, (fd32(fd), w.p[views["chunk"][0]], w[piece], w.p["fs"], w.p[views["chunk"][2]]),
+                                                                       (B64, FS, MEM))
+                w.if_(w.ne(written, w[piece]), lambda: (stop(FAILED), w.set(done, w[total])), lambda: w.set(done, w.add(w[done], w[piece])))
+
+            w.while_(lambda: w.lt(w[done], w[total]), step)
+            close(fd)
+
+        w.if_(w.ne(w[status], FAILED), write_all)
+
+    from xax_selfhost_views_backend import WORDS_AT
+
+    final = w.let("final", 0)
+    w.set(final, w[status])
+    w.if_(w.eq(w[status], IMAGE), lambda: emit(WORDS_AT, w.ld(1), 1),
+          lambda: w.if_(w.eq(w[status], REJECTED), lambda: emit(D.DIAG_AT + 1, w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8)))
+    w.if_(w.eq(w[status], FAILED), lambda: w.set(final, FAILED))
+
+    # Every view released (``munmap`` of the whole view: the deallocator contract).
+    released = []
+    for name, (pointer_type_, extent, _alignment) in buffers.items():
+        pointer_name, token_name, memory_name, _element = views[name]
+        _result, memory = w.syscall(api.munmap_view(pointer_type_, extent), (proc[pointer_name], proc[token_name], proc[memory_name]), (B64, MEM))
+        released.append(memory)
+    proc.ret(proc["ap"], proc["av"], proc["am"], proc["fs"], *released, w[final])
+    function = proc.function((api.bytes_read, heap_view_type(ARGUMENTS_EXTENT), MEM, FS, *(MEM,) * len(buffers), B64))
+    component_objects = [item for reader in (decoder_reader, graph_reader, backend_reader) for item in reader.objects()
+                         if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *component_objects, *api.types, WRITE_RW)
+    return program_store(function, x86_64_linux_exec_target(), objects_), function
+
+
+def _write_declaration():
+    from xax_compiler import LINUX_X86_64_SYSCALL_ABI, foreign_function_symbol
+    from xax_linux import _LIBRARY, linux_api
+    from xax_x86_64 import encode_syscall_name
+
+    api = linux_api()
+    return foreign_function_symbol(_LIBRARY, encode_syscall_name(1), (api.b32, api.bytes_rw, api.b64, api.filesystem_effect, api.memory_effect),
+                                   (api.b64, api.filesystem_effect, api.memory_effect), abi=LINUX_X86_64_SYSCALL_ABI)
+
+
+WRITE_RW = _write_declaration()  # ``write`` from a read-write view (the profile narrows no permission for a syscall)
+
+
+def in_view_extent(view: SemanticObject) -> int:
+    from xax_compiler import _heap_view_info
+
+    return _heap_view_info(view)[0]
+
+
+out_view_extent = in_view_extent
+
+
+def load_driver_program() -> tuple[StoreReader, SemanticObject]:
+    from xax_native import verify_component_store
+
+    reader = StoreReader(STORE_PATH.read_bytes())
+    verify_component_store(reader, "compiler-driver")
+    module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
+    function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
+    return reader, function
+
+
+def write_driver_store() -> bytes:
+    reader, _function = build_driver_program()
+    STORE_PATH.write_bytes(reader.data)
+    return reader.data
+
+
+def target_package(target: SemanticObject) -> bytes:
+    """A target-package store: ``target`` as the root object."""
+    from xax_compiler import write_store
+
+    return write_store(target.cid, [target])
+
+
+class NativeDriver:
+    """The driver image (lowered by the XAX backend for ``x86_64-linux-views-v2``), called in-process.  The host only
+    maps the code and passes the three paths; the driver does its own I/O and owns its memory."""
+
+    def __init__(self, image=None) -> None:
+        from xax_compiler import x86_64_views_syscall_target
+        from xax_x86_64_views import NativeViewsImage, compile_x86_64_views
+
+        if image is None:
+            reader, function = load_driver_program()
+            image = compile_x86_64_views(reader, function.cid, x86_64_views_syscall_target(), backend="xax")
+        self.image = image
+        self._native = NativeViewsImage(image)
+
+    def run(self, store_path: str | Path, target_path: str | Path, output_path: str | Path) -> int:
+        arguments = b"".join(str(item).encode() + b"\0" for item in (store_path, target_path, output_path))
+        if len(arguments) > ARGUMENTS_EXTENT:
+            raise ValueError("paths exceed the argument view")
+        buffer = ctypes.create_string_buffer(arguments, ARGUMENTS_EXTENT)
+        return self._native(ctypes.addressof(buffer))

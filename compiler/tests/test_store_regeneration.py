@@ -16,6 +16,7 @@ BUILDERS = (
     ("xax_selfhost_riscv64", "build_encoder_program"),
     ("xax_selfhost_store", "build_decoder_program"),
     ("xax_selfhost_writer", "build_writer_program"),
+    ("xax_selfhost_driver", "build_driver_program"),
     ("xax_selfhost_blake3", "build_hash_program"),
     ("xax_selfhost_typing", "build_typing_program"),
     ("xax_selfhost_verify", "build_verifier_program"),

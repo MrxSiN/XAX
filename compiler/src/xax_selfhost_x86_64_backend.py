@@ -23,11 +23,12 @@ from xax_selfhost_views_backend import (
     _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
     WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
-    _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value, collect_program_output,
+    SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
+    collect_program_output,
 )
 
 from xax_native import bootstrap_dir  # noqa: E402
-from xax_x86_64_views import ISA, LOWERED_OPERATIONS, SYSCALL_ARGUMENT_REGISTERS, SYSCALL_EXPECTED  # noqa: E402
+from xax_x86_64_views import ISA, NULL_ON_ERROR, SYSCALL_ARGUMENT_REGISTERS, SYSCALL_EXPECTED, X86_LOWERED_OPERATIONS  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -331,7 +332,7 @@ class X86_64:
     SYSCALLS = True  # S10a (ADR-264): Linux syscalls (``x86_64-linux-views-v2``)
     EXTRA_RULES = (("SYSCALL", "FOREIGN_ABI"),)
     SYSCALL_EXPECTED = SYSCALL_EXPECTED
-    LOWERED = LOWERED_OPERATIONS
+    LOWERED = X86_LOWERED_OPERATIONS
     LOWERED_NAME = "x86-64 views subset"
     ALLOCATABLE = ALLOCATABLE
     ARGUMENT_REGISTERS = len(ARGUMENTS)
@@ -610,7 +611,7 @@ def _block(tables):
                     e.var("sc_reg", 0)
                     for position, register in enumerate(SYSCALL_ARGUMENT_REGISTERS):
                         e.if_(e.eq(p["q"], position), lambda register=register: e.set("sc_reg", register))
-                    e.var("sc_value", attribute(e.add(3, e.mul(p["q"], 2))))
+                    e.var("sc_value", attribute(e.add(SYSCALL_HEADER + 1, e.mul(p["q"], 2))))
 
                     def operand_value():
                         e.var("sc_seen", 0)
@@ -624,17 +625,21 @@ def _block(tables):
                               lambda: e.if_(e.ne(p["sc_source"], 0), lambda: _move(e, p["sc_reg"], p["sc_source"]),
                                             lambda: _st(e, 0x8B, p["sc_reg"], e.add(_value(e, S_SLOT, p["sc_ref"]), 16))))
 
-                    e.if_(e.eq(attribute(e.add(2, e.mul(p["q"], 2))), 1), lambda: _call(e, "constant", p["sc_reg"], p["sc_value"]), operand_value)
+                    e.if_(e.eq(attribute(e.add(SYSCALL_HEADER, e.mul(p["q"], 2))), 1), lambda: _call(e, "constant", p["sc_reg"], p["sc_value"]), operand_value)
 
                 e.for_("q", 0, attribute(1), argument)
                 _emit(e, 0xB8)
                 _bytes(e, attribute(0), 4)  # mov eax, nr
-                _bytes(e, 0x5E5F050F, 4)  # syscall; pop rdi; pop rsi
+                _bytes(e, 0x050F, 2)  # syscall
+                e.if_(e.ne(attribute(2), 0), lambda: [_emit(e, byte) for byte in NULL_ON_ERROR])  # S10b: a nullable allocator result
+                _bytes(e, 0x5E5F, 2)  # pop rdi; pop rsi
                 e.var("sc_written", 0)
                 e.for_("q", 0, results, lambda: e.if_(e.both(e.ne(_value(e, S_WIDTH, e.add(result, p["q"])), 0), e.eq(p["sc_written"], 0)), lambda: (
                     _call(e, "write", e.add(result, p["q"]), RAX), e.set("sc_written", 1))))
 
             case((Operation.CALL_FOREIGN,), foreign)
+            # S10b (ADR-265): a heap view's pointer and a narrowed pointer are their operand's address.
+            case((Operation.HEAP_VIEW, Operation.POINTER_CAST), lambda: _call(e, "write", result, _call(e, "read", operand(0), T0)))
             for code in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
                 def checked(store=code == Operation.CHECKED_STORE_BITS_LE):
                     e.set_hd(S_TRAP_USED, 1)

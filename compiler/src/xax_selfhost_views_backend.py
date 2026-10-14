@@ -978,17 +978,20 @@ def _target_list(e: E, slot: int):
     e.for_("dg_q", 0, p["dg_n"], lambda: D.integer(e, _payload_uleb(e, "dg_at")))
 
 
-# S10a (ADR-264): a lowered syscall's template record (arena words): number, argument count, then per argument
-# (tag, value): tag 0 names machine operand ``value``, tag 1 is the literal ``value``.
-SYSCALL_RECORD = 2 + 2 * 6
+# S10a (ADR-264): a lowered syscall's template record (arena words): number, argument count, allocator flag (S10b,
+# ADR-265: a nullable allocator result), then per argument (tag, value): tag 0 names machine operand ``value``, tag 1
+# is the literal ``value``.
+SYSCALL_HEADER = 3
+SYSCALL_RECORD = SYSCALL_HEADER + 2 * 6
 _FOREIGN_PREFIX = b"foreign-function-v1"
 _SYSCALL_ABI = b"linux-x86_64-syscall-v1"
 
 
 def _syscall(tables):
     """``xax_x86_64_views.syscall_template`` for declaration object ``obj`` and ``m`` machine operands: the template
-    record (``SYSCALL_RECORD``), or 0 when the views profile does not lower the call (a declaration of another ABI
-    or with a heap contract, or a template ``decode_syscall_name`` rejects).  The caller checks the result count."""
+    record (``SYSCALL_RECORD``), or 0 when the views profile does not lower the call (a declaration of another ABI,
+    or a template ``decode_syscall_name`` rejects).  The caller checks the result count; the verifier has already
+    checked the declaration's heap contracts, which are only skipped here (an allocator's flag is recorded)."""
     def build(e: E):
         p = e.p
         e.var("sy_ok", 1)
@@ -1001,7 +1004,7 @@ def _syscall(tables):
                 e.if_(e.ne(e.rd(e.add(p["sy_at"], k)), value), lambda: e.set("sy_ok", 0))
             e.set("sy_at", e.add(p["sy_at"], len(data)))
 
-        # The identity: the prefix, the ABI, the library, the name, the input and output CIDs, and nothing after them.
+        # The identity: the prefix, the ABI, the library, the name, the input and output CIDs, then the heap contracts.
         same(_FOREIGN_PREFIX)
         e.if_(e.ne(_payload_uleb(e, "sy_at"), len(_SYSCALL_ABI)), lambda: e.give(0))
         same(_SYSCALL_ABI)
@@ -1013,6 +1016,21 @@ def _syscall(tables):
         e.set("sy_at", p["sy_stop"])
         for _group in range(2):
             e.set("sy_at", e.add(e.mul(_payload_uleb(e, "sy_at"), 32), p["sy_at"]))
+        e.var("sy_alloc", 0)
+
+        def allocator():  # tag 1: size inputs, pointer output, token output, alignment, zeroed
+            _payload_uleb(e, "sy_at")
+            e.for_("sy_q", 0, _payload_uleb(e, "sy_at"), lambda: _payload_uleb(e, "sy_at"))
+            for _field in range(4):
+                _payload_uleb(e, "sy_at")
+            e.set("sy_alloc", 1)
+
+        def deallocator():  # tag 2: pointer input, token input
+            for _field in range(3):
+                _payload_uleb(e, "sy_at")
+
+        e.if_(e.both(e.lt(p["sy_at"], p["sy_end"]), e.eq(e.rd(p["sy_at"]), 1)), allocator)
+        e.if_(e.both(e.lt(p["sy_at"], p["sy_end"]), e.eq(e.rd(p["sy_at"]), 2)), deallocator)
         e.if_(e.ne(p["sy_at"], p["sy_end"]), lambda: e.give(0))
 
         def byte():
@@ -1047,12 +1065,13 @@ def _syscall(tables):
         number("sy_nr", (1 << 31) - 1)
         e.if_(e.not_(canonical("sy_nr")), lambda: e.set("sy_ok", 0))
         e.st(p["sy_rec"], p["sy_nr"])
+        e.st(e.add(p["sy_rec"], 2), p["sy_alloc"])
         e.var("sy_n", 0)
 
         def put(tag, value):
             """Argument ``sy_n``; a seventh is invalid (Linux x86-64 syscalls take at most six)."""
             def store():
-                at = e.add(p["sy_rec"], e.add(2, e.mul(p["sy_n"], 2)))
+                at = e.add(p["sy_rec"], e.add(SYSCALL_HEADER, e.mul(p["sy_n"], 2)))
                 e.st(at, tag)
                 e.st(e.add(at, 1), value)
                 e.set("sy_n", e.add(p["sy_n"], 1))
@@ -1624,14 +1643,14 @@ def _translate(tables, isa=None):
                             _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"])))))))
 
                 def syscall():
-                    """S10a: the template record as the attributes: number, count, (tag, value) per argument."""
+                    """S10a: the template record as the attributes: number, count, allocator, (tag, value) per argument."""
                     e.var("nb_mi", 0)
                     e.var("nb_oa", e.add(p["nb_ops_at"], 1))
                     e.for_("q", 0, e.rd(p["nb_ops_at"]), lambda: e.if_(e.ne(_type_width(e, e.ld(e.add(p["vt"], raw_value_id("nb_oa")))), 0),
                                                                     lambda: e.set("nb_mi", e.add(p["nb_mi"], 1))))
                     e.var("nb_template", e.call(_FN["syscall"], _reference(e, p["graph"], entity), p["nb_mi"]))
                     _ok(e, e.both(e.ne(p["nb_template"], NONE), e.ne(p["nb_template"], 0)))
-                    e.var("nb_words", e.add(2, e.mul(2, e.ld(e.add(p["nb_template"], 1)))))
+                    e.var("nb_words", e.add(SYSCALL_HEADER, e.mul(2, e.ld(e.add(p["nb_template"], 1)))))
                     _emit_out(e, p["nb_words"])
                     e.for_("q", 0, p["nb_words"], lambda: _emit_out(e, e.ld(e.add(p["nb_template"], p["q"]))))
 

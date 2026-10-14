@@ -70,7 +70,9 @@ IDENTITY = b"x86_64-linux-views-v1"
 IDENTITIES = (IDENTITY, b"x86_64-linux-views-v2")
 SYSCALL_ARGUMENT_REGISTERS = (7, 6, 2, 10, 8, 9)  # rdi, rsi, rdx, r10, r8, r9
 RSI, RDI = 6, 7
-SYSCALL_EXPECTED = "linux-x86_64-syscall-v1 declaration without heap contracts: a canonical template naming each machine operand once, at most six arguments, at most one machine result"
+SYSCALL_EXPECTED = "linux-x86_64-syscall-v1 declaration: a canonical template naming each machine operand once, at most six arguments, at most one machine result"
+# An allocator contract's nullable result: the kernel's -4095..-1 becomes 0 (``xax_x86_64._linux_syscall``).
+NULL_ON_ERROR = b"\x48\x3d\x01\xf0\xff\xff\x72\x02\x31\xc0"  # cmp rax, -4095; jb +2; xor eax, eax
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
 T0, T1 = 10, 11
 ARGUMENT_REGISTERS = (RCX, RDX, 8, 9)
@@ -89,6 +91,8 @@ LOWERED_OPERATIONS = tuple(sorted({*map(int, ALU), int(Operation.MUL_WRAP), int(
                                    int(Operation.INT_TRUNCATE), int(Operation.INT_ZERO_EXTEND), int(Operation.CONSTANT), int(Operation.INT_COMPARE),
                                    int(Operation.CALL_DIRECT), int(Operation.CHECKED_LOAD_BITS_LE), int(Operation.CHECKED_STORE_BITS_LE),
                                    int(Operation.AGGREGATE_GET), int(Operation.AGGREGATE_MAKE), *map(int, RESOURCE_EFFECT_OPERATIONS)}))
+# S10b (ADR-265): v2 also lowers owned-memory operations; each is a copy of its pointer operand.
+X86_LOWERED_OPERATIONS = tuple(sorted({*LOWERED_OPERATIONS, int(Operation.HEAP_VIEW), int(Operation.POINTER_CAST)}))
 
 
 @dataclass(frozen=True)
@@ -341,7 +345,7 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
         template = syscall_template(node, resolve)
         if template is None:
             fail(f"XAX.{ISA}.FOREIGN_ABI", where, f"{ISA}-SYSCALL", SYSCALL_EXPECTED, node.entity.cid.hex())
-        number, arguments = template
+        number, arguments, allocator = template
         machine = machine_arguments(node)
         e.emit(b"\x56\x57")  # push rsi; push rdi
         for register, argument in zip(SYSCALL_ARGUMENT_REGISTERS, arguments):
@@ -356,7 +360,10 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
                 e.emit(move(register, source))
             else:
                 e.emit(stack(b"\x8b", register, slot_of[ref] + 16))
-        e.emit(b"\xb8" + number.to_bytes(4, "little") + b"\x0f\x05\x5f\x5e")  # mov eax, nr; syscall; pop rdi; pop rsi
+        e.emit(b"\xb8" + number.to_bytes(4, "little") + b"\x0f\x05")  # mov eax, nr; syscall
+        if allocator:
+            e.emit(NULL_ON_ERROR)
+        e.emit(b"\x5f\x5e")  # pop rdi; pop rsi
         results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results))
                    if ValueRef.node_result(block_index, node_index, index) in width_of]
         if results:
@@ -488,6 +495,8 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
                     write(result, destination)
             elif operation == Operation.CALL_FOREIGN:
                 _syscall(node, result, block_index, node_index)
+            elif operation in (Operation.HEAP_VIEW, Operation.POINTER_CAST):
+                write(result, read(node.operands[0], T0))  # S10b: the view's (or narrowed) pointer is the address
             elif operation in RESOURCE_EFFECT_OPERATIONS or operation == Operation.AGGREGATE_MAKE:
                 pass
             else:
@@ -530,21 +539,22 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
     return ranges
 
 
-def syscall_template(node, resolve) -> tuple[int, tuple[int | str, ...]] | None:
-    """S10a: ``(number, register template)`` of a ``call.foreign`` the views profile lowers, or None (rejected with
-    ``X86_64_VIEWS-SYSCALL``): a ``linux-x86_64-syscall-v1`` declaration without heap contracts, at most one machine
-    result, and a template ``decode_syscall_name`` accepts for the machine operands."""
+def syscall_template(node, resolve) -> tuple[int, tuple[int | str, ...], bool] | None:
+    """S10a/S10b: ``(number, register template, allocator)`` of a ``call.foreign`` the views profile lowers, or None
+    (rejected with ``X86_64_VIEWS-SYSCALL``): a ``linux-x86_64-syscall-v1`` declaration with at most one machine
+    result and a template ``decode_syscall_name`` accepts for the machine operands.  With an allocator contract the
+    result is nullable: a kernel error becomes 0."""
     from xax_compiler import LINUX_X86_64_SYSCALL_ABI, XaxError, decode_foreign_function
     from xax_x86_64 import decode_syscall_name
 
     declaration = decode_foreign_function(node.entity)
-    if declaration.abi != LINUX_X86_64_SYSCALL_ABI or declaration.allocator is not None or declaration.deallocator is not None:
+    if declaration.abi != LINUX_X86_64_SYSCALL_ABI:
         return None
     if sum(1 for cid in node.results if not _is_proof_type(resolve(cid))) > 1:
         return None
     machine = sum(1 for cid in node.operand_types if not _is_proof_type(resolve(cid)))
     try:
-        return decode_syscall_name(declaration.name, machine)
+        return (*decode_syscall_name(declaration.name, machine), declaration.allocator is not None)
     except XaxError:
         return None
 

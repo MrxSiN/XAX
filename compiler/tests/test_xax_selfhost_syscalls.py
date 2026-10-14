@@ -164,16 +164,37 @@ class SyscallLoweringTests(unittest.TestCase):
                 rules.add(diagnostic.rule)
         self.assertEqual(rules, {"X86_64_VIEWS-SYSCALL"})
 
-    def test_a_heap_contract_is_rejected(self):
-        """``mmap`` with its allocator contract: the views profile has no heap ownership yet (S10b)."""
+    def test_owned_memory(self):
+        """S10b (ADR-265): ``mmap`` (allocator contract), ``heap.view``, checked accesses, ``pointer.cast`` to a read-only
+        view lent to a callee, and ``munmap`` (deallocator contract), natively from the XAX backend's image."""
+        extent = 1 << 16
+        view = heap_view_type(extent)
+        reader_pointer = API.bytes_read
+        callee_graph = GraphBuilder()
+        callee_block = callee_graph.block(reader_pointer, view, MEM, B64)
+        pointer, token, memory, offset = callee_block.params
+        value, memory = callee_block.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, callee_block.op1(Operation.INT_TRUNCATE, (offset,), B32), memory),
+                                        (B64, MEM), attributes=(8, 1))
+        callee_block.ret(pointer, token, memory, value)
+        callee = callee_graph.function((reader_pointer, view, MEM, B64), (reader_pointer, view, MEM, B64))
+
         graph = GraphBuilder()
         block = graph.block(B64, MEM)
-        size, memory = block.params
-        pointer, owner, memory = block.op(Operation.CALL_FOREIGN, (size, memory), (API.bytes_rw, API.heap_owner, MEM), entity=API.mmap_anonymous)
-        block.ret(pointer, owner, memory)
-        entry = graph.function((B64, MEM), (API.bytes_rw, API.heap_owner, MEM))
-        reader = program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *API.types))
-        self.assertEqual(self.assertSameOutcome(reader, entry).rule, "X86_64_VIEWS-SYSCALL")
+        stored, memory = block.params
+        raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, extent), memory), (API.bytes_rw, API.heap_owner, MEM), entity=API.mmap_anonymous)
+        pointer, token, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (API.bytes_rw, view, MEM), attributes=(extent, 4096))
+        at = block.const(B32, extent - 8)
+        memory = block.op1(Operation.CHECKED_STORE_BITS_LE, (pointer, at, stored, memory), MEM, attributes=(8, 1))
+        narrowed = block.op1(Operation.POINTER_CAST, (pointer,), reader_pointer)
+        _narrowed, token, memory, loaded = block.op(Operation.CALL_DIRECT, (narrowed, token, memory, block.const(B64, extent - 8)),
+                                                    (reader_pointer, view, MEM, B64), entity=callee)
+        _status, memory = block.op(Operation.CALL_FOREIGN, (pointer, token, memory), (B64, MEM), entity=API.munmap_view(API.bytes_rw, extent))
+        block.ret(loaded, memory)
+        entry = graph.function((B64, MEM), (B64, MEM))
+        reader = program_store(entry, x86_64_linux_exec_target(), (*graph.objects.values(), *callee_graph.objects.values(), *API.types))
+        image = self.assertSameOutcome(reader, entry)
+        self.assertEqual(type(image).__name__, "X86ViewsImage", image)
+        self.assertEqual(NativeViewsImage(image)(0x0123456789ABCDEF), 0x0123456789ABCDEF)
 
     def test_the_v1_profile_rejects_syscalls(self):
         reader, entry = copy_program()

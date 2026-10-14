@@ -9,7 +9,7 @@
       "B4": false,
       "B5": false,
       "B6": false,
-      "blocker": "no canonical XAX store implements the whole compiler; S10 and later steps are open (ADR-180, ADR-262)"
+      "blocker": "no canonical XAX store implements the whole compiler; S10e, S11, and later steps are open (ADR-180, ADR-265)"
     },
     "m14_semantic_image_wrapper": {
       "B2": true,
