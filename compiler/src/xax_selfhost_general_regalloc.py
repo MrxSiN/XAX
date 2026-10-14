@@ -47,7 +47,9 @@ RA_WORDS = 256
 (T_S1, T_S2, T_S3, T_S4, T_USTAMP, T_UCOUNT, T_WEIGHT, T_WSTAMP, T_PARENT, T_CAND) = range(30, 40)
 # S12d emission (``xax_selfhost_general_emit``): the register of a value, then fields valid while ``T_ESTAMP`` is current.
 (T_REG, T_SPOFF, T_SPID, T_ESTAMP, T_ULIST, T_ULEN, T_HINT, T_EUSE) = range(40, 48)
-VALUE_TABLES = 48
+# S12f frame lowering (``xax_selfhost_general_frame``): slot, layout size, frame pointer, heap root and offset, extent.
+(T_FSLOT, T_FSIZE, T_FPTR, T_FHROOT, T_FHOFF, T_FEXT, T_FESC) = range(48, 55)
+VALUE_TABLES = 55
 # Register-allocation globals (``_ra``), after the value tables' pointers.
 (R_ELIGIBLE, R_HAS_CALL, R_STACKS, R_NSTACKS, R_FUSED, R_BTAB, R_MEMB, R_CL_RECORDS, R_NHOMES, R_HOMES, R_LOOPHDR, R_ALLOC, R_NALLOC,
  R_HOISTED, R_NHOISTED, R_SHADOW, R_EDGE_SPILL_BASE, R_HOME_BASE, R_SLOT_BASE, R_NSLOTS, R_DYN_BASE, R_USES, R_OWN_ELIDED, R_NPARAMS,

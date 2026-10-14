@@ -504,6 +504,17 @@ def reference_emission(function, view, marks, resolve, target_object, process_en
     return "none" if result is None else (result[0], tuple(result[1]), tuple(result[2]))
 
 
+def reference_function(function, view, marks, resolve, target_object, process_entry: bool):
+    """The bootstrap's ``_compile_function`` of ``function`` (every path): ``(code, calls, ranges)`` or its error."""
+    from xax_x86_64 import AtomicLegalizationPolicy, _compile_function
+
+    try:
+        code, calls, ranges = _compile_function(function, resolve, decode_native_target(target_object), AtomicLegalizationPolicy(), process_entry, view, marks)
+    except XaxError as error:
+        return ("error", error.diagnostic.code)
+    return code, tuple(calls), tuple(ranges)
+
+
 def check_emission(views, prefetches, emitted, order, resolve, target_object, entry_cid) -> None:
     """S12d audit: every function's register-resident code the program emitted equals the bootstrap's, byte for byte,
     with the same call fixups and semantic ranges; where the program says the bootstrap returns None, it does."""
@@ -513,6 +524,11 @@ def check_emission(views, prefetches, emitted, order, resolve, target_object, en
             EMISSION_COUNTS["undecided"] = EMISSION_COUNTS.get("undecided", 0) + 1
             continue
         want = reference_emission(function, views[function.cid], prefetches.get(function.cid), resolve, target_object, function.cid == entry_cid)
+        if want == "none" and isinstance(got, tuple):
+            # S12f: the bootstrap lowers it on another path (``_compile_function``: the legacy register path or the frame).
+            want = reference_function(function, views[function.cid], prefetches.get(function.cid), resolve, target_object, function.cid == entry_cid)
+            if isinstance(want, tuple):
+                EMISSION_COUNTS["frame"] = EMISSION_COUNTS.get("frame", 0) + 1
         if got != want:
             detail = ""
             if isinstance(got, tuple) and isinstance(want, tuple):

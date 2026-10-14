@@ -1404,6 +1404,8 @@ def _view(tables):
             e.if_(e.eq(p["vw_code"], 0), lambda: e.set("vw_emit", 1), lambda: e.if_(e.eq(p["vw_code"], 1), lambda: e.set("vw_emit", 2)))
 
         e.if_(e.eq(p["vw_status"], STATUS_ANALYSED), emit)
+        # S12f (ADR-275): the frame lowering where the bootstrap takes it.
+        e.set("vw_emit", _call(e, "frame_fallback", p["f"], p["fidx"], p["vw_status"], p["vw_emit"]))
         _call(e, "write_emission", p["vw_emit"])
         from xax_selfhost_general_image import I_OK
         from xax_selfhost_general_regalloc import _set_ra
@@ -1497,7 +1499,10 @@ def add_view_functions(add, tables):
     from xax_selfhost_general_emit import add_emit_functions
 
     add_emit_functions(add, tables)
+    from xax_selfhost_general_frame import add_frame_functions
     from xax_selfhost_general_image import add_image_functions
+
+    add_frame_functions(add, tables)
 
     add_image_functions(add, tables)
     add("write_analysis", _writer(tables, "analysis"))

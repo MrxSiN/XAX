@@ -353,6 +353,10 @@
       "class": "G",
       "note": "Builder of the S12e image assembly and Linux ELF64 container in the general x86-64 backend store (ADR-273)."
     },
+    "xax_selfhost_general_frame.py": {
+      "class": "G",
+      "note": "Builder of the S12f frame lowering in the general x86-64 backend store (ADR-275)."
+    },
     "xax_selfhost_writer.py": {
       "class": "G",
       "note": "Builder of the canonical S9 store (ADR-262)."

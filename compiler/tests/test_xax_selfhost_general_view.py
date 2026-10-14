@@ -238,6 +238,80 @@ class GeneralViewTests(unittest.TestCase):
                 self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
                 self.assertEqual(xax, compile_linux_executable(reader, entry_cid, target.cid, frontend="python"))
 
+    def test_frame_lowering(self):
+        """S12f: functions the register-resident path rejects (floats, products, sums) are lowered by the XAX frame
+        path, byte for byte the bootstrap's ``_compile_function``; whole programs are assembled in XAX."""
+        import xax_linux
+        from xax_compiler import (
+            Block, FloatCompare, FloatFormat, Node, Terminator, ValueRef, array_type, constant, float_constant, float_type, function,
+            graph_fragment, sum_type, tuple_type,
+        )
+
+        f32, f64 = float_type(FloatFormat.BINARY32), float_type(FloatFormat.BINARY64)
+        P, R = ValueRef.parameter, ValueRef.node_result
+        half = float_constant(f64, 1.5)
+        floats = graph_fragment([Block((B32, B32), (
+            Node(Operation.UINT_TO_FLOAT, (P(0, 0),), (f64,)),
+            Node(Operation.SINT_TO_FLOAT, (P(0, 1),), (f64,)),
+            Node(Operation.CONSTANT, (), (f64,), entity=half),
+            Node(Operation.FLOAT_ADD, (R(0, 0), R(0, 2)), (f64,)),
+            Node(Operation.FLOAT_MUL, (R(0, 3), R(0, 1)), (f64,)),
+            Node(Operation.FLOAT_SUB, (R(0, 4), R(0, 0)), (f64,)),
+            Node(Operation.FLOAT_DIV, (R(0, 5), R(0, 2)), (f64,)),
+            Node(Operation.FLOAT_CONVERT, (R(0, 6),), (f32,)),
+            Node(Operation.FLOAT_CONVERT, (R(0, 7),), (f64,)),
+            Node(Operation.FLOAT_COMPARE, (R(0, 8), R(0, 6)), (B1,), attributes=(FloatCompare.LE,)),
+            Node(Operation.FLOAT_TO_SINT_TRUNC, (R(0, 8),), (B32,)),
+            Node(Operation.FLOAT_TO_UINT_TRUNC, (R(0, 2),), (B64,)),
+            Node(Operation.INT_ZERO_EXTEND, (R(0, 9),), (B32,)),
+            Node(Operation.ADD_WRAP, (R(0, 10), R(0, 12)), (B32,)),
+        ), Terminator.return_((R(0, 13),)))])
+        floating = function(floats, (B32, B32), (B32,))
+        pair, array = tuple_type((B32, B64)), array_type(B32, 2)
+        choice = sum_type((B32, B1))
+        zero = constant(B1, 0)
+        products = graph_fragment([
+            Block((B32, B32), (
+                Node(Operation.INT_ZERO_EXTEND, (P(0, 1),), (B64,)),
+                Node(Operation.AGGREGATE_MAKE, (P(0, 0), R(0, 0)), (pair,)),
+                Node(Operation.AGGREGATE_GET, (R(0, 1),), (B32,), attributes=(0,)),
+                Node(Operation.AGGREGATE_MAKE, (R(0, 2), P(0, 1)), (array,)),
+                Node(Operation.AGGREGATE_GET, (R(0, 3),), (B32,), attributes=(1,)),
+                Node(Operation.SUM_MAKE, (R(0, 4),), (choice,), attributes=(0,)),
+                Node(Operation.SUM_TAG, (R(0, 5),), (B1,)),
+                Node(Operation.CONSTANT, (), (B1,), entity=zero),
+                Node(Operation.INT_COMPARE, (R(0, 6), R(0, 7)), (B1,), attributes=(IntCompare.EQ,)),
+            ), Terminator.conditional_branch(R(0, 8), 1, (R(0, 5),), 2, ())),
+            Block((choice,), (Node(Operation.SUM_GET, (P(1, 0),), (B32,), attributes=(0,)),), Terminator.return_((R(1, 0),))),
+            Block((), (), Terminator.trap()),
+        ])
+        aggregate = function(products, (B32, B32), (B32,))
+        from xax_compiler import Permission, memory_effect_type, pointer_type, stack_owner_type
+
+        rw, ro = pointer_type(f32, Permission.READ_WRITE, 4), pointer_type(f32, Permission.READ, 4)
+        owner, effect = stack_owner_type(), memory_effect_type()
+        storage = graph_fragment([Block((B32,), (
+            Node(Operation.UINT_TO_FLOAT, (P(0, 0),), (f32,)),
+            Node(Operation.STACK_ALLOC, (), (rw, owner, effect), attributes=(4, 4)),
+            Node(Operation.STORE_BITS_LE, (R(0, 1, 0), R(0, 0), R(0, 1, 2)), (effect,), attributes=(4, 4)),
+            Node(Operation.POINTER_CAST, (R(0, 1, 0),), (ro,)),
+            Node(Operation.LOAD_BITS_LE, (R(0, 3), R(0, 2)), (f32, effect), attributes=(4, 4)),
+            Node(Operation.STACK_END, (R(0, 1, 1), R(0, 4, 1)), ()),
+            Node(Operation.FLOAT_TO_UINT_TRUNC, (R(0, 4, 0),), (B32,)),
+        ), Terminator.return_((R(0, 6),)))])
+        stored = function(storage, (B32,), (B32,))
+        objects = (B1, B32, B64, f32, f64, half, floats, floating, pair, array, choice, zero, products, aggregate, rw, ro, owner, effect, storage, stored)
+        for callee, arguments in ((floating, (7, 3)), (aggregate, (5, 9)), (stored, (11,))):
+            with self.subTest(callee=callee.cid.hex()[:8]):
+                reader, entry = self.store([(callee, tuple((B32, value) for value in arguments), (B32,))], *objects)
+                xax_linux.EMISSION_COUNTS.clear()
+                self.assertViews(reader, entry)
+                self.assertGreaterEqual(xax_linux.EMISSION_COUNTS.get("frame", 0), 1)
+                xax_linux.ASSEMBLY_COUNTS.clear()
+                xax = compile_linux_executable(reader, entry.cid, self.target.cid, frontend="xax")
+                self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
+                self.assertEqual(xax, compile_linux_executable(reader, entry.cid, self.target.cid, frontend="python"))
+
     def test_trap_reasons(self):
         """S12d: a trap terminator's reason (the head of its payload, carried in the object table's trap section) is
         loaded into rax before ``ud2``, in the callee and where it is inlined into its caller."""

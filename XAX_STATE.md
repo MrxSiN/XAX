@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12f.1 the frame lowering — 2026-10-14 (ADR-275)
+
+S12f is cut into S12f.1 (the frame lowering) and S12f.2 (atomics, by-reference aggregates, and the legacy register path). S12f.1 is complete on Linux x86-64. The general backend program now lowers, byte for byte the bootstrap's, the functions the register-resident lowering cannot take, including floating-point code. 152 of the 157 Linux test compiles are produced entirely by XAX, and no function in those suites is left on the bootstrap's paths. Next: S12e.2 and S12f.2.
+
 ## S12d.2 every startup read — 2026-10-14 (ADR-274)
 
-The XAX emission now covers every Linux startup read (arguments, environment, auxiliary vector). 148 of the 157 Linux test compiles are produced entirely by XAX; the functions still on the bootstrap's paths in those suites are floating-point code (the frame lowering). Next: S12f and S12e.2.
+The XAX emission now covers every Linux startup read (arguments, environment, auxiliary vector). 148 of the 157 Linux test compiles are produced entirely by XAX; the functions still on the bootstrap's paths in those suites are floating-point code (the frame lowering). Next: S12f and S12e.2. S12f.1: see above.
 
 ## S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
 
