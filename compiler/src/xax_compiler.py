@@ -1161,6 +1161,16 @@ def x86_64_views_target() -> SemanticObject:
     )
 
 
+def x86_64_views_syscall_target() -> SemanticObject:
+    """S10a (ADR-264): the x86-64 views profile plus explicit Linux syscalls (``call.foreign`` of a
+    ``linux-x86_64-syscall-v1`` declaration without heap contracts), so an XAX views program performs its own I/O."""
+    return _x86_64_windows_target(
+        b"x86_64-linux-views-v2",
+        tuple(sorted({*views_operations(), int(Operation.CALL_FOREIGN)})),
+        machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
+    )
+
+
 def x86_64_linux_dynamic_exec_target() -> SemanticObject:
     """Linux x86-64 ELF64 executable that explicitly requests the system dynamic loader."""
     return _x86_64_windows_target(

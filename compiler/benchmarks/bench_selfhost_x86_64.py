@@ -27,7 +27,7 @@ from bench_selfhost_closure import PROGRAMS, verifier_input  # noqa: E402
 
 EVIDENCE = Path(__file__).resolve().parent / "selfhost_x86_64_evidence.json"
 BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
-HELPERS = (*PROGRAMS, ("xax_selfhost_x86_64_backend", "load_backend_program"))
+HELPERS = (*PROGRAMS, ("xax_selfhost_x86_64_backend", "load_backend_program"), ("xax_selfhost_writer", "load_writer_program"))
 
 
 def _median(function, repeats=7):

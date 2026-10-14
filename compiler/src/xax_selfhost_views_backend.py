@@ -100,7 +100,15 @@ VIEWS_RULES = (
 )
 # ADR-231: the expected value of ``<ISA>-CHECKED-BYTE-VIEW-WIDTH`` (an ISA whose wide loads may fault when misaligned).
 BYTE_VIEW_WIDTH_EXPECTED = "1-byte checked access on a byte view (no misaligned wide access on this target)"
-_RULE_SITES = {rule: site for site, (rule, _code) in enumerate(VIEWS_RULES)}
+
+
+def _rules(isa) -> tuple[tuple[str, str], ...]:
+    """The family's rules: the shared views rules, then the ISA's own (``EXTRA_RULES``, e.g. S10a's syscalls)."""
+    return (*VIEWS_RULES, *getattr(isa, "EXTRA_RULES", ()))
+
+
+def _site(isa, rule: str) -> int:
+    return next(site for site, (name, _code) in enumerate(_rules(isa)) if name == rule)
 
 
 def _legal(e: E, isa, condition, rule: str, entity, expected, actual, deferred: bool = False):
@@ -113,7 +121,7 @@ def _legal(e: E, isa, condition, rule: str, entity, expected, actual, deferred: 
         return
 
     def write():
-        e.call(_FN["diagnostic"], _RULE_SITES[rule], entity)
+        e.call(_FN["diagnostic"], _site(isa, rule), entity)
         expected()
         actual()
 
@@ -136,7 +144,7 @@ def _diagnostic(tables, isa):
     def build(e: E):
         p = e.p
         for part in ("code", "rule"):
-            for site, (rule, code) in enumerate(VIEWS_RULES):
+            for site, (rule, code) in enumerate(_rules(isa)):
                 value = f"XAX.{family}.{code}" if part == "code" else f"{family}-{rule}"
                 e.if_(e.eq(p["site"], site), lambda value=value: D.text(e, value))
             if part == "code":
@@ -970,6 +978,127 @@ def _target_list(e: E, slot: int):
     e.for_("dg_q", 0, p["dg_n"], lambda: D.integer(e, _payload_uleb(e, "dg_at")))
 
 
+# S10a (ADR-264): a lowered syscall's template record (arena words): number, argument count, then per argument
+# (tag, value): tag 0 names machine operand ``value``, tag 1 is the literal ``value``.
+SYSCALL_RECORD = 2 + 2 * 6
+_FOREIGN_PREFIX = b"foreign-function-v1"
+_SYSCALL_ABI = b"linux-x86_64-syscall-v1"
+
+
+def _syscall(tables):
+    """``xax_x86_64_views.syscall_template`` for declaration object ``obj`` and ``m`` machine operands: the template
+    record (``SYSCALL_RECORD``), or 0 when the views profile does not lower the call (a declaration of another ABI
+    or with a heap contract, or a template ``decode_syscall_name`` rejects).  The caller checks the result count."""
+    def build(e: E):
+        p = e.p
+        e.var("sy_ok", 1)
+        e.var("sy_at", _at(e, G_PAY, p["obj"]))
+        e.var("sy_end", 0)
+        e.set("sy_end", e.add(_payload_uleb(e, "sy_at"), p["sy_at"]))
+
+        def same(data: bytes):
+            for k, value in enumerate(data):
+                e.if_(e.ne(e.rd(e.add(p["sy_at"], k)), value), lambda: e.set("sy_ok", 0))
+            e.set("sy_at", e.add(p["sy_at"], len(data)))
+
+        # The identity: the prefix, the ABI, the library, the name, the input and output CIDs, and nothing after them.
+        same(_FOREIGN_PREFIX)
+        e.if_(e.ne(_payload_uleb(e, "sy_at"), len(_SYSCALL_ABI)), lambda: e.give(0))
+        same(_SYSCALL_ABI)
+        e.if_(e.eq(p["sy_ok"], 0), lambda: e.give(0))
+        e.set("sy_at", e.add(_payload_uleb(e, "sy_at"), p["sy_at"]))
+        e.var("sy_len", _payload_uleb(e, "sy_at"))
+        e.var("sy_pos", p["sy_at"])
+        e.var("sy_stop", e.add(p["sy_at"], p["sy_len"]))
+        e.set("sy_at", p["sy_stop"])
+        for _group in range(2):
+            e.set("sy_at", e.add(e.mul(_payload_uleb(e, "sy_at"), 32), p["sy_at"]))
+        e.if_(e.ne(p["sy_at"], p["sy_end"]), lambda: e.give(0))
+
+        def byte():
+            """The name byte at ``sy_pos``; 256 past its end."""
+            inside = e.lt(p["sy_pos"], p["sy_stop"])
+            return e.sel(inside, e.rd(e.sel(inside, p["sy_pos"], p["sy_at"])), 256)
+
+        def number(name: str, limit: int):
+            """Digits at ``sy_pos``: ``name`` (valid unless ``name_o``: above ``limit``), their count ``name_n``, the
+            first ``name_f``."""
+            e.var(name, 0)
+            e.var(f"{name}_n", 0)
+            e.var(f"{name}_o", 0)
+            e.var(f"{name}_f", byte())
+
+            def step():
+                d = e.sub(byte(), 48)
+                e.var("sy_d", d)
+                fits = e.le(p[name], e.udiv(e.sub(limit, p["sy_d"]), 10))
+                e.if_(fits, lambda: e.set(name, e.add(e.mul(p[name], 10), p["sy_d"])), lambda: e.set(f"{name}_o", 1))
+                e.set(f"{name}_n", e.add(p[f"{name}_n"], 1))
+                e.set("sy_pos", e.add(p["sy_pos"], 1))
+
+            e.while_(lambda: e.both(e.le(48, byte()), e.le(byte(), 57)), step)
+
+        def canonical(name: str):
+            """A nonempty decimal without a leading zero, at most ``limit``."""
+            return e.both(e.ne(p[f"{name}_n"], 0), e.either(e.eq(p[f"{name}_n"], 1), e.ne(p[f"{name}_f"], 48)), e.eq(p[f"{name}_o"], 0))
+
+        e.var("sy_rec", e.alloc(SYSCALL_RECORD))
+        _ok(e, e.ne(p["sy_rec"], NONE))
+        number("sy_nr", (1 << 31) - 1)
+        e.if_(e.not_(canonical("sy_nr")), lambda: e.set("sy_ok", 0))
+        e.st(p["sy_rec"], p["sy_nr"])
+        e.var("sy_n", 0)
+
+        def put(tag, value):
+            """Argument ``sy_n``; a seventh is invalid (Linux x86-64 syscalls take at most six)."""
+            def store():
+                at = e.add(p["sy_rec"], e.add(2, e.mul(p["sy_n"], 2)))
+                e.st(at, tag)
+                e.st(e.add(at, 1), value)
+                e.set("sy_n", e.add(p["sy_n"], 1))
+
+            e.if_(e.lt(p["sy_n"], 6), store, lambda: e.set("sy_ok", 0))
+
+        def operands_in_order():
+            e.if_(e.lt(6, p["m"]), lambda: e.set("sy_ok", 0), lambda: e.for_("sy_k", 0, p["m"], lambda: put(0, p["sy_k"])))
+
+        def template():
+            e.set("sy_pos", e.add(p["sy_pos"], 1))
+            e.var("sy_used", 0)  # bit k: machine operand k is named (k < 6 for any valid template)
+            e.var("sy_refs", 0)
+            e.var("sy_go", 1)
+
+            def item():
+                def reference():
+                    e.set("sy_pos", e.add(p["sy_pos"], 1))
+                    number("sy_k", 1000)  # "$" and any digits, leading zeros included (``str.isdigit``)
+                    bit = e.c(0)
+                    for k in range(6):
+                        bit = e.add(bit, e.mul(e.flag(e.eq(p["sy_k"], k)), 1 << k))
+                    e.var("sy_bit", bit)
+                    fresh = e.both(e.ne(p["sy_k_n"], 0), e.lt(p["sy_k"], p["m"]), e.ne(p["sy_bit"], 0), e.eq(e.and_(p["sy_used"], p["sy_bit"]), 0))
+                    e.if_(fresh, lambda: (e.set("sy_used", e.or_(p["sy_used"], p["sy_bit"])), e.set("sy_refs", e.add(p["sy_refs"], 1))),
+                          lambda: e.set("sy_ok", 0))
+                    put(0, p["sy_k"])
+
+                def literal():
+                    number("sy_lit", (1 << 64) - 1)
+                    e.if_(e.not_(canonical("sy_lit")), lambda: e.set("sy_ok", 0))
+                    put(1, p["sy_lit"])
+
+                e.if_(e.eq(byte(), 36), reference, literal)  # "$"
+                e.if_(e.le(p["sy_stop"], p["sy_pos"]), lambda: e.set("sy_go", 0), lambda: e.if_(
+                    e.eq(byte(), 44), lambda: e.set("sy_pos", e.add(p["sy_pos"], 1)), lambda: (e.set("sy_ok", 0), e.set("sy_go", 0))))  # ","
+
+            e.while_(lambda: e.both(e.ne(p["sy_go"], 0), e.ne(p["sy_ok"], 0)), item)
+            e.if_(e.ne(p["sy_refs"], p["m"]), lambda: e.set("sy_ok", 0))
+
+        e.if_(e.le(p["sy_stop"], p["sy_pos"]), operands_in_order, lambda: e.if_(e.eq(byte(), 58), template, lambda: e.set("sy_ok", 0)))  # ":"
+        e.st(e.add(p["sy_rec"], 1), p["sy_n"])
+        e.give(e.mul(e.flag(e.ne(p["sy_ok"], 0)), p["sy_rec"]))
+    return _function(("obj", "m"), build, tables)
+
+
 def _emit_out(e: E, value):
     at = _g(e, G_OUT)
     e.if_(e.lt(at, STREAM_END), lambda: e.st(at, value))  # past the end: nothing is written, and the front end declines
@@ -1181,8 +1310,23 @@ def _legality(e: E, isa, f, stream, raw_value_id, value_id):
             _legal(e, isa, _in_set(e, p["lg_op"], isa.LOWERED), "OP-LOWERED", where,
                    lambda: D.text(e, isa.LOWERED_NAME), lambda: D.integer(e, p["lg_op"]))
 
+        def foreign():
+            """S10a: a Linux syscall (``xax_x86_64_views.syscall_template``)."""
+            e.var("lg_decl", callee())
+            _ok(e, e.ne(p["lg_decl"], NONE))
+            e.var("lg_mr", 0)
+            e.for_("lg_r", 0, e.rd(p["lg_results"]), lambda: e.if_(e.ne(_type_width(e, type_at(e.add(e.add(p["lg_results"], 1), p["lg_r"]))), 0),
+                                                                   lambda: e.set("lg_mr", e.add(p["lg_mr"], 1))))
+            e.var("lg_mi", 0)
+            operands_each(lambda value: e.if_(e.ne(_type_width(e, e.ld(e.add(p["vt"], value))), 0), lambda: e.set("lg_mi", e.add(p["lg_mi"], 1))))
+            e.var("lg_template", e.mul(e.flag(e.le(p["lg_mr"], 1)), e.call(_FN["syscall"], p["lg_decl"], p["lg_mi"])))
+            _ok(e, e.ne(p["lg_template"], NONE))
+            _legal(e, isa, e.ne(p["lg_template"], 0), "SYSCALL", where, lambda: D.text(e, isa.SYSCALL_EXPECTED),
+                   lambda: D.cid(e, _cid_words(e, p["lg_decl"])))
+
         checked_access = e.either(e.eq(p["lg_op"], int(Operation.CHECKED_LOAD_BITS_LE)), e.eq(p["lg_op"], int(Operation.CHECKED_STORE_BITS_LE)))
-        e.if_(e.eq(p["lg_op"], int(Operation.CALL_DIRECT)), lambda: e.if_(kept_call(), call), lambda: e.if_(checked_access, checked, other))
+        rest = (lambda: e.if_(e.eq(p["lg_op"], int(Operation.CALL_FOREIGN)), foreign, other)) if getattr(isa, "SYSCALLS", False) else other
+        e.if_(e.eq(p["lg_op"], int(Operation.CALL_DIRECT)), lambda: e.if_(kept_call(), call), lambda: e.if_(checked_access, checked, rest))
 
     def single_return(at):
         def returned():
@@ -1272,6 +1416,14 @@ def _translate(tables, isa=None):
         e.var("aggv", e.alloc(e.add(p["id"], 1)))
         e.var("bv", e.alloc(e.add(p["id"], 1)))  # ADR-231: the view pointer's element is bits<8>
         _ok(e, e.both(e.ne(p["ext"], NONE), e.ne(p["alias"], NONE), e.ne(p["made"], NONE), e.ne(p["aggv"], NONE), e.ne(p["bv"], NONE)))
+        if getattr(isa, "SYSCALLS", False):
+            e.var("vt", e.alloc(e.add(p["id"], 1)))  # S10a: each value's type object (a foreign call's machine operands)
+            _ok(e, e.ne(p["vt"], NONE))
+
+        def types(types_at, count, first_id):
+            """S10a: record the type objects of ``count`` values from id ``first_id`` (types at input ``types_at``)."""
+            if getattr(isa, "SYSCALLS", False):
+                e.for_("vq", 0, count(), lambda: e.st(e.add(p["vt"], e.add(first_id(), p["vq"])), _reference(e, p["graph"], e.rd(e.add(types_at(), p["vq"])))))
         e.for_("q", 0, p["id"], lambda: e.st(e.add(p["bv"], p["q"]), 0))
         e.for_("q", 0, p["id"], lambda: (e.st(e.add(p["ext"], p["q"]), 0), e.st(e.add(p["alias"], p["q"]), NONE),
                                          e.st(e.add(p["made"], p["q"]), NONE), e.st(e.add(p["aggv"], p["q"]), 0)))
@@ -1307,6 +1459,7 @@ def _translate(tables, isa=None):
         def block_a2():
             params = e.rd(p["pa"])
             scan(e.add(p["pa"], 1), params, e.ld(e.add(p["base"], p["b"])))
+            types(lambda: e.add(p["pa"], 1), lambda: e.rd(p["pa"]), lambda: e.ld(e.add(p["base"], p["b"])))
             e.set("pa", e.add(e.add(p["pa"], 1), e.rd(p["pa"])))
             count = e.rd(p["pa"])
             e.set("pa", e.add(p["pa"], 1))
@@ -1320,6 +1473,7 @@ def _translate(tables, isa=None):
                 e.var("a2_results", e.ld(e.add(ni, NI_RESULTS)))
                 e.var("a2_id", e.ld(e.add(p["node_base"], p["nodes"])))
                 scan(e.add(p["a2_results"], 1), e.rd(p["a2_results"]), p["a2_id"])
+                types(lambda: e.add(p["a2_results"], 1), lambda: e.rd(p["a2_results"]), lambda: p["a2_id"])
                 e.for_("r", 0, e.rd(p["a2_results"]), lambda: e.if_(
                     e.ne(_call(e, "aggregate", _reference(e, p["graph"], e.rd(e.add(e.add(p["a2_results"], 1), p["r"])))), 0),
                     lambda: e.st(e.add(p["aggv"], e.add(p["a2_id"], p["r"])), 1)))
@@ -1448,6 +1602,8 @@ def _translate(tables, isa=None):
                           lambda: _emit_out(e, width_of(e.rd(e.add(e.add(p["nb_results"], 1), p["q"])))))
 
                 e.for_("q", 0, results, result_width)
+                if getattr(isa, "SYSCALLS", False):
+                    e.var("nb_ops_at", p["na_ops"])  # ``values`` below advances ``na_ops``
                 e.var("op0_at", e.add(p["na_ops"], 1))
                 e.var("op0", NONE)
                 e.if_(e.ne(e.rd(p["na_ops"]), 0), lambda: e.set("op0", value_id("op0_at")))
@@ -1461,9 +1617,28 @@ def _translate(tables, isa=None):
                     e.if_(e.eq(_call(e, "erased", p["nb_callee"]), 0), lambda: e.set("nb_fields", _call(e, "result_fields", p["nb_callee"])))
 
                 e.if_(e.eq(p["nb_op"], int(Operation.CALL_DIRECT)), hidden)
-                e.if_(e.ne(p["nb_fields"], 0), lambda: (_emit_out(e, 1), _emit_out(e, p["nb_fields"])), lambda: e.if_(
-                    e.eq(attributes_at, NONE), lambda: _emit_out(e, 0), lambda: (
-                        _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"])))))))
+
+                def attributes():
+                    e.if_(e.ne(p["nb_fields"], 0), lambda: (_emit_out(e, 1), _emit_out(e, p["nb_fields"])), lambda: e.if_(
+                        e.eq(attributes_at, NONE), lambda: _emit_out(e, 0), lambda: (
+                            _emit_out(e, e.rd(attributes_at)), e.for_("q", 0, e.rd(attributes_at), lambda: _emit_out(e, e.rd(e.add(e.add(attributes_at, 1), p["q"])))))))
+
+                def syscall():
+                    """S10a: the template record as the attributes: number, count, (tag, value) per argument."""
+                    e.var("nb_mi", 0)
+                    e.var("nb_oa", e.add(p["nb_ops_at"], 1))
+                    e.for_("q", 0, e.rd(p["nb_ops_at"]), lambda: e.if_(e.ne(_type_width(e, e.ld(e.add(p["vt"], raw_value_id("nb_oa")))), 0),
+                                                                    lambda: e.set("nb_mi", e.add(p["nb_mi"], 1))))
+                    e.var("nb_template", e.call(_FN["syscall"], _reference(e, p["graph"], entity), p["nb_mi"]))
+                    _ok(e, e.both(e.ne(p["nb_template"], NONE), e.ne(p["nb_template"], 0)))
+                    e.var("nb_words", e.add(2, e.mul(2, e.ld(e.add(p["nb_template"], 1)))))
+                    _emit_out(e, p["nb_words"])
+                    e.for_("q", 0, p["nb_words"], lambda: _emit_out(e, e.ld(e.add(p["nb_template"], p["q"]))))
+
+                if getattr(isa, "SYSCALLS", False):
+                    e.if_(e.eq(p["nb_op"], int(Operation.CALL_FOREIGN)), syscall, attributes)
+                else:
+                    attributes()
                 e.var("extra", 0)
 
                 def constant():

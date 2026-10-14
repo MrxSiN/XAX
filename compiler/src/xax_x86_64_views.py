@@ -66,6 +66,11 @@ from xax_views_lowering import (  # noqa: F401  (LOWERED_OPERATIONS is part of t
 
 ISA = "X86_64_VIEWS"
 IDENTITY = b"x86_64-linux-views-v1"
+# S10a (ADR-264): v1 plus Linux syscalls; the closure check against the target's operations keeps v1 programs free of them.
+IDENTITIES = (IDENTITY, b"x86_64-linux-views-v2")
+SYSCALL_ARGUMENT_REGISTERS = (7, 6, 2, 10, 8, 9)  # rdi, rsi, rdx, r10, r8, r9
+RSI, RDI = 6, 7
+SYSCALL_EXPECTED = "linux-x86_64-syscall-v1 declaration without heap contracts: a canonical template naming each machine operand once, at most six arguments, at most one machine result"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
 T0, T1 = 10, 11
 ARGUMENT_REGISTERS = (RCX, RDX, 8, 9)
@@ -330,6 +335,33 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
                 write(destination, read(argument, T0))
         e.jump(JMP, ("block", function.cid, target))
 
+    def _syscall(node, result: ValueRef, block_index: int, node_index: int) -> None:
+        """S10a (ADR-264): ``syscall`` with the declaration's register template.  rsi and rdi may hold values (they are
+        callee-saved here, argument registers to the kernel), so both are pushed first and read back from the stack."""
+        template = syscall_template(node, resolve)
+        if template is None:
+            fail(f"XAX.{ISA}.FOREIGN_ABI", where, f"{ISA}-SYSCALL", SYSCALL_EXPECTED, node.entity.cid.hex())
+        number, arguments = template
+        machine = machine_arguments(node)
+        e.emit(b"\x56\x57")  # push rsi; push rdi
+        for register, argument in zip(SYSCALL_ARGUMENT_REGISTERS, arguments):
+            if isinstance(argument, int):
+                e.emit(load_constant(register, argument))
+                continue
+            ref = machine[int(argument[1:])]
+            source = register_of.get(ref)
+            if source in (RSI, RDI):
+                e.emit(stack(b"\x8b", register, 8 if source == RSI else 0))
+            elif source is not None:
+                e.emit(move(register, source))
+            else:
+                e.emit(stack(b"\x8b", register, slot_of[ref] + 16))
+        e.emit(b"\xb8" + number.to_bytes(4, "little") + b"\x0f\x05\x5f\x5e")  # mov eax, nr; syscall; pop rdi; pop rsi
+        results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results))
+                   if ValueRef.node_result(block_index, node_index, index) in width_of]
+        if results:
+            write(results[0], RAX)
+
     ranges: list[tuple[int, int, int, int]] = []
     trap_used = False
     trap = ("trap", function.cid)
@@ -454,6 +486,8 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
                     destination = target_register(result)
                     e.emit(stack(b"\x8b", destination, area_of[node.operands[0]] + 8 * node.attributes[0]))
                     write(result, destination)
+            elif operation == Operation.CALL_FOREIGN:
+                _syscall(node, result, block_index, node_index)
             elif operation in RESOURCE_EFFECT_OPERATIONS or operation == Operation.AGGREGATE_MAKE:
                 pass
             else:
@@ -496,6 +530,25 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
     return ranges
 
 
+def syscall_template(node, resolve) -> tuple[int, tuple[int | str, ...]] | None:
+    """S10a: ``(number, register template)`` of a ``call.foreign`` the views profile lowers, or None (rejected with
+    ``X86_64_VIEWS-SYSCALL``): a ``linux-x86_64-syscall-v1`` declaration without heap contracts, at most one machine
+    result, and a template ``decode_syscall_name`` accepts for the machine operands."""
+    from xax_compiler import LINUX_X86_64_SYSCALL_ABI, XaxError, decode_foreign_function
+    from xax_x86_64 import decode_syscall_name
+
+    declaration = decode_foreign_function(node.entity)
+    if declaration.abi != LINUX_X86_64_SYSCALL_ABI or declaration.allocator is not None or declaration.deallocator is not None:
+        return None
+    if sum(1 for cid in node.results if not _is_proof_type(resolve(cid))) > 1:
+        return None
+    machine = sum(1 for cid in node.operand_types if not _is_proof_type(resolve(cid)))
+    try:
+        return decode_syscall_name(declaration.name, machine)
+    except XaxError:
+        return None
+
+
 def compile_x86_64_views(reader: StoreReader, function_cid: bytes, target_object: SemanticObject, *, backend: str = "python",
                          verified: bool = False) -> X86ViewsImage:
     """``backend``: ``"python"`` (this bootstrap generator), ``"xax"`` (the XAX program; fails where it cannot run or
@@ -508,7 +561,7 @@ def compile_x86_64_views(reader: StoreReader, function_cid: bytes, target_object
     if entry.kind != Kind.FUNCTION:
         fail(f"XAX.{ISA}.FUNCTION", function_cid.hex(), f"{ISA}-ENTRY-FUNCTION", Kind.FUNCTION.name, entry.kind.name)
     target = decode_native_target(target_object)
-    if target.identity != IDENTITY:
+    if target.identity not in IDENTITIES:
         fail(f"XAX.{ISA}.TARGET", target_object.cid.hex(), f"{ISA}-TARGET-PROFILE", IDENTITY.decode(), target.identity.decode(errors="replace"))
     if backend != "python":
         from xax_selfhost_x86_64_backend import compile_with_xax

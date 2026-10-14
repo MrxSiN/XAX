@@ -502,7 +502,11 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S8c.28 | Pointer element and opaque identity rejections decided by the typing program | S8c.27 | EXECUTED (ADR-246) |
 | S8c.29 | Malformed constant body rejections decided by the typing program | S8c.28 | EXECUTED (ADR-247) |
 | S9 | Canonical store writing (object encoding, CID, container) in XAX | S2, S3 | EXECUTED (ADR-262) on Linux x86-64: validation, CID re-derivation, ordering, the container and digest, and the exact rejections are decided by `xax_store_writer.xax`; byte-identical to the bootstrap writer on every committed store; the writer writes its own store (component fixed point) |
-| S10 | The driver as an XAX program in a native Linux x86-64 process: explicit platform file I/O, target-package interpretation, verify → lower → assemble → write | S7b, S8, S9 | UNIMPLEMENTED |
+| S10 | The driver as an XAX program in a native Linux x86-64 process: explicit platform file I/O, target-package interpretation, verify → lower → assemble → write | S7b, S8, S9 | In progress (ADR-264): S10a EXECUTED |
+| S10a | Explicit Linux syscalls in the x86-64 views profile (`x86_64-linux-views-v2`), lowered and rejected by the XAX backend program | S7b | EXECUTED (ADR-264): byte-identical to the bootstrap generator; an XAX views image does its own file I/O natively |
+| S10b | Driver-owned memory in the views profile: `mmap`/`munmap` with heap contracts, `heap.view`, `pointer.cast` between element types | S10a | UNIMPLEMENTED |
+| S10c | The `verify` driver: one XAX store reads a store file, runs the XAX decoder and verifier components as callees, writes the verdict or exact diagnostic | S10b, S8 | UNIMPLEMENTED |
+| S10d | The `lower` driver: target-package interpretation in XAX, the backend and writer as callees, the image written to a file | S10c, S9 | UNIMPLEMENTED |
 | S11 | ELF64 executable container for views images, so the S10 driver is a standalone executable | S10 | UNIMPLEMENTED |
 | S12 | General x86-64 program lowering (the optimizing backend's decisions) for ordinary programs | S10 | UNIMPLEMENTED |
 | S13 | Build/package/provenance and the minimal command surface (`verify`, `build`, `inspect`) | S9, S10 | UNIMPLEMENTED |

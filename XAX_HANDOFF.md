@@ -186,6 +186,13 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S10a Linux syscalls in the views profile — 2026-10-14 (ADR-264)
+
+- Done: `x86_64-linux-views-v2` (`x86_64_views_syscall_target`) lowers `call.foreign` of `linux-x86_64-syscall-v1` declarations in both views generators (`xax_x86_64_views._syscall`, the XAX backend's `foreign` case and `_syscall` parser); tests in `tests/test_xax_selfhost_syscalls.py`.
+- ISA-only views rules go in the ISA class's `EXTRA_RULES`; gate ISA-only front-end work on a class flag (`SYSCALLS`) and keep the gated code from emitting nodes for other ISAs (argument expressions included), or the RISC-V backend store changes.
+- After changing the backend builders: `write_backend_store()`, then `benchmarks/bench_selfhost_x86_64.py --write` (native, `XAX_REQUIRE_NATIVE=1`).
+- Next: S10b, driver-owned memory (`mmap`/`munmap` heap contracts, `heap.view`, `pointer.cast`) in the views profile; then S10c (the `verify` driver) and S10d (the `lower` driver), per ADR-264.
+
 ## S9 canonical store writing — 2026-10-14 (ADR-262)
 
 - Done: the XAX writer decides every store write on Linux x86-64 (`compiler/src/xax_selfhost_writer.py`; tests `tests/test_xax_selfhost_writer.py`). Opt out with `XAX_STORE_PYTHON_WRITER=1`; `_bootstrap_store_contents`/`_bootstrap_emit_store` are the oracle.

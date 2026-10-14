@@ -23,11 +23,11 @@ from xax_selfhost_views_backend import (
     _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
     WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
-    _node_info, _ok, _payload_uleb, _program, _result_fields, _target, _term_end, _translate, _value, collect_program_output,
+    _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value, collect_program_output,
 )
 
 from xax_native import bootstrap_dir  # noqa: E402
-from xax_x86_64_views import ISA, LOWERED_OPERATIONS  # noqa: E402
+from xax_x86_64_views import ISA, LOWERED_OPERATIONS, SYSCALL_ARGUMENT_REGISTERS, SYSCALL_EXPECTED  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -328,6 +328,9 @@ class X86_64:
 
     ARCHITECTURE = 1
     DIAGNOSTICS = ISA  # S7b (ADR-179): this program decides target legality and writes the rejection diagnostics
+    SYSCALLS = True  # S10a (ADR-264): Linux syscalls (``x86_64-linux-views-v2``)
+    EXTRA_RULES = (("SYSCALL", "FOREIGN_ABI"),)
+    SYSCALL_EXPECTED = SYSCALL_EXPECTED
     LOWERED = LOWERED_OPERATIONS
     LOWERED_NAME = "x86-64 views subset"
     ALLOCATABLE = ALLOCATABLE
@@ -597,6 +600,41 @@ def _block(tables):
                 e.if_(e.ne(extra, NONE), machine)
 
             case((Operation.CALL_DIRECT,), call)
+
+            def foreign():
+                """S10a: ``xax_x86_64_views``'s ``_syscall``: rsi and rdi pushed, the template placed, ``syscall``."""
+                _emit(e, 0x56)
+                _emit(e, 0x57)  # push rsi; push rdi
+
+                def argument():
+                    e.var("sc_reg", 0)
+                    for position, register in enumerate(SYSCALL_ARGUMENT_REGISTERS):
+                        e.if_(e.eq(p["q"], position), lambda register=register: e.set("sc_reg", register))
+                    e.var("sc_value", attribute(e.add(3, e.mul(p["q"], 2))))
+
+                    def operand_value():
+                        e.var("sc_seen", 0)
+                        e.var("sc_ref", NONE)
+                        e.for_("k", 0, operands, lambda: e.if_(e.ne(_value(e, S_WIDTH, operand(p["k"])), 0), lambda: (
+                            e.if_(e.eq(p["sc_seen"], p["sc_value"]), lambda: e.set("sc_ref", operand(p["k"]))), e.set("sc_seen", e.add(p["sc_seen"], 1)))))
+                        _ok(e, e.ne(p["sc_ref"], NONE))
+                        e.var("sc_source", _value(e, S_REG, p["sc_ref"]))
+                        e.if_(e.either(e.eq(p["sc_source"], 6), e.eq(p["sc_source"], 7)),  # rsi, rdi: their pushed copies
+                              lambda: _st(e, 0x8B, p["sc_reg"], e.sel(e.eq(p["sc_source"], 6), 8, 0)),
+                              lambda: e.if_(e.ne(p["sc_source"], 0), lambda: _move(e, p["sc_reg"], p["sc_source"]),
+                                            lambda: _st(e, 0x8B, p["sc_reg"], e.add(_value(e, S_SLOT, p["sc_ref"]), 16))))
+
+                    e.if_(e.eq(attribute(e.add(2, e.mul(p["q"], 2))), 1), lambda: _call(e, "constant", p["sc_reg"], p["sc_value"]), operand_value)
+
+                e.for_("q", 0, attribute(1), argument)
+                _emit(e, 0xB8)
+                _bytes(e, attribute(0), 4)  # mov eax, nr
+                _bytes(e, 0x5E5F050F, 4)  # syscall; pop rdi; pop rsi
+                e.var("sc_written", 0)
+                e.for_("q", 0, results, lambda: e.if_(e.both(e.ne(_value(e, S_WIDTH, e.add(result, p["q"])), 0), e.eq(p["sc_written"], 0)), lambda: (
+                    _call(e, "write", e.add(result, p["q"]), RAX), e.set("sc_written", 1))))
+
+            case((Operation.CALL_FOREIGN,), foreign)
             for code in (Operation.CHECKED_LOAD_BITS_LE, Operation.CHECKED_STORE_BITS_LE):
                 def checked(store=code == Operation.CHECKED_STORE_BITS_LE):
                     e.set_hd(S_TRAP_USED, 1)
@@ -767,6 +805,7 @@ def build_backend_program():
     add("borrowed", _borrowed(tables))
     add("aggregate", _aggregate(tables))
     add("result_fields", _result_fields(tables, X86_64))
+    add("syscall", _syscall(tables))
     add("translate", _translate(tables, X86_64))
     add("frontend", _frontend(tables, X86_64))
     compile_function = add("function", _compile_function(tables, X86_64))

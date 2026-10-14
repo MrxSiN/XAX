@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S10a Linux syscalls in the views profile — 2026-10-14 (ADR-264)
+
+S10 is cut into S10a-S10d (I/O, owned memory, the `verify` driver, the `lower` driver). S10a is complete on Linux x86-64: the `x86_64-linux-views-v2` profile adds explicit Linux syscalls, and the XAX x86-64 backend program decodes each declaration and its register template, lowers it byte-identically to the bootstrap generator, and decides every rejection with the exact diagnostic. An XAX views image opens, reads, writes, and closes files natively with its own syscalls. The RISC-V backend store is unchanged. No driver is XAX yet. Next: S10b (driver-owned memory).
+
 ## S9 canonical store writing — 2026-10-14 (ADR-262)
 
 S9 is complete on Linux x86-64: `write_store`, `StoreReader.from_objects`, and lazy serialization run the XAX store writer (`xax_store_writer.xax`). It re-derives every object's CID with the S2 hash graph over its own view, decides schema versions, reference order, duplicate CIDs, the root, and record order and duplicates in the bootstrap's precedence, and emits the container with its digest. Committed stores (shuffled), 150 random stores, and every rejection with its precedence match the bootstrap writer exactly; the writer writes its own store byte for byte. Python still decides off Linux x86-64 and for inputs over the writer's capacity, and `SemanticObject.create` still proposes CIDs in Python (re-derived at write). Next: S10 (the driver as a native XAX program).

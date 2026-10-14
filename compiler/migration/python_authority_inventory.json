@@ -521,13 +521,13 @@
     },
     "driver": {
       "python_authority": "xax_compiler/xax_x86_64_views/xax_build call sequences",
-      "xax_hosted": null,
+      "xax_hosted": "S10a (ADR-264): explicit Linux syscalls lowered in the x86-64 views profile by the XAX backend program (the driver's I/O mechanism); no driver logic is XAX yet",
       "target_dependency": "host x86-64 Linux",
       "prerequisite": "S7b, S8, S9, platform I/O contracts",
       "differential_oracle": "artifacts and diagnostics of the Python driver",
       "fixed_point_relevance": "the self-build entry point",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S10"
+      "recommended_step": "S10b-S10d (ADR-264)"
     },
     "cli": {
       "python_authority": "xax_compiler.main (xaxc)",
