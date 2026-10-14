@@ -943,8 +943,8 @@ def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = F
         return None
     resolve = store_resolver(reader)
     closure = tuple(members[cid] if cid in members else resolve(cid) for cid in order)
-    views, prefetches, bounds = rebuild_views(view_words, closure, resolve, audit)
-    return (closure, views, prefetches, bounds) if audit else (closure, views, prefetches)
+    views, prefetches, audits = rebuild_views(view_words, closure, resolve, audit)
+    return (closure, views, prefetches, *audits) if audit else (closure, views, prefetches)
 
 
 def closure_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
@@ -960,6 +960,94 @@ def _view_words(read) -> list[int]:
 
     (end,) = read(GLOBALS + G_VIEW_OUT, 1)
     return read(VIEW_AT, end - VIEW_AT)
+
+
+ANALYSIS_UNDECIDED, ANALYSIS_INELIGIBLE, ANALYSIS_DONE = range(3)
+
+
+def _read_analysis(take, value, block_count: int):
+    """A function's S12c.2 analysis record (``xax_selfhost_general_regalloc._write_analysis``): None when undecided,
+    ``"ineligible"``, or the analyses in ``xax_x86_64_regalloc.ANALYSIS_AUDIT``'s normal form (``analysis_form``)."""
+    (status,) = take()
+    if status == ANALYSIS_UNDECIDED:
+        return None
+    if status == ANALYSIS_INELIGIBLE:
+        return "ineligible"
+
+    def _table(fields):
+        result = {}
+        for _ in range(take()[0]):
+            ref = value()
+            result[ref] = fields()
+        return result
+
+    def flags():
+        return tuple(take(take()[0]))
+
+    record = {}
+    record["widths"] = _table(lambda: take()[0])
+    record["has_call"] = take()[0]
+    record["stack_storage"] = [(value(), *take(2)) for _ in range(take()[0])]
+    record["nonzero"] = set(_table(lambda: None))
+    record["fused"] = {block: index for block, index in enumerate(take(block_count)) if index != NONE}
+    branch_tables = {}
+    for block in range(block_count):
+        if take()[0]:
+            subject = value()
+            entries = bytes(take(take()[0]))
+            branch_tables[block] = (subject, entries, frozenset(flags()))
+    record["branch_tables"] = branch_tables
+    membership = {}
+    for block in range(block_count):
+        if take()[0]:
+            subject = value()
+            low, mask = take(2)
+            membership[block] = (subject, low, mask, frozenset(flags()))
+    record["membership"] = membership
+    record["folded"] = _table(lambda: (value(), take()[0]))
+    record["scaled"] = _table(lambda: (value(), take()[0]))
+    record["erased"] = set(_table(lambda: None))
+    record["rmw"] = _table(lambda: take()[0])
+    record["rmw_erased"] = set(_table(lambda: None))
+    record["value_tables"] = _table(lambda: (value(), bytes(take(take()[0]))))
+    record["member_values"] = _table(lambda: (value(), *take(2)))
+    record["compare_load"] = _table(lambda: (value(), value() if take()[0] else None, *take(2)))
+    record["edge_sunk"] = _table(lambda: (value(), (lambda word: word - (1 << 64) if word >= 1 << 63 else word)(take()[0])))
+    record["call_aliases"] = _table(lambda: value())
+    uses = {}
+    for block in range(block_count):
+        entries = []
+        for _ in range(take()[0]):
+            ref = value()
+            entries.append((ref, tuple(take(take()[0]))))
+        uses[block] = entries
+    record["uses"] = uses
+    record["homes"] = [value() for _ in range(take()[0])]
+    record["pinned"] = _table(lambda: take()[0])
+    record["loop_headers"] = set(take(take()[0]))
+    record["allocatable"] = tuple(take(take()[0]))
+    pairs = take(2 * take()[0])
+    record["hoisted"] = dict(zip(pairs[0::2], pairs[1::2]))
+    record["shadow"], record["edge_spill_base"] = take(2)
+    record["home_offset"] = _table(lambda: take()[0])
+    record["parameter_slot"] = _table(lambda: take()[0])
+    record["stack_offset"] = _table(lambda: take()[0])
+    record["dynamic_spill_base"] = take()[0]
+    return record
+
+
+def analysis_form(analyses) -> dict | str:
+    """``xax_x86_64_regalloc.ANALYSIS_AUDIT``'s dict in the form ``_read_analysis`` gives (``"ineligible"`` for None)."""
+    if analyses is None:
+        return "ineligible"
+    form = dict(analyses)
+    form["has_call"] = int(analyses["has_call"])
+    form["uses"] = {block: list(uses.items()) for block, uses in analyses["uses"].items()}
+    form["branch_tables"] = {block: (subject, table, frozenset(indices)) for block, (subject, table, indices) in analyses["branch_tables"].items()}
+    form["membership"] = {block: (subject, low, mask, frozenset(tree)) for block, (subject, low, mask, tree) in analyses["membership"].items()}
+    form["value_tables"] = {ref: (subject, bytes(table)) for ref, (subject, table) in analyses["value_tables"].items()}
+    form["loop_headers"] = set(analyses["loop_headers"])
+    return form
 
 
 def rebuild_views(words, closure, resolve, audit: bool = False):
@@ -988,7 +1076,7 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
         tag, block, index, result = take(4)
         return ValueRef(tag, block, index, result)
 
-    views, prefetches, bounds = {}, {}, {}
+    views, prefetches, bounds, analyses = {}, {}, {}, {}
     while position < len(words):
         (fidx, entry, count) = take(3)
         blocks = []
@@ -1024,7 +1112,9 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
                 *(ValueRef.parameter(b, k) for k in range(len(block.parameters))),
                 *(ValueRef.node_result(b, n, r) for n, node in enumerate(block.nodes) for r in range(len(node.results))))]
             bounds[closure[fidx].cid] = {ref: (None if none else bound) for ref, (none, bound) in zip(refs, (take(2) for _ in refs))}
-    return views, prefetches, bounds
+        if audit:
+            analyses[closure[fidx].cid] = _read_analysis(take, value, len(views[closure[fidx].cid].blocks))
+    return views, prefetches, (bounds, analyses) if audit else bounds
 
 
 __all__ = ["RULES", "build_general_program", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general", "write_general_store"]

@@ -41,7 +41,7 @@ from xax_selfhost_views_backend import (
 
 INLINE_NODE_LIMIT = 256
 VIEW_AT, VIEW_END = 1 << 20, 6 << 20
-VCAP = 1 << 20  # values per function view
+VCAP = 1 << 18  # values per function view
 MAX_HOPS = 8
 
 # Globals (``GLOBALS + slot``), after the front end's.
@@ -1387,6 +1387,12 @@ def _view(tables):
         _call(e, "lower")
         _write_marks(e, e.ne(p["vw_facts"], NONE))
         e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _write_audit(e, e.ne(p["vw_facts"], NONE)))
+        # S12c.2 (ADR-271): the register-resident analyses of the final view (when its values are bounded exactly).
+        from xax_selfhost_general_regalloc import STATUS_UNDECIDED, _write_analysis
+
+        e.var("vw_status", STATUS_UNDECIDED)
+        e.if_(e.ne(p["vw_facts"], NONE), lambda: e.set("vw_status", _call(e, "analyse", p["f"])))
+        e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _write_analysis(e, lambda w: _out(e, w), lambda v: _out_value(e, v), p["vw_status"]))
         e.give(1)
     return _function(("f", "fidx"), build, tables)
 
@@ -1468,8 +1474,10 @@ def add_view_functions(add, tables):
     add("positions", _positions(tables))
     add("lower", _lower(tables))
     from xax_selfhost_general_ranges import add_range_functions
+    from xax_selfhost_general_regalloc import add_regalloc_functions
 
     add_range_functions(add, tables)
+    add_regalloc_functions(add, tables)
     add("view", _view(tables))
 
 
@@ -1508,8 +1516,10 @@ def views_prologue(e: E, total, order, members):
     _globals(e, G_AUDIT, e.rd(p["vp_at"]))
     _globals(e, G_VIEW_OUT, VIEW_AT)
     from xax_selfhost_general_ranges import ranges_prologue
+    from xax_selfhost_general_regalloc import regalloc_prologue
 
     ranges_prologue(e)
+    regalloc_prologue(e)
 
     def each():
         e.var("vp_mark", e.hd(H_ARENA))  # every allocation of a view is dead once it is written

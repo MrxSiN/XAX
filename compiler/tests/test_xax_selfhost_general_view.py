@@ -1,11 +1,12 @@
-"""S12b and S12c.1 (ADR-269, ADR-270): the general x86-64 backend's lowering view, value ranges, and prefetch
-selection decided by an XAX program.
+"""S12b, S12c.1, and S12c.2 (ADR-269 to ADR-271): the general x86-64 backend's lowering view, value ranges, prefetch
+selection, and register-resident analyses decided by an XAX program.
 
 ``general_with_xax(required=True)`` fails rather than fall back; the views it returns are rebuilt from the program's
 words (origins and operands), so equality with ``xax_inline.inline_leaf_calls`` -- every block, node, operand,
 terminator, entry, and pointer extent -- proves the XAX program made every inlining, simplification, and layout
 decision.  Where the program selected the prefetch, the view and marks equal ``prefetch_next_iteration``'s; with
-``audit=True`` the program also writes every value's range bound, which must equal ``xax_ranges.upper_bounds``.
+``audit=True`` the program also writes every value's range bound, which must equal ``xax_ranges.upper_bounds``, and every function's register-resident analyses (eligibility, widths, folding,
+uses, pressure, pins, frame, loop slots), which must equal ``xax_x86_64_regalloc``'s (``check_analyses``).
 The suites that build Linux programs check all of it with ``XAX_GENERAL_FRONTEND_DIFF=1``.
 """
 
@@ -27,7 +28,7 @@ from xax_compiler import (
 )
 from xax_graph_builder import GraphBuilder, program_store
 from xax_inline import inline_leaf_calls
-from xax_linux import check_bounds, compile_linux_executable, linux_api, reference_view
+from xax_linux import check_analyses, check_bounds, compile_linux_executable, linux_api, reference_view
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -65,8 +66,9 @@ class GeneralViewTests(unittest.TestCase):
         from xax_selfhost_x86_64_general import general_with_xax
 
         resolve = store_resolver(reader)
-        closure, views, prefetches, bounds = general_with_xax(reader, entry.cid, self.target, required=True, audit=True)
+        closure, views, prefetches, bounds, analyses = general_with_xax(reader, entry.cid, self.target, required=True, audit=True)
         check_bounds(views, bounds, closure, resolve)  # S12c.1: every value's range bound
+        check_analyses(views, prefetches, analyses, closure, resolve, self.target)  # S12c.2: the register-resident analyses
         changed = 0
         for function in closure:
             graph = parse_function_graph(function, resolve)
@@ -171,8 +173,9 @@ class GeneralViewTests(unittest.TestCase):
             with self.subTest(links=links):
                 program = build_chains_program(links=links)
                 resolve = store_resolver(program.reader)
-                closure, views, prefetches, bounds = general_with_xax(program.reader, program.entry.cid, program.target, required=True, audit=True)
+                closure, views, prefetches, bounds, analyses = general_with_xax(program.reader, program.entry.cid, program.target, required=True, audit=True)
                 check_bounds(views, bounds, closure, resolve)
+                check_analyses(views, prefetches, analyses, closure, resolve, program.target)
                 marks = {}
                 for function in closure:
                     self.assertIn(function.cid, prefetches)
@@ -191,10 +194,11 @@ class GeneralViewTests(unittest.TestCase):
         from benchmarks.jsonmin import build_jsonmin
 
         program = build_jsonmin()
-        closure, views, prefetches, bounds = __import__("xax_selfhost_x86_64_general").general_with_xax(
+        closure, views, prefetches, bounds, analyses = __import__("xax_selfhost_x86_64_general").general_with_xax(
             program.reader, program.entry.cid, program.target, required=True, audit=True)
         resolve = store_resolver(program.reader)
         check_bounds(views, bounds, closure, resolve)
+        check_analyses(views, prefetches, analyses, closure, resolve, program.target)
         for function in closure:
             reference, marks = reference_view(function, resolve, function.cid in prefetches)
             self.assertEqual(views[function.cid], reference)
@@ -202,6 +206,21 @@ class GeneralViewTests(unittest.TestCase):
         xax = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="xax")
         python = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="python")
         self.assertEqual(xax.data, python.data)
+
+    def test_register_resident_analyses(self):
+        """S12c.2: the register-allocator differential corpus (straight-line DAGs, counted loops, calls with pinned
+        values live across them) gets every analysis from the XAX program, and the driver that calls all 160 of them
+        from one block stays within the arena (per-root scratch is released)."""
+        import xax_linux
+        from test_xax_regalloc_differential import RegisterAllocatorDifferentialTests
+
+        functions, objects = RegisterAllocatorDifferentialTests()._corpus()
+        xax_linux.ANALYSIS_COUNTS.clear()
+        calls = [(function, tuple((B64, item) for item in arguments), (B64,)) for function, arguments in functions]
+        reader, entry = self.store(calls, *objects)
+        self.assertViews(reader, entry)
+        for kind in ("widths", "uses", "homes", "pinned", "loop_headers"):
+            self.assertGreater(xax_linux.ANALYSIS_COUNTS.get(kind, 0), 0, kind)
 
 
 if __name__ == "__main__":

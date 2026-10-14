@@ -186,12 +186,19 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12c.2 register-resident analyses — 2026-10-14 (ADR-271)
+
+- Done: `compiler/src/xax_selfhost_general_regalloc.py` (`_analyse` and its 18 helpers, the `G_RA` table of per-value tables `T_*` and globals `R_*`), run by the view after `lower` where the values are bounded. `general_with_xax(..., audit=True)` returns `(closure, views, prefetches, bounds, analyses)`; `xax_x86_64_regalloc.ANALYSIS_AUDIT` (test-only) and `xax_linux.check_analyses`/`reference_analyses` are the references; `xax_selfhost_x86_64_general.analysis_form` normalizes the bootstrap's dict.
+- The arena is only reset per view. A helper called per value or per block must release its scratch (`_release(e, mark, result)`) when its result does not escape, or a large function exhausts the arena and the whole program declines.
+- Debugging a decline: the `_ok` recorder must also replace `_ok` in `xax_selfhost_general_ranges` and `xax_selfhost_general_regalloc` (they import it by name).
+- Next: S12d. Port `compile_register_resident`'s emission (block lowering, the dry run, the assembler, stubs, traps, and tables) to read the program's analyses, and compare each function's bytes with the bootstrap's.
+
 ## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
 
 - Done: `compiler/src/xax_selfhost_general_ranges.py` (value facts, `maximum0`-`maximum9`, `edge_bound`, `bounds`, `extent`, `cycle`, `prefetch_load`, `prefetch`; second globals table `G_MORE`/`_g2`), the view now runs `positions`, `value_facts`, and `prefetch` before `lower`, and writes marks (and, with the input's audit flag, every value's bound). `general_with_xax(..., audit=True)` returns `(closure, views, prefetches, bounds)`; `xax_linux.check_bounds` and `reference_view` are the references.
 - Ranges take a width table (`G2_WIDTHS`): S12c.2 must point it at the register lowering's machine widths (`_eligible`), which include pointers, unlike the prefetch's bits widths.
 - Stamps: every stamp word must be cleared when its value or block is created (`_clear_stamps`, `B_SCRATCH`), because rounds restart per run and the native runner reuses its output view.
-- Next: S12c.2. Instrument `compile_register_resident` to export its analyses (a test-only hook), port them in the same order, and audit them value by value like the ranges.
+- Next: S12c.2. Instrument `compile_register_resident` to export its analyses (a test-only hook), port them in the same order, and audit them value by value like the ranges. S12c.2: see above.
 
 ## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
 

@@ -341,6 +341,10 @@
       "class": "G",
       "note": "Builder of the S12c.1 value ranges and prefetch selection in the general x86-64 backend store (ADR-270)."
     },
+    "xax_selfhost_general_regalloc.py": {
+      "class": "G",
+      "note": "Builder of the S12c.2 register-resident analyses in the general x86-64 backend store (ADR-271)."
+    },
     "xax_selfhost_writer.py": {
       "class": "G",
       "note": "Builder of the canonical S9 store (ADR-262)."

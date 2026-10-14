@@ -435,9 +435,9 @@ def _bounds(tables):
                     e.var("bd_eb", e.call(_FN["edge_bound"], source, edge, argument))
                     clamp("bd_bound")
                     e.var("bd_at", e.add(p["bd_rc"], p["bd_param"]))
-                    e.var("bd_seen", e.eq(e.ld(e.add(p["bd_at"], VCAP)), p["bd_seen_round"]))
+                    e.var("bd_seen", e.flag(e.eq(e.ld(e.add(p["bd_at"], VCAP)), p["bd_seen_round"])))
                     # recomputed[parameter] = max(recomputed.get(parameter, 0), bound)
-                    best = e.sel(e.both(p["bd_seen"], e.lt(p["bd_bound"], e.ld(p["bd_at"]))), e.ld(p["bd_at"]), p["bd_bound"])
+                    best = e.sel(e.both(e.ne(p["bd_seen"], 0), e.lt(p["bd_bound"], e.ld(p["bd_at"]))), e.ld(p["bd_at"]), p["bd_bound"])
                     e.st(p["bd_at"], best)
                     e.st(e.add(p["bd_at"], VCAP), p["bd_seen_round"])
 

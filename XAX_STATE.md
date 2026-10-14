@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12c.2 register-resident analyses — 2026-10-14 (ADR-271)
+
+S12c is complete on Linux x86-64. The general backend program now makes every analysis of the register-resident lowering: eligibility and its rejections, widths, folding, predicate tables, membership tests, uses, homes, pins, hoisted constants, and the frame. An audit compares them with the bootstrap's: 2,840 random-program functions and every Linux test compile agree. Emission still uses the bootstrap's analyses. Closure, views, prefetch, and analyses together take 114.7 ms in XAX on jsonmin; the bootstrap's analyses alone take 543.5 ms. Next: S12d (register-resident emission).
+
 ## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
 
-S12c is cut into S12c.1 (ranges and prefetch) and S12c.2 (the register-resident analyses). S12c.1 is complete on Linux x86-64. The general backend program bounds values exactly as `upper_bounds` does: 81,492 audited bounds over jsonmin, chains, and 550 random programs agree, and so do all Linux test compiles. It selects the next-iteration prefetch on the view (the chains lookup's mark included), byte-identical executables. Closure, views, and prefetch together take 73.5 ms in XAX against 163 ms in Python on jsonmin. Next: S12c.2.
+S12c is cut into S12c.1 (ranges and prefetch) and S12c.2 (the register-resident analyses). S12c.1 is complete on Linux x86-64. The general backend program bounds values exactly as `upper_bounds` does: 81,492 audited bounds over jsonmin, chains, and 550 random programs agree, and so do all Linux test compiles. It selects the next-iteration prefetch on the view (the chains lookup's mark included), byte-identical executables. Closure, views, and prefetch together take 73.5 ms in XAX against 163 ms in Python on jsonmin. Next: S12c.2. S12c.2: see above.
 
 ## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
 

@@ -447,6 +447,45 @@ def check_bounds(views, bounds, order, resolve) -> None:
             raise AssertionError(f"S12c.1 value ranges disagree for {function.cid.hex()}: (xax, reference) {wrong!r}")
 
 
+def reference_analyses(function, view, marks, resolve, target_object):
+    """The bootstrap's register-resident analyses of ``function``'s view (``xax_x86_64_regalloc.ANALYSIS_AUDIT``), in
+    ``analysis_form``; None when the lowering raised before recording them."""
+    import xax_x86_64_regalloc
+    from xax_selfhost_x86_64_general import analysis_form
+
+    captured = []
+    xax_x86_64_regalloc.ANALYSIS_AUDIT = lambda _function, analyses: captured.append(analyses)
+    try:
+        graph_object, parameters, returns = _decode_function_interface(function, resolve)
+        try:
+            xax_x86_64_regalloc.compile_register_resident(function, graph_object, view, parameters, returns, resolve,
+                                                          decode_native_target(target_object), False, marks)
+        except XaxError:
+            pass  # emission rejections are S12d's; the analyses were recorded first
+    finally:
+        xax_x86_64_regalloc.ANALYSIS_AUDIT = None
+    return analysis_form(captured[0]) if captured else None
+
+
+ANALYSIS_COUNTS: dict = {}  # S12c.2 differential: how often each analysis held something (tests read it)
+
+
+def check_analyses(views, prefetches, analyses, order, resolve, target_object) -> None:
+    """S12c.2 audit: every function's register-resident analyses the program decided equal the bootstrap's."""
+    for function in order:
+        got = analyses.get(function.cid)
+        if got is None:
+            continue
+        want = reference_analyses(function, views[function.cid], prefetches.get(function.cid), resolve, target_object)
+        if got != want:
+            keys = [key for key in want if got.get(key) != want[key]] if isinstance(got, dict) and isinstance(want, dict) else "status"
+            raise AssertionError(f"S12c.2 analyses disagree for {function.cid.hex()} in {keys}: xax {got!r} reference {want!r}")
+        if isinstance(got, dict):
+            for key, item in got.items():
+                if isinstance(item, (dict, list, set, tuple)) and item:
+                    ANALYSIS_COUNTS[key] = ANALYSIS_COUNTS.get(key, 0) + 1
+
+
 def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "auto") -> LinuxExecutable:
     """``frontend``: who decides the target, the process entry, the function closure (S12a, ADR-268), and each
     function's lowering view (S12b, ADR-269): ``"xax"``
@@ -474,6 +513,7 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
             if audit:
                 _check_views(views, prefetches, order, resolve)
                 check_bounds(views, decided[3], order, resolve)
+                check_analyses(views, prefetches, decided[4], order, resolve, target_object)
     if order is None:
         order = linux_closure(reader, entry_cid, target_object)
     description = decode_native_target(target_object)

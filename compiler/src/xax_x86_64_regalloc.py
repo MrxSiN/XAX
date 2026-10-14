@@ -36,6 +36,7 @@ Unsupported operations return ``None`` so the caller falls back to the
 spill-every-value lowering; nothing is guessed.
 """
 
+
 from __future__ import annotations
 
 from collections import Counter
@@ -103,6 +104,9 @@ from xax_x86_64 import (
 )
 
 RBX, RBP, RSI, RDI = 3, 5, 6, 7
+# S12c.2 (ADR-271), tests only: when set, called with ``(function, analyses)`` -- the dict of every analysis before
+# emission, or None when the function is ineligible -- so the XAX program's analyses can be compared with these.
+ANALYSIS_AUDIT = None
 CALLEE_SAVED = (RBX, RBP, RSI, RDI, 12, 13, 14, 15)
 _SHADOW_SPACE = 32
 _SCRATCH = 11
@@ -527,6 +531,8 @@ def compile_register_resident(
     """
     widths = _eligible(graph, parameter_types, return_types, resolve)
     if widths is None:
+        if ANALYSIS_AUDIT is not None:
+            ANALYSIS_AUDIT(function, None)
         return None
     machine_parameters = {
         block_index: tuple(ValueRef.parameter(block_index, index) for index in range(len(block.parameters)) if ValueRef.parameter(block_index, index) in widths)
@@ -553,6 +559,8 @@ def compile_register_resident(
             if node.operation == Operation.STACK_ALLOC:
                 extent, alignment = node.attributes
                 if alignment > 16:
+                    if ANALYSIS_AUDIT is not None:
+                        ANALYSIS_AUDIT(function, None)
                     return None  # the frame base is only 16-byte aligned
                 stack_storage.append((ValueRef.node_result(block_index, node_index), extent, alignment))
     stack_values = {value for value, _extent, _alignment in stack_storage}
@@ -1015,6 +1023,19 @@ def compile_register_resident(
         stack_offset[value] = cursor
         cursor += extent
     dynamic_spill_base = _align(cursor, 8)
+    if ANALYSIS_AUDIT is not None:  # S12c.2 (ADR-271): the analyses, for the XAX program's differential test
+        ANALYSIS_AUDIT(function, {
+            "widths": dict(widths), "has_call": has_call, "stack_storage": list(stack_storage),
+            "nonzero": {value for values in nonzero_parameters.values() for value in values},
+            "fused": dict(fused), "branch_tables": {block: (found[0], found[1], frozenset(found[2])) for block, found in branch_tables.items()},
+            "membership": dict(membership), "folded": dict(folded), "scaled": dict(scaled), "erased": set(erased_index_nodes),
+            "rmw": dict(read_modify_write), "rmw_erased": set(rmw_erased), "value_tables": dict(value_tables), "member_values": dict(member_values),
+            "compare_load": dict(compare_load), "edge_sunk": dict(edge_sunk), "call_aliases": dict(call_aliases),
+            "uses": {block: dict(uses) for block, uses in uses_by_block.items()}, "homes": list(homes), "pinned": dict(pinned),
+            "loop_headers": set(loop_headers), "allocatable": tuple(allocatable), "hoisted": dict(hoisted_constants), "shadow": shadow,
+            "edge_spill_base": edge_spill_base, "home_offset": dict(home_offset), "parameter_slot": dict(parameter_slot),
+            "stack_offset": dict(stack_offset), "dynamic_spill_base": dynamic_spill_base,
+        })
 
     def width_bytes(value: ValueRef) -> int:
         return 8 if widths[value] > 32 else 4
