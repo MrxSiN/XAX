@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12d.2 every startup read — 2026-10-14 (ADR-274)
+
+The XAX emission now covers every Linux startup read (arguments, environment, auxiliary vector). 148 of the 157 Linux test compiles are produced entirely by XAX; the functions still on the bootstrap's paths in those suites are floating-point code (the frame lowering). Next: S12f and S12e.2.
+
 ## S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
 
 S12e is cut into S12e.1 (assembly and container) and S12e.2 (the driver runs the general backend). S12e.1 is complete on Linux x86-64. When the general backend program emits every function, it also places them, builds the SysV entry adapters, binds every fixup and import, and writes the static or dynamic ELF64 executable, byte for byte the bootstrap's. 143 of the 157 Linux test compiles are now produced entirely by XAX from the closure to the executable file; jsonmin compiles in 189 ms against 1,003 ms in Python. Next: S12e.2 and S12f (the remaining lowering paths).

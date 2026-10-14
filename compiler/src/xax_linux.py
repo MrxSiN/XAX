@@ -487,7 +487,7 @@ def check_analyses(views, prefetches, analyses, order, resolve, target_object) -
 
 
 EMISSION_COUNTS: dict = {}  # S12d differential: functions emitted, and "none" outcomes (tests read it)
-ASSEMBLY_COUNTS: dict = {}  # S12e: executables assembled by the XAX program ("xax") or by the host ("host")
+ASSEMBLY_COUNTS: dict = {}  # S12e: non-reference compiles assembled by the XAX program ("xax") or by the host ("host")
 
 
 def reference_emission(function, view, marks, resolve, target_object, process_entry: bool):
@@ -566,7 +566,8 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
             if executable != reference:
                 raise AssertionError(f"S12e executables disagree: xax {len(executable.data)} bytes, reference {len(reference.data)}")
         return executable
-    ASSEMBLY_COUNTS["host"] = ASSEMBLY_COUNTS.get("host", 0) + 1
+    if frontend != "python":
+        ASSEMBLY_COUNTS["host"] = ASSEMBLY_COUNTS.get("host", 0) + 1
     image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True, views=views,
                            prefetches=prefetches, code=emitted)
     data, image_offset, needed = emit_linux_elf_executable(image, dynamic_loader=description.image_format == X86_64_LINUX_ELF_DYNAMIC_FORMAT)

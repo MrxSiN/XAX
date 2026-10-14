@@ -58,7 +58,8 @@ JUMP_IF_FALSE = {IntCompare.EQ: 0x85, IntCompare.NE: 0x84, IntCompare.ULT: 0x83,
                  IntCompare.UGE: 0x82, IntCompare.SLT: 0x8D, IntCompare.SLE: 0x8F, IntCompare.SGT: 0x8E, IntCompare.SGE: 0x8C}
 INTEGER_DIVIDE_BY_ZERO = 2
 NULL_ON_ERROR = b"\x48\x3d\x01\xf0\xff\xff\x72\x02\x31\xc0"  # cmp rax, -4095; jb +2; xor eax, eax
-STARTUP_ARGC, STARTUP_ARG_COPY = 1 << 32, (1 << 32) + 1
+STARTUP_NAMES = (b"argc", b"arg_length", b"arg_copy", b"envc", b"env_length", b"env_copy", b"auxv_value")
+STARTUP_ABI = b"linux-x86_64-startup-v1"
 SYSCALL_HEADER = 3
 
 # Emission state (``_ra`` slots from E_BASE on).
@@ -2081,6 +2082,131 @@ def _direct_call_fn(tables):
     return _function(("bi", "m"), build, tables)
 
 
+def _startup_name(e: E, obj, name: str):
+    """``name``: 1 + the index in ``STARTUP_NAMES`` of a ``linux-x86_64-startup-v1`` declaration's read, else 0."""
+    from xax_selfhost_views_backend import _FOREIGN_PREFIX, _payload_uleb
+
+    p = e.p
+    e.var(name, 0)
+    e.var(f"{name}_ok", 1)
+    e.var(f"{name}_at", _at(e, G_PAY, obj))
+    _payload_uleb(e, f"{name}_at")
+    for k, value in enumerate(_FOREIGN_PREFIX):
+        e.if_(e.ne(e.rd(e.add(p[f"{name}_at"], k)), value), lambda: e.set(f"{name}_ok", 0))
+    e.set(f"{name}_at", e.add(p[f"{name}_at"], len(_FOREIGN_PREFIX)))
+    e.if_(e.ne(_payload_uleb(e, f"{name}_at"), len(STARTUP_ABI)), lambda: e.set(f"{name}_ok", 0))
+    for k, value in enumerate(STARTUP_ABI):
+        e.if_(e.ne(e.rd(e.add(p[f"{name}_at"], k)), value), lambda: e.set(f"{name}_ok", 0))
+    e.set(f"{name}_at", e.add(p[f"{name}_at"], len(STARTUP_ABI)))
+    e.set(f"{name}_at", e.add(_payload_uleb(e, f"{name}_at"), p[f"{name}_at"]))  # the library
+    e.var(f"{name}_n", _payload_uleb(e, f"{name}_at"))
+
+    def match():
+        for index, read in enumerate(STARTUP_NAMES, 1):
+            e.var(f"{name}_m", e.flag(e.eq(p[f"{name}_n"], len(read))))
+            for k, value in enumerate(read):
+                e.if_(e.ne(e.rd(e.add(p[f"{name}_at"], k)), value), lambda: e.set(f"{name}_m", 0))
+            e.if_(e.ne(p[f"{name}_m"], 0), lambda index=index: e.set(name, index))
+
+    e.if_(e.ne(p[f"{name}_ok"], 0), match)
+
+
+def _startup_read_fn(tables):
+    """``emit_startup_read(name, extent)`` (``read`` is 1 + its ``STARTUP_NAMES`` index); declined for an unknown read,
+    where the bootstrap fails (LINUX-STARTUP-NAME)."""
+    def build(e: E):
+        p = e.p
+        read = p["read"]
+        _lea(e, SCRATCH, RSP, _e(e, E_FRAME))  # r11 = &argc
+
+        def loop_until_zero(test: bytes, step: bytes):
+            e.var("sr_top", _new_label(e))
+            e.var("sr_done", _new_label(e))
+            _label(e, p["sr_top"])
+            _b(e, test)
+            _jcc(e, 0x84, p["sr_done"])
+            _b(e, step)
+            _jump(e, 0xE9, 1, p["sr_top"])
+            _label(e, p["sr_done"])
+
+        def environment_count():  # rsi = &envp[0]; rcx = envc
+            _call(e, "load_exact", RAX, SCRATCH, 0, 8)
+            _b(e, bytes.fromhex("498d74c310"))  # lea rsi, [r11 + rax*8 + 16]
+            _b(e, bytes.fromhex("31c9"))
+            loop_until_zero(bytes.fromhex("48833cce00"), bytes.fromhex("4883c101"))
+
+        def string_length_and_copy():  # rsi = string; rax = length, or bytes copied to rdx when extent
+            _b(e, bytes.fromhex("31c0"))
+            loop_until_zero(bytes.fromhex("803c0600"), bytes.fromhex("4883c001"))
+
+            def bounded():
+                e.var("sr_fits", _new_label(e))
+                _b(e, bytes.fromhex("4889c1"))  # mov rcx, rax
+                _ok(e, e.lt(p["extent"], 1 << 31))  # _cmp_imm32 fails above
+                _b(e, bytes.fromhex("4881f9"))
+                _bx(e, p["extent"], 4)
+                _jcc(e, 0x86, p["sr_fits"])
+                _bx(e, 0xB9, 1)
+                _bx(e, p["extent"], 4)
+                _label(e, p["sr_fits"])
+                _b(e, bytes.fromhex("4889c8"))  # mov rax, rcx: the copy returns the copied byte count
+                _b(e, bytes.fromhex("4889d7f3a4"))  # mov rdi, rdx; rep movsb
+
+            e.if_(e.ne(p["extent"], 0), bounded)
+
+        def number(name: bytes):
+            return STARTUP_NAMES.index(name) + 1
+
+        def argc():
+            _call(e, "load_exact", RAX, SCRATCH, 0, 8)
+
+        def argument():
+            _b(e, bytes.fromhex("493b3b"))  # cmp rdi, [r11]
+            _trap_if(e, 0x83)
+            _b(e, bytes.fromhex("498b74fb08"))  # mov rsi, [r11 + rdi*8 + 8]
+            string_length_and_copy()
+
+        def envc():
+            environment_count()
+            _b(e, bytes.fromhex("4889c8"))
+
+        def environment():
+            environment_count()
+            _b(e, bytes.fromhex("4839cf"))  # cmp rdi, rcx
+            _trap_if(e, 0x83)
+            _b(e, bytes.fromhex("488b34fe"))  # mov rsi, [rsi + rdi*8]
+            string_length_and_copy()
+
+        def auxv():
+            environment_count()
+            _b(e, bytes.fromhex("488d74ce08"))  # lea rsi, [rsi + rcx*8 + 8]: the first auxv pair
+            for label in ("sr_atop", "sr_absent", "sr_found", "sr_end"):
+                e.var(label, _new_label(e))
+            _label(e, p["sr_atop"])
+            _b(e, bytes.fromhex("488b06"))
+            _b(e, bytes.fromhex("4885c0"))
+            _jcc(e, 0x84, p["sr_absent"])  # AT_NULL ends
+            _b(e, bytes.fromhex("4839f8"))
+            _jcc(e, 0x84, p["sr_found"])
+            _b(e, bytes.fromhex("4883c610"))
+            _jump(e, 0xE9, 1, p["sr_atop"])
+            _label(e, p["sr_absent"])
+            _b(e, bytes.fromhex("31c0"))
+            _jump(e, 0xE9, 1, p["sr_end"])
+            _label(e, p["sr_found"])
+            _b(e, bytes.fromhex("488b4608"))  # mov rax, [rsi + 8]
+            _label(e, p["sr_end"])
+
+        e.if_(e.eq(read, number(b"argc")), argc)
+        e.if_(e.either(e.eq(read, number(b"arg_length")), e.eq(read, number(b"arg_copy"))), argument)
+        e.if_(e.eq(read, number(b"envc")), envc)
+        e.if_(e.either(e.eq(read, number(b"env_length")), e.eq(read, number(b"env_copy"))), environment)
+        e.if_(e.eq(read, number(b"auxv_value")), auxv)
+        _ok(e, e.ne(read, 0))
+        e.give(1)
+    return _function(("read", "extent"), build, tables)
+
+
 def _foreign_call_fn(tables):
     """``CALL_FOREIGN`` node ``m``: SysV imports, Linux syscalls, and the startup reads ``argc``/``arg_copy``; 1, or
     INELIGIBLE where the bootstrap returns -1.  Other declarations decline."""
@@ -2099,7 +2225,6 @@ def _foreign_call_fn(tables):
         e.for_("fc_k", 0, _f(e, node, N_NRES), lambda: e.if_(e.ne(_width(e, _output(e, node, p["fc_k"])), 0), lambda: e.set("fc_nres", e.add(p["fc_nres"], 1))))
         e.var("fc_rec", _call(e, "syscall", p["fc_obj"], p["fc_n"]))
         e.var("fc_number", e.sel(e.ne(p["fc_rec"], 0), e.ld(e.sel(e.ne(p["fc_rec"], 0), p["fc_rec"], 0)), NONE))
-        startup = e.either(e.eq(p["fc_number"], STARTUP_ARGC), e.eq(p["fc_number"], STARTUP_ARG_COPY))
 
         def sysv():
             _foreign_abi(e, p["fc_obj"], "fc_sysv")
@@ -2147,50 +2272,18 @@ def _foreign_call_fn(tables):
             e.if_(e.ne(e.ld(e.add(p["fc_rec"], 2)), 0), lambda: _b(e, NULL_ON_ERROR))
 
         def startup_read():
+            """``emit_startup_read`` (ADR-094): the read named by the declaration, result in rax."""
             _ok(e, e.ne(_e(e, E_PROCESS), 0))  # the bootstrap fails (LINUX-STARTUP-PROCESS-ENTRY)
-            e.var("fc_copy", e.flag(e.eq(p["fc_number"], STARTUP_ARG_COPY)))
+            e.var("fc_copy", e.flag(e.either(e.eq(p["fc_start"], STARTUP_NAMES.index(b"arg_copy") + 1), e.eq(p["fc_start"], STARTUP_NAMES.index(b"env_copy") + 1))))
             e.var("fc_extent", 0)
             e.if_(e.ne(p["fc_copy"], 0), lambda: e.set("fc_extent", _call(e, "extent", e.ld(e.add(p["fc_saved"], 1)))))
             e.for_("fc_k", 0, p["fc_n"], lambda: e.st(e.add(_e(e, E_REGS), p["fc_k"]), _select_register(e, p["fc_k"], (RDI, RDX))))
             _se(e, E_NARGS, p["fc_n"])
             _call(e, "place_arguments", m)
-            _lea(e, SCRATCH, RSP, _e(e, E_FRAME))  # r11 = &argc
+            _call(e, "startup_read", p["fc_start"], p["fc_extent"])
 
-            def argc():
-                _call(e, "load_exact", RAX, SCRATCH, 0, 8)
-
-            def arg_copy():
-                _b(e, bytes.fromhex("493b3b"))  # cmp rdi, [r11]
-                _trap_if(e, 0x83)
-                _b(e, bytes.fromhex("498b74fb08"))  # mov rsi, [r11 + rdi*8 + 8]
-                _b(e, bytes.fromhex("31c0"))
-                e.var("fc_top", _new_label(e))
-                e.var("fc_done", _new_label(e))
-                _label(e, p["fc_top"])
-                _b(e, bytes.fromhex("803c0600"))  # cmp byte [rsi + rax], 0
-                _jcc(e, 0x84, p["fc_done"])
-                _b(e, bytes.fromhex("4883c001"))  # add rax, 1
-                _jump(e, 0xE9, 1, p["fc_top"])
-                _label(e, p["fc_done"])
-
-                def bounded():
-                    e.var("fc_fits", _new_label(e))
-                    _b(e, bytes.fromhex("4889c1"))  # mov rcx, rax
-                    _ok(e, e.lt(p["fc_extent"], 1 << 31))
-                    _b(e, bytes.fromhex("4881f9"))  # cmp rcx, imm32
-                    _bx(e, p["fc_extent"], 4)
-                    _jcc(e, 0x86, p["fc_fits"])
-                    _bx(e, 0xB9, 1)
-                    _bx(e, p["fc_extent"], 4)
-                    _label(e, p["fc_fits"])
-                    _b(e, bytes.fromhex("4889c8"))  # mov rax, rcx
-                    _b(e, bytes.fromhex("4889d7f3a4"))  # mov rdi, rdx; rep movsb
-
-                e.if_(e.ne(p["fc_extent"], 0), bounded)
-
-            e.if_(e.ne(p["fc_copy"], 0), arg_copy, argc)
-
-        e.if_(e.eq(p["fc_rec"], 0), sysv, lambda: e.if_(startup, startup_read, syscall))
+        _startup_name(e, p["fc_obj"], "fc_start")
+        e.if_(e.ne(p["fc_start"], 0), startup_read, lambda: e.if_(e.eq(p["fc_rec"], 0), sysv, syscall))
         _call(e, "after_call", m)
         _retire_arguments(e, m, p["fc_n"])
 
@@ -2845,6 +2938,7 @@ def add_emit_functions(add, tables):
     add("em_compare", _compare_fn(tables))
     add("em_memory", _memory_fn(tables))
     add("direct_call", _direct_call_fn(tables))
+    add("startup_read", _startup_read_fn(tables))
     add("foreign_call", _foreign_call_fn(tables))
     add("em_node_a", _node_fn(tables, "a"))
     add("em_node_b", _node_fn(tables, "b"))
