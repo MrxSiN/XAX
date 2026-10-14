@@ -1,5 +1,5 @@
-"""S12b, S12c.1, and S12c.2 (ADR-269 to ADR-271): the general x86-64 backend's lowering view, value ranges, prefetch
-selection, and register-resident analyses decided by an XAX program.
+"""S12b to S12d (ADR-269 to ADR-272): the general x86-64 backend's lowering view, value ranges, prefetch selection,
+register-resident analyses, and register-resident code decided by an XAX program.
 
 ``general_with_xax(required=True)`` fails rather than fall back; the views it returns are rebuilt from the program's
 words (origins and operands), so equality with ``xax_inline.inline_leaf_calls`` -- every block, node, operand,
@@ -28,7 +28,7 @@ from xax_compiler import (
 )
 from xax_graph_builder import GraphBuilder, program_store
 from xax_inline import inline_leaf_calls
-from xax_linux import check_analyses, check_bounds, compile_linux_executable, linux_api, reference_view
+from xax_linux import check_analyses, check_bounds, check_emission, compile_linux_executable, linux_api, reference_view
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -66,9 +66,10 @@ class GeneralViewTests(unittest.TestCase):
         from xax_selfhost_x86_64_general import general_with_xax
 
         resolve = store_resolver(reader)
-        closure, views, prefetches, bounds, analyses = general_with_xax(reader, entry.cid, self.target, required=True, audit=True)
+        closure, views, prefetches, code, bounds, analyses = general_with_xax(reader, entry.cid, self.target, required=True, audit=True)
         check_bounds(views, bounds, closure, resolve)  # S12c.1: every value's range bound
         check_analyses(views, prefetches, analyses, closure, resolve, self.target)  # S12c.2: the register-resident analyses
+        check_emission(views, prefetches, code, closure, resolve, self.target, entry.cid)  # S12d: the code, byte for byte
         changed = 0
         for function in closure:
             graph = parse_function_graph(function, resolve)
@@ -173,9 +174,11 @@ class GeneralViewTests(unittest.TestCase):
             with self.subTest(links=links):
                 program = build_chains_program(links=links)
                 resolve = store_resolver(program.reader)
-                closure, views, prefetches, bounds, analyses = general_with_xax(program.reader, program.entry.cid, program.target, required=True, audit=True)
+                closure, views, prefetches, code, bounds, analyses = general_with_xax(program.reader, program.entry.cid, program.target, required=True, audit=True)
                 check_bounds(views, bounds, closure, resolve)
                 check_analyses(views, prefetches, analyses, closure, resolve, program.target)
+                check_emission(views, prefetches, code, closure, resolve, program.target, program.entry.cid)
+                self.assertEqual({type(item) for item in code.values()}, {tuple})  # every function's code is XAX's
                 marks = {}
                 for function in closure:
                     self.assertIn(function.cid, prefetches)
@@ -194,11 +197,13 @@ class GeneralViewTests(unittest.TestCase):
         from benchmarks.jsonmin import build_jsonmin
 
         program = build_jsonmin()
-        closure, views, prefetches, bounds, analyses = __import__("xax_selfhost_x86_64_general").general_with_xax(
+        closure, views, prefetches, code, bounds, analyses = __import__("xax_selfhost_x86_64_general").general_with_xax(
             program.reader, program.entry.cid, program.target, required=True, audit=True)
         resolve = store_resolver(program.reader)
         check_bounds(views, bounds, closure, resolve)
         check_analyses(views, prefetches, analyses, closure, resolve, program.target)
+        check_emission(views, prefetches, code, closure, resolve, program.target, program.entry.cid)
+        self.assertGreaterEqual(sum(isinstance(item, tuple) for item in code.values()), 7)  # all but the entry's helper
         for function in closure:
             reference, marks = reference_view(function, resolve, function.cid in prefetches)
             self.assertEqual(views[function.cid], reference)
@@ -206,6 +211,51 @@ class GeneralViewTests(unittest.TestCase):
         xax = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="xax")
         python = compile_linux_executable(program.reader, program.entry.cid, program.target.cid, frontend="python")
         self.assertEqual(xax.data, python.data)
+
+    def test_executables_assembled_in_xax(self):
+        """S12e: the XAX program places the code, binds every fixup and import, and writes the ELF container; static
+        (status, chains, jsonmin) and dynamic (a C import) executables equal the bootstrap's, image and ranges included."""
+        import xax_linux
+        from benchmarks.jsonmin import build_jsonmin
+        from benchmarks.linux_chains import build_chains_program
+        from test_xax_linux import _crc_program, _status_program
+        from xax_compiler import x86_64_linux_dynamic_exec_target
+
+        programs = []
+        reader, entry, target, _ = _status_program(lambda b: b.const(bits_type(32), 7))
+        programs.append((reader, entry.cid, target))
+        reader, entry, target = _crc_program(x86_64_linux_dynamic_exec_target())
+        programs.append((reader, entry.cid, target))
+        jsonmin = build_jsonmin()
+        programs.append((jsonmin.reader, jsonmin.entry.cid, jsonmin.target))
+        for links in ("index", "soa"):
+            chains = build_chains_program(links=links)
+            programs.append((chains.reader, chains.entry.cid, chains.target))
+        for reader, entry_cid, target in programs:
+            with self.subTest(target=target.cid.hex()[:8], entry=entry_cid.hex()[:8]):
+                xax_linux.ASSEMBLY_COUNTS.clear()
+                xax = compile_linux_executable(reader, entry_cid, target.cid, frontend="xax")
+                self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
+                self.assertEqual(xax, compile_linux_executable(reader, entry_cid, target.cid, frontend="python"))
+
+    def test_trap_reasons(self):
+        """S12d: a trap terminator's reason (the head of its payload, carried in the object table's trap section) is
+        loaded into rax before ``ud2``, in the callee and where it is inlined into its caller."""
+        from xax_compiler import trap_payload
+
+        for reason in (0, 1, 2, 300, 0xFFFF):
+            def body(g, b, reason=reason):
+                ok, bad = g.block(), g.block()
+                b.cbr(b.op1(Operation.INT_COMPARE, (b.params[0], b.const(B64, 5)), B1, attributes=(IntCompare.ULT,)), ok, (), bad, ())
+                ok.ret(ok.const(B64, 1))
+                bad.trap(trap_payload(reason) if reason else b"")
+
+            callee, objects = _function((B64,), (B64,), body)
+            reader, entry = self.store([(callee, ((B64, 3),), (B64,))], *objects)
+            with self.subTest(reason=reason):
+                self.assertViews(reader, entry)
+                image = compile_linux_executable(reader, entry.cid, self.target.cid, frontend="xax")
+                self.assertIn(b"\x48\xb8" + reason.to_bytes(8, "little") + b"\x0f\x0b", image.data)
 
     def test_register_resident_analyses(self):
         """S12c.2: the register-allocator differential corpus (straight-line DAGs, counted loops, calls with pinned
@@ -216,11 +266,14 @@ class GeneralViewTests(unittest.TestCase):
 
         functions, objects = RegisterAllocatorDifferentialTests()._corpus()
         xax_linux.ANALYSIS_COUNTS.clear()
+        xax_linux.EMISSION_COUNTS.clear()
         calls = [(function, tuple((B64, item) for item in arguments), (B64,)) for function, arguments in functions]
         reader, entry = self.store(calls, *objects)
         self.assertViews(reader, entry)
         for kind in ("widths", "uses", "homes", "pinned", "loop_headers"):
             self.assertGreater(xax_linux.ANALYSIS_COUNTS.get(kind, 0), 0, kind)
+        # S12d: the corpus's code is emitted by the XAX program, byte for byte the bootstrap's (checked above).
+        self.assertGreaterEqual(xax_linux.EMISSION_COUNTS.get("emitted", 0), 160)
 
 
 if __name__ == "__main__":

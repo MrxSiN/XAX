@@ -2313,11 +2313,13 @@ def _compile_native_with_target(
     verified: bool = False,
     views: dict | None = None,
     prefetches: dict | None = None,
+    code: dict | None = None,
 ) -> NativeImage:
     """``closure``: the entry's function closure in image order when a caller's front end already decided it (S12a,
     ADR-268); ``verified``: ``verify_store`` already accepted ``reader`` in this call chain; ``views``: each function's
     lowering view by CID, when decided by the XAX general backend (S12b, ADR-269); ``prefetches``: the prefetch marks
-    by CID where that backend also selected them on the view (S12c.1, ADR-270)."""
+    by CID where that backend also selected them on the view (S12c.1, ADR-270); ``code``: the register-resident code,
+    fixups, and ranges by CID where that backend emitted them (S12d, ADR-272)."""
     if not verified:
         verify_store(reader)
     resolve = store_resolver(reader)
@@ -2332,8 +2334,9 @@ def _compile_native_with_target(
             fail("XAX.NATIVE.FUNCTION", root.hex(), "NATIVE-ENTRY-FUNCTION", Kind.FUNCTION.name, resolve(root).kind.name)
         functions = (*functions, *(item for item in _function_closure(resolve(root), resolve, description) if item.cid not in {f.cid for f in functions}))
     fragments: dict[bytes, tuple[bytes, tuple[tuple[int, bytes], ...], tuple[ArtifactSemanticRange, ...]]] = {
-        function.cid: _compile_function(function, resolve, description, atomic_policy, process_entry and function.cid == entry.cid,
-                                        (views or {}).get(function.cid), (prefetches or {}).get(function.cid))
+        function.cid: (code or {}).get(function.cid) if isinstance((code or {}).get(function.cid), tuple) else _compile_function(
+            function, resolve, description, atomic_policy, process_entry and function.cid == entry.cid,
+            (views or {}).get(function.cid), (prefetches or {}).get(function.cid))
         for function in functions
     }
     if realtime_profile is not None:
@@ -2403,10 +2406,11 @@ def compile_native(
     verified: bool = False,
     views: dict | None = None,
     prefetches: dict | None = None,
+    code: dict | None = None,
 ) -> NativeImage:
     resolve = store_resolver(reader)
     return _compile_native_with_target(reader, function_cid, resolve(target_cid), realtime_profile, atomic_policy, process_entry,
-                                       closure=closure, verified=verified, views=views, prefetches=prefetches)
+                                       closure=closure, verified=verified, views=views, prefetches=prefetches, code=code)
 
 
 def compile_native_bound_target(

@@ -129,9 +129,17 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
+
+S12e is cut into S12e.1 (assembly and container) and S12e.2 (the driver runs the general backend). S12e.1 is complete on Linux x86-64. When the general backend program emits every function, it also places them, builds the SysV entry adapters, binds every fixup and import, and writes the static or dynamic ELF64 executable, byte for byte the bootstrap's. 143 of the 157 Linux test compiles are now produced entirely by XAX from the closure to the executable file; jsonmin compiles in 189 ms against 1,003 ms in Python. Next: S12e.2 and S12f (the remaining lowering paths).
+
+## S12d register-resident emission — 2026-10-14 (ADR-272)
+
+S12d is complete on Linux x86-64. The general backend program now also emits each register-resident function's machine code, call fixups, and semantic ranges, byte for byte the bootstrap's: 827 random-program functions, jsonmin, chains, and every Linux test compile agree, and Linux compiles now use the XAX code. On jsonmin the whole per-function pipeline (closure through code) takes 247.5 ms in XAX against 977.3 ms in Python. Image assembly, the ELF container, and the other lowering paths are still Python. Next: S12e (image assembly and the container). S12e.1: see above.
+
 ## S12c.2 register-resident analyses — 2026-10-14 (ADR-271)
 
-S12c is complete on Linux x86-64. The general backend program now makes every analysis of the register-resident lowering: eligibility and its rejections, widths, folding, predicate tables, membership tests, uses, homes, pins, hoisted constants, and the frame. An audit compares them with the bootstrap's: 2,840 random-program functions and every Linux test compile agree. Emission still uses the bootstrap's analyses. Closure, views, prefetch, and analyses together take 114.7 ms in XAX on jsonmin; the bootstrap's analyses alone take 543.5 ms. Next: S12d (register-resident emission).
+S12c is complete on Linux x86-64. The general backend program now makes every analysis of the register-resident lowering: eligibility and its rejections, widths, folding, predicate tables, membership tests, uses, homes, pins, hoisted constants, and the frame. An audit compares them with the bootstrap's: 2,840 random-program functions and every Linux test compile agree. Emission still uses the bootstrap's analyses. Closure, views, prefetch, and analyses together take 114.7 ms in XAX on jsonmin; the bootstrap's analyses alone take 543.5 ms. Next: S12d (register-resident emission). S12d: see above.
 
 ## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
 

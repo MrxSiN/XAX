@@ -186,12 +186,29 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
+
+- Done: `compiler/src/xax_selfhost_general_image.py` (`image_add` per emitted function, `image_adapter`, `image_finish`, `elf_static`, `elf_dynamic`, `image_record` at `IMAGE_AT`), run after the views; `general_with_xax(...).image` (`GeneralResult`), `xax_linux._executable_from_image`, `ASSEMBLY_COUNTS`.
+- Prologue order matters: anything stored in the `_ra` table (`set_trap_section`) must follow `regalloc_prologue`, which allocates it.
+- Call records are `(position, object, SysV entry label flag)` everywhere (emission, image, and the host's reader).
+- Next: S12f, so every function is on an XAX path (the legacy register path `_compile_register_resident_function` and the frame lowering; the 14 host-assembled Linux test compiles name the functions), and S12e.2: link the general backend into the S11 driver so the driver lowers `x86_64-linux-elf-exec-v1` programs.
+
+## S12d register-resident emission — 2026-10-14 (ADR-272)
+
+- Done: `compiler/src/xax_selfhost_general_emit.py` (encoders, allocation state, `em_node`, `em_memory`, `direct_call`, `foreign_call`, `em_begin`, `em_block`/`em_block_copy`, `em_term`/`em_term_copy`, `emit_function`, `write_emission`), run by the view after the analyses. `general_with_xax` now returns `(closure, views, prefetches, code[, bounds, analyses])`; `compile_native(code=)` uses it; `xax_linux.check_emission`/`reference_emission` are the references.
+- The builder's `NONE` is 2^32-1, not -1: encode the bootstrap's -1 explicitly (a biased comparison, or 2^64-1 from a subtraction).
+- Graph objects reach the program as decoded streams: data that only the body holds (trap payloads) needs its own object-table section.
+- Function names are global in `_FN`: the emission functions use `em_` where the front end already has the name (`node`, `layout`).
+- Keep every function graph small enough for the XAX facts engine (the S10 driver verifies every committed store with it; `test_xax_selfhost_driver.py::test_every_committed_store` declines otherwise). A 422 KB graph did not converge; split large functions (as `em_node`/`em_node_a`/`em_node_b`).
+- Debugging: `emdiff`-style per-range comparison (first range whose position or length differs) plus the `_ok` site recorder found every defect; disassemble with capstone for terminator differences.
+- Next: S12e. Port `compile_native`'s image assembly (function placement, call and address fixups, the SysV entry adapters, the import table) and `emit_linux_elf_executable`, then let the S11 driver call the general backend. S12e.1: see above.
+
 ## S12c.2 register-resident analyses — 2026-10-14 (ADR-271)
 
 - Done: `compiler/src/xax_selfhost_general_regalloc.py` (`_analyse` and its 18 helpers, the `G_RA` table of per-value tables `T_*` and globals `R_*`), run by the view after `lower` where the values are bounded. `general_with_xax(..., audit=True)` returns `(closure, views, prefetches, bounds, analyses)`; `xax_x86_64_regalloc.ANALYSIS_AUDIT` (test-only) and `xax_linux.check_analyses`/`reference_analyses` are the references; `xax_selfhost_x86_64_general.analysis_form` normalizes the bootstrap's dict.
 - The arena is only reset per view. A helper called per value or per block must release its scratch (`_release(e, mark, result)`) when its result does not escape, or a large function exhausts the arena and the whole program declines.
 - Debugging a decline: the `_ok` recorder must also replace `_ok` in `xax_selfhost_general_ranges` and `xax_selfhost_general_regalloc` (they import it by name).
-- Next: S12d. Port `compile_register_resident`'s emission (block lowering, the dry run, the assembler, stubs, traps, and tables) to read the program's analyses, and compare each function's bytes with the bootstrap's.
+- Next: S12d. Port `compile_register_resident`'s emission (block lowering, the dry run, the assembler, stubs, traps, and tables) to read the program's analyses, and compare each function's bytes with the bootstrap's. S12d: see above.
 
 ## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
 

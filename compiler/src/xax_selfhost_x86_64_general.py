@@ -910,6 +910,20 @@ def general_object_table(reader, entry_cid: bytes, target_object, audit: bool = 
         for ref, extent in extents:
             words += [ref.tag, ref.block, ref.index, ref.result, extent]
     words.append(int(audit))  # S12c.1: write every value's range bound (tests)
+    # S12d: trap terminators' payload heads (the stream carries only their length and body offset): per graph with a
+    # nonempty trap payload, its CID, the count, and per such block its index and the payload's first three bytes.
+    traps = []
+    for obj in graphs:
+        blocks = [(index, block.terminator.payload) for index, block in enumerate(_parse_graph(obj, resolve).blocks)
+                  if block.terminator.kind == TerminatorKind.TRAP and block.terminator.payload]
+        if blocks:
+            traps.append((obj, blocks))
+    words.append(len(traps))
+    for obj, blocks in traps:
+        words += [*_cid_words(obj.cid), len(blocks)]
+        for index, payload in blocks:
+            head = bytes(payload[:3])
+            words += [index, len(head), *head]
     return words, {obj.cid: obj for obj in extras}
 
 
@@ -928,10 +942,10 @@ def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = F
 
     def collect(read):
         order = collect_order(read)
-        return order, (None if order is None else _view_words(read)), decode_diagnostic(read)
+        return order, (None if order is None else _view_words(read)), decode_diagnostic(read), (None if order is None else _image_words(read))
 
     outcome = None if words is None else native.run(words, collect)
-    order, view_words, diagnostic = outcome if outcome is not None else (None, None, None)
+    order, view_words, diagnostic, image_words = outcome if outcome is not None else (None, None, None, None)
     if diagnostic is not None:
         raise XaxError(diagnostic)
     if order is None:
@@ -943,8 +957,65 @@ def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = F
         return None
     resolve = store_resolver(reader)
     closure = tuple(members[cid] if cid in members else resolve(cid) for cid in order)
-    views, prefetches, audits = rebuild_views(view_words, closure, resolve, audit)
-    return (closure, views, prefetches, *audits) if audit else (closure, views, prefetches)
+    views, prefetches, code, audits = rebuild_views(view_words, closure, resolve, audit)
+    result = GeneralResult((closure, views, prefetches, code, *audits) if audit else (closure, views, prefetches, code))
+    result.image = _read_image(image_words, closure, code)
+    return result
+
+
+class GeneralResult(tuple):
+    """``general_with_xax``'s tuple, with ``image``: the S12e image and container (``_read_image``), or None."""
+    image = None
+
+
+def _image_words(read):
+    """The S12e record's words (``xax_selfhost_general_image``), up to the program's cursor."""
+    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT
+    from xax_selfhost_general_regalloc import G_RA
+    from xax_selfhost_views_backend import GLOBALS
+
+    (table,) = read(GLOBALS + G_RA, 1)
+    (end,) = read(table + I_CURSOR, 1)
+    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_AT + (5 << 20) else []
+
+
+def _read_image(words, closure, code):
+    """``(NativeImage fields, ELF bytes, code file offset, DT_NEEDED)`` from the S12e record, or None."""
+    from xax_artifact import ArtifactSemanticRange
+
+    if not words or words[0] != 1:
+        return None
+    position = 1
+
+    def take(count=1):
+        nonlocal position
+        position += count
+        return words[position - count:position]
+
+    def packed():
+        (length,) = take()
+        return b"".join(word.to_bytes(8, "little") for word in take((length + 7) // 8))[:length]
+
+    def text():
+        (length,) = take()
+        return bytes(take(length))
+
+    image_code = packed()
+    elf = packed()
+    code_offset, entry_offset, members = take(3)
+    offsets = take(members)
+    imports = []
+    for _ in range(take()[0]):
+        (position_,) = take()
+        imports.append((position_, text(), text()))
+    needed = tuple(text() for _ in range(take()[0]))
+    ranges = []
+    for function, base in zip(closure, offsets):
+        fragment = code[function.cid]
+        ranges.append(ArtifactSemanticRange(function.cid, None, None, base, base + len(fragment[0])))
+        ranges.extend(ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, base + item.start, base + item.end) for item in fragment[2])
+    return {"code": image_code, "entry_offset": entry_offset, "function_offsets": tuple((f.cid, o) for f, o in zip(closure, offsets)),
+            "semantic_ranges": tuple(ranges), "imports": tuple(imports), "elf": elf, "code_offset": code_offset, "needed": needed}
 
 
 def closure_with_xax(reader, entry_cid: bytes, target_object, required: bool = False):
@@ -1050,6 +1121,33 @@ def analysis_form(analyses) -> dict | str:
     return form
 
 
+EMIT_UNDECIDED, EMIT_NONE, EMIT_DONE = range(3)
+SYSV_ENTRY_LABEL = b"E"  # ``xax_x86_64._SYSV_ENTRY_LABEL``
+
+
+def _read_emission(take, function):
+    """A function's S12d emission record (``xax_selfhost_general_emit.write_emission``): None when not decided,
+    ``"none"`` when the bootstrap's register-resident lowering returns None, else ``(code, calls, ranges)`` as
+    ``compile_register_resident`` returns them."""
+    from xax_artifact import ArtifactSemanticRange
+
+    (status,) = take()
+    if status == EMIT_UNDECIDED:
+        return None
+    if status == EMIT_NONE:
+        return "none"
+    (length,) = take()
+    words = take((length + 7) // 8)
+    data = b"".join(word.to_bytes(8, "little") for word in words)[:length]
+    calls = []
+    for _ in range(take()[0]):
+        offset, prefixed, *cid = take(6)
+        target = b"".join(word.to_bytes(8, "big") for word in cid)
+        calls.append((offset, SYSV_ENTRY_LABEL + target if prefixed else target))
+    ranges = tuple(ArtifactSemanticRange(function.cid, *take(4)) for _ in range(take()[0]))
+    return data, tuple(calls), ranges
+
+
 def rebuild_views(words, closure, resolve, audit: bool = False):
     """Each function's lowering view from the program's view words (``xax_selfhost_general_view``): nodes and blocks
     are taken from the graphs they came from and given the program's operands, as ``xax_inline._lower`` does.  The
@@ -1076,7 +1174,7 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
         tag, block, index, result = take(4)
         return ValueRef(tag, block, index, result)
 
-    views, prefetches, bounds, analyses = {}, {}, {}, {}
+    views, prefetches, bounds, analyses, code = {}, {}, {}, {}, {}
     while position < len(words):
         (fidx, entry, count) = take(3)
         blocks = []
@@ -1114,7 +1212,11 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
             bounds[closure[fidx].cid] = {ref: (None if none else bound) for ref, (none, bound) in zip(refs, (take(2) for _ in refs))}
         if audit:
             analyses[closure[fidx].cid] = _read_analysis(take, value, len(views[closure[fidx].cid].blocks))
-    return views, prefetches, (bounds, analyses) if audit else bounds
+        # S12d (ADR-272): the register-resident code the program emitted.
+        emitted = _read_emission(take, closure[fidx])
+        if emitted is not None:
+            code[closure[fidx].cid] = emitted
+    return views, prefetches, code, (bounds, analyses) if audit else bounds
 
 
 __all__ = ["RULES", "build_general_program", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general", "write_general_store"]

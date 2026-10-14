@@ -1388,11 +1388,27 @@ def _view(tables):
         _write_marks(e, e.ne(p["vw_facts"], NONE))
         e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _write_audit(e, e.ne(p["vw_facts"], NONE)))
         # S12c.2 (ADR-271): the register-resident analyses of the final view (when its values are bounded exactly).
-        from xax_selfhost_general_regalloc import STATUS_UNDECIDED, _write_analysis
+        from xax_selfhost_general_regalloc import STATUS_UNDECIDED
 
         e.var("vw_status", STATUS_UNDECIDED)
         e.if_(e.ne(p["vw_facts"], NONE), lambda: e.set("vw_status", _call(e, "analyse", p["f"])))
-        e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _write_analysis(e, lambda w: _out(e, w), lambda v: _out_value(e, v), p["vw_status"]))
+        e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _call(e, "write_analysis", p["vw_status"]))
+        # S12d (ADR-272): the function's register-resident code (0 not decided, 1 not this path, 2 emitted).
+        from xax_selfhost_general_regalloc import STATUS_ANALYSED, STATUS_INELIGIBLE
+
+        e.var("vw_emit", 0)
+        e.if_(e.eq(p["vw_status"], STATUS_INELIGIBLE), lambda: e.set("vw_emit", 1))
+
+        def emit():
+            e.var("vw_code", e.call(_FN["emit_function"], p["f"]))
+            e.if_(e.eq(p["vw_code"], 0), lambda: e.set("vw_emit", 1), lambda: e.if_(e.eq(p["vw_code"], 1), lambda: e.set("vw_emit", 2)))
+
+        e.if_(e.eq(p["vw_status"], STATUS_ANALYSED), emit)
+        _call(e, "write_emission", p["vw_emit"])
+        from xax_selfhost_general_image import I_OK
+        from xax_selfhost_general_regalloc import _set_ra
+
+        e.if_(e.eq(p["vw_emit"], 2), lambda: _call(e, "image_add", p["fidx"]), lambda: _set_ra(e, I_OK, 0))
         e.give(1)
     return _function(("f", "fidx"), build, tables)
 
@@ -1478,7 +1494,30 @@ def add_view_functions(add, tables):
 
     add_range_functions(add, tables)
     add_regalloc_functions(add, tables)
+    from xax_selfhost_general_emit import add_emit_functions
+
+    add_emit_functions(add, tables)
+    from xax_selfhost_general_image import add_image_functions
+
+    add_image_functions(add, tables)
+    add("write_analysis", _writer(tables, "analysis"))
+    add("write_emission", _writer(tables, "emission"))
     add("view", _view(tables))
+
+
+def _writer(tables, kind: str):
+    """The S12c.2 analysis audit record or the S12d emission record of the function just lowered (``status``)."""
+    from xax_selfhost_general_emit import write_emission
+    from xax_selfhost_general_regalloc import _write_analysis
+
+    def build(e: E):
+        p = e.p
+        if kind == "analysis":
+            _write_analysis(e, lambda w: _out(e, w), lambda v: _out_value(e, v), p["status"])
+        else:
+            write_emission(e, lambda w: _out(e, w), p["status"])
+        e.give(1)
+    return _function(("status",), build, tables)
 
 
 def views_prologue(e: E, total, order, members):
@@ -1514,12 +1553,19 @@ def views_prologue(e: E, total, order, members):
     e.for_("vp_k", 0, p["vp_n"], graph)
     # S12c.1: an audit flag follows the extents (1: also write every value's range bound after each view).
     _globals(e, G_AUDIT, e.rd(p["vp_at"]))
+    # S12d: the trap payload heads follow (``general_object_table``).
+    e.var("vp_traps", e.add(p["vp_at"], 1))
     _globals(e, G_VIEW_OUT, VIEW_AT)
+    from xax_selfhost_general_emit import emit_prologue, set_trap_section
+    from xax_selfhost_general_image import image_after_views, image_prologue
     from xax_selfhost_general_ranges import ranges_prologue
     from xax_selfhost_general_regalloc import regalloc_prologue
 
     ranges_prologue(e)
     regalloc_prologue(e)
+    emit_prologue(e)
+    set_trap_section(e, p["vp_traps"])
+    image_prologue(e)
 
     def each():
         e.var("vp_mark", e.hd(H_ARENA))  # every allocation of a view is dead once it is written
@@ -1527,3 +1573,5 @@ def views_prologue(e: E, total, order, members):
         e.set_hd(H_ARENA, p["vp_mark"])
 
     e.for_("vp_q", 0, members, each)
+    # S12e (ADR-273): the image and its container, when every function's code is the program's.
+    image_after_views(e, members)

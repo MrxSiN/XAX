@@ -486,6 +486,44 @@ def check_analyses(views, prefetches, analyses, order, resolve, target_object) -
                     ANALYSIS_COUNTS[key] = ANALYSIS_COUNTS.get(key, 0) + 1
 
 
+EMISSION_COUNTS: dict = {}  # S12d differential: functions emitted, and "none" outcomes (tests read it)
+ASSEMBLY_COUNTS: dict = {}  # S12e: executables assembled by the XAX program ("xax") or by the host ("host")
+
+
+def reference_emission(function, view, marks, resolve, target_object, process_entry: bool):
+    """The bootstrap's ``compile_register_resident`` of ``function``'s view: ``(code, calls, ranges)``, ``"none"``, or the
+    error it raises (as ``("error", code)``)."""
+    import xax_x86_64_regalloc
+
+    graph_object, parameters, returns = _decode_function_interface(function, resolve)
+    try:
+        result = xax_x86_64_regalloc.compile_register_resident(function, graph_object, view, parameters, returns, resolve,
+                                                               decode_native_target(target_object), process_entry, marks)
+    except XaxError as error:
+        return ("error", error.diagnostic.code)
+    return "none" if result is None else (result[0], tuple(result[1]), tuple(result[2]))
+
+
+def check_emission(views, prefetches, emitted, order, resolve, target_object, entry_cid) -> None:
+    """S12d audit: every function's register-resident code the program emitted equals the bootstrap's, byte for byte,
+    with the same call fixups and semantic ranges; where the program says the bootstrap returns None, it does."""
+    for function in order:
+        got = emitted.get(function.cid)
+        if got is None:
+            EMISSION_COUNTS["undecided"] = EMISSION_COUNTS.get("undecided", 0) + 1
+            continue
+        want = reference_emission(function, views[function.cid], prefetches.get(function.cid), resolve, target_object, function.cid == entry_cid)
+        if got != want:
+            detail = ""
+            if isinstance(got, tuple) and isinstance(want, tuple):
+                code, reference = got[0], want[0]
+                first = next((k for k in range(min(len(code), len(reference))) if code[k] != reference[k]), min(len(code), len(reference)))
+                detail = f" first difference at byte {first} of {len(code)}/{len(reference)}; calls equal {got[1] == want[1]}; ranges equal {got[2] == want[2]}"
+            raise AssertionError(f"S12d emission disagrees for {function.cid.hex()}:{detail} xax {got!r:.300} reference {want!r:.300}")
+        key = "none" if got == "none" else "emitted"
+        EMISSION_COUNTS[key] = EMISSION_COUNTS.get(key, 0) + 1
+
+
 def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "auto") -> LinuxExecutable:
     """``frontend``: who decides the target, the process entry, the function closure (S12a, ADR-268), and each
     function's lowering view (S12b, ADR-269): ``"xax"``
@@ -497,7 +535,7 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
     verify_store(reader)
     resolve = store_resolver(reader)
     target_object = resolve(target_cid)
-    order = views = prefetches = None
+    order = views = prefetches = emitted = assembled = None
     if frontend != "python":
         from xax_selfhost_x86_64_general import closure_with_xax, general_with_xax
 
@@ -509,22 +547,55 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
         audit = os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
         decided = general_with_xax(reader, entry_cid, target_object, required=frontend == "xax", audit=audit)
         if decided is not None:
-            order, views, prefetches = decided[:3]
+            order, views, prefetches, emitted = decided[:4]
+            assembled = decided.image
             if audit:
                 _check_views(views, prefetches, order, resolve)
-                check_bounds(views, decided[3], order, resolve)
-                check_analyses(views, prefetches, decided[4], order, resolve, target_object)
+                check_bounds(views, decided[4], order, resolve)
+                check_analyses(views, prefetches, decided[5], order, resolve, target_object)
+                check_emission(views, prefetches, emitted, order, resolve, target_object, entry_cid)
     if order is None:
         order = linux_closure(reader, entry_cid, target_object)
     description = decode_native_target(target_object)
+    if assembled is not None:
+        # S12e (ADR-273): the XAX program placed the code, bound every fixup, and wrote the container.
+        executable = _executable_from_image(assembled, reader, entry_cid, target_cid)
+        ASSEMBLY_COUNTS["xax"] = ASSEMBLY_COUNTS.get("xax", 0) + 1
+        if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+            reference = compile_linux_executable(reader, entry_cid, target_cid, frontend="python")
+            if executable != reference:
+                raise AssertionError(f"S12e executables disagree: xax {len(executable.data)} bytes, reference {len(reference.data)}")
+        return executable
+    ASSEMBLY_COUNTS["host"] = ASSEMBLY_COUNTS.get("host", 0) + 1
     image = compile_native(reader, entry_cid, target_cid, process_entry=True, closure=tuple(order), verified=True, views=views,
-                           prefetches=prefetches)
+                           prefetches=prefetches, code=emitted)
     data, image_offset, needed = emit_linux_elf_executable(image, dynamic_loader=description.image_format == X86_64_LINUX_ELF_DYNAMIC_FORMAT)
     ranges = tuple(
         ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, image_offset + item.start, image_offset + item.end)
         for item in image.semantic_ranges
     )
     return LinuxExecutable(data, image, target_cid, ranges, image_offset + image.entry_offset, needed)
+
+
+def _executable_from_image(assembled: dict, reader: StoreReader, entry_cid: bytes, target_cid: bytes) -> LinuxExecutable:
+    """The ``LinuxExecutable`` of the S12e record: the program's ELF bytes and image; the host adds only the entry's
+    interface metadata (``NativeImage``'s widths and ABI kinds) and offsets the ranges by the code's file offset."""
+    from xax_x86_64 import _abi_kind, _value_width
+
+    resolve = store_resolver(reader)
+    _graph, parameters, returns = _decode_function_interface(resolve(entry_cid), resolve)
+    machine = lambda cids: [cid for cid in cids if not _is_proof_type(resolve(cid))]  # noqa: E731
+    image = NativeImage(
+        assembled["code"], assembled["entry_offset"],
+        tuple(_value_width(resolve, cid) or 64 for cid in machine(parameters)), tuple(_value_width(resolve, cid) or 64 for cid in machine(returns)),
+        target_cid, assembled["function_offsets"], assembled["semantic_ranges"],
+        tuple(_abi_kind(resolve, cid) for cid in machine(parameters)), tuple(_abi_kind(resolve, cid) for cid in machine(returns)),
+        assembled["imports"],
+    )
+    offset = assembled["code_offset"]
+    ranges = tuple(ArtifactSemanticRange(item.function_cid, item.block_index, item.node_index, offset + item.start, offset + item.end)
+                   for item in image.semantic_ranges)
+    return LinuxExecutable(assembled["elf"], image, target_cid, ranges, offset + image.entry_offset, assembled["needed"])
 
 
 def run_linux_executable(
