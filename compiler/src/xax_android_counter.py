@@ -297,3 +297,206 @@ def counter_library(description: CounterActivityDescription, *, packed: bool = T
     """The native library exporting both JNI methods (general target: heap views need it)."""
     reader, target_object, on_create, on_click = counter_store(description, packed=packed)
     return compile_counter_library(reader, target_object, on_create, on_click, description, soname=soname)
+
+
+# ---------------------------------------------------------------- DEX-only side (ADR-259)
+#
+# The same app with no native library: both callbacks are XAX functions over the Android platform's managed
+# members, compiled by the JVM class-file backend and lowered to DEX (``xax_dex_jvm``).  Each one owns what the
+# JNI version owns (the state file's descriptor: open, pread/pwrite, fdatasync, close) and also what the generated
+# DEX did around it: the button, its text, the listener, and the content view.  The only non-XAX code is the two
+# platform-required class shells: ``onCreate`` calls ``super.onCreate`` and the XAX function; ``onClick`` calls the
+# XAX function.  The file is opened ``O_RDWR | O_CREAT`` with mode 0600, as ``ParcelFileDescriptor`` opened it.
+
+_O_RDWR, _O_CREAT, _MODE_0600 = 0o2, 0o100, 0o600  # Linux values (bionic)
+
+
+@dataclass(frozen=True)
+class CounterManaged:
+    on_create: SemanticObject  # (activity, io) -> io
+    on_click: SemanticObject  # (view, io) -> io
+    objects: tuple[SemanticObject, ...]
+
+
+def counter_managed(description: CounterActivityDescription) -> CounterManaged:
+    from xax_compiler import EffectDomain, effect_type, opaque_identity_type
+    from xax_jvm import REFERENCE_PREFIX, jvm_reference_type, jvm_static, jvm_virtual
+
+    b8 = bits_type(8)
+    io = effect_type(EffectDomain.IO, 0)
+    types: list[SemanticObject] = [b8, B32, B64, io]
+
+    def reference(descriptor: str) -> SemanticObject:
+        types.append(opaque_identity_type(REFERENCE_PREFIX + descriptor.encode()))
+        types.append(jvm_reference_type(descriptor.encode()))
+        return types[-1]
+
+    def internal(descriptor: str) -> bytes:
+        return descriptor[1:-1].encode() if descriptor.startswith("L") else descriptor.encode()
+
+    activity, listener = reference(description.activity_descriptor), reference(description.listener_descriptor)
+    view, context, file, string = reference(_VIEW), reference(_CONTEXT), reference(_FILE), reference(_STRING)
+    descriptor, cell_array = reference("Ljava/io/FileDescriptor;"), reference("[B")
+    button, text_view, text = reference("Landroid/widget/Button;"), reference("Landroid/widget/TextView;"), reference("Ljava/lang/CharSequence;")
+    on_click_listener, platform_activity = reference("Landroid/view/View$OnClickListener;"), reference("Landroid/app/Activity;")
+
+    def special(abi: bytes, library: bytes, name: bytes, inputs, outputs) -> SemanticObject:
+        return foreign_function_symbol(library, name, inputs, outputs, abi=abi)
+
+    def cast(source: SemanticObject, result: SemanticObject, target_descriptor: str) -> SemanticObject:
+        return special(b"jvm-checkcast", internal(target_descriptor), b"checkcast", (source,), (result,))
+
+    os_class = b"android/system/Os"
+    files_dir = jvm_virtual(b"android/content/Context", b"getFilesDir()Ljava/io/File;", (context, io), (file, io))
+    path = jvm_virtual(b"java/io/File", b"getPath()Ljava/lang/String;", (file,), (string,))
+    name = special(b"jvm-ldc", b"java/lang/String", b"/" + description.state_file.encode(), (), (string,))
+    concat = jvm_virtual(b"java/lang/String", b"concat(Ljava/lang/String;)Ljava/lang/String;", (string, string), (string,))
+    open_file = jvm_static(os_class, b"open(Ljava/lang/String;II)Ljava/io/FileDescriptor;", (string, B32, B32, io), (descriptor, io))
+    new_cell = special(b"jvm-newarray", b"B", b"newarray", (B32,), (cell_array,))
+    load = special(b"jvm-arrayload", b"[B", b"load", (cell_array, B32), (b8,))
+    store = special(b"jvm-arraystore", b"[B", b"store", (cell_array, B32, b8), ())
+    pread = jvm_static(os_class, b"pread(Ljava/io/FileDescriptor;[BIIJ)I", (descriptor, cell_array, B32, B32, B64, io), (B32, io))
+    pwrite = jvm_static(os_class, b"pwrite(Ljava/io/FileDescriptor;[BIIJ)I", (descriptor, cell_array, B32, B32, B64, io), (B32, io))
+    fdatasync = jvm_static(os_class, b"fdatasync(Ljava/io/FileDescriptor;)V", (descriptor, io), (io,))
+    close = jvm_static(os_class, b"close(Ljava/io/FileDescriptor;)V", (descriptor, io), (io,))
+    to_string = jvm_static(b"java/lang/Long", b"toString(J)Ljava/lang/String;", (B64,), (string,))
+    set_text = jvm_virtual(b"android/widget/TextView", b"setText(Ljava/lang/CharSequence;)V", (text_view, text, io), (io,))
+    new_button = special(b"jvm-new", b"android/widget/Button", b"<init>(Landroid/content/Context;)V", (context, io), (button, io))
+    new_listener = special(b"jvm-new", internal(description.listener_descriptor), b"<init>()V", (io,), (listener, io))
+    set_listener = jvm_virtual(b"android/view/View", b"setOnClickListener(Landroid/view/View$OnClickListener;)V", (view, on_click_listener, io), (io,))
+    set_content = jvm_virtual(b"android/app/Activity", b"setContentView(Landroid/view/View;)V", (platform_activity, view, io), (io,))
+    get_context = jvm_virtual(b"android/view/View", b"getContext()Landroid/content/Context;", (view, io), (context, io))
+    casts = {
+        "context": cast(activity, context, _CONTEXT), "activity": cast(activity, platform_activity, "Landroid/app/Activity;"),
+        "button_view": cast(button, view, _VIEW), "button_text": cast(button, text_view, "Landroid/widget/TextView;"),
+        "view_text": cast(view, text_view, "Landroid/widget/TextView;"), "chars": cast(string, text, "Ljava/lang/CharSequence;"),
+        "listener": cast(listener, on_click_listener, "Landroid/view/View$OnClickListener;"),
+    }
+    declarations = (files_dir, path, name, concat, open_file, new_cell, load, store, pread, pwrite, fdatasync, close, to_string,
+                    set_text, new_button, new_listener, set_listener, set_content, get_context, *casts.values())
+
+    def call(block, entity, operands, results):
+        return block.op(Operation.CALL_FOREIGN, operands, results, entity=entity)
+
+    def call1(block, entity, operands, result):
+        return block.op1(Operation.CALL_FOREIGN, operands, result, entity=entity)
+
+    def read_count(block, source, effect):
+        """Open the state file and read its 8-byte little-endian count (missing bytes read as zero)."""
+        directory, effect = call(block, files_dir, (source, effect), (file, io))
+        location = call1(block, concat, (call1(block, path, (directory,), string), call1(block, name, (), string)), string)
+        fd, effect = call(block, open_file, (location, block.const(B32, _O_RDWR | _O_CREAT), block.const(B32, _MODE_0600), effect), (descriptor, io))
+        cell = call1(block, new_cell, (block.const(B32, 8),), cell_array)
+        _read, effect = call(block, pread, (fd, cell, block.const(B32, 0), block.const(B32, 8), block.const(B64, 0), effect), (B32, io))
+        count = None
+        for index in range(8):
+            byte = block.op1(Operation.INT_ZERO_EXTEND, (call1(block, load, (cell, block.const(B32, index)), b8),), B64)
+            if index:
+                byte = block.op1(Operation.MUL_WRAP, (byte, block.const(B64, 1 << (8 * index))), B64)
+            count = byte if count is None else block.op1(Operation.BIT_OR, (count, byte), B64)
+        return fd, cell, count, effect
+
+    def show(block, widget, count, effect):
+        label = call1(block, casts["chars"], (call1(block, to_string, (count,), string),), text)
+        return call1(block, set_text, (widget, label, effect), io)
+
+    graph = GraphBuilder()
+    block = graph.block(activity, io)
+    owner, effect = block.params
+    owner_context = call1(block, casts["context"], (owner,), context)
+    fd, _cell, count, effect = read_count(block, owner_context, effect)
+    effect = call1(block, close, (fd, effect), io)
+    widget, effect = call(block, new_button, (owner_context, effect), (button, io))
+    effect = show(block, call1(block, casts["button_text"], (widget,), text_view), count, effect)
+    handler, effect = call(block, new_listener, (effect,), (listener, io))
+    widget_view = call1(block, casts["button_view"], (widget,), view)
+    effect = call1(block, set_listener, (widget_view, call1(block, casts["listener"], (handler,), on_click_listener), effect), io)
+    effect = call1(block, set_content, (call1(block, casts["activity"], (owner,), platform_activity), widget_view, effect), io)
+    block.ret(effect)
+    on_create = graph.function((activity, io), (io,))
+
+    click_graph = GraphBuilder()
+    block = click_graph.block(view, io)
+    clicked, effect = block.params
+    clicked_context, effect = call(block, get_context, (clicked, effect), (context, io))
+    fd, cell, count, effect = read_count(block, clicked_context, effect)
+    count = block.op1(Operation.ADD_WRAP, (count, block.const(B64, 1)), B64)
+    for index in range(8):
+        part = block.op1(Operation.ROTATE_RIGHT, (count,), B64, attributes=(8 * index,)) if index else count
+        block.op(Operation.CALL_FOREIGN, (cell, block.const(B32, index), block.op1(Operation.INT_TRUNCATE, (part,), b8)), (), entity=store)
+    _written, effect = call(block, pwrite, (fd, cell, block.const(B32, 0), block.const(B32, 8), block.const(B64, 0), effect), (B32, io))
+    effect = call1(block, fdatasync, (fd, effect), io)
+    effect = call1(block, close, (fd, effect), io)
+    effect = show(block, call1(block, casts["view_text"], (clicked,), text_view), count, effect)
+    block.ret(effect)
+    on_click = click_graph.function((view, io), (io,))
+    return CounterManaged(on_create, on_click, (*types, *declarations, *graph.objects.values(), *click_graph.objects.values()))
+
+
+def counter_dex_store(description: CounterActivityDescription):
+    """``(reader, target object, onCreate cid, onClick cid)``: the verified canonical store of both managed callbacks."""
+    from xax_compiler import StoreReader, jvm_classfile_target, object_with_refs, verify_store, write_store
+
+    managed = counter_managed(description)
+    target_object = jvm_classfile_target()
+    functions = (managed.on_create, managed.on_click)
+    available = {item.cid: item for item in (*managed.objects, *functions, target_object)}
+    module = object_with_refs(Kind.MODULE, [*functions, target_object])
+    root = object_with_refs(Kind.PROGRAM_ROOT, [module])
+    available.update({module.cid: module, root.cid: root})
+    reachable, pending = {}, [root.cid]
+    while pending:
+        cid = pending.pop()
+        if cid not in reachable:
+            reachable[cid] = available[cid]
+            pending.extend(reachable[cid].references)
+    reader = StoreReader(write_store(root.cid, tuple(reachable.values())))
+    verify_store(reader)
+    return reader, target_object, managed.on_create.cid, managed.on_click.cid
+
+
+def _shell_classes(description: CounterActivityDescription):
+    """The platform-required class shells: each forwards its callback to the XAX function and does nothing else."""
+    from xax_dex import ACC_CONSTRUCTOR, ACC_FINAL
+    from xax_dex_jvm import DexClassDef, DexCode, DexMethodDef
+
+    activity, listener = description.activity_descriptor, description.listener_descriptor
+    platform_activity, base = "Landroid/app/Activity;", "Ljava/lang/Object;"
+
+    def method(owner: str, name: str, parameters: tuple[str, ...]):
+        return ("method", (owner, name, "V", parameters))
+
+    def constructor(superclass: str) -> DexMethodDef:  # invoke-direct {v0}, super.<init>; return-void
+        return DexMethodDef("<init>", "V", (), ACC_PUBLIC | ACC_CONSTRUCTOR, DexCode(1, 1, 1, (0x1070, method(superclass, "<init>", ()), 0x0000, 0x000E)))
+
+    on_create = DexMethodDef("onCreate", "V", (_BUNDLE,), ACC_PUBLIC, DexCode(2, 2, 2, (
+        0x206F, method(platform_activity, "onCreate", (_BUNDLE,)), 0x0010,  # invoke-super {v0, v1}
+        0x1071, method(activity, "entry", (activity,)), 0x0000,  # invoke-static {v0}
+        0x000E,
+    )))
+    on_click = DexMethodDef("onClick", "V", (_VIEW,), ACC_PUBLIC, DexCode(2, 2, 1, (
+        0x1071, method(listener, "entry", (_VIEW,)), 0x0001,  # invoke-static {v1}
+        0x000E,
+    )))
+    return (
+        DexClassDef(activity, ACC_PUBLIC | ACC_FINAL, platform_activity, (), (), (constructor(platform_activity), on_create)),
+        DexClassDef(listener, ACC_PUBLIC | ACC_FINAL, base, ("Landroid/view/View$OnClickListener;",), (), (constructor(base), on_click)),
+    )
+
+
+def compile_counter_dex(reader, target_object: SemanticObject, on_create: bytes, on_click: bytes, description: CounterActivityDescription) -> bytes:
+    """``classes.dex``: each XAX callback compiled to a JVM class, lowered to DEX, and merged into its class shell."""
+    from xax_dex_jvm import merge_classes, translate_class, write_dex
+    from xax_jvm import compile_jvm_bound_target
+
+    merged = []
+    for shell, function in zip(_shell_classes(description), (on_create, on_click)):
+        image = compile_jvm_bound_target(reader, function, target_object)
+        merged.append(merge_classes(shell, translate_class(image.class_bytes, {image.class_name: shell.descriptor[1:-1]})))
+    return write_dex(merged)
+
+
+def counter_dex(description: CounterActivityDescription) -> bytes:
+    """The app's only code file (ADR-259)."""
+    reader, target_object, on_create, on_click = counter_dex_store(description)
+    return compile_counter_dex(reader, target_object, on_create, on_click, description)

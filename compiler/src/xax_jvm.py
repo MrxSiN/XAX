@@ -3430,6 +3430,16 @@ def run_jvm_calls(
     masks integer results to the XAX width.  ``classpath`` adds directories or
     JARs the program's foreign members name (beside the JDK).
     """
+    kinds = image.parameter_kinds
+    lines = "".join(" ".join(_encode(value, kind) for value, kind in zip(call, kinds)) + "\n" for call in calls)
+    result_kind = image.return_kinds[0] if image.return_kinds else "V"
+    from xax_dex_jvm import device_art_requested, run_on_device_art
+
+    if device_art_requested() and not classpath:  # the same program lowered to DEX, on a device's ART (ADR-259)
+        completed = run_on_device_art(image.class_bytes, "XaxDexHarness", (image.class_name.replace("/", "."), method or image.entry_method), lines.encode(), harness=True)
+        if completed.returncode:
+            raise RuntimeError(completed.stderr.decode(errors="replace").strip() or f"dalvikvm exited {completed.returncode}")
+        return tuple(_decode(line, result_kind, result_width) for line in completed.stdout.decode().splitlines())
     java = shutil.which("java")
     if not java:
         fail("XAX.JVM.HOST", "host", "JVM-HOST-JAVA", "java executable", "missing")
@@ -3438,20 +3448,21 @@ def run_jvm_calls(
         jar = os.path.join(directory, "program.jar")
         with open(jar, "wb") as handle:
             handle.write(image.jar)
-        kinds = image.parameter_kinds
-        lines = "".join(" ".join(_encode(value, kind) for value, kind in zip(call, kinds)) + "\n" for call in calls)
         completed = subprocess.run(
             [java, "-Xshare:auto", "-cp", os.pathsep.join((harness, *classpath)), "XaxJvmHarness", jar, image.class_name.replace("/", "."), method or image.entry_method],
             input=lines, capture_output=True, text=True, check=False,
         )
     if completed.returncode:
         raise RuntimeError(completed.stderr.strip() or f"java exited {completed.returncode}")
-    result_kind = image.return_kinds[0] if image.return_kinds else "V"
     return tuple(_decode(line, result_kind, result_width) for line in completed.stdout.splitlines())
 
 
 def run_jvm_jar(image: JvmImage, *, timeout: float = 120.0, java: str | None = None, stdin: bytes | None = None) -> subprocess.CompletedProcess:
     """Run the JAR with ``java -jar`` (the platform launcher); returns the completed process."""
+    from xax_dex_jvm import device_art_requested, run_on_device_art
+
+    if device_art_requested() and java is None:  # the same program lowered to DEX, on a device's ART (ADR-259)
+        return run_on_device_art(image.class_bytes, image.class_name.replace("/", "."), stdin=stdin, timeout=timeout)
     java = java or shutil.which("java")
     if not java:
         fail("XAX.JVM.HOST", "host", "JVM-HOST-JAVA", "java executable", "missing")
