@@ -7,7 +7,9 @@ committed store its output equals ``compile_x86_64_views`` (code bytes, or the e
 stores reject with the bootstrap's container and envelope diagnostics and the graph decoder's; the driver lowers
 its own store to its own image (a component fixed point).  S10e (ADR-266): the driver verifies the store semantically
 with the XAX typing, store-verifier, CFG, and facts programs over inputs it builds itself
-(``xax_selfhost_semantic``): a store ``verify_store`` rejects never yields an image.
+(``xax_selfhost_semantic``): a store ``verify_store`` rejects never yields an image.  S11 (ADR-267): the driver is a
+standalone ELF64 executable (its entry is the process entry, argv gives the paths, ``exit_group`` the status); every
+run below is a real process, and the executable rebuilds itself through three generations byte for byte.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ import glob
 import os
 import platform
 import random
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -69,12 +72,12 @@ class DriverTests(unittest.TestCase):
 
         reader, function = load_driver_program()
         cls.driver_reader, cls.driver_function = reader, function
-        cls.v2 = X.x86_64_views_syscall_target()
-        cls.image = compile_x86_64_views(reader, function.cid, cls.v2, backend="xax")
+        cls.exec_target = X.x86_64_views_exec_target()
+        cls.image = compile_x86_64_views(reader, function.cid, cls.exec_target, backend="xax")
         cls.driver = NativeDriver(cls.image)
         cls.directory = tempfile.mkdtemp()
         cls.targets = {}
-        for name, target in (("v1", X.x86_64_views_target()), ("v2", cls.v2)):
+        for name, target in (("v1", X.x86_64_views_target()), ("exec", cls.exec_target)):
             path = os.path.join(cls.directory, f"{name}.xax")
             Path(path).write_bytes(target_package(target))
             cls.targets[name] = path
@@ -96,7 +99,7 @@ class DriverTests(unittest.TestCase):
     def test_the_driver_image_is_the_bootstrap_generators(self):
         from xax_x86_64_views import compile_x86_64_views
 
-        self.assertEqual(self.image, compile_x86_64_views(self.driver_reader, self.driver_function.cid, self.v2, backend="python"))
+        self.assertEqual(self.image, compile_x86_64_views(self.driver_reader, self.driver_function.cid, self.exec_target, backend="python"))
 
     def test_every_committed_store(self):
         target = X.x86_64_views_target()
@@ -109,9 +112,30 @@ class DriverTests(unittest.TestCase):
                 outcomes.add(expected[0])
         self.assertEqual(outcomes, {"image", "rejected"})
 
-    def test_the_driver_lowers_itself(self):
-        """Component fixed point: the driver image, run natively, lowers the driver store to the driver image."""
-        self.assertEqual(self.run_driver(self.driver_reader.data, "v2"), ("image", self.image.code))
+    def test_the_driver_rebuilds_itself_as_processes(self):
+        """S11 self-build loop: gen1 (the XAX backend's executable) lowers the driver store to gen2, gen2 to gen3;
+        each is a process with no Python inside, and gen1 = gen2 = gen3 = ``views_executable`` of the bootstrap
+        generator's image."""
+        from xax_selfhost_driver import STORE_PATH
+        from xax_x86_64_views import views_executable
+
+        generation = Path(self.driver.path)
+        executables = [generation.read_bytes()]
+        for name in ("gen2", "gen3"):
+            output = Path(self.directory) / name
+            status = subprocess.run([str(generation), str(STORE_PATH), self.targets["exec"], str(output)], check=False).returncode
+            self.assertEqual(status, 0, name)
+            os.chmod(output, 0o755)
+            executables.append(output.read_bytes())
+            generation = output
+        self.assertEqual(executables[0], views_executable(self.image))
+        self.assertEqual(executables[1], executables[0])
+        self.assertEqual(executables[2], executables[0])
+
+    def test_the_process_needs_three_paths(self):
+        for arguments in ([], ["one"], ["one", "two"], ["a", "b", "c", "d"], ["x" * 4096, "b", "c"]):
+            with self.subTest(count=len(arguments)):
+                self.assertEqual(subprocess.run([str(self.driver.path), *arguments], check=False).returncode, 3)
 
     def test_container_and_object_rejections_are_the_bootstraps(self):
         rng = random.Random(10)

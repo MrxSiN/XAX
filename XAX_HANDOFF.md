@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S11 and later steps are open (ADR-180, ADR-266)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S12 and later steps are open (ADR-180, ADR-267)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,12 +186,20 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
+
+- Done: `x86_64_views_exec_target()`, `xax_x86_64_views.views_executable(image)`; the driver store's entry is the process entry, and `NativeDriver(image).run(...)` runs the executable as a subprocess (the exit status is the driver status). Tests: `tests/test_xax_selfhost_process.py`, `tests/test_xax_selfhost_driver.py` (self-build loop).
+- Lower the driver with the exec target only: under v1/v2 its startup reads reject. Helpers keep v1.
+- Process-only backend work is gated on the ISA class's `PROCESS` (the identity; the front end distinguishes it by length, so keep `IDENTITIES` lengths distinct from it) and reads `G_PROCESS`; the RISC-V store must stay unchanged.
+- A function cannot pass memory effects without views to a callee (`MEMORY-CALL-PASS-THROUGH`), so the process entry cannot wrap a separate driver function. The driver function is the entry.
+- Next: S12 (the optimizing x86-64 backend's decisions for ordinary programs), then S13 and S14.
+
 ## S10e semantic verification in the driver — 2026-10-14 (ADR-266)
 
 - Done: `compiler/src/xax_selfhost_semantic.py` (seven marshal functions, workspace layout at the top) is linked into the driver store; tests `tests/test_xax_selfhost_semantic.py` (word equality) and `tests/test_xax_selfhost_driver.py` (semantic rejections).
 - Capacities are shared: changing `xax_selfhost_typing.IN_EXTENT/OUT_EXTENT`, the store decoder's `DATA_EXTENT`, or the views stream region regenerates the typing, verifier, decoder, both backend, and driver stores. Keep `IN_WORDS <= (OUT_WORDS - TABLE) // 2` (asserted): otherwise the typing program defers every stream and Python silently decides.
 - Debugging a driver decline: give `stop(DECLINED)` a distinct status per call site temporarily (status `2 + 16 * site`) and rebuild the driver in memory; nothing else reports where it declined.
-- Next: S11 (process entry in the views profile, the ELF64 container written by the driver, a self-build loop of processes).
+- Next: S11 (process entry in the views profile, the ELF64 container written by the driver, a self-build loop of processes). S11: see above.
 
 ## S10 the compiler driver as XAX — 2026-10-14 (ADR-265)
 

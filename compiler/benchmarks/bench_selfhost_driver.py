@@ -1,12 +1,13 @@
-"""S10 evidence (ADR-265, ADR-266): the XAX compiler driver, run natively, against the in-process Python-orchestrated path.
+"""S10/S11 evidence (ADR-265, ADR-266, ADR-267): the XAX compiler driver, run as a Linux process, against the in-process
+Python-orchestrated path.
 
 For every committed store: the driver's outcome (image or diagnostic) and whether it equals
 ``compile_x86_64_views`` (the bootstrap generator, after the bootstrap verifier); the driver's wall time (file read,
 decoding, semantic verification, object table, lowering, file write) against the in-process path doing the same work
 (``StoreReader`` and ``compile_x86_64_views(..., backend="xax")``, whose ``verify_store`` asks the same XAX components
-with Python orchestrating them), median of five.  Also:
-the driver image is the bootstrap generator's (B1-like), and the driver lowers its own store to its own image
-(component fixed point).  Host timings are non-semantic.  Runs with ``XAX_REQUIRE_NATIVE=1``.
+with Python orchestrating them), median of five; the driver's time includes starting its process.  Also: the driver
+image is the bootstrap generator's (B1-like), and the self-build loop: the driver executable (gen1) lowers the driver
+store to gen2, gen2 to gen3, each a process (component fixed point).  Host timings are non-semantic.  Runs with ``XAX_REQUIRE_NATIVE=1``.
 Run: ``PYTHONPATH=src python benchmarks/bench_selfhost_driver.py [--write]``.
 """
 
@@ -17,6 +18,7 @@ import json
 import os
 import platform
 import statistics
+import subprocess
 import sys
 import tempfile
 import time
@@ -40,17 +42,17 @@ def measure() -> dict:
     import xax_native
     from xax_selfhost_diagnostics import decode_record
     from xax_selfhost_driver import NativeDriver, load_driver_program, target_package
-    from xax_x86_64_views import compile_x86_64_views
+    from xax_x86_64_views import compile_x86_64_views, views_executable
 
     reader, function = load_driver_program()
-    v1, v2 = X.x86_64_views_target(), X.x86_64_views_syscall_target()
-    image = compile_x86_64_views(reader, function.cid, v2, backend="xax")
-    reference = compile_x86_64_views(reader, function.cid, v2, backend="python")
+    v1, exec_target = X.x86_64_views_target(), X.x86_64_views_exec_target()
+    image = compile_x86_64_views(reader, function.cid, exec_target, backend="xax")
+    reference = compile_x86_64_views(reader, function.cid, exec_target, backend="python")
     driver = NativeDriver(image)
     directory = Path(tempfile.mkdtemp())
-    targets = {"v1": directory / "v1.xax", "v2": directory / "v2.xax"}
+    targets = {"v1": directory / "v1.xax", "exec": directory / "exec.xax"}
     targets["v1"].write_bytes(target_package(v1))
-    targets["v2"].write_bytes(target_package(v2))
+    targets["exec"].write_bytes(target_package(exec_target))
     output = directory / "out.bin"
 
     def drive(path: Path, target: str):
@@ -95,17 +97,29 @@ def measure() -> dict:
             row["diagnostic"] = {"code": outcome[1].code, "rule": outcome[1].rule} if outcome[0] == "rejected" else None
         rows.append(row)
 
-    status, produced = drive(Path(X.__file__).resolve().parents[1] / "bootstrap" / "xax_compiler_driver.xax", "v2")
+    generations, seconds, statuses = [driver.path.read_bytes()], [], []
+    generation = driver.path
+    for name in ("gen2", "gen3"):
+        output = directory / name
+        start = time.perf_counter()
+        statuses.append(subprocess.run([str(generation), str(BOOTSTRAP / "xax_compiler_driver.xax"), str(targets["exec"]), str(output)], check=False).returncode)
+        seconds.append(round(time.perf_counter() - start, 2))
+        os.chmod(output, 0o755)
+        generations.append(output.read_bytes())
+        generation = output
     return {
-        "format": "xax-selfhost-driver-evidence-v2",
+        "format": "xax-selfhost-driver-evidence-v3",
         "label": "EXECUTED",
         "host_nonsemantic": f"{platform.system()} {platform.machine()} Python {platform.python_version()}",
         "driver": {"store_sha256": hashlib.sha256(reader.data).hexdigest(), "semantic_root": reader.root_cid.hex(),
-                   "target_cid": v2.cid.hex(), "code_bytes": len(image.code), "image_sha256": hashlib.sha256(image.code).hexdigest(),
-                   "xax_backend_equals_bootstrap_generator": image == reference},
+                   "target_cid": exec_target.cid.hex(), "code_bytes": len(image.code), "image_sha256": hashlib.sha256(image.code).hexdigest(),
+                   "executable_bytes": len(generations[0]), "executable_sha256": hashlib.sha256(generations[0]).hexdigest(),
+                   "xax_backend_equals_bootstrap_generator": image == reference,
+                   "executable_equals_views_executable": generations[0] == views_executable(reference)},
         "stores": rows,
-        "fixed_point": {"compiler": "the driver image, native, with the v2 target package", "status": status,
-                        "output_equals_driver_image": produced == image.code},
+        "self_build_loop": {"gen1": "the driver executable from the XAX backend's image", "gen2_gen3_statuses": statuses,
+                            "host_s_nonsemantic": seconds, "gen2_equals_gen1": generations[1] == generations[0],
+                            "gen3_equals_gen2": generations[2] == generations[1]},
         "authority": xax_native.AUTHORITY,
     }
 

@@ -68,9 +68,17 @@ ISA = "X86_64_VIEWS"
 IDENTITY = b"x86_64-linux-views-v1"
 # S10a (ADR-264): v1 plus Linux syscalls; the closure check against the target's operations keeps v1 programs free of them.
 IDENTITIES = (IDENTITY, b"x86_64-linux-views-v2")
+# S11 (ADR-267): v2 whose entry is the Linux process entry, packaged as a static ELF64 executable.
+EXEC_IDENTITY = b"x86_64-linux-views-exec-v1"
+IDENTITIES += (EXEC_IDENTITY,)
 SYSCALL_ARGUMENT_REGISTERS = (7, 6, 2, 10, 8, 9)  # rdi, rsi, rdx, r10, r8, r9
 RSI, RDI = 6, 7
 SYSCALL_EXPECTED = "linux-x86_64-syscall-v1 declaration: a canonical template naming each machine operand once, at most six arguments, at most one machine result"
+# S11: the ``linux-x86_64-startup-v1`` reads the views profile lowers (``syscall_template`` gives each a number past
+# every syscall's), only in the process entry; ``arg_copy``'s destination is a view under 2 GiB.
+STARTUP_ARGC, STARTUP_ARG_COPY = 1 << 32, (1 << 32) + 1
+STARTUP_READS = {b"argc": (STARTUP_ARGC, 0), b"arg_copy": (STARTUP_ARG_COPY, 2)}
+STARTUP_EXPECTED = "argc, or arg_copy into a view under 2 GiB, in the process entry function"
 # An allocator contract's nullable result: the kernel's -4095..-1 becomes 0 (``xax_x86_64._linux_syscall``).
 NULL_ON_ERROR = b"\x48\x3d\x01\xf0\xff\xff\x72\x02\x31\xc0"  # cmp rax, -4095; jb +2; xor eax, eax
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -80,6 +88,10 @@ SHADOW = 32
 # Callee-saved registers available to the allocator (Win64): rbx, rbp, rsi, rdi, r12-r15.
 ALLOCATABLE = (3, 5, 6, 7, 12, 13, 14, 15)
 UD2 = b"\x0f\x0b"
+# S11: ``arg_copy``'s byte loop after ``cmp rcx, extent`` (r11 = the string, rdx = the destination, rcx = the count):
+# jae done; movzx eax, byte [r11 + rcx]; test eax, eax; je done; mov [rdx + rcx], al; add rcx, 1; jmp top; done:
+# mov rax, rcx.
+ARG_COPY_LOOP = bytes.fromhex("7312" "410fb6040b" "85c0" "7409" "88040a" "4883c101" "ebe5" "4889c8")
 PAD = 0xCC  # int3 between functions
 SETCC = {IntCompare.EQ: 0x94, IntCompare.NE: 0x95, IntCompare.ULT: 0x92, IntCompare.ULE: 0x96, IntCompare.UGT: 0x97,
          IntCompare.UGE: 0x93, IntCompare.SLT: 0x9C, IntCompare.SLE: 0x9E, IntCompare.SGT: 0x9F, IntCompare.SGE: 0x9D}
@@ -214,13 +226,15 @@ class _Emitter:
         return bytes(self.code)
 
 
-JMP, JZ, JA, CALL = b"\xe9", b"\x0f\x84", b"\x0f\x87", b"\xe8"
+JMP, JZ, JA, JAE, CALL = b"\xe9", b"\x0f\x84", b"\x0f\x87", b"\x0f\x83", b"\xe8"
 
 
 # ------------------------------------------------------------------ lowering
 
 
-def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tuple[int, int, int, int]]:
+def _compile_function(function: SemanticObject, resolve, e: _Emitter, process: bool = False) -> list[tuple[int, int, int, int]]:
+    """Lower ``function``; ``process``: it is the process entry (S11): no machine parameters, a 16-byte aligned frame
+    over ``argc``, startup reads, and ``ud2`` for a return."""
     graph_object, parameter_types, return_types = _decode_function_interface(function, resolve)
     graph, elided = rewrite_borrowed_views(parse_function_graph(function, resolve), resolve)
     elided_returns = set(borrowed_view_returns(parameter_types, return_types, resolve))
@@ -271,8 +285,10 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
     for ref in sorted(aggregates.returned, key=lambda ref: (ref.block, ref.index, ref.result)):
         area_of[ref] = cursor
         cursor += 8 * aggregates.returned[ref]
-    frame = frame_size(cursor)
+    frame = ((cursor + 15) & -16) if process else frame_size(cursor)  # a process entry starts aligned, with no return address
     machine_parameters = [ValueRef.parameter(graph.entry, index) for index in range(len(graph.blocks[graph.entry].parameters)) if ValueRef.parameter(graph.entry, index) in width_of]
+    if process and (machine_parameters or returned_fields is not None):
+        fail(f"XAX.{ISA}.ABI", where, f"{ISA}-PROCESS-ENTRY", 0, len(machine_parameters) + (returned_fields is not None))
 
     def read(ref: ValueRef, scratch: int) -> int:
         if ref in register_of:
@@ -313,6 +329,9 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
             write(ref, T0)
 
     def epilogue() -> None:
+        if process:
+            e.emit(UD2)  # the process ends only by an explicit exit_group
+            return
         for position, register in enumerate(saved):
             e.emit(stack(b"\x8b", register, saved_at + 8 * position))
         e.emit(adjust(0))
@@ -347,6 +366,9 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
             fail(f"XAX.{ISA}.FOREIGN_ABI", where, f"{ISA}-SYSCALL", SYSCALL_EXPECTED, node.entity.cid.hex())
         number, arguments, allocator = template
         machine = machine_arguments(node)
+        if number >= STARTUP_ARGC:
+            _startup(node, number, machine, block_index, node_index)
+            return
         e.emit(b"\x56\x57")  # push rsi; push rdi
         for register, argument in zip(SYSCALL_ARGUMENT_REGISTERS, arguments):
             if isinstance(argument, int):
@@ -364,6 +386,29 @@ def _compile_function(function: SemanticObject, resolve, e: _Emitter) -> list[tu
         if allocator:
             e.emit(NULL_ON_ERROR)
         e.emit(b"\x5f\x5e")  # pop rdi; pop rsi
+        results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results))
+                   if ValueRef.node_result(block_index, node_index, index) in width_of]
+        if results:
+            write(results[0], RAX)
+
+    def _startup(node, number: int, machine: list[ValueRef], block_index: int, node_index: int) -> None:
+        """S11: ``argc`` is the word at the entry RSP (``rsp + frame``); ``arg_copy(index, destination)`` traps unless
+        ``index < argc``, then copies ``argv[index]`` up to its NUL or the destination's extent and returns the count."""
+        nonlocal trap_used
+        extent = extents.get(machine[1]) if number == STARTUP_ARG_COPY else 0
+        if not process or extent is None or extent >= 1 << 31:
+            fail(f"XAX.{ISA}.FOREIGN_ABI", where, f"{ISA}-STARTUP", STARTUP_EXPECTED, node.entity.cid.hex())
+        if number == STARTUP_ARGC:
+            e.emit(stack(b"\x8b", RAX, frame))
+        else:
+            trap_used = True
+            read_into(machine[0], RAX)
+            read_into(machine[1], RDX)
+            e.emit(stack(b"\x8d", T1, frame))  # lea r11, [rsp + frame]: &argc
+            e.emit(b"\x49\x3b\x03")  # cmp rax, [r11]
+            e.jump(JAE, trap)
+            e.emit(b"\x4d\x8b\x5c\xc3\x08\x31\xc9")  # mov r11, [r11 + rax*8 + 8]; xor ecx, ecx
+            e.emit(b"\x48\x81\xf9" + extent.to_bytes(4, "little") + ARG_COPY_LOOP)  # cmp rcx, extent; the loop
         results = [ValueRef.node_result(block_index, node_index, index) for index in range(len(node.results))
                    if ValueRef.node_result(block_index, node_index, index) in width_of]
         if results:
@@ -543,16 +588,24 @@ def syscall_template(node, resolve) -> tuple[int, tuple[int | str, ...], bool] |
     """S10a/S10b: ``(number, register template, allocator)`` of a ``call.foreign`` the views profile lowers, or None
     (rejected with ``X86_64_VIEWS-SYSCALL``): a ``linux-x86_64-syscall-v1`` declaration with at most one machine
     result and a template ``decode_syscall_name`` accepts for the machine operands.  With an allocator contract the
-    result is nullable: a kernel error becomes 0."""
-    from xax_compiler import LINUX_X86_64_SYSCALL_ABI, XaxError, decode_foreign_function
+    result is nullable: a kernel error becomes 0.  S11: a ``linux-x86_64-startup-v1`` declaration of a read in
+    ``STARTUP_READS`` (no heap contracts, its machine operands, at most one machine result) is ``STARTUP_*`` over
+    them."""
+    from xax_compiler import LINUX_X86_64_STARTUP_ABI, LINUX_X86_64_SYSCALL_ABI, XaxError, decode_foreign_function
     from xax_x86_64 import decode_syscall_name
 
     declaration = decode_foreign_function(node.entity)
+    results = sum(1 for cid in node.results if not _is_proof_type(resolve(cid)))
+    machine = sum(1 for cid in node.operand_types if not _is_proof_type(resolve(cid)))
+    if declaration.abi == LINUX_X86_64_STARTUP_ABI and declaration.allocator is None and declaration.deallocator is None:
+        number, operands = STARTUP_READS.get(declaration.name, (None, None))  # S11: a startup read (``_startup``)
+        if number is None or machine != operands or results > 1:
+            return None
+        return number, tuple(f"${k}" for k in range(operands)), False
     if declaration.abi != LINUX_X86_64_SYSCALL_ABI:
         return None
-    if sum(1 for cid in node.results if not _is_proof_type(resolve(cid))) > 1:
+    if results > 1:
         return None
-    machine = sum(1 for cid in node.operand_types if not _is_proof_type(resolve(cid)))
     try:
         return (*decode_syscall_name(declaration.name, machine), declaration.allocator is not None)
     except XaxError:
@@ -588,13 +641,23 @@ def compile_x86_64_views(reader: StoreReader, function_cid: bytes, target_object
         while emitter.offset % 16:
             emitter.emit(bytes((PAD,)))
         offsets[function.cid] = emitter.offset
-        for block, node, start, end in _compile_function(function, resolve, emitter):
+        process = target.identity == EXEC_IDENTITY and function is entry
+        for block, node, start, end in _compile_function(function, resolve, emitter, process):
             node_ranges.append(ArtifactSemanticRange(function.cid, block, node, start, end))
     code = emitter.finish(offsets)
     _graph, parameters, returns = _decode_function_interface(entry, resolve)
     widths = lambda cids: tuple(w for w in (machine_width(resolve, cid, function_cid.hex(), ISA) for cid in cids) if w is not None)  # noqa: E731
     return X86ViewsImage(code, 0, tuple(sorted(offsets.items())), widths(parameters), widths(returns), target_object.cid,
                          (*_function_ranges(functions, offsets, len(code)), *node_ranges))
+
+
+def views_executable(image: X86ViewsImage) -> bytes:
+    """S11 (ADR-267): an image lowered for ``x86_64-linux-views-exec-v1`` as a static ELF64 ``ET_EXEC``: the Linux
+    package's container (``xax_linux``: one read/execute load segment at 0x400000 and a non-executable stack), whose
+    ``e_entry`` is the entry function.  The container adds no code."""
+    from xax_linux import _emit_static
+
+    return _emit_static(image)[0]
 
 
 def _function_ranges(functions: Sequence[SemanticObject], offsets: dict[bytes, int], size: int) -> list[ArtifactSemanticRange]:

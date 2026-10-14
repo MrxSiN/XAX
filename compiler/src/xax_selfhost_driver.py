@@ -20,14 +20,19 @@ does its own file I/O (``openat``, ``read``, ``write``, ``close``), and calls th
 
 The output file receives the image's code (status ``IMAGE``) or the first rejection's diagnostic record as
 little-endian 64-bit words (status ``REJECTED``, ``xax_selfhost_diagnostics.decode_record``).  ``DECLINED`` means
-an input beyond a component's capacity or one a component defers; ``FAILED`` an I/O error.  Semantic verification
-(typing, facts, and object verification, orchestrated by ``verify_store``) is not part of this driver: S10e.
+an input beyond a component's capacity or one a component defers; ``FAILED`` an I/O error.  S10e (ADR-266): before
+lowering, the driver verifies the store semantically (``xax_selfhost_semantic``).
+
+S11 (ADR-267): the store's entry is ``main``, the Linux process entry for ``x86_64-linux-views-exec-v1``: it copies
+``argv[1..3]`` into an arguments view, calls ``drive``, and ends the process with ``exit_group(status)`` (``FAILED``
+unless there are exactly three paths and each fits).  Under that profile the driver writes the static ELF64
+executable (``xax_x86_64_views.views_executable``) instead of the bare code, so the driver lowers itself to the
+executable it runs as.
 """
 
 from __future__ import annotations
 
 
-import ctypes
 from pathlib import Path
 
 from xax_compiler import (
@@ -53,7 +58,7 @@ STORE_PATH = bootstrap_dir() / "xax_compiler_driver.xax"
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
 ARGUMENTS_EXTENT = 4096
 CHUNK = 1 << 16
-VIEWS_IDENTITIES = (b"x86_64-linux-views-v1", b"x86_64-linux-views-v2")
+from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
 AT_FDCWD = 0xFFFFFF9C
 O_OUTPUT = 0x241  # O_WRONLY | O_CREAT | O_TRUNC
 MODE_OUTPUT = 0o644
@@ -202,15 +207,19 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         "work": (out_pointer, out_view_extent(out_view), 8),
         "cfgin": (backend_in_rw, CF.IN_EXTENT, 8),
         "cfgout": (CF.OUT_POINTER, CF.OUT_EXTENT, 8),
+        # S11 (ADR-267): the three paths, copied from argv, and one argument as ``arg_copy`` gives it.
+        "arguments": (bytes_rw, ARGUMENTS_EXTENT, 1),
+        "argument": (bytes_rw, ARGUMENTS_EXTENT, 1),
     }
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
-             "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp"}
-    views = {"arguments": ("ap", "av", "am", 1)}
+             "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp",
+             "arguments": "ap", "argument": "zp"}
+    views = {}
     for name, pointer_name in names.items():
         stem = pointer_name[0]
         views[name] = (pointer_name, f"{stem}v", f"{stem}m", 1 if buffers[name][0] == bytes_rw else 8)
-    parameters = [("ap", api.bytes_read), ("av", heap_view_type(ARGUMENTS_EXTENT)), ("am", MEM), ("fs", FS)]
-    parameters += [(f"mem_{name}", MEM) for name in buffers]
+    PROCESS = api.process_effect
+    parameters = [("fs", FS), ("process", PROCESS)] + [(f"mem_{name}", MEM) for name in buffers]
     proc = Proc(parameters)
     w = _Driver(proc, views)
 
@@ -235,6 +244,25 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     def stop(code):
         w.set(status, code)
+
+    # -- S11: argv[1..3], each NUL-terminated, into ``arguments`` ------------------------------------------------
+    from xax_linux import linux_startup_api
+
+    startup = linux_startup_api(api)
+    argc = proc.op1(Operation.CALL_FOREIGN, (), B64, entity=startup.argc)
+    w.if_(w.ne(argc, 4), lambda: stop(FAILED))
+    argument_end = w.let("argument_end", 0)
+
+    def argument(index: int):
+        count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(index, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
+        n = w.let("n", count)
+        at = argument_end
+        fits = w.both(w.lt(w[n], ARGUMENTS_EXTENT), w.lt(w.add(w[at], w[n]), ARGUMENTS_EXTENT))  # and its NUL
+        w.if_(fits, lambda: (w.copy("argument", 0, "arguments", w[at], w[n]), w.store("arguments", w.add(w[at], w[n]), 0),
+                             w.set(at, w.add(w.add(w[at], w[n]), 1))), lambda: stop(FAILED))
+
+    for index in (1, 2, 3):
+        when(lambda index=index: argument(index))
 
     # -- paths ---------------------------------------------------------------------------------------------------
     def path(index: int):
@@ -778,6 +806,8 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     when(target_record)
 
+    executable = w.let("executable", 0)  # S11: the target is the exec profile: the output is an ELF executable
+
     def target_profile():
         """``compile_x86_64_views``: a target object whose identity is a views profile, else ``X86_64_VIEWS-TARGET-PROFILE``."""
         w.if_(w.ne(record_word(w[target], 4), int(Kind.TARGET)), lambda: stop(DECLINED))
@@ -786,6 +816,7 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         w.if_(w.le(128, w[size]), lambda: stop(DECLINED))
         start = w.let("identity_at", w.add(w[body], 1))
         known = w.let("known", 0)
+        w.if_(w.eq(w[size], len(EXEC_IDENTITY)), lambda: w.set(executable, w.same_constant("data", w[start], EXEC_IDENTITY)))
         for identity in VIEWS_IDENTITIES:
             w.if_(w.eq(w[size], len(identity)), lambda identity=identity: w.set(known, w.or_(w[known], w.same_constant("data", w[start], identity))))
         printable = w.let("printable", 1)
@@ -844,12 +875,28 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     when(lower)
 
     # -- the output ------------------------------------------------------------------------------------------
-    def emit(first_word, byte_count):
+    def emit(first_word, byte_count, header: bool = False):
         """Write ``byte_count`` bytes of the backend output from word ``first_word`` (little-endian words: the packed
-        code, ADR-266, or a diagnostic record)."""
+        code, ADR-266, or a diagnostic record); with ``header``, under the exec profile, the ELF header first."""
         fd = open_path(2, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
 
+        def write_chunk(count):
+            """``write`` the first ``count`` bytes of ``chunk``; FAILED unless all are written."""
+            written, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(WRITE_RW, (fd32(fd), w.p[views["chunk"][0]], count, w.p["fs"], w.p[views["chunk"][2]]),
+                                                                   (B64, FS, MEM))
+            ok = w.let("written_ok", w.flag(w.eq(written, count)))
+            w.if_(w.eq(w[ok], 0), lambda: stop(FAILED))
+            return w[ok]
+
+        def elf_header():
+            """S11: ``views_executable``'s header; only the load segment's file and memory sizes depend on the code."""
+            for index, word in enumerate(ELF_HEADER_WORDS):
+                w.store("chunk", 8 * index, w.add(byte_count, ELF_HEADER_SIZE) if index in ELF_SIZE_WORDS else word, 8)
+            write_chunk(ELF_HEADER_SIZE)
+
         def write_all():
+            if header:
+                w.if_(w.ne(w[executable], 0), elf_header)
             done = w.let("done", 0)
             total = w.let("total", byte_count)
 
@@ -858,11 +905,9 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
                 q = w.let("q", 0)
                 w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.udiv(w.add(w[done], w[q]), 8))), 8),
                                                                 w.set(q, w.add(w[q], 8))))
-                written, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(WRITE_RW, (fd32(fd), w.p[views["chunk"][0]], w[piece], w.p["fs"], w.p[views["chunk"][2]]),
-                                                                       (B64, FS, MEM))
-                w.if_(w.ne(written, w[piece]), lambda: (stop(FAILED), w.set(done, w[total])), lambda: w.set(done, w.add(w[done], w[piece])))
+                w.if_(w.eq(write_chunk(w[piece]), 0), lambda: w.set(done, w[total]), lambda: w.set(done, w.add(w[done], w[piece])))
 
-            w.while_(lambda: w.lt(w[done], w[total]), step)
+            w.while_(lambda: w.both(w.lt(w[done], w[total]), w.ne(w[status], FAILED)), step)
             close(fd)
 
         w.if_(w.ne(w[status], FAILED), write_all)
@@ -871,7 +916,7 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     final = w.let("final", 0)
     w.set(final, w[status])
-    w.if_(w.eq(w[status], IMAGE), lambda: emit(WORDS_AT, w.ld(1)),
+    w.if_(w.eq(w[status], IMAGE), lambda: emit(WORDS_AT, w.ld(1), header=True),
           lambda: w.if_(w.eq(w[status], REJECTED), lambda: emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8))))
     w.if_(w.eq(w[status], FAILED), lambda: w.set(final, FAILED))
 
@@ -881,13 +926,34 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         pointer_name, token_name, memory_name, _element = views[name]
         _result, memory = w.syscall(api.munmap_view(pointer_type_, extent), (proc[pointer_name], proc[token_name], proc[memory_name]), (B64, MEM))
         released.append(memory)
-    proc.ret(proc["ap"], proc["av"], proc["am"], proc["fs"], *released, w[final])
-    function = proc.function((api.bytes_read, heap_view_type(ARGUMENTS_EXTENT), MEM, FS, *(MEM,) * len(buffers), B64))
+    # The process ends here: ``exit_group`` with the status (a return would trap).
+    process = proc.op1(Operation.CALL_FOREIGN, (proc.op1(Operation.INT_TRUNCATE, (w[final],), B32), proc["process"]), PROCESS, entity=api.exit_group)
+    proc.ret(proc["fs"], process, *released)
+    function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader)
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
-    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *component_objects, *api.types, WRITE_RW)
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *component_objects, *api.types, *startup.symbols, WRITE_RW)
     return program_store(function, x86_64_linux_exec_target(), objects_), function
+
+
+def _elf_header_words() -> tuple[tuple[int, ...], tuple[int, int]]:
+    """``views_executable``'s 176-byte header as little-endian words, and the two words (``p_filesz``, ``p_memsz``)
+    that hold the file size."""
+    from xax_linux import _emit_static
+
+    class _Empty:
+        code, entry_offset = b"", 0
+
+    header, code_offset, _imports = _emit_static(_Empty())
+    words = tuple(int.from_bytes(header[k:k + 8], "little") for k in range(0, len(header), 8))
+    sizes = tuple(index for index, word in enumerate(words) if word == len(header))
+    assert code_offset == len(header) and sizes == (12, 13), sizes  # the load segment's sizes; nothing else equals 176
+    return words, sizes
+
+
+ELF_HEADER_WORDS, ELF_SIZE_WORDS = _elf_header_words()
+ELF_HEADER_SIZE = 8 * len(ELF_HEADER_WORDS)
 
 
 def _write_declaration():
@@ -936,22 +1002,29 @@ def target_package(target: SemanticObject) -> bytes:
 
 
 class NativeDriver:
-    """The driver image (lowered by the XAX backend for ``x86_64-linux-views-v2``), called in-process.  The host only
-    maps the code and passes the three paths; the driver does its own I/O and owns its memory."""
+    """S11 (ADR-267): the driver as a Linux process.  The image (lowered by the XAX backend for
+    ``x86_64-linux-views-exec-v1``) is written once as its static ELF64 executable; ``run`` executes it with the three
+    paths as its arguments and returns its exit status.  No Python runs inside the process."""
 
     def __init__(self, image=None) -> None:
-        from xax_compiler import x86_64_views_syscall_target
-        from xax_x86_64_views import NativeViewsImage, compile_x86_64_views
+        import os
+        import tempfile
+
+        from xax_compiler import x86_64_views_exec_target
+        from xax_x86_64_views import compile_x86_64_views, views_executable
 
         if image is None:
             reader, function = load_driver_program()
-            image = compile_x86_64_views(reader, function.cid, x86_64_views_syscall_target(), backend="xax")
+            image = compile_x86_64_views(reader, function.cid, x86_64_views_exec_target(), backend="xax")
         self.image = image
-        self._native = NativeViewsImage(image)
+        self.executable = views_executable(image)
+        self._directory = tempfile.TemporaryDirectory(prefix="xax-driver-")
+        self.path = Path(self._directory.name) / "xax-driver"
+        self.path.write_bytes(self.executable)
+        os.chmod(self.path, 0o755)
 
     def run(self, store_path: str | Path, target_path: str | Path, output_path: str | Path) -> int:
-        arguments = b"".join(str(item).encode() + b"\0" for item in (store_path, target_path, output_path))
-        if len(arguments) > ARGUMENTS_EXTENT:
-            raise ValueError("paths exceed the argument view")
-        buffer = ctypes.create_string_buffer(arguments, ARGUMENTS_EXTENT)
-        return self._native(ctypes.addressof(buffer))
+        """The process's exit status (``IMAGE`` .. ``FAILED``); a negative value is the signal that ended it."""
+        import subprocess
+
+        return subprocess.run([str(self.path), str(store_path), str(target_path), str(output_path)], check=False).returncode

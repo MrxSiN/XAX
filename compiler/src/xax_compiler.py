@@ -1165,11 +1165,20 @@ def x86_64_views_syscall_target() -> SemanticObject:
     """S10a/S10b (ADR-264, ADR-265): the x86-64 views profile plus explicit Linux syscalls (``call.foreign`` of a
     ``linux-x86_64-syscall-v1`` declaration) and owned memory (``heap.view`` over an ``mmap`` allocation,
     ``pointer.cast``), so an XAX views program performs its own I/O and owns the views it lends."""
-    return _x86_64_windows_target(
-        b"x86_64-linux-views-v2",
-        tuple(sorted({*views_operations(), int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), int(Operation.POINTER_CAST)})),
-        machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32),
-    )
+    return _x86_64_windows_target(b"x86_64-linux-views-v2", _views_syscall_operations(), machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32))
+
+
+def x86_64_views_exec_target() -> SemanticObject:
+    """S11 (ADR-267): ``x86_64-linux-views-v2`` for a whole process.  The entry function is the Linux process entry
+    (no machine parameters; it starts with RSP 16-byte aligned on ``argc`` and ends the process with an explicit
+    ``exit_group``, a return traps), it may read ``argc`` and copy ``argv`` strings (``linux-x86_64-startup-v1``),
+    and the image is packaged as a static ELF64 ``ET_EXEC`` whose ``e_entry`` is that function."""
+    return _x86_64_windows_target(b"x86_64-linux-views-exec-v1", _views_syscall_operations(),
+                                  machine=(2, 1, X86_64_LINUX_ABI, X86_64_LINUX_ELF_EXEC_FORMAT, 64, 64, 16, 32))
+
+
+def _views_syscall_operations() -> tuple[int, ...]:
+    return tuple(sorted({*views_operations(), int(Operation.CALL_FOREIGN), int(Operation.HEAP_VIEW), int(Operation.POINTER_CAST)}))
 
 
 def x86_64_linux_dynamic_exec_target() -> SemanticObject:

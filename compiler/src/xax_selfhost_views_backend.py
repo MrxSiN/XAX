@@ -590,7 +590,7 @@ def _copy_edge(tables, isa):
 
 GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
 (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR, G_SUP_AT, G_SUPT_AT, G_S,
- G_REFS, G_PENDING) = range(20)
+ G_REFS, G_PENDING, G_PROCESS) = range(21)
 CID_WORDS = 4
 NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
@@ -986,13 +986,20 @@ SYSCALL_HEADER = 3
 SYSCALL_RECORD = SYSCALL_HEADER + 2 * 6
 _FOREIGN_PREFIX = b"foreign-function-v1"
 _SYSCALL_ABI = b"linux-x86_64-syscall-v1"
+# S11 (ADR-267): a startup read's record is ``(STARTUP_*, operands, 0, (0, k)...)`` (``xax_x86_64_views.STARTUP_READS``).
+_STARTUP_ABI = b"linux-x86_64-startup-v1"
+assert len(_STARTUP_ABI) == len(_SYSCALL_ABI)
 
 
 def _syscall(tables):
     """``xax_x86_64_views.syscall_template`` for declaration object ``obj`` and ``m`` machine operands: the template
     record (``SYSCALL_RECORD``), or 0 when the views profile does not lower the call (a declaration of another ABI,
     or a template ``decode_syscall_name`` rejects).  The caller checks the result count; the verifier has already
-    checked the declaration's heap contracts, which are only skipped here (an allocator's flag is recorded)."""
+    checked the declaration's heap contracts, which are only skipped here (an allocator's flag is recorded).  S11: a
+    ``linux-x86_64-startup-v1`` declaration of a read in ``STARTUP_READS`` with its machine operands and no heap
+    contract gives the startup record."""
+    from xax_x86_64_views import STARTUP_READS
+
     def build(e: E):
         p = e.p
         e.var("sy_ok", 1)
@@ -1008,8 +1015,14 @@ def _syscall(tables):
         # The identity: the prefix, the ABI, the library, the name, the input and output CIDs, then the heap contracts.
         same(_FOREIGN_PREFIX)
         e.if_(e.ne(_payload_uleb(e, "sy_at"), len(_SYSCALL_ABI)), lambda: e.give(0))
-        same(_SYSCALL_ABI)
-        e.if_(e.eq(p["sy_ok"], 0), lambda: e.give(0))
+        e.var("sy_startup", p["sy_ok"])
+        for k, (syscall_byte, startup_byte) in enumerate(zip(_SYSCALL_ABI, _STARTUP_ABI)):
+            byte_at = e.rd(e.add(p["sy_at"], k))
+            e.var("sy_b", byte_at)
+            e.if_(e.ne(p["sy_b"], syscall_byte), lambda: e.set("sy_ok", 0))
+            e.if_(e.ne(p["sy_b"], startup_byte), lambda: e.set("sy_startup", 0))
+        e.set("sy_at", e.add(p["sy_at"], len(_SYSCALL_ABI)))
+        e.if_(e.both(e.eq(p["sy_ok"], 0), e.eq(p["sy_startup"], 0)), lambda: e.give(0))
         e.set("sy_at", e.add(_payload_uleb(e, "sy_at"), p["sy_at"]))
         e.var("sy_len", _payload_uleb(e, "sy_at"))
         e.var("sy_pos", p["sy_at"])
@@ -1029,10 +1042,35 @@ def _syscall(tables):
         def deallocator():  # tag 2: pointer input, token input
             for _field in range(3):
                 _payload_uleb(e, "sy_at")
+            e.set("sy_alloc", 2)
 
         e.if_(e.both(e.lt(p["sy_at"], p["sy_end"]), e.eq(e.rd(p["sy_at"]), 1)), allocator)
         e.if_(e.both(e.lt(p["sy_at"], p["sy_end"]), e.eq(e.rd(p["sy_at"]), 2)), deallocator)
         e.if_(e.ne(p["sy_at"], p["sy_end"]), lambda: e.give(0))
+        e.var("sy_rec", e.alloc(SYSCALL_RECORD))
+        _ok(e, e.ne(p["sy_rec"], NONE))
+
+        def startup():
+            """The read named ``sy_pos .. sy_stop``, with exactly its machine operands, in operand order."""
+            e.if_(e.ne(p["sy_alloc"], 0), lambda: e.give(0))
+            for name, (number, operands) in STARTUP_READS.items():
+                def named(name=name):
+                    for k, value in enumerate(name):
+                        e.if_(e.ne(e.rd(e.add(p["sy_pos"], k)), value), lambda: e.set("sy_named", 0))
+
+                e.var("sy_named", e.flag(e.both(e.eq(p["sy_len"], len(name)), e.eq(p["m"], operands))))
+                e.if_(e.ne(p["sy_named"], 0), named)
+
+                def record(number=number, operands=operands):
+                    for slot, value in enumerate((number, operands, 0, *(word for k in range(operands) for word in (0, k)))):
+                        e.st(e.add(p["sy_rec"], slot), value)
+                    e.give(p["sy_rec"])
+
+                e.if_(e.ne(p["sy_named"], 0), record)
+            e.give(0)
+
+        e.if_(e.eq(p["sy_ok"], 0), startup)
+        e.set("sy_alloc", e.flag(e.eq(p["sy_alloc"], 1)))
 
         def byte():
             """The name byte at ``sy_pos``; 256 past its end."""
@@ -1061,8 +1099,6 @@ def _syscall(tables):
             """A nonempty decimal without a leading zero, at most ``limit``."""
             return e.both(e.ne(p[f"{name}_n"], 0), e.either(e.eq(p[f"{name}_n"], 1), e.ne(p[f"{name}_f"], 48)), e.eq(p[f"{name}_o"], 0))
 
-        e.var("sy_rec", e.alloc(SYSCALL_RECORD))
-        _ok(e, e.ne(p["sy_rec"], NONE))
         number("sy_nr", (1 << 31) - 1)
         e.if_(e.not_(canonical("sy_nr")), lambda: e.set("sy_ok", 0))
         e.st(p["sy_rec"], p["sy_nr"])
@@ -1297,6 +1333,18 @@ def _legality(e: E, isa, f, stream, raw_value_id, value_id):
 
     each_block(lambda block: visit(block, on_parameter=lambda position, _value: width(position), on_node=result_widths))
 
+    if getattr(isa, "PROCESS", False):
+        # S11 (ADR-267): the process entry has no machine parameters (an aggregate result's hidden pointer counts).
+        e.var("lg_process", e.flag(e.both(e.ne(_g(e, G_PROCESS), 0), e.eq(f, _at(e, G_ORDER, 0)))))
+
+        def process_entry():
+            e.var("lg_mp", e.flag(e.ne(p["lg_own"], 0)))
+            visit(e.rd(e.add(stream, 1)), on_parameter=lambda position, _value: e.if_(
+                e.ne(_type_width(e, type_at(position)), 0), lambda: e.set("lg_mp", e.add(p["lg_mp"], 1))))
+            _legal(e, isa, e.eq(p["lg_mp"], 0), "PROCESS-ENTRY", where, lambda: D.integer(e, 0), lambda: D.integer(e, p["lg_mp"]))
+
+        e.if_(e.ne(p["lg_process"], 0), process_entry)
+
     # (d) The lowering's checks, in block order: the entry block, then the others.
     def lowered():
         def call():
@@ -1343,6 +1391,22 @@ def _legality(e: E, isa, f, stream, raw_value_id, value_id):
             _ok(e, e.ne(p["lg_template"], NONE))
             _legal(e, isa, e.ne(p["lg_template"], 0), "SYSCALL", where, lambda: D.text(e, isa.SYSCALL_EXPECTED),
                    lambda: D.cid(e, _cid_words(e, p["lg_decl"])))
+            if getattr(isa, "PROCESS", False):
+                def startup():
+                    """S11: a startup read only in the process entry; ``arg_copy`` into a view under 2 GiB."""
+                    e.var("lg_sa", e.add(p["lg_ops"], 1))
+                    e.var("lg_sx", 1)
+
+                    def destination():
+                        raw_value_id("lg_sa")
+                        e.var("lg_sx", e.ld(e.add(p["ext"], value_id("lg_sa"))))
+                        e.set("lg_sx", e.flag(e.both(e.ne(p["lg_sx"], 0), e.lt(p["lg_sx"], 1 << 31))))
+
+                    e.if_(e.eq(e.ld(p["lg_template"]), isa.STARTUP_ARG_COPY), destination)
+                    _legal(e, isa, e.both(e.ne(p["lg_process"], 0), e.ne(p["lg_sx"], 0)), "STARTUP", where,
+                           lambda: D.text(e, isa.STARTUP_EXPECTED), lambda: D.cid(e, _cid_words(e, p["lg_decl"])))
+
+                e.if_(e.le(isa.STARTUP_ARGC, e.ld(p["lg_template"])), startup)
 
         checked_access = e.either(e.eq(p["lg_op"], int(Operation.CHECKED_LOAD_BITS_LE)), e.eq(p["lg_op"], int(Operation.CHECKED_STORE_BITS_LE)))
         rest = (lambda: e.if_(e.eq(p["lg_op"], int(Operation.CALL_FOREIGN)), foreign, other)) if getattr(isa, "SYSCALLS", False) else other
@@ -1688,6 +1752,14 @@ def _translate(tables, isa=None):
 
                 e.if_(e.eq(operation, int(Operation.CONSTANT)), constant, lambda: e.if_(e.eq(operation, int(Operation.CALL_DIRECT)), call, lambda: e.if_(
                     e.either(e.eq(operation, int(Operation.CHECKED_LOAD_BITS_LE)), e.eq(operation, int(Operation.CHECKED_STORE_BITS_LE))), checked)))
+                if getattr(isa, "PROCESS", False):
+                    def destination():
+                        """S11: a foreign call's second operand's view extent (``arg_copy``'s destination; 0 unknown)."""
+                        e.var("op1_at", e.add(p["nb_ops_at"], 1))
+                        raw_value_id("op1_at")
+                        e.set("extra", e.ld(e.add(p["ext"], value_id("op1_at"))))
+
+                    e.if_(e.both(e.eq(operation, int(Operation.CALL_FOREIGN)), e.le(2, e.rd(p["nb_ops_at"]))), destination)
                 _emit_out(e, p["extra"])
                 e.set("pa", p["next_node"])
                 e.set("nodes", e.add(p["nodes"], 1))
@@ -1844,6 +1916,12 @@ def _frontend(tables, isa):
         # The target's operation and terminator sets (a verified package of the ISA's architecture).
         e.var("ta", _at(e, G_PAY, target))
         identity = _payload_uleb(e, "ta")
+        if getattr(isa, "PROCESS", False):
+            # S11 (ADR-267): the entry is the process entry under the exec profile (callers admit only ``IDENTITIES``,
+            # and only that identity has its length).
+            e.var("t_identity", identity)
+            e.st(GLOBALS + G_PROCESS, e.flag(e.eq(p["t_identity"], len(isa.PROCESS))))
+            identity = p["t_identity"]
         e.set("ta", e.add(p["ta"], identity))
         fields = [_payload_uleb(e, "ta") for _ in range(6)]
         e.var("arch", fields[1])

@@ -24,11 +24,14 @@ from xax_selfhost_views_backend import (
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
     WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
     SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
-    collect_program_output,
+    collect_program_output, G_PROCESS, _g,
 )
 
 from xax_native import bootstrap_dir  # noqa: E402
-from xax_x86_64_views import ISA, NULL_ON_ERROR, SYSCALL_ARGUMENT_REGISTERS, SYSCALL_EXPECTED, X86_LOWERED_OPERATIONS  # noqa: E402
+from xax_x86_64_views import (  # noqa: E402
+    ARG_COPY_LOOP, EXEC_IDENTITY, ISA, NULL_ON_ERROR, STARTUP_ARG_COPY, STARTUP_ARGC, STARTUP_EXPECTED, SYSCALL_ARGUMENT_REGISTERS, SYSCALL_EXPECTED,
+    X86_LOWERED_OPERATIONS,
+)
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_backend.xax"
 RAX, RCX, RDX, RSP = 0, 1, 2, 4
@@ -40,7 +43,7 @@ PAD = 0xCC
 ALU = {Operation.ADD_WRAP: 0x01, Operation.SUB_WRAP: 0x29, Operation.BIT_XOR: 0x31, Operation.BIT_OR: 0x09, Operation.BIT_AND: 0x21}
 SETCC = {IntCompare.EQ: 0x94, IntCompare.NE: 0x95, IntCompare.ULT: 0x92, IntCompare.ULE: 0x96, IntCompare.UGT: 0x97,
          IntCompare.UGE: 0x93, IntCompare.SLT: 0x9C, IntCompare.SLE: 0x9E, IntCompare.SGT: 0x9F, IntCompare.SGE: 0x9D}
-JMP, JZ, JA, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0xE8, 1)  # opcode bytes, little-endian, and their count
+JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8, 1)  # opcode bytes, little-endian, and their count
 
 
 # -- byte emission and encoders (``xax_x86_64_views``) ---------------------------------------------
@@ -326,9 +329,15 @@ def _adjust(e: E, extension: int, frame):
     e.if_(e.lt(frame, 128), near, far)
 
 
+def _process(e: E):
+    """S11 (ADR-267): the function being lowered is the process entry (the first under the exec profile)."""
+    return e.both(e.ne(_g(e, G_PROCESS), 0), e.eq(e.hd(S_FN), 0))
+
+
 def _epilogue(tables):
     def build(e: E):
         p = e.p
+        e.if_(_process(e), lambda: (_bytes(e, 0x0B0F, 2), e.give(1)))  # ud2: the process ends only by exit_group
         saved = e.hd(S_SAVED)
         e.var("saved_at", e.ld(e.add(e.hd(S_AGG), A_OUT)))
         e.var("nsaved", 0)
@@ -350,7 +359,9 @@ class X86_64:
     ARCHITECTURE = 1
     DIAGNOSTICS = ISA  # S7b (ADR-179): this program decides target legality and writes the rejection diagnostics
     SYSCALLS = True  # S10a (ADR-264): Linux syscalls (``x86_64-linux-views-v2``)
-    EXTRA_RULES = (("SYSCALL", "FOREIGN_ABI"),)
+    EXTRA_RULES = (("SYSCALL", "FOREIGN_ABI"), ("STARTUP", "FOREIGN_ABI"), ("PROCESS-ENTRY", "ABI"))
+    PROCESS = EXEC_IDENTITY  # S11 (ADR-267): the exec profile's identity
+    STARTUP_ARGC, STARTUP_ARG_COPY, STARTUP_EXPECTED = STARTUP_ARGC, STARTUP_ARG_COPY, STARTUP_EXPECTED
     SYSCALL_EXPECTED = SYSCALL_EXPECTED
     LOWERED = X86_LOWERED_OPERATIONS
     LOWERED_NAME = "x86-64 views subset"
@@ -374,7 +385,8 @@ class X86_64:
 
     @staticmethod
     def frame_size(e: E, cursor):
-        return e.sub(e.and_(e.add(cursor, 8 + 15), (1 << 64) - 16), 8)
+        """rsp is 8 mod 16 on entry, or 0 for the process entry (no return address)."""
+        return e.sel(_process(e), e.and_(e.add(cursor, 15), (1 << 64) - 16), e.sub(e.and_(e.add(cursor, 8 + 15), (1 << 64) - 16), 8))
 
     @staticmethod
     def prologue(e: E, p, index, saved, entry_base, entry) -> None:
@@ -622,8 +634,45 @@ def _block(tables):
 
             case((Operation.CALL_DIRECT,), call)
 
+            def machine_operand(k):
+                """The ``k``-th operand with a machine width (NONE declines)."""
+                e.var("mo_seen", 0)
+                e.var("mo_ref", NONE)
+                e.for_("k", 0, operands, lambda: e.if_(e.ne(_value(e, S_WIDTH, operand(p["k"])), 0), lambda: (
+                    e.if_(e.eq(p["mo_seen"], k), lambda: e.set("mo_ref", operand(p["k"]))), e.set("mo_seen", e.add(p["mo_seen"], 1)))))
+                _ok(e, e.ne(p["mo_ref"], NONE))
+                return p["mo_ref"]
+
+            def first_result():
+                e.var("sc_written", 0)
+                e.for_("q", 0, results, lambda: e.if_(e.both(e.ne(_value(e, S_WIDTH, e.add(result, p["q"])), 0), e.eq(p["sc_written"], 0)), lambda: (
+                    _call(e, "write", e.add(result, p["q"]), RAX), e.set("sc_written", 1))))
+
+            def startup():
+                """S11: ``xax_x86_64_views``'s ``_startup``: ``argc`` at the entry RSP; ``arg_copy``'s bounded byte loop."""
+                def copy():
+                    e.set_hd(S_TRAP_USED, 1)
+                    _read_into(e, machine_operand(0), RAX)
+                    _read_into(e, machine_operand(1), RDX)
+                    _st(e, 0x8D, T1, e.hd(S_FRAME))  # lea r11, [rsp + frame]: &argc
+                    _bytes(e, 0x033B49, 3)  # cmp rax, [r11]
+                    _jump(e, JAE, e.hd(S_TRAP))
+                    _bytes(e, 0xC931_08C35C8B4D, 7)  # mov r11, [r11 + rax*8 + 8]; xor ecx, ecx
+                    _bytes(e, 0xF98148, 3)
+                    _bytes(e, extra, 4)  # cmp rcx, extent
+                    for at in range(0, len(ARG_COPY_LOOP), 8):
+                        chunk = ARG_COPY_LOOP[at:at + 8]
+                        _bytes(e, int.from_bytes(chunk, "little"), len(chunk))
+
+                e.if_(e.eq(attribute(0), STARTUP_ARGC), lambda: _st(e, 0x8B, RAX, e.hd(S_FRAME)), copy)
+                first_result()
+
             def foreign():
-                """S10a: ``xax_x86_64_views``'s ``_syscall``: rsi and rdi pushed, the template placed, ``syscall``."""
+                """S10a: ``xax_x86_64_views``'s ``_syscall``: rsi and rdi pushed, the template placed, ``syscall``; S11: a
+                startup read."""
+                e.if_(e.le(STARTUP_ARGC, attribute(0)), startup, syscall)
+
+            def syscall():
                 _emit(e, 0x56)
                 _emit(e, 0x57)  # push rsi; push rdi
 
@@ -653,9 +702,7 @@ def _block(tables):
                 _bytes(e, 0x050F, 2)  # syscall
                 e.if_(e.ne(attribute(2), 0), lambda: [_emit(e, byte) for byte in NULL_ON_ERROR])  # S10b: a nullable allocator result
                 _bytes(e, 0x5E5F, 2)  # pop rdi; pop rsi
-                e.var("sc_written", 0)
-                e.for_("q", 0, results, lambda: e.if_(e.both(e.ne(_value(e, S_WIDTH, e.add(result, p["q"])), 0), e.eq(p["sc_written"], 0)), lambda: (
-                    _call(e, "write", e.add(result, p["q"]), RAX), e.set("sc_written", 1))))
+                first_result()
 
             case((Operation.CALL_FOREIGN,), foreign)
             # S10b (ADR-265): a heap view's pointer and a narrowed pointer are their operand's address.
