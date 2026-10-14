@@ -46,6 +46,7 @@ from xax_compiler import (
     bits_type,
     heap_view_type,
     pointer_type,
+    TerminatorKind,
     x86_64_linux_exec_target,
 )
 from xax_graph_builder import program_store
@@ -55,6 +56,9 @@ from xax_structured import B64, Proc
 import xax_selfhost_diagnostics as D
 
 STORE_PATH = bootstrap_dir() / "xax_compiler_driver.xax"
+GENERAL_STORE_PATH = bootstrap_dir() / "xax_compiler_driver_general.xax"  # S12e.2 (ADR-276)
+GENERAL_IDENTITIES = (b"x86_64-linux-elf-exec-v1", b"x86_64-linux-elf-dynexec-v1")
+EXTENTS_EXTENT, TRAPS_EXTENT, MEMBERS_EXTENT = 1 << 25, 1 << 22, 1 << 22
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
 ARGUMENTS_EXTENT = 4096
 CHUNK = 1 << 16
@@ -172,7 +176,9 @@ class _Driver(E):
 D_MEM = None  # the memory effect type, bound by ``build_driver_program``
 
 
-def build_driver_program() -> tuple[StoreReader, SemanticObject]:
+def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticObject]:
+    """The driver's store and entry; with ``general`` (S12e.2, ADR-276), the general driver: the same driver, which also
+    lowers the Linux ELF profiles with the general x86-64 backend program."""
     global D_MEM
     from xax_linux import linux_api
 
@@ -211,11 +217,17 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         "arguments": (bytes_rw, ARGUMENTS_EXTENT, 1),
         "argument": (bytes_rw, ARGUMENTS_EXTENT, 1),
     }
+    if general:
+        # S12e.2: per graph, the verifier's pointer extents and its trap payload heads (``general_object_table``).
+        buffers["extents"] = (backend_in_rw, EXTENTS_EXTENT, 8)
+        buffers["traps"] = (backend_in_rw, TRAPS_EXTENT, 8)
+        buffers["members"] = (backend_in_rw, MEMBERS_EXTENT, 8)  # the group member functions the store does not hold
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
              "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp",
-             "arguments": "ap", "argument": "zp"}
+             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp"}
     views = {}
-    for name, pointer_name in names.items():
+    for name in buffers:
+        pointer_name = names[name]
         stem = pointer_name[0]
         views[name] = (pointer_name, f"{stem}v", f"{stem}m", 1 if buffers[name][0] == bytes_rw else 8)
     PROCESS = api.process_effect
@@ -334,6 +346,11 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     decoder_reader, decoder = S.load_decoder_program()
     graph_reader, graph_decoder = G.load_graph_decoder_program()
     backend_reader, backend = X.load_backend_program()
+    if general:
+        import xax_selfhost_general_image as GI
+        import xax_selfhost_x86_64_general as GEN
+
+        general_reader, general_program = GEN.load_general_program()
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
 
@@ -647,6 +664,105 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
         w.if_(w.both(running(), w.ne(w.ld(1), 1)), store)
 
+    def side_put(view: str, cursor: str, limit: int, value):
+        w.if_(w.lt(w[cursor], limit), lambda: w.store(view, w.mul(w[cursor], 8), value, 8), lambda: stop(DECLINED))
+        w.set(cursor, w.add(w[cursor], 1))
+
+    def blk(b, field: int):
+        return work_word(w.add(SM.BLK, w.add(w.mul(b, SM.BLOCK_WORDS), field)))
+
+    def nod(n, field: int):
+        return work_word(w.add(SM.NODE, w.add(w.mul(n, SM.NODE_WORDS), field)))
+
+    if general:
+        x_words, x_graphs = w.let("x_words", 0), w.let("x_graphs", 0)
+        j_words, j_graphs = w.let("j_words", 0), w.let("j_graphs", 0)
+
+    def collect(o: str):
+        """S12e.2: graph ``o``'s pointer extents (``_parse_graph(...).pointer_extents``: the facts engine's when it
+        accepted, by value reference) and its nonempty trap payloads' first three bytes, from the workspace's parse."""
+        def xput(value):
+            side_put("extents", x_words, EXTENTS_EXTENT // 8, value)
+
+        def jput(value):
+            side_put("traps", j_words, TRAPS_EXTENT // 8, value)
+
+        for word in range(4):
+            xput(w.cid_word("data", record_word(w[o], 2), word))
+        x_count_at, x_count = w.let("x_count_at", w[x_words]), w.let("x_count", 0)
+        xput(0)
+
+        def extents():
+            base = w.let("x_base", w.ld(FA.HEADER + FA.H_EXTENTS))
+
+            def entry(tag: int, block, index, result, value_id):
+                extent = w.let("x_extent", w.ld(w.add(w[base], value_id)))
+                w.if_(w.ne(w[extent], 0), lambda: (xput(tag), xput(block), xput(index), xput(result), xput(w.sub(w[extent], 1)),
+                                                   w.set(x_count, w.add(w[x_count], 1))))
+
+            b, blocks = w.let("x_block", 0), w.let("x_blocks", work_word(SM.CTRL + SM.C_BLOCKS))
+
+            def parameters():
+                q = w.let("x_q", 0)
+
+                def parameter():
+                    entry(0, w[b], w[q], 0, w.add(blk(w[b], SM.B_BASE), w[q]))
+                    w.set(q, w.add(w[q], 1))
+
+                w.while_(lambda: w.lt(w[q], blk(w[b], SM.B_PARAMS)), parameter)
+                w.set(b, w.add(w[b], 1))
+
+            w.while_(lambda: w.lt(w[b], w[blocks]), parameters)
+            n, nodes = w.let("x_node", 0), w.let("x_nodes", work_word(SM.CTRL + SM.C_NODES))
+
+            def results():
+                block = w.let("x_nb", nod(w[n], SM.N_BLOCK))
+                index = w.let("x_ni", w.sub(w[n], blk(w[block], SM.B_FIRST)))
+                r = w.let("x_r", 0)
+
+                def result():
+                    entry(1, w[block], w[index], w[r], w.add(nod(w[n], SM.N_BASE), w[r]))
+                    w.set(r, w.add(w[r], 1))
+
+                w.while_(lambda: w.lt(w[r], nod(w[n], SM.N_NRES)), result)
+                w.set(n, w.add(w[n], 1))
+
+            w.while_(lambda: w.lt(w[n], w[nodes]), results)
+
+        w.if_(w.eq(w.ld(FA.HEADER + FA.H_STATUS), FA.ACCEPTED), extents)
+        w.if_(w.lt(w[x_count_at], EXTENTS_EXTENT // 8), lambda: w.store("extents", w.mul(w[x_count_at], 8), w[x_count], 8))
+        w.set(x_graphs, w.add(w[x_graphs], 1))
+
+        j_start = w.let("j_start", w[j_words])
+        for word in range(4):
+            jput(w.cid_word("data", record_word(w[o], 2), word))
+        j_count_at, j_count = w.let("j_count_at", w[j_words]), w.let("j_count", 0)
+        jput(0)
+        body_at = w.let("j_body", record_word(w[o], 7))
+        b2, blocks2 = w.let("j_block", 0), w.let("j_blocks", work_word(SM.CTRL + SM.C_BLOCKS))
+
+        def terminator():
+            at = w.let("j_at", blk(w[b2], SM.B_TERM))
+            kind = w.let("j_kind", w.load("vtable", w.mul(w[at], 8), 8))
+            size = w.let("j_size", w.load("vtable", w.mul(w.add(w[at], 1), 8), 8))
+
+            def trap():
+                offset = w.let("j_offset", w.load("vtable", w.mul(w.add(w[at], 2), 8), 8))
+                head = w.let("j_head", w.sel(w.lt(w[size], 3), w[size], 3))
+                jput(w[b2])
+                jput(w[head])
+                k = w.let("j_k", 0)
+                w.while_(lambda: w.lt(w[k], w[head]), lambda: (jput(w.load("data", w.add(w[body_at], w.add(w[offset], w[k])))), w.set(k, w.add(w[k], 1))))
+                w.set(j_count, w.add(w[j_count], 1))
+
+            w.if_(w.both(w.eq(w[kind], int(TerminatorKind.TRAP)), w.ne(w[size], 0)), trap)
+            w.set(b2, w.add(w[b2], 1))
+
+        w.while_(lambda: w.lt(w[b2], w[blocks2]), terminator)
+        w.if_(w.eq(w[j_count], 0), lambda: w.set(j_words, w[j_start]), lambda: (
+            w.if_(w.lt(w[j_count_at], TRAPS_EXTENT // 8), lambda: w.store("traps", w.mul(w[j_count_at], 8), w[j_count], 8)),
+            w.set(j_graphs, w.add(w[j_graphs], 1))))
+
     def graph_verdicts():
         """``_parse_graph`` for every graph: CFG (branch targets, uses), then typing, facts, and linear flow."""
         o = w.let("graph_object", 0)
@@ -713,6 +829,8 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
                                                           lambda: stop(DECLINED)))
 
                 when(verdicts)
+                if general:
+                    when(lambda: collect(o))
 
             w.if_(w.eq(record_word(w[o], 4), int(Kind.GRAPH_FRAGMENT)), graph)
             w.set(o, w.add(w[o], 1))
@@ -793,6 +911,83 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     k2 = w.let("listed", 0)
     w.while_(lambda: w.both(w.lt(w[k2], w[objects]), running()), lambda: (table_object(w[k2]), w.set(k2, w.add(w[k2], 1))))
 
+    if general:
+        m_words, m_count = w.let("m_words", 0), w.let("m_count", 0)
+
+    def group_members():
+        """``general_object_table``'s group member functions (``group_member_function``: kind FUNCTION, the group as
+        its one reference, body ``uleb(0) uleb(member)``) the store does not hold, each CID derived with the S2 hash;
+        in store order, then member order."""
+        def mput(value):
+            side_put("members", m_words, MEMBERS_EXTENT // 8, value)
+
+        g = w.let("m_group", 0)
+        base = len(SEMANTIC_DOMAIN)
+        body_at = base + 3 + CID_SIZE  # the body's length byte; the body follows
+        cid_at = w.let("m_cid_at", w.add(w[length], CID_SIZE))  # past the container digest (``limit`` keeps room)
+
+        def each():
+            def group():
+                at = w.let("m_at", record_word(w[g], 7))
+                count, shift, more = w.let("m_n", 0), w.let("m_shift", 1), w.let("m_more", 1)
+
+                def byte():
+                    value = w.let("m_byte", w.load("data", w[at]))
+                    w.set(count, w.add(w[count], w.mul(w.and_(w[value], 127), w[shift])))
+                    w.set(shift, w.mul(w[shift], 128))
+                    w.set(more, w.flag(w.le(128, w[value])))
+                    w.set(at, w.add(w[at], 1))
+
+                w.while_(lambda: w.ne(w[more], 0), byte)
+                m = w.let("m_member", 0)
+
+                def member():
+                    for k, data_byte in enumerate(SEMANTIC_DOMAIN):
+                        w.store("object", k, data_byte)
+                    for k, data_byte in enumerate((int(Kind.FUNCTION), 1, 1)):  # kind, schema version, one reference
+                        w.store("object", base + k, data_byte)
+                    w.copy("data", record_word(w[g], 2), "object", base + 3, CID_SIZE)
+                    w.store("object", body_at + 1, 0)
+                    n, v, first = w.let("m_length", 1), w.let("m_v", w[m]), w.let("m_first", 1)
+
+                    def encode():
+                        low = w.let("m_low", w.urem(w[v], 128))
+                        w.set(v, w.udiv(w[v], 128))
+                        w.store("object", w.add(body_at + 1, w[n]), w.add(w[low], w.mul(w.flag(w.ne(w[v], 0)), 128)))
+                        w.set(n, w.add(w[n], 1))
+                        w.set(first, 0)
+
+                    w.while_(lambda: w.either(w.ne(w[first], 0), w.ne(w[v], 0)), encode)
+                    w.store("object", body_at, w[n])
+                    hash_span("object", 0, w.add(body_at + 1, w[n]))
+                    digest_to("data", w[cid_at])
+                    found = find(w[cid_at])
+
+                    def extra():
+                        mput(int(Kind.FUNCTION))
+                        mput(1)
+                        for word in range(4):
+                            mput(w.cid_word("data", record_word(w[g], 2), word))
+                        for word in range(4):
+                            mput(w.cid_word("data", w[cid_at], word))
+                        mput(w[n])
+                        q = w.let("m_q", 0)
+                        w.while_(lambda: w.lt(w[q], w[n]), lambda: (mput(w.load("object", w.add(body_at + 1, w[q]))), w.set(q, w.add(w[q], 1))))
+                        w.set(m_count, w.add(w[m_count], 1))
+
+                    w.if_(w.eq(w[found], w[objects]), extra)
+                    w.set(m, w.add(w[m], 1))
+
+                w.while_(lambda: w.both(w.lt(w[m], w[count]), running()), member)
+
+            w.if_(w.eq(record_word(w[g], 4), int(Kind.RECURSION_GROUP)), group)
+            w.set(g, w.add(w[g], 1))
+
+        w.while_(lambda: w.both(w.lt(w[g], w[objects]), running()), each)
+
+    if general:
+        when(group_members)
+
     # -- the target package: its root object, checked like any object, then appended ----------------------------
     read_store(1)
     when(decode_container)
@@ -807,6 +1002,8 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     when(target_record)
 
     executable = w.let("executable", 0)  # S11: the target is the exec profile: the output is an ELF executable
+    if general:
+        linux = w.let("linux", 0)  # S12e.2: the target is a Linux ELF profile: the general backend lowers
 
     def target_profile():
         """``compile_x86_64_views``: a target object whose identity is a views profile, else ``X86_64_VIEWS-TARGET-PROFILE``."""
@@ -819,6 +1016,10 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
         w.if_(w.eq(w[size], len(EXEC_IDENTITY)), lambda: w.set(executable, w.same_constant("data", w[start], EXEC_IDENTITY)))
         for identity in VIEWS_IDENTITIES:
             w.if_(w.eq(w[size], len(identity)), lambda identity=identity: w.set(known, w.or_(w[known], w.same_constant("data", w[start], identity))))
+        if general:
+            for identity in GENERAL_IDENTITIES:
+                w.if_(w.eq(w[size], len(identity)), lambda identity=identity: w.set(linux, w.or_(w[linux], w.same_constant("data", w[start], identity))))
+            w.set(known, w.or_(w[known], w[linux]))
         printable = w.let("printable", 1)
         q = w.let("q", 0)
         w.while_(lambda: w.lt(w[q], w[size]), lambda: (w.set(printable, w.and_(w[printable], w.flag(w.both(
@@ -864,13 +1065,40 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     when(target_entry)
 
+    def general_sections():
+        """``general_object_table`` after the target: the group member functions the store does not hold, the pointer
+        extents, no audit, and the trap payload heads."""
+        put(w[m_count])
+        q0 = w.let("m_copy", 0)
+        w.while_(lambda: w.both(w.lt(w[q0], w[m_words]), running()), lambda: (put(w.load("members", w.mul(w[q0], 8), 8)), w.set(q0, w.add(w[q0], 1))))
+        put(w[x_graphs])
+        q = w.let("x_copy", 0)
+        w.while_(lambda: w.both(w.lt(w[q], w[x_words]), running()), lambda: (put(w.load("extents", w.mul(w[q], 8), 8)), w.set(q, w.add(w[q], 1))))
+        put(0)
+        put(w[j_graphs])
+        q2 = w.let("j_copy", 0)
+        w.while_(lambda: w.both(w.lt(w[q2], w[j_words]), running()), lambda: (put(w.load("traps", w.mul(w[q2], 8), 8)), w.set(q2, w.add(w[q2], 1))))
+
+    if general:
+        when(lambda: w.if_(w.ne(w[linux], 0), general_sections))
+
     # -- the backend -------------------------------------------------------------------------------------------
     def lower():
-        results = proc.op(Operation.CALL_DIRECT, (*w.triple("table", w.narrowed("table", in_pointer)), *w.triple("image")), (B64, *VIEW_TYPES), entity=backend)
-        w.take("table", results[1:4])
-        w.take("image", results[4:])
+        def call(program):
+            results = proc.op(Operation.CALL_DIRECT, (*w.triple("table", w.narrowed("table", in_pointer)), *w.triple("image")), (B64, *VIEW_TYPES),
+                              entity=program)
+            w.take("table", results[1:4])
+            w.take("image", results[4:])
+
+        if general:
+            w.if_(w.ne(w[linux], 0), lambda: call(general_program), lambda: call(backend))
+        else:
+            call(backend)
         code = w.let("backend_status", w.ld(0))
         w.if_(w.eq(w[code], 1), lambda: None, lambda: w.if_(w.eq(w[code], D.REJECT), lambda: stop(REJECTED), lambda: stop(DECLINED)))
+        if general:
+            # The general program decided the closure but not every function's code: the bootstrap would assemble.
+            w.if_(w.both(running(), w.ne(w[linux], 0), w.ne(w.ld(GI.IMAGE_AT), 1)), lambda: stop(DECLINED))
 
     when(lower)
 
@@ -916,7 +1144,18 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
 
     final = w.let("final", 0)
     w.set(final, w[status])
-    w.if_(w.eq(w[status], IMAGE), lambda: emit(WORDS_AT, w.ld(1), header=True),
+    def image_out():
+        def elf():
+            """S12e.2: the ELF file of the general program's image record (status, packed code, packed ELF)."""
+            at = w.let("elf_at", w.add(GI.IMAGE_AT + 2, w.udiv(w.add(w.ld(GI.IMAGE_AT + 1), 7), 8)))
+            emit(w.add(w[at], 1), w.ld(w[at]))
+
+        if general:
+            w.if_(w.ne(w[linux], 0), elf, lambda: emit(WORDS_AT, w.ld(1), header=True))
+        else:
+            emit(WORDS_AT, w.ld(1), header=True)
+
+    w.if_(w.eq(w[status], IMAGE), image_out,
           lambda: w.if_(w.eq(w[status], REJECTED), lambda: emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8))))
     w.if_(w.eq(w[status], FAILED), lambda: w.set(final, FAILED))
 
@@ -930,7 +1169,7 @@ def build_driver_program() -> tuple[StoreReader, SemanticObject]:
     process = proc.op1(Operation.CALL_FOREIGN, (proc.op1(Operation.INT_TRUNCATE, (w[final],), B32), proc["process"]), PROCESS, entity=api.exit_group)
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
-    readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader)
+    readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader, *((general_reader,) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
     objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *component_objects, *api.types, *startup.symbols, WRITE_RW)
@@ -978,20 +1217,30 @@ def in_view_extent(view: SemanticObject) -> int:
 out_view_extent = in_view_extent
 
 
-def load_driver_program() -> tuple[StoreReader, SemanticObject]:
+def build_general_driver_program() -> tuple[StoreReader, SemanticObject]:
+    """S12e.2 (ADR-276): the general driver's store and entry."""
+    return build_driver_program(general=True)
+
+
+def load_driver_program(general: bool = False) -> tuple[StoreReader, SemanticObject]:
     from xax_native import verify_component_store
 
-    reader = StoreReader(STORE_PATH.read_bytes())
-    verify_component_store(reader, "compiler-driver")
+    reader = StoreReader((GENERAL_STORE_PATH if general else STORE_PATH).read_bytes())
+    verify_component_store(reader, "compiler-driver-general" if general else "compiler-driver")
     module = next(item for item in reader.objects() if item.kind == Kind.MODULE)
     function = next(reader.get(cid) for cid in module.references if reader.get(cid).kind == Kind.FUNCTION)
     return reader, function
 
 
-def write_driver_store() -> bytes:
-    reader, _function = build_driver_program()
-    STORE_PATH.write_bytes(reader.data)
+def write_driver_store(general: bool = False) -> bytes:
+    reader, _function = build_driver_program(general)
+    (GENERAL_STORE_PATH if general else STORE_PATH).write_bytes(reader.data)
     return reader.data
+
+
+def write_general_driver_store() -> bytes:
+    """S12e.2 (ADR-276): the general driver's store."""
+    return write_driver_store(general=True)
 
 
 def target_package(target: SemanticObject) -> bytes:

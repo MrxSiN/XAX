@@ -29,12 +29,15 @@ import xax_selfhost_diagnostics as D
 # arena, which the largest function's liveness bitsets nearly filled, gains 3M words.
 WORDS_AT, WORDS_LIMIT = 1 << 20, 5 << 20  # code: one word per RISC-V instruction or x86-64 byte
 JUMPS_AT, JUMPS_LIMIT = 6 << 20, 1 << 19  # 3 words per jump
-RANGES_AT, RANGES_LIMIT = (6 << 20) + (1 << 19), 2 << 20  # 5 words per range
-META_AT = (8 << 20) + (1 << 19)  # entry machine parameter and return widths; the function order
+# ADR-276: the ranges and the stream doubled, so the general driver (the S10 driver with the general x86-64 backend
+# program: 856k ranges, a 9M-word stream) fits; the stream starts after the diagnostic record (DIAG_AT), and the arena
+# keeps 36M words.
+RANGES_AT, RANGES_LIMIT = (6 << 20) + (1 << 19), 4 << 20  # 5 words per range
+META_AT = (10 << 20) + (1 << 19)  # entry machine parameter and return widths; the function order
 # ADR-266: the stream holds the compiler driver's closure (5M words); the output view doubled to 64M words.
-STREAM_AT, STREAM_END = 9 << 20, 17 << 20  # the front end's internal stream (S5a format), read by the code generator
+STREAM_AT, STREAM_END = 12 << 20, 28 << 20  # the front end's internal stream (S5a format), read by the code generator
 # S6c: the arena takes the rest; each function's scratch is reclaimed after it is lowered.
-ARENA_AT, ARENA_END = 17 << 20, HEADER - 1
+ARENA_AT, ARENA_END = 28 << 20, HEADER - 1
 # Backend state in the header (after the argument words).
 (S_COUNT, S_JUMPS, S_RANGES, S_FN, S_OFFSETS, S_REG, S_SLOT, S_WIDTH, S_TRAP, S_TRAP_USED, S_POW, S_FRAME, S_TEMPS,
  S_SAVED, S_BLOCK_LABELS, S_FALSE_LABELS, S_BASE, S_BLOCK_AT, S_LEVELS, S_AGG) = range(44, 64)

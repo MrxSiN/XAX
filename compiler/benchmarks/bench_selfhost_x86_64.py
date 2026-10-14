@@ -75,8 +75,11 @@ def measure() -> dict:
             X.verify_store(reader)
         except X.XaxError:
             bootstrap_ok = False
-        b3.append({"store": path.name, "objects": len(listed), "store_verdict": bool(native and native[0]), "bootstrap_accepts": bootstrap_ok,
-                   "agrees": bool(native) and native[0] == bootstrap_ok})
+        row = {"store": path.name, "objects": len(listed), "store_verdict": bool(native and native[0]), "bootstrap_accepts": bootstrap_ok,
+               "agrees": bool(native) and native[0] == bootstrap_ok}
+        if native is None:  # ADR-276: an input beyond the verifier's capacity: the image makes no claim, so none is compared
+            row.update(store_verdict=None, agrees=None, native_declined=True)
+        b3.append(row)
 
     backend_reader, backend_entry, gen2 = images["xax_selfhost_x86_64_backend"]
     runner = _NativeRunner(gen2.code, gen2.entry_offset)

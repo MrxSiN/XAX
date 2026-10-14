@@ -186,6 +186,18 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12e.2 the general driver — 2026-10-14 (ADR-276)
+
+- Done:
+  - `build_driver_program(general=True)` / `write_general_driver_store` (`xax_compiler_driver_general.xax`); with `general=False` the views driver is byte-identical, so keep every general-only `w.let` under `if general:` (the structured builder threads every live name).
+  - During S10e graph verification, `collect` copies each graph's pointer extents (facts output `H_EXTENTS`, value ids in block parameter, then node result order) and trap heads (stream `[4, size, offset]`, body bytes) into side buffers.
+  - `group_members` derives the missing `group_member_function` CIDs with the hash before the target store overwrites `data`.
+  - `lower` calls the general program for the Linux identities, and the output is the ELF from the image record.
+- The S10e marshal (`_callee_aux`) now resolves group member callees through the group's references (`c_holder`).
+- Views backend layout (ADR-276): ranges 4M words, stream 12M..28M, arena from 28M; `GLOBALS` moved with the arena.
+- Evidence: the regenerated backends need `bench_selfhost_x86_64.py --write` and `refresh_selfhost_store.py xax_selfhost_riscv64_backend --write` (the refresh script does not know the x86-64 backend).
+- Next: S12e.3. Grow the typing/verifier input views (the general driver's verifier table is 28.3M words against 16.8M), so the general driver verifies and rebuilds itself and can replace the views driver. Then S12f.2.
+
 ## S12f.1 the frame lowering — 2026-10-14 (ADR-275)
 
 - Done: `compiler/src/xax_selfhost_general_frame.py`:
@@ -195,7 +207,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - The view calls `frame_fallback` before `write_emission`. The frame tables are `T_FSLOT`..`T_FESC` (48..54, `VALUE_TABLES` = 55).
 - `_FN` names are global. The view's block `layout` shadows the front end's ABI `layout`, so the frame code registers it as `abi_layout`. Keep the `em_`/`fr_` prefixes.
 - Keep each graph small. A ~300 KB graph (the whole float group) did not converge in the facts engine, so the S10 driver declined the store. Split such functions.
-- Next: S12e.2 (the S11 driver runs the general backend) and S12f.2 (atomics, by-reference aggregate arguments and results, and the legacy register path).
+- Next: S12e.2 (the S11 driver runs the general backend) and S12f.2 (atomics, by-reference aggregate arguments and results, and the legacy register path). S12e.2: see above.
 
 ## S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
 

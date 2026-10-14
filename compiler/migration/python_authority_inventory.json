@@ -276,7 +276,7 @@
     },
     "xax_selfhost_driver.py": {
       "class": "G",
-      "note": "Builder of the canonical S10 driver store (ADR-265, ADR-266)."
+      "note": "Builder of the canonical S10 driver store (ADR-265, ADR-266) and of the S12e.2 general driver store (ADR-276)."
     },
     "xax_selfhost_semantic.py": {
       "class": "G",

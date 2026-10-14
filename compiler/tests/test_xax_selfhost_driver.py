@@ -107,6 +107,11 @@ class DriverTests(unittest.TestCase):
         for path in sorted(glob.glob(str(BOOTSTRAP / "*.xax"))):
             data = Path(path).read_bytes()
             with self.subTest(store=Path(path).name):
+                if Path(path).name == "xax_compiler_driver_general.xax":
+                    # S12e.2 (ADR-276): its verifier object table exceeds the typing program's input view; the driver
+                    # makes no claim.
+                    self.assertEqual(self.run_driver(data), ("declined", None))
+                    continue
                 expected = _reference(data, target)
                 self.assertEqual(self.run_driver(data), expected)
                 outcomes.add(expected[0])

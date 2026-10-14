@@ -23,6 +23,7 @@ BUILDERS = (
     ("xax_selfhost_riscv64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_general", "build_general_program"),
+    ("xax_selfhost_driver", "build_general_driver_program", "GENERAL_STORE_PATH"),
 )
 
 
@@ -35,10 +36,10 @@ def _build(module, builder) -> bytes:
         xax_compiler._TYPING_BUILDING = building
 
 
-@pytest.mark.parametrize("name,builder", BUILDERS, ids=[name for name, _ in BUILDERS])
-def test_committed_store_regenerates_byte_identically(name, builder):
+@pytest.mark.parametrize("name,builder,path", [(item + ("STORE_PATH",))[:3] for item in BUILDERS], ids=[item[1] if len(item) > 2 else item[0] for item in BUILDERS])
+def test_committed_store_regenerates_byte_identically(name, builder, path):
     module = importlib.import_module(name)
     first, second = _build(module, builder), _build(module, builder)
     assert first == second, f"{name}: two builds in one process differ"
-    assert first == module.STORE_PATH.read_bytes(), f"{name}: committed store is stale; regenerate it with its write_* function"
+    assert first == getattr(module, path).read_bytes(), f"{name}: committed store is stale; regenerate it with its write_* function"
     xax_compiler.verify_store(xax_compiler.StoreReader(first))

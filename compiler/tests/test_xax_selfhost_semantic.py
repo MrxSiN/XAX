@@ -3,7 +3,8 @@
 Each ``xax_selfhost_semantic`` function is lowered alone and run natively over the store verifier's object table
 (``object_table``): the object index, the type and constant verdict stream (``marshal(objects=...)``), and, for every
 graph fragment, the CFG program's input (``_cfg_tables``, ``_cfg_uses``) and the typing-and-facts stream (``marshal``
-with the facts section and callee summaries and links) must be word-identical on committed stores.
+with the facts section and callee summaries and links) must be word-identical on committed stores and on jsonmin, whose
+direct calls reach recursion group member functions (S12e.2, ADR-276).
 """
 
 from __future__ import annotations
@@ -15,6 +16,8 @@ import unittest
 from pathlib import Path
 
 import xax_compiler as X
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 BOOTSTRAP = Path(__file__).resolve().parents[1] / "bootstrap"
@@ -56,9 +59,12 @@ class SemanticMarshalTests(unittest.TestCase):
         from xax_selfhost_typing import marshal, type_info_from
         from xax_selfhost_verify import object_table
 
+        from benchmarks.jsonmin import build_jsonmin
+
         S, out = self.S, self.output
-        for store in STORES:
-            reader = X.StoreReader((BOOTSTRAP / store).read_bytes())
+        stores = [(store, X.StoreReader((BOOTSTRAP / store).read_bytes())) for store in STORES]
+        stores.append(("jsonmin", build_jsonmin().reader))  # S12e.2: direct calls to recursion group member functions
+        for store, reader in stores:
             listed = list(reader.objects())
             index = {item.cid: position for position, item in enumerate(listed)}
             objects = {item.cid: item for item in listed}

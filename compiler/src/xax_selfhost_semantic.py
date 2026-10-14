@@ -573,8 +573,52 @@ def _callee_aux(e: E, cursor: str, end: int):
         e.var("cg", e.sel(e.lt(value, _nrefs(e, p["cf"])), _ref(e, p["cf"], value), NONE))
         e.var("cg_kind", e.sel(e.eq(p["cg"], NONE), 0, _kind(e, e.sel(e.eq(p["cg"], NONE), 0, p["cg"]))))
         e.set("cb_at", e.add(p["cb_at"], size))
-        _decline(e, e.eq(p["cg_kind"], GROUP_))  # a group member callee: its interface is the member's (not modelled here)
+        e.var("c_holder", p["cf"])  # the object whose references the interface's type indices name
         e.var("c_ok", e.flag(e.both(ok, e.eq(p["cg_kind"], GRAPH_))))
+
+        def member():
+            """S12e.2 (ADR-276): a group member function's interface is the member's (``_decode_function_interface``):
+            its graph and types are indices into the group's references; a member index out of range has none."""
+            index, index_size, index_ok = _uleb(e, p["cb_at"])
+            e.var("cm", index)
+            e.var("cm_ok", e.flag(index_ok))
+            e.set("cb_at", e.add(_payload(e, p["cg"]), 1))
+            count, count_size, count_ok = _uleb(e, p["cb_at"])
+            e.var("cm_n", count)
+            e.set("cb_at", e.add(p["cb_at"], count_size))
+            e.set("cm_ok", e.and_(p["cm_ok"], e.flag(e.both(count_ok, e.lt(p["cm"], p["cm_n"])))))
+
+            def skip_uleb():
+                _value, step, _ok = _uleb(e, p["cb_at"])
+                e.set("cb_at", e.add(p["cb_at"], step))
+
+            def skip_list():
+                n, step, _ok = _uleb(e, p["cb_at"])
+                e.var("cm_list", n)
+                e.set("cb_at", e.add(p["cb_at"], step))
+                e.for_("cml", 0, p["cm_list"], skip_uleb)
+
+            def skip_member():
+                skip_uleb()  # the graph position
+                skip_list()  # the parameters
+                skip_list()  # the returns
+
+            e.for_("cmq", 0, e.sel(e.ne(p["cm_ok"], 0), p["cm"], 0), skip_member)
+
+            def found():
+                position, position_size, position_ok = _uleb(e, p["cb_at"])
+                e.var("cm_pos", position)
+                e.var("cm_pos_ok", e.flag(position_ok))
+                e.set("cb_at", e.add(p["cb_at"], position_size))
+                e.set("c_holder", p["cg"])
+                e.set("cg", e.sel(e.lt(p["cm_pos"], _nrefs(e, p["c_holder"])), _ref(e, p["c_holder"], e.sel(
+                    e.lt(p["cm_pos"], _nrefs(e, p["c_holder"])), p["cm_pos"], 0)), NONE))
+                e.set("c_ok", e.flag(e.both(e.ne(p["cm_pos_ok"], 0), e.ne(p["cg"], NONE),
+                                            e.eq(_kind(e, e.sel(e.eq(p["cg"], NONE), 0, p["cg"])), GRAPH_))))
+
+            e.if_(e.ne(p["cm_ok"], 0), found)
+
+        e.if_(e.eq(p["cg_kind"], GROUP_), member)
 
         def decoded():
             e.var("c_owner", 0)
@@ -587,7 +631,7 @@ def _callee_aux(e: E, cursor: str, end: int):
                 def each():
                     index, size2, _ok2 = _uleb(e, p["cb_at"])
                     e.set("cb_at", e.add(p["cb_at"], size2))
-                    e.var("ct_t", e.sel(e.lt(index, _nrefs(e, p["cf"])), _ref(e, p["cf"], index), NONE))
+                    e.var("ct_t", e.sel(e.lt(index, _nrefs(e, p["c_holder"])), _ref(e, p["c_holder"], index), NONE))
 
                     def owner():
                         length, at = _body(e, p["ct_t"])
