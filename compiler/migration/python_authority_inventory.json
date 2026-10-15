@@ -575,13 +575,13 @@
     },
     "cli": {
       "python_authority": "xax_compiler.main (xaxc)",
-      "xax_hosted": "the general driver process's commands lower and build (S13a, ADR-281); verify and inspect are S13b",
+      "xax_hosted": "the general driver process's commands lower and build (S13a, ADR-281), verify and inspect (S13b, ADR-282); run (the reference interpreter) stays xaxc tooling",
       "target_dependency": "Linux x86-64 process entry",
       "prerequisite": "S10",
-      "differential_oracle": "xaxc JSON outputs",
+      "differential_oracle": "xaxc verify and inspect outputs (tests/test_xax_selfhost_general_commands.py)",
       "fixed_point_relevance": "how the self-build is invoked",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S13b"
+      "recommended_step": "S13b (EXECUTED for Linux x86-64)"
     },
     "x86-64-program-backend": {
       "python_authority": "xax_x86_64, xax_x86_64_regalloc, xax_linux (register-resident analyses, code generation, image); xax_inline, xax_prefetch, xax_ranges are the S12b/S12c.1 references",

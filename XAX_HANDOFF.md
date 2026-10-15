@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S13b and later steps are open (ADR-180, ADR-281)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S13c and later steps are open (ADR-180, ADR-282)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,6 +186,12 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S13b verify and inspect — 2026-10-15 (ADR-282)
+
+- Done: `xax_selfhost_graph.BODY_EXTENT` is 2 MiB and `OUT_EXTENT` 32 MiB (decoder and both drivers regenerated). The general driver's commands are `COMMANDS` (name to file-argument count); `verify` and `inspect` stop after verification with the internal status `DONE`, which `done_out` turns into the output and exit status 0. `decode_inspection` renders `inspect`'s record; `NativeGeneralDriver.verify` and `.inspect`.
+- The driver's function body is 1,100,353 bytes of 2 MiB.
+- Next: S13c. Port `resolve_packages` (candidate selection by exact root and logical identity, the dependency closure, signatures) and `snapshot_store` (the reachable closure) as helper functions, and write the snapshot store with the S9 writer; a `resolve` command. Then S14.
+
 ## S13a build requests and provenance — 2026-10-15 (ADR-281)
 
 - Done:
@@ -194,7 +200,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - `XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1` in `xax_artifact`.
 - Capacity: the driver function's graph body is 1,012,484 bytes; the graph decoder takes 1 MiB less 32. Logic added inline to the driver costs about 5 KB per `if`/`while`, because every construct carries all ~130 live values. Put new logic in helper functions; grow `xax_selfhost_graph.BODY_EXTENT` (and regenerate the decoder, both drivers, and their evidence) before S13b.
 - Pitfall: Python evaluates `e.add(p["cur"], r.uleb())` left to right, so the cursor is read before the ULEB moves it. Bind the ULEB first.
-- Next: S13b (`verify`, `inspect`), then S13c (resolution and snapshot formation with the S9 writer), then S14.
+- Next: S13b (`verify`, `inspect`), then S13c (resolution and snapshot formation with the S9 writer), then S14. S13b: see above.
 
 ## S12 complete: S12f.4 — 2026-10-15 (ADR-280)
 

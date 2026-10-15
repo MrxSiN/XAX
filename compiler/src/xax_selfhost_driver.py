@@ -69,8 +69,11 @@ GENERAL_STORE_PATH = bootstrap_dir() / "xax_compiler_driver_general.xax"  # S12e
 GENERAL_IDENTITIES = RQ.GENERAL_IDENTITIES  # S12e.2: the Linux ELF profiles
 EXTENTS_EXTENT, TRAPS_EXTENT, MEMBERS_EXTENT = 1 << 25, 1 << 22, 1 << 22
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
-LOWER, BUILD = 0, 1  # S13a (ADR-281): the general driver's commands, argv[1]
-COMMANDS = ("lower", "build")
+# The general driver's commands, argv[1] (S13a, ADR-281; S13b, ADR-282), with the file arguments each takes.
+LOWER, BUILD, VERIFY, INSPECT = 0, 1, 2, 3
+COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2}
+DONE = 4  # internal status: ``verify`` or ``inspect`` finished after verification; the process exits with IMAGE
+INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words (nothing is lowered)
 ARGUMENTS_EXTENT = 4096
 CHUNK = 1 << 16
 from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
@@ -273,21 +276,27 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
     startup = linux_startup_api(api)
     argc = proc.op1(Operation.CALL_FOREIGN, (), B64, entity=startup.argc)
-    w.if_(w.ne(argc, 5 if general else 4), lambda: stop(FAILED))
+    if general:
+        arguments = w.let("arguments_count", argc)
+    else:
+        w.if_(w.ne(argc, 4), lambda: stop(FAILED))
     argument_end = w.let("argument_end", 0)
     if general:
-        # S13a (ADR-281): argv[1] is the command, ``lower`` (a program store and a target package) or ``build`` (a
-        # build snapshot store); anything else FAILED.
+        # S13a (ADR-281), S13b (ADR-282): argv[1] is the command (``COMMANDS``), followed by its file arguments; an
+        # unknown command or another count FAILED.
         mode = w.let("mode", LOWER)
 
         def command():
             count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(1, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
             n = w.let("n", count)
-            words = {word: w.let(word, w.flag(w.both(w.eq(w[n], len(word)), w.ne(w.same_constant("argument", 0, word.encode()), 0))))
-                     for word in COMMANDS}
-            w.if_(w.ne(w[words["build"]], 0), lambda: w.set(mode, BUILD), lambda: w.if_(w.eq(w[words["lower"]], 0), lambda: stop(FAILED)))
+            known, chosen, files = w.c(0), w.c(0), w.c(0)
+            for value, (word, paths) in enumerate(COMMANDS.items()):
+                matched = w.flag(w.both(w.eq(w[n], len(word)), w.ne(w.same_constant("argument", 0, word.encode()), 0)))
+                known, chosen, files = w.or_(known, matched), w.add(chosen, w.mul(matched, value)), w.add(files, w.mul(matched, paths))
+            w.set(mode, chosen)
+            w.if_(w.either(w.eq(known, 0), w.ne(w[arguments], w.add(files, 2))), lambda: stop(FAILED))
 
-        when(command)
+        w.if_(w.both(w.ne(w[arguments], 4), w.ne(w[arguments], 5)), lambda: stop(FAILED), lambda: when(command))
 
     def argument(index: int):
         count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(index, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
@@ -297,8 +306,13 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.if_(fits, lambda: (w.copy("argument", 0, "arguments", w[at], w[n]), w.store("arguments", w.add(w[at], w[n]), 0),
                              w.set(at, w.add(w.add(w[at], w[n]), 1))), lambda: stop(FAILED))
 
-    for index in (2, 3, 4) if general else (1, 2, 3):
-        when(lambda index=index: argument(index))
+    if general:
+        for index in (2, 3):
+            when(lambda index=index: argument(index))
+        when(lambda: w.if_(w.eq(w[arguments], 5), lambda: argument(4)))
+    else:
+        for index in (1, 2, 3):
+            when(lambda index=index: argument(index))
 
     # -- paths ---------------------------------------------------------------------------------------------------
     def path(index: int):
@@ -878,6 +892,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     when(object_verdicts)
     when(store_verdicts)
     when(graph_verdicts)
+    if general:
+        when(lambda: w.if_(w.le(VERIFY, w[mode]), lambda: stop(DONE)))  # S13b: ``verify`` and ``inspect`` end here
 
     if general:
         # -- S13a (ADR-281): ``build``: the snapshot's request, read and checked by ``xax_selfhost_request`` ---------
@@ -1283,11 +1299,46 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8), path=path)
 
         if general:
-            w.if_(w.eq(w[mode], BUILD), lambda: to(1), lambda: to(2))
+            w.if_(w.eq(w[mode], LOWER), lambda: to(2), lambda: to(1))
         else:
             to(2)
 
     w.if_(w.eq(w[status], IMAGE), image_out, lambda: w.if_(w.eq(w[status], REJECTED), record_out))
+    if general:
+        def done_out():
+            """S13b: ``verify`` writes nothing (an empty file); ``inspect`` the store's root, then per object its kind,
+            its CID, and its references' CIDs (``decode_inspection``)."""
+            def inspect_record():
+                n = w.let("i_at", INSPECT_AT)
+
+                def put(value):
+                    w.st(w[n], value)
+                    w.set(n, w.add(w[n], 1))
+
+                def cid(at):
+                    for word in range(4):
+                        put(w.cid_word("data", at, word))
+
+                cid(w.load("decoded", 4 * 7, 4))
+                put(w[objects])
+                o = w.let("i_object", 0)
+
+                def each():
+                    put(record_word(w[o], 4))
+                    count = w.let("i_references", record_word(w[o], 5))
+                    put(w[count])
+                    cid(record_word(w[o], 2))
+                    r = w.let("i_reference", 0)
+                    w.while_(lambda: w.lt(w[r], w[count]), lambda: (cid(w.add(record_word(w[o], 6), w.mul(w[r], CID_SIZE))), w.set(r, w.add(w[r], 1))))
+                    w.set(o, w.add(w[o], 1))
+
+                w.while_(lambda: w.lt(w[o], w[objects]), each)
+                emit(INSPECT_AT, w.mul(w.sub(w[n], INSPECT_AT), 8), path=1)
+
+            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: emit(INSPECT_AT, 0, path=1))
+            w.set(final, IMAGE)
+
+        w.if_(w.eq(w[status], DONE), done_out)
     w.if_(w.eq(w[status], FAILED), lambda: w.set(final, FAILED))
 
     # Every view released (``munmap`` of the whole view: the deallocator contract).
@@ -1417,8 +1468,9 @@ class NativeDriver:
 
 
 class NativeGeneralDriver(NativeDriver):
-    """S13a (ADR-281): the general driver as a Linux process.  Its first argument is the command: ``lower`` (a program
-    store, a target package, the output) or ``build`` (a build snapshot store, the artifact, its provenance)."""
+    """S13a (ADR-281), S13b (ADR-282): the general driver as a Linux process.  Its first argument is the command:
+    ``lower`` (a program store, a target package, the output), ``build`` (a build snapshot store, the artifact, its
+    provenance), ``verify`` or ``inspect`` (a store, the output)."""
 
     def __init__(self, image=None) -> None:
         if image is None:
@@ -1436,3 +1488,37 @@ class NativeGeneralDriver(NativeDriver):
         """The exit status; on ``IMAGE`` the artifact and the provenance object's envelope are written, on ``REJECTED``
         the diagnostic record is in the artifact's file."""
         return self._process("build", snapshot_path, artifact_path, provenance_path)
+
+    def verify(self, store_path: str | Path, output_path: str | Path) -> int:
+        """S13b: ``IMAGE`` (an empty output) when the store verifies; ``REJECTED`` with the diagnostic record."""
+        return self._process("verify", store_path, output_path)
+
+    def inspect(self, store_path: str | Path, output_path: str | Path) -> int:
+        """S13b: on ``IMAGE`` the verified store's inspection record (``decode_inspection``)."""
+        return self._process("inspect", store_path, output_path)
+
+
+def decode_inspection(data: bytes) -> dict:
+    """``xaxc inspect``'s JSON object from the record ``inspect`` wrote (little-endian words): the root CID, then per
+    object in store order its kind, reference count, CID, and reference CIDs.  It renders words (CID words to hex, a
+    kind number to its lowercase name) and decides nothing."""
+    words = [int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)]
+    position = 0
+
+    def take(count: int):
+        nonlocal position
+        position += count
+        return words[position - count:position]
+
+    def cid() -> str:
+        return b"".join(word.to_bytes(8, "big") for word in take(4)).hex()
+
+    root = cid()
+    (count,) = take(1)
+    objects = []
+    for _ in range(count):
+        kind, references = take(2)
+        objects.append({"cid": cid(), "kind": Kind(kind).name.lower(), "references": [cid() for _ in range(references)]})
+    if position != len(words):
+        raise ValueError(f"inspection record has {len(words) - position} trailing words")
+    return {"root_cid": root, "objects": objects}

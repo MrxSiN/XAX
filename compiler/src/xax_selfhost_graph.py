@@ -54,8 +54,8 @@ import xax_selfhost_store as store
 from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_graph_decoder.xax"
-BODY_EXTENT = 1 << 20
-OUT_EXTENT = 1 << 24  # S6c: a stream word per body byte for the largest (1 MiB) bodies, with room to spare
+BODY_EXTENT = 1 << 21  # S13b (ADR-282): 2 MiB, so the general driver's own function body (1 MB) can grow
+OUT_EXTENT = 1 << 25  # S6c: a stream word per body byte for the largest bodies, with room to spare
 OUT_WORDS = OUT_EXTENT // 8
 ACCEPT, REJECT, DEFER = 0, 1, 2
 # S8b.2 (ADR-185): the diagnostic record (64-bit words) after its cursor at DIAG_AT, below the stream's end; on reject
