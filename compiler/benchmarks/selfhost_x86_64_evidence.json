@@ -187,7 +187,7 @@
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "objects": 2541,
+      "objects": 2544,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -425,7 +425,7 @@
   },
   "refreshed": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "21ccf5953ce29efea83e7d2d4a90e5c5642d14068b662328a7512ed14259f4d0",
+    "store_sha256": "97fb04b24a5aef952f7770236d13486401adba5c5a1f9d74ab72de3d59e87349",
     "reason": "only this store changed since the last full run; its rows were re-executed natively",
     "authority": {
       "blake3-compress": {
@@ -440,7 +440,7 @@
       "verification:hash": {
         "component": "verification:hash",
         "store_verification": "memoized",
-        "record": "verified-hash-ad8f24afb96ee195bdb83ec795019b9b1c72a6e13d369b70b176c84561170ec8.bin"
+        "record": "verified-hash-03087d1989e51abf2c5d64f1f08c46893bf8a7ac09cccd469ff7b697d8a2a3cc.bin"
       },
       "blake3-hash": {
         "component": "blake3-hash",
@@ -454,7 +454,7 @@
       "verification:store-decoder": {
         "component": "verification:store-decoder",
         "store_verification": "memoized",
-        "record": "verified-store-decoder-22f06274a01315480fe7cc61b91866e2840648257cb6011ebe33d005a335cc9b.bin"
+        "record": "verified-store-decoder-9ad4ab95ba2e184d9c61f7ff52739205d54167e8cd534763093f3780bc8ac5bd.bin"
       },
       "store-decoder": {
         "component": "store-decoder",
@@ -465,10 +465,24 @@
         "fallback_occurred": false,
         "fallback_reason": null
       },
+      "verification:riscv64-encoder": {
+        "component": "verification:riscv64-encoder",
+        "store_verification": "memoized",
+        "record": "verified-riscv64-encoder-78271d68ea0556be9378273480645eb137370527df70156ddf75d55634007942.bin"
+      },
+      "riscv64-encoder": {
+        "component": "riscv64-encoder",
+        "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
+        "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
       "verification:typing": {
         "component": "verification:typing",
         "store_verification": "memoized",
-        "record": "verified-typing-f9cb7c527d7b5e345b7db3b8e8e53990eca0b4b1be4d3727991dad5281188922.bin"
+        "record": "verified-typing-b71b86f26e59e7d346fdc572666072cdc12a905d1e5003fcfebfc10cc0e06ab7.bin"
       },
       "typing": {
         "component": "typing",
@@ -482,7 +496,7 @@
       "verification:store-verifier": {
         "component": "verification:store-verifier",
         "store_verification": "memoized",
-        "record": "verified-store-verifier-ae02f409ca399809fd0461b2c87285a08bb96813c747650cf5b57f28ef9a5e9d.bin"
+        "record": "verified-store-verifier-181fcc9adf886e57271b77dda374551ccbf9f311f348c4b05eed5dbe71a644d3.bin"
       },
       "store-verifier": {
         "component": "store-verifier",
@@ -492,12 +506,12 @@
         "actual_authority": "xax",
         "fallback_occurred": false,
         "fallback_reason": null,
-        "declined_inputs": 2597
+        "declined_inputs": 2326
       },
       "verification:graph-decoder": {
         "component": "verification:graph-decoder",
         "store_verification": "memoized",
-        "record": "verified-graph-decoder-8df08d3f4919cb91f0273b968b67db6cdc63dc6f8985ce0ed0eaa193fbb89791.bin"
+        "record": "verified-graph-decoder-61b1107ae888c9f0213d2da2865ddf9c3d8dc40e233f51867fd3929bfdcc8433.bin"
       },
       "graph-decoder": {
         "component": "graph-decoder",
@@ -511,7 +525,7 @@
       "verification:cfg": {
         "component": "verification:cfg",
         "store_verification": "memoized",
-        "record": "verified-cfg-3fd99606b81bb0772618846c59991ad7894938125f863875bcd189c338926df0.bin"
+        "record": "verified-cfg-54a75fa623ff7460596e67c69318f3038a0db242c058b1896854da798577b01f.bin"
       },
       "cfg": {
         "component": "cfg",
@@ -522,14 +536,10 @@
         "fallback_occurred": false,
         "fallback_reason": null
       },
-      "riscv64-encoder": {
-        "component": "riscv64-encoder",
-        "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
-        "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
-        "requested_authority": "xax",
-        "actual_authority": "xax",
-        "fallback_occurred": false,
-        "fallback_reason": null
+      "verification:xax_riscv64_backend": {
+        "component": "verification:xax_riscv64_backend",
+        "store_verification": "memoized",
+        "record": "verified-xax_riscv64_backend-31cb68e69420dea859f0b6a0e38b8f37bba154b321c0caaf06610e8ff6605301.bin"
       },
       "riscv64-backend": {
         "component": "riscv64-backend",
