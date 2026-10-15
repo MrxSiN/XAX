@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.3d nested decoders — 2026-10-15 (ADR-296)
+
+The production compiler now follows the bootstrap into two more nested decoders: a recursion group's member types, and a build snapshot's request and packages. It also types an object named as a type on demand. The two corpus rejections that were not yet exact now are. Next: the remaining S15b.3d sites, then evidence.
+
 ## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
 
 A graph that uses a value that does not exist, or that does not dominate its use, is now rejected with the bootstrap's own diagnostic. Any earlier check the bootstrap's first pass makes comes first, and the compiler no longer writes a record of its own for any verification rejection. What still declines: memory rejections that quote a foreign, lend, target-operation or bounded indirect-call declaration; a stack-owner entry's contract; and a constant or type the bootstrap first reaches inside a graph. B1 does not hold yet. Next: S15b.3d.

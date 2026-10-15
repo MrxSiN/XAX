@@ -29,7 +29,7 @@ def _layout():
                ("ARENA", 1 << 20), ("STACK", 2 * MAX_ENTRIES), ("BLK", BLOCK_WORDS * MAX_BLOCKS), ("NODE", NODE_WORDS * MAX_NODES),
                ("VT", MAX_VALUES), ("VNUM", MAX_VALUES), ("ORDER", MAX_BLOCKS), ("SITE", MAX_NODES), ("KEYIDX", MAX_NODES),
                ("EDGEBASE", MAX_BLOCKS), ("INCCOUNT", MAX_BLOCKS), ("INCAT", MAX_BLOCKS), ("INCLIST", 1 << 18), ("LINKS", 1 << 12),
-               ("SCRATCH", 1 << 14), ("CUT", MAX_BLOCKS))
+               ("SCRATCH", 1 << 14), ("CUT", MAX_BLOCKS), ("OVERRIDE", 1 << 16))
     at, table = 0, {}
     for name, size in regions:
         table[name] = at
@@ -47,7 +47,8 @@ assert _END <= MARSHAL_AT
 
 # Control words: status, the graph object, lengths and counts.
 (C_STATUS, C_GRAPH, C_LENGTH, C_ENTRIES, C_ARENA, C_BLOCKS, C_ENTRY, C_NODES, C_VALUES, C_KEYS, C_VCOUNT, C_CFG_LENGTH, C_OBJECTS,
- C_EDGES, C_KINDS, C_SP, C_TOP, C_USES) = range(18)  # ``C_USES``: the CFG input's use count word (S15b.3c)
+ C_EDGES, C_KINDS, C_SP, C_TOP, C_USES, C_OVERRIDE, C_OLEN) = range(20)  # ``C_USES``: the CFG input's use count word (S15b.3c)
+# ``C_OVERRIDE``/``C_OLEN`` (S15b.3d): the object read as a type on demand, and its body length (its bytes in ``OVERRIDE``).
 OK, DECLINE = 0, 1
 MODE_OTHER, MODE_FULL, MODE_KIND = 0, 1, 2
 BODY_LIMIT, TARGET_BODY_LIMIT, NATIVE_TARGET_LIMIT = 64, 4096, 1 << 16  # ``type_info_from``
@@ -120,6 +121,7 @@ def _index_objects(tables):
         p = e.p
         e.var("n", e.rd(0))
         _set_ctrl(e, C_OBJECTS, p["n"])
+        _set_ctrl(e, C_OVERRIDE, NONE)
         _decline(e, e.lt(MAX_OBJECTS, p["n"]))
         e.var("at", 2)
 
@@ -143,13 +145,14 @@ def _index_objects(tables):
 # -- ``type_index`` (``marshal``): entries in depth-first first-visit order ------------------------------------------
 
 def _mode(e: E, o):
-    """``type_info_from``'s reading of object ``o``: full, kind only, or (unresolvable) NONE."""
+    """``type_info_from``'s reading of object ``o``: full, kind only, or (unresolvable) NONE; the object read as a type
+    on demand (``C_OVERRIDE``) is read in full."""
     kind = _kind(e, o)
     length = e.sel(e.eq(kind, GRAPH_), 0, e.rd(_payload(e, o)))
     limit = e.sel(e.eq(kind, TARGET_), NATIVE_TARGET_LIMIT, TARGET_BODY_LIMIT)
     first = e.both(e.either(*(e.eq(kind, k) for k in (TARGET_, GROUP_, CONTRACT_, TYPE_))), e.le(length, limit))
     kind_only = e.either(e.lt(BODY_LIMIT, length), e.not_(e.either(*(e.eq(kind, k) for k in (TYPE_, CONSTANT_, FUNCTION_)))))
-    return e.sel(first, MODE_FULL, e.sel(kind_only, MODE_KIND, MODE_FULL))
+    return e.sel(e.eq(o, _ctrl(e, C_OVERRIDE)), MODE_FULL, e.sel(first, MODE_FULL, e.sel(kind_only, MODE_KIND, MODE_FULL)))
 
 
 def _type_index(tables):
@@ -251,10 +254,13 @@ def _serialize_entries(e: E, cursor: str):
         e.var("sblen", 0)
         e.var("sbat", 0)
         e.if_(e.eq(p["smode"], MODE_FULL), lambda: (e.set("sblen", e.rd(_payload(e, p["so"]))), e.set("sbat", e.add(_payload(e, p["so"]), 1))))
+        e.var("sover", e.flag(e.eq(p["so"], _ctrl(e, C_OVERRIDE))))  # its body bytes are in ``OVERRIDE``
+        e.if_(e.ne(p["sover"], 0), lambda: e.set("sblen", _ctrl(e, C_OLEN)))
         _emit(e, cursor, e.mul(e.flag(e.ne(p["smode"], MODE_OTHER)), _kind(e, p["so"])), end)
         _emit(e, cursor, p["srefs"], end)
         _emit(e, cursor, p["sblen"], end)
-        e.for_("sb", 0, p["sblen"], lambda: _emit(e, cursor, e.rd(e.add(p["sbat"], p["sb"])), end))
+        e.for_("sb", 0, p["sblen"], lambda: _emit(e, cursor, e.sel(e.ne(p["sover"], 0), e.ld(e.add(OVERRIDE, e.sel(e.lt(p["sb"], 1 << 16), p["sb"], 0))),
+                                                                   e.rd(e.add(p["sbat"], p["sb"]))), end))
         e.for_("sr", 0, p["srefs"], lambda: _emit(e, cursor, e.ld(e.add(ARENA, e.add(p["srefs_at"], p["sr"]))), end))
 
     e.for_("sq", 0, _ctrl(e, C_ENTRIES), each)
@@ -1045,6 +1051,23 @@ def _graph_marshal(tables):
     return _function((), build, tables)
 
 
+def _object_marshal(tables):
+    """S15b.3d (ADR-296): ``_xax_prove_as_type``: object ``C_OVERRIDE`` (another kind named as a type), its body in
+    ``OVERRIDE``, read as a type on its own (``marshal([], ..., objects=[obj.cid])``)."""
+    def build(e: E):
+        p = e.p
+        _reset_types(e)
+        e.for_("o", 0, _ctrl(e, C_OBJECTS), lambda: e.st(e.add(LISTED, p["o"]), NONE))
+        e.st(e.add(LISTED, _ctrl(e, C_OVERRIDE)), _tidx(e, _ctrl(e, C_OVERRIDE)))
+        e.var("cur", MARSHAL_AT)
+        _serialize_entries(e, "cur")
+        for _word in range(3 + PADDING):
+            _emit(e, "cur", 0, MARSHAL_AT + MARSHAL_LIMIT)
+        _set_ctrl(e, C_LENGTH, e.sub(p["cur"], MARSHAL_AT))
+        e.give(1)
+    return _function((), build, tables)
+
+
 def _trim(tables):
     """S15b.3c (ADR-295): ``_parse_graph``'s graph trimmed at its invalid uses.  ``CUT[b]`` (NONE: none) keeps block
     ``b``'s first nodes and ends it in a trap; the values are renumbered densely in block, node, and result order
@@ -1098,6 +1121,7 @@ def build_functions():
 
     add("type_index", _type_index(None))
     for name, builder in (("index_objects", _index_objects), ("objects_marshal", _objects_marshal), ("parse_graph", _parse_graph),
-                          ("cfg_input", _cfg_input), ("graph_marshal", _graph_marshal), ("trim", _trim)):
+                          ("cfg_input", _cfg_input), ("graph_marshal", _graph_marshal), ("trim", _trim),
+                          ("object_marshal", _object_marshal)):
         add(name, builder(None))
     return dict(_FN), tuple(objects)

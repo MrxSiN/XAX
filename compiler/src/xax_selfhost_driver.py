@@ -774,8 +774,39 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
             when(write)
 
+        def as_type():
+            """S15b.3d (ADR-296): ``_xax_prove_as_type``: another kind of object named as a type, read by the typing
+            program on its own (its body copied from the store), its record kept like a type's."""
+            length = w.let("at_len", record_word(w[target_object], 8))
+            body = w.let("at_body", record_word(w[target_object], 7))
+            w.if_(w.lt(1 << 16, w[length]), lambda: stop(DECLINED))
+            q = w.let("at_q", 0)
+            w.while_(lambda: w.both(w.lt(w[q], w[length]), running()), lambda: (
+                set_work(w.add(SM.OVERRIDE, w[q]), w.load("data", w.add(w[body], w[q]), 1)), w.set(q, w.add(w[q], 1))))
+            set_work(SM.CTRL + SM.C_OVERRIDE, w[target_object])
+            set_work(SM.CTRL + SM.C_OLEN, w[length])
+            when(lambda: helper("object_marshal"))
+            when(typing)
+
+            def keep():
+                entries = w.let("at_entries", work_word(SM.MARSHAL_AT))
+                listed = w.let("at_listed", work_word(w.add(SM.LISTED, w[target_object])))
+                for k, field in enumerate(RT.FIELDS):
+                    set_work(w.add(w.add(R.TYPES_AT, w.mul(w[target_object], RT.RECORD_WORDS)), k),
+                             w.sel(w.eq(w.ld(w.add(w.add(TY.TABLE, w.mul(w[entries], TY.OBJOK)), w[listed])), 1), 0,
+                                   w.ld(w.add(w.add(TY.TABLE, w.mul(w[entries], field)), w[listed]))))
+                # A graph's table record holds its stream, not its body: a rejection that quotes body bytes declines.
+                site = work_word(w.add(R.TYPES_AT, w.mul(w[target_object], RT.RECORD_WORDS)))
+                quoting = w.either(*(w.eq(site, RT.TYPE_SITE_NUMBER[name]) for name in RT.BODY_QUOTING))
+                w.if_(w.both(w.eq(record_word(w[target_object], 4), int(Kind.GRAPH_FRAGMENT)), quoting), lambda: stop(DECLINED))
+
+            when(keep)
+            set_work(SM.CTRL + SM.C_OVERRIDE, FA.NONE)
+
         def typed():
             """S15b.2 (ADR-289): the typing program's rejection, rendered (``xax_selfhost_render_types``)."""
+            kind_of = record_word(w[target_object], 4)
+            w.if_(w.not_(w.either(w.eq(kind_of, int(Kind.TYPE)), w.eq(kind_of, int(Kind.CONSTANT)))), as_type)
             site = w.let("type_site", work_word(w.add(R.TYPES_AT, w.mul(w[target_object], RT.RECORD_WORDS))))
 
             def render():
@@ -783,7 +814,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 request_helper("render", type_renderers)
                 w.if_(w.eq(work_word(SM.CTRL + RT.T_STATUS), RT.ACCEPT), from_work, lambda: stop(DECLINED))
 
-            w.if_(w.ne(w[site], 0), render, lambda: stop(DECLINED))
+            w.if_(w.both(running(), w.ne(w[site], 0)), render, lambda: stop(DECLINED))
 
         def decoder():
             graph_stream(w[target_object], graph_rejected)

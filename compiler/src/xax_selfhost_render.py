@@ -1482,7 +1482,30 @@ def _plan(tables):
 
                 def member():
                     named = e.both(e.eq(verdict(p["pf_g"]), V.REJECTED), e.either(*(e.eq(site(p["pf_g"]), SITE[name]) for name in group_sites)))
-                    e.if_(named, lambda: finish(P_BANK, p["pf_g"]), lambda: finish(P_DECLINE))
+                    e.if_(named, lambda: finish(P_BANK, p["pf_g"]), lambda: e.if_(e.eq(verdict(p["pf_g"]), 0), member_types,
+                                                                                    lambda: finish(P_DECLINE)))
+
+                def member_types():
+                    """S15b.3d (ADR-296): ``_decode_recursion_group`` of an undecided group: each member's parameter
+                    and return types are verified in body order (``_type_reference``); the first one the typing
+                    program did not prove is that type's own rejection (``P_TYPE``)."""
+                    group = _Body(e, "pm")
+                    group.at(p["pf_g"])
+
+                    def types():
+                        e.for_("pm_t", 0, group.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
+                            e.var("pm_type", V._reference(e, p["pf_g"], group.uleb())),
+                            e.if_(e.eq(p["pm_type"], NONE), lambda: finish(P_DECLINE),
+                                  lambda: e.if_(e.not_(V._type_ok(e, p["pm_type"])), lambda: finish(P_TYPE, p["pm_type"]))))))
+
+                    def each():
+                        e.var("pm_graph", V._reference(e, p["pf_g"], group.uleb()))
+                        e.if_(e.either(e.eq(p["pm_graph"], NONE), e.ne(V._kind(e, p["pm_graph"]), int(Kind.GRAPH_FRAGMENT))), lambda: finish(P_DECLINE))
+                        e.if_(e.eq(p["term"], NONE), types)
+                        e.if_(e.eq(p["term"], NONE), types)
+
+                    e.for_("pm_k", 0, group.uleb(), lambda: e.if_(e.eq(p["term"], NONE), each))
+                    e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
 
                 def ordinary():
                     def types():
@@ -1500,11 +1523,34 @@ def _plan(tables):
                     e.eq(V._kind(e, p["pf_g"]), int(Kind.RECURSION_GROUP)), member, lambda: e.if_(
                         e.eq(V._kind(e, p["pf_g"]), int(Kind.GRAPH_FRAGMENT)), ordinary, lambda: finish(P_DECLINE))))
 
+            def snapshot():
+                """S15b.3d (ADR-296): ``decode_snapshot`` of a snapshot the verifier left to a nested decoder (its own
+                checks hold): ``decode_request``, then each package's ``decode_package``, raise their own rejections."""
+                body = _Body(e, "ps")
+                body.at(o)
+                body.uleb()  # the form
+                e.var("ps_req", V._reference(e, o, body.uleb()))
+                body.string("ps_id")
+                body.uleb()  # the trust policy
+                own = lambda x: e.both(e.eq(verdict(x), V.REJECTED), e.ne(site(x), SITE["OBJECT_MISSING"]))  # noqa: E731
+
+                def packages():
+                    e.for_("ps_k", 0, body.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
+                        e.var("ps_pkg", V._reference(e, o, body.uleb())),
+                        e.if_(e.eq(p["ps_pkg"], NONE), lambda: finish(P_DECLINE), lambda: e.if_(
+                            own(p["ps_pkg"]), lambda: finish(P_BANK, p["ps_pkg"]), lambda: e.if_(
+                                e.ne(verdict(p["ps_pkg"]), 1), lambda: finish(P_DECLINE)))))))
+
+                e.if_(e.eq(p["ps_req"], NONE), lambda: finish(P_DECLINE), lambda: e.if_(
+                    own(p["ps_req"]), lambda: finish(P_BANK, p["ps_req"]), lambda: e.if_(e.eq(verdict(p["ps_req"]), 1), packages)))
+                e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
+
             def other():
+                e.if_(e.both(e.eq(p["pkind"], int(Kind.BUILD)), e.eq(e.rd(body_at(e, o)), 3)), snapshot)
                 structural = e.either(*(e.eq(p["pkind"], int(kind)) for kind in STRUCTURAL if kind != Kind.FUNCTION))
                 typed = e.either(e.eq(p["pkind"], int(Kind.TYPE)), e.eq(p["pkind"], int(Kind.CONSTANT)))
                 e.if_(e.eq(p["pkind"], int(Kind.FUNCTION)), undecided_function)
-                e.if_(structural, lambda: finish(P_DECLINE))
+                e.if_(e.both(structural, e.eq(p["term"], NONE)), lambda: finish(P_DECLINE))
                 e.if_(e.both(typed, e.not_(V._type_ok(e, o))), lambda: finish(P_TYPE, o))
 
             e.if_(e.eq(p["pverdict"], V.REJECTED), rejected, lambda: e.if_(

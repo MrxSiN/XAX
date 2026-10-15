@@ -26,6 +26,9 @@ T_OBJECT, T_STATUS = 60, 61
 ACCEPT, DECLINE = 0, 1
 RECORD_WORDS = 8  # per object: CREJ, COFF, CLEN, CWIDTH, C4, C5, C6
 FIELDS = (TY.CREJ, TY.COFF, TY.CLEN, TY.CWIDTH, TY.C4, TY.C5, TY.C6)
+TYPE_SITE_NUMBER = {name: number for number, name in enumerate(TY.TYPE_SITES, TY.TYPE_SITE_BASE + 1)}
+# S15b.3d (ADR-296): the type sites whose record quotes the object's body bytes.
+BODY_QUOTING = ("TYPE_EFFECT_CANONICAL", "TYPE_ULEB_MINIMAL", "TYPE_IDENTITY_CANONICAL", "TYPE_LINK", "TYPE_RESOURCE_CANONICAL")
 COUNTS_AT = 35 << 20  # workspace scratch: per object, how often a list quotes it (zero between uses)
 BAD_AT = (34 << 20) - 1  # workspace word: set while the record quotes an index that names no stored object
 assert R.TYPES_AT + RECORD_WORDS * (1 << 16) <= R.WORK_PLAN

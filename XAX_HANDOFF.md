@@ -186,6 +186,16 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.3d nested decoders — 2026-10-15 (ADR-296)
+
+- Done:
+  - In `xax_selfhost_render._plan`: `member_types` and `snapshot`.
+  - In `xax_selfhost_semantic`: `object_marshal`, with `C_OVERRIDE`/`C_OLEN` and the `OVERRIDE` region.
+  - In the driver: `as_type`.
+  - In `xax_selfhost_render_types`: `TYPE_SITE_NUMBER` and `BODY_QUOTING`.
+- Reproducing a corpus row: generate it as `bench_full_selfhost` does, with `PYTHONHASHSEED=0`, then compare `NativeGeneralDriver.verify` with `verify_store`.
+- Next: the declaration-decoding memory sites, stack-owner entries, and constants reached inside a graph's parse.
+
 ## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
 
 - Done:
