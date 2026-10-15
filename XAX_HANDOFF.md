@@ -186,6 +186,13 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12e.3 the general driver rebuilds itself — 2026-10-15 (ADR-277)
+
+- Done: `xax_selfhost_typing.IN_EXTENT, OUT_EXTENT = 256 MiB, 1 GiB` (keep `IN_WORDS <= OUT_WORDS / 4`), and every dependent store regenerated. The RISC-V harness `_STACK_TOP = 0x10000000`, so the emulator maps the 1 GiB output view.
+- The general driver self-build: `tests/test_xax_selfhost_general_driver.py::test_the_general_driver_rebuilds_itself_as_processes`, about 42 s per generation.
+- Evidence after a view change: `bench_selfhost_closure.py --write`, `bench_selfhost_x86_64.py --write`, and `bench_selfhost_driver.py --write`, each natively.
+- Next: S12f.2.
+
 ## S12e.2 the general driver — 2026-10-14 (ADR-276)
 
 - Done:
@@ -196,7 +203,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 - The S10e marshal (`_callee_aux`) now resolves group member callees through the group's references (`c_holder`).
 - Views backend layout (ADR-276): ranges 4M words, stream 12M..28M, arena from 28M; `GLOBALS` moved with the arena.
 - Evidence: the regenerated backends need `bench_selfhost_x86_64.py --write` and `refresh_selfhost_store.py xax_selfhost_riscv64_backend --write` (the refresh script does not know the x86-64 backend).
-- Next: S12e.3. Grow the typing/verifier input views (the general driver's verifier table is 28.3M words against 16.8M), so the general driver verifies and rebuilds itself and can replace the views driver. Then S12f.2.
+- Next: S12e.3. Grow the typing/verifier input views (the general driver's verifier table is 28.3M words against 16.8M), so the general driver verifies and rebuilds itself and can replace the views driver. Then S12f.2. S12e.3: see above.
 
 ## S12f.1 the frame lowering — 2026-10-14 (ADR-275)
 

@@ -722,7 +722,7 @@ def compile_riscv64(reader: StoreReader, function_cid: bytes, target_cid: bytes,
 
 _CODE_BASE = 0x10000
 _RETURN_SENTINEL = 0x1000
-_STACK_TOP = 0x80000000
+_STACK_TOP = 0x10000000  # S12e.3 (ADR-277): below the views, so a 1 GiB output view ends at 0x80000000 (every address < 2^31)
 _STACK_SIZE = 1 << 20
 
 

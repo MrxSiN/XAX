@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12e.3 the general driver rebuilds itself — 2026-10-15 (ADR-277)
+
+S12e.3 is complete on Linux x86-64. The verifier views doubled, so the general driver now verifies its own store. It rebuilds itself through three generations as plain processes, byte for byte, like the views driver (S11). This is a component fixed point, not a B milestone. S12e is complete. Next: S12f.2.
+
 ## S12e.2 the general driver — 2026-10-14 (ADR-276)
 
-S12e.2 is complete on Linux x86-64. A second driver store, the general driver, links the general x86-64 backend program into the S11 driver. As a plain Linux process with no Python inside, it reads a program store and a Linux target, verifies the store, builds every input the general program needs (recursion-group member functions included), and writes the executable. On the Linux test programs its output is byte for byte `compile_linux_executable`'s: 117 executables and 2 rejections. It declines what the general program still leaves to the bootstrap. It cannot yet rebuild itself: its own store is beyond the verifier's input view. Next: S12e.3 (larger verifier views, so the general driver is a fixed point) and S12f.2.
+S12e.2 is complete on Linux x86-64. A second driver store, the general driver, links the general x86-64 backend program into the S11 driver. As a plain Linux process with no Python inside, it reads a program store and a Linux target, verifies the store, builds every input the general program needs (recursion-group member functions included), and writes the executable. On the Linux test programs its output is byte for byte `compile_linux_executable`'s: 117 executables and 2 rejections. It declines what the general program still leaves to the bootstrap. It cannot yet rebuild itself: its own store is beyond the verifier's input view. Next: S12e.3 (larger verifier views, so the general driver is a fixed point) and S12f.2. S12e.3: see above.
 
 ## S12f.1 the frame lowering — 2026-10-14 (ADR-275)
 

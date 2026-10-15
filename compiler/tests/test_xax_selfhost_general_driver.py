@@ -6,7 +6,8 @@ program's object table itself (the program store, the target, the verifier's poi
 engine during its own semantic verification, and the trap payload heads), calls the program, and writes the ELF
 file the program assembled.  Every run below is a real process with no Python inside.  Differential: each output
 equals ``compile_linux_executable`` (the executable bytes, or the exact ``Diagnostic``); where the general program
-leaves a decision to the bootstrap, the driver declines.  The views profiles are lowered exactly as before.
+leaves a decision to the bootstrap, the driver declines.  The views profiles are lowered exactly as before.  S12e.3
+(ADR-277): the general driver verifies its own store and rebuilds itself through three generations as processes.
 """
 
 from __future__ import annotations
@@ -40,8 +41,8 @@ class GeneralDriverTests(unittest.TestCase):
         from xax_x86_64_views import compile_x86_64_views
 
         reader, function = load_driver_program(general=True)
-        image = compile_x86_64_views(reader, function.cid, X.x86_64_views_exec_target(), backend="xax")
-        cls.driver = NativeDriver(image)
+        cls.image = compile_x86_64_views(reader, function.cid, X.x86_64_views_exec_target(), backend="xax")
+        cls.driver = NativeDriver(cls.image)
         cls.directory = tempfile.mkdtemp()
 
     def run_driver(self, data: bytes, target):
@@ -132,6 +133,33 @@ class GeneralDriverTests(unittest.TestCase):
         target = X.x86_64_views_target()
         data = (BOOTSTRAP / "xax_blake3_compress.xax").read_bytes()
         self.assertEqual(self.run_driver(data, target), _reference(data, target))
+
+
+    def test_the_general_driver_rebuilds_itself_as_processes(self):
+        """S12e.3: gen1 (the XAX views backend's executable) lowers the general driver's store to gen2, gen2 to gen3;
+        gen1 = gen2 = gen3 = ``views_executable`` of the bootstrap generator's image."""
+        import subprocess
+
+        from xax_selfhost_driver import GENERAL_STORE_PATH, target_package
+        from xax_x86_64_views import compile_x86_64_views, views_executable
+
+        reader = X.StoreReader(GENERAL_STORE_PATH.read_bytes())
+        entry = _root_entry(reader)
+        self.assertEqual(self.image, compile_x86_64_views(reader, entry, X.x86_64_views_exec_target(), backend="python"))
+        package = Path(self.directory) / "exec.xax"
+        package.write_bytes(target_package(X.x86_64_views_exec_target()))
+        generation = Path(self.driver.path)
+        executables = [generation.read_bytes()]
+        for name in ("gen2", "gen3"):
+            output = Path(self.directory) / name
+            status = subprocess.run([str(generation), str(GENERAL_STORE_PATH), str(package), str(output)], check=False).returncode
+            self.assertEqual(status, 0, name)
+            os.chmod(output, 0o755)
+            executables.append(output.read_bytes())
+            generation = output
+        self.assertEqual(executables[0], views_executable(self.image))
+        self.assertEqual(executables[1], executables[0])
+        self.assertEqual(executables[2], executables[0])
 
 
 if __name__ == "__main__":
