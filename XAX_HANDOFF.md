@@ -186,12 +186,21 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12f.2 code generation rejections — 2026-10-15 (ADR-278)
+
+- Done: `xax_selfhost_general_emit.reject_at(e, write)`, which writes the diagnostic only while `I_OK` holds and sets `E_FAIL`. `E_F` names the function being lowered, and `graph_cid_words` names its graph, which is the bootstrap's `graph_object`.
+- After a rejection, `_view` skips every later function and the front end's status is REJECT. `xax_linux` (differential) compares a code-generation rejection with the bootstrap's whole compile.
+- Findings for S12f.3:
+  - Atomics compile on Linux in the bootstrap (frame path). XAX declines them in `frame_layout`.
+  - `_value_facts` declines any value wider than 64 bits, even dead ones the simplifier removes.
+  - The legacy register path accepts only add/sub/mul/constant/direct-call integer graphs (Linux, not hosted); it was never taken in 400 random programs.
+
 ## S12e.3 the general driver rebuilds itself — 2026-10-15 (ADR-277)
 
 - Done: `xax_selfhost_typing.IN_EXTENT, OUT_EXTENT = 256 MiB, 1 GiB` (keep `IN_WORDS <= OUT_WORDS / 4`), and every dependent store regenerated. The RISC-V harness `_STACK_TOP = 0x10000000`, so the emulator maps the 1 GiB output view.
 - The general driver self-build: `tests/test_xax_selfhost_general_driver.py::test_the_general_driver_rebuilds_itself_as_processes`, about 42 s per generation.
 - Evidence after a view change: `bench_selfhost_closure.py --write`, `bench_selfhost_x86_64.py --write`, and `bench_selfhost_driver.py --write`, each natively.
-- Next: S12f.2.
+- Next: S12f.2. S12f.2: see above.
 
 ## S12e.2 the general driver — 2026-10-14 (ADR-276)
 

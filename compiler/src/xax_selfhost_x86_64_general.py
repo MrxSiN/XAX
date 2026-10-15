@@ -818,7 +818,10 @@ def _frontend(tables):
         e.for_("q", 0, p["members"], out)
         # S12b: the lowering view of every closure function, in image order.
         views_prologue(e, total, order, p["members"])
-        e.st(0, OK)
+        from xax_selfhost_general_emit import E_FAIL
+        from xax_selfhost_general_regalloc import _ra
+
+        e.st(0, e.sel(e.ne(_ra(e, E_FAIL), 0), D.REJECT, OK))  # S12f.2 (ADR-278): a code generation rejection
         e.give(1)
     return _function((), build, tables)
 

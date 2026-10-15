@@ -1318,6 +1318,10 @@ def _view(tables):
     """``inline_leaf_calls`` of function ``f`` (image index ``fidx``), written to the view output."""
     def build(e: E):
         p = e.p
+        from xax_selfhost_general_emit import E_FAIL
+        from xax_selfhost_general_regalloc import _ra
+
+        e.if_(e.ne(_ra(e, E_FAIL), 0), lambda: e.give(1))  # S12f.2: an earlier function was rejected
         _globals(e, G_VCOUNT, 0)
         _globals(e, G_FKEYN, 0)
         e.var("vw_blocks", _call(e, "lift", p["f"], p["fidx"]))
@@ -1404,8 +1408,11 @@ def _view(tables):
             e.if_(e.eq(p["vw_code"], 0), lambda: e.set("vw_emit", 1), lambda: e.if_(e.eq(p["vw_code"], 1), lambda: e.set("vw_emit", 2)))
 
         e.if_(e.eq(p["vw_status"], STATUS_ANALYSED), emit)
-        # S12f (ADR-275): the frame lowering where the bootstrap takes it.
-        e.set("vw_emit", _call(e, "frame_fallback", p["f"], p["fidx"], p["vw_status"], p["vw_emit"]))
+        from xax_selfhost_general_emit import E_FAIL
+        from xax_selfhost_general_regalloc import _ra
+
+        # S12f (ADR-275): the frame lowering where the bootstrap takes it (not after a rejection, S12f.2).
+        e.if_(e.eq(_ra(e, E_FAIL), 0), lambda: e.set("vw_emit", _call(e, "frame_fallback", p["f"], p["fidx"], p["vw_status"], p["vw_emit"])))
         _call(e, "write_emission", p["vw_emit"])
         from xax_selfhost_general_image import I_OK
         from xax_selfhost_general_regalloc import _set_ra

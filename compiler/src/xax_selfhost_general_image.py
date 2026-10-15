@@ -133,13 +133,43 @@ def _adapter_fn(tables):
         _ok(e, e.ne(p["ad_widths"], NONE))
         e.var("ad_n", 0)
 
+        def machine_parameter(k):
+            return e.not_(_proof_type(e, e.ld(e.add(e.add(p["ad_i"], 2), k))))
+
+        def machine_return(k):
+            return e.both(e.not_(_proof_type(e, e.ld(e.add(e.add(p["ad_rt"], 1), k)))), e.eq(e.ld(e.add(p["ad_elided"], k)), NONE))
+
+        def signature():
+            """S12f.2 (ADR-278): ``_sysv_entry_adapter``'s rejection, naming the machine parameter and result types."""
+            import xax_selfhost_diagnostics as D
+            from xax_selfhost_general_emit import reject_at
+
+            def write():
+                D.text(e, "XAX.NATIVE.FOREIGN_ENTRY")
+                D.cid(e, _cid_words(e, p["f"]))
+                D.text(e, "SYSV-ENTRY-SIGNATURE")
+                D.text(e, "<=4 integer/pointer parameters of 8/16/32/64 bits, <=1 integer/pointer result")
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                for side, (count, base, machine) in enumerate(((p["ad_np"], e.add(p["ad_i"], 2), machine_parameter),
+                                                               (p["ad_nr"], e.add(p["ad_rt"], 1), machine_return))):
+                    at, n, k = f"sg_base{side}", f"sg_n{side}", f"sg_k{side}"
+                    e.var(at, base)
+                    e.var(n, 0)
+                    e.for_(k, 0, count, lambda machine=machine, n=n, k=k: e.if_(machine(p[k]), lambda: e.set(n, e.add(p[n], 1))))
+                    D.put(e, D.T_LIST)
+                    D.put(e, p[n])
+                    e.for_(k, 0, count, lambda machine=machine, at=at, k=k: e.if_(machine(p[k]), lambda: D.cid(e, _cid_words(e, e.ld(e.add(p[at], p[k]))))))
+
+            reject_at(e, write)
+
         def parameter():
             e.var("ad_t", e.ld(e.add(e.add(p["ad_i"], 2), p["ad_k"])))
 
             def machine():
                 _type_width_class(e, p["ad_t"], "ad_w")
                 good = e.either(*(e.eq(p["ad_w"], w) for w in (8, 16, 32, 64)))
-                _ok(e, e.both(good, e.lt(p["ad_n"], 4)))  # the bootstrap fails (SYSV-ENTRY-SIGNATURE)
+                e.if_(e.not_(e.both(good, e.lt(p["ad_n"], 4))), signature)
                 e.st(e.add(p["ad_widths"], p["ad_n"]), p["ad_w"])
                 e.set("ad_n", e.add(p["ad_n"], 1))
 
@@ -153,13 +183,13 @@ def _adapter_fn(tables):
 
             def machine():
                 _type_width_class(e, p["ad_t"], "ad_w")
-                _ok(e, e.ne(p["ad_w"], NONE))
+                e.if_(e.eq(p["ad_w"], NONE), signature)
                 e.set("ad_r", e.add(p["ad_r"], 1))
 
             e.if_(e.both(e.not_(_proof_type(e, p["ad_t"])), e.eq(e.ld(e.add(p["ad_elided"], p["ad_k"])), NONE)), machine)
 
         e.for_("ad_k", 0, p["ad_nr"], returned)
-        _ok(e, e.le(p["ad_r"], 1))
+        e.if_(e.lt(1, p["ad_r"]), signature)
         _pad(e, 0x90, 16)
         _set_ra(e, I_ADSTART, _ra(e, I_LEN))
         _img(e, 0x28EC8348, 4)  # sub rsp, 40
@@ -297,6 +327,7 @@ def _image_finish_fn(tables):
             e.var("if_fx", e.ld(e.add(_g(e, G_CIDX), p["if_obj"])))
             _ok(e, e.ne(p["if_fx"], NONE))
             e.var("if_call", _call(e, "image_adapter", p["if_obj"]))
+            _ok(e, e.ne(p["if_call"], NONE))
             e.st(e.add(e.add(p["if_adapt"], e.mul(p["if_k"], 2)), 1), _ra(e, I_ADSTART))
             e.var("if_target", e.ld(e.add(_ra(e, I_BASES), p["if_fx"])))
             _patch(e, p["if_call"], e.and_(e.sub(p["if_target"], e.add(p["if_call"], 4)), 0xFFFFFFFF), 4)

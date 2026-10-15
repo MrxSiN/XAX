@@ -238,6 +238,52 @@ class GeneralViewTests(unittest.TestCase):
                 self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
                 self.assertEqual(xax, compile_linux_executable(reader, entry_cid, target.cid, frontend="python"))
 
+    def test_code_generation_rejections(self):
+        """S12f.2 (ADR-278): the bootstrap's rejections during code generation (a startup read outside the process
+        entry, a C import in the static profile, C scalars beyond the register subset, a foreign entry signature beyond
+        the adapter) are the XAX program's, with the exact diagnostic."""
+        from test_xax_c_interop import _address_program, _pure
+        from test_xax_linux import _crc_program
+        from xax_compiler import XaxError, x86_64_linux_dynamic_exec_target, x86_64_linux_exec_target
+        from xax_linux import c_function, linux_startup_api
+        from xax_selfhost_x86_64_general import general_with_xax
+
+        api, startup = linux_api(), linux_startup_api()
+        cases = {}
+        helper_graph = GraphBuilder()
+        block = helper_graph.block()
+        block.ret(block.op1(Operation.CALL_FOREIGN, (), B64, entity=startup.argc))
+        helper = helper_graph.function((), (B64,))
+        graph = GraphBuilder()
+        graph.track(*api.types)
+        entry = graph.block(api.process_effect)
+        status = entry.op1(Operation.INT_TRUNCATE, (entry.op1(Operation.CALL_DIRECT, (), B64, entity=helper),), B32)
+        entry.ret(status, entry.op1(Operation.CALL_FOREIGN, (status, entry.params[0]), api.process_effect, entity=api.exit_group))
+        function = graph.function((api.process_effect,), (B32, api.process_effect))
+        target = x86_64_linux_exec_target()
+        cases["LINUX-STARTUP-PROCESS-ENTRY"] = (program_store(function, target, (*graph.objects.values(), *helper_graph.objects.values(), helper,
+                                                                                   *startup.symbols)), function, target)
+        reader, entry_function, target = _crc_program(x86_64_linux_exec_target())
+        cases["SYSV-C-REQUIRES-DYNAMIC-PROFILE"] = (reader, entry_function, target)
+        seven = c_function(b"libc.so.6", b"seven", (B64,) * 7, (B64,))
+        graph = GraphBuilder()
+        block = graph.block(api.filesystem_effect)
+        value = block.op1(Operation.CALL_FOREIGN, tuple(block.const(B64, index) for index in range(7)), B64, entity=seven)
+        block.ret(block.op1(Operation.INT_TRUNCATE, (value,), B32), block.params[0])
+        function = graph.function((api.filesystem_effect,), (B32, api.filesystem_effect))
+        target = x86_64_linux_dynamic_exec_target()
+        cases["SYSV-C-SCALAR-CLASS"] = (program_store(function, target, tuple(graph.objects.values())), function, target)
+        callee_graph, callee = _pure((B64,) * 5)
+        cases["SYSV-ENTRY-SIGNATURE"] = _address_program(callee_graph, callee, api.c_callback, extra=api.types)
+        for rule, (reader, function, target) in cases.items():
+            with self.subTest(rule):
+                with self.assertRaises(XaxError) as xax:
+                    general_with_xax(reader, function.cid, target, required=True)
+                with self.assertRaises(XaxError) as reference:
+                    compile_linux_executable(reader, function.cid, target.cid, frontend="python")
+                self.assertEqual(reference.exception.diagnostic.rule, rule)
+                self.assertEqual(xax.exception.diagnostic, reference.exception.diagnostic)
+
     def test_frame_lowering(self):
         """S12f: functions the register-resident path rejects (floats, products, sums) are lowered by the XAX frame
         path, byte for byte the bootstrap's ``_compile_function``; whole programs are assembled in XAX."""

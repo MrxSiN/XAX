@@ -558,8 +558,18 @@ def compile_linux_executable(reader: StoreReader, entry_cid: bytes, target_cid: 
         if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
             xax = _frontend_outcome(lambda: closure_with_xax(reader, entry_cid, target_object, required=True))
             reference = _frontend_outcome(lambda: linux_closure(reader, entry_cid, target_object))
-            if xax != reference:
+            if xax != reference and not isinstance(reference, tuple):
                 raise AssertionError(f"S12a front ends disagree: xax {xax!r} reference {reference!r}")
+            if xax != reference:
+                # S12f.2 (ADR-278): the closure is the bootstrap's, and the program rejected during code generation;
+                # the bootstrap's whole compile must fail with that diagnostic.
+                try:
+                    compile_linux_executable(reader, entry_cid, target_cid, frontend="python")
+                    full = None
+                except XaxError as error:
+                    full = error.diagnostic
+                if xax != full:
+                    raise AssertionError(f"S12f.2 rejections disagree: xax {xax!r} reference {full!r}")
         audit = os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
         decided = general_with_xax(reader, entry_cid, target_object, required=frontend == "xax", audit=audit)
         if decided is not None:

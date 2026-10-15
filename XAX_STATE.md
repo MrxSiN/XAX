@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S12f.2 code generation rejections — 2026-10-15 (ADR-278)
+
+The general backend program now makes the bootstrap's code-generation rejections itself, with the exact diagnostics. Every compile in the Linux test suites is decided entirely by XAX: 152 executables and 5 rejections. Next: S12f.3 (atomics, aggregates passed by reference, values wider than 64 bits, and the legacy register path).
+
 ## S12e.3 the general driver rebuilds itself — 2026-10-15 (ADR-277)
 
-S12e.3 is complete on Linux x86-64. The verifier views doubled, so the general driver now verifies its own store. It rebuilds itself through three generations as plain processes, byte for byte, like the views driver (S11). This is a component fixed point, not a B milestone. S12e is complete. Next: S12f.2.
+S12e.3 is complete on Linux x86-64. The verifier views doubled, so the general driver now verifies its own store. It rebuilds itself through three generations as plain processes, byte for byte, like the views driver (S11). This is a component fixed point, not a B milestone. S12e is complete. Next: S12f.2. S12f.2: see above.
 
 ## S12e.2 the general driver — 2026-10-14 (ADR-276)
 

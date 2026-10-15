@@ -1352,8 +1352,28 @@ def _foreign_node_fn(tables):
         def sysv():
             from xax_selfhost_x86_64_general import G_TFMT
 
-            _ok(e, e.eq(_g(e, G_TFMT), 6))  # SYSV-C-REQUIRES-DYNAMIC-PROFILE
-            _ok(e, e.le(p["fc_r"], 1))  # SYSV-C-SCALAR-CLASS
+            from xax_selfhost_general_emit import reject_at, write_dynamic_profile
+
+            e.if_(e.ne(_g(e, G_TFMT), 6), lambda: reject_at(e, lambda: write_dynamic_profile(e)))
+
+            def scalar_class():
+                """``_emit_sysv_c_call``: outside the lowered register-passed subset."""
+                def write():
+                    import xax_selfhost_diagnostics as D
+                    from xax_selfhost_general_emit import E_F, _e, graph_cid_words
+
+                    D.text(e, "XAX.NATIVE.FOREIGN_ABI")
+                    D.cid(e, graph_cid_words(e, _e(e, E_F)))
+                    D.text(e, "SYSV-C-SCALAR-CLASS")
+                    D.text(e, "<=6 INTEGER and <=8 SSE scalar arguments, <=1 scalar result")
+                    D.put(e, D.T_LIST)
+                    D.put(e, 2)
+                    D.integer(e, p["fc_n"])
+                    D.integer(e, p["fc_r"])
+
+                reject_at(e, write)
+
+            e.if_(e.lt(1, p["fc_r"]), scalar_class)
             e.var("fc_ints", 0)
             e.var("fc_vecs", 0)
 
@@ -1368,7 +1388,7 @@ def _foreign_node_fn(tables):
                         e.set("fc_vecs", e.add(p["fc_vecs"], 1))
 
                     def gpr():
-                        _ok(e, e.both(_integer_class(e, p["fc_t"]), e.lt(p["fc_ints"], 6)))  # SYSV-C-SCALAR-CLASS
+                        e.if_(e.not_(e.both(_integer_class(e, p["fc_t"]), e.lt(p["fc_ints"], 6))), scalar_class)
                         e.var("fc_reg", _select(e, p["fc_ints"], SYSV_REGISTERS))
                         _load(e, p["fc_reg"], _slot(e, p["fc_o"]), 8)
                         e.set("fc_ints", e.add(p["fc_ints"], 1))
@@ -1380,7 +1400,7 @@ def _foreign_node_fn(tables):
             e.for_("fc_k", 0, _f(e, node, N_NOPS), argument)
             # The result's class (at most one scalar).
             e.if_(e.ne(p["fc_r_first"], NONE), lambda: (e.var("fc_rt", _vf(e, G_VTYPE, p["fc_r_first"])),
-                                                         _ok(e, e.either(_is_float(e, p["fc_rt"]), _integer_class(e, p["fc_rt"])))))
+                                                         e.if_(e.not_(e.either(_is_float(e, p["fc_rt"]), _integer_class(e, p["fc_rt"]))), scalar_class)))
             _bx(e, 0x15FF, 2, True)
             _record_call(e, p["fc_obj"], 0)
             _bx(e, 0, 4, True)
@@ -1711,6 +1731,9 @@ def _frame_function_fn(tables):
 
     def build(e: E):
         p = e.p
+        from xax_selfhost_general_emit import E_F
+
+        _set_ra(e, E_F, p["f"])  # S12f.2: the function a rejection names
         # The function's own graph: lift it again (the view's records were rewritten).
         _globals(e, G_VCOUNT, 0)
         _globals(e, G_FKEYN, 0)

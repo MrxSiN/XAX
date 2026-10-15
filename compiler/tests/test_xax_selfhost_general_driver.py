@@ -6,7 +6,8 @@ program's object table itself (the program store, the target, the verifier's poi
 engine during its own semantic verification, and the trap payload heads), calls the program, and writes the ELF
 file the program assembled.  Every run below is a real process with no Python inside.  Differential: each output
 equals ``compile_linux_executable`` (the executable bytes, or the exact ``Diagnostic``); where the general program
-leaves a decision to the bootstrap, the driver declines.  The views profiles are lowered exactly as before.  S12e.3
+leaves a decision to the bootstrap, the driver declines (S12f.2: code generation rejections are the program's).  The
+views profiles are lowered exactly as before.  S12e.3
 (ADR-277): the general driver verifies its own store and rebuilds itself through three generations as processes.
 """
 
@@ -117,15 +118,14 @@ class GeneralDriverTests(unittest.TestCase):
                 kind, diagnostic = self.assertLinuxOutcome(reader, target)
                 self.assertEqual((kind, diagnostic.rule), ("rejected", rule))
 
-    def test_a_code_generation_rejection_declines(self):
-        """The bootstrap still decides a C import in the static profile (S12f.2); the driver makes no claim."""
+    def test_a_code_generation_rejection_is_the_general_programs(self):
+        """S12f.2 (ADR-278): a C import in the static profile is rejected during code generation with the bootstrap's
+        diagnostic."""
         from test_xax_linux import _crc_program
-        from xax_linux import compile_linux_executable
 
-        reader, entry, target = _crc_program(X.x86_64_linux_exec_target())
-        with self.assertRaises(X.XaxError):
-            compile_linux_executable(reader, entry.cid, target.cid)
-        self.assertEqual(self.run_driver(reader.data, target), ("declined", None))
+        reader, _entry, target = _crc_program(X.x86_64_linux_exec_target())
+        kind, diagnostic = self.assertLinuxOutcome(reader, target)
+        self.assertEqual((kind, diagnostic.rule), ("rejected", "SYSV-C-REQUIRES-DYNAMIC-PROFILE"))
 
     def test_views_profiles_are_unchanged(self):
         from test_xax_selfhost_driver import BOOTSTRAP, _reference

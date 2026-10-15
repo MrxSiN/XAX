@@ -45,6 +45,43 @@ SYSCALL_REGISTERS = (7, 6, 2, 10, 8, 9)
 LOOP_ALIGNMENT = 16
 FAR = 1 << 30
 DYNAMIC_FORMAT = 6
+
+
+def reject_at(e: E, write):
+    """S12f.2 (ADR-278): the bootstrap fails here.  When every earlier function's code is the program's (``I_OK``), the
+    bootstrap reached this point too: write its diagnostic (``write()`` emits the code, entity, rule, expected, and
+    actual) and mark the program rejected (``E_FAIL``); otherwise an earlier function may have failed first, and the
+    program declines.  Gives NONE either way."""
+    import xax_selfhost_diagnostics as D
+    from xax_selfhost_general_image import I_OK
+
+    def record():
+        D.begin(e)
+        write()
+        _se(e, E_FAIL, 1)
+
+    e.if_(e.both(e.ne(_ra(e, I_OK), 0), e.eq(_e(e, E_FAIL), 0)), record)
+    e.give(NONE)
+
+
+def graph_cid_words(e: E, f):
+    """The CID words of function ``f``'s graph (``_decode_function_interface``: a group member's own graph)."""
+    return _cid_words(e, e.ld(_call(e, "interface", f)))
+
+
+def write_dynamic_profile(e: E):
+    """``require_sysv_profile``'s diagnostic for the current function (the target is a Linux ELF profile)."""
+    import xax_selfhost_diagnostics as D
+    from xax_selfhost_x86_64_general import G_TFMT, LINUX_ABI
+
+    D.text(e, "XAX.NATIVE.FOREIGN_ABI")
+    D.cid(e, graph_cid_words(e, _e(e, E_F)))
+    D.text(e, "SYSV-C-REQUIRES-DYNAMIC-PROFILE")
+    for second in (DYNAMIC_FORMAT, _g(e, G_TFMT)):
+        D.put(e, D.T_LIST)
+        D.put(e, 2)
+        D.integer(e, LINUX_ABI)
+        D.integer(e, second)
 NOPS = (
     b"\x90", b"\x66\x90", b"\x0f\x1f\x00", b"\x0f\x1f\x40\x00", b"\x0f\x1f\x44\x00\x00",
     b"\x66\x0f\x1f\x44\x00\x00", b"\x0f\x1f\x80\x00\x00\x00\x00",
@@ -2231,7 +2268,7 @@ def _foreign_call_fn(tables):
             _ok(e, e.ne(p["fc_sysv"], 0))
             from xax_selfhost_x86_64_general import G_TFMT
 
-            _ok(e, e.eq(_g(e, G_TFMT), DYNAMIC_FORMAT))  # the bootstrap fails (SYSV-C-REQUIRES-DYNAMIC-PROFILE)
+            e.if_(e.ne(_g(e, G_TFMT), DYNAMIC_FORMAT), lambda: reject_at(e, lambda: write_dynamic_profile(e)))
             e.if_(e.either(e.lt(6, p["fc_n"]), e.lt(1, p["fc_nres"])), lambda: e.give(INELIGIBLE))
             e.for_("fc_k", 0, p["fc_n"], lambda: e.st(e.add(_e(e, E_REGS), p["fc_k"]), _select_register(e, p["fc_k"], SYSV_REGISTERS)))
             _se(e, E_NARGS, p["fc_n"])
@@ -2273,7 +2310,16 @@ def _foreign_call_fn(tables):
 
         def startup_read():
             """``emit_startup_read`` (ADR-094): the read named by the declaration, result in rax."""
-            _ok(e, e.ne(_e(e, E_PROCESS), 0))  # the bootstrap fails (LINUX-STARTUP-PROCESS-ENTRY)
+            def write():
+                import xax_selfhost_diagnostics as D
+
+                D.text(e, "XAX.NATIVE.STARTUP")
+                D.cid(e, graph_cid_words(e, _e(e, E_F)))
+                D.text(e, "LINUX-STARTUP-PROCESS-ENTRY")
+                D.text(e, "process entry function")
+                D.text(e, "called function")
+
+            e.if_(e.eq(_e(e, E_PROCESS), 0), lambda: reject_at(e, write))
             e.var("fc_copy", e.flag(e.either(e.eq(p["fc_start"], STARTUP_NAMES.index(b"arg_copy") + 1), e.eq(p["fc_start"], STARTUP_NAMES.index(b"env_copy") + 1))))
             e.var("fc_extent", 0)
             e.if_(e.ne(p["fc_copy"], 0), lambda: e.set("fc_extent", _call(e, "extent", e.ld(e.add(p["fc_saved"], 1)))))
@@ -2698,6 +2744,7 @@ def _emit_function_fn(tables):
         e.for_("ef_r", 0, 16, lambda: _set_regv(e, p["ef_r"], NONE))
         _se(e, E_STAMP, 0)
         _se(e, E_PROCESS, e.flag(e.eq(p["f"], _g(e, G_ENTRY))))
+        _se(e, E_F, p["f"])
         for slot in (E_NTABLES, E_USED, E_REAL, E_NSTUBS, E_NTRAPS, E_FRAME, E_CLOSED, E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
             _se(e, slot, 0)
         _se(e, E_NLABELS, p["ef_nb"])
@@ -2894,6 +2941,7 @@ def emit_prologue(e: E):
         at = e.alloc(words)
         _ok(e, e.ne(at, NONE))
         _se(e, slot, at)
+    _se(e, E_FAIL, 0)  # S12f.2: no rejection yet (the arena is not re-zeroed between runs)
     e.var("ep_pow", 1)
     e.for_("ep_r", 0, 16, lambda: (_set_ra(e, e.add(E_POW, e.p["ep_r"]), e.p["ep_pow"]), e.set("ep_pow", e.mul(e.p["ep_pow"], 2))))
 
