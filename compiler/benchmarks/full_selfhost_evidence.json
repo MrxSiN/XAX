@@ -17,10 +17,10 @@
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "a41470752f09c47f7313f55f37968de3628dee1b174274848a66e2c925b09fa0",
-    "semantic_root": "aa4d9b1c5fb1aede93fc98efd149bc0a61d871e78efdd46270af16657b51ab6a",
-    "request_store_sha256": "3628f322556b0215610dc81f202e0fe58fb41c87f6361fd66fba0800299c078c",
-    "request_root": "8fa0e139ed06f62f8ae3100fe7ea8feffa46b991867a42033851b81e36d97f8c",
+    "store_sha256": "e2eae79e3533086982a1299cb36ec68ffb4b7b7803f09d17aa4b31c7552d77bd",
+    "semantic_root": "d5b653d0efa5ff33f67c2942ea4cac6f3e8a957ea16b59b81b28767e4e0c37b7",
+    "request_store_sha256": "a50afc2898d01a92b83d345ce16b19db5cfe3ee1916d722b2fa1e2a1d922a262",
+    "request_root": "7f977e6e0115c8b003ecabbc847b1d603d46dd9ad8f2e461c12de07b5691e1ae",
     "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -28,52 +28,52 @@
   },
   "seed": {
     "kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
-    "sha256": "29906d7327c24fcbaaa94a3bc1faffe1a2c46e873169231801190856aaf9f947",
-    "bytes": 29644209,
+    "sha256": "e746b144b3d92f7691e838f73e6a3d7a8f7c2ab191d804a38f33887638667328",
+    "bytes": 32028193,
     "requires_python": true,
-    "host_s_nonsemantic": 50.6
+    "host_s_nonsemantic": 56.0
   },
   "references": {
-    "python_resolver_snapshot_sha256": "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660",
-    "python_resolve_s_nonsemantic": 69.8,
-    "bootstrap_compile_sha256": "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-    "bootstrap_compile_bytes": 6914072,
-    "bootstrap_compile_s_nonsemantic": 577.3
+    "python_resolver_snapshot_sha256": "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135",
+    "python_resolve_s_nonsemantic": 84.5,
+    "bootstrap_compile_sha256": "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+    "bootstrap_compile_bytes": 8286392,
+    "bootstrap_compile_s_nonsemantic": 847.7
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "29906d7327c24fcbaaa94a3bc1faffe1a2c46e873169231801190856aaf9f947",
+      "producer_sha256": "e746b144b3d92f7691e838f73e6a3d7a8f7c2ab191d804a38f33887638667328",
       "resolve": {
         "status": "image",
         "outputs": [
-          "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660"
+          "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135"
         ],
-        "host_s_nonsemantic": 28.73,
-        "peak_rss_kib_nonsemantic": 2572964
+        "host_s_nonsemantic": 40.43,
+        "peak_rss_kib_nonsemantic": 2911644
       },
       "build": {
         "status": "image",
         "outputs": [
-          "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-          "154299fdabf517d9ae22d6a5630eb0f177bff32b9e0d9bf6ec5342d0595d90d6"
+          "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+          "5053049d6c318a5d74ddcbeebc20983860502d226b45a6bd45a44e43a62ac8d4"
         ],
-        "host_s_nonsemantic": 106.33,
-        "peak_rss_kib_nonsemantic": 2572964
+        "host_s_nonsemantic": 160.52,
+        "peak_rss_kib_nonsemantic": 2911644
       },
-      "snapshot_sha256": "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660",
+      "snapshot_sha256": "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-      "artifact_bytes": 6914072,
-      "provenance_sha256": "154299fdabf517d9ae22d6a5630eb0f177bff32b9e0d9bf6ec5342d0595d90d6",
+      "artifact_sha256": "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+      "artifact_bytes": 8286392,
+      "provenance_sha256": "5053049d6c318a5d74ddcbeebc20983860502d226b45a6bd45a44e43a62ac8d4",
       "provenance": {
-        "cid": "4f1cec23287ae9dd791d7329bd4409309374a41a062b126d1355d36497b619f9",
-        "snapshot_root": "2b27ff119fc87e623067667656a8d9371d71d6b6404e69fbf9ad9009fd2fd014",
-        "request_root": "8fa0e139ed06f62f8ae3100fe7ea8feffa46b991867a42033851b81e36d97f8c",
+        "cid": "b4d0bc0b28cd80086e8bd77fe2529ed65b5277cab00b642a4a0ef7b641899b44",
+        "snapshot_root": "15b6beeac973157f3920d043c40af6753415943c79c231d63cf077d6993f2c58",
+        "request_root": "7f977e6e0115c8b003ecabbc847b1d603d46dd9ad8f2e461c12de07b5691e1ae",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "271c369be5daa5e721e78b5081a5372be0c42c4d6da1546e402c8c9d3b968353",
+        "artifact_digest_blake3": "773203e4b06b8592032ddf8721d14647502b28ba6d7785f6ebe47013e83e88ba",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       },
@@ -82,36 +82,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
+      "producer_sha256": "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
       "resolve": {
         "status": "image",
         "outputs": [
-          "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660"
+          "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135"
         ],
-        "host_s_nonsemantic": 9.91,
-        "peak_rss_kib_nonsemantic": 3879908
+        "host_s_nonsemantic": 12.71,
+        "peak_rss_kib_nonsemantic": 4316832
       },
       "build": {
         "status": "image",
         "outputs": [
-          "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-          "154299fdabf517d9ae22d6a5630eb0f177bff32b9e0d9bf6ec5342d0595d90d6"
+          "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+          "5053049d6c318a5d74ddcbeebc20983860502d226b45a6bd45a44e43a62ac8d4"
         ],
-        "host_s_nonsemantic": 33.0,
-        "peak_rss_kib_nonsemantic": 3879908
+        "host_s_nonsemantic": 45.83,
+        "peak_rss_kib_nonsemantic": 4316832
       },
-      "snapshot_sha256": "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660",
+      "snapshot_sha256": "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-      "artifact_bytes": 6914072,
-      "provenance_sha256": "154299fdabf517d9ae22d6a5630eb0f177bff32b9e0d9bf6ec5342d0595d90d6",
+      "artifact_sha256": "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+      "artifact_bytes": 8286392,
+      "provenance_sha256": "5053049d6c318a5d74ddcbeebc20983860502d226b45a6bd45a44e43a62ac8d4",
       "provenance": {
-        "cid": "4f1cec23287ae9dd791d7329bd4409309374a41a062b126d1355d36497b619f9",
-        "snapshot_root": "2b27ff119fc87e623067667656a8d9371d71d6b6404e69fbf9ad9009fd2fd014",
-        "request_root": "8fa0e139ed06f62f8ae3100fe7ea8feffa46b991867a42033851b81e36d97f8c",
+        "cid": "b4d0bc0b28cd80086e8bd77fe2529ed65b5277cab00b642a4a0ef7b641899b44",
+        "snapshot_root": "15b6beeac973157f3920d043c40af6753415943c79c231d63cf077d6993f2c58",
+        "request_root": "7f977e6e0115c8b003ecabbc847b1d603d46dd9ad8f2e461c12de07b5691e1ae",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "271c369be5daa5e721e78b5081a5372be0c42c4d6da1546e402c8c9d3b968353",
+        "artifact_digest_blake3": "773203e4b06b8592032ddf8721d14647502b28ba6d7785f6ebe47013e83e88ba",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -119,36 +119,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
+      "producer_sha256": "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
       "resolve": {
         "status": "image",
         "outputs": [
-          "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660"
+          "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135"
         ],
-        "host_s_nonsemantic": 11.02,
-        "peak_rss_kib_nonsemantic": 3879908
+        "host_s_nonsemantic": 12.37,
+        "peak_rss_kib_nonsemantic": 4316832
       },
       "build": {
         "status": "image",
         "outputs": [
-          "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-          "154299fdabf517d9ae22d6a5630eb0f177bff32b9e0d9bf6ec5342d0595d90d6"
+          "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+          "5053049d6c318a5d74ddcbeebc20983860502d226b45a6bd45a44e43a62ac8d4"
         ],
-        "host_s_nonsemantic": 32.22,
-        "peak_rss_kib_nonsemantic": 3879908
+        "host_s_nonsemantic": 47.71,
+        "peak_rss_kib_nonsemantic": 4316832
       },
-      "snapshot_sha256": "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660",
+      "snapshot_sha256": "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-      "artifact_bytes": 6914072,
-      "provenance_sha256": "154299fdabf517d9ae22d6a5630eb0f177bff32b9e0d9bf6ec5342d0595d90d6",
+      "artifact_sha256": "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+      "artifact_bytes": 8286392,
+      "provenance_sha256": "5053049d6c318a5d74ddcbeebc20983860502d226b45a6bd45a44e43a62ac8d4",
       "provenance": {
-        "cid": "4f1cec23287ae9dd791d7329bd4409309374a41a062b126d1355d36497b619f9",
-        "snapshot_root": "2b27ff119fc87e623067667656a8d9371d71d6b6404e69fbf9ad9009fd2fd014",
-        "request_root": "8fa0e139ed06f62f8ae3100fe7ea8feffa46b991867a42033851b81e36d97f8c",
+        "cid": "b4d0bc0b28cd80086e8bd77fe2529ed65b5277cab00b642a4a0ef7b641899b44",
+        "snapshot_root": "15b6beeac973157f3920d043c40af6753415943c79c231d63cf077d6993f2c58",
+        "request_root": "7f977e6e0115c8b003ecabbc847b1d603d46dd9ad8f2e461c12de07b5691e1ae",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "271c369be5daa5e721e78b5081a5372be0c42c4d6da1546e402c8c9d3b968353",
+        "artifact_digest_blake3": "773203e4b06b8592032ddf8721d14647502b28ba6d7785f6ebe47013e83e88ba",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -157,15 +157,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-      "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343",
-      "3b9147075516c78a213ce035b0928462aa45385b8fbe39cbea45cc5b4aba7343"
+      "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+      "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997",
+      "b05accd5b83275b1d674a0c84e27e0b1f23d0c6a713f1282c859783525f11997"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "5782a7b83191c5ee9ac946a53cbff3a24a4a0aba84d6770924bce60b09725660"
+    "snapshot_sha256": "b15d6f9e5c0f1dff2cefbf02f597a89818b6b177b7371db11db8bb78655db135"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -1055,19 +1055,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "ecb48765d0c77e01fcac50f5c2f490fece20cd65a5d176bdb97fc347ac08040d"
+          "143892a73ab9820b6f39b02a89e6f70774028c76753ef3a070642a794498c363"
         ],
         "C1": [
           "image",
-          "ecb48765d0c77e01fcac50f5c2f490fece20cd65a5d176bdb97fc347ac08040d"
+          "143892a73ab9820b6f39b02a89e6f70774028c76753ef3a070642a794498c363"
         ],
         "C2": [
           "image",
-          "ecb48765d0c77e01fcac50f5c2f490fece20cd65a5d176bdb97fc347ac08040d"
+          "143892a73ab9820b6f39b02a89e6f70774028c76753ef3a070642a794498c363"
         ],
         "C3": [
           "image",
-          "ecb48765d0c77e01fcac50f5c2f490fece20cd65a5d176bdb97fc347ac08040d"
+          "143892a73ab9820b6f39b02a89e6f70774028c76753ef3a070642a794498c363"
         ]
       },
       "reference": null
@@ -1209,22 +1209,26 @@
         "C0": [
           "rejected",
           "XAX.CONTAINER.MAGIC",
-          "SER-HEADER-MAGIC"
+          "SER-HEADER-MAGIC",
+          "d4c1e6a0e9af53afc09e193dbd499897fccfaba727f9bdf8570ba91551a7eca3"
         ],
         "C1": [
           "rejected",
           "XAX.CONTAINER.MAGIC",
-          "SER-HEADER-MAGIC"
+          "SER-HEADER-MAGIC",
+          "d4c1e6a0e9af53afc09e193dbd499897fccfaba727f9bdf8570ba91551a7eca3"
         ],
         "C2": [
           "rejected",
           "XAX.CONTAINER.MAGIC",
-          "SER-HEADER-MAGIC"
+          "SER-HEADER-MAGIC",
+          "d4c1e6a0e9af53afc09e193dbd499897fccfaba727f9bdf8570ba91551a7eca3"
         ],
         "C3": [
           "rejected",
           "XAX.CONTAINER.MAGIC",
-          "SER-HEADER-MAGIC"
+          "SER-HEADER-MAGIC",
+          "d4c1e6a0e9af53afc09e193dbd499897fccfaba727f9bdf8570ba91551a7eca3"
         ]
       },
       "reference": null
@@ -1237,22 +1241,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dd6ef10830c62647d3599f04432eceba313c18708c5c7ac0384460380d2c3730"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dd6ef10830c62647d3599f04432eceba313c18708c5c7ac0384460380d2c3730"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dd6ef10830c62647d3599f04432eceba313c18708c5c7ac0384460380d2c3730"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dd6ef10830c62647d3599f04432eceba313c18708c5c7ac0384460380d2c3730"
         ]
       },
       "reference": null
@@ -1265,22 +1273,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93ff7cb017a12b4cad80d2a7541feaecc881fdd3525e5b3c31415fe4f8457563"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93ff7cb017a12b4cad80d2a7541feaecc881fdd3525e5b3c31415fe4f8457563"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93ff7cb017a12b4cad80d2a7541feaecc881fdd3525e5b3c31415fe4f8457563"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93ff7cb017a12b4cad80d2a7541feaecc881fdd3525e5b3c31415fe4f8457563"
         ]
       },
       "reference": null
@@ -1293,22 +1305,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "df374a6fd1a5168efbd0df324086365eea4c8272a77dabf0a3ea7e67e402d4ab"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "df374a6fd1a5168efbd0df324086365eea4c8272a77dabf0a3ea7e67e402d4ab"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "df374a6fd1a5168efbd0df324086365eea4c8272a77dabf0a3ea7e67e402d4ab"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "df374a6fd1a5168efbd0df324086365eea4c8272a77dabf0a3ea7e67e402d4ab"
         ]
       },
       "reference": null
@@ -1321,22 +1337,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "e833bd8c86c993fdd2c466769c8628807459b10dfb29174f42c0a7ef16e78f17"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "e833bd8c86c993fdd2c466769c8628807459b10dfb29174f42c0a7ef16e78f17"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "e833bd8c86c993fdd2c466769c8628807459b10dfb29174f42c0a7ef16e78f17"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "e833bd8c86c993fdd2c466769c8628807459b10dfb29174f42c0a7ef16e78f17"
         ]
       },
       "reference": null
@@ -1349,22 +1369,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "440d8195aa581dfe5fa955719ad7ddd1919b81daab67de33cdf77d74b6e7ca5e"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "440d8195aa581dfe5fa955719ad7ddd1919b81daab67de33cdf77d74b6e7ca5e"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "440d8195aa581dfe5fa955719ad7ddd1919b81daab67de33cdf77d74b6e7ca5e"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "440d8195aa581dfe5fa955719ad7ddd1919b81daab67de33cdf77d74b6e7ca5e"
         ]
       },
       "reference": null
@@ -1377,22 +1401,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dea58c827409e10707d49fb0cf9b4c761d350a0f70f1b5c562d32d8c87050f6b"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dea58c827409e10707d49fb0cf9b4c761d350a0f70f1b5c562d32d8c87050f6b"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dea58c827409e10707d49fb0cf9b4c761d350a0f70f1b5c562d32d8c87050f6b"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "dea58c827409e10707d49fb0cf9b4c761d350a0f70f1b5c562d32d8c87050f6b"
         ]
       },
       "reference": null
@@ -1405,22 +1433,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "029314f93d65f862e4ee5f3ce1c737c00335397517622b6bb8274c69a35469b6"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "029314f93d65f862e4ee5f3ce1c737c00335397517622b6bb8274c69a35469b6"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "029314f93d65f862e4ee5f3ce1c737c00335397517622b6bb8274c69a35469b6"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "029314f93d65f862e4ee5f3ce1c737c00335397517622b6bb8274c69a35469b6"
         ]
       },
       "reference": null
@@ -1433,22 +1465,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "86e867189a0e627dc31ba00e17fb04ac94c1b889a5d97b02eb9fd18cb8090c95"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "86e867189a0e627dc31ba00e17fb04ac94c1b889a5d97b02eb9fd18cb8090c95"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "86e867189a0e627dc31ba00e17fb04ac94c1b889a5d97b02eb9fd18cb8090c95"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "86e867189a0e627dc31ba00e17fb04ac94c1b889a5d97b02eb9fd18cb8090c95"
         ]
       },
       "reference": null
@@ -1461,22 +1497,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "34058aa0c5fe4b00a1fb269188a412a817e0cd21ed4d00bdb26698da99affff4"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "34058aa0c5fe4b00a1fb269188a412a817e0cd21ed4d00bdb26698da99affff4"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "34058aa0c5fe4b00a1fb269188a412a817e0cd21ed4d00bdb26698da99affff4"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "34058aa0c5fe4b00a1fb269188a412a817e0cd21ed4d00bdb26698da99affff4"
         ]
       },
       "reference": null
@@ -1489,22 +1529,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93a5999793a116b3dbae18bf0e0d33e0bb2964a1a6614d8d004511042b6c8f16"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93a5999793a116b3dbae18bf0e0d33e0bb2964a1a6614d8d004511042b6c8f16"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93a5999793a116b3dbae18bf0e0d33e0bb2964a1a6614d8d004511042b6c8f16"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "93a5999793a116b3dbae18bf0e0d33e0bb2964a1a6614d8d004511042b6c8f16"
         ]
       },
       "reference": null
@@ -1517,22 +1561,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "272f1963efbff5ff52ae644d65db42292b6e0b68ee5473c0029c2374c189697c"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "272f1963efbff5ff52ae644d65db42292b6e0b68ee5473c0029c2374c189697c"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "272f1963efbff5ff52ae644d65db42292b6e0b68ee5473c0029c2374c189697c"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "272f1963efbff5ff52ae644d65db42292b6e0b68ee5473c0029c2374c189697c"
         ]
       },
       "reference": null
@@ -1545,22 +1593,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "7684ad06eb86938a61117eee05c6b5028f3fe2ef932ce1d8d93025420bfd8def"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "7684ad06eb86938a61117eee05c6b5028f3fe2ef932ce1d8d93025420bfd8def"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "7684ad06eb86938a61117eee05c6b5028f3fe2ef932ce1d8d93025420bfd8def"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "7684ad06eb86938a61117eee05c6b5028f3fe2ef932ce1d8d93025420bfd8def"
         ]
       },
       "reference": null
@@ -1573,22 +1625,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "92aed1733b28f5a3ec06543b8b1ea2f456a1ac2754d6e843ec7c25996cfe1a70"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "92aed1733b28f5a3ec06543b8b1ea2f456a1ac2754d6e843ec7c25996cfe1a70"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "92aed1733b28f5a3ec06543b8b1ea2f456a1ac2754d6e843ec7c25996cfe1a70"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "92aed1733b28f5a3ec06543b8b1ea2f456a1ac2754d6e843ec7c25996cfe1a70"
         ]
       },
       "reference": null
@@ -1601,22 +1657,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "313ee2b5d6a7ff49f86cb50bd6c9e9f94a10c54433ac8f60e787c6660b0949fb"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "313ee2b5d6a7ff49f86cb50bd6c9e9f94a10c54433ac8f60e787c6660b0949fb"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "313ee2b5d6a7ff49f86cb50bd6c9e9f94a10c54433ac8f60e787c6660b0949fb"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "313ee2b5d6a7ff49f86cb50bd6c9e9f94a10c54433ac8f60e787c6660b0949fb"
         ]
       },
       "reference": null
@@ -1629,22 +1689,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "8b009b4625346840a3a6fca1b284926441ed3691f4dba12b6b244912cc592252"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "8b009b4625346840a3a6fca1b284926441ed3691f4dba12b6b244912cc592252"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "8b009b4625346840a3a6fca1b284926441ed3691f4dba12b6b244912cc592252"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "8b009b4625346840a3a6fca1b284926441ed3691f4dba12b6b244912cc592252"
         ]
       },
       "reference": null
@@ -1657,22 +1721,26 @@
         "C0": [
           "rejected",
           "XAX.CANON.TRUNCATED",
-          "SER-RECORD-LENGTH"
+          "SER-RECORD-LENGTH",
+          "dcba25dbd70ea63ab01fab5334463d79e42ca7b07d3423140c779915c9bf2f9c"
         ],
         "C1": [
           "rejected",
           "XAX.CANON.TRUNCATED",
-          "SER-RECORD-LENGTH"
+          "SER-RECORD-LENGTH",
+          "dcba25dbd70ea63ab01fab5334463d79e42ca7b07d3423140c779915c9bf2f9c"
         ],
         "C2": [
           "rejected",
           "XAX.CANON.TRUNCATED",
-          "SER-RECORD-LENGTH"
+          "SER-RECORD-LENGTH",
+          "dcba25dbd70ea63ab01fab5334463d79e42ca7b07d3423140c779915c9bf2f9c"
         ],
         "C3": [
           "rejected",
           "XAX.CANON.TRUNCATED",
-          "SER-RECORD-LENGTH"
+          "SER-RECORD-LENGTH",
+          "dcba25dbd70ea63ab01fab5334463d79e42ca7b07d3423140c779915c9bf2f9c"
         ]
       },
       "reference": null
@@ -1685,22 +1753,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "3d16abbd1fa384ba372b6b7716a90dd1983bf1460c01bdb9f6aab4e6e7fd7b53"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "3d16abbd1fa384ba372b6b7716a90dd1983bf1460c01bdb9f6aab4e6e7fd7b53"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "3d16abbd1fa384ba372b6b7716a90dd1983bf1460c01bdb9f6aab4e6e7fd7b53"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "3d16abbd1fa384ba372b6b7716a90dd1983bf1460c01bdb9f6aab4e6e7fd7b53"
         ]
       },
       "reference": null
@@ -1713,22 +1785,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9c2c030f7412b0b9b85cb2e03e2f9027aada1897d92c1fac5499f276b681fbb9"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9c2c030f7412b0b9b85cb2e03e2f9027aada1897d92c1fac5499f276b681fbb9"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9c2c030f7412b0b9b85cb2e03e2f9027aada1897d92c1fac5499f276b681fbb9"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9c2c030f7412b0b9b85cb2e03e2f9027aada1897d92c1fac5499f276b681fbb9"
         ]
       },
       "reference": null
@@ -1741,22 +1817,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9e4488d7b5892f2599a2dca55f90b7ddbd6ffaca055fc2d4b6f063d1c74adf1d"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9e4488d7b5892f2599a2dca55f90b7ddbd6ffaca055fc2d4b6f063d1c74adf1d"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9e4488d7b5892f2599a2dca55f90b7ddbd6ffaca055fc2d4b6f063d1c74adf1d"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "9e4488d7b5892f2599a2dca55f90b7ddbd6ffaca055fc2d4b6f063d1c74adf1d"
         ]
       },
       "reference": null
@@ -1769,22 +1849,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "94d65e773681358f4b68f2ba051641c3e3888aee15f9ee2bf775715cac5fec53"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "94d65e773681358f4b68f2ba051641c3e3888aee15f9ee2bf775715cac5fec53"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "94d65e773681358f4b68f2ba051641c3e3888aee15f9ee2bf775715cac5fec53"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "94d65e773681358f4b68f2ba051641c3e3888aee15f9ee2bf775715cac5fec53"
         ]
       },
       "reference": null
@@ -1797,22 +1881,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "0ad44ef6cb0fdbdebd1dfd4c591708788b24ccbfd0bfd4c94c750d06ed04c698"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "0ad44ef6cb0fdbdebd1dfd4c591708788b24ccbfd0bfd4c94c750d06ed04c698"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "0ad44ef6cb0fdbdebd1dfd4c591708788b24ccbfd0bfd4c94c750d06ed04c698"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "0ad44ef6cb0fdbdebd1dfd4c591708788b24ccbfd0bfd4c94c750d06ed04c698"
         ]
       },
       "reference": null
@@ -1825,22 +1913,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "1c6384102125062a9d3aad1f0e242cbb4416b32ccd970db439fa2fecf4acdd1c"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "1c6384102125062a9d3aad1f0e242cbb4416b32ccd970db439fa2fecf4acdd1c"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "1c6384102125062a9d3aad1f0e242cbb4416b32ccd970db439fa2fecf4acdd1c"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "1c6384102125062a9d3aad1f0e242cbb4416b32ccd970db439fa2fecf4acdd1c"
         ]
       },
       "reference": null
@@ -1853,22 +1945,26 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "cb6cd264f37c3df3fb09efad46949c6aede09d01910e69fcbfe0735dfc577d75"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "cb6cd264f37c3df3fb09efad46949c6aede09d01910e69fcbfe0735dfc577d75"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "cb6cd264f37c3df3fb09efad46949c6aede09d01910e69fcbfe0735dfc577d75"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "cb6cd264f37c3df3fb09efad46949c6aede09d01910e69fcbfe0735dfc577d75"
         ]
       },
       "reference": null
@@ -1881,25 +1977,864 @@
         "C0": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "d908b127773f3f4c54b3e6273a9f45437c5545b40bed74b4c8b894796a588b79"
         ],
         "C1": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "d908b127773f3f4c54b3e6273a9f45437c5545b40bed74b4c8b894796a588b79"
         ],
         "C2": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "d908b127773f3f4c54b3e6273a9f45437c5545b40bed74b4c8b894796a588b79"
         ],
         "C3": [
           "rejected",
           "XAX.INTEGRITY.STORE_DIGEST",
-          "SER-STORE-DIGEST"
+          "SER-STORE-DIGEST",
+          "d908b127773f3f4c54b3e6273a9f45437c5545b40bed74b4c8b894796a588b79"
         ]
       },
       "reference": null
+    },
+    {
+      "case": "verify rejected: ID-REFERENCE-RESOLVED",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.IDENTITY.OBJECT_MISSING",
+          "ID-REFERENCE-RESOLVED",
+          "4037b73c9498512072400ceb1fdb0bfb537d2297c357e317abbf1d55f0b62205"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.IDENTITY.OBJECT_MISSING",
+          "ID-REFERENCE-RESOLVED",
+          "4037b73c9498512072400ceb1fdb0bfb537d2297c357e317abbf1d55f0b62205"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.IDENTITY.OBJECT_MISSING",
+          "ID-REFERENCE-RESOLVED",
+          "4037b73c9498512072400ceb1fdb0bfb537d2297c357e317abbf1d55f0b62205"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.IDENTITY.OBJECT_MISSING",
+          "ID-REFERENCE-RESOLVED",
+          "4037b73c9498512072400ceb1fdb0bfb537d2297c357e317abbf1d55f0b62205"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.IDENTITY.OBJECT_MISSING",
+        "ID-REFERENCE-RESOLVED",
+        "4037b73c9498512072400ceb1fdb0bfb537d2297c357e317abbf1d55f0b62205"
+      ]
+    },
+    {
+      "case": "verify rejected: TARGET-NATIVE-BODY",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TARGET-NATIVE-BODY",
+          "025a19756196ee3eb727d0c2b964aadad571baa59a897b372b0eed57791cbfc4"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TARGET-NATIVE-BODY",
+          "025a19756196ee3eb727d0c2b964aadad571baa59a897b372b0eed57791cbfc4"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TARGET-NATIVE-BODY",
+          "025a19756196ee3eb727d0c2b964aadad571baa59a897b372b0eed57791cbfc4"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TARGET-NATIVE-BODY",
+          "025a19756196ee3eb727d0c2b964aadad571baa59a897b372b0eed57791cbfc4"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.TRAILING_BYTES",
+        "TARGET-NATIVE-BODY",
+        "025a19756196ee3eb727d0c2b964aadad571baa59a897b372b0eed57791cbfc4"
+      ]
+    },
+    {
+      "case": "verify rejected: SER-ULEB-TERMINATED",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.ULEB_UNTERMINATED",
+          "SER-ULEB-TERMINATED",
+          "14505c7f49a2215a22d4a8155edf3770748fe68494d881c95b6b349075ccd4a0"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.ULEB_UNTERMINATED",
+          "SER-ULEB-TERMINATED",
+          "14505c7f49a2215a22d4a8155edf3770748fe68494d881c95b6b349075ccd4a0"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.ULEB_UNTERMINATED",
+          "SER-ULEB-TERMINATED",
+          "14505c7f49a2215a22d4a8155edf3770748fe68494d881c95b6b349075ccd4a0"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.ULEB_UNTERMINATED",
+          "SER-ULEB-TERMINATED",
+          "14505c7f49a2215a22d4a8155edf3770748fe68494d881c95b6b349075ccd4a0"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.ULEB_UNTERMINATED",
+        "SER-ULEB-TERMINATED",
+        "14505c7f49a2215a22d4a8155edf3770748fe68494d881c95b6b349075ccd4a0"
+      ]
+    },
+    {
+      "case": "verify rejected: SCHEMA-BODY",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "SCHEMA-BODY",
+          "fe3e45039332d452940b38956dd26d4a4f87763cab6884aff511f2e88b158817"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "SCHEMA-BODY",
+          "fe3e45039332d452940b38956dd26d4a4f87763cab6884aff511f2e88b158817"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "SCHEMA-BODY",
+          "fe3e45039332d452940b38956dd26d4a4f87763cab6884aff511f2e88b158817"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "SCHEMA-BODY",
+          "fe3e45039332d452940b38956dd26d4a4f87763cab6884aff511f2e88b158817"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.TRAILING_BYTES",
+        "SCHEMA-BODY",
+        "fe3e45039332d452940b38956dd26d4a4f87763cab6884aff511f2e88b158817"
+      ]
+    },
+    {
+      "case": "verify rejected: BUILD-KIND",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND",
+          "7ab4829845746fec98762351613fc92259a3c718c775a24b096c776042ec1719"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND",
+          "7ab4829845746fec98762351613fc92259a3c718c775a24b096c776042ec1719"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND",
+          "7ab4829845746fec98762351613fc92259a3c718c775a24b096c776042ec1719"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND",
+          "7ab4829845746fec98762351613fc92259a3c718c775a24b096c776042ec1719"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.BUILD.KIND",
+        "BUILD-KIND",
+        "7ab4829845746fec98762351613fc92259a3c718c775a24b096c776042ec1719"
+      ]
+    },
+    {
+      "case": "verify rejected: SNAPSHOT-HEADER",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.SNAPSHOT.HEADER",
+          "SNAPSHOT-HEADER",
+          "e91aa56a1ab3866dc64317cb860fdd40e994e685905af11e28b27229e7cc1f92"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.SNAPSHOT.HEADER",
+          "SNAPSHOT-HEADER",
+          "e91aa56a1ab3866dc64317cb860fdd40e994e685905af11e28b27229e7cc1f92"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.SNAPSHOT.HEADER",
+          "SNAPSHOT-HEADER",
+          "e91aa56a1ab3866dc64317cb860fdd40e994e685905af11e28b27229e7cc1f92"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.SNAPSHOT.HEADER",
+          "SNAPSHOT-HEADER",
+          "e91aa56a1ab3866dc64317cb860fdd40e994e685905af11e28b27229e7cc1f92"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.SNAPSHOT.HEADER",
+        "SNAPSHOT-HEADER",
+        "e91aa56a1ab3866dc64317cb860fdd40e994e685905af11e28b27229e7cc1f92"
+      ]
+    },
+    {
+      "case": "verify rejected: BUILD-REQUEST-REFERENCE-KINDS",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "declined",
+          null
+        ],
+        "C1": [
+          "declined",
+          null
+        ],
+        "C2": [
+          "declined",
+          null
+        ],
+        "C3": [
+          "declined",
+          null
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.BUILD.REQUEST",
+        "BUILD-REQUEST-REFERENCE-KINDS",
+        "203f91fc89a5840f8be517e217a692bfcab2c14f065bad00305c0cb43fe81039"
+      ]
+    },
+    {
+      "case": "verify rejected: TARGET-PROFILE-SUPPORTED",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TARGET.PROFILE",
+          "TARGET-PROFILE-SUPPORTED",
+          "285abacc46a8bf3aee8ff669b32620987670acb58052ee4b1efe569776259138"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TARGET.PROFILE",
+          "TARGET-PROFILE-SUPPORTED",
+          "285abacc46a8bf3aee8ff669b32620987670acb58052ee4b1efe569776259138"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TARGET.PROFILE",
+          "TARGET-PROFILE-SUPPORTED",
+          "285abacc46a8bf3aee8ff669b32620987670acb58052ee4b1efe569776259138"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TARGET.PROFILE",
+          "TARGET-PROFILE-SUPPORTED",
+          "285abacc46a8bf3aee8ff669b32620987670acb58052ee4b1efe569776259138"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TARGET.PROFILE",
+        "TARGET-PROFILE-SUPPORTED",
+        "285abacc46a8bf3aee8ff669b32620987670acb58052ee4b1efe569776259138"
+      ]
+    },
+    {
+      "case": "verify rejected: TYPE-BODY",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TYPE-BODY",
+          "f4e9521148d3e2f4db01ba33cadb8265e43058888121ac77781a993d8a0fab70"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TYPE-BODY",
+          "f4e9521148d3e2f4db01ba33cadb8265e43058888121ac77781a993d8a0fab70"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TYPE-BODY",
+          "f4e9521148d3e2f4db01ba33cadb8265e43058888121ac77781a993d8a0fab70"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "TYPE-BODY",
+          "f4e9521148d3e2f4db01ba33cadb8265e43058888121ac77781a993d8a0fab70"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.TRAILING_BYTES",
+        "TYPE-BODY",
+        "f4e9521148d3e2f4db01ba33cadb8265e43058888121ac77781a993d8a0fab70"
+      ]
+    },
+    {
+      "case": "verify rejected: TYPE-FORM-SUPPORTED",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TYPE.FORM",
+          "TYPE-FORM-SUPPORTED",
+          "1da61bbc99d534fa9d1721a229e571598e50ceebfad40d94aa69e21f53243f99"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TYPE.FORM",
+          "TYPE-FORM-SUPPORTED",
+          "1da61bbc99d534fa9d1721a229e571598e50ceebfad40d94aa69e21f53243f99"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TYPE.FORM",
+          "TYPE-FORM-SUPPORTED",
+          "1da61bbc99d534fa9d1721a229e571598e50ceebfad40d94aa69e21f53243f99"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TYPE.FORM",
+          "TYPE-FORM-SUPPORTED",
+          "1da61bbc99d534fa9d1721a229e571598e50ceebfad40d94aa69e21f53243f99"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TYPE.FORM",
+        "TYPE-FORM-SUPPORTED",
+        "1da61bbc99d534fa9d1721a229e571598e50ceebfad40d94aa69e21f53243f99"
+      ]
+    },
+    {
+      "case": "verify rejected: GRAPH-REF-INDEX",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.STRUCT.REF_INDEX",
+          "GRAPH-REF-INDEX",
+          "0eb7db164cc87be5a00374e00c83e94c54451d1dc8b839c4893e2d25d50a9c4c"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.STRUCT.REF_INDEX",
+          "GRAPH-REF-INDEX",
+          "0eb7db164cc87be5a00374e00c83e94c54451d1dc8b839c4893e2d25d50a9c4c"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.STRUCT.REF_INDEX",
+          "GRAPH-REF-INDEX",
+          "0eb7db164cc87be5a00374e00c83e94c54451d1dc8b839c4893e2d25d50a9c4c"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.STRUCT.REF_INDEX",
+          "GRAPH-REF-INDEX",
+          "0eb7db164cc87be5a00374e00c83e94c54451d1dc8b839c4893e2d25d50a9c4c"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.STRUCT.REF_INDEX",
+        "GRAPH-REF-INDEX",
+        "0eb7db164cc87be5a00374e00c83e94c54451d1dc8b839c4893e2d25d50a9c4c"
+      ]
+    },
+    {
+      "case": "verify rejected: CONST-BODY",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "CONST-BODY",
+          "1a74380f3f42b299b90e9ddc5ce09b37270b20cac59fc4aea0a1b12e7a4337db"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "CONST-BODY",
+          "1a74380f3f42b299b90e9ddc5ce09b37270b20cac59fc4aea0a1b12e7a4337db"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "CONST-BODY",
+          "1a74380f3f42b299b90e9ddc5ce09b37270b20cac59fc4aea0a1b12e7a4337db"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "CONST-BODY",
+          "1a74380f3f42b299b90e9ddc5ce09b37270b20cac59fc4aea0a1b12e7a4337db"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.TRAILING_BYTES",
+        "CONST-BODY",
+        "1a74380f3f42b299b90e9ddc5ce09b37270b20cac59fc4aea0a1b12e7a4337db"
+      ]
+    },
+    {
+      "case": "verify rejected: TYPE-POINTER",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TYPE.POINTER",
+          "TYPE-POINTER",
+          "b0bffbb81546f9700379b6cac08fe049bd6a93896c9e4b49650634de823d69b6"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TYPE.POINTER",
+          "TYPE-POINTER",
+          "b0bffbb81546f9700379b6cac08fe049bd6a93896c9e4b49650634de823d69b6"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TYPE.POINTER",
+          "TYPE-POINTER",
+          "b0bffbb81546f9700379b6cac08fe049bd6a93896c9e4b49650634de823d69b6"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TYPE.POINTER",
+          "TYPE-POINTER",
+          "b0bffbb81546f9700379b6cac08fe049bd6a93896c9e4b49650634de823d69b6"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TYPE.POINTER",
+        "TYPE-POINTER",
+        "b0bffbb81546f9700379b6cac08fe049bd6a93896c9e4b49650634de823d69b6"
+      ]
+    },
+    {
+      "case": "verify rejected: TYPE-FLOAT-FORMAT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TYPE.FLOAT",
+          "TYPE-FLOAT-FORMAT",
+          "eaab5179c1501022ba8283536da278e6221d708f1667776185588c3de61bdd27"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TYPE.FLOAT",
+          "TYPE-FLOAT-FORMAT",
+          "eaab5179c1501022ba8283536da278e6221d708f1667776185588c3de61bdd27"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TYPE.FLOAT",
+          "TYPE-FLOAT-FORMAT",
+          "eaab5179c1501022ba8283536da278e6221d708f1667776185588c3de61bdd27"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TYPE.FLOAT",
+          "TYPE-FLOAT-FORMAT",
+          "eaab5179c1501022ba8283536da278e6221d708f1667776185588c3de61bdd27"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TYPE.FLOAT",
+        "TYPE-FLOAT-FORMAT",
+        "eaab5179c1501022ba8283536da278e6221d708f1667776185588c3de61bdd27"
+      ]
+    },
+    {
+      "case": "verify rejected: CONST-BITS-WIDTH",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CONSTANT.WIDTH",
+          "CONST-BITS-WIDTH",
+          "ac2b6d25c5a2849a6f62c687ceaaf4605270019d3c912bc1bea26ece2f06ba48"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CONSTANT.WIDTH",
+          "CONST-BITS-WIDTH",
+          "ac2b6d25c5a2849a6f62c687ceaaf4605270019d3c912bc1bea26ece2f06ba48"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CONSTANT.WIDTH",
+          "CONST-BITS-WIDTH",
+          "ac2b6d25c5a2849a6f62c687ceaaf4605270019d3c912bc1bea26ece2f06ba48"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CONSTANT.WIDTH",
+          "CONST-BITS-WIDTH",
+          "ac2b6d25c5a2849a6f62c687ceaaf4605270019d3c912bc1bea26ece2f06ba48"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CONSTANT.WIDTH",
+        "CONST-BITS-WIDTH",
+        "ac2b6d25c5a2849a6f62c687ceaaf4605270019d3c912bc1bea26ece2f06ba48"
+      ]
+    },
+    {
+      "case": "verify rejected: GRAPH-RETURN-CONTRACT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.STRUCT.RETURN_CONTRACT",
+          "GRAPH-RETURN-CONTRACT",
+          "1e2e60ecc3cee40cde633a53127f38c417e6e10ef86f0ecc7dec11cb0b720cb4"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.STRUCT.RETURN_CONTRACT",
+          "GRAPH-RETURN-CONTRACT",
+          "1e2e60ecc3cee40cde633a53127f38c417e6e10ef86f0ecc7dec11cb0b720cb4"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.STRUCT.RETURN_CONTRACT",
+          "GRAPH-RETURN-CONTRACT",
+          "1e2e60ecc3cee40cde633a53127f38c417e6e10ef86f0ecc7dec11cb0b720cb4"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.STRUCT.RETURN_CONTRACT",
+          "GRAPH-RETURN-CONTRACT",
+          "1e2e60ecc3cee40cde633a53127f38c417e6e10ef86f0ecc7dec11cb0b720cb4"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.STRUCT.RETURN_CONTRACT",
+        "GRAPH-RETURN-CONTRACT",
+        "1e2e60ecc3cee40cde633a53127f38c417e6e10ef86f0ecc7dec11cb0b720cb4"
+      ]
+    },
+    {
+      "case": "verify rejected: SER-BOOL-CANONICAL",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.BOOL",
+          "SER-BOOL-CANONICAL",
+          "a8056c8bb65d73b4c5229fdfd86e4e461e51121cf78e92ddd649cd47c56601ec"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.BOOL",
+          "SER-BOOL-CANONICAL",
+          "a8056c8bb65d73b4c5229fdfd86e4e461e51121cf78e92ddd649cd47c56601ec"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.BOOL",
+          "SER-BOOL-CANONICAL",
+          "a8056c8bb65d73b4c5229fdfd86e4e461e51121cf78e92ddd649cd47c56601ec"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.BOOL",
+          "SER-BOOL-CANONICAL",
+          "a8056c8bb65d73b4c5229fdfd86e4e461e51121cf78e92ddd649cd47c56601ec"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.BOOL",
+        "SER-BOOL-CANONICAL",
+        "a8056c8bb65d73b4c5229fdfd86e4e461e51121cf78e92ddd649cd47c56601ec"
+      ]
+    },
+    {
+      "case": "verify rejected: ID-ROOTED-STORE",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.IDENTITY.UNREACHABLE_OBJECT",
+          "ID-ROOTED-STORE",
+          "ab1292067eb2ea6656b6c892b256d5c4908aac46f7ef7e92386ced8d224c466f"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.IDENTITY.UNREACHABLE_OBJECT",
+          "ID-ROOTED-STORE",
+          "ab1292067eb2ea6656b6c892b256d5c4908aac46f7ef7e92386ced8d224c466f"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.IDENTITY.UNREACHABLE_OBJECT",
+          "ID-ROOTED-STORE",
+          "ab1292067eb2ea6656b6c892b256d5c4908aac46f7ef7e92386ced8d224c466f"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.IDENTITY.UNREACHABLE_OBJECT",
+          "ID-ROOTED-STORE",
+          "ab1292067eb2ea6656b6c892b256d5c4908aac46f7ef7e92386ced8d224c466f"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.IDENTITY.UNREACHABLE_OBJECT",
+        "ID-ROOTED-STORE",
+        "ab1292067eb2ea6656b6c892b256d5c4908aac46f7ef7e92386ced8d224c466f"
+      ]
+    },
+    {
+      "case": "verify rejected: FUNCTION-BODY",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "FUNCTION-BODY",
+          "dfe2b199d6043beaa9a82ff5be3b755c675f77b4bf8cdec0a33ccd6eb7e846c6"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "FUNCTION-BODY",
+          "dfe2b199d6043beaa9a82ff5be3b755c675f77b4bf8cdec0a33ccd6eb7e846c6"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "FUNCTION-BODY",
+          "dfe2b199d6043beaa9a82ff5be3b755c675f77b4bf8cdec0a33ccd6eb7e846c6"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.TRAILING_BYTES",
+          "FUNCTION-BODY",
+          "dfe2b199d6043beaa9a82ff5be3b755c675f77b4bf8cdec0a33ccd6eb7e846c6"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.TRAILING_BYTES",
+        "FUNCTION-BODY",
+        "dfe2b199d6043beaa9a82ff5be3b755c675f77b4bf8cdec0a33ccd6eb7e846c6"
+      ]
+    },
+    {
+      "case": "verify rejected: SER-REF-BODY-CANONICAL",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.REFERENCE_BODY",
+          "SER-REF-BODY-CANONICAL",
+          "62fcfed47b4294f170cc0bd677d2a28954a5eeaebb0785f6a5be3bfd5c3d238a"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.REFERENCE_BODY",
+          "SER-REF-BODY-CANONICAL",
+          "62fcfed47b4294f170cc0bd677d2a28954a5eeaebb0785f6a5be3bfd5c3d238a"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.REFERENCE_BODY",
+          "SER-REF-BODY-CANONICAL",
+          "62fcfed47b4294f170cc0bd677d2a28954a5eeaebb0785f6a5be3bfd5c3d238a"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.REFERENCE_BODY",
+          "SER-REF-BODY-CANONICAL",
+          "62fcfed47b4294f170cc0bd677d2a28954a5eeaebb0785f6a5be3bfd5c3d238a"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.REFERENCE_BODY",
+        "SER-REF-BODY-CANONICAL",
+        "62fcfed47b4294f170cc0bd677d2a28954a5eeaebb0785f6a5be3bfd5c3d238a"
+      ]
+    },
+    {
+      "case": "verify rejected: SER-ULEB-MINIMAL",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.ULEB_NON_MINIMAL",
+          "SER-ULEB-MINIMAL",
+          "1f66f78673b1c28a4e1c565379bab223baff1da08f7e28ba8e772e820afcf522"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.ULEB_NON_MINIMAL",
+          "SER-ULEB-MINIMAL",
+          "1f66f78673b1c28a4e1c565379bab223baff1da08f7e28ba8e772e820afcf522"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.ULEB_NON_MINIMAL",
+          "SER-ULEB-MINIMAL",
+          "1f66f78673b1c28a4e1c565379bab223baff1da08f7e28ba8e772e820afcf522"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.ULEB_NON_MINIMAL",
+          "SER-ULEB-MINIMAL",
+          "1f66f78673b1c28a4e1c565379bab223baff1da08f7e28ba8e772e820afcf522"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CANON.ULEB_NON_MINIMAL",
+        "SER-ULEB-MINIMAL",
+        "1f66f78673b1c28a4e1c565379bab223baff1da08f7e28ba8e772e820afcf522"
+      ]
+    },
+    {
+      "case": "verify rejected: GRAPH-FUNCTION-CARRIER",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_GRAPH",
+          "GRAPH-FUNCTION-CARRIER",
+          "6e6d33c05176fdd57cf857649db7380f626ba79e087f89ecd38e595c87dce11e"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_GRAPH",
+          "GRAPH-FUNCTION-CARRIER",
+          "6e6d33c05176fdd57cf857649db7380f626ba79e087f89ecd38e595c87dce11e"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_GRAPH",
+          "GRAPH-FUNCTION-CARRIER",
+          "6e6d33c05176fdd57cf857649db7380f626ba79e087f89ecd38e595c87dce11e"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_GRAPH",
+          "GRAPH-FUNCTION-CARRIER",
+          "6e6d33c05176fdd57cf857649db7380f626ba79e087f89ecd38e595c87dce11e"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.STRUCT.FUNCTION_GRAPH",
+        "GRAPH-FUNCTION-CARRIER",
+        "6e6d33c05176fdd57cf857649db7380f626ba79e087f89ecd38e595c87dce11e"
+      ]
+    },
+    {
+      "case": "verify rejected: TYPE-EFFECT-DOMAIN",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "declined",
+          null
+        ],
+        "C1": [
+          "declined",
+          null
+        ],
+        "C2": [
+          "declined",
+          null
+        ],
+        "C3": [
+          "declined",
+          null
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TYPE.EFFECT",
+        "TYPE-EFFECT-DOMAIN",
+        "20792f45967a8683b8d71f66b8cb05a1f994f67d97038d634cd5c6f787413065"
+      ]
     },
     {
       "case": "build snapshot",
@@ -2146,7 +3081,7 @@
     }
   ],
   "rejection_exactness_gaps": [
-    "semantic verification rejections are the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266)",
+    "graph verification rejections (invalid uses, operation typing, terminators, memory facts, linear flow) are the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266); a graph decoder rejection behind an unproven type, and a missing reference first reached through another object's graph, decline (ADR-288)",
     "code generation rules on malformed or extreme inputs decline (ADR-280's list)"
   ],
   "required_paths_outside_xax": [
@@ -2175,7 +3110,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-7ac0fc55182806e175cc25b933c6357c18fc09712203cca26b81e28e64936ce4.bin"
+      "record": "verified-hash-f1b4699aa2d103d6cecce6b7f1ae805524893cd441cd13ed7150da73ada3a157.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -2189,7 +3124,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-8895211d053a876170fb98df4e982260611b715f0ce4797cfe212113ed06210e.bin"
+      "record": "verified-store-decoder-ce03d00a026fc1c8020a741cd145c5b84ecf376dbd10048f34811c25fc0c330a.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -2203,7 +3138,7 @@
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-a14898ef4c797aae13c86c62091bcac48402f98b5b76ac0cab7424c0a6d71199.bin"
+      "record": "verified-store-writer-460aa595f723fe24fcbe0ebe65541e12794cf8176e245f3fcd7ccb2ff1ca01e8.bin"
     },
     "store-writer": {
       "component": "store-writer",
@@ -2217,7 +3152,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-0d892438cd723ca0f2fde59021c3d81cf041b7d67948fafc01ac723314a27ffe.bin"
+      "record": "verified-graph-decoder-8c44e03448258a307b51930b8722a3ec2805474b9f87e9c5a0c9915729bbfb94.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -2231,7 +3166,7 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-dde85b2721f553dc7c341fd601bda19a95b2815d92f578a4a2111ae9e4620ac1.bin"
+      "record": "verified-cfg-78f0c28287ed7d8214ab9fbc79a5e7b38b63e1513586d94180a060283c626eb1.bin"
     },
     "cfg": {
       "component": "cfg",
@@ -2245,7 +3180,7 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-327e1b94c5119d208c687ba2825c3676104e0c235c17d93f6a135971ce071bed.bin"
+      "record": "verified-typing-eaa0d8add9e2f0b1e4797d2f7be4219e8c1a03834e2cdb5f5a45076e1e212e7e.bin"
     },
     "typing": {
       "component": "typing",
@@ -2259,27 +3194,27 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-215ce2f6dcb5810c0dbbf254cbbd8e9ecca522c30cd79144c746e66098081139.bin"
+      "record": "verified-store-verifier-0cd4d5be206f607cbfac0240e4c317f4b41fa8ec239099d6519db44fa012eb84.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
-      "semantic_root": "733dc3f40dc14c82f09ff0c363c195e1b3135767921f05c3cb34a2ee3b110bc3",
-      "native_artifact_digest": "d1b490486ab40e0aa356887bc0a365b64839a22b9143de58455adb3391d8e471",
+      "semantic_root": "1454f1d7db4be2797ba4d23e541db05d0ca8671660c3883c3124133fd9f66f52",
+      "native_artifact_digest": "da1903f4bf368e9e0b803a70063e3a4ffcf5a431b1a3be120000fcfb02e99312",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 16605
+      "declined_inputs": 23717
     },
     "verification:compiler-driver-general": {
       "component": "verification:compiler-driver-general",
       "store_verification": "memoized",
-      "record": "verified-compiler-driver-general-03a5237a4e4d68a56914a9871056089dfbc6a994cb93bdcd2ae756672017f1c8.bin"
+      "record": "verified-compiler-driver-general-a03d59258b15912afa1792319f3906cb5c82915b63ffbeafd8d4887c7c25b7ee.bin"
     },
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-6cc72183ce3b1bd069b2b8db14ed0e6b0e70fd17ed4a4604f6ae82fa64dea900.bin"
+      "record": "verified-xax_x86_64_backend-462ea1ba713d5fc9cad24335c1dbfdda5be18eb77d637e20cfda9e4ffd827de2.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
@@ -2293,16 +3228,7 @@
     "verification:xax_x86_64_general": {
       "component": "verification:xax_x86_64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-17ec4ae08eb695802fbe707dbb4d67d7b0c2bdf35db6bd81ed9ff70ed5915ef9.bin"
-    },
-    "lowering:x86-64-general-frontend": {
-      "component": "lowering:x86-64-general-frontend",
-      "semantic_root": "ee4b88c9bcfacb3c3dd8b74bff5b97589798db1203cffe85c4193cdcba65e062",
-      "native_artifact_digest": "e7a79d19bcf82dd5b2df90bce2b918b848001a1e39e8acd49c3e5e626175ee6d",
-      "requested_authority": "xax",
-      "actual_authority": "xax",
-      "fallback_occurred": false,
-      "fallback_reason": null
+      "record": "verified-xax_x86_64_general-957638caa4ba7926281411ba0d28e110b5caa79c9264f6c4dd8a4fc0e9a59f2b.bin"
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
