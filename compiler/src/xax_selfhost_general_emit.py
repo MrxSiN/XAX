@@ -65,6 +65,17 @@ def reject_at(e: E, write):
     e.give(NONE)
 
 
+def write_startup_entry(e: E):
+    """LINUX-STARTUP-PROCESS-ENTRY of the current function: a startup read outside the process entry."""
+    import xax_selfhost_diagnostics as D
+
+    D.text(e, "XAX.NATIVE.STARTUP")
+    D.cid(e, graph_cid_words(e, _e(e, E_F)))
+    D.text(e, "LINUX-STARTUP-PROCESS-ENTRY")
+    D.text(e, "process entry function")
+    D.text(e, "called function")
+
+
 def graph_cid_words(e: E, f):
     """The CID words of function ``f``'s graph (``_decode_function_interface``: a group member's own graph)."""
     return _cid_words(e, e.ld(_call(e, "interface", f)))
@@ -321,7 +332,7 @@ def _store_exact_fn(tables):
 
 def _frame_access_fn(tables):
     """``_load``/``_store`` (``opcode`` 0x8B/0x89) of a frame slot ``[rsp + off]``: 1/2-byte accesses as the exact
-    forms, 4/8-byte ones as ``_memory_instruction`` (declined outside 0..2^31-1)."""
+    forms, 4/8-byte ones as ``_memory_instruction`` (NATIVE-MEMORY-ENCODABLE outside 0..2^31-1, S15b.4)."""
     def build(e: E):
         p = e.p
 
@@ -330,7 +341,10 @@ def _frame_access_fn(tables):
                   lambda: _call(e, "store_exact", p["reg"], RSP, p["off"], p["width"]))
 
         def memory():
-            _ok(e, e.both(e.either(e.eq(p["width"], 4), e.eq(p["width"], 8)), e.lt(p["off"], 1 << 31)))
+            from xax_selfhost_general_rejects import MEMORY, encoding_reject
+
+            e.if_(e.not_(e.both(e.either(e.eq(p["width"], 4), e.eq(p["width"], 8)), e.lt(p["off"], 1 << 31))),
+                  lambda: encoding_reject(e, MEMORY, p["width"], p["off"]))
             e.var("fa_rex", e.add(e.add(0x40, e.mul(e.flag(e.eq(p["width"], 8)), 8)), e.mul(_hi(e, p["reg"]), 4)))
             e.if_(e.ne(p["fa_rex"], 0x40), lambda: _bx(e, p["fa_rex"], 1))
             e.if_(e.lt(p["off"], 128), lambda: (
@@ -352,8 +366,10 @@ def _store(e: E, register, offset, width):
 
 
 def _and_imm(e: E, register, value, wide):
-    """``_and_immediate`` (declined above 32 bits, where the bootstrap fails: NATIVE-AND-IMM32)."""
-    _ok(e, e.lt(value, 1 << 32))
+    """``_and_immediate`` (NATIVE-AND-IMM32 above 32 bits, S15b.4)."""
+    from xax_selfhost_general_rejects import AND_IMM32, encoding_reject
+
+    e.if_(e.le(1 << 32, value), lambda: encoding_reject(e, AND_IMM32, value))
     e.var("ai_rex", e.add(e.add(0x40, e.mul(wide, 8)), _hi(e, register)))
     e.if_(e.ne(e.p["ai_rex"], 0x40), lambda: _bx(e, e.p["ai_rex"], 1))
     _bx(e, e.add(0x81, e.mul(e.add(0xE0, _low3(e, register)), 256)), 2)
@@ -460,8 +476,10 @@ def _group1(e: E, digit, register, value, width):
 
 
 def _compare_immediate(e: E, register, value):
-    """``_compare_immediate`` (64-bit cmp; declined outside 0..2^31-1)."""
-    _ok(e, e.lt(value, 1 << 31))
+    """``_compare_immediate`` (64-bit cmp; NATIVE-CHECKED-BOUND-ENCODABLE outside 0..2^31-1, S15b.4)."""
+    from xax_selfhost_general_rejects import CHECKED_BOUND, encoding_reject
+
+    e.if_(e.le(1 << 31, value), lambda: encoding_reject(e, CHECKED_BOUND, value))
     _group1(e, 7, register, value, 64)
 
 
@@ -819,7 +837,7 @@ def _ensure_fn(tables):
         e.var("en_stack", _rt(e, T_STACK, v))
         e.if_(e.ne(p["en_stack"], NONE), lambda: (_lea(e, p["en_new"], RSP, p["en_stack"]), done()))
         e.var("en_off", _sget(e, T_SPOFF, v, NONE))
-        _ok(e, e.ne(p["en_off"], NONE))  # the bootstrap fails (NATIVE-VALUE-LOCATION)
+        e.if_(e.eq(p["en_off"], NONE), lambda: _call(e, "location_reject", v, 0, _e(e, E_F)))  # NATIVE-VALUE-LOCATION
         _load(e, p["en_new"], p["en_off"], _wbytes(e, v))
         done()
     return _function(("v", "pos", "p1", "p2", "p3", "excl"), build, tables)
@@ -969,7 +987,7 @@ def _location_fn(tables):
         e.var("lo_s", _rt(e, T_STACK, v))
         e.if_(e.ne(p["lo_s"], NONE), lambda: put(LOC_STACK, p["lo_s"]))
         e.var("lo_o", _sget(e, T_SPOFF, v, NONE))
-        _ok(e, e.ne(p["lo_o"], NONE))  # the bootstrap fails (NATIVE-VALUE-LOCATION)
+        e.if_(e.eq(p["lo_o"], NONE), lambda: _call(e, "location_reject", v, 1, _e(e, E_F)))  # NATIVE-VALUE-LOCATION
         put(LOC_SPILL, p["lo_o"])
     return _function(("v",), build, tables)
 
@@ -2184,7 +2202,9 @@ def _startup_read_fn(tables):
             def bounded():
                 e.var("sr_fits", _new_label(e))
                 _b(e, bytes.fromhex("4889c1"))  # mov rcx, rax
-                _ok(e, e.lt(p["extent"], 1 << 31))  # _cmp_imm32 fails above
+                from xax_selfhost_general_rejects import CHECKED_BOUND, encoding_reject
+
+                e.if_(e.le(1 << 31, p["extent"]), lambda: encoding_reject(e, CHECKED_BOUND, p["extent"]))  # ``_cmp_imm32``
                 _b(e, bytes.fromhex("4881f9"))
                 _bx(e, p["extent"], 4)
                 _jcc(e, 0x86, p["sr_fits"])
@@ -2315,16 +2335,7 @@ def _foreign_call_fn(tables):
 
         def startup_read():
             """``emit_startup_read`` (ADR-094): the read named by the declaration, result in rax."""
-            def write():
-                import xax_selfhost_diagnostics as D
-
-                D.text(e, "XAX.NATIVE.STARTUP")
-                D.cid(e, graph_cid_words(e, _e(e, E_F)))
-                D.text(e, "LINUX-STARTUP-PROCESS-ENTRY")
-                D.text(e, "process entry function")
-                D.text(e, "called function")
-
-            e.if_(e.eq(_e(e, E_PROCESS), 0), lambda: reject_at(e, write))
+            e.if_(e.eq(_e(e, E_PROCESS), 0), lambda: reject_at(e, lambda: write_startup_entry(e)))
             e.var("fc_copy", e.flag(e.either(e.eq(p["fc_start"], STARTUP_NAMES.index(b"arg_copy") + 1), e.eq(p["fc_start"], STARTUP_NAMES.index(b"env_copy") + 1))))
             e.var("fc_extent", 0)
             e.if_(e.ne(p["fc_copy"], 0), lambda: e.set("fc_extent", _call(e, "extent", e.ld(e.add(p["fc_saved"], 1)))))
@@ -2334,6 +2345,30 @@ def _foreign_call_fn(tables):
             _call(e, "startup_read", p["fc_start"], p["fc_extent"])
 
         _startup_name(e, p["fc_obj"], "fc_start")
+        from xax_selfhost_general_rejects import ABI_STARTUP, ABI_SYSCALL, ABI_SYSV_C, foreign_identity
+
+        foreign_identity(e, p["fc_obj"], "fc_abi")
+        owned = e.either(*(e.eq(p["fc_abi"], kind) for kind in (ABI_SYSV_C, ABI_SYSCALL, ABI_STARTUP)))
+        e.if_(e.not_(owned), lambda: _call(e, "abi_reject", p["fc_obj"], _e(e, E_F), 0))
+        e.if_(e.both(e.eq(p["fc_abi"], ABI_SYSCALL), e.eq(p["fc_rec"], 0)), lambda: _call(e, "template_reject", p["fc_obj"], p["fc_n"]))
+
+        def unknown_startup():
+            """A startup read of another name: LINUX-STARTUP-PROCESS-ENTRY, then (after its arguments, the bootstrap
+            placing at most two and reading a ``*_copy`` read's extent) LINUX-STARTUP-NAME."""
+            e.if_(e.eq(_e(e, E_PROCESS), 0), lambda: reject_at(e, lambda: write_startup_entry(e)))
+            _ok(e, e.le(p["fc_n"], 2))
+            _ok(e, e.eq(p["fc_abi_copy"], 0))
+            _call(e, "startup_name_reject", p["fc_obj"], _e(e, E_F))
+
+        def copy_suffix():
+            """``fc_abi_copy``: 1 when the read's name ends in ``_copy``."""
+            e.var("fc_abi_copy", e.flag(e.le(5, p["fc_abi_len"])))
+            for k, value in enumerate(b"_copy"):
+                e.if_(e.ne(p["fc_abi_copy"], 0), lambda k=k, value=value: e.if_(
+                    e.ne(e.rd(e.add(e.sub(e.add(p["fc_abi_at"], p["fc_abi_len"]), 5), k)), value), lambda: e.set("fc_abi_copy", 0)))
+
+        copy_suffix()
+        e.if_(e.both(e.eq(p["fc_abi"], ABI_STARTUP), e.eq(p["fc_start"], 0)), unknown_startup)
         e.if_(e.ne(p["fc_start"], 0), startup_read, lambda: e.if_(e.eq(p["fc_rec"], 0), sysv, syscall))
         _call(e, "after_call", m)
         _retire_arguments(e, m, p["fc_n"])
@@ -2779,7 +2814,7 @@ def _emit_function_fn(tables):
         e.var("ef_frame", 0)
         e.if_(e.either(e.ne(p["ef_payload"], 0), e.ne(_ra(e, R_HAS_CALL), 0)), lambda: e.set("ef_frame", e.sub(
             e.and_(e.add(e.add(p["ef_payload"], p["ef_pushed"]), 15), (1 << 64) - 16), p["ef_pushed"])))
-        _ok(e, e.lt(p["ef_frame"], 1 << 31))
+        _ok(e, e.lt(p["ef_frame"], 1 << 32))  # ``frame_size.to_bytes(4)``; an access past 2^31 is the encoders' rejection
         _se(e, E_FRAME, p["ef_frame"])
         # The epilogue (captured): a process entry traps on return.
         _capture_begin(e)

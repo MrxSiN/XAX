@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.4 exact code generation rejections — 2026-10-15 (ADR-294)
+
+The production compiler now rejects with the bootstrap's own diagnostic where it reaches the bootstrap's code generation failures on malformed or extreme inputs. These include unencodable stack offsets, malformed syscall names, foreign calls of other ABIs, startup reads of other names, a call with two machine results, wrong pointer widths, and one symbol imported from two libraries. Every such program a test builds is the bootstrap's exact rejection. Rules no verified program reaches are recorded as such. B1 still waits on S15b.3c, a graph's invalid uses. Next: S15b.3c.
+
 ## S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
 
-The production compiler now writes the bootstrap's own diagnostic for a graph that fails operation typing, a terminator, a memory-fact check, linear resource flow, or a branch target. The typing program follows `_parse_graph`'s order and renders the record that decides the graph's outcome. On every corpus and mutated graph the compiler's `verify` either matches the bootstrap exactly or declines. Over the typing, linear and memory corpora, 2290 rejections are exact, none differs, and 18 decline. Still declining: memory sites that quote a foreign, lend, target-operation or bounded indirect-call declaration, and a stack-owner entry's contract. Invalid uses still carry the driver's own record. B1 does not hold yet. Next: S15b.3c.
+The production compiler now writes the bootstrap's own diagnostic for a graph that fails operation typing, a terminator, a memory-fact check, linear resource flow, or a branch target. The typing program follows `_parse_graph`'s order and renders the record that decides the graph's outcome. On every corpus and mutated graph the compiler's `verify` either matches the bootstrap exactly or declines. Over the typing, linear and memory corpora, 2290 rejections are exact, none differs, and 18 decline. Still declining: memory sites that quote a foreign, lend, target-operation or bounded indirect-call declaration, and a stack-owner entry's contract. Invalid uses still carry the driver's own record. B1 does not hold yet. Next: S15b.3c. S15b.4: see above.
 
 ## S15b room for the compiler's image — 2026-10-15 (ADR-291)
 

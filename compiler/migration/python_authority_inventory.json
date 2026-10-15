@@ -306,6 +306,10 @@
       "class": "G",
       "note": "Builder of the driver's type and constant rejection renderer (S15b.2, ADR-289)."
     },
+    "xax_selfhost_general_rejects.py": {
+      "class": "G",
+      "note": "Builder of the general x86-64 program's code generation rejections with the bootstrap's diagnostics (S15b.4, ADR-294)."
+    },
     "xax_selfhost_render_graph.py": {
       "class": "G",
       "note": "Builder of the typing program's graph outcome function (_parse_graph's order, the deciding record) and its host decoder (S15b.3a, ADR-292)."

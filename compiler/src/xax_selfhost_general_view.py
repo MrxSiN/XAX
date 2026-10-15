@@ -1506,6 +1506,9 @@ def add_view_functions(add, tables):
 
     add_range_functions(add, tables)
     add_regalloc_functions(add, tables)
+    from xax_selfhost_general_rejects import add_reject_functions
+
+    add_reject_functions(add, tables)  # S15b.4: before the emission and frame paths that call them
     from xax_selfhost_general_emit import add_emit_functions
 
     add_emit_functions(add, tables)

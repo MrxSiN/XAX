@@ -542,7 +542,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15b.3a | Operation typing, terminator, linear and CFG branch-target graph rejections in `_parse_graph`'s order, computed by the typing program (ADR-292) | S15b.2 | DONE |
 | S15b.3b | Memory-fact rejections (`MEMORY_SITES`, `memory_diagnostic`) rendered by the typing program, except declaration-decoding and stack-owner-entry sites (ADR-293) | S15b.3a | DONE |
 | S15b.3c | Invalid uses (Python re-types the graph trimmed at each invalid use), declaration-decoding memory sites, and constants or types reached inside a graph's parse | S15b.3b | UNIMPLEMENTED |
-| S15b.4 | ADR-280's declined code generation rules decided by the general program with exact diagnostics | S15b.1 | UNIMPLEMENTED |
+| S15b.4 | ADR-280's declined code generation rules decided by the general program with exact diagnostics (ADR-294) | S15b.1 | DONE |
 | S15c | The remaining required build paths (B5): signature verification, external inputs and effects, profile grants, capacities | S14 | UNIMPLEMENTED |
 | S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |

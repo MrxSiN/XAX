@@ -8,7 +8,7 @@ one (``PT_INTERP``, ``DT_NEEDED``, a one-bucket hash, ``GLOB_DAT`` relocations, 
 
 The program assembles only when it emitted every function of the closure (S12d); otherwise the record says "not
 decided" and the host assembles.  Where the bootstrap fails (an entry adapter's signature, an import symbol in two
-libraries, a static profile with imports) the program declines and the bootstrap reports the error.
+libraries (S15b.4: its diagnostic), a static profile with imports) the program declines and the bootstrap reports the error.
 
 The record is written at ``IMAGE_AT``: the status, the image code (before the container binds its imports), the ELF
 bytes, the code's file offset, the entry offset, each function's offset, the imports (position, library, name), and
@@ -489,19 +489,14 @@ def _elf_dynamic_fn(tables):
 
         e.for_("ed_s", 1, p["ed_nn"], insert)
 
-        def unique():
-            _foreign_strings(e, e.ld(e.add(p["ed_names"], p["ed_k"])), "ed_u")
-            _foreign_strings(e, e.ld(e.add(p["ed_names"], e.add(p["ed_k"], 1))), "ed_v")
-            _same_input(e, p["ed_u_sym"], p["ed_u_symn"], p["ed_v_sym"], p["ed_v_symn"], "ed_us")
-            _ok(e, e.eq(p["ed_us"], 0))  # the bootstrap fails (LINUX-IMPORT-SYMBOL-UNIQUE)
-
-        e.for_("ed_k", 0, e.sel(e.eq(p["ed_nn"], 0), 0, e.sub(p["ed_nn"], 1)), unique)
-        # (names are sorted by (library, name); a repeated name in two libraries need not be adjacent)
+        # A name in two libraries (sorted by (library, name), the two need not be adjacent): LINUX-IMPORT-SYMBOL-UNIQUE.
+        e.var("ed_repeated", 0)
         e.for_("ed_k", 0, p["ed_nn"], lambda: e.for_("ed_j", e.add(p["ed_k"], 1), p["ed_nn"], lambda: (
             _foreign_strings(e, e.ld(e.add(p["ed_names"], p["ed_k"])), "ed_u"),
             _foreign_strings(e, e.ld(e.add(p["ed_names"], p["ed_j"])), "ed_v"),
             _same_input(e, p["ed_u_sym"], p["ed_u_symn"], p["ed_v_sym"], p["ed_v_symn"], "ed_us"),
-            _ok(e, e.eq(p["ed_us"], 0)))))
+            e.if_(e.ne(p["ed_us"], 0), lambda: e.set("ed_repeated", 1)))))
+        e.if_(e.ne(p["ed_repeated"], 0), lambda: _call(e, "imports_reject", p["ed_names"], p["ed_nn"]))
         # The needed libraries: distinct, sorted (the declarations of their first pairs, in pair order).
         e.var("ed_needed", _ra(e, I_NEEDED))
         e.var("ed_nd", 0)

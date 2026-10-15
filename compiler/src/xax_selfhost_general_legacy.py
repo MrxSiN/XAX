@@ -798,7 +798,7 @@ def _legacy_fn(tables):
                                                      e.if_(e.lt(p["lf_spills"], p["lf_s"]), lambda: e.set("lf_spills", p["lf_s"]))))
         e.var("lf_payload", e.add(_s(e, S_DYN), e.mul(p["lf_spills"], 8)))
         e.var("lf_frame", e.sel(e.ne(p["lf_payload"], 0), e.sub(e.and_(e.add(e.add(p["lf_payload"], 8), 15), (1 << 64) - 16), 8), 0))
-        _ok(e, e.lt(p["lf_frame"], 1 << 31))
+        _ok(e, e.lt(p["lf_frame"], 1 << 32))  # ``frame_size.to_bytes(4)``; an access past 2^31 is the encoders' rejection
         _set_ra(e, E_REAL, 1)
         e.if_(e.ne(p["lf_frame"], 0), lambda: (_bx(e, 0xEC8148, 3, True), _bx(e, p["lf_frame"], 4, True)))
         e.var("lf_entry", _f(e, _g(e, G_BENTRY), B_POS))

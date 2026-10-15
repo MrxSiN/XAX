@@ -186,6 +186,17 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.4 exact code generation rejections — 2026-10-15 (ADR-294)
+
+- Done:
+  - `xax_selfhost_general_rejects`: the reject functions, which are registered before the emission functions that call them.
+  - The frame path's, register path's, legacy path's and image's `_ok` guards at the bootstrap's failures now reject.
+  - The frame size limits are now 2^32.
+  - `tests/test_xax_selfhost_general_rejects.py`.
+- Finding reachable rules: build a verified program, then compare `compile_linux_executable(frontend="python")` with `general_with_xax`. Its `image` is None when a function's code was declined.
+- Memory: a 2 GiB-frame program runs fine alone, but run probes under `ulimit -v` (an unbounded run once took the container down).
+- Next: S15b.3c (invalid uses, declaration-decoding memory sites, constants inside a graph's parse). Then the evidence re-run.
+
 ## S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
 
 - Done:

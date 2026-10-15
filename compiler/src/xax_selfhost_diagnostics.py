@@ -132,7 +132,8 @@ def decode_record(words) -> Diagnostic:
             count = (length + 7) // 8
             data = _packed(words[position + 1:position + 1 + count], length)
             position += 1 + count
-            return data.decode("ascii") if tag == T_STR else data.hex() if tag == T_HEX else data
+            # S15b.4 (ADR-294): a text the bootstrap quotes with ``decode("ascii", "replace")`` carries its raw bytes.
+            return data.decode("ascii", "replace") if tag == T_STR else data.hex() if tag == T_HEX else data
         if tag in (T_ENUM, T_NAME):
             position += 2
             member = _registered(ENUM_NAMES[words[position - 2]])(words[position - 1])

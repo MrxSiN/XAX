@@ -145,8 +145,11 @@ def _align_to(e: E, value, alignment):
 # -- encoders (frame path) --------------------------------------------------------------------------------------
 
 def _xmm_memory(e: E, load: bool, xmm, offset, width):
-    """``_xmm_memory``: movss/movsd between xmm and ``[rsp + offset]`` (declined beyond the bootstrap's checks)."""
-    _ok(e, e.both(e.either(e.eq(width, 32), e.eq(width, 64)), e.lt(offset, 1 << 31), e.lt(xmm, 16)))
+    """``_xmm_memory``: movss/movsd between xmm and ``[rsp + offset]`` (NATIVE-XMM-MEMORY beyond it, S15b.4)."""
+    from xax_selfhost_general_rejects import XMM, encoding_reject
+
+    e.if_(e.not_(e.both(e.either(e.eq(width, 32), e.eq(width, 64)), e.lt(offset, 1 << 31), e.lt(xmm, 16))),
+          lambda: encoding_reject(e, XMM, xmm, offset, width))
     _bx(e, e.sel(e.eq(width, 32), 0xF3, 0xF2), 1)
     e.if_(e.le(8, xmm), lambda: _bx(e, 0x44, 1))
     _xmm_modrm(e, 0x10 if load else 0x11, xmm, offset)
@@ -228,7 +231,9 @@ def _mask_register(e: E, register: int, width):
 
 
 def _cmp_imm32(e: E, register: int, value):
-    _ok(e, e.lt(value, 1 << 31))
+    from xax_selfhost_general_rejects import CHECKED_BOUND, encoding_reject
+
+    e.if_(e.le(1 << 31, value), lambda: encoding_reject(e, CHECKED_BOUND, value))
     _b(e, bytes((0x48 | (0x01 if register >= 8 else 0), 0x81, 0xF8 | (register & 7))))
     _bx(e, value, 4)
 
@@ -265,8 +270,10 @@ def _copy_bytes(e: E, destination_base, destination, source_base, source, size, 
 
 
 def _indexed(e: E, opcode: int, register: int, index: int, offset, width):
-    """``_indexed_memory_instruction``: ``[rsp + index + disp32]`` of 4/8 bytes (declined otherwise)."""
-    _ok(e, e.both(e.either(e.eq(width, 4), e.eq(width, 8)), e.lt(offset, 1 << 31)))
+    """``_indexed_memory_instruction``: ``[rsp + index + disp32]`` of 4/8 bytes (NATIVE-INDEXED-MEMORY-ENCODABLE otherwise)."""
+    from xax_selfhost_general_rejects import INDEXED, encoding_reject
+
+    e.if_(e.not_(e.both(e.either(e.eq(width, 4), e.eq(width, 8)), e.lt(offset, 1 << 31))), lambda: encoding_reject(e, INDEXED, width, offset))
     rex = e.add(0x40 | (0x04 if register >= 8 else 0) | (0x02 if index >= 8 else 0), e.mul(e.flag(e.eq(width, 8)), 8))
     e.var("ix_rex", rex)
     e.if_(e.ne(e.p["ix_rex"], 0x40), lambda: _bx(e, e.p["ix_rex"], 1))
@@ -547,7 +554,7 @@ def _frame_layout_fn(tables):
         bias = e.sel(e.ne(_ra(e, F_PROCESS), 0), 0, 8)
         e.var("fl_bias", bias)
         e.var("fl_frame", e.sub(_align_to(e, e.add(p["fl_cursor"], p["fl_bias"]), 16), p["fl_bias"]))
-        _ok(e, e.lt(p["fl_frame"], 1 << 31))
+        _ok(e, e.lt(p["fl_frame"], 1 << 32))  # ``frame_size.to_bytes(4)``; an access past 2^31 is the encoders' rejection
         _set_ra(e, F_FRAME, p["fl_frame"])
         e.give(1)
     return _function(("f",), build, tables)
@@ -1393,8 +1400,10 @@ def _memory_tail_fn(tables):
         e.if_(e.eq(op, _op(Operation.POINTER_REBASE)), lambda: _call(e, "fixed_reject", REBASE_REJECTION))
 
         def pointer_address():
+            from xax_selfhost_general_rejects import ADDRESS_POINTER_WIDTH
+
             _bits_width(e, _result_type(e, result), "ft_w")
-            _ok(e, e.eq(p["ft_w"], 64))
+            e.if_(e.ne(p["ft_w"], 64), lambda: _call(e, "pointer_width_reject", ADDRESS_POINTER_WIDTH, 64, p["ft_w"], _ra(e, F_FN)))
             e.if_(is_frame(pointer), lambda: _lea(e, RAX, RSP, _rt(e, T_FPTR, pointer)), lambda: e.if_(
                 is_heap(pointer), lambda: (_heap_base(e, pointer, "ft_off"), _lea(e, RAX, SCRATCH1, p["ft_off"])),
                 lambda: _load(e, RAX, _slot(e, pointer), 8)))
@@ -1510,6 +1519,16 @@ def _foreign_node_fn(tables):
         _machine_results(e, node, "fc_r")
         _foreign_abi(e, p["fc_obj"], "fc_sysv")
         e.var("fc_rec", _call(e, "syscall", p["fc_obj"], p["fc_n"]))
+        from xax_selfhost_general_rejects import ABI_SYSCALL, foreign_identity
+
+        foreign_identity(e, p["fc_obj"], "fc_abi")
+
+        def syscall_checks():
+            """``_linux_syscall``: SYSCALL-ONE-RESULT (the node's results), then the name (``decode_syscall_name``)."""
+            e.if_(e.lt(1, p["fc_r"]), lambda: _call(e, "one_result_reject", _ra(e, F_FN), _f(e, node, N_NRES)))
+            e.if_(e.eq(p["fc_rec"], 0), lambda: _call(e, "template_reject", p["fc_obj"], p["fc_n"]))
+
+        e.if_(e.eq(p["fc_abi"], ABI_SYSCALL), syscall_checks)
         e.var("fc_start", 0)
         from xax_selfhost_general_emit import _startup_name
 
@@ -1589,7 +1608,6 @@ def _foreign_node_fn(tables):
             _bx(e, 0, 4, True)
 
         def syscall():
-            _ok(e, e.le(p["fc_r"], 1))  # SYSCALL-ONE-RESULT
 
             def item():
                 e.var("fc_tag", e.ld(e.add(p["fc_rec"], e.add(SYSCALL_HEADER, e.mul(p["fc_i"], 2)))))
@@ -1632,9 +1650,30 @@ def _call_node_fn(tables):
         p = e.p
         node, op, result = _node_prelude(e)
         e.if_(e.not_(_in(e, op, CALLS)), lambda: e.give(0))
-        _ok(e, e.ne(op, _op(Operation.CALL_FOREIGN)))
+
+        def foreign():
+            """A foreign call the foreign node did not lower: the bootstrap's Win64 call path (``_win64_foreign_call``)
+            rejects every ABI but ``win64-c`` (NATIVE-FOREIGN-ABI), which is declined here."""
+            from xax_selfhost_general_rejects import ABI_WIN64_C, foreign_identity
+
+            e.var("cl_obj", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+            _ok(e, e.ne(p["cl_obj"], NONE))
+            foreign_identity(e, p["cl_obj"], "cl_abi")
+            _ok(e, e.ne(p["cl_abi"], ABI_WIN64_C))
+            _call(e, "abi_reject", p["cl_obj"], _ra(e, F_FN), 1)
+
+        e.if_(e.eq(op, _op(Operation.CALL_FOREIGN)), foreign)
         _machine_results(e, node, "cl_r")
-        _ok(e, e.le(p["cl_r"], 1))  # NATIVE-CALL-ARITY
+
+        def arity():
+            """NATIVE-CALL-ARITY: the machine arguments (an indirect call's target not counted, a hidden result pointer
+            counted) and results."""
+            _machine_inputs(e, node, 0, "cl_mi")
+            _hidden_result(e, p["cl_r_first"], "cl_h0")
+            arguments = e.add(e.sub(p["cl_mi"], e.flag(e.eq(op, _op(Operation.CALL_INDIRECT)))), p["cl_h0"])
+            _call(e, "arity_reject", arguments, p["cl_r"], _ra(e, F_FN))
+
+        e.if_(e.lt(1, p["cl_r"]), arity)
         e.var("cl_indirect", e.flag(e.eq(op, _op(Operation.CALL_INDIRECT))))
         e.var("cl_pos", 0)
         e.var("cl_seen", 0)  # machine operands seen (the first is the callee of an indirect call)
@@ -1745,8 +1784,10 @@ SEQ_CST = 5
 
 
 def _atomic_access(e: E, opcodes: int, count: int, register: int, offset, size, locked):
-    """``_atomic_memory_instruction`` on ``[rsp + offset]`` (``size`` 4 or 8; the bootstrap fails otherwise)."""
-    _ok(e, e.both(e.either(e.eq(size, 4), e.eq(size, 8)), e.lt(offset, 1 << 31)))
+    """``_atomic_memory_instruction`` on ``[rsp + offset]`` (``size`` 4 or 8; NATIVE-ATOMIC-ENCODABLE otherwise)."""
+    from xax_selfhost_general_rejects import ATOMIC, encoding_reject
+
+    e.if_(e.not_(e.both(e.either(e.eq(size, 4), e.eq(size, 8)), e.lt(offset, 1 << 31))), lambda: encoding_reject(e, ATOMIC, size, offset))
     e.if_(e.ne(locked, 0), lambda: _bx(e, 0xF0, 1))
     e.var("aa_rex", e.add(e.add(0x40, e.mul(e.flag(e.eq(size, 8)), 8)), 4 if register >= 8 else 0))
     e.if_(e.ne(e.p["aa_rex"], 0x40), lambda: _bx(e, e.p["aa_rex"], 1))
@@ -1950,7 +1991,10 @@ def _frame_node_fn(tables):
         def element_width():
             e.var("fx_vt", e.sel(_in(e, op, loads), _vf(e, G_VTYPE, e.sel(e.ne(result, NONE), result, 0)),
                                  _vf(e, G_VTYPE, _operand(e, node, e.sub(_f(e, node, N_NOPS), 2)))))
-            _ok(e, e.either(e.ne(_form(e, p["fx_vt"]), 2), e.eq(_attribute(e, node, 0), 8)))
+            from xax_selfhost_general_rejects import POINTER_ELEMENT_WIDTH
+
+            e.if_(e.both(e.eq(_form(e, p["fx_vt"]), 2), e.ne(_attribute(e, node, 0), 8)),
+                  lambda: _call(e, "pointer_width_reject", POINTER_ELEMENT_WIDTH, 8, _attribute(e, node, 0), _ra(e, F_FN)))
 
         e.if_(_in(e, op, (*loads, *stores)), element_width)
         e.var("fx_done", 0)

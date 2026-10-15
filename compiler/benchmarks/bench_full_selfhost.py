@@ -380,7 +380,6 @@ def measure() -> dict:
              "rejections that quote a decoded declaration or a stack-owner entry's contract, and a constant or type reached inside a graph's "
              "parse, decline (ADR-293); a graph decoder rejection behind an unproven type, and a missing reference first reached through "
              "another object's graph, decline (ADR-288)"),
-            "code generation rules on malformed or extreme inputs decline (ADR-280's list)",
         ],
         "required_paths_outside_xax": [
             "package signature verification (no signature algorithm in the driver)",
