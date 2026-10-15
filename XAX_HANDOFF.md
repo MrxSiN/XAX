@@ -186,11 +186,18 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
+
+- Done: `xax_selfhost_typing.IN_EXTENT` 512 MiB (the typing program's own input bounded by `TYPING_WORDS`, 32M words); every component on that view regenerated; the request store rewritten; the seed rotated and its pins updated.
+- Why first: the pinned seed verifies only what fits its own views. A change that grows the driver store past them must follow a rotation to a seed that has room; the old seed cannot build it.
+- Next: S15b.1 (the store verifier renders its own rejections; the driver follows `verify_store`'s order).
+
 ## S15a a Python-free seed — 2026-10-15 (ADR-286)
 
 - Done: `compiler/bootstrap/seed/` (`xaxc-linux-x86_64`, `xax_compiler_request.xax`, `selfbuild.sh`), `xax_selfhost_seed` (pins, `write-request`, `rotate-seed`), `benchmarks/bench_python_free_seed.py` → `python_free_seed_evidence.json`, and `xax_selfhost.seed_requires_python`.
 - After a driver-store change: `python -m xax_selfhost_seed write-request`, then `bench_full_selfhost.py --write`, then `bench_python_free_seed.py --write`. The seed itself need not change; rotate it only deliberately, with `rotate-seed` and a reviewed pin update.
 - Next: S15b (B1), decomposed in the roadmap (S15b.1-S15b.4). The S8 components decide each rejection as a site code and raw values; Python renders the diagnostic (`xax_selfhost_verify.object_diagnostic`/`object_entity` and their `_build_rule_`, `_uleb_`, and `_target_*_diagnostic` helpers; `xax_selfhost_typing.object_rejections`; `xax_selfhost_facts.memory_diagnostic`; the linear and CFG renderers) and applies `verify_store`'s precedence (objects in store order through `verify_object`, early `OBJECT_MISSING`, `OTHER_OBJECT`, `AFTER_PARSE` sites, the store's rootedness last). The driver has neither: it checks types, then objects, then the store, then graphs, and writes `XAX.DRIVER.VERIFY`. Start with S15b.1: precedence plus the object sites, rendered with the `xax_selfhost_diagnostics` writers in a helper function (S10e convention) and checked against `verify_store` on the S8 mutation corpora (`migration/s8_differential.py`). S15c to S15e follow.
+- S15b.0: see above.
 
 ## S14 complete: S14b the production compiler's generations — 2026-10-15 (ADR-285)
 

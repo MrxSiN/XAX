@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
+
+The input view the verifier and the backends read grew from 256 MiB to 512 MiB, so the driver can keep verifying its own store as S15b adds the bootstrap's diagnostics to it. The typing program's own input stays bounded at its former size. The seed was rotated deliberately: the S15a seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.1.
+
 ## S15a a Python-free seed — 2026-10-15 (ADR-286)
 
-The Linux x86-64 production compiler no longer needs Python to start. Its seed is a pinned copy of the compiler as its own build made it, committed with the compiler's build request. A shell script makes the seed rebuild the compiler twice, and both builds equal the seed, with only `sh`, `dirname`, `mkdir`, `chmod`, and `cmp` on `PATH` and no Python anywhere. The committed record derives "seed requires Python: no". The B levels are unchanged (B1, B5, and B6 still do not hold). Next: S15b to S15e.
+The Linux x86-64 production compiler no longer needs Python to start. Its seed is a pinned copy of the compiler as its own build made it, committed with the compiler's build request. A shell script makes the seed rebuild the compiler twice, and both builds equal the seed, with only `sh`, `dirname`, `mkdir`, `chmod`, and `cmp` on `PATH` and no Python anywhere. The committed record derives "seed requires Python: no". The B levels are unchanged (B1, B5, and B6 still do not hold). Next: S15b to S15e. S15b.0: see above.
 
 ## S14 complete: S14b the production compiler's generations — 2026-10-15 (ADR-285)
 

@@ -75,10 +75,13 @@ from xax_compiler import heap_view_type
 from xax_selfhost_cfg import B64, IN_POINTER, MEM, OUT_POINTER, _Builder
 
 # The typing-and-facts program's own views: large graphs need room for their streams and fact tables.
-IN_EXTENT, OUT_EXTENT = 256 << 20, 1 << 30  # S6c; S10e (ADR-266): the driver store as one object table, its stream
+IN_EXTENT, OUT_EXTENT = 512 << 20, 1 << 30  # S6c; S10e (ADR-266): the driver store as one object table, its stream
 # S12e.3 (ADR-277): both views grew 2x (input from 128 MiB, output from 512 MiB; the input stays at most a quarter of
-# the output) so the general driver's own object table (28.3M words) fits.
+# the output) so the general driver's own object table (28.3M words) fits.  ADR-287: the input view grew to 512 MiB
+# for the verifier's object table of the growing driver store; the typing program's own input stays bounded by
+# TYPING_WORDS, the quarter of the output its tables reserve for it.
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
+TYPING_WORDS = (256 << 20) // 8
 IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)
 
 from xax_native import bootstrap_dir  # noqa: E402
@@ -121,7 +124,7 @@ SITE_CROSS_BITS, SITE_CROSS_FLOAT = SITE_META_ARITY + 35, SITE_META_ARITY + 36
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 # The tables and the block positions after them hold a copy-sized region of the input (``places``): an input view
 # more than half the space above TABLE defers every stream (ADR-266).
-assert IN_WORDS <= (OUT_WORDS - TABLE) // 2
+assert TYPING_WORDS <= (OUT_WORDS - TABLE) // 2
 ATTRIBUTE_LIMIT = (1 << 63) - 1
 # Per-type tables, each T words from TABLE + k*T.
 WIDTH, FORMAT, LINK, POSITION, AGGREGATE, COUNT, ITEMS = range(7)
@@ -347,7 +350,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b = _Builder(IN_EXTENT, OUT_EXTENT)
     count = b.read(b.c(0))
     t = _Typing(b, count)
-    b.check(b.cmp(IntCompare.ULE, b.add(b.add(b.mul(count, TABLES), MARKS), IN_WORDS), OUT_WORDS - TABLE), b.defer_block)
+    b.check(b.cmp(IntCompare.ULE, b.add(b.add(b.mul(count, TABLES), MARKS), TYPING_WORDS), OUT_WORDS - TABLE), b.defer_block)
     nodes_at = b.for_range(b.c(0), count, lambda index, carried: _scalar_entry(b, t, index, carried), (b.c(1),))[0]
     items = b.add(t.slot(TABLES, b.c(0)), MARKS)
     # Aggregate items first (all elements unvalidated), so proof-type transition lists follow them.
@@ -371,7 +374,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.state = (in_view, in_mem, out_view, out_mem)
     # S4d.1: terminator typing, one verdict per block after the node verdicts.
     blocks = b.read(blocks_at)
-    places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), IN_WORDS)  # block stream positions
+    places = b.add(b.add(t.slot(TABLES, b.c(0)), MARKS), TYPING_WORDS)  # block stream positions
     b.check(b.cmp(IntCompare.ULE, b.add(b.add(nodes, blocks), 5), DIAGNOSTICS), b.defer_block)
     b.check(b.cmp(IntCompare.ULE, b.add(places, blocks), OUT_WORDS), b.defer_block)
     (facts_at,) = b.for_range(b.c(0), blocks, lambda index, carried: _block_place(b, index, carried, places), (b.add(blocks_at, 1),))
@@ -2258,7 +2261,7 @@ class NativeTyping:
 
     def check(self, words: list[int], count: int) -> tuple[int, list[int] | None]:
         """``(status, verdicts)`` for one marshalled stream: ``count`` verdicts (nodes, then blocks)."""
-        if len(words) > IN_WORDS or any(word >= 1 << 64 for word in words):
+        if len(words) > TYPING_WORDS or any(word >= 1 << 64 for word in words):
             return DEFER, None
         with self._lock:
             self._in[: len(words)] = words
