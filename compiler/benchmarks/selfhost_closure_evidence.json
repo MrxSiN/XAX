@@ -194,13 +194,13 @@
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "objects": 2544,
+      "objects": 2548,
       "store_proven": true,
-      "objects_proven": 551,
+      "objects_proven": 553,
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 30000000000,
       "host_s_nonsemantic": {
-        "emulated": 608.2
+        "emulated": 593.6
       }
     },
     {
@@ -282,8 +282,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.017,
-        "emulated": 2.9
+        "emulated": 3.9
       }
     },
     {
@@ -306,7 +305,7 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 14000000000,
       "host_s_nonsemantic": {
-        "emulated": 268.7
+        "emulated": 267.3
       }
     }
   ],
@@ -391,9 +390,9 @@
     },
     {
       "store": "xax_store_writer.xax",
-      "bytes": 133869,
+      "bytes": 133837,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.06
+      "host_s_nonsemantic": 0.1
     },
     {
       "store": "xax_x86_64_backend.xax",
@@ -403,9 +402,9 @@
     },
     {
       "store": "xax_x86_64_general.xax",
-      "bytes": 7669691,
+      "bytes": 7669710,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 6.38
+      "host_s_nonsemantic": 5.15
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -542,8 +541,8 @@
     }
   },
   "refreshed": {
-    "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "97fb04b24a5aef952f7770236d13486401adba5c5a1f9d74ab72de3d59e87349",
+    "store": "xax_store_writer.xax",
+    "store_sha256": "8ac49509691daa8c156cb457cde7a8c21f469af8f004172bc86c25f1c3dd8d14",
     "reason": "only this store changed since the last full run; its rows were re-executed natively",
     "authority": {
       "blake3-compress": {
@@ -558,7 +557,7 @@
       "verification:hash": {
         "component": "verification:hash",
         "store_verification": "memoized",
-        "record": "verified-hash-03087d1989e51abf2c5d64f1f08c46893bf8a7ac09cccd469ff7b697d8a2a3cc.bin"
+        "record": "verified-hash-485fdcb9949c6f4c613d45d5c3441fa700a0c84a020ce13252ba5a563abb2545.bin"
       },
       "blake3-hash": {
         "component": "blake3-hash",
@@ -572,7 +571,7 @@
       "verification:store-decoder": {
         "component": "verification:store-decoder",
         "store_verification": "memoized",
-        "record": "verified-store-decoder-9ad4ab95ba2e184d9c61f7ff52739205d54167e8cd534763093f3780bc8ac5bd.bin"
+        "record": "verified-store-decoder-60174e06b9d16be5db79a0b9918c40a3bad45ac1b923de200dc8b2545857e0b3.bin"
       },
       "store-decoder": {
         "component": "store-decoder",
@@ -586,7 +585,7 @@
       "verification:riscv64-encoder": {
         "component": "verification:riscv64-encoder",
         "store_verification": "memoized",
-        "record": "verified-riscv64-encoder-78271d68ea0556be9378273480645eb137370527df70156ddf75d55634007942.bin"
+        "record": "verified-riscv64-encoder-3179cd91674defe8ee7669ca0ef269aa5437bca64533ff6448b060e5a260358d.bin"
       },
       "riscv64-encoder": {
         "component": "riscv64-encoder",
@@ -600,7 +599,7 @@
       "verification:typing": {
         "component": "verification:typing",
         "store_verification": "memoized",
-        "record": "verified-typing-b71b86f26e59e7d346fdc572666072cdc12a905d1e5003fcfebfc10cc0e06ab7.bin"
+        "record": "verified-typing-2442d572768ff55179cb55cfc0babfebf121acbf68062cd0aec7d9aa20c01d5f.bin"
       },
       "typing": {
         "component": "typing",
@@ -614,7 +613,7 @@
       "verification:store-verifier": {
         "component": "verification:store-verifier",
         "store_verification": "memoized",
-        "record": "verified-store-verifier-181fcc9adf886e57271b77dda374551ccbf9f311f348c4b05eed5dbe71a644d3.bin"
+        "record": "verified-store-verifier-daf9713e2e5663148b5ba29bcb54dbbc1d18ec70d0e8ddaaf40f92df0b7c73a5.bin"
       },
       "store-verifier": {
         "component": "store-verifier",
@@ -624,12 +623,12 @@
         "actual_authority": "xax",
         "fallback_occurred": false,
         "fallback_reason": null,
-        "declined_inputs": 2326
+        "declined_inputs": 462
       },
       "verification:graph-decoder": {
         "component": "verification:graph-decoder",
         "store_verification": "memoized",
-        "record": "verified-graph-decoder-61b1107ae888c9f0213d2da2865ddf9c3d8dc40e233f51867fd3929bfdcc8433.bin"
+        "record": "verified-graph-decoder-ca898f421080a7b56f6c9b42c0d305914b3527fdf5c46ea666de1768b74cc72b.bin"
       },
       "graph-decoder": {
         "component": "graph-decoder",
@@ -643,7 +642,7 @@
       "verification:cfg": {
         "component": "verification:cfg",
         "store_verification": "memoized",
-        "record": "verified-cfg-54a75fa623ff7460596e67c69318f3038a0db242c058b1896854da798577b01f.bin"
+        "record": "verified-cfg-71947680750f92f4187be6a8a6b22bb5a76afe4ed7c3248c645901085e239ee8.bin"
       },
       "cfg": {
         "component": "cfg",
@@ -657,7 +656,7 @@
       "verification:xax_riscv64_backend": {
         "component": "verification:xax_riscv64_backend",
         "store_verification": "memoized",
-        "record": "verified-xax_riscv64_backend-31cb68e69420dea859f0b6a0e38b8f37bba154b321c0caaf06610e8ff6605301.bin"
+        "record": "verified-xax_riscv64_backend-568d67fa3708d70e9da3cfb00906264f2dd5acd66aeb6f7fcf3774910e657d87.bin"
       },
       "riscv64-backend": {
         "component": "riscv64-backend",
