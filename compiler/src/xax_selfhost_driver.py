@@ -83,7 +83,7 @@ INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words
 # bootstrap's first pass (its code, use block and node, value tag/block/index/result, the use block's order position,
 # the dominator bitset width), the use block's dominators, the native block order, and each block's position in it.
 INV_AT = 36 << 20
-I_MODE, I_CODE, I_UB, I_UN, I_TAG, I_VB, I_VI, I_VR, I_POS, I_W = range(10)
+I_MODE, I_CODE, I_UB, I_UN, I_TAG, I_VB, I_VI, I_VR, I_POS, I_W, I_NODE = range(11)  # I_NODE: the first use is a node's
 I_DOMS, I_ORDER = INV_AT + 64, INV_AT + 2048
 I_POSITION = I_ORDER + (1 << 16)
 ARGUMENTS_EXTENT = 4096
@@ -929,6 +929,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         facts, and linear flow."""
         planned = w.let("planned", 0)
         o = w.let("graph_object", 0)
+        objected_ = w.let("graph_objected", 0)
 
         def each():
             w.set(o, work_word(w.add(R.WORK_PLAN + 3, w[planned])))
@@ -1004,6 +1005,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                     # The first use's node checks its operation code before its operands (GRAPH-OP-SUPPORTED): declined.
                     un = w.let("iu_un", work_word(INV_AT + I_UN))
                     known = lambda op: w.both(w.le(1, op), w.le(op, max(int(item) for item in Operation)))  # noqa: E731
+                    set_work(INV_AT + I_NODE, w.flag(w.lt(w[un], blk(w[ub], SM.B_COUNT))))  # before the trim shortens the block
                     w.if_(w.lt(w[un], blk(w[ub], SM.B_COUNT)), lambda: w.if_(
                         w.not_(known(work_word(w.add(SM.NODE, w.add(w.mul(w.add(blk(w[ub], SM.B_FIRST), w[un]), SM.NODE_WORDS), SM.N_OP))))),
                         lambda: stop(DECLINED)))
@@ -1125,19 +1127,32 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                         stop(REJECTED)
 
                     def trimmed():
-                        """S15b.3c: the trimmed graph's outcome counts only before the first invalid use (decided there,
-                        its own checks may differ: declined); after it, the bootstrap reached the use."""
+                        """S15b.3c: the trimmed graph's outcome counts only before the first invalid use; after it, the
+                        bootstrap reached the use.  At the use's own node (S15b.3d) the use comes first: a node's operands
+                        resolve right after its operation code (declined above), before its memory and typing checks; at a
+                        terminator the trimmed graph's trap has other checks (declined)."""
                         here = w.let("g_here", w.ld(RG.OUTCOME_AT + RG.O_POS))
                         first = w.let("g_first", w.add(w.mul(work_word(INV_AT + I_POS), 1 << 32), work_word(INV_AT + I_UN)))
-                        w.if_(w.both(w.eq(w[status], RG.G_REJECT), w.lt(w[here], w[first])), rejected, lambda: w.if_(
-                            w.either(w.eq(w[status], RG.G_ACCEPT), w.lt(w[first], w[here])), render_use, lambda: stop(DECLINED)))
+                        decided = w.either(w.eq(w[status], RG.G_REJECT), w.eq(w[status], RG.G_OBJECT))
+                        reached = w.either(w.lt(w[first], w[here]), w.both(decided, w.eq(w[first], w[here]), w.ne(work_word(INV_AT + I_NODE), 0)))
+                        w.if_(w.both(decided, w.lt(w[here], w[first])), lambda: w.if_(w.eq(w[status], RG.G_REJECT), rejected, objected), lambda: w.if_(
+                            w.either(w.eq(w[status], RG.G_ACCEPT), reached), render_use, lambda: stop(DECLINED)))
+
+                    def objected():
+                        """S15b.3d (ADR-297): another object's own rejection decides (``RG.G_OBJECT``): the plan's outcome
+                        becomes that object's typing record (``P_TYPE``), after this graph."""
+                        entry_ = w.ld(RG.OUTCOME_AT + RG.O_ENTITY)
+                        set_work(R.WORK_PLAN + 1, work_word(w.add(SM.ENT, w.mul(entry_, SM.ENTRY_WORDS))))
+                        set_work(R.WORK_PLAN, R.P_TYPE)
+                        w.set(planned, work_word(R.WORK_PLAN + 2))
+                        w.set(objected_, 1)
 
                     w.if_(w.ne(work_word(INV_AT + I_MODE), 0), trimmed, lambda: w.if_(w.eq(w[status], RG.G_REJECT), rejected, lambda: w.if_(
-                        w.ne(w[status], RG.G_ACCEPT), lambda: stop(DECLINED))))
+                        w.eq(w[status], RG.G_OBJECT), objected, lambda: w.if_(w.ne(w[status], RG.G_ACCEPT), lambda: stop(DECLINED)))))
 
                 when(verdicts)
                 if general:
-                    when(lambda: collect(o))
+                    when(lambda: w.if_(w.eq(w[objected_], 0), lambda: collect(o)))
 
             w.if_(w.eq(record_word(w[o], 4), int(Kind.GRAPH_FRAGMENT)), graph, lambda: stop(DECLINED))
             w.set(planned, w.add(w[planned], 1))

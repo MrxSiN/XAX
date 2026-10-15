@@ -10,7 +10,8 @@ rendered keep the driver's own record (``XAX.DRIVER.VERIFY``); a decline makes n
   build objects), with one object's body or references mutated.
 * Types and constants: ``test_xax_selfhost_objects``'s random types of every form and constants, mutated, in a module.
 * Graphs (S15b.3, ADR-292): ``test_xax_selfhost_typing``'s one-node graphs of every covered operation and
-  ``test_xax_selfhost_linear``'s resource programs with their mutations, as function stores.
+  ``test_xax_selfhost_linear``'s resource programs with their mutations, as function stores; none of their rejections
+  declines (S15b.3d, ADR-297).
 * Invalid uses (S15b.3c, ADR-295): the same programs with one operand pointed at a value that does not exist or does not
   dominate its use, and ``test_xax_selfhost_s8_graphs``'s use variants.
 * Memory facts (S15b.3b, ADR-293): ``test_xax_selfhost_facts``'s stack and view programs with their mutations and its
@@ -73,6 +74,7 @@ class VerifyExactTests(unittest.TestCase):
         self.assertIn(kind, ("rejected", "declined"))  # never accepted
         if kind == "declined":
             tally["declined"] += 1
+            tally["declined_rejection"] = tally.get("declined_rejection", 0) + 1
         elif diagnostic.code == "XAX.DRIVER.VERIFY":
             tally["driver_record"] += 1
         else:
@@ -159,6 +161,9 @@ class VerifyExactTests(unittest.TestCase):
             with self.subTest(program=trial):
                 self.check(reader, tally)
         self.assertGreater(tally["exact"], 60, tally)
+        # S15b.3d (ADR-297): a type or constant reached inside the parse, and a sum operation's type of another form,
+        # are rendered too: every rejection here is decided.
+        self.assertEqual(tally.get("declined_rejection", 0), 0, tally)
 
     def test_memory(self):
         import test_xax_selfhost_facts as F

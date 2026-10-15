@@ -121,6 +121,8 @@ SITE_CALL_CONTRACT = SITE_META_ARITY + 34  # S8c.7 (ADR-220)
 # S8 (ADR-251): a node's type decoded as ``bits`` or ``float`` that the decoder rejects (payload: the type); the
 # diagnostic is the decoder's own, for the type (its per-type XSTAT/XA/XB outcome).
 SITE_CROSS_BITS, SITE_CROSS_FLOAT = SITE_META_ARITY + 35, SITE_META_ARITY + 36
+# S15b.3d (ADR-297): a sum operation's type of another (valid) form: ``_decode_sum_type``'s TYPE-SUM, for the type.
+SITE_CROSS_SUM = SITE_META_ARITY + 37
 TABLE = OUT_WORDS // 2  # per-type tables start here; verdicts live below
 # The tables and the block positions after them hold a copy-sized region of the input (``places``): an input view
 # more than half the space above TABLE defers every stream (ADR-266).
@@ -1050,14 +1052,22 @@ def _object_entry(b: _Builder, t: _Typing, index):
     none_word = b.c((1 << 64) - 1)
 
     def read_item(k, carried):
-        at, ok, bad = carried
+        # S15b.3d (ADR-297): the first malformed item ULEB (its ``Cursor.uleb`` status and body offset) after items that
+        # each resolved (``_reference`` resolves an item before the next is read).
+        at, ok, bad, fault, fault_at, resolved = carried
         value, size, value_ok = t.uleb(at)
         good = t.all(ok, value_ok, t.le(b.add(at, size), end))
         first_bad = t.all(good, t.eq(bad, none_word), t.le(references, value))
-        b.put(b.add(marks, t.pick(t.all(good, t.lt(value, references)), value, b.c(0))), t.pick(t.all(good, t.lt(value, references)), b.c(1), b.get(b.add(marks, b.c(0)))))
-        return b.add(at, size), t.all(good, t.not_(first_bad)), t.pick(first_bad, value, bad)
+        status_, _size = _uleb_status(t, at, end)
+        newly = t.all(ok, resolved, t.not_(good), t.one_of(status_, (1, 2, 3)))
+        inside = t.all(good, t.lt(value, references))
+        b.put(b.add(marks, t.pick(inside, value, b.c(0))), t.pick(inside, b.c(1), b.get(b.add(marks, b.c(0)))))
+        resolved = t.all(resolved, t.any(t.not_(inside), t.lt(b.read(b.add(end, t.pick(inside, value, b.c(0)))), t.count)))
+        return (b.add(at, size), t.all(good, t.not_(first_bad)), t.pick(first_bad, value, bad), t.pick(newly, status_, fault),
+                t.pick(newly, b.sub(at, base), fault_at), resolved)
 
-    items_end, items_ok, bad = b.for_range(b.c(0), steps, read_item, (after, b.c(1), none_word))
+    items_end, items_ok, bad, item_fault, item_fault_at, _resolved = b.for_range(
+        b.c(0), steps, read_item, (after, b.c(1), none_word, b.c(0), b.c(0), b.c(1)))
 
     def check_item(k, carried):
         at, state, which = carried
@@ -1073,7 +1083,7 @@ def _object_entry(b: _Builder, t: _Typing, index):
         b.add(c[0], b.mul(b.get(b.add(marks, k)), c[1])), b.mul(c[1], 2), b.add(c[2], b.get(b.add(marks, k)))), (b.c(0), b.c(1), b.c(0)))
     list_left = b.sub(end, items_end)
     list_site = t.pick(t.not_(listable), b.c(0), t.pick(t.all(t.eq(form, 10), t.eq(second, 0)), code("TYPE_SUM_NONEMPTY"), t.pick(
-        t.not_(t.eq(bad, none_word)), code("TYPE_REF_INDEX"), t.pick(t.not_(items_ok), b.c(0), t.pick(t.nonzero(list_left), code("TYPE_TRAILING"), t.pick(
+        t.not_(t.eq(bad, none_word)), code("TYPE_REF_INDEX"), t.pick(t.not_(items_ok), uleb_code(item_fault), t.pick(t.nonzero(list_left), code("TYPE_TRAILING"), t.pick(
             t.eq(item_state, 2), b.c(0), t.pick(t.eq(item_state, 1), t.pick(t.eq(form, 8), code("TYPE_TUPLE_ELEMENT"), code("TYPE_SUM_VARIANT")), t.pick(
                 t.eq(used_count, references), b.c(0), t.pick(t.le(references, 64), code("TYPE_LIST_UNUSED"), b.c(0))))))))))
     list_third = t.pick(t.not_(t.eq(bad, none_word)), bad, t.pick(t.nonzero(list_left), list_left, which))
@@ -1089,7 +1099,9 @@ def _object_entry(b: _Builder, t: _Typing, index):
     a_type = t.not_(t.any(t.eq(kind, int(Kind.CONSTANT)), t.eq(kind, 0)))
     type_site = t.pick(t.eq(statuses[0], 0), type_site, first_bad(0))
     uleb_site = t.any(*(t.eq(type_site, b.c(TYPE_SITE_BASE + 1 + TYPE_SITES.index(name))) for name in uleb_codes.values()))
-    b.put(t.slot(C4, index), t.pick(uleb_site, t.pick(transition_uleb, transition_fault_at, first_bad_at(5)), t.pick(listy, used_mask, fourth)))
+    item_uleb = t.all(listy, t.eq(statuses[0], 0), listable, t.not_(items_ok), t.eq(bad, none_word), t.nonzero(item_fault))
+    b.put(t.slot(C4, index), t.pick(uleb_site, t.pick(transition_uleb, transition_fault_at, t.pick(item_uleb, item_fault_at, first_bad_at(5))),
+                                    t.pick(listy, used_mask, fourth)))
     b.put(t.slot(C6, index), b.sub(after5, base))  # S8: a resource type's transition count offset (its canonical rejection quotes them)
     # S8 (ADR-251): ``_decode_pointer_type``'s reading of any type, up to its shape check.
     shape_bad = t.any(t.not_(t.eq(form, 2)), t.eq(second, 0), t.eq(fifth, 0), t.not_(power))
@@ -1321,6 +1333,8 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
     tuple_like = lambda shape_: t.any(t.eq(shape_, TUPLE), t.eq(shape_, ARRAY))  # noqa: E731
 
     cross = lambda type_, decoder: _cross(b, t, type_, decoder)  # noqa: E731
+    # ``_decode_sum_type`` of a type the parse verified, of another form: TYPE-SUM (a form-10 body it did not decode defers).
+    not_sum = lambda type_: (t.all(_known(t, type_), t.not_(t.eq(t.lookup(FORMB, type_), 10))), SITE_CROSS_SUM, (type_, b.c(0), b.c(0)))  # noqa: E731
 
     def other_form(form, site):
         """A type whose one-byte form is known and neither tuple nor array is rejected by form; else deferred."""
@@ -1390,18 +1404,21 @@ def _rejection(b: _Builder, t: _Typing, operation, shape, counts, attribute, kin
         )),
         (is_(Operation.SUM_MAKE), (
             (t.not_(shape(1, 1, 1)), SITE_SUM_MAKE_CONTRACT, counts),
+            not_sum(result),
             (t.not_(t.eq(result_shape, SUM)), *none),
             (clamped, *none),
             (t.not_(ok), SITE_SUM_MAKE_VARIANT, (result, attribute, first)),
         )),
         (is_(Operation.SUM_TAG), (
             (t.not_(shape(1, 1, 0)), SITE_SUM_TAG_CONTRACT, counts),
+            not_sum(first),
             (t.not_(t.eq(first_shape, SUM)), *none),
             (t.not_(is_bits), *cross(result, 1)),
             (t.not_(ok), SITE_SUM_TAG_WIDTH, payload(t.pick(t.nonzero(needed), needed, b.c(1)), width)),
         )),
         (is_(Operation.SUM_GET), (
             (t.not_(shape(1, 1, 1)), SITE_SUM_GET_CONTRACT, counts),
+            not_sum(first),
             (t.not_(t.eq(first_shape, SUM)), *none),
             (clamped, *none),
             (t.not_(ok), SITE_SUM_GET_VARIANT, (first, attribute, result)),
@@ -1733,6 +1750,8 @@ def rejection(record, cids, items=None, operands=None, results=None, field=None,
     site, x, y, z = record
     if site in (SITE_CROSS_BITS, SITE_CROSS_FLOAT):
         return cross_diagnostic(site == SITE_CROSS_BITS, field(XSTAT, x), field(XA, x), field(XB, x), cids[x], body(x) if body else b"")
+    if site == SITE_CROSS_SUM:
+        return "XAX.TYPE.SUM", "TYPE-SUM", "sum type", "different type form", cids[x].hex()
     if site not in _SITES:
         raise ValueError(f"unknown typing rejection site {site}")
     code, rule, expected, actual = _SITES[site]

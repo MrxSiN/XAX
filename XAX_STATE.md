@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.3d objects inside a graph's parse — 2026-10-15 (ADR-297)
+
+A graph that names a malformed type, uses an unproven constant, applies a sum operation to a type of another form, or belongs to an undecided recursion group is now rejected with the bootstrap's own diagnostic. So is a sum or tuple type with a malformed item index, and an invalid use the bootstrap reaches at the same node as another check. Over the exactness corpora, declined rejections fell from 54 to 10, and none differs from the bootstrap. Still declining: the memory engine's declaration and pointer decoders, stack-owner entries, a few nested build decoders. B1 does not hold yet. Next: the remaining S15b.3d sites, then evidence.
+
 ## S15b.3d nested decoders — 2026-10-15 (ADR-296)
 
-The production compiler now follows the bootstrap into two more nested decoders: a recursion group's member types, and a build snapshot's request and packages. It also types an object named as a type on demand. The two corpus rejections that were not yet exact now are. Next: the remaining S15b.3d sites, then evidence.
+The production compiler now follows the bootstrap into two more nested decoders: a recursion group's member types, and a build snapshot's request and packages. It also types an object named as a type on demand. The two corpus rejections that were not yet exact now are. Next: the remaining S15b.3d sites, then evidence. S15b.3d objects inside a graph's parse: see above.
 
 ## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
 

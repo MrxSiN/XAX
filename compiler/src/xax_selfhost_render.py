@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_verify as V
-from xax_compiler import BOARD_PROFILE, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE, SPIRV_ARCHITECTURE, Kind
+from xax_compiler import BOARD_PROFILE, JVM_ARCHITECTURE, RISCV64_ARCHITECTURE, SPIRV_ARCHITECTURE, Kind, Operation
 from xax_selfhost_facts import NONE, E, _function
 
 BANK_CURSOR = 7 << 20
@@ -1392,6 +1392,88 @@ STRUCTURAL = (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT,
 assert PLAN_AT + 3 + (1 << 16) <= V.ARENA_AT
 
 
+def _prefix(tables):
+    """S15b.3d (ADR-297): ``_graph_syntax_from_stream`` over graph ``g``'s decoder stream (with ``prefix=True`` when the
+    decoder rejected the body: its stream ends there): the bootstrap resolves each reference of the stream and verifies
+    each parameter and result type in body order.  Gives 0 when every one holds (the decoder's rejection, or the graph's
+    next check, follows), the first unproven type's
+    object + 1 (its own rejection: ``P_TYPE``), or ``NONE`` when the bootstrap decides otherwise (a reference outside the
+    graph's or missing, a constant named as a type, a trap payload)."""
+    def build(e: E):
+        p = e.p
+        g = p["g"]
+        e.var("x_refs", V._references(e, g))
+        e.var("x_at", V._payload(e, g))
+        e.var("x_end", e.add(p["x_at"], e.rd(e.sub(p["x_at"], 1))))
+        e.var("x_out", 0)
+        e.var("x_live", 1)  # the prefix has words left and nothing is decided
+        for name in ("x_blocks", "x_params", "x_nodes", "x_op", "x_count", "x_kind", "x_ref", "x_obj"):
+            e.var(name, 0)
+
+        def need(words):
+            e.if_(e.lt(p["x_end"], e.add(p["x_at"], words)), lambda: e.set("x_live", 0))
+
+        def word(name):
+            """``take()`` into ``name`` (0 once the prefix ended)."""
+            need(1)
+            e.set(name, e.sel(e.ne(p["x_live"], 0), e.rd(p["x_at"]), 0))
+            e.set("x_at", e.add(p["x_at"], p["x_live"]))
+
+        def decide(value):
+            e.set("x_out", value)
+            e.set("x_live", 0)
+
+        def reference():
+            word("x_ref")
+            e.if_(e.ne(p["x_live"], 0), lambda: e.if_(e.le(p["x_refs"], p["x_ref"]), lambda: decide(NONE), lambda: (
+                e.set("x_obj", V._reference(e, g, p["x_ref"])), e.if_(e.eq(p["x_obj"], NONE), lambda: decide(NONE)))))
+
+        def type_reference():
+            reference()
+            e.if_(e.ne(p["x_live"], 0), lambda: e.if_(e.eq(V._kind(e, p["x_obj"]), int(Kind.CONSTANT)), lambda: decide(NONE), lambda: e.if_(
+                e.not_(V._type_ok(e, p["x_obj"])), lambda: decide(e.add(p["x_obj"], 1)))))
+
+        def skip(words):
+            e.if_(e.ne(p["x_live"], 0), lambda: e.set("x_at", e.add(p["x_at"], words)))
+
+        def values(count):
+            e.for_("x_v", 0, count, lambda: skip(e.add(3, e.flag(e.eq(e.rd(p["x_at"]), 1)))))
+
+        def edge():
+            word("x_kind")  # the target
+            word("x_count")
+            values(p["x_count"])
+
+        def node():
+            word("x_op")
+            e.if_(e.eq(p["x_op"], int(Operation.CALL_GROUP_MEMBER)), lambda: skip(3))  # the member and its span
+            e.if_(e.both(e.ne(p["x_live"], 0), e.either(*(e.eq(p["x_op"], code) for code in V.ENTITY_CODES))), reference)
+            word("x_count")
+            values(p["x_count"])
+            word("x_count")
+            e.for_("x_r", 0, p["x_count"], lambda: e.if_(e.ne(p["x_live"], 0), type_reference))
+            e.if_(e.either(*(e.eq(p["x_op"], code) for code in V.ATTRIBUTE_CODES)), lambda: (word("x_count"), skip(p["x_count"])))
+
+        def block():
+            word("x_params")
+            e.for_("x_p", 0, p["x_params"], lambda: e.if_(e.ne(p["x_live"], 0), type_reference))
+            word("x_nodes")
+            e.for_("x_n", 0, p["x_nodes"], lambda: e.if_(e.ne(p["x_live"], 0), node))
+            word("x_kind")
+            e.var("x_term", p["x_kind"])
+            e.if_(e.eq(p["x_term"], 1), edge)
+            e.if_(e.eq(p["x_term"], 2), lambda: (values(1), edge(), edge()))
+            e.if_(e.eq(p["x_term"], 3), lambda: (word("x_count"), values(p["x_count"])))
+            e.if_(e.eq(p["x_term"], 4), lambda: (word("x_count"), skip(1), e.if_(e.both(e.ne(p["x_live"], 0), e.ne(p["x_count"], 0)),
+                                                                                lambda: decide(NONE))))
+
+        word("x_blocks")
+        skip(1)  # the entry
+        e.for_("x_b", 0, p["x_blocks"], lambda: e.if_(e.ne(p["x_live"], 0), block))
+        e.give(p["x_out"])
+    return _function(("g",), build, tables)
+
+
 def _plan(tables):
     """``verify_store``'s order over the verdicts: the graphs it parses, in order (each once), until the first object
     it rejects; then the outcome.
@@ -1427,12 +1509,16 @@ def _plan(tables):
             e.var("pg", g)
 
             def decoder():
-                e.var("pd_ok", 1)
-                e.for_("pd_k", 0, V._references(e, p["pg"]), lambda: (
-                    e.var("pd_r", V._reference(e, p["pg"], p["pd_k"])),
-                    e.if_(e.either(e.eq(p["pd_r"], NONE), e.both(e.eq(V._kind(e, p["pd_r"]), int(Kind.TYPE)), e.not_(V._type_ok(e, p["pd_r"])))),
-                          lambda: e.set("pd_ok", 0))))
-                e.if_(e.ne(p["pd_ok"], 0), lambda: finish(P_DECODER, p["pg"]), lambda: finish(P_DECLINE))
+                """S15b.3d: the stream prefix's type references first (``_prefix``), then the decoder's rejection."""
+                e.var("pd_r", e.call(_FN["prefix"], p["pg"]))
+                e.if_(e.eq(p["pd_r"], 0), lambda: finish(P_DECODER, p["pg"]), lambda: e.if_(
+                    e.eq(p["pd_r"], NONE), lambda: finish(P_DECLINE), lambda: finish(P_TYPE, e.sub(p["pd_r"], 1))))
+
+            def undecided():
+                """S15b.3d: a decoded graph the verifier left undecided: ``_graph_syntax_from_stream`` verifies the stream's
+                types first (the first unproven one is its own rejection); otherwise the bootstrap decides."""
+                e.var("pu_r", e.call(_FN["prefix"], p["pg"]))
+                e.if_(e.either(e.eq(p["pu_r"], 0), e.eq(p["pu_r"], NONE)), lambda: finish(P_DECLINE), lambda: finish(P_TYPE, e.sub(p["pu_r"], 1)))
 
             def append():
                 e.st(e.add(e.add(PLAN_AT, 3), p["pn"]), p["pg"])
@@ -1442,8 +1528,7 @@ def _plan(tables):
                 e.st(e.add(p["memo"], p["pg"]), 1)
                 e.if_(e.eq(verdict(p["pg"]), V.REJECTED), lambda: e.if_(e.eq(site(p["pg"]), SITE["OBJECT_MISSING"]), lambda: finish(P_DECLINE),
                                                                         lambda: finish(P_BANK, p["pg"])),
-                      lambda: e.if_(V._graph_rejected(e, p["pg"]), decoder, lambda: e.if_(e.eq(verdict(p["pg"]), 1), append,
-                                                                                             lambda: finish(P_DECLINE))))
+                      lambda: e.if_(V._graph_rejected(e, p["pg"]), decoder, lambda: e.if_(e.eq(verdict(p["pg"]), 1), append, undecided)))
 
             ok = e.both(e.eq(p["term"], NONE), e.lt(p["pg"], p["pO"]))
             e.if_(ok, lambda: e.if_(e.ne(V._kind(e, p["pg"]), int(Kind.GRAPH_FRAGMENT)), lambda: finish(P_DECLINE),
@@ -1471,6 +1556,51 @@ def _plan(tables):
                 e.if_(e.both(e.eq(p["pkind"], int(Kind.FUNCTION)), e.ne(e.ld(e.add(V.GRAPHS_AT, o)), NONE)), lambda: parse(e.ld(e.add(V.GRAPHS_AT, o))))
                 e.if_(e.eq(p["pkind"], int(Kind.RECURSION_GROUP)), lambda: parse_list(e.ld(e.add(V.GRAPHS_AT, o)), e.ld(e.ld(e.add(V.GRAPHS_AT, o)))))
 
+            def group_types(g):
+                """S15b.3d (ADR-296): ``_decode_recursion_group`` of an undecided group ``g``: each member's parameter and
+                return types are verified in body order (``_type_reference``); the first one the typing program did not
+                prove is that type's own rejection (``P_TYPE``)."""
+                e.var("pm_g", g)
+                group = _Body(e, "pm")
+                group.at(p["pm_g"])
+
+                def types():
+                    e.for_("pm_t", 0, group.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
+                        e.var("pm_type", V._reference(e, p["pm_g"], group.uleb())),
+                        e.if_(e.eq(p["pm_type"], NONE), lambda: finish(P_DECLINE),
+                              lambda: e.if_(e.not_(V._type_ok(e, p["pm_type"])), lambda: finish(P_TYPE, p["pm_type"]))))))
+
+                def each():
+                    e.var("pm_graph", V._reference(e, p["pm_g"], group.uleb()))
+                    e.if_(e.either(e.eq(p["pm_graph"], NONE), e.ne(V._kind(e, p["pm_graph"]), int(Kind.GRAPH_FRAGMENT))), lambda: finish(P_DECLINE))
+                    e.if_(e.eq(p["term"], NONE), types)
+                    e.if_(e.eq(p["term"], NONE), types)
+
+                e.for_("pm_k", 0, group.uleb(), lambda: e.if_(e.eq(p["term"], NONE), each))
+
+            def undecided_group():
+                """S15b.3d (ADR-297): ``_verify_recursion_group`` of a group the verifier left undecided: its member list
+                (``group_types``), then each member graph parsed in order, each checked against the group before the
+                next; the verifier's checks held up to the member it reached (``G_GROUP_REACHED``), whose parse comes
+                next; what follows that parse is the bootstrap's."""
+                e.var("pg_reached", e.ld(e.add(V._g(e, V.G_GROUP_REACHED), o)))
+
+                def parse_members():
+                    group = _Body(e, "pq")
+                    group.at(o)
+
+                    def each():
+                        e.var("pq_graph", V._reference(e, o, group.uleb()))
+                        for _part in range(2):
+                            e.for_("pq_t", 0, group.uleb(), lambda: group.uleb())
+                        e.if_(e.both(e.le(p["pq_k"], p["pg_reached"]), e.eq(p["term"], NONE)), lambda: parse(p["pq_graph"]))
+
+                    e.for_("pq_k", 0, group.uleb(), each)
+
+                e.if_(e.eq(e.ld(e.add(V._g(e, V.G_GROUP_SIZE), o)), NONE), lambda: group_types(o), lambda: e.if_(
+                    e.ne(p["pg_reached"], NONE), parse_members))
+                e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
+
             def undecided_function():
                 """``_verify_function`` of a function the verifier left undecided: ``_decode_function_interface`` decodes
                 the group a member function names (its own rejection, when the group decoder makes that check), or
@@ -1482,30 +1612,8 @@ def _plan(tables):
 
                 def member():
                     named = e.both(e.eq(verdict(p["pf_g"]), V.REJECTED), e.either(*(e.eq(site(p["pf_g"]), SITE[name]) for name in group_sites)))
-                    e.if_(named, lambda: finish(P_BANK, p["pf_g"]), lambda: e.if_(e.eq(verdict(p["pf_g"]), 0), member_types,
-                                                                                    lambda: finish(P_DECLINE)))
-
-                def member_types():
-                    """S15b.3d (ADR-296): ``_decode_recursion_group`` of an undecided group: each member's parameter
-                    and return types are verified in body order (``_type_reference``); the first one the typing
-                    program did not prove is that type's own rejection (``P_TYPE``)."""
-                    group = _Body(e, "pm")
-                    group.at(p["pf_g"])
-
-                    def types():
-                        e.for_("pm_t", 0, group.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
-                            e.var("pm_type", V._reference(e, p["pf_g"], group.uleb())),
-                            e.if_(e.eq(p["pm_type"], NONE), lambda: finish(P_DECLINE),
-                                  lambda: e.if_(e.not_(V._type_ok(e, p["pm_type"])), lambda: finish(P_TYPE, p["pm_type"]))))))
-
-                    def each():
-                        e.var("pm_graph", V._reference(e, p["pf_g"], group.uleb()))
-                        e.if_(e.either(e.eq(p["pm_graph"], NONE), e.ne(V._kind(e, p["pm_graph"]), int(Kind.GRAPH_FRAGMENT))), lambda: finish(P_DECLINE))
-                        e.if_(e.eq(p["term"], NONE), types)
-                        e.if_(e.eq(p["term"], NONE), types)
-
-                    e.for_("pm_k", 0, group.uleb(), lambda: e.if_(e.eq(p["term"], NONE), each))
-                    e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
+                    e.if_(named, lambda: finish(P_BANK, p["pf_g"]), lambda: e.if_(e.eq(verdict(p["pf_g"]), 0), lambda: (
+                        group_types(p["pf_g"]), e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))), lambda: finish(P_DECLINE)))
 
                 def ordinary():
                     def types():
@@ -1550,6 +1658,7 @@ def _plan(tables):
                 structural = e.either(*(e.eq(p["pkind"], int(kind)) for kind in STRUCTURAL if kind != Kind.FUNCTION))
                 typed = e.either(e.eq(p["pkind"], int(Kind.TYPE)), e.eq(p["pkind"], int(Kind.CONSTANT)))
                 e.if_(e.eq(p["pkind"], int(Kind.FUNCTION)), undecided_function)
+                e.if_(e.both(e.eq(p["pkind"], int(Kind.RECURSION_GROUP)), e.eq(p["pverdict"], 0)), undecided_group)
                 e.if_(e.both(structural, e.eq(p["term"], NONE)), lambda: finish(P_DECLINE))
                 e.if_(e.both(typed, e.not_(V._type_ok(e, o))), lambda: finish(P_TYPE, o))
 
@@ -1576,6 +1685,7 @@ def add_functions(add, tables) -> dict:
         functions[name] = add(f"render_{name}", made(tables))
     functions["render"] = add("render", _render(tables, functions))
     functions["store"] = add("render_store", _store(tables))
+    _FN["prefix"] = functions["prefix"] = add("render_prefix", _prefix(tables))
     functions["plan"] = add("render_plan", _plan(tables))
     return functions
 

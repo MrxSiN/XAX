@@ -65,7 +65,7 @@ ATTRIBUTE_CODES = (7, 8, 9, 10, 11, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
 MODULE_CHILDREN = (Kind.TYPE, Kind.CONSTANT, Kind.FUNCTION, Kind.TARGET, Kind.RECURSION_GROUP, Kind.CALL_CONTRACT)
 # Globals (the first arena words): table pointers.
 GLOBALS = ARENA_AT
-G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE, G_EXIT, G_SINK, G_GROUP_SIZE = range(10)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
+G_REC, G_O, G_TYPEOK, G_MARK, G_LIST, G_ULEB_STATUS, G_ULEB_SIZE, G_EXIT, G_SINK, G_GROUP_SIZE, G_GROUP_REACHED = range(11)  # G_LIST: a graph contract mismatch's quoted types (S8c.20)
 _FN: dict = {}
 
 
@@ -580,6 +580,7 @@ def _group_ok(tables):
         e.st(e.add(_g(e, G_GROUP_SIZE), o), p["count"])  # ``_decode_recursion_group`` accepts
 
         def contract():
+            e.st(e.add(_g(e, G_GROUP_REACHED), o), p["i"])
             g = e.ld(e.add(e.add(p["graphs"], 1), p["i"]))
             e.var("cg", g)
             _no(e, _graph_rejected(e, p["cg"]))
@@ -593,6 +594,7 @@ def _group_ok(tables):
             _no(e, e.ne(p["gcode"], 1))
 
         e.for_("i", 0, p["count"], contract)
+        e.st(e.add(_g(e, G_GROUP_REACHED), o), p["count"])
 
         def scc():
             """``GRAPH-RECURSION-SCC`` quoting every member's callees: ``[count, (n, callees) per member]``."""
@@ -2242,12 +2244,13 @@ def _program(tables):
         O = e.rd(0)
         e.var("O", O)
         e.st(GLOBALS + G_O, p["O"])
-        for slot, size in ((G_REC, p["O"]), (G_MARK, 1 << 16), (G_GROUP_SIZE, p["O"])):
+        for slot, size in ((G_REC, p["O"]), (G_MARK, 1 << 16), (G_GROUP_SIZE, p["O"]), (G_GROUP_REACHED, p["O"])):
             table = e.alloc(e.add(size, 1))
             e.if_(e.eq(table, NONE), lambda: e.give(NONE))
             e.st(GLOBALS + slot, table)
-        # S8 (ADR-251): a recursion group's member count once its member list decodes (NONE before or without that).
-        e.for_("o", 0, p["O"], lambda: e.st(e.add(_g(e, G_GROUP_SIZE), p["o"]), NONE))
+        # S8 (ADR-251): a recursion group's member count once its member list decodes (NONE before or without that);
+        # S15b.3d (ADR-297): the member whose graph the contract checks reached (the count once every member passed).
+        e.for_("o", 0, p["O"], lambda: (e.st(e.add(_g(e, G_GROUP_SIZE), p["o"]), NONE), e.st(e.add(_g(e, G_GROUP_REACHED), p["o"]), NONE)))
         e.var("ra", 2)
 
         def record():

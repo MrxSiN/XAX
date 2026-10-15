@@ -186,6 +186,17 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.3d objects inside a graph's parse — 2026-10-15 (ADR-297)
+
+- Done:
+  - In `xax_selfhost_render`: `_prefix` (the stream's type references), the plan's `undecided` graph and `undecided_group`, and `group_types`.
+  - In `xax_selfhost_verify`: `G_GROUP_REACHED`.
+  - In `xax_selfhost_typing`: `SITE_CROSS_SUM`, and the list items' ULEB fault (`C4` holds its offset).
+  - In the outcome: `G_OBJECT` for a constant node's unproven constant.
+  - In the driver: `objected`, and `I_NODE` for a tie at the first invalid use's node.
+- Diagnosing a decline: a copy of the driver with a unique exit code per `stop(DECLINED)`, and a copy of `render.py` whose `finish(P_DECLINE)` records its line; the plan's words are at `PLAN_AT`.
+- Next: the pointer-decoder and declaration-decoding memory sites, stack-owner entries, the group-call-context function, nested build decoders.
+
 ## S15b.3d nested decoders — 2026-10-15 (ADR-296)
 
 - Done:
@@ -194,7 +205,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - In the driver: `as_type`.
   - In `xax_selfhost_render_types`: `TYPE_SITE_NUMBER` and `BODY_QUOTING`.
 - Reproducing a corpus row: generate it as `bench_full_selfhost` does, with `PYTHONHASHSEED=0`, then compare `NativeGeneralDriver.verify` with `verify_store`.
-- Next: the declaration-decoding memory sites, stack-owner entries, and constants reached inside a graph's parse.
+- Next: the declaration-decoding memory sites, stack-owner entries, and constants reached inside a graph's parse. The latter: see above.
 
 ## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
 

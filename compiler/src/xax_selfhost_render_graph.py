@@ -12,6 +12,8 @@ at ``OUTCOME_AT`` of its output view:
 * ``G_REJECT``: the first rejection, as a diagnostic record (``xax_selfhost_diagnostics``) from ``RECORD_AT``: its code,
   its entity when it is not the graph (``O_ENTITY``), then its rule, expected, and actual; the general compiler driver
   writes the graph's CID as the entity otherwise;
+* ``G_OBJECT`` (S15b.3d, ADR-297): the bootstrap raises another object's own rejection here: a constant node's constant
+  the typing program did not prove (its typing entry at ``O_ENTITY``; the driver renders that object's record);
 * ``G_DECLINE``: the bootstrap would decide the next check (a node or terminator the typing program did not cover, an
   entry that holds a stack owner, an engine that declined, a record this phase does not render): no claim.
 
@@ -45,7 +47,9 @@ O_POS, O_MODE = 4, 5
 POS_LATE = 1 << 63
 RECORD_AT, RECORD_END = OUTCOME_AT + 8, OUTCOME_AT + (1 << 21)
 ARRAYS_AT, ARRAYS_END = OUTCOME_AT + (1 << 21), OUTCOME_AT + (6 << 20)  # the shape's arrays (below the terminator records)
-G_ACCEPT, G_REJECT, G_DECLINE = 0, 1, 2
+# S15b.3d (ADR-297): ``G_OBJECT``: the bootstrap raises another object's own rejection here (a constant node's constant
+# the typing program did not prove: ``_decode_constant``); ``O_ENTITY`` is its typing entry.
+G_ACCEPT, G_REJECT, G_DECLINE, G_OBJECT = 0, 1, 2, 3
 ENTITY_GRAPH, ENTITY_WRITTEN = 0, 1
 ENGINE_OPERATIONS = tuple(int(item) for item in Operation if item not in T.COVERED)  # checked by the facts engine's rules
 _FN: dict = {}
@@ -337,7 +341,8 @@ def _node_part(tables, part: int):
 
 
 def _node_cross(tables):
-    """``cross_diagnostic``: a node's type the bits or float decoder rejects; gives 1 when written."""
+    """``cross_diagnostic``: a node's type the bits or float decoder rejects (or, S15b.3d, the sum decoder); gives 1 when
+    written."""
     def build(e: E):
         p = e.p
         w = _writer(e)
@@ -375,6 +380,9 @@ def _node_cross(tables):
 
         e.if_(e.eq(p["site"], T.SITE_CROSS_BITS), lambda: cross(True))
         e.if_(e.eq(p["site"], T.SITE_CROSS_FLOAT), lambda: cross(False))
+        e.if_(e.eq(p["site"], T.SITE_CROSS_SUM), lambda: (
+            _four(e, w, "XAX.TYPE.SUM", "TYPE-SUM", lambda: w.text("sum type"), lambda: w.text("different type form"), lambda: c.h(x)),
+            e.set("written", 1)))
         e.give(p["written"])
     return _function(("key",), build, tables)
 
@@ -1157,11 +1165,23 @@ def _outcome(tables):
                     e.if_(e.both(memory_here, e.eq(p["memory"], M["OP_SUPPORTED"])), memory)
                     e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.eq(p["nop"], 0), lambda: decide(G_DECLINE), lambda: e.if_(e.not_(known), unsupported)))
 
+                    def constant():
+                        """S15b.3d: a constant node left undecided because its constant is not proven (``_entity_steps``
+                        held): ``_decode_constant`` raises the constant's own rejection."""
+                        e.var("ce_at", e.add(e.ld(T.PASS_NODES_AT), 1))
+                        e.for_("ce_k", 0, p["nkey"], lambda: e.set("ce_at", e.add(e.add(p["ce_at"], 6), e.add(
+                            e.add(e.rd(e.add(p["ce_at"], 1)), e.rd(e.add(p["ce_at"], 2))), e.rd(e.add(p["ce_at"], 5))))))
+                        e.var("ce_e", e.rd(e.add(e.add(e.add(p["ce_at"], 6), e.rd(e.add(p["ce_at"], 1))), e.rd(e.add(p["ce_at"], 2)))))
+                        valid = e.both(e.eq(e.rd(e.add(p["ce_at"], 5)), 1), e.lt(p["ce_e"], e.rd(0)))
+                        e.set("ce_e", e.sel(valid, p["ce_e"], 0))
+                        own = e.both(valid, e.eq(e.rd(_field(e, T.POSITION, p["ce_e"])), int(Kind.CONSTANT)), e.eq(_field(e, T.OBJOK, p["ce_e"]), 0))
+                        e.if_(own, lambda: (e.st(OUTCOME_AT + O_ENTITY, p["ce_e"]), decide(G_OBJECT)), lambda: decide(G_DECLINE))
+
                     def typed():
                         verdict = e.ld(e.add(2, p["nkey"]))
                         e.var("nv", verdict)
                         e.if_(e.eq(p["nv"], T.REJECTED), lambda: reject(lambda: e.call(_FN["node"], p["nkey"])), lambda: e.if_(
-                            e.ne(p["nv"], T.PROVEN), lambda: decide(G_DECLINE)))
+                            e.ne(p["nv"], T.PROVEN), lambda: e.if_(e.eq(p["nop"], int(Operation.CONSTANT)), constant, lambda: decide(G_DECLINE))))
 
                     def checks():
                         e.if_(at(1, p["pb"], p["pn"]), memory)
