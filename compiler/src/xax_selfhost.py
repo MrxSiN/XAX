@@ -561,9 +561,51 @@ def current_m14_readiness() -> M14ClosureReadiness:
     )
 
 
-# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the driver, the
-# verifier's rejections, store writing, program backends, and build orchestration are Python (S8-S15, ADR-180).
+# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the program
+# backends of every target but Linux x86-64 and build orchestration for them are Python (S15, ADR-180).
 FULL_COMPILER_STORE: Path | None = None
+# S14b (ADR-285): the executed generations of the Linux x86-64 production compiler (the general driver).
+FULL_SELFHOST_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "full_selfhost_evidence.json"
+
+
+def linux_x86_64_status(full: dict) -> dict:
+    """B0-B6 for the Linux x86-64 production compiler, derived from the raw record ``full`` (``bench_full_selfhost``):
+    executable digests, which executable produced which, snapshot digests against the Python resolver, the bootstrap's
+    own compile, every generation's outcome on the corpus against the bootstrap's, and the recorded gaps.  No level is
+    read from the record; each is computed here."""
+    import json
+
+    generations = full["generations"]
+    produced = [full["seed"]["sha256"], *(item["artifact_sha256"] for item in generations)]
+    completed = len(generations) == 3 and all(item["resolve"]["status"] == "image" and item["build"]["status"] == "image" for item in generations)
+    chained = completed and all(item["producer_sha256"] == produced[index] for index, item in enumerate(generations))
+    snapshots = completed and all(item["snapshot_equals_python_resolver"] for item in generations)
+    artifacts = [item["artifact_sha256"] for item in generations]
+    corpus = full["corpus"]
+    agree = bool(corpus) and all(len(row["outcomes"]) == len(generations) + 1 and len({json.dumps(o) for o in row["outcomes"].values()}) == 1
+                                 for row in corpus)
+    exact = all(row["reference"] is None or row["outcomes"]["C1"] == row["reference"] for row in corpus)
+    both = {row["kind"] for row in corpus} >= {"positive", "negative"}
+    b0 = bool(generations) and generations[0]["build"]["status"] == "image" and len(generations) > 1 and generations[1]["resolve"]["status"] == "image"
+    b2 = chained and snapshots
+    b3 = b2 and agree and exact and both
+    b4 = b2 and len(set(artifacts)) == 1 and artifacts[0] == full["references"]["bootstrap_compile_sha256"]
+    b1 = b2 and not full["rejection_exactness_gaps"]
+    b5 = b2 and not full["required_paths_outside_xax"] and not any(full["executables_have_interpreter"].values())
+    b6 = b5 and not full["ordinary_evolution"]
+    blockers = {
+        "B0": None if b0 else "the seed did not produce a running compiler",
+        "B1": None if b1 else "; ".join(full["rejection_exactness_gaps"]) or "no recursive build",
+        "B2": None if b2 else "the generations do not chain through resolve and build",
+        "B3": None if b3 else "the generations or the bootstrap disagree on the corpus",
+        "B4": None if b4 else "the generations are not byte-identical to each other and the bootstrap's compile",
+        "B5": None if b5 else "; ".join(full["required_paths_outside_xax"]) or "a required path is not XAX-hosted",
+        "B6": None if b6 else full["ordinary_evolution"] or "B5 does not hold",
+    }
+    return {"scope": full["scope"]["compiler"], "outside_scope": full["scope"]["outside_scope"],
+            **{f"B{n}": level for n, level in enumerate((b0, b1, b2, b3, b4, b5, b6))},
+            "blockers": {level: reason for level, reason in blockers.items() if reason},
+            "seed_requires_python": full["seed"]["requires_python"]}
 
 M14_SCOPE = (
     "xax-semantic-image-v1 META wrapper: an XAX graph that materializes, verifies, and canonically encodes a program "
@@ -580,12 +622,17 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
     if FULL_COMPILER_STORE is not None:
         raise NotImplementedError("derive whole-compiler B levels from executed evidence for FULL_COMPILER_STORE")
     readiness = readiness_from_recursive_evidence(evidence)
+    import json
+
+    linux = linux_x86_64_status(json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8"))) if FULL_SELFHOST_EVIDENCE.exists() else None
     return {
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "no canonical XAX store implements the whole compiler; S14b and later steps are open (ADR-180, ADR-284)",
+            "blocker": "every target but Linux x86-64 is compiled by Python backends; the Linux x86-64 production compiler is "
+                       "reported separately (ADR-180, ADR-285)",
         },
+        **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
         "m14_semantic_image_wrapper": {
             "scope": M14_SCOPE,
             "B2": readiness.b2, "B3": readiness.b3, "B4": readiness.b4, "B5": readiness.b5, "B6": readiness.b6,

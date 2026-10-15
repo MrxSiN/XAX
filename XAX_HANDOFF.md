@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S14b and later steps are open (ADR-180, ADR-284)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64 is compiled by Python backends; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4 hold, B1, B5, B6 do not; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,11 +186,27 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S14 complete: S14b the production compiler's generations — 2026-10-15 (ADR-285)
+
+- Done:
+  - `xax_selfhost_compiler.compiler_request` (the compiler's request store).
+  - `benchmarks/bench_full_selfhost.py` → `benchmarks/full_selfhost_evidence.json` (about 50 minutes; the bootstrap compile is 10 of them).
+  - `xax_selfhost.linux_x86_64_status`, reported by `bootstrap_status` and the status blocks.
+  - Writer views 32/64 MiB; the general driver's `written` buffer; the general program's views region 32M–56M words, arena from 56M.
+- After a change to the general driver, the general program, or the writer: re-run `bench_full_selfhost.py --write`. `tests/test_full_selfhost_status.py` fails while the record describes another compiler store. Then `python bootstrap/generate_m14.py` and `python -m xax_status_docs --write`.
+- Pitfall: changing `xax_selfhost_writer`'s constants breaks `write_store` (the native writer) until its store is regenerated; regenerate it with `XAX_STORE_PYTHON_WRITER=1`. Never run evidence against an uncommitted constant change: an earlier S14a evidence run did, and was discarded and re-run from a clean worktree.
+- Next: S15. The remaining blockers are recorded in `full_selfhost_evidence.json`:
+  - B1: exact verification rejections in the driver, and ADR-280's declined rules decided;
+  - B5: signature verification, external inputs and effects, grants, and capacities;
+  - B6: compiler evolution by semantic transactions instead of Python builders;
+  - SH8: a seed that needs no Python (C1 itself can be the next seed);
+  - the other targets.
+
 ## S14a the compiler compiles itself with its optimizing backend — 2026-10-15 (ADR-284)
 
 - Done: the fixed point C0 → C1 → C2 → C3 through `lower` (`tests/test_xax_selfhost_compiler_fixed_point.py`); fixes in `xax_x86_64_regalloc` (value tables skip the fused branch compare) and the XAX general program (`uses`/`loop_slots` exact-size arrays, bounded `copy_edge`/`_machine_operands` writes, `MOVE_CAP` 4096, views region 32M–48M words, `GENERAL_ARENA_AT` 48M, `CODE_CAP`/`IMAGE_CAP` 8 MiB).
 - Diagnosing a decline of the general program on a large input: `_ok` records nothing. Build an uncommitted variant whose `_ok` (swap `xax_selfhost_views_backend._ok.__code__`, so every module's binding changes) writes a ring of (site, `H_ARENA`) records near the end of the output view, lower it with `compile_x86_64_views(..., backend="xax")`, and run it on `general_object_table`'s words with `_NativeRunner`.
-- Next: S14b. First grow `xax_selfhost_writer`'s views beyond the compiler's own snapshot store (17.7 MB) so `resolve` can write it, then generations through `resolve` → `build` with provenance identity records, the positive/negative corpus run by C1, C2, and C3 (ADR-280's declined rules included), `benchmarks/full_selfhost_evidence.json`, and the B levels derived from it by `xax_selfhost.bootstrap_status`.
+- Next: S14b (see above). First grow `xax_selfhost_writer`'s views beyond the compiler's own snapshot store (17.7 MB) so `resolve` can write it, then generations through `resolve` → `build` with provenance identity records, the positive/negative corpus run by C1, C2, and C3 (ADR-280's declined rules included), `benchmarks/full_selfhost_evidence.json`, and the B levels derived from it by `xax_selfhost.bootstrap_status`.
 
 ## S13 complete: S13c package resolution — 2026-10-15 (ADR-283)
 

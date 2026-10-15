@@ -1,0 +1,2267 @@
+{
+  "format": "xax-full-selfhost-evidence-v1",
+  "label": "EXECUTED",
+  "adr": "ADR-285",
+  "host_nonsemantic": "Linux x86_64 Python 3.13.16",
+  "scope": {
+    "name": "linux_x86_64_production_compiler",
+    "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, build, lower",
+    "targets": [
+      "x86_64-linux-elf-exec-v1",
+      "x86_64-linux-elf-dynexec-v1",
+      "x86_64-linux-views-v1/v2",
+      "x86_64-linux-views-exec-v1"
+    ],
+    "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python"
+  },
+  "spec_revision": "XAX_SPEC.md \u00a716",
+  "compiler": {
+    "store": "xax_compiler_driver_general.xax",
+    "store_sha256": "1a289a772eba6c29e6c0babc6b07b7f7b7372722b5b844f2fe59bac50cfa6eaa",
+    "semantic_root": "0db10b856b9da6fa6ef355d342f2835d0b4eca164809b538624bec40214917be",
+    "request_store_sha256": "518a20960b77772312f800579ec8b73242626d952b261140f94f906b4ba43a96",
+    "request_root": "82e77bbcff838345fdf9c329777fca12b8d132a9dc2f9915c494b57fb03729df",
+    "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
+    "resolver_identity": "xax-driver-resolver-v1",
+    "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
+    "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117"
+  },
+  "seed": {
+    "kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
+    "sha256": "db8de208bafc5c3f669727dff211943b5ecb8b30f156f1be534ce0b4b680b1ef",
+    "bytes": 29644223,
+    "requires_python": true,
+    "host_s_nonsemantic": 56.3
+  },
+  "references": {
+    "python_resolver_snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa",
+    "python_resolve_s_nonsemantic": 45.8,
+    "bootstrap_compile_sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+    "bootstrap_compile_bytes": 6914069,
+    "bootstrap_compile_s_nonsemantic": 580.6
+  },
+  "generations": [
+    {
+      "generation": 1,
+      "producer": "C0",
+      "producer_sha256": "db8de208bafc5c3f669727dff211943b5ecb8b30f156f1be534ce0b4b680b1ef",
+      "resolve": {
+        "status": "image",
+        "outputs": [
+          "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa"
+        ],
+        "host_s_nonsemantic": 28.91,
+        "peak_rss_kib_nonsemantic": 2723948
+      },
+      "build": {
+        "status": "image",
+        "outputs": [
+          "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+          "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a"
+        ],
+        "host_s_nonsemantic": 103.92,
+        "peak_rss_kib_nonsemantic": 2723948
+      },
+      "snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa",
+      "snapshot_equals_python_resolver": true,
+      "artifact_sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "artifact_bytes": 6914069,
+      "provenance_sha256": "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a",
+      "provenance": {
+        "cid": "c08c45b1a8d7e55403025f96e1222de01cfb8bea4d56b765f722bbc74cfcd45a",
+        "snapshot_root": "c9a25d9b713d1c0fc3142f31c70851e01ebd9a20ad357b66633881f94264aacb",
+        "request_root": "82e77bbcff838345fdf9c329777fca12b8d132a9dc2f9915c494b57fb03729df",
+        "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
+        "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
+        "artifact_digest_blake3": "bd8fa7af1a9b266f3c9057c12bec91094a0c0aef79581c8d251f23f33ea0e582",
+        "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
+        "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
+      },
+      "equals_python_build": true
+    },
+    {
+      "generation": 2,
+      "producer": "C1",
+      "producer_sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "resolve": {
+        "status": "image",
+        "outputs": [
+          "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa"
+        ],
+        "host_s_nonsemantic": 11.1,
+        "peak_rss_kib_nonsemantic": 3893204
+      },
+      "build": {
+        "status": "image",
+        "outputs": [
+          "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+          "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a"
+        ],
+        "host_s_nonsemantic": 30.25,
+        "peak_rss_kib_nonsemantic": 3893204
+      },
+      "snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa",
+      "snapshot_equals_python_resolver": true,
+      "artifact_sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "artifact_bytes": 6914069,
+      "provenance_sha256": "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a",
+      "provenance": {
+        "cid": "c08c45b1a8d7e55403025f96e1222de01cfb8bea4d56b765f722bbc74cfcd45a",
+        "snapshot_root": "c9a25d9b713d1c0fc3142f31c70851e01ebd9a20ad357b66633881f94264aacb",
+        "request_root": "82e77bbcff838345fdf9c329777fca12b8d132a9dc2f9915c494b57fb03729df",
+        "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
+        "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
+        "artifact_digest_blake3": "bd8fa7af1a9b266f3c9057c12bec91094a0c0aef79581c8d251f23f33ea0e582",
+        "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
+        "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
+      }
+    },
+    {
+      "generation": 3,
+      "producer": "C2",
+      "producer_sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "resolve": {
+        "status": "image",
+        "outputs": [
+          "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa"
+        ],
+        "host_s_nonsemantic": 11.16,
+        "peak_rss_kib_nonsemantic": 3893204
+      },
+      "build": {
+        "status": "image",
+        "outputs": [
+          "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+          "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a"
+        ],
+        "host_s_nonsemantic": 32.15,
+        "peak_rss_kib_nonsemantic": 3893204
+      },
+      "snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa",
+      "snapshot_equals_python_resolver": true,
+      "artifact_sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "artifact_bytes": 6914069,
+      "provenance_sha256": "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a",
+      "provenance": {
+        "cid": "c08c45b1a8d7e55403025f96e1222de01cfb8bea4d56b765f722bbc74cfcd45a",
+        "snapshot_root": "c9a25d9b713d1c0fc3142f31c70851e01ebd9a20ad357b66633881f94264aacb",
+        "request_root": "82e77bbcff838345fdf9c329777fca12b8d132a9dc2f9915c494b57fb03729df",
+        "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
+        "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
+        "artifact_digest_blake3": "bd8fa7af1a9b266f3c9057c12bec91094a0c0aef79581c8d251f23f33ea0e582",
+        "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
+        "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
+      }
+    }
+  ],
+  "fixed_point": {
+    "comparison": "raw executable bytes (SHA-256)",
+    "artifacts": [
+      "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0"
+    ]
+  },
+  "empty_environment_run": {
+    "environment": "empty (no PATH, no PYTHONPATH)",
+    "status": "image",
+    "snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa"
+  },
+  "executables_have_interpreter": {
+    "C0": false,
+    "C1": false,
+    "C2": false,
+    "C3": false
+  },
+  "corpus": [
+    {
+      "case": "lower status",
+      "kind": "positive",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83"
+        ],
+        "C1": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83"
+        ],
+        "C2": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83"
+        ],
+        "C3": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83"
+        ]
+      },
+      "reference": [
+        "image",
+        "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83"
+      ]
+    },
+    {
+      "case": "lower crc (dynamic)",
+      "kind": "positive",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "image",
+          "7a9efeb05b1779517f66292e37cd63c67b6992fe575f9b787766ed6f0916fe2d"
+        ],
+        "C1": [
+          "image",
+          "7a9efeb05b1779517f66292e37cd63c67b6992fe575f9b787766ed6f0916fe2d"
+        ],
+        "C2": [
+          "image",
+          "7a9efeb05b1779517f66292e37cd63c67b6992fe575f9b787766ed6f0916fe2d"
+        ],
+        "C3": [
+          "image",
+          "7a9efeb05b1779517f66292e37cd63c67b6992fe575f9b787766ed6f0916fe2d"
+        ]
+      },
+      "reference": [
+        "image",
+        "7a9efeb05b1779517f66292e37cd63c67b6992fe575f9b787766ed6f0916fe2d"
+      ]
+    },
+    {
+      "case": "lower jsonmin",
+      "kind": "positive",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "image",
+          "a4f7a2022b3495edba9708adb45c77b656a96938f82bf0da433e3a075ec6ec3e"
+        ],
+        "C1": [
+          "image",
+          "a4f7a2022b3495edba9708adb45c77b656a96938f82bf0da433e3a075ec6ec3e"
+        ],
+        "C2": [
+          "image",
+          "a4f7a2022b3495edba9708adb45c77b656a96938f82bf0da433e3a075ec6ec3e"
+        ],
+        "C3": [
+          "image",
+          "a4f7a2022b3495edba9708adb45c77b656a96938f82bf0da433e3a075ec6ec3e"
+        ]
+      },
+      "reference": [
+        "image",
+        "a4f7a2022b3495edba9708adb45c77b656a96938f82bf0da433e3a075ec6ec3e"
+      ]
+    },
+    {
+      "case": "lower chains",
+      "kind": "positive",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "image",
+          "b86b905508034328566ea9808508ee08a8cda90b22c438092471e96b38d05fd3"
+        ],
+        "C1": [
+          "image",
+          "b86b905508034328566ea9808508ee08a8cda90b22c438092471e96b38d05fd3"
+        ],
+        "C2": [
+          "image",
+          "b86b905508034328566ea9808508ee08a8cda90b22c438092471e96b38d05fd3"
+        ],
+        "C3": [
+          "image",
+          "b86b905508034328566ea9808508ee08a8cda90b22c438092471e96b38d05fd3"
+        ]
+      },
+      "reference": [
+        "image",
+        "b86b905508034328566ea9808508ee08a8cda90b22c438092471e96b38d05fd3"
+      ]
+    },
+    {
+      "case": "lower C import, static profile",
+      "kind": "negative",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.NATIVE.FOREIGN_ABI",
+          "SYSV-C-REQUIRES-DYNAMIC-PROFILE"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.NATIVE.FOREIGN_ABI",
+          "SYSV-C-REQUIRES-DYNAMIC-PROFILE"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.NATIVE.FOREIGN_ABI",
+          "SYSV-C-REQUIRES-DYNAMIC-PROFILE"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.NATIVE.FOREIGN_ABI",
+          "SYSV-C-REQUIRES-DYNAMIC-PROFILE"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.NATIVE.FOREIGN_ABI",
+        "SYSV-C-REQUIRES-DYNAMIC-PROFILE"
+      ]
+    },
+    {
+      "case": "lower ABI arity",
+      "kind": "negative",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.NATIVE.ABI",
+          "NATIVE-ABI-ARITY"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.NATIVE.ABI",
+          "NATIVE-ABI-ARITY"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.NATIVE.ABI",
+          "NATIVE-ABI-ARITY"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.NATIVE.ABI",
+          "NATIVE-ABI-ARITY"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.NATIVE.ABI",
+        "NATIVE-ABI-ARITY"
+      ]
+    },
+    {
+      "case": "lower process entry contract",
+      "kind": "negative",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.LINUX.ENTRY",
+          "LINUX-PROCESS-ENTRY-CONTRACT"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.LINUX.ENTRY",
+          "LINUX-PROCESS-ENTRY-CONTRACT"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.LINUX.ENTRY",
+          "LINUX-PROCESS-ENTRY-CONTRACT"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.LINUX.ENTRY",
+          "LINUX-PROCESS-ENTRY-CONTRACT"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.LINUX.ENTRY",
+        "LINUX-PROCESS-ENTRY-CONTRACT"
+      ]
+    },
+    {
+      "case": "lower a views program",
+      "kind": "positive",
+      "command": "lower",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.X86_64_VIEWS.VALUE",
+          "X86_64_VIEWS-VALUE-BITS"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.X86_64_VIEWS.VALUE",
+          "X86_64_VIEWS-VALUE-BITS"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.X86_64_VIEWS.VALUE",
+          "X86_64_VIEWS-VALUE-BITS"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.X86_64_VIEWS.VALUE",
+          "X86_64_VIEWS-VALUE-BITS"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify m11_bootstrap_bundle.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect m11_bootstrap_bundle.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "f208f2c10b2960ec78d81e21b7c5811ff08cc3ad85622c818553d0128b269315"
+        ],
+        "C1": [
+          "image",
+          "f208f2c10b2960ec78d81e21b7c5811ff08cc3ad85622c818553d0128b269315"
+        ],
+        "C2": [
+          "image",
+          "f208f2c10b2960ec78d81e21b7c5811ff08cc3ad85622c818553d0128b269315"
+        ],
+        "C3": [
+          "image",
+          "f208f2c10b2960ec78d81e21b7c5811ff08cc3ad85622c818553d0128b269315"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify m11_compiler_subset.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect m11_compiler_subset.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4c0e43af18afa01b12469643397b025d32718fe6ae5d43b2db57ce5c371acc70"
+        ],
+        "C1": [
+          "image",
+          "4c0e43af18afa01b12469643397b025d32718fe6ae5d43b2db57ce5c371acc70"
+        ],
+        "C2": [
+          "image",
+          "4c0e43af18afa01b12469643397b025d32718fe6ae5d43b2db57ce5c371acc70"
+        ],
+        "C3": [
+          "image",
+          "4c0e43af18afa01b12469643397b025d32718fe6ae5d43b2db57ce5c371acc70"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify m14_selfhost_compiler.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect m14_selfhost_compiler.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "b0242969f0b76e43d142edf70cc5cefbb7f172ecd8d69ee5a45368355b6f36ad"
+        ],
+        "C1": [
+          "image",
+          "b0242969f0b76e43d142edf70cc5cefbb7f172ecd8d69ee5a45368355b6f36ad"
+        ],
+        "C2": [
+          "image",
+          "b0242969f0b76e43d142edf70cc5cefbb7f172ecd8d69ee5a45368355b6f36ad"
+        ],
+        "C3": [
+          "image",
+          "b0242969f0b76e43d142edf70cc5cefbb7f172ecd8d69ee5a45368355b6f36ad"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_blake3_compress.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_blake3_compress.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "b44378f5237f1330046fa55ff6487b8de3f315a31bb3fcf4beae579244f1b3ca"
+        ],
+        "C1": [
+          "image",
+          "b44378f5237f1330046fa55ff6487b8de3f315a31bb3fcf4beae579244f1b3ca"
+        ],
+        "C2": [
+          "image",
+          "b44378f5237f1330046fa55ff6487b8de3f315a31bb3fcf4beae579244f1b3ca"
+        ],
+        "C3": [
+          "image",
+          "b44378f5237f1330046fa55ff6487b8de3f315a31bb3fcf4beae579244f1b3ca"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_blake3_hash.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_blake3_hash.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "ecd831af6eab731c89fd92c70eb9a32aadf718b2fd097bad6c86eeb9b6ab4bce"
+        ],
+        "C1": [
+          "image",
+          "ecd831af6eab731c89fd92c70eb9a32aadf718b2fd097bad6c86eeb9b6ab4bce"
+        ],
+        "C2": [
+          "image",
+          "ecd831af6eab731c89fd92c70eb9a32aadf718b2fd097bad6c86eeb9b6ab4bce"
+        ],
+        "C3": [
+          "image",
+          "ecd831af6eab731c89fd92c70eb9a32aadf718b2fd097bad6c86eeb9b6ab4bce"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_cfg_analysis.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_cfg_analysis.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+        ],
+        "C1": [
+          "image",
+          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+        ],
+        "C2": [
+          "image",
+          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+        ],
+        "C3": [
+          "image",
+          "5bd81bf231fe7a3e5c13931464c413391444ba469023011d67c496226df69824"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_compiler_driver.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "verify xax_compiler_driver_general.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "verify xax_graph_decoder.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_graph_decoder.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+        ],
+        "C1": [
+          "image",
+          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+        ],
+        "C2": [
+          "image",
+          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+        ],
+        "C3": [
+          "image",
+          "0b1c35b6ef98fc1625c5cf87f15aba13a29caca5ef58ba1d931cd9a80c1d7a26"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_op_typing.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_op_typing.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "9c21fffd8708b3b750275f905a79ac193cc33b95f98ef54c675c5f85475f07a3"
+        ],
+        "C1": [
+          "image",
+          "9c21fffd8708b3b750275f905a79ac193cc33b95f98ef54c675c5f85475f07a3"
+        ],
+        "C2": [
+          "image",
+          "9c21fffd8708b3b750275f905a79ac193cc33b95f98ef54c675c5f85475f07a3"
+        ],
+        "C3": [
+          "image",
+          "9c21fffd8708b3b750275f905a79ac193cc33b95f98ef54c675c5f85475f07a3"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_riscv64_backend.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_riscv64_backend.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "cfd0d8d34630c2b6794f31802437344c51f59256c50e334c1f50643266a47830"
+        ],
+        "C1": [
+          "image",
+          "cfd0d8d34630c2b6794f31802437344c51f59256c50e334c1f50643266a47830"
+        ],
+        "C2": [
+          "image",
+          "cfd0d8d34630c2b6794f31802437344c51f59256c50e334c1f50643266a47830"
+        ],
+        "C3": [
+          "image",
+          "cfd0d8d34630c2b6794f31802437344c51f59256c50e334c1f50643266a47830"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_riscv64_encoder.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_riscv64_encoder.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "00f813887b6ff3e90010d2cd051159a3a80e6d40a5d0b9fb8a9d64e495defc01"
+        ],
+        "C1": [
+          "image",
+          "00f813887b6ff3e90010d2cd051159a3a80e6d40a5d0b9fb8a9d64e495defc01"
+        ],
+        "C2": [
+          "image",
+          "00f813887b6ff3e90010d2cd051159a3a80e6d40a5d0b9fb8a9d64e495defc01"
+        ],
+        "C3": [
+          "image",
+          "00f813887b6ff3e90010d2cd051159a3a80e6d40a5d0b9fb8a9d64e495defc01"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_store_decoder.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_store_decoder.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+        ],
+        "C1": [
+          "image",
+          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+        ],
+        "C2": [
+          "image",
+          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+        ],
+        "C3": [
+          "image",
+          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_store_verifier.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_store_verifier.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "2e3075cecdd7a160a61ee0fedbc69914bbb3d68b8821c44ab1a7f06b6c1e15ff"
+        ],
+        "C1": [
+          "image",
+          "2e3075cecdd7a160a61ee0fedbc69914bbb3d68b8821c44ab1a7f06b6c1e15ff"
+        ],
+        "C2": [
+          "image",
+          "2e3075cecdd7a160a61ee0fedbc69914bbb3d68b8821c44ab1a7f06b6c1e15ff"
+        ],
+        "C3": [
+          "image",
+          "2e3075cecdd7a160a61ee0fedbc69914bbb3d68b8821c44ab1a7f06b6c1e15ff"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_store_writer.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_store_writer.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+        ],
+        "C1": [
+          "image",
+          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+        ],
+        "C2": [
+          "image",
+          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+        ],
+        "C3": [
+          "image",
+          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_x86_64_backend.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "inspect xax_x86_64_backend.xax",
+      "kind": "positive",
+      "command": "inspect",
+      "outcomes": {
+        "C0": [
+          "image",
+          "766020a0f3f535497f7a6d064d926626181f3c7284838b2df08df22e03923935"
+        ],
+        "C1": [
+          "image",
+          "766020a0f3f535497f7a6d064d926626181f3c7284838b2df08df22e03923935"
+        ],
+        "C2": [
+          "image",
+          "766020a0f3f535497f7a6d064d926626181f3c7284838b2df08df22e03923935"
+        ],
+        "C3": [
+          "image",
+          "766020a0f3f535497f7a6d064d926626181f3c7284838b2df08df22e03923935"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify xax_x86_64_general.xax",
+      "kind": "positive",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C1": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C2": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "C3": [
+          "image",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      },
+      "reference": [
+        "image",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "case": "verify mutated status store @0",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CONTAINER.MAGIC",
+          "SER-HEADER-MAGIC"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CONTAINER.MAGIC",
+          "SER-HEADER-MAGIC"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CONTAINER.MAGIC",
+          "SER-HEADER-MAGIC"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CONTAINER.MAGIC",
+          "SER-HEADER-MAGIC"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @84",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @168",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @252",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @336",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @420",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @504",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @588",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @672",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @756",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @840",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @924",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1008",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1092",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1176",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1260",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1344",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CANON.TRUNCATED",
+          "SER-RECORD-LENGTH"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CANON.TRUNCATED",
+          "SER-RECORD-LENGTH"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CANON.TRUNCATED",
+          "SER-RECORD-LENGTH"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CANON.TRUNCATED",
+          "SER-RECORD-LENGTH"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1428",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1512",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1596",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1680",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1764",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1848",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @1932",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "verify mutated status store @2016",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.INTEGRITY.STORE_DIGEST",
+          "SER-STORE-DIGEST"
+        ]
+      },
+      "reference": null
+    },
+    {
+      "case": "build snapshot",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "9ae118b3f6a9470cabfd06cd3b0674a3f39046f5df714fcbbaa052536df08791"
+        ],
+        "C1": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "9ae118b3f6a9470cabfd06cd3b0674a3f39046f5df714fcbbaa052536df08791"
+        ],
+        "C2": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "9ae118b3f6a9470cabfd06cd3b0674a3f39046f5df714fcbbaa052536df08791"
+        ],
+        "C3": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "9ae118b3f6a9470cabfd06cd3b0674a3f39046f5df714fcbbaa052536df08791"
+        ]
+      },
+      "reference": [
+        "image",
+        "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+        "9ae118b3f6a9470cabfd06cd3b0674a3f39046f5df714fcbbaa052536df08791"
+      ]
+    },
+    {
+      "case": "build: the root is no snapshot",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.KIND",
+          "BUILD-KIND"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.KIND",
+        "BUILD-KIND"
+      ]
+    },
+    {
+      "case": "build: external inputs",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.INPUT_CLOSURE",
+        "BUILD-EXTERNAL-COMPLETE"
+      ]
+    },
+    {
+      "case": "build: required signatures",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.TRUST.REQUIRED",
+        "TRUST-SIGNATURE-REQUIRED"
+      ]
+    },
+    {
+      "case": "build: an unsupported artifact",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ARTIFACT",
+        "BUILD-ARTIFACT-SUPPORTED"
+      ]
+    },
+    {
+      "case": "resolve with dependencies",
+      "kind": "positive",
+      "command": "resolve",
+      "outcomes": {
+        "C0": [
+          "image",
+          "5dcddaa143821d634b5f01b5587fd94f269906a1f07af2e554b390842dc4d596"
+        ],
+        "C1": [
+          "image",
+          "5dcddaa143821d634b5f01b5587fd94f269906a1f07af2e554b390842dc4d596"
+        ],
+        "C2": [
+          "image",
+          "5dcddaa143821d634b5f01b5587fd94f269906a1f07af2e554b390842dc4d596"
+        ],
+        "C3": [
+          "image",
+          "5dcddaa143821d634b5f01b5587fd94f269906a1f07af2e554b390842dc4d596"
+        ]
+      },
+      "reference": [
+        "image",
+        "5dcddaa143821d634b5f01b5587fd94f269906a1f07af2e554b390842dc4d596"
+      ]
+    },
+    {
+      "case": "resolve: a missing logical identity",
+      "kind": "negative",
+      "command": "resolve",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.RESOLVE.MISSING",
+          "RESOLVE-LOGICAL-IDENTITY"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.RESOLVE.MISSING",
+          "RESOLVE-LOGICAL-IDENTITY"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.RESOLVE.MISSING",
+          "RESOLVE-LOGICAL-IDENTITY"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.RESOLVE.MISSING",
+          "RESOLVE-LOGICAL-IDENTITY"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.RESOLVE.MISSING",
+        "RESOLVE-LOGICAL-IDENTITY"
+      ]
+    },
+    {
+      "case": "unknown command",
+      "kind": "negative",
+      "command": "compile",
+      "outcomes": {
+        "C0": [
+          "failed",
+          null
+        ],
+        "C1": [
+          "failed",
+          null
+        ],
+        "C2": [
+          "failed",
+          null
+        ],
+        "C3": [
+          "failed",
+          null
+        ]
+      },
+      "reference": null
+    }
+  ],
+  "rejection_exactness_gaps": [
+    "semantic verification rejections are the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266)",
+    "code generation rules on malformed or extreme inputs decline (ADR-280's list)"
+  ],
+  "required_paths_outside_xax": [
+    "package signature verification (no signature algorithm in the driver)",
+    "external build inputs and build effects",
+    "profile capability grants",
+    "stores beyond the driver's capacities (32 MiB store, 32 MiB snapshot batch)"
+  ],
+  "ordinary_evolution": "compiler semantics are changed by editing Python builder modules (xax_selfhost_*.py) that regenerate the stores (S15)",
+  "python_dependency": {
+    "production": false,
+    "bootstrap_seed": true,
+    "reference": true,
+    "test_only": true
+  },
+  "authority": {
+    "blake3-compress": {
+      "component": "blake3-compress",
+      "semantic_root": "ae86029b87b1cc687758458c631df32cff5603d2527cf3290ce8f249210d3484",
+      "native_artifact_digest": "bfaf9a6c4b3347f00c053e8192f6b3c7860c9f47bab7c07ee2731debb52caa13",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "blake3-hash": {
+      "component": "blake3-hash",
+      "semantic_root": "ec668facd92aa066226428ee8685cd9f6aaca4d8a67507b49fbf54d3e6fe4328",
+      "native_artifact_digest": "a1ba499f179c341455d676814c7d4b7ded072706bc6ee211c3bce6b3a6351ac5",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "store-decoder": {
+      "component": "store-decoder",
+      "semantic_root": "38475748791bd6de6c022e5af52c4336608a83dcf3265be635e36c9291e04599",
+      "native_artifact_digest": "02dfaa70b1b9a0eaeb8e503955daa18faa864f77f357de6adbcd595dd8b25689",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "graph-decoder": {
+      "component": "graph-decoder",
+      "semantic_root": "2b34c9bb61e0911568ff51fdf38f9692897186503acc26d2f34f18b2ee2a6474",
+      "native_artifact_digest": "03b077e79c1cf10b90acae3e627229ffab07326b38f0c6213139fda245fd7032",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "cfg": {
+      "component": "cfg",
+      "semantic_root": "66d42ef0298b00e21b40906d2073dc21eef4957109bf6e5948006b75ded5c884",
+      "native_artifact_digest": "e178c633ab77fe926b0eb76f8573e1aed2720b9ca5daabc4576e5de916bb42a3",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "typing": {
+      "component": "typing",
+      "semantic_root": "b2c74a8669388d567be4d659fb88bae5bb9e20331eb513bfe5ddbbf6592dc6a5",
+      "native_artifact_digest": "2c0c949961425a8fbad47d97612d251425583304c5201b00b070fc8a3bf100da",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "store-verifier": {
+      "component": "store-verifier",
+      "semantic_root": "1ee9d72afeeef44b2d41885e5a950fb89b6fcb04ed42141394cca3e96871bd49",
+      "native_artifact_digest": "860a8c3d40eb02a72ce76f686a67122703bc0cbe783ab6acc9192288d778d684",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null,
+      "declined_inputs": 19690
+    },
+    "store-writer": {
+      "component": "store-writer",
+      "semantic_root": "72d481a13b9513677642e43bd072d28d272d94e20c43a61076211a216440e7af",
+      "native_artifact_digest": "3c2b579934783262660845f32cc9069e35d63771341dcfb40217bfd315d8c093",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "x86-64-views-backend": {
+      "component": "x86-64-views-backend",
+      "semantic_root": "f4c51340b0aace838ea2454d85d8f9dbf898ec21b579a45b7c10a911043d9a1a",
+      "native_artifact_digest": "ddbc8732c60205be1804db6a3f1760ea97e6b8e0329f6543ea6af69e3ce23e84",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "lowering:x86-64-general-frontend": {
+      "component": "lowering:x86-64-general-frontend",
+      "semantic_root": "1e11d58bef0fb42accbc9d2ac05c0af5ef640c70473c63109f098e2fba304f0b",
+      "native_artifact_digest": "1770cd420998de35234ac31d0f578b8c57f449852c01f068d2fae457a1aa9774",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "x86-64-general-frontend": {
+      "component": "x86-64-general-frontend",
+      "semantic_root": "1e11d58bef0fb42accbc9d2ac05c0af5ef640c70473c63109f098e2fba304f0b",
+      "native_artifact_digest": "1770cd420998de35234ac31d0f578b8c57f449852c01f068d2fae457a1aa9774",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    }
+  }
+}

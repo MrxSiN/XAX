@@ -238,10 +238,11 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         buffers["extents"] = (backend_in_rw, EXTENTS_EXTENT, 8)
         buffers["traps"] = (backend_in_rw, TRAPS_EXTENT, 8)
         buffers["members"] = (backend_in_rw, MEMBERS_EXTENT, 8)  # the group member functions the store does not hold
-        buffers["batch"] = (bytes_rw, WR.IN_EXTENT, 1)  # S13c: the S9 writer's batch (``object`` is its buffer)
+        buffers["batch"] = (bytes_rw, WR.IN_EXTENT, 1)  # S13c: the S9 writer's batch
+        buffers["written"] = (bytes_rw, WR.BUF_EXTENT, 1)  # S14b (ADR-285): the S9 writer's buffer; the store it writes
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
              "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp",
-             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp"}
+             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp", "written": "lp"}
     views = {}
     for name in buffers:
         pointer_name = names[name]
@@ -920,7 +921,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         when(lambda: w.if_(w.eq(w[mode], BUILD), build_request))
 
         # -- S13c (ADR-283): ``resolve``: the request store's packages selected, the snapshot store written ---------
-        resolved = w.let("resolved", 0)  # the snapshot store's length in ``object``
+        resolved = w.let("resolved", 0)  # the snapshot store's length in ``written``
 
         def batch_put(at: str, value):
             w.store("batch", w[at], value, 8)
@@ -984,14 +985,14 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                     batch_copy(at, "object", w.add(len(SEMANTIC_DOMAIN), w[body]), w[size])
                     for field, value in enumerate((w.add(w[objects], 2), 0, w[at])):
                         w.store("batch", 8 * field, value, 8)
-                    results = proc.op(Operation.CALL_DIRECT, (*w.triple("batch", w.narrowed("batch", WR.BATCH_POINTER)), *w.triple("object"),
+                    results = proc.op(Operation.CALL_DIRECT, (*w.triple("batch", w.narrowed("batch", WR.BATCH_POINTER)), *w.triple("written"),
                                                               *w.triple("scratch"), w.c(WR.MODE_WRITE)), tuple(type_ for _name, type_ in WR.VIEWS),
                                       entity=writer)
                     w.take("batch", results[:3])
-                    w.take("object", results[3:6])
+                    w.take("written", results[3:6])
                     w.take("scratch", results[6:])
-                    w.if_(w.ne(w.load("object", WR.STATUS_AT, 8), WR.ACCEPT), lambda: stop(DECLINED),
-                          lambda: w.set(resolved, w.load("object", WR.STATUS_AT + 24, 8)))
+                    w.if_(w.ne(w.load("written", WR.STATUS_AT, 8), WR.ACCEPT), lambda: stop(DECLINED),
+                          lambda: w.set(resolved, w.load("written", WR.STATUS_AT + 24, 8)))
 
                 when(tail)
 
@@ -1426,13 +1427,13 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 emit(INSPECT_AT, w.mul(w.sub(w[n], INSPECT_AT), 8), path=1)
 
             def resolved_store():
-                """S13c: the snapshot store, ``object[0:resolved]``."""
+                """S13c: the snapshot store, ``written[0:resolved]``."""
                 fd = open_path(1, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
                 done = w.let("r_done", 0)
 
                 def step():
                     piece = w.let("r_piece", w.sel(w.lt(w.sub(w[resolved], w[done]), CHUNK), w.sub(w[resolved], w[done]), CHUNK))
-                    w.copy("object", w[done], "chunk", 0, w[piece])
+                    w.copy("written", w[done], "chunk", 0, w[piece])
                     w.if_(w.eq(write_chunk(fd, w[piece]), 0), lambda: w.set(done, w[resolved]), lambda: w.set(done, w.add(w[done], w[piece])))
 
                 def write():

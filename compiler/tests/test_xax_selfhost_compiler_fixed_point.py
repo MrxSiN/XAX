@@ -56,6 +56,32 @@ class CompilerFixedPointTests(unittest.TestCase):
         self.assertEqual(output.read_bytes(), compile_linux_executable(program, entry.cid, program_target.cid).data)
         self.assertEqual(run_linux_executable(output.read_bytes()).returncode, 7)
 
+    def test_the_compiler_resolves_and_builds_itself(self):
+        """S14b (ADR-285): C0 resolves the compiler's request store and builds the snapshot into C1 with provenance; C1
+        does the same into C2.  C1 = C2, and both snapshots are the Python resolver's."""
+        from xax_build import resolve_packages, snapshot_store
+        from xax_selfhost_compiler import compiler_request
+        from xax_selfhost_driver import NativeGeneralDriver
+        from xax_selfhost_resolve import POLICY, RESOLVER_IDENTITY
+
+        directory = Path(tempfile.mkdtemp())
+        store, request = compiler_request()
+        request_path = directory / "request.xax"
+        request_path.write_bytes(store.data)
+        candidates = (*store.objects(), POLICY)
+        expected = snapshot_store(resolve_packages(request, candidates, POLICY, RESOLVER_IDENTITY), candidates).data
+        seed = NativeGeneralDriver()  # held: its temporary directory holds C0
+        generation, executables = Path(seed.path), []
+        for name in ("C1", "C2"):
+            snapshot, artifact, provenance = directory / f"{name}.snapshot", directory / name, directory / f"{name}.provenance"
+            self.assertEqual(subprocess.run([str(generation), "resolve", str(request_path), str(snapshot)], check=False, timeout=3000).returncode, 0)
+            self.assertEqual(snapshot.read_bytes(), expected)
+            self.assertEqual(subprocess.run([str(generation), "build", str(snapshot), str(artifact), str(provenance)], check=False, timeout=3000).returncode, 0)
+            os.chmod(artifact, 0o755)
+            executables.append((artifact.read_bytes(), provenance.read_bytes()))
+            generation = artifact
+        self.assertEqual(executables[1], executables[0])
+
 
 if __name__ == "__main__":
     unittest.main()

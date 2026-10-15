@@ -49,6 +49,16 @@ def targets_table(matrix: dict) -> str:
     return "\n".join(lines)
 
 
+def linux_text(linux: dict | None) -> str:
+    """The Linux x86-64 production compiler's derived levels (ADR-285), or nothing before its evidence exists."""
+    if linux is None:
+        return ""
+    held = [f"B{n}" for n in range(7) if linux[f"B{n}"]]
+    missing = [f"B{n}" for n in range(7) if not linux[f"B{n}"]]
+    return (f"Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): {', '.join(held) or 'none'} hold, "
+            f"{', '.join(missing) or 'none'} do not; ")
+
+
 def bootstrap_summary(evidence: dict) -> str:
     """One line from ``bootstrap_status`` (``xax_selfhost``) as recorded in the M14 evidence: no hand-written B level."""
     status, seed = evidence["bootstrap_status"], evidence["seed_runtime"]
@@ -60,6 +70,7 @@ def bootstrap_summary(evidence: dict) -> str:
     return (
         f"Bootstrap status (generated from `{BOOTSTRAP_EVIDENCE.as_posix()}`, derived by `{status['derivation_source']}`): "
         f"whole production compiler: {full_text} ({full['blocker']}); "
+        f"{linux_text(status.get('linux_x86_64_production_compiler'))}"
         f"M14 semantic-image META wrapper: {', '.join(held) or 'none'} hold, {', '.join(missing) or 'none'} do not "
         f"(host-executed {', '.join(wrapper['host_substrate_operations']) or 'nothing'}). "
         "S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). "

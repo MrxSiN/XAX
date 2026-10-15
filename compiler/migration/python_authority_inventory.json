@@ -270,6 +270,10 @@
       "class": "G",
       "note": "Builder of the canonical S2 store (the store is authoritative)."
     },
+    "xax_selfhost_compiler.py": {
+      "class": "G",
+      "note": "The production compiler's canonical build request, derived from the general driver store (S14b, ADR-285)."
+    },
     "xax_selfhost_cfg.py": {
       "class": "G",
       "note": "Builder of the canonical S3d store."
