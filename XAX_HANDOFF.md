@@ -186,6 +186,35 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
+
+- Done:
+  - `xax_selfhost_render_graph`: the typing program's final function. It computes `_parse_graph`'s outcome and writes the deciding record: typing sites, terminators, memory sites, linear codes, the unknown operation.
+  - The driver reads the outcome (`OUTCOME_AT`) instead of verdicts and renders the CFG branch target.
+  - Record tags `DICT`/`SINT`; enumerations `AtomicRmwKind` and `CompareExchangeStrength`.
+  - Tests: `tests/test_xax_selfhost_verify_exact.py::test_graphs` and `::test_memory`, plus the differential plugin `migration/s15_graph.py`.
+- Layout: the outcome sits in the typing output at `DIAGNOSTICS - 8M` words: status, cursor, entity mode, bad flag. Record words follow at +8 to +2M; the arrays the outcome reads from the facts section sit at +2M to +6M.
+- Order the outcome follows:
+  - With no facts, or with the engine accepted and every terminator proven, it goes straight to the linear stage.
+  - Otherwise pass 1 runs over the CFG order:
+    - the engine's operation-code rejection, then an unknown operation;
+    - a memory rejection at the node;
+    - typing proven/rejected/unproven;
+    - the terminator (memory, then typing).
+  - A later pass's memory rejection comes after pass 1, and linear flow comes last.
+- Memory rendering:
+  - `storage`, `ref` and `intervals` are helper functions; `storages` follows `facts_storages`' order.
+  - Byte-view widening quotes the graph's own `bits<8*size>` entry.
+  - Where the host's `memory_diagnostic` would raise (an index out of range, an invalid enumeration value, a carry), the outcome sets the bad flag and declines.
+- Capacity:
+  - The facts engine declines a function with tens of thousands of edge arguments (its arena, `each_exit`).
+  - So the renderers are split: `NODE_PARTS` and `MEMORY_PARTS`.
+  - The driver verifies its own store only when the engine accepts every graph in it. Check new builder functions with the uncached-parse loop: every graph's outcome must be `G_ACCEPT`.
+- Next: S15b.3c.
+  - Invalid uses: the trimmed re-typing.
+  - The declaration-decoding memory sites.
+  - Constants and types reached inside a graph's parse.
+
 ## S15b room for the compiler's image — 2026-10-15 (ADR-291)
 
 - Done:
@@ -196,7 +225,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - The seed's `build` exit 2 came from the general program declining to assemble.
   - To find which check declines, use a debug copy of `xax_selfhost_views_backend._ok` that records its call site in output word 3.
   - Order matters: change the capacity alone, regenerate, check that the old seed still builds the request, then `rotate-seed`. Only after that land the work that grows the compiler.
-- Next: S15b.3.
+- Next: S15b.3. S15b.3a-S15b.3b: see above.
 
 ## S15b.1-S15b.2 exact object, type, and constant rejections — 2026-10-15 (ADR-288, ADR-289)
 
@@ -213,6 +242,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - The typing program holds every graph decision and the type CIDs (the facts section). Give it a final function that computes `_parse_graph`'s outcome in its order and renders the deciding record, as the verifier's plan does for objects. That order is: pass 1 over `order` (memory reject at the node, typing proven/rejected/unproven), the terminator (memory reject at the terminator, typing terminator records), later passes, then linear flow.
   - In the driver: the CFG branch target needs only rendering (`GRAPH-BRANCH-TARGET`, `< blocks`, the target). Invalid uses must decline: Python re-types the graph trimmed at each invalid use.
   - Constants and types reached inside a graph's parse (a constant node naming a malformed constant) currently decline.
+- S15b.3a-S15b.3b: see above.
 
 ## S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
 

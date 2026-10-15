@@ -399,6 +399,14 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
     b.state = (in_view, in_mem, out_view, out_mem)
     b.put(b.c(1), proven)
     b.put(b.c(0), ACCEPT)
+    # S15b.3 (ADR-292): ``_parse_graph``'s outcome over these decisions, in its order (``xax_selfhost_render_graph``).
+    import xax_selfhost_render_graph as RG
+
+    outcome, outcome_objects = RG.build_functions()
+    in_view, in_mem, out_view, out_mem = b.state
+    _status, _inp, in_view, in_mem, _out, out_view, out_mem = b.cur.op(
+        Operation.CALL_DIRECT, (b.inp, in_view, in_mem, b.out, out_view, out_mem), (B64, *VIEW_TYPES), entity=outcome)
+    b.state = (in_view, in_mem, out_view, out_mem)
     in_view, in_mem, out_view, out_mem = b.state
     b.cur.ret(b.inp, in_view, in_mem, b.out, out_view, out_mem)
     for failure, status in ((b.reject_block, REJECT), (b.defer_block, DEFER)):
@@ -408,7 +416,7 @@ def build_typing_program() -> tuple[StoreReader, SemanticObject]:
         b.cur.ret(b.inp, in_view, in_mem, b.out, out_view, out_mem)
     triples = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
     function = b.g.function(triples, triples)
-    return program_store(function, x86_64_linux_exec_target(), (*b.g.objects.values(), *engine_objects, *_PASS[1])), function
+    return program_store(function, x86_64_linux_exec_target(), (*b.g.objects.values(), *engine_objects, *_PASS[1], *outcome_objects)), function
 
 
 def _value_element(t: _Typing, element):

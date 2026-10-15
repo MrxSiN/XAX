@@ -306,6 +306,10 @@
       "class": "G",
       "note": "Builder of the driver's type and constant rejection renderer (S15b.2, ADR-289)."
     },
+    "xax_selfhost_render_graph.py": {
+      "class": "G",
+      "note": "Builder of the typing program's graph outcome function (_parse_graph's order, the deciding record) and its host decoder (S15b.3a, ADR-292)."
+    },
     "xax_selfhost_diagnostics.py": {
       "class": "G",
       "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing."

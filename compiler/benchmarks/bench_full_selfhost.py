@@ -376,9 +376,10 @@ def measure() -> dict:
         "corpus": rows,
         # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
         "rejection_exactness_gaps": [
-            ("graph verification rejections (invalid uses, operation typing, terminators, memory facts, linear flow) are the driver's "
-             "XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266); a graph decoder rejection behind an unproven type, "
-             "and a missing reference first reached through another object's graph, decline (ADR-288)"),
+            ("a graph's invalid use is the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266); memory "
+             "rejections that quote a decoded declaration or a stack-owner entry's contract, and a constant or type reached inside a graph's "
+             "parse, decline (ADR-293); a graph decoder rejection behind an unproven type, and a missing reference first reached through "
+             "another object's graph, decline (ADR-288)"),
             "code generation rules on malformed or extreme inputs decline (ADR-280's list)",
         ],
         "required_paths_outside_xax": [

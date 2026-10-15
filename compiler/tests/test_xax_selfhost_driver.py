@@ -231,12 +231,13 @@ class DriverTests(unittest.TestCase):
                     self.assertEqual(outcome[0], "declined")  # no claim; never an image
         self.assertGreaterEqual(accepted, 40)
         self.assertGreaterEqual(exact, 30)
-        self.assertLessEqual(rules, {"DRIVER-VERIFY-TYPE", "DRIVER-VERIFY-GRAPH", "DRIVER-VERIFY-BRANCH", "DRIVER-VERIFY-USE"})
+        self.assertLessEqual(rules, {"DRIVER-VERIFY-USE"})  # S15b.3c: invalid uses
 
     def test_type_and_graph_rejections(self):
-        """An operation whose operand or result types are wrong (DRIVER-VERIFY-GRAPH), and a constant node naming a
-        malformed constant: ``verify_store`` rejects each.  The constant's diagnostic is raised inside the graph's parse,
-        at its node (S15b.3): until then the driver declines it, and never reports it out of ``verify_store``'s order."""
+        """An operation whose operand or result types are wrong, and a constant node naming a malformed constant:
+        ``verify_store`` rejects each.  The operation's rejection is the bootstrap's own (S15b.3a, ADR-292).  The
+        constant's diagnostic is raised inside the graph's parse, at its node: the driver declines it (S15b.3c), and never
+        reports it out of ``verify_store``'s order."""
         from xax_compiler import Operation, SemanticObject, bits_type, object_with_refs, write_store
         from xax_graph_builder import GraphBuilder
 
@@ -252,8 +253,8 @@ class DriverTests(unittest.TestCase):
             root = object_with_refs(X.Kind.PROGRAM_ROOT, [module])
             return write_store(root.cid, list({item.cid: item for item in (*graph.objects.values(), *extra, function, module, root)}.values()))
 
-        cases = [(store(lambda e: e.op1(Operation.ADD_WRAP, e.params, b32), (b32, b8), (b32,)), "DRIVER-VERIFY-GRAPH"),
-                 (store(lambda e: e.op1(Operation.ADD_WRAP, e.params, b8), (b32, b32), (b8,)), "DRIVER-VERIFY-GRAPH")]
+        cases = [(store(lambda e: e.op1(Operation.ADD_WRAP, e.params, b32), (b32, b8), (b32,)), "exact"),
+                 (store(lambda e: e.op1(Operation.ADD_WRAP, e.params, b8), (b32, b32), (b8,)), "exact")]
         for body in (b"\x00\x02\x01\xff", b"\x00\x01\x01\x00", b"\x00\x01"):
             bad = SemanticObject.create(X.Kind.CONSTANT, body, [b8.cid])
             build = lambda e, bad=bad: e.op1(Operation.ADD_WRAP, (e.params[0], e.op1(Operation.CONSTANT, (), b8, entity=bad)), b8)
@@ -267,8 +268,7 @@ class DriverTests(unittest.TestCase):
                 if rule is None:
                     self.assertIn(outcome, (("rejected", raised.exception.diagnostic), ("declined", None)))
                 else:
-                    self.assertEqual(outcome[0], "rejected")
-                    self.assertEqual((outcome[1].code, outcome[1].rule), ("XAX.DRIVER.VERIFY", rule))
+                    self.assertEqual(outcome, ("rejected", raised.exception.diagnostic))
 
     def test_target_profile_rejection(self):
         from xax_selfhost_driver import target_package

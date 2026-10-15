@@ -9,6 +9,10 @@ rendered keep the driver's own record (``XAX.DRIVER.VERIFY``); a decline makes n
 * Object sites: the stores of ``test_xax_selfhost_render`` (functions, groups, contracts, lists, targets, packages and
   build objects), with one object's body or references mutated.
 * Types and constants: ``test_xax_selfhost_objects``'s random types of every form and constants, mutated, in a module.
+* Graphs (S15b.3, ADR-292): ``test_xax_selfhost_typing``'s one-node graphs of every covered operation and
+  ``test_xax_selfhost_linear``'s resource programs with their mutations, as function stores.
+* Memory facts (S15b.3b, ADR-293): ``test_xax_selfhost_facts``'s stack and view programs with their mutations and its
+  typed-access, heap-view, atomic, record/link, and address variants.
 """
 
 from __future__ import annotations
@@ -106,6 +110,83 @@ class VerifyExactTests(unittest.TestCase):
             except (XaxError, ValueError, KeyError):
                 continue
             with self.subTest(trial=trial):
+                self.check(reader, tally)
+        self.assertGreater(tally["exact"], 40, tally)
+
+    @staticmethod
+    def stored(function, objects):
+        module = object_with_refs(Kind.MODULE, [function])
+        root = object_with_refs(Kind.PROGRAM_ROOT, [module])
+        table = {item.cid: item for item in (*objects, function, module, root)}
+        reached, pending = {}, [root.cid]
+        while pending:
+            cid = pending.pop()
+            if cid not in reached and cid in table:
+                reached[cid] = table[cid]
+                pending.extend(table[cid].references)
+        return StoreReader(write_store(root.cid, list(reached.values())))
+
+    def test_graphs(self):
+        from test_xax_selfhost_linear import MUTATIONS, _program
+        from test_xax_selfhost_typing import CALLEE_OBJECTS, CONSTANTS, POOL, _samples
+        from xax_graph_builder import GraphBuilder
+
+        stored = self.stored
+        tally = dict.fromkeys(("accepted", "exact", "driver_record", "declined", "host_error"), 0)
+        trials = int(os.environ.get("XAX_VERIFY_EXACT_TRIALS", "240"))
+        for index, sample in enumerate(_samples(trials, seed=290)):
+            operation, operand_types, result_types, attributes, *entity = sample
+            graph = GraphBuilder()
+            block = graph.block(*operand_types)
+            results = block.op(operation, tuple(block.params), tuple(result_types), attributes=tuple(attributes), entity=entity[0] if entity else None)
+            block.ret(*results)
+            try:
+                function = graph.function(tuple(operand_types), tuple(result_types))
+                reader = stored(function, (*graph.objects.values(), *POOL, *CONSTANTS, *CALLEE_OBJECTS))
+            except (XaxError, ValueError, KeyError):
+                continue
+            with self.subTest(sample=index):
+                self.check(reader, tally)
+        rng = random.Random(290)
+        for trial in range(trials // 2):
+            function, objects = _program(rng, MUTATIONS[trial % len(MUTATIONS)])
+            try:
+                reader = stored(function, objects)
+            except (XaxError, ValueError, KeyError):
+                continue
+            with self.subTest(program=trial):
+                self.check(reader, tally)
+        self.assertGreater(tally["exact"], 60, tally)
+
+    def test_memory(self):
+        import test_xax_selfhost_facts as F
+
+        programs = []
+        rng = random.Random(291)
+        trials = int(os.environ.get("XAX_VERIFY_EXACT_TRIALS", "240"))
+        programs += [F._program(rng, F.MUTATIONS[trial % len(F.MUTATIONS)]) for trial in range(trials // 4)]
+        programs += [F._view_program(rng, F.VIEW_MUTATIONS[trial % len(F.VIEW_MUTATIONS)]) for trial in range(trials // 4)]
+        variants = {
+            F._typed_program: ("load_type", "store_type", "store_effect_type", "checked_alignment", "checked_offset", "checked_load_type",
+                               "checked_store_type", "checked_effect_type", "rebase_width", "rebase_authority", "rebase_extent",
+                               "rebase_alignment", "return_order"),
+            F._heap_program: ("view_bounds", "view_alignment", "view_token_type", "view_effect_type", "view_owner", "dealloc_offset",
+                              "dealloc_twice", "foreign_fork", "use_after_free"),
+            F._atomic_program: ("valid", "uninitialized", "read_only", "misaligned", "forked", "effect_type", "result_type", "value_type",
+                                "cmpxchg_result", "fence_effect", "fence_forked", "order_enum", "order_legal", "scope_enum", "rmw_kind",
+                                "fence_order", "cmpxchg_stronger", "cmpxchg_failure", "cmpxchg_failure_enum", "cmpxchg_strength"),
+            F._record_program: ("valid", "link_record_only", "record_extent", "pointer_store_local", "link_make_record", "link_make_type",
+                                "follow_authority", "follow_alignment"),
+            F._address_program: ("valid", "authority", "element", "alignment"),
+        }
+        programs += [make(variant) for make, names in variants.items() for variant in names]
+        tally = dict.fromkeys(("accepted", "exact", "driver_record", "declined", "host_error"), 0)
+        for index, (function, objects) in enumerate(programs):
+            try:
+                reader = self.stored(function, objects)
+            except (XaxError, ValueError, KeyError):
+                continue
+            with self.subTest(program=index):
                 self.check(reader, tally)
         self.assertGreater(tally["exact"], 40, tally)
 

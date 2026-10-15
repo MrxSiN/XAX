@@ -63,6 +63,7 @@ from xax_selfhost_facts import E
 from xax_structured import B64, Proc
 import xax_selfhost_diagnostics as D
 import xax_selfhost_render as R
+import xax_selfhost_render_graph as RG
 import xax_selfhost_render_types as RT
 import xax_selfhost_request as RQ
 import xax_selfhost_resolve as RS
@@ -906,7 +907,20 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                     w.take("cfgin", results[:3])
                     w.take("cfgout", results[3:])
                     status_word = w.let("c_status", w.load("cfgout", 0, 8))
-                    w.if_(w.eq(w[status_word], CF.REJECT), lambda: verify_reject(w[o], "DRIVER-VERIFY-BRANCH", w.load("cfgout", 8, 8)), lambda: w.if_(
+                    def branch_target():
+                        """S15b.3 (ADR-292): ``GRAPH-BRANCH-TARGET``, the first branch target out of range."""
+                        D.begin(w)
+                        D.text(w, "XAX.STRUCT.BRANCH_TARGET")
+                        D.cid(w, [w.cid_word("data", record_word(w[o], 2), word) for word in range(4)])
+                        D.text(w, "GRAPH-BRANCH-TARGET")
+                        D.put(w, D.T_FORMAT)
+                        D.text(w, "< {}")
+                        D.put(w, 1)
+                        D.integer(w, work_word(SM.CTRL + SM.C_BLOCKS))
+                        D.integer(w, w.load("cfgout", 8, 8))
+                        stop(REJECTED)
+
+                    w.if_(w.eq(w[status_word], CF.REJECT), branch_target, lambda: w.if_(
                         w.ne(w[status_word], CF.ACCEPT), lambda: stop(DECLINED), lambda: w.if_(
                             w.eq(w.load("cfgout", 16, 8), 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-USE", 0))))
 
@@ -923,34 +937,22 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 when(typing)
 
                 def verdicts():
-                    keys, blocks, nodes = (w.let(name, work_word(SM.CTRL + field)) for name, field in
-                                           (("v_keys", SM.C_KEYS), ("v_blocks", SM.C_BLOCKS), ("v_nodes", SM.C_NODES)))
-                    rejected, proven, terminators = w.let("v_rejected", 0), w.let("v_proven", 0), w.let("v_terms", 0)
-                    q = w.let("q", 0)
+                    """S15b.3 (ADR-292): the typing program's outcome of ``_parse_graph`` in its order
+                    (``xax_selfhost_render_graph``): accepted, its rendered rejection, or a decline."""
+                    status = w.let("g_outcome", w.ld(RG.OUTCOME_AT + RG.O_STATUS))
 
-                    def key():
-                        value = w.ld(w.add(2, w[q]))
-                        w.set(rejected, w.or_(w[rejected], w.flag(w.eq(value, TY.REJECTED))))
-                        w.set(proven, w.add(w[proven], w.flag(w.eq(value, TY.PROVEN))))
-                        w.set(q, w.add(w[q], 1))
+                    def rejected():
+                        D.begin(w)
+                        end = w.let("g_end", w.ld(RG.OUTCOME_AT + RG.O_CURSOR))
+                        code_end = w.let("g_code_end", w.add(RG.RECORD_AT, w.add(2, w.udiv(w.add(w.ld(RG.RECORD_AT + 1), 7), 8))))
+                        q = w.let("g_q", RG.RECORD_AT)
+                        w.while_(lambda: w.lt(w[q], w[code_end]), lambda: (D.put(w, w.ld(w[q])), w.set(q, w.add(w[q], 1))))
+                        w.if_(w.eq(w.ld(RG.OUTCOME_AT + RG.O_ENTITY), RG.ENTITY_GRAPH),
+                              lambda: D.cid(w, [w.cid_word("data", record_word(w[o], 2), word) for word in range(4)]))
+                        w.while_(lambda: w.lt(w[q], w[end]), lambda: (D.put(w, w.ld(w[q])), w.set(q, w.add(w[q], 1))))
+                        stop(REJECTED)
 
-                    w.while_(lambda: w.lt(w[q], w[keys]), key)
-                    q2 = w.let("q", 0)
-
-                    def block():
-                        w.set(terminators, w.add(w[terminators], w.flag(w.eq(w.ld(w.add(w.add(2, w[keys]), w[q2])), TY.PROVEN))))
-                        w.set(rejected, w.or_(w[rejected], w.flag(w.ne(w.ld(w.sub(TY.TERMINATOR_RECORDS, w.mul(4, w[q2]))), 0))))
-                        w.set(q2, w.add(w[q2], 1))
-
-                    w.while_(lambda: w.lt(w[q2], w[blocks]), block)
-                    header = FA.HEADER
-                    facts = w.eq(w.ld(header + FA.H_STATUS), FA.ACCEPTED)
-                    linear = w.eq(w.ld(header + FA.H_LINEAR), 1)
-                    w.set(rejected, w.or_(w[rejected], w.or_(w.flag(w.ne(w.ld(header + FA.H_REJECT), 0)), w.flag(w.ne(w.ld(header + FA.H_LREJ), 0)))))
-                    fact_free = w.both(w.eq(w.ld(w.add(w.add(2, w[keys]), w[blocks])), 1), w.eq(w[proven], w[nodes]), w.eq(w[keys], w[nodes]))
-                    accepted = w.both(w.eq(w[terminators], w[blocks]), w.either(facts, fact_free), linear)
-                    w.if_(w.not_(accepted), lambda: w.if_(w.ne(w[rejected], 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-GRAPH", w[rejected]),
-                                                          lambda: stop(DECLINED)))
+                    w.if_(w.eq(w[status], RG.G_REJECT), rejected, lambda: w.if_(w.ne(w[status], RG.G_ACCEPT), lambda: stop(DECLINED)))
 
                 when(verdicts)
                 if general:

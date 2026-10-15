@@ -13,7 +13,8 @@ the repair neighborhood, each a list), where a value is
 
     INT n | STR length packed-bytes... | LIST count values... | NONE | CID w0 w1 w2 w3 | TERMINATOR n |
     WIDE low high | FORMAT template-STR count values... | HEX length packed-bytes... | TUPLE count values... |
-    KIND n | BYTES length packed-bytes... | ENUM enum n | OBJECT class count values... | BOOL n | NAME enum n
+    KIND n | BYTES length packed-bytes... | ENUM enum n | OBJECT class count values... | BOOL n | NAME enum n |
+    DICT count (key value)... | SINT n
 
 Text and HEX bytes are packed eight per word, little-endian; a CID is four big-endian 64-bit words; WIDE is the
 integer ``high * 2**64 + low`` (a ULEB can carry 70 bits); FORMAT is ``template.format(*values)`` -- the program
@@ -30,10 +31,12 @@ from xax_selfhost_facts import E, NONE
 REJECT = 2
 DIAG_AT = 11 << 20
 T_INT, T_STR, T_LIST, T_NONE, T_CID, T_TERMINATOR, T_WIDE, T_FORMAT, T_HEX, T_TUPLE, T_KIND, T_BYTES, T_ENUM, T_OBJECT, T_BOOL, T_NAME = range(16)
+T_DICT, T_SINT = 16, 17  # S15b.3 (ADR-292): ``{key: value}`` (count, then key and value pairs); a signed 64-bit integer
 # S15b (ADR-288): the enumerations and value classes a record can name (by position; append only).
 ENUM_NAMES = ("Kind", "BuildForm", "BuildMode", "BuildCapabilityKind", "ArtifactKind", "OptimizationObjective", "AtomicScope", "AtomicFamily",
-              "EffectDomain", "TargetValueConstraintKind", "Operation", "TerminatorKind", "OpaqueKind", "Permission")
-OBJECT_NAMES = ("BuildCapability", "AcceleratorMemorySpace")
+              "EffectDomain", "TargetValueConstraintKind", "Operation", "TerminatorKind", "OpaqueKind", "Permission", "IntCompare",
+              "AtomicRmwKind", "CompareExchangeStrength")
+OBJECT_NAMES = ("BuildCapability", "AcceleratorMemorySpace", "_EffectType")
 
 
 # -- XAX side: builders that emit the record-writing nodes --------------------------------------
@@ -134,6 +137,14 @@ def decode_record(words) -> Diagnostic:
             position += 2
             member = _registered(ENUM_NAMES[words[position - 2]])(words[position - 1])
             return member if tag == T_ENUM else member.name
+        if tag == T_DICT:
+            count = words[position]
+            position += 1
+            pairs = [(value(), value()) for _ in range(count)]
+            return dict(pairs)
+        if tag == T_SINT:
+            position += 1
+            return words[position - 1] - (1 << 64) if words[position - 1] >> 63 else words[position - 1]
         if tag == T_OBJECT:
             name, count = words[position], words[position + 1]
             position += 2
