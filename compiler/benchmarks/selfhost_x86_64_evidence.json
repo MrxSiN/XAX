@@ -19,15 +19,15 @@
     },
     {
       "program": "xax_selfhost_graph",
-      "store_bytes": 148177,
-      "store_sha256": "3da3fed07bec537038e245ebeaf0db7c6a54d6e94ee0c3c6cfa7850109866e62",
+      "store_bytes": 147689,
+      "store_sha256": "2ff5685b5d2b21a0efb0f7c1543e4316d41e0659e939ae239f9e741a3b2effe3",
       "functions": 1,
       "code_bytes": 108036,
-      "image_sha256": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
+      "image_sha256": "03b077e79c1cf10b90acae3e627229ffab07326b38f0c6213139fda245fd7032",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.55,
-        "bootstrap": 0.34
+        "gen1": 5.81,
+        "bootstrap": 0.32
       }
     },
     {
@@ -425,7 +425,7 @@
   },
   "refreshed": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "fa663dc0c67b8a153b675f152f7a02ef98c62043463a475cc1092e745d6e7257",
+    "store_sha256": "3db21e30de7b195c541d33daf1c1fcd933ac54fd8af9209298d8afbe0a34ae7d",
     "reason": "only this store changed since the last full run; its rows were re-executed natively",
     "authority": {
       "blake3-compress": {
@@ -440,7 +440,7 @@
       "verification:hash": {
         "component": "verification:hash",
         "store_verification": "memoized",
-        "record": "verified-hash-35cfcbe1a8b867407f7d45771ed2edd9aea90a30b9a5a7720fe1203d0c4ee719.bin"
+        "record": "verified-hash-b1ed05bd737338b13d91346e253903aa7ebb21c7aaba1d650293c36213a47901.bin"
       },
       "blake3-hash": {
         "component": "blake3-hash",
@@ -454,7 +454,7 @@
       "verification:store-decoder": {
         "component": "verification:store-decoder",
         "store_verification": "memoized",
-        "record": "verified-store-decoder-fc9d6fa1d9efcf912fc0b0a003e02157f1525d8b21a08fddffe59019da314bcd.bin"
+        "record": "verified-store-decoder-5b6cf4cbc69da97e6d90898eefcbdd88fb3b1281923f674b3008cbc6721b2847.bin"
       },
       "store-decoder": {
         "component": "store-decoder",
@@ -468,7 +468,7 @@
       "verification:typing": {
         "component": "verification:typing",
         "store_verification": "memoized",
-        "record": "verified-typing-577999c92d74dd5e19ac69bbdf6eeaaf07e49637bfc63d0d95f08f98bdb135e4.bin"
+        "record": "verified-typing-e5abb62e1fa07b407b86113fc9c3711adccf9eef92dde1a5726a78400f49b287.bin"
       },
       "typing": {
         "component": "typing",
@@ -482,7 +482,7 @@
       "verification:store-verifier": {
         "component": "verification:store-verifier",
         "store_verification": "memoized",
-        "record": "verified-store-verifier-dea94d1dc429213bbec264bbff2eeca22b3c7f0a7795e25ca3e07e151409fc29.bin"
+        "record": "verified-store-verifier-66fb35d13efedc87a36732976c420c39f9ddfea51829c07cefbf08f44a42acbb.bin"
       },
       "store-verifier": {
         "component": "store-verifier",
@@ -492,17 +492,17 @@
         "actual_authority": "xax",
         "fallback_occurred": false,
         "fallback_reason": null,
-        "declined_inputs": 2900
+        "declined_inputs": 2571
       },
       "verification:graph-decoder": {
         "component": "verification:graph-decoder",
         "store_verification": "memoized",
-        "record": "verified-graph-decoder-c26a3433fe664d9c3abbbef9fce662097b4312fcd5d2560d4ec1403f4514137b.bin"
+        "record": "verified-graph-decoder-3160b44c42ab59c16c7d120d816aa1cdd230b4fc8b2a30ae20cbd948689e1299.bin"
       },
       "graph-decoder": {
         "component": "graph-decoder",
-        "semantic_root": "05ba650dc678a359093ac0f4d3e1b2520ddfd6737954e04622e22634baba04a6",
-        "native_artifact_digest": "87664570adb470617fedcb740c4999d86b9ff53a5de32920f10b411dab436943",
+        "semantic_root": "2b34c9bb61e0911568ff51fdf38f9692897186503acc26d2f34f18b2ee2a6474",
+        "native_artifact_digest": "03b077e79c1cf10b90acae3e627229ffab07326b38f0c6213139fda245fd7032",
         "requested_authority": "xax",
         "actual_authority": "xax",
         "fallback_occurred": false,
@@ -511,7 +511,7 @@
       "verification:cfg": {
         "component": "verification:cfg",
         "store_verification": "memoized",
-        "record": "verified-cfg-20337c7ecf6182f028c87ef40cab8798126b4e96befdad0366e37a6caa55dc14.bin"
+        "record": "verified-cfg-de1d8f19af4f439263f97772058edc9631bd7c3219097c6ea5f82321b2b7e73c.bin"
       },
       "cfg": {
         "component": "cfg",
@@ -522,37 +522,10 @@
         "fallback_occurred": false,
         "fallback_reason": null
       },
-      "x86-64-views-backend": {
-        "component": "x86-64-views-backend",
-        "semantic_root": "f4c51340b0aace838ea2454d85d8f9dbf898ec21b579a45b7c10a911043d9a1a",
-        "native_artifact_digest": "ddbc8732c60205be1804db6a3f1760ea97e6b8e0329f6543ea6af69e3ce23e84",
-        "requested_authority": "xax",
-        "actual_authority": "xax",
-        "fallback_occurred": false,
-        "fallback_reason": null
-      },
-      "lowering:riscv64-encoder": {
-        "component": "lowering:riscv64-encoder",
-        "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
-        "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
-        "requested_authority": "xax",
-        "actual_authority": "xax",
-        "fallback_occurred": false,
-        "fallback_reason": null
-      },
       "riscv64-encoder": {
         "component": "riscv64-encoder",
         "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
         "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
-        "requested_authority": "xax",
-        "actual_authority": "xax",
-        "fallback_occurred": false,
-        "fallback_reason": null
-      },
-      "lowering:riscv64-backend": {
-        "component": "lowering:riscv64-backend",
-        "semantic_root": "a6a45aa2ff2a3e315196c2ec7f52253faf8cfcaceb618f1e141901930921b016",
-        "native_artifact_digest": "28cc0d700a4ab3416b97e93fa2b454cdda46ce9de3014ade7565ce0bb42d3174",
         "requested_authority": "xax",
         "actual_authority": "xax",
         "fallback_occurred": false,
