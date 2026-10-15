@@ -1,0 +1,42 @@
+{
+  "format": "xax-python-free-seed-evidence-v1",
+  "label": "EXECUTED",
+  "adr": "ADR-286",
+  "host_nonsemantic": "Linux x86_64",
+  "seed": {
+    "path": "compiler/bootstrap/seed/xaxc-linux-x86_64",
+    "sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+    "bytes": 6914069,
+    "has_interpreter": false
+  },
+  "request_store_sha256": "518a20960b77772312f800579ec8b73242626d952b261140f94f906b4ba43a96",
+  "environment": {
+    "variables": [
+      "PATH"
+    ],
+    "tools": [
+      "sh",
+      "dirname",
+      "mkdir",
+      "chmod",
+      "cmp"
+    ],
+    "python_on_path": null
+  },
+  "selfbuild_status": 0,
+  "generations": [
+    {
+      "name": "xaxc1",
+      "sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa",
+      "provenance_sha256": "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a"
+    },
+    {
+      "name": "xaxc2",
+      "sha256": "f04a02f269905f849bf56579b400e285f374b599809806598c23f4b256b8d4a0",
+      "snapshot_sha256": "954646c8bc741ed8ccdd82c696380ebcc1f375613c58361a56f5a0af023c3baa",
+      "provenance_sha256": "9ad23cb11c0e5fbdc5626a059885952ccf1995e87638f847f4d7a6e59c3bbd1a"
+    }
+  ],
+  "host_s_nonsemantic": 84.1
+}

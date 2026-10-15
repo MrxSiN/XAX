@@ -26,7 +26,7 @@
       },
       "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python",
       "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, build, lower",
-      "seed_requires_python": true
+      "seed_requires_python": false
     },
     "m14_semantic_image_wrapper": {
       "B2": true,

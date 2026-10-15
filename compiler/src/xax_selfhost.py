@@ -566,9 +566,28 @@ def current_m14_readiness() -> M14ClosureReadiness:
 FULL_COMPILER_STORE: Path | None = None
 # S14b (ADR-285): the executed generations of the Linux x86-64 production compiler (the general driver).
 FULL_SELFHOST_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "full_selfhost_evidence.json"
+# S15a (ADR-286): the pinned XAX-built seed rebuilding the compiler with no Python reachable.
+SEED_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "python_free_seed_evidence.json"
 
 
-def linux_x86_64_status(full: dict) -> dict:
+def seed_requires_python(full: dict, seed: dict | None) -> bool:
+    """False only when ``seed`` records the pinned seed, without an ELF interpreter, rebuilding the compiler of ``full``
+    (the same request store, the same executable as its generations) twice with an environment of ``PATH`` alone, on
+    which no Python resolves."""
+    from xax_selfhost_seed import SEED_SHA256
+
+    if seed is None:
+        return full["seed"]["requires_python"]
+    compiler = full["generations"][-1]["artifact_sha256"]
+    return not (
+        seed["seed"]["sha256"] == SEED_SHA256 and not seed["seed"]["has_interpreter"]
+        and seed["environment"]["variables"] == ["PATH"] and seed["environment"]["python_on_path"] is None
+        and seed["selfbuild_status"] == 0 and seed["request_store_sha256"] == full["compiler"]["request_store_sha256"]
+        and all(item["sha256"] == compiler for item in seed["generations"])
+    )
+
+
+def linux_x86_64_status(full: dict, seed: dict | None = None) -> dict:
     """B0-B6 for the Linux x86-64 production compiler, derived from the raw record ``full`` (``bench_full_selfhost``):
     executable digests, which executable produced which, snapshot digests against the Python resolver, the bootstrap's
     own compile, every generation's outcome on the corpus against the bootstrap's, and the recorded gaps.  No level is
@@ -605,7 +624,7 @@ def linux_x86_64_status(full: dict) -> dict:
     return {"scope": full["scope"]["compiler"], "outside_scope": full["scope"]["outside_scope"],
             **{f"B{n}": level for n, level in enumerate((b0, b1, b2, b3, b4, b5, b6))},
             "blockers": {level: reason for level, reason in blockers.items() if reason},
-            "seed_requires_python": full["seed"]["requires_python"]}
+            "seed_requires_python": seed_requires_python(full, seed)}
 
 M14_SCOPE = (
     "xax-semantic-image-v1 META wrapper: an XAX graph that materializes, verifies, and canonically encodes a program "
@@ -624,7 +643,8 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
     readiness = readiness_from_recursive_evidence(evidence)
     import json
 
-    linux = linux_x86_64_status(json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8"))) if FULL_SELFHOST_EVIDENCE.exists() else None
+    seed = json.loads(SEED_EVIDENCE.read_text(encoding="utf-8")) if SEED_EVIDENCE.exists() else None
+    linux = linux_x86_64_status(json.loads(FULL_SELFHOST_EVIDENCE.read_text(encoding="utf-8")), seed) if FULL_SELFHOST_EVIDENCE.exists() else None
     return {
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {

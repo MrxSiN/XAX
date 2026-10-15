@@ -286,6 +286,10 @@
       "class": "G",
       "note": "Builder of the S10e semantic-verification marshal functions inside the driver store (ADR-266)."
     },
+    "xax_selfhost_seed.py": {
+      "class": "F",
+      "note": "Pins of the XAX-built Linux x86-64 compiler seed (bootstrap/seed/) and its rotation; it builds nothing itself (S15a, ADR-286)."
+    },
     "xax_selfhost_request.py": {
       "class": "G",
       "note": "Builder of the S13a build-request and provenance functions inside the general driver store (ADR-281)."

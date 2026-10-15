@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64 is compiled by Python backends; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4 hold, B1, B5, B6 do not; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64 is compiled by Python backends; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4 hold, B1, B5, B6 do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,6 +186,12 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15a a Python-free seed — 2026-10-15 (ADR-286)
+
+- Done: `compiler/bootstrap/seed/` (`xaxc-linux-x86_64`, `xax_compiler_request.xax`, `selfbuild.sh`), `xax_selfhost_seed` (pins, `write-request`, `rotate-seed`), `benchmarks/bench_python_free_seed.py` → `python_free_seed_evidence.json`, and `xax_selfhost.seed_requires_python`.
+- After a driver-store change: `python -m xax_selfhost_seed write-request`, then `bench_full_selfhost.py --write`, then `bench_python_free_seed.py --write`. The seed itself need not change; rotate it only deliberately, with `rotate-seed` and a reviewed pin update.
+- Next: S15b (B1). Make the driver's verification rejections the bootstrap's exact diagnostics: the components already write them (S8), so the driver's precedence must follow `verify_store`'s. Then decide ADR-280's declined rules in the general program. S15c to S15e follow.
+
 ## S14 complete: S14b the production compiler's generations — 2026-10-15 (ADR-285)
 
 - Done:
@@ -201,6 +207,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - B6: compiler evolution by semantic transactions instead of Python builders;
   - SH8: a seed that needs no Python (C1 itself can be the next seed);
   - the other targets.
+- S15a: see above.
 
 ## S14a the compiler compiles itself with its optimizing backend — 2026-10-15 (ADR-284)
 

@@ -56,7 +56,7 @@ def linux_text(linux: dict | None) -> str:
     held = [f"B{n}" for n in range(7) if linux[f"B{n}"]]
     missing = [f"B{n}" for n in range(7) if not linux[f"B{n}"]]
     return (f"Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): {', '.join(held) or 'none'} hold, "
-            f"{', '.join(missing) or 'none'} do not; ")
+            f"{', '.join(missing) or 'none'} do not; its seed requires Python: {'yes' if linux['seed_requires_python'] else 'no'}; ")
 
 
 def bootstrap_summary(evidence: dict) -> str:
