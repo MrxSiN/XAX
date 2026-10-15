@@ -187,7 +187,7 @@
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "objects": 2508,
+      "objects": 2541,
       "store_verdict": true,
       "bootstrap_accepts": true,
       "agrees": true
@@ -425,7 +425,7 @@
   },
   "refreshed": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "3db21e30de7b195c541d33daf1c1fcd933ac54fd8af9209298d8afbe0a34ae7d",
+    "store_sha256": "21ccf5953ce29efea83e7d2d4a90e5c5642d14068b662328a7512ed14259f4d0",
     "reason": "only this store changed since the last full run; its rows were re-executed natively",
     "authority": {
       "blake3-compress": {
@@ -440,7 +440,7 @@
       "verification:hash": {
         "component": "verification:hash",
         "store_verification": "memoized",
-        "record": "verified-hash-b1ed05bd737338b13d91346e253903aa7ebb21c7aaba1d650293c36213a47901.bin"
+        "record": "verified-hash-ad8f24afb96ee195bdb83ec795019b9b1c72a6e13d369b70b176c84561170ec8.bin"
       },
       "blake3-hash": {
         "component": "blake3-hash",
@@ -454,7 +454,7 @@
       "verification:store-decoder": {
         "component": "verification:store-decoder",
         "store_verification": "memoized",
-        "record": "verified-store-decoder-5b6cf4cbc69da97e6d90898eefcbdd88fb3b1281923f674b3008cbc6721b2847.bin"
+        "record": "verified-store-decoder-22f06274a01315480fe7cc61b91866e2840648257cb6011ebe33d005a335cc9b.bin"
       },
       "store-decoder": {
         "component": "store-decoder",
@@ -468,7 +468,7 @@
       "verification:typing": {
         "component": "verification:typing",
         "store_verification": "memoized",
-        "record": "verified-typing-e5abb62e1fa07b407b86113fc9c3711adccf9eef92dde1a5726a78400f49b287.bin"
+        "record": "verified-typing-f9cb7c527d7b5e345b7db3b8e8e53990eca0b4b1be4d3727991dad5281188922.bin"
       },
       "typing": {
         "component": "typing",
@@ -482,7 +482,7 @@
       "verification:store-verifier": {
         "component": "verification:store-verifier",
         "store_verification": "memoized",
-        "record": "verified-store-verifier-66fb35d13efedc87a36732976c420c39f9ddfea51829c07cefbf08f44a42acbb.bin"
+        "record": "verified-store-verifier-ae02f409ca399809fd0461b2c87285a08bb96813c747650cf5b57f28ef9a5e9d.bin"
       },
       "store-verifier": {
         "component": "store-verifier",
@@ -492,12 +492,12 @@
         "actual_authority": "xax",
         "fallback_occurred": false,
         "fallback_reason": null,
-        "declined_inputs": 2571
+        "declined_inputs": 2597
       },
       "verification:graph-decoder": {
         "component": "verification:graph-decoder",
         "store_verification": "memoized",
-        "record": "verified-graph-decoder-3160b44c42ab59c16c7d120d816aa1cdd230b4fc8b2a30ae20cbd948689e1299.bin"
+        "record": "verified-graph-decoder-8df08d3f4919cb91f0273b968b67db6cdc63dc6f8985ce0ed0eaa193fbb89791.bin"
       },
       "graph-decoder": {
         "component": "graph-decoder",
@@ -511,7 +511,7 @@
       "verification:cfg": {
         "component": "verification:cfg",
         "store_verification": "memoized",
-        "record": "verified-cfg-de1d8f19af4f439263f97772058edc9631bd7c3219097c6ea5f82321b2b7e73c.bin"
+        "record": "verified-cfg-3fd99606b81bb0772618846c59991ad7894938125f863875bcd189c338926df0.bin"
       },
       "cfg": {
         "component": "cfg",
