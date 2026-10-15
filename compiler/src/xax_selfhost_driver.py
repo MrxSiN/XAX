@@ -28,6 +28,14 @@ S11 (ADR-267): the store's entry is ``main``, the Linux process entry for ``x86_
 unless there are exactly three paths and each fits).  Under that profile the driver writes the static ELF64
 executable (``xax_x86_64_views.views_executable``) instead of the bare code, so the driver lowers itself to the
 executable it runs as.
+
+S13a (ADR-281): the general driver's first argument is a command.  ``lower <store> <target package> <output>`` is the
+path above.  ``build <snapshot store> <artifact> <provenance>`` is ``xax_build.build`` for the snapshot's request:
+after verification it reads the snapshot, its request, and the package's build entry, makes ``build``'s rejections
+(the root, external inputs, required signatures, requested artifacts) with its exact diagnostics, lowers the entry for
+the request's Linux x86-64 ELF target, and writes the artifact and the canonical provenance object's envelope, the
+digest and the CID derived with the S2 hash.  ``build``'s other paths (Android packages, Windows DLLs, other targets)
+decline.
 """
 
 from __future__ import annotations
@@ -54,12 +62,15 @@ from xax_native import bootstrap_dir
 from xax_selfhost_facts import E
 from xax_structured import B64, Proc
 import xax_selfhost_diagnostics as D
+import xax_selfhost_request as RQ
 
 STORE_PATH = bootstrap_dir() / "xax_compiler_driver.xax"
 GENERAL_STORE_PATH = bootstrap_dir() / "xax_compiler_driver_general.xax"  # S12e.2 (ADR-276)
-GENERAL_IDENTITIES = (b"x86_64-linux-elf-exec-v1", b"x86_64-linux-elf-dynexec-v1")
+GENERAL_IDENTITIES = RQ.GENERAL_IDENTITIES  # S12e.2: the Linux ELF profiles
 EXTENTS_EXTENT, TRAPS_EXTENT, MEMBERS_EXTENT = 1 << 25, 1 << 22, 1 << 22
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
+LOWER, BUILD = 0, 1  # S13a (ADR-281): the general driver's commands, argv[1]
+COMMANDS = ("lower", "build")
 ARGUMENTS_EXTENT = 4096
 CHUNK = 1 << 16
 from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
@@ -262,8 +273,21 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
     startup = linux_startup_api(api)
     argc = proc.op1(Operation.CALL_FOREIGN, (), B64, entity=startup.argc)
-    w.if_(w.ne(argc, 4), lambda: stop(FAILED))
+    w.if_(w.ne(argc, 5 if general else 4), lambda: stop(FAILED))
     argument_end = w.let("argument_end", 0)
+    if general:
+        # S13a (ADR-281): argv[1] is the command, ``lower`` (a program store and a target package) or ``build`` (a
+        # build snapshot store); anything else FAILED.
+        mode = w.let("mode", LOWER)
+
+        def command():
+            count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(1, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
+            n = w.let("n", count)
+            words = {word: w.let(word, w.flag(w.both(w.eq(w[n], len(word)), w.ne(w.same_constant("argument", 0, word.encode()), 0))))
+                     for word in COMMANDS}
+            w.if_(w.ne(w[words["build"]], 0), lambda: w.set(mode, BUILD), lambda: w.if_(w.eq(w[words["lower"]], 0), lambda: stop(FAILED)))
+
+        when(command)
 
     def argument(index: int):
         count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(index, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
@@ -273,7 +297,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.if_(fits, lambda: (w.copy("argument", 0, "arguments", w[at], w[n]), w.store("arguments", w.add(w[at], w[n]), 0),
                              w.set(at, w.add(w.add(w[at], w[n]), 1))), lambda: stop(FAILED))
 
-    for index in (1, 2, 3):
+    for index in (2, 3, 4) if general else (1, 2, 3):
         when(lambda index=index: argument(index))
 
     # -- paths ---------------------------------------------------------------------------------------------------
@@ -482,7 +506,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         w.if_(w.lt(w[module_record], w[objects]), function, lambda: stop(DECLINED))
 
-    when(choose_entry)
+    if general:
+        when(lambda: w.if_(w.eq(w[mode], LOWER), choose_entry))  # S13a: ``build`` takes the package's build entry
+    else:
+        when(choose_entry)
 
     # -- S10e (ADR-266): semantic verification, every decision by an XAX component -------------------------------
     semantic, semantic_objects = SM.build_functions()
@@ -594,6 +621,16 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.take("vtable", results[1:4])
         w.take("work", results[4:])
         w.if_(w.ne(work_word(SM.CTRL + SM.C_STATUS), SM.OK), lambda: stop(DECLINED))
+
+    if general:
+        requests, request_objects = RQ.build_functions()
+
+        def request_helper(name: str):
+            """S13a: an ``xax_selfhost_request`` function over the object table and the workspace."""
+            results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("work")),
+                              (B64, *VIEW_TYPES), entity=requests[name])
+            w.take("vtable", results[1:4])
+            w.take("work", results[4:])
 
     def typing():
         """The typing program over the workspace's marshal, copied to ``table``; its output in ``image``."""
@@ -842,6 +879,27 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     when(store_verdicts)
     when(graph_verdicts)
 
+    if general:
+        # -- S13a (ADR-281): ``build``: the snapshot's request, read and checked by ``xax_selfhost_request`` ---------
+        target, linux = w.let("target", 0), w.let("linux", 0)
+
+        def from_work():
+            """The workspace's diagnostic record (a request function's) as the driver's."""
+            end = w.let("work_end", work_word(D.DIAG_AT))
+            q = w.let("work_q", D.DIAG_AT)
+            w.while_(lambda: w.lt(w[q], w[end]), lambda: (w.st(w[q], work_word(w[q])), w.set(q, w.add(w[q], 1))))
+            stop(REJECTED)
+
+        def build_request():
+            request_helper("build_request")
+            outcome = w.let("request_outcome", work_word(SM.CTRL + RQ.B_STATUS))
+            w.if_(w.eq(w[outcome], RQ.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RQ.ACCEPT), lambda: stop(DECLINED)))
+            w.set(entry, work_word(SM.CTRL + RQ.B_ENTRY))
+            w.set(target, work_word(SM.CTRL + RQ.B_TARGET))
+            w.set(linux, 1)
+
+        when(lambda: w.if_(w.eq(w[mode], BUILD), build_request))
+
     # -- the backend's object table (``xax_riscv64._object_table``) -----------------------------------------------
     words = w.let("words", 1 + 4)
     table_limit = in_view_extent(in_view) // 8
@@ -989,21 +1047,24 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         when(group_members)
 
     # -- the target package: its root object, checked like any object, then appended ----------------------------
-    read_store(1)
-    when(decode_container)
-    when(lambda: w.set(objects, w.load("decoded", 8, 4)))
-    target = w.let("target", 0)
+    def target_store():
+        read_store(1)
+        when(decode_container)
+        when(lambda: w.set(objects, w.load("decoded", 8, 4)))
+
+    if not general:
+        target_store()
+        target = w.let("target", 0)  # (the general driver's is declared with its build section)
 
     def target_record():
         w.set(target, w[find(w.load("decoded", 4 * 7, 4))])
         w.if_(w.eq(w[target], w[objects]), lambda: stop(DECLINED))
         when(lambda: check_object(w[target]))
 
-    when(target_record)
+    if not general:
+        when(target_record)
 
     executable = w.let("executable", 0)  # S11: the target is the exec profile: the output is an ELF executable
-    if general:
-        linux = w.let("linux", 0)  # S12e.2: the target is a Linux ELF profile: the general backend lowers
 
     def target_profile():
         """``compile_x86_64_views``: a target object whose identity is a views profile, else ``X86_64_VIEWS-TARGET-PROFILE``."""
@@ -1049,7 +1110,16 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         w.if_(w.ne(w[known], 0), lambda: None, lambda: w.if_(w.ne(w[printable], 0), reject, lambda: stop(DECLINED)))
 
-    when(target_profile)
+    if general:
+        def target_package():
+            """``lower``: the target package's root (S12e.2's ``linux`` flag: the general backend lowers)."""
+            target_store()
+            when(target_record)
+            when(target_profile)
+
+        when(lambda: w.if_(w.eq(w[mode], LOWER), target_package))
+    else:
+        when(target_profile)
 
     def target_entry():
         position = w[target]
@@ -1102,25 +1172,65 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
     when(lower)
 
-    # -- the output ------------------------------------------------------------------------------------------
-    def emit(first_word, byte_count, header: bool = False):
-        """Write ``byte_count`` bytes of the backend output from word ``first_word`` (little-endian words: the packed
-        code, ADR-266, or a diagnostic record); with ``header``, under the exec profile, the ELF header first."""
-        fd = open_path(2, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
+    if general:
+        def elf_at():
+            """S12e.2: the word holding the byte length of the ELF file in the general program's image record (status,
+            packed code, packed ELF); the file's words follow it."""
+            return w.let("elf_at", w.add(GI.IMAGE_AT + 2, w.udiv(w.add(w.ld(GI.IMAGE_AT + 1), 7), 8)))
 
-        def write_chunk(count):
-            """``write`` the first ``count`` bytes of ``chunk``; FAILED unless all are written."""
-            written, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(WRITE_RW, (fd32(fd), w.p[views["chunk"][0]], count, w.p["fs"], w.p[views["chunk"][2]]),
-                                                                   (B64, FS, MEM))
-            ok = w.let("written_ok", w.flag(w.eq(written, count)))
-            w.if_(w.eq(w[ok], 0), lambda: stop(FAILED))
-            return w[ok]
+        def provenance():
+            """The artifact's digest (S2 hash) for ``provenance``'s envelope, copied to ``argument``; its CID derived
+            with the S2 hash from the domain and the envelope from its kind on."""
+            at = elf_at()
+            size = w.let("artifact_size", w.ld(w[at]))
+            w.if_(w.lt(limit, w[size]), lambda: stop(DECLINED))  # the hash reads its last block past the end
+
+            def record():
+                q = w.let("p_q", 0)
+                w.while_(lambda: w.lt(w[q], w[size]), lambda: (w.store("object", w[q], w.ld(w.add(w.add(w[at], 1), w.udiv(w[q], 8))), 8),
+                                                               w.set(q, w.add(w[q], 8))))
+                hash_span("object", 0, w[size])
+                for word in range(CID_SIZE // 8):
+                    low, high = (w.load("scratch", H.DIGEST_OFFSET + 8 * word + 4 * half, 4) for half in (0, 1))
+                    set_work(SM.CTRL + RQ.B_DIGEST + word, w.add(low, w.mul(high, 1 << 32)))
+                request_helper("provenance")
+                q2 = w.let("p_q", 0)
+                w.while_(lambda: w.lt(w[q2], len(RQ.TEMPLATE)), lambda: (w.store("argument", w[q2], work_word(w.add(RQ.ENVELOPE_AT, w[q2]))),
+                                                                         w.set(q2, w.add(w[q2], 1))))
+                for k, byte in enumerate(SEMANTIC_DOMAIN):
+                    w.store("object", k, byte)
+                w.copy("argument", RQ.P_KIND, "object", len(SEMANTIC_DOMAIN), len(RQ.TEMPLATE) - RQ.P_KIND)
+                hash_span("object", 0, len(SEMANTIC_DOMAIN) + len(RQ.TEMPLATE) - RQ.P_KIND)
+                digest_to("argument", RQ.P_CID)
+
+            when(record)
+
+        def built():
+            """``build`` checks the requested artifacts after making the container."""
+            w.if_(w.ne(work_word(SM.CTRL + RQ.B_ARTIFACT), 0), from_work, provenance)
+
+        when(lambda: w.if_(w.eq(w[mode], BUILD), built))
+
+    # -- the output ------------------------------------------------------------------------------------------
+    def write_chunk(fd: str, count):
+        """``write`` the first ``count`` bytes of ``chunk``; FAILED unless all are written."""
+        written, w.p["fs"], w.p[views["chunk"][2]] = w.syscall(WRITE_RW, (fd32(fd), w.p[views["chunk"][0]], count, w.p["fs"], w.p[views["chunk"][2]]),
+                                                               (B64, FS, MEM))
+        ok = w.let("written_ok", w.flag(w.eq(written, count)))
+        w.if_(w.eq(w[ok], 0), lambda: stop(FAILED))
+        return w[ok]
+
+    def emit(first_word, byte_count, header: bool = False, path: int = 2):
+        """Write ``byte_count`` bytes of the backend output from word ``first_word`` (little-endian words: the packed
+        code, ADR-266, or a diagnostic record) to the file argument ``path``; with ``header``, under the exec profile,
+        the ELF header first."""
+        fd = open_path(path, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
 
         def elf_header():
             """S11: ``views_executable``'s header; only the load segment's file and memory sizes depend on the code."""
             for index, word in enumerate(ELF_HEADER_WORDS):
                 w.store("chunk", 8 * index, w.add(byte_count, ELF_HEADER_SIZE) if index in ELF_SIZE_WORDS else word, 8)
-            write_chunk(ELF_HEADER_SIZE)
+            write_chunk(fd, ELF_HEADER_SIZE)
 
         def write_all():
             if header:
@@ -1133,7 +1243,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 q = w.let("q", 0)
                 w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w[q], w.ld(w.add(first_word, w.udiv(w.add(w[done], w[q]), 8))), 8),
                                                                 w.set(q, w.add(w[q], 8))))
-                w.if_(w.eq(write_chunk(w[piece]), 0), lambda: w.set(done, w[total]), lambda: w.set(done, w.add(w[done], w[piece])))
+                w.if_(w.eq(write_chunk(fd, w[piece]), 0), lambda: w.set(done, w[total]), lambda: w.set(done, w.add(w[done], w[piece])))
 
             w.while_(lambda: w.both(w.lt(w[done], w[total]), w.ne(w[status], FAILED)), step)
             close(fd)
@@ -1145,18 +1255,39 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     final = w.let("final", 0)
     w.set(final, w[status])
     def image_out():
-        def elf():
-            """S12e.2: the ELF file of the general program's image record (status, packed code, packed ELF)."""
-            at = w.let("elf_at", w.add(GI.IMAGE_AT + 2, w.udiv(w.add(w.ld(GI.IMAGE_AT + 1), 7), 8)))
-            emit(w.add(w[at], 1), w.ld(w[at]))
+        def elf(path: int):
+            """S12e.2: the ELF file of the general program's image record."""
+            at = elf_at()
+            emit(w.add(w[at], 1), w.ld(w[at]), path=path)
+
+        def provenance_out():
+            """S13a: the provenance object's envelope to the third file argument."""
+            fd = open_path(2, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
+
+            def write():
+                w.copy("argument", 0, "chunk", 0, len(RQ.TEMPLATE))
+                write_chunk(fd, len(RQ.TEMPLATE))
+                close(fd)
+
+            w.if_(w.ne(w[status], FAILED), write)
 
         if general:
-            w.if_(w.ne(w[linux], 0), elf, lambda: emit(WORDS_AT, w.ld(1), header=True))
+            w.if_(w.ne(w[linux], 0), lambda: w.if_(w.eq(w[mode], BUILD), lambda: (elf(1), provenance_out()), lambda: elf(2)),
+                  lambda: emit(WORDS_AT, w.ld(1), header=True))
         else:
             emit(WORDS_AT, w.ld(1), header=True)
 
-    w.if_(w.eq(w[status], IMAGE), image_out,
-          lambda: w.if_(w.eq(w[status], REJECTED), lambda: emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8))))
+    def record_out():
+        """The rejection's diagnostic record, to the output (``build``: the artifact's file)."""
+        def to(path: int):
+            emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8), path=path)
+
+        if general:
+            w.if_(w.eq(w[mode], BUILD), lambda: to(1), lambda: to(2))
+        else:
+            to(2)
+
+    w.if_(w.eq(w[status], IMAGE), image_out, lambda: w.if_(w.eq(w[status], REJECTED), record_out))
     w.if_(w.eq(w[status], FAILED), lambda: w.set(final, FAILED))
 
     # Every view released (``munmap`` of the whole view: the deallocator contract).
@@ -1172,7 +1303,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader, *((general_reader,) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
-    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *component_objects, *api.types, *startup.symbols, WRITE_RW)
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *(request_objects if general else ()), *component_objects,
+                *api.types, *startup.symbols, WRITE_RW)
     return program_store(function, x86_64_linux_exec_target(), objects_), function
 
 
@@ -1255,6 +1387,8 @@ class NativeDriver:
     ``x86_64-linux-views-exec-v1``) is written once as its static ELF64 executable; ``run`` executes it with the three
     paths as its arguments and returns its exit status.  No Python runs inside the process."""
 
+    timeout = None  # seconds per process; None waits
+
     def __init__(self, image=None) -> None:
         import os
         import tempfile
@@ -1274,6 +1408,31 @@ class NativeDriver:
 
     def run(self, store_path: str | Path, target_path: str | Path, output_path: str | Path) -> int:
         """The process's exit status (``IMAGE`` .. ``FAILED``); a negative value is the signal that ended it."""
+        return self._process(store_path, target_path, output_path)
+
+    def _process(self, *arguments: str | Path) -> int:
         import subprocess
 
-        return subprocess.run([str(self.path), str(store_path), str(target_path), str(output_path)], check=False).returncode
+        return subprocess.run([str(self.path), *(str(item) for item in arguments)], check=False, timeout=self.timeout).returncode
+
+
+class NativeGeneralDriver(NativeDriver):
+    """S13a (ADR-281): the general driver as a Linux process.  Its first argument is the command: ``lower`` (a program
+    store, a target package, the output) or ``build`` (a build snapshot store, the artifact, its provenance)."""
+
+    def __init__(self, image=None) -> None:
+        if image is None:
+            from xax_compiler import x86_64_views_exec_target
+            from xax_x86_64_views import compile_x86_64_views
+
+            reader, function = load_driver_program(general=True)
+            image = compile_x86_64_views(reader, function.cid, x86_64_views_exec_target(), backend="xax")
+        super().__init__(image)
+
+    def run(self, store_path: str | Path, target_path: str | Path, output_path: str | Path) -> int:
+        return self._process("lower", store_path, target_path, output_path)
+
+    def build(self, snapshot_path: str | Path, artifact_path: str | Path, provenance_path: str | Path) -> int:
+        """The exit status; on ``IMAGE`` the artifact and the provenance object's envelope are written, on ``REJECTED``
+        the diagnostic record is in the artifact's file."""
+        return self._process("build", snapshot_path, artifact_path, provenance_path)

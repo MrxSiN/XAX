@@ -18,6 +18,12 @@ from typing import Protocol
 BOOTSTRAP_COMPILER_IDENTITY_V1 = bytes.fromhex(
     "13dbd0cf3458d70b1e2f817928fa7248dabd7c6dade5ca52624ace6d6c296c78"
 )
+# S13a (ADR-281): the compiler identity the XAX-hosted general driver (``xax_compiler_driver_general.xax``) records
+# in the provenance of every artifact its ``build`` command makes.  Its outputs equal the bootstrap's, but it is a
+# different producer, so its builds have their own keys.
+XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1 = bytes.fromhex(
+    "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117"
+)
 X86_64_LOWERING_IDENTITY_V1 = bytes.fromhex(
     "d071ac136d8b85c8e3f993804c655b90e3a6ef583e6c472328ce5b28ec51c45c"
 )

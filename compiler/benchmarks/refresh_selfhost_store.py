@@ -4,7 +4,9 @@
 store changes (ADR-249: the BLAKE3 hash's lent input view), this re-runs exactly that program's B1 entries and the
 B3 rows for its store with the same per-entry procedure, leaving every other entry (whose store is unchanged) as
 recorded.  It runs with ``XAX_REQUIRE_NATIVE=1`` and records ``xax_native.AUTHORITY`` under ``refreshed``.
-Run: ``PYTHONPATH=src python benchmarks/refresh_selfhost_store.py xax_selfhost_blake3 [--write]``.
+Run: ``PYTHONPATH=src python benchmarks/refresh_selfhost_store.py xax_selfhost_blake3 [--write]``.  A committed store that
+is no helper program (ADR-281: the general driver's) has no B1 entry; ``--store xax_compiler_driver_general.xax``
+re-runs only its B3 rows and its emulated BLAKE3 row.
 """
 
 from __future__ import annotations
@@ -48,6 +50,69 @@ def _replace(items: list, key: str, value: str, record: dict) -> None:
             items[index] = record
             return
     raise KeyError(value)
+
+
+def _store_rows(store: Path, closure: dict, x86: dict, rv_hash_image=None) -> None:
+    """Re-run the B3 rows for ``store`` (emulated and native verifier) and, given the RISC-V hash image, its emulated
+    BLAKE3 row."""
+    import xax_compiler as X
+    import xax_riscv64 as R
+    from xax_selfhost_typing import IN_WORDS, OUT_WORDS
+    from xax_selfhost_verify import collect_verdicts, native_store_verifier
+
+    reader = X.StoreReader(store.read_bytes())
+    words, listed, groups = verifier_input(reader)
+    native = native_store_verifier().verify(words, len(listed), groups)
+    rv_target = X.riscv64_views_target()
+    verifier_image = R.compile_riscv64_bound_target(*(lambda r, e: (r, e.cid))(*importlib.import_module("xax_selfhost_verify").load_verifier_program()), rv_target, backend="xax")
+    start = time.perf_counter()
+    emulated, instructions = _emulate(verifier_image, words, 8 * IN_WORDS, 8 * OUT_WORDS, lambda read: collect_verdicts(read, len(listed), groups))
+    _replace(closure["b3_emulated_verifier"], "store", store.name, {
+        "store": store.name, "objects": len(listed), "store_proven": bool(native and native[0]),
+        "objects_proven": sum(1 for verdict in (native[1] if native else ()) if verdict == 1),
+        "emulated_equals_native": same_verdicts(emulated, native, listed), "emulated_instructions_upper_bound": instructions,
+        "host_s_nonsemantic": {"emulated": round(time.perf_counter() - start, 1)}})
+    bootstrap_ok = True
+    try:
+        X.verify_store(reader)
+    except X.XaxError:
+        bootstrap_ok = False
+    _replace(x86["b3_native_verifier"], "store", store.name, {
+        "store": store.name, "objects": len(listed), "store_verdict": bool(native and native[0]), "bootstrap_accepts": bootstrap_ok,
+        "agrees": bool(native) and native[0] == bootstrap_ok})
+    if rv_hash_image is not None:
+        from xax_selfhost_blake3 import INPUT_EXTENT, run_riscv64_hash
+
+        data = reader.data
+        rows = closure["b3_emulated_blake3"]
+        if len(data) > INPUT_EXTENT:  # as the full run: a store beyond the hash's input view has no row
+            rows[:] = [row for row in rows if row["store"] != store.name]
+        else:
+            start = time.perf_counter()
+            digest = run_riscv64_hash(rv_hash_image, data)
+            _replace(closure["b3_emulated_blake3"], "store", store.name, {
+                "store": store.name, "bytes": len(data), "emulated_equals_production": digest == blake3.blake3(data).digest(),
+                "host_s_nonsemantic": round(time.perf_counter() - start, 2)})
+
+
+def refresh_store(store_name: str) -> dict:
+    """The B3 and emulated BLAKE3 rows of a committed store that is no helper program."""
+    import xax_compiler as X
+    import xax_native
+    import xax_riscv64 as R
+
+    store = BOOTSTRAP / store_name
+    closure = json.loads((HERE / "selfhost_closure_evidence.json").read_text())
+    x86 = json.loads((HERE / "selfhost_x86_64_evidence.json").read_text())
+    reader, entry = importlib.import_module("xax_selfhost_blake3").load_hash_program()
+    hash_image = R.compile_riscv64_bound_target(reader, entry.cid, X.riscv64_views_target(), backend="xax")
+    _store_rows(store, closure, x86, hash_image)
+    refreshed = {"selfhost_closure_evidence.json": closure, "selfhost_x86_64_evidence.json": x86}
+    for evidence in refreshed.values():
+        evidence["refreshed"] = {"store": store.name, "store_sha256": hashlib.sha256(store.read_bytes()).hexdigest(),
+                                 "reason": "only this store changed since the last full run; its rows were re-executed natively",
+                                 "authority": xax_native.AUTHORITY}
+    return refreshed
 
 
 def refresh(module_name: str) -> dict:
@@ -117,6 +182,13 @@ def refresh(module_name: str) -> dict:
 
 
 if __name__ == "__main__":
+    if sys.argv[1] == "--store":
+        results = refresh_store(sys.argv[2])
+        for name, evidence in results.items():
+            if "--write" in sys.argv:
+                (HERE / name).write_text(json.dumps(evidence, indent=2) + "\n")
+        print(json.dumps({name: ev["refreshed"] for name, ev in results.items()}, indent=1))
+        raise SystemExit(0)
     results = refresh(sys.argv[1])
     for name, evidence in results.items():
         text = json.dumps(evidence, indent=2) + "\n"

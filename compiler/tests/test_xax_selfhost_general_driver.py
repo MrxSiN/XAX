@@ -38,12 +38,12 @@ def _root_entry(reader):
 class GeneralDriverTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from xax_selfhost_driver import NativeDriver, load_driver_program
+        from xax_selfhost_driver import NativeGeneralDriver, load_driver_program
         from xax_x86_64_views import compile_x86_64_views
 
         reader, function = load_driver_program(general=True)
         cls.image = compile_x86_64_views(reader, function.cid, X.x86_64_views_exec_target(), backend="xax")
-        cls.driver = NativeDriver(cls.image)
+        cls.driver = NativeGeneralDriver(cls.image)
         cls.directory = tempfile.mkdtemp()
 
     def run_driver(self, data: bytes, target):
@@ -152,7 +152,7 @@ class GeneralDriverTests(unittest.TestCase):
         executables = [generation.read_bytes()]
         for name in ("gen2", "gen3"):
             output = Path(self.directory) / name
-            status = subprocess.run([str(generation), str(GENERAL_STORE_PATH), str(package), str(output)], check=False).returncode
+            status = subprocess.run([str(generation), "lower", str(GENERAL_STORE_PATH), str(package), str(output)], check=False).returncode
             self.assertEqual(status, 0, name)
             os.chmod(output, 0o755)
             executables.append(output.read_bytes())

@@ -282,6 +282,10 @@
       "class": "G",
       "note": "Builder of the S10e semantic-verification marshal functions inside the driver store (ADR-266)."
     },
+    "xax_selfhost_request.py": {
+      "class": "G",
+      "note": "Builder of the S13a build-request and provenance functions inside the general driver store (ADR-281)."
+    },
     "xax_selfhost_diagnostics.py": {
       "class": "G",
       "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing."
@@ -571,13 +575,13 @@
     },
     "cli": {
       "python_authority": "xax_compiler.main (xaxc)",
-      "xax_hosted": null,
+      "xax_hosted": "the general driver process's commands lower and build (S13a, ADR-281); verify and inspect are S13b",
       "target_dependency": "Linux x86-64 process entry",
       "prerequisite": "S10",
       "differential_oracle": "xaxc JSON outputs",
       "fixed_point_relevance": "how the self-build is invoked",
       "runtime_relevance": "compile time only",
-      "recommended_step": "S13"
+      "recommended_step": "S13b"
     },
     "x86-64-program-backend": {
       "python_authority": "xax_x86_64, xax_x86_64_regalloc, xax_linux (register-resident analyses, code generation, image); xax_inline, xax_prefetch, xax_ranges are the S12b/S12c.1 references",
@@ -601,23 +605,23 @@
     },
     "provenance": {
       "python_authority": "xax_artifact, xax_build provenance",
-      "xax_hosted": null,
+      "xax_hosted": "for the Linux x86-64 ELF profiles: the general driver's build command (xax_compiler_driver_general.xax, S13a, ADR-281) writes the canonical provenance object (artifact digest and CID by the S2 hash); other targets' provenance stays in xax_build",
       "target_dependency": "none",
       "prerequisite": "S9",
-      "differential_oracle": "provenance roots",
+      "differential_oracle": "xax_build.build's artifact and provenance envelope, byte for byte (tests/test_xax_selfhost_general_build.py)",
       "fixed_point_relevance": "generation identity records",
       "runtime_relevance": "none",
-      "recommended_step": "S13"
+      "recommended_step": "S13a (EXECUTED for Linux x86-64)"
     },
     "build-package-resolution": {
       "python_authority": "xax_build",
-      "xax_hosted": null,
+      "xax_hosted": "reading a resolved snapshot (S13a, ADR-281): the snapshot root, its request, the package's build entry, the target, external inputs, the trust policy, and the requested artifacts, with build's exact rejections; package resolution and snapshot formation (resolve_packages, snapshot_store) remain Python",
       "target_dependency": "none",
       "prerequisite": "S9",
       "differential_oracle": "build roots and closures",
       "fixed_point_relevance": "the compiler's own package closure",
       "runtime_relevance": "none",
-      "recommended_step": "S13"
+      "recommended_step": "S13c (resolution and snapshot formation)"
     },
     "platform-contracts": {
       "python_authority": "xax_platform",

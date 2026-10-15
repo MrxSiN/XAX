@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S13 and later steps are open (ADR-180, ADR-280)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S13b and later steps are open (ADR-180, ADR-281)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,6 +186,16 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S13a build requests and provenance — 2026-10-15 (ADR-281)
+
+- Done:
+  - `xax_selfhost_request.py`: `build_request` and `provenance`, in the S10e helper convention (input: the verifier's object table, `OBJAT` from `index_objects`; output: the workspace). Arguments and results are in control words `B_*` (32..43); the provenance envelope is at `ENVELOPE_AT` (`_END`), one byte per word; rejection records are at the workspace's `DIAG_AT`, which `from_work` copies to the driver's record.
+  - The general driver: argv[1] is `lower` or `build` (`NativeGeneralDriver.run` and `.build`). The views driver is untouched (keep every new `w.let` under `if general:`).
+  - `XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1` in `xax_artifact`.
+- Capacity: the driver function's graph body is 1,012,484 bytes; the graph decoder takes 1 MiB less 32. Logic added inline to the driver costs about 5 KB per `if`/`while`, because every construct carries all ~130 live values. Put new logic in helper functions; grow `xax_selfhost_graph.BODY_EXTENT` (and regenerate the decoder, both drivers, and their evidence) before S13b.
+- Pitfall: Python evaluates `e.add(p["cur"], r.uleb())` left to right, so the cursor is read before the ULEB moves it. Bind the ULEB first.
+- Next: S13b (`verify`, `inspect`), then S13c (resolution and snapshot formation with the S9 writer), then S14.
+
 ## S12 complete: S12f.4 — 2026-10-15 (ADR-280)
 
 - Done:
@@ -194,7 +204,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - Exact frame rejections: `value_reject`, `width_reject` (rotation amount in slot 243), and `fixed_reject` for links and rebases.
   - `xax_selfhost_store.DATA_EXTENT` is 32 MiB.
 - Order matters for exactness: the bootstrap's `_arithmetic` and `_rotate_right_immediate` fail after the operand loads (a missing slot fails first), while division checks the width first.
-- Next: S13. S14's negative equivalence should take up ADR-280's list of declined rules.
+- Next: S13. S14's negative equivalence should take up ADR-280's list of declined rules. S13a: see above.
 
 ## S12f.3 atomics and by-reference aggregates — 2026-10-15 (ADR-279)
 
