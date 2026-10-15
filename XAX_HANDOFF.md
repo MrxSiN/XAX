@@ -186,6 +186,18 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b room for the compiler's image — 2026-10-15 (ADR-291)
+
+- Done:
+  - `IMAGE_CAP` in `xax_selfhost_general_image.py` is now 12 MiB. At 16 MiB the arena left too little room, and the compiler could not rebuild itself.
+  - The general program store, both drivers, and the request store are regenerated.
+  - The seed is rotated; `SEED_SHA256` and `SEED_SIZE` are updated.
+- Diagnosis, for the next capacity step:
+  - The seed's `build` exit 2 came from the general program declining to assemble.
+  - To find which check declines, use a debug copy of `xax_selfhost_views_backend._ok` that records its call site in output word 3.
+  - Order matters: change the capacity alone, regenerate, check that the old seed still builds the request, then `rotate-seed`. Only after that land the work that grows the compiler.
+- Next: S15b.3.
+
 ## S15b.1-S15b.2 exact object, type, and constant rejections — 2026-10-15 (ADR-288, ADR-289)
 
 - Done:
@@ -197,7 +209,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - `bench_full_selfhost` records verification rejections with the bootstrap's diagnostic (`bootstrap_diagnostic`), and the B1/B3 derivation uses them.
 - Layout: the bank is at verifier output words 7M–11M. The plan is at 11M. The driver keeps typing records, the plan, and the outcome's record at workspace words 32M–35M; type scratch is at 35M.
 - Writing records in XAX: write through the `put`/`cid` functions (`R.Writer`), not inline stores. Inline writes made the verifier 4.7 MB and pushed the driver past its own verification capacity.
-- Next: S15b.3.
+- Next: S15b.3 (image capacity: see above).
   - The typing program holds every graph decision and the type CIDs (the facts section). Give it a final function that computes `_parse_graph`'s outcome in its order and renders the deciding record, as the verifier's plan does for objects. That order is: pass 1 over `order` (memory reject at the node, typing proven/rejected/unproven), the terminator (memory reject at the terminator, typing terminator records), later passes, then linear flow.
   - In the driver: the CFG branch target needs only rendering (`GRAPH-BRANCH-TARGET`, `< blocks`, the target). Invalid uses must decline: Python re-types the graph trimmed at each invalid use.
   - Constants and types reached inside a graph's parse (a constant node naming a malformed constant) currently decline.

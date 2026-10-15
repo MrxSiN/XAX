@@ -2761,3 +2761,12 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Rationale | `_verify_type` and constant decoding raise these diagnostics at the object's turn in `verify_store`; the typing program already decided them and recorded the values they quote. |
 | Evidence | EXECUTED on Linux x86-64. `tests/test_xax_selfhost_verify_exact.py::test_types_and_constants` covers random types of every form and constants, mutated, through the general driver's `verify`. Every rejection equals `verify_store`'s diagnostic, dependencies and repair included. `tests/test_xax_selfhost_driver.py::test_type_and_graph_rejections` covers malformed constants through the views driver. |
 | Limits | A type rejected only through another type's decoder (`object_cross`), or reached inside a graph's parse, is part of S15b.3. |
+
+## ADR-291 — The general program's image holds 12 MiB; the seed rotated to carry it
+
+| Field | Record |
+|---|---|
+| Decision | The general x86-64 program's image buffers (`IMAGE_CAP`: the code and the ELF container, one byte per word in its arena) grow from 8 MiB to 12 MiB. The compiler's own image is about to pass 8 MiB as S15b's renderers join the typing program. The seed was rotated deliberately: the S15b.0 seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. |
+| Rationale | With S15b.3's outcome functions, the driver's image no longer fit. The program then declined to assemble the compiler, so the seed declined `build`. As in S15b.0, the capacity goes in alone, while the old seed can still build it. 16 MiB was tried first: the compiler built that way could not rebuild itself, because its two 16M-word buffers left too little arena for the largest function's scratch. |
+| Evidence | EXECUTED on Linux x86-64. The old seed resolved and built the new request. `rotate-seed` wrote the new seed, whose `selfbuild.sh` run gives two identical compilers. `tests/test_python_free_seed.py` and `tests/test_store_regeneration.py` pass. |
+| Limits | The arena keeps about 48M words for the largest function's scratch. A compiler image beyond 12 MiB declines, and would need another rotation. |
