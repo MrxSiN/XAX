@@ -186,6 +186,19 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
+
+- Done:
+  - In `xax_selfhost_semantic`: `trim`, with the `B_TRAP` and `CUT` regions; `C_USES`.
+  - In the driver: `invalid_uses`; the trimmed verdict and `render_use`.
+  - In the outcome: `O_POS` and `O_MODE`.
+  - `tests/test_xax_selfhost_verify_exact.py::test_uses`.
+- Workspace: `INV_AT` (36M words) holds the first use, the use block's dominators (at most 1024 words), the native order, and the positions.
+- Next: S15b.3d.
+  - The memory sites that quote decoded declarations (FOREIGN_*, LEND, TARGET_DEFINED/SCOPE_SUPPORTED/SPACES, INDIRECT_BOUNDED_CONTRACT).
+  - Stack-owner entries.
+  - Constants and types reached inside a graph's parse.
+
 ## S15b.4 exact code generation rejections — 2026-10-15 (ADR-294)
 
 - Done:
@@ -195,7 +208,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - `tests/test_xax_selfhost_general_rejects.py`.
 - Finding reachable rules: build a verified program, then compare `compile_linux_executable(frontend="python")` with `general_with_xax`. Its `image` is None when a function's code was declined.
 - Memory: a 2 GiB-frame program runs fine alone, but run probes under `ulimit -v` (an unbounded run once took the container down).
-- Next: S15b.3c (invalid uses, declaration-decoding memory sites, constants inside a graph's parse). Then the evidence re-run.
+- Next: S15b.3c (invalid uses, declaration-decoding memory sites, constants inside a graph's parse). Then the evidence re-run. S15b.3c: see above.
 
 ## S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
 

@@ -11,6 +11,8 @@ rendered keep the driver's own record (``XAX.DRIVER.VERIFY``); a decline makes n
 * Types and constants: ``test_xax_selfhost_objects``'s random types of every form and constants, mutated, in a module.
 * Graphs (S15b.3, ADR-292): ``test_xax_selfhost_typing``'s one-node graphs of every covered operation and
   ``test_xax_selfhost_linear``'s resource programs with their mutations, as function stores.
+* Invalid uses (S15b.3c, ADR-295): the same programs with one operand pointed at a value that does not exist or does not
+  dominate its use, and ``test_xax_selfhost_s8_graphs``'s use variants.
 * Memory facts (S15b.3b, ADR-293): ``test_xax_selfhost_facts``'s stack and view programs with their mutations and its
   typed-access, heap-view, atomic, record/link, and address variants.
 """
@@ -188,6 +190,54 @@ class VerifyExactTests(unittest.TestCase):
                 continue
             with self.subTest(program=index):
                 self.check(reader, tally)
+        self.assertGreater(tally["exact"], 40, tally)
+
+    def test_uses(self):
+        import dataclasses
+        from unittest import mock
+
+        import test_xax_selfhost_facts as F
+        import test_xax_selfhost_s8_graphs as S8
+        from test_xax_selfhost_linear import MUTATIONS, _program
+        from xax_compiler import ValueRef
+        from xax_graph_builder import GraphBuilder
+
+        rng = random.Random(295)
+        build = GraphBuilder.function
+
+        def mutated(graph, parameters, returns):
+            """One node's operand pointed at an invalid value (a missing block, parameter, node, or result; a later
+            node of its block; a value of another block)."""
+            nodes = [(block, n) for block in graph.blocks for n, node in enumerate(block.nodes) if node.operands]
+            if nodes:
+                block, n = rng.choice(nodes)
+                node = block.nodes[n]
+                k = rng.randrange(len(node.operands))
+                choices = [ValueRef.parameter(len(graph.blocks) + 2, 0), ValueRef.parameter(block.index, len(block.parameter_types) + 1),
+                           ValueRef.node_result(block.index, len(block.nodes) + 3, 0), ValueRef.node_result(block.index, n, 0)]
+                if n + 1 < len(block.nodes):
+                    choices.append(ValueRef.node_result(block.index, n + 1, 0))
+                choices += [ValueRef.node_result(other.index, 0, 0) for other in graph.blocks if other is not block and other.nodes]
+                operands = list(node.operands)
+                operands[k] = rng.choice(choices)
+                block.nodes[n] = dataclasses.replace(node, operands=tuple(operands))
+            return build(graph, parameters, returns)
+
+        programs = [S8._use(variant) for variant in S8.USES if variant != "target"]
+        trials = int(os.environ.get("XAX_VERIFY_EXACT_TRIALS", "240"))
+        with mock.patch.object(GraphBuilder, "function", mutated):
+            programs += [_program(rng, MUTATIONS[trial % len(MUTATIONS)]) for trial in range(trials // 4)]
+            programs += [F._program(rng, F.MUTATIONS[trial % len(F.MUTATIONS)]) for trial in range(trials // 4)]
+            programs += [F._view_program(rng, F.VIEW_MUTATIONS[trial % len(F.VIEW_MUTATIONS)]) for trial in range(trials // 8)]
+        tally = dict.fromkeys(("accepted", "exact", "driver_record", "declined", "host_error"), 0)
+        for index, (function, objects) in enumerate(programs):
+            try:
+                reader = self.stored(function, objects)
+            except (XaxError, ValueError, KeyError):
+                continue
+            with self.subTest(program=index):
+                self.check(reader, tally)
+        self.assertEqual(tally["driver_record"], 0, tally)
         self.assertGreater(tally["exact"], 40, tally)
 
 

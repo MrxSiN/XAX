@@ -38,6 +38,11 @@ from xax_selfhost_facts import (
 
 OUTCOME_AT = T.DIAGNOSTICS - (1 << 23)
 O_STATUS, O_CURSOR, O_ENTITY, O_BAD = range(4)
+# S15b.3c (ADR-295): where in the first pass the outcome was decided (``order position << 32 | node``; a terminator's
+# node is the block's node count; ``POS_LATE`` after the first pass), and the mode the driver sets before the typing
+# program runs: 1 for a graph trimmed at its invalid uses, whose first pass the bootstrap runs node by node.
+O_POS, O_MODE = 4, 5
+POS_LATE = 1 << 63
 RECORD_AT, RECORD_END = OUTCOME_AT + 8, OUTCOME_AT + (1 << 21)
 ARRAYS_AT, ARRAYS_END = OUTCOME_AT + (1 << 21), OUTCOME_AT + (6 << 20)  # the shape's arrays (below the terminator records)
 G_ACCEPT, G_REJECT, G_DECLINE = 0, 1, 2
@@ -1075,6 +1080,8 @@ def _outcome(tables):
         w = _writer(e)
         c = _Context(e, w)
         e.st(OUTCOME_AT + O_STATUS, G_DECLINE)
+        e.var("here", 0)  # the first pass's position (``O_POS``)
+        e.st(OUTCOME_AT + O_POS, 0)
         e.var("keys", e.rd(e.ld(T.PASS_NODES_AT)))
         shape = _Shape(e)
         blocks, entry = p["sh_blocks"], p["sh_entry"]
@@ -1085,6 +1092,7 @@ def _outcome(tables):
 
         def decide(status):
             e.set("term", status)
+            e.st(OUTCOME_AT + O_POS, p["here"])
 
         def reject(write):
             """``write()`` gives 1 when it wrote the record, else the outcome is a decline."""
@@ -1099,6 +1107,7 @@ def _outcome(tables):
         fact_free = e.both(e.eq(e.ld(e.add(p["verdicts"], blocks)), 1), e.eq(p["proven"], p["sh_nodes"]), e.ne(p["terms_proven"], 0))
         engine = e.eq(e.hd(H_STATUS), ACCEPTED)
         e.var("skip", e.flag(e.either(fact_free, e.both(engine, e.ne(p["terms_proven"], 0)))))
+        e.if_(e.ne(e.ld(OUTCOME_AT + O_MODE), 0), lambda: e.set("skip", 0))  # a trimmed graph: the bootstrap's passes run
         e.var("memory", e.hd(H_REJECT))  # the engine's rejection site (0: none)
         at = lambda pass_, block_, node_: e.both(e.ne(p["memory"], 0), e.eq(e.hd(H_RPASS), pass_), e.eq(e.hd(H_RBLOCK), block_),  # noqa: E731
                                                  e.eq(e.hd(H_RNODE), node_))
@@ -1121,6 +1130,7 @@ def _outcome(tables):
             def block():
                 b = e.rd(e.add(p["sh_order"], p["po"]))
                 e.var("pb", b)
+                e.set("here", e.mul(p["po"], 1 << 32))
 
                 def stack_entry():
                     e.var("se_pos", shape.word("bpos", p["pb"]))
@@ -1130,6 +1140,7 @@ def _outcome(tables):
                 e.if_(e.eq(p["pb"], entry), stack_entry)
 
                 def node():
+                    e.set("here", e.add(e.mul(p["po"], 1 << 32), p["pn"]))
                     pos = shape.node_pos(p["pb"], p["pn"])
                     e.var("np", pos)
                     e.var("nop", e.rd(p["np"]))
@@ -1163,6 +1174,7 @@ def _outcome(tables):
                 e.for_("pn", 0, shape.word("bnodes", p["pb"]), lambda: e.if_(e.eq(p["term"], NONE), node))
 
                 def terminator():
+                    e.set("here", e.add(e.mul(p["po"], 1 << 32), shape.word("bnodes", p["pb"])))
                     e.if_(at(1, p["pb"], shape.word("bnodes", p["pb"])), memory)  # a stack-owner entry's late ones decline above
                     record = e.ld(e.sub(T.TERMINATOR_RECORDS, e.mul(p["pb"], 4)))
 
@@ -1177,11 +1189,12 @@ def _outcome(tables):
                 e.if_(e.eq(p["term"], NONE), terminator)
 
             e.for_("po", 0, blocks, lambda: e.if_(e.eq(p["term"], NONE), block))
+            e.set("here", POS_LATE)
             # Past the first pass: the engine's rejection in a later pass, else every check held (later passes
             # repeat them) and linear flow decides.
             e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["memory"], 0), memory, linear))
 
-        e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["skip"], 0), linear, passes))
+        e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["skip"], 0), lambda: (e.set("here", POS_LATE), linear()), passes))
         e.st(OUTCOME_AT + O_STATUS, e.sel(e.eq(p["term"], NONE), G_DECLINE, p["term"]))
         e.give(0)
     return _function((), build, tables)

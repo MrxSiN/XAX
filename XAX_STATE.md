@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
+
+A graph that uses a value that does not exist, or that does not dominate its use, is now rejected with the bootstrap's own diagnostic. Any earlier check the bootstrap's first pass makes comes first, and the compiler no longer writes a record of its own for any verification rejection. What still declines: memory rejections that quote a foreign, lend, target-operation or bounded indirect-call declaration; a stack-owner entry's contract; and a constant or type the bootstrap first reaches inside a graph. B1 does not hold yet. Next: S15b.3d.
+
 ## S15b.4 exact code generation rejections — 2026-10-15 (ADR-294)
 
-The production compiler now rejects with the bootstrap's own diagnostic where it reaches the bootstrap's code generation failures on malformed or extreme inputs. These include unencodable stack offsets, malformed syscall names, foreign calls of other ABIs, startup reads of other names, a call with two machine results, wrong pointer widths, and one symbol imported from two libraries. Every such program a test builds is the bootstrap's exact rejection. Rules no verified program reaches are recorded as such. B1 still waits on S15b.3c, a graph's invalid uses. Next: S15b.3c.
+The production compiler now rejects with the bootstrap's own diagnostic where it reaches the bootstrap's code generation failures on malformed or extreme inputs. These include unencodable stack offsets, malformed syscall names, foreign calls of other ABIs, startup reads of other names, a call with two machine results, wrong pointer widths, and one symbol imported from two libraries. Every such program a test builds is the bootstrap's exact rejection. Rules no verified program reaches are recorded as such. B1 still waits on S15b.3c, a graph's invalid uses. Next: S15b.3c. S15b.3c: see above.
 
 ## S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
 

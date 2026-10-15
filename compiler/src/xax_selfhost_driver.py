@@ -79,6 +79,13 @@ LOWER, BUILD, VERIFY, INSPECT, RESOLVE = 0, 1, 2, 3, 4  # (S13c, ADR-283: ``reso
 COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2}
 DONE = 5  # internal status: ``verify``, ``inspect``, or ``resolve`` finished; the process exits with IMAGE
 INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words (nothing is lowered)
+# S15b.3c (ADR-295): a graph with an invalid use, in the workspace: the mode (1: trimmed), the first invalid use in the
+# bootstrap's first pass (its code, use block and node, value tag/block/index/result, the use block's order position,
+# the dominator bitset width), the use block's dominators, the native block order, and each block's position in it.
+INV_AT = 36 << 20
+I_MODE, I_CODE, I_UB, I_UN, I_TAG, I_VB, I_VI, I_VR, I_POS, I_W = range(10)
+I_DOMS, I_ORDER = INV_AT + 64, INV_AT + 2048
+I_POSITION = I_ORDER + (1 << 16)
 ARGUMENTS_EXTENT = 4096
 CHUNK = 1 << 16
 from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
@@ -665,6 +672,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                                                                            w.set(q, w.add(w[q], 1))))
 
         def run():
+            w.st(RG.OUTCOME_AT + RG.O_MODE, work_word(INV_AT + I_MODE))  # S15b.3c: a trimmed graph's first pass runs whole
             results = proc.op(Operation.CALL_DIRECT, (*w.triple("table", w.narrowed("table", in_pointer)), *w.triple("image")), VIEW_TYPES,
                               entity=typing_program)
             w.take("table", results[:3])
@@ -898,7 +906,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 helper("parse_graph")
                 when(lambda: helper("cfg_input"))
 
-                def cfg():
+                set_work(INV_AT + I_MODE, 0)
+
+                def run_cfg():
+                    """The CFG program over the workspace's CFG input."""
                     count = w.let("c_count", work_word(SM.CTRL + SM.C_CFG_LENGTH))
                     q = w.let("q", 0)
                     w.while_(lambda: w.lt(w[q], w[count]), lambda: (w.store("cfgin", w.mul(w[q], 8), work_word(w.add(SM.CFG_AT, w[q])), 8), w.set(q, w.add(w[q], 1))))
@@ -906,6 +917,92 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                                       (in_pointer, CF.IN_VIEW, MEM, CF.OUT_POINTER, CF.OUT_VIEW, MEM), entity=cfg_program)
                     w.take("cfgin", results[:3])
                     w.take("cfgout", results[3:])
+
+                def cfg_word(index):
+                    return w.load("cfgout", w.mul(index, 8), 8)
+
+                def use_codes_at():
+                    """The CFG output's use codes (``NativeCfg.analyze``'s layout)."""
+                    n, width = work_word(SM.CTRL + SM.C_BLOCKS), cfg_word(1)
+                    return w.add(w.add(w.add(67 + CF.IN_WORDS, w.mul(n, 11)), w.mul(n, width)), width)
+
+                def each_invalid_use(body):
+                    """``body(use word position)`` for each use the CFG program found invalid, in use order."""
+                    uses_at = w.let("iu_uses", w.add(SM.CFG_AT, work_word(SM.CTRL + SM.C_USES)))
+                    codes_at = w.let("iu_codes", use_codes_at())
+                    k = w.let("iu_k", 0)
+
+                    def step():
+                        w.if_(w.ne(cfg_word(w.add(w[codes_at], w[k])), 0), lambda: body(w.add(w.add(w[uses_at], 1), w.mul(w[k], 6)), cfg_word(w.add(w[codes_at], w[k]))))
+                        w.set(k, w.add(w[k], 1))
+
+                    w.while_(lambda: w.lt(w[k], work_word(w[uses_at])), step)
+
+                def invalid_uses():
+                    """S15b.3c (ADR-295): ``_parse_graph`` with an invalid use.  The bootstrap's first pass reaches the
+                    first one in its order and raises its diagnostic, unless a check before it fails first; XAX decides
+                    those checks over the graph trimmed at each invalid use (until every remaining use is valid)."""
+                    n = w.let("iu_n", work_word(SM.CTRL + SM.C_BLOCKS))
+                    k = w.let("iu_o", 0)
+                    w.while_(lambda: w.lt(w[k], w[n]), lambda: (set_work(w.add(I_ORDER, w[k]), cfg_word(w.add(3, w[k]))),
+                                                              set_work(w.add(I_POSITION, cfg_word(w.add(3, w[k]))), w[k]), w.set(k, w.add(w[k], 1))))
+                    best = w.let("iu_best", 1 << 63)  # no use yet
+
+                    def first(at, code):
+                        ub, un = work_word(at), work_word(w.add(at, 1))
+                        key = w.let("iu_key", w.add(w.mul(work_word(w.add(I_POSITION, ub)), 1 << 32), un))
+
+                        def keep():
+                            w.set(best, w[key])
+                            set_work(INV_AT + I_CODE, code)
+                            for field, offset in ((I_UB, 0), (I_UN, 1), (I_TAG, 2), (I_VB, 3), (I_VI, 4), (I_VR, 5)):
+                                set_work(INV_AT + field, work_word(w.add(at, offset)))
+
+                        w.if_(w.lt(w[key], w[best]), keep)
+
+                    each_invalid_use(first)
+                    ub = w.let("iu_ub", work_word(INV_AT + I_UB))
+                    set_work(INV_AT + I_POS, work_word(w.add(I_POSITION, w[ub])))
+                    width = w.let("iu_width", cfg_word(1))
+                    set_work(INV_AT + I_W, w[width])
+                    w.if_(w.lt(1024, w[width]), lambda: stop(DECLINED))
+                    d = w.let("iu_d", 0)
+                    w.while_(lambda: w.both(w.lt(w[d], w[width]), running()), lambda: (
+                        set_work(w.add(I_DOMS, w[d]), cfg_word(w.add(w.add(w.add(3, w[n]), w.mul(w[ub], w[width])), w[d]))), w.set(d, w.add(w[d], 1))))
+                    set_work(INV_AT + I_MODE, 1)
+                    # The first use's node checks its operation code before its operands (GRAPH-OP-SUPPORTED): declined.
+                    un = w.let("iu_un", work_word(INV_AT + I_UN))
+                    known = lambda op: w.both(w.le(1, op), w.le(op, max(int(item) for item in Operation)))  # noqa: E731
+                    w.if_(w.lt(w[un], blk(w[ub], SM.B_COUNT)), lambda: w.if_(
+                        w.not_(known(work_word(w.add(SM.NODE, w.add(w.mul(w.add(blk(w[ub], SM.B_FIRST), w[un]), SM.NODE_WORDS), SM.N_OP))))),
+                        lambda: stop(DECLINED)))
+                    # Trim each block at its first invalid use until every use is valid (``trimmed``).
+                    valid = w.let("iu_valid", 0)
+                    rounds = w.let("iu_rounds", 0)
+
+                    def cut(at, _code):
+                        b, node = work_word(at), work_word(w.add(at, 1))
+                        current = work_word(w.add(SM.CUT, b))
+                        w.if_(w.either(w.eq(current, FA.NONE), w.lt(node, current)), lambda: set_work(w.add(SM.CUT, b), node))
+
+                    def trim_round():
+                        each_invalid_use(cut)
+                        helper("trim")
+                        when(lambda: helper("cfg_input"))
+                        when(run_cfg)
+                        w.if_(w.ne(cfg_word(0), CF.ACCEPT), lambda: stop(DECLINED))
+                        w.set(valid, cfg_word(2))
+                        w.set(rounds, w.add(w[rounds], 1))
+
+                    w.while_(lambda: w.both(running(), w.eq(w[valid], 0), w.le(w[rounds], w[n])), trim_round)
+                    w.if_(w.eq(w[valid], 0), lambda: stop(DECLINED))
+                    # ``trimmed_order[:first] == native_order[:first]`` (positions before the first use's block).
+                    q = w.let("iu_q", 0)
+                    w.while_(lambda: w.lt(w[q], work_word(INV_AT + I_POS)), lambda: (
+                        w.if_(w.ne(cfg_word(w.add(3, w[q])), work_word(w.add(I_ORDER, w[q]))), lambda: stop(DECLINED)), w.set(q, w.add(w[q], 1))))
+
+                def cfg():
+                    run_cfg()
                     status_word = w.let("c_status", w.load("cfgout", 0, 8))
                     def branch_target():
                         """S15b.3 (ADR-292): ``GRAPH-BRANCH-TARGET``, the first branch target out of range."""
@@ -922,7 +1019,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
                     w.if_(w.eq(w[status_word], CF.REJECT), branch_target, lambda: w.if_(
                         w.ne(w[status_word], CF.ACCEPT), lambda: stop(DECLINED), lambda: w.if_(
-                            w.eq(w.load("cfgout", 16, 8), 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-USE", 0))))
+                            w.eq(w.load("cfgout", 16, 8), 0), invalid_uses)))
 
                     def order():
                         blocks = w.let("c_blocks", work_word(SM.CTRL + SM.C_BLOCKS))
@@ -952,7 +1049,60 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                         w.while_(lambda: w.lt(w[q], w[end]), lambda: (D.put(w, w.ld(w[q])), w.set(q, w.add(w[q], 1))))
                         stop(REJECTED)
 
-                    w.if_(w.eq(w[status], RG.G_REJECT), rejected, lambda: w.if_(w.ne(w[status], RG.G_ACCEPT), lambda: stop(DECLINED)))
+                    def render_use():
+                        """``value_type``'s diagnostic for the first invalid use (the CFG program's code)."""
+                        code = w.let("ru_code", work_word(INV_AT + I_CODE))
+                        vb, vi, vr = (work_word(INV_AT + field) for field in (I_VB, I_VI, I_VR))
+                        D.begin(w)
+                        w.if_(w.eq(w[code], 1), lambda: D.text(w, "XAX.STRUCT.VALUE_BLOCK"), lambda: w.if_(
+                            w.le(w[code], 3), lambda: D.text(w, "XAX.STRUCT.VALUE_INDEX"), lambda: D.text(w, "XAX.STRUCT.SSA_DOMINANCE")))
+                        D.cid(w, [w.cid_word("data", record_word(w[o], 2), word) for word in range(4)])
+                        w.if_(w.le(w[code], 3), lambda: D.text(w, "GRAPH-VALUE-DEFINED"), lambda: D.text(w, "GRAPH-SSA-DOMINANCE"))
+
+                        def less_than(bound):
+                            D.put(w, D.T_FORMAT)
+                            D.text(w, "< {}")
+                            D.put(w, 1)
+                            D.integer(w, bound)
+
+                        def dominators():
+                            """``sorted(dominators[use_block])``: the saved bitset's blocks, ascending."""
+                            n = w.let("ru_n", work_word(SM.CTRL + SM.C_BLOCKS))
+
+                            def each(emit):
+                                b, mask = w.let("ru_b", 0), w.let("ru_mask", 1)
+
+                                def step():
+                                    w.if_(w.ne(w.and_(work_word(w.add(I_DOMS, w.udiv(w[b], 64))), w[mask]), 0), lambda: emit(w[b]))
+                                    w.set(mask, w.sel(w.eq(w.and_(w[b], 63), 63), 1, w.mul(w[mask], 2)))
+                                    w.set(b, w.add(w[b], 1))
+
+                                w.while_(lambda: w.lt(w[b], w[n]), step)
+
+                            total = w.let("ru_count", 0)
+                            each(lambda _b: w.set(total, w.add(w[total], 1)))
+                            D.put(w, D.T_LIST)
+                            D.put(w, w[total])
+                            each(lambda b: D.integer(w, b))
+
+                        w.if_(w.eq(w[code], 1), lambda: (less_than(work_word(SM.CTRL + SM.C_BLOCKS)), D.integer(w, vb)))
+                        w.if_(w.eq(w[code], 2), lambda: (less_than(blk(vb, SM.B_PARAMS)), D.integer(w, vi)))
+                        w.if_(w.eq(w[code], 3), lambda: (D.text(w, "existing node result"), D.put(w, D.T_LIST), D.put(w, 2), D.integer(w, vi), D.integer(w, vr)))
+                        w.if_(w.eq(w[code], 4), lambda: (D.put(w, D.T_FORMAT), D.text(w, "node < {}"), D.put(w, 1), D.integer(w, work_word(INV_AT + I_UN)),
+                                                         D.integer(w, vi)))
+                        w.if_(w.eq(w[code], 5), lambda: (dominators(), D.integer(w, vb)))
+                        stop(REJECTED)
+
+                    def trimmed():
+                        """S15b.3c: the trimmed graph's outcome counts only before the first invalid use (decided there,
+                        its own checks may differ: declined); after it, the bootstrap reached the use."""
+                        here = w.let("g_here", w.ld(RG.OUTCOME_AT + RG.O_POS))
+                        first = w.let("g_first", w.add(w.mul(work_word(INV_AT + I_POS), 1 << 32), work_word(INV_AT + I_UN)))
+                        w.if_(w.both(w.eq(w[status], RG.G_REJECT), w.lt(w[here], w[first])), rejected, lambda: w.if_(
+                            w.either(w.eq(w[status], RG.G_ACCEPT), w.lt(w[first], w[here])), render_use, lambda: stop(DECLINED)))
+
+                    w.if_(w.ne(work_word(INV_AT + I_MODE), 0), trimmed, lambda: w.if_(w.eq(w[status], RG.G_REJECT), rejected, lambda: w.if_(
+                        w.ne(w[status], RG.G_ACCEPT), lambda: stop(DECLINED))))
 
                 when(verdicts)
                 if general:

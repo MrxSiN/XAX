@@ -15,13 +15,13 @@ function has no machine arguments and a host test can call it alone.  A capacity
 
 from __future__ import annotations
 
-from xax_compiler import Kind, Operation
+from xax_compiler import Kind, Operation, TerminatorKind
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_typing import ATTRIBUTE_LIMIT, COVERED, PADDING
 
 # -- the workspace (64-bit words of the output view) ------------------------------------------------------------------
 MAX_OBJECTS, MAX_ENTRIES, MAX_BLOCKS, MAX_NODES, MAX_VALUES = 1 << 16, 1 << 16, 1 << 16, 1 << 19, 1 << 20
-BLOCK_WORDS, NODE_WORDS, ENTRY_WORDS = 6, 10, 4
+BLOCK_WORDS, NODE_WORDS, ENTRY_WORDS = 7, 10, 4
 
 
 def _layout():
@@ -29,7 +29,7 @@ def _layout():
                ("ARENA", 1 << 20), ("STACK", 2 * MAX_ENTRIES), ("BLK", BLOCK_WORDS * MAX_BLOCKS), ("NODE", NODE_WORDS * MAX_NODES),
                ("VT", MAX_VALUES), ("VNUM", MAX_VALUES), ("ORDER", MAX_BLOCKS), ("SITE", MAX_NODES), ("KEYIDX", MAX_NODES),
                ("EDGEBASE", MAX_BLOCKS), ("INCCOUNT", MAX_BLOCKS), ("INCAT", MAX_BLOCKS), ("INCLIST", 1 << 18), ("LINKS", 1 << 12),
-               ("SCRATCH", 1 << 14))
+               ("SCRATCH", 1 << 14), ("CUT", MAX_BLOCKS))
     at, table = 0, {}
     for name, size in regions:
         table[name] = at
@@ -47,7 +47,7 @@ assert _END <= MARSHAL_AT
 
 # Control words: status, the graph object, lengths and counts.
 (C_STATUS, C_GRAPH, C_LENGTH, C_ENTRIES, C_ARENA, C_BLOCKS, C_ENTRY, C_NODES, C_VALUES, C_KEYS, C_VCOUNT, C_CFG_LENGTH, C_OBJECTS,
- C_EDGES, C_KINDS, C_SP, C_TOP) = range(17)
+ C_EDGES, C_KINDS, C_SP, C_TOP, C_USES) = range(18)  # ``C_USES``: the CFG input's use count word (S15b.3c)
 OK, DECLINE = 0, 1
 MODE_OTHER, MODE_FULL, MODE_KIND = 0, 1, 2
 BODY_LIMIT, TARGET_BODY_LIMIT, NATIVE_TARGET_LIMIT = 64, 4096, 1 << 16  # ``type_info_from``
@@ -292,7 +292,8 @@ def _node(e: E, n, field: int):
     return e.ld(e.add(NODE, e.add(e.mul(n, NODE_WORDS), field)))
 
 
-B_PARAMS, B_TYPES, B_FIRST, B_COUNT, B_TERM, B_BASE = range(6)
+# ``B_TRAP``: S15b.3c (ADR-295), the block trimmed at an invalid use (its first ``B_COUNT`` nodes, then a trap).
+B_PARAMS, B_TYPES, B_FIRST, B_COUNT, B_TERM, B_BASE, B_TRAP = range(7)
 N_OP, N_ENTITY, N_OPS, N_NOPS, N_NRES, N_RES, N_ATTRS, N_NATTRS, N_BASE, N_BLOCK = range(10)
 
 
@@ -369,6 +370,8 @@ def _parse_graph(tables):
 
             e.for_("m", 0, p["nc"], node)
             put(BLK, p["b"], B_TERM, p["at"])
+            put(BLK, p["b"], B_TRAP, 0)
+            e.st(e.add(CUT, p["b"]), NONE)
             e.var("kind", e.rd(p["at"]))
             e.set("at", e.add(p["at"], 1))
 
@@ -417,7 +420,7 @@ def _terminator_parts(e: E, b, on_value, on_edge):
     value), ``on_edge(target, argument count, first argument at)`` for each edge, in stream order."""
     p = e.p
     e.var("tp", _blk(e, b, B_TERM))
-    e.var("tk", e.rd(p["tp"]))
+    e.var("tk", e.sel(e.ne(_blk(e, b, B_TRAP), 0), int(TerminatorKind.TRAP), e.rd(p["tp"])))  # a trimmed block ends in a trap
     e.set("tp", e.add(p["tp"], 1))
 
     def edge():
@@ -509,6 +512,7 @@ def _cfg_input(tables):
 
         e.for_("b", 0, p["B"], uses)
         e.if_(e.lt(p["uses_at"], end), lambda: e.st(p["uses_at"], p["uses"]))
+        _set_ctrl(e, C_USES, e.sub(p["uses_at"], CFG_AT))
         _set_ctrl(e, C_CFG_LENGTH, e.sub(p["cur"], CFG_AT))
         e.give(1)
     return _function((), build, tables)
@@ -1041,6 +1045,46 @@ def _graph_marshal(tables):
     return _function((), build, tables)
 
 
+def _trim(tables):
+    """S15b.3c (ADR-295): ``_parse_graph``'s graph trimmed at its invalid uses.  ``CUT[b]`` (NONE: none) keeps block
+    ``b``'s first nodes and ends it in a trap; the values are renumbered densely in block, node, and result order
+    (``_facts_section``'s ``refs`` of the trimmed blocks), their types moved with them."""
+    def build(e: E):
+        p = e.p
+        e.var("B", _ctrl(e, C_BLOCKS))
+        e.var("tv", 0)
+
+        def put(base, index, field: int, value):
+            e.st(e.add(base, e.add(e.mul(index, BLOCK_WORDS if base == BLK else NODE_WORDS), field)), value)
+
+        def move(old):
+            """Value ``old`` becomes value ``tv`` (never above it: the copy runs forward)."""
+            e.if_(e.lt(old, MAX_VALUES), lambda: e.st(e.add(VT, p["tv"]), e.ld(e.add(VT, old))))
+            e.set("tv", e.add(p["tv"], 1))
+
+        def block():
+            e.var("tc", e.ld(e.add(CUT, p["b"])))
+            e.if_(e.both(e.ne(p["tc"], NONE), e.lt(p["tc"], _blk(e, p["b"], B_COUNT))), lambda: put(BLK, p["b"], B_COUNT, p["tc"]))
+            e.if_(e.ne(p["tc"], NONE), lambda: put(BLK, p["b"], B_TRAP, 1))
+            e.var("tb", _blk(e, p["b"], B_BASE))
+            put(BLK, p["b"], B_BASE, p["tv"])
+            e.for_("tq", 0, _blk(e, p["b"], B_PARAMS), lambda: move(e.add(p["tb"], p["tq"])))
+
+            def node():
+                e.var("tn", e.add(_blk(e, p["b"], B_FIRST), p["tm"]))
+                e.var("tnb", _node(e, p["tn"], N_BASE))
+                put(NODE, p["tn"], N_BASE, p["tv"])
+                e.for_("tr", 0, _node(e, p["tn"], N_NRES), lambda: move(e.add(p["tnb"], p["tr"])))
+
+            e.for_("tm", 0, _blk(e, p["b"], B_COUNT), node)
+            e.st(e.add(CUT, p["b"]), NONE)
+
+        e.for_("b", 0, p["B"], block)
+        _set_ctrl(e, C_VALUES, p["tv"])
+        e.give(1)
+    return _function((), build, tables)
+
+
 def build_functions():
     """``{name: function}`` and the objects they need; ``type_index`` first (the marshals call it)."""
     objects: list = []
@@ -1054,6 +1098,6 @@ def build_functions():
 
     add("type_index", _type_index(None))
     for name, builder in (("index_objects", _index_objects), ("objects_marshal", _objects_marshal), ("parse_graph", _parse_graph),
-                          ("cfg_input", _cfg_input), ("graph_marshal", _graph_marshal)):
+                          ("cfg_input", _cfg_input), ("graph_marshal", _graph_marshal), ("trim", _trim)):
         add(name, builder(None))
     return dict(_FN), tuple(objects)
