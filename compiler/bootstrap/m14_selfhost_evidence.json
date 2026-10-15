@@ -20,7 +20,7 @@
       "B5": false,
       "B6": false,
       "blockers": {
-        "B1": "graph verification rejections (invalid uses, operation typing, terminators, memory facts, linear flow) are the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266); a graph decoder rejection behind an unproven type, and a missing reference first reached through another object's graph, decline (ADR-288); code generation rules on malformed or extreme inputs decline (ADR-280's list); 2 of 23 corpus verification rejections are not the bootstrap's exact diagnostic",
+        "B1": "a graph's invalid use is the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266); memory rejections that quote a decoded declaration or a stack-owner entry's contract, and a constant or type reached inside a graph's parse, decline (ADR-293); a graph decoder rejection behind an unproven type, and a missing reference first reached through another object's graph, decline (ADR-288); 2 of 23 corpus verification rejections are not the bootstrap's exact diagnostic",
         "B5": "package signature verification (no signature algorithm in the driver); external build inputs and build effects; profile capability grants; stores beyond the driver's capacities (32 MiB store, 32 MiB snapshot batch)",
         "B6": "compiler semantics are changed by editing Python builder modules (xax_selfhost_*.py) that regenerate the stores (S15)"
       },
