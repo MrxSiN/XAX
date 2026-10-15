@@ -535,6 +535,10 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | In progress (ADR-286): S15a EXECUTED |
 | S15a | A Python-free seed (SH8): the pinned XAX-built compiler and the compiler's request store rebuild the compiler with no Python reachable | S14 | EXECUTED (ADR-286): `bootstrap/seed/selfbuild.sh` under `PATH` of five tools; derived seed requires Python: no |
 | S15b | Exact rejections (B1): the driver's verification diagnostics, ADR-280's declined code generation rules | S14 | UNIMPLEMENTED |
+| S15b.1 | The driver's verification precedence becomes `verify_store`'s (objects in store order; the first failing check of the first failing object; the store's rootedness last), and the store verifier's object rejections (`OBJECT_SITES`, `object_diagnostic`, `object_entity`, the build/target/ULEB renderers) are rendered as exact records in XAX; other failures keep `XAX.DRIVER.VERIFY` | S15a | UNIMPLEMENTED |
+| S15b.2 | Type and constant rejections (`TYPE_SITES`, `CONSTANT_SITES`, `object_rejections`) rendered in XAX | S15b.1 | UNIMPLEMENTED |
+| S15b.3 | Graph rejections in `_parse_graph`'s order: resolution and glue (`GRAPH_TRAP_PAYLOAD`, `GRAPH_UNUSED`), CFG, operation typing (S8c.1-7), memory facts (`MEMORY_SITES`, `memory_diagnostic`), linear flow (`LINEAR_SITES`) | S15b.2 | UNIMPLEMENTED |
+| S15b.4 | ADR-280's declined code generation rules decided by the general program with exact diagnostics | S15b.1 | UNIMPLEMENTED |
 | S15c | The remaining required build paths (B5): signature verification, external inputs and effects, profile grants, capacities | S14 | UNIMPLEMENTED |
 | S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |
