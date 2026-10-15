@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S13c and later steps are open (ADR-180, ADR-282)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S14 and later steps are open (ADR-180, ADR-283)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,11 +186,17 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S13 complete: S13c package resolution — 2026-10-15 (ADR-283)
+
+- Done: `xax_selfhost_resolve.py` (`select`, `snapshot`; control words `R_*` 48..58; workspace regions `SELECTED_AT`, `STACK_AT`, `SNAPSHOT_AT` at 40M..43M words). The driver's `resolve` command, a `batch` buffer (16 MiB, the S9 writer's batch; `object` is the writer's buffer), and the writer in the general driver store. `NativeGeneralDriver.resolve`.
+- The input is a request store (root = the request). Oracle: `snapshot_store(resolve_packages(request, store objects + POLICY, POLICY, RESOLVER_IDENTITY), ...)`.
+- Next: S14. First, grow `xax_selfhost_writer`'s views (`IN_EXTENT`, `OUT_LIMIT`) beyond the general driver's own store (17.6 MB), regenerate the writer, the general driver, and their evidence. Then resolve and build the compiler's own package as C1 → C2 → C3, with identity records and ADR-280's declined rules in the negative equivalence.
+
 ## S13b verify and inspect — 2026-10-15 (ADR-282)
 
 - Done: `xax_selfhost_graph.BODY_EXTENT` is 2 MiB and `OUT_EXTENT` 32 MiB (decoder and both drivers regenerated). The general driver's commands are `COMMANDS` (name to file-argument count); `verify` and `inspect` stop after verification with the internal status `DONE`, which `done_out` turns into the output and exit status 0. `decode_inspection` renders `inspect`'s record; `NativeGeneralDriver.verify` and `.inspect`.
 - The driver's function body is 1,100,353 bytes of 2 MiB.
-- Next: S13c. Port `resolve_packages` (candidate selection by exact root and logical identity, the dependency closure, signatures) and `snapshot_store` (the reachable closure) as helper functions, and write the snapshot store with the S9 writer; a `resolve` command. Then S14.
+- Next: S13c. Port `resolve_packages` (candidate selection by exact root and logical identity, the dependency closure, signatures) and `snapshot_store` (the reachable closure) as helper functions, and write the snapshot store with the S9 writer; a `resolve` command. Then S14. S13c: see above.
 
 ## S13a build requests and provenance — 2026-10-15 (ADR-281)
 

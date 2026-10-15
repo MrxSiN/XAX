@@ -286,6 +286,10 @@
       "class": "G",
       "note": "Builder of the S13a build-request and provenance functions inside the general driver store (ADR-281)."
     },
+    "xax_selfhost_resolve.py": {
+      "class": "G",
+      "note": "Builder of the S13c package-resolution and snapshot functions inside the general driver store (ADR-283)."
+    },
     "xax_selfhost_diagnostics.py": {
       "class": "G",
       "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing."
@@ -615,13 +619,13 @@
     },
     "build-package-resolution": {
       "python_authority": "xax_build",
-      "xax_hosted": "reading a resolved snapshot (S13a, ADR-281): the snapshot root, its request, the package's build entry, the target, external inputs, the trust policy, and the requested artifacts, with build's exact rejections; package resolution and snapshot formation (resolve_packages, snapshot_store) remain Python",
+      "xax_hosted": "the general driver (xax_compiler_driver_general.xax): reading a resolved snapshot for build (S13a, ADR-281); resolve (S13c, ADR-283): package selection by exact root and logical identity with the exact RESOLVE-LOGICAL-IDENTITY rejections, the snapshot object (CID by the S2 hash), and the snapshot store written by the S9 writer, for a request store under the default trust policy; signature policies, external inputs, and profile grants remain Python",
       "target_dependency": "none",
       "prerequisite": "S9",
-      "differential_oracle": "build roots and closures",
+      "differential_oracle": "snapshot_store(resolve_packages(...)) bytes and xax_build.build's artifact and provenance (tests/test_xax_selfhost_general_resolve.py, test_xax_selfhost_general_build.py)",
       "fixed_point_relevance": "the compiler's own package closure",
       "runtime_relevance": "none",
-      "recommended_step": "S13c (resolution and snapshot formation)"
+      "recommended_step": "S13c (EXECUTED for Linux x86-64)"
     },
     "platform-contracts": {
       "python_authority": "xax_platform",

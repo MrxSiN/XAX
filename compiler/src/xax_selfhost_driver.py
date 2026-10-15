@@ -63,6 +63,8 @@ from xax_selfhost_facts import E
 from xax_structured import B64, Proc
 import xax_selfhost_diagnostics as D
 import xax_selfhost_request as RQ
+import xax_selfhost_resolve as RS
+import xax_selfhost_writer as WR
 
 STORE_PATH = bootstrap_dir() / "xax_compiler_driver.xax"
 GENERAL_STORE_PATH = bootstrap_dir() / "xax_compiler_driver_general.xax"  # S12e.2 (ADR-276)
@@ -70,9 +72,9 @@ GENERAL_IDENTITIES = RQ.GENERAL_IDENTITIES  # S12e.2: the Linux ELF profiles
 EXTENTS_EXTENT, TRAPS_EXTENT, MEMBERS_EXTENT = 1 << 25, 1 << 22, 1 << 22
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
 # The general driver's commands, argv[1] (S13a, ADR-281; S13b, ADR-282), with the file arguments each takes.
-LOWER, BUILD, VERIFY, INSPECT = 0, 1, 2, 3
-COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2}
-DONE = 4  # internal status: ``verify`` or ``inspect`` finished after verification; the process exits with IMAGE
+LOWER, BUILD, VERIFY, INSPECT, RESOLVE = 0, 1, 2, 3, 4  # (S13c, ADR-283: ``resolve``)
+COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2}
+DONE = 5  # internal status: ``verify``, ``inspect``, or ``resolve`` finished; the process exits with IMAGE
 INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words (nothing is lowered)
 ARGUMENTS_EXTENT = 4096
 CHUNK = 1 << 16
@@ -236,9 +238,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         buffers["extents"] = (backend_in_rw, EXTENTS_EXTENT, 8)
         buffers["traps"] = (backend_in_rw, TRAPS_EXTENT, 8)
         buffers["members"] = (backend_in_rw, MEMBERS_EXTENT, 8)  # the group member functions the store does not hold
+        buffers["batch"] = (bytes_rw, WR.IN_EXTENT, 1)  # S13c: the S9 writer's batch (``object`` is its buffer)
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
              "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp",
-             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp"}
+             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp"}
     views = {}
     for name in buffers:
         pointer_name = names[name]
@@ -389,6 +392,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         import xax_selfhost_x86_64_general as GEN
 
         general_reader, general_program = GEN.load_general_program()
+        writer_reader, writer = WR.load_writer_program()  # S13c
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
 
@@ -638,11 +642,13 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
     if general:
         requests, request_objects = RQ.build_functions()
+        resolvers, resolve_objects = RS.build_functions()
 
-        def request_helper(name: str):
-            """S13a: an ``xax_selfhost_request`` function over the object table and the workspace."""
+        def request_helper(name: str, functions=requests):
+            """S13a: an ``xax_selfhost_request`` (S13c: ``xax_selfhost_resolve``) function over the object table and the
+            workspace."""
             results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("work")),
-                              (B64, *VIEW_TYPES), entity=requests[name])
+                              (B64, *VIEW_TYPES), entity=functions[name])
             w.take("vtable", results[1:4])
             w.take("work", results[4:])
 
@@ -893,9 +899,6 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     when(store_verdicts)
     when(graph_verdicts)
     if general:
-        when(lambda: w.if_(w.le(VERIFY, w[mode]), lambda: stop(DONE)))  # S13b: ``verify`` and ``inspect`` end here
-
-    if general:
         # -- S13a (ADR-281): ``build``: the snapshot's request, read and checked by ``xax_selfhost_request`` ---------
         target, linux = w.let("target", 0), w.let("linux", 0)
 
@@ -915,6 +918,93 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.set(linux, 1)
 
         when(lambda: w.if_(w.eq(w[mode], BUILD), build_request))
+
+        # -- S13c (ADR-283): ``resolve``: the request store's packages selected, the snapshot store written ---------
+        resolved = w.let("resolved", 0)  # the snapshot store's length in ``object``
+
+        def batch_put(at: str, value):
+            w.store("batch", w[at], value, 8)
+            w.set(at, w.add(w[at], 8))
+
+        def batch_copy(at: str, source: str, source_at, count):
+            w.copy(source, source_at, "batch", w[at], count)
+            w.set(at, w.add(w[at], count))
+
+        def hash_preimage(count, cid_at: int):
+            """The S2 hash of the domain and ``object[domain:]``; the CID in ``argument[cid_at:]``."""
+            for k, byte in enumerate(SEMANTIC_DOMAIN):
+                w.store("object", k, byte)
+            hash_span("object", 0, w.add(len(SEMANTIC_DOMAIN), count))
+            digest_to("argument", cid_at)
+
+        def snapshot_store():
+            """The policy's CID (``argument[0:32]``), the snapshot's (``argument[32:64]``), the writer's batch: the
+            request store's objects, the policy, the snapshot; the store the S9 writer makes."""
+            for k, byte in enumerate(RS.POLICY_PREIMAGE):
+                w.store("object", len(SEMANTIC_DOMAIN) + k, byte)
+            hash_preimage(len(RS.POLICY_PREIMAGE), 0)
+            for k in range(4):
+                set_work(SM.CTRL + RS.R_POLICY + k, w.cid_word("argument", 0, k))
+            request_helper("snapshot", resolvers)
+            length = w.let("snapshot_length", work_word(SM.CTRL + RS.R_LENGTH))
+            w.if_(w.lt(RS.SNAPSHOT_LIMIT, w[length]), lambda: stop(DECLINED))
+
+            def batch():
+                q = w.let("s_q", 0)
+                w.while_(lambda: w.lt(w[q], w[length]), lambda: (
+                    w.store("object", w.add(len(SEMANTIC_DOMAIN), w[q]), work_word(w.add(RS.SNAPSHOT_AT, w[q]))), w.set(q, w.add(w[q], 1))))
+                hash_preimage(w[length], CID_SIZE)
+                at = w.let("b_at", 24)
+                batch_copy(at, "argument", CID_SIZE, CID_SIZE)  # the root: the snapshot
+                o = w.let("b_object", 0)
+
+                def each():
+                    count, size = w.let("b_refs", record_word(w[o], 5)), w.let("b_body", record_word(w[o], 8))
+                    w.if_(w.lt(WR.IN_EXTENT - 4096, w.add(w[at], w.add(w.mul(w[count], CID_SIZE), w[size]))), lambda: stop(DECLINED), lambda: (
+                        batch_put(at, record_word(w[o], 4)), batch_put(at, 1), batch_put(at, w[count]), batch_put(at, w[size]),
+                        batch_copy(at, "data", record_word(w[o], 2), CID_SIZE), batch_copy(at, "data", record_word(w[o], 6), w.mul(w[count], CID_SIZE)),
+                        batch_copy(at, "data", record_word(w[o], 7), w[size])))
+                    w.set(o, w.add(w[o], 1))
+
+                w.while_(lambda: w.both(w.lt(w[o], w[objects]), running()), each)
+
+                def tail():
+                    for value in (int(Kind.BUILD), 1, 0, len(RS.POLICY.body)):
+                        batch_put(at, value)
+                    batch_copy(at, "argument", 0, CID_SIZE)
+                    for byte in RS.POLICY.body:
+                        w.store("batch", w[at], byte)
+                        w.set(at, w.add(w[at], 1))
+                    references, body = (w.let(name, work_word(SM.CTRL + field)) for name, field in (("b_refs_at", RS.R_REFS_AT), ("b_body_at", RS.R_BODY_AT)))
+                    count, size = w.let("b_count", w.add(work_word(SM.CTRL + RS.R_PACKAGES), 2)), w.let("b_size", work_word(SM.CTRL + RS.R_BODY_LENGTH))
+                    for value in (int(Kind.BUILD), 1, w[count], w[size]):
+                        batch_put(at, value)
+                    batch_copy(at, "argument", CID_SIZE, CID_SIZE)
+                    batch_copy(at, "object", w.add(len(SEMANTIC_DOMAIN), w[references]), w.mul(w[count], CID_SIZE))
+                    batch_copy(at, "object", w.add(len(SEMANTIC_DOMAIN), w[body]), w[size])
+                    for field, value in enumerate((w.add(w[objects], 2), 0, w[at])):
+                        w.store("batch", 8 * field, value, 8)
+                    results = proc.op(Operation.CALL_DIRECT, (*w.triple("batch", w.narrowed("batch", WR.BATCH_POINTER)), *w.triple("object"),
+                                                              *w.triple("scratch"), w.c(WR.MODE_WRITE)), tuple(type_ for _name, type_ in WR.VIEWS),
+                                      entity=writer)
+                    w.take("batch", results[:3])
+                    w.take("object", results[3:6])
+                    w.take("scratch", results[6:])
+                    w.if_(w.ne(w.load("object", WR.STATUS_AT, 8), WR.ACCEPT), lambda: stop(DECLINED),
+                          lambda: w.set(resolved, w.load("object", WR.STATUS_AT + 24, 8)))
+
+                when(tail)
+
+            when(batch)
+
+        def resolve():
+            request_helper("select", resolvers)
+            outcome = w.let("select_outcome", work_word(SM.CTRL + RS.R_STATUS))
+            w.if_(w.eq(w[outcome], RS.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RS.ACCEPT), lambda: stop(DECLINED)))
+            when(snapshot_store)
+
+        when(lambda: w.if_(w.eq(w[mode], RESOLVE), resolve))
+        when(lambda: w.if_(w.le(VERIFY, w[mode]), lambda: stop(DONE)))  # S13b, S13c: these commands end here
 
     # -- the backend's object table (``xax_riscv64._object_table``) -----------------------------------------------
     words = w.let("words", 1 + 4)
@@ -1335,7 +1425,23 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 w.while_(lambda: w.lt(w[o], w[objects]), each)
                 emit(INSPECT_AT, w.mul(w.sub(w[n], INSPECT_AT), 8), path=1)
 
-            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: emit(INSPECT_AT, 0, path=1))
+            def resolved_store():
+                """S13c: the snapshot store, ``object[0:resolved]``."""
+                fd = open_path(1, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
+                done = w.let("r_done", 0)
+
+                def step():
+                    piece = w.let("r_piece", w.sel(w.lt(w.sub(w[resolved], w[done]), CHUNK), w.sub(w[resolved], w[done]), CHUNK))
+                    w.copy("object", w[done], "chunk", 0, w[piece])
+                    w.if_(w.eq(write_chunk(fd, w[piece]), 0), lambda: w.set(done, w[resolved]), lambda: w.set(done, w.add(w[done], w[piece])))
+
+                def write():
+                    w.while_(lambda: w.lt(w[done], w[resolved]), step)
+                    close(fd)
+
+                w.if_(w.ne(w[status], FAILED), write)
+
+            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: w.if_(w.eq(w[mode], RESOLVE), resolved_store, lambda: emit(INSPECT_AT, 0, path=1)))
             w.set(final, IMAGE)
 
         w.if_(w.eq(w[status], DONE), done_out)
@@ -1351,10 +1457,12 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     process = proc.op1(Operation.CALL_FOREIGN, (proc.op1(Operation.INT_TRUNCATE, (w[final],), B32), proc["process"]), PROCESS, entity=api.exit_group)
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
-    readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader, *((general_reader,) if general else ()))
+    readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader,
+               *((general_reader, writer_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
-    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *(request_objects if general else ()), *component_objects,
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *((*request_objects, *resolve_objects) if general else ()),
+                *component_objects,
                 *api.types, *startup.symbols, WRITE_RW)
     return program_store(function, x86_64_linux_exec_target(), objects_), function
 
@@ -1470,7 +1578,7 @@ class NativeDriver:
 class NativeGeneralDriver(NativeDriver):
     """S13a (ADR-281), S13b (ADR-282): the general driver as a Linux process.  Its first argument is the command:
     ``lower`` (a program store, a target package, the output), ``build`` (a build snapshot store, the artifact, its
-    provenance), ``verify`` or ``inspect`` (a store, the output)."""
+    provenance), ``verify`` or ``inspect`` (a store, the output), ``resolve`` (a request store, the snapshot store)."""
 
     def __init__(self, image=None) -> None:
         if image is None:
@@ -1496,6 +1604,10 @@ class NativeGeneralDriver(NativeDriver):
     def inspect(self, store_path: str | Path, output_path: str | Path) -> int:
         """S13b: on ``IMAGE`` the verified store's inspection record (``decode_inspection``)."""
         return self._process("inspect", store_path, output_path)
+
+    def resolve(self, request_path: str | Path, snapshot_path: str | Path) -> int:
+        """S13c: on ``IMAGE`` the snapshot store for the request store's request (``xax_selfhost_resolve``)."""
+        return self._process("resolve", request_path, snapshot_path)
 
 
 def decode_inspection(data: bytes) -> dict:
