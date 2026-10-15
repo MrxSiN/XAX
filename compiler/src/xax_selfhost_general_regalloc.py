@@ -1199,7 +1199,8 @@ def _folding(tables):
                 root = p["fo_root"]
                 in_tree = e.both(e.ne(p["fo_tab"], NONE), e.ne(e.ld(e.add(e.ld(e.add(e.sel(e.ne(p["fo_tab"], NONE), p["fo_tab"], 0), 3)), p["fo_m"])), 0))
                 skip = e.either(e.eq(_f(e, p["fo_node"], N_NRES), 0), e.ne(_rt(e, T_TABLE_ERASED, root), 0), e.eq(_width(e, root), 0), in_tree,
-                                e.not_(_in(e, _eop(e, p["fo_node"]), TABLE_OPERATIONS)))
+                                e.not_(_in(e, _eop(e, p["fo_node"]), TABLE_OPERATIONS)),
+                                e.eq(fused_at(p["fo_bi"]), p["fo_m"]))  # ADR-284: not the fused branch compare
 
                 def check():
                     e.var("fo_found", _call(e, "predicate_table", p["fo_bi"], root))
@@ -1571,8 +1572,6 @@ def _uses(tables):
         def block():
             e.var("us_b", _block_at(e, p["us_bi"]))
             e.var("us_stamp", _stamp(e))
-            e.var("us_values", e.alloc(e.add(p["us_n"], 1)))
-            _ok(e, e.ne(p["us_values"], NONE))
             e.var("us_count", 0)
 
             def count(value, _position):
@@ -1582,13 +1581,17 @@ def _uses(tables):
                     _set_rt(e, T_USTAMP, p["us_v"], p["us_stamp"])
                     _set_rt(e, T_UIDX, p["us_v"], p["us_count"])
                     _set_rt(e, T_UCOUNT, p["us_v"], 0)
-                    e.st(e.add(p["us_values"], p["us_count"]), p["us_v"])
                     e.set("us_count", e.add(p["us_count"], 1))
 
                 e.if_(e.ne(_rt(e, T_USTAMP, p["us_v"]), p["us_stamp"]), first)
                 _set_rt(e, T_UCOUNT, p["us_v"], e.add(_rt(e, T_UCOUNT, p["us_v"]), 1))
 
             _enumerate_uses(e, p["us_bi"], p["us_b"], count)
+            # ADR-284: the block's values, in first-use order, in an array of the block's own size (a function's whole
+            # value count per block exhausted the arena on the compiler's own functions).
+            e.var("us_values", e.alloc(e.add(p["us_count"], 1)))
+            _ok(e, e.ne(p["us_values"], NONE))
+            _enumerate_uses(e, p["us_bi"], p["us_b"], lambda value, _position: e.st(e.add(p["us_values"], _rt(e, T_UIDX, value)), value))
             e.var("us_lists", e.alloc(e.add(p["us_count"], 1)))
             e.var("us_lengths", e.alloc(e.add(p["us_count"], 1)))
             _ok(e, e.both(e.ne(p["us_lists"], NONE), e.ne(p["us_lengths"], NONE)))
@@ -2220,6 +2223,8 @@ def _loop_slots(tables):
         _ok(e, e.ne(p["ls_classes"], NONE))
         e.var("ls_ncl", 0)
 
+        # ADR-284: classes are numbered and counted first, then each gets a members array of its own size (an array of
+        # every candidate per class exhausted the arena on the compiler's own functions), then filled in the same order.
         def classify():
             e.var("ls_v", e.ld(e.add(p["ls_cands"], p["ls_k"])))
             find(p["ls_v"], "ls_root")
@@ -2228,20 +2233,34 @@ def _loop_slots(tables):
                 _set_rt(e, T_S1, p["ls_root"], p["ls_rstamp"])
                 _set_rt(e, T_S3, p["ls_root"], p["ls_ncl"])
                 at = e.add(p["ls_classes"], e.mul(p["ls_ncl"], 3))
-                e.var("ls_at", at)
-                e.var("ls_members", e.alloc(e.add(p["ls_nc"], 1)))
-                _ok(e, e.ne(p["ls_members"], NONE))
-                e.st(p["ls_at"], p["ls_members"])
-                e.st(e.add(p["ls_at"], 1), 0)
-                e.st(e.add(p["ls_at"], 2), 0)
+                e.st(at, 0)
+                e.st(e.add(at, 1), 0)
+                e.st(e.add(at, 2), 0)
                 e.set("ls_ncl", e.add(p["ls_ncl"], 1))
 
             e.if_(e.ne(_rt(e, T_S1, p["ls_root"]), p["ls_rstamp"]), new_class)
             e.var("ls_cat", e.add(p["ls_classes"], e.mul(_rt(e, T_S3, p["ls_root"]), 3)))
-            e.st(e.add(e.ld(p["ls_cat"]), e.ld(e.add(p["ls_cat"], 1))), p["ls_v"])
             e.st(e.add(p["ls_cat"], 1), e.add(e.ld(e.add(p["ls_cat"], 1)), 1))
 
         e.for_("ls_k", 0, p["ls_nc"], classify)
+
+        def members():
+            e.var("ls_cat", e.add(p["ls_classes"], e.mul(p["ls_q"], 3)))
+            e.var("ls_members", e.alloc(e.add(e.ld(e.add(p["ls_cat"], 1)), 1)))
+            _ok(e, e.ne(p["ls_members"], NONE))
+            e.st(p["ls_cat"], p["ls_members"])
+            e.st(e.add(p["ls_cat"], 1), 0)
+
+        e.for_("ls_q", 0, p["ls_ncl"], members)
+
+        def fill():
+            e.var("ls_v", e.ld(e.add(p["ls_cands"], p["ls_k"])))
+            find(p["ls_v"], "ls_root")
+            e.var("ls_cat", e.add(p["ls_classes"], e.mul(_rt(e, T_S3, p["ls_root"]), 3)))
+            e.st(e.add(e.ld(p["ls_cat"]), e.ld(e.add(p["ls_cat"], 1))), p["ls_v"])
+            e.st(e.add(p["ls_cat"], 1), e.add(e.ld(e.add(p["ls_cat"], 1)), 1))
+
+        e.for_("ls_k", 0, p["ls_nc"], fill)
 
         def class_at(index):
             return e.add(p["ls_classes"], e.mul(index, 3))

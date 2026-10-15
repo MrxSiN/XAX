@@ -584,7 +584,7 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "no canonical XAX store implements the whole compiler; S14 and later steps are open (ADR-180, ADR-283)",
+            "blocker": "no canonical XAX store implements the whole compiler; S14b and later steps are open (ADR-180, ADR-284)",
         },
         "m14_semantic_image_wrapper": {
             "scope": M14_SCOPE,

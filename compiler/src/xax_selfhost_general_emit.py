@@ -110,7 +110,7 @@ E_REGV = 192  # sixteen words: the value in each register, NONE when free
 assert E_REGV + 16 <= 256 and E_FAIL < E_REGV
 LOC_REG, LOC_CONST, LOC_STACK, LOC_SPILL = range(4)
 # Capacities (words).
-CODE_CAP = 1 << 20
+CODE_CAP = 1 << 23  # S14a (ADR-284): the compiler's own largest function
 CAPTURE_CAP = 1 << 14
 LABEL_CAP = 1 << 16
 BRANCH_CAP = 1 << 16
@@ -120,7 +120,8 @@ STUB_CAP = 1 << 14
 TRAP_CAP = 64
 TABLE_CAP = 1 << 10
 CHECK_CAP = 1 << 14
-MOVE_CAP = 64
+ARGS_CAP = 16  # ``E_ARGS``/``E_REGS`` words
+MOVE_CAP = 1 << 12  # S14a (ADR-284): an edge of the compiler's own functions carries over a hundred values
 INELIGIBLE = NONE - 2  # the bootstrap's ``return -1`` (the function is lowered by another path)
 
 
@@ -1227,6 +1228,7 @@ def _copy_edge_fn(tables):
             dead = e.both(e.eq(p["ce_use"], NONE), e.eq(_rt(e, T_HOME, p["ce_dst"]), NONE), e.eq(_pinned(e, p["ce_dst"]), NONE))
 
             def add():
+                _ok(e, e.lt(p["ce_n"], MOVE_CAP))  # S14a (ADR-284): never past the pairs buffer
                 _machine_index(e, tb, p["ce_k"], "ce_mi")
                 e.var("ce_src", p["ce_arg"])
                 e.var("ce_sunk", 0)
@@ -1290,6 +1292,7 @@ def _copy_edge_fn(tables):
                 e.var("ce_amt", e.mul(e.ld(at(p["ce_q"], 3)), e.ld(at(p["ce_q"], 4))))
 
                 def delay():
+                    _ok(e, e.lt(p["ce_nd"], MOVE_CAP))  # S14a (ADR-284): never past the delayed-move buffer
                     e.var("ce_dat", e.add(p["ce_delayed"], e.mul(p["ce_nd"], 6)))
                     for field, value in enumerate((p["ce_reg"], p["ce_kind"], p["ce_where"], _wbytes(e, p["ce_s"]), p["ce_amt"], _width(e, p["ce_d"]))):
                         e.st(e.add(p["ce_dat"], field), value)
@@ -1394,7 +1397,8 @@ def _machine_operands(e: E, node, first: int = 0):
 
     def each():
         e.var("mo_o", _operand(e, node, p["mo_k"]))
-        e.if_(e.ne(_width(e, p["mo_o"]), 0), lambda: (e.st(e.add(_e(e, E_ARGS), p["mo_n"]), p["mo_o"]), e.set("mo_n", e.add(p["mo_n"], 1))))
+        e.if_(e.ne(_width(e, p["mo_o"]), 0), lambda: (_ok(e, e.lt(p["mo_n"], ARGS_CAP)), e.st(e.add(_e(e, E_ARGS), p["mo_n"]), p["mo_o"]),
+                                                      e.set("mo_n", e.add(p["mo_n"], 1))))  # S14a (ADR-284): bounded
 
     e.for_("mo_k", first, _f(e, node, N_NOPS), each)
 
@@ -2937,7 +2941,7 @@ def emit_prologue(e: E):
     """Allocate the emission buffers (once, after the register-allocation tables)."""
     for slot, words in ((E_CODE, CODE_CAP), (E_CAPBUF, CAPTURE_CAP), (E_LABELS, LABEL_CAP), (E_BRANCHES, 2 * BRANCH_CAP), (E_CALLS, 3 * CALL_CAP),
                         (E_RANGES, 4 * RANGE_CAP), (E_STUBS, 3 * STUB_CAP), (E_TRAPS, 2 * TRAP_CAP), (E_TABLES, 3 * TABLE_CAP),
-                        (E_FREE, 1 << 16), (E_CHECKED, 3 * CHECK_CAP), (E_CALLPOS, 1 << 16), (E_MOVES, 4 * MOVE_CAP), (E_ARGS, 16), (E_REGS, 16),
+                        (E_FREE, 1 << 16), (E_CHECKED, 3 * CHECK_CAP), (E_CALLPOS, 1 << 16), (E_MOVES, 4 * MOVE_CAP), (E_ARGS, ARGS_CAP), (E_REGS, ARGS_CAP),
                         (E_LIVE, 64), (E_DELAYED, 6 * MOVE_CAP), (E_PAIRS, 5 * MOVE_CAP)):
         at = e.alloc(words)
         _ok(e, e.ne(at, NONE))

@@ -22,7 +22,7 @@ from xax_selfhost_general_regalloc import _ra, _set_ra
 from xax_selfhost_views_backend import _FN, G_PAY, _at, _call, _cid_words, _g, _ok
 
 IMAGE_AT, IMAGE_END = 6 << 20, 11 << 20
-IMAGE_CAP = 1 << 22  # image bytes (one per word)
+IMAGE_CAP = 1 << 23  # image bytes (one per word); S14a (ADR-284): the compiler's own image
 IMAGE_CALLS = 1 << 16
 # State (``_ra`` slots after the emission's register words).
 (I_IMG, I_LEN, I_OK, I_COUNT, I_BASES, I_CALLS, I_NCALLS, I_ADAPT, I_NADAPT, I_IMPORTS, I_NIMPORTS, I_ENTRY, I_ELF, I_ELEN, I_OUT,

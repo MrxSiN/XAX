@@ -790,6 +790,8 @@ def compile_register_resident(
             root = ValueRef.node_result(block_index, node_index)
             if root in table_erased or root not in widths or node_index in tree or block.nodes[node_index].operation not in _TABLE_OPERATIONS:
                 continue
+            if fused.get(block_index) == node_index:  # ADR-284: the fused branch compare reads its operands; they stay
+                continue
             found = predicate_table(block_index, root)
             if found is not None:
                 subject, table, indices = found

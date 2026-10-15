@@ -35,7 +35,7 @@ from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, NONE, _function
 import xax_selfhost_diagnostics as D
 from xax_selfhost_general_view import add_view_functions, views_prologue
 from xax_selfhost_views_backend import (
-    _FN, ARENA_AT, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
+    _FN, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
     G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ATTRIBUTES, NI_ENTITY, NI_OP, NI_RESULTS, NativeProgram, _at, _borrowed, _call,
     _cid_at, _cid_less, _cid_words, _erased, _find, _g, _interface, _kind, _node_info, _ok, _payload_uleb, _reference,
     _target_list, _term_end, _type_form, _type_width,
@@ -43,6 +43,9 @@ from xax_selfhost_views_backend import (
 
 STORE_PATH = bootstrap_dir() / "xax_x86_64_general.xax"
 OK = 1
+# S14a (ADR-284): the general program's arena starts after the views region (``xax_selfhost_general_view.VIEW_END``);
+# the front end's globals stay at the views backends' ``GLOBALS``.
+GENERAL_ARENA_AT = 48 << 20
 COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each function's four CID words in image order
 # Front-end state beyond the views backends' globals (``GLOBALS + slot``).
 (G_LSIZE, G_LALIGN, G_LSTACK, G_TABI, G_TFMT, G_NARGS, G_GENERAL, G_EA_AT, G_EA_N, G_FRAMES, G_TARGET, G_ENTRY,
@@ -557,7 +560,7 @@ def _frontend(tables):
     def build(e: E):
         p = e.p
         e.st(0, 0)
-        e.set_hd(H_ARENA, ARENA_AT + 64)
+        e.set_hd(H_ARENA, GENERAL_ARENA_AT)
         e.set_hd(H_ARENA_END, ARENA_END)
         S = e.rd(0)
         e.st(GLOBALS + G_S, S)
