@@ -8,15 +8,18 @@ bytes to text, CID words to hex, a terminator code to its ``TerminatorKind``) an
 nothing.
 
 Record layout (output-view words): ``DIAG_AT`` holds the cursor (the word after the
-record); the record follows as ``code, entity, rule, expected, actual``, where a value is
+record); the record follows as ``code, entity, rule, expected, actual`` (S15b: optionally then the dependencies and
+the repair neighborhood, each a list), where a value is
 
     INT n | STR length packed-bytes... | LIST count values... | NONE | CID w0 w1 w2 w3 | TERMINATOR n |
     WIDE low high | FORMAT template-STR count values... | HEX length packed-bytes... | TUPLE count values... |
-    KIND n
+    KIND n | BYTES length packed-bytes... | ENUM enum n | OBJECT class count values... | BOOL n | NAME enum n
 
 Text and HEX bytes are packed eight per word, little-endian; a CID is four big-endian 64-bit words; WIDE is the
 integer ``high * 2**64 + low`` (a ULEB can carry 70 bits); FORMAT is ``template.format(*values)`` -- the program
-chooses the template and the values, the host only renders; HEX renders bytes as lowercase hex.
+chooses the template and the values, the host only renders; HEX renders bytes as lowercase hex.  S15b (ADR-288): BYTES
+renders the bytes themselves; ENUM is member ``n`` of ``ENUMS[enum]`` and NAME its name; OBJECT is
+``OBJECTS[class](*values)``; BOOL is ``bool(n)``.
 """
 
 from __future__ import annotations
@@ -26,7 +29,11 @@ from xax_selfhost_facts import E, NONE
 
 REJECT = 2
 DIAG_AT = 11 << 20
-T_INT, T_STR, T_LIST, T_NONE, T_CID, T_TERMINATOR, T_WIDE, T_FORMAT, T_HEX, T_TUPLE, T_KIND = range(11)
+T_INT, T_STR, T_LIST, T_NONE, T_CID, T_TERMINATOR, T_WIDE, T_FORMAT, T_HEX, T_TUPLE, T_KIND, T_BYTES, T_ENUM, T_OBJECT, T_BOOL, T_NAME = range(16)
+# S15b (ADR-288): the enumerations and value classes a record can name (by position; append only).
+ENUM_NAMES = ("Kind", "BuildForm", "BuildMode", "BuildCapabilityKind", "ArtifactKind", "OptimizationObjective", "AtomicScope", "AtomicFamily",
+              "EffectDomain", "TargetValueConstraintKind", "Operation", "TerminatorKind", "OpaqueKind", "Permission")
+OBJECT_NAMES = ("BuildCapability", "AcceleratorMemorySpace")
 
 
 # -- XAX side: builders that emit the record-writing nodes --------------------------------------
@@ -93,6 +100,13 @@ def decode_diagnostic(read) -> Diagnostic | None:
     return decode_record(read(DIAG_AT + 1, end - DIAG_AT - 1))
 
 
+def _registered(name: str):
+    import xax_build
+    import xax_compiler
+
+    return getattr(xax_compiler, name, None) or getattr(xax_build, name)
+
+
 def _packed(words, length: int) -> bytes:
     return b"".join(word.to_bytes(8, "little") for word in words)[:length]
 
@@ -110,12 +124,20 @@ def decode_record(words) -> Diagnostic:
         if tag == T_CID:
             position += 4
             return b"".join(word.to_bytes(8, "big") for word in words[position - 4:position]).hex()
-        if tag in (T_STR, T_HEX):
+        if tag in (T_STR, T_HEX, T_BYTES):
             length = words[position]
             count = (length + 7) // 8
             data = _packed(words[position + 1:position + 1 + count], length)
             position += 1 + count
-            return data.decode("ascii") if tag == T_STR else data.hex()
+            return data.decode("ascii") if tag == T_STR else data.hex() if tag == T_HEX else data
+        if tag in (T_ENUM, T_NAME):
+            position += 2
+            member = _registered(ENUM_NAMES[words[position - 2]])(words[position - 1])
+            return member if tag == T_ENUM else member.name
+        if tag == T_OBJECT:
+            name, count = words[position], words[position + 1]
+            position += 2
+            return _registered(OBJECT_NAMES[name])(*(value() for _ in range(count)))
         if tag in (T_LIST, T_TUPLE):
             count = words[position]
             position += 1
@@ -131,12 +153,15 @@ def decode_record(words) -> Diagnostic:
             return template.format(*(value() for _ in range(count)))
         number = words[position]
         position += 1
-        return {T_INT: int, T_TERMINATOR: TerminatorKind, T_KIND: Kind}[tag](number)
+        return {T_INT: int, T_TERMINATOR: TerminatorKind, T_KIND: Kind, T_BOOL: bool}[tag](number)
 
     code, entity, rule, expected, actual = (value() for _ in range(5))
+    related = ()
+    if position < len(words):  # S15b (ADR-288): the dependencies and the repair neighborhood
+        related = (tuple(value()), tuple(value()))
     if position != len(words):
         raise ValueError(f"diagnostic record has {len(words) - position} trailing words")
-    return Diagnostic(code, entity, rule, expected, actual)
+    return Diagnostic(code, entity, rule, expected, actual, *related)
 
 
 __all__ = ["DIAG_AT", "NONE", "REJECT", "begin", "cid", "decode_diagnostic", "decode_record", "integer", "none", "put", "reject_unless", "tagged", "text"]

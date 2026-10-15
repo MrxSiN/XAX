@@ -186,11 +186,28 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S15b.1-S15b.2 exact object, type, and constant rejections — 2026-10-15 (ADR-288, ADR-289)
+
+- Done:
+  - `xax_selfhost_render` (the verifier's rendering phase: bank, `_plan`, `Writer`);
+  - `xax_selfhost_render_types` (type/constant records, S10e helper);
+  - the driver's `plan`/`verify_outcome`;
+  - record tags `BYTES`/`ENUM`/`NAME`/`OBJECT`/`BOOL` and optional dependencies/repair;
+  - `tests/test_xax_selfhost_render.py`, `tests/test_xax_selfhost_verify_exact.py`, `migration/s15_render.py`;
+  - `bench_full_selfhost` records verification rejections with the bootstrap's diagnostic (`bootstrap_diagnostic`), and the B1/B3 derivation uses them.
+- Layout: the bank is at verifier output words 7M–11M. The plan is at 11M. The driver keeps typing records, the plan, and the outcome's record at workspace words 32M–35M; type scratch is at 35M.
+- Writing records in XAX: write through the `put`/`cid` functions (`R.Writer`), not inline stores. Inline writes made the verifier 4.7 MB and pushed the driver past its own verification capacity.
+- Next: S15b.3.
+  - The typing program holds every graph decision and the type CIDs (the facts section). Give it a final function that computes `_parse_graph`'s outcome in its order and renders the deciding record, as the verifier's plan does for objects. That order is: pass 1 over `order` (memory reject at the node, typing proven/rejected/unproven), the terminator (memory reject at the terminator, typing terminator records), later passes, then linear flow.
+  - In the driver: the CFG branch target needs only rendering (`GRAPH-BRANCH-TARGET`, `< blocks`, the target). Invalid uses must decline: Python re-types the graph trimmed at each invalid use.
+  - Constants and types reached inside a graph's parse (a constant node naming a malformed constant) currently decline.
+
 ## S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
 
 - Done: `xax_selfhost_typing.IN_EXTENT` 512 MiB (the typing program's own input bounded by `TYPING_WORDS`, 32M words); every component on that view regenerated; the request store rewritten; the seed rotated and its pins updated.
 - Why first: the pinned seed verifies only what fits its own views. A change that grows the driver store past them must follow a rotation to a seed that has room; the old seed cannot build it.
 - Next: S15b.1 (the store verifier renders its own rejections; the driver follows `verify_store`'s order).
+- S15b.1-S15b.2: see above.
 
 ## S15a a Python-free seed — 2026-10-15 (ADR-286)
 

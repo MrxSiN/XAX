@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import platform
+import random
 import subprocess
 import sys
 import tempfile
@@ -33,6 +34,7 @@ sys.path.insert(0, str(HERE.parent / "tests"))
 sys.path.insert(0, str(HERE.parent))
 
 STATUS = {0: "image", 1: "rejected", 2: "declined", 3: "failed"}
+BOOTSTRAP_DIAGNOSTICS: dict[str, list] = {}  # verify cases: the bootstrap's diagnostic key (``_diagnostic_key``)
 
 
 def sha(data: bytes | None) -> str | None:
@@ -123,6 +125,81 @@ def corpus(directory: Path):
             pass
         cases.append((f"verify mutated status store @{offset}", "negative", "verify", {"store": mutated}, ["out"], None))
 
+    # S15b.1-S15b.2 (ADR-288, ADR-289): verification rejections of objects, types, constants, and the store, chosen by
+    # the bootstrap's rule alone (deterministic mutations).  Their bootstrap diagnostics are recorded beside the
+    # outcomes (``bootstrap_diagnostic``), not as references: ``xax_selfhost.linux_x86_64_status`` derives B1 from how
+    # many of them each generation reproduces exactly; a decline or the driver's own record is no claim.
+    from test_xax_selfhost_objects import _sample
+    from test_xax_selfhost_render import _bases, _mutated
+
+    object_rules = ("ID-REFERENCE-RESOLVED", "ID-ROOTED-STORE", "GRAPH-CHILD-KIND", "SCHEMA-BODY", "FUNCTION-BODY", "CALL-CONTRACT-BODY",
+                    "RECURSION-GROUP-BODY", "TARGET-NATIVE-BODY", "SER-ULEB-TERMINATED", "TARGET-PROFILE-SUPPORTED", "BUILD-KIND", "PACKAGE-NAMED-REFERENCE",
+                    "BUILD-REQUEST-REFERENCE-KINDS", "SNAPSHOT-HEADER")
+    type_rules = ("TYPE-BITS", "TYPE-FORM-SUPPORTED", "TYPE-BODY", "CONST-BITS-WIDTH", "CONST-BODY", "TYPE-FLOAT-FORMAT", "TYPE-POINTER", "GRAPH-REF-INDEX")
+    def entity_kind(reader, entity):
+        try:
+            return reader.get(bytes.fromhex(entity)).kind
+        except (KeyError, ValueError, X.XaxError):
+            return None  # the store, or a missing object
+
+    rng, seen = random.Random(288), set()
+    bases = _bases(rng)
+    for trial in range(400):
+        objects, root = bases[trial % len(bases)]
+        objects, root = _mutated(rng, objects, root)
+        try:
+            reader = X.StoreReader(X.write_store(root, list(objects.values())))
+            X._PARSED_GRAPHS.clear()
+            X.verify_store(reader)
+            continue
+        except X.XaxError as error:
+            diagnostic = error.diagnostic
+        except (IndexError, KeyError, TypeError, ValueError):
+            continue
+        if diagnostic.rule in object_rules and diagnostic.rule not in seen and entity_kind(reader, diagnostic.entity) != X.Kind.GRAPH_FRAGMENT:
+            seen.add(diagnostic.rule)
+            cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
+            BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
+    for trial in range(400):
+        made, objects = _sample(rng)
+        module = X.object_with_refs(X.Kind.MODULE, [made])
+        program = X.object_with_refs(X.Kind.PROGRAM_ROOT, [module])
+        try:
+            reader = X.StoreReader(X.write_store(program.cid, list({item.cid: item for item in (*objects, module, program)}.values())))
+            X._PARSED_GRAPHS.clear()
+            X.verify_store(reader)
+            continue
+        except X.XaxError as error:
+            diagnostic = error.diagnostic
+        except (IndexError, KeyError, TypeError, ValueError):
+            continue
+        if diagnostic.rule in type_rules and diagnostic.rule not in seen:
+            seen.add(diagnostic.rule)
+            cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
+            BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
+
+    # Graph rejections (S15b.3): the S10e mutation corpus of function stores (``test_xax_selfhost_verify``), one case per
+    # bootstrap rule, recorded the same way.
+    from test_xax_selfhost_verify import MUTATIONS, _store as function_store
+
+    graph_rng = random.Random(266)
+    for trial in range(160):
+        reader = function_store(graph_rng, MUTATIONS[trial % len(MUTATIONS)])
+        if reader is None:
+            continue
+        try:
+            X._PARSED_GRAPHS.clear()
+            X.verify_store(reader)
+            continue
+        except X.XaxError as error:
+            diagnostic = error.diagnostic
+        except (IndexError, KeyError, TypeError, ValueError):
+            continue
+        if diagnostic.rule not in seen:
+            seen.add(diagnostic.rule)
+            cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
+            BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
+
     def build(name, reader, kind):
         expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
@@ -150,6 +227,14 @@ def corpus(directory: Path):
     resolve("resolve: a missing logical identity", _request(objects, entry, linux, dependencies=(DependencyRequirement.logical(b"absent"),)), "negative")
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
+
+
+def _diagnostic_key(diagnostic) -> list:
+    """A rejection's code, rule, and the digest of the whole diagnostic (entity, values and their types, dependencies,
+    repair neighborhood): equal digests are equal diagnostics."""
+    whole = (diagnostic.code, diagnostic.entity, diagnostic.rule, diagnostic.expected, diagnostic.actual, tuple(diagnostic.dependencies),
+             tuple(diagnostic.repair_neighborhood))
+    return [diagnostic.code, diagnostic.rule, sha(repr(whole).encode())]
 
 
 def run_case(executable: Path, directory: Path, case) -> dict:
@@ -248,11 +333,14 @@ def measure() -> dict:
 
                 data = result["_data"][0]
                 diagnostic = decode_record([int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)])
-                outcome = ["rejected", diagnostic.code, diagnostic.rule]
+                outcome = ["rejected", *(_diagnostic_key(diagnostic) if command == "verify" else (diagnostic.code, diagnostic.rule))]
             if command == "inspect" and result["status"] == "image":
                 outcome = ["image", sha(json.dumps(decode_inspection(result["_data"][0]), sort_keys=True).encode())]
             outcomes[f"C{index}"] = outcome
-        rows.append({"case": name, "kind": kind, "command": command, "outcomes": outcomes, "reference": reference})
+        row = {"case": name, "kind": kind, "command": command, "outcomes": outcomes, "reference": reference}
+        if name in BOOTSTRAP_DIAGNOSTICS:
+            row["bootstrap_diagnostic"] = BOOTSTRAP_DIAGNOSTICS[name]
+        rows.append(row)
 
     def elf_interpreter(path: Path) -> bool:
         data = path.read_bytes()
@@ -288,7 +376,9 @@ def measure() -> dict:
         "corpus": rows,
         # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
         "rejection_exactness_gaps": [
-            "semantic verification rejections are the driver's XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266)",
+            ("graph verification rejections (invalid uses, operation typing, terminators, memory facts, linear flow) are the driver's "
+             "XAX.DRIVER.VERIFY record, not the bootstrap's exact diagnostic (ADR-266); a graph decoder rejection behind an unproven type, "
+             "and a missing reference first reached through another object's graph, decline (ADR-288)"),
             "code generation rules on malformed or extreme inputs decline (ADR-280's list)",
         ],
         "required_paths_outside_xax": [
@@ -302,6 +392,10 @@ def measure() -> dict:
         "authority": xax_native.AUTHORITY,
     }
 
+
+if __name__ == "__main__" and os.environ.get("PYTHONHASHSEED") != "0":
+    # The corpus generators iterate sets of bytes: a fixed hash seed makes the cases the same on every run.
+    os.execve(sys.executable, [sys.executable, *sys.argv], {**os.environ, "PYTHONHASHSEED": "0"})
 
 if __name__ == "__main__":
     os.environ["XAX_REQUIRE_NATIVE"] = "1"

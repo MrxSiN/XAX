@@ -49,7 +49,21 @@ class FullSelfhostStatusTests(unittest.TestCase):
         self.assertNotIn("B4", self.levels(reference))
         closed = copy.deepcopy(self.evidence)
         closed["rejection_exactness_gaps"], closed["required_paths_outside_xax"] = [], []
+        rejecting = [row for row in closed["corpus"] if row.get("bootstrap_diagnostic")]
+        for row in rejecting:
+            for generation in row["outcomes"]:
+                row["outcomes"][generation] = ["rejected", *row["bootstrap_diagnostic"]]
         self.assertEqual(self.levels(closed) & {"B1", "B5", "B6"}, {"B1", "B5"})
+        # S15b (ADR-288): a verification rejection that is not the bootstrap's keeps B1; another diagnostic is a
+        # disagreement (B3); a decline or the driver's own record is no claim.
+        self.assertTrue(rejecting)
+        index = closed["corpus"].index(rejecting[0])
+        declined = copy.deepcopy(closed)
+        declined["corpus"][index]["outcomes"] = {generation: ["declined", None] for generation in declined["corpus"][index]["outcomes"]}
+        self.assertEqual(self.levels(declined) & {"B1", "B3"}, {"B3"})
+        wrong = copy.deepcopy(closed)
+        wrong["corpus"][index]["outcomes"] = {generation: ["rejected", "XAX.OTHER", "OTHER", "0" * 64] for generation in wrong["corpus"][index]["outcomes"]}
+        self.assertFalse(self.levels(wrong) & {"B1", "B3"})
 
 
 if __name__ == "__main__":

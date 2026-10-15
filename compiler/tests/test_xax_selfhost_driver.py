@@ -187,20 +187,25 @@ class DriverTests(unittest.TestCase):
             broken = X.SemanticObject.create(X.Kind.GRAPH_FRAGMENT, graph.body[:-cut], graph.references)
             objects = [item for item in reader.objects() if item.cid != graph.cid] + [broken]
             data = X.write_store(reader.root_cid, objects)
-            status, _words, diagnostic = decoder.decode_with_diagnostic(broken.body, len(broken.references), broken.cid)
+            status, _words, _diagnostic = decoder.decode_with_diagnostic(broken.body, len(broken.references), broken.cid)
             self.assertEqual(status, 1)
-            # Graph fragments before it in store order decode cleanly, so its rejection is the first.
+            # S15b.1 (ADR-288): the first rejection in ``verify_store``'s order: the decoder's, or the missing reference
+            # of the function still naming the old graph when that function comes first.
+            X._PARSED_GRAPHS.clear()
+            with self.assertRaises(X.XaxError) as raised:
+                X.verify_store(X.StoreReader(data))
             with self.subTest(cut=cut):
-                self.assertEqual(self.run_driver(data), ("rejected", diagnostic))
+                self.assertEqual(self.run_driver(data), ("rejected", raised.exception.diagnostic))
 
     def test_semantic_rejections(self):
         """Random function stores and their semantic mutations (``test_xax_selfhost_verify``): where ``verify_store``
-        accepts, the driver's outcome is ``compile_x86_64_views``'s; where it rejects, the driver writes its
-        verification record (``XAX.DRIVER.VERIFY``) and no image."""
+        accepts, the driver's outcome is ``compile_x86_64_views``'s; where it rejects, the driver writes the same
+        diagnostic (S15b.1, ADR-288: object and store rejections, in ``verify_store``'s order), or its own verification
+        record for the graph and typing checks not yet rendered (``XAX.DRIVER.VERIFY``), and no image."""
         from test_xax_selfhost_verify import MUTATIONS, _store
 
         rng = random.Random(266)
-        rules, accepted = set(), 0
+        rules, accepted, exact = set(), 0, 0
         for trial in range(160):
             mutation = MUTATIONS[trial % len(MUTATIONS)]
             reader = _store(rng, mutation)
@@ -209,25 +214,29 @@ class DriverTests(unittest.TestCase):
             X._PARSED_GRAPHS.clear()
             try:
                 X.verify_store(reader)
-                verified = True
-            except X.XaxError:
-                verified = False
+                diagnostic = None
+            except X.XaxError as error:
+                diagnostic = error.diagnostic
             with self.subTest(trial=trial, mutation=mutation):
                 outcome = self.run_driver(reader.data)
-                if verified:
+                if diagnostic is None:
                     self.assertEqual(outcome, _reference(reader.data, X.x86_64_views_target()))
                     accepted += 1
-                elif outcome[0] == "rejected":
-                    self.assertEqual(outcome[1].code, "XAX.DRIVER.VERIFY")
+                elif outcome[0] == "rejected" and outcome[1].code == "XAX.DRIVER.VERIFY":
                     rules.add(outcome[1].rule)
+                elif outcome[0] == "rejected":
+                    self.assertEqual(outcome[1], diagnostic)
+                    exact += 1
                 else:
                     self.assertEqual(outcome[0], "declined")  # no claim; never an image
         self.assertGreaterEqual(accepted, 40)
-        self.assertEqual(rules, {"DRIVER-VERIFY-OBJECT", "DRIVER-VERIFY-STORE"})
+        self.assertGreaterEqual(exact, 30)
+        self.assertLessEqual(rules, {"DRIVER-VERIFY-TYPE", "DRIVER-VERIFY-GRAPH", "DRIVER-VERIFY-BRANCH", "DRIVER-VERIFY-USE"})
 
     def test_type_and_graph_rejections(self):
-        """A constant the typing program rejects (DRIVER-VERIFY-TYPE) and an operation whose operand or result types
-        are wrong (DRIVER-VERIFY-GRAPH); ``verify_store`` rejects each."""
+        """An operation whose operand or result types are wrong (DRIVER-VERIFY-GRAPH), and a constant node naming a
+        malformed constant: ``verify_store`` rejects each.  The constant's diagnostic is raised inside the graph's parse,
+        at its node (S15b.3): until then the driver declines it, and never reports it out of ``verify_store``'s order."""
         from xax_compiler import Operation, SemanticObject, bits_type, object_with_refs, write_store
         from xax_graph_builder import GraphBuilder
 
@@ -248,15 +257,18 @@ class DriverTests(unittest.TestCase):
         for body in (b"\x00\x02\x01\xff", b"\x00\x01\x01\x00", b"\x00\x01"):
             bad = SemanticObject.create(X.Kind.CONSTANT, body, [b8.cid])
             build = lambda e, bad=bad: e.op1(Operation.ADD_WRAP, (e.params[0], e.op1(Operation.CONSTANT, (), b8, entity=bad)), b8)
-            cases.append((store(build, (b8,), (b8,), (bad, b8)), "DRIVER-VERIFY-TYPE"))
+            cases.append((store(build, (b8,), (b8,), (bad, b8)), None))
         for data, rule in cases:
             with self.subTest(rule=rule):
                 X._PARSED_GRAPHS.clear()
-                with self.assertRaises(X.XaxError):
+                with self.assertRaises(X.XaxError) as raised:
                     X.verify_store(X.StoreReader(data))
                 outcome = self.run_driver(data)
-                self.assertEqual(outcome[0], "rejected")
-                self.assertEqual((outcome[1].code, outcome[1].rule), ("XAX.DRIVER.VERIFY", rule))
+                if rule is None:
+                    self.assertIn(outcome, (("rejected", raised.exception.diagnostic), ("declined", None)))
+                else:
+                    self.assertEqual(outcome[0], "rejected")
+                    self.assertEqual((outcome[1].code, outcome[1].rule), ("XAX.DRIVER.VERIFY", rule))
 
     def test_target_profile_rejection(self):
         from xax_selfhost_driver import target_package

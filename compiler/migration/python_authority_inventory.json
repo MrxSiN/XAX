@@ -298,6 +298,14 @@
       "class": "G",
       "note": "Builder of the S13c package-resolution and snapshot functions inside the general driver store (ADR-283)."
     },
+    "xax_selfhost_render.py": {
+      "class": "G",
+      "note": "Builder of the store verifier's rendering phase (its rejections as the bootstrap's diagnostics, verify_store's order) and the host's reference rendering for tests (S15b.1, ADR-288)."
+    },
+    "xax_selfhost_render_types.py": {
+      "class": "G",
+      "note": "Builder of the driver's type and constant rejection renderer (S15b.2, ADR-289)."
+    },
     "xax_selfhost_diagnostics.py": {
       "class": "G",
       "note": "S7b record builders (emit XAX nodes) and the host renderer, which decides nothing."

@@ -62,6 +62,8 @@ from xax_native import bootstrap_dir
 from xax_selfhost_facts import E
 from xax_structured import B64, Proc
 import xax_selfhost_diagnostics as D
+import xax_selfhost_render as R
+import xax_selfhost_render_types as RT
 import xax_selfhost_request as RQ
 import xax_selfhost_resolve as RS
 import xax_selfhost_writer as WR
@@ -610,7 +612,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             body_at, body_length = w.let("t_body_at", record_word(w[position], 7)), w.let("t_body_length", record_word(w[position], 8))
 
             def graph():
-                graph_stream(w[position], graph_rejected)
+                graph_stream(w[position], lambda: None)  # S15b.1: a rejection waits for its turn in ``verify_store``'s order
 
                 def stream():
                     count = w.let("t_stream", w.sub(w.load("stream", 8, 8), 2))
@@ -620,7 +622,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                     t_put(w[body_length])
                     q2 = w.let("q", 0)
                     w.while_(lambda: w.both(w.lt(w[q2], w[body_length]), running()), lambda: (t_put(w.load("data", w.add(w[body_at], w[q2]))), w.set(q2, w.add(w[q2], 1))))
-                    t_put(0)  # accepted by the graph decoder
+                    t_put(w.flag(w.eq(w.load("stream", 0, 8), 1)))  # 1: the graph decoder rejected it (a prefix)
 
                 when(stream)
 
@@ -641,17 +643,17 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.take("work", results[4:])
         w.if_(w.ne(work_word(SM.CTRL + SM.C_STATUS), SM.OK), lambda: stop(DECLINED))
 
-    if general:
-        requests, request_objects = RQ.build_functions()
-        resolvers, resolve_objects = RS.build_functions()
+    type_renderers, type_objects = RT.build_functions()  # S15b.2 (ADR-289)
+    requests, request_objects = RQ.build_functions() if general else ({}, ())
+    resolvers, resolve_objects = RS.build_functions() if general else ({}, ())
 
-        def request_helper(name: str, functions=requests):
-            """S13a: an ``xax_selfhost_request`` (S13c: ``xax_selfhost_resolve``) function over the object table and the
-            workspace."""
-            results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("work")),
-                              (B64, *VIEW_TYPES), entity=functions[name])
-            w.take("vtable", results[1:4])
-            w.take("work", results[4:])
+    def request_helper(name: str, functions=requests):
+        """S13a: an ``xax_selfhost_request`` (S13c: ``xax_selfhost_resolve``; S15b.2: ``xax_selfhost_render_types``)
+        function over the object table and the workspace."""
+        results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("work")),
+                          (B64, *VIEW_TYPES), entity=functions[name])
+        w.take("vtable", results[1:4])
+        w.take("work", results[4:])
 
     def typing():
         """The typing program over the workspace's marshal, copied to ``table``; its output in ``image``."""
@@ -686,41 +688,102 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             kind = record_word(w[o], 4)
 
             def unproven():
-                site = w.ld(w.add(w.add(TY.TABLE, w.mul(w[entries], TY.CREJ)), w[listed]))
-                w.if_(w.ne(site, 0), lambda: verify_reject(w[o], "DRIVER-VERIFY-TYPE", site), lambda: stop(DECLINED))
+                for k, field in enumerate(RT.FIELDS):  # S15b.2: the typing program's record, rendered at its turn
+                    set_work(w.add(w.add(R.TYPES_AT, w.mul(w[o], RT.RECORD_WORDS)), k), w.ld(w.add(w.add(TY.TABLE, w.mul(w[entries], field)), w[listed])))
 
+            set_work(w.add(R.TYPES_AT, w.mul(w[o], RT.RECORD_WORDS)), 0)
             w.if_(w.both(w.either(w.eq(kind, int(Kind.TYPE)), w.eq(kind, int(Kind.CONSTANT))), w.eq(w[proven], 0), running()), unproven)
             w.set(o, w.add(w[o], 1))
 
         w.while_(lambda: w.lt(w[o], w[objects]), flag)
 
-    structural = tuple(int(kind) for kind in (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET,
-                                              Kind.PACKAGE, Kind.BUILD, Kind.GRAPH_FRAGMENT))
-
     def store_verdicts():
-        """``_xax_verify_store``: every object of these kinds and the store proven by the XAX store verifier."""
+        """``_xax_verify_store``: the XAX store verifier's verdicts, rendered rejections, and ``verify_store``'s order."""
         results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("image")), (B64, *VIEW_TYPES),
                           entity=verifier_program)
         w.take("vtable", results[1:4])
         w.take("image", results[4:])
         w.if_(w.ne(w.ld(0), VF.OK), lambda: stop(DECLINED))
-        o = w.let("verdict_object", 0)
 
-        def verdict():
-            value = w.let("verdict", w.ld(w.add(VF.VERDICTS_AT, w[o])))
-            kind = record_word(w[o], 4)
-            unproven = w.both(w.either(*(w.eq(kind, k) for k in structural)), w.ne(w[value], 1))
-            w.if_(unproven, lambda: w.if_(w.eq(w[value], VF.REJECTED), lambda: verify_reject(w[o], "DRIVER-VERIFY-OBJECT", w[value]), lambda: stop(DECLINED)))
-            w.set(o, w.add(w[o], 1))
+        def plan():
+            """S15b.1 (ADR-288): ``verify_store``'s order (``xax_selfhost_render``): the graphs to parse and the outcome,
+            and the outcome's rendered record, kept in the workspace (the graph checks reuse the output view)."""
+            count = w.let("plan_count", w.ld(R.PLAN_AT + 2))
+            w.if_(w.lt(R.PLAN_LIMIT, w[count]), lambda: stop(DECLINED))
+            q = w.let("plan_q", 0)
+            w.while_(lambda: w.lt(w[q], w.add(w[count], 3)), lambda: (set_work(w.add(R.WORK_PLAN, w[q]), w.ld(w.add(R.PLAN_AT, w[q]))),
+                                                                      w.set(q, w.add(w[q], 1))))
+            index = w.let("plan_index", w.add(R.INDEX_AT, w.mul(w.ld(R.PLAN_AT + 1), R.INDEX_WORDS)))
+            start, middle, end = (w.let(name, w.sel(w.both(w.eq(w.ld(R.PLAN_AT), R.P_BANK), w.ne(w.ld(R.BANK_CURSOR), 0)), w.ld(w.add(w[index], k)), 0))
+                                  for k, name in enumerate(("record_start", "record_middle", "record_end")))
+            w.if_(w.lt(R.RECORD_LIMIT, w.sub(w[end], w[start])), lambda: w.set(start, 0))
+            w.if_(w.eq(w[start], 0), lambda: w.set(end, 0))
+            set_work(R.WORK_RECORD, w.sub(w[middle], w[start]))
+            set_work(R.WORK_RECORD + 1, w.sub(w[end], w[start]))
+            for k in (3, 4):
+                set_work(R.WORK_RECORD + k - 1, w.ld(w.add(w[index], k)))
+            q2 = w.let("record_q", 0)
+            w.while_(lambda: w.lt(w[q2], w.sub(w[end], w[start])), lambda: (
+                set_work(w.add(R.WORK_RECORD + 4, w[q2]), w.ld(w.add(w[start], w[q2]))), w.set(q2, w.add(w[q2], 1))))
 
-        w.while_(lambda: w.both(w.lt(w[o], w[objects]), running()), verdict)
+        when(plan)
 
-        def store():
-            fault = w.let("fault", w.ld(VF.STORE_FAULT))
-            root = find(w.load("decoded", 4 * 7, 4))
-            w.if_(w.either(w.eq(w[fault], 1), w.eq(w[fault], 2)), lambda: verify_reject(w[root], "DRIVER-VERIFY-STORE", w[fault]), lambda: stop(DECLINED))
+    def from_work():
+        """The workspace's diagnostic record (a helper function's) as the driver's."""
+        end = w.let("work_end", work_word(D.DIAG_AT))
+        q = w.let("work_q", D.DIAG_AT)
+        w.while_(lambda: w.lt(w[q], w[end]), lambda: (w.st(w[q], work_word(w[q])), w.set(q, w.add(w[q], 1))))
+        stop(REJECTED)
 
-        w.if_(w.both(running(), w.ne(w.ld(1), 1)), store)
+    def verify_outcome():
+        """The plan's outcome once its graphs parsed: accepted, the rendered record, the typing program's rejection, the
+        graph decoder's, or declined."""
+        kind = w.let("outcome_kind", work_word(R.WORK_PLAN))
+        target_object = w.let("outcome_object", work_word(R.WORK_PLAN + 1))
+
+        def record():
+            length = w.let("record_length", work_word(R.WORK_RECORD + 1))
+            w.if_(w.eq(w[length], 0), lambda: stop(DECLINED))
+
+            def write():
+                D.begin(w)
+                middle = w.let("record_mid", work_word(R.WORK_RECORD))
+                q = w.let("record_w", 0)
+                w.while_(lambda: w.lt(w[q], w[middle]), lambda: (D.put(w, work_word(w.add(R.WORK_RECORD + 4, w[q]))), w.set(q, w.add(w[q], 1))))
+                mode, value = w.let("entity_mode", work_word(R.WORK_RECORD + 2)), w.let("entity_value", work_word(R.WORK_RECORD + 3))
+
+                def of_object():
+                    D.cid(w, [w.cid_word("data", record_word(w[value], 2), word) for word in range(4)])
+
+                def missing():
+                    holder, k = w.let("missing_holder", w.udiv(w[value], 1 << 32)), w.let("missing_k", w.and_(w[value], 0xFFFFFFFF))
+                    D.cid(w, [w.cid_word("data", w.add(record_word(w[holder], 6), w.mul(w[k], CID_SIZE)), word) for word in range(4)])
+
+                w.if_(w.eq(w[mode], R.ENTITY_OBJECT), of_object, lambda: w.if_(w.eq(w[mode], R.ENTITY_MISSING), missing, lambda: D.text(w, "store")))
+                w.while_(lambda: w.lt(w[q], w[length]), lambda: (D.put(w, work_word(w.add(R.WORK_RECORD + 4, w[q]))), w.set(q, w.add(w[q], 1))))
+                stop(REJECTED)
+
+            when(write)
+
+        def typed():
+            """S15b.2 (ADR-289): the typing program's rejection, rendered (``xax_selfhost_render_types``)."""
+            site = w.let("type_site", work_word(w.add(R.TYPES_AT, w.mul(w[target_object], RT.RECORD_WORDS))))
+
+            def render():
+                set_work(SM.CTRL + RT.T_OBJECT, w[target_object])
+                request_helper("render", type_renderers)
+                w.if_(w.eq(work_word(SM.CTRL + RT.T_STATUS), RT.ACCEPT), from_work, lambda: stop(DECLINED))
+
+            w.if_(w.ne(w[site], 0), render, lambda: stop(DECLINED))
+
+        def decoder():
+            graph_stream(w[target_object], graph_rejected)
+            when(lambda: stop(DECLINED))
+
+        w.if_(w.eq(w[kind], R.P_BANK), record)
+        w.if_(w.eq(w[kind], R.P_TYPE), typed)
+        w.if_(w.eq(w[kind], R.P_DECODER), decoder)
+        w.if_(w.both(running(), w.ne(w[kind], R.P_ACCEPT)), lambda: stop(DECLINED))
 
     def side_put(view: str, cursor: str, limit: int, value):
         w.if_(w.lt(w[cursor], limit), lambda: w.store(view, w.mul(w[cursor], 8), value, 8), lambda: stop(DECLINED))
@@ -822,10 +885,13 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.set(j_graphs, w.add(w[j_graphs], 1))))
 
     def graph_verdicts():
-        """``_parse_graph`` for every graph: CFG (branch targets, uses), then typing, facts, and linear flow."""
+        """``_parse_graph`` for the plan's graphs, in ``verify_store``'s order: CFG (branch targets, uses), then typing,
+        facts, and linear flow."""
+        planned = w.let("planned", 0)
         o = w.let("graph_object", 0)
 
         def each():
+            w.set(o, work_word(w.add(R.WORK_PLAN + 3, w[planned])))
             def graph():
                 set_work(SM.CTRL + SM.C_GRAPH, w[o])
                 helper("parse_graph")
@@ -890,25 +956,19 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 if general:
                     when(lambda: collect(o))
 
-            w.if_(w.eq(record_word(w[o], 4), int(Kind.GRAPH_FRAGMENT)), graph)
-            w.set(o, w.add(w[o], 1))
+            w.if_(w.eq(record_word(w[o], 4), int(Kind.GRAPH_FRAGMENT)), graph, lambda: stop(DECLINED))
+            w.set(planned, w.add(w[planned], 1))
 
-        w.while_(lambda: w.both(w.lt(w[o], w[objects]), running()), each)
+        w.while_(lambda: w.both(w.lt(w[planned], work_word(R.WORK_PLAN + 2)), running()), each)
 
     when(object_table)
     when(object_verdicts)
     when(store_verdicts)
     when(graph_verdicts)
+    when(verify_outcome)
     if general:
         # -- S13a (ADR-281): ``build``: the snapshot's request, read and checked by ``xax_selfhost_request`` ---------
         target, linux = w.let("target", 0), w.let("linux", 0)
-
-        def from_work():
-            """The workspace's diagnostic record (a request function's) as the driver's."""
-            end = w.let("work_end", work_word(D.DIAG_AT))
-            q = w.let("work_q", D.DIAG_AT)
-            w.while_(lambda: w.lt(w[q], w[end]), lambda: (w.st(w[q], work_word(w[q])), w.set(q, w.add(w[q], 1))))
-            stop(REJECTED)
 
         def build_request():
             request_helper("build_request")
@@ -1462,7 +1522,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                *((general_reader, writer_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
-    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *((*request_objects, *resolve_objects) if general else ()),
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects,
                 *component_objects,
                 *api.types, *startup.symbols, WRITE_RW)
     return program_store(function, x86_64_linux_exec_target(), objects_), function

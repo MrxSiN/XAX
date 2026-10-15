@@ -2379,6 +2379,10 @@ def _program(tables):
         # S8: unreachable objects (the reachable ones are coloured 2).
         e.if_(e.both(e.ne(p["searched"], 0), e.eq(p["store_ok"], 0)), lambda: (e.st(STORE_FAULT, 2), e.st(STORE_FAULT + 1, p["colour"])))
         e.st(1, p["store_ok"])
+        # S15b.1 (ADR-288): every rejection rendered as the bootstrap's diagnostic (``xax_selfhost_render``).
+        import xax_selfhost_render as R
+
+        R.render_phase(e, _FN["rendering"], VERDICTS_AT, REJECTED)
         e.st(0, OK)
         e.give(1)
     return _function((), build, tables)
@@ -2412,6 +2416,9 @@ def build_verifier_program():
     add("snapshot", _snapshot_ok(tables))
     add("provenance", _provenance_ok(tables))
     add("glue", _glue_ok(tables))
+    import xax_selfhost_render as R
+
+    _FN["rendering"] = R.add_functions(add, tables)
     program = add("program", _program(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
 

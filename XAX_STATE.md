@@ -129,9 +129,13 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.1-S15b.2 exact object, type, and constant rejections — 2026-10-15 (ADR-288, ADR-289)
+
+The production compiler now reports the bootstrap's own diagnostic when it rejects a store for an object, type, constant, or store-level fault, and it reports the first one in the bootstrap's order. The store verifier writes every object rejection itself, including entity, values and their exact types. It also computes which graphs `verify_store` parses, in which order, before which object fails. The driver follows that order, and renders type and constant rejections from the typing program's records. On 480 mutated stores the compiler's `verify` accepts exactly what the bootstrap accepts, and every rejection it makes outside the graph checks is the bootstrap's. Graph rejections (operation typing, terminators, memory facts, linear flow, invalid uses) still carry the driver's own record. A few cases the bootstrap decides through another object's decoder decline. B1 does not hold yet. Next: S15b.3.
+
 ## S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
 
-The input view the verifier and the backends read grew from 256 MiB to 512 MiB, so the driver can keep verifying its own store as S15b adds the bootstrap's diagnostics to it. The typing program's own input stays bounded at its former size. The seed was rotated deliberately: the S15a seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.1.
+The input view the verifier and the backends read grew from 256 MiB to 512 MiB, so the driver can keep verifying its own store as S15b adds the bootstrap's diagnostics to it. The typing program's own input stays bounded at its former size. The seed was rotated deliberately: the S15a seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.1. S15b.1-S15b.2: see above.
 
 ## S15a a Python-free seed — 2026-10-15 (ADR-286)
 

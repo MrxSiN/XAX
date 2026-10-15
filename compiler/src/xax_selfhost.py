@@ -604,17 +604,28 @@ def linux_x86_64_status(full: dict, seed: dict | None = None) -> dict:
     agree = bool(corpus) and all(len(row["outcomes"]) == len(generations) + 1 and len({json.dumps(o) for o in row["outcomes"].values()}) == 1
                                  for row in corpus)
     exact = all(row["reference"] is None or row["outcomes"]["C1"] == row["reference"] for row in corpus)
+    # S15b (ADR-288): verification rejections recorded with the bootstrap's diagnostic.  A generation that rejects with
+    # another diagnostic disagrees with the bootstrap; one that declines, or writes its own record, makes no claim but
+    # is not exact.
+    rejecting = [row for row in corpus if row.get("bootstrap_diagnostic")]
+    reproduced = lambda row: row["outcomes"].get("C1") == ["rejected", *row["bootstrap_diagnostic"]]  # noqa: E731
+    wrong = [row for row in rejecting if row["outcomes"].get("C1", [None])[0] == "rejected" and row["outcomes"]["C1"][1] != "XAX.DRIVER.VERIFY"
+             and not reproduced(row)]
+    inexact = [row for row in rejecting if not reproduced(row)]
+    exact = exact and not wrong
     both = {row["kind"] for row in corpus} >= {"positive", "negative"}
     b0 = bool(generations) and generations[0]["build"]["status"] == "image" and len(generations) > 1 and generations[1]["resolve"]["status"] == "image"
     b2 = chained and snapshots
     b3 = b2 and agree and exact and both
     b4 = b2 and len(set(artifacts)) == 1 and artifacts[0] == full["references"]["bootstrap_compile_sha256"]
-    b1 = b2 and not full["rejection_exactness_gaps"]
+    b1 = b2 and not full["rejection_exactness_gaps"] and not inexact
     b5 = b2 and not full["required_paths_outside_xax"] and not any(full["executables_have_interpreter"].values())
     b6 = b5 and not full["ordinary_evolution"]
     blockers = {
         "B0": None if b0 else "the seed did not produce a running compiler",
-        "B1": None if b1 else "; ".join(full["rejection_exactness_gaps"]) or "no recursive build",
+        "B1": None if b1 else "; ".join([*full["rejection_exactness_gaps"],
+                                         *([f"{len(inexact)} of {len(rejecting)} corpus verification rejections are not the bootstrap's exact diagnostic"]
+                                           if inexact else [])]) or "no recursive build",
         "B2": None if b2 else "the generations do not chain through resolve and build",
         "B3": None if b3 else "the generations or the bootstrap disagree on the corpus",
         "B4": None if b4 else "the generations are not byte-identical to each other and the bootstrap's compile",
