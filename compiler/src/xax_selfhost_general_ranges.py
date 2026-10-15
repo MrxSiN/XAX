@@ -118,7 +118,9 @@ def _clear_stamps(e: E, value):
 
 def _value_facts(tables):
     """Constants (``G2_CONST``/``G2_CVAL``) and bits widths (``G2_WBITS``: ``decode_bits_width``, 0 when not bits) of
-    every value; NONE (decline) for a width above 64 or a float constant."""
+    every value; NONE (decline) for a value of the final view wider than 64 bits or a float constant in it (the
+    prefetch bounds those as Python numbers).  S12f.4 (ADR-280): such a value the simplifications removed (``G_VPOS``
+    NONE: not in the final view) is ignored, so a dead one leaves the function on the register-resident path."""
     def build(e: E):
         p = e.p
         n = _g(e, G_VCOUNT)
@@ -127,7 +129,8 @@ def _value_facts(tables):
         def each():
             v = p["vf_v"]
             e.var("vf_w", _bits_width(e, _vf(e, G_VTYPE, v)))
-            _ok(e, e.le(p["vf_w"], 64))
+            e.var("vf_live", e.flag(e.ne(_vf(e, G_VPOS, v), NONE)))
+            e.if_(e.lt(64, p["vf_w"]), lambda: (_ok(e, e.eq(p["vf_live"], 0)), e.set("vf_w", 0)))
             _set_t(e, G2_WBITS, v, p["vf_w"])
             _set_t(e, G2_CONST, v, 0)
             _clear_stamps(e, v)
@@ -142,14 +145,20 @@ def _value_facts(tables):
                 type_obj = _reference(e, p["vf_obj"], _payload_uleb(e, "vf_at"))
                 e.var("vf_form", _type_form(e, type_obj))
                 e.var("vf_len", _payload_uleb(e, "vf_at"))
-                _ok(e, e.either(e.eq(p["vf_form"], 1), e.eq(p["vf_form"], 11)))  # a float constant declines
-                _ok(e, e.le(p["vf_len"], 8))
-                e.var("vf_value", 0)
-                e.var("vf_weight", 1)
-                e.for_("vf_k", 0, p["vf_len"], lambda: (e.set("vf_value", e.add(p["vf_value"], e.mul(e.rd(e.add(p["vf_at"], p["vf_k"])), p["vf_weight"]))),
-                                                        e.set("vf_weight", e.mul(p["vf_weight"], 256))))
-                _set_t(e, G2_CONST, v, 1)
-                _set_t(e, G2_CVAL, v, p["vf_value"])
+
+                def known():
+                    _ok(e, e.le(p["vf_len"], 8))
+                    e.var("vf_value", 0)
+                    e.var("vf_weight", 1)
+                    e.for_("vf_k", 0, p["vf_len"], lambda: (e.set("vf_value", e.add(p["vf_value"], e.mul(e.rd(e.add(p["vf_at"], p["vf_k"])), p["vf_weight"]))),
+                                                            e.set("vf_weight", e.mul(p["vf_weight"], 256))))
+                    _set_t(e, G2_CONST, v, 1)
+                    _set_t(e, G2_CVAL, v, p["vf_value"])
+
+                bits_or_link = e.either(e.eq(p["vf_form"], 1), e.eq(p["vf_form"], 11))
+                e.if_(e.not_(bits_or_link), lambda: _ok(e, e.eq(p["vf_live"], 0)))  # a live float constant declines
+                # A removed wide constant is no constant (it has no width here either).
+                e.if_(e.both(bits_or_link, e.either(e.eq(p["vf_form"], 11), e.ne(p["vf_w"], 0))), known)
 
             e.if_(e.both(e.ne(p["vf_node"], NONE), e.eq(_f(e, e.sel(e.ne(p["vf_node"], NONE), p["vf_node"], 0), N_OP), int(Operation.CONSTANT))), constant)
 

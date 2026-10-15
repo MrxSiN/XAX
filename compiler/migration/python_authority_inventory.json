@@ -357,6 +357,10 @@
       "class": "G",
       "note": "Builder of the S12f frame lowering in the general x86-64 backend store (ADR-275)."
     },
+    "xax_selfhost_general_legacy.py": {
+      "class": "G",
+      "note": "Builder of the S12f.4 legacy register path in the general x86-64 backend store (ADR-280)."
+    },
     "xax_selfhost_writer.py": {
       "class": "G",
       "note": "Builder of the canonical S9 store (ADR-262)."

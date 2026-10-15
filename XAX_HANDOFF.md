@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S12 and later steps are open (ADR-180, ADR-267)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (no canonical XAX store implements the whole compiler; S13 and later steps are open (ADR-180, ADR-280)); M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -186,6 +186,16 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12 complete: S12f.4 — 2026-10-15 (ADR-280)
+
+- Done:
+  - `xax_selfhost_general_legacy.py`: `legacy_function`, run by `frame_function` where `_legacy_static` accepts. Its state record lives at `_ra` slot 242, and calls are recorded only in the real run, because `_record_call` and `_relative2` do not check `E_REAL`.
+  - `_value_facts` no longer declines wide values or float constants.
+  - Exact frame rejections: `value_reject`, `width_reject` (rotation amount in slot 243), and `fixed_reject` for links and rebases.
+  - `xax_selfhost_store.DATA_EXTENT` is 32 MiB.
+- Order matters for exactness: the bootstrap's `_arithmetic` and `_rotate_right_immediate` fail after the operand loads (a missing slot fails first), while division checks the width first.
+- Next: S13. S14's negative equivalence should take up ADR-280's list of declined rules.
+
 ## S12f.3 atomics and by-reference aggregates — 2026-10-15 (ADR-279)
 
 - Done in `xax_selfhost_general_frame.py`:
@@ -198,6 +208,7 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
   - Values wider than 64 bits. The simplifier must fold them exactly; the bootstrap uses Python integers.
   - The legacy register path.
   - Links and rebases on the frame path.
+- S12f.4: see above.
 
 ## S12f.2 code generation rejections — 2026-10-15 (ADR-278)
 

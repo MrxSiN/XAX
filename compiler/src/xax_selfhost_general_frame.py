@@ -382,7 +382,23 @@ def _frame_layout_fn(tables):
 
                 def machine():
                     _layout_size(e, p["fl_pt"], "fl_psize")
-                    _ok(e, e.both(e.ne(p["fl_psize"], NONE), e.either(_is_aggregate(e, p["fl_pt"]), e.le(p["fl_psize"], 8))))  # NATIVE-BLOCK-PARAMETER-VALUE
+
+                    def reject():
+                        """S12f.4 (ADR-280): the bootstrap's NATIVE-BLOCK-PARAMETER-VALUE, naming the parameter's type."""
+                        import xax_selfhost_diagnostics as D
+                        from xax_selfhost_general_emit import graph_cid_words, reject_at
+                        from xax_selfhost_views_backend import _cid_words
+
+                        def write():
+                            D.text(e, "XAX.NATIVE.BLOCK_TYPE")
+                            D.cid(e, graph_cid_words(e, p["f"]))
+                            D.text(e, "NATIVE-BLOCK-PARAMETER-VALUE")
+                            D.text(e, "scalar <=64 bits or aggregate")
+                            D.cid(e, _cid_words(e, p["fl_pt"]))
+
+                        reject_at(e, write)
+
+                    e.if_(e.not_(e.both(e.ne(p["fl_psize"], NONE), e.either(_is_aggregate(e, p["fl_pt"]), e.le(p["fl_psize"], 8)))), reject)
                     slot(p["fl_pv"], p["fl_pt"])
 
                 e.if_(e.not_(_proof(e, p["fl_pt"])), machine)
@@ -562,10 +578,112 @@ def _copy_at(e: E, node, operand):
 
 
 def _slot(e: E, value):
-    """``value_slot``: the value's frame slot (declined where the bootstrap fails, NATIVE-VALUE-MACHINE)."""
+    """``value_slot``: the value's frame slot; S12f.4 (ADR-280): a value without one (wider than 64 bits, not laid out)
+    is the bootstrap's NATIVE-VALUE-MACHINE rejection, naming the value's (block, index, result)."""
     e.var("vs_s", _rt(e, T_FSLOT, value))
-    _ok(e, e.ne(e.p["vs_s"], NONE))
+    e.var("vs_v", value)
+    e.if_(e.eq(e.p["vs_s"], NONE), lambda: _call(e, "value_reject", e.p["vs_v"]))
     return e.p["vs_s"]
+
+
+def _value_reject_fn(tables):
+    """NATIVE-VALUE-MACHINE for ``value`` of the function being lowered (``reject_at``)."""
+    from xax_selfhost_general_view import G_VPOS, POS_BLOCK, POS_INDEX
+
+    def build(e: E):
+        import xax_selfhost_diagnostics as D
+        from xax_selfhost_general_emit import graph_cid_words, reject_at
+
+        p = e.p
+        e.var("vr_pos", _vf(e, G_VPOS, p["value"]))
+        _ok(e, e.ne(p["vr_pos"], NONE))
+
+        def write():
+            D.text(e, "XAX.NATIVE.VALUE")
+            D.cid(e, graph_cid_words(e, _ra(e, F_FN)))
+            D.text(e, "NATIVE-VALUE-MACHINE")
+            D.text(e, "scalar/compact value <=64 bits")
+            D.put(e, D.T_LIST)
+            D.put(e, 3)
+            D.integer(e, e.and_(e.udiv(p["vr_pos"], POS_BLOCK), (1 << 22) - 1))
+            D.integer(e, e.and_(e.udiv(p["vr_pos"], POS_INDEX), (1 << 24) - 1))
+            D.integer(e, e.and_(p["vr_pos"], (1 << 16) - 1))
+
+        reject_at(e, write)
+    return _function(("value",), build, tables)
+
+
+def _fixed_reject_fn(tables):
+    """A frame-path rejection of the function being lowered whose fields are constant: ``which`` selects it."""
+    def build(e: E):
+        import xax_selfhost_diagnostics as D
+        from xax_selfhost_general_emit import graph_cid_words, reject_at
+
+        p = e.p
+
+        def write():
+            for which, (code, rule, expected, actual) in enumerate(FIXED_REJECTIONS):
+                e.if_(e.eq(p["which"], which), lambda code=code: D.text(e, code))
+            D.cid(e, graph_cid_words(e, _ra(e, F_FN)))
+            for which, (code, rule, expected, actual) in enumerate(FIXED_REJECTIONS):
+                e.if_(e.eq(p["which"], which), lambda rule=rule, expected=expected, actual=actual: (D.text(e, rule), D.text(e, expected), D.text(e, actual)))
+
+        reject_at(e, write)
+    return _function(("which",), build, tables)
+
+
+WIDTH_DIVISION, WIDTH_ARITHMETIC, WIDTH_ROTATE = range(3)
+F_AMOUNT = 243  # ``_ra`` slot: a rotation's amount, for its rejection
+
+
+def _width_reject_fn(tables):
+    """The bootstrap's width rejections on the frame path: ``which`` 0 division (NATIVE-BITS-SUPPORTED, naming the
+    graph), 1 arithmetic (``_arithmetic``: NATIVE-BITS-SUPPORTED on "x86_64"), 2 rotation (NATIVE-ROTATE-RIGHT)."""
+    def build(e: E):
+        import xax_selfhost_diagnostics as D
+        from xax_selfhost_general_emit import graph_cid_words, reject_at
+
+        p = e.p
+
+        def write():
+            def bits(graph: bool):
+                D.text(e, "XAX.NATIVE.BITS")
+                if graph:
+                    D.cid(e, graph_cid_words(e, _ra(e, F_FN)))
+                else:
+                    D.text(e, "x86_64")
+                D.text(e, "NATIVE-BITS-SUPPORTED")
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                D.integer(e, 32)
+                D.integer(e, 64)
+                D.integer(e, p["width"])
+
+            def rotate():
+                D.text(e, "XAX.NATIVE.ROTATE")
+                D.text(e, "x86_64")
+                D.text(e, "NATIVE-ROTATE-RIGHT")
+                D.put(e, D.T_LIST)
+                D.put(e, 3)
+                D.integer(e, 32)
+                D.integer(e, 64)
+                D.text(e, "amount < width")
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                D.integer(e, p["width"])
+                D.integer(e, _ra(e, F_AMOUNT))
+
+            e.if_(e.eq(p["which"], WIDTH_DIVISION), lambda: bits(True), lambda: e.if_(e.eq(p["which"], WIDTH_ARITHMETIC), lambda: bits(False), rotate))
+
+        reject_at(e, write)
+    return _function(("which", "width"), build, tables)
+
+
+FIXED_REJECTIONS = (
+    ("XAX.NATIVE.LINK", "NATIVE-LINK-REGISTER-PATH", "register-resident hosted function", "frame lowering"),
+    ("XAX.NATIVE.REBASE", "NATIVE-REBASE-REGISTER-PATH", "register-resident Linux function", "frame lowering"),
+)
+LINK_REJECTION, REBASE_REJECTION = range(2)
 
 
 def _begin_float(e: E):
@@ -633,7 +751,7 @@ def _int_node_fn(tables):
         def division():
             _bits_width(e, _result_type(e, result), "fi_w")
             width = p["fi_w"]
-            _ok(e, e.either(e.eq(width, 32), e.eq(width, 64)))
+            e.if_(e.not_(e.either(e.eq(width, 32), e.eq(width, 64))), lambda: _call(e, "width_reject", WIDTH_DIVISION, width))
             e.var("fi_bytes", e.sel(e.eq(width, 64), 8, 4))
             _load(e, RAX, _slot(e, p["fn_a"]), p["fi_bytes"])
             _constant_divisor(e, p["fn_b"], "fi_c")
@@ -667,10 +785,11 @@ def _int_node_fn(tables):
         def arithmetic():
             _bits_width(e, _result_type(e, result), "fi_w")
             width = p["fi_w"]
-            _ok(e, e.either(e.eq(width, 32), e.eq(width, 64)))
             e.var("fi_bytes", e.sel(e.eq(width, 64), 8, 4))
             _load(e, RAX, _slot(e, p["fn_a"]), p["fi_bytes"])
             _load(e, SCRATCH0, _slot(e, p["fn_b"]), p["fi_bytes"])
+            # ``_arithmetic`` fails after the operands' loads (S12f.4).
+            e.if_(e.not_(e.either(e.eq(width, 32), e.eq(width, 64))), lambda: _call(e, "width_reject", WIDTH_ARITHMETIC, width))
             for operation in ARITHMETIC_64:
                 e.if_(e.eq(op, _op(operation)), lambda operation=operation: e.if_(e.eq(width, 64), lambda: _b(e, ARITHMETIC_64[operation]), lambda: _b(e, ARITHMETIC_32[operation])))
             _store(e, RAX, _slot(e, result), 8)
@@ -682,9 +801,12 @@ def _int_node_fn(tables):
             _bits_width(e, _result_type(e, result), "fi_w")
             width = p["fi_w"]
             e.var("fi_amount", _attribute(e, node, 0))
-            _ok(e, e.both(e.either(e.eq(width, 32), e.eq(width, 64)), e.lt(p["fi_amount"], width)))
             e.var("fi_bytes", e.sel(e.eq(width, 64), 8, 4))
             _load(e, RAX, _slot(e, p["fn_a"]), p["fi_bytes"])
+            # ``_rotate_right_immediate`` fails after the operand's load (S12f.4).
+            _set_ra(e, F_AMOUNT, p["fi_amount"])
+            e.if_(e.not_(e.both(e.either(e.eq(width, 32), e.eq(width, 64)), e.lt(p["fi_amount"], width))),
+                  lambda: _call(e, "width_reject", WIDTH_ROTATE, width))
             e.if_(e.eq(width, 64), lambda: _bx(e, 0x48, 1))
             _bx(e, 0xC8C1, 2)
             _bx(e, p["fi_amount"], 1)
@@ -1266,8 +1388,9 @@ def _memory_tail_fn(tables):
 
         e.if_(e.both(_in(e, op, (_op(Operation.ADDRESS_OFFSET), _op(Operation.POINTER_CAST))), e.ne(result, NONE), is_heap(result)), heap_address)
         e.if_(e.eq(op, _op(Operation.LINK_TARGET)), lambda: e.give(1))
-        # LINK_MAKE, LINK_FOLLOW, POINTER_REBASE: the bootstrap rejects them on this path; atomics are declined earlier.
-        _ok(e, e.not_(_in(e, op, (_op(Operation.LINK_MAKE), _op(Operation.LINK_FOLLOW), _op(Operation.POINTER_REBASE)))))
+        # LINK_MAKE, LINK_FOLLOW, POINTER_REBASE: the bootstrap rejects them on this path (S12f.4, ADR-280).
+        e.if_(_in(e, op, (_op(Operation.LINK_MAKE), _op(Operation.LINK_FOLLOW))), lambda: _call(e, "fixed_reject", LINK_REJECTION))
+        e.if_(e.eq(op, _op(Operation.POINTER_REBASE)), lambda: _call(e, "fixed_reject", REBASE_REJECTION))
 
         def pointer_address():
             _bits_width(e, _result_type(e, result), "ft_w")
@@ -2010,8 +2133,8 @@ def _legacy_static(e: E, f, name: str):
 
 
 def _frame_function_fn(tables):
-    """The frame lowering of function ``f`` (image index ``fidx``) from its own graph: 1 emitted; 0 when the
-    bootstrap would try the legacy register path first (not decided here)."""
+    """The frame lowering of function ``f`` (image index ``fidx``) from its own graph, or the legacy register path where
+    the bootstrap takes it (S12f.4): 1 emitted."""
     from xax_selfhost_general_view import G_BLIST, G_FKEYN, G_LIFT_ENTRY, _globals
     from xax_selfhost_x86_64_general import G_ENTRY
 
@@ -2035,68 +2158,75 @@ def _frame_function_fn(tables):
         _set_ra(e, F_FN, p["f"])
         _set_ra(e, F_PROCESS, e.flag(e.eq(p["f"], _g(e, G_ENTRY))))
         _set_ra(e, F_DYN, 1)  # the Linux profiles support heap views: pointers are first-class values
-        e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_legacy"), e.if_(e.ne(p["ff_legacy"], 0), lambda: e.give(0))))
-        _call(e, "frame_layout", p["f"])
+        # S12f.4 (ADR-280): a function the legacy register path's static checks accept is lowered by that path.
+        e.var("ff_legacy", 0)
+        e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_static"), e.set("ff_legacy", p["ff_static"])))
         # The emission state (``xax_selfhost_general_emit``): the real run only.
         for slot in (E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
             _set_ra(e, slot, 0)
         _set_ra(e, E_REAL, 1)
         _set_ra(e, E_NLABELS, _g(e, G_BCOUNT))
         e.for_("ff_l", 0, _g(e, G_BCOUNT), lambda: e.st(e.add(_ra(e, E_LABELS), p["ff_l"]), NONE))
-        e.var("ff_frame", _ra(e, F_FRAME))
-        _bx(e, 0xEC8148, 3, True)
-        _bx(e, p["ff_frame"], 4, True)
-        # The entry block's parameters from the argument registers or the caller's stack.
-        e.var("ff_entry", _g(e, G_BENTRY))
-        e.var("ff_pos", 0)
-        e.if_(e.ne(_ra(e, F_RETPTR), NONE), lambda: (_store(e, ARGUMENT_REGISTERS[0], _ra(e, F_RETPTR), 8), e.set("ff_pos", 1)))
 
-        def parameter():
-            e.var("ff_v", e.ld(e.add(_f(e, p["ff_entry"], B_INPUTS), p["ff_k"])))
-            e.var("ff_t", _vf(e, G_VTYPE, p["ff_v"]))
+        def frame_body():
+            _call(e, "frame_layout", p["f"])
+            e.var("ff_frame", _ra(e, F_FRAME))
+            _bx(e, 0xEC8148, 3, True)
+            _bx(e, p["ff_frame"], 4, True)
+            # The entry block's parameters from the argument registers or the caller's stack.
+            e.var("ff_entry", _g(e, G_BENTRY))
+            e.var("ff_pos", 0)
+            e.if_(e.ne(_ra(e, F_RETPTR), NONE), lambda: (_store(e, ARGUMENT_REGISTERS[0], _ra(e, F_RETPTR), 8), e.set("ff_pos", 1)))
 
-            def machine():
-                e.var("ff_dest", _slot(e, p["ff_v"]))
-                e.var("ff_size", _rt(e, T_FSIZE, p["ff_v"]))
+            def parameter():
+                e.var("ff_v", e.ld(e.add(_f(e, p["ff_entry"], B_INPUTS), p["ff_k"])))
+                e.var("ff_t", _vf(e, G_VTYPE, p["ff_v"]))
 
-                e.var("ff_byref", 0)
-                e.if_(_is_aggregate(e, p["ff_t"]), lambda: e.set("ff_byref", e.flag(_by_reference(e, p["ff_t"], p["ff_size"]))))
+                def machine():
+                    e.var("ff_dest", _slot(e, p["ff_v"]))
+                    e.var("ff_size", _rt(e, T_FSIZE, p["ff_v"]))
 
-                def register():
-                    e.var("ff_reg", _select(e, p["ff_pos"], ARGUMENT_REGISTERS))
-                    e.if_(_is_float(e, p["ff_t"]), lambda: (_float_width(e, p["ff_t"], "ff_fw"), _xmm_memory(e, False, p["ff_pos"], p["ff_dest"], p["ff_fw"])),
-                          lambda: e.if_(_is_aggregate(e, p["ff_t"]), lambda: (
-                              _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), e.if_(
-                                  e.ne(p["ff_byref"], 0), lambda: _copy_bytes(e, RSP, p["ff_dest"], p["ff_reg"], 0, p["ff_size"]),
-                                  lambda: _call(e, "store_exact", p["ff_reg"], RSP, p["ff_dest"], p["ff_size"]))),
-                              lambda: _store(e, p["ff_reg"], p["ff_dest"], 8)))
+                    e.var("ff_byref", 0)
+                    e.if_(_is_aggregate(e, p["ff_t"]), lambda: e.set("ff_byref", e.flag(_by_reference(e, p["ff_t"], p["ff_size"]))))
 
-                def stacked():
-                    e.var("ff_in", e.add(e.add(p["ff_frame"], 8 + SHADOW), e.mul(e.sub(p["ff_pos"], 4), 8)))
-                    e.if_(_is_float(e, p["ff_t"]), lambda: (_float_width(e, p["ff_t"], "ff_fw"), _xmm_memory(e, True, 4, p["ff_in"], p["ff_fw"]),
-                                                            _xmm_memory(e, False, 4, p["ff_dest"], p["ff_fw"])),
-                          lambda: e.if_(_is_aggregate(e, p["ff_t"]), lambda: (
-                              _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), e.if_(
-                                  e.ne(p["ff_byref"], 0), lambda: (_load(e, SCRATCH0, p["ff_in"], 8), _copy_bytes(e, RSP, p["ff_dest"], SCRATCH0, 0, p["ff_size"])),
-                                  lambda: (_call(e, "load_exact", SCRATCH0, RSP, p["ff_in"], p["ff_size"]),
-                                           _call(e, "store_exact", SCRATCH0, RSP, p["ff_dest"], p["ff_size"])))),
-                              lambda: (_load(e, SCRATCH0, p["ff_in"], 8), _store(e, SCRATCH0, p["ff_dest"], 8))))
+                    def register():
+                        e.var("ff_reg", _select(e, p["ff_pos"], ARGUMENT_REGISTERS))
+                        e.if_(_is_float(e, p["ff_t"]), lambda: (_float_width(e, p["ff_t"], "ff_fw"), _xmm_memory(e, False, p["ff_pos"], p["ff_dest"], p["ff_fw"])),
+                              lambda: e.if_(_is_aggregate(e, p["ff_t"]), lambda: (
+                                  _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), e.if_(
+                                      e.ne(p["ff_byref"], 0), lambda: _copy_bytes(e, RSP, p["ff_dest"], p["ff_reg"], 0, p["ff_size"]),
+                                      lambda: _call(e, "store_exact", p["ff_reg"], RSP, p["ff_dest"], p["ff_size"]))),
+                                  lambda: _store(e, p["ff_reg"], p["ff_dest"], 8)))
 
-                e.if_(e.lt(p["ff_pos"], 4), register, stacked)
-                e.set("ff_pos", e.add(p["ff_pos"], 1))
+                    def stacked():
+                        e.var("ff_in", e.add(e.add(p["ff_frame"], 8 + SHADOW), e.mul(e.sub(p["ff_pos"], 4), 8)))
+                        e.if_(_is_float(e, p["ff_t"]), lambda: (_float_width(e, p["ff_t"], "ff_fw"), _xmm_memory(e, True, 4, p["ff_in"], p["ff_fw"]),
+                                                                _xmm_memory(e, False, 4, p["ff_dest"], p["ff_fw"])),
+                              lambda: e.if_(_is_aggregate(e, p["ff_t"]), lambda: (
+                                  _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), e.if_(
+                                      e.ne(p["ff_byref"], 0), lambda: (_load(e, SCRATCH0, p["ff_in"], 8), _copy_bytes(e, RSP, p["ff_dest"], SCRATCH0, 0, p["ff_size"])),
+                                      lambda: (_call(e, "load_exact", SCRATCH0, RSP, p["ff_in"], p["ff_size"]),
+                                               _call(e, "store_exact", SCRATCH0, RSP, p["ff_dest"], p["ff_size"])))),
+                                  lambda: (_load(e, SCRATCH0, p["ff_in"], 8), _store(e, SCRATCH0, p["ff_dest"], 8))))
 
-            e.if_(e.not_(_proof(e, p["ff_t"])), machine)
+                    e.if_(e.lt(p["ff_pos"], 4), register, stacked)
+                    e.set("ff_pos", e.add(p["ff_pos"], 1))
 
-        e.for_("ff_k", 0, _f(e, p["ff_entry"], B_NP), parameter)
-        e.var("ff_ei", _f(e, p["ff_entry"], B_POS))
-        e.if_(e.ne(p["ff_ei"], 0), lambda: _relative(e, 0xE9, p["ff_ei"]))
+                e.if_(e.not_(_proof(e, p["ff_t"])), machine)
 
-        def block():
-            _label(e, p["ff_bi"])
-            e.for_("ff_m", 0, _f(e, _block_at(e, p["ff_bi"]), B_NNODES), lambda: _call(e, "fr_node", p["ff_bi"], p["ff_m"]))
-            _call(e, "fr_term", p["ff_bi"])
+            e.for_("ff_k", 0, _f(e, p["ff_entry"], B_NP), parameter)
+            e.var("ff_ei", _f(e, p["ff_entry"], B_POS))
+            e.if_(e.ne(p["ff_ei"], 0), lambda: _relative(e, 0xE9, p["ff_ei"]))
 
-        e.for_("ff_bi", 0, _g(e, G_BCOUNT), block)
+            def block():
+                _label(e, p["ff_bi"])
+                e.for_("ff_m", 0, _f(e, _block_at(e, p["ff_bi"]), B_NNODES), lambda: _call(e, "fr_node", p["ff_bi"], p["ff_m"]))
+                _call(e, "fr_term", p["ff_bi"])
+
+            e.for_("ff_bi", 0, _g(e, G_BCOUNT), block)
+
+
+        e.if_(e.ne(p["ff_legacy"], 0), lambda: _call(e, "legacy_function", p["f"]), frame_body)
 
         def fixup():
             from xax_selfhost_general_emit import E_BRANCHES, E_CODE, _store_bytes
@@ -2154,9 +2284,14 @@ def _eligible_only_fn(tables):
 
 
 def add_frame_functions(add, tables):
+    from xax_selfhost_general_legacy import add_legacy_functions
+
     from xax_selfhost_x86_64_general import _layout
 
     add("abi_layout", _layout(tables))  # the front end's ``layout`` (the view's block layout took that name)
+    add("value_reject", _value_reject_fn(tables))
+    add("width_reject", _width_reject_fn(tables))
+    add("fixed_reject", _fixed_reject_fn(tables))
     add("frame_layout", _frame_layout_fn(tables))
     add("fr_int", _int_node_fn(tables))
     add("fr_float", _float_node_fn(tables))
@@ -2171,6 +2306,7 @@ def add_frame_functions(add, tables):
     add("atomic_check", _atomic_check_fn(tables))
     add("fr_node", _frame_node_fn(tables))
     add("fr_term", _frame_term_fn(tables))
+    add_legacy_functions(add, tables)
     add("frame_function", _frame_function_fn(tables))
     add("eligible_only", _eligible_only_fn(tables))
     add("frame_fallback", _fallback_fn(tables))

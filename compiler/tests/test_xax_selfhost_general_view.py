@@ -147,8 +147,10 @@ class GeneralViewTests(unittest.TestCase):
         """Random loop programs over random widths, each calling the previous ones (leaf candidates and not)."""
         from test_xax_jvm import _random_function
 
+        from xax_compiler import XaxError
+
         rng = random.Random(269)
-        checked = changed = 0
+        checked = changed = rejected = 0
         for trial in range(40):
             width = rng.choice((8, 16, 32, 47, 64))
             callees, objects = [], []
@@ -159,10 +161,19 @@ class GeneralViewTests(unittest.TestCase):
             bw = bits_type(width)
             reader, entry = self.store([(callees[-1], ((bw, 1), (bw, 2), (bw, 3)), (bw,))], *objects)
             with self.subTest(trial=trial):
-                changed += self.assertViews(reader, entry)
+                try:
+                    changed += self.assertViews(reader, entry)
+                except XaxError as error:
+                    # S12f.4 (ADR-280): code generation rejects (an operation of another width than 32 or 64 bits on
+                    # the frame path), as the bootstrap's whole compile does.
+                    with self.assertRaises(XaxError) as reference:
+                        compile_linux_executable(reader, entry.cid, self.target.cid, frontend="python")
+                    self.assertEqual(error.diagnostic, reference.exception.diagnostic)
+                    rejected += 1
                 checked += 1
         self.assertEqual(checked, 40)
         self.assertGreater(changed, 20)
+        self.assertGreater(rejected, 0)
 
     def test_chains_prefetch(self):
         """S12c.1: the chains benchmark's lookup gets the next iteration's head load and its prefetches from the XAX
@@ -409,6 +420,225 @@ class GeneralViewTests(unittest.TestCase):
                 xax = compile_linux_executable(reader, entry.cid, target.cid, frontend="xax")
                 self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
                 self.assertEqual(xax, compile_linux_executable(reader, entry.cid, target.cid, frontend="python"))
+
+    def _same_outcome(self, reader, entry, target, xax_assembles=True):
+        """``compile_linux_executable``'s outcome equals the bootstrap's, decided entirely by the XAX program."""
+        import xax_linux
+        from xax_compiler import XaxError
+        from xax_selfhost_x86_64_general import general_with_xax
+
+        try:
+            reference = ("image", compile_linux_executable(reader, entry.cid, target.cid, frontend="python"))
+        except XaxError as error:
+            reference = ("rejected", error.diagnostic)
+        if reference[0] == "rejected":
+            with self.assertRaises(XaxError) as xax:
+                general_with_xax(reader, entry.cid, target, required=True)
+            self.assertEqual(xax.exception.diagnostic, reference[1])
+            return reference
+        xax_linux.ASSEMBLY_COUNTS.clear()
+        self.assertEqual(compile_linux_executable(reader, entry.cid, target.cid, frontend="xax"), reference[1])
+        if xax_assembles:
+            self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
+        return reference
+
+    def test_values_wider_than_64_bits(self):
+        """S12f.4 (ADR-280): values wider than 64 bits are no constants for the ranges (the simplifier folds none): a
+        dead one leaves the function on the register-resident path; a live one, or a wide block parameter, is the frame
+        path's rejection (NATIVE-VALUE-MACHINE, NATIVE-BLOCK-PARAMETER-VALUE), the XAX program's."""
+        from xax_compiler import x86_64_linux_exec_target
+
+        B128 = bits_type(128)
+
+        def program(build):
+            graph = GraphBuilder()
+            graph.track(B128)
+            block = graph.block(B32, B32)
+            build(graph, block)
+            callee = graph.function((B32, B32), (B32,))
+            entry, items = _process([(callee, ((B32, 1), (B32, 2)), (B32,))])
+            target = x86_64_linux_exec_target()
+            return program_store(entry, target, (*items, *graph.objects.values())), entry, target
+
+        def dead(graph, block):
+            block.op1(Operation.ADD_WRAP, (block.const(B128, 5), block.const(B128, 7)), B128)
+            block.ret(block.op1(Operation.ADD_WRAP, (block.params[0], block.params[1]), B32))
+
+        def live(graph, block):
+            wide = block.op1(Operation.INT_ZERO_EXTEND, (block.params[0],), B128)
+            block.ret(block.op1(Operation.INT_TRUNCATE, (block.op1(Operation.ADD_WRAP, (wide, wide), B128),), B32))
+
+        def parameter(graph, block):
+            join = graph.block(B128)
+            block.br(join, block.op1(Operation.INT_ZERO_EXTEND, (block.params[0],), B128))
+            join.ret(join.op1(Operation.INT_TRUNCATE, (join.params[0],), B32))
+
+        for name, build, outcome in (("dead", dead, "image"), ("live", live, "NATIVE-VALUE-MACHINE"), ("parameter", parameter, "NATIVE-BLOCK-PARAMETER-VALUE")):
+            with self.subTest(name):
+                kind, value = self._same_outcome(*program(build))
+                self.assertEqual(kind if kind == "image" else value.rule, outcome)
+
+    def test_links_and_rebases_on_the_frame_path(self):
+        """S12f.4 (ADR-280): a function the register-resident path cannot take (a float) with a link or a dynamic
+        rebase is the frame path's rejection (NATIVE-LINK-REGISTER-PATH, NATIVE-REBASE-REGISTER-PATH)."""
+        from test_xax_links import ARENA, LINK, NEXT, RECORD, RECORDS
+        from xax_compiler import FloatFormat, Permission, float_type, heap_view_type, pointer_type, x86_64_linux_exec_target
+
+        api = linux_api()
+        memory_type, f64 = api.memory_effect, float_type(FloatFormat.BINARY64)
+        words = pointer_type(B64, Permission.READ_WRITE, 8, space=2)
+
+        def program(view_type, extent, alignment, middle):
+            graph = GraphBuilder()
+            graph.track(*api.types, LINK, RECORD, RECORDS, NEXT, words, f64, B1)
+            block = graph.block(api.process_effect, api.filesystem_effect, memory_type)
+            process, fs, memory = block.params
+            raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, extent), memory), (api.bytes_rw, api.heap_owner, memory_type),
+                                          entity=api.mmap_anonymous)
+            view, token, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (view_type, heap_view_type(extent), memory_type), attributes=(extent, alignment))
+            memory = middle(block, view, memory)
+            floating = block.op1(Operation.UINT_TO_FLOAT, (block.const(B64, 3),), f64)
+            value = block.op1(Operation.FLOAT_TO_UINT_TRUNC, (floating,), B64)
+            _result, memory = block.op(Operation.CALL_FOREIGN, (view, token, memory), (B64, memory_type), entity=api.munmap_view(view_type, extent))
+            status = block.op1(Operation.INT_TRUNCATE, (value,), B32)
+            process = block.op1(Operation.CALL_FOREIGN, (status, process), api.process_effect, entity=api.exit_group)
+            block.ret(status, process, fs, memory)
+            function = graph.function((api.process_effect, api.filesystem_effect, memory_type), (B32, api.process_effect, api.filesystem_effect, memory_type))
+            target = x86_64_linux_exec_target()
+            return program_store(function, target, tuple(graph.objects.values())), function, target
+
+        def link(block, arena, memory):
+            field = block.op1(Operation.ADDRESS_OFFSET, (arena,), NEXT, attributes=(8,))
+            return block.op1(Operation.STORE_BITS_LE, (field, block.op1(Operation.LINK_MAKE, (arena,), LINK), memory), memory_type, attributes=(8, 8))
+
+        def rebase(block, view, memory):
+            address = block.op1(Operation.POINTER_ADDRESS, (view,), B64, attributes=(1,))
+            node = block.op1(Operation.POINTER_REBASE, (view, address), words, attributes=(16,))
+            _value, memory = block.op(Operation.LOAD_BITS_LE, (node, memory), (B64, memory_type), attributes=(8, 8))
+            return memory
+
+        for rule, case in (("NATIVE-LINK-REGISTER-PATH", (RECORDS, ARENA, 16, link)), ("NATIVE-REBASE-REGISTER-PATH", (words, 64, 8, rebase))):
+            with self.subTest(rule):
+                kind, diagnostic = self._same_outcome(*program(*case))
+                self.assertEqual((kind, diagnostic.rule), ("rejected", rule))
+
+    def test_width_rejections_on_the_frame_path(self):
+        """S12f.4 (ADR-280): a division or a rotation of another width than 32 or 64 bits on the frame path is the
+        bootstrap's rejection (NATIVE-BITS-SUPPORTED naming the graph; NATIVE-ROTATE-RIGHT), the XAX program's."""
+        from xax_compiler import FloatFormat, float_type, x86_64_linux_exec_target
+
+        f64, b16 = float_type(FloatFormat.BINARY64), bits_type(16)
+
+        def program(operation, attributes=()):
+            graph = GraphBuilder()
+            graph.track(f64, b16)
+            block = graph.block(B32, B32)
+            narrow = block.op1(Operation.INT_TRUNCATE, (block.params[0],), b16)
+            operands = (narrow, block.op1(Operation.INT_TRUNCATE, (block.params[1],), b16)) if operation == Operation.UDIV else (narrow,)
+            result = block.op1(operation, operands, b16, attributes=attributes)
+            floating = block.op1(Operation.UINT_TO_FLOAT, (block.op1(Operation.INT_ZERO_EXTEND, (result,), B64),), f64)  # the frame path
+            block.ret(block.op1(Operation.INT_TRUNCATE, (block.op1(Operation.FLOAT_TO_UINT_TRUNC, (floating,), B64),), B32))
+            callee = graph.function((B32, B32), (B32,))
+            entry, items = _process([(callee, ((B32, 9), (B32, 2)), (B32,))])
+            target = x86_64_linux_exec_target()
+            return program_store(entry, target, (*items, *graph.objects.values())), entry, target
+
+        for rule, case in (("NATIVE-BITS-SUPPORTED", (Operation.UDIV,)), ("NATIVE-ROTATE-RIGHT", (Operation.ROTATE_RIGHT, (3,)))):
+            with self.subTest(rule):
+                kind, diagnostic = self._same_outcome(*program(*case))
+                self.assertEqual((kind, diagnostic.rule), ("rejected", rule))
+
+    def test_legacy_register_path(self):
+        """S12f.4 (ADR-280): a function of ``add``/``sub``/``mul``, constants, and direct calls whose lowering view the
+        register-resident path cannot take (an inlined float leaf) is lowered by the bootstrap's legacy register path;
+        the XAX program's code is the bootstrap's (registers, spills, homes, edge copies, calls), and arithmetic of
+        another width than 32 or 64 bits is its rejection (NATIVE-BITS-SUPPORTED)."""
+        import random
+
+        import xax_x86_64
+        from xax_compiler import FloatFormat, float_type, x86_64_linux_exec_target
+
+        f64 = float_type(FloatFormat.BINARY64)
+        arithmetic = (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP)
+
+        def program(rng, width):
+            value = bits_type(width)
+            leaf_graph = GraphBuilder()
+            leaf_graph.track(f64)
+            block = leaf_graph.block(value, value)
+            floating = block.op1(Operation.UINT_TO_FLOAT, (block.params[0],), f64)
+            block.ret(block.op1(Operation.ADD_WRAP, (block.op1(Operation.FLOAT_TO_UINT_TRUNC, (floating,), value), block.params[1]), value))
+            leaf = leaf_graph.function((value, value), (value,))
+            outer_graph = GraphBuilder()
+            block = outer_graph.block(value, value)
+            called = block.op1(Operation.CALL_DIRECT, (block.params[0], block.params[1]), value, entity=leaf)
+            block.ret(block.op1(Operation.SUB_WRAP, (called, block.params[0]), value))
+            outer = outer_graph.function((value, value), (value,))
+            graph = GraphBuilder()
+            count = rng.randint(1, 4)
+            entry = graph.block(*(value,) * count)
+            pool = list(entry.params)
+
+            def operations(block, pool, n):
+                for _ in range(n):
+                    roll = rng.random()
+                    if roll < 0.15:
+                        pool.append(block.const(value, rng.choice((0, 1, 7, 255, rng.getrandbits(width)))))
+                    elif roll < 0.25:
+                        pool.append(block.op1(Operation.CALL_DIRECT, (rng.choice(pool), rng.choice(pool)), value, entity=rng.choice((leaf, outer))))
+                    else:
+                        pool.append(block.op1(rng.choice(arithmetic), (rng.choice(pool), rng.choice(pool)), value))
+
+            pool.append(entry.op1(Operation.CALL_DIRECT, (pool[0], pool[-1]), value, entity=leaf))  # inlined: keeps the view off
+            operations(entry, pool, rng.randint(2, 18))
+            shape = rng.choice(("return", "branch", "conditional"))
+            if shape == "return":
+                entry.ret(rng.choice(pool))
+            else:
+                k = rng.randint(1, 8)  # beyond six machine parameters: edge spill slots
+                join = graph.block(*(value,) * k)
+                if shape == "branch":
+                    entry.br(join, *(rng.choice(pool) for _ in range(k)))
+                else:
+                    left, right = graph.block(), graph.block()
+                    entry.cbr(entry.const(B1, rng.randint(0, 1)), left, (), right, ())
+                    for side in (left, right):
+                        reachable = pool[:]
+                        operations(side, reachable, rng.randint(0, 8))
+                        side.br(join, *(rng.choice(reachable) for _ in range(k)))
+                joined = list(join.params)
+                operations(join, joined, rng.randint(1, 10))
+                crossing = joined + [rng.choice(pool)]  # an entry value used in the join: a home slot
+                join.ret(join.op1(Operation.ADD_WRAP, (rng.choice(crossing), rng.choice(crossing)), value))
+            function = graph.function((value,) * count, (value,))
+            entry_function, items = _process([(function, tuple((value, rng.randint(0, 99)) for _ in range(count)), (value,))])
+            target = x86_64_linux_exec_target()
+            objects = (*items, *leaf_graph.objects.values(), *outer_graph.objects.values(), *graph.objects.values(), leaf, outer)
+            return program_store(entry_function, target, objects), entry_function, target
+
+        taken = []
+        original = xax_x86_64._compile_register_resident_function
+
+        def recording(*arguments, **keywords):
+            result = original(*arguments, **keywords)
+            taken.append(result is not None)
+            return result
+
+        xax_x86_64._compile_register_resident_function = recording
+        try:
+            rng = random.Random(280)
+            for trial in range(24):
+                width = rng.choice((32, 64))
+                with self.subTest(trial=trial, width=width):
+                    taken.clear()
+                    reader, entry, target = program(rng, width)
+                    self.assertEqual(self._same_outcome(reader, entry, target)[0], "image")
+                    self.assertIn(True, taken)  # the bootstrap took the legacy path
+            with self.subTest("NATIVE-BITS-SUPPORTED"):
+                kind, diagnostic = self._same_outcome(*program(random.Random(7), 16))
+                self.assertEqual((kind, diagnostic.rule), ("rejected", "NATIVE-BITS-SUPPORTED"))
+        finally:
+            xax_x86_64._compile_register_resident_function = original
 
     def test_frame_lowering(self):
         """S12f: functions the register-resident path rejects (floats, products, sums) are lowered by the XAX frame
