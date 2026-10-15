@@ -376,9 +376,9 @@ def measure() -> dict:
         "corpus": rows,
         # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
         "rejection_exactness_gaps": [
-            ("memory rejections that quote a decoded declaration or a stack-owner entry's contract, and a constant or type reached "
-             "inside a graph's parse, decline (ADR-293, ADR-295); a graph decoder rejection behind an unproven type, and a missing "
-             "reference first reached through another object's graph, decline (ADR-288)"),
+            ("memory rejections that quote a decoded declaration, a pointer type the memory engine's pointer decoder rejects, and a "
+             "stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference "
+             "first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297)"),
         ],
         "required_paths_outside_xax": [
             "package signature verification (no signature algorithm in the driver)",
