@@ -59,6 +59,7 @@ def reject_at(e: E, write):
         D.begin(e)
         write()
         _se(e, E_FAIL, 1)
+        e.st(0, D.REJECT)  # the status now, so a caller's decline (NONE) cannot leave it undecided
 
     e.if_(e.both(e.ne(_ra(e, I_OK), 0), e.eq(_e(e, E_FAIL), 0)), record)
     e.give(NONE)

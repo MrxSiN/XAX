@@ -1333,6 +1333,9 @@ def _view(tables):
         e.for_("vw_q", 0, p["vw_n"], lambda: e.st(e.add(p["vw_list"], p["vw_q"]), e.ld(e.add(p["vw_blocks"], p["vw_q"]))))
         _globals(e, G_BLIST, p["vw_list"])
         _globals(e, G_BCOUNT, p["vw_n"])
+        # S12f.3 (ADR-279): ``_compile_function`` first proves every atomic node's capability on the function's graph.
+        _call(e, "atomic_check", p["f"])
+        e.if_(e.ne(_ra(e, E_FAIL), 0), lambda: e.give(1))
         # Any candidate in the original graph?
         e.var("vw_any", 0)
 

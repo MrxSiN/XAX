@@ -47,6 +47,8 @@ COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each functi
 # Front-end state beyond the views backends' globals (``GLOBALS + slot``).
 (G_LSIZE, G_LALIGN, G_LSTACK, G_TABI, G_TFMT, G_NARGS, G_GENERAL, G_EA_AT, G_EA_N, G_FRAMES, G_TARGET, G_ENTRY,
  G_MEMBERS, G_MTAB, G_GROUPOF) = range(21, 36)
+# S12f.3 (ADR-279): the target's profile, and where its atomic widths, scopes, and families start (profiles 2 and 5).
+G_TPROFILE, G_TATOMIC = 61, 62
 FRAME = 5  # a closure frame: function, graph, stream cursor, blocks left, nodes left in the current block
 F_FN, F_GRAPH, F_AT, F_BLOCKS, F_NODES = range(FRAME)
 
@@ -661,6 +663,7 @@ def _frontend(tables):
         identity = _payload_uleb(e, "ta")
         e.set("ta", e.add(p["ta"], identity))  # past the identity bytes
         fields = [_payload_uleb(e, "ta") for _ in range(6)]  # profile, architecture, abi, format, word, pointer bits
+        e.var("t_profile", fields[0])
         e.var("t_arch", fields[1])
         e.var("t_abi", fields[2])
         e.var("t_fmt", fields[3])
@@ -686,6 +689,8 @@ def _frontend(tables):
             e.var("tcount", _payload_uleb(e, "ta"))
             e.for_("q", 0, p["tcount"], lambda table=table, limit=limit: (lambda value: (_ok(e, e.lt(value, limit)), e.st(e.add(_g(e, table), value), 1)))(
                 _payload_uleb(e, "ta")))
+        e.st(GLOBALS + G_TPROFILE, p["t_profile"])
+        e.st(GLOBALS + G_TATOMIC, p["ta"])
         sup = _g(e, G_SUP)
         e.st(GLOBALS + G_GENERAL, e.flag(e.either(*(e.ne(e.ld(e.add(sup, int(op))), 0) for op in (Operation.FLOAT_ADD, Operation.AGGREGATE_MAKE, Operation.SUM_MAKE)))))
 

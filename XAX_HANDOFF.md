@@ -186,6 +186,19 @@ Linux x86-64 is R6 on the validator's rules. What would make it robust: R4 re-ru
 
 - Next: resource transitions, target register lists and profile sections, the canonical group order, packages, and builds; the remaining memory declines. Superseded by S8 below.
 
+## S12f.3 atomics and by-reference aggregates — 2026-10-15 (ADR-279)
+
+- Done in `xax_selfhost_general_frame.py`:
+  - `atomic_check` (run by `_view` on the lifted graph, before the lowering view), `atomic_reject`, and `fr_atomic`;
+  - `_hidden_result`, `_copy_at`, and the `F_RETPTR`, `F_COPIES`, `F_NCOPIES` slots (239..241).
+- The front end keeps `G_TPROFILE`/`G_TATOMIC` (globals 61, 62).
+- `reject_at` sets the REJECT status itself: `_call` turns NONE into a decline that would otherwise abort before the final status.
+- Capacity: the general driver store is 16.19 MB against the store decoder's 16 MiB `DATA_EXTENT`. Enlarge it, and regenerate every store that embeds the decoder, before the general backend grows much more.
+- Next: S12f.4:
+  - Values wider than 64 bits. The simplifier must fold them exactly; the bootstrap uses Python integers.
+  - The legacy register path.
+  - Links and rebases on the frame path.
+
 ## S12f.2 code generation rejections — 2026-10-15 (ADR-278)
 
 - Done: `xax_selfhost_general_emit.reject_at(e, write)`, which writes the diagnostic only while `I_OK` holds and sets `E_FAIL`. `E_F` names the function being lowered, and `graph_cid_words` names its graph, which is the bootstrap's `graph_object`.

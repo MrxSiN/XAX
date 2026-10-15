@@ -284,6 +284,132 @@ class GeneralViewTests(unittest.TestCase):
                 self.assertEqual(reference.exception.diagnostic.rule, rule)
                 self.assertEqual(xax.exception.diagnostic, reference.exception.diagnostic)
 
+    def test_atomics_on_the_frame_path(self):
+        """S12f.3 (ADR-279): atomic loads, stores, read-modify-writes, compare-exchanges, and fences of stack storage are
+        lowered by the XAX frame path, byte for byte; an unsupported width (NATIVE-ATOMIC-CAPABILITY) and a heap view
+        (NATIVE-ATOMIC-STACK-STORAGE) are the program's rejections."""
+        import xax_linux
+        from xax_compiler import (
+            AtomicOrder, AtomicRmwKind, AtomicScope, CompareExchangeStrength, Permission, XaxError, heap_view_type, pointer_type,
+            stack_owner_type, x86_64_linux_exec_target,
+        )
+        from xax_selfhost_x86_64_general import general_with_xax
+
+        api, system = linux_api(), AtomicScope.SYSTEM
+        owner_type, memory_type = stack_owner_type(), api.memory_effect
+
+        def program(width, store_order, load_order, rmw_kind, fence_order):
+            value = bits_type(width)
+            size = width // 8
+            pointer = pointer_type(value, Permission.READ_WRITE, max(1, size))
+            graph = GraphBuilder()
+            graph.track(pointer, owner_type, memory_type, value, B1)
+            block = graph.block(value)
+            (seed,) = block.params
+            p, owner, memory = block.op(Operation.STACK_ALLOC, (), (pointer, owner_type, memory_type), attributes=(size, max(1, size)))
+            memory = block.op1(Operation.ATOMIC_STORE, (p, seed, memory), memory_type, attributes=(store_order, system, size))
+            loaded, memory = block.op(Operation.ATOMIC_LOAD, (p, memory), (value, memory_type), attributes=(load_order, system, size))
+            _old, memory = block.op(Operation.ATOMIC_RMW, (p, loaded, memory), (value, memory_type), attributes=(rmw_kind, AtomicOrder.ACQ_REL, system, size))
+            memory = block.op1(Operation.ATOMIC_FENCE, (memory,), memory_type, attributes=(fence_order, system))
+            seen, _flag, memory = block.op(Operation.ATOMIC_CMPXCHG, (p, seed, loaded, memory), (value, B1, memory_type),
+                                           attributes=(AtomicOrder.SEQ_CST, AtomicOrder.ACQUIRE, system, size, CompareExchangeStrength.STRONG))
+            block.op(Operation.STACK_END, (owner, memory), ())
+            block.ret(seen)
+            callee = graph.function((value,), (value,))
+            entry, items = _process([(callee, ((value, 41),), (value,))])
+            target = x86_64_linux_exec_target()
+            return program_store(entry, target, (*items, *graph.objects.values())), entry, target
+
+        cases = []
+        for width in (32, 64):
+            for store_order in (AtomicOrder.RELAXED, AtomicOrder.RELEASE, AtomicOrder.SEQ_CST):
+                cases.append((width, store_order, AtomicOrder.ACQUIRE, AtomicRmwKind.ADD_WRAP, AtomicOrder.SEQ_CST))
+            for load_order in (AtomicOrder.RELAXED, AtomicOrder.SEQ_CST):
+                cases.append((width, AtomicOrder.RELEASE, load_order, AtomicRmwKind.EXCHANGE, AtomicOrder.ACQUIRE))
+            for fence_order in (AtomicOrder.RELEASE, AtomicOrder.ACQ_REL):
+                cases.append((width, AtomicOrder.RELEASE, AtomicOrder.ACQUIRE, AtomicRmwKind.EXCHANGE, fence_order))
+        for case in cases:
+            with self.subTest(case=case):
+                reader, entry, target = program(*case)
+                xax_linux.ASSEMBLY_COUNTS.clear()
+                xax = compile_linux_executable(reader, entry.cid, target.cid, frontend="xax")
+                self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
+                self.assertEqual(xax, compile_linux_executable(reader, entry.cid, target.cid, frontend="python"))
+
+        def rejection(reader, entry, target, rule):
+            with self.assertRaises(XaxError) as xax:
+                general_with_xax(reader, entry.cid, target, required=True)
+            with self.assertRaises(XaxError) as reference:
+                compile_linux_executable(reader, entry.cid, target.cid, frontend="python")
+            self.assertEqual(reference.exception.diagnostic.rule, rule)
+            self.assertEqual(xax.exception.diagnostic, reference.exception.diagnostic)
+
+        with self.subTest("NATIVE-ATOMIC-CAPABILITY"):
+            rejection(*program(16, AtomicOrder.RELEASE, AtomicOrder.ACQUIRE, AtomicRmwKind.ADD_WRAP, AtomicOrder.SEQ_CST), "NATIVE-ATOMIC-CAPABILITY")
+        with self.subTest("NATIVE-ATOMIC-STACK-STORAGE"):
+            words = pointer_type(B32, Permission.READ_WRITE, 4, space=api.bytes_rw.body[1])
+            graph = GraphBuilder()
+            graph.track(words)
+            block = graph.block(api.process_effect, api.memory_effect)
+            process, memory = block.params
+            raw, owner, memory = block.op(Operation.CALL_FOREIGN, (block.const(B64, 4096), memory), (api.bytes_rw, api.heap_owner, memory_type),
+                                          entity=api.mmap_anonymous)
+            pointer, view, memory = block.op(Operation.HEAP_VIEW, (raw, owner, memory), (words, heap_view_type(4096), memory_type), attributes=(4096, 4))
+            loaded, memory = block.op(Operation.ATOMIC_LOAD, (pointer, memory), (B32, memory_type), attributes=(AtomicOrder.ACQUIRE, system, 4))
+            _result, memory = block.op(Operation.CALL_FOREIGN, (pointer, view, memory), (B64, memory_type), entity=api.munmap_view(words, 4096))
+            process = block.op1(Operation.CALL_FOREIGN, (loaded, process), api.process_effect, entity=api.exit_group)
+            block.ret(loaded, process, memory)
+            entry = graph.function((api.process_effect, memory_type), (B32, api.process_effect, memory_type))
+            target = x86_64_linux_exec_target()
+            rejection(program_store(entry, target, (*api.types, *graph.objects.values())), entry, target, "NATIVE-ATOMIC-STACK-STORAGE")
+
+    def test_aggregates_by_reference(self):
+        """S12f.3 (ADR-279): aggregates of other sizes than 1, 2, 4, and 8 bytes pass by reference (the caller's 16-byte
+        aligned copy) and return through a hidden first argument, in registers and on the stack, through direct and
+        indirect calls; the frame path's code is the bootstrap's."""
+        import xax_linux
+        from xax_compiler import OpaqueKind, call_contract, function_pointer_type, opaque_type, tuple_type, x86_64_linux_exec_target
+
+        cases = []
+        for name, fields, extra in (("pair16", (B64, B64), 0), ("pair12", (B32, B64), 0), ("triple24", (B64, B64, B64), 0),
+                                    ("stacked", (B64, B64), 3), ("hidden-stacked", (B64, B64), 4)):
+            aggregate = tuple_type(fields)
+            graph = GraphBuilder()
+            graph.track(aggregate, *fields)
+            # (b64 x extra, aggregate) -> aggregate: the aggregate's fields swapped when they share a type.
+            block = graph.block(*((B64,) * extra), aggregate)
+            whole = block.params[-1]
+            items = [block.op1(Operation.AGGREGATE_GET, (whole,), t, attributes=(k,)) for k, t in enumerate(fields)]
+            if fields[0] == fields[1]:
+                items[0], items[1] = items[1], items[0]
+            block.ret(block.op1(Operation.AGGREGATE_MAKE, tuple(items), aggregate))
+            callee = graph.function((*((B64,) * extra), aggregate), (aggregate,))
+            for indirect in (False, True):
+                user_graph = GraphBuilder()
+                user_graph.track(aggregate, *fields)
+                user = user_graph.block(fields[0])
+                made = user.op1(Operation.AGGREGATE_MAKE, tuple(user.params[0] if t == fields[0] else user.const(t, 9) for t in fields), aggregate)
+                arguments = (*(user.const(B64, k) for k in range(extra)), made)
+                if indirect:
+                    pointer = user.op1(Operation.FUNCTION_ADDRESS, (), function_pointer_type(), entity=callee)
+                    contract = call_contract((*((B64,) * extra), aggregate), (aggregate,), may_return=True, may_trap=False)
+                    user_graph.track(contract, function_pointer_type(), opaque_type(OpaqueKind.FUNCTION))
+                    out = user.op1(Operation.CALL_INDIRECT, (pointer, *arguments), aggregate, entity=contract)
+                else:
+                    out = user.op1(Operation.CALL_DIRECT, arguments, aggregate, entity=callee)
+                user.ret(user.op1(Operation.AGGREGATE_GET, (out,), fields[0], attributes=(0,)))
+                caller = user_graph.function((fields[0],), (fields[0],))
+                entry, process_items = _process([(caller, ((fields[0], 5),), (fields[0],))])
+                target = x86_64_linux_exec_target()
+                reader = program_store(entry, target, (*process_items, *graph.objects.values(), *user_graph.objects.values(), callee))
+                cases.append((f"{name}{'-indirect' if indirect else ''}", reader, entry, target))
+        for name, reader, entry, target in cases:
+            with self.subTest(name):
+                xax_linux.ASSEMBLY_COUNTS.clear()
+                xax = compile_linux_executable(reader, entry.cid, target.cid, frontend="xax")
+                self.assertEqual(xax_linux.ASSEMBLY_COUNTS, {"xax": 1})
+                self.assertEqual(xax, compile_linux_executable(reader, entry.cid, target.cid, frontend="python"))
+
     def test_frame_lowering(self):
         """S12f: functions the register-resident path rejects (floats, products, sums) are lowered by the XAX frame
         path, byte for byte the bootstrap's ``_compile_function``; whole programs are assembled in XAX."""

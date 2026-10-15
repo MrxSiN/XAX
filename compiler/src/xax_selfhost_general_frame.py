@@ -11,9 +11,9 @@ Covered: integer arithmetic, division with its zero trap, width changes, rotatio
 compares, the SSE float operations under an IEEE MXCSR, float/integer conversions with their range traps, float
 width conversion, products, sums, function addresses, stack storage (static accesses, escaping addresses),
 first-class pointers and heap views (dynamic accesses), SysV C imports with INTEGER and SSE scalars, Linux syscalls,
-direct and indirect calls, returns, branches, and traps.  Declined (the bootstrap lowers or rejects): atomics,
-aggregates passed or returned by reference (sizes other than 1, 2, 4, 8), links and rebases (which the bootstrap
-rejects on this path), and the startup reads.
+direct and indirect calls, returns, branches, and traps; S12f.3 (ADR-279): atomics of stack storage with the
+capability check, and aggregates passed by reference or returned through the hidden pointer.  Declined (the bootstrap
+lowers or rejects): links and rebases (which the bootstrap rejects on this path), and the startup reads.
 
 The code, fixups, and ranges go to the same emission record as the register-resident code (S12d), so image
 assembly (S12e.1) is unchanged.
@@ -48,6 +48,9 @@ SHADOW = 32
 INTEGER_DIVIDE_BY_ZERO = 2
 # Frame state (``_ra`` slots).
 (F_FRAME, F_TEMP, F_MXOLD, F_PROCESS, F_DYN, F_ENTRYB) = range(232, 238)
+# S12f.3 (ADR-279): the hidden return pointer's slot (NONE without one), and the call copies of by-reference
+# arguments: ``[node, operand index, offset]`` triples and their count.
+F_RETPTR, F_COPIES, F_NCOPIES = 239, 240, 241
 ARITHMETIC_64 = {Operation.ADD_WRAP: b"\x4c\x01\xd0", Operation.SUB_WRAP: b"\x4c\x29\xd0", Operation.MUL_WRAP: b"\x49\x0f\xaf\xc2",
                  Operation.BIT_XOR: b"\x4c\x31\xd0", Operation.BIT_AND: b"\x4c\x21\xd0", Operation.BIT_OR: b"\x4c\x09\xd0"}
 ARITHMETIC_32 = {Operation.ADD_WRAP: b"\x44\x01\xd0", Operation.SUB_WRAP: b"\x44\x29\xd0", Operation.MUL_WRAP: b"\x41\x0f\xaf\xc2",
@@ -331,8 +334,8 @@ def _machine_results(e: E, node, name: str):
 
 def _frame_layout_fn(tables):
     """The frame: every value's slot and layout size, stack storage and heap-view pointers with their extents,
-    escaping pointers, the MXCSR save slots, and the frame size.  Declined for aggregates passed by reference and for
-    atomics (left to the bootstrap)."""
+    escaping pointers, the MXCSR save slots, and the frame size.  Declined for aggregates passed by reference (left to
+    the bootstrap)."""
     def build(e: E):
         p = e.p
         n = _g(e, G_VCOUNT)
@@ -346,20 +349,13 @@ def _frame_layout_fn(tables):
             e.var("fl_op", _eop(e, node))
 
             def call():
-                # A by-reference argument (its call copy) or result (the hidden pointer) is declined.
-                def by_reference(v):
-                    e.var("fl_ct", _vf(e, G_VTYPE, v))
-                    e.if_(e.both(e.not_(_proof(e, p["fl_ct"])), _is_aggregate(e, p["fl_ct"])), lambda: (
-                        _layout_size(e, p["fl_ct"], "fl_csize"), _ok(e, e.not_(_by_reference(e, p["fl_ct"], p["fl_csize"])))))
-
-                e.for_("fl_ck", 0, _f(e, node, N_NOPS), lambda: by_reference(_operand(e, node, p["fl_ck"])))
-                e.for_("fl_ck", 0, _f(e, node, N_NRES), lambda: by_reference(_output(e, node, p["fl_ck"])))
                 _machine_inputs(e, node, e.flag(e.eq(p["fl_op"], _op(Operation.CALL_INDIRECT))), "fl_in")
+                # A by-reference result travels as a hidden first argument.
+                _machine_results(e, node, "fl_cr")
+                e.set("fl_in", e.add(p["fl_in"], _hidden_result(e, p["fl_cr_first"], "fl_ch")))
                 e.if_(e.lt(4, p["fl_in"]), lambda: e.if_(e.lt(p["fl_out"], e.sub(p["fl_in"], 4)), lambda: e.set("fl_out", e.sub(p["fl_in"], 4))))
-                # (a hidden by-reference return would add one; such calls are declined below)
 
             e.if_(_in(e, p["fl_op"], CALLS), call)
-            _ok(e, e.not_(_in(e, p["fl_op"], ATOMICS)))
 
         _each_node(e, outgoing)
         e.var("fl_cursor", e.add(SHADOW, e.mul(p["fl_out"], 8)))
@@ -491,7 +487,47 @@ def _frame_layout_fn(tables):
         _each_node(e, lambda block, bi, node, m: e.if_(_in(e, _eop(e, node), FLOAT_OPERATIONS), lambda: e.set("fl_float", 1)))
         _set_ra(e, F_MXOLD, NONE)
         e.if_(e.ne(p["fl_float"], 0), lambda: (_set_ra(e, F_MXOLD, p["fl_cursor"]), e.set("fl_cursor", e.add(p["fl_cursor"], 8))))
-        # A by-reference return or argument (the hidden pointer, the call copies) is declined.
+        # The hidden return pointer's slot, then each by-reference call argument's 16-byte aligned copy.
+        e.var("fl_i", _call(e, "interface", p["f"]))
+        e.var("fl_np", e.ld(e.add(p["fl_i"], 1)))
+        e.var("fl_rt", e.add(e.add(p["fl_i"], 2), p["fl_np"]))
+        e.var("fl_first", NONE)
+        e.for_("fl_k", 0, e.ld(p["fl_rt"]), lambda: (e.var("fl_t", e.ld(e.add(e.add(p["fl_rt"], 1), p["fl_k"]))), e.if_(
+            e.both(e.eq(p["fl_first"], NONE), e.not_(_proof(e, p["fl_t"]))), lambda: e.set("fl_first", p["fl_t"]))))
+        _set_ra(e, F_RETPTR, NONE)
+        e.if_(e.ne(p["fl_first"], NONE), lambda: (_layout_size(e, p["fl_first"], "fl_rsize"), e.if_(
+            e.both(e.ne(p["fl_rsize"], NONE), _by_reference(e, p["fl_first"], p["fl_rsize"])),
+            lambda: (_set_ra(e, F_RETPTR, p["fl_cursor"]), e.set("fl_cursor", e.add(p["fl_cursor"], 8))))))
+        e.var("fl_ncopies", 0)
+        _each_node(e, lambda block, bi, node, m: e.if_(_in(e, _eop(e, node), CALLS), lambda: e.set("fl_ncopies", e.add(p["fl_ncopies"], _f(e, node, N_NOPS)))))
+        e.var("fl_copies", e.alloc(e.add(e.mul(p["fl_ncopies"], 3), 1)))
+        _ok(e, e.ne(p["fl_copies"], NONE))
+        _set_ra(e, F_COPIES, p["fl_copies"])
+        _set_ra(e, F_NCOPIES, 0)
+
+        def copies(block, bi, node, m):
+            def each():
+                e.var("fl_cv", _operand(e, node, p["fl_ck"]))
+                e.var("fl_ct", _vf(e, G_VTYPE, p["fl_cv"]))
+
+                def aggregate():
+                    _layout_size(e, p["fl_ct"], "fl_csize")
+
+                    def copy():
+                        e.set("fl_cursor", _align_to(e, p["fl_cursor"], 16))
+                        e.var("fl_cat", e.add(p["fl_copies"], e.mul(_ra(e, F_NCOPIES), 3)))
+                        for field, value in enumerate((node, p["fl_ck"], p["fl_cursor"])):
+                            e.st(e.add(p["fl_cat"], field), value)
+                        _set_ra(e, F_NCOPIES, e.add(_ra(e, F_NCOPIES), 1))
+                        e.set("fl_cursor", e.add(p["fl_cursor"], _slot_bytes(e, p["fl_csize"])))
+
+                    e.if_(e.both(e.ne(p["fl_csize"], NONE), _by_reference(e, p["fl_ct"], p["fl_csize"])), copy)
+
+                e.if_(e.both(e.not_(_proof(e, p["fl_ct"])), _is_aggregate(e, p["fl_ct"])), aggregate)
+
+            e.if_(_in(e, _eop(e, node), CALLS), lambda: e.for_("fl_ck", 0, _f(e, node, N_NOPS), each))
+
+        _each_node(e, copies)
         bias = e.sel(e.ne(_ra(e, F_PROCESS), 0), 0, 8)
         e.var("fl_bias", bias)
         e.var("fl_frame", e.sub(_align_to(e, e.add(p["fl_cursor"], p["fl_bias"]), 16), p["fl_bias"]))
@@ -499,6 +535,30 @@ def _frame_layout_fn(tables):
         _set_ra(e, F_FRAME, p["fl_frame"])
         e.give(1)
     return _function(("f",), build, tables)
+
+
+def _hidden_result(e: E, first, name: str):
+    """1 when a call's first machine result ``first`` (NONE: none) is an aggregate returned through a hidden pointer."""
+    p = e.p
+    e.var(name, 0)
+
+    def result():
+        e.var(f"{name}_t", _vf(e, G_VTYPE, first))
+        _layout_size(e, p[f"{name}_t"], f"{name}_size")
+        e.if_(e.both(e.ne(p[f"{name}_size"], NONE), _by_reference(e, p[f"{name}_t"], p[f"{name}_size"])), lambda: e.set(name, 1))
+
+    e.if_(e.ne(first, NONE), result)
+    return p[name]
+
+
+def _copy_at(e: E, node, operand):
+    """The frame offset of call ``node``'s copy of by-reference argument ``operand``."""
+    p = e.p
+    e.var("ca_at", NONE)
+    e.for_("ca_q", 0, _ra(e, F_NCOPIES), lambda: (e.var("ca_r", e.add(_ra(e, F_COPIES), e.mul(p["ca_q"], 3))), e.if_(
+        e.both(e.eq(e.ld(p["ca_r"]), node), e.eq(e.ld(e.add(p["ca_r"], 1)), operand)), lambda: e.set("ca_at", e.ld(e.add(p["ca_r"], 2))))))
+    _ok(e, e.ne(p["ca_at"], NONE))
+    return p["ca_at"]
 
 
 def _slot(e: E, value):
@@ -1455,6 +1515,21 @@ def _call_node_fn(tables):
         e.var("cl_indirect", e.flag(e.eq(op, _op(Operation.CALL_INDIRECT))))
         e.var("cl_pos", 0)
         e.var("cl_seen", 0)  # machine operands seen (the first is the callee of an indirect call)
+        e.var("cl_node", node)
+        _hidden_result(e, p["cl_r_first"], "cl_hidden")
+
+        # Each by-reference argument's caller-owned copy first.
+        def copy():
+            e.var("cl_o", _operand(e, node, p["cl_k"]))
+            e.var("cl_t", _vf(e, G_VTYPE, p["cl_o"]))
+
+            def aggregate():
+                e.var("cl_size", _rt(e, T_FSIZE, p["cl_o"]))
+                e.if_(_by_reference(e, p["cl_t"], p["cl_size"]), lambda: _copy_bytes(e, RSP, _copy_at(e, node, p["cl_k"]), RSP, _slot(e, p["cl_o"]), p["cl_size"]))
+
+            e.if_(e.both(e.not_(_proof(e, p["cl_t"])), _is_aggregate(e, p["cl_t"])), aggregate)
+
+        e.for_("cl_k", 0, _f(e, node, N_NOPS), copy)
 
         # The bootstrap loads the callee first, then the arguments in order.
         def callee_first():
@@ -1467,6 +1542,7 @@ def _call_node_fn(tables):
             e.set("cl_seen", 0)
 
         e.if_(e.ne(p["cl_indirect"], 0), callee_first)
+        e.if_(e.ne(p["cl_hidden"], 0), lambda: (_lea_any(e, ARGUMENT_REGISTERS[0], RSP, _slot(e, p["cl_r_first"])), e.set("cl_pos", 1)))
 
         def operand_skip_callee():
             e.var("cl_o", _operand(e, node, p["cl_k"]))
@@ -1492,18 +1568,22 @@ def _call_node_fn(tables):
             e.if_(e.eq(_call(e, "erased", p["cl_callee"]), 0), call)
 
         e.if_(e.ne(p["cl_indirect"], 0), lambda: _bx(e, 0xD3FF41, 3), direct)  # call r11
-        _store_call_result(e, node)
+        e.if_(e.eq(p["cl_hidden"], 0), lambda: _store_call_result(e, node))
         e.give(1)
     return _function(("bi", "m"), build, tables)
 
 
 def _argument(e: E, p):
     """One machine argument of a direct or indirect call at position ``cl_pos`` (register or stack)."""
+    e.var("cl_byref", 0)
+    e.if_(_is_aggregate(e, p["cl_t"]), lambda: e.set("cl_byref", e.flag(_by_reference(e, p["cl_t"], _rt(e, T_FSIZE, p["cl_o"])))))
+
     def register():
         e.var("cl_reg", _select(e, p["cl_pos"], ARGUMENT_REGISTERS))
         e.if_(_is_float(e, p["cl_t"]), lambda: (_float_width(e, p["cl_t"], "cl_fw"), _xmm_memory(e, True, p["cl_pos"], _slot(e, p["cl_o"]), p["cl_fw"])),
-              lambda: e.if_(e.ne(_rt(e, T_FPTR, p["cl_o"]), NONE), lambda: _lea_any(e, p["cl_reg"], RSP, _rt(e, T_FPTR, p["cl_o"])),
-                            lambda: _load(e, p["cl_reg"], _slot(e, p["cl_o"]), 8)))
+              lambda: e.if_(e.ne(p["cl_byref"], 0), lambda: _lea_any(e, p["cl_reg"], RSP, _copy_at(e, p["cl_node"], p["cl_k"])),
+                            lambda: e.if_(e.ne(_rt(e, T_FPTR, p["cl_o"]), NONE), lambda: _lea_any(e, p["cl_reg"], RSP, _rt(e, T_FPTR, p["cl_o"])),
+                                          lambda: _load(e, p["cl_reg"], _slot(e, p["cl_o"]), 8))))
 
     def stack():
         e.var("cl_out", e.add(SHADOW, e.mul(e.sub(p["cl_pos"], 4), 8)))
@@ -1522,7 +1602,11 @@ def _argument(e: E, p):
                   lambda: _load(e, SCRATCH0, _slot(e, p["cl_o"]), 8))
             _store(e, SCRATCH0, p["cl_out"], 8)
 
-        e.if_(_is_float(e, p["cl_t"]), floating, lambda: e.if_(_is_aggregate(e, p["cl_t"]), aggregate, scalar))
+        def by_reference():
+            _lea_any(e, SCRATCH0, RSP, _copy_at(e, p["cl_node"], p["cl_k"]))
+            _store(e, SCRATCH0, p["cl_out"], 8)
+
+        e.if_(_is_float(e, p["cl_t"]), floating, lambda: e.if_(e.ne(p["cl_byref"], 0), by_reference, lambda: e.if_(_is_aggregate(e, p["cl_t"]), aggregate, scalar)))
 
     e.if_(e.lt(p["cl_pos"], 4), register, stack)
     e.set("cl_pos", e.add(p["cl_pos"], 1))
@@ -1531,6 +1615,203 @@ def _argument(e: E, p):
 def _lea_any(e: E, register, base: int, offset):
     """``_lea`` for a computed register."""
     _lea(e, register, base, offset)
+
+
+FENCES = {1: None, 2: 0xE8AE0F, 3: 0xF8AE0F, 4: 0xF0AE0F, 5: 0xF0AE0F}  # ``_fence``: acquire lfence, release sfence, mfence
+SEQ_CST = 5
+
+
+def _atomic_access(e: E, opcodes: int, count: int, register: int, offset, size, locked):
+    """``_atomic_memory_instruction`` on ``[rsp + offset]`` (``size`` 4 or 8; the bootstrap fails otherwise)."""
+    _ok(e, e.both(e.either(e.eq(size, 4), e.eq(size, 8)), e.lt(offset, 1 << 31)))
+    e.if_(e.ne(locked, 0), lambda: _bx(e, 0xF0, 1))
+    e.var("aa_rex", e.add(e.add(0x40, e.mul(e.flag(e.eq(size, 8)), 8)), 4 if register >= 8 else 0))
+    e.if_(e.ne(e.p["aa_rex"], 0x40), lambda: _bx(e, e.p["aa_rex"], 1))
+    _bx(e, opcodes, count)
+    head = 0x44 | ((register & 7) << 3)
+    e.if_(e.lt(offset, 128), lambda: (_bx(e, head + 0x2400, 2), _bx(e, offset, 1)),
+          lambda: (_bx(e, (head | 0x80) + 0x2400, 2), _bx(e, offset, 4)))
+
+
+def _atomic_node_fn(tables):
+    """The frame path's atomics (``_compile_function``): fences, and loads, stores, read-modify-writes, and
+    compare-exchanges of stack storage; a heap view rejects (NATIVE-ATOMIC-STACK-STORAGE): 1, or 0 when not this group."""
+    from xax_compiler import AtomicRmwKind
+
+    def build(e: E):
+        p = e.p
+        node, op, result = _node_prelude(e)
+        e.if_(e.not_(_in(e, op, ATOMICS)), lambda: e.give(0))
+
+        def fence():
+            e.var("an_order", _attribute(e, node, 0))
+            _ok(e, e.both(e.le(2, p["an_order"]), e.le(p["an_order"], 5)))
+            for order, word in FENCES.items():
+                if word is not None:
+                    e.if_(e.eq(p["an_order"], order), lambda word=word: _bx(e, word, 3))
+            e.give(1)
+
+        e.if_(e.eq(op, _op(Operation.ATOMIC_FENCE)), fence)
+        e.var("an_ptr", _operand(e, node, 0))
+
+        def heap():
+            from xax_selfhost_general_emit import E_F, _e, graph_cid_words, reject_at
+            import xax_selfhost_diagnostics as D
+
+            def write():
+                D.text(e, "XAX.NATIVE.POINTER")
+                D.cid(e, graph_cid_words(e, _e(e, E_F)))
+                D.text(e, "NATIVE-ATOMIC-STACK-STORAGE")
+                D.text(e, "stack storage")
+                D.text(e, "heap view")
+
+            reject_at(e, write)
+
+        e.if_(e.ne(_rt(e, T_FHROOT, p["an_ptr"]), NONE), heap)
+        e.var("an_at", _rt(e, T_FPTR, p["an_ptr"]))
+        _ok(e, e.ne(p["an_at"], NONE))  # neither: the bootstrap has no frame offset for it
+        at = p["an_at"]
+
+        def size_of(type_obj):
+            _bits_width(e, type_obj, "an_w")
+            e.var("an_size", e.udiv(p["an_w"], 8))
+
+        def load():
+            size_of(_result_type(e, result))
+            _load(e, RAX, at, p["an_size"])
+            e.if_(e.eq(_attribute(e, node, 0), SEQ_CST), lambda: _bx(e, FENCES[SEQ_CST], 3))
+            _store(e, RAX, _slot(e, result), 8)
+            e.give(1)
+
+        e.if_(e.eq(op, _op(Operation.ATOMIC_LOAD)), load)
+
+        def store():
+            e.var("an_v", _operand(e, node, 1))
+            size_of(_vf(e, G_VTYPE, p["an_v"]))
+            _load(e, RAX, _slot(e, p["an_v"]), 8)
+            e.if_(e.eq(_attribute(e, node, 0), SEQ_CST), lambda: _atomic_access(e, 0x87, 1, RAX, at, p["an_size"], 0),
+                  lambda: _store(e, RAX, at, p["an_size"]))
+            e.give(1)
+
+        e.if_(e.eq(op, _op(Operation.ATOMIC_STORE)), store)
+
+        def rmw():
+            size_of(_result_type(e, result))
+            _load(e, RAX, _slot(e, _operand(e, node, 1)), 8)
+            e.var("an_kind", _attribute(e, node, 0))
+            exchange = e.eq(p["an_kind"], int(AtomicRmwKind.EXCHANGE))
+            e.if_(exchange, lambda: _atomic_access(e, 0x87, 1, RAX, at, p["an_size"], 0),
+                  lambda: _atomic_access(e, 0xC10F, 2, RAX, at, p["an_size"], e.flag(e.eq(p["an_kind"], int(AtomicRmwKind.ADD_WRAP)))))
+            _store(e, RAX, _slot(e, result), 8)
+            e.give(1)
+
+        e.if_(e.eq(op, _op(Operation.ATOMIC_RMW)), rmw)
+        # ATOMIC_CMPXCHG: lock cmpxchg [rsp+at], r10 with the expected value in rax; the flag zero-extended.
+        size_of(_result_type(e, result))
+        _load(e, RAX, _slot(e, _operand(e, node, 1)), 8)
+        _load(e, 10, _slot(e, _operand(e, node, 2)), 8)
+        _atomic_access(e, 0xB10F, 2, 10, at, p["an_size"], 1)
+        _store(e, RAX, _slot(e, result), 8)
+        _b(e, bytes.fromhex("0f94c00fb6c0"))
+        _store(e, RAX, _slot(e, _output(e, node, 1)), 8)
+        e.give(1)
+    return _function(("bi", "m"), build, tables)
+
+
+def _atomic_check_fn(tables):
+    """``_compile_function``'s first step on function ``f``'s own (lifted) graph: every atomic node's capability
+    (``atomic_capability`` with the default policy); an unsupported one is the bootstrap's NATIVE-ATOMIC-CAPABILITY
+    rejection.  1 when every node is supported."""
+    from xax_selfhost_x86_64_general import G_TATOMIC, G_TPROFILE
+
+    def build(e: E):
+        p = e.p
+        e.var("ac_ok", 1)
+        # The target's atomic widths, scopes, and families (empty unless the profile carries them).
+        e.var("ac_has", e.flag(e.either(e.eq(_g(e, G_TPROFILE), 2), e.eq(_g(e, G_TPROFILE), 5))))
+
+        def member(list_index, value, name):
+            """``name``: 1 when ``value`` is in the target's ``list_index``-th atomic list."""
+            e.var(name, 0)
+
+            def scan():
+                e.var(f"{name}_at", _g(e, G_TATOMIC))
+                for skip in range(list_index):
+                    e.var(f"{name}_n{skip}", _payload_uleb(e, f"{name}_at"))
+                    e.for_(f"{name}_s{skip}", 0, p[f"{name}_n{skip}"], lambda: _payload_uleb(e, f"{name}_at"))
+                e.var(f"{name}_n", _payload_uleb(e, f"{name}_at"))
+                e.for_(f"{name}_q", 0, p[f"{name}_n"], lambda: e.if_(e.eq(_payload_uleb(e, f"{name}_at"), value), lambda: e.set(name, 1)))
+
+            e.if_(e.ne(p["ac_has"], 0), scan)
+
+        def node(block, bi, n, m):
+            e.var("ac_op", _eop(e, n))
+
+            def atomic():
+                e.var("ac_family", 5)
+                for family, operation in enumerate((Operation.ATOMIC_LOAD, Operation.ATOMIC_STORE, Operation.ATOMIC_RMW, Operation.ATOMIC_CMPXCHG), 1):
+                    e.if_(e.eq(p["ac_op"], _op(operation)), lambda family=family: e.set("ac_family", family))
+                e.var("ac_width", 0)
+                e.var("ac_align", 1)
+                e.var("ac_scope", _attribute(e, n, 1))
+
+                def memory():
+                    e.var("ac_pt", _vf(e, G_VTYPE, _operand(e, n, 0)))
+                    e.var("ac_pa", e.add(_at(e, G_PAY, p["ac_pt"]), 1))
+                    _payload_uleb(e, "ac_pa")  # space
+                    e.var("ac_elem", _reference(e, p["ac_pt"], _payload_uleb(e, "ac_pa")))
+                    _ok(e, e.ne(p["ac_elem"], NONE))
+                    _bits_width(e, p["ac_elem"], "ac_bw")
+                    e.set("ac_width", p["ac_bw"])
+                    e.var("ac_na", _attribute_count(e, n))
+                    cmpxchg = e.eq(p["ac_family"], 4)
+                    from xax_selfhost_general_ranges import N_ATTR
+
+                    # ``attributes[-2]`` for a compare-exchange, else ``attributes[-1]`` (word 1 + k holds attribute k).
+                    e.set("ac_align", e.rd(e.add(_f(e, n, N_ATTR), e.sub(p["ac_na"], e.sel(cmpxchg, 1, 0)))))
+                    e.if_(e.either(cmpxchg, e.eq(p["ac_family"], 3)), lambda: e.set("ac_scope", _attribute(e, n, 2)))
+
+                e.if_(e.ne(p["ac_family"], 5), memory)
+                member(0, p["ac_width"], "ac_wok")
+                member(1, p["ac_scope"], "ac_sok")
+                member(2, p["ac_family"], "ac_fok")
+                e.var("ac_need", e.sel(e.eq(p["ac_family"], 5), 1, e.sel(e.lt(p["ac_width"], 8), 1, e.udiv(p["ac_width"], 8))))
+                supported = e.both(e.either(e.eq(p["ac_family"], 5), e.ne(p["ac_wok"], 0)), e.ne(p["ac_fok"], 0), e.ne(p["ac_sok"], 0),
+                                   e.le(p["ac_need"], p["ac_align"]))
+
+                def unsupported():
+                    e.if_(e.ne(p["ac_ok"], 0), lambda: (e.set("ac_ok", 0), _call(e, "atomic_reject", p["f"])))
+
+                e.if_(e.not_(supported), unsupported)
+
+            e.if_(_in(e, p["ac_op"], ATOMICS), atomic)
+
+        _each_node(e, node)
+        e.give(p["ac_ok"])
+    return _function(("f",), build, tables)
+
+
+def _atomic_reject_fn(tables):
+    """The NATIVE-ATOMIC-CAPABILITY rejection of function ``f`` (``reject_at``: exact when every earlier function's
+    code is the program's)."""
+    def build(e: E):
+        from xax_selfhost_general_emit import graph_cid_words, reject_at
+        import xax_selfhost_diagnostics as D
+
+        p = e.p
+
+        def write():
+            D.text(e, "XAX.NATIVE.ATOMIC_UNSUPPORTED")
+            D.cid(e, graph_cid_words(e, p["f"]))
+            D.text(e, "NATIVE-ATOMIC-CAPABILITY")
+            D.put(e, D.T_LIST)
+            D.put(e, 2)
+            D.text(e, "native")
+            D.text(e, "bounded_sequence")
+            D.text(e, "unsupported")
+
+        reject_at(e, write)
+    return _function(("f",), build, tables)
 
 
 def _frame_node_fn(tables):
@@ -1550,7 +1831,7 @@ def _frame_node_fn(tables):
 
         e.if_(_in(e, op, (*loads, *stores)), element_width)
         e.var("fx_done", 0)
-        for group in ("fr_int", "fr_float", "fr_ftrunc", "fr_data", "fr_foreign", "fr_memory", "fr_call", "fr_tail"):
+        for group in ("fr_int", "fr_float", "fr_ftrunc", "fr_data", "fr_foreign", "fr_memory", "fr_atomic", "fr_call", "fr_tail"):
             e.if_(e.eq(p["fx_done"], 0), lambda group=group: e.set("fx_done", _call(e, group, p["bi"], p["m"])))
 
         def record():
@@ -1626,9 +1907,14 @@ def _frame_term_fn(tables):
                 e.if_(e.both(e.eq(p["ft_first"], NONE), e.not_(_proof(e, p["ft_t"]))),
                       lambda: (e.set("ft_first", e.ld(e.add(_f(e, block, B_VALUES), p["ft_k"]))), e.set("ft_ftype", p["ft_t"])))))
 
+            def hidden():
+                _load(e, SCRATCH0, _ra(e, F_RETPTR), 8)
+                _copy_bytes(e, SCRATCH0, 0, RSP, _slot(e, p["ft_first"]), _rt(e, T_FSIZE, p["ft_first"]))
+                _bx(e, 0xD0894C, 3)  # mov rax, r10
+
             def value():
                 e.if_(_is_float(e, p["ft_ftype"]), lambda: (_float_width(e, p["ft_ftype"], "ft_fw"), _xmm_memory(e, True, 0, _slot(e, p["ft_first"]), p["ft_fw"])),
-                      lambda: _load(e, RAX, _slot(e, p["ft_first"]), 8))
+                      lambda: e.if_(e.ne(_ra(e, F_RETPTR), NONE), hidden, lambda: _load(e, RAX, _slot(e, p["ft_first"]), 8)))
 
             e.if_(e.ne(p["ft_first"], NONE), value, lambda: _bx(e, 0xC031, 2))
             e.if_(e.ne(_ra(e, F_PROCESS), 0), lambda: _bx(e, 0x0B0F, 2), lambda: (_bx(e, 0xC48148, 3), _bx(e, _ra(e, F_FRAME), 4), _bx(e, 0xC3, 1)))
@@ -1750,19 +2036,6 @@ def _frame_function_fn(tables):
         _set_ra(e, F_PROCESS, e.flag(e.eq(p["f"], _g(e, G_ENTRY))))
         _set_ra(e, F_DYN, 1)  # the Linux profiles support heap views: pointers are first-class values
         e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_legacy"), e.if_(e.ne(p["ff_legacy"], 0), lambda: e.give(0))))
-        # A by-reference return needs the hidden pointer: declined.
-        e.var("ff_i", _call(e, "interface", p["f"]))
-        e.var("ff_np", e.ld(e.add(p["ff_i"], 1)))
-        e.var("ff_rt", e.add(e.add(p["ff_i"], 2), p["ff_np"]))
-        e.var("ff_first", NONE)
-        e.for_("ff_k", 0, e.ld(p["ff_rt"]), lambda: (e.var("ff_t", e.ld(e.add(e.add(p["ff_rt"], 1), p["ff_k"]))), e.if_(
-            e.both(e.eq(p["ff_first"], NONE), e.not_(_proof(e, p["ff_t"]))), lambda: e.set("ff_first", p["ff_t"]))))
-
-        def hidden():
-            _layout_size(e, p["ff_first"], "ff_size")
-            _ok(e, e.either(e.eq(p["ff_size"], NONE), e.not_(_by_reference(e, p["ff_first"], p["ff_size"]))))
-
-        e.if_(e.ne(p["ff_first"], NONE), hidden)
         _call(e, "frame_layout", p["f"])
         # The emission state (``xax_selfhost_general_emit``): the real run only.
         for slot in (E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
@@ -1776,6 +2049,7 @@ def _frame_function_fn(tables):
         # The entry block's parameters from the argument registers or the caller's stack.
         e.var("ff_entry", _g(e, G_BENTRY))
         e.var("ff_pos", 0)
+        e.if_(e.ne(_ra(e, F_RETPTR), NONE), lambda: (_store(e, ARGUMENT_REGISTERS[0], _ra(e, F_RETPTR), 8), e.set("ff_pos", 1)))
 
         def parameter():
             e.var("ff_v", e.ld(e.add(_f(e, p["ff_entry"], B_INPUTS), p["ff_k"])))
@@ -1785,13 +2059,16 @@ def _frame_function_fn(tables):
                 e.var("ff_dest", _slot(e, p["ff_v"]))
                 e.var("ff_size", _rt(e, T_FSIZE, p["ff_v"]))
 
-                e.if_(_is_aggregate(e, p["ff_t"]), lambda: _ok(e, e.not_(_by_reference(e, p["ff_t"], p["ff_size"]))))  # copied from a pointer: declined
+                e.var("ff_byref", 0)
+                e.if_(_is_aggregate(e, p["ff_t"]), lambda: e.set("ff_byref", e.flag(_by_reference(e, p["ff_t"], p["ff_size"]))))
 
                 def register():
                     e.var("ff_reg", _select(e, p["ff_pos"], ARGUMENT_REGISTERS))
                     e.if_(_is_float(e, p["ff_t"]), lambda: (_float_width(e, p["ff_t"], "ff_fw"), _xmm_memory(e, False, p["ff_pos"], p["ff_dest"], p["ff_fw"])),
                           lambda: e.if_(_is_aggregate(e, p["ff_t"]), lambda: (
-                              _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), _call(e, "store_exact", p["ff_reg"], RSP, p["ff_dest"], p["ff_size"])),
+                              _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), e.if_(
+                                  e.ne(p["ff_byref"], 0), lambda: _copy_bytes(e, RSP, p["ff_dest"], p["ff_reg"], 0, p["ff_size"]),
+                                  lambda: _call(e, "store_exact", p["ff_reg"], RSP, p["ff_dest"], p["ff_size"]))),
                               lambda: _store(e, p["ff_reg"], p["ff_dest"], 8)))
 
                 def stacked():
@@ -1799,8 +2076,10 @@ def _frame_function_fn(tables):
                     e.if_(_is_float(e, p["ff_t"]), lambda: (_float_width(e, p["ff_t"], "ff_fw"), _xmm_memory(e, True, 4, p["ff_in"], p["ff_fw"]),
                                                             _xmm_memory(e, False, 4, p["ff_dest"], p["ff_fw"])),
                           lambda: e.if_(_is_aggregate(e, p["ff_t"]), lambda: (
-                              _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])),
-                              _call(e, "load_exact", SCRATCH0, RSP, p["ff_in"], p["ff_size"]), _call(e, "store_exact", SCRATCH0, RSP, p["ff_dest"], p["ff_size"])),
+                              _zero_bytes(e, RSP, p["ff_dest"], _slot_bytes(e, p["ff_size"])), e.if_(
+                                  e.ne(p["ff_byref"], 0), lambda: (_load(e, SCRATCH0, p["ff_in"], 8), _copy_bytes(e, RSP, p["ff_dest"], SCRATCH0, 0, p["ff_size"])),
+                                  lambda: (_call(e, "load_exact", SCRATCH0, RSP, p["ff_in"], p["ff_size"]),
+                                           _call(e, "store_exact", SCRATCH0, RSP, p["ff_dest"], p["ff_size"])))),
                               lambda: (_load(e, SCRATCH0, p["ff_in"], 8), _store(e, SCRATCH0, p["ff_dest"], 8))))
 
                 e.if_(e.lt(p["ff_pos"], 4), register, stacked)
@@ -1887,6 +2166,9 @@ def add_frame_functions(add, tables):
     add("fr_memory", _memory_node_fn(tables))
     add("fr_call", _call_node_fn(tables))
     add("fr_tail", _memory_tail_fn(tables))
+    add("fr_atomic", _atomic_node_fn(tables))
+    add("atomic_reject", _atomic_reject_fn(tables))
+    add("atomic_check", _atomic_check_fn(tables))
     add("fr_node", _frame_node_fn(tables))
     add("fr_term", _frame_term_fn(tables))
     add("frame_function", _frame_function_fn(tables))
