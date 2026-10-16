@@ -67,6 +67,7 @@ import xax_selfhost_render as R
 import xax_selfhost_render_graph as RG
 import xax_selfhost_render_types as RT
 import xax_selfhost_request as RQ
+import xax_selfhost_edit as EDT
 import xax_selfhost_resolve as RS
 import xax_selfhost_writer as WR
 
@@ -76,9 +77,9 @@ GENERAL_IDENTITIES = RQ.GENERAL_IDENTITIES  # S12e.2: the Linux ELF profiles
 EXTENTS_EXTENT, TRAPS_EXTENT, MEMBERS_EXTENT = 1 << 25, 1 << 22, 1 << 22
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
 # The general driver's commands, argv[1] (S13a, ADR-281; S13b, ADR-282), with the file arguments each takes.
-LOWER, BUILD, VERIFY, INSPECT, RESOLVE = 0, 1, 2, 3, 4  # (S13c, ADR-283: ``resolve``)
-COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2}
-DONE = 5  # internal status: ``verify``, ``inspect``, or ``resolve`` finished; the process exits with IMAGE
+LOWER, BUILD, VERIFY, INSPECT, RESOLVE, EDIT = 0, 1, 2, 3, 4, 5  # (S13c, ADR-283: ``resolve``; S15d.1, ADR-304: ``edit``)
+COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2, "edit": 3}
+DONE = 5  # internal status: ``verify``, ``inspect``, ``resolve``, or ``edit`` finished; the process exits with IMAGE
 INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words (nothing is lowered)
 # S15b.3c (ADR-295): a graph with an invalid use, in the workspace: the mode (1: trimmed), the first invalid use in the
 # bootstrap's first pass (its code, use block and node, value tag/block/index/result, the use block's order position,
@@ -88,7 +89,7 @@ I_MODE, I_CODE, I_UB, I_UN, I_TAG, I_VB, I_VI, I_VR, I_POS, I_W, I_NODE = range(
 I_DOMS, I_ORDER = INV_AT + 64, INV_AT + 2048
 I_POSITION = I_ORDER + (1 << 16)
 ARGUMENTS_EXTENT = 4096
-INPUTS_EXTENT = 4096  # S15c.2: ``INPUTS_LIMIT`` digests and one staged
+EDITS_EXTENT = 1 << 16  # S15d.1 (ADR-304): the edit record, one byte per workspace word (``xax_selfhost_edit.EIN``)
 CHUNK = 1 << 16
 from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
 AT_FDCWD = 0xFFFFFF9C
@@ -252,10 +253,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         buffers["members"] = (backend_in_rw, MEMBERS_EXTENT, 8)  # the group member functions the store does not hold
         buffers["batch"] = (bytes_rw, WR.IN_EXTENT, 1)  # S13c: the S9 writer's batch
         buffers["written"] = (bytes_rw, WR.BUF_EXTENT, 1)  # S14b (ADR-285): the S9 writer's buffer; the store it writes
-        buffers["inputs"] = (bytes_rw, INPUTS_EXTENT, 1)  # S15c.2 (ADR-300): the input files' digests, sorted, each once
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
              "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp",
-             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp", "written": "lp", "inputs": "fp"}
+             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp", "written": "lp"}
     views = {}
     for name in buffers:
         pointer_name = names[name]
@@ -330,8 +330,11 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                              w.set(at, w.add(w.add(w[at], w[n]), 1))), lambda: stop(FAILED))
 
     if general:
-        copied = w.let("copied", 2)
-        w.while_(lambda: w.both(w.lt(w[copied], w[arguments]), running()), lambda: (argument(w[copied]), w.set(copied, w.add(w[copied], 1))))
+        def copy_arguments():  # scoped: the copy's names do not outlive it (each name is a block argument everywhere after)
+            copied = w.let("copied", 2)
+            w.while_(lambda: w.both(w.lt(w[copied], w[arguments]), running()), lambda: (argument(w[copied]), w.set(copied, w.add(w[copied], 1))))
+
+        when(copy_arguments)
     else:
         for index in (1, 2, 3):
             when(lambda index=index: argument(index))
@@ -517,31 +520,43 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 read_store(w.add(w[files_count], w[i]), "external-input")
 
                 def place():
+                    """The digest into the workspace's sorted list (``INPUTS_AT``, one byte per word), once."""
+                    def work_at(index):
+                        return w.mul(index, 8)
+
                     hash_span("data", 0, w[length])
-                    staged = RQ.INPUTS_LIMIT * CID_SIZE
-                    digest_to("inputs", staged)
-                    before, duplicate = w.let("before", 0), w.let("duplicate", 0)
+                    staged = RQ.INPUTS_AT + RQ.INPUTS_LIMIT * CID_SIZE
+                    for word in range(CID_SIZE // 4):  # the scratch view is read four bytes at a time
+                        value = w.let("dw", w.load("scratch", H.DIGEST_OFFSET + 4 * word, 4))
+                        for k in range(4):
+                            w.store("work", work_at(staged + 4 * word + k), w.and_(w.udiv(w[value], 1 << (8 * k)), 255), 8)
+                    before, duplicate, j = w.let("before", 0), w.let("duplicate", 0), w.let("j", 0)
 
                     def compare():
-                        at = w.mul(w[j], CID_SIZE)
-                        less, equal = w.let("less", 0), w.let("equal", 1)
-                        for word in range(4):
-                            x, y = w.let("x", w.cid_word("inputs", at, word)), w.let("y", w.cid_word("inputs", staged, word))
-                            w.if_(w.ne(w[equal], 0), lambda: w.if_(w.lt(w[x], w[y]), lambda: (w.set(less, 1), w.set(equal, 0)),
-                                                                   lambda: w.if_(w.lt(w[y], w[x]), lambda: w.set(equal, 0))))
+                        less, equal, k = w.let("less", 0), w.let("equal", 1), w.let("k", 0)
+
+                        def byte():
+                            x = w.let("x", w.load("work", work_at(w.add(w.add(RQ.INPUTS_AT, w.mul(w[j], CID_SIZE)), w[k])), 8))
+                            y = w.let("y", w.load("work", work_at(w.add(staged, w[k])), 8))
+                            w.if_(w.lt(w[x], w[y]), lambda: (w.set(less, 1), w.set(equal, 0)), lambda: w.if_(w.lt(w[y], w[x]), lambda: w.set(equal, 0)))
+                            w.set(k, w.add(w[k], 1))
+
+                        w.while_(lambda: w.both(w.lt(w[k], CID_SIZE), w.ne(w[equal], 0)), byte)
                         w.set(before, w.add(w[before], w[less]))
                         w.set(duplicate, w.or_(w[duplicate], w[equal]))
                         w.set(j, w.add(w[j], 1))
 
-                    j = w.let("j", 0)
                     w.while_(lambda: w.lt(w[j], w[inputs_count]), compare)
 
                     def insert():
-                        tail = w.let("tail", w[inputs_count])
-                        w.while_(lambda: w.lt(w[before], w[tail]), lambda: (
-                            w.copy("inputs", w.mul(w.sub(w[tail], 1), CID_SIZE), "inputs", w.mul(w[tail], CID_SIZE), CID_SIZE),
-                            w.set(tail, w.sub(w[tail], 1))))
-                        w.copy("inputs", staged, "inputs", w.mul(w[before], CID_SIZE), CID_SIZE)
+                        first = w.let("first", w.add(RQ.INPUTS_AT, w.mul(w[before], CID_SIZE)))  # a name: values cross blocks only so
+                        top = w.let("top", w.add(RQ.INPUTS_AT, w.mul(w[inputs_count], CID_SIZE)))  # words above ``first`` move up 32
+                        w.while_(lambda: w.lt(w[first], w[top]), lambda: (
+                            w.set(top, w.sub(w[top], 1)),
+                            w.store("work", work_at(w.add(w[top], CID_SIZE)), w.load("work", work_at(w[top]), 8), 8)))
+                        r = w.let("r", 0)
+                        w.while_(lambda: w.lt(w[r], CID_SIZE), lambda: (
+                            w.store("work", work_at(w.add(w[first], w[r])), w.load("work", work_at(w.add(staged, w[r])), 8), 8), w.set(r, w.add(w[r], 1))))
                         w.set(inputs_count, w.add(w[inputs_count], 1))
 
                     w.if_(w.eq(w[duplicate], 0), insert)
@@ -553,13 +568,33 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         when(input_files)
 
+    # -- S15d.1 (ADR-304): ``edit``'s record, read before the store ---------------------------------------------------
+    if general:
+        def edit_record():
+            """Into the workspace words from ``EIN``, which verification does not use."""
+            read_store(1, "edit-record")
+
+            def copy():
+                q = w.let("eq", 0)
+                w.while_(lambda: w.lt(w[q], w[length]), lambda: (
+                    w.store("work", w.mul(w.add(EDT.EIN, w[q]), 8), w.load("data", w[q]), 8), w.set(q, w.add(w[q], 1))))
+                w.store("work", 8 * (EDT.EC + EDT.E_LENGTH), w[length], 8)
+
+            w.if_(w.lt(EDITS_EXTENT, w[length]), lambda: capacity("edit-record", "DRIVER-FILE-CAPACITY", EDITS_EXTENT), copy)
+
+        when(lambda: w.if_(w.eq(w[mode], EDIT), edit_record))
+
     # -- the program store ---------------------------------------------------------------------------------------
-    read_store(0)
+    when(lambda: read_store(0))  # scoped (each name declared at this level is a block argument everywhere after)
     when(decode_container)
     objects = w.let("objects", 0)
     when(lambda: w.set(objects, w.load("decoded", 8, 4)))
-    k = w.let("checked", 0)
-    w.while_(lambda: w.both(w.lt(w[k], w[objects]), running()), lambda: (check_object(w[k]), w.set(k, w.add(w[k], 1))))
+
+    def check_objects():
+        k = w.let("checked", 0)
+        w.while_(lambda: w.both(w.lt(w[k], w[objects]), running()), lambda: (check_object(w[k]), w.set(k, w.add(w[k], 1))))
+
+    when(check_objects)
 
     def find(cid_at):
         """The record whose CID is the one at ``data[cid_at]`` (NONE-like: ``objects`` when absent)."""
@@ -720,6 +755,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     type_renderers, type_objects = RT.build_functions()  # S15b.2 (ADR-289)
     requests, request_objects = RQ.build_functions() if general else ({}, ())
     resolvers, resolve_objects = RS.build_functions() if general else ({}, ())
+    editors, edit_objects = EDT.build_functions() if general else ({}, ())  # S15d.1 (ADR-304)
 
     def request_helper(name: str, functions=requests):
         """S13a: an ``xax_selfhost_request`` (S13c: ``xax_selfhost_resolve``; S15b.2: ``xax_selfhost_render_types``)
@@ -1235,10 +1271,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         target, linux = w.let("target", 0), w.let("linux", 0)
 
         def inputs_to_work():
-            """S15c.2: the input digests, one byte per word, at ``INPUTS_AT`` of the workspace; their count."""
-            q = w.let("iw", 0)
-            w.while_(lambda: w.lt(w[q], w.mul(w[inputs_count], CID_SIZE)), lambda: (
-                set_work(w.add(RQ.INPUTS_AT, w[q]), w.load("inputs", w[q])), w.set(q, w.add(w[q], 1))))
+            """S15c.2: the input digests' count (the digests are at ``INPUTS_AT`` of the workspace)."""
             set_work(SM.CTRL + RQ.B_INPUTS, w[inputs_count])
 
         def build_request():
@@ -1348,6 +1381,63 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             when(snapshot_store)
 
         when(lambda: w.if_(w.eq(w[mode], RESOLVE), resolve))
+
+        # -- S15d.1 (ADR-304): ``edit``: a transaction applied by ``xax_selfhost_edit``, the store written by S9 ------
+        def edit():
+            """The helpers decide; the driver hashes each new object's preimage and hands the batch to the S9 writer."""
+            def ew(field):
+                return work_word(EDT.EC + field)
+
+            request_helper("edit_begin", editors)
+            w.if_(w.eq(ew(EDT.E_STATUS), EDT.REJECT), from_work)
+            going = w.let("e_going", 1)
+
+            def each():
+                results = proc.op(Operation.CALL_DIRECT, (*w.triple("vtable", w.narrowed("vtable", in_pointer)), *w.triple("work")), (B64, *VIEW_TYPES),
+                                  entity=editors["edit_next"])
+                w.take("vtable", results[1:4])
+                w.take("work", results[4:])
+                outcome = w.let("e_outcome", results[0])
+
+                def made():
+                    at, length_ = w.let("e_pre_at", ew(EDT.E_PRE_AT)), w.let("e_pre", ew(EDT.E_PRE_LENGTH))
+                    k = w.let("e_h", 0)
+                    w.while_(lambda: w.lt(w[k], w[length_]), lambda: (
+                        w.store("object", w.add(len(SEMANTIC_DOMAIN), w[k]), work_word(w.add(w[at], w[k]))), w.set(k, w.add(w[k], 1))))
+                    hash_preimage(w[length_], 0)
+                    slot = w.let("e_slot", ew(EDT.E_SLOT))
+                    for word in range(4):
+                        set_work(w.add(w[slot], word), w.cid_word("argument", 0, word))
+                    request_helper("edit_place", editors)
+
+                w.if_(w.eq(w[outcome], EDT.MORE), made, lambda: w.set(going, 0))
+
+            w.while_(lambda: w.both(w.ne(w[going], 0), running()), each)
+            w.if_(w.both(running(), w.eq(ew(EDT.E_STATUS), EDT.REJECT)), from_work)  # past a capacity
+
+            def write():
+                request_helper("edit_reach", editors)
+                request_helper("edit_batch", editors)
+                w.if_(w.eq(ew(EDT.E_STATUS), EDT.REJECT), from_work)
+
+                def handed():
+                    n = w.let("e_n", ew(EDT.E_BATCH_LENGTH))
+                    k = w.let("e_b", 0)
+                    w.while_(lambda: w.lt(w[k], w[n]), lambda: (w.store("batch", w[k], work_word(w.add(EDT.BATCH, w[k]))), w.set(k, w.add(w[k], 1))))
+                    results = proc.op(Operation.CALL_DIRECT, (*w.triple("batch", w.narrowed("batch", WR.BATCH_POINTER)), *w.triple("written"),
+                                                              *w.triple("scratch"), w.c(WR.MODE_WRITE)), tuple(type_ for _name, type_ in WR.VIEWS),
+                                      entity=writer)
+                    w.take("batch", results[:3])
+                    w.take("written", results[3:6])
+                    w.take("scratch", results[6:])
+                    w.if_(w.ne(w.load("written", WR.STATUS_AT, 8), WR.ACCEPT), lambda: stop(DECLINED),
+                          lambda: w.set(resolved, w.load("written", WR.STATUS_AT + 24, 8)))
+
+                when(handed)
+
+            when(write)
+
+        when(lambda: w.if_(w.eq(w[mode], EDIT), edit))
         when(lambda: w.if_(w.le(VERIFY, w[mode]), lambda: stop(DONE)))  # S13b, S13c: these commands end here
 
     # -- the backend's object table (``xax_riscv64._object_table``) -----------------------------------------------
@@ -1733,7 +1823,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             emit(D.DIAG_AT + 1, w.mul(w.sub(w.ld(D.DIAG_AT), D.DIAG_AT + 1), 8), path=path)
 
         if general:
-            w.if_(w.eq(w[mode], LOWER), lambda: to(2), lambda: to(1))
+            # ``lower`` and ``edit`` (S15d.1) write to their third path; ``edit``'s second is its input record.
+            w.if_(w.either(w.eq(w[mode], LOWER), w.eq(w[mode], EDIT)), lambda: to(2), lambda: to(1))
         else:
             to(2)
 
@@ -1769,9 +1860,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 w.while_(lambda: w.lt(w[o], w[objects]), each)
                 emit(INSPECT_AT, w.mul(w.sub(w[n], INSPECT_AT), 8), path=1)
 
-            def resolved_store():
-                """S13c: the snapshot store, ``written[0:resolved]``."""
-                fd = open_path(1, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
+            def resolved_store(path: int = 1):
+                """S13c: the snapshot store, ``written[0:resolved]`` (S15d.1: ``edit``'s store, to its third path)."""
+                fd = open_path(path, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
                 done = w.let("r_done", 0)
 
                 def step():
@@ -1785,7 +1876,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
                 w.if_(w.ne(w[status], FAILED), write)
 
-            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: w.if_(w.eq(w[mode], RESOLVE), resolved_store, lambda: emit(INSPECT_AT, 0, path=1)))
+            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: w.if_(w.eq(w[mode], RESOLVE), resolved_store, lambda: w.if_(
+                w.eq(w[mode], EDIT), lambda: resolved_store(2), lambda: emit(INSPECT_AT, 0, path=1))))
             w.set(final, IMAGE)
 
         w.if_(w.eq(w[status], DONE), done_out)
@@ -1805,7 +1897,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                *((general_reader, writer_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
-    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects,
+    objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects, *edit_objects,
                 *component_objects,
                 *api.types, *startup.symbols, WRITE_RW)
     return program_store(function, x86_64_linux_exec_target(), objects_), function

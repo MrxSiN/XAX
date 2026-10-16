@@ -1176,3 +1176,10 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - Run the heavy driver tests with at most two workers here: four parallel drivers exceed this container's memory.
 - Next: S15d.1 (the `edit` command), then S15d.2-S15d.3; S15c.5 and the S15b.3d remainder after that (ADR-298).
 
+## S15d.0-S15d.1 views room, seed rotation, `edit` — 2026-10-16 (ADR-303, ADR-304)
+
+- The seed was rotated (ADR-303): SHA-256 `7eb76449…`, 10,403,192 bytes. The general program's views region is 36M words; the compiler's own closure uses about 25.9M.
+- `edit <store> <record> <output>`; records are made with `xax_selfhost_edit.edit_record`, `apply_reference` is the Python reference. Node positions are (block, node) within the function's graph.
+- General-backend hazard (found here): do not use a `bits<1>` comparison value in a block other than the one that computed it; keep it as a 64-bit flag (`e.flag`) and compare again. The views backend hides this; only the self-built compiler shows it, so run new driver code through `selfbuild.sh` and test with the resulting compiler.
+- Measuring the general program's memory: `GLOBALS + G_VIEW_OUT` is the views cursor after a run; a host harness can build a variant program in memory (`build_general_program` with changed module constants, then `host_image`).
+

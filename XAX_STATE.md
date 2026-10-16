@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15d.1 semantic transactions in the production compiler — 2026-10-16 (ADR-304)
+
+The production compiler can now change a canonical store itself. Its new `edit` command takes a small transaction record (change an arithmetic operation, or the value of a constant, at a named node of a named function), verifies the store, rebuilds every object that depends on the change, and writes the new store. The result is byte for byte what the existing Python workspace commits for the same transaction, and it rejects where the workspace rejects. On the compiler's own store an edit takes about 15 seconds and the result verifies. Next: S15d.2 (the committed compiler stores become authoritative, with a ledger of transactions) and S15d.3 (a real compiler change made this way).
+
 ## S15d.0 room for the compiler's own lowering views — 2026-10-16 (ADR-303)
 
 The general x86-64 program keeps the lowering view of every function of the compiler at once, and after S15c those views filled 99.6 % of their region. The program image's buffer now lives in a part of the program's memory that was unused, which lets the views region grow by half without taking memory from anything else. The seed was rotated deliberately: the previous seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. Next: S15d.1.

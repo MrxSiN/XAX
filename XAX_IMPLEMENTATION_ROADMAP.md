@@ -552,7 +552,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15c.5 | Resolution under a trust policy other than the driver's own (signed snapshots made in XAX) | S15c.3 | UNIMPLEMENTED |
 | S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | UNIMPLEMENTED |
 | S15d.0 | Room for the compiler's own lowering views in the general program (the image buffer at a fixed place, views to 36M words); the seed rotated to carry it (ADR-303) | S15c | DONE |
-| S15d.1 | An XAX-hosted transaction engine: the production compiler's `edit` command (graph-local mutations, the canonical cascade to the root, the S9 writer), equal to the Python workspace (ADR-298) | S13c | UNIMPLEMENTED |
+| S15d.1 | An XAX-hosted transaction engine: the production compiler's `edit` command (graph-local mutations, the canonical cascade to the root, the S9 writer), equal to the Python workspace (ADR-298, ADR-304) | S13c | DONE |
 | S15d.2 | The committed compiler stores become authoritative: an evolution ledger of transactions since each builder baseline, checked by `test_store_regeneration` (ADR-298) | S15d.1 | UNIMPLEMENTED |
 | S15d.3 | One real compiler change made only through S15d.1: verified, rebuilt, self-compiled to a fixed point, regression-tested (ADR-298) | S15d.2 | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |
