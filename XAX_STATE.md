@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15e.0 room for target backends in the compiler — 2026-10-16 (ADR-307)
+
+The compiler's own build nearly filled the scratch memory of the program that compiles it (62.21M of 62.91M words), mostly because the buffer for one function's machine code was 18 times larger than the compiler's largest function needs. The buffer is now 2M words, freeing about 6M words for the backends S15e adds to the driver. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15e.1.
+
 ## S15d.2-S15d.3 the compiler changed by its own transactions — 2026-10-16 (ADR-305, ADR-306)
 
 The compiler's committed store is now its historical Python construction plus a ledger of transactions, and the first transaction is a real change made without touching any Python compiler code: the compiler's `resolve` and `build` now accept up to 100 external input files instead of 64. The compiler applied the transaction to its own store with its `edit` command, verified the result, rebuilt itself to identical bytes, and the new compiler behaves as intended while still matching the bootstrap's results. B6 (bootstrap independence) is still not established: the transaction engine can only change operations and constants, so most compiler changes still need the Python builders. Next: S15d.4 (a larger transaction vocabulary), S15c.5, the S15b.3d remainder, S15e.

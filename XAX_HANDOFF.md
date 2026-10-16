@@ -1190,3 +1190,7 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - The committed compiler's external-input bound is 100 (`xax_selfhost_evolution.INPUTS_LIMIT`); `xax_selfhost_request.INPUTS_LIMIT` (64) is the baseline's.
 - Next: S15d.4 (InsertPureNode, DeleteNode, ReplaceUse, edge arguments, signatures in the XAX engine, then new functions) is what B6 needs; S15c.5 (signed resolution) is what B5 needs; the S15b.3d declines are what B1 needs.
 
+## S15e.0 code buffer and seed rotation — 2026-10-16 (ADR-307)
+
+- `xax_selfhost_general_emit.CODE_CAP` is 2M words (largest compiler function: 466,416 bytes). The seed was rotated; the ledger record was rebased.
+- Next: S15e.1, `build` for further targets by XAX backends in the driver.

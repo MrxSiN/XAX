@@ -557,6 +557,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15d.3 | One real compiler change made only through S15d.1: verified, rebuilt, self-compiled to a fixed point, regression-tested (ADR-298, ADR-306) | S15d.2 | DONE: the external input bound raised from 64 to 100 by a 35-mutation transaction |
 | S15d.4 | The engine's vocabulary for ordinary changes: node insertion and deletion, uses, edge arguments, result types and signatures (the workspace's), then new functions, so a builder is no longer needed for ordinary compiler changes (B6) | S15d.3 | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |
+| S15e.0 | Arena headroom for target backends in the driver: the general program's code buffer sized to the compiler's largest function; the seed rotated (ADR-307) | S15d | DONE |
 
 ## EI — Evidence and canonical-state integrity (ADR-177; before S7b)
 

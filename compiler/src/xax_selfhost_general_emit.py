@@ -121,7 +121,7 @@ E_REGV = 192  # sixteen words: the value in each register, NONE when free
 assert E_REGV + 16 <= 256 and E_FAIL < E_REGV
 LOC_REG, LOC_CONST, LOC_STACK, LOC_SPILL = range(4)
 # Capacities (words).
-CODE_CAP = 1 << 23  # S14a (ADR-284): the compiler's own largest function
+CODE_CAP = 1 << 21  # S14a (ADR-284): the compiler's own largest function; S15e.0 (ADR-307): 2M words, 4.5 times its 466 KB
 CAPTURE_CAP = 1 << 14
 LABEL_CAP = 1 << 16
 BRANCH_CAP = 1 << 16
