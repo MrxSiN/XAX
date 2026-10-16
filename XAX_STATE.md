@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15d.0 room for the compiler's own lowering views — 2026-10-16 (ADR-303)
+
+The general x86-64 program keeps the lowering view of every function of the compiler at once, and after S15c those views filled 99.6 % of their region. The program image's buffer now lives in a part of the program's memory that was unused, which lets the views region grow by half without taking memory from anything else. The seed was rotated deliberately: the previous seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. Next: S15d.1.
+
 ## S15c.1-S15c.4 grants, external inputs, Ed25519 signatures, capacities — 2026-10-16 (ADR-298 to ADR-302)
 
 The production compiler now decides four build paths it used to leave to Python. `resolve` checks profile grants and rejects an undeclared one with the bootstrap's own diagnostic. `resolve` and `build` take external input files, hash them in XAX, and record or check their digests. `build` verifies package signatures under a policy that requires them, with Ed25519 implemented in XAX (SHA-512 and the curve arithmetic), and rejects in the bootstrap's order with its exact diagnostics. An input past one of the compiler's declared capacities is the compiler's own rejection instead of a decline. Every scenario equals the bootstrap given the same inputs and the reference verifier, on the views-built driver and on the compiler built by its own backend, which still rebuilds itself to identical bytes from the pinned seed. Still open for B5: making signed snapshots (S15c.5). The B levels are unchanged until the evidence is re-run. Next: S15d.

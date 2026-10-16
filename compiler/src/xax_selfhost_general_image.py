@@ -23,6 +23,9 @@ from xax_selfhost_views_backend import _FN, G_PAY, _at, _call, _cid_words, _g, _
 
 IMAGE_AT, IMAGE_END = 6 << 20, 11 << 20
 IMAGE_CAP = 3 << 22  # image bytes (one per word); S14a (ADR-284): the compiler's own image; S15b (ADR-291): 12 MiB
+# S15d.0 (ADR-303): the code image's buffer sits at a fixed place the general program does not otherwise use (between
+# the diagnostic record and the views backend's globals), so it no longer takes arena words and the views can grow.
+IMAGE_BUFFER_AT = 12 << 20
 IMAGE_CALLS = 1 << 16
 # State (``_ra`` slots after the emission's register words).
 (I_IMG, I_LEN, I_OK, I_COUNT, I_BASES, I_CALLS, I_NCALLS, I_ADAPT, I_NADAPT, I_IMPORTS, I_NIMPORTS, I_ENTRY, I_ELF, I_ELEN, I_OUT,
@@ -752,7 +755,8 @@ def _image_record_fn(tables):
 
 def image_prologue(e: E):
     """Allocate the image buffers (once, before the views)."""
-    for slot, words in ((I_IMG, IMAGE_CAP), (I_BASES, 1 << 16), (I_CALLS, 3 * IMAGE_CALLS), (I_ADAPT, 2 << 12), (I_IMPORTS, 2 * IMAGE_CALLS),
+    _set_ra(e, I_IMG, IMAGE_BUFFER_AT)
+    for slot, words in ((I_BASES, 1 << 16), (I_CALLS, 3 * IMAGE_CALLS), (I_ADAPT, 2 << 12), (I_IMPORTS, 2 * IMAGE_CALLS),
                         (I_ELF, IMAGE_CAP + (1 << 16)), (I_NEEDED, 1 << 12), (I_NAMES, IMAGE_CALLS)):
         at = e.alloc(words)
         _ok(e, e.ne(at, NONE))

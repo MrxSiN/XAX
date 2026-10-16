@@ -45,7 +45,7 @@ STORE_PATH = bootstrap_dir() / "xax_x86_64_general.xax"
 OK = 1
 # S14a (ADR-284): the general program's arena starts after the views region (``xax_selfhost_general_view.VIEW_END``);
 # the front end's globals stay at the views backends' ``GLOBALS``.
-GENERAL_ARENA_AT = 56 << 20
+GENERAL_ARENA_AT = 68 << 20
 COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each function's four CID words in image order
 # Front-end state beyond the views backends' globals (``GLOBALS + slot``).
 (G_LSIZE, G_LALIGN, G_LSTACK, G_TABI, G_TFMT, G_NARGS, G_GENERAL, G_EA_AT, G_EA_N, G_FRAMES, G_TARGET, G_ENTRY,
