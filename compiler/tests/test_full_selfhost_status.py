@@ -31,7 +31,7 @@ class FullSelfhostStatusTests(unittest.TestCase):
         self.assertEqual(self.evidence["label"], "EXECUTED")
 
     def test_the_committed_levels(self):
-        self.assertEqual(self.levels(self.evidence), {"B0", "B2", "B3", "B4"})
+        self.assertEqual(self.levels(self.evidence), {"B0", "B2", "B3", "B4", "B5"})  # S15c.5 (ADR-309): B5
         self.assertFalse(any(key.startswith("B") and key[1:].isdigit() for key in self.evidence))  # no level is recorded
 
     def test_each_level_follows_its_facts(self):

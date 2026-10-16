@@ -60,6 +60,15 @@ H_CUROP, H_MNODE, H_CURBLOCK, H_REJECT, H_RPASS, H_RBLOCK, H_RNODE = range(34, 4
 H_RPAY = 41  # payload words H_RPAY .. H_RPAY + 5
 # S8 (ADR-251): the linear-flow rejection: its code (``LINEAR_SITES``), then two words (a block or value id, a count).
 H_LREJ, H_LA, H_LB = 47, 48, 49
+# S15b.3d (ADR-311): the typing key + 1 of the node the typing program rejected where the engine stopped, and that pass.
+H_TSTOP, H_TSTOP_PASS = 51, 52  # (50 is H_RENTRY_BAD)
+# S15b.3d (ADR-313): the input position of the target contracts list ``_target_contract`` last read (TARGET_DEFINED quotes it).
+H_TCONTRACTS = 53
+# S15b.3d (ADR-313): the first resource call of the first pass whose parameters and returns match a contract (the
+# bootstrap parses the callee's graph there, ``_resource_call_contract``): its block, node and callee entry, how many
+# such calls the pass made, and whether the callee's body selected no unique contract (the engine declined there).
+H_RCALL_B, H_RCALL_N, H_RCALL_E, H_RCALL_COUNT, H_RCALL_DECLINE = 57, 58, 59, 60, 61
+H_RCALL_OTHER = 62  # a later such call names another callee
 # S8 (ADR-251): a stack-owner entry whose body selects no unique contract (rejected at its terminator).
 H_RENTRY_BAD = 50
 LINEAR_SITES = ("UNREACHABLE_PARAMETER", "BLOCK_ARGUMENT", "NODE_AND_TERMINATOR", "SAME_BLOCK_CONSUMER", "EXPLICIT_BLOCK_PARAMETER",
@@ -1889,8 +1898,21 @@ def _resource_call(e: E, n):
     blocks, operations = e.rd(e.add(n.aux_at, 1)), e.rd(e.add(n.aux_at, 2))
     single = e.flag(e.both(e.ne(aux_count, 0), e.eq(blocks, 1)))
     body = _body_shape(e, lambda k: e.rd(e.add(e.add(n.aux_at, 3), k)), e.mul(single, operations))
-    kind, permission, requires_initialized, initializes = _resource_contract(e, n.tids_at, n.no, n.rt_at, n.nr, single, body)
-    _require(e, e.ne(kind, R_NONE))
+    kind, permission, requires_initialized, initializes, shape = _resource_contract(e, n.tids_at, n.no, n.rt_at, n.nr, single, body, shape=True)
+    e.var("rc_kind", kind)
+
+    def first_call():
+        """S15b.3d (ADR-313): the bootstrap parses the callee's graph here (a candidate's parameters and returns match)."""
+        def record():
+            for field, value in ((H_RCALL_B, e.hd(H_CURBLOCK)), (H_RCALL_N, e.hd(H_MNODE)), (H_RCALL_E, n.entity)):
+                e.set_hd(field, value)
+            e.set_hd(H_RCALL_DECLINE, e.flag(e.eq(p["rc_kind"], R_NONE)))
+
+        e.if_(e.eq(e.hd(H_RCALL_COUNT), 0), record, lambda: e.if_(e.ne(e.hd(H_RCALL_E), n.entity), lambda: e.set_hd(H_RCALL_OTHER, 1)))
+        e.set_hd(H_RCALL_COUNT, e.add(e.hd(H_RCALL_COUNT), 1))
+
+    e.if_(e.both(e.eq(e.hd(H_PASS), 1), e.ne(shape, R_NONE)), first_call)
+    _require(e, e.ne(p["rc_kind"], R_NONE))
     e.var("has_pointer", e.flag(e.ne(kind, R_PASS)))
     owner_operand = e.sel(e.eq(kind, R_PASS), 0, e.sel(e.eq(kind, R_LOAD), 1, 2))
     effect_operand = e.add(owner_operand, 1)
@@ -2610,7 +2632,10 @@ def _node_dispatch(tables, handlers, end_views):
         e.set_hd(H_CUROP, operation)
         # S8 (ADR-251): the vocabulary is the contiguous codes 1..max (GRAPH-OP-SUPPORTED).
         _reject(e, e.both(e.ne(operation, 0), e.le(operation, max(int(code) for code in Operation))), M["OP_SUPPORTED"], operation)
-        # A node the typing function covers must be proven by it.
+        # A node the typing function covers must be proven by it.  S15b.3d (ADR-311): where it rejected the node, the
+        # engine stops there; the outcome then knows every node before it was modelled.
+        e.if_(e.both(e.ne(key, NONE), e.eq(e.ld(e.add(2, e.sel(e.ne(key, NONE), key, 0))), _T.REJECTED), e.eq(e.hd(H_TSTOP), 0)),
+              lambda: (e.set_hd(H_TSTOP, e.add(key, 1)), e.set_hd(H_TSTOP_PASS, e.hd(H_PASS))))
         e.if_(e.ne(key, NONE), lambda: _require(e, e.eq(e.ld(e.add(2, key)), _T.PROVEN)))
         e.var("next", NONE)
         e.var("handled", 0)
@@ -2944,6 +2969,10 @@ def _engine(tables, block, empty, record_equal):
         e.set_hd(H_REJECT, 0)
         e.set_hd(H_LINEAR, 0)
         e.set_hd(H_LREJ, 0)
+        e.set_hd(H_TSTOP, 0)
+        e.set_hd(H_TSTOP_PASS, 0)
+        for field in (H_RCALL_COUNT, H_RCALL_DECLINE, H_RCALL_OTHER):
+            e.set_hd(field, 0)
         _require(e, e.ne(e.rd(e.hd(H_FACTS_AT)), 0))  # no facts section: nothing to decide
         at = e.add(e.hd(H_FACTS_AT), 1)
         for field, offset in ((H_V, 0), (H_S, 1), (H_E, 2), (H_B, 3), (H_ENTRY, 4)):
@@ -3066,6 +3095,8 @@ def _linear_flow(tables):
             e.for_("z", 0, V, lambda name=name: e.st(e.add(p[name], p["z"]), 0))
         e.set("eargs", e.alloc(e.add(e.hd(H_E), 1)))
         e.if_(e.eq(p["eargs"], NONE), lambda: e.give(0))
+        e.var("eat", e.alloc(e.add(e.hd(H_E), 1)))  # S15b.3d (ADR-311): each edge's record (its arguments' value ids)
+        e.if_(e.eq(p["eat"], NONE), lambda: e.give(0))
         cell = lambda name, value: e.add(p[name], value)  # noqa: E731
         bump = lambda name, value: e.st(cell(name, value), e.add(e.ld(cell(name, value)), 1))  # noqa: E731
 
@@ -3116,6 +3147,7 @@ def _linear_flow(tables):
                 at = p["edge_at"]
                 arguments = e.rd(e.add(at, 2))
                 e.st(cell("eargs", e.rd(e.add(at, 1))), arguments)
+                e.st(cell("eat", e.rd(e.add(at, 1))), at)
                 e.for_("q", 0, arguments, lambda: term_use(e.rd(e.add(e.add(at, 3), p["q"])), p["x"]))
                 e.set("edge_at", e.add(e.add(at, 3), arguments))
 
@@ -3177,13 +3209,33 @@ def _linear_flow(tables):
             returns 0 when the walk meets a non-entry block parameter."""
             e.var(f"{name}_ok", 1)
             e.var(f"{name}_go", 1)
+            e.var(f"{name}_steps", 0)
 
             def step():
                 record = defining(p[name])
 
                 def parameter():
-                    e.if_(e.ne(e.ld(cell("vblock", p[name])), e.hd(H_ENTRY)), lambda: e.set(f"{name}_ok", 0))
-                    e.set(f"{name}_go", 0)
+                    """An entry parameter ends the walk; a non-entry block's parameter is the argument its one incoming
+                    edge passes (S15b.3d, ADR-311: the bootstrap's ``origin``); more edges, or a walk longer than the
+                    values (a cycle), leave the origin to the bootstrap."""
+                    e.var(f"{name}_vb", e.ld(cell("vblock", p[name])))
+
+                    def through():
+                        incoming = e.ld(_block_word(e, p[f"{name}_vb"], B_INCOMING))
+                        e.var(f"{name}_in", incoming)
+                        e.set(f"{name}_steps", e.add(p[f"{name}_steps"], 1))
+
+                        def follow():
+                            e.var(f"{name}_at", e.ld(cell("eat", e.rd(e.add(p[f"{name}_in"], 1)))))
+                            e.var(f"{name}_i", e.sub(p[name], e.rd(e.ld(_block_word(e, p[f"{name}_vb"], B_PARAMS)))))
+                            e.if_(e.lt(p[f"{name}_i"], e.rd(e.add(p[f"{name}_at"], 2))),
+                                  lambda: e.set(name, e.rd(e.add(e.add(p[f"{name}_at"], 3), p[f"{name}_i"]))),
+                                  lambda: (e.set(f"{name}_ok", 0), e.set(f"{name}_go", 0)))
+
+                        e.if_(e.both(e.eq(e.rd(p[f"{name}_in"]), 1), e.le(p[f"{name}_steps"], e.hd(H_V))), follow,
+                              lambda: (e.set(f"{name}_ok", 0), e.set(f"{name}_go", 0)))
+
+                    e.if_(e.ne(p[f"{name}_vb"], e.hd(H_ENTRY)), through, lambda: e.set(f"{name}_go", 0))
 
                 def node_result():
                     operation = e.rd(record)

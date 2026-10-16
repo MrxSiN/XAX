@@ -200,6 +200,21 @@ def corpus(directory: Path):
             cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
             BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
 
+    # S15b.3d (ADR-313): rejections that quote a decoded declaration or a stack-owner entry's block, one case per rule
+    # (``tests/fixtures/declared_rejections``).
+    for path in sorted((Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "declared_rejections").glob("*.xax")):
+        reader = X.StoreReader(path.read_bytes())
+        try:
+            X._PARSED_GRAPHS.clear()
+            X.verify_store(reader)
+            continue
+        except X.XaxError as error:
+            diagnostic = error.diagnostic
+        if diagnostic.rule not in seen:
+            seen.add(diagnostic.rule)
+            cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
+            BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
+
     def build(name, reader, kind):
         expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
@@ -439,10 +454,11 @@ def measure() -> dict:
         "executables_have_interpreter": {f"C{index}": elf_interpreter(path) for index, path in enumerate(executables)},
         "corpus": rows,
         # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
+        # S15b.3d (ADR-313): a decoded declaration's and a stack-owner entry's rejections are rendered, and a resource
+        # callee's graph comes before its caller's later checks; what still declines:
         "rejection_exactness_gaps": [
-            ("memory rejections that quote a decoded declaration, a pointer type the memory engine's pointer decoder rejects, and a "
-             "stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference "
-             "first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297)"),
+            ("a graph whose first pass calls two different resource callees before its own decision declines (the "
+             "bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)"),
         ],
         # S15c (ADR-299 to ADR-302, ADR-309): grants, external input files, Ed25519 verification in ``build``, capacity
         # rejections, and signed resolution are the driver's.

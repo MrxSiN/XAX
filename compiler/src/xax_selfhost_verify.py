@@ -310,6 +310,50 @@ def _function_ok(tables):
             e.give(1)
 
         e.if_(e.both(e.eq(p["refs"], 1), e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP))), member_function)
+
+        def group_with_more():
+            """S15b.3d (ADR-311): a function naming a group member with other references too.  Its interface is the
+            member's (``_decode_function_interface``), but ``decode_group_member_function`` does not take it, so
+            ``_verify_function`` parses the member's graph: a member call there is GRAPH-GROUP-CALL-CONTEXT; else the
+            contract holds (the group is proven) and the group itself is an unused reference."""
+            e.var("member", _read(e, "fa", p["fend"], f, p["fbody"]))
+            _reject(e, e.ne(p["fa"], p["fend"]), f, S["FUNCTION_MEMBER_TRAILING"], e.sub(p["fend"], p["fa"]))
+            size = e.ld(e.add(_g(e, G_GROUP_SIZE), p["graph"]))
+            _no(e, e.eq(size, NONE))
+            _reject(e, e.le(size, p["member"]), f, S["FUNCTION_MEMBER_RANGE"], size, p["member"])
+            e.var("xg_at", _payload(e, p["graph"]))
+            e.var("xg_end", e.add(p["xg_at"], e.rd(e.sub(p["xg_at"], 1))))
+            _read(e, "xg_at", p["xg_end"])  # the member count
+
+            def skip_member():
+                _read(e, "xg_at", p["xg_end"])  # its graph
+                for _part in range(2):
+                    e.for_("xs", 0, _read(e, "xg_at", p["xg_end"]), lambda: _read(e, "xg_at", p["xg_end"]))
+
+            e.for_("xm", 0, p["member"], skip_member)
+            e.var("xmg", _reference(e, p["graph"], _read(e, "xg_at", p["xg_end"])))
+            e.var("xtypes", p["xg_at"])
+            e.var("xiface", _interface(e, p["graph"], "xg_at", p["xg_end"]))
+            _no(e, _graph_rejected(e, p["xmg"]))
+            e.var("xcontract", e.call(_FN["graph"], p["xmg"], p["xiface"], NONE, NONE))
+            _reject(e, e.eq(p["xcontract"], 7), f, S["FUNCTION_GROUP_CONTEXT"], p["xmg"])
+            _no(e, e.ne(p["xcontract"], 1))
+            # The references used: the member graph and its interface's types.
+            _clear_marks(e, p["refs"])
+
+            def mark_object(x):
+                e.var("xmark", x)
+                e.for_("xk", 0, p["refs"], lambda: e.if_(e.eq(_reference(e, f, p["xk"]), p["xmark"]), lambda: _mark(e, p["xk"])))
+
+            mark_object(p["xmg"])
+            e.var("xn", e.ld(p["xiface"]))
+            e.for_("xt", 0, p["xn"], lambda: mark_object(e.ld(e.add(e.add(p["xiface"], 1), p["xt"]))))
+            e.var("xr_at", e.add(e.add(p["xiface"], 1), p["xn"]))
+            e.for_("xt", 0, e.ld(p["xr_at"]), lambda: mark_object(e.ld(e.add(e.add(p["xr_at"], 1), p["xt"]))))
+            _no(e, e.ne(_all_marked(e, p["refs"]), 0))
+            _reject(e, None, f, S["FUNCTION_UNUSED"], p["xmg"], _list_copy(e, p["refs"], lambda k: e.ld(e.add(_g(e, G_MARK), k))))
+
+        e.if_(e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP)), group_with_more)
         _no(e, e.eq(_kind(e, p["graph"]), int(Kind.RECURSION_GROUP)))
         _reject(e, e.ne(_kind(e, p["graph"]), int(Kind.GRAPH_FRAGMENT)), f, S["FUNCTION_CARRIER"], _kind(e, p["graph"]))
         _mark(e, p["gi"])

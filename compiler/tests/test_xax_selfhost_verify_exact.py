@@ -11,11 +11,15 @@ rendered keep the driver's own record (``XAX.DRIVER.VERIFY``); a decline makes n
 * Types and constants: ``test_xax_selfhost_objects``'s random types of every form and constants, mutated, in a module.
 * Graphs (S15b.3, ADR-292): ``test_xax_selfhost_typing``'s one-node graphs of every covered operation and
   ``test_xax_selfhost_linear``'s resource programs with their mutations, as function stores; none of their rejections
-  declines (S15b.3d, ADR-297).
+  declines (S15b.3d, ADR-297; since ADR-311 none in any corpus here).
 * Invalid uses (S15b.3c, ADR-295): the same programs with one operand pointed at a value that does not exist or does not
   dominate its use, and ``test_xax_selfhost_s8_graphs``'s use variants.
 * Memory facts (S15b.3b, ADR-293): ``test_xax_selfhost_facts``'s stack and view programs with their mutations and its
   typed-access, heap-view, atomic, record/link, and address variants.
+* Declarations and stack-owner entries (S15b.3d, ADR-313): ``fixtures/declared_rejections``, the stores the C-interop,
+  lend-entry, Android, web, JVM-callback, accelerator and recursion tests reject with a rule that quotes a decoded
+  declaration (foreign function, call contract, code-address type, target operation) or a stack-owner entry's block;
+  each file is named by the rule.
 """
 
 from __future__ import annotations
@@ -97,7 +101,23 @@ class VerifyExactTests(unittest.TestCase):
                 continue
             with self.subTest(trial=trial):
                 self.check(reader, tally)
+        self.assertEqual(tally.get("declined_rejection", 0), 0, tally)  # S15b.3d (ADR-311)
         self.assertGreater(tally["exact"], 100, tally)
+
+    def test_declared_rejections(self):
+        """S15b.3d (ADR-313): every fixture rejects with its rule, and the driver writes the bootstrap's exact record."""
+        fixtures = sorted((Path(__file__).parent / "fixtures" / "declared_rejections").glob("*.xax"))
+        self.assertEqual(len(fixtures), 36)
+        tally = dict.fromkeys(("accepted", "exact", "driver_record", "declined", "host_error"), 0)
+        for path in fixtures:
+            with self.subTest(fixture=path.name):
+                reader = StoreReader(path.read_bytes())
+                X._PARSED_GRAPHS.clear()
+                with self.assertRaises(XaxError) as raised:
+                    X.verify_store(reader)
+                self.assertEqual(raised.exception.diagnostic.rule, path.stem.split("_", 1)[1])
+                self.check(reader, tally)
+        self.assertEqual(tally["exact"], len(fixtures), tally)
 
     def test_types_and_constants(self):
         from test_xax_selfhost_objects import _sample
@@ -115,6 +135,7 @@ class VerifyExactTests(unittest.TestCase):
                 continue
             with self.subTest(trial=trial):
                 self.check(reader, tally)
+        self.assertEqual(tally.get("declined_rejection", 0), 0, tally)  # S15b.3d (ADR-311)
         self.assertGreater(tally["exact"], 40, tally)
 
     @staticmethod
@@ -195,6 +216,7 @@ class VerifyExactTests(unittest.TestCase):
                 continue
             with self.subTest(program=index):
                 self.check(reader, tally)
+        self.assertEqual(tally.get("declined_rejection", 0), 0, tally)  # S15b.3d (ADR-311)
         self.assertGreater(tally["exact"], 40, tally)
 
     def test_uses(self):
@@ -243,6 +265,7 @@ class VerifyExactTests(unittest.TestCase):
             with self.subTest(program=index):
                 self.check(reader, tally)
         self.assertEqual(tally["driver_record"], 0, tally)
+        self.assertEqual(tally.get("declined_rejection", 0), 0, tally)  # S15b.3d (ADR-311)
         self.assertGreater(tally["exact"], 40, tally)
 
 

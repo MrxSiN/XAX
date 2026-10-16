@@ -90,7 +90,10 @@ I_MODE, I_CODE, I_UB, I_UN, I_TAG, I_VB, I_VI, I_VR, I_POS, I_W, I_NODE = range(
 I_DOMS, I_ORDER = INV_AT + 64, INV_AT + 2048
 I_POSITION = I_ORDER + (1 << 16)
 ARGUMENTS_EXTENT = 4096
-EDITS_EXTENT = 1 << 16  # S15d.1 (ADR-304): the edit record, one byte per workspace word (``xax_selfhost_edit.EIN``)
+# Debugging only (never in a committed store): with ``XAX_DRIVER_DECLINE_SITES`` set at build time, a decline exits with
+# 16 + the index of its ``stop(DECLINED)`` call in this list of source lines.
+DECLINE_SITES: list[int] | None = [] if __import__("os").environ.get("XAX_DRIVER_DECLINE_SITES") else None
+EDITS_EXTENT = 16 << 20  # the edit record, one byte per workspace word (``xax_selfhost_edit.EIN``; S15d.4a, ADR-312: 16 MiB)
 CHUNK = 1 << 16
 from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
 AT_FDCWD = 0xFFFFFF9C
@@ -287,6 +290,11 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.if_(running(), body)
 
     def stop(code):
+        if code == DECLINED and DECLINE_SITES is not None:  # a debugging build: the exit status names the decline's site
+            import traceback
+
+            DECLINE_SITES.append(tuple(f.lineno for f in traceback.extract_stack()[:-1] if f.filename == __file__)[-4:])
+            code = 15 + len(DECLINE_SITES)
         w.set(status, code)
 
     # -- S11: argv[1..3], each NUL-terminated, into ``arguments`` ------------------------------------------------
@@ -1101,9 +1109,17 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         planned = w.let("planned", 0)
         o = w.let("graph_object", 0)
         objected_ = w.let("graph_objected", 0)
+        # S15b.3d (ADR-313): a graph whose outcome waits on its resource callee's graph (``RG.O_DEFER``): the callee's
+        # graph is checked next (``override``); its rejection decides, else the waiting outcome holds (a rejection is
+        # rendered by checking the waiting graph again, ``final``).  ``pending``: 1 a rejection, 2 an acceptance, 3 a
+        # decline.
+        for field, value in ((SM.RC_PENDING, 0), (SM.RC_OVERRIDE, FA.NONE), (SM.RC_FROM, 0), (SM.RC_WAITING, FA.NONE), (SM.RC_FINAL, 0)):
+            set_work(field, value)
 
         def each():
-            w.set(o, work_word(w.add(R.WORK_PLAN + 3, w[planned])))
+            set_work(SM.RC_FROM, w.flag(w.ne(work_word(SM.RC_OVERRIDE), FA.NONE)))
+            w.set(o, w.sel(w.ne(work_word(SM.RC_OVERRIDE), FA.NONE), work_word(SM.RC_OVERRIDE), work_word(w.add(R.WORK_PLAN + 3, w[planned]))))
+            set_work(SM.RC_OVERRIDE, FA.NONE)
             def graph():
                 set_work(SM.CTRL + SM.C_GRAPH, w[o])
                 helper("parse_graph")
@@ -1318,17 +1334,25 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                         w.set(planned, work_word(R.WORK_PLAN + 2))
                         w.set(objected_, 1)
 
-                    w.if_(w.ne(work_word(INV_AT + I_MODE), 0), trimmed, lambda: w.if_(w.eq(w[status], RG.G_REJECT), rejected, lambda: w.if_(
-                        w.eq(w[status], RG.G_OBJECT), objected, lambda: w.if_(w.ne(w[status], RG.G_ACCEPT), lambda: stop(DECLINED)))))
+                    # S15b.3d (ADR-313): a resource callee's graph may come first (``SM.rc_decide`` decides; its state is in
+                    # workspace words, not variables of this function).
+                    for field, value in ((SM.RC_DEFER, w.ld(RG.OUTCOME_AT + RG.O_DEFER)), (SM.RC_STATUS, w[status]), (SM.RC_O, w[o]),
+                                         (SM.RC_TRIMMED, work_word(INV_AT + I_MODE))):
+                        set_work(field, value)
+                    helper("rc_decide")
+                    for action, act in ((4, trimmed), (1, rejected), (3, objected), (2, lambda: stop(DECLINED))):
+                        w.if_(w.both(running(), w.eq(work_word(SM.RC_ACTION), action)), act)
 
                 when(verdicts)
-                if general:
-                    when(lambda: w.if_(w.eq(w[objected_], 0), lambda: collect(o)))
+                if general:  # a resource callee checked out of turn is collected in its own turn
+                    when(lambda: w.if_(w.both(w.eq(w[objected_], 0), w.eq(work_word(SM.RC_FROM), 0)), lambda: collect(o)))
 
             w.if_(w.eq(record_word(w[o], 4), int(Kind.GRAPH_FRAGMENT)), graph, lambda: stop(DECLINED))
-            w.set(planned, w.add(w[planned], 1))
+            w.set(planned, w.add(w[planned], w.sub(1, work_word(SM.RC_FROM))))
 
-        w.while_(lambda: w.both(w.lt(w[planned], work_word(R.WORK_PLAN + 2)), running()), each)
+        w.while_(lambda: w.both(w.either(w.lt(w[planned], work_word(R.WORK_PLAN + 2)), w.ne(work_word(SM.RC_OVERRIDE), FA.NONE)), running()), each)
+        # A waiting outcome whose callee was never checked (the loop ended): no claim.
+        when(lambda: w.if_(w.either(w.ne(work_word(SM.RC_PENDING), 0), w.ne(work_word(SM.RC_FINAL), 0)), lambda: stop(DECLINED)))
 
     when(object_table)
     when(object_verdicts)

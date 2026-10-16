@@ -1108,6 +1108,75 @@ def _trim(tables):
     return _function((), build, tables)
 
 
+# S15b.3d (ADR-313): a graph outcome waiting on its resource callee's graph (``xax_selfhost_render_graph.O_DEFER``):
+# the driver's graph loop state in workspace words (not variables of its main function): pending (1 a rejection, 2 an
+# acceptance, 3 a decline), the graph checked next, whether this one was, the waiting graph, final (the waiting graph
+# checked again for its record), then the inputs of one outcome (defer word, status, graph, trimmed) and its action
+# (0 continue, 1 its rejection, 2 decline, 3 another object's rejection, 4 the trimmed graph's checks).
+RC_AT = (35 << 20) + (1 << 19)
+RC_PENDING, RC_OVERRIDE, RC_FROM, RC_WAITING, RC_FINAL, RC_DEFER, RC_STATUS, RC_O, RC_TRIMMED, RC_ACTION = (RC_AT + k for k in range(10))
+
+
+def _rc_decide(tables):
+    """``rc_decide``: what the graph loop does with one outcome (see ``RC_AT``)."""
+    from xax_selfhost_facts import _uleb
+    from xax_selfhost_render_graph import G_ACCEPT, G_DECLINE, G_OBJECT, G_REJECT
+
+    def build(e: E):
+        p = e.p
+        e.var("rs", e.ld(RC_STATUS))
+        e.var("rd", e.ld(RC_DEFER))
+        e.var("rp", e.ld(RC_PENDING))
+        e.var("rf", e.ld(RC_FINAL))
+        act = lambda value: e.st(RC_ACTION, value)  # noqa: E731
+        act(0)
+
+        def ordinary():
+            e.if_(e.eq(p["rs"], G_REJECT), lambda: act(1), lambda: e.if_(
+                e.eq(p["rs"], G_OBJECT), lambda: act(3), lambda: e.if_(e.ne(p["rs"], G_ACCEPT), lambda: act(2))))
+
+        def waiting():
+            """The callee function (its typing entry), its graph: checked next."""
+            e.var("rw_f", e.ld(e.add(ENT, e.mul(e.sub(p["rd"], 1), ENTRY_WORDS))))
+            e.var("rw_g", NONE)
+
+            def function_():
+                value, _size, ok = _uleb(e, e.add(_payload(e, p["rw_f"]), 1))
+                e.var("rw_k", value)
+                e.var("rw_ok", e.flag(ok))
+                e.if_(e.both(e.ne(p["rw_ok"], 0), e.lt(p["rw_k"], _nrefs(e, p["rw_f"]))), lambda: e.set("rw_g", _ref(e, p["rw_f"], p["rw_k"])))
+                e.if_(e.ne(p["rw_g"], NONE), lambda: e.if_(e.ne(_kind(e, p["rw_g"]), GRAPH_), lambda: e.set("rw_g", NONE)))
+
+            e.if_(e.both(e.lt(p["rw_f"], _ctrl(e, C_OBJECTS)), e.eq(_kind(e, e.sel(e.lt(p["rw_f"], _ctrl(e, C_OBJECTS)), p["rw_f"], 0)), FUNCTION_)), function_)
+            e.st(RC_PENDING, e.sel(e.eq(p["rs"], G_REJECT), 1, e.sel(e.eq(p["rs"], G_ACCEPT), 2, e.sel(e.eq(p["rs"], G_DECLINE), 3, 0))))
+            e.if_(e.either(e.eq(e.ld(RC_PENDING), 0), e.eq(p["rw_g"], NONE), e.eq(p["rw_g"], e.ld(RC_O))), lambda: act(2))
+            e.st(RC_WAITING, e.ld(RC_O))
+            e.st(RC_OVERRIDE, p["rw_g"])
+
+        def callee():
+            """The waiting graph's callee was checked: its rejection decides; once it is accepted the waiting outcome holds
+            (a rejection: the waiting graph is checked again, ``RC_FINAL``, for its record)."""
+            def accepted():
+                e.if_(e.eq(p["rp"], 1), lambda: (e.st(RC_OVERRIDE, e.ld(RC_WAITING)), e.st(RC_FINAL, 1)), lambda: e.if_(
+                    e.eq(p["rp"], 3), lambda: act(2)))
+                e.st(RC_PENDING, 0)
+
+            e.if_(e.both(e.eq(p["rs"], G_REJECT), e.eq(p["rd"], 0)), lambda: act(1), lambda: e.if_(
+                e.both(e.eq(p["rs"], G_ACCEPT), e.eq(p["rd"], 0)), accepted, lambda: act(2)))
+
+        def again():
+            e.st(RC_FINAL, 0)
+            act(e.sel(e.eq(p["rs"], G_REJECT), 1, 2))
+
+        def untrimmed():
+            e.if_(e.ne(p["rf"], 0), again, lambda: e.if_(e.ne(p["rp"], 0), callee, lambda: e.if_(e.ne(p["rd"], 0), waiting, ordinary)))
+
+        e.if_(e.ne(e.ld(RC_TRIMMED), 0), lambda: act(e.sel(e.either(e.ne(p["rd"], 0), e.ne(p["rp"], 0), e.ne(p["rf"], 0)), 2, 4)), untrimmed)
+        _set_ctrl(e, C_STATUS, OK)
+        e.give(0)
+    return _function((), build, tables)
+
+
 def build_functions():
     """``{name: function}`` and the objects they need; ``type_index`` first (the marshals call it)."""
     objects: list = []
@@ -1122,6 +1191,6 @@ def build_functions():
     add("type_index", _type_index(None))
     for name, builder in (("index_objects", _index_objects), ("objects_marshal", _objects_marshal), ("parse_graph", _parse_graph),
                           ("cfg_input", _cfg_input), ("graph_marshal", _graph_marshal), ("trim", _trim),
-                          ("object_marshal", _object_marshal)):
+                          ("object_marshal", _object_marshal), ("rc_decide", _rc_decide)):
         add(name, builder(None))
     return dict(_FN), tuple(objects)

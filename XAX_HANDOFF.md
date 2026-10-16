@@ -1208,3 +1208,11 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 
 - `xaxc resolve-trusted <request> <snapshot> <trust file> [inputs]`; trust file = `xax_selfhost_resolve.trust_file(policy, signatures)`. `resolve` uses the same path with the driver's policy.
 - Workspace: `TRUST_IN` (43M words), `TRUST_TABLE`/`EXTRA_AT` (44M); control words `R_TRUST` 20, `R_USED` 21.
+
+## S15b.3d remainder and S15d.4a — 2026-10-16 (ADR-311 to ADR-313)
+
+- `verify` declines that remain: two different resource callees before a graph's decision (`rejection_exactness_gaps`). Fixtures: `compiler/tests/fixtures/declared_rejections` (36 stores, named by rule; `test_declared_rejections`).
+- Header words of the typing output: 51/52 `H_TSTOP`, 53 `H_TCONTRACTS`, 54-56 the declared renderers' cursor (`render_graph.D_*`), 57-62 the first resource call (`H_RCALL_*`). `O_DEFER` (outcome word 6) names a resource callee whose graph the driver checks first (`xax_selfhost_semantic.rc_decide`, state at `SM.RC_AT` in the workspace).
+- The driver's main function is at what the seed's facts engine decides (about 239k values): new driver logic goes in workspace helpers and workspace words, not `w.let` variables or new branches in the main function.
+- The general x86-64 backend miscompiles a copy that stays live while its source advances (see the suggested task); `xax_selfhost_render._target_words` works around it.
+- `edit` records: `REPLACE_REFERENCE` (kind 3) with supplied objects (`edit_record(mutations, root, objects)`); an empty supplied section is EDIT-RECORD-END. Next: S15d.4b (the workspace's fine-grained graph mutations in the engine) for B6.

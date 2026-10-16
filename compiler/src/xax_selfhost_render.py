@@ -570,6 +570,7 @@ def _target_words(tables):
             take(f"f_{name}")
         for name in ("args", "scratch", "operations", "terminators", "widths", "scopes", "families", "handlers", "acc_scopes", "spaces", "contracts"):
             e.var(f"at_{name}", 0)
+
         for name in ("result", "lane", "groups"):
             e.var(f"f_{name}", 0)
         e.if_(e.either(e.eq(p["f_arch"], 1), e.eq(p["f_arch"], 3)), lambda: (
@@ -587,20 +588,24 @@ def _target_words(tables):
             e.set("at_widths", many("m_widths"))
             e.set("at_scopes", many("m_scopes"))
             e.set("at_families", many("m_families"))
-            e.set("at_handlers", p["tw"])
-            e.for_("hk", 0, take("t_handlers"), handler_skip)
+            take("t_handlers")
+            e.set("at_handlers", e.sub(p["tw"], 1))
+            e.for_("hk", 0, p["t_handlers"], handler_skip)
 
         def contract_skip():
             e.set("tw", e.add(p["tw"], 3))
-            for _signature in range(2):
-                e.var("cn", e.ld(p["tw"]))
-                e.set("tw", e.add(e.add(p["tw"], 1), e.mul(p["cn"], 3)))
+            for signature in range(2):
+                e.var(f"cn{signature}", e.ld(p["tw"]))
+                e.set("tw", e.add(e.add(p["tw"], 1), e.mul(p[f"cn{signature}"], 3)))
             many("m_cscopes")
             e.set("tw", e.add(p["tw"], 5))
 
+        # The general x86-64 backend miscompiles a copy of ``tw`` that stays live while ``tw`` is then advanced (the copy
+        # reads the advanced value): each list's position is derived from ``tw`` after its count is read instead.
         def contracts():
-            e.set("at_contracts", p["tw"])
-            e.for_("ck", 0, take("t_contracts"), contract_skip)
+            take("t_contracts")
+            e.set("at_contracts", e.sub(p["tw"], 1))
+            e.for_("ck", 0, p["t_contracts"], contract_skip)
 
         def space_skip():
             e.set("tw", e.add(p["tw"], 4))
@@ -612,8 +617,9 @@ def _target_words(tables):
             e.set("f_lane", take("t_lane"))
             e.set("f_groups", take("t_groups"))
             e.set("at_acc_scopes", many("m_acc_scopes"))
-            e.set("at_spaces", p["tw"])
-            e.for_("sk", 0, take("t_spaces"), space_skip)
+            take("t_spaces")
+            e.set("at_spaces", e.sub(p["tw"], 1))
+            e.for_("sk", 0, p["t_spaces"], space_skip)
             contracts()
 
         e.if_(e.either(e.eq(p["f_profile"], 2), e.eq(p["f_profile"], BOARD_PROFILE)), concurrency)
@@ -668,12 +674,17 @@ def _target_words(tables):
             w.tagged(D.T_BOOL, e.ld(e.add(p["sp_f"], 1)))
 
         def operation_ids():
-            def item(_i):
-                w.integer(e.ld(p["tw"]))
+            """Each contract's identity (its values named)."""
+            def item():
+                e.var("oi_id", e.ld(p["tw"]))
+                w.integer(p["oi_id"])
                 contract_skip()
 
             e.set("tw", e.add(p["at_contracts"], 1))
-            w.seq(D.T_TUPLE, e.ld(p["at_contracts"]), item)
+            e.var("oi_n", e.ld(p["at_contracts"]))
+            w.put(D.T_TUPLE)
+            w.put(p["oi_n"])
+            e.for_("oi_k", 0, p["oi_n"], item)
 
         def sorted_unique_spaces():
             """``sorted(set(space identities))``: ascending, each once."""
@@ -1387,6 +1398,9 @@ PLAN_LIMIT = 1 << 16
 TYPES_AT, WORK_PLAN, WORK_RECORD = 32 << 20, 33 << 20, 34 << 20
 RECORD_LIMIT = 1 << 20
 P_ACCEPT, P_BANK, P_TYPE, P_DECODER, P_DECLINE = range(5)
+P_MISSING = 5  # within one visit only: ``lazy_missing`` of the object, decided once after the visit's other checks
+MISSING = (1 << 64) - 2  # ``_prefix``: the walk reached the graph's first missing reference
+DEBUG_PLAN = bool(__import__("os").environ.get("XAX_DEBUG_PLAN"))  # never set when a committed store is written
 STRUCTURAL = (Kind.FUNCTION, Kind.MODULE, Kind.PROGRAM_ROOT, Kind.CALL_CONTRACT, Kind.RECURSION_GROUP, Kind.TARGET, Kind.PACKAGE, Kind.BUILD,
               Kind.GRAPH_FRAGMENT)
 assert PLAN_AT + 3 + (1 << 16) <= V.ARENA_AT
@@ -1420,17 +1434,30 @@ def _prefix(tables):
             e.set("x_at", e.add(p["x_at"], p["x_live"]))
 
         def decide(value):
+            if DEBUG_PLAN and value is NONE:  # debugging only: the prefix's undecided source line
+                import traceback
+
+                e.st(PLAN_AT + 2 + PLAN_LIMIT, traceback.extract_stack()[-2].lineno)
             e.set("x_out", value)
             e.set("x_live", 0)
+
+        def missing():
+            """S15b.3d (ADR-311): the parse resolves references in body order: a missing one that is also the graph's
+            first missing reference (``verify_object``'s order) is the graph's own OBJECT_MISSING record."""
+            e.var("x_first", 1)
+            e.for_("x_m", 0, p["x_ref"], lambda: e.if_(e.eq(V._reference(e, g, p["x_m"]), NONE), lambda: e.set("x_first", 0)))
+            e.if_(e.ne(p["x_first"], 0), lambda: decide(MISSING), lambda: decide(NONE))
 
         def reference():
             word("x_ref")
             e.if_(e.ne(p["x_live"], 0), lambda: e.if_(e.le(p["x_refs"], p["x_ref"]), lambda: decide(NONE), lambda: (
-                e.set("x_obj", V._reference(e, g, p["x_ref"])), e.if_(e.eq(p["x_obj"], NONE), lambda: decide(NONE)))))
+                e.set("x_obj", V._reference(e, g, p["x_ref"])), e.if_(e.eq(p["x_obj"], NONE), missing))))
 
         def type_reference():
             reference()
-            e.if_(e.ne(p["x_live"], 0), lambda: e.if_(e.eq(V._kind(e, p["x_obj"]), int(Kind.CONSTANT)), lambda: decide(NONE), lambda: e.if_(
+            # ``_verify_type`` returns for any proven object (S15b.3d, ADR-311: a proven constant named as a type passes).
+            e.if_(e.ne(p["x_live"], 0), lambda: e.if_(e.eq(V._kind(e, p["x_obj"]), int(Kind.CONSTANT)), lambda: e.if_(
+                e.not_(V._type_ok(e, p["x_obj"])), lambda: decide(NONE)), lambda: e.if_(
                 e.not_(V._type_ok(e, p["x_obj"])), lambda: decide(e.add(p["x_obj"], 1)))))
 
         def skip(words):
@@ -1474,7 +1501,7 @@ def _prefix(tables):
     return _function(("g",), build, tables)
 
 
-def _plan(tables):
+def _plan(tables, functions):
     """``verify_store``'s order over the verdicts: the graphs it parses, in order (each once), until the first object
     it rejects; then the outcome.
 
@@ -1496,8 +1523,27 @@ def _plan(tables):
         e.var("pn", 0)
 
         def finish(kind, obj=0):
+            if kind == P_DECLINE and DEBUG_PLAN:  # debugging only: the decline's source line, in the unused object word
+                import traceback
+
+                obj = traceback.extract_stack()[-2].lineno
             e.set("term", kind)
             e.set("tobj", obj)
+
+        def kind_of(owner, x):
+            """S15b.3d: ``_build_form(x)`` reached while decoding ``owner``: x's BUILD-KIND diagnostic, rendered into
+            owner's bank record (its ``BUILD_KIND_OF`` site; the record it had is not the store's rejection)."""
+            e.var("pk_owner", owner)
+            e.var("pk_x", x)
+
+            def synthesize():
+                row = e.add(V.REJECTS_AT, e.mul(p["pk_owner"], V.REJECT_WORDS))
+                e.st(row, SITE["BUILD_KIND_OF"])
+                e.st(e.add(row, 1), p["pk_x"])
+                e.call(functions["render"], p["pk_owner"], p["pcounts"])
+                e.if_(e.ne(e.ld(e.add(INDEX_AT, e.mul(p["pk_owner"], INDEX_WORDS))), 0), lambda: finish(P_BANK, p["pk_owner"]), lambda: finish(P_DECLINE))
+
+            e.if_(e.both(e.ne(p["pcounts"], NONE), e.ne(e.ld(BANK_CURSOR), 0), e.ne(p["pk_x"], NONE)), synthesize, lambda: finish(P_DECLINE))
 
         e.if_(e.eq(p["memo"], NONE), lambda: finish(P_DECLINE))
         e.if_(e.ne(p["memo"], NONE), lambda: e.for_("pz", 0, p["pO"], lambda: e.st(e.add(p["memo"], p["pz"]), 0)))
@@ -1512,13 +1558,24 @@ def _plan(tables):
                 """S15b.3d: the stream prefix's type references first (``_prefix``), then the decoder's rejection."""
                 e.var("pd_r", e.call(_FN["prefix"], p["pg"]))
                 e.if_(e.eq(p["pd_r"], 0), lambda: finish(P_DECODER, p["pg"]), lambda: e.if_(
-                    e.eq(p["pd_r"], NONE), lambda: finish(P_DECLINE), lambda: finish(P_TYPE, e.sub(p["pd_r"], 1))))
+                    e.either(e.eq(p["pd_r"], NONE), e.eq(p["pd_r"], MISSING)), lambda: finish(P_DECLINE), lambda: finish(P_TYPE, e.sub(p["pd_r"], 1))))
+
+            def missing_reference():
+                """S15b.3d (ADR-311): a graph with a missing reference, parsed for another object: the walk in body order
+                reaches its first missing reference (its own record), an unproven type first, or the decoder's
+                rejection; otherwise the bootstrap's later checks decide."""
+                e.var("pm_r", e.call(_FN["prefix"], p["pg"]))
+                e.if_(e.eq(p["pm_r"], MISSING), lambda: finish(P_BANK, p["pg"]), lambda: e.if_(
+                    e.eq(p["pm_r"], NONE), lambda: finish(P_DECLINE), lambda: e.if_(
+                        e.ne(p["pm_r"], 0), lambda: finish(P_TYPE, e.sub(p["pm_r"], 1)), lambda: e.if_(
+                            V._graph_rejected(e, p["pg"]), lambda: finish(P_DECODER, p["pg"]), lambda: finish(P_DECLINE)))))
 
             def undecided():
                 """S15b.3d: a decoded graph the verifier left undecided: ``_graph_syntax_from_stream`` verifies the stream's
                 types first (the first unproven one is its own rejection); otherwise the bootstrap decides."""
                 e.var("pu_r", e.call(_FN["prefix"], p["pg"]))
-                e.if_(e.either(e.eq(p["pu_r"], 0), e.eq(p["pu_r"], NONE)), lambda: finish(P_DECLINE), lambda: finish(P_TYPE, e.sub(p["pu_r"], 1)))
+                e.if_(e.either(e.eq(p["pu_r"], 0), e.eq(p["pu_r"], NONE), e.eq(p["pu_r"], MISSING)), lambda: finish(P_DECLINE),
+                      lambda: finish(P_TYPE, e.sub(p["pu_r"], 1)))
 
             def append():
                 e.st(e.add(e.add(PLAN_AT, 3), p["pn"]), p["pg"])
@@ -1526,7 +1583,7 @@ def _plan(tables):
 
             def fresh():
                 e.st(e.add(p["memo"], p["pg"]), 1)
-                e.if_(e.eq(verdict(p["pg"]), V.REJECTED), lambda: e.if_(e.eq(site(p["pg"]), SITE["OBJECT_MISSING"]), lambda: finish(P_DECLINE),
+                e.if_(e.eq(verdict(p["pg"]), V.REJECTED), lambda: e.if_(e.eq(site(p["pg"]), SITE["OBJECT_MISSING"]), missing_reference,
                                                                         lambda: finish(P_BANK, p["pg"])),
                       lambda: e.if_(V._graph_rejected(e, p["pg"]), decoder, lambda: e.if_(e.eq(verdict(p["pg"]), 1), append, undecided)))
 
@@ -1541,6 +1598,8 @@ def _plan(tables):
 
         def visit():
             o = p["po"]
+            if DEBUG_PLAN:
+                e.st(PLAN_AT + 1 + PLAN_LIMIT, o)
             e.var("pkind", V._kind(e, o))
             e.var("pverdict", verdict(o))
             e.var("psite", site(o))
@@ -1619,8 +1678,11 @@ def _plan(tables):
                     def types():
                         e.for_("pf_k", 0, cursor.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
                             e.var("pf_t", V._reference(e, o, cursor.uleb())),
-                            e.if_(e.either(e.eq(p["pf_t"], NONE), e.ne(V._kind(e, p["pf_t"]), int(Kind.TYPE))), lambda: finish(P_DECLINE),
-                                  lambda: e.if_(e.not_(V._type_ok(e, p["pf_t"])), lambda: finish(P_TYPE, p["pf_t"]))))))
+                            # ``_verify_type``: a proven object passes; another kind than a constant is read as a type
+                            # (S15b.3d, ADR-311: ``_xax_prove_as_type``, the driver's P_TYPE of that object).
+                            e.if_(e.eq(p["pf_t"], NONE), lambda: finish(P_DECLINE), lambda: e.if_(
+                                e.not_(V._type_ok(e, p["pf_t"])), lambda: e.if_(
+                                    e.eq(V._kind(e, p["pf_t"]), int(Kind.CONSTANT)), lambda: finish(P_DECLINE), lambda: finish(P_TYPE, p["pf_t"])))))))
 
                     types()
                     e.if_(e.eq(p["term"], NONE), types)
@@ -1633,28 +1695,188 @@ def _plan(tables):
 
             def snapshot():
                 """S15b.3d (ADR-296): ``decode_snapshot`` of a snapshot the verifier left to a nested decoder (its own
-                checks hold): ``decode_request``, then each package's ``decode_package``, raise their own rejections."""
+                checks hold): ``decode_request``, then each package's ``decode_package``, raise their own rejections.
+                ``ps_o``: the visited snapshot, or the one a provenance reaches first (ADR-311)."""
                 body = _Body(e, "ps")
-                body.at(o)
+                body.at(p["ps_o"])
                 body.uleb()  # the form
-                e.var("ps_req", V._reference(e, o, body.uleb()))
+                e.var("ps_req", V._reference(e, p["ps_o"], body.uleb()))
                 body.string("ps_id")
-                body.uleb()  # the trust policy
+                e.var("ps_pol", V._reference(e, p["ps_o"], body.uleb()))
                 own = lambda x: e.both(e.eq(verdict(x), V.REJECTED), e.ne(site(x), SITE["OBJECT_MISSING"]))  # noqa: E731
 
+                def decoded(x):
+                    """``x``'s own decoder: its rejection, else the bootstrap's unless the verifier proved it."""
+                    e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.eq(x, NONE), lambda: finish(P_DECLINE), lambda: e.if_(
+                        own(x), lambda: finish(P_BANK, x), lambda: e.if_(e.ne(verdict(x), 1), lambda: finish(P_DECLINE)))))
+
+                def after_packages():
+                    """S15b.3d (ADR-311): with the request and every package proven, the verifier's root and closure checks
+                    held; ``decode_snapshot`` then decodes the request's profile and the trust policy, checks the grants,
+                    and decodes each signature in order: the first own rejection decides."""
+                    request = _Body(e, "pr")
+                    request.at(p["ps_req"])
+                    request.uleb()  # the form
+                    request.uleb()  # the package
+                    request.string("pr_entry")
+                    request.uleb()  # the target
+                    e.var("ps_prof", V._reference(e, p["ps_req"], request.uleb()))
+                    decoded(p["ps_prof"])
+                    decoded(p["ps_pol"])
+
+                    def signatures():
+                        profile = _Body(e, "pf")
+                        profile.at(p["ps_prof"])
+                        for _field in range(4):  # form, mode, optimization, verification
+                            profile.uleb()
+                        e.var("ps_grants", profile.uleb())  # a grant's check comes first: rendered by the bootstrap
+                        e.for_("ps_s", 0, body.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
+                            e.var("ps_sig", V._reference(e, p["ps_o"], body.uleb())),
+                            e.if_(e.both(e.ne(p["ps_grants"], 0), e.ne(p["ps_sig"], NONE), own(e.sel(e.eq(p["ps_sig"], NONE), 0, p["ps_sig"]))),
+                                  lambda: finish(P_DECLINE)),
+                            decoded(p["ps_sig"]))))
+
+                    e.if_(e.eq(p["term"], NONE), signatures)
+
                 def packages():
-                    e.for_("ps_k", 0, body.uleb(), lambda: e.if_(e.eq(p["term"], NONE), lambda: (
-                        e.var("ps_pkg", V._reference(e, o, body.uleb())),
+                    e.var("ps_n", body.uleb())
+                    e.for_("ps_k", 0, p["ps_n"], lambda: e.if_(e.eq(p["term"], NONE), lambda: (
+                        e.var("ps_pkg", V._reference(e, p["ps_o"], body.uleb())),
                         e.if_(e.eq(p["ps_pkg"], NONE), lambda: finish(P_DECLINE), lambda: e.if_(
                             own(p["ps_pkg"]), lambda: finish(P_BANK, p["ps_pkg"]), lambda: e.if_(
                                 e.ne(verdict(p["ps_pkg"]), 1), lambda: finish(P_DECLINE)))))))
+                    e.if_(e.eq(p["term"], NONE), after_packages)
 
                 e.if_(e.eq(p["ps_req"], NONE), lambda: finish(P_DECLINE), lambda: e.if_(
-                    own(p["ps_req"]), lambda: finish(P_BANK, p["ps_req"]), lambda: e.if_(e.eq(verdict(p["ps_req"]), 1), packages)))
+                    own(p["ps_req"]), lambda: finish(P_BANK, p["ps_req"]), lambda: e.if_(e.eq(verdict(p["ps_req"]), 1), packages, lambda: e.if_(
+                        e.eq(verdict(p["ps_req"]), V.REJECTED), lambda: finish(P_MISSING, p["ps_req"])))))
                 e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
 
+            own_rejection = lambda x: e.both(e.eq(verdict(x), V.REJECTED), e.ne(site(x), SITE["OBJECT_MISSING"]))  # noqa: E731
+
+            def lazy_missing(x):
+                """S15b.3d (ADR-311): a nested decoder resolves references as it reads them.  For a snapshot (request, then
+                trust policy) or a request (package, target, profile), nothing but reading comes between those first
+                references: the first of them missing, when it is also ``x``'s first missing reference (its own record),
+                decides; otherwise the bootstrap's checks may come first (a decline)."""
+                e.var("lm_x", x)
+                body = _Body(e, "lm")
+                body.at(p["lm_x"])
+                e.var("lm_form", body.uleb())
+                e.var("lm_first", NONE)  # the first missing in body order: its reference index
+                e.var("lm_bad", 0)  # another check comes first (an index past the references, an empty package identity)
+
+                def ref():
+                    e.var("lm_k", body.uleb())
+                    e.if_(e.both(e.eq(p["lm_first"], NONE), e.le(V._references(e, p["lm_x"]), p["lm_k"])), lambda: e.set("lm_bad", 1))
+                    e.if_(e.both(e.eq(p["lm_first"], NONE), e.lt(p["lm_k"], V._references(e, p["lm_x"]))), lambda: e.if_(
+                        e.eq(V._reference(e, p["lm_x"], p["lm_k"]), NONE), lambda: e.set("lm_first", p["lm_k"])))
+
+                def package_refs():
+                    """S15b.3d: ``decode_package`` reads its logical identity (nonempty), then its module references."""
+                    body.at(p["lm_x"])
+                    body.string("lm_pid")
+                    e.if_(e.eq(p["lm_pid_len"], 0), lambda: e.set("lm_bad", 1))
+                    e.for_("lm_m", 0, body.uleb(), ref)
+
+                e.var("lm_package", e.flag(e.eq(V._kind(e, p["lm_x"]), int(Kind.PACKAGE))))
+                e.if_(e.ne(p["lm_package"], 0), package_refs)
+
+                def snapshot_refs():
+                    ref()
+                    body.string("lm_id")
+                    ref()
+
+                def request_refs():
+                    ref()
+                    body.string("lm_entry")
+                    ref()
+                    ref()
+
+                e.if_(e.both(e.eq(p["lm_package"], 0), e.eq(p["lm_form"], 3)), snapshot_refs, lambda: e.if_(
+                    e.both(e.eq(p["lm_package"], 0), e.eq(p["lm_form"], 2)), request_refs))
+                e.var("lm_list", NONE)  # the first missing in reference order
+                e.for_("lm_r", 0, V._references(e, p["lm_x"]), lambda: e.if_(e.both(e.eq(p["lm_list"], NONE), e.eq(V._reference(e, p["lm_x"], p["lm_r"]), NONE)),
+                                                                               lambda: e.set("lm_list", p["lm_r"])))
+                def header():
+                    """S15b.3d: the header's references are present: its kind checks come before any later reference
+                    (``_build_form`` of a snapshot's request, then its policy; a request's profile once its package and
+                    target kinds hold): an object that is no build object is BUILD-KIND, rendered for ``lm_x``."""
+                    body.at(p["lm_x"])
+                    body.uleb()
+                    e.var("lm_a", V._reference(e, p["lm_x"], body.uleb()))
+
+                    def of_snapshot():
+                        body.string("lm_id2")
+                        e.var("lm_b", V._reference(e, p["lm_x"], body.uleb()))
+                        e.if_(e.ne(p["lm_id2_len"], 0), lambda: e.if_(e.ne(V._kind(e, p["lm_a"]), int(Kind.BUILD)), lambda: kind_of(p["lm_x"], p["lm_a"]), lambda: e.if_(
+                            e.both(e.eq(verdict(p["lm_a"]), 1), e.eq(e.rd(body_at(e, p["lm_a"])), 2), e.ne(V._kind(e, p["lm_b"]), int(Kind.BUILD))),
+                            lambda: kind_of(p["lm_x"], p["lm_b"]))))
+
+                    def of_request():
+                        body.string("lm_entry2")
+                        e.var("lm_b", V._reference(e, p["lm_x"], body.uleb()))
+                        e.var("lm_c", V._reference(e, p["lm_x"], body.uleb()))
+                        e.if_(e.both(e.eq(V._kind(e, p["lm_a"]), int(Kind.PACKAGE)), e.eq(V._kind(e, p["lm_b"]), int(Kind.TARGET)),
+                                     e.ne(V._kind(e, p["lm_c"]), int(Kind.BUILD))), lambda: kind_of(p["lm_x"], p["lm_c"]))
+
+                    e.if_(e.eq(p["lm_form"], 3), of_snapshot, lambda: e.if_(e.eq(p["lm_form"], 2), of_request))
+                    e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
+
+                e.var("lm_build", e.flag(e.eq(V._kind(e, p["lm_x"]), int(Kind.BUILD))))
+                e.if_(e.both(e.ne(p["lm_first"], NONE), e.eq(p["lm_first"], p["lm_list"]), e.eq(p["lm_bad"], 0),
+                             e.either(e.ne(p["lm_build"], 0), e.ne(p["lm_package"], 0))),
+                      lambda: finish(P_BANK, p["lm_x"]), lambda: e.if_(
+                          e.both(e.eq(p["lm_first"], NONE), e.eq(p["lm_bad"], 0), e.ne(p["lm_build"], 0), e.either(e.eq(p["lm_form"], 2), e.eq(p["lm_form"], 3))),
+                          header, lambda: finish(P_DECLINE)))
+
+            def nested(x, deeper=False):
+                """A nested decoder over ``x``: its own rejection decides; a proven ``x`` passes; an undecided snapshot or
+                request is decoded as the visit decodes one (``deeper``); else the bootstrap's."""
+                def undecided():
+                    if deeper:
+                        e.var("nx_build", e.flag(e.both(e.eq(verdict(x), 0), e.eq(V._kind(e, x), int(Kind.BUILD)))))
+                        e.var("nx_form", e.rd(body_at(e, x)))
+                        e.if_(e.both(e.ne(p["nx_build"], 0), e.eq(p["nx_form"], 3)), lambda: e.set("ps_o", x), lambda: e.if_(
+                            e.both(e.ne(p["nx_build"], 0), e.eq(p["nx_form"], 2)), lambda: request(x), lambda: e.if_(e.ne(verdict(x), 1), lambda: finish(P_DECLINE))))
+                        # passed, undecided (a snapshot is decoded next, as a visited one is)
+                        e.if_(e.both(e.eq(p["term"], NONE), e.eq(p["ps_o"], NONE), e.ne(verdict(x), 1)), lambda: finish(P_DECLINE))
+                    else:
+                        e.if_(e.ne(verdict(x), 1), lambda: finish(P_DECLINE))
+
+                e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.eq(x, NONE), lambda: finish(P_DECLINE), lambda: e.if_(
+                    own_rejection(x), lambda: finish(P_BANK, x), lambda: e.if_(
+                        e.both(e.eq(verdict(x), V.REJECTED), e.eq(site(x), SITE["OBJECT_MISSING"])), lambda: finish(P_MISSING, x), undecided))))
+
+            def request(x=None):
+                """S15b.3d (ADR-311): ``decode_request`` of a request the verifier left to its package's decoder (its own
+                checks before it hold): ``decode_package`` raises the package's own rejection.  ``x``: as ``snapshot``'s."""
+                e.var("pq_o", o if x is None else x)
+                body = _Body(e, "pq")
+                body.at(p["pq_o"])
+                body.uleb()  # the form
+                e.var("pq_pkg", V._reference(e, p["pq_o"], body.uleb()))
+                nested(p["pq_pkg"])
+                e.if_(e.eq(p["term"], NONE), lambda: finish(P_DECLINE))
+
+            def provenance():
+                """S15b.3d (ADR-311): ``decode_provenance`` of a provenance the verifier left to its nested decoders (its
+                own checks hold): ``decode_snapshot`` of its snapshot, then ``decode_request`` of its request."""
+                body = _Body(e, "pv")
+                body.at(o)
+                body.uleb()  # the form
+                e.var("pv_snap", V._reference(e, o, body.uleb()))
+                e.var("pv_req", V._reference(e, o, body.uleb()))
+                nested(p["pv_snap"], deeper=True)
+                e.if_(e.eq(p["ps_o"], NONE), lambda: nested(p["pv_req"], deeper=True))
+                e.if_(e.both(e.eq(p["term"], NONE), e.eq(p["ps_o"], NONE)), lambda: finish(P_DECLINE))
+
             def other():
-                e.if_(e.both(e.eq(p["pkind"], int(Kind.BUILD)), e.eq(e.rd(body_at(e, o)), 3)), snapshot)
+                e.var("ps_o", NONE)
+                e.if_(e.both(e.eq(p["pkind"], int(Kind.BUILD)), e.eq(e.rd(body_at(e, o)), 3)), lambda: e.set("ps_o", o))
+                e.if_(e.both(e.eq(p["pkind"], int(Kind.BUILD)), e.eq(e.rd(body_at(e, o)), 2)), request)
+                e.if_(e.both(e.eq(p["pkind"], int(Kind.BUILD)), e.eq(e.rd(body_at(e, o)), 5)), provenance)
+                e.if_(e.both(e.ne(p["ps_o"], NONE), e.eq(p["term"], NONE)), snapshot)
                 structural = e.either(*(e.eq(p["pkind"], int(kind)) for kind in STRUCTURAL if kind != Kind.FUNCTION))
                 typed = e.either(e.eq(p["pkind"], int(Kind.TYPE)), e.eq(p["pkind"], int(Kind.CONSTANT)))
                 e.if_(e.eq(p["pkind"], int(Kind.FUNCTION)), undecided_function)
@@ -1664,6 +1886,8 @@ def _plan(tables):
 
             e.if_(e.eq(p["pverdict"], V.REJECTED), rejected, lambda: e.if_(
                 e.eq(p["pkind"], int(Kind.GRAPH_FRAGMENT)), lambda: parse(o), lambda: e.if_(e.eq(p["pverdict"], 1), proven, other)))
+            # A nested decoder reached an object with a missing reference (``P_MISSING``): decided here, once.
+            e.if_(e.eq(p["term"], P_MISSING), lambda: (e.var("pm_x", p["tobj"]), e.set("term", NONE), lazy_missing(p["pm_x"])))
 
         e.for_("po", 0, p["pO"], lambda: e.if_(e.eq(p["term"], NONE), visit))
         fault = e.ld(V.STORE_FAULT)
@@ -1673,7 +1897,7 @@ def _plan(tables):
         e.st(PLAN_AT + 1, p["tobj"])
         e.st(PLAN_AT + 2, p["pn"])
         e.give(0)
-    return _function((), build, tables)
+    return _function(("pcounts",), build, tables)
 
 
 def add_functions(add, tables) -> dict:
@@ -1686,7 +1910,7 @@ def add_functions(add, tables) -> dict:
     functions["render"] = add("render", _render(tables, functions))
     functions["store"] = add("render_store", _store(tables))
     _FN["prefix"] = functions["prefix"] = add("render_prefix", _prefix(tables))
-    functions["plan"] = add("render_plan", _plan(tables))
+    functions["plan"] = add("render_plan", _plan(tables, functions))
     return functions
 
 
@@ -1718,7 +1942,7 @@ def render_phase(e: E, functions, verdicts_at: int, rejected: int):
         e.call(functions["store"])
 
     e.if_(e.ne(p["rcounts"], NONE), phase, lambda: e.st(BANK_CURSOR, 0))  # cursor 0: no bank
-    e.call(functions["plan"])
+    e.call(functions["plan"], p["rcounts"])
 
 
 # -- host side --------------------------------------------------------------------------------------------------------

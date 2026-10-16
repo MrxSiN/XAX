@@ -129,6 +129,14 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15b.3d the compiler's verification rejections, nearly complete — 2026-10-16 (ADR-311, ADR-313)
+
+The production compiler's `verify` now writes the bootstrap's exact rejection in the cases it used to leave undecided: builds that reference each other (a provenance's snapshot, a request's package), stores missing objects that a nested build object reaches, function and type corner cases, and the memory checks that quote a declaration (a foreign function's signature, a call contract, a code-entry type, an accelerator target's operation contracts) or a stack-owner entry's body. A caller's check now waits for the callee's graph when the bootstrap would parse the callee first. Over the randomized verification corpora (16 hash seeds of the object-site corpus and the type, graph, memory and use corpora) and 36 collected declaration and stack-owner stores, the self-built compiler declined none and wrote no diagnostic that differs from the bootstrap's. One narrow class still declines: a graph that calls two different resource callees before its own decision. Two compiler bugs were found on the way: the general x86-64 backend miscompiles a variable copy whose source keeps advancing (worked around here; the backend fix is its own task), and an internal header word was shared by two uses. Whether B1 holds is decided by the evidence re-run.
+
+## S15d.4a structural compiler changes as transactions — 2026-10-16 (ADR-312)
+
+The compiler's `edit` command can now replace any reference in the store (a function's graph, a module's function, a type or constant) with new objects carried in the transaction record, rebuilding everything that depends on it, byte for byte as the Python reference does. That makes every structural compiler change expressible as a transaction; writing the fine-grained graph mutations (insert, delete, rewire nodes) in the engine is the next step (S15d.4b), and B6 is not yet established.
+
 ## S15c.5a room for the compiler's largest function — 2026-10-16 (ADR-310)
 
 The program that compiles the compiler kept a 12.6M-word buffer for the final executable reserved through the whole compilation, although it is only used at the very end; with the next feature the compiler's largest function no longer fit beside it. The buffer is now taken at the end. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15c.5.

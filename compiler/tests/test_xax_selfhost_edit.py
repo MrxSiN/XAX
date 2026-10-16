@@ -264,6 +264,55 @@ class EditCommandTests(unittest.TestCase):
             seen.add(expected[0])
         self.assertTrue({"store", "verify 0"} <= seen, seen)
 
+    def test_replace_reference(self):
+        """S15d.4a (ADR-312): a reference replaced by an object the record supplies: the store equals the Python
+        reference and the program built with the new object directly, and verifies; the rejections are the engine's."""
+        import xax_compiler as X
+        from test_xax_linux import _status_program
+        from xax_selfhost_diagnostics import decode_record
+        from xax_selfhost_edit import REPLACE_REFERENCE, apply_reference, edit_record
+
+        def entry_of(reader):
+            module = next(item for item in reader.objects() if item.kind == X.Kind.MODULE)
+            return module, next(reader.get(cid) for cid in module.references if reader.get(cid).kind == X.Kind.FUNCTION)
+
+        reader = _status_program(lambda b: b.const(X.bits_type(32), 7))[0]
+        other = _status_program(lambda b: b.const(X.bits_type(32), 9))[0]
+        module, old_function = entry_of(reader)
+        _module, new_function = entry_of(other)
+        graph_of = lambda store, f: store.get(f.references[X.Cursor(f.body, "").uleb()])  # noqa: E731
+        old_graph, new_graph = graph_of(reader, old_function), graph_of(other, new_function)
+        stored = {item.cid for item in reader.objects()}
+        supplied = [item for item in other.objects() if item.cid not in stored and item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT)]
+        store, record_path, output, verified = (self.directory / name for name in ("store.xax", "edit.bin", "out.xax", "verify.bin"))
+        store.write_bytes(reader.data)
+
+        def run(record):
+            record_path.write_bytes(record)
+            output.unlink(missing_ok=True)
+            status = self.driver._process("edit", store, record_path, output)
+            data = output.read_bytes() if output.exists() else None
+            if status == 1:
+                return status, decode_record([int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)]).rule
+            return status, data
+
+        for name, mutation in (("graph", (REPLACE_REFERENCE, old_function.cid, old_graph.cid, new_graph.cid)),
+                               ("function", (REPLACE_REFERENCE, module.cid, old_function.cid, new_function.cid))):
+            with self.subTest(name):
+                record = edit_record([mutation], reader.root_cid, supplied + [X.constant(X.bits_type(32), 12345)])  # one unreached
+                status, data = run(record)
+                self.assertEqual((status, data), (0, apply_reference(reader, record).data))
+                self.assertEqual(data, other.data)
+                self.assertEqual(self.driver.verify(output, verified), 0)
+        for name, mutation, objects, rule in (
+                ("not a reference", (REPLACE_REFERENCE, old_function.cid, new_graph.cid, new_graph.cid), supplied, "EDIT-REFERENCE-PRECONDITION"),
+                ("no owner", (REPLACE_REFERENCE, bytes(32), old_graph.cid, new_graph.cid), supplied, "WORKSPACE-HANDLE-GENERATION"),
+                ("no new child", (REPLACE_REFERENCE, old_function.cid, old_graph.cid, new_graph.cid), [], "EDIT-REFERENCE-TARGET"),
+                ("a supplied object naming nothing", (REPLACE_REFERENCE, old_function.cid, old_graph.cid, new_graph.cid),
+                 [item for item in supplied if item.kind != X.Kind.CONSTANT], "EDIT-OBJECT-REFERENCE")):
+            with self.subTest(name):
+                self.assertEqual(run(edit_record([mutation], reader.root_cid, objects)), (1, rule))
+
 
 if __name__ == "__main__":
     unittest.main()

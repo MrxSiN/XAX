@@ -1045,9 +1045,11 @@ def _object_entry(b: _Builder, t: _Typing, index):
     # (a decoded type, the first proof type rejects), then every reference used.
     listy = t.any(t.eq(form, 8), t.eq(form, 10))
     marks = t.slot(TABLES, b.c(0))
-    listable = t.all(kind_is_type := t.not_(t.any(t.eq(kind, int(Kind.CONSTANT)), t.eq(kind, 0))), listy, second_ok, t.le(references, MARKS), t.le(second, length))
+    listable = t.all(kind_is_type := t.not_(t.any(t.eq(kind, int(Kind.CONSTANT)), t.eq(kind, 0))), listy, second_ok, t.le(references, MARKS))
     list_unreadable = t.all(listy, t.not_(second_ok))
-    steps = t.pick(listable, second, b.c(0))
+    # S15b.3d (ADR-311): an item count past the body's bytes: the bootstrap reads items until one runs past the end
+    # (each item is at least a byte, so at most ``length + 1`` reads reach that fault).
+    steps = t.pick(listable, t.pick(t.le(second, length), second, b.add(length, 1)), b.c(0))
     b.for_range(b.c(0), t.pick(listable, references, b.c(0)), lambda k, c: (b.put(b.add(marks, k), 0),) and (), ())
     none_word = b.c((1 << 64) - 1)
 

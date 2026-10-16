@@ -18,10 +18,10 @@
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "067fdb13f761fcafa3929c1b417ded8ccc5247b02ef0adecfdfe074281224b23",
-    "semantic_root": "7e79814eec2490b551236fb9bd508a6f024a5962ebc53508904494e748b1edea",
-    "request_store_sha256": "08921bec513974ca3adefa91c69975f9dd529847343a326926ed9e1ff5e5b355",
-    "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
+    "store_sha256": "5dbceeb028edca54428234b2b9ea9d0b94705f84f1f3bdbcdcfca4d8d29c14c1",
+    "semantic_root": "16a78f0a40703dedcf06a4cd24b92f161fcd19eb09b6b01c793e50df3fa04bd7",
+    "request_store_sha256": "4ef41b5bab45a807a3b7e94e89922154089c3aef287a64e507bd6ae94b5c5f8c",
+    "request_root": "478383d1738bc479f33aa86f8a514ad820f419dda2b0fc341a12b327d30fe043",
     "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -29,52 +29,52 @@
   },
   "seed": {
     "kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
-    "sha256": "7c6bf8fda81ac150e87d8bde9058c1f70c43b4035d93e17d96a195bf5d5b3064",
-    "bytes": 40517393,
+    "sha256": "2e911dd749871c58a438acba8cdf5da5ffab7cf0da2283657f0464ebcb7d8566",
+    "bytes": 41732241,
     "requires_python": true,
-    "host_s_nonsemantic": 70.2
+    "host_s_nonsemantic": 70.6
   },
   "references": {
-    "python_resolver_snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
-    "python_resolve_s_nonsemantic": 113.0,
-    "bootstrap_compile_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-    "bootstrap_compile_bytes": 11285128,
-    "bootstrap_compile_s_nonsemantic": 1402.2
+    "python_resolver_snapshot_sha256": "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0",
+    "python_resolve_s_nonsemantic": 120.8,
+    "bootstrap_compile_sha256": "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+    "bootstrap_compile_bytes": 11674511,
+    "bootstrap_compile_s_nonsemantic": 1343.2
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "7c6bf8fda81ac150e87d8bde9058c1f70c43b4035d93e17d96a195bf5d5b3064",
+      "producer_sha256": "2e911dd749871c58a438acba8cdf5da5ffab7cf0da2283657f0464ebcb7d8566",
       "resolve": {
         "status": "image",
         "outputs": [
-          "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
+          "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0"
         ],
-        "host_s_nonsemantic": 51.08,
-        "peak_rss_kib_nonsemantic": 3743180
+        "host_s_nonsemantic": 52.67,
+        "peak_rss_kib_nonsemantic": 3713060
       },
       "build": {
         "status": "image",
         "outputs": [
-          "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-          "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425"
+          "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+          "d0ca192f0f0b61101029833a0cc83586a858ce7739bd0612afacfd96d5d43f63"
         ],
-        "host_s_nonsemantic": 230.02,
-        "peak_rss_kib_nonsemantic": 3743180
+        "host_s_nonsemantic": 235.14,
+        "peak_rss_kib_nonsemantic": 3713060
       },
-      "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
+      "snapshot_sha256": "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-      "artifact_bytes": 11285128,
-      "provenance_sha256": "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425",
+      "artifact_sha256": "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+      "artifact_bytes": 11674511,
+      "provenance_sha256": "d0ca192f0f0b61101029833a0cc83586a858ce7739bd0612afacfd96d5d43f63",
       "provenance": {
-        "cid": "6ac00582fcbb898b1eeaac30d93861d9db735eef9d075075d481eabf15c9f8ff",
-        "snapshot_root": "b3e0a52273dff34f1b97dc799500bc580533f596d16399eef1e4d6d9de2f01fc",
-        "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
+        "cid": "d0cfcbd57edbe2089fe19ece543c988b59dec4715b4b10de614db9527da13574",
+        "snapshot_root": "0954a6e23af4bd009cb25ce2a4230fb118a27103a49c3e6f86d7d6b5c26dfb2c",
+        "request_root": "478383d1738bc479f33aa86f8a514ad820f419dda2b0fc341a12b327d30fe043",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "8b302f2cc84fbafff4268e53fea42fc33c3f0215c98c6f7b975b31f1923db347",
+        "artifact_digest_blake3": "201c83b493c3bccd4c2df92779266a3c0f10e96f94962cad84bcd5ccaba18f81",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       },
@@ -83,36 +83,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "producer_sha256": "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
       "resolve": {
         "status": "image",
         "outputs": [
-          "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
+          "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0"
         ],
-        "host_s_nonsemantic": 16.97,
-        "peak_rss_kib_nonsemantic": 5592580
+        "host_s_nonsemantic": 18.23,
+        "peak_rss_kib_nonsemantic": 5770288
       },
       "build": {
         "status": "image",
         "outputs": [
-          "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-          "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425"
+          "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+          "d0ca192f0f0b61101029833a0cc83586a858ce7739bd0612afacfd96d5d43f63"
         ],
-        "host_s_nonsemantic": 68.9,
-        "peak_rss_kib_nonsemantic": 5592580
+        "host_s_nonsemantic": 72.43,
+        "peak_rss_kib_nonsemantic": 5770288
       },
-      "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
+      "snapshot_sha256": "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-      "artifact_bytes": 11285128,
-      "provenance_sha256": "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425",
+      "artifact_sha256": "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+      "artifact_bytes": 11674511,
+      "provenance_sha256": "d0ca192f0f0b61101029833a0cc83586a858ce7739bd0612afacfd96d5d43f63",
       "provenance": {
-        "cid": "6ac00582fcbb898b1eeaac30d93861d9db735eef9d075075d481eabf15c9f8ff",
-        "snapshot_root": "b3e0a52273dff34f1b97dc799500bc580533f596d16399eef1e4d6d9de2f01fc",
-        "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
+        "cid": "d0cfcbd57edbe2089fe19ece543c988b59dec4715b4b10de614db9527da13574",
+        "snapshot_root": "0954a6e23af4bd009cb25ce2a4230fb118a27103a49c3e6f86d7d6b5c26dfb2c",
+        "request_root": "478383d1738bc479f33aa86f8a514ad820f419dda2b0fc341a12b327d30fe043",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "8b302f2cc84fbafff4268e53fea42fc33c3f0215c98c6f7b975b31f1923db347",
+        "artifact_digest_blake3": "201c83b493c3bccd4c2df92779266a3c0f10e96f94962cad84bcd5ccaba18f81",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -120,36 +120,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "producer_sha256": "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
       "resolve": {
         "status": "image",
         "outputs": [
-          "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
+          "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0"
         ],
-        "host_s_nonsemantic": 17.74,
-        "peak_rss_kib_nonsemantic": 5592580
+        "host_s_nonsemantic": 18.26,
+        "peak_rss_kib_nonsemantic": 5770288
       },
       "build": {
         "status": "image",
         "outputs": [
-          "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-          "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425"
+          "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+          "d0ca192f0f0b61101029833a0cc83586a858ce7739bd0612afacfd96d5d43f63"
         ],
-        "host_s_nonsemantic": 69.83,
-        "peak_rss_kib_nonsemantic": 5592580
+        "host_s_nonsemantic": 70.78,
+        "peak_rss_kib_nonsemantic": 5770288
       },
-      "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
+      "snapshot_sha256": "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-      "artifact_bytes": 11285128,
-      "provenance_sha256": "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425",
+      "artifact_sha256": "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+      "artifact_bytes": 11674511,
+      "provenance_sha256": "d0ca192f0f0b61101029833a0cc83586a858ce7739bd0612afacfd96d5d43f63",
       "provenance": {
-        "cid": "6ac00582fcbb898b1eeaac30d93861d9db735eef9d075075d481eabf15c9f8ff",
-        "snapshot_root": "b3e0a52273dff34f1b97dc799500bc580533f596d16399eef1e4d6d9de2f01fc",
-        "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
+        "cid": "d0cfcbd57edbe2089fe19ece543c988b59dec4715b4b10de614db9527da13574",
+        "snapshot_root": "0954a6e23af4bd009cb25ce2a4230fb118a27103a49c3e6f86d7d6b5c26dfb2c",
+        "request_root": "478383d1738bc479f33aa86f8a514ad820f419dda2b0fc341a12b327d30fe043",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "8b302f2cc84fbafff4268e53fea42fc33c3f0215c98c6f7b975b31f1923db347",
+        "artifact_digest_blake3": "201c83b493c3bccd4c2df92779266a3c0f10e96f94962cad84bcd5ccaba18f81",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -158,15 +158,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-      "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
-      "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2"
+      "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+      "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503",
+      "280c4d86b266bba5e70dc814eed3a217b2632ed0ace93bb60626f01bc94ac503"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
+    "snapshot_sha256": "4074d2ef86e06f1ba938f52a16158cda891d527a622a95a23f3cd066e307cfe0"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -1032,19 +1032,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "6fbc4768301fab38ab28b56f759a3aa862ae07966d4f1fdfdccc80eedc419079"
+          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
         ],
         "C1": [
           "image",
-          "6fbc4768301fab38ab28b56f759a3aa862ae07966d4f1fdfdccc80eedc419079"
+          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
         ],
         "C2": [
           "image",
-          "6fbc4768301fab38ab28b56f759a3aa862ae07966d4f1fdfdccc80eedc419079"
+          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
         ],
         "C3": [
           "image",
-          "6fbc4768301fab38ab28b56f759a3aa862ae07966d4f1fdfdccc80eedc419079"
+          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
         ]
       },
       "reference": null
@@ -1134,19 +1134,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "aee0e5871fa0faaab6835a3416d42a2f532cb2f0f5dde0b2c86b91200dd44fea"
+          "63365ed8f05811673f3a27c7998048e8817cb7eafe8417791b379861692f2548"
         ],
         "C1": [
           "image",
-          "aee0e5871fa0faaab6835a3416d42a2f532cb2f0f5dde0b2c86b91200dd44fea"
+          "63365ed8f05811673f3a27c7998048e8817cb7eafe8417791b379861692f2548"
         ],
         "C2": [
           "image",
-          "aee0e5871fa0faaab6835a3416d42a2f532cb2f0f5dde0b2c86b91200dd44fea"
+          "63365ed8f05811673f3a27c7998048e8817cb7eafe8417791b379861692f2548"
         ],
         "C3": [
           "image",
-          "aee0e5871fa0faaab6835a3416d42a2f532cb2f0f5dde0b2c86b91200dd44fea"
+          "63365ed8f05811673f3a27c7998048e8817cb7eafe8417791b379861692f2548"
         ]
       },
       "reference": null
@@ -2798,20 +2798,28 @@
       "command": "verify",
       "outcomes": {
         "C0": [
-          "declined",
-          null
+          "rejected",
+          "XAX.TYPE.EFFECT",
+          "TYPE-EFFECT-DOMAIN",
+          "20792f45967a8683b8d71f66b8cb05a1f994f67d97038d634cd5c6f787413065"
         ],
         "C1": [
-          "declined",
-          null
+          "rejected",
+          "XAX.TYPE.EFFECT",
+          "TYPE-EFFECT-DOMAIN",
+          "20792f45967a8683b8d71f66b8cb05a1f994f67d97038d634cd5c6f787413065"
         ],
         "C2": [
-          "declined",
-          null
+          "rejected",
+          "XAX.TYPE.EFFECT",
+          "TYPE-EFFECT-DOMAIN",
+          "20792f45967a8683b8d71f66b8cb05a1f994f67d97038d634cd5c6f787413065"
         ],
         "C3": [
-          "declined",
-          null
+          "rejected",
+          "XAX.TYPE.EFFECT",
+          "TYPE-EFFECT-DOMAIN",
+          "20792f45967a8683b8d71f66b8cb05a1f994f67d97038d634cd5c6f787413065"
         ]
       },
       "reference": null,
@@ -2819,6 +2827,561 @@
         "XAX.TYPE.EFFECT",
         "TYPE-EFFECT-DOMAIN",
         "20792f45967a8683b8d71f66b8cb05a1f994f67d97038d634cd5c6f787413065"
+      ]
+    },
+    {
+      "case": "verify rejected: GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_ADDRESS",
+          "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY",
+          "357914fd07b93783fe48e2f7179099b24a8d9f6016d2eab2d576859c4911132f"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_ADDRESS",
+          "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY",
+          "357914fd07b93783fe48e2f7179099b24a8d9f6016d2eab2d576859c4911132f"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_ADDRESS",
+          "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY",
+          "357914fd07b93783fe48e2f7179099b24a8d9f6016d2eab2d576859c4911132f"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.STRUCT.FUNCTION_ADDRESS",
+          "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY",
+          "357914fd07b93783fe48e2f7179099b24a8d9f6016d2eab2d576859c4911132f"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.STRUCT.FUNCTION_ADDRESS",
+        "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY",
+        "357914fd07b93783fe48e2f7179099b24a8d9f6016d2eab2d576859c4911132f"
+      ]
+    },
+    {
+      "case": "verify rejected: INDIRECT-CALL-BOUNDED-CONTRACT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.CALL.INDIRECT",
+          "INDIRECT-CALL-BOUNDED-CONTRACT",
+          "701f108d764dcce599fd8e3734b70752636e7c14450b49833f6bcf1f663ddfa8"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.CALL.INDIRECT",
+          "INDIRECT-CALL-BOUNDED-CONTRACT",
+          "701f108d764dcce599fd8e3734b70752636e7c14450b49833f6bcf1f663ddfa8"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.CALL.INDIRECT",
+          "INDIRECT-CALL-BOUNDED-CONTRACT",
+          "701f108d764dcce599fd8e3734b70752636e7c14450b49833f6bcf1f663ddfa8"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.CALL.INDIRECT",
+          "INDIRECT-CALL-BOUNDED-CONTRACT",
+          "701f108d764dcce599fd8e3734b70752636e7c14450b49833f6bcf1f663ddfa8"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.CALL.INDIRECT",
+        "INDIRECT-CALL-BOUNDED-CONTRACT",
+        "701f108d764dcce599fd8e3734b70752636e7c14450b49833f6bcf1f663ddfa8"
+      ]
+    },
+    {
+      "case": "verify rejected: FOREIGN-CALL-CONTRACT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.FOREIGN.CALL",
+          "FOREIGN-CALL-CONTRACT",
+          "8665da573891782ed09ced78c37d70884318ed5d2b056e9050926f958408bcdc"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.FOREIGN.CALL",
+          "FOREIGN-CALL-CONTRACT",
+          "8665da573891782ed09ced78c37d70884318ed5d2b056e9050926f958408bcdc"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.FOREIGN.CALL",
+          "FOREIGN-CALL-CONTRACT",
+          "8665da573891782ed09ced78c37d70884318ed5d2b056e9050926f958408bcdc"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.FOREIGN.CALL",
+          "FOREIGN-CALL-CONTRACT",
+          "8665da573891782ed09ced78c37d70884318ed5d2b056e9050926f958408bcdc"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.FOREIGN.CALL",
+        "FOREIGN-CALL-CONTRACT",
+        "8665da573891782ed09ced78c37d70884318ed5d2b056e9050926f958408bcdc"
+      ]
+    },
+    {
+      "case": "verify rejected: LEND-ENTRY-VIEW-LENT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.FOREIGN.LEND",
+          "LEND-ENTRY-VIEW-LENT",
+          "01080b67b4b9064329b6fa98a42059bda9ec8b4c7b66a61bfa14b11cc1a7e0c8"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.FOREIGN.LEND",
+          "LEND-ENTRY-VIEW-LENT",
+          "01080b67b4b9064329b6fa98a42059bda9ec8b4c7b66a61bfa14b11cc1a7e0c8"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.FOREIGN.LEND",
+          "LEND-ENTRY-VIEW-LENT",
+          "01080b67b4b9064329b6fa98a42059bda9ec8b4c7b66a61bfa14b11cc1a7e0c8"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.FOREIGN.LEND",
+          "LEND-ENTRY-VIEW-LENT",
+          "01080b67b4b9064329b6fa98a42059bda9ec8b4c7b66a61bfa14b11cc1a7e0c8"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.FOREIGN.LEND",
+        "LEND-ENTRY-VIEW-LENT",
+        "01080b67b4b9064329b6fa98a42059bda9ec8b4c7b66a61bfa14b11cc1a7e0c8"
+      ]
+    },
+    {
+      "case": "verify rejected: TARGET-OPERATION-SCOPE-SUPPORTED",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-SCOPE-SUPPORTED",
+          "f040fec822e4997e2d963ac9e6935532c98f2cb59b9308098e4a783c56d459f5"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-SCOPE-SUPPORTED",
+          "f040fec822e4997e2d963ac9e6935532c98f2cb59b9308098e4a783c56d459f5"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-SCOPE-SUPPORTED",
+          "f040fec822e4997e2d963ac9e6935532c98f2cb59b9308098e4a783c56d459f5"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-SCOPE-SUPPORTED",
+          "f040fec822e4997e2d963ac9e6935532c98f2cb59b9308098e4a783c56d459f5"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TARGET.OPERATION",
+        "TARGET-OPERATION-SCOPE-SUPPORTED",
+        "f040fec822e4997e2d963ac9e6935532c98f2cb59b9308098e4a783c56d459f5"
+      ]
+    },
+    {
+      "case": "verify rejected: TARGET-OPERATION-MEMORY-SPACES",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-MEMORY-SPACES",
+          "c518a7022e4f0dff53b7a5cb95787f714d12e7b4e13e8e3bf73b84f581e4f04a"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-MEMORY-SPACES",
+          "c518a7022e4f0dff53b7a5cb95787f714d12e7b4e13e8e3bf73b84f581e4f04a"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-MEMORY-SPACES",
+          "c518a7022e4f0dff53b7a5cb95787f714d12e7b4e13e8e3bf73b84f581e4f04a"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TARGET.OPERATION",
+          "TARGET-OPERATION-MEMORY-SPACES",
+          "c518a7022e4f0dff53b7a5cb95787f714d12e7b4e13e8e3bf73b84f581e4f04a"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.TARGET.OPERATION",
+        "TARGET-OPERATION-MEMORY-SPACES",
+        "c518a7022e4f0dff53b7a5cb95787f714d12e7b4e13e8e3bf73b84f581e4f04a"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-ENTRY-STORE-SLICE",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-SLICE",
+          "e4522e9d9ea6a1086dd30ced4c33f424895d6da0fe52f59dab759630ec6bec8f"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-SLICE",
+          "e4522e9d9ea6a1086dd30ced4c33f424895d6da0fe52f59dab759630ec6bec8f"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-SLICE",
+          "e4522e9d9ea6a1086dd30ced4c33f424895d6da0fe52f59dab759630ec6bec8f"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-SLICE",
+          "e4522e9d9ea6a1086dd30ced4c33f424895d6da0fe52f59dab759630ec6bec8f"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.ENTRY_CONTRACT",
+        "MEMORY-ENTRY-STORE-SLICE",
+        "e4522e9d9ea6a1086dd30ced4c33f424895d6da0fe52f59dab759630ec6bec8f"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-WRITE-PERMISSION",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-WRITE-PERMISSION",
+          "ef95f22f766423949e10ea49b946784d8b296e940682ad040779af3dcea39db4"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-WRITE-PERMISSION",
+          "ef95f22f766423949e10ea49b946784d8b296e940682ad040779af3dcea39db4"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-WRITE-PERMISSION",
+          "ef95f22f766423949e10ea49b946784d8b296e940682ad040779af3dcea39db4"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-WRITE-PERMISSION",
+          "ef95f22f766423949e10ea49b946784d8b296e940682ad040779af3dcea39db4"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.PERMISSION",
+        "MEMORY-WRITE-PERMISSION",
+        "ef95f22f766423949e10ea49b946784d8b296e940682ad040779af3dcea39db4"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-READ-PERMISSION",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-READ-PERMISSION",
+          "5185b2dc8222766153c0745ff0d7db73ec494b656b9f476867b0ce4cc75f6567"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-READ-PERMISSION",
+          "5185b2dc8222766153c0745ff0d7db73ec494b656b9f476867b0ce4cc75f6567"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-READ-PERMISSION",
+          "5185b2dc8222766153c0745ff0d7db73ec494b656b9f476867b0ce4cc75f6567"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.PERMISSION",
+          "MEMORY-READ-PERMISSION",
+          "5185b2dc8222766153c0745ff0d7db73ec494b656b9f476867b0ce4cc75f6567"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.PERMISSION",
+        "MEMORY-READ-PERMISSION",
+        "5185b2dc8222766153c0745ff0d7db73ec494b656b9f476867b0ce4cc75f6567"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-LIFETIME-LIVE",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.USE_AFTER_LIFETIME",
+          "MEMORY-LIFETIME-LIVE",
+          "21ebc4b5f802acd7f17d3409dada2222ef8b606551a995b9e6453a774d285a87"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.USE_AFTER_LIFETIME",
+          "MEMORY-LIFETIME-LIVE",
+          "21ebc4b5f802acd7f17d3409dada2222ef8b606551a995b9e6453a774d285a87"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.USE_AFTER_LIFETIME",
+          "MEMORY-LIFETIME-LIVE",
+          "21ebc4b5f802acd7f17d3409dada2222ef8b606551a995b9e6453a774d285a87"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.USE_AFTER_LIFETIME",
+          "MEMORY-LIFETIME-LIVE",
+          "21ebc4b5f802acd7f17d3409dada2222ef8b606551a995b9e6453a774d285a87"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.USE_AFTER_LIFETIME",
+        "MEMORY-LIFETIME-LIVE",
+        "21ebc4b5f802acd7f17d3409dada2222ef8b606551a995b9e6453a774d285a87"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-ALIGNMENT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.ALIGNMENT",
+          "MEMORY-ALIGNMENT",
+          "dd799c893b4ab13f716af800cd755e741a6fffc89764ec9200da9edc751817b2"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.ALIGNMENT",
+          "MEMORY-ALIGNMENT",
+          "dd799c893b4ab13f716af800cd755e741a6fffc89764ec9200da9edc751817b2"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.ALIGNMENT",
+          "MEMORY-ALIGNMENT",
+          "dd799c893b4ab13f716af800cd755e741a6fffc89764ec9200da9edc751817b2"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.ALIGNMENT",
+          "MEMORY-ALIGNMENT",
+          "dd799c893b4ab13f716af800cd755e741a6fffc89764ec9200da9edc751817b2"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.ALIGNMENT",
+        "MEMORY-ALIGNMENT",
+        "dd799c893b4ab13f716af800cd755e741a6fffc89764ec9200da9edc751817b2"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-EFFECT-LINEAR",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.EFFECT_FORK",
+          "MEMORY-EFFECT-LINEAR",
+          "1ed70a1b1cb2856a65f1135d9f4893f62473305a5d0b585e10185fdb42d08dbd"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.EFFECT_FORK",
+          "MEMORY-EFFECT-LINEAR",
+          "1ed70a1b1cb2856a65f1135d9f4893f62473305a5d0b585e10185fdb42d08dbd"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.EFFECT_FORK",
+          "MEMORY-EFFECT-LINEAR",
+          "1ed70a1b1cb2856a65f1135d9f4893f62473305a5d0b585e10185fdb42d08dbd"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.EFFECT_FORK",
+          "MEMORY-EFFECT-LINEAR",
+          "1ed70a1b1cb2856a65f1135d9f4893f62473305a5d0b585e10185fdb42d08dbd"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.EFFECT_FORK",
+        "MEMORY-EFFECT-LINEAR",
+        "1ed70a1b1cb2856a65f1135d9f4893f62473305a5d0b585e10185fdb42d08dbd"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-ENTRY-STORE-LOAD-RESULT",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-LOAD-RESULT",
+          "70d135d064ce3a8418d93bc2c2eeaba66d2adf8720fe90ad80bf55392a2a58a4"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-LOAD-RESULT",
+          "70d135d064ce3a8418d93bc2c2eeaba66d2adf8720fe90ad80bf55392a2a58a4"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-LOAD-RESULT",
+          "70d135d064ce3a8418d93bc2c2eeaba66d2adf8720fe90ad80bf55392a2a58a4"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.ENTRY_CONTRACT",
+          "MEMORY-ENTRY-STORE-LOAD-RESULT",
+          "70d135d064ce3a8418d93bc2c2eeaba66d2adf8720fe90ad80bf55392a2a58a4"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.ENTRY_CONTRACT",
+        "MEMORY-ENTRY-STORE-LOAD-RESULT",
+        "70d135d064ce3a8418d93bc2c2eeaba66d2adf8720fe90ad80bf55392a2a58a4"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-INITIALIZED",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.UNINITIALIZED",
+          "MEMORY-INITIALIZED",
+          "1a62dcdcaba800a3e46641f143461fdf903921f43ca791a53ff3ded5cb239665"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.UNINITIALIZED",
+          "MEMORY-INITIALIZED",
+          "1a62dcdcaba800a3e46641f143461fdf903921f43ca791a53ff3ded5cb239665"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.UNINITIALIZED",
+          "MEMORY-INITIALIZED",
+          "1a62dcdcaba800a3e46641f143461fdf903921f43ca791a53ff3ded5cb239665"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.UNINITIALIZED",
+          "MEMORY-INITIALIZED",
+          "1a62dcdcaba800a3e46641f143461fdf903921f43ca791a53ff3ded5cb239665"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.UNINITIALIZED",
+        "MEMORY-INITIALIZED",
+        "1a62dcdcaba800a3e46641f143461fdf903921f43ca791a53ff3ded5cb239665"
+      ]
+    },
+    {
+      "case": "verify rejected: MEMORY-RESOURCE-TRANSFER",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.MEMORY.RESOURCE_DROP",
+          "MEMORY-RESOURCE-TRANSFER",
+          "f7edc2c69147ff0dd836e320d769deab0feaa88f917432e208266a5745d1089b"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.MEMORY.RESOURCE_DROP",
+          "MEMORY-RESOURCE-TRANSFER",
+          "f7edc2c69147ff0dd836e320d769deab0feaa88f917432e208266a5745d1089b"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.MEMORY.RESOURCE_DROP",
+          "MEMORY-RESOURCE-TRANSFER",
+          "f7edc2c69147ff0dd836e320d769deab0feaa88f917432e208266a5745d1089b"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.MEMORY.RESOURCE_DROP",
+          "MEMORY-RESOURCE-TRANSFER",
+          "f7edc2c69147ff0dd836e320d769deab0feaa88f917432e208266a5745d1089b"
+        ]
+      },
+      "reference": null,
+      "bootstrap_diagnostic": [
+        "XAX.MEMORY.RESOURCE_DROP",
+        "MEMORY-RESOURCE-TRANSFER",
+        "f7edc2c69147ff0dd836e320d769deab0feaa88f917432e208266a5745d1089b"
       ]
     },
     {
@@ -3499,7 +4062,7 @@
     }
   ],
   "rejection_exactness_gaps": [
-    "memory rejections that quote a decoded declaration, a pointer type the memory engine's pointer decoder rejects, and a stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297)"
+    "a graph whose first pass calls two different resource callees before its own decision declines (the bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)"
   ],
   "required_paths_outside_xax": [],
   "ordinary_evolution": "the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes (nodes, uses, signatures, new functions) still need the Python builders (S15d.4)",
@@ -3522,7 +4085,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-c2431f6647ecf16b0cb7394293ef81648bcc0619faa9b89fc09585c8eb4a0a87.bin"
+      "record": "verified-hash-62651458e7074b57a886d0a26b63848811affdc545733082d6089f1f6cda46ac.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -3536,7 +4099,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-ceee4ab2f9b46ae44edbf4cf45232f9544139e979889c0ae2bbc614aa92e7e7b.bin"
+      "record": "verified-store-decoder-929633a543986af7b3f5ec3320270b3d3405c54b0bdea71166ced9c226b4202c.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -3550,7 +4113,7 @@
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-c9a64ab81bdcb25ffa05045eb73cafb5eff540685ea5f1b627db25d8be0563a0.bin"
+      "record": "verified-store-writer-b505e9d737e21b46aec403194dc874fb737d236254ac0053c37befd543a52c1f.bin"
     },
     "store-writer": {
       "component": "store-writer",
@@ -3564,7 +4127,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-033af7ed415b1d9207e40036a9d3a206a9893905ac0bcaee563a2d2a32b7bd75.bin"
+      "record": "verified-graph-decoder-66f919a6692bc9a06db56baa519f980ae34c86608598925a99103db488d3436a.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -3578,7 +4141,7 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-85bdd550c1160a7dcb50c69532cd1f667d5f60d5651c0f1ba5aa717375bc44ec.bin"
+      "record": "verified-cfg-e0cc583c8b21faa67dc9e86eb63a7438de102a877a5b7117fde13ea86824def9.bin"
     },
     "cfg": {
       "component": "cfg",
@@ -3592,12 +4155,12 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-1a8e8f9bbb4918deb8adc901688532cba0f31c640026aa4e1c7b3c2ef8818a31.bin"
+      "record": "verified-typing-9f049625555adc7ba0d394ac1f23973f7fa6be38ccf9d6ed6c5d741ca79887b1.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "0bf8352cf84f6f4f1913137f51e85d4e05d36f47cc53d5796d0dab7d8ac09f10",
-      "native_artifact_digest": "b58be35fb5c526530d20571a68eb12effcb6034becd782da02c43db2c4420f81",
+      "semantic_root": "9a3529798e0977b075b8f5aaaa94b34d03a07e620510ef408dd183f582626896",
+      "native_artifact_digest": "63b746bfedb62f518828f1c268872235fe8eb428048ef81b62cb147b2e1326b4",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -3606,32 +4169,32 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-7f285e0de01079993fb8ca9bacbe1fbfd5cc967dc3004f27d26cbe7cc6b5f2ed.bin"
+      "record": "verified-store-verifier-190be2c0ad61772354e3a910bf7d9c636089b31e9ea8e71c999f58938bf0ae65.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
-      "semantic_root": "fbbfe994c4221e939a6ce67c548b92050fb9482407cf66dcf6dc6dc6da7db8be",
-      "native_artifact_digest": "11146d8555fa2c7b97e8bd609ff448d68fbaec5d247df8d75f64d80c3a989354",
+      "semantic_root": "38af48e9f9858c6526356c30fc0e45fec51b06000bfe26adc286c7c948f50d36",
+      "native_artifact_digest": "43dbd137d50b264d40107d4a7358ff98ded02570d80ab5e56f460997336288d3",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 35994
+      "declined_inputs": 37844
     },
     "verification:compiler-driver-general": {
       "component": "verification:compiler-driver-general",
       "store_verification": "memoized",
-      "record": "verified-compiler-driver-general-1dd56294cba5735937b4c2f46342b568ef60d3062c6669bf0c1bc518436e7c02.bin"
+      "record": "verified-compiler-driver-general-e0fd353cf5d2df88a840de7eeaefbdc63d888a4c986e77214c2a48cc022fbce1.bin"
     },
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-6d742c90277d7c7b61978257a9dccf1918ace508640e1c4cb72d6f4acc28e093.bin"
+      "record": "verified-xax_x86_64_backend-02df54d2222c2907fd6fe99763ced49ef9c65f37e568198a36b64c25b8a947d7.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
-      "semantic_root": "e3d9a9f388e32c342f6d2b04aed0202e1d2205be2f92a25ae110d9f1caebf19c",
-      "native_artifact_digest": "2c6e81e6728b88550ce089ec7cb8ee1dec5fae0be16e72eb11cb85281fc0c062",
+      "semantic_root": "b28974dba72bcaa372db1d2bf83d5e1184a1badabc94b2d8708e7b0377285a38",
+      "native_artifact_digest": "e709771329f214256de51378fa536625b675fb41657fbe2fcf42de9cfe717e9c",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -3640,7 +4203,7 @@
     "verification:xax_x86_64_general": {
       "component": "verification:xax_x86_64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-98e12d2b3c3edbbc633d15e96729c8fff81e47023bb08f66e52c2443659567eb.bin"
+      "record": "verified-xax_x86_64_general-4585fff29ed59b8971ef22188c39ac61a6ccfb112abff7a943e901b8b628c831.bin"
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
@@ -3654,7 +4217,7 @@
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-82f7a9b910837e78263df8578259d9c120119b4264d0b8e0fea7d608793070d1.bin"
+      "record": "verified-riscv64-encoder-596ec570b4533d15bf20aafa4b3ed1cc2ee4964c9a805a292cbfdfa0e2a7cbf3.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -3668,7 +4231,7 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-232359cce9af5062ff9f3b3b993dca43f9301de3b6537dbe94945804489ded61.bin"
+      "record": "verified-xax_riscv64_backend-510ad7d1f49366d4e0b2bc9363b6ea2e6409399ab20fbd9849dec5bcdbe68a3d.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",

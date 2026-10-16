@@ -15,13 +15,14 @@ at ``OUTCOME_AT`` of its output view:
 * ``G_OBJECT`` (S15b.3d, ADR-297): the bootstrap raises another object's own rejection here: a constant node's constant
   the typing program did not prove (its typing entry at ``O_ENTITY``; the driver renders that object's record);
 * ``G_DECLINE``: the bootstrap would decide the next check (a node or terminator the typing program did not cover, an
-  entry that holds a stack owner, an engine that declined, a record this phase does not render): no claim.
+  engine that declined, a record this phase does not render): no claim.
 
 Rendered: every typing site (``xax_selfhost_typing._render_sites``), the bits/float decoders' rejections of a node's
 type (``cross_diagnostic``), the terminator records (``GRAPH-CBR-CONDITION``, ``GRAPH-BLOCK-PARAMETERS``), an operation
 code outside the vocabulary, the linear-flow rejections (``_linear_diagnostic``), and (S15b.3b, ADR-293) the facts
-engine's memory rejections (``memory_diagnostic``) except those that quote a declaration's decoded body (foreign, lend,
-target-operation, and bounded indirect-call contracts) or a stack-owner entry's contract: those decline.
+engine's memory rejections (``memory_diagnostic``): since S15b.3d (ADR-313) also those that quote a declaration's decoded
+body (foreign, lend, target-operation, and bounded indirect-call contracts, a code-address type's entry ABI) and a
+stack-owner entry's (its body, its return, its final load), the late ones after the terminator's own checks.
 """
 
 from __future__ import annotations
@@ -34,7 +35,8 @@ from xax_compiler import (
     IntCompare, Kind, OpaqueKind, Operation, TargetValueConstraintKind, TerminatorKind,
 )
 from xax_selfhost_facts import (
-    H_CIDS, H_FACTS_AT, H_LA, H_LB, H_LINEAR, H_LREJ, H_RBLOCK, H_REJECT, H_RNODE, H_RPASS, H_RPAY, H_S, H_SITES, H_STATUS, HEADER, M,
+    H_CIDS, H_FACTS_AT, H_LA, H_LB, H_LINEAR, H_LREJ, H_RBLOCK, H_REJECT, H_RNODE, H_RPASS, H_RPAY, H_S, H_SITES, H_STATUS, H_TSTOP, H_TSTOP_PASS,
+    H_RCALL_B, H_RCALL_COUNT, H_RCALL_DECLINE, H_RCALL_E, H_RCALL_N, H_RCALL_OTHER, HEADER, M,
     MEMORY_SITES, ACCEPTED, NONE, _CONTRACTS, E, _function,
 )
 
@@ -45,6 +47,10 @@ O_STATUS, O_CURSOR, O_ENTITY, O_BAD = range(4)
 # program runs: 1 for a graph trimmed at its invalid uses, whose first pass the bootstrap runs node by node.
 O_POS, O_MODE = 4, 5
 POS_LATE = 1 << 63
+# S15b.3d (ADR-313): 1 + the callee's typing entry when the outcome waits on a resource callee's graph: the bootstrap
+# parses it at the graph's first resource call (``_resource_call_contract``), before the outcome's own decision, so its
+# rejection comes first; 0 otherwise.
+O_DEFER = 6
 RECORD_AT, RECORD_END = OUTCOME_AT + 8, OUTCOME_AT + (1 << 21)
 ARRAYS_AT, ARRAYS_END = OUTCOME_AT + (1 << 21), OUTCOME_AT + (6 << 20)  # the shape's arrays (below the terminator records)
 # S15b.3d (ADR-297): ``G_OBJECT``: the bootstrap raises another object's own rejection here (a constant node's constant
@@ -703,11 +709,15 @@ def _linear(tables):
 
 # -- memory rejections (S15b.3b) ----------------------------------------------------------------------------------
 
-# ``memory_diagnostic``'s sites that quote a declaration's decoded body, a stack-owner entry's contract, or a CID only
-# the host computes: the bootstrap decides them (a decline).
-DECLINED_MEMORY_SITES = ("FOREIGN_ENTRY", "FOREIGN_ABI", "FOREIGN_CONTRACT", "INDIRECT_BOUNDED_CONTRACT", "LEND_VIEW_LENT", "TARGET_DEFINED",
-                         "TARGET_SCOPE_SUPPORTED", "TARGET_SPACES", "ENTRY_BODY", "ENTRY_TRANSFER_RETURN", "ENTRY_TRANSFER_COUNT",
-                         "ENTRY_LOAD_RESULT", "ENTRY_TRANSFER_PAIR")
+# ``memory_diagnostic``'s sites the bootstrap decides (a decline): none since S15b.3d (ADR-313).
+DECLINED_MEMORY_SITES = ()
+# S15b.3d (ADR-313): a stack-owner entry's body and final-load checks quote its block (``_memory`` renders them).
+ENTRY_MEMORY_SITES = ("ENTRY_BODY", "ENTRY_LOAD_RESULT")
+# ``_parse_graph`` raises these stack-owner entry checks after the terminator's own (``late_reject``).
+LATE_MEMORY_SITES = ("ENTRY_LOAD_RESULT", "ENTRY_TRANSFER_COUNT", "ENTRY_TRANSFER_PAIR")
+# S15b.3d (ADR-313): the sites whose diagnostic quotes a declaration's decoded body (``_declared``).
+DECLARED_MEMORY_SITES = ("FOREIGN_ENTRY", "FOREIGN_ABI", "FOREIGN_CONTRACT", "INDIRECT_BOUNDED_CONTRACT", "LEND_VIEW_LENT", "TARGET_DEFINED",
+                         "TARGET_SCOPE_SUPPORTED", "TARGET_SPACES")
 
 
 def _bad(e: E):
@@ -785,9 +795,46 @@ def _memory(tables):
         e.var("mop", 0)
         e.if_(e.both(e.ne(p["sh_ok"], 0), e.lt(p["mb"], p["sh_blocks"])), lambda: e.if_(
             e.lt(p["mn"], shape.word("bnodes", p["mb"])), lambda: e.set("mop", e.rd(shape.node_pos(p["mb"], p["mn"])))))
+        e.var("mpos", NONE)
+        e.if_(e.both(e.ne(p["sh_ok"], 0), e.lt(p["mb"], p["sh_blocks"])), lambda: e.if_(
+            e.lt(p["mn"], shape.word("bnodes", p["mb"])), lambda: e.set("mpos", shape.node_pos(p["mb"], p["mn"]))))
         e.var("written", 0)
         for part in range(MEMORY_PARTS):
             e.set("written", e.or_(p["written"], e.call(_FN[f"memory{part}"], p["mop"])))
+        for name in DECLARED_MEMORY_SITES:
+            e.if_(e.eq(e.hd(H_REJECT), M[name]), lambda name=name: e.set("written", e.call(_FN[f"declared_{name}"], p["mpos"])))
+        # S15b.3d (ADR-313): a stack-owner entry's block: the body that selects no contract, the final load not returned.
+        w = _writer(e)
+        e.var("ms", e.hd(H_REJECT))
+        e.var("mx", e.hd(H_RPAY))
+        in_block = e.both(e.ne(p["sh_ok"], 0), e.lt(p["mb"], p["sh_blocks"]))
+        e.var("m_ok", e.flag(in_block))
+
+        def entry_body():
+            from xax_compiler import MAX_RESOURCE_CALL_ACCESSES as N
+            from xax_selfhost_facts import H_RENTRY, R_LOAD, R_STORE
+
+            e.var("eb_kind", e.hd(H_RENTRY))
+            e.var("eb_n", shape.word("bnodes", p["mb"]))
+
+            def emit(rule, expected):
+                _four(e, w, "XAX.MEMORY.ENTRY_CONTRACT", rule, lambda: w.const(expected),
+                      lambda: w.seq(D.T_LIST, p["eb_n"], lambda k: w.integer(e.rd(shape.node_pos(p["mb"], k)))))
+                e.set("written", 1)
+
+            e.if_(e.eq(p["eb_kind"], R_STORE), lambda: emit("MEMORY-ENTRY-STORE-SLICE", [
+                f"1..{N} store.bits.le nodes", f"2..{N} mixed store/load nodes with final load.bits.le"]), lambda: e.if_(
+                e.eq(p["eb_kind"], R_LOAD), lambda: emit("MEMORY-ENTRY-LOAD-SLICE", f"1..{N} load.bits.le nodes"), lambda: _bad(e)))
+
+        def load_result():
+            e.var("lr_n", shape.word("bnodes", p["mb"]))
+            e.if_(e.either(e.eq(p["lr_n"], 0), e.le(p["sh_values"], p["mx"])), lambda: _bad(e), lambda: (_four(
+                e, w, "XAX.MEMORY.ENTRY_CONTRACT", "MEMORY-ENTRY-STORE-LOAD-RESULT",
+                lambda: (w.put(D.T_LIST), w.put(2), w.integer(e.sub(p["lr_n"], 1)), w.integer(0)),
+                lambda: (w.put(D.T_LIST), w.put(2), w.integer(shape.word("vi", p["mx"])), w.integer(shape.word("vr", p["mx"])))), e.set("written", 1)))
+
+        e.if_(e.both(e.ne(p["m_ok"], 0), e.eq(p["ms"], M["ENTRY_BODY"])), entry_body)
+        e.if_(e.both(e.ne(p["m_ok"], 0), e.eq(p["ms"], M["ENTRY_LOAD_RESULT"])), load_result)
         e.give(e.sel(e.either(e.eq(p["sh_ok"], 0), e.ne(e.ld(OUTCOME_AT + O_BAD), 0)), 0, e.flag(e.ne(p["written"], 0))))
     return _function((), build, tables)
 
@@ -1051,8 +1098,16 @@ def _memory_part(tables, part: int):
             "TARGET_SCOPE_ENUM": ("XAX.TARGET.OPERATION", "TARGET-OPERATION-SCOPE-ENUM", const([item.value for item in AtomicScope]), integer(x)),
             "TARGET_ARITY": ("XAX.TARGET.OPERATION", "TARGET-OPERATION-ARITY", pair_list(integer(x), integer(y)), pair_list(integer(z), integer(w4))),
             "TARGET_TYPE": ("XAX.TARGET.OPERATION", "TARGET-OPERATION-TYPE", target_type, h(p["p5"])),
+            # S15b.3d (ADR-313): a stack-owner entry's return.
+            "ENTRY_TRANSFER_RETURN": ("XAX.MEMORY.RESOURCE_DROP", "MEMORY-RESOURCE-TRANSFER", const("explicit owner/effect return"),
+                                      member(TerminatorKind, x, lambda item: w.text(item.name))),
+            "ENTRY_TRANSFER_COUNT": ("XAX.MEMORY.RESOURCE_DROP", "MEMORY-RESOURCE-TRANSFER", lambda: e.if_(
+                e.eq(x, 3), lambda: w.text("value, owner, and effect return"), lambda: w.text("owner and effect return")), integer(y)),
+            "ENTRY_TRANSFER_PAIR": ("XAX.MEMORY.RESOURCE_DROP", "MEMORY-RESOURCE-TRANSFER", const("one live owner/effect pair"),
+                                    const("dropped, duplicated, or mismatched")),
         }
-        assert set(sites) | set(DECLINED_MEMORY_SITES) | {"EFFECT_LINEAR"} == set(MEMORY_SITES), set(MEMORY_SITES) - set(sites)
+        assert set(sites) | set(DECLINED_MEMORY_SITES) | set(DECLARED_MEMORY_SITES) | set(ENTRY_MEMORY_SITES) | {"EFFECT_LINEAR"} == set(MEMORY_SITES), \
+            set(MEMORY_SITES) - set(sites)
 
         def effect_linear():
             code = lambda name: lambda: _four(e, w, name, "MEMORY-EFFECT-LINEAR", const("one consumer"), operation_name)  # noqa: E731
@@ -1066,6 +1121,304 @@ def _memory_part(tables, part: int):
                 _four(e, w, code, rule, expected, actual, entity[0] if entity else None), e.set("written", 1)))
         e.give(p["written"])
     return _function(("mop",), build, tables)
+
+
+# S15b.3d (ADR-313): the declared renderers' cursor over an input entry's body (free facts header words): the next byte,
+# the end, and the start of the last byte string read.
+D_AT, D_END, D_BLOB = 54, 55, 56
+
+
+def _d_entry(tables):
+    """``d_entry(index)``: entry ``index``'s position; its body becomes the cursor's (bad past the table)."""
+    def build(e: E):
+        p = e.p
+        e.if_(e.le(e.rd(0), p["index"]), lambda: _bad(e))
+        e.var("de_pos", _field(e, T.POSITION, e.sel(e.lt(p["index"], e.rd(0)), p["index"], 0)))
+        e.set_hd(D_AT, e.add(p["de_pos"], 3))
+        e.set_hd(D_END, e.add(e.add(p["de_pos"], 3), e.rd(e.add(p["de_pos"], 2))))
+        e.give(p["de_pos"])
+    return _function(("index",), build, tables)
+
+
+def _d_uleb(tables):
+    """``d_uleb()``: the next ULEB at the cursor (past its end, or past ten bytes: bad, 0)."""
+    def build(e: E):
+        p = e.p
+        e.var("du_at", e.hd(D_AT))
+        e.var("du_end", e.hd(D_END))
+        e.var("du_value", 0)
+        e.var("du_shift", 1)
+        e.var("du_more", 1)
+
+        def step():
+            def byte():
+                e.var("du_byte", e.rd(p["du_at"]))
+                e.set("du_at", e.add(p["du_at"], 1))
+                e.set("du_value", e.add(p["du_value"], e.mul(e.and_(p["du_byte"], 127), p["du_shift"])))
+                e.set("du_shift", e.mul(p["du_shift"], 128))
+                e.if_(e.lt(p["du_byte"], 128), lambda: e.set("du_more", 0))
+
+            e.if_(e.either(e.le(p["du_end"], p["du_at"]), e.eq(p["du_shift"], 0)), lambda: (_bad(e), e.set("du_more", 0)), byte)
+
+        e.while_(lambda: e.ne(p["du_more"], 0), step)
+        e.set_hd(D_AT, p["du_at"])
+        e.give(p["du_value"])
+    return _function((), build, tables)
+
+
+def _d_blob(tables):
+    """``d_blob()``: a byte string's length; ``D_BLOB`` its first byte, the cursor past it (bad past the end)."""
+    def build(e: E):
+        p = e.p
+        e.var("db_len", e.call(_FN["d_uleb"]))
+        e.set_hd(D_BLOB, e.hd(D_AT))
+        e.set_hd(D_AT, e.add(e.hd(D_AT), p["db_len"]))
+        e.if_(e.lt(e.hd(D_END), e.hd(D_AT)), lambda: _bad(e))
+        e.give(p["db_len"])
+    return _function((), build, tables)
+
+
+def _d_text(tables):
+    """``d_text(at, length)``: ``bytes.decode("ascii", "replace")`` of input bytes."""
+    def build(e: E):
+        p = e.p
+        w = _writer(e)
+        w.packed(D.T_STR, p["length"], lambda byte: e.for_("dt_k", 0, p["length"], lambda: byte(e.rd(e.add(p["at"], p["dt_k"])))))
+        e.give(0)
+    return _function(("at", "length"), build, tables)
+
+
+def _d_cids(tables):
+    """``d_cids(count, at)``: ``[cid.hex() ...]`` of ``count`` 32-byte CIDs at input word ``at``."""
+    def build(e: E):
+        p = e.p
+        w = _writer(e)
+
+        def one(i):
+            e.var("dc_base", e.add(p["at"], e.mul(i, 32)))
+            w.put(D.T_CID)
+            for k in range(4):
+                e.var("dc_word", 0)
+                e.for_("dc_j", 0, 8, lambda k=k: e.set("dc_word", e.add(e.mul(p["dc_word"], 256), e.rd(e.add(e.add(p["dc_base"], 8 * k), p["dc_j"])))))
+                w.put(p["dc_word"])
+
+        w.seq(D.T_LIST, p["count"], one)
+        e.give(0)
+    return _function(("count", "at"), build, tables)
+
+
+def _d_node_types(tables):
+    """``d_node_types(mpos, skip)``: ``[[operand types][skip:], [result types]]`` of the node at facts position ``mpos``."""
+    def build(e: E):
+        p = e.p
+        w = _writer(e)
+        c = _Context(e, w)
+        e.if_(e.eq(p["mpos"], NONE), lambda: _bad(e))
+        e.var("dn_pos", e.sel(e.eq(p["mpos"], NONE), 0, p["mpos"]))
+        e.var("dn_na", e.rd(e.add(p["dn_pos"], 5)))
+        e.var("dn_no", e.rd(e.add(e.add(p["dn_pos"], 6), p["dn_na"])))
+        e.var("dn_tids", e.add(e.add(e.add(p["dn_pos"], 7), p["dn_na"]), p["dn_no"]))
+        e.var("dn_nr", e.rd(e.add(p["dn_tids"], p["dn_no"])))
+        e.var("dn_rt", e.add(e.add(p["dn_tids"], p["dn_no"]), 1))
+        e.if_(e.lt(p["dn_no"], p["skip"]), lambda: _bad(e))
+        e.var("dn_count", e.sel(e.lt(p["dn_no"], p["skip"]), 0, e.sub(p["dn_no"], p["skip"])))
+        w.put(D.T_LIST)
+        w.put(2)
+        w.seq(D.T_LIST, p["dn_count"], lambda i: c.h(e.rd(e.add(e.add(p["dn_tids"], p["skip"]), i))))
+        w.seq(D.T_LIST, p["dn_nr"], lambda i: c.h(e.rd(e.add(p["dn_rt"], i))))
+        e.give(0)
+    return _function(("mpos", "skip"), build, tables)
+
+
+def _d_prefix(e: E, data: bytes, at, length):
+    """``bytes[at:at + length].startswith(data)`` as a flag (``dp_ok``)."""
+    p = e.p
+    e.var("dp_at", at)
+    e.var("dp_ok", e.flag(e.le(len(data), length)))
+    for k, value in enumerate(data):
+        e.if_(e.ne(p["dp_ok"], 0), lambda k=k, value=value: e.if_(e.ne(e.rd(e.add(p["dp_at"], k)), value), lambda: e.set("dp_ok", 0)))
+    return p["dp_ok"]
+
+
+def _d_foreign(tables):
+    """``d_foreign(index)``: ``decode_foreign_function``'s identity: the cursor after its prefix, over the identity."""
+    from xax_compiler import FOREIGN_FUNCTION_PREFIX
+
+    def build(e: E):
+        p = e.p
+        e.var("df_pos", e.call(_FN["d_entry"], p["index"]))
+        e.if_(e.either(e.ne(e.rd(p["df_pos"]), int(Kind.TARGET)), e.ne(e.rd(e.add(p["df_pos"], 1)), 0)), lambda: _bad(e))
+        e.var("df_len", e.call(_FN["d_blob"]))
+        e.set_hd(D_AT, e.hd(D_BLOB))
+        e.set_hd(D_END, e.add(e.hd(D_BLOB), p["df_len"]))
+        e.if_(e.eq(_d_prefix(e, FOREIGN_FUNCTION_PREFIX, e.hd(D_AT), p["df_len"]), 0), lambda: _bad(e))
+        e.set_hd(D_AT, e.add(e.hd(D_AT), len(FOREIGN_FUNCTION_PREFIX)))
+        e.give(0)
+    return _function(("index",), build, tables)
+
+
+def _d_contract_scopes(tables):
+    """``d_contract_scopes(start)``: from a contract's start, past its identity, codes and constraints: its scope count
+    (the cursor then at the first scope)."""
+    def build(e: E):
+        p = e.p
+        e.set_hd(D_AT, p["start"])
+        for _field_ in range(3):
+            e.call(_FN["d_uleb"])
+        for _signature in range(2):
+            e.var("dk_n", e.call(_FN["d_uleb"]))
+            e.for_("dk_k", 0, e.sel(e.lt(p["dk_n"], 1 << 16), p["dk_n"], 0), lambda: [e.call(_FN["d_uleb"]) for _ in range(3)])
+        e.give(e.call(_FN["d_uleb"]))
+    return _function(("start",), build, tables)
+
+
+def _declared_site(tables, name: str):
+    """``memory_diagnostic`` of one declared site (``_memory`` calls it for that site); gives 1 when written."""
+    from xax_compiler import FOREIGN_ABIS, LEND_ENTRY_ABI, _CODE_ENTRY_PREFIX, _LEND_ENTRY_PREFIX
+    from xax_selfhost_facts import FOREIGN_ENTRY_EXPECTED
+
+    def build(e: E):
+        p = e.p
+        w = _writer(e)
+        c = _Context(e, w)
+        for k, word in enumerate(("x", "y", "z", "w4", "p4")):
+            e.var(word, e.hd(H_RPAY + k))
+        x, y, z, w4 = p["x"], p["y"], p["z"], p["w4"]
+        call = lambda fn, *args: e.call(_FN[fn], *args)  # noqa: E731
+        ok = lambda: e.eq(e.ld(OUTCOME_AT + O_BAD), 0)  # noqa: E731
+
+        def write(code, rule, expected, actual):
+            e.if_(ok(), lambda: _four(e, w, code, rule, expected, actual))
+
+        def blob():
+            """The next byte string: ``(start, length)`` named."""
+            e.var("ds_len", call("d_blob"))
+            e.var("ds_at", e.hd(D_BLOB))
+
+        if name == "FOREIGN_ABI":
+            call("d_foreign", x)
+            blob()
+            write("XAX.FOREIGN.ABI", "FOREIGN-CALL-ABI", lambda: w.const([abi.decode() for abi in FOREIGN_ABIS]),
+                  lambda: call("d_text", p["ds_at"], p["ds_len"]))
+        elif name == "FOREIGN_CONTRACT":
+            call("d_foreign", x)
+            for _blob in range(3):
+                call("d_blob")
+            e.var("fc_in", call("d_uleb"))
+            e.var("fc_in_at", e.hd(D_AT))
+            e.set_hd(D_AT, e.add(e.hd(D_AT), e.mul(e.sel(e.lt(p["fc_in"], 1 << 20), p["fc_in"], 1 << 20), 32)))
+            e.var("fc_out", call("d_uleb"))
+            e.var("fc_out_at", e.hd(D_AT))
+            e.if_(e.lt(e.hd(D_END), e.add(p["fc_out_at"], e.mul(e.sel(e.lt(p["fc_out"], 1 << 20), p["fc_out"], 1 << 20), 32))), lambda: _bad(e))
+            write("XAX.FOREIGN.CALL", "FOREIGN-CALL-CONTRACT",
+                  lambda: (w.put(D.T_LIST), w.put(2), call("d_cids", p["fc_in"], p["fc_in_at"]), call("d_cids", p["fc_out"], p["fc_out_at"])),
+                  lambda: call("d_node_types", p["mpos"], 0))
+        elif name == "LEND_VIEW_LENT":
+            call("d_foreign", y)
+            for _blob in range(2):
+                call("d_blob")
+            blob()
+            write("XAX.FOREIGN.LEND", "LEND-ENTRY-VIEW-LENT",
+                  lambda: w.fmt("a sysv-x86_64-c call lending a whole initialized {}-byte view and returning its memory effect", x),
+                  lambda: call("d_text", p["ds_at"], p["ds_len"]))
+        elif name == "INDIRECT_BOUNDED_CONTRACT":
+            # ``_decode_call_contract``: ``[[inputs], [outputs]]``, each a body index into its references.
+            e.var("bc_pos", call("d_entry", x))
+            e.if_(e.ne(e.rd(p["bc_pos"]), int(Kind.CALL_CONTRACT)), lambda: _bad(e))
+            e.var("bc_nrefs", e.rd(e.add(p["bc_pos"], 1)))
+            e.var("bc_refs", e.hd(D_END))
+
+            def types():
+                e.var("bc_n", call("d_uleb"))
+
+                def one(_i):
+                    e.var("bc_k", call("d_uleb"))
+                    e.if_(e.le(p["bc_nrefs"], p["bc_k"]), lambda: _bad(e))
+                    c.h(e.rd(e.add(p["bc_refs"], e.sel(e.lt(p["bc_k"], p["bc_nrefs"]), p["bc_k"], 0))))
+
+                w.seq(D.T_LIST, e.sel(ok(), p["bc_n"], 0), one)
+
+            write("XAX.CALL.INDIRECT", "INDIRECT-CALL-BOUNDED-CONTRACT", lambda: (w.put(D.T_LIST), w.put(2), types(), types()),
+                  lambda: call("d_node_types", p["mpos"], 1))
+        elif name == "FOREIGN_ENTRY":
+            # ``foreign_entry_abi``: the pointer's element, an identity-qualified opaque type, names the entry ABI.
+            e.var("fe_pos", call("d_entry", x))
+            e.if_(e.ne(e.rd(p["fe_pos"]), int(Kind.TYPE)), lambda: _bad(e))
+            e.var("fe_refs", e.hd(D_END))
+            e.if_(e.ne(call("d_uleb"), 2), lambda: _bad(e))
+            call("d_uleb")  # the address space
+            e.var("fe_ref", call("d_uleb"))
+            e.var("fe_nrefs", e.rd(e.add(p["fe_pos"], 1)))
+            e.if_(e.le(p["fe_nrefs"], p["fe_ref"]), lambda: _bad(e))
+            e.var("fe_elem", e.rd(e.add(p["fe_refs"], e.sel(e.lt(p["fe_ref"], p["fe_nrefs"]), p["fe_ref"], 0))))
+            e.var("fe_epos", call("d_entry", p["fe_elem"]))
+            e.if_(e.either(e.ne(e.rd(p["fe_epos"]), int(Kind.TYPE)), e.ne(e.rd(e.add(p["fe_epos"], 1)), 0)), lambda: _bad(e))
+            e.if_(e.ne(call("d_uleb"), 6), lambda: _bad(e))
+            blob()
+            e.if_(e.either(e.eq(p["ds_len"], 0), e.ne(e.hd(D_AT), e.hd(D_END))), lambda: _bad(e))
+            e.var("fe_lend", _d_prefix(e, _LEND_ENTRY_PREFIX, p["ds_at"], p["ds_len"]))
+            e.var("fe_code", _d_prefix(e, _CODE_ENTRY_PREFIX, p["ds_at"], p["ds_len"]))
+            e.if_(e.eq(p["fe_code"], 0), lambda: _bad(e))
+
+            def expected():
+                w.put(D.T_DICT)
+                w.put(len(FOREIGN_ENTRY_EXPECTED))
+                for key, value in FOREIGN_ENTRY_EXPECTED.items():
+                    w.const(key)
+                    w.const(value)
+
+            write("XAX.STRUCT.FUNCTION_ADDRESS", "GRAPH-FUNCTION-ADDRESS-FOREIGN-ENTRY", expected, lambda: e.if_(
+                e.ne(p["fe_lend"], 0), lambda: w.const(LEND_ENTRY_ABI.decode()),
+                lambda: call("d_text", e.add(p["ds_at"], len(_CODE_ENTRY_PREFIX)), e.sub(p["ds_len"], len(_CODE_ENTRY_PREFIX)))))
+        else:
+            # Target operations: the target's contracts (``decode_native_target``).
+            e.var("tg_pos", call("d_entry", x))
+            e.if_(e.ne(e.rd(p["tg_pos"]), int(Kind.TARGET)), lambda: _bad(e))
+            e.var("tg_start", e.hd(D_AT))
+            start = {"TARGET_DEFINED": z, "TARGET_SCOPE_SUPPORTED": w4, "TARGET_SPACES": p["p4"]}[name]
+            e.var("tg_at", start)
+            e.if_(e.either(e.lt(p["tg_at"], p["tg_start"]), e.le(e.hd(D_END), p["tg_at"])), lambda: _bad(e))
+
+            def lower_scope(value):
+                for item in AtomicScope:
+                    e.if_(e.eq(value, int(item)), lambda item=item: w.text(item.name.lower()))
+                e.if_(e.not_(e.either(*(e.eq(value, int(item)) for item in AtomicScope))), lambda: _bad(e))
+
+            if name == "TARGET_DEFINED":
+                def ids():
+                    e.set_hd(D_AT, p["tg_at"])
+                    e.var("td_n", e.sel(ok(), call("d_uleb"), 0))
+
+                    def one(_i):
+                        e.var("td_start", e.hd(D_AT))
+                        e.var("td_id", call("d_uleb"))
+                        w.integer(p["td_id"])
+                        e.var("td_scopes", call("d_contract_scopes", p["td_start"]))
+                        e.for_("td_s", 0, e.sel(e.lt(p["td_scopes"], 1 << 16), p["td_scopes"], 0), lambda: call("d_uleb"))
+                        for _space in range(2):
+                            call("d_uleb")
+                        e.set_hd(D_AT, e.add(e.hd(D_AT), 2))  # synchronizes, may block: one byte each
+                        call("d_blob")  # the runtime dependency
+
+                    w.seq(D.T_LIST, e.sel(e.lt(p["td_n"], 1 << 16), p["td_n"], 0), one)
+
+                write("XAX.TARGET.OPERATION", "TARGET-OPERATION-DEFINED", ids, lambda: w.integer(y))
+            else:
+                e.var("ts_scopes", call("d_contract_scopes", p["tg_at"]))
+                e.var("ts_n", e.sel(e.both(ok(), e.lt(p["ts_scopes"], 1 << 16)), p["ts_scopes"], 0))
+                if name == "TARGET_SCOPE_SUPPORTED":
+                    write("XAX.TARGET.OPERATION", "TARGET-OPERATION-SCOPE-SUPPORTED",
+                          lambda: w.seq(D.T_LIST, p["ts_n"], lambda _i: (e.var("ts_scope", call("d_uleb")), lower_scope(p["ts_scope"]))),
+                          lambda: lower_scope(z))
+                else:
+                    e.for_("ts_s", 0, p["ts_n"], lambda: call("d_uleb"))
+                    e.var("ts_source", call("d_uleb"))
+                    e.var("ts_destination", call("d_uleb"))
+                    write("XAX.TARGET.OPERATION", "TARGET-OPERATION-MEMORY-SPACES",
+                          lambda: (w.put(D.T_LIST), w.put(2), w.integer(p["ts_source"]), w.integer(p["ts_destination"])),
+                          lambda: (w.put(D.T_LIST), w.put(2), w.integer(z), w.integer(w4)))
+        e.give(e.flag(ok()))
+    return _function(("mpos",), build, tables)
 
 
 def _storage_pair(e: E, w: R.Writer, site):
@@ -1090,6 +1443,8 @@ def _outcome(tables):
         e.st(OUTCOME_AT + O_STATUS, G_DECLINE)
         e.var("here", 0)  # the first pass's position (``O_POS``)
         e.st(OUTCOME_AT + O_POS, 0)
+        e.st(OUTCOME_AT + O_DEFER, 0)
+        e.var("by_memory", 0)  # the decision is the engine's memory rejection
         e.var("keys", e.rd(e.ld(T.PASS_NODES_AT)))
         shape = _Shape(e)
         blocks, entry = p["sh_blocks"], p["sh_entry"]
@@ -1099,6 +1454,17 @@ def _outcome(tables):
         e.if_(e.either(e.eq(p["sh_ok"], 0), e.not_(clear)), lambda: e.set("term", G_DECLINE))
 
         def decide(status):
+            if R.DEBUG_PLAN:  # debugging only: a decline's source line at ``O_POS + 3``
+                import traceback
+
+                line = traceback.extract_stack()[-2].lineno
+                if isinstance(status, int):
+                    if status == G_DECLINE:
+                        e.st(OUTCOME_AT + O_POS + 3, line)
+                else:
+                    e.var("dbg_status", status)
+                    e.st(OUTCOME_AT + O_POS + 3, e.sel(e.eq(p["dbg_status"], G_DECLINE), line, e.ld(OUTCOME_AT + O_POS + 3)))
+                    status = p["dbg_status"]
             e.set("term", status)
             e.st(OUTCOME_AT + O_POS, p["here"])
 
@@ -1121,6 +1487,7 @@ def _outcome(tables):
                                                  e.eq(e.hd(H_RNODE), node_))
 
         def memory():
+            e.set("by_memory", 1)
             reject(lambda: e.call(_FN["memory"]))
 
         def linear():
@@ -1130,6 +1497,14 @@ def _outcome(tables):
         # The facts engine decided memory (it accepted, or found the first memory rejection), or no type the fact
         # system tracks occurs (memory-free: the bootstrap's fact checks record and reject nothing).
         e.var("engine_ok", e.flag(e.either(engine, e.ne(p["memory"], 0))))
+        # S15b.3d (ADR-311): the engine stopped, in its first pass, at a node the typing program rejected: every node
+        # before it was modelled (a memory rejection there would have stopped it first), so the walk reaches that node.
+        e.var("tstop", e.sel(e.both(e.eq(e.hd(H_TSTOP_PASS), 1), e.ne(e.hd(H_TSTOP), 0)), e.sub(e.hd(H_TSTOP), 1), NONE))
+        e.set("engine_ok", e.or_(p["engine_ok"], e.flag(e.ne(p["tstop"], NONE))))
+        # S15b.3d (ADR-313): the engine stopped at its first resource call (the callee's body selects no contract):
+        # every node before it was modelled; the walk decides up to that node.
+        e.var("rdecl", e.flag(e.both(e.ne(e.hd(H_RCALL_COUNT), 0), e.ne(e.hd(H_RCALL_DECLINE), 0))))
+        e.set("engine_ok", e.or_(p["engine_ok"], p["rdecl"]))
         memory_free = e.eq(e.ld(e.add(p["verdicts"], blocks)), 1)
 
         def passes():
@@ -1139,13 +1514,6 @@ def _outcome(tables):
                 b = e.rd(e.add(p["sh_order"], p["po"]))
                 e.var("pb", b)
                 e.set("here", e.mul(p["po"], 1 << 32))
-
-                def stack_entry():
-                    e.var("se_pos", shape.word("bpos", p["pb"]))
-                    e.for_("se_k", 0, e.rd(e.add(p["se_pos"], 1)), lambda: e.if_(
-                        e.ne(_field(e, T.STACKOWNER, e.rd(e.add(e.add(p["se_pos"], 2), p["se_k"]))), 0), lambda: decide(G_DECLINE)))
-
-                e.if_(e.eq(p["pb"], entry), stack_entry)
 
                 def node():
                     e.set("here", e.add(e.mul(p["po"], 1 << 32), p["pn"]))
@@ -1188,6 +1556,9 @@ def _outcome(tables):
                         engine_domain = e.both(e.ne(p["engine_ok"], 0), e.either(*(e.eq(p["nop"], code) for code in ENGINE_OPERATIONS)))
                         e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["nkey"], NONE), typed, lambda: e.if_(
                             e.not_(engine_domain), lambda: decide(G_DECLINE))))
+                        # The engine's stop at its first resource call: no claim past it (the callee's graph may decide).
+                        e.if_(e.both(e.eq(p["term"], NONE), e.ne(p["rdecl"], 0), e.eq(p["pb"], e.hd(H_RCALL_B)), e.eq(p["pn"], e.hd(H_RCALL_N))),
+                              lambda: decide(G_DECLINE))
 
                     e.if_(e.eq(p["term"], NONE), checks)
 
@@ -1195,7 +1566,9 @@ def _outcome(tables):
 
                 def terminator():
                     e.set("here", e.add(e.mul(p["po"], 1 << 32), shape.word("bnodes", p["pb"])))
-                    e.if_(at(1, p["pb"], shape.word("bnodes", p["pb"])), memory)  # a stack-owner entry's late ones decline above
+                    # S15b.3d (ADR-313): a stack-owner entry's late checks come after the terminator's own.
+                    e.var("late", e.flag(e.either(*(e.eq(p["memory"], M[name]) for name in LATE_MEMORY_SITES))))
+                    e.if_(e.both(at(1, p["pb"], shape.word("bnodes", p["pb"])), e.eq(p["late"], 0)), memory)
                     record = e.ld(e.sub(T.TERMINATOR_RECORDS, e.mul(p["pb"], 4)))
 
                     def written():
@@ -1205,6 +1578,7 @@ def _outcome(tables):
 
                     e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(record, 0), written, lambda: e.if_(
                         e.ne(e.ld(e.add(p["verdicts"], p["pb"])), T.PROVEN), lambda: decide(G_DECLINE))))
+                    e.if_(e.both(e.eq(p["term"], NONE), e.ne(p["late"], 0), at(1, p["pb"], shape.word("bnodes", p["pb"]))), memory)
 
                 e.if_(e.eq(p["term"], NONE), terminator)
 
@@ -1215,7 +1589,28 @@ def _outcome(tables):
             e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["memory"], 0), memory, linear))
 
         e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["skip"], 0), lambda: (e.set("here", POS_LATE), linear()), passes))
-        e.st(OUTCOME_AT + O_STATUS, e.sel(e.eq(p["term"], NONE), G_DECLINE, p["term"]))
+        e.if_(e.eq(p["term"], NONE), lambda: e.set("term", G_DECLINE))
+
+        def resource_call():
+            """S15b.3d (ADR-313): the graph's first resource call parses its callee's graph before what follows it: an
+            acceptance, a decision after that call (a memory one at it), or the engine's stop there waits on the callee
+            (``O_DEFER``); calls to another callee in the pass decline."""
+            e.var("rc_po", NONE)
+            e.for_("rc_q", 0, blocks, lambda: e.if_(e.eq(e.rd(e.add(p["sh_order"], p["rc_q"])), e.hd(H_RCALL_B)), lambda: e.set("rc_po", p["rc_q"])))
+            e.var("rc_here", e.add(e.mul(p["rc_po"], 1 << 32), e.hd(H_RCALL_N)))
+            e.var("rc_final", e.ld(OUTCOME_AT + O_POS))
+            e.var("rc_after", e.flag(e.either(e.lt(p["rc_here"], p["rc_final"]), e.both(e.eq(p["rc_here"], p["rc_final"]), e.ne(p["by_memory"], 0)))))
+            e.var("rc_wait", e.flag(e.either(
+                e.eq(p["term"], G_ACCEPT), e.both(e.eq(p["term"], G_REJECT), e.ne(p["rc_after"], 0)),
+                e.both(e.eq(p["term"], G_DECLINE), e.ne(p["rdecl"], 0), e.eq(p["rc_here"], p["rc_final"])))))
+            e.if_(e.both(e.eq(p["term"], G_OBJECT), e.le(p["rc_here"], p["rc_final"])), lambda: e.set("term", G_DECLINE))
+            # One callee (a call made again names the parsed graph: the bootstrap's parse is cached).
+            e.var("rc_alone", e.flag(e.both(e.eq(e.hd(H_RCALL_OTHER), 0), e.ne(p["rc_po"], NONE), e.eq(e.ld(OUTCOME_AT + O_MODE), 0))))
+            e.if_(e.ne(p["rc_wait"], 0), lambda: e.if_(e.ne(p["rc_alone"], 0), lambda: e.st(OUTCOME_AT + O_DEFER, e.add(e.hd(H_RCALL_E), 1)),
+                                                        lambda: e.set("term", G_DECLINE)))
+
+        e.if_(e.both(e.ne(e.hd(H_RCALL_COUNT), 0), e.ne(p["sh_ok"], 0)), resource_call)
+        e.st(OUTCOME_AT + O_STATUS, p["term"])
         e.give(0)
     return _function((), build, tables)
 
@@ -1241,6 +1636,11 @@ def build_functions(tables=None):
     add("intervals", _intervals(tables))
     for part in range(MEMORY_PARTS):
         add(f"memory{part}", _memory_part(tables, part))
+    for name, made in (("d_entry", _d_entry), ("d_uleb", _d_uleb), ("d_blob", _d_blob), ("d_text", _d_text), ("d_cids", _d_cids),
+                       ("d_node_types", _d_node_types), ("d_foreign", _d_foreign), ("d_contract_scopes", _d_contract_scopes)):
+        add(name, made(tables))
+    for name in DECLARED_MEMORY_SITES:
+        add(f"declared_{name}", _declared_site(tables, name))
     add("memory", _memory(tables))
     add("outcome", _outcome(tables))
     return _FN["outcome"], tuple(objects)

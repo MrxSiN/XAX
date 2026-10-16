@@ -16,7 +16,7 @@ from __future__ import annotations
 import xax_compiler as _X
 import xax_selfhost_typing as _T
 from xax_compiler import Kind, Operation, TerminatorKind
-from xax_selfhost_facts import E, M, NONE, H_COUNT, _Node, _function, _reject, _require, _uleb
+from xax_selfhost_facts import E, M, NONE, H_COUNT, H_TCONTRACTS, _Node, _function, _reject, _require, _uleb
 
 SCOPES = (1, 3)  # AtomicScope values
 FAMILIES = (1, 5)  # AtomicFamily values
@@ -198,6 +198,7 @@ def _target_contract(tables):
         checked = lambda: e.either(e.eq(p["profile"], 3), e.eq(p["profile"], 4))  # noqa: E731
 
         def contracts():
+            e.set_hd(H_TCONTRACTS, p["t_at"])  # S15b.3d (ADR-313): where the list starts, for TARGET_DEFINED's record
             e.var("id_previous", 0)
 
             def contract():
@@ -296,7 +297,7 @@ def _target_op(tables, contract):
         r = _Reader(e, "t_at", "t_end")
         # S8 (ADR-251): each check below is ``_verify_target_node``'s, in its order, with its exact rejection.
         _reject(e, e.eq(n.na, 4), M["TARGET_ATTRIBUTES"], n.na)
-        _reject(e, e.ne(p["match"], NO_CONTRACT), M["TARGET_DEFINED"], entity, n.attr(0))
+        _reject(e, e.ne(p["match"], NO_CONTRACT), M["TARGET_DEFINED"], entity, n.attr(0), e.hd(H_TCONTRACTS))
         scope = n.attr(1)
         e.set("t_at", p["match"])
         for name in ("operation_id", "semantic", "opcode"):
@@ -308,9 +309,9 @@ def _target_op(tables, contract):
         e.var("scope_supported", 0)
         r.listing("contract_scope", each=lambda value, k: e.if_(e.eq(value, scope), lambda: e.set("scope_supported", 1)))
         _reject(e, member(scope, SCOPES), M["TARGET_SCOPE_ENUM"], scope)
-        _reject(e, e.ne(p["scope_supported"], 0), M["TARGET_SCOPE_SUPPORTED"], entity, n.attr(0), scope)
+        _reject(e, e.ne(p["scope_supported"], 0), M["TARGET_SCOPE_SUPPORTED"], entity, n.attr(0), scope, p["match"])
         _reject(e, e.both(e.eq(r.uleb("source_space"), n.attr(2)), e.eq(r.uleb("destination_space"), n.attr(3))), M["TARGET_SPACES"],
-                entity, n.attr(0), n.attr(2), n.attr(3))
+                entity, n.attr(0), n.attr(2), n.attr(3), p["match"])
         _reject(e, e.both(e.eq(p["operand_constraints"], n.no), e.eq(p["result_constraints"], n.nr)), M["TARGET_ARITY"],
                 p["operand_constraints"], p["result_constraints"], n.no, n.nr)
         kinds = {}

@@ -52,6 +52,7 @@ JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8
 # program (the S10 driver with its verifier components) fits: 40 MiB of code, 699,050 ranges.
 CODE_BYTES = WORDS_LIMIT * 8
 RANGE_WORDS = 3
+JUMP_WORDS = 2
 
 
 def _byte_weight(e: E, position):
@@ -262,11 +263,11 @@ def _jump_fn(tables):
         p = e.p
         _bytes(e, p["opcode"], p["oplen"])
         count = e.hd(S_JUMPS)
-        _ok(e, e.lt(count, JUMPS_LIMIT // 3))
-        at = e.add(JUMPS_AT, e.mul(count, 3))
+        # ADR-313: two words per jump (its position and its label's slot), so the general driver's 175k jumps fit.
+        _ok(e, e.lt(count, JUMPS_LIMIT // JUMP_WORDS))
+        at = e.add(JUMPS_AT, e.mul(count, JUMP_WORDS))
         e.st(at, e.hd(S_COUNT))
         e.st(e.add(at, 1), p["slot"])
-        e.st(e.add(at, 2), 0)
         e.set_hd(S_JUMPS, e.add(count, 1))
         _bytes(e, 0, 4)
         e.give(1)
@@ -436,7 +437,7 @@ class X86_64:
         p = e.p
 
         def patch():
-            at = e.add(JUMPS_AT, e.mul(p["j"], 3))
+            at = e.add(JUMPS_AT, e.mul(p["j"], JUMP_WORDS))
             position, label = e.ld(at), e.ld(e.ld(e.add(at, 1)))
             _ok(e, e.ne(label, NONE))
             e.var("delta", e.and_(e.sub(label, e.add(position, 4)), 0xFFFFFFFF))

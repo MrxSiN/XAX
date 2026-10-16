@@ -34,19 +34,21 @@ from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_semantic import _cid_word, _kind, _nrefs, _payload, _ref
 
 RECORD_MAGIC = b"XAXEDIT1"
-SET_OPERATION, SET_CONSTANT = 1, 2
+SET_OPERATION, SET_CONSTANT, REPLACE_REFERENCE = 1, 2, 3
 EB = 52 << 20  # workspace words
 (E_STATUS, E_LENGTH, E_MUTATIONS, E_EXTRAS, E_EXTRAS_DONE, E_OBJECTS, E_SLOT, E_KIND, E_NREFS, E_REFS_AT, E_BODY_AT, E_BODY_LENGTH,
  E_PRE_LENGTH, E_OBJECT, E_ROOT, E_AFFECTED, E_PRE_AT, E_NEW, E_BATCH_LENGTH, E_PRE_END) = range(20)
 OK, REJECT, MORE, DONE = 0, 1, 2, 3
 EC = EB  # control words (64)
 OPF = EB + 64  # per operation code: 1 entity, 2 attributes
-EIN = EB + 256  # the edit record, one byte per word
-EIN_LIMIT = 1 << 16
-MUT = EIN + EIN_LIMIT  # 8 words per mutation: kind, function, graph, block, node, expected, value, extra
+MUT = EB + 256  # 8 words per mutation: kind, function, graph, block, node, expected, value, extra
 MUT_WORDS, MUT_LIMIT = 8, 256
-EXTRA = MUT + MUT_WORDS * MUT_LIMIT  # 16 words per new constant: type, length, value, alias, CID (4) ...
+# 16 words per new object of the transaction's own: type, length, value, alias, CID (4) for a new constant; S15d.4a
+# (ADR-312): a supplied object has X_SUPPLIED set and its kind, reference count, references, body length and body (record
+# words), and whether ``reach`` reached it.
+EXTRA = MUT + MUT_WORDS * MUT_LIMIT
 EXTRA_WORDS = 16
+X_SUPPLIED, X_KIND, X_NREFS, X_REFS, X_BODY_LENGTH, X_BODY, X_REACHED = range(8, 15)
 ENTITY_AT = EXTRA + EXTRA_WORDS * MUT_LIMIT  # per mutation: its node's entity reference index + 1 (0: none)
 STATE = EB + (1 << 17)  # per object: 0 untouched, 1 affected, 2 rebuilt
 NEWCID = STATE + (1 << 16)  # 4 words per object
@@ -71,6 +73,9 @@ BATCH_LIMIT = (1 << 25) - 4096  # the writer's input view less its slack
 BATCH_AT = 58  # control word: the batch bytes written
 EXTRA_TAG = 1 << 40
 assert BATCH + BATCH_LIMIT < 128 << 20
+# The edit record, one byte per word (S15d.4a: past the batch, room for supplied objects).
+EIN, EIN_LIMIT = 107 << 20, 16 << 20
+assert ENTITY_AT + MUT_LIMIT <= STATE and BATCH + BATCH_LIMIT <= EIN and EIN + EIN_LIMIT <= 128 << 20
 ENTITY = sorted(int(op) for op in ENTITY_OPERATIONS)
 ATTRIBUTE = sorted(int(op) for op in ATTRIBUTE_OPERATIONS)
 WRAPPING = (int(Operation.ADD_WRAP), int(Operation.SUB_WRAP), int(Operation.MUL_WRAP))
@@ -266,6 +271,73 @@ def _insert_function():
     return _function(("source",), build, None)
 
 
+def _resolve_function():
+    """S15d.4a (ADR-312): the source of the CID in ``KEY``: the store's object with it (binary search: the store lists
+    its objects by CID), else the supplied object whose CID ``next`` derived, else ``NONE``."""
+    def build(e: E):
+        p = e.p
+        for k in range(4):
+            e.var(f"key{k}", _ctrl(e, KEY + k))
+        e.var("lo", 0)
+        e.var("hi", _ctrl(e, E_OBJECTS))
+        e.var("found", NONE)
+
+        def step():
+            e.var("mid", e.udiv(e.add(p["lo"], p["hi"]), 2))
+            e.var("below", 0)
+            e.var("same", 1)
+            for k in range(4):
+                e.var(f"c{k}", _cid_word(e, p["mid"], k))
+                e.if_(e.ne(p["same"], 0), lambda k=k: e.if_(e.lt(p[f"c{k}"], p[f"key{k}"]), lambda: (e.set("below", 1), e.set("same", 0)),
+                                                            lambda: e.if_(e.lt(p[f"key{k}"], p[f"c{k}"]), lambda: e.set("same", 0))))
+            e.if_(e.ne(p["same"], 0), lambda: (e.set("found", p["mid"]), e.set("lo", p["hi"])),
+                  lambda: e.if_(e.ne(p["below"], 0), lambda: e.set("lo", e.add(p["mid"], 1)), lambda: e.set("hi", p["mid"])))
+
+        e.while_(lambda: e.lt(p["lo"], p["hi"]), step)
+
+        def supplied():
+            def each():
+                e.var("rrow", e.add(EXTRA, e.mul(p["rx"], EXTRA_WORDS)))
+                e.var("rsame", e.ld(e.add(p["rrow"], X_SUPPLIED)))
+                for k in range(4):
+                    e.set("rsame", e.and_(p["rsame"], e.flag(e.eq(e.ld(e.add(p["rrow"], 4 + k)), p[f"key{k}"]))))
+                e.if_(e.ne(p["rsame"], 0), lambda: e.set("found", e.add(EXTRA_TAG, p["rx"])))
+
+            e.for_("rx", 0, _ctrl(e, E_EXTRAS_DONE), each)
+
+        e.if_(e.eq(p["found"], NONE), supplied)
+        e.give(p["found"])
+    return _function((), build, None)
+
+
+def _replaced_function():
+    """S15d.4a: the source owner ``o``'s reference to ``source`` names after the transaction: a ``REPLACE_REFERENCE``'s
+    new child (found by ``resolve``; a missing one is EDIT-REFERENCE-TARGET), else ``source``."""
+    def build(e: E):
+        p = e.p
+        e.var("out", p["source"])
+
+        def each():
+            def hit():
+                for k in range(4):
+                    e.var(f"nw{k}", 0)
+                    for j in range(8):
+                        e.set(f"nw{k}", e.add(e.mul(p[f"nw{k}"], 256), e.ld(e.add(_mutation(e, p["rq"], 5), 8 * k + j))))
+                    _set(e, KEY + k, p[f"nw{k}"])
+                e.var("target", _call(e, "resolve"))
+                e.if_(e.eq(p["target"], NONE), lambda: _reject(
+                    e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: _cid_of(e, p["o"]), "EDIT-REFERENCE-TARGET",
+                    lambda: D.text(e, "an object of the store or of the record"), lambda: _record_cid(e, _mutation(e, p["rq"], 5))))
+                e.if_(e.ne(p["target"], NONE), lambda: e.set("out", p["target"]))
+
+            e.if_(e.both(e.eq(_mutation(e, p["rq"], 0), REPLACE_REFERENCE), e.eq(_mutation(e, p["rq"], 1), p["o"]),
+                         e.eq(_mutation(e, p["rq"], 3), p["source"])), hit)
+
+        e.for_("rq", 0, _ctrl(e, E_MUTATIONS), each)
+        e.give(p["out"])
+    return _function(("o", "source"), build, None)
+
+
 def _reference_function():
     """One reference index in the body of object ``o``: COLLECT inserts its source's CID among the sorted references
     (``SR``); EMIT writes the index of its CID there.  ``extra``: the new constant replacing it (NONE: none).  Gives the
@@ -274,6 +346,7 @@ def _reference_function():
         p = e.p
         e.var("ri", _call(e, "uleb_read"))
         e.var("rsrc", e.sel(e.ne(p["extra"], NONE), e.add(EXTRA_TAG, p["extra"]), _ref(e, p["o"], p["ri"])))
+        e.if_(e.eq(p["extra"], NONE), lambda: e.set("rsrc", _call(e, "replaced", p["o"], p["rsrc"])))
         e.var("rmode", _ctrl(e, MODE))
         e.if_(e.eq(p["rmode"], COLLECT), lambda: _call(e, "insert", p["rsrc"]))
 
@@ -556,11 +629,71 @@ def _begin(tables):
         e.if_(e.both(running(), e.lt(MUT_LIMIT, p["count"])), malformed("EDIT-RECORD-COUNT"))
         e.var("mi", 0)
 
+        def record_words(at, name: str):
+            """The four big-endian words of the CID at record word ``at``."""
+            for k in range(4):
+                e.var(f"{name}{k}", 0)
+                for j in range(8):
+                    e.set(f"{name}{k}", e.add(e.mul(p[f"{name}{k}"], 256), e.ld(e.add(at, 8 * k + j))))
+
+        def replace():
+            """S15d.4a (ADR-312): ``REPLACE_REFERENCE``: the owner by its CID, the old child among its references; the new
+            child (an object of the store or one the record supplies) is found once the supplied objects have CIDs."""
+            need(96, "EDIT-RECORD-TARGET")
+            e.var("owner_at", p["at"])
+            e.set("at", e.add(p["at"], 96))
+
+            def located():
+                record_words(p["owner_at"], "ow")
+                e.var("owner", NONE)
+                e.for_("fo", 0, p["objects"], lambda: e.if_(e.both(*(e.eq(_cid_word(e, p["fo"], k), p[f"ow{k}"]) for k in range(4))),
+                                                            lambda: e.set("owner", p["fo"])))
+                e.if_(e.eq(p["owner"], NONE), lambda: _reject(
+                    e, "XAX.WORKSPACE.HANDLE", lambda: _record_cid(e, p["owner_at"]), "WORKSPACE-HANDLE-GENERATION",
+                    lambda: D.text(e, "object at the current root"), lambda: D.text(e, "unbound or stale")))
+
+                def child():
+                    record_words(e.add(p["owner_at"], 32), "oc")
+                    e.var("old", NONE)
+                    e.for_("fc", 0, _nrefs(e, p["owner"]), lambda: e.if_(e.both(*(e.eq(_cid_word(e, _ref(e, p["owner"], p["fc"]), k), p[f"oc{k}"])
+                                                                                 for k in range(4))), lambda: e.set("old", _ref(e, p["owner"], p["fc"]))))
+                    e.if_(e.eq(p["old"], NONE), lambda: _reject(
+                        e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: _record_cid(e, p["owner_at"]), "EDIT-REFERENCE-PRECONDITION",
+                        lambda: _record_cid(e, e.add(p["owner_at"], 32)), lambda: D.text(e, "not a reference of the object")))
+
+                    def row():
+                        e.var("dup", 0)
+                        e.for_("dq", 0, p["mi"], lambda: e.if_(e.both(
+                            e.eq(_mutation(e, p["dq"], 0), REPLACE_REFERENCE), e.eq(_mutation(e, p["dq"], 2), p["owner"]), e.eq(_mutation(e, p["dq"], 3), p["old"])),
+                            lambda: e.set("dup", 1)))
+                        e.if_(e.ne(p["dup"], 0), lambda: _reject(
+                            e, "XAX.WORKSPACE.DUPLICATE_MUTATION", lambda: _record_cid(e, p["owner_at"]), "WORKSPACE-MUTATION-TARGET-UNIQUE",
+                            lambda: D.text(e, "one replacement per reference"), lambda: D.text(e, "duplicate")))
+                        def write():
+                            fields = (REPLACE_REFERENCE, p["owner"], p["owner"], p["old"], NONE, e.add(p["owner_at"], 64), 0, 0)
+                            for field, value in enumerate(fields):
+                                e.st(e.add(p["row"], field), value)
+                            e.st(e.add(ENTITY_AT, p["mi"]), 0)
+                            _set(e, E_MUTATIONS, e.add(p["mi"], 1))
+
+                        e.if_(running(), write)
+
+                    e.if_(running(), row)
+
+                e.if_(running(), child)
+
+            e.if_(running(), located)
+
         def mutation():
             row = e.add(MUT, e.mul(p["mi"], MUT_WORDS))
             e.var("row", row)
             e.var("mkind", uleb("m_kind"))
-            e.if_(e.both(running(), e.ne(p["mkind"], SET_OPERATION), e.ne(p["mkind"], SET_CONSTANT)), malformed("EDIT-RECORD-KIND"))
+            e.if_(e.both(running(), e.ne(p["mkind"], SET_OPERATION), e.ne(p["mkind"], SET_CONSTANT), e.ne(p["mkind"], REPLACE_REFERENCE)),
+                  malformed("EDIT-RECORD-KIND"))
+            e.if_(e.both(running(), e.eq(p["mkind"], REPLACE_REFERENCE)), replace, lambda: e.if_(running(), node_mutation))
+            e.set("mi", e.add(p["mi"], 1))
+
+        def node_mutation():
             need(32, "EDIT-RECORD-TARGET")
             e.var("target_at", p["at"])
             e.set("at", e.add(p["at"], 32))
@@ -613,9 +746,44 @@ def _begin(tables):
                 e.if_(running(), graph)
 
             e.if_(running(), located)
-            e.set("mi", e.add(p["mi"], 1))
 
         e.while_(lambda: e.both(e.lt(p["mi"], p["count"]), running()), mutation)
+
+        def supplied():
+            """S15d.4a (ADR-312): the objects the record supplies, each kept as a new object of the transaction's own."""
+            e.var("supplied", uleb("s_count"))
+            e.if_(e.both(running(), e.lt(MUT_LIMIT, p["supplied"])), malformed("EDIT-RECORD-COUNT"))
+            e.if_(e.both(running(), e.eq(p["supplied"], 0)), malformed("EDIT-RECORD-END"))  # an empty section is no section
+            e.var("si", 0)
+
+            def one():
+                e.var("xe", _ctrl(e, E_EXTRAS))
+                e.var("xrow", e.add(EXTRA, e.mul(p["xe"], EXTRA_WORDS)))
+                e.var("s_kind_v", uleb("s_kind"))
+                e.var("s_refs_v", uleb("s_refs"))
+                e.if_(e.both(running(), e.lt(EIN_LIMIT, p["s_refs_v"])), malformed("EDIT-RECORD-OBJECT"))
+                need(e.mul(e.sel(running(), p["s_refs_v"], 0), 32), "EDIT-RECORD-OBJECT")
+                e.var("s_refs_at", p["at"])
+                e.set("at", e.add(p["at"], e.mul(e.sel(running(), p["s_refs_v"], 0), 32)))
+                e.var("s_body_v", 0)
+                e.if_(running(), lambda: e.set("s_body_v", uleb("s_body")))
+                need(e.sel(running(), p["s_body_v"], 0), "EDIT-RECORD-OBJECT")
+                e.var("s_body_at", p["at"])
+                e.set("at", e.add(p["at"], e.sel(running(), p["s_body_v"], 0)))
+
+                def keep():
+                    e.st(e.add(p["xrow"], 3), NONE)  # no alias yet
+                    for field, value in ((X_SUPPLIED, 1), (X_KIND, p["s_kind_v"]), (X_NREFS, p["s_refs_v"]), (X_REFS, p["s_refs_at"]),
+                                         (X_BODY_LENGTH, p["s_body_v"]), (X_BODY, p["s_body_at"]), (X_REACHED, 0)):
+                        e.st(e.add(p["xrow"], field), value)
+                    _set(e, E_EXTRAS, e.add(p["xe"], 1))
+
+                e.if_(running(), keep)
+                e.set("si", e.add(p["si"], 1))
+
+            e.while_(lambda: e.both(e.lt(p["si"], p["supplied"]), running()), one)
+
+        e.if_(e.both(running(), e.lt(p["at"], e.add(EIN, p["length"]))), supplied)
         e.if_(e.both(running(), e.ne(p["at"], e.add(EIN, p["length"]))), malformed("EDIT-RECORD-END"))
         e.if_(e.both(running(), e.eq(p["count"], 0)), lambda: _reject(
             e, "XAX.WORKSPACE.EMPTY_TRANSACTION", lambda: D.text(e, "R0"), "WORKSPACE-MUTATION-NONEMPTY", lambda: D.text(e, ">= 1 mutation"),
@@ -726,6 +894,7 @@ def _begin(tables):
                                 e.st(e.add(p["xrow"], 1), p["cm_bytes"])
                                 e.st(e.add(p["xrow"], 2), p["cm_value"])
                                 e.st(e.add(p["xrow"], 3), NONE)
+                                e.st(e.add(p["xrow"], X_SUPPLIED), 0)
                                 e.st(e.add(p["cm_row"], 7), p["xe"])
                                 _set(e, E_EXTRAS, e.add(p["xe"], 1))
 
@@ -739,7 +908,8 @@ def _begin(tables):
 
             e.if_(running(), preconditions)
 
-        e.for_("cmq", 0, e.sel(running(), _ctrl(e, E_MUTATIONS), 0), lambda: e.if_(running(), lambda: check(p["cmq"])))
+        e.for_("cmq", 0, e.sel(running(), _ctrl(e, E_MUTATIONS), 0), lambda: e.if_(
+            e.both(running(), e.ne(_mutation(e, p["cmq"], 0), REPLACE_REFERENCE)), lambda: check(p["cmq"])))
         e.give(_ctrl(e, E_STATUS))
 
     def affected_stage(e: E):
@@ -901,6 +1071,7 @@ def _begin(tables):
                                 e.st(e.add(p["xrow"], 1), p["cm_bytes"])
                                 e.st(e.add(p["xrow"], 2), p["cm_value"])
                                 e.st(e.add(p["xrow"], 3), NONE)
+                                e.st(e.add(p["xrow"], X_SUPPLIED), 0)
                                 e.st(e.add(p["cm_row"], 7), p["xe"])
                                 _set(e, E_EXTRAS, e.add(p["xe"], 1))
 
@@ -915,7 +1086,8 @@ def _begin(tables):
             e.if_(running(), preconditions)
 
         # The workspace checks the users' topology before each node's precondition.
-        e.for_("cpq", 0, e.sel(running(), _ctrl(e, E_MUTATIONS), 0), lambda: e.if_(running(), lambda: precondition(p["cpq"])))
+        e.for_("cpq", 0, e.sel(running(), _ctrl(e, E_MUTATIONS), 0), lambda: e.if_(
+            e.both(running(), e.ne(_mutation(e, p["cpq"], 0), REPLACE_REFERENCE)), lambda: precondition(p["cpq"])))
         e.give(_ctrl(e, E_STATUS))
 
     stages = [_function((), stage, tables) for stage in (parse, locate, affected_stage, check_stage)]
@@ -994,9 +1166,24 @@ def _next(tables):
             _set(e, E_BODY_AT, p["pre"])
             e.for_("bq", 0, length, lambda: _pre_byte(e, e.ld(e.add(at_word, p["bq"]))))
 
+        def supplied_extra():
+            """S15d.4a: a supplied object's preimage, from the record."""
+            for name, field in (("xkind", X_KIND), ("xnrefs", X_NREFS), ("xrefs", X_REFS), ("xbody", X_BODY), ("xblen", X_BODY_LENGTH)):
+                e.var(name, e.ld(e.add(p["xrow"], field)))  # names: values cross blocks only so
+            header(p["xkind"], p["xnrefs"])
+            e.for_("xr", 0, e.mul(p["xnrefs"], 32), lambda: _pre_byte(e, e.ld(e.add(p["xrefs"], p["xr"]))))
+            body_from(p["xbody"], p["xblen"])
+            _set(e, E_SLOT, e.add(p["xrow"], 4))
+            _set(e, E_OBJECT, e.add(EXTRA_TAG, p["x"]))
+            _set(e, E_EXTRAS_DONE, e.add(p["x"], 1))
+            e.set("result", MORE)
+
         def extra():
             e.var("x", _ctrl(e, E_EXTRAS_DONE))
             e.var("xrow", e.add(EXTRA, e.mul(p["x"], EXTRA_WORDS)))
+            e.if_(e.ne(e.ld(e.add(p["xrow"], X_SUPPLIED)), 0), supplied_extra, constant_extra)
+
+        def constant_extra():
             e.var("xtype", e.ld(p["xrow"]))
             header(int(Kind.CONSTANT), 1)
             _pre_cid(e, [_cid_word(e, p["xtype"], k) for k in range(4)])
@@ -1023,6 +1210,15 @@ def _next(tables):
                     e.var("blocked", 0)
                     e.for_("nr", 0, _nrefs(e, p["o"]), lambda: e.if_(e.ne(_ref(e, p["o"], p["nr"]), NONE), lambda: e.if_(
                         e.eq(e.ld(e.add(STATE, _ref(e, p["o"], p["nr"]))), 1), lambda: e.set("blocked", 1))))
+
+                    def replacement():
+                        """S15d.4a: a replacement child of the store's that is itself rebuilt comes first."""
+                        e.var("rn", _call(e, "replaced", p["o"], _mutation(e, p["bq"], 3)))
+                        e.if_(e.both(e.lt(p["rn"], EXTRA_TAG), e.ne(p["rn"], NONE)), lambda: e.if_(
+                            e.eq(e.ld(e.add(STATE, p["rn"])), 1), lambda: e.set("blocked", 1)))
+
+                    e.for_("bq", 0, _ctrl(e, E_MUTATIONS), lambda: e.if_(e.both(
+                        e.eq(_mutation(e, p["bq"], 0), REPLACE_REFERENCE), e.eq(_mutation(e, p["bq"], 1), p["o"])), replacement))
                     e.if_(e.eq(p["blocked"], 0), lambda: e.set("ready", p["o"]))
 
                 e.if_(e.eq(e.ld(e.add(STATE, p["o"])), 1), candidate)
@@ -1105,8 +1301,9 @@ def _next(tables):
 
 
 def _module_ref(e: E, o, k):
-    """A module's or program root's reference ``k``, collected."""
-    _call(e, "insert", _ref(e, o, k))
+    """A module's or program root's reference ``k`` (S15d.4a: or its replacement), collected."""
+    e.var("mref", _call(e, "replaced", o, _ref(e, o, k)))
+    _call(e, "insert", e.p["mref"])
 
 
 def _reach(tables):
@@ -1127,8 +1324,31 @@ def _reach(tables):
             e.var("s", e.ld(e.add(STACK, p["sp"])))
 
             def extra():
-                e.var("xa", e.ld(e.add(e.add(EXTRA, e.mul(e.sub(p["s"], EXTRA_TAG), EXTRA_WORDS)), 3)))
+                e.var("xrow", e.add(EXTRA, e.mul(e.sub(p["s"], EXTRA_TAG), EXTRA_WORDS)))
+                e.var("xa", e.ld(e.add(p["xrow"], 3)))
                 e.if_(e.ne(p["xa"], NONE), lambda: push(p["xa"]))
+
+                def supplied():
+                    """S15d.4a: a supplied object nothing aliases is written; its references are reached (each an object
+                    of the store or another supplied one; anything else is EDIT-OBJECT-REFERENCE)."""
+                    e.st(e.add(p["xrow"], X_REACHED), 1)
+                    e.var("xrefs", e.ld(e.add(p["xrow"], X_REFS)))
+
+                    def each():
+                        for k in range(4):
+                            e.var(f"xw{k}", 0)
+                            for j in range(8):
+                                e.set(f"xw{k}", e.add(e.mul(p[f"xw{k}"], 256), e.ld(e.add(p["xrefs"], e.add(e.mul(p["xq"], 32), 8 * k + j)))))
+                            _set(e, KEY + k, p[f"xw{k}"])
+                        e.var("xs", _call(e, "resolve"))
+                        e.if_(e.eq(p["xs"], NONE), lambda: _reject(
+                            e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: D.text(e, "edit"), "EDIT-OBJECT-REFERENCE",
+                            lambda: D.text(e, "an object of the store or of the record"), lambda: _record_cid(e, e.add(p["xrefs"], e.mul(p["xq"], 32)))),
+                              lambda: push(p["xs"]))
+
+                    e.for_("xq", 0, e.ld(e.add(p["xrow"], X_NREFS)), each)
+
+                e.if_(e.both(e.eq(p["xa"], NONE), e.ne(e.ld(e.add(p["xrow"], X_SUPPLIED)), 0), e.eq(e.ld(e.add(p["xrow"], X_REACHED)), 0)), supplied)
 
             def object_():
                 e.var("st", e.ld(e.add(STATE, p["s"])))
@@ -1202,7 +1422,12 @@ def _place(tables):
                 e.var("same", e.flag(e.eq(e.ld(e.add(p["row"], 8)), 0)))
                 for k in range(4):
                     e.set("same", e.and_(p["same"], e.flag(e.eq(e.ld(e.add(p["other"], k)), p[f"key{k}"]))))
-                e.if_(e.ne(p["same"], 0), lambda: e.st(e.add(e.add(NEWT, e.mul(p["last"], NEWT_WORDS)), 8), 1))
+                def same():
+                    e.st(e.add(e.add(NEWT, e.mul(p["last"], NEWT_WORDS)), 8), 1)
+                    # S15d.4a: a rebuilt object equal to a supplied one is written as that supplied object, reached.
+                    e.if_(e.le(EXTRA_TAG, p["object"]), lambda: e.st(e.add(e.add(EXTRA, e.mul(e.sub(p["object"], EXTRA_TAG), EXTRA_WORDS)), X_REACHED), 1))
+
+                e.if_(e.ne(p["same"], 0), same)
 
             e.for_("eq", 0, p["last"], compare)
 
@@ -1273,7 +1498,12 @@ def _batch(tables):
 
                 e.if_(fits(e.add(64, e.add(e.mul(p["n_refs"], 32), p["n_body"]))), body, lambda: e.set("full", 1))
 
-            e.if_(e.eq(e.ld(e.add(p["row"], 8)), 0), write)
+            # S15d.4a: a supplied object ``reach`` did not reach is not written.
+            e.var("n_obj", e.ld(e.add(p["row"], 7)))
+            e.var("n_xrow", e.add(EXTRA, e.mul(e.sel(e.le(EXTRA_TAG, p["n_obj"]), e.sub(p["n_obj"], EXTRA_TAG), 0), EXTRA_WORDS)))
+            e.var("n_unreached", e.flag(e.both(e.le(EXTRA_TAG, p["n_obj"]), e.ne(e.ld(e.add(p["n_xrow"], X_SUPPLIED)), 0),
+                                               e.eq(e.ld(e.add(p["n_xrow"], X_REACHED)), 0))))
+            e.if_(e.both(e.eq(e.ld(e.add(p["row"], 8)), 0), e.eq(p["n_unreached"], 0)), write)
 
         e.for_("nq", 0, _ctrl(e, E_NEW), new_object)
 
@@ -1318,6 +1548,7 @@ def build_functions():
     functions, objects = {}, []
     for name, builder in (("record_uleb", _record_uleb_function), ("uleb_read", _uleb_read_function), ("put_uleb", _put_uleb_function), ("copy_uleb", _copy_uleb_function),
                           ("copy_string", _copy_string_function), ("search", _search_function), ("insert", _insert_function),
+                          ("resolve", _resolve_function), ("replaced", _replaced_function),
                           ("reference", _reference_function), ("scan_graph", _scan_graph_function), ("scan_other", _scan_other_function)):
         _F[name], items = builder()
         objects.extend(items)
@@ -1328,17 +1559,29 @@ def build_functions():
     return functions, tuple(objects)
 
 
-def edit_record(mutations, expected_root: bytes = bytes(32)) -> bytes:
-    """The edit record for ``mutations``: ``(kind, function CID, block, node, expected, value)`` each."""
+def edit_record(mutations, expected_root: bytes = bytes(32), objects=()) -> bytes:
+    """The edit record for ``mutations``: ``(kind, function CID, block, node, expected, value)`` for an operation or a
+    constant, ``(REPLACE_REFERENCE, owner CID, old child CID, new child CID)`` for a reference (S15d.4a); ``objects``,
+    the new objects the transaction supplies (``SemanticObject``s, each written as its kind, references and body)."""
     data = bytearray(RECORD_MAGIC + expected_root + uleb(len(mutations)))
-    for kind, function_cid, block, node, expected, value in mutations:
-        data += uleb(kind) + function_cid + uleb(block) + uleb(node) + uleb(expected) + uleb(value)
+    for kind, *fields in mutations:
+        if kind == REPLACE_REFERENCE:
+            owner, old, new = fields
+            data += uleb(kind) + owner + old + new
+        else:
+            function_cid, block, node, expected, value = fields
+            data += uleb(kind) + function_cid + uleb(block) + uleb(node) + uleb(expected) + uleb(value)
+    if objects:
+        data += uleb(len(objects))
+        for item in objects:
+            data += uleb(int(item.kind)) + uleb(len(item.references)) + b"".join(item.references) + uleb(len(item.body)) + item.body
     return bytes(data)
 
 
-def parse_record(record: bytes):
-    """``(expected root or None, ((kind, function CID, block, node, expected, value), ...))`` of a well-formed record."""
-    from xax_compiler import Cursor
+def parse_record(record: bytes, with_objects: bool = False):
+    """``(expected root or None, mutations)`` of a well-formed record (``edit_record``'s tuples); with ``with_objects``
+    also the supplied objects."""
+    from xax_compiler import Cursor, Kind as K, SemanticObject
 
     if record[:len(RECORD_MAGIC)] != RECORD_MAGIC:
         raise ValueError("not an edit record")
@@ -1347,10 +1590,25 @@ def parse_record(record: bytes):
     mutations = []
     for _ in range(cursor.uleb()):
         kind = cursor.uleb()
+        if kind == REPLACE_REFERENCE:
+            mutations.append((kind, cursor.take(32), cursor.take(32), cursor.take(32)))
+            continue
         function_cid = cursor.take(32)
         mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb(), cursor.uleb(), cursor.uleb()))
+    objects = []
+    if cursor.remaining:
+        start = cursor.pos
+        count = cursor.uleb()
+        if not count:  # an empty section is no section: the record ends before it
+            cursor.pos = start
+            cursor.end("EDIT-RECORD-END")
+        for _ in range(count):
+            kind = K(cursor.uleb())
+            references = tuple(cursor.take(32) for _ in range(cursor.uleb()))
+            objects.append(SemanticObject.create(kind, cursor.take(cursor.uleb()), references))
     cursor.end("EDIT-RECORD-END")
-    return (None if root == bytes(32) else root), tuple(mutations)
+    parsed = (None if root == bytes(32) else root), tuple(mutations)
+    return (*parsed, tuple(objects)) if with_objects else parsed
 
 
 def apply_reference(reader, record: bytes):
@@ -1359,13 +1617,22 @@ def apply_reference(reader, record: bytes):
     the same mutations.  It checks the root and each node's expected operation or value, and nothing else."""
     from xax_compiler import Cursor, SemanticObject, StoreReader, ref_body, write_store
 
-    root, mutations = parse_record(record)
+    root, mutations, supplied = parse_record(record, with_objects=True)
     if root is not None and root != reader.root_cid:
         raise ValueError("stale root")
     objects = {item.cid: item for item in reader.objects()}
     edits: dict[bytes, dict[tuple[int, int], tuple]] = {}
     extras: dict[tuple[bytes, int, int], SemanticObject] = {}
-    for kind, function_cid, block, node, expected, value in mutations:
+    replaced: dict[bytes, dict[bytes, bytes]] = {}  # S15d.4a: owner -> {old child: new child}
+    given = {item.cid: item for item in supplied}
+    for kind, *fields in mutations:
+        if kind == REPLACE_REFERENCE:
+            owner, old, new = fields
+            if owner not in objects or old not in objects[owner].references or (new not in objects and new not in given):
+                raise ValueError("reference precondition")
+            replaced.setdefault(owner, {})[old] = new
+            continue
+        function_cid, block, node, expected, value = fields
         function_object = objects[function_cid]
         graph = objects[function_object.references[Cursor(function_object.body, "").uleb()]]
         edits.setdefault(graph.cid, {})[(block, node)] = (kind, expected, value)
@@ -1479,7 +1746,7 @@ def apply_reference(reader, record: bytes):
     for item in objects.values():
         for child in item.references:
             users.setdefault(child, []).append(item.cid)
-    affected, pending = set(edits), list(edits)
+    affected, pending = set(edits) | set(replaced), [*edits, *replaced]
     while pending:
         for user in users.get(pending.pop(), ()):
             if user not in affected:
@@ -1504,21 +1771,26 @@ def apply_reference(reader, record: bytes):
     def current(cid: bytes) -> bytes:
         return new[cid].cid if cid in new else cid
 
+    def child(owner: bytes, cid: bytes) -> bytes:
+        """The child an owner's reference names after the transaction (its replacement, at its current version)."""
+        return current(replaced.get(owner, {}).get(cid, cid))
+
     done: set[bytes] = set()
     while len(done) < len(affected):
         for cid in sorted(affected):
             owner = objects[cid]
-            if cid in done or any(child in affected and child not in done for child in owner.references):
+            children = [replaced.get(cid, {}).get(item, item) for item in owner.references]
+            if cid in done or any(item in affected and item not in done for item in children):
                 continue
             if owner.kind in (Kind.MODULE, Kind.PROGRAM_ROOT):
-                references = sorted({current(child) for child in owner.references})
+                references = sorted({child(cid, item) for item in owner.references})
                 body = ref_body(range(len(references)))
             else:
                 collected: list[bytes] = []
 
                 def collect(index, site, owner=owner):
                     extra = extras.get((owner.cid, *site)) if site is not None else None
-                    collected.append(extra.cid if extra is not None else current(owner.references[index]))
+                    collected.append(extra.cid if extra is not None else child(owner.cid, owner.references[index]))
                     return b""
 
                 scan(owner, collect, False)
@@ -1527,7 +1799,7 @@ def apply_reference(reader, record: bytes):
                 body = scan(owner, lambda _index, _site: uleb(references.index(next(order))), True)
             new[cid] = SemanticObject.create(owner.kind, body, references)
             done.add(cid)
-    pool = {**objects, **{item.cid: item for item in new.values()}, **{item.cid: item for item in extras.values()}}
+    pool = {**objects, **given, **{item.cid: item for item in new.values()}, **{item.cid: item for item in extras.values()}}
     root_cid = current(reader.root_cid)
     reached, pending = {}, [root_cid]
     while pending:
@@ -1538,4 +1810,5 @@ def apply_reference(reader, record: bytes):
     return StoreReader(write_store(root_cid, tuple(reached.values())))
 
 
-__all__ = ["EB", "RECORD_MAGIC", "SET_CONSTANT", "SET_OPERATION", "apply_reference", "build_functions", "edit_record", "parse_record"]
+__all__ = ["EB", "RECORD_MAGIC", "REPLACE_REFERENCE", "SET_CONSTANT", "SET_OPERATION", "apply_reference", "build_functions", "edit_record",
+           "parse_record"]

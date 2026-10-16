@@ -538,11 +538,11 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15b.0 | A 512 MiB input view for the verifier's object table of the growing driver store; the seed rotated to carry it (ADR-287) | S15a | DONE |
 | S15b.1 | The driver's verification precedence becomes `verify_store`'s (objects in store order; the first failing check of the first failing object; the store's rootedness last), and the store verifier's object rejections (`OBJECT_SITES`, `object_diagnostic`, `object_entity`, the build/target/ULEB renderers) are rendered as exact records in XAX; other failures keep `XAX.DRIVER.VERIFY` (ADR-288) | S15b.0 | DONE |
 | S15b.2 | Type and constant rejections (`TYPE_SITES`, `CONSTANT_SITES`, `object_rejections`) rendered in XAX (ADR-289) | S15b.1 | DONE |
-| S15b.3 | Graph rejections in `_parse_graph`'s order: resolution and glue (`GRAPH_TRAP_PAYLOAD`, `GRAPH_UNUSED`), CFG, operation typing (S8c.1-7), memory facts (`MEMORY_SITES`, `memory_diagnostic`), linear flow (`LINEAR_SITES`) | S15b.2 | UNIMPLEMENTED |
+| S15b.3 | Graph rejections in `_parse_graph`'s order: resolution and glue (`GRAPH_TRAP_PAYLOAD`, `GRAPH_UNUSED`), CFG, operation typing (S8c.1-7), memory facts (`MEMORY_SITES`, `memory_diagnostic`), linear flow (`LINEAR_SITES`) | S15b.2 | DONE: S15b.3a-S15b.3d (ADR-292 to ADR-297, ADR-311, ADR-313) |
 | S15b.3a | Operation typing, terminator, linear and CFG branch-target graph rejections in `_parse_graph`'s order, computed by the typing program (ADR-292) | S15b.2 | DONE |
 | S15b.3b | Memory-fact rejections (`MEMORY_SITES`, `memory_diagnostic`) rendered by the typing program, except declaration-decoding and stack-owner-entry sites (ADR-293) | S15b.3a | DONE |
 | S15b.3c | Invalid uses: the graph trimmed at each invalid use, re-typed, and the first use's diagnostic in the bootstrap's order (ADR-295) | S15b.3b | DONE |
-| S15b.3d | Declaration-decoding memory sites, stack-owner entry contracts, and constants or types reached inside a graph's parse (the latter done: ADR-296, ADR-297) | S15b.3c | PARTIAL |
+| S15b.3d | Declaration-decoding memory sites, stack-owner entry contracts, and constants or types reached inside a graph's parse (ADR-296, ADR-297); nested build decoders, lazy missing references, the remaining verify declines (ADR-311); declaration and stack-owner entry rejections rendered (ADR-313) | S15b.3c | DONE |
 | S15b.4 | ADR-280's declined code generation rules decided by the general program with exact diagnostics (ADR-294) | S15b.1 | DONE |
 | S15c | The remaining required build paths (B5): signature verification, external inputs and effects, profile grants, capacities | S14 | PARTIAL (ADR-298): S15c.1-S15c.4 DONE |
 | S15c.1 | Profile grants decided by `resolve` with `decode_snapshot`'s exact BUILD-GRANT-DECLARED (ADR-299) | S13c | DONE |
@@ -550,12 +550,14 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15c.3 | Ed25519 package signature verification in `build`, in XAX (ADR-301) | S13a | DONE |
 | S15c.4 | The driver's capacities as its own `XAX.DRIVER.CAPACITY` rejection (ADR-302) | S13 | DONE |
 | S15c.5 | Resolution under a trust policy other than the driver's own (signed snapshots made in XAX): `resolve-trusted` (ADR-309) | S15c.3 | DONE |
-| S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | PARTIAL: S15d.0-S15d.3 DONE (ADR-303 to ADR-306); S15d.4 open |
+| S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | PARTIAL: S15d.0-S15d.3 and S15d.4a DONE (ADR-303 to ADR-306, ADR-312); S15d.4b open |
 | S15d.0 | Room for the compiler's own lowering views in the general program (the image buffer at a fixed place, views to 36M words); the seed rotated to carry it (ADR-303) | S15c | DONE |
 | S15d.1 | An XAX-hosted transaction engine: the production compiler's `edit` command (graph-local mutations, the canonical cascade to the root, the S9 writer), equal to the Python workspace (ADR-298, ADR-304) | S13c | DONE |
 | S15d.2 | The committed compiler stores become authoritative: an evolution ledger of transactions since each builder baseline, checked by `test_store_regeneration` (ADR-298, ADR-305) | S15d.1 | DONE |
 | S15d.3 | One real compiler change made only through S15d.1: verified, rebuilt, self-compiled to a fixed point, regression-tested (ADR-298, ADR-306) | S15d.2 | DONE: the external input bound raised from 64 to 100 by a 35-mutation transaction |
-| S15d.4 | The engine's vocabulary for ordinary changes: node insertion and deletion, uses, edge arguments, result types and signatures (the workspace's), then new functions, so a builder is no longer needed for ordinary compiler changes (B6) | S15d.3 | UNIMPLEMENTED |
+| S15d.4 | The engine's vocabulary for ordinary changes: node insertion and deletion, uses, edge arguments, result types and signatures (the workspace's), then new functions, so a builder is no longer needed for ordinary compiler changes (B6) | S15d.3 | PARTIAL |
+| S15d.4a | `REPLACE_REFERENCE` with objects the record supplies: any reference (a graph, a function, a constant or type) replaced by new objects, the cascade to the root (ADR-312) | S15d.3 | DONE |
+| S15d.4b | The workspace's fine-grained graph mutations (node insertion and deletion, uses, edge arguments, result types) in the engine, and a structural compiler change made only through the ledger (B6) | S15d.4a | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |
 | S15e.0 | Arena headroom for target backends in the driver: the general program's code buffer sized to the compiler's largest function; the seed rotated (ADR-307) | S15d | DONE |
 | S15c.5a | The general program's ELF buffer taken after the views (arena room for the driver's largest function); the seed rotated (ADR-310) | S15e.1 | DONE |
