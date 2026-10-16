@@ -28,15 +28,21 @@ results travel in its control words (``B_*``, after the semantic helpers' ``C_*`
 from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
+import xax_selfhost_ed25519 as ED
 from xax_artifact import XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, container_lowering_identity
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import CID_SIZE, Kind, uleb
 from xax_selfhost_facts import E, _function
+from xax_ed25519 import ALGORITHM, DOMAIN
 from xax_selfhost_semantic import CTRL, _END, _body, _cid_word, _kind, _ref
 
 # Control words: the outcome, the objects found, the artifact flag, the digest (four little-endian words).
 (B_STATUS, B_SNAPSHOT, B_REQUEST, B_TARGET, B_PROFILE, B_ENTRY, B_DYNAMIC, B_ARTIFACT) = range(32, 40)
 B_DIGEST = 40
+# S15c.2 (ADR-300): the input files' digests, sorted and each once, one byte per word (set by the driver).
+B_INPUTS = 44
+INPUTS_AT, INPUTS_LIMIT = 46 << 20, 64
+TRUST_AT = 47 << 20  # S15c.3: per snapshot signature, 1 once it is accepted
 ACCEPT, REJECT, DECLINE = 0, 1, 2
 GENERAL_IDENTITIES = (b"x86_64-linux-elf-exec-v1", b"x86_64-linux-elf-dynexec-v1")  # ``xax_selfhost_driver``'s
 KIND_NAMES = {int(kind): kind.name for kind in Kind}
@@ -136,7 +142,128 @@ def _reject(e: E, code: str, entity, rule: str, expected, actual):
     e.set("outcome", REJECT)
 
 
-def _build_request(tables):
+def _strings(e: E, r: _Reader, name: str):
+    """The cursor's count of byte strings: their count and where the first starts; the cursor moves past them."""
+    e.var(f"{name}_count", r.uleb())
+    e.var(f"{name}_at", e.p["cur"])
+    r.repeat(f"{name}_skip", e.p[f"{name}_count"], r.skip_bytes)
+
+
+def _listed(e: E, r: _Reader, name: str, at, length):
+    """1 when the byte string ``rd[at : at + length]`` is one of the strings ``_strings`` found as ``name``."""
+    p = e.p
+    e.var(f"{name}_hit", 0)
+    e.var(f"{name}_saved", p["cur"])
+    e.set("cur", p[f"{name}_at"])
+
+    def each():
+        e.var(f"{name}_length", r.uleb())
+        e.var(f"{name}_same", e.flag(e.eq(p[f"{name}_length"], length)))
+        e.for_(f"{name}_k", 0, e.sel(e.ne(p[f"{name}_same"], 0), length, 0), lambda: e.set(f"{name}_same", e.and_(p[f"{name}_same"], e.flag(
+            e.eq(e.rd(e.add(p["cur"], p[f"{name}_k"])), e.rd(e.add(at, p[f"{name}_k"])))))))
+        e.set(f"{name}_hit", e.or_(p[f"{name}_hit"], p[f"{name}_same"]))
+        e.set("cur", e.add(p["cur"], p[f"{name}_length"]))
+
+    e.for_(f"{name}_each", 0, p[f"{name}_count"], each)
+    e.set("cur", p[f"{name}_saved"])
+    return p[f"{name}_hit"]
+
+
+def _trust(e: E, r: _Reader, verify):
+    """``_validate_trust`` under a policy requiring package signatures, with ``xax_ed25519.signature_verifier``: in
+    CID order, each package needs a signature of it that is trusted (its algorithm and signer accepted, its value
+    verified); the trusted signatures must be exactly the snapshot's."""
+    p = e.p
+    r.at(p["policy"])
+    e.set("cur", e.add(p["cur"], 3))  # the form and the two requirement flags
+    _strings(e, r, "algorithms")
+    _strings(e, r, "signers")
+    e.for_("tz", 0, p["signatures"], lambda: e.st(e.add(TRUST_AT, p["tz"]), 0))
+    e.var("pcur", p["packages_at"])
+
+    def package():
+        e.set("cur", p["pcur"])
+        e.var("root", r.ref("snapshot"))
+        e.set("pcur", p["cur"])
+        e.var("matched", 0)
+        e.var("scur", p["signatures_at"])
+
+        def signature():
+            e.set("cur", p["scur"])
+            e.var("signature_object", r.ref("snapshot"))
+            e.set("scur", p["cur"])
+            r.at(p["signature_object"])
+            r.uleb()  # the form
+            e.var("signed", r.ref("signature_object"))
+
+            def candidate():
+                fields = []
+                for field in ("algorithm", "signer", "value"):
+                    e.var(f"{field}_length", r.uleb())
+                    e.var(f"{field}_at", p["cur"])
+                    e.set("cur", e.add(p["cur"], p[f"{field}_length"]))
+                    fields.append(field)
+                e.var("trusted", e.and_(_listed(e, r, "algorithms", p["algorithm_at"], p["algorithm_length"]),
+                                        _listed(e, r, "signers", p["signer_at"], p["signer_length"])))
+                e.var("ed25519", e.flag(e.eq(p["algorithm_length"], len(ALGORITHM))))
+                for k, byte in enumerate(ALGORITHM):
+                    e.set("ed25519", e.and_(p["ed25519"], e.flag(e.eq(e.rd(e.add(p["algorithm_at"], k)), byte))))
+                e.set("trusted", e.and_(p["trusted"], p["ed25519"]))
+                e.set("trusted", e.and_(p["trusted"], e.flag(e.both(e.eq(p["signer_length"], 32), e.eq(p["value_length"], 64)))))
+
+                def verified():
+                    e.for_("vk", 0, 32, lambda: e.st(e.add(ED.PK_AT, p["vk"]), e.rd(e.add(p["signer_at"], p["vk"]))))
+                    e.for_("vs", 0, 64, lambda: e.st(e.add(ED.SIG_AT, p["vs"]), e.rd(e.add(p["value_at"], p["vs"]))))
+                    for k, byte in enumerate(DOMAIN):
+                        e.st(ED.MSG_AT + k, byte)
+                    for word in range(4):
+                        e.var(f"root_word{word}", _cid_word(e, p["root"], word))
+                        for k in range(8):
+                            e.st(ED.MSG_AT + len(DOMAIN) + 8 * word + k, e.and_(e.udiv(p[f"root_word{word}"], 1 << (8 * (7 - k))), 255))
+                    e.st(ED.MSG_LENGTH, len(DOMAIN) + CID_SIZE)
+                    e.set("trusted", e.call(verify))
+
+                e.if_(e.ne(p["trusted"], 0), verified)
+
+                def accepted():
+                    e.set("matched", 1)
+                    e.st(e.add(TRUST_AT, p["sq"]), 1)
+
+                e.if_(e.ne(p["trusted"], 0), accepted)
+
+            e.if_(e.eq(p["signed"], p["root"]), candidate)
+
+        e.for_("sq", 0, p["signatures"], signature)
+        e.if_(e.eq(p["matched"], 0), lambda: _reject(
+            e, "XAX.TRUST.REQUIRED", lambda: _cid(e, p["root"]), "TRUST-SIGNATURE-REQUIRED",
+            lambda: D.text(e, "accepted valid signature"), lambda: D.text(e, "missing")))
+
+    e.var("pk", 0)
+    e.while_(lambda: e.both(e.lt(p["pk"], p["packages"]), e.eq(p["outcome"], ACCEPT)), lambda: (package(), e.set("pk", e.add(p["pk"], 1))))
+    e.var("unaccepted", 0)
+    e.for_("tu", 0, p["signatures"], lambda: e.set("unaccepted", e.add(p["unaccepted"], e.flag(e.eq(e.ld(e.add(TRUST_AT, p["tu"])), 0)))))
+
+    def listed(only_accepted: bool):
+        def write():
+            D.put(e, D.T_LIST)
+            D.put(e, e.sub(p["signatures"], p["unaccepted"]) if only_accepted else p["signatures"])
+            e.set("cur", p["signatures_at"])
+
+            def each():
+                e.var("listed_signature", r.ref("snapshot"))
+                if only_accepted:
+                    e.if_(e.ne(e.ld(e.add(TRUST_AT, p["lq"])), 0), lambda: _cid(e, p["listed_signature"]))
+                else:
+                    _cid(e, p["listed_signature"])
+
+            e.for_("lq", 0, p["signatures"], each)
+        return write
+
+    e.if_(e.both(e.eq(p["outcome"], ACCEPT), e.ne(p["unaccepted"], 0)), lambda: _reject(
+        e, "XAX.TRUST.SNAPSHOT", lambda: D.text(e, "snapshot"), "TRUST-SNAPSHOT-SIGNATURES", listed(False), listed(True)))
+
+
+def _build_request(tables, verify):
     def build(e: E):
         p = e.p
         r = _Reader(e)
@@ -172,10 +299,13 @@ def _build_request(tables):
             r.skip_bytes()  # the resolver identity
             e.var("policy", r.ref("snapshot"))
             e.var("packages", r.uleb())
-            e.var("first_package", r.ref("snapshot"))  # the request's package is in the closure
-            r.repeat("sp", e.sub(p["packages"], 1), r.uleb)
-            r.repeat("ss", r.uleb(), r.uleb)  # signatures
+            e.var("packages_at", p["cur"])
+            r.repeat("sp", p["packages"], r.uleb)
+            e.var("signatures", r.uleb())
+            e.var("signatures_at", p["cur"])
+            r.repeat("ss", p["signatures"], r.uleb)
             e.var("digests", r.uleb())
+            e.var("digests_at", p["cur"])
 
             def digests():
                 D.put(e, D.T_LIST)
@@ -187,22 +317,40 @@ def _build_request(tables):
                     for word in range(CID_SIZE // 8):
                         value = e.c(0)
                         for k in reversed(range(8)):
-                            value = e.add(e.mul(value, 256), r.byte(e.add(e.mul(p["sd"], CID_SIZE), 8 * word + k)))
+                            value = e.add(e.mul(value, 256), e.rd(e.add(p["digests_at"], e.add(e.mul(p["sd"], CID_SIZE), 8 * word + k))))
                         D.put(e, value)
 
                 e.for_("sd", 0, p["digests"], digest)
 
-            # ``_validate_external_inputs``: the driver is given none.
-            e.if_(e.ne(p["digests"], 0), lambda: _reject(
-                e, "XAX.BUILD.INPUT_CLOSURE", lambda: D.text(e, "external-inputs"), "BUILD-EXTERNAL-COMPLETE", digests,
-                lambda: (D.put(e, D.T_LIST), D.put(e, 0))))
+            # ``_validate_external_inputs`` (S15c.2): the digests of the input files the driver was given (``INPUTS_AT``,
+            # sorted, each once) are the snapshot's.
+            e.var("given", _ctrl(e, B_INPUTS))
+            e.var("inputs_same", e.flag(e.eq(p["given"], p["digests"])))
+            e.for_("ic", 0, e.sel(e.ne(p["inputs_same"], 0), e.mul(p["digests"], CID_SIZE), 0), lambda: e.set("inputs_same", e.and_(
+                p["inputs_same"], e.flag(e.eq(e.ld(e.add(INPUTS_AT, p["ic"])), e.rd(e.add(p["digests_at"], p["ic"])))))))
 
-            # ``_validate_trust`` without a signature verifier: the first package has no trusted signature.
+            def given():
+                D.put(e, D.T_LIST)
+                D.put(e, p["given"])
+
+                def digest():
+                    D.put(e, D.T_HEX)
+                    D.put(e, CID_SIZE)
+                    for word in range(CID_SIZE // 8):
+                        value = e.c(0)
+                        for k in reversed(range(8)):
+                            value = e.add(e.mul(value, 256), e.ld(e.add(INPUTS_AT, e.add(e.mul(p["gd"], CID_SIZE), 8 * word + k))))
+                        D.put(e, value)
+
+                e.for_("gd", 0, p["given"], digest)
+
+            e.if_(e.eq(p["inputs_same"], 0), lambda: _reject(
+                e, "XAX.BUILD.INPUT_CLOSURE", lambda: D.text(e, "external-inputs"), "BUILD-EXTERNAL-COMPLETE", digests, given))
+
+            # ``_validate_trust`` with the driver's verifier (S15c.3, ``xax_ed25519.signature_verifier``).
             def trust():
                 r.at(p["policy"])
-                e.if_(e.ne(r.byte(1), 0), lambda: _reject(  # after the one-byte form
-                    e, "XAX.TRUST.REQUIRED", lambda: _cid(e, p["first_package"]), "TRUST-SIGNATURE-REQUIRED",
-                    lambda: D.text(e, "accepted valid signature"), lambda: D.text(e, "missing")))
+                e.if_(e.ne(r.byte(1), 0), lambda: _trust(e, r, verify))
 
             when(trust)
 
@@ -327,7 +475,9 @@ def _provenance(tables):
 def build_functions():
     """``{name: function}`` and the objects they need."""
     functions, objects = {}, []
-    for name, builder in (("build_request", _build_request), ("provenance", _provenance)):
+    ed_functions, ed_objects = ED.build_functions()
+    objects.extend(ed_objects)
+    for name, builder in (("build_request", lambda tables: _build_request(tables, ed_functions["verify"])), ("provenance", _provenance)):
         function, items = builder(None)
         functions[name] = function
         objects.extend(items)

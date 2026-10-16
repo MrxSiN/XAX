@@ -31,7 +31,7 @@ import xax_selfhost_diagnostics as D
 from xax_build import BuildForm, trust_policy
 from xax_compiler import CID_SIZE, Kind, uleb
 from xax_selfhost_facts import E, _function
-from xax_selfhost_request import CTRL, _cid, _Reader
+from xax_selfhost_request import B_INPUTS, CTRL, INPUTS_AT, _cid, _Reader
 from xax_selfhost_semantic import _cid_word, _kind
 
 RESOLVER_IDENTITY = b"xax-driver-resolver-v1"
@@ -40,6 +40,10 @@ POLICY = trust_policy()  # the driver's trust policy: its body is a constant of 
 (R_STATUS, R_REQUEST, R_PACKAGES, R_LENGTH) = range(48, 52)
 R_POLICY = 52  # the policy's CID, four big-endian words (set by the driver)
 R_REFS_AT, R_BODY_AT, R_BODY_LENGTH = 56, 57, 58  # within the snapshot's preimage: its references and its body
+# S15c.1 (ADR-299): the first profile grant ``decode_snapshot`` rejects (``NO_GRANT`` when none), and the snapshot's
+# CID for its record (four big-endian words, set by the driver).
+R_GRANT, R_PROFILE, R_SNAPSHOT_CID = 24, 25, 26  # the CID in words 26 .. 29 (control words 20 .. 31 are otherwise unused)
+NO_GRANT = (1 << 64) - 1
 ACCEPT, REJECT, DECLINE = 0, 1, 2
 SELECTED_AT, STACK_AT, SNAPSHOT_AT = 40 << 20, 41 << 20, 42 << 20  # workspace words
 STACK_LIMIT, SNAPSHOT_LIMIT = 1 << 20, 1 << 20
@@ -61,7 +65,10 @@ def _select(tables):
         e.var("request", e.rd(1))
         e.var("objects", e.rd(0))
         e.var("package", 0)
+        e.var("grants", 0)
+        e.var("grants_at", 0)
         _set(e, R_REQUEST, p["request"])
+        _set(e, R_GRANT, NO_GRANT)
         running = lambda: e.eq(p["outcome"], ACCEPT)  # noqa: E731
 
         def decline():
@@ -76,10 +83,12 @@ def _select(tables):
             r.skip_bytes()  # the build entry
             r.uleb()  # the target
             e.var("profile", r.ref("request"))
+            _set(e, R_PROFILE, p["profile"])
             r.at(p["profile"])
             for _field in range(4):  # form, mode, optimization, verification
                 r.uleb()
-            e.if_(e.ne(r.uleb(), 0), decline)  # grants
+            e.set("grants", r.uleb())
+            e.set("grants_at", p["cur"])
 
         e.if_(running(), request)
         e.for_("clear", 0, p["objects"], lambda: e.st(e.add(SELECTED_AT, p["clear"]), 0))
@@ -163,12 +172,164 @@ def _select(tables):
             e.while_(lambda: e.both(e.ne(p["sp"], 0), running()), visit)
 
         e.if_(running(), walk)
+        e.if_(running(), lambda: _grants(e, r))
         e.var("selected", 0)
         e.for_("o", 0, p["objects"], lambda: e.set("selected", e.add(p["selected"], e.ld(e.add(SELECTED_AT, p["o"])))))
         _set(e, R_PACKAGES, p["selected"])
         _set(e, R_STATUS, p["outcome"])
         e.give(p["outcome"])
     return _function((), build, tables)
+
+
+def _package_identity(e: E, r: _Reader, package, name: str):
+    """The package's logical identity: where its bytes start and its length; the cursor is after it."""
+    r.at(package)
+    e.var(f"{name}_length", r.uleb())
+    e.var(f"{name}_at", e.p["cur"])
+    e.set("cur", e.add(e.p["cur"], e.p[f"{name}_length"]))
+
+
+def _same(e: E, name: str, x_at, x_length, y_at, y_length):
+    p = e.p
+    e.var(name, e.flag(e.eq(x_length, y_length)))
+    e.for_(f"{name}_k", 0, e.sel(e.ne(p[name], 0), x_length, 0), lambda: e.set(name, e.and_(p[name], e.flag(
+        e.eq(e.rd(e.add(x_at, p[f"{name}_k"])), e.rd(e.add(y_at, p[f"{name}_k"])))))))
+    return p[name]
+
+
+def _grants(e: E, r: _Reader):
+    """``decode_snapshot``'s grant check over the selected packages: the first profile grant whose logical identity
+    no selected package has, or which some package with that identity does not declare, in ``R_GRANT``."""
+    p = e.p
+    e.var("gcur", p["grants_at"])
+    e.var("gq", 0)
+
+    def grant():
+        e.set("cur", p["gcur"])
+        e.var("gi_length", r.uleb())
+        e.var("gi_at", p["cur"])
+        e.set("cur", e.add(p["cur"], p["gi_length"]))
+        e.var("g_kind", r.uleb())
+        e.var("gs_length", r.uleb())
+        e.var("gs_at", p["cur"])
+        e.set("cur", e.add(p["cur"], p["gs_length"]))
+        e.set("gcur", p["cur"])
+        e.var("found", 0)
+        e.var("missing", 0)
+
+        def candidate():
+            def has_identity():
+                _package_identity(e, r, p["gp"], "gpi")
+
+                def declared():
+                    e.set("found", 1)
+                    r.repeat("gm", r.uleb(), r.uleb)  # modules
+                    r.repeat("gd", r.uleb(), lambda: e.if_(e.eq(r.uleb(), 1), r.uleb, r.skip_bytes))  # dependencies
+                    for name in ("ge", "gf", "gc"):  # build entries, features, configuration
+                        r.repeat(name, r.uleb(), lambda: (r.skip_bytes(), r.uleb()))
+                    e.var("has", 0)
+
+                    def capability():
+                        e.var("c_kind", r.uleb())
+                        e.var("cs_length", r.uleb())
+                        e.var("cs_at", p["cur"])
+                        e.set("cur", e.add(p["cur"], p["cs_length"]))
+                        e.if_(e.eq(p["c_kind"], p["g_kind"]), lambda: e.set("has", e.or_(p["has"], _same(
+                            e, "scope_same", p["cs_at"], p["cs_length"], p["gs_at"], p["gs_length"]))))
+
+                    r.repeat("gcap", r.uleb(), capability)
+                    e.if_(e.eq(p["has"], 0), lambda: e.set("missing", 1))
+
+                e.if_(e.ne(_same(e, "identity_same", p["gpi_at"], p["gpi_length"], p["gi_at"], p["gi_length"]), 0), declared)
+
+            e.if_(e.ne(e.ld(e.add(SELECTED_AT, p["gp"])), 0), has_identity)
+
+        e.for_("gp", 0, p["objects"], candidate)
+        e.if_(e.either(e.eq(p["found"], 0), e.ne(p["missing"], 0)), lambda: _set(e, R_GRANT, p["gq"]))
+        e.set("gq", e.add(p["gq"], 1))
+
+    e.while_(lambda: e.both(e.lt(p["gq"], p["grants"]), e.eq(_ctrl(e, R_GRANT), NO_GRANT)), grant)
+
+
+def _grant_record(tables):
+    """The record of ``decode_snapshot``'s BUILD-GRANT-DECLARED for grant ``R_GRANT``: the snapshot, the selected
+    packages' logical identities (each once, in package order), and the grant's identity and capability."""
+    def build(e: E):
+        p = e.p
+        r = _Reader(e)
+        e.var("objects", e.rd(0))
+        D.begin(e)
+        D.text(e, "XAX.BUILD.CAPABILITY")
+        D.cid(e, [_ctrl(e, R_SNAPSHOT_CID + k) for k in range(4)])
+        D.text(e, "BUILD-GRANT-DECLARED")
+
+        def identities(emit):
+            def each():
+                def selected():
+                    _package_identity(e, r, p["io"], "ii")
+                    e.var("first", 1)
+
+                    def earlier():
+                        def compare():
+                            _package_identity(e, r, p["ij"], "ij_id")
+                            e.if_(e.ne(_same(e, "earlier_same", p["ij_id_at"], p["ij_id_length"], p["ii_at"], p["ii_length"]), 0),
+                                  lambda: e.set("first", 0))
+
+                        e.if_(e.ne(e.ld(e.add(SELECTED_AT, p["ij"])), 0), compare)
+
+                    e.for_("ij", 0, p["io"], earlier)
+                    e.if_(e.ne(p["first"], 0), lambda: emit(p["ii_at"], p["ii_length"]))
+
+                e.if_(e.ne(e.ld(e.add(SELECTED_AT, p["io"])), 0), selected)
+
+            e.for_("io", 0, p["objects"], each)
+
+        e.var("distinct", 0)
+        identities(lambda _at, _length: e.set("distinct", e.add(p["distinct"], 1)))
+        D.put(e, D.T_LIST)
+        D.put(e, p["distinct"])
+        identities(lambda at, length: _bytes(e, D.T_HEX, at, length))
+        # The grant: its identity and its capability.
+        r.at(_ctrl(e, R_PROFILE))
+        for _field in range(4):
+            r.uleb()
+        r.uleb()  # the grant count
+        e.for_("gk", 0, _ctrl(e, R_GRANT), lambda: (r.skip_bytes(), r.uleb(), r.skip_bytes()))
+        e.var("gi_length", r.uleb())
+        e.var("gi_at", p["cur"])
+        e.set("cur", e.add(p["cur"], p["gi_length"]))
+        e.var("g_kind", r.uleb())
+        e.var("gs_length", r.uleb())
+        e.var("gs_at", p["cur"])
+        D.put(e, D.T_LIST)
+        D.put(e, 2)
+        _bytes(e, D.T_HEX, p["gi_at"], p["gi_length"])
+        D.put(e, D.T_OBJECT)
+        D.put(e, D.OBJECT_NAMES.index("BuildCapability"))
+        D.put(e, 2)
+        D.put(e, D.T_ENUM)
+        D.put(e, D.ENUM_NAMES.index("BuildCapabilityKind"))
+        D.put(e, p["g_kind"])
+        _bytes(e, D.T_BYTES, p["gs_at"], p["gs_length"])
+        e.give(0)
+    return _function((), build, tables)
+
+
+def _bytes(e: E, tag: int, at, length):
+    """A record value of ``length`` input bytes at ``at``, packed eight per word."""
+    p = e.p
+    D.put(e, tag)
+    D.put(e, length)
+    e.var("bw", 0)
+
+    def word():
+        e.var("bv", 0)
+        for k in reversed(range(8)):
+            e.set("bv", e.add(e.mul(p["bv"], 256), e.sel(e.lt(e.add(p["bw"], k), length), e.rd(e.add(at, e.add(p["bw"], k))), 0)))
+        D.put(e, p["bv"])
+        e.set("bw", e.add(p["bw"], 8))
+
+    e.while_(lambda: e.lt(p["bw"], length), word)
 
 
 def _snapshot(tables):
@@ -248,7 +409,8 @@ def _snapshot(tables):
         e.for_("o2", 0, p["objects"], lambda: e.if_(e.ne(e.ld(e.add(SELECTED_AT, p["o2"])), 0),
                                                    lambda: put_uleb(e.ld(e.add(STACK_AT, p["o2"])))))
         byte(0)  # signatures
-        byte(0)  # external input digests
+        put_uleb(_ctrl(e, B_INPUTS))  # S15c.2: the external input digests, sorted (``INPUTS_AT``)
+        e.for_("xd", 0, e.mul(_ctrl(e, B_INPUTS), CID_SIZE), lambda: byte(e.ld(e.add(INPUTS_AT, p["xd"]))))
         e.var("body_length", e.sub(p["at"], p["body_at"]))
         # Move the body up past its length's ULEB.
         e.set("at", p["body_at"])
@@ -274,7 +436,7 @@ assert CID_SIZE == 32
 def build_functions():
     """``{name: function}`` and the objects they need."""
     functions, objects = {}, []
-    for name, builder in (("select", _select), ("snapshot", _snapshot)):
+    for name, builder in (("select", _select), ("snapshot", _snapshot), ("grant_record", _grant_record)):
         function, items = builder(None)
         functions[name] = function
         objects.extend(items)

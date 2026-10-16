@@ -1167,3 +1167,12 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - `python -m benchmarks.bench_r6_xcksum --write` deploys to every attached device whose `uname -m` is `aarch64` (or `XAX_R6_SERIALS`); about 25 seconds for two phones. The oracle is the device's toybox `cksum`.
 - Put the SDK `platform-tools` directory on `PATH`; the harnesses call `adb` by name.
 - XAX-MCP (`compat.py`) should learn host contract minor 7 (`linux-aarch64` construct platform).
+
+## S15c grants, inputs, signatures, capacities — 2026-10-16 (ADR-298 to ADR-302)
+
+- `resolve <request> <snapshot> [input ...]` and `build <snapshot> <artifact> <provenance> [input ...]`: up to 64 input files, hashed by the driver. The bootstrap reference for `build` is now `build(..., signature_verifier=xax_ed25519.signature_verifier)`; tests and `bench_full_selfhost` use it.
+- Ed25519 lives in `xax_selfhost_ed25519` (workspace words from `ED_AT`, 48 Mi words). `tests/test_xax_selfhost_ed25519.py` runs the helpers alone; `tests/test_xax_selfhost_s15c.py` runs the driver.
+- The compiler image grew to 10.4 MB of the 12 MiB the general program can assemble (ADR-291). The general backend inlines the field multiplication at each call site; if a later change approaches the cap, rotate the seed with a larger `IMAGE_CAP` first (ADR-291's procedure).
+- Run the heavy driver tests with at most two workers here: four parallel drivers exceed this container's memory.
+- Next: S15d.1 (the `edit` command), then S15d.2-S15d.3; S15c.5 and the S15b.3d remainder after that (ADR-298).
+

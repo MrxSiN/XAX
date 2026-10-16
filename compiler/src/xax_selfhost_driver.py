@@ -9,7 +9,8 @@ lowers it.  This module makes that whole path one XAX function on the ``x86_64-l
 
 ``arguments`` holds three NUL-terminated paths: the program store, a target-package store (its root is the target
 object), and the output file.  The driver owns every buffer (``mmap`` and ``heap.view``, released with ``munmap``),
-does its own file I/O (``openat``, ``read``, ``write``, ``close``), and calls the committed XAX components directly:
+does its own file I/O (``openat``, ``read``, ``write``, ``close``), and calls the committed XAX components directly
+(S15c.4, ADR-302: a file or object past the driver's capacity is rejected with ``XAX.DRIVER.CAPACITY``):
 
 * the store decoder (S3/S8a) and the S2 hash decide the container, its digest, and each object envelope and CID
   (S8b.1), in store order, as ``StoreReader`` and ``get`` do;
@@ -87,6 +88,7 @@ I_MODE, I_CODE, I_UB, I_UN, I_TAG, I_VB, I_VI, I_VR, I_POS, I_W, I_NODE = range(
 I_DOMS, I_ORDER = INV_AT + 64, INV_AT + 2048
 I_POSITION = I_ORDER + (1 << 16)
 ARGUMENTS_EXTENT = 4096
+INPUTS_EXTENT = 4096  # S15c.2: ``INPUTS_LIMIT`` digests and one staged
 CHUNK = 1 << 16
 from xax_x86_64_views import EXEC_IDENTITY, IDENTITIES as VIEWS_IDENTITIES  # noqa: E402
 AT_FDCWD = 0xFFFFFF9C
@@ -250,9 +252,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         buffers["members"] = (backend_in_rw, MEMBERS_EXTENT, 8)  # the group member functions the store does not hold
         buffers["batch"] = (bytes_rw, WR.IN_EXTENT, 1)  # S13c: the S9 writer's batch
         buffers["written"] = (bytes_rw, WR.BUF_EXTENT, 1)  # S14b (ADR-285): the S9 writer's buffer; the store it writes
+        buffers["inputs"] = (bytes_rw, INPUTS_EXTENT, 1)  # S15c.2 (ADR-300): the input files' digests, sorted, each once
     names = {"data": "dp", "object": "xp", "decoded": "up", "envelope": "ep", "scratch": "sp", "body": "gp", "stream": "hp",
              "table": "ip", "image": "op", "chunk": "cp", "path": "pp", "vtable": "tp", "work": "wp", "cfgin": "kp", "cfgout": "qp",
-             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp", "written": "lp"}
+             "arguments": "ap", "argument": "zp", "extents": "np", "traps": "jp", "members": "mp", "batch": "bp", "written": "lp", "inputs": "fp"}
     views = {}
     for name in buffers:
         pointer_name = names[name]
@@ -299,6 +302,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         # S13a (ADR-281), S13b (ADR-282): argv[1] is the command (``COMMANDS``), followed by its file arguments; an
         # unknown command or another count FAILED.
         mode = w.let("mode", LOWER)
+        files_count = w.let("files", 0)
 
         def command():
             count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(1, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
@@ -308,12 +312,17 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 matched = w.flag(w.both(w.eq(w[n], len(word)), w.ne(w.same_constant("argument", 0, word.encode()), 0)))
                 known, chosen, files = w.or_(known, matched), w.add(chosen, w.mul(matched, value)), w.add(files, w.mul(matched, paths))
             w.set(mode, chosen)
-            w.if_(w.either(w.eq(known, 0), w.ne(w[arguments], w.add(files, 2))), lambda: stop(FAILED))
+            w.set(files_count, files)
+            # S15c.2 (ADR-300): ``build`` and ``resolve`` take up to ``INPUTS_LIMIT`` external input files after their own.
+            takes_inputs = w.either(w.eq(w[mode], BUILD), w.eq(w[mode], RESOLVE))
+            extra = w.sub(w[arguments], w.add(files, 2))
+            w.if_(w.either(w.eq(known, 0), w.lt(w[arguments], w.add(files, 2)),
+                           w.both(w.ne(extra, 0), w.either(w.not_(takes_inputs), w.lt(RQ.INPUTS_LIMIT, extra)))), lambda: stop(FAILED))
 
-        w.if_(w.both(w.ne(w[arguments], 4), w.ne(w[arguments], 5)), lambda: stop(FAILED), lambda: when(command))
+        w.if_(w.lt(w[arguments], 4), lambda: stop(FAILED), lambda: when(command))
 
-    def argument(index: int):
-        count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (proc.const(index, B64), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
+    def argument(index):
+        count, proc["zm"] = proc.op(Operation.CALL_FOREIGN, (w.v(index), proc["zp"], proc["zm"]), (B64, MEM), entity=startup.arg_copy)
         n = w.let("n", count)
         at = argument_end
         fits = w.both(w.lt(w[n], ARGUMENTS_EXTENT), w.lt(w.add(w[at], w[n]), ARGUMENTS_EXTENT))  # and its NUL
@@ -321,9 +330,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                              w.set(at, w.add(w.add(w[at], w[n]), 1))), lambda: stop(FAILED))
 
     if general:
-        for index in (2, 3):
-            when(lambda index=index: argument(index))
-        when(lambda: w.if_(w.eq(w[arguments], 5), lambda: argument(4)))
+        copied = w.let("copied", 2)
+        w.while_(lambda: w.both(w.lt(w[copied], w[arguments]), running()), lambda: (argument(w[copied]), w.set(copied, w.add(w[copied], 1))))
     else:
         for index in (1, 2, 3):
             when(lambda index=index: argument(index))
@@ -372,7 +380,17 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     length = w.let("length", 0)
     limit = S.DATA_EXTENT - 2 * CID_SIZE - 64  # the digest after the data, and the hash's block reads past its end
 
-    def read_store(index: int):
+    def capacity(entity: str, rule: str, limit_bytes: int):
+        """S15c.4 (ADR-302): an input past the driver's declared capacity is rejected, with the driver's own record."""
+        D.begin(w)
+        D.text(w, "XAX.DRIVER.CAPACITY")
+        D.text(w, entity)
+        D.text(w, rule)
+        D.integer(w, limit_bytes)
+        D.text(w, "larger")
+        stop(REJECTED)
+
+    def read_store(index, entity: str = "store"):
         fd = open_path(index, 0, 0)
 
         def read_all():
@@ -386,7 +404,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 w.set(count, result)
                 w.if_(w.le(1 << 63, w[count]), lambda: (stop(FAILED), w.set(going, 0)), lambda: w.if_(
                     w.eq(w[count], 0), lambda: w.set(going, 0), lambda: w.if_(
-                        w.lt(limit, w.add(w[length], w[count])), lambda: (stop(DECLINED), w.set(going, 0)), lambda: (
+                        w.lt(limit, w.add(w[length], w[count])), lambda: (capacity(entity, "DRIVER-FILE-CAPACITY", limit), w.set(going, 0)), lambda: (
                             w.copy("chunk", 0, "data", w[length], w[count]), w.set(length, w.add(w[length], w[count]))))))
 
             w.while_(lambda: w.ne(w[going], 0), step)
@@ -466,7 +484,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         envelope = w.let("envelope", w.add(w.uleb_size(record_length), record_length))
         offset = w.let("offset", record_at)
         w.if_(w.eq(record_word(position, 3), 0), lambda: stop(DECLINED))  # an envelope the container pass left to the bootstrap
-        w.if_(w.lt(S.DATA_EXTENT - 4 * CID_SIZE, w.mul(w[envelope], 2)), lambda: stop(DECLINED))  # the envelope and its preimage
+        w.if_(w.lt(S.DATA_EXTENT - 4 * CID_SIZE, w.mul(w[envelope], 2)),  # the envelope and its preimage (S15c.4)
+              lambda: capacity("object", "DRIVER-OBJECT-CAPACITY", (S.DATA_EXTENT - 4 * CID_SIZE) // 2))
 
         def checked():
             w.copy("data", w[offset], "object", 0, w[envelope])
@@ -486,6 +505,53 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             outcome(w[code], "envelope")
 
         when(checked)
+
+    # -- S15c.2 (ADR-300): the external input files, hashed (BLAKE3, as ``verify_external_bytes``), sorted, each once -----
+    inputs_count = w.let("inputs_count", 0)
+    if general:
+        def input_files():
+            given = w.let("given", w.sub(w[arguments], w.add(w[files_count], 2)))
+            i = w.let("input", 0)
+
+            def each():
+                read_store(w.add(w[files_count], w[i]), "external-input")
+
+                def place():
+                    hash_span("data", 0, w[length])
+                    staged = RQ.INPUTS_LIMIT * CID_SIZE
+                    digest_to("inputs", staged)
+                    before, duplicate = w.let("before", 0), w.let("duplicate", 0)
+
+                    def compare():
+                        at = w.mul(w[j], CID_SIZE)
+                        less, equal = w.let("less", 0), w.let("equal", 1)
+                        for word in range(4):
+                            x, y = w.let("x", w.cid_word("inputs", at, word)), w.let("y", w.cid_word("inputs", staged, word))
+                            w.if_(w.ne(w[equal], 0), lambda: w.if_(w.lt(w[x], w[y]), lambda: (w.set(less, 1), w.set(equal, 0)),
+                                                                   lambda: w.if_(w.lt(w[y], w[x]), lambda: w.set(equal, 0))))
+                        w.set(before, w.add(w[before], w[less]))
+                        w.set(duplicate, w.or_(w[duplicate], w[equal]))
+                        w.set(j, w.add(w[j], 1))
+
+                    j = w.let("j", 0)
+                    w.while_(lambda: w.lt(w[j], w[inputs_count]), compare)
+
+                    def insert():
+                        tail = w.let("tail", w[inputs_count])
+                        w.while_(lambda: w.lt(w[before], w[tail]), lambda: (
+                            w.copy("inputs", w.mul(w.sub(w[tail], 1), CID_SIZE), "inputs", w.mul(w[tail], CID_SIZE), CID_SIZE),
+                            w.set(tail, w.sub(w[tail], 1))))
+                        w.copy("inputs", staged, "inputs", w.mul(w[before], CID_SIZE), CID_SIZE)
+                        w.set(inputs_count, w.add(w[inputs_count], 1))
+
+                    w.if_(w.eq(w[duplicate], 0), insert)
+
+                when(place)
+                w.set(i, w.add(w[i], 1))
+
+            w.while_(lambda: w.both(w.lt(w[i], w[given]), running()), each)
+
+        when(input_files)
 
     # -- the program store ---------------------------------------------------------------------------------------
     read_store(0)
@@ -1168,7 +1234,15 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         # -- S13a (ADR-281): ``build``: the snapshot's request, read and checked by ``xax_selfhost_request`` ---------
         target, linux = w.let("target", 0), w.let("linux", 0)
 
+        def inputs_to_work():
+            """S15c.2: the input digests, one byte per word, at ``INPUTS_AT`` of the workspace; their count."""
+            q = w.let("iw", 0)
+            w.while_(lambda: w.lt(w[q], w.mul(w[inputs_count], CID_SIZE)), lambda: (
+                set_work(w.add(RQ.INPUTS_AT, w[q]), w.load("inputs", w[q])), w.set(q, w.add(w[q], 1))))
+            set_work(SM.CTRL + RQ.B_INPUTS, w[inputs_count])
+
         def build_request():
+            inputs_to_work()
             request_helper("build_request")
             outcome = w.let("request_outcome", work_word(SM.CTRL + RQ.B_STATUS))
             w.if_(w.eq(w[outcome], RQ.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RQ.ACCEPT), lambda: stop(DECLINED)))
@@ -1206,20 +1280,30 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
                 set_work(SM.CTRL + RS.R_POLICY + k, w.cid_word("argument", 0, k))
             request_helper("snapshot", resolvers)
             length = w.let("snapshot_length", work_word(SM.CTRL + RS.R_LENGTH))
-            w.if_(w.lt(RS.SNAPSHOT_LIMIT, w[length]), lambda: stop(DECLINED))
+            w.if_(w.lt(RS.SNAPSHOT_LIMIT, w[length]), lambda: capacity("snapshot", "DRIVER-SNAPSHOT-CAPACITY", RS.SNAPSHOT_LIMIT))
 
             def batch():
                 q = w.let("s_q", 0)
                 w.while_(lambda: w.lt(w[q], w[length]), lambda: (
                     w.store("object", w.add(len(SEMANTIC_DOMAIN), w[q]), work_word(w.add(RS.SNAPSHOT_AT, w[q]))), w.set(q, w.add(w[q], 1))))
                 hash_preimage(w[length], CID_SIZE)
+
+                def grant_rejected():
+                    """S15c.1 (ADR-299): ``decode_snapshot`` rejects a profile grant no selected package declares."""
+                    for k in range(4):
+                        set_work(SM.CTRL + RS.R_SNAPSHOT_CID + k, w.cid_word("argument", CID_SIZE, k))
+                    request_helper("grant_record", resolvers)
+                    from_work()
+
+                w.if_(w.ne(work_word(SM.CTRL + RS.R_GRANT), RS.NO_GRANT), grant_rejected)
                 at = w.let("b_at", 24)
                 batch_copy(at, "argument", CID_SIZE, CID_SIZE)  # the root: the snapshot
                 o = w.let("b_object", 0)
 
                 def each():
                     count, size = w.let("b_refs", record_word(w[o], 5)), w.let("b_body", record_word(w[o], 8))
-                    w.if_(w.lt(WR.IN_EXTENT - 4096, w.add(w[at], w.add(w.mul(w[count], CID_SIZE), w[size]))), lambda: stop(DECLINED), lambda: (
+                    w.if_(w.lt(WR.IN_EXTENT - 4096, w.add(w[at], w.add(w.mul(w[count], CID_SIZE), w[size]))),
+                          lambda: capacity("snapshot", "DRIVER-SNAPSHOT-CAPACITY", WR.IN_EXTENT - 4096), lambda: (
                         batch_put(at, record_word(w[o], 4)), batch_put(at, 1), batch_put(at, w[count]), batch_put(at, w[size]),
                         batch_copy(at, "data", record_word(w[o], 2), CID_SIZE), batch_copy(at, "data", record_word(w[o], 6), w.mul(w[count], CID_SIZE)),
                         batch_copy(at, "data", record_word(w[o], 7), w[size])))
@@ -1257,6 +1341,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             when(batch)
 
         def resolve():
+            inputs_to_work()
             request_helper("select", resolvers)
             outcome = w.let("select_outcome", work_word(SM.CTRL + RS.R_STATUS))
             w.if_(w.eq(w[outcome], RS.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RS.ACCEPT), lambda: stop(DECLINED)))
@@ -1837,7 +1922,9 @@ class NativeDriver:
 class NativeGeneralDriver(NativeDriver):
     """S13a (ADR-281), S13b (ADR-282): the general driver as a Linux process.  Its first argument is the command:
     ``lower`` (a program store, a target package, the output), ``build`` (a build snapshot store, the artifact, its
-    provenance), ``verify`` or ``inspect`` (a store, the output), ``resolve`` (a request store, the snapshot store)."""
+    provenance), ``verify`` or ``inspect`` (a store, the output), ``resolve`` (a request store, the snapshot store).
+    S15c.2 (ADR-300): ``build`` and ``resolve`` take up to ``xax_selfhost_request.INPUTS_LIMIT`` external input files
+    after their own arguments."""
 
     def __init__(self, image=None) -> None:
         if image is None:
@@ -1851,10 +1938,10 @@ class NativeGeneralDriver(NativeDriver):
     def run(self, store_path: str | Path, target_path: str | Path, output_path: str | Path) -> int:
         return self._process("lower", store_path, target_path, output_path)
 
-    def build(self, snapshot_path: str | Path, artifact_path: str | Path, provenance_path: str | Path) -> int:
+    def build(self, snapshot_path: str | Path, artifact_path: str | Path, provenance_path: str | Path, *inputs: str | Path) -> int:
         """The exit status; on ``IMAGE`` the artifact and the provenance object's envelope are written, on ``REJECTED``
-        the diagnostic record is in the artifact's file."""
-        return self._process("build", snapshot_path, artifact_path, provenance_path)
+        the diagnostic record is in the artifact's file.  ``inputs``: the external input files (S15c.2)."""
+        return self._process("build", snapshot_path, artifact_path, provenance_path, *inputs)
 
     def verify(self, store_path: str | Path, output_path: str | Path) -> int:
         """S13b: ``IMAGE`` (an empty output) when the store verifies; ``REJECTED`` with the diagnostic record."""
@@ -1864,9 +1951,10 @@ class NativeGeneralDriver(NativeDriver):
         """S13b: on ``IMAGE`` the verified store's inspection record (``decode_inspection``)."""
         return self._process("inspect", store_path, output_path)
 
-    def resolve(self, request_path: str | Path, snapshot_path: str | Path) -> int:
-        """S13c: on ``IMAGE`` the snapshot store for the request store's request (``xax_selfhost_resolve``)."""
-        return self._process("resolve", request_path, snapshot_path)
+    def resolve(self, request_path: str | Path, snapshot_path: str | Path, *inputs: str | Path) -> int:
+        """S13c: on ``IMAGE`` the snapshot store for the request store's request (``xax_selfhost_resolve``); S15c.2: its
+        external input digests are those of ``inputs``."""
+        return self._process("resolve", request_path, snapshot_path, *inputs)
 
 
 def decode_inspection(data: bytes) -> dict:

@@ -225,6 +225,40 @@ def corpus(directory: Path):
     resolve("resolve with dependencies", _request(objects, entry, linux, dependencies=(DependencyRequirement.exact(base), DependencyRequirement.logical(b"base")),
                                                   extra=(base, *base_objects)), "positive")
     resolve("resolve: a missing logical identity", _request(objects, entry, linux, dependencies=(DependencyRequirement.logical(b"absent"),)), "negative")
+
+    # S15c (ADR-299 to ADR-302): grants, external input files, Ed25519 signatures, capacities.
+    import xax_ed25519 as ED
+    from test_xax_selfhost_s15c import _Fixture, build_expected as build_with, resolve_expected as resolve_with
+    from xax_build import BuildCapability, BuildCapabilityKind, CapabilityGrant, signature
+
+    fixture = _Fixture()
+    read = BuildCapability(BuildCapabilityKind.READ_OBJECT)
+
+    def resolve_inputs(name, reader, kind, values=()):
+        expected = resolve_with(reader, values)
+        reference = ["image", sha(expected[1])] if expected[0] == "store" else ["rejected", expected[1].code, expected[1].rule]
+        cases.append((name, kind, "resolve", {"store": reader.data}, ["out"], reference, list(values)))
+        return expected
+
+    def build_inputs(name, reader, kind, values=()):
+        expected = build_with(reader, values)
+        reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
+        cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference, list(values)))
+
+    resolve_inputs("resolve: a declared grant", fixture.request_store(capabilities=(read,), grants=(CapabilityGrant(b"app", read),)), "positive")
+    resolve_inputs("resolve: an undeclared grant", fixture.request_store(grants=(CapabilityGrant(b"app", read),)), "negative")
+    values = (b"input one", bytes(4096))
+    resolved = resolve_inputs("resolve with external inputs", fixture.request_store(), "positive", values)
+    build_inputs("build with external inputs", X.StoreReader(resolved[1]), "positive", values)
+    build_inputs("build: an external input missing", X.StoreReader(resolved[1]), "negative", values[:1])
+    secret = bytes(range(32))
+    key, app = ED.public_key(secret), fixture.app()
+    ed_policy = trust_policy(require_package_signatures=True, accepted_algorithms=(ED.ALGORITHM,), accepted_signers=(key,))
+    build_inputs("build: Ed25519-signed", fixture.signed_snapshot((signature(app, ED.ALGORITHM, key, ED.sign(secret, app.cid)),), ed_policy),
+                 "positive")
+    build_inputs("build: a forged Ed25519 signature",
+                 fixture.signed_snapshot((signature(app, ED.ALGORITHM, key, ED.sign(bytes(32), app.cid)),), ed_policy), "negative")
+    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(33 << 20)}, ["out"], None))
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
 
@@ -238,13 +272,17 @@ def _diagnostic_key(diagnostic) -> list:
 
 
 def run_case(executable: Path, directory: Path, case) -> dict:
-    name, _kind, command, inputs, outputs, _reference = case
+    name, _kind, command, inputs, outputs, _reference, *extra = case
     paths = {}
     for key, data in inputs.items():
         paths[key] = directory / f"{key}.xax"
         paths[key].write_bytes(data)
     out = [directory / f"{item}.bin" for item in outputs]
-    arguments = [command, *paths.values(), *out]
+    files = []  # S15c.2: external input files after the outputs
+    for k, data in enumerate(extra[0] if extra else ()):
+        files.append(directory / f"input{k}.bin")
+        files[-1].write_bytes(data)
+    arguments = [command, *paths.values(), *out, *files]
     return run(executable, arguments, out)
 
 
@@ -323,7 +361,7 @@ def measure() -> dict:
     cases = corpus(directory)
     rows = []
     for case in cases:
-        name, kind, command, _inputs, _outputs, reference = case
+        name, kind, command, _inputs, _outputs, reference, *_extra = case
         outcomes = {}
         for index, executable in enumerate(executables):
             result = run_case(executable, directory, case)
@@ -380,11 +418,11 @@ def measure() -> dict:
              "stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference "
              "first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297)"),
         ],
+        # S15c (ADR-299 to ADR-302): grants, external input files, Ed25519 verification in ``build``, and capacity
+        # rejections are the driver's.  What remains:
         "required_paths_outside_xax": [
-            "package signature verification (no signature algorithm in the driver)",
-            "external build inputs and build effects",
-            "profile capability grants",
-            "stores beyond the driver's capacities (32 MiB store, 32 MiB snapshot batch)",
+            "resolution under a trust policy other than the driver's own: signed snapshots are verified by build (S15c.3) but "
+            "only the bootstrap resolver makes them",
         ],
         "ordinary_evolution": "compiler semantics are changed by editing Python builder modules (xax_selfhost_*.py) that regenerate the stores (S15)",
         "python_dependency": {"production": False, "bootstrap_seed": True, "reference": True, "test_only": True},

@@ -44,9 +44,12 @@ def _request_root(reader) -> bytes:
     return bytes(32)
 
 
-def _expected(reader):
+def _expected(reader, external_inputs=None):
+    from xax_ed25519 import signature_verifier
+
     try:
-        result = build(reader, _request_root(reader), compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)
+        result = build(reader, _request_root(reader), compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, external_inputs=external_inputs,
+                       signature_verifier=signature_verifier)
     except X.XaxError as error:
         return "rejected", error.diagnostic
     return "image", result.artifact, result.provenance.envelope()
@@ -180,7 +183,7 @@ class GeneralBuildTests(unittest.TestCase):
         self.assertEqual((kind, diagnostic.rule, diagnostic.actual), ("rejected", "BUILD-SNAPSHOT-ROOT", "REQUEST"))
 
     def test_external_inputs_and_signatures(self):
-        """The driver is given no external input and verifies no signature: ``build`` without them rejects."""
+        """Without the input files ``build`` rejects; a signature whose algorithm is not Ed25519 is never trusted."""
         from blake3 import blake3
         from test_xax_build import fake_signature
         from test_xax_linux import _status_program

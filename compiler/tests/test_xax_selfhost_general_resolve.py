@@ -5,7 +5,8 @@
 candidates are the request store's objects and the policy is the driver's (the default trust policy): it verifies the
 store (S10e), selects the packages in ``resolve_packages``'s order, derives the policy's and the snapshot's CIDs with the
 S2 hash, and writes the store with the S9 writer.  Differential: the store bytes, or the exact diagnostic of a logical
-identity no candidate or several candidates have.  A root that is no build request and a profile with grants decline.
+identity no candidate or several candidates have.  A root that is no build request declines; profile grants are
+decided since S15c.1 (``test_xax_selfhost_s15c``).
 The snapshot it writes is one ``build`` (S13a) builds.
 """
 
@@ -19,10 +20,7 @@ import unittest
 from pathlib import Path
 
 import xax_compiler as X
-from xax_build import (
-    BuildCapability, BuildCapabilityKind, CapabilityGrant, DependencyRequirement, build_profile, build_request, package, resolve_packages,
-    snapshot_store,
-)
+from xax_build import DependencyRequirement, build_profile, build_request, package, resolve_packages, snapshot_store
 from xax_selfhost_diagnostics import decode_record
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -136,11 +134,7 @@ class GeneralResolveTests(unittest.TestCase):
     def test_declines(self):
         objects, entry, target = _program()
         program = _request(objects, entry, target)
-        grant = CapabilityGrant(b"app", BuildCapability(BuildCapabilityKind.READ_OBJECT))
-        cases = {
-            "a program store": _program_store(),
-            "a profile with grants": _request(objects, entry, target, profile=build_profile(grants=(grant,))),
-        }
+        cases = {"a program store": _program_store()}
         self.assertEqual(self.run_resolve(program.data)[0], "store")
         for name, reader in cases.items():
             with self.subTest(name):
