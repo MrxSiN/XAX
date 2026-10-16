@@ -82,6 +82,150 @@ def transactions(seed: int, count: int):
             yield reader, mutations, edit_record(record, reader.root_cid if rng.random() < 0.5 else bytes(32))
 
 
+# -- S15d.4b (ADR-314): the workspace's structural mutations ---------------------------------------------------------
+
+def _graphs(reader):
+    found = []
+    for function_object in (item for item in reader.objects() if item.kind == X.Kind.FUNCTION):
+        try:
+            graph = X._parse_graph(reader.get(function_object.references[X.Cursor(function_object.body, "").uleb()]), reader.get)
+        except X.XaxError:
+            continue
+        if any(block.nodes for block in graph.blocks):
+            found.append((function_object, graph))
+    return found
+
+
+def _available(graph, b, n):
+    """``(value, type CID)`` usable before node ``n`` of block ``b``."""
+    block = graph.blocks[b]
+    values = [(X.ValueRef.parameter(b, i), t) for i, t in enumerate(block.parameters)]
+    for j, node in enumerate(block.nodes[:n]):
+        values += [(X.ValueRef.node_result(b, j, r), t) for r, t in enumerate(node.results)]
+    return values
+
+
+def structural_oracle(reader, mutations):
+    """``Workspace.commit`` for a record's mutations: ``("store", bytes)``, ``("rejected", diagnostic)``, or None when the
+    workspace has no handle for them."""
+    from xax_selfhost_edit import workspace_mutations
+
+    try:
+        workspace, made = workspace_mutations(reader, mutations)
+    except ValueError:
+        return None
+    result = workspace.commit(Transaction(RootRef(0), made))
+    return ("store", workspace.reader.data) if result.committed else ("rejected", result.diagnostic)
+
+
+def structural_transactions(seed: int, count: int):
+    """``(case, reader, mutations)``: random insertions (a constant; a wrapping add, then used by the next node or an
+    edge), uses replaced, deletions, result types set, edge arguments disconnected and connected, each also with its
+    preconditions broken; and two-step cases (an insertion committed, then deleted or retyped)."""
+    import xax_selfhost_edit as EDT
+    from xax_workspace import TransactionValueRef as T
+
+    V, rng = X.ValueRef, random.Random(seed)
+    for reader in _stores():
+        functions = _graphs(reader)
+        for _trial in range(count):
+            f, graph = rng.choice(functions)
+            b = rng.choice([index for index, block in enumerate(graph.blocks) if block.nodes])
+            block = graph.blocks[b]
+            n = rng.randrange(len(block.nodes))
+            node = block.nodes[n]
+            bits = sorted({t for item in graph.blocks for other in item.nodes if other.operation == X.Operation.CONSTANT for t in other.results})
+            if not bits:
+                continue
+            t = rng.choice(bits)
+            case = rng.choice(("constant", "add", "add", "use", "delete", "type", "edge", "edge", "bad", "bad", "two-step"))
+            if case == "constant":
+                width = X.decode_bits_width(reader.get(t))
+                yield case, reader, [(EDT.INSERT_NODE, f.cid, b, n, 0, X.Operation.CONSTANT, (), t, rng.randrange(1 << min(width, 16)), ())]
+            elif case == "add":
+                typed = {}
+                for value, value_type in _available(graph, b, n):
+                    if reader.get(value_type).body[:1] == b"\x01":
+                        typed.setdefault(value_type, []).append(value)
+                if not typed:
+                    continue
+                t = rng.choice(sorted(typed))
+                mutations = [(EDT.INSERT_NODE, f.cid, b, n, 3, X.Operation.ADD_WRAP, (rng.choice(typed[t]), rng.choice(typed[t])), t, None, ())]
+                if n + 1 < len(block.nodes) and block.nodes[n + 1].operands and rng.random() < 0.7:
+                    after = block.nodes[n + 1]
+                    k = rng.choice([k for k, o in enumerate(after.operands) if k < len(after.operand_types) and after.operand_types[k] == t]
+                                   or list(range(len(after.operands))))
+                    mutations.append((EDT.REPLACE_USE, f.cid, b, n + 1, k, after.operands[k], T(3, 0)))
+                elif block.terminator.edges and block.terminator.edges[0][1]:
+                    mutations += [(EDT.DISCONNECT_EDGE, f.cid, b, 0, 0, block.terminator.edges[0][1][0]), (EDT.CONNECT_EDGE, f.cid, b, 0, 0, T(3, 0))]
+                yield case, reader, mutations
+            elif case == "use" and node.operands:
+                k = rng.randrange(len(node.operands)) if rng.random() < 0.9 else len(node.operands) + 1
+                expected = node.operands[k] if k < len(node.operands) and rng.random() < 0.9 else V.node_result(b, 99, 0)
+                choices = [value for value, _type in _available(graph, b, n)]
+                if choices:
+                    yield case, reader, [(EDT.REPLACE_USE, f.cid, b, n, k, expected, rng.choice(choices))]
+            elif case == "delete":
+                yield case, reader, [(EDT.DELETE_NODE, f.cid, b, n)]
+            elif case == "type" and node.results:
+                r = rng.randrange(len(node.results)) if rng.random() < 0.9 else len(node.results)
+                expected = node.results[min(r, len(node.results) - 1)] if rng.random() < 0.9 else t
+                yield case, reader, [(EDT.SET_RESULT_TYPE, f.cid, b, n, r, expected, t)]
+            elif case == "edge" and block.terminator.edges:
+                edge = rng.randrange(len(block.terminator.edges))
+                arguments = block.terminator.edges[edge][1]
+                choices = [value for value, _type in _available(graph, b, len(block.nodes))]
+                if arguments and rng.random() < 0.6:
+                    a = rng.randrange(len(arguments))
+                    mutations = [(EDT.DISCONNECT_EDGE, f.cid, b, edge, a, arguments[a] if rng.random() < 0.9 else V.parameter(b, 9))]
+                    if choices and rng.random() < 0.7:
+                        mutations.append((EDT.CONNECT_EDGE, f.cid, b, edge, a, rng.choice(choices)))
+                    yield case, reader, mutations
+                elif choices:
+                    yield case, reader, [(EDT.CONNECT_EDGE, f.cid, b, edge, rng.randrange(len(arguments) + 2), rng.choice(choices))]
+            elif case == "two-step":
+                made = structural_oracle(reader, [(EDT.INSERT_NODE, f.cid, b, n, 0, X.Operation.CONSTANT, (), t, 1, ())])
+                if made is None or made[0] != "store":
+                    continue
+                after = X.StoreReader(made[1])
+                g = next(item for item, parsed in _graphs(after) if len(parsed.blocks) == len(graph.blocks)
+                         and len(parsed.blocks[b].nodes) == len(block.nodes) + 1 and parsed.blocks[b].nodes[n].operation == X.Operation.CONSTANT
+                         and parsed.blocks[b].nodes[n].results == (t,))
+                if rng.random() < 0.6:
+                    yield "two-step delete", after, [(EDT.DELETE_NODE, g.cid, b, n)]
+                else:
+                    yield "two-step type", after, [(EDT.SET_RESULT_TYPE, g.cid, b, n, 0, t, rng.choice(bits))]
+            elif case == "bad":
+                later = n + 1 if n + 1 < len(block.nodes) else n
+                broken = {
+                    "local": [(EDT.REPLACE_USE, f.cid, b, n, 0, node.operands[0], T(5, 0))] if node.operands else None,
+                    "duplicate local": [(EDT.INSERT_NODE, f.cid, b, n, 1, X.Operation.CONSTANT, (), t, 1, ()),
+                                        (EDT.INSERT_NODE, f.cid, b, later, 1, X.Operation.CONSTANT, (), t, 2, ())],
+                    "no value": [(EDT.INSERT_NODE, f.cid, b, n, 0, X.Operation.CONSTANT, (), t, None, ())],
+                    "a value": [(EDT.INSERT_NODE, f.cid, b, n, 0, X.Operation.ADD_WRAP, (), t, 4, ())],
+                    "edge": [(EDT.DISCONNECT_EDGE, f.cid, b, 5, 0, V.parameter(0, 0))],
+                    "impure": [(EDT.INSERT_NODE, f.cid, b, n, 0, X.Operation.UDIV, (), t, None, ())],
+                    "result": [(EDT.SET_RESULT_TYPE, f.cid, b, n, len(node.results), t, t)],
+                    "range": [(EDT.INSERT_NODE, f.cid, b, n, 0, X.Operation.CONSTANT, (), t, (1 << 63) + 5, ())],
+                    "local result": [(EDT.INSERT_NODE, f.cid, b, n, 2, X.Operation.CONSTANT, (), t, 1, ()),
+                                     (EDT.INSERT_NODE, f.cid, b, later, 4, X.Operation.ADD_WRAP, (T(2, 1), T(2, 0)), t, None, ())],
+                }
+                name = rng.choice(sorted(broken))
+                if broken[name]:
+                    yield name, reader, broken[name]
+
+
+# The workspace's own checks the engine reproduces exactly; any other rejection is the candidate's verification, which
+# the engine leaves to ``verify`` (the driver runs it after ``edit``).
+STRUCTURAL_RULES = {
+    "WORKSPACE-OPERAND-INDEX", "WORKSPACE-OPERAND-PRECONDITION", "WORKSPACE-DELETE-PURE-NODE", "WORKSPACE-DELETE-NODE-UNUSED",
+    "WORKSPACE-INSERT-PURE-NODE", "WORKSPACE-INSERT-CONSTANT-VALUE", "WORKSPACE-INSERT-CONSTANT-ABSENT", "WORKSPACE-INSERT-LOCAL-VALUE",
+    "WORKSPACE-INSERT-LOCAL-RESULT", "WORKSPACE-INSERT-LOCAL-ID-UNIQUE", "WORKSPACE-RESULT-INDEX", "WORKSPACE-RESULT-TYPE-PRECONDITION",
+    "WORKSPACE-CONSTANT-SINGLE-RESULT", "WORKSPACE-CONSTANT-RANGE", "WORKSPACE-TERMINATOR-EDGE", "WORKSPACE-EDGE-ARGUMENT-INDEX",
+    "WORKSPACE-EDGE-ARGUMENT-PRECONDITION", "WORKSPACE-MUTATION-TARGET-UNIQUE", "WORKSPACE-RECURSION-REBUILD",
+}
+
+
 def write_batch(batch: bytes) -> bytes:
     """The store the S9 writer makes from ``batch`` (its layout: count, zero, end, root CID, then per object its kind,
     schema, reference count, body length, CID, references, body), by the bootstrap's writer: every object's CID is
@@ -214,7 +358,7 @@ class XaxEditTests(unittest.TestCase):
             "WORKSPACE-HANDLE-GENERATION": edit_record([(SET_OPERATION, bytes(32), 0, 0, 1, 2)]),
             "WORKSPACE-NODE-INDEX": edit_record([(SET_OPERATION, f.cid, b, 1 << 20, 1, 2)]),
             "WORKSPACE-MUTATION-TARGET-UNIQUE": edit_record([(SET_OPERATION, f.cid, b, n, 1, 2), (SET_OPERATION, f.cid, b, n, 1, 3)]),
-            "EDIT-RECORD-KIND": good[:41] + b"\x09" + good[42:],
+            "EDIT-RECORD-KIND": good[:41] + b"\x0a" + good[42:],
             "WORKSPACE-OP-CONTRACT-PRESERVED": edit_record([(SET_OPERATION, f.cid, b, n, int(node.operation), int(X.Operation.UDIV))]),
             "WORKSPACE-OP-PRECONDITION": edit_record([(SET_OPERATION, f.cid, b, n, 1 + int(node.operation) % 3, 1)]),
         }
@@ -223,6 +367,31 @@ class XaxEditTests(unittest.TestCase):
                 kind, diagnostic = self.edit(reader, record)
                 self.assertEqual((kind, diagnostic.rule), ("rejected", rule))
         self.assertEqual(self.edit(reader, good), ("store", apply_reference(reader, good).data))
+
+    def test_structural_transactions(self):
+        """S15d.4b (ADR-314): every structural transaction the workspace commits gives the same store; every one it
+        rejects with its own check rejects with the same code, rule, expected and actual."""
+        from xax_selfhost_edit import edit_record
+
+        outcomes = set()
+        for case, reader, mutations in structural_transactions(8, 30):
+            expected = structural_oracle(reader, mutations)
+            if expected is None:
+                continue
+            actual = self.edit(reader, edit_record(mutations))
+            with self.subTest(case=case, mutations=repr(mutations)[:300]):
+                if expected[0] == "store":
+                    self.assertEqual(actual, expected)
+                    outcomes.add(f"{case}: store")
+                elif expected[1].rule in STRUCTURAL_RULES:
+                    self.assertEqual(actual[0], "rejected")
+                    self.assertEqual((actual[1].code, actual[1].rule), (expected[1].code, expected[1].rule))
+                    if expected[1].rule != "WORKSPACE-RECURSION-REBUILD":  # the topology check names the group by handle
+                        self.assertEqual((actual[1].expected, actual[1].actual), (expected[1].expected, expected[1].actual))
+                    outcomes.add(expected[1].rule)
+        self.assertTrue({"constant: store", "add: store", "use: store", "type: store", "two-step delete: store", "two-step type: store",
+                         "WORKSPACE-DELETE-NODE-UNUSED", "WORKSPACE-DELETE-PURE-NODE", "WORKSPACE-INSERT-LOCAL-ID-UNIQUE", "WORKSPACE-CONSTANT-RANGE",
+                         "WORKSPACE-INSERT-PURE-NODE", "WORKSPACE-RESULT-INDEX", "WORKSPACE-TERMINATOR-EDGE"} <= outcomes, outcomes)
 
 
 @unittest.skipUnless(LINUX_X86_64, "UNAVAILABLE: the driver image runs on Linux x86-64 only")
@@ -312,6 +481,33 @@ class EditCommandTests(unittest.TestCase):
                  [item for item in supplied if item.kind != X.Kind.CONSTANT], "EDIT-OBJECT-REFERENCE")):
             with self.subTest(name):
                 self.assertEqual(run(edit_record([mutation], reader.root_cid, objects)), (1, rule))
+
+    def test_structural_edit_then_verify(self):
+        """S15d.4b: the driver's ``edit`` applies structural transactions as the workspace does, and verifies the result."""
+        from xax_selfhost_diagnostics import decode_record
+        from xax_selfhost_edit import edit_record
+
+        store, record_path, output, verified = (self.directory / name for name in ("store.xax", "edit.bin", "out.xax", "verify.bin"))
+        seen = set()
+        for case, reader, mutations in structural_transactions(9, 6):
+            expected = structural_oracle(reader, mutations)
+            if expected is None or (expected[0] == "rejected" and expected[1].rule not in STRUCTURAL_RULES):
+                continue
+            store.write_bytes(reader.data)
+            record_path.write_bytes(edit_record(mutations))
+            output.unlink(missing_ok=True)
+            status = self.driver._process("edit", store, record_path, output)
+            if expected[0] == "store":
+                self.assertEqual((status, output.read_bytes()), (0, expected[1]))
+                verdict = self.driver.verify(output, verified)
+                self.assertIn(verdict, (0, 2))
+                seen.add(f"verify {verdict}")
+            else:
+                data = output.read_bytes()
+                diagnostic = decode_record([int.from_bytes(data[k:k + 8], "little") for k in range(0, len(data), 8)])
+                self.assertEqual((status, diagnostic.code, diagnostic.rule), (1, expected[1].code, expected[1].rule))
+                seen.add("rejected")
+        self.assertTrue({"verify 0", "rejected"} <= seen, seen)
 
 
 if __name__ == "__main__":

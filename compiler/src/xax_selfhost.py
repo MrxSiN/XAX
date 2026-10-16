@@ -621,7 +621,15 @@ def linux_x86_64_status(full: dict, seed: dict | None = None) -> dict:
     b4 = b2 and len(set(artifacts)) == 1 and artifacts[0] == full["references"]["bootstrap_compile_sha256"]
     b1 = b2 and not full["rejection_exactness_gaps"] and not inexact
     b5 = b2 and not full["required_paths_outside_xax"] and not any(full["executables_have_interpreter"].values())
-    b6 = b5 and not full["ordinary_evolution"]
+    # S15d.4b (ADR-314): ordinary evolution is shown, not stated: the first self-built compiler replayed the ledger,
+    # including a structural transaction, to exactly the committed stores, which it verified.
+    evolution = full.get("evolution") or {}
+    evolved = (bool(evolution.get("transactions")) and evolution.get("structural") is True and evolution.get("driver_equals_committed") is True
+               and evolution.get("request_equals_committed") is True and evolution.get("driver_verify") == "image"
+               and evolution.get("request_verify") == "image"
+               and all(item.get("driver_edit", {}).get("status") == "image" and item.get("request_edit", {}).get("status") == "image"
+                       for item in evolution["transactions"]))
+    b6 = b5 and evolved and not full["ordinary_evolution"]
     blockers = {
         "B0": None if b0 else "the seed did not produce a running compiler",
         "B1": None if b1 else "; ".join([*full["rejection_exactness_gaps"],
@@ -631,7 +639,8 @@ def linux_x86_64_status(full: dict, seed: dict | None = None) -> dict:
         "B3": None if b3 else "the generations or the bootstrap disagree on the corpus",
         "B4": None if b4 else "the generations are not byte-identical to each other and the bootstrap's compile",
         "B5": None if b5 else "; ".join(full["required_paths_outside_xax"]) or "a required path is not XAX-hosted",
-        "B6": None if b6 else full["ordinary_evolution"] or "B5 does not hold",
+        "B6": None if b6 else full["ordinary_evolution"] or ("B5 does not hold" if not b5 else
+                                                             "the self-built compiler did not replay a structural evolution ledger to the committed stores"),
     }
     return {"scope": full["scope"]["compiler"], "outside_scope": full["scope"]["outside_scope"],
             **{f"B{n}": level for n, level in enumerate((b0, b1, b2, b3, b4, b5, b6))},

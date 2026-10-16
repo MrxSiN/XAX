@@ -31,7 +31,7 @@ class FullSelfhostStatusTests(unittest.TestCase):
         self.assertEqual(self.evidence["label"], "EXECUTED")
 
     def test_the_committed_levels(self):
-        self.assertEqual(self.levels(self.evidence), {"B0", "B2", "B3", "B4", "B5"})  # S15c.5 (ADR-309): B5
+        self.assertEqual(self.levels(self.evidence), {"B0", "B2", "B3", "B4", "B5", "B6"})  # S15c.5 (ADR-309): B5; S15d.4b (ADR-314): B6
         self.assertFalse(any(key.startswith("B") and key[1:].isdigit() for key in self.evidence))  # no level is recorded
 
     def test_each_level_follows_its_facts(self):
@@ -53,7 +53,18 @@ class FullSelfhostStatusTests(unittest.TestCase):
         for row in rejecting:
             for generation in row["outcomes"]:
                 row["outcomes"][generation] = ["rejected", *row["bootstrap_diagnostic"]]
-        self.assertEqual(self.levels(closed) & {"B1", "B5", "B6"}, {"B1", "B5"})
+        self.assertEqual(self.levels(closed) & {"B1", "B5", "B6"}, {"B1", "B5", "B6"})
+        # S15d.4b (ADR-314): B6 follows C1's replay of the ledger: every transaction applied, both stores equal to the
+        # committed ones and verified, a structural transaction among them.
+        for change in (lambda e: e.update(structural=False), lambda e: e.update(driver_equals_committed=False),
+                       lambda e: e.update(request_verify="rejected"), lambda e: e["transactions"][-1]["driver_edit"].update(status="failed"),
+                       lambda e: e.update(transactions=[])):
+            unevolved = copy.deepcopy(closed)
+            change(unevolved["evolution"])
+            self.assertEqual(self.levels(unevolved) & {"B5", "B6"}, {"B5"})
+        stated = copy.deepcopy(closed)
+        stated["evolution"] = None
+        self.assertNotIn("B6", self.levels(stated))
         # S15b (ADR-288): a verification rejection that is not the bootstrap's keeps B1; another diagnostic is a
         # disagreement (B3); a decline or the driver's own record is no claim.
         self.assertTrue(rejecting)

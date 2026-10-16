@@ -20,9 +20,9 @@ from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, Term
 from xax_graph_builder import program_store
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_views_backend import (
-    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
+    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, META_AT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
-    WORDS_LIMIT, NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
+    NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
     SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
     collect_program_output, G_PROCESS, _g,
 )
@@ -50,8 +50,16 @@ JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8
 
 # ADR-266: code bytes are packed eight to an output word (little-endian), and a node range takes three words, so one
 # program (the S10 driver with its verifier components) fits: 40 MiB of code, 699,050 ranges.
-CODE_BYTES = WORDS_LIMIT * 8
-RANGE_WORDS = 3
+# ADR-314: the x86-64 program's own layout of the shared regions (the RISC-V program keeps ``xax_selfhost_views_backend``'s):
+# a range takes two words (its function, block and node in one, its code offsets in the other) and a jump two (ADR-313),
+# so the code grows to 44 MiB, then 262,144 jumps, then 1,835,008 ranges up to the function order (``META_AT``).
+X86_WORDS_LIMIT = (5 << 20) + (1 << 19)
+X86_JUMPS_AT, X86_JUMPS_LIMIT = WORDS_AT + X86_WORDS_LIMIT, 1 << 19
+X86_RANGES_AT = X86_JUMPS_AT + X86_JUMPS_LIMIT
+X86_RANGES_LIMIT = META_AT - X86_RANGES_AT
+assert X86_JUMPS_AT > JUMPS_AT and JUMPS_AT + JUMPS_LIMIT == RANGES_AT and RANGES_AT + RANGES_LIMIT == META_AT  # replaces the shared layout
+CODE_BYTES = X86_WORDS_LIMIT * 8
+RANGE_WORDS = 2
 JUMP_WORDS = 2
 
 
@@ -264,8 +272,8 @@ def _jump_fn(tables):
         _bytes(e, p["opcode"], p["oplen"])
         count = e.hd(S_JUMPS)
         # ADR-313: two words per jump (its position and its label's slot), so the general driver's 175k jumps fit.
-        _ok(e, e.lt(count, JUMPS_LIMIT // JUMP_WORDS))
-        at = e.add(JUMPS_AT, e.mul(count, JUMP_WORDS))
+        _ok(e, e.lt(count, X86_JUMPS_LIMIT // JUMP_WORDS))
+        at = e.add(X86_JUMPS_AT, e.mul(count, JUMP_WORDS))
         e.st(at, e.hd(S_COUNT))
         e.st(e.add(at, 1), p["slot"])
         e.set_hd(S_JUMPS, e.add(count, 1))
@@ -437,7 +445,7 @@ class X86_64:
         p = e.p
 
         def patch():
-            at = e.add(JUMPS_AT, e.mul(p["j"], JUMP_WORDS))
+            at = e.add(X86_JUMPS_AT, e.mul(p["j"], JUMP_WORDS))
             position, label = e.ld(at), e.ld(e.ld(e.add(at, 1)))
             _ok(e, e.ne(label, NONE))
             e.var("delta", e.and_(e.sub(label, e.add(position, 4)), 0xFFFFFFFF))
@@ -764,9 +772,10 @@ def _block(tables):
 
             def record():
                 count = e.hd(S_RANGES)
-                _ok(e, e.lt(count, RANGES_LIMIT // RANGE_WORDS))
-                at = e.add(RANGES_AT, e.mul(count, RANGE_WORDS))
-                for k, value in enumerate((e.add(e.mul(e.hd(S_FN), 1 << 32), b), p["m"], e.add(e.mul(p["start"], 1 << 32), e.hd(S_COUNT)))):
+                _ok(e, e.both(e.lt(count, X86_RANGES_LIMIT // RANGE_WORDS), e.lt(e.hd(S_FN), 1 << 24), e.lt(b, 1 << 20), e.lt(p["m"], 1 << 20)))
+                at = e.add(X86_RANGES_AT, e.mul(count, RANGE_WORDS))
+                for k, value in enumerate((e.add(e.add(e.mul(e.hd(S_FN), 1 << 40), e.mul(b, 1 << 20)), p["m"]),
+                                           e.add(e.mul(p["start"], 1 << 32), e.hd(S_COUNT)))):
                     e.st(e.add(at, k), value)
                 e.set_hd(S_RANGES, e.add(count, 1))
 
@@ -898,8 +907,8 @@ def collect_output(read):
         return b"".join(word.to_bytes(8, "little") for word in read(WORDS_AT, (count + 7) // 8))[:count]
 
     def ranges(count):
-        flat = read(RANGES_AT, RANGE_WORDS * count)
-        return [(a >> 32, a & 0xFFFFFFFF, node, c >> 32, c & 0xFFFFFFFF) for a, node, c in zip(flat[0::3], flat[1::3], flat[2::3])]
+        flat = read(X86_RANGES_AT, RANGE_WORDS * count)
+        return [(a >> 40, (a >> 20) & 0xFFFFF, a & 0xFFFFF, c >> 32, c & 0xFFFFFFFF) for a, c in zip(flat[0::2], flat[1::2])]
 
     return collect_program_output(read, read_code=code, read_ranges=ranges)
 

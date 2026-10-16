@@ -1,3 +1,4 @@
 # xax-evolution-ledger-v1 (ADR-305): edit records applied in order to the general driver's baseline
 # <record> <query> -- the record is a transaction of ``xaxc edit``; the query (xax_selfhost_evolution.QUERIES) located its nodes.
 0001-inputs-limit.edit inputs_limit
+0002-dead-constants.edit dead_constants

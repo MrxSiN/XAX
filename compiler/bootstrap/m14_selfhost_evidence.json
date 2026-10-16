@@ -18,10 +18,9 @@
       "B3": true,
       "B4": true,
       "B5": true,
-      "B6": false,
+      "B6": true,
       "blockers": {
-        "B1": "a graph whose first pass calls two different resource callees before its own decision declines (the bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)",
-        "B6": "the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes (nodes, uses, signatures, new functions) still need the Python builders (S15d.4)"
+        "B1": "a graph whose first pass calls two different resource callees before its own decision declines (the bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)"
       },
       "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.2-S15e.7)",
       "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",

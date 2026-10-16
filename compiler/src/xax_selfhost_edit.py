@@ -14,12 +14,23 @@ The edit record (``RECORD_MAGIC``), a tooling carrier, not program source:
     mutation: ULEB kind | function CID (32 bytes) | ULEB block | ULEB node | operands
       SET_OPERATION (1): ULEB expected operation, ULEB operation   (``SetOperation``: wrapping add, sub, mul)
       SET_CONSTANT (2):  ULEB expected value, ULEB value             (``SetConstant``: an integer constant node)
+    S15d.4a (ADR-312): REPLACE_REFERENCE (3): owner CID, old child CID, new child CID; then the supplied objects.
+    S15d.4b (ADR-314), the workspace's structural mutations, a value being ``ULEB tag (0 parameter, 1 node result, 2 an
+    insertion's result) | ULEB block or local id | ULEB index or result | (tag 1) ULEB result``:
+      REPLACE_USE (4):     ULEB operand, expected value, value                         (``ReplaceUse``)
+      DELETE_NODE (5):     nothing more                                                 (``DeleteNode``)
+      INSERT_NODE (6):     ULEB local id, ULEB operation, ULEB count, values, result type CID, ULEB has value
+                           [ULEB value], ULEB attribute count, ULEBs; inserted before the node (``InsertPureNode``)
+      SET_RESULT_TYPE (7): ULEB result, expected type CID, type CID                     (``SetResultType``)
+      DISCONNECT_EDGE (8), CONNECT_EDGE (9): the node field is the edge; ULEB argument, value
 
 A mutation names its node by the function's CID and the node's block and position, so a changed function is stale by
 construction; the expected root and the expected operation or value are its other preconditions.
 
 * ``begin`` parses the record, checks every precondition with the workspace's diagnostics, makes each new constant,
-  and marks the affected objects (the mutated graphs and their transitive users).
+  and marks the affected objects (the mutated graphs and their transitive users).  The structural preconditions are
+  the workspace's (``_mutate_function``), quoted exactly; the candidate's verification is ``verify``'s, run on ``edit``'s output
+  (the workspace's commit verifies inside the transaction).
 * ``next`` gives the next object whose references are all final: a new constant, then each affected object once
   all its affected references are done.  It writes the object's CID preimage (after the domain) at ``PRE`` and where
   the driver puts its CID (``E_SLOT``).
@@ -35,20 +46,37 @@ from xax_selfhost_semantic import _cid_word, _kind, _nrefs, _payload, _ref
 
 RECORD_MAGIC = b"XAXEDIT1"
 SET_OPERATION, SET_CONSTANT, REPLACE_REFERENCE = 1, 2, 3
+# S15d.4b (ADR-314): the workspace's graph mutations (``xax_workspace``'s ReplaceUse, DeleteNode, InsertPureNode,
+# SetResultType, DisconnectEdgeArgument, ConnectEdgeArgument), each naming its node or edge by function CID and block.
+REPLACE_USE, DELETE_NODE, INSERT_NODE, SET_RESULT_TYPE, DISCONNECT_EDGE, CONNECT_EDGE = 4, 5, 6, 7, 8, 9
+STRUCTURAL = (REPLACE_USE, DELETE_NODE, INSERT_NODE, SET_RESULT_TYPE, DISCONNECT_EDGE, CONNECT_EDGE)
+VALUE_PARAMETER, VALUE_RESULT, VALUE_INSERTED = 0, 1, 2  # a record value: its tag, then block and index (and result), or local id and result
 EB = 52 << 20  # workspace words
 (E_STATUS, E_LENGTH, E_MUTATIONS, E_EXTRAS, E_EXTRAS_DONE, E_OBJECTS, E_SLOT, E_KIND, E_NREFS, E_REFS_AT, E_BODY_AT, E_BODY_LENGTH,
  E_PRE_LENGTH, E_OBJECT, E_ROOT, E_AFFECTED, E_PRE_AT, E_NEW, E_BATCH_LENGTH, E_PRE_END) = range(20)
 OK, REJECT, MORE, DONE = 0, 1, 2, 3
 EC = EB  # control words (64)
 OPF = EB + 64  # per operation code: 1 entity, 2 attributes
-MUT = EB + 256  # 8 words per mutation: kind, function, graph, block, node, expected, value, extra
-MUT_WORDS, MUT_LIMIT = 8, 256
+MUT = EB + 256  # 12 words per mutation: kind, function, graph, block, node, expected, value, extra, then (S15d.4b) four more
+MUT_WORDS, MUT_LIMIT = 12, 256
+# S15d.4b (ADR-314): a structural mutation's row: field 5 the record word of its payload, field 6 its operand, result,
+# argument or local id, field 7 located (its node's operation + 2^32), then a new constant (``M_EXTRA``), and what the
+# locating scan found: a count (operands, results, an edge's arguments), a comparison (1 equal, 2 differs; a deleted
+# node's first use; the old result type + 1), and a value (a use's result; the block's edge count).
+M_EXTRA, M_COUNT, M_FOUND, M_USE = 8, 9, 10, 11
+NODE_KINDS = (SET_OPERATION, SET_CONSTANT, REPLACE_USE, DELETE_NODE, INSERT_NODE, SET_RESULT_TYPE)
+INSERTABLE = (Operation.CONSTANT, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_AND, Operation.BIT_OR,
+              Operation.BIT_XOR, Operation.INT_COMPARE, Operation.INT_ZERO_EXTEND, Operation.INT_TRUNCATE)  # ``xax_workspace._INSERTABLE``
+PURE = (Operation.CONSTANT, Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP)  # what DeleteNode removes
 # 16 words per new object of the transaction's own: type, length, value, alias, CID (4) for a new constant; S15d.4a
 # (ADR-312): a supplied object has X_SUPPLIED set and its kind, reference count, references, body length and body (record
 # words), and whether ``reach`` reached it.
 EXTRA = MUT + MUT_WORDS * MUT_LIMIT
 EXTRA_WORDS = 16
 X_SUPPLIED, X_KIND, X_NREFS, X_REFS, X_BODY_LENGTH, X_BODY, X_REACHED = range(8, 15)
+# S15d.4b: a new constant whose type the record names (an inserted constant, a constant node's new result type): field
+# 0 is NONE and ``X_TYPE_AT`` the record word of that type's CID (resolved once the supplied objects have CIDs).
+X_TYPE_AT = 15
 ENTITY_AT = EXTRA + EXTRA_WORDS * MUT_LIMIT  # per mutation: its node's entity reference index + 1 (0: none)
 STATE = EB + (1 << 17)  # per object: 0 untouched, 1 affected, 2 rebuilt
 NEWCID = STATE + (1 << 16)  # 4 words per object
@@ -79,7 +107,7 @@ assert ENTITY_AT + MUT_LIMIT <= STATE and BATCH + BATCH_LIMIT <= EIN and EIN + E
 ENTITY = sorted(int(op) for op in ENTITY_OPERATIONS)
 ATTRIBUTE = sorted(int(op) for op in ATTRIBUTE_OPERATIONS)
 WRAPPING = (int(Operation.ADD_WRAP), int(Operation.SUB_WRAP), int(Operation.MUL_WRAP))
-LOCATE, COLLECT, EMIT = 0, 1, 2
+LOCATE, COLLECT, EMIT = 0, 1, 2  # (S15d.4b: SKIP, 3, below)
 
 
 def _ctrl(e: E, field: int):
@@ -125,6 +153,10 @@ def _body_of(e: E, o, name: str):
 # The cursor lives in control words, so the scanners are functions of their own: ``CUR`` (the object table word read
 # next), ``OUT`` (the ``BODY`` word written next), ``MODE`` (LOCATE, COLLECT, EMIT).
 CUR, OUT, MODE, KEY, HIT, RCUR = 48, 49, 50, 52, 56, 57
+# S15d.4b: a value being written (tag, then two or three fields), and the graph being scanned; SKIP scans a deleted
+# node without collecting or writing anything.
+V_TAG, V_A, V_B, V_C, GRAPH_CUR = 20, 21, 22, 23, 24
+SKIP = 3
 _F: dict = {}
 
 
@@ -400,12 +432,330 @@ def _mutation(e: E, m, field: int):
     return e.ld(e.add(e.add(MUT, e.mul(m, MUT_WORDS)), field))
 
 
+def _row(e: E, m, field: int):
+    return e.add(e.add(MUT, e.mul(m, MUT_WORDS)), field)
+
+
+# -- S15d.4b (ADR-314): the workspace's graph mutations ----------------------------------------------------------------
+
+def _record_value_function():
+    """The record's value at ``RCUR`` into ``V_TAG``.. ``V_C`` (``V_C`` 0 for a parameter); ``RCUR`` moves past it."""
+    def build(e: E):
+        p = e.p
+        e.var("vt", _call(e, "record_uleb"))
+        e.var("va", _call(e, "record_uleb"))
+        e.var("vb", _call(e, "record_uleb"))
+        e.var("vc", 0)
+        e.if_(e.eq(p["vt"], VALUE_RESULT), lambda: e.set("vc", _call(e, "record_uleb")))
+        for field, name in ((V_TAG, "vt"), (V_A, "va"), (V_B, "vb"), (V_C, "vc")):
+            _set(e, field, p[name])
+        e.give(p["vt"])
+    return _function((), build, None)
+
+
+def _count_rows_function():
+    """How many rows of mutation ``kind`` name graph ``GRAPH_CUR``'s block ``block`` (the node counts of a re-encoded
+    block move by its insertions less its deletions)."""
+    def build(e: E):
+        p = e.p
+        e.var("cn", 0)
+        e.for_("cq", 0, _ctrl(e, E_MUTATIONS), lambda: e.if_(e.both(
+            e.eq(_mutation(e, p["cq"], 0), p["kind"]), e.eq(_mutation(e, p["cq"], 2), _ctrl(e, GRAPH_CUR)), e.eq(_mutation(e, p["cq"], 3), p["block"])),
+            lambda: e.set("cn", e.add(p["cn"], 1))))
+        e.give(p["cn"])
+    return _function(("kind", "block"), build, None)
+
+
+def _remap_function():
+    """Node ``index`` of block ``block`` after the transaction (``_mutate_function``'s ``remap_value``): moved up by the
+    insertions anchored at or before it, down by the deletions before it.  ``strict``: insertions strictly before it
+    (an inserted node's own place, ``inserted_value``)."""
+    def build(e: E):
+        p = e.p
+        e.var("rn", p["index"])
+        e.var("rstrict", e.ld(EC + 25))
+
+        def each():
+            same = e.both(e.eq(_mutation(e, p["rq"], 2), _ctrl(e, GRAPH_CUR)), e.eq(_mutation(e, p["rq"], 3), p["block"]))
+            e.var("rk", _mutation(e, p["rq"], 0))
+            e.var("rat", _mutation(e, p["rq"], 4))
+            e.var("rsame", e.flag(same))
+            e.if_(e.both(e.ne(p["rsame"], 0), e.eq(p["rk"], INSERT_NODE), e.either(e.lt(p["rat"], p["index"]), e.both(e.eq(p["rat"], p["index"]), e.eq(p["rstrict"], 0)))),
+                  lambda: e.set("rn", e.add(p["rn"], 1)))
+            e.if_(e.both(e.ne(p["rsame"], 0), e.eq(p["rk"], DELETE_NODE), e.lt(p["rat"], p["index"])), lambda: e.set("rn", e.sub(p["rn"], 1)))
+
+        e.for_("rq", 0, _ctrl(e, E_MUTATIONS), each)
+        e.give(p["rn"])
+    return _function(("block", "index"), build, None)
+
+
+def _local_function():
+    """The row of the insertion with transaction-local id ``local`` in graph ``GRAPH_CUR``, or NONE."""
+    def build(e: E):
+        p = e.p
+        e.var("lr", NONE)
+        e.for_("lq", 0, _ctrl(e, E_MUTATIONS), lambda: e.if_(e.both(
+            e.eq(_mutation(e, p["lq"], 0), INSERT_NODE), e.eq(_mutation(e, p["lq"], 2), _ctrl(e, GRAPH_CUR)), e.eq(_mutation(e, p["lq"], 6), p["local"])),
+            lambda: e.set("lr", p["lq"])))
+        e.give(p["lr"])
+    return _function(("local",), build, None)
+
+
+def _emit_value_function():
+    """Write the value in ``V_TAG``.. (EMIT mode): a parameter as it is, a node result remapped, a transaction-local
+    insertion's result as that node's result."""
+    def build(e: E):
+        p = e.p
+        e.var("et", _ctrl(e, V_TAG))
+        e.var("ea", _ctrl(e, V_A))
+        e.var("eb", _ctrl(e, V_B))
+        e.var("ec", _ctrl(e, V_C))
+
+        def write():
+            def parameter():
+                for value in (0, p["ea"], p["eb"]):
+                    _call(e, "put_uleb", value)
+
+            def result():
+                e.st(EC + 25, 0)
+                e.var("ei", _call(e, "remap", p["ea"], p["eb"]))
+                for value in (1, p["ea"], p["ei"], p["ec"]):
+                    _call(e, "put_uleb", value)
+
+            def inserted():
+                e.var("er", _call(e, "local", p["ea"]))
+                e.if_(e.eq(p["er"], NONE), lambda: e.st(EC + 26, 1))  # checked before: never here
+                e.var("erow", e.sel(e.eq(p["er"], NONE), 0, p["er"]))
+                e.st(EC + 25, 1)
+                e.var("ei", _call(e, "remap", _mutation(e, p["erow"], 3), _mutation(e, p["erow"], 4)))
+                for value in (1, _mutation(e, p["erow"], 3), p["ei"], p["eb"]):
+                    _call(e, "put_uleb", value)
+
+            e.if_(e.eq(p["et"], VALUE_PARAMETER), parameter, lambda: e.if_(e.eq(p["et"], VALUE_RESULT), result, inserted))
+
+        e.if_(e.eq(_ctrl(e, MODE), EMIT), write)
+        e.give(0)
+    return _function((), build, None)
+
+
+def _read_value_function():
+    """The body's value at ``CUR`` into ``V_TAG``.. (nothing written)."""
+    def build(e: E):
+        p = e.p
+        e.var("wt", _call(e, "uleb_read"))
+        _set(e, V_TAG, p["wt"])
+        _set(e, V_A, _call(e, "uleb_read"))
+        _set(e, V_B, _call(e, "uleb_read"))
+        _set(e, V_C, 0)
+        e.if_(e.eq(p["wt"], 1), lambda: _set(e, V_C, _call(e, "uleb_read")))
+        e.give(p["wt"])
+    return _function((), build, None)
+
+
+def _emit_ref_function():
+    """A reference to ``source`` written as the current version's index: COLLECT inserts its CID among the sorted
+    references, EMIT writes its index (other modes nothing)."""
+    def build(e: E):
+        p = e.p
+        e.var("em", _ctrl(e, MODE))
+        e.if_(e.eq(p["em"], COLLECT), lambda: _call(e, "insert", p["source"]))
+
+        def emit():
+            for k in range(4):
+                _set(e, KEY + k, _source_cid(e, p["source"], k))
+            _call(e, "put_uleb", _call(e, "search"))
+
+        e.if_(e.eq(p["em"], EMIT), emit)
+        e.give(0)
+    return _function(("source",), build, None)
+
+
+def _type_source_function():
+    """The object whose CID is the record's 32 bytes at ``at`` (the store's, or a supplied one's once it has its CID);
+    NONE when neither holds it."""
+    def build(e: E):
+        p = e.p
+        for k in range(4):
+            e.var(f"tw{k}", 0)
+            for j in range(8):
+                e.set(f"tw{k}", e.add(e.mul(p[f"tw{k}"], 256), e.ld(e.add(p["at"], 8 * k + j))))
+            _set(e, KEY + k, p[f"tw{k}"])
+        e.give(_call(e, "resolve"))
+    return _function(("at",), build, None)
+
+
+def _emit_insert_function():
+    """Insertion row ``m``'s node, written (COLLECT: its references collected): its operation, its constant (a new
+    object), its operands (record values), its one result type, its attributes."""
+    def build(e: E):
+        p = e.p
+        e.var("in_row", p["m"])
+        _set(e, RCUR, _mutation(e, p["in_row"], 5))
+        e.var("iop", _call(e, "record_uleb"))
+        e.var("imode", _ctrl(e, MODE))
+        e.if_(e.eq(p["imode"], EMIT), lambda: _call(e, "put_uleb", p["iop"]))
+        e.if_(e.eq(p["iop"], int(Operation.CONSTANT)), lambda: _call(e, "emit_ref", e.add(EXTRA_TAG, _mutation(e, p["in_row"], M_EXTRA))))
+        e.var("in", _call(e, "record_uleb"))
+        e.if_(e.eq(p["imode"], EMIT), lambda: _call(e, "put_uleb", p["in"]))
+
+        def operand():
+            _call(e, "record_value")
+            e.var("irc", _ctrl(e, RCUR))
+            _call(e, "emit_value")
+            _set(e, RCUR, p["irc"])
+
+        e.for_("iq", 0, p["in"], operand)
+        e.var("itype_at", _ctrl(e, RCUR))
+        _set(e, RCUR, e.add(p["itype_at"], 32))
+        e.if_(e.eq(p["imode"], EMIT), lambda: _call(e, "put_uleb", 1))
+        e.var("itype", _call(e, "type_source", p["itype_at"]))
+        e.if_(e.eq(p["itype"], NONE), lambda: _reject(
+            e, "XAX.WORKSPACE.HANDLE", lambda: _record_cid(e, p["itype_at"]), "WORKSPACE-HANDLE-GENERATION",
+            lambda: D.text(e, "type at the current root"), lambda: D.text(e, "unbound or stale")))
+        e.if_(e.ne(p["itype"], NONE), lambda: _call(e, "emit_ref", p["itype"]))
+        e.var("ihas", _call(e, "record_uleb"))
+        e.if_(e.ne(p["ihas"], 0), lambda: _call(e, "record_uleb"))
+        e.var("iattrs", _call(e, "record_uleb"))
+
+        def attributes():
+            e.if_(e.eq(p["imode"], EMIT), lambda: _call(e, "put_uleb", p["iattrs"]))
+            e.for_("ia", 0, p["iattrs"], lambda: (e.var("iav", _call(e, "record_uleb")), e.if_(e.eq(p["imode"], EMIT), lambda: _call(e, "put_uleb", p["iav"]))))
+
+        e.if_(e.ne(e.and_(e.ld(e.add(OPF, e.sel(e.lt(p["iop"], 128), p["iop"], 0))), 2), 0), attributes)
+        e.give(0)
+    return _function(("m",), build, None)
+
+
+def _note_use_function():
+    """LOCATE: the value in ``V_TAG``.. read at body word ``at`` uses a node a ``DELETE_NODE`` row deletes: the row's
+    ``M_FOUND`` keeps the first such use (``at`` + 1).  A use in a node the transaction deletes too does not count."""
+    def build(e: E):
+        p = e.p
+        e.var("nu_tag", _ctrl(e, V_TAG))
+        e.var("nu_block", _ctrl(e, V_A))
+        e.var("nu_node", _ctrl(e, V_B))
+
+        def each():
+            e.if_(e.both(e.eq(_mutation(e, p["nq"], 0), DELETE_NODE), e.eq(_mutation(e, p["nq"], 2), _ctrl(e, GRAPH_CUR)),
+                         e.eq(_mutation(e, p["nq"], 3), p["nu_block"]), e.eq(_mutation(e, p["nq"], 4), p["nu_node"]),
+                         e.eq(_mutation(e, p["nq"], M_FOUND), 0)), lambda: e.st(_row(e, p["nq"], M_FOUND), e.add(p["at"], 1)))
+
+        e.if_(e.both(e.eq(p["nu_tag"], VALUE_RESULT), e.eq(p["deleted"], 0)), lambda: e.for_("nq", 0, _ctrl(e, E_MUTATIONS), each))
+        e.give(0)
+    return _function(("at", "deleted"), build, None)
+
+
+def _same_value_function():
+    """1 when the record's value at ``at`` is the value in ``V_TAG``.. (which it leaves as the record's)."""
+    def build(e: E):
+        p = e.p
+        for field in (V_TAG, V_A, V_B, V_C):
+            e.var(f"sv{field}", _ctrl(e, field))
+        _set(e, RCUR, p["at"])
+        _call(e, "record_value")
+        e.var("sv_same", 1)
+        for field in (V_TAG, V_A, V_B, V_C):
+            e.set("sv_same", e.and_(p["sv_same"], e.flag(e.eq(_ctrl(e, field), p[f"sv{field}"]))))
+        e.give(p["sv_same"])
+    return _function(("at",), build, None)
+
+
+def _edge_row_function():
+    """The row of an edge mutation of ``kind`` on graph ``GRAPH_CUR``'s block ``block``, edge ``edge``, argument ``arg``,
+    or NONE; with ``arg`` NONE, how many name that edge."""
+    def build(e: E):
+        p = e.p
+        e.var("er_row", NONE)
+        e.var("er_count", 0)
+
+        def each():
+            e.if_(e.both(e.eq(_mutation(e, p["eq"], 0), p["kind"]), e.eq(_mutation(e, p["eq"], 2), _ctrl(e, GRAPH_CUR)),
+                         e.eq(_mutation(e, p["eq"], 3), p["block"]), e.eq(_mutation(e, p["eq"], M_EXTRA), p["edge"])), lambda: (
+                e.set("er_count", e.add(p["er_count"], 1)),
+                e.if_(e.eq(_mutation(e, p["eq"], 6), p["arg"]), lambda: e.set("er_row", p["eq"]))))
+
+        e.for_("eq", 0, _ctrl(e, E_MUTATIONS), each)
+        e.give(e.sel(e.eq(p["arg"], NONE), p["er_count"], p["er_row"]))
+    return _function(("kind", "block", "edge", "arg"), build, None)
+
+
+def _scan_value_function():
+    """A value of the body at ``CUR``: LOCATE notes a deleted node's use, EMIT writes it remapped."""
+    def build(e: E):
+        p = e.p
+        e.var("sv_at", _ctrl(e, CUR))
+        _call(e, "read_value")
+        e.if_(e.eq(_ctrl(e, MODE), LOCATE), lambda: _call(e, "note_use", p["sv_at"], p["deleted"]), lambda: _call(e, "emit_value"))
+        e.give(0)
+    return _function(("deleted",), build, None)
+
+
+def _scan_edge_function():
+    """A terminator edge of graph ``GRAPH_CUR``'s block ``block`` from ``CUR``: its target and arguments, with the
+    transaction's disconnections and connections (S15d.4b); LOCATE records the edge's argument count (``M_FOUND`` + 1)
+    and each disconnection's comparison (``M_USE``; the argument's body word + 1 in ``ENTITY_AT``)."""
+    def build(e: E):
+        p = e.p
+        e.var("xm", _ctrl(e, MODE))
+        _call(e, "copy_uleb")  # the target
+        e.var("xn", _call(e, "uleb_read"))
+
+        def counts():
+            def each():
+                e.if_(e.both(e.lt(SET_RESULT_TYPE, _mutation(e, p["xq"], 0)),
+                             e.eq(_mutation(e, p["xq"], 2), _ctrl(e, GRAPH_CUR)), e.eq(_mutation(e, p["xq"], 3), p["block"]),
+                             e.eq(_mutation(e, p["xq"], M_EXTRA), p["edge"])), lambda: e.st(_row(e, p["xq"], M_FOUND), e.add(p["xn"], 1)))
+
+            e.for_("xq", 0, _ctrl(e, E_MUTATIONS), each)
+
+        e.if_(e.eq(p["xm"], LOCATE), counts)
+        e.if_(e.eq(p["xm"], EMIT), lambda: _call(e, "put_uleb", e.sub(e.add(p["xn"], _call(e, "edge_row", CONNECT_EDGE, p["block"], p["edge"], NONE)),
+                                                                   _call(e, "edge_row", DISCONNECT_EDGE, p["block"], p["edge"], NONE))))
+
+        def argument():
+            e.var("xc", _call(e, "edge_row", CONNECT_EDGE, p["block"], p["edge"], p["xa"]))
+
+            def connect():
+                _set(e, RCUR, _mutation(e, p["xc"], 5))
+                _call(e, "record_value")
+                _call(e, "emit_value")
+
+            e.if_(e.both(e.ne(p["xc"], NONE), e.eq(p["xm"], EMIT)), connect)
+
+            def existing():
+                e.var("xat", _ctrl(e, CUR))
+                _call(e, "read_value")
+                e.var("xd", _call(e, "edge_row", DISCONNECT_EDGE, p["block"], p["edge"], p["xa"]))
+
+                def locate():
+                    _call(e, "note_use", p["xat"], 0)
+
+                    def compare():
+                        e.var("xsame", _call(e, "same_value", _mutation(e, p["xd"], 5)))
+                        e.st(_row(e, p["xd"], M_USE), e.sub(2, p["xsame"]))
+                        e.st(e.add(ENTITY_AT, p["xd"]), e.add(p["xat"], 1))
+
+                    e.if_(e.ne(p["xd"], NONE), compare)
+
+                e.if_(e.eq(p["xm"], LOCATE), locate, lambda: e.if_(e.eq(p["xd"], NONE), lambda: _call(e, "emit_value")))
+
+            e.if_(e.lt(p["xa"], p["xn"]), existing)
+
+        e.for_("xa", 0, e.add(p["xn"], 1), argument)
+        e.give(0)
+    return _function(("block", "edge"), build, None)
+
+
 def _scan_graph_function():
     """``graph_fragment``'s body grammar over graph ``o`` from ``CUR``, applying its mutations.  In LOCATE mode it
-    records each mutated node's operation (``MUT`` field 7) and its entity's reference index (``ENTITY_AT``)."""
+    records each mutated node's operation (``MUT`` field 7) and its entity's reference index (``ENTITY_AT``), and
+    (S15d.4b) what the structural mutations check: operand and result counts, an operand's comparison, a deleted node's
+    first use, a result's old type, an edge's counts.  COLLECT and EMIT insert nodes before their anchors, skip deleted
+    ones, and write every value remapped."""
     def build(e: E):
         p = e.p
         e.var("mode", _ctrl(e, MODE))
+        _set(e, GRAPH_CUR, p["o"])
         e.var("nblocks", _call(e, "copy_uleb"))
         _call(e, "copy_uleb")  # the entry block
         e.var("gb", 0)
@@ -413,61 +763,121 @@ def _scan_graph_function():
         def block():
             e.var("np", _call(e, "copy_uleb"))
             e.for_("gp", 0, p["np"], lambda: _call(e, "reference", p["o"], NONE))
-            e.var("nn", _call(e, "copy_uleb"))
+            e.var("nn", _call(e, "uleb_read"))
+            e.if_(e.eq(p["mode"], EMIT), lambda: _call(e, "put_uleb", e.sub(e.add(p["nn"], _call(e, "count_rows", INSERT_NODE, p["gb"])),
+                                                                          _call(e, "count_rows", DELETE_NODE, p["gb"]))))
             e.var("gn", 0)
 
             def node():
                 e.var("gm", NONE)
                 e.for_("mq", 0, _ctrl(e, E_MUTATIONS), lambda: e.if_(e.both(
-                    e.eq(_mutation(e, p["mq"], 2), p["o"]), e.eq(_mutation(e, p["mq"], 3), p["gb"]), e.eq(_mutation(e, p["mq"], 4), p["gn"])),
+                    e.eq(_mutation(e, p["mq"], 2), p["o"]), e.eq(_mutation(e, p["mq"], 3), p["gb"]), e.eq(_mutation(e, p["mq"], 4), p["gn"]),
+                    e.lt(_mutation(e, p["mq"], 0), DISCONNECT_EDGE), e.ne(_mutation(e, p["mq"], 0), REPLACE_REFERENCE)),
                     lambda: e.set("gm", p["mq"])))
+                e.var("gk", 0)
+                e.if_(e.ne(p["gm"], NONE), lambda: e.set("gk", _mutation(e, p["gm"], 0)))
+
+                def inserted():  # the inserted node comes before its anchor, which is otherwise unchanged
+                    e.if_(e.eq(p["mode"], LOCATE), lambda: e.st(_row(e, p["gm"], 7), 1 << 32), lambda: _call(e, "emit_insert", p["gm"]))
+                    e.set("gm", NONE)
+                    e.set("gk", 0)
+
+                e.if_(e.eq(p["gk"], INSERT_NODE), inserted)
+                e.var("gmr", e.sel(e.eq(p["gm"], NONE), 0, p["gm"]))
+                e.var("gdel", e.flag(e.eq(p["gk"], DELETE_NODE)))
+                e.if_(e.both(e.ne(p["gdel"], 0), e.ne(p["mode"], LOCATE)), lambda: _set(e, MODE, SKIP))
                 e.var("gop", _call(e, "uleb_read"))
                 e.var("gout", p["gop"])
                 e.var("edited", e.flag(e.ne(p["gm"], NONE)))
-                e.if_(e.both(e.ne(p["edited"], 0), e.eq(_mutation(e, e.sel(e.ne(p["edited"], 0), p["gm"], 0), 0), SET_OPERATION), e.ne(p["mode"], LOCATE)),
-                      lambda: e.set("gout", _mutation(e, p["gm"], 6)))
-                e.if_(e.both(e.ne(p["edited"], 0), e.eq(p["mode"], LOCATE)),
-                      lambda: e.st(e.add(e.add(MUT, e.mul(p["gm"], MUT_WORDS)), 7), e.add(p["gop"], 1 << 32)))  # located
-                e.if_(e.eq(p["mode"], EMIT), lambda: _call(e, "put_uleb", p["gout"]))
+                e.if_(e.both(e.eq(p["gk"], SET_OPERATION), e.ne(p["mode"], LOCATE)), lambda: e.set("gout", _mutation(e, p["gmr"], 6)))
+                e.if_(e.both(e.ne(p["edited"], 0), e.eq(p["mode"], LOCATE)), lambda: e.st(_row(e, p["gmr"], 7), e.add(p["gop"], 1 << 32)))  # located
+                e.if_(e.eq(_ctrl(e, MODE), EMIT), lambda: _call(e, "put_uleb", p["gout"]))
                 e.var("gflags", e.ld(e.add(OPF, e.sel(e.lt(p["gop"], 128), p["gop"], 0))))
                 e.if_(e.eq(p["gop"], int(Operation.CALL_GROUP_MEMBER)), lambda: _call(e, "copy_uleb"))
 
                 def entity():
                     e.var("gx", NONE)
-                    e.if_(e.both(e.ne(p["edited"], 0), e.ne(p["mode"], LOCATE)), lambda: e.if_(
-                        e.eq(_mutation(e, p["gm"], 0), SET_CONSTANT), lambda: e.set("gx", _mutation(e, p["gm"], 7))))
+                    e.if_(e.both(e.eq(p["gk"], SET_CONSTANT), e.ne(p["mode"], LOCATE)), lambda: e.set("gx", _mutation(e, p["gmr"], 7)))
+                    e.if_(e.both(e.eq(p["gk"], SET_RESULT_TYPE), e.ne(p["mode"], LOCATE)), lambda: e.set("gx", _mutation(e, p["gmr"], M_EXTRA)))
                     e.var("gent", _call(e, "reference", p["o"], p["gx"]))
-                    e.if_(e.both(e.ne(p["edited"], 0), e.eq(p["mode"], LOCATE)), lambda: e.st(e.add(ENTITY_AT, p["gm"]), e.add(p["gent"], 1)))
+                    e.if_(e.both(e.ne(p["edited"], 0), e.eq(p["mode"], LOCATE)), lambda: e.st(e.add(ENTITY_AT, p["gmr"]), e.add(p["gent"], 1)))
 
                 e.if_(e.ne(e.and_(p["gflags"], 1), 0), entity)
+                e.var("guse", e.flag(e.eq(p["gk"], REPLACE_USE)))
+                e.var("gno", _call(e, "copy_uleb"))
+                e.if_(e.both(e.ne(p["guse"], 0), e.eq(p["mode"], LOCATE)), lambda: e.st(_row(e, p["gmr"], M_COUNT), p["gno"]))
 
                 def operand():
-                    e.var("vt", _call(e, "copy_uleb"))
-                    _call(e, "copy_uleb")
-                    _call(e, "copy_uleb")
-                    e.if_(e.eq(p["vt"], 1), lambda: _call(e, "copy_uleb"))
+                    e.var("ghit", e.flag(e.both(e.ne(p["guse"], 0), e.eq(_mutation(e, p["gmr"], 6), p["go"]))))
 
-                e.for_("go", 0, _call(e, "copy_uleb"), operand)
-                e.for_("gr", 0, _call(e, "copy_uleb"), lambda: _call(e, "reference", p["o"], NONE))
+                    def replaced():
+                        def locate():
+                            e.var("gat", _ctrl(e, CUR))
+                            _call(e, "read_value")
+                            _call(e, "note_use", p["gat"], p["gdel"])
+                            e.var("gsame", _call(e, "same_value", _mutation(e, p["gmr"], 5)))
+                            e.st(_row(e, p["gmr"], M_FOUND), e.sub(2, p["gsame"]))
+                            e.st(_row(e, p["gmr"], M_USE), p["gat"])
+
+                        def replace():
+                            _call(e, "read_value")
+                            _set(e, RCUR, _mutation(e, p["gmr"], 5))
+                            _call(e, "record_value")  # the expected value
+                            _call(e, "record_value")
+                            _call(e, "emit_value")
+
+                        e.if_(e.eq(p["mode"], LOCATE), locate, replace)
+
+                    e.if_(e.ne(p["ghit"], 0), replaced, lambda: _call(e, "scan_value", p["gdel"]))
+
+                e.for_("go", 0, p["gno"], operand)
+                e.var("gtype", e.flag(e.eq(p["gk"], SET_RESULT_TYPE)))
+                e.var("gnr", _call(e, "copy_uleb"))
+                e.if_(e.both(e.ne(p["gtype"], 0), e.eq(p["mode"], LOCATE)), lambda: e.st(_row(e, p["gmr"], M_COUNT), p["gnr"]))
+
+                def result():
+                    def retyped():
+                        def locate():
+                            e.var("gold", _call(e, "uleb_read"))
+                            e.st(_row(e, p["gmr"], M_FOUND), e.add(_ref(e, p["o"], p["gold"]), 1))
+
+                        def retype():
+                            _call(e, "uleb_read")
+                            e.var("gnew_at", e.add(_mutation(e, p["gmr"], 5), 32))
+                            e.var("gnew", _call(e, "type_source", p["gnew_at"]))
+                            e.if_(e.eq(p["gnew"], NONE), lambda: _reject(
+                                e, "XAX.WORKSPACE.HANDLE", lambda: _record_cid(e, p["gnew_at"]), "WORKSPACE-HANDLE-GENERATION",
+                                lambda: D.text(e, "type at the current root"), lambda: D.text(e, "unbound or stale")),
+                                  lambda: _call(e, "emit_ref", p["gnew"]))
+
+                        e.if_(e.eq(p["mode"], LOCATE), locate, retype)
+
+                    e.if_(e.both(e.ne(p["gtype"], 0), e.eq(_mutation(e, p["gmr"], 6), p["gr"])), retyped,
+                          lambda: _call(e, "reference", p["o"], NONE))
+
+                e.for_("gr", 0, p["gnr"], result)
                 e.if_(e.ne(e.and_(p["gflags"], 2), 0), lambda: e.for_("ga", 0, _call(e, "copy_uleb"), lambda: _call(e, "copy_uleb")))
+                _set(e, MODE, p["mode"])
                 e.set("gn", e.add(p["gn"], 1))
 
             e.while_(lambda: e.lt(p["gn"], p["nn"]), node)
-
-            def value():
-                e.var("tv", _call(e, "copy_uleb"))
-                _call(e, "copy_uleb")
-                _call(e, "copy_uleb")
-                e.if_(e.eq(p["tv"], 1), lambda: _call(e, "copy_uleb"))
-
-            def edge():
-                _call(e, "copy_uleb")  # the target
-                e.for_("te", 0, _call(e, "copy_uleb"), value)
-
             e.var("tk", _call(e, "copy_uleb"))
-            e.if_(e.eq(p["tk"], 1), edge)
-            e.if_(e.eq(p["tk"], 2), lambda: (value(), edge(), edge()))
-            e.if_(e.eq(p["tk"], 3), lambda: e.for_("tr", 0, _call(e, "copy_uleb"), value))
+
+            def edges():
+                """LOCATE: the block's edge mutations are located when it has a node (their handle) and see its edge count."""
+                e.var("tedges", e.sel(e.eq(p["tk"], 1), 1, e.sel(e.eq(p["tk"], 2), 2, 0)))
+
+                def each():
+                    e.if_(e.both(e.lt(SET_RESULT_TYPE, _mutation(e, p["tq"], 0)), e.eq(_mutation(e, p["tq"], 2), p["o"]),
+                                 e.eq(_mutation(e, p["tq"], 3), p["gb"]), e.lt(0, p["nn"])), lambda: (
+                        e.st(_row(e, p["tq"], 7), 1 << 32), e.st(_row(e, p["tq"], M_COUNT), p["tedges"])))
+
+                e.for_("tq", 0, _ctrl(e, E_MUTATIONS), each)
+
+            e.if_(e.eq(p["mode"], LOCATE), edges)
+            e.if_(e.eq(p["tk"], 1), lambda: _call(e, "scan_edge", p["gb"], 0))
+            e.if_(e.eq(p["tk"], 2), lambda: (_call(e, "scan_value", 0), _call(e, "scan_edge", p["gb"], 0), _call(e, "scan_edge", p["gb"], 1)))
+            e.if_(e.eq(p["tk"], 3), lambda: e.for_("tr", 0, _call(e, "copy_uleb"), lambda: _call(e, "scan_value", 0)))
             e.if_(e.eq(p["tk"], 4), lambda: _call(e, "copy_string"))
             e.set("gb", e.add(p["gb"], 1))
 
@@ -530,6 +940,271 @@ def _scan_other_function():
         e.if_(e.eq(p["kind"], int(Kind.BUILD)), request)
         e.give(0)
     return _function(("o",), build, None)
+
+
+# -- S15d.4b: each structural mutation's preconditions, in the workspace's order (``xax_workspace._mutate_function``) ---
+
+def _relation(e: E):
+    """The value in ``V_TAG``.. as the workspace quotes it (``_value_relation``): tag, block, index, result."""
+    D.put(e, D.T_TUPLE)
+    D.put(e, 4)
+    for field in (V_TAG, V_A, V_B, V_C):
+        D.integer(e, _ctrl(e, field))
+
+
+def _at_most(e: E, template: str, value):
+    D.put(e, D.T_FORMAT)
+    D.text(e, template)
+    D.put(e, 1)
+    D.integer(e, value)
+
+
+def _names(e: E, operations):
+    D.put(e, D.T_LIST)
+    D.put(e, len(operations))
+    for operation in operations:
+        D.text(e, operation.name)
+
+
+def _operation_name(e: E, value):
+    D.put(e, D.T_NAME)
+    D.put(e, D.ENUM_NAMES.index("Operation"))
+    D.put(e, value)
+
+
+def _new_constant(e: E, m, type_at, value, field: int):
+    """A new constant of the type the record names at ``type_at`` (resolved by ``next``), kept at row field ``field``."""
+    p = e.p
+    e.var("nc_x", _ctrl(e, E_EXTRAS))
+    e.var("nc_row", e.add(EXTRA, e.mul(p["nc_x"], EXTRA_WORDS)))
+    for at, word in ((0, NONE), (1, 0), (2, value), (3, NONE), (X_SUPPLIED, 0), (X_TYPE_AT, type_at)):
+        e.st(e.add(p["nc_row"], at), word)
+    e.st(_row(e, m, field), p["nc_x"])
+    _set(e, E_EXTRAS, e.add(p["nc_x"], 1))
+
+
+def _check_local_function():
+    """The record's value at ``at`` of row ``m``: a transaction-local one names an insertion in the same graph, and
+    its first result (WORKSPACE-INSERT-LOCAL-VALUE, WORKSPACE-INSERT-LOCAL-RESULT); ``RCUR`` moves past it."""
+    def build(e: E):
+        p = e.p
+        _set(e, RCUR, p["at"])
+        e.var("cl_tag", _call(e, "record_value"))
+        e.var("cl_a", _ctrl(e, V_A))
+        e.var("cl_b", _ctrl(e, V_B))
+        e.var("cl_after", _ctrl(e, RCUR))
+
+        def local():
+            _set(e, GRAPH_CUR, _mutation(e, p["m"], 2))
+            e.var("cl_row", _call(e, "local", p["cl_a"]))
+
+            def missing():
+                _reject(e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: _cid_of(e, _mutation(e, p["m"], 1)), "WORKSPACE-INSERT-LOCAL-VALUE",
+                        lambda: D.text(e, "transaction-local inserted result in the same function"),
+                        lambda: (D.put(e, D.T_FORMAT), D.text(e, "I{}.R{}"), D.put(e, 2), D.integer(e, p["cl_a"]), D.integer(e, p["cl_b"])))
+
+            e.if_(e.eq(p["cl_row"], NONE), missing, lambda: e.if_(e.ne(p["cl_b"], 0), lambda: _reject(
+                e, "XAX.WORKSPACE.RELATION_CONFLICT", lambda: _cid_of(e, _mutation(e, p["m"], 1)), "WORKSPACE-INSERT-LOCAL-RESULT",
+                lambda: D.integer(e, 0), lambda: D.integer(e, p["cl_b"]))))
+
+        e.if_(e.eq(p["cl_tag"], VALUE_INSERTED), local)
+        _set(e, RCUR, p["cl_after"])
+        e.give(0)
+    return _function(("m", "at"), build, None)
+
+
+def _check_use_function():
+    def build(e: E):
+        p = e.p
+        e.var("cu_index", _mutation(e, p["m"], 6))
+        e.var("cu_count", _mutation(e, p["m"], M_COUNT))
+        entity = lambda: _cid_of(e, _mutation(e, p["m"], 1))  # noqa: E731
+
+        def stale():
+            def expected():
+                _set(e, RCUR, _mutation(e, p["m"], 5))
+                _call(e, "record_value")
+                _relation(e)
+
+            def actual():
+                _set(e, CUR, _mutation(e, p["m"], M_USE))
+                _call(e, "read_value")
+                _relation(e)
+
+            _reject(e, "XAX.WORKSPACE.RELATION_CONFLICT", entity, "WORKSPACE-OPERAND-PRECONDITION", expected, actual)
+
+        def value():
+            _set(e, RCUR, _mutation(e, p["m"], 5))
+            _call(e, "record_value")
+            _call(e, "check_local", p["m"], _ctrl(e, RCUR))
+
+        e.if_(e.le(p["cu_count"], p["cu_index"]), lambda: _reject(
+            e, "XAX.WORKSPACE.RELATION_CONFLICT", entity, "WORKSPACE-OPERAND-INDEX", lambda: _at_most(e, "< {}", p["cu_count"]),
+            lambda: D.integer(e, p["cu_index"])), lambda: e.if_(e.eq(_mutation(e, p["m"], M_FOUND), 2), stale, value))
+        e.give(0)
+    return _function(("m",), build, None)
+
+
+def _check_delete_function():
+    def build(e: E):
+        p = e.p
+        e.var("cd_op", e.sub(_mutation(e, p["m"], 7), 1 << 32))
+        e.var("cd_use", _mutation(e, p["m"], M_FOUND))
+        entity = lambda: _cid_of(e, _mutation(e, p["m"], 1))  # noqa: E731
+
+        def used():
+            def actual():
+                _set(e, CUR, e.sub(p["cd_use"], 1))
+                _call(e, "read_value")
+                _relation(e)
+
+            _reject(e, "XAX.WORKSPACE.DELETE_USE_CONFLICT", entity, "WORKSPACE-DELETE-NODE-UNUSED", lambda: D.text(e, "zero semantic uses"), actual)
+
+        e.if_(e.not_(e.either(*(e.eq(p["cd_op"], int(op)) for op in PURE))), lambda: _reject(
+            e, "XAX.WORKSPACE.UNSUPPORTED_MUTATION", entity, "WORKSPACE-DELETE-PURE-NODE", lambda: _names(e, PURE),
+            lambda: _operation_name(e, p["cd_op"])), lambda: e.if_(e.ne(p["cd_use"], 0), used))
+        e.give(0)
+    return _function(("m",), build, None)
+
+
+def _check_insert_function():
+    def build(e: E):
+        p = e.p
+        entity = lambda: _cid_of(e, _mutation(e, p["m"], 1))  # noqa: E731
+        _set(e, RCUR, _mutation(e, p["m"], 5))
+        e.var("ci_op", _call(e, "record_uleb"))
+        e.var("ci_n", _call(e, "record_uleb"))
+        e.var("ci_values", _ctrl(e, RCUR))
+        e.for_("ci_q", 0, p["ci_n"], lambda: _call(e, "record_value"))
+        e.var("ci_type", _ctrl(e, RCUR))
+        _set(e, RCUR, e.add(p["ci_type"], 32))
+        e.var("ci_has", _call(e, "record_uleb"))
+        e.var("ci_value", 0)
+        e.if_(e.ne(p["ci_has"], 0), lambda: e.set("ci_value", _call(e, "record_uleb")))
+        e.var("ci_constant", e.flag(e.eq(p["ci_op"], int(Operation.CONSTANT))))
+        running = lambda: e.eq(_ctrl(e, E_STATUS), OK)  # noqa: E731
+        e.if_(e.not_(e.either(*(e.eq(p["ci_op"], int(op)) for op in INSERTABLE))), lambda: _reject(
+            e, "XAX.WORKSPACE.UNSUPPORTED_MUTATION", entity, "WORKSPACE-INSERT-PURE-NODE", lambda: _names(e, INSERTABLE),
+            lambda: _operation_name(e, p["ci_op"])))
+        e.if_(e.both(running(), e.ne(p["ci_constant"], 0), e.eq(p["ci_has"], 0)), lambda: _reject(
+            e, "XAX.WORKSPACE.INVALID_VALUE", entity, "WORKSPACE-INSERT-CONSTANT-VALUE", lambda: D.text(e, "integer constant value"),
+            lambda: D.none(e)))
+        e.if_(e.both(running(), e.eq(p["ci_constant"], 0), e.ne(p["ci_has"], 0)), lambda: _reject(
+            e, "XAX.WORKSPACE.INVALID_VALUE", entity, "WORKSPACE-INSERT-CONSTANT-ABSENT", lambda: D.none(e), lambda: D.integer(e, p["ci_value"])))
+        e.if_(e.both(running(), e.ne(p["ci_constant"], 0)), lambda: _new_constant(e, p["m"], p["ci_type"], p["ci_value"], M_EXTRA))
+        e.var("ci_at", p["ci_values"])
+
+        def operand():
+            _call(e, "check_local", p["m"], p["ci_at"])
+            e.set("ci_at", _ctrl(e, RCUR))
+
+        e.for_("ci_o", 0, e.sel(running(), p["ci_n"], 0), lambda: e.if_(running(), operand))
+        e.give(0)
+    return _function(("m",), build, None)
+
+
+def _check_result_function():
+    def build(e: E):
+        p = e.p
+        entity = lambda: _cid_of(e, _mutation(e, p["m"], 1))  # noqa: E731
+        running = lambda: e.eq(_ctrl(e, E_STATUS), OK)  # noqa: E731
+        e.var("cr_index", _mutation(e, p["m"], 6))
+        e.var("cr_count", _mutation(e, p["m"], M_COUNT))
+        e.var("cr_at", _mutation(e, p["m"], 5))
+        e.var("cr_op", e.sub(_mutation(e, p["m"], 7), 1 << 32))
+        e.if_(e.le(p["cr_count"], p["cr_index"]), lambda: _reject(
+            e, "XAX.WORKSPACE.RELATION_CONFLICT", entity, "WORKSPACE-RESULT-INDEX", lambda: _at_most(e, "< {}", p["cr_count"]),
+            lambda: D.integer(e, p["cr_index"])))
+
+        def precondition():
+            e.var("cr_old", e.sub(_mutation(e, p["m"], M_FOUND), 1))
+            e.var("cr_same", 1)
+            for k in range(4):
+                e.var(f"cr_w{k}", 0)
+                for j in range(8):
+                    e.set(f"cr_w{k}", e.add(e.mul(p[f"cr_w{k}"], 256), e.ld(e.add(p["cr_at"], 8 * k + j))))
+                e.set("cr_same", e.and_(p["cr_same"], e.flag(e.eq(p[f"cr_w{k}"], _cid_word(e, p["cr_old"], k)))))
+            e.if_(e.eq(p["cr_same"], 0), lambda: _reject(
+                e, "XAX.WORKSPACE.ATTRIBUTE_CONFLICT", entity, "WORKSPACE-RESULT-TYPE-PRECONDITION", lambda: _record_cid(e, p["cr_at"]),
+                lambda: _cid_of(e, p["cr_old"])))
+
+        e.if_(running(), precondition)
+
+        def constant():
+            e.if_(e.either(e.ne(p["cr_index"], 0), e.ne(p["cr_count"], 1)), lambda: _reject(
+                e, "XAX.WORKSPACE.UNSUPPORTED_MUTATION", entity, "WORKSPACE-CONSTANT-SINGLE-RESULT", lambda: D.integer(e, 0),
+                lambda: D.integer(e, p["cr_index"])))
+
+            def value():
+                e.var("cr_entity", _ref(e, _mutation(e, p["m"], 2), e.sub(e.ld(e.add(ENTITY_AT, p["m"])), 1)))
+                clen, cat = _plain_body(e, p["cr_entity"])
+                e.var("cr_body", cat)
+                e.var("cr_bytes", e.rd(e.add(p["cr_body"], 1)))
+                e.if_(e.lt(8, p["cr_bytes"]), lambda: _reject(
+                    e, "XAX.WORKSPACE.UNSUPPORTED_MUTATION", entity, "EDIT-CONSTANT-BITS", lambda: D.text(e, "an integer constant of at most 64 bits"),
+                    lambda: D.integer(e, p["cr_bytes"])))
+                e.var("cr_value", 0)
+                e.for_("cr_b", 0, e.sel(running(), p["cr_bytes"], 0), lambda: e.set("cr_value", e.add(p["cr_value"], e.mul(
+                    e.rd(e.add(e.add(p["cr_body"], 2), p["cr_b"])), _pow256(e, p["cr_b"])))))
+                e.if_(running(), lambda: _new_constant(e, p["m"], e.add(p["cr_at"], 32), p["cr_value"], M_EXTRA))
+
+            e.if_(running(), value)
+
+        e.if_(e.both(running(), e.eq(p["cr_op"], int(Operation.CONSTANT))), constant)
+        e.give(0)
+    return _function(("m",), build, None)
+
+
+def _check_edge_function():
+    def build(e: E):
+        p = e.p
+        entity = lambda: _cid_of(e, _mutation(e, p["m"], 1))  # noqa: E731
+        e.var("ce_kind", _mutation(e, p["m"], 0))
+        e.var("ce_edge", _mutation(e, p["m"], M_EXTRA))
+        e.var("ce_edges", _mutation(e, p["m"], M_COUNT))
+        e.var("ce_arg", _mutation(e, p["m"], 6))
+        e.var("ce_args", e.sub(_mutation(e, p["m"], M_FOUND), 1))
+
+        def disconnect():
+            def stale():
+                def expected():
+                    _set(e, RCUR, _mutation(e, p["m"], 5))
+                    _call(e, "record_value")
+                    _relation(e)
+
+                def actual():
+                    _set(e, CUR, e.sub(e.ld(e.add(ENTITY_AT, p["m"])), 1))
+                    _call(e, "read_value")
+                    _relation(e)
+
+                _reject(e, "XAX.WORKSPACE.RELATION_CONFLICT", entity, "WORKSPACE-EDGE-ARGUMENT-PRECONDITION", expected, actual)
+
+            e.if_(e.le(p["ce_args"], p["ce_arg"]), lambda: _reject(
+                e, "XAX.WORKSPACE.RELATION_CONFLICT", entity, "WORKSPACE-EDGE-ARGUMENT-INDEX", lambda: _at_most(e, "< {}", p["ce_args"]),
+                lambda: D.integer(e, p["ce_arg"])), lambda: e.if_(e.eq(_mutation(e, p["m"], M_USE), 2), stale))
+
+        def connect():
+            e.if_(e.lt(p["ce_args"], p["ce_arg"]), lambda: _reject(
+                e, "XAX.WORKSPACE.RELATION_CONFLICT", entity, "WORKSPACE-EDGE-ARGUMENT-INDEX", lambda: _at_most(e, "<= {}", p["ce_args"]),
+                lambda: D.integer(e, p["ce_arg"])), lambda: _call(e, "check_local", p["m"], _mutation(e, p["m"], 5)))
+
+        e.if_(e.le(p["ce_edges"], p["ce_edge"]), lambda: _reject(
+            e, "XAX.WORKSPACE.CONTAINMENT_CONFLICT", entity, "WORKSPACE-TERMINATOR-EDGE", lambda: _at_most(e, "< {}", p["ce_edges"]),
+            lambda: D.integer(e, p["ce_edge"])), lambda: e.if_(e.eq(p["ce_kind"], DISCONNECT_EDGE), disconnect, connect))
+        e.give(0)
+    return _function(("m",), build, None)
+
+
+def _check_structural_function():
+    """Row ``m``'s preconditions, by its kind."""
+    def build(e: E):
+        p = e.p
+        e.var("cs_kind", _mutation(e, p["m"], 0))
+        for kind, name in ((REPLACE_USE, "check_use"), (DELETE_NODE, "check_delete"), (INSERT_NODE, "check_insert"),
+                           (SET_RESULT_TYPE, "check_result"), (DISCONNECT_EDGE, "check_edge"), (CONNECT_EDGE, "check_edge")):
+            e.if_(e.eq(p["cs_kind"], kind), lambda name=name: _call(e, name, p["m"]))
+        e.give(0)
+    return _function(("m",), build, None)
 
 
 def _reject(e: E, code: str, entity, rule: str, expected, actual):
@@ -688,8 +1363,7 @@ def _begin(tables):
             row = e.add(MUT, e.mul(p["mi"], MUT_WORDS))
             e.var("row", row)
             e.var("mkind", uleb("m_kind"))
-            e.if_(e.both(running(), e.ne(p["mkind"], SET_OPERATION), e.ne(p["mkind"], SET_CONSTANT), e.ne(p["mkind"], REPLACE_REFERENCE)),
-                  malformed("EDIT-RECORD-KIND"))
+            e.if_(e.both(running(), e.either(e.eq(p["mkind"], 0), e.lt(CONNECT_EDGE, p["mkind"]))), malformed("EDIT-RECORD-KIND"))
             e.if_(e.both(running(), e.eq(p["mkind"], REPLACE_REFERENCE)), replace, lambda: e.if_(running(), node_mutation))
             e.set("mi", e.add(p["mi"], 1))
 
@@ -707,8 +1381,60 @@ def _begin(tables):
                                                         lambda: e.set("function", p["fo"])))
             e.var("mblock", uleb("m_block"))
             e.var("mnode", uleb("m_node"))
-            e.var("mexpected", uleb("m_expected"))
-            e.var("mvalue", uleb("m_value"))
+            e.var("mexpected", 0)  # S15d.4b: a structural row's payload (record word)
+            e.var("mvalue", 0)  # and its operand, result, argument or local id
+            e.var("medge", NONE)
+
+            def plain():
+                e.set("mexpected", uleb("m_expected"))
+                e.set("mvalue", uleb("m_value"))
+
+            def skip_value():
+                _set(e, RCUR, p["at"])
+                e.if_(e.both(e.lt(VALUE_INSERTED, _call(e, "record_value")), running()), malformed("EDIT-RECORD-VALUE"))
+                e.set("at", _ctrl(e, RCUR))
+
+            def use():
+                e.set("mvalue", uleb("u_operand"))
+                e.set("mexpected", p["at"])
+                skip_value()
+                e.if_(running(), skip_value)
+
+            def insert():
+                e.set("mvalue", uleb("i_local"))
+                e.set("mexpected", p["at"])
+                uleb("i_operation")
+                e.var("i_count", uleb("i_operands"))
+                e.var("i_q", 0)
+                e.while_(lambda: e.both(e.lt(p["i_q"], p["i_count"]), running()), lambda: (skip_value(), e.set("i_q", e.add(p["i_q"], 1))))
+                need(32, "EDIT-RECORD-TARGET")
+                e.set("at", e.add(p["at"], 32))
+                e.var("i_has", 0)
+                e.if_(running(), lambda: e.set("i_has", uleb("i_has_value")))
+                e.if_(e.both(running(), e.ne(p["i_has"], 0)), lambda: uleb("i_value"))
+                e.var("i_attrs", 0)
+                e.if_(running(), lambda: e.set("i_attrs", uleb("i_attributes")))
+                e.var("i_a", 0)
+                e.while_(lambda: e.both(e.lt(p["i_a"], p["i_attrs"]), running()), lambda: (uleb("i_attribute"), e.set("i_a", e.add(p["i_a"], 1))))
+
+            def retype():
+                e.set("mvalue", uleb("t_result"))
+                need(64, "EDIT-RECORD-TARGET")
+                e.set("mexpected", p["at"])
+                e.set("at", e.add(p["at"], 64))
+
+            def edge():
+                e.set("mvalue", uleb("x_argument"))
+                e.set("mexpected", p["at"])
+                skip_value()
+                e.set("medge", p["mnode"])
+                e.set("mnode", 0)  # an edge's handle is its block's first node
+
+            e.if_(e.lt(p["mkind"], REPLACE_REFERENCE), plain)
+            e.if_(e.eq(p["mkind"], REPLACE_USE), use)
+            e.if_(e.eq(p["mkind"], INSERT_NODE), insert)
+            e.if_(e.eq(p["mkind"], SET_RESULT_TYPE), retype)
+            e.if_(e.lt(SET_RESULT_TYPE, p["mkind"]), edge)
 
             def located():
                 e.if_(e.either(e.eq(p["function"], NONE), e.ne(_kind(e, e.sel(e.eq(p["function"], NONE), 0, p["function"])), int(Kind.FUNCTION))),
@@ -732,13 +1458,33 @@ def _begin(tables):
                     e.while_(lambda: e.ne(p["gidx_more"], 0), step)
                     e.var("graph", _ref(e, p["function"], p["gidx"]))
                     e.var("dup", 0)
+                    e.var("pair", 0)  # S15d.4b: one disconnection and one connection of the same edge argument share a handle
+
+                    def same():
+                        e.set("dup", e.add(p["dup"], 1))
+                        e.var("dk", _mutation(e, p["dq"], 0))
+                        e.if_(e.both(e.lt(SET_RESULT_TYPE, p["dk"]), e.lt(SET_RESULT_TYPE, p["mkind"]), e.ne(p["dk"], p["mkind"]),
+                                     e.eq(_mutation(e, p["dq"], M_EXTRA), p["medge"]), e.eq(_mutation(e, p["dq"], 6), p["mvalue"])),
+                              lambda: e.set("pair", e.add(p["pair"], 1)))
+
                     e.for_("dq", 0, p["mi"], lambda: e.if_(e.both(
-                        e.eq(_mutation(e, p["dq"], 2), p["graph"]), e.eq(_mutation(e, p["dq"], 3), p["mblock"]), e.eq(_mutation(e, p["dq"], 4), p["mnode"])),
-                        lambda: e.set("dup", 1)))
-                    e.if_(e.ne(p["dup"], 0), lambda: _reject(
+                        e.eq(_mutation(e, p["dq"], 2), p["graph"]), e.eq(_mutation(e, p["dq"], 3), p["mblock"]), e.eq(_mutation(e, p["dq"], 4), p["mnode"]),
+                        e.ne(_mutation(e, p["dq"], 0), REPLACE_REFERENCE)), same))
+                    e.if_(e.either(e.lt(1, p["dup"]), e.both(e.eq(p["dup"], 1), e.eq(p["pair"], 0))), lambda: _reject(
                         e, "XAX.WORKSPACE.DUPLICATE_MUTATION", lambda: _record_cid(e, p["target_at"]), "WORKSPACE-MUTATION-TARGET-UNIQUE",
                         lambda: D.text(e, "one mutation per node, except one matching disconnect/connect edge-argument pair"), lambda: D.text(e, "duplicate")))
-                    for field, value in enumerate((p["mkind"], p["function"], p["graph"], p["mblock"], p["mnode"], p["mexpected"], p["mvalue"], 0)):
+                    e.var("lid", 0)
+
+                    def local_id():
+                        e.for_("lq", 0, p["mi"], lambda: e.if_(e.both(e.eq(_mutation(e, p["lq"], 0), INSERT_NODE), e.eq(_mutation(e, p["lq"], 6), p["mvalue"])),
+                                                                lambda: e.set("lid", 1)))
+                        e.if_(e.ne(p["lid"], 0), lambda: _reject(
+                            e, "XAX.WORKSPACE.DUPLICATE_MUTATION", lambda: (D.put(e, D.T_FORMAT), D.text(e, "I{}"), D.put(e, 1), D.integer(e, p["mvalue"])),
+                            "WORKSPACE-INSERT-LOCAL-ID-UNIQUE", lambda: D.text(e, "one inserted node per transaction-local id"), lambda: D.text(e, "duplicate")))
+
+                    e.if_(e.both(running(), e.eq(p["mkind"], INSERT_NODE)), local_id)
+                    for field, value in enumerate((p["mkind"], p["function"], p["graph"], p["mblock"], p["mnode"], p["mexpected"], p["mvalue"], 0,
+                                                   p["medge"], 0, 0, 0)):
                         e.st(e.add(p["row"], field), value)
                     e.st(e.add(ENTITY_AT, p["mi"]), 0)
                     _set(e, E_MUTATIONS, e.add(p["mi"], 1))
@@ -904,7 +1650,8 @@ def _begin(tables):
 
                     e.if_(running(), value)
 
-                e.if_(e.eq(p["cm_kind"], SET_OPERATION), operation, constant)
+                e.if_(e.eq(p["cm_kind"], SET_OPERATION), operation, lambda: e.if_(
+                    e.eq(p["cm_kind"], SET_CONSTANT), constant, lambda: _call(e, "check_structural", m)))
 
             e.if_(running(), preconditions)
 
@@ -1081,7 +1828,8 @@ def _begin(tables):
 
                     e.if_(running(), value)
 
-                e.if_(e.eq(p["cm_kind"], SET_OPERATION), operation, constant)
+                e.if_(e.eq(p["cm_kind"], SET_OPERATION), operation, lambda: e.if_(
+                    e.eq(p["cm_kind"], SET_CONSTANT), constant, lambda: _call(e, "check_structural", m)))
 
             e.if_(running(), preconditions)
 
@@ -1185,8 +1933,51 @@ def _next(tables):
 
         def constant_extra():
             e.var("xtype", e.ld(p["xrow"]))
+
+            def typed():
+                """S15d.4b: the type the record names (the store's or a supplied one, which has its CID by now)."""
+                e.var("xtat", e.ld(e.add(p["xrow"], X_TYPE_AT)))
+                e.set("xtype", _call(e, "type_source", p["xtat"]))
+                e.var("xvalue0", e.ld(e.add(p["xrow"], 2)))
+
+                def found():
+                    e.var("xform", 0)
+                    e.var("xwidth", 0)
+
+                    def given():
+                        e.var("xbody", e.ld(e.add(e.add(EXTRA, e.mul(e.sub(p["xtype"], EXTRA_TAG), EXTRA_WORDS)), X_BODY)))
+                        e.set("xform", e.ld(p["xbody"]))
+                        e.set("xwidth", e.ld(e.add(p["xbody"], 1)))
+
+                    def stored():
+                        tlen, tat = _plain_body(e, p["xtype"])
+                        e.var("xtat2", tat)
+                        e.set("xform", e.rd(p["xtat2"]))
+                        e.set("xwidth", e.rd(e.add(p["xtat2"], 1)))
+
+                    e.if_(e.le(EXTRA_TAG, p["xtype"]), given, stored)
+                    e.if_(e.either(e.ne(p["xform"], 1), e.eq(p["xwidth"], 0), e.lt(64, p["xwidth"])), lambda: _reject(
+                        e, "XAX.WORKSPACE.UNSUPPORTED_MUTATION", lambda: D.cid(e, [_source_cid(e, p["xtype"], k) for k in range(4)]), "EDIT-CONSTANT-BITS",
+                        lambda: D.text(e, "an integer constant of at most 64 bits"), lambda: D.integer(e, p["xwidth"])))
+                    fits = e.either(e.eq(p["xwidth"], 64), e.lt(p["xvalue0"], _pow2(e, e.sel(e.lt(p["xwidth"], 64), p["xwidth"], 0))))
+                    e.if_(e.both(e.eq(_ctrl(e, E_STATUS), OK), e.not_(fits)), lambda: _reject(
+                        e, "XAX.WORKSPACE.INVALID_VALUE", lambda: D.text(e, "edit"), "WORKSPACE-CONSTANT-RANGE",
+                        lambda: (D.put(e, D.T_FORMAT), D.text(e, "value fitting {}"), D.put(e, 1), D.cid(e, [_source_cid(e, p["xtype"], k) for k in range(4)])),
+                        lambda: D.integer(e, p["xvalue0"])))
+                    e.st(p["xrow"], p["xtype"])
+                    e.st(e.add(p["xrow"], 1), e.udiv(e.add(p["xwidth"], 7), 8))
+
+                e.if_(e.eq(p["xtype"], NONE), lambda: _reject(
+                    e, "XAX.WORKSPACE.HANDLE", lambda: _record_cid(e, p["xtat"]), "WORKSPACE-HANDLE-GENERATION",
+                    lambda: D.text(e, "type at the current root"), lambda: D.text(e, "unbound or stale")), found)
+
+            e.if_(e.eq(p["xtype"], NONE), typed)
+            e.if_(e.eq(_ctrl(e, E_STATUS), OK), made_constant)
+
+        def made_constant():
+            e.var("xtype2", e.ld(p["xrow"]))
             header(int(Kind.CONSTANT), 1)
-            _pre_cid(e, [_cid_word(e, p["xtype"], k) for k in range(4)])
+            _pre_cid(e, [_source_cid(e, p["xtype2"], k) for k in range(4)])
             e.var("xbytes", e.ld(e.add(p["xrow"], 1)))
             e.var("xvalue", e.ld(e.add(p["xrow"], 2)))
             _set(e, E_BODY_LENGTH, e.add(p["xbytes"], 2))
@@ -1295,6 +2086,7 @@ def _next(tables):
                 e.st(e.add(p["ntrow"], field), value)
             _set(e, E_NEW, e.add(p["nt"], 1))
 
+        e.if_(e.eq(_ctrl(e, E_STATUS), REJECT), lambda: e.set("result", DONE))  # S15d.4b: a type or value found wanting
         e.if_(e.eq(p["result"], MORE), log)
         e.give(p["result"])
     return _function((), build, tables)
@@ -1549,7 +2341,15 @@ def build_functions():
     for name, builder in (("record_uleb", _record_uleb_function), ("uleb_read", _uleb_read_function), ("put_uleb", _put_uleb_function), ("copy_uleb", _copy_uleb_function),
                           ("copy_string", _copy_string_function), ("search", _search_function), ("insert", _insert_function),
                           ("resolve", _resolve_function), ("replaced", _replaced_function),
-                          ("reference", _reference_function), ("scan_graph", _scan_graph_function), ("scan_other", _scan_other_function)):
+                          ("reference", _reference_function), ("record_value", _record_value_function), ("count_rows", _count_rows_function),
+                          ("remap", _remap_function), ("local", _local_function), ("emit_value", _emit_value_function), ("read_value", _read_value_function),
+                          ("emit_ref", _emit_ref_function), ("type_source", _type_source_function), ("emit_insert", _emit_insert_function),
+                          ("note_use", _note_use_function), ("same_value", _same_value_function), ("edge_row", _edge_row_function),
+                          ("scan_value", _scan_value_function), ("scan_edge", _scan_edge_function),
+                          ("scan_graph", _scan_graph_function), ("scan_other", _scan_other_function),
+                          ("check_local", _check_local_function), ("check_use", _check_use_function), ("check_delete", _check_delete_function),
+                          ("check_insert", _check_insert_function), ("check_result", _check_result_function), ("check_edge", _check_edge_function),
+                          ("check_structural", _check_structural_function)):
         _F[name], items = builder()
         objects.extend(items)
     for name, builder in (("edit_begin", _begin), ("edit_next", _next), ("edit_place", _place), ("edit_reach", _reach), ("edit_batch", _batch)):
@@ -1559,18 +2359,56 @@ def build_functions():
     return functions, tuple(objects)
 
 
+def _record_value(value) -> bytes:
+    """A ``ValueRef`` or ``TransactionValueRef`` as record ULEBs."""
+    from xax_workspace import TransactionValueRef
+
+    if isinstance(value, TransactionValueRef):
+        return uleb(VALUE_INSERTED) + uleb(value.insertion) + uleb(value.result)
+    if value.tag == 0:
+        return uleb(VALUE_PARAMETER) + uleb(value.block) + uleb(value.index)
+    return uleb(VALUE_RESULT) + uleb(value.block) + uleb(value.index) + uleb(value.result)
+
+
 def edit_record(mutations, expected_root: bytes = bytes(32), objects=()) -> bytes:
     """The edit record for ``mutations``: ``(kind, function CID, block, node, expected, value)`` for an operation or a
     constant, ``(REPLACE_REFERENCE, owner CID, old child CID, new child CID)`` for a reference (S15d.4a); ``objects``,
-    the new objects the transaction supplies (``SemanticObject``s, each written as its kind, references and body)."""
+    the new objects the transaction supplies (``SemanticObject``s, each written as its kind, references and body).
+    S15d.4b (ADR-314), values being ``ValueRef``s or ``TransactionValueRef``s:
+    ``(REPLACE_USE, function, block, node, operand, expected value, value)``, ``(DELETE_NODE, function, block, node)``,
+    ``(INSERT_NODE, function, block, anchor node, local id, operation, operand values, result type CID, constant value
+    or None, attributes)``, ``(SET_RESULT_TYPE, function, block, node, result, expected type CID, type CID)``,
+    ``(DISCONNECT_EDGE, function, block, edge, argument, expected value)``, ``(CONNECT_EDGE, function, block, edge,
+    argument, value)``."""
     data = bytearray(RECORD_MAGIC + expected_root + uleb(len(mutations)))
     for kind, *fields in mutations:
+        data += uleb(kind)
         if kind == REPLACE_REFERENCE:
             owner, old, new = fields
-            data += uleb(kind) + owner + old + new
+            data += owner + old + new
+        elif kind == REPLACE_USE:
+            function_cid, block, node, operand, expected, value = fields
+            data += function_cid + uleb(block) + uleb(node) + uleb(operand) + _record_value(expected) + _record_value(value)
+        elif kind == DELETE_NODE:
+            function_cid, block, node = fields
+            data += function_cid + uleb(block) + uleb(node)
+        elif kind == INSERT_NODE:
+            function_cid, block, node, local, operation, operands, result_type, value, attributes = fields
+            data += function_cid + uleb(block) + uleb(node) + uleb(local) + uleb(int(operation)) + uleb(len(operands))
+            for item in operands:
+                data += _record_value(item)
+            data += result_type + (uleb(0) if value is None else uleb(1) + uleb(value)) + uleb(len(attributes))
+            for item in attributes:
+                data += uleb(item)
+        elif kind == SET_RESULT_TYPE:
+            function_cid, block, node, result, expected_type, value_type = fields
+            data += function_cid + uleb(block) + uleb(node) + uleb(result) + expected_type + value_type
+        elif kind in (DISCONNECT_EDGE, CONNECT_EDGE):
+            function_cid, block, edge, argument, value = fields
+            data += function_cid + uleb(block) + uleb(edge) + uleb(argument) + _record_value(value)
         else:
             function_cid, block, node, expected, value = fields
-            data += uleb(kind) + function_cid + uleb(block) + uleb(node) + uleb(expected) + uleb(value)
+            data += function_cid + uleb(block) + uleb(node) + uleb(expected) + uleb(value)
     if objects:
         data += uleb(len(objects))
         for item in objects:
@@ -1581,12 +2419,24 @@ def edit_record(mutations, expected_root: bytes = bytes(32), objects=()) -> byte
 def parse_record(record: bytes, with_objects: bool = False):
     """``(expected root or None, mutations)`` of a well-formed record (``edit_record``'s tuples); with ``with_objects``
     also the supplied objects."""
-    from xax_compiler import Cursor, Kind as K, SemanticObject
+    from xax_compiler import Cursor, Kind as K, SemanticObject, ValueRef
+    from xax_workspace import TransactionValueRef
 
     if record[:len(RECORD_MAGIC)] != RECORD_MAGIC:
         raise ValueError("not an edit record")
     root = record[len(RECORD_MAGIC):len(RECORD_MAGIC) + 32]
     cursor = Cursor(record[len(RECORD_MAGIC) + 32:], "edit")
+
+    def value():
+        tag = cursor.uleb()
+        if tag == VALUE_INSERTED:
+            return TransactionValueRef(cursor.uleb(), cursor.uleb())
+        if tag == VALUE_PARAMETER:
+            return ValueRef.parameter(cursor.uleb(), cursor.uleb())
+        if tag == VALUE_RESULT:
+            return ValueRef.node_result(cursor.uleb(), cursor.uleb(), cursor.uleb())
+        raise ValueError("value tag")
+
     mutations = []
     for _ in range(cursor.uleb()):
         kind = cursor.uleb()
@@ -1594,7 +2444,23 @@ def parse_record(record: bytes, with_objects: bool = False):
             mutations.append((kind, cursor.take(32), cursor.take(32), cursor.take(32)))
             continue
         function_cid = cursor.take(32)
-        mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb(), cursor.uleb(), cursor.uleb()))
+        if kind == REPLACE_USE:
+            mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb(), cursor.uleb(), value(), value()))
+        elif kind == DELETE_NODE:
+            mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb()))
+        elif kind == INSERT_NODE:
+            block, node, local, operation = (cursor.uleb() for _ in range(4))
+            operands = tuple(value() for _ in range(cursor.uleb()))
+            result_type = cursor.take(32)
+            constant_value = cursor.uleb() if cursor.uleb() else None
+            attributes = tuple(cursor.uleb() for _ in range(cursor.uleb()))
+            mutations.append((kind, function_cid, block, node, local, operation, operands, result_type, constant_value, attributes))
+        elif kind == SET_RESULT_TYPE:
+            mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb(), cursor.uleb(), cursor.take(32), cursor.take(32)))
+        elif kind in (DISCONNECT_EDGE, CONNECT_EDGE):
+            mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb(), cursor.uleb(), value()))
+        else:
+            mutations.append((kind, function_cid, cursor.uleb(), cursor.uleb(), cursor.uleb(), cursor.uleb()))
     objects = []
     if cursor.remaining:
         start = cursor.pos
@@ -1611,6 +2477,77 @@ def parse_record(record: bytes, with_objects: bool = False):
     return (*parsed, tuple(objects)) if with_objects else parsed
 
 
+def workspace_mutations(reader, mutations, objects=()):
+    """S15d.4b (ADR-314): the ``xax_workspace`` transaction a record's mutations name, against ``Workspace(reader)``:
+    each node by its handle (an edge by its block's first node's), each type by its handle, a new type (a supplied
+    ``bits<N>``) by its literal.  Gives ``(workspace, mutations)``."""
+    from xax_compiler import Cursor, Operation, StoreReader, decode_bits_width
+    from xax_workspace import (
+        ConnectEdgeArgument, DeleteNode, DisconnectEdgeArgument, InsertPureNode, ReplaceUse, SetConstant, SetOperation, SetResultType, Workspace,
+    )
+
+    workspace = Workspace(reader)
+    given = {item.cid: item for item in objects}
+
+    def handle(function_cid, block, node):
+        graph = reader.get(reader.get(function_cid).references[Cursor(reader.get(function_cid).body, "").uleb()])
+        from xax_compiler import _parse_graph
+        parsed = _parse_graph(graph, reader.get)
+        if block >= len(parsed.blocks) or node >= len(parsed.blocks[block].nodes):
+            raise ValueError("no such node")  # the engine rejects it (WORKSPACE-NODE-INDEX); the workspace has no handle
+        position = sum(len(parsed.blocks[b].nodes) for b in range(block)) + node
+        return workspace.function_nodes(function_cid, 1 << 20).entities[position].handle
+
+    bound = set()
+
+    def type_handle(cid, function_cid, literal=True):
+        """A type's handle: bound by querying the function's nodes' neighborhoods (a supplied ``bits<N>``: its
+        literal, which only an insertion takes)."""
+        if function_cid not in bound:
+            bound.add(function_cid)
+            for entity in workspace.function_nodes(function_cid, 1 << 20).entities:
+                workspace.neighborhood(entity.handle, 1 << 10)
+        for name, binding in workspace._type_bindings.items():
+            if binding[0] == cid:
+                return name
+        source = given.get(cid) or (reader.get(cid) if cid in reader.object_cids else None)
+        if literal and source is not None:
+            return f"bits<{decode_bits_width(source)}>"
+        raise ValueError("unbound type")
+
+    made = []
+    for kind, *fields in mutations:
+        if kind == SET_OPERATION:
+            function_cid, block, node, expected, value = fields
+            made.append(SetOperation(handle(function_cid, block, node), Operation(expected), Operation(value)))
+        elif kind == SET_CONSTANT:
+            function_cid, block, node, expected, value = fields
+            made.append(SetConstant(handle(function_cid, block, node), expected, value))
+        elif kind == REPLACE_USE:
+            function_cid, block, node, operand, expected, value = fields
+            made.append(ReplaceUse(handle(function_cid, block, node), operand, expected, value))
+        elif kind == DELETE_NODE:
+            function_cid, block, node = fields
+            made.append(DeleteNode(handle(function_cid, block, node), block, node))
+        elif kind == INSERT_NODE:
+            function_cid, block, node, local, operation, operands, result_type, value, attributes = fields
+            made.append(InsertPureNode(handle(function_cid, block, node), block, node, local, Operation(operation), operands,
+                                       type_handle(result_type, function_cid), value, attributes))
+        elif kind == SET_RESULT_TYPE:
+            function_cid, block, node, result, expected_type, value_type = fields
+            made.append(SetResultType(handle(function_cid, block, node), result, type_handle(expected_type, function_cid, False),
+                                      type_handle(value_type, function_cid, False)))
+        elif kind == DISCONNECT_EDGE:
+            function_cid, block, edge, argument, value = fields
+            made.append(DisconnectEdgeArgument(handle(function_cid, block, 0), block, edge, argument, value))
+        elif kind == CONNECT_EDGE:
+            function_cid, block, edge, argument, value = fields
+            made.append(ConnectEdgeArgument(handle(function_cid, block, 0), block, edge, argument, value))
+        else:
+            raise ValueError("no workspace mutation")
+    return workspace, tuple(made)
+
+
 def apply_reference(reader, record: bytes):
     """The store ``edit`` makes from ``reader`` for a well-formed, applicable ``record``, computed in Python: the
     reference the XAX engine is compared with (``tests/test_xax_selfhost_edit.py``), equal to ``Workspace.commit`` for
@@ -1620,6 +2557,15 @@ def apply_reference(reader, record: bytes):
     root, mutations, supplied = parse_record(record, with_objects=True)
     if root is not None and root != reader.root_cid:
         raise ValueError("stale root")
+    if any(kind in STRUCTURAL for kind, *_fields in mutations):
+        # S15d.4b (ADR-314): the workspace's own commit is the reference (its verification included).
+        from xax_workspace import RootRef, Transaction
+
+        workspace, made = workspace_mutations(reader, mutations, supplied)
+        result = workspace.commit(Transaction(RootRef(0), made))
+        if not result.committed:
+            raise ValueError(f"workspace rejected: {result.diagnostic.rule}")
+        return StoreReader(workspace.reader.data)
     objects = {item.cid: item for item in reader.objects()}
     edits: dict[bytes, dict[tuple[int, int], tuple]] = {}
     extras: dict[tuple[bytes, int, int], SemanticObject] = {}

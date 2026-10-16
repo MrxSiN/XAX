@@ -112,7 +112,27 @@ def query_inputs_limit(reader, limit: int = 100) -> list[tuple]:
     return mutations
 
 
-QUERIES = {"inputs_limit": query_inputs_limit}
+def query_dead_constants(reader) -> list[tuple]:
+    """S15d.4b (ADR-314): the driver's function holds constants nothing uses (each builder idiom that materialized a
+    constant on a path that then did not need it); delete them.  A constant is pure, so ``DeleteNode`` takes it when it
+    has no use: no node operand, terminator value or edge argument names it."""
+    import xax_compiler as X
+    from xax_selfhost_edit import DELETE_NODE
+
+    main, graph = _main_graph(reader)
+    used = set()
+    for block in graph.blocks:
+        values = [value for node in block.nodes for value in node.operands]
+        values += list(block.terminator.values) + [value for _target, arguments in block.terminator.edges for value in arguments]
+        used.update((value.block, value.index) for value in values if value.tag == 1)
+    mutations = [(DELETE_NODE, main.cid, b, n) for b, block in enumerate(graph.blocks) for n, node in enumerate(block.nodes)
+                 if node.operation == X.Operation.CONSTANT and (b, n) not in used]
+    if not mutations:
+        raise ValueError("no unused constant")
+    return mutations
+
+
+QUERIES = {"inputs_limit": query_inputs_limit, "dead_constants": query_dead_constants}
 INPUTS_LIMIT = 100  # the committed compiler's external-input bound since ledger entry 0001 (the baseline's is 64)
 
 

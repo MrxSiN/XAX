@@ -420,6 +420,50 @@ def measure() -> dict:
             row["bootstrap_diagnostic"] = BOOTSTRAP_DIAGNOSTICS[name]
         rows.append(row)
 
+    # S15d.4b (ADR-314): ordinary evolution.  C1, the first self-built compiler, replays the evolution ledger on the
+    # builders' baseline stores with its own ``edit`` and must make the committed driver and request stores, which its
+    # ``verify`` accepts.  The baseline is input data (what the builders made); every transaction is applied by C1.
+    evolution = None
+    if len(executables) > 1:
+        from xax_selfhost_driver import build_general_driver_program
+        from xax_selfhost_edit import STRUCTURAL, parse_record
+        from xax_selfhost_evolution import entries
+        from xax_selfhost_seed import REQUEST_PATH
+
+        building = X._TYPING_BUILDING
+        X._TYPING_BUILDING = True
+        try:
+            baseline = build_general_driver_program()[0]
+        finally:
+            X._TYPING_BUILDING = building
+        stores = {"driver": baseline.data, "request": compiler_request(baseline)[0].data}
+        committed = {"driver": GENERAL_STORE_PATH.read_bytes(), "request": REQUEST_PATH.read_bytes()}
+        names = {1: "SetOperation", 2: "SetConstant", 3: "ReplaceReference", 4: "ReplaceUse", 5: "DeleteNode", 6: "InsertPureNode",
+                 7: "SetResultType", 8: "DisconnectEdgeArgument", 9: "ConnectEdgeArgument"}
+        transactions, equal, verified = [], {}, {}
+        for name, data in stores.items():
+            path = directory / f"evolve-{name}.xax"
+            path.write_bytes(data)
+            for index, (record, _query) in enumerate(entries()):
+                output = directory / f"evolve-{name}-next.xax"
+                result = run(executables[1], ["edit", path, record, output], [output])
+                if name == "driver":
+                    kinds = sorted({names[kind] for kind, *_fields in parse_record(record.read_bytes())[1]})
+                    transactions.append({"record": record.name, "mutations": len(parse_record(record.read_bytes())[1]), "kinds": kinds,
+                                         "record_sha256": sha(record.read_bytes())})
+                if index < len(transactions):
+                    transactions[index][f"{name}_edit"] = {key: value for key, value in result.items() if key != "_data"}
+                if result["status"] != "image":
+                    break
+                output.replace(path)
+            equal[name] = path.read_bytes() == committed[name]
+            checked = run(executables[1], ["verify", path, directory / f"evolve-{name}-verified.bin"], [directory / f"evolve-{name}-verified.bin"])
+            verified[name] = checked["status"]
+        evolution = {"replayed_by": "C1", "baseline": "the builders' baseline stores (driver, and the request store derived from it)",
+                     "transactions": transactions, "structural": any(set(item["kinds"]) & {names[kind] for kind in STRUCTURAL} for item in transactions),
+                     "driver_equals_committed": equal["driver"], "request_equals_committed": equal["request"],
+                     "driver_verify": verified["driver"], "request_verify": verified["request"]}
+
     def elf_interpreter(path: Path) -> bool:
         data = path.read_bytes()
         count, size, offset = int.from_bytes(data[56:58], "little"), int.from_bytes(data[54:56], "little"), int.from_bytes(data[32:40], "little")
@@ -464,10 +508,11 @@ def measure() -> dict:
         # rejections, and signed resolution are the driver's.
         # S15c.5 (ADR-309): resolution under a given trust policy with signatures (``resolve-trusted``) closed the last.
         "required_paths_outside_xax": [],
-        # S15d.1-S15d.3 (ADR-304 to ADR-306): the compiler changes its own store through ``edit`` and the evolution
-        # ledger; what remains:
-        "ordinary_evolution": ("the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes "
-                               "(nodes, uses, signatures, new functions) still need the Python builders (S15d.4)"),
+        # S15d.1-S15d.4 (ADR-304 to ADR-306, ADR-312, ADR-314): the compiler changes its own store through ``edit``
+        # (operations, constants, references with supplied objects, and the workspace's structural mutations) and the
+        # evolution ledger, which C1 replays above; what remains:
+        "evolution": evolution,
+        "ordinary_evolution": None,
         "python_dependency": {"production": False, "bootstrap_seed": True, "reference": True, "test_only": True},
         "authority": xax_native.AUTHORITY,
     }
