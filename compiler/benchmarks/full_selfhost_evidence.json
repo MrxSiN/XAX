@@ -5,22 +5,23 @@
   "host_nonsemantic": "Linux x86_64 Python 3.13.16",
   "scope": {
     "name": "linux_x86_64_production_compiler",
-    "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, build, lower",
+    "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
     "targets": [
       "x86_64-linux-elf-exec-v1",
       "x86_64-linux-elf-dynexec-v1",
       "x86_64-linux-views-v1/v2",
-      "x86_64-linux-views-exec-v1"
+      "x86_64-linux-views-exec-v1",
+      "RISC-V raw images (architecture 6, format 1; S15e.1)"
     ],
-    "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python"
+    "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.2-S15e.7)"
   },
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "dd9dd25a2575c2c21c97bc4edd4a252e2050237e1ebcd86bc6dcae2cd51ee183",
-    "semantic_root": "8dcfe44125d1d99c48c5199298757b33b2cafb29d90de815a21eef5383e1028d",
-    "request_store_sha256": "8176095279ce6afe2c1756cb36fcd1b5362816e1b5d862c48eb0a8f635aaf735",
-    "request_root": "7588c883c6d1447718bc1b9dca79ba842b7d056a26554d5fd672da337a0d55ef",
+    "store_sha256": "067fdb13f761fcafa3929c1b417ded8ccc5247b02ef0adecfdfe074281224b23",
+    "semantic_root": "7e79814eec2490b551236fb9bd508a6f024a5962ebc53508904494e748b1edea",
+    "request_store_sha256": "08921bec513974ca3adefa91c69975f9dd529847343a326926ed9e1ff5e5b355",
+    "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
     "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -28,52 +29,52 @@
   },
   "seed": {
     "kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
-    "sha256": "bb5a29985e4a6834c133d198e274d3416e52be3841e369ee30eba72bd5710ccd",
-    "bytes": 35731217,
+    "sha256": "7c6bf8fda81ac150e87d8bde9058c1f70c43b4035d93e17d96a195bf5d5b3064",
+    "bytes": 40517393,
     "requires_python": true,
-    "host_s_nonsemantic": 45.4
+    "host_s_nonsemantic": 70.2
   },
   "references": {
-    "python_resolver_snapshot_sha256": "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b",
-    "python_resolve_s_nonsemantic": 75.2,
-    "bootstrap_compile_sha256": "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-    "bootstrap_compile_bytes": 10191048,
-    "bootstrap_compile_s_nonsemantic": 904.1
+    "python_resolver_snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
+    "python_resolve_s_nonsemantic": 113.0,
+    "bootstrap_compile_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+    "bootstrap_compile_bytes": 11285128,
+    "bootstrap_compile_s_nonsemantic": 1402.2
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "bb5a29985e4a6834c133d198e274d3416e52be3841e369ee30eba72bd5710ccd",
+      "producer_sha256": "7c6bf8fda81ac150e87d8bde9058c1f70c43b4035d93e17d96a195bf5d5b3064",
       "resolve": {
         "status": "image",
         "outputs": [
-          "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b"
+          "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
         ],
-        "host_s_nonsemantic": 34.63,
-        "peak_rss_kib_nonsemantic": 3149892
+        "host_s_nonsemantic": 51.08,
+        "peak_rss_kib_nonsemantic": 3743180
       },
       "build": {
         "status": "image",
         "outputs": [
-          "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-          "cd2235aa21f347722fe3ba0af26f7efa17fb0a44cbb0c440207515b75035aeaf"
+          "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+          "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425"
         ],
-        "host_s_nonsemantic": 171.46,
-        "peak_rss_kib_nonsemantic": 3149892
+        "host_s_nonsemantic": 230.02,
+        "peak_rss_kib_nonsemantic": 3743180
       },
-      "snapshot_sha256": "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b",
+      "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-      "artifact_bytes": 10191048,
-      "provenance_sha256": "cd2235aa21f347722fe3ba0af26f7efa17fb0a44cbb0c440207515b75035aeaf",
+      "artifact_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "artifact_bytes": 11285128,
+      "provenance_sha256": "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425",
       "provenance": {
-        "cid": "fee6898a3edfc610972de0f7292d2e624309b4d913fda94eebdcd6ec88110f86",
-        "snapshot_root": "0d3023d589d0bd900cb5504f8e53f5bd3a09b6875dbc23fafe4c718e78b10dd8",
-        "request_root": "7588c883c6d1447718bc1b9dca79ba842b7d056a26554d5fd672da337a0d55ef",
+        "cid": "6ac00582fcbb898b1eeaac30d93861d9db735eef9d075075d481eabf15c9f8ff",
+        "snapshot_root": "b3e0a52273dff34f1b97dc799500bc580533f596d16399eef1e4d6d9de2f01fc",
+        "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "83e20b19cf7478ef040da5e3ecfd5084df803eeffb9adf7de933ddedd5bf93bf",
+        "artifact_digest_blake3": "8b302f2cc84fbafff4268e53fea42fc33c3f0215c98c6f7b975b31f1923db347",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       },
@@ -82,36 +83,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
+      "producer_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
       "resolve": {
         "status": "image",
         "outputs": [
-          "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b"
+          "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
         ],
-        "host_s_nonsemantic": 12.46,
-        "peak_rss_kib_nonsemantic": 4934256
+        "host_s_nonsemantic": 16.97,
+        "peak_rss_kib_nonsemantic": 5592580
       },
       "build": {
         "status": "image",
         "outputs": [
-          "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-          "cd2235aa21f347722fe3ba0af26f7efa17fb0a44cbb0c440207515b75035aeaf"
+          "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+          "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425"
         ],
-        "host_s_nonsemantic": 55.89,
-        "peak_rss_kib_nonsemantic": 4934256
+        "host_s_nonsemantic": 68.9,
+        "peak_rss_kib_nonsemantic": 5592580
       },
-      "snapshot_sha256": "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b",
+      "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-      "artifact_bytes": 10191048,
-      "provenance_sha256": "cd2235aa21f347722fe3ba0af26f7efa17fb0a44cbb0c440207515b75035aeaf",
+      "artifact_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "artifact_bytes": 11285128,
+      "provenance_sha256": "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425",
       "provenance": {
-        "cid": "fee6898a3edfc610972de0f7292d2e624309b4d913fda94eebdcd6ec88110f86",
-        "snapshot_root": "0d3023d589d0bd900cb5504f8e53f5bd3a09b6875dbc23fafe4c718e78b10dd8",
-        "request_root": "7588c883c6d1447718bc1b9dca79ba842b7d056a26554d5fd672da337a0d55ef",
+        "cid": "6ac00582fcbb898b1eeaac30d93861d9db735eef9d075075d481eabf15c9f8ff",
+        "snapshot_root": "b3e0a52273dff34f1b97dc799500bc580533f596d16399eef1e4d6d9de2f01fc",
+        "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "83e20b19cf7478ef040da5e3ecfd5084df803eeffb9adf7de933ddedd5bf93bf",
+        "artifact_digest_blake3": "8b302f2cc84fbafff4268e53fea42fc33c3f0215c98c6f7b975b31f1923db347",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -119,36 +120,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
+      "producer_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
       "resolve": {
         "status": "image",
         "outputs": [
-          "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b"
+          "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
         ],
-        "host_s_nonsemantic": 12.22,
-        "peak_rss_kib_nonsemantic": 4934256
+        "host_s_nonsemantic": 17.74,
+        "peak_rss_kib_nonsemantic": 5592580
       },
       "build": {
         "status": "image",
         "outputs": [
-          "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-          "cd2235aa21f347722fe3ba0af26f7efa17fb0a44cbb0c440207515b75035aeaf"
+          "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+          "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425"
         ],
-        "host_s_nonsemantic": 55.82,
-        "peak_rss_kib_nonsemantic": 4934256
+        "host_s_nonsemantic": 69.83,
+        "peak_rss_kib_nonsemantic": 5592580
       },
-      "snapshot_sha256": "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b",
+      "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-      "artifact_bytes": 10191048,
-      "provenance_sha256": "cd2235aa21f347722fe3ba0af26f7efa17fb0a44cbb0c440207515b75035aeaf",
+      "artifact_sha256": "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "artifact_bytes": 11285128,
+      "provenance_sha256": "74754bac4839d9e2450daed3889c226deb2b771cd22506a2c848ac9befbed425",
       "provenance": {
-        "cid": "fee6898a3edfc610972de0f7292d2e624309b4d913fda94eebdcd6ec88110f86",
-        "snapshot_root": "0d3023d589d0bd900cb5504f8e53f5bd3a09b6875dbc23fafe4c718e78b10dd8",
-        "request_root": "7588c883c6d1447718bc1b9dca79ba842b7d056a26554d5fd672da337a0d55ef",
+        "cid": "6ac00582fcbb898b1eeaac30d93861d9db735eef9d075075d481eabf15c9f8ff",
+        "snapshot_root": "b3e0a52273dff34f1b97dc799500bc580533f596d16399eef1e4d6d9de2f01fc",
+        "request_root": "688b599a263ecc7cd10e86265fb3871e49ccc37ee6f6f98c13e78a70d28ba182",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "83e20b19cf7478ef040da5e3ecfd5084df803eeffb9adf7de933ddedd5bf93bf",
+        "artifact_digest_blake3": "8b302f2cc84fbafff4268e53fea42fc33c3f0215c98c6f7b975b31f1923db347",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -157,15 +158,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-      "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6",
-      "4002b3010ce5ff596ee3de7729139329f130e47b9e87bfed453aa716f3715fd6"
+      "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2",
+      "300a4cb96f431944ecc93b049172693b4e3463b4de9182b6bd3399282e008ed2"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "15040a9516a3d1bf634e7a88acefbeeb6082f8875bf4468f77e10910e96ff39b"
+    "snapshot_sha256": "b77b2e4a4b7d3b179099b54137f84481770a7011c8ec5092119e6bd1ef61ae32"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -2981,6 +2982,134 @@
       ]
     },
     {
+      "case": "build: a RISC-V raw image",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "b631ec0c3eb7f64f64c3c09ba41d0a3bb2a9a00cf93133f8bc8b1f4a7af42d35"
+        ],
+        "C1": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "b631ec0c3eb7f64f64c3c09ba41d0a3bb2a9a00cf93133f8bc8b1f4a7af42d35"
+        ],
+        "C2": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "b631ec0c3eb7f64f64c3c09ba41d0a3bb2a9a00cf93133f8bc8b1f4a7af42d35"
+        ],
+        "C3": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "b631ec0c3eb7f64f64c3c09ba41d0a3bb2a9a00cf93133f8bc8b1f4a7af42d35"
+        ]
+      },
+      "reference": [
+        "image",
+        "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+        "b631ec0c3eb7f64f64c3c09ba41d0a3bb2a9a00cf93133f8bc8b1f4a7af42d35"
+      ]
+    },
+    {
+      "case": "build: a RISC-V views image",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "5ff768294c416a3682de980a30f186059a7419e3b7dcb5024ea6a6e81e8b78a7"
+        ],
+        "C1": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "5ff768294c416a3682de980a30f186059a7419e3b7dcb5024ea6a6e81e8b78a7"
+        ],
+        "C2": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "5ff768294c416a3682de980a30f186059a7419e3b7dcb5024ea6a6e81e8b78a7"
+        ],
+        "C3": [
+          "image",
+          "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+          "5ff768294c416a3682de980a30f186059a7419e3b7dcb5024ea6a6e81e8b78a7"
+        ]
+      },
+      "reference": [
+        "image",
+        "9970dcb0aaae85257062fe6414e857d5abbdbd17b9113c5839ca78d9d8e277a2",
+        "5ff768294c416a3682de980a30f186059a7419e3b7dcb5024ea6a6e81e8b78a7"
+      ]
+    },
+    {
+      "case": "build: a RISC-V unsupported artifact",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ARTIFACT",
+        "BUILD-ARTIFACT-SUPPORTED"
+      ]
+    },
+    {
+      "case": "build: a program the RISC-V profile cannot lower",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.RISCV64.UNSUPPORTED_OPERATION",
+          "RISCV64-OP-TARGET-SUPPORTED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.RISCV64.UNSUPPORTED_OPERATION",
+          "RISCV64-OP-TARGET-SUPPORTED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.RISCV64.UNSUPPORTED_OPERATION",
+          "RISCV64-OP-TARGET-SUPPORTED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.RISCV64.UNSUPPORTED_OPERATION",
+          "RISCV64-OP-TARGET-SUPPORTED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.RISCV64.UNSUPPORTED_OPERATION",
+        "RISCV64-OP-TARGET-SUPPORTED"
+      ]
+    },
+    {
       "case": "resolve with dependencies",
       "kind": "positive",
       "command": "resolve",
@@ -3040,6 +3169,311 @@
       ]
     },
     {
+      "case": "resolve: a declared grant",
+      "kind": "positive",
+      "command": "resolve",
+      "outcomes": {
+        "C0": [
+          "image",
+          "aa05b7bbe5354cd6eea3954c9ef5004ccc7059a7c8c060c0a4db3837d493773e"
+        ],
+        "C1": [
+          "image",
+          "aa05b7bbe5354cd6eea3954c9ef5004ccc7059a7c8c060c0a4db3837d493773e"
+        ],
+        "C2": [
+          "image",
+          "aa05b7bbe5354cd6eea3954c9ef5004ccc7059a7c8c060c0a4db3837d493773e"
+        ],
+        "C3": [
+          "image",
+          "aa05b7bbe5354cd6eea3954c9ef5004ccc7059a7c8c060c0a4db3837d493773e"
+        ]
+      },
+      "reference": [
+        "image",
+        "aa05b7bbe5354cd6eea3954c9ef5004ccc7059a7c8c060c0a4db3837d493773e"
+      ]
+    },
+    {
+      "case": "resolve: an undeclared grant",
+      "kind": "negative",
+      "command": "resolve",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.CAPABILITY",
+          "BUILD-GRANT-DECLARED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.CAPABILITY",
+          "BUILD-GRANT-DECLARED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.CAPABILITY",
+          "BUILD-GRANT-DECLARED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.CAPABILITY",
+          "BUILD-GRANT-DECLARED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.CAPABILITY",
+        "BUILD-GRANT-DECLARED"
+      ]
+    },
+    {
+      "case": "resolve with external inputs",
+      "kind": "positive",
+      "command": "resolve",
+      "outcomes": {
+        "C0": [
+          "image",
+          "6582b08283271b8401ba9a659af2794db190b93cf64cb569542043bcf96672ca"
+        ],
+        "C1": [
+          "image",
+          "6582b08283271b8401ba9a659af2794db190b93cf64cb569542043bcf96672ca"
+        ],
+        "C2": [
+          "image",
+          "6582b08283271b8401ba9a659af2794db190b93cf64cb569542043bcf96672ca"
+        ],
+        "C3": [
+          "image",
+          "6582b08283271b8401ba9a659af2794db190b93cf64cb569542043bcf96672ca"
+        ]
+      },
+      "reference": [
+        "image",
+        "6582b08283271b8401ba9a659af2794db190b93cf64cb569542043bcf96672ca"
+      ]
+    },
+    {
+      "case": "build with external inputs",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "dac71baa45785a39bcfe54e4d09c97581506d7f5927d91109e1f1ee43b2badbe"
+        ],
+        "C1": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "dac71baa45785a39bcfe54e4d09c97581506d7f5927d91109e1f1ee43b2badbe"
+        ],
+        "C2": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "dac71baa45785a39bcfe54e4d09c97581506d7f5927d91109e1f1ee43b2badbe"
+        ],
+        "C3": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "dac71baa45785a39bcfe54e4d09c97581506d7f5927d91109e1f1ee43b2badbe"
+        ]
+      },
+      "reference": [
+        "image",
+        "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+        "dac71baa45785a39bcfe54e4d09c97581506d7f5927d91109e1f1ee43b2badbe"
+      ]
+    },
+    {
+      "case": "build: an external input missing",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.INPUT_CLOSURE",
+          "BUILD-EXTERNAL-COMPLETE"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.INPUT_CLOSURE",
+        "BUILD-EXTERNAL-COMPLETE"
+      ]
+    },
+    {
+      "case": "build: Ed25519-signed",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "2263baf5ed4888ffa37196ed1af15eab0a42e91a122e9a02bb9b69222a3c1611"
+        ],
+        "C1": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "2263baf5ed4888ffa37196ed1af15eab0a42e91a122e9a02bb9b69222a3c1611"
+        ],
+        "C2": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "2263baf5ed4888ffa37196ed1af15eab0a42e91a122e9a02bb9b69222a3c1611"
+        ],
+        "C3": [
+          "image",
+          "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+          "2263baf5ed4888ffa37196ed1af15eab0a42e91a122e9a02bb9b69222a3c1611"
+        ]
+      },
+      "reference": [
+        "image",
+        "4ce48955aedf588165aa958059f9866bcfef63678106e44cd9c2d986c7de2e83",
+        "2263baf5ed4888ffa37196ed1af15eab0a42e91a122e9a02bb9b69222a3c1611"
+      ]
+    },
+    {
+      "case": "build: a forged Ed25519 signature",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.TRUST.REQUIRED",
+        "TRUST-SIGNATURE-REQUIRED"
+      ]
+    },
+    {
+      "case": "resolve-trusted: Ed25519-signed",
+      "kind": "positive",
+      "command": "resolve-trusted",
+      "outcomes": {
+        "C0": [
+          "image",
+          "053f46114619e67a44226c6a6d399f4b1a954d75e142d31752cb352bdff9d2a4"
+        ],
+        "C1": [
+          "image",
+          "053f46114619e67a44226c6a6d399f4b1a954d75e142d31752cb352bdff9d2a4"
+        ],
+        "C2": [
+          "image",
+          "053f46114619e67a44226c6a6d399f4b1a954d75e142d31752cb352bdff9d2a4"
+        ],
+        "C3": [
+          "image",
+          "053f46114619e67a44226c6a6d399f4b1a954d75e142d31752cb352bdff9d2a4"
+        ]
+      },
+      "reference": [
+        "image",
+        "053f46114619e67a44226c6a6d399f4b1a954d75e142d31752cb352bdff9d2a4"
+      ]
+    },
+    {
+      "case": "resolve-trusted: unsigned",
+      "kind": "negative",
+      "command": "resolve-trusted",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.TRUST.REQUIRED",
+          "TRUST-SIGNATURE-REQUIRED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.TRUST.REQUIRED",
+        "TRUST-SIGNATURE-REQUIRED"
+      ]
+    },
+    {
+      "case": "verify: a store past the driver's capacity",
+      "kind": "negative",
+      "command": "verify",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.DRIVER.CAPACITY",
+          "DRIVER-FILE-CAPACITY",
+          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.DRIVER.CAPACITY",
+          "DRIVER-FILE-CAPACITY",
+          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.DRIVER.CAPACITY",
+          "DRIVER-FILE-CAPACITY",
+          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.DRIVER.CAPACITY",
+          "DRIVER-FILE-CAPACITY",
+          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+        ]
+      },
+      "reference": null
+    },
+    {
       "case": "unknown command",
       "kind": "negative",
       "command": "compile",
@@ -3067,13 +3501,8 @@
   "rejection_exactness_gaps": [
     "memory rejections that quote a decoded declaration, a pointer type the memory engine's pointer decoder rejects, and a stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297)"
   ],
-  "required_paths_outside_xax": [
-    "package signature verification (no signature algorithm in the driver)",
-    "external build inputs and build effects",
-    "profile capability grants",
-    "stores beyond the driver's capacities (32 MiB store, 32 MiB snapshot batch)"
-  ],
-  "ordinary_evolution": "compiler semantics are changed by editing Python builder modules (xax_selfhost_*.py) that regenerate the stores (S15)",
+  "required_paths_outside_xax": [],
+  "ordinary_evolution": "the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes (nodes, uses, signatures, new functions) still need the Python builders (S15d.4)",
   "python_dependency": {
     "production": false,
     "bootstrap_seed": true,
@@ -3093,7 +3522,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-2b26f06fd17d59235263884a54219dc0afbbf1086a89e960da91fa039ea6c439.bin"
+      "record": "verified-hash-c2431f6647ecf16b0cb7394293ef81648bcc0619faa9b89fc09585c8eb4a0a87.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -3107,7 +3536,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-2c5824275b988440e6d95d6f661202b5dbba20801f8984b41b2a39114696ffea.bin"
+      "record": "verified-store-decoder-ceee4ab2f9b46ae44edbf4cf45232f9544139e979889c0ae2bbc614aa92e7e7b.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -3121,7 +3550,7 @@
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-bcf1b97660178894359b177be374c5b4d3080fac854713cc31d350e3eb705aad.bin"
+      "record": "verified-store-writer-c9a64ab81bdcb25ffa05045eb73cafb5eff540685ea5f1b627db25d8be0563a0.bin"
     },
     "store-writer": {
       "component": "store-writer",
@@ -3135,7 +3564,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-a8b2f0228c172202ebf42f91d48c08ec152ab464554e7cad0ffc485343874ee3.bin"
+      "record": "verified-graph-decoder-033af7ed415b1d9207e40036a9d3a206a9893905ac0bcaee563a2d2a32b7bd75.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -3149,7 +3578,7 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-f981bb510aaaf8b9b3c1e48619820b041780b27bac0510708d3d942375dd1b2e.bin"
+      "record": "verified-cfg-85bdd550c1160a7dcb50c69532cd1f667d5f60d5651c0f1ba5aa717375bc44ec.bin"
     },
     "cfg": {
       "component": "cfg",
@@ -3163,7 +3592,7 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-fbecd902c05185f19bd2afae14b2cc1243954fc8ec5ed952201e96fb2bcc5061.bin"
+      "record": "verified-typing-1a8e8f9bbb4918deb8adc901688532cba0f31c640026aa4e1c7b3c2ef8818a31.bin"
     },
     "typing": {
       "component": "typing",
@@ -3177,7 +3606,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-5e1fca7b72114bb1f636ed1b2b497554130febfd8405d097989fb3b86aa80711.bin"
+      "record": "verified-store-verifier-7f285e0de01079993fb8ca9bacbe1fbfd5cc967dc3004f27d26cbe7cc6b5f2ed.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -3187,17 +3616,17 @@
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 30103
+      "declined_inputs": 35994
     },
     "verification:compiler-driver-general": {
       "component": "verification:compiler-driver-general",
       "store_verification": "memoized",
-      "record": "verified-compiler-driver-general-042882b2c10d045e74c8349ff1d20953a86fab59773c698f48d13d2958931dee.bin"
+      "record": "verified-compiler-driver-general-1dd56294cba5735937b4c2f46342b568ef60d3062c6669bf0c1bc518436e7c02.bin"
     },
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-0c052c9a376c738e1ee93a7a031debcf3d6f5c9662a571ce71ac95eea4c32e0c.bin"
+      "record": "verified-xax_x86_64_backend-6d742c90277d7c7b61978257a9dccf1918ace508640e1c4cb72d6f4acc28e093.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
@@ -3211,12 +3640,40 @@
     "verification:xax_x86_64_general": {
       "component": "verification:xax_x86_64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-5a8868212bed90c6892f071eeed7129569788ad64405fdf2d6f456eefbc77d98.bin"
+      "record": "verified-xax_x86_64_general-98e12d2b3c3edbbc633d15e96729c8fff81e47023bb08f66e52c2443659567eb.bin"
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
-      "semantic_root": "7491aff6a812de33c9b783463dad620708630da4d9effc3975289e7362f6dcef",
-      "native_artifact_digest": "bad3d4ead145a2e3401f7e794bfe8143279fac0b116e4ab8a70551fc7f1ee772",
+      "semantic_root": "e9bc63bd72415281600130d4f94738307aac85437c667a416006f7363f6cf7b8",
+      "native_artifact_digest": "8a4463fe2a5b1a85d2e969c1a2beb30ac0d4b59512376b77082afb9e274c2b9e",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:riscv64-encoder": {
+      "component": "verification:riscv64-encoder",
+      "store_verification": "memoized",
+      "record": "verified-riscv64-encoder-82f7a9b910837e78263df8578259d9c120119b4264d0b8e0fea7d608793070d1.bin"
+    },
+    "riscv64-encoder": {
+      "component": "riscv64-encoder",
+      "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
+      "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "verification:xax_riscv64_backend": {
+      "component": "verification:xax_riscv64_backend",
+      "store_verification": "memoized",
+      "record": "verified-xax_riscv64_backend-232359cce9af5062ff9f3b3b993dca43f9301de3b6537dbe94945804489ded61.bin"
+    },
+    "riscv64-backend": {
+      "component": "riscv64-backend",
+      "semantic_root": "1d6e4dd3516efe5d3fed55857399efc60e065eb959e097613aff914d3a80c219",
+      "native_artifact_digest": "8a84a1e5711fdc9bf0bee41dcdc455449f25326f2c46fe8b8f769c8f217d13f6",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,

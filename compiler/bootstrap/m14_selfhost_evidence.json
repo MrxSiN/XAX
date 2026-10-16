@@ -9,7 +9,7 @@
       "B4": false,
       "B5": false,
       "B6": false,
-      "blocker": "every target but Linux x86-64 is compiled by Python backends; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285)"
+      "blocker": "every target but Linux x86-64 and RISC-V raw images is compiled by Python backends (S15e.2-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308)"
     },
     "linux_x86_64_production_compiler": {
       "B0": true,
@@ -17,15 +17,14 @@
       "B2": true,
       "B3": true,
       "B4": true,
-      "B5": false,
+      "B5": true,
       "B6": false,
       "blockers": {
         "B1": "memory rejections that quote a decoded declaration, a pointer type the memory engine's pointer decoder rejects, and a stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297); 1 of 23 corpus verification rejections are not the bootstrap's exact diagnostic",
-        "B5": "package signature verification (no signature algorithm in the driver); external build inputs and build effects; profile capability grants; stores beyond the driver's capacities (32 MiB store, 32 MiB snapshot batch)",
-        "B6": "compiler semantics are changed by editing Python builder modules (xax_selfhost_*.py) that regenerate the stores (S15)"
+        "B6": "the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes (nodes, uses, signatures, new functions) still need the Python builders (S15d.4)"
       },
-      "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python",
-      "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, build, lower",
+      "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.2-S15e.7)",
+      "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
       "seed_requires_python": false
     },
     "m14_semantic_image_wrapper": {
