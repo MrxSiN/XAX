@@ -9,6 +9,9 @@
 * Signatures (S15c.3): under a policy requiring package signatures, ``build`` verifies each package's signatures with
   the driver's verifier (``xax_ed25519.signature_verifier``, in XAX) in ``_validate_trust``'s order.
 * Capacities (S15c.4): a file or object past the driver's capacity is the driver's own ``XAX.DRIVER.CAPACITY``.
+* Signed resolution (S15c.5): ``resolve-trusted`` resolves under the policy and signatures of a trust file
+  (``xax_selfhost_resolve.trust_file``), as ``resolve_packages`` with ``signature_verifier``; its snapshot names the
+  policy and the trusted signatures, and ``build`` accepts it.
 
 Differential: ``resolve_packages``/``snapshot_store`` with the same external inputs, and ``build`` with the same
 inputs and ``signature_verifier``: the store or artifact bytes, the provenance, or the exact diagnostic.
@@ -48,6 +51,18 @@ def resolve_expected(reader, inputs=()):
         resolution = resolve_packages(reader.get(reader.root_cid), candidates, POLICY, RESOLVER_IDENTITY,
                                       external_inputs={blake3(value).digest(): value for value in inputs})
         return "store", snapshot_store(resolution, candidates).data
+    except X.XaxError as error:
+        return "rejected", error.diagnostic
+
+
+def trusted_expected(reader, trust: bytes, inputs=()):
+    from xax_selfhost_resolve import RESOLVER_IDENTITY, parse_trust_file
+
+    policy, signatures = parse_trust_file(trust)
+    try:
+        resolution = resolve_packages(reader.get(reader.root_cid), tuple(reader.objects()), policy, RESOLVER_IDENTITY, signatures=signatures,
+                                      signature_verifier=ED.signature_verifier, external_inputs={blake3(value).digest(): value for value in inputs})
+        return "store", snapshot_store(resolution, (*reader.objects(), policy, *signatures)).data
     except X.XaxError as error:
         return "rejected", error.diagnostic
 
@@ -224,6 +239,52 @@ class S15cTests(unittest.TestCase):
             badly = (signed_two[0], signature(f.base, ED.ALGORITHM, key_b, ED.sign(a, f.base.cid)))
             outcome = self.assertBuild(f.signed_snapshot(badly, both, (two, f.base), f.base_objects))
             self.assertEqual(outcome[1].rule, "TRUST-SIGNATURE-REQUIRED")
+
+    def test_trusted_resolution(self):
+        """S15c.5 (ADR-309): the snapshot ``resolve_packages`` makes under the trust file's policy and signatures, or
+        its exact rejection; a signed snapshot then builds.  A malformed trust file declines."""
+        from xax_selfhost_resolve import POLICY, trust_file
+
+        f = self.f
+        a, b = b"\x01" * 32, b"\x02" * 32
+        key_a, key_b = ED.public_key(a), ED.public_key(b)
+        app, request = f.app(), f.request_store()
+        policy = trust_policy(require_package_signatures=True, accepted_algorithms=(ED.ALGORITHM,), accepted_signers=(key_a,))
+        good = signature(app, ED.ALGORITHM, key_a, ED.sign(a, app.cid))
+        other = signature(app, ED.ALGORITHM, key_b, ED.sign(b, app.cid))
+        two = f.app(dependencies=(DependencyRequirement.exact(f.base),))
+        with_base = f.request_store(dependencies=(DependencyRequirement.exact(f.base),), extra=(f.base, *f.base_objects))
+        signed_two = signature(two, ED.ALGORITHM, key_a, ED.sign(a, two.cid))
+        signed_base = signature(f.base, ED.ALGORITHM, key_a, ED.sign(a, f.base.cid))
+        cases = {
+            "the driver's policy": (request, trust_file(POLICY, (good,)), "store"),
+            "signed": (request, trust_file(policy, (good,)), "store"),
+            "an untrusted one too": (request, trust_file(policy, (good, other)), "store"),
+            "forged": (request, trust_file(policy, (signature(app, ED.ALGORITHM, key_a, ED.sign(b, app.cid)),)), "TRUST-SIGNATURE-REQUIRED"),
+            "an untrusted signer": (request, trust_file(policy, (other,)), "TRUST-SIGNATURE-REQUIRED"),
+            "unsigned": (request, trust_file(policy), "TRUST-SIGNATURE-REQUIRED"),
+            "an unsigned dependency": (with_base, trust_file(policy, (signed_two,)), "TRUST-SIGNATURE-REQUIRED"),
+            "a signed dependency": (with_base, trust_file(policy, (signed_two, signed_base)), "store"),
+        }
+        trust = self.directory / "trust.bin"
+        for name, (reader, data, expected) in cases.items():
+            with self.subTest(name):
+                trust.write_bytes(data)
+                output = self.directory / "snapshot.xax"
+                output.unlink(missing_ok=True)
+                (self.directory / "request.xax").write_bytes(reader.data)
+                status = self.driver.resolve_trusted(self.directory / "request.xax", output, trust, *self._inputs((b"input",)))
+                produced = output.read_bytes() if output.exists() else None
+                outcome = ("store", produced) if status == 0 else ("rejected", self._record(produced)) if status == 1 else (status, produced)
+                self.assertEqual(outcome, trusted_expected(reader, data, (b"input",)))
+                self.assertEqual(outcome[0] if outcome[0] == "store" else outcome[1].rule, expected)
+                if outcome[0] == "store":
+                    self.assertEqual(self.assertBuild(X.StoreReader(produced), (b"input",))[0], "image")
+        for name, data in {"empty": b"", "truncated": trust_file(policy, (good,))[:-3], "no policy first": good.envelope() + policy.envelope()}.items():
+            with self.subTest(name):
+                trust.write_bytes(data)
+                (self.directory / "request.xax").write_bytes(request.data)
+                self.assertEqual(self.driver.resolve_trusted(self.directory / "request.xax", self.directory / "snapshot.xax", trust), 2)
 
     def test_capacities(self):
         large = self.directory / "large.bin"

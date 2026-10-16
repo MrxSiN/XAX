@@ -271,6 +271,18 @@ def corpus(directory: Path):
                  "positive")
     build_inputs("build: a forged Ed25519 signature",
                  fixture.signed_snapshot((signature(app, ED.ALGORITHM, key, ED.sign(bytes(32), app.cid)),), ed_policy), "negative")
+    # S15c.5 (ADR-309): resolution under a trust file's policy and signatures (the trust file goes first among the files).
+    from test_xax_selfhost_s15c import trusted_expected
+    from xax_selfhost_resolve import trust_file
+
+    def resolve_trusted(name, reader, kind, trust):
+        expected = trusted_expected(reader, trust)
+        reference = ["image", sha(expected[1])] if expected[0] == "store" else ["rejected", expected[1].code, expected[1].rule]
+        cases.append((name, kind, "resolve-trusted", {"store": reader.data}, ["out"], reference, [trust]))
+
+    signed_app = signature(app, ED.ALGORITHM, key, ED.sign(secret, app.cid))
+    resolve_trusted("resolve-trusted: Ed25519-signed", fixture.request_store(), "positive", trust_file(ed_policy, (signed_app,)))
+    resolve_trusted("resolve-trusted: unsigned", fixture.request_store(), "negative", trust_file(ed_policy))
     cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(33 << 20)}, ["out"], None))
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
@@ -405,9 +417,10 @@ def measure() -> dict:
         "host_nonsemantic": f"{platform.system()} {platform.machine()} Python {platform.python_version()}",
         "scope": {
             "name": "linux_x86_64_production_compiler",
-            "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, build, lower",
-            "targets": ["x86_64-linux-elf-exec-v1", "x86_64-linux-elf-dynexec-v1", "x86_64-linux-views-v1/v2", "x86_64-linux-views-exec-v1"],
-            "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python",
+            "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
+            "targets": ["x86_64-linux-elf-exec-v1", "x86_64-linux-elf-dynexec-v1", "x86_64-linux-views-v1/v2", "x86_64-linux-views-exec-v1",
+                        "RISC-V raw images (architecture 6, format 1; S15e.1)"],
+            "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.2-S15e.7)",
         },
         "spec_revision": "XAX_SPEC.md §16",
         "compiler": {"store": GENERAL_STORE_PATH.name, "store_sha256": sha(driver.data), "semantic_root": driver.root_cid.hex(),
@@ -431,12 +444,10 @@ def measure() -> dict:
              "stack-owner entry's contract decline (ADR-293, ADR-297); a group member function's own graph check, a missing reference "
              "first reached through another object's graph, and rejections inside nested build decoders decline (ADR-288, ADR-297)"),
         ],
-        # S15c (ADR-299 to ADR-302): grants, external input files, Ed25519 verification in ``build``, and capacity
-        # rejections are the driver's.  What remains:
-        "required_paths_outside_xax": [
-            "resolution under a trust policy other than the driver's own: signed snapshots are verified by build (S15c.3) but "
-            "only the bootstrap resolver makes them",
-        ],
+        # S15c (ADR-299 to ADR-302, ADR-309): grants, external input files, Ed25519 verification in ``build``, capacity
+        # rejections, and signed resolution are the driver's.
+        # S15c.5 (ADR-309): resolution under a given trust policy with signatures (``resolve-trusted``) closed the last.
+        "required_paths_outside_xax": [],
         # S15d.1-S15d.3 (ADR-304 to ADR-306): the compiler changes its own store through ``edit`` and the evolution
         # ledger; what remains:
         "ordinary_evolution": ("the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes "

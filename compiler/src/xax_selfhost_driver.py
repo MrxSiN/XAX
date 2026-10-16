@@ -77,8 +77,9 @@ GENERAL_IDENTITIES = RQ.GENERAL_IDENTITIES  # S12e.2: the Linux ELF profiles
 EXTENTS_EXTENT, TRAPS_EXTENT, MEMBERS_EXTENT = 1 << 25, 1 << 22, 1 << 22
 IMAGE, REJECTED, DECLINED, FAILED = 0, 1, 2, 3
 # The general driver's commands, argv[1] (S13a, ADR-281; S13b, ADR-282), with the file arguments each takes.
-LOWER, BUILD, VERIFY, INSPECT, RESOLVE, EDIT = 0, 1, 2, 3, 4, 5  # (S13c, ADR-283: ``resolve``; S15d.1, ADR-304: ``edit``)
-COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2, "edit": 3}
+LOWER, BUILD, VERIFY, INSPECT, RESOLVE, EDIT, TRUSTED = 0, 1, 2, 3, 4, 5, 6  # (S13c, ADR-283: ``resolve``; S15d.1, ADR-304: ``edit``;
+# S15c.5, ADR-309: ``resolve-trusted``)
+COMMANDS = {"lower": 3, "build": 3, "verify": 2, "inspect": 2, "resolve": 2, "edit": 3, "resolve-trusted": 3}
 DONE = 5  # internal status: ``verify``, ``inspect``, ``resolve``, or ``edit`` finished; the process exits with IMAGE
 INSPECT_AT = 1 << 20  # ``inspect``'s record, in the backend output view's words (nothing is lowered)
 # S15b.3c (ADR-295): a graph with an invalid use, in the workspace: the mode (1: trimmed), the first invalid use in the
@@ -314,7 +315,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.set(mode, chosen)
             w.set(files_count, files)
             # S15c.2 (ADR-300): ``build`` and ``resolve`` take up to ``INPUTS_LIMIT`` external input files after their own.
-            takes_inputs = w.either(w.eq(w[mode], BUILD), w.eq(w[mode], RESOLVE))
+            takes_inputs = w.either(w.eq(w[mode], BUILD), w.eq(w[mode], RESOLVE), w.eq(w[mode], TRUSTED))
             extra = w.sub(w[arguments], w.add(files, 2))
             w.if_(w.either(w.eq(known, 0), w.lt(w[arguments], w.add(files, 2)),
                            w.both(w.ne(extra, 0), w.either(w.not_(takes_inputs), w.lt(RQ.INPUTS_LIMIT, extra)))), lambda: stop(FAILED))
@@ -484,6 +485,24 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     def record_word(position, field: int):
         return w.load("decoded", w.mul(w.add(S.HEADER_WORDS, w.add(w.mul(position, S.RECORD_WORDS), field)), 4), 4)
 
+    def envelope_status(envelope):
+        """The store decoder's status for the envelope in ``object[0:envelope]`` (S8b.1), its CID re-derived with the
+        S2 hash; the name holding it."""
+        code = w.let("code", decode("object", "envelope", w[envelope], S.MODE_OBJECT_HASH))
+
+        def digest():
+            start, end = w.let("start", w.load("envelope", 4, 4)), w.let("stop", w.load("envelope", 8, 4))
+            stage = w.let("stage", w.add(w[envelope], 2 * CID_SIZE))
+            for k, byte in enumerate(SEMANTIC_DOMAIN):
+                w.store("object", w.add(w[stage], k), byte)
+            w.copy("object", w[start], "object", w.add(w[stage], len(SEMANTIC_DOMAIN)), w.sub(w[end], w[start]))
+            hash_span("object", w[stage], w.add(len(SEMANTIC_DOMAIN), w.sub(w[end], w[start])))
+            digest_to("object", w[envelope])
+            w.set(code, decode("object", "envelope", w[envelope], S.MODE_OBJECT_VERIFY))
+
+        w.if_(w.eq(w[code], S.NEED_DIGEST), digest)
+        return code
+
     def check_object(position):
         """``StoreReader.get`` (S8b.1): record ``position``'s envelope, its CID re-derived; the rejection on failure."""
         record_at, record_length = record_word(position, 0), record_word(position, 1)
@@ -495,20 +514,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         def checked():
             w.copy("data", w[offset], "object", 0, w[envelope])
-            code = w.let("code", decode("object", "envelope", w[envelope], S.MODE_OBJECT_HASH))
-
-            def digest():
-                start, end = w.let("start", w.load("envelope", 4, 4)), w.let("stop", w.load("envelope", 8, 4))
-                stage = w.let("stage", w.add(w[envelope], 2 * CID_SIZE))
-                for k, byte in enumerate(SEMANTIC_DOMAIN):
-                    w.store("object", w.add(w[stage], k), byte)
-                w.copy("object", w[start], "object", w.add(w[stage], len(SEMANTIC_DOMAIN)), w.sub(w[end], w[start]))
-                hash_span("object", w[stage], w.add(len(SEMANTIC_DOMAIN), w.sub(w[end], w[start])))
-                digest_to("object", w[envelope])
-                w.set(code, decode("object", "envelope", w[envelope], S.MODE_OBJECT_VERIFY))
-
-            w.if_(w.eq(w[code], S.NEED_DIGEST), digest)
-            outcome(w[code], "envelope")
+            outcome(w[envelope_status(envelope)], "envelope")
 
         when(checked)
 
@@ -570,6 +576,66 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.while_(lambda: w.both(w.lt(w[i], w[given]), running()), each)
 
         when(input_files)
+
+    # -- S15c.5 (ADR-309): the trust objects, read before the store ----------------------------------------------------
+    if general:
+        trusts = w.let("trusts", 0)  # the trust objects' count, handed to the helpers after verification
+
+        def put_work(index, value):
+            w.store("work", w.mul(index, 8), value, 8)
+
+        def trust_objects():
+            """``resolve``'s own policy, or ``resolve-trusted``'s trust file: each envelope checked by the store decoder
+            (its CID re-derived), then copied to the workspace (``RS.TRUST_IN``, one byte per word)."""
+            def own():
+                for k, byte in enumerate(RS.POLICY_ENVELOPE):
+                    put_work(RS.TRUST_IN + k, byte)
+                w.set(trusts, 1)
+
+            def given():
+                read_store(2, "trust")
+                pos, put, count = w.let("t_pos", 0), w.let("t_put", 0), w.let("t_count", 0)
+                object_limit = (S.DATA_EXTENT - 4 * CID_SIZE) // 2
+
+                def each():
+                    n, shift, more, at = w.let("t_n", 0), w.let("t_shift", 1), w.let("t_more", 1), w.let("t_at", w[pos])
+
+                    def byte():
+                        value = w.let("t_byte", w.load("data", w[at]))
+                        w.set(n, w.add(w[n], w.mul(w.and_(w[value], 127), w[shift])))
+                        w.set(shift, w.mul(w[shift], 128))
+                        w.set(more, w.flag(w.le(128, w[value])))
+                        w.set(at, w.add(w[at], 1))
+
+                    w.while_(lambda: w.both(w.ne(w[more], 0), w.lt(w[at], w[length]), w.lt(w[shift], 1 << 35)), byte)
+                    w.if_(w.either(w.ne(w[more], 0), w.lt(w.sub(w[length], w[at]), w[n])), lambda: stop(DECLINED))  # a truncated envelope
+                    size = w.let("t_size", w.add(w.sub(w[at], w[pos]), w[n]))
+                    w.if_(w.both(running(), w.lt(object_limit, w[size])), lambda: capacity("trust", "DRIVER-OBJECT-CAPACITY", object_limit))
+                    w.if_(w.both(running(), w.either(w.lt(RS.TRUST_IN_LIMIT, w.add(w[put], w[size])), w.le(RS.TRUST_LIMIT, w[count]))),
+                          lambda: capacity("trust", "DRIVER-FILE-CAPACITY", RS.TRUST_IN_LIMIT))
+
+                    def checked():
+                        w.copy("data", w[pos], "object", 0, w[size])
+                        w.if_(w.ne(w[envelope_status(size)], 0), lambda: stop(DECLINED))
+
+                        def copy():
+                            q = w.let("t_q", 0)
+                            w.while_(lambda: w.lt(w[q], w[size]), lambda: (
+                                put_work(w.add(RS.TRUST_IN, w.add(w[put], w[q])), w.load("data", w.add(w[pos], w[q]))), w.set(q, w.add(w[q], 1))))
+                            w.set(put, w.add(w[put], w[size]))
+                            w.set(pos, w.add(w[pos], w[size]))
+                            w.set(count, w.add(w[count], 1))
+
+                        when(copy)
+
+                    when(checked)
+
+                w.while_(lambda: w.both(w.lt(w[pos], w[length]), running()), each)
+                w.set(trusts, w[count])
+
+            w.if_(w.eq(w[mode], RESOLVE), own, lambda: w.if_(w.eq(w[mode], TRUSTED), given))
+
+        when(trust_objects)
 
     # -- S15d.1 (ADR-304): ``edit``'s record, read before the store ---------------------------------------------------
     if general:
@@ -1310,11 +1376,6 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         def snapshot_store():
             """The policy's CID (``argument[0:32]``), the snapshot's (``argument[32:64]``), the writer's batch: the
             request store's objects, the policy, the snapshot; the store the S9 writer makes."""
-            for k, byte in enumerate(RS.POLICY_PREIMAGE):
-                w.store("object", len(SEMANTIC_DOMAIN) + k, byte)
-            hash_preimage(len(RS.POLICY_PREIMAGE), 0)
-            for k in range(4):
-                set_work(SM.CTRL + RS.R_POLICY + k, w.cid_word("argument", 0, k))
             request_helper("snapshot", resolvers)
             length = w.let("snapshot_length", work_word(SM.CTRL + RS.R_LENGTH))
             w.if_(w.lt(RS.SNAPSHOT_LIMIT, w[length]), lambda: capacity("snapshot", "DRIVER-SNAPSHOT-CAPACITY", RS.SNAPSHOT_LIMIT))
@@ -1348,21 +1409,44 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
                 w.while_(lambda: w.both(w.lt(w[o], w[objects]), running()), each)
 
-                def tail():
-                    for value in (int(Kind.BUILD), 1, 0, len(RS.POLICY.body)):
+                def trust_object(t):
+                    """S15c.5: a trust object the snapshot names (the policy, a used signature), from the workspace."""
+                    def tw(field):
+                        return work_word(w.add(RS.TRUST_TABLE, w.add(w.mul(w[t], RS.T_WORDS), field)))
+
+                    refs, size = w.let("t_refs", tw(RS.T_COUNT)), w.let("t_body", tw(RS.T_BODY_LENGTH))
+                    for value in (int(Kind.BUILD), 1, w[refs], w[size]):
                         batch_put(at, value)
-                    batch_copy(at, "argument", 0, CID_SIZE)
-                    for byte in RS.POLICY.body:
-                        w.store("batch", w[at], byte)
-                        w.set(at, w.add(w[at], 1))
+
+                    def bytes_from(start, count):
+                        first, n, q = w.let("t_first", start), w.let("t_n", count), w.let("t_b", 0)  # names: values cross blocks only so
+                        w.while_(lambda: w.lt(w[q], w[n]), lambda: (w.store("batch", w.add(w[at], w[q]), work_word(w.add(w[first], w[q]))),
+                                                                    w.set(q, w.add(w[q], 1))))
+                        w.set(at, w.add(w[at], w[n]))
+
+                    bytes_from(tw(RS.T_CID), CID_SIZE)
+                    bytes_from(tw(RS.T_REFS), w.mul(w[refs], CID_SIZE))
+                    bytes_from(tw(RS.T_BODY), w[size])
+
+                trusted_limit = WR.IN_EXTENT - 4096 - RS.TRUST_IN_LIMIT - 32 * RS.TRUST_LIMIT  # room for the trust objects' words
+                w.if_(w.both(running(), w.lt(trusted_limit, w[at])), lambda: capacity("snapshot", "DRIVER-SNAPSHOT-CAPACITY", trusted_limit))
+
+                def tail():
+                    extras = w.let("t_extras", w.add(work_word(SM.CTRL + RS.R_USED), 1))
+                    x = w.let("t_x", 0)
+                    def each_extra():
+                        trust_object(w.let("t_object", work_word(w.add(RS.EXTRA_AT, w.add(w.mul(w[x], RS.EXTRA_WORDS), 4)))))
+                        w.set(x, w.add(w[x], 1))
+
+                    w.while_(lambda: w.lt(w[x], w[extras]), each_extra)
                     references, body = (w.let(name, work_word(SM.CTRL + field)) for name, field in (("b_refs_at", RS.R_REFS_AT), ("b_body_at", RS.R_BODY_AT)))
-                    count, size = w.let("b_count", w.add(work_word(SM.CTRL + RS.R_PACKAGES), 2)), w.let("b_size", work_word(SM.CTRL + RS.R_BODY_LENGTH))
+                    count, size = w.let("b_count", w.add(w.add(work_word(SM.CTRL + RS.R_PACKAGES), 2), work_word(SM.CTRL + RS.R_USED))), w.let("b_size", work_word(SM.CTRL + RS.R_BODY_LENGTH))
                     for value in (int(Kind.BUILD), 1, w[count], w[size]):
                         batch_put(at, value)
                     batch_copy(at, "argument", CID_SIZE, CID_SIZE)
                     batch_copy(at, "object", w.add(len(SEMANTIC_DOMAIN), w[references]), w.mul(w[count], CID_SIZE))
                     batch_copy(at, "object", w.add(len(SEMANTIC_DOMAIN), w[body]), w[size])
-                    for field, value in enumerate((w.add(w[objects], 2), 0, w[at])):
+                    for field, value in enumerate((w.add(w.add(w[objects], 1), w[extras]), 0, w[at])):
                         w.store("batch", 8 * field, value, 8)
                     results = proc.op(Operation.CALL_DIRECT, (*w.triple("batch", w.narrowed("batch", WR.BATCH_POINTER)), *w.triple("written"),
                                                               *w.triple("scratch"), w.c(WR.MODE_WRITE)), tuple(type_ for _name, type_ in WR.VIEWS),
@@ -1379,12 +1463,17 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         def resolve():
             inputs_to_work()
-            request_helper("select", resolvers)
-            outcome = w.let("select_outcome", work_word(SM.CTRL + RS.R_STATUS))
-            w.if_(w.eq(w[outcome], RS.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RS.ACCEPT), lambda: stop(DECLINED)))
+            set_work(SM.CTRL + RS.R_TRUST, w[trusts])
+            for helper in ("select", "trust"):  # S15c.5 (ADR-309): the trust objects after the selection
+                def step(helper=helper):
+                    request_helper(helper, resolvers)
+                    outcome = w.let("select_outcome", work_word(SM.CTRL + RS.R_STATUS))
+                    w.if_(w.eq(w[outcome], RS.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RS.ACCEPT), lambda: stop(DECLINED)))
+
+                when(step)
             when(snapshot_store)
 
-        when(lambda: w.if_(w.eq(w[mode], RESOLVE), resolve))
+        when(lambda: w.if_(w.either(w.eq(w[mode], RESOLVE), w.eq(w[mode], TRUSTED)), resolve))
 
         # -- S15d.1 (ADR-304): ``edit``: a transaction applied by ``xax_selfhost_edit``, the store written by S9 ------
         def edit():
@@ -1909,7 +1998,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
                 w.if_(w.ne(w[status], FAILED), write)
 
-            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: w.if_(w.eq(w[mode], RESOLVE), resolved_store, lambda: w.if_(
+            w.if_(w.eq(w[mode], INSPECT), inspect_record, lambda: w.if_(w.either(w.eq(w[mode], RESOLVE), w.eq(w[mode], TRUSTED)), resolved_store, lambda: w.if_(
                 w.eq(w[mode], EDIT), lambda: resolved_store(2), lambda: emit(INSPECT_AT, 0, path=1))))
             w.set(final, IMAGE)
 
@@ -2087,6 +2176,11 @@ class NativeGeneralDriver(NativeDriver):
         """S13c: on ``IMAGE`` the snapshot store for the request store's request (``xax_selfhost_resolve``); S15c.2: its
         external input digests are those of ``inputs``."""
         return self._process("resolve", request_path, snapshot_path, *inputs)
+
+    def resolve_trusted(self, request_path: str | Path, snapshot_path: str | Path, trust_path: str | Path, *inputs: str | Path) -> int:
+        """S15c.5 (ADR-309): ``resolve`` under the trust file's policy and signatures
+        (``xax_selfhost_resolve.trust_file``)."""
+        return self._process("resolve-trusted", request_path, snapshot_path, trust_path, *inputs)
 
 
 def decode_inspection(data: bytes) -> dict:

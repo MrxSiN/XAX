@@ -1203,3 +1203,8 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 ## S15c.5a ELF buffer after the views — 2026-10-16 (ADR-310)
 
 - `xax_selfhost_general_image`: `I_ELF` is allocated in `image_after_views`. Seed rotated (11,191,528 bytes).
+
+## S15c.5 `resolve-trusted` — 2026-10-16 (ADR-309)
+
+- `xaxc resolve-trusted <request> <snapshot> <trust file> [inputs]`; trust file = `xax_selfhost_resolve.trust_file(policy, signatures)`. `resolve` uses the same path with the driver's policy.
+- Workspace: `TRUST_IN` (43M words), `TRUST_TABLE`/`EXTRA_AT` (44M); control words `R_TRUST` 20, `R_USED` 21.

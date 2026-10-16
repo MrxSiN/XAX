@@ -549,7 +549,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15c.2 | External input files for `resolve` and `build`, hashed and compared in XAX (ADR-300) | S13c | DONE |
 | S15c.3 | Ed25519 package signature verification in `build`, in XAX (ADR-301) | S13a | DONE |
 | S15c.4 | The driver's capacities as its own `XAX.DRIVER.CAPACITY` rejection (ADR-302) | S13 | DONE |
-| S15c.5 | Resolution under a trust policy other than the driver's own (signed snapshots made in XAX) | S15c.3 | UNIMPLEMENTED |
+| S15c.5 | Resolution under a trust policy other than the driver's own (signed snapshots made in XAX): `resolve-trusted` (ADR-309) | S15c.3 | DONE |
 | S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | PARTIAL: S15d.0-S15d.3 DONE (ADR-303 to ADR-306); S15d.4 open |
 | S15d.0 | Room for the compiler's own lowering views in the general program (the image buffer at a fixed place, views to 36M words); the seed rotated to carry it (ADR-303) | S15c | DONE |
 | S15d.1 | An XAX-hosted transaction engine: the production compiler's `edit` command (graph-local mutations, the canonical cascade to the root, the S9 writer), equal to the Python workspace (ADR-298, ADR-304) | S13c | DONE |
