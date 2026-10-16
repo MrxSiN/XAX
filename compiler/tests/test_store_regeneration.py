@@ -1,4 +1,5 @@
-"""STORE_REGENERATION: every committed self-hosting store is exactly what its builder makes, on every host.
+"""STORE_REGENERATION: every committed self-hosting store is exactly what its builder makes, on every host (the general
+driver: its builder's baseline with the evolution ledger applied, S15d.2).
 
 Building a store is deterministic Python; only *running* the native image needs Linux x86-64 (NATIVE_EXECUTION,
 tested elsewhere).  Each store is built twice in one process, so state leaking between builds (decline-site codes
@@ -23,7 +24,8 @@ BUILDERS = (
     ("xax_selfhost_riscv64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_general", "build_general_program"),
-    ("xax_selfhost_driver", "build_general_driver_program", "GENERAL_STORE_PATH"),
+    # S15d.2 (ADR-305): the general driver's committed store is its builder's baseline with the evolution ledger applied.
+    ("xax_selfhost_evolution", "build_evolved_general", "GENERAL_STORE_PATH"),
 )
 
 

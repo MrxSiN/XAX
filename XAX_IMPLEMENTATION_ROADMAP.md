@@ -532,7 +532,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S14 | Full-compiler generations C1 → C2 → C3 on Linux x86-64 with positive/negative equivalence and identity records (full-compiler B2–B4) | S10–S13 | EXECUTED (ADR-284, ADR-285) for the Linux x86-64 production compiler: C1 = C2 = C3 through `resolve`/`build`; derived B0, B2, B3, B4 hold, B1, B5, B6 do not |
 | S14a | The production compiler (the general driver) compiled by its own general x86-64 backend: C0 (views-built) → C1 → C2 → C3 through `lower`, a byte fixed point equal to the bootstrap's compile | S13 | EXECUTED (ADR-284): an allocator bug, quadratic arena use, unchecked emission buffers, and capacities fixed; C1 = C2 = C3 = the bootstrap's compile |
 | S14b | Generations through the ordinary build path (`resolve`, `build`, provenance), the positive/negative equivalence corpus across generations, identity records (`full_selfhost_evidence.json`), and the derived full-compiler B2–B4 | S14a | EXECUTED (ADR-285): generations through `resolve`/`build` equal to the bootstrap's compile; 72-case corpus without disagreement; `full_selfhost_evidence.json` |
-| S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | In progress (ADR-286, ADR-298): S15a EXECUTED; S15c.1-S15c.4 DONE |
+| S15 | Compiler evolution by semantic transactions (B6/SH7), other targets through target packages, a Python-free seed (SH8) | S14 | In progress (ADR-286, ADR-298): S15a EXECUTED; S15c.1-S15c.4, S15d.0-S15d.3 DONE |
 | S15a | A Python-free seed (SH8): the pinned XAX-built compiler and the compiler's request store rebuild the compiler with no Python reachable | S14 | EXECUTED (ADR-286): `bootstrap/seed/selfbuild.sh` under `PATH` of five tools; derived seed requires Python: no |
 | S15b | Exact rejections (B1): the driver's verification diagnostics, ADR-280's declined code generation rules | S14 | UNIMPLEMENTED |
 | S15b.0 | A 512 MiB input view for the verifier's object table of the growing driver store; the seed rotated to carry it (ADR-287) | S15a | DONE |
@@ -550,11 +550,12 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15c.3 | Ed25519 package signature verification in `build`, in XAX (ADR-301) | S13a | DONE |
 | S15c.4 | The driver's capacities as its own `XAX.DRIVER.CAPACITY` rejection (ADR-302) | S13 | DONE |
 | S15c.5 | Resolution under a trust policy other than the driver's own (signed snapshots made in XAX) | S15c.3 | UNIMPLEMENTED |
-| S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | UNIMPLEMENTED |
+| S15d | Compiler evolution by semantic transactions instead of Python builders (B6, SH7) | S14 | PARTIAL: S15d.0-S15d.3 DONE (ADR-303 to ADR-306); S15d.4 open |
 | S15d.0 | Room for the compiler's own lowering views in the general program (the image buffer at a fixed place, views to 36M words); the seed rotated to carry it (ADR-303) | S15c | DONE |
 | S15d.1 | An XAX-hosted transaction engine: the production compiler's `edit` command (graph-local mutations, the canonical cascade to the root, the S9 writer), equal to the Python workspace (ADR-298, ADR-304) | S13c | DONE |
-| S15d.2 | The committed compiler stores become authoritative: an evolution ledger of transactions since each builder baseline, checked by `test_store_regeneration` (ADR-298) | S15d.1 | UNIMPLEMENTED |
-| S15d.3 | One real compiler change made only through S15d.1: verified, rebuilt, self-compiled to a fixed point, regression-tested (ADR-298) | S15d.2 | UNIMPLEMENTED |
+| S15d.2 | The committed compiler stores become authoritative: an evolution ledger of transactions since each builder baseline, checked by `test_store_regeneration` (ADR-298, ADR-305) | S15d.1 | DONE |
+| S15d.3 | One real compiler change made only through S15d.1: verified, rebuilt, self-compiled to a fixed point, regression-tested (ADR-298, ADR-306) | S15d.2 | DONE: the external input bound raised from 64 to 100 by a 35-mutation transaction |
+| S15d.4 | The engine's vocabulary for ordinary changes: node insertion and deletion, uses, edge arguments, result types and signatures (the workspace's), then new functions, so a builder is no longer needed for ordinary compiler changes (B6) | S15d.3 | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |
 
 ## EI — Evidence and canonical-state integrity (ADR-177; before S7b)

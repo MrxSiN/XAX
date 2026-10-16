@@ -1960,7 +1960,14 @@ def load_driver_program(general: bool = False) -> tuple[StoreReader, SemanticObj
 
 
 def write_driver_store(general: bool = False) -> bytes:
-    reader, _function = build_driver_program(general)
+    """The committed store: the builder's, and for the general driver its evolution ledger applied (S15d.2,
+    ``xax_selfhost_evolution``)."""
+    if general:
+        from xax_selfhost_evolution import build_evolved_general
+
+        reader, _function = build_evolved_general()
+    else:
+        reader, _function = build_driver_program(general)
     (GENERAL_STORE_PATH if general else STORE_PATH).write_bytes(reader.data)
     return reader.data
 
@@ -2015,8 +2022,8 @@ class NativeGeneralDriver(NativeDriver):
     """S13a (ADR-281), S13b (ADR-282): the general driver as a Linux process.  Its first argument is the command:
     ``lower`` (a program store, a target package, the output), ``build`` (a build snapshot store, the artifact, its
     provenance), ``verify`` or ``inspect`` (a store, the output), ``resolve`` (a request store, the snapshot store).
-    S15c.2 (ADR-300): ``build`` and ``resolve`` take up to ``xax_selfhost_request.INPUTS_LIMIT`` external input files
-    after their own arguments."""
+    S15c.2 (ADR-300): ``build`` and ``resolve`` take external input files after their own arguments, up to
+    ``xax_selfhost_evolution.INPUTS_LIMIT`` in the committed compiler (S15d.3, ADR-306)."""
 
     def __init__(self, image=None) -> None:
         if image is None:

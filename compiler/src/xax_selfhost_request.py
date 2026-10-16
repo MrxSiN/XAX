@@ -41,7 +41,7 @@ from xax_selfhost_semantic import CTRL, _END, _body, _cid_word, _kind, _ref
 B_DIGEST = 40
 # S15c.2 (ADR-300): the input files' digests, sorted and each once, one byte per word (set by the driver).
 B_INPUTS = 44
-INPUTS_AT, INPUTS_LIMIT = 46 << 20, 64
+INPUTS_AT, INPUTS_LIMIT = 46 << 20, 64  # the builder baseline's bound; the committed compiler's is 100 (ledger 0001, ADR-306)
 TRUST_AT = 47 << 20  # S15c.3: per snapshot signature, 1 once it is accepted
 ACCEPT, REJECT, DECLINE = 0, 1, 2
 GENERAL_IDENTITIES = (b"x86_64-linux-elf-exec-v1", b"x86_64-linux-elf-dynexec-v1")  # ``xax_selfhost_driver``'s

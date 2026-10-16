@@ -424,7 +424,10 @@ def measure() -> dict:
             "resolution under a trust policy other than the driver's own: signed snapshots are verified by build (S15c.3) but "
             "only the bootstrap resolver makes them",
         ],
-        "ordinary_evolution": "compiler semantics are changed by editing Python builder modules (xax_selfhost_*.py) that regenerate the stores (S15)",
+        # S15d.1-S15d.3 (ADR-304 to ADR-306): the compiler changes its own store through ``edit`` and the evolution
+        # ledger; what remains:
+        "ordinary_evolution": ("the compiler's transaction engine (S15d.1) changes operations and constants only; structural changes "
+                               "(nodes, uses, signatures, new functions) still need the Python builders (S15d.4)"),
         "python_dependency": {"production": False, "bootstrap_seed": True, "reference": True, "test_only": True},
         "authority": xax_native.AUTHORITY,
     }

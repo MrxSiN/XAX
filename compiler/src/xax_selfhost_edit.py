@@ -1189,6 +1189,24 @@ def _place(tables):
             e.st(e.add(e.add(NEWT, e.mul(e.sub(_ctrl(e, E_NEW), 1), NEWT_WORDS)), 8), 1)
 
         e.if_(e.ne(p["found"], NONE), alias)
+
+        def earlier():
+            """A new object equal to an earlier new one (two mutations making the same constant) is written once."""
+            e.var("last", e.sub(_ctrl(e, E_NEW), 1))
+
+            def compare():
+                e.var("row", e.add(NEWT, e.mul(p["eq"], NEWT_WORDS)))
+                e.var("object", e.ld(e.add(p["row"], 7)))
+                e.var("other", e.sel(e.le(EXTRA_TAG, p["object"]), e.add(e.add(EXTRA, e.mul(e.sub(p["object"], EXTRA_TAG), EXTRA_WORDS)), 4),
+                                     e.add(NEWCID, e.mul(p["object"], 4))))
+                e.var("same", e.flag(e.eq(e.ld(e.add(p["row"], 8)), 0)))
+                for k in range(4):
+                    e.set("same", e.and_(p["same"], e.flag(e.eq(e.ld(e.add(p["other"], k)), p[f"key{k}"]))))
+                e.if_(e.ne(p["same"], 0), lambda: e.st(e.add(e.add(NEWT, e.mul(p["last"], NEWT_WORDS)), 8), 1))
+
+            e.for_("eq", 0, p["last"], compare)
+
+        e.if_(e.eq(p["found"], NONE), earlier)
         e.give(0)
     return _function((), build, tables)
 

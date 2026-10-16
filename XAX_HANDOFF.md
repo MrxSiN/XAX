@@ -1183,3 +1183,10 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - General-backend hazard (found here): do not use a `bits<1>` comparison value in a block other than the one that computed it; keep it as a 64-bit flag (`e.flag`) and compare again. The views backend hides this; only the self-built compiler shows it, so run new driver code through `selfbuild.sh` and test with the resulting compiler.
 - Measuring the general program's memory: `GLOBALS + G_VIEW_OUT` is the views cursor after a run; a host harness can build a variant program in memory (`build_general_program` with changed module constants, then `host_image`).
 
+## S15d.2-S15d.3 ledger and the first compiler transaction — 2026-10-16 (ADR-305, ADR-306)
+
+- The general driver's committed store = builder baseline + `compiler/bootstrap/evolution/LEDGER`. `write_general_driver_store` applies the ledger; `test_store_regeneration` checks it; `tests/test_xax_selfhost_evolution.py` checks the native `edit` makes the committed stores.
+- To change the compiler: write a query in `xax_selfhost_evolution.QUERIES`, make the record (`edit_record`), apply it with the compiler (`xaxc edit` on the driver store and the request store, then `xaxc verify`), add the ledger line, run `selfbuild.sh`. If you change a builder, run `python -m xax_selfhost_evolution rebase` afterwards and review the records.
+- The committed compiler's external-input bound is 100 (`xax_selfhost_evolution.INPUTS_LIMIT`); `xax_selfhost_request.INPUTS_LIMIT` (64) is the baseline's.
+- Next: S15d.4 (InsertPureNode, DeleteNode, ReplaceUse, edge arguments, signatures in the XAX engine, then new functions) is what B6 needs; S15c.5 (signed resolution) is what B5 needs; the S15b.3d declines are what B1 needs.
+

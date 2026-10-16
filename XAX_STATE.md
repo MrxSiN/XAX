@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15d.2-S15d.3 the compiler changed by its own transactions — 2026-10-16 (ADR-305, ADR-306)
+
+The compiler's committed store is now its historical Python construction plus a ledger of transactions, and the first transaction is a real change made without touching any Python compiler code: the compiler's `resolve` and `build` now accept up to 100 external input files instead of 64. The compiler applied the transaction to its own store with its `edit` command, verified the result, rebuilt itself to identical bytes, and the new compiler behaves as intended while still matching the bootstrap's results. B6 (bootstrap independence) is still not established: the transaction engine can only change operations and constants, so most compiler changes still need the Python builders. Next: S15d.4 (a larger transaction vocabulary), S15c.5, the S15b.3d remainder, S15e.
+
 ## S15d.1 semantic transactions in the production compiler — 2026-10-16 (ADR-304)
 
 The production compiler can now change a canonical store itself. Its new `edit` command takes a small transaction record (change an arithmetic operation, or the value of a constant, at a named node of a named function), verifies the store, rebuilds every object that depends on the change, and writes the new store. The result is byte for byte what the existing Python workspace commits for the same transaction, and it rejects where the workspace rejects. On the compiler's own store an edit takes about 15 seconds and the result verifies. Next: S15d.2 (the committed compiler stores become authoritative, with a ledger of transactions) and S15d.3 (a real compiler change made this way).
