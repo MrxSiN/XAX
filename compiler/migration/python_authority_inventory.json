@@ -1,7 +1,7 @@
 {
   "format": "xax-python-authority-inventory-v1",
-  "as_of": "2026-10-07",
-  "adr": "ADR-180",
+  "as_of": "2026-10-16",
+  "adr": "ADR-180; updated by ADR-309",
   "classes": {
     "A": "authoritative production compiler logic",
     "B": "production orchestration/tooling",
@@ -498,6 +498,22 @@
         "x86-64-program-backend"
       ],
       "note": "Lowering-view next-iteration prefetch (ADR-211): pure index copy, proven-in-bounds load, prefetch hints; canonical program unchanged."
+    },
+    "xax_ed25519.py": {
+      "class": "C",
+      "note": "Ed25519 reference (RFC 8032) and xax_build's signature verifier for the bootstrap; the differential oracle of the XAX verifier (S15c.3, ADR-301)."
+    },
+    "xax_selfhost_ed25519.py": {
+      "class": "G",
+      "note": "Builder of the XAX SHA-512 and Ed25519 verification functions inside the general driver store (S15c.3, ADR-301)."
+    },
+    "xax_selfhost_edit.py": {
+      "class": "G",
+      "note": "Builder of the XAX transaction engine inside the general driver store (S15d.1, ADR-304); apply_reference is its Python reference."
+    },
+    "xax_selfhost_evolution.py": {
+      "class": "D",
+      "note": "The evolution ledger: applies the committed transactions to the builder baseline and derives records from read-only queries (S15d.2, ADR-305)."
     }
   },
   "components": {
@@ -603,7 +619,7 @@
     },
     "cli": {
       "python_authority": "xax_compiler.main (xaxc)",
-      "xax_hosted": "the general driver process's commands lower and build (S13a, ADR-281), verify and inspect (S13b, ADR-282); run (the reference interpreter) stays xaxc tooling",
+      "xax_hosted": "the general driver process's commands lower and build (S13a, ADR-281), verify and inspect (S13b, ADR-282), resolve (S13c), edit (S15d.1, ADR-304), resolve-trusted (S15c.5, ADR-309); run (the reference interpreter) stays xaxc tooling",
       "target_dependency": "Linux x86-64 process entry",
       "prerequisite": "S10",
       "differential_oracle": "xaxc verify and inspect outputs (tests/test_xax_selfhost_general_commands.py)",
@@ -633,7 +649,7 @@
     },
     "provenance": {
       "python_authority": "xax_artifact, xax_build provenance",
-      "xax_hosted": "for the Linux x86-64 ELF profiles: the general driver's build command (xax_compiler_driver_general.xax, S13a, ADR-281) writes the canonical provenance object (artifact digest and CID by the S2 hash); other targets' provenance stays in xax_build",
+      "xax_hosted": "for the Linux x86-64 ELF profiles (S13a, ADR-281) and RISC-V raw images (S15e.1, ADR-308): the general driver's build command writes the canonical provenance object (artifact digest and CID by the S2 hash); other targets' provenance stays in xax_build",
       "target_dependency": "none",
       "prerequisite": "S9",
       "differential_oracle": "xax_build.build's artifact and provenance envelope, byte for byte (tests/test_xax_selfhost_general_build.py)",
@@ -643,13 +659,13 @@
     },
     "build-package-resolution": {
       "python_authority": "xax_build",
-      "xax_hosted": "the general driver (xax_compiler_driver_general.xax): reading a resolved snapshot for build (S13a, ADR-281); resolve (S13c, ADR-283): package selection by exact root and logical identity with the exact RESOLVE-LOGICAL-IDENTITY rejections, the snapshot object (CID by the S2 hash), and the snapshot store written by the S9 writer, for a request store under the default trust policy; signature policies, external inputs, and profile grants remain Python",
+      "xax_hosted": "the general driver (xax_compiler_driver_general.xax): reading a resolved snapshot for build (S13a, ADR-281); resolve (S13c, ADR-283): package selection by exact root and logical identity with the exact RESOLVE-LOGICAL-IDENTITY rejections, the snapshot object (CID by the S2 hash), and the snapshot store written by the S9 writer; S15c (ADR-299 to ADR-302, ADR-309): profile grants, external input files, Ed25519 package signatures in build, capacities, and resolution under a given trust policy with signatures (resolve-trusted); build effects (Android signing) remain Python",
       "target_dependency": "none",
       "prerequisite": "S9",
       "differential_oracle": "snapshot_store(resolve_packages(...)) bytes and xax_build.build's artifact and provenance (tests/test_xax_selfhost_general_resolve.py, test_xax_selfhost_general_build.py)",
       "fixed_point_relevance": "the compiler's own package closure",
       "runtime_relevance": "none",
-      "recommended_step": "S13c (EXECUTED for Linux x86-64)"
+      "recommended_step": "S13c, S15c (EXECUTED for Linux x86-64)"
     },
     "platform-contracts": {
       "python_authority": "xax_platform",
@@ -743,13 +759,13 @@
     },
     "workspace-transactions": {
       "python_authority": "xax_workspace, xax_local_protocol",
-      "xax_hosted": null,
+      "xax_hosted": "S15d.1 (ADR-304): the production compiler's edit command applies SetOperation and SetConstant transactions with Workspace.commit's semantics and cascade, written by the S9 writer; S15d.2-S15d.3 (ADR-305, ADR-306): the committed compiler store is a builder baseline plus the evolution ledger; insertion, deletion, use, signature and function edits remain Python (S15d.4)",
       "target_dependency": "none",
       "prerequisite": "S9 store codec",
       "differential_oracle": "transaction roots and diagnostics",
       "fixed_point_relevance": "semantic mutation of the compiler (SH7)",
       "runtime_relevance": "none",
-      "recommended_step": "S15"
+      "recommended_step": "S15d.1-S15d.3 (EXECUTED for Linux x86-64); S15d.4"
     },
     "semantic-libraries": {
       "python_authority": "xax_stdlib, xax_strings (package construction)",
