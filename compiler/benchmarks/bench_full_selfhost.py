@@ -215,6 +215,19 @@ def corpus(directory: Path):
     build("build: required signatures", _program(objects, {b"image": entry}, linux, policy=policy, signatures=(fake_signature(app),),
                                                  verifier=lambda *_: True), "negative")
     build("build: an unsupported artifact", _program(objects, {b"image": entry}, linux, artifacts=(ArtifactKind.ACCELERATOR_DEPLOYMENT,)), "negative")
+    # S15e.1 (ADR-308): RISC-V raw images, lowered by the XAX RISC-V backend program in the driver.
+    from xax_graph_builder import GraphBuilder
+
+    b64 = X.bits_type(64)
+    graph = GraphBuilder()
+    block = graph.block(b64, b64)
+    block.ret(block.op1(X.Operation.MUL_WRAP, (block.op1(X.Operation.ADD_WRAP, block.params, b64), block.const(b64, 7)), b64))
+    rv_entry, rv_objects = graph.function((b64, b64), (b64,)), (*graph.objects.values(), b64)
+    build("build: a RISC-V raw image", _program(rv_objects, {b"image": rv_entry}, X.riscv64_baremetal_target()), "positive")
+    build("build: a RISC-V views image", _program(rv_objects, {b"image": rv_entry}, X.riscv64_views_target()), "positive")
+    build("build: a RISC-V unsupported artifact", _program(rv_objects, {b"image": rv_entry}, X.riscv64_baremetal_target(),
+                                                           artifacts=(ArtifactKind.ACCELERATOR_DEPLOYMENT,)), "negative")
+    build("build: a program the RISC-V profile cannot lower", _program(objects, {b"image": entry}, X.riscv64_baremetal_target()), "negative")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)

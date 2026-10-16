@@ -7,8 +7,9 @@ requested artifacts), and the package's build entry, lowers that entry for the r
 general backend program, hashes the artifact with the S2 hash, and writes the canonical provenance object (its CID
 re-derived with the S2 hash).  Differential: the artifact bytes and the provenance object's envelope equal
 ``build(..., compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)``'s, and every rejection ``build`` makes on these
-paths is the driver's, with the exact diagnostic.  What ``build`` makes on other paths (Android packages, Windows DLLs,
-other targets) the driver declines.  The driver is given no external inputs and verifies no signatures, which is
+paths is the driver's, with the exact diagnostic.  S15e.1 (ADR-308): a RISC-V raw image target is lowered by the XAX
+RISC-V backend program.  What ``build`` makes on other paths (Android packages, Windows DLLs, other targets) the driver
+declines.  The driver is given no external inputs and verifies no signatures, which is
 ``build`` called without them.
 """
 
@@ -215,9 +216,36 @@ class GeneralBuildTests(unittest.TestCase):
         kind, diagnostic = self.assertBuild(_program(objects, {b"image": entry}, target, artifacts=(ArtifactKind.JVM_LIBRARY_JAR,)))
         self.assertEqual((kind, diagnostic.rule), ("rejected", "SYSV-C-REQUIRES-DYNAMIC-PROFILE"))
 
+    def test_riscv_images(self):
+        """S15e.1 (ADR-308): a RISC-V raw image target is lowered by the XAX RISC-V backend program; the artifact
+        (the code words, little-endian) and its provenance are the bootstrap's, and the requested artifacts are
+        checked before lowering, with ``build``'s three-name expectation."""
+        from xax_graph_builder import GraphBuilder
+        from test_xax_linux import _status_program
+        from test_xax_riscv64 import aggregate_program
+
+        b64 = X.bits_type(64)
+        graph = GraphBuilder()
+        block = graph.block(b64, b64)
+        x, y = block.params
+        block.ret(block.op1(X.Operation.MUL_WRAP, (block.op1(X.Operation.ADD_WRAP, (x, y), b64), block.const(b64, 7)), b64))
+        function, objects = graph.function((b64, b64), (b64,)), (*graph.objects.values(), b64)
+        for target in (X.riscv64_baremetal_target(), X.riscv64_views_target()):
+            with self.subTest(target.cid.hex()):
+                self.assertEqual(self.assertBuild(_program(objects, {b"image": function}, target))[0], "image")
+        entry, aggregate_objects, _reference = aggregate_program()
+        self.assertEqual(self.assertBuild(_program(aggregate_objects, {b"image": entry}, X.riscv64_views_target()))[0], "image")
+        for artifacts in ((ArtifactKind.ACCELERATOR_DEPLOYMENT,), (ArtifactKind.NATIVE_IMAGE, ArtifactKind.JVM_LIBRARY_JAR)):
+            with self.subTest(artifacts):
+                kind, diagnostic = self.assertBuild(_program(objects, {b"image": function}, X.riscv64_baremetal_target(), artifacts=artifacts))
+                self.assertEqual((kind, diagnostic.rule), ("rejected", "BUILD-ARTIFACT-SUPPORTED"))
+        program, _entry, _target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
+        linux_objects, linux_entry = _parts(program)
+        self.assertEqual(self.assertBuild(_program(linux_objects, {b"image": linux_entry}, X.riscv64_baremetal_target()))[0], "rejected")
+
     def test_other_paths_decline(self):
-        """Android packages, Windows DLLs, and targets other than the Linux x86-64 profiles are ``build``'s other
-        paths: the driver declines and writes nothing."""
+        """Android packages, Windows DLLs, and targets other than the Linux x86-64 and RISC-V raw profiles are
+        ``build``'s other paths: the driver declines and writes nothing."""
         from test_xax_linux import _status_program
 
         program, _entry, target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
@@ -227,6 +255,7 @@ class GeneralBuildTests(unittest.TestCase):
             "dll": _program(objects, {b"image": entry}, target, artifacts=(ArtifactKind.WINDOWS_DLL,)),
             "windows": _program(objects, {b"image": entry}, X.x86_64_windows_pe_target()),
             "views": _program(objects, {b"image": entry}, X.x86_64_views_exec_target()),
+            "riscv dll": _program(objects, {b"image": entry}, X.riscv64_baremetal_target(), artifacts=(ArtifactKind.WINDOWS_DLL,)),
         }
         for name, reader in cases.items():
             with self.subTest(name):

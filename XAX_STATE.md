@@ -129,6 +129,10 @@ Returned-view rejections are now decided by the XAX facts engine; all 824 reject
 
 `heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
 
+## S15e.1 RISC-V images built by the production compiler — 2026-10-16 (ADR-308)
+
+The production compiler's `build` now makes RISC-V raw images itself, with the RISC-V backend that was already written in XAX: the artifact, its provenance, and every rejection equal the bootstrap's. The remaining targets (AArch64 Linux, Windows, the browser, JVM, Android, accelerators and SPIR-V) are listed as their own steps; each still needs its lowering written in XAX, and until then only the bootstrap builds them. Next: the evidence re-run and the final gate report.
+
 ## S15e.0 room for target backends in the compiler — 2026-10-16 (ADR-307)
 
 The compiler's own build nearly filled the scratch memory of the program that compiles it (62.21M of 62.91M words), mostly because the buffer for one function's machine code was 18 times larger than the compiler's largest function needs. The buffer is now 2M words, freeing about 6M words for the backends S15e adds to the driver. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15e.1.

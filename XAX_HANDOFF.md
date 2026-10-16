@@ -1194,3 +1194,9 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 
 - `xax_selfhost_general_emit.CODE_CAP` is 2M words (largest compiler function: 466,416 bytes). The seed was rotated; the ledger record was rebased.
 - Next: S15e.1, `build` for further targets by XAX backends in the driver.
+
+## S15e.1 RISC-V `build` — 2026-10-16 (ADR-308)
+
+- `build` on a RISC-V raw target (architecture 6, format 1) calls `xax_riscv64_backend.xax` from the driver; `B_RISCV` is control word 45. Artifact = code words as 4-byte LE; lowering identity `RISCV64_LOWERING_IDENTITY_V1`.
+- S15e.2-S15e.7 (other targets) are rows in the roadmap; each needs an XAX backend/container first.
+

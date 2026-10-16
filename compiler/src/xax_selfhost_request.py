@@ -16,7 +16,7 @@ results travel in its control words (``B_*``, after the semantic helpers' ``C_*`
   (``BUILD-EXTERNAL-COMPLETE``); its trust policy requires package signatures, which the driver does not verify
   (``TRUST-SIGNATURE-REQUIRED``, ``build`` without a signature verifier).  It finds the build entry's function and the
   target, and declines ``build``'s other paths: Android packages, Windows DLLs, and targets other than the Linux
-  x86-64 ELF profiles.  ``build`` checks the requested artifacts only after it made the container, so a request for
+  x86-64 ELF profiles and (S15e.1, ADR-308) the RISC-V raw image profiles, whose requested artifacts it checks at once.  ``build`` checks the requested artifacts only after it made the container, so a request for
   anything but one native image writes its record (``BUILD-ARTIFACT-SUPPORTED``) and sets ``B_ARTIFACT``; the driver
   rejects with it only when lowering succeeded.
 * ``provenance`` writes the envelope of ``xax_build.provenance``'s object (``ENVELOPE_AT``, one byte per word): its four
@@ -29,9 +29,9 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_ed25519 as ED
-from xax_artifact import XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, container_lowering_identity
+from xax_artifact import RISCV64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, container_lowering_identity
 from xax_build import ArtifactKind, BuildForm
-from xax_compiler import CID_SIZE, Kind, uleb
+from xax_compiler import CID_SIZE, RISCV64_ARCHITECTURE, RISCV64_RAW_FORMAT, Kind, uleb
 from xax_selfhost_facts import E, _function
 from xax_ed25519 import ALGORITHM, DOMAIN
 from xax_selfhost_semantic import CTRL, _END, _body, _cid_word, _kind, _ref
@@ -41,6 +41,7 @@ from xax_selfhost_semantic import CTRL, _END, _body, _cid_word, _kind, _ref
 B_DIGEST = 40
 # S15c.2 (ADR-300): the input files' digests, sorted and each once, one byte per word (set by the driver).
 B_INPUTS = 44
+B_RISCV = 45  # S15e.1 (ADR-308): the request's target is a RISC-V raw image profile (``build``'s ``else`` path)
 INPUTS_AT, INPUTS_LIMIT = 46 << 20, 64  # the builder baseline's bound; the committed compiler's is 100 (ledger 0001, ADR-306)
 TRUST_AT = 47 << 20  # S15c.3: per snapshot signature, 1 once it is accepted
 ACCEPT, REJECT, DECLINE = 0, 1, 2
@@ -273,6 +274,7 @@ def _build_request(tables, verify):
         _set(e, B_SNAPSHOT, p["snapshot"])
         _set(e, B_ARTIFACT, 0)
         _set(e, B_DYNAMIC, 0)
+        _set(e, B_RISCV, 0)
         running = lambda: e.eq(p["outcome"], ACCEPT)  # noqa: E731
 
         def when(body):
@@ -406,7 +408,27 @@ def _build_request(tables, verify):
                         _set(e, B_DYNAMIC, p["matched"])
 
                 e.if_(e.eq(r.byte(), len(identity)), same)
-            e.if_(e.eq(p["linux"], 0), lambda: e.set("outcome", DECLINE))
+            # S15e.1 (ADR-308): a RISC-V raw image target (architecture 6, format 1) has no container: ``build``
+            # checks the requested artifacts before lowering, against a native image or an Android package.
+            e.var("riscv", 0)
+
+            def profile():
+                e.var("target_end", e.add(_body(e, _ctrl(e, B_TARGET))[1], _body(e, _ctrl(e, B_TARGET))[0]))
+                r.at(_ctrl(e, B_TARGET))
+                r.skip_bytes()  # the identity
+
+                def fields():
+                    r.uleb()  # the profile
+                    e.var("architecture", r.uleb())
+                    r.uleb()  # the ABI
+                    e.var("image_format", r.uleb())
+                    e.set("riscv", e.flag(e.both(e.eq(p["architecture"], RISCV64_ARCHITECTURE), e.eq(p["image_format"], RISCV64_RAW_FORMAT))))
+
+                e.if_(e.lt(p["cur"], p["target_end"]), fields)
+
+            e.if_(e.eq(p["linux"], 0), profile)
+            _set(e, B_RISCV, p["riscv"])
+            e.if_(e.both(e.eq(p["linux"], 0), e.eq(p["riscv"], 0)), lambda: e.set("outcome", DECLINE))
 
             # Recorded now, decided after lowering: one native image.
             def artifacts():
@@ -426,8 +448,23 @@ def _build_request(tables, verify):
                 requested()
                 _set(e, B_ARTIFACT, 1)
 
+            def riscv_artifacts():
+                D.begin(e)
+                D.text(e, "XAX.BUILD.ARTIFACT")
+                _cid(e, p["request"])
+                D.text(e, "BUILD-ARTIFACT-SUPPORTED")
+                D.put(e, D.T_LIST)
+                D.put(e, 3)
+                for kind in (ArtifactKind.NATIVE_IMAGE, ArtifactKind.ANDROID_UNSIGNED_APK, ArtifactKind.ANDROID_SIGNED_APK):
+                    D.text(e, kind.name)
+                D.put(e, D.T_LIST)
+                D.put(e, p["artifacts"])
+                e.for_("rk", 0, p["artifacts"], lambda: (e.var("kind_value", e.rd(e.add(p["artifacts_at"], p["rk"]))),
+                                                         _name(e, "kind_value", ARTIFACT_NAMES)))
+                e.set("outcome", REJECT)
+
             native = e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE)))
-            e.if_(e.both(running(), e.not_(native)), artifacts)
+            e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.ne(p["riscv"], 0), riscv_artifacts, artifacts))
 
         when(request)
         _set(e, B_STATUS, p["outcome"])
@@ -442,6 +479,8 @@ def _provenance(tables):
             e.st(ENVELOPE_AT + k, byte)
         dynamic = container_lowering_identity(GENERAL_IDENTITIES[1])
         e.if_(e.ne(_ctrl(e, B_DYNAMIC), 0), lambda: [e.st(ENVELOPE_AT + P_LOWERING + k, byte) for k, byte in enumerate(dynamic)])
+        assert len(RISCV64_LOWERING_IDENTITY_V1) == len(dynamic)
+        e.if_(e.ne(_ctrl(e, B_RISCV), 0), lambda: [e.st(ENVELOPE_AT + P_LOWERING + k, byte) for k, byte in enumerate(RISCV64_LOWERING_IDENTITY_V1)])
         for word in range(CID_SIZE // 8):
             for k in range(8):
                 e.st(ENVELOPE_AT + P_DIGEST + 8 * word + k, e.and_(e.udiv(_ctrl(e, B_DIGEST + word), 1 << (8 * k)), 255))

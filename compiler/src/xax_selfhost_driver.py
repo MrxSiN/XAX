@@ -423,7 +423,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         import xax_selfhost_general_image as GI
         import xax_selfhost_x86_64_general as GEN
 
+        import xax_selfhost_riscv64_backend as RV
+
         general_reader, general_program = GEN.load_general_program()
+        riscv_reader, riscv_backend = RV.load_backend_program()  # S15e.1 (ADR-308)
         writer_reader, writer = WR.load_writer_program()  # S13c
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
@@ -1268,7 +1271,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     when(verify_outcome)
     if general:
         # -- S13a (ADR-281): ``build``: the snapshot's request, read and checked by ``xax_selfhost_request`` ---------
-        target, linux = w.let("target", 0), w.let("linux", 0)
+        target, linux, riscv = w.let("target", 0), w.let("linux", 0), w.let("riscv", 0)
 
         def inputs_to_work():
             """S15c.2: the input digests' count (the digests are at ``INPUTS_AT`` of the workspace)."""
@@ -1281,7 +1284,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.if_(w.eq(w[outcome], RQ.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RQ.ACCEPT), lambda: stop(DECLINED)))
             w.set(entry, work_word(SM.CTRL + RQ.B_ENTRY))
             w.set(target, work_word(SM.CTRL + RQ.B_TARGET))
-            w.set(linux, 1)
+            w.set(riscv, work_word(SM.CTRL + RQ.B_RISCV))  # S15e.1: the XAX RISC-V backend lowers
+            w.set(linux, w.sub(1, w[riscv]))
 
         when(lambda: w.if_(w.eq(w[mode], BUILD), build_request))
 
@@ -1693,6 +1697,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         when(lambda: w.if_(w.ne(w[linux], 0), general_sections))
 
     # -- the backend -------------------------------------------------------------------------------------------
+    from xax_selfhost_views_backend import WORDS_AT
+
     def lower():
         def call(program):
             results = proc.op(Operation.CALL_DIRECT, (*w.triple("table", w.narrowed("table", in_pointer)), *w.triple("image")), (B64, *VIEW_TYPES),
@@ -1701,7 +1707,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.take("image", results[4:])
 
         if general:
-            w.if_(w.ne(w[linux], 0), lambda: call(general_program), lambda: call(backend))
+            w.if_(w.ne(w[linux], 0), lambda: call(general_program), lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
         else:
             call(backend)
         code = w.let("backend_status", w.ld(0))
@@ -1720,15 +1726,24 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         def provenance():
             """The artifact's digest (S2 hash) for ``provenance``'s envelope, copied to ``argument``; its CID derived
-            with the S2 hash from the domain and the envelope from its kind on."""
+            with the S2 hash from the domain and the envelope from its kind on.  The artifact is the ELF file, or
+            (S15e.1) the RISC-V code words, four little-endian bytes each."""
             at = elf_at()
-            size = w.let("artifact_size", w.ld(w[at]))
+            size = w.let("artifact_size", w.sel(w.ne(w[riscv], 0), w.mul(w.ld(1), 4), w.ld(w[at])))
             w.if_(w.lt(limit, w[size]), lambda: stop(DECLINED))  # the hash reads its last block past the end
 
             def record():
                 q = w.let("p_q", 0)
-                w.while_(lambda: w.lt(w[q], w[size]), lambda: (w.store("object", w[q], w.ld(w.add(w.add(w[at], 1), w.udiv(w[q], 8))), 8),
-                                                               w.set(q, w.add(w[q], 8))))
+
+                def elf_bytes():
+                    w.while_(lambda: w.lt(w[q], w[size]), lambda: (w.store("object", w[q], w.ld(w.add(w.add(w[at], 1), w.udiv(w[q], 8))), 8),
+                                                                   w.set(q, w.add(w[q], 8))))
+
+                def code_words():
+                    w.while_(lambda: w.lt(w[q], w[size]), lambda: (w.store("object", w[q], w.ld(w.add(WORDS_AT, w.udiv(w[q], 4))), 4),
+                                                                   w.set(q, w.add(w[q], 4))))
+
+                w.if_(w.ne(w[riscv], 0), code_words, elf_bytes)
                 hash_span("object", 0, w[size])
                 for word in range(CID_SIZE // 8):
                     low, high = (w.load("scratch", H.DIGEST_OFFSET + 8 * word + 4 * half, 4) for half in (0, 1))
@@ -1790,8 +1805,6 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         w.if_(w.ne(w[status], FAILED), write_all)
 
-    from xax_selfhost_views_backend import WORDS_AT
-
     final = w.let("final", 0)
     w.set(final, w[status])
     def image_out():
@@ -1811,9 +1824,29 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
             w.if_(w.ne(w[status], FAILED), write)
 
+        def code_out():
+            """S15e.1: ``build``'s RISC-V artifact, the code words as four little-endian bytes each, to the second file
+            argument."""
+            fd = open_path(1, O_OUTPUT, MODE_OUTPUT, guard=lambda: w.ne(w[status], FAILED))
+
+            def write_all():
+                done, total = w.let("c_done", 0), w.let("c_total", w.ld(1))
+
+                def step():
+                    piece = w.let("c_piece", w.sel(w.lt(w.sub(w[total], w[done]), CHUNK // 4), w.sub(w[total], w[done]), CHUNK // 4))
+                    q = w.let("c_q", 0)
+                    w.while_(lambda: w.lt(w[q], w[piece]), lambda: (w.store("chunk", w.mul(w[q], 4), w.ld(w.add(WORDS_AT, w.add(w[done], w[q]))), 4),
+                                                                    w.set(q, w.add(w[q], 1))))
+                    w.if_(w.eq(write_chunk(fd, w.mul(w[piece], 4)), 0), lambda: w.set(done, w[total]), lambda: w.set(done, w.add(w[done], w[piece])))
+
+                w.while_(lambda: w.both(w.lt(w[done], w[total]), w.ne(w[status], FAILED)), step)
+                close(fd)
+
+            w.if_(w.ne(w[status], FAILED), write_all)
+
         if general:
             w.if_(w.ne(w[linux], 0), lambda: w.if_(w.eq(w[mode], BUILD), lambda: (elf(1), provenance_out()), lambda: elf(2)),
-                  lambda: emit(WORDS_AT, w.ld(1), header=True))
+                  lambda: w.if_(w.ne(w[riscv], 0), lambda: (code_out(), provenance_out()), lambda: emit(WORDS_AT, w.ld(1), header=True)))
         else:
             emit(WORDS_AT, w.ld(1), header=True)
 
@@ -1894,7 +1927,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader,
-               *((general_reader, writer_reader) if general else ()))
+               *((general_reader, writer_reader, riscv_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
     objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects, *edit_objects,
