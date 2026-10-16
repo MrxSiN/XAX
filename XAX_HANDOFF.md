@@ -1200,3 +1200,6 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - `build` on a RISC-V raw target (architecture 6, format 1) calls `xax_riscv64_backend.xax` from the driver; `B_RISCV` is control word 45. Artifact = code words as 4-byte LE; lowering identity `RISCV64_LOWERING_IDENTITY_V1`.
 - S15e.2-S15e.7 (other targets) are rows in the roadmap; each needs an XAX backend/container first.
 
+## S15c.5a ELF buffer after the views — 2026-10-16 (ADR-310)
+
+- `xax_selfhost_general_image`: `I_ELF` is allocated in `image_after_views`. Seed rotated (11,191,528 bytes).

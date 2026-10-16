@@ -558,6 +558,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15d.4 | The engine's vocabulary for ordinary changes: node insertion and deletion, uses, edge arguments, result types and signatures (the workspace's), then new functions, so a builder is no longer needed for ordinary compiler changes (B6) | S15d.3 | UNIMPLEMENTED |
 | S15e | The other targets through target packages | S14 | UNIMPLEMENTED |
 | S15e.0 | Arena headroom for target backends in the driver: the general program's code buffer sized to the compiler's largest function; the seed rotated (ADR-307) | S15d | DONE |
+| S15c.5a | The general program's ELF buffer taken after the views (arena room for the driver's largest function); the seed rotated (ADR-310) | S15e.1 | DONE |
 | S15e.1 | RISC-V raw images (architecture 6, format 1) built by the driver with the XAX RISC-V backend program (ADR-308) | S15e.0 | DONE |
 | S15e.2 | Linux AArch64 ELF executables: an XAX AArch64 backend and ELF container in the driver (ADR-308) | S15e.1 | UNIMPLEMENTED |
 | S15e.3 | Windows PE32+ executables and DLLs: the native x86-64 lowering (Windows ABI) and the PE container in XAX (ADR-308) | S15e.1 | UNIMPLEMENTED |

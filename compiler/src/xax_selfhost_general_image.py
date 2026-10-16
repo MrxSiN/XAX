@@ -757,11 +757,11 @@ def image_prologue(e: E):
     """Allocate the image buffers (once, before the views)."""
     _set_ra(e, I_IMG, IMAGE_BUFFER_AT)
     for slot, words in ((I_BASES, 1 << 16), (I_CALLS, 3 * IMAGE_CALLS), (I_ADAPT, 2 << 12), (I_IMPORTS, 2 * IMAGE_CALLS),
-                        (I_ELF, IMAGE_CAP + (1 << 16)), (I_NEEDED, 1 << 12), (I_NAMES, IMAGE_CALLS)):
+                        (I_NEEDED, 1 << 12), (I_NAMES, IMAGE_CALLS)):
         at = e.alloc(words)
         _ok(e, e.ne(at, NONE))
         _set_ra(e, slot, at)
-    for slot in (I_LEN, I_COUNT, I_NCALLS, I_NIMPORTS, I_ELEN, I_NNEEDED):
+    for slot in (I_LEN, I_COUNT, I_NCALLS, I_NIMPORTS, I_ELEN, I_NNEEDED, I_ELF):  # S15c.5a: the ELF buffer comes after the views
         _set_ra(e, slot, 0)
     _set_ra(e, I_OK, 1)
 
@@ -772,6 +772,13 @@ def image_after_views(e: E, members):
     e.var("ia_ok", e.flag(e.both(e.ne(_ra(e, I_OK), 0), e.eq(_ra(e, I_COUNT), members))))
 
     def assemble():
+        # S15c.5a (ADR-310): the container's buffer is taken here, after the views released their scratch, not before
+        # them: it is 12.6M words, and the largest function's scratch needs them.
+        e.var("ia_elf", e.alloc(IMAGE_CAP + (1 << 16)))
+        e.if_(e.eq(p["ia_elf"], NONE), lambda: e.set("ia_ok", 0), lambda: _set_ra(e, I_ELF, p["ia_elf"]))
+        e.if_(e.ne(p["ia_ok"], 0), assemble_now)
+
+    def assemble_now():
         e.var("ia_r", e.call(_FN["image_finish"]))
         e.if_(e.eq(p["ia_r"], NONE), lambda: e.set("ia_ok", 0))
 
