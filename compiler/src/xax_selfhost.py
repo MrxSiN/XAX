@@ -562,7 +562,8 @@ def current_m14_readiness() -> M14ClosureReadiness:
 
 
 # The canonical XAX store implementing the whole production compiler, once one exists.  None today: the program
-# backends of every target but Linux x86-64 and build orchestration for them are Python (S15, ADR-180).
+# backends of every target but Linux x86-64 and RISC-V raw images (S15e.1) and build orchestration for them are Python
+# (S15, ADR-180, ADR-308).
 FULL_COMPILER_STORE: Path | None = None
 # S14b (ADR-285): the executed generations of the Linux x86-64 production compiler (the general driver).
 FULL_SELFHOST_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "full_selfhost_evidence.json"
@@ -660,8 +661,8 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "every target but Linux x86-64 is compiled by Python backends; the Linux x86-64 production compiler is "
-                       "reported separately (ADR-180, ADR-285)",
+            "blocker": "every target but Linux x86-64 and RISC-V raw images is compiled by Python backends (S15e.2-S15e.7); the "
+                       "Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308)",
         },
         **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
         "m14_semantic_image_wrapper": {
