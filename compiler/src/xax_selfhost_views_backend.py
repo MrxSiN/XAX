@@ -994,13 +994,14 @@ _STARTUP_ABI = b"linux-x86_64-startup-v1"
 assert len(_STARTUP_ABI) == len(_SYSCALL_ABI)
 
 
-def _syscall(tables):
+def _syscall(tables, abi: bytes = _SYSCALL_ABI):
     """``xax_x86_64_views.syscall_template`` for declaration object ``obj`` and ``m`` machine operands: the template
     record (``SYSCALL_RECORD``), or 0 when the views profile does not lower the call (a declaration of another ABI,
     or a template ``decode_syscall_name`` rejects).  The caller checks the result count; the verifier has already
     checked the declaration's heap contracts, which are only skipped here (an allocator's flag is recorded).  S11: a
     ``linux-x86_64-startup-v1`` declaration of a read in ``STARTUP_READS`` with its machine operands and no heap
-    contract gives the startup record."""
+    contract gives the startup record.  S15e.2 (ADR-315): ``abi`` another syscall ABI (``linux-aarch64-syscall-v1``),
+    without startup reads."""
     from xax_x86_64_views import STARTUP_READS
 
     def build(e: E):
@@ -1017,14 +1018,19 @@ def _syscall(tables):
 
         # The identity: the prefix, the ABI, the library, the name, the input and output CIDs, then the heap contracts.
         same(_FOREIGN_PREFIX)
-        e.if_(e.ne(_payload_uleb(e, "sy_at"), len(_SYSCALL_ABI)), lambda: e.give(0))
-        e.var("sy_startup", p["sy_ok"])
-        for k, (syscall_byte, startup_byte) in enumerate(zip(_SYSCALL_ABI, _STARTUP_ABI)):
-            byte_at = e.rd(e.add(p["sy_at"], k))
-            e.var("sy_b", byte_at)
-            e.if_(e.ne(p["sy_b"], syscall_byte), lambda: e.set("sy_ok", 0))
-            e.if_(e.ne(p["sy_b"], startup_byte), lambda: e.set("sy_startup", 0))
-        e.set("sy_at", e.add(p["sy_at"], len(_SYSCALL_ABI)))
+        e.if_(e.ne(_payload_uleb(e, "sy_at"), len(abi)), lambda: e.give(0))
+        if abi == _SYSCALL_ABI:
+            e.var("sy_startup", p["sy_ok"])
+            for k, (syscall_byte, startup_byte) in enumerate(zip(_SYSCALL_ABI, _STARTUP_ABI)):
+                byte_at = e.rd(e.add(p["sy_at"], k))
+                e.var("sy_b", byte_at)
+                e.if_(e.ne(p["sy_b"], syscall_byte), lambda: e.set("sy_ok", 0))
+                e.if_(e.ne(p["sy_b"], startup_byte), lambda: e.set("sy_startup", 0))
+        else:
+            e.var("sy_startup", 0)
+            for k, syscall_byte in enumerate(abi):
+                e.if_(e.ne(e.rd(e.add(p["sy_at"], k)), syscall_byte), lambda: e.set("sy_ok", 0))
+        e.set("sy_at", e.add(p["sy_at"], len(abi)))
         e.if_(e.both(e.eq(p["sy_ok"], 0), e.eq(p["sy_startup"], 0)), lambda: e.give(0))
         e.set("sy_at", e.add(_payload_uleb(e, "sy_at"), p["sy_at"]))
         e.var("sy_len", _payload_uleb(e, "sy_at"))

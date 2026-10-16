@@ -36,6 +36,8 @@ MORE_WORDS = 256
 # Second globals.
 (G2_WIDTHS, G2_CONST, G2_CVAL, G2_RNONE, G2_PBOUND, G2_ISPARAM, G2_CACHE, G2_CSTAMP, G2_ROUND, G2_MARKS, G2_NMARKS, G2_WBITS,
  G2_EXPR, G2_RECOMP, G2_COPY, G2_BODYSET, G2_SCRATCH) = range(17)
+# S15e.2 (ADR-315): ``upper_bounds(..., bitwise=True)`` bounds ``or``/``xor`` too (the AArch64 lowering); 0 on x86-64.
+G2_BITWISE = 17
 DEPTH = 8  # ``_maximum`` follows nodes up to depth 8
 SCALES = (1, 2, 4, 8)
 PREFETCH_PURE = tuple(int(op) for op in (
@@ -252,6 +254,16 @@ def _maximum(tables, depth: int):
                                 smaller = e.sel(e.lt(p["mx_a"], p["mx_b"]), p["mx_a"], p["mx_b"])
                                 finish(e.sel(e.both(a_ok, b_ok), smaller, e.sel(a_ok, p["mx_a"], e.sel(b_ok, p["mx_b"], p["mx_limit"]))))
 
+                            def bitwise():
+                                """``min(limit, (1 << max(bounds).bit_length()) - 1)`` (ADR-168)."""
+                                sub(_operand(e, n, 0), "mx_a")
+                                sub(_operand(e, n, 1), "mx_b")
+                                e.var("mx_ones", 0)
+                                e.var("mx_top", e.sel(e.lt(p["mx_a"], p["mx_b"]), p["mx_b"], p["mx_a"]))
+                                e.while_(lambda: e.lt(p["mx_ones"], p["mx_top"]), lambda: e.set("mx_ones", e.add(e.mul(p["mx_ones"], 2), 1)))
+                                none = e.either(e.ne(p["mx_a_none"], 0), e.ne(p["mx_b_none"], 0))
+                                finish(e.sel(e.either(none, e.lt(p["mx_limit"], p["mx_ones"])), p["mx_limit"], p["mx_ones"]))
+
                             def mul():
                                 sub(_operand(e, n, 0), "mx_a")
                                 e.var("mx_c", operand_value(1))
@@ -267,9 +279,11 @@ def _maximum(tables, depth: int):
                             divide = e.both(e.eq(op, int(Operation.UDIV)), e.ne(operand_constant(1), 0), e.ne(operand_value(1), 0))
                             multiply = e.both(e.eq(op, int(Operation.MUL_WRAP)), e.ne(operand_constant(1), 0))
                             e.if_(divide, udiv, lambda: e.if_(e.eq(op, int(Operation.ADD_WRAP)), add, lambda: e.if_(
-                                e.eq(op, int(Operation.BIT_AND)), and_, lambda: e.if_(multiply, mul, lambda: e.if_(
+                                e.eq(op, int(Operation.BIT_AND)), and_, lambda: e.if_(e.both(
+                                    e.ne(_g2(e, G2_BITWISE), 0), e.either(e.eq(op, int(Operation.BIT_OR)), e.eq(op, int(Operation.BIT_XOR)))), bitwise,
+                                    lambda: e.if_(multiply, mul, lambda: e.if_(
                                     e.either(e.eq(op, int(Operation.INT_TRUNCATE)), e.eq(op, int(Operation.INT_ZERO_EXTEND))), width_change,
-                                    lambda: e.if_(e.eq(op, int(Operation.INT_COMPARE)), lambda: finish(1), lambda: finish(p["mx_limit"])))))))
+                                    lambda: e.if_(e.eq(op, int(Operation.INT_COMPARE)), lambda: finish(1), lambda: finish(p["mx_limit"]))))))))
 
                         e.if_(e.eq(p["mx_done"], 0), node)
 
@@ -914,6 +928,7 @@ def ranges_prologue(e: E):
     more = e.alloc(MORE_WORDS)
     _ok(e, e.ne(more, NONE))
     e.st(GLOBALS + G_MORE, more)
+    _set_g2(e, G2_BITWISE, 0)
     for slot, size in ((G2_CONST, VCAP), (G2_CVAL, VCAP), (G2_PBOUND, VCAP), (G2_ISPARAM, VCAP), (G2_CACHE, 2 * VCAP), (G2_CSTAMP, VCAP),
                        (G2_WBITS, VCAP), (G2_EXPR, VCAP), (G2_RECOMP, 2 * VCAP), (G2_COPY, 2 * VCAP), (G2_BODYSET, 3 << 16), (G2_MARKS, MARK_WORDS * VCAP),
                        (G2_SCRATCH, 128)):

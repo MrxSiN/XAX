@@ -314,7 +314,24 @@ def emit_linux_aarch64_executable(bundle: Aarch64Bundle, entry_cid: bytes, decla
     return bytes(out), code_offset + code_base, needed
 
 
-def compile_linux_aarch64_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes) -> LinuxAarch64Executable:
+def compile_linux_aarch64_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "python") -> LinuxAarch64Executable:
+    """``frontend``: who builds (S15e.2, ADR-315): ``"xax"`` (the XAX AArch64 program; fails where it cannot run or
+    declines), ``"python"`` (the bootstrap reference), or ``"auto"`` (the XAX program where it runs and decides).  The default stays the bootstrap until the program's
+    store is regenerated and its executables are checked against it (S15e.2 in progress)."""
+    if frontend != "python":
+        from xax_compiler import XaxError, verify_store
+
+        try:
+            verify_store(reader)
+            verified = True
+        except XaxError:
+            verified = False  # the bootstrap reports in its own order
+        if verified or frontend == "xax":
+            from xax_selfhost_aarch64_general import aarch64_with_xax
+
+            built = aarch64_with_xax(reader, entry_cid, store_resolver(reader)(target_cid), required=frontend == "xax")
+            if built is not None:
+                return built
     resolve = store_resolver(reader)
     target_object = resolve(target_cid)
     description = decode_native_target(target_object)
