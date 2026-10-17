@@ -52,6 +52,9 @@ COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each functi
  G_MEMBERS, G_MTAB, G_GROUPOF) = range(21, 36)
 # S12f.3 (ADR-279): the target's profile, and where its atomic widths, scopes, and families start (profiles 2 and 5).
 G_TPROFILE, G_TATOMIC = 61, 62
+# S15e.3 (ADR-317): 1 for the Windows PE32+ profile (``_hosted_container``'s ``x86_64-windows-pe-v1``), 0 for Linux.
+G_WINDOWS = 63
+PE_IDENTITY = b"x86_64-windows-pe-v1"
 FRAME = 5  # a closure frame: function, graph, stream cursor, blocks left, nodes left in the current block
 F_FN, F_GRAPH, F_AT, F_BLOCKS, F_NODES = range(FRAME)
 
@@ -79,6 +82,7 @@ RULES = (
     ("XAX.NATIVE.FOREIGN_ENTRY", "SYSV-ENTRY-TARGET"),
     ("XAX.NATIVE.FOREIGN_ENTRY", "WIN64-ENTRY-TARGET"),
     ("XAX.NATIVE.UNSUPPORTED_TERMINATOR", "NATIVE-TERMINATOR-TARGET-SUPPORTED"),
+    ("XAX.NATIVE.FUNCTION", "NATIVE-ENTRY-FUNCTION"),  # S15e.3: ``_compile_native_with_target``'s entry, on Windows
 )
 SITE = {rule: site for site, (_code, rule) in enumerate(RULES)}
 ABI_ARITY_EXPECTED = "Win64 stack arguments"
@@ -670,8 +674,12 @@ def _frontend(tables):
         target = p["target"]
         _ok(e, e.eq(_kind(e, target), int(Kind.TARGET)))
         e.var("ta", _at(e, G_PAY, target))
-        identity = _payload_uleb(e, "ta")
-        e.set("ta", e.add(p["ta"], identity))  # past the identity bytes
+        e.var("t_idn", _payload_uleb(e, "ta"))
+        # S15e.3 (ADR-317): the Windows PE32+ profile is ``_hosted_container``'s by identity (on architecture 1).
+        e.var("t_windows", e.flag(e.eq(p["t_idn"], len(PE_IDENTITY))))
+        e.if_(e.ne(p["t_windows"], 0), lambda: [e.if_(e.ne(e.rd(e.add(p["ta"], k)), byte), lambda: e.set("t_windows", 0))
+                                               for k, byte in enumerate(PE_IDENTITY)])
+        e.set("ta", e.add(p["ta"], p["t_idn"]))  # past the identity bytes
         fields = [_payload_uleb(e, "ta") for _ in range(6)]  # profile, architecture, abi, format, word, pointer bits
         e.var("t_profile", fields[0])
         e.var("t_arch", fields[1])
@@ -719,8 +727,9 @@ def _frontend(tables):
             D.integer(e, p["t_abi"])
             D.integer(e, p["t_fmt"])
 
+        e.st(GLOBALS + G_WINDOWS, e.flag(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1))))
         linux = e.both(e.eq(p["t_abi"], LINUX_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
-        _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual)
+        e.if_(e.eq(_g(e, G_WINDOWS), 0), lambda: _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual))
 
         # 2. The process entry (``validate_process_entry``).
         e.var("entry", e.call(_FN["find"], 1))
@@ -733,6 +742,8 @@ def _frontend(tables):
                 e.if_(e.eq(_kind(e, entry), int(kind)), lambda kind=kind: D.text(e, kind.name))
 
         _ok(e, e.either(*(e.eq(_kind(e, entry), int(kind)) for kind in Kind)))
+        e.if_(e.ne(_g(e, G_WINDOWS), 0), lambda: _reject(e, e.eq(_kind(e, entry), int(Kind.FUNCTION)), "NATIVE-ENTRY-FUNCTION", entry,
+                                                        lambda: D.text(e, Kind.FUNCTION.name), kind_name))
         _reject(e, e.eq(_kind(e, entry), int(Kind.FUNCTION)), "LINUX-ENTRY-FUNCTION", entry, lambda: D.text(e, Kind.FUNCTION.name), kind_name)
         e.var("ei", _call(e, "interface", entry))
         e.var("enp", e.ld(e.add(p["ei"], 1)))
@@ -768,7 +779,7 @@ def _frontend(tables):
 
             e.for_("q", 0, e.ld(p["ert"]), each)
 
-        contract = e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0))
+        contract = e.either(e.ne(_g(e, G_WINDOWS), 0), e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0)))
         _reject(e, contract, "LINUX-PROCESS-ENTRY-CONTRACT", entry, lambda: D.text(e, ENTRY_CONTRACT_EXPECTED), contract_actual)
 
         # 3. The closure, depth first in the bootstrap's order.

@@ -2040,10 +2040,9 @@ def _hosted_container(reader: StoreReader, function_root: bytes, target_object: 
 
         return compile_linux_aarch64_executable(reader, function_root, target_object.cid).data
     if description.architecture == 1 and description.identity == b"x86_64-windows-pe-v1":
-        from xax_pe import emit_pe_executable
-        from xax_x86_64 import compile_native_bound_target
+        from xax_pe import compile_pe_executable
 
-        return emit_pe_executable(compile_native_bound_target(reader, function_root, target_object))
+        return compile_pe_executable(reader, function_root, target_object)
     if description.architecture == 2 and description.identity == WASM32_BROWSER_IDENTITY:
         from xax_wasm import compile_wasm_bound_target
         from xax_web import emit_browser_page

@@ -263,6 +263,15 @@ def corpus(directory: Path):
         X.Operation.CALL_FOREIGN, (b.const(X.bits_type(64), 0),), X.bits_type(64), entity=strlen),), X.bits_type(32)))
     c_objects, c_entry = _parts(c_import)
     build("build: a C import on the static AArch64 profile", _program(c_objects, {b"image": c_entry}, c_target), "negative")
+    # S15e.3 (ADR-317): Windows PE32+ executables, lowered by the general x86-64 program in the driver.
+    from test_xax_pe import hosted_fixture, thread_callback_fixture
+
+    for name, fixture in (("hosted", hosted_fixture), ("thread callback", thread_callback_fixture)):
+        pe, _entry, pe_target = fixture()
+        pe_objects, pe_entry = _parts(pe)
+        build(f"build: a Windows PE32+ {name} executable", _program(tuple(o for o in pe_objects if o.cid != pe_target.cid), {b"image": pe_entry}, pe_target),
+              "positive")
+    build("build: a Linux process entry on the Windows PE32+ profile", _program(objects, {b"image": entry}, X.x86_64_windows_pe_target()), "negative")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)
@@ -499,8 +508,8 @@ def measure() -> dict:
             "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
             "targets": ["x86_64-linux-elf-exec-v1", "x86_64-linux-elf-dynexec-v1", "x86_64-linux-views-v1/v2", "x86_64-linux-views-exec-v1",
                         "RISC-V raw images (architecture 6, format 1; S15e.1)",
-                        "aarch64-linux-elf-exec-v1, aarch64-linux-elf-dynexec-v1 (S15e.2)"],
-            "outside_scope": "every other target and artifact (Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
+                        "aarch64-linux-elf-exec-v1, aarch64-linux-elf-dynexec-v1 (S15e.2)", "x86_64-windows-pe-v1 executables (S15e.3)"],
+            "outside_scope": "every other target and artifact (Windows DLLs, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
         },
         "spec_revision": "XAX_SPEC.md §16",
         "compiler": {"store": GENERAL_STORE_PATH.name, "store_sha256": sha(driver.data), "semantic_root": driver.root_cid.hex(),

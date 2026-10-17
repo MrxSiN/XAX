@@ -111,6 +111,34 @@ def emit_pe_executable(image: NativeImage) -> bytes:
     return _emit(image, None, ())
 
 
+def compile_pe_executable(reader, function_cid: bytes, target_object, *, frontend: str = "auto") -> bytes:
+    """``emit_pe_executable(compile_native_bound_target(...))``: S15e.3 (ADR-317) decides it with the XAX general
+    x86-64 program where it runs and decides (``"auto"``; ``"xax"`` requires it), else the bootstrap.  With
+    ``XAX_GENERAL_FRONTEND_DIFF=1`` the two must produce the same bytes."""
+    import os
+
+    from xax_compiler import verify_store
+    from xax_x86_64 import compile_native_bound_target
+
+    def reference() -> bytes:
+        return emit_pe_executable(compile_native_bound_target(reader, function_cid, target_object))
+
+    if frontend == "python":
+        return reference()
+    from xax_selfhost_x86_64_general import general_with_xax
+
+    verify_store(reader)
+    decided = general_with_xax(reader, function_cid, target_object, required=frontend == "xax")
+    image = None if decided is None else decided.image
+    if image is None:
+        if frontend == "xax":
+            fail("XAX.X86_64.GENERAL_FRONTEND", function_cid.hex(), "X86_64-XAX-GENERAL-FRONTEND", "assembled by the XAX general program", "declined")
+        return reference()
+    if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1" and image["elf"] != reference():
+        raise AssertionError("S15e.3 PE executables disagree")
+    return image["elf"]
+
+
 def emit_pe_dll(
     image: NativeImage,
     dll_name: bytes,

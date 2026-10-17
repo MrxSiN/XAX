@@ -26,7 +26,7 @@ import struct
 from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_general_emit import (
-    E_CALLS, E_CLEN, E_LABELS, E_NBRANCHES, E_NCALLS, E_NLABELS, E_NRANGES, E_RANGES, E_REAL, E_CAP_ON, _b, _bx, _jcc, _label, _lea,
+    E_CALLS, E_CLEN, E_FWD_ON, E_LABELS, E_NBRANCHES, E_NCALLS, E_NLABELS, E_NRANGES, E_RANGES, E_REAL, E_CAP_ON, _b, _bx, _jcc, _label, _lea,
     _load, _modrm, _movabs, _new_label, _record_call, _relative, _rex, _store, _zero32,
 )
 from xax_selfhost_general_ranges import _attribute, _block_at, _node_at
@@ -74,6 +74,15 @@ DYNAMIC_MEMORY = tuple(int(op) for op in (Operation.LOAD_BITS_LE, Operation.STOR
                                           Operation.CHECKED_STORE_BITS_LE, Operation.RAW_LOAD_BITS_LE))
 LEGACY_ALLOWED = tuple(sorted({int(op) for op in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.CONSTANT, Operation.CALL_DIRECT,
                                                   *RESOURCE_EFFECT_OPERATIONS)}))
+
+# S15e.3: ``_compile_register_resident_function``'s hosted (PE) additions and its memory operations.
+HOSTED_ALLOWED = tuple(sorted(int(op) for op in (
+    Operation.INT_COMPARE, Operation.CALL_FOREIGN, Operation.FUNCTION_ADDRESS, Operation.HEAP_VIEW, Operation.ADDRESS_OFFSET,
+    Operation.POINTER_CAST, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE,
+    Operation.CHECKED_STORE_BITS_LE, Operation.POINTER_ADDRESS)))
+HOSTED_MEMORY = tuple(sorted(int(op) for op in (
+    Operation.ADDRESS_OFFSET, Operation.POINTER_CAST, Operation.LOAD_BITS_LE, Operation.STORE_BITS_LE, Operation.CHECKED_LOAD_BITS_LE,
+    Operation.CHECKED_STORE_BITS_LE, Operation.POINTER_ADDRESS)))
 
 
 def _op(operation) -> int:
@@ -1528,6 +1537,23 @@ def _foreign_node_fn(tables):
             e.if_(e.lt(1, p["fc_r"]), lambda: _call(e, "one_result_reject", _ra(e, F_FN), _f(e, node, N_NRES)))
             e.if_(e.eq(p["fc_rec"], 0), lambda: _call(e, "template_reject", p["fc_obj"], p["fc_n"]))
 
+        from xax_selfhost_x86_64_general import G_TABI, G_WINDOWS, LINUX_ABI
+
+        def syscall_target():
+            """``_linux_syscall`` on Windows: NATIVE-FOREIGN-ABI-TARGET (the syscall ABI and the Linux ABI)."""
+            import xax_selfhost_diagnostics as D
+            from xax_selfhost_general_emit import E_F, _e, graph_cid_words, reject_at
+
+            def write():
+                D.text(e, "XAX.NATIVE.FOREIGN_ABI")
+                D.cid(e, graph_cid_words(e, _e(e, E_F)))
+                D.text(e, "NATIVE-FOREIGN-ABI-TARGET")
+                D.put(e, D.T_LIST), D.put(e, 2), D.text(e, "linux-x86_64-syscall-v1"), D.integer(e, LINUX_ABI)
+                D.put(e, D.T_LIST), D.put(e, 2), D.text(e, "linux-x86_64-syscall-v1"), D.integer(e, _g(e, G_TABI))
+
+            reject_at(e, write)
+
+        e.if_(e.both(e.eq(p["fc_abi"], ABI_SYSCALL), e.ne(_g(e, G_WINDOWS), 0)), syscall_target)
         e.if_(e.eq(p["fc_abi"], ABI_SYSCALL), syscall_checks)
         e.var("fc_start", 0)
         from xax_selfhost_general_emit import _startup_name
@@ -1556,7 +1582,7 @@ def _foreign_node_fn(tables):
 
             from xax_selfhost_general_emit import reject_at, write_dynamic_profile
 
-            e.if_(e.ne(_g(e, G_TFMT), 6), lambda: reject_at(e, lambda: write_dynamic_profile(e)))
+            e.if_(e.either(e.ne(_g(e, G_TFMT), 6), e.ne(_g(e, G_TABI), LINUX_ABI)), lambda: reject_at(e, lambda: write_dynamic_profile(e)))
 
             def scalar_class():
                 """``_emit_sysv_c_call``: outside the lowered register-passed subset."""
@@ -1644,23 +1670,33 @@ def _movabs_any(e: E, register, value):
 
 
 def _call_node_fn(tables):
-    """Direct and indirect calls (the internal convention: four argument registers, then the stack after the shadow
-    space); a foreign call of another ABI is declined (the bootstrap's Win64 path rejects it on Linux)."""
+    """Direct, indirect and (S15e.3, Windows) ``win64-c`` foreign calls (the internal convention: four argument
+    registers, then the stack after the shadow space).  A foreign call the foreign node did not lower takes the
+    bootstrap's Win64 call path (``_win64_foreign_call``): any ABI but ``win64-c`` is NATIVE-FOREIGN-ABI, a malformed
+    COM method WIN64-COM-METHOD; a ``win64-c`` call on Linux declines."""
+    from xax_selfhost_general_rejects import COM_MALFORMED
+    from xax_selfhost_x86_64_general import G_WINDOWS
+
     def build(e: E):
         p = e.p
         node, op, result = _node_prelude(e)
         e.if_(e.not_(_in(e, op, CALLS)), lambda: e.give(0))
+        e.var("cl_obj", NONE)
+        e.var("cl_com", NONE)
 
         def foreign():
-            """A foreign call the foreign node did not lower: the bootstrap's Win64 call path (``_win64_foreign_call``)
-            rejects every ABI but ``win64-c`` (NATIVE-FOREIGN-ABI), which is declined here."""
             from xax_selfhost_general_rejects import ABI_WIN64_C, foreign_identity
 
-            e.var("cl_obj", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+            e.set("cl_obj", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
             _ok(e, e.ne(p["cl_obj"], NONE))
             foreign_identity(e, p["cl_obj"], "cl_abi")
-            _ok(e, e.ne(p["cl_abi"], ABI_WIN64_C))
-            _call(e, "abi_reject", p["cl_obj"], _ra(e, F_FN), 1)
+
+            def win64():
+                _ok(e, e.ne(_g(e, G_WINDOWS), 0))
+                e.set("cl_com", e.call(_FN["com_method"], p["cl_obj"]))
+                e.if_(e.eq(p["cl_com"], COM_MALFORMED), lambda: _call(e, "com_reject", p["cl_obj"], _ra(e, F_FN)))
+
+            e.if_(e.eq(p["cl_abi"], ABI_WIN64_C), win64, lambda: _call(e, "abi_reject", p["cl_obj"], _ra(e, F_FN), 1))
 
         e.if_(e.eq(op, _op(Operation.CALL_FOREIGN)), foreign)
         _machine_results(e, node, "cl_r")
@@ -1729,7 +1765,12 @@ def _call_node_fn(tables):
 
             e.if_(e.eq(_call(e, "erased", p["cl_callee"]), 0), call)
 
-        e.if_(e.ne(p["cl_indirect"], 0), lambda: _bx(e, 0xD3FF41, 3), direct)  # call r11
+        def imported():
+            """``mov rax, [rcx]; call [rax + 8k]`` for a COM method, else ``call [rip + slot]`` (the image binds it)."""
+            e.if_(e.ne(p["cl_com"], NONE), lambda: (_bx(e, 0xFF018B48, 4, True), _bx(e, 0x90, 1, True), _bx(e, e.mul(p["cl_com"], 8), 4, True)),
+                  lambda: (_bx(e, 0x15FF, 2, True), _record_call(e, p["cl_obj"], 0), _bx(e, 0, 4, True)))
+
+        e.if_(e.ne(p["cl_indirect"], 0), lambda: _bx(e, 0xD3FF41, 3), lambda: e.if_(e.eq(op, _op(Operation.CALL_FOREIGN)), imported, direct))  # call r11
         e.if_(e.eq(p["cl_hidden"], 0), lambda: _store_call_result(e, node))
         e.give(1)
     return _function(("bi", "m"), build, tables)
@@ -2130,14 +2171,59 @@ F_FN = 238  # the function being lowered (``_ra`` slot)
 
 
 def _legacy_static(e: E, f, name: str):
-    """``name``: 1 when ``_compile_register_resident_function``'s static checks (Linux, not hosted) accept the lifted
-    graph, so the bootstrap would try that path before the frame lowering."""
+    """``name``: 1 when ``_compile_register_resident_function``'s static checks accept the lifted graph, so the
+    bootstrap would try that path before the frame lowering.  S15e.3: on Windows the hosted profile's checks (the
+    larger operation list, heap-view memory only, 32/64-bit compares, integer foreign calls of at most four
+    arguments)."""
+    from xax_selfhost_x86_64_general import G_WINDOWS
+
     p = e.p
     e.var(name, 1)
+    e.var(f"{name}_w", _g(e, G_WINDOWS))
+    e.var(f"{name}_heap", e.alloc(e.add(_g(e, G_VCOUNT), 1)))
+    _ok(e, e.ne(p[f"{name}_heap"], NONE))
+    e.for_(f"{name}_z", 0, _g(e, G_VCOUNT), lambda: e.st(e.add(p[f"{name}_heap"], p[f"{name}_z"]), 0))
+
+    def heap(v):
+        return e.ld(e.add(p[f"{name}_heap"], v))
+
+    def hosted(n):
+        """The hosted profile's per-node checks (``heap_values`` in node order)."""
+        op = p[f"{name}_op"]
+        e.var(f"{name}_a", e.sel(e.lt(0, _f(e, n, N_NOPS)), _operand(e, n, 0), 0))
+        e.if_(e.eq(op, _op(Operation.HEAP_VIEW)), lambda: e.st(e.add(p[f"{name}_heap"], _output(e, n, 0)), 1))
+        e.if_(e.both(_in(e, op, (_op(Operation.ADDRESS_OFFSET), _op(Operation.POINTER_CAST))), e.ne(heap(p[f"{name}_a"]), 0)),
+              lambda: e.st(e.add(p[f"{name}_heap"], _output(e, n, 0)), 1))
+        e.if_(e.both(_in(e, op, HOSTED_MEMORY), e.eq(heap(p[f"{name}_a"]), 0)), lambda: e.set(name, 0))
+
+        def compare():
+            _bits_width(e, _vf(e, G_VTYPE, p[f"{name}_a"]), f"{name}_cw")
+            e.if_(e.not_(e.either(e.eq(p[f"{name}_cw"], 32), e.eq(p[f"{name}_cw"], 64))), lambda: e.set(name, 0))
+
+        e.if_(e.eq(op, _op(Operation.INT_COMPARE)), compare)
+
+        def scalar(t):
+            e.var(f"{name}_st", t)
+            e.if_(e.both(e.not_(_proof(e, p[f"{name}_st"])), e.either(_is_float(e, p[f"{name}_st"]), _is_aggregate(e, p[f"{name}_st"]))),
+                  lambda: e.set(name, 0))
+
+        def foreign():
+            _machine_inputs(e, n, 0, f"{name}_fi")
+            _machine_results(e, n, f"{name}_fr")
+            e.if_(e.either(e.lt(4, p[f"{name}_fi"]), e.lt(1, p[f"{name}_fr"])), lambda: e.set(name, 0))
+            e.for_(f"{name}_k", 0, _f(e, n, N_NOPS), lambda: scalar(_vf(e, G_VTYPE, _operand(e, n, p[f"{name}_k"]))))
+            e.for_(f"{name}_k", 0, _f(e, n, N_NRES), lambda: scalar(_vf(e, G_VTYPE, _output(e, n, p[f"{name}_k"]))))
+
+        e.if_(e.eq(op, _op(Operation.CALL_FOREIGN)), foreign)
+        e.if_(_in(e, op, (_op(Operation.LOAD_BITS_LE), _op(Operation.CHECKED_LOAD_BITS_LE))), lambda: scalar(_vf(e, G_VTYPE, _output(e, n, 0))))
+        e.if_(_in(e, op, (_op(Operation.STORE_BITS_LE), _op(Operation.CHECKED_STORE_BITS_LE))),
+              lambda: scalar(_vf(e, G_VTYPE, _operand(e, n, e.sub(_f(e, n, N_NOPS), 2)))))
 
     def node(block, bi, n, m):
         e.var(f"{name}_op", _eop(e, n))
-        e.if_(e.not_(_in(e, p[f"{name}_op"], LEGACY_ALLOWED)), lambda: e.set(name, 0))
+        e.if_(e.not_(e.either(_in(e, p[f"{name}_op"], LEGACY_ALLOWED), e.both(e.ne(p[f"{name}_w"], 0), _in(e, p[f"{name}_op"], HOSTED_ALLOWED)))),
+              lambda: e.set(name, 0))
+        e.if_(e.ne(p[f"{name}_w"], 0), lambda: hosted(n))
 
         def direct():
             _machine_inputs(e, n, 0, f"{name}_in")
@@ -2180,7 +2266,7 @@ def _frame_function_fn(tables):
     """The frame lowering of function ``f`` (image index ``fidx``) from its own graph, or the legacy register path where
     the bootstrap takes it (S12f.4): 1 emitted."""
     from xax_selfhost_general_view import G_BLIST, G_FKEYN, G_LIFT_ENTRY, _globals
-    from xax_selfhost_x86_64_general import G_ENTRY
+    from xax_selfhost_x86_64_general import G_ENTRY, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -2200,11 +2286,15 @@ def _frame_function_fn(tables):
         _globals(e, G_BCOUNT, p["ff_n"])
         _call(e, "positions")
         _set_ra(e, F_FN, p["f"])
-        _set_ra(e, F_PROCESS, e.flag(e.eq(p["f"], _g(e, G_ENTRY))))
-        _set_ra(e, F_DYN, 1)  # the Linux profiles support heap views: pointers are first-class values
+        _set_ra(e, F_PROCESS, e.flag(e.both(e.eq(p["f"], _g(e, G_ENTRY)), e.eq(_g(e, G_WINDOWS), 0))))  # S15e.3: no process entry on PE
+        # The Linux profiles support heap views: pointers are first-class values (S15e.3: not on Windows).
+        _set_ra(e, F_DYN, e.flag(e.eq(_g(e, G_WINDOWS), 0)))
         # S12f.4 (ADR-280): a function the legacy register path's static checks accept is lowered by that path.
         e.var("ff_legacy", 0)
         e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_static"), e.set("ff_legacy", p["ff_static"])))
+        # S15e.3: the hosted (Windows) legacy register path is the bootstrap's alone.
+        _ok(e, e.either(e.eq(p["ff_legacy"], 0), e.eq(_g(e, G_WINDOWS), 0)))
+        _set_ra(e, E_FWD_ON, _g(e, G_WINDOWS))  # ``forward_stores``: the Windows frame path
         # The emission state (``xax_selfhost_general_emit``): the real run only.
         for slot in (E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
             _set_ra(e, slot, 0)
@@ -2282,6 +2372,7 @@ def _frame_function_fn(tables):
             _store_bytes(e, e.add(_ra(e, E_CODE), p["ff_p"]), e.sub(p["ff_target"], e.add(p["ff_p"], 4)), 4)
 
         e.for_("ff_k", 0, _ra(e, E_NBRANCHES), fixup)
+        _set_ra(e, E_FWD_ON, 0)
         e.give(1)
     return _function(("f", "fidx"), build, tables)
 

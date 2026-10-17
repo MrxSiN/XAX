@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_general_regalloc import _ra, _set_ra
-from xax_selfhost_views_backend import _FN, G_PAY, GLOBALS, _at, _call, _cid_words, _g, _ok
+from xax_selfhost_views_backend import _FN, G_PAY, GLOBALS, _at, _call, _cid_words, _g, _ok, _type_form
 
 IMAGE_AT, IMAGE_END = 6 << 20, 11 << 20
 IMAGE_CAP = 4 << 22  # image bytes (one per word); S14a (ADR-284): the compiler's own image; S15b (ADR-291): 12 MiB; S15e.2 (ADR-315): 16 MiB
@@ -295,7 +295,7 @@ def _less_input(e: E, a, an, b, bn, name: str):
 def _image_finish_fn(tables):
     """The SysV entry adapters, the fixups, the imports, then the ELF container (``IMAGE_AT`` record)."""
     from xax_selfhost_general_view import G_CIDX
-    from xax_selfhost_x86_64_general import G_ENTRY, G_TFMT
+    from xax_selfhost_x86_64_general import G_ENTRY, G_TFMT, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -371,9 +371,14 @@ def _image_finish_fn(tables):
         _set_ra(e, I_NIMPORTS, p["if_ni"])
         e.var("if_entry", e.ld(e.add(_ra(e, I_BASES), e.ld(e.add(_g(e, G_CIDX), _g(e, G_ENTRY))))))
         _set_ra(e, I_ENTRY, p["if_entry"])
-        e.var("if_dynamic", e.flag(e.eq(_g(e, G_TFMT), DYNAMIC_FORMAT)))
-        _ok(e, e.either(e.ne(p["if_dynamic"], 0), e.eq(p["if_ni"], 0)))  # the bootstrap fails (LINUX-DYNAMIC-LOADER-EXPLICIT)
-        e.if_(e.ne(p["if_dynamic"], 0), lambda: _call(e, "elf_dynamic"), lambda: _call(e, "elf_static"))
+
+        def linux():
+            e.var("if_dynamic", e.flag(e.eq(_g(e, G_TFMT), DYNAMIC_FORMAT)))
+            _ok(e, e.either(e.ne(p["if_dynamic"], 0), e.eq(p["if_ni"], 0)))  # the bootstrap fails (LINUX-DYNAMIC-LOADER-EXPLICIT)
+            e.if_(e.ne(p["if_dynamic"], 0), lambda: _call(e, "elf_dynamic"), lambda: _call(e, "elf_static"))
+
+        # S15e.3: ``emit_pe_executable``'s entry checks, then the PE32+ container.
+        e.if_(e.ne(_g(e, G_WINDOWS), 0), lambda: (_call(e, "pe_entry"), _call(e, "pe")), linux)
         e.give(1)
     return _function((), build, tables)
 
@@ -437,32 +442,31 @@ def _align(e: E, value, alignment: int):
     return e.and_(e.add(value, alignment - 1), (1 << 64) - alignment)
 
 
-def _elf_dynamic_fn(tables):
-    """``_emit_dynamic``: ``PT_INTERP``, ``DT_NEEDED`` from the imports, bind-now GOT slots bound by ``GLOB_DAT``."""
+def _import_pairs_fn(tables):
+    """The imports' distinct (library, name) pairs (one declaration each), sorted by library then name, in
+    ``I_NAMES``/``I_NNAMES`` (the dynamic ELF's names and S15e.3's PE import table)."""
     def build(e: E):
         p = e.p
-        imports = _ra(e, I_IMPORTS)
-        e.var("ed_imp", imports)
-        e.var("ed_ni", _ra(e, I_NIMPORTS))
-        # The distinct (library, name) pairs, sorted; the names must be unique.
-        e.var("ed_names", _ra(e, I_NAMES))  # (declaration object) per distinct pair
-        e.var("ed_nn", 0)
+        e.var("ip_imp", _ra(e, I_IMPORTS))
+        e.var("ip_ni", _ra(e, I_NIMPORTS))
+        e.var("ip_names", _ra(e, I_NAMES))  # (declaration object) per distinct pair
+        e.var("ip_nn", 0)
 
         def distinct():
-            e.var("ed_obj", e.ld(e.add(p["ed_imp"], e.add(e.mul(p["ed_k"], 2), 1))))
-            _foreign_strings(e, p["ed_obj"], "ed_a")
-            e.var("ed_dup", 0)
+            e.var("ip_obj", e.ld(e.add(p["ip_imp"], e.add(e.mul(p["ip_k"], 2), 1))))
+            _foreign_strings(e, p["ip_obj"], "ip_a")
+            e.var("ip_dup", 0)
 
             def compare():
-                _foreign_strings(e, e.ld(e.add(p["ed_names"], p["ed_j"])), "ed_b")
-                _same_input(e, p["ed_a_lib"], p["ed_a_libn"], p["ed_b_lib"], p["ed_b_libn"], "ed_sl")
-                _same_input(e, p["ed_a_sym"], p["ed_a_symn"], p["ed_b_sym"], p["ed_b_symn"], "ed_ss")
-                e.if_(e.both(e.ne(p["ed_sl"], 0), e.ne(p["ed_ss"], 0)), lambda: e.set("ed_dup", 1))
+                _foreign_strings(e, e.ld(e.add(p["ip_names"], p["ip_j"])), "ip_b")
+                _same_input(e, p["ip_a_lib"], p["ip_a_libn"], p["ip_b_lib"], p["ip_b_libn"], "ip_sl")
+                _same_input(e, p["ip_a_sym"], p["ip_a_symn"], p["ip_b_sym"], p["ip_b_symn"], "ip_ss")
+                e.if_(e.both(e.ne(p["ip_sl"], 0), e.ne(p["ip_ss"], 0)), lambda: e.set("ip_dup", 1))
 
-            e.for_("ed_j", 0, p["ed_nn"], compare)
-            e.if_(e.eq(p["ed_dup"], 0), lambda: (e.st(e.add(p["ed_names"], p["ed_nn"]), p["ed_obj"]), e.set("ed_nn", e.add(p["ed_nn"], 1))))
+            e.for_("ip_j", 0, p["ip_nn"], compare)
+            e.if_(e.eq(p["ip_dup"], 0), lambda: (e.st(e.add(p["ip_names"], p["ip_nn"]), p["ip_obj"]), e.set("ip_nn", e.add(p["ip_nn"], 1))))
 
-        e.for_("ed_k", 0, p["ed_ni"], distinct)
+        e.for_("ip_k", 0, p["ip_ni"], distinct)
 
         def pair_less(a, b, name):
             """(library, name) of declaration ``a`` sorts before ``b``'s."""
@@ -474,24 +478,39 @@ def _elf_dynamic_fn(tables):
             return e.either(e.ne(p[f"{name}_l"], 0), e.both(e.ne(p[f"{name}_e"], 0), e.ne(p[f"{name}_s"], 0)))
 
         def insert():
-            e.var("ed_item", e.ld(e.add(p["ed_names"], p["ed_s"])))
-            e.var("ed_j", p["ed_s"])
-            e.var("ed_go", 1)
+            e.var("ip_item", e.ld(e.add(p["ip_names"], p["ip_s"])))
+            e.var("ip_j", p["ip_s"])
+            e.var("ip_go", 1)
 
             def step():
-                e.set("ed_go", 0)
+                e.set("ip_go", 0)
 
                 def check():
-                    e.var("ed_prev", e.ld(e.add(p["ed_names"], e.sub(p["ed_j"], 1))))
-                    e.if_(pair_less(p["ed_item"], p["ed_prev"], "ed_pl"), lambda: (
-                        e.st(e.add(p["ed_names"], p["ed_j"]), p["ed_prev"]), e.set("ed_j", e.sub(p["ed_j"], 1)), e.set("ed_go", 1)))
+                    e.var("ip_prev", e.ld(e.add(p["ip_names"], e.sub(p["ip_j"], 1))))
+                    e.if_(pair_less(p["ip_item"], p["ip_prev"], "ip_pl"), lambda: (
+                        e.st(e.add(p["ip_names"], p["ip_j"]), p["ip_prev"]), e.set("ip_j", e.sub(p["ip_j"], 1)), e.set("ip_go", 1)))
 
-                e.if_(e.lt(0, p["ed_j"]), check)
+                e.if_(e.lt(0, p["ip_j"]), check)
 
-            e.while_(lambda: e.ne(p["ed_go"], 0), step)
-            e.st(e.add(p["ed_names"], p["ed_j"]), p["ed_item"])
+            e.while_(lambda: e.ne(p["ip_go"], 0), step)
+            e.st(e.add(p["ip_names"], p["ip_j"]), p["ip_item"])
 
-        e.for_("ed_s", 1, p["ed_nn"], insert)
+        e.for_("ip_s", 1, p["ip_nn"], insert)
+        _set_ra(e, I_NNAMES, p["ip_nn"])
+        e.give(1)
+    return _function((), build, tables)
+
+
+def _elf_dynamic_fn(tables):
+    """``_emit_dynamic``: ``PT_INTERP``, ``DT_NEEDED`` from the imports, bind-now GOT slots bound by ``GLOB_DAT``."""
+    def build(e: E):
+        p = e.p
+        e.var("ed_imp", _ra(e, I_IMPORTS))
+        e.var("ed_ni", _ra(e, I_NIMPORTS))
+        # The distinct (library, name) pairs, sorted; the names must be unique.
+        _call(e, "import_pairs")
+        e.var("ed_names", _ra(e, I_NAMES))
+        e.var("ed_nn", _ra(e, I_NNAMES))
 
         # A name in two libraries (sorted by (library, name), the two need not be adjacent): LINUX-IMPORT-SYMBOL-UNIQUE.
         e.var("ed_repeated", 0)
@@ -664,6 +683,272 @@ def _elf_dynamic_fn(tables):
     return _function((), build, tables)
 
 
+# -- S15e.3 (ADR-317): the PE32+ container ---------------------------------------------------------------------------
+
+PE_TEXT_RVA, PE_SECTION_ALIGNMENT, PE_FILE_ALIGNMENT, PE_HEADERS = 0x1000, 0x1000, 0x200, 0x200
+PE_IMAGE_BASE, PE_OPTIONAL = 0x140000000, 240
+PE_STACK_RESERVE, PE_STACK_COMMIT = 0x100000, 0x1000
+
+
+def _pe_entry_fn(tables):
+    """``emit_pe_executable``'s entry checks: no machine parameters (PE-ENTRY-NO-PARAMETERS), integer results only
+    (PE-ENTRY-INTEGER-RESULT, naming every result's ``_abi_kind``)."""
+    from xax_selfhost_general_frame import _float_width, _layout_size
+    from xax_selfhost_general_regalloc import _machine_width, _proof_type
+    from xax_selfhost_x86_64_general import G_ENTRY, G_TARGET
+
+    def build(e: E):
+        import xax_selfhost_diagnostics as D
+        from xax_selfhost_general_emit import reject_at
+
+        p = e.p
+        e.var("pn_i", _call(e, "interface", _g(e, G_ENTRY)))
+        e.var("pn_np", e.ld(e.add(p["pn_i"], 1)))
+        e.var("pn_rt", e.add(e.add(p["pn_i"], 2), p["pn_np"]))
+        e.var("pn_params", 0)
+        e.for_("pn_k", 0, p["pn_np"], lambda: e.if_(e.not_(_proof_type(e, e.ld(e.add(e.add(p["pn_i"], 2), p["pn_k"])))),
+                                                    lambda: e.set("pn_params", e.add(p["pn_params"], 1))))
+
+        def head(rule):
+            D.text(e, "XAX.PE.ENTRY")
+            D.cid(e, _cid_words(e, _g(e, G_TARGET)))
+            D.text(e, rule)
+
+        e.if_(e.ne(p["pn_params"], 0), lambda: reject_at(e, lambda: (head("PE-ENTRY-NO-PARAMETERS"), D.integer(e, 0), D.integer(e, p["pn_params"]))))
+        e.var("pn_bad", 0)
+        e.var("pn_nr", 0)
+
+        def form(k):
+            return _type_form(e, e.ld(e.add(e.add(p["pn_rt"], 1), k)))
+
+        def count():
+            e.var("pn_t", e.ld(e.add(e.add(p["pn_rt"], 1), p["pn_k"])))
+            e.if_(e.not_(_proof_type(e, p["pn_t"])), lambda: (
+                e.set("pn_nr", e.add(p["pn_nr"], 1)),
+                e.if_(e.either(e.eq(form(p["pn_k"]), 7), e.eq(form(p["pn_k"]), 8), e.eq(form(p["pn_k"]), 9), e.eq(form(p["pn_k"]), 10)),
+                      lambda: e.set("pn_bad", 1))))
+
+        e.for_("pn_k", 0, e.ld(p["pn_rt"]), count)
+
+        def kinds():
+            head("PE-ENTRY-INTEGER-RESULT")
+            D.text(e, "u<bits>")
+            D.put(e, D.T_LIST)
+            D.put(e, p["pn_nr"])
+
+            def kind():
+                e.var("pn_t", e.ld(e.add(e.add(p["pn_rt"], 1), p["pn_k"])))
+                e.var("pn_f", _type_form(e, p["pn_t"]))
+
+                def floating():
+                    _float_width(e, p["pn_t"], "pn_fw")
+                    D.put(e, D.T_FORMAT), D.text(e, "f{}"), D.put(e, 1), D.integer(e, p["pn_fw"])
+
+                def aggregate():
+                    _layout_size(e, p["pn_t"], "pn_size")
+                    D.put(e, D.T_FORMAT), D.text(e, "a{}"), D.put(e, 1), D.integer(e, p["pn_size"])
+
+                def integer():
+                    e.var("pn_w", _machine_width(e, p["pn_t"]))
+                    D.put(e, D.T_FORMAT), D.text(e, "u{}"), D.put(e, 1), D.integer(e, e.sel(e.eq(p["pn_w"], NONE), 64, p["pn_w"]))
+
+                e.if_(e.not_(_proof_type(e, p["pn_t"])), lambda: e.if_(e.eq(p["pn_f"], 7), floating, lambda: e.if_(
+                    e.either(e.eq(p["pn_f"], 8), e.eq(p["pn_f"], 9), e.eq(p["pn_f"], 10)), aggregate, integer)))
+
+            e.for_("pn_k", 0, e.ld(p["pn_rt"]), kind)
+
+        e.if_(e.ne(p["pn_bad"], 0), lambda: reject_at(e, kinds))
+        e.give(1)
+    return _function((), build, tables)
+
+
+def _pe_fn(tables):
+    """``xax_pe._emit`` for an executable: the DOS stub's ``e_lfanew``, the COFF and PE32+ optional headers, ``.text``
+    (the code, each import's ``call [rip + slot]`` bound to its IAT slot) and, with imports, ``.idata`` (descriptors,
+    lookup and address tables, hint/name and library strings; libraries and names sorted)."""
+    def build(e: E):
+        p = e.p
+        _call(e, "import_pairs")
+        e.var("pe_names", _ra(e, I_NAMES))
+        e.var("pe_nn", _ra(e, I_NNAMES))
+        e.var("pe_len", _ra(e, I_LEN))
+        e.var("pe_raw", _align(e, p["pe_len"], PE_FILE_ALIGNMENT))
+        e.var("pe_rva", e.add(PE_TEXT_RVA, _align(e, p["pe_len"], PE_SECTION_ALIGNMENT)))  # ``.idata``
+        # Each pair's library index (the pairs are sorted, so a library's pairs are adjacent).
+        e.var("pe_lib", e.alloc(e.add(p["pe_nn"], 1)))
+        e.var("pe_last", e.alloc(e.add(p["pe_nn"], 1)))  # 1 for a library's last pair
+        e.var("pe_hint", e.alloc(e.add(p["pe_nn"], 1)))
+        e.var("pe_dll", e.alloc(e.add(p["pe_nn"], 1)))
+        _ok(e, e.both(e.ne(p["pe_lib"], NONE), e.ne(p["pe_last"], NONE), e.ne(p["pe_hint"], NONE), e.ne(p["pe_dll"], NONE)))
+        e.var("pe_nl", 0)
+
+        def library():
+            e.var("pe_new", 1)
+
+            def same():
+                _foreign_strings(e, e.ld(e.add(p["pe_names"], p["pe_k"])), "pe_a")
+                _foreign_strings(e, e.ld(e.add(p["pe_names"], e.sub(p["pe_k"], 1))), "pe_b")
+                _same_input(e, p["pe_a_lib"], p["pe_a_libn"], p["pe_b_lib"], p["pe_b_libn"], "pe_sl")
+                e.set("pe_new", e.flag(e.eq(p["pe_sl"], 0)))
+
+            e.if_(e.lt(0, p["pe_k"]), same)
+            e.if_(e.both(e.ne(p["pe_new"], 0), e.lt(0, p["pe_k"])), lambda: e.st(e.add(p["pe_last"], e.sub(p["pe_k"], 1)), 1))
+            e.st(e.add(p["pe_last"], p["pe_k"]), 0)
+            e.set("pe_nl", e.add(p["pe_nl"], p["pe_new"]))
+            e.st(e.add(p["pe_lib"], p["pe_k"]), e.sub(p["pe_nl"], 1))
+
+        e.for_("pe_k", 0, p["pe_nn"], library)
+        e.if_(e.lt(0, p["pe_nn"]), lambda: e.st(e.add(p["pe_last"], e.sub(p["pe_nn"], 1)), 1))
+        e.var("pe_desc", e.mul(20, e.add(p["pe_nl"], 1)))
+        e.var("pe_thunks", e.mul(8, e.add(p["pe_nn"], p["pe_nl"])))
+        e.var("pe_ilt", e.add(p["pe_rva"], p["pe_desc"]))
+        e.var("pe_iat", e.add(p["pe_ilt"], p["pe_thunks"]))
+        e.var("pe_srva", e.add(p["pe_iat"], p["pe_thunks"]))
+        e.var("pe_off", 0)
+
+        def strings():
+            _foreign_strings(e, e.ld(e.add(p["pe_names"], p["pe_k"])), "pe_a")
+            e.st(e.add(p["pe_hint"], p["pe_k"]), e.add(p["pe_srva"], p["pe_off"]))
+            e.set("pe_off", e.add(p["pe_off"], e.add(p["pe_a_symn"], 3)))
+            e.set("pe_off", e.add(p["pe_off"], e.and_(p["pe_off"], 1)))
+
+            def dll():
+                e.st(e.add(p["pe_dll"], e.ld(e.add(p["pe_lib"], p["pe_k"]))), e.add(p["pe_srva"], p["pe_off"]))
+                e.set("pe_off", e.add(p["pe_off"], e.add(p["pe_a_libn"], 1)))
+                e.set("pe_off", e.add(p["pe_off"], e.and_(p["pe_off"], 1)))
+
+            e.if_(e.ne(e.ld(e.add(p["pe_last"], p["pe_k"])), 0), dll)
+
+        e.for_("pe_k", 0, p["pe_nn"], strings)
+        e.var("pe_has", e.flag(e.lt(0, p["pe_nn"])))
+        e.var("pe_ilen", e.add(e.add(p["pe_desc"], e.mul(p["pe_thunks"], 2)), p["pe_off"]))
+        e.var("pe_iraw", _align(e, p["pe_ilen"], PE_FILE_ALIGNMENT))
+        e.var("pe_size", e.sel(e.ne(p["pe_has"], 0), e.add(p["pe_rva"], _align(e, p["pe_ilen"], PE_SECTION_ALIGNMENT)), p["pe_rva"]))
+        # Headers.
+        _set_ra(e, I_ELEN, 0)
+        _elf(e, 0x5A4D, 2)
+        e.while_(lambda: e.lt(_ra(e, I_ELEN), 0x3C), lambda: _elf(e, 0, 1))
+        _elf(e, 0x40, 4)  # e_lfanew
+        _elf(e, 0x4550, 4)  # PE\0\0
+        _elf(e, e.add(0x8664, e.mul(e.add(1, p["pe_has"]), 1 << 16)), 4)  # machine, sections
+        _elf(e, 0, 8)
+        _elf(e, 0, 4)
+        _elf(e, PE_OPTIONAL | (0x0022 << 16), 4)  # optional header size, EXECUTABLE_IMAGE | LARGE_ADDRESS_AWARE
+        _elf(e, 0x20B, 4)  # PE32+
+        _elf(e, p["pe_raw"], 4)
+        _elf(e, e.mul(p["pe_has"], p["pe_iraw"]), 4)
+        _elf(e, 0, 4)
+        _elf(e, e.add(PE_TEXT_RVA, _ra(e, I_ENTRY)), 4)
+        _elf(e, PE_TEXT_RVA, 4)
+        _elf(e, PE_IMAGE_BASE, 8)
+        _elf(e, PE_SECTION_ALIGNMENT, 4)
+        _elf(e, PE_FILE_ALIGNMENT, 4)
+        _elf(e, 6, 8)  # OS 6.0, image 0.0
+        _elf(e, 6, 4)  # subsystem 6.0
+        _elf(e, 0, 4)
+        _elf(e, p["pe_size"], 4)
+        _elf(e, PE_HEADERS, 4)
+        _elf(e, 0, 4)
+        _elf(e, 3 | (0x8160 << 16), 4)  # WINDOWS_CUI; NX_COMPAT | DYNAMIC_BASE | HIGH_ENTROPY_VA | TERMINAL_SERVER_AWARE
+        for value in (PE_STACK_RESERVE, PE_STACK_COMMIT, 0x100000, 0x1000):
+            _elf(e, value, 8)
+        _elf(e, 16 << 32, 8)  # loader flags, 16 directories
+
+        def directory(index):
+            imports = lambda: (_elf(e, p["pe_rva"], 4), _elf(e, p["pe_desc"], 4))  # noqa: E731
+            iat = lambda: (_elf(e, p["pe_iat"], 4), _elf(e, p["pe_thunks"], 4))  # noqa: E731
+            entry = {1: imports, 12: iat}.get(index)
+            if entry is None:
+                _elf(e, 0, 8)
+            else:
+                e.if_(e.ne(p["pe_has"], 0), entry, lambda: _elf(e, 0, 8))
+
+        for index in range(16):
+            directory(index)
+
+        def section(name: bytes, size, rva, raw, offset, flags: int):
+            _elf(e, int.from_bytes(name.ljust(8, b"\0"), "little"), 8)
+            _elf(e, size, 4)
+            _elf(e, rva, 4)
+            _elf(e, raw, 4)
+            _elf(e, offset, 4)
+            _elf(e, 0, 8)
+            _elf(e, 0, 4)
+            _elf(e, flags, 4)
+
+        section(b".text", p["pe_len"], PE_TEXT_RVA, p["pe_raw"], PE_HEADERS, 0x60000020)
+        e.if_(e.ne(p["pe_has"], 0), lambda: section(b".idata", p["pe_ilen"], p["pe_rva"], p["pe_iraw"], e.add(PE_HEADERS, p["pe_raw"]), 0xC0000040))
+        e.while_(lambda: e.lt(_ra(e, I_ELEN), PE_HEADERS), lambda: _elf(e, 0, 1))
+        _copy_image(e)
+        e.var("pe_end", e.add(PE_HEADERS, p["pe_raw"]))
+        e.while_(lambda: e.lt(_ra(e, I_ELEN), p["pe_end"]), lambda: _elf(e, 0, 1))
+
+        def idata():
+            def descriptor():
+                e.var("pe_first", e.flag(e.either(e.eq(p["pe_k"], 0), e.ne(e.ld(e.add(p["pe_last"], e.sub(p["pe_k"], e.flag(e.lt(0, p["pe_k"]))))), 0))))
+                e.var("pe_at", e.mul(8, e.add(p["pe_k"], e.ld(e.add(p["pe_lib"], p["pe_k"])))))
+                e.if_(e.ne(p["pe_first"], 0), lambda: (
+                    _elf(e, e.add(p["pe_ilt"], p["pe_at"]), 4), _elf(e, 0, 8),
+                    _elf(e, e.ld(e.add(p["pe_dll"], e.ld(e.add(p["pe_lib"], p["pe_k"])))), 4), _elf(e, e.add(p["pe_iat"], p["pe_at"]), 4)))
+
+            e.for_("pe_k", 0, p["pe_nn"], descriptor)
+            _elf(e, 0, 8)
+            _elf(e, 0, 8)
+            _elf(e, 0, 4)
+
+            def thunks():
+                e.for_("pe_k", 0, p["pe_nn"], lambda: (_elf(e, e.ld(e.add(p["pe_hint"], p["pe_k"])), 8),
+                                                       e.if_(e.ne(e.ld(e.add(p["pe_last"], p["pe_k"])), 0), lambda: _elf(e, 0, 8))))
+
+            thunks()
+            thunks()
+
+            def string():
+                _foreign_strings(e, e.ld(e.add(p["pe_names"], p["pe_k"])), "pe_a")
+                _elf(e, 0, 2)
+                e.for_("pe_j", 0, p["pe_a_symn"], lambda: _elf(e, e.rd(e.add(p["pe_a_sym"], p["pe_j"])), 1))
+                _elf(e, 0, 1)
+                e.if_(e.ne(e.and_(_ra(e, I_ELEN), 1), 0), lambda: _elf(e, 0, 1))
+
+                def dll():
+                    e.for_("pe_j", 0, p["pe_a_libn"], lambda: _elf(e, e.rd(e.add(p["pe_a_lib"], p["pe_j"])), 1))
+                    _elf(e, 0, 1)
+                    e.if_(e.ne(e.and_(_ra(e, I_ELEN), 1), 0), lambda: _elf(e, 0, 1))
+
+                e.if_(e.ne(e.ld(e.add(p["pe_last"], p["pe_k"])), 0), dll)
+
+            e.for_("pe_k", 0, p["pe_nn"], string)
+            e.var("pe_iend", e.add(p["pe_end"], p["pe_iraw"]))
+            e.while_(lambda: e.lt(_ra(e, I_ELEN), p["pe_iend"]), lambda: _elf(e, 0, 1))
+
+            # Bind each import's ``call [rip + disp32]`` to its pair's IAT slot.
+            def bind():
+                e.var("pe_pos", e.ld(e.add(_ra(e, I_IMPORTS), e.mul(p["pe_i"], 2))))
+                _foreign_strings(e, e.ld(e.add(e.add(_ra(e, I_IMPORTS), e.mul(p["pe_i"], 2)), 1)), "pe_x")
+                e.var("pe_slot", NONE)
+
+                def match():
+                    _foreign_strings(e, e.ld(e.add(p["pe_names"], p["pe_k"])), "pe_y")
+                    _same_input(e, p["pe_x_lib"], p["pe_x_libn"], p["pe_y_lib"], p["pe_y_libn"], "pe_ml")
+                    _same_input(e, p["pe_x_sym"], p["pe_x_symn"], p["pe_y_sym"], p["pe_y_symn"], "pe_ms")
+                    e.if_(e.both(e.ne(p["pe_ml"], 0), e.ne(p["pe_ms"], 0)),
+                          lambda: e.set("pe_slot", e.add(p["pe_iat"], e.mul(8, e.add(p["pe_k"], e.ld(e.add(p["pe_lib"], p["pe_k"])))))))
+
+                e.for_("pe_k", 0, p["pe_nn"], match)
+                _ok(e, e.ne(p["pe_slot"], NONE))
+                e.var("pe_d", e.and_(e.sub(p["pe_slot"], e.add(PE_TEXT_RVA + 4, p["pe_pos"])), 0xFFFFFFFF))
+                e.var("pe_site", e.add(_ra(e, I_ELF), e.add(PE_HEADERS, p["pe_pos"])))
+                e.for_("pe_j", 0, 4, lambda: (e.st(e.add(p["pe_site"], p["pe_j"]), e.and_(p["pe_d"], 0xFF)), e.set("pe_d", e.udiv(p["pe_d"], 256))))
+
+            e.for_("pe_i", 0, _ra(e, I_NIMPORTS), bind)
+
+        e.if_(e.ne(p["pe_has"], 0), idata)
+        _set_ra(e, I_OUT, PE_HEADERS)
+        _set_ra(e, I_NNEEDED, 0)
+        e.give(1)
+    return _function((), build, tables)
+
+
 def _image_snapshot_fn(tables):
     """Keep the image code before the container binds its imports (``NativeImage.code``)."""
     def build(e: E):
@@ -792,6 +1077,9 @@ def add_image_functions(add, tables):
     add("image_adapter", _adapter_fn(tables))
     add("image_snapshot", _image_snapshot_fn(tables))
     add("elf_static", _elf_static_fn(tables))
+    add("import_pairs", _import_pairs_fn(tables))
     add("elf_dynamic", _elf_dynamic_fn(tables))
+    add("pe_entry", _pe_entry_fn(tables))
+    add("pe", _pe_fn(tables))
     add("image_finish", _image_finish_fn(tables))
     add("image_record", _image_record_fn(tables))

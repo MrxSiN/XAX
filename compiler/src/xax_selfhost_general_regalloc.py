@@ -2071,8 +2071,30 @@ def _frame(tables):
         e.for_("fr_v", 0, p["fr_n"], lambda: e.if_(_constant(e, p["fr_v"]), lambda: e.for_("fr_q", 0, p["fr_nhoisted"], lambda: e.if_(
             e.eq(_cval(e, p["fr_v"]), e.ld(e.add(p["fr_hoisted"], e.mul(p["fr_q"], 2)))),
             lambda: _set_rt(e, T_PIN, p["fr_v"], e.ld(e.add(p["fr_hoisted"], e.add(e.mul(p["fr_q"], 2), 1))))))))
-        # The frame.
-        e.var("fr_shadow", e.mul(_ra(e, R_HAS_CALL), 32))
+        # The frame.  S15e.3 (ADR-317): on Windows a foreign call passes its fifth and later arguments on the stack above
+        # the shadow space; the frame reserves the largest such area.
+        e.var("fr_outgoing", 0)
+
+        def outgoing():
+            e.var("fr_ob", _block_at(e, p["fr_bi"]))
+
+            def node():
+                e.var("fr_on", _node_at(e, p["fr_ob"], p["fr_m"]))
+
+                def foreign():
+                    e.var("fr_om", 0)
+                    e.for_("fr_k", 0, _f(e, p["fr_on"], N_NOPS), lambda: e.if_(e.not_(_proof_type(e, _vf(e, G_VTYPE, _operand(e, p["fr_on"], p["fr_k"])))),
+                                                                                   lambda: e.set("fr_om", e.add(p["fr_om"], 1))))
+                    e.if_(e.lt(e.add(p["fr_outgoing"], 4), p["fr_om"]), lambda: e.set("fr_outgoing", e.sub(p["fr_om"], 4)))
+
+                e.if_(e.eq(_eop(e, p["fr_on"]), _op(Operation.CALL_FOREIGN)), foreign)
+
+            e.for_("fr_m", 0, _f(e, p["fr_ob"], B_NNODES), node)
+
+        from xax_selfhost_x86_64_general import G_WINDOWS
+
+        e.if_(e.ne(_g(e, G_WINDOWS), 0), lambda: e.for_("fr_bi", 0, p["fr_nb"], outgoing))
+        e.var("fr_shadow", e.mul(_ra(e, R_HAS_CALL), e.add(32, e.mul(p["fr_outgoing"], 8))))
         e.var("fr_spills", 0)
 
         def spills():

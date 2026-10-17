@@ -82,17 +82,17 @@ def graph_cid_words(e: E, f):
 
 
 def write_dynamic_profile(e: E):
-    """``require_sysv_profile``'s diagnostic for the current function (the target is a Linux ELF profile)."""
+    """``require_sysv_profile``'s diagnostic for the current function (the target's ABI and image format)."""
     import xax_selfhost_diagnostics as D
-    from xax_selfhost_x86_64_general import G_TFMT, LINUX_ABI
+    from xax_selfhost_x86_64_general import G_TABI, G_TFMT, LINUX_ABI
 
     D.text(e, "XAX.NATIVE.FOREIGN_ABI")
     D.cid(e, graph_cid_words(e, _e(e, E_F)))
     D.text(e, "SYSV-C-REQUIRES-DYNAMIC-PROFILE")
-    for second in (DYNAMIC_FORMAT, _g(e, G_TFMT)):
+    for first, second in ((LINUX_ABI, DYNAMIC_FORMAT), (_g(e, G_TABI), _g(e, G_TFMT))):
         D.put(e, D.T_LIST)
         D.put(e, 2)
-        D.integer(e, LINUX_ABI)
+        D.integer(e, first)
         D.integer(e, second)
 NOPS = (
     b"\x90", b"\x66\x90", b"\x0f\x1f\x00", b"\x0f\x1f\x40\x00", b"\x0f\x1f\x44\x00\x00",
@@ -116,10 +116,12 @@ E_BASE = 100
 (E_CODE, E_CLEN, E_CAP_ON, E_CAPBUF, E_CAPLEN, E_REAL, E_LABELS, E_NLABELS, E_BRANCHES, E_NBRANCHES, E_CALLS, E_NCALLS, E_RANGES,
  E_NRANGES, E_STUBS, E_NSTUBS, E_TRAPS, E_NTRAPS, E_TABLES, E_NTABLES, E_CLOSED, E_USED, E_STAMP, E_FREE, E_NFREE, E_NEXT, E_MAX,
  E_CHECKED, E_NCHECKED, E_CALLPOS, E_NCALLPOS, E_HINT, E_BI, E_FOLLOW, E_EPI, E_EPILEN, E_FRAME, E_LOCK, E_LOCW, E_MOVES, E_NMOVES,
- E_ARGS, E_REGS, E_NARGS, E_PROCESS, E_LIVE, E_RECORD, E_DELAYED, E_NDELAYED, E_PAIRS, E_NPAIRS, E_F, E_FAIL, E_TRAPSEC) = range(E_BASE, E_BASE + 54)
+ E_ARGS, E_REGS, E_NARGS, E_PROCESS, E_LIVE, E_RECORD, E_DELAYED, E_NDELAYED, E_PAIRS, E_NPAIRS, E_F, E_FAIL, E_TRAPSEC,
+ E_FWD_ON, E_FWD_END, E_FWD_REG, E_FWD_OFF) = range(E_BASE, E_BASE + 58)
 E_REGV = 192  # sixteen words: the value in each register, NONE when free
 assert E_REGV + 16 <= 256 and E_FAIL < E_REGV
 LOC_REG, LOC_CONST, LOC_STACK, LOC_SPILL = range(4)
+WIN64_SCRATCH = 11  # S15e.3: ``xax_x86_64_regalloc._SCRATCH``, through which a Win64 stack argument is stored
 # Capacities (words).
 CODE_CAP = 1 << 21  # S14a (ADR-284): the compiler's own largest function; S15e.0 (ADR-307): 2M words, 4.5 times its 466 KB
 CAPTURE_CAP = 1 << 14
@@ -345,12 +347,26 @@ def _frame_access_fn(tables):
 
             e.if_(e.not_(e.both(e.either(e.eq(p["width"], 4), e.eq(p["width"], 8)), e.lt(p["off"], 1 << 31))),
                   lambda: encoding_reject(e, MEMORY, p["width"], p["off"]))
+            # S15e.3: ``_Assembler.forward_stores`` (the Windows frame path): a qword reload of the slot the directly
+            # preceding qword store wrote, at no label, is nothing (the same register) or ``mov dst, src``.
+            e.var("fa_fwd", e.flag(e.both(e.ne(_e(e, E_FWD_ON), 0), e.eq(p["width"], 8), e.eq(_e(e, E_CAP_ON), 0), e.ne(_e(e, E_REAL), 0))))
+
+            def forwarded():
+                e.var("fa_src", _e(e, E_FWD_REG))
+                _se(e, E_FWD_END, NONE)
+                e.if_(e.ne(p["fa_src"], p["reg"]), lambda: _bx(e, e.add(e.add(0x8948, e.add(e.mul(_hi(e, p["fa_src"]), 4), _hi(e, p["reg"]))),
+                                                                          e.mul(e.add(0xC0, e.add(e.mul(_low3(e, p["fa_src"]), 8), _low3(e, p["reg"]))), 1 << 16)), 3))
+                e.give(1)
+
+            e.if_(e.both(e.ne(p["fa_fwd"], 0), e.eq(p["opcode"], 0x8B), e.eq(_e(e, E_FWD_END), _e(e, E_CLEN)), e.eq(_e(e, E_FWD_OFF), p["off"])), forwarded)
             e.var("fa_rex", e.add(e.add(0x40, e.mul(e.flag(e.eq(p["width"], 8)), 8)), e.mul(_hi(e, p["reg"]), 4)))
             e.if_(e.ne(p["fa_rex"], 0x40), lambda: _bx(e, p["fa_rex"], 1))
             e.if_(e.lt(p["off"], 128), lambda: (
                 _bx(e, e.add(e.add(p["opcode"], e.mul(e.add(0x44, e.mul(_low3(e, p["reg"]), 8)), 256)), e.add(0x240000, e.mul(p["off"], 1 << 24))), 4)),
                 lambda: (_bx(e, e.add(e.add(p["opcode"], e.mul(e.add(0x84, e.mul(_low3(e, p["reg"]), 8)), 256)), 0x240000), 3),
                          _bx(e, p["off"], 4)))
+            e.if_(e.ne(p["fa_fwd"], 0), lambda: e.if_(e.eq(p["opcode"], 0x89), lambda: (
+                _se(e, E_FWD_END, _e(e, E_CLEN)), _se(e, E_FWD_REG, p["reg"]), _se(e, E_FWD_OFF, p["off"])), lambda: _se(e, E_FWD_END, NONE)))
 
         e.if_(e.lt(p["width"], 4), exact, memory)
         e.give(1)
@@ -1087,7 +1103,8 @@ def _new_label(e: E):
 
 
 def _label(e: E, label):
-    e.if_(e.ne(_e(e, E_REAL), 0), lambda: e.st(e.add(_e(e, E_LABELS), label), _e(e, E_CLEN)))
+    # A label ends a forwarding window (``forward_stores`` never rewrites a branch target).
+    e.if_(e.ne(_e(e, E_REAL), 0), lambda: (e.st(e.add(_e(e, E_LABELS), label), _e(e, E_CLEN)), _se(e, E_FWD_END, NONE)))
 
 
 def _jump_fn(tables):
@@ -2157,11 +2174,12 @@ def _startup_name(e: E, obj, name: str):
     e.if_(e.ne(_payload_uleb(e, f"{name}_at"), len(STARTUP_ABI)), lambda: e.set(f"{name}_ok", 0))
     for k, value in enumerate(STARTUP_ABI):
         e.if_(e.ne(e.rd(e.add(p[f"{name}_at"], k)), value), lambda: e.set(f"{name}_ok", 0))
-    e.set(f"{name}_at", e.add(p[f"{name}_at"], len(STARTUP_ABI)))
-    e.set(f"{name}_at", e.add(_payload_uleb(e, f"{name}_at"), p[f"{name}_at"]))  # the library
-    e.var(f"{name}_n", _payload_uleb(e, f"{name}_at"))
 
     def match():
+        # S15e.3: the library and the name are read only past a startup ABI (another ABI's bytes are not these fields).
+        e.set(f"{name}_at", e.add(p[f"{name}_at"], len(STARTUP_ABI)))
+        e.set(f"{name}_at", e.add(_payload_uleb(e, f"{name}_at"), p[f"{name}_at"]))  # the library
+        e.var(f"{name}_n", _payload_uleb(e, f"{name}_at"))
         for index, read in enumerate(STARTUP_NAMES, 1):
             e.var(f"{name}_m", e.flag(e.eq(p[f"{name}_n"], len(read))))
             for k, value in enumerate(read):
@@ -2345,11 +2363,16 @@ def _foreign_call_fn(tables):
             _call(e, "startup_read", p["fc_start"], p["fc_extent"])
 
         _startup_name(e, p["fc_obj"], "fc_start")
-        from xax_selfhost_general_rejects import ABI_STARTUP, ABI_SYSCALL, ABI_SYSV_C, foreign_identity
+        from xax_selfhost_general_rejects import ABI_STARTUP, ABI_SYSCALL, ABI_SYSV_C, ABI_WIN64_C, COM_MALFORMED, foreign_identity
 
         foreign_identity(e, p["fc_obj"], "fc_abi")
+        from xax_selfhost_x86_64_general import G_WINDOWS
+
+        e.var("fc_windows", e.flag(e.ne(_g(e, G_WINDOWS), 0)))
         owned = e.either(*(e.eq(p["fc_abi"], kind) for kind in (ABI_SYSV_C, ABI_SYSCALL, ABI_STARTUP)))
-        e.if_(e.not_(owned), lambda: _call(e, "abi_reject", p["fc_obj"], _e(e, E_F), 0))
+        # S15e.3 (ADR-317): on Windows the register path owns ``win64-c`` only.
+        e.if_(e.ne(p["fc_windows"], 0), lambda: e.if_(e.ne(p["fc_abi"], ABI_WIN64_C), lambda: _call(e, "abi_reject", p["fc_obj"], _e(e, E_F), 2)),
+              lambda: e.if_(e.not_(owned), lambda: _call(e, "abi_reject", p["fc_obj"], _e(e, E_F), 0)))
         e.if_(e.both(e.eq(p["fc_abi"], ABI_SYSCALL), e.eq(p["fc_rec"], 0)), lambda: _call(e, "template_reject", p["fc_obj"], p["fc_n"]))
 
         def unknown_startup():
@@ -2367,9 +2390,34 @@ def _foreign_call_fn(tables):
                 e.if_(e.ne(p["fc_abi_copy"], 0), lambda k=k, value=value: e.if_(
                     e.ne(e.rd(e.add(e.sub(e.add(p["fc_abi_at"], p["fc_abi_len"]), 5), k)), value), lambda: e.set("fc_abi_copy", 0)))
 
+        def win64():
+            """S15e.3 (ADR-317): the fifth and later arguments above the shadow space, the first four in rcx, rdx, r8,
+            r9, then a COM method through the interface's vtable or the import's IAT slot."""
+            e.var("fc_com", e.call(_FN["com_method"], p["fc_obj"]))  # NONE: an ordinary import
+            e.if_(e.eq(p["fc_com"], COM_MALFORMED), lambda: _call(e, "com_reject", p["fc_obj"], _e(e, E_F)))
+
+            def stacked():
+                e.var("fc_o", e.ld(e.add(_e(e, E_ARGS), p["fc_k"])))
+                e.var("fc_slot", e.add(32, e.mul(e.sub(p["fc_k"], 4), 8)))
+                _location(e, p["fc_o"], "fc_kind", "fc_where")
+                e.if_(e.eq(p["fc_kind"], LOC_REG), lambda: _store(e, p["fc_where"], p["fc_slot"], 8), lambda: (
+                    _materialize(e, WIN64_SCRATCH, p["fc_kind"], p["fc_where"], _wbytes(e, p["fc_o"])), _store(e, WIN64_SCRATCH, p["fc_slot"], 8)))
+
+            e.for_("fc_k", 4, p["fc_n"], stacked)
+            e.for_("fc_k", 0, p["fc_n"], lambda: e.st(e.add(_e(e, E_REGS), p["fc_k"]), _select_register(e, p["fc_k"], ARGUMENT_REGISTERS)))
+            _se(e, E_NARGS, e.sel(e.lt(4, p["fc_n"]), 4, p["fc_n"]))
+            _call(e, "place_arguments", m)
+
+            def real():
+                # ``mov rax, [rcx]; call [rax + 8k]`` for a COM method, else ``call [rip + slot]`` (the image binds it).
+                e.if_(e.ne(p["fc_com"], NONE), lambda: (_bx(e, 0xFF018B48, 4, True), _bx(e, 0x90, 1, True), _bx(e, e.mul(p["fc_com"], 8), 4, True)),
+                      lambda: (_bx(e, 0x15FF, 2, True), _record_call(e, p["fc_obj"], 0), _bx(e, 0, 4, True)))
+
+            e.if_(e.ne(_e(e, E_REAL), 0), real)
+
         copy_suffix()
         e.if_(e.both(e.eq(p["fc_abi"], ABI_STARTUP), e.eq(p["fc_start"], 0)), unknown_startup)
-        e.if_(e.ne(p["fc_start"], 0), startup_read, lambda: e.if_(e.eq(p["fc_rec"], 0), sysv, syscall))
+        e.if_(e.ne(p["fc_windows"], 0), win64, lambda: e.if_(e.ne(p["fc_start"], 0), startup_read, lambda: e.if_(e.eq(p["fc_rec"], 0), sysv, syscall)))
         _call(e, "after_call", m)
         _retire_arguments(e, m, p["fc_n"])
 
@@ -2774,7 +2822,7 @@ def _capture_end(e: E, name: str):
 def _emit_function_fn(tables):
     """``compile_register_resident``'s emission of function ``f`` after its analyses: 1 emitted, 0 when the bootstrap
     returns None (a block is lowered by another path); NONE (declined) where the bootstrap fails."""
-    from xax_selfhost_x86_64_general import G_ENTRY
+    from xax_selfhost_x86_64_general import G_ENTRY, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -2783,7 +2831,7 @@ def _emit_function_fn(tables):
         e.for_("ef_v", 0, n, lambda: (_set_rt(e, T_REG, p["ef_v"], NONE), _set_rt(e, T_ESTAMP, p["ef_v"], 0)))
         e.for_("ef_r", 0, 16, lambda: _set_regv(e, p["ef_r"], NONE))
         _se(e, E_STAMP, 0)
-        _se(e, E_PROCESS, e.flag(e.eq(p["f"], _g(e, G_ENTRY))))
+        _se(e, E_PROCESS, e.flag(e.both(e.eq(p["f"], _g(e, G_ENTRY)), e.eq(_g(e, G_WINDOWS), 0))))  # S15e.3: no process entry on PE
         _se(e, E_F, p["f"])
         for slot in (E_NTABLES, E_USED, E_REAL, E_NSTUBS, E_NTRAPS, E_FRAME, E_CLOSED, E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
             _se(e, slot, 0)
@@ -2800,15 +2848,15 @@ def _emit_function_fn(tables):
             e.if_(e.lt(p["ef_spills"], p["ef_r"]), lambda: e.set("ef_spills", p["ef_r"]))
 
         e.for_("ef_bi", 0, p["ef_nb"], plan)
-        # The frame: SysV preserves rbx, rbp, r12-r15; a process entry preserves nothing.
+        # The frame: SysV preserves rbx, rbp, r12-r15, Win64 (S15e.3) also rsi and rdi; a process entry preserves nothing.
         e.var("ef_saved", e.alloc(9))
         _ok(e, e.ne(p["ef_saved"], NONE))
         e.var("ef_ns", 0)
         e.var("ef_used", _e(e, E_USED))
         for register in CALLEE_SAVED:
-            if register in PINNABLE:
-                e.if_(e.both(e.eq(_e(e, E_PROCESS), 0), e.ne(e.and_(p["ef_used"], 1 << register), 0)),
-                      lambda register=register: (e.st(e.add(p["ef_saved"], p["ef_ns"]), register), e.set("ef_ns", e.add(p["ef_ns"], 1))))
+            preserved = e.eq(_e(e, E_PROCESS), 0) if register in PINNABLE else e.ne(_g(e, G_WINDOWS), 0)
+            e.if_(e.both(preserved, e.ne(e.and_(p["ef_used"], 1 << register), 0)),
+                  lambda register=register: (e.st(e.add(p["ef_saved"], p["ef_ns"]), register), e.set("ef_ns", e.add(p["ef_ns"], 1))))
         e.var("ef_payload", e.add(_ra(e, R_DYN_BASE), e.mul(p["ef_spills"], 8)))
         e.var("ef_pushed", e.add(e.sel(e.ne(_e(e, E_PROCESS), 0), 0, 8), e.mul(p["ef_ns"], 8)))
         e.var("ef_frame", 0)
@@ -2982,6 +3030,7 @@ def emit_prologue(e: E):
         _ok(e, e.ne(at, NONE))
         _se(e, slot, at)
     _se(e, E_FAIL, 0)  # S12f.2: no rejection yet (the arena is not re-zeroed between runs)
+    _se(e, E_FWD_ON, 0)  # S15e.3: store forwarding is the Windows frame path's alone
     e.var("ep_pow", 1)
     e.for_("ep_r", 0, 16, lambda: (_set_ra(e, e.add(E_POW, e.p["ep_r"]), e.p["ep_pow"]), e.set("ep_pow", e.mul(e.p["ep_pow"], 2))))
 

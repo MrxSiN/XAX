@@ -35,7 +35,7 @@ from xax_artifact import RISCV64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPIL
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
     AARCH64_LINUX_ELF_DYNAMIC_FORMAT, AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_IDENTITIES, CID_SIZE, RISCV64_ARCHITECTURE,
-    RISCV64_RAW_FORMAT, Kind, uleb,
+    RISCV64_RAW_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT, X86_64_LINUX_ELF_EXEC_FORMAT, Kind, uleb,
 )
 from xax_selfhost_facts import E, _function
 from xax_ed25519 import ALGORITHM, DOMAIN
@@ -48,7 +48,7 @@ B_DIGEST = 40
 B_INPUTS = 44
 # S15e.1 (ADR-308), S15e.2 (ADR-315): the program the driver lowers the request's target with.
 B_PATH = 45
-PATH_LINUX_X86_64, PATH_RISCV64_RAW, PATH_LINUX_AARCH64 = 0, 1, 2
+PATH_LINUX_X86_64, PATH_RISCV64_RAW, PATH_LINUX_AARCH64, PATH_WINDOWS_PE = 0, 1, 2, 3
 INPUTS_AT, INPUTS_LIMIT = 46 << 20, 64  # the builder baseline's bound; the committed compiler's is 100 (ledger 0001, ADR-306)
 TRUST_AT = 47 << 20  # S15c.3: per snapshot signature, 1 once it is accepted
 ACCEPT, REJECT, DECLINE = 0, 1, 2
@@ -61,7 +61,10 @@ HOSTED_PROFILES = (
     (GENERAL_IDENTITIES[1], PATH_LINUX_X86_64, 1, None, ()),
     (AARCH64_LINUX_IDENTITIES[0], PATH_LINUX_AARCH64, 0, 3, (AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT)),
     (AARCH64_LINUX_IDENTITIES[1], PATH_LINUX_AARCH64, 1, 3, (AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT)),
+    # S15e.3 (ADR-317): any image format but the Linux x86-64 ELF ones (``_hosted_container`` tries those first).
+    (b"x86_64-windows-pe-v1", PATH_WINDOWS_PE, 0, 1, None),
 )
+LINUX_X86_64_FORMATS = (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT)
 KIND_NAMES = {int(kind): kind.name for kind in Kind}
 FORM_NAMES = {int(form): form.name for form in BuildForm}
 ARTIFACT_NAMES = {int(kind): kind.name for kind in ArtifactKind}
@@ -452,7 +455,9 @@ def _build_request(tables, verify):
             e.if_(e.lt(p["cur"], p["target_end"]), fields)
             for index, (_identity, _path, _dynamic, architecture, formats) in enumerate(HOSTED_PROFILES):
                 if architecture is not None:
-                    fits = e.both(e.eq(p["architecture"], architecture), e.either(*(e.eq(p["image_format"], value) for value in formats)))
+                    listed = (e.either(*(e.eq(p["image_format"], value) for value in formats)) if formats is not None
+                              else e.not_(e.either(*(e.eq(p["image_format"], value) for value in LINUX_X86_64_FORMATS))))
+                    fits = e.both(e.eq(p["architecture"], architecture), listed)
                     e.if_(e.both(e.eq(p["profile"], index), e.not_(fits)), lambda: e.set("hosted", 0))
             e.if_(e.ne(p["riscv"], 0), lambda: e.set("path", PATH_RISCV64_RAW))
             _set(e, B_PATH, p["path"])

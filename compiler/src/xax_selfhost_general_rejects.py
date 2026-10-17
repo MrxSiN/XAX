@@ -161,8 +161,9 @@ def _pointer_width_reject_fn(tables):
 
 
 def _abi_reject_fn(tables):
-    """NATIVE-FOREIGN-ABI of declaration ``obj`` in function ``f``: the frame path expects ``win64-c`` (its call path
-    is the Win64 one), the register path the ABIs it owns on Linux."""
+    """NATIVE-FOREIGN-ABI of declaration ``obj`` in function ``f``: ``frame`` 1, the frame path, expects ``win64-c`` (its
+    call path is the Win64 one); 0 the register path the ABIs it owns on Linux; 2 (S15e.3) the register path on Windows,
+    ``[win64-c]``."""
     def build(e: E):
         from xax_selfhost_general_emit import graph_cid_words, reject_at
 
@@ -173,8 +174,9 @@ def _abi_reject_fn(tables):
             D.text(e, "XAX.FOREIGN.ABI")
             D.cid(e, graph_cid_words(e, p["f"]))
             D.text(e, "NATIVE-FOREIGN-ABI")
-            e.if_(e.ne(p["frame"], 0), lambda: D.text(e, WIN64_C.decode()), lambda: (
-                D.put(e, D.T_LIST), D.put(e, len(REGISTER_OWNED)), [D.text(e, abi.decode()) for abi in REGISTER_OWNED]))
+            e.if_(e.eq(p["frame"], 1), lambda: D.text(e, WIN64_C.decode()), lambda: e.if_(e.eq(p["frame"], 2), lambda: (
+                D.put(e, D.T_LIST), D.put(e, 1), D.text(e, WIN64_C.decode())), lambda: (
+                D.put(e, D.T_LIST), D.put(e, len(REGISTER_OWNED)), [D.text(e, abi.decode()) for abi in REGISTER_OWNED])))
             _packed(e, D.T_STR, p["ar_abi"], p["ar_alen"])
 
         reject_at(e, write)
@@ -430,7 +432,75 @@ def _imports_reject_fn(tables):
     return _function(("names", "n"), build, tables)
 
 
+COM_PREFIX, VTABLE = b"com:", b"vtable:"
+COM_MALFORMED = NONE - 1  # ``com_method_slot``'s -1
+
+
+def _com_method_fn(tables):
+    """``com_method_slot`` of ``win64-c`` declaration ``obj`` (S15e.3, ADR-317): NONE for an ordinary import (its library
+    is not ``com:...``), the vtable slot of a well-formed COM method (``vtable:<k>``, canonical decimal below 2**24, a
+    named interface, a ``bits<64>`` first input), else ``COM_MALFORMED``."""
+    from xax_compiler import bits_type
+    from xax_selfhost_general_image import _foreign_strings
+    from xax_selfhost_views_backend import _payload_uleb
+
+    first_input = bits_type(64).cid
+
+    def build(e: E):
+        p = e.p
+        _foreign_strings(e, p["obj"], "cm")
+        e.var("cm_com", e.flag(e.le(len(COM_PREFIX), p["cm_libn"])))
+        e.if_(e.ne(p["cm_com"], 0), lambda: [e.if_(e.ne(e.rd(e.add(p["cm_lib"], k)), byte), lambda: e.set("cm_com", 0))
+                                             for k, byte in enumerate(COM_PREFIX)])
+        e.if_(e.eq(p["cm_com"], 0), lambda: e.give(NONE))
+        # ``decode_com_slot``: the digits after ``vtable:``, no leading zero but ``0`` itself, below 2**24.
+        e.var("cm_ok", e.flag(e.lt(len(VTABLE), p["cm_symn"])))
+        e.if_(e.ne(p["cm_ok"], 0), lambda: [e.if_(e.ne(e.rd(e.add(p["cm_sym"], k)), byte), lambda: e.set("cm_ok", 0)) for k, byte in enumerate(VTABLE)])
+        e.var("cm_slot", 0)
+        e.var("cm_digits", e.sub(p["cm_symn"], len(VTABLE)))
+
+        def digit():
+            e.var("cm_d", e.rd(e.add(e.add(p["cm_sym"], len(VTABLE)), p["cm_k"])))
+            e.if_(e.either(e.lt(p["cm_d"], 48), e.lt(57, p["cm_d"])), lambda: e.set("cm_ok", 0))
+            e.if_(e.both(e.eq(p["cm_k"], 0), e.eq(p["cm_d"], 48), e.lt(1, p["cm_digits"])), lambda: e.set("cm_ok", 0))
+            e.if_(e.lt(p["cm_slot"], 1 << 24), lambda: e.set("cm_slot", e.add(e.mul(p["cm_slot"], 10), e.sub(p["cm_d"], 48))))
+
+        e.if_(e.ne(p["cm_ok"], 0), lambda: e.for_("cm_k", 0, p["cm_digits"], digit))
+        e.if_(e.le(1 << 24, p["cm_slot"]), lambda: e.set("cm_ok", 0))
+        e.if_(e.le(p["cm_libn"], len(COM_PREFIX)), lambda: e.set("cm_ok", 0))
+        # The first input: the identity's inputs follow the name (their count, then 32-byte CIDs).
+        e.var("cm_at", e.add(p["cm_sym"], p["cm_symn"]))
+        e.var("cm_inputs", _payload_uleb(e, "cm_at"))
+        e.if_(e.eq(p["cm_inputs"], 0), lambda: e.set("cm_ok", 0), lambda: [
+            e.if_(e.ne(e.rd(e.add(p["cm_at"], k)), byte), lambda: e.set("cm_ok", 0)) for k, byte in enumerate(first_input)])
+        e.give(e.sel(e.ne(p["cm_ok"], 0), p["cm_slot"], COM_MALFORMED))
+    return _function(("obj",), build, tables)
+
+
+def _com_reject_fn(tables):
+    """WIN64-COM-METHOD of declaration ``obj`` in function ``f`` (a malformed COM method), quoting its name."""
+    from xax_selfhost_general_image import _foreign_strings
+
+    def build(e: E):
+        from xax_selfhost_general_emit import graph_cid_words, reject_at
+
+        p = e.p
+        _foreign_strings(e, p["obj"], "cr")
+
+        def write():
+            D.text(e, "XAX.FOREIGN.ABI")
+            D.cid(e, graph_cid_words(e, p["f"]))
+            D.text(e, "WIN64-COM-METHOD")
+            D.text(e, "vtable:<k> and a bits<64> interface pointer first")
+            _packed(e, D.T_STR, p["cr_sym"], p["cr_symn"])
+
+        reject_at(e, write)
+    return _function(("obj", "f"), build, tables)
+
+
 def add_reject_functions(add, tables):
+    add("com_method", _com_method_fn(tables))
+    add("com_reject", _com_reject_fn(tables))
     add("encoding_reject", _encoding_reject_fn(tables))
     add("pointer_width_reject", _pointer_width_reject_fn(tables))
     add("abi_reject", _abi_reject_fn(tables))

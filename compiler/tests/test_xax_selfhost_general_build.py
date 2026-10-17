@@ -275,9 +275,28 @@ class GeneralBuildTests(unittest.TestCase):
         self.assertEqual(kind, "image")
         self.assertEqual(run_linux_aarch64_executable(artifact).returncode, 7)
 
+    def test_windows_pe_executables(self):
+        """S15e.3 (ADR-317): the Windows PE32+ profile is lowered by the XAX general x86-64 program: the executable is
+        the bootstrap's bytes (``build`` with the XAX programs opted out) with its provenance; a Linux process entry
+        is the bootstrap's rejection."""
+        from test_xax_linux import _status_program
+        from test_xax_pe import hosted_fixture, thread_callback_fixture
+
+        for name, fixture in (("hosted", hosted_fixture), ("thread", thread_callback_fixture)):
+            with self.subTest(name):
+                reader, _entry, target = fixture()
+                objects, entry = _parts(reader)
+                program = _program(tuple(item for item in objects if item.cid != target.cid), {b"image": entry}, target)
+                outcome = self.assertBuild(program)
+                self.assertEqual(outcome[0], "image")
+                self.assertEqual(outcome[1], compile_pe_executable(reader, entry.cid, target, frontend="python"))
+        program, _entry, _target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
+        objects, entry = _parts(program)
+        self.assertEqual(self.assertBuild(_program(objects, {b"image": entry}, X.x86_64_windows_pe_target()))[0], "rejected")
+
     def test_other_paths_decline(self):
-        """Android packages, Windows DLLs, and targets other than the Linux x86-64 and RISC-V raw profiles are
-        ``build``'s other paths: the driver declines and writes nothing."""
+        """Android packages, Windows DLLs, and targets other than the Linux x86-64, Linux AArch64, Windows PE32+ and
+        RISC-V raw profiles are ``build``'s other paths: the driver declines and writes nothing."""
         from test_xax_linux import _status_program
 
         program, _entry, target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
@@ -285,7 +304,6 @@ class GeneralBuildTests(unittest.TestCase):
         cases = {
             "android": _program(objects, {b"image": entry}, target, artifacts=(ArtifactKind.ANDROID_UNSIGNED_APK,)),
             "dll": _program(objects, {b"image": entry}, target, artifacts=(ArtifactKind.WINDOWS_DLL,)),
-            "windows": _program(objects, {b"image": entry}, X.x86_64_windows_pe_target()),
             "views": _program(objects, {b"image": entry}, X.x86_64_views_exec_target()),
             "riscv dll": _program(objects, {b"image": entry}, X.riscv64_baremetal_target(), artifacts=(ArtifactKind.WINDOWS_DLL,)),
         }
