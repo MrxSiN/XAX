@@ -20,9 +20,10 @@ register allocator (``xax_aarch64_regalloc.compile_linux_function``) over the lo
 This module builds the program: the front end here, the view from ``xax_selfhost_general_view``, value ranges from
 ``xax_selfhost_general_ranges``, and the AArch64 lowering, image and ELF container from
 ``xax_selfhost_aarch64_lower``.  Its input is the general program's object table
-(``xax_selfhost_x86_64_general.general_object_table``).  Where the bootstrap would take another path (a function the
-register allocator declines, a value form or operation this program does not lower, a recursion group, an atomic
-operation) the program declines and the bootstrap builds.
+(``xax_selfhost_x86_64_general.general_object_table``).  A function the register allocator returns None for is
+lowered on the frame path (``xax_selfhost_aarch64_frame``, S15e.2b).  Where the bootstrap would take another path (the
+legacy register path, a code address, an indirect call, an atomic operation) the program declines and the bootstrap
+builds.
 """
 
 from __future__ import annotations
@@ -40,14 +41,14 @@ from xax_selfhost_views_backend import (
 from xax_selfhost_x86_64_general import (
     COUNT_AT, ENTRY_CONTRACT_EXPECTED, FRAME, F_AT, F_BLOCKS, F_FN, F_GRAPH, F_NODES, GENERAL_ARENA_AT, G_ENTRY, G_FRAMES,
     G_GROUPOF, G_LALIGN, G_LSIZE, G_LSTACK, G_MEMBERS, G_MTAB, G_NARGS, G_TABI, G_TARGET, G_TFMT, ORDER_AT, OK, _group_interface,
-    _proof, _text_at,
+    _proof, _text_at, group_member_tables,
 )
 
 STORE_PATH = bootstrap_dir() / "xax_aarch64_general.xax"
 AARCH64 = 3
 LINUX_AARCH64_ABI = 5
 ELF_FORMATS = (6, 7)  # AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT
-DECLINE_OPERATIONS = tuple(int(op) for op in (Operation.CALL_GROUP_MEMBER, Operation.FUNCTION_ADDRESS))
+DECLINE_OPERATIONS = (int(Operation.FUNCTION_ADDRESS),)  # code addresses: the bootstrap's bundle carries their fixups
 
 # The bootstrap's rejections this program decides: (code, rule) by site.
 RULES = (
@@ -57,6 +58,8 @@ RULES = (
     ("XAX.AARCH64.ABI", "AARCH64-ABI-RETURNS"),
     ("XAX.AARCH64.UNSUPPORTED_OPERATION", "AARCH64-OP-TARGET-SUPPORTED"),
     ("XAX.AARCH64.UNSUPPORTED_TERMINATOR", "AARCH64-TERMINATOR-TARGET-SUPPORTED"),
+    ("XAX.FOREIGN.ABI", "AARCH64-FOREIGN-ABI"),  # during code generation (``_require_foreign_abi``)
+    ("XAX.AARCH64.FRAME", "AARCH64-FRAME-SIZE"),  # S15e.2b (ADR-316): the frame path's layout
 )
 SITE = {rule: site for site, (_code, rule) in enumerate(RULES)}
 
@@ -85,9 +88,8 @@ def _reject(e: E, condition, rule: str, entity, expected, actual):
 
 def _prologue(tables):
     """``_function_closure``'s checks of function ``f`` before its graph, on a ``_general_aarch64_target``: every
-    machine value's AAPCS64 layout, then at most one machine result (``AARCH64-ABI-RETURNS``).  A value other than a
-    ``bits<N>`` or a pointer declines (the bootstrap lays out floats, aggregates and sums).  1, or NONE (rejected or
-    declined)."""
+    machine value's AAPCS64 layout (a value without one declines: the bootstrap's AARCH64-ABI-VALUE), then at most
+    one machine result (``AARCH64-ABI-RETURNS``).  1, or NONE (rejected or declined)."""
     def build(e: E):
         p = e.p
         e.var("pi", _call(e, "interface", p["f"]))
@@ -103,8 +105,7 @@ def _prologue(tables):
             return e.ld(e.add(e.add(p["prt"], 1), q))
 
         def scalar(t):
-            form = _type_form(e, t)
-            _ok(e, e.either(e.eq(form, 1), e.eq(form, 2)))
+            _call(e, "abi_layout", t)  # S15e.2b (ADR-316): floats, products and sums are laid out too
 
         e.for_("q", 0, p["pnp"], lambda: e.if_(e.not_(_proof(e, param(p["q"]))), lambda: scalar(param(p["q"]))))
         e.var("pmr", 0)
@@ -117,12 +118,14 @@ def _prologue(tables):
 
 def _node(tables):
     """``_function_closure``'s checks of the node just read (``G_NI``) in graph ``g`` of function ``f``: the target's
-    operation list, and the visit of a called function.  The function it visits, NONE-1 when there is none, NONE when
-    rejected or declined (a group member call or a code address: the bootstrap decides)."""
+    operation list, and the visit of a called function.  In a group member's graph ``call.group_member`` is a direct
+    call of member ``member`` of the same group (``parse_function_graph``, S15e.2b).  The function it visits, NONE-1
+    when there is none, NONE when rejected or declined (a code address: the bootstrap decides)."""
     def build(e: E):
         p = e.p
         ni = _g(e, G_NI)
-        e.var("nop", e.ld(e.add(ni, NI_OP)))
+        e.var("nraw", e.ld(e.add(ni, NI_OP)))
+        e.var("nop", e.sel(e.eq(p["nraw"], int(Operation.CALL_GROUP_MEMBER)), int(Operation.CALL_DIRECT), p["nraw"]))
         op = p["nop"]
         _ok(e, e.not_(e.either(*(e.eq(op, item) for item in DECLINE_OPERATIONS))))
         supported = e.both(e.lt(op, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(op, 256), op, 0)), 0))
@@ -130,16 +133,28 @@ def _node(tables):
         e.var("nvisit", NONE - 1)
 
         def callee():
-            entity = e.ld(e.add(ni, NI_ENTITY))
-            _ok(e, e.ne(entity, NONE))
-            e.var("nc", _reference(e, p["g"], entity))
+            e.var("nc", NONE)
+
+            def direct():
+                entity = e.ld(e.add(ni, NI_ENTITY))
+                _ok(e, e.ne(entity, NONE))
+                e.set("nc", _reference(e, p["g"], entity))
+
+            def sibling():
+                e.var("ngroup", e.ld(e.add(_g(e, G_GROUPOF), p["f"])))
+                _ok(e, e.ne(p["ngroup"], NONE))
+                e.var("nmembers", e.ld(e.add(_g(e, G_MTAB), p["ngroup"])))
+                _ok(e, e.both(e.ne(p["nmembers"], NONE), e.lt(p["member"], e.ld(p["nmembers"]))))
+                e.set("nc", e.ld(e.add(e.add(p["nmembers"], 1), p["member"])))
+
+            e.if_(e.eq(p["nraw"], int(Operation.CALL_GROUP_MEMBER)), sibling, direct)
             _ok(e, e.both(e.ne(p["nc"], NONE), e.eq(_kind(e, p["nc"]), int(Kind.FUNCTION))))
             fresh = e.eq(e.ld(e.add(_g(e, G_TW), p["nc"])), 0)
             e.if_(e.both(fresh, e.eq(_call(e, "erased", p["nc"]), 0)), lambda: e.set("nvisit", p["nc"]))
 
         e.if_(e.eq(op, int(Operation.CALL_DIRECT)), callee)
         e.give(p["nvisit"])
-    return _function(("g", "f"), build, tables)
+    return _function(("g", "f", "member"), build, tables)
 
 
 def _push(e: E, f):
@@ -151,7 +166,7 @@ def _push(e: E, f):
     e.st(GLOBALS + G_MEMBERS, e.add(_g(e, G_MEMBERS), 1))
     _call(e, "prologue", p["vf"])
     e.var("vg", e.ld(_call(e, "interface", p["vf"])))
-    _ok(e, e.eq(_kind(e, p["vg"]), int(Kind.GRAPH_FRAGMENT)))  # a recursion group member: the bootstrap decides
+    _ok(e, e.eq(_kind(e, p["vg"]), int(Kind.GRAPH_FRAGMENT)))
     e.var("vs", _at(e, G_PAY, p["vg"]))
     e.var("vframe", e.add(_g(e, G_FRAMES), e.mul(p["depth"], FRAME)))
     blocks = e.rd(p["vs"])
@@ -179,9 +194,9 @@ def _frontend(tables):
             e.set("ra", e.add(e.add(payload_at, 1), e.rd(payload_at)))
 
         e.for_("o", 0, e.add(S, 1), skip)
+        # The store's objects, the bound target, then the group member functions the store does not hold (S15e.2b).
         e.var("extras_at", p["ra"])
-        _ok(e, e.eq(e.rd(p["extras_at"]), 0))  # recursion group member functions: the bootstrap decides
-        e.var("total", e.add(S, 1))
+        e.var("total", e.add(e.add(S, 1), e.rd(p["extras_at"])))
         total = p["total"]
         for slot in (G_REC, G_PAY, G_TW, G_ERASED, G_IFACE, G_ORDER, G_REFS, G_LSIZE, G_LALIGN, G_LSTACK, G_MTAB, G_GROUPOF):
             table = e.alloc(e.add(total, 2))
@@ -232,6 +247,7 @@ def _frontend(tables):
             e.for_("k", 0, count, lambda: e.st(e.add(p["refs"], p["k"]), e.call(_FN["find"], e.add(first, e.mul(p["k"], CID_WORDS)))))
 
         e.for_("o", 0, O, resolve)
+        group_member_tables(e, O)
 
         # 1. The target (``decode_native_target``'s fields up to the terminator list).
         target = p["target"]
@@ -343,8 +359,9 @@ def _frontend(tables):
             def node():
                 e.st(e.add(fr, F_NODES), e.sub(e.ld(e.add(fr, F_NODES)), 1))
                 e.var("nat0", e.ld(e.add(fr, F_AT)))
+                e.var("nmember", e.rd(e.add(p["nat0"], 1)))  # ``call.group_member``'s member index (else unused)
                 e.st(e.add(fr, F_AT), _call(e, "node_info", p["nat0"]))
-                e.var("visit", _call(e, "node", e.ld(e.add(fr, F_GRAPH)), e.ld(e.add(fr, F_FN))))
+                e.var("visit", _call(e, "node", e.ld(e.add(fr, F_GRAPH)), e.ld(e.add(fr, F_FN)), p["nmember"]))
                 e.if_(e.ne(p["visit"], NONE - 1), lambda: _push(e, p["visit"]))
 
             def terminator():
@@ -417,6 +434,9 @@ def build_aarch64_program():
     add("interface", _group_interface(tables))
     add("erased", _erased(tables))
     add("borrowed", _borrowed(tables))
+    from xax_selfhost_x86_64_general import _layout
+
+    add("abi_layout", _layout(tables))
     add("prologue", _prologue(tables))
     add("node", _node(tables))
     add_lower_functions(add, tables)

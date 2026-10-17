@@ -18,7 +18,9 @@ from __future__ import annotations
 
 from xax_compiler import IntCompare, Operation, TerminatorKind
 from xax_selfhost_facts import E, NONE, _function
-from xax_selfhost_general_view import N_ATTR, N_NOPS, N_NRES, N_OP, _f, _operand as _operand_, _output
+import xax_selfhost_diagnostics as D
+from xax_selfhost_general_view import N_ATTR, N_NOPS, N_NRES, _f, _operand as _operand_, _output
+from xax_selfhost_general_regalloc import _eop  # a group-member call is the direct call the bootstrap's graph shows
 from xax_selfhost_views_backend import _FN, _call, _g, _ok
 
 
@@ -505,7 +507,7 @@ def _binary_fn(tables):
     def build(e: E):
         p = e.p
         node, result = p["node"], p["result"]
-        e.var("bi_op", _f(e, node, N_OP))
+        e.var("bi_op", _eop(e, node))
         op = p["bi_op"]
         e.var("bi_width", _w(e, result))
         e.var("bi_wide", e.flag(e.lt(32, p["bi_width"])))
@@ -588,7 +590,7 @@ def _divide_fn(tables):
     def build(e: E):
         p = e.p
         node, result = p["node"], p["result"]
-        e.var("dv_op", _f(e, node, N_OP))
+        e.var("dv_op", _eop(e, node))
         e.var("dv_width", _w(e, result))
         e.var("dv_wide", e.flag(e.lt(32, p["dv_width"])))
         e.var("dv_dividend", _read(e, _operand_(e, node, 0)))
@@ -715,7 +717,7 @@ def _checked_fn(tables):
         node, result = p["node"], p["result"]
         e.var("ck_size", e.rd(e.add(_f(e, node, N_ATTR), 1)))
         e.var("ck_ext", _call(e, "extent", _operand_(e, node, 0)))
-        e.var("ck_load", e.flag(e.eq(_f(e, node, N_OP), int(Operation.CHECKED_LOAD_BITS_LE))))
+        e.var("ck_load", e.flag(e.eq(_eop(e, node), int(Operation.CHECKED_LOAD_BITS_LE))))
         _const(e, _operand_(e, node, 1), "ck_ic")
         e.var("ck_neg", e.flag(e.lt(p["ck_ext"], p["ck_size"])))
         e.var("ck_bound", e.sub(p["ck_ext"], p["ck_size"]))
@@ -806,7 +808,7 @@ def _call_fn(tables):
     def build(e: E):
         p = e.p
         node, result = p["node"], p["result"]
-        e.var("cl_op", _f(e, node, N_OP))
+        e.var("cl_op", _eop(e, node))
         e.var("cl_target", NONE)
 
         def direct():
@@ -822,9 +824,23 @@ def _call_fn(tables):
             from xax_selfhost_x86_64_general import G_TFMT
             from xax_selfhost_views_backend import GLOBALS
 
-            dynamic = e.eq(e.ld(GLOBALS + G_TFMT), 7)
-            # ``_require_foreign_abi``: a syscall always, a C import only on the dynamic-loader profile; else the bootstrap rejects.
-            _ok(e, e.either(e.eq(p["cl_class"], ABI_SYSCALL_CLASS), e.both(e.eq(p["cl_class"], ABI_C_CLASS), dynamic)))
+            e.var("cl_dynamic", e.flag(e.eq(e.ld(GLOBALS + G_TFMT), 7)))
+            # ``_require_foreign_abi``: a syscall always, a C import only on the dynamic-loader profile; else
+            # ``AARCH64-FOREIGN-ABI`` on the function's graph, quoting the declaration's ABI (S15e.2, ADR-315).
+            allowed = e.either(e.eq(p["cl_class"], ABI_SYSCALL_CLASS), e.both(e.eq(p["cl_class"], ABI_C_CLASS), e.ne(p["cl_dynamic"], 0)))
+
+            def write():
+                from xax_selfhost_aarch64_general import SITE
+                from xax_selfhost_aarch64_lower import A_FN
+
+                e.call(_FN["diagnostic"], SITE["AARCH64-FOREIGN-ABI"], e.ld(_call(e, "interface", _a(e, A_FN))))
+                D.put(e, D.T_LIST)
+                D.put(e, e.add(1, p["cl_dynamic"]))
+                D.text(e, SYSCALL_ABI.decode())
+                e.if_(e.ne(p["cl_dynamic"], 0), lambda: D.text(e, C_ABI.decode()))
+                _call(e, "text_at", p["cl_abi_cur"], p["cl_abi_alen"])
+
+            D.reject_unless(e, allowed, write)
             e.set("cl_target", e.add(p["cl_decl"], 1 << 40))
 
         e.if_(e.eq(p["cl_op"], int(Operation.CALL_DIRECT)), direct, foreign)
@@ -872,7 +888,7 @@ def _node_fn(tables):
         e.var("nd_b", e.ld(e.add(_g(e, G_BLIST), p["blk"])))
         e.var("nd_node", e.ld(e.add(_f(e, p["nd_b"], B_NODES), p["m"])))
         node = p["nd_node"]
-        e.var("nd_op", _f(e, node, N_OP))
+        e.var("nd_op", _eop(e, node))
         op = p["nd_op"]
         e.var("nd_result", e.call(_FN["a64_defines"], p["blk"], p["m"]))
         result = p["nd_result"]
@@ -995,8 +1011,32 @@ def _node_fn(tables):
         e.if_(e.eq(op, int(Operation.ADDRESS_OFFSET)), offset)
         e.if_(e.eq(op, int(Operation.HEAP_VIEW)), lambda: (
             e.var("nd_raw", _read(e, _operand_(e, node, 0))), _branch(e, e.add(0xB4000000, p["nd_raw"]), _trap(e, BRK_NULL_HEAP), 19), e.give(0)))
-        # ``pointer.rebase``: the element alignment's shift is not lowered here yet; the bootstrap builds.
-        _ok(e, e.ne(op, int(Operation.POINTER_REBASE)))
+
+        def rebase():
+            """S15e.2b (ADR-316): trap unless ``0 <= address - view <= span`` and the distance is a multiple of the
+            result's alignment (one rotate and one unsigned compare); the result aliases the address."""
+            from xax_selfhost_views_backend import G_PAY, _at, _payload_uleb
+
+            e.var("nd_extent", _call(e, "extent", _operand_(e, node, 0)))
+            e.var("nd_wanted", e.rd(e.add(_f(e, node, N_ATTR), 1)))
+            e.if_(e.lt(p["nd_extent"], p["nd_wanted"]), lambda: (_branch(e, 0x14000000, _trap(e, BRK_MEMORY_CHECK), 26), e.give(0)))
+            e.var("nd_pat", e.add(_at(e, G_PAY, _vf(e, G_VTYPE, _output(e, node, 0))), 1))  # (an aliased result is no value here)
+            for _field in range(3):  # the space, the element, the permission
+                _payload_uleb(e, "nd_pat")
+            e.var("nd_alignment", _payload_uleb(e, "nd_pat"))
+            e.var("nd_shift", 0)
+            e.var("nd_unit", 1)  # 2 ** shift: the alignment's highest power of two
+            e.while_(lambda: e.le(e.mul(p["nd_unit"], 2), p["nd_alignment"]), lambda: (e.set("nd_shift", e.add(p["nd_shift"], 1)), e.set("nd_unit", e.mul(p["nd_unit"], 2))))
+            e.var("nd_address", _read(e, _operand_(e, node, 1)))
+            e.var("nd_view", _read(e, _operand_(e, node, 0)))
+            e.var("nd_distance", _scratch(e))
+            _emit(e, _three(e, SUB, 1, p["nd_distance"], p["nd_address"], p["nd_view"]))
+            e.if_(e.ne(p["nd_shift"], 0), lambda: _emit(e, _ror(e, p["nd_distance"], p["nd_distance"], p["nd_shift"], 1)))
+            _compare_constant(e, p["nd_distance"], e.udiv(e.sub(p["nd_extent"], p["nd_wanted"]), p["nd_unit"]))
+            _branch(e, 0x54000000 | 8, _trap(e, BRK_MEMORY_CHECK), 19)  # b.hi
+            e.give(0)
+
+        e.if_(e.eq(op, int(Operation.POINTER_REBASE)), rebase)
 
         def load():
             e.var("nd_base", _read(e, _operand_(e, node, 0)))
@@ -1069,7 +1109,7 @@ def _emitting(e: E, blk, m, node, name: str):
     from xax_selfhost_aarch64_lower import A_DEAD, A_FUSED, RESOURCE, _node_word
 
     e.var(name, e.flag(e.both(e.ne(m, e.ld(e.add(_a(e, A_FUSED), blk))), e.eq(e.ld(_node_word(e, A_DEAD, blk, m)), 0),
-                              e.not_(_in_(e, _f(e, node, N_OP), NO_CODE)), e.not_(_in_(e, _f(e, node, N_OP), RESOURCE)))))
+                              e.not_(_in_(e, _eop(e, node), NO_CODE)), e.not_(_in_(e, _eop(e, node), RESOURCE)))))
     return e.p[name]
 
 
@@ -1087,7 +1127,7 @@ def _duplicable_fn(tables):
         def node():
             e.var("du_node", e.ld(e.add(_f(e, p["du_b"], B_NODES), p["du_m"])))
             e.if_(e.ne(_emitting(e, p["blk"], p["du_m"], p["du_node"], "du_e"), 0), lambda: (
-                e.set("du_n", e.add(p["du_n"], 1)), e.if_(_in_(e, _f(e, p["du_node"], N_OP), (int(Operation.CALL_DIRECT), int(Operation.CALL_FOREIGN))),
+                e.set("du_n", e.add(p["du_n"], 1)), e.if_(_in_(e, _eop(e, p["du_node"]), (int(Operation.CALL_DIRECT), int(Operation.CALL_FOREIGN))),
                                                           lambda: e.set("du_call", 1))))
 
         e.for_("du_m", 0, _f(e, p["du_b"], B_NNODES), node)
@@ -1113,7 +1153,7 @@ def _through_fn(tables):
             e.var("th_b", e.ld(e.add(_g(e, G_BLIST), p["th_t"])))
             e.var("th_quiet", e.flag(e.eq(_f(e, p["th_b"], B_KIND), BRANCH)))
             e.for_("th_m", 0, _f(e, p["th_b"], B_NNODES), lambda: (e.var("th_node", e.ld(e.add(_f(e, p["th_b"], B_NODES), p["th_m"]))), e.if_(e.not_(e.either(
-                e.ne(e.ld(_node_word(e, A_DEAD, p["th_t"], p["th_m"])), 0), _in_(e, _f(e, p["th_node"], N_OP), NO_CODE), _in_(e, _f(e, p["th_node"], N_OP), RESOURCE))),
+                e.ne(e.ld(_node_word(e, A_DEAD, p["th_t"], p["th_m"])), 0), _in_(e, _eop(e, p["th_node"]), NO_CODE), _in_(e, _eop(e, p["th_node"]), RESOURCE))),
                 lambda: e.set("th_quiet", 0))))
 
             def follow():
@@ -1531,6 +1571,36 @@ def emit_prologue(e: E):
         _set_a(e, slot, at)
 
 
+def _fixups_fn(tables):
+    """Every branch fixup patched with its label's offset: 26-bit ``b``/``bl``, 21-bit ``adr``, else 19-bit (``cbz``,
+    ``cbnz``, ``b.cond``); an unplaced label declines."""
+    def build(e: E):
+        p = e.p
+
+        def fixup():
+            e.var("fx_at", e.add(_a(e, X_FIX), e.mul(p["fx_k"], 3)))
+            e.var("fx_pos", e.ld(p["fx_at"]))
+            e.var("fx_bits", e.ld(e.add(p["fx_at"], 2)))
+            e.var("fx_target", e.ld(e.add(_a(e, X_LABELS), e.ld(e.add(p["fx_at"], 1)))))
+            _ok(e, e.ne(p["fx_target"], NONE))
+            e.var("fx_code", e.add(_a(e, X_CODE), p["fx_pos"]))
+            e.var("fx_word", 0)
+            for k in range(4):
+                e.set("fx_word", e.add(p["fx_word"], e.mul(e.ld(e.add(p["fx_code"], k)), 1 << (8 * k))))
+            # The byte offset modulo 2^32 (a backward offset wraps), then its fields.
+            e.var("fx_off", e.and_(e.sub(e.add(p["fx_target"], 1 << 32), p["fx_pos"]), 0xFFFFFFFF))
+            e.if_(e.eq(p["fx_bits"], 26), lambda: e.set("fx_word", e.add(p["fx_word"], e.and_(e.udiv(p["fx_off"], 4), 0x3FFFFFF))), lambda: e.if_(
+                e.eq(p["fx_bits"], 21), lambda: e.set("fx_word", e.add(e.add(p["fx_word"], e.mul(e.and_(p["fx_off"], 3), 1 << 29)),
+                                                                     e.mul(e.and_(e.udiv(p["fx_off"], 4), 0x7FFFF), 32))),
+                lambda: e.set("fx_word", e.add(p["fx_word"], e.mul(e.and_(e.udiv(p["fx_off"], 4), 0x7FFFF), 32)))))
+            for k in range(4):
+                e.st(e.add(p["fx_code"], k), e.and_(e.udiv(p["fx_word"], 1 << (8 * k)), 255))
+
+        e.for_("fx_k", 0, _a(e, X_NFIX), fixup)
+        e.give(0)
+    return _function((), build, tables)
+
+
 def _function_fn(tables):
     """``run()`` after the allocation: the frame, the prologue, the entry moves, a jump to the entry when it is not
     first, every block in layout order with its node ranges, the stubs, the used trap stubs (by code), the referenced
@@ -1662,26 +1732,7 @@ def _function_fn(tables):
         e.for_("fn_k", 0, p["fn_ntab"], table)
         e.while_(lambda: e.ne(e.and_(_a(e, X_LEN), 3), 0), lambda: (e.st(e.add(_a(e, X_CODE), _a(e, X_LEN)), 0), _set_a(e, X_LEN, e.add(_a(e, X_LEN), 1))))
 
-        def fixup():
-            e.var("fx_at", e.add(_a(e, X_FIX), e.mul(p["fn_k"], 3)))
-            e.var("fx_pos", e.ld(p["fx_at"]))
-            e.var("fx_bits", e.ld(e.add(p["fx_at"], 2)))
-            e.var("fx_target", e.ld(e.add(_a(e, X_LABELS), e.ld(e.add(p["fx_at"], 1)))))
-            _ok(e, e.ne(p["fx_target"], NONE))
-            e.var("fx_code", e.add(_a(e, X_CODE), p["fx_pos"]))
-            e.var("fx_word", 0)
-            for k in range(4):
-                e.set("fx_word", e.add(p["fx_word"], e.mul(e.ld(e.add(p["fx_code"], k)), 1 << (8 * k))))
-            # The byte offset modulo 2^32 (a backward offset wraps), then its fields.
-            e.var("fx_off", e.and_(e.sub(e.add(p["fx_target"], 1 << 32), p["fx_pos"]), 0xFFFFFFFF))
-            e.if_(e.eq(p["fx_bits"], 26), lambda: e.set("fx_word", e.add(p["fx_word"], e.and_(e.udiv(p["fx_off"], 4), 0x3FFFFFF))), lambda: e.if_(
-                e.eq(p["fx_bits"], 21), lambda: e.set("fx_word", e.add(e.add(p["fx_word"], e.mul(e.and_(p["fx_off"], 3), 1 << 29)),
-                                                                     e.mul(e.and_(e.udiv(p["fx_off"], 4), 0x7FFFF), 32))),
-                lambda: e.set("fx_word", e.add(p["fx_word"], e.mul(e.and_(e.udiv(p["fx_off"], 4), 0x7FFFF), 32)))))
-            for k in range(4):
-                e.st(e.add(p["fx_code"], k), e.and_(e.udiv(p["fx_word"], 1 << (8 * k)), 255))
-
-        e.for_("fn_k", 0, _a(e, X_NFIX), fixup)
+        _call(e, "x_fixups")
         e.give(0)
     return _function((), build, tables)
 
@@ -1723,5 +1774,5 @@ def add_emit_functions(add, tables):
                           ("x_divide", _divide_fn), ("x_compare", _compare_fn), ("x_checked", _checked_fn), ("x_call", _call_fn),
                           ("x_node", _node_fn), ("x_edge_moves", _edge_moves_fn), ("x_duplicable", _duplicable_fn), ("x_through", _through_fn),
                           ("x_conditional", _conditional_fn), ("x_prologue", _prologue_fn), ("x_epilogue", _epilogue_fn), ("x_entry", _entry_fn),
-                          ("x_trap_reason", _trap_reason_fn), ("x_terminator", _terminator_fn), ("x_function", _function_fn), ("x_write", _write_fn)):
+                          ("x_trap_reason", _trap_reason_fn), ("x_terminator", _terminator_fn), ("x_fixups", _fixups_fn), ("x_function", _function_fn), ("x_write", _write_fn)):
         add(name, builder(tables))

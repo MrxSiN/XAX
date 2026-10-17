@@ -432,10 +432,12 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         import xax_selfhost_general_image as GI
         import xax_selfhost_x86_64_general as GEN
 
+        import xax_selfhost_aarch64_general as A64
         import xax_selfhost_riscv64_backend as RV
 
         general_reader, general_program = GEN.load_general_program()
         riscv_reader, riscv_backend = RV.load_backend_program()  # S15e.1 (ADR-308)
+        aarch64_reader, aarch64_program = A64.load_aarch64_program()  # S15e.2 (ADR-315)
         writer_reader, writer = WR.load_writer_program()  # S13c
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
@@ -1374,7 +1376,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.if_(w.eq(w[outcome], RQ.REJECT), from_work, lambda: w.if_(w.ne(w[outcome], RQ.ACCEPT), lambda: stop(DECLINED)))
             w.set(entry, work_word(SM.CTRL + RQ.B_ENTRY))
             w.set(target, work_word(SM.CTRL + RQ.B_TARGET))
-            w.set(riscv, work_word(SM.CTRL + RQ.B_RISCV))  # S15e.1: the XAX RISC-V backend lowers
+            # S15e.1: the XAX RISC-V backend lowers; otherwise (``linux``) a program whose record holds an ELF file:
+            # the general x86-64 program, or (S15e.2, ADR-315) the AArch64 program, chosen by ``B_PATH`` when it is called.
+            w.set(riscv, w.flag(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_RISCV64_RAW)))
             w.set(linux, w.sub(1, w[riscv]))
 
         when(lambda: w.if_(w.eq(w[mode], BUILD), build_request))
@@ -1820,7 +1824,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.take("image", results[4:])
 
         if general:
-            w.if_(w.ne(w[linux], 0), lambda: call(general_program), lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
+            elf_program = lambda: w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_LINUX_AARCH64),  # noqa: E731
+                                        lambda: call(aarch64_program), lambda: call(general_program))
+            w.if_(w.ne(w[linux], 0), elf_program, lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
         else:
             call(backend)
         code = w.let("backend_status", w.ld(0))
@@ -2040,7 +2046,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader,
-               *((general_reader, writer_reader, riscv_reader) if general else ()))
+               *((general_reader, writer_reader, riscv_reader, aarch64_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
     objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects, *edit_objects,

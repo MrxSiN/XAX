@@ -22,9 +22,10 @@ from xax_selfhost_facts import E, H_ARENA, NONE, _function
 from xax_selfhost_general_view import (
     B_KIND, B_NNODES, B_NODES, B_NP, B_INPUTS, CONDITIONAL, G_AUDIT, G_BCOUNT, G_BENTRY, G_BLIST, G_CAND, G_CIDX, G_FKEYN,
     G_FKEYS, G_GEXT, G_LIFT_ENTRY, G_STAMP, G_VCOUNT, G_VEXT, G_VFWD, G_VIEW_OUT, G_VMULTI, G_VPARAM, G_VPOS, G_VPROD, G_VREAD,
-    G_VSTAMP, G_VSTAMP2, G_VTYPE, N_ATTR, N_NOPS, N_NRES, N_OP, NOT_CALL, VCAP, VIEW_AT, _f, _globals, _operand, _out, _output, _simplify,
+    G_VSTAMP, G_VSTAMP2, G_VTYPE, N_ATTR, N_NOPS, N_NRES, NOT_CALL, VCAP, VIEW_AT, _f, _globals, _operand, _out, _output, _simplify,
     _vf,
 )
+from xax_selfhost_general_regalloc import _eop  # a group-member call is the direct call the bootstrap's graph shows
 from xax_selfhost_views_backend import _FN, CID_WORDS, G_PAY, _at, _call, _g, _ok, _payload_uleb, _type_form
 
 A_DECLINED, A_LOWERED = 0, 1
@@ -167,7 +168,7 @@ def _eligible(tables):
 
             def node():
                 e.var("el_n", e.ld(e.add(_f(e, p["el_blk"], B_NODES), p["el_m"])))
-                e.var("el_op", _f(e, p["el_n"], N_OP))
+                e.var("el_op", _eop(e, p["el_n"]))
                 e.if_(e.not_(_in(e, p["el_op"], SUPPORTED)), fail)
                 e.for_("el_o", 0, _f(e, p["el_n"], N_NOPS), lambda: e.if_(
                     e.eq(_machine_width(e, _vf(e, G_VTYPE, _operand(e, p["el_n"], p["el_o"])), "el_ow"), WIDE), fail))
@@ -371,7 +372,7 @@ def _aliases(tables):
 
             def one():
                 e.var("na_r", _output(e, p["na_node"], 0))
-                e.var("na_op", _f(e, p["na_node"], N_OP))
+                e.var("na_op", _eop(e, p["na_node"]))
                 op = p["na_op"]
 
                 def machine():
@@ -488,7 +489,7 @@ def _uses(tables):
             def conditional():
                 c = _canon(e, e.ld(_f(e, p["uf_b"], B_VALUES)), "uf_c")
                 local = e.both(e.not_(_is_param(e, c)), e.eq(_pos_block(e, c), p["uf_q"]), e.eq(_pos_result(e, c), 0), e.eq(_rt_(e, T_USES, c), 1))
-                e.if_(local, lambda: e.if_(e.eq(_f(e, _vf(e, G_VPROD, c), N_OP), int(Operation.INT_COMPARE)),
+                e.if_(local, lambda: e.if_(e.eq(_eop(e, _vf(e, G_VPROD, c)), int(Operation.INT_COMPARE)),
                                            lambda: e.st(e.add(p["uf_fused"], p["uf_q"]), _pos_index(e, c))))
 
             e.if_(e.eq(_f(e, p["uf_b"], B_KIND), CONDITIONAL), conditional)
@@ -523,7 +524,7 @@ def _tables(tables):
 
                 def check():
                     skip = e.either(e.eq(_av(e, V_W, root), 0), e.ne(_rt_(e, T_ALIAS, root), NONE),
-                                    e.eq(p["tb_m"], e.ld(e.add(_a(e, A_FUSED), p["tb_q"]))), e.not_(_in(e, _f(e, p["tb_node"], N_OP), table_ops)))
+                                    e.eq(p["tb_m"], e.ld(e.add(_a(e, A_FUSED), p["tb_q"]))), e.not_(_in(e, _eop(e, p["tb_node"]), table_ops)))
 
                     def found():
                         e.var("tb_rec", _call(e, "predicate_table", p["tb_q"], root))
@@ -849,7 +850,7 @@ def _membership(tables):
             e.var("mb_node", e.sel(local, _vf(e, G_VPROD, v), NONE))
 
             def node():
-                e.var("mb_op", _f(e, p["mb_node"], N_OP))
+                e.var("mb_op", _eop(e, p["mb_node"]))
 
                 def or_():
                     e.if_(e.ne(v, p["root"]), lambda: (e.st(e.add(p["mb_inner"], p["mb_ninner"]), v), e.set("mb_ninner", e.add(p["mb_ninner"], 1))))
@@ -938,7 +939,7 @@ def _patterns(tables):
 
                 def with_result():
                     e.var("pa_root", _output(e, p["pa_node"], 0))
-                    e.var("pa_op", _f(e, p["pa_node"], N_OP))
+                    e.var("pa_op", _eop(e, p["pa_node"]))
                     root = p["pa_root"]
                     member = e.both(e.eq(p["pa_op"], int(Operation.BIT_OR)), e.ne(_rt_(e, T_RW, root), 0), e.ne(_av(e, V_MINT, root), p["pa_stamp"]),
                                     e.eq(_av(e, V_TINT, root), 0))
@@ -955,7 +956,7 @@ def _patterns(tables):
 
                                 def xor():
                                     _maximum0(e, p["pa_other"], "pa_om")
-                                    good = e.both(e.eq(_f(e, p["pa_xor"], N_OP), int(Operation.BIT_XOR)), e.eq(_rt_(e, T_USES, p["pa_fc"]), 1),
+                                    good = e.both(e.eq(_eop(e, p["pa_xor"]), int(Operation.BIT_XOR)), e.eq(_rt_(e, T_USES, p["pa_fc"]), 1),
                                                   e.eq(p["pa_om_none"], 0), e.le(p["pa_om"], 1))
 
                                     def operands():
@@ -1172,7 +1173,7 @@ def _folds_fn(tables):
         e.var("fo_operand", _operand(e, node, position))
         _const(e, p["fo_operand"], "fo_v")
         e.if_(e.eq(p["fo_v_is"], 0), lambda: e.give(0))
-        e.var("fo_op", _f(e, node, N_OP))
+        e.var("fo_op", _eop(e, node))
         op = p["fo_op"]
         e.var("fo_w", _width_of(e, p["fo_operand"], "fo_wd"))
         v = p["fo_v"]
@@ -1233,7 +1234,7 @@ def _scaled_fn(tables):
         e.if_(e.either(e.eq(p["sd_size"], 1), e.eq(_call(e, "a64_proven", p["node"]), 0)), lambda: e.give(NONE))
         _definition(e, _canon(e, _operand(e, p["node"], 1), "sd_i"), "sd_mul")
         e.if_(e.eq(p["sd_mul"], NONE), lambda: e.give(NONE))
-        e.if_(e.ne(_f(e, p["sd_mul"], N_OP), int(Operation.MUL_WRAP)), lambda: e.give(NONE))
+        e.if_(e.ne(_eop(e, p["sd_mul"]), int(Operation.MUL_WRAP)), lambda: e.give(NONE))
         e.var("sd_x", _operand(e, p["sd_mul"], 0))
         e.var("sd_f", _operand(e, p["sd_mul"], 1))
         _const(e, p["sd_f"], "sd_fc")
@@ -1282,7 +1283,7 @@ def _reads_fn(tables):
         e.var("rd_b", e.ld(e.add(_g(e, G_BLIST), p["blk"])))
         e.var("rd_node", e.ld(e.add(_f(e, p["rd_b"], B_NODES), p["m"])))
         node = p["rd_node"]
-        e.var("rd_op", _f(e, node, N_OP))
+        e.var("rd_op", _eop(e, node))
         op = p["rd_op"]
         none = e.either(e.eq(p["m"], e.ld(e.add(_a(e, A_FUSED), p["blk"]))), _in(e, op, (int(Operation.CONSTANT), int(Operation.STACK_END), *RESOURCE)),
                         _in(e, op, tuple(int(x) for x in (Operation.POINTER_CAST, Operation.POINTER_ADDRESS, Operation.INT_ZERO_EXTEND))))
@@ -1346,7 +1347,7 @@ def _defines_fn(tables):
         e.var("df_b", e.ld(e.add(_g(e, G_BLIST), p["blk"])))
         e.var("df_node", e.ld(e.add(_f(e, p["df_b"], B_NODES), p["m"])))
         node = p["df_node"]
-        e.if_(e.eq(_f(e, node, N_OP), int(Operation.CONSTANT)), lambda: e.give(NONE))
+        e.if_(e.eq(_eop(e, node), int(Operation.CONSTANT)), lambda: e.give(NONE))
         e.var("df_first", NONE)
         e.for_("df_r", 0, _f(e, node, N_NRES), lambda: (e.var("df_v", _output(e, node, p["df_r"])), e.if_(
             e.both(e.eq(p["df_first"], NONE), e.ne(_rt_(e, T_RW, p["df_v"]), 0), e.eq(_av(e, V_ELIDED, p["df_v"]), NONE)), lambda: e.set("df_first", p["df_v"]))))
@@ -1490,7 +1491,7 @@ def _plan_fn(tables):
 
                     e.if_(e.not_(skip), bound)
 
-                e.if_(_in(e, _f(e, node_, N_OP), CHECKED), checked)
+                e.if_(_in(e, _eop(e, node_), CHECKED), checked)
 
             e.for_("pl_m", 0, _f(e, p["pl_b"], B_NNODES), node)
 
@@ -1519,7 +1520,7 @@ def _plan_fn(tables):
 
                     e.for_("pl_k", 0, _f(e, p["pl_node"], N_NOPS), operand)
 
-                e.if_(e.not_(_in(e, _f(e, p["pl_node"], N_OP), CALLS)), operands)
+                e.if_(e.not_(_in(e, _eop(e, p["pl_node"]), CALLS)), operands)
 
             e.for_("pl_m", 0, _f(e, p["pl_b"], B_NNODES), node)
 
@@ -1562,7 +1563,7 @@ def _plan_fn(tables):
 
                 def node():
                     e.var("pl_node", e.ld(e.add(_f(e, p["pl_b"], B_NODES), p["pl_m"])))
-                    alive = e.both(e.eq(e.ld(_node_word(e, A_DEAD, p["pl_q"], p["pl_m"])), 0), _in(e, _f(e, p["pl_node"], N_OP), PURE))
+                    alive = e.both(e.eq(e.ld(_node_word(e, A_DEAD, p["pl_q"], p["pl_m"])), 0), _in(e, _eop(e, p["pl_node"]), PURE))
 
                     def check():
                         e.var("pl_d", _q(e, "a64_defines", p["pl_q"], p["pl_m"]))
@@ -1626,7 +1627,7 @@ def _bit_has(e: E, base, index):
 def _is_call_node(e: E, node, name: str):
     """A call that is not an erased proof function's (``_liveness``' ``calls_at``) into ``name``."""
     p = e.p
-    e.var(name, e.flag(_in(e, _f(e, node, N_OP), CALLS)))
+    e.var(name, e.flag(_in(e, _eop(e, node), CALLS)))
 
     def direct():
         from xax_selfhost_general_regalloc import _callee_object
@@ -1634,7 +1635,7 @@ def _is_call_node(e: E, node, name: str):
         _callee_object(e, node, f"{name}_callee")
         e.if_(e.ne(_call(e, "erased", p[f"{name}_callee"]), 0), lambda: e.set(name, 0))
 
-    e.if_(e.eq(_f(e, node, N_OP), int(Operation.CALL_DIRECT)), direct)
+    e.if_(e.eq(_eop(e, node), int(Operation.CALL_DIRECT)), direct)
     return p[name]
 
 
@@ -2110,7 +2111,7 @@ def _allocate_fn(tables):
 
             def node():
                 e.var("ah_node", e.ld(e.add(_f(e, p["ah_b"], B_NODES), p["ah_m"])))
-                e.if_(_in(e, _f(e, p["ah_node"], N_OP), CALLS), lambda: (e.var("ah_d", _q(e, "a64_defines", p["ah_q"], p["ah_m"])),
+                e.if_(_in(e, _eop(e, p["ah_node"]), CALLS), lambda: (e.var("ah_d", _q(e, "a64_defines", p["ah_q"], p["ah_m"])),
                                                                          e.if_(e.ne(p["ah_d"], NONE), lambda: _set_av(e, V_HINT, p["ah_d"], 0))))
 
             e.for_("ah_m", 0, _f(e, p["ah_b"], B_NNODES), node)
@@ -2307,7 +2308,7 @@ def _view(tables):
 
             e.var("vw_b", e.ld(e.add(p["vw_blocks"], p["vw_q"])))
             e.for_("vw_m", 0, _f(e, p["vw_b"], B_NNODES), lambda: _ok(e, e.not_(_in(
-                e, _f(e, e.ld(e.add(_f(e, p["vw_b"], _B_NODES), p["vw_m"])), N_OP), tuple(int(op) for op in ATOMIC_OPERATIONS)))))
+                e, _eop(e, e.ld(e.add(_f(e, p["vw_b"], _B_NODES), p["vw_m"]))), tuple(int(op) for op in ATOMIC_OPERATIONS)))))
 
         e.for_("vw_q", 0, p["vw_n"], atomics)
         e.var("vw_any", 0)
@@ -2360,13 +2361,15 @@ def _view(tables):
         e.if_(e.ne(p["vw_any"], 0), inline, lambda: _simplify(e, False))
         _call(e, "layout")
         _call(e, "positions")
-        _ok(e, e.ne(e.call(_FN["value_facts"]), NONE))  # a value wider than 64 bits or a float constant: another path
-        _out(e, p["fidx"])
-        _call(e, "lower")
+        # ``compile_linux_function`` returns None for an ineligible view: S15e.2b (ADR-316), the frame path from the
+        # function's own graph (or the legacy register path, which declines).  Eligibility reads types only.
         e.var("vw_status", A_DECLINED)
         e.if_(e.ne(_call(e, "a64_eligible", p["f"]), 0), lambda: e.set("vw_status", A_LOWERED))
+        e.if_(e.eq(p["vw_status"], A_DECLINED), lambda: (_call(e, "a64f_function", p["f"], p["fidx"]), _call(e, "a64_image_add", p["fidx"]), e.give(1)))
+        _ok(e, e.ne(e.call(_FN["value_facts"]), NONE))  # a value wider than 64 bits or a float constant: declined
+        _out(e, p["fidx"])
+        _call(e, "lower")
         _out(e, p["vw_status"])
-        _ok(e, e.eq(p["vw_status"], A_LOWERED))  # another bootstrap path lowers the function
         for k, stage in enumerate(("a64_aliases", "a64_uses", "a64_tables", "a64_loops", "a64_patterns")):
             e.st(TRACE_AT, 10 + k)
             _call(e, stage)
@@ -2433,6 +2436,9 @@ def add_lower_functions(add, tables):
     from xax_selfhost_aarch64_image import add_image_functions
 
     add_image_functions(add, tables)
+    from xax_selfhost_aarch64_frame import add_frame_functions
+
+    add_frame_functions(add, tables)
     add("a64_view", _view(tables))
 
 

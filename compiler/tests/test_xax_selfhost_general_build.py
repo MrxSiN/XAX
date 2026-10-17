@@ -8,7 +8,7 @@ general backend program, hashes the artifact with the S2 hash, and writes the ca
 re-derived with the S2 hash).  Differential: the artifact bytes and the provenance object's envelope equal
 ``build(..., compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)``'s, and every rejection ``build`` makes on these
 paths is the driver's, with the exact diagnostic.  S15e.1 (ADR-308): a RISC-V raw image target is lowered by the XAX
-RISC-V backend program.  What ``build`` makes on other paths (Android packages, Windows DLLs, other targets) the driver
+RISC-V backend program; S15e.2 (ADR-315): a Linux AArch64 ELF profile by the XAX AArch64 program.  What ``build`` makes on other paths (Android packages, Windows DLLs, other targets) the driver
 declines.  The driver is given no external inputs and verifies no signatures, which is
 ``build`` called without them.
 """
@@ -242,6 +242,38 @@ class GeneralBuildTests(unittest.TestCase):
         program, _entry, _target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
         linux_objects, linux_entry = _parts(program)
         self.assertEqual(self.assertBuild(_program(linux_objects, {b"image": linux_entry}, X.riscv64_baremetal_target()))[0], "rejected")
+
+    def test_linux_aarch64_executables(self):
+        """S15e.2 (ADR-315): a Linux AArch64 ELF profile is lowered by the XAX AArch64 program; static and dynamic
+        executables are the bootstrap's bytes with their provenance, a request for another artifact is
+        ``BUILD-ARTIFACT-SUPPORTED`` after the container."""
+        from test_xax_linux_aarch64 import _status_program, _write_program
+
+        programs = {
+            "status": _status_program(lambda b: b.const(X.bits_type(32), 7))[::2],
+            "dynamic status": _status_program(lambda b: b.const(X.bits_type(32), 9), dynamic=True)[::2],
+            "write": _write_program(b"hello\n")[::2],
+        }
+        for name, (program, target) in programs.items():
+            with self.subTest(name):
+                objects, entry = _parts(program)
+                self.assertEqual(self.assertBuild(_program(objects, {b"image": entry}, target))[0], "image")
+        program, target = programs["status"]
+        objects, entry = _parts(program)
+        kind, diagnostic = self.assertBuild(_program(objects, {b"image": entry}, target, artifacts=(ArtifactKind.JVM_LIBRARY_JAR,)))
+        self.assertEqual((kind, diagnostic.rule), ("rejected", "BUILD-ARTIFACT-SUPPORTED"))
+
+    def test_linux_aarch64_artifact_runs(self):
+        from test_xax_linux_aarch64 import _status_program
+        from xax_linux_aarch64 import aarch64_runner, run_linux_aarch64_executable
+
+        if aarch64_runner() is None:
+            self.skipTest("requires an AArch64 Linux host or qemu-aarch64")
+        program, _entry, target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))
+        objects, entry = _parts(program)
+        kind, artifact, _provenance = self.run_build(_program(objects, {b"image": entry}, target).data)
+        self.assertEqual(kind, "image")
+        self.assertEqual(run_linux_aarch64_executable(artifact).returncode, 7)
 
     def test_other_paths_decline(self):
         """Android packages, Windows DLLs, and targets other than the Linux x86-64 and RISC-V raw profiles are

@@ -446,6 +446,40 @@ def _entry_abi(tables):
     return _function(("t",), build, tables)
 
 
+def group_member_tables(e: E, O):
+    """Group member functions by (group, member) (ADR-125): ``[count, member function...]`` per recursion group in
+    ``G_MTAB``, over the ``O`` listed objects (shared by the S15e.2 AArch64 front end)."""
+    p = e.p
+
+    def member_function():
+        o = p["o"]
+        e.var("mg", _reference(e, o, 0))
+
+        def listed():
+            e.var("ma", _at(e, G_PAY, o))
+            _ok(e, e.eq(_payload_uleb(e, "ma"), 0))
+            e.var("mk", _payload_uleb(e, "ma"))
+            e.var("mtable", e.ld(e.add(_g(e, G_MTAB), p["mg"])))
+
+            def create():
+                e.var("mga", _at(e, G_PAY, p["mg"]))
+                e.var("mcount", _payload_uleb(e, "mga"))
+                e.set("mtable", e.alloc(e.add(p["mcount"], 1)))
+                _ok(e, e.ne(p["mtable"], NONE))
+                e.st(p["mtable"], p["mcount"])
+                e.for_("mq", 0, p["mcount"], lambda: e.st(e.add(e.add(p["mtable"], 1), p["mq"]), NONE))
+                e.st(e.add(_g(e, G_MTAB), p["mg"]), p["mtable"])
+
+            e.if_(e.eq(p["mtable"], NONE), create)
+            e.if_(e.lt(p["mk"], e.ld(p["mtable"])), lambda: e.st(e.add(e.add(p["mtable"], 1), p["mk"]), o))
+
+        one = e.eq(e.rd(e.add(_at(e, G_REC, o), 1)), 1)
+        e.if_(e.both(e.eq(_kind(e, o), int(Kind.FUNCTION)), one, e.ne(p["mg"], NONE)), lambda: e.if_(
+            e.eq(_kind(e, p["mg"]), int(Kind.RECURSION_GROUP)), listed))
+
+    e.for_("o", 0, O, lambda: e.if_(e.ne(e.rd(e.add(_at(e, G_REC, p["o"]), 1)), 0), member_function))
+
+
 def _node(tables):
     """``_function_closure``'s checks of the node just read (``G_NI``) in graph ``g`` of function ``f``: the target's
     operation list and a code address's foreign entry ABI.  In a group member's graph ``call.group_member`` is a
@@ -630,34 +664,7 @@ def _frontend(tables):
 
         e.for_("o", 0, O, resolve)
 
-        # Group member functions by (group, member) (ADR-125): ``[count, member function...]`` per recursion group.
-        def member_function():
-            o = p["o"]
-            e.var("mg", _reference(e, o, 0))
-
-            def listed():
-                e.var("ma", _at(e, G_PAY, o))
-                _ok(e, e.eq(_payload_uleb(e, "ma"), 0))
-                e.var("mk", _payload_uleb(e, "ma"))
-                e.var("mtable", e.ld(e.add(_g(e, G_MTAB), p["mg"])))
-
-                def create():
-                    e.var("mga", _at(e, G_PAY, p["mg"]))
-                    e.var("mcount", _payload_uleb(e, "mga"))
-                    e.set("mtable", e.alloc(e.add(p["mcount"], 1)))
-                    _ok(e, e.ne(p["mtable"], NONE))
-                    e.st(p["mtable"], p["mcount"])
-                    e.for_("mq", 0, p["mcount"], lambda: e.st(e.add(e.add(p["mtable"], 1), p["mq"]), NONE))
-                    e.st(e.add(_g(e, G_MTAB), p["mg"]), p["mtable"])
-
-                e.if_(e.eq(p["mtable"], NONE), create)
-                e.if_(e.lt(p["mk"], e.ld(p["mtable"])), lambda: e.st(e.add(e.add(p["mtable"], 1), p["mk"]), o))
-
-            one = e.eq(e.rd(e.add(_at(e, G_REC, o), 1)), 1)
-            e.if_(e.both(e.eq(_kind(e, o), int(Kind.FUNCTION)), one, e.ne(p["mg"], NONE)), lambda: e.if_(
-                e.eq(_kind(e, p["mg"]), int(Kind.RECURSION_GROUP)), listed))
-
-        e.for_("o", 0, O, lambda: e.if_(e.ne(e.rd(e.add(_at(e, G_REC, p["o"]), 1)), 0), member_function))
+        group_member_tables(e, O)
 
         # 1. The target (``decode_native_target``'s fields up to the terminator list, of a verified target object).
         target = p["target"]

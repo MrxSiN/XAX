@@ -24,6 +24,7 @@ BUILDERS = (
     ("xax_selfhost_riscv64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_backend", "build_backend_program"),
     ("xax_selfhost_x86_64_general", "build_general_program"),
+    ("xax_selfhost_aarch64_general", "build_aarch64_program"),  # S15e.2 (ADR-315)
     # S15d.2 (ADR-305): the general driver's committed store is its builder's baseline with the evolution ledger applied.
     ("xax_selfhost_evolution", "build_evolved_general", "GENERAL_STORE_PATH"),
 )

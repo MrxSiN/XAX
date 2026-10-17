@@ -314,10 +314,10 @@ def emit_linux_aarch64_executable(bundle: Aarch64Bundle, entry_cid: bytes, decla
     return bytes(out), code_offset + code_base, needed
 
 
-def compile_linux_aarch64_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "python") -> LinuxAarch64Executable:
+def compile_linux_aarch64_executable(reader: StoreReader, entry_cid: bytes, target_cid: bytes, *, frontend: str = "auto") -> LinuxAarch64Executable:
     """``frontend``: who builds (S15e.2, ADR-315): ``"xax"`` (the XAX AArch64 program; fails where it cannot run or
-    declines), ``"python"`` (the bootstrap reference), or ``"auto"`` (the XAX program where it runs and decides).  The default stays the bootstrap until the program's
-    store is regenerated and its executables are checked against it (S15e.2 in progress)."""
+    declines), ``"python"`` (the bootstrap reference), or ``"auto"`` (the XAX program where it runs and decides, as
+    ``compile_linux_executable`` does on x86-64).  A store that does not verify is the bootstrap's to reject."""
     if frontend != "python":
         from xax_compiler import XaxError, verify_store
 

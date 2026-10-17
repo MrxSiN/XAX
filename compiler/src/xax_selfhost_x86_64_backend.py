@@ -18,9 +18,9 @@ from pathlib import Path
 
 from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS, TerminatorKind, x86_64_linux_exec_target
 from xax_graph_builder import program_store
-from xax_selfhost_facts import E, NONE, _function
+from xax_selfhost_facts import E, HEADER, NONE, _function
 from xax_selfhost_views_backend import (
-    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, JUMPS_AT, JUMPS_LIMIT, META_AT, RANGES_AT, RANGES_LIMIT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
+    _FN, A_AREAS, A_BASE, A_OUT, A_POINTER, META_AT, S_AGG, S_BASE, S_BLOCK_AT, S_BLOCK_LABELS,
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
     NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
     SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
@@ -51,13 +51,15 @@ JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8
 # ADR-266: code bytes are packed eight to an output word (little-endian), and a node range takes three words, so one
 # program (the S10 driver with its verifier components) fits: 40 MiB of code, 699,050 ranges.
 # ADR-314: the x86-64 program's own layout of the shared regions (the RISC-V program keeps ``xax_selfhost_views_backend``'s):
-# a range takes two words (its function, block and node in one, its code offsets in the other) and a jump two (ADR-313),
-# so the code grows to 44 MiB, then 262,144 jumps, then 1,835,008 ranges up to the function order (``META_AT``).
-X86_WORDS_LIMIT = (5 << 20) + (1 << 19)
-X86_JUMPS_AT, X86_JUMPS_LIMIT = WORDS_AT + X86_WORDS_LIMIT, 1 << 19
+# a range takes two words (its function, block and node in one, its code offsets in the other) and a jump two (ADR-313).
+# S15e.2 (ADR-315): the code takes the whole span up to the function order (``META_AT``), 76 MiB, and the jumps (524,288)
+# and ranges (2,097,152) sit in a fixed region below the header, above the program's arena.
+X86_WORDS_LIMIT = META_AT - WORDS_AT
+X86_JUMPS_LIMIT, X86_RANGES_LIMIT = 1 << 20, 1 << 22
+X86_JUMPS_AT = HEADER - 1 - X86_JUMPS_LIMIT - X86_RANGES_LIMIT
 X86_RANGES_AT = X86_JUMPS_AT + X86_JUMPS_LIMIT
-X86_RANGES_LIMIT = META_AT - X86_RANGES_AT
-assert X86_JUMPS_AT > JUMPS_AT and JUMPS_AT + JUMPS_LIMIT == RANGES_AT and RANGES_AT + RANGES_LIMIT == META_AT  # replaces the shared layout
+X86_ARENA_END = X86_JUMPS_AT
+assert X86_JUMPS_AT > (96 << 20) and X86_RANGES_AT + X86_RANGES_LIMIT == HEADER - 1  # replaces the shared layout
 CODE_BYTES = X86_WORDS_LIMIT * 8
 RANGE_WORDS = 2
 JUMP_WORDS = 2
@@ -378,6 +380,7 @@ class X86_64:
     ARGUMENT_REGISTERS = len(ARGUMENTS)
     T0 = T0
     CODE_LIMIT = CODE_BYTES
+    ARENA_END = X86_ARENA_END
 
     @staticmethod
     def declare(e: E, p) -> None:

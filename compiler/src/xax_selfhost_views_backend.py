@@ -2062,7 +2062,7 @@ def _program(tables, compile_function, isa):
         p = e.p
         e.st(0, 0)
         e.set_hd(H_ARENA, ARENA_AT + 64)  # the front end's GLOBALS come first
-        e.set_hd(H_ARENA_END, ARENA_END)
+        e.set_hd(H_ARENA_END, getattr(isa, "ARENA_END", ARENA_END))  # an ISA may keep fixed regions above its arena
         e.set_hd(S_COUNT, 0)
         e.set_hd(S_JUMPS, 0)
         e.set_hd(S_RANGES, 0)

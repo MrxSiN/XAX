@@ -243,6 +243,26 @@ def corpus(directory: Path):
     build("build: a RISC-V unsupported artifact", _program(rv_objects, {b"image": rv_entry}, X.riscv64_baremetal_target(),
                                                            artifacts=(ArtifactKind.ACCELERATOR_DEPLOYMENT,)), "negative")
     build("build: a program the RISC-V profile cannot lower", _program(objects, {b"image": entry}, X.riscv64_baremetal_target()), "negative")
+    # S15e.2 (ADR-315, ADR-316): Linux AArch64 ELF executables, lowered by the XAX AArch64 program in the driver.
+    from test_xax_linux_aarch64 import _status_program as aarch64_status
+    from test_xax_selfhost_aarch64 import frame_programs
+
+    for name, dynamic in (("static", False), ("dynamic", True)):
+        a64, _entry, a64_target, _value = aarch64_status(lambda b: b.const(X.bits_type(32), 7), dynamic=dynamic)
+        a64_objects, a64_entry = _parts(a64)
+        build(f"build: a Linux AArch64 {name} executable", _program(a64_objects, {b"image": a64_entry}, a64_target), "positive")
+    frame, _entry, frame_target = next(iter(frame_programs(1, 20261017)))
+    frame_objects, frame_entry = _parts(frame)
+    build("build: a Linux AArch64 frame-path executable (floats, products, a sum)", _program(frame_objects, {b"image": frame_entry}, frame_target), "positive")
+    build("build: a Linux AArch64 unsupported artifact", _program(a64_objects, {b"image": a64_entry}, a64_target, artifacts=(ArtifactKind.JVM_LIBRARY_JAR,)),
+          "negative")
+    from xax_linux_aarch64 import c_function
+
+    strlen = c_function(b"libc.so.6", b"strlen", (X.bits_type(64),), (X.bits_type(64),))
+    c_import, _entry, c_target, _value = aarch64_status(lambda b: b.op1(X.Operation.INT_TRUNCATE, (b.op1(
+        X.Operation.CALL_FOREIGN, (b.const(X.bits_type(64), 0),), X.bits_type(64), entity=strlen),), X.bits_type(32)))
+    c_objects, c_entry = _parts(c_import)
+    build("build: a C import on the static AArch64 profile", _program(c_objects, {b"image": c_entry}, c_target), "negative")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)
@@ -478,8 +498,9 @@ def measure() -> dict:
             "name": "linux_x86_64_production_compiler",
             "compiler": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
             "targets": ["x86_64-linux-elf-exec-v1", "x86_64-linux-elf-dynexec-v1", "x86_64-linux-views-v1/v2", "x86_64-linux-views-exec-v1",
-                        "RISC-V raw images (architecture 6, format 1; S15e.1)"],
-            "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.2-S15e.7)",
+                        "RISC-V raw images (architecture 6, format 1; S15e.1)",
+                        "aarch64-linux-elf-exec-v1, aarch64-linux-elf-dynexec-v1 (S15e.2)"],
+            "outside_scope": "every other target and artifact (Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
         },
         "spec_revision": "XAX_SPEC.md §16",
         "compiler": {"store": GENERAL_STORE_PATH.name, "store_sha256": sha(driver.data), "semantic_root": driver.root_cid.hex(),
