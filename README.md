@@ -1,4 +1,4 @@
-# XAX
+# XAX - Xenial Agent Xenogenesis
 
 **An AI-native programming language. Meaning is the source.**
 
