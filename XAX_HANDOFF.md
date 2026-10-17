@@ -1232,3 +1232,11 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - `IMAGE_CAP` is 16 MiB (S15e.2a); the seed was rotated (11,942,047 bytes). The x86-64 views backend keeps jumps/ranges below the header (`X86_ARENA_END`).
 - Next: S15e.3 (Windows PE32+ in the general x86-64 program), then S15e.4-S15e.7; B1's two-callee gap.
 
+## S15e.3 Windows PE32+ `build` — 2026-10-17 (ADR-317)
+
+- `G_WINDOWS` (general front-end word 63) selects the PE profile; `PATH_WINDOWS_PE` = 3 in `B_PATH` (any image format but 5/6). `xax_pe.compile_pe_executable` is `_hosted_container`'s PE path.
+- Frame path on Windows: `E_FWD_*` emission words implement `_Assembler.forward_stores` in `frame_access` (cleared by `_label`); the hosted legacy register path declines (`_legacy_static` computes the hosted checks).
+- PE container: `xax_selfhost_general_image._pe_fn`/`_pe_entry_fn`; `import_pairs` is shared with the dynamic ELF.
+- x86-64 views backend layout: stream `X86_STREAM_AT` (1M, 21M words), jumps/ranges after it, code `X86_CODE_AT` below the header; the driver's `lower` reads `X86_CODE_AT`.
+- Next: S15e.3b (DLLs), S15e.4-S15e.7; B1's two-callee gap.
+

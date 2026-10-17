@@ -24,7 +24,7 @@ from xax_selfhost_views_backend import (
     S_COUNT, S_FALSE_LABELS, S_FN, S_FRAME, S_JUMPS, S_OFFSETS, S_POW, S_RANGES, S_REG, S_SAVED, S_SLOT, S_TRAP, S_TRAP_USED, S_WIDTH, WORDS_AT,
     NativeProgram, _aggregate, _borrowed, _call, _compile_function, _diagnostic, _find, _copy_edge, _erased, _field, _frontend, _interface,
     SYSCALL_HEADER, _node_info, _ok, _payload_uleb, _program, _result_fields, _syscall, _target, _term_end, _translate, _value,
-    collect_program_output, G_PROCESS, _g,
+    collect_program_output, G_PROCESS, GLOBALS, _g,
 )
 
 from xax_native import bootstrap_dir  # noqa: E402
@@ -52,14 +52,17 @@ JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8
 # program (the S10 driver with its verifier components) fits: 40 MiB of code, 699,050 ranges.
 # ADR-314: the x86-64 program's own layout of the shared regions (the RISC-V program keeps ``xax_selfhost_views_backend``'s):
 # a range takes two words (its function, block and node in one, its code offsets in the other) and a jump two (ADR-313).
-# S15e.2 (ADR-315): the code takes the whole span up to the function order (``META_AT``), 76 MiB, and the jumps (524,288)
-# and ranges (2,097,152) sit in a fixed region below the header, above the program's arena.
+# S15e.2 (ADR-315): the code may take 76 MiB.  S15e.3 (ADR-317): the internal stream (21M words; the driver's is 16.1M,
+# past the shared region's 16M) starts at the shared code region, the jumps (524,288) and ranges (2,097,152) follow it
+# below the globals, and the code sits below the header, above the program's arena.
 X86_WORDS_LIMIT = META_AT - WORDS_AT
+X86_STREAM_AT, X86_STREAM_LIMIT = WORDS_AT, 21 << 20
 X86_JUMPS_LIMIT, X86_RANGES_LIMIT = 1 << 20, 1 << 22
-X86_JUMPS_AT = HEADER - 1 - X86_JUMPS_LIMIT - X86_RANGES_LIMIT
+X86_JUMPS_AT = X86_STREAM_AT + X86_STREAM_LIMIT
 X86_RANGES_AT = X86_JUMPS_AT + X86_JUMPS_LIMIT
-X86_ARENA_END = X86_JUMPS_AT
-assert X86_JUMPS_AT > (96 << 20) and X86_RANGES_AT + X86_RANGES_LIMIT == HEADER - 1  # replaces the shared layout
+X86_CODE_AT = HEADER - 1 - X86_WORDS_LIMIT
+X86_ARENA_END = X86_CODE_AT
+assert X86_RANGES_AT + X86_RANGES_LIMIT <= GLOBALS and X86_ARENA_END > (112 << 20)  # replaces the shared layout
 CODE_BYTES = X86_WORDS_LIMIT * 8
 RANGE_WORDS = 2
 JUMP_WORDS = 2
@@ -72,14 +75,14 @@ def _byte_weight(e: E, position):
 
 def _emit(e: E, byte):
     count = e.hd(S_COUNT)
-    word = e.add(WORDS_AT, e.udiv(count, 8))
+    word = e.add(X86_CODE_AT, e.udiv(count, 8))
     first = e.eq(e.and_(count, 7), 0)
     e.st(word, e.add(e.mul(e.sel(first, 0, 1), e.ld(word)), e.mul(byte, _byte_weight(e, count))))  # a new word starts clear
     e.set_hd(S_COUNT, e.add(count, 1))
 
 
 def _patch_byte(e: E, position, byte):
-    word = e.add(WORDS_AT, e.udiv(position, 8))
+    word = e.add(X86_CODE_AT, e.udiv(position, 8))
     weight = _byte_weight(e, position)
     old = e.and_(e.udiv(e.ld(word), weight), 0xFF)
     e.st(word, e.add(e.sub(e.ld(word), e.mul(old, weight)), e.mul(byte, weight)))
@@ -381,6 +384,7 @@ class X86_64:
     T0 = T0
     CODE_LIMIT = CODE_BYTES
     ARENA_END = X86_ARENA_END
+    STREAM_AT, STREAM_END = X86_STREAM_AT, X86_JUMPS_AT
 
     @staticmethod
     def declare(e: E, p) -> None:
@@ -907,13 +911,13 @@ def collect_output(read):
     """``collect_program_output`` with the packed code as bytes and the packed range records unpacked, or None
     (declined)."""
     def code(count):
-        return b"".join(word.to_bytes(8, "little") for word in read(WORDS_AT, (count + 7) // 8))[:count]
+        return b"".join(word.to_bytes(8, "little") for word in read(X86_CODE_AT, (count + 7) // 8))[:count]
 
     def ranges(count):
         flat = read(X86_RANGES_AT, RANGE_WORDS * count)
         return [(a >> 40, (a >> 20) & 0xFFFFF, a & 0xFFFFF, c >> 32, c & 0xFFFFFFFF) for a, c in zip(flat[0::2], flat[1::2])]
 
-    return collect_program_output(read, read_code=code, read_ranges=ranges)
+    return collect_program_output(read, read_code=code, read_ranges=ranges, stream_at=X86_STREAM_AT)
 
 
 def native_backend():

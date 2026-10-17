@@ -594,6 +594,7 @@ def _copy_edge(tables, isa):
 GLOBALS = ARENA_AT  # the front end's table pointers (the first arena words)
 (G_REC, G_PAY, G_TW, G_FIDX, G_ERASED, G_IFACE, G_SUP, G_SUPT, G_NI, G_O, G_ORDER, G_F, G_OUT, G_WIDTHS, G_FAR, G_SUP_AT, G_SUPT_AT, G_S,
  G_REFS, G_PENDING, G_PROCESS) = range(21)
+G_SEND = 21  # S15e.3: the end of the ISA's internal stream (``stream(isa)``)
 CID_WORDS = 4
 NI_OP, NI_ENTITY, NI_OPERANDS, NI_RESULTS, NI_ATTRIBUTES = range(5)
 ENTITY_CODES = (5, 6, 30, 41, 42, 43)
@@ -1164,9 +1165,14 @@ def _syscall(tables, abi: bytes = _SYSCALL_ABI):
     return _function(("obj", "m"), build, tables)
 
 
+def stream(isa):
+    """The ISA's internal stream region (an ISA may keep a larger one above its arena)."""
+    return getattr(isa, "STREAM_AT", STREAM_AT), getattr(isa, "STREAM_END", STREAM_END)
+
+
 def _emit_out(e: E, value):
     at = _g(e, G_OUT)
-    e.if_(e.lt(at, STREAM_END), lambda: e.st(at, value))  # past the end: nothing is written, and the front end declines
+    e.if_(e.lt(at, _g(e, G_SEND)), lambda: e.st(at, value))  # past the end: nothing is written, and the front end declines
     e.st(GLOBALS + G_OUT, e.add(at, 1))
 
 
@@ -2020,10 +2026,11 @@ def _frontend(tables, isa):
         e.for_("q", 0, p["members"], lambda: e.st(e.add(_g(e, G_FIDX), e.ld(e.add(order, p["q"]))), p["q"]))
         e.st(GLOBALS + G_F, p["members"])
         # The internal stream.
-        e.st(GLOBALS + G_OUT, STREAM_AT)
+        e.st(GLOBALS + G_OUT, stream(isa)[0])
+        e.st(GLOBALS + G_SEND, stream(isa)[1])
         _emit_out(e, p["members"])
         e.for_("q", 0, p["members"], lambda: _call(e, "translate", e.ld(e.add(order, p["q"]))))
-        _ok(e, e.lt(_g(e, G_OUT), STREAM_END))
+        _ok(e, e.lt(_g(e, G_OUT), stream(isa)[1]))
         # The entry's machine parameter and return widths.
         iface = _call(e, "interface", p["entry"])
         widths = e.alloc(e.add(e.add(e.ld(e.add(iface, 1)), e.ld(e.add(e.add(iface, 2), e.ld(e.add(iface, 1))))), 4))
@@ -2072,12 +2079,12 @@ def _program(tables, compile_function, isa):
         e.set_hd(S_POW, powers)
         e.set_hd(S_LEVELS, e.alloc(32))
         _ok(e, e.ne(e.call(_FN["frontend"]), NONE))
-        functions = e.ld(STREAM_AT)
+        functions = e.ld(stream(isa)[0])
         offsets = e.alloc(e.add(functions, 1))
         _ok(e, e.ne(offsets, NONE))
         e.set_hd(S_OFFSETS, offsets)
         e.for_("f", 0, functions, lambda: e.st(e.add(offsets, p["f"]), NONE))
-        e.var("cursor", STREAM_AT + 1)
+        e.var("cursor", stream(isa)[0] + 1)
 
         def each():
             e.set("cursor", e.call(compile_function, p["cursor"], p["f"]))
@@ -2112,7 +2119,7 @@ def _program(tables, compile_function, isa):
 
 # -- outputs and native execution ---------------------------------------------------------------------
 
-def collect_program_output(read, read_code=None, read_ranges=None):
+def collect_program_output(read, read_code=None, read_ranges=None, stream_at=STREAM_AT):
     """A backend program's result from its output view, read as ``read(start word, count)`` wherever it ran:
     ``(code units, function CIDs in layout order, their start and end offsets in code units, node ranges by layout
     position, entry parameter widths, entry return widths)``, or None (declined).  A code unit is a RISC-V instruction
@@ -2121,7 +2128,7 @@ def collect_program_output(read, read_code=None, read_ranges=None):
     status, count, ranges, offsets_at, image_at, widths_at = read(0, 6)
     if status != OK:
         return None
-    (functions,) = read(STREAM_AT, 1)
+    (functions,) = read(stream_at, 1)
     code = read(WORDS_AT, count) if read_code is None else read_code(count)
     image = read(image_at, functions * (CID_WORDS + 1))
     records = [image[k:k + CID_WORDS + 1] for k in range(0, len(image), CID_WORDS + 1)]

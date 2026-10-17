@@ -1965,9 +1965,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
 
         if general:
             w.if_(w.ne(w[linux], 0), lambda: w.if_(w.eq(w[mode], BUILD), lambda: (elf(1), provenance_out()), lambda: elf(2)),
-                  lambda: w.if_(w.ne(w[riscv], 0), lambda: (code_out(), provenance_out()), lambda: emit(WORDS_AT, w.ld(1), header=True)))
+                  lambda: w.if_(w.ne(w[riscv], 0), lambda: (code_out(), provenance_out()), lambda: emit(X.X86_CODE_AT, w.ld(1), header=True)))
         else:
-            emit(WORDS_AT, w.ld(1), header=True)
+            emit(X.X86_CODE_AT, w.ld(1), header=True)
 
     def record_out():
         """The rejection's diagnostic record, to the output (``build``: the artifact's file)."""

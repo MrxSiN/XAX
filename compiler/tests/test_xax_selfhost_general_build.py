@@ -277,10 +277,10 @@ class GeneralBuildTests(unittest.TestCase):
 
     def test_windows_pe_executables(self):
         """S15e.3 (ADR-317): the Windows PE32+ profile is lowered by the XAX general x86-64 program: the executable is
-        the bootstrap's bytes (``build`` with the XAX programs opted out) with its provenance; a Linux process entry
-        is the bootstrap's rejection."""
+        the bootstrap's bytes with its provenance; a Linux process entry is the bootstrap's rejection."""
         from test_xax_linux import _status_program
         from test_xax_pe import hosted_fixture, thread_callback_fixture
+        from xax_pe import compile_pe_executable
 
         for name, fixture in (("hosted", hosted_fixture), ("thread", thread_callback_fixture)):
             with self.subTest(name):

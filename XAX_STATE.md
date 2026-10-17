@@ -125,6 +125,10 @@ Checked accesses and the type checks of loads and stores are now rejected by the
 
 Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
 
+## S15e.3 Windows executables built by the production compiler — 2026-10-17 (ADR-317)
+
+The production compiler's `build` now makes Windows PE32+ executables itself: the general x86-64 program lowers the Windows calling convention (imports through the import table, COM methods, arguments on the stack), applies the bootstrap's Windows-only peephole, and writes the PE container. On the Windows test programs and 850 random ones the executable and every rejection equal the bootstrap's. The compiler rebuilds itself from the pinned seed with no rotation. Windows DLLs, and functions only the bootstrap's older register path takes on Windows, are still built by the bootstrap (S15e.3b). Next: S15e.4 (the browser Wasm page).
+
 ## S15e.2 Linux AArch64 executables built by the production compiler — 2026-10-17 (ADR-315, ADR-316)
 
 The production compiler's `build` now makes Linux AArch64 executables, static and dynamic, with a new AArch64 backend written in XAX: its register allocator, its general frame lowering (floats, products, sums, aggregates, stack storage), the syscall and import thunks and the ELF container. On every AArch64 test program and 340 random ones the executable, its provenance and every rejection equal the bootstrap's. The compiler grew past its image buffer, which was raised to 16 MiB; the seed was rotated deliberately and rebuilds itself to the same bytes. The evidence re-run keeps B0 and B2-B6 for the Linux x86-64 production compiler (B1 still has its one gap). Code addresses, indirect calls, atomics and the legacy register path on AArch64 still decline to the bootstrap. Next: S15e.3 (Windows PE32+).
