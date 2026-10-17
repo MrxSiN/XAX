@@ -1,42 +1,84 @@
+<div align="center">
+
 # XAX
 
-**An AI-native programming language. Meaning is the source.**
+### A programming language built for AI, not for typing
 
 ![Status](https://img.shields.io/badge/status-research%20prototype-orange)
 ![Python](https://img.shields.io/badge/bootstrap-Python%203.11%2B-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
-XAX has no text syntax. A program is a verified **semantic graph**. AI agents read the smallest part they need, send a small typed edit, and the compiler verifies it and builds machine code or a platform artifact directly.
+</div>
 
-The goal: one small language that can build what C, Rust, Java, Kotlin, Swift, JavaScript, Python and others build today — from firmware to apps to GPU kernels — with **zero hidden runtime cost** (no mandatory GC, allocator, VM, exceptions, or runtime library).
+---
 
-## How it works
+## What is XAX?
+
+Most programming languages are text files that people type. XAX is different: **there is no text to type.**
+
+An XAX program is stored as a map of meaning (a *semantic graph*). It records what each piece of the program does and how the pieces connect. An AI assistant changes the program by sending a small, exact edit ("change this limit from 64 to 128"). XAX checks that the edit is correct and then turns the program straight into a file that runs on your computer, phone, browser or GPU.
 
 ```text
-intent -> AI -> small semantic edit -> verified XAX graph -> optimize -> target artifact
+  You describe what you want
+            ↓
+  AI sends a small, exact edit
+            ↓
+  XAX checks that the edit is correct
+            ↓
+  XAX builds a program that runs on the device
 ```
 
-- **Tiny kernel**: values, arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target ops, compile-time meta.
-- **Everything else is a library or package**: strings, collections, objects, async, GC — you pay only for what you use.
-- **Platforms are packages**: ABI, OS, and target packages lower the same semantics to ELF, PE, DEX/APK, JVM class files, WebAssembly, SPIR-V, and raw images.
+## Why build it?
 
-## Replacement levels
+- **One language for everything.** The long-term goal is to build what people use C, Rust, Java, Kotlin, Swift, JavaScript or Python for today, from tiny chips to phone apps to GPU code.
+- **No hidden extras.** Programs carry nothing they don't use: no forced garbage collector, virtual machine or large runtime library. That keeps them small and fast.
+- **Made for AI editing.** The AI reads only the part it needs and changes only what must change, so it doesn't rewrite whole files.
+- **Checked before it runs.** Every change is verified first. Edits that would break the program are rejected with a clear reason.
 
-A platform gets a level only when evidence exists. Levels are cumulative. Full rules: [`XAX_SPEC.md`](XAX_SPEC.md) §21.2.
+## How it is organised
 
-| Level | Meaning |
+| Part | What it means |
 |---|---|
-| R0 | The workload can be expressed exactly in XAX |
-| R1 | XAX builds a target artifact that runs |
-| R2 | Platform ABI, system APIs, and libraries work |
-| R3 | A real application runs |
-| R4 | **Faster**: median time ≤ 0.9999× the fastest non-XAX build, with a real (not noise) advantage |
-| R5 | An AI maintains the app through semantic transactions |
-| R6 | A complete app is built and maintained 100% in XAX |
+| **Small core** | Just the basics: numbers, math, data, decisions, loops, function calls and memory. |
+| **Everything else is optional** | Text, lists, objects, async code and garbage collection are add-on packages, used only when needed. |
+| **Platforms are packages too** | The same program can be turned into a Linux or Windows app, an Android app, Java bytecode, WebAssembly for browsers, or GPU code. |
 
-AI token efficiency (≤ 0.50× textual languages) is a later milestone, not a level.
+## How far along is it?
 
-## Targets
+Each platform earns a level only when there is proof (tests and measurements). Each level includes all the ones below it.
+
+| Level | In plain words |
+|---|---|
+| **R0** | The program can be described in XAX |
+| **R1** | XAX makes a file that runs |
+| **R2** | It can use the platform's normal system features and libraries |
+| **R3** | A real, useful app runs |
+| **R4** | It runs **faster** than the best C, Rust or Java version, by a margin bigger than measurement noise |
+| **R5** | An AI can keep the app updated using XAX's exact edits |
+| **R6** | A whole app is written and maintained 100% in XAX |
+
+Full rules: [`XAX_SPEC.md`](XAX_SPEC.md) §21.2.
+
+### Platform levels at a glance
+
+| Platform | Level | Plain summary |
+|---|---|---|
+| Linux (Intel/AMD PCs) | R6 | Fastest of all tested builds on three test apps; a full app (`xb64`) written only in XAX |
+| Linux (ARM, e.g. phones) | R6 | Runs on real Pixel phones, faster than the C and Rust versions; a full app (`xcksum`) written only in XAX |
+| Java (JVM) | R6 | Builds Java files directly, faster than the Java version; a full app (`xwc`) written only in XAX |
+| Android phones | R3 | Real signed apps run on a Pixel 8 Pro; start-up speed ties the Java and Kotlin versions |
+| Windows | R2 | Real Windows programs run on Windows 11 |
+| ARM devices with no OS | R2 | Tested in an emulator only |
+| Web browser | R2 | Web pages with XAX code that update the page |
+| WebAssembly / WASI | R1 | Runs in WebAssembly engines and Node.js |
+| RISC-V | R1 | Tested in an emulator only |
+| GPU (Vulkan) | R1 | Tested on a software GPU, not real GPU hardware yet |
+| Apple, .NET, small chips (RTOS), BSD | — | Not started |
+
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+
+<details>
+<summary><b>Full technical details per platform</b></summary>
 
 Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "—" means not started.
 
@@ -61,9 +103,19 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "�
 | BSD / other Unix | `bsd-unix` | — | Not started: no FreeBSD/OpenBSD/NetBSD syscall, ELF note, or libc ABI package. |
 <!-- /xax-status:targets -->
 
-## Quick start
+</details>
 
-Requires Python 3.11+. No third-party runtime dependencies.
+## Highlights so far
+
+- **Faster than C and Rust on Linux.** On three test apps, XAX beat the fastest C (clang) or Rust build, in one case by about 15%.
+- **Faster on real phones.** On a Pixel 8 Pro and an original Pixel, XAX's test app ran faster than the C and Rust versions.
+- **Apps written only in XAX.** Three small command-line tools (`xb64` for base64, `xcksum` for checksums, `xwc` for word counts) match the standard Linux tools, and each shipped a second version through one XAX edit.
+- **An AI kept apps updated.** An AI changed real apps through exact XAX edits, then rebuilt, tested and measured them.
+- **XAX can build itself.** On Linux (Intel/AMD), the XAX compiler compiles its own code and gets the same result every time, without needing Python.
+
+## Try it
+
+You need **Python 3.11 or newer**. Nothing else needs to be installed.
 
 ```bash
 cd compiler
@@ -72,28 +124,28 @@ xaxc --help
 PYTHONPATH=src:.:.. python -m pytest -n auto tests
 ```
 
-Tests that need a missing host tool (QEMU, Wine, JDK, Android tools, …) are skipped; skipped is not passed. Full host setup: [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-benchmark-suite).
+Some tests need extra tools (QEMU, Wine, a JDK, Android tools and so on). Without them those tests are skipped, and skipped doesn't mean passed. Full setup guide: [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-benchmark-suite).
 
-AI agents: read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
+**For AI agents:** read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
 
-## Status
+## Project status
 
-Research prototype. Part of the compiler (hashing, decoding, typing, the store verifier, the store writer, and two code generators) is itself XAX; the rest is Python.
+This is a **research prototype**. Part of the compiler is already written in XAX itself; the rest is still Python.
 
-Recent results (one shared x86-64 host; details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md)):
+<details>
+<summary><b>Self-hosting details (technical)</b></summary>
 
-- **Linux x86-64 is R6**: faster than the fastest C/Rust build on `filestat` (0.85× clang), `jsonmin` (0.96× clang, a small margin) and `chains` (0.91× rustc); maintained through a semantic transaction; and `xb64` below is 100% XAX.
-- **JVM is R5**: `jsonmin` runs 0.87× javac, and an AI changed it through one semantic transaction, then rebuilt, tested, and benchmarked it.
-- **First XAX-only app**: `xb64`, a base64 tool whose code, tests, and build are all XAX, matches coreutils `base64` and shipped a second release through one transaction.
-- **The verifier rejects in XAX**: on Linux x86-64, every rejection in the test suite is decided by XAX code, with the same message the Python verifier gives (S8).
-- **Stores are written in XAX**: on Linux x86-64, every canonical store the compiler writes, its CIDs, order, digest, and rejections, comes from an XAX program, byte-identical to the Python writer (S9).
-- **The compiler driver is XAX**: one XAX program reads a store file, checks it, lowers it with the XAX backend, and writes the machine code. It owns its own memory and makes its own system calls, and its output matches the Python-driven path on every compiler store, including its own (S10). It also verifies each store semantically itself, calling the XAX typing, verifier, CFG, and facts programs over inputs it builds in XAX, and it verifies and lowers its own store (S10e). The driver is a standalone Linux executable that takes its paths from the command line, and it rebuilds itself byte for byte across three generations as plain processes (S11). This covers the views-profile compiler path only, not the whole compiler. For ordinary Linux programs, the general x86-64 backend's front end is XAX: it checks the target and the process entry, walks the function closure with all its rejections, and sets the function order. It also makes the optimizer's graph-level decisions: which small functions are inlined, how the graph is simplified, and how blocks are laid out. It proves value ranges, chooses where to prefetch, makes every analysis of the register-resident lowering (which registers and stack slots values get, what is folded), emits each such function's machine code byte for byte, and, when every function is on that path, assembles the image and writes the static or dynamic ELF executable itself (most Linux test programs now compile entirely in XAX). It also has the frame lowering, which covers floating-point code and other functions the register-resident path cannot take. It also makes the bootstrap's code-generation rejections itself. Every Linux test program is now compiled or rejected entirely by XAX. It lowers atomics, aggregates passed by reference, values wider than 64 bits, and the bootstrap's legacy register path too. Every function the bootstrap compiles for the Linux executable profiles is now compiled by XAX, byte for byte (S12a-S12f). A second build of the driver includes this backend. It turns an ordinary Linux program's store into its executable file as a plain process, byte for byte the Python path's, and it rebuilds itself through three generations (S12e.2, S12e.3).
+"Self-hosting" means the compiler is written in its own language. On Linux (Intel/AMD), these parts of the compiler are XAX programs: checking stores, writing stores, the compiler driver, and the code generator for ordinary Linux programs. Each produces exactly the same bytes as the older Python version, and the driver rebuilds itself identically across three generations. Details: [`XAX_STATE.md`](XAX_STATE.md).
 
 <!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64, Linux AArch64, Windows PE32+ executables and RISC-V raw images is compiled by Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4, B5, B6 hold, B1 do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
-## Docs
+</details>
 
-- [Architecture](XAX_AI_Native_Programming_Language_Architecture.md) · [Specification](XAX_SPEC.md) · [Normative docs](docs/)
-- [State](XAX_STATE.md) · [Roadmap](XAX_IMPLEMENTATION_ROADMAP.md) · [Handoff](XAX_HANDOFF.md)
-- [Decisions](XAX_DECISIONS.md) · [Open issues](XAX_OPEN_ISSUES.md)
-- [Conformance](XAX_CONFORMANCE.md) · [Benchmarks](XAX_BENCHMARKS.md)
+## Learn more
+
+| Topic | Documents |
+|---|---|
+| Big picture | [Architecture](XAX_AI_Native_Programming_Language_Architecture.md) · [Specification](XAX_SPEC.md) · [Normative docs](docs/) |
+| Progress | [State](XAX_STATE.md) · [Roadmap](XAX_IMPLEMENTATION_ROADMAP.md) · [Handoff](XAX_HANDOFF.md) |
+| Choices made | [Decisions](XAX_DECISIONS.md) · [Open issues](XAX_OPEN_ISSUES.md) |
+| Proof | [Conformance](XAX_CONFORMANCE.md) · [Benchmarks](XAX_BENCHMARKS.md) |
