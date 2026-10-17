@@ -9,7 +9,7 @@
       "B4": false,
       "B5": false,
       "B6": false,
-      "blocker": "every target but Linux x86-64 and RISC-V raw images is compiled by Python backends (S15e.2-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308)"
+      "blocker": "every target but Linux x86-64, Linux AArch64 and RISC-V raw images is compiled by Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315)"
     },
     "linux_x86_64_production_compiler": {
       "B0": true,
@@ -22,7 +22,7 @@
       "blockers": {
         "B1": "a graph whose first pass calls two different resource callees before its own decision declines (the bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)"
       },
-      "outside_scope": "every other target and artifact (AArch64, Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.2-S15e.7)",
+      "outside_scope": "every other target and artifact (Windows PE, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
       "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
       "seed_requires_python": false
     },

@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64 and RISC-V raw images is compiled by Python backends (S15e.2-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4, B5, B6 hold, B1 do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64, Linux AArch64 and RISC-V raw images is compiled by Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4, B5, B6 hold, B1 do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1224,3 +1224,11 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - The x86-64 views backend has its own region layout (`X86_*` in `xax_selfhost_x86_64_backend`): 44 MiB code, two-word jumps and ranges. The views-built seed driver is 42.2 MB.
 - Ledger: `0002-dead-constants.edit` (`query_dead_constants`). `bench_full_selfhost` has C1 replay the ledger (`evolution`); `linux_x86_64_status` derives B6 from it.
 - Next: S15e.2 (Linux AArch64 ELF in XAX: a port of `xax_aarch64`'s general lowering and register allocator, byte-equal to `build`), then S15e.3-S15e.7; B1's two-callee gap.
+
+## S15e.2 Linux AArch64 `build` — 2026-10-17 (ADR-315, ADR-316)
+
+- Control word 45 is now `B_PATH` (`xax_selfhost_request.PATH_*`: 0 Linux x86-64, 1 RISC-V raw, 2 Linux AArch64); `HOSTED_PROFILES` lists the ELF profiles by identity. The driver's main function is at the seed's capacity: read `B_PATH` only where a program is called, put new logic in helpers.
+- `xax_aarch64_general.xax` (`xax_selfhost_aarch64_general` and `_lower`, `_emit`, `_image`, `_frame`). The frame path's state is `_ra` slots from `FRAME_BASE` (100); `group_member_tables` is shared with the x86-64 front end.
+- `IMAGE_CAP` is 16 MiB (S15e.2a); the seed was rotated (11,942,047 bytes). The x86-64 views backend keeps jumps/ranges below the header (`X86_ARENA_END`).
+- Next: S15e.3 (Windows PE32+ in the general x86-64 program), then S15e.4-S15e.7; B1's two-callee gap.
+
