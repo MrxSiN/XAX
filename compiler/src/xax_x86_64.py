@@ -181,6 +181,19 @@ def _align(value: int, alignment: int) -> int:
     return (value + alignment - 1) & -alignment
 
 
+def _reserve_stack(size: int, target: NativeTargetDescription) -> bytes:
+    if target.identity != PE_HOSTED_IDENTITY or size <= 4096:
+        return b"\x48\x81\xec" + size.to_bytes(4, "little")
+    # Windows commits stack memory one guard page at a time.
+    code = bytearray()
+    while size:
+        chunk = min(size, 4096)
+        code += b"\x48\x81\xec" + chunk.to_bytes(4, "little")
+        code += b"\xf6\x04\x24\x00"  # test byte ptr [rsp], 0
+        size -= chunk
+    return bytes(code)
+
+
 def _memory_instruction(opcode: int, register: int, offset: int, width: int) -> bytes:
     if width not in (4, 8) or offset < 0 or offset >= 1 << 31:
         fail("XAX.NATIVE.MEMORY_ENCODING", "x86_64", "NATIVE-MEMORY-ENCODABLE", "4/8-byte access with disp32", [width, offset])
@@ -1027,6 +1040,9 @@ def _compile_register_resident_function(
         return None
     for block in graph.blocks:
         for node in block.nodes:
+            if node.operation in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR):
+                if _bits_width(resolve, node.results[0]) not in (32, 64):
+                    return None  # narrow wrapping values use the masking frame path
             if node.operation == Operation.CALL_DIRECT:
                 machine_call_inputs = tuple(cid for cid in node.operand_types if not _is_proof_type(resolve(cid)))
                 if len(machine_call_inputs) > len(target.argument_registers):
@@ -1485,7 +1501,7 @@ def _compile_register_resident_function(
     frame_size = (_align(payload + 8, target.stack_alignment) - 8) if payload else 0
     assembler = _Assembler()
     if frame_size:
-        assembler.emit(b"\x48\x81\xec" + frame_size.to_bytes(4, "little"))
+        assembler.emit(_reserve_stack(frame_size, target))
     if graph.entry:
         assembler.relative(b"\xe9", f"block-{graph.entry}")
     ranges: list[ArtifactSemanticRange] = []
@@ -1624,7 +1640,9 @@ def _compile_function(
     pointer_extents: dict[ValueRef, int] = {}
     # Profiles with a foreign/heap boundary treat pointers as first-class
     # machine values; legacy profiles keep their frame-offset-only pointers.
-    dynamic_pointers = Operation.HEAP_VIEW in target.supported_operations and target.abi == X86_64_LINUX_ABI
+    dynamic_pointers = Operation.HEAP_VIEW in target.supported_operations and (
+        target.abi == X86_64_LINUX_ABI or target.identity == PE_HOSTED_IDENTITY
+    )
     for block_index, block in enumerate(graph.blocks):
         for node_index, node in enumerate(block.nodes):
             result = ValueRef.node_result(block_index, node_index)
@@ -1691,7 +1709,7 @@ def _compile_function(
     entry_bias = 0 if process_entry else 8
     frame_size = _align(cursor + entry_bias, target.stack_alignment) - entry_bias
     assembler = _Assembler()
-    assembler.emit(b"\x48\x81\xec" + frame_size.to_bytes(4, "little"))
+    assembler.emit(_reserve_stack(frame_size, target))
     entry = graph.blocks[graph.entry]
     argument_position = 0
     if hidden_return:
@@ -1832,7 +1850,9 @@ def _compile_function(
                 width = _bits_width(resolve, node.results[0])
                 assembler.emit(_load(target.result_register, value_slot(node.operands[0]), 8 if width == 64 else 4))
                 assembler.emit(_load(target.scratch_registers[0], value_slot(node.operands[1]), 8 if width == 64 else 4))
-                assembler.emit(_arithmetic(node.operation, width))
+                assembler.emit(_arithmetic(node.operation, 32 if 0 < width < 32 else width))
+                if 0 < width < 32:
+                    mask_register(target.result_register, width)
                 assembler.emit(_store(target.result_register, value_slot(result_ref)))
             elif node.operation == Operation.ROTATE_RIGHT:
                 width = _bits_width(resolve, node.results[0])

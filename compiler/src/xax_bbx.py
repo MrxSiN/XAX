@@ -60,13 +60,15 @@ class ImportedBBX:
     output_extent: int
 
 
-def construct_bbx(record: bytes, *, input_extent: int = 65536, output_extent: int = 65536) -> ImportedBBX:
-    """Create an Android-target verified graph with one native operation path per opcode.
+def construct_bbx(record: bytes, *, input_extent: int = 65536, output_extent: int = 65536,
+                  target_object: SemanticObject | None = None) -> ImportedBBX:
+    """Create a verified graph with one native operation path per opcode.
 
     Parameters: input triple, output triple, tape triple, input_length:u32,
     output_capacity:u32. Each triple is (pointer, extent-bearing view, memory).
     All buffers must already have initialized-view proofs; tape contents
     may be arbitrary because this graph explicitly zeroes the entire tape.
+    The default target is Android ARM64; callers may select another XAX target.
     """
     code, pairs = decode_bbx(record)
     if any(type(n) is not int or not 1 <= n <= 65536 for n in (input_extent, output_extent)):
@@ -160,6 +162,6 @@ def construct_bbx(record: bytes, *, input_extent: int = 65536, output_extent: in
     for status, block in failures.items():
         finish(block, status)
     function = graph.function((*triples, B32, B32), (B64, *triples))
-    target = android_arm64_shared_integer_target()
+    target = target_object or android_arm64_shared_integer_target()
     reader = program_store(function, target, tuple(graph.objects.values()))
     return ImportedBBX(reader, function, target, input_extent, output_extent)

@@ -74,6 +74,7 @@ from xax_x86_64 import (
     _SYSV_ARGUMENT_REGISTERS,
     _Assembler,
     _align,
+    _reserve_stack,
     _and_immediate,
     _cmp_imm32,
     _cmp_registers,
@@ -2031,7 +2032,7 @@ def compile_register_resident(
     for register in saved:
         assembler.emit(_push(register))
     if frame_size:
-        assembler.emit(b"\x48\x81\xec" + frame_size.to_bytes(4, "little"))
+        assembler.emit(_reserve_stack(frame_size, target))
     # Edges write pinned parameters directly; the function's own arguments
     # arrive in argument registers instead.
     for index, value in enumerate(machine_parameters[graph.entry]):

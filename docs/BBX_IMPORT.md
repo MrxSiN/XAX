@@ -4,6 +4,8 @@ Status: EXECUTED on a Pixel 8 Pro, Android 17/API 37, ARM64, 2026-10-18.
 The BBX decision runs natively inside the XAX-built Activity. Three native
 frontend rebuild generations also agree exactly. The compiler host uses
 Python bootstrap helpers on Windows; this is not XAX-backend self-hosting.
+Windows x86-64 PE decision execution and three native frontend generations
+also passed. Linux x86-64 still has no available execution host.
 
 `compiler/src/xax_bbx.py` is XAX construction tooling for BBX records from
 the separate BBC Brainfuck frontend. It does not accept or parse raw human
@@ -24,7 +26,9 @@ and `docs/BRAINFUCK_PROFILE.md`. Saved modules use `.bbx`.
 
 `construct_bbx(record, input_extent=65536, output_extent=65536)` returns an
 `ImportedBBX` containing a verified reader, function and Android ARM64 integer
-target. The fixed view extents must be integers from 1 through 65536; runtime
+target by default. Pass `target_object=x86_64_windows_pe_target()` to reuse the
+same graph construction for Windows. The fixed view extents must be integers
+from 1 through 65536; runtime
 input length and output capacity may be zero and cannot exceed those extents.
 
 The function takes an input triple, output triple, tape triple, u32 input
@@ -114,8 +118,28 @@ reproduction. External NDK test loaders only move files and supply buffers;
 all source framing and compilation are Brainfuck, lowered by XAX. The XAX
 backend still runs on Windows using Python bootstrap helpers.
 
-Windows x86-64 lowering currently rejects the graph with
-`NATIVE-BITS-SUPPORTED` (bits<1>). It needs XAX backend support, not another
-BBC backend. Linux x86-64 execution remains unverified; WSL is not installed
-on this host. No speed advantage or native Windows/Linux frontend cycle is
-claimed. These remain separate later acceptance gates.
+## Windows execution
+
+The same BBX module now lowers through XAX's existing Win64/PE backend. Its
+frame path masks wrapping arithmetic below 32 bits and accepts proven pointer
+parameters on the hosted PE profile. Narrow arithmetic falls back from the
+legacy register path. Both hosted lowering paths probe large stack frames one
+page at a time, following the Windows stack-growth requirement documented in
+[Microsoft's x64 prolog guidance](https://learn.microsoft.com/en-us/cpp/build/prolog-and-epilog?view=msvc-170).
+These fixes belong to XAX; no BBC native backend was introduced.
+
+Use `compile_native_bound_target` with the imported reader/function/target,
+then `xax_pe.emit_pe_dll` to export the trusted internal component. BBC's
+`evidence/bbx_windows.json` records 22 native checks: 11 real-BBX decision and
+profile cases, three exact BBX/graph/PE frontend generations and eight frontend
+fixtures. The decision DLL is 8,704 bytes and compiler DLL is 701,952 bytes.
+External ctypes supplies initialized buffers; no BF VM or foreign parser runs.
+This proves native component execution, not a Windows GUI application.
+
+Four Windows regression methods cover decision semantics, logical lengths,
+36 narrow arithmetic cases and a 128 KiB frame in a fresh child process.
+The focused pytest run passed 45 tests and 158 subtests; 12 environment-dependent
+tests skipped. Android library/DEX/stores remain byte-identical after target
+selection was added. XAX backend self-hosting and speed advantages are not
+claimed. Linux x86-64 execution remains unverified: WSL is not installed and
+the user confirmed no Linux host is available.
