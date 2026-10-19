@@ -1,5 +1,8 @@
 # Standalone Android decision process
 
+For the separate Windows PE host and its build configuration, see
+[Windows standalone execution](WINDOWS_STANDALONE.md).
+
 [standalone_arm64.xax](standalone_arm64.xax) calls a verified decision directly
 from a static executable. It uses the existing AArch64 syscall target and runs
 on Android ARM64. There is no shared-library test host, dynamic loader, libc,

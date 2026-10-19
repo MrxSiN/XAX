@@ -17,6 +17,8 @@ The current [eight-byte tape reset](WIDE_RESET.md) retains the complete
 correctness runs and absolute timings have separate evidence.
 The [standalone Android host](STANDALONE.md) can call an imported decision
 directly from a static executable, removing the shared-library test host.
+The [standalone Windows host](WINDOWS_STANDALONE.md) supplies a kernel32-only
+PE process with the same buffered-input, checked-decision and exit contract.
 
 ## Import call
 

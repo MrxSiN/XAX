@@ -6,6 +6,7 @@ compiler/integration/bfx/*.xax -text
 compiler/integration/bfx/wide_reset_evidence.json -text
 compiler/integration/bfx/standalone_arm64_evidence.json -text
 compiler/integration/bfx/standalone_native_replay.json -text
+compiler/integration/bfx/standalone_windows_evidence.json -text
 compiler/integration/windows_helpers/*.xax -text
 compiler/integration/windows_helpers/*.edit -text
 compiler/integration/windows_helpers/regression/*.xax -text
