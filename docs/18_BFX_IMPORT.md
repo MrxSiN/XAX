@@ -9,6 +9,7 @@ BBC's Brainfuck frontend is in `D:\GitHub\Ballsdeep_Brainfuck_Compiler`.
 - [Android app](../compiler/integration/bfx/ANDROID.md): canonical JNI/UI/lifecycle source; eight Pixel 8 Pro Activity cases passed.
 - [Verification evidence](../compiler/integration/bfx/android_import_evidence.json): source hashes, artifacts, device results and backend regressions.
 - [Eight-byte tape reset](../compiler/integration/bfx/WIDE_RESET.md): current importer transaction, full-tape equivalence checks, native-call A/B and fresh Android process comparisons; no competitor surpassed.
+- [Standalone Android process](../compiler/integration/bfx/STANDALONE.md): canonical host and callee-binding transaction; process timing improves over the pinned Awib configuration on the twelve-source subset, while brainfry remains faster. No unrestricted sweep or build/RAM victory.
 
 The maintained implementation consists of canonical XAX stores. Generic Python
 verifier, backend and packaging utilities remain bootstrap dependencies.
