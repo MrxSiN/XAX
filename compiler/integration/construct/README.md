@@ -5,9 +5,10 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: step 1 of the plan below. Nothing here decodes a carrier yet.** What is established is that
+**Status: steps 1-2 of the plan below. Nothing here decodes a carrier yet.** What is established is that
 the authoring primitives the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same
-canonical objects* as the Python reference, which is the precondition for the rest.
+canonical objects* as the Python reference, and that a program authored that way runs as a native
+windows-x86_64 host with the file transport a `construct` command needs.
 
 ## Why canonical identity is the oracle
 
@@ -38,12 +39,51 @@ Both print `f70ba76887b02a4d27e583f490c654035490e4e9ab1c37bb2af49475a052f1d8` an
 `call.foreign` with an entity, constants, terminators, parameter types and the function itself all
 land on the reference objects. That covers the per-node half of graph assembly.
 
+## Step 2: the host (done)
+
+`host.py` authors the transport program the decoder will live in and builds it end to end:
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path compiler/src).Path
+python -B compiler/integration/construct/host.py build/construct_host --check
+```
+
+```
+entry     ca66c72ad84a126a35b3d922c29b4b61c585260064a163d286409209ffc76c4f
+root      205acbdf03070039ea8e42dbaf5c691e6cf457d9cbb8f142b0bf60acd52ed4d3
+store     13086 bytes
+artifact  3584 bytes
+check     PASS exit=0 bytes=1024
+```
+
+The contract is `host.exe <carrier path> <store path>`, read the way every Windows host here reads
+its command line (`GetCommandLineA` + `lstrcpynA`), one `virtual_alloc` view holding the command-line
+copy, both path buffers and the data buffer. Measured on this host: a 255-byte file round-trips
+byte-identically, and the two committed carriers pass through at full length (957 089 and 66 KB)
+with exit 0.
+
+It fails closed, which is the property the decoder depends on:
+
+| situation | exit |
+|---|---|
+| input does not open | 2 |
+| output does not open | 3 |
+| input empty or unreadable | 4 |
+| input fills the 4 MiB data region | 5 |
+| short write | 6 |
+| anything after the store path (quoting included) | 7 |
+
+The view is one linear token: every path hands it back through `win32.virtual_free_view` before
+`win32.exit_process`, and a failed step records a code that the single exit returns. Quoted paths
+are deliberately not interpreted -- the quoting characters would reach `_open`, which fails, and the
+process exits non-zero instead of guessing.
+
 ## The plan
 
 | Step | Content | Oracle |
 |---|---|---|
 | 1 | authoring primitives (this check) | canonical CID match |
-| 2 | native host: argv, file read/write, exit (the pattern of `hash_host.xax`) | copies bytes, exits 0 |
+| 2 | native host: argv, file read/write, exit (the pattern of `hash_host.xax`) | copies bytes byte-exactly, exits 0; refuses with 2-7 |
 | 3 | carrier JSON reader: objects, arrays, strings (incl. `\u` escapes), integers; floats rejected | `json.dumps(json.loads(x), sort_keys=True, separators=(",",":"))` byte-identical on both carriers |
 | 4 | type and entity resolution, embedded platform namespaces (as `xax_platform.py` declares them) | object CIDs for every type/entity name |
 | 5 | graph, package and build request assembly; `resolve` + `snapshot_store` reuse | the two store roots above, byte-exact |
