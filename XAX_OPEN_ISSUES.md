@@ -725,3 +725,43 @@ This enables that program; it does not repair the general backend operation.
 copy-address/data registers, exercised on Android for leaf and non-leaf calls,
 multiple composite sizes above 16 bytes, output guards and repeatable native
 results. No new Python implementation is needed or authorized by this issue.
+
+## OI-50 — x86-64 branch fusion loses cross-block comparison values
+
+**Status: OPEN (2026-10-20).** Compare/branch fusion in the hosted register
+allocator (`compiler/src/xax_x86_64_regalloc.py`) counts consumers only in the
+defining block and its outgoing arguments. A comparison may also dominate uses
+in later blocks. Fusing it without materializing its result leaves those uses
+reading a value the emitter did not define. Windows execution through verified
+raw lowering views reproduces this with a canonical three-block function.
+
+The [canonical control and fixed fixture](compiler/integration/windows_helpers/DRIVER.md)
+and [execution report](compiler/integration/windows_helpers/driver_execution.json)
+record the reproduction. Capturing the comparison as a 64-bit flag before the
+branch makes the equivalent fixed graph pass 256 native inputs. The Windows
+driver follows that convention for 522 results in 95 functions through an exact
+transaction. The Python emitter remains unchanged; arbitrary programs still
+need a general repair. No Linux execution is claimed by this report.
+
+**Evidence that closes it.** A canonical XAX backend repair accounting for all
+comparison uses, with native positive/negative branches, reuse in multiple
+later blocks, and unchanged branch-only comparisons. Do not substitute a new
+Python compiler implementation.
+
+## OI-51 — Windows native driver coverage and diagnostic parity
+
+**Status: OPEN (2026-10-20).** The [Windows driver prototype](compiler/integration/windows_helpers/DRIVER.md)
+accepts all 78 reference-valid stores in its 212-case corpus, rejects 130
+reference-invalid stores, and explicitly declines four malformed cases.
+One rejected case, `semantic-43-function_byte`, produces
+`XAX.CANON.TRAILING_BYTES / TYPE-BODY` where the reference produces
+`XAX.TYPE.EXPECTED / TYPE-BITS`. Both reject it; first-diagnostic parity is unmet.
+The corrected self-store and large flag edit also decline; the responsible
+component is undiagnosed. Windows DLL packaging and migration of the common
+Python helper loader remain outside the implemented native route.
+
+**Evidence that closes it.** Canonical graph changes preserving rejection and
+diagnostic ordering, accepting the corrected self-store and replaying the large
+transaction byte for byte. Re-run the corpus without treating declines as
+validity claims or removing the diagnostic mismatch. No B-level or replacement
+matrix promotion follows from the current prototype.

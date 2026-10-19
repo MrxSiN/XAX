@@ -1,0 +1,1108 @@
+{
+  "status": "MEASURED exploratory verification CLI only",
+  "date": "2026-10-20",
+  "host": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "architecture": "AMD64",
+    "cpu": "AMD Ryzen 9 5900HS, 8 cores / 16 threads"
+  },
+  "scope": "Whole fresh-process CLI including startup, store read and verification; native also creates an empty success output file. OS file cache warmed by one unmeasured invocation per arm/case/cluster. No BBC filtering, BFX import, lowering or packaging. No competitor score change. Clocks/affinity/thermals uncontrolled; descriptive medians, no superiority claim. Current host differs from previous pilot; compare these paired samples only.",
+  "input": {
+    "bbc-compiler": {
+      "bytes": 262358,
+      "sha256": "e915f2f66e8b663a70085d1a739e7ea0a726c718b166667bce0b5e196b50c3c6"
+    },
+    "hash-host": {
+      "bytes": 46368,
+      "sha256": "2b67dd9975c623f95eb0096dcb0e465a9f78c63ceb0c9d6c7f79df34ab8a7d90"
+    },
+    "small-semantic": {
+      "bytes": 1031,
+      "sha256": "368a3e534a8c030d25913bfebb2269ff2e57ea544900626c7479df9b80628cd9"
+    }
+  },
+  "exe_sha256": "e2b730647e5005321166513c68c51223b7e8b4ee78222197f99dcf2725016d43",
+  "python_command": [
+    "C:\\Users\\SiN\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+    "-B",
+    "-m",
+    "xax_compiler",
+    "verify",
+    "<store>"
+  ],
+  "native_command": [
+    "xaxc-windows.exe",
+    "verify",
+    "<store>",
+    "<output.diag>"
+  ],
+  "bootstrap_environment_XAX_REQUIRE_NATIVE": "unset",
+  "native_environment_XAX_REQUIRE_NATIVE": "1",
+  "clusters": [
+    {
+      "cluster": 0,
+      "wall_seconds_samples": {
+        "bbc-compiler": {
+          "python": [
+            5.862229000000298,
+            7.422940800001015,
+            8.044153200000437,
+            5.898321200000282,
+            5.892461900000853,
+            7.650515900000755,
+            7.8831424999989395,
+            6.110549999999421,
+            7.308488599999691,
+            8.411964900000385
+          ],
+          "native": [
+            0.16350429999874905,
+            0.1778094000001147,
+            0.1956811000000016,
+            0.3110221000006277,
+            0.13690060000044468,
+            0.2486103000010189,
+            0.24391119999927469,
+            0.2877676000007341,
+            0.22934770000028948,
+            0.21819200000027195
+          ]
+        },
+        "hash-host": {
+          "python": [
+            1.1323253000009572,
+            1.6904317999997147,
+            1.2816322000016953,
+            1.4871933999984321,
+            1.138867499999833,
+            1.6307139000000461,
+            2.236814800000502,
+            1.9802608999998483,
+            1.4385342999994464,
+            1.3342054000004282
+          ],
+          "native": [
+            0.05237859999942884,
+            0.047993899999710266,
+            0.08677580000039598,
+            0.05229770000005374,
+            0.043827699999383185,
+            0.06621460000133084,
+            0.12202579999939189,
+            0.09651879999910307,
+            0.08222349999959988,
+            0.06308940000053553
+          ]
+        },
+        "small-semantic": {
+          "python": [
+            0.8667462000012165,
+            0.8932819000001473,
+            0.9684606999999232,
+            1.0270423000001756,
+            2.0476696000005177,
+            1.3246804999998858,
+            1.9550292000003537,
+            2.3615589999990334,
+            1.6020171000000119,
+            0.9932697999993252
+          ],
+          "native": [
+            0.024140100000295206,
+            0.036723700000948156,
+            0.0502624000000651,
+            0.05053860000043642,
+            0.043452899999465444,
+            0.06170380000003206,
+            0.13683769999988726,
+            0.14091150000058406,
+            0.07183199999963108,
+            0.05118339999899035
+          ]
+        }
+      },
+      "pair_order": [
+        [
+          "small-semantic",
+          5,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          3,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          3,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          6,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          2,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          2,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          9,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          5,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          8,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          9,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          9,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          8,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          2,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          4,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          6,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          4,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          7,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          0,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          5,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          8,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          3,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          0,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          4,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          0,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          6,
+          [
+            "native",
+            "python"
+          ]
+        ]
+      ]
+    },
+    {
+      "cluster": 1,
+      "wall_seconds_samples": {
+        "bbc-compiler": {
+          "python": [
+            7.094225099999676,
+            7.2965698999996675,
+            7.554985700000543,
+            7.077591900000698,
+            6.506236900000658,
+            8.360665500000323,
+            7.7751009999992675,
+            7.744855299999472,
+            7.511748200000511,
+            8.433559900000546
+          ],
+          "native": [
+            0.23963150000054156,
+            0.24612770000021555,
+            0.1796412000003329,
+            0.18024869999862858,
+            0.27432539999972505,
+            0.21227709999948274,
+            0.2504692000002251,
+            0.16649239999969723,
+            0.6148291999998037,
+            0.20761549999951967
+          ]
+        },
+        "hash-host": {
+          "python": [
+            1.6729433000000427,
+            1.5394448999995802,
+            1.7535547999996197,
+            1.5807760000006965,
+            1.503234200001316,
+            2.0240458000007493,
+            1.6863096000015503,
+            1.6952571000001626,
+            1.4575418000003992,
+            2.262749999999869
+          ],
+          "native": [
+            0.07381600000007893,
+            0.07150009999895701,
+            0.07532019999962358,
+            0.06792789999963134,
+            0.07504140000128245,
+            0.08284719999937806,
+            0.148282800000743,
+            0.08946840000135126,
+            0.10584109999945213,
+            0.07107670000004873
+          ]
+        },
+        "small-semantic": {
+          "python": [
+            0.9971468999992794,
+            1.2669488999999885,
+            1.487844799999948,
+            1.4228012000003218,
+            1.1325101000002178,
+            1.046291900000142,
+            1.3145772000007128,
+            1.08449230000042,
+            1.007928000000902,
+            1.3070198000004893
+          ],
+          "native": [
+            0.05210839999926975,
+            0.054248099999313126,
+            0.08098539999991772,
+            0.06978590000107943,
+            0.07686140000078012,
+            0.045719800000370014,
+            0.054294199999276316,
+            0.05104910000045493,
+            0.03460760000052687,
+            0.05291190000025381
+          ]
+        }
+      },
+      "pair_order": [
+        [
+          "small-semantic",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          9,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          6,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          9,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          6,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          2,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          5,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          9,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          4,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          3,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          5,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          6,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          4,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          2,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          2,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          0,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          0,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          8,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          8,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          5,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          3,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          3,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          1,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          0,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          8,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          4,
+          [
+            "python",
+            "native"
+          ]
+        ]
+      ]
+    },
+    {
+      "cluster": 2,
+      "wall_seconds_samples": {
+        "bbc-compiler": {
+          "python": [
+            5.471980899999835,
+            7.981830599999739,
+            7.214005300000281,
+            7.158737200001269,
+            7.053287200000341,
+            7.574615800000174,
+            7.323633300000438,
+            6.470372199999474,
+            4.870241799999349,
+            4.690226900000198
+          ],
+          "native": [
+            0.15746829999989131,
+            0.309135099998457,
+            0.16323279999960505,
+            0.17175219999990077,
+            0.1682135000010021,
+            0.1961327999997593,
+            0.18978640000023006,
+            0.2394097000014881,
+            0.14554519999910553,
+            0.13890820000051463
+          ]
+        },
+        "hash-host": {
+          "python": [
+            1.467629400000078,
+            2.2448861000011675,
+            1.8345642999993288,
+            1.912557100000413,
+            1.5994099999988975,
+            1.4938366000005772,
+            1.2937399999991612,
+            1.6312888000011299,
+            1.48917960000108,
+            1.2791600000000471
+          ],
+          "native": [
+            0.039443300000129966,
+            0.10123569999996107,
+            0.08414260000063223,
+            0.09134430000085558,
+            0.07285120000051393,
+            0.06524379999973462,
+            0.0645808000008401,
+            0.05912690000150178,
+            0.09842620000017632,
+            0.07641679999869666
+          ]
+        },
+        "small-semantic": {
+          "python": [
+            0.8430860999997094,
+            0.789767700000084,
+            2.058353000000352,
+            1.1677558999999746,
+            1.3647621000000072,
+            1.2634664000015619,
+            0.9107244000006176,
+            1.014931699999579,
+            1.1006548999994266,
+            1.388179499999751
+          ],
+          "native": [
+            0.0235344000011537,
+            0.036680399998658686,
+            0.09734149999894726,
+            0.06442400000014459,
+            0.05600170000070648,
+            0.07404690000112168,
+            0.05020869999862043,
+            0.04601330000150483,
+            0.0744330000015907,
+            0.06596779999927094
+          ]
+        }
+      },
+      "pair_order": [
+        [
+          "bbc-compiler",
+          4,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          3,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          5,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          5,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          8,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          9,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          8,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          2,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          7,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          3,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          0,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          4,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          8,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          2,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          1,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          3,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          5,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          7,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          6,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "small-semantic",
+          6,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "hash-host",
+          0,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          6,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          9,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "hash-host",
+          9,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "small-semantic",
+          4,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          2,
+          [
+            "python",
+            "native"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          0,
+          [
+            "native",
+            "python"
+          ]
+        ],
+        [
+          "bbc-compiler",
+          1,
+          [
+            "python",
+            "native"
+          ]
+        ]
+      ]
+    }
+  ],
+  "summary": {
+    "bbc-compiler": {
+      "median_ms": {
+        "python": 7302.529249999679,
+        "native": 201.87414999963949
+      },
+      "less_time_ms": 7100.65510000004,
+      "min_ms": {
+        "python": 4690.226900000198,
+        "native": 136.90060000044468
+      },
+      "max_ms": {
+        "python": 8433.559900000546,
+        "native": 614.8291999998037
+      },
+      "cluster_median_ms": [
+        {
+          "python": 7365.714700000353,
+          "native": 223.7698500002807
+        },
+        {
+          "python": 7533.366950000527,
+          "native": 225.95430000001215
+        },
+        {
+          "python": 7106.012200000805,
+          "native": 169.98285000045144
+        }
+      ]
+    },
+    "hash-host": {
+      "median_ms": {
+        "python": 1590.092999999797,
+        "native": 74.42870000068069
+      },
+      "less_time_ms": 1515.6642999991163,
+      "min_ms": {
+        "python": 1132.3253000009572,
+        "native": 39.443300000129966
+      },
+      "max_ms": {
+        "python": 2262.749999999869,
+        "native": 148.282800000743
+      },
+      "cluster_median_ms": [
+        {
+          "python": 1462.8638499989393,
+          "native": 64.65200000093319
+        },
+        {
+          "python": 1679.6264500007965,
+          "native": 75.18080000045302
+        },
+        {
+          "python": 1546.6232999997374,
+          "native": 74.6339999996053
+        }
+      ]
+    },
+    "small-semantic": {
+      "median_ms": {
+        "python": 1150.1330000000962,
+        "native": 53.57999999978347
+      },
+      "less_time_ms": 1096.5530000003127,
+      "min_ms": {
+        "python": 789.767700000084,
+        "native": 23.5344000011537
+      },
+      "max_ms": {
+        "python": 2361.5589999990334,
+        "native": 140.91150000058406
+      },
+      "cluster_median_ms": [
+        {
+          "python": 1175.8614000000307,
+          "native": 50.860999999713385
+        },
+        {
+          "python": 1199.7295000001031,
+          "native": 53.57999999978347
+        },
+        {
+          "python": 1134.2053999997006,
+          "native": 60.21285000042553
+        }
+      ]
+    }
+  },
+  "runner_sha256": "d2bce4057e6b2a8cecef35a44a76f45e91dc941d51200c6f81dccef405ca8d98"
+}
