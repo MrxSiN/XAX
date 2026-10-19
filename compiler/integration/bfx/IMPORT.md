@@ -15,6 +15,8 @@ source. Subsequent source changes require expected-root workspace transactions.
 The current [eight-byte tape reset](WIDE_RESET.md) retains the complete
 65,536-byte reset and all checked accesses. Its canonical transaction,
 correctness runs and absolute timings have separate evidence.
+The [standalone Android host](STANDALONE.md) can call an imported decision
+directly from a static executable, removing the shared-library test host.
 
 ## Import call
 

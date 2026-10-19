@@ -1,0 +1,419 @@
+{
+  "date": "2026-10-20",
+  "status": "EXECUTED native-only replay",
+  "primary_evidence_sha256": "12a7c5ca3d000e4a53977df0badc927d961b6a6469749bf563b3083aaa0d7735",
+  "source_sha256": "43a227c14726eb76a227c8ab63d8ba18dd5b52cdf4c9099985301183c80a85d6",
+  "XAX_REQUIRE_NATIVE": "1",
+  "checks": [
+    {
+      "name": "hello",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "03ba204e50d126e4674c005e04d82e84c21366780af1f43bd54a37816b6ab340",
+      "fragmented": false
+    },
+    {
+      "name": "binary_echo",
+      "input_bytes": 4,
+      "input_sha256": "89273d2f70b93285bb7ddb4bcee86a5347ca7159352e3cbdd20c23e9d1e507d3",
+      "exit_code": 0,
+      "stdout_sha256": "89273d2f70b93285bb7ddb4bcee86a5347ca7159352e3cbdd20c23e9d1e507d3",
+      "fragmented": false
+    },
+    {
+      "name": "wrap",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "942e1e2a66a427b6551732f758bc314f22b9cdec9365a3425c9184de299392b5",
+      "fragmented": false
+    },
+    {
+      "name": "nested_count",
+      "input_bytes": 1,
+      "input_sha256": "fb95aa98d6e6c5827a57ec17b978d647fcc01d98c357b7e64989af57339e9ac3",
+      "exit_code": 0,
+      "stdout_sha256": "fb95aa98d6e6c5827a57ec17b978d647fcc01d98c357b7e64989af57339e9ac3",
+      "fragmented": false
+    },
+    {
+      "name": "transfer_repeat",
+      "input_bytes": 221,
+      "input_sha256": "85f71b1edbf29ee22faaf2a817bc55f857d82f2cbdec2eb402f81e3eb6fb1bf6",
+      "exit_code": 0,
+      "stdout_sha256": "7c5bd2d144fdde498406edcb9fe60ce65b0dfa5f2dd7a7617f505e3d46d68bdb",
+      "fragmented": false
+    },
+    {
+      "name": "multi_transfer",
+      "input_bytes": 1,
+      "input_sha256": "fb95aa98d6e6c5827a57ec17b978d647fcc01d98c357b7e64989af57339e9ac3",
+      "exit_code": 0,
+      "stdout_sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "fragmented": false
+    },
+    {
+      "name": "scan",
+      "input_bytes": 1,
+      "input_sha256": "9652595f37edd08c51dfa26567e6cd76e6fa2709c3e578478ca398d316837a7a",
+      "exit_code": 0,
+      "stdout_sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "fragmented": false
+    },
+    {
+      "name": "nested_math",
+      "input_bytes": 16291,
+      "input_sha256": "59c936897f0938d77b1052dd7f15e38912f4dac7a256583801329cbadbe78eee",
+      "exit_code": 0,
+      "stdout_sha256": "c19a797fa1fd590cd2e5b42d1cf5f246e29b91684e2f87404b81dc345c7a56a0",
+      "fragmented": false
+    },
+    {
+      "name": "clear_set",
+      "input_bytes": 241,
+      "input_sha256": "2bfc8165d8c8e9b6efc5746577bca4f24f93bb2fbb0b502c1b9b5c29241d5ccb",
+      "exit_code": 0,
+      "stdout_sha256": "e77b9a9ae9e30b0dbdb6f510a264ef9de781501d7b6b92ae89eb059c5ab743db",
+      "fragmented": false
+    },
+    {
+      "name": "permit_flag",
+      "input_bytes": 1,
+      "input_sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "exit_code": 0,
+      "stdout_sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "fragmented": false
+    },
+    {
+      "name": "countdown_actions",
+      "input_bytes": 1,
+      "input_sha256": "ca358758f6d27e6cf45272937977a748fd88391db679ceda7dc7bf1f005ee879",
+      "exit_code": 0,
+      "stdout_sha256": "4bd00f01eadfdf639fdcd3c924c8935961df7f9ee44fcd4839da21bca5e65ffc",
+      "fragmented": false
+    },
+    {
+      "name": "checksum_four",
+      "input_bytes": 4,
+      "input_sha256": "b8acebbdbb55efd3d1fd27b7e1940a4809da3c305c22598a70ddf4c501f807e4",
+      "exit_code": 0,
+      "stdout_sha256": "4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080",
+      "fragmented": false
+    },
+    {
+      "name": "empty",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fragmented": false
+    },
+    {
+      "name": "left-trap",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fragmented": false
+    },
+    {
+      "name": "skipped-left",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "fragmented": false
+    },
+    {
+      "name": "taken-left",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fragmented": false
+    },
+    {
+      "name": "right-trap",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fragmented": false
+    },
+    {
+      "name": "nested-skip",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "fragmented": false
+    },
+    {
+      "name": "eof-zero",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "fragmented": false
+    },
+    {
+      "name": "clear-wrap",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "fragmented": false
+    },
+    {
+      "name": "prefix-failure",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fragmented": false
+    },
+    {
+      "name": "output-overflow",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 2,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fragmented": false
+    },
+    {
+      "name": "large-output",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "stdout_sha256": "701c5b26fc79fe83e4c67d2edd7d40d0c2dd8fc97a25ac89832760c3843189b6",
+      "fragmented": false
+    }
+  ],
+  "driver_binding": {
+    "edit_replay_byte_identical": true,
+    "verify_accepted": true,
+    "stale_root_rejected_exit": 1,
+    "stale_diagnostic_sha256": "21825ebd00c75279f1562490a155010ce5bbc727c4d9eb7b9d7a4564c4d1d1a7"
+  },
+  "authority_recorded_by": "External collector xax_native.loaded/AUTHORITY after direct executable execution. Complete ELF/PE digests bind exact semantic roots; no Python compiler algorithms execute in this replay.",
+  "xax_native.AUTHORITY": {
+    "android-hello": {
+      "component": "android-hello",
+      "semantic_root": "3e571bf1d5b5c455e8e1a4da0e5344b1c2e0bb5ae59187061dde83a27b6ffc4c",
+      "native_artifact_digest": "2b0ccefbfa4e798e440265af32bd0d9019b62d4c9b0b3a54adb6ef20794c511e",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-binary_echo": {
+      "component": "android-binary_echo",
+      "semantic_root": "38d28079ccbc05173e82414c65d0c1ff925beace2741a44a022efe555680b740",
+      "native_artifact_digest": "cbcf235f22dddae0112de5108b842a771d49affd038a9949c7cf095dee71e88b",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-wrap": {
+      "component": "android-wrap",
+      "semantic_root": "c2b5a8b9af1fca108034e8f7961393f1a0d685a7712c3f5eff19ddb64e1c7df9",
+      "native_artifact_digest": "ff9bf0600c60cdff001d07ea2a8bdedf8847c5f2862711a9849fc65c70ae7ade",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-nested_count": {
+      "component": "android-nested_count",
+      "semantic_root": "eeb1b47b97bea738824cef46f7267bb7d4b2153099e721ae394146f35141ffcc",
+      "native_artifact_digest": "26377b33aa17fc204985deb098a9f78b10260cbc858d2bb71bfa40a94bb08fc7",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-transfer_repeat": {
+      "component": "android-transfer_repeat",
+      "semantic_root": "c059b733bf51a4cd8618fb686452bbba32f04024d76b597bda0a5d9c9e717b48",
+      "native_artifact_digest": "ead63b7a403eefb5982c14bcf66fe7da168ed682dad21806203b48e2afba73bc",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-multi_transfer": {
+      "component": "android-multi_transfer",
+      "semantic_root": "f4e8a396e2fb86f6925f2b8ffafb478bad469cb6aeeccb3582acce6fdcfb5873",
+      "native_artifact_digest": "d761a581620eede87c986472fae4848e1a7bf4699530a03276bbcfba2418b4c9",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-scan": {
+      "component": "android-scan",
+      "semantic_root": "1f59585117f03bd7135a7283d87d882f4838592fe91c227aa2817f617884952f",
+      "native_artifact_digest": "6a9fa9c5d5e1a01b6a456f98da881ad20359201d848488618926775c6858cb37",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-nested_math": {
+      "component": "android-nested_math",
+      "semantic_root": "5909e440ca2157b0ba8a04da61109720483141bca7db4af0a9e7c7673a35c3e9",
+      "native_artifact_digest": "2d5943fca57a42a913df8cc2cf7f915eca6d7b37e880ac29c15770b32d694ef6",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-clear_set": {
+      "component": "android-clear_set",
+      "semantic_root": "078f62a2377160df87e5fbfd8191e828b7063934ce8431685be8028343d19329",
+      "native_artifact_digest": "88b3040b6b095bc4585ca32952958d62af8647e771b3c566f45a70dadceea6b6",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-permit_flag": {
+      "component": "android-permit_flag",
+      "semantic_root": "8ebefb0a01103925e7add7d31cc48a1357c95ac1c60b737b5380dabd10ad0b09",
+      "native_artifact_digest": "fafe12169a9f6d72070b671fb624f2df6da946ba6cb0046cf6f94c87c178de44",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-countdown_actions": {
+      "component": "android-countdown_actions",
+      "semantic_root": "865804dde1b636d665f362f2d56fa250cec86206b20750b4b7aa87d2fa52ba93",
+      "native_artifact_digest": "89cc8153a8e715722d1debdefebc776b5a61c99a05bffc26bb9aa47ff450ca81",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-checksum_four": {
+      "component": "android-checksum_four",
+      "semantic_root": "784eeaaffd89e85fbde959cf5435332a35a1f05bc8fa8beacc1514c791756228",
+      "native_artifact_digest": "54fcef3fd19fe9f9b131a213827242490942de6bd20e10f8bb8aad8422d3aeb5",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-empty": {
+      "component": "android-empty",
+      "semantic_root": "ffc802672a132e2bd40bc89c92d9d89b0ff9b7d21b1157cd0ba9caa2ab7c8dbd",
+      "native_artifact_digest": "a9dd50ec9b3638b3993470ee856187679a92ecc4d372199bca18c4f3a56037f6",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-left-trap": {
+      "component": "android-left-trap",
+      "semantic_root": "bc3c6b178a16dc0c51c3d0136b1083f7e1e4095de880a01b8dfd3e832f6c5a1e",
+      "native_artifact_digest": "7bb5cad386a9a6d6ee7cac29585fdaf1381737906a47a51cfda779a840ea2506",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-skipped-left": {
+      "component": "android-skipped-left",
+      "semantic_root": "a87d7d6c691fa1a23ea471287faa9b6e730d15e18ef60b44266ed6c3c8f1b741",
+      "native_artifact_digest": "806080530dc9af116e69e7fa7b11329f124a51ba62ea54e6f4cfc613c0b91151",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-taken-left": {
+      "component": "android-taken-left",
+      "semantic_root": "d2d9e58a725be447f5ac8c7d2b436b186f16d0ae29a1e9a196c711937e31e332",
+      "native_artifact_digest": "cc62ea2ace379223837a4669c370f7003f8e052275bf30224d6bff1aaa8ff8e5",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-right-trap": {
+      "component": "android-right-trap",
+      "semantic_root": "8b65420476eed42f677b199f024626cf5a8a6da251a09778e4d7022b14104c71",
+      "native_artifact_digest": "4da5c42cd7937c0596ec56e11058025e1ff416b9a019a8dc26fa5f990d722182",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-nested-skip": {
+      "component": "android-nested-skip",
+      "semantic_root": "617a5af78c1a280bb5911b178ef45c0e85050749733e45caf9f4b7c1330e1aaa",
+      "native_artifact_digest": "e3e0d54647fbf04b7c8ba08a5c3efc37025d45f87250c16ae74d9fea8021459e",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-eof-zero": {
+      "component": "android-eof-zero",
+      "semantic_root": "0b0d9b83ffbf9b4e1ae27e06b2570921d4927cc7fd238c4412fd746bdf60bf15",
+      "native_artifact_digest": "4ae95b9c947bb05ee3d7805d96430e0c00fdf854425d7204f0e4ced8c2e71fb8",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-clear-wrap": {
+      "component": "android-clear-wrap",
+      "semantic_root": "e6e8548b9cb2d2c2c338a3f509cdeab4de6ce8ef4dc21e2a39e40203fdfb80bc",
+      "native_artifact_digest": "236ffb5866b1700d58b218592a34636d4d4a1cf7f988c0de4149280f933bdac7",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-prefix-failure": {
+      "component": "android-prefix-failure",
+      "semantic_root": "80e46e5977f75b7a07cb34ba4f37fe611b996a52549d6071c097b5ef6b4e3745",
+      "native_artifact_digest": "3e792b1fc5b8311cb30f5c4632d446718a8c12c6ade9e57b109caf2fa29f8ffc",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-output-overflow": {
+      "component": "android-output-overflow",
+      "semantic_root": "805b1eb124b894a12a73208b400e6f5c5404afcc45b9df43ec05f5171c1fe39a",
+      "native_artifact_digest": "a0e4602950fc24e5fcc69d351ff3e3d3464d8eb72ad539f31d77a92db99341e9",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "android-large-output": {
+      "component": "android-large-output",
+      "semantic_root": "fe8b9000fcf1364eebee35e0a729c51d6c94a0e12eab9b4db34eb3585e2bc25a",
+      "native_artifact_digest": "aa73191a6f10af7ae94902dd65d5e33c20be875b75b03d313a39c4ff1ee26050",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "windows-binding-driver": {
+      "component": "windows-binding-driver",
+      "semantic_root": "59b52b732f54086588c34ba4098d54cea0d33dd1a102aeab5749b933cdc54d71",
+      "native_artifact_digest": "e2b730647e5005321166513c68c51223b7e8b4ee78222197f99dcf2725016d43",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    }
+  },
+  "external_runner_sha256": "2b24a5f5d09e5ca6beb6c2824b0656abaa98e20b10a4e423c557abe35e1c30da"
+}
