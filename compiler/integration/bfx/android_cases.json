@@ -1,0 +1,344 @@
+{
+  "root": "c6eadbc7b476b6522d75f84b564b2bc0cb679f172a04f8c3ca95fae3f20429d3",
+  "request": "bf9d2e05640f6d8a51900bce8e315b4d98a68f9780fb5869c20f582f66717a54",
+  "oncreate": "1040e3078000b71ffeb3bdfc6cd0cfbaba3aa04fe8bdd1b2de7498d8b8b0e9db",
+  "evaluate": "7808a44a18a5388feccaa3243d4917a259be49d314627aaf27a37fbc91920671",
+  "ui": "d3777165f7c012633652a3ebaacc965eba9c97ca010de6344a92dd31a4395784",
+  "core": "c16c150eac66359c19889e7bef188964a4e8601431fbec9bec1753f5116d3ae2",
+  "package": "org.bbc.bfxdecision",
+  "activity": "org.bbc.bfxdecision.DecisionActivity",
+  "ui_class": "org/bbc/bfxdecision/Ui",
+  "jni_symbols": [
+    "Java_org_bbc_bfxdecision_DecisionActivity_xaxOnCreate",
+    "Java_org_bbc_bfxdecision_DecisionActivity_xaxEvaluate"
+  ],
+  "cases": [
+    {
+      "capacity": 1,
+      "name": "permit",
+      "passed": true,
+      "label": "PERMIT: Brainfuck returned 01",
+      "row_visible": true,
+      "flag": 0
+    },
+    {
+      "capacity": 1,
+      "name": "block",
+      "passed": true,
+      "label": "BLOCK: Brainfuck returned 00",
+      "row_visible": false,
+      "flag": 1
+    },
+    {
+      "capacity": 16,
+      "name": "block255",
+      "passed": true,
+      "label": "BLOCK: Brainfuck returned 00",
+      "row_visible": false,
+      "flag": 255
+    },
+    {
+      "capacity": 0,
+      "name": "exhausted",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 0
+    },
+    {
+      "capacity": 1,
+      "name": "invalid_flag",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 256
+    },
+    {
+      "capacity": 17,
+      "name": "invalid_capacity",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 0
+    },
+    {
+      "capacity": 1,
+      "name": "negative_flag",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": -1
+    },
+    {
+      "capacity": -1,
+      "name": "negative_capacity",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 0
+    }
+  ],
+  "backend_regression": {
+    "root": "368d870980bfbfa10bbbdab03219bb7c34f19639e56270704131d5385b20c9f1",
+    "function": "b79c5a59cab37d5c6b14fe9ba0213bb71207bb05a82b3d02bdb56fc290ad55cd",
+    "result": [
+      0
+    ],
+    "narrow_cases": 36,
+    "large_stack_bytes": 131072,
+    "cases": [
+      {
+        "width": 1,
+        "operation": "ADD_WRAP",
+        "left": 1,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 1,
+        "operation": "SUB_WRAP",
+        "left": 0,
+        "right": 1,
+        "expected": 1
+      },
+      {
+        "width": 1,
+        "operation": "MUL_WRAP",
+        "left": 1,
+        "right": 1,
+        "expected": 1
+      },
+      {
+        "width": 1,
+        "operation": "BIT_OR",
+        "left": 0,
+        "right": 1,
+        "expected": 1
+      },
+      {
+        "width": 1,
+        "operation": "BIT_AND",
+        "left": 1,
+        "right": 0,
+        "expected": 0
+      },
+      {
+        "width": 1,
+        "operation": "BIT_XOR",
+        "left": 1,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 2,
+        "operation": "ADD_WRAP",
+        "left": 3,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 2,
+        "operation": "SUB_WRAP",
+        "left": 0,
+        "right": 1,
+        "expected": 3
+      },
+      {
+        "width": 2,
+        "operation": "MUL_WRAP",
+        "left": 3,
+        "right": 3,
+        "expected": 1
+      },
+      {
+        "width": 2,
+        "operation": "BIT_OR",
+        "left": 0,
+        "right": 3,
+        "expected": 3
+      },
+      {
+        "width": 2,
+        "operation": "BIT_AND",
+        "left": 3,
+        "right": 0,
+        "expected": 0
+      },
+      {
+        "width": 2,
+        "operation": "BIT_XOR",
+        "left": 3,
+        "right": 3,
+        "expected": 0
+      },
+      {
+        "width": 7,
+        "operation": "ADD_WRAP",
+        "left": 127,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 7,
+        "operation": "SUB_WRAP",
+        "left": 0,
+        "right": 1,
+        "expected": 127
+      },
+      {
+        "width": 7,
+        "operation": "MUL_WRAP",
+        "left": 127,
+        "right": 127,
+        "expected": 1
+      },
+      {
+        "width": 7,
+        "operation": "BIT_OR",
+        "left": 0,
+        "right": 127,
+        "expected": 127
+      },
+      {
+        "width": 7,
+        "operation": "BIT_AND",
+        "left": 127,
+        "right": 0,
+        "expected": 0
+      },
+      {
+        "width": 7,
+        "operation": "BIT_XOR",
+        "left": 127,
+        "right": 127,
+        "expected": 0
+      },
+      {
+        "width": 8,
+        "operation": "ADD_WRAP",
+        "left": 255,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 8,
+        "operation": "SUB_WRAP",
+        "left": 0,
+        "right": 1,
+        "expected": 255
+      },
+      {
+        "width": 8,
+        "operation": "MUL_WRAP",
+        "left": 255,
+        "right": 255,
+        "expected": 1
+      },
+      {
+        "width": 8,
+        "operation": "BIT_OR",
+        "left": 0,
+        "right": 255,
+        "expected": 255
+      },
+      {
+        "width": 8,
+        "operation": "BIT_AND",
+        "left": 255,
+        "right": 0,
+        "expected": 0
+      },
+      {
+        "width": 8,
+        "operation": "BIT_XOR",
+        "left": 255,
+        "right": 255,
+        "expected": 0
+      },
+      {
+        "width": 16,
+        "operation": "ADD_WRAP",
+        "left": 65535,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 16,
+        "operation": "SUB_WRAP",
+        "left": 0,
+        "right": 1,
+        "expected": 65535
+      },
+      {
+        "width": 16,
+        "operation": "MUL_WRAP",
+        "left": 65535,
+        "right": 65535,
+        "expected": 1
+      },
+      {
+        "width": 16,
+        "operation": "BIT_OR",
+        "left": 0,
+        "right": 65535,
+        "expected": 65535
+      },
+      {
+        "width": 16,
+        "operation": "BIT_AND",
+        "left": 65535,
+        "right": 0,
+        "expected": 0
+      },
+      {
+        "width": 16,
+        "operation": "BIT_XOR",
+        "left": 65535,
+        "right": 65535,
+        "expected": 0
+      },
+      {
+        "width": 31,
+        "operation": "ADD_WRAP",
+        "left": 2147483647,
+        "right": 1,
+        "expected": 0
+      },
+      {
+        "width": 31,
+        "operation": "SUB_WRAP",
+        "left": 0,
+        "right": 1,
+        "expected": 2147483647
+      },
+      {
+        "width": 31,
+        "operation": "MUL_WRAP",
+        "left": 2147483647,
+        "right": 2147483647,
+        "expected": 1
+      },
+      {
+        "width": 31,
+        "operation": "BIT_OR",
+        "left": 0,
+        "right": 2147483647,
+        "expected": 2147483647
+      },
+      {
+        "width": 31,
+        "operation": "BIT_AND",
+        "left": 2147483647,
+        "right": 0,
+        "expected": 0
+      },
+      {
+        "width": 31,
+        "operation": "BIT_XOR",
+        "left": 2147483647,
+        "right": 2147483647,
+        "expected": 0
+      }
+    ]
+  }
+}

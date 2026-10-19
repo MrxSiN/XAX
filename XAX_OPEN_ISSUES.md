@@ -705,3 +705,23 @@ Historical profiles and their failed or unknown costs remain separately recorded
 - CR-008: threads, timers and file I/O through the construct carrier.
 
 Each closes only with the acceptance test named in the register, EXECUTED on Windows.
+
+## OI-49 — Android ARM64 large composite return copy
+
+**Status: OPEN (2026-10-19).** The generic ARM64 frame path's return of a
+composite larger than 16 bytes loads its destination into the same temporary
+used by the memory-copy data load. Pixel 8 Pro execution of a 64-byte BLAKE3
+result faults: the emitted sequence loads the destination into x16, overwrites
+x16 with source data, then stores through that data value. The affected code
+is `_compile_general_function`'s indirect-result return copy in
+`compiler/src/xax_aarch64.py`. The backend is unchanged.
+
+The BFX importer uses checked scratch outputs and at most 16-byte mixing
+results, with native Android and Windows regression evidence in
+[android_import_evidence.json](compiler/integration/bfx/android_import_evidence.json).
+This enables that program; it does not repair the general backend operation.
+
+**Evidence that closes it.** A canonical XAX backend change with distinct live
+copy-address/data registers, exercised on Android for leaf and non-leaf calls,
+multiple composite sizes above 16 bytes, output guards and repeatable native
+results. No new Python implementation is needed or authorized by this issue.

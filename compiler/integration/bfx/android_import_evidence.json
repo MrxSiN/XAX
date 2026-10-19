@@ -1,0 +1,3563 @@
+{
+  "date": "2026-10-19",
+  "status": "EXECUTED",
+  "scope": "Canonical BFX importer native execution and native Brainfuck frontend rebuild cycles on Android ARM64 and Windows x86-64",
+  "xax_base_revision": "51bb251aff4abfe340901960b150eb11dc2a9a50",
+  "bbc_base_revision": "2b68a668f01ee0fc9e8d0a36938279a2685221a7",
+  "canonical_source": {
+    "path": "compiler/integration/bfx/import_bfx.xax",
+    "bytes": 413895,
+    "sha256": "3f2670d392683e194dae89e4fbbb8d67eea950a5ee681e2b4f356c078220b407",
+    "base_root": "252eca5c660b317fb7844a920ee2340144ef67ad858b7db906cc6f6c6c8da29f",
+    "root": "108fe27f40ea8b1fffa14426c6ee85bcecb7caef91e2f8313292ec22770badb8",
+    "function": "8f07f1a3ea93249df76090fc80af95162625b2ecf4b994cc2816bf7d10aea391",
+    "compression": "5f4c05e6ff56896d3b065ff52b35019e9ec28298d1474ce11c4b7df7c686cbac",
+    "g_function": "37cfc487b0e55f28a4a26d8aa8baefb27253f237af731adfeb82aefeeb465105",
+    "compression_nodes": 308,
+    "g_nodes": 15,
+    "scratch_output_offset": 1760,
+    "scratch_output_bytes": 32,
+    "compression_calls_replaced": 3,
+    "matched_g_sequences": 56,
+    "hash_nodes": 387,
+    "largest_machine_result_bytes": 16
+  },
+  "frontend_source": {
+    "path": "compiler/compiler.bf",
+    "bytes": 4531,
+    "sha256": "45a5ae43b6cebfe854453827e321c11be2b7ab50db4d78f6a2360b241ed2014b",
+    "changed_this_iteration": false
+  },
+  "transaction": {
+    "path": "compiler/integration/bfx/android_importer.edit",
+    "bytes": 13808,
+    "sha256": "83e7a3fa1f15d08053bd0fbb412539e6f6a9e6b2d71bea83d84bbb4ccf1e09ea",
+    "expected_root": "252eca5c660b317fb7844a920ee2340144ef67ad858b7db906cc6f6c6c8da29f",
+    "mutations": 1,
+    "supplied_objects": 16,
+    "replay_matches_maintained_store": true,
+    "stale_root_rejected": true,
+    "publication": "Unchanged reference transaction applier; verify_store; Workspace.save; tested candidate bytes match maintained source"
+  },
+  "contract": {
+    "format": "BFX",
+    "version": 1,
+    "native_export": "import_bfx",
+    "argument_count": 4,
+    "buffer_extents": [
+      3847,
+      16380,
+      67108864,
+      2048
+    ],
+    "hash_chaining_output_range": [
+      1760,
+      1792
+    ],
+    "hash_digest_range": [
+      1728,
+      1760
+    ],
+    "new_allocations": 0,
+    "largest_mixing_result_bytes": 16,
+    "input_abi_unchanged": true
+  },
+  "android_device": {
+    "ro.product.model": "Pixel 8 Pro",
+    "ro.build.fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "ro.build.version.sdk": "37",
+    "ro.product.cpu.abilist": "arm64-v8a"
+  },
+  "android_importer": {
+    "artifact": {
+      "bytes": 132040,
+      "sha256": "ca6d51ded4559c3fce6f7eb33e967cd05e181be1db4770c3e870383c12339109"
+    },
+    "record_cases": 393,
+    "real_frontend_outputs": 3,
+    "all_396_match_established_windows_results_byte_for_byte": true,
+    "all_four_buffer_guards_preserved": true,
+    "input_preserved": true,
+    "cases": [
+      {
+        "name": "payload 0",
+        "result": 45161581117440,
+        "store_sha256": "d34029fa90d1e21ae397a44c12ec033b373e915faf5b43df969f4affef069937",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 1",
+        "result": 49512382988288,
+        "store_sha256": "acab64ead7b82f608dd7d931588513daa49df55b5066aa3b2362f53a59921954",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 2",
+        "result": 53081500811264,
+        "store_sha256": "cb7771b235d8827f3f9dc355b805cb05aaf34f92aa00cabe489095439b1717bc",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 3",
+        "result": 1818188505415680,
+        "store_sha256": "84a780f0b401b6c995f94988b58d96a0da178dee670001b174e2ed28e2ec2274",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 4",
+        "result": 319871984336896,
+        "store_sha256": "63783f37db86fab7e3917009695fd731652cf11b61d6173806e158682897d812",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 5",
+        "result": 4,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 6",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 7",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 8",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 9",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "payload 10",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 0",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 1",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 2",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 3",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 4",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 5",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "short 6",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "invalid length 3848",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "invalid length 65535",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "invalid length 4294967295",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 21",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 22",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 23",
+        "result": 2,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 24",
+        "result": 2,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 25",
+        "result": 3,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 26",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 27",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bad header 28",
+        "result": 4,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 0",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 1",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 2",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 3",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 4",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 5",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 6",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 7",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 8",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 9",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 10",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 11",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 12",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 13",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 14",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 15",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 16",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 17",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 18",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 19",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 20",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 21",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 22",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 23",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 24",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 25",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 26",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 27",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 28",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 29",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 30",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 31",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 32",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 33",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 34",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 35",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 36",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 37",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 38",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 39",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 40",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 41",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 42",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 43",
+        "result": 45552423141376,
+        "store_sha256": "c0c1cf2de16ff0ed5377a19cd848620bae9dcb1c50df0bf619b9bd3ccd6d7825",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 44",
+        "result": 46192373268480,
+        "store_sha256": "6ebf11b10c989c1d1c208a92eef291624fd8ba5856f674fdbc745d54183cecd8",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 45",
+        "result": 45556718108672,
+        "store_sha256": "36278aef892eeb941f4823b16226533746e0d624a03c9a6f537a769ca37c1f5d",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 46",
+        "result": 45921790328832,
+        "store_sha256": "7d6ab4da3636a6137a764c7be91a1e257088a339c221ab85db75915cd3264789",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 47",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 48",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 49",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 50",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 51",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 52",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 53",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 54",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 55",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 56",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 57",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 58",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 59",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 60",
+        "result": 45582487912448,
+        "store_sha256": "c598b15948129d24f9ea9fd716b7aad0051bf6ddb1cc539f62dcc045d012fc67",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 61",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 62",
+        "result": 45582487912448,
+        "store_sha256": "813ae2c2602f59f96967188c54500b4807951819e3690b47006b15ffd3fb08f1",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 63",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 64",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 65",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 66",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 67",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 68",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 69",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 70",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 71",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 72",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 73",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 74",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 75",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 76",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 77",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 78",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 79",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 80",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 81",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 82",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 83",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 84",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 85",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 86",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 87",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 88",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 89",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 90",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 91",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 92",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 93",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 94",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 95",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 96",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 97",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 98",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 99",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 100",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 101",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 102",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 103",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 104",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 105",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 106",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 107",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 108",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 109",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 110",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 111",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 112",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 113",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 114",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 115",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 116",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 117",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 118",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 119",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 120",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 121",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 122",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 123",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 124",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 125",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 126",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 127",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 128",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 129",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 130",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 131",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 132",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 133",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 134",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 135",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 136",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 137",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 138",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 139",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 140",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 141",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 142",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 143",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 144",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 145",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 146",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 147",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 148",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 149",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 150",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 151",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 152",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 153",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 154",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 155",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 156",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 157",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 158",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 159",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 160",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 161",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 162",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 163",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 164",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 165",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 166",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 167",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 168",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 169",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 170",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 171",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 172",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 173",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 174",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 175",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 176",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 177",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 178",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 179",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 180",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 181",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 182",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 183",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 184",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 185",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 186",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 187",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 188",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 189",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 190",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 191",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 192",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 193",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 194",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 195",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 196",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 197",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 198",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 199",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 200",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 201",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 202",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 203",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 204",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 205",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 206",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 207",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 208",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 209",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 210",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 211",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 212",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 213",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 214",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 215",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 216",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 217",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 218",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 219",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 220",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 221",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 222",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 223",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 224",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 225",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 226",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 227",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 228",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 229",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 230",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 231",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 232",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 233",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 234",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 235",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 236",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 237",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 238",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 239",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 240",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 241",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 242",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 243",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 244",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 245",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 246",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 247",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 248",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 249",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 250",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 251",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 252",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 253",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 254",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "single byte 255",
+        "result": 5,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 0",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 1",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 2",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 3",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 4",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 5",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 6",
+        "result": 46192373268480,
+        "store_sha256": "6ebf11b10c989c1d1c208a92eef291624fd8ba5856f674fdbc745d54183cecd8",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 7",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 8",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 9",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 10",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 11",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 12",
+        "result": 46321222287360,
+        "store_sha256": "0a35c79e7427cb38bf05f5e064aa350a5f0ce1edcfaaa13cc2c3b5a2be6ddaa7",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 13",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 14",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 15",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 16",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 17",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 18",
+        "result": 60030757896192,
+        "store_sha256": "3b6e5b66b3ae9594498e5e2e1789f4b10c951f9fb406c3cfb3f95e4370c70d4c",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 19",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 20",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 21",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 22",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 23",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 24",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 25",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 26",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 27",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 28",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 29",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 30",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 31",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 32",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 33",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 34",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 35",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 36",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 37",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 38",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 39",
+        "result": 45161581117440,
+        "store_sha256": "d34029fa90d1e21ae397a44c12ec033b373e915faf5b43df969f4affef069937",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 40",
+        "result": 53244709568512,
+        "store_sha256": "91c10ef333d8e8bad7e28f3576aebe8866b8813bf657d5656aff3b88a1be53b2",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 41",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 42",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 43",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 44",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 45",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 46",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 47",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 48",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 49",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 50",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 51",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 52",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 53",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 54",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 55",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 56",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 57",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 58",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 59",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 60",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 61",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 62",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 63",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 64",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 65",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 66",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 67",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 68",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 69",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 70",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 71",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 72",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 73",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 74",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 75",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 76",
+        "result": 52158082842624,
+        "store_sha256": "4699d4a9ace025f18f38cff9688d75a18b640821c0c5b80d35fac5918b48a015",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 77",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 78",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 79",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 80",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 81",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 82",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 83",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 84",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 85",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 86",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 87",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 88",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 89",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 90",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 91",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 92",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 93",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 94",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 95",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 96",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 97",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 98",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "random 99",
+        "result": 6,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC all-eight",
+        "result": 49512382988288,
+        "store_sha256": "acab64ead7b82f608dd7d931588513daa49df55b5066aa3b2362f53a59921954",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC bad-close",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC bad-open",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC empty",
+        "result": 45161581117440,
+        "store_sha256": "d34029fa90d1e21ae397a44c12ec033b373e915faf5b43df969f4affef069937",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC nested",
+        "result": 53081500811264,
+        "store_sha256": "cb7771b235d8827f3f9dc355b805cb05aaf34f92aa00cabe489095439b1717bc",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC raw-zero",
+        "result": 46321222287360,
+        "store_sha256": "0a35c79e7427cb38bf05f5e064aa350a5f0ce1edcfaaa13cc2c3b5a2be6ddaa7",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC safe-annotations",
+        "result": 46321222287360,
+        "store_sha256": "0a35c79e7427cb38bf05f5e064aa350a5f0ce1edcfaaa13cc2c3b5a2be6ddaa7",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "BBC truncated",
+        "result": 1,
+        "store_sha256": null,
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "compiler frontend output",
+        "result": 1283409242488832,
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "bootstrap frontend output",
+        "result": 193728794853376,
+        "store_sha256": "383b9ffde8caf7ad0ca5d15d6e5e0f0c355187b58aa16aa75fe7269f2b846969",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      },
+      {
+        "name": "decision frontend output",
+        "result": 54335631261696,
+        "store_sha256": "27f711b7dff29d2960b113ae94c3116947038f5f1a2355d165dc166169cbd6b7",
+        "input_preserved": true,
+        "all_four_buffer_canaries_preserved": true,
+        "passed": true
+      }
+    ],
+    "transport": {
+      "bytes": 8408,
+      "sha256": "9ec7fa85772d255c1a2bdaabff5342cc5ac15cc95c1d1afdee19325bc90e01cd"
+    },
+    "transport_input": {
+      "bytes": 1525000,
+      "sha256": "afe56dd25b6efec4799d89502942bec84ff2bbd992d1cb69a8d6408a8062e75a"
+    },
+    "transport_output": {
+      "bytes": 1085553,
+      "sha256": "be2392031b72dea3f5332dbcb02f7e16c603d3127b7e7e3d1c1b9b7e8e0901df"
+    }
+  },
+  "windows_importer": {
+    "artifact": {
+      "bytes": 156672,
+      "sha256": "6d1339d2f6ef89484ed29d31e3adece4ddfbd3db97f4b67793b7f3c6a84d50a6"
+    },
+    "record_cases": 393,
+    "emitted_native_decision_calls": 89,
+    "emitted_modules": 13,
+    "all_passed": true,
+    "test_result_log": {
+      "bytes": 17563,
+      "sha256": "f43ad34244d537e63f46b0f7c1c4a31d40287cde45cd092a35307eb89a2516df"
+    }
+  },
+  "android_frontend_cycle": {
+    "generations": [
+      {
+        "generation": 0,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "elf_sha256": "a51053f148a6cb3f0a2d6de3731644edb1ea037bbb39c7ee5b1f04229e99277d",
+        "elf_bytes": 66504,
+        "input_preserved": true,
+        "all_buffer_canaries_preserved": true,
+        "fixtures": [
+          {
+            "fixture": "all-eight",
+            "output_hex": "424658010008003e3c2b2d2e2c5b5d",
+            "passed": true
+          },
+          {
+            "fixture": "bad-close",
+            "output_hex": "4246580102",
+            "passed": true
+          },
+          {
+            "fixture": "bad-open",
+            "output_hex": "4246580102",
+            "passed": true
+          },
+          {
+            "fixture": "empty",
+            "output_hex": "42465801000000",
+            "passed": true
+          },
+          {
+            "fixture": "nested",
+            "output_hex": "424658010012002b2b5b3e2b2b5b3e2b3c2d5d3c2d5d3e3e2e",
+            "passed": true
+          },
+          {
+            "fixture": "raw-zero",
+            "output_hex": "424658010002002b2e",
+            "passed": true
+          },
+          {
+            "fixture": "safe-annotations",
+            "output_hex": "424658010002002b2e",
+            "passed": true
+          },
+          {
+            "fixture": "truncated",
+            "output_hex": "4246580101",
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      {
+        "generation": 1,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "elf_sha256": "a51053f148a6cb3f0a2d6de3731644edb1ea037bbb39c7ee5b1f04229e99277d",
+        "elf_bytes": 66504,
+        "input_preserved": true,
+        "all_buffer_canaries_preserved": true,
+        "fixtures": [
+          {
+            "fixture": "all-eight",
+            "output_hex": "424658010008003e3c2b2d2e2c5b5d",
+            "passed": true
+          },
+          {
+            "fixture": "bad-close",
+            "output_hex": "4246580102",
+            "passed": true
+          },
+          {
+            "fixture": "bad-open",
+            "output_hex": "4246580102",
+            "passed": true
+          },
+          {
+            "fixture": "empty",
+            "output_hex": "42465801000000",
+            "passed": true
+          },
+          {
+            "fixture": "nested",
+            "output_hex": "424658010012002b2b5b3e2b2b5b3e2b3c2d5d3c2d5d3e3e2e",
+            "passed": true
+          },
+          {
+            "fixture": "raw-zero",
+            "output_hex": "424658010002002b2e",
+            "passed": true
+          },
+          {
+            "fixture": "safe-annotations",
+            "output_hex": "424658010002002b2e",
+            "passed": true
+          },
+          {
+            "fixture": "truncated",
+            "output_hex": "4246580101",
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      {
+        "generation": 2,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "elf_sha256": "a51053f148a6cb3f0a2d6de3731644edb1ea037bbb39c7ee5b1f04229e99277d",
+        "elf_bytes": 66504,
+        "input_preserved": true,
+        "all_buffer_canaries_preserved": true,
+        "fixtures": [
+          {
+            "fixture": "all-eight",
+            "output_hex": "424658010008003e3c2b2d2e2c5b5d",
+            "passed": true
+          },
+          {
+            "fixture": "bad-close",
+            "output_hex": "4246580102",
+            "passed": true
+          },
+          {
+            "fixture": "bad-open",
+            "output_hex": "4246580102",
+            "passed": true
+          },
+          {
+            "fixture": "empty",
+            "output_hex": "42465801000000",
+            "passed": true
+          },
+          {
+            "fixture": "nested",
+            "output_hex": "424658010012002b2b5b3e2b2b5b3e2b3c2d5d3c2d5d3e3e2e",
+            "passed": true
+          },
+          {
+            "fixture": "raw-zero",
+            "output_hex": "424658010002002b2e",
+            "passed": true
+          },
+          {
+            "fixture": "safe-annotations",
+            "output_hex": "424658010002002b2e",
+            "passed": true
+          },
+          {
+            "fixture": "truncated",
+            "output_hex": "4246580101",
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    ],
+    "all_generations_identical": true,
+    "scope": "BFX import and Brainfuck frontend execute on Android; native lowering/verification uses unchanged generic Windows-hosted XAX bootstrap utilities"
+  },
+  "windows_frontend_cycle": [
+    {
+      "generation": 0,
+      "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+      "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+      "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+      "dll_bytes": 622592,
+      "passed": true
+    },
+    {
+      "generation": 1,
+      "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+      "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+      "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+      "dll_bytes": 622592,
+      "passed": true
+    },
+    {
+      "generation": 2,
+      "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+      "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+      "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+      "dll_bytes": 622592,
+      "passed": true
+    }
+  ],
+  "rebuild": {
+    "maintained_android_library_matches_tested_artifact": true,
+    "maintained_windows_dll_matches_tested_artifact": true,
+    "generated_decision_stores_unchanged": true
+  },
+  "unchanged_components": {
+    "bfx.xax": {
+      "bytes": 9504,
+      "sha256": "5b2025a204ffb9e3634f880966f09f54d11c695e420f9ad688bd398afdabf2e8"
+    },
+    "android_bfx.xax": {
+      "bytes": 46088,
+      "sha256": "da7605a7b44a7335b277ab730e97d5d29a879ceb1a11ba7f7702ac54bf8d0083"
+    },
+    "backend_tests.xax": {
+      "bytes": 18102,
+      "sha256": "b622760d05831e5b21f61f7022a9a5fa640748137150886accf9dd972b766735"
+    }
+  },
+  "backend_limitation": {
+    "issue": "OI-49",
+    "status": "OPEN",
+    "scope": "General ARM64 frame-path composite returns above 16 bytes",
+    "observed_device_exit": 139,
+    "failed_candidate_artifact": {
+      "bytes": 132040,
+      "sha256": "28ae902f776ff314677ff625d3069cf1ee535f6e8c948664b3cdebca594f55a2"
+    },
+    "fault_pc_relative": 16752,
+    "observed_sequence": [
+      "ldr x16, [sp, #0x5c0]",
+      "ldr x16, [sp, #0x480]",
+      "str x16, [x16]"
+    ],
+    "diagnosis": "The copy data load overwrites the destination address register before the store",
+    "backend_changed": false,
+    "importer_uses_operation": false
+  },
+  "purity": {
+    "new_or_modified_python_implementation_files": 0,
+    "new_canonical_executable_source": [
+      "compiler/integration/bfx/import_bfx.xax"
+    ],
+    "bbc_executable_changes": 0,
+    "generic_dependencies": "Unchanged Python canonical verifier, reference transaction applier, native lowerers and PE/ELF packaging; external NDK C transports only allocate buffers, copy files and call exports",
+    "XAX_REQUIRE_NATIVE": "unset",
+    "xax_host_execution_claim": false
+  },
+  "external_tools": {
+    "outline-bfx-compression.py": {
+      "bytes": 5138,
+      "sha256": "38b5c81fe3e8a67b8277e74da7b935fbd30d64fa698bba8436dcfc6103c437fa"
+    },
+    "outline-bfx-mask.py": {
+      "bytes": 3899,
+      "sha256": "c168ceb38f37828f5aefff99cabe1e95c32408bb50a4fde3d2a049e08e67c720"
+    },
+    "narrow-bfx-compression.py": {
+      "bytes": 7585,
+      "sha256": "5b5076b455924c6aef27fc92ee14a6802adc9e6940612dc40d56b358a533eabe"
+    },
+    "lower-bfx-arm64-candidate.py": {
+      "bytes": 2088,
+      "sha256": "bf7630987b22cf846de4430f202e4c4207a76c0409ec6dfd4182c9b0d6d9d05b"
+    },
+    "test-bfx-import-arm64-device-v4.py": {
+      "bytes": 3103,
+      "sha256": "1339cc8f5aee9925287ca3bcb7f16f1f905fb1bcab6cbba1bf36ed6cb74e1bf2"
+    },
+    "test-bfx-import-arm64-windows-v4.py": {
+      "bytes": 5100,
+      "sha256": "b9a10dd94fa011842931f45804a5cff87e0c0ebdf01c22183c713a8016d5fde5"
+    },
+    "test-bfx-import-arm64-cycle-v4.py": {
+      "bytes": 2152,
+      "sha256": "38678e73a95bcefa563370602c5dd83d2f2f8f1e9993716f062be2044a35b646"
+    },
+    "test-bfx-import-arm64-frontend-cycle.py": {
+      "bytes": 3052,
+      "sha256": "0817163bdacec52c757e9eda98065931879fc5dd92c2af9b368e1be5fa2a62db"
+    },
+    "bfx-import-transport.c": {
+      "bytes": 1463,
+      "sha256": "5528e33eab22b7c5219aaa61f673462d792c60a9527e253ec5d12fae427b4c89"
+    },
+    "bfx-frontend-transport.c": {
+      "bytes": 910,
+      "sha256": "8cac9d4af9d765faffae602502af97435a06c658ca862b6a4e35a7031858b74d"
+    }
+  },
+  "performance": "No speed claim. Artifact sizes, deterministic bytes and native correctness only.",
+  "remaining_work": [
+    "BBC-owned optimization with equivalence evidence",
+    "Linux execution host unavailable",
+    "XAX-hosted native lowering on Android is outside the demonstrated cycle",
+    "General ARM64 composite-return copy defect OI-49"
+  ]
+}

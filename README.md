@@ -94,3 +94,13 @@ Recent results (details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md)):
 - [State](XAX_STATE.md) · [Roadmap](XAX_IMPLEMENTATION_ROADMAP.md) · [Handoff](XAX_HANDOFF.md)
 - [Decisions](XAX_DECISIONS.md) · [Open issues](XAX_OPEN_ISSUES.md)
 - [Conformance](XAX_CONFORMANCE.md) · [Benchmarks](XAX_BENCHMARKS.md)
+
+## BFX integration
+
+BBC emits BFX modules for the [canonical XAX decoder](docs/18_BFX_IMPORT.md),
+which executes on Android ARM64 and Windows x86-64. The
+[native BFX importer](compiler/integration/bfx/IMPORT.md) emits complete
+canonical decision stores and executes on Android and Windows. Three frontend
+generations on each platform produce identical artifacts. The
+[canonical Android app](compiler/integration/bfx/ANDROID.md) passes eight
+Activity cases. Native lowering uses the Windows build host.

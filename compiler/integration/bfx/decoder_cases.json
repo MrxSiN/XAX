@@ -1,0 +1,3293 @@
+{
+  "format": "bfx-decoder-test-data-v1",
+  "cases": [
+    {
+      "name": "payload 0",
+      "record_hex": "42465801000000",
+      "length": 7,
+      "expected_result": 0,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 1",
+      "record_hex": "424658010008003e3c2b2d2e2c5b5d",
+      "length": 15,
+      "expected_result": 34359738368,
+      "expected_pairs": {
+        "7": 6,
+        "6": 7
+      }
+    },
+    {
+      "name": "payload 2",
+      "record_hex": "424658010012002b2b5b3e2b2b5b3e2b3c2d5d3c2d5d3e3e2e",
+      "length": 25,
+      "expected_result": 77309411328,
+      "expected_pairs": {
+        "11": 6,
+        "6": 11,
+        "14": 2,
+        "2": 14
+      }
+    },
+    {
+      "name": "payload 3",
+      "record_hex": "4246580100000f2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+      "length": 3847,
+      "expected_result": 16492674416640,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 4",
+      "record_hex": "4246580100fe015b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "length": 517,
+      "expected_result": 2190433320960,
+      "expected_pairs": {
+        "255": 254,
+        "254": 255,
+        "256": 253,
+        "253": 256,
+        "257": 252,
+        "252": 257,
+        "258": 251,
+        "251": 258,
+        "259": 250,
+        "250": 259,
+        "260": 249,
+        "249": 260,
+        "261": 248,
+        "248": 261,
+        "262": 247,
+        "247": 262,
+        "263": 246,
+        "246": 263,
+        "264": 245,
+        "245": 264,
+        "265": 244,
+        "244": 265,
+        "266": 243,
+        "243": 266,
+        "267": 242,
+        "242": 267,
+        "268": 241,
+        "241": 268,
+        "269": 240,
+        "240": 269,
+        "270": 239,
+        "239": 270,
+        "271": 238,
+        "238": 271,
+        "272": 237,
+        "237": 272,
+        "273": 236,
+        "236": 273,
+        "274": 235,
+        "235": 274,
+        "275": 234,
+        "234": 275,
+        "276": 233,
+        "233": 276,
+        "277": 232,
+        "232": 277,
+        "278": 231,
+        "231": 278,
+        "279": 230,
+        "230": 279,
+        "280": 229,
+        "229": 280,
+        "281": 228,
+        "228": 281,
+        "282": 227,
+        "227": 282,
+        "283": 226,
+        "226": 283,
+        "284": 225,
+        "225": 284,
+        "285": 224,
+        "224": 285,
+        "286": 223,
+        "223": 286,
+        "287": 222,
+        "222": 287,
+        "288": 221,
+        "221": 288,
+        "289": 220,
+        "220": 289,
+        "290": 219,
+        "219": 290,
+        "291": 218,
+        "218": 291,
+        "292": 217,
+        "217": 292,
+        "293": 216,
+        "216": 293,
+        "294": 215,
+        "215": 294,
+        "295": 214,
+        "214": 295,
+        "296": 213,
+        "213": 296,
+        "297": 212,
+        "212": 297,
+        "298": 211,
+        "211": 298,
+        "299": 210,
+        "210": 299,
+        "300": 209,
+        "209": 300,
+        "301": 208,
+        "208": 301,
+        "302": 207,
+        "207": 302,
+        "303": 206,
+        "206": 303,
+        "304": 205,
+        "205": 304,
+        "305": 204,
+        "204": 305,
+        "306": 203,
+        "203": 306,
+        "307": 202,
+        "202": 307,
+        "308": 201,
+        "201": 308,
+        "309": 200,
+        "200": 309,
+        "310": 199,
+        "199": 310,
+        "311": 198,
+        "198": 311,
+        "312": 197,
+        "197": 312,
+        "313": 196,
+        "196": 313,
+        "314": 195,
+        "195": 314,
+        "315": 194,
+        "194": 315,
+        "316": 193,
+        "193": 316,
+        "317": 192,
+        "192": 317,
+        "318": 191,
+        "191": 318,
+        "319": 190,
+        "190": 319,
+        "320": 189,
+        "189": 320,
+        "321": 188,
+        "188": 321,
+        "322": 187,
+        "187": 322,
+        "323": 186,
+        "186": 323,
+        "324": 185,
+        "185": 324,
+        "325": 184,
+        "184": 325,
+        "326": 183,
+        "183": 326,
+        "327": 182,
+        "182": 327,
+        "328": 181,
+        "181": 328,
+        "329": 180,
+        "180": 329,
+        "330": 179,
+        "179": 330,
+        "331": 178,
+        "178": 331,
+        "332": 177,
+        "177": 332,
+        "333": 176,
+        "176": 333,
+        "334": 175,
+        "175": 334,
+        "335": 174,
+        "174": 335,
+        "336": 173,
+        "173": 336,
+        "337": 172,
+        "172": 337,
+        "338": 171,
+        "171": 338,
+        "339": 170,
+        "170": 339,
+        "340": 169,
+        "169": 340,
+        "341": 168,
+        "168": 341,
+        "342": 167,
+        "167": 342,
+        "343": 166,
+        "166": 343,
+        "344": 165,
+        "165": 344,
+        "345": 164,
+        "164": 345,
+        "346": 163,
+        "163": 346,
+        "347": 162,
+        "162": 347,
+        "348": 161,
+        "161": 348,
+        "349": 160,
+        "160": 349,
+        "350": 159,
+        "159": 350,
+        "351": 158,
+        "158": 351,
+        "352": 157,
+        "157": 352,
+        "353": 156,
+        "156": 353,
+        "354": 155,
+        "155": 354,
+        "355": 154,
+        "154": 355,
+        "356": 153,
+        "153": 356,
+        "357": 152,
+        "152": 357,
+        "358": 151,
+        "151": 358,
+        "359": 150,
+        "150": 359,
+        "360": 149,
+        "149": 360,
+        "361": 148,
+        "148": 361,
+        "362": 147,
+        "147": 362,
+        "363": 146,
+        "146": 363,
+        "364": 145,
+        "145": 364,
+        "365": 144,
+        "144": 365,
+        "366": 143,
+        "143": 366,
+        "367": 142,
+        "142": 367,
+        "368": 141,
+        "141": 368,
+        "369": 140,
+        "140": 369,
+        "370": 139,
+        "139": 370,
+        "371": 138,
+        "138": 371,
+        "372": 137,
+        "137": 372,
+        "373": 136,
+        "136": 373,
+        "374": 135,
+        "135": 374,
+        "375": 134,
+        "134": 375,
+        "376": 133,
+        "133": 376,
+        "377": 132,
+        "132": 377,
+        "378": 131,
+        "131": 378,
+        "379": 130,
+        "130": 379,
+        "380": 129,
+        "129": 380,
+        "381": 128,
+        "128": 381,
+        "382": 127,
+        "127": 382,
+        "383": 126,
+        "126": 383,
+        "384": 125,
+        "125": 384,
+        "385": 124,
+        "124": 385,
+        "386": 123,
+        "123": 386,
+        "387": 122,
+        "122": 387,
+        "388": 121,
+        "121": 388,
+        "389": 120,
+        "120": 389,
+        "390": 119,
+        "119": 390,
+        "391": 118,
+        "118": 391,
+        "392": 117,
+        "117": 392,
+        "393": 116,
+        "116": 393,
+        "394": 115,
+        "115": 394,
+        "395": 114,
+        "114": 395,
+        "396": 113,
+        "113": 396,
+        "397": 112,
+        "112": 397,
+        "398": 111,
+        "111": 398,
+        "399": 110,
+        "110": 399,
+        "400": 109,
+        "109": 400,
+        "401": 108,
+        "108": 401,
+        "402": 107,
+        "107": 402,
+        "403": 106,
+        "106": 403,
+        "404": 105,
+        "105": 404,
+        "405": 104,
+        "104": 405,
+        "406": 103,
+        "103": 406,
+        "407": 102,
+        "102": 407,
+        "408": 101,
+        "101": 408,
+        "409": 100,
+        "100": 409,
+        "410": 99,
+        "99": 410,
+        "411": 98,
+        "98": 411,
+        "412": 97,
+        "97": 412,
+        "413": 96,
+        "96": 413,
+        "414": 95,
+        "95": 414,
+        "415": 94,
+        "94": 415,
+        "416": 93,
+        "93": 416,
+        "417": 92,
+        "92": 417,
+        "418": 91,
+        "91": 418,
+        "419": 90,
+        "90": 419,
+        "420": 89,
+        "89": 420,
+        "421": 88,
+        "88": 421,
+        "422": 87,
+        "87": 422,
+        "423": 86,
+        "86": 423,
+        "424": 85,
+        "85": 424,
+        "425": 84,
+        "84": 425,
+        "426": 83,
+        "83": 426,
+        "427": 82,
+        "82": 427,
+        "428": 81,
+        "81": 428,
+        "429": 80,
+        "80": 429,
+        "430": 79,
+        "79": 430,
+        "431": 78,
+        "78": 431,
+        "432": 77,
+        "77": 432,
+        "433": 76,
+        "76": 433,
+        "434": 75,
+        "75": 434,
+        "435": 74,
+        "74": 435,
+        "436": 73,
+        "73": 436,
+        "437": 72,
+        "72": 437,
+        "438": 71,
+        "71": 438,
+        "439": 70,
+        "70": 439,
+        "440": 69,
+        "69": 440,
+        "441": 68,
+        "68": 441,
+        "442": 67,
+        "67": 442,
+        "443": 66,
+        "66": 443,
+        "444": 65,
+        "65": 444,
+        "445": 64,
+        "64": 445,
+        "446": 63,
+        "63": 446,
+        "447": 62,
+        "62": 447,
+        "448": 61,
+        "61": 448,
+        "449": 60,
+        "60": 449,
+        "450": 59,
+        "59": 450,
+        "451": 58,
+        "58": 451,
+        "452": 57,
+        "57": 452,
+        "453": 56,
+        "56": 453,
+        "454": 55,
+        "55": 454,
+        "455": 54,
+        "54": 455,
+        "456": 53,
+        "53": 456,
+        "457": 52,
+        "52": 457,
+        "458": 51,
+        "51": 458,
+        "459": 50,
+        "50": 459,
+        "460": 49,
+        "49": 460,
+        "461": 48,
+        "48": 461,
+        "462": 47,
+        "47": 462,
+        "463": 46,
+        "46": 463,
+        "464": 45,
+        "45": 464,
+        "465": 44,
+        "44": 465,
+        "466": 43,
+        "43": 466,
+        "467": 42,
+        "42": 467,
+        "468": 41,
+        "41": 468,
+        "469": 40,
+        "40": 469,
+        "470": 39,
+        "39": 470,
+        "471": 38,
+        "38": 471,
+        "472": 37,
+        "37": 472,
+        "473": 36,
+        "36": 473,
+        "474": 35,
+        "35": 474,
+        "475": 34,
+        "34": 475,
+        "476": 33,
+        "33": 476,
+        "477": 32,
+        "32": 477,
+        "478": 31,
+        "31": 478,
+        "479": 30,
+        "30": 479,
+        "480": 29,
+        "29": 480,
+        "481": 28,
+        "28": 481,
+        "482": 27,
+        "27": 482,
+        "483": 26,
+        "26": 483,
+        "484": 25,
+        "25": 484,
+        "485": 24,
+        "24": 485,
+        "486": 23,
+        "23": 486,
+        "487": 22,
+        "22": 487,
+        "488": 21,
+        "21": 488,
+        "489": 20,
+        "20": 489,
+        "490": 19,
+        "19": 490,
+        "491": 18,
+        "18": 491,
+        "492": 17,
+        "17": 492,
+        "493": 16,
+        "16": 493,
+        "494": 15,
+        "15": 494,
+        "495": 14,
+        "14": 495,
+        "496": 13,
+        "13": 496,
+        "497": 12,
+        "12": 497,
+        "498": 11,
+        "11": 498,
+        "499": 10,
+        "10": 499,
+        "500": 9,
+        "9": 500,
+        "501": 8,
+        "8": 501,
+        "502": 7,
+        "7": 502,
+        "503": 6,
+        "6": 503,
+        "504": 5,
+        "5": 504,
+        "505": 4,
+        "4": 505,
+        "506": 3,
+        "3": 506,
+        "507": 2,
+        "2": 507,
+        "508": 1,
+        "1": 508,
+        "509": 0,
+        "0": 509
+      }
+    },
+    {
+      "name": "payload 5",
+      "record_hex": "424658010000025b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "length": 519,
+      "expected_result": 4,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 6",
+      "record_hex": "424658010001005b",
+      "length": 8,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 7",
+      "record_hex": "424658010001005d",
+      "length": 8,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 8",
+      "record_hex": "424658010002005d5b",
+      "length": 9,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 9",
+      "record_hex": "4246580100010061",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "payload 10",
+      "record_hex": "4246580100010000",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 0",
+      "record_hex": "",
+      "length": 0,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 1",
+      "record_hex": "42",
+      "length": 1,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 2",
+      "record_hex": "4246",
+      "length": 2,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 3",
+      "record_hex": "424658",
+      "length": 3,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 4",
+      "record_hex": "42465801",
+      "length": 4,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 5",
+      "record_hex": "4246580100",
+      "length": 5,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "short 6",
+      "record_hex": "424658010000",
+      "length": 6,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "invalid length 3848",
+      "record_hex": "42465801000000",
+      "length": 3848,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "invalid length 65535",
+      "record_hex": "42465801000000",
+      "length": 65535,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "invalid length 4294967295",
+      "record_hex": "42465801000000",
+      "length": 4294967295,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 21",
+      "record_hex": "42425801000000",
+      "length": 7,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 22",
+      "record_hex": "42464931000000",
+      "length": 7,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 23",
+      "record_hex": "42465800000000",
+      "length": 7,
+      "expected_result": 2,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 24",
+      "record_hex": "42465802000000",
+      "length": 7,
+      "expected_result": 2,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 25",
+      "record_hex": "42465801010000",
+      "length": 7,
+      "expected_result": 3,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 26",
+      "record_hex": "4246580100000000",
+      "length": 8,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 27",
+      "record_hex": "42465801000100",
+      "length": 7,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "bad header 28",
+      "record_hex": "4246580100010f",
+      "length": 7,
+      "expected_result": 4,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 0",
+      "record_hex": "4246580100010000",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 1",
+      "record_hex": "4246580100010001",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 2",
+      "record_hex": "4246580100010002",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 3",
+      "record_hex": "4246580100010003",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 4",
+      "record_hex": "4246580100010004",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 5",
+      "record_hex": "4246580100010005",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 6",
+      "record_hex": "4246580100010006",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 7",
+      "record_hex": "4246580100010007",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 8",
+      "record_hex": "4246580100010008",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 9",
+      "record_hex": "4246580100010009",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 10",
+      "record_hex": "424658010001000a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 11",
+      "record_hex": "424658010001000b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 12",
+      "record_hex": "424658010001000c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 13",
+      "record_hex": "424658010001000d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 14",
+      "record_hex": "424658010001000e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 15",
+      "record_hex": "424658010001000f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 16",
+      "record_hex": "4246580100010010",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 17",
+      "record_hex": "4246580100010011",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 18",
+      "record_hex": "4246580100010012",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 19",
+      "record_hex": "4246580100010013",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 20",
+      "record_hex": "4246580100010014",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 21",
+      "record_hex": "4246580100010015",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 22",
+      "record_hex": "4246580100010016",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 23",
+      "record_hex": "4246580100010017",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 24",
+      "record_hex": "4246580100010018",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 25",
+      "record_hex": "4246580100010019",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 26",
+      "record_hex": "424658010001001a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 27",
+      "record_hex": "424658010001001b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 28",
+      "record_hex": "424658010001001c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 29",
+      "record_hex": "424658010001001d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 30",
+      "record_hex": "424658010001001e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 31",
+      "record_hex": "424658010001001f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 32",
+      "record_hex": "4246580100010020",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 33",
+      "record_hex": "4246580100010021",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 34",
+      "record_hex": "4246580100010022",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 35",
+      "record_hex": "4246580100010023",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 36",
+      "record_hex": "4246580100010024",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 37",
+      "record_hex": "4246580100010025",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 38",
+      "record_hex": "4246580100010026",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 39",
+      "record_hex": "4246580100010027",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 40",
+      "record_hex": "4246580100010028",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 41",
+      "record_hex": "4246580100010029",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 42",
+      "record_hex": "424658010001002a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 43",
+      "record_hex": "424658010001002b",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 44",
+      "record_hex": "424658010001002c",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 45",
+      "record_hex": "424658010001002d",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 46",
+      "record_hex": "424658010001002e",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 47",
+      "record_hex": "424658010001002f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 48",
+      "record_hex": "4246580100010030",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 49",
+      "record_hex": "4246580100010031",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 50",
+      "record_hex": "4246580100010032",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 51",
+      "record_hex": "4246580100010033",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 52",
+      "record_hex": "4246580100010034",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 53",
+      "record_hex": "4246580100010035",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 54",
+      "record_hex": "4246580100010036",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 55",
+      "record_hex": "4246580100010037",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 56",
+      "record_hex": "4246580100010038",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 57",
+      "record_hex": "4246580100010039",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 58",
+      "record_hex": "424658010001003a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 59",
+      "record_hex": "424658010001003b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 60",
+      "record_hex": "424658010001003c",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 61",
+      "record_hex": "424658010001003d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 62",
+      "record_hex": "424658010001003e",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 63",
+      "record_hex": "424658010001003f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 64",
+      "record_hex": "4246580100010040",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 65",
+      "record_hex": "4246580100010041",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 66",
+      "record_hex": "4246580100010042",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 67",
+      "record_hex": "4246580100010043",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 68",
+      "record_hex": "4246580100010044",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 69",
+      "record_hex": "4246580100010045",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 70",
+      "record_hex": "4246580100010046",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 71",
+      "record_hex": "4246580100010047",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 72",
+      "record_hex": "4246580100010048",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 73",
+      "record_hex": "4246580100010049",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 74",
+      "record_hex": "424658010001004a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 75",
+      "record_hex": "424658010001004b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 76",
+      "record_hex": "424658010001004c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 77",
+      "record_hex": "424658010001004d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 78",
+      "record_hex": "424658010001004e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 79",
+      "record_hex": "424658010001004f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 80",
+      "record_hex": "4246580100010050",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 81",
+      "record_hex": "4246580100010051",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 82",
+      "record_hex": "4246580100010052",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 83",
+      "record_hex": "4246580100010053",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 84",
+      "record_hex": "4246580100010054",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 85",
+      "record_hex": "4246580100010055",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 86",
+      "record_hex": "4246580100010056",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 87",
+      "record_hex": "4246580100010057",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 88",
+      "record_hex": "4246580100010058",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 89",
+      "record_hex": "4246580100010059",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 90",
+      "record_hex": "424658010001005a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 91",
+      "record_hex": "424658010001005b",
+      "length": 8,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 92",
+      "record_hex": "424658010001005c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 93",
+      "record_hex": "424658010001005d",
+      "length": 8,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 94",
+      "record_hex": "424658010001005e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 95",
+      "record_hex": "424658010001005f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 96",
+      "record_hex": "4246580100010060",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 97",
+      "record_hex": "4246580100010061",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 98",
+      "record_hex": "4246580100010062",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 99",
+      "record_hex": "4246580100010063",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 100",
+      "record_hex": "4246580100010064",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 101",
+      "record_hex": "4246580100010065",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 102",
+      "record_hex": "4246580100010066",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 103",
+      "record_hex": "4246580100010067",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 104",
+      "record_hex": "4246580100010068",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 105",
+      "record_hex": "4246580100010069",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 106",
+      "record_hex": "424658010001006a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 107",
+      "record_hex": "424658010001006b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 108",
+      "record_hex": "424658010001006c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 109",
+      "record_hex": "424658010001006d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 110",
+      "record_hex": "424658010001006e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 111",
+      "record_hex": "424658010001006f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 112",
+      "record_hex": "4246580100010070",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 113",
+      "record_hex": "4246580100010071",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 114",
+      "record_hex": "4246580100010072",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 115",
+      "record_hex": "4246580100010073",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 116",
+      "record_hex": "4246580100010074",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 117",
+      "record_hex": "4246580100010075",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 118",
+      "record_hex": "4246580100010076",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 119",
+      "record_hex": "4246580100010077",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 120",
+      "record_hex": "4246580100010078",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 121",
+      "record_hex": "4246580100010079",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 122",
+      "record_hex": "424658010001007a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 123",
+      "record_hex": "424658010001007b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 124",
+      "record_hex": "424658010001007c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 125",
+      "record_hex": "424658010001007d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 126",
+      "record_hex": "424658010001007e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 127",
+      "record_hex": "424658010001007f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 128",
+      "record_hex": "4246580100010080",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 129",
+      "record_hex": "4246580100010081",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 130",
+      "record_hex": "4246580100010082",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 131",
+      "record_hex": "4246580100010083",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 132",
+      "record_hex": "4246580100010084",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 133",
+      "record_hex": "4246580100010085",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 134",
+      "record_hex": "4246580100010086",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 135",
+      "record_hex": "4246580100010087",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 136",
+      "record_hex": "4246580100010088",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 137",
+      "record_hex": "4246580100010089",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 138",
+      "record_hex": "424658010001008a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 139",
+      "record_hex": "424658010001008b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 140",
+      "record_hex": "424658010001008c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 141",
+      "record_hex": "424658010001008d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 142",
+      "record_hex": "424658010001008e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 143",
+      "record_hex": "424658010001008f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 144",
+      "record_hex": "4246580100010090",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 145",
+      "record_hex": "4246580100010091",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 146",
+      "record_hex": "4246580100010092",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 147",
+      "record_hex": "4246580100010093",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 148",
+      "record_hex": "4246580100010094",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 149",
+      "record_hex": "4246580100010095",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 150",
+      "record_hex": "4246580100010096",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 151",
+      "record_hex": "4246580100010097",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 152",
+      "record_hex": "4246580100010098",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 153",
+      "record_hex": "4246580100010099",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 154",
+      "record_hex": "424658010001009a",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 155",
+      "record_hex": "424658010001009b",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 156",
+      "record_hex": "424658010001009c",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 157",
+      "record_hex": "424658010001009d",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 158",
+      "record_hex": "424658010001009e",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 159",
+      "record_hex": "424658010001009f",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 160",
+      "record_hex": "42465801000100a0",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 161",
+      "record_hex": "42465801000100a1",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 162",
+      "record_hex": "42465801000100a2",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 163",
+      "record_hex": "42465801000100a3",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 164",
+      "record_hex": "42465801000100a4",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 165",
+      "record_hex": "42465801000100a5",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 166",
+      "record_hex": "42465801000100a6",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 167",
+      "record_hex": "42465801000100a7",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 168",
+      "record_hex": "42465801000100a8",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 169",
+      "record_hex": "42465801000100a9",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 170",
+      "record_hex": "42465801000100aa",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 171",
+      "record_hex": "42465801000100ab",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 172",
+      "record_hex": "42465801000100ac",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 173",
+      "record_hex": "42465801000100ad",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 174",
+      "record_hex": "42465801000100ae",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 175",
+      "record_hex": "42465801000100af",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 176",
+      "record_hex": "42465801000100b0",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 177",
+      "record_hex": "42465801000100b1",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 178",
+      "record_hex": "42465801000100b2",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 179",
+      "record_hex": "42465801000100b3",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 180",
+      "record_hex": "42465801000100b4",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 181",
+      "record_hex": "42465801000100b5",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 182",
+      "record_hex": "42465801000100b6",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 183",
+      "record_hex": "42465801000100b7",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 184",
+      "record_hex": "42465801000100b8",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 185",
+      "record_hex": "42465801000100b9",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 186",
+      "record_hex": "42465801000100ba",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 187",
+      "record_hex": "42465801000100bb",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 188",
+      "record_hex": "42465801000100bc",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 189",
+      "record_hex": "42465801000100bd",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 190",
+      "record_hex": "42465801000100be",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 191",
+      "record_hex": "42465801000100bf",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 192",
+      "record_hex": "42465801000100c0",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 193",
+      "record_hex": "42465801000100c1",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 194",
+      "record_hex": "42465801000100c2",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 195",
+      "record_hex": "42465801000100c3",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 196",
+      "record_hex": "42465801000100c4",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 197",
+      "record_hex": "42465801000100c5",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 198",
+      "record_hex": "42465801000100c6",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 199",
+      "record_hex": "42465801000100c7",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 200",
+      "record_hex": "42465801000100c8",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 201",
+      "record_hex": "42465801000100c9",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 202",
+      "record_hex": "42465801000100ca",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 203",
+      "record_hex": "42465801000100cb",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 204",
+      "record_hex": "42465801000100cc",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 205",
+      "record_hex": "42465801000100cd",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 206",
+      "record_hex": "42465801000100ce",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 207",
+      "record_hex": "42465801000100cf",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 208",
+      "record_hex": "42465801000100d0",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 209",
+      "record_hex": "42465801000100d1",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 210",
+      "record_hex": "42465801000100d2",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 211",
+      "record_hex": "42465801000100d3",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 212",
+      "record_hex": "42465801000100d4",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 213",
+      "record_hex": "42465801000100d5",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 214",
+      "record_hex": "42465801000100d6",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 215",
+      "record_hex": "42465801000100d7",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 216",
+      "record_hex": "42465801000100d8",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 217",
+      "record_hex": "42465801000100d9",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 218",
+      "record_hex": "42465801000100da",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 219",
+      "record_hex": "42465801000100db",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 220",
+      "record_hex": "42465801000100dc",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 221",
+      "record_hex": "42465801000100dd",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 222",
+      "record_hex": "42465801000100de",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 223",
+      "record_hex": "42465801000100df",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 224",
+      "record_hex": "42465801000100e0",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 225",
+      "record_hex": "42465801000100e1",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 226",
+      "record_hex": "42465801000100e2",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 227",
+      "record_hex": "42465801000100e3",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 228",
+      "record_hex": "42465801000100e4",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 229",
+      "record_hex": "42465801000100e5",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 230",
+      "record_hex": "42465801000100e6",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 231",
+      "record_hex": "42465801000100e7",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 232",
+      "record_hex": "42465801000100e8",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 233",
+      "record_hex": "42465801000100e9",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 234",
+      "record_hex": "42465801000100ea",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 235",
+      "record_hex": "42465801000100eb",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 236",
+      "record_hex": "42465801000100ec",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 237",
+      "record_hex": "42465801000100ed",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 238",
+      "record_hex": "42465801000100ee",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 239",
+      "record_hex": "42465801000100ef",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 240",
+      "record_hex": "42465801000100f0",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 241",
+      "record_hex": "42465801000100f1",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 242",
+      "record_hex": "42465801000100f2",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 243",
+      "record_hex": "42465801000100f3",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 244",
+      "record_hex": "42465801000100f4",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 245",
+      "record_hex": "42465801000100f5",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 246",
+      "record_hex": "42465801000100f6",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 247",
+      "record_hex": "42465801000100f7",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 248",
+      "record_hex": "42465801000100f8",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 249",
+      "record_hex": "42465801000100f9",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 250",
+      "record_hex": "42465801000100fa",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 251",
+      "record_hex": "42465801000100fb",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 252",
+      "record_hex": "42465801000100fc",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 253",
+      "record_hex": "42465801000100fd",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 254",
+      "record_hex": "42465801000100fe",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "single byte 255",
+      "record_hex": "42465801000100ff",
+      "length": 8,
+      "expected_result": 5,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 0",
+      "record_hex": "4246580100a5003c2d5d2e2e3e2c2b3e2e5d2e2c3c3c5b2e2d5d3c2b5b2c3e2c2e2b3c2c3e5b3e2c2c5d2e2e2c2e3c2b5d5d3c2d2d5b3e2c2e2d3e2d5b2e3c2c3e5b2b2e3c2e2d2c5d3c2c2b2e2c2d2e5b2e3e2c3e2c5d2b3c5b5d2e5d2d2e2d2c2d3c3e2c2b3c2e2e2e2d2b2d2c2b2d2b5d3e5d3c2b2c2e3e3e2c3c3c3c3e3c5b5d2b3e5d5b2c5d2e2b5d2d2c2b5d2b2c2c3c3c2b3e2d2d2c2c2d2b2d2d3e5b5d3c3c2e3e3e3c5d2b5d2e5b",
+      "length": 172,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 1",
+      "record_hex": "4246580100fd003e2e5b2d2e2e2b2e2c5d2e2c2e5d2b2d3e2c2b3c2c3e2c5d2c5b2b2d5b2c2e3e2d3e3c2c2c5d2c2e3c2d2e5b3c2d2d5d3e5b2e3e2e2b3c2e5d5b3e3e2c2e2c5b3c3e2d5b2e2c2b5b3c3e2e3e2b2d5b5b5b3c2b5d2c5d2b2d5b2c2d5d2e2e3c2d3c3e3e3c2b5b3e5d2d2d2e3c3c5b5b3e2e2d2d5d2e2d2b5d2e2b2d2c3e2d5d3e2e3c2d5b5b2c2c2d5d2b5b5b5b5d3e3e3e3c2d2e2b3c3e5d3c2c3c5b2e3c2c2b2b5b3c5b3e5b2d2d5b5b2b2e5b5d2b2e5d2d3e2e3e5d5b2e3c5b2e3e5d2e5d2b5d5d2c3c2d3e2b2b2b2c2b5b2e2d2e3c3e3c2d3e3c3e3e5d2d2e2d3e2d2e3e2e2d2d3c2d3c5b2c3c2b2b5b5d2b3c3c2e5b5b2e2d2b2c5b2b5b3c2b3c2d",
+      "length": 260,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 2",
+      "record_hex": "4246580100d5005b2d2e2d3e5b2e2c2d2c2e2c2c5b5b3c5d5b2d5d2c5b2d2b3e2c3c3c2e5d2e2d3c2e2b2e2d2b5b2c3c2e2d2e3e2b5d2d2c2e2e2b5d3c2d5b3c2b5b2b2c2b2c2e5d5b2e2e2d5b2c5d2b3e5b3c5b5d3c5b3e2b2d5b5b5b2b2d5b2b5d2b5d2d2e2c3e3e2e3c5b2d2e2b5d5d2d3e2d2b2e2b3c5b3c3c2d2d3e2c3e5d5d5b2e3e2c2e3c3c3c2d3c3e2e5b2c5d5d3c5d3e3c3c2c5b5b3e3e5b2b5b3c2c3e2e3c3e2b2e2c5d2d2e2d5d3e3e5b2d5d2b5b2d2c2d3e2d5d2c3c2d5d2b5d5b5d2d5d2b5b2b3e3c2e2c2e2b3e5b5b3c5d2e2d5b2d2d3e2d2d2e5b",
+      "length": 220,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 3",
+      "record_hex": "4246580100f9002d2c3e2b2b2d5b5b3c2e2b3c5d2b5d3c5b3e5b5b3e2e2b2c2c2e2c2c5d3c5b2d2d2d2e3e3e3c2d3e3c2e2b2d5b2b2d2d2c2c5b5b2e2d2b3c5b5d3c5b2b3c2c2b5d3e5b2b2c3e2e5d2e5d5d5d2c5b3e2b5d2e2c3c5b2d3e3e2b3c2e2d3c2d3c5d3c2b2d2e2b2c3c3c5d5d2c5d5d3e2e5d2d2d5d3e2d2c2b3e2d2c2b3c2e5d3c2c3c2b5d3c2b3c5d5b5b2d3e3c3e3e2d3c2b5d2d3c2d3e2c5d2c2b2b5d5d2d5d3e3e2d2b5d2b5b2c5d3e2c3c3e5d3e2c5b3e2c3e2b2e2b2d2e5d2d2d2e2c2e3e5d3c5d2b2c5b5d2e3e2b5d3c2c2b2b5d2c3e3c2d3e2e2e5b2c2d5b5d5d2e2b2b2c3c3c2e5d2b5d3e2e2d3c3e3e2c5d2e2c3e2d2d3e3c2e3e3c2c",
+      "length": 256,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 4",
+      "record_hex": "424658010013012e3e2d5b2d2c5b5d2d2c3e5b2d5b2e2c5d3e5b3c2e2b5d2e2e3c2b5b2c5b2e2b3e3e3c2d2b5d5b2b5b2d5b2c3c5b2b5b5b2e3e2b3e3c5b5b2d3e2e2b5b2c5b3e5d2c2c2d5d5d5b5d3c2c3c3e3e3e2b5b5d2b3e2c2e3c2b3e2d3e3e2c3e5b5d2b3e2e2c5d3c2e5b2b2b2e3e2d3c2d2d2e2e2e5d3c2e2d2d2c5d2b2c2d2e2e5b2b3e2c2c2b3e2d3e2c2d5b3c2c5b5d3c2d3e3c2e3e3c2c3e2c5b5b5d2c3c2d5d3c2e3c2b3c3c3c5b2d3e2e2d2d2e3c5d5d2e2d3e2c3c2e2b3e5b2e5d5d3e3c3c2d5b3e2d2d5d3c5b3c3e2c3c3e2c2e5b2b3c2d2c2b3e2b3e5d3e2d5d5b2b2c3e3e5d2b3c3e5b2e2d5b3c2c5d3c2c2b3e2d2e3c2d5b2e2d2e2b2d2c2c3e3c3c3c2e5b2e5d3e2c5b5d2c5b5d5d5d3c2c2d3c3c2e2c",
+      "length": 282,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 5",
+      "record_hex": "42465801002a005b3c5d5d2c3c2e2b5d5b2c2b2d2c3e3c3e2d3e2d3e2c3c2d2d3c3c2d3e3e2d3c3c5b3e2e5b2b2d2b2e5d",
+      "length": 49,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 6",
+      "record_hex": "424658010001002c",
+      "length": 8,
+      "expected_result": 4294967296,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 7",
+      "record_hex": "4246580100a0002b2c2e2c2c3c3e5d3c2b5d2c5b5d5d2e2b5b2e5d5b2c5d2b2c2b3e2e2e3c5b5d5d2b2b3c2c2b5b2e2d3e5d5b2b2c5b3c3e3e3c2c2c3c5b5b2b2d5d2d2b2c2b5b2d5b5d2e5d2e3e2d2d2e2b3e3c2e2c5d2c2e2c5d3c3e2e5b2b2d2d3c3e2c3c2e3c2d5d2c2c2d2b5d2c5b2b5d3e2c2c5b2c5b2c2d5d2b2d5b3e2d2d2c3c2c2d2e2c5b2d5d2d2e2e3c5b3e2e5b2d2c5b2e5b5b3e3e5b2b5d5d2e3c3c2d3c2c2c3c",
+      "length": 167,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 8",
+      "record_hex": "424658010000013c5b2d5d2e2e2c5d2e5d3e2b2e2e2d2b3e5b3e2d2b2b5d3c2d2d2b3e5d3c5b5d5b3e2d2e2c3e2c3e2e2c2d2d2c2d2c2d2c3c5b3c3e2c3e2c5d5d3c5d2c2b3c2c5b3c3c2e5b2d3c5d2e5d5d3c2d2b2b2e5b2b5b2b2b2b5b3e3c2e2c5d5d3e2c3c5b5b5b5d5b3c2d2e2e3c2d5b2b2d2d3e3e2c2d2b3e3e3c2b2c2d3c2d5b5b2b2b5b2d3e5b2e2c5d3e3c5b5d2d5d2c5b2d3c2b5b5b2d2e5d3e2e2b2b2b2d3e2b3e5d2e5d2c5d3e2b2e3c5b2d5b2d2c5d2d3c3e2c2b2b2c3e2b2e3c5d2c5b2d3e5b2c2b2e3e3e2e5d2d5d3e3c3e5d2b2c5b3c5d2b5d3c3e3e5b2c3c2c3e3c3c2d2d2d3c5d5d5d2b2b2d5d2e2d2d5b5b2c2b5b5d3e2c2b2c5b3e2c2d3e3e5b5b5d2c",
+      "length": 263,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 9",
+      "record_hex": "4246580100ac002c2b2e2d2d2b2e2b5b2b2b2b5d3e3e2c2b3c2c2e5b3e3e2d2d2b3c3e5d5b2e5b3c5b5b5d3e3c3c2d5d3e3c3c2e2d5d2c2c2c5d2b2e3c3c2e3e3e5d3c5d2e2c2e2e2d5d2b2c2d3c2c5d5d2d2d2c3c3c2b2e5b2c2e5b2e3e2d2c2c2d5b5d5b2e3c3e2c5b3e2e2b3e2c5b3e5b5b2d2c5d3c2c5b5b2c3c5b3e3e3c2b3c2e2e5d3c3e2b3c2d3c5d2d5d2c5b3c5b2d2c5d2b2e5d2e2e2b2e2d2e2e2b2b2e5b2d2c2d2b3e2e2b5d3e5b3e5d2e3e2b2d",
+      "length": 179,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 10",
+      "record_hex": "4246580100bb002d2d3c2e3c5b3e2c5d2d5b5d2b2e2c5b5b2b2e2c2b3e3e5d2c2b2e3c2c2c5b2c2c5d3c2c2d5b3e2d5d3e3c3c2e2b5d2b2b5b5d3e2b5d2b2d3e3e5d2e2b2c5d2c5d5b2e2e3e5b2e2c2e2b3e2d3e3c2b2c3e5b2b2b5d3e2b2d3c2e3c2d5d2c5b5b2e3e3c2e3e2c2d3c3c5b5d5d5d5b2d5b2d2d5d2b2d2b3e3c2e2e2d5b5d2e5b5b2d3c2d2e3c2c3c2e3e2c2c2e3e2b5d3c2d2d2d2e2d2e5d2d3c2e5b2b3c2e2b2d3e2b2e2b2d5d2e3e3e5d5d5d5b2e5b3c5d3e3c5b2e5d2c2e3e2d2c",
+      "length": 194,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 11",
+      "record_hex": "4246580100e8002c2d2c2b2b2c2c3c2e2d2d2c5b2e5b2c2c2c3e2d3c2b2c3e2d2d2e5b2c3c2b2b3e3c5b5b5b2e2d2e3e3c2c2c3e3c3c2d5d5d3c3c3c5b2c5d5d3e2c3e5d3c2b3c3e5b3c3c2c5b3c3e5d3c3c5d5b2e2e5b2d5b2e5d3c2e5d2b5d2e2d5d2b5b2e2b2d3e3e3e2b2b5b2d2c5b2d2e5b3c3c2b3c3e2c2e5d5b3e2c5d3c5b5b5b5b2e3e3e2b3e3c3c2e3e3e2d2d3e3c2d2c2c3e2d2e2e3e2b2d5b5d5b2c2d5d2c2d5b3e2d3c2c2e5b2d2b3e2b2d2c2b2d5d2b3c2e2c5b2e5d5b5b5b5b5b2e2e2e5b5b2c5d2b2d2b3c2d5d2e2d2b3c2b3c2d2e2c2d2d2b2c5d5d2c5b5d3e2b2e2c5b2e3c2d2d5b3c2c5b5d2c",
+      "length": 239,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 12",
+      "record_hex": "424658010002002b2e",
+      "length": 9,
+      "expected_result": 8589934592,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 13",
+      "record_hex": "424658010096005b5b5d5d3c3c2e5b3c3e2d3e5b3c3e2b2e5b2c3c2c2d5d3c3e3c5d5b5b3e5b3e3c5b3e2c3e2d2d3e3c2d3e2e2e2d5d2e3c2b5b2e2e2c2e2e5d5d2e2b2c5b3c2c5d3e2c2c2e2d3e5b5b3c3c2c3c5d5b2b2b2b2b2c3c3e2b5d2e3c5b3e5b3e5d2e2d3c3c2c2e2e2e5b5b2b2d5d2b2b3e3e3c3c3e2e5b5b2b3c2b3c2d5d2c2e3c2c3c2b3e3c5d5b2c2e2c3c5d3c3c2e5b5d5d3e2b2b5b2d",
+      "length": 157,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 14",
+      "record_hex": "424658010041003e3c3e2d3c5b3c2c5d5d2c2b5b2b2e3e2d2d2d5d3e5b3e2e2e5b2c2b2c2c2d3c2e3c2c5b5b5d2b5b2d3e2c5b2b2b2d5d2e2d2b3e5b2c2c5d2b5b2c2e2c3e3e3c2b",
+      "length": 72,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 15",
+      "record_hex": "42465801009e002b2d2d3e2d3c2b2b5b5d2d3e2c2c2b2d5b2b3e3c5b3c3e3c5d2b2c3e2b5b2e2c2b5d3e3c5d2c2d2d3e2d2c2e5d3e2e3e3c3e3e3e5d2e3e2b5b2d3e2d2d5b3e3c5d5b3c5b2c2c2d2b3e5b2b5b2e2b2b2d3e2b2b2e2e2c2c5b5b2c2b2e5d3e2b2e3c3c3c2c5d3e2b5d2e2c3e2e2d2c2b2d2d3e2e2c5b3e2b2d5d2b2e2c5b2b2e5d2b5d3e3e5d2c3e3e2b3c2d2c2e5d3c5b2b5d2e3e3e2c5b5b2d2d5d2e3c5b",
+      "length": 165,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 16",
+      "record_hex": "424658010028015d3c3e5d5d2e5b5b2e3e3c2d3e2e2c3e5b2e3c2d3e2e5b3c3e3c3e3e5d2d2d2d3e3e2d3e5b3c2c3c5d5d2b2b3c2b5d5d5d3c2b3e2d2c5d5b3c3c2d2b2b2e2e5b2d5b5b3e5b5d5b3e2d2c3e3c2d2c2b5b2e3c2b2c2e2e5d3c2e2b2e2c2e5d2d2c2c5d2e2d2c2e3e3c5b3e5b2d2d3c2b2d5b2e5d2b2e5b5b3c3c5d5d3e2b2b2b5b2e3e5d2c3c3c3e2b3e5b2c2d3e2d3c3e2b3c2c2b2b5d5d3c5d5d3c2b3e2c2c2b2c5d3e5b2d2e5b5b2e2c2b2d3e5b3e2b2e5d3c5b5b5d2b3e2c2c3c2b3e2b3c2d2c5b2d3c3c2c2d3e2d2c2e2c2c3c5b2c3c2b2e2b5b5b2c2d3c3c3e5d2d3e2c2b3c3e2d5b5d5b2d3e3e2d2c5d5b5b2b3c5b3c5d2e2d2d2b5b3e5d3e3c2c2b2e2c5b3e3c5b3e3c5b2c2b2d5b2d5d2c3c3c2d3e2e2d2d3e2d5d2c2d3e5d3c2c2e5d2c2d2e2e2b5d5d2c",
+      "length": 303,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 17",
+      "record_hex": "424658010052002c2e5d2e2c2e5b2e5b2b5b5d2d5d5d3c3c5b2b3e5d2e2e5b5b3e2d3e2c3c2b5b5d2e3c5d2d2e2b2d2d2e3c2e2e3c5d2b2d2b5b3e2e3e2d3c2b2d5d5b5d2b5d2d5d3e3e2e5b5b2e2d5d2e2d2c2d2e2b2d2b3c",
+      "length": 89,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 18",
+      "record_hex": "424658010018005b3c2c3c2b5d5b2c2c2b2c5b3e2e3e2c2c5d2d5d2b3e2c3c",
+      "length": 31,
+      "expected_result": 103079215104,
+      "expected_pairs": {
+        "5": 0,
+        "0": 5,
+        "17": 11,
+        "11": 17,
+        "19": 6,
+        "6": 19
+      }
+    },
+    {
+      "name": "random 19",
+      "record_hex": "424658010038002c2c5b2b2b2b2e2b3c3e2c3c3c3e2d3e5b2c2e2d5b2c2e2e3e2d2b5d2c3e2c3c3e5b2d2c2c3e5d5b2b3e3e2c3c2d2d2b2c2c2e2b2b2d5d3c",
+      "length": 63,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 20",
+      "record_hex": "4246580100e4003c2d5b2d5d5b2b2d2b5d5d2c2e3e2b2e5b5b2c2c2b2d3e5d3c2e2e2e5b2d3c3e5b5d2d2b2c3c2d2d3c2c5d2c2b3c3e2b2c2c3e3e3e2d2c2d5d2b2e2b3e2e2e5d2c2b2b5b2b2c2c5b3c2e3c2e2d3c3e2c2d5d3c5d2c3c5d5b2c2b3c5d2b2e2d3c3c2b5d2d2c2d3c2c2d2e5d3c2d5d3e2c2b2e2d3e3c3c2b2c2b5d2d2c3e2b3c2c3c2c2e5d2e5b2b2e3e2c5b2d3c2c3c2b2e3c3c3c3c2b2b3e3e3c2e2c5b3c5d2c3c2c3c3c3c5d2b5d3c2b5d5d2e5b2c3c2d5d2e2e2c5d5b3e2c2b3e2c2c5b3e3c2d3e2d3c3c2b2d2d3c2d2e3c2d2e2c2b3c3e2b3c2b5b3c2b2b3c3c2d2e5b2b2e2d5b3e3e",
+      "length": 235,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 21",
+      "record_hex": "4246580100de003c2e2c3c2e2c2c2c5d2d5d2d5b2b2b5b5d3c3c3c5b3e2e2b2b5d3c2c2e2c3c5b2d5b2c5b2b2c2c5d2b3c2d3c5d3c2c2b2e5d5b2e2e5d2c5d2c2c3e2d5b3c2d3e3c2e3c5b3e3e5b5b2b3e5d2e5b5d3e2b2d3e3e2c3e3e2b5d3c5b3c2d2b5d2b3e2e3c3c2e2d2e3e5b2c5b2b3c2d2c2d3e5b2d2e2c3c5d2c3c3c2d3c3c3e3e3c3c2e2e5b2e5b5b2d2b2e2b2b2e3c2b2b3e2b5b2d2e2d2d2d3e2c2c3c2b3e5d2c5d2c5b3c5d2d5b2c2c5d3e2e3e3e2d3c5b2b5b2d5d2e5b2d2b2d2b5d2b2d5b2c5d2c2c5d5b2c5b2d3c2e5b2d5d2d2c2c2d3c3e2c2e3c2c3e2b2e3c2b2e3e5d",
+      "length": 229,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 22",
+      "record_hex": "424658010058005b3e2b2d2b2b5b3c3e2e2b5b3e2c2d2c3c3e2b5b5b2d5d2e2b2c3e5b5d3e3c2e3e2c3c3c3c2c2b2e2e2b5d2b5b3c2c2d2e5d2d2b5b5d2b3c3e2c2e2e2c5d3c3e2e5b3c2c3c3e5b5b2d2c3e2b5b2e3e5d5d3e5b5d2c3c5b5d",
+      "length": 95,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 23",
+      "record_hex": "4246580100e3003c5b2e5b5d2d5d3c2e2e2d3c2b2e2b5b3c5d2e3c3c5d2d2b2e2d2e3c2d2b2e5d2e5b2b5b5b2d2c2d3e2c2e2d5d2c3e2b2d3c5b3e2b2d5d3c2d5b2e5d3e3c5d2b3e2d5b5b2c2e2c5b3e2d5b5b5b2b2c2b3e2b5b5d2d3e2c3e3e5d2b2c3e3e3c2c3e2d3c5b5d3c5d2c2d2c2c2d5b5b2e2b3c2c2c2c2c2c2b3e5d3c3c2e2c5d3e2e3c2c2c2b5d2e2e5d2d5b3e5b3e2b2b5b2d5b2e2b5d3c2b5d3e2d5b5b5d2c2e2d5d2e2b2d3c3e3e5d3c2e3c2d5b5b2d5d3c3c2e3c3c5d3e2c2c2e5d5d3e3e5b2e2c2d3c2e2c2e2d2c5d2c2c5b5b2d2b2b2d5d2c2b5b2d2e2d5d2c2b3e5d5b2d3c2d2c3e",
+      "length": 234,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 24",
+      "record_hex": "424658010087002e3c5b2c2b5b2d2b5d3e2d5b3e3c2c2e2b3e3e5d5b5b5d2b3e3c2d3c3e2b2d5d5d2b3e2d3c2c2c5b2d3e5d5b2d2c2e5b5b5d5b2b2e2b5b2e2e2e3c3e3e2c3e2e5d5d3e3e2b2c2b3c2c2b3e2c2b2e5d3c2e2d2c2d2b3c5d2d2d3e5d2d2d5b2e5d5b2d2d5d5b5b3c5d5d2c3c3e3c2c3e2d2e2b2d2b5b5b2b2e5b3e5b2b2c2e2d2d5b3c2b2b2c2e2b",
+      "length": 142,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 25",
+      "record_hex": "424658010006013e5d3e2c2d2b2d2d2d5b3c5d2d5d2b5b2d2b2d5b2e3c5d2d5d2d2d3e5b2d5d2b3e3e2d3e2b2b2d3c2c5d3e2b5b3c5d3c3c2d2d2e5b5d2e3c2e3c5d3e2d2e2b5b2e2b3c2e5d5d5d2b2b3c2b3e2c2c2c3c2d2e5b5d3c2b2d5b3c2c2b2d5d2d2e2e5d5d5d2c5d5b2e2e2b2c2c3e2d2d2c3c3e2e2b5d2b2d3c2c2e2c3c2c3e5b3e2e5b5d2b2d2d5b3e2b3c3c5d2b5b2d5d3e3e3c5d2e5b3c2e5b3c2d2d2d2c2c2b2c3e2d2c2e3c2b2b2b2d5b2c2b2c2e2e3c3c2c2d2b5d2d5d2c3e3e5d2e3e3c2d5b2c3c2e2d5d2d5b3c3c2c5b2b5b2d2e2e5d5d3c2e2b2b5d5d5d5d3c2e2b5b2d2c2e2b2e2c2c2b2c3c2e2c5b5b5b2b3e3c2d5d2d2b2e3e2e2b2b2e2b2d3c2c2d3c2e3c2b2b3c5d",
+      "length": 269,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 26",
+      "record_hex": "4246580100e0002e2c2e2e5b2e2e2e2b2b2c2d2d2c2d2c3c2d3c5b5d5b2c2e2b2e2c3c5d2b5d3c5b5d2b5d2e2b5d2b5b2d2e5b5d2b5b2e3e3c2b2c3c3e2c3c2c2b5d3c2e3e3c5d3c3e2b3c2b5b5b2b2b2c3c5d5b2d2d3e5b2d2b3c2c3c2d2d2d5d2e2b2e2e5b3e5b2e3c3c3c5b5d3c2e2c3e2d2b3c2e5b2b3e3c5b5b2d2b2b2d5b2b2e5b5d2e5b3e2b5b2e2c3c2b2c5b3e5b2b2e2b2d3e3c2d2e2e5b2c5d2d2c2e2d3c2e2c2b5d3c3c2d2e3c2e5d2e5b2b2c2e2d2d2c5b3c2e2e5d2c2b5d2c2d2e3e2c5d2e5d3e3c2c2d5d2e3e5b2c2c3e3c5d5b2b5d2b2d2c3c2b2e5d3c3c2e2d5b5d2c5d2c2c",
+      "length": 231,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 27",
+      "record_hex": "42465801002a005d2c2e5d3e2e2c2c3c2c3e5b3c5d5d3e3e2d2b2b5d5d5b5d3e5d5b3c2b2b5d2e2b2b2e3e3c2e5b5d2d5b",
+      "length": 49,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 28",
+      "record_hex": "424658010056002c5b3e3e2c2b3e2e5d3e2e2c3e5b5b2e3e3c3c5b2b2d2c3e5d2e3e2b2e3e2e5b5d5d2b3e5b2d5d2e5b2c2e2b3c5b3c2c2b2d2c5d5d3e3c3e2b2c2c5d3e5b2d5d2d2b2c2d2e3c2e2d2e2d5d2b2e2d3e2b2c5d3c2b5d5d",
+      "length": 93,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 29",
+      "record_hex": "42465801009b005d2c2c5d2c3e2e3e3e5d2b2e2c3c3c2b3c5b5d3c2c2b2b3e3c2e2e2c3c2c3c3e2d3e3e5d2e2c3e3c5b5b5b2c2c2b5b3c5d3e5d2b2c2d5b2e3c5b3e2e2d5d2e3c5d3c3e3e2b5b3c2d2d2c2e5b3e2b2e2b2e3e3c3e2b3c2e3e3e2e3c3e2b3e5d2b2c3e5b2c2e3e5d2e3e3e2c2d3e3c2b5b2c2d3e3c2d2b5b2d2b2d2e2c3c2c5d2e3c2b2e5b5d2b2e5d2b3c5b5d5d5d2c2c3c2b2c2d5d2b2e3c2b3c2d",
+      "length": 162,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 30",
+      "record_hex": "424658010050002c2c2d3c2d2c2c5d2e2e5b2d5b2e2e2b5d2b5d2b2c3e2b2d3c3e3c2b3c3e3c3c5b5d2e2c5b5b2e5b5b5b3e3e3e2b3e2b5d5d5b5d3e3c3e2c5b2c3e3c2c5d2e2c2b2e5b2d3c3e3e5b2e2c5d3e5b2b3e3c",
+      "length": 87,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 31",
+      "record_hex": "4246580100bf002b2e2d3c2d3c2d3e5d5b2d5b5b5b2c2e3e5b2e2e2c2c2e3e2d5d5b2e2e5d2d3c3c2d5b3c3c3c2c2b3e2e3c5d2e2d2e2e2e5b2e2e3c3e3c3e3e2b2b5b3c2b2b2b5b2e2d3c3e5b2c5d2e2b3c2e5b3e2c5d3c2e3c3e5b2b5b2b2c3c5b5d2d2e2c2e3e5b2c2e5d3c2b2b2c2d2c2b5d5b5b2d3e2d2e5b5b5b3c3e2b2c2c2c3c2b2c3c5d3e2b2c2e3c2c2d2e5d2c5d3c2e2d2b2b5b2c3c2e5b5d3e5d5d2b3e5d3c5d3c2e5b2c3c5b5b5d2c3e2d5b2d5d2e5d2e2c3e5b2e2e2b3c2c2d2b2e5b5d3c3e",
+      "length": 198,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 32",
+      "record_hex": "4246580100d4002c3c3c2e5b2e2b5d2b5b2e3e3c2e5b3c5d2b3e2b5d2e5d5b3e5d5b2e3e5d3e2d2b2b5d5d2d5b2e2c2d2b3c2c5d5d3c3e2e3c5b2d3c3e5b3e5b5b2c3c2b2d3e2b3e3e2c2b2e2e3c2c2d5b2b3e2b2e2b3e2d5b5d3e2d3e2e3c2c2d3c3e2c2c3c2b2e5b2d3e2d3e5b2c3e2d5b3e2e3e3c2b2b2d2d3c2b5b5b2b5d2d3c2b5b3e3e3c5b2b2c2e3e3e2e5d5b3e5b3c5b2d5d2c3c2e2c2c2e3e3c2d2c2c5d3e5d3e5b5b2e2b5b2e3c2c3e2e2d3c2d2d3e3e3e2b3e3c2d2b2b5b2e5b5d5b2b3e5b5d2d5d2d2e3c5d2e2e3c2c2d2c3e3e3c2d2d3e2b5d2e2b",
+      "length": 219,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 33",
+      "record_hex": "4246580100a5002c2d3e3c2d3c2b2b3e5b2c5d3c2e3c3c3c3e2b5b2c2c2e5b5d3c2d5d2c3c3c2c2c3c3e2e2e3c2b3c3e2c2d2c3c2b3c3e2e5b5b2e2e2e2e5b2b3c2d5b3e3e5d2d2b2c3c2e3e5b5b5d2d2b5d2e5d2e2b2d3c2e5d3e5d3e2e2c2b2b5d3e2b2b3e2d5d5d2d3c5b3e3e3e3c2d2d5d2b5d5d3e3e5b3e3c3e3e2e5d2b2d5b2b5b3c3e3e2d2e5d3c2d3e2b2c3c2d2b3c3c3e5b3e5d2b3c2e5d2e2c3e2b2b3e2e2c3c2e3c2c2e2b2c5b",
+      "length": 172,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 34",
+      "record_hex": "424658010070002e2b5d3e2b2d2c5b2b3e2c2d2d2c2d3e2e3c3c2b5b2d5d2c5b5b3e5b5b2d3c2e3e3c3e3c2c2d2d3c5d2e2b2b3c5d3c2d5b5d2d5d2c2b3e3c5d2b2e5d2b2c2b2c5b2c5b3c2d5d2c5d2e5b2e2c2e2b3e3e2d2c2c5d3e5d5d2e3e2b2e2d3c2d2d2c2d2d2c5d5b3c2d2b2b5d5b2d2c3c2d5b",
+      "length": 119,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 35",
+      "record_hex": "4246580100dd003c5b2c3e2c3e3e2e3c2c2c2b5b3e2d3c5b2e2b3c3c2d5d2e5b3e2d3e2b2c3c2e3e2e2c2c2e2b5b3c2c3c5b5d2e5d3c3e5b5d2e5d2c2e2e5b5b2c5d3e2c2b2e2b2e2d3c3c2e2e5d5d5b2d2c2c5b2e2b2d3e2d2c2e2b5b3e2e2c5b2b3c5b3e3c5b2d5d5d2b2d3e3c3c5b2b2b5d5b5d2d3e5b3e3e2d5b5d3e2c5d5b2c2c3e3c2b5d2e2c5b5b2e5b2b2c2d3e3c5b2d2c5d5d3e5b2c2c5b2d3e2d2b2b5b3c3c5b5d2e3c2c3e3e5b2c5b2c2c5b2e5d2d3e2b2e3c3c3e2b3c5d5b2c5b2e3e2e3e2c3e2e2c5d2e2d2d3e2d2c2d3c2c5d5d5b2b5d2c5d2b5d3e2e2c2c5b2b5d5d3e",
+      "length": 228,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 36",
+      "record_hex": "42465801004f002e2b2c2e2d2e2d5b5b2e2b5d2c2b2c2d3e3e2c2d2e2e2c2c2e3e3c2b2c5d5b2d5b3e5b2d5d2c2d3e2e3c5d5d5d3c3c2d5d3e2e5b2b5d2c3e5d2e3c5b2d5b2c5b2c2e2c3e5d5d3c2d3c2b2e2d5b3c2e",
+      "length": 86,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 37",
+      "record_hex": "424658010085005b2c2b2b2e3e2d3e2d3c2c2e2d5d3c5d3e3c3e2b2c2d2d2e3e5d2b2b3c2b3e2e5d2b3c5b5d2c5d3c5b5d3e2b2e2c5d2d2c2b5d2c3e5b5b2b5b5d3e2c5b3c2b2d2c5b5b5b5d2c3c5b2d3e2b2c2c2b2b2b2d3c2c2c2d2d5b2d5b2d3c3e5d2b2d2b2c3c2b3e2e3c5d2c2e3e2d2c5b5d2c2d2e5b5b3e2c2d5d2c5d2d2b2b2d3e3e2b2b5b5b2b3c",
+      "length": 140,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 38",
+      "record_hex": "42465801000f002d3c2b2b2b3c2b3c2e5d3e2e2b5b2d",
+      "length": 22,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 39",
+      "record_hex": "42465801000000",
+      "length": 7,
+      "expected_result": 0,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 40",
+      "record_hex": "42465801000b002c2c3e2e2e2c3c2e2c2b3e",
+      "length": 18,
+      "expected_result": 47244640256,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 41",
+      "record_hex": "4246580100ce002e2d2d2b3c2c2e5b2e5d3c3e5d3c2b5d3e5d2d2b3e2d3c2d3e2b2d2d3c3e2d2d2d2e2e3c5d3c3e5b2e5b5b2e3c3e2e2c2d5b2d5b2d2e5b2e5d2e3e5b2d3c5b2b3c2c3c2c2e2c2e5d2e3c5d2b5d2b2b3e2d2b3c5b3e3c2d2b5b2d2d2c2d2c2d2b2b2b5b2d2c2e2c3c5d3c2b5b2e2e5b2c2c5d5d2d5d2e5b5b2c2d3c2b5d3c3c2e3e5d2c2e5d3e2d2b3e5b2b3c3c2b3e5b2c2c5b3c2e3e2e3c5d2e2c2e2b5b3c3e3e2d2c3e2e2e3e2b3c2d2d3c3c2b2b5b2d5d2e2e2c5d2c2e2e3c2d2d2d2c2b5d2c2c5d2c2c2d3e3c5b3e2d2d2d2d",
+      "length": 213,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 42",
+      "record_hex": "42465801007d002b2c3e5d2c2e3c2b2d3e2d2c2d3c3c2b5b5b2d2e3c5d2c5b2c2b2c3e2e3e2d5b5b2c5b3c3c5d5b5d2e2d2e2b2b3e2c2e2e2b5d2e3c5b3c5b2c2e2d2e5d5b5d2b5d5d2c2e3c3e3e5b5b2b2b2e5b3c3e2b2e2b2c3c2c5b3c2b3c2c5b3c2e5d3e3c3c2e2c2d2b5d2b2d5d5b2b3e2d3e3e3e2b5b5b2c2b3c2d5d2b3c5b3e2c",
+      "length": 132,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 43",
+      "record_hex": "4246580100da005b3c3e3e2c2d2e5b3c2d2c5b5d5b5b2c3c3e5b2d5b5b2e2c3e5d2e2e2e2c3e2c2d2e2d2b5d5b3e2d3c2c2d2c3c2d3c2d5b2c5d5b2b2b3c2e3c3e2e3c5b2b3e2c5d3c5d3c3e2b3c3c3e3c2e3e2c2d2b2b5b3c2b2b3c2c3e2c5b2c2e2c2b5b2e2e5b3e2e2c2c2b2e5d2d2d5d2e5d2d3c5b2d2c5b2e2b2e2c3c3e3e2e2e2d2c3c3c3c5b3e5d2b3c5b3c3c3c2e2c2d2c2c3e2d2e3c3c2c5d3c5d3c2c3e2b3e5d5b5b5b2e5b2d5b2e2d5b5b5d3e2c2d5d2d5d3e3e2c2e5b2b2b5d3c5b2d2c3e2b2b5d2c2d5b5b2d5d2e2e3e2e5d2b5d2e2d2e5b2e3e2b2c5d5b2b2b5b",
+      "length": 225,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 44",
+      "record_hex": "424658010045002e2e2d2c2d3e3c5b2b5b3c2b3c2e2b3c2b2b2b2b2e2b2c2c2e2b2c5b5b2c5d2e5b2b2b2e2e3e5b5b2c5b2c3c2b2b2b3c2e3e3c2b3c3c5b5d2c2e3c3e2e3e3e2c3e5b2d3e3c",
+      "length": 76,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 45",
+      "record_hex": "42465801002e002e5b3c3c2e2d5b3c2b2b2e5d3e3c2e2b2d2b2e2b5d2e2b5b2d2b5d2d5d2c2e2b2c2b5b2b5d2c3e2d2e2c2b2b2c2e",
+      "length": 53,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 46",
+      "record_hex": "424658010093005d3e5d5b3c2d5d2d3e5b2b2d2c2c5d3c2c5b5b2d2d2c3c5d2b2e3e2e3c5d2b5b5d3e3c2e2b5b5d2d2b2b5d2d2b5d3e2b2d3e2d2b2e3e5d3e3e2b2e2e2c5b3c3c3c2b3e2e2c5b2c3e5d2b3e2b2e2e5b2d2c5d5b3e3c2b3c5b2e3e3e5b2e2d2b3c2d5b3e3e2b5b5d2b3e2b3c5b2d5b5d5d3e2e5d2c2b3e3e5d2e2c3e2d5b2b5d2d5d5d2e2e5d3e2e3c2d3e3e3e3c2b3e2c3e5b2b",
+      "length": 154,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 47",
+      "record_hex": "4246580100aa002e2d3e3e3e5b2b2d3c2d2d2b2b5d2c5d2d5b2d3e5d3e5d2c3e2c3c2c3e3e5d5d3e2d2c2d2d3c2b3c5b2c2d2d2e5b2b5b3c2d2e2e2d5d3c5b2b5d3e2c5d2e5b2d5b2d5b5b3c2d2b2e5d2b5d3c3e2d2c3c2b5d5b2b3e5b3e2c2b2d3c5b2b3e3c3c2e3c2b2d2e2d2c2c5d5d3c5d5d5d2e5b2c2e2d2b5b3c2b2d2d2c3e2b2c2c2b5d2c2d2e5b3c5b5d2c5b3e2d5b5b2c5d2b3e2b2b2c2e2b2e2c2b2d2c5d2d2d5b2d3e5d5b5b3e2b3e2c5b2d",
+      "length": 177,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 48",
+      "record_hex": "42465801001b002c3c2e5d3e2b2b3c3e2b2c3c2c3e3c2e2b2c2e3e2c2d5d3c2d2d2d",
+      "length": 34,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 49",
+      "record_hex": "424658010053003e5d5b5d2d5d5d2d3c5d3e2b3c2e2e3c5b2c3c3e3e2e2c2d2b3c2c3c3c2e5b5b5b2e5d2c5b3c2c3c2c5d2d5d2c2e2b2c5b3c3c3e2c3c2d2c2c2c2e2d2b2d3e5d3e5d5d2e5d2d2e2e3c5d2e2e3c3c3e3c3e2c2e",
+      "length": 90,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 50",
+      "record_hex": "424658010014015b2b5d2c2d2c3c2d2c5d3e2d5d3e2b5d2d2e2d3e2b2d5d3c3c3c5b5d2b2e5b2c2e2d5d2d2b5b5d5b2d2c3e2e3c5d3e5d2c2d5b2b2b3e2d2c5b2e5d3e2e3e3c3c2b3e2c2e2d3c3e3e3e2c5d5d2b2b5d5b2d2c3e3c2e2c2b2c2b3c2e2d5b2e2b5d3c5d3c2d2d2b3e5b5b2c5d3e2b5d3c2d3c3c2e5d5d3e2d3c3c5d2c2e3c2e5d2b3e2b2c5b2e2e2b3c2d3e3e2b3e2d2b3c5b3c2b3c5d5b3c2b5d2c3e3c2e3c3c3c2b3c2d5b5b2d3e2c5b3e3c2c3c3e5b2e2c2c5b3e3e3e2e2e2c2d5d2c3e2d2d5d5d2b3c5d2d5d2e2b2d3e2c5b2e5d2e3e2b2c3c2e2b2c2c2e2d3e5d2b3e5b5d2c5b5d2e2d5b2e3e5b5b2e2c2c2c2b5d2e2b5d3c2e2b2d5d3c3c2d2c5b3c5b2c2c3e3e2e5b2d3c2b3c2d5b2d2b5b2c2d2b3e2c2e2b",
+      "length": 283,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 51",
+      "record_hex": "424658010020015d2e5b3e2b2d5b2b2e5d3e2e2d5b5b2c2d2d5b2e5d3c2d5d2e2d5d2d3c3c2d5b2c3e2e2d5b2b2d2c5d3c3c2e3e2b2b5d5d2c3c2e2c2d2b2d2d2c2e5b3c5d2b2e5b3e5b3c5d2c5d3c3c2d5b3c2d2c2e2d2c5b2e3e3e5b2e2e2c5b5b3c2d5d2d5b2b2d2d2b2c2c5b2d2d2c2b2c3e5d3c3c2d5d5d2e3e2e2e3e3e2e5b3e5d3e2c2d2b2d2b5b2c2c5d2b2e3c2d2c2e2e5b3c2b3c2b2b5b5b2c3c5b2e5b2d5d2d2b2e3c3e5b2c5b2c5b5d3e3c2e2d5b5d5b2d2d3e2b3c2d2e3e2b3c3e5b2c5b5b2d2e5d5d5b3e2c2b2d2e2c2b2e3c3c3c5b2d3e2b3c2d5d2e2b3c2e2c5d3e2e5b3c2e3c2e2d3e2b2d5d3e2c3c3c5b5b3c3c5d3e3e5b2e2b2e5b3c5d5d5d3c3c2d3c2d5b2c2e3e2c3e2e3e2c5b2e2e2c2e5d5b2e5d2c2d5d2c3e2e2b3e2c3e2b2c3c2c",
+      "length": 295,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 52",
+      "record_hex": "424658010052002d3c3e2c5d5d2d5d5b2b2c2b5d5b3c2c2b2d5d2c5b5b2d5b5b3e2c3c5b2c3c5d3c5b2d5d3e5d5d3e2e2d2b2e3e2c5b2e3c2e3e3e2b2b5b3e2e2c5d5b3e5d5d5d3c3e2d2d2b3c3e3e2b5d3e2c5d5d5d5b5b2c",
+      "length": 89,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 53",
+      "record_hex": "4246580100e8002b5d2e2c2c2e3c2e3e2c2d2c2d5d5d5b5d2b2e3c2b5b2e3e3c3c5d3c2c5d2e3e2e3c2d5d2c2e2b2e2d3c2c2c2d3e5b2e3e2e5b2e3e2d2c5b5d5d2e3e5b3e2c2e2e2d2b3e5b2b3c3c2d2c3e3c3c2c2d2c5d2e2d2d3e5b2e3e2b2e2b5b2b5b2e2e2e2c5b3c2e5b5b2b2d2e2b3e2e3c3e5d5d2e3e3c3c2d5b2e2d3e2b2c5b2b3c5b2b5b5d3e2e3c2d2c2b2d3e2d5b3e2b3e3e2c2e2c2c2d3e2c3c5b3c3e2e2d2d5d5b3c5b3e5b3e2d5d3c5b5b3e2c5b2b5b2b2c5b3e2e2b3e2e3c3c2b5d3e2d5b2b5d3c5b2b2b5d2c5d2b3c2c2c2e3c5d5b2c3e2c2d2e2c5b3c2c2b5b2e3e2d5d2d2e2d3e5d3e3e3e2b",
+      "length": 239,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 54",
+      "record_hex": "424658010081003c2b2e2c2e2b5b3e5d2c3e2d2c5d3e2e2b2c3e2d5d3e5b2e2d2c2c2c2b5b5d5b2e5b5b2c5d2b3e2c2e5d3c2c2e3e2c5d5b5b2d2d3c2c3c5b2d2d2e2c2c5d3e2e2d2e5b5b5b2c3c5b5b3c5d2b5b3e3e2e5b2b2e3c2d2c3e2b3e2e3c5d2d3e3e2d2d2b2c5b2d2c2b2d2c3c3e3c2e5b2e2e3c2e3c3e2c2e3c3e3e3e2c2d5b2b5d2b3e",
+      "length": 136,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 55",
+      "record_hex": "42465801003f002c2b2c2b5b2c3e2b2b5d2b3e2d2b3c2c2d3e2c5d5d3c5d2e3c2c3c5d3c3e5d3e5d3c3c5b2e2c2e2e3e2e2e3e3e2e3e5b2d3c2b3e2d5d3c3e3c5b5d2d3e2b3e",
+      "length": 70,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 56",
+      "record_hex": "424658010021002d5d5d5d2b2c2b2c2c5b5b2d2c2d5d3e5d5b2d2e2c2d2e3c5d2c5d2c5d2e5b5d3c",
+      "length": 40,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 57",
+      "record_hex": "4246580100dc005d2e3e3c5d5b2c3c2d2b3e3c2b5d3c2c5b2d5d5d5d2e5d2e3c2c5b5b5b2e5b3c2d3c3c3e2d2b5b2c3c5b2d2c5b2e2b2d5d5b2c5b2d2e2d5b3e2e2c2c3c2b5b5d2c2d2b2e2b3c3e2b2b2b3c3e5b2b2c5b5b3c2d3e2b2e5b3c3c2c3e5d3e2d5d2b5d5b2e2d3e2b2c2b2d3e3c5b2e2e3e2d5d2e5d2d5d3e5b2d5b3e3e5d2c3e2b3e5d2d2c5b2c2b2c5b2c5b2d5b2b5b3c3c5d2b2e2e2d3c5b2c3e2b5d3c2d5d5b3c2e2c2b2b3c3e2e2b2d2e2c5b2e5d5d2e2b5d2b5d3e3e5b3c2c3e3e5b2d5d5b3e2b2e2d2b3c2d5d2e2b3e2d2e5b3c2e2e2c5d2b2d3e3c3e2b3c3e2b3c",
+      "length": 227,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 58",
+      "record_hex": "42465801000a012c3e3c5d3e3e3e3e2d3e2e2c2e2d5d5b2d3e5d2c5b3c3c5b2c3c3e2b3e3c2b5b3e3c2e2c3c2c3e3c3c3c3e2b3c2c3e3e3c5b2e2b2e2e5d2e3c5b2e2b5d5d2d3e3e2d2d2b5d3c2b3e5b2e3e2c2d3c5d2e2c3e5d3c3c3c3e5d5d2e3e2c2d2b5d3c5b5b2e3e2d2b3e5d3e2b5b2b3e3e5d5b2b5b2e3c5d2d5d5d2e2d3e3e3c2e2c3c5b2c2d2e2e2d5b2d5d2d2d3c5d3c5d2c2d2d2d2e3e3e2e3c2c2b2d2e2c3e2d3c5d3e2c2e2e2c2e2d5b5b5b3e3e2b2d2c5d5d2d2e2e3e3e2d2e2c3e2d2d2b2b2e3e2c2b2c5b2b2b2e3e5d2c2c2d5d2e3e2c2e3c2e5d3c5b5d3c2b3e2d2e5d3c5d3c2d3e2c5d3e2e3c2c5b2b2d2d5b2d2e3e2b2c5b5d2b5b3c3c5b2e5d5b3c2b2b2c2e3e5b3e5d3e2e5d5b",
+      "length": 273,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 59",
+      "record_hex": "424658010008012d2d2d3e3e2b3c5b5d2b5b3c3c2e2b5b5b2b2d2c5d2c2e5d2e2e2c5b5b5d3c2c2d5d2e5d2e2c2b2e3e2e5d2c2d2d2d5b3c5d3e5d5d5d3e2b5b5d2d2b3e2e3c2e2b2b3e3c2e2d2b5d5b5b5d3e2e5b2e2d3c5d2c5d3e2b3e3c2b2b3e2b2e5b2b3c2c3e5b3c2e2e2b5b2b5b3e2e2c5d2c5d5b3c3e3c3e2c5d2c2c5d2c5b5d5d2e3c2c5d5b2d3c3e3c2e5d2e2b5d2e2e2c3c3e2e5d2b2b5b3c2c3c2c2c2c5d5d2e5b2c5b5b2b3e5d5d2d2c2b2d5d2c2e5d2d2c3c2d2b3e2e2d5d3c3e2b3e3c3c5d3c5b2d5b2e2e5d2e2e2e2c2c5b5b2d2d2b5d5d5b2b2c2d3e5b2b2e2d3c3e5d3c5d2d3e2b5b5b2c2b3c5d5b2e3c3c2b2d3c2b2c5b2d2b2b2e2d3c2b5b3e2b5b5d2d2e2d2b2b2c5d5d3c",
+      "length": 271,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 60",
+      "record_hex": "424658010021013e5b3c5b2d2b2c5d5b2b3e3e2d2c5d2d2e3e2b3c3e2c2b2c2c3e5b2b3e3e3c2d3c5b2d5d2c3c5d2b3e5d2e5d2e5b2c3e5d3c2d5b3c3c2b2c3c2d5b3c5b3c2b5b5d2b3c2d3c5b2b3e2c2d2d2b3c3e3c2c2c5b2c2d2b3c2b2d5b2d3e2e5d2e2d2d2c5d2e2c2b2b5b5b2b3e5d5b2b3e5d2d2c3c2d2c3e3c3e2c3e5b3c5d3e3c2e2d3c2d2b2c3c2b2c5b2c2e2c3e2e3c3e2c2c2b2d2b3e5b2d2c3c2d3e3e2d3c5b2b2e3c5b2e2d2e2e2b3c5d2c2c5b2c2d2e3c2e3e2e2c5d3c3e3e2c2b2b5b2b2b5d5b2e2d5b3e5d5b3c5b5d2c5b5d2c2b2d2e2d3c3e3c2b5d5b2d2c5d2c2c3c3c3c5d2d2b3e2b5d2b5b2b2c2c3e3c2b2b2e5d5b2c2d2b2e2b2e5b3e2d2e2d3c2c3e5d2c2c2c2e5d5b2e2e2b2e5b2e2e5b2e2b5d3e5b2e2c5b5b2d3e2e2b2b2d2e2e2b",
+      "length": 296,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 61",
+      "record_hex": "424658010049002c5d2e3e2d5d3e5b5b2b2b3e2d5b5b2b2e5d5b5d2b2c5d2d5d2b3c2b5d5b5d2e5d2b5b3e2b3c3c2d2b2e3e2b5d2c2e2c2c2d2c5d2b5d3c5d3e2b5d5d2c2c3e5d2b2b3c5d2e5b2e5b2d",
+      "length": 80,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 62",
+      "record_hex": "424658010093005d2c2d5d2c2b3c5d3c3e5d3e2d2d3e2e3c2c3c5d2b3e2e2b3e3c3c5b3e2b5d2e2c3c3e2b2b2e3c3c3e3e5d2b3e3c2c3c2e3e3c5d3e2c5d2e2c2c5d3e2e2c5b3c2e5b3e3c5b3c2b2d3c3e3c3c3c5d2e2e2e2c2c2d2b3e5b5b3e3e2d5b2b2c3e5d5b3c2b2d5b5d2e5b2d5d2c3e3c5d3e3c5b2b3e3e2b2c5d3e2e2c2b2b2b2c2c3c3c5b2c2d2d2e5d3e2c2c5b5d3e2c5d2b3e3c5d",
+      "length": 154,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 63",
+      "record_hex": "4246580100dd002c3e2d3c5d2d2c2c2b3e3e3c5b2e2c3c3c5b2e5d5b2c2b3e5d2c3e2b2e5b5b3c2c2c3e2e2c2d3c3c3c2b5b3c2c5b3c3e5b3e2d3c2e2d5b5b2b2b3e3e5d3c2e3e3c2e2d2d2c2c2c3c2b5b2d5d2c5b3e2e5d2b3e3c3e5b2d5d5d3c5d2e5b2d2c5d3c2e2e5d2b2e2d2c3c3e5d5b3c5d2d2d2e2b2c2d3e2d3c5b5b2e5b2e2b2e3c3c2b2d2e2c2d3e2d3c2e3c2b2b2c3e3c5d2e2b3c2b5b2e2e3c3c2d3c2c2b3e5d3e2d2b5d3e5b5b3e2e3c2b2e2d2e2b2c2b5b2d2d3e2e5d5d5d2b2c2c2b5b3c2c2b2b2b2d3e2e2d5d3e3e3c3c5d2c3e3c2c5b5d5d2e2d5d5d5d3e2d2c2d2d",
+      "length": 228,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 64",
+      "record_hex": "42465801000c003e2b3e3c2e5b2b3c2d2e2c3c",
+      "length": 19,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 65",
+      "record_hex": "4246580100c8005d3c2e5b2c5b2c3e2e3c2e3c2b2c5d3e2b3c5d2c2d5b3c3e5b3c3e2b2e5b2e5b3e3c5d2e2c5b3e2d3c3e5b2b2c2c3c2e2b5b2b2e2b5d5b2e5b5b5d3e5d3e2e2c3c2b2c2b2c5d3e3e2c2d5b2d2b5d2e2c5d5d5d2e5b2b3c5d3e5b3c5d2e2d3c2b3e2c5b5b2d2b5b2c5d2e2d2e3c3e5d2b2d5b3e3e2b2b2c3c2b2d3e5b2d2b2e5b2b3e3c3c5d3e3e5b5b2d3c2d2e2d3c3c3e2d2b2d5b3e5d2b3e5d5d3e5b3e3e5b5b5b3c5d2e2d5d3c2d3e3e3e2c2c2c5d5d2b2e2e2c5d2d2c2d3c3e5b2b3e3c3e2c2d2b3c2c3c5d3c",
+      "length": 207,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 66",
+      "record_hex": "42465801001b012d3e3c5d2c2c3c2e3c2b2b2c2e2b5d3e2e2e5d2c5b3e2d2d3e3e3c5b3e3e3c2c3e2e5b5b2e2b2e3c5d2e3e5b5d2e2d2b5b2e5b2b2d5b2e2d2c5b2c3c3e2e5d5b2e3e3c2c5b5d2d3c3e2c2d2c5b2d2d2c5d5b3c5b5d5d5b5b3c3c5d2b5b3c3e2d5d3c2b5b2c2d3c2c3c3c2d3c2d5b2c2d2c2d2b5b3e5d2b3c5d2b2e5b2c5d5b2e2b2d5b2e2b5b2b2c5d3e2d5d5d2c5d2b2b2e2b2d2e5b3e2e5d2c5d3c5b5b2b3c2c5d2e5b2d5d2b5d2c2d3c2c2e2e2b2e3c2d3e5b2b2b3c5d2e2d5d3e2b5b2c2d3c2c2e2b2c3c3c5b2b2c2e5b3e5d2d2e3e5d2e3e3e5b5b2c2b3c5d2d5b2e5d2b2c5d3e2b5b5d5d2d2b2c5b2b2e5d2d3e2d5d2b5d3e2b2c5b2d3c3c3c2d5d3c2e2e3e2c2b2b5b3c2d2d3e2d2e5b2e3c2e2b3c2b2c3e2d2b5b3c2d2d",
+      "length": 290,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 67",
+      "record_hex": "4246580100aa003c3c2c2d3c3c5b2e2e2e5b2c2c2e5d3c3e5b2c2b2b2b2b2d5d5b3c5d5d3c2d5d2d2b5b5d2b3c2e2d5b5d2c2e3c2b2c2d5b5b2d2d2b2e2c2e2b5b3e2c2b2d2b3c5b5d2c3e2d2b2b2d2e2e2b5b2c3e5d2e2c2b2c5b2b2b3e3c5b2d5b2d5d5b2e5d2d2c2c2d3e2c2c2c5b2d2d3e2e3c2c5b2c3c3e5d3c2e2b2c3e2e5b2e3c5d2c2c2d2e5d2c2b2d2d5b5b5d2b3e3e2d3c3c3c2c5d3e2c2b5b5d2b5b3e3c2c3c3c5b3e2e2d2e2e5b3c3c2e3e",
+      "length": 177,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 68",
+      "record_hex": "42465801008d005b3e3e5b5d5d2b2c5d2b5b2b2b5d2b2b2b3e3c3e2d2c2e2e3c2c3e2c2d5d2c3e3e2d3e2d2e2c3c2b2c2c2d3e5b5d5b2b2d2b2d2e2b2d3c2e3e3e3e2c5b3c2d2d3e3c2e2b2b5d5b3c3c3e2b5b2e3c3e2c2d2d3c2e5b5b2e3c5b5b2d2e2c2b3c3e5d5b3c2c2b3c2e5b2c5b2e3e2b2d3c2e2c2b3e2c3c2d2e2e2b2b3e2b3e5b2c5b3c2d5d5d2e2c5b5d3e2e2b2d2b",
+      "length": 148,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 69",
+      "record_hex": "424658010016015d3e2e2c5d3e3e3e5b5b3c5b5d5d3c5d3c3e2b2e3e5b5b2e2c5d2e2d3c2e2c3c2e2b3e5b2c3c3c2b3e2b5b2c2b5b2b2e3c2c5b5d3e3e2c5d2b3e2c3e2c5d3c3c2e2e2e2e3e3c3c5d2e3e2e5d2c2e3c3c2b2e3c5d2d3e3c2c2c5b2d2b2b2d5b2e2c3c2c5d2e2c2d2b3e3c2c5b3e5d2d3e2b2d5b2d2c2b2d5d2d2d5d2e3c5b2c5b3c2e2d2d2e2b2c5b2b5b5d3e3e2d2b5d2b3c2e5b3e2e2d5b2e2b5d5d3e2c2e2d5b2c2d2d2b2e2e2b2d3e3c5d3c2b2d3e3e2e5b2c2e2b2b3e2e5d2c5d3e2d2c3e5b2d2c2d5b2d3e2d3e2e2b2b5d2d3c3c5b3c2d3c2e5d3c2e2c5b2b3e2b2d5d2b5d2b3e2c2e2c3c3c2c3c3c2e3c2d5b5d2b2e5d2b3e2e5b2c2e2b2b3e5d2e2e5b5d2d3c5d3c3c5d2e3e3e2c2d5b5b2c2d2b2b2c2c2e2c",
+      "length": 285,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 70",
+      "record_hex": "424658010015015d2d2e5b2d2c2d2d3e2c3e2d3e5b2c2b5d2e2e2d2b2c5b2d2e2c5b3c2d5d2c3e2c2c5d3e2d3e5d2b3c2b2e5d5d3e3e5d2b5d2b2b3e3c2b2c3c3e3e2e2b5d5b2b3e2d2c5d3e2e3e2c5b2d2e2c5b2b3c3e3c2d3c3c2c5d2e5b5d2b2e3e5d3c2e2d2e5d2c3c3e3c5d3e5d3c3c2d5b2c2e3e2e2b3e2c2d5b3e2e2b2e2b3c2d2c2b3c2c2e3c3c3e2b3e2e3e5d2c3c2c5d3e5b3e2c5b5b5b5d3e5b5d2e2c2d2d2c2e2c3e5d5d5b2b3c5d5b2b2d2c3e2c5b2b2d2e2e5b5b2b5d2d3c5b5b2c2b2c2c2b5b5d2b2c2c5b2e5d2d5d5d3c3e2c5d2e2b5b3e5d3e2d3c5b2d3e2e2d2b2b5b3e2e5d3c3c3e2b5d2b2b5d3c5b2e2d2c2e2e2e5d2c5b2c5b5b2d2c5d2d2e2e5d2e3c2e2b2e3e2c3c2c5b2e2e3e3c5d3c5b3e2c2e2c2e2e",
+      "length": 284,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 71",
+      "record_hex": "4246580100ec005b2d2e2c5b5d2b2e3e3e3c2e2e2b2b3e2b2b2c5d2d5d3c2b2b5b2c2b2d2d2b5b5d2c5b5b2b5b3e5b2c5b2c2d2e3c3e5b3c2d3c2c2b2d3e5b2c2e3e3e5b2c2e3c3e5b2c2e2b3c3e2e2b2c2d2e3c5b3e5d3c2e5d2c3e2e2c3c5d2b2c2b2b2d3c2e5b2d2e2d3c5b3e5d2c2e3c2c2c3c3c2c2c2b2d3c5d2d2d5d2c2c3e2d2b3e2d2e5b2c2b2e5d3e2c2e3c5d5b5d2b2e2b2c5d3e5b3e3e3c2e5b3c2c3e2e5d5d2e2b2b2d2c3e3e3c2d2d3c2d2d5d5b2c2b2b2b2b5b2e3e2b2c2b2c3c2c2c3e2e5b3e2c2b2c5b3c3c2e5b3e3e5d3c3e5b2d3e2c5b2c5d2b5b5d3c2b2c3c3e2b5b3e5d3e5b2e2c2c2e3c3c3e3c2e5b",
+      "length": 243,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 72",
+      "record_hex": "424658010008005b5b2d5b2b2d2e2e",
+      "length": 15,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 73",
+      "record_hex": "42465801004c002d3e3e3c3e2c2d3e5d5b3e3c5b2d3c2e3c5b3e2e3c2b5b5d5b2c2c5d5d5b2e5d5b3e3c2e2e2b2b2b5b3c2e5b2b5b2b5b3c2b3c5d5d2b5d3c5d3c2c2c2b2c2e2d2c3c2d2b3e5b2b3e5d2b5d2c",
+      "length": 83,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 74",
+      "record_hex": "424658010088002b2c2d3c2b5b2b5b2b2e5b5b5d2e2d2d3c5b2b2d3c5d5b5b2d3c2c5d3e5d5b2c2e2e2e2b5d5b3e3c5d2e2d5d5d2d2b3e3e2d3e5d2e2e5b2b5d3e5d3e3c3c2d3e5b5d3e2d2c5b3c5b5d2e2b2d5d3c3e3c5b2b5d5d2d2d3c2b3e2e2e3e5b2c5d2c2c2b5b3e3e2e5d5b3e2c3c2d2d2b2c5d2c5b2b2c2e2e5b2d2c2c5b3e2d2c5d5d2b2d2d2e3e5b2d2e",
+      "length": 143,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 75",
+      "record_hex": "424658010085005b2e5d2c2b5b2e3c2c3e3c3c5d5d2e2b2b5b5d3e2d2d2d2c5b2d5d2c3c5b2b2d5b5b2d2d2c2b3c5b5d5b2c2e3e5b3e2b2d2d2d2b3c2b5d5d2e3e2d5d2b2e2b2b2e2d5d2d2c3e3e5b3e3e2d5d2e2c2b3c5d2b5b3c5d2c5d3e2e5b3c2b2e3c2e5d3e3e2e2c5d3c5b5d2c5d5d2b2b2e3e2d5d5d2c2b2d2d3c3c5d2b2d3c2e2b2d2c5b5d2b2b2b",
+      "length": 140,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 76",
+      "record_hex": "42465801000c002d2c5b3c3c2c2e2e3e3c2d5d",
+      "length": 19,
+      "expected_result": 51539607552,
+      "expected_pairs": {
+        "11": 2,
+        "2": 11
+      }
+    },
+    {
+      "name": "random 77",
+      "record_hex": "4246580100de003e5b5b2d2c3e5b5b3e2e2b2c3e5d3c3c2c5d5d5d2b2d2c5b5b2d5d5d3c5b5b2c2e2d2b5d5b2b5b3c5b2c2c3e2c5b5b3c2d3e3c2c2b5b2d2e5d5b2b5d2c5b2c2d3e2e5b2d2b5b3e2e2b2b2d2e3c2e2e3c3c2e2e2b5d2b5b5b2d2d2b3e2d2b2c2e3c3e3c5d2b3e2b5d2b5b2e3e2e2b2c2b2d5b5d5d3c2d3c2d2e2c3e5d5b2b5d2b2c5d3c3c5d5b2c3e3e3c5b2c5b5d5d5d3c5b2e5b5d2b2b3c5b5b3e3c5b2b5d3e3e2e3e2d3e3c2b2c5d2d3c2c3c3e3c2e5d2c5d5d2d5b2b3c2b3c2e2e2c2d2d2d2c2c5d2e2e5b3e2b2d2e2d5b2c2c3e2b2d2b2c2d5d5b3e3c2e2b3e2d3e3c",
+      "length": 229,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 78",
+      "record_hex": "4246580100d3005d2c5b2b2d2c5d3c2d3c3c2b3c2e5b3e2d3c5d5d5d2e2d2b2d5d5d2d5b2d2d3e5d5d3e2b3c3e2c2d3c2c5d5b3c2e2d2d3c5d2e5d5b3c2b3c5d5b5b5d3c2e5b2b2c2c2c2d2d2b2d2c2c2d3e3c5d2e5d5d2e2d2b5d3e5b2e3c2c3e5b2b2d3e2d2b2e2e2d3c2c2d2c2b2c2e2d3c5d5b3e5b3c3c2b5d5b3e2b2c2d3c3c5b2c3e2d2d2e2c5b2b5b2c2b3e3c2e2e2d3c2c2d5d2e5b2e2b2c5d2c2e3c3e5d2d5d2e2d2b2e3e2b3c2b3e3e5b2c3e2b2b2c5b2e2c2e3c2e3c3c5d3e2e3c3e5d5b5d5b2e2c2d5b3e2c2b3e2d2d5b3c2d5b2e2c2e3e5d3c2d",
+      "length": 218,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 79",
+      "record_hex": "42465801005b003e2c5d5d3e3c5d3e3e3e2d2d3e2d5d3c3c2c2d2d3e2d2e5b2e2e2b2d2e2d2c5b3e2d3c2d5d3c5b2e2e3e2c5b2e5d2e3e3e2c2e3e2d2b2c2e3c2e5b2e5d3e2c2c2e2e2e2e3e2e3e2e2b2c5d3c5d2b5d2d5d5b5d3c5d3c2b2c2e5b2e",
+      "length": 98,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 80",
+      "record_hex": "4246580100ca005d3c5b2e2d5d5d3e5d3c2b2e2b5b2c5d2b5d2c2b5d2c2b5d5b2e5d3e2c3c3c2d2d3e3e2d5b2c2d3c5d2c5d3c2e3e2b2d5b5b3e5d2d3c2c2c2e2b2c3e2e3e3c2c2d5d5d5d5d5d5d2c3c2c5b2c2b3e3e5b5d2d2e5d3e5d2c2e5d2c3c5b2d5b3c2c2b2c5b3e5d5b2c5b2e2c5d5d2d5d3c5b5d5b5d3e2d5b3c2c2e3c3c2b2e3e2c2b2b5b2b2c2d2d3c5b2c2d3e3c2d3e5d2c3e5b3c3e3c2d2e3e5b3c3c2d2e3e2e2b5d3c3c5d2e3e2c3c5d3e2c2e2b2e2c2c2d3c3c2d3e2c2e5d3e3c5d5b2e3c2e3c2e3c3e3e5d2c3c5d5b2e",
+      "length": 209,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 81",
+      "record_hex": "424658010008002e2c3e5d3c3c2e3e",
+      "length": 15,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 82",
+      "record_hex": "424658010035002c2d5d2e2e3c2e5b2c5b3e2d3c2d2d2b2c2d2c5b2c2d5b2d5b3e2d5d2d2b5d2e3e5d2b2e3c2e2c2d3e2e5b3c2b2e2c3c3e2c2b3e2c",
+      "length": 60,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 83",
+      "record_hex": "42465801007b002d2c2b3e5d2b2e2c2c2b2e2e2c2d5d2e2d2e2e5b3c5b3c5b2e2e2e2c2b3e5b3c2d2c3c3c2c5d2e2c2e2c2c2d5b2c2b5d3c2b2e3e2c5d2d5d3e2e2e3c2c5b5b2d2b5d2e5d5b2c5d2e2b2b2d3c3e3e5b2c2b5d2c3e2d2d3e2d3e2b5b2d5d3e3e2e2e3c5d2c2d2d5d2c2d3c5b2c5d5b3c5d3c2d2b3c2d2e5b2e3e2b5d",
+      "length": 130,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 84",
+      "record_hex": "42465801003e003c2b3c2d2e3c2e3c5b5d3c5d3c2d5d2b3c5b3e2e3c5b2b3c5d5d3c5d3c3e2c2b2e5b3c2d5d3c3e5d5b2b2c5b2d5b3e3e5b3e2c2e5d5d2d2b5b3c3c3e2c5b",
+      "length": 69,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 85",
+      "record_hex": "42465801005e002b3e3e2d2c5d2c2c2e3c5b5b3e2d2d3c2b3e2b2d5b5d5d5d3e3c5b2d2b2b2d2e5b5b5b3c2d5b2e5d2e2e2c2c5d5b3c2b5b2c5d5b3c2b5d5b3e5d3e2d3e3c2b3c5d2e2b3e2b2d2b2d2b3e2e3c3e5b2b2c2e5b2b2d2e5b2e3e2d2b5b2d2d3e",
+      "length": 101,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 86",
+      "record_hex": "42465801003e002b2d3c2c2e5d3e5d2e3c2c5b2c3e2b2c2c2c3e2d5d3e2b5d5d5d2e2c3c2b2e2d2d2d2b3c3e3e2e2e2e3e2d3e2b5b2b2b5b2e2c2e5d5b5b2b5b3c5d2d2e3c",
+      "length": 69,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 87",
+      "record_hex": "424658010087002e3e3c2b2c2b2c5d3e2e5d5b5d5b2e5b5d2c2e2b2b3e3e2e5d2d5b2c2c2b3e3c3c2c2c3e2b2c2c2e5b2d5d3c2c2d2c2d2c3c2b3e3e3e3e2b5d2b3e2d2e2b2c2c2e2e2e3e2b2c2e2c2b2b2b2d2c2d2d2e5b5d3e3e3e2d5b5b2e2d5d3c2d3c3e3e2b5d5d3e3e2b5d3c5d2c5d3c3c3c2e5d2c2b3e5b2b3c3e2b3c2b3c2c2c3c5b3c2d5b2d5b2b2c2c",
+      "length": 142,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 88",
+      "record_hex": "424658010004005b3e2e2b",
+      "length": 11,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 89",
+      "record_hex": "424658010051002e2e2b2b2e5d2b3e5d3c3c5b3c2d3c5b3c5b5d2b5b2c2c5b2e2c5b2d5b2c2c5b3c2c3c2d2d3c3e2e5d5d5b3c3c2c5b2d2d5d2d2d2c2d2b2c3e5d5d2e2d5d2b2c3c2d2c3c3c2c3e2b3e2d2c2e5d3c3e3c2d",
+      "length": 88,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 90",
+      "record_hex": "424658010020003e3c2d5d2b2e2b2e2b5b2e2c5d2c3e2d2c2e5b2b2c2c2c2e5d5d5d3c3e5b5b2c",
+      "length": 39,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 91",
+      "record_hex": "424658010007002b2b2d2e5d5d2e",
+      "length": 14,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 92",
+      "record_hex": "4246580100d0002d2c2c5d2b2c2e2b5d2d2e3e2c2d2c2e2b2e5d5d3c2c2d2e5d5d5b5b2e3e3c2e5b2e2d3c2b5b3c3e5b3c3c2d3c2b5b2b3e3e5d3c5b2b2c2c2e3c2d2c3e2b2c5d3c5d2d2b2c2d5b3c2b3e2e2e3c2e3e2b2b2b3c5b5d2d2d2c5b3e2e2b3c2b2b5b2d2c3e2d3e2c5b3e3e2d5b2c2d2b2c2e2c2b2b5d3c2e3c5d3c5d2d2e3c2b2b3e3c2d2d5d2d3e2c2e3c2d2e5b2d5d3e3e5d2d5b3c5d3e2e2e2c2b5d5d2c2b2c2b5b3c3e2e2b5b5b2b2b2e2c2c2c2d2b2b3c2e5b2d3c3c2e2b5b2c3c2e2b3c2c3e2c3e5b5d2e2b2c5b2b2c3c5d2d2d2d2b",
+      "length": 215,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 93",
+      "record_hex": "4246580100f0005b3c2e2b3e2d2e5d2c3c5b2b2d2b2e2e2e2b5b3c2e3e5d2e2e2c5b3e2b2c2e3c2c2c5b2c2d5d2b2d2e2b2d5b5d2e2c2d2d2e3e2d2b3c5b2d2c2b2e3c2d2c5d5b2e3c2e2d5d2b2d3e2c2b2e5d2b2c3c5d5d2c5d2e3c2e5b2d5d3c2b2e3c5d2c5d2c3c3e5d2c2c2b5d3c2c2d3c2e5b2c2e5d2e5d2e3e5b5d2e3c3e2d3e2c2b2b2e2c5b2b2d3c2b2d3c3e5d2d2e3c2e3e3c2d2b3c2c5d5b3c5d2c2d2d2d5d3e2d2e2b2b2b5b5b2d2b2c3e3c5b5d3c2d2b2e3e3c3e3c3e2d3c3c2c2b3e2b5d2e2e5b2d2b5b3e3c2c5d2d2b5b3e2c5d3e5b2d5d5d2d3e2b2b3e3c2b2e2e2e3c3c3e5d3c2d2e3e5b3c2b5b5d3e3e2c5d2c5b3e",
+      "length": 247,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 94",
+      "record_hex": "42465801002a005b2e5d2e2c2e2b2b2e2d3e5d2e3c2b3c5d5b3e2d5b2c2c2b5d5b3c5b2c3c2b2c5d2e5b2c2e2c5b2e3c2c",
+      "length": 49,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 95",
+      "record_hex": "424658010069003e2b2e5d2c5b5b2d2c2e3e2d3c2b5d3c3e2e2e5d3c3e2b2d3e2d2e2c5b3c2c2c2c5b2b2c5d2b5b2d3e2b5d2d2e2e5b5b3e2c3e5b5d2e3c2d2b2b3e2c2d5d2b5b2e3e2c2b5b2b5b3e5b2e5d2b2d3c5d5b5d2c5b5b3c5d2e5d3e3c5d2e5d5d3e2b3e3c2d3e2b3c5b2b5b",
+      "length": 112,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 96",
+      "record_hex": "4246580100a1002c5b2c2d5d3e2b2d2e2c3c2d5b3e2e2c3c3e3e3e2c5b3c2d2d3c5d2b3c2e2d2b5b3e5b2e5d5d3e3c5b2e5b5b2d2d2e2d2c2b5b2d3c2b3c5b2d5d2b2e2c2e5d2c2e2e2c2b2e3e2d2c2d5d2c5d5d3c5d5b2e3e2e2c2b2e2e2c2e5b5b2d3e2d3e2c2d3c3e3c2c5b5b3c2c2d2e3e2d2d5b2c3c2d5b2d5d2b5b2e3e5b2c5d2c2b3c5b5d2c3e5b3c2b2c5d2d3c2d2c5d2c2c5d5b3e2b5d3c2c2c2d3c2d2c5d2c5b3e5d2c",
+      "length": 168,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 97",
+      "record_hex": "424658010049005b3e2b2e2b2b3c3c2c5b3e5b2d5d2d2d5d5b3c3c2c2b3e2c5d5b2b2c3c2b3c2d2b2b2d3e5b2c5d2d2c5b2e5b3c2c2c5d2b5d5b2d5b2d2e2e3e2c5b5d2e3c5d2b5d5b2b3c2b3e3c5d3c",
+      "length": 80,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 98",
+      "record_hex": "42465801005d002b3e2c2c3c3c3e3e2b2d2b2d5d2b2d2e5b2c5d3c3e5d3c2b3e3e2b5d2b5d5b5d5d3e5b2e2d2d3c3e3e3c5d5d2e2c5d2c2b2b3c2b3c3c5b2c3c2c2d2e5d3e5d3e2d3e5d5b3e5b3c2d2e5d5b2e2d2e2b3e3e2c3c2d2d2d2b3e3e2e3e2b2b",
+      "length": 100,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "random 99",
+      "record_hex": "4246580100ba003e2d5b2e3e2c5b5d3e2d3e5d2c2d2e2c2e2b5b5b2c2e5b5d3e3e2c5b3c5b2e2d5d2e5d2d5d5b5b3c2e3c3e2c5b2e5d5d5d2b2d2c2b2b5b2c3e2e2b2e2c3e3e5d2b2e5d3e2e3e2b3c5d3e3e3e3e5d2e2c2b2e5b2c5b3e3e3e2d2c3c3e2d3e5d2c5d2d2d3e2d3e2b2e5b3c2e2d2b2c5d2d2e5d5d3e2b2b2d2b5d2d3c5d5b5d3e3c2b3c2d3e3e2b5d2b3c3e3e2c2e2b2e3e2e5b5b5b3c5b5d5d2b2b2d2b3e2d2c5d3e2b5b2b2c5d5d2b2c3e2d2e2c5b2c3c2d3c2e5b3e3e2c2d5d2b",
+      "length": 193,
+      "expected_result": 6,
+      "expected_pairs": {}
+    },
+    {
+      "name": "BBC all-eight",
+      "record_hex": "424658010008003e3c2b2d2e2c5b5d",
+      "length": 15,
+      "expected_result": 34359738368,
+      "expected_pairs": {
+        "7": 6,
+        "6": 7
+      }
+    },
+    {
+      "name": "BBC bad-close",
+      "record_hex": "4246580102",
+      "length": 5,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "BBC bad-open",
+      "record_hex": "4246580102",
+      "length": 5,
+      "expected_result": 1,
+      "expected_pairs": {}
+    },
+    {
+      "name": "BBC empty",
+      "record_hex": "42465801000000",
+      "length": 7,
+      "expected_result": 0,
+      "expected_pairs": {}
+    },
+    {
+      "name": "BBC nested",
+      "record_hex": "424658010012002b2b5b3e2b2b5b3e2b3c2d5d3c2d5d3e3e2e",
+      "length": 25,
+      "expected_result": 77309411328,
+      "expected_pairs": {
+        "11": 6,
+        "6": 11,
+        "14": 2,
+        "2": 14
+      }
+    },
+    {
+      "name": "BBC raw-zero",
+      "record_hex": "424658010002002b2e",
+      "length": 9,
+      "expected_result": 8589934592,
+      "expected_pairs": {}
+    },
+    {
+      "name": "BBC safe-annotations",
+      "record_hex": "424658010002002b2e",
+      "length": 9,
+      "expected_result": 8589934592,
+      "expected_pairs": {}
+    },
+    {
+      "name": "BBC truncated",
+      "record_hex": "4246580101",
+      "length": 5,
+      "expected_result": 1,
+      "expected_pairs": {}
+    }
+  ]
+}

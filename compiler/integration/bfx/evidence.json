@@ -1,0 +1,289 @@
+{
+  "date": "2026-10-19",
+  "status": "EXECUTED",
+  "format": "BFX",
+  "format_version": 1,
+  "magic_hex": "424658",
+  "scope": "BFX rename, Brainfuck frontend emission, canonical XAX record decoder; full adapter migration incomplete",
+  "bbc_base_revision": "2b68a668f01ee0fc9e8d0a36938279a2685221a7",
+  "xax_base_revision": "51bb251aff4abfe340901960b150eb11dc2a9a50",
+  "revision_scope": "base commits plus uncommitted changes identified by exact file hashes",
+  "device": {
+    "ro.product.model": "Pixel 8 Pro",
+    "ro.build.fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "ro.build.version.release": "17",
+    "ro.build.version.sdk": "37",
+    "ro.product.cpu.abilist": "arm64-v8a"
+  },
+  "decoder": {
+    "canonical_store": {
+      "bytes": 9504,
+      "sha256": "5b2025a204ffb9e3634f880966f09f54d11c695e420f9ad688bd398afdabf2e8"
+    },
+    "root": "379c4b87a6ab39f219a617da9874fcc8465db2bad50cc666621541ce2fa48d72",
+    "function": "46b16842e6046e2277f1f36b2cd57bf5bb8b6c4ed406b9d9d79744b794594946",
+    "construction": "Existing xax-construct-v1 carrier; verify_store; Workspace.save; saved store is authoritative; no committed builder",
+    "blocks": 23,
+    "nodes": 62,
+    "windows_cases": 393,
+    "android_cases": 393,
+    "windows_dll": {
+      "bytes": 2048,
+      "sha256": "5f5e1a6b630aad018a2bf7065aa4c7237209a03f436abc72bec5938bce462cd7"
+    },
+    "android_elf": {
+      "bytes": 17352,
+      "sha256": "8b6f03555a3abb8e19e2b5ac29cf929542255ebc5dabf7d7d918e0eaa802c561"
+    },
+    "case_data": {
+      "bytes": 110436,
+      "sha256": "04341374b5cd82975350f6049e2201a9539b490892f848f3973e1293a3df8310"
+    },
+    "android_output": {
+      "bytes": 7954320,
+      "sha256": "ffc9e8b35f10486c6f2258c80998fab35f2d484a1fa69fd7fd4659036478b63d"
+    },
+    "checks": [
+      "all 256 payload byte values",
+      "length and version rejection",
+      "old magic rejection",
+      "count and depth limits",
+      "random opcode streams",
+      "loop pair table",
+      "exact BBC records",
+      "input preservation",
+      "scratch canary"
+    ]
+  },
+  "frontend": {
+    "source": {
+      "bytes": 4531,
+      "sha256": "45a5ae43b6cebfe854453827e321c11be2b7ab50db4d78f6a2360b241ed2014b"
+    },
+    "filtered_sha256": "ecc84ea90ad9cb1b2d314686078177f8e8b9a430300f09a94a34d3777dd5c536",
+    "instructions": 2455,
+    "seed_checks": [
+      {
+        "name": "all-eight",
+        "passed": true
+      },
+      {
+        "name": "bad-close",
+        "passed": true
+      },
+      {
+        "name": "bad-open",
+        "passed": true
+      },
+      {
+        "name": "empty",
+        "passed": true
+      },
+      {
+        "name": "nested",
+        "passed": true
+      },
+      {
+        "name": "raw-zero",
+        "passed": true
+      },
+      {
+        "name": "safe-annotations",
+        "passed": true
+      },
+      {
+        "name": "truncated",
+        "passed": true
+      },
+      {
+        "name": "framer empty",
+        "passed": true
+      },
+      {
+        "name": "framer text",
+        "passed": true
+      },
+      {
+        "name": "framer nul-terminated",
+        "passed": true
+      },
+      {
+        "name": "compiler frame",
+        "passed": true
+      },
+      {
+        "name": "frontend interpreted own source",
+        "passed": true
+      },
+      {
+        "name": "bootstrap frame",
+        "passed": true
+      },
+      {
+        "name": "decision frame",
+        "passed": true
+      },
+      {
+        "name": "boundary 0 status 0",
+        "passed": true
+      },
+      {
+        "name": "boundary 3840 status 0",
+        "passed": true
+      },
+      {
+        "name": "boundary 3841 status 3",
+        "passed": true
+      },
+      {
+        "name": "boundary 510 status 0",
+        "passed": true
+      },
+      {
+        "name": "boundary 512 status 3",
+        "passed": true
+      },
+      {
+        "name": "boundary 65535 status 0",
+        "passed": true
+      }
+    ],
+    "seed_own_source_output": {
+      "bytes": 2462,
+      "sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074"
+    },
+    "windows_native_checks": [
+      "all-eight.request",
+      "bad-close.request",
+      "bad-open.request",
+      "empty.request",
+      "nested.request",
+      "raw-zero.request",
+      "safe-annotations.request",
+      "truncated.request",
+      "native own-source equals BF seed"
+    ],
+    "android_native_checks": [
+      {
+        "passed": true,
+        "name": "all-eight",
+        "observed": "status=0 length=15"
+      },
+      {
+        "passed": true,
+        "name": "bad-close",
+        "observed": "status=0 length=5"
+      },
+      {
+        "passed": true,
+        "name": "bad-open",
+        "observed": "status=0 length=5"
+      },
+      {
+        "passed": true,
+        "name": "empty",
+        "observed": "status=0 length=7"
+      },
+      {
+        "passed": true,
+        "name": "nested",
+        "observed": "status=0 length=25"
+      },
+      {
+        "passed": true,
+        "name": "raw-zero",
+        "observed": "status=0 length=9"
+      },
+      {
+        "passed": true,
+        "name": "safe-annotations",
+        "observed": "status=0 length=9"
+      },
+      {
+        "passed": true,
+        "name": "truncated",
+        "observed": "status=0 length=5"
+      },
+      {
+        "passed": true,
+        "name": "native own source equals seed",
+        "observed": "status=0 length=2462"
+      }
+    ],
+    "windows_dll": {
+      "bytes": 701952,
+      "sha256": "908ff02a86cee84c059f8f89ac0691387386a095464c3eb15ca880e37c1203ef"
+    },
+    "android_elf": {
+      "bytes": 66504,
+      "sha256": "1fa10c141204e5234005514bf4c01b0b29827978e93013c48a54f79583128ce5"
+    },
+    "native_own_source_matches_seed": true,
+    "bootstrap_disclosure": "Unchanged previously compiled BBX frontend compiled updated BF source into genuine BBX. Unchanged legacy xax_bbx.construct_bbx imported it to native updated frontend, which emits BFX. This is not a graph-only BFX rebuild cycle."
+  },
+  "dependencies": {
+    "adb": "C:\\platform-tools\\adb.exe",
+    "android_ndk": "28.2.13676358; external buffer transport only",
+    "compiler_host": "Windows x86-64; Python 3.14.5; unchanged legacy verification/lowering helpers; XAX_REQUIRE_NATIVE unset; no claim of XAX-hosted compiler execution",
+    "legacy_importer_unchanged": {
+      "bytes": 8399,
+      "sha256": "08fcbe63e81ee8a92089946465432d9a32bb253d674603eabb9d4136aaf748d1"
+    },
+    "legacy_android_constructor_unchanged": {
+      "bytes": 13397,
+      "sha256": "509bcefbc79d5d5451d0f59b203fe46b2054713b57ec8b6c17d8ffff9e5cf408"
+    },
+    "seed": "External .NET C# interpreter runs BF with wrapping bytes, checked 65536-byte tape, EOF zero",
+    "external_tools": {
+      "verify-bfx.ps1": {
+        "bytes": 4167,
+        "sha256": "74c518b46d06b0d015fb49cf77d4b1f558f4f4241e039248b6e231b264289bc9"
+      },
+      "verify-decoder.py": {
+        "bytes": 2892,
+        "sha256": "3e9947c49cc511a2fc6d53ea4e7e9c778c352d5867b0017c92cf71aefee55179"
+      },
+      "verify-native-frontend.py": {
+        "bytes": 2460,
+        "sha256": "4b2bf05f012e2d38bd6f00585a0d5cbb1ebcbc44cf4a71a6e8374f2b3299dcc2"
+      },
+      "bfx-transport.c": {
+        "bytes": 1012,
+        "sha256": "9a54abde1ec817cf5dcba43ce0f1a585960c287da2bfd6e161674500f35a463b"
+      },
+      "bfx-transport": {
+        "bytes": 7688,
+        "sha256": "b7100963d5fcf0977aa4a4913a5bf82603879e0f7e043703f721f522e4d25f03"
+      },
+      "frontend-transport.c": {
+        "bytes": 920,
+        "sha256": "860c22aaae9772316174c7b3c58e47def211320f8a59e2219245c9ba9354aef0"
+      },
+      "frontend-transport": {
+        "bytes": 7952,
+        "sha256": "b6efdadb35a640d1ed1299fd88939fd94bad014462f812bc613b3e14babdd681"
+      },
+      "bfx-construction.json": {
+        "bytes": 6655,
+        "sha256": "55e727483cebd4080a77e4185dfc972e0e55ad189d23fa327a69cfe6fcd6f30a"
+      }
+    }
+  },
+  "purity_audit": {
+    "bbc_bf_files": 7,
+    "new_or_modified_xax_python_implementation_files": 0,
+    "new_xax_executable_source": [
+      "compiler/integration/bfx/bfx.xax"
+    ],
+    "historical_bbx_evidence_byte_identical": true,
+    "request_and_io_fixtures_byte_identical_after_move": true,
+    "preexisting_xax_readme_title_preserved": true
+  },
+  "remaining": {
+    "bfx_decision_graph_emission": "UNIMPLEMENTED",
+    "bfx_android_app_construction": "UNIMPLEMENTED",
+    "graph_only_bfx_selfhost_cycle": "UNIMPLEMENTED",
+    "linux_execution": "UNIMPLEMENTED"
+  },
+  "performance": "No benchmark or speed claim; artifact sizes only"
+}

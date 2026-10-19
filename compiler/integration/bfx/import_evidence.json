@@ -1,0 +1,1110 @@
+{
+  "date": "2026-10-19",
+  "status": "EXECUTED",
+  "scope": "Python BFX import algorithms replaced by canonical XAX; Android app construction and whole-toolchain Python removal are separate",
+  "xax_base_revision": "51bb251aff4abfe340901960b150eb11dc2a9a50",
+  "bbc_base_revision": "2b68a668f01ee0fc9e8d0a36938279a2685221a7",
+  "source_revision": "base plus source hashes; commits recorded by Git",
+  "source": {
+    "path": "compiler/integration/bfx/import_bfx.xax",
+    "bytes": 426886,
+    "sha256": "c5e65f61b16f02e8ed4d437dcdb18f705bb75aa282743585b96bbb1f55eac83e",
+    "function": "92d069ce34da97836f33496ceda543f22213c0d3b024fd205419661d51a4434c",
+    "root": "252eca5c660b317fb7844a920ee2340144ef67ad858b7db906cc6f6c6c8da29f",
+    "size": 426886,
+    "blocks": 148,
+    "nodes": 14142,
+    "output_extent": 67108864,
+    "decision_extent": 65536,
+    "static_objects": 19,
+    "hash_function": "bdb83cafbd9c991426d415fd40f7b6d9db7b7080681e5dc506b60adb71dee595"
+  },
+  "construction": "One-time GraphBuilder/Proc approved construction interface; private candidates tested; verify_store and Workspace.save; subsequent maintained edits require transactions",
+  "entry_contract": {
+    "native_arguments": [
+      "record pointer",
+      "decoder workspace pointer (u32 length at offset zero)",
+      "output/workspace pointer",
+      "hash scratch pointer"
+    ],
+    "view_extents": [
+      3847,
+      16380,
+      67108864,
+      2048
+    ],
+    "result": "(store_length << 32) | decoder_status",
+    "generated_decision_views": [
+      65536,
+      65536,
+      65536
+    ]
+  },
+  "windows_importer": {
+    "status": "EXECUTED",
+    "artifact": {
+      "bytes": 173056,
+      "sha256": "5e8e31bb704380f00e4c206d3922f026e3b1c49e186f554fad4d9ab543e826cc"
+    },
+    "record_cases": 393,
+    "native_decision_cases": 89,
+    "decision_modules": 13,
+    "results": [
+      {
+        "name": "complete importer acceptance/rejection",
+        "cases": 393,
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 0,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 1,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 1,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 1,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 1,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 1,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "ff0000ff",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 2,
+        "output_hex": "ff",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 2,
+        "output_hex": "ff",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "ff000000",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 2,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "04",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "04",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "04",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "04",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 3,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "00ff00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 2,
+        "output_hex": "01",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 2,
+        "output_hex": "ff",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "000000",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 4,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 5,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 6,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 7,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "0000",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 2,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 2,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "0000",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 8,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 9,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "01",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "00",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 2,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "01",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 10,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 0,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 11,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "00ff",
+        "capacity": 16,
+        "length": 2,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "0100",
+        "capacity": 1,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "ff00",
+        "capacity": 1,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "0000",
+        "capacity": 0,
+        "length": 1,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 0,
+        "status": 1,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "0000",
+        "capacity": 16,
+        "length": 65537,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "native decision",
+        "module": 12,
+        "input_hex": "0000",
+        "capacity": 65537,
+        "length": 1,
+        "status": 3,
+        "output_hex": "",
+        "passed": true
+      },
+      {
+        "name": "deterministic real BF output",
+        "module": "compiler",
+        "store_bytes": 298817,
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "passed": true
+      },
+      {
+        "name": "deterministic real BF output",
+        "module": "bootstrap",
+        "store_bytes": 45106,
+        "store_sha256": "383b9ffde8caf7ad0ca5d15d6e5e0f0c355187b58aa16aa75fe7269f2b846969",
+        "passed": true
+      },
+      {
+        "name": "deterministic real BF output",
+        "module": "decision",
+        "store_bytes": 12651,
+        "store_sha256": "27f711b7dff29d2960b113ae94c3116947038f5f1a2355d165dc166169cbd6b7",
+        "passed": true
+      }
+    ],
+    "known_nonterminating_empty_loop_inputs": "Excluded from native execution, not counted as passes"
+  },
+  "frontend_selfhost": {
+    "status": "EXECUTED",
+    "platform": "Windows x86-64",
+    "scope": "Brainfuck frontend through graph-native BFX import and external generic XAX backend",
+    "legacy_bbx_importer_called": false,
+    "generations": [
+      {
+        "generation": 0,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+        "dll_bytes": 622592,
+        "passed": true
+      },
+      {
+        "generation": 1,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+        "dll_bytes": 622592,
+        "passed": true
+      },
+      {
+        "generation": 2,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+        "dll_bytes": 622592,
+        "passed": true
+      }
+    ],
+    "source_frame": {
+      "bytes": 4534,
+      "sha256": "584571a704bcac4938f5a397765f3a42913532cb08b79f6d4c5c8ba5e0f9b1e6"
+    },
+    "seed_bfx": {
+      "bytes": 2462,
+      "sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074"
+    }
+  },
+  "android_generated_decision": {
+    "status": "EXECUTED",
+    "device": "Pixel 8 Pro; Android 17 API 37; arm64-v8a",
+    "library": {
+      "bytes": 17352,
+      "sha256": "ee533cfd7c284fa4dedddfed116bf3b0496a0df2510f3a264505acc941236027"
+    },
+    "cases": [
+      {
+        "observed": "status=0 length=1 output=01",
+        "flag": 0,
+        "capacity": 1,
+        "passed": true
+      },
+      {
+        "observed": "status=0 length=1 output=00",
+        "flag": 1,
+        "capacity": 1,
+        "passed": true
+      },
+      {
+        "observed": "status=0 length=1 output=00",
+        "flag": 255,
+        "capacity": 1,
+        "passed": true
+      },
+      {
+        "observed": "status=2 length=0 output=",
+        "flag": 0,
+        "capacity": 0,
+        "passed": true
+      }
+    ],
+    "scope": "Native decision component emitted by the Windows graph-native importer; not an app"
+  },
+  "android_importer": {
+    "status": "BLOCKED",
+    "diagnostic": {
+      "code": "XAX.AARCH64.FRAME",
+      "rule": "AARCH64-FRAME-SIZE",
+      "entity": "f1744e682b2f99c542100f0e987dced9a87f40dfa4b8f173596fb24b78faa216",
+      "expected": "< 4096 bytes",
+      "actual": 6960
+    },
+    "culprit_function": "3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564",
+    "culprit": "Reused S0 BLAKE3 compression graph, 805 nodes, one block; fallback frame 6960 bytes versus <4096",
+    "new_python_backend_fix": false
+  },
+  "dependencies": {
+    "generic_host": "Unchanged Python canonical verification, x86/ARM native lowering, PE/ELF packaging; XAX_REQUIRE_NATIVE unset, no XAX-hosted compiler claim",
+    "importer_lowering": "Existing _compile_native_with_target with original verified parsed views and empty prefetch marks; avoids greedy helper inlining; not BFX logic",
+    "hash_helper": "Existing canonical writer-store BLAKE3 function and dependencies",
+    "old_python_modules": "Preserved unchanged; not used for BFX import",
+    "external_oracle": "Independent eight-instruction BF interpreter used only in verification",
+    "external_android_c": "Only supplies buffers, invokes native decision and transports output"
+  },
+  "external_tool_hashes": {
+    "construct-bfx-import.py": {
+      "bytes": 21026,
+      "sha256": "71c5a17509522da2a05a2f25834637b81cc5f031b6ad4b4b2e2943fef84eb6e4"
+    },
+    "lower-bfx-import.py": {
+      "bytes": 935,
+      "sha256": "a564c95beb469f2f52d6746ee4e2a6964b5355983295f55a6945cde42e5c379b"
+    },
+    "test-bfx-import.py": {
+      "bytes": 5055,
+      "sha256": "150bc5bab12ccec3b808e7f5773532d40a061431fb64698d828eda61b91f79a6"
+    },
+    "test-bfx-import-cycle.py": {
+      "bytes": 2111,
+      "sha256": "f460f968f30a46df17d4db2d735c3355cc4f93f8f3be6db076300400969e3d79"
+    },
+    "bfx-decision-transport.c": {
+      "bytes": 788,
+      "sha256": "9a65649738c3660cb089e5ac3b92170ebd91fc76300495b2c930241d1bb20edb"
+    },
+    "bfx-decision-transport": {
+      "bytes": 7184,
+      "sha256": "f433f37afb27237dab88b4ac741d9b36626b1db83a4e436bb7dafb9f0f0d2a3c"
+    }
+  },
+  "audits": {
+    "new_or_modified_python_implementation_files": 0,
+    "bbc_frontend_sha256": "45a5ae43b6cebfe854453827e321c11be2b7ab50db4d78f6a2360b241ed2014b",
+    "old_bbx_python_sources_unchanged": true,
+    "new_xax_source_verified": true,
+    "old_decoder_unchanged": {
+      "bytes": 9504,
+      "sha256": "5b2025a204ffb9e3634f880966f09f54d11c695e420f9ad688bd398afdabf2e8"
+    }
+  },
+  "remaining": [
+    "Android importer needs graph-native compression/ABI decomposition or canonical backend change",
+    "Android JNI/UI construction migration",
+    "Python test-tool and wider compiler-host migration remain separate"
+  ],
+  "performance": "No speed claim; artifact sizes and exact repeatability only"
+}

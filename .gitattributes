@@ -1,3 +1,4 @@
 # Measurement digests bind exact CSV bytes, including original line endings.
 compiler/benchmarks/ai_native/*results.csv -text
 *.xax linguist-language=XAX
+compiler/integration/bfx/*.edit -text

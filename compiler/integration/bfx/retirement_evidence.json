@@ -1,0 +1,525 @@
+{
+  "date": "2026-10-19",
+  "status": "EXECUTED",
+  "scope": "Retirement of both Python BBX modules, APK builder and old tests after canonical XAX replacements executed",
+  "canonical_source": {
+    "bfx.xax": {
+      "bytes": 9504,
+      "sha256": "5b2025a204ffb9e3634f880966f09f54d11c695e420f9ad688bd398afdabf2e8"
+    },
+    "import_bfx.xax": {
+      "bytes": 426886,
+      "sha256": "c5e65f61b16f02e8ed4d437dcdb18f705bb75aa282743585b96bbb1f55eac83e"
+    },
+    "android_bfx.xax": {
+      "bytes": 46088,
+      "sha256": "da7605a7b44a7335b277ab730e97d5d29a879ceb1a11ba7f7702ac54bf8d0083"
+    },
+    "backend_tests.xax": {
+      "bytes": 18102,
+      "sha256": "b622760d05831e5b21f61f7022a9a5fa640748137150886accf9dd972b766735"
+    }
+  },
+  "android_linkage": {
+    "root": "c6eadbc7b476b6522d75f84b564b2bc0cb679f172a04f8c3ca95fae3f20429d3",
+    "request": "bf9d2e05640f6d8a51900bce8e315b4d98a68f9780fb5869c20f582f66717a54",
+    "oncreate": "1040e3078000b71ffeb3bdfc6cd0cfbaba3aa04fe8bdd1b2de7498d8b8b0e9db",
+    "evaluate": "7808a44a18a5388feccaa3243d4917a259be49d314627aaf27a37fbc91920671",
+    "ui": "d3777165f7c012633652a3ebaacc965eba9c97ca010de6344a92dd31a4395784",
+    "core": "c16c150eac66359c19889e7bef188964a4e8601431fbec9bec1753f5116d3ae2",
+    "package": "org.bbc.bfxdecision",
+    "activity": "org.bbc.bfxdecision.DecisionActivity",
+    "ui_class": "org/bbc/bfxdecision/Ui",
+    "jni_symbols": [
+      "Java_org_bbc_bfxdecision_DecisionActivity_xaxOnCreate",
+      "Java_org_bbc_bfxdecision_DecisionActivity_xaxEvaluate"
+    ]
+  },
+  "android_device": {
+    "ro.product.model": "Pixel 8 Pro",
+    "ro.build.fingerprint": "google/husky/husky:17/CP3A.261005.005/16271449:user/release-keys",
+    "ro.build.version.sdk": "37",
+    "ro.product.cpu.abilist": "arm64-v8a"
+  },
+  "android_cases": [
+    {
+      "capacity": 1,
+      "name": "permit",
+      "passed": true,
+      "label": "PERMIT: Brainfuck returned 01",
+      "row_visible": true,
+      "flag": 0
+    },
+    {
+      "capacity": 1,
+      "name": "block",
+      "passed": true,
+      "label": "BLOCK: Brainfuck returned 00",
+      "row_visible": false,
+      "flag": 1
+    },
+    {
+      "capacity": 16,
+      "name": "block255",
+      "passed": true,
+      "label": "BLOCK: Brainfuck returned 00",
+      "row_visible": false,
+      "flag": 255
+    },
+    {
+      "capacity": 0,
+      "name": "exhausted",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 0
+    },
+    {
+      "capacity": 1,
+      "name": "invalid_flag",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 256
+    },
+    {
+      "capacity": 17,
+      "name": "invalid_capacity",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 0
+    },
+    {
+      "capacity": 1,
+      "name": "negative_flag",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": -1
+    },
+    {
+      "capacity": -1,
+      "name": "negative_capacity",
+      "passed": true,
+      "label": "ERROR: decision rejected; row hidden",
+      "row_visible": false,
+      "flag": 0
+    }
+  ],
+  "apk": {
+    "bytes": 35493,
+    "sha256": "688beef5059ed325d7a02d4d2a0b708910e0e4d66b2c710727292da741d78b79",
+    "members": [
+      "AndroidManifest.xml",
+      "classes.dex",
+      "classes2.dex",
+      "lib/arm64-v8a/libxaxapp.so"
+    ],
+    "installed_matches_post_retirement_rebuild": true,
+    "installed_sha256": "688beef5059ed325d7a02d4d2a0b708910e0e4d66b2c710727292da741d78b79",
+    "signing": "Existing public development test certificate"
+  },
+  "artifacts": {
+    "libbfx-app.so": {
+      "bytes": 17432,
+      "sha256": "61395f6133702c29392027b4a1920927f07fc68f812516f62f6b35e567f6b07c"
+    },
+    "bfx-ui.dex": {
+      "bytes": 1844,
+      "sha256": "8c281c3091747ff036b13a5e35d04b0e9487dbb3501e9da165dcfb003acdba97"
+    },
+    "bfx-platform.dex": {
+      "bytes": 888,
+      "sha256": "bbaf1c0c322706cecbc8c7ea830720c983f902889d38209060f2c60240d1de7f"
+    },
+    "bfx-app-permit.png": {
+      "bytes": 77121,
+      "sha256": "9fe5ccbae637d0be439d725582d6692ea0895ed3e1278900d906c04944e28116"
+    },
+    "bfx-app-block.png": {
+      "bytes": 66092,
+      "sha256": "96ba5017f32e3209b0aceabda26b8a5545a9801a919c89c74f00a8748cca01bb"
+    },
+    "bfx-app-exhausted.png": {
+      "bytes": 65667,
+      "sha256": "c822ed125f5d92fbd4cc832e7799a5e93c604283218ce09ed903e2216989e7bd"
+    }
+  },
+  "source_construction": "Initial GraphBuilder/Proc construction and verified semantic metadata; private candidates verified and device-tested before Workspace.save; initial managed-UI carrier reused existing declarative construction schema, not an ongoing source dependency",
+  "source_maintenance": "Saved canonical stores are authoritative; subsequent edits require expected-root transactions, not replaying construction scripts",
+  "removed": [
+    {
+      "path": "compiler/src/xax_bbx.py",
+      "sha256": "08fcbe63e81ee8a92089946465432d9a32bb253d674603eabb9d4136aaf748d1",
+      "backup": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\19\\01a151a5-3e3d-7680-a6b1-3dd4bd01e4c9\\retired-bbx\\compiler\\src\\xax_bbx.py"
+    },
+    {
+      "path": "compiler/src/xax_bbx_android.py",
+      "sha256": "509bcefbc79d5d5451d0f59b203fe46b2054713b57ec8b6c17d8ffff9e5cf408",
+      "backup": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\19\\01a151a5-3e3d-7680-a6b1-3dd4bd01e4c9\\retired-bbx\\compiler\\src\\xax_bbx_android.py"
+    },
+    {
+      "path": "compiler/benchmarks/android_bbx_app.py",
+      "sha256": "e0fe358ff04c5d37c0d11aa65d846bd43468c1a07e361a38a6a7cb3b72437f51",
+      "backup": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\19\\01a151a5-3e3d-7680-a6b1-3dd4bd01e4c9\\retired-bbx\\compiler\\benchmarks\\android_bbx_app.py"
+    },
+    {
+      "path": "compiler/tests/test_xax_bbx.py",
+      "sha256": "d2bf368abacc8109bbdd3c13031503ddacaccacbff0399f1efed133d7d6a3687",
+      "backup": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\19\\01a151a5-3e3d-7680-a6b1-3dd4bd01e4c9\\retired-bbx\\compiler\\tests\\test_xax_bbx.py"
+    },
+    {
+      "path": "compiler/tests/test_xax_bbx_android.py",
+      "sha256": "03d9b4952c9cb9798ab86029b63221fa48c27879ed141c552760b84bc3c602d9",
+      "backup": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\19\\01a151a5-3e3d-7680-a6b1-3dd4bd01e4c9\\retired-bbx\\compiler\\tests\\test_xax_bbx_android.py"
+    },
+    {
+      "path": "compiler/tests/test_xax_bbx_windows.py",
+      "sha256": "4f1a18dc509da989830905b3e97e2201bd0a1e959cb59aad5ff7c04571af4bac",
+      "backup": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\19\\01a151a5-3e3d-7680-a6b1-3dd4bd01e4c9\\retired-bbx\\compiler\\tests\\test_xax_bbx_windows.py"
+    }
+  ],
+  "package_metadata": "Removed xax_bbx/xax_bbx_android py-modules; added canonical stores/data/docs under share/xax/bfx; no compatibility stubs",
+  "regressions": {
+    "backend_graph": {
+      "root": "368d870980bfbfa10bbbdab03219bb7c34f19639e56270704131d5385b20c9f1",
+      "function": "b79c5a59cab37d5c6b14fe9ba0213bb71207bb05a82b3d02bdb56fc290ad55cd",
+      "result": [
+        0
+      ],
+      "narrow_cases": 36,
+      "large_stack_bytes": 131072,
+      "cases": [
+        {
+          "width": 1,
+          "operation": "ADD_WRAP",
+          "left": 1,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 1,
+          "operation": "SUB_WRAP",
+          "left": 0,
+          "right": 1,
+          "expected": 1
+        },
+        {
+          "width": 1,
+          "operation": "MUL_WRAP",
+          "left": 1,
+          "right": 1,
+          "expected": 1
+        },
+        {
+          "width": 1,
+          "operation": "BIT_OR",
+          "left": 0,
+          "right": 1,
+          "expected": 1
+        },
+        {
+          "width": 1,
+          "operation": "BIT_AND",
+          "left": 1,
+          "right": 0,
+          "expected": 0
+        },
+        {
+          "width": 1,
+          "operation": "BIT_XOR",
+          "left": 1,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 2,
+          "operation": "ADD_WRAP",
+          "left": 3,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 2,
+          "operation": "SUB_WRAP",
+          "left": 0,
+          "right": 1,
+          "expected": 3
+        },
+        {
+          "width": 2,
+          "operation": "MUL_WRAP",
+          "left": 3,
+          "right": 3,
+          "expected": 1
+        },
+        {
+          "width": 2,
+          "operation": "BIT_OR",
+          "left": 0,
+          "right": 3,
+          "expected": 3
+        },
+        {
+          "width": 2,
+          "operation": "BIT_AND",
+          "left": 3,
+          "right": 0,
+          "expected": 0
+        },
+        {
+          "width": 2,
+          "operation": "BIT_XOR",
+          "left": 3,
+          "right": 3,
+          "expected": 0
+        },
+        {
+          "width": 7,
+          "operation": "ADD_WRAP",
+          "left": 127,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 7,
+          "operation": "SUB_WRAP",
+          "left": 0,
+          "right": 1,
+          "expected": 127
+        },
+        {
+          "width": 7,
+          "operation": "MUL_WRAP",
+          "left": 127,
+          "right": 127,
+          "expected": 1
+        },
+        {
+          "width": 7,
+          "operation": "BIT_OR",
+          "left": 0,
+          "right": 127,
+          "expected": 127
+        },
+        {
+          "width": 7,
+          "operation": "BIT_AND",
+          "left": 127,
+          "right": 0,
+          "expected": 0
+        },
+        {
+          "width": 7,
+          "operation": "BIT_XOR",
+          "left": 127,
+          "right": 127,
+          "expected": 0
+        },
+        {
+          "width": 8,
+          "operation": "ADD_WRAP",
+          "left": 255,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 8,
+          "operation": "SUB_WRAP",
+          "left": 0,
+          "right": 1,
+          "expected": 255
+        },
+        {
+          "width": 8,
+          "operation": "MUL_WRAP",
+          "left": 255,
+          "right": 255,
+          "expected": 1
+        },
+        {
+          "width": 8,
+          "operation": "BIT_OR",
+          "left": 0,
+          "right": 255,
+          "expected": 255
+        },
+        {
+          "width": 8,
+          "operation": "BIT_AND",
+          "left": 255,
+          "right": 0,
+          "expected": 0
+        },
+        {
+          "width": 8,
+          "operation": "BIT_XOR",
+          "left": 255,
+          "right": 255,
+          "expected": 0
+        },
+        {
+          "width": 16,
+          "operation": "ADD_WRAP",
+          "left": 65535,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 16,
+          "operation": "SUB_WRAP",
+          "left": 0,
+          "right": 1,
+          "expected": 65535
+        },
+        {
+          "width": 16,
+          "operation": "MUL_WRAP",
+          "left": 65535,
+          "right": 65535,
+          "expected": 1
+        },
+        {
+          "width": 16,
+          "operation": "BIT_OR",
+          "left": 0,
+          "right": 65535,
+          "expected": 65535
+        },
+        {
+          "width": 16,
+          "operation": "BIT_AND",
+          "left": 65535,
+          "right": 0,
+          "expected": 0
+        },
+        {
+          "width": 16,
+          "operation": "BIT_XOR",
+          "left": 65535,
+          "right": 65535,
+          "expected": 0
+        },
+        {
+          "width": 31,
+          "operation": "ADD_WRAP",
+          "left": 2147483647,
+          "right": 1,
+          "expected": 0
+        },
+        {
+          "width": 31,
+          "operation": "SUB_WRAP",
+          "left": 0,
+          "right": 1,
+          "expected": 2147483647
+        },
+        {
+          "width": 31,
+          "operation": "MUL_WRAP",
+          "left": 2147483647,
+          "right": 2147483647,
+          "expected": 1
+        },
+        {
+          "width": 31,
+          "operation": "BIT_OR",
+          "left": 0,
+          "right": 2147483647,
+          "expected": 2147483647
+        },
+        {
+          "width": 31,
+          "operation": "BIT_AND",
+          "left": 2147483647,
+          "right": 0,
+          "expected": 0
+        },
+        {
+          "width": 31,
+          "operation": "BIT_XOR",
+          "left": 2147483647,
+          "right": 2147483647,
+          "expected": 0
+        }
+      ]
+    },
+    "fresh_process_result": [
+      0
+    ],
+    "native_importer_record_cases_after_removal": 393,
+    "native_decision_calls_after_removal": 89,
+    "frontend_generations_after_removal": [
+      {
+        "generation": 0,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+        "dll_bytes": 622592,
+        "passed": true
+      },
+      {
+        "generation": 1,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+        "dll_bytes": 622592,
+        "passed": true
+      },
+      {
+        "generation": 2,
+        "bfx_sha256": "52ed6d3590448ab8f5170df8e13622d7712faef30d1278d993bac46fa1cd7074",
+        "store_sha256": "3567b335677d8495bd34373497940a7316c93f39aae4d9c2775ce647f5b6fb47",
+        "dll_sha256": "2aa0e7d20e6f131728d56a065881ad650a91d514f6734d9b7b0916c06eaa078b",
+        "dll_bytes": 622592,
+        "passed": true
+      }
+    ],
+    "generic_managed_class_unittest_methods": 7,
+    "generic_managed_class_unittest_passed": 7,
+    "oom_injection": "Not executed in this iteration; checked-null trap behavior retained, not reported as a new pass"
+  },
+  "host_dependencies": "Unchanged generic Python canonical verifier, native/JVM/DEX lowerers, APK packaging and test signer; XAX_REQUIRE_NATIVE unset; no whole-toolchain Python removal or XAX-hosted compiler claim",
+  "packaging_scope": "Generic native managed-class build plus generic JVM-to-DEX UI lowering and generic final APK packaging; no hand-written lifecycle DEX or Python BFX builder remains in repository",
+  "remaining_android_importer_blocker": {
+    "code": "XAX.AARCH64.FRAME",
+    "rule": "AARCH64-FRAME-SIZE",
+    "entity": "f1744e682b2f99c542100f0e987dced9a87f40dfa4b8f173596fb24b78faa216",
+    "expected": "< 4096 bytes",
+    "actual": 6960
+  },
+  "external_tool_hashes": {
+    "construct-bfx-android.py": {
+      "bytes": 10061,
+      "sha256": "47249c306470c41254573fc1917be86ad192582dbf562c3677355c07736a9595"
+    },
+    "lower-bfx-android.py": {
+      "bytes": 1602,
+      "sha256": "0229ac526dc012054965f1d5a38bc2bcdcfc20ef1a254ea263f981ff8fc05e65"
+    },
+    "construct-bfx-backend-tests.py": {
+      "bytes": 2927,
+      "sha256": "1beedb91286eee14dc239c20270fa8e448c2ac84e5b45b1d4001f110a00db500"
+    },
+    "test-bfx-import.py": {
+      "bytes": 5055,
+      "sha256": "150bc5bab12ccec3b808e7f5773532d40a061431fb64698d828eda61b91f79a6"
+    },
+    "test-bfx-import-cycle.py": {
+      "bytes": 2111,
+      "sha256": "f460f968f30a46df17d4db2d735c3355cc4f93f8f3be6db076300400969e3d79"
+    }
+  },
+  "audit": {
+    "retired_py_files_present": false,
+    "retired_pycache_files_present": false,
+    "active_python_bbx_imports": 0,
+    "new_or_extended_python_implementation_files": 0,
+    "new_executable_source": [
+      "compiler/integration/bfx/android_bfx.xax",
+      "compiler/integration/bfx/backend_tests.xax"
+    ]
+  },
+  "performance": "No speed claim; sizes and repeatability only"
+}
