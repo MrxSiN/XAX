@@ -1,4 +1,4 @@
-# Windows native helper host
+# Windows native helper hosts
 
 `hash_host.xax` is a canonical XAX program that reads raw bytes from standard
 input and writes their 32-byte BLAKE3-256 digest to standard output. It runs
@@ -7,10 +7,11 @@ its input, scratch, read buffer and byte-count storage. Its hashing functions
 come from the existing generic BLAKE3 graph constructor; no new hash algorithm
 or foreign hash library is part of the program.
 
-This is the first standalone Windows helper host. It does **not** change the
-Linux-only in-process helper loader, activate native hashing in the Python
-compiler, or establish a Windows-hosted XAX compiler. Store/graph decoding,
-CFG, typing and verification still need a complete native host integration.
+The hashing host does **not** change the Linux-only in-process helper loader
+or activate native hashing in the Python compiler. The separate
+[Windows driver prototype](DRIVER.md) executes the existing store/graph, CFG,
+typing and verifier call chain as a native process on tested inputs. Its
+diagnostic and large-store coverage limits remain explicit.
 
 ## Stream contract
 
