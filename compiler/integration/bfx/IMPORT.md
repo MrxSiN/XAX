@@ -12,6 +12,10 @@ construction interface, verified, tested privately, then saved with
 `Workspace.save`. The construction carrier is external, not maintained
 source. Subsequent source changes require expected-root workspace transactions.
 
+The current [eight-byte tape reset](WIDE_RESET.md) retains the complete
+65,536-byte reset and all checked accesses. Its canonical transaction,
+correctness runs and absolute timings have separate evidence.
+
 ## Import call
 
 The function borrows four distinct live initialized views:
@@ -88,7 +92,7 @@ installed this graph change. The saved `import_bfx.xax` store is authoritative;
 apply subsequent edits through verified transactions. The unchanged Python
 reference transaction applier and canonical verifier were used by the host.
 
-## Executed results
+## 2026-10-19 execution snapshot
 
 - 393 complete-importer record cases passed on each of Windows x86-64 and
   Android ARM64. Android also imported compiler, framer and decision outputs.
@@ -102,10 +106,10 @@ reference transaction applier and canonical verifier were used by the host.
 - Three Android generations executed both BFX import and the native Brainfuck
   frontend on Pixel 8 Pro. BFX, stores and ELF libraries matched across all
   generations; eight exact frontend fixtures passed in each generation.
-- Rebuilding Android and Windows importer artifacts from the maintained store
+- Rebuilding Android and Windows importer artifacts from that snapshot's store
   reproduced the tested bytes.
 
-Native verification/lowering still runs on Windows through unchanged generic
+For that snapshot, verification/lowering runs on Windows through unchanged generic
 Python bootstrap utilities. Importer lowering uses the verified parsed graph
 views and empty prefetch marks through the existing generic lowering interface
 on Windows, avoiding expansion of thousands of serialization calls. These are
@@ -116,3 +120,12 @@ frontend execution; they do not claim an Android-hosted XAX compiler.
 Exact identities, artifacts, transaction, device results and external tool
 hashes: [android_import_evidence.json](android_import_evidence.json). The
 [Android app and regression source](ANDROID.md) are canonical stores.
+
+The [2026-10-20 reset evidence](wide_reset_evidence.json) covers the current
+importer: 393 cases per arm/target, 380 decision checks per arm/target, and
+three frontend generations with 20 checks each on both targets. Native-only
+Windows replay and Android child execution use `XAX_REQUIRE_NATIVE=1` with
+separate authority records. The standalone native Windows driver applies the
+transaction byte for byte, rejects its stale root and verifies the result.
+Bootstrap graph verification and native lowering still use unchanged Python
+tools; no complete native BBC compiler-host or Android-hosted compiler is claimed.

@@ -2,6 +2,8 @@
 compiler/benchmarks/ai_native/*results.csv -text
 *.xax linguist-language=XAX
 compiler/integration/bfx/*.edit -text
+compiler/integration/bfx/*.xax -text
+compiler/integration/bfx/wide_reset_evidence.json -text
 compiler/integration/windows_helpers/*.xax -text
 compiler/integration/windows_helpers/*.edit -text
 compiler/integration/windows_helpers/regression/*.xax -text
