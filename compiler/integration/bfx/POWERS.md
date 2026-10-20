@@ -1,6 +1,7 @@
 # Versioned BFX arithmetic powers
 
-The importer accepts versions one, two and three. V1 stays strict ASCII;
+The importer accepts versions one through four; [v4 movement](MOVEMENT.md)
+is a separate extension. This document specifies v3. V1 stays strict ASCII;
 v2 adds CLEAR byte zero. V3 adds fourteen one-byte modular arithmetic
 operations. Every successful record is `BFX || version || 00 || count:u16le ||
 operations`, exactly `7 + count` bytes. Limits remain 3,840 operations, nesting
