@@ -35,3 +35,11 @@ refresh a stale root implicitly. Current evidence pins transaction digests,
 roots, native images, source hashes, target execution and external test tools.
 Historical sources remain in Git; no old wire decoder remains in the maintained
 compilation path. Generic SDK files under compiler/src were not changed.
+
+## Unified public compilation
+
+[COMPILE.md](COMPILE.md) records the new closed facade/host stores and exact-root
+edits under transactions/unified. The existing source coordinator now binds
+the reproducible native BF chunk core and defers sticky bracket errors until
+instruction capacity has been checked across all chunks. The strict decoder,
+importer, packer and BFX wire identity are unchanged.
