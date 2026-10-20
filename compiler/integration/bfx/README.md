@@ -9,7 +9,8 @@ construction request or edit its binary bytes directly.
 
 The canonical [importer](IMPORT.md) now owns graph/store emission, and the
 [Android application](ANDROID.md) is maintained as canonical XAX source.
-Its embedded decoder also accepts the [v2 CLEAR extension](CLEAR.md).
+Its embedded decoder also accepts [v2 CLEAR](CLEAR.md) and
+[v3 arithmetic powers](POWERS.md).
 This standalone `bfx.xax` source remains unchanged and strict v1.
 `backend_tests.xax` provides the generic arithmetic and stack-allocation
 regression checks.
