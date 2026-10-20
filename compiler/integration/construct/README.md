@@ -124,7 +124,7 @@ order -- are exactly the step 3b list. They are rejected here, not silently appr
 this reader accepts is one it understood completely. The tree it builds is the whole carrier; nothing
 is skipped on the way to emission.
 
-## Step 4: type and entity resolution (done for named types)
+## Step 4: type and entity resolution (done)
 
 `resolve.py` walks the tree step 3 built and turns every type and entity *name* into the canonical
 object the reference builds, emitting one line per occurrence in the native writer's batch shape:
@@ -150,21 +150,21 @@ python -B compiler/integration/construct/resolve.py build/construct_resolve --ch
 ```
 
 ```
-entry     a7c0def59d84edb439c94381616f3c29fbb68e23b24b505016d0ee54cd3973d4
-entry fn  7372266ec2e28a5862849f7836030ae2d4224573498d8e8e103b8cf880c94b1a
-store     1531340 bytes
-artifact  194560 bytes
+entry     31f6fd4645420de285650b312446b8bba30a9a5b229e7fcbb32fedad61f40603
+entry fn  268d040bcef7a3e5d0df98c4fd4ebff23fb2809a3e2a4058116d04137e5d6a3c
+store     2121837 bytes
+artifact  313344 bytes
 namespace 2880 bytes, 21 entries
-carrier   sandbox_request.json       exit=0 lines=2473 resolved=2395 deferred=78 MATCH
-carrier   construction_request.json  exit=0 lines=31325 resolved=30871 deferred=454 MATCH
+carrier   sandbox_request.json       exit=0 lines=2473 resolved=2460 deferred=13 MATCH
+carrier   construction_request.json  exit=0 lines=31325 resolved=30925 deferred=400 MATCH
 ```
 
 The check decodes each produced line back into a `SemanticObject` and compares its CID with the
 reference object for that occurrence, so the claim is object identity, not textual similarity. Both
 carriers run inside the one program, and the reader's identity is unchanged by the seam that exposes
-the tree (`6539e017…`, root `a87c6b33…`, 280 467 B, 80 384 B). Measured on this host: 16 ms for the
-66 KB carrier, 27 ms for the 957 KB one; two consecutive builds produce the same store
-(`24d3be84519b0103`, 1 531 340 B).
+the tree (`6539e017…`, root `a87c6b33…`, 280 467 B, 80 384 B). Measured on this host: 17 ms for the
+66 KB carrier, 29 ms for the 957 KB one; two consecutive builds produce the same store
+(`8fd859243bc9a747`, 2 121 837 B).
 
 ```powershell
 resolve.exe <carrier> <listing>
@@ -172,17 +172,44 @@ resolve.exe <carrier> <listing>
 
 | situation | exit |
 |---|---|
-| unknown alias, unknown `win32.` name, alias chain longer than 8 | 11 |
-| unknown entity name | 12 |
+| unknown alias, unknown `win32.` name, alias chain longer than 8, `b` width 0 or above 64, view extent above 2^28 | 11 |
+| unknown entity name, a type name used as an entity, malformed `win32.import` / `win32.virtual_free_view` | 12 |
 
-`?` lines are counted, not emitted as guesses. They are the derived declarations whose bodies need
-type CIDs hashed in the program:
+## Step 4b: derived declarations (done)
+
+A declaration is the one object whose body contains *other objects' identities*: the imported
+signature's type CIDs and the deallocator contract. The program therefore hashes inside itself.
+
+`hash_span_function` in `xax_selfhost_blake3.py` is the single-view span hash. `hash_function` lends the
+caller's memory as two views, and a program that owns its memory cannot do that: one allocation yields
+one live effect token and a second `heap_view` consumes the first view's token
+(`XAX.MEMORY.EFFECT_LINEAR`). The span variant takes one view triple, hashes
+`input[base : base + length]`, and addresses the chaining-value stack and digest at a fixed distance
+past the view base, sharing that one token. `probe_hash.py` builds a program that hashes six inputs
+(empty, 3 B, one block, two blocks, two chunks, ten chunks) and compares every digest word with the
+Python reference: exit 0, 6 of 6 match.
+
+The resolver stages each object's canonical content -- `blake3("XAX-SEM-1", uleb(kind), uleb(schema),
+uleb(refcount), refs, uleb(bodylen), body)` -- at `CANON = 0xE10000`, points the hash at
+`0xE12000` (2 048 bytes, digest at `+1 728`) and assembles declaration bodies at `DBODY = 0xE20000`.
+Each type spec in a signature is resolved by the same code as a top-level type, hashed, and its digest
+appended, so the declaration cannot disagree with the type lines in the same listing.
+`win32.virtual_free_view` also embeds the view type built from the carrier's extent, which is why the
+view object's body is assembled here rather than looked up.
+
+A declaration body is ``uleb(len(identity)) + identity`` (the TARGET encoding), and the identity starts
+with the 19 raw bytes `foreign-function-v1` -- not a length-prefixed string -- followed by length-prefixed
+ABI, library, symbol, input CIDs, output CIDs, then the optional deallocator clause
+`02 00 03` (`uleb(tag) uleb(pointer_input) uleb(token_input)`).
+
+Only the function placeholders remain deferred, and they are counted, never guessed:
 
 | deferred name | sandbox | construction | needs |
 |---|---|---|---|
-| `win32.import` | 61 | 48 | type CIDs for the imported signature (step 4b) |
-| `win32.virtual_free_view` | 4 | 6 | the view type's CID (step 4b) |
 | `{"fn": …}` | 13 | 400 | graph assembly (step 5) |
+
+The declaration lines that used to be deferred now match: 61 sandbox and 48 construction
+`win32.import` declarations, plus 4 and 6 `win32.virtual_free_view` declarations.
 
 ## The plan
 
@@ -193,7 +220,7 @@ type CIDs hashed in the program:
 | 3 | carrier JSON reader: objects, arrays, strings, integers; unmeasured cases refused | `json.dumps(json.loads(x), sort_keys=True, separators=(",",":"))` byte-identical on both carriers |
 | 3b | `\uXXXX` escapes, UTF-8, floats, member-order sort for unsorted carriers | a corpus that exercises each, against `json.dumps` |
 | 4 | types, aliases, view specs and `win32.` platform lookups against the embedded namespace | every produced object's CID equals the reference object's |
-| 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use |
+| 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use, byte-exact (done) |
 | 5 | graph, package and build request assembly; `resolve` + `snapshot_store` reuse | the two store roots above, byte-exact |
 | 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
 

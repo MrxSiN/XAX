@@ -84,11 +84,13 @@ def _imports(api, pointer):
     }
 
 
-def build_main(api, stdio, on_tree=None):
+def build_main(api, stdio, on_tree=None, view_alignment=1):
     """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier.
 
     With ``on_tree`` the parsed tree is handed to that callback instead of being re-emitted; it receives
-    an environment of the node accessors, the byte helpers and the output writer."""
+    an environment of the node accessors, the byte helpers and the output writer.  ``view_alignment`` is
+    the alignment the byte view is lent with; a resolver that hashes inside the view asks for four, so a
+    word-aligned scratch area can be addressed."""
     proc_type, fs_type, mem_type = api.process_effect, api.filesystem_effect, api.memory_effect
     pointer_type, view_type = stdio.bytes_rw, heap_view_type(EXTENT)
     declarations = _imports(api, pointer_type)
@@ -183,7 +185,7 @@ def build_main(api, stdio, on_tree=None):
         (api.heap_ptr_rw, api.heap_resource, mem_type), entity=declarations["allocate"])
     p["mem"] = memory
     base, view, memory = p.op(Operation.HEAP_VIEW, (block, owner, p["mem"]), (pointer_type, view_type, mem_type),
-                              attributes=(EXTENT, 1))
+                              attributes=(EXTENT, view_alignment))
     p["mem"] = memory
     p.let("vp", pointer_type, base)
     p.let("vv", view_type, view)
@@ -617,6 +619,7 @@ def build_main(api, stdio, on_tree=None):
             "OBJECT": OBJECT, "ARRAY": ARRAY, "STRING": STRING, "INTEGER": INTEGER,
             "IN": IN, "OUT": OUT, "OUT_CAP": OUT_CAP, "SCRATCH": SCRATCH, "NS": NS,
             "EXIT_SYNTAX": EXIT_SYNTAX, "EXIT_OVERFLOW": EXIT_OVERFLOW,
+            "mem_type": mem_type, "view_type": view_type,
         }
 
     def normalize():
@@ -633,20 +636,20 @@ def build_main(api, stdio, on_tree=None):
     return p.function((B32, proc_type, fs_type, mem_type)), tuple(p.graph.objects.values())
 
 
-def build_reader(name=b"xax-construct-reader", on_tree=None):
+def build_reader(name=b"xax-construct-reader", on_tree=None, view_alignment=1, extra_objects=()):
     from xax_build import (ArtifactKind, build, build_profile, build_request, package, resolve_packages,
                            snapshot_store, trust_policy)
     from xax_compiler import Kind, StoreReader, object_with_refs, verify_store, write_store
 
     api = win32_kernel32_api()
     stdio = win32_stdio_api(api)
-    entry, objects = build_main(api, stdio, on_tree)
+    entry, objects = build_main(api, stdio, on_tree, view_alignment)
     platform_types = (*api.types, *api.symbols, *stdio.types, *stdio.symbols)
     module = object_with_refs(Kind.MODULE, (entry,))
     app = package(name, (module,), build_entries=((b"app", entry),))
     target, profile, policy = x86_64_windows_pe_target(), build_profile(), trust_policy()
     request = build_request(app, b"app", target, profile, requested_artifacts=(ArtifactKind.NATIVE_IMAGE,))
-    everything = (*objects, *platform_types, module, app, target, profile, policy, request)
+    everything = (*objects, *extra_objects, *platform_types, module, app, target, profile, policy, request)
     snapshot = snapshot_store(resolve_packages(request, everything, policy, name + b"-v1"), everything)
 
     available = {item.cid: item for item in snapshot.objects()}
