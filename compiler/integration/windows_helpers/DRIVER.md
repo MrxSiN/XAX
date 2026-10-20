@@ -169,3 +169,28 @@ its PE hash exactly. The corrected PE is 11,864,576 bytes. Its bootstrap reused
 507 immutable SDK function fragments in the same process and freshly compiled
 the changed entry and guard through existing APIs; this is not a cold-build
 measurement or native self-build. The follow-up preserves that distinction.
+
+## Frame bitwise extension — 2026-10-21
+
+[driver_bits1.json](driver_bits1.json) records a canonical expected-root local
+edit of the frame arithmetic predicate: verified bits1 AND/OR/XOR now use the
+existing zero-extending 32-bit instructions. The closed 0/1 operand set proves
+this representation exact. Width1 addition/subtraction/multiplication and
+width8 operations retain their existing rejection bytes. This is extra backend
+coverage; no semantic input checks are bypassed.
+
+[frame_bits1.edit](frame_bits1.edit) expects root `2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17` and produces
+`fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc`. The candidate receives full verification, Workspace.save and
+stale-root rejection. It changes fourteen predicate nodes in one graph; seven
+function identities change transitively. Generic SDK and general driver
+builder/evolution stores are unchanged.
+
+Forty-eight native build cases pass, including Boolean truth tables, nonzero
+fifth Win64 arguments, unchanged 32-bit artifacts and sixteen exact preserved
+rejections. All 160 existing corrected semantic cases retain full diagnostic
+bytes. Of six prepared BBC workload/target snapshots, 3 build successfully;
+each success is rebuilt identically twice and executed on its target. Raw
+results include any remaining declines/rejections. Snapshot preparation still
+uses generic bootstrap APIs. DLL/shared-library packaging, self-store/resource
+callee coverage and the full native BBC source workflow remain incomplete.
+No complete-build, runtime, RAM or competitor performance score follows.

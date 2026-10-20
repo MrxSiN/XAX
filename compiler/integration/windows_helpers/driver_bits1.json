@@ -1,0 +1,2486 @@
+{
+  "date": "2026-10-21",
+  "state": "EXECUTED native x86-64 frame bitwise extension; native build workflow incomplete",
+  "xax_parent_revision": "d320babab5bb9fe61a9d29f1f14942a847bf83a7",
+  "canonical_change": {
+    "parent": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+    "root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+    "transaction_sha256": "5e2b075a9471e3f83324095b681568179f8a3f6051e957354a0b35edb12e5eaf",
+    "file_sha256": "da1ddee0e494bde75f65802f323ac6cd9b937aedd69b1a94c3c01c23b6278b5e",
+    "changed_graph": "68aa2bca810ec7e179902a68dc1b076e9b7598f94762b83d573fa5568546f39e",
+    "new_graph": "77d217d70b26854943dc05817ca3535291c3c34b3ff84c5af2f6cfd73637ce49",
+    "new_predicate_nodes": 14,
+    "width_reference": "ValueRef(tag=0, block=197, index=14, result=0)",
+    "opcode_reference": "ValueRef(tag=1, block=0, index=68, result=0)",
+    "fully_verified": true,
+    "workspace_saved": true,
+    "stale_rejected": true,
+    "scope": "Allow only verified bits1 AND/OR/XOR on the existing zero-extending 32-bit frame instructions. Widths and non-bitwise operations retain their original diagnostics; no semantic input verification is removed."
+  },
+  "generic_sdk_unchanged": true,
+  "external_archive": {
+    "path": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\native_build_fix",
+    "commit": "37285efca57d7a5a9710c8be83468b98ee6d3f59",
+    "production_dependency": false
+  },
+  "proof": "Verified bits1 operands are 0 or 1. 32-bit AND/OR/XOR preserves that closed value set, zero-extends rax, and is identical to bits1 semantics. Existing arithmetic emission is reused only for these three operations at width1. All other width predicates and first-pass semantic verification remain unchanged.",
+  "reports": {
+    "native-base-build": {
+      "source": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\compact_ir\\wrap\\xax-publish\\compiler\\integration\\windows_helpers\\driver.xax",
+      "root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+      "source_sha256": "35d08af4641143eae2169a9e9972db9a183cb13fd4a03d7c6e6b1d685164adb6",
+      "artifact_sha256": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+      "artifact_bytes": 11864576,
+      "verification": {
+        "objects": 5836,
+        "cache_hits": 0,
+        "cache_misses": 5836,
+        "dependency_cids_checked": 38119,
+        "cache_entries_before": 0,
+        "cache_entries_after": 5836,
+        "cache_entries_invalidated": 0,
+        "cache_entries_written": 5836
+      },
+      "functions": 509,
+      "fresh_functions": 509,
+      "reused_function_fragments": 0,
+      "seconds_unscored": 1121.2060676999972,
+      "configuration": "Fresh full first verification; same-process compiler-owned ProofCache and SDK-produced function fragments through existing code= API. Fixed exact simplifiers, target and empty prefetches. Unchanged generic Python SDK. Diagnostic bootstrap, not a native-host or cold-build performance claim."
+    },
+    "native-bits1-build": {
+      "source": "C:/Users/User/.codex/visualizations/2026/10/20/01a156c6-4d9f-7521-888e-9f3bc25184bb/native_build_fix/driver_bits1.xax",
+      "root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+      "source_sha256": "da1ddee0e494bde75f65802f323ac6cd9b937aedd69b1a94c3c01c23b6278b5e",
+      "artifact_sha256": "c8f024f4eccaf8a8837c205664a6624fd57da52796ced0b437bdcadf128c17cd",
+      "artifact_bytes": 11864576,
+      "verification": {
+        "objects": 5837,
+        "cache_hits": 5820,
+        "cache_misses": 17,
+        "dependency_cids_checked": 38121,
+        "cache_entries_before": 5836,
+        "cache_entries_after": 5837,
+        "cache_entries_invalidated": 16,
+        "cache_entries_written": 17
+      },
+      "functions": 509,
+      "fresh_functions": 7,
+      "reused_function_fragments": 502,
+      "seconds_unscored": 298.7128870000015,
+      "configuration": "Fresh full first verification; same-process compiler-owned ProofCache and SDK-produced function fragments through existing code= API. Fixed exact simplifiers, target and empty prefetches. Unchanged generic Python SDK. Diagnostic bootstrap, not a native-host or cold-build performance claim."
+    },
+    "bits_baseline": [
+      {
+        "name": "32-BIT_AND-00",
+        "root": "8b3e5af32cf23b8268a720fd59d4685a34763fc95a9b429f0c1933ea56b6f4cf",
+        "native_build_exit": 0,
+        "source_sha256": "e235ffae4b93bb1ead967ff62d30e3b07338eb4ae5cdb61ae7d944b6cf57090a",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 0
+      },
+      {
+        "name": "32-BIT_AND-01",
+        "root": "080f162f96427c92385425f262047172faee6ee392df618f14f88ec4ce7fab36",
+        "native_build_exit": 0,
+        "source_sha256": "9c59d2f31941da0fc0ff4b087e14228cc9f72cf8ad5092b335b52adb28a66a68",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 0
+      },
+      {
+        "name": "32-BIT_AND-10",
+        "root": "ae0cd69b916996253e28d9a18965475b6eed79f58de2c3b7e817efc7d1c1cdc9",
+        "native_build_exit": 0,
+        "source_sha256": "f91aae7f4b3cb4fabade74f8b03bf36073c8437aa4c6ce2398cf9fc3bcfb3ec3",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 0
+      },
+      {
+        "name": "32-BIT_AND-11",
+        "root": "7d39bc1ff12ee6f228aa84ca930941d731d796d174b1bf86d5de0aafcd171f3c",
+        "native_build_exit": 0,
+        "source_sha256": "124dc21cbd967bb13fc5e46cf6fd3074b65961ed02ef1dcbec01f644e8d6b69d",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 1
+      },
+      {
+        "name": "1-BIT_AND-00",
+        "root": "2f245c5dfc59b9a40200bb15bd3dd5f08c29ea012a84ca3de57f20853d3e761b",
+        "native_build_exit": 1,
+        "source_sha256": "b0cda8f6a2e931fdba129f4435d8882bc845a63224a4d5ed0e4ac35beb3dd675",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_AND-01",
+        "root": "939d3e669cc115a3107446fc957872517d1a2abd9e2ca31c25ec4a2d2d8b8599",
+        "native_build_exit": 1,
+        "source_sha256": "09e2fb0182e80f95688a095f6187c240fefc8f073da42ab811a95f265045af83",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_AND-10",
+        "root": "80ab526595e3da9d1622c418850c625cb3a4bda7f47a6dd43d1b6a033e313b00",
+        "native_build_exit": 1,
+        "source_sha256": "662cc2c0adba39b99524cae65d454f79ff1650e19083bacbc4ab64af2bf15453",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_AND-11",
+        "root": "60c25d0c606c9f76ac5aabcaf80bd7943574938d3c4aaaaa46bcac8d2e9fbd80",
+        "native_build_exit": 1,
+        "source_sha256": "d2226bd4787ef220f3d13e20df08b165a04c1e84dec0f58442fab262d8156c40",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_OR-00",
+        "root": "e45d4806144a03f80506ad891c5060ae8be42fa59fcf6d7d359301c7568a1554",
+        "native_build_exit": 1,
+        "source_sha256": "3422fd8131e30fb73419b1a4b105fcb9c49d27eff65d8d24e0f4b427a1dae401",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_OR-01",
+        "root": "a4edef3add941e02b76259081a4be026ece5caa3f6ea3c5748ca4f5fb8a00c37",
+        "native_build_exit": 1,
+        "source_sha256": "8f6b994cf2b822a2f9f0b5f1e3255aa6598514000d6f56de872651e5a612fc88",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_OR-10",
+        "root": "cdb99ceea3a4b36c6d032bb1ee48eaaa03901d7ee5eab08bf1188f9a369f21e3",
+        "native_build_exit": 1,
+        "source_sha256": "f4f50722dc5ad088254fe421d3aca8f7d84ff8d27a2fa03bcd8c4c1b63e61fab",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_OR-11",
+        "root": "632353740df3699d51e1d7dc79cbb98e8595ab496fca188ecdf7d5fd651c9295",
+        "native_build_exit": 1,
+        "source_sha256": "0efd4702a69e5fbe2fb9e38dcacde57c9ee631fece25bebb67cebe5af22b1c4c",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_XOR-00",
+        "root": "63bc20fc1baf873aefdbc39cab315b9abd2f2c40593a29fe22b1a5eee1c02837",
+        "native_build_exit": 1,
+        "source_sha256": "f5546428c484513a7815bd2ea7b333208e76b20c6ff24b6d89b890249cc62a06",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_XOR-01",
+        "root": "62c0a3dd0b6491e56c565ddfc2c74aad7a89e9fef25e3ee9cc51ab4cc23d72ca",
+        "native_build_exit": 1,
+        "source_sha256": "0b4c1c581a2132b6dbcd18d00424af24ec50fc426fa588cc5f50121bf3383f8d",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_XOR-10",
+        "root": "0d47b58aacae69c10a51f274c6151627b444f412ffc5399c48642d51f6622d14",
+        "native_build_exit": 1,
+        "source_sha256": "084899b41b6ce77f9f3d93bae0e33c98a799cdf24e026b1e8bb4fdb1d9c75cb2",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-BIT_XOR-11",
+        "root": "207cf29b55cabc46e4c785251c746b71ad4f6551b848e01640199b4b01ea6c55",
+        "native_build_exit": 1,
+        "source_sha256": "90a95816e37dafc17d4fae57d4273e66c5c0dc3a75cdfa609314cfe66d4fb0ee",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      }
+    ],
+    "bits_extra_baseline": [
+      {
+        "name": "1-ADD_WRAP-00",
+        "root": "807eb8145b9f12c1c6e4fb46b6b4d27697409cb6e10f856432746c23d2611de4",
+        "native_build_exit": 1,
+        "source_sha256": "016c0ff1e67a3f26dd116f21fa5aa9dbc74a259f0d825f8a40116a7c9aca5dd8",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-ADD_WRAP-01",
+        "root": "59ca428fc8a56f2f5bf1112f889f477b073f286bd502fd7b141e7d09a79e78bf",
+        "native_build_exit": 1,
+        "source_sha256": "4502f545d6f798d7441d79125a2149f96e4876f6f5c71942dbce0dbc5fc7fb4f",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-ADD_WRAP-10",
+        "root": "5d826cefb7b84bc71ab257070a49d24232a837d176710bd1bb6afe188498e9ea",
+        "native_build_exit": 1,
+        "source_sha256": "602666dbd55e1cc856cb8a35f7c53dbb80cb2a4b02c5e14b8df4b81e1e911d71",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-ADD_WRAP-11",
+        "root": "c015dcb6d82f29144d91e3eabd5c3bcdf22c5237bc784fdcc77cb934a236d510",
+        "native_build_exit": 1,
+        "source_sha256": "646f4dbcfc16bddfac4b7e098975be025801bd898cfebb085cf0cd8f6d79b2c0",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-SUB_WRAP-00",
+        "root": "01798bf41125b8a4c09d13d105e7e2e0d9e2578e76cbab011e976ef5886e389a",
+        "native_build_exit": 1,
+        "source_sha256": "a2c3923b3c5bc1ef03dcf094867e898398b2e8bae6a6f680114ae3df845dce45",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-SUB_WRAP-01",
+        "root": "6f5bcdc08ea6e446e6291c94e24cc755afe00cce9dc2fbf73a84cfe93cb525fb",
+        "native_build_exit": 1,
+        "source_sha256": "6089b8f7fd13717c3d5629af4b6ae6fc12bbb7f7c8ed52ef629bd2537caac63c",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-SUB_WRAP-10",
+        "root": "9f18cc0f5f4ffe77143f938541b932675da634e62de43ed0da7806fbab51d2ff",
+        "native_build_exit": 1,
+        "source_sha256": "a0559bd495eb5d149b9fac8897ee5b7aa7d1bd64372ad7b59b94fa805aa661ee",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-SUB_WRAP-11",
+        "root": "624c9069fa44717683817e7f014c7706798686bb8959772aaf66d3bc01782a4a",
+        "native_build_exit": 1,
+        "source_sha256": "60db1bf8be675c3b4a6b9e52c5d1b26e660d9b49a7d59fe08f7fbc71d40fd049",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-MUL_WRAP-00",
+        "root": "7d20873316f77e2af6db36a7b1e2e02bbabb9c22cf171e4e253dfe896ba2b132",
+        "native_build_exit": 1,
+        "source_sha256": "3301c84a31bf986eccc841fb0d2392e3b9acbd99b6635f30cf4ff9ebbdd24386",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-MUL_WRAP-01",
+        "root": "4aba77c1df5a81bda1fa783c016597eb42327369000e94dab8c15ef64929842d",
+        "native_build_exit": 1,
+        "source_sha256": "897da7c1418ebf8c7a6340b7e49fd59eb21f57aab6850eb53515c8a4b57bf339",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-MUL_WRAP-10",
+        "root": "2b3d52b3111be1c7f44dc449e0436abfa9b11bbf7df924cd68caa9dae3c07e1e",
+        "native_build_exit": 1,
+        "source_sha256": "52ed7f906b9732bb7c771ae470eace7f4f378ddf00710c0c1d23058b59ff521b",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "1-MUL_WRAP-11",
+        "root": "ddf6b1628fe355feb2514c60421d14c6421a0f788122e7ce2201a3a63c27496d",
+        "native_build_exit": 1,
+        "source_sha256": "6db6a55883d5d0b3ddb4e4facc83616ff42ae7217770878b181927562ca8a089",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "8-BIT_AND-00",
+        "root": "583435f3c8ec208f0416e8c3a46a2336178ce8f696fb5d59c8d6df15ab37a136",
+        "native_build_exit": 1,
+        "source_sha256": "602070ecbcfbbf69a573ca0fdb5625ff2240e849d1bdb27e46cc17670dde59b4",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "8-BIT_AND-01",
+        "root": "bd952840b5f4a6d3dd07aed0f11c2332237e7cf9f5187486658de906f7ded62f",
+        "native_build_exit": 1,
+        "source_sha256": "289e1a5e04d6d65e867a5d65cc0bc7bcac242941541956926186eb400f00a68b",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "8-BIT_AND-10",
+        "root": "43938bf2d37c37560df58f0687e895515f7e67647a09bd60cd671658f6fa78a5",
+        "native_build_exit": 1,
+        "source_sha256": "787d9581acaa921c48feecc1032915da652833ca7a5743ab75e56950748b8b08",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "8-BIT_AND-11",
+        "root": "3490b3ec916aa5fddf872aff4c86b1de5a302ad723e48aa797aaf0ff09e51a2f",
+        "native_build_exit": 1,
+        "source_sha256": "348c98074c2bddac3a3775a2d326aaad343a2294260e3b3761b81d8b318e01ab",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      }
+    ],
+    "bits_stack_baseline": [
+      {
+        "name": "stack-32-BIT_AND-00",
+        "root": "5a1b1e3434d7a945c52ac55d3ae9b463bcba3e3c489ed1512eba658e704b4ad9",
+        "native_build_exit": 0,
+        "source_sha256": "27dd681ac6dd45007512de11545fddd462e68dc018c7c28c1a8d35bf9b9a7eed",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 88
+      },
+      {
+        "name": "stack-32-BIT_AND-01",
+        "root": "8ebca2a40e392426d6b01e64f60f4962b47fa04d0d4af39e347406021eed03cb",
+        "native_build_exit": 0,
+        "source_sha256": "ead509dd2d5a134ca9d072f78e2dbdb77f6d34a0f460b41658d78275c31b0b1c",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 88
+      },
+      {
+        "name": "stack-32-BIT_AND-10",
+        "root": "48775e6fe161e2f07787cec2bf902a11cf3903487ea3814806b9845ff80d982b",
+        "native_build_exit": 0,
+        "source_sha256": "38fa8dbbbb7574c01a23ce7fee8a6930d48e2c0066360676fe1854fa11816af0",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 88
+      },
+      {
+        "name": "stack-32-BIT_AND-11",
+        "root": "ed2b9e02a3999653679f2c8e2ed117dc1cabd95f47fafca0e872c9c50017b5e5",
+        "native_build_exit": 0,
+        "source_sha256": "173a3d764bc0f47f7f24482f49f5385e3f8c3250771a4c2812b1b067c522dfdf",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        },
+        "native_program_exit": 89
+      },
+      {
+        "name": "stack-1-BIT_AND-00",
+        "root": "2d557170e3fbac0ed60ef86e06d577d1ef62674b4d4c11cab5e95ace7ec81e7a",
+        "native_build_exit": 1,
+        "source_sha256": "298cae959ceedab3e46f0ced571526c6742d2136e234bb42090f7313e3af7d14",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_AND-01",
+        "root": "782068bf73574cbb05cb2c3443abf2ae5fdb7a76dd8a59d0e16d187a32650b07",
+        "native_build_exit": 1,
+        "source_sha256": "0b7879d0f063fcf6bc8d78e8b139f1f759ae6d22b321dcad3a7b3c795a5fd9ff",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_AND-10",
+        "root": "8a1d20eb98789bab965bb7b6ad6208af97cfe773677b76c61f5abd99dc712b01",
+        "native_build_exit": 1,
+        "source_sha256": "7efef7442191f15a4aed4bee0e4a7eb2091ed691a16d81e725ef02511e57216b",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_AND-11",
+        "root": "16a2f871fbdde0cbf7dd5f10c506620869125dfa2a70288134ca1fa98a1c5914",
+        "native_build_exit": 1,
+        "source_sha256": "92cb6831d26e76215b8d620247c8b852f88e389e50a49a19faa6d392a6c80785",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_OR-00",
+        "root": "153dc834fe5c81a76a2f7b677b043731a79200b38d6718282985b44a9b34dba0",
+        "native_build_exit": 1,
+        "source_sha256": "2c7906a39e1175bdd6e66de90718026be6a01fe917cd982590de85105832f9ee",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_OR-01",
+        "root": "a71f8da8bbc97d099b8db45104f8b51bc29e32514a2fd19be7c78efea293a0aa",
+        "native_build_exit": 1,
+        "source_sha256": "b35a5dc8e3598f8607e98647b7d9e34c63475c2751aba2807d7c464f3b955053",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_OR-10",
+        "root": "a8bc011d50fd4fd3c3c61c0ce02ae2c3139f60fa2944c9c039c79d1406658db5",
+        "native_build_exit": 1,
+        "source_sha256": "bdd7943be1c3a11940fb335e7e91076ef5887ca265c46a5b2e3b6f61083288cb",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_OR-11",
+        "root": "96570d279a34dbbfc822d3aaeb84191e9b575b30537a00000ef29f024e9f3fbf",
+        "native_build_exit": 1,
+        "source_sha256": "bfee5792a30e0ea46906d1aa7be910a7d7bb530e7a33f47b2653e676548da655",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_XOR-00",
+        "root": "b49691dd35d12e3e6e3a860fffacf214d9e4b4e52e1c3f871a364c6fc8dff135",
+        "native_build_exit": 1,
+        "source_sha256": "4f8d033e8eda75b6ca62a013d60ea5dbdb3dfee095f2c4d00dd36cbf7538ad2e",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_XOR-01",
+        "root": "c6fc9a93e063ef8c94eaf6c423dd43af99f3a4363e21bb6d4841cc3aa5e22a2b",
+        "native_build_exit": 1,
+        "source_sha256": "b285ab872e8bbb8f9688ad41f6b3a33a3ba06ec8125e5468ef07a8e2fdace258",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_XOR-10",
+        "root": "f422e3c3e71ae4074c1c3334bd80d0da5dc9b3e9f606d2dcc37e59d6d6670758",
+        "native_build_exit": 1,
+        "source_sha256": "a75d98af5dea70e72dfb094f4eb74cd5a7c8b9311d157231985a28fd570cd112",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      },
+      {
+        "name": "stack-1-BIT_XOR-11",
+        "root": "24a84168399b6b1250c3a555fde5c5e6ef28ee39a2e79d83ec3b3b312cdaae94",
+        "native_build_exit": 1,
+        "source_sha256": "c438e0a5937b35ae8a89b4a9c9c0f643ad5e91b727372876098ed052f7f1f865",
+        "authority": {
+          "component": "native-bits-probe",
+          "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+          "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+          "requested_authority": "xax",
+          "actual_authority": "xax",
+          "fallback_occurred": false,
+          "fallback_reason": null
+        }
+      }
+    ],
+    "bits_replay": {
+      "authority": {
+        "component": "native-driver-bits1",
+        "semantic_root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+        "native_artifact_digest": "c8f024f4eccaf8a8837c205664a6624fd57da52796ced0b437bdcadf128c17cd",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "cases": [
+        {
+          "name": "32-BIT_AND-00",
+          "exit": 0,
+          "source_sha256": "e235ffae4b93bb1ead967ff62d30e3b07338eb4ae5cdb61ae7d944b6cf57090a",
+          "program_exit": 0,
+          "artifact_sha256": "1af2d1e1549649c70bcfda2acca9794f9a7c2cbac7981c89a29be0fc689d0b44",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "32-BIT_AND-01",
+          "exit": 0,
+          "source_sha256": "9c59d2f31941da0fc0ff4b087e14228cc9f72cf8ad5092b335b52adb28a66a68",
+          "program_exit": 0,
+          "artifact_sha256": "11622d41622065838338fbe287291f85b3461d0820e905365f171fe21d56bcb8",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "32-BIT_AND-10",
+          "exit": 0,
+          "source_sha256": "f91aae7f4b3cb4fabade74f8b03bf36073c8437aa4c6ce2398cf9fc3bcfb3ec3",
+          "program_exit": 0,
+          "artifact_sha256": "6a6a3081fb792b8c7c1fbc0d71cfb3c2dc29de9f24028b0285b314a1fbd681fc",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "32-BIT_AND-11",
+          "exit": 0,
+          "source_sha256": "124dc21cbd967bb13fc5e46cf6fd3074b65961ed02ef1dcbec01f644e8d6b69d",
+          "program_exit": 1,
+          "artifact_sha256": "451846dfa1b136342ecf7175e7507cf5b60b37bcc2badcd23fbc3c1863fa321b",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "1-BIT_AND-00",
+          "exit": 0,
+          "source_sha256": "b0cda8f6a2e931fdba129f4435d8882bc845a63224a4d5ed0e4ac35beb3dd675",
+          "program_exit": 0,
+          "artifact_sha256": "6a6e7a171fd1f4b4f806b99952dcecbed0ad7eb4fd60d8d01b371a686345d124"
+        },
+        {
+          "name": "1-BIT_AND-01",
+          "exit": 0,
+          "source_sha256": "09e2fb0182e80f95688a095f6187c240fefc8f073da42ab811a95f265045af83",
+          "program_exit": 0,
+          "artifact_sha256": "42fc0c5b41056c944bcd33b8efc8b282a65943b71906b505fe9574f4bc4187ea"
+        },
+        {
+          "name": "1-BIT_AND-10",
+          "exit": 0,
+          "source_sha256": "662cc2c0adba39b99524cae65d454f79ff1650e19083bacbc4ab64af2bf15453",
+          "program_exit": 0,
+          "artifact_sha256": "2eb85edd89805f145b6441e21f07eff163576ac440cf257adc0967dd6725a53c"
+        },
+        {
+          "name": "1-BIT_AND-11",
+          "exit": 0,
+          "source_sha256": "d2226bd4787ef220f3d13e20df08b165a04c1e84dec0f58442fab262d8156c40",
+          "program_exit": 1,
+          "artifact_sha256": "7ba3d07df693adc5e83f778a79507637376397893efc3f11e0a264bcfe6ec094"
+        },
+        {
+          "name": "1-BIT_OR-00",
+          "exit": 0,
+          "source_sha256": "3422fd8131e30fb73419b1a4b105fcb9c49d27eff65d8d24e0f4b427a1dae401",
+          "program_exit": 0,
+          "artifact_sha256": "07cd0aca6684a0e928e49a98c137a92eb5c845edd90a0be202e0bddab4c83299"
+        },
+        {
+          "name": "1-BIT_OR-01",
+          "exit": 0,
+          "source_sha256": "8f6b994cf2b822a2f9f0b5f1e3255aa6598514000d6f56de872651e5a612fc88",
+          "program_exit": 1,
+          "artifact_sha256": "ddbfe5faef839392e9399dfce9a505c25751e908182aef5512b4ed11d9206775"
+        },
+        {
+          "name": "1-BIT_OR-10",
+          "exit": 0,
+          "source_sha256": "f4f50722dc5ad088254fe421d3aca8f7d84ff8d27a2fa03bcd8c4c1b63e61fab",
+          "program_exit": 1,
+          "artifact_sha256": "fd92bd2645ac119d0f238c5be053d15157d3498e3d9994db448c13e159879ef9"
+        },
+        {
+          "name": "1-BIT_OR-11",
+          "exit": 0,
+          "source_sha256": "0efd4702a69e5fbe2fb9e38dcacde57c9ee631fece25bebb67cebe5af22b1c4c",
+          "program_exit": 1,
+          "artifact_sha256": "0539ce1a29c9f2afefcbf14db41772a549894853aea3eb61ffd758dc82c285b8"
+        },
+        {
+          "name": "1-BIT_XOR-00",
+          "exit": 0,
+          "source_sha256": "f5546428c484513a7815bd2ea7b333208e76b20c6ff24b6d89b890249cc62a06",
+          "program_exit": 0,
+          "artifact_sha256": "70fb7e1e32d2469a9c9a9ae2a7d03b41e646e3c4e74ab166bde23a4eed00fa0d"
+        },
+        {
+          "name": "1-BIT_XOR-01",
+          "exit": 0,
+          "source_sha256": "0b4c1c581a2132b6dbcd18d00424af24ec50fc426fa588cc5f50121bf3383f8d",
+          "program_exit": 1,
+          "artifact_sha256": "986344aa5b8840ae833deaca19e5fd94caec0f06e0c61186cc54d378eb5d216a"
+        },
+        {
+          "name": "1-BIT_XOR-10",
+          "exit": 0,
+          "source_sha256": "084899b41b6ce77f9f3d93bae0e33c98a799cdf24e026b1e8bb4fdb1d9c75cb2",
+          "program_exit": 1,
+          "artifact_sha256": "01fcdd517ac3a4ffefb545b93a8ea3770294aa1997b867c08220f8d4e5d7ec32"
+        },
+        {
+          "name": "1-BIT_XOR-11",
+          "exit": 0,
+          "source_sha256": "90a95816e37dafc17d4fae57d4273e66c5c0dc3a75cdfa609314cfe66d4fb0ee",
+          "program_exit": 0,
+          "artifact_sha256": "9ccaf9c4028efc8762a1a79bc6b95e8f3b18416ac9d186023908480dc6d108be"
+        },
+        {
+          "name": "1-ADD_WRAP-00",
+          "exit": 1,
+          "source_sha256": "016c0ff1e67a3f26dd116f21fa5aa9dbc74a259f0d825f8a40116a7c9aca5dd8",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-ADD_WRAP-01",
+          "exit": 1,
+          "source_sha256": "4502f545d6f798d7441d79125a2149f96e4876f6f5c71942dbce0dbc5fc7fb4f",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-ADD_WRAP-10",
+          "exit": 1,
+          "source_sha256": "602666dbd55e1cc856cb8a35f7c53dbb80cb2a4b02c5e14b8df4b81e1e911d71",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-ADD_WRAP-11",
+          "exit": 1,
+          "source_sha256": "646f4dbcfc16bddfac4b7e098975be025801bd898cfebb085cf0cd8f6d79b2c0",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-SUB_WRAP-00",
+          "exit": 1,
+          "source_sha256": "a2c3923b3c5bc1ef03dcf094867e898398b2e8bae6a6f680114ae3df845dce45",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-SUB_WRAP-01",
+          "exit": 1,
+          "source_sha256": "6089b8f7fd13717c3d5629af4b6ae6fc12bbb7f7c8ed52ef629bd2537caac63c",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-SUB_WRAP-10",
+          "exit": 1,
+          "source_sha256": "a0559bd495eb5d149b9fac8897ee5b7aa7d1bd64372ad7b59b94fa805aa661ee",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-SUB_WRAP-11",
+          "exit": 1,
+          "source_sha256": "60db1bf8be675c3b4a6b9e52c5d1b26e660d9b49a7d59fe08f7fbc71d40fd049",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-MUL_WRAP-00",
+          "exit": 1,
+          "source_sha256": "3301c84a31bf986eccc841fb0d2392e3b9acbd99b6635f30cf4ff9ebbdd24386",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-MUL_WRAP-01",
+          "exit": 1,
+          "source_sha256": "897da7c1418ebf8c7a6340b7e49fd59eb21f57aab6850eb53515c8a4b57bf339",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-MUL_WRAP-10",
+          "exit": 1,
+          "source_sha256": "52ed7f906b9732bb7c771ae470eace7f4f378ddf00710c0c1d23058b59ff521b",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "1-MUL_WRAP-11",
+          "exit": 1,
+          "source_sha256": "6db6a55883d5d0b3ddb4e4facc83616ff42ae7217770878b181927562ca8a089",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "744880201b0a2dc77b60e7ba9a4a57f0925e133aebd3a8fcee7ff68d2c69d3fe"
+        },
+        {
+          "name": "8-BIT_AND-00",
+          "exit": 1,
+          "source_sha256": "602070ecbcfbbf69a573ca0fdb5625ff2240e849d1bdb27e46cc17670dde59b4",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+        },
+        {
+          "name": "8-BIT_AND-01",
+          "exit": 1,
+          "source_sha256": "289e1a5e04d6d65e867a5d65cc0bc7bcac242941541956926186eb400f00a68b",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+        },
+        {
+          "name": "8-BIT_AND-10",
+          "exit": 1,
+          "source_sha256": "787d9581acaa921c48feecc1032915da652833ca7a5743ab75e56950748b8b08",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+        },
+        {
+          "name": "8-BIT_AND-11",
+          "exit": 1,
+          "source_sha256": "348c98074c2bddac3a3775a2d326aaad343a2294260e3b3761b81d8b318e01ab",
+          "exact_old_diagnostic": true,
+          "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+        },
+        {
+          "name": "stack-32-BIT_AND-00",
+          "exit": 0,
+          "source_sha256": "27dd681ac6dd45007512de11545fddd462e68dc018c7c28c1a8d35bf9b9a7eed",
+          "program_exit": 88,
+          "artifact_sha256": "fec0ca08c60bf32ba07cd37f35d9587aac4be1d0ec0b841a1bbc5168391e2965",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "stack-32-BIT_AND-01",
+          "exit": 0,
+          "source_sha256": "ead509dd2d5a134ca9d072f78e2dbdb77f6d34a0f460b41658d78275c31b0b1c",
+          "program_exit": 88,
+          "artifact_sha256": "d8494e55af01c3886d6ed8807f06bdf7074265458c4d1cd691688ad03a230e8c",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "stack-32-BIT_AND-10",
+          "exit": 0,
+          "source_sha256": "38fa8dbbbb7574c01a23ce7fee8a6930d48e2c0066360676fe1854fa11816af0",
+          "program_exit": 88,
+          "artifact_sha256": "5c1961daac1869a95a04c973f85e1fbd0c29cab3e390bda8fde51cd0a39395df",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "stack-32-BIT_AND-11",
+          "exit": 0,
+          "source_sha256": "173a3d764bc0f47f7f24482f49f5385e3f8c3250771a4c2812b1b067c522dfdf",
+          "program_exit": 89,
+          "artifact_sha256": "55cb196bc79d9e0409aea1ab0cd9ff3bc583b758e9e210a4c39c6a5192b919b7",
+          "old_artifact_identical": true
+        },
+        {
+          "name": "stack-1-BIT_AND-00",
+          "exit": 0,
+          "source_sha256": "298cae959ceedab3e46f0ced571526c6742d2136e234bb42090f7313e3af7d14",
+          "program_exit": 88,
+          "artifact_sha256": "37fc2c93b2d76067b8662509359e392f5d827ac70aeb59c4ab04f3af58ffcf79"
+        },
+        {
+          "name": "stack-1-BIT_AND-01",
+          "exit": 0,
+          "source_sha256": "0b7879d0f063fcf6bc8d78e8b139f1f759ae6d22b321dcad3a7b3c795a5fd9ff",
+          "program_exit": 88,
+          "artifact_sha256": "bbcbff79c31cfe4d6d9e8e3a70cc673af35d06cd3961aa6636037d5c84fb1d3d"
+        },
+        {
+          "name": "stack-1-BIT_AND-10",
+          "exit": 0,
+          "source_sha256": "7efef7442191f15a4aed4bee0e4a7eb2091ed691a16d81e725ef02511e57216b",
+          "program_exit": 88,
+          "artifact_sha256": "469f4131e5852e825030e613ca9a669d76893d2c0ee16248db45a1d676f05388"
+        },
+        {
+          "name": "stack-1-BIT_AND-11",
+          "exit": 0,
+          "source_sha256": "92cb6831d26e76215b8d620247c8b852f88e389e50a49a19faa6d392a6c80785",
+          "program_exit": 89,
+          "artifact_sha256": "fff9e2aef5fd4060a4e65706570b7770b5903f198960f55a30cf56729ad3fbaf"
+        },
+        {
+          "name": "stack-1-BIT_OR-00",
+          "exit": 0,
+          "source_sha256": "2c7906a39e1175bdd6e66de90718026be6a01fe917cd982590de85105832f9ee",
+          "program_exit": 88,
+          "artifact_sha256": "1e8bb391d4364c334a3e9e5ceb1551899062455fac6a0bbbab69e0f7347e25f7"
+        },
+        {
+          "name": "stack-1-BIT_OR-01",
+          "exit": 0,
+          "source_sha256": "b35a5dc8e3598f8607e98647b7d9e34c63475c2751aba2807d7c464f3b955053",
+          "program_exit": 89,
+          "artifact_sha256": "207c3339c8730571b023aa3e3b8b854242886d58bc54dd0fe7cbd85feea05b0a"
+        },
+        {
+          "name": "stack-1-BIT_OR-10",
+          "exit": 0,
+          "source_sha256": "bdd7943be1c3a11940fb335e7e91076ef5887ca265c46a5b2e3b6f61083288cb",
+          "program_exit": 89,
+          "artifact_sha256": "b6c2ff7533830df7a610c5148c1a04dee31eb2cb90e0f0a3174bacab4ee7931c"
+        },
+        {
+          "name": "stack-1-BIT_OR-11",
+          "exit": 0,
+          "source_sha256": "bfee5792a30e0ea46906d1aa7be910a7d7bb530e7a33f47b2653e676548da655",
+          "program_exit": 89,
+          "artifact_sha256": "108963b2ece1fccf8ccc15d57e0a9901be5d1245aa5697e06bee38eea100f432"
+        },
+        {
+          "name": "stack-1-BIT_XOR-00",
+          "exit": 0,
+          "source_sha256": "4f8d033e8eda75b6ca62a013d60ea5dbdb3dfee095f2c4d00dd36cbf7538ad2e",
+          "program_exit": 88,
+          "artifact_sha256": "462cc9bb7eb655c7cf89b2fe88aed387fbde2f86c14088911d0787b46365c070"
+        },
+        {
+          "name": "stack-1-BIT_XOR-01",
+          "exit": 0,
+          "source_sha256": "b285ab872e8bbb8f9688ad41f6b3a33a3ba06ec8125e5468ef07a8e2fdace258",
+          "program_exit": 89,
+          "artifact_sha256": "fe30be2b4a99cc86ac03bc2df327c23234441b83adaec2df361ca1300f4cbd93"
+        },
+        {
+          "name": "stack-1-BIT_XOR-10",
+          "exit": 0,
+          "source_sha256": "a75d98af5dea70e72dfb094f4eb74cd5a7c8b9311d157231985a28fd570cd112",
+          "program_exit": 89,
+          "artifact_sha256": "26fc340019d061557f2ec95a76669d3023d7e2c8a82baab82cca4e1dc8ae349e"
+        },
+        {
+          "name": "stack-1-BIT_XOR-11",
+          "exit": 0,
+          "source_sha256": "c438e0a5937b35ae8a89b4a9c9c0f643ad5e91b727372876098ed052f7f1f865",
+          "program_exit": 88,
+          "artifact_sha256": "6d3528810f9a07f63c63f15298ac79886ce60888e859c9499e15c81e8b136b93"
+        }
+      ],
+      "count": 48,
+      "truth_table_scope": "All four inputs for AND/OR/XOR; includes a nonzero fifth Win64 stack argument and 32-bit unchanged-image controls. Non-bitwise bits1 and bits8 rejection bytes retained."
+    },
+    "semantic_replay": {
+      "authority": {
+        "component": "native-driver-bits1",
+        "semantic_root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+        "native_artifact_digest": "c8f024f4eccaf8a8837c205664a6624fd57da52796ced0b437bdcadf128c17cd",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "cases": [
+        {
+          "name": "semantic-0-None",
+          "exit": 0,
+          "source_sha256": "368a3e534a8c030d25913bfebb2269ff2e57ea544900626c7479df9b80628cd9",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-1-None",
+          "exit": 0,
+          "source_sha256": "b92661198db27ee4594ac100b5ce8596b0a35436c15b443c4eb74790408ff6fd",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-2-None",
+          "exit": 0,
+          "source_sha256": "d42e0bf962c02cfdba5fe9d136466f4e4aa8298f52101caa91f1a5bda6483c7a",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-3-function_byte",
+          "exit": 1,
+          "source_sha256": "fff1b3d0170af7a0306deb1c2fd09a5deb533e731f79b0ecd6a2b9d5f3c9f7b9",
+          "diagnostic_sha256": "a6d098485dadaa57c918027425bce5611e7b0fd91770b0ef4d644574fd7b3b3a",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-4-return_type",
+          "exit": 1,
+          "source_sha256": "9b8d98eb170f653d5d968fcf98c1611f0565f910a00a6cff8e92a30ad0dbc624",
+          "diagnostic_sha256": "cf3784f1f643776171a05887436857cd224f0ed92c0bbe8501e726525164d98d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-5-list_byte",
+          "exit": 1,
+          "source_sha256": "6c8029c57d6a0962bbd26f88f4b30e4ec96facaf88496d6a6fc167008f5a6ebb",
+          "diagnostic_sha256": "f7c9990093b65c03c0da6a15c2ef859cc50df2d83b0062b8bf36d04529091d3c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-6-contract_flag",
+          "exit": 1,
+          "source_sha256": "896d68861659c91f92c5b809bf67ad8e31529602872be7030be90a70f91b35d3",
+          "diagnostic_sha256": "65aa70b5684ee59422c0868bb5704e729f05e6a55d1dfe7dce3b5e87d0b4d736",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-7-unreachable",
+          "exit": 1,
+          "source_sha256": "aa661fa5fb13a99d76751329e5c762594bb5b9ae587cfabc5dee75e78637611d",
+          "diagnostic_sha256": "d1f5bb0f56fb389bfd8ab3547066f155015af21d7a97254ad160805e0e36a8fb",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-8-None",
+          "exit": 0,
+          "source_sha256": "807a81a41f3f3cdf0baad5e336c0517b321b9cc83288e01f8b383068320f7496",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-9-None",
+          "exit": 0,
+          "source_sha256": "f2e0c16a1afa08c7220c58971a80c34695fc290fb294f6749bf97c3ed00b3a1b",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-10-None",
+          "exit": 0,
+          "source_sha256": "9e8e31fb74c2b2c1186f7efafc06cc1dfe4dc62aeda7be7bc9cae66f4ac6328a",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-11-function_byte",
+          "exit": 1,
+          "source_sha256": "0ac7eecb58a956e3dec18ae6edfeac2e2b6a0d8e39d2da0b405d783773ec464f",
+          "diagnostic_sha256": "a4e887d120a16986a49f54588a3f3a46eebb95210a72a5364c873289a76e6b63",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-12-return_type",
+          "exit": 1,
+          "source_sha256": "a23feb40f4d388ef486ed879810e0870a135b76955bffe5bf3c392558c9b0e01",
+          "diagnostic_sha256": "ccd883076362991d1bf5630f4b043cc4edbbc523dc36a2914641a5ab4cfddfdc",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-13-list_byte",
+          "exit": 1,
+          "source_sha256": "0b19bcd3e9aed69366208aaf7042f9a6985e84e080bf50c861c4f872ade92cc1",
+          "diagnostic_sha256": "79356b98c0a6e11d8af9a6c9e47684caf98b01e2a7fe4e82a72bbc41de778147",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-14-contract_flag",
+          "exit": 1,
+          "source_sha256": "9bd532bbe36ea71f3ae05f2db163459518d8fcece218f7e03458ba98bc2e5c6f",
+          "diagnostic_sha256": "a42c8fa850c252fa02d025dd4eee43fb0a77381010e9c8e0f24d6c9d91eb50a9",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-15-unreachable",
+          "exit": 1,
+          "source_sha256": "6f0eb5e8ead05a2a139844aa1451bdcc5ef8f1f1690eb15fd0fe0b399e90c470",
+          "diagnostic_sha256": "d35f8cc244af8f2ddcd586683643d1db6600f5e75d72940026d3b43556932940",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-16-None",
+          "exit": 0,
+          "source_sha256": "89e0840b277301af2aa1eedfd8cb15b494ae5a69bcd8fd8a75194de5be818087",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-17-None",
+          "exit": 0,
+          "source_sha256": "6ddbd3c59e9367cde39b6b32ea3ba45f3aa9fe43e69d6db80b130c29fdc8e037",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-18-None",
+          "exit": 0,
+          "source_sha256": "08d4c004df57e26130205fe757ec6a31f47b0884ec6855c43f173bf89f25d0bf",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-19-function_byte",
+          "exit": 1,
+          "source_sha256": "38344a2746a4b953191c8d7502c97f6882abe16b3aa96c7f62323a29a14fec16",
+          "diagnostic_sha256": "df71c7a889ace1dfc8c3349558d4265431e2605617f920955686aca443de3b0a",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-20-return_type",
+          "exit": 1,
+          "source_sha256": "38a2f992fc362a1fe7b754340aecebb438f9964409a63c3f8a71016c9d2d6fe8",
+          "diagnostic_sha256": "fd890aad8b2e86f60bbb9ce2fca210e85c3ad44d02ffaef12fae1358521b28f5",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-21-list_byte",
+          "exit": 1,
+          "source_sha256": "27d451b0f36b85e2d6b706075595ffb0f5f08816a72d71836db58bdddee558f2",
+          "diagnostic_sha256": "4ef0edeed64a0e774e7102e5367dae10bc49dcd2f80ca423f724652b0541bf79",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-22-contract_flag",
+          "exit": 1,
+          "source_sha256": "748af3171ab0dd613d5fca91086690e6a5c4a5daa6c440f30909d2bbda56f508",
+          "diagnostic_sha256": "b19d471123c52492710442835e455f0e89ad375ac226fb5c92de233383013592",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-23-unreachable",
+          "exit": 1,
+          "source_sha256": "a6fa9a7471d221fe56549c1fdd5478c94149027b2e7d226a5183229a19f06b80",
+          "diagnostic_sha256": "bf7b7d04921604a49f74feda8d51f4e60e25249c6327245ec8dd2f2c31117d7c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-24-None",
+          "exit": 0,
+          "source_sha256": "7eec4d805d1cb69a41f7fb437f64564b0dfb5b21a07e9276a7556dfd8a1a2765",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-25-None",
+          "exit": 0,
+          "source_sha256": "f3030fbd9743a970f34101279cd48faa16dd6c0613648b87ee5adb260edc2af3",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-26-None",
+          "exit": 0,
+          "source_sha256": "363087cf7cd55bd555b24ae4e4ec466c88e3e3ee891689646c778f02236b3261",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-27-function_byte",
+          "exit": 1,
+          "source_sha256": "4e651ebb318e5232a32764bc8456bc860f72867cbfe8651e382fcb3dfa2ac2fd",
+          "diagnostic_sha256": "8cfede1ae19162be116015d3e0fd67279ee57aeaef4d78ff48e17d99ae94c2ba",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-28-return_type",
+          "exit": 1,
+          "source_sha256": "f3aae1da49c859897afd1502ddba9a5a2fb14da0eafaeed81bd378dc4a172daf",
+          "diagnostic_sha256": "bc017b1d75557fc5cd499f20a6118064b95811e09e06a76b19c1a0b322d32033",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-29-list_byte",
+          "exit": 1,
+          "source_sha256": "b9cbafce0ffb32b4ee22f91f58c28b1acc21f8981d9f7c531178189c160c862c",
+          "diagnostic_sha256": "1c0efa15d1e4dd56d99c0705d6820307f30beafe5b1c006600fd582c5e35b7f0",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-30-contract_flag",
+          "exit": 1,
+          "source_sha256": "9448ab304736f44ce8f6ab7e43506c14f310e9f14b2079c5e6619125f02a9a33",
+          "diagnostic_sha256": "c2e42daab77b5fd0dea5d2dc21dfbb922b4d2b495bc16b44db9b9165fc0c33ac",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-31-unreachable",
+          "exit": 1,
+          "source_sha256": "31799ccb11f32b981236a781accc50bcf37f822dfc9ae8beb6ddf144afd11253",
+          "diagnostic_sha256": "2121b609d361a9e91956cef9360bd7fedff219af9078a4270b54b8137771cb9c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-32-None",
+          "exit": 0,
+          "source_sha256": "ad203a03abd47a84e9500a887032349e4f6df6d0f2e844241364a5b7f5b9ae67",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-33-None",
+          "exit": 0,
+          "source_sha256": "181f611e715bada219907945b07f1a366611365732e51f08b52b0d5fab0f6767",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-34-None",
+          "exit": 0,
+          "source_sha256": "22073a03170be8e247c9ca47c9651455eb347489b984527d4ce843fc49286aca",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-35-function_byte",
+          "exit": 1,
+          "source_sha256": "09361e4a819588e8867c7422753b302bc8b8008fd0c7239cf6daf27c8c35c5da",
+          "diagnostic_sha256": "10c2167585acf4d67db427e5f1ae2ef745b19ec6d560e0bfbea764123d08dcf9",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-36-return_type",
+          "exit": 1,
+          "source_sha256": "14613f4d5a60655930a5777d8b1533bd6907161a8687561410bfa73546495d5d",
+          "diagnostic_sha256": "d3bb445cbf3f1bce338f7b3b14cfc6f139cb9ad7b901e8c50458acb7b0f4af59",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-37-list_byte",
+          "exit": 1,
+          "source_sha256": "07f97313b11563b4452de51d46995d05502c5444808ccc62bc956a73715f2af7",
+          "diagnostic_sha256": "457c295045438acf05aac9f9c3da08f9a60de37bfdf6ac166ae1d9b4ff3b6630",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-38-contract_flag",
+          "exit": 1,
+          "source_sha256": "463e59d51016737c5ed6f49bde911f35ca5187ca9ce6668a7068c0fedfa976a7",
+          "diagnostic_sha256": "65aa70b5684ee59422c0868bb5704e729f05e6a55d1dfe7dce3b5e87d0b4d736",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-39-unreachable",
+          "exit": 1,
+          "source_sha256": "2cc60c6bb4f03410a6a05f20b0d40e97ed3803aaae4710efcab054357f7f5069",
+          "diagnostic_sha256": "05ba4549f8a948e1d6d168de5328d033174fd4f040585298b0362a465f504ed5",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-40-None",
+          "exit": 0,
+          "source_sha256": "73da0294b79bb12a55bd9a7e9b2f41a5ec304c13db99a0c2e8029ff97995c12e",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-41-None",
+          "exit": 0,
+          "source_sha256": "810a7d902ee40a0875461bc9ea6200333c351a5cbf7a43db190fc01819d60172",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-42-None",
+          "exit": 0,
+          "source_sha256": "6658e0fab479d954c7176387a01eaa3e16ac6da36ad5c5180eba4cf4dd361a3e",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-43-function_byte",
+          "exit": 1,
+          "source_sha256": "7ec2010ac95edb9a9b99ec27d9f0c33a62db3c6d001d0bc0c6c97be06ca09f15",
+          "diagnostic_sha256": "4ef55efed6e8781b67409cea64cd36f2931119f455dc23c7c52398cec8a68a93",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-44-return_type",
+          "exit": 1,
+          "source_sha256": "b4168e11ab53ce4163790859f3ee94a54578e9e877f3657f50bde04b2bdacd92",
+          "diagnostic_sha256": "af4779f728a1d825299dcd15e6f594a582d6de931f85946cfb5b83f564f61b24",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-45-list_byte",
+          "exit": 1,
+          "source_sha256": "834fb1a89c201c0b2794ee783ba8cba5ff31809589b0a681c04e05ddff8a54e4",
+          "diagnostic_sha256": "c4ce301857969ba968085188e985f3127ba19b27531fd5f9ce861222c78df42f",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-46-contract_flag",
+          "exit": 1,
+          "source_sha256": "f525275ab1f3b48eb167577563c2efdf818ae3b90272f28b6ec52c1c60b08423",
+          "diagnostic_sha256": "a42c8fa850c252fa02d025dd4eee43fb0a77381010e9c8e0f24d6c9d91eb50a9",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-47-unreachable",
+          "exit": 1,
+          "source_sha256": "5afdce2d0e4d8a0df6737f599e8179a0cc8bd2fdd07adbb6630c2e22553af39e",
+          "diagnostic_sha256": "d1dba92fddf9733107ccf218ab51ac485e1aaca34e4b0e86b7110f2283cc8c20",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-48-None",
+          "exit": 0,
+          "source_sha256": "38dfb289a6003c9200ad9d0a9cc1f2795c6f7f8a0c39ae7cb9ab309709d75935",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-49-None",
+          "exit": 0,
+          "source_sha256": "7f24d0c9f48926e458451f709f3b213846c690eb1ee67ea8677b477f9f4296a8",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-50-None",
+          "exit": 0,
+          "source_sha256": "be83c0a19bfb7235c7cb48ba0250a0d7a9ce0c1340ad9d80d38f500c70cb92e9",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-51-function_byte",
+          "exit": 1,
+          "source_sha256": "677d7fc8f4d1f66bd4a2edeb23d920820e3c2225e803a2e82daeafb488a4c724",
+          "diagnostic_sha256": "2be1d80432d72d019b1f37eea60e19bf951a23505a0700a1cf835c1e0a8e546b",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-52-return_type",
+          "exit": 1,
+          "source_sha256": "f5d43ffaf6998b906b28171a566ac7b4561ec96735a64f951335a5aab3610a09",
+          "diagnostic_sha256": "936767df9cf1a0b2859217f4139428df62d4fe336306ce3d24a4265f8f09d8d0",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-53-list_byte",
+          "exit": 1,
+          "source_sha256": "fe0d925960c8d95a32988d2ec599da6ddc3fedc51315f245100c86c57e65c2ea",
+          "diagnostic_sha256": "a928c82a99c96b6f9113b621d2af8237113731afaff522467cf346c9a70ed71f",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-54-contract_flag",
+          "exit": 1,
+          "source_sha256": "9f58da3420c9b8ec1320970df7391a4ea84dade3ad63198b9b08167b3c6dc862",
+          "diagnostic_sha256": "93c7f92b0a689db4e8bff9c266737acce80ebfc1f9ce058c149308ba08f6913c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-55-unreachable",
+          "exit": 1,
+          "source_sha256": "dc764e9bece12f169b6bc8c6995dc629d6964f6173f85cd6423f8ff2a1a7577c",
+          "diagnostic_sha256": "7a37c55f78055823ee2b266fa83f95f295d9e03936b29dbdd97dd525f361767e",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-56-None",
+          "exit": 0,
+          "source_sha256": "20e82d3a6680342e213e4a0a795b670c95d182939315da347912586490dbaed7",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-57-None",
+          "exit": 0,
+          "source_sha256": "dda19850d502f994284fd62171227180e9ef98aa734fd8572c81d262c69aedd5",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-58-None",
+          "exit": 0,
+          "source_sha256": "94ed2f23546fbe85dfaca7cfb89ad64adec349d3b47679612852aefa7a68e018",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-59-function_byte",
+          "exit": 0,
+          "source_sha256": "c67b4cd8dadedbce615e0e129078431047a168f21a3f0bc6955d6a88bfbd50f3",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-60-return_type",
+          "exit": 1,
+          "source_sha256": "b2dd990a2bddc8f57b8c59fc21e564c4b976d451a842e619ab80efbb434f3914",
+          "diagnostic_sha256": "b06b16f8b9b311572c6114376d1636528da5c1bcadbe0a4c962da3d03010bf58",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-61-list_byte",
+          "exit": 1,
+          "source_sha256": "e1b1ebb8f543e083e7f99db32257897699ae82606242a84d249890a0b47bbc8d",
+          "diagnostic_sha256": "8f5eeb7c7bc5e55a28926718a4a0eaabdaaa4fbd2360b5331688638c34007ed0",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-62-contract_flag",
+          "exit": 1,
+          "source_sha256": "5dc1e38cbcd183f0d2c6e6cac305686fbf8df6e3459ed04b9d34c734392190e2",
+          "diagnostic_sha256": "a42c8fa850c252fa02d025dd4eee43fb0a77381010e9c8e0f24d6c9d91eb50a9",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-63-unreachable",
+          "exit": 1,
+          "source_sha256": "2c286cd6922ecf87cdce03d61504e7e109a4f9ef5d2b449af6c8c79a51efdc17",
+          "diagnostic_sha256": "58372c27adc5869784ae43931081b30966feebd4514b3c8868940362d1974399",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-64-None",
+          "exit": 0,
+          "source_sha256": "f4708c6506eebb14d2f07a0aa52d131f0b0aaa84eb37f8de627ab4036ca0b33d",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-65-None",
+          "exit": 0,
+          "source_sha256": "0dda5723aaa8591f7b0e8bd846930a8e53f3460ebd21f5f963b7ac9a664ccf67",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-66-None",
+          "exit": 0,
+          "source_sha256": "3786108203175dd47500b3f4e2445c4006af9a611dd0ce78dd6d9a3fa8c1e61d",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-67-function_byte",
+          "exit": 1,
+          "source_sha256": "286b0ee66c0d2f31a9adb9dbd2c39941e1b682dd7b7481c8ad7db8685d05a057",
+          "diagnostic_sha256": "c63a2623fcc126971b902d51190473ef2aab976cc6fd629db7ee60dbe95c4ffe",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-68-return_type",
+          "exit": 1,
+          "source_sha256": "eb31d17c9dc62308296bfc889f5cf78f0451dd21e3e8c18e7c2ac3fb1d3c8e23",
+          "diagnostic_sha256": "593a8f8918762f00a0a3ac7078d785b8dab3a1b712e38583bd175fdeb116bf77",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-69-list_byte",
+          "exit": 1,
+          "source_sha256": "7ae6cc7e3539d8aae6cd1f0a1e7ad7e70bed070ae5ab69a22ec8da26492eced0",
+          "diagnostic_sha256": "223db3fcf8c804537b9cd2d6dcc9c5c723b253af52896be7d9b00013597dbd0c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-70-contract_flag",
+          "exit": 1,
+          "source_sha256": "50c04a6c3d100dc031f043f5103305a48704441da0a14527299aa4c0e71b8f47",
+          "diagnostic_sha256": "7afab2fae00374c9b7432419861a8b1ad4a96e38f7607213d8d60e9d847cba9d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-71-unreachable",
+          "exit": 1,
+          "source_sha256": "77d569fc7ad23b26fa9cf274789ae253e4e4a799b3a6c7a1c5f970efa5170c38",
+          "diagnostic_sha256": "618434683ef035e931f5e5351898dd74c154c1fa89d48d0bebbab92188661c1e",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-72-None",
+          "exit": 0,
+          "source_sha256": "5894915e1cde8e97f256317281ceaf0cabc2baf55ba6e283f0afbb8146b044b1",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-73-None",
+          "exit": 0,
+          "source_sha256": "4bbc61ccb3bf378cf060b8b4f1b88599e451e23a9639f3fdf5746a783a17e36e",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-74-None",
+          "exit": 0,
+          "source_sha256": "a3941c6062654f8e106b8d185047065faadedcbf64075c2059045f96528e2364",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-75-function_byte",
+          "exit": 1,
+          "source_sha256": "b33c415d5f448da700ae3b887cbe994d8f8517bfdde61c911b1672568788d47d",
+          "diagnostic_sha256": "cb4166dfe19a5803959bbe4cee544aa8968cb07b8ab3f0fe715b8dab1c221400",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-76-return_type",
+          "exit": 1,
+          "source_sha256": "c9b78a38accb13d716f7b79caa0d5eb6b6dab4501072bdd452063e97344ea4c1",
+          "diagnostic_sha256": "eb02370ccff2f228b3fb1b1321dacc2ff15366bf910231b3a91f8b8ae3392f84",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-77-list_byte",
+          "exit": 1,
+          "source_sha256": "400645fa85b776a023260dcc41c82ba4c9b3c3ed25258718360724268d645dfd",
+          "diagnostic_sha256": "44f66b9531d0893a40dc9cd093a780d8bac3e336c57e1f4df1a3879c02f907a0",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-78-contract_flag",
+          "exit": 1,
+          "source_sha256": "7b38cf87bb480bd4cb7a061f108056a6e987c702bf06c0cf7faa4aea90be558f",
+          "diagnostic_sha256": "7afab2fae00374c9b7432419861a8b1ad4a96e38f7607213d8d60e9d847cba9d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-79-unreachable",
+          "exit": 1,
+          "source_sha256": "f6c9396f5fad2f5dcf2527392b41e38e727b114ae5497f523ac717f2507a7614",
+          "diagnostic_sha256": "a86b0c0842398e88a238b066d83eb04461945f9b051264fb1f7b5171ac6bbf5f",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-80-None",
+          "exit": 0,
+          "source_sha256": "448b1432523d7d8a2782ad6625a94a1c903e8b89c1cf4553d0530142742a9cd0",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-81-None",
+          "exit": 0,
+          "source_sha256": "644bfcc282959de272d2cde7d06bc69ad1827a223502b6a01a910a0386063db4",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-82-None",
+          "exit": 0,
+          "source_sha256": "db0354094afb2c29427f2fc31eb47041b9e19d95908f0bcc7c8e6b9d0c6076e1",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-83-function_byte",
+          "exit": 1,
+          "source_sha256": "45c41331efa2c7019148fc84c1b26c46fa7e983251571f06f25cf53e8a77acf0",
+          "diagnostic_sha256": "76730f0e704898a10c961e23c168ce817ff4039cc72fc0de1951e4cc102ca7fc",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-84-return_type",
+          "exit": 1,
+          "source_sha256": "fb47c06847fe7e92c51d24be1ce41dedeace9b92951c3c8f54f2cd436841b00f",
+          "diagnostic_sha256": "cf3784f1f643776171a05887436857cd224f0ed92c0bbe8501e726525164d98d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-85-list_byte",
+          "exit": 1,
+          "source_sha256": "eb7fec8aeaf443e1fabdf53df8536ae152be71f6a41dd2b03e8eb683f18c5ff0",
+          "diagnostic_sha256": "c7c8a420c13f7916702ac8aef59e3912a35589ce8f8b5fb993429dbecc6d7b75",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-86-contract_flag",
+          "exit": 1,
+          "source_sha256": "959ff1e25327d767708e6c60d1ae1f7d6f0bb0b2355202f87db060acdf3c9e10",
+          "diagnostic_sha256": "b19d471123c52492710442835e455f0e89ad375ac226fb5c92de233383013592",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-87-unreachable",
+          "exit": 1,
+          "source_sha256": "0cab6d4c2bd9a7e7ea131c454688067ba62ebcf8a7bc0a37b31a3693679aba05",
+          "diagnostic_sha256": "7cd84f8eb7d7dd36143746e236837bb8baa680c5f10bf86094982058d6db6633",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-88-None",
+          "exit": 0,
+          "source_sha256": "e759d4c62b3eb0b2d640ffbc8cb9e1c4ee7ac71b71ad96322a3b6855393967aa",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-89-None",
+          "exit": 0,
+          "source_sha256": "6cbfad00c0095858ea3342f09f4db54f22f28f58eb87993f4da82565dc393c32",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-90-None",
+          "exit": 0,
+          "source_sha256": "211fb5bb60074b201269bdd3795162b909be875ce2fd001f088ac41a0774423b",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-91-function_byte",
+          "exit": 1,
+          "source_sha256": "938fdfc08217951f26c5a4dedaef3bdcb4e7af908055373fb4864d9c85c16db3",
+          "diagnostic_sha256": "f5911262bf1968e4b8ef4f852aaa4b5b173d88f65fff70c97fafa58e5c0c40bc",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-92-return_type",
+          "exit": 1,
+          "source_sha256": "cfa2eebf1a86dc2d0d21d8bae4f65c1a13085fdb6c840d6c6ca3b88d18eed014",
+          "diagnostic_sha256": "cf3784f1f643776171a05887436857cd224f0ed92c0bbe8501e726525164d98d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-93-list_byte",
+          "exit": 1,
+          "source_sha256": "738e0fafda0eb60df076ca068de717350e76f919f23d6bf15283810c5d630d6d",
+          "diagnostic_sha256": "bf432ccfab1ce985b0d98e97ae4bf19c12438c5044aac35250406a35a58726d0",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-94-contract_flag",
+          "exit": 1,
+          "source_sha256": "7abbd5d3a15b2992290d2fc86f5ea082e51af3f9eb1edbdfaaa80ef012afa422",
+          "diagnostic_sha256": "65aa70b5684ee59422c0868bb5704e729f05e6a55d1dfe7dce3b5e87d0b4d736",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-95-unreachable",
+          "exit": 1,
+          "source_sha256": "46d997ed5f5eb6dc03a74c1064adba9daa1f3c2c260ff7ee933b2571bcccfa86",
+          "diagnostic_sha256": "bc87cac31cca10ecbe380b78037c7026776c0305dd0be9ae3d2bc6ae29c2bbcb",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-96-None",
+          "exit": 0,
+          "source_sha256": "9d37b732b0fbb8bdb9fb15afc7e20a632822470ca9dd0275f59aece7a7e0d94e",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-97-None",
+          "exit": 0,
+          "source_sha256": "891b51829b1dadb7e23e2621600355320b80f376c602e7cc83203137fc05832a",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-98-None",
+          "exit": 0,
+          "source_sha256": "41e2eb2d61989ef1ddb114e3e800c3a5ddf0764c11c214a6535fcbfcc5a84224",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-99-function_byte",
+          "exit": 1,
+          "source_sha256": "75bbdc2a1d6b78a784ab1f5a8e3945e09f1c078b0c53870bccda128344e1310d",
+          "diagnostic_sha256": "358a4a0e6212bb31629b1d443dfeaa09974f4c1dfc316af34959e811041124d5",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-100-return_type",
+          "exit": 1,
+          "source_sha256": "708b6b4cc8e271dbf8dcec1f31da85d41f7ebeae82d0520f8871231c98c34b92",
+          "diagnostic_sha256": "f180e08f33e342686b129495ad77dc0eff85065ba8a7bada6f8f563d54a4df7b",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-101-list_byte",
+          "exit": 1,
+          "source_sha256": "6e6aedd82427dcffd980ed354e5853b3d026b8b68de07278f930720bc6154e99",
+          "diagnostic_sha256": "7a5aed3f11ac91222b586001c3f1ffb8bf4a1044f8ccdb1b90dc5a55add5d881",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-102-contract_flag",
+          "exit": 1,
+          "source_sha256": "dc3adcc53cbeefe4d0c8348a86ac900841d0acb661d7d76796fda433d1d1a8ee",
+          "diagnostic_sha256": "65aa70b5684ee59422c0868bb5704e729f05e6a55d1dfe7dce3b5e87d0b4d736",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-103-unreachable",
+          "exit": 1,
+          "source_sha256": "c1fb53b1b9123ed44534012c855bfac752aeb794f89a008bf9d48d7e60e1b204",
+          "diagnostic_sha256": "cc7d60b568682d203f9c85b8d399981dbd041d70658cc84abe8228d85ee8bc76",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-104-None",
+          "exit": 0,
+          "source_sha256": "a38c33bea6147113936f8cd5c78d59fe76507ea621764fd76a21a7a0b5f3cc0d",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-105-None",
+          "exit": 0,
+          "source_sha256": "b5e0f3024a794e11ac5ac98799b372c5cff8be784ffc72381e1e2d6cbe68a7a5",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-106-None",
+          "exit": 0,
+          "source_sha256": "353fc609b4cd4cb7a8ce2549bbc9c6a4764789ff4c5c8766de681bb7043baf4c",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-107-function_byte",
+          "exit": 1,
+          "source_sha256": "b7834bdc70895144e9443acbcecf415db163c1817e2f4b21175f0a6329ccd4b4",
+          "diagnostic_sha256": "33793c6338cd4d3ea5ca1ca3546299144012989f2a6e690ae7ecf1a5a5a37a6a",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-108-return_type",
+          "exit": 1,
+          "source_sha256": "4d3ec8edf8fa2baddb808b54a5b60a1c75e58ad181cb6533bd306f999bfeba9b",
+          "diagnostic_sha256": "cf3784f1f643776171a05887436857cd224f0ed92c0bbe8501e726525164d98d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-109-list_byte",
+          "exit": 1,
+          "source_sha256": "8a0aa1b3ad47464ed33f529c8ebabc39cda33246e41e5cc7f2e98ff1e3e6cc60",
+          "diagnostic_sha256": "f433a1b73ff2945385bdb033fda1a71c1954227d667c669b1f25395d7f4e23bf",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-110-contract_flag",
+          "exit": 1,
+          "source_sha256": "5d607537fe54056c1722998031e2478582df5a862435a07a004a81d10d9db077",
+          "diagnostic_sha256": "a42c8fa850c252fa02d025dd4eee43fb0a77381010e9c8e0f24d6c9d91eb50a9",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-111-unreachable",
+          "exit": 1,
+          "source_sha256": "047c962ec0cf1f2e01517b7acc86fb6d8bb4e7a96d937fc5f0d17a233a4a99df",
+          "diagnostic_sha256": "0dbfd4b8c2c55d7f2ec18577c9bec47033b19b0f128604a23c4c9658816d23c5",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-112-None",
+          "exit": 0,
+          "source_sha256": "e2847e1f523d9f46edb6bd25cb0fcf8258e04479753beb6abdcf72b9d0c0b1ec",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-113-None",
+          "exit": 0,
+          "source_sha256": "181f611e715bada219907945b07f1a366611365732e51f08b52b0d5fab0f6767",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-114-None",
+          "exit": 0,
+          "source_sha256": "abd34dd088493f7afd82b3c017af73e92a2cc8bf5166bf5a7bdd9a2ba28696e0",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-115-function_byte",
+          "exit": 1,
+          "source_sha256": "84c299c46ee77b6d3cbc9aed6395d519f7371fd4f1da47d6aa5c1bfa29d3ebc2",
+          "diagnostic_sha256": "90f03365dadebe64d22504b5595b060617731dce266c30894a5c6043d4641ae1",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-116-return_type",
+          "exit": 1,
+          "source_sha256": "ccc198a98d204e72d46259de3aa42dfe85fb1e817529abd2855471d613045956",
+          "diagnostic_sha256": "764c9032cd524355c1bbf54f52daac12aace47debd77a6d226215d8a90f5862c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-117-list_byte",
+          "exit": 1,
+          "source_sha256": "258f6fccabc7a2daca66e454e247dfdb073939980e70a9e6f70c973e3b5eaaf8",
+          "diagnostic_sha256": "31489c7e0904ecff44933ad7cab9659310824ec64712d507248d32c3cbc82f4d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-118-contract_flag",
+          "exit": 1,
+          "source_sha256": "9df6c02ff8bd29d5169aacaafd9b2092ed433ba354c20227c43add33776e31d1",
+          "diagnostic_sha256": "b19d471123c52492710442835e455f0e89ad375ac226fb5c92de233383013592",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-119-unreachable",
+          "exit": 1,
+          "source_sha256": "0819740eb2abfedde964b200c1a27e188a05f3ddc3ea0764086b01b0ef4088cf",
+          "diagnostic_sha256": "cb119f82273f1cfbed73351b0f69bd2da4cbe332668fe43ffde2692e5faa71ba",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-120-None",
+          "exit": 0,
+          "source_sha256": "758d9f2da81268fc40cc7c64b0728bd822548c6380ae7139818d48176823da73",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-121-None",
+          "exit": 0,
+          "source_sha256": "7bc9fb2591184e3ef6219798cf7250116937bfed4dbd12a30da61dbc9cc4a1e0",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-122-None",
+          "exit": 0,
+          "source_sha256": "d9483f72985d0dd74fbe22afbd9bf8257fc4aa7190feb07e32d90a8e738d6ce6",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-123-function_byte",
+          "exit": 1,
+          "source_sha256": "715ab128e302c9abd244433ac7c0e9d4828675bcc89e5b36b8251b47364e6e7d",
+          "diagnostic_sha256": "321c77448a76807e12f6cf4a1c5f0d21f62df7c66f55dd5b9c031e83117f7f7d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-124-return_type",
+          "exit": 1,
+          "source_sha256": "6069f51fab95b63ee0c54f4964c568dd92ed87e1e570b50a01b1b447ddad9483",
+          "diagnostic_sha256": "ccd883076362991d1bf5630f4b043cc4edbbc523dc36a2914641a5ab4cfddfdc",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-125-list_byte",
+          "exit": 1,
+          "source_sha256": "01e40738e6ac63a85af0980d680a00b0b4ad3534138689182e2922bec8cea433",
+          "diagnostic_sha256": "78ceeaee73cd463025e722e7dd1304c8e3be66ed76c7b704dffac176073fe33b",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-126-contract_flag",
+          "exit": 1,
+          "source_sha256": "c119ba1b43d09bfbd769062f795495a20c139e449563395170639733210ea82b",
+          "diagnostic_sha256": "65aa70b5684ee59422c0868bb5704e729f05e6a55d1dfe7dce3b5e87d0b4d736",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-127-unreachable",
+          "exit": 1,
+          "source_sha256": "8e4c57257395dc2660706cb478e05c46767fa5eb359381167f5dcab7533a7c52",
+          "diagnostic_sha256": "0f22c161e4046946b8fb4d6e49c481036f61129c1f237fd60c9e0d2f689e0bdc",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-128-None",
+          "exit": 0,
+          "source_sha256": "12783278087956059dfb473b6f8df7dc80e7b57350ca970af14ee7045a85098e",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-129-None",
+          "exit": 0,
+          "source_sha256": "63b4eca90c880ce1b863c5256d3d6f29cffcb0b8b7009653e2a3e26db5aa3275",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-130-None",
+          "exit": 0,
+          "source_sha256": "b69ee557ed5816704aa2ef7a866b38a259ad0355535f9163f7cfdd80614b1b22",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-131-function_byte",
+          "exit": 0,
+          "source_sha256": "2ea46503aa8b87515b793481ccbf9c23295be6c16aa9db409e8551475f6cc788",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-132-return_type",
+          "exit": 1,
+          "source_sha256": "a8ece9c6d14f1300e886033cb4247c6a87a5cd060649e4ca40e1a53205e7aba6",
+          "diagnostic_sha256": "d3bb445cbf3f1bce338f7b3b14cfc6f139cb9ad7b901e8c50458acb7b0f4af59",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-133-list_byte",
+          "exit": 1,
+          "source_sha256": "9d6efe6115fbd26f202db57953df2aa1b7c1743db04eefd00100fdff11c0808e",
+          "diagnostic_sha256": "91f8ce4981fb38437230a23dcdd379d706cb1dded0604797ad1d82ba9f31c6c3",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-134-contract_flag",
+          "exit": 1,
+          "source_sha256": "a27081f1aa065b1a08f7cf6adac167bd3199931a24184ef0dbc45110de1e6744",
+          "diagnostic_sha256": "553f5321219698f9d5687e27f826d9d63d5cf0c78c5a9b2e374e0f18695c1aae",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-135-unreachable",
+          "exit": 1,
+          "source_sha256": "e693ad2891d77040c9b2cd2deb55a524f7077449db3158b676e3f5445cdd691f",
+          "diagnostic_sha256": "214778b756ce1f6de09023befc2c7ae7bb49c2952a10fa0995a0a4815f223cc7",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-136-None",
+          "exit": 0,
+          "source_sha256": "f4708c6506eebb14d2f07a0aa52d131f0b0aaa84eb37f8de627ab4036ca0b33d",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-137-None",
+          "exit": 0,
+          "source_sha256": "031c205235ca8e3427fc58a8c7f38867dc458eebb38c0164f3285173991aa222",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-138-None",
+          "exit": 0,
+          "source_sha256": "1760a542e9634999dc3eadaf5c6ff003a497963d238595aa165c5067bf7f57e4",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-139-function_byte",
+          "exit": 0,
+          "source_sha256": "4c177e0279f2610a3a2e1e79df4198f79b11427a07237ee63e589e8ef1d2cad4",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-140-return_type",
+          "exit": 1,
+          "source_sha256": "6659118ef4c3fbf502e97b706d5190bbdfe28f1bba2233988605bd7f294c5d91",
+          "diagnostic_sha256": "2e777563ab82779751e573cb70268c817af43cd906f0695286b0eeb3c251ffad",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-141-list_byte",
+          "exit": 1,
+          "source_sha256": "d85f67b10623eb6be46b63c985a1041d080c4aaa60d7731f46bbb6899f0befb1",
+          "diagnostic_sha256": "7f46bade59cb6aaa494d8eec848cc778eeac132393a32da9ebacadfa68c8bfce",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-142-contract_flag",
+          "exit": 1,
+          "source_sha256": "a81e17881f9a54e04df4e3f5c5f676b31ac0a964b91bc2f61e95b08bdd83f96f",
+          "diagnostic_sha256": "93c7f92b0a689db4e8bff9c266737acce80ebfc1f9ce058c149308ba08f6913c",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-143-unreachable",
+          "exit": 1,
+          "source_sha256": "16a9428a5e683765f752a1cb421b00a092f38bd21afb340af5d895963bb36702",
+          "diagnostic_sha256": "24140983c98e8466d92517897852e079f0932a6d09bf7423801c8f9333799816",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-144-None",
+          "exit": 0,
+          "source_sha256": "ba240d9a47bafa13ae968efc4b5266a90af6999d6f8cdd0e7db88752af5f3e44",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-145-None",
+          "exit": 0,
+          "source_sha256": "1db4e8a0e9fc4c2eeae3f545457857ef64f94b5c2130033fe313b9cc134d9c12",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-146-None",
+          "exit": 0,
+          "source_sha256": "bd194e54397d874477d73e238e2fd6c69f105e9ba55cea96a085dfb6b576c20c",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-147-function_byte",
+          "exit": 1,
+          "source_sha256": "60698787398b85b22a0a959c05303565cafcaa16341b2b09f85c1753571e3352",
+          "diagnostic_sha256": "dbda41db67acdf55f768112ac55c4fd84d47e1cb4b54b13ecc689aa792c15bbf",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-148-return_type",
+          "exit": 1,
+          "source_sha256": "5e6b59180f4e031cd29134f14667e85887d8e4d0a10df88dbe3802028adfb192",
+          "diagnostic_sha256": "77797e42c6f3740da36c4d23705a76010c6fb271fff0e18654bbae0c491a0eed",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-149-list_byte",
+          "exit": 1,
+          "source_sha256": "18a375353bbc8fbd189e717a59347980b194ab309f6ac01c93776ae95d73548f",
+          "diagnostic_sha256": "dfdf1ef8ec920aa9212e125d5fd6d0ae75df60230a25f6ada2cc76497828cb57",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-150-contract_flag",
+          "exit": 1,
+          "source_sha256": "3f5af17a9ea04d20e808b5b4bd73913fabdae0600c74d569ae26818fcb438a42",
+          "diagnostic_sha256": "a42c8fa850c252fa02d025dd4eee43fb0a77381010e9c8e0f24d6c9d91eb50a9",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-151-unreachable",
+          "exit": 1,
+          "source_sha256": "f508eee56be9e4c186c47e8c2c73cf2a27c80d63a77f1040cc4f6e383701f2eb",
+          "diagnostic_sha256": "fcde9090aaa373b0a262393c831119cb59f996d5e0c8a3993a2e0a9c4c40dd8f",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-152-None",
+          "exit": 0,
+          "source_sha256": "781a88240238e8ba1ddcd228f23bf3016d41ecf6a46cbef08b1e804ee75d19f3",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-153-None",
+          "exit": 0,
+          "source_sha256": "6bd2f98e53fbacfa0802e1c5d93e277a93ca5721d9fbdf9dbf490bf80e8c4dad",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-154-None",
+          "exit": 0,
+          "source_sha256": "8cc658cc4c30f3d50d6f7448decee1808399dbb8b2767da0cb7569ecf6b1e077",
+          "diagnostic_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-155-function_byte",
+          "exit": 1,
+          "source_sha256": "b067a83390c1b3fdf9f0b40bd511ad96b70fe603983dfddc6b2c3abbcf5a1f24",
+          "diagnostic_sha256": "7fe9b5beaf2be673f67108684be17ff3c444493dc9e30afe9513f0eb49159733",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-156-return_type",
+          "exit": 1,
+          "source_sha256": "d36336c69aae7855d51a92767d056b7e22e666c47e81d2594b7ceb6e6ebd3724",
+          "diagnostic_sha256": "7c325c6db7429556e7ac8cf3c6fee800975d0052400b88fc24321dc3d8278ad2",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-157-list_byte",
+          "exit": 1,
+          "source_sha256": "9b95ece171ae04048e1d434d3f9b2542ca7ff2c14b7b6e9dfcae7280e9903092",
+          "diagnostic_sha256": "17c65b5a78428b82523a84833d192b950c2d4256d367bb7913e0d4fdb8ba6c22",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-158-contract_flag",
+          "exit": 1,
+          "source_sha256": "946026fa95112070d9daf166700e95b63889ecc228c238f997be11fcf1ea666e",
+          "diagnostic_sha256": "7afab2fae00374c9b7432419861a8b1ad4a96e38f7607213d8d60e9d847cba9d",
+          "full_diagnostic_identical": true
+        },
+        {
+          "name": "semantic-159-unreachable",
+          "exit": 1,
+          "source_sha256": "2e16124bb96e1a01cdf113379c8f3dfecd8c863ce43712ade52d5ca30f1c6507",
+          "diagnostic_sha256": "8549611b15f40d03a414ef0a0b94aa7c6c799ddd0e810caac0ddb737d9cbb045",
+          "full_diagnostic_identical": true
+        }
+      ],
+      "count": 160
+    },
+    "bbc_build_replay": {
+      "authority": {
+        "component": "native-driver-bits1",
+        "semantic_root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+        "native_artifact_digest": "c8f024f4eccaf8a8837c205664a6624fd57da52796ced0b437bdcadf128c17cd",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "cases": [
+        {
+          "target": "windows",
+          "input_sha256": "c09b2e38b9087bfc29603eaeecae7413600cdcd4e46617357119a0b92ff354a7",
+          "native_build_exit": 2,
+          "stdout_hex": "",
+          "stderr_hex": "",
+          "declined_without_validity_claim": true
+        },
+        {
+          "target": "android",
+          "input_sha256": "fa1c0cd563d5f0d3af79de4bab53a4e8016b5286c3280184ac8e0200e956b8a7",
+          "native_build_exit": 0,
+          "stdout_hex": "",
+          "stderr_hex": "",
+          "artifact_bytes": 5880,
+          "artifact_sha256": "38c86bdd228a62304e4f6f9d22c9f99a0762d9511e358b7fec2cafeb125d6c2e",
+          "program_exit": 0,
+          "output_hex": "48656c6c6f20576f726c64210a",
+          "device": "Pixel 8 Pro API37 ARM64",
+          "binary_file_transport": true
+        }
+      ],
+      "scope": "Native store verification, lowering and executable packaging. Build snapshots prepared with generic bootstrap APIs; not a complete Python-free source compilation workflow."
+    },
+    "bbc_broader_replay": {
+      "authority": {
+        "component": "native-driver-bits1",
+        "semantic_root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+        "native_artifact_digest": "c8f024f4eccaf8a8837c205664a6624fd57da52796ced0b437bdcadf128c17cd",
+        "requested_authority": "xax",
+        "actual_authority": "xax",
+        "fallback_occurred": false,
+        "fallback_reason": null
+      },
+      "cases": [
+        {
+          "name": "hello-windows",
+          "root": "caa22d797d48216a837f0159be4abc605543fee12a0242f6df6beed0865898b4",
+          "target": "windows",
+          "input_hex": "",
+          "output_hex": "48656c6c6f20576f726c64210a",
+          "native_build_exit": 2,
+          "diagnostic_hex": ""
+        },
+        {
+          "name": "hello-android",
+          "root": "bb5883724d90459470abd2bc46f2e24c6e162784a7c87feee375f0c3838b217a",
+          "target": "android",
+          "input_hex": "",
+          "output_hex": "48656c6c6f20576f726c64210a",
+          "native_build_exit": 0,
+          "repeat_artifact_and_provenance_identical": true,
+          "artifact_bytes": 5880,
+          "artifact_sha256": "38c86bdd228a62304e4f6f9d22c9f99a0762d9511e358b7fec2cafeb125d6c2e",
+          "program_exit": 0,
+          "exact_output": true,
+          "device": "Pixel 8 Pro API37 ARM64"
+        },
+        {
+          "name": "nested_math-windows",
+          "root": "0b0f1b707cd614d1f80f837f640c93cf91ce4f2a1ff8c04a7d5c714c7ba4a4d6",
+          "target": "windows",
+          "input_hex": "5a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "output_hex": "a0",
+          "native_build_exit": 2,
+          "diagnostic_hex": ""
+        },
+        {
+          "name": "nested_math-android",
+          "root": "afeb1403f83320c60bab3e039c5f06bc1f62985bfb7d277a4d2404b2fc94f1ad",
+          "target": "android",
+          "input_hex": "5a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "output_hex": "a0",
+          "native_build_exit": 0,
+          "repeat_artifact_and_provenance_identical": true,
+          "artifact_bytes": 3540,
+          "artifact_sha256": "94d3ecc033bb62e077b4496b03027a342cef827b1a3707e47654a9c7a2638feb",
+          "program_exit": 0,
+          "exact_output": true,
+          "device": "Pixel 8 Pro API37 ARM64"
+        },
+        {
+          "name": "checksum_four-windows",
+          "root": "faf9aa21a12e5aee852164de7bb4e9e0e0b189895987c9814a3f4a496ad8a472",
+          "target": "windows",
+          "input_hex": "08152237",
+          "output_hex": "76",
+          "native_build_exit": 2,
+          "diagnostic_hex": ""
+        },
+        {
+          "name": "checksum_four-android",
+          "root": "cc198aadaf5d592312f66e550c608777070ec7f41826a368beabb034d656c552",
+          "target": "android",
+          "input_hex": "08152237",
+          "output_hex": "76",
+          "native_build_exit": 0,
+          "repeat_artifact_and_provenance_identical": true,
+          "artifact_bytes": 3496,
+          "artifact_sha256": "54fcef3fd19fe9f9b131a213827242490942de6bd20e10f8bb8aad8422d3aeb5",
+          "program_exit": 0,
+          "exact_output": true,
+          "device": "Pixel 8 Pro API37 ARM64"
+        }
+      ],
+      "scope": "Prepared snapshot native verification/lowering/executable packaging; twice per workload and target. Snapshot setup remains external unchanged generic SDK."
+    }
+  },
+  "preserved_bbc_evidence": {
+    "evidence\\backend_build_cache.json": "411e9ba4792ce268a4a3d6544f40fcf030a755a7e35208f6acd5838a671c7873",
+    "evidence\\bfx_android_importer.json": "d95cb43a426b27316218f26e6989bd6a525c801b112fbfd1b50cb0743f744f9d",
+    "evidence\\bfx_migration.json": "da7e7e8ace07226cb517dedd3b7201ab8d6924e6b724322ee812d4bb89a7428e",
+    "evidence\\bfx_retirement.json": "af93874bbbfba8e918ad4388d7c177371f95fb1a03450947b7609f91e03b200f",
+    "evidence\\bfx_v2_optimization.json": "b10b6bc81883f55645fb88e4a24b605f6bd4d2acbaf33d8dcaf37aacac30510f",
+    "evidence\\bfx_v3_arithmetic.json": "204be68527086d91c5f4a17964a28de6aae48bada346afc4cdebd8815f072e75",
+    "evidence\\bfx_v3_measurements.json": "6a5be297356daf4c5a606f7493abc7e50290ad2e49e9ce7f14626991f7c0247d",
+    "evidence\\bfx_v4_call_controls.json": "136104fc816ff991eb71a7ded1679dc30556dde34677d9bce9b6123baefec8a2",
+    "evidence\\bfx_v4_measurements.json": "4237ad2cac2c44ccdd6d20ffe75b3c8136747cfc00d1302e06071e2599719709",
+    "evidence\\bfx_v4_movement.json": "6b473db541ca3c2d36686e13185afd84cff34997010f9c3fe23de270474545ee",
+    "evidence\\bfx_v4_native_boundaries.json": "0c4ec8f7e3120ef898cfca29d4f10fe6d3c4c7217874dd6bc5d1df49288ce1e7",
+    "evidence\\bfx_xax_import.json": "a36b219b946f9113a4be8346c5356524b1a7e10c63ef1a735657a56f632e3eda",
+    "evidence\\brainfly_brainfry_followup.json": "6b02fd4393cb355479aa73a49f2021eb9923cf036c4516853a5a2c40a8873355",
+    "evidence\\build_runtime_resources.json": "dd24aa1b587624b4233eb8aca4982c2287f51f8091855ac34e13ce67d6daa382",
+    "evidence\\canonical_bfx.json": "76b83fa69be48083edda84ba57b4568143c42708a9c3442233736c282c0cdce6",
+    "evidence\\competition_pilot.json": "7d67f74a41a4697f98b05313d37321af5c151c45b05cd9bee5c48100de02bf05",
+    "evidence\\format_cleanup.json": "9a3874fc4c357bd5ef6fe31713ee30c205e87834905886250773ac0ebf640aeb",
+    "evidence\\frontend_capacity_gate.json": "373c9a1ae361539f6748c700605c920fe7940510185386d2e89693becf4b32a2",
+    "evidence\\frontend_counter_android.json": "0816f4a8236b2a601dd33752880f1fe677344b2d1331d106d35259adf23249c8",
+    "evidence\\frontend_counter_profile.json": "6dcc9f67097f5a715dbaf0a0d130d1cf2b93430b2f8fb6cadd7018d534249b81",
+    "evidence\\frontend_counter_windows.json": "57884d07519a8da09a8d78c40b5d37663ccbff80cb55009cca8fff896e9db9c3",
+    "evidence\\frontend_filter_android.json": "5ec718eeb4a2a991e34e4dd3277bd2bfc2fd9a67b3ddc4fca1704f6edf726dad",
+    "evidence\\frontend_filter_profile.json": "3549521bd5d56f3bde6566e0fde0b31c8a2fd93a22d9be062df2174f9fb6599b",
+    "evidence\\frontend_filter_windows.json": "87228c9802e2f84ec221bb4488127bdc7aaace33ebd1f9274e549c8e7cb40d9e",
+    "evidence\\graph_verification_profile.json": "05d4ed7fe4823c5a330c08628025094c4c8bf8427b2cfde66f55e7248268fdbe",
+    "evidence\\modernization_baseline.json": "b9a6411d6c6abb33cc41684ba187e45e3b62b56c6c566af393ed0a52f1106883",
+    "evidence\\repository_cleanup.json": "f22455b91f7e8928f3d35ee8b0bada851578fc1c9cc6d7f9fcfdf4c8f87fe481",
+    "evidence\\scalability_capacity_audit.json": "86a8625470a85a558ce84a11e75aedfde48e64cd9fb675cb289a5e0cbf0a4b35",
+    "evidence\\source_capacity.json": "606dd06e71e71197b37a3acbb96dbff7f3e18ced9148f07dc10ee5ce7db85f59",
+    "evidence\\source_capacity_android.json": "c4d8c43abd4cd25ef8e9d3979d6cf1347905e5fb94719e215e16edce175e530c",
+    "evidence\\standalone_android.json": "12a7c5ca3d000e4a53977df0badc927d961b6a6469749bf563b3083aaa0d7735",
+    "evidence\\standalone_native_replay.json": "394742c1af05a6675df35757ce168d189ac83cf4d30305d9b054b7f8fbb4751e",
+    "evidence\\standalone_windows.json": "ff2fdcb226de2a91c0e2b7e82a68f47d2d1327c9697d847a6ea94146fa6d5148",
+    "evidence\\streaming_frontend_bootstrap.json": "4fdf92fb1f2f217e24b895988c5f47f279695296c135dced3c5ab7d3a3988f3c",
+    "evidence\\streaming_frontend_prototype.json": "75fda1cdc92ca1f943ea672dcabeb46b863df33a4c907024ea133b2b06ed4324",
+    "evidence\\streaming_frontend_verification.json": "476ecc4ba2140bf71d3a78697e6b9b11b57f8b383ae3c084ca185053f918e335",
+    "evidence\\stream_runs.json": "e1d8c7192b114ebb6f492fd49128aecaf17c7e4542e02d060a53b749f9f29654",
+    "evidence\\unified_compilation.json": "360ffa0f18dcb80d98450d6dd16cde1f33a6a0d2214b68c5f312d58050049449",
+    "evidence\\wide_bootstrap.json": "2dafc7dfa543ed08594e347be55dc5543879036da53a2a07c7451a277ad0b2c8",
+    "evidence\\wide_final_audit.json": "f473574f22dc107162a62332765280e02b82e0b18ac26b0277ce23f302867d4d",
+    "evidence\\wide_profile.json": "9d6239b39303e9ad3a5171db92004bfb3411f1237269dc656767089233f4af33",
+    "evidence\\wide_tape_reset.json": "ccd7c3539117091159c668552adfe9f75ce58148df23b34f7de5daf6308a13dc",
+    "evidence\\windows_hash_host.json": "0a7fe2e05713c53b8a59b3212496de431a4adc75ff9ff3f56d21901107e508f8",
+    "evidence\\windows_native_driver.json": "f7a59cb75543b257aa428cd5c3a3bd2aaa172872f3b0cfcfb50d064f892b65b9",
+    "evidence\\windows_native_driver_followup.json": "fb0fb27cb89a7e19247fe21c3d0c66d3b87f291014407685a3c7e76d938eb77e",
+    "evidence\\windows_native_resource_diagnosis.json": "cd6f16a12e676ee270023601c052a5cf99303d13345492e507f090fb6bd00486",
+    "evidence\\windows_native_verification_profile.json": "2fe2b73f57b2735963502cc7f979b9c3998f715961b1b3bf9b0b2bd6d9d95cf8"
+  },
+  "tools": {
+    "author_frame_bits1.py": "0d666df43932b3276cd4c312348e72bd0c44d37bba0f9f2c2b3bec9d7cd24c00",
+    "live_driver.py": "76ae155c706fe5167e2d257786c11a71caba547bc23adfbea2215dbe0d32406b",
+    "prepare_bbc_cases.py": "8b8ef1d219d9f59d31650b1c024f78c2d3f6728e8b1d617c8269cd2b487d924c",
+    "prepare_bits_cases.py": "05e91c533d1e5c3841cd2a562e263ac74b86f8e5129db0f2d29e78c88d02e87d",
+    "prepare_extra_cases.py": "2d7187af046a69d5217a6706999a737117558327f80255660f8718d4609b9ec8",
+    "prepare_stack_cases.py": "d1e7c4f810a69d700c64ae1a18ce638214b608595cd6ed67f1da2414ebaba18d",
+    "publish_bits1.py": "6397c836666d6c501875c0bed64839af929cbcf94bf62e5f21eeddf2c4f1161b",
+    "query_frame.py": "fcc6884017a8e486bb0de424e382e2e68a8137854fdcb4e3e19abe50fa503bea",
+    "query_frame_small.py": "644619cb0901093618aad21f932977f005bb765640df015728a823f5dcf496bd",
+    "query_width.py": "837e11422de254a3bac9308b6302e5074d621bdab4260f2c9f8e08bc9bf5c0d8",
+    "replay_bits1.py": "c33392a9a95a9e0097f623a65c9ce6e10a8e4f1aceeb67880a6515950dd2ec84"
+  },
+  "limitations": [
+    "Prepared native snapshot build is distinct from source-to-native BBC compilation. Snapshot preparation and initial compiler bootstrap still use unchanged generic Python APIs.",
+    "Windows DLL/Android shared-library packaging, self-store/multiple-resource-callee coverage, common helper loading and complete native BBC command remain incomplete.",
+    "No new complete-source build, runtime, RAM or competitor speedup score. Bootstrap local proof/fragment reuse is not a fresh compiler measurement.",
+    "One-bit arithmetic and eight-bit frame arithmetic retain their previous rejection behavior; this change supports only one-bit bitwise operations."
+  ]
+}
