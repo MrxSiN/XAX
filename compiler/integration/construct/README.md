@@ -315,8 +315,16 @@ refuses what it does not recognise.
 | `Kind.PACKAGE` | `uleb(len(package name)) + name`, the module count and ranks, `uleb(0)` dependencies, the entry count and `uleb(len(entry)) + entry + uleb(rank)` per entry, then `0` features, `0` configuration and `0` capabilities |
 | `Kind.BUILD` profile | `uleb(PROFILE=1), uleb(HERMETIC_REPRODUCIBLE=1), uleb(0) optimization, uleb(1) verification, uleb(0) grants` |
 | `Kind.BUILD` trust policy | `uleb(TRUST_POLICY=4), 0x00, 0x00, uleb(0) algorithms, uleb(0) signers` |
-| `Kind.TARGET` | not encoded from the carrier: `builder.target` is the fixed platform target (`x86_64_windows_pe_target()`, a large operation/ABI body), so it is captured as authoring data the way the 2 880-byte namespace blob already is |
+| `Kind.TARGET` | not encoded from the carrier: `builder.target` is the fixed platform target (`x86_64_windows_pe_target()`; 129 bytes and no references), so it can be emitted as a literal the way the namespace blob is |
 | `Kind.BUILD` request | `uleb(REQUEST=2)`, the package rank, `uleb(len(release)) + release`, the target rank, the profile rank, `0` features, `0` configuration, then the requested artifact kinds |
+
+Checked against the reference's own constructors on the sandbox carrier: the module body is
+`08 00 01 02 03 04 05 06 07` (eight functions, ranks in order), the package body is
+`0f "xax_mcp_sandbox" 01 00 00 01 03 "app" 01 00 00 00` (name, one module at rank 0, no dependencies, the
+`app` entry at rank 1, and three empty collections), the profile is `01 01 00 01 00`, the trust policy is
+`04 00 00 00 00`, and the request is `02 00 03 "app" 01 02 00 00 01 01` -- package rank 0, target rank 1,
+profile rank 2, one `NATIVE_IMAGE` artifact. None of that is carrier-specific arithmetic: it is the same
+six encodings for the other carrier.
 
 The program root and the snapshot are not authored here: `resolve_packages` computes the root from those
 objects and `snapshot_store` writes the store, which is why 5b hands over to `xax_selfhost_resolve` and 5c
