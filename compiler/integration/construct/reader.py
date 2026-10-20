@@ -47,6 +47,8 @@ END = NODES + 8 * NODE_CAP
 FIRST = NODES + 12 * NODE_CAP
 NEXT = NODES + 16 * NODE_CAP
 SCRATCH = NODES + 20 * NODE_CAP
+NS = 0xE00000  # the embedded platform namespace blob (step 4)
+SCRATCH_CAP = 0x1000
 PNODE, PPHASE, PLAST, PMEMBER = SCRATCH, SCRATCH + 128, SCRATCH + 256, SCRATCH + 384
 ENODE, ECURSOR, EFIRST = SCRATCH + 512, SCRATCH + 640, SCRATCH + 768
 CAP = 32
@@ -82,8 +84,11 @@ def _imports(api, pointer):
     }
 
 
-def build_main(api, stdio):
-    """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier."""
+def build_main(api, stdio, on_tree=None):
+    """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier.
+
+    With ``on_tree`` the parsed tree is handed to that callback instead of being re-emitted; it receives
+    an environment of the node accessors, the byte helpers and the output writer."""
     proc_type, fs_type, mem_type = api.process_effect, api.filesystem_effect, api.memory_effect
     pointer_type, view_type = stdio.bytes_rw, heap_view_type(EXTENT)
     declarations = _imports(api, pointer_type)
@@ -136,6 +141,17 @@ def build_main(api, stdio):
     def store_out(offset, value):
         (memory,) = p.op(Operation.CHECKED_STORE_BITS_LE, (p["outp"], offset, value, p["mem"]), (mem_type,),
                          attributes=(1, 1))
+        p["mem"] = memory
+
+    def put_dyn(value):
+        """Write a computed ``b32`` as one byte."""
+        store_out(p["out"], p.op1(Operation.INT_TRUNCATE, (value,), B8))
+        p["out"] = add(p["out"], c32(1))
+        fail_if(p.cmp(IntCompare.UGE, p["out"], c32(OUT_CAP), B32), EXIT_OVERFLOW)
+
+    def st64(offset, value):
+        (memory,) = p.op(Operation.CHECKED_STORE_BITS_LE, (p["base"], offset, value, p["mem"]), (mem_type,),
+                         attributes=(8, 1))
         p["mem"] = memory
 
     def eq(value, constant):
@@ -588,9 +604,27 @@ def build_main(api, stdio):
         p["fs"] = p.op(Operation.CALL_FOREIGN, (p["fd"], p["fs"]), (B32, fs_type), entity=declarations["close"])[1]
         fail_if(p.cmp(IntCompare.NE, p["written"], p["out"], B32), EXIT_SHORT_WRITE)
 
+    def environment(proc):
+        """The parser's node accessors and output writer, for a resolver built on this front half."""
+        return {
+            "p": proc,
+            "get": get, "put": put, "at": at, "add": add, "sub": sub, "mul": mul,
+            "ld8": ld8, "ld32": ld32, "st8": st8, "st32": st32, "st64": st64,
+            "byte": byte, "load_out": store_out, "in_byte": raw_at,
+            "out_byte": put_out, "out_dyn": put_dyn, "fail": fail_if,
+            "c32": c32, "eq": eq, "ne": ne, "lt": lt, "cmp": proc.cmp,
+            "KIND": KIND, "START": START, "END": END, "FIRST": FIRST, "NEXT": NEXT,
+            "OBJECT": OBJECT, "ARRAY": ARRAY, "STRING": STRING, "INTEGER": INTEGER,
+            "IN": IN, "OUT": OUT, "OUT_CAP": OUT_CAP, "SCRATCH": SCRATCH, "NS": NS,
+            "EXIT_SYNTAX": EXIT_SYNTAX, "EXIT_OVERFLOW": EXIT_OVERFLOW,
+        }
+
     def normalize():
         parse()
-        p.if_(eq(p["code"], 0), lambda _p: emit_tree())
+        if on_tree is None:
+            p.if_(eq(p["code"], 0), lambda _p: emit_tree())
+        else:
+            p.if_(eq(p["code"], 0), lambda _p: on_tree(environment(p)))
 
     guard(read_input)
     guard(normalize)
@@ -599,21 +633,21 @@ def build_main(api, stdio):
     return p.function((B32, proc_type, fs_type, mem_type)), tuple(p.graph.objects.values())
 
 
-def build_reader():
+def build_reader(name=b"xax-construct-reader", on_tree=None):
     from xax_build import (ArtifactKind, build, build_profile, build_request, package, resolve_packages,
                            snapshot_store, trust_policy)
     from xax_compiler import Kind, StoreReader, object_with_refs, verify_store, write_store
 
     api = win32_kernel32_api()
     stdio = win32_stdio_api(api)
-    entry, objects = build_main(api, stdio)
+    entry, objects = build_main(api, stdio, on_tree)
     platform_types = (*api.types, *api.symbols, *stdio.types, *stdio.symbols)
     module = object_with_refs(Kind.MODULE, (entry,))
-    app = package(b"xax-construct-reader", (module,), build_entries=((b"app", entry),))
+    app = package(name, (module,), build_entries=((b"app", entry),))
     target, profile, policy = x86_64_windows_pe_target(), build_profile(), trust_policy()
     request = build_request(app, b"app", target, profile, requested_artifacts=(ArtifactKind.NATIVE_IMAGE,))
     everything = (*objects, *platform_types, module, app, target, profile, policy, request)
-    snapshot = snapshot_store(resolve_packages(request, everything, policy, b"xax-construct-reader-v1"), everything)
+    snapshot = snapshot_store(resolve_packages(request, everything, policy, name + b"-v1"), everything)
 
     available = {item.cid: item for item in snapshot.objects()}
     reachable: dict[bytes, object] = {}
