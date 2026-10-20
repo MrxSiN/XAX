@@ -305,6 +305,26 @@ remains the first move if the build cost becomes a problem again.
 `TRAP` terminators and `CALL_GROUP_MEMBER` are not encoded yet; neither carrier uses them, and the walk
 refuses what it does not recognise.
 
+### Steps 5b/5c: what is left (scoped, not implemented)
+
+`xax_construct.construct` adds six objects after the functions, and none of them is a graph:
+
+| object | encoding the program must reproduce |
+|---|---|
+| `Kind.MODULE` | references = every built function CID (sorted, deduplicated); body = `uleb(count)` followed by the ranks `0..n-1` |
+| `Kind.PACKAGE` | `uleb(len(package name)) + name`, the module count and ranks, `uleb(0)` dependencies, the entry count and `uleb(len(entry)) + entry + uleb(rank)` per entry, then `0` features, `0` configuration and `0` capabilities |
+| `Kind.BUILD` profile | `uleb(PROFILE=1), uleb(HERMETIC_REPRODUCIBLE=1), uleb(0) optimization, uleb(1) verification, uleb(0) grants` |
+| `Kind.BUILD` trust policy | `uleb(TRUST_POLICY=4), 0x00, 0x00, uleb(0) algorithms, uleb(0) signers` |
+| `Kind.TARGET` | not encoded from the carrier: `builder.target` is the fixed platform target (`x86_64_windows_pe_target()`, a large operation/ABI body), so it is captured as authoring data the way the 2 880-byte namespace blob already is |
+| `Kind.BUILD` request | `uleb(REQUEST=2)`, the package rank, `uleb(len(release)) + release`, the target rank, the profile rank, `0` features, `0` configuration, then the requested artifact kinds |
+
+The program root and the snapshot are not authored here: `resolve_packages` computes the root from those
+objects and `snapshot_store` writes the store, which is why 5b hands over to `xax_selfhost_resolve` and 5c
+to `xax_selfhost_writer` instead of deriving a root in this program. Both carriers' `package` sections are
+already in the reader's tree, so no new parsing is needed; the work is those six encodings plus the
+hand-over format the self-host components take, after which the byte oracle moves from the listing to the
+two store roots.
+
 ## The plan
 
 | Step | Content | Oracle |
