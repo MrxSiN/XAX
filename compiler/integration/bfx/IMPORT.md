@@ -12,6 +12,10 @@ construction interface, verified, tested privately, then saved with
 `Workspace.save`. The construction carrier is external, not maintained
 source. Subsequent source changes require expected-root workspace transactions.
 
+The importer accepts strict v1 and the explicitly versioned
+[v2 CLEAR extension](CLEAR.md). Only v2 permits payload byte zero; v1 output
+stores stay exact. The standalone `bfx.xax` validator remains v1-only.
+
 The current [eight-byte tape reset](WIDE_RESET.md) retains the complete
 65,536-byte reset and all checked accesses. Its canonical transaction,
 correctness runs and absolute timings have separate evidence.
