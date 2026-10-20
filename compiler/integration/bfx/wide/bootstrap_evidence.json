@@ -1,0 +1,395 @@
+{
+  "date": "2026-10-20",
+  "bbc_parent": "655e7be",
+  "xax_parent": "ab25b75f7cc0f03d06aae3cab7d84327c59c5e37",
+  "generic_bootstrap_pin": "3dcb358e48b0f9a45b8cb72767c1aa600e55cd78",
+  "native_compiler_host": false,
+  "device": {
+    "model": "Pixel 8 Pro",
+    "api": "37"
+  },
+  "competitive_objective": "NOT YET ACHIEVED; no counterbalanced performance score changed.",
+  "status": "EXECUTED three native own-source component cycles, not native XAX compiler-host self-compilation",
+  "cycles": [
+    {
+      "generation": 0,
+      "source_sha256": "559cd796d73928c869de1dcd8c6254d10be7af73ecdfa6db8fdc7b71bf228977",
+      "record_sha256": "715b14254bdd7c54afc6ca3cd55f0970a8845513435b3338a611b2c93e4ad171",
+      "store_sha256": "099f3388eb83216880a1de30e279d6efd942c3cf1ff9072e67c4c493ce4fbbc7",
+      "core_root": "52522db94fe79a908cf4178d7cf8314439ffa32ee63579763fc357f9e6d71c8a",
+      "host_root": "566f0b59d59fb66e2ac169450fafef328401b4782cc63166090b89fe6cb88387",
+      "dll_sha256": "c98b255711a5c45cfeb1c3aae27373fa2397070be53ede4b48b1d167572e7afd",
+      "so_sha256": "de9ff1d4410b3b4c79f8447bc887c0c2faa7709baf829e35dd222ba86bb0d565",
+      "dll_bytes": 103424,
+      "so_bytes": 115656,
+      "both_targets_own_source_passed": true
+    },
+    {
+      "generation": 1,
+      "source_sha256": "559cd796d73928c869de1dcd8c6254d10be7af73ecdfa6db8fdc7b71bf228977",
+      "record_sha256": "715b14254bdd7c54afc6ca3cd55f0970a8845513435b3338a611b2c93e4ad171",
+      "store_sha256": "099f3388eb83216880a1de30e279d6efd942c3cf1ff9072e67c4c493ce4fbbc7",
+      "core_root": "52522db94fe79a908cf4178d7cf8314439ffa32ee63579763fc357f9e6d71c8a",
+      "host_root": "566f0b59d59fb66e2ac169450fafef328401b4782cc63166090b89fe6cb88387",
+      "dll_sha256": "c98b255711a5c45cfeb1c3aae27373fa2397070be53ede4b48b1d167572e7afd",
+      "so_sha256": "de9ff1d4410b3b4c79f8447bc887c0c2faa7709baf829e35dd222ba86bb0d565",
+      "dll_bytes": 103424,
+      "so_bytes": 115656,
+      "both_targets_own_source_passed": true
+    },
+    {
+      "generation": 2,
+      "source_sha256": "559cd796d73928c869de1dcd8c6254d10be7af73ecdfa6db8fdc7b71bf228977",
+      "record_sha256": "715b14254bdd7c54afc6ca3cd55f0970a8845513435b3338a611b2c93e4ad171",
+      "store_sha256": "099f3388eb83216880a1de30e279d6efd942c3cf1ff9072e67c4c493ce4fbbc7",
+      "core_root": "52522db94fe79a908cf4178d7cf8314439ffa32ee63579763fc357f9e6d71c8a",
+      "host_root": "566f0b59d59fb66e2ac169450fafef328401b4782cc63166090b89fe6cb88387",
+      "dll_sha256": "c98b255711a5c45cfeb1c3aae27373fa2397070be53ede4b48b1d167572e7afd",
+      "so_sha256": "de9ff1d4410b3b4c79f8447bc887c0c2faa7709baf829e35dd222ba86bb0d565",
+      "dll_bytes": 103424,
+      "so_bytes": 115656,
+      "both_targets_own_source_passed": true
+    }
+  ],
+  "procedure": "Native BF source filtering and preceding native BF packing coordinator execute own source; native importer emits exact canonical store on both targets; existing expected-root view/interface transactions specialize and bind the private core; full SDK verification and both generic native backends rebuild the next coordinator; both new artifacts reproduce own-source record.",
+  "canonical_publication": {
+    "sources": {
+      "import_bfx.xax": {
+        "root": "237c52b4ab2722ed534f870f3fcde7e2f5ae57766f2bc55213e0859c06a7705c",
+        "sha256": "a4188a2d46554742768216b29f7f5aa11c7152ad98c0a9bea94b001b54c2bf2d",
+        "bytes": 431694
+      },
+      "source.xax": {
+        "root": "727d0ae094705c2db6ca317160a15590414e3910d1706a92d302cf66162ce926",
+        "sha256": "a67991dbfc7a2493ffb48909066252f1548d60881fc6273aad3b053a50051e80",
+        "bytes": 242284
+      },
+      "pack.xax": {
+        "root": "566f0b59d59fb66e2ac169450fafef328401b4782cc63166090b89fe6cb88387",
+        "sha256": "3e309d112920e3685bc2641da51b5adf6798286204589a1dfea9d2146e33e86f",
+        "bytes": 544460
+      },
+      "transactions/source_seed.xax": {
+        "root": "02dea35a4e2dbd04b062cd0f0ab8df570a910b7664c776d8cbf3fc23326bfca7",
+        "sha256": "9e77b5f975a5f853250f6b912f9976d250ed17bc95def8fd1c3d4a9cd7228067",
+        "bytes": 242969
+      },
+      "transactions/pack_seed.xax": {
+        "root": "fbcc9987cce9326af2b943b62c3ad7587762d496035c401aef88c599ebcfddb0",
+        "sha256": "a459e62c21d32b8050efc3c9ecce3450218c30f9f52c18f1db942a7d035e1b92",
+        "bytes": 1328117
+      },
+      "transactions/runs_seed.xax": {
+        "root": "ea43aa3290a5b1d7df89f7c08dc7436e3a37eb03c415b76c433e02af9c350f9d",
+        "sha256": "b2d04de4b37df08b838f2a19e0e7067b76cdde09c29654fad16346369beb3288",
+        "bytes": 1319963
+      },
+      "transactions/packed_runs_seed.xax": {
+        "root": "2b0beceb4a6f71a226541d0cd81aaeda9d04eca038df8278cd1037a5549111e7",
+        "sha256": "099f3388eb83216880a1de30e279d6efd942c3cf1ff9072e67c4c493ce4fbbc7",
+        "bytes": 536327
+      },
+      "transactions/chunk_seed.xax": {
+        "root": "bd4b6002f48dd080241a65e35347f1c1276ccc67a0e7ec1113dd5acf3fb5ad70",
+        "sha256": "2d4c6ad105cf8e683d5b1c012e83adf9552cbdc28435e69a3480c45f4fbb555a"
+      },
+      "transactions/wide_decoder.edit": {
+        "sha256": "e8de49a496aca22ac8333a31bcb9a9a6602360631c91d849f005dcfced711a93",
+        "bytes": 4223
+      },
+      "transactions/wide_regions.edit": {
+        "sha256": "30473944cfab9aa78ce6c1ec94b6d2aa2be736435a9502d5b71b07a7714a46bd",
+        "bytes": 297170
+      },
+      "transactions/wide_importer.edit": {
+        "sha256": "f21a4188832c7c9ade76062f689e6223a4e9d9793a6228f1f9280cb5c1f1aded",
+        "bytes": 1826
+      },
+      "transactions/chunk_large_views.edit": {
+        "sha256": "44d8b3e3ae9bb703f8c1f5e1bb44dd5ab89bd9de157a9f8845bc6f49f95610ae",
+        "bytes": 248
+      },
+      "transactions/coordinator_four_args.edit": {
+        "sha256": "3f8ae670a340060f668715b123f341e0545e28eb303be3b8ffe99bf072490152",
+        "bytes": 239601
+      },
+      "transactions/runs_large_views.edit": {
+        "sha256": "0d26d37fa584dbe7e1760d549ca0f9f1b4cb1bfd18b7353b84495f6d86fe9199",
+        "bytes": 248
+      },
+      "transactions/packed_runs_large_views.edit": {
+        "sha256": "0f86bb16592d396b40b7bf925e30eb0ac8593ad786b57b6a68e28d70b897d588",
+        "bytes": 248
+      },
+      "transactions/runs_fixed_core.edit": {
+        "sha256": "8b0d6d90e59e51fd3eb1eb9c8939241301f49c35ae3a6848f181680b51c664c7",
+        "bytes": 527587
+      },
+      "transactions/pack_fixed_packet.edit": {
+        "sha256": "bd2b08b655210032382787ce0362156fb7b47d7f5cbe7337f038bc0ad55cd3ec",
+        "bytes": 1068191
+      }
+    },
+    "all_verified": true,
+    "all_transaction_chains_replayed": true,
+    "every_stale_replay_rejected": true
+  },
+  "verification": {
+    "preserved_old_bf": 11,
+    "preserved_old_evidence": 37,
+    "preserved_sha256": {
+      "bootstrap/frame_source.bf": "1b1f7d90c17414417c8622303244d424ccf6e30704ee6165c77f3161e0bd454f",
+      "compiler/compiler.bf": "d8170d895449cf00e971a052b6d5415d2c5f86585d982f826fa70c5127850d6e",
+      "compiler/optimize.bf": "6f1b09b2f7719ea80b90fe0a4def3c172714de964a7a9587ae2e64806442d177",
+      "compiler/pack_arithmetic.bf": "c117e100ebb4c91dce1f872517f1070af00aa175711ff74a9fd648b464fb5c35",
+      "compiler/pack_moves.bf": "bc906d771d3e7a31c35f753a7a9df7f33e6732b3534f24a953e179780def177b",
+      "compiler/stream_chunks.bf": "7a243960bcbde41b4b84f45e78075971b5ee29b60e9ca44e267ffbf3b554649b",
+      "evidence/bfx_android_importer.json": "d95cb43a426b27316218f26e6989bd6a525c801b112fbfd1b50cb0743f744f9d",
+      "evidence/bfx_migration.json": "da7e7e8ace07226cb517dedd3b7201ab8d6924e6b724322ee812d4bb89a7428e",
+      "evidence/bfx_retirement.json": "af93874bbbfba8e918ad4388d7c177371f95fb1a03450947b7609f91e03b200f",
+      "evidence/bfx_v2_optimization.json": "b10b6bc81883f55645fb88e4a24b605f6bd4d2acbaf33d8dcaf37aacac30510f",
+      "evidence/bfx_v3_arithmetic.json": "204be68527086d91c5f4a17964a28de6aae48bada346afc4cdebd8815f072e75",
+      "evidence/bfx_v3_measurements.json": "6a5be297356daf4c5a606f7493abc7e50290ad2e49e9ce7f14626991f7c0247d",
+      "evidence/bfx_v4_call_controls.json": "136104fc816ff991eb71a7ded1679dc30556dde34677d9bce9b6123baefec8a2",
+      "evidence/bfx_v4_measurements.json": "4237ad2cac2c44ccdd6d20ffe75b3c8136747cfc00d1302e06071e2599719709",
+      "evidence/bfx_v4_movement.json": "6b473db541ca3c2d36686e13185afd84cff34997010f9c3fe23de270474545ee",
+      "evidence/bfx_v4_native_boundaries.json": "0c4ec8f7e3120ef898cfca29d4f10fe6d3c4c7217874dd6bc5d1df49288ce1e7",
+      "evidence/bfx_xax_import.json": "a36b219b946f9113a4be8346c5356524b1a7e10c63ef1a735657a56f632e3eda",
+      "evidence/brainfly_brainfry_followup.json": "6b02fd4393cb355479aa73a49f2021eb9923cf036c4516853a5a2c40a8873355",
+      "evidence/build_runtime_resources.json": "dd24aa1b587624b4233eb8aca4982c2287f51f8091855ac34e13ce67d6daa382",
+      "evidence/competition_pilot.json": "7d67f74a41a4697f98b05313d37321af5c151c45b05cd9bee5c48100de02bf05",
+      "evidence/format_cleanup.json": "9a3874fc4c357bd5ef6fe31713ee30c205e87834905886250773ac0ebf640aeb",
+      "evidence/frontend_capacity_gate.json": "373c9a1ae361539f6748c700605c920fe7940510185386d2e89693becf4b32a2",
+      "evidence/frontend_counter_android.json": "0816f4a8236b2a601dd33752880f1fe677344b2d1331d106d35259adf23249c8",
+      "evidence/frontend_counter_profile.json": "6dcc9f67097f5a715dbaf0a0d130d1cf2b93430b2f8fb6cadd7018d534249b81",
+      "evidence/frontend_counter_windows.json": "57884d07519a8da09a8d78c40b5d37663ccbff80cb55009cca8fff896e9db9c3",
+      "evidence/frontend_filter_android.json": "5ec718eeb4a2a991e34e4dd3277bd2bfc2fd9a67b3ddc4fca1704f6edf726dad",
+      "evidence/frontend_filter_profile.json": "3549521bd5d56f3bde6566e0fde0b31c8a2fd93a22d9be062df2174f9fb6599b",
+      "evidence/frontend_filter_windows.json": "87228c9802e2f84ec221bb4488127bdc7aaace33ebd1f9274e549c8e7cb40d9e",
+      "evidence/graph_verification_profile.json": "05d4ed7fe4823c5a330c08628025094c4c8bf8427b2cfde66f55e7248268fdbe",
+      "evidence/repository_cleanup.json": "f22455b91f7e8928f3d35ee8b0bada851578fc1c9cc6d7f9fcfdf4c8f87fe481",
+      "evidence/scalability_capacity_audit.json": "86a8625470a85a558ce84a11e75aedfde48e64cd9fb675cb289a5e0cbf0a4b35",
+      "evidence/source_capacity.json": "606dd06e71e71197b37a3acbb96dbff7f3e18ced9148f07dc10ee5ce7db85f59",
+      "evidence/source_capacity_android.json": "c4d8c43abd4cd25ef8e9d3979d6cf1347905e5fb94719e215e16edce175e530c",
+      "evidence/standalone_android.json": "12a7c5ca3d000e4a53977df0badc927d961b6a6469749bf563b3083aaa0d7735",
+      "evidence/standalone_native_replay.json": "394742c1af05a6675df35757ce168d189ac83cf4d30305d9b054b7f8fbb4751e",
+      "evidence/standalone_windows.json": "ff2fdcb226de2a91c0e2b7e82a68f47d2d1327c9697d847a6ea94146fa6d5148",
+      "evidence/streaming_frontend_bootstrap.json": "4fdf92fb1f2f217e24b895988c5f47f279695296c135dced3c5ab7d3a3988f3c",
+      "evidence/streaming_frontend_prototype.json": "75fda1cdc92ca1f943ea672dcabeb46b863df33a4c907024ea133b2b06ed4324",
+      "evidence/streaming_frontend_verification.json": "476ecc4ba2140bf71d3a78697e6b9b11b57f8b383ae3c084ca185053f918e335",
+      "evidence/wide_tape_reset.json": "ccd7c3539117091159c668552adfe9f75ce58148df23b34f7de5daf6308a13dc",
+      "evidence/windows_hash_host.json": "0a7fe2e05713c53b8a59b3212496de431a4adc75ff9ff3f56d21901107e508f8",
+      "evidence/windows_native_driver.json": "f7a59cb75543b257aa428cd5c3a3bd2aaa172872f3b0cfcfb50d064f892b65b9",
+      "evidence/windows_native_verification_profile.json": "2fe2b73f57b2735963502cc7f979b9c3998f715961b1b3bf9b0b2bd6d9d95cf8",
+      "examples/decision.bf": "61a87e0c7c1d4a2289a879076ed75b769dfd65ea159d113a3ac997fb60c73ba9",
+      "tests/basic.bf": "37ae641cbff6e75739bf26e89658cdcea05c0aeac6c488e581a1197a66bf4e3e",
+      "tests/bounds.bf": "fb00c5df7036d6ce1c9b4de8bbd046d02fd5bca2afa804c8a3847ae69c346152",
+      "tests/bounds_right.bf": "bd34d7dcaed6a6c08e2419a2f75b3523ff7363e866fee81e295f40e9473888f8",
+      "tests/loops.bf": "ad573fdbd12ddce19021fe45acaf3fb64f8270d2ad823b55c97aff7328d97cb3"
+    },
+    "stream_run_fixtures": 26,
+    "old_frontend_fixtures": 12,
+    "final_native_pipeline_mandelbrot_exact": true,
+    "generic_bootstrap_pin": "3dcb358e48b0f9a45b8cb72767c1aa600e55cd78",
+    "generic_python_unchanged": {
+      "blake3.py": {
+        "executed_file_sha256": "d06f19b142115ee8ca32df794235d97bfe35fc2996199d961ef26d53613c9c40",
+        "git_blob_sha256": "d06f19b142115ee8ca32df794235d97bfe35fc2996199d961ef26d53613c9c40",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_compiler.py": {
+        "executed_file_sha256": "8bee254ebf8f74609a68b6296d75b18dcabb2c02078265f5c214651683c24115",
+        "git_blob_sha256": "4c3c4fd91acb7b7cff117697a2587a0ecb935e3560fa75bc1609f6cb1c619029",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_inline.py": {
+        "executed_file_sha256": "921eebd78f30249b84df84ed6ef4fe8440d1159c1a92a754d401c1e7041ac9db",
+        "git_blob_sha256": "921eebd78f30249b84df84ed6ef4fe8440d1159c1a92a754d401c1e7041ac9db",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_artifact.py": {
+        "executed_file_sha256": "eca5b0a33adb11b5a6183418d7ad2cf9a7dd8bafe7eb9cf5d7bc45a4d576d676",
+        "git_blob_sha256": "b846c36fc2513e7edb09e0b62edd51efe378354d74460533e3fdc51eedbce931",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_x86_64.py": {
+        "executed_file_sha256": "c0c43abd17de7d096f36c6ba898650f9346d6464e46baecd6ef6b6974b60bc94",
+        "git_blob_sha256": "6218dacc1d9598fcb49805de9db1598b71474a28845e0a46b26f59b9a013fb4e",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_pe.py": {
+        "executed_file_sha256": "ef041246b751cd0c8d587281d8e366845705fe6d0756b5d7348ed7fe4808dd56",
+        "git_blob_sha256": "f49b2fc4266c71cc771fcc2187e8298b64cc6062783d718d236d3cd1b87027cd",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_elf.py": {
+        "executed_file_sha256": "7de2cf4eb799483091fba7ae720096b6f4e04d8f1f855052f57901322c6d5c81",
+        "git_blob_sha256": "7de2cf4eb799483091fba7ae720096b6f4e04d8f1f855052f57901322c6d5c81",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_aarch64.py": {
+        "executed_file_sha256": "acc639bbeba73fc4ef694da969485e3e49fe8b0cc3a28d53bae4c0aae87871dd",
+        "git_blob_sha256": "d00ab8ade0529d4f927b0acfe059d5deedbaa75359e1106424ce09fb7eb56252",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_android.py": {
+        "executed_file_sha256": "2b6d37236b218c308f2f686041a39df600883c17f4cae2ac998d59cef01ac959",
+        "git_blob_sha256": "5296048728145f6276760c33215f9efd68f64106886af98bec228cfb6a0cefda",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_linux.py": {
+        "executed_file_sha256": "ac4c52e60285fa3914ba6cd56aead5f861ce8612a623cbd25b38c54c3c8eb232",
+        "git_blob_sha256": "5310275c997519968d2f6295bad9c3d10e34001ca4eed58b1692247a7158e82d",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_linux_aarch64.py": {
+        "executed_file_sha256": "6898764ae6627291207b067e8a184a2d4a285886d281948a8c184d9caa5ead24",
+        "git_blob_sha256": "32d635312f41466d4b22a566d924ef3761500493a080317883ba932ca850b66f",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_graph_builder.py": {
+        "executed_file_sha256": "9f80accfc24d8880de074ed6d9562716942942d3309732fc2e97eeb4d3ab024e",
+        "git_blob_sha256": "9f80accfc24d8880de074ed6d9562716942942d3309732fc2e97eeb4d3ab024e",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_native.py": {
+        "executed_file_sha256": "0bf4e199a1e5a643501a15bb5c48ae8f7eab05316bad7576b14f825f366bbfe3",
+        "git_blob_sha256": "0bf4e199a1e5a643501a15bb5c48ae8f7eab05316bad7576b14f825f366bbfe3",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_native_blake3.py": {
+        "executed_file_sha256": "0c637b02fc190095126f128b1f07bae8819053bedf3538509e21847dfaab77fe",
+        "git_blob_sha256": "0c637b02fc190095126f128b1f07bae8819053bedf3538509e21847dfaab77fe",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_native_blake3_store.py": {
+        "executed_file_sha256": "3e23739a4ad488280f4689eec7e96500405a9479abd9cbdeac8affc24a43ff07",
+        "git_blob_sha256": "3e23739a4ad488280f4689eec7e96500405a9479abd9cbdeac8affc24a43ff07",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_blake3.py": {
+        "executed_file_sha256": "906309f7106503c59d3a5da35f087b39b81b29246deefaf13c329ee5e4ab5520",
+        "git_blob_sha256": "cf04d0aa0ef97b29254667dd71a75d0e5eb73691985a82198f06671861800f65",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_cfg.py": {
+        "executed_file_sha256": "87b43729b74c4a3545c173367b18e9a6d4831b3025931e2cdceece217ae39324",
+        "git_blob_sha256": "87b43729b74c4a3545c173367b18e9a6d4831b3025931e2cdceece217ae39324",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_typing.py": {
+        "executed_file_sha256": "09572deb0042d82e49ed10a9038fc17517779e7cd7c636005d8027872ab976df",
+        "git_blob_sha256": "f05e0d1b384c0c2c0431c12807dde9798d4e8263525ea9be94f31079cf2a83bc",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_structured.py": {
+        "executed_file_sha256": "58b1ca4e9cf7e9ed640d9e2c8204735ffed08e4b7eea307e162cf7c48f8166c3",
+        "git_blob_sha256": "58b1ca4e9cf7e9ed640d9e2c8204735ffed08e4b7eea307e162cf7c48f8166c3",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_facts.py": {
+        "executed_file_sha256": "d3bbf6e0b4d9fa1dba9249a732ea10e47ac1076c168ec3de9c8605aba89c790e",
+        "git_blob_sha256": "305d2e75652b7e71717041ba8024ec97d9f780e115edbb29284808100acb87c6",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_diagnostics.py": {
+        "executed_file_sha256": "4523d32a34d48c25aebad6301951dbe5ca78e5d0ba301248088c48989e0ad9ec",
+        "git_blob_sha256": "884151b1d57c4bf753ebdf8656b4b7de7430058ca3815e829480e13dac534efb",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_semantic.py": {
+        "executed_file_sha256": "e2f90d4fe8f1622e3cbf96a30b0021be348a72cf056455c3e6e03a84aabc0d6b",
+        "git_blob_sha256": "64fc8142cb5d79e2f63f83146ef8b855cb490752704f87c217f50ddfbe5e4c1c",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_edit.py": {
+        "executed_file_sha256": "0bc4ab8af16f569f59025bea50fd6512c6d92be6a33fb1f038062d5d4bb92a0c",
+        "git_blob_sha256": "7e544ec6e0e1df3f3e1ce8f9a24125c69839f3746f21d51bcaf6a8556e17a62d",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_accelerator.py": {
+        "executed_file_sha256": "a6264b8c7f6ec7ca331b7351af8f67c80adb988c0ac881c12017a19c0fc6d754",
+        "git_blob_sha256": "a6264b8c7f6ec7ca331b7351af8f67c80adb988c0ac881c12017a19c0fc6d754",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_wasm.py": {
+        "executed_file_sha256": "1afe282b4dc0f57cb528df7c29846cb18a346f9ac73f17b7d182b41ab5e5e8e4",
+        "git_blob_sha256": "1afe282b4dc0f57cb528df7c29846cb18a346f9ac73f17b7d182b41ab5e5e8e4",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_workspace.py": {
+        "executed_file_sha256": "ea751e2f56cfe560ea3cb981ca505bf4552c18636b32f34d0ba568727c112920",
+        "git_blob_sha256": "7c8842646c8ac67ce684279b6f8935672c11e3955a0d6ebb7afbbae3f8e9bfb4",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_store.py": {
+        "executed_file_sha256": "eaa10d6b77ae22719afd6b1240f8a0584cdc47ad62967390cc2c9130b72f9df9",
+        "git_blob_sha256": "392e9fb747b9d46d5d8c3ea3a36562d2170806b0967320e82350fb04efd5c742",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_verify.py": {
+        "executed_file_sha256": "09a8a78dfc56f6a83a3ebc5105ae523774b365423ecf9245e44c2b5722880304",
+        "git_blob_sha256": "1c9333d28b723a21406480923b408fdbcb6146009fbaf804b0e435e6c38f72f2",
+        "content_equal_after_CRLF_normalization": true
+      },
+      "xax_selfhost_graph.py": {
+        "executed_file_sha256": "de76604dd3791933f9fc78b429552899cd422756da73b300934bb85da01a091d",
+        "git_blob_sha256": "50df87bf2d35213efedb2592f55025e09a3f6e349fafbf033999d24e4308fa18",
+        "content_equal_after_CRLF_normalization": true
+      }
+    },
+    "python_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+    "source_sha256": "559cd796d73928c869de1dcd8c6254d10be7af73ecdfa6db8fdc7b71bf228977",
+    "all_bf_annotations_and_brackets_valid": true
+  },
+  "transport_artifacts": [
+    {
+      "file": "wide_transport.c",
+      "bytes": 1696,
+      "sha256": "966ab54c4d46bf85c762e4e33a17b9a4124e4ba4b61276326d978774713edcd5"
+    },
+    {
+      "file": "wide_transport",
+      "bytes": 9088,
+      "sha256": "0db5e75622defbaed226a9fc4c5344c9fa3d1b87308655c2dce8dd8c86e6db63"
+    },
+    {
+      "file": "source_batch.c",
+      "bytes": 1730,
+      "sha256": "647e5bf51fe745547cab5d7d4cdb120f6c75e1d48f1528eeb5d2b0d69554877e"
+    },
+    {
+      "file": "source_batch",
+      "bytes": 11704,
+      "sha256": "e4dec793f4eac278ffd47b2062336bdf137719d0e233773b77bb7f33263ba7c7"
+    },
+    {
+      "file": "decoder_batch.c",
+      "bytes": 1519,
+      "sha256": "0d8903905ec39bb679acdef0f4231bbf42217de9dfbebae8ef0b7f52abd20311"
+    },
+    {
+      "file": "decoder_batch",
+      "bytes": 9264,
+      "sha256": "51a52a69ebdbb5419782736705ca0f166621aa94889f994e4213951bd85ee24f"
+    },
+    {
+      "file": "runs_check.c",
+      "bytes": 1677,
+      "sha256": "16568f5dd24524d82b4d679754950cf86006d7023026d90cf11b346aaff38e9f"
+    },
+    {
+      "file": "runs_check",
+      "bytes": 9408,
+      "sha256": "24b5c590bbc13e933268bb27e4f43eb363f6a4a9c4bddc6b5d274289c44cb316"
+    }
+  ],
+  "transport_role": "External opaque buffer/file/process and native-call test transport only. No production BF filtering, optimization or BFX graph translation in C/Python.",
+  "exploratory_attempts": [
+    "Six-argument coordinator declined on Windows nested borrowed-view calls; replaced by verified four-argument source coordinator.",
+    "Attempted canonical persistence of generic optimized inlining views was rejected by SSA/memory verification; final canonical source keeps explicit calls and uses derived views only for supported native lowering.",
+    "One unoptimized Windows packing-coordinator build was interrupted; an explicit derived-closure build completed and passed checks. Maintained private three-pointer fixed-packet core instead uses verified canonical specialization and ordinary direct calls.",
+    "An external guard test initially compared ctypes appended NUL beyond its intended allocation; the bounded guard check was corrected and all fourteen complete-module buffer checks rerun."
+  ],
+  "tooling_note": "Executed generic Python files match pinned Git source after CRLF normalization; raw executed-file and pinned Git-blob SHA256 values are both recorded. No generic compiler source changed."
+}
