@@ -41,6 +41,21 @@ The canonical renderer guard now gives `semantic-43-function_byte` the reference
 field, including dependencies and repair neighborhood. Broader diagnostic
 coverage and the four original malformed declines remain open.
 
+The separate [resource diagnosis](resource_diagnosis.json) identifies the current
+self-store's entry graph, with 2,149 blocks and 37,533 nodes, as the declined
+graph; its deferred-callee token is zero. It has 112 direct calls to 37 targets.
+The precise node/facts reason remains undiagnosed. The private transactions and
+their distinct exit protocol are in [diagnostics](diagnostics/README.md).
+
+Five small native controls isolate another coverage limit. A single stack
+resource callee and two calls to the same callee accept. Two distinct valid
+identity callees in a 1,919-byte store decline. A malformed second callee rejects
+with the exact reference diagnostic. A 138-byte fixture-only expected-root
+[rebinding](regression/resource_rebind_same.edit) makes the valid two-call
+fixture accept while retaining both callee functions in its module. These
+fixtures are `regression/resource_*.xax`; they establish a small multiple-callee
+coverage gap, not its equivalence to the self-store's underlying failure.
+
 ## Canonical changes and resources
 
 The source derives from `compiler/bootstrap/xax_compiler_driver_general.xax`.

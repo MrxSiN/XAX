@@ -19,3 +19,5 @@ compiler/integration/windows_helpers/regression/*.edit -text
 compiler/integration/windows_helpers/driver_execution.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/driver_verification_profile.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/driver_followup.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/resource_diagnosis.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/diagnostics/*.edit -text
