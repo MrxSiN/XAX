@@ -19,23 +19,23 @@ What resolves here
 * a ``b<N>`` type -- body ``01`` then the width,
 * an alias declared in the carrier's ``types`` map (recursive, depth-limited, so a cycle is refused, as
   the reference refuses one),
-* ``win32.<name>`` -- the platform namespace, embedded as authoring data by ``namespace_blob`` from
+* ``win32.<name>`` -- the platform namespace, embedded as authoring data by ``namespace_layout`` from
   ``xax_platform.win32_kernel32_api`` and ``win32_stdio_api``, read exactly as ``xax_construct`` reads
   them,
 * ``{"view": EXTENT}`` -- the heap-view type,
-* entities that are ``win32.<name>`` strings: the platform declarations are already in the blob.
+* entities that are ``win32.<name>`` strings: the platform declarations are already in the blob,
+* ``{"win32.import": [DLL, SYMBOL, IN, OUT]}`` and ``{"win32.virtual_free_view": [TYPE, EXTENT]}`` --
+  declarations whose body embeds the *CIDs* of their signature types.  Those CIDs are hashed in the
+  program: the object's canonical content (``XAX-SEM-1``, kind, schema, references, body) is staged in
+  the view and hashed by ``xax_selfhost_blake3.hash_span_function``, the committed S2 graph over one
+  view (a program that owns its memory holds one effect token, so it cannot lend the two views
+  ``hash_function`` asks for).
 
 What does not, yet
 ------------------
 
-A *derived* declaration is built from type CIDs at decode time:
-
-* ``{"win32.import": [DLL, SYMBOL, IN, OUT]}`` and ``{"win32.virtual_free_view": [TYPE, EXTENT]}``
-  need the type CIDs hashed in the program (graph instantiation), step 4b,
-* ``{"fn": NAME}`` needs the constructed functions, step 5.
-
-Those are emitted as ``?`` and counted.  An unknown name is a refusal (exit 11 for a type, 12 for an
-entity), never a guess.
+``{"fn": NAME}`` needs the constructed functions, step 5.  Those are emitted as ``?`` and counted.  An
+unknown name is a refusal (exit 11 for a type, 12 for an entity), never a guess.
 """
 
 from __future__ import annotations
@@ -49,16 +49,29 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import reader as R  # noqa: E402
-from xax_compiler import IntCompare, Kind, Operation, SemanticObject, bits_type  # noqa: E402
+from xax_compiler import IntCompare, Kind, Operation, Permission, SemanticObject, bits_type, heap_view_type, pointer_type  # noqa: E402
 from xax_platform import win32_kernel32_api, win32_stdio_api  # noqa: E402
+from xax_selfhost_blake3 import DIGEST_OFFSET, hash_span_function  # noqa: E402
 from xax_structured import B32, B64  # noqa: E402
 
 HEX = b"0123456789abcdef"
 SPACE, NL, COMMA, DASH = 32, 10, 44, 45
 PREFIX = b"win32."
 UNKNOWN_TYPE, UNKNOWN_ENTITY = 11, 12
-TABLE_SCRATCH = 0x800        # ULEB staging, inside the reader's scratch region
 DEPTH_LIMIT = 8              # alias chain bound: the reference recurses, this refuses
+DOMAIN = b"XAX-SEM-1"        # the canonical content's domain separator (xax_compiler.semantic_cid)
+FF_PREFIX, FF_ABI = b"foreign-function-v1", b"win64-c"
+B8 = bits_type(8)
+
+# Regions of the view the resolver stages objects in.  The canonical area holds one object's content;
+# the hash's chaining-value stack and digest sit past the largest object, both inside the same view.
+CANON = 0xE10000
+HASH_GAP = 0x2000
+HASH_SCRATCH = CANON + HASH_GAP
+DBODY = 0xE20000            # a declaration's identity, up to a few KiB
+DBOFF = 4                   # room for the identity's length prefix (a uleb of at most four bytes)
+ALIGNED = pointer_type(B8, Permission.READ_WRITE, 4, space=2)  # the view base, word-aligned
+HASH: dict = {}
 
 # table entry, relative to the kind byte
 T_KIND, T_SCHEMA, T_COUNT, T_REFS = 0, 1, 5, 9
@@ -79,13 +92,18 @@ def namespace_entries() -> dict[str, SemanticObject]:
     return entries
 
 
-def namespace_blob() -> bytes:
-    """The embedded table: count, then name, kind, schema, references and body per entry."""
+def namespace_layout() -> tuple[bytes, dict[str, int]]:
+    """The embedded table and the offset of each entry's kind byte.
+
+    The table is the decode-time lookup for ``win32.<name>``; the offsets let a declaration that names a
+    platform type (``b64``, ``b32``, ``memory_effect``) address it without a run-time name scan."""
     entries = namespace_entries()
     blob = bytearray(len(entries).to_bytes(4, "little"))
+    offsets: dict[str, int] = {}
     for name in sorted(entries):
         obj = entries[name]
         key = name.encode()
+        offsets[name] = len(blob) + 1 + len(key)
         blob += len(key).to_bytes(1, "little") + key
         blob += int(obj.kind).to_bytes(1, "little")
         blob += obj.schema_version.to_bytes(4, "little")
@@ -93,10 +111,10 @@ def namespace_blob() -> bytes:
         for reference in obj.references:
             blob += reference
         blob += len(obj.body).to_bytes(4, "little") + obj.body
-    return bytes(blob)
+    return bytes(blob), offsets
 
 
-TABLE = namespace_blob()
+TABLE, TABLE_OFFSETS = namespace_layout()
 
 
 def walk(environment):
@@ -137,9 +155,11 @@ def walk(environment):
     def fail_here(code):
         p.if_(zero(p["code"]), lambda _p: p.__setitem__("code", c32(code)))
 
-    for name in ("w1", "w2", "w3", "w4", "w5", "w6", "w7", "whead", "wtail", "wub", "wul", "wuc",
-                 "wdig", "weqi", "weqc", "wcur", "wval", "wrefi", "wscan", "wname", "wnlen", "wentry",
-                 "wfound", "wpick", "wrefs", "wblen", "wdepth", "wmember", "wss", "wse", "wnode", "wmore"):
+    for name in ("w1", "w2", "w3", "w4", "w5", "w6", "w7", "whead", "wtail", "wdig", "weqi", "weqc",
+                 "wcur", "wval", "wrefi", "wscan", "wname", "wnlen", "wentry", "wfound", "wpick",
+                 "wrefs", "wblen", "wdepth", "wmember", "wss", "wse", "wnode", "wmore", "wcursor",
+                 "wsrc", "wcnt", "wbyte", "wkind", "wschema", "wrefn", "wrefsrc", "wbody", "wbodyat",
+                 "wcanonlen", "wln", "wlv", "wdbn", "wdbat", "w8", "w9"):
         p.let(name, B32, c32(0))
 
     def kind(node):
@@ -173,62 +193,123 @@ def walk(environment):
         out_byte(HEX[value >> 4])
         out_byte(HEX[value & 15])
 
-    def emit_table_entry(entry):
-        out_dyn(add(c32(48), flag(ld8(entry))))
+    def table_object(entry):
+        """The object fields of a table entry: kind, schema, references, body."""
+        p["wkind"] = flag(ld8(entry))
+        p["wschema"] = flag(ld8(add(entry, c32(T_SCHEMA))))
+        p["wrefn"] = ld32(add(entry, c32(T_COUNT)))
+        p["wrefsrc"] = add(entry, c32(T_REFS))
+        p["wblen"] = ld32(add(add(entry, c32(T_BODY_LEN)), mul(p["wrefn"], c32(32))))
+        p["wbody"] = add(add(entry, c32(T_BODY)), mul(p["wrefn"], c32(32)))
+
+    def emit_object():
+        """``<kind> <schema> <refs|-> <body>``: the native writer's batch shape."""
+        out_dyn(add(c32(48), p["wkind"]))
         out_byte(SPACE)
-        out_dyn(add(c32(48), flag(ld8(add(entry, c32(T_SCHEMA))))))
+        out_dyn(add(c32(48), p["wschema"]))
         out_byte(SPACE)
-        p["wrefs"] = ld32(add(entry, c32(T_COUNT)))
         p["wrefi"] = c32(0)
-        p.while_(lambda _p: lt(p["wrefi"], p["wrefs"]),
+        p.while_(lambda _p: lt(p["wrefi"], p["wrefn"]),
                  lambda _p: (p.if_(gt(p["wrefi"], c32(0)), lambda _q: out_byte(COMMA)),
-                             hexdump(add(add(entry, c32(T_REFS)), mul(p["wrefi"], c32(32))), c32(32)),
+                             hexdump(add(p["wrefsrc"], mul(p["wrefi"], c32(32))), c32(32)),
                              p.__setitem__("wrefi", add(p["wrefi"], c32(1)))))
-        p.if_(zero(p["wrefs"]), lambda _q: out_byte(DASH))
+        p.if_(zero(p["wrefn"]), lambda _q: out_byte(DASH))
         out_byte(SPACE)
-        p["wblen"] = ld32(add(add(entry, c32(T_BODY_LEN)), mul(p["wrefs"], c32(32))))
-        hexdump(add(add(entry, c32(T_BODY)), mul(p["wrefs"], c32(32))), p["wblen"])
+        hexdump(add(c32(CANON), p["wbodyat"]), p["wblen"])
         out_byte(NL)
 
-    def uleb(value):
-        """Encode ``value`` at the scratch buffer; its length lands in ``wul``."""
-        p["wub"] = c32(E["SCRATCH"] + TABLE_SCRATCH)
-        p["wul"] = c32(0)
+    # -- canonical staging: the content the store writer hashes ---------------------------------
+
+    def canon_put(value):
+        """One byte at ``CANON + wcursor``, then one past it."""
+        st8(add(c32(CANON), p["wcursor"]), p.const(value, B8))
+        p["wcursor"] = add(p["wcursor"], c32(1))
+
+    def uleb_len(value):
+        """The encoded length of ``uleb(value)``, into ``wln``."""
+        p["wlv"] = value
+        p["wln"] = c32(1)
+        p.while_(lambda _p: ge(p["wlv"], c32(128)),
+                 lambda _p: (p.__setitem__("wlv", div(p["wlv"], c32(128))),
+                             p.__setitem__("wln", add(p["wln"], c32(1)))))
+        return p["wln"]
+
+    def canon_uleb(value):
+        """Append ``uleb(value)`` at ``CANON + wcursor``."""
         p["wval"] = value
-        p["wuc"] = c32(1)
-        p.while_(lambda _p: ne(p["wuc"], 0),
+        p["wbyte"] = c32(1)
+        p.while_(lambda _p: ne(p["wbyte"], 0),
                  lambda _p: (p.__setitem__("wdig", rem(p["wval"], c32(128))),
                              p.__setitem__("wval", div(p["wval"], c32(128))),
-                             p.__setitem__("wuc", flag(ne(p["wval"], 0))),
-                             st8(add(p["wub"], p["wul"]),
-                                 p.op1(Operation.INT_TRUNCATE,
-                                       (add(p["wdig"], mul(p["wuc"], c32(128))),), bits_type(8))),
-                             p.__setitem__("wul", add(p["wul"], c32(1)))))
+                             p.__setitem__("wbyte", flag(ne(p["wval"], 0))),
+                             st8(add(c32(CANON), p["wcursor"]),
+                                  p.op1(Operation.INT_TRUNCATE,
+                                        (add(p["wdig"], mul(p["wbyte"], c32(128))),), B8)),
+                             p.__setitem__("wcursor", add(p["wcursor"], c32(1)))))
 
-    def emit_type_head():
-        """``4 1 - ``: a scalar type object, schema 1, no references."""
-        out_byte(ord("4"))
-        out_byte(SPACE)
-        out_byte(ord("1"))
-        out_byte(SPACE)
-        out_byte(DASH)
-        out_byte(SPACE)
+    def canon_copy(offset, count):
+        """Copy ``count`` bytes of the view at ``offset`` into the staging area."""
+        p["wsrc"], p["wcnt"] = offset, count
+        p.while_(lambda _p: ne(p["wcnt"], 0),
+                 lambda _p: (st8(add(c32(CANON), p["wcursor"]), ld8(p["wsrc"])),
+                             p.__setitem__("wsrc", add(p["wsrc"], c32(1))),
+                             p.__setitem__("wcursor", add(p["wcursor"], c32(1))),
+                             p.__setitem__("wcnt", sub(p["wcnt"], c32(1)))))
 
-    def emit_bits(width):
-        emit_type_head()
-        out_fixed(0x01)
-        uleb(width)
-        hexdump(p["wub"], p["wul"])
-        out_byte(NL)
+    def canon_begin(kind, schema, nrefs):
+        """Start an object's canonical content: domain, kind, schema, reference count."""
+        p["wcursor"] = c32(0)
+        for value in DOMAIN:
+            canon_put(value)
+        canon_uleb(kind)
+        canon_uleb(schema)
+        canon_uleb(nrefs)
 
-    def emit_view(extent):
-        emit_type_head()
+    def build_canonical():
+        """Stage the object in ``wkind``/``wschema``/``wrefn``; keep the body offset and length."""
+        canon_begin(p["wkind"], p["wschema"], p["wrefn"])
+        p.if_(ne(p["wrefn"], 0), lambda _q: canon_copy(p["wrefsrc"], mul(p["wrefn"], c32(32))))
+        canon_uleb(p["wblen"])
+        p["wbodyat"] = p["wcursor"]
+        canon_copy(p["wbody"], p["wblen"])
+        p["wcanonlen"] = p["wcursor"]
+
+    def set_scalar_object(kind, refs, body_len):
+        p["wkind"], p["wschema"], p["wrefn"] = c32(kind), c32(1), c32(refs)
+        p["wrefsrc"], p["wbody"] = c32(0), c32(0)
+        p["wblen"] = body_len
+
+    def bits_object(width):
+        """A ``b<N>`` type: body ``01`` then the width."""
+        set_scalar_object(4, 0, add(c32(1), uleb_len(width)))
+        canon_begin(c32(4), c32(1), c32(0))
+        canon_uleb(p["wblen"])
+        p["wbodyat"] = p["wcursor"]
+        canon_put(0x01)
+        canon_uleb(width)
+        p["wcanonlen"] = p["wcursor"]
+
+    def view_object(extent):
+        """A heap-view type: body ``04 81 02 01 04``, extent, ``00``."""
+        set_scalar_object(4, 0, add(c32(6), uleb_len(extent)))
+        canon_begin(c32(4), c32(1), c32(0))
+        canon_uleb(p["wblen"])
+        p["wbodyat"] = p["wcursor"]
         for value in (0x04, 0x81, 0x02, 0x01, 0x04):
-            out_fixed(value)
-        uleb(extent)
-        hexdump(p["wub"], p["wul"])
-        out_fixed(0x00)
-        out_byte(NL)
+            canon_put(value)
+        canon_uleb(extent)
+        canon_put(0x00)
+        p["wcanonlen"] = p["wcursor"]
+
+    def hash_canonical():
+        """Hash the staged content; the digest lands at ``HASH_SCRATCH + DIGEST_OFFSET``."""
+        base = p.op1(Operation.ADDRESS_OFFSET, (p["vp"],), ALIGNED, attributes=(0,))
+        _pointer, view, memory = p.op(
+            Operation.CALL_DIRECT,
+            (base, p["vv"], p["mem"], p.const(CANON, B64), p.widen(p["wcanonlen"], B64)),
+            (ALIGNED, E["view_type"], E["mem_type"]),
+            entity=HASH["fn"])
+        p["vv"], p["mem"] = view, memory
 
     def bytes_eq(offset, literal):
         """The input bytes at ``offset`` equal the literal (the literal is compile-time, so unrolled)."""
@@ -328,21 +409,22 @@ def walk(environment):
                              p.__setitem__("wcur", add(p["wcur"], c32(1)))))
         return p["wpick"]
 
-    def emit_platform(offset, stop, code):
+    def resolve_platform(offset, stop, code):
         """``win32.<name>``: strip the prefix, look the declaration up, refuse a miss."""
         p.if_(span_prefix(offset, stop, PREFIX),
               lambda _q: (p.__setitem__("wentry", lookup(add(offset, c32(len(PREFIX))), stop)),
                           fail_if(zero(p["wentry"]), code),
-                          p.if_(ne(p["wentry"], 0), lambda _r: emit_table_entry(p["wentry"]))),
+                          p.if_(ne(p["wentry"], 0),
+                                lambda _r: (table_object(p["wentry"]), build_canonical()))),
               lambda _q: fail_here(code))
 
-    def emit_type_node(node):
+    def resolve_type_node(node):
         p.if_(eq(kind(node), strings),
-              lambda _q: emit_type_spec(start(node), end(node)),
-              lambda _q: emit_type_object(node))
+              lambda _q: resolve_type_spec(start(node), end(node)),
+              lambda _q: resolve_type_object(node))
 
-    def emit_type_spec(offset, stop):
-        """Follow the carrier's alias map at run time -- bounded, so a cycle is refused -- then emit."""
+    def resolve_type_spec(offset, stop):
+        """Follow the carrier's alias map at run time -- bounded, so a cycle is refused -- then stage."""
         p["wss"] = offset
         p["wse"] = stop
         p["wnode"] = c32(0)
@@ -359,36 +441,232 @@ def walk(environment):
                                                                 p.__setitem__("wmore", c32(1))),
                                                     lambda _r: p.__setitem__("wnode", first(p["wmember"]))))))
         fail_if(ne(p["wmore"], 0), UNKNOWN_TYPE)
-        p.if_(ne(p["wnode"], 0), lambda _q: emit_type_object(p["wnode"]),
-              lambda _q: emit_bits_or_platform(p["wss"], p["wse"]))
+        p.if_(ne(p["wnode"], 0), lambda _q: resolve_type_object(p["wnode"]),
+              lambda _q: resolve_bits_or_platform(p["wss"], p["wse"]))
 
-    def emit_type_object(node):
+    def resolve_type_object(node):
         def as_view(_q):
             member = first(node)
             good = p.all_of(ne(member, 0), span_eq(start(member), end(member), b"view"),
                             zero(after(member)), eq(kind(first(member)), integers))
             p.if_(good,
                   lambda _r: (parse_uint(start(first(first(node))), end(first(first(node))), (1 << 28) - 1),
-                              emit_view(p["wval"])),
+                              view_object(p["wval"])),
                   lambda _r: fail_here(UNKNOWN_TYPE))
 
         p.if_(eq(kind(node), objects), as_view, lambda _q: fail_here(UNKNOWN_TYPE))
 
-    def emit_bits_or_platform(offset, stop):
+    def resolve_bits_or_platform(offset, stop):
         is_bits = p.all_of(eq(byte(offset), ord("b")), gt(sub(stop, offset), c32(1)))
-        p.if_(is_bits, lambda _q: emit_bits_spec(offset, stop),
-              lambda _q: emit_platform(offset, stop, UNKNOWN_TYPE))
+        p.if_(is_bits, lambda _q: resolve_bits_spec(offset, stop),
+              lambda _q: resolve_platform(offset, stop, UNKNOWN_TYPE))
 
-    def emit_bits_spec(offset, stop):
+    def resolve_bits_spec(offset, stop):
         fail_if(eq(byte(add(offset, c32(1))), 48), UNKNOWN_TYPE)  # no leading zero
         parse_uint(add(offset, c32(1)), stop, 64)
         fail_if(zero(p["wval"]), UNKNOWN_TYPE)
-        emit_bits(p["wval"])
+        bits_object(p["wval"])
+
+    def resolve_type_digest(node):
+        """Stage a type spec and append its CID to the declaration body under construction."""
+        resolve_type_node(node)
+        hash_canonical()
+        db_digest()
+
+    def resolve_platform_digest(name):
+        """Append a platform type's CID (from the embedded table) to the body under construction."""
+        table_object(c32(E["NS"] + TABLE_OFFSETS[name]))
+        build_canonical()
+        hash_canonical()
+        db_digest()
+
+    def resolve_view_digest(node):
+        """Append the CID of ``{"view": extent}`` to the body under construction."""
+        parse_uint(start(node), end(node), (1 << 28) - 1)
+        view_object(p["wval"])
+        hash_canonical()
+        db_digest()
+
+    # -- declaration bodies: an ``import`` embeds the CIDs of its signature types ----------------
+
+    def db_byte(value):
+        st8(add(c32(DBODY), p["wdbn"]), value)
+        p["wdbn"] = add(p["wdbn"], c32(1))
+
+    def db_put(value):
+        db_byte(p.const(value, B8))
+
+    def db_uleb(value):
+        p["wval"] = value
+        p["wbyte"] = c32(1)
+        p.while_(lambda _p: ne(p["wbyte"], 0),
+                 lambda _p: (p.__setitem__("wdig", rem(p["wval"], c32(128))),
+                             p.__setitem__("wval", div(p["wval"], c32(128))),
+                             p.__setitem__("wbyte", flag(ne(p["wval"], 0))),
+                             db_byte(p.op1(Operation.INT_TRUNCATE,
+                                           (add(p["wdig"], mul(p["wbyte"], c32(128))),), B8))))
+
+    def db_raw(blob):
+        """Append the bytes as they are (the identity's own prefix carries no length)."""
+        for value in blob:
+            db_put(value)
+
+    def db_literal(blob):
+        """Append ``uleb(len), bytes`` -- the reference's string encoding."""
+        db_uleb(c32(len(blob)))
+        db_raw(blob)
+
+    def in8(offset):
+        """One byte of the carrier at ``offset`` (node spans are offsets into the input)."""
+        return p.op1(Operation.INT_TRUNCATE, (byte(offset),), B8)
+
+    def db_span(offset, stop):
+        """Append the carrier's byte span as a length-prefixed string."""
+        db_uleb(sub(stop, offset))
+        p["wsrc"], p["wcnt"] = offset, sub(stop, offset)
+        p.while_(lambda _p: ne(p["wcnt"], 0),
+                 lambda _p: (db_byte(in8(p["wsrc"])),
+                             p.__setitem__("wsrc", add(p["wsrc"], c32(1))),
+                             p.__setitem__("wcnt", sub(p["wcnt"], c32(1)))))
+
+    def db_digest():
+        """Append the 32-byte digest the last hash left at ``HASH_SCRATCH + DIGEST_OFFSET``."""
+        p["wcnt"] = c32(0)
+        p.while_(lambda _p: lt(p["wcnt"], c32(32)),
+                 lambda _p: (db_byte(ld8(add(c32(HASH_SCRATCH + DIGEST_OFFSET), p["wcnt"]))),
+                             p.__setitem__("wcnt", add(p["wcnt"], c32(1)))))
+
+    def finish_declaration():
+        """Prepend the identity's length: a TARGET body is ``uleb(len) + identity``."""
+        p["wdbn"] = sub(p["wdbn"], c32(DBOFF))
+        uleb_len(p["wdbn"])                      # the prefix's own size lands in wln
+        p["wcursor"] = c32(0)
+        canon_uleb(p["wdbn"])                    # the prefix bytes, at CANON
+        p["wdbat"] = sub(c32(DBOFF), p["wln"])
+        p["wcnt"] = c32(0)
+        p.while_(lambda _p: lt(p["wcnt"], p["wln"]),
+                 lambda _p: (st8(add(add(c32(DBODY), p["wdbat"]), p["wcnt"]),
+                                 ld8(add(c32(CANON), p["wcnt"]))),
+                             p.__setitem__("wcnt", add(p["wcnt"], c32(1)))))
+
+    def emit_declaration():
+        """``6 1 - <body>``: a declaration, schema 1, no references."""
+        out_byte(ord("6"))
+        out_byte(SPACE)
+        out_byte(ord("1"))
+        out_byte(SPACE)
+        out_byte(DASH)
+        out_byte(SPACE)
+        hexdump(add(c32(DBODY), p["wdbat"]), add(p["wdbn"], p["wln"]))
+        out_byte(NL)
+
+    def list_count(array):
+        """The number of children of a list node, into ``wcnt``."""
+        p["wcnt"] = c32(0)
+        p["wcur"] = first(array)
+        p.while_(lambda _p: ne(p["wcur"], 0),
+                 lambda _p: (p.__setitem__("wcur", after(p["wcur"])),
+                             p.__setitem__("wcnt", add(p["wcnt"], c32(1)))))
+        return p["wcnt"]
+
+    def emit_import(member):
+        """``{"win32.import": [DLL, SYMBOL, IN, OUT]}``: a foreign function with hashed signature CIDs."""
+        def shaped(_q):
+            items = first(member)
+            good = p.all_of(eq(kind(items), E["ARRAY"]),
+                            ne(nth(items, 3), 0), zero(after(nth(items, 3))),
+                            eq(kind(nth(items, 0)), strings),
+                            eq(kind(nth(items, 1)), strings),
+                            eq(kind(nth(items, 2)), E["ARRAY"]),
+                            eq(kind(nth(items, 3)), E["ARRAY"]))
+            p.if_(good,
+                  lambda _r: (p.__setitem__("wdbn", c32(DBOFF)),
+                              db_raw(FF_PREFIX),
+                              db_literal(FF_ABI),
+                              db_span(start(nth(items, 0)), end(nth(items, 0))),
+                              db_span(start(nth(items, 1)), end(nth(items, 1))),
+                              db_uleb(list_count(nth(items, 2))),
+                              each(nth(items, 2), "w8", resolve_type_digest),
+                              db_uleb(list_count(nth(items, 3))),
+                              each(nth(items, 3), "w9", resolve_type_digest),
+                              finish_declaration(),
+                              p.if_(zero(p["code"]), lambda _s: emit_declaration())),
+                  lambda _r: fail_here(UNKNOWN_ENTITY))
+
+        p.if_(eq(kind(first(member)), E["ARRAY"]), shaped, lambda _q: fail_here(UNKNOWN_ENTITY))
+
+    def emit_free_view(member):
+        """``{"win32.virtual_free_view": [TYPE, EXTENT]}``: VirtualFree over a typed view."""
+        def shaped(_q):
+            items = first(member)
+            good = p.all_of(eq(kind(items), E["ARRAY"]),
+                            ne(nth(items, 1), 0), zero(after(nth(items, 1))),
+                            eq(kind(nth(items, 1)), integers))
+            p.if_(good,
+                  lambda _r: (p.__setitem__("wdbn", c32(DBOFF)),
+                              db_raw(FF_PREFIX),
+                              db_literal(FF_ABI),
+                              db_literal(b"kernel32.dll"),
+                              db_literal(b"VirtualFree"),
+                              db_uleb(c32(5)),
+                              resolve_type_digest(nth(items, 0)),
+                              resolve_platform_digest("b64"),
+                              resolve_platform_digest("b32"),
+                              resolve_view_digest(nth(items, 1)),
+                              resolve_platform_digest("memory_effect"),
+                              db_uleb(c32(2)),
+                              resolve_platform_digest("b32"),
+                              resolve_platform_digest("memory_effect"),
+                              db_uleb(c32(2)),
+                              db_uleb(c32(0)),
+                              db_uleb(c32(3)),
+                              finish_declaration(),
+                              p.if_(zero(p["code"]), lambda _s: emit_declaration())),
+                  lambda _r: fail_here(UNKNOWN_ENTITY))
+
+        p.if_(eq(kind(first(member)), E["ARRAY"]), shaped, lambda _q: fail_here(UNKNOWN_ENTITY))
+
+    def emit_entity_name(offset, stop):
+        """``win32.<name>`` used as an entity: a declaration and an effect, never a type."""
+        def named(_q):
+            p["wentry"] = lookup(add(offset, c32(len(PREFIX))), stop)
+            fail_if(zero(p["wentry"]), UNKNOWN_ENTITY)
+            p.if_(ne(p["wentry"], 0),
+                  lambda _r: (fail_if(same(flag(ld8(p["wentry"])), c32(4)), UNKNOWN_ENTITY),
+                              p.if_(zero(p["code"]),
+                                    lambda _s: (table_object(p["wentry"]),
+                                                build_canonical(),
+                                                emit_object()))))
+
+        p.if_(span_prefix(offset, stop, PREFIX), named, lambda _q: fail_here(UNKNOWN_ENTITY))
+
+    def emit_entity_object(node):
+        """A declared entity object: import, free-view, or the function placeholder."""
+        def dispatch(_q):
+            member = first(node)
+            p.if_(p.all_of(ne(member, 0), zero(after(member))),
+                  lambda _r: p.if_(span_eq(start(member), end(member), b"win32.import"),
+                                   lambda _s: emit_import(member),
+                                   lambda _s: p.if_(
+                                       span_eq(start(member), end(member), b"win32.virtual_free_view"),
+                                       lambda _t: emit_free_view(member),
+                                       lambda _t: p.if_(
+                                           span_eq(start(member), end(member), b"fn"),
+                                           lambda _u: (out_byte(ord("?")), out_byte(NL)),
+                                           lambda _u: fail_here(UNKNOWN_ENTITY)))),
+                  lambda _r: fail_here(UNKNOWN_ENTITY))
+
+        p.if_(eq(kind(node), objects), dispatch, lambda _q: fail_here(UNKNOWN_ENTITY))
+
+    def emit_type_node(node):
+        """Resolve one type occurrence, then write its line (nothing if the resolution refused)."""
+        resolve_type_node(node)
+        p.if_(zero(p["code"]), lambda _q: emit_object())
 
     def emit_entity_node(node):
         p.if_(eq(kind(node), strings),
-              lambda _q: emit_platform(start(node), end(node), UNKNOWN_ENTITY),
-              lambda _q: (out_byte(ord("?")), out_byte(NL)))
+              lambda _q: emit_entity_name(start(node), end(node)),
+              lambda _q: emit_entity_object(node))
 
     def each(container, cursor, body):
         p[cursor] = first(container)
@@ -440,7 +718,11 @@ def walk(environment):
 
 
 def build_resolver():
-    return R.build_reader(b"xax-construct-resolve", walk)
+    """The resolver: the reader's host, a word-aligned view, and the span hash linked in."""
+    hash_at, hash_objects = hash_span_function(ALIGNED, heap_view_type(R.EXTENT), HASH_SCRATCH)
+    HASH["fn"] = hash_at
+    return R.build_reader(b"xax-construct-resolve", walk, view_alignment=4,
+                          extra_objects=hash_objects)
 
 
 # -- the oracle ----------------------------------------------------------------------------------------
@@ -482,7 +764,7 @@ def expected_lines(request: dict) -> list[tuple[str, bytes]]:
                     extra = node[3] if len(node) == 4 else {}
                     if "entity" in extra:
                         spec = extra["entity"]
-                        if isinstance(spec, dict):
+                        if isinstance(spec, dict) and "fn" in spec:
                             lines.append(("?", b""))
                         else:
                             lines.append(reference_line(builder, spec, True))
