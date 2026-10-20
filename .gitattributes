@@ -18,3 +18,4 @@ compiler/integration/windows_helpers/regression/*.edit -text
 # These immutable snapshots include digests of their exact file bytes.
 compiler/integration/windows_helpers/driver_execution.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/driver_verification_profile.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/driver_followup.json -text whitespace=cr-at-eol

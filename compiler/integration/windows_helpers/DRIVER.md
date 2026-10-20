@@ -9,7 +9,8 @@ foreign implementation of compiler algorithms.
 This is an **EXECUTED prototype with bounded coverage**. The common Python
 helper loader is unchanged. It is not a complete native BBC build path or a
 native self-build fixed point. [driver_execution.json](driver_execution.json)
-records source, artifact, tests, declines and authority.
+preserves the original run. [driver_followup.json](driver_followup.json) records
+the current diagnostic correction, exact rebuild and additional native checks.
 
 The separate [CLI timing samples](driver_verification_profile.json) compare
 fresh Python and native verification processes on one Windows host. They do
@@ -19,7 +20,7 @@ not measure full BBC compilation or change competitor scores.
 
 | Command | Result and boundary |
 |---|---|
-| `verify <store> <diagnostic>` | All 78 valid corpus stores accept, including the BBC compiler, BFX decoder/importers and hashing host. Of 134 malformed stores, 130 reject and four explicitly decline. One rejection has a different diagnostic from the reference. |
+| `verify <store> <diagnostic>` | The original 212-case report retains 78 accepts, 130 rejects, four declines and one diagnostic mismatch. The current driver passes the separate 160-case semantic replay: 63 accepts, 97 rejects, no declines and exact full diagnostics. It also accepts BBC's v4 importer and v5 packed Mandelbrot store. This follow-up does not rerun every original case. |
 | `inspect <store> <record>` | A valid semantic store produces its binary inspection record; the existing `decode_inspection` renders it. |
 | `resolve <request> <snapshot>` | The Windows PE test request produces the exact reference snapshot with the driver's resolver identity. |
 | `build <snapshot> <artifact> <provenance>` | The PE smoke fixture produces reference-identical executable and provenance bytes; the executable runs correctly. Windows DLL packaging explicitly declines. |
@@ -32,11 +33,13 @@ exit, including any partial I/O output.
 
 Native verification declines the corrected driver store itself. The unchanged
 Python verifier and verified workspace save establish its canonical validity
-before bootstrap lowering. The component responsible for that decline is not
-diagnosed. Do not call this native self-verification. In malformed case
-`semantic-43-function_byte`, the native diagnostic is
-`XAX.CANON.TRAILING_BYTES / TYPE-BODY`; the reference diagnostic is
-`XAX.TYPE.EXPECTED / TYPE-BITS`. Both reject it; diagnostic parity is unmet.
+before bootstrap lowering. A private canonical probe locates the original
+self-store decline at the resource-callee decision's action 2. This identifies
+the stage, not its underlying cause. Do not call this native self-verification.
+The canonical renderer guard now gives `semantic-43-function_byte` the reference
+`XAX.TYPE.EXPECTED / TYPE-BITS` diagnostic. Its 160-case replay compares every
+field, including dependencies and repair neighborhood. Broader diagnostic
+coverage and the four original malformed declines remain open.
 
 ## Canonical changes and resources
 
@@ -44,20 +47,29 @@ The source derives from `compiler/bootstrap/xax_compiler_driver_general.xax`.
 That production store, builder, request store and evolution ledger are unchanged.
 The initial port reuses 501 existing functions, adapts 100 host call sites and
 adds six canonical adapters for arguments, paths, binary reads/writes, open and
-close. The complete driver contains 508 functions.
+close. The current driver contains 509 functions: the original renderer remains
+as the new guard's fallback.
 
 | Transaction | Expected root | Change |
 |---|---|---|
 | [windows_host.edit](windows_host.edit) | `68347cdffbc556b17dfe771a88dd308a0751376fa9feb3e9c9237978d0092122` | Windows host interfaces and PE target |
 | [windows_flags.edit](windows_flags.edit) | `eec166eafff5eac891bc8174d4191767dd01b2715a2f66ffac53fb8366f3cb0e` | Capture 522 cross-block comparisons as 64-bit flags in 95 functions and bind callers to updated helpers |
+| [type_kind_order.edit](type_kind_order.edit) | `59b52b732f54086588c34ba4098d54cea0d33dd1a102aeab5749b933cdc54d71` | Bind the type renderer to a canonical kind-check guard; supply only its two new semantic objects |
 
 Final root:
-`59b52b732f54086588c34ba4098d54cea0d33dd1a102aeab5749b933cdc54d71`.
-Both records were applied with the unchanged reference edit service, followed
+`2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17`.
+The records were applied with the unchanged reference edit service, followed
 by full canonical verification and workspace save. Native host-record replay
 passes. Native replay of the larger flag record declines despite its file
 fitting the 16 MiB record view. Use verified expected-root transactions for
 subsequent changes.
+
+The guard restores the verifier's kind check before bits/float body parsing
+when another object kind is read as a type. It covers copied bodies beginning
+with canonical forms 1 or 7. Empty bodies, other forms and ordinary TYPE or
+CONSTANT objects delegate to the existing renderer. There are 110 native helper
+checks across all eleven object kinds, five first bytes and two copied lengths.
+No generic Python compiler source or production evolution ledger changes.
 
 The flag convention avoids [OI-50](../../../XAX_OPEN_ISSUES.md#oi-50--x86-64-branch-fusion-loses-cross-block-comparison-values).
 The generic bootstrap register allocator can fuse a comparison into its branch
@@ -137,4 +149,8 @@ The smoke executable copies up to 4 KiB of stdin to stdout and exits with its
 byte count. External full test transports stay outside the implementation
 repositories and are identified by hashes in the evidence. No full BBC pipeline,
 competitor score, RAM or Android result follows from these checks. A second
-independent rebuild of the large driver PE was not performed in this run.
+independent bootstrap rebuild of the original 508-function source reproduces
+its PE hash exactly. The corrected PE is 11,864,576 bytes. Its bootstrap reused
+507 immutable SDK function fragments in the same process and freshly compiled
+the changed entry and guard through existing APIs; this is not a cold-build
+measurement or native self-build. The follow-up preserves that distinction.
