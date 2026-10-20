@@ -8,11 +8,17 @@ only the new magic and identifier; old records reject without fallback.
 |---|---|
 | `bfx.xax` | Portable FUNCTION dependency closure of the shared strict decoder |
 | `import_bfx.xax` | Same decoder, then checked canonical decision-store import |
+| `compile.xax` | Single public typed source-to-BFX interface, O0/O1 |
+| `compile_windows.xax` | Native Windows emit-bfx, check and info process host |
 | `source.xax` | BF chunk filtering/validation and final BFX publication |
 | `pack.xax` | BF streaming run packing of validated BFX, including opaque encoded opcodes |
 | `android_bfx.xax` | Bounded decision demo, JNI/lifecycle/UI packaging |
 | `standalone_arm64.xax` | Direct native decision process host on Android |
 | `standalone_windows.xax` | Direct native decision Windows process host |
+
+[COMPILE.md](COMPILE.md) specifies the unified public interface and exact generic
+bootstrap recipe. Native emit/check/info commands need no Python at runtime;
+full native target builds remain incomplete.
 
 [IMPORT.md](IMPORT.md) specifies typed buffer/build contracts and
 [TRANSACTIONS.md](TRANSACTIONS.md) records exact-root migration/replay boundaries.
