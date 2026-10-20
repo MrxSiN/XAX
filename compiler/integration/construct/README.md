@@ -5,11 +5,12 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: steps 1-3 of the plan below.** What is established is that the authoring primitives the
+**Status: steps 1-4 of the plan below.** What is established is that the authoring primitives the
 self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects* as the
 Python reference, that a program authored that way runs as a native windows-x86_64 host with the file
-transport a `construct` command needs, and that the host can read a carrier into a tree and write the
-tree back out byte for byte. Type resolution, assembly and the driver command are steps 4-6.
+transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
+back out byte for byte, and that every named type in both carriers resolves to the reference object.
+Derived declarations, assembly and the driver command are the remaining steps.
 
 ## Why canonical identity is the oracle
 
@@ -123,6 +124,66 @@ order -- are exactly the step 3b list. They are rejected here, not silently appr
 this reader accepts is one it understood completely. The tree it builds is the whole carrier; nothing
 is skipped on the way to emission.
 
+## Step 4: type and entity resolution (done for named types)
+
+`resolve.py` walks the tree step 3 built and turns every type and entity *name* into the canonical
+object the reference builds, emitting one line per occurrence in the native writer's batch shape:
+
+```
+<kind> <schema> <refs|-> <body hex>
+```
+
+`-` means no references; otherwise the space-separated reference CIDs. That is exactly the input
+`xax_selfhost_writer` expects, so step 5 hands the listing over instead of re-encoding objects.
+
+Names resolve the way `xax_construct._Builder.type` does: a carrier alias first, then `b<N>`, then a
+`win32.` platform name. The platform namespace is embedded as authoring data -- the 21 declarations of
+`xax_platform.win32_kernel32_api()` and `win32_stdio_api()` are captured at build time as framed entries
+(2 880 bytes) and stored in the same view at `NS = 0xE00000`, so a `win32.<name>` spec is a table
+lookup, not a table in Python at run time. Aliases resolve in a bounded loop (8 hops) so a cycle is a
+refusal, not a build-time recursion.
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path compiler/src).Path
+python -B compiler/integration/construct/resolve.py build/construct_resolve --check `
+    ..\XAX-MCP\native\sandbox_request.json ..\XAX-MCP\native\construction_request.json
+```
+
+```
+entry     a7c0def59d84edb439c94381616f3c29fbb68e23b24b505016d0ee54cd3973d4
+entry fn  7372266ec2e28a5862849f7836030ae2d4224573498d8e8e103b8cf880c94b1a
+store     1531340 bytes
+artifact  194560 bytes
+namespace 2880 bytes, 21 entries
+carrier   sandbox_request.json       exit=0 lines=2473 resolved=2395 deferred=78 MATCH
+carrier   construction_request.json  exit=0 lines=31325 resolved=30871 deferred=454 MATCH
+```
+
+The check decodes each produced line back into a `SemanticObject` and compares its CID with the
+reference object for that occurrence, so the claim is object identity, not textual similarity. Both
+carriers run inside the one program, and the reader's identity is unchanged by the seam that exposes
+the tree (`6539e017…`, root `a87c6b33…`, 280 467 B, 80 384 B). Measured on this host: 16 ms for the
+66 KB carrier, 27 ms for the 957 KB one; two consecutive builds produce the same store
+(`24d3be84519b0103`, 1 531 340 B).
+
+```powershell
+resolve.exe <carrier> <listing>
+```
+
+| situation | exit |
+|---|---|
+| unknown alias, unknown `win32.` name, alias chain longer than 8 | 11 |
+| unknown entity name | 12 |
+
+`?` lines are counted, not emitted as guesses. They are the derived declarations whose bodies need
+type CIDs hashed in the program:
+
+| deferred name | sandbox | construction | needs |
+|---|---|---|---|
+| `win32.import` | 61 | 48 | type CIDs for the imported signature (step 4b) |
+| `win32.virtual_free_view` | 4 | 6 | the view type's CID (step 4b) |
+| `{"fn": …}` | 13 | 400 | graph assembly (step 5) |
+
 ## The plan
 
 | Step | Content | Oracle |
@@ -131,7 +192,8 @@ is skipped on the way to emission.
 | 2 | native host: argv, file read/write, exit (the pattern of `hash_host.xax`) | copies bytes byte-exactly, exits 0; refuses with 2-7 |
 | 3 | carrier JSON reader: objects, arrays, strings, integers; unmeasured cases refused | `json.dumps(json.loads(x), sort_keys=True, separators=(",",":"))` byte-identical on both carriers |
 | 3b | `\uXXXX` escapes, UTF-8, floats, member-order sort for unsorted carriers | a corpus that exercises each, against `json.dumps` |
-| 4 | type and entity resolution, embedded platform namespaces (as `xax_platform.py` declares them) | object CIDs for every type/entity name |
+| 4 | types, aliases, view specs and `win32.` platform lookups against the embedded namespace | every produced object's CID equals the reference object's |
+| 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use |
 | 5 | graph, package and build request assembly; `resolve` + `snapshot_store` reuse | the two store roots above, byte-exact |
 | 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
 
