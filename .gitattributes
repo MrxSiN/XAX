@@ -3,6 +3,10 @@ compiler/benchmarks/ai_native/*results.csv -text
 *.xax linguist-language=XAX
 compiler/integration/bfx/*.edit -text
 compiler/integration/bfx/*.xax -text
+compiler/integration/bfx/wide/*.xax -text
+compiler/integration/bfx/wide/transactions/*.xax -text
+compiler/integration/bfx/wide/transactions/*.edit -text
+compiler/integration/bfx/wide/*.json -text whitespace=cr-at-eol
 compiler/integration/bfx/wide_reset_evidence.json -text
 compiler/integration/bfx/standalone_arm64_evidence.json -text
 compiler/integration/bfx/standalone_native_replay.json -text

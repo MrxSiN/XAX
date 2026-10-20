@@ -12,6 +12,9 @@ The canonical [importer](IMPORT.md) now owns graph/store emission, and the
 Its embedded decoder also accepts [v2 CLEAR](CLEAR.md) and
 [v3 arithmetic powers](POWERS.md) and [v4 movement powers](MOVEMENT.md).
 This standalone `bfx.xax` source remains unchanged and strict v1.
+The separate [v5 wide profile](wide/README.md) has its own native coordinator,
+u32-count decoder/importer and larger fixed views. It does not expand this
+standalone decoder or the original importer's versions and capacities.
 `backend_tests.xax` provides the generic arithmetic and stack-allocation
 regression checks.
 

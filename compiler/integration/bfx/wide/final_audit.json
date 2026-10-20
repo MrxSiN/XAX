@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-20",
+  "final_private_fixed_packet_coordinator": {
+    "parent": "fbcc9987cce9326af2b943b62c3ad7587762d496035c401aef88c599ebcfddb0",
+    "root": "566f0b59d59fb66e2ac169450fafef328401b4782cc63166090b89fe6cb88387",
+    "entry": "f2c1a8e0c1d9104e03a5b399b761d68a9dab7105840bc4aa1087cdd793461c82",
+    "core": "10693e99e7df1b9faaf1a71f8695d07df6c5002ba18a1e1fc7f8953faf865dc1",
+    "core_packet_logical_input_and_output_extent": 65536,
+    "precondition": "Initialized private packet buffer; complete count-bounded frame <=32774 bytes; max output <65536.",
+    "fully_verified": true,
+    "stale_replay_rejected": true,
+    "source_sha256": "3e309d112920e3685bc2641da51b5adf6798286204589a1dfea9d2146e33e86f"
+  },
+  "final_production_path_modules": [
+    {
+      "name": "empty-megabyte",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "comment-megabyte",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "deep-512",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "cross-chunk",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "binary-comment",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "wrap-capacity",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "arithmetic-wrap",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "right-edge",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "right-trap",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "left-trap",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "opposite",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "skip-wide",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "transfer",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    },
+    {
+      "name": "unit-clear",
+      "final_fixed_coordinator_record_and_verified_store_identical_to_full_buffer_test": true
+    }
+  ],
+  "local_markdown_links_checked": 447,
+  "missing_links": [],
+  "existing_reports_unchanged": true,
+  "new_bf_sources": 12,
+  "evidence_reports_after_this_audit": 41
+}
