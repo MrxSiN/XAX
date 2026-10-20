@@ -1,5 +1,10 @@
 # Eight-byte decision tape reset
 
+> Historical pre-migration reset snapshot. Current production uses the single
+> [BFX decoder and importer](IMPORT.md). This report's old format names and
+> source identities remain historical, not accepted production modes.
+
+
 The importer clears the complete 65,536-byte decision tape using checked
 eight-byte stores at alignment one. It performs 8,192 reset iterations.
 The previous importer used 65,536 checked one-byte stores. Brainfuck source,
@@ -8,7 +13,7 @@ are unchanged. This is a generic memory-initialization improvement.
 
 ## Canonical change
 
-[wide_reset.edit](wide_reset.edit) replaces one graph reference in the importer.
+[wide_reset.edit](https://github.com/MrxSiN/XAX/blob/6c9ed73474307d4b3f6130dd09a16431b0f8046d/compiler/integration/bfx/wide_reset.edit) replaces one graph reference in the importer.
 Its parent is `import_bfx.xax` at revision
 `3ddafd26752511d7efbc6ff715e2f4899be93ff2`.
 

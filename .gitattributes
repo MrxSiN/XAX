@@ -21,3 +21,7 @@ compiler/integration/windows_helpers/driver_verification_profile.json -text whit
 compiler/integration/windows_helpers/driver_followup.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/resource_diagnosis.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/diagnostics/*.edit -text
+
+# Canonical BFX migration records and immutable execution snapshot.
+compiler/integration/bfx/transactions/*.edit -text
+compiler/integration/bfx/canonical_bfx_evidence.json -text whitespace=cr-at-eol
