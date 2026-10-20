@@ -763,7 +763,14 @@ neighborhood. Its 110 helper checks cover every object kind. The complete
 original 212-case corpus has not been replayed in this follow-up.
 The corrected self-store and large flag edit still decline. A private canonical
 probe locates the original self-store's decline at resource-callee action 2;
-the underlying graph outcome is still being diagnosed. All 508 original graph
+the current self-store probe identifies its entry graph (2,149 blocks, 37,533
+nodes; defer token zero). The underlying node/facts reason is still being
+diagnosed. Separate tiny resource-call controls accept one/same callee, decline
+two distinct valid callees and reject a malformed second callee exactly;
+[resource evidence](compiler/integration/windows_helpers/resource_diagnosis.json)
+and [private records](compiler/integration/windows_helpers/diagnostics/README.md)
+preserve that distinct coverage gap without assuming it is the self-store's cause.
+All 508 original graph
 bodies decode natively; audited CFG input/output and object-table sizes fit
 their current views. Windows DLL packaging and migration of the common
 Python helper loader remain outside the implemented native route.

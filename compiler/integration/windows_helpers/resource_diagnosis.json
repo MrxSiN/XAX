@@ -1,0 +1,418 @@
+{
+  "date": "2026-10-20",
+  "status": "EXECUTED unscored native coverage diagnosis; production verifier expansion remains open",
+  "xax_input_revision": "76792c792eb6f2165e562aaea41b11119f274798",
+  "bbc_input_revision": "a2a28decb677d2c528938ed4ce38afe5ceb1f924",
+  "production_driver_source_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+  "production_driver_unchanged": true,
+  "scope": "Five normal-driver controls, a fixture-only canonical rebinding and private canonical state capture. No new build/RAM/competitor score or validity claim from private exits. M4 incomplete; M8 NOT YET ACHIEVED.",
+  "normal_native_controls": {
+    "scope": "Unscored native resource-call coverage controls. Validity from unchanged SDK full verification; initial canonical valid fixtures saved through Workspace. Declines are no validity claim.",
+    "authority": {
+      "component": "resource-call-coverage-controls",
+      "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+      "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "required_native_during_calls": true,
+    "bootstrap_reference_authority_separate": {
+      "blake3-compress": {
+        "component": "blake3-compress",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native leaf unavailable: RuntimeError('host mmap does not expose executable mappings')"
+      },
+      "blake3-hash": {
+        "component": "blake3-hash",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      },
+      "store-writer": {
+        "component": "store-writer",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      },
+      "store-decoder": {
+        "component": "store-decoder",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      },
+      "typing": {
+        "component": "typing",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      },
+      "store-verifier": {
+        "component": "store-verifier",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      },
+      "graph-decoder": {
+        "component": "graph-decoder",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      },
+      "cfg": {
+        "component": "cfg",
+        "semantic_root": null,
+        "native_artifact_digest": null,
+        "requested_authority": "xax",
+        "actual_authority": "python",
+        "fallback_occurred": true,
+        "fallback_reason": "native XAX helper images run on Linux x86-64 only (host: win32 AMD64)"
+      }
+    },
+    "cases": [
+      {
+        "name": "one",
+        "source": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\backend\\resource-controls\\one.xax",
+        "root": "4c4f1f0a5d720abc03bfa7446651b13a7094bd491c9b9eabc6c1616fbb9b6d62",
+        "bytes": 1333,
+        "sha256": "427a83a5dd4fa3918d81ce2a93e74665074632f98af9ba2c9630448a6002e486",
+        "expected": null,
+        "exit": 0
+      },
+      {
+        "name": "same_twice",
+        "source": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\backend\\resource-controls\\same_twice.xax",
+        "root": "59a5f7f60d28e28bbc910e426ea8b1f8d3bb95bc2fa23f705bc68ae501c95265",
+        "bytes": 1347,
+        "sha256": "2a7b012e47a917d4d5fe63a71238953b9bfb9aa6223390d405b70c61448a2d6a",
+        "expected": null,
+        "exit": 0
+      },
+      {
+        "name": "different_twice",
+        "source": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\backend\\resource-controls\\different_twice.xax",
+        "root": "d9ac5d3bc0f4bb28661474df40c2011f7103f62b3f9ffdf0ce2b40384b065660",
+        "bytes": 1919,
+        "sha256": "b6faec8db567a79fcbe098508b4aa4c65e850f2adc2f872e34881bb0d8fea6c5",
+        "expected": null,
+        "exit": 2
+      },
+      {
+        "name": "different_bad_second",
+        "source": "C:\\Users\\User\\.codex\\visualizations\\2026\\10\\20\\01a156c6-4d9f-7521-888e-9f3bc25184bb\\backend\\resource-controls\\different_bad_second.xax",
+        "root": "cdb2c8802408942c1fd0f473e1de1b88f7625c5afa13b707ac189b6a1ca12aa2",
+        "bytes": 1919,
+        "sha256": "59a839afd98966f63d2a872625398aafccd4851ebc090226462497c864df1b31",
+        "expected": {
+          "code": "XAX.MEMORY.RESOURCE_DROP",
+          "entity": "20a0d77bfeabefc48fe6f60c032ddbe5f2a78c04f7540b5d8d2db8d7fdce8507",
+          "rule": "MEMORY-RESOURCE-TRANSFER",
+          "expected": "one live owner/effect pair",
+          "actual": "dropped, duplicated, or mismatched",
+          "dependencies": [],
+          "repair_neighborhood": []
+        },
+        "exit": 1,
+        "actual": {
+          "code": "XAX.MEMORY.RESOURCE_DROP",
+          "entity": "20a0d77bfeabefc48fe6f60c032ddbe5f2a78c04f7540b5d8d2db8d7fdce8507",
+          "rule": "MEMORY-RESOURCE-TRANSFER",
+          "expected": "one live owner/effect pair",
+          "actual": "dropped, duplicated, or mismatched",
+          "dependencies": [],
+          "repair_neighborhood": []
+        },
+        "full_diagnostic_matches": true
+      }
+    ]
+  },
+  "fixture_rebinding": {
+    "scope": "Fixture-only expected-root rebinding of the second call to the first identity callee. Both original callee functions remain in the module. No production optimization claim.",
+    "expected_root": "d9ac5d3bc0f4bb28661474df40c2011f7103f62b3f9ffdf0ce2b40384b065660",
+    "root": "37a80514700cfc86d9665111d195c40430133ef634305edb498e161c305c053a",
+    "record_bytes": 138,
+    "record_sha256": "40325b137dbf9ba5d07aaa9028a54e1eb59e8b77728e55338143978d9ba6a0f5",
+    "source_bytes": 1887,
+    "source_sha256": "b603ca3afd5dfe8e40e93ed43f4b2dfb4f067e6ff327d5764f7a5a546fa028f5",
+    "canonical_verified": true,
+    "workspace_saved": true,
+    "stale_root_rejected": true,
+    "native_exit": 0,
+    "authority": {
+      "component": "resource-rebinding-control",
+      "semantic_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+      "native_artifact_digest": "ff0355c5bf148bc79cf463748a285c3f982b6c8e47faf8d2d25bd3571b2ad638",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    }
+  },
+  "private_native_resource_capture": {
+    "scope": "Private canonical resource-stage instrumentation only, not normal CLI statuses or a validity result. Fully verified source and expected-root binding/edge transactions; native PE bootstrap uses unchanged SDK. Direct decode of the private packed ordinal/defer status locates the input semantic graph.",
+    "preparation": {
+      "scope": "Private probe; at original decline site only, return packed graph ordinal+1 and deferred function entry. All other command semantics retained. No validity claim from private exit codes.",
+      "expected_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+      "binding_root": "743923d00aa8e18be5ec6d48130dbf7c0c7ac71128659628f731fc105b12ff5a",
+      "candidate_root": "a4cfa166b469d70a3f95439c54698f7b844b28caf6b4d7d554563e94df6eb6c8",
+      "candidate_sha256": "607fe421f538106ef0d3ba047eddde250a5f1a44201a0166522276e0bea71baa",
+      "record_sha256": "55c0f120d4e63024e10115ce04824ea7ea3f2dc8681d823c05afa39284ab9575",
+      "record_bytes": 125,
+      "binding_record_sha256": "9d55cda9f5dfb0680922ed9369a6389b56793d7ecf3908979d70afbadbb74a84",
+      "binding_record_bytes": 1249,
+      "old_rc_decide": "bf3cb1fbe77355a8a0f03f88a2947ab32377ea5eea5947acb6fb53fc03646fbe",
+      "probe_helper": "0351b3de08d8271a880d6a9cb30c0969ae91a16f6d82af54d6621746700b75ca",
+      "call_site": [
+        680,
+        50
+      ],
+      "stale_root_rejected": true
+    },
+    "build": {
+      "source": "C:/Users/User/.codex/visualizations/2026/10/20/01a156c6-4d9f-7521-888e-9f3bc25184bb/backend/driver_resource_probe.xax",
+      "root": "a4cfa166b469d70a3f95439c54698f7b844b28caf6b4d7d554563e94df6eb6c8",
+      "source_sha256": "607fe421f538106ef0d3ba047eddde250a5f1a44201a0166522276e0bea71baa",
+      "artifact_sha256": "0006d35e32887da63088ebf980e910a43c48a4010d1988174f33dd19d1f1b9c9",
+      "artifact_bytes": 11864576,
+      "verification": {
+        "objects": 5838,
+        "cache_hits": 5832,
+        "cache_misses": 6,
+        "dependency_cids_checked": 38142,
+        "cache_entries_before": 5836,
+        "cache_entries_after": 5838,
+        "cache_entries_invalidated": 4,
+        "cache_entries_written": 6
+      },
+      "functions": 510,
+      "fresh_functions": 2,
+      "reused_function_fragments": 508,
+      "seconds_unscored": 331.3249020999938,
+      "configuration": "Fresh full first verification; same-process compiler-owned ProofCache and SDK-produced function fragments through existing code= API. Fixed exact simplifiers, target and empty prefetches. Unchanged generic Python SDK. Diagnostic bootstrap, not a native-host or cold-build performance claim."
+    },
+    "required_native_during_calls": true,
+    "authority": {
+      "component": "private-resource-state-probe",
+      "semantic_root": "a4cfa166b469d70a3f95439c54698f7b844b28caf6b4d7d554563e94df6eb6c8",
+      "native_artifact_digest": "0006d35e32887da63088ebf980e910a43c48a4010d1988174f33dd19d1f1b9c9",
+      "requested_authority": "xax",
+      "actual_authority": "xax",
+      "fallback_occurred": false,
+      "fallback_reason": null
+    },
+    "encoding": "Exit = (RC_O + 1) * 65536 + RC_DEFER; these tested stores have fewer than 65536 objects/entries. RC_DEFER is a typing-entry token, not a direct object ordinal.",
+    "cases": [
+      {
+        "name": "current-driver",
+        "source_root": "2b8136a8e052ccefd88f31b5d906dc986a070f2ca6e370668b73b17783ed3d17",
+        "source_sha256": "35d08af4641143eae2169a9e9972db9a183cb13fd4a03d7c6e6b1d685164adb6",
+        "private_exit_uint32": 201981952,
+        "graph_object_ordinal": 3081,
+        "deferred_typing_entry_plus_one": 0,
+        "graph_cid": "85a20ba4e71d38112f4a59ec76ede95cab3810090495a8580b11acc98205aaa6",
+        "graph_bytes": 1884005,
+        "owner_function_cids": [
+          "39b4e312a03012e6f94930f15f7a1b2b75727dae1d72c8bc23311e23acd64ade"
+        ],
+        "blocks": 2149,
+        "nodes": 37533,
+        "direct_calls": 112,
+        "distinct_direct_callees": 37,
+        "direct_callee_cids": [
+          "125f1623ffaff0fff95fcd083b22e18d100de89f6f42adc079bcaf811c26c73c",
+          "1455761a79cc7b8145c5d4dabf70981b012086ed949f1c6804e2540a775f35f9",
+          "1553bc68499abd5dd209bd6ff493672a5c11f1918ef5df98ec301e0ad711a278",
+          "1e82feaaec37eae0013eee0ffbff709f70888774f8ae25add3520d8a5ce9014a",
+          "270e8c39a6869fbb9fd9a378ceb4ccced98d66e45de9e3417e19afe100b58fe9",
+          "3d1842cbb6657cf5bc2951dd6eb0315fee4b612074962811bb7658c43e70cf0e",
+          "5315cfc825ed344bd2b2a2d50ab8d845e7c9f7b3f796b4a565e7306ba4349034",
+          "572672bcf8b975bf95995aaf3ba3f089c2c9181d6442eb3f398710559bf39119",
+          "586446ed321ccc8c2253e3f6c24d810d31470c1a4bf64db17349c5f307a3cfd8",
+          "5aa1009abbe4b01f44224a3e53fb4317ea77274387605d426cf02220621342b4",
+          "65949a0418c2fd1d0930f491d8612dd1d6a3413fbbe576c092c4f9accce97176",
+          "697eabf661b847d3349c8f5ec774713225a4f5cd33247465e9bd580485ef5657",
+          "6cbc33662a9d93e7c39a74865c017c66f7de1408c759940eb99ddf362d54b29f",
+          "6cc68c2da4c7ec85a471ecb51e75fa08277ced41699a6429c5f6107ec4ef073a",
+          "73abf40d9c9c589466836f7d546769e3929e6a00372bccdf5edb23b207aa08a2",
+          "74a5b4a3474617f06db7f4819c65d51278407c2d327ba798294b6957a01863fb",
+          "78b2a479a9364e4378c8ea2c435f46f53cafedde70a73f48ec070ad3eb073e9e",
+          "7ac9e1925deacfa17155b55dbb1706dd924a610e2c9b426638c00747e7d0b14a",
+          "7ed57253360dd8c0d45d3b8d19b6c93cfc763bffbcab7b150eef0e19636d540d",
+          "7f8e93cbccc86fa88b82c53457769233e8e43f8b8d0df9525504813397195dd9",
+          "8e86608556a77e3dbb6e371fa96acf9e96bfe4afac5ec1baee7d77a373c6a353",
+          "a1af76e6946c1feb00b35de6c95b3c9ee99a2c4c8a779f13ed4b5fb03534dfa8",
+          "a865ead90c0cc23986fcff269c54000f609f3c8521ef1ec6c677cb959133a8fd",
+          "b03e618b53652952a47e53e974cce333de1ef17f9b34bdbc24f45aa39db67da0",
+          "b04dde881daf34bf3d538d41d7d07030af917cc88987cf584eb063e50f64d169",
+          "bdd332290c0e76d1aeeed150aefd61a10ae451bdbebfe714d2bb00b802346ded",
+          "bf3cb1fbe77355a8a0f03f88a2947ab32377ea5eea5947acb6fb53fc03646fbe",
+          "c0b733267c4d2413abca8d8c0a33bdc8f761bc0edcde9894fadf8d4a541faa57",
+          "ca36b8dfd123e27d80c5eb1fe4adf0c3a8ca95767b679ab04bcf6e505e8fee10",
+          "cfdd7a58022c50b1ceceeb32ec9a2c222985c4603781be0d8f166b1ccb770a78",
+          "d3e663b5c010de7bd10b0480bdc8c215d658f4c03a1cf28820b3424b49c14989",
+          "e1d73163fb70f4f10dedfe731c98c67c027e69e82efb6074a40aed36bed85c6c",
+          "e9df876b6413b6d567d0b37fb03d0a0a92ce151ea19dd7a9c2dfedcf834eb67b",
+          "ecad3117acb69447c1f66a12de696815cd8cd64a5563739bc8ba3fc8aea8d052",
+          "f03c1e344e56e64e67536960f99705f5171fea51a721f1d078103fdd1869bd41",
+          "f0ac770a97ed8f73f88ae7b6a11217abf89bf96840e54bec1a5aaa46bde2cf69",
+          "f9a9249dee42ab8875243a71fdda6cec51aae4987c11fb3d0a434b559913e80c"
+        ]
+      },
+      {
+        "name": "one",
+        "source_root": "4c4f1f0a5d720abc03bfa7446651b13a7094bd491c9b9eabc6c1616fbb9b6d62",
+        "source_sha256": "427a83a5dd4fa3918d81ce2a93e74665074632f98af9ba2c9630448a6002e486",
+        "private_exit_uint32": 0
+      },
+      {
+        "name": "same_twice",
+        "source_root": "59a5f7f60d28e28bbc910e426ea8b1f8d3bb95bc2fa23f705bc68ae501c95265",
+        "source_sha256": "2a7b012e47a917d4d5fe63a71238953b9bfb9aa6223390d405b70c61448a2d6a",
+        "private_exit_uint32": 0
+      },
+      {
+        "name": "different_twice",
+        "source_root": "d9ac5d3bc0f4bb28661474df40c2011f7103f62b3f9ffdf0ce2b40384b065660",
+        "source_sha256": "b6faec8db567a79fcbe098508b4aa4c65e850f2adc2f872e34881bb0d8fea6c5",
+        "private_exit_uint32": 655360,
+        "graph_object_ordinal": 9,
+        "deferred_typing_entry_plus_one": 0,
+        "graph_cid": "a6384746666df4fde9031ede276b4a196103d1394d1146c82002980c2d403c32",
+        "graph_bytes": 55,
+        "owner_function_cids": [
+          "485511baa91df0b2bb046ce927cec13f100aeb4ea5ccea800b0d59ed094e4704"
+        ],
+        "blocks": 1,
+        "nodes": 4,
+        "direct_calls": 2,
+        "distinct_direct_callees": 2,
+        "direct_callee_cids": [
+          "24843e4e7737dbfe04558fe20a259b80dc7ee581568e2d358ecf0e4375a801ae",
+          "94451b562dcc20d5bdfa23ada24fc6a2d6c85cd6a3f08cc0536f1de90679ec7d"
+        ]
+      },
+      {
+        "name": "different_bad_second",
+        "source_root": "cdb2c8802408942c1fd0f473e1de1b88f7625c5afa13b707ac189b6a1ca12aa2",
+        "source_sha256": "59a839afd98966f63d2a872625398aafccd4851ebc090226462497c864df1b31",
+        "private_exit_uint32": 1
+      }
+    ]
+  },
+  "conclusions": {
+    "self_decline_graph_is_current_entry": true,
+    "current_entry_graph_cid": "85a20ba4e71d38112f4a59ec76ede95cab3810090495a8580b11acc98205aaa6",
+    "current_entry_graph_bytes": 1884005,
+    "current_entry_blocks": 2149,
+    "current_entry_nodes": 37533,
+    "current_entry_direct_calls": 112,
+    "current_entry_distinct_direct_callees": 37,
+    "current_entry_defer_token": 0,
+    "small_distinct_callee_limit_reproduced": true,
+    "small_limit_and_self_decline_share_resource_decision_stage": true,
+    "same_underlying_cause_established": false,
+    "precise_node_or_facts_reason": "UNDIAGNOSED"
+  },
+  "canonical_fixture_sha256": {
+    "compiler/integration/windows_helpers/regression/resource_one.xax": "427a83a5dd4fa3918d81ce2a93e74665074632f98af9ba2c9630448a6002e486",
+    "compiler/integration/windows_helpers/regression/resource_same_twice.xax": "2a7b012e47a917d4d5fe63a71238953b9bfb9aa6223390d405b70c61448a2d6a",
+    "compiler/integration/windows_helpers/regression/resource_different_twice.xax": "b6faec8db567a79fcbe098508b4aa4c65e850f2adc2f872e34881bb0d8fea6c5",
+    "compiler/integration/windows_helpers/regression/resource_different_bad_second.xax": "59a839afd98966f63d2a872625398aafccd4851ebc090226462497c864df1b31",
+    "compiler/integration/windows_helpers/regression/resource_rebound_same.xax": "b603ca3afd5dfe8e40e93ed43f4b2dfb4f067e6ff327d5764f7a5a546fa028f5"
+  },
+  "canonical_diagnostic_record_sha256": {
+    "compiler/integration/windows_helpers/diagnostics/decline_sites.edit": "29a3520353efc4772ea1b823b376d3744d5963e0c2560ff7f532ba52d912a4b7",
+    "compiler/integration/windows_helpers/diagnostics/resource_state_binding.edit": "9d55cda9f5dfb0680922ed9369a6389b56793d7ecf3908979d70afbadbb74a84",
+    "compiler/integration/windows_helpers/diagnostics/resource_state_status.edit": "55c0f120d4e63024e10115ce04824ea7ea3f2dc8681d823c05afa39284ab9575"
+  },
+  "prior_bbc_evidence_sha256": {
+    "backend_build_cache.json": "411e9ba4792ce268a4a3d6544f40fcf030a755a7e35208f6acd5838a671c7873",
+    "bfx_android_importer.json": "d95cb43a426b27316218f26e6989bd6a525c801b112fbfd1b50cb0743f744f9d",
+    "bfx_migration.json": "da7e7e8ace07226cb517dedd3b7201ab8d6924e6b724322ee812d4bb89a7428e",
+    "bfx_retirement.json": "af93874bbbfba8e918ad4388d7c177371f95fb1a03450947b7609f91e03b200f",
+    "bfx_v2_optimization.json": "b10b6bc81883f55645fb88e4a24b605f6bd4d2acbaf33d8dcaf37aacac30510f",
+    "bfx_v3_arithmetic.json": "204be68527086d91c5f4a17964a28de6aae48bada346afc4cdebd8815f072e75",
+    "bfx_v3_measurements.json": "6a5be297356daf4c5a606f7493abc7e50290ad2e49e9ce7f14626991f7c0247d",
+    "bfx_v4_call_controls.json": "136104fc816ff991eb71a7ded1679dc30556dde34677d9bce9b6123baefec8a2",
+    "bfx_v4_measurements.json": "4237ad2cac2c44ccdd6d20ffe75b3c8136747cfc00d1302e06071e2599719709",
+    "bfx_v4_movement.json": "6b473db541ca3c2d36686e13185afd84cff34997010f9c3fe23de270474545ee",
+    "bfx_v4_native_boundaries.json": "0c4ec8f7e3120ef898cfca29d4f10fe6d3c4c7217874dd6bc5d1df49288ce1e7",
+    "bfx_xax_import.json": "a36b219b946f9113a4be8346c5356524b1a7e10c63ef1a735657a56f632e3eda",
+    "brainfly_brainfry_followup.json": "6b02fd4393cb355479aa73a49f2021eb9923cf036c4516853a5a2c40a8873355",
+    "build_runtime_resources.json": "dd24aa1b587624b4233eb8aca4982c2287f51f8091855ac34e13ce67d6daa382",
+    "competition_pilot.json": "7d67f74a41a4697f98b05313d37321af5c151c45b05cd9bee5c48100de02bf05",
+    "format_cleanup.json": "9a3874fc4c357bd5ef6fe31713ee30c205e87834905886250773ac0ebf640aeb",
+    "frontend_capacity_gate.json": "373c9a1ae361539f6748c700605c920fe7940510185386d2e89693becf4b32a2",
+    "frontend_counter_android.json": "0816f4a8236b2a601dd33752880f1fe677344b2d1331d106d35259adf23249c8",
+    "frontend_counter_profile.json": "6dcc9f67097f5a715dbaf0a0d130d1cf2b93430b2f8fb6cadd7018d534249b81",
+    "frontend_counter_windows.json": "57884d07519a8da09a8d78c40b5d37663ccbff80cb55009cca8fff896e9db9c3",
+    "frontend_filter_android.json": "5ec718eeb4a2a991e34e4dd3277bd2bfc2fd9a67b3ddc4fca1704f6edf726dad",
+    "frontend_filter_profile.json": "3549521bd5d56f3bde6566e0fde0b31c8a2fd93a22d9be062df2174f9fb6599b",
+    "frontend_filter_windows.json": "87228c9802e2f84ec221bb4488127bdc7aaace33ebd1f9274e549c8e7cb40d9e",
+    "graph_verification_profile.json": "05d4ed7fe4823c5a330c08628025094c4c8bf8427b2cfde66f55e7248268fdbe",
+    "repository_cleanup.json": "f22455b91f7e8928f3d35ee8b0bada851578fc1c9cc6d7f9fcfdf4c8f87fe481",
+    "scalability_capacity_audit.json": "86a8625470a85a558ce84a11e75aedfde48e64cd9fb675cb289a5e0cbf0a4b35",
+    "source_capacity.json": "606dd06e71e71197b37a3acbb96dbff7f3e18ced9148f07dc10ee5ce7db85f59",
+    "source_capacity_android.json": "c4d8c43abd4cd25ef8e9d3979d6cf1347905e5fb94719e215e16edce175e530c",
+    "standalone_android.json": "12a7c5ca3d000e4a53977df0badc927d961b6a6469749bf563b3083aaa0d7735",
+    "standalone_native_replay.json": "394742c1af05a6675df35757ce168d189ac83cf4d30305d9b054b7f8fbb4751e",
+    "standalone_windows.json": "ff2fdcb226de2a91c0e2b7e82a68f47d2d1327c9697d847a6ea94146fa6d5148",
+    "streaming_frontend_bootstrap.json": "4fdf92fb1f2f217e24b895988c5f47f279695296c135dced3c5ab7d3a3988f3c",
+    "streaming_frontend_prototype.json": "75fda1cdc92ca1f943ea672dcabeb46b863df33a4c907024ea133b2b06ed4324",
+    "streaming_frontend_verification.json": "476ecc4ba2140bf71d3a78697e6b9b11b57f8b383ae3c084ca185053f918e335",
+    "stream_runs.json": "e1d8c7192b114ebb6f492fd49128aecaf17c7e4542e02d060a53b749f9f29654",
+    "wide_bootstrap.json": "2dafc7dfa543ed08594e347be55dc5543879036da53a2a07c7451a277ad0b2c8",
+    "wide_final_audit.json": "f473574f22dc107162a62332765280e02b82e0b18ac26b0277ce23f302867d4d",
+    "wide_profile.json": "9d6239b39303e9ad3a5171db92004bfb3411f1237269dc656767089233f4af33",
+    "wide_tape_reset.json": "ccd7c3539117091159c668552adfe9f75ce58148df23b34f7de5daf6308a13dc",
+    "windows_hash_host.json": "0a7fe2e05713c53b8a59b3212496de431a4adc75ff9ff3f56d21901107e508f8",
+    "windows_native_driver.json": "f7a59cb75543b257aa428cd5c3a3bd2aaa172872f3b0cfcfb50d064f892b65b9",
+    "windows_native_driver_followup.json": "fb0fb27cb89a7e19247fe21c3d0c66d3b87f291014407685a3c7e76d938eb77e",
+    "windows_native_verification_profile.json": "2fe2b73f57b2735963502cc7f979b9c3998f715961b1b3bf9b0b2bd6d9d95cf8"
+  },
+  "prior_xax_helper_evidence_sha256": {
+    "driver_execution.json": "f7a59cb75543b257aa428cd5c3a3bd2aaa172872f3b0cfcfb50d064f892b65b9",
+    "driver_followup.json": "fb0fb27cb89a7e19247fe21c3d0c66d3b87f291014407685a3c7e76d938eb77e",
+    "driver_verification_profile.json": "2fe2b73f57b2735963502cc7f979b9c3998f715961b1b3bf9b0b2bd6d9d95cf8",
+    "execution.json": "0a7fe2e05713c53b8a59b3212496de431a4adc75ff9ff3f56d21901107e508f8"
+  },
+  "external_transport_sha256": {
+    "check_resource_call_limit.py": "722acd7a22a105033ffdb9c8fb4ba07110372586d1d6c0866eaa72332cd97cf3",
+    "rebind_resource_control.py": "799cb10fd43ec8a805af6b9160a6232602fbb8c90f6dc93e0022d822bfbc0838",
+    "prepare_resource_probe.py": "8821b9355ab5eca6f851256c06b86979c344896e63cfd438a6bff41d7bd824fb",
+    "replay_resource_probe.py": "4deff75267f50874ba2e877d9a5912760864311da472b671199b21bbf115b0d8",
+    "publish_resource_diagnosis.py": "c01328538257ffaf7689c934394363de6d80862149dffee6c60ebdb8ea92e8af"
+  },
+  "remaining": [
+    "underlying entry-graph outcome",
+    "support multiple resource-callee dependencies with rejection ordering preserved",
+    "all original malformed declines",
+    "large-edit native replay",
+    "Windows DLL packaging",
+    "common helper-loader migration",
+    "full BBC native compilation and fair full-pipeline measurements"
+  ]
+}
