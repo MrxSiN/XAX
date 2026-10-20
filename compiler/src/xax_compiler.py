@@ -7,6 +7,7 @@ the binary store handled by ``StoreReader`` and ``write_store``.
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import math
 import re
@@ -4294,7 +4295,8 @@ class _ParsedGraph:
     returns: tuple[tuple[bytes, ...], ...]
     member_spans: tuple[tuple[int, int], ...] = ()
     # Verified remaining byte extent of every pointer value with a storage
-    # fact, for backends lowering checked accesses.
+    # fact, for backends lowering checked accesses; sorted by value reference, so
+    # ``pointer_extent_from_graph`` can binary search it.
     pointer_extents: tuple[tuple[ValueRef, int], ...] = ()
 
 
@@ -4663,17 +4665,38 @@ def _constant_operand(blocks: Sequence["_ParsedBlock"], ref: ValueRef, resolve: 
     return value if isinstance(value, int) else None
 
 
+def _pointer_extent_key(item) -> tuple[int, int, int, int]:
+    ref = item[0]
+    return (ref.tag, ref.block, ref.index, ref.result)
+
+
+def _verified_pointer_extent(verified: Sequence[tuple[ValueRef, int]], ref: ValueRef) -> int | None:
+    """The verified extent of ``ref`` in a ``pointer_extents`` table sorted by value reference.
+
+    The table can hold one entry per pointer value in the function, so materialising it as a dict on
+    every checked access made the backends quadratic in the graph size; the table is sorted, so a
+    binary search answers the same question without copying it."""
+    if not verified:
+        return None
+    key = (ref.tag, ref.block, ref.index, ref.result)
+    position = bisect.bisect_left(verified, key, key=_pointer_extent_key)
+    if position < len(verified) and _pointer_extent_key(verified[position]) == key:
+        return verified[position][1]
+    return None
+
+
 def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], SemanticObject]) -> int:
     """Recover the statically verified extent for stack/heap-view pointer SSA."""
-    verified = dict(getattr(graph, "pointer_extents", ()))
+    verified = getattr(graph, "pointer_extents", ())
     if ref.tag == 0:
         parameters = graph.blocks[ref.block].parameters
         if ref.index + 1 < len(parameters):
             info = _heap_view_info(resolve(parameters[ref.index + 1]))
             if info is not None:
                 return info[0]
-        if ref in verified:
-            return verified[ref]
+        extent = _verified_pointer_extent(verified, ref)
+        if extent is not None:
+            return extent
         fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "heap-view parameter or derived pointer", [ref.block, ref.index, ref.result])
     node = graph.blocks[ref.block].nodes[ref.index]
     if node.operation == Operation.STACK_ALLOC:
@@ -4686,8 +4709,9 @@ def pointer_extent_from_graph(graph, ref: ValueRef, resolve: Callable[[bytes], S
         return pointer_extent_from_graph(graph, node.operands[0], resolve)
     if node.operation == Operation.POINTER_REBASE:
         return node.attributes[0]
-    if ref in verified:  # e.g. a borrowed view given back by a call (ADR-101)
-        return verified[ref]
+    extent = _verified_pointer_extent(verified, ref)  # e.g. a borrowed view given back by a call (ADR-101)
+    if extent is not None:
+        return extent
     fail("XAX.NATIVE.POINTER", "native", "NATIVE-POINTER-EXTENT", "stack allocation, heap view, or derived pointer", node.operation)
 
 

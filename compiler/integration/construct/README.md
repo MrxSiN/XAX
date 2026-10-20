@@ -5,12 +5,13 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: steps 1-4 of the plan below.** What is established is that the authoring primitives the
-self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects* as the
+**Status: steps 1-4b and 5a of the plan below.** What is established is that the authoring primitives
+the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects* as the
 Python reference, that a program authored that way runs as a native windows-x86_64 host with the file
 transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
-back out byte for byte, and that every named type in both carriers resolves to the reference object.
-Derived declarations, assembly and the driver command are the remaining steps.
+back out byte for byte, that every named type and derived declaration in both carriers resolves to the
+reference object, and that the graph and function objects of both carriers come out byte-identical.
+Packages, build requests, the store and the driver command are the remaining steps.
 
 ## Why canonical identity is the oracle
 
@@ -174,6 +175,7 @@ resolve.exe <carrier> <listing>
 |---|---|
 | unknown alias, unknown `win32.` name, alias chain longer than 8, `b` width 0 or above 64, view extent above 2^28 | 11 |
 | unknown entity name, a type name used as an entity, malformed `win32.import` / `win32.virtual_free_view` | 12 |
+| a graph beyond the staging caps above, an unknown operation or type name inside a graph, a declaration body past its region | 13 |
 
 ## Step 4b: derived declarations (done)
 
@@ -190,8 +192,10 @@ past the view base, sharing that one token. `probe_hash.py` builds a program tha
 Python reference: exit 0, 6 of 6 match.
 
 The resolver stages each object's canonical content -- `blake3("XAX-SEM-1", uleb(kind), uleb(schema),
-uleb(refcount), refs, uleb(bodylen), body)` -- at `CANON = 0xE10000`, points the hash at
-`0xE12000` (2 048 bytes, digest at `+1 728`) and assembles declaration bodies at `DBODY = 0xE20000`.
+uleb(refcount), refs, uleb(bodylen), body)` -- at `CANON = 0xEB0000`, points the hash at
+`0xEE2000` (2 048 bytes, digest at `+1 728`) and assembles declaration bodies at `DBODY = 0xEE4000`.
+The canonical region is `0x31000` bytes because the hash reads the span it hashes: the scratch must sit
+past the widest object (a reference table plus a body), never inside it -- a lesson step 5a paid for.
 Each type spec in a signature is resolved by the same code as a top-level type, hashed, and its digest
 appended, so the declaration cannot disagree with the type lines in the same listing.
 `win32.virtual_free_view` also embeds the view type built from the carrier's extent, which is why the
@@ -211,6 +215,96 @@ Only the function placeholders remain deferred, and they are counted, never gues
 The declaration lines that used to be deferred now match: 61 sandbox and 48 construction
 `win32.import` declarations, plus 4 and 6 `win32.virtual_free_view` declarations.
 
+## Step 5a: graph and function objects (done)
+
+Step 4 resolved names; step 5a encodes the objects that hold them. One carrier function becomes its
+constants, its graph and its function object:
+
+- a constant is `5 1 <type CID> 00 <uleb width> <value>`: the type is resolved like any other type spec,
+  hashed, and the body is the width and the little-endian value the carrier spelled;
+- a graph is `7 1 <refs> <body>`: `uleb(block count), uleb(entry)`, then per block
+  `uleb(parameter count) + positions, uleb(node count)`, then per node `uleb(op), [uleb(entity)],
+  uleb(operand count) + operand references, uleb(result count) + result positions,
+  [uleb(attribute count) + values]`, and finally the terminator `uleb(kind)` -- BRANCH 1, CBRANCH 2,
+  RETURN 3;
+- a function is `3 1 <graph CID, parameter CIDs, return CIDs> <graph rank, parameter ranks, return ranks>`.
+
+An operand reference is `uleb(tag), uleb(block), uleb(index)` plus `uleb(result)` when the tag selects a
+node result: operands point at positions, never at CIDs, which is why an object's reference table has to
+be complete before its body is written.
+
+One view holds everything, so a function is encoded without a second allocation: pass one resolves every
+operand, constant and type and logs each reference *occurrence* in body order (`OCC`); the distinct
+references are deduplicated in first-occurrence order, selection-sorted by a 32-byte compare, and every
+position is read back through `REF_POS[slot]`. Pass two replays the same walk to write the body, so the
+two passes have to agree on every numbering decision -- including where an inline constant is inserted.
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path compiler/src).Path
+python -B compiler/integration/construct/resolve.py build/construct_resolve --check `
+    ..\XAX-MCP\native\sandbox_request.json ..\XAX-MCP\native\construction_request.json
+```
+
+```
+entry     f5a0510dd0e2bc43909d218a65c7a18028d14fd909590176fb78980c22e63398
+entry fn  10f3a887f4d7ae9e4ee33ed4a11b5b2a65e36c7fc5f7f97dac7ccd942b58a504
+store     8461834 bytes
+artifact  1092608 bytes
+namespace 2880 bytes, 21 entries
+carrier   sandbox_request.json       exit=0 lines=3059 resolved=3046 deferred=13 MATCH
+carrier   construction_request.json  exit=0 lines=41318 resolved=40918 deferred=400 MATCH
+```
+
+Every produced line is decoded back into a `SemanticObject` and compared with the reference object for
+that occurrence, so both listings are byte-identical object by object: 3 059 and 41 318 lines,
+`sha256 5adfcc7b…` and `d7f78fce…`. The 13 and 400 `?` lines are the `{"fn": …}` occurrences the
+reference also defers at that point in its own walk; the graph pass resolves them from the name table
+filled as each function is registered, which is why the walk visits functions in carrier order.
+
+Measured on this host, one program for both carriers:
+
+| measurement | value |
+|---|---|
+| `resolve_packages` / `snapshot_store` / `build` | 34.9 s / 6.2 s / 295.0 s |
+| store / artifact | 8 461 834 B / 1 092 608 B |
+| widest graph body (sandbox, construction) | 16 141 B / 56 123 B (cap 131 072) |
+| widest reference table | 231 / 1 391 entries (cap 2 048) |
+| widest canonical object | 23 549 B / 100 651 B (region 200 704) |
+
+The caps are enforced, not assumed: a body above `0x20000`, a reference table above 2 048 entries, a
+canonical object above `0x31000`, more than 16 parameters or returns, more than 8 192 nodes or 512 blocks
+in one function, or a name table past the end of the view is a refusal (`BAD_GRAPH`, exit 13) rather than
+a silent overwrite of the next region.
+
+Six defects the byte oracle caught, each of which produced a *plausible* listing:
+
+| symptom | cause |
+|---|---|
+| every operand name lookup missed | the operation table steps by `3 + the entry's length byte`, not by the lookup name's length |
+| constants had the wrong type | an inline constant hashes its resolved type *before* its value, and the value widens into the shift register the writer reads |
+| one function stalled the walk forever | a body called by an outer `each` reused that loop's cursor register |
+| every function name was zero bytes | `register_function` read the name with a base-relative load although `start()` is input-relative |
+| declarations were correct lines with wrong CIDs | the hash covered only the length prefix left at `CANON`; the identity was at `DBODY` and had to be staged canonically first |
+| one graph had a wrong CID while its line was right | that 16 141-byte body overran the 8 KiB gap into the hash's own scratch; the region now lies past the widest object and `hash_canonical` refuses a wider span |
+
+The staging layout is asserted at authoring time (`CANON_CAP >= REF_CAP * 32 + BODY_CAP + 16`, no region
+overlap, the hash scratch past the canonical span), so a future cap change cannot silently reintroduce
+the last defect.
+
+Two narrowly scoped, semantics-preserving changes in `compiler/src` were needed to build a program this
+size at all: `xax_prefetch` computes a block's cycle set lazily instead of for every block on every
+visit, and `pointer_extent_from_graph` binary-searches a sorted pointer table instead of copying it on
+every call. Neither changes an emitted object; together they take the build from not finishing to about
+five minutes.
+
+A per-function split (`walk` / `graph_collect` / `graph_write`, with the type table shared through the
+environment) was designed and then deprioritised: with those two changes the monolithic program builds
+and verifies, so the split would buy build time at the cost of a second parameter-passing convention. It
+remains the first move if the build cost becomes a problem again.
+
+`TRAP` terminators and `CALL_GROUP_MEMBER` are not encoded yet; neither carrier uses them, and the walk
+refuses what it does not recognise.
+
 ## The plan
 
 | Step | Content | Oracle |
@@ -221,11 +315,13 @@ The declaration lines that used to be deferred now match: 61 sandbox and 48 cons
 | 3b | `\uXXXX` escapes, UTF-8, floats, member-order sort for unsorted carriers | a corpus that exercises each, against `json.dumps` |
 | 4 | types, aliases, view specs and `win32.` platform lookups against the embedded namespace | every produced object's CID equals the reference object's |
 | 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use, byte-exact (done) |
-| 5 | graph, package and build request assembly; `resolve` + `snapshot_store` reuse | the two store roots above, byte-exact |
+| 5a | constant, graph and function objects: two passes per function, a reference table and positions, terminators | both carriers' listings byte-exact (done) |
+| 5b | module, package, profile, policy, target and build-request objects, and the snapshot | the two roots above, byte-exact |
+| 5c | write the store from the listing (`xax_selfhost_writer` reuse) | the two stores byte-exact, roots `7ef7099d…` and `baec162e…` |
 | 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
 
-Step 5 is where the existing `xax_selfhost_resolve` and `xax_selfhost_writer` components are reused
-rather than reimplemented.
+Steps 5b and 5c are where the existing `xax_selfhost_resolve` and `xax_selfhost_writer` components are
+reused rather than reimplemented.
 
 ## Boundaries
 
