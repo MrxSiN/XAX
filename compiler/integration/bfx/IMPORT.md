@@ -13,10 +13,11 @@ construction interface, verified, tested privately, then saved with
 source. Subsequent source changes require expected-root workspace transactions.
 
 The importer accepts strict v1, the explicitly versioned
-[v2 CLEAR extension](CLEAR.md), and [v3 arithmetic powers](POWERS.md).
-Versions two/three permit payload byte zero; only v3 permits power bytes
-one through fourteen. V1/v2 accepted output
-stores stay exact. The standalone `bfx.xax` validator remains v1-only.
+[v2 CLEAR extension](CLEAR.md), [v3 arithmetic powers](POWERS.md), and
+[v4 monotone movement powers](MOVEMENT.md). Versions two through four permit
+payload byte zero; versions three/four permit arithmetic bytes one through
+fourteen, and only v4 permits movement bytes fifteen through twenty-eight.
+V1/v2/v3 accepted output stores stay exact. The standalone `bfx.xax` validator remains v1-only.
 
 The current [eight-byte tape reset](WIDE_RESET.md) retains the complete
 65,536-byte reset and all checked accesses. Its canonical transaction,
