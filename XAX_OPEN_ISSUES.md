@@ -753,11 +753,19 @@ Python compiler implementation.
 **Status: OPEN (2026-10-20).** The [Windows driver prototype](compiler/integration/windows_helpers/DRIVER.md)
 accepts all 78 reference-valid stores in its 212-case corpus, rejects 130
 reference-invalid stores, and explicitly declines four malformed cases.
-One rejected case, `semantic-43-function_byte`, produces
+The original run's rejected case, `semantic-43-function_byte`, produces
 `XAX.CANON.TRAILING_BYTES / TYPE-BODY` where the reference produces
-`XAX.TYPE.EXPECTED / TYPE-BITS`. Both reject it; first-diagnostic parity is unmet.
-The corrected self-store and large flag edit also decline; the responsible
-component is undiagnosed. Windows DLL packaging and migration of the common
+`XAX.TYPE.EXPECTED / TYPE-BITS`. The current canonical
+[kind-order transaction](compiler/integration/windows_helpers/type_kind_order.edit)
+corrects that mismatch. A separate 160-case native replay now has 63 accepts,
+97 rejects and exact full diagnostic equality, including dependencies and repair
+neighborhood. Its 110 helper checks cover every object kind. The complete
+original 212-case corpus has not been replayed in this follow-up.
+The corrected self-store and large flag edit still decline. A private canonical
+probe locates the original self-store's decline at resource-callee action 2;
+the underlying graph outcome is still being diagnosed. All 508 original graph
+bodies decode natively; audited CFG input/output and object-table sizes fit
+their current views. Windows DLL packaging and migration of the common
 Python helper loader remain outside the implemented native route.
 
 **Evidence that closes it.** Canonical graph changes preserving rejection and
