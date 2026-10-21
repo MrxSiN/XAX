@@ -5,13 +5,16 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: steps 1-4b and 5a of the plan below.** What is established is that the authoring primitives
-the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects* as the
-Python reference, that a program authored that way runs as a native windows-x86_64 host with the file
-transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
+**Status: steps 1-4b, 5a, 5b and the root half of 5c.** What is established is that the authoring
+primitives the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects*
+as the Python reference, that a program authored that way runs as a native windows-x86_64 host with the
+file transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
 back out byte for byte, that every named type and derived declaration in both carriers resolves to the
-reference object, and that the graph and function objects of both carriers come out byte-identical.
-Packages, build requests, the store and the driver command are the remaining steps.
+reference object, that the graph, function, module, package, target, profile, trust-policy, build-request
+and snapshot objects of both carriers come out byte-identical -- the snapshot's CID *is* the reference
+store's root -- and that the program refuses what it does not implement (a platform other than
+windows-x86_64, more than one build entry) rather than emit a plausible wrong object. The store container
+and the driver command are the remaining steps.
 
 ## Why canonical identity is the oracle
 
@@ -246,27 +249,31 @@ python -B compiler/integration/construct/resolve.py build/construct_resolve --ch
 ```
 
 ```
-entry     f5a0510dd0e2bc43909d218a65c7a18028d14fd909590176fb78980c22e63398
-entry fn  10f3a887f4d7ae9e4ee33ed4a11b5b2a65e36c7fc5f7f97dac7ccd942b58a504
-store     8461834 bytes
-artifact  1092608 bytes
+entry     df94e035dd9fa84bf57175755b029e35b59f8c48a43055bc4fc6b579e9e2a3c8
+entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
+store     9402941 bytes
+artifact  1738240 bytes
 namespace 2880 bytes, 21 entries
-carrier   sandbox_request.json       exit=0 lines=3059 resolved=3046 deferred=13 MATCH
-carrier   construction_request.json  exit=0 lines=41318 resolved=40918 deferred=400 MATCH
+carrier   sandbox_request.json       exit=0 lines=3066 resolved=3053 deferred=13 MATCH
+carrier   construction_request.json  exit=0 lines=41325 resolved=40925 deferred=400 MATCH
 ```
 
 Every produced line is decoded back into a `SemanticObject` and compared with the reference object for
-that occurrence, so both listings are byte-identical object by object: 3 059 and 41 318 lines,
-`sha256 5adfcc7b…` and `d7f78fce…`. The 13 and 400 `?` lines are the `{"fn": …}` occurrences the
+that occurrence, so both listings are byte-identical object by object: 3 066 and 41 325 lines,
+`sha256 35e23efa…` and `fef6f4ea…`. The 13 and 400 `?` lines are the `{"fn": …}` occurrences the
 reference also defers at that point in its own walk; the graph pass resolves them from the name table
-filled as each function is registered, which is why the walk visits functions in carrier order.
+filled as each function is registered, which is why the walk visits functions in carrier order. The
+program now also emits the step-5b objects and the step-5c snapshot, so these are its identities; the 5a
+claim is the first 3 059 and 41 318 lines, which are unchanged.
 
-Measured on this host, one program for both carriers:
+Measured on this host, one program for both carriers (the machine is shared, so the timing rows varied by
+nearly a factor of two between runs; the byte rows did not):
 
 | measurement | value |
 |---|---|
-| `resolve_packages` / `snapshot_store` / `build` | 34.9 s / 6.2 s / 295.0 s |
-| store / artifact | 8 461 834 B / 1 092 608 B |
+| `resolve_packages` / `snapshot_store` / `build` (unverified harness) | 185.1 s / 22.8 s / 876.3 s |
+| verifier pass (separate gate on the same program) | 160.1 s, 1 305 objects |
+| store / artifact | 9 402 941 B / 1 738 240 B |
 | widest graph body (sandbox, construction) | 16 141 B / 56 123 B (cap 131 072) |
 | widest reference table | 231 / 1 391 entries (cap 2 048) |
 | widest canonical object | 23 549 B / 100 651 B (region 200 704) |
@@ -294,8 +301,8 @@ the last defect.
 Two narrowly scoped, semantics-preserving changes in `compiler/src` were needed to build a program this
 size at all: `xax_prefetch` computes a block's cycle set lazily instead of for every block on every
 visit, and `pointer_extent_from_graph` binary-searches a sorted pointer table instead of copying it on
-every call. Neither changes an emitted object; together they take the build from not finishing to about
-five minutes.
+every call. Neither changes an emitted object; together they take the build from not finishing to about ten
+minutes on this host.
 
 A per-function split (`walk` / `graph_collect` / `graph_write`, with the type table shared through the
 environment) was designed and then deprioritised: with those two changes the monolithic program builds
@@ -305,33 +312,82 @@ remains the first move if the build cost becomes a problem again.
 `TRAP` terminators and `CALL_GROUP_MEMBER` are not encoded yet; neither carrier uses them, and the walk
 refuses what it does not recognise.
 
-### Steps 5b/5c: what is left (scoped, not implemented)
+## Step 5b: module, package and build request (done, two limits)
 
-`xax_construct.construct` adds six objects after the functions, and none of them is a graph:
+`xax_construct.construct` appends six objects after the functions, in this order: the platform target, the
+module, the package, the hermetic profile, the trust policy and the build request. None is a graph, so
+they reuse the function pass's staging: references are collected into `REFS` through `ref_slot`, sorted
+once by `sort_refs`, and every rank in a body is read back with `rank_of` -- the same table the graph
+encoder uses, so a body's ranks cannot disagree with its own reference table. `emit_staged(kind, schema)`
+then canonicalises, hashes and prints the line, and every object that is referenced copies its CID from
+`CUR` into a slot of its own (`TARGET_CID`, `MODULE_CID`, `PACKAGE_CID`, `PROFILE_CID`, `POLICY_CID`):
+`select_function` became `lookup_function` (find the name, leave its CID in `CUR`) plus a `ref_collect`
+call, so the same lookup serves `{"fn": ...}` operands and the package's entry.
 
-| object | encoding the program must reproduce |
+| object | encoding |
 |---|---|
-| `Kind.MODULE` | references = every built function CID (sorted, deduplicated); body = `uleb(count)` followed by the ranks `0..n-1` |
-| `Kind.PACKAGE` | `uleb(len(package name)) + name`, the module count and ranks, `uleb(0)` dependencies, the entry count and `uleb(len(entry)) + entry + uleb(rank)` per entry, then `0` features, `0` configuration and `0` capabilities |
-| `Kind.BUILD` profile | `uleb(PROFILE=1), uleb(HERMETIC_REPRODUCIBLE=1), uleb(0) optimization, uleb(1) verification, uleb(0) grants` |
-| `Kind.BUILD` trust policy | `uleb(TRUST_POLICY=4), 0x00, 0x00, uleb(0) algorithms, uleb(0) signers` |
-| `Kind.TARGET` | not encoded from the carrier: `builder.target` is the fixed platform target (`x86_64_windows_pe_target()`; 129 bytes and no references), so it can be emitted as a literal the way the namespace blob is |
-| `Kind.BUILD` request | `uleb(REQUEST=2)`, the package rank, `uleb(len(release)) + release`, the target rank, the profile rank, `0` features, `0` configuration, then the requested artifact kinds |
+| `Kind.TARGET` (6) | the fixed platform target, a 129-byte literal with no references: not carrier data, and the same bytes for every carrier this program accepts |
+| `Kind.MODULE` (2) | references = every built function CID (sorted, deduplicated); body = `uleb(count)` followed by the ranks `0..n-1` |
+| `Kind.PACKAGE` (9) | `uleb(len(name)) + name`, `uleb(1)` module and its rank, `uleb(0)` dependencies, `uleb(1)` entry with `uleb(len(entry)) + entry + uleb(rank)`, then `0` features, `0` configuration and `0` capabilities |
+| `Kind.BUILD` profile (10) | `01 01 00 01 00` -- `PROFILE`, `HERMETIC_REPRODUCIBLE`, no optimisation, verification, no grants |
+| `Kind.BUILD` trust policy (10) | `04 00 00 00 00` -- `TRUST_POLICY`, no algorithms, no signers |
+| `Kind.BUILD` request (10) | `uleb(2)`, package rank, `uleb(len(release)) + release`, target rank, profile rank, `0` features, `0` configuration, then `uleb(1) uleb(1)` for one `NATIVE_IMAGE` artifact |
 
-Checked against the reference's own constructors on the sandbox carrier: the module body is
-`08 00 01 02 03 04 05 06 07` (eight functions, ranks in order), the package body is
-`0f "xax_mcp_sandbox" 01 00 00 01 03 "app" 01 00 00 00` (name, one module at rank 0, no dependencies, the
-`app` entry at rank 1, and three empty collections), the profile is `01 01 00 01 00`, the trust policy is
-`04 00 00 00 00`, and the request is `02 00 03 "app" 01 02 00 00 01 01` -- package rank 0, target rank 1,
-profile rank 2, one `NATIVE_IMAGE` artifact. None of that is carrier-specific arithmetic: it is the same
-six encodings for the other carrier.
+Measured on the sandbox carrier, those bodies are `08 00 01 02 03 04 05 06 07` (eight functions, ranks in
+order), `0f "xax_mcp_sandbox" 01 00 00 01 03 "app" 01 00 00 00`, `01 01 00 01 00`, `04 00 00 00 00` and
+`02 00 03 "app" 01 02 00 00 01 01` (package rank 0, target rank 1, profile rank 2). The construction
+carrier's module body is 216 bytes -- `uleb(171)`, then 128 one-byte ranks and 43 two-byte ranks -- and its
+package and request are 27 and 12 bytes; the six lines are the same six encodings, not carrier-specific
+arithmetic. Six lines were appended to the oracle in the program's order, and all six CIDs were checked
+against `xax_construct.construct` before the program was written: target `99480deb...`, module
+`b363e174...`, package `396e6697...`, profile `9e3dd6a9...`, policy `15264515...`, request `6fbb92a5...`.
+Both carriers now match end to end: 3 066 lines (13 deferred) and 41 325 lines (400 deferred).
 
-The program root and the snapshot are not authored here: `resolve_packages` computes the root from those
-objects and `snapshot_store` writes the store, which is why 5b hands over to `xax_selfhost_resolve` and 5c
-to `xax_selfhost_writer` instead of deriving a root in this program. Both carriers' `package` sections are
-already in the reader's tree, so no new parsing is needed; the work is those six encodings plus the
-hand-over format the self-host components take, after which the byte oracle moves from the listing to the
-two store roots.
+Three defects the gate caught, each of which produced a plausible listing:
+
+| symptom | cause |
+|---|---|
+| the module was never reached | `span_eq` returns `bits<1>`; comparing it with a `b32` zero breaks `INT-COMPARE-CONTRACT`, so the platform check has to widen the flag first |
+| every body byte was refused | `INT_TRUNCATE` must *narrow*: a `b8` literal truncated to `b8` is rejected, so `gb_put` takes a `b32` and the literal bytes are authored as `b32` |
+| exactly three lines had kind `1` (profile, policy, request) | `emit_sorted_object` printed `48 + kind`, which is only right for single-digit kinds; `BUILD` is 10, so the digit was written as `:`-minus-one. Target, module and package were already byte-correct, which located the defect in the printer, not the encoders |
+
+Two limits are refusals, not approximations:
+
+- **`windows-x86_64` only.** The target is authoring data embedded like the namespace blob, so a carrier
+  whose `platform` is anything else is refused (`BAD_GRAPH`, exit 13) instead of being labelled with the
+  wrong target. Both carriers are windows-x86_64.
+- **Exactly one build entry.** The reference sorts entry names and accepts any number; sorting
+  variable-length name spans is not implemented, so a second entry is refused rather than emitted with
+  the wrong rank order. Both carriers have one (`app` -> `main`).
+
+`TRAP` terminators and `CALL_GROUP_MEMBER` remain unencoded for the same reason as before: no carrier
+uses them, and the walk refuses what it does not recognise.
+
+## Step 5c: the root (done), the store container (left)
+
+A canonical store's root is the snapshot object: `resolve_packages` selects the request's package and its
+dependency closure and returns the `Kind.BUILD` object with form `SNAPSHOT`. The program now emits it as
+the seventh appended object:
+
+```
+uleb(SNAPSHOT=3), uleb(rank(request)), uleb(len) + resolver identity, uleb(rank(policy)),
+uleb(packages) + their ranks, uleb(signatures) + their ranks, uleb(digests) + the 32-byte digests
+```
+
+The references are the sorted, deduplicated CIDs of the request, the policy and the selected packages; the
+identity is `xax-construct-v1`; neither carrier has dependencies, signatures or external digests. The last
+produced line's CID is then the store root itself -- `7ef7099d…f8b6` for the sandbox carrier and
+`baec162e…d442` for the construction carrier, the two roots the reference stores have. That is checked
+twice: the line is decoded and compared with `resolve_packages`'s own object, and that object is the root
+`xax_construct.construct` returns (`store.root_cid`), confirmed separately on both carriers.
+
+What is left is the container: header (magic, major, hash suite, flags), one record envelope per object in
+ascending CID order (kind, schema, reference count, body length, references, body), the non-semantic
+metadata records in canonical order, the index, the digest and the trailer.
+`xax_selfhost_writer.write_store` already implements exactly that as one XAX function (S9), so the
+remaining work is the hand-over: encode the objects the listing already has as the writer's batch (`kind`,
+schema, reference count, body length, references, body), give it the views it asks for (32 MiB batch,
+64 MiB buffer) and write the buffer it returns. No second container writer is planned.
 
 ## The plan
 
@@ -344,8 +400,8 @@ two store roots.
 | 4 | types, aliases, view specs and `win32.` platform lookups against the embedded namespace | every produced object's CID equals the reference object's |
 | 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use, byte-exact (done) |
 | 5a | constant, graph and function objects: two passes per function, a reference table and positions, terminators | both carriers' listings byte-exact (done) |
-| 5b | module, package, profile, policy, target and build-request objects, and the snapshot | the two roots above, byte-exact |
-| 5c | write the store from the listing (`xax_selfhost_writer` reuse) | the two stores byte-exact, roots `7ef7099d…` and `baec162e…` |
+| 5b | module, package, profile, policy, target and build-request objects | both carriers' six appended lines byte-exact (done; the snapshot moves to 5c) |
+| 5c | snapshot object, which is the store's root (done) and the store container from the listing (`xax_selfhost_writer` reuse) | the root CIDs match (done); the two stores byte-exact (left) |
 | 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
 
 Steps 5b and 5c are where the existing `xax_selfhost_resolve` and `xax_selfhost_writer` components are

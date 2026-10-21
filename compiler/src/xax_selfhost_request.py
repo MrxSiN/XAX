@@ -31,11 +31,13 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_ed25519 as ED
-from xax_artifact import RISCV64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, container_lowering_identity
+from xax_artifact import (ACCELERATOR_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
+                          container_lowering_identity)
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
     AARCH64_LINUX_ELF_DYNAMIC_FORMAT, AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_IDENTITIES, CID_SIZE, RISCV64_ARCHITECTURE,
-    RISCV64_RAW_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT, X86_64_LINUX_ELF_EXEC_FORMAT, Kind, uleb,
+    RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE, SPIRV_MODULE_FORMAT, SPIRV_VULKAN_COMPUTE_IDENTITY, X86_64_LINUX_ELF_DYNAMIC_FORMAT,
+    X86_64_LINUX_ELF_EXEC_FORMAT, Kind, uleb,
 )
 from xax_selfhost_facts import E, _function
 from xax_ed25519 import ALGORITHM, DOMAIN
@@ -49,6 +51,15 @@ B_INPUTS = 44
 # S15e.1 (ADR-308), S15e.2 (ADR-315): the program the driver lowers the request's target with.
 B_PATH = 45
 PATH_LINUX_X86_64, PATH_RISCV64_RAW, PATH_LINUX_AARCH64, PATH_WINDOWS_PE = 0, 1, 2, 3
+# S15e.7a (ADR-321): an accelerator deployment (architecture 4, image format 3), made by the general program.
+PATH_ACCELERATOR = 4
+# S15e.7b (ADR-321): the SPIR-V compute profile, a hosted container, made by the general program.
+PATH_SPIRV = 5
+ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
+# S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
+# program reads the package's plan, ``xax_selfhost_general_dll``), and the provenance names the DLL container.
+B_DLL = 46
+DLL_LOWERING = b"x86_64-windows-pe-dll-v1"
 INPUTS_AT, INPUTS_LIMIT = 46 << 20, 64  # the builder baseline's bound; the committed compiler's is 100 (ledger 0001, ADR-306)
 TRUST_AT = 47 << 20  # S15c.3: per snapshot signature, 1 once it is accepted
 ACCEPT, REJECT, DECLINE = 0, 1, 2
@@ -63,6 +74,7 @@ HOSTED_PROFILES = (
     (AARCH64_LINUX_IDENTITIES[1], PATH_LINUX_AARCH64, 1, 3, (AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT)),
     # S15e.3 (ADR-317): any image format but the Linux x86-64 ELF ones (``_hosted_container`` tries those first).
     (b"x86_64-windows-pe-v1", PATH_WINDOWS_PE, 0, 1, None),
+    (SPIRV_VULKAN_COMPUTE_IDENTITY, PATH_SPIRV, 0, SPIRV_ARCHITECTURE, (SPIRV_MODULE_FORMAT,)),  # S15e.7b
 )
 LINUX_X86_64_FORMATS = (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT)
 KIND_NAMES = {int(kind): kind.name for kind in Kind}
@@ -294,6 +306,7 @@ def _build_request(tables, verify):
         _set(e, B_ARTIFACT, 0)
         _set(e, B_DYNAMIC, 0)
         _set(e, B_PATH, PATH_LINUX_X86_64)
+        _set(e, B_DLL, 0)
         running = lambda: e.eq(p["outcome"], ACCEPT)  # noqa: E731
 
         def when(body):
@@ -411,9 +424,11 @@ def _build_request(tables, verify):
             r.repeat("pe", r.uleb(), build_entry)
             e.if_(e.eq(_ctrl(e, B_ENTRY), e.c(-1)), lambda: e.set("outcome", DECLINE))
 
-            # ``build``'s own paths come first; the Linux x86-64 profiles are ``_hosted_container``'s.
+            # ``build``'s own paths come first; the Linux x86-64 profiles are ``_hosted_container``'s.  S15e.3b: a Windows DLL
+            # on the PE profile is the general program's (decided below, with the target's fields).
             e.var("first_kind", e.rd(p["artifacts_at"]))  # artifact kinds are one ULEB byte
-            e.if_(e.both(e.eq(p["artifacts"], 1), e.either(*(e.eq(p["first_kind"], int(kind)) for kind in BOOTSTRAP_ARTIFACTS))),
+            e.var("dll", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.WINDOWS_DLL)))))
+            e.if_(e.both(e.eq(p["artifacts"], 1), e.eq(p["dll"], 0), e.either(*(e.eq(p["first_kind"], int(kind)) for kind in BOOTSTRAP_ARTIFACTS))),
                   lambda: e.set("outcome", DECLINE))
             r.at(_ctrl(e, B_TARGET))
             e.var("hosted", 0)
@@ -438,6 +453,7 @@ def _build_request(tables, verify):
             # (architecture 6, format 1) has no container: ``build`` checks the requested artifacts before lowering,
             # against a native image or an Android package.  S15e.2: a hosted profile's identity with other fields declines.
             e.var("riscv", 0)
+            e.var("accel", 0)
             e.var("architecture", NONE_FIELD)
             e.var("image_format", NONE_FIELD)
             e.var("target_end", e.add(_body(e, _ctrl(e, B_TARGET))[1], _body(e, _ctrl(e, B_TARGET))[0]))
@@ -451,6 +467,8 @@ def _build_request(tables, verify):
                 e.set("image_format", r.uleb())
                 e.set("riscv", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], RISCV64_ARCHITECTURE),
                                              e.eq(p["image_format"], RISCV64_RAW_FORMAT))))
+                e.set("accel", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], ACCELERATOR_ARCHITECTURE),
+                                             e.eq(p["image_format"], ACCELERATOR_FORMAT))))
 
             e.if_(e.lt(p["cur"], p["target_end"]), fields)
             for index, (_identity, _path, _dynamic, architecture, formats) in enumerate(HOSTED_PROFILES):
@@ -460,8 +478,17 @@ def _build_request(tables, verify):
                     fits = e.both(e.eq(p["architecture"], architecture), listed)
                     e.if_(e.both(e.eq(p["profile"], index), e.not_(fits)), lambda: e.set("hosted", 0))
             e.if_(e.ne(p["riscv"], 0), lambda: e.set("path", PATH_RISCV64_RAW))
+            e.if_(e.ne(p["accel"], 0), lambda: e.set("path", PATH_ACCELERATOR))
             _set(e, B_PATH, p["path"])
-            e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0)), lambda: e.set("outcome", DECLINE))
+            e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0), e.eq(p["accel"], 0)), lambda: e.set("outcome", DECLINE))
+
+            def dll():
+                """``_build_windows_dll`` (S15e.3b): only on the PE profile (architecture 1, ``x86_64-windows-pe-v1``); any
+                other target's ``WINDOWS-DLL-TARGET`` is ``build``'s.  The general program is given the request."""
+                pe = e.both(e.ne(p["hosted"], 0), e.eq(p["path"], PATH_WINDOWS_PE))
+                e.if_(pe, lambda: (_set(e, B_DLL, 1), _set(e, B_ENTRY, p["request"])), lambda: e.set("outcome", DECLINE))
+
+            e.if_(e.ne(p["dll"], 0), dll)
 
             # Recorded now, decided after lowering: one native image.
             def artifacts():
@@ -482,13 +509,16 @@ def _build_request(tables, verify):
                 _set(e, B_ARTIFACT, 1)
 
             def riscv_artifacts():
+                """``build``'s last branch, before lowering: the expected artifact (a native image; S15e.7a an
+                accelerator deployment), or an Android package."""
                 D.begin(e)
                 D.text(e, "XAX.BUILD.ARTIFACT")
                 _cid(e, p["request"])
                 D.text(e, "BUILD-ARTIFACT-SUPPORTED")
                 D.put(e, D.T_LIST)
                 D.put(e, 3)
-                for kind in (ArtifactKind.NATIVE_IMAGE, ArtifactKind.ANDROID_UNSIGNED_APK, ArtifactKind.ANDROID_SIGNED_APK):
+                e.if_(e.ne(p["accel"], 0), lambda: D.text(e, ArtifactKind.ACCELERATOR_DEPLOYMENT.name), lambda: D.text(e, ArtifactKind.NATIVE_IMAGE.name))
+                for kind in (ArtifactKind.ANDROID_UNSIGNED_APK, ArtifactKind.ANDROID_SIGNED_APK):
                     D.text(e, kind.name)
                 D.put(e, D.T_LIST)
                 D.put(e, p["artifacts"])
@@ -496,8 +526,9 @@ def _build_request(tables, verify):
                                                          _name(e, "kind_value", ARTIFACT_NAMES)))
                 e.set("outcome", REJECT)
 
-            native = e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE)))
-            e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.ne(p["riscv"], 0), riscv_artifacts, artifacts))
+            native = e.either(e.ne(p["dll"], 0), e.both(e.eq(p["artifacts"], 1), e.eq(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE))),
+                              e.both(e.eq(p["artifacts"], 1), e.ne(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.ACCELERATOR_DEPLOYMENT))))
+            e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.either(e.ne(p["riscv"], 0), e.ne(p["accel"], 0)), riscv_artifacts, artifacts))
 
         when(request)
         _set(e, B_STATUS, p["outcome"])
@@ -520,6 +551,8 @@ def _provenance(tables):
             e.if_(e.both(e.eq(_ctrl(e, B_PATH), path), e.eq(_ctrl(e, B_DYNAMIC), dynamic)),
                   lambda identity=identity: lowering(container_lowering_identity(identity)))
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_RISCV64_RAW), lambda: lowering(RISCV64_LOWERING_IDENTITY_V1))
+        e.if_(e.ne(_ctrl(e, B_DLL), 0), lambda: lowering(container_lowering_identity(DLL_LOWERING)))  # S15e.3b
+        e.if_(e.eq(_ctrl(e, B_PATH), PATH_ACCELERATOR), lambda: lowering(ACCELERATOR_LOWERING_IDENTITY_V1))  # S15e.7a
         for word in range(CID_SIZE // 8):
             for k in range(8):
                 e.st(ENVELOPE_AT + P_DIGEST + 8 * word + k, e.and_(e.udiv(_ctrl(e, B_DIGEST + word), 1 << (8 * k)), 255))

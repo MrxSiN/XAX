@@ -36,7 +36,7 @@ from xax_compiler import (
 )
 from xax_selfhost_facts import (
     H_CIDS, H_FACTS_AT, H_LA, H_LB, H_LINEAR, H_LREJ, H_RBLOCK, H_REJECT, H_RNODE, H_RPASS, H_RPAY, H_S, H_SITES, H_STATUS, H_TSTOP, H_TSTOP_PASS,
-    H_RCALL_B, H_RCALL_COUNT, H_RCALL_DECLINE, H_RCALL_E, H_RCALL_N, H_RCALL_OTHER, HEADER, M,
+    H_RCALL_B, H_RCALL_COUNT, H_RCALL_E, H_RCALL_N, H_RCALL_STOP, HEADER, M,
     MEMORY_SITES, ACCEPTED, NONE, _CONTRACTS, E, _function,
 )
 
@@ -1501,9 +1501,12 @@ def _outcome(tables):
         # before it was modelled (a memory rejection there would have stopped it first), so the walk reaches that node.
         e.var("tstop", e.sel(e.both(e.eq(e.hd(H_TSTOP_PASS), 1), e.ne(e.hd(H_TSTOP), 0)), e.sub(e.hd(H_TSTOP), 1), NONE))
         e.set("engine_ok", e.or_(p["engine_ok"], e.flag(e.ne(p["tstop"], NONE))))
-        # S15b.3d (ADR-313): the engine stopped at its first resource call (the callee's body selects no contract):
-        # every node before it was modelled; the walk decides up to that node.
-        e.var("rdecl", e.flag(e.both(e.ne(e.hd(H_RCALL_COUNT), 0), e.ne(e.hd(H_RCALL_DECLINE), 0))))
+        # S15b.3d (ADR-313): the engine stopped at a resource call (the callee's body selects no contract; S15b.3e,
+        # ADR-318: any callee not yet accepted, not only the first): every node before it was modelled; the walk decides
+        # up to that node.
+        e.var("rdecl", e.flag(e.both(e.ne(e.hd(H_RCALL_COUNT), 0), e.ne(e.hd(H_RCALL_STOP), 0))))
+        e.var("rstop", e.sub(e.hd(H_RCALL_STOP), 1))
+        e.var("at_stop", 0)  # the walk's decline is that stop
         e.set("engine_ok", e.or_(p["engine_ok"], p["rdecl"]))
         memory_free = e.eq(e.ld(e.add(p["verdicts"], blocks)), 1)
 
@@ -1556,9 +1559,9 @@ def _outcome(tables):
                         engine_domain = e.both(e.ne(p["engine_ok"], 0), e.either(*(e.eq(p["nop"], code) for code in ENGINE_OPERATIONS)))
                         e.if_(e.eq(p["term"], NONE), lambda: e.if_(e.ne(p["nkey"], NONE), typed, lambda: e.if_(
                             e.not_(engine_domain), lambda: decide(G_DECLINE))))
-                        # The engine's stop at its first resource call: no claim past it (the callee's graph may decide).
-                        e.if_(e.both(e.eq(p["term"], NONE), e.ne(p["rdecl"], 0), e.eq(p["pb"], e.hd(H_RCALL_B)), e.eq(p["pn"], e.hd(H_RCALL_N))),
-                              lambda: decide(G_DECLINE))
+                        # The engine's stop at a resource call: no claim past it (the callee's graph may decide).
+                        e.if_(e.both(e.eq(p["term"], NONE), e.ne(p["rdecl"], 0), e.eq(e.add(e.mul(p["pb"], 1 << 32), p["pn"]), p["rstop"])),
+                              lambda: (e.set("at_stop", 1), decide(G_DECLINE)))
 
                     e.if_(e.eq(p["term"], NONE), checks)
 
@@ -1594,18 +1597,23 @@ def _outcome(tables):
         def resource_call():
             """S15b.3d (ADR-313): the graph's first resource call parses its callee's graph before what follows it: an
             acceptance, a decision after that call (a memory one at it), or the engine's stop there waits on the callee
-            (``O_DEFER``); calls to another callee in the pass decline."""
+            (``O_DEFER``); a later callee is waited on after this one (ADR-318)."""
             e.var("rc_po", NONE)
             e.for_("rc_q", 0, blocks, lambda: e.if_(e.eq(e.rd(e.add(p["sh_order"], p["rc_q"])), e.hd(H_RCALL_B)), lambda: e.set("rc_po", p["rc_q"])))
             e.var("rc_here", e.add(e.mul(p["rc_po"], 1 << 32), e.hd(H_RCALL_N)))
             e.var("rc_final", e.ld(OUTCOME_AT + O_POS))
             e.var("rc_after", e.flag(e.either(e.lt(p["rc_here"], p["rc_final"]), e.both(e.eq(p["rc_here"], p["rc_final"]), e.ne(p["by_memory"], 0)))))
+            # S15b.3e (ADR-318): a decline past the call waits too (the bootstrap parses the callee before it); at the
+            # call only when the walk stopped there.
             e.var("rc_wait", e.flag(e.either(
                 e.eq(p["term"], G_ACCEPT), e.both(e.eq(p["term"], G_REJECT), e.ne(p["rc_after"], 0)),
-                e.both(e.eq(p["term"], G_DECLINE), e.ne(p["rdecl"], 0), e.eq(p["rc_here"], p["rc_final"])))))
+                e.both(e.eq(p["term"], G_DECLINE), e.lt(p["rc_here"], p["rc_final"])),
+                e.both(e.eq(p["term"], G_DECLINE), e.ne(p["at_stop"], 0), e.eq(p["rc_here"], p["rc_final"])))))
             e.if_(e.both(e.eq(p["term"], G_OBJECT), e.le(p["rc_here"], p["rc_final"])), lambda: e.set("term", G_DECLINE))
-            # One callee (a call made again names the parsed graph: the bootstrap's parse is cached).
-            e.var("rc_alone", e.flag(e.both(e.eq(e.hd(H_RCALL_OTHER), 0), e.ne(p["rc_po"], NONE), e.eq(e.ld(OUTCOME_AT + O_MODE), 0))))
+            # The first callee not yet accepted (S15b.3e, ADR-318: once it is, the driver checks this graph again and a
+            # later callee is the next one waited on; a call made again names the parsed graph, the bootstrap's parse is
+            # cached).
+            e.var("rc_alone", e.flag(e.both(e.ne(p["rc_po"], NONE), e.eq(e.ld(OUTCOME_AT + O_MODE), 0))))
             e.if_(e.ne(p["rc_wait"], 0), lambda: e.if_(e.ne(p["rc_alone"], 0), lambda: e.st(OUTCOME_AT + O_DEFER, e.add(e.hd(H_RCALL_E), 1)),
                                                         lambda: e.set("term", G_DECLINE)))
 

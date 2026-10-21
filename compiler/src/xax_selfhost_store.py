@@ -57,7 +57,7 @@ import xax_selfhost_diagnostics as D
 from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_store_decoder.xax"
-DATA_EXTENT = 1 << 25  # S10e (ADR-266): the driver reads its own store; S12f.4 (ADR-280): the general driver's (16.7 MB)
+DATA_EXTENT = 1 << 26  # S10e (ADR-266): the driver reads its own store; S12f.4 (ADR-280): the general driver's (16.7 MB); ADR-319: 64 MiB
 OUT_EXTENT = 1 << 24
 # Out words (32 bits): the header and record table, then the parsed index (S8a), then the diagnostic record.
 # Per record: offset, length, CID offset, parsed flag, kind, reference count,
