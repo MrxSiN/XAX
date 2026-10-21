@@ -138,6 +138,8 @@ def _index_objects(tables):
             e.if_(e.eq(kind, GRAPH_), graph, lambda: e.set("at", e.add(e.add(p["pay"], 1), e.rd(p["pay"]))))
 
         e.for_("o", 0, e.sel(e.lt(MAX_OBJECTS, p["n"]), 0, p["n"]), each)
+        # S15b.3e (ADR-318): no graph is accepted yet (``ACC_AT``).
+        e.for_("ao", 0, e.sel(e.lt(MAX_OBJECTS, p["n"]), 0, p["n"]), lambda: e.st(e.add(ACC_AT, p["ao"]), 0))
         e.give(p["n"])
     return _function((), build, tables)
 
@@ -576,6 +578,7 @@ def _callee_aux(e: E, cursor: str, end: int):
     e.var("cs_blocks", NONE)  # NONE: no summary
     e.var("cs_ops", 0)
     e.var("cl_count", NONE)   # NONE: links unreadable or not a function; else the pairs in LINKS
+    e.var("c_known", 0)       # S15b.3e (ADR-318): the callee's graph was accepted earlier in this verification
 
     def function():
         e.var("cb_at", e.add(_payload(e, p["cf"]), 1))
@@ -632,6 +635,7 @@ def _callee_aux(e: E, cursor: str, end: int):
 
         def decoded():
             e.var("c_owner", 0)
+            e.set("c_known", e.flag(e.ne(e.ld(e.add(ACC_AT, e.sel(e.lt(p["cg"], MAX_OBJECTS), p["cg"], 0))), 0)))
 
             def types():
                 count, size_, _ok = _uleb(e, p["cb_at"])
@@ -721,7 +725,7 @@ def _callee_aux(e: E, cursor: str, end: int):
 
     def aux():
         length = e.add(e.add(2, p["cs_ops"]), e.add(1, e.mul(p["cl_count"], 2)))
-        _emit(e, cursor, length, end)
+        _emit(e, cursor, e.add(length, p["c_known"]), end)
         e.if_(e.eq(p["cs_blocks"], NONE), lambda: (_emit(e, cursor, 0, end), _emit(e, cursor, 0, end)), lambda: (
             _emit(e, cursor, p["cs_blocks"], end), _emit(e, cursor, p["cs_ops"], end),
             e.for_("axq", 0, p["cs_ops"], lambda: _emit(e, cursor, e.ld(e.add(SCRATCH, p["axq"])), end))))
@@ -747,6 +751,9 @@ def _callee_aux(e: E, cursor: str, end: int):
             e.set("ax_taken", e.add(p["ax_taken"], 1))
 
         e.while_(lambda: e.lt(p["ax_taken"], p["cl_count"]), pick)
+        # S15b.3e (ADR-318): a trailing 1 past the pairs marks a callee whose graph is known accepted (readers skip
+        # the words by the length; the facts engine's resource call reads it, ``xax_selfhost_facts._known_callee``).
+        e.if_(e.ne(p["c_known"], 0), lambda: _emit(e, cursor, 1, end))
 
     e.if_(nothing, lambda: _emit(e, cursor, 0, end), aux)
 
@@ -1110,11 +1117,17 @@ def _trim(tables):
 
 # S15b.3d (ADR-313): a graph outcome waiting on its resource callee's graph (``xax_selfhost_render_graph.O_DEFER``):
 # the driver's graph loop state in workspace words (not variables of its main function): pending (1 a rejection, 2 an
-# acceptance, 3 a decline), the graph checked next, whether this one was, the waiting graph, final (the waiting graph
-# checked again for its record), then the inputs of one outcome (defer word, status, graph, trimmed) and its action
-# (0 continue, 1 its rejection, 2 decline, 3 another object's rejection, 4 the trimmed graph's checks).
+# acceptance, 3 a decline), the graph checked next, whether this one was, the waiting graph, final (unused since
+# ADR-318: a waiting graph is checked again after its callee is accepted), then the inputs of one outcome (defer word,
+# status, graph, trimmed) and its action (0 continue, 1 its rejection, 2 decline, 3 another object's rejection, 4 the
+# trimmed graph's checks).
 RC_AT = (35 << 20) + (1 << 19)
 RC_PENDING, RC_OVERRIDE, RC_FROM, RC_WAITING, RC_FINAL, RC_DEFER, RC_STATUS, RC_O, RC_TRIMMED, RC_ACTION = (RC_AT + k for k in range(10))
+# S15b.3e (ADR-318): per graph object, 1 once the graph was accepted in this verification (the bootstrap's parse is
+# cached, so a call to such a callee raises nothing): ``_callee_aux`` marks its calls, and the facts engine records the
+# first resource call of a callee not yet accepted.  A waiting graph is checked again after each accepted callee.
+ACC_AT = RC_AT + 16
+assert ACC_AT + MAX_OBJECTS <= 36 << 20  # the driver's ``INV_AT``
 
 
 def _rc_decide(tables):
@@ -1127,13 +1140,15 @@ def _rc_decide(tables):
         e.var("rs", e.ld(RC_STATUS))
         e.var("rd", e.ld(RC_DEFER))
         e.var("rp", e.ld(RC_PENDING))
-        e.var("rf", e.ld(RC_FINAL))
         act = lambda value: e.st(RC_ACTION, value)  # noqa: E731
         act(0)
 
+        def accept(o):
+            e.st(e.add(ACC_AT, e.sel(e.lt(o, MAX_OBJECTS), o, 0)), e.flag(e.lt(o, MAX_OBJECTS)))
+
         def ordinary():
             e.if_(e.eq(p["rs"], G_REJECT), lambda: act(1), lambda: e.if_(
-                e.eq(p["rs"], G_OBJECT), lambda: act(3), lambda: e.if_(e.ne(p["rs"], G_ACCEPT), lambda: act(2))))
+                e.eq(p["rs"], G_OBJECT), lambda: act(3), lambda: e.if_(e.ne(p["rs"], G_ACCEPT), lambda: act(2), lambda: accept(e.ld(RC_O)))))
 
         def waiting():
             """The callee function (its typing entry), its graph: checked next."""
@@ -1154,24 +1169,21 @@ def _rc_decide(tables):
             e.st(RC_OVERRIDE, p["rw_g"])
 
         def callee():
-            """The waiting graph's callee was checked: its rejection decides; once it is accepted the waiting outcome holds
-            (a rejection: the waiting graph is checked again, ``RC_FINAL``, for its record)."""
+            """The waiting graph's callee was checked: its rejection decides; once it is accepted the waiting graph is
+            checked again (S15b.3e, ADR-318): its calls to accepted callees raise nothing, so its outcome holds or waits on
+            its next callee."""
             def accepted():
-                e.if_(e.eq(p["rp"], 1), lambda: (e.st(RC_OVERRIDE, e.ld(RC_WAITING)), e.st(RC_FINAL, 1)), lambda: e.if_(
-                    e.eq(p["rp"], 3), lambda: act(2)))
+                accept(e.ld(RC_O))
+                e.st(RC_OVERRIDE, e.ld(RC_WAITING))
                 e.st(RC_PENDING, 0)
 
             e.if_(e.both(e.eq(p["rs"], G_REJECT), e.eq(p["rd"], 0)), lambda: act(1), lambda: e.if_(
                 e.both(e.eq(p["rs"], G_ACCEPT), e.eq(p["rd"], 0)), accepted, lambda: act(2)))
 
-        def again():
-            e.st(RC_FINAL, 0)
-            act(e.sel(e.eq(p["rs"], G_REJECT), 1, 2))
-
         def untrimmed():
-            e.if_(e.ne(p["rf"], 0), again, lambda: e.if_(e.ne(p["rp"], 0), callee, lambda: e.if_(e.ne(p["rd"], 0), waiting, ordinary)))
+            e.if_(e.ne(p["rp"], 0), callee, lambda: e.if_(e.ne(p["rd"], 0), waiting, ordinary))
 
-        e.if_(e.ne(e.ld(RC_TRIMMED), 0), lambda: act(e.sel(e.either(e.ne(p["rd"], 0), e.ne(p["rp"], 0), e.ne(p["rf"], 0)), 2, 4)), untrimmed)
+        e.if_(e.ne(e.ld(RC_TRIMMED), 0), lambda: act(e.sel(e.either(e.ne(p["rd"], 0), e.ne(p["rp"], 0)), 2, 4)), untrimmed)
         _set_ctrl(e, C_STATUS, OK)
         e.give(0)
     return _function((), build, tables)
