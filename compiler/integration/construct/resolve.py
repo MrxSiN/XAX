@@ -59,7 +59,9 @@ from xax_compiler import (ATTRIBUTE_OPERATIONS, ENTITY_OPERATIONS, IntCompare, K
                           pointer_type, x86_64_windows_pe_target)
 from xax_structured import B32, B64  # noqa: E402
 from xax_platform import win32_kernel32_api, win32_stdio_api  # noqa: E402
-from xax_selfhost_blake3 import DIGEST_OFFSET, hash_span_function  # noqa: E402
+from xax_selfhost_blake3 import (DIGEST_OFFSET, SCRATCH_EXTENT, SCRATCH_POINTER, SCRATCH_VIEW,  # noqa: E402
+                                 hash_span_function)
+import xax_selfhost_writer as WR  # noqa: E402
 
 HEX = b"0123456789abcdef"
 SPACE, NL, COMMA, DASH = 32, 10, 44, 45
@@ -169,12 +171,39 @@ REQUEST_CID = POLICY_CID + 32       # the build request, for the snapshot's refe
 FUNS = REQUEST_CID + 0x40           # function name -> FUNCTION CID, for {"fn": NAME}
 FUNS_CAP = 0x1000000 - FUNS         # entries are 33 + name bytes
 GA = 0xEA5000               # the operation, comparison and terminator name tables
+
+# The store half's registers.  The walk appends every object it stages to the writer's batch (in the
+# batch buffer) and keeps this index in the main view: the distinct CIDs in append order (``SEEN``), a
+# CID-sorted permutation of them (``SORT``), each record's batch offset (``ROFF``), the reachability
+# marks (``MARK``) and the queue of records still to expand (``QUEUE``), plus one CID copied out of the
+# batch for a lookup (``TMPCID``).  They sit between the parse scratch and the embedded namespace, the
+# one span of the view that is unused once the tree has been parsed.
+# The parser's own regions end at SCRATCH + SCRATCH_CAP (0xD11000) and the embedded namespace starts at
+# NS (0xE00000); the store registers live in that gap.  Placing them anywhere below 0xD11000 would
+# overwrite the node tables (START/END/FIRST/NEXT) that the walk is still reading.
+SEEN = 0xD20000
+SEEN_CAP = 0x2000
+SORT = SEEN + 32 * SEEN_CAP
+ROFF = SORT + 4 * SEEN_CAP
+MARK = ROFF + 4 * SEEN_CAP
+QUEUE = MARK + SEEN_CAP
+TMPCID = QUEUE + 4 * SEEN_CAP
+BUCKETS = 0xD7C000                 # 8192 open-addressing buckets: index + 1, 0 = empty
+NEXT = BUCKETS + 4 * SEEN_CAP      # the bucket chain, one index per distinct object
+BATCH_REFS = 0xD90000              # the sorted references of the object being appended (REF_CAP x 32)
+BATCH_AT = 56                      # three header words and the root CID, then the records
 BAD_GRAPH = 13
+BAD_STORE = 14
+# store diagnostics: a refusal names the stage instead of only "the store failed"
+BAD_SEEN, BAD_BATCH, BAD_MISS = 20, 21, 23
 
 # the caps have to fit their regions: a build-time invariant, not a run-time surprise
 assert HASH_SCRATCH >= CANON + CANON_CAP, "the hash scratch must lie past the canonical span"
 assert CANON_CAP >= REF_CAP * 32 + BODY_CAP + 16, "canonical region smaller than the widest object"
 assert BODY >= DBODY + DBODY_CAP and FUNS + 512 < 0x1000000, "staging regions overlap"
+assert TMPCID + 32 <= BUCKETS and NEXT + 4 * SEEN_CAP <= BATCH_REFS, "store registers overlap"
+assert SEEN >= R.SCRATCH + R.SCRATCH_CAP, "the store registers overlap the parser's node tables"
+assert BATCH_REFS + REF_CAP * 32 <= R.NS, "the store registers overlap the embedded namespace"
 U64_LAST_SAFE = ((1 << 64) - 1 - 9) // 10   # largest accumulator a decimal digit can still extend
 
 
@@ -211,7 +240,10 @@ def walk(environment):
     get = E["get"]
     add, sub, mul, c32 = E["add"], E["sub"], E["mul"], E["c32"]
     eq, ne, lt = E["eq"], E["ne"], E["lt"]
-    ld8, ld32, st8, st32, st64 = E["ld8"], E["ld32"], E["st8"], E["st32"], E["st64"]
+    ld8, ld32, st8, st32, st64, ld64 = E["ld8"], E["ld32"], E["st8"], E["st32"], E["st64"], E["ld64"]
+    load8, load64 = E["store_load8"], E["store_load64"]
+    put8, put64 = E["store_put8"], E["store_put64"]
+    spec = E["store_writer"]
     byte, out_byte, out_dyn = E["byte"], E["out_byte"], E["out_dyn"]
     fail_if = E["fail"]
     strings, objects, integers = E["STRING"], E["OBJECT"], E["INTEGER"]
@@ -247,8 +279,16 @@ def walk(environment):
                  "wcur", "wval", "wrefi", "wscan", "wname", "wnlen", "wentry", "wfound", "wpick",
                  "wrefs", "wblen", "wdepth", "wmember", "wss", "wse", "wnode", "wmore", "wcursor",
                  "wsrc", "wcnt", "wkind", "wschema", "wrefn", "wrefsrc", "wbody", "wbodyat",
-                 "wcanonlen", "wln", "wdbn", "wdbat", "w8", "w9"):
+                 "wcanonlen", "wln", "wdbn", "wdbat", "w8", "w9",
+                 # the store half: the batch cursor and the object count, the sorted-index and
+                 # reachability registers, and one record's size while it is compacted
+                 "bat", "bn", "bi", "bj", "bk", "bmid", "blo", "bhi", "bri", "brfound", "bhead",
+                 "btail", "bsrc", "bdst", "bsize", "bnrefs", "bblen", "bmi", "bcount", "bstatus", "breason",
+                 "bobj"):
         p.let(name, B32, c32(0))
+    # the batch's records start after the three header words and the root CID; a record written at zero
+    # would overwrite the header the writer reads first
+    p["bat"] = c32(BATCH_AT)
 
     def kind(node):
         return get(node, kind_of)
@@ -305,6 +345,7 @@ def walk(environment):
         out_byte(SPACE)
         hexdump(add(c32(CANON), p["wbodyat"]), p["wblen"])
         out_byte(NL)
+        record_staged()
 
     # -- canonical staging: the content the store writer hashes ---------------------------------
 
@@ -389,6 +430,7 @@ def walk(environment):
         canon_put(0x01)
         canon_uleb(width)
         p["wcanonlen"] = p["wcursor"]
+        record_staged()
 
     def view_object(extent):
         """A heap-view type: body ``04 81 02 01 04``, extent, ``00``."""
@@ -401,6 +443,7 @@ def walk(environment):
         canon_uleb(extent)
         canon_put(0x00)
         p["wcanonlen"] = p["wcursor"]
+        record_staged()
 
     def hash_canonical():
         """Hash the staged content; the digest lands at ``HASH_SCRATCH + DIGEST_OFFSET``."""
@@ -537,7 +580,7 @@ def walk(environment):
               lambda _q: (p.__setitem__("wentry", lookup(add(offset, c32(len(PREFIX))), stop)),
                           fail_if(zero(p["wentry"]), code),
                           p.if_(ne(p["wentry"], 0),
-                                lambda _r: (table_object(p["wentry"]), build_canonical()))),
+                                lambda _r: (table_object(p["wentry"]), build_canonical(), record_staged()))),
               lambda _q: fail_here(code))
 
     def resolve_type_node(node):
@@ -599,6 +642,7 @@ def walk(environment):
         """Append a platform type's CID (from the embedded table) to the body under construction."""
         table_object(c32(E["NS"] + TABLE_OFFSETS[name]))
         build_canonical()
+        record_staged()
         hash_canonical()
         db_digest()
 
@@ -686,6 +730,8 @@ def walk(environment):
         out_byte(SPACE)
         hexdump(add(c32(DBODY), p["wdbat"]), add(p["wdbn"], p["wln"]))
         out_byte(NL)
+        declaration_canonical()
+        record_staged()
 
     def list_count(array):
         """The number of children of a list node, into ``wcnt``."""
@@ -1079,6 +1125,8 @@ def walk(environment):
         out_byte(SPACE)
         hexdump(c32(BODY), p["gcur"])
         out_byte(NL)
+        sorted_refs_to(c32(BATCH_REFS))
+        append_record(c32(kind_value), c32(schema_value), p["grefl"], c32(BATCH_REFS), c32(BODY), p["gcur"])
 
     def node_is_const(node):
         """Is this carrier node the ``const`` form?"""
@@ -1143,6 +1191,7 @@ def walk(environment):
             p["wcanonlen"] = p["wcursor"]
             hash_canonical()
             capture_digest(c32(CUR))
+            append_record(c32(5), c32(1), c32(1), c32(CURTYPE), c32(CBODY), p["gcur2"])
             out_byte(ord("5"))
             out_byte(SPACE)
             out_byte(ord("1"))
@@ -1595,6 +1644,223 @@ def walk(environment):
         emit_staged(3, 1)
         register_function(function)
 
+    # -- the store half: the writer's batch and the reachable closure -----------------------------------
+
+    def trunc32(value):
+        return p.op1(Operation.INT_TRUNCATE, (value,), B32)
+
+    def cid_bucket():
+        """The bucket of the CID in ``CUR``: its first word is a hash, so its low bits are uniform."""
+        return p.bin(Operation.BIT_AND, trunc32(ld64(c32(CUR))), c32(SEEN_CAP - 1), B32)
+
+    def copy_to_batch(source, destination, count):
+        """Copy ``count`` bytes of the main view at ``source`` to the batch at ``destination``."""
+        p["bmi"] = c32(0)
+        p.while_(lambda _p: lt(p["bmi"], count),
+                 lambda _p: (put8("batch", add(destination, p["bmi"]), ld8(add(source, p["bmi"]))),
+                             p.__setitem__("bmi", add(p["bmi"], c32(1)))))
+
+    def copy_from_batch(source, destination, count):
+        """Copy ``count`` bytes of the batch at ``source`` to the main view at ``destination``."""
+        p["bmi"] = c32(0)
+        p.while_(lambda _p: lt(p["bmi"], count),
+                 lambda _p: (st8(add(destination, p["bmi"]), load8("batch", add(source, p["bmi"]))),
+                             p.__setitem__("bmi", add(p["bmi"], c32(1)))))
+
+    def move_batch(destination, source, count):
+        """Copy ``count`` bytes forward inside the batch (``destination <= source``)."""
+        p["bmi"] = c32(0)
+        p.while_(lambda _p: lt(p["bmi"], count),
+                 lambda _p: (put8("batch", add(destination, p["bmi"]), load8("batch", add(source, p["bmi"]))),
+                             p.__setitem__("bmi", add(p["bmi"], c32(1)))))
+
+    def sorted_refs_to(destination):
+        """The object's references in CID order, contiguous at ``destination``."""
+        p["gr"] = c32(0)
+        p.while_(lambda _p: lt(p["gr"], p["grefl"]),
+                 lambda _p: (copy32(add(c32(REFS),
+                                        mul(ld32(add(c32(REF_SLOTS), mul(p["gr"], c32(4)))), c32(32))),
+                                   add(destination, mul(p["gr"], c32(32)))),
+                             p.__setitem__("gr", add(p["gr"], c32(1)))))
+
+    def append_record(kind, schema, nrefs, refs_at, body_at, body_len):
+        """Append the object whose CID is in ``CUR`` to the writer's batch, once.
+
+        ``SEEN`` holds the distinct CIDs in append order; ``BUCKETS`` and ``NEXT`` chain them by the
+        first word of the CID, so an occurrence costs one CID compare rather than a scan of everything
+        seen so far.  The references are the contiguous table at ``refs_at`` (sorted and deduplicated
+        by the caller) and the body is ``body_len`` bytes at ``body_at``; both are in the main view.
+        The record is the writer's own shape: kind, schema, reference count, body length, CID,
+        references, body, all 64-bit words little-endian except the CIDs and the body.
+        """
+        bucket = cid_bucket()
+        p["bri"] = ld32(add(c32(BUCKETS), mul(bucket, c32(4))))
+        p["brfound"] = c32(0)
+        p.while_(lambda _p: p.all_of(ne(p["bri"], 0), eq(p["brfound"], 0)),
+                 lambda _p: (p.if_(cid_eq(add(c32(SEEN), mul(sub(p["bri"], c32(1)), c32(32))), c32(CUR)),
+                                   lambda _q: p.__setitem__("brfound", c32(1)),
+                                   lambda _q: p.__setitem__(
+                                       "bri", ld32(add(c32(NEXT), mul(sub(p["bri"], c32(1)), c32(4))))))))
+
+        def add_new(_p):
+            fail_if(ge(p["bn"], c32(SEEN_CAP)), BAD_SEEN)
+            fail_if(gt(p["bat"], c32(spec["batch_extent"] - 0x10000)), BAD_BATCH)
+            copy32(c32(CUR), add(c32(SEEN), mul(p["bn"], c32(32))))
+            st32(add(c32(ROFF), mul(p["bn"], c32(4))), p["bat"])
+            st32(add(c32(NEXT), mul(p["bn"], c32(4))), ld32(add(c32(BUCKETS), mul(bucket, c32(4)))))
+            st32(add(c32(BUCKETS), mul(bucket, c32(4))), add(p["bn"], c32(1)))
+            put64("batch", p["bat"], kind)
+            put64("batch", add(p["bat"], c32(8)), schema)
+            put64("batch", add(p["bat"], c32(16)), nrefs)
+            put64("batch", add(p["bat"], c32(24)), body_len)
+            copy_to_batch(c32(CUR), add(p["bat"], c32(32)), c32(32))
+            p["bri"] = c32(0)
+            p.while_(lambda _p: lt(p["bri"], mul(nrefs, c32(32))),
+                     lambda _p: (put8("batch", add(add(p["bat"], c32(64)), p["bri"]),
+                                      ld8(add(refs_at, p["bri"]))),
+                                 p.__setitem__("bri", add(p["bri"], c32(1)))))
+            p["bri"] = c32(0)
+            p.while_(lambda _p: lt(p["bri"], body_len),
+                     lambda _p: (put8("batch",
+                                      add(add(p["bat"], c32(64)), add(mul(nrefs, c32(32)), p["bri"])),
+                                      ld8(add(body_at, p["bri"]))),
+                                 p.__setitem__("bri", add(p["bri"], c32(1)))))
+            p["bat"] = add(p["bat"], add(c32(64), add(mul(nrefs, c32(32)), body_len)))
+            p["bn"] = add(p["bn"], c32(1))
+
+        p.if_(eq(p["brfound"], 0), add_new)
+
+    def record_staged():
+        """Append the object staged in ``wkind``/``wschema``/... at ``CANON`` under its own CID."""
+        hash_canonical()
+        capture_digest(c32(CUR))
+        append_record(p["wkind"], p["wschema"], p["wrefn"], p["wrefsrc"],
+                      add(c32(CANON), p["wbodyat"]), p["wblen"])
+
+    def find_record(cid_at):
+        """The index in ``SEEN`` of ``cid_at``, by binary search over ``SORT``; a miss is refused."""
+        p["blo"], p["bhi"] = c32(0), p["bn"]
+        p.while_(lambda _p: lt(p["blo"], p["bhi"]),
+                 lambda _p: (p.__setitem__("bmid", div(add(p["blo"], p["bhi"]), c32(2))),
+                             p.if_(cid_less(add(c32(SEEN), mul(ld32(add(c32(SORT),
+                                                                         mul(p["bmid"], c32(4)))), c32(32))),
+                                            cid_at),
+                                   lambda _q: p.__setitem__("blo", add(p["bmid"], c32(1))),
+                                   lambda _q: p.__setitem__("bhi", p["bmid"]))))
+        fail_if(ge(p["blo"], p["bn"]), BAD_MISS)
+        fail_if(ne(flag(cid_eq(add(c32(SEEN), mul(ld32(add(c32(SORT), mul(p["blo"], c32(4)))), c32(32))),
+                                cid_at)), 1), BAD_MISS)
+        # ``blo`` is a position in the sorted index, not the object's index: every caller that marks,
+        # enqueues or reads a record has to go through ``SORT``
+        p["bobj"] = ld32(add(c32(SORT), mul(p["blo"], c32(4))))
+
+    def expand_record():
+        """Mark every reference of the record at the head of the queue, and enqueue the new ones."""
+        p["bk"] = ld32(add(c32(QUEUE), mul(p["bhead"], c32(4))))
+        p["bhead"] = add(p["bhead"], c32(1))
+        p["bsrc"] = ld32(add(c32(ROFF), mul(p["bk"], c32(4))))
+        p["bnrefs"] = trunc32(load64("batch", add(p["bsrc"], c32(16))))
+        p["bi"] = c32(0)
+        p.while_(lambda _p: lt(p["bi"], p["bnrefs"]),
+                 lambda _p: (copy_from_batch(add(p["bsrc"], add(c32(64), mul(p["bi"], c32(32)))),
+                                             c32(TMPCID), c32(32)),
+                             find_record(c32(TMPCID)),
+                             p.if_(eq(flag(ld8(add(c32(MARK), p["bobj"]))), 0),
+                                   lambda _q: (st8(add(c32(MARK), p["bobj"]), p.const(1, B8)),
+                                               st32(add(c32(QUEUE), mul(p["btail"], c32(4))), p["bobj"]),
+                                               p.__setitem__("btail", add(p["btail"], c32(1))))),
+                             p.__setitem__("bi", add(p["bi"], c32(1)))))
+
+    def compact_record():
+        """Move the marked record at ``ROFF[bi]`` down to ``bdst``."""
+        p["bsrc"] = ld32(add(c32(ROFF), mul(p["bi"], c32(4))))
+        p["bnrefs"] = trunc32(load64("batch", add(p["bsrc"], c32(16))))
+        p["bblen"] = trunc32(load64("batch", add(p["bsrc"], c32(24))))
+        p["bsize"] = add(c32(64), add(mul(p["bnrefs"], c32(32)), p["bblen"]))
+        move_batch(p["bdst"], p["bsrc"], p["bsize"])
+        p["bdst"] = add(p["bdst"], p["bsize"])
+        p["bcount"] = add(p["bcount"], c32(1))
+
+    def call_writer():
+        """Hand the compacted batch to the S9 writer and take the store length it reports."""
+        base = p.op1(Operation.POINTER_CAST, (p["batch_p"],), WR.BATCH_POINTER)
+        results = p.op(Operation.CALL_DIRECT,
+                       (base, p["batch_v"], p["batch_m"],
+                        p["written_p"], p["written_v"], p["written_m"],
+                        p["scratch_p"], p["scratch_v"], p["scratch_m"],
+                        p.const(spec["mode"], B64)),
+                       tuple(spec["types"]), entity=spec["function"])
+        # the callee takes the three view triples and hands them back: rebind the views and memory
+        # proofs (pointers are plain values; the driver's buffers keep theirs, so does this one)
+        (p["batch_v"], p["batch_m"]) = results[1], results[2]
+        (p["written_v"], p["written_m"]) = results[4], results[5]
+        (p["scratch_v"], p["scratch_m"]) = results[7], results[8]
+        p["bstatus"] = trunc32(load64("written", c32(spec["status_at"])))
+        p["breason"] = trunc32(load64("written", c32(spec["status_at"] + 8)))
+        p["code"] = add(p["code"], mul(
+            p.widen(p.all_of(eq(p["code"], 0), ne(p["bstatus"], spec["accept"]))),
+            add(c32(0x100), add(mul(p["bstatus"], c32(0x40)), p["breason"]))))
+        p["store_len"] = trunc32(load64("written", c32(spec["status_at"] + 24)))
+
+    def finish_store():
+        """Close the batch, keep the snapshot's reachable closure, compact it, and write the store.
+
+        The batch holds every object the walk staged, in append order; the store holds the ones the
+        snapshot can reach (the unresolved aliases and the signature types embedded in declaration
+        bodies are staged but unreachable, and the reference store does not hold them either).  The
+        marked records are compacted forward in append order, the header is patched, and the writer
+        orders them by CID itself.
+        """
+        # a CID-sorted index: insertion sort, and the comparison stops at the first differing byte
+        p["bi"] = c32(0)
+        p.while_(lambda _p: lt(p["bi"], p["bn"]),
+                 lambda _p: (st32(add(c32(SORT), mul(p["bi"], c32(4))), p["bi"]),
+                             p.__setitem__("bi", add(p["bi"], c32(1)))))
+        p["bi"] = c32(1)
+        p.while_(lambda _p: lt(p["bi"], p["bn"]),
+                 lambda _p: (p.__setitem__("bj", p["bi"]),
+                             p.while_(lambda _q: p.all_of(
+                                          gt(p["bj"], c32(0)),
+                                          cid_less(add(c32(SEEN), mul(ld32(add(c32(SORT),
+                                                                                 mul(p["bj"], c32(4)))),
+                                                                         c32(32))),
+                                                   add(c32(SEEN), mul(ld32(add(c32(SORT),
+                                                                              mul(sub(p["bj"], c32(1)),
+                                                                                  c32(4)))),
+                                                                      c32(32))))),
+                                      lambda _q: (p.__setitem__("bk", ld32(add(c32(SORT),
+                                                                               mul(p["bj"], c32(4))))),
+                                                  st32(add(c32(SORT), mul(p["bj"], c32(4))),
+                                                       ld32(add(c32(SORT), mul(sub(p["bj"], c32(1)),
+                                                                               c32(4))))),
+                                                  st32(add(c32(SORT), mul(sub(p["bj"], c32(1)), c32(4))),
+                                                       p["bk"]),
+                                                  p.__setitem__("bj", sub(p["bj"], c32(1))))),
+                             p.__setitem__("bi", add(p["bi"], c32(1)))))
+        # the snapshot is the root: mark it, then close over the references
+        p["bi"] = c32(0)
+        p.while_(lambda _p: lt(p["bi"], p["bn"]),
+                 lambda _p: (st8(add(c32(MARK), p["bi"]), p.const(0, B8)),
+                             p.__setitem__("bi", add(p["bi"], c32(1)))))
+        find_record(c32(CUR))
+        st8(add(c32(MARK), p["bobj"]), p.const(1, B8))
+        st32(add(c32(QUEUE), c32(0)), p["bobj"])
+        p["bhead"], p["btail"] = c32(0), c32(1)
+        p.while_(lambda _p: lt(p["bhead"], p["btail"]), lambda _p: expand_record())
+        # compact the marked records forward and patch the header
+        p["bdst"] = c32(BATCH_AT)
+        p["bcount"] = c32(0)
+        p["bi"] = c32(0)
+        p.while_(lambda _p: lt(p["bi"], p["bn"]),
+                 lambda _p: (p.if_(ne(flag(ld8(add(c32(MARK), p["bi"]))), 0),
+                                   lambda _q: compact_record()),
+                             p.__setitem__("bi", add(p["bi"], c32(1)))))
+        put64("batch", c32(0), p["bcount"])
+        put64("batch", c32(8), c32(0))
+        put64("batch", c32(16), p["bdst"])
+        copy_to_batch(c32(CUR), c32(24), c32(32))
+        call_writer()
+
     def package_pass():
         """Step 5b: the platform target, module, package, profile, policy and build request.
 
@@ -1719,6 +1985,7 @@ def walk(environment):
         gb_uleb(c32(0))
         gb_uleb(c32(0))
         emit_staged(10, 1)
+        p.if_(zero(p["code"]), lambda _q: finish_store())
 
     def graph_function(function):
         """One carrier function: its constants, its graph, then the function object."""
@@ -1752,11 +2019,29 @@ def walk(environment):
 
 
 def build_resolver():
-    """The resolver: the reader's host, a word-aligned view, and the span hash linked in."""
+    """The resolver: the reader's host, a word-aligned view, the span hash and the S9 writer linked in.
+
+    The writer is a component store of its own; its function and the objects it needs are merged into
+    this program's store, and the resolver calls it directly, so the container is written by the one
+    verified writer rather than by a second implementation here."""
     hash_at, hash_objects = hash_span_function(ALIGNED, heap_view_type(R.EXTENT), HASH_SCRATCH)
     HASH["fn"] = hash_at
+    writer_reader, writer = WR.load_writer_program()
+    spec = {
+        "function": writer,
+        "types": tuple(type_ for _name, type_ in WR.VIEWS),
+        "buffers": (("batch", WR.BUF_POINTER, WR.BATCH_VIEW, WR.IN_EXTENT, 1),
+                    ("written", WR.BUF_POINTER, WR.BUF_VIEW, WR.BUF_EXTENT, 1),
+                    ("scratch", SCRATCH_POINTER, SCRATCH_VIEW, SCRATCH_EXTENT, 4)),
+        "batch_extent": WR.IN_EXTENT,
+        "mode": WR.MODE_WRITE,
+        "status_at": WR.STATUS_AT,
+        "accept": WR.ACCEPT,
+    }
+    component = tuple(item for item in writer_reader.objects()
+                      if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET))
     return R.build_reader(b"xax-construct-resolve", walk, view_alignment=4,
-                          extra_objects=hash_objects)
+                          extra_objects=(*hash_objects, *component), store_writer=spec)
 
 
 # -- the oracle ----------------------------------------------------------------------------------------
@@ -1864,11 +2149,18 @@ def expected_lines(request: dict) -> list[tuple[str, bytes]]:
 
 
 def check(out: Path, carriers: list[Path]) -> int:
+    import json
+
+    import xax_construct as C
+    from xax_compiler import StoreReader
+
     executable, target = out / "resolve.exe", out / "resolve-listing.txt"
+    store_path = out / "resolve-store.xax"
     good = True
     for carrier in carriers:
         target.unlink(missing_ok=True)
-        result = subprocess.run([str(executable), str(carrier), str(target)],
+        store_path.unlink(missing_ok=True)
+        result = subprocess.run([str(executable), str(carrier), str(target), str(store_path)],
                                 capture_output=True, text=True)
         produced = target.read_text(encoding="ascii").splitlines() if target.exists() else []
         expected = expected_lines(json.loads(carrier.read_text(encoding="ascii")))
@@ -1895,6 +2187,16 @@ def check(out: Path, carriers: list[Path]) -> int:
         else:
             print(f"carrier   {carrier.name:26} exit=0 lines={len(produced)} resolved={resolved} "
                   f"deferred={deferred} MATCH")
+        # the container is the oracle's own bytes, not a re-encoding of them
+        reference = C.construct(json.loads(carrier.read_text(encoding="ascii"))).reader.canonical_bytes()
+        store = store_path.read_bytes() if store_path.exists() else b""
+        store_ok = store == reference
+        good = good and store_ok
+        if store_ok:
+            root = StoreReader(store).root_cid
+            print(f"store     {carrier.name:26} {len(store):>8} bytes / {len(reference):>8} root {root.hex()[:16]} MATCH")
+        else:
+            print(f"store     {carrier.name:26} {len(store):>8} bytes / {len(reference):>8} DIFF")
     return 0 if good else 1
 
 
