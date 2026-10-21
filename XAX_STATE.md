@@ -125,6 +125,10 @@ Checked accesses and the type checks of loads and stores are now rejected by the
 
 Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
 
+## S15e.3b, S15e.3c, S15e.7 DLLs, accelerator deployments and SPIR-V modules — 2026-10-21 (ADR-319 to ADR-321)
+
+The production compiler's `build` now makes Windows DLLs (exports, loader forwards, DllMain and its loader-lock rules), accelerator deployment packets and SPIR-V compute modules itself, inside the general x86-64 program; each equals the bootstrap's bytes or exact rejection on its test programs and on random corpora (620 DLL requests, 120 accelerator requests, 420 SPIR-V kernels), with none declined. The compiler outgrew the driver's 32 MiB store views, so they were raised to 64 MiB first and the seed rotated (ADR-319); the new compiler is a fixed point of `selfbuild.sh` from that seed. Still Python: the browser Wasm page, JVM jars, Android packages, the raw x86-64, Wasm and AArch64 images, and Windows functions only the legacy register path takes.
+
 ## S15b.3e B1 holds for the Linux x86-64 production compiler — 2026-10-21 (ADR-318)
 
 The production compiler's `verify` now decides graphs that call several different resource callees before their own decision: it remembers which graphs it has already accepted (the bootstrap does not parse those again), waits on the first callee it has not, and checks the waiting graph again once that callee is accepted. On 800 random multi-callee programs every outcome is the bootstrap's and none declines. The evidence re-run has C1 = C2 = C3 = the bootstrap's compile with no recorded rejection gap: **B0 to B6 all hold for the Linux x86-64 production compiler**, and the Python-free seed rebuilds it. The whole multi-target compiler still holds none of B0-B6 (other targets are built by Python backends). Next: S15e.3b-S15e.7.

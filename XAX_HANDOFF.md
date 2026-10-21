@@ -1252,3 +1252,11 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 
 - `DATA_EXTENT` and the writer's `IN_EXTENT`/`OUT_LIMIT` are 64 MiB. Regenerating the decoder or writer store after changing their constants needs `XAX_STORE_PYTHON_DECODER=1 XAX_STORE_PYTHON_WRITER=1` (the old native images disagree with the new Python buffers). Seed `66a3f91d…`, 14,372,181 bytes.
 
+## S15e.3b DLLs and S15e.7 accelerator/SPIR-V — 2026-10-21 (ADR-320, ADR-321)
+
+- `xax_selfhost_general_dll` (state at `GLOBALS + 64`), `xax_selfhost_general_accel`, `xax_selfhost_general_spirv` (state at `GLOBALS + 96`) are functions of the general x86-64 program. A DLL request reaches it as the entry (`B_DLL`, control word 46); architectures 4 and 7 branch in the front end before the Linux target check and write the image record directly.
+- `B_PATH`: 4 accelerator, 5 SPIR-V (a hosted profile). The driver's main function was not changed.
+- Builder pitfalls met: a raw value used after a branch must travel in a variable (`_emit` binds operands); `NONE` (0xFFFFFFFF) is a valid data word, not a sentinel, in emitted code; reusing a variable name of the enclosing function (`pe_dll`) silently reassigns it.
+- Corpora: `tests/dll_corpus.py`, `tests/accel_corpus.py`, `tests/spirv_corpus.py`.
+- Next: S15e.4 (browser Wasm page), S15e.5 (JVM jars), S15e.6 (Android), the raw-image targets, and the Windows legacy register path.
+
