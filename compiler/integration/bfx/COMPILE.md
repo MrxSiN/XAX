@@ -236,3 +236,83 @@ record, so it excludes frontend and import. Each Wine process launch costs about
 0.044 s here and `bbc compile` launches four, so these are not Windows-native
 times and carry no competitor verdict. Stage medians under Wine are bind 0.050,
 edit 0.065, resolve 0.069 and build 0.075 s, each including that launch cost.
+
+## Single-process compilation — 2026-10-21
+
+[bbc.xax](bbc.xax) is one program that holds BBC's commands and the whole native
+XAX driver, so `bbc compile` runs in one process. It is the driver store
+(`../windows_helpers/driver.xax`, root
+`9bf3f203349cf8712ca93f968db2bd63f1c20b6277181891724ee4fbdd60aafc`) with one
+expected-root transaction,
+[transactions/bbc_single_process.edit](transactions/bbc_single_process.edit),
+that replaces the module's entry. Result root:
+`84478ecaeb21337d68707db175d6c85fc6628466fc4e6b119e50d19e46933f78`. Full
+verification, `Workspace.save` and stale-root rejection pass.
+
+The new entry dispatches on the first argument:
+
+- `verify`, `inspect`, `resolve`, `build`, `edit`, `lower`, `resolve-trusted`:
+  the unchanged driver entry.
+- `compile`: an in-process front (argument checks, source read, the unchanged
+  `compile_bfx` and importer, framing, `<output>.edit`), then the driver entry
+  three more times as ordinary calls, then cleanup and one exit.
+- anything else: the BBC command entry (`emit-bfx`, `check`, `info`, `bind`,
+  usage).
+
+Each of the three driver calls uses a variant of the driver entry whose graph
+differs in three references only: its argument count and argument helpers
+synthesize that step's command line from this process's own arguments (`edit
+<dir>bbc-<target>.xax <output>.edit <output>.request.xax`, `resolve
+<output>.request.xax <output>.xax`, `build <output>.xax <output>
+<output>.provenance`), and its final `ExitProcess` is `SetLastError`, so the
+step's exit status is read with `GetLastError` immediately after the call.
+Every step still verifies its inputs; the intermediate request and snapshot
+remain files. No other state passes between steps. Each step allocates and
+releases the driver's views as before.
+
+Install `bbc.exe` with the two host requests only; `xaxc.exe` is no longer
+needed. Exits and outputs are those of the native compilation section above.
+`bbc.exe` also answers the driver's own commands.
+
+### Bootstrap
+
+Build `bbc.exe` from `bbc.xax` with the generic SDK, choosing a lowering view
+per function: functions of the driver entry's closure and the three step
+variants use the driver recipe in [DRIVER.md](../windows_helpers/DRIVER.md);
+every other function uses the recipe above (inline 11-parameter callee sites,
+otherwise the parsed graph). The tested PE is 14,747,648 bytes, SHA-256
+`4e5b03d49ce0759156e7f229c564c0816e214523423d455edc37d87b4d5afa01`.
+
+The compile front is deliberately loop-free: its two loops (reading source and
+writing the record) are small helper functions with at most four machine
+arguments. An earlier front with its loops inline failed under the generic
+bootstrap's register-resident x86-64 lowering: a loop-carried view pointer's
+spill slot was shared with another value, so the record copy read a wrong
+pointer. The graph was valid; this is the same bootstrap defect class recorded
+above and remains open in the generic SDK.
+
+### Evidence
+
+[single_process_evidence.json](single_process_evidence.json), Wine and qemu
+user emulation on Linux x86-64:
+
+- 83 programs, O0/O1, both targets: 332 builds, 588 executions matching the
+  reference interpreter; all 332 artifacts equal the multi-process pipeline's.
+- Driver commands through `bbc.exe` give byte-identical exits, diagnostics,
+  artifacts and provenance to the driver PE on 141 regression and
+  declared-rejection stores.
+- Error paths (invalid source, target, level, missing host request, missing
+  output directory) give exits 1, 4, 4, 3, 3 and leave no files.
+
+| Complete Android build, median of 10 (s) | Single process | Previous four processes | Python SDK path |
+|---|---:|---:|---:|
+| hello | 0.110 | 0.271 | 1.409 |
+| nested_math | 0.113 | 0.272 | 1.347 |
+| checksum_four | 0.111 | 0.275 | 1.444 |
+| deep_nesting_512 | 0.883 | 0.993 | 13.094 |
+
+All arms produce identical artifacts. One Wine launch (about 0.044 s) remains
+in the single-process time; these are not Windows-native times and give no
+competitor verdict. The remaining work in a small build is three driver entry
+runs, each committing the driver's fixed views and re-reading and re-verifying
+its inputs; handing verified stores between steps in memory is the next step.
