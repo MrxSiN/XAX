@@ -215,6 +215,30 @@ def corpus(directory: Path):
             cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
             BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
 
+    # S15b.3e (ADR-318): graphs calling several different resource callees before their own decision
+    # (``test_xax_selfhost_verify_exact.resource_callee_program``): accepted ones, and rejections the bootstrap raises in a
+    # callee's graph or in the caller.
+    from test_xax_selfhost_verify_exact import resource_callee_program
+
+    callee_rng, accepted, rejected = random.Random(318), 0, 0
+    for _trial in range(400):
+        data, callees = resource_callee_program(callee_rng)
+        if callees < 2:
+            continue
+        try:
+            X._PARSED_GRAPHS.clear()
+            X.verify_store(X.StoreReader(data))
+            diagnostic = None
+        except X.XaxError as error:
+            diagnostic = error.diagnostic
+        if diagnostic is None and accepted < 3:
+            accepted += 1
+            cases.append((f"verify resource callees: accepted {accepted}", "positive", "verify", {"store": data}, ["out"], ["image", sha(b"")]))
+        elif diagnostic is not None and rejected < 4:
+            rejected += 1
+            cases.append((f"verify resource callees: {diagnostic.rule} {rejected}", "negative", "verify", {"store": data}, ["out"], None))
+            BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
+
     def build(name, reader, kind):
         expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
@@ -529,11 +553,9 @@ def measure() -> dict:
         "corpus": rows,
         # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
         # S15b.3d (ADR-313): a decoded declaration's and a stack-owner entry's rejections are rendered, and a resource
-        # callee's graph comes before its caller's later checks; what still declines:
-        "rejection_exactness_gaps": [
-            ("a graph whose first pass calls two different resource callees before its own decision declines (the "
-             "bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)"),
-        ],
+        # callee's graph comes before its caller's later checks; S15b.3e (ADR-318): every resource callee in turn, so a
+        # graph calling several different ones before its own decision is decided too.  None is left.
+        "rejection_exactness_gaps": [],
         # S15c (ADR-299 to ADR-302, ADR-309): grants, external input files, Ed25519 verification in ``build``, capacity
         # rejections, and signed resolution are the driver's.
         # S15c.5 (ADR-309): resolution under a given trust policy with signatures (``resolve-trusted``) closed the last.
