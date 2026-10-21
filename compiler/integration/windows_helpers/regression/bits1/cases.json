@@ -1,5 +1,5 @@
 {
-  "source_root": "fd2fe37a0128b7b8661e2be7de4fe6a44108b8eb554b5becd1fa4b99629ad7bc",
+  "source_root": "db44f3a8cdc955cf264aec7f4eabed549bca1bcc5bcb5d0685c6a1ee4b658e18",
   "cases": [
     {
       "name": "32-BIT_AND-00",
@@ -203,31 +203,35 @@
     },
     {
       "name": "8-BIT_AND-00",
-      "exit": 1,
+      "exit": 0,
       "source_sha256": "602070ecbcfbbf69a573ca0fdb5625ff2240e849d1bdb27e46cc17670dde59b4",
-      "exact_old_diagnostic": true,
-      "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+      "program_exit": 0,
+      "artifact_sha256": "ff7c6fa95422220ade2bfcce9a712507ccef00a47a4219e31833ecf0cb191935",
+      "new_width8_coverage": true
     },
     {
       "name": "8-BIT_AND-01",
-      "exit": 1,
+      "exit": 0,
       "source_sha256": "289e1a5e04d6d65e867a5d65cc0bc7bcac242941541956926186eb400f00a68b",
-      "exact_old_diagnostic": true,
-      "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+      "program_exit": 0,
+      "artifact_sha256": "76c16f633b0ecef820669fb2a41619c1cdb01076975952703a68cb6f48083cff",
+      "new_width8_coverage": true
     },
     {
       "name": "8-BIT_AND-10",
-      "exit": 1,
+      "exit": 0,
       "source_sha256": "787d9581acaa921c48feecc1032915da652833ca7a5743ab75e56950748b8b08",
-      "exact_old_diagnostic": true,
-      "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+      "program_exit": 0,
+      "artifact_sha256": "0d4c39dca8f0d4a7bcd75852ea7f68500c0206d3fdcdf04a44014fcd5513685e",
+      "new_width8_coverage": true
     },
     {
       "name": "8-BIT_AND-11",
-      "exit": 1,
+      "exit": 0,
       "source_sha256": "348c98074c2bddac3a3775a2d326aaad343a2294260e3b3761b81d8b318e01ab",
-      "exact_old_diagnostic": true,
-      "diagnostic_sha256": "e5ae5fcef5f98998c4b46ecaa998b0f18518d61f26b13b1d90102921763229b6"
+      "program_exit": 1,
+      "artifact_sha256": "4a8874aafee93d22ecb07aa5d1f5d0dc0f29d7139e2ec42d8370ecee70c4b464",
+      "new_width8_coverage": true
     },
     {
       "name": "stack-32-BIT_AND-00",

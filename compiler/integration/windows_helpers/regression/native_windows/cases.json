@@ -1,0 +1,339 @@
+{
+  "driver_root": "db44f3a8cdc955cf264aec7f4eabed549bca1bcc5bcb5d0685c6a1ee4b658e18",
+  "interface": "xaxc build <snapshot> <artifact> <provenance>; discard outputs on nonzero exit",
+  "cases": [
+    {
+      "name": "pointer-00-1-rawvalid",
+      "source_sha256": "3fc568bf71286b136f19d5e358150ced34dd5a8dd765d27258cc065ace01da10",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "e6ea5904907e866ae5e50ab241d432d6eeedaa062451cefbd80491a29d8d6d7c"
+    },
+    {
+      "name": "pointer-01-1-rawvalid",
+      "source_sha256": "4576ae5dc940a4893d5511e4bace8e2a8244d91d718914cd90f4406c1039175c",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "98ecda09d7f59e87de6340008f171501d76d82bcea1883baac7c125b97635dc8"
+    },
+    {
+      "name": "pointer-02-1-checkedvalid",
+      "source_sha256": "bf34683d788cd6e5556bc5b92b67cfd24201587f243d4595b8900a889239c15e",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "18346a64c53d6154ebb5877f78fea213c1bb1258611feb259d790f14528eef01"
+    },
+    {
+      "name": "pointer-03-1-checkedvalid",
+      "source_sha256": "245d80cbb82b3dbdfca644ed31bc5714dda429278de38ee9e4299fca6215bc30",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "253e2a6060d7f96d24cd78e7433a89283eb22df1ee6ed2ae9a0d0e80932b7cb1"
+    },
+    {
+      "name": "pointer-04-1-checkedvalid",
+      "source_sha256": "245d80cbb82b3dbdfca644ed31bc5714dda429278de38ee9e4299fca6215bc30",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "253e2a6060d7f96d24cd78e7433a89283eb22df1ee6ed2ae9a0d0e80932b7cb1"
+    },
+    {
+      "name": "pointer-05-1-checked-trap",
+      "source_sha256": "0a56b1d62d6c51ae23e60e0912fe2ca8d9e2bb584255c0c4cd346c8a8859d905",
+      "build_exit": 0,
+      "program_exit": 3221225501,
+      "artifact_sha256": "b94896d6554b63c664ac10cb5c1e25b25a19a8225a38689ad4cbf83f3a1a1ce2"
+    },
+    {
+      "name": "pointer-06-2-rawvalid",
+      "source_sha256": "3dc6b9b9ac03f6b9c517bf91864f6c0b27f31b956e9095c1dd847e00d3879711",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "6a2265383d45bebeb55c95658816d45d7e48faf3c75a7136c653ddcbd15c8848"
+    },
+    {
+      "name": "pointer-07-2-rawvalid",
+      "source_sha256": "673bed7edf347bb15e0b400de0faceae331a3234d3827f65cd621f7e998db8d1",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "1fb3317a6152a1402705b43119efe1083cb7b6c3cb7c4220e2eb4e644dd08cb2"
+    },
+    {
+      "name": "pointer-08-2-checkedvalid",
+      "source_sha256": "908ddbe675736f1c4a240a1e62bcbea88cfdad2a90e561f6b96f8783e3de1e52",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "1eaa224db316526f0e1dc860fdc7886c3cc00e9e6c56a92a21bf1891ffbbfcb9"
+    },
+    {
+      "name": "pointer-09-2-checkedvalid",
+      "source_sha256": "8c1de93e624ce6cec29ebf3cd15f8fbe3b1fe4ec5a4f15cb31d7b0d60c93b503",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "e77ebab2ebbce20518783217509ef905f956b592fed3425e513955b99cff7176"
+    },
+    {
+      "name": "pointer-10-2-checkedvalid",
+      "source_sha256": "8c1de93e624ce6cec29ebf3cd15f8fbe3b1fe4ec5a4f15cb31d7b0d60c93b503",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "e77ebab2ebbce20518783217509ef905f956b592fed3425e513955b99cff7176"
+    },
+    {
+      "name": "pointer-11-2-checked-trap",
+      "source_sha256": "72f9d3225c162d8ed88834b87145053c56af09e6b20d1540f998c53818059054",
+      "build_exit": 0,
+      "program_exit": 3221225501,
+      "artifact_sha256": "61fc2ae4bd404beb60360598c490327f2af86c64d7af74fac3dc38d9b7f32a08"
+    },
+    {
+      "name": "pointer-12-4-rawvalid",
+      "source_sha256": "412273ccf3ccb5d2924763adbd154c23f65e22947d5d57856be3edbe5bcbeb0d",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "545a545e98a9e49978fe5828a753b22ddb5534b4ad3c3aca814371efb738fb0d"
+    },
+    {
+      "name": "pointer-13-4-rawvalid",
+      "source_sha256": "d7bcc3969325b9b9d7ab92c4cc9114a8936ceb00a90f3f03332e025d8b15e790",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "2fb4337c47394b5729959786237d0a36c8ce13884722515fba91cb6863ce7ee5"
+    },
+    {
+      "name": "pointer-14-4-checkedvalid",
+      "source_sha256": "b41f38f0c1d83314ecc2398163dd81a413dd169a460f71ae3b3635eab65743a4",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "4a48ec876e97c3cf20258a673d0842d019705b5e19a8383126dc633a3df4d79f"
+    },
+    {
+      "name": "pointer-15-4-checkedvalid",
+      "source_sha256": "0e3c510a082ae6d6dd0e21aadf545dea8201124dfa23d5047e07acf8274ea695",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "c79c486e4bc72444768585acd2a75f6e92023af62c5b49601f32d12189b1fbaa"
+    },
+    {
+      "name": "pointer-16-4-checkedvalid",
+      "source_sha256": "0e3c510a082ae6d6dd0e21aadf545dea8201124dfa23d5047e07acf8274ea695",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "c79c486e4bc72444768585acd2a75f6e92023af62c5b49601f32d12189b1fbaa"
+    },
+    {
+      "name": "pointer-17-4-checked-trap",
+      "source_sha256": "8af7d03d21ffc8ae3fd78869024ea8533afe5648dd09a6ed317b6bbfce36ae01",
+      "build_exit": 0,
+      "program_exit": 3221225501,
+      "artifact_sha256": "98dc39c1f2940d9e36592562d593383530bdc69b8e0c598d0253f9f478e94bf7"
+    },
+    {
+      "name": "pointer-18-8-rawvalid",
+      "source_sha256": "6f9c98fb98a468c7b3fe257ec18a01096cbd3a1c45de707e85d35af580959266",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "10c296e4876121b38442c5b760827c7fe808dce2429640e0c83d6c4e475676db"
+    },
+    {
+      "name": "pointer-19-8-rawvalid",
+      "source_sha256": "28e85c313212c48bb8a2ceabf75a073c3e01de70abd5e37b76b45d43be091cfd",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "3e3abc404cd92251d23d5f42665cac834c369b66800d7c11a5a440f3009fa482"
+    },
+    {
+      "name": "pointer-20-8-checkedvalid",
+      "source_sha256": "2683439f7221c7bcebb715073cd180b3825b1f41eb4be5a5e20237ca0db30df1",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "686c4b10fbd1c7ece700951a4c8c8568ede9ddf3af5c866c21a10a49a0c386f1"
+    },
+    {
+      "name": "pointer-21-8-checkedvalid",
+      "source_sha256": "57cc1166d6174a893563a4363c6eeda651954707b70509b05ad5beff7ae79def",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "9a3384c0712f8729ea5bb8d915dd76aa1339c016ca7f98e0c5320bd44a91454a"
+    },
+    {
+      "name": "pointer-22-8-checkedvalid",
+      "source_sha256": "57cc1166d6174a893563a4363c6eeda651954707b70509b05ad5beff7ae79def",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "9a3384c0712f8729ea5bb8d915dd76aa1339c016ca7f98e0c5320bd44a91454a"
+    },
+    {
+      "name": "pointer-23-8-checked-trap",
+      "source_sha256": "e4785882dc46125281c3ae5593175f8c00dfe1db5bb04aeddff94ca120700d94",
+      "build_exit": 0,
+      "program_exit": 3221225501,
+      "artifact_sha256": "04451ffb7a493088e534dbdf8e8e745811fcf3a94f4951aa524afb24b7238d16"
+    },
+    {
+      "name": "byte-negative-16-ADD_WRAP",
+      "source_sha256": "2e328f5f5ec61cc150513b165f9024d28e3fc31545e2ce04184b0f5f28461870",
+      "build_exit": 1,
+      "diagnostic_sha256": "61012e0ad67f01abd2250586f43bcd29321dd19b891efb5c725c4d439c8b0034"
+    },
+    {
+      "name": "byte-negative-16-SUB_WRAP",
+      "source_sha256": "908e8b49d41422e2c0b312049de01f76838c0f0c2476d8cc623baee45901d8fe",
+      "build_exit": 1,
+      "diagnostic_sha256": "61012e0ad67f01abd2250586f43bcd29321dd19b891efb5c725c4d439c8b0034"
+    },
+    {
+      "name": "byte-negative-16-MUL_WRAP",
+      "source_sha256": "648194f94bedcded8dd2822b0c7afa975dd2cb071d93ae4a50e5a0da84146076",
+      "build_exit": 1,
+      "diagnostic_sha256": "61012e0ad67f01abd2250586f43bcd29321dd19b891efb5c725c4d439c8b0034"
+    },
+    {
+      "name": "byte-negative-8-UDIV",
+      "source_sha256": "c66751ca510b05a57f272ba01dac123847e5a6566e02bd368e686547e4fb4e7d",
+      "build_exit": 1,
+      "diagnostic_sha256": "da7ab12b2de778e4ee7eb5396b7a248829ac8cb62c1c285a5fc80721ff2d4582"
+    },
+    {
+      "name": "byte-negative-8-UREM",
+      "source_sha256": "8e8f1267928888009c0903b138edcd3c0333ab1f2dc13d70fd9a4469192a3def",
+      "build_exit": 1,
+      "diagnostic_sha256": "8ed1a70fa1bf83ddf0e177cb0b07a19543adc93ffd19b5b2ea32d64a0519da45"
+    },
+    {
+      "name": "byte-negative-8-ROTATE_RIGHT",
+      "source_sha256": "316aadebfe59b4d241d53d351999fdcd84c5761cc6b5317ac0ab294eec5a096c",
+      "build_exit": 1,
+      "diagnostic_sha256": "1da398320acbdf30707212b6fbf3d6fe62d22ae6bce15a8f9d913625f72dc4a4"
+    },
+    {
+      "name": "stack-probe-64",
+      "source_sha256": "105c5d47a2b5887fd073471aa06f40fc0aa2f89e60e3ead301ca3745a3d81c1e",
+      "build_exit": 0,
+      "program_exit": 136,
+      "artifact_sha256": "9a43f83e1e2eb19a46e6ab4ea4cb49198703e16eb46a5abfca3a230bf39f8943"
+    },
+    {
+      "name": "stack-probe-1024",
+      "source_sha256": "1bf4e47cc73041cb246a48e8d97cf0c2104e279b7852b817cc2a2905acc2a18f",
+      "build_exit": 0,
+      "program_exit": 2056,
+      "artifact_sha256": "fce4f433abc72aff4cf88e974a92e8e4ce85f21d1d81503f8a422b10ddcd02a3"
+    },
+    {
+      "name": "stack-probe-8192",
+      "source_sha256": "d16b0045c26d0e01eb88e60a8a24cabee01e9c7f2b738902e4cadec53ff047b0",
+      "build_exit": 0,
+      "program_exit": 16392,
+      "artifact_sha256": "61197d154a94d54638d6c36875d1d3cb7968b339a23a5091bb9e0582aec172b6"
+    },
+    {
+      "name": "counted-byte-exhaustive-ADD_WRAP",
+      "source_sha256": "1e1f8d83277cf82591be90627e0cbc78e930d140d547c7407e327c6f2730815f",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "35ca78de7f1d1387ed1f0f54d3e3a89966780c0f7fe6240782abb22a185bd2ea",
+      "checked_operand_pairs": 65536,
+      "route": "inline"
+    },
+    {
+      "name": "counted-byte-exhaustive-SUB_WRAP",
+      "source_sha256": "eef18c44791156f4b5119cd306ae23b5aebe7673fb6b03369b1ac9800ac22414",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "48f9e7749f3378448cc240789958eb46f58597a6e8920c1b365c316c16c5dda2",
+      "checked_operand_pairs": 65536,
+      "route": "inline"
+    },
+    {
+      "name": "counted-byte-exhaustive-MUL_WRAP",
+      "source_sha256": "c937de2f731e7e659530291cee1291dd0ebc58f4acdc37e8bf90a7224d444c66",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "16a2ccfd22a20769d805191265164852d7895530a0f87b008bc70a1434c320cf",
+      "checked_operand_pairs": 65536,
+      "route": "inline"
+    },
+    {
+      "name": "counted-byte-exhaustive-BIT_AND",
+      "source_sha256": "65f4aab9dbc460bd4f76d7f0e84cc7c4d523ddb25013786d112189bbca27914f",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "a97b25a1651d5f711f75ee8f04f2ad0f4c074f4e82fb7e42ab2bf9646aadb560",
+      "checked_operand_pairs": 65536,
+      "route": "inline"
+    },
+    {
+      "name": "counted-byte-exhaustive-BIT_OR",
+      "source_sha256": "33eb28329ab630a62eaf3fab18cc77b9bb7131351c5523eefdc3e1806e4d53bb",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "436bfc1adc81ac826b9197848da2fb0d74f32e01cf0fcd3788098e40941e7ee2",
+      "checked_operand_pairs": 65536,
+      "route": "inline"
+    },
+    {
+      "name": "counted-byte-exhaustive-BIT_XOR",
+      "source_sha256": "8464a60f904979aa6e2e56f4d6e634edfcfa4242289e9c11fb8fae4b9a279313",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "270a18f24d991bcab0fc84dc63e261f3e4568193ed85f2c70faddccb5b66e32d",
+      "checked_operand_pairs": 65536,
+      "route": "inline"
+    },
+    {
+      "name": "counted-byte-frame-exhaustive-ADD_WRAP",
+      "source_sha256": "c11897721eb00e184ae3b9fbc6e4bac58785bd9bfac872c23e9f140312989399",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "39ee0fe06b164dc550aeeff767fa08723864dde8b4e1ceb388f91a020e51ed97",
+      "checked_operand_pairs": 65536,
+      "route": "frame"
+    },
+    {
+      "name": "counted-byte-frame-exhaustive-SUB_WRAP",
+      "source_sha256": "7f3721bb287342d944d76da366dd6fc233165dafdf44e6c11795f02a229027d6",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "2f08580954ba9279b195e91325ecca9a773ea7581be7890af4d590c1a8441e0e",
+      "checked_operand_pairs": 65536,
+      "route": "frame"
+    },
+    {
+      "name": "counted-byte-frame-exhaustive-MUL_WRAP",
+      "source_sha256": "9f74e36c590d4464a04ffe45eb501d21748c371468d3549011949bad0fc96d28",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "ff147788b82cee07c685d87f0fce76d43360e770cbbb16c9c2107e83988409f4",
+      "checked_operand_pairs": 65536,
+      "route": "frame"
+    },
+    {
+      "name": "counted-byte-frame-exhaustive-BIT_AND",
+      "source_sha256": "354a617a6c44efa714eba8cff0b347cf09b1d8fce0303b43d5669c41bbec9e84",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "ba3a8fba9a66621ebd1728a751c3945a54e5addf3854156adb5033e8050b7b2d",
+      "checked_operand_pairs": 65536,
+      "route": "frame"
+    },
+    {
+      "name": "counted-byte-frame-exhaustive-BIT_OR",
+      "source_sha256": "db580f81c067a16c9ce85dabba987ae685bd69d91674a020035b5176844d57cc",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "cda37357cd93ceac2194f22b67824b937897b6d1ef192ea5d7067bad6d28a7f7",
+      "checked_operand_pairs": 65536,
+      "route": "frame"
+    },
+    {
+      "name": "counted-byte-frame-exhaustive-BIT_XOR",
+      "source_sha256": "64f6b538fb37a954138191390a55f3df75a52b210ce9e69eb8bfe9b92901c23a",
+      "build_exit": 0,
+      "program_exit": 0,
+      "artifact_sha256": "41f6c2cd2da43329202a655ae5c645fe5243a33ec070e6bb92903346322f63d0",
+      "checked_operand_pairs": 65536,
+      "route": "frame"
+    }
+  ]
+}
