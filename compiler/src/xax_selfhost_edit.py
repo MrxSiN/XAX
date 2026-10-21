@@ -97,13 +97,12 @@ PRE_LIMIT = 1 << 24
 NEWT = PRE + PRE_LIMIT  # per new object: preimage start, length, references at, count, body at, length, kind, object, alias
 NEWT_WORDS, NEWT_LIMIT = 9, 1 << 16
 BATCH = NEWT + NEWT_WORDS * NEWT_LIMIT  # the S9 writer's batch, one byte per word (``xax_selfhost_writer``'s layout)
-BATCH_LIMIT = (1 << 25) - 4096  # the writer's input view less its slack
+BATCH_LIMIT = (1 << 26) - 4096  # the writer's input view less its slack (S15e.4, ADR-322: 64 MiB, the writer's since ADR-319)
 BATCH_AT = 58  # control word: the batch bytes written
 EXTRA_TAG = 1 << 40
-assert BATCH + BATCH_LIMIT < 128 << 20
 # The edit record, one byte per word (S15d.4a: past the batch, room for supplied objects).
-EIN, EIN_LIMIT = 107 << 20, 16 << 20
-assert ENTITY_AT + MUT_LIMIT <= STATE and BATCH + BATCH_LIMIT <= EIN and EIN + EIN_LIMIT <= 128 << 20
+EIN, EIN_LIMIT = 238 << 20, 16 << 20  # S15e.4 (ADR-322): above the batch, far above the typing tables (from 128M words)
+assert ENTITY_AT + MUT_LIMIT <= STATE and BATCH + BATCH_LIMIT <= EIN and EIN + EIN_LIMIT <= __import__("xax_selfhost_facts").HEADER
 ENTITY = sorted(int(op) for op in ENTITY_OPERATIONS)
 ATTRIBUTE = sorted(int(op) for op in ATTRIBUTE_OPERATIONS)
 WRAPPING = (int(Operation.ADD_WRAP), int(Operation.SUB_WRAP), int(Operation.MUL_WRAP))
