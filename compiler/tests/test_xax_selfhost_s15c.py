@@ -288,7 +288,7 @@ class S15cTests(unittest.TestCase):
 
     def test_capacities(self):
         large = self.directory / "large.bin"
-        large.write_bytes(bytes(33 << 20))
+        large.write_bytes(bytes(65 << 20))  # past the 64 MiB views (ADR-319)
         output = self.directory / "out.bin"
         for command, arguments, entity in (("verify", (large, output), "store"),
                                            ("resolve", (self.directory / "request.xax", output, large), "external-input")):

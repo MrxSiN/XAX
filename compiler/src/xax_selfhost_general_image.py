@@ -18,6 +18,7 @@ the ``DT_NEEDED`` libraries.
 from __future__ import annotations
 
 from xax_selfhost_facts import E, NONE, _function
+import xax_selfhost_general_dll as DLL
 from xax_selfhost_general_regalloc import _ra, _set_ra
 from xax_selfhost_views_backend import _FN, G_PAY, GLOBALS, _at, _call, _cid_words, _g, _ok, _type_form
 
@@ -377,8 +378,9 @@ def _image_finish_fn(tables):
             _ok(e, e.either(e.ne(p["if_dynamic"], 0), e.eq(p["if_ni"], 0)))  # the bootstrap fails (LINUX-DYNAMIC-LOADER-EXPLICIT)
             e.if_(e.ne(p["if_dynamic"], 0), lambda: _call(e, "elf_dynamic"), lambda: _call(e, "elf_static"))
 
-        # S15e.3: ``emit_pe_executable``'s entry checks, then the PE32+ container.
-        e.if_(e.ne(_g(e, G_WINDOWS), 0), lambda: (_call(e, "pe_entry"), _call(e, "pe")), linux)
+        # S15e.3: ``emit_pe_executable``'s entry checks, then the PE32+ container; (S15e.3b) ``emit_pe_dll``'s for a DLL.
+        windows = lambda: (e.if_(e.ne(e.ld(DLL.D_ON), 0), lambda: _call(e, "dll_names"), lambda: _call(e, "pe_entry")), _call(e, "pe"))  # noqa: E731
+        e.if_(e.ne(_g(e, G_WINDOWS), 0), windows, linux)
         e.give(1)
     return _function((), build, tables)
 
@@ -687,6 +689,7 @@ def _elf_dynamic_fn(tables):
 
 PE_TEXT_RVA, PE_SECTION_ALIGNMENT, PE_FILE_ALIGNMENT, PE_HEADERS = 0x1000, 0x1000, 0x200, 0x200
 PE_IMAGE_BASE, PE_OPTIONAL = 0x140000000, 240
+PE_DLL_IMAGE_BASE = 0x180000000  # ``xax_pe.DLL_IMAGE_BASE``
 PE_STACK_RESERVE, PE_STACK_COMMIT = 0x100000, 0x1000
 
 
@@ -765,9 +768,13 @@ def _pe_entry_fn(tables):
 def _pe_fn(tables):
     """``xax_pe._emit`` for an executable: the DOS stub's ``e_lfanew``, the COFF and PE32+ optional headers, ``.text``
     (the code, each import's ``call [rip + slot]`` bound to its IAT slot) and, with imports, ``.idata`` (descriptors,
-    lookup and address tables, hint/name and library strings; libraries and names sorted)."""
+    lookup and address tables, hint/name and library strings; libraries and names sorted).  S15e.3b (ADR-320): for a
+    DLL, ``.edata`` (``xax_selfhost_general_dll``) follows, and the headers are a DLL's."""
+    from xax_selfhost_general_view import G_CIDX
+
     def build(e: E):
         p = e.p
+        e.var("pe_isdll", e.flag(e.ne(e.ld(DLL.D_ON), 0)))
         _call(e, "import_pairs")
         e.var("pe_names", _ra(e, I_NAMES))
         e.var("pe_nn", _ra(e, I_NNAMES))
@@ -824,23 +831,44 @@ def _pe_fn(tables):
         e.var("pe_ilen", e.add(e.add(p["pe_desc"], e.mul(p["pe_thunks"], 2)), p["pe_off"]))
         e.var("pe_iraw", _align(e, p["pe_ilen"], PE_FILE_ALIGNMENT))
         e.var("pe_size", e.sel(e.ne(p["pe_has"], 0), e.add(p["pe_rva"], _align(e, p["pe_ilen"], PE_SECTION_ALIGNMENT)), p["pe_rva"]))
+        # S15e.3b: the export section after the others; its RVA is where the image would end without it.
+        e.var("pe_elen", 0)
+        e.var("pe_eraw", 0)
+        e.var("pe_erva", p["pe_size"])
+
+        def sized():
+            DLL.edata_length(e, "pe_el")
+            e.set("pe_elen", p["pe_el"])
+            e.set("pe_eraw", _align(e, p["pe_el"], PE_FILE_ALIGNMENT))
+            e.set("pe_size", e.add(p["pe_erva"], _align(e, p["pe_el"], PE_SECTION_ALIGNMENT)))
+
+        e.if_(e.ne(p["pe_isdll"], 0), sized)
+        e.var("pe_entry", e.add(PE_TEXT_RVA, _ra(e, I_ENTRY)))
+
+        def dll_entry():
+            e.var("pe_main", e.ld(DLL.D_MAIN))
+            e.set("pe_entry", 0)
+            e.if_(e.ne(p["pe_main"], NONE), lambda: e.set("pe_entry", e.add(PE_TEXT_RVA, e.ld(e.add(_ra(e, I_BASES), e.ld(e.add(_g(e, G_CIDX), p["pe_main"])))))))
+
+        e.if_(e.ne(p["pe_isdll"], 0), dll_entry)
         # Headers.
         _set_ra(e, I_ELEN, 0)
         _elf(e, 0x5A4D, 2)
         e.while_(lambda: e.lt(_ra(e, I_ELEN), 0x3C), lambda: _elf(e, 0, 1))
         _elf(e, 0x40, 4)  # e_lfanew
         _elf(e, 0x4550, 4)  # PE\0\0
-        _elf(e, e.add(0x8664, e.mul(e.add(1, p["pe_has"]), 1 << 16)), 4)  # machine, sections
+        _elf(e, e.add(0x8664, e.mul(e.add(e.add(1, p["pe_has"]), p["pe_isdll"]), 1 << 16)), 4)  # machine, sections
         _elf(e, 0, 8)
         _elf(e, 0, 4)
-        _elf(e, PE_OPTIONAL | (0x0022 << 16), 4)  # optional header size, EXECUTABLE_IMAGE | LARGE_ADDRESS_AWARE
+        # Optional header size; EXECUTABLE_IMAGE | LARGE_ADDRESS_AWARE (| DLL).
+        _elf(e, e.add(PE_OPTIONAL | (0x0022 << 16), e.mul(p["pe_isdll"], 0x2000 << 16)), 4)
         _elf(e, 0x20B, 4)  # PE32+
         _elf(e, p["pe_raw"], 4)
-        _elf(e, e.mul(p["pe_has"], p["pe_iraw"]), 4)
+        _elf(e, e.add(e.mul(p["pe_has"], p["pe_iraw"]), p["pe_eraw"]), 4)
         _elf(e, 0, 4)
-        _elf(e, e.add(PE_TEXT_RVA, _ra(e, I_ENTRY)), 4)
+        _elf(e, p["pe_entry"], 4)
         _elf(e, PE_TEXT_RVA, 4)
-        _elf(e, PE_IMAGE_BASE, 8)
+        _elf(e, e.sel(e.ne(p["pe_isdll"], 0), PE_DLL_IMAGE_BASE, PE_IMAGE_BASE), 8)
         _elf(e, PE_SECTION_ALIGNMENT, 4)
         _elf(e, PE_FILE_ALIGNMENT, 4)
         _elf(e, 6, 8)  # OS 6.0, image 0.0
@@ -849,7 +877,8 @@ def _pe_fn(tables):
         _elf(e, p["pe_size"], 4)
         _elf(e, PE_HEADERS, 4)
         _elf(e, 0, 4)
-        _elf(e, 3 | (0x8160 << 16), 4)  # WINDOWS_CUI; NX_COMPAT | DYNAMIC_BASE | HIGH_ENTROPY_VA | TERMINAL_SERVER_AWARE
+        # WINDOWS_CUI; NX_COMPAT | DYNAMIC_BASE | HIGH_ENTROPY_VA | TERMINAL_SERVER_AWARE; a DLL: WINDOWS_GUI, not the last.
+        _elf(e, e.sel(e.ne(p["pe_isdll"], 0), 2 | (0x0160 << 16), 3 | (0x8160 << 16)), 4)
         for value in (PE_STACK_RESERVE, PE_STACK_COMMIT, 0x100000, 0x1000):
             _elf(e, value, 8)
         _elf(e, 16 << 32, 8)  # loader flags, 16 directories
@@ -857,11 +886,12 @@ def _pe_fn(tables):
         def directory(index):
             imports = lambda: (_elf(e, p["pe_rva"], 4), _elf(e, p["pe_desc"], 4))  # noqa: E731
             iat = lambda: (_elf(e, p["pe_iat"], 4), _elf(e, p["pe_thunks"], 4))  # noqa: E731
-            entry = {1: imports, 12: iat}.get(index)
+            exports = lambda: (_elf(e, p["pe_erva"], 4), _elf(e, p["pe_elen"], 4))  # noqa: E731
+            entry = {0: exports, 1: imports, 12: iat}.get(index)
             if entry is None:
                 _elf(e, 0, 8)
             else:
-                e.if_(e.ne(p["pe_has"], 0), entry, lambda: _elf(e, 0, 8))
+                e.if_(e.ne(p["pe_isdll"] if index == 0 else p["pe_has"], 0), entry, lambda: _elf(e, 0, 8))
 
         for index in range(16):
             directory(index)
@@ -878,6 +908,8 @@ def _pe_fn(tables):
 
         section(b".text", p["pe_len"], PE_TEXT_RVA, p["pe_raw"], PE_HEADERS, 0x60000020)
         e.if_(e.ne(p["pe_has"], 0), lambda: section(b".idata", p["pe_ilen"], p["pe_rva"], p["pe_iraw"], e.add(PE_HEADERS, p["pe_raw"]), 0xC0000040))
+        e.if_(e.ne(p["pe_isdll"], 0), lambda: section(b".edata", p["pe_elen"], p["pe_erva"], p["pe_eraw"],
+                                                   e.add(e.add(PE_HEADERS, p["pe_raw"]), e.mul(p["pe_has"], p["pe_iraw"])), 0x40000040))
         e.while_(lambda: e.lt(_ra(e, I_ELEN), PE_HEADERS), lambda: _elf(e, 0, 1))
         _copy_image(e)
         e.var("pe_end", e.add(PE_HEADERS, p["pe_raw"]))
@@ -943,6 +975,13 @@ def _pe_fn(tables):
             e.for_("pe_i", 0, _ra(e, I_NIMPORTS), bind)
 
         e.if_(e.ne(p["pe_has"], 0), idata)
+
+        def edata():
+            e.var("pe_eend", e.add(_ra(e, I_ELEN), p["pe_eraw"]))
+            _call(e, "dll_edata", p["pe_erva"], PE_TEXT_RVA)
+            e.while_(lambda: e.lt(_ra(e, I_ELEN), p["pe_eend"]), lambda: _elf(e, 0, 1))
+
+        e.if_(e.ne(p["pe_isdll"], 0), edata)
         _set_ra(e, I_OUT, PE_HEADERS)
         _set_ra(e, I_NNEEDED, 0)
         e.give(1)

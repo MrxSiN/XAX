@@ -240,7 +240,18 @@ def corpus(directory: Path):
             BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
 
     def build(name, reader, kind):
-        expected = build_expected(reader)
+        # The reference is the bootstrap's own path (``build`` asks the XAX programs first since S15e.3-S15e.7).
+        from unittest import mock
+
+        import xax_pe
+        import xax_selfhost_general_accel as ACC
+        import xax_selfhost_general_spirv as SPV
+
+        accel, spirv, dll = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll
+        with mock.patch.object(ACC, "accelerator_artifact", lambda r, f, t, frontend="auto": accel(r, f, t, frontend="python")), \
+             mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": spirv(r, f, t, frontend="python")), \
+             mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()):
+            expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
         cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference))
 
@@ -296,6 +307,32 @@ def corpus(directory: Path):
         build(f"build: a Windows PE32+ {name} executable", _program(tuple(o for o in pe_objects if o.cid != pe_target.cid), {b"image": pe_entry}, pe_target),
               "positive")
     build("build: a Linux process entry on the Windows PE32+ profile", _program(objects, {b"image": entry}, X.x86_64_windows_pe_target()), "negative")
+    # S15e.3b (ADR-320): Windows DLLs; S15e.7 (ADR-321): accelerator deployments and SPIR-V modules, all lowered by the
+    # general x86-64 program in the driver (images and rejections from the differential corpora).
+    from accel_corpus import accel_case
+    from dll_corpus import dll_case
+    from spirv_corpus import spirv_case
+
+    target_rng, wanted = random.Random(320), {"dll": 0, "dll rejected": 0, "accelerator": 0, "accelerator rejected": 0}
+
+    while min(wanted.values()) < 2:
+        reader, what = dll_case(target_rng)
+        key = "dll" if what == "constructed" else "dll rejected"
+        if wanted[key] < 2:
+            wanted[key] += 1
+            build(f"build: a Windows DLL ({what}) {wanted[key]}", reader, "positive" if key == "dll" else "negative")
+        reader, change = accel_case(target_rng)
+        key = "accelerator" if change == "none" else "accelerator rejected"
+        if wanted[key] < 2:
+            wanted[key] += 1
+            build(f"build: an accelerator deployment ({change}) {wanted[key]}", reader, "positive" if key == "accelerator" else "negative")
+    for kernel_name in ("collatz", "mix", "trap"):
+        while True:
+            reader, kernel, spirv_target, name = spirv_case(target_rng)
+            if name == kernel_name:
+                break
+        spirv_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != spirv_target.cid)
+        build(f"build: a SPIR-V {kernel_name} kernel", _program(spirv_objects, {b"image": kernel}, spirv_target), "positive")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)
@@ -351,7 +388,7 @@ def corpus(directory: Path):
     signed_app = signature(app, ED.ALGORITHM, key, ED.sign(secret, app.cid))
     resolve_trusted("resolve-trusted: Ed25519-signed", fixture.request_store(), "positive", trust_file(ed_policy, (signed_app,)))
     resolve_trusted("resolve-trusted: unsigned", fixture.request_store(), "negative", trust_file(ed_policy))
-    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(33 << 20)}, ["out"], None))
+    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(65 << 20)}, ["out"], None))
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
 

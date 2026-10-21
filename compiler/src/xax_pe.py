@@ -111,6 +111,15 @@ def emit_pe_executable(image: NativeImage) -> bytes:
     return _emit(image, None, ())
 
 
+def _names_build(reader, cid: bytes) -> bool:
+    from xax_compiler import Kind
+
+    try:
+        return reader.get(cid).kind == Kind.BUILD
+    except Exception:  # noqa: BLE001  (a missing object: the reference path raises its own diagnostic)
+        return False
+
+
 def compile_pe_executable(reader, function_cid: bytes, target_object, *, frontend: str = "auto") -> bytes:
     """``emit_pe_executable(compile_native_bound_target(...))``: S15e.3 (ADR-317) decides it with the XAX general
     x86-64 program where it runs and decides (``"auto"``; ``"xax"`` requires it), else the bootstrap.  With
@@ -123,7 +132,7 @@ def compile_pe_executable(reader, function_cid: bytes, target_object, *, fronten
     def reference() -> bytes:
         return emit_pe_executable(compile_native_bound_target(reader, function_cid, target_object))
 
-    if frontend == "python":
+    if frontend == "python" or _names_build(reader, function_cid):  # S15e.3b: a BUILD entry names a DLL request there
         return reference()
     from xax_selfhost_x86_64_general import general_with_xax
 
@@ -136,6 +145,34 @@ def compile_pe_executable(reader, function_cid: bytes, target_object, *, fronten
         return reference()
     if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1" and image["elf"] != reference():
         raise AssertionError("S15e.3 PE executables disagree")
+    return image["elf"]
+
+
+def compile_pe_dll(reader, request_cid: bytes, target_object, reference, *, frontend: str = "auto") -> bytes:
+    """S15e.3b (ADR-320): a Windows DLL request built by the XAX general x86-64 program, given the request (it reads the
+    package's exports, forwards and DllMain itself); ``reference()`` is ``build``'s own path, used where the program
+    declines (``"auto"``) or always (``"python"``).  With ``XAX_GENERAL_FRONTEND_DIFF=1`` the two must agree."""
+    import os
+
+    from xax_compiler import XaxError, fail
+
+    if frontend == "python":
+        return reference()
+    from xax_selfhost_x86_64_general import general_with_xax
+
+    decided = general_with_xax(reader, request_cid, target_object, required=frontend == "xax")
+    image = None if decided is None else decided.image
+    if image is None:
+        if frontend == "xax":
+            fail("XAX.X86_64.GENERAL_FRONTEND", request_cid.hex(), "X86_64-XAX-GENERAL-FRONTEND", "assembled by the XAX general program", "declined")
+        return reference()
+    if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+        try:
+            expected = reference()
+        except XaxError as error:
+            raise AssertionError(f"S15e.3b: the bootstrap rejects ({error.diagnostic.rule}) a DLL the XAX program built") from error
+        if image["elf"] != expected:
+            raise AssertionError("S15e.3b PE DLLs disagree")
     return image["elf"]
 
 
