@@ -38,8 +38,8 @@ What resolves here
 What does not, yet
 ------------------
 
-The store: this program emits the objects in the writer's batch shape, but the module, the package, the
-build request and the snapshot -- step 5b -- are still the reference's work.  An unknown name is a
+The store: this program emits the objects in the writer's batch shape, up to and including the snapshot that
+is the canonical store's root; writing the container bytes from them is step 5c.  An unknown name is a
 refusal (exit 11 for a type, 12 for an entity, 13 for a malformed graph), never a guess.
 """
 
@@ -134,6 +134,7 @@ TABLE, TABLE_OFFSETS = namespace_layout()
 _TARGET = x86_64_windows_pe_target()
 assert _TARGET.kind is Kind.TARGET and _TARGET.schema_version == 1 and not _TARGET.references
 TARGET_BODY = _TARGET.body
+RESOLVER_IDENTITY = b"xax-construct-v1"   # the resolver identity xax_construct.construct names
 
 # Regions the graph encoder stages in.  One view holds the carrier, the canonical area, its hash and
 # every buffer one function's graph needs, so encoding a function is one effect token's work.  Each
@@ -164,7 +165,8 @@ PACKAGE_CID = MODULE_CID + 32       # the package, for the build request
 TARGET_CID = PACKAGE_CID + 32       # the platform target, for the build request
 PROFILE_CID = TARGET_CID + 32       # the hermetic profile, for the build request
 POLICY_CID = PROFILE_CID + 32       # the trust policy the snapshot is resolved against
-FUNS = POLICY_CID + 0x60            # function name -> FUNCTION CID, for {"fn": NAME}
+REQUEST_CID = POLICY_CID + 32       # the build request, for the snapshot's reference
+FUNS = REQUEST_CID + 0x40           # function name -> FUNCTION CID, for {"fn": NAME}
 FUNS_CAP = 0x1000000 - FUNS         # entries are 33 + name bytes
 GA = 0xEA5000               # the operation, comparison and terminator name tables
 BAD_GRAPH = 13
@@ -1697,6 +1699,26 @@ def walk(environment):
         gb_uleb(c32(1))
         gb_uleb(c32(1))
         emit_staged(10, 1)
+        copy32(c32(CUR), c32(REQUEST_CID))
+        # -- the snapshot, which is the canonical store's root: request, resolver identity, policy, the
+        #    selected packages (the request's package and its closure), no signatures, no external digests
+        p["grefl"] = c32(0)
+        for cid in (PACKAGE_CID, POLICY_CID, REQUEST_CID):
+            copy32(c32(cid), c32(CUR))
+            ref_slot()
+        sort_refs()
+        p["gcur"] = c32(0)
+        gb_uleb(c32(3))
+        gb_uleb(rank_of(c32(REQUEST_CID)))
+        gb_uleb(c32(len(RESOLVER_IDENTITY)))
+        for value in RESOLVER_IDENTITY:
+            gb_put(p.const(value, B32))
+        gb_uleb(rank_of(c32(POLICY_CID)))
+        gb_uleb(c32(1))
+        gb_uleb(rank_of(c32(PACKAGE_CID)))
+        gb_uleb(c32(0))
+        gb_uleb(c32(0))
+        emit_staged(10, 1)
 
     def graph_function(function):
         """One carrier function: its constants, its graph, then the function object."""
@@ -1831,6 +1853,13 @@ def expected_lines(request: dict) -> list[tuple[str, bytes]]:
                             requested_artifacts=(builder.artifact,))
     for obj in (builder.target, module, app, profile, policy, build):
         lines.append((object_line(obj), obj.cid))
+    # the snapshot is the canonical store's root: the request, the resolver identity, the policy and the
+    # selected packages (the request's package and its dependency closure, which is just the package here)
+    resolution = B.resolve_packages(
+        build,
+        (*builder.objects.values(), *builder.platform_types, module, app, builder.target, profile, policy, build),
+        policy, b"xax-construct-v1")
+    lines.append((object_line(resolution.snapshot), resolution.snapshot.cid))
     return lines
 
 
