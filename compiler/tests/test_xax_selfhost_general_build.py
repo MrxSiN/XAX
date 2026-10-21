@@ -294,9 +294,84 @@ class GeneralBuildTests(unittest.TestCase):
         objects, entry = _parts(program)
         self.assertEqual(self.assertBuild(_program(objects, {b"image": entry}, X.x86_64_windows_pe_target()))[0], "rejected")
 
+    def test_windows_dlls(self):
+        """S15e.3b (ADR-320): a Windows DLL request on the PE profile is built by the XAX general program from the
+        request (exports, forwards, DllMain and their rejections): the artifact and provenance are ``build``'s with the
+        bootstrap's own DLL path, and every rejection its diagnostic."""
+        import random
+        from unittest import mock
+
+        import xax_pe
+        from dll_corpus import dll_case
+
+        rng = random.Random(319)
+        seen = set()
+        for trial in range(int(os.environ.get("XAX_DLL_TRIALS", "40"))):
+            reader, what = dll_case(rng)
+            with mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()):
+                expected = _expected(reader)
+            with self.subTest(trial=trial, case=what):
+                outcome = self.run_build(reader.data)
+                self.assertEqual(outcome, expected)
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+        self.assertIn("image", seen)
+        self.assertGreater(len(seen), 5, seen)
+
+    def test_accelerator_deployments(self):
+        """S15e.7a (ADR-321): an accelerator deployment (architecture 4, format 3) is the XAX general program's: the
+        packet and provenance are ``build``'s with the bootstrap's own path, and every rejection its diagnostic."""
+        import random
+        from unittest import mock
+
+        import xax_selfhost_general_accel as A
+        from accel_corpus import accel_case
+
+        reference = A.accelerator_artifact
+        rng = random.Random(320)
+        seen = set()
+        for trial in range(int(os.environ.get("XAX_ACCEL_TRIALS", "24"))):
+            reader, change = accel_case(rng)
+            with mock.patch.object(A, "accelerator_artifact", lambda r, f, t, frontend="auto": reference(r, f, t, frontend="python")):
+                expected = _expected(reader)
+            with self.subTest(trial=trial, change=change):
+                outcome = self.run_build(reader.data)
+                self.assertEqual(outcome, expected)
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+        self.assertIn("image", seen)
+        self.assertGreater(len(seen), 4, seen)
+
+    def test_spirv_modules(self):
+        """S15e.7b (ADR-321): a SPIR-V compute module is the XAX general program's: the module and provenance are
+        ``build``'s with ``compile_spirv_kernel``, and every rejection its diagnostic."""
+        import random
+        from unittest import mock
+
+        import xax_selfhost_general_spirv as SPV
+        from spirv_corpus import spirv_case
+
+        reference = SPV.spirv_module
+        rng = random.Random(321)
+        seen = set()
+        for trial in range(int(os.environ.get("XAX_SPIRV_TRIALS", "24"))):
+            reader, kernel, target, name = spirv_case(rng)
+            objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != target.cid)
+            try:
+                program = _program(objects, {b"image": kernel}, target)
+            except (X.XaxError, ValueError):
+                continue
+            with mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": reference(r, f, t, frontend="python")):
+                expected = _expected(program)
+            with self.subTest(trial=trial, kernel=name):
+                outcome = self.run_build(program.data)
+                self.assertEqual(outcome, expected)
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+        self.assertIn("image", seen)
+        self.assertGreater(len(seen), 2, seen)
+
     def test_other_paths_decline(self):
-        """Android packages, Windows DLLs, and targets other than the Linux x86-64, Linux AArch64, Windows PE32+ and
-        RISC-V raw profiles are ``build``'s other paths: the driver declines and writes nothing."""
+        """Android packages, Windows DLLs on a target other than the PE profile, and targets other than the Linux
+        x86-64, Linux AArch64, Windows PE32+ and RISC-V raw profiles are ``build``'s other paths: the driver declines and
+        writes nothing."""
         from test_xax_linux import _status_program
 
         program, _entry, target, _ = _status_program(lambda b: b.const(X.bits_type(32), 7))

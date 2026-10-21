@@ -1980,10 +1980,19 @@ def _check_dllmain(reader: StoreReader, function_cid: bytes, where: str) -> None
                              f"{declaration.library.decode('ascii', 'replace')}!{declaration.name.decode('ascii', 'replace')}")
 
 
-def _build_windows_dll(reader: StoreReader, package_view, target_object: SemanticObject, description, function_root: bytes) -> bytes:
+def _build_windows_dll(reader: StoreReader, package_view, target_object: SemanticObject, description, function_root: bytes,
+                       request_cid: bytes | None = None) -> bytes:
     """A PE32+ DLL (ADR-259) exporting every ``windows-pe-export-v1`` member of the package's modules, forwarding every
     ``windows-pe-forward-v1`` member, and entering at an optional ``windows-pe-dllmain-v1`` member (ADR-261).  The build
-    entry must be one of the exports; the DLL name is the package logical identity plus ``.dll``."""
+    entry must be one of the exports; the DLL name is the package logical identity plus ``.dll``.
+
+    S15e.3b (ADR-320): given the build request, the XAX general x86-64 program decides it where it runs and decides
+    (``xax_pe.compile_pe_dll``); this function is the reference where it declines."""
+    if request_cid is not None and description.architecture == 1 and description.identity == b"x86_64-windows-pe-v1":
+        from xax_pe import compile_pe_dll
+
+        return compile_pe_dll(reader, request_cid, target_object,
+                              lambda: _build_windows_dll(reader, package_view, target_object, description, function_root))
     from xax_compiler import (
         WINDOWS_DLLMAIN_PREFIX, WINDOWS_EXPORT_PREFIX, WINDOWS_FORWARD_PREFIX, decode_windows_dllmain, decode_windows_export,
         decode_windows_forward,
@@ -2049,9 +2058,9 @@ def _hosted_container(reader: StoreReader, function_root: bytes, target_object: 
 
         return emit_browser_page(compile_wasm_bound_target(reader, function_root, target_object))
     if description.architecture == SPIRV_ARCHITECTURE:
-        from xax_spirv import compile_spirv_kernel
+        from xax_selfhost_general_spirv import spirv_module
 
-        return compile_spirv_kernel(reader, function_root, target_object.cid).artifact_bytes
+        return spirv_module(reader, function_root, target_object)  # S15e.7b (ADR-321): the XAX general program first
     return None
 
 
@@ -2132,7 +2141,7 @@ def build(
             artifact = sign_apk_v2(artifact, signing_capability)
             lowering = ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1
     elif request_view.requested_artifacts == (ArtifactKind.WINDOWS_DLL,):
-        artifact = _build_windows_dll(reader, package_view, target_object, description, function_root)
+        artifact = _build_windows_dll(reader, package_view, target_object, description, function_root, request.cid)
         lowering = container_lowering_identity(b"x86_64-windows-pe-dll-v1")
     elif (hosted := _hosted_container(reader, function_root, target_object, description)) is not None:
         if request_view.requested_artifacts != (ArtifactKind.NATIVE_IMAGE,):
@@ -2185,12 +2194,14 @@ def build(
 
             image = compile_riscv64_bound_target(reader, function_root, target_object)
         elif description.architecture == 4:
-            from xax_accelerator import compile_accelerator_bound_target
+            from xax_selfhost_general_accel import accelerator_artifact
 
-            image = compile_accelerator_bound_target(reader, function_root, target_object)
+            image = None
+            artifact = accelerator_artifact(reader, function_root, target_object)  # S15e.7a (ADR-321): XAX first
         else:
             fail("XAX.BUILD.TARGET", target_object.cid.hex(), "BUILD-TARGET-SUPPORTED", [1, 2, 3, 4, 5, 6], description.architecture)
-        artifact = image.artifact_bytes
+        if image is not None:
+            artifact = image.artifact_bytes
         lowering = lowering_identity(description.architecture, description.image_format)
     artifact_digest = blake3(artifact).digest()
     record = provenance(
