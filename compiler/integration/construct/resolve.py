@@ -38,8 +38,8 @@ What resolves here
 What does not, yet
 ------------------
 
-The store: this program emits the objects in the writer's batch shape, but the module, the package, the
-build request and the snapshot -- step 5b -- are still the reference's work.  An unknown name is a
+The store: this program emits the objects in the writer's batch shape, up to and including the snapshot that
+is the canonical store's root; writing the container bytes from them is step 5c.  An unknown name is a
 refusal (exit 11 for a type, 12 for an entity, 13 for a malformed graph), never a guess.
 """
 
@@ -55,7 +55,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import reader as R  # noqa: E402
 from xax_compiler import (ATTRIBUTE_OPERATIONS, ENTITY_OPERATIONS, IntCompare, Kind, Operation,  # noqa: E402
-                          Permission, SemanticObject, bits_type, constant, heap_view_type, pointer_type)
+                          Permission, SemanticObject, bits_type, constant, heap_view_type, object_with_refs,
+                          pointer_type, x86_64_windows_pe_target)
 from xax_structured import B32, B64  # noqa: E402
 from xax_platform import win32_kernel32_api, win32_stdio_api  # noqa: E402
 from xax_selfhost_blake3 import DIGEST_OFFSET, hash_span_function  # noqa: E402
@@ -127,6 +128,14 @@ def namespace_layout() -> tuple[bytes, dict[str, int]]:
 
 TABLE, TABLE_OFFSETS = namespace_layout()
 
+# The platform target is a fixed object for the platform this program is authored for, exactly like the
+# namespace table above: a carrier names its platform, and one that names another is a refusal (the
+# embedded target is the Windows PE target), never a build request that lies about what it builds.
+_TARGET = x86_64_windows_pe_target()
+assert _TARGET.kind is Kind.TARGET and _TARGET.schema_version == 1 and not _TARGET.references
+TARGET_BODY = _TARGET.body
+RESOLVER_IDENTITY = b"xax-construct-v1"   # the resolver identity xax_construct.construct names
+
 # Regions the graph encoder stages in.  One view holds the carrier, the canonical area, its hash and
 # every buffer one function's graph needs, so encoding a function is one effect token's work.  Each
 # region is followed by its neighbour, and each multi-slot region is sized by the cap it enforces, so a
@@ -151,7 +160,13 @@ CUR = RETURNS + FUNCTION_SLOTS * 32      # the CID under construction, or the re
 CURTYPE = CUR + 32                  # a constant's type CID
 CBODY = CURTYPE + 32                # a constant's body: a width above 64 is refused, so at most 14 bytes
 GRAPH_CID = CBODY + 0x40            # the graph a function wraps
-FUNS = GRAPH_CID + 0x100            # function name -> FUNCTION CID, for {"fn": NAME}
+MODULE_CID = GRAPH_CID + 32         # the module, for the package's reference
+PACKAGE_CID = MODULE_CID + 32       # the package, for the build request
+TARGET_CID = PACKAGE_CID + 32       # the platform target, for the build request
+PROFILE_CID = TARGET_CID + 32       # the hermetic profile, for the build request
+POLICY_CID = PROFILE_CID + 32       # the trust policy the snapshot is resolved against
+REQUEST_CID = POLICY_CID + 32       # the build request, for the snapshot's reference
+FUNS = REQUEST_CID + 0x40           # function name -> FUNCTION CID, for {"fn": NAME}
 FUNS_CAP = 0x1000000 - FUNS         # entries are 33 + name bytes
 GA = 0xEA5000               # the operation, comparison and terminator name tables
 BAD_GRAPH = 13
@@ -963,6 +978,19 @@ def walk(environment):
         fail_if(ge(add(p["gcur"], c32(5)), c32(BODY_CAP)), BAD_GRAPH)
         write_uleb(value, BODY, "gcur")
 
+    def gb_put(value):
+        """One byte of a body at ``BODY + gcur``."""
+        fail_if(ge(p["gcur"], c32(BODY_CAP)), BAD_GRAPH)
+        st8(add(c32(BODY), p["gcur"]), p.op1(Operation.INT_TRUNCATE, (value,), B8))
+        p["gcur"] = add(p["gcur"], c32(1))
+
+    def gb_input(offset, count):
+        """Copy ``count`` input bytes from ``offset`` (input-relative) into the body."""
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], count),
+                 lambda _p: (gb_put(byte(add(offset, p["gi"]))),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+
     def ref_write():
         """Write the position of the next logged reference."""
         fail_if(ge(p["gocc"], c32(OCC_CAP)), BAD_GRAPH)
@@ -1034,9 +1062,13 @@ def walk(environment):
 
     def emit_sorted_object(kind_value, schema_value):
         """``<kind> <schema> <sorted refs|-> <body>`` for the object staged at ``BODY``."""
-        out_dyn(c32(48 + kind_value))
+        # kind and schema are compile-time here, so the digits are written exactly; ``48 + kind`` would
+        # print one byte and turn BUILD (10) into ``1``
+        for digit in str(kind_value):
+            out_byte(ord(digit))
         out_byte(SPACE)
-        out_dyn(c32(48 + schema_value))
+        for digit in str(schema_value):
+            out_byte(ord(digit))
         out_byte(SPACE)
         p["gr"] = c32(0)
         p.while_(lambda _p: lt(p["gr"], p["grefl"]),
@@ -1128,11 +1160,8 @@ def walk(environment):
         return p.all_of(eq(kind(node), objects), ne(member, 0), zero(after(member)),
                         span_eq(start(member), end(member), b"fn"))
 
-    def select_function(node):
-        """The CID of the function named ``{"fn": NAME}``, from the function table."""
-        member = first(node)
-        offset = start(first(member))
-        stop = end(first(member))
+    def lookup_function(offset, stop):
+        """Find the function whose name is the input span; its CID lands in ``CUR``."""
         p["gpos"] = c32(FUNS)
         p["gfound"] = c32(0)
         p.while_(lambda _p: p.all_of(zero(p["gfound"]),
@@ -1145,6 +1174,11 @@ def walk(environment):
                              p.if_(zero(p["gfound"]),
                                    lambda _q: p.__setitem__("gpos", add(add(p["gpos"], c32(33)), p["gnlen"])))))
         fail_if(zero(p["gfound"]), BAD_GRAPH)
+
+    def select_function(node):
+        """The CID of the function named ``{"fn": NAME}``, from the function table."""
+        member = first(node)
+        lookup_function(start(first(member)), end(first(member)))
         p.if_(zero(p["code"]), lambda _q: ref_collect())
 
     def visit_entity(spec):
@@ -1445,6 +1479,27 @@ def walk(environment):
         p.if_(ne(blocks, 0), lambda _q: each(blocks, "gc1", collect_block))
         p["gbcount"] = p["gbi"]
 
+    def emit_staged(kind_value, schema_value):
+        """Canonicalise the staged references and body, hash it, and emit the object line.
+
+        The caller has already sorted the references (so the body's ranks are final) and left the body at
+        ``BODY[0..gcur]``.  ``CUR`` is left holding the object's CID, which is what the next object that
+        references it copies.
+        """
+        canon_begin(c32(kind_value), c32(schema_value), p["grefl"])
+        p["gr"] = c32(0)
+        p.while_(lambda _p: lt(p["gr"], p["grefl"]),
+                 lambda _p: (canon_copy(add(c32(REFS),
+                                            mul(ld32(add(c32(REF_SLOTS), mul(p["gr"], c32(4)))), c32(32))),
+                                        c32(32)),
+                             p.__setitem__("gr", add(p["gr"], c32(1)))))
+        canon_uleb(p["gcur"])
+        canon_copy(c32(BODY), p["gcur"])
+        p["wcanonlen"] = p["wcursor"]
+        hash_canonical()
+        capture_digest(c32(CUR))
+        emit_sorted_object(kind_value, schema_value)
+
     def write_graph(function):
         """Pass two: write the body, sort the references, emit the GRAPH_FRAGMENT."""
         p["gmode"] = c32(1)
@@ -1465,10 +1520,7 @@ def walk(environment):
                              p.__setitem__("gr", add(p["gr"], c32(1)))))
         canon_uleb(p["gcur"])
         canon_copy(c32(BODY), p["gcur"])
-        p["wcanonlen"] = p["wcursor"]
-        hash_canonical()
-        capture_digest(c32(CUR))
-        emit_sorted_object(7, 1)
+        emit_staged(7, 1)
 
     def save_param(node):
         # the staging area is fixed, so a signature wider than it is a refusal, not an overwrite
@@ -1540,11 +1592,133 @@ def walk(environment):
                              p.__setitem__("gr", add(p["gr"], c32(1)))))
         canon_uleb(p["gcur"])
         canon_copy(c32(BODY), p["gcur"])
-        p["wcanonlen"] = p["wcursor"]
-        hash_canonical()
-        capture_digest(c32(CUR))
-        emit_sorted_object(3, 1)
+        emit_staged(3, 1)
         register_function(function)
+
+    def package_pass():
+        """Step 5b: the platform target, module, package, profile, policy and build request.
+
+        The carrier's ``package`` names one build entry, one release entry and the platform; everything
+        else is fixed by the toolchain (the target, the hermetic profile, the trust policy, one native
+        image).  The program therefore refuses a carrier that needs more than this pass implements: a
+        non-Windows platform or more than one build entry.
+        """
+        platform = nth_value(p["root"], b"platform")
+        fail_if(eq(platform, 0), BAD_GRAPH)
+        # the embedded target is the Windows PE target; another platform is refused, not mislabelled
+        fail_if(zero(flag(span_eq(start(platform), end(platform), b"windows-x86_64"))), BAD_GRAPH)
+        package = nth_value(p["root"], b"package")
+        fail_if(eq(package, 0), BAD_GRAPH)
+        name = nth_value(package, b"name")
+        entries = nth_value(package, b"entries")
+        release = nth_value(package, b"release")
+        fail_if(eq(name, 0), BAD_GRAPH)
+        fail_if(eq(entries, 0), BAD_GRAPH)
+        fail_if(eq(release, 0), BAD_GRAPH)
+        member = first(entries)
+        fail_if(eq(member, 0), BAD_GRAPH)
+        # the reference sorts the entry names and supports any number; this pass supports one, so a
+        # second entry is a refusal rather than a package with the wrong rank order
+        fail_if(ne(after(member), 0), BAD_GRAPH)
+        # -- the target: the fixed platform object
+        p["grefl"] = c32(0)
+        p["gcur"] = c32(0)
+        for value in TARGET_BODY:
+            gb_put(p.const(value, B32))
+        emit_staged(6, 1)
+        copy32(c32(CUR), c32(TARGET_CID))
+        # -- the module: every constructed function, deduplicated and sorted by CID
+        p["grefl"] = c32(0)
+        p["gpos"] = c32(FUNS)
+        p.while_(lambda _p: lt(p["gpos"], add(c32(FUNS), p["gfuns"])),
+                 lambda _p: (p.__setitem__("gnlen", flag(ld8(p["gpos"]))),
+                             copy32(add(p["gpos"], add(c32(1), p["gnlen"])), c32(CUR)),
+                             ref_slot(),
+                             p.__setitem__("gpos", add(add(p["gpos"], c32(33)), p["gnlen"]))))
+        sort_refs()
+        p["gcur"] = c32(0)
+        gb_uleb(p["grefl"])
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["grefl"]),
+                 lambda _p: (gb_uleb(p["gi"]), p.__setitem__("gi", add(p["gi"], c32(1)))))
+        emit_staged(2, 1)
+        copy32(c32(CUR), c32(MODULE_CID))
+        # -- the package: name, module, the one entry, three empty collections
+        p["grefl"] = c32(0)
+        copy32(c32(MODULE_CID), c32(CUR))
+        ref_slot()
+        lookup_function(start(first(member)), end(first(member)))
+        p.if_(zero(p["code"]), lambda _q: ref_slot())
+        sort_refs()
+        p["gcur"] = c32(0)
+        p["gnlen"] = sub(end(name), start(name))
+        gb_uleb(p["gnlen"])
+        gb_input(start(name), p["gnlen"])
+        gb_uleb(c32(1))
+        gb_uleb(rank_of(c32(MODULE_CID)))
+        gb_uleb(c32(0))
+        gb_uleb(c32(1))
+        p["gnlen"] = sub(end(member), start(member))
+        gb_uleb(p["gnlen"])
+        gb_input(start(member), p["gnlen"])
+        gb_uleb(rank_of(c32(CUR)))
+        gb_uleb(c32(0))
+        gb_uleb(c32(0))
+        gb_uleb(c32(0))
+        emit_staged(9, 1)
+        copy32(c32(CUR), c32(PACKAGE_CID))
+        # -- the profile and the trust policy: fixed forms, no references
+        p["grefl"] = c32(0)
+        p["gcur"] = c32(0)
+        for value in (0x01, 0x01, 0x00, 0x01, 0x00):
+            gb_put(p.const(value, B32))
+        emit_staged(10, 1)
+        copy32(c32(CUR), c32(PROFILE_CID))
+        p["grefl"] = c32(0)
+        p["gcur"] = c32(0)
+        for value in (0x04, 0x00, 0x00, 0x00, 0x00):
+            gb_put(p.const(value, B32))
+        emit_staged(10, 1)
+        copy32(c32(CUR), c32(POLICY_CID))
+        # -- the build request: package, release entry, target, profile, one native image
+        p["grefl"] = c32(0)
+        for cid in (PACKAGE_CID, TARGET_CID, PROFILE_CID):
+            copy32(c32(cid), c32(CUR))
+            ref_slot()
+        sort_refs()
+        p["gcur"] = c32(0)
+        gb_uleb(c32(2))
+        gb_uleb(rank_of(c32(PACKAGE_CID)))
+        p["gnlen"] = sub(end(release), start(release))
+        gb_uleb(p["gnlen"])
+        gb_input(start(release), p["gnlen"])
+        gb_uleb(rank_of(c32(TARGET_CID)))
+        gb_uleb(rank_of(c32(PROFILE_CID)))
+        gb_uleb(c32(0))
+        gb_uleb(c32(0))
+        gb_uleb(c32(1))
+        gb_uleb(c32(1))
+        emit_staged(10, 1)
+        copy32(c32(CUR), c32(REQUEST_CID))
+        # -- the snapshot, which is the canonical store's root: request, resolver identity, policy, the
+        #    selected packages (the request's package and its closure), no signatures, no external digests
+        p["grefl"] = c32(0)
+        for cid in (PACKAGE_CID, POLICY_CID, REQUEST_CID):
+            copy32(c32(cid), c32(CUR))
+            ref_slot()
+        sort_refs()
+        p["gcur"] = c32(0)
+        gb_uleb(c32(3))
+        gb_uleb(rank_of(c32(REQUEST_CID)))
+        gb_uleb(c32(len(RESOLVER_IDENTITY)))
+        for value in RESOLVER_IDENTITY:
+            gb_put(p.const(value, B32))
+        gb_uleb(rank_of(c32(POLICY_CID)))
+        gb_uleb(c32(1))
+        gb_uleb(rank_of(c32(PACKAGE_CID)))
+        gb_uleb(c32(0))
+        gb_uleb(c32(0))
+        emit_staged(10, 1)
 
     def graph_function(function):
         """One carrier function: its constants, its graph, then the function object."""
@@ -1573,6 +1747,8 @@ def walk(environment):
     # ``graph_function`` walks the blocks and the parameter lists itself: its cursors may not be the
     # one this loop carries, or the loop would continue from inside the function it just wrote.
     p.if_(ne(functions, 0), lambda _q: each(functions, "gfun", graph_function))
+    # step 5b: the target, module, package, profile, policy and request, once the function table is full
+    p.if_(zero(p["code"]), lambda _q: package_pass())
 
 
 def build_resolver():
@@ -1664,6 +1840,26 @@ def expected_lines(request: dict) -> list[tuple[str, bytes]]:
         graph = next(item for item in fresh if item.kind == Kind.GRAPH_FRAGMENT)
         lines.append((object_line(graph), graph.cid))
         lines.append((object_line(entry), entry.cid))
+    # step 5b: the target, module, package, profile, policy and request, in the program's order
+    import xax_build as B
+
+    spec = request["package"]
+    build_entries = tuple((entry.encode(), builder.functions[function])
+                          for entry, function in sorted(spec["entries"].items()))
+    module = object_with_refs(Kind.MODULE, tuple(builder.functions.values()))
+    app = B.package(spec["name"].encode(), (module,), build_entries=build_entries)
+    profile, policy = B.build_profile(), B.trust_policy()
+    build = B.build_request(app, spec["release"].encode(), builder.target, profile,
+                            requested_artifacts=(builder.artifact,))
+    for obj in (builder.target, module, app, profile, policy, build):
+        lines.append((object_line(obj), obj.cid))
+    # the snapshot is the canonical store's root: the request, the resolver identity, the policy and the
+    # selected packages (the request's package and its dependency closure, which is just the package here)
+    resolution = B.resolve_packages(
+        build,
+        (*builder.objects.values(), *builder.platform_types, module, app, builder.target, profile, policy, build),
+        policy, b"xax-construct-v1")
+    lines.append((object_line(resolution.snapshot), resolution.snapshot.cid))
     return lines
 
 
