@@ -217,7 +217,7 @@ def _imports(api, pointer):
     }
 
 
-def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None):
+def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None, store_only=False):
     """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier.
 
     With ``on_tree`` the parsed tree is handed to that callback instead of being re-emitted; it receives
@@ -323,7 +323,12 @@ def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None):
     scan_word(separated)
     copy_word(PATH_TWO, PATH_CAP - 1)
     scan_word(separated)
-    if store_writer is None:
+    if store_only:
+        # the command form is ``construct <carrier> <store>``: argv[2] is the store, and there is no
+        # listing path to consume or require
+        p["have_three"] = c32(1)
+        fail_if(ne(p["byte"], 0), EXIT_TRAILING)
+    elif store_writer is None:
         fail_if(ne(p["byte"], 0), EXIT_TRAILING)
     else:
         def third_path(_p):
@@ -702,7 +707,8 @@ def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None):
         fail_if(p.cmp(IntCompare.NE, p["written"], p["out"], B32), EXIT_SHORT_WRITE)
 
     def write_store():
-        p["fd"], p["fs"] = p.op(Operation.CALL_FOREIGN, (at(PATH_THREE), c32(OPEN_WRITE), c32(CREATE_MODE),
+        path_at = PATH_TWO if store_only else PATH_THREE
+        p["fd"], p["fs"] = p.op(Operation.CALL_FOREIGN, (at(path_at), c32(OPEN_WRITE), c32(CREATE_MODE),
                                                          p["fs"]), (B32, fs_type), entity=declarations["open"])
         fail_if(p.cmp(IntCompare.SLT, p["fd"], c32(0), B32), EXIT_BAD_OPEN_OUT)
         p["written"], p["fs"], p["written_m"] = p.op(
@@ -745,7 +751,8 @@ def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None):
 
     guard(read_input)
     guard(normalize)
-    guard(write_output)
+    if not store_only:
+        guard(write_output)
     if store_writer is not None:
         def store_output():
             fail_if(p.all_of(ne(p["store_len"], 0), eq(p["have_three"], 0)), EXIT_NO_STORE)
@@ -757,14 +764,14 @@ def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None):
 
 
 def build_reader(name=b"xax-construct-reader", on_tree=None, view_alignment=1, extra_objects=(),
-                 store_writer=None):
+                 store_writer=None, store_only=False):
     from xax_build import (ArtifactKind, build, build_profile, build_request, package, resolve_packages,
                            snapshot_store, trust_policy)
     from xax_compiler import Kind, StoreReader, object_with_refs, verify_store, write_store
 
     api = win32_kernel32_api()
     stdio = win32_stdio_api(api)
-    entry, objects = build_main(api, stdio, on_tree, view_alignment, store_writer)
+    entry, objects = build_main(api, stdio, on_tree, view_alignment, store_writer, store_only)
     platform_types = (*api.types, *api.symbols, *stdio.types, *stdio.symbols)
     module = object_with_refs(Kind.MODULE, (entry,))
     app = package(name, (module,), build_entries=((b"app", entry),))
