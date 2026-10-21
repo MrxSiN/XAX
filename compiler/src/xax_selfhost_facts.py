@@ -69,6 +69,11 @@ H_TCONTRACTS = 53
 # such calls the pass made, and whether the callee's body selected no unique contract (the engine declined there).
 H_RCALL_B, H_RCALL_N, H_RCALL_E, H_RCALL_COUNT, H_RCALL_DECLINE = 57, 58, 59, 60, 61
 H_RCALL_OTHER = 62  # a later such call names another callee
+# S15b.3e (ADR-318): where the engine stopped at such a call whose callee's body selects no unique contract (any of the
+# pass's calls, not only the first): ``block << 32 | node``, plus one (0: it did not).
+H_RCALL_STOP = 63
+# S15b.3e (ADR-318): calls to a callee whose graph the driver marks accepted (``_known_callee``) are not recorded: the
+# bootstrap's cached parse raises nothing there.
 # S8 (ADR-251): a stack-owner entry whose body selects no unique contract (rejected at its terminator).
 H_RENTRY_BAD = 50
 LINEAR_SITES = ("UNREACHABLE_PARAMETER", "BLOCK_ARGUMENT", "NODE_AND_TERMINATOR", "SAME_BLOCK_CONSUMER", "EXPLICIT_BLOCK_PARAMETER",
@@ -1890,6 +1895,17 @@ def _call_direct(tables, covers):
     return _function(("cursor", "block"), build, tables)
 
 
+def _known_callee(e: E, n):
+    """S15b.3e (ADR-318): 1 when the call's auxiliary words end with the driver's mark that the callee's graph was
+    accepted earlier in this verification (``xax_selfhost_semantic._callee_aux``): one word past the link pairs."""
+    operations = e.rd(e.add(n.aux_at, 2))
+    links_at = e.add(e.add(n.aux_at, 3), operations)
+    links = e.rd(links_at)
+    plain = e.add(e.add(2, operations), e.add(1, e.mul(links, 2)))
+    marked = e.both(e.ne(e.rd(n.aux_at), 0), e.ne(links, NONE), e.eq(e.rd(n.aux_at), e.add(plain, 1)))
+    return e.mul(e.flag(marked), e.rd(e.sel(marked, e.add(links_at, e.add(1, e.mul(links, 2))), n.aux_at)))
+
+
 def _resource_call(e: E, n):
     """A direct call through a stack resource contract (the callee's single block summarized)."""
     p = e.p
@@ -1911,7 +1927,14 @@ def _resource_call(e: E, n):
         e.if_(e.eq(e.hd(H_RCALL_COUNT), 0), record, lambda: e.if_(e.ne(e.hd(H_RCALL_E), n.entity), lambda: e.set_hd(H_RCALL_OTHER, 1)))
         e.set_hd(H_RCALL_COUNT, e.add(e.hd(H_RCALL_COUNT), 1))
 
-    e.if_(e.both(e.eq(e.hd(H_PASS), 1), e.ne(shape, R_NONE)), first_call)
+    def stop():
+        e.set_hd(H_RCALL_STOP, e.add(e.add(e.mul(e.hd(H_CURBLOCK), 1 << 32), e.hd(H_MNODE)), 1))
+
+    def unknown():
+        first_call()
+        e.if_(e.eq(p["rc_kind"], R_NONE), stop)
+
+    e.if_(e.both(e.eq(e.hd(H_PASS), 1), e.ne(shape, R_NONE), e.eq(_known_callee(e, n), 0)), unknown)
     _require(e, e.ne(p["rc_kind"], R_NONE))
     e.var("has_pointer", e.flag(e.ne(kind, R_PASS)))
     owner_operand = e.sel(e.eq(kind, R_PASS), 0, e.sel(e.eq(kind, R_LOAD), 1, 2))
@@ -2971,7 +2994,7 @@ def _engine(tables, block, empty, record_equal):
         e.set_hd(H_LREJ, 0)
         e.set_hd(H_TSTOP, 0)
         e.set_hd(H_TSTOP_PASS, 0)
-        for field in (H_RCALL_COUNT, H_RCALL_DECLINE, H_RCALL_OTHER):
+        for field in (H_RCALL_COUNT, H_RCALL_DECLINE, H_RCALL_OTHER, H_RCALL_STOP):
             e.set_hd(field, 0)
         _require(e, e.ne(e.rd(e.hd(H_FACTS_AT)), 0))  # no facts section: nothing to decide
         at = e.add(e.hd(H_FACTS_AT), 1)

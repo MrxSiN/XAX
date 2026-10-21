@@ -215,8 +215,43 @@ def corpus(directory: Path):
             cases.append((f"verify rejected: {diagnostic.rule}", "negative", "verify", {"store": reader.data}, ["out"], None))
             BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
 
+    # S15b.3e (ADR-318): graphs calling several different resource callees before their own decision
+    # (``test_xax_selfhost_verify_exact.resource_callee_program``): accepted ones, and rejections the bootstrap raises in a
+    # callee's graph or in the caller.
+    from test_xax_selfhost_verify_exact import resource_callee_program
+
+    callee_rng, accepted, rejected = random.Random(318), 0, 0
+    for _trial in range(400):
+        data, callees = resource_callee_program(callee_rng)
+        if callees < 2:
+            continue
+        try:
+            X._PARSED_GRAPHS.clear()
+            X.verify_store(X.StoreReader(data))
+            diagnostic = None
+        except X.XaxError as error:
+            diagnostic = error.diagnostic
+        if diagnostic is None and accepted < 3:
+            accepted += 1
+            cases.append((f"verify resource callees: accepted {accepted}", "positive", "verify", {"store": data}, ["out"], ["image", sha(b"")]))
+        elif diagnostic is not None and rejected < 4:
+            rejected += 1
+            cases.append((f"verify resource callees: {diagnostic.rule} {rejected}", "negative", "verify", {"store": data}, ["out"], None))
+            BOOTSTRAP_DIAGNOSTICS[cases[-1][0]] = _diagnostic_key(diagnostic)
+
     def build(name, reader, kind):
-        expected = build_expected(reader)
+        # The reference is the bootstrap's own path (``build`` asks the XAX programs first since S15e.3-S15e.7).
+        from unittest import mock
+
+        import xax_pe
+        import xax_selfhost_general_accel as ACC
+        import xax_selfhost_general_spirv as SPV
+
+        accel, spirv, dll = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll
+        with mock.patch.object(ACC, "accelerator_artifact", lambda r, f, t, frontend="auto": accel(r, f, t, frontend="python")), \
+             mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": spirv(r, f, t, frontend="python")), \
+             mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()):
+            expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
         cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference))
 
@@ -272,6 +307,32 @@ def corpus(directory: Path):
         build(f"build: a Windows PE32+ {name} executable", _program(tuple(o for o in pe_objects if o.cid != pe_target.cid), {b"image": pe_entry}, pe_target),
               "positive")
     build("build: a Linux process entry on the Windows PE32+ profile", _program(objects, {b"image": entry}, X.x86_64_windows_pe_target()), "negative")
+    # S15e.3b (ADR-320): Windows DLLs; S15e.7 (ADR-321): accelerator deployments and SPIR-V modules, all lowered by the
+    # general x86-64 program in the driver (images and rejections from the differential corpora).
+    from accel_corpus import accel_case
+    from dll_corpus import dll_case
+    from spirv_corpus import spirv_case
+
+    target_rng, wanted = random.Random(320), {"dll": 0, "dll rejected": 0, "accelerator": 0, "accelerator rejected": 0}
+
+    while min(wanted.values()) < 2:
+        reader, what = dll_case(target_rng)
+        key = "dll" if what == "constructed" else "dll rejected"
+        if wanted[key] < 2:
+            wanted[key] += 1
+            build(f"build: a Windows DLL ({what}) {wanted[key]}", reader, "positive" if key == "dll" else "negative")
+        reader, change = accel_case(target_rng)
+        key = "accelerator" if change == "none" else "accelerator rejected"
+        if wanted[key] < 2:
+            wanted[key] += 1
+            build(f"build: an accelerator deployment ({change}) {wanted[key]}", reader, "positive" if key == "accelerator" else "negative")
+    for kernel_name in ("collatz", "mix", "trap"):
+        while True:
+            reader, kernel, spirv_target, name = spirv_case(target_rng)
+            if name == kernel_name:
+                break
+        spirv_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != spirv_target.cid)
+        build(f"build: a SPIR-V {kernel_name} kernel", _program(spirv_objects, {b"image": kernel}, spirv_target), "positive")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)
@@ -327,7 +388,7 @@ def corpus(directory: Path):
     signed_app = signature(app, ED.ALGORITHM, key, ED.sign(secret, app.cid))
     resolve_trusted("resolve-trusted: Ed25519-signed", fixture.request_store(), "positive", trust_file(ed_policy, (signed_app,)))
     resolve_trusted("resolve-trusted: unsigned", fixture.request_store(), "negative", trust_file(ed_policy))
-    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(33 << 20)}, ["out"], None))
+    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(65 << 20)}, ["out"], None))
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
 
@@ -529,11 +590,9 @@ def measure() -> dict:
         "corpus": rows,
         # Recorded gaps (each one keeps a B level from holding; see ``xax_selfhost.bootstrap_status``).
         # S15b.3d (ADR-313): a decoded declaration's and a stack-owner entry's rejections are rendered, and a resource
-        # callee's graph comes before its caller's later checks; what still declines:
-        "rejection_exactness_gaps": [
-            ("a graph whose first pass calls two different resource callees before its own decision declines (the "
-             "bootstrap parses each callee's graph at its first call; the driver orders one callee) (ADR-313)"),
-        ],
+        # callee's graph comes before its caller's later checks; S15b.3e (ADR-318): every resource callee in turn, so a
+        # graph calling several different ones before its own decision is decided too.  None is left.
+        "rejection_exactness_gaps": [],
         # S15c (ADR-299 to ADR-302, ADR-309): grants, external input files, Ed25519 verification in ``build``, capacity
         # rejections, and signed resolution are the driver's.
         # S15c.5 (ADR-309): resolution under a given trust policy with signatures (``resolve-trusted``) closed the last.

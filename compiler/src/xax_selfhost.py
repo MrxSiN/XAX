@@ -562,8 +562,8 @@ def current_m14_readiness() -> M14ClosureReadiness:
 
 
 # The canonical XAX store implementing the whole production compiler, once one exists.  None today: the program
-# backends of every target but Linux x86-64, Linux AArch64 (S15e.2) and RISC-V raw images (S15e.1) and build
-# orchestration for them are Python (S15, ADR-180, ADR-308, ADR-315).
+# backends of the browser page, JVM, Android and raw-image targets are Python (S15e.4-S15e.6; ADR-180, ADR-308, ADR-320,
+# ADR-321).
 FULL_COMPILER_STORE: Path | None = None
 # S14b (ADR-285): the executed generations of the Linux x86-64 production compiler (the general driver).
 FULL_SELFHOST_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "full_selfhost_evidence.json"
@@ -670,9 +670,11 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "every target but Linux x86-64, Linux AArch64, Windows PE32+ executables and RISC-V raw images is compiled by "
-                       "Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, "
-                       "ADR-308, ADR-315, ADR-317)",
+            "blocker": "the browser Wasm page, JVM jars, Android packages and the raw x86-64, Wasm and AArch64 images are compiled by "
+                       "Python backends (S15e.4-S15e.6), and Windows functions only the legacy register path takes are left to the "
+                       "bootstrap; Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V raw images, "
+                       "accelerator deployments and SPIR-V modules are the production compiler's; the Linux x86-64 production compiler "
+                       "is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321)",
         },
         **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
         "m14_semantic_image_wrapper": {
