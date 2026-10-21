@@ -36,7 +36,7 @@ from xax_artifact import (ACCELERATOR_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDE
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
     AARCH64_LINUX_ELF_DYNAMIC_FORMAT, AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_IDENTITIES, CID_SIZE, RISCV64_ARCHITECTURE,
-    RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE, SPIRV_MODULE_FORMAT, SPIRV_VULKAN_COMPUTE_IDENTITY, X86_64_LINUX_ELF_DYNAMIC_FORMAT,
+    RISCV64_RAW_FORMAT, SPIRV_ARCHITECTURE, SPIRV_MODULE_FORMAT, SPIRV_VULKAN_COMPUTE_IDENTITY, WASM32_BROWSER_IDENTITY, X86_64_LINUX_ELF_DYNAMIC_FORMAT,
     X86_64_LINUX_ELF_EXEC_FORMAT, Kind, uleb,
 )
 from xax_selfhost_facts import E, _function
@@ -55,6 +55,8 @@ PATH_LINUX_X86_64, PATH_RISCV64_RAW, PATH_LINUX_AARCH64, PATH_WINDOWS_PE = 0, 1,
 PATH_ACCELERATOR = 4
 # S15e.7b (ADR-321): the SPIR-V compute profile, a hosted container, made by the general program.
 PATH_SPIRV = 5
+# S15e.4 (ADR-322): the browser page profile, a hosted container, made by the general program.
+PATH_WASM_PAGE = 6
 ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
 # S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
 # program reads the package's plan, ``xax_selfhost_general_dll``), and the provenance names the DLL container.
@@ -75,6 +77,7 @@ HOSTED_PROFILES = (
     # S15e.3 (ADR-317): any image format but the Linux x86-64 ELF ones (``_hosted_container`` tries those first).
     (b"x86_64-windows-pe-v1", PATH_WINDOWS_PE, 0, 1, None),
     (SPIRV_VULKAN_COMPUTE_IDENTITY, PATH_SPIRV, 0, SPIRV_ARCHITECTURE, (SPIRV_MODULE_FORMAT,)),  # S15e.7b
+    (WASM32_BROWSER_IDENTITY, PATH_WASM_PAGE, 0, 2, (2,)),  # S15e.4
 )
 LINUX_X86_64_FORMATS = (X86_64_LINUX_ELF_EXEC_FORMAT, X86_64_LINUX_ELF_DYNAMIC_FORMAT)
 KIND_NAMES = {int(kind): kind.name for kind in Kind}

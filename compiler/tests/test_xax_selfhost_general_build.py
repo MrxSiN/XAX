@@ -368,6 +368,34 @@ class GeneralBuildTests(unittest.TestCase):
         self.assertIn("image", seen)
         self.assertGreater(len(seen), 2, seen)
 
+    def test_browser_pages(self):
+        """S15e.4 (ADR-322): a browser page is the XAX general program's: the page and provenance are ``build``'s with
+        ``compile_wasm_bound_target`` and ``emit_browser_page``, and every rejection its diagnostic."""
+        import random
+        from unittest import mock
+
+        import xax_selfhost_general_wasm as WASM
+        from wasm_corpus import wasm_case
+
+        reference = WASM.browser_page
+        rng = random.Random(322)
+        seen = set()
+        for trial in range(int(os.environ.get("XAX_WASM_TRIALS", "24"))):
+            reader, entry, target, name = wasm_case(rng)
+            objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != target.cid)
+            try:
+                program = _program(objects, {b"image": entry}, target)
+            except (X.XaxError, ValueError):
+                continue
+            with mock.patch.object(WASM, "browser_page", lambda r, f, t, frontend="auto": reference(r, f, t, frontend="python")):
+                expected = _expected(program)
+            with self.subTest(trial=trial, page=name):
+                outcome = self.run_build(program.data)
+                self.assertEqual(outcome, expected)
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+        self.assertIn("image", seen)
+        self.assertGreater(len(seen), 2, seen)
+
     def test_other_paths_decline(self):
         """Android packages, Windows DLLs on a target other than the PE profile, and targets other than the Linux
         x86-64, Linux AArch64, Windows PE32+ and RISC-V raw profiles are ``build``'s other paths: the driver declines and
