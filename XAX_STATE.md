@@ -125,6 +125,10 @@ Checked accesses and the type checks of loads and stores are now rejected by the
 
 Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
 
+## S15e.4 browser pages — 2026-10-21 (ADR-322)
+
+The production compiler's `build` now makes the browser page of a `wasm32-browser-v1` target itself: the general x86-64 program lowers the closure to the WebAssembly module and writes the page, byte for byte the bootstrap's (`compile_wasm_bound_target` + `emit_browser_page`), with the same diagnostic on every rejection; 340 differential pages agree and none declined. The compiler's own lowering views needed a larger region (41M words; the arena now starts at 73M), so the seed was rotated in two stages; the new seed (16,131,490 bytes) rebuilds itself to a fixed point. JVM jars, Android packages and the raw images remain the bootstrap's (S15e.5, S15e.6).
+
 ## S15e.3b, S15e.3c, S15e.7 DLLs, accelerator deployments and SPIR-V modules — 2026-10-21 (ADR-319 to ADR-321)
 
 The production compiler's `build` now makes Windows DLLs (exports, loader forwards, DllMain and its loader-lock rules), accelerator deployment packets and SPIR-V compute modules itself, inside the general x86-64 program; each equals the bootstrap's bytes or exact rejection on its test programs and on random corpora (620 DLL requests, 120 accelerator requests, 420 SPIR-V kernels), with none declined. The compiler outgrew the driver's 32 MiB store views, so they were raised to 64 MiB first and the seed rotated (ADR-319); the new compiler is a fixed point of `selfbuild.sh` from that seed. Still Python: the browser Wasm page, JVM jars, Android packages, the raw x86-64, Wasm and AArch64 images, and Windows functions only the legacy register path takes.

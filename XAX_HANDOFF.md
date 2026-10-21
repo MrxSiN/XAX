@@ -1264,3 +1264,13 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 ## ADR-320/ADR-321 evidence — 2026-10-21
 
 - `benchmarks/full_selfhost_evidence.json` re-run on the compiler with DLL, accelerator and SPIR-V paths: C1 = C2 = C3 = `a8059c6d…` (15,451,493 bytes), 150 corpus cases with every generation agreeing, `rejection_exactness_gaps` empty. `python_free_seed_evidence.json`, `m14_selfhost_evidence.json` and the status blocks regenerated; B0-B6 still hold for the Linux x86-64 production compiler, and the whole-compiler blocker now lists only S15e.4-S15e.6, the raw images and the Windows legacy register path.
+
+## S15e.4 browser pages — 2026-10-21 (ADR-322)
+
+- `src/xax_selfhost_general_wasm.py`: `wasm` (front end, architecture 2) → `wa_closure` (explicit DFS, `wa_enter`), `wa_imports`, layout pass (`wa_index` + `wa_addr` per function), `wa_types` (signatures), the WASI-entry check, `wa_function` per function (`wa_slots`, the four `wa_node_*` parts, `wa_term`), `wa_sections`, `wa_page`. Byte buffers are triples at `BUF`; `W_CUR` selects the one `wa_b`/`wa_u`/`wa_s` write. State lives at `GLOBALS + 192` (`WA`).
+- `abi_layout` with 4-byte pointers: `_layout(tables, wasm=True)` (only the general program's `abi_layout`, in `xax_selfhost_general_frame`) reads `W_ON`, which the front end clears and `wasm` sets. Call `abi_layout`, not `layout` (the views took that name).
+- Routing: `xax_selfhost_request.PATH_WASM_PAGE` (a `HOSTED_PROFILES` entry); `xax_build._hosted_container` calls `browser_page` (Python fallback on decline, `XAX_GENERAL_FRONTEND_DIFF=1` compares).
+- Pitfalls met: DSL variable names `ip/iv/im/op/ov/om` are the views (a variable named `op` or `iv` breaks the call contract); the compile pass must reset `W_CURSOR` before laying storage out again; packing a 64-bit raw float into an argument word overflows (thresholds go through `W_THR`).
+- Capacity: the compiler's views filled `VIEW_END` (68M words); now 73M with under 1M spare, arena 73M-128M. The probe that found it reads `GLOBALS + G_VIEW_OUT` and the emitted count after a declined run. A seed that cannot build the next compiler is rotated in two stages (build a compiler with only the capacity change, rotate, then the full one).
+- Corpus: `tests/wasm_corpus.py`; driver test `test_browser_pages`; bench cases "build: a browser page (...)".
+- Next: S15e.5 (JVM jars), S15e.6 (Android), the raw-image targets, the Windows legacy register path. Before the next addition to the general program, make room in the views region.
