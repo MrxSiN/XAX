@@ -246,11 +246,13 @@ def corpus(directory: Path):
         import xax_pe
         import xax_selfhost_general_accel as ACC
         import xax_selfhost_general_spirv as SPV
+        import xax_selfhost_general_wasm as WASM
 
-        accel, spirv, dll = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll
+        accel, spirv, dll, page = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll, WASM.browser_page
         with mock.patch.object(ACC, "accelerator_artifact", lambda r, f, t, frontend="auto": accel(r, f, t, frontend="python")), \
              mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": spirv(r, f, t, frontend="python")), \
-             mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()):
+             mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()), \
+             mock.patch.object(WASM, "browser_page", lambda r, f, t, frontend="auto": page(r, f, t, frontend="python")):
             expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
         cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference))
@@ -333,6 +335,17 @@ def corpus(directory: Path):
                 break
         spirv_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != spirv_target.cid)
         build(f"build: a SPIR-V {kernel_name} kernel", _program(spirv_objects, {b"image": kernel}, spirv_target), "positive")
+    # S15e.4 (ADR-322): browser pages, lowered by the general x86-64 program in the driver.
+    from wasm_corpus import wasm_case
+
+    for page_name in ("fib", "random", "random", "memory", "forged_import"):
+        while True:
+            reader, page_entry, page_target, name = wasm_case(target_rng)
+            if name == page_name:
+                break
+        page_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != page_target.cid)
+        build(f"build: a browser page ({page_name})", _program(page_objects, {b"image": page_entry}, page_target),
+              "positive" if page_name in ("fib", "random") else "negative")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)
