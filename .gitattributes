@@ -25,3 +25,9 @@ compiler/integration/windows_helpers/diagnostics/*.edit -text
 # Canonical BFX migration records and immutable execution snapshot.
 compiler/integration/bfx/transactions/*.edit -text
 compiler/integration/bfx/canonical_bfx_evidence.json -text whitespace=cr-at-eol
+
+# Preserve exact native lowering evidence and binary regression transactions.
+compiler/integration/windows_helpers/native_lowering_evidence.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/native_android_lowering_evidence.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/regression/android/*.xax -text
+compiler/integration/windows_helpers/regression/android/*.edit -text
