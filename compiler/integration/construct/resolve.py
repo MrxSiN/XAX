@@ -30,12 +30,17 @@ What resolves here
   the view and hashed by ``xax_selfhost_blake3.hash_span_function``, the committed S2 graph over one
   view (a program that owns its memory holds one effect token, so it cannot lend the two views
   ``hash_function`` asks for).
+* every function's graph: the constants its nodes carry, the ``GRAPH_FRAGMENT`` (blocks, nodes,
+  operands as value references, terminators) and the ``FUNCTION`` that names it, with the reference
+  list sorted by CID exactly as ``xax_compiler.graph_fragment`` sorts it.  ``{"fn": NAME}`` resolves to
+  the function built earlier in the same walk.
 
 What does not, yet
 ------------------
 
-``{"fn": NAME}`` needs the constructed functions, step 5.  Those are emitted as ``?`` and counted.  An
-unknown name is a refusal (exit 11 for a type, 12 for an entity), never a guess.
+The store: this program emits the objects in the writer's batch shape, but the module, the package, the
+build request and the snapshot -- step 5b -- are still the reference's work.  An unknown name is a
+refusal (exit 11 for a type, 12 for an entity, 13 for a malformed graph), never a guess.
 """
 
 from __future__ import annotations
@@ -49,10 +54,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import reader as R  # noqa: E402
-from xax_compiler import IntCompare, Kind, Operation, Permission, SemanticObject, bits_type, heap_view_type, pointer_type  # noqa: E402
+from xax_compiler import (ATTRIBUTE_OPERATIONS, ENTITY_OPERATIONS, IntCompare, Kind, Operation,  # noqa: E402
+                          Permission, SemanticObject, bits_type, constant, heap_view_type, pointer_type)
+from xax_structured import B32, B64  # noqa: E402
 from xax_platform import win32_kernel32_api, win32_stdio_api  # noqa: E402
 from xax_selfhost_blake3 import DIGEST_OFFSET, hash_span_function  # noqa: E402
-from xax_structured import B32, B64  # noqa: E402
 
 HEX = b"0123456789abcdef"
 SPACE, NL, COMMA, DASH = 32, 10, 44, 45
@@ -63,12 +69,17 @@ DOMAIN = b"XAX-SEM-1"        # the canonical content's domain separator (xax_com
 FF_PREFIX, FF_ABI = b"foreign-function-v1", b"win64-c"
 B8 = bits_type(8)
 
-# Regions of the view the resolver stages objects in.  The canonical area holds one object's content;
-# the hash's chaining-value stack and digest sit past the largest object, both inside the same view.
-CANON = 0xE10000
-HASH_GAP = 0x2000
-HASH_SCRATCH = CANON + HASH_GAP
-DBODY = 0xE20000            # a declaration's identity, up to a few KiB
+# Regions of the view the resolver stages objects in.  They start past the embedded namespace and the
+# name tables, so nothing overlaps the carrier transport, the parsed tree or the tables.  One object's
+# canonical content is at most ``CANON_CAP`` bytes (domain, kind, schema, the reference table and the
+# body), and the hash's own chaining values and digest have to sit past it: the hash reads the whole
+# canonical span while it uses the scratch, so a scratch inside the span would corrupt the digest of
+# any object larger than the gap -- which is exactly what a multi-KiB graph is.
+CANON = 0xEB0000
+CANON_CAP = 0x31000         # domain + kind + schema + REF_CAP refs + REF_CAP * 32 + BODY_CAP
+HASH_SCRATCH = CANON + CANON_CAP + 0x1000
+DBODY = HASH_SCRATCH + 0x2000   # a declaration's identity, up to a few KiB
+DBODY_CAP = 0x10000
 DBOFF = 4                   # room for the identity's length prefix (a uleb of at most four bytes)
 ALIGNED = pointer_type(B8, Permission.READ_WRITE, 4, space=2)  # the view base, word-aligned
 HASH: dict = {}
@@ -116,6 +127,67 @@ def namespace_layout() -> tuple[bytes, dict[str, int]]:
 
 TABLE, TABLE_OFFSETS = namespace_layout()
 
+# Regions the graph encoder stages in.  One view holds the carrier, the canonical area, its hash and
+# every buffer one function's graph needs, so encoding a function is one effect token's work.  Each
+# region is followed by its neighbour, and each multi-slot region is sized by the cap it enforces, so a
+# wider carrier is refused rather than silently overwriting the next region.
+BODY = DBODY + DBODY_CAP    # a graph or function body under construction
+BODY_CAP = 0x20000
+REFS = BODY + BODY_CAP      # the object's distinct references (REF_CAP x 32 bytes)
+REF_CAP = 0x800
+REF_SLOTS = REFS + REF_CAP * 32     # the reference slots in CID order
+REF_POS = REF_SLOTS + REF_CAP * 32  # slot -> its position in that order
+OCC = REF_POS + REF_CAP * 4         # the reference occurrences, in body order (OCC_CAP x u32)
+OCC_CAP = 0x4000
+NODEMAP = OCC + OCC_CAP * 4         # per block: carrier node index -> builder node index
+NODE_CAP = 0x2000
+BASES = NODEMAP + NODE_CAP * 4      # per block: the node map's base
+NODE_COUNT = BASES + 0x800          # per block: the builder's node count
+CARRIER = NODE_COUNT + 0x800        # per block: the carrier's node count
+PARAMS = CARRIER + 0x800            # a function's parameter CIDs
+FUNCTION_SLOTS = 16
+RETURNS = PARAMS + FUNCTION_SLOTS * 32   # a function's return CIDs
+CUR = RETURNS + FUNCTION_SLOTS * 32      # the CID under construction, or the reference being added
+CURTYPE = CUR + 32                  # a constant's type CID
+CBODY = CURTYPE + 32                # a constant's body: a width above 64 is refused, so at most 14 bytes
+GRAPH_CID = CBODY + 0x40            # the graph a function wraps
+FUNS = GRAPH_CID + 0x100            # function name -> FUNCTION CID, for {"fn": NAME}
+FUNS_CAP = 0x1000000 - FUNS         # entries are 33 + name bytes
+GA = 0xEA5000               # the operation, comparison and terminator name tables
+BAD_GRAPH = 13
+
+# the caps have to fit their regions: a build-time invariant, not a run-time surprise
+assert HASH_SCRATCH >= CANON + CANON_CAP, "the hash scratch must lie past the canonical span"
+assert CANON_CAP >= REF_CAP * 32 + BODY_CAP + 16, "canonical region smaller than the widest object"
+assert BODY >= DBODY + DBODY_CAP and FUNS + 512 < 0x1000000, "staging regions overlap"
+U64_LAST_SAFE = ((1 << 64) - 1 - 9) // 10   # largest accumulator a decimal digit can still extend
+
+
+def graph_tables() -> tuple[bytes, bytes, bytes]:
+    """The name tables the graph encoder looks operations, comparisons and terminators up in.
+
+    An entry is ``u8 length, name, u8 value, u8 flags``: bit 0 says the operation takes an entity, bit
+    1 that it takes attributes.  The names are the reference's own spellings, so a name the reference
+    does not know is refused here too.
+    """
+    operations = bytearray()
+    for member in Operation:
+        name = member.name.lower().replace("_", ".").encode()
+        flags = (1 if member in ENTITY_OPERATIONS else 0) | (2 if member in ATTRIBUTE_OPERATIONS else 0)
+        operations += bytes((len(name),)) + name + bytes((int(member), flags))
+    compares = bytearray()
+    for member in IntCompare:
+        name = member.name.lower().encode()
+        compares += bytes((len(name),)) + name + bytes((int(member), 0))
+    terminators = bytearray()
+    for name, value in ((b"br", 1), (b"cbr", 2), (b"ret", 3), (b"trap", 4)):
+        terminators += bytes((len(name),)) + name + bytes((value, 0))
+    return bytes(operations), bytes(compares), bytes(terminators)
+
+
+OP_TABLE, CMP_TABLE, TERM_TABLE = graph_tables()
+GRAPH_BLOB = OP_TABLE + CMP_TABLE + TERM_TABLE
+
 
 def walk(environment):
     """Resolve every type occurrence and every platform entity in the parsed carrier."""
@@ -124,7 +196,7 @@ def walk(environment):
     get = E["get"]
     add, sub, mul, c32 = E["add"], E["sub"], E["mul"], E["c32"]
     eq, ne, lt = E["eq"], E["ne"], E["lt"]
-    ld8, ld32, st8, st64 = E["ld8"], E["ld32"], E["st8"], E["st64"]
+    ld8, ld32, st8, st32, st64 = E["ld8"], E["ld32"], E["st8"], E["st32"], E["st64"]
     byte, out_byte, out_dyn = E["byte"], E["out_byte"], E["out_dyn"]
     fail_if = E["fail"]
     strings, objects, integers = E["STRING"], E["OBJECT"], E["INTEGER"]
@@ -153,13 +225,14 @@ def walk(environment):
         return p.cmp(IntCompare.EQ, left, right, B32)
 
     def fail_here(code):
-        p.if_(zero(p["code"]), lambda _p: p.__setitem__("code", c32(code)))
+        # Branchless for the same reason as ``reader.fail_if``: one block per error site is expensive.
+        p["code"] = add(p["code"], mul(flag(zero(p["code"])), c32(code)))
 
     for name in ("w1", "w2", "w3", "w4", "w5", "w6", "w7", "whead", "wtail", "wdig", "weqi", "weqc",
                  "wcur", "wval", "wrefi", "wscan", "wname", "wnlen", "wentry", "wfound", "wpick",
                  "wrefs", "wblen", "wdepth", "wmember", "wss", "wse", "wnode", "wmore", "wcursor",
-                 "wsrc", "wcnt", "wbyte", "wkind", "wschema", "wrefn", "wrefsrc", "wbody", "wbodyat",
-                 "wcanonlen", "wln", "wlv", "wdbn", "wdbat", "w8", "w9"):
+                 "wsrc", "wcnt", "wkind", "wschema", "wrefn", "wrefsrc", "wbody", "wbodyat",
+                 "wcanonlen", "wln", "wdbn", "wdbat", "w8", "w9"):
         p.let(name, B32, c32(0))
 
     def kind(node):
@@ -226,26 +299,39 @@ def walk(environment):
         p["wcursor"] = add(p["wcursor"], c32(1))
 
     def uleb_len(value):
-        """The encoded length of ``uleb(value)``, into ``wln``."""
-        p["wlv"] = value
-        p["wln"] = c32(1)
-        p.while_(lambda _p: ge(p["wlv"], c32(128)),
-                 lambda _p: (p.__setitem__("wlv", div(p["wlv"], c32(128))),
-                             p.__setitem__("wln", add(p["wln"], c32(1)))))
+        """The encoded length of ``uleb(value)``, into ``wln``.
+
+        ``value`` is a ``b32``, so its encoding is one to five bytes; the length is the count of thresholds
+        it reaches.  Counting in a loop would cost a block at every call site."""
+        length = c32(1)
+        for limit in (1 << 7, 1 << 14, 1 << 21, 1 << 28):
+            length = add(length, flag(ge(value, c32(limit))))
+        p["wln"] = length
         return p["wln"]
+
+    def write_uleb(value, destination, cursor):
+        """Append ``uleb(value)`` at ``destination + p[cursor]`` without a loop.
+
+        ``value`` is a ``b32``, so five bytes always suffice and the five positions are written
+        unconditionally; the caller stages what follows at the returned length, so the extra bytes are
+        overwritten before they are read, or fall outside the length the object uses.  A loop here would
+        cost three blocks at every call site, and call sites are what makes the program expensive to
+        verify."""
+        p["wval"] = value
+        length = c32(1)
+        for index in range(5):
+            digit = rem(p["wval"], c32(128))
+            p["wval"] = div(p["wval"], c32(128))
+            more = flag(ne(p["wval"], 0))
+            st8(add(add(c32(destination), p[cursor]), c32(index)),
+                p.op1(Operation.INT_TRUNCATE, (add(digit, mul(more, c32(128))),), B8))
+            if index < 4:
+                length = add(length, more)
+        p[cursor] = add(p[cursor], length)
 
     def canon_uleb(value):
         """Append ``uleb(value)`` at ``CANON + wcursor``."""
-        p["wval"] = value
-        p["wbyte"] = c32(1)
-        p.while_(lambda _p: ne(p["wbyte"], 0),
-                 lambda _p: (p.__setitem__("wdig", rem(p["wval"], c32(128))),
-                             p.__setitem__("wval", div(p["wval"], c32(128))),
-                             p.__setitem__("wbyte", flag(ne(p["wval"], 0))),
-                             st8(add(c32(CANON), p["wcursor"]),
-                                  p.op1(Operation.INT_TRUNCATE,
-                                        (add(p["wdig"], mul(p["wbyte"], c32(128))),), B8)),
-                             p.__setitem__("wcursor", add(p["wcursor"], c32(1)))))
+        write_uleb(value, CANON, "wcursor")
 
     def canon_copy(offset, count):
         """Copy ``count`` bytes of the view at ``offset`` into the staging area."""
@@ -303,6 +389,9 @@ def walk(environment):
 
     def hash_canonical():
         """Hash the staged content; the digest lands at ``HASH_SCRATCH + DIGEST_OFFSET``."""
+        # the scratch must lie past the span being hashed, so an object wider than the canonical region
+        # is a refusal: hashing it would cover the hash's own chaining values
+        fail_if(gt(p["wcanonlen"], c32(CANON_CAP)), BAD_GRAPH)
         base = p.op1(Operation.ADDRESS_OFFSET, (p["vp"],), ALIGNED, attributes=(0,))
         _pointer, view, memory = p.op(
             Operation.CALL_DIRECT,
@@ -347,6 +436,26 @@ def walk(environment):
                              p.__setitem__("wval", add(mul(p["wval"], c32(10)), p["wdig"])),
                              p.__setitem__("wcur", add(p["wcur"], c32(1)))))
         fail_if(gt(p["wval"], c32(limit)), UNKNOWN_TYPE)
+
+    def parse_u64(offset, stop):
+        """The decimal integer in the span, into ``gshift``; refuses non-digits and overflow.
+
+        The constant encoder writes the value little-endian out of a 64-bit shift register, so the
+        value is accumulated at 64 bits: every step must keep ``10 * x + digit`` inside ``2**64 - 1``,
+        which holds exactly while ``x <= (2**64 - 1 - 9) // 10``."""
+        p["gshift"] = p.const(0, B64)
+        p["wcur"] = offset
+        p.while_(lambda _p: lt(p["wcur"], stop),
+                 lambda _p: (p.__setitem__("wdig", sub(byte(p["wcur"]), c32(48))),
+                             fail_if(gt(p["wdig"], c32(9)), BAD_GRAPH),
+                             fail_if(p.cmp(IntCompare.UGT, p["gshift"],
+                                           p.const(U64_LAST_SAFE, B64), B64), BAD_GRAPH),
+                             p.__setitem__("gshift",
+                                           p.bin(Operation.ADD_WRAP,
+                                                 p.bin(Operation.MUL_WRAP, p["gshift"],
+                                                        p.const(10, B64), B64),
+                                                 p.widen(p["wdig"], B64), B64)),
+                             p.__setitem__("wcur", add(p["wcur"], c32(1)))))
 
     def lookup(offset, stop):
         """The embedded entry for the name span, into ``wentry`` (0 when absent)."""
@@ -401,12 +510,10 @@ def walk(environment):
         return p["wentry"]
 
     def nth(array, index):
-        """The ``index``-th child of an array."""
+        """The ``index``-th child of an array; the index is compile-time, so the walk is unrolled."""
         p["wpick"] = first(array)
-        p["wcur"] = c32(0)
-        p.while_(lambda _p: lt(p["wcur"], c32(index)),
-                 lambda _p: (p.__setitem__("wpick", after(p["wpick"])),
-                             p.__setitem__("wcur", add(p["wcur"], c32(1)))))
+        for _ in range(index):
+            p["wpick"] = after(p["wpick"])
         return p["wpick"]
 
     def resolve_platform(offset, stop, code):
@@ -497,14 +604,7 @@ def walk(environment):
         db_byte(p.const(value, B8))
 
     def db_uleb(value):
-        p["wval"] = value
-        p["wbyte"] = c32(1)
-        p.while_(lambda _p: ne(p["wbyte"], 0),
-                 lambda _p: (p.__setitem__("wdig", rem(p["wval"], c32(128))),
-                             p.__setitem__("wval", div(p["wval"], c32(128))),
-                             p.__setitem__("wbyte", flag(ne(p["wval"], 0))),
-                             db_byte(p.op1(Operation.INT_TRUNCATE,
-                                           (add(p["wdig"], mul(p["wbyte"], c32(128))),), B8))))
+        write_uleb(value, DBODY, "wdbn")
 
     def db_raw(blob):
         """Append the bytes as they are (the identity's own prefix carries no length)."""
@@ -549,6 +649,18 @@ def walk(environment):
                                  ld8(add(c32(CANON), p["wcnt"]))),
                              p.__setitem__("wcnt", add(p["wcnt"], c32(1)))))
 
+    def declaration_canonical():
+        """Stage the finished TARGET as the canonical object its CID covers.
+
+        ``finish_declaration`` leaves the body at ``DBODY + wdbat`` and writes only the length prefix at
+        ``CANON``, so a hash of ``CANON`` would cover the wrong bytes; the body has to be staged first.
+        """
+        p["wkind"], p["wschema"], p["wrefn"] = c32(6), c32(1), c32(0)
+        p["wrefsrc"] = c32(0)
+        p["wbody"] = add(c32(DBODY), p["wdbat"])
+        p["wblen"] = add(p["wdbn"], p["wln"])
+        build_canonical()
+
     def emit_declaration():
         """``6 1 - <body>``: a declaration, schema 1, no references."""
         out_byte(ord("6"))
@@ -569,7 +681,16 @@ def walk(environment):
                              p.__setitem__("wcnt", add(p["wcnt"], c32(1)))))
         return p["wcnt"]
 
-    def emit_import(member):
+    def declaration_done(emit):
+        """Write the declaration line, or leave the staged object for the caller to hash."""
+        if emit:
+            p.if_(zero(p["code"]), lambda _q: emit_declaration())
+
+    def object_done(emit):
+        if emit:
+            emit_object()
+
+    def entity_import(member, emit=True):
         """``{"win32.import": [DLL, SYMBOL, IN, OUT]}``: a foreign function with hashed signature CIDs."""
         def shaped(_q):
             items = first(member)
@@ -590,12 +711,12 @@ def walk(environment):
                               db_uleb(list_count(nth(items, 3))),
                               each(nth(items, 3), "w9", resolve_type_digest),
                               finish_declaration(),
-                              p.if_(zero(p["code"]), lambda _s: emit_declaration())),
+                              declaration_done(emit)),
                   lambda _r: fail_here(UNKNOWN_ENTITY))
 
         p.if_(eq(kind(first(member)), E["ARRAY"]), shaped, lambda _q: fail_here(UNKNOWN_ENTITY))
 
-    def emit_free_view(member):
+    def entity_free_view(member, emit=True):
         """``{"win32.virtual_free_view": [TYPE, EXTENT]}``: VirtualFree over a typed view."""
         def shaped(_q):
             items = first(member)
@@ -621,12 +742,12 @@ def walk(environment):
                               db_uleb(c32(0)),
                               db_uleb(c32(3)),
                               finish_declaration(),
-                              p.if_(zero(p["code"]), lambda _s: emit_declaration())),
+                              declaration_done(emit)),
                   lambda _r: fail_here(UNKNOWN_ENTITY))
 
         p.if_(eq(kind(first(member)), E["ARRAY"]), shaped, lambda _q: fail_here(UNKNOWN_ENTITY))
 
-    def emit_entity_name(offset, stop):
+    def entity_name(offset, stop, emit=True):
         """``win32.<name>`` used as an entity: a declaration and an effect, never a type."""
         def named(_q):
             p["wentry"] = lookup(add(offset, c32(len(PREFIX))), stop)
@@ -636,20 +757,20 @@ def walk(environment):
                               p.if_(zero(p["code"]),
                                     lambda _s: (table_object(p["wentry"]),
                                                 build_canonical(),
-                                                emit_object()))))
+                                                object_done(emit)))))
 
         p.if_(span_prefix(offset, stop, PREFIX), named, lambda _q: fail_here(UNKNOWN_ENTITY))
 
-    def emit_entity_object(node):
+    def entity_object(node, emit=True):
         """A declared entity object: import, free-view, or the function placeholder."""
         def dispatch(_q):
             member = first(node)
             p.if_(p.all_of(ne(member, 0), zero(after(member))),
                   lambda _r: p.if_(span_eq(start(member), end(member), b"win32.import"),
-                                   lambda _s: emit_import(member),
+                                   lambda _s: entity_import(member, emit),
                                    lambda _s: p.if_(
                                        span_eq(start(member), end(member), b"win32.virtual_free_view"),
-                                       lambda _t: emit_free_view(member),
+                                       lambda _t: entity_free_view(member, emit),
                                        lambda _t: p.if_(
                                            span_eq(start(member), end(member), b"fn"),
                                            lambda _u: (out_byte(ord("?")), out_byte(NL)),
@@ -665,8 +786,8 @@ def walk(environment):
 
     def emit_entity_node(node):
         p.if_(eq(kind(node), strings),
-              lambda _q: emit_entity_name(start(node), end(node)),
-              lambda _q: emit_entity_object(node))
+              lambda _q: entity_name(start(node), end(node)),
+              lambda _q: entity_object(node))
 
     def each(container, cursor, body):
         p[cursor] = first(container)
@@ -704,6 +825,739 @@ def walk(environment):
         blocks = nth_value(function, b"blocks")
         p.if_(ne(blocks, 0), lambda _q: each(blocks, "w3", per_block))
 
+    # -- step 5: graph fragments, functions and their constants --------------------------------
+
+    for name in ("geqi", "gequ", "geqok", "gfound", "gpos", "gnlen", "gval", "gflag", "gend", "gci",
+                 "gok", "gres2", "gswap", "gi", "gj", "gmin", "gcur", "gcur2", "gsh",
+                 "gmore", "gb2", "gw", "gnbytes", "gslot", "gocc", "grefl", "gmap", "gbase",
+                 "gcount", "gbi", "gk", "gwalk", "gopidx", "gconstn", "gconstbase", "gseq", "gop",
+                 "gflags", "gmode", "gbcount", "gfuns", "gnpar", "gnret", "gtermbase", "gr",
+                 "gc1", "gc2", "gc3", "gc4", "gc5", "gc6", "gc7", "gc8", "gc9", "gfun",
+                 "gn", "gtag", "gblock", "gidx", "gres"):
+        p.let(name, B32, c32(0))
+
+    # the constant encoder shifts a 64-bit value one byte at a time
+    p.let("gshift", B64, p.const(0, B64))
+
+    # The operation, comparison and terminator names are authoring data from the reference enum: the
+    # carrier names an operation as text, the store holds its number.
+    for index in range(0, len(GRAPH_BLOB), 8):
+        chunk = GRAPH_BLOB[index:index + 8].ljust(8, b"\0")
+        st64(c32(GA + index), p.const(int.from_bytes(chunk, "little"), B64))
+
+    GO_END = GA + len(OP_TABLE)
+    GC_AT = GO_END
+    GC_END = GC_AT + len(CMP_TABLE)
+
+    def mixed_eq(abs_start, offset, stop):
+        """Do the view's bytes at ``abs_start`` equal the carrier's bytes at ``offset..stop``?"""
+        p["geqi"] = c32(0)
+        p["geqok"] = c32(1)
+        p["gequ"] = sub(stop, offset)
+        p.while_(lambda _p: p.all_of(lt(p["geqi"], p["gequ"]), ne(p["geqok"], 0)),
+                 lambda _p: (p.if_(p.cmp(IntCompare.NE, flag(ld8(add(abs_start, p["geqi"]))),
+                                          byte(add(offset, p["geqi"])), B32),
+                                   lambda _q: p.__setitem__("geqok", c32(0))),
+                             p.__setitem__("geqi", add(p["geqi"], c32(1)))))
+        return ne(p["geqok"], 0)
+
+    def table_find(base, end_at, offset, stop):
+        """Look a name span up; ``gval``/``gflag`` hold the entry and ``gfound`` says it is there.
+
+        Entries are laid out back to back as ``len, name, value, flags``, so the next entry starts at
+        ``gpos + 3 + len`` where ``len`` is *this entry's* length byte -- not the length of the name
+        being looked up."""
+        p["gfound"] = c32(0)
+        p["gpos"] = c32(base)
+        p["gnlen"] = sub(stop, offset)
+        p.while_(lambda _p: p.all_of(zero(p["gfound"]), lt(p["gpos"], c32(end_at))),
+                 lambda _p: (p.if_(same(flag(ld8(p["gpos"])), p["gnlen"]),
+                                   lambda _q: p.if_(mixed_eq(add(p["gpos"], c32(1)), offset, stop),
+                                                    lambda _r: (p.__setitem__("gfound", c32(1)),
+                                                                p.__setitem__("gval", flag(ld8(add(add(p["gpos"], c32(1)), p["gnlen"])))),
+                                                                p.__setitem__("gflag", flag(ld8(add(add(p["gpos"], c32(2)), p["gnlen"]))))))),
+                             p.__setitem__("gpos", add(add(p["gpos"], c32(3)), flag(ld8(p["gpos"]))))))
+
+    def digit(at):
+        """Is the carrier's byte at ``at`` a decimal digit?"""
+        return p.all_of(ge(byte(at), c32(48)), ge(c32(57), byte(at)))
+
+    def require_digit(at, stop):
+        """Refuse a non-digit where a decimal run must start."""
+        p.if_(ge(at, stop), lambda _q: fail_here(BAD_GRAPH),
+              lambda _q: p.if_(same(flag(digit(at)), c32(0)), lambda _r: fail_here(BAD_GRAPH)))
+
+    def number(at, stop):
+        """Read a decimal run into ``gval``; ``gend`` lands one past its last digit."""
+        p["gval"] = c32(0)
+        p["gend"] = at
+        p.while_(lambda _p: p.all_of(lt(p["gend"], stop), digit(p["gend"])),
+                 lambda _p: (p.__setitem__("gval", add(mul(p["gval"], c32(10)),
+                                                       sub(byte(p["gend"]), c32(48)))),
+                             p.__setitem__("gend", add(p["gend"], c32(1)))))
+
+    def copy32(src, dst):
+        """Copy 32 bytes of the view."""
+        p["gci"] = c32(0)
+        p.while_(lambda _p: lt(p["gci"], c32(32)),
+                 lambda _p: (st8(add(dst, p["gci"]), ld8(add(src, p["gci"]))),
+                             p.__setitem__("gci", add(p["gci"], c32(1)))))
+
+    def capture_digest(dst):
+        """Copy the last hash's digest to ``dst``."""
+        p["gci"] = c32(0)
+        p.while_(lambda _p: lt(p["gci"], c32(32)),
+                 lambda _p: (st8(add(dst, p["gci"]), ld8(add(c32(HASH_SCRATCH + DIGEST_OFFSET), p["gci"]))),
+                             p.__setitem__("gci", add(p["gci"], c32(1)))))
+
+    def cid_eq(left, right):
+        """Are the two 32-byte CIDs equal?"""
+        p["gci"] = c32(0)
+        p["gok"] = c32(1)
+        p.while_(lambda _p: lt(p["gci"], c32(32)),
+                 lambda _p: (p.if_(p.cmp(IntCompare.NE, flag(ld8(add(left, p["gci"]))),
+                                          flag(ld8(add(right, p["gci"]))), B32),
+                                   lambda _q: p.__setitem__("gok", c32(0))),
+                             p.__setitem__("gci", add(p["gci"], c32(1)))))
+        return ne(p["gok"], 0)
+
+    def cid_less(left, right):
+        """Is the CID at ``left`` byte-wise less than the one at ``right``?"""
+        p["gci"] = c32(0)
+        p["gres2"] = c32(0)
+        p.while_(lambda _p: p.all_of(lt(p["gci"], c32(32)), zero(p["gres2"])),
+                 lambda _p: (p.if_(p.cmp(IntCompare.NE, flag(ld8(add(left, p["gci"]))),
+                                          flag(ld8(add(right, p["gci"]))), B32),
+                                   lambda _q: p.__setitem__(
+                                       "gres2",
+                                       add(c32(1), flag(p.cmp(IntCompare.UGE,
+                                                              flag(ld8(add(left, p["gci"]))),
+                                                              flag(ld8(add(right, p["gci"]))), B32))))),
+                             p.__setitem__("gci", add(p["gci"], c32(1)))))
+        return same(p["gres2"], c32(1))
+
+    def ref_slot():
+        """Find ``CUR`` among the references, or append it; ``gslot`` is its slot."""
+        p["gslot"] = c32(0)
+        p["gfound"] = c32(0)
+        p.while_(lambda _p: p.all_of(zero(p["gfound"]), lt(p["gslot"], p["grefl"])),
+                 lambda _p: (p.if_(cid_eq(add(c32(REFS), mul(p["gslot"], c32(32))), c32(CUR)),
+                                   lambda _q: p.__setitem__("gfound", c32(1))),
+                             p.if_(zero(p["gfound"]),
+                                   lambda _q: p.__setitem__("gslot", add(p["gslot"], c32(1))))))
+        p.if_(zero(p["gfound"]),
+              lambda _q: (fail_if(ge(p["grefl"], c32(REF_CAP)), BAD_GRAPH),
+                          copy32(c32(CUR), add(c32(REFS), mul(p["grefl"], c32(32)))),
+                          p.__setitem__("gslot", p["grefl"]),
+                          p.__setitem__("grefl", add(p["grefl"], c32(1)))))
+
+    def ref_collect():
+        """Add ``CUR`` as a reference and log the occurrence for the write pass."""
+        ref_slot()
+        fail_if(ge(p["gocc"], c32(OCC_CAP)), BAD_GRAPH)
+        st32(add(c32(OCC), mul(p["gocc"], c32(4))), p["gslot"])
+        p["gocc"] = add(p["gocc"], c32(1))
+
+    def gb_uleb(value):
+        """Append ``uleb(value)`` at ``BODY + gcur``."""
+        fail_if(ge(add(p["gcur"], c32(5)), c32(BODY_CAP)), BAD_GRAPH)
+        write_uleb(value, BODY, "gcur")
+
+    def ref_write():
+        """Write the position of the next logged reference."""
+        fail_if(ge(p["gocc"], c32(OCC_CAP)), BAD_GRAPH)
+        p["gslot"] = ld32(add(c32(OCC), mul(p["gocc"], c32(4))))
+        p["gocc"] = add(p["gocc"], c32(1))
+        fail_if(ge(p["gslot"], p["grefl"]), BAD_GRAPH)
+        gb_uleb(ld32(add(c32(REF_POS), mul(p["gslot"], c32(4)))))
+
+    def sort_refs():
+        """Sort the reference slots by CID; ``REF_POS[slot]`` becomes the reference's position."""
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["grefl"]),
+                 lambda _p: (st32(add(c32(REF_SLOTS), mul(p["gi"], c32(4))), p["gi"]),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["grefl"]),
+                 lambda _p: (p.__setitem__("gmin", p["gi"]),
+                             p.__setitem__("gj", add(p["gi"], c32(1))),
+                             p.while_(lambda _q: lt(p["gj"], p["grefl"]),
+                                      lambda _q: (p.if_(cid_less(add(c32(REFS), mul(ld32(add(c32(REF_SLOTS), mul(p["gj"], c32(4)))), c32(32))),
+                                                                 add(c32(REFS), mul(ld32(add(c32(REF_SLOTS), mul(p["gmin"], c32(4)))), c32(32)))),
+                                                          lambda _r: p.__setitem__("gmin", p["gj"])),
+                                                  p.__setitem__("gj", add(p["gj"], c32(1))))),
+                             p.if_(p.cmp(IntCompare.NE, p["gmin"], p["gi"], B32),
+                                   lambda _q: (p.__setitem__("gswap", ld32(add(c32(REF_SLOTS), mul(p["gi"], c32(4))))),
+                                               st32(add(c32(REF_SLOTS), mul(p["gi"], c32(4))),
+                                                    ld32(add(c32(REF_SLOTS), mul(p["gmin"], c32(4))))),
+                                               st32(add(c32(REF_SLOTS), mul(p["gmin"], c32(4))), p["gswap"]))),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["grefl"]),
+                 lambda _p: (st32(add(c32(REF_POS), mul(ld32(add(c32(REF_SLOTS), mul(p["gi"], c32(4)))), c32(4))), p["gi"]),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+
+    def rank_of(cid_at):
+        """The position of the CID in the sorted reference list."""
+        p["gslot"] = c32(0)
+        p["gfound"] = c32(0)
+        p.while_(lambda _p: p.all_of(zero(p["gfound"]), lt(p["gslot"], p["grefl"])),
+                 lambda _p: (p.if_(cid_eq(add(c32(REFS), mul(p["gslot"], c32(32))), cid_at),
+                                   lambda _q: p.__setitem__("gfound", c32(1))),
+                             p.if_(zero(p["gfound"]),
+                                   lambda _q: p.__setitem__("gslot", add(p["gslot"], c32(1))))))
+        fail_if(zero(p["gfound"]), BAD_GRAPH)
+        return ld32(add(c32(REF_POS), mul(p["gslot"], c32(4))))
+
+    def cb_put(value):
+        """One byte of a constant's body at ``CBODY``."""
+        st8(add(c32(CBODY), p["gcur2"]), p.op1(Operation.INT_TRUNCATE, (value,), B8))
+        p["gcur2"] = add(p["gcur2"], c32(1))
+
+    def cb_uleb(value):
+        """Append ``uleb(value)`` at ``CBODY + gcur2``."""
+        write_uleb(value, CBODY, "gcur2")
+
+    def uleb_at(offset):
+        """Read a uleb from the view."""
+        p["gval"] = c32(0)
+        p["gsh"] = c32(1)
+        p["gpos"] = offset
+        p["gmore"] = c32(1)
+        p.while_(lambda _p: ne(p["gmore"], 0),
+                 lambda _p: (p.__setitem__("gb2", flag(ld8(p["gpos"]))),
+                             p.__setitem__("gval", add(p["gval"], mul(rem(p["gb2"], c32(128)), p["gsh"]))),
+                             p.__setitem__("gmore", div(p["gb2"], c32(128))),
+                             p.__setitem__("gsh", mul(p["gsh"], c32(128))),
+                             p.__setitem__("gpos", add(p["gpos"], c32(1)))))
+        return p["gval"]
+
+    def emit_sorted_object(kind_value, schema_value):
+        """``<kind> <schema> <sorted refs|-> <body>`` for the object staged at ``BODY``."""
+        out_dyn(c32(48 + kind_value))
+        out_byte(SPACE)
+        out_dyn(c32(48 + schema_value))
+        out_byte(SPACE)
+        p["gr"] = c32(0)
+        p.while_(lambda _p: lt(p["gr"], p["grefl"]),
+                 lambda _p: (p.if_(gt(p["gr"], c32(0)), lambda _q: out_byte(COMMA)),
+                             hexdump(add(c32(REFS), mul(ld32(add(c32(REF_SLOTS), mul(p["gr"], c32(4)))), c32(32))), c32(32)),
+                             p.__setitem__("gr", add(p["gr"], c32(1)))))
+        p.if_(zero(p["grefl"]), lambda _q: out_byte(DASH))
+        out_byte(SPACE)
+        hexdump(c32(BODY), p["gcur"])
+        out_byte(NL)
+
+    def node_is_const(node):
+        """Is this carrier node the ``const`` form?"""
+        return span_eq(start(first(node)), end(first(node)), b"const")
+
+    def count_consts(container):
+        """Count the inline ``[type, value]`` operands of a list node, into ``gk``."""
+        p["gk"] = c32(0)
+        p.if_(ne(container, 0),
+              lambda _q: (p.__setitem__("gwalk", first(container)),
+                          p.while_(lambda _r: ne(p["gwalk"], 0),
+                                   lambda _r: (p.if_(eq(kind(p["gwalk"]), E["ARRAY"]),
+                                                     lambda _s: p.__setitem__("gk", add(p["gk"], c32(1)))),
+                                               p.__setitem__("gwalk", after(p["gwalk"]))))))
+
+    def visit_type(node):
+        """A type reference: resolve and collect it, or write its position."""
+        p.if_(zero(p["gmode"]),
+              lambda _q: (resolve_type_node(node),
+                          p.if_(zero(p["code"]),
+                                lambda _r: (hash_canonical(), capture_digest(c32(CUR)), ref_collect()))),
+              lambda _q: ref_write())
+
+    def visit_constant(type_node, value_node):
+        """A ``const``: the constant object (the node's entity), then its type (its result)."""
+        def resolved(_q):
+            hash_canonical()                     # the type's own digest, not the previous hash's
+            capture_digest(c32(CURTYPE))
+            constant_object(value_node)
+            p.if_(zero(p["code"]),
+                  lambda _r: (ref_collect(),
+                              copy32(c32(CURTYPE), c32(CUR)),
+                              ref_collect()))
+
+        p.if_(zero(p["gmode"]),
+              lambda _q: (resolve_type_node(type_node),
+                          p.if_(zero(p["code"]), resolved)))
+
+    def constant_object(value_node):
+        """Stage a ``CONSTANT``: body ``00``, ``uleb(len)``, then the value little-endian."""
+        def staged(_q):
+            fail_if(ne(p["wkind"], 4), BAD_GRAPH)
+            fail_if(p.cmp(IntCompare.NE, flag(ld8(add(c32(CANON), p["wbodyat"]))), c32(1), B32), BAD_GRAPH)
+            p["gw"] = uleb_at(add(add(c32(CANON), p["wbodyat"]), c32(1)))
+            fail_if(zero(p["gw"]), BAD_GRAPH)
+            fail_if(gt(p["gw"], c32(64)), BAD_GRAPH)
+            p["gnbytes"] = div(add(p["gw"], c32(7)), c32(8))
+            parse_u64(start(value_node), end(value_node))
+            p["gcur2"] = c32(0)
+            cb_put(c32(0))
+            cb_uleb(p["gnbytes"])
+            p["gi"] = c32(0)
+            p.while_(lambda _p: lt(p["gi"], p["gnbytes"]),
+                     lambda _p: (cb_put(p.bin(Operation.UREM, p["gshift"], p.const(256, B64), B64)),
+                                 p.__setitem__("gshift",
+                                               p.bin(Operation.UDIV, p["gshift"], p.const(256, B64), B64)),
+                                 p.__setitem__("gi", add(p["gi"], c32(1)))))
+            canon_begin(c32(5), c32(1), c32(1))
+            canon_copy(c32(CURTYPE), c32(32))
+            canon_uleb(p["gcur2"])
+            canon_copy(c32(CBODY), p["gcur2"])
+            p["wcanonlen"] = p["wcursor"]
+            hash_canonical()
+            capture_digest(c32(CUR))
+            out_byte(ord("5"))
+            out_byte(SPACE)
+            out_byte(ord("1"))
+            out_byte(SPACE)
+            hexdump(c32(CURTYPE), c32(32))
+            out_byte(SPACE)
+            hexdump(c32(CBODY), p["gcur2"])
+            out_byte(NL)
+
+        p.if_(zero(p["code"]), staged)
+
+    def is_function_spec(node):
+        """``{"fn": NAME}``: a reference to a function this walk already built."""
+        member = first(node)
+        return p.all_of(eq(kind(node), objects), ne(member, 0), zero(after(member)),
+                        span_eq(start(member), end(member), b"fn"))
+
+    def select_function(node):
+        """The CID of the function named ``{"fn": NAME}``, from the function table."""
+        member = first(node)
+        offset = start(first(member))
+        stop = end(first(member))
+        p["gpos"] = c32(FUNS)
+        p["gfound"] = c32(0)
+        p.while_(lambda _p: p.all_of(zero(p["gfound"]),
+                                     lt(p["gpos"], add(c32(FUNS), p["gfuns"]))),
+                 lambda _p: (p.__setitem__("gnlen", flag(ld8(p["gpos"]))),
+                             p.if_(p.all_of(same(p["gnlen"], sub(stop, offset)),
+                                            mixed_eq(add(p["gpos"], c32(1)), offset, stop)),
+                                   lambda _q: (p.__setitem__("gfound", c32(1)),
+                                               copy32(add(p["gpos"], add(c32(1), p["gnlen"])), c32(CUR)))),
+                             p.if_(zero(p["gfound"]),
+                                   lambda _q: p.__setitem__("gpos", add(add(p["gpos"], c32(33)), p["gnlen"])))))
+        fail_if(zero(p["gfound"]), BAD_GRAPH)
+        p.if_(zero(p["code"]), lambda _q: ref_collect())
+
+    def visit_entity(spec):
+        p.if_(zero(p["gmode"]),
+              lambda _q: p.if_(eq(kind(spec), strings),
+                               lambda _r: visit_entity_name(start(spec), end(spec)),
+                               lambda _r: p.if_(is_function_spec(spec),
+                                                lambda _s: select_function(spec),
+                                                lambda _s: visit_entity_object(spec))),
+              lambda _q: ref_write())
+
+    def visit_entity_name(offset, stop):
+        def staged(_q):
+            entity_name(offset, stop, False)
+            p.if_(zero(p["code"]), lambda _r: (hash_canonical(), capture_digest(c32(CUR)), ref_collect()))
+
+        staged(None)
+
+    def visit_entity_object(node):
+        def staged(_q):
+            entity_object(node, False)
+            p.if_(zero(p["code"]),
+                  lambda _r: (declaration_canonical(),
+                              hash_canonical(),
+                              capture_digest(c32(CUR)),
+                              ref_collect()))
+
+        staged(None)
+
+    def visit_entity_member(extra):
+        """The node's ``entity`` reference, when the carrier carries one."""
+        p.if_(ne(extra, 0),
+              lambda _q: p.if_(ne(nth_value(extra, b"entity"), 0),
+                               lambda _r: visit_entity(nth_value(extra, b"entity"))))
+
+    def parse_operand(offset, stop, here):
+        """``p<i>``, ``n<i>``, ``n<i>.r<k>`` or ``B<b>.n<i>`` into ``gtag/gblock/gidx/gres``."""
+        p["gpos"] = offset
+        p["gblock"] = here
+        p["gtag"] = c32(0)
+        p["gidx"] = c32(0)
+        p["gres"] = c32(0)
+        p.if_(same(byte(p["gpos"]), c32(ord("B"))),
+              lambda _q: (p.__setitem__("gpos", add(p["gpos"], c32(1))),
+                          require_digit(p["gpos"], stop),
+                          number(p["gpos"], stop),
+                          p.__setitem__("gblock", p["gval"]),
+                          p.__setitem__("gpos", p["gend"]),
+                          fail_if(ge(p["gpos"], stop), BAD_GRAPH),
+                          fail_if(p.cmp(IntCompare.NE, byte(p["gpos"]), c32(ord(".")), B32), BAD_GRAPH),
+                          p.__setitem__("gpos", add(p["gpos"], c32(1)))))
+        p.if_(same(byte(p["gpos"]), c32(ord("n"))),
+              lambda _q: p.__setitem__("gtag", c32(1)),
+              lambda _q: p.if_(same(byte(p["gpos"]), c32(ord("p"))),
+                               lambda _r: p.__setitem__("gtag", c32(0)),
+                               lambda _r: fail_here(BAD_GRAPH)))
+        p["gpos"] = add(p["gpos"], c32(1))
+        require_digit(p["gpos"], stop)
+        number(p["gpos"], stop)
+        p["gidx"] = p["gval"]
+        p["gpos"] = p["gend"]
+        p.if_(lt(p["gpos"], stop),
+              lambda _q: (p.__setitem__("gpos", add(p["gpos"], c32(1))),
+                          p.if_(p.cmp(IntCompare.NE, byte(p["gpos"]), c32(ord("r")), B32),
+                                lambda _r: fail_here(BAD_GRAPH)),
+                          p.__setitem__("gpos", add(p["gpos"], c32(1))),
+                          require_digit(p["gpos"], stop),
+                          number(p["gpos"], stop),
+                          p.__setitem__("gres", p["gval"]),
+                          p.__setitem__("gpos", p["gend"])))
+        fail_if(p.cmp(IntCompare.NE, p["gpos"], stop, B32), BAD_GRAPH)
+        p.if_(zero(p["gtag"]), lambda _q: fail_if(ne(p["gres"], 0), BAD_GRAPH))
+
+    def write_const_node():
+        """One ``CONSTANT`` node: its entity (the constant), no operands, one result (its type)."""
+        gb_uleb(c32(6))
+        ref_write()
+        gb_uleb(c32(0))
+        gb_uleb(c32(1))
+        ref_write()
+
+    def write_operand(operand):
+        """A named operand becomes a value reference; an inline constant was already a node."""
+        def named(_q):
+            parse_operand(start(operand), end(operand), p["gbi"])
+            gb_uleb(p["gtag"])
+            gb_uleb(p["gblock"])
+            p.if_(zero(p["gtag"]),
+                  lambda _r: gb_uleb(p["gidx"]),
+                  lambda _r: (p.if_(ge(p["gbi"], p["gblock"]),
+                                    lambda _s: (fail_if(ge(p["gidx"],
+                                                           ld32(add(c32(CARRIER),
+                                                                    mul(p["gblock"], c32(4))))),
+                                                        BAD_GRAPH),
+                                                p.__setitem__(
+                                                    "gidx",
+                                                    ld32(add(c32(NODEMAP),
+                                                             add(ld32(add(c32(BASES), mul(p["gblock"], c32(4)))),
+                                                                 mul(p["gidx"], c32(4))))))),
+                                    lambda _s: fail_here(BAD_GRAPH)),
+                              gb_uleb(p["gidx"]),
+                              gb_uleb(p["gres"])))
+
+        p.if_(eq(kind(operand), strings), named,
+              lambda _q: (gb_uleb(c32(1)),
+                          gb_uleb(p["gbi"]),
+                          gb_uleb(add(p["gconstbase"], p["gseq"])),
+                          gb_uleb(c32(0)),
+                          p.__setitem__("gseq", add(p["gseq"], c32(1)))))
+
+    def list_size(container):
+        """The number of children of a list node, into ``gn``."""
+        p["gn"] = c32(0)
+        p.if_(ne(container, 0), lambda _q: (list_count(container), p.__setitem__("gn", p["wcnt"])))
+        return p["gn"]
+
+    def write_attribute(attr):
+        p.if_(eq(kind(attr), integers),
+              lambda _q: (parse_uint(start(attr), end(attr), 0xFFFFFFFF), gb_uleb(p["wval"])),
+              lambda _q: (table_find(GC_AT, GC_END, start(attr), end(attr)),
+                          fail_if(zero(p["gfound"]), BAD_GRAPH),
+                          gb_uleb(p["gval"])))
+
+    def write_attributes(extra):
+        """``uleb(count)`` then the attribute values (numbers, or comparison names)."""
+        attrs = nth_value(extra, b"attrs")
+        gb_uleb(list_size(attrs))
+        p.if_(ne(attrs, 0), lambda _q: each(attrs, "gc7", write_attribute))
+
+    def write_plain_node(node):
+        """One operation node: operation, entity, operands, results, attributes."""
+        name = first(node)
+        table_find(GA, GO_END, start(name), end(name))
+        fail_if(zero(p["gfound"]), BAD_GRAPH)
+        p["gop"] = p["gval"]
+        p["gflags"] = p["gflag"]
+        gb_uleb(p["gop"])
+        p.if_(same(rem(p["gflags"], c32(2)), c32(1)),
+              lambda _q: visit_entity_member(nth(node, 3)))
+        gb_uleb(list_size(nth(node, 1)))
+        p.if_(ne(nth(node, 1), 0), lambda _q: each(nth(node, 1), "gc5", write_operand))
+        gb_uleb(list_size(nth(node, 2)))
+        p.if_(ne(nth(node, 2), 0), lambda _q: each(nth(node, 2), "gc6", visit_type))
+        p.if_(same(rem(div(p["gflags"], c32(2)), c32(2)), c32(1)),
+              lambda _q: write_attributes(nth(node, 3)))
+
+    def term_const_node(operand):
+        """An inline constant in a terminator operand list is a node before the terminator."""
+        p.if_(eq(kind(operand), E["ARRAY"]),
+              lambda _q: p.if_(zero(p["gmode"]),
+                               lambda _r: (visit_constant(first(operand), after(first(operand))),
+                                           p.__setitem__("gk", add(p["gk"], c32(1)))),
+                               lambda _r: (write_const_node(),
+                                           p.__setitem__("gk", add(p["gk"], c32(1))),
+                                           p.__setitem__("gseq", add(p["gseq"], c32(1))))))
+
+    def term_const_list(container):
+        p.if_(ne(container, 0), lambda _q: each(container, "gc8", term_const_node))
+
+    def term_list(container):
+        """``uleb(count)`` then the operand list's value references (``gseq`` runs across lists)."""
+        gb_uleb(list_size(container))
+        p.if_(ne(container, 0), lambda _q: each(container, "gc9", write_operand))
+
+    def term_base():
+        p["gtermbase"] = sub(ld32(add(c32(NODE_COUNT), mul(p["gbi"], c32(4)))), p["gk"])
+
+    def term_edge(target_node, args):
+        """One edge: the target block, then its arguments."""
+        fail_if(ne(kind(target_node), integers), BAD_GRAPH)
+        number(start(target_node), end(target_node))
+        fail_if(p.cmp(IntCompare.NE, p["gend"], end(target_node), B32), BAD_GRAPH)
+        gb_uleb(p["gval"])
+        term_list(args)
+
+    def terminator(block):
+        """The block's terminator; inline constants are nodes before it, in both passes."""
+        tail = nth_value(block, b"end")
+        head = first(tail)
+        p["gk"] = c32(0)
+        p["gseq"] = c32(0)
+
+        def ret(_q):
+            term_const_list(nth(tail, 1))
+
+            def written(_r):
+                term_base()
+                gb_uleb(c32(3))
+                p["gconstbase"], p["gseq"] = p["gtermbase"], c32(0)
+                term_list(nth(tail, 1))
+            p.if_(ne(p["gmode"], 0), written)
+
+        def br(_q):
+            term_const_list(nth(tail, 2))
+
+            def written(_r):
+                term_base()
+                gb_uleb(c32(1))
+                p["gconstbase"], p["gseq"] = p["gtermbase"], c32(0)
+                term_edge(nth(tail, 1), nth(tail, 2))
+            p.if_(ne(p["gmode"], 0), written)
+
+        def cbr(_q):
+            term_const_node(nth(tail, 1))
+            term_const_list(nth(tail, 3))
+            term_const_list(nth(tail, 5))
+
+            def written(_r):
+                term_base()
+                gb_uleb(c32(2))
+                p["gconstbase"] = p["gtermbase"]
+                p["gseq"] = c32(0)
+                write_operand(nth(tail, 1))
+                term_edge(nth(tail, 2), nth(tail, 3))
+                term_edge(nth(tail, 4), nth(tail, 5))
+            p.if_(ne(p["gmode"], 0), written)
+
+        p.if_(span_eq(start(head), end(head), b"ret"), ret,
+              lambda _q: p.if_(span_eq(start(head), end(head), b"br"), br,
+                               lambda _r: p.if_(span_eq(start(head), end(head), b"cbr"), cbr,
+                                                lambda _r: fail_here(BAD_GRAPH))))
+
+    def collect_block(block):
+        """Record the block's node map and collect its references."""
+        p["gbase"] = p["gmap"]
+        st32(add(c32(BASES), mul(p["gbi"], c32(4))), p["gbase"])
+        params = nth_value(block, b"params")
+        p.if_(ne(params, 0), lambda _q: each(params, "gc2", visit_type))
+        p["gcount"] = c32(0)
+        p["gj"] = c32(0)
+        nodes = nth_value(block, b"nodes")
+        p.if_(ne(nodes, 0), lambda _q: each(nodes, "gc3", collect_node))
+        fail_if(ge(p["gj"], c32(NODE_CAP)), BAD_GRAPH)
+        st32(add(c32(CARRIER), mul(p["gbi"], c32(4))), p["gj"])
+        terminator(block)
+        p["gcount"] = add(p["gcount"], p["gk"])
+        st32(add(c32(NODE_COUNT), mul(p["gbi"], c32(4))), p["gcount"])
+        p["gmap"] = add(p["gbase"], mul(p["gj"], c32(4)))
+        p["gbi"] = add(p["gbi"], c32(1))
+
+    def collect_node(node):
+        """Collect one carrier node's references in body order: constants, entity, results."""
+        count_consts(nth(node, 1))
+        st32(add(c32(NODEMAP), add(p["gbase"], mul(p["gj"], c32(4)))), add(p["gcount"], p["gk"]))
+        p.if_(node_is_const(node),
+              lambda _q: visit_constant(nth(node, 1), nth(node, 2)),
+              lambda _q: (p.if_(ne(nth(node, 1), 0),
+                                lambda _r: each(nth(node, 1), "gc4",
+                                                lambda operand: p.if_(eq(kind(operand), E["ARRAY"]),
+                                                                      lambda _s: visit_constant(first(operand),
+                                                                                                after(first(operand)))))),
+                          visit_entity_member(nth(node, 3)),
+                          p.if_(ne(nth(node, 2), 0),
+                                lambda _r: each(nth(node, 2), "gc6", visit_type))))
+        p["gcount"] = add(p["gcount"], add(p["gk"], c32(1)))
+        p["gj"] = add(p["gj"], c32(1))
+
+    def write_block(block):
+        """Write one block: parameters, node count, nodes, terminator."""
+        p["gbase"] = ld32(add(c32(BASES), mul(p["gbi"], c32(4))))
+        params = nth_value(block, b"params")
+        gb_uleb(list_size(params))
+        p.if_(ne(params, 0), lambda _q: each(params, "gc2", visit_type))
+        gb_uleb(ld32(add(c32(NODE_COUNT), mul(p["gbi"], c32(4)))))
+        p["gj"] = c32(0)
+        nodes = nth_value(block, b"nodes")
+        p.if_(ne(nodes, 0), lambda _q: each(nodes, "gc3", write_node))
+        terminator(block)
+        p["gbi"] = add(p["gbi"], c32(1))
+
+    def write_node(node):
+        """One carrier node: the inline-constant nodes it needs, then the node itself."""
+        count_consts(nth(node, 1))
+        p["gconstn"] = p["gk"]
+        p["gopidx"] = ld32(add(c32(NODEMAP), add(p["gbase"], mul(p["gj"], c32(4)))))
+        p["gconstbase"] = sub(p["gopidx"], p["gconstn"])
+        p["gseq"] = c32(0)
+        p.if_(p.all_of(ne(nth(node, 1), 0), same(flag(node_is_const(node)), c32(0))),
+              lambda _q: each(nth(node, 1), "gc4", lambda operand: p.if_(
+                  eq(kind(operand), E["ARRAY"]),
+                  lambda _r: (write_const_node(), p.__setitem__("gseq", add(p["gseq"], c32(1)))))))
+        # the constants just written occupy ``gconstbase .. gopidx - 1``; the operand list numbers
+        # them from zero again (the terminator writer does the same with its own base)
+        p["gseq"] = c32(0)
+        p.if_(node_is_const(node),
+              lambda _q: write_const_node(),
+              lambda _q: write_plain_node(node))
+        p["gj"] = add(p["gj"], c32(1))
+
+    def collect_function(function):
+        """Pass one: resolve every reference the graph needs, and log them in body order."""
+        p["grefl"] = c32(0)
+        p["gocc"] = c32(0)
+        p["gmap"] = c32(0)
+        p["gbi"] = c32(0)
+        p["gmode"] = c32(0)
+        blocks = nth_value(function, b"blocks")
+        p.if_(ne(blocks, 0), lambda _q: each(blocks, "gc1", collect_block))
+        p["gbcount"] = p["gbi"]
+
+    def write_graph(function):
+        """Pass two: write the body, sort the references, emit the GRAPH_FRAGMENT."""
+        p["gmode"] = c32(1)
+        p["gocc"] = c32(0)
+        p["gcur"] = c32(0)
+        p["gbi"] = c32(0)
+        sort_refs()
+        gb_uleb(p["gbcount"])
+        gb_uleb(c32(0))
+        blocks = nth_value(function, b"blocks")
+        p.if_(ne(blocks, 0), lambda _q: each(blocks, "gc1", write_block))
+        canon_begin(c32(7), c32(1), p["grefl"])
+        p["gr"] = c32(0)
+        p.while_(lambda _p: lt(p["gr"], p["grefl"]),
+                 lambda _p: (canon_copy(add(c32(REFS),
+                                            mul(ld32(add(c32(REF_SLOTS), mul(p["gr"], c32(4)))), c32(32))),
+                                        c32(32)),
+                             p.__setitem__("gr", add(p["gr"], c32(1)))))
+        canon_uleb(p["gcur"])
+        canon_copy(c32(BODY), p["gcur"])
+        p["wcanonlen"] = p["wcursor"]
+        hash_canonical()
+        capture_digest(c32(CUR))
+        emit_sorted_object(7, 1)
+
+    def save_param(node):
+        # the staging area is fixed, so a signature wider than it is a refusal, not an overwrite
+        fail_if(ge(p["gnpar"], c32(FUNCTION_SLOTS)), BAD_GRAPH)
+        resolve_type_node(node)
+        p.if_(zero(p["code"]),
+              lambda _q: (hash_canonical(), capture_digest(add(c32(PARAMS), mul(p["gnpar"], c32(32))))))
+        p["gnpar"] = add(p["gnpar"], c32(1))
+
+    def save_return(node):
+        fail_if(ge(p["gnret"], c32(FUNCTION_SLOTS)), BAD_GRAPH)
+        resolve_type_node(node)
+        p.if_(zero(p["code"]),
+              lambda _q: (hash_canonical(), capture_digest(add(c32(RETURNS), mul(p["gnret"], c32(32))))))
+        p["gnret"] = add(p["gnret"], c32(1))
+
+    def register_function(function):
+        """Remember ``name -> FUNCTION CID`` so a later ``{"fn": NAME}`` resolves to it."""
+        # the name table is fixed: a carrier with more functions than it holds is a refusal, not an overlap
+        fail_if(gt(p["gfuns"], c32(FUNS_CAP - 512)), BAD_GRAPH)
+        name = nth_value(function, b"name")
+        p["gnlen"] = sub(end(name), start(name))
+        st8(add(c32(FUNS), p["gfuns"]), p.op1(Operation.INT_TRUNCATE, (p["gnlen"],), B8))
+        p["gfuns"] = add(p["gfuns"], c32(1))
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["gnlen"]),
+                 lambda _p: (st8(add(c32(FUNS), add(p["gfuns"], p["gi"])),
+                                 # ``start`` is input-relative; ``ld8`` reads the view
+                                 ld8(add(add(c32(E["IN"]), start(name)), p["gi"]))),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        p["gfuns"] = add(p["gfuns"], p["gnlen"])
+        copy32(c32(CUR), add(c32(FUNS), p["gfuns"]))
+        p["gfuns"] = add(p["gfuns"], c32(32))
+
+    def write_function(function):
+        """The FUNCTION object: its graph, parameters and returns, all by position."""
+        p["grefl"] = c32(0)
+        copy32(c32(CUR), c32(GRAPH_CID))
+        ref_slot()
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["gnpar"]),
+                 lambda _p: (copy32(add(c32(PARAMS), mul(p["gi"], c32(32))), c32(CUR)),
+                             ref_slot(),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["gnret"]),
+                 lambda _p: (copy32(add(c32(RETURNS), mul(p["gi"], c32(32))), c32(CUR)),
+                             ref_slot(),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        sort_refs()
+        p["gcur"] = c32(0)
+        gb_uleb(rank_of(c32(GRAPH_CID)))
+        gb_uleb(p["gnpar"])
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["gnpar"]),
+                 lambda _p: (gb_uleb(rank_of(add(c32(PARAMS), mul(p["gi"], c32(32))))),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        gb_uleb(p["gnret"])
+        p["gi"] = c32(0)
+        p.while_(lambda _p: lt(p["gi"], p["gnret"]),
+                 lambda _p: (gb_uleb(rank_of(add(c32(RETURNS), mul(p["gi"], c32(32))))),
+                             p.__setitem__("gi", add(p["gi"], c32(1)))))
+        canon_begin(c32(3), c32(1), p["grefl"])
+        p["gr"] = c32(0)
+        p.while_(lambda _p: lt(p["gr"], p["grefl"]),
+                 lambda _p: (canon_copy(add(c32(REFS),
+                                            mul(ld32(add(c32(REF_SLOTS), mul(p["gr"], c32(4)))), c32(32))),
+                                        c32(32)),
+                             p.__setitem__("gr", add(p["gr"], c32(1)))))
+        canon_uleb(p["gcur"])
+        canon_copy(c32(BODY), p["gcur"])
+        p["wcanonlen"] = p["wcursor"]
+        hash_canonical()
+        capture_digest(c32(CUR))
+        emit_sorted_object(3, 1)
+        register_function(function)
+
+    def graph_function(function):
+        """One carrier function: its constants, its graph, then the function object."""
+        p["gnpar"] = c32(0)
+        p["gnret"] = c32(0)
+        params = nth_value(function, b"params")
+        p.if_(ne(params, 0), lambda _q: each(params, "gc1", save_param))
+        returns = nth_value(function, b"returns")
+        p.if_(ne(returns, 0), lambda _q: each(returns, "gc1", save_return))
+        collect_function(function)
+        p.if_(zero(p["code"]), lambda _q: write_graph(function))
+        p.if_(zero(p["code"]), lambda _q: write_function(function))
+
     # the embedded namespace must be in the view before anything is resolved
     for index in range(0, len(TABLE), 8):
         chunk = TABLE[index:index + 8].ljust(8, b"\0")
@@ -715,6 +1569,10 @@ def walk(environment):
     p.if_(ne(TYPES, 0), lambda _q: each(TYPES, "w1", lambda member: emit_type_node(first(member))))
     functions = nth_value(root, b"functions")
     p.if_(ne(functions, 0), lambda _q: each(functions, "w2", per_function))
+    p["gfuns"] = c32(0)
+    # ``graph_function`` walks the blocks and the parameter lists itself: its cursors may not be the
+    # one this loop carries, or the loop would continue from inside the function it just wrote.
+    p.if_(ne(functions, 0), lambda _q: each(functions, "gfun", graph_function))
 
 
 def build_resolver():
@@ -735,10 +1593,35 @@ def object_of(line: str) -> SemanticObject:
     return SemanticObject.create(Kind(int(kind)), bytes.fromhex(body), references, int(schema))
 
 
+def object_line(obj: SemanticObject) -> str:
+    """One object's line: kind, schema, references, body -- the writer's batch shape."""
+    references = ",".join(reference.hex() for reference in obj.references) or "-"
+    return f"{int(obj.kind)} {obj.schema_version} {references} {obj.body.hex()}"
+
+
 def reference_line(builder, spec, entity: bool) -> tuple[str, bytes]:
     obj = builder.entity(spec) if entity else builder.type(spec)
-    references = ",".join(reference.hex() for reference in obj.references) or "-"
-    return f"{int(obj.kind)} {obj.schema_version} {references} {obj.body.hex()}", obj.cid
+    return object_line(obj), obj.cid
+
+
+def inline_constants(record: dict):
+    """The inline ``[type, value]`` constants of a function, in the encoder's own walk order."""
+    found = []
+    for block in record.get("blocks", []):
+        for node in block.get("nodes", []):
+            if node[0] == "const":
+                found.append((node[1], node[2]))
+            else:
+                found.extend((item[0], item[1]) for item in node[1] if isinstance(item, list))
+        end = block["end"]
+        if end[0] == "ret":
+            operands = end[1]
+        elif end[0] == "br":
+            operands = end[2]
+        else:
+            operands = [end[1], *end[3], *end[5]]
+        found.extend((item[0], item[1]) for item in operands if isinstance(item, list))
+    return found
 
 
 def expected_lines(request: dict) -> list[tuple[str, bytes]]:
@@ -768,6 +1651,19 @@ def expected_lines(request: dict) -> list[tuple[str, bytes]]:
                             lines.append(("?", b""))
                         else:
                             lines.append(reference_line(builder, spec, True))
+    # step 5: each function's constants, then its graph and its function object
+    import xax_construct as C
+
+    for record in request.get("functions", []):
+        before = set(builder.objects)
+        entry = builder.function(record)
+        fresh = [builder.objects[cid] for cid in set(builder.objects) - before]
+        for spec, value in inline_constants(record):
+            obj = constant(builder.type(spec), value)
+            lines.append((object_line(obj), obj.cid))
+        graph = next(item for item in fresh if item.kind == Kind.GRAPH_FRAGMENT)
+        lines.append((object_line(graph), graph.cid))
+        lines.append((object_line(entry), entry.cid))
     return lines
 
 
