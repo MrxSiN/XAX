@@ -351,7 +351,7 @@ def corpus(directory: Path):
     signed_app = signature(app, ED.ALGORITHM, key, ED.sign(secret, app.cid))
     resolve_trusted("resolve-trusted: Ed25519-signed", fixture.request_store(), "positive", trust_file(ed_policy, (signed_app,)))
     resolve_trusted("resolve-trusted: unsigned", fixture.request_store(), "negative", trust_file(ed_policy))
-    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(33 << 20)}, ["out"], None))
+    cases.append(("verify: a store past the driver's capacity", "negative", "verify", {"store": bytes(65 << 20)}, ["out"], None))
     cases.append(("unknown command", "negative", "compile", {"store": status.data}, ["out"], None))
     return cases
 

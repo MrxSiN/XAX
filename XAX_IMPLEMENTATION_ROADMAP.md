@@ -567,6 +567,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15e.2 | Linux AArch64 ELF executables: an XAX AArch64 backend and ELF container in the driver (ADR-308, ADR-315) | S15e.2a | DONE |
 | S15e.2b | The AArch64 frame path, pointer rebases and recursion groups in XAX (ADR-316) | S15e.2 | DONE |
 | S15e.3 | Windows PE32+ executables: the native x86-64 lowering (Windows ABI) and the PE container in XAX (ADR-308, ADR-317) | S15e.2 | DONE |
+| S15e.3c | The driver's store files and snapshots hold 64 MiB; the seed rotated (ADR-319) | S15e.3 | DONE |
 | S15e.3b | Windows PE32+ DLLs (exports, forwards, DllMain) and the hosted legacy register path in XAX (ADR-317) | S15e.3 | UNIMPLEMENTED |
 | S15e.4 | The browser Wasm page: an XAX Wasm backend and page container (ADR-308) | S15e.1 | UNIMPLEMENTED |
 | S15e.5 | JVM jars: an XAX JVM class and jar writer (ADR-308) | S15e.1 | UNIMPLEMENTED |
