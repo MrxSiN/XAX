@@ -10,6 +10,7 @@ only the new magic and identifier; old records reject without fallback.
 | `import_bfx.xax` | Same decoder, then checked canonical decision-store import |
 | `compile.xax` | Single public typed source-to-BFX interface, O0/O1 |
 | `compile_windows.xax` | Native Windows `compile`, `bind`, emit-bfx, check and info process host |
+| `bbc.xax` | Single-process `bbc.exe`: BBC commands plus the native XAX driver |
 | `bbc-android-arm64.xax`, `bbc-windows-x86_64.xax` | Host build requests `bbc compile` binds a decision into |
 | `source.xax` | BF chunk filtering/validation and final BFX publication |
 | `pack.xax` | BF streaming run packing of validated BFX, including opaque encoded opcodes |
@@ -20,7 +21,8 @@ only the new magic and identifier; old records reject without fallback.
 [COMPILE.md](COMPILE.md) specifies the unified public interface and exact generic
 bootstrap recipe. `bbc compile` builds Android ARM64 and Windows x86-64
 executables from Brainfuck source with the native XAX driver and no Python at
-runtime; see its native compilation section for scope and evidence.
+runtime, in one process (`bbc.xax`); see its native and single-process
+compilation sections for scope and evidence.
 
 [IMPORT.md](IMPORT.md) specifies typed buffer/build contracts and
 [TRANSACTIONS.md](TRANSACTIONS.md) records exact-root migration/replay boundaries.
