@@ -292,3 +292,35 @@ These measurements do not replace full-source/competitor or peak-RAM results.
 The public source workflow, libraries, common loading, self-store/resource-callee
 coverage and Windows ABI gaps remain incomplete. Bootstrap uses unchanged
 SDK 1c211da and existing local proof/fragment APIs; bootstrap time is unscored.
+
+## x86-64 borrowed-view call elision — 2026-10-21
+
+[call_elision.edit](call_elision.edit) expects the alias-index root
+`ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd` and produces
+`9bf3f203349cf8712ca93f968db2bd63f1c20b6277181891724ee4fbdd60aafc`. It ports the AArch64 frame path's
+treatment of borrowed views a direct callee gives back (ADR-101) to the x86-64
+frame path. Two helpers change, each bound into its single user graph by a
+`REPLACE_REFERENCE`:
+
+- `fr_call` no longer counts given-back views as machine results. They are
+  elided only after a first machine result that is not itself given back, so
+  the result in `rax` is unchanged. After the call each elided result's slot
+  receives its lent operand's pointer value.
+- `frame_layout` gives each elided result the lent operand's frame or heap-view
+  root, offset and extent, as `pointer.cast` already does.
+
+Before this change every Windows build of a call to a non-inlined BF decision
+(three borrowed views given back) rejected with `NATIVE-CALL-ARITY` `[5,4]`;
+smaller decisions were inlined by the lowering view and built. The function
+interface check already elided given-back views. Full canonical verification,
+`Workspace.save` and stale-root rejection pass. The record was applied by the
+unchanged reference edit service; the new functions come from the unchanged
+general-backend builders with the two helpers patched in memory by external
+authoring transport. Generic SDK and builder files are unchanged.
+
+The PE is 11,876,864 bytes, SHA-256
+`110a76a2578f5f55777e6b0438b05642013e9587cae902ef3729229af8e5420e`. It was
+bootstrapped with the recipe above; unchanged functions reused per-CID views
+and code fragments from a scratch cache produced by the same recipe, which
+itself reproduced the previous PE (`aa72234d…`) exactly. Evidence:
+[call_elision_evidence.json](call_elision_evidence.json).

@@ -51,9 +51,10 @@ may fail after a prefix; callers must discard output on nonzero exit. Every
 ordinary completion explicitly frees all seven allocations (4,001,802 declared
 bytes). Allocation-failure and forced-short-write injection are not claimed.
 
-These commands execute without Python. Full native executable/library compilation
-is not implemented by this host. Bootstrap and native-code generation still use
-the unchanged Windows-hosted generic SDK. No `bbc compile` command is claimed.
+These commands execute without Python. Executable compilation is the later
+[`bbc compile`](#native-source-to-executable-compilation--2026-10-21) command;
+library packaging is not implemented. Bootstrapping `bbc.exe` itself still uses
+the unchanged generic SDK.
 The Android shared component executes on-device; the CLI host is Windows-only.
 
 ## Bootstrap the Windows command with the generic SDK
@@ -122,3 +123,116 @@ Windows DLL and Android shared images are also rebuilt identically.
 Initial authoring transport and intermediate parents are archived outside BBC;
 current runtime stores are closed and do not load historical parents or seeds.
 Generic SDK Python files and all BBC BF instruction streams remain unchanged.
+
+## Native source-to-executable compilation — 2026-10-21
+
+`compile_windows.xax` now also implements `bbc compile` and `bbc bind`. The
+change is one expected-root transaction,
+[transactions/native_compile.edit](transactions/native_compile.edit): its
+expected root is the previous host root
+`fcbea87b30cbf359ec073c1c54cde985d4ca3b9350e12f0075647815ac9c98a4`, and it
+replaces the module's process entry with a new entry that handles the two new
+commands and calls the unchanged previous entry for `emit-bfx`, `check` and
+`info`. The result root is
+`db853d409115d4b87bf032613c8f5379b0d4220050b07530c61c0e903645c789`.
+Full canonical verification and `Workspace.save` produced the store; replaying
+the record against the result rejects its stale root.
+
+```
+bbc compile <android-arm64|windows-x86_64> [-O0|-O1] <output> < program.bf
+bbc bind    <android-arm64|windows-x86_64> [-O0|-O1] < program.bf > program.edit
+```
+
+`bind` runs, in one process, the unchanged BF frontend (`compile_bfx`), the
+unchanged strict decoder/importer (`import_bfx`) and a new canonical framing
+function. Framing reads the importer's canonical decision store and writes one
+`XAXEDIT1` record: the host request's expected root, a `REPLACE_REFERENCE` of
+the host graph's empty decision with the imported decision, and every store
+object as a supplied object. It accepts only a store with magic, version 1,
+BLAKE3 suite, no non-semantic records, 1 to 256 objects (the native driver's
+supplied-object limit; more is a capacity failure), schema 1 records whose
+lengths stay inside the store, and exactly one FUNCTION object. Nothing is
+trusted from this record: the driver checks the expected root, recomputes every
+supplied object's CID and verifies the result.
+
+`compile` writes that record beside the output and runs the native XAX driver
+(`xaxc.exe`) three times with `CreateProcessW`, waiting for each: `edit` binds
+the decision into the target's host request, `resolve` makes the build snapshot
+and `build` verifies, lowers and packages it. `<output>.xax` (the verified
+snapshot) and `<output>.provenance` remain; the record and request are deleted.
+On failure every output, snapshot and provenance file is deleted. No Python,
+interpreter or foreign compiler logic runs at any stage.
+
+The host requests are canonical build requests, `bbc-android-arm64.xax` and
+`bbc-windows-x86_64.xax`, with package identity `bbc`, entry `main`, the
+default hermetic profile and a native-image artifact. They wrap the unchanged
+`standalone_arm64.xax` and `standalone_windows.xax` programs; their roots are
+`4b2c3e190b548d96b5c504e8fd95c09edb204685340290e9741918f1ccd95d7f` and
+`e2c3f5574a423cb17d54c5bb440508ca0c42faafbd848e6a5a9270ca62ad4560`. They were
+created once with the generic `xax_build` constructors and verified; later
+changes use expected-root transactions.
+
+Install layout: put `bbc.exe`, the driver as `xaxc.exe` and both request stores
+in one directory. `bbc compile` finds them with `GetModuleFileNameW`; output
+paths are relative to the working directory. Combined command lines are limited
+to 3,900 UTF-8 bytes (`2 * directory + 3 * output + 120`), larger paths exit 4.
+
+| Exit | Meaning |
+|---|---|
+| 0 | Success |
+| 1 | Invalid Brainfuck source |
+| 2 | A source or importer resource limit |
+| 3 | I/O failure, the driver could not start, or the driver reported I/O failure |
+| 4 | Usage, or an internal component or edit/resolve rejection |
+| 5 | The native backend rejects or declines the program for the target |
+
+### Bootstrap
+
+Build `bbc.exe` from the new store with the generic recipe above (the same
+11-parameter callee inlining configuration). Build the driver with the recipe in
+[DRIVER.md](../windows_helpers/DRIVER.md); its PE must be SHA-256
+`aa72234d6dd8a111efde62b47ced8449a482c4c5506d876714ff7fbe0968ab79`.
+
+### Bootstrap backend finding
+
+The generic bootstrap's Windows PE lowering of the new entry lost scalar values
+carried from early blocks across later loops and calls: a standard handle
+reached `WriteFile` as 2, and the selected target reached framing as an invalid
+value, although each value has a single definition in the verified graph. The
+entry therefore keeps process scalars in words of its own initialized chunk view
+and fetches standard handles where it uses them. This is a defect in the
+disclosed generic bootstrap backend, not a graph rule; it is recorded here
+because any other long-lived bootstrap-lowered entry can meet it.
+
+### Execution evidence
+
+See [native_compile_evidence.json](native_compile_evidence.json). It was run on
+Linux x86-64 with Wine 9.0 hosting the Windows PEs and `qemu-aarch64` user
+emulation running Android ARM64 artifacts. These are emulated environments, not
+Windows or Android device executions. The artifacts are nonetheless compared
+byte for byte with earlier native-driver artifacts that ran on Windows 11 and
+a Pixel 8 Pro.
+
+The first campaign run with the previous driver rejected nine Windows builds of
+decisions the lowering view does not inline (over 256 nodes, such as O0 hello
+and both depth-512 programs) with `NATIVE-CALL-ARITY` `[5,4]`: the x86-64 frame
+path counted the three borrowed views the decision gives back as machine
+results. The [call elision](../windows_helpers/DRIVER.md#x86-64-borrowed-view-call-elision--2026-10-21)
+driver change removes that gap; with it all 332 campaign builds (83 programs,
+O0/O1, both targets) succeed and 588 executions match the reference
+interpreter. `bbc compile` requires that driver (PE SHA-256
+`110a76a2578f5f55777e6b0438b05642013e9587cae902ef3729229af8e5420e`); exit 5
+remains for any other native backend rejection or decline.
+
+| Fresh-process complete build, Linux host, median of 10 (s) | `bbc compile` under Wine | Previous Python SDK path |
+|---|---:|---:|
+| hello | 0.245 | 1.271 |
+| nested_math | 0.247 | 1.238 |
+| checksum_four | 0.237 | 1.236 |
+| deep_nesting_512 | 0.853 | 11.218 |
+
+Both arms produce identical artifacts. The Python arm starts from the native
+record, so it excludes frontend and import. Each Wine process launch costs about
+0.044 s here and `bbc compile` launches four, so these are not Windows-native
+times and carry no competitor verdict. Stage medians under Wine are bind 0.050,
+edit 0.065, resolve 0.069 and build 0.075 s, each including that launch cost.

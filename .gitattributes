@@ -36,3 +36,8 @@ compiler/integration/windows_helpers/regression/android/*.edit -text
 compiler/integration/windows_helpers/alias_index_evidence.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/regression/android_alias/*.xax -text
 compiler/integration/windows_helpers/regression/android_alias/*.json -text
+
+# Native source-to-executable compilation and x86-64 call elision.
+compiler/integration/bfx/native_compile_evidence.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/call_elision_evidence.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/*.edit -text
