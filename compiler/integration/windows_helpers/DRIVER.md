@@ -232,3 +232,36 @@ These boundaries do not establish a full-build or competitor win. The compiler
 PE is 11,866,112 bytes, SHA256 `23d0b374b3701f011e7ad3aa7f5169085b237c2078db603aab8376591c914f1c`.
 Its bootstrap uses SDK 1c211da; three private helpers also rebuild byte-identically
 under upstream 2e1af7c. That compatibility check is not a new whole-driver bootstrap.
+
+## Android interval allocation — 2026-10-21
+
+[native_android_lowering_evidence.json](native_android_lowering_evidence.json)
+records source root `68ecf527e4c18c163d1fc2bdddc76335ca2f205eff4f57766cec944a67915f4c`. One expected-root transaction replaces
+the ARM64 interval pass's pessimistic block-count times value-count reservation
+with three-word linked records allocated as needed inside the fixed arena.
+[android_sparse_intervals.edit](android_sparse_intervals.edit) expects the
+previous lowering root. [android_interval_allocator.xax](android_interval_allocator.xax)
+checks capacity using subtraction before advancing the head. All three call
+sites propagate exhaustion through explicit borrowed-view branches. The edge
+table address is unchanged. Full verification, Workspace.save and stale-root
+rejection pass; no verifier rule or bounds requirement is weakened.
+
+The [Android fixtures](regression/android/README.md) cover zero-entry and active
+depth-512 loops. All 22 prepared Android snapshots build twice with identical
+artifacts and provenance and pass 47 Pixel 8 Pro process executions. All 20 prior
+successful Android artifacts remain exact. There are 160 unchanged diagnostic
+controls, three unchanged Windows smoke artifacts, 388 allocation boundary/random
+cases and six repeated exhaustion calls. Four O0/O1 framed frontend checks
+retain the single BFX format. Raw reports preserve rejected private attempts.
+
+The native compiler PE is 11,870,208 bytes, SHA-256
+`fa50e6005717a521e30123ad8e9cc637aa3fe15f28a1935cf394f0d4f2ee1125`. Generic SDK `1c211da` bootstraps it with mandatory
+verification and existing same-process code-fragment APIs. Bootstrap timings
+and concurrent deep-build timings are unscored. This is a native prepared-stage
+coverage improvement, not a full-source speedup or competitor win.
+
+The fixed views still declare 3,550,558,208 bytes. No dynamic arena growth or
+peak-RAM improvement is claimed. Android-hosted compiler execution, the public
+source-to-native command, self-store/resource-callee coverage, common loading,
+shared libraries and the Windows call ABI boundary remain incomplete. Android
+alias/range analysis and complete native workflow remain the next priority.
