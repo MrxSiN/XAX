@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64, Linux AArch64, Windows PE32+ executables and RISC-V raw images is compiled by Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B2, B3, B4, B5, B6 hold, B1 do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (every target but Linux x86-64, Linux AArch64, Windows PE32+ executables and RISC-V raw images is compiled by Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1239,4 +1239,12 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - PE container: `xax_selfhost_general_image._pe_fn`/`_pe_entry_fn`; `import_pairs` is shared with the dynamic ELF.
 - x86-64 views backend layout: stream `X86_STREAM_AT` (1M, 21M words), jumps/ranges after it, code `X86_CODE_AT` below the header; the driver's `lower` reads `X86_CODE_AT`.
 - Next: S15e.3b (DLLs), S15e.4-S15e.7; B1's two-callee gap.
+
+## S15b.3e every resource callee; B1 — 2026-10-21 (ADR-318)
+
+- `xax_selfhost_semantic.ACC_AT` (workspace words after `RC_AT`): 1 per graph accepted in this `verify`, cleared by `index_objects`, set by `rc_decide`. `_callee_aux` marks a call to an accepted callee with a trailing aux word; `xax_selfhost_facts._known_callee` reads it. Typing header word 63 is `H_RCALL_STOP` (the engine's stop at a callee).
+- A waiting graph is checked again after each accepted callee (`RC_FINAL` unused).
+- The driver's main function is at the pinned seed's facts-engine arena: even one more helper call there makes the seed decline to verify the compiler (check with `xaxc-linux-x86_64 verify bootstrap/xax_compiler_driver_general.xax`). Put new logic in helpers already called.
+- `__pycache__` files are tracked: run with `PYTHONDONTWRITEBYTECODE=1` or restore them before committing.
+- Next: S15e.3b (DLLs), S15e.7 (accelerator, SPIR-V), S15e.4-S15e.6.
 

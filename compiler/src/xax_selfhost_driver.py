@@ -1112,9 +1112,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         o = w.let("graph_object", 0)
         objected_ = w.let("graph_objected", 0)
         # S15b.3d (ADR-313): a graph whose outcome waits on its resource callee's graph (``RG.O_DEFER``): the callee's
-        # graph is checked next (``override``); its rejection decides, else the waiting outcome holds (a rejection is
-        # rendered by checking the waiting graph again, ``final``).  ``pending``: 1 a rejection, 2 an acceptance, 3 a
-        # decline.
+        # graph is checked next (``override``); its rejection decides, else the waiting graph is checked again with that
+        # callee accepted (S15b.3e, ADR-318; ``index_objects`` cleared the accepted graphs), and holds or waits on its
+        # next callee.  ``pending``: 1 a rejection, 2 an acceptance, 3 a decline.
         for field, value in ((SM.RC_PENDING, 0), (SM.RC_OVERRIDE, FA.NONE), (SM.RC_FROM, 0), (SM.RC_WAITING, FA.NONE), (SM.RC_FINAL, 0)):
             set_work(field, value)
 

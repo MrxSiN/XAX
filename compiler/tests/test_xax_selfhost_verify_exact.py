@@ -39,6 +39,82 @@ from xax_selfhost_diagnostics import decode_record
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
 
+def resource_callee_program(rng: random.Random):
+    """S15b.3e (ADR-318): a caller threading one stack owner through calls to several resource callees (pass-through,
+    store and load contracts, some with a graph the verifier rejects) in a random order, with an optional fault of its
+    own (a typing or an uninitialized-load rejection) at a random place; ``(store bytes, callee count)``."""
+    from xax_compiler import (Block, Node, Operation, Terminator, ValueRef, bits_type, constant, function, graph_fragment,
+                              memory_effect_type, pointer_type, stack_owner_type)
+
+    b8, b32 = bits_type(8), bits_type(32)
+    pointer, owner, effect = pointer_type(b32, alignment=4), stack_owner_type(), memory_effect_type()
+    constants = [constant(b8, value) for value in range(4)]
+    objects = [b8, b32, pointer, owner, effect, *constants]
+
+    def made(kind: str, variant: int):
+        pure = tuple(Node(Operation.CONSTANT, (), (b8,), entity=constants[k]) for k in range(variant))
+        bad = (Node(Operation.ADD_WRAP, (ValueRef.parameter(0, 0), ValueRef.parameter(0, 1)), (b8,)),) if kind.endswith("bad") else ()
+        if kind.startswith("pass"):
+            block = Block((owner, effect), pure + bad, Terminator.return_((ValueRef.parameter(0, 0), ValueRef.parameter(0, 1))))
+            interface = ((owner, effect), (owner, effect))
+        elif kind.startswith("store"):
+            store = Node(Operation.STORE_BITS_LE, (ValueRef.parameter(0, 0), ValueRef.parameter(0, 1), ValueRef.parameter(0, 3)), (effect,), attributes=(4, 4))
+            block = Block((pointer, b32, owner, effect), (store,) + bad, Terminator.return_((ValueRef.parameter(0, 2), ValueRef.node_result(0, 0))))
+            interface = ((pointer, b32, owner, effect), (owner, effect))
+        else:
+            load = Node(Operation.LOAD_BITS_LE, (ValueRef.parameter(0, 0), ValueRef.parameter(0, 2)), (b32, effect), attributes=(4, 4))
+            block = Block((pointer, owner, effect), (load,) + bad, Terminator.return_((ValueRef.node_result(0, 0, 0), ValueRef.parameter(0, 1), ValueRef.node_result(0, 0, 1))))
+            interface = ((pointer, owner, effect), (b32, owner, effect))
+        graph = graph_fragment([block])
+        objects.append(graph)
+        return function(graph, *interface), kind
+
+    kinds = ("pass", "pass", "pass", "store", "store", "load") + (("pass_bad", "store_bad", "load_bad") if rng.random() < 0.4 else ())
+    pool = [made(rng.choice(kinds), variant) for variant in rng.sample(range(4), rng.randrange(2, 5))]
+    called = {}
+    nodes = [Node(Operation.STACK_ALLOC, (), (pointer, owner, effect), attributes=(4, 4))]
+    own, eff = ValueRef.node_result(0, 0, 1), ValueRef.node_result(0, 0, 2)
+    calls = rng.randrange(2, 7)
+    fault_at = rng.randrange(calls + 1) if rng.random() < 0.5 else None
+    fault = rng.choice(("typing", "uninitialized"))
+    for k in range(calls + 1):
+        if k == fault_at:
+            if fault == "typing":
+                nodes.append(Node(Operation.ADD_WRAP, (ValueRef.parameter(0, 0), own), (b32,)))
+            else:
+                nodes.append(Node(Operation.LOAD_BITS_LE, (ValueRef.node_result(0, 0, 0), eff), (b32, effect), attributes=(4, 4)))
+                eff = ValueRef.node_result(0, len(nodes) - 1, 1)
+        if k == calls:
+            break
+        callee, kind = rng.choice(pool)
+        called[callee.cid] = callee
+        at = len(nodes)
+        if kind.startswith("pass"):
+            nodes.append(Node(Operation.CALL_DIRECT, (own, eff), (owner, effect), entity=callee))
+            own, eff = ValueRef.node_result(0, at, 0), ValueRef.node_result(0, at, 1)
+        elif kind.startswith("store"):
+            nodes.append(Node(Operation.CALL_DIRECT, (ValueRef.node_result(0, 0, 0), ValueRef.parameter(0, 0), own, eff), (owner, effect), entity=callee))
+            own, eff = ValueRef.node_result(0, at, 0), ValueRef.node_result(0, at, 1)
+        else:
+            nodes.append(Node(Operation.CALL_DIRECT, (ValueRef.node_result(0, 0, 0), own, eff), (b32, owner, effect), entity=callee))
+            own, eff = ValueRef.node_result(0, at, 1), ValueRef.node_result(0, at, 2)
+    nodes.append(Node(Operation.STACK_END, (own, eff), ()))
+    caller_graph = graph_fragment([Block((b32,), tuple(nodes), Terminator.return_((ValueRef.parameter(0, 0),)))])
+    caller = function(caller_graph, (b32,), (b32,))
+    members = [caller, *called.values()]
+    rng.shuffle(members)
+    module = object_with_refs(Kind.MODULE, members)
+    root = object_with_refs(Kind.PROGRAM_ROOT, [module])
+    table = {item.cid: item for item in (*objects, *called.values(), caller_graph, caller, module, root)}
+    reached, pending = {}, [root.cid]
+    while pending:
+        cid = pending.pop()
+        if cid not in reached and cid in table:
+            reached[cid] = table[cid]
+            pending.extend(table[cid].references)
+    return write_store(root.cid, list(reached.values())), len(called)
+
+
 @unittest.skipUnless(LINUX_X86_64, "UNAVAILABLE: the driver runs on Linux x86-64 only")
 class VerifyExactTests(unittest.TestCase):
     @classmethod
@@ -267,6 +343,20 @@ class VerifyExactTests(unittest.TestCase):
         self.assertEqual(tally["driver_record"], 0, tally)
         self.assertEqual(tally.get("declined_rejection", 0), 0, tally)  # S15b.3d (ADR-311)
         self.assertGreater(tally["exact"], 40, tally)
+
+    def test_resource_callees(self):
+        """S15b.3e (ADR-318): graphs calling several different resource callees before their own decision get the
+        bootstrap's outcome: each callee's graph is parsed at its first call, in the caller's order."""
+        rng = random.Random(318)
+        tally = dict.fromkeys(("accepted", "exact", "driver_record", "declined", "host_error"), 0)
+        for trial in range(int(os.environ.get("XAX_VERIFY_EXACT_TRIALS", "240")) // 2):
+            data, _callees = resource_callee_program(rng)
+            with self.subTest(trial=trial):
+                self.check(StoreReader(data), tally)
+        self.assertEqual(tally["declined"], 0, tally)
+        self.assertEqual(tally["driver_record"], 0, tally)
+        self.assertGreater(tally["exact"], 20, tally)
+        self.assertGreater(tally["accepted"], 10, tally)
 
 
 if __name__ == "__main__":
