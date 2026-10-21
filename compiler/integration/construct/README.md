@@ -5,7 +5,8 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: steps 1-5c.** What is established is that the authoring
+**Status: steps 1-5c, and the `construct` command (step 6) as its own native program.** What is
+established is that the authoring
 primitives the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects*
 as the Python reference, that a program authored that way runs as a native windows-x86_64 host with the
 file transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
@@ -14,8 +15,9 @@ reference object, that the graph, function, module, package, target, profile, tr
 and snapshot objects of both carriers come out byte-identical -- the snapshot's CID *is* the reference
 store's root -- and that the program refuses what it does not implement (a platform other than
 windows-x86_64, more than one build entry) rather than emit a plausible wrong object. The container is
-written by the linked S9 writer, so both stores come out byte-identical to the committed ones; the driver
-command (step 6) is what remains.
+written by the linked S9 writer, so both stores come out byte-identical to the committed ones, and the
+command form writes that store with no Python and no listing path. The general `xaxc` driver does not
+dispatch the command yet, and the MCP tool is not wired (M3).
 
 ## Why canonical identity is the oracle
 
@@ -429,6 +431,31 @@ Store refusals are exit codes that name the stage: 20 (more distinct objects tha
 21 (batch capacity), 23 (a reference with no staged object), and `0x100 + status * 0x40 + reason` for a
 writer that rejects or declines the batch.
 
+## Step 6: the `construct` command (done as a command; driver dispatch left)
+
+`construct <carrier> <store>` is the same walk with a different transport, not a second decoder: the
+listing writer is compiled out (`walk(listing=False)`), argv[2] is the store, and the bytes the S9 writer
+returns are written there. The command is the program's own name rather than a word in argv[1]; the store
+is the only output, so no listing path is asked for. The check runs it on both carriers and compares the
+store bytes with `xax_construct.construct(...).reader.canonical_bytes()` -- the committed stores again:
+
+```
+entry     096ef1b4a7b1233eed01679efce9e907cb42f6f7b2b41e3532eebf7a571d3cfa
+entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
+store     19045135 bytes
+artifact  2852352 bytes
+command   sandbox_request.json       exit=0 store=   74434/   74434 sha256=588f57c0fa69eb17 root 7ef7099d5358bf02 MATCH
+command   construction_request.json  exit=0 store= 1020614/ 1020614 sha256=bbe28c1e5568abf4 root baec162e4bfb177f MATCH
+```
+
+The command build is smaller than the check build (19 045 135 vs 19 085 525 store bytes, 2 852 352 vs
+2 870 784 artifact bytes) because the listing writer's blocks are never emitted when no line is written.
+
+What is not done: the general driver (`compiler/src/xax_selfhost_driver.py`, `COMMANDS`) does not dispatch
+`construct`, so the command is a separate native program for now; the driver has not been re-derived for
+Windows and there is no `DRIVER.md` for it. Those are the remaining parts of the plan's step 6. The command
+itself is what a host -- and the MCP adapter -- needs.
+
 
 ## The plan
 
@@ -443,7 +470,7 @@ writer that rejects or declines the batch.
 | 5a | constant, graph and function objects: two passes per function, a reference table and positions, terminators | both carriers' listings byte-exact (done) |
 | 5b | module, package, profile, policy, target and build-request objects | both carriers' six appended lines byte-exact (done; the snapshot moves to 5c) |
 | 5c | snapshot object, which is the store's root, and the store container from the listing (`xax_selfhost_writer` reuse) | the root CIDs match and the two stores are byte-exact (done) |
-| 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
+| 6 | `construct <carrier> <store>` (done as a separate native program); driver dispatch, re-derived Windows driver and `DRIVER.md` (left) | the command reproduces both committed stores byte-exactly (done); command table and native checks (left) |
 
 Steps 5b and 5c are where the existing `xax_selfhost_resolve` and `xax_selfhost_writer` components are
 reused rather than reimplemented.

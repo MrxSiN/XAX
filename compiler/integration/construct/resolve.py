@@ -233,8 +233,11 @@ OP_TABLE, CMP_TABLE, TERM_TABLE = graph_tables()
 GRAPH_BLOB = OP_TABLE + CMP_TABLE + TERM_TABLE
 
 
-def walk(environment):
-    """Resolve every type occurrence and every platform entity in the parsed carrier."""
+def walk(environment, listing=True):
+    """Resolve every type occurrence and every platform entity in the parsed carrier.
+
+    ``listing=False`` is the command form: the walk still stages and hashes every object, but the
+    textual listing is not written (there is no listing path, and the store is the only output)."""
     p = environment["p"]
     E = environment
     get = E["get"]
@@ -244,7 +247,12 @@ def walk(environment):
     load8, load64 = E["store_load8"], E["store_load64"]
     put8, put64 = E["store_put8"], E["store_put64"]
     spec = E["store_writer"]
-    byte, out_byte, out_dyn = E["byte"], E["out_byte"], E["out_dyn"]
+    byte, out_dyn = E["byte"], E["out_dyn"]
+    if listing:
+        out_byte = E["out_byte"]
+    else:
+        def out_byte(_value):
+            return None
     fail_if = E["fail"]
     strings, objects, integers = E["STRING"], E["OBJECT"], E["INTEGER"]
     kind_of, start_of, end_of = E["KIND"], E["START"], E["END"]
@@ -2018,12 +2026,13 @@ def walk(environment):
     p.if_(zero(p["code"]), lambda _q: package_pass())
 
 
-def build_resolver():
+def build_resolver(listing=True):
     """The resolver: the reader's host, a word-aligned view, the span hash and the S9 writer linked in.
 
     The writer is a component store of its own; its function and the objects it needs are merged into
     this program's store, and the resolver calls it directly, so the container is written by the one
-    verified writer rather than by a second implementation here."""
+    verified writer rather than by a second implementation here.  ``listing=False`` builds the command
+    form (``construct <carrier> <store>``), which writes the store and no listing."""
     hash_at, hash_objects = hash_span_function(ALIGNED, heap_view_type(R.EXTENT), HASH_SCRATCH)
     HASH["fn"] = hash_at
     writer_reader, writer = WR.load_writer_program()
@@ -2040,8 +2049,13 @@ def build_resolver():
     }
     component = tuple(item for item in writer_reader.objects()
                       if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET))
-    return R.build_reader(b"xax-construct-resolve", walk, view_alignment=4,
-                          extra_objects=(*hash_objects, *component), store_writer=spec)
+
+    def on_tree(env):
+        walk(env, listing)
+
+    return R.build_reader(b"xax-construct-resolve", on_tree, view_alignment=4,
+                          extra_objects=(*hash_objects, *component), store_writer=spec,
+                          store_only=not listing)
 
 
 # -- the oracle ----------------------------------------------------------------------------------------
@@ -2200,14 +2214,44 @@ def check(out: Path, carriers: list[Path]) -> int:
     return 0 if good else 1
 
 
+def check_command(out: Path, carriers: list[Path]) -> int:
+    """Run ``construct <carrier> <store>`` and compare the store with the reference's canonical bytes."""
+    import hashlib
+    import json
+
+    import xax_construct as C
+    from xax_compiler import StoreReader
+
+    executable, store_path = out / "construct.exe", out / "construct-store.xax"
+    good = True
+    for carrier in carriers:
+        store_path.unlink(missing_ok=True)
+        result = subprocess.run([str(executable), str(carrier), str(store_path)],
+                                capture_output=True, text=True)
+        request = json.loads(carrier.read_text(encoding="ascii"))
+        reference = C.construct(request).reader.canonical_bytes()
+        store = store_path.read_bytes() if store_path.exists() else b""
+        matched = result.returncode == 0 and store == reference
+        good = good and matched
+        root = StoreReader(store).root_cid.hex()[:16] if store else "-"
+        print(f"command   {carrier.name:26} exit={result.returncode} "
+              f"store={len(store):>8}/{len(reference):>8} "
+              f"sha256={hashlib.sha256(store).hexdigest()[:16]} root {root} "
+              f"{'MATCH' if matched else 'DIFF'}")
+        if result.stderr.strip():
+            print(f"          {result.stderr.strip()[:200]}")
+    return 0 if good else 1
+
+
 def main(argv):
     out = Path(argv[1])
     carriers = [Path(item) for item in argv[2:] if not item.startswith("--")]
-    store, snapshot, artifact = build_resolver()
+    command = "--command" in argv
+    store, snapshot, artifact = build_resolver(listing=not command)
     out.mkdir(parents=True, exist_ok=True)
     (out / "resolve.xax").write_bytes(store.canonical_bytes())
     (out / "resolve-snapshot.xax").write_bytes(snapshot.canonical_bytes())
-    (out / "resolve.exe").write_bytes(artifact.artifact)
+    (out / ("construct.exe" if command else "resolve.exe")).write_bytes(artifact.artifact)
     entry = next(item for item in store.objects() if item.kind == Kind.FUNCTION)
     print(f"entry     {store.root_cid.hex()}")
     print(f"entry fn  {entry.cid.hex()}")
@@ -2215,7 +2259,7 @@ def main(argv):
     print(f"artifact  {len(artifact.artifact)} bytes")
     print(f"namespace {len(TABLE)} bytes, {len(namespace_entries())} entries")
     if "--check" in argv:
-        return check(out, carriers)
+        return check_command(out, carriers) if command else check(out, carriers)
     return 0
 
 
