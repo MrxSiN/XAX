@@ -5,15 +5,16 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: steps 1-4b, 5a and 5b of the plan below.** What is established is that the authoring primitives
-the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects* as the
-Python reference, that a program authored that way runs as a native windows-x86_64 host with the file
-transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
+**Status: steps 1-4b, 5a, 5b and the root half of 5c.** What is established is that the authoring
+primitives the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects*
+as the Python reference, that a program authored that way runs as a native windows-x86_64 host with the
+file transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
 back out byte for byte, that every named type and derived declaration in both carriers resolves to the
-reference object, that the graph, function, module, package, target, profile, trust-policy and
-build-request objects of both carriers come out byte-identical, and that the program refuses what it does
-not implement (a platform other than windows-x86_64, more than one build entry) rather than emit a
-plausible wrong object. The store write, the program root and the driver command are the remaining steps.
+reference object, that the graph, function, module, package, target, profile, trust-policy, build-request
+and snapshot objects of both carriers come out byte-identical -- the snapshot's CID *is* the reference
+store's root -- and that the program refuses what it does not implement (a platform other than
+windows-x86_64, more than one build entry) rather than emit a plausible wrong object. The store container
+and the driver command are the remaining steps.
 
 ## Why canonical identity is the oracle
 
@@ -248,31 +249,31 @@ python -B compiler/integration/construct/resolve.py build/construct_resolve --ch
 ```
 
 ```
-entry     a26bf50993fd3d42e2cc95e083728eb1d02c3905f4379101d617d14daca04202
+entry     df94e035dd9fa84bf57175755b029e35b59f8c48a43055bc4fc6b579e9e2a3c8
 entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
-store     9200433 bytes
-artifact  1597952 bytes
+store     9402941 bytes
+artifact  1738240 bytes
 namespace 2880 bytes, 21 entries
-carrier   sandbox_request.json       exit=0 lines=3065 resolved=3052 deferred=13 MATCH
-carrier   construction_request.json  exit=0 lines=41324 resolved=40924 deferred=400 MATCH
+carrier   sandbox_request.json       exit=0 lines=3066 resolved=3053 deferred=13 MATCH
+carrier   construction_request.json  exit=0 lines=41325 resolved=40925 deferred=400 MATCH
 ```
 
 Every produced line is decoded back into a `SemanticObject` and compared with the reference object for
-that occurrence, so both listings are byte-identical object by object: 3 065 and 41 324 lines,
-`sha256 724bbe25…` and `4c09830f…`. The 13 and 400 `?` lines are the `{"fn": …}` occurrences the
+that occurrence, so both listings are byte-identical object by object: 3 066 and 41 325 lines,
+`sha256 35e23efa…` and `fef6f4ea…`. The 13 and 400 `?` lines are the `{"fn": …}` occurrences the
 reference also defers at that point in its own walk; the graph pass resolves them from the name table
 filled as each function is registered, which is why the walk visits functions in carrier order. The
-program now also emits the step-5b objects, so these are its identities; the 5a claim is the first
-3 059 and 41 318 lines, which are unchanged.
+program now also emits the step-5b objects and the step-5c snapshot, so these are its identities; the 5a
+claim is the first 3 059 and 41 318 lines, which are unchanged.
 
 Measured on this host, one program for both carriers (the machine is shared, so the timing rows varied by
 nearly a factor of two between runs; the byte rows did not):
 
 | measurement | value |
 |---|---|
-| `resolve_packages` / `snapshot_store` / `build` (unverified harness) | 139.5 s / 7.7 s / 612.0 s |
-| verifier pass (separate gate on the same program) | 196.8 s, 1 301 objects |
-| store / artifact | 9 200 433 B / 1 597 952 B |
+| `resolve_packages` / `snapshot_store` / `build` (unverified harness) | 185.1 s / 22.8 s / 876.3 s |
+| verifier pass (separate gate on the same program) | 160.1 s, 1 305 objects |
+| store / artifact | 9 402 941 B / 1 738 240 B |
 | widest graph body (sandbox, construction) | 16 141 B / 56 123 B (cap 131 072) |
 | widest reference table | 231 / 1 391 entries (cap 2 048) |
 | widest canonical object | 23 549 B / 100 651 B (region 200 704) |
@@ -340,7 +341,7 @@ package and request are 27 and 12 bytes; the six lines are the same six encoding
 arithmetic. Six lines were appended to the oracle in the program's order, and all six CIDs were checked
 against `xax_construct.construct` before the program was written: target `99480deb...`, module
 `b363e174...`, package `396e6697...`, profile `9e3dd6a9...`, policy `15264515...`, request `6fbb92a5...`.
-Both carriers now match end to end: 3 065 lines (13 deferred) and 41 324 lines (400 deferred).
+Both carriers now match end to end: 3 066 lines (13 deferred) and 41 325 lines (400 deferred).
 
 Three defects the gate caught, each of which produced a plausible listing:
 
@@ -362,13 +363,31 @@ Two limits are refusals, not approximations:
 `TRAP` terminators and `CALL_GROUP_MEMBER` remain unencoded for the same reason as before: no carrier
 uses them, and the walk refuses what it does not recognise.
 
-## Step 5c: what is left (scoped, not implemented)
+## Step 5c: the root (done), the store container (left)
 
-The program root and the snapshot are not authored here: `resolve_packages` computes the root from the
-objects above and `snapshot_store` writes the store, which is why 5b hands over to `xax_selfhost_resolve`
-and 5c to `xax_selfhost_writer` instead of deriving a root in this program. The listing now ends with
-exactly the objects a root is computed from, so 5c is the store write and the hand-over format, not
-another encoder; the byte oracle then moves from the listing to the two store roots above.
+A canonical store's root is the snapshot object: `resolve_packages` selects the request's package and its
+dependency closure and returns the `Kind.BUILD` object with form `SNAPSHOT`. The program now emits it as
+the seventh appended object:
+
+```
+uleb(SNAPSHOT=3), uleb(rank(request)), uleb(len) + resolver identity, uleb(rank(policy)),
+uleb(packages) + their ranks, uleb(signatures) + their ranks, uleb(digests) + the 32-byte digests
+```
+
+The references are the sorted, deduplicated CIDs of the request, the policy and the selected packages; the
+identity is `xax-construct-v1`; neither carrier has dependencies, signatures or external digests. The last
+produced line's CID is then the store root itself -- `7ef7099d…f8b6` for the sandbox carrier and
+`baec162e…d442` for the construction carrier, the two roots the reference stores have. That is checked
+twice: the line is decoded and compared with `resolve_packages`'s own object, and that object is the root
+`xax_construct.construct` returns (`store.root_cid`), confirmed separately on both carriers.
+
+What is left is the container: header (magic, major, hash suite, flags), one record envelope per object in
+ascending CID order (kind, schema, reference count, body length, references, body), the non-semantic
+metadata records in canonical order, the index, the digest and the trailer.
+`xax_selfhost_writer.write_store` already implements exactly that as one XAX function (S9), so the
+remaining work is the hand-over: encode the objects the listing already has as the writer's batch (`kind`,
+schema, reference count, body length, references, body), give it the views it asks for (32 MiB batch,
+64 MiB buffer) and write the buffer it returns. No second container writer is planned.
 
 ## The plan
 
@@ -382,7 +401,7 @@ another encoder; the byte oracle then moves from the listing to the two store ro
 | 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use, byte-exact (done) |
 | 5a | constant, graph and function objects: two passes per function, a reference table and positions, terminators | both carriers' listings byte-exact (done) |
 | 5b | module, package, profile, policy, target and build-request objects | both carriers' six appended lines byte-exact (done; the snapshot moves to 5c) |
-| 5c | write the store from the listing (`xax_selfhost_writer` reuse) | the two stores byte-exact, roots `7ef7099d…` and `baec162e…` |
+| 5c | snapshot object, which is the store's root (done) and the store container from the listing (`xax_selfhost_writer` reuse) | the root CIDs match (done); the two stores byte-exact (left) |
 | 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
 
 Steps 5b and 5c are where the existing `xax_selfhost_resolve` and `xax_selfhost_writer` components are
