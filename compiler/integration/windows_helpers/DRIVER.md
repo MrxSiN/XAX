@@ -20,7 +20,7 @@ not measure full BBC compilation or change competitor scores.
 
 | Command | Result and boundary |
 |---|---|
-| `verify <store> <diagnostic>` | The original 212-case report retains 78 accepts, 130 rejects, four declines and one diagnostic mismatch. The current driver passes the separate 160-case semantic replay: 63 accepts, 97 rejects, no declines and exact full diagnostics. It also accepts BBC's v4 importer and v5 packed Mandelbrot store. This follow-up does not rerun every original case. |
+| `verify <store> <diagnostic>` | The original 212-case report retains 78 accepts, 130 rejects, four declines and one diagnostic mismatch. The current driver passes the separate 160-case semantic replay: 63 accepts, 97 rejects, no declines and exact full diagnostics. The original report's archived store inputs retain their original scope; current BFX coverage is listed below. This follow-up does not rerun every original case. |
 | `inspect <store> <record>` | A valid semantic store produces its binary inspection record; the existing `decode_inspection` renders it. |
 | `resolve <request> <snapshot>` | The Windows PE test request produces the exact reference snapshot with the driver's resolver identity. |
 | `build <snapshot> <artifact> <provenance>` | The PE smoke fixture produces reference-identical executable and provenance bytes; the executable runs correctly. Windows DLL packaging explicitly declines. |
@@ -194,3 +194,41 @@ results include any remaining declines/rejections. Snapshot preparation still
 uses generic bootstrap APIs. DLL/shared-library packaging, self-store/resource
 callee coverage and the full native BBC source workflow remain incomplete.
 No complete-build, runtime, RAM or competitor performance score follows.
+
+## Native pointer and byte lowering — 2026-10-21
+
+[native_lowering_evidence.json](native_lowering_evidence.json) and
+[regression/native_windows](regression/native_windows/README.md) record the
+current verified source root `db44f3a8cdc955cf264aec7f4eabed549bca1bcc5bcb5d0685c6a1ee4b658e18`. Three ordered expected-root
+transactions add first-class pointer frame support on Windows, byte arithmetic
+masking, signed displacement validation and the existing SDK Win64 page probes.
+[frame_pointers.edit](frame_pointers.edit) starts at the bitwise-phase root;
+[native_pointer_lowering.edit](native_pointer_lowering.edit) then changes the
+descendant helpers; [native_stack_probe.edit](native_stack_probe.edit) edits the
+resulting outer frame. All new helpers are asserted reachable before final save.
+Generic SDK and builder source remain unchanged by these edits.
+
+Private helper checks pass 240 displacement, 20 stack and 24 byte-store cases.
+Counted native grids cover all 256 by 256 operand pairs for six byte operations
+on both inline-eligible and non-inline routes: 786,432 route executions.
+Twenty-four pointer/bounds programs, three stack sizes, 48 earlier controls
+and 160 exact semantic diagnostic cases pass. The former 8,192-addition frame
+program now returns 16392 instead of access violation. Four byte-width controls
+now accept; the other 44 earlier output expectations and six further unsupported
+operation diagnostics retain exact bytes.
+
+All six original BBC target snapshots build twice identically and execute on
+Windows and Pixel 8 Pro. A separate 42-target corpus passes 38: three Windows cases
+hit NATIVE-CALL-ARITY [5,4], and Android deep512 verifies but declines at build.
+The public BBC command store also verifies but hits that call ABI gate.
+Self-store/resource-callee coverage, DLL/shared libraries and common loader
+migration remain incomplete. Initial bootstrap and snapshot preparation still
+use generic Python APIs. No full Python-free BBC source workflow is claimed.
+
+Fresh native prepared-build medians are 24.25–31.83 ms, with nine scored processes
+per case; source frontend/import/binding are excluded. Separate OS counter
+samples record about 3.31 GiB private commit and 11.2–13.3 MiB peak resident memory.
+These boundaries do not establish a full-build or competitor win. The compiler
+PE is 11,866,112 bytes, SHA256 `23d0b374b3701f011e7ad3aa7f5169085b237c2078db603aab8376591c914f1c`.
+Its bootstrap uses SDK 1c211da; three private helpers also rebuild byte-identically
+under upstream 2e1af7c. That compatibility check is not a new whole-driver bootstrap.
