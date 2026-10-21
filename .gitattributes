@@ -31,3 +31,8 @@ compiler/integration/windows_helpers/native_lowering_evidence.json -text whitesp
 compiler/integration/windows_helpers/native_android_lowering_evidence.json -text whitespace=cr-at-eol
 compiler/integration/windows_helpers/regression/android/*.xax -text
 compiler/integration/windows_helpers/regression/android/*.edit -text
+
+# Exact alias-index implementation and regression evidence.
+compiler/integration/windows_helpers/alias_index_evidence.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/regression/android_alias/*.xax -text
+compiler/integration/windows_helpers/regression/android_alias/*.json -text

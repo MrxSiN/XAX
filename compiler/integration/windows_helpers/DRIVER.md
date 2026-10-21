@@ -265,3 +265,30 @@ peak-RAM improvement is claimed. Android-hosted compiler execution, the public
 source-to-native command, self-store/resource-callee coverage, common loading,
 shared libraries and the Windows call ABI boundary remain incomplete. Android
 alias/range analysis and complete native workflow remain the next priority.
+
+## ARM64 alias indexing — 2026-10-21
+
+[The immutable report](alias_index_evidence.json) records root `ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd`.
+[android_alias_index.edit](android_alias_index.edit) expects the preceding
+Android interval-allocation root. The canonical helper indexes incoming edges
+inside per-call scratch, preserves parameter and edge order, and releases its
+scratch on success. Insufficient scratch enters the unchanged canonical scan
+before alias/stamp mutation. First verification remains mandatory; no Python
+compiler fallback is added. Generic SDK and builder sources are unchanged.
+
+There are 1,091 native helper and 1,091 production-dispatch checks, including
+forced scratch failures. [Regression fixtures](regression/android_alias/README.md)
+freeze the internal cases. All 22 Android snapshots reproduce exact artifacts
+in 44 builds and pass 47 Pixel 8 Pro executions, plus a separate hello replay.
+All 160 semantic diagnostics and three Windows smoke artifacts remain exact.
+
+The report includes 76 counterbalanced fresh-process prepared native builds,
+66 scored and 10 warmups, with three deep and nine small samples per arm.
+The three small Android medians fall by 16.8–20.4%. Depth-512 zero-entry
+builds fall from 111.340 s to 0.327 s, and active builds from 146.465 s to
+0.688 s. All artifacts and provenance remain exact across both compiler arms.
+Source frontend, BFX import, binding and snapshot preparation are excluded.
+These measurements do not replace full-source/competitor or peak-RAM results.
+The public source workflow, libraries, common loading, self-store/resource-callee
+coverage and Windows ABI gaps remain incomplete. Bootstrap uses unchanged
+SDK 1c211da and existing local proof/fragment APIs; bootstrap time is unscored.
