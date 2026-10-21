@@ -1248,3 +1248,7 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - `__pycache__` files are tracked: run with `PYTHONDONTWRITEBYTECODE=1` or restore them before committing.
 - Next: S15e.3b (DLLs), S15e.7 (accelerator, SPIR-V), S15e.4-S15e.6.
 
+## S15e.3c 64 MiB stores and seed rotation — 2026-10-21 (ADR-319)
+
+- `DATA_EXTENT` and the writer's `IN_EXTENT`/`OUT_LIMIT` are 64 MiB. Regenerating the decoder or writer store after changing their constants needs `XAX_STORE_PYTHON_DECODER=1 XAX_STORE_PYTHON_WRITER=1` (the old native images disagree with the new Python buffers). Seed `66a3f91d…`, 14,372,181 bytes.
+
