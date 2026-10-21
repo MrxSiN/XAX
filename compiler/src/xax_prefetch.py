@@ -96,9 +96,6 @@ def prefetch_next_iteration(graph, resolve: Callable[[bytes], SemanticObject]):
         if term.kind != TerminatorKind.BRANCH or len(term.edges) != 1:
             continue
         (walk, arguments), = term.edges
-        inner = _cycle_blocks(graph, walk, body_index)
-        if not inner:
-            continue
         for load_index, load in enumerate(body.nodes):
             if load.operation != Operation.CHECKED_LOAD_BITS_LE:
                 continue
@@ -128,6 +125,10 @@ def prefetch_next_iteration(graph, resolve: Callable[[bytes], SemanticObject]):
             # The guess for the next input: the value this body passes on in the seed's own parameter position.
             guess = arguments[seed.index] if seed.index < len(arguments) else None
             if guess is None or guess not in expression:
+                continue
+            # Only now is the cycle worth finding: it is the expensive part, and most bodies never get here.
+            inner = _cycle_blocks(graph, walk, body_index)
+            if not inner:
                 continue
             # Inner-loop arrays read at block-parameter * scale, with pointers defined in the entry block.
             prefetches = []

@@ -136,7 +136,7 @@ def _lower(graph, blocks: list[_Block], entry: _Block):
         for value in (*block.inputs, *(output for item in block.nodes for output in item.outputs)):
             if value.extent is not None:
                 extents.append((where[id(value)], value.extent))
-    return replace(graph, entry=index[id(entry)], blocks=tuple(parsed_blocks), member_spans=(), pointer_extents=tuple(extents))
+    return replace(graph, entry=index[id(entry)], blocks=tuple(parsed_blocks), member_spans=(), pointer_extents=tuple(sorted(extents, key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result))))
 
 
 def _replace_uses(blocks: list[_Block], mapping: dict[int, _Value]) -> None:

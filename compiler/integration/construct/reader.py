@@ -67,35 +67,11 @@ EXIT_BAD_OPEN_IN, EXIT_BAD_OPEN_OUT, EXIT_READ, EXIT_TOO_LARGE = 2, 3, 4, 5
 EXIT_SHORT_WRITE, EXIT_TRAILING, EXIT_SYNTAX, EXIT_OVERFLOW = 6, 7, 8, 9
 
 
-def _imports(api, pointer):
-    abi = b"win64-c"
-    process, filesystem, memory = api.process_effect, api.filesystem_effect, api.memory_effect
-    return {
-        "command_line": foreign_function_symbol(b"kernel32.dll", b"GetCommandLineA", (process,), (B64, process), abi=abi),
-        "copy": foreign_function_symbol(b"kernel32.dll", b"lstrcpynA", (pointer, B64, B32, memory), (B64, memory), abi=abi),
-        "open": foreign_function_symbol(b"msvcrt.dll", b"_open", (pointer, B32, B32, filesystem), (B32, filesystem), abi=abi),
-        "read": foreign_function_symbol(b"msvcrt.dll", b"_read", (B32, pointer, B32, filesystem, memory),
-                                        (B32, filesystem, memory), abi=abi),
-        "write": foreign_function_symbol(b"msvcrt.dll", b"_write", (B32, pointer, B32, filesystem, memory),
-                                         (B32, filesystem, memory), abi=abi),
-        "close": foreign_function_symbol(b"msvcrt.dll", b"_close", (B32, filesystem), (B32, filesystem), abi=abi),
-        "exit": api.exit_process,
-        "allocate": api.virtual_alloc,
-    }
+def _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem_type):
+    """The byte, node and output accessors of one function, bound to its ``proc``.
 
-
-def build_main(api, stdio, on_tree=None, view_alignment=1):
-    """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier.
-
-    With ``on_tree`` the parsed tree is handed to that callback instead of being re-emitted; it receives
-    an environment of the node accessors, the byte helpers and the output writer.  ``view_alignment`` is
-    the alignment the byte view is lent with; a resolver that hashes inside the view asks for four, so a
-    word-aligned scratch area can be addressed."""
-    proc_type, fs_type, mem_type = api.process_effect, api.filesystem_effect, api.memory_effect
-    pointer_type, view_type = stdio.bytes_rw, heap_view_type(EXTENT)
-    declarations = _imports(api, pointer_type)
-    declarations["free"] = api.virtual_free_view(view_type, pointer_type)
-    p = Proc((("proc", proc_type), ("fs", fs_type), ("mem", mem_type)))
+    The reader's front half and a resolver's second function share this code; every accessor reads and
+    writes the named registers of the ``proc`` it is built for, so nothing is shared at run time."""
 
     def c32(value):
         return p.const(value, B32)
@@ -176,9 +152,77 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
         p.if_(eq(p["code"], 0), lambda _p: work())
 
     def fail_if(condition, code):
-        def mark(_p):
-            p["code"] = c32(code)
-        p.if_(p.all_of(eq(p["code"], 0), condition), mark)
+        # ``code = code + (code == 0 && condition ? code : 0)``.  A branch here would add a block at every
+        # check site, and a function's verifier work grows with its block count: the first failure wins
+        # either way, and no later check can overwrite it.
+        p["code"] = add(p["code"], mul(p.widen(p.all_of(eq(p["code"], 0), condition)), c32(code)))
+
+    def put(node, field, value):
+        st32(add(field, mul(node, c32(4))), value)
+
+    def get(node, field):
+        return ld32(add(field, mul(node, c32(4))))
+
+    def frame_slot(slot, field):
+        return add(field, mul(slot, c32(4)))
+
+    def put_out(value):
+        store_out(p["out"], p.const(value, B8))
+        p["out"] = add(p["out"], c32(1))
+        fail_if(p.cmp(IntCompare.UGE, p["out"], c32(OUT_CAP), B32), EXIT_OVERFLOW)
+
+    def raw_at(pointer, offset):
+        value, memory = p.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, offset, p["mem"]), (B8, mem_type),
+                             attributes=(1, 1))
+        p["mem"] = memory
+        return value
+
+    return {
+        "p": p, "c32": c32, "add": add, "sub": sub, "mul": mul, "at": at,
+        "ld8": ld8, "ld32": ld32, "st8": st8, "st32": st32, "st64": st64,
+        "byte": byte, "load_out": store_out, "store_out": store_out, "in_byte": raw_at, "raw_at": raw_at,
+        "out_byte": put_out, "put_out": put_out, "out_dyn": put_dyn, "put_dyn": put_dyn,
+        "fail": fail_if, "fail_if": fail_if, "guard": guard, "eq": eq, "ne": ne, "lt": lt, "cmp": p.cmp,
+        "exit_with": exit_with, "put": put, "get": get, "frame_slot": frame_slot,
+    }
+
+
+def _imports(api, pointer):
+    abi = b"win64-c"
+    process, filesystem, memory = api.process_effect, api.filesystem_effect, api.memory_effect
+    return {
+        "command_line": foreign_function_symbol(b"kernel32.dll", b"GetCommandLineA", (process,), (B64, process), abi=abi),
+        "copy": foreign_function_symbol(b"kernel32.dll", b"lstrcpynA", (pointer, B64, B32, memory), (B64, memory), abi=abi),
+        "open": foreign_function_symbol(b"msvcrt.dll", b"_open", (pointer, B32, B32, filesystem), (B32, filesystem), abi=abi),
+        "read": foreign_function_symbol(b"msvcrt.dll", b"_read", (B32, pointer, B32, filesystem, memory),
+                                        (B32, filesystem, memory), abi=abi),
+        "write": foreign_function_symbol(b"msvcrt.dll", b"_write", (B32, pointer, B32, filesystem, memory),
+                                         (B32, filesystem, memory), abi=abi),
+        "close": foreign_function_symbol(b"msvcrt.dll", b"_close", (B32, filesystem), (B32, filesystem), abi=abi),
+        "exit": api.exit_process,
+        "allocate": api.virtual_alloc,
+    }
+
+
+def build_main(api, stdio, on_tree=None, view_alignment=1):
+    """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier.
+
+    With ``on_tree`` the parsed tree is handed to that callback instead of being re-emitted; it receives
+    an environment of the node accessors, the byte helpers and the output writer.  ``view_alignment`` is
+    the alignment the byte view is lent with; a resolver that hashes inside the view asks for four, so a
+    word-aligned scratch area can be addressed."""
+    proc_type, fs_type, mem_type = api.process_effect, api.filesystem_effect, api.memory_effect
+    pointer_type, view_type = stdio.bytes_rw, heap_view_type(EXTENT)
+    declarations = _imports(api, pointer_type)
+    declarations["free"] = api.virtual_free_view(view_type, pointer_type)
+    p = Proc((("proc", proc_type), ("fs", fs_type), ("mem", mem_type)))
+
+    A = _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem_type)
+    (c32, add, sub, mul, at, ld8, st8, ld32, st32, byte, store_out, put_dyn, st64, eq, ne, lt,
+     exit_with, guard, fail_if, put, get, frame_slot, put_out, raw_at) = (
+        A[name] for name in ("c32", "add", "sub", "mul", "at", "ld8", "st8", "ld32", "st32", "byte",
+                             "store_out", "put_dyn", "st64", "eq", "ne", "lt", "exit_with", "guard",
+                             "fail_if", "put", "get", "frame_slot", "put_out", "raw_at"))
 
     block, owner, memory = p.op(
         Operation.CALL_FOREIGN, (p.const(0, B64), p.const(EXTENT, B64), c32(0x3000), c32(4), p["mem"]),
@@ -257,15 +301,6 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
         fail_if(p.cmp(IntCompare.UGE, p["got"], c32(IN_CAP), B32), EXIT_TOO_LARGE)
 
     # -- tree -------------------------------------------------------------------------------------------
-    def put(node, field, value):
-        st32(add(field, mul(node, c32(4))), value)
-
-    def get(node, field):
-        return ld32(add(field, mul(node, c32(4))))
-
-    def frame_slot(slot, field):
-        return add(field, mul(slot, c32(4)))
-
     def new_node(kind_value, start, end):
         fail_if(p.cmp(IntCompare.UGE, p["nodes"], c32(NODE_CAP), B32), EXIT_OVERFLOW)
         node = p["nodes"]
@@ -514,17 +549,6 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
         fail_if(eq(p["root"], 0), EXIT_SYNTAX)
 
     # -- canonical emission ------------------------------------------------------------------------------
-    def put_out(value):
-        store_out(p["out"], p.const(value, B8))
-        p["out"] = add(p["out"], c32(1))
-        fail_if(p.cmp(IntCompare.UGE, p["out"], c32(OUT_CAP), B32), EXIT_OVERFLOW)
-
-    def raw_at(pointer, offset):
-        value, memory = p.op(Operation.CHECKED_LOAD_BITS_LE, (pointer, offset, p["mem"]), (B8, mem_type),
-                             attributes=(1, 1))
-        p["mem"] = memory
-        return value
-
     def copy_span(source, length):
         p["a"] = source
         p["b"] = add(source, length)
@@ -606,21 +630,25 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
         p["fs"] = p.op(Operation.CALL_FOREIGN, (p["fd"], p["fs"]), (B32, fs_type), entity=declarations["close"])[1]
         fail_if(p.cmp(IntCompare.NE, p["written"], p["out"], B32), EXIT_SHORT_WRITE)
 
+    EXTRA: list = []
+
     def environment(proc):
-        """The parser's node accessors and output writer, for a resolver built on this front half."""
-        return {
-            "p": proc,
-            "get": get, "put": put, "at": at, "add": add, "sub": sub, "mul": mul,
-            "ld8": ld8, "ld32": ld32, "st8": st8, "st32": st32, "st64": st64,
-            "byte": byte, "load_out": store_out, "in_byte": raw_at,
-            "out_byte": put_out, "out_dyn": put_dyn, "fail": fail_if,
-            "c32": c32, "eq": eq, "ne": ne, "lt": lt, "cmp": proc.cmp,
+        """The parser's node accessors and output writer, for a resolver built on this front half.
+
+        Calling it with another ``proc`` yields accessors bound to that function: a resolver that splits
+        itself across functions builds each one from this front half's declarations and can still read the
+        parsed tree, allocate, and free its view."""
+        env = _accessors(proc, declarations, pointer_type, view_type, proc_type, fs_type, mem_type)
+        env.update({
             "KIND": KIND, "START": START, "END": END, "FIRST": FIRST, "NEXT": NEXT,
             "OBJECT": OBJECT, "ARRAY": ARRAY, "STRING": STRING, "INTEGER": INTEGER,
             "IN": IN, "OUT": OUT, "OUT_CAP": OUT_CAP, "SCRATCH": SCRATCH, "NS": NS,
             "EXIT_SYNTAX": EXIT_SYNTAX, "EXIT_OVERFLOW": EXIT_OVERFLOW,
-            "mem_type": mem_type, "view_type": view_type,
-        }
+            "mem_type": mem_type, "view_type": view_type, "pointer_type": pointer_type,
+            "proc_type": proc_type, "fs_type": fs_type,
+            "declarations": declarations, "accessors": environment, "extra": EXTRA,
+        })
+        return env
 
     def normalize():
         parse()
@@ -633,7 +661,7 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
     guard(normalize)
     guard(write_output)
     exit_with(p["code"])
-    return p.function((B32, proc_type, fs_type, mem_type)), tuple(p.graph.objects.values())
+    return (p.function((B32, proc_type, fs_type, mem_type)), tuple(p.graph.objects.values()) + tuple(EXTRA))
 
 
 def build_reader(name=b"xax-construct-reader", on_tree=None, view_alignment=1, extra_objects=()):
