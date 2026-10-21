@@ -33,11 +33,14 @@ from xax_graph_builder import program_store
 from xax_native import bootstrap_dir
 from xax_selfhost_facts import E, H_ARENA, H_ARENA_END, NONE, _function
 import xax_selfhost_diagnostics as D
+import xax_selfhost_general_dll as DLL
+from xax_selfhost_general_accel import add_accelerator_functions
+from xax_selfhost_general_spirv import add_spirv_functions
 from xax_selfhost_general_view import add_view_functions, views_prologue
 from xax_selfhost_views_backend import (
     _FN, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
     G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ATTRIBUTES, NI_ENTITY, NI_OP, NI_RESULTS, NativeProgram, _at, _borrowed, _call,
-    _cid_at, _cid_less, _cid_words, _erased, _find, _g, _interface, _kind, _node_info, _ok, _payload_uleb, _reference,
+    _cid_at, _cid_words, _erased, _find, _g, _interface, _kind, _node_info, _ok, _payload_uleb, _reference,
     _target_list, _term_end, _type_form, _type_width,
 )
 
@@ -727,6 +730,25 @@ def _frontend(tables):
             D.integer(e, p["t_abi"])
             D.integer(e, p["t_fmt"])
 
+        def accelerator():
+            """S15e.7a (ADR-321): an accelerator target's deployment packet (``xax_selfhost_general_accel``)."""
+            e.var("acc_entry", e.call(_FN["find"], 1))
+            _ok(e, e.ne(p["acc_entry"], NONE))
+            _call(e, "accelerator", p["acc_entry"], target)
+            e.st(0, OK)
+            e.give(1)
+
+        e.if_(e.eq(p["t_arch"], 4), accelerator)
+
+        def spirv():
+            """S15e.7b (ADR-321): a SPIR-V compute module (``xax_selfhost_general_spirv``)."""
+            e.var("spv_entry", e.call(_FN["find"], 1))
+            _ok(e, e.ne(p["spv_entry"], NONE))
+            _call(e, "spirv", p["spv_entry"])
+            e.st(0, OK)
+            e.give(1)
+
+        e.if_(e.eq(p["t_arch"], 7), spirv)
         e.st(GLOBALS + G_WINDOWS, e.flag(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1))))
         linux = e.both(e.eq(p["t_abi"], LINUX_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
         e.if_(e.eq(_g(e, G_WINDOWS), 0), lambda: _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual))
@@ -734,6 +756,11 @@ def _frontend(tables):
         # 2. The process entry (``validate_process_entry``).
         e.var("entry", e.call(_FN["find"], 1))
         _ok(e, e.ne(p["entry"], NONE))
+        # S15e.3b (ADR-320): on the PE profile the driver names a DLL's build request instead of its entry; the plan
+        # (``xax_selfhost_general_dll``) gives the entry and the further roots.
+        e.st(DLL.D_ON, 0)
+        e.st(DLL.D_NROOTS, 0)
+        e.if_(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_kind(e, p["entry"]), int(Kind.BUILD))), lambda: e.set("entry", _call(e, "dll_plan", p["entry"])))
         entry = p["entry"]
         e.st(GLOBALS + G_ENTRY, entry)
 
@@ -782,10 +809,9 @@ def _frontend(tables):
         contract = e.either(e.ne(_g(e, G_WINDOWS), 0), e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0)))
         _reject(e, contract, "LINUX-PROCESS-ENTRY-CONTRACT", entry, lambda: D.text(e, ENTRY_CONTRACT_EXPECTED), contract_actual)
 
-        # 3. The closure, depth first in the bootstrap's order.
+        # 3. The closure, depth first in the bootstrap's order; (S15e.3b) then each further root's.
         e.st(GLOBALS + G_MEMBERS, 0)
         e.var("depth", 0)
-        _push(e, entry)
 
         def step():
             e.var("fr", e.add(_g(e, G_FRAMES), e.mul(e.sub(p["depth"], 1), FRAME)))
@@ -819,21 +845,22 @@ def _frontend(tables):
 
             e.if_(e.ne(e.ld(e.add(fr, F_NODES)), 0), node, terminator)
 
-        e.while_(lambda: e.ne(p["depth"], 0), step)
+        # 4. The image order: each root's new functions by CID (``_function_closure``'s ``sorted(functions)``).
+        e.var("rk", 0)
+        e.var("rseg", 0)
 
-        # 4. The image order: the closure by CID.
+        def root():
+            e.var("rt", e.sel(e.eq(p["rk"], 0), entry, e.ld(e.add(e.ld(DLL.D_ROOTS), e.sub(p["rk"], 1)))))
+            e.if_(e.ne(p["rk"], 0), lambda: _call(e, "dll_root", p["rt"]))
+            e.if_(e.eq(e.ld(e.add(_g(e, G_TW), p["rt"])), 0), lambda: (_push(e, p["rt"]), e.while_(lambda: e.ne(p["depth"], 0), step)))
+            _call(e, "dll_sort", p["rseg"], _g(e, G_MEMBERS))
+            e.set("rseg", _g(e, G_MEMBERS))
+            e.set("rk", e.add(p["rk"], 1))
+
+        e.while_(lambda: e.lt(p["rk"], e.add(1, e.ld(DLL.D_NROOTS))), root)
         order = _g(e, G_ORDER)
         members = _g(e, G_MEMBERS)
         e.var("members", members)
-
-        def insert():
-            e.var("item", e.ld(e.add(order, p["s"])))
-            e.var("j", p["s"])
-            before = lambda: e.both(e.lt(0, p["j"]), _cid_less(e, _cid_at(e, p["item"]), _cid_at(e, e.ld(e.add(order, e.sub(p["j"], 1))))))  # noqa: E731
-            e.while_(before, lambda: (e.st(e.add(order, p["j"]), e.ld(e.add(order, e.sub(p["j"], 1)))), e.set("j", e.sub(p["j"], 1))))
-            e.st(e.add(order, p["j"]), p["item"])
-
-        e.for_("s", 1, p["members"], insert)
         _ok(e, e.lt(e.add(ORDER_AT, e.mul(p["members"], CID_WORDS)), D.DIAG_AT))
         e.st(COUNT_AT, p["members"])
 
@@ -876,6 +903,9 @@ def build_general_program():
     add("entry_abi", _entry_abi(tables))
     add("prologue", _prologue(tables))
     add("node", _node(tables))
+    DLL.add_dll_functions(add, tables)  # S15e.3b (ADR-320)
+    add_accelerator_functions(add, tables)  # S15e.7a (ADR-321)
+    add_spirv_functions(add, tables)  # S15e.7b (ADR-321)
     add_view_functions(add, tables)
     program = add("frontend", _frontend(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
