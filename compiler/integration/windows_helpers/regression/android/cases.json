@@ -1,0 +1,37 @@
+{
+  "driver_root": "68ecf527e4c18c163d1fc2bdddc76335ca2f205eff4f57766cec944a67915f4c",
+  "target": "android-arm64",
+  "cases": [
+    {
+      "name": "deep_zero_512",
+      "source_snapshot_sha256": "dc4a17058f37105153f7f2ef0c1618fbf679e8f1f97842212b30ef0bbec0a0e7",
+      "snapshot_root": "a64599059abeaf31f7232b434aca3e9ffb6fa36ff7dfb90c1bce47f06b6bd5d5",
+      "source_sha256": "31c8b5b3c0609f20a09a67b6c4d2688244e6bbc7820fd46fcc3997e855323319",
+      "prepack_commands": 1026,
+      "packed_commands": 1026,
+      "verify_exit": 0,
+      "build_exit": 0,
+      "artifact_sha256": "f0e67192b1ae3bd21aa318acd3e7203484036fab0de8c1219163c299c6e0b449",
+      "artifact_bytes": 13680,
+      "provenance_sha256": "9f1b855c0657f1c7cf2c09e29bae49d7d545d5bc4a22c385e9295877d1e9b447",
+      "expected_output_hex": "01",
+      "program_exit": 0
+    },
+    {
+      "name": "deep_active_512",
+      "source_snapshot_sha256": "15b4040be2f02bcae07cc294f4ded9726f23d26ac17d1b1ea2a88b345041346f",
+      "snapshot_root": "deb4d627b7f6869e30d5c3b746b8786d1a18cf3f337d70c4c96c2f5bc028973a",
+      "source_sha256": "19b7d68c287fb756de791e19df006fb252bf634b3015d6ce5ecfd5e2fb78a3c3",
+      "prepack_commands": 1030,
+      "packed_commands": 1029,
+      "verify_exit": 0,
+      "build_exit": 0,
+      "artifact_sha256": "ac8c7e4058a470c94daaf62e39e84011fe354a7586b4f0c0a7efc303945bd994",
+      "artifact_bytes": 19960,
+      "provenance_sha256": "98bdb5ee86ae110dcc58e71cf52a856a0dbca887d7ee30b4b2eb17991e0ea60d",
+      "expected_output_hex": "03020100",
+      "program_exit": 0
+    }
+  ],
+  "scope": "Exact canonical snapshots and expected-root host bindings. Source/BFX/framed fixtures live in BBC tests/compile. Both build twice identically and execute on Pixel8Pro."
+}
