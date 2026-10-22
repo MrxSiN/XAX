@@ -244,19 +244,22 @@ def corpus(directory: Path):
         from unittest import mock
 
         import xax_pe
+        import xax_selfhost_aarch64_general as A64
         import xax_selfhost_general_accel as ACC
         import xax_selfhost_general_spirv as SPV
         import xax_selfhost_general_wasm as WASM
         import xax_selfhost_x86_64_general as GEN
 
         accel, spirv, dll, page = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll, WASM.browser_page
-        module, raw = WASM.wasm_module, GEN.x86_64_raw_image
+        module, raw, bare, pe = WASM.wasm_module, GEN.x86_64_raw_image, A64.aarch64_raw_image, xax_pe.compile_pe_executable
         with mock.patch.object(ACC, "accelerator_artifact", lambda r, f, t, frontend="auto": accel(r, f, t, frontend="python")), \
              mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": spirv(r, f, t, frontend="python")), \
              mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()), \
              mock.patch.object(WASM, "browser_page", lambda r, f, t, frontend="auto": page(r, f, t, frontend="python")), \
              mock.patch.object(WASM, "wasm_module", lambda r, f, t, frontend="auto": module(r, f, t, frontend="python")), \
-             mock.patch.object(GEN, "x86_64_raw_image", lambda r, f, t, frontend="auto": raw(r, f, t, frontend="python")):
+             mock.patch.object(GEN, "x86_64_raw_image", lambda r, f, t, frontend="auto": raw(r, f, t, frontend="python")), \
+             mock.patch.object(A64, "aarch64_raw_image", lambda r, f, t, frontend="auto": bare(r, f, t, frontend="python")), \
+             mock.patch.object(xax_pe, "compile_pe_executable", lambda r, c, t, frontend="auto": pe(r, c, t, frontend="python")):
             expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
         cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference))
@@ -363,6 +366,21 @@ def corpus(directory: Path):
         raw_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != raw_target.cid)
         build(f"build: a Windows load image ({raw_name})", _program(raw_objects, {b"image": raw_entry}, raw_target),
               "negative" if raw_name.endswith("unsupported") else "positive")
+    # S15f.4 (ADR-325): bare-metal AArch64 images, lowered by the AArch64 program in the driver.
+    from aarch64_raw_corpus import aarch64_raw_case
+
+    for raw_kind in ("legacy", "eligible", "general"):
+        reader, raw_entry, raw_target, raw_name = aarch64_raw_case(target_rng, raw_kind)
+        raw_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != raw_target.cid)
+        build(f"build: a bare-metal AArch64 image ({raw_name})", _program(raw_objects, {b"image": raw_entry}, raw_target), "positive")
+    # S15e.3b (ADR-326): PE32+ functions on the hosted legacy register path, lowered by the general x86-64 program.
+    from pe_legacy_corpus import pe_legacy_case
+
+    for fault in (None, None, "abi"):
+        reader, pe_entry, pe_target, pe_name = pe_legacy_case(target_rng, fault)
+        pe_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != pe_target.cid)
+        build(f"build: a PE32+ legacy register path program ({pe_name})", _program(pe_objects, {b"image": pe_entry}, pe_target),
+              "negative" if fault else "positive")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)

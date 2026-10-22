@@ -15,7 +15,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (JVM jars, Android packages and the raw x86-64, Wasm and AArch64 images are compiled by Python backends (S15e.5, S15e.6), and Windows functions only the legacy register path takes are left to the bootstrap; Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V raw images, accelerator deployments, SPIR-V modules and browser pages are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (JVM jars and Android packages are compiled by Python backends (S15e.5, S15e.6); Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules and browser pages are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1275,3 +1275,27 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - Corpus: `tests/wasm_corpus.py`; driver test `test_browser_pages`; bench cases "build: a browser page (...)".
 - Next: S15e.5 (JVM jars), S15e.6 (Android), the raw-image targets, the Windows legacy register path. Before the next addition to the general program, make room in the views region.
 - The components' output view is 2 GiB (`xax_selfhost_typing.OUT_EXTENT`): the views backend lowering the driver needed ~105M words. Regenerating after such a layout change needs every native opt-out set (`XAX_*_PYTHON*`), since the old native images read the old layout.
+
+## S15f.4 and S15e.3b — 2026-10-22 (ADR-325, ADR-326)
+
+- `src/xax_selfhost_aarch64_legacy.py`: the AArch64 legacy register path (`a64l_*`; state at `_a` slot 130). It is registered inside `add_frame_functions` before `a64f_function`, because it calls `a64f_movimm`. The dry run emits too: the emission state (`X_LEN`, `X_NFIX`, `X_NCALLS`, `X_NRANGES`, `F_NEXT_LABEL`) is reset before the real run.
+- Bare-metal routing:
+  - `G_A64RAW` (GLOBALS slot 191) is set by the AArch64 front end for ABI 3 / format 1.
+  - `a64_view` skips the Linux allocator.
+  - `_layout_fn` does not share slots.
+  - The image has no stub or thunks.
+  - Request path: `PATH_A64_RAW` 9 (ABI 3 required).
+  - Hook: `xax_selfhost_aarch64_general.aarch64_raw_image`.
+- Hosted x86 legacy additions: `lg_hosted` in `xax_selfhost_general_legacy.py`. `lg_call` takes `(node, position, obj, com)`: `obj` NONE for a direct call, `com` NONE for an import.
+- Corpora:
+  - `tests/aarch64_raw_corpus.py` (kinds `legacy`, `eligible`, `general`, `random`).
+  - `tests/pe_legacy_corpus.py` (faults `com`, `abi`, `malformed`, `bound`). An inlined float leaf makes the bootstrap try its legacy path.
+- Tests:
+  - `test_xax_selfhost_aarch64_raw.py`.
+  - `test_xax_selfhost_pe_legacy.py`.
+  - `test_raw_images` includes the AArch64 cases.
+- Pitfall: do not edit a builder module while a regeneration chain runs. The rebase and the evolved build import it and would capture half-finished code.
+- View tests:
+  - The audit decoder now sorts `pointer_extents` by value reference, as the verifier does.
+  - `test_legacy_register_path` no longer expects `NATIVE-BITS-SUPPORTED` (ADR-324 sends narrow arithmetic to the frame path).
+- Next: S15e.5 (JVM jars; `xax_jvm._compile_method_pass` is a two-pass optimizer: aliases, folding, slot coloring, deferred stores, stack-kept values) and S15e.6 (Android).
