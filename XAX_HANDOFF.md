@@ -1299,3 +1299,22 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   - The audit decoder now sorts `pointer_extents` by value reference, as the verifier does.
   - `test_legacy_register_path` no longer expects `NATIVE-BITS-SUPPORTED` (ADR-324 sends narrow arithmetic to the frame path).
 - Next: S15e.5 (JVM jars; `xax_jvm._compile_method_pass` is a two-pass optimizer: aliases, folding, slot coloring, deferred stores, stack-kept values) and S15e.6 (Android).
+
+## S15e.5a JVM program — 2026-10-22 (ADR-327)
+
+- Modules:
+  - `xax_selfhost_jvm` (front end, methods, class file, JAR, host `jvm_with_xax`/`jvm_jar`).
+  - `_jvm_class` (buffers, pool).
+  - `_jvm_code` (code buffer; `jc_flush` emits a deferred store's bytes directly, because the DSL has no recursion).
+  - `_jvm_method` (analyses).
+  - `_jvm_lower` (task stack at `M_WORK + 2^20`, top in `M_ONE`).
+  - `_jvm_emit`.
+- Pitfalls:
+  - A variable declared inside an `if_`/`for_` body is out of scope after it: declare it first.
+  - `jk_emit_pass` gives, so call it through `_emit_pass_call`.
+  - `M_NEEDS_PK` is reset after the counting pass. Pass 2 (all attempts) sets `J_PK`.
+- Checks:
+  - `tests/test_xax_selfhost_jvm.py`.
+  - The JVM tests with `XAX_GENERAL_FRONTEND_DIFF=1`.
+  - Recording every `compile_jvm_bound_target` call of a test module against `jvm_with_xax` finds the declines to port next.
+- Next: floats and conversions (`test_conversions`, `test_arithmetic_and_compares`), platform calls, traps. After that, a driver request path for JARs (then rotate the seed), and S15e.6 (Android).
