@@ -137,7 +137,7 @@ def compile_pe_executable(reader, function_cid: bytes, target_object, *, fronten
     from xax_selfhost_x86_64_general import general_with_xax
 
     verify_store(reader)
-    decided = general_with_xax(reader, function_cid, target_object, required=frontend == "xax")
+    decided = general_with_xax(reader, function_cid, target_object, required=frontend == "xax", linux=False)
     image = None if decided is None else decided.image
     if image is None:
         if frontend == "xax":
@@ -160,7 +160,7 @@ def compile_pe_dll(reader, request_cid: bytes, target_object, reference, *, fron
         return reference()
     from xax_selfhost_x86_64_general import general_with_xax
 
-    decided = general_with_xax(reader, request_cid, target_object, required=frontend == "xax")
+    decided = general_with_xax(reader, request_cid, target_object, required=frontend == "xax", linux=False)
     image = None if decided is None else decided.image
     if image is None:
         if frontend == "xax":

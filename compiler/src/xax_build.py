@@ -2158,13 +2158,12 @@ def build(
                 [ArtifactKind.JVM_LIBRARY_JAR.name, ArtifactKind.JVM_EXECUTABLE_JAR.name],
                 [item.name for item in request_view.requested_artifacts],
             )
-        from xax_jvm import compile_jvm_bound_target
+        from xax_selfhost_jvm import jvm_jar
 
-        image = compile_jvm_bound_target(
+        artifact = jvm_jar(  # S15e.5 (ADR-327): XAX first
             reader, function_root, target_object,
             process_entry=request_view.requested_artifacts == (ArtifactKind.JVM_EXECUTABLE_JAR,),
         )
-        artifact = image.artifact_bytes
         lowering = lowering_identity(description.architecture, description.image_format)
     else:
         expected_artifact = ArtifactKind.ACCELERATOR_DEPLOYMENT if description.architecture == 4 else ArtifactKind.NATIVE_IMAGE

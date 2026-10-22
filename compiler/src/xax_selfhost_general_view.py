@@ -1574,7 +1574,7 @@ def views_prologue(e: E, total, order, members):
 
     e.for_("vp_k", 0, p["vp_n"], graph)
     # S12c.1: an audit flag follows the extents (1: also write every value's range bound after each view).
-    _globals(e, G_AUDIT, e.rd(p["vp_at"]))
+    _globals(e, G_AUDIT, e.and_(e.rd(p["vp_at"]), 1))  # (bit 2: a Linux request, the front end's)
     # S12d: the trap payload heads follow (``general_object_table``).
     e.var("vp_traps", e.add(p["vp_at"], 1))
     _globals(e, G_VIEW_OUT, VIEW_AT)

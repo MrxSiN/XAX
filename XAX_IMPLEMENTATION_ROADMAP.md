@@ -570,7 +570,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15e.3c | The driver's store files and snapshots hold 64 MiB; the seed rotated (ADR-319) | S15e.3 | DONE |
 | S15e.3b | Windows PE32+ DLLs (exports, forwards, DllMain) and the hosted legacy register path in XAX (ADR-317) | S15e.3 | DONE: DLLs (ADR-320), the hosted legacy register path (ADR-326) |
 | S15e.4 | The browser Wasm page: an XAX Wasm backend and page container (ADR-308) | S15e.1 | DONE (ADR-322): the general program writes the module and page; the views region raised to 41M words and the seed rotated in two stages |
-| S15e.5 | JVM jars: an XAX JVM class and jar writer (ADR-308) | S15e.1 | UNIMPLEMENTED |
+| S15e.5 | JVM jars: an XAX JVM class and jar writer (ADR-308) | S15e.1 | In progress: S15e.5a (integer subset of `jvm-classfile-v1`, `build` asks XAX first) EXECUTED (ADR-327); S15e.5b (floats and conversions) EXECUTED (ADR-328); S15e.5c (references and platform calls) EXECUTED (ADR-329); S15e.5d (object kinds) EXECUTED (ADR-330); S15e.5e (callbacks, the class-file profiles) EXECUTED (ADR-331); the general and memory profiles' operations, recursion groups, the threaded launcher and the driver path open |
 | S15e.6 | Android packages, unsigned and signed (ADR-308) | S15e.2 | UNIMPLEMENTED |
 | S15e.7 | Accelerator deployments and SPIR-V modules (ADR-308) | S15e.1 | DONE (ADR-321): S15e.7a accelerator deployments, S15e.7b SPIR-V modules |
 | S15f | The raw images and the remaining lowerings: headroom (ADR-323), raw Wasm modules and Windows load images (ADR-324), raw AArch64 images and the AArch64 legacy register path (ADR-325) | S15e | DONE |
