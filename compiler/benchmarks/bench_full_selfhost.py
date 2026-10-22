@@ -247,12 +247,16 @@ def corpus(directory: Path):
         import xax_selfhost_general_accel as ACC
         import xax_selfhost_general_spirv as SPV
         import xax_selfhost_general_wasm as WASM
+        import xax_selfhost_x86_64_general as GEN
 
         accel, spirv, dll, page = ACC.accelerator_artifact, SPV.spirv_module, xax_pe.compile_pe_dll, WASM.browser_page
+        module, raw = WASM.wasm_module, GEN.x86_64_raw_image
         with mock.patch.object(ACC, "accelerator_artifact", lambda r, f, t, frontend="auto": accel(r, f, t, frontend="python")), \
              mock.patch.object(SPV, "spirv_module", lambda r, f, t, frontend="auto": spirv(r, f, t, frontend="python")), \
              mock.patch.object(xax_pe, "compile_pe_dll", lambda r, c, t, reference, frontend="auto": reference()), \
-             mock.patch.object(WASM, "browser_page", lambda r, f, t, frontend="auto": page(r, f, t, frontend="python")):
+             mock.patch.object(WASM, "browser_page", lambda r, f, t, frontend="auto": page(r, f, t, frontend="python")), \
+             mock.patch.object(WASM, "wasm_module", lambda r, f, t, frontend="auto": module(r, f, t, frontend="python")), \
+             mock.patch.object(GEN, "x86_64_raw_image", lambda r, f, t, frontend="auto": raw(r, f, t, frontend="python")):
             expected = build_expected(reader)
         reference = (["image", sha(expected[1]), sha(expected[2])] if expected[0] == "image" else ["rejected", expected[1].code, expected[1].rule])
         cases.append((name, kind, "build", {"store": reader.data}, ["artifact", "provenance"], reference))
@@ -346,6 +350,19 @@ def corpus(directory: Path):
         page_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != page_target.cid)
         build(f"build: a browser page ({page_name})", _program(page_objects, {b"image": page_entry}, page_target),
               "positive" if page_name in ("fib", "random") else "negative")
+    # S15f (ADR-324): raw Wasm modules and Windows load images, lowered by the general x86-64 program in the driver.
+    from x86_raw_corpus import x86_raw_case
+
+    for raw_kind in ("wasi", "plain", "legacy"):
+        reader, raw_entry, raw_target, raw_name = wasm_case(target_rng, raw_kind)
+        raw_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != raw_target.cid)
+        build(f"build: a {raw_kind} Wasm module ({raw_name})", _program(raw_objects, {b"image": raw_entry}, raw_target),
+              "positive" if raw_name == "random" else "negative")
+    for _ in range(3):
+        reader, raw_entry, raw_target, raw_name = x86_raw_case(target_rng)
+        raw_objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != raw_target.cid)
+        build(f"build: a Windows load image ({raw_name})", _program(raw_objects, {b"image": raw_entry}, raw_target),
+              "negative" if raw_name.endswith("unsupported") else "positive")
 
     def resolve(name, reader, kind):
         expected = resolve_expected(reader)
