@@ -1738,3 +1738,7 @@ The XAX JVM program now also lowers float constants, arithmetic, compares and co
 
 - In `test_xax_jvm.py`, 86 JARs and 1 rejection agree, 14 decline (platform calls and their rejections), none disagree.
 - In `test_xax_selfhost_jvm.py`, every conversion across eleven integer widths and both float formats agrees byte for byte.
+
+## S15e.5c JVM references and platform calls through XAX — 2026-10-22 (ADR-329)
+
+The XAX JVM program now handles JVM reference values and platform calls: static, virtual and interface methods, and static fields. It decides `_foreign_member`'s rejections exactly. Checked against the bootstrap, `test_xax_jvm.py` gives 94 JARs and 4 rejections that agree, and 1 decline (the memory profile), none disagreeing. The memory, general and object profiles still fall back to the bootstrap.

@@ -28,7 +28,7 @@ from xax_selfhost_jvm_class import (
 )
 from xax_selfhost_jvm_code import (
     C_BUF, C_ENDED, C_FIX, C_LABELS, C_LINES, C_NFIX, C_NLINES, C_PENDING, C_POOL, C_READS, C_STORED, C_TARGET, C_VSDESC, C_VSLOT, CODE_CAP,
-    D_D, D_F, D_I, D_J, D_NONE, M_STATE, _m, _set_m, op,
+    D_D, D_F, D_I, D_J, D_NONE, D_REF, M_STATE, _m, _set_m, op,
 )
 from xax_selfhost_jvm_method import (
     BL_BASE, BL_DEF, BL_INC, BL_LIVE, BL_ORDER, BL_PLACED, BL_REACH, BL_RESOLVED, BL_UP, M_ACROSS, M_ENTRY, M_FRAMED, M_FREED, M_FTYPES,
@@ -51,12 +51,13 @@ JVM_ARCHITECTURE = 5
 V1_IDENTITY = b"jvm-classfile-v1"
 J_STATE = 211  # GLOBALS slot: the class state record
 (J_POOL, J_ENTRY_INDEX, J_NFN, J_NAMES, J_DESCS, J_ARGS, J_RESULT, J_METHODS, J_NMETHODS, J_STORE, J_STORE_LEN, J_PK, J_PROCESS,
- J_CLASSNAME, J_SCRATCH) = range(15)
-J_WORDS = 15
+ J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS) = range(17)
+J_WORDS = 17
 METHOD_WORDS = 13  # kind, fidx, code, code length, max stack, max locals, frames, frame count, frame types, their count, lines, line count, bare frame
 (MR_KIND, MR_FIDX, MR_CODE, MR_CLEN, MR_STACK, MR_LOCALS, MR_FRAMES, MR_NFRAMES, MR_FTYPES, MR_NFTYPES, MR_LINES, MR_NLINES, MR_BARE) = range(13)
 STORE_CAP = 1 << 24
 KIND_FN, KIND_PK, KIND_MAIN = range(3)
+SIGNATURE_CAP = 1024  # a method descriptor's characters (a longer one declines)
 VERIFICATION = {D_I: 1, D_J: 2 + 2, 3: 2, 4: 3}  # I 1, J 4, F 2, D 3; Top 0
 
 
@@ -91,26 +92,10 @@ def _store_alloc(e: E, words, name: str):
 # -- descriptors ------------------------------------------------------------------------------------------------------------
 
 def _jvm_desc(e: E, type_obj, name: str):
-    """``_jvm_type``: proof none, bits int or long, floats float or double; anything else declines."""
-    from xax_selfhost_general_frame import _bits_width
+    """``_jvm_type`` into ``name`` (``jk_vdesc``)."""
+    from xax_selfhost_jvm_foreign import vdesc
 
-    p = e.p
-    e.var(f"{name}_form", _type_form(e, type_obj))
-    e.var(name, D_NONE)
-
-    def bits():
-        _bits_width(e, type_obj, f"{name}_w")
-        _ok(e, e.both(e.lt(0, p[f"{name}_w"]), e.le(p[f"{name}_w"], 64)))
-        e.set(name, e.sel(e.le(p[f"{name}_w"], 32), D_I, D_J))
-
-    def floating():
-        from xax_selfhost_general_frame import _float_width
-
-        _float_width(e, type_obj, f"{name}_fw")
-        e.set(name, e.sel(e.eq(p[f"{name}_fw"], 32), D_F, D_D))
-
-    e.if_(e.eq(p[f"{name}_form"], 1), bits, lambda: e.if_(e.eq(p[f"{name}_form"], 7), floating, lambda: _ok(
-        e, e.either(e.eq(p[f"{name}_form"], 3), e.eq(p[f"{name}_form"], 4)))))
+    e.var(name, vdesc(e, type_obj))
 
 
 def _desc_char(e: E, d):
@@ -130,26 +115,35 @@ def _signature_fn(tables):
         e.var("sg_i", _call(e, "interface", p["f"]))
         e.var("sg_np", e.ld(e.add(p["sg_i"], 1)))
         e.var("sg_rt", e.add(e.add(p["sg_i"], 2), p["sg_np"]))
-        e.var("sg_text", _store_alloc(e, e.add(e.add(p["sg_np"], 4), 0), "sg_t"))
+        e.var("sg_text", _store_alloc(e, SIGNATURE_CAP, "sg_t"))
         e.var("sg_n", 0)
         e.var("sg_slots", 0)
         e.var("sg_entry", e.flag(e.eq(p["fidx"], _js(e, J_ENTRY_INDEX))))
 
         def put_char(ch):
+            _ok(e, e.lt(p["sg_n"], SIGNATURE_CAP))
             e.st(e.add(p["sg_text"], p["sg_n"]), ch)
             e.set("sg_n", e.add(p["sg_n"], 1))
+
+        def put_desc(d):
+            from xax_selfhost_jvm_foreign import ref_text
+
+            e.var("sg_pd", d)
+            e.if_(e.lt(p["sg_pd"], D_REF), lambda: put_char(_desc_char(e, p["sg_pd"])), lambda: (
+                e.var("sg_rtx", ref_text(e, p["sg_pd"])[0]), e.var("sg_rtn", ref_text(e, p["sg_pd"])[1]),
+                e.for_("sg_q", 0, p["sg_rtn"], lambda: put_char(e.ld(e.add(p["sg_rtx"], p["sg_q"]))))))
 
         put_char(ord("("))
         for wide_pass in (0, 1):
             def parameter(wide_pass=wide_pass):
                 _jvm_desc(e, e.ld(e.add(e.add(p["sg_i"], 2), p["sg_k"])), "sg_d")
                 take = e.sel(e.ne(p["sg_entry"], 0), e.flag(e.eq(wide_pass, 0)), e.flag(e.eq(e.flag(_two(e, p["sg_d"])), wide_pass)))
-                e.if_(e.both(e.ne(p["sg_d"], D_NONE), e.ne(take, 0)), lambda: (put_char(_desc_char(e, p["sg_d"])),
+                e.if_(e.both(e.ne(p["sg_d"], D_NONE), e.ne(take, 0)), lambda: (put_desc(p["sg_d"]),
                                                                                 e.set("sg_slots", e.add(p["sg_slots"], e.sel(_two(e, p["sg_d"]), 2, 1)))))
 
             e.for_("sg_k", 0, p["sg_np"], parameter)
         put_char(ord(")"))
-        # The machine result: at most one (JVM-SINGLE-RESULT: declined); views given back (pointers) do not reach S15e.5a.
+        # The machine result: at most one (JVM-SINGLE-RESULT: declined); borrowed views given back need heap views (declined).
         e.var("sg_result", D_NONE)
         e.var("sg_count", 0)
 
@@ -159,7 +153,7 @@ def _signature_fn(tables):
 
         e.for_("sg_k", 0, e.ld(p["sg_rt"]), returned)
         _ok(e, e.le(p["sg_count"], 1))
-        put_char(_desc_char(e, p["sg_result"]))
+        put_desc(p["sg_result"])
         e.st(e.add(_js(e, J_DESCS), e.mul(p["fidx"], 2)), p["sg_text"])
         e.st(e.add(_js(e, J_DESCS), e.add(e.mul(p["fidx"], 2), 1)), p["sg_n"])
         e.st(e.add(_js(e, J_ARGS), p["fidx"]), p["sg_slots"])
@@ -559,6 +553,25 @@ def _serialize_fn(tables):
             buffer(e, "se_body", 1 << 18)
             u2(e, p["se_body"], f(MR_NFRAMES))
             e.var("se_prev", NONE)
+            # ``locals_blob`` first, as the bootstrap makes it (its Class entries) before any frame.
+            buffer(e, "se_lb", 1 << 16)
+
+            def verification():
+                from xax_selfhost_jvm_foreign import ref_text
+
+                e.var("se_ty", e.ld(e.add(f(MR_FTYPES), p["se_t"])))
+
+                def reference():
+                    e.var("se_rx", ref_text(e, p["se_ty"])[0])
+                    e.var("se_rn", ref_text(e, p["se_ty"])[1])
+                    e.var("se_l", e.flag(e.eq(e.ld(p["se_rx"]), ord("L"))))  # ``Lname;`` names ``name``; an array itself
+                    u1(e, p["se_lb"], 7)
+                    u2(e, p["se_lb"], _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, e.add(p["se_rx"], p["se_l"]), e.sub(p["se_rn"], e.mul(p["se_l"], 2)))))
+
+                e.if_(e.lt(p["se_ty"], D_REF), lambda: u1(e, p["se_lb"], e.sel(e.eq(p["se_ty"], D_I), 1, e.sel(e.eq(p["se_ty"], D_J), 4, e.sel(
+                    e.eq(p["se_ty"], D_F), 2, e.sel(e.eq(p["se_ty"], D_D), 3, 0))))), reference)
+
+            e.for_("se_t", 0, f(MR_NFTYPES), verification)
 
             def entry():
                 e.var("se_off", e.ld(e.add(f(MR_FRAMES), p["se_i"])))
@@ -568,8 +581,7 @@ def _serialize_fn(tables):
                     u1(e, p["se_body"], 255)
                     u2(e, p["se_body"], p["se_delta"])
                     u2(e, p["se_body"], f(MR_NFTYPES))
-                    e.for_("se_t", 0, f(MR_NFTYPES), lambda: (e.var("se_ty", e.ld(e.add(f(MR_FTYPES), p["se_t"]))), u1(e, p["se_body"], e.sel(
-                        e.eq(p["se_ty"], D_I), 1, e.sel(e.eq(p["se_ty"], D_J), 4, e.sel(e.eq(p["se_ty"], 3), 2, e.sel(e.eq(p["se_ty"], 4), 3, 0)))))))
+                    append_buf(e, p["se_body"], p["se_lb"])
                     u2(e, p["se_body"], 0)
 
                 e.if_(e.eq(p["se_off"], f(MR_BARE)), lambda: (u1(e, p["se_body"], 255), u2(e, p["se_body"], p["se_delta"]), u2(e, p["se_body"], 0),
@@ -948,6 +960,10 @@ def _frontend(tables):
         _set_js(e, J_PROCESS, p["process"])
         _set_js(e, J_PK, 0)
         _set_js(e, J_NMETHODS, 0)
+        from xax_selfhost_jvm_foreign import REFS_CAP
+
+        _set_js(e, J_REFS, _store_alloc(e, 2 * REFS_CAP + 2, "js_refs"))
+        _set_js(e, J_NREFS, 0)
 
         def contract():
             """``validate_process_entry``: no machine parameter or result (each a bits value of at most 64 bits here;
@@ -1137,6 +1153,9 @@ def build_jvm_program():
     add("jf_node", _node(tables))
     add_class_functions(add, tables)
     add_code_functions(add, tables)
+    from xax_selfhost_jvm_foreign import add_foreign_functions
+
+    add_foreign_functions(add, tables)
     add_method_functions(add, tables)
     add("jk_signature", _signature_fn(tables))
     add("jl_own_method", _own_method_fn(tables))

@@ -56,7 +56,7 @@ LOWERED = tuple(sorted({*FOLDABLE, *(int(op) for op in (Operation.CALL_DIRECT, O
 OP = {name: int(getattr(Operation, name)) for name in (
     "ADD_WRAP", "SUB_WRAP", "MUL_WRAP", "BIT_AND", "BIT_OR", "BIT_XOR", "ROTATE_RIGHT", "INT_TRUNCATE", "INT_ZERO_EXTEND", "INT_COMPARE",
     "CONSTANT", "CALL_DIRECT", "UDIV", "UREM", "HEAP_VIEW", "POINTER_CAST", "FLOAT_ADD", "FLOAT_SUB", "FLOAT_MUL", "FLOAT_DIV",
-    "FLOAT_CONVERT", "FLOAT_COMPARE", "UINT_TO_FLOAT", "SINT_TO_FLOAT", "FLOAT_TO_UINT_TRUNC", "FLOAT_TO_SINT_TRUNC")}
+    "FLOAT_CONVERT", "FLOAT_COMPARE", "UINT_TO_FLOAT", "SINT_TO_FLOAT", "FLOAT_TO_UINT_TRUNC", "FLOAT_TO_SINT_TRUNC", "CALL_FOREIGN")}
 # Lowerings that place their own branch targets inside a node (``_INTERNAL_LABELS``).
 INTERNAL_LABELS = tuple(int(op) for op in (Operation.ATOMIC_CMPXCHG, Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT,
                                            Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC))
@@ -148,29 +148,14 @@ def _target_index(e: E, edge):
 # -- stage 1: types, constants, folding -------------------------------------------------------------------------------
 
 def _types_fn(tables):
-    """``value_type`` of every value: ``int`` for bits of at most 32 bits, ``long`` to 64, ``float``/``double`` for
-    binary32/binary64, none for a proof value; anything else declines."""
+    """``value_type`` of every value (``jk_vdesc``)."""
     def build(e: E):
         p = e.p
 
         def one():
-            e.var("ty_t", _type(e, p["ty_v"]))
-            e.var("ty_form", _form(e, p["ty_t"]))
-            e.var("ty_d", D_NONE)
+            from xax_selfhost_jvm_foreign import vdesc
 
-            def bits():
-                _bits_width(e, p["ty_t"], "ty_w")
-                _ok(e, e.both(e.lt(0, p["ty_w"]), e.le(p["ty_w"], 64)))  # wider: JVM-VALUE-REPRESENTABLE, the bootstrap's
-                e.set("ty_d", e.sel(e.le(p["ty_w"], 32), D_I, D_J))
-
-            def floating():
-                from xax_selfhost_general_frame import _float_width
-
-                _float_width(e, p["ty_t"], "ty_fw")
-                e.set("ty_d", e.sel(e.eq(p["ty_fw"], 32), D_F, D_D))
-
-            e.if_(e.eq(p["ty_form"], 1), bits, lambda: e.if_(e.eq(p["ty_form"], 7), floating, lambda: _ok(e, _in(e, p["ty_form"], (3, 4)))))
-            _set_v(e, V_DESC, p["ty_v"], p["ty_d"])
+            _set_v(e, V_DESC, p["ty_v"], vdesc(e, _type(e, p["ty_v"])))
 
         e.for_("ty_v", 0, _m(e, M_NV), one)
         e.give(1)
