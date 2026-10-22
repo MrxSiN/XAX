@@ -1746,3 +1746,7 @@ The XAX JVM program now handles JVM reference values and platform calls: static,
 ## S15e.5d JVM object kinds through XAX — 2026-10-22 (ADR-330)
 
 The XAX JVM program now builds the object kinds byte for byte with the bootstrap: `new`, arrays, `ldc`, instance and static fields, `checkcast` and `instanceof`. In `test_xax_jvm_objects.py`, 6 JARs and 3 rejections agree, and 1 callback declines.
+
+## S15e.5e JVM callbacks through XAX — 2026-10-22 (ADR-331)
+
+The XAX JVM program now builds callbacks: JDK streams and comparators that call XAX functions. It also accepts the memory and general class-file profiles. Every compile in `test_xax_jvm_callbacks.py`, `test_xax_jvm_objects.py`, `test_xax_jvm_import.py` and `test_xax_jvm.py` either agrees with the bootstrap or declines, and none disagree. The declines are a stack allocation and the memory-profile rejection.

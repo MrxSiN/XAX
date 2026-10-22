@@ -1,4 +1,4 @@
-"""S15e.5a-d (ADR-327-ADR-330): JVM JARs built by the XAX JVM program equal the bootstrap's.
+"""S15e.5a-e (ADR-327-ADR-331): JVM JARs built by the XAX JVM program equal the bootstrap's.
 
 ``xax_selfhost_jvm.jvm_jar(..., frontend="xax")`` runs the XAX program and fails where it declines;
 ``frontend="python"`` is ``compile_jvm_bound_target``.  Differential, by bytes, over seeded integer programs of
@@ -6,7 +6,8 @@
 executable JARs with a proof-only entry, the float operations and conversions over every width pair (the trapping
 truncations included), platform calls over references (static, virtual, interface, static fields; narrow parameters
 and results), the object kinds (``new``, arrays, ``ldc``, instance and static fields, casts), and the rejections the
-program decides (``JVM-ENTRY-FUNCTION``, ``JVM-PROCESS-ENTRY-CONTRACT``, and
+program decides, callbacks on the general profile (the JDK stream pipeline, a comparator over objects, the program over
+imported declarations; ``JVM-ENTRY-SIGNATURE``) (``JVM-ENTRY-FUNCTION``, ``JVM-PROCESS-ENTRY-CONTRACT``, and
 ``_foreign_member``'s and ``_object_member``'s: the ABI, the member and descriptor texts, the arity, each descriptor's
 type, the array and ``multianewarray`` descriptors, ``ldc`` strings, cast inputs).
 """
@@ -17,6 +18,7 @@ import platform
 import random
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from xax_compiler import (
@@ -212,6 +214,40 @@ class SelfhostJvmTests(unittest.TestCase):
         for name, ((carrier, inputs, outputs), expected) in cases.items():
             with self.subTest(case=name):
                 self.assertEqual(self._call_one(carrier, inputs, outputs, (*inputs, *outputs, *elements))[0], expected)
+
+    def test_callback_programs(self):
+        import importlib
+
+        import test_xax_jvm_callbacks
+        import xax_jvm
+
+        cases = (("test_xax_jvm_callbacks", "_program", {}), ("test_xax_jvm_objects", "_comparator_program", {}),
+                 ("test_xax_jvm_import", "_program", {}))
+        for module_name, builder, arguments in cases:
+            module = importlib.import_module(module_name)
+            seen = []
+
+            def compiled(reader, cid, target, *, process_entry=False, seen=seen):
+                expected = _outcome(reader, cid, target, "python", process_entry)
+                self.assertEqual(_outcome(reader, cid, target, "xax", process_entry), expected)
+                seen.append(expected[0])
+                return xax_jvm.compile_jvm_bound_target(reader, cid, target, process_entry=process_entry)
+
+            with self.subTest(module=module_name), unittest.mock.patch.object(module, "compile_jvm_bound_target", compiled):
+                getattr(module, builder)(**arguments)
+                self.assertEqual(seen, ["jar"])
+        with self.subTest(case="JVM-ENTRY-SIGNATURE"):
+            seen = []
+
+            def rejected(reader, cid, target, *, process_entry=False):
+                expected = _outcome(reader, cid, target, "python", process_entry)
+                self.assertEqual(_outcome(reader, cid, target, "xax", process_entry), expected)
+                seen.append(expected)
+                return xax_jvm.compile_jvm_bound_target(reader, cid, target, process_entry=process_entry)
+
+            with unittest.mock.patch.object(test_xax_jvm_callbacks, "compile_jvm_bound_target", rejected):
+                test_xax_jvm_callbacks.JvmCallbackRejectionTests("test_the_interface_method_must_match_the_function").test_the_interface_method_must_match_the_function()
+            self.assertEqual([(kind, diagnostic.rule) for kind, diagnostic in seen], [("rejected", "JVM-ENTRY-SIGNATURE")])
 
     def test_entry_must_be_a_function(self):
         target = jvm_classfile_target()
