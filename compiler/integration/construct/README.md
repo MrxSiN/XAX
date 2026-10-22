@@ -5,7 +5,8 @@
 consumer that needs one either runs Python or ships a second decoder. This directory is the start of a
 native decoder that keeps XAX as the only semantic authority.
 
-**Status: steps 1-4b, 5a, 5b and the root half of 5c.** What is established is that the authoring
+**Status: steps 1-5c, and the `construct` command (step 6) as its own native program.** What is
+established is that the authoring
 primitives the self-hosting components use (`Proc` over `GraphBuilder`) reach the *same canonical objects*
 as the Python reference, that a program authored that way runs as a native windows-x86_64 host with the
 file transport a `construct` command needs, that the host can read a carrier into a tree and write the tree
@@ -13,8 +14,10 @@ back out byte for byte, that every named type and derived declaration in both ca
 reference object, that the graph, function, module, package, target, profile, trust-policy, build-request
 and snapshot objects of both carriers come out byte-identical -- the snapshot's CID *is* the reference
 store's root -- and that the program refuses what it does not implement (a platform other than
-windows-x86_64, more than one build entry) rather than emit a plausible wrong object. The store container
-and the driver command are the remaining steps.
+windows-x86_64, more than one build entry) rather than emit a plausible wrong object. The container is
+written by the linked S9 writer, so both stores come out byte-identical to the committed ones, and the
+command form writes that store with no Python and no listing path. The general `xaxc` driver does not
+dispatch the command yet, and the MCP tool is not wired (M3).
 
 ## Why canonical identity is the oracle
 
@@ -249,13 +252,15 @@ python -B compiler/integration/construct/resolve.py build/construct_resolve --ch
 ```
 
 ```
-entry     df94e035dd9fa84bf57175755b029e35b59f8c48a43055bc4fc6b579e9e2a3c8
+entry     4426818db95e2ad3997f4ec32b5f06d8b7998ba21eee698277f5228d1dc295b2
 entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
-store     9402941 bytes
-artifact  1738240 bytes
+store     19085525 bytes
+artifact  2870784 bytes
 namespace 2880 bytes, 21 entries
 carrier   sandbox_request.json       exit=0 lines=3066 resolved=3053 deferred=13 MATCH
+store     sandbox_request.json          74434 bytes /    74434 root 7ef7099d5358bf02 MATCH
 carrier   construction_request.json  exit=0 lines=41325 resolved=40925 deferred=400 MATCH
+store     construction_request.json   1020614 bytes /  1020614 root baec162e4bfb177f MATCH
 ```
 
 Every produced line is decoded back into a `SemanticObject` and compared with the reference object for
@@ -264,16 +269,19 @@ that occurrence, so both listings are byte-identical object by object: 3 066 and
 reference also defers at that point in its own walk; the graph pass resolves them from the name table
 filled as each function is registered, which is why the walk visits functions in carrier order. The
 program now also emits the step-5b objects and the step-5c snapshot, so these are its identities; the 5a
-claim is the first 3 059 and 41 318 lines, which are unchanged.
+claim is the first 3 059 and 41 318 lines, which are unchanged. The store lines are the container half:
+the bytes the S9 writer returns are compared with `xax_construct.construct(...).reader.canonical_bytes()`,
+so the two committed stores are reproduced byte for byte, not just their roots.
 
 Measured on this host, one program for both carriers (the machine is shared, so the timing rows varied by
 nearly a factor of two between runs; the byte rows did not):
 
 | measurement | value |
 |---|---|
-| `resolve_packages` / `snapshot_store` / `build` (unverified harness) | 185.1 s / 22.8 s / 876.3 s |
-| verifier pass (separate gate on the same program) | 160.1 s, 1 305 objects |
-| store / artifact | 9 402 941 B / 1 738 240 B |
+| `resolve_packages` / `snapshot_store` / `build` (unverified harness, 5a/5b program) | 185.1 s / 22.8 s / 876.3 s |
+| verifier pass (separate gate, 5a/5b program) | 160.1 s, 1 305 objects |
+| `build_main` / verifier pass (5c program, separate gate) | 41.8 s / 392.0 s |
+| store / artifact (5c program) | 19 085 525 B / 2 870 784 B |
 | widest graph body (sandbox, construction) | 16 141 B / 56 123 B (cap 131 072) |
 | widest reference table | 231 / 1 391 entries (cap 2 048) |
 | widest canonical object | 23 549 B / 100 651 B (region 200 704) |
@@ -363,7 +371,7 @@ Two limits are refusals, not approximations:
 `TRAP` terminators and `CALL_GROUP_MEMBER` remain unencoded for the same reason as before: no carrier
 uses them, and the walk refuses what it does not recognise.
 
-## Step 5c: the root (done), the store container (left)
+## Step 5c: the root and the store container (done)
 
 A canonical store's root is the snapshot object: `resolve_packages` selects the request's package and its
 dependency closure and returns the `Kind.BUILD` object with form `SNAPSHOT`. The program now emits it as
@@ -381,13 +389,73 @@ produced line's CID is then the store root itself -- `7ef7099d…f8b6` for the s
 twice: the line is decoded and compared with `resolve_packages`'s own object, and that object is the root
 `xax_construct.construct` returns (`store.root_cid`), confirmed separately on both carriers.
 
-What is left is the container: header (magic, major, hash suite, flags), one record envelope per object in
-ascending CID order (kind, schema, reference count, body length, references, body), the non-semantic
-metadata records in canonical order, the index, the digest and the trailer.
-`xax_selfhost_writer.write_store` already implements exactly that as one XAX function (S9), so the
-remaining work is the hand-over: encode the objects the listing already has as the writer's batch (`kind`,
-schema, reference count, body length, references, body), give it the views it asks for (32 MiB batch,
-64 MiB buffer) and write the buffer it returns. No second container writer is planned.
+The container is written by the S9 writer, linked into the resolver as a component and called directly,
+so there is one container implementation rather than two. The walk stages every object it emits as a
+writer batch record (`kind`, `schema`, reference count, body length, CID, references, body) in append
+order, deduplicated by CID through an open-addressing index; the record area starts after the three header
+words and the root CID, at 56 bytes. The snapshot's references then close the reachable set -- the store is
+that closure, not the listing: 2 of the sandbox carrier's 272 distinct line CIDs and 1 of the construction
+carrier's 3 413 are unreachable aliases, while the sandbox store holds one object with no line at all, the
+inline `b16` type. The marked records are compacted forward in append order behind the header (`count`,
+`0` non-semantic records, `total` length, root CID), and the buffer the writer returns is written to the
+third argv path. The resolver borrows one 32 MiB batch view, one 64 MiB output view and the hash's 2 KiB
+scratch view; all three are released before the program returns.
+
+Both stores are byte-identical to the committed ones:
+
+| carrier | store bytes | SHA-256 | root |
+|---|---|---|---|
+| `sandbox_request.json` | 74 434 | `588f57c0fa69eb175b6e06e88c73977292d42c06dfc5b814ec48cc5710bab2b8` | `7ef7099d5358bf022715faff1ef26387c1486c554ed2f7d9145bd9d8953ef8b6` |
+| `construction_request.json` | 1 020 614 | `bbe28c1e5568abf40cb2d38a354f4dcbaae09b231abeb04f87674d5f1a70e25f` | `baec162e4bfb177fff18c3d36efdbd6e2ad0a0dec6cb412874fcbd18c12dd442` |
+
+The comparison is against `xax_construct.construct(carrier).reader.canonical_bytes()`, which was checked
+separately to equal the committed `native/xax-mcp-*.xax` files byte for byte, so the oracle is the
+committed store itself and not a looser re-encoding of it.
+
+Four defects on the way to that run are worth recording, because each one produced a store that looked
+plausible:
+
+- the batch's first record was written at offset 0 and overwrote the header the writer reads first, so the
+  sandbox listing matched while the store was refused;
+- `find_record` returns a position in the sorted CID index, and that position was used as the object's own
+  index: the "closure" then marked and expanded whichever objects happened to sit at those positions. The
+  sandbox store had 54 objects at depths 0 and 2..5 with none at depth 1, which no walk from the root can
+  produce;
+- the store registers were first placed at `0x960000`, inside the parser's `START` array, which corrupted
+  the walk on the construction carrier (it crashed rather than refused);
+- three verifier-level defects in the linked call: a lent view rebound to the caller's pointer type, the
+  lent views never released at return, and `virtual_free_view` needing one declaration per (pointer, view)
+  pair rather than one per call.
+
+Store refusals are exit codes that name the stage: 20 (more distinct objects than the 8 192-entry index),
+21 (batch capacity), 23 (a reference with no staged object), and `0x100 + status * 0x40 + reason` for a
+writer that rejects or declines the batch.
+
+## Step 6: the `construct` command (done as a command; driver dispatch left)
+
+`construct <carrier> <store>` is the same walk with a different transport, not a second decoder: the
+listing writer is compiled out (`walk(listing=False)`), argv[2] is the store, and the bytes the S9 writer
+returns are written there. The command is the program's own name rather than a word in argv[1]; the store
+is the only output, so no listing path is asked for. The check runs it on both carriers and compares the
+store bytes with `xax_construct.construct(...).reader.canonical_bytes()` -- the committed stores again:
+
+```
+entry     096ef1b4a7b1233eed01679efce9e907cb42f6f7b2b41e3532eebf7a571d3cfa
+entry fn  3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564
+store     19045135 bytes
+artifact  2852352 bytes
+command   sandbox_request.json       exit=0 store=   74434/   74434 sha256=588f57c0fa69eb17 root 7ef7099d5358bf02 MATCH
+command   construction_request.json  exit=0 store= 1020614/ 1020614 sha256=bbe28c1e5568abf4 root baec162e4bfb177f MATCH
+```
+
+The command build is smaller than the check build (19 045 135 vs 19 085 525 store bytes, 2 852 352 vs
+2 870 784 artifact bytes) because the listing writer's blocks are never emitted when no line is written.
+
+What is not done: the general driver (`compiler/src/xax_selfhost_driver.py`, `COMMANDS`) does not dispatch
+`construct`, so the command is a separate native program for now; the driver has not been re-derived for
+Windows and there is no `DRIVER.md` for it. Those are the remaining parts of the plan's step 6. The command
+itself is what a host -- and the MCP adapter -- needs.
+
 
 ## The plan
 
@@ -401,8 +469,8 @@ schema, reference count, body length, references, body), give it the views it as
 | 4b | derived declarations (`win32.import`, `win32.virtual_free_view`) with type CIDs hashed in-program | the 109 import and 10 view-free declarations the carriers use, byte-exact (done) |
 | 5a | constant, graph and function objects: two passes per function, a reference table and positions, terminators | both carriers' listings byte-exact (done) |
 | 5b | module, package, profile, policy, target and build-request objects | both carriers' six appended lines byte-exact (done; the snapshot moves to 5c) |
-| 5c | snapshot object, which is the store's root (done) and the store container from the listing (`xax_selfhost_writer` reuse) | the root CIDs match (done); the two stores byte-exact (left) |
-| 6 | driver command `construct <carrier> <store>`, re-derived Windows driver, `DRIVER.md` | command table and native checks |
+| 5c | snapshot object, which is the store's root, and the store container from the listing (`xax_selfhost_writer` reuse) | the root CIDs match and the two stores are byte-exact (done) |
+| 6 | `construct <carrier> <store>` (done as a separate native program); driver dispatch, re-derived Windows driver and `DRIVER.md` (left) | the command reproduces both committed stores byte-exactly (done); command table and native checks (left) |
 
 Steps 5b and 5c are where the existing `xax_selfhost_resolve` and `xax_selfhost_writer` components are
 reused rather than reimplemented.

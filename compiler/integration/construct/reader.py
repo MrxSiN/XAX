@@ -37,7 +37,7 @@ from xax_structured import B8, B32, B64, Proc
 
 EXTENT = 16 << 20
 COMMAND_CAP = 32768
-PATH_ONE, PATH_TWO, PATH_CAP = 0x8000, 0x9000, 4096
+PATH_ONE, PATH_TWO, PATH_THREE, PATH_CAP = 0x8000, 0x9000, 0xA000, 4096
 IN, IN_CAP = 0x10000, 4 << 20
 OUT, OUT_CAP = 0x410000, 4 << 20
 NODES, NODE_CAP = 0x810000, 1 << 18
@@ -65,9 +65,10 @@ OBJ_KEY, OBJ_COLON, OBJ_VALUE, OBJ_NEXT, ARR_VALUE, ARR_NEXT, OBJ_KEY_STRICT, AR
 OPEN_READ, OPEN_WRITE, CREATE_MODE = 0x8000, 0x8301, 0x0180
 EXIT_BAD_OPEN_IN, EXIT_BAD_OPEN_OUT, EXIT_READ, EXIT_TOO_LARGE = 2, 3, 4, 5
 EXIT_SHORT_WRITE, EXIT_TRAILING, EXIT_SYNTAX, EXIT_OVERFLOW = 6, 7, 8, 9
+EXIT_NO_STORE = 10
 
 
-def _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem_type):
+def _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem_type, extra_views=()):
     """The byte, node and output accessors of one function, bound to its ``proc``.
 
     The reader's front half and a resolver's second function share this code; every accessor reads and
@@ -132,6 +133,12 @@ def _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem
                          attributes=(8, 1))
         p["mem"] = memory
 
+    def ld64(offset):
+        value, memory = p.op(Operation.CHECKED_LOAD_BITS_LE, (p["base"], offset, p["mem"]), (B64, mem_type),
+                             attributes=(8, 1))
+        p["mem"] = memory
+        return value
+
     def eq(value, constant):
         return p.cmp(IntCompare.EQ, value, c32(constant), B32)
 
@@ -145,8 +152,14 @@ def _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem
         p["mem"] = p.op(Operation.CALL_FOREIGN,
                         (p["vp"], p.const(0, B64), c32(0x8000), p["vv"], p["mem"]), (B32, mem_type),
                         entity=declarations["free"])[1]
+        # every view this process lent is a resource: it is released here, in the order it was taken
+        for pointer_name, token_name, memory_name, extent, declaration in extra_views:
+            p[memory_name] = p.op(Operation.CALL_FOREIGN,
+                                  (p[pointer_name], p.const(extent, B64), c32(0x8000), p[token_name],
+                                   p[memory_name]), (B32, mem_type), entity=declaration)[1]
         p["proc"] = p.op1(Operation.CALL_FOREIGN, (code, p["proc"]), proc_type, entity=declarations["exit"])
-        p.ret(code, p["proc"], p["fs"], p["mem"])
+        p.ret(code, p["proc"], p["fs"], p["mem"],
+              *(p[memory] for _pointer, _token, memory, _extent, _declaration in extra_views))
 
     def guard(work):
         p.if_(eq(p["code"], 0), lambda _p: work())
@@ -179,7 +192,7 @@ def _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem
 
     return {
         "p": p, "c32": c32, "add": add, "sub": sub, "mul": mul, "at": at,
-        "ld8": ld8, "ld32": ld32, "st8": st8, "st32": st32, "st64": st64,
+        "ld8": ld8, "ld32": ld32, "st8": st8, "st32": st32, "st64": st64, "ld64": ld64,
         "byte": byte, "load_out": store_out, "store_out": store_out, "in_byte": raw_at, "raw_at": raw_at,
         "out_byte": put_out, "put_out": put_out, "out_dyn": put_dyn, "put_dyn": put_dyn,
         "fail": fail_if, "fail_if": fail_if, "guard": guard, "eq": eq, "ne": ne, "lt": lt, "cmp": p.cmp,
@@ -204,20 +217,31 @@ def _imports(api, pointer):
     }
 
 
-def build_main(api, stdio, on_tree=None, view_alignment=1):
+def build_main(api, stdio, on_tree=None, view_alignment=1, store_writer=None, store_only=False):
     """``main(proc, fs, mem) -> (b32, proc, fs, mem)``: normalize a carrier.
 
     With ``on_tree`` the parsed tree is handed to that callback instead of being re-emitted; it receives
     an environment of the node accessors, the byte helpers and the output writer.  ``view_alignment`` is
     the alignment the byte view is lent with; a resolver that hashes inside the view asks for four, so a
-    word-aligned scratch area can be addressed."""
+    word-aligned scratch area can be addressed.
+
+    With ``store_writer`` the same callback also gets three more views -- the writer's batch, the store it
+    writes and its hash scratch -- each with its own memory proof, and the process gains a third path: the
+    callback leaves a store length in ``store_len`` and this front half writes ``written[0..store_len]``
+    there.  The writer itself is called by the callback; this half only owns the buffers and the file."""
     proc_type, fs_type, mem_type = api.process_effect, api.filesystem_effect, api.memory_effect
     pointer_type, view_type = stdio.bytes_rw, heap_view_type(EXTENT)
     declarations = _imports(api, pointer_type)
     declarations["free"] = api.virtual_free_view(view_type, pointer_type)
-    p = Proc((("proc", proc_type), ("fs", fs_type), ("mem", mem_type)))
+    buffers = () if store_writer is None else tuple(store_writer["buffers"])
+    parameters = [("proc", proc_type), ("fs", fs_type), ("mem", mem_type)]
+    parameters += [(f"mem_{name}", mem_type) for name, _pointer, _view, _extent, _alignment in buffers]
+    p = Proc(parameters)
 
-    A = _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem_type)
+    A = _accessors(p, declarations, pointer_type, view_type, proc_type, fs_type, mem_type,
+                   extra_views=tuple((f"{name}_p", f"{name}_v", f"{name}_m", extent,
+                                      api.virtual_free_view(buffer_view, buffer_pointer))
+                                     for name, buffer_pointer, buffer_view, extent, _alignment in buffers))
     (c32, add, sub, mul, at, ld8, st8, ld32, st32, byte, store_out, put_dyn, st64, eq, ne, lt,
      exit_with, guard, fail_if, put, get, frame_slot, put_out, raw_at) = (
         A[name] for name in ("c32", "add", "sub", "mul", "at", "ld8", "st8", "ld32", "st32", "byte",
@@ -237,6 +261,18 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
     p.let("in", pointer_type, at(IN))
     p.let("outp", pointer_type, at(OUT))
 
+    for name, buffer_pointer, buffer_view, extent, alignment in buffers:
+        block, owner, memory = p.op(
+            Operation.CALL_FOREIGN,
+            (p.const(0, B64), p.const(extent, B64), c32(0x3000), c32(4), p[f"mem_{name}"]),
+            (api.heap_ptr_rw, api.heap_resource, mem_type), entity=declarations["allocate"])
+        base, view, memory = p.op(Operation.HEAP_VIEW, (block, owner, memory),
+                                  (buffer_pointer, buffer_view, mem_type), attributes=(extent, alignment))
+        p.drop(f"mem_{name}")
+        p.let(f"{name}_p", buffer_pointer, base)
+        p.let(f"{name}_v", buffer_view, view)
+        p.let(f"{name}_m", mem_type, memory)
+
     line, process = p.op(Operation.CALL_FOREIGN, (p["proc"],), (B64, proc_type), entity=declarations["command_line"])
     p["proc"] = process
     _, memory = p.op(Operation.CALL_FOREIGN, (at(0), line, c32(COMMAND_CAP), p["mem"]), (B64, mem_type),
@@ -244,7 +280,8 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
     p["mem"] = memory
 
     for name in ("code", "i", "n", "byte", "fd", "got", "written", "q", "depth", "root", "nodes", "scan",
-                 "value", "member", "out", "emit", "frame", "slot", "child", "kind", "a", "b", "t"):
+                 "value", "member", "out", "emit", "frame", "slot", "child", "kind", "a", "b", "t",
+                 "store_len", "have_three"):
         p.let(name, B32, c32(0))
     p["nodes"] = c32(1)   # node 0 is "none"
 
@@ -286,7 +323,20 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
     scan_word(separated)
     copy_word(PATH_TWO, PATH_CAP - 1)
     scan_word(separated)
-    fail_if(ne(p["byte"], 0), EXIT_TRAILING)
+    if store_only:
+        # the command form is ``construct <carrier> <store>``: argv[2] is the store, and there is no
+        # listing path to consume or require
+        p["have_three"] = c32(1)
+        fail_if(ne(p["byte"], 0), EXIT_TRAILING)
+    elif store_writer is None:
+        fail_if(ne(p["byte"], 0), EXIT_TRAILING)
+    else:
+        def third_path(_p):
+            p["have_three"] = c32(1)
+            copy_word(PATH_THREE, PATH_CAP - 1)
+            scan_word(separated)
+            fail_if(ne(p["byte"], 0), EXIT_TRAILING)
+        p.if_(ne(p["byte"], 0), third_path)
 
     # -- I/O --------------------------------------------------------------------------------------------
     def read_input():
@@ -619,6 +669,32 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
                  lambda _p: emit_step())
         fail_if(eq(p["out"], 0), EXIT_OVERFLOW)
 
+    # -- store buffers ----------------------------------------------------------------------------------
+    def store_load8(name, offset):
+        value, memory = p.op(Operation.CHECKED_LOAD_BITS_LE, (p[f"{name}_p"], offset, p[f"{name}_m"]),
+                             (B8, mem_type), attributes=(1, 1))
+        p[f"{name}_m"] = memory
+        return value
+
+    def store_load64(name, offset):
+        value, memory = p.op(Operation.CHECKED_LOAD_BITS_LE, (p[f"{name}_p"], offset, p[f"{name}_m"]),
+                             (B64, mem_type), attributes=(8, 1))
+        p[f"{name}_m"] = memory
+        return value
+
+    def store_put8(name, offset, value):
+        """Store one byte; the value must already be ``b8`` (a byte load, not a widened word)."""
+        (memory,) = p.op(Operation.CHECKED_STORE_BITS_LE,
+                         (p[f"{name}_p"], offset, value, p[f"{name}_m"]),
+                         (mem_type,), attributes=(1, 1))
+        p[f"{name}_m"] = memory
+
+    def store_put64(name, offset, value):
+        (memory,) = p.op(Operation.CHECKED_STORE_BITS_LE,
+                         (p[f"{name}_p"], offset, p.widen(value, B64), p[f"{name}_m"]),
+                         (mem_type,), attributes=(8, 1))
+        p[f"{name}_m"] = memory
+
     # -- write ------------------------------------------------------------------------------------------
     def write_output():
         p["fd"], p["fs"] = p.op(Operation.CALL_FOREIGN, (at(PATH_TWO), c32(OPEN_WRITE), c32(CREATE_MODE),
@@ -629,6 +705,17 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
                                                (B32, fs_type, mem_type), entity=declarations["write"])
         p["fs"] = p.op(Operation.CALL_FOREIGN, (p["fd"], p["fs"]), (B32, fs_type), entity=declarations["close"])[1]
         fail_if(p.cmp(IntCompare.NE, p["written"], p["out"], B32), EXIT_SHORT_WRITE)
+
+    def write_store():
+        path_at = PATH_TWO if store_only else PATH_THREE
+        p["fd"], p["fs"] = p.op(Operation.CALL_FOREIGN, (at(path_at), c32(OPEN_WRITE), c32(CREATE_MODE),
+                                                         p["fs"]), (B32, fs_type), entity=declarations["open"])
+        fail_if(p.cmp(IntCompare.SLT, p["fd"], c32(0), B32), EXIT_BAD_OPEN_OUT)
+        p["written"], p["fs"], p["written_m"] = p.op(
+            Operation.CALL_FOREIGN, (p["fd"], p["written_p"], p["store_len"], p["fs"], p["written_m"]),
+            (B32, fs_type, mem_type), entity=declarations["write"])
+        p["fs"] = p.op(Operation.CALL_FOREIGN, (p["fd"], p["fs"]), (B32, fs_type), entity=declarations["close"])[1]
+        fail_if(p.cmp(IntCompare.NE, p["written"], p["store_len"], B32), EXIT_SHORT_WRITE)
 
     EXTRA: list = []
 
@@ -647,6 +734,11 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
             "mem_type": mem_type, "view_type": view_type, "pointer_type": pointer_type,
             "proc_type": proc_type, "fs_type": fs_type,
             "declarations": declarations, "accessors": environment, "extra": EXTRA,
+            "store": {name: (f"{name}_p", f"{name}_v", f"{name}_m")
+                      for name, _pointer, _view, _extent, _alignment in buffers},
+            "store_writer": store_writer, "store_len": "store_len", "have_three": "have_three",
+            "store_load8": store_load8, "store_load64": store_load64,
+            "store_put8": store_put8, "store_put64": store_put64,
         })
         return env
 
@@ -659,19 +751,27 @@ def build_main(api, stdio, on_tree=None, view_alignment=1):
 
     guard(read_input)
     guard(normalize)
-    guard(write_output)
+    if not store_only:
+        guard(write_output)
+    if store_writer is not None:
+        def store_output():
+            fail_if(p.all_of(ne(p["store_len"], 0), eq(p["have_three"], 0)), EXIT_NO_STORE)
+            p.if_(ne(p["store_len"], 0), lambda _q: write_store())
+        guard(store_output)
     exit_with(p["code"])
-    return (p.function((B32, proc_type, fs_type, mem_type)), tuple(p.graph.objects.values()) + tuple(EXTRA))
+    returns = (B32, proc_type, fs_type, mem_type) + (mem_type,) * len(buffers)
+    return (p.function(returns), tuple(p.graph.objects.values()) + tuple(EXTRA))
 
 
-def build_reader(name=b"xax-construct-reader", on_tree=None, view_alignment=1, extra_objects=()):
+def build_reader(name=b"xax-construct-reader", on_tree=None, view_alignment=1, extra_objects=(),
+                 store_writer=None, store_only=False):
     from xax_build import (ArtifactKind, build, build_profile, build_request, package, resolve_packages,
                            snapshot_store, trust_policy)
     from xax_compiler import Kind, StoreReader, object_with_refs, verify_store, write_store
 
     api = win32_kernel32_api()
     stdio = win32_stdio_api(api)
-    entry, objects = build_main(api, stdio, on_tree, view_alignment)
+    entry, objects = build_main(api, stdio, on_tree, view_alignment, store_writer, store_only)
     platform_types = (*api.types, *api.symbols, *stdio.types, *stdio.symbols)
     module = object_with_refs(Kind.MODULE, (entry,))
     app = package(name, (module,), build_entries=((b"app", entry),))
