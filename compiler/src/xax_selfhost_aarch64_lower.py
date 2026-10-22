@@ -2311,6 +2311,12 @@ def _view(tables):
                 e, _eop(e, e.ld(e.add(_f(e, p["vw_b"], _B_NODES), p["vw_m"]))), tuple(int(op) for op in ATOMIC_OPERATIONS)))))
 
         e.for_("vw_q", 0, p["vw_n"], atomics)
+        # S15f.4 (ADR-325): a bare-metal image has no function-wide register allocation (``compile_linux_function`` is
+        # the Linux and Android profiles'): the frame path or the legacy register path from the function's own graph.
+        from xax_selfhost_aarch64_frame import G_A64RAW
+        from xax_selfhost_views_backend import GLOBALS
+
+        e.if_(e.ne(e.ld(GLOBALS + G_A64RAW), 0), lambda: (_call(e, "a64f_function", p["f"], p["fidx"]), _call(e, "a64_image_add", p["fidx"]), e.give(1)))
         e.var("vw_any", 0)
 
         def scan():

@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_ed25519 as ED
-from xax_artifact import (ACCELERATOR_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
+from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
                           container_lowering_identity)
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
@@ -63,6 +63,10 @@ WASM_ARCHITECTURE, WASM_FORMAT = 2, 2
 # S15f.2 (ADR-324): a Windows load image (architecture 1, image format 1, not the PE profile), made by the general program.
 PATH_X86_RAW = 8
 X86_ARCHITECTURE, X86_RAW_FORMAT = 1, 1
+# S15f.4 (ADR-325): a bare-metal AArch64 load image (architecture 3, the bare-metal ABI 3, image format 1), made by the
+# AArch64 program.
+PATH_A64_RAW = 9
+A64_ARCHITECTURE, A64_BAREMETAL_ABI, A64_RAW_FORMAT = 3, 3, 1
 ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
 # S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
 # program reads the package's plan, ``xax_selfhost_general_dll``), and the provenance names the DLL container.
@@ -464,6 +468,8 @@ def _build_request(tables, verify):
             e.var("riscv", 0)
             e.var("wasm", 0)  # S15f.1: a raw module, ``build``'s last branch like RISC-V
             e.var("x86raw", 0)  # S15f.2: a Windows load image, likewise
+            e.var("a64raw", 0)  # S15f.4: a bare-metal AArch64 image, likewise
+            e.var("abi", NONE_FIELD)
             e.var("accel", 0)
             e.var("architecture", NONE_FIELD)
             e.var("image_format", NONE_FIELD)
@@ -474,7 +480,7 @@ def _build_request(tables, verify):
             def fields():
                 r.uleb()  # the profile
                 e.set("architecture", r.uleb())
-                r.uleb()  # the ABI
+                e.set("abi", r.uleb())
                 e.set("image_format", r.uleb())
                 e.set("riscv", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], RISCV64_ARCHITECTURE),
                                              e.eq(p["image_format"], RISCV64_RAW_FORMAT))))
@@ -482,6 +488,8 @@ def _build_request(tables, verify):
                                             e.eq(p["image_format"], WASM_FORMAT))))
                 e.set("x86raw", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], X86_ARCHITECTURE),
                                               e.eq(p["image_format"], X86_RAW_FORMAT))))
+                e.set("a64raw", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], A64_ARCHITECTURE), e.eq(p["abi"], A64_BAREMETAL_ABI),
+                                              e.eq(p["image_format"], A64_RAW_FORMAT))))
                 e.set("accel", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], ACCELERATOR_ARCHITECTURE),
                                              e.eq(p["image_format"], ACCELERATOR_FORMAT))))
 
@@ -495,9 +503,10 @@ def _build_request(tables, verify):
             e.if_(e.ne(p["riscv"], 0), lambda: e.set("path", PATH_RISCV64_RAW))
             e.if_(e.ne(p["wasm"], 0), lambda: e.set("path", PATH_WASM_RAW))
             e.if_(e.ne(p["x86raw"], 0), lambda: e.set("path", PATH_X86_RAW))
+            e.if_(e.ne(p["a64raw"], 0), lambda: e.set("path", PATH_A64_RAW))
             e.if_(e.ne(p["accel"], 0), lambda: e.set("path", PATH_ACCELERATOR))
             _set(e, B_PATH, p["path"])
-            e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0), e.eq(p["wasm"], 0), e.eq(p["x86raw"], 0), e.eq(p["accel"], 0)),
+            e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0), e.eq(p["wasm"], 0), e.eq(p["x86raw"], 0), e.eq(p["a64raw"], 0), e.eq(p["accel"], 0)),
                   lambda: e.set("outcome", DECLINE))
 
             def dll():
@@ -546,7 +555,8 @@ def _build_request(tables, verify):
 
             native = e.either(e.ne(p["dll"], 0), e.both(e.eq(p["artifacts"], 1), e.eq(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE))),
                               e.both(e.eq(p["artifacts"], 1), e.ne(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.ACCELERATOR_DEPLOYMENT))))
-            e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.either(e.ne(p["riscv"], 0), e.ne(p["wasm"], 0), e.ne(p["x86raw"], 0), e.ne(p["accel"], 0)), riscv_artifacts, artifacts))
+            e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.either(e.ne(p["riscv"], 0), e.ne(p["wasm"], 0), e.ne(p["x86raw"], 0), e.ne(p["a64raw"], 0), e.ne(p["accel"], 0)), riscv_artifacts,
+                                                                       artifacts))
 
         when(request)
         _set(e, B_STATUS, p["outcome"])
@@ -571,6 +581,7 @@ def _provenance(tables):
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_RISCV64_RAW), lambda: lowering(RISCV64_LOWERING_IDENTITY_V1))
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_WASM_RAW), lambda: lowering(WASM_LOWERING_IDENTITY_V1))  # S15f.1
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_X86_RAW), lambda: lowering(X86_64_LOWERING_IDENTITY_V1))  # S15f.2
+        e.if_(e.eq(_ctrl(e, B_PATH), PATH_A64_RAW), lambda: lowering(AARCH64_LOWERING_IDENTITY_V1))  # S15f.4
         e.if_(e.ne(_ctrl(e, B_DLL), 0), lambda: lowering(container_lowering_identity(DLL_LOWERING)))  # S15e.3b
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_ACCELERATOR), lambda: lowering(ACCELERATOR_LOWERING_IDENTITY_V1))  # S15e.7a
         for word in range(CID_SIZE // 8):
