@@ -2226,6 +2226,13 @@ def _legacy_static(e: E, f, name: str):
         e.if_(e.not_(e.either(_in(e, p[f"{name}_op"], LEGACY_ALLOWED), e.both(e.ne(p[f"{name}_w"], 0), _in(e, p[f"{name}_op"], HOSTED_ALLOWED)))),
               lambda: e.set(name, 0))
         e.if_(e.ne(p[f"{name}_w"], 0), lambda: hosted(n))
+        wrapping = (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR)
+
+        def narrow():  # S15f.2: narrow wrapping values use the masking frame path
+            _bits_width(e, _vf(e, G_VTYPE, _output(e, n, 0)), f"{name}_aw")
+            e.if_(e.not_(e.either(e.eq(p[f"{name}_aw"], 32), e.eq(p[f"{name}_aw"], 64))), lambda: e.set(name, 0))
+
+        e.if_(_in(e, p[f"{name}_op"], tuple(_op(o) for o in wrapping)), narrow)
 
         def direct():
             _machine_inputs(e, n, 0, f"{name}_in")
