@@ -45,6 +45,8 @@ RIGHT_OF = {"xax_workspace": "read", "xax_query": "read", "xax_construct": "muta
             "xax_build": "build", "xax_execute": "execute", "xax_result": "read"}
 # Tools that drive the host-granted native compiler: without XAX_MCP_COMPILER/WORK/STORE they report denied_capability.
 COMPILER_TOOLS = {"xax_workspace", "xax_query", "xax_transaction", "xax_build", "xax_execute"}
+# Tools with a host grant of their own: without it they report denied_capability (construct: XAX_MCP_CONSTRUCT/WORK).
+GATED_TOOLS = COMPILER_TOOLS | {"xax_construct"}
 LMAX = 4 * 1024 * 1024
 
 
@@ -209,6 +211,9 @@ def test_tool_dispatch_under_default_rights(server):
         if tool == "xax_execute":
             assert payload["error"]["code"] == "denied_capability"
             assert payload["error"]["repair"] == ["the host owner may add --allow-execute to the server launch command"]
+        elif tool == "xax_construct":
+            assert payload["error"]["code"] == "denied_capability", (tool, payload)
+            assert "XAX_MCP_CONSTRUCT" in payload["error"]["message"]
         elif tool in COMPILER_TOOLS:
             assert payload["error"]["code"] == "denied_capability", (tool, payload)
             assert "XAX_MCP_COMPILER" in payload["error"]["message"]
@@ -241,7 +246,7 @@ def test_host_rights_come_from_launch_flags(exe, args, rights):
         for tool, right in RIGHT_OF.items():
             # a tool argument never grants a right
             error = server.call(tool, {"rights": ["execute"], "allow_execute": True})["error"]
-            expected = ("unsupported" if right in rights and tool not in COMPILER_TOOLS else "denied_capability")
+            expected = ("unsupported" if right in rights and tool not in GATED_TOOLS else "denied_capability")
             assert error["code"] == expected, (tool, error)
     finally:
         server.process.kill()
@@ -444,7 +449,51 @@ def test_native_compiler_chain_over_stdio(exe, tmp_path):
         assert code == 0 and not rest, (code, rest, err)
 
 
-def test_native_sandbox_launcher_runs_artifact_confined(tmp_path):
+def test_native_construct_over_stdio(exe, tmp_path):
+    """End to end: the server decodes an inline carrier with the host-granted native construct command.
+
+    Gated on XAX_MCP_TEST_CONSTRUCT, the native ``construct`` executable (XAX's carrier decoder).  The carrier is the
+    committed ``native/sandbox_request.json``; the store the decoder writes must equal the committed
+    ``native/xax-mcp-sandbox-gen0.xax`` byte for byte, and it becomes the work directory's current store.  Nothing
+    here decodes a carrier inside the server: the server spawns the decoder with a fixed three-word argv.
+    """
+    decoder = os.environ.get("XAX_MCP_TEST_CONSTRUCT")
+    if not decoder:
+        pytest.skip("set XAX_MCP_TEST_CONSTRUCT (native XAX construct executable) to drive the native decoder")
+    request = json.loads((_native() / "sandbox_request.json").read_text())
+    store = (_native() / "xax-mcp-sandbox-gen0.xax").read_bytes()
+    work = tmp_path / "work"
+    work.mkdir()
+    server = Server(exe, env={"XAX_MCP_WORK": str(work), "XAX_MCP_CONSTRUCT": decoder})
+    try:
+        result = server.call("xax_construct", {"request": request})
+        current = work / "current.xax"
+        assert result == {"bytes": len(store), "ok": True, "root": store[7:39].hex(), "workspace": "ws_0"}, result
+        assert current.read_bytes() == store
+        # a carrier the decoder refuses is reported, and the current store is left exactly as it was
+        refused = server.call("xax_construct", {"request": {"format": "xax-construct-v0", "platform": "windows-x86_64",
+                                                            "functions": [{}], "package": {}}})
+        assert refused["error"]["code"] == "construct_rejected", refused
+        assert current.read_bytes() == store
+        # the request must be a JSON object and it must be present
+        assert server.call("xax_construct", {"request": 7})["error"]["code"] == "invalid_request"
+        assert server.call("xax_construct", {})["error"]["code"] == "invalid_request"
+    finally:
+        code, rest, err = server.close()
+        assert code == 0 and not rest, (code, rest, err)
+    # the grant is the decoder and the work directory together: either one missing fails closed before spawning
+    for env in ({"XAX_MCP_CONSTRUCT": decoder}, {"XAX_MCP_WORK": str(work)},
+                {"XAX_MCP_WORK": str(work), "XAX_MCP_CONSTRUCT": str(tmp_path / "missing-construct.exe")}):
+        other = Server(exe, env=env)
+        try:
+            error = other.call("xax_construct", {"request": request})["error"]
+            expected = "construct_rejected" if "missing-construct.exe" in env.get("XAX_MCP_CONSTRUCT", "") else "denied_capability"
+            assert error["code"] == expected, (env, error)
+        finally:
+            assert other.close()[0] == 0
+
+
+
     """The native executor runs the committed seed artifact and records its exit code.
 
     Gated on XAX_NATIVE_SRC: it builds ``native/sandbox.py`` into a launcher with the pinned XAX compiler.  The
