@@ -573,6 +573,7 @@ Steps S3–S7a are migrated for acceptance only: their XAX components decline in
 | S15e.5 | JVM jars: an XAX JVM class and jar writer (ADR-308) | S15e.1 | UNIMPLEMENTED |
 | S15e.6 | Android packages, unsigned and signed (ADR-308) | S15e.2 | UNIMPLEMENTED |
 | S15e.7 | Accelerator deployments and SPIR-V modules (ADR-308) | S15e.1 | DONE (ADR-321): S15e.7a accelerator deployments, S15e.7b SPIR-V modules |
+| S15f | The raw images and the remaining lowerings: headroom (ADR-323), raw Wasm modules and Windows load images (ADR-324), raw AArch64 images | S15e | PARTIAL: S15f.0-S15f.3 DONE; raw AArch64 images open |
 
 ## EI — Evidence and canonical-state integrity (ADR-177; before S7b)
 
