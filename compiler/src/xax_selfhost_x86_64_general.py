@@ -59,6 +59,9 @@ COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each functi
 G_TPROFILE, G_TATOMIC = 61, 62
 # S15e.3 (ADR-317): 1 for the Windows PE32+ profile (``_hosted_container``'s ``x86_64-windows-pe-v1``), 0 for Linux.
 G_WINDOWS = 63
+# S15f.2 (ADR-324): 1 for a Windows load image (architecture 1, ABI 1, format 1, not the PE profile): the Win64 frame path
+# without the register-resident lowering, the hosted register path or a container; the image is the code alone.
+G_RAWWIN = 190
 PE_IDENTITY = b"x86_64-windows-pe-v1"
 FRAME = 5  # a closure frame: function, graph, stream cursor, blocks left, nodes left in the current block
 F_FN, F_GRAPH, F_AT, F_BLOCKS, F_NODES = range(FRAME)
@@ -769,7 +772,8 @@ def _frontend(tables):
             e.give(1)
 
         e.if_(e.eq(p["t_arch"], 2), wasm)
-        e.st(GLOBALS + G_WINDOWS, e.flag(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1))))
+        e.st(GLOBALS + G_RAWWIN, e.flag(e.both(e.eq(p["t_windows"], 0), e.eq(p["t_arch"], 1), e.eq(p["t_abi"], 1), e.eq(p["t_fmt"], 1))))
+        e.st(GLOBALS + G_WINDOWS, e.flag(e.either(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1)), e.ne(_g(e, G_RAWWIN), 0))))
         linux = e.both(e.eq(p["t_abi"], LINUX_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
         e.if_(e.eq(_g(e, G_WINDOWS), 0), lambda: _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual))
 
@@ -780,7 +784,7 @@ def _frontend(tables):
         # (``xax_selfhost_general_dll``) gives the entry and the further roots.
         e.st(DLL.D_ON, 0)
         e.st(DLL.D_NROOTS, 0)
-        e.if_(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_kind(e, p["entry"]), int(Kind.BUILD))), lambda: e.set("entry", _call(e, "dll_plan", p["entry"])))
+        e.if_(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0), e.eq(_kind(e, p["entry"]), int(Kind.BUILD))), lambda: e.set("entry", _call(e, "dll_plan", p["entry"])))
         entry = p["entry"]
         e.st(GLOBALS + G_ENTRY, entry)
 
@@ -1300,3 +1304,31 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
 
 
 __all__ = ["RULES", "build_general_program", "closure_with_xax", "general_with_xax", "rebuild_views", "load_general_program", "native_general", "write_general_store"]
+
+
+def x86_64_raw_image(reader, function_cid: bytes, target_object, *, frontend: str = "auto") -> bytes:
+    """``build``'s image for a Windows load-image target (S15f.2, ADR-324): the XAX general program's code where it runs
+    and decides (``"auto"``; ``"xax"`` requires it), else ``compile_native_bound_target``'s.  With
+    ``XAX_GENERAL_FRONTEND_DIFF=1`` the two must agree."""
+    import os
+
+    from xax_compiler import XaxError
+    from xax_x86_64 import compile_native_bound_target
+
+    def reference() -> bytes:
+        return compile_native_bound_target(reader, function_cid, target_object).code
+
+    if frontend == "python":
+        return reference()
+    result = general_with_xax(reader, function_cid, target_object, required=frontend == "xax")
+    image = None if result is None or result.image is None else result.image["elf"]
+    if image is None:
+        return reference()
+    if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+        try:
+            expected = reference()
+        except XaxError as error:
+            raise AssertionError(f"S15f.2: the bootstrap rejects ({error.diagnostic.rule}) an image the XAX program wrote") from error
+        if image != expected:
+            raise AssertionError("S15f.2 Windows load images disagree")
+    return image

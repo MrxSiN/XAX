@@ -296,7 +296,7 @@ def _less_input(e: E, a, an, b, bn, name: str):
 def _image_finish_fn(tables):
     """The SysV entry adapters, the fixups, the imports, then the ELF container (``IMAGE_AT`` record)."""
     from xax_selfhost_general_view import G_CIDX
-    from xax_selfhost_x86_64_general import G_ENTRY, G_TFMT, G_WINDOWS
+    from xax_selfhost_x86_64_general import G_ENTRY, G_RAWWIN, G_TFMT, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -380,7 +380,11 @@ def _image_finish_fn(tables):
 
         # S15e.3: ``emit_pe_executable``'s entry checks, then the PE32+ container; (S15e.3b) ``emit_pe_dll``'s for a DLL.
         windows = lambda: (e.if_(e.ne(e.ld(DLL.D_ON), 0), lambda: _call(e, "dll_names"), lambda: _call(e, "pe_entry")), _call(e, "pe"))  # noqa: E731
-        e.if_(e.ne(_g(e, G_WINDOWS), 0), windows, linux)
+        def raw():
+            """S15f.2 (ADR-324): a Windows load image is the code itself (``NativeImage.code``), as the container bytes."""
+            e.for_("if_rk", 0, _ra(e, I_LEN), lambda: _elf(e, e.ld(e.add(_ra(e, I_IMG), p["if_rk"])), 1))
+
+        e.if_(e.ne(_g(e, G_RAWWIN), 0), raw, lambda: e.if_(e.ne(_g(e, G_WINDOWS), 0), windows, linux))
         e.give(1)
     return _function((), build, tables)
 
