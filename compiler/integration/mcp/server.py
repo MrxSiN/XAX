@@ -17,8 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dsl import Program  # noqa: E402
 
-VERSION = "0.7.0+native"
-NATIVE_XAX_COMMIT = "f79b532fd4651ba808676d02f4b038e2cc271e6a"  # XAX main, 2026-10-19; host contract xax-host-contract-v1 r10
+VERSION = "0.8.0+native"
+NATIVE_XAX_COMMIT = "3e9b0c2b3f88d2193caae72a5fe8eefa83d1995b"  # XAX main, 2026-10-22; host contract xax-host-contract-v1 r10
 LMAX = 4 * 1024 * 1024  # largest accepted message line
 MAX_ARGUMENTS = 1024 * 1024  # policy.max_request_bytes default
 MAX_DEPTH = 64
