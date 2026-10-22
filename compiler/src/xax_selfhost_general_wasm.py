@@ -15,7 +15,7 @@ alignments, 32-bit immediates outside 32 bits, non-ASCII names) and capacities p
 
 from __future__ import annotations
 
-from xax_compiler import Kind, Operation, WASM32_BROWSER_EVENT_ABI, WASM32_BROWSER_IDENTITY
+from xax_compiler import Kind, Operation, WASM32_BROWSER_EVENT_ABI, WASM32_BROWSER_IDENTITY, WASM32_WASI_IDENTITY
 import xax_selfhost_diagnostics as D
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_views_backend import (
@@ -27,7 +27,8 @@ from xax_selfhost_views_backend import (
 WA = GLOBALS + 192
 (W_ON, W_F, W_G, W_B, W_ENTRY, W_BLK, W_NODE, W_NV, W_VAL, W_IDS, W_IFACE, W_FUNCS, W_NF, W_FIDX, W_ACT, W_DONE, W_REC,
  W_STACK, W_DEPTH, W_CARR, W_NCARR, W_IMPIDX, W_EVT, W_EVL, W_NEVT, W_CURSOR, W_LOC, W_NLOC, W_PC, W_SCR, W_CUR, W_SIGS,
- W_NSIGS, W_TYIDX, W_IMPTY, W_SPAN, W_EF, W_THR) = (WA + k for k in range(38))
+ W_NSIGS, W_TYIDX, W_IMPTY, W_SPAN, W_EF, W_THR, W_KIND) = (WA + k for k in range(39))
+PAGE_KIND, COMMAND_KIND, PLAIN_KIND = 0, 1, 2  # ``W_KIND``: the browser page, a WASI command module, a plain core module (S15f.1)
 BUF = WA + 40  # buffers: base, length, capacity
 CODE, BODIES, MODULE, PART, PAGE = (BUF + 3 * k for k in range(5))
 assert PAGE + 3 <= GLOBALS + 256
@@ -2015,19 +2016,26 @@ def _wa_sections(tables):
         _section(e, 3)
         _bytes(e, b"\x01\x00\x01")
         _section(e, 5)
-        _u(e, e.add(e.ld(W_NEVT), 2))
-        _bytes(e, b"\x06_start\x00")
-        _u(e, e.add(e.ld(W_NCARR), _obj(e, W_FIDX, e.ld(W_EF))))
-        _bytes(e, b"\x06memory\x02\x00")
+        def command():
+            _u(e, e.add(e.ld(W_NEVT), 2))
+            _bytes(e, b"\x06_start\x00")
+            _u(e, e.add(e.ld(W_NCARR), _obj(e, W_FIDX, e.ld(W_EF))))
+            _bytes(e, b"\x06memory\x02\x00")
 
-        def event():
-            _u(e, e.add(6, _digits(e, p["ye"], "ydg")))
-            _bytes(e, b"entry_")
-            _decimal(e, p["ye"], "ydc")
-            _b(e, 0)
-            _u(e, e.add(e.ld(W_NCARR), _obj(e, W_FIDX, _list(e, W_EVL, p["ye"]))))
+            def event():
+                _u(e, e.add(6, _digits(e, p["ye"], "ydg")))
+                _bytes(e, b"entry_")
+                _decimal(e, p["ye"], "ydc")
+                _b(e, 0)
+                _u(e, e.add(e.ld(W_NCARR), _obj(e, W_FIDX, _list(e, W_EVL, p["ye"]))))
 
-        e.for_("ye", 0, e.ld(W_NEVT), event)
+            e.for_("ye", 0, e.ld(W_NEVT), event)
+
+        def plain():  # one export: ``entry``
+            _bytes(e, b"\x01\x05entry\x00")
+            _u(e, e.add(e.ld(W_NCARR), _obj(e, W_FIDX, e.ld(W_EF))))
+
+        e.if_(e.eq(e.ld(W_KIND), PLAIN_KIND), plain, command)
         _section(e, 7)
         _u(e, e.ld(W_NF))
         _append(e, PART, BODIES)
@@ -2132,7 +2140,7 @@ def _wa_host(name: bytes):
 def _wasm(tables):
     """``compile_wasm_bound_target`` and ``emit_browser_page`` for function ``wf``: 1 with the page in the image record,
     NONE when rejected or declined."""
-    from xax_selfhost_general_image import IMAGE_AT
+    from xax_selfhost_general_image import IMAGE_AT, IMAGE_END
     from xax_selfhost_x86_64_general import G_GENERAL, G_TARGET
 
     def build(e: E):
@@ -2142,8 +2150,13 @@ def _wasm(tables):
         e.var("wt", _g(e, G_TARGET))
         e.var("wta", _at(e, G_PAY, p["wt"]))
         e.var("wtn", _payload_uleb(e, "wta"))
-        _ok(e, e.both(e.eq(p["wtn"], len(WASM32_BROWSER_IDENTITY)),
-                      *(e.eq(e.rd(e.add(p["wta"], k)), byte) for k, byte in enumerate(WASM32_BROWSER_IDENTITY))))
+
+        def named(identity: bytes):
+            return e.both(e.eq(p["wtn"], len(identity)), *(e.eq(e.rd(e.add(p["wta"], k)), byte) for k, byte in enumerate(identity)))
+
+        e.st(W_KIND, PLAIN_KIND)  # S15f.1: any other architecture-2 target on the general profile is a plain core module
+        e.if_(named(WASM32_WASI_IDENTITY), lambda: e.st(W_KIND, COMMAND_KIND))
+        e.if_(named(WASM32_BROWSER_IDENTITY), lambda: e.st(W_KIND, PAGE_KIND))
         _ok(e, e.ne(_g(e, G_GENERAL), 0))  # the legacy profile's lowering is not this one
         e.st(W_ON, 1)
         e.st(W_EF, f)
@@ -2171,20 +2184,26 @@ def _wasm(tables):
                 e.for_("wq4", 0, e.ld(p["wrt"]), lambda: D.cid(e, _cid_words(e, e.ld(e.add(e.add(p["wrt"], 1), p["wq4"])))))
             _reject(e, "XAX.WASM.WASI_ENTRY", lambda: D.cid(e, _cid_words(e, f)), "WASI-START-NO-MACHINE-VALUES", lambda: D.text(e, "() -> ()"), actual)
 
-        e.if_(e.ne(p["wmachine"], 0), machine)
+        e.if_(e.both(e.ne(p["wmachine"], 0), e.ne(e.ld(W_KIND), PLAIN_KIND)), machine)
         _buffer_reset(e, BODIES)
         e.st(W_CURSOR, NULL_GUARD)  # the compile pass lays the storage out again, in the same order
         e.for_("wc", 0, e.ld(W_NF), lambda: _call(e, "wa_function", p["wc"]))
         _call(e, "wa_sections")
-        _call(e, "wa_page")
-        # The image record: no code, the page as the container bytes, nothing else.
-        e.var("wlen", e.ld(PAGE + 1))
+        # The image record: no code, the page (or, S15f.1, the module) as the container bytes, nothing else.
+        e.var("wout", MODULE)
+
+        def page():
+            _call(e, "wa_page")
+            e.set("wout", PAGE)
+
+        e.if_(e.eq(e.ld(W_KIND), PAGE_KIND), page)
+        e.var("wlen", e.ld(e.add(p["wout"], 1)))
         e.st(IMAGE_AT, 1)
         e.st(IMAGE_AT + 1, 0)
         e.st(IMAGE_AT + 2, p["wlen"])
-        e.var("wbase", e.ld(PAGE))
+        e.var("wbase", e.ld(p["wout"]))
         e.var("wwords", e.udiv(e.add(p["wlen"], 7), 8))
-        _ok(e, e.lt(e.add(IMAGE_AT + 8, p["wwords"]), 11 << 20))
+        _ok(e, e.lt(e.add(IMAGE_AT + 8, p["wwords"]), IMAGE_END))
 
         def word():
             e.var("ww", 0)
@@ -2245,3 +2264,30 @@ def browser_page(reader, function_cid: bytes, target_object, *, frontend: str = 
         if page != expected:
             raise AssertionError("S15e.4 browser pages disagree")
     return page
+
+
+def wasm_module(reader, function_cid: bytes, target_object, *, frontend: str = "auto") -> bytes:
+    """``build``'s module for an architecture-2 target other than the browser page (S15f.1, ADR-324): the XAX general
+    program where it runs and decides (``"auto"``; ``"xax"`` requires it), else ``compile_wasm_bound_target``.  With
+    ``XAX_GENERAL_FRONTEND_DIFF=1`` the two must agree."""
+    import os
+
+    from xax_compiler import XaxError
+    from xax_wasm import compile_wasm_bound_target
+
+    def reference() -> bytes:
+        return compile_wasm_bound_target(reader, function_cid, target_object).artifact_bytes
+
+    if frontend == "python":
+        return reference()
+    module = wasm_page_with_xax(reader, function_cid, target_object, required=frontend == "xax")
+    if module is None:
+        return reference()
+    if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+        try:
+            expected = reference()
+        except XaxError as error:
+            raise AssertionError(f"S15f.1: the bootstrap rejects ({error.diagnostic.rule}) a module the XAX program wrote") from error
+        if module != expected:
+            raise AssertionError("S15f.1 Wasm modules disagree")
+    return module

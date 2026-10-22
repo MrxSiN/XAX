@@ -2177,13 +2177,15 @@ def build(
                 [item.name for item in request_view.requested_artifacts],
             )
         if description.architecture == 1:
-            from xax_x86_64 import compile_native_bound_target
+            from xax_selfhost_x86_64_general import x86_64_raw_image
 
-            image = compile_native_bound_target(reader, function_root, target_object)
+            image = None
+            artifact = x86_64_raw_image(reader, function_root, target_object)  # S15f.2 (ADR-324): XAX first
         elif description.architecture == 2:
-            from xax_wasm import compile_wasm_bound_target
+            from xax_selfhost_general_wasm import wasm_module
 
-            image = compile_wasm_bound_target(reader, function_root, target_object)
+            image = None
+            artifact = wasm_module(reader, function_root, target_object)  # S15f.1 (ADR-324): XAX first
         elif description.architecture == 3:
             from xax_aarch64 import compile_aarch64_bound_target
 
