@@ -9,7 +9,7 @@
       "B4": false,
       "B5": false,
       "B6": false,
-      "blocker": "the browser Wasm page, JVM jars, Android packages and the raw x86-64, Wasm and AArch64 images are compiled by Python backends (S15e.4-S15e.6), and Windows functions only the legacy register path takes are left to the bootstrap; Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V raw images, accelerator deployments and SPIR-V modules are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321)"
+      "blocker": "JVM jars, Android packages and the raw x86-64, Wasm and AArch64 images are compiled by Python backends (S15e.5, S15e.6), and Windows functions only the legacy register path takes are left to the bootstrap; Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V raw images, accelerator deployments, SPIR-V modules and browser pages are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322)"
     },
     "linux_x86_64_production_compiler": {
       "B0": true,
