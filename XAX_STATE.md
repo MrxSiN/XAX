@@ -1722,3 +1722,12 @@ A Windows XAX DLL may forward exports to another module (`package.forwards`) and
 ## S15f.4 bare-metal AArch64 images and S15e.3b hosted legacy path — 2026-10-22 (ADR-325, ADR-326)
 
 The production compiler now builds bare-metal AArch64 load images itself. Before, only Python did. The AArch64 program gained the bootstrap's legacy register path, which these profiles use, and the image is the bundle code. On 600 random programs (spills, calls, homes, wide joins, loops, traps, narrow-width rejections) and the frame and offset rejections, the output equals the bootstrap's. On Windows, functions the bootstrap lowers on its hosted legacy register path are now built by the general program too, including compares, imports and COM calls, code addresses, heap views and checked accesses. 230 programs that reach that path and 20 rejection cases equal the bootstrap's. The seed was rotated (`ec14532e…`) and rebuilds itself (seed = C1 = C2). Every target except JVM jars and Android packages is now built by the production compiler.
+
+## S15e.5a JVM JARs for the integer subset through XAX — 2026-10-22 (ADR-327)
+
+A standalone XAX program (`xax_selfhost_jvm`, store `compiler/bootstrap/xax_jvm_general.xax`) now builds JVM JARs for `jvm-classfile-v1` programs that use only integer operations, byte for byte equal to `compile_jvm_bound_target`'s. `build` asks it first and falls back to the bootstrap when it declines. Results:
+
+- 330 seeded random programs agree, none declined.
+- Inside `test_xax_jvm.py`, 39 JARs and 1 rejection agree, 61 decline (floats, platform calls, traps), none disagree.
+
+The production driver does not contain the program yet, so the bootstrap status is unchanged.

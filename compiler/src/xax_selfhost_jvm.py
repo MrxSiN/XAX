@@ -362,8 +362,10 @@ def _method_fn(tables):
         # Pass 2, retried while the definite assignment keeps parameters.
         _set_m(e, M_PASS, 2)
         _set_m(e, M_KEPTNONE, 0)
+        _set_m(e, M_NEEDS_PK, 0)  # the counting pass's needs are a scratch set; every pass-2 attempt's are the class's
         e.var("mt_retry", 1)
         e.while_(lambda: e.ne(p["mt_retry"], 0), lambda: (_analyses(e), e.set("mt_retry", _emit_pass_call(e))))
+        e.if_(e.ne(_m(e, M_NEEDS_PK), 0), lambda: _set_js(e, J_PK, 1))
         _call(e, "je_finish")
         _call(e, "jk_record", KIND_FN, p["fidx"])
         e.set_hd(H_ARENA, p["mt_mark"])
@@ -1178,4 +1180,31 @@ def jvm_with_xax(reader, function_cid: bytes, target_object, *, process_entry: b
             xax_native.declined("jvm-general", 1)
         if required:
             fail("XAX.JVM.GENERAL", function_cid.hex(), "JVM-XAX-GENERAL", "built by the XAX JVM program", "unavailable or declined")
+    return jar
+
+
+def jvm_jar(reader, function_cid: bytes, target_object, *, process_entry: bool = False, frontend: str = "auto") -> bytes:
+    """``build``'s JAR for a JVM target (S15e.5, ADR-327): the XAX JVM program's where it runs and decides
+    (``"auto"``; ``"xax"`` requires it), else ``compile_jvm_bound_target``'s.  With ``XAX_GENERAL_FRONTEND_DIFF=1``
+    the two must agree."""
+    import os
+
+    from xax_compiler import XaxError
+    from xax_jvm import compile_jvm_bound_target
+
+    def reference() -> bytes:
+        return compile_jvm_bound_target(reader, function_cid, target_object, process_entry=process_entry).jar
+
+    if frontend == "python":
+        return reference()
+    jar = jvm_with_xax(reader, function_cid, target_object, process_entry=process_entry, required=frontend == "xax")
+    if jar is None:
+        return reference()
+    if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+        try:
+            expected = reference()
+        except XaxError as error:
+            raise AssertionError(f"S15e.5: the bootstrap rejects ({error.diagnostic.rule}) a JAR the XAX program wrote") from error
+        if jar != expected:
+            raise AssertionError("S15e.5 JARs disagree")
     return jar
