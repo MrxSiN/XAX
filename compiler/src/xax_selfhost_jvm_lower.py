@@ -9,7 +9,7 @@ Task kinds (``K_*``, five words each: kind and four arguments): ``GET`` a value;
 constant bytes; ``ICONST``/``LCONST``; ``PUT`` a value; ``MASK`` (descriptor, width); ``CALL`` an internal method
 (callee function); ``JAVA`` a fixed ``java.lang`` method or the shared ``xax$pk``; ``BRANCH`` (opcode, label);
 ``MARK`` (label); ``JUMP`` (condition, when, label); ``STORE`` (descriptor, slot); ``GETLONG`` (value, width, signed);
-``FCONST`` (raw bits, width); ``FOREIGN`` (member record): a platform call's opcode and pool entry; ``CALLBACK`` (table index): ``new P(k)``.
+``FCONST`` (raw bits, width); ``FOREIGN`` (member record): a platform call's opcode and pool entry; ``CALLBACK`` (table index): ``new P(k)``; ``LOAD`` (descriptor, slot).
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from xax_selfhost_views_backend import _FN, _call, _g, _ok
 
 TASK_W = 5
 (K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG, K_FCONST,
- K_FOREIGN, K_CALLBACK) = range(1, 18)
+ K_FOREIGN, K_CALLBACK, K_LOAD) = range(1, 19)
 # The fixed methods a lowering calls (``K_JAVA``): owner, name, descriptor.
 JAVA = (
     ("java/lang/Integer", "toUnsignedLong", "(I)J"),
@@ -47,8 +47,14 @@ JAVA = (
     ("java/lang/Long", "rotateRight", "(JI)J"),
     ("java/lang/Integer", "rotateRight", "(II)I"),
     (None, "xax$pk", "(II)J"),  # the class's own shared member
+    ("java/lang/Float", "floatToRawIntBits", "(F)I"),
+    ("java/lang/Double", "doubleToRawLongBits", "(D)J"),
+    ("java/lang/Float", "intBitsToFloat", "(I)F"),
+    ("java/lang/Double", "longBitsToDouble", "(J)D"),
+    ("java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V"),
+    ("java/util/Arrays", "copyOfRange", "([JII)[J"),
 )
-J_TOUNSIGNED, J_LDIV, J_LREM, J_LROTR, J_IROTR, J_PK = range(6)
+J_TOUNSIGNED, J_LDIV, J_LREM, J_LROTR, J_IROTR, J_PK, J_F2I, J_D2L, J_I2F, J_L2D, J_ARRAYCOPY, J_COPYRANGE = range(12)
 RELATION = {IntCompare.EQ: 0, IntCompare.NE: 1, IntCompare.ULT: 2, IntCompare.SLT: 2, IntCompare.ULE: 5, IntCompare.SLE: 5,
             IntCompare.UGT: 4, IntCompare.SGT: 4, IntCompare.UGE: 3, IntCompare.SGE: 3}
 EQ_, NE_, LT_, GE_, GT_, LE_ = range(6)
@@ -61,7 +67,9 @@ INVERSE = {0x99: 0x9A, 0x9A: 0x99, 0x9B: 0x9C, 0x9C: 0x9B, 0x9D: 0x9E, 0x9E: 0x9
 SIGNED = tuple(int(k) for k in (IntCompare.SLT, IntCompare.SLE, IntCompare.SGT, IntCompare.SGE))
 ARITH_OPCODE = {OP["ADD_WRAP"]: (0x60, 0x61), OP["SUB_WRAP"]: (0x64, 0x65), OP["MUL_WRAP"]: (0x68, 0x69), OP["BIT_AND"]: (0x7E, 0x7F),
                 OP["BIT_OR"]: (0x80, 0x81), OP["BIT_XOR"]: (0x82, 0x83)}
-MAY_RAISE = tuple(int(op) for op in (Operation.CALL_DIRECT, Operation.CALL_FOREIGN, Operation.UDIV, Operation.UREM))
+# ``_MAY_RAISE`` (the memory accesses decline before their line matters).
+MAY_RAISE = tuple(int(op) for op in (Operation.CALL_INDIRECT, Operation.SUM_GET, Operation.LINK_FOLLOW, Operation.CALL_DIRECT,
+                                     Operation.CALL_FOREIGN, Operation.UDIV, Operation.UREM))
 TRAP_LABEL = 0  # labels: block b is b, false stub NB + b, the trap 2 NB, a fresh one 2 NB + 1 + k
 
 
@@ -733,6 +741,7 @@ def _node_task(e: E, node):
         e.give(1)
 
     e.if_(e.eq(opv, OP["FUNCTION_ADDRESS"]), address)
+    _aggregate_nodes(e, node, opv, result)
     _ok(e, _in(e, opv, tuple(sorted(int(op) for op in RESOURCE_EFFECT_OPERATIONS))))  # another: the bootstrap
     e.give(1)
 
@@ -936,6 +945,168 @@ def _foreign_node(e: E, node):
     e.if_(e.eq(p["fn_kind"], OK_NEW), lambda: _call(e, "jl_push", K_FOREIGN, mb, 1, 0, 0))  # new; dup
     e.if_(e.lt(_m(e, M_MAXCALL), p["fn_slots"]), lambda: _set_m(e, M_MAXCALL, p["fn_slots"]))
     e.give(1)
+
+
+class Reverse:
+    """Tasks pushed now, run last pushed first: a lowering written back to front."""
+
+    def __init__(self, e: E):
+        self.e = e
+
+    def __call__(self, kind: int, *arguments):
+        words = list(arguments) + [0] * (4 - len(arguments))
+        _call(self.e, "jl_push", kind, *words)
+
+
+def _to_long(e: E, push, d):
+    """``to_long`` (pushed in reverse): the raw bits of the scalar on the stack as a long."""
+    e.if_(e.eq(d, D_I), lambda: push(K_OP, 0x85, 1))
+    e.if_(e.eq(d, D_F), lambda: (push(K_OP, 0x85, 1), push(K_JAVA, J_F2I)))
+    e.if_(e.eq(d, D_D), lambda: push(K_JAVA, J_D2L))
+
+
+def _from_long(e: E, push, d):
+    """``from_long`` (pushed in reverse)."""
+    e.if_(e.eq(d, D_I), lambda: push(K_OP, 0x88, 1))
+    e.if_(e.eq(d, D_F), lambda: (push(K_JAVA, J_I2F), push(K_OP, 0x88, 1)))
+    e.if_(e.eq(d, D_D), lambda: push(K_JAVA, J_L2D))
+
+
+def _aggregate_nodes(e: E, node, opv, result):
+    """``AGGREGATE_MAKE``, ``SUM_MAKE``, ``AGGREGATE_GET``, ``SUM_TAG``, ``SUM_GET`` (ADR-159), pushed in reverse."""
+    from xax_selfhost_jvm_aggregate import flat_code, flat_size
+    from xax_selfhost_jvm_emit import _scratch_slot
+    from xax_selfhost_jvm_method import _type
+    from xax_selfhost_views_backend import G_PAY, _at, _payload_uleb, _reference, _type_form
+
+    p = e.p
+    push = Reverse(e)
+
+    def flat():
+        return flat_code(e, "ag_flat")
+
+    def store_field(buf, offset, value):
+        """``store_field`` (in reverse): a nested value's ``System.arraycopy``, else ``lastore`` of the raw bits."""
+        e.var("sf_v", value)
+        e.var("sf_off", offset)
+        e.var("sf_d", _desc(e, p["sf_v"]))
+        e.var("sf_fl", flat())
+
+        def nested():
+            push(K_JAVA, J_ARRAYCOPY)
+            push(K_ICONST, flat_size(e, _type(e, p["sf_v"])))
+            push(K_ICONST, p["sf_off"])
+            push(K_LOAD, p["sf_fl"], buf)
+            push(K_ICONST, 0)
+            push(K_GET, p["sf_v"])
+
+        def scalar():
+            push(K_OP, 0x50, 1)
+            _to_long(e, push, p["sf_d"])
+            push(K_GET, p["sf_v"])
+            push(K_ICONST, p["sf_off"])
+            push(K_LOAD, p["sf_fl"], buf)
+
+        e.if_(e.ne(p["sf_d"], D_NONE), lambda: e.if_(e.eq(p["sf_d"], p["sf_fl"]), nested, scalar))
+
+    def make():
+        e.var("mk_fl", flat())
+        _scratch_slot(e, p["mk_fl"], "mk_buf")
+        push(K_PUT, result)
+        push(K_LOAD, p["mk_fl"], p["mk_buf"])
+
+        def sum_make():
+            store_field(p["mk_buf"], 1, _operand(e, node, 0))
+            push(K_OP, 0x50, 1)
+            push(K_LCONST, _attribute(e, node, 0))
+            push(K_ICONST, 0)
+            push(K_LOAD, p["mk_fl"], p["mk_buf"])
+
+        def aggregate_make():
+            # The fields' offsets first (forwards), then each field's steps (backwards).
+            e.var("mk_n", _f(e, node, N_NOPS))
+            e.var("mk_offs", e.alloc(e.add(p["mk_n"], 1)))
+            _ok(e, e.ne(p["mk_offs"], NONE))
+            e.var("mk_off", 0)
+            e.for_("mk_k", 0, p["mk_n"], lambda: (e.st(e.add(p["mk_offs"], p["mk_k"]), p["mk_off"]),
+                                                  e.set("mk_off", e.add(p["mk_off"], flat_size(e, _type(e, _operand(e, node, p["mk_k"])))))))
+            e.var("mk_k2", p["mk_n"])
+            e.while_(lambda: e.lt(0, p["mk_k2"]), lambda: (e.set("mk_k2", e.sub(p["mk_k2"], 1)),
+                                                           store_field(p["mk_buf"], e.ld(e.add(p["mk_offs"], p["mk_k2"])), _operand(e, node, p["mk_k2"]))))
+
+        e.if_(e.eq(opv, OP["SUM_MAKE"]), sum_make, aggregate_make)
+        push(K_STORE, p["mk_fl"], p["mk_buf"])
+        push(K_OP, 0xBC0B, 2)  # newarray long
+        push(K_ICONST, flat_size(e, _type(e, result)))
+        e.give(1)
+
+    e.if_(_in(e, opv, (OP["AGGREGATE_MAKE"], OP["SUM_MAKE"])), make)
+
+    def load_field(source, offset, t):
+        """``load_field`` (in reverse): ``Arrays.copyOfRange`` of a nested value, else ``laload`` and ``from_long``."""
+        e.var("lf_s", source)
+        e.var("lf_off", offset)
+        e.var("lf_d", _desc(e, result))
+
+        def nested():
+            push(K_JAVA, J_COPYRANGE)
+            push(K_ICONST, e.add(p["lf_off"], flat_size(e, t)))
+            push(K_ICONST, p["lf_off"])
+
+        def scalar():
+            _from_long(e, push, p["lf_d"])
+            push(K_OP, 0x2F, 1)
+            push(K_ICONST, p["lf_off"])
+
+        e.if_(e.eq(p["lf_d"], flat()), nested, scalar)
+        push(K_GET, p["lf_s"])
+
+    def get():
+        # The fields: a tuple's elements, an array's element repeated; the offset of field ``attribute``.
+        e.var("gt_t", _type(e, _operand(e, node, 0)))
+        e.var("gt_form", _type_form(e, p["gt_t"]))
+        e.var("gt_at", e.add(_at(e, G_PAY, p["gt_t"]), 1))
+        e.var("gt_index", _attribute(e, node, 0))
+        e.var("gt_off", 0)
+
+        def tuple_():
+            e.var("gt_n", _payload_uleb(e, "gt_at"))
+            e.for_("gt_k", 0, p["gt_n"], lambda: (e.var("gt_el", _reference(e, p["gt_t"], _payload_uleb(e, "gt_at"))), e.if_(
+                e.lt(p["gt_k"], p["gt_index"]), lambda: e.set("gt_off", e.add(p["gt_off"], flat_size(e, p["gt_el"]))))))
+
+        def array():
+            e.var("gt_el", _reference(e, p["gt_t"], _payload_uleb(e, "gt_at")))
+            e.set("gt_off", e.mul(p["gt_index"], flat_size(e, p["gt_el"])))
+
+        e.if_(e.eq(p["gt_form"], 8), tuple_, lambda: (_ok(e, e.eq(p["gt_form"], 9)), array()))
+        push(K_PUT, result)
+        load_field(_operand(e, node, 0), p["gt_off"], _type(e, result))
+        e.give(1)
+
+    e.if_(e.eq(opv, OP["AGGREGATE_GET"]), get)
+
+    def tag():
+        push(K_PUT, result)
+        e.if_(e.eq(_sdesc(e, result), D_I), lambda: push(K_OP, 0x88, 1))
+        push(K_OP, 0x2F, 1)
+        push(K_ICONST, 0)
+        push(K_GET, _operand(e, node, 0))
+        e.give(1)
+
+    e.if_(e.eq(opv, OP["SUM_TAG"]), tag)
+
+    def variant():
+        _set_m(e, M_TRAPUSED, 1)
+        push(K_PUT, result)
+        load_field(_operand(e, node, 0), 1, _type(e, result))
+        push(K_BRANCH, 0xA0, _trap_label(e))
+        push(K_ICONST, _attribute(e, node, 0))
+        push(K_OP, 0x2F88, 2)
+        push(K_ICONST, 0)
+        push(K_GET, _operand(e, node, 0))
+        e.give(1)
+
+    e.if_(e.eq(opv, OP["SUM_GET"]), variant)
 
 
 def _callback_task(e: E, index):
@@ -1167,6 +1338,7 @@ def _run_fn(tables):
             e.if_(e.eq(kind, K_FCONST), lambda: fconst(e, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_FOREIGN), lambda: _foreign_task(e, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_CALLBACK), lambda: _callback_task(e, p["rn_a"]))
+            e.if_(e.eq(kind, K_LOAD), lambda: local(e, False, p["rn_a"], p["rn_b"]))
 
         e.while_(lambda: e.lt(p["base"], _m(e, M_ONE)), step)
         e.give(1)

@@ -112,8 +112,8 @@ def ref_text(e: E, code):
 
 def _vdesc_fn(tables):
     """``_jvm_type`` of TYPE ``t``: ``D_NONE`` for a proof value, ``D_I``/``D_J`` for bits of at most 64 bits, ``D_F``/
-    ``D_D`` for floats, a reference code for a pointer to ``jvm-ref:<descriptor>``; anything else (a memory pointer, a
-    callback interface, an aggregate, a sum, a link, a wider value) declines."""
+    ``D_D`` for floats, ``[J`` for an aggregate or sum, ``D_I`` for a link, a reference code for a pointer to
+    ``jvm-ref:<descriptor>`` or to a ``jvm-interface`` entry; anything else (a memory pointer, a wider value) declines."""
     from xax_selfhost_general_frame import _bits_width, _float_width
 
     def build(e: E):
@@ -133,6 +133,14 @@ def _vdesc_fn(tables):
             e.give(e.sel(e.eq(p["vd_fw"], 32), D_F, D_D))
 
         e.if_(e.eq(p["vd_form"], 7), floating)
+
+        def flat():
+            from xax_selfhost_jvm_aggregate import flat_code
+
+            e.give(flat_code(e, "vd_fl"))
+
+        e.if_(e.either(e.eq(p["vd_form"], 8), e.eq(p["vd_form"], 9), e.eq(p["vd_form"], 10)), flat)  # a flattened long[] (ADR-159)
+        e.if_(e.eq(p["vd_form"], 11), lambda: e.give(D_I))  # a link: a record's offset (ADR-160)
         _ok(e, e.eq(p["vd_form"], 2))
         e.var("vd_at", e.add(_at(e, G_PAY, p["t"]), 1))
         _payload_uleb(e, "vd_at")  # the address space

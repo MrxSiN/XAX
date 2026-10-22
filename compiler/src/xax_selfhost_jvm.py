@@ -52,8 +52,8 @@ V1_IDENTITY = b"jvm-classfile-v1"
 PROFILE_IDENTITIES = (b"jvm-classfile-memory-v1", b"jvm-classfile-general-v1")  # a process entry there is threaded (declined)
 J_STATE = 211  # GLOBALS slot: the class state record
 (J_POOL, J_ENTRY_INDEX, J_NFN, J_NAMES, J_DESCS, J_ARGS, J_RESULT, J_METHODS, J_NMETHODS, J_STORE, J_STORE_LEN, J_PK, J_PROCESS,
- J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES) = range(24)
-J_WORDS = 24
+ J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES, J_FLAT) = range(25)
+J_WORDS = 25
 METHOD_WORDS = 13  # kind, fidx, code, code length, max stack, max locals, frames, frame count, frame types, their count, lines, line count, bare frame
 (MR_KIND, MR_FIDX, MR_CODE, MR_CLEN, MR_STACK, MR_LOCALS, MR_FRAMES, MR_NFRAMES, MR_FTYPES, MR_NFTYPES, MR_LINES, MR_NLINES, MR_BARE) = range(13)
 STORE_CAP = 1 << 24
@@ -1178,6 +1178,7 @@ def _frontend(tables):
         _set_js(e, J_POOL, p["js_pool"])
         e.for_("q", 0, p["members"], lambda: _call(e, "jk_signature", e.ld(e.add(order, p["q"])), p["q"]))
         _call(e, "jk_table")  # ``_indirect_calls``' function table and the callback groups (ADR-331)
+        _call(e, "jk_flat")  # every type's flattened size (ADR-332)
         # Each method, in closure order.
         e.for_("q", 0, p["members"], lambda: _call(e, "jk_method", e.ld(e.add(order, p["q"])), p["q"]))
         _call(e, "jk_class")
@@ -1230,6 +1231,9 @@ def build_jvm_program():
     from xax_selfhost_jvm_foreign import add_foreign_functions
 
     add_foreign_functions(add, tables)
+    from xax_selfhost_jvm_aggregate import add_aggregate_functions
+
+    add_aggregate_functions(add, tables)
     add_method_functions(add, tables)
     add("jk_signature", _signature_fn(tables))
     add("jl_own_method", _own_method_fn(tables))
