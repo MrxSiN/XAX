@@ -18,7 +18,7 @@ from xax_selfhost_general_view import (
 from xax_selfhost_jvm_class import B_LEN, POOL_CAP, P_BYTES, P_COUNT, bdata, blen, buffer
 from xax_selfhost_jvm_code import (
     C_BUF, C_COUNTING, C_ENDED, C_FIX, C_LABELS, C_LINES, C_NFIX, C_NLABELS, C_NLINES, C_PENDING, C_POOL, C_READS, C_STORED, C_TARGET,
-    C_VSDESC, C_VSLOT, CODE_CAP, D_I, D_J, D_NONE, GOTO, M_STATE, RETURN as RETURN_OPS, SLOT_LATE, ZERO, _flush, _in, _length, _m, _pick, _set_m,
+    C_VSDESC, C_VSLOT, CODE_CAP, D_I, D_J, D_NONE, GOTO, M_STATE, RETURN as RETURN_OPS, SLOT_LATE, ZERO, _flush, _in, _length, kind, _m, _pick, _set_m,
     branch, local, mark, op, opx,
 )
 from xax_selfhost_jvm_lower import K_GET, K_JUMP, K_NODE, run
@@ -277,7 +277,7 @@ def _assignment_fn(tables):
         e.if_(e.ne(p["da_retry"], 0), lambda: e.give(1))
         e.for_("da_k", _m(e, M_PEND), p["da_s"], lambda: e.if_(e.ne(e.ld(e.add(p["da_need"], p["da_k"])), 0), lambda: (
             e.var("da_t", e.ld(e.add(_m(e, M_STYPE), p["da_k"]))),
-            opx(e, _pick(e, p["da_t"], ZERO), 1),
+            opx(e, _pick(e, kind(e, p["da_t"]), ZERO), 1),
             local(e, True, p["da_t"], p["da_k"]))))
         e.give(0)
     return _function((), build, tables)
@@ -383,7 +383,7 @@ def _terminator_fn(tables):
             def value():
                 e.var("tm_d", _desc_get(e, p["tm_v"]))
                 run(e, K_GET, p["tm_v"])
-                opx(e, _pick(e, p["tm_d"], RETURN_OPS), 1)
+                opx(e, _pick(e, kind(e, p["tm_d"]), RETURN_OPS), 1)
 
             e.if_(e.ne(p["tm_v"], NONE), value, lambda: op(e, 0xB1))
 

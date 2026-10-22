@@ -1327,3 +1327,19 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - The task stack runs the last pushed task first. When a lowering pushes a conditional tail and an unconditional head, push the tail first.
 - `INTERNAL_LABELS` (in `_jvm_method`) feeds the interference `M_ACROSS` and the definite-assignment points.
 - Next: `CALL_FOREIGN` (the platform calls of `java_base_api`, `jvm_static`/`jvm_virtual`), then their rejections (`test_descriptor_type_mismatch_rejects`, `test_foreign_abi_from_another_platform_rejects`, `test_static_arity_mismatch_rejects`).
+
+## S15e.5c JVM references and platform calls — 2026-10-22 (ADR-329)
+
+- `xax_selfhost_jvm_foreign`:
+  - `jk_intern` (codes `D_REF + k`; texts in the class store, `J_REFS`/`J_NREFS`).
+  - `jk_vdesc` (every value type; `_jvm_desc` and `jm_types` call it).
+  - `jk_matches`.
+  - `jk_member` (an `MB_*` record whose texts are words).
+- `kind(e, d)` maps a reference code to `D_A` for the opcode tables.
+- Reference codes start at 16 so that they never collide with `ST_FREED`/`ST_TOP`.
+- Store objects for a reference type need its opaque element: `opaque_identity_type(REFERENCE_PREFIX + text)`.
+- Next:
+  - The object kinds (`_object_member`: new, arrays, instance fields, `ldc`, `checkcast`, `instanceof`, `putstatic`).
+  - Then the memory profile (`xax/jvm/Memory`, loads and stores through `xax$ld*`/`xax$st*`).
+  - The general and object profiles.
+  - The driver request path.

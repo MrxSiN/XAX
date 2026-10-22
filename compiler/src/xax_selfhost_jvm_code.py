@@ -14,6 +14,7 @@ from xax_selfhost_views_backend import GLOBALS, _call, _ok
 
 M_STATE = 210  # GLOBALS slot: the method state record
 D_NONE, D_I, D_J, D_F, D_D, D_A = range(6)
+D_REF = 16  # a reference descriptor: D_REF + k is the class's k-th interned descriptor text (``jk_intern``)
 SLOTS = {D_I: 1, D_J: 2, D_F: 1, D_D: 2, D_A: 1}
 LOAD = {D_I: 0x15, D_J: 0x16, D_F: 0x17, D_D: 0x18, D_A: 0x19}
 STORE = {D_I: 0x36, D_J: 0x37, D_F: 0x38, D_D: 0x39, D_A: 0x3A}
@@ -38,6 +39,11 @@ def _m(e: E, field: int):
 
 def _set_m(e: E, field: int, value):
     e.st(e.add(e.ld(GLOBALS + M_STATE), field), value)
+
+
+def kind(e: E, desc):
+    """The opcode family of a descriptor code: a reference is ``D_A``."""
+    return e.sel(e.lt(desc, D_REF), desc, D_A)
 
 
 def _in(e: E, value, items):
@@ -166,7 +172,8 @@ def _emit_ended(e: E, word, n):
 def _local_bytes(e: E, store, desc, slot, out):
     """The load (``store`` 0) or store of ``slot`` through ``out(e, word, n)``."""
     p = e.p
-    e.var("lo_op", e.sel(e.ne(store, 0), _pick(e, desc, STORE), _pick(e, desc, LOAD)))
+    e.var("lo_k", kind(e, desc))
+    e.var("lo_op", e.sel(e.ne(store, 0), _pick(e, p["lo_k"], STORE), _pick(e, p["lo_k"], LOAD)))
     _ok(e, e.ne(p["lo_op"], 0))
     e.var("lo_slot", slot)
     e.if_(e.le(p["lo_slot"], 3), lambda: out(e, e.add(_pick(e, p["lo_op"], SHORT_LOCAL), p["lo_slot"]), 1), lambda: e.if_(
@@ -322,6 +329,17 @@ def _depth_fn(tables):
                 e.set("dp_push", e.ld(e.add(_pool_field(e, p["dp_pool"], P_RESULT), p["dp_ix"])))
 
             e.if_(_in(e, p["dp_op"], (0xB6, 0xB7, 0xB8, 0xB9)), invocation)
+
+            def field_access():
+                # getstatic, putstatic, getfield, putfield: the field's size is its entry's recorded result slots.
+                e.var("dp_fx", e.add(e.mul(byte(1), 256), byte(2)))
+                e.var("dp_size", e.ld(e.add(_pool_field(e, p["dp_pool"], P_RESULT), p["dp_fx"])))
+                e.set("dp_len", 3)
+                e.var("dp_fo", e.sub(p["dp_op"], 0xB2))
+                e.set("dp_pops", e.sel(e.eq(p["dp_fo"], 0), 0, e.sel(e.eq(p["dp_fo"], 1), p["dp_size"], e.sel(e.eq(p["dp_fo"], 2), 1, e.add(1, p["dp_size"])))))
+                e.set("dp_push", e.sel(e.either(e.eq(p["dp_fo"], 0), e.eq(p["dp_fo"], 2)), p["dp_size"], 0))
+
+            e.if_(_in(e, p["dp_op"], (0xB2, 0xB3, 0xB4, 0xB5)), field_access)
 
             def wide():
                 e.var("dp_inner", byte(1))

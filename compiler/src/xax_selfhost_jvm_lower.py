@@ -9,7 +9,7 @@ Task kinds (``K_*``, five words each: kind and four arguments): ``GET`` a value;
 constant bytes; ``ICONST``/``LCONST``; ``PUT`` a value; ``MASK`` (descriptor, width); ``CALL`` an internal method
 (callee function); ``JAVA`` a fixed ``java.lang`` method or the shared ``xax$pk``; ``BRANCH`` (opcode, label);
 ``MARK`` (label); ``JUMP`` (condition, when, label); ``STORE`` (descriptor, slot); ``GETLONG`` (value, width, signed);
-``FCONST`` (raw bits, width).
+``FCONST`` (raw bits, width); ``FOREIGN`` (member record): a platform call's opcode and pool entry.
 """
 
 from __future__ import annotations
@@ -37,7 +37,8 @@ from xax_selfhost_jvm_method import (
 from xax_selfhost_views_backend import _FN, _call, _g, _ok
 
 TASK_W = 5
-(K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG, K_FCONST) = range(1, 16)
+(K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG, K_FCONST,
+ K_FOREIGN) = range(1, 17)
 # The fixed methods a lowering calls (``K_JAVA``): owner, name, descriptor.
 JAVA = (
     ("java/lang/Integer", "toUnsignedLong", "(I)J"),
@@ -715,6 +716,7 @@ def _node_task(e: E, node):
         e.give(1)
 
     e.if_(e.eq(opv, OP["CALL_DIRECT"]), call)
+    e.if_(e.eq(opv, OP["CALL_FOREIGN"]), lambda: _foreign_node(e, node))
     _ok(e, _in(e, opv, tuple(sorted(int(op) for op in RESOURCE_EFFECT_OPERATIONS))))  # another: the bootstrap
     e.give(1)
 
@@ -861,6 +863,84 @@ def _float_nodes(e: E, node, opv, result):
     e.if_(_in(e, opv, (OP["FLOAT_TO_UINT_TRUNC"], OP["FLOAT_TO_SINT_TRUNC"])), truncation)
 
 
+def _foreign_node(e: E, node):
+    """A platform call (``jk_member``'s call kinds): each machine operand (narrowed to a ``B``/``C``/``S`` parameter),
+    the opcode and its pool entry, a ``B``/``S`` result masked (the JVM returns those sign-extended), and the one
+    machine result stored (``_store_call_result``)."""
+    from xax_selfhost_general_view import N_GRAPH, N_OPSAT
+    from xax_selfhost_jvm_foreign import MB_NP, MB_PARAMS, MB_RES, MB_RESN, NARROW, PARAM_WORDS
+    from xax_selfhost_views_backend import _reference
+
+    p = e.p
+    e.var("fn_c", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+    _ok(e, e.ne(p["fn_c"], NONE))
+    e.var("fn_mb", _call(e, "jk_member", p["fn_c"]))
+    mb = p["fn_mb"]
+    # The machine results with a local: at most one (JVM-SINGLE-RESULT on entity "call": declined).
+    e.var("fn_nres", 0)
+    e.var("fn_res", NONE)
+    e.for_("fn_r", 0, _f(e, node, N_NRES), lambda: (e.var("fn_rv", _output(e, node, p["fn_r"])), e.if_(e.ne(_slot(e, p["fn_rv"]), NONE), lambda: (
+        e.if_(e.eq(p["fn_res"], NONE), lambda: e.set("fn_res", p["fn_rv"])), e.set("fn_nres", e.add(p["fn_nres"], 1))))))
+    _ok(e, e.le(p["fn_nres"], 1))
+    e.if_(e.ne(p["fn_res"], NONE), lambda: _call(e, "jl_push", K_PUT, p["fn_res"], 0, 0, 0))
+    e.var("fn_r0", e.ld(e.ld(e.add(mb, MB_RES))))
+    e.if_(e.both(e.eq(e.ld(e.add(mb, MB_RESN)), 1), e.either(e.eq(p["fn_r0"], ord("B")), e.eq(p["fn_r0"], ord("S")))),
+          lambda: _call(e, "jl_push", K_MASK, D_I, e.sel(e.eq(p["fn_r0"], ord("B")), 8, 16), 0, 0))
+    _call(e, "jl_push", K_FOREIGN, mb, 0, 0, 0)
+    # The machine operands in reverse (zip with the parameters: the arity matched).
+    e.var("fn_m", 0)
+    e.for_("fn_k", 0, _f(e, node, N_NOPS), lambda: e.if_(e.ne(_desc(e, _operand(e, node, p["fn_k"])), D_NONE), lambda: e.set("fn_m", e.add(p["fn_m"], 1))))
+    e.var("fn_k", _f(e, node, N_NOPS))
+    e.var("fn_slots", 0)
+
+    def one():
+        e.set("fn_k", e.sub(p["fn_k"], 1))
+        e.var("fn_o", _operand(e, node, p["fn_k"]))
+
+        def machine():
+            e.set("fn_m", e.sub(p["fn_m"], 1))
+
+            def paired():
+                e.var("fn_pt", e.add(e.ld(e.add(mb, MB_PARAMS)), e.mul(p["fn_m"], PARAM_WORDS)))
+                e.var("fn_pc", e.ld(e.ld(p["fn_pt"])))
+                e.var("fn_narrow", 0)
+                for ch, opcode in NARROW.items():
+                    e.if_(e.both(e.eq(e.ld(e.add(p["fn_pt"], 1)), 1), e.eq(p["fn_pc"], ch)), lambda opcode=opcode: e.set("fn_narrow", opcode))
+                e.if_(e.ne(p["fn_narrow"], 0), lambda: _call(e, "jl_push", K_OP, p["fn_narrow"], 1, 0, 0))
+                _call(e, "jl_push", K_GET, p["fn_o"], 0, 0, 0)
+                e.set("fn_slots", e.add(p["fn_slots"], _pick_slots(e, _desc_get(e, p["fn_o"]))))
+
+            e.if_(e.lt(p["fn_m"], e.ld(e.add(mb, MB_NP))), paired)
+
+        e.if_(e.ne(_desc(e, p["fn_o"]), D_NONE), machine)
+
+    e.while_(lambda: e.lt(0, p["fn_k"]), one)
+    e.if_(e.lt(_m(e, M_MAXCALL), p["fn_slots"]), lambda: _set_m(e, M_MAXCALL, p["fn_slots"]))
+    e.give(1)
+
+
+def _foreign_task(e: E, mb):
+    """The opcode, then (as ``lookup(class, name, descriptor)`` after ``code.op``) the Fieldref, Methodref or
+    InterfaceMethodref, and ``invokeinterface``'s count and zero."""
+    from xax_selfhost_jvm_foreign import MB_ARGS, MB_CLS, MB_CLSN, MB_DESC, MB_DESCN, MB_IFACE, MB_NAME, MB_NAMEN, MB_OP, MB_RSLOTS
+
+    p = e.p
+    e.var("ft_mb", mb)
+
+    def f(k):
+        return e.ld(e.add(p["ft_mb"], k))
+
+    e.var("ft_op", f(MB_OP))
+    opx(e, p["ft_op"], 1)
+    pool = _m(e, C_POOL)
+    e.var("ft_cls", _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, f(MB_CLS), f(MB_CLSN))))
+    e.var("ft_nt", _call(e, "jp_ref2", pool, 12, _call(e, "jp_utf8", pool, f(MB_NAME), f(MB_NAMEN)), _call(e, "jp_utf8", pool, f(MB_DESC), f(MB_DESCN)), 0, 0))
+    e.var("ft_tag", e.sel(e.eq(p["ft_op"], 0xB2), 9, e.sel(e.ne(f(MB_IFACE), 0), 11, 10)))
+    e.var("ft_ix", _call(e, "jp_ref2", pool, p["ft_tag"], p["ft_cls"], p["ft_nt"], e.sel(e.eq(p["ft_op"], 0xB2), 0, f(MB_ARGS)), f(MB_RSLOTS)))
+    raw(e, p["ft_ix"], 2)
+    e.if_(e.eq(p["ft_op"], 0xB9), lambda: raw(e, e.mul(e.add(f(MB_ARGS), 1), 256), 2))
+
+
 def _compare_result_relation(e: E, node):
     """``relation = compare_to_int(node); _compare_result(relation)`` (pushed in reverse: the result first)."""
     _compare_result_pushes(e, _relation_of(e, node, "cq_r"))
@@ -962,6 +1042,7 @@ def _run_fn(tables):
             e.if_(e.eq(kind, K_STORE), lambda: local(e, True, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_GETLONG), lambda: _call(e, "jl_getlong", p["rn_a"], p["rn_b"], p["rn_c"]))
             e.if_(e.eq(kind, K_FCONST), lambda: fconst(e, p["rn_a"], p["rn_b"]))
+            e.if_(e.eq(kind, K_FOREIGN), lambda: _foreign_task(e, p["rn_a"]))
 
         e.while_(lambda: e.lt(p["base"], _m(e, M_ONE)), step)
         e.give(1)
