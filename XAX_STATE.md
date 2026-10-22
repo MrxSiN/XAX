@@ -1742,3 +1742,7 @@ The XAX JVM program now also lowers float constants, arithmetic, compares and co
 ## S15e.5c JVM references and platform calls through XAX — 2026-10-22 (ADR-329)
 
 The XAX JVM program now handles JVM reference values and platform calls: static, virtual and interface methods, and static fields. It decides `_foreign_member`'s rejections exactly. Checked against the bootstrap, `test_xax_jvm.py` gives 94 JARs and 4 rejections that agree, and 1 decline (the memory profile), none disagreeing. The memory, general and object profiles still fall back to the bootstrap.
+
+## S15e.5d JVM object kinds through XAX — 2026-10-22 (ADR-330)
+
+The XAX JVM program now builds the object kinds byte for byte with the bootstrap: `new`, arrays, `ldc`, instance and static fields, `checkcast` and `instanceof`. In `test_xax_jvm_objects.py`, 6 JARs and 3 rejections agree, and 1 callback declines.

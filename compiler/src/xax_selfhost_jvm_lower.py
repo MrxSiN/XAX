@@ -868,7 +868,7 @@ def _foreign_node(e: E, node):
     the opcode and its pool entry, a ``B``/``S`` result masked (the JVM returns those sign-extended), and the one
     machine result stored (``_store_call_result``)."""
     from xax_selfhost_general_view import N_GRAPH, N_OPSAT
-    from xax_selfhost_jvm_foreign import MB_NP, MB_PARAMS, MB_RES, MB_RESN, NARROW, PARAM_WORDS
+    from xax_selfhost_jvm_foreign import MB_KIND, MB_NP, MB_PARAMS, MB_RES, MB_RESN, NARROW, OK_CALL, OK_NEW, PARAM_WORDS
     from xax_selfhost_views_backend import _reference
 
     p = e.p
@@ -887,11 +887,12 @@ def _foreign_node(e: E, node):
     e.if_(e.both(e.eq(e.ld(e.add(mb, MB_RESN)), 1), e.either(e.eq(p["fn_r0"], ord("B")), e.eq(p["fn_r0"], ord("S")))),
           lambda: _call(e, "jl_push", K_MASK, D_I, e.sel(e.eq(p["fn_r0"], ord("B")), 8, 16), 0, 0))
     _call(e, "jl_push", K_FOREIGN, mb, 0, 0, 0)
-    # The machine operands in reverse (zip with the parameters: the arity matched).
+    e.var("fn_kind", e.ld(e.add(mb, MB_KIND)))
+    # The machine operands in reverse (zip with the parameters: the arity matched); narrowed for a call or ``new``.
     e.var("fn_m", 0)
     e.for_("fn_k", 0, _f(e, node, N_NOPS), lambda: e.if_(e.ne(_desc(e, _operand(e, node, p["fn_k"])), D_NONE), lambda: e.set("fn_m", e.add(p["fn_m"], 1))))
     e.var("fn_k", _f(e, node, N_NOPS))
-    e.var("fn_slots", 0)
+    e.var("fn_slots", e.sel(e.eq(p["fn_kind"], OK_CALL), 0, 2))
 
     def one():
         e.set("fn_k", e.sub(p["fn_k"], 1))
@@ -904,8 +905,9 @@ def _foreign_node(e: E, node):
                 e.var("fn_pt", e.add(e.ld(e.add(mb, MB_PARAMS)), e.mul(p["fn_m"], PARAM_WORDS)))
                 e.var("fn_pc", e.ld(e.ld(p["fn_pt"])))
                 e.var("fn_narrow", 0)
+                narrows = e.either(e.eq(p["fn_kind"], OK_CALL), e.eq(p["fn_kind"], OK_NEW))
                 for ch, opcode in NARROW.items():
-                    e.if_(e.both(e.eq(e.ld(e.add(p["fn_pt"], 1)), 1), e.eq(p["fn_pc"], ch)), lambda opcode=opcode: e.set("fn_narrow", opcode))
+                    e.if_(e.both(narrows, e.eq(e.ld(e.add(p["fn_pt"], 1)), 1), e.eq(p["fn_pc"], ch)), lambda opcode=opcode: e.set("fn_narrow", opcode))
                 e.if_(e.ne(p["fn_narrow"], 0), lambda: _call(e, "jl_push", K_OP, p["fn_narrow"], 1, 0, 0))
                 _call(e, "jl_push", K_GET, p["fn_o"], 0, 0, 0)
                 e.set("fn_slots", e.add(p["fn_slots"], _pick_slots(e, _desc_get(e, p["fn_o"]))))
@@ -915,30 +917,116 @@ def _foreign_node(e: E, node):
         e.if_(e.ne(_desc(e, p["fn_o"]), D_NONE), machine)
 
     e.while_(lambda: e.lt(0, p["fn_k"]), one)
+    e.if_(e.eq(p["fn_kind"], OK_NEW), lambda: _call(e, "jl_push", K_FOREIGN, mb, 1, 0, 0))  # new; dup
     e.if_(e.lt(_m(e, M_MAXCALL), p["fn_slots"]), lambda: _set_m(e, M_MAXCALL, p["fn_slots"]))
     e.give(1)
 
 
-def _foreign_task(e: E, mb):
-    """The opcode, then (as ``lookup(class, name, descriptor)`` after ``code.op``) the Fieldref, Methodref or
-    InterfaceMethodref, and ``invokeinterface``'s count and zero."""
-    from xax_selfhost_jvm_foreign import MB_ARGS, MB_CLS, MB_CLSN, MB_DESC, MB_DESCN, MB_IFACE, MB_NAME, MB_NAMEN, MB_OP, MB_RSLOTS
+def _foreign_task(e: E, mb, phase):
+    """A platform member's instructions (``phase`` 1: ``new``'s ``new``/``dup`` before its operands).  A call: the
+    opcode, then (as ``lookup(class, name, descriptor)`` after ``code.op``) the Fieldref, Methodref or
+    InterfaceMethodref, and ``invokeinterface``'s count and zero; an object kind: its instruction and Class, Methodref,
+    Fieldref or String entry (``_object_member``'s lowering)."""
+    from xax_selfhost_jvm_foreign import (
+        ARRAY_LOAD, FIELD_OPS, MB_ARGS, MB_CLS, MB_CLSN, MB_DESC, MB_DESCN, MB_FSIZE, MB_IFACE, MB_KIND, MB_NAME, MB_NAMEN, MB_NP, MB_OP,
+        MB_RES, MB_RESN, MB_RSLOTS, NEWARRAY_TYPE, OK_ALEN, OK_ALOAD, OK_ASTORE, OK_CALL, OK_CHECKCAST, OK_INSTANCEOF, OK_LDC, OK_MULTI,
+        OK_NEW, OK_NEWARRAY,
+    )
 
     p = e.p
     e.var("ft_mb", mb)
+    e.var("ft_phase", phase)
 
     def f(k):
         return e.ld(e.add(p["ft_mb"], k))
 
-    e.var("ft_op", f(MB_OP))
-    opx(e, p["ft_op"], 1)
     pool = _m(e, C_POOL)
-    e.var("ft_cls", _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, f(MB_CLS), f(MB_CLSN))))
-    e.var("ft_nt", _call(e, "jp_ref2", pool, 12, _call(e, "jp_utf8", pool, f(MB_NAME), f(MB_NAMEN)), _call(e, "jp_utf8", pool, f(MB_DESC), f(MB_DESCN)), 0, 0))
-    e.var("ft_tag", e.sel(e.eq(p["ft_op"], 0xB2), 9, e.sel(e.ne(f(MB_IFACE), 0), 11, 10)))
-    e.var("ft_ix", _call(e, "jp_ref2", pool, p["ft_tag"], p["ft_cls"], p["ft_nt"], e.sel(e.eq(p["ft_op"], 0xB2), 0, f(MB_ARGS)), f(MB_RSLOTS)))
-    raw(e, p["ft_ix"], 2)
-    e.if_(e.eq(p["ft_op"], 0xB9), lambda: raw(e, e.mul(e.add(f(MB_ARGS), 1), 256), 2))
+    e.var("ft_kind", f(MB_KIND))
+
+    def utf8(text, n):
+        return _call(e, "jp_utf8", pool, text, n)
+
+    def klass(text, n):
+        return _call(e, "jp_ref1", pool, 7, utf8(text, n))
+
+    def ref(tag, cls_text, cls_n, name_text, name_n, desc_text, desc_n, args, result):
+        e.var("ft_cls", klass(cls_text, cls_n))
+        e.var("ft_nt", _call(e, "jp_ref2", pool, 12, utf8(name_text, name_n), utf8(desc_text, desc_n), 0, 0))
+        return _call(e, "jp_ref2", pool, tag, p["ft_cls"], p["ft_nt"], args, result)
+
+    def head():
+        op(e, 0xBB)
+        raw(e, klass(f(MB_CLS), f(MB_CLSN)), 2)
+        op(e, 0x59)
+
+    def call():
+        e.var("ft_op", f(MB_OP))
+        opx(e, p["ft_op"], 1)
+        e.var("ft_tag", e.sel(e.eq(p["ft_op"], 0xB2), 9, e.sel(e.ne(f(MB_IFACE), 0), 11, 10)))
+        e.var("ft_ix", ref(p["ft_tag"], f(MB_CLS), f(MB_CLSN), f(MB_NAME), f(MB_NAMEN), f(MB_DESC), f(MB_DESCN),
+                           e.sel(e.eq(p["ft_op"], 0xB2), 0, f(MB_ARGS)), e.sel(e.eq(p["ft_op"], 0xB2), f(MB_FSIZE), f(MB_RSLOTS))))
+        raw(e, p["ft_ix"], 2)
+        e.if_(e.eq(p["ft_op"], 0xB9), lambda: raw(e, e.mul(e.add(f(MB_ARGS), 1), 256), 2))
+
+    def new():
+        op(e, 0xB7)
+        e.var("ft_init", ref(10, f(MB_CLS), f(MB_CLSN), f(MB_NAME), f(MB_NAMEN), f(MB_DESC), f(MB_DESCN), f(MB_ARGS), 0))
+        raw(e, p["ft_init"], 2)
+
+    def single(text, n, table: dict, default):
+        """``table[text]`` for a one-character text, else ``default``."""
+        e.var("ft_c", e.sel(e.eq(n, 1), e.ld(text), 0))
+        return _pick(e, p["ft_c"], table, default)
+
+    def new_array():
+        e.var("ft_t", single(f(MB_CLS), f(MB_CLSN), NEWARRAY_TYPE, 0))
+
+        def objects():
+            # ``element[1:-1]`` for a class descriptor, else the array descriptor itself.
+            e.var("ft_l", e.flag(e.eq(e.ld(f(MB_CLS)), ord("L"))))
+            op(e, 0xBD)
+            raw(e, klass(e.add(f(MB_CLS), p["ft_l"]), e.sub(f(MB_CLSN), e.mul(p["ft_l"], 2))), 2)
+
+        e.if_(e.ne(p["ft_t"], 0), lambda: opx(e, e.add(0xBC00, p["ft_t"]), 2), objects)
+
+    def multi():
+        op(e, 0xC5)
+        raw(e, klass(f(MB_CLS), f(MB_CLSN)), 2)
+        opx(e, f(MB_NP), 1)
+
+    def array_access():
+        e.var("ft_load", single(e.add(f(MB_CLS), 1), e.sub(f(MB_CLSN), 1), ARRAY_LOAD, 0x32))
+        opx(e, e.add(p["ft_load"], e.sel(e.eq(p["ft_kind"], OK_ASTORE), 0x21, 0)), 1)
+
+    def ldc():
+        _call(e, "jc_ldc", _call(e, "jp_ref1", pool, 8, utf8(f(MB_NAME), f(MB_NAMEN))))
+
+    def field():
+        opx(e, _pick(e, p["ft_kind"], FIELD_OPS), 1)
+        raw(e, ref(9, f(MB_CLS), f(MB_CLSN), f(MB_NAME), f(MB_NAMEN), f(MB_DESC), f(MB_DESCN), 0, f(MB_FSIZE)), 2)
+
+    def type_check():
+        e.var("ft_res", f(MB_RES))
+        e.var("ft_resn", f(MB_RESN))
+        e.var("ft_l2", e.flag(e.both(e.eq(p["ft_kind"], OK_CHECKCAST), e.eq(e.ld(p["ft_res"]), ord("L")))))
+        opx(e, e.sel(e.eq(p["ft_kind"], OK_CHECKCAST), 0xC0, 0xC1), 1)
+        # instanceof names the class itself; checkcast its result descriptor (``result[1:-1]`` for a class).
+        e.if_(e.eq(p["ft_kind"], OK_INSTANCEOF), lambda: raw(e, klass(f(MB_CLS), f(MB_CLSN)), 2), lambda: raw(
+            e, klass(e.add(p["ft_res"], p["ft_l2"]), e.sub(p["ft_resn"], e.mul(p["ft_l2"], 2))), 2))
+
+    def tail():
+        k = p["ft_kind"]
+        e.if_(e.eq(k, OK_CALL), call)
+        e.if_(e.eq(k, OK_NEW), new)
+        e.if_(e.eq(k, OK_NEWARRAY), new_array)
+        e.if_(e.eq(k, OK_MULTI), multi)
+        e.if_(e.either(e.eq(k, OK_ALOAD), e.eq(k, OK_ASTORE)), array_access)
+        e.if_(e.eq(k, OK_ALEN), lambda: op(e, 0xBE))
+        e.if_(e.eq(k, OK_LDC), ldc)
+        e.if_(_in(e, k, tuple(FIELD_OPS)), field)
+        e.if_(e.either(e.eq(k, OK_CHECKCAST), e.eq(k, OK_INSTANCEOF)), type_check)
+
+    e.if_(e.ne(p["ft_phase"], 0), head, tail)
 
 
 def _compare_result_relation(e: E, node):
@@ -1042,7 +1130,7 @@ def _run_fn(tables):
             e.if_(e.eq(kind, K_STORE), lambda: local(e, True, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_GETLONG), lambda: _call(e, "jl_getlong", p["rn_a"], p["rn_b"], p["rn_c"]))
             e.if_(e.eq(kind, K_FCONST), lambda: fconst(e, p["rn_a"], p["rn_b"]))
-            e.if_(e.eq(kind, K_FOREIGN), lambda: _foreign_task(e, p["rn_a"]))
+            e.if_(e.eq(kind, K_FOREIGN), lambda: _foreign_task(e, p["rn_a"], p["rn_b"]))
 
         e.while_(lambda: e.lt(p["base"], _m(e, M_ONE)), step)
         e.give(1)

@@ -1343,3 +1343,14 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   - Then the memory profile (`xax/jvm/Memory`, loads and stores through `xax$ld*`/`xax$st*`).
   - The general and object profiles.
   - The driver request path.
+
+## S15e.5d JVM object kinds — 2026-10-22 (ADR-330)
+
+- `MB_KIND` (`OK_*`): `OK_CALL` is the call kinds.
+- `K_FOREIGN` takes a phase: 1 is `new`'s head, 0 the instruction.
+- The member record's `MB_FSIZE` is the field descriptor's size, which the Fieldref records for the depth scan.
+- Next:
+  - Callbacks: `_callbacks` and the `jvm-interface` code entries, which may add classes to the JAR.
+  - Indirect calls: `_indirect_calls`, the `xax$i<k>` dispatchers.
+  - Recursion groups.
+  - The memory and general profiles.

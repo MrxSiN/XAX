@@ -1,12 +1,14 @@
-"""S15e.5a-c (ADR-327-ADR-329): JVM JARs built by the XAX JVM program equal the bootstrap's.
+"""S15e.5a-d (ADR-327-ADR-330): JVM JARs built by the XAX JVM program equal the bootstrap's.
 
 ``xax_selfhost_jvm.jvm_jar(..., frontend="xax")`` runs the XAX program and fails where it declines;
 ``frontend="python"`` is ``compile_jvm_bound_target``.  Differential, by bytes, over seeded integer programs of
 ``test_xax_jvm._random_function`` (widths 8/13/32/47/64, a counted loop rebinding its own parameters, direct calls),
 executable JARs with a proof-only entry, the float operations and conversions over every width pair (the trapping
 truncations included), platform calls over references (static, virtual, interface, static fields; narrow parameters
-and results), and the rejections the program decides (``JVM-ENTRY-FUNCTION``, ``JVM-PROCESS-ENTRY-CONTRACT``, and
-``_foreign_member``'s: the ABI, the member and descriptor texts, the arity, each descriptor's type).
+and results), the object kinds (``new``, arrays, ``ldc``, instance and static fields, casts), and the rejections the
+program decides (``JVM-ENTRY-FUNCTION``, ``JVM-PROCESS-ENTRY-CONTRACT``, and
+``_foreign_member``'s and ``_object_member``'s: the ABI, the member and descriptor texts, the arity, each descriptor's
+type, the array and ``multianewarray`` descriptors, ``ldc`` strings, cast inputs).
 """
 
 from __future__ import annotations
@@ -18,7 +20,8 @@ import unittest
 from pathlib import Path
 
 from xax_compiler import (
-    SYSV_X86_64_C_ABI, FloatCompare, FloatFormat, Operation, XaxError, bits_type, float_type, foreign_function_symbol, jvm_classfile_target,
+    JVM_ARRAYLENGTH_ABI, JVM_ARRAYLOAD_ABI, JVM_ARRAYSTORE_ABI, JVM_CHECKCAST_ABI, JVM_GETFIELD_ABI, JVM_INSTANCEOF_ABI, JVM_LDC_ABI,
+    JVM_MULTIANEWARRAY_ABI, JVM_NEW_ABI, JVM_NEWARRAY_ABI, JVM_PUTFIELD_ABI, JVM_PUTSTATIC_ABI, SYSV_X86_64_C_ABI, FloatCompare, FloatFormat, Operation, XaxError, bits_type, float_type, foreign_function_symbol, jvm_classfile_target,
 )
 from xax_compiler import opaque_identity_type
 from xax_jvm import REFERENCE_PREFIX, java_base_api, jvm_interface, jvm_reference_type, jvm_static, jvm_static_field, jvm_virtual
@@ -166,6 +169,49 @@ class SelfhostJvmTests(unittest.TestCase):
                 self.assertEqual(self._call_one(carrier, inputs, outputs, (*inputs, *outputs, *elements))[0], expected)
         api = java_base_api()
         self.assertEqual(self._call_one(api.system_out, (api.io_effect,), (api.print_stream, api.io_effect), api.types)[0], "jar")
+
+    def test_object_members(self):
+        b1, b8, b16, b32, b64 = (bits_type(width) for width in (1, 8, 16, 32, 64))
+        texts = (b"Ljava/lang/String;", b"Ljava/lang/StringBuilder;", b"Ljava/lang/Short;", b"[I", b"[Ljava/lang/String;", b"[[I", b"[B",
+                 b"Ljava/awt/Point;", b"Ljava/lang/Object;")
+        string, builder, short, ints, strings, grid, bytes_, point, anything = (jvm_reference_type(text) for text in texts)
+        elements = tuple(opaque_identity_type(REFERENCE_PREFIX + text) for text in texts)
+
+        def member(abi, library, text, inputs, outputs):
+            return foreign_function_symbol(library, text, inputs, outputs, abi=abi), inputs, outputs
+
+        cases = {
+            "new": (member(JVM_NEW_ABI, b"java/lang/StringBuilder", b"<init>(I)V", (b32,), (builder,)), "jar"),
+            "new narrow": (member(JVM_NEW_ABI, b"java/lang/Short", b"<init>(S)V", (b16,), (short,)), "jar"),
+            "new no V": (member(JVM_NEW_ABI, b"java/lang/StringBuilder", b"<init>(I)", (b32,), (builder,)), "rejected"),
+            "new name": (member(JVM_NEW_ABI, b"java/lang/StringBuilder", b"make(I)V", (b32,), (builder,)), "rejected"),
+            "newarray": (member(JVM_NEWARRAY_ABI, b"I", b"x", (b32,), (ints,)), "jar"),
+            "anewarray": (member(JVM_NEWARRAY_ABI, b"Ljava/lang/String;", b"x", (b32,), (strings,)), "jar"),
+            "array of arrays": (member(JVM_NEWARRAY_ABI, b"[I", b"x", (b32,), (grid,)), "jar"),
+            "multianewarray": (member(JVM_MULTIANEWARRAY_ABI, b"[[I", b"x", (b32, b32), (grid,)), "jar"),
+            "multi rank": (member(JVM_MULTIANEWARRAY_ABI, b"[I", b"x", (b32,), (ints,)), "rejected"),
+            "baload": (member(JVM_ARRAYLOAD_ABI, b"[B", b"x", (bytes_, b32), (b8,)), "jar"),
+            "iaload": (member(JVM_ARRAYLOAD_ABI, b"[I", b"x", (ints, b32), (b32,)), "jar"),
+            "aaload": (member(JVM_ARRAYLOAD_ABI, b"[Ljava/lang/String;", b"x", (strings, b32), (string,)), "jar"),
+            "not an array": (member(JVM_ARRAYLOAD_ABI, b"I", b"x", (ints, b32), (b32,)), "rejected"),
+            "iastore": (member(JVM_ARRAYSTORE_ABI, b"[I", b"x", (ints, b32, b32), ()), "jar"),
+            "arraylength": (member(JVM_ARRAYLENGTH_ABI, b"[I", b"x", (ints,), (b32,)), "jar"),
+            "ldc": (member(JVM_LDC_ABI, b"java/lang/String", b"hello, world", (), (string,)), "jar"),
+            "ldc class": (member(JVM_LDC_ABI, b"java/lang/Object", b"hello", (), (string,)), "rejected"),
+            "ldc control": (member(JVM_LDC_ABI, b"java/lang/String", b"a\x01", (), (string,)), "rejected"),
+            "getfield": (member(JVM_GETFIELD_ABI, b"java/awt/Point", b"x:I", (point,), (b32,)), "jar"),
+            "putfield": (member(JVM_PUTFIELD_ABI, b"java/awt/Point", b"y:I", (point, b32), ()), "jar"),
+            "putstatic": (member(JVM_PUTSTATIC_ABI, b"xax/Holder", b"v:J", (b64,), ()), "jar"),
+            "field colon": (member(JVM_GETFIELD_ABI, b"java/awt/Point", b"x", (point,), (b32,)), "rejected"),
+            "checkcast": (member(JVM_CHECKCAST_ABI, b"java/lang/String", b"x", (anything,), (string,)), "jar"),
+            "checkcast array": (member(JVM_CHECKCAST_ABI, b"[I", b"x", (anything,), (ints,)), "jar"),
+            "instanceof": (member(JVM_INSTANCEOF_ABI, b"java/lang/String", b"x", (anything,), (b1,)), "jar"),
+            "cast an int": (member(JVM_CHECKCAST_ABI, b"java/lang/String", b"x", (b32,), (string,)), "rejected"),
+            "cast arity": (member(JVM_CHECKCAST_ABI, b"java/lang/String", b"x", (anything, anything), (string,)), "rejected"),
+        }
+        for name, ((carrier, inputs, outputs), expected) in cases.items():
+            with self.subTest(case=name):
+                self.assertEqual(self._call_one(carrier, inputs, outputs, (*inputs, *outputs, *elements))[0], expected)
 
     def test_entry_must_be_a_function(self):
         target = jvm_classfile_target()
