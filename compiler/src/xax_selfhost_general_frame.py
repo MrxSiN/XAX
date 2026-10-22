@@ -2252,6 +2252,9 @@ def _legacy_static(e: E, f, name: str):
     def terminators():
         e.var(f"{name}_b", _block_at(e, p[f"{name}_bi"]))
         e.if_(e.not_(_in(e, _f(e, p[f"{name}_b"], B_KIND), (RETURN, BRANCH, CONDITIONAL))), lambda: e.set(name, 0))
+        # S15e.3b (ADR-326): a hosted block parameter that is a float leaves the path (an aggregate or sum declines there).
+        e.if_(e.ne(p[f"{name}_w"], 0), lambda: e.for_(f"{name}_k", 0, _f(e, p[f"{name}_b"], B_NP), lambda: e.if_(
+            _is_float(e, _vf(e, G_VTYPE, e.ld(e.add(_f(e, p[f"{name}_b"], B_INPUTS), p[f"{name}_k"])))), lambda: e.set(name, 0))))
 
     e.for_(f"{name}_bi", 0, _g(e, G_BCOUNT), terminators)
     # The interface: at most four machine parameters, every machine parameter and result a bits type.
@@ -2301,8 +2304,6 @@ def _frame_function_fn(tables):
         # S12f.4 (ADR-280): a function the legacy register path's static checks accept is lowered by that path.
         e.var("ff_legacy", 0)
         e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_static"), e.set("ff_legacy", p["ff_static"])))
-        # S15e.3: the hosted (Windows) legacy register path is the bootstrap's alone.
-        _ok(e, e.either(e.eq(p["ff_legacy"], 0), e.eq(_g(e, G_WINDOWS), 0), e.ne(_g(e, G_RAWWIN), 0)))  # S15f.2: load images' is Linux's
         _set_ra(e, E_FWD_ON, e.flag(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0))))  # ``forward_stores``: the PE frame path
         # The emission state (``xax_selfhost_general_emit``): the real run only.
         for slot in (E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
