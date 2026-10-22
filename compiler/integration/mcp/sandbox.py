@@ -31,7 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dsl import Program  # noqa: E402
 
-NATIVE_XAX_COMMIT = "f79b532fd4651ba808676d02f4b038e2cc271e6a"  # XAX main, 2026-10-19
+NATIVE_XAX_COMMIT = "3e9b0c2b3f88d2193caae72a5fe8eefa83d1995b"  # XAX main, 2026-10-22
 
 OUT_CAP = 1024 * 1024
 VIEWS = {"O": 8 * 1024 * 1024, "N": 64, "A": 32768 + 64, "W": 256}
