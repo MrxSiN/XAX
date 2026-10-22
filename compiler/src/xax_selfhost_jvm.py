@@ -11,7 +11,8 @@ changes, unsigned division and remainder, integer compares, constants, direct ca
 a foreign call, a memory or general profile, or anything the bootstrap would reject declines (the bootstrap builds).
 
 Input: the general program's object table (``general_object_table``) followed by one word, 1 for a process entry.
-Output: the image record at ``IMAGE_AT``: the status (1), the JAR's length and its bytes packed eight to a word.
+Output: the image record at ``IMAGE_AT`` in the general program's layout (so the driver hashes and writes it as it does
+an ELF file): the status (1), an empty code section (0), the JAR's length and its bytes packed eight to a word.
 """
 
 from __future__ import annotations
@@ -795,9 +796,10 @@ def _class_fn(tables):
         le(e, p["cl_jar"], 0, 2)
         # The record.
         e.var("cl_n", blen(e, p["cl_jar"]))
-        _ok(e, e.lt(e.add(IMAGE_AT, e.add(e.udiv(p["cl_n"], 8), 4)), IMAGE_END))
+        _ok(e, e.lt(e.add(IMAGE_AT, e.add(e.udiv(p["cl_n"], 8), 5)), IMAGE_END))
         e.st(IMAGE_AT, 1)
-        e.st(IMAGE_AT + 1, p["cl_n"])
+        e.st(IMAGE_AT + 1, 0)  # no code words
+        e.st(IMAGE_AT + 2, p["cl_n"])
         e.var("cl_jd", bdata(e, p["cl_jar"]))
 
         def word():
@@ -805,7 +807,7 @@ def _class_fn(tables):
             e.var("cl_wt", 1)
             e.for_("cl_b", 0, 8, lambda: (e.var("cl_ix", e.add(e.mul(p["cl_q"], 8), p["cl_b"])), e.if_(e.lt(p["cl_ix"], p["cl_n"]), lambda: e.set(
                 "cl_w", e.add(p["cl_w"], e.mul(e.ld(e.add(p["cl_jd"], p["cl_ix"])), p["cl_wt"])))), e.set("cl_wt", e.mul(p["cl_wt"], 256))))
-            e.st(e.add(IMAGE_AT + 2, p["cl_q"]), p["cl_w"])
+            e.st(e.add(IMAGE_AT + 3, p["cl_q"]), p["cl_w"])
 
         e.for_("cl_q", 0, e.udiv(e.add(p["cl_n"], 7), 8), word)
         e.give(1)
@@ -1281,11 +1283,11 @@ def jvm_with_xax(reader, function_cid: bytes, target_object, *, process_entry: b
             (status,) = read(0, 1)
             if status != 1:
                 return None, decode_diagnostic(read)
-            head = read(IMAGE_AT, 2)
+            head = read(IMAGE_AT, 3)
             if head[0] != 1:
                 return None, None
-            packed = read(IMAGE_AT + 2, (head[1] + 7) // 8)
-            return b"".join(word.to_bytes(8, "little") for word in packed)[:head[1]], None
+            packed = read(IMAGE_AT + 3, (head[2] + 7) // 8)
+            return b"".join(word.to_bytes(8, "little") for word in packed)[:head[2]], None
 
         outcome = native.run(words, collect)
         jar, diagnostic = outcome if outcome is not None else (None, None)
