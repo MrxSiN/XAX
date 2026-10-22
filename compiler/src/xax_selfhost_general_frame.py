@@ -2175,11 +2175,11 @@ def _legacy_static(e: E, f, name: str):
     bootstrap would try that path before the frame lowering.  S15e.3: on Windows the hosted profile's checks (the
     larger operation list, heap-view memory only, 32/64-bit compares, integer foreign calls of at most four
     arguments)."""
-    from xax_selfhost_x86_64_general import G_WINDOWS
+    from xax_selfhost_x86_64_general import G_RAWWIN, G_WINDOWS
 
     p = e.p
     e.var(name, 1)
-    e.var(f"{name}_w", _g(e, G_WINDOWS))
+    e.var(f"{name}_w", e.flag(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0))))  # the hosted (PE) variant
     e.var(f"{name}_heap", e.alloc(e.add(_g(e, G_VCOUNT), 1)))
     _ok(e, e.ne(p[f"{name}_heap"], NONE))
     e.for_(f"{name}_z", 0, _g(e, G_VCOUNT), lambda: e.st(e.add(p[f"{name}_heap"], p[f"{name}_z"]), 0))
@@ -2266,7 +2266,7 @@ def _frame_function_fn(tables):
     """The frame lowering of function ``f`` (image index ``fidx``) from its own graph, or the legacy register path where
     the bootstrap takes it (S12f.4): 1 emitted."""
     from xax_selfhost_general_view import G_BLIST, G_FKEYN, G_LIFT_ENTRY, _globals
-    from xax_selfhost_x86_64_general import G_ENTRY, G_WINDOWS
+    from xax_selfhost_x86_64_general import G_ENTRY, G_RAWWIN, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -2293,8 +2293,8 @@ def _frame_function_fn(tables):
         e.var("ff_legacy", 0)
         e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_static"), e.set("ff_legacy", p["ff_static"])))
         # S15e.3: the hosted (Windows) legacy register path is the bootstrap's alone.
-        _ok(e, e.either(e.eq(p["ff_legacy"], 0), e.eq(_g(e, G_WINDOWS), 0)))
-        _set_ra(e, E_FWD_ON, _g(e, G_WINDOWS))  # ``forward_stores``: the Windows frame path
+        _ok(e, e.either(e.eq(p["ff_legacy"], 0), e.eq(_g(e, G_WINDOWS), 0), e.ne(_g(e, G_RAWWIN), 0)))  # S15f.2: load images' is Linux's
+        _set_ra(e, E_FWD_ON, e.flag(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0))))  # ``forward_stores``: the PE frame path
         # The emission state (``xax_selfhost_general_emit``): the real run only.
         for slot in (E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
             _set_ra(e, slot, 0)

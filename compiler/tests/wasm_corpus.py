@@ -225,7 +225,28 @@ def _helper(rng, objects: list, fault: str | None, depth: int = 0):
     return function, params, results
 
 
-def _start(rng, fault: str | None):
+def _target(kind: str):
+    """The browser page target, or (S15f.1) a WASI command or plain core-module target on the general profile with the
+    browser's operations, so the same random programs reach every lowering."""
+    from xax_compiler import WASM32_WASI_IDENTITY, decode_native_target, wasm32_general_target
+
+    if kind == "page":
+        return wasm32_browser_target()
+    base = set(decode_native_target(wasm32_general_target()).supported_operations)
+    extra = tuple(op for op in decode_native_target(wasm32_browser_target()).supported_operations if op not in base)
+    return wasm32_general_target(WASM32_WASI_IDENTITY if kind == "wasi" else b"wasm32-core-module-v2", extra)
+
+
+def _plain(rng, fault: str | None):
+    """A plain core module: a random helper is the entry (machine values allowed)."""
+    objects = [B1, *INTS, *FLOATS]
+    helper_fault = fault if fault in ("two_returns", "unsupported", "memory", "extent", "address_width") else None
+    entry, _params, _results = _helper(rng, objects, helper_fault)
+    target = _target("plain")
+    return program_store(entry, target, tuple(objects)), entry, target
+
+
+def _start(rng, fault: str | None, kind: str = "page"):
     api = web_api()
     objects = [*api.types, *api.symbols, B1, *INTS, *FLOATS]
     entry_params = (api.page_effect, B32) if fault == "entry_machine" else (api.page_effect,)
@@ -269,18 +290,21 @@ def _start(rng, fault: str | None):
     block.ret(page)
     start = graph.function(entry_params, (api.page_effect,))
     objects += list(graph.objects.values())
-    target = wasm32_browser_target()
+    target = _target(kind)
     return program_store(start, target, tuple(objects)), start, target
 
 
-def wasm_case(rng: random.Random):
-    """``(reader, entry, target, name)``; a program the verifier rejects is drawn again."""
+def wasm_case(rng: random.Random, kind: str = "page"):
+    """``(reader, entry, target, name)``; a program the verifier rejects is drawn again.  ``kind``: ``"page"`` (the
+    browser page), ``"wasi"`` or ``"plain"`` (S15f.1: raw modules)."""
     while True:
-        name = rng.choice(("fib", "random", "random", "random", "random", *FAULTS))
+        name = rng.choice(("fib" if kind == "page" else "random", "random", "random", "random", "random", *FAULTS))
         try:
             if name == "fib":
                 return (*fib_page_program(), name)
             fault = None if name == "random" else name
-            return (*_start(rng, fault), name)
+            if kind == "plain":
+                return (*_plain(rng, fault), name)
+            return (*_start(rng, fault, kind), name)
         except (XaxError, ValueError, KeyError, AttributeError, TypeError):
             continue
