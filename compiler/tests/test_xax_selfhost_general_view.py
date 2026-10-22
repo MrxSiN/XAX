@@ -551,8 +551,8 @@ class GeneralViewTests(unittest.TestCase):
     def test_legacy_register_path(self):
         """S12f.4 (ADR-280): a function of ``add``/``sub``/``mul``, constants, and direct calls whose lowering view the
         register-resident path cannot take (an inlined float leaf) is lowered by the bootstrap's legacy register path;
-        the XAX program's code is the bootstrap's (registers, spills, homes, edge copies, calls), and arithmetic of
-        another width than 32 or 64 bits is its rejection (NATIVE-BITS-SUPPORTED)."""
+        the XAX program's code is the bootstrap's (registers, spills, homes, edge copies, calls); arithmetic of another
+        width than 32 or 64 bits takes the masking frame path instead (ADR-324)."""
         import random
 
         import xax_x86_64
@@ -634,9 +634,9 @@ class GeneralViewTests(unittest.TestCase):
                     reader, entry, target = program(rng, width)
                     self.assertEqual(self._same_outcome(reader, entry, target)[0], "image")
                     self.assertIn(True, taken)  # the bootstrap took the legacy path
-            with self.subTest("NATIVE-BITS-SUPPORTED"):
-                kind, diagnostic = self._same_outcome(*program(random.Random(7), 16))
-                self.assertEqual((kind, diagnostic.rule), ("rejected", "NATIVE-BITS-SUPPORTED"))
+            with self.subTest("narrow"):
+                # ADR-324: 16-bit wrapping arithmetic leaves the legacy path for the masking frame path, in both.
+                self.assertEqual(self._same_outcome(*program(random.Random(7), 16))[0], "image")
         finally:
             xax_x86_64._compile_register_resident_function = original
 

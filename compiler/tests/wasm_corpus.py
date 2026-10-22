@@ -246,6 +246,18 @@ def _plain(rng, fault: str | None):
     return program_store(entry, target, tuple(objects)), entry, target
 
 
+def _legacy(rng, fault: str | None):
+    """S15f.3: a core module on a target off the general profile (``wasm32-core-module-v1``, ``-oi06-v1``): the raw-image
+    corpus's random functions over that target's operations (bits arithmetic, calls, static stack storage)."""
+    from x86_raw_corpus import _function
+    from xax_compiler import decode_native_target, oi06_wasm32_target, wasm32_target
+
+    target = rng.choice((wasm32_target, oi06_wasm32_target))()
+    objects: list = []
+    entry, _params = _function(rng, set(decode_native_target(target).supported_operations), objects, "unsupported" if fault == "unsupported" else None)
+    return program_store(entry, target, tuple(objects)), entry, target
+
+
 def _start(rng, fault: str | None, kind: str = "page"):
     api = web_api()
     objects = [*api.types, *api.symbols, B1, *INTS, *FLOATS]
@@ -305,6 +317,8 @@ def wasm_case(rng: random.Random, kind: str = "page"):
             fault = None if name == "random" else name
             if kind == "plain":
                 return (*_plain(rng, fault), name)
+            if kind == "legacy":
+                return (*_legacy(rng, fault), name)
             return (*_start(rng, fault, kind), name)
         except (XaxError, ValueError, KeyError, AttributeError, TypeError):
             continue
