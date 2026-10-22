@@ -2478,7 +2478,7 @@ def lower_closure(e: E, total, order, members):
         e.set("vp_at", e.add(e.add(p["vp_at"], 1), e.mul(e.rd(p["vp_at"]), 5)))
 
     e.for_("vp_k", 0, p["vp_n"], graph)
-    _globals(e, G_AUDIT, e.rd(p["vp_at"]))
+    _globals(e, G_AUDIT, e.and_(e.rd(p["vp_at"]), 1))
     e.var("vp_traps", e.add(p["vp_at"], 1))
     _globals(e, G_VIEW_OUT, VIEW_AT)
     ranges_prologue(e)

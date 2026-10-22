@@ -57,7 +57,7 @@ OP = {name: int(getattr(Operation, name)) for name in (
     "ADD_WRAP", "SUB_WRAP", "MUL_WRAP", "BIT_AND", "BIT_OR", "BIT_XOR", "ROTATE_RIGHT", "INT_TRUNCATE", "INT_ZERO_EXTEND", "INT_COMPARE",
     "CONSTANT", "CALL_DIRECT", "UDIV", "UREM", "HEAP_VIEW", "POINTER_CAST", "FLOAT_ADD", "FLOAT_SUB", "FLOAT_MUL", "FLOAT_DIV",
     "FLOAT_CONVERT", "FLOAT_COMPARE", "UINT_TO_FLOAT", "SINT_TO_FLOAT", "FLOAT_TO_UINT_TRUNC", "FLOAT_TO_SINT_TRUNC", "CALL_FOREIGN",
-    "FUNCTION_ADDRESS")}
+    "FUNCTION_ADDRESS", "AGGREGATE_MAKE", "AGGREGATE_GET", "SUM_MAKE", "SUM_TAG", "SUM_GET")}
 # Lowerings that place their own branch targets inside a node (``_INTERNAL_LABELS``).
 INTERNAL_LABELS = tuple(int(op) for op in (Operation.ATOMIC_CMPXCHG, Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT,
                                            Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC))
