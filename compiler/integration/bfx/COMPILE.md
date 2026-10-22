@@ -408,3 +408,105 @@ packaging. Handing the files over in memory would therefore save under 1 ms, so
 it was not done. Most objects are shared between the request and the snapshot;
 a per-process proof cache keyed by CID inside the driver's verifier, changed
 through the evolution ledger, is the remaining build-latency step.
+That step is taken in [Graph proof cache](#graph-proof-cache--2026-10-22), as
+a transaction on this store rather than a change to the production driver.
+
+## Graph proof cache — 2026-10-22
+
+[bbc.xax](bbc.xax) now lets `compile`'s three driver steps share graph checks. It
+is the driver store (root
+`9bf3f203349cf8712ca93f968db2bd63f1c20b6277181891724ee4fbdd60aafc`) with one
+expected-root transaction,
+[transactions/bbc_proof_cache.edit](transactions/bbc_proof_cache.edit). Result
+root: `80fabd92f7812ccdcef82689e3b0fbf32da249b01898708574eea83b606f6537`, entry
+`147827c216435f2feda6b95018d7628139d67e85a0d61878c94be22b75a73807`. Full
+verification, `Workspace.save` and stale-root rejection pass. The earlier
+transactions remain as records of the earlier stores. The production driver
+store, its builder and the evolution ledger are unchanged.
+
+### Where the time was
+
+Profiled with `perf` under Wine, with PE addresses mapped to function CIDs from
+the bootstrap image's offsets. For hello's stores:
+
+- Verification was 52% of the three steps' machine-code time and build's
+  lowering was 40%.
+- About 60% of verification was the typing program, which runs once over the
+  store's types and constants and once per graph.
+- The host request, the request and the snapshot hold the same 2 graphs, 11
+  types and 14 constants. The snapshot only adds BUILD objects.
+
+### Change
+
+The three step entries differ from the lazy ones in the per-graph verification
+loop. The command-line entry is unchanged.
+
+- **Lookup.** Before a graph is checked, a lookup searches a process-wide
+  table by the graph's CID. The lookup runs only on the loop's ordinary path:
+  no resource-callee override, no pending deferral, no earlier objection, still
+  running.
+- **Hit.** The graph's check is skipped. The step replays what an ordinary
+  acceptance leaves:
+  - the graph's `collect` records (pointer extents and trap heads, which the
+    build step's lowering reads), appended at the loop's counters;
+  - the counters themselves;
+  - `rc_decide`'s accepted state: action 0, the graph's accepted flag,
+    `C_GRAPH`, and the RC fields of an accepted outcome.
+  The loop then continues at its join.
+- **Miss.** The graph is checked as before. If it was accepted ordinarily
+  (accept status, no deferral, no trim, no override, no objection), its
+  records are added to the table.
+
+A graph's verdict and records depend only on its CID: its references are CIDs,
+and everything the check reads is reached through them. Every object's CID is
+still re-derived from its bytes before the loop. Checks of types and constants,
+store-level checks, the hashing and everything outside the graph loop still run
+in every step.
+
+The table lives in a 64 MiB region that the `bbc.exe` entry reserves for one
+`compile` and releases at the end; the commit-on-touch handler commits it as it
+is used. The verifier does not let the step entries take a view next to their
+bare memory capabilities. So each step entry takes the region's address as one
+integer parameter. Block 0 stores it, with a check word, in the last words of
+the `work` view, which no component uses. Seven small helpers move words
+between the region and the views with `RtlMoveMemory`, on the views' memory
+effects, within ranges they bound themselves. The address is not threaded
+through every block, because the generic bootstrap's x86-64 lowering loses
+values carried that far. A first build that threaded it never reached the
+table.
+
+### Bootstrap
+
+As above, with the three cached step entries in the driver recipe and the
+helpers in the BBC recipe. The tested PE is 15,294,976 bytes, SHA-256
+`d9cb64919be09322758590b6e9cd9d46672e0477b32fdfba3ccbfcf7957d106d`.
+
+### Evidence
+
+[proof_cache_evidence.json](proof_cache_evidence.json), Wine and qemu user
+emulation on Linux x86-64:
+
+- 332 builds and 588 executions match the reference interpreter; all 996
+  output files equal those of the previous `bbc.exe`.
+- Driver commands match the previous `bbc.exe` byte for byte on 141 stores.
+- Error paths give exits 1, 4, 4, 3, 3 and leave no files.
+- Typing-program samples fall from 3,931 to 2,301 over 10 hello compiles and
+  from 9,779 to 6,062 over 5 deep_nesting_512 compiles. All machine-code samples
+  fall by 10.5% and 5%.
+
+| Complete Android build, -O1 | Median before (s) | With cache (s) | Change |
+|---|---:|---:|---:|
+| hello | 0.113 | 0.109 | −3% |
+| nested_math | 0.100 | 0.097 | −3.5% |
+| checksum_four | 0.103 | 0.096 | −6.6% |
+| deep_nesting_512 | 0.690 | 0.639 | −7.5% |
+
+These are 20 alternating trials per case. Host stalls of several seconds hit
+both arms in about half of nested_math's trials; they are excluded and counted
+in the evidence. Artifacts are identical in both arms. These are not
+Windows-native times and give no competitor verdict.
+
+What remains is mostly build's lowering, which is 40% of the steps' machine
+time for hello and most of it for deep_nesting_512. After that come the
+first verification of each store's types, constants and new graphs, and one Wine
+process launch.
