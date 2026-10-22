@@ -22,8 +22,9 @@ only the new magic and identifier; old records reject without fallback.
 bootstrap recipe. `bbc compile` builds Android ARM64 and Windows x86-64
 executables from Brainfuck source with the native XAX driver and no Python at
 runtime, in one process (`bbc.xax`), committing the driver's large views only as
-they are touched; see its native, single-process and lazily committed views
-sections for scope and evidence.
+they are touched and checking each graph once per process; see its native,
+single-process, lazily committed views and graph proof cache sections for scope
+and evidence.
 
 [IMPORT.md](IMPORT.md) specifies typed buffer/build contracts and
 [TRANSACTIONS.md](TRANSACTIONS.md) records exact-root migration/replay boundaries.
