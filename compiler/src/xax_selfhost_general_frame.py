@@ -804,10 +804,12 @@ def _int_node_fn(tables):
             e.var("fi_bytes", e.sel(e.eq(width, 64), 8, 4))
             _load(e, RAX, _slot(e, p["fn_a"]), p["fi_bytes"])
             _load(e, SCRATCH0, _slot(e, p["fn_b"]), p["fi_bytes"])
-            # ``_arithmetic`` fails after the operands' loads (S12f.4).
-            e.if_(e.not_(e.either(e.eq(width, 32), e.eq(width, 64))), lambda: _call(e, "width_reject", WIDTH_ARITHMETIC, width))
+            # ``_arithmetic`` fails after the operands' loads (S12f.4); S15f.2: a width below 32 is done at 32 and masked.
+            e.var("fi_narrow", e.flag(e.both(e.lt(0, width), e.lt(width, 32))))
+            e.if_(e.not_(e.either(e.eq(width, 32), e.eq(width, 64), e.ne(p["fi_narrow"], 0))), lambda: _call(e, "width_reject", WIDTH_ARITHMETIC, width))
             for operation in ARITHMETIC_64:
                 e.if_(e.eq(op, _op(operation)), lambda operation=operation: e.if_(e.eq(width, 64), lambda: _b(e, ARITHMETIC_64[operation]), lambda: _b(e, ARITHMETIC_32[operation])))
+            e.if_(e.ne(p["fi_narrow"], 0), lambda: _mask_register(e, RAX, width))
             _store(e, RAX, _slot(e, result), 8)
             e.give(1)
 
@@ -2175,11 +2177,11 @@ def _legacy_static(e: E, f, name: str):
     bootstrap would try that path before the frame lowering.  S15e.3: on Windows the hosted profile's checks (the
     larger operation list, heap-view memory only, 32/64-bit compares, integer foreign calls of at most four
     arguments)."""
-    from xax_selfhost_x86_64_general import G_WINDOWS
+    from xax_selfhost_x86_64_general import G_RAWWIN, G_WINDOWS
 
     p = e.p
     e.var(name, 1)
-    e.var(f"{name}_w", _g(e, G_WINDOWS))
+    e.var(f"{name}_w", e.flag(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0))))  # the hosted (PE) variant
     e.var(f"{name}_heap", e.alloc(e.add(_g(e, G_VCOUNT), 1)))
     _ok(e, e.ne(p[f"{name}_heap"], NONE))
     e.for_(f"{name}_z", 0, _g(e, G_VCOUNT), lambda: e.st(e.add(p[f"{name}_heap"], p[f"{name}_z"]), 0))
@@ -2224,6 +2226,13 @@ def _legacy_static(e: E, f, name: str):
         e.if_(e.not_(e.either(_in(e, p[f"{name}_op"], LEGACY_ALLOWED), e.both(e.ne(p[f"{name}_w"], 0), _in(e, p[f"{name}_op"], HOSTED_ALLOWED)))),
               lambda: e.set(name, 0))
         e.if_(e.ne(p[f"{name}_w"], 0), lambda: hosted(n))
+        wrapping = (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_XOR, Operation.BIT_AND, Operation.BIT_OR)
+
+        def narrow():  # S15f.2: narrow wrapping values use the masking frame path
+            _bits_width(e, _vf(e, G_VTYPE, _output(e, n, 0)), f"{name}_aw")
+            e.if_(e.not_(e.either(e.eq(p[f"{name}_aw"], 32), e.eq(p[f"{name}_aw"], 64))), lambda: e.set(name, 0))
+
+        e.if_(_in(e, p[f"{name}_op"], tuple(_op(o) for o in wrapping)), narrow)
 
         def direct():
             _machine_inputs(e, n, 0, f"{name}_in")
@@ -2243,6 +2252,9 @@ def _legacy_static(e: E, f, name: str):
     def terminators():
         e.var(f"{name}_b", _block_at(e, p[f"{name}_bi"]))
         e.if_(e.not_(_in(e, _f(e, p[f"{name}_b"], B_KIND), (RETURN, BRANCH, CONDITIONAL))), lambda: e.set(name, 0))
+        # S15e.3b (ADR-326): a hosted block parameter that is a float leaves the path (an aggregate or sum declines there).
+        e.if_(e.ne(p[f"{name}_w"], 0), lambda: e.for_(f"{name}_k", 0, _f(e, p[f"{name}_b"], B_NP), lambda: e.if_(
+            _is_float(e, _vf(e, G_VTYPE, e.ld(e.add(_f(e, p[f"{name}_b"], B_INPUTS), p[f"{name}_k"])))), lambda: e.set(name, 0))))
 
     e.for_(f"{name}_bi", 0, _g(e, G_BCOUNT), terminators)
     # The interface: at most four machine parameters, every machine parameter and result a bits type.
@@ -2266,7 +2278,7 @@ def _frame_function_fn(tables):
     """The frame lowering of function ``f`` (image index ``fidx``) from its own graph, or the legacy register path where
     the bootstrap takes it (S12f.4): 1 emitted."""
     from xax_selfhost_general_view import G_BLIST, G_FKEYN, G_LIFT_ENTRY, _globals
-    from xax_selfhost_x86_64_general import G_ENTRY, G_WINDOWS
+    from xax_selfhost_x86_64_general import G_ENTRY, G_RAWWIN, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -2292,9 +2304,7 @@ def _frame_function_fn(tables):
         # S12f.4 (ADR-280): a function the legacy register path's static checks accept is lowered by that path.
         e.var("ff_legacy", 0)
         e.if_(e.eq(_ra(e, F_PROCESS), 0), lambda: (_legacy_static(e, p["f"], "ff_static"), e.set("ff_legacy", p["ff_static"])))
-        # S15e.3: the hosted (Windows) legacy register path is the bootstrap's alone.
-        _ok(e, e.either(e.eq(p["ff_legacy"], 0), e.eq(_g(e, G_WINDOWS), 0)))
-        _set_ra(e, E_FWD_ON, _g(e, G_WINDOWS))  # ``forward_stores``: the Windows frame path
+        _set_ra(e, E_FWD_ON, e.flag(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0))))  # ``forward_stores``: the PE frame path
         # The emission state (``xax_selfhost_general_emit``): the real run only.
         for slot in (E_CLEN, E_NBRANCHES, E_NCALLS, E_NRANGES, E_CAP_ON):
             _set_ra(e, slot, 0)
@@ -2423,7 +2433,7 @@ def add_frame_functions(add, tables):
 
     from xax_selfhost_x86_64_general import _layout
 
-    add("abi_layout", _layout(tables))  # the front end's ``layout`` (the view's block layout took that name)
+    add("abi_layout", _layout(tables, wasm=True))  # the front end's ``layout`` (the view's block layout took that name); S15e.4
     add("value_reject", _value_reject_fn(tables))
     add("width_reject", _width_reject_fn(tables))
     add("fixed_reject", _fixed_reject_fn(tables))

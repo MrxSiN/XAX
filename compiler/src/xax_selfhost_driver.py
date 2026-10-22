@@ -1824,8 +1824,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             w.take("image", results[4:])
 
         if general:
-            elf_program = lambda: w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_LINUX_AARCH64),  # noqa: E731
-                                        lambda: call(aarch64_program), lambda: call(general_program))
+            # S15f.4 (ADR-325): the AArch64 program also makes the bare-metal AArch64 images.
+            aarch64_path = lambda: w.either(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_LINUX_AARCH64),  # noqa: E731
+                                            w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_A64_RAW))
+            elf_program = lambda: w.if_(aarch64_path(), lambda: call(aarch64_program), lambda: call(general_program))  # noqa: E731
             w.if_(w.ne(w[linux], 0), elf_program, lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
         else:
             call(backend)

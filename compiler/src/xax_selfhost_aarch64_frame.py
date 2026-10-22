@@ -575,6 +575,16 @@ def _machine_operands(e: E, node, skip_first, name: str):
 
 # -- eligibility for the other paths -------------------------------------------------------------------------------
 
+G_A64RAW = 191  # GLOBALS slot: 1 for a bare-metal load image (S15f.4, ADR-325), whose frames share no slots
+
+
+def _general(e: E):
+    """``_general_aarch64_target``: the target lists a float, aggregate or sum operation."""
+    from xax_selfhost_views_backend import G_SUP
+
+    return e.flag(e.either(*(e.ne(e.ld(e.add(_g(e, G_SUP), _op(op))), 0) for op in (Operation.FLOAT_ADD, Operation.AGGREGATE_MAKE, Operation.SUM_MAKE))))
+
+
 def _register_path_fn(tables):
     """``_register_path_eligible`` of function ``f``'s own graph (lifted): 1 when the bootstrap takes the legacy
     register path (this program declines), 0 when it takes the frame path."""
@@ -971,11 +981,20 @@ def _layout_fn(tables):
                 "fl_r", 0, _f(e, p["fl_nd"], N_NRES), lambda: add(_output(e, p["fl_nd"], p["fl_r"])))))
 
         e.for_("fl_bi", 0, _g(e, G_BCOUNT), gather)
-        _call(e, "a64f_hulls")
-        # The bootstrap's order: (hull start, tag, block, index, result); a value's position orders the last four.
-        _merge_sort(e, p["fl_values"], p["fl_count"], lambda a, b: e.either(
-            e.lt(_rt(e, T_HULL_START, a), _rt(e, T_HULL_START, b)),
-            e.both(e.eq(_rt(e, T_HULL_START, a), _rt(e, T_HULL_START, b)), e.lt(_vf(e, G_VPOS, a), _vf(e, G_VPOS, b)))))
+        # Slots are shared by disjoint hulls only on the Linux profiles; a bare-metal image keeps one slot per value in
+        # gathering order (S15f.4, ADR-325).
+        from xax_selfhost_views_backend import GLOBALS
+
+        e.var("fl_share", e.flag(e.eq(e.ld(GLOBALS + G_A64RAW), 0)))
+
+        def share():
+            _call(e, "a64f_hulls")
+            # The bootstrap's order: (hull start, tag, block, index, result); a value's position orders the last four.
+            _merge_sort(e, p["fl_values"], p["fl_count"], lambda a, b: e.either(
+                e.lt(_rt(e, T_HULL_START, a), _rt(e, T_HULL_START, b)),
+                e.both(e.eq(_rt(e, T_HULL_START, a), _rt(e, T_HULL_START, b)), e.lt(_vf(e, G_VPOS, a), _vf(e, G_VPOS, b)))))
+
+        e.if_(e.ne(p["fl_share"], 0), share)
         # Free slots: (slot size, alignment, offset, busy until), in the order they were made.
         e.var("fl_free", e.alloc(e.add(e.mul(p["fl_count"], 4), 4)))
         _ok(e, e.ne(p["fl_free"], NONE))
@@ -987,7 +1006,7 @@ def _layout_fn(tables):
             e.var("fl_ka", e.sel(e.lt(_rt(e, T_ALIGN, p["fl_v"]), 8), 8, _rt(e, T_ALIGN, p["fl_v"])))
             e.var("fl_start", _rt(e, T_HULL_START, p["fl_v"]))
             e.var("fl_reuse", NONE)
-            e.for_("fl_j", 0, p["fl_nfree"], lambda: (e.var("fl_fat", e.add(p["fl_free"], e.mul(p["fl_j"], 4))), e.if_(
+            e.for_("fl_j", 0, e.mul(p["fl_nfree"], p["fl_share"]), lambda: (e.var("fl_fat", e.add(p["fl_free"], e.mul(p["fl_j"], 4))), e.if_(
                 e.both(e.eq(p["fl_reuse"], NONE), e.eq(e.ld(p["fl_fat"]), p["fl_ks"]), e.eq(e.ld(e.add(p["fl_fat"], 1)), p["fl_ka"]),
                        e.lt(e.ld(e.add(p["fl_fat"], 3)), p["fl_start"])), lambda: e.set("fl_reuse", p["fl_fat"]))))
 
@@ -1909,10 +1928,12 @@ def _function_fn(tables):
         _globals(e, G_BLIST, p["ff_list"])
         _globals(e, G_BCOUNT, p["ff_n"])
         _call(e, "positions")
-        e.if_(e.ne(_call(e, "a64f_register_path", p["f"]), 0), lambda: e.give(NONE))  # the legacy register path: the bootstrap
+        # The legacy register path (S15f.4, ADR-325): a target that is not ``_general_aarch64_target`` (the bare-metal
+        # profiles), or a register-path eligible function.
+        e.var("ff_legacy", e.flag(e.either(e.eq(_general(e), 0), e.ne(_call(e, "a64f_register_path", p["f"]), 0))))
         for slot, value in ((F_FN, p["f"]), (A_FN, p["f"]), (A_IFACE, _call(e, "interface", p["f"])), (A_OWNB, _call(e, "borrowed", p["f"]))):
             _set_a(e, slot, value)
-        _call(e, "a64f_layout", p["f"])
+        e.if_(e.eq(p["ff_legacy"], 0), lambda: _call(e, "a64f_layout", p["f"]))
         # The emission state: labels for the blocks, then the nodes' own (four per node at most).
         e.var("ff_nodes", 0)
         e.for_("ff_q", 0, p["ff_n"], lambda: e.set("ff_nodes", e.add(p["ff_nodes"], _f(e, _block_at(e, p["ff_q"]), B_NNODES))))
@@ -1924,6 +1945,7 @@ def _function_fn(tables):
         _set_a(e, F_NEXT_LABEL, p["ff_n"])
         for slot in (X_LEN, X_NFIX, X_NCALLS, X_NRANGES):
             _set_a(e, slot, 0)
+        e.if_(e.ne(p["ff_legacy"], 0), lambda: (_call(e, "a64l_function", p["f"]), _call(e, "x_fixups"), e.give(1)))
         _entry(e)
         e.var("ff_entry", _f(e, _g(e, G_BENTRY), B_POS))
         e.if_(e.ne(p["ff_entry"], 0), lambda: _branch(e, 0x14000000, p["ff_entry"], 26))
@@ -1947,6 +1969,10 @@ def add_frame_functions(add, tables):
                           ("a64f_store_value", _store_value_fn), ("a64f_homogeneous", _homogeneous_fn), ("a64f_class", _class_fn),
                           ("a64f_plan", _plan_fn), ("a64f_register_path", _register_path_fn), ("a64f_hulls", _hulls_fn), ("a64f_layout", _layout_fn),
                           ("a64f_integer", _integer_fn), ("a64f_float", _float_fn), ("a64f_data", _data_fn), ("a64f_call", _call_fn),
-                          ("a64f_node", _node_fn), ("a64f_term", _term_fn), ("a64f_function", _function_fn)):
+                          ("a64f_node", _node_fn), ("a64f_term", _term_fn)):
         add(name, builder(tables))
+    from xax_selfhost_aarch64_legacy import add_legacy_functions
+
+    add_legacy_functions(add, tables)  # S15f.4 (ADR-325): the legacy register path ``a64f_function`` takes
+    add("a64f_function", _function_fn(tables))
 

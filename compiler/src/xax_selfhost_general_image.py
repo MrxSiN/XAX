@@ -22,12 +22,12 @@ import xax_selfhost_general_dll as DLL
 from xax_selfhost_general_regalloc import _ra, _set_ra
 from xax_selfhost_views_backend import _FN, G_PAY, GLOBALS, _at, _call, _cid_words, _g, _ok, _type_form
 
-IMAGE_AT, IMAGE_END = 6 << 20, 11 << 20
-IMAGE_CAP = 4 << 22  # image bytes (one per word); S14a (ADR-284): the compiler's own image; S15b (ADR-291): 12 MiB; S15e.2 (ADR-315): 16 MiB
+IMAGE_AT, IMAGE_END = 232 << 20, 252 << 20  # S15f (ADR-323): above the arena in the 2 GiB view (was 6M-11M words)
+IMAGE_CAP = 1 << 25  # image bytes (one per word); S14a (ADR-284): the compiler's own image; S15b (ADR-291): 12 MiB; S15e.2 (ADR-315): 16 MiB; S15f (ADR-323): 32 MiB
 # S15d.0 (ADR-303): the code image's buffer sits at a fixed place the general program does not otherwise use (between
 # the diagnostic record and the views backend's globals), so it no longer takes arena words and the views can grow.
-IMAGE_BUFFER_AT = 12 << 20
-assert IMAGE_BUFFER_AT + IMAGE_CAP <= GLOBALS  # the buffer ends where the globals begin
+IMAGE_BUFFER_AT = 200 << 20  # S15f (ADR-323): between the general arena and the image record
+assert IMAGE_BUFFER_AT + IMAGE_CAP <= IMAGE_AT
 IMAGE_CALLS = 1 << 16
 # State (``_ra`` slots after the emission's register words).
 (I_IMG, I_LEN, I_OK, I_COUNT, I_BASES, I_CALLS, I_NCALLS, I_ADAPT, I_NADAPT, I_IMPORTS, I_NIMPORTS, I_ENTRY, I_ELF, I_ELEN, I_OUT,
@@ -296,7 +296,7 @@ def _less_input(e: E, a, an, b, bn, name: str):
 def _image_finish_fn(tables):
     """The SysV entry adapters, the fixups, the imports, then the ELF container (``IMAGE_AT`` record)."""
     from xax_selfhost_general_view import G_CIDX
-    from xax_selfhost_x86_64_general import G_ENTRY, G_TFMT, G_WINDOWS
+    from xax_selfhost_x86_64_general import G_ENTRY, G_RAWWIN, G_TFMT, G_WINDOWS
 
     def build(e: E):
         p = e.p
@@ -380,7 +380,11 @@ def _image_finish_fn(tables):
 
         # S15e.3: ``emit_pe_executable``'s entry checks, then the PE32+ container; (S15e.3b) ``emit_pe_dll``'s for a DLL.
         windows = lambda: (e.if_(e.ne(e.ld(DLL.D_ON), 0), lambda: _call(e, "dll_names"), lambda: _call(e, "pe_entry")), _call(e, "pe"))  # noqa: E731
-        e.if_(e.ne(_g(e, G_WINDOWS), 0), windows, linux)
+        def raw():
+            """S15f.2 (ADR-324): a Windows load image is the code itself (``NativeImage.code``), as the container bytes."""
+            e.for_("if_rk", 0, _ra(e, I_LEN), lambda: _elf(e, e.ld(e.add(_ra(e, I_IMG), p["if_rk"])), 1))
+
+        e.if_(e.ne(_g(e, G_RAWWIN), 0), raw, lambda: e.if_(e.ne(_g(e, G_WINDOWS), 0), windows, linux))
         e.give(1)
     return _function((), build, tables)
 
