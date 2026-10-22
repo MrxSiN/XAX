@@ -23,7 +23,7 @@ from xax_selfhost_general_view import (
     B_EDGES, B_INPUTS, B_KIND, B_NEDGES, B_NNODES, B_NP, B_NVALUES, B_VALUES, BRANCH, CONDITIONAL, EDGE, G_BCOUNT, G_BENTRY, G_VCOUNT,
     G_VPOS, G_VPROD, G_VTYPE, N_GRAPH, N_N, N_NOPS, N_NRES, N_OPSAT, POS_BLOCK, POS_INDEX, RETURN, TRAP, _f, _operand, _output, _vf,
 )
-from xax_selfhost_jvm_code import CODE_FIELDS, C_READS, C_VSDESC, C_VSLOT, D_I, D_J, D_NONE, SLOT_LATE, SLOTS, _in, _m, _set_m
+from xax_selfhost_jvm_code import CODE_FIELDS, C_READS, C_VSDESC, C_VSLOT, D_D, D_F, D_I, D_J, D_NONE, SLOT_LATE, SLOTS, _in, _m, _set_m
 from xax_selfhost_views_backend import _call, _g, _ok
 
 # Per-value tables (``_v``), after the code state's fields.
@@ -50,12 +50,16 @@ DEAD_IF_UNREAD = tuple(sorted({*TREE, *(int(op) for op in (
 ARITHMETIC = tuple(int(op) for op in (Operation.ADD_WRAP, Operation.SUB_WRAP, Operation.MUL_WRAP, Operation.BIT_AND, Operation.BIT_OR,
                                       Operation.BIT_XOR))
 FOLDABLE = (*ARITHMETIC, int(Operation.INT_ZERO_EXTEND), int(Operation.INT_TRUNCATE), int(Operation.ROTATE_RIGHT))
-# S15e.5a: the operations lowered (the integer subset of ``jvm-classfile-v1``); another declines.
+# The operations lowered (``jvm-classfile-v1`` without platform calls); another declines.
 LOWERED = tuple(sorted({*FOLDABLE, *(int(op) for op in (Operation.CALL_DIRECT, Operation.CONSTANT, Operation.INT_COMPARE, Operation.UDIV,
                                                          Operation.UREM)), *(int(op) for op in RESOURCE_EFFECT_OPERATIONS)}))
 OP = {name: int(getattr(Operation, name)) for name in (
     "ADD_WRAP", "SUB_WRAP", "MUL_WRAP", "BIT_AND", "BIT_OR", "BIT_XOR", "ROTATE_RIGHT", "INT_TRUNCATE", "INT_ZERO_EXTEND", "INT_COMPARE",
-    "CONSTANT", "CALL_DIRECT", "UDIV", "UREM", "HEAP_VIEW", "POINTER_CAST")}
+    "CONSTANT", "CALL_DIRECT", "UDIV", "UREM", "HEAP_VIEW", "POINTER_CAST", "FLOAT_ADD", "FLOAT_SUB", "FLOAT_MUL", "FLOAT_DIV",
+    "FLOAT_CONVERT", "FLOAT_COMPARE", "UINT_TO_FLOAT", "SINT_TO_FLOAT", "FLOAT_TO_UINT_TRUNC", "FLOAT_TO_SINT_TRUNC")}
+# Lowerings that place their own branch targets inside a node (``_INTERNAL_LABELS``).
+INTERNAL_LABELS = tuple(int(op) for op in (Operation.ATOMIC_CMPXCHG, Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT,
+                                           Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC))
 
 
 # -- accessors --------------------------------------------------------------------------------------------------------
@@ -144,8 +148,8 @@ def _target_index(e: E, edge):
 # -- stage 1: types, constants, folding -------------------------------------------------------------------------------
 
 def _types_fn(tables):
-    """``value_type`` of every value: ``int`` for bits of at most 32 bits, ``long`` to 64, none for a proof value;
-    anything else declines (S15e.5a)."""
+    """``value_type`` of every value: ``int`` for bits of at most 32 bits, ``long`` to 64, ``float``/``double`` for
+    binary32/binary64, none for a proof value; anything else declines."""
     def build(e: E):
         p = e.p
 
@@ -159,7 +163,13 @@ def _types_fn(tables):
                 _ok(e, e.both(e.lt(0, p["ty_w"]), e.le(p["ty_w"], 64)))  # wider: JVM-VALUE-REPRESENTABLE, the bootstrap's
                 e.set("ty_d", e.sel(e.le(p["ty_w"], 32), D_I, D_J))
 
-            e.if_(e.eq(p["ty_form"], 1), bits, lambda: _ok(e, _in(e, p["ty_form"], (3, 4))))
+            def floating():
+                from xax_selfhost_general_frame import _float_width
+
+                _float_width(e, p["ty_t"], "ty_fw")
+                e.set("ty_d", e.sel(e.eq(p["ty_fw"], 32), D_F, D_D))
+
+            e.if_(e.eq(p["ty_form"], 1), bits, lambda: e.if_(e.eq(p["ty_form"], 7), floating, lambda: _ok(e, _in(e, p["ty_form"], (3, 4)))))
             _set_v(e, V_DESC, p["ty_v"], p["ty_d"])
 
         e.for_("ty_v", 0, _m(e, M_NV), one)
@@ -540,7 +550,7 @@ def _facts_fn(tables):
                 e.var("fu_c", e.ld(_f(e, p["fu_b"], B_VALUES)))
                 e.var("fu_n", _def(e, p["fu_c"]))
                 e.if_(e.both(e.ne(p["fu_n"], NONE), e.eq(_block_of(e, p["fu_c"]), p["fu_bi"]), e.eq(_v(e, V_USES, p["fu_c"]), 1)), lambda: e.if_(
-                    e.eq(_eop(e, p["fu_n"]), OP["INT_COMPARE"]), lambda: _set_v(e, V_FUSED, p["fu_c"], 1)))
+                    _in(e, _eop(e, p["fu_n"]), (OP["INT_COMPARE"], OP["FLOAT_COMPARE"])), lambda: _set_v(e, V_FUSED, p["fu_c"], 1)))
 
             e.if_(e.eq(_f(e, p["fu_b"], B_KIND), CONDITIONAL), check)
 
@@ -900,6 +910,8 @@ def _interference_fn(tables):
                         e.if_(e.ne(p["in_rb"], NONE), interfere)
 
                     e.for_("in_r", 0, _f(e, p["in_n"], N_NRES), result)
+                    e.if_(_in(e, _eop(e, p["in_n"]), INTERNAL_LABELS), lambda: (
+                        union(_m(e, M_ACROSS), p["in_live"]), union(_m(e, M_ACROSS), p["in_defs"]), union(_m(e, M_ACROSS), p["in_ops"])))
                     e.for_("in_t", 0, t, lambda: e.if_(e.ne(e.ld(e.add(p["in_defs"], p["in_t"])), 0), lambda: e.st(e.add(p["in_live"], p["in_t"]), 0)))
                     union(p["in_live"], p["in_ops"])
 

@@ -28,7 +28,7 @@ from xax_selfhost_jvm_class import (
 )
 from xax_selfhost_jvm_code import (
     C_BUF, C_ENDED, C_FIX, C_LABELS, C_LINES, C_NFIX, C_NLINES, C_PENDING, C_POOL, C_READS, C_STORED, C_TARGET, C_VSDESC, C_VSLOT, CODE_CAP,
-    D_I, D_J, D_NONE, M_STATE, _m, _set_m, op,
+    D_D, D_F, D_I, D_J, D_NONE, M_STATE, _m, _set_m, op,
 )
 from xax_selfhost_jvm_method import (
     BL_BASE, BL_DEF, BL_INC, BL_LIVE, BL_ORDER, BL_PLACED, BL_REACH, BL_RESOLVED, BL_UP, M_ACROSS, M_ENTRY, M_FRAMED, M_FREED, M_FTYPES,
@@ -91,7 +91,7 @@ def _store_alloc(e: E, words, name: str):
 # -- descriptors ------------------------------------------------------------------------------------------------------------
 
 def _jvm_desc(e: E, type_obj, name: str):
-    """``_jvm_type`` (S15e.5a): proof none, bits int or long; anything else declines."""
+    """``_jvm_type``: proof none, bits int or long, floats float or double; anything else declines."""
     from xax_selfhost_general_frame import _bits_width
 
     p = e.p
@@ -103,7 +103,23 @@ def _jvm_desc(e: E, type_obj, name: str):
         _ok(e, e.both(e.lt(0, p[f"{name}_w"]), e.le(p[f"{name}_w"], 64)))
         e.set(name, e.sel(e.le(p[f"{name}_w"], 32), D_I, D_J))
 
-    e.if_(e.eq(p[f"{name}_form"], 1), bits, lambda: _ok(e, e.either(e.eq(p[f"{name}_form"], 3), e.eq(p[f"{name}_form"], 4))))
+    def floating():
+        from xax_selfhost_general_frame import _float_width
+
+        _float_width(e, type_obj, f"{name}_fw")
+        e.set(name, e.sel(e.eq(p[f"{name}_fw"], 32), D_F, D_D))
+
+    e.if_(e.eq(p[f"{name}_form"], 1), bits, lambda: e.if_(e.eq(p[f"{name}_form"], 7), floating, lambda: _ok(
+        e, e.either(e.eq(p[f"{name}_form"], 3), e.eq(p[f"{name}_form"], 4)))))
+
+
+def _desc_char(e: E, d):
+    """The descriptor letter of ``d`` (``V`` for none)."""
+    return e.sel(e.eq(d, D_I), ord("I"), e.sel(e.eq(d, D_J), ord("J"), e.sel(e.eq(d, D_F), ord("F"), e.sel(e.eq(d, D_D), ord("D"), ord("V")))))
+
+
+def _two(e: E, d):
+    return e.either(e.eq(d, D_J), e.eq(d, D_D))
 
 
 def _signature_fn(tables):
@@ -127,9 +143,9 @@ def _signature_fn(tables):
         for wide_pass in (0, 1):
             def parameter(wide_pass=wide_pass):
                 _jvm_desc(e, e.ld(e.add(e.add(p["sg_i"], 2), p["sg_k"])), "sg_d")
-                take = e.sel(e.ne(p["sg_entry"], 0), e.flag(e.eq(wide_pass, 0)), e.flag(e.eq(e.flag(e.eq(p["sg_d"], D_J)), wide_pass)))
-                e.if_(e.both(e.ne(p["sg_d"], D_NONE), e.ne(take, 0)), lambda: (put_char(e.sel(e.eq(p["sg_d"], D_J), ord("J"), ord("I"))),
-                                                                                e.set("sg_slots", e.add(p["sg_slots"], e.sel(e.eq(p["sg_d"], D_J), 2, 1)))))
+                take = e.sel(e.ne(p["sg_entry"], 0), e.flag(e.eq(wide_pass, 0)), e.flag(e.eq(e.flag(_two(e, p["sg_d"])), wide_pass)))
+                e.if_(e.both(e.ne(p["sg_d"], D_NONE), e.ne(take, 0)), lambda: (put_char(_desc_char(e, p["sg_d"])),
+                                                                                e.set("sg_slots", e.add(p["sg_slots"], e.sel(_two(e, p["sg_d"]), 2, 1)))))
 
             e.for_("sg_k", 0, p["sg_np"], parameter)
         put_char(ord(")"))
@@ -143,11 +159,11 @@ def _signature_fn(tables):
 
         e.for_("sg_k", 0, e.ld(p["sg_rt"]), returned)
         _ok(e, e.le(p["sg_count"], 1))
-        put_char(e.sel(e.eq(p["sg_result"], D_NONE), ord("V"), e.sel(e.eq(p["sg_result"], D_J), ord("J"), ord("I"))))
+        put_char(_desc_char(e, p["sg_result"]))
         e.st(e.add(_js(e, J_DESCS), e.mul(p["fidx"], 2)), p["sg_text"])
         e.st(e.add(_js(e, J_DESCS), e.add(e.mul(p["fidx"], 2), 1)), p["sg_n"])
         e.st(e.add(_js(e, J_ARGS), p["fidx"]), p["sg_slots"])
-        e.st(e.add(_js(e, J_RESULT), p["fidx"]), e.sel(e.eq(p["sg_result"], D_NONE), 0, e.sel(e.eq(p["sg_result"], D_J), 2, 1)))
+        e.st(e.add(_js(e, J_RESULT), p["fidx"]), e.sel(e.eq(p["sg_result"], D_NONE), 0, e.sel(_two(e, p["sg_result"]), 2, 1)))
         # The name: ``entry``, else ``f<fidx>``.
         e.var("sg_name", _store_alloc(e, 24, "sg_nm"))
         e.var("sg_nn", 0)

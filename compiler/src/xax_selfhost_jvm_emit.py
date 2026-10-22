@@ -18,7 +18,7 @@ from xax_selfhost_general_view import (
 from xax_selfhost_jvm_class import B_LEN, POOL_CAP, P_BYTES, P_COUNT, bdata, blen, buffer
 from xax_selfhost_jvm_code import (
     C_BUF, C_COUNTING, C_ENDED, C_FIX, C_LABELS, C_LINES, C_NFIX, C_NLABELS, C_NLINES, C_PENDING, C_POOL, C_READS, C_STORED, C_TARGET,
-    C_VSDESC, C_VSLOT, CODE_CAP, D_I, D_J, D_NONE, GOTO, M_STATE, RETURN as RETURN_OPS, SLOT_LATE, ZERO, _flush, _length, _m, _pick, _set_m,
+    C_VSDESC, C_VSLOT, CODE_CAP, D_I, D_J, D_NONE, GOTO, M_STATE, RETURN as RETURN_OPS, SLOT_LATE, ZERO, _flush, _in, _length, _m, _pick, _set_m,
     branch, local, mark, op, opx,
 )
 from xax_selfhost_jvm_lower import K_GET, K_JUMP, K_NODE, run
@@ -27,7 +27,7 @@ from xax_selfhost_jvm_method import (
     M_FOLLOW, M_FRAMED, M_FREED, M_FTYPES, M_GEND, M_HINT, M_INTER, M_ISENTRY, M_KEPTNONE, M_LABELN, M_MAXCALL, M_MAXLOC, M_MAXSLOTS,
     M_NB, M_NEEDZ, M_NEXT, M_NFTYPES, M_NN, M_NORDER, M_NRET, M_NV, M_ONE, M_PASS, M_PEND, M_PSLOTS, M_RETTYPES, M_SCRATCH, M_SOCC,
     M_STYPE, M_T, M_TRACK, M_TRAPUSED, M_TYPED, M_WORK, N_COPY, N_ELIM, N_LINE, ST_TOP, STATE_WORDS, T_CAP, V_DESC, V_IMPLICIT, V_KEPT,
-    V_SINGLE, VALUE_TABLES, _desc, _each_edge, _node_id, _pick_slots, _result0, _set_v, _target_index, _v, canon, carried, late,
+    V_SINGLE, VALUE_TABLES, INTERNAL_LABELS, _desc, _each_edge, _node_id, _pick_slots, _result0, _set_v, _target_index, _v, canon, carried, late,
 )
 from xax_selfhost_views_backend import GLOBALS, _call, _g, _ok
 
@@ -263,6 +263,7 @@ def _assignment_fn(tables):
 
             def node():
                 e.var("da_n", _node_at(e, p["da_b"], p["da_m"]))
+                e.if_(_in(e, _eop(e, p["da_n"]), INTERNAL_LABELS), lambda: check(p["da_tmp"]))  # a label inside it
                 e.for_("da_rr", 0, _f(e, p["da_n"], N_NRES), lambda: (e.var("da_rv", _output(e, p["da_n"], p["da_rr"])), e.if_(
                     _stores_result(e, p["da_rv"]), lambda: e.st(e.add(p["da_tmp"], _v(e, C_VSLOT, p["da_rv"])), 1))))
 

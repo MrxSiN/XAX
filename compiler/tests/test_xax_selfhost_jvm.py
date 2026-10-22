@@ -1,10 +1,10 @@
-"""S15e.5a (ADR-327): JVM JARs built by the XAX JVM program equal the bootstrap's.
+"""S15e.5a-b (ADR-327, ADR-328): JVM JARs built by the XAX JVM program equal the bootstrap's.
 
 ``xax_selfhost_jvm.jvm_jar(..., frontend="xax")`` runs the XAX program and fails where it declines;
 ``frontend="python"`` is ``compile_jvm_bound_target``.  Differential, by bytes, over seeded integer programs of
 ``test_xax_jvm._random_function`` (widths 8/13/32/47/64, a counted loop rebinding its own parameters, direct calls),
-executable JARs with a proof-only entry, and the rejections the program decides (``JVM-ENTRY-FUNCTION``,
-``JVM-PROCESS-ENTRY-CONTRACT``).
+executable JARs with a proof-only entry, the float operations and conversions over every width pair (the trapping
+truncations included), and the rejections the program decides (``JVM-ENTRY-FUNCTION``, ``JVM-PROCESS-ENTRY-CONTRACT``).
 """
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ import sys
 import unittest
 from pathlib import Path
 
-from xax_compiler import Operation, XaxError, bits_type, jvm_classfile_target
+from xax_compiler import FloatCompare, FloatFormat, Operation, XaxError, bits_type, float_type, jvm_classfile_target
 from xax_graph_builder import GraphBuilder, program_store
 from xax_selfhost_jvm import jvm_jar
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from test_xax_jvm import _random_function  # noqa: E402
+from test_xax_jvm import _binary_float, _random_function, _unary  # noqa: E402
 
 LINUX_X86_64 = sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
@@ -88,6 +88,28 @@ class SelfhostJvmTests(unittest.TestCase):
             with self.subTest(width=width):
                 entry, objects = _proof_entry(width)
                 self.assertEqual(self._agree(entry, objects, True)[0], "jar")
+
+    def test_float_operations(self):
+        for width in (32, 64):
+            for operation in (Operation.FLOAT_ADD, Operation.FLOAT_SUB, Operation.FLOAT_MUL, Operation.FLOAT_DIV, *FloatCompare):
+                with self.subTest(width=width, operation=operation.name):
+                    entry, graph = _binary_float(operation, width)
+                    self.assertEqual(self._agree(entry, tuple(graph.objects.values()), False)[0], "jar")
+
+    def test_float_conversions(self):
+        floats = {32: float_type(FloatFormat.BINARY32), 64: float_type(FloatFormat.BINARY64)}
+        for fwidth, ftype in floats.items():
+            for iwidth in (1, 2, 8, 13, 24, 25, 32, 47, 53, 54, 64):
+                itype = bits_type(iwidth)
+                for operation, source, result in ((Operation.UINT_TO_FLOAT, itype, ftype), (Operation.SINT_TO_FLOAT, itype, ftype),
+                                                  (Operation.FLOAT_TO_UINT_TRUNC, ftype, itype), (Operation.FLOAT_TO_SINT_TRUNC, ftype, itype)):
+                    with self.subTest(operation=operation.name, i=iwidth, f=fwidth):
+                        entry, graph = _unary(operation, source, result)
+                        self.assertEqual(self._agree(entry, tuple(graph.objects.values()), False)[0], "jar")
+            other = floats[96 - fwidth]
+            with self.subTest(operation="FLOAT_CONVERT", f=fwidth):
+                entry, graph = _unary(Operation.FLOAT_CONVERT, ftype, other)
+                self.assertEqual(self._agree(entry, tuple(graph.objects.values()), False)[0], "jar")
 
     def test_entry_must_be_a_function(self):
         target = jvm_classfile_target()
