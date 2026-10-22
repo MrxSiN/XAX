@@ -18,6 +18,12 @@ and ``return``/``branch``/``conditional branch`` terminators:
 
 The code, fixups, and ranges go to the emission record (S12d), so image assembly is unchanged.  Where the bootstrap
 fails (NATIVE-BITS-SUPPORTED: arithmetic other than 32 or 64 bits wide) the program writes its diagnostic.
+
+S15e.3b (ADR-326): on the hosted PE profile the path also lowers integer compares (``cmp``, ``setcc``), ``win64-c``
+foreign calls (an import's ``call [rip + slot]`` or a COM method's ``mov rax, [rcx]; call [rax + 8k]``), code addresses
+(``lea r, [rip + target]``), heap views (a ``test``/``jnz`` null trap), address offsets, pointer casts and addresses,
+and plain and checked loads and stores through heap pointers (the bound check against the view's extent); pointers are
+machine values.  A float, aggregate or sum value declines.
 """
 
 from __future__ import annotations
@@ -28,9 +34,9 @@ from xax_selfhost_general_emit import (
     E_CLEN, E_NRANGES, E_RANGES, E_REAL, _bx, _label, _load, _movabs, _new_label, _record_call, _relative, _store, _test,
 )
 from xax_selfhost_general_frame import (
-    ARGUMENT_REGISTERS, CALLS, _bits_width, _each_node, _eop, _op, _proof, _relative2,
+    ARGUMENT_REGISTERS, CALLS, F_FN, _bits_width, _each_node, _eop, _form, _in, _op, _proof, _relative2,
 )
-from xax_selfhost_general_ranges import _block_at, _node_at
+from xax_selfhost_general_ranges import _attribute, _block_at, _node_at
 from xax_selfhost_general_regalloc import _callee_object, _ra, _set_ra
 from xax_selfhost_general_view import (
     B_EDGES, B_INPUTS, B_KIND, B_NEDGES, B_NNODES, B_NP, B_NVALUES, B_POS, B_VALUES, BRANCH, CONDITIONAL, EDGE, G_BCOUNT,
@@ -45,8 +51,8 @@ RAX = 0
 L_STATE = 242  # ``_ra`` slot: the legacy lowering's state record
 # State words: per-value tables (each VCOUNT words), the register map, the spill slot flags, and scalars.
 (S_WIDTH, S_HOME, S_REG, S_SPILL, S_SPID, S_LAST, S_UCOUNT, S_UAT, S_ULIST, S_VREG, S_FREE, S_NEXT, S_MAX, S_BI, S_DYN,
- S_EDGEB, S_P1, S_P2, S_NFREE, S_POSN) = range(20)
-STATE_WORDS = 20
+ S_EDGEB, S_P1, S_P2, S_NFREE, S_POSN, S_HOSTED, S_EXT) = range(22)
+STATE_WORDS = 22
 MOVE_CAP = 8
 
 
@@ -372,7 +378,9 @@ def _select(e: E, index, items):
 
 
 def _call_node_fn(tables):
-    """A direct call (``prepare_call``, the call, the killed registers, the released slots, the result in rax)."""
+    """A direct call, or (S15e.3b, hosted) the ``win64-c`` foreign call of declaration ``obj`` (``com``: its COM method
+    slot, NONE for an import): ``prepare_call``, the call, the killed registers, the released slots, the result in
+    rax."""
     def build(e: E):
         p = e.p
         node, position = p["node"], p["position"]
@@ -425,15 +433,25 @@ def _call_node_fn(tables):
             e.var("cn_o", e.ld(e.add(p["cn_ops"], p["cn_k"]))),
             e.if_(e.eq(_t(e, S_REG, p["cn_o"]), NONE), lambda: _load(e, _select(e, p["cn_k"], ARGUMENT_REGISTERS), _t(e, S_SPILL, p["cn_o"]),
                                                                     _width_bytes(e, p["cn_o"])))))
-        _callee_object(e, node, "cn_callee")
-        _ok(e, e.ne(p["cn_callee"], NONE))
 
-        def call():
+        def direct():
+            _callee_object(e, node, "cn_callee")
+            _ok(e, e.ne(p["cn_callee"], NONE))
             _bx(e, 0xE8, 1, True)
             _real(e, lambda: _record_call(e, p["cn_callee"], 0))
             _bx(e, 0, 4, True)
 
-        call()
+        def imported():
+            _bx(e, 0x15FF, 2, True)  # call [rip + slot]
+            _real(e, lambda: _record_call(e, p["obj"], 0))
+            _bx(e, 0, 4, True)
+
+        def com():
+            _bx(e, 0xFF018B48, 4)  # mov rax, [rcx]; call [rax + 8k]
+            _bx(e, 0x90, 1)
+            _bx(e, e.mul(p["com"], 8), 4)
+
+        e.if_(e.eq(p["obj"], NONE), direct, lambda: e.if_(e.eq(p["com"], NONE), imported, com))
         # Every register is killed; slots of values not live after the call are freed.
         e.for_("cn_v", 0, _g(e, G_VCOUNT), lambda: e.if_(e.ne(_t(e, S_REG, p["cn_v"]), NONE), lambda: _unbind(e, p["cn_v"])))
         e.for_("cn_v", 0, _g(e, G_VCOUNT), lambda: e.if_(e.both(e.ne(_t(e, S_SPID, p["cn_v"]), NONE), e.eq(e.ld(e.add(p["cn_live"], p["cn_v"])), 0)),
@@ -443,7 +461,7 @@ def _call_node_fn(tables):
                                                              lambda: e.set("cn_res", _output(e, node, p["cn_k"]))))
         e.if_(e.ne(p["cn_res"], NONE), lambda: _call(e, "lg_define", p["cn_res"], RAX))
         e.give(1)
-    return _function(("node", "position"), build, tables)
+    return _function(("node", "position", "obj", "com"), build, tables)
 
 
 # -- one block ---------------------------------------------------------------------------------------------------
@@ -554,6 +572,158 @@ def _constant(e: E, node, result, m):
     _call(e, "lg_define", result, p["cs_reg"])
 
 
+def _base_index(e: E, store: bool, register, base, index, size):
+    """``_base_index_load``/``_base_index_store``: ``[base + index + disp32 0]`` of ``size`` bytes (a load zero-extends)."""
+    from xax_selfhost_general_emit import _hi, _low3
+
+    p = e.p
+    e.var("bi_rex", e.add(e.add(e.add(e.add(0x40, e.mul(e.flag(e.eq(size, 8)), 8)), e.mul(_hi(e, register), 4)), e.mul(_hi(e, index), 2)), _hi(e, base)))
+    if store:
+        e.if_(e.eq(size, 2), lambda: _bx(e, 0x66, 1))
+    e.if_(e.either(e.ne(p["bi_rex"], 0x40), e.both(e.eq(size, 1), e.le(4, register), e.lt(register, 8))), lambda: _bx(e, p["bi_rex"], 1))
+    if store:
+        _bx(e, e.sel(e.eq(size, 1), 0x88, 0x89), 1)
+    else:
+        e.if_(e.lt(size, 4), lambda: _bx(e, e.sel(e.eq(size, 1), 0xB60F, 0xB70F), 2), lambda: _bx(e, 0x8B, 1))
+    _bx(e, e.add(e.add(0x84, e.mul(_low3(e, register), 8)), e.mul(e.add(e.mul(_low3(e, index), 8), _low3(e, base)), 256)), 2)
+    _bx(e, 0, 4)
+
+
+def _bound(e: E, pointer, index, size, access):
+    """A checked access: ``ud2`` when the view is smaller than the access, else ``cmp index, extent - size``, ``jbe``
+    over a ``ud2`` (NATIVE-CHECKED-BOUND-ENCODABLE past 2^31 - 1), then ``access``."""
+    from xax_selfhost_general_emit import _hi, _low3
+    from xax_selfhost_general_rejects import CHECKED_BOUND, encoding_reject
+
+    p = e.p
+    e.var("bd_ext", _t(e, S_EXT, pointer))
+    _ok(e, e.ne(p["bd_ext"], NONE))  # the static checks: heap pointers only
+
+    def fits():
+        e.var("bd_max", e.sub(p["bd_ext"], size))
+        e.if_(e.le(1 << 31, p["bd_max"]), lambda: encoding_reject(e, CHECKED_BOUND, p["bd_max"]))
+        _bx(e, e.add(e.add(0x8148, _hi(e, index)), e.mul(e.add(0xF8, _low3(e, index)), 1 << 16)), 3)  # cmp r64, imm32
+        _bx(e, p["bd_max"], 4)
+        e.var("bd_ok", _new_label(e))
+        _real(e, lambda: (_relative2(e, 0x860F, p["bd_ok"]), _bx(e, 0x0B0F, 2, True), _label(e, p["bd_ok"])))
+        access()
+
+    e.if_(e.lt(p["bd_ext"], size), lambda: _bx(e, 0x0B0F, 2), fits)
+
+
+def _hosted_fn(tables):
+    """S15e.3b (ADR-326): the hosted profile's further nodes (compares, foreign calls, code addresses, pointer
+    operations, heap memory); other nodes give 0."""
+    from xax_selfhost_general_emit import _cmp_rr, _lea
+    from xax_selfhost_general_rejects import ABI_WIN64_C, COM_MALFORMED, foreign_identity
+    from xax_selfhost_views_backend import _reference
+
+    def build(e: E):
+        p = e.p
+        node, m = p["node"], p["position"]
+        e.var("lh_op", _eop(e, node))
+        op = p["lh_op"]
+        e.var("lh_res", e.sel(e.ne(_f(e, node, N_NRES), 0), _output(e, node, 0), NONE))
+        result = p["lh_res"]
+
+        def compare():
+            e.var("lh_left", _operand(e, node, 0))
+            e.var("lh_right", _operand(e, node, 1))
+            e.var("lh_lr", _ensure(e, p["lh_left"], m))
+            e.var("lh_rr", _ensure(e, p["lh_right"], m, p["lh_left"]))
+            _cmp_rr(e, p["lh_lr"], p["lh_rr"], _t(e, S_WIDTH, p["lh_left"]))
+            _release_dead(e, p["lh_left"], m)
+            e.if_(e.ne(p["lh_right"], p["lh_left"]), lambda: _release_dead(e, p["lh_right"], m))
+            e.var("lh_dst", _acquire(e, m))
+            _call(e, "setcc", _attribute(e, node, 0), p["lh_dst"], 1)
+            _call(e, "lg_define", result, p["lh_dst"])
+
+        def foreign():
+            e.var("lh_obj", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+            _ok(e, e.ne(p["lh_obj"], NONE))
+            foreign_identity(e, p["lh_obj"], "lh_abi")
+            e.if_(e.ne(p["lh_abi"], ABI_WIN64_C), lambda: _call(e, "abi_reject", p["lh_obj"], _ra(e, F_FN), 1))
+            e.var("lh_com", e.call(_FN["com_method"], p["lh_obj"]))  # NONE: an import
+            e.if_(e.eq(p["lh_com"], COM_MALFORMED), lambda: _call(e, "com_reject", p["lh_obj"], _ra(e, F_FN)))
+            _call(e, "lg_call", node, m, p["lh_obj"], p["lh_com"])
+
+        def address():
+            from xax_selfhost_x86_64_general import EA_LEND, EA_SYSV
+
+            e.var("lh_target", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+            _ok(e, e.ne(p["lh_target"], NONE))
+            e.var("lh_abi", _call(e, "entry_abi", _vf(e, G_VTYPE, result)))
+            e.var("lh_dst", _acquire(e, m))
+            _bx(e, e.add(e.add(0x8D48, e.mul(e.flag(e.le(8, p["lh_dst"])), 4)), e.mul(e.add(0x05, e.mul(e.and_(p["lh_dst"], 7), 8)), 1 << 16)), 3, True)
+            _real(e, lambda: _record_call(e, p["lh_target"], e.flag(e.either(e.eq(p["lh_abi"], EA_SYSV), e.eq(p["lh_abi"], EA_LEND)))))
+            _bx(e, 0, 4, True)
+            _call(e, "lg_define", result, p["lh_dst"])
+
+        def pointer():
+            e.var("lh_src", _operand(e, node, 0))
+            e.var("lh_sr", _ensure(e, p["lh_src"], m))
+            _release_dead(e, p["lh_src"], m)
+            e.var("lh_dst", _acquire(e, m, e.sel(e.ne(_t(e, S_REG, p["lh_src"]), NONE), p["lh_src"], NONE)))
+            e.if_(e.eq(op, _op(Operation.ADDRESS_OFFSET)), lambda: _lea(e, p["lh_dst"], p["lh_sr"], _attribute(e, node, 0)),
+                  lambda: e.if_(e.ne(p["lh_dst"], p["lh_sr"]), lambda: _call(e, "mov", p["lh_dst"], p["lh_sr"], 64)))
+
+            def view():
+                _test(e, p["lh_dst"], 64)
+                e.var("lh_nonnull", _new_label(e))
+                _real(e, lambda: (_relative2(e, 0x850F, p["lh_nonnull"]), _bx(e, 0x0B0F, 2, True), _label(e, p["lh_nonnull"])))
+
+            e.if_(e.eq(op, _op(Operation.HEAP_VIEW)), view)
+            _call(e, "lg_define", result, p["lh_dst"])
+
+        def load():
+            e.var("lh_size", _attribute(e, node, 0))
+            e.var("lh_checked", e.flag(e.eq(op, _op(Operation.CHECKED_LOAD_BITS_LE))))
+            e.var("lh_ptr", _operand(e, node, 0))
+            e.var("lh_idx", e.sel(e.ne(p["lh_checked"], 0), _operand(e, node, 1), NONE))
+            e.var("lh_base", _ensure(e, p["lh_ptr"], m))
+            e.var("lh_ir", NONE)
+            e.if_(e.ne(p["lh_checked"], 0), lambda: e.set("lh_ir", _ensure(e, p["lh_idx"], m, p["lh_ptr"])))
+            e.var("lh_dst", _acquire(e, m, p["lh_ptr"], p["lh_idx"]))
+            e.if_(e.ne(p["lh_checked"], 0), lambda: _bound(e, p["lh_ptr"], p["lh_ir"], p["lh_size"],
+                                                            lambda: _base_index(e, False, p["lh_dst"], p["lh_base"], p["lh_ir"], p["lh_size"])),
+                  lambda: _call(e, "load_exact", p["lh_dst"], p["lh_base"], 0, p["lh_size"]))
+            _release_dead(e, p["lh_ptr"], m)
+            e.if_(e.both(e.ne(p["lh_idx"], NONE), e.ne(p["lh_idx"], p["lh_ptr"])), lambda: _release_dead(e, p["lh_idx"], m))
+            _call(e, "lg_define", result, p["lh_dst"])
+
+        def store():
+            e.var("lh_size", _attribute(e, node, 0))
+            e.var("lh_checked", e.flag(e.eq(op, _op(Operation.CHECKED_STORE_BITS_LE))))
+            e.var("lh_ptr", _operand(e, node, 0))
+            e.var("lh_idx", e.sel(e.ne(p["lh_checked"], 0), _operand(e, node, 1), NONE))
+            e.var("lh_val", _operand(e, node, e.add(1, p["lh_checked"])))
+            e.var("lh_base", _ensure(e, p["lh_ptr"], m))
+            e.var("lh_ir", NONE)
+            e.if_(e.ne(p["lh_checked"], 0), lambda: e.set("lh_ir", _ensure(e, p["lh_idx"], m, p["lh_ptr"])))
+            e.var("lh_vr", _ensure(e, p["lh_val"], m, p["lh_ptr"], p["lh_idx"]))
+            e.if_(e.ne(p["lh_checked"], 0), lambda: _bound(e, p["lh_ptr"], p["lh_ir"], p["lh_size"],
+                                                            lambda: _base_index(e, True, p["lh_vr"], p["lh_base"], p["lh_ir"], p["lh_size"])),
+                  lambda: _call(e, "store_exact", p["lh_vr"], p["lh_base"], 0, p["lh_size"]))
+            _release_dead(e, p["lh_ptr"], m)
+            e.if_(e.ne(p["lh_val"], p["lh_ptr"]), lambda: _release_dead(e, p["lh_val"], m))
+            e.if_(e.both(e.ne(p["lh_idx"], NONE), e.ne(p["lh_idx"], p["lh_ptr"]), e.ne(p["lh_idx"], p["lh_val"])), lambda: _release_dead(e, p["lh_idx"], m))
+
+        e.if_(e.eq(op, _op(Operation.INT_COMPARE)), compare)
+        e.if_(e.eq(op, _op(Operation.CALL_FOREIGN)), foreign)
+        e.if_(e.eq(op, _op(Operation.FUNCTION_ADDRESS)), address)
+        e.if_(_in(e, op, tuple(_op(o) for o in (Operation.HEAP_VIEW, Operation.ADDRESS_OFFSET, Operation.POINTER_CAST, Operation.POINTER_ADDRESS))), pointer)
+        e.if_(_in(e, op, (_op(Operation.LOAD_BITS_LE), _op(Operation.CHECKED_LOAD_BITS_LE))), load)
+        e.if_(_in(e, op, (_op(Operation.STORE_BITS_LE), _op(Operation.CHECKED_STORE_BITS_LE))), store)
+        e.give(1)
+    return _function(("node", "position"), build, tables)
+
+
+def _release_dead(e: E, value, position):
+    e.var("rd_v", value)
+    p = e.p
+    e.if_(e.both(e.ne(_t(e, S_WIDTH, p["rd_v"]), 0), e.eq(_t(e, S_LAST, p["rd_v"]), position)), lambda: _call(e, "lg_release", p["rd_v"]))
+
+
 def _block_fn(tables):
     """``lower_block(bi)``: the block's code (in the real run), and its dynamic spill count."""
     from xax_selfhost_general_emit import E_F
@@ -629,9 +799,10 @@ def _nodes_fn(tables):
             def direct():
                 _callee_object(e, p["ln_n"], "ln_callee")
                 _ok(e, e.ne(p["ln_callee"], NONE))
-                e.if_(e.eq(_call(e, "erased", p["ln_callee"]), 0), lambda: _call(e, "lg_call", p["ln_n"], p["ln_m"]))
+                e.if_(e.eq(_call(e, "erased", p["ln_callee"]), 0), lambda: _call(e, "lg_call", p["ln_n"], p["ln_m"], NONE, NONE))
 
             e.if_(e.eq(p["ln_op"], _op(Operation.CALL_DIRECT)), direct)
+            e.if_(e.ne(_s(e, S_HOSTED), 0), lambda: _call(e, "lg_hosted", p["ln_n"], p["ln_m"]))
 
             def record():
                 from xax_selfhost_general_emit import _se
@@ -704,7 +875,7 @@ def _prepare_fn(tables):
         e.var("lp_state", e.alloc(STATE_WORDS))
         _ok(e, e.ne(p["lp_state"], NONE))
         _set_ra(e, L_STATE, p["lp_state"])
-        for field in (S_WIDTH, S_HOME, S_REG, S_SPILL, S_SPID, S_LAST, S_UCOUNT, S_UAT):
+        for field in (S_WIDTH, S_HOME, S_REG, S_SPILL, S_SPID, S_LAST, S_UCOUNT, S_UAT, S_EXT):
             e.var("lp_t", e.alloc(e.add(n, 1)))
             _ok(e, e.ne(p["lp_t"], NONE))
             _set_s(e, field, p["lp_t"])
@@ -716,11 +887,24 @@ def _prepare_fn(tables):
         _ok(e, e.ne(p["lp_free"], NONE))
         _set_s(e, S_FREE, p["lp_free"])
 
-        # Widths: bits values of at most 64 bits (a wider one, or a constant of another type, is declined).
+        from xax_selfhost_x86_64_general import G_RAWWIN, G_WINDOWS
+
+        _set_s(e, S_HOSTED, e.flag(e.both(e.ne(_g(e, G_WINDOWS), 0), e.eq(_g(e, G_RAWWIN), 0))))
+
+        # Widths: bits values of at most 64 bits (a wider one, or a constant of another type, is declined); on the hosted
+        # profile pointers too (64), and a float, aggregate or sum declines.
         def width():
             e.var("lp_type", _vf(e, G_VTYPE, p["lp_v"]))
             _bits_width(e, p["lp_type"], "lp_w")
             _ok(e, e.le(p["lp_w"], 64))
+            _set_t(e, S_EXT, p["lp_v"], NONE)
+
+            def hosted():
+                e.var("lp_form", _form(e, p["lp_type"]))
+                _ok(e, e.not_(_in(e, p["lp_form"], (7, 8, 9, 10))))
+                e.if_(e.eq(p["lp_form"], 2), lambda: e.set("lp_w", 64))
+
+            e.if_(e.ne(_s(e, S_HOSTED), 0), hosted)
             _set_t(e, S_WIDTH, p["lp_v"], p["lp_w"])
             _set_t(e, S_HOME, p["lp_v"], NONE)
             e.var("lp_prod", _vf(e, G_VPROD, p["lp_v"]))
@@ -752,6 +936,17 @@ def _prepare_fn(tables):
                     e.if_(e.eq(_call(e, "erased", p["lp_callee"]), 0), lambda: e.set("lp_calls", 1))
 
                 e.if_(e.eq(_eop(e, p["lp_n"]), _op(Operation.CALL_DIRECT)), call)
+                e.if_(e.eq(_eop(e, p["lp_n"]), _op(Operation.CALL_FOREIGN)), lambda: e.set("lp_calls", 1))
+                # The heap values' extents (the hosted profile's checked accesses).
+                e.var("lp_op", _eop(e, p["lp_n"]))
+                e.if_(e.eq(p["lp_op"], _op(Operation.HEAP_VIEW)), lambda: _set_t(e, S_EXT, _output(e, p["lp_n"], 0), _attribute(e, p["lp_n"], 0)))
+
+                def derived():
+                    e.var("lp_base", _t(e, S_EXT, _operand(e, p["lp_n"], 0)))
+                    e.if_(e.ne(p["lp_base"], NONE), lambda: _set_t(e, S_EXT, _output(e, p["lp_n"], 0), e.sub(p["lp_base"], e.sel(
+                        e.eq(p["lp_op"], _op(Operation.ADDRESS_OFFSET)), _attribute(e, p["lp_n"], 0), 0))))
+
+                e.if_(_in(e, p["lp_op"], (_op(Operation.ADDRESS_OFFSET), _op(Operation.POINTER_CAST))), derived)
 
             e.for_("lp_m", 0, _f(e, p["lp_b"], B_NNODES), node)
             e.for_("lp_k", 0, _f(e, p["lp_b"], B_NVALUES), lambda: mark(e.ld(e.add(_f(e, p["lp_b"], B_VALUES), p["lp_k"])), p["lp_bi"]))
@@ -825,6 +1020,7 @@ def add_legacy_functions(add, tables):
     add("lg_moves", _moves_fn(tables))
     add("lg_edge", _copy_edge_fn(tables))
     add("lg_call", _call_node_fn(tables))
+    add("lg_hosted", _hosted_fn(tables))
     add("lg_nodes", _nodes_fn(tables))
     add("lg_term", _term_fn(tables))
     add("lg_block", _block_fn(tables))

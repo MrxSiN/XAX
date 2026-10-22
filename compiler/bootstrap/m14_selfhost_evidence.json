@@ -9,7 +9,7 @@
       "B4": false,
       "B5": false,
       "B6": false,
-      "blocker": "every target but Linux x86-64, Linux AArch64, Windows PE32+ executables and RISC-V raw images is compiled by Python backends (S15e.3-S15e.7); the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317)"
+      "blocker": "JVM jars and Android packages are compiled by Python backends (S15e.5, S15e.6); Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules and browser pages are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326)"
     },
     "linux_x86_64_production_compiler": {
       "B0": true,
@@ -22,7 +22,7 @@
       "blockers": {},
       "outside_scope": "every other target and artifact (Windows DLLs, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
       "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
-      "seed_requires_python": false
+      "seed_requires_python": true
     },
     "m14_semantic_image_wrapper": {
       "B2": true,

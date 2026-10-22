@@ -38,8 +38,9 @@ from xax_selfhost_views_backend import (
     G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ENTITY, NI_OP, NativeProgram, _at, _borrowed, _call, _cid_at, _cid_less,
     _cid_words, _erased, _find, _g, _kind, _node_info, _ok, _payload_uleb, _reference, _target_list, _term_end, _type_form,
 )
+from xax_selfhost_aarch64_frame import G_A64RAW
 from xax_selfhost_x86_64_general import (
-    COUNT_AT, ENTRY_CONTRACT_EXPECTED, FRAME, F_AT, F_BLOCKS, F_FN, F_GRAPH, F_NODES, GENERAL_ARENA_AT, G_ENTRY, G_FRAMES,
+    COUNT_AT, ENTRY_CONTRACT_EXPECTED, FRAME, F_AT, F_BLOCKS, F_FN, F_GRAPH, F_NODES, GENERAL_ARENA_AT, GENERAL_ARENA_END, G_ENTRY, G_FRAMES,
     G_GROUPOF, G_LALIGN, G_LSIZE, G_LSTACK, G_MEMBERS, G_MTAB, G_NARGS, G_TABI, G_TARGET, G_TFMT, ORDER_AT, OK, _group_interface,
     _proof, _text_at, group_member_tables,
 )
@@ -48,6 +49,7 @@ STORE_PATH = bootstrap_dir() / "xax_aarch64_general.xax"
 AARCH64 = 3
 LINUX_AARCH64_ABI = 5
 ELF_FORMATS = (6, 7)  # AARCH64_LINUX_ELF_EXEC_FORMAT, AARCH64_LINUX_ELF_DYNAMIC_FORMAT
+BAREMETAL_ABI, RAW_FORMAT = 3, 1  # S15f.4 (ADR-325): the bare-metal load-image and atomic profiles
 DECLINE_OPERATIONS = (int(Operation.FUNCTION_ADDRESS),)  # code addresses: the bootstrap's bundle carries their fixups
 
 # The bootstrap's rejections this program decides: (code, rule) by site.
@@ -107,10 +109,23 @@ def _prologue(tables):
         def scalar(t):
             _call(e, "abi_layout", t)  # S15e.2b (ADR-316): floats, products and sums are laid out too
 
-        e.for_("q", 0, p["pnp"], lambda: e.if_(e.not_(_proof(e, param(p["q"]))), lambda: scalar(param(p["q"]))))
+        def register(t):
+            """S15f.4 (ADR-325): on a target that is not ``_general_aarch64_target`` a machine value is a bits value of
+            at most 64 bits or a pointer in one register; anything else (the bootstrap's AARCH64-ABI) declines."""
+            e.var("pform", _type_form(e, t))
+            e.var("pat", e.add(_at(e, G_PAY, e.sel(e.eq(p["pform"], 1), t, 0)), 1))
+            _ok(e, e.either(e.eq(p["pform"], 2), e.both(e.eq(p["pform"], 1), e.le(_payload_uleb(e, "pat"), 64))))
+
+        from xax_selfhost_aarch64_frame import _general
+
+        e.var("pgeneral", _general(e))
+        e.var("pmp", 0)
+        e.for_("q", 0, p["pnp"], lambda: e.if_(e.not_(_proof(e, param(p["q"]))), lambda: (
+            e.set("pmp", e.add(p["pmp"], 1)), e.if_(e.ne(p["pgeneral"], 0), lambda: scalar(param(p["q"])), lambda: register(param(p["q"]))))))
         e.var("pmr", 0)
         e.for_("q", 0, p["pnr"], lambda: e.if_(e.both(e.not_(_proof(e, ret(p["q"]))), e.eq(e.ld(e.add(p["pb"], p["q"])), NONE)), lambda: (
-            scalar(ret(p["q"])), e.set("pmr", e.add(p["pmr"], 1)))))
+            e.if_(e.ne(p["pgeneral"], 0), lambda: scalar(ret(p["q"])), lambda: register(ret(p["q"]))), e.set("pmr", e.add(p["pmr"], 1)))))
+        e.if_(e.eq(p["pgeneral"], 0), lambda: _ok(e, e.both(e.le(p["pmp"], 8), e.le(p["pmr"], 1))))
         _reject(e, e.le(p["pmr"], 1), "AARCH64-ABI-RETURNS", p["f"], lambda: D.integer(e, 1), lambda: D.integer(e, p["pmr"]))
         e.give(1)
     return _function(("f",), build, tables)
@@ -183,7 +198,7 @@ def _frontend(tables):
         p = e.p
         e.st(0, 0)
         e.set_hd(H_ARENA, GENERAL_ARENA_AT)
-        e.set_hd(H_ARENA_END, ARENA_END)
+        e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
         S = e.rd(0)
         e.st(GLOBALS + G_S, S)
         e.var("ra", 1 + CID_WORDS)
@@ -282,7 +297,10 @@ def _frontend(tables):
             D.integer(e, p["t_fmt"])
 
         linux = e.both(e.eq(p["t_abi"], LINUX_AARCH64_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
-        _reject(e, linux, "LINUX-AARCH64-ELF-EXEC-TARGET", target, target_expected, target_actual)
+        # S15f.4 (ADR-325): a bare-metal load image (ABI 3, format 1) is ``build``'s raw AArch64 image, the bundle's code.
+        e.var("t_raw", e.flag(e.both(e.eq(p["t_abi"], BAREMETAL_ABI), e.eq(p["t_fmt"], RAW_FORMAT))))
+        e.st(GLOBALS + G_A64RAW, p["t_raw"])
+        _reject(e, e.either(linux, e.ne(p["t_raw"], 0)), "LINUX-AARCH64-ELF-EXEC-TARGET", target, target_expected, target_actual)
         _payload_uleb(e, "ta")  # stack alignment
         _payload_uleb(e, "ta")  # shadow space
         e.var("t_nargs", _payload_uleb(e, "ta"))
@@ -298,7 +316,8 @@ def _frontend(tables):
                 _payload_uleb(e, "ta")))
         # The Linux profiles are ``_general_aarch64_target`` (floats, aggregates or sums); another target: the bootstrap.
         sup = _g(e, G_SUP)
-        _ok(e, e.either(*(e.ne(e.ld(e.add(sup, int(op))), 0) for op in (Operation.FLOAT_ADD, Operation.AGGREGATE_MAKE, Operation.SUM_MAKE))))
+        general = e.either(*(e.ne(e.ld(e.add(sup, int(op))), 0) for op in (Operation.FLOAT_ADD, Operation.AGGREGATE_MAKE, Operation.SUM_MAKE)))
+        _ok(e, e.either(general, e.ne(p["t_raw"], 0)))
 
         # 2. The process entry (``validate_process_entry``).
         e.var("entry", e.call(_FN["find"], 1))
@@ -306,46 +325,50 @@ def _frontend(tables):
         entry = p["entry"]
         e.st(GLOBALS + G_ENTRY, entry)
 
-        def kind_name():
-            for kind in Kind:
-                e.if_(e.eq(_kind(e, entry), int(kind)), lambda kind=kind: D.text(e, kind.name))
+        def process_entry():
+            """``validate_process_entry`` (not for a bare-metal image)."""
+            def kind_name():
+                for kind in Kind:
+                    e.if_(e.eq(_kind(e, entry), int(kind)), lambda kind=kind: D.text(e, kind.name))
 
-        _ok(e, e.either(*(e.eq(_kind(e, entry), int(kind)) for kind in Kind)))
-        _reject(e, e.eq(_kind(e, entry), int(Kind.FUNCTION)), "LINUX-ENTRY-FUNCTION", entry, lambda: D.text(e, Kind.FUNCTION.name), kind_name)
-        e.var("ei", _call(e, "interface", entry))
-        e.var("enp", e.ld(e.add(p["ei"], 1)))
-        e.var("ert", e.add(e.add(p["ei"], 2), p["enp"]))
-        e.var("emp", 0)
-        e.for_("q", 0, p["enp"], lambda: e.if_(e.not_(_proof(e, e.ld(e.add(e.add(p["ei"], 2), p["q"])))), lambda: e.set("emp", e.add(p["emp"], 1))))
-        e.var("emr", 0)
-        e.var("einteger", 1)
+            _ok(e, e.either(*(e.eq(_kind(e, entry), int(kind)) for kind in Kind)))
+            _reject(e, e.eq(_kind(e, entry), int(Kind.FUNCTION)), "LINUX-ENTRY-FUNCTION", entry, lambda: D.text(e, Kind.FUNCTION.name), kind_name)
+            e.var("ei", _call(e, "interface", entry))
+            e.var("enp", e.ld(e.add(p["ei"], 1)))
+            e.var("ert", e.add(e.add(p["ei"], 2), p["enp"]))
+            e.var("emp", 0)
+            e.for_("q", 0, p["enp"], lambda: e.if_(e.not_(_proof(e, e.ld(e.add(e.add(p["ei"], 2), p["q"])))), lambda: e.set("emp", e.add(p["emp"], 1))))
+            e.var("emr", 0)
+            e.var("einteger", 1)
 
-        def entry_return():
-            e.var("et", e.ld(e.add(e.add(p["ert"], 1), p["q"])))
-
-            def machine():
-                e.set("emr", e.add(p["emr"], 1))
-                e.if_(e.ne(_type_form(e, p["et"]), 1), lambda: e.set("einteger", 0))
-
-            e.if_(e.not_(_proof(e, p["et"])), machine)
-
-        e.for_("q", 0, e.ld(p["ert"]), entry_return)
-
-        def contract_actual():
-            D.put(e, D.T_LIST)
-            D.put(e, 2)
-            D.integer(e, p["emp"])
-            D.put(e, D.T_LIST)
-            D.put(e, p["emr"])
-
-            def each():
+            def entry_return():
                 e.var("et", e.ld(e.add(e.add(p["ert"], 1), p["q"])))
-                e.if_(e.not_(_proof(e, p["et"])), lambda: D.cid(e, _cid_words(e, p["et"])))
 
-            e.for_("q", 0, e.ld(p["ert"]), each)
+                def machine():
+                    e.set("emr", e.add(p["emr"], 1))
+                    e.if_(e.ne(_type_form(e, p["et"]), 1), lambda: e.set("einteger", 0))
 
-        contract = e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0))
-        _reject(e, contract, "LINUX-PROCESS-ENTRY-CONTRACT", entry, lambda: D.text(e, ENTRY_CONTRACT_EXPECTED), contract_actual)
+                e.if_(e.not_(_proof(e, p["et"])), machine)
+
+            e.for_("q", 0, e.ld(p["ert"]), entry_return)
+
+            def contract_actual():
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                D.integer(e, p["emp"])
+                D.put(e, D.T_LIST)
+                D.put(e, p["emr"])
+
+                def each():
+                    e.var("et", e.ld(e.add(e.add(p["ert"], 1), p["q"])))
+                    e.if_(e.not_(_proof(e, p["et"])), lambda: D.cid(e, _cid_words(e, p["et"])))
+
+                e.for_("q", 0, e.ld(p["ert"]), each)
+
+            contract = e.both(e.eq(p["emp"], 0), e.le(p["emr"], 1), e.ne(p["einteger"], 0))
+            _reject(e, contract, "LINUX-PROCESS-ENTRY-CONTRACT", entry, lambda: D.text(e, ENTRY_CONTRACT_EXPECTED), contract_actual)
+
+        e.if_(e.eq(p["t_raw"], 0), process_entry, lambda: _ok(e, e.eq(_kind(e, entry), int(Kind.FUNCTION))))  # AARCH64-ENTRY-FUNCTIONS
 
         # 3. The closure, depth first in the bootstrap's order.
         e.st(GLOBALS + G_MEMBERS, 0)
@@ -457,12 +480,12 @@ def native_aarch64():
 
 def _read_record(read):
     """The image record's words (``xax_selfhost_aarch64_image``), up to the program's cursor."""
-    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT
+    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT, IMAGE_END
     from xax_selfhost_general_regalloc import G_RA
 
     (table,) = read(GLOBALS + G_RA, 1)
     (end,) = read(table + I_CURSOR, 1)
-    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_AT + (5 << 20) else []
+    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_END else []
 
 
 def _executable(words, closure, reader, target_cid: bytes):
@@ -544,3 +567,54 @@ def aarch64_with_xax(reader, entry_cid: bytes, target_object, required: bool = F
         if required:
             fail("XAX.AARCH64.GENERAL", entry_cid.hex(), "AARCH64-XAX-GENERAL", "built by the XAX AArch64 program", "unavailable or declined")
     return executable
+
+
+def aarch64_raw_image(reader, function_cid: bytes, target_object, *, frontend: str = "auto") -> bytes:
+    """``build``'s image for a bare-metal AArch64 load-image target (S15f.4, ADR-325): the XAX AArch64 program's
+    bundle code where it runs and decides (``"auto"``; ``"xax"`` requires it), else
+    ``compile_aarch64_bound_target``'s.  With ``XAX_GENERAL_FRONTEND_DIFF=1`` the two must agree."""
+    import os
+
+    import xax_native
+    from xax_aarch64 import compile_aarch64_bound_target
+    from xax_compiler import XaxError, fail
+    from xax_selfhost_diagnostics import decode_diagnostic
+    from xax_selfhost_x86_64_general import collect_order, general_object_table
+
+    def reference() -> bytes:
+        return compile_aarch64_bound_target(reader, function_cid, target_object).artifact_bytes
+
+    if frontend == "python":
+        return reference()
+    native = native_aarch64()
+    table = None if native is None else general_object_table(reader, function_cid, target_object)
+    words = None if table is None else table[0]
+
+    def collect(read):
+        order = collect_order(read)
+        return order, decode_diagnostic(read), (None if order is None else _read_record(read))
+
+    outcome = None if words is None else native.run(words, collect)
+    order, diagnostic, record = outcome if outcome is not None else (None, None, None)
+    if diagnostic is not None:
+        raise XaxError(diagnostic)
+    image = None
+    if order is not None and record and record[0] == 1:
+        code_length = record[1]
+        at = 2 + (code_length + 7) // 8
+        length = record[at]
+        image = b"".join(word.to_bytes(8, "little") for word in record[at + 1:at + 1 + (length + 7) // 8])[:length]
+    if image is None:
+        if native is not None:
+            xax_native.declined("aarch64-general", 1)
+        if frontend == "xax":
+            fail("XAX.AARCH64.GENERAL", function_cid.hex(), "AARCH64-XAX-GENERAL", "built by the XAX AArch64 program", "unavailable or declined")
+        return reference()
+    if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+        try:
+            expected = reference()
+        except XaxError as error:
+            raise AssertionError(f"S15f.4: the bootstrap rejects ({error.diagnostic.rule}) an image the XAX program wrote") from error
+        if image != expected:
+            raise AssertionError("S15f.4 bare-metal AArch64 images disagree")
+    return image

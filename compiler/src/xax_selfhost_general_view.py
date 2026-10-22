@@ -40,7 +40,7 @@ from xax_selfhost_views_backend import (
 )
 
 INLINE_NODE_LIMIT = 256
-VIEW_AT, VIEW_END = 32 << 20, 68 << 20  # S14a (ADR-284): the compiler's own closure (above the front end's globals); S15d.0 (ADR-303): 36M words
+VIEW_AT, VIEW_END = 32 << 20, 120 << 20  # S14a (ADR-284): the compiler's own closure (above the front end's globals); S15d.0 (ADR-303): 36M words; S15e.4 (ADR-322): 41M; S15f (ADR-323): 88M
 VCAP = 1 << 18  # values per function view
 MAX_HOPS = 8
 
@@ -1395,10 +1395,14 @@ def _view(tables):
         _write_marks(e, e.ne(p["vw_facts"], NONE))
         e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _write_audit(e, e.ne(p["vw_facts"], NONE)))
         # S12c.2 (ADR-271): the register-resident analyses of the final view (when its values are bounded exactly).
-        from xax_selfhost_general_regalloc import STATUS_UNDECIDED
+        from xax_selfhost_general_regalloc import STATUS_INELIGIBLE, STATUS_UNDECIDED
 
         e.var("vw_status", STATUS_UNDECIDED)
-        e.if_(e.ne(p["vw_facts"], NONE), lambda: e.set("vw_status", _call(e, "analyse", p["f"])))
+        from xax_selfhost_x86_64_general import G_RAWWIN
+
+        # S15f.2: a Windows load image has no register-resident lowering (``target.abi`` is neither Linux nor the PE profile).
+        e.if_(e.both(e.ne(p["vw_facts"], NONE), e.eq(_g(e, G_RAWWIN), 0)), lambda: e.set("vw_status", _call(e, "analyse", p["f"])))
+        e.if_(e.ne(_g(e, G_RAWWIN), 0), lambda: e.set("vw_status", STATUS_INELIGIBLE))
         e.if_(e.ne(_g(e, G_AUDIT), 0), lambda: _call(e, "write_analysis", p["vw_status"]))
         # S12d (ADR-272): the function's register-resident code (0 not decided, 1 not this path, 2 emitted).
         from xax_selfhost_general_regalloc import STATUS_ANALYSED, STATUS_INELIGIBLE

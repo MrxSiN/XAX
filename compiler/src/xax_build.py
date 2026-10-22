@@ -2053,10 +2053,9 @@ def _hosted_container(reader: StoreReader, function_root: bytes, target_object: 
 
         return compile_pe_executable(reader, function_root, target_object)
     if description.architecture == 2 and description.identity == WASM32_BROWSER_IDENTITY:
-        from xax_wasm import compile_wasm_bound_target
-        from xax_web import emit_browser_page
+        from xax_selfhost_general_wasm import browser_page
 
-        return emit_browser_page(compile_wasm_bound_target(reader, function_root, target_object))
+        return browser_page(reader, function_root, target_object)  # S15e.4 (ADR-322): the XAX general program first
     if description.architecture == SPIRV_ARCHITECTURE:
         from xax_selfhost_general_spirv import spirv_module
 
@@ -2178,13 +2177,20 @@ def build(
                 [item.name for item in request_view.requested_artifacts],
             )
         if description.architecture == 1:
-            from xax_x86_64 import compile_native_bound_target
+            from xax_selfhost_x86_64_general import x86_64_raw_image
 
-            image = compile_native_bound_target(reader, function_root, target_object)
+            image = None
+            artifact = x86_64_raw_image(reader, function_root, target_object)  # S15f.2 (ADR-324): XAX first
         elif description.architecture == 2:
-            from xax_wasm import compile_wasm_bound_target
+            from xax_selfhost_general_wasm import wasm_module
 
-            image = compile_wasm_bound_target(reader, function_root, target_object)
+            image = None
+            artifact = wasm_module(reader, function_root, target_object)  # S15f.1 (ADR-324): XAX first
+        elif description.architecture == 3 and description.abi == 3 and description.image_format == 1:
+            from xax_selfhost_aarch64_general import aarch64_raw_image
+
+            image = None
+            artifact = aarch64_raw_image(reader, function_root, target_object)  # S15f.4 (ADR-325): XAX first
         elif description.architecture == 3:
             from xax_aarch64 import compile_aarch64_bound_target
 
