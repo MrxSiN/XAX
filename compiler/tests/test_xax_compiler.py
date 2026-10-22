@@ -2322,21 +2322,22 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(run_native_isolated(image, (0xAABBCCDD,)), (0xAABBCCDD,))
 
     def test_unsupported_native_width_rejected(self):
-        b8 = bits_type(8)
+        # Wrapping arithmetic below 32 bits is lowered at 32 and masked (e268146, ADR-324); 48 bits has no lowering.
+        b48 = bits_type(48)
         graph = graph_fragment(
             [
                 Block(
-                    (b8, b8),
-                    (Node(Operation.ADD_WRAP, (ValueRef.parameter(0, 0), ValueRef.parameter(0, 1)), (b8,)),),
+                    (b48, b48),
+                    (Node(Operation.ADD_WRAP, (ValueRef.parameter(0, 0), ValueRef.parameter(0, 1)), (b48,)),),
                     Terminator.return_((ValueRef.node_result(0, 0),)),
                 )
             ]
         )
-        fn = function(graph, (b8, b8), (b8,))
+        fn = function(graph, (b48, b48), (b48,))
         target_object = x86_64_windows_target()
         module = object_with_refs(Kind.MODULE, [fn, target_object])
         root = object_with_refs(Kind.PROGRAM_ROOT, [module])
-        reader = StoreReader(write_store(root.cid, [b8, graph, fn, target_object, module, root]))
+        reader = StoreReader(write_store(root.cid, [b48, graph, fn, target_object, module, root]))
         with self.assertRaisesRegex(XaxError, "XAX.NATIVE.BITS"):
             compile_native(reader, fn.cid, target_object.cid)
 

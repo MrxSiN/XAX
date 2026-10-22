@@ -514,6 +514,82 @@
     "xax_selfhost_evolution.py": {
       "class": "D",
       "note": "The evolution ledger: applies the committed transactions to the builder baseline and derives records from read-only queries (S15d.2, ADR-305)."
+    },
+    "xax_selfhost_aarch64_emit.py": {
+      "class": "G",
+      "note": "Builder of the S15e.2 AArch64 program store: the instruction encoders (ADR-315)."
+    },
+    "xax_selfhost_aarch64_frame.py": {
+      "class": "G",
+      "note": "Builder of the S15e.2b AArch64 program store: the frame path (ADR-316, ADR-325)."
+    },
+    "xax_selfhost_aarch64_general.py": {
+      "class": "G",
+      "note": "Builder of the canonical S15e.2 AArch64 program store; its front end and bare-metal images (ADR-315, ADR-325)."
+    },
+    "xax_selfhost_aarch64_image.py": {
+      "class": "G",
+      "note": "Builder of the S15e.2 AArch64 program store: the bundle and the ELF image (ADR-315)."
+    },
+    "xax_selfhost_aarch64_legacy.py": {
+      "class": "G",
+      "note": "Builder of the S15f.4 AArch64 legacy register path in the AArch64 program store (ADR-325)."
+    },
+    "xax_selfhost_aarch64_lower.py": {
+      "class": "G",
+      "note": "Builder of the S15e.2 AArch64 lowering views in the AArch64 program store (ADR-315)."
+    },
+    "xax_selfhost_general_accel.py": {
+      "class": "G",
+      "note": "Builder of the S15e.7a accelerator deployments in the general x86-64 backend store (ADR-321)."
+    },
+    "xax_selfhost_general_dll.py": {
+      "class": "G",
+      "note": "Builder of the S15e.3b Windows DLL plan and image in the general x86-64 backend store (ADR-320)."
+    },
+    "xax_selfhost_general_spirv.py": {
+      "class": "G",
+      "note": "Builder of the S15e.7b SPIR-V modules in the general x86-64 backend store (ADR-321)."
+    },
+    "xax_selfhost_general_wasm.py": {
+      "class": "G",
+      "note": "Builder of the S15e.4 and S15f.1 Wasm modules in the general x86-64 backend store (ADR-322, ADR-324)."
+    },
+    "xax_selfhost_jvm.py": {
+      "class": "G",
+      "note": "Builder of the canonical S15e.5 JVM program store; front end, class file and JAR (ADR-327-ADR-331)."
+    },
+    "xax_selfhost_jvm_aggregate.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5f aggregates and sums in the JVM program store (ADR-332)."
+    },
+    "xax_selfhost_jvm_callback.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5e callbacks in the JVM program store (ADR-331)."
+    },
+    "xax_selfhost_jvm_class.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5 class-file buffers and constant pool in the JVM program store (ADR-327)."
+    },
+    "xax_selfhost_jvm_code.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5 code buffer in the JVM program store (ADR-327)."
+    },
+    "xax_selfhost_jvm_emit.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5 edge copies, layout and blocks in the JVM program store (ADR-327)."
+    },
+    "xax_selfhost_jvm_foreign.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5c references and platform calls in the JVM program store (ADR-329, ADR-330)."
+    },
+    "xax_selfhost_jvm_lower.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5 node lowering in the JVM program store (ADR-327)."
+    },
+    "xax_selfhost_jvm_method.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5 method analyses in the JVM program store (ADR-327)."
     }
   },
   "components": {

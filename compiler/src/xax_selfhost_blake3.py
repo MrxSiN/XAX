@@ -19,7 +19,7 @@ itself is the committed S0 function, called directly.
 This is the first migrated component that passes buffers across the leaf
 boundary.  The Python driver in ``blake3.py`` remains the reference and the
 fallback for inputs over ``INPUT_EXTENT`` and for hosts that cannot run the
-leaf.  ``INPUT_EXTENT`` is 16 MiB (ADR-249; 1 MiB before), so every committed
+leaf.  ``INPUT_EXTENT`` is 64 MiB (ADR-333; 16 MiB in ADR-249, 1 MiB before), so every committed
 component store hashes in one call; the lent buffer is lazily zeroed, so the
 extent costs resident memory only for the bytes a hash copies in.
 """
@@ -52,7 +52,7 @@ from xax_graph_builder import BlockBuilder, GraphBuilder, program_store
 from xax_native import bootstrap_dir  # noqa: E402
 
 STORE_PATH = bootstrap_dir() / "xax_blake3_hash.xax"
-INPUT_EXTENT = 1 << 24  # ADR-249: every committed component store hashes in one call (the largest is about 3.6 MB)
+INPUT_EXTENT = 1 << 26  # ADR-249, ADR-333: every committed store hashes in one call (the general driver's is about 36 MB; stores hold 64 MiB, ADR-319)
 STACK_OFFSET, STACK_ENTRIES = 0, 54
 DIGEST_OFFSET = STACK_OFFSET + 32 * STACK_ENTRIES  # 1728
 SCRATCH_EXTENT = 2048
