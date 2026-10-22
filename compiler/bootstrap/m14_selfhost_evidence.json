@@ -22,7 +22,7 @@
       "blockers": {},
       "outside_scope": "every other target and artifact (Windows DLLs, JVM, WebAssembly, Android, SPIR-V, accelerator): Python (S15e.3-S15e.7)",
       "scope": "the general driver (xax_compiler_driver_general.xax): verify, inspect, resolve, resolve-trusted, build, lower, edit",
-      "seed_requires_python": true
+      "seed_requires_python": false
     },
     "m14_semantic_image_wrapper": {
       "B2": true,
