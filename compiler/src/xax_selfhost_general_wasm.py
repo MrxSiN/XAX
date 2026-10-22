@@ -29,6 +29,10 @@ WA = GLOBALS + 192
  W_STACK, W_DEPTH, W_CARR, W_NCARR, W_IMPIDX, W_EVT, W_EVL, W_NEVT, W_CURSOR, W_LOC, W_NLOC, W_PC, W_SCR, W_CUR, W_SIGS,
  W_NSIGS, W_TYIDX, W_IMPTY, W_SPAN, W_EF, W_THR, W_KIND) = (WA + k for k in range(39))
 PAGE_KIND, COMMAND_KIND, PLAIN_KIND = 0, 1, 2  # ``W_KIND``: the browser page, a WASI command module, a plain core module (S15f.1)
+# S15f.3 (ADR-324): 1 for a target off the general profile (``xax_wasm_legacy``: bits values only, static stack addresses);
+# ``W_MEM``: the laid-out static memory's size.
+W_LEG = WA + 39
+W_MEM = WA + 60
 BUF = WA + 40  # buffers: base, length, capacity
 CODE, BODIES, MODULE, PART, PAGE = (BUF + 3 * k for k in range(5))
 assert PAGE + 3 <= GLOBALS + 256
@@ -147,6 +151,14 @@ def _valtype(e: E, t, name: str):
     e.if_(e.eq(p[f"{name}_f"], 1), lambda: e.set(name, e.sel(e.le(_bits_width(e, t, f"{name}_b"), 32), I32, I64)))
     e.if_(e.eq(p[f"{name}_f"], 7), lambda: e.set(name, e.sel(e.eq(_float_width(e, t), 32), F32, F64)))
     e.if_(e.either(*(e.eq(p[f"{name}_f"], f) for f in (2, 8, 9, 10, 11))), lambda: e.set(name, I32))
+    return p[name]
+
+
+def _slot_type(e: E, t, name: str):
+    """The value type a value's local takes: ``_valtype``, or on the legacy lowering a ``bits`` value's alone."""
+    p = e.p
+    e.var(name, _valtype(e, t, f"{name}_g"))
+    e.if_(e.both(e.ne(e.ld(W_LEG), 0), e.ne(_type_form(e, t), 1)), lambda: e.set(name, 0))
     return p[name]
 
 
@@ -320,6 +332,8 @@ def _wa_get(tables):
                 D.put(e, 3)
                 for field in (V_BLK, V_IDX, V_RES):
                     D.integer(e, _val(e, p["gv"], field))
+            e.if_(e.ne(e.ld(W_LEG), 0), lambda: _reject(e, "XAX.WASM.VALUE", lambda: _graph_cid(e), "WASM-VALUE-MACHINE-BITS",
+                                                        lambda: D.text(e, "bits value"), actual))
             _reject(e, "XAX.WASM.VALUE", lambda: _graph_cid(e), "WASM-VALUE-MACHINE", lambda: D.text(e, "machine value"), actual)
 
         e.if_(e.eq(p["gs"], NONE), missing)
@@ -555,6 +569,10 @@ def _wa_enter(tables):
         f = p["ef"]
         e.var("eact", _obj(e, W_ACT, f))
 
+        e.if_(e.both(e.ne(p["eact"], 0), e.ne(e.ld(W_LEG), 0)), lambda: _reject(
+            e, "XAX.WASM.RECURSION", lambda: D.cid(e, _cid_words(e, f)), "WASM-DIRECT-CALL-ACYCLIC", lambda: D.text(e, "acyclic calls"),
+            lambda: D.text(e, "cycle")))
+
         def cycle():
             e.for_("ed", e.sub(p["eact"], 1), e.ld(W_DEPTH), lambda: _set_obj(
                 e, W_REC, e.ld(e.add(e.ld(W_STACK), e.add(e.mul(p["ed"], FRAME_W), F_FN))), 1))
@@ -573,6 +591,8 @@ def _wa_enter(tables):
 
             def machine():
                 e.if_(e.eq(_valtype(e, p["ect"], "evt"), 0), lambda: e.set("ebad", 1))
+                legacy_bad = e.either(e.ne(_type_form(e, p["ect"]), 1), e.lt(64, _bits_width(e, p["ect"], "ebw")))
+                e.if_(e.both(e.ne(e.ld(W_LEG), 0), legacy_bad), lambda: e.set("ebad", 1))
 
             e.if_(e.not_(_proof(e, p["ect"])), machine)
 
@@ -590,6 +610,8 @@ def _wa_enter(tables):
                 D.put(e, e.add(p["enp"], e.ld(p["ert"])))
                 e.for_("eq3", 0, p["enp"], lambda: D.cid(e, _cid_words(e, e.ld(e.add(e.add(p["ei"], 2), p["eq3"])))))
                 e.for_("eq4", 0, e.ld(p["ert"]), lambda: D.cid(e, _cid_words(e, e.ld(e.add(e.add(p["ert"], 1), p["eq4"])))))
+            e.if_(e.ne(e.ld(W_LEG), 0), lambda: _reject(e, "XAX.WASM.ABI", lambda: D.cid(e, _cid_words(e, f)), "WASM-ABI-BITS",
+                                                        lambda: D.text(e, "bits<1..64>, at most one return"), actual))
             _reject(e, "XAX.WASM.ABI", lambda: D.cid(e, _cid_words(e, f)), "WASM-ABI-VALUE",
                     lambda: D.text(e, "bits, float, pointer, or aggregate; at most one return"), actual)
 
@@ -969,7 +991,7 @@ def _wa_slots(tables):
             e.var("lv", e.add(_blk(e, p["lentry"], B_PBASE), p["lq2"]))
 
             def machine():
-                _ok(e, e.ne(_valtype(e, _val(e, p["lv"], V_TYPE), "lvt"), 0))
+                _ok(e, e.ne(_slot_type(e, _val(e, p["lv"], V_TYPE), "lvt"), 0))
                 _set_val(e, p["lv"], V_SLOT, p["lmi"])
                 e.set("lmi", e.add(p["lmi"], 1))
 
@@ -977,18 +999,22 @@ def _wa_slots(tables):
 
         e.for_("lq2", 0, _blk(e, p["lentry"], B_NP), entry_param)
 
-        def add(v):
+        def add(v, parameter: bool = False):
             e.var("lav", v)
 
             def machine():
-                e.var("lat", _valtype(e, _val(e, p["lav"], V_TYPE), "lvt2"))
+                e.var("lat", _slot_type(e, _val(e, p["lav"], V_TYPE), "lvt2"))
+                if parameter:  # ``xax_wasm_legacy``: a non-entry block parameter is a bits value
+                    e.if_(e.both(e.ne(e.ld(W_LEG), 0), e.eq(p["lat"], 0)), lambda: _reject(
+                        e, "XAX.WASM.BLOCK_TYPE", lambda: _graph_cid(e), "WASM-BLOCK-PARAMETER-BITS", lambda: D.text(e, "bits<1..64>"),
+                        lambda: D.cid(e, _cid_words(e, _val(e, p["lav"], V_TYPE)))))
                 e.if_(e.ne(p["lat"], 0), lambda: (_set_val(e, p["lav"], V_SLOT, e.add(p["lmpc"], p["ln"])),
                                                     e.st(e.add(p["lloc"], p["ln"]), p["lat"]), e.set("ln", e.add(p["ln"], 1))))
 
             e.if_(e.not_(_proof(e, _val(e, p["lav"], V_TYPE))), machine)
 
         def block():
-            e.if_(e.ne(p["lb"], p["lentry"]), lambda: e.for_("lp", 0, _blk(e, p["lb"], B_NP), lambda: add(e.add(_blk(e, p["lb"], B_PBASE), p["lp"]))))
+            e.if_(e.ne(p["lb"], p["lentry"]), lambda: e.for_("lp", 0, _blk(e, p["lb"], B_NP), lambda: add(e.add(_blk(e, p["lb"], B_PBASE), p["lp"]), True)))
             e.var("lk", _blk(e, p["lb"], B_NBASE))
             e.for_("lm", 0, _blk(e, p["lb"], B_NN), lambda: (
                 e.var("lrb", _node(e, e.add(p["lk"], p["lm"]), N_RBASE)),
@@ -999,7 +1025,7 @@ def _wa_slots(tables):
         def temporaries():
             def one():
                 e.var("ltv", e.add(_blk(e, p["lb2"], B_PBASE), p["lp2"]))
-                e.var("ltt", _valtype(e, _val(e, p["ltv"], V_TYPE), "lvt3"))
+                e.var("ltt", _slot_type(e, _val(e, p["ltv"], V_TYPE), "lvt3"))
                 e.if_(e.ne(p["ltt"], 0), lambda: (_set_val(e, p["ltv"], V_TEMP, e.add(p["lmpc"], p["ln"])),
                                                     e.st(e.add(p["lloc"], p["ln"]), p["ltt"]), e.set("ln", e.add(p["ln"], 1))))
 
@@ -1010,7 +1036,7 @@ def _wa_slots(tables):
         e.st(e.add(p["lloc"], p["ln"]), I32)
         e.st(W_SCR, e.add(p["lmpc"], e.add(p["ln"], 1)))
         e.st(e.add(p["lloc"], e.add(p["ln"], 1)), I32)
-        e.st(W_NLOC, e.add(p["ln"], 2))
+        e.st(W_NLOC, e.add(p["ln"], e.sel(e.ne(e.ld(W_LEG), 0), 1, 2)))  # the legacy lowering has no aggregate scratch
 
         # ``pointer_extents``, in block and node order.
         def extents():
@@ -1029,6 +1055,19 @@ def _wa_slots(tables):
                     _set_val(e, p["xr"], V_EXTK, 1)
 
                 e.if_(e.eq(p["xop"], int(Operation.STACK_ALLOC)), lambda: put(_attr(e, p["xn"], 0)))
+
+                def static():
+                    """``xax_wasm_legacy``'s ``pointers``: a stack object's address, an offset's base plus its attribute."""
+                    e.if_(e.eq(p["xop"], int(Operation.STACK_ALLOC)), lambda: _set_val(e, p["xr"], V_ADDR, _node(e, p["xn"], N_SADDR)))
+
+                    def offset():
+                        e.var("xbase", _val(e, _op_id(e, p["xn"], 0), V_ADDR))
+                        _ok(e, e.ne(p["xbase"], NONE))  # the bootstrap fails (a pointer it did not lay out)
+                        _set_val(e, p["xr"], V_ADDR, e.add(p["xbase"], _attr(e, p["xn"], 0)))
+
+                    e.if_(e.eq(p["xop"], int(Operation.ADDRESS_OFFSET)), offset)
+
+                e.if_(e.ne(e.ld(W_LEG), 0), static)
                 e.if_(e.both(e.eq(p["xop"], int(Operation.ADDRESS_OFFSET)), e.ne(known(), 0)), lambda: put(e.sub(extent(), _attr(e, p["xn"], 0))))
                 e.if_(e.both(e.eq(p["xop"], int(Operation.POINTER_CAST)), e.ne(known(), 0)), lambda: put(extent()))
 
@@ -1670,9 +1709,109 @@ def _wa_node_memory(tables):
     return _function(("k",), build, tables)
 
 
+def _wa_node_legacy(tables):
+    """``xax_wasm_legacy``'s memory nodes of node ``k``: storage at static addresses, nothing emitted for stack objects,
+    offsets, stack ends and resource steps; 1 when lowered, 0 when not this part's."""
+    def build(e: E):
+        p = e.p
+        k = p["k"]
+        e.var("nop", _node(e, k, N_OP))
+        e.var("r0", _node(e, k, N_RBASE))
+        e.var("a0", _op_id(e, k, 0))
+        op = p["nop"]
+        from xax_compiler import RESOURCE_EFFECT_OPERATIONS
+
+        quiet = (Operation.STACK_ALLOC, Operation.ADDRESS_OFFSET, Operation.STACK_END, *RESOURCE_EFFECT_OPERATIONS)
+        e.if_(e.either(*(e.eq(op, int(o)) for o in quiet)), lambda: e.give(1))
+
+        def address():
+            e.var("ladr", _val(e, p["a0"], V_ADDR))
+            _ok(e, e.ne(p["ladr"], NONE))  # the bootstrap fails (a pointer it did not lay out)
+            return p["ladr"]
+
+        def bits(t, name):
+            _ok(e, e.eq(_type_form(e, t), 1))
+            _bits_width(e, t, name)
+            _ok(e, e.le(e.p[name], 64))
+            return e.p[name]
+
+        def opcode(table, width, size):
+            st = e.sel(e.le(width, 32), 32, 64)
+            return _table(e, [(e.both(e.eq(st, s_), e.eq(size, w)), code) for (s_, w), code in table.items()])
+
+        def access(load: bool, value_type, size, alignment_log):
+            e.var("lw", bits(value_type, "lbw"))
+            e.var("lopc", opcode(LOAD if load else STORE, p["lw"], size))
+            e.if_(e.eq(p["lopc"], 0), lambda: _reject(e, "XAX.WASM.MEMORY_WIDTH", lambda: _graph_cid(e), "WASM-MEMORY-WIDTH",
+                                                     lambda: _int_list(e, (8, 16, 32, 64)), lambda: D.integer(e, p["lw"])))
+            _b(e, p["lopc"])
+            _u(e, alignment_log)
+            _b(e, 0)
+
+        def checked():
+            e.var("lload", e.flag(e.eq(op, int(Operation.CHECKED_LOAD_BITS_LE))))
+            e.var("lat", address())
+            _ok(e, e.ne(_val(e, p["a0"], V_EXTK), 0))  # the bootstrap fails (no extent)
+            e.var("lsz", _attr(e, k, 0))
+            e.var("lal", _attr(e, k, 1))
+            e.var("lmax", e.sub(_val(e, p["a0"], V_EXT), p["lsz"]))
+
+            def in_range():
+                e.var("la1", _op_id(e, k, 1))
+                _get(e, p["la1"])
+                _iconst(e, p["lmax"], 0)
+                _b(e, 0x4B)  # i32.gt_u
+                _bytes(e, b"\x04\x40\x00\x0b")
+                _iconst(e, p["lat"], 0)
+                _get(e, p["la1"])
+                _b(e, 0x6A)
+
+                def load():
+                    access(True, _ty(e, p["r0"]), p["lsz"], _log2(e, p["lal"], "llg"))
+                    _mask(e, p["lw"])
+                    _set_local(e, p["r0"])
+
+                def store():
+                    e.var("lval", _op_id(e, k, 2))
+                    _get(e, p["lval"])
+                    access(False, _ty(e, p["lval"]), p["lsz"], _log2(e, p["lal"], "llg2"))
+
+                e.if_(e.ne(p["lload"], 0), load, store)
+
+            e.if_(_signed_lt(e, p["lmax"], 0), lambda: _b(e, 0), in_range)
+            e.give(1)
+
+        e.if_(e.either(e.eq(op, int(Operation.CHECKED_LOAD_BITS_LE)), e.eq(op, int(Operation.CHECKED_STORE_BITS_LE))), checked)
+
+        def plain_load():
+            e.var("lpa", address())
+            e.var("lpal", _attr(e, k, 1))
+            e.var("lpal1", e.sel(e.both(e.eq(op, int(Operation.RAW_LOAD_BITS_LE)), e.eq(p["lpal"], 0)), 1, p["lpal"]))
+            _iconst(e, p["lpa"], 0)
+            access(True, _ty(e, p["r0"]), _attr(e, k, 0), _log2(e, p["lpal1"], "llg3"))
+            _mask(e, p["lw"])
+            _set_local(e, p["r0"])
+            e.give(1)
+
+        e.if_(e.either(e.eq(op, int(Operation.RAW_LOAD_BITS_LE)), e.eq(op, int(Operation.LOAD_BITS_LE))), plain_load)
+
+        def plain_store():
+            e.var("lsa", address())
+            e.var("lsv", _op_id(e, k, 1))
+            _iconst(e, p["lsa"], 0)
+            _get(e, p["lsv"])
+            access(False, _ty(e, p["lsv"]), _attr(e, k, 0), _log2(e, _attr(e, k, 1), "llg4"))
+            e.give(1)
+
+        e.if_(e.eq(op, int(Operation.STORE_BITS_LE)), plain_store)
+        e.give(0)
+    return _function(("k",), build, tables)
+
+
 def _wa_node(tables):
     def build(e: E):
         p = e.p
+        e.if_(e.ne(e.ld(W_LEG), 0), lambda: e.if_(e.ne(_call(e, "wa_node_legacy", p["nk"]), 0), lambda: e.give(1)))
         for part in ("wa_node_int", "wa_node_float", "wa_node_value", "wa_node_memory"):
             e.if_(e.ne(_call(e, part, p["nk"]), 0), lambda: e.give(1))
         e.give(NONE)  # an operation the target lists but the lowering does not (``WASM-OP-LOWERED``): declined
@@ -2014,8 +2153,11 @@ def _wa_sections(tables):
         _u(e, e.ld(W_NF))
         e.for_("yf", 0, e.ld(W_NF), lambda: _u(e, e.ld(e.add(e.ld(W_TYIDX), p["yf"]))))
         _section(e, 3)
-        _bytes(e, b"\x01\x00\x01")
-        _section(e, 5)
+        def memory():
+            _bytes(e, b"\x01\x00\x01")
+            _section(e, 5)
+
+        e.if_(e.either(e.eq(e.ld(W_LEG), 0), e.ne(e.ld(W_MEM), 0)), memory)  # the legacy module has memory only when used
         def command():
             _u(e, e.add(e.ld(W_NEVT), 2))
             _bytes(e, b"\x06_start\x00")
@@ -2157,13 +2299,15 @@ def _wasm(tables):
         e.st(W_KIND, PLAIN_KIND)  # S15f.1: any other architecture-2 target on the general profile is a plain core module
         e.if_(named(WASM32_WASI_IDENTITY), lambda: e.st(W_KIND, COMMAND_KIND))
         e.if_(named(WASM32_BROWSER_IDENTITY), lambda: e.st(W_KIND, PAGE_KIND))
-        _ok(e, e.ne(_g(e, G_GENERAL), 0))  # the legacy profile's lowering is not this one
+        e.st(W_LEG, e.flag(e.eq(_g(e, G_GENERAL), 0)))  # S15f.3: off the general profile, ``xax_wasm_legacy``
+        e.if_(e.ne(e.ld(W_LEG), 0), lambda: e.st(W_KIND, PLAIN_KIND))
         e.st(W_ON, 1)
         e.st(W_EF, f)
         _call(e, "wa_closure", f)
         _call(e, "wa_imports")
-        e.st(W_CURSOR, NULL_GUARD)
+        e.st(W_CURSOR, e.sel(e.ne(e.ld(W_LEG), 0), 0, NULL_GUARD))  # the legacy layout starts at address 0
         e.for_("wl", 0, e.ld(W_NF), lambda: (_call(e, "wa_index", _list(e, W_FUNCS, p["wl"])), _call(e, "wa_addr")))
+        e.st(W_MEM, e.ld(W_CURSOR))
         e.if_(e.lt(MEMORY_LIMIT, e.ld(W_CURSOR)), lambda: _reject(
             e, "XAX.WASM.MEMORY", lambda: D.text(e, "module"), "WASM-STATIC-MEMORY-LIMIT", lambda: D.text(e, "<= 65536 bytes"),
             lambda: D.integer(e, e.ld(W_CURSOR))))
@@ -2186,7 +2330,7 @@ def _wasm(tables):
 
         e.if_(e.both(e.ne(p["wmachine"], 0), e.ne(e.ld(W_KIND), PLAIN_KIND)), machine)
         _buffer_reset(e, BODIES)
-        e.st(W_CURSOR, NULL_GUARD)  # the compile pass lays the storage out again, in the same order
+        e.st(W_CURSOR, e.sel(e.ne(e.ld(W_LEG), 0), 0, NULL_GUARD))  # the compile pass lays the storage out again, in the same order
         e.for_("wc", 0, e.ld(W_NF), lambda: _call(e, "wa_function", p["wc"]))
         _call(e, "wa_sections")
         # The image record: no code, the page (or, S15f.1, the module) as the container bytes, nothing else.
@@ -2223,7 +2367,8 @@ def add_wasm_functions(add, tables):
                           ("wa_set", _wa_set), ("wa_mask", _wa_mask), ("wa_gi", _wa_gi), ("wa_index", _wa_index), ("wa_enter", _wa_enter),
                           ("wa_closure", _wa_closure), ("wa_imports", _wa_imports), ("wa_addr", _wa_addr), ("wa_slots", _wa_slots),
                           ("wa_trap", _wa_trap_compare), ("wa_node_int", _wa_node_int), ("wa_node_float", _wa_node_float),
-                          ("wa_node_value", _wa_node_value), ("wa_node_memory", _wa_node_memory), ("wa_node", _wa_node),
+                          ("wa_node_value", _wa_node_value), ("wa_node_memory", _wa_node_memory), ("wa_node_legacy", _wa_node_legacy),
+                          ("wa_node", _wa_node),
                           ("wa_term", _wa_term), ("wa_function", _wa_function), ("wa_signature", _wa_signature), ("wa_types", _wa_module),
                           ("wa_sections", _wa_sections), *((f"wa_host_{name.decode()}", _wa_host(name)) for name in DECLARED),
                           ("wa_page", _wa_page), ("wasm", _wasm)):

@@ -804,10 +804,12 @@ def _int_node_fn(tables):
             e.var("fi_bytes", e.sel(e.eq(width, 64), 8, 4))
             _load(e, RAX, _slot(e, p["fn_a"]), p["fi_bytes"])
             _load(e, SCRATCH0, _slot(e, p["fn_b"]), p["fi_bytes"])
-            # ``_arithmetic`` fails after the operands' loads (S12f.4).
-            e.if_(e.not_(e.either(e.eq(width, 32), e.eq(width, 64))), lambda: _call(e, "width_reject", WIDTH_ARITHMETIC, width))
+            # ``_arithmetic`` fails after the operands' loads (S12f.4); S15f.2: a width below 32 is done at 32 and masked.
+            e.var("fi_narrow", e.flag(e.both(e.lt(0, width), e.lt(width, 32))))
+            e.if_(e.not_(e.either(e.eq(width, 32), e.eq(width, 64), e.ne(p["fi_narrow"], 0))), lambda: _call(e, "width_reject", WIDTH_ARITHMETIC, width))
             for operation in ARITHMETIC_64:
                 e.if_(e.eq(op, _op(operation)), lambda operation=operation: e.if_(e.eq(width, 64), lambda: _b(e, ARITHMETIC_64[operation]), lambda: _b(e, ARITHMETIC_32[operation])))
+            e.if_(e.ne(p["fi_narrow"], 0), lambda: _mask_register(e, RAX, width))
             _store(e, RAX, _slot(e, result), 8)
             e.give(1)
 
