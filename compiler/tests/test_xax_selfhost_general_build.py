@@ -396,6 +396,38 @@ class GeneralBuildTests(unittest.TestCase):
         self.assertIn("image", seen)
         self.assertGreater(len(seen), 2, seen)
 
+    def test_raw_images(self):
+        """S15f (ADR-324): raw Wasm modules (WASI, plain and legacy core modules) and Windows load images are the XAX
+        general program's: the artifact and provenance are ``build``'s with the bootstrap's backends, and every
+        rejection its diagnostic."""
+        import random
+        from unittest import mock
+
+        import xax_selfhost_general_wasm as WASM
+        import xax_selfhost_x86_64_general as GEN
+        from wasm_corpus import wasm_case
+        from x86_raw_corpus import x86_raw_case
+
+        module, raw = WASM.wasm_module, GEN.x86_64_raw_image
+        rng = random.Random(324)
+        seen = set()
+        cases = [wasm_case(rng, kind) for kind in ("wasi", "plain", "legacy") for _ in range(int(os.environ.get("XAX_RAW_TRIALS", "6")))]
+        cases += [x86_raw_case(rng) for _ in range(int(os.environ.get("XAX_RAW_TRIALS", "6")) * 2)]
+        for trial, (reader, entry, target, name) in enumerate(cases):
+            objects = tuple(item for item in reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT) and item.cid != target.cid)
+            try:
+                program = _program(objects, {b"image": entry}, target)
+            except (X.XaxError, ValueError):
+                continue
+            with mock.patch.object(WASM, "wasm_module", lambda r, f, t, frontend="auto": module(r, f, t, frontend="python")), \
+                 mock.patch.object(GEN, "x86_64_raw_image", lambda r, f, t, frontend="auto": raw(r, f, t, frontend="python")):
+                expected = _expected(program)
+            with self.subTest(trial=trial, case=name):
+                outcome = self.run_build(program.data)
+                self.assertEqual(outcome, expected)
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+        self.assertIn("image", seen)
+
     def test_other_paths_decline(self):
         """Android packages, Windows DLLs on a target other than the PE profile, and targets other than the Linux
         x86-64, Linux AArch64, Windows PE32+ and RISC-V raw profiles are ``build``'s other paths: the driver declines and
