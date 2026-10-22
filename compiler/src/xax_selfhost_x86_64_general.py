@@ -62,6 +62,7 @@ G_WINDOWS = 63
 # S15f.2 (ADR-324): 1 for a Windows load image (architecture 1, ABI 1, format 1, not the PE profile): the Win64 frame path
 # without the register-resident lowering, the hosted register path or a container; the image is the code alone.
 G_RAWWIN = 190
+LINUX_REQUEST = 2  # the audit word's Linux-executable bit (``general_object_table(linux=True)``)
 PE_IDENTITY = b"x86_64-windows-pe-v1"
 FRAME = 5  # a closure frame: function, graph, stream cursor, blocks left, nodes left in the current block
 F_FN, F_GRAPH, F_AT, F_BLOCKS, F_NODES = range(FRAME)
@@ -686,6 +687,14 @@ def _frontend(tables):
         group_member_tables(e, O)
 
         e.st(W_ON, 0)  # S15e.4 (ADR-322): 8-byte pointers in ``abi_layout`` until the browser Wasm path sets it
+        # The audit word after the extents: bit 2 is a Linux executable request (``compile_linux_executable``,
+        # ``closure_with_xax``): any other target is then ``LINUX-ELF-EXEC-TARGET``'s, as the bootstrap's first check
+        # decides, instead of the path its own profile would take.
+        e.var("lx_at", p["ext_at"])
+        e.var("lx_n", e.rd(p["lx_at"]))
+        e.set("lx_at", e.add(p["lx_at"], 1))
+        e.for_("lx_k", 0, p["lx_n"], lambda: e.set("lx_at", e.add(e.add(e.add(p["lx_at"], CID_WORDS), 1), e.mul(e.rd(e.add(p["lx_at"], CID_WORDS)), 5))))
+        e.var("linux_request", e.flag(e.ne(e.and_(e.rd(p["lx_at"]), LINUX_REQUEST), 0)))
         # 1. The target (``decode_native_target``'s fields up to the terminator list, of a verified target object).
         target = p["target"]
         _ok(e, e.eq(_kind(e, target), int(Kind.TARGET)))
@@ -751,7 +760,7 @@ def _frontend(tables):
             e.st(0, OK)
             e.give(1)
 
-        e.if_(e.eq(p["t_arch"], 4), accelerator)
+        e.if_(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_arch"], 4)), accelerator)
 
         def spirv():
             """S15e.7b (ADR-321): a SPIR-V compute module (``xax_selfhost_general_spirv``)."""
@@ -761,7 +770,7 @@ def _frontend(tables):
             e.st(0, OK)
             e.give(1)
 
-        e.if_(e.eq(p["t_arch"], 7), spirv)
+        e.if_(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_arch"], 7)), spirv)
 
         def wasm():
             """S15e.4 (ADR-322): a browser page (``xax_selfhost_general_wasm``)."""
@@ -771,9 +780,11 @@ def _frontend(tables):
             e.st(0, OK)
             e.give(1)
 
-        e.if_(e.eq(p["t_arch"], 2), wasm)
-        e.st(GLOBALS + G_RAWWIN, e.flag(e.both(e.eq(p["t_windows"], 0), e.eq(p["t_arch"], 1), e.eq(p["t_abi"], 1), e.eq(p["t_fmt"], 1))))
-        e.st(GLOBALS + G_WINDOWS, e.flag(e.either(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1)), e.ne(_g(e, G_RAWWIN), 0))))
+        e.if_(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_arch"], 2)), wasm)
+        e.st(GLOBALS + G_RAWWIN, e.flag(e.both(e.eq(p["linux_request"], 0), e.eq(p["t_windows"], 0), e.eq(p["t_arch"], 1), e.eq(p["t_abi"], 1),
+                                               e.eq(p["t_fmt"], 1))))
+        e.st(GLOBALS + G_WINDOWS, e.flag(e.both(e.eq(p["linux_request"], 0), e.either(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1)),
+                                                                                     e.ne(_g(e, G_RAWWIN), 0)))))
         linux = e.both(e.eq(p["t_abi"], LINUX_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
         e.if_(e.eq(_g(e, G_WINDOWS), 0), lambda: _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual))
 
@@ -957,7 +968,7 @@ def collect_order(read) -> list[bytes] | None:
     return [b"".join(word.to_bytes(8, "big") for word in words[k:k + CID_WORDS]) for k in range(0, len(words), CID_WORDS)]
 
 
-def general_object_table(reader, entry_cid: bytes, target_object, audit: bool = False):
+def general_object_table(reader, entry_cid: bytes, target_object, audit: bool = False, linux: bool = False):
     """``(words, member functions)``: the views backends' object table (``object_table_words``), then the count and
     records of every recursion group member function (``group_member_function``) the store does not hold, so the
     program can name each group member a ``call.group_member`` reaches; None when a graph cannot be streamed.  The
@@ -993,7 +1004,7 @@ def general_object_table(reader, entry_cid: bytes, target_object, audit: bool = 
         words += [*_cid_words(obj.cid), len(extents)]
         for ref, extent in extents:
             words += [ref.tag, ref.block, ref.index, ref.result, extent]
-    words.append(int(audit))  # S12c.1: write every value's range bound (tests)
+    words.append(int(audit) | (LINUX_REQUEST if linux else 0))  # S12c.1: write every value's range bound (tests); a Linux request
     # S12d: trap terminators' payload heads (the stream carries only their length and body offset): per graph with a
     # nonempty trap payload, its CID, the count, and per such block its index and the payload's first three bytes.
     traps = []
@@ -1011,17 +1022,18 @@ def general_object_table(reader, entry_cid: bytes, target_object, audit: bool = 
     return words, {obj.cid: obj for obj in extras}
 
 
-def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = False, audit: bool = False):
+def general_with_xax(reader, entry_cid: bytes, target_object, required: bool = False, audit: bool = False, linux: bool = True):
     """S12a-S12c.1: ``(closure, views, prefetches)`` as the XAX program decides them for a verified store: the entry's
     closure in image order and, per function CID, its lowering view (``xax_inline.inline_leaf_calls``, then the
     prefetch rewrite) rebuilt from the program's words, and its prefetch marks (absent where the host selects them).  It raises the ``XaxError`` the program wrote when it rejects.  None when the program cannot run or
-    declines (the bootstrap then decides), unless ``required``."""
+    declines (the bootstrap then decides), unless ``required``.  ``linux``: a Linux executable is requested (the PE and
+    raw-image hosts pass False: the target's own profile decides)."""
     import xax_native
     from xax_compiler import XaxError, fail, store_resolver
     from xax_selfhost_diagnostics import decode_diagnostic
 
     native = native_general()
-    table = None if native is None else general_object_table(reader, entry_cid, target_object, audit)
+    table = None if native is None else general_object_table(reader, entry_cid, target_object, audit, linux)
     words, members = table if table is not None else (None, {})
 
     def collect(read):
@@ -1321,7 +1333,7 @@ def x86_64_raw_image(reader, function_cid: bytes, target_object, *, frontend: st
 
     if frontend == "python":
         return reference()
-    result = general_with_xax(reader, function_cid, target_object, required=frontend == "xax")
+    result = general_with_xax(reader, function_cid, target_object, required=frontend == "xax", linux=False)
     image = None if result is None or result.image is None else result.image["elf"]
     if image is None:
         return reference()

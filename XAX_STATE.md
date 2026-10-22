@@ -1722,3 +1722,31 @@ A Windows XAX DLL may forward exports to another module (`package.forwards`) and
 ## S15f.4 bare-metal AArch64 images and S15e.3b hosted legacy path — 2026-10-22 (ADR-325, ADR-326)
 
 The production compiler now builds bare-metal AArch64 load images itself. Before, only Python did. The AArch64 program gained the bootstrap's legacy register path, which these profiles use, and the image is the bundle code. On 600 random programs (spills, calls, homes, wide joins, loops, traps, narrow-width rejections) and the frame and offset rejections, the output equals the bootstrap's. On Windows, functions the bootstrap lowers on its hosted legacy register path are now built by the general program too, including compares, imports and COM calls, code addresses, heap views and checked accesses. 230 programs that reach that path and 20 rejection cases equal the bootstrap's. The seed was rotated (`ec14532e…`) and rebuilds itself (seed = C1 = C2). Every target except JVM jars and Android packages is now built by the production compiler.
+
+## S15e.5a JVM JARs for the integer subset through XAX — 2026-10-22 (ADR-327)
+
+A standalone XAX program (`xax_selfhost_jvm`, store `compiler/bootstrap/xax_jvm_general.xax`) now builds JVM JARs for `jvm-classfile-v1` programs that use only integer operations, byte for byte equal to `compile_jvm_bound_target`'s. `build` asks it first and falls back to the bootstrap when it declines. Results:
+
+- 330 seeded random programs agree, none declined.
+- Inside `test_xax_jvm.py`, 39 JARs and 1 rejection agree, 61 decline (floats, platform calls, traps), none disagree.
+
+The production driver does not contain the program yet, so the bootstrap status is unchanged.
+
+## S15e.5b JVM floats and conversions through XAX — 2026-10-22 (ADR-328)
+
+The XAX JVM program now also lowers float constants, arithmetic, compares and conversions, including the trapping float-to-integer truncations. Results, checked against the bootstrap:
+
+- In `test_xax_jvm.py`, 86 JARs and 1 rejection agree, 14 decline (platform calls and their rejections), none disagree.
+- In `test_xax_selfhost_jvm.py`, every conversion across eleven integer widths and both float formats agrees byte for byte.
+
+## S15e.5c JVM references and platform calls through XAX — 2026-10-22 (ADR-329)
+
+The XAX JVM program now handles JVM reference values and platform calls: static, virtual and interface methods, and static fields. It decides `_foreign_member`'s rejections exactly. Checked against the bootstrap, `test_xax_jvm.py` gives 94 JARs and 4 rejections that agree, and 1 decline (the memory profile), none disagreeing. The memory, general and object profiles still fall back to the bootstrap.
+
+## S15e.5d JVM object kinds through XAX — 2026-10-22 (ADR-330)
+
+The XAX JVM program now builds the object kinds byte for byte with the bootstrap: `new`, arrays, `ldc`, instance and static fields, `checkcast` and `instanceof`. In `test_xax_jvm_objects.py`, 6 JARs and 3 rejections agree, and 1 callback declines.
+
+## S15e.5e JVM callbacks through XAX — 2026-10-22 (ADR-331)
+
+The XAX JVM program now builds callbacks: JDK streams and comparators that call XAX functions. It also accepts the memory and general class-file profiles. Every compile in `test_xax_jvm_callbacks.py`, `test_xax_jvm_objects.py`, `test_xax_jvm_import.py` and `test_xax_jvm.py` either agrees with the bootstrap or declines, and none disagree. The declines are a stack allocation and the memory-profile rejection.

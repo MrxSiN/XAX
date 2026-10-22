@@ -1299,3 +1299,75 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   - The audit decoder now sorts `pointer_extents` by value reference, as the verifier does.
   - `test_legacy_register_path` no longer expects `NATIVE-BITS-SUPPORTED` (ADR-324 sends narrow arithmetic to the frame path).
 - Next: S15e.5 (JVM jars; `xax_jvm._compile_method_pass` is a two-pass optimizer: aliases, folding, slot coloring, deferred stores, stack-kept values) and S15e.6 (Android).
+
+## S15e.5a JVM program — 2026-10-22 (ADR-327)
+
+- Modules:
+  - `xax_selfhost_jvm` (front end, methods, class file, JAR, host `jvm_with_xax`/`jvm_jar`).
+  - `_jvm_class` (buffers, pool).
+  - `_jvm_code` (code buffer; `jc_flush` emits a deferred store's bytes directly, because the DSL has no recursion).
+  - `_jvm_method` (analyses).
+  - `_jvm_lower` (task stack at `M_WORK + 2^20`, top in `M_ONE`).
+  - `_jvm_emit`.
+- Pitfalls:
+  - A variable declared inside an `if_`/`for_` body is out of scope after it: declare it first.
+  - `jk_emit_pass` gives, so call it through `_emit_pass_call`.
+  - `M_NEEDS_PK` is reset after the counting pass. Pass 2 (all attempts) sets `J_PK`.
+- Checks:
+  - `tests/test_xax_selfhost_jvm.py`.
+  - The JVM tests with `XAX_GENERAL_FRONTEND_DIFF=1`.
+  - Recording every `compile_jvm_bound_target` call of a test module against `jvm_with_xax` finds the declines to port next.
+- Next: floats and conversions (`test_conversions`, `test_arithmetic_and_compares`), platform calls, traps. After that, a driver request path for JARs (then rotate the seed), and S15e.6 (Android).
+
+## S15e.5b JVM floats — 2026-10-22 (ADR-328)
+
+- `_float_nodes` in `xax_selfhost_jvm_lower.py`.
+- `K_FCONST` is (raw bits, width).
+- `_relation_of` maps both compare kinds. `_compare_to_int` sets `prefix` to the relation and `prefix_fl` for a float compare.
+- The task stack runs the last pushed task first. When a lowering pushes a conditional tail and an unconditional head, push the tail first.
+- `INTERNAL_LABELS` (in `_jvm_method`) feeds the interference `M_ACROSS` and the definite-assignment points.
+- Next: `CALL_FOREIGN` (the platform calls of `java_base_api`, `jvm_static`/`jvm_virtual`), then their rejections (`test_descriptor_type_mismatch_rejects`, `test_foreign_abi_from_another_platform_rejects`, `test_static_arity_mismatch_rejects`).
+
+## S15e.5c JVM references and platform calls — 2026-10-22 (ADR-329)
+
+- `xax_selfhost_jvm_foreign`:
+  - `jk_intern` (codes `D_REF + k`; texts in the class store, `J_REFS`/`J_NREFS`).
+  - `jk_vdesc` (every value type; `_jvm_desc` and `jm_types` call it).
+  - `jk_matches`.
+  - `jk_member` (an `MB_*` record whose texts are words).
+- `kind(e, d)` maps a reference code to `D_A` for the opcode tables.
+- Reference codes start at 16 so that they never collide with `ST_FREED`/`ST_TOP`.
+- Store objects for a reference type need its opaque element: `opaque_identity_type(REFERENCE_PREFIX + text)`.
+- Next:
+  - The object kinds (`_object_member`: new, arrays, instance fields, `ldc`, `checkcast`, `instanceof`, `putstatic`).
+  - Then the memory profile (`xax/jvm/Memory`, loads and stores through `xax$ld*`/`xax$st*`).
+  - The general and object profiles.
+  - The driver request path.
+
+## S15e.5d JVM object kinds — 2026-10-22 (ADR-330)
+
+- `MB_KIND` (`OK_*`): `OK_CALL` is the call kinds.
+- `K_FOREIGN` takes a phase: 1 is `new`'s head, 0 the instruction.
+- The member record's `MB_FSIZE` is the field descriptor's size, which the Fieldref records for the depth scan.
+- Next:
+  - Callbacks: `_callbacks` and the `jvm-interface` code entries, which may add classes to the JAR.
+  - Indirect calls: `_indirect_calls`, the `xax$i<k>` dispatchers.
+  - Recursion groups.
+  - The memory and general profiles.
+
+## S15e.5e JVM callbacks — 2026-10-22 (ADR-331)
+
+- `xax_selfhost_jvm_callback`:
+  - `jk_table` runs after the signatures: the table and the groups.
+  - `jk_cb_signature`.
+  - `jk_callbacks` runs inside `jk_class`, before `xax$pk`, whose record then moves ahead of the callback records.
+- `jk_parse` (in `_jvm_foreign`) parses a descriptor without diagnostics.
+- `jk_vdesc` gives a `jvm-interface` code entry's pointer the type `L<interface>;`.
+- `scratchpad/jprobe.py`-style probing works: read `GLOBALS + J_STATE` and its fields after a native run to see how far a declined compile got. A zero state means a front-end decline.
+- Next, the general profile's operations, in `xax_jvm`'s order:
+  - aggregates and sums (flattened `long[]`);
+  - links;
+  - `STACK_ALLOC` and the shadow stack (`S`, `M`, the memory members);
+  - atomics;
+  - indirect calls (`xax$i<k>`).
+- Then the memory profile's members, recursion groups, the threaded launcher, and the driver request path.
