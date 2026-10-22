@@ -20,10 +20,10 @@
   "spec_revision": "XAX_SPEC.md \u00a716",
   "compiler": {
     "store": "xax_compiler_driver_general.xax",
-    "store_sha256": "7299817e4b1a6914a40f69359cad3ddf3a19356370bc93cffdf508881846c79b",
-    "semantic_root": "fac937a4e3dee15a5e0e9781f202c4f85a24e407c0b8b6502767715a3e777aeb",
-    "request_store_sha256": "8bfa5922c13b51e01017b90975a8cc3e38e612a524a99dda685642b5f117786e",
-    "request_root": "40928f4118c2058aa2188beed04162cc5764a24ec36693fa778ef591b0f4838b",
+    "store_sha256": "6ff9f3f0a422a9e1acb9e9fe185de45be9cacfa1176ada7675fc26c7e2319e14",
+    "semantic_root": "655af3d24b200252ab9662c27f769c10c0cc3e1b6fb08e2668f4f31a0399a5f7",
+    "request_store_sha256": "6b0418f2c86ed7148f4fe6788efb3022573acd25d69ee766837d742371b46d50",
+    "request_root": "4c8c15aea02a07127db1c44d89d24f97ca7cc03899f8198a217353662c8aa004",
     "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
     "resolver_identity": "xax-driver-resolver-v1",
     "policy_root": "15264515d69f8d9ed3287f17674e1d0e87809fd366832b905d9423121ec62540",
@@ -31,52 +31,52 @@
   },
   "seed": {
     "kind": "the driver store lowered by the XAX views backend for x86_64-linux-views-exec-v1, in a Python host process",
-    "sha256": "ea729ce221fe309ab1cc8236070794e816d1ac7a4b71e1de9de284f69af9c26c",
-    "bytes": 52073342,
+    "sha256": "a9fe721694a18c1a22828746f184219550732e08b7ac137cd64a16cecb83d9f2",
+    "bytes": 59221208,
     "requires_python": true,
-    "host_s_nonsemantic": 100.4
+    "host_s_nonsemantic": 122.2
   },
   "references": {
-    "python_resolver_snapshot_sha256": "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782",
-    "python_resolve_s_nonsemantic": 154.1,
-    "bootstrap_compile_sha256": "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-    "bootstrap_compile_bytes": 14372181,
-    "bootstrap_compile_s_nonsemantic": 1349.8
+    "python_resolver_snapshot_sha256": "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3",
+    "python_resolve_s_nonsemantic": 155.9,
+    "bootstrap_compile_sha256": "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+    "bootstrap_compile_bytes": 16131497,
+    "bootstrap_compile_s_nonsemantic": 1446.3
   },
   "generations": [
     {
       "generation": 1,
       "producer": "C0",
-      "producer_sha256": "ea729ce221fe309ab1cc8236070794e816d1ac7a4b71e1de9de284f69af9c26c",
+      "producer_sha256": "a9fe721694a18c1a22828746f184219550732e08b7ac137cd64a16cecb83d9f2",
       "resolve": {
         "status": "image",
         "outputs": [
-          "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782"
+          "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3"
         ],
-        "host_s_nonsemantic": 71.31,
-        "peak_rss_kib_nonsemantic": 4622772
+        "host_s_nonsemantic": 75.84,
+        "peak_rss_kib_nonsemantic": 5106388
       },
       "build": {
         "status": "image",
         "outputs": [
-          "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-          "770c4d12386876c7c32bd7deff53455023cc3f90d372da1eb7fe1aa4451422ef"
+          "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+          "ab48557ea82d08f0a21d94e83e55382e4f70ef775cfa3046516297c23fa72c33"
         ],
-        "host_s_nonsemantic": 310.78,
-        "peak_rss_kib_nonsemantic": 4622772
+        "host_s_nonsemantic": 334.62,
+        "peak_rss_kib_nonsemantic": 5106388
       },
-      "snapshot_sha256": "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782",
+      "snapshot_sha256": "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-      "artifact_bytes": 14372181,
-      "provenance_sha256": "770c4d12386876c7c32bd7deff53455023cc3f90d372da1eb7fe1aa4451422ef",
+      "artifact_sha256": "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+      "artifact_bytes": 16131497,
+      "provenance_sha256": "ab48557ea82d08f0a21d94e83e55382e4f70ef775cfa3046516297c23fa72c33",
       "provenance": {
-        "cid": "594af9d42068f6398539092abf9a86a369ee536431aa6d47cd03a9445f59dbe7",
-        "snapshot_root": "c7c76ad1da7d384f92bbab85c2cf4973ca9962c65f325fc587070c4fb59c7470",
-        "request_root": "40928f4118c2058aa2188beed04162cc5764a24ec36693fa778ef591b0f4838b",
+        "cid": "52d728207f813fa2d0bf90a6c48f27fe276b5c791880d47fdf59047dfe2faa74",
+        "snapshot_root": "e8f89989f341c2d3d290d83217845dffca8ef286ebb8f91f3efa4af619c691ba",
+        "request_root": "4c8c15aea02a07127db1c44d89d24f97ca7cc03899f8198a217353662c8aa004",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "9918af23a773455bc9811dcb720a359b2b9e3841e33ebc2afa22f948c92d8638",
+        "artifact_digest_blake3": "51cffd63ae12acfb331ae86e91339024a609d0548f5f4a66131ac42e35e15525",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       },
@@ -85,36 +85,36 @@
     {
       "generation": 2,
       "producer": "C1",
-      "producer_sha256": "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
+      "producer_sha256": "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
       "resolve": {
         "status": "image",
         "outputs": [
-          "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782"
+          "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3"
         ],
-        "host_s_nonsemantic": 24.65,
-        "peak_rss_kib_nonsemantic": 6964744
+        "host_s_nonsemantic": 26.48,
+        "peak_rss_kib_nonsemantic": 7705288
       },
       "build": {
         "status": "image",
         "outputs": [
-          "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-          "770c4d12386876c7c32bd7deff53455023cc3f90d372da1eb7fe1aa4451422ef"
+          "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+          "ab48557ea82d08f0a21d94e83e55382e4f70ef775cfa3046516297c23fa72c33"
         ],
-        "host_s_nonsemantic": 91.54,
-        "peak_rss_kib_nonsemantic": 6964744
+        "host_s_nonsemantic": 100.75,
+        "peak_rss_kib_nonsemantic": 7705288
       },
-      "snapshot_sha256": "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782",
+      "snapshot_sha256": "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-      "artifact_bytes": 14372181,
-      "provenance_sha256": "770c4d12386876c7c32bd7deff53455023cc3f90d372da1eb7fe1aa4451422ef",
+      "artifact_sha256": "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+      "artifact_bytes": 16131497,
+      "provenance_sha256": "ab48557ea82d08f0a21d94e83e55382e4f70ef775cfa3046516297c23fa72c33",
       "provenance": {
-        "cid": "594af9d42068f6398539092abf9a86a369ee536431aa6d47cd03a9445f59dbe7",
-        "snapshot_root": "c7c76ad1da7d384f92bbab85c2cf4973ca9962c65f325fc587070c4fb59c7470",
-        "request_root": "40928f4118c2058aa2188beed04162cc5764a24ec36693fa778ef591b0f4838b",
+        "cid": "52d728207f813fa2d0bf90a6c48f27fe276b5c791880d47fdf59047dfe2faa74",
+        "snapshot_root": "e8f89989f341c2d3d290d83217845dffca8ef286ebb8f91f3efa4af619c691ba",
+        "request_root": "4c8c15aea02a07127db1c44d89d24f97ca7cc03899f8198a217353662c8aa004",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "9918af23a773455bc9811dcb720a359b2b9e3841e33ebc2afa22f948c92d8638",
+        "artifact_digest_blake3": "51cffd63ae12acfb331ae86e91339024a609d0548f5f4a66131ac42e35e15525",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -122,36 +122,36 @@
     {
       "generation": 3,
       "producer": "C2",
-      "producer_sha256": "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
+      "producer_sha256": "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
       "resolve": {
         "status": "image",
         "outputs": [
-          "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782"
+          "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3"
         ],
-        "host_s_nonsemantic": 23.37,
-        "peak_rss_kib_nonsemantic": 6964744
+        "host_s_nonsemantic": 26.39,
+        "peak_rss_kib_nonsemantic": 7705288
       },
       "build": {
         "status": "image",
         "outputs": [
-          "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-          "770c4d12386876c7c32bd7deff53455023cc3f90d372da1eb7fe1aa4451422ef"
+          "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+          "ab48557ea82d08f0a21d94e83e55382e4f70ef775cfa3046516297c23fa72c33"
         ],
-        "host_s_nonsemantic": 94.41,
-        "peak_rss_kib_nonsemantic": 6964744
+        "host_s_nonsemantic": 103.03,
+        "peak_rss_kib_nonsemantic": 7705288
       },
-      "snapshot_sha256": "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782",
+      "snapshot_sha256": "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3",
       "snapshot_equals_python_resolver": true,
-      "artifact_sha256": "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-      "artifact_bytes": 14372181,
-      "provenance_sha256": "770c4d12386876c7c32bd7deff53455023cc3f90d372da1eb7fe1aa4451422ef",
+      "artifact_sha256": "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+      "artifact_bytes": 16131497,
+      "provenance_sha256": "ab48557ea82d08f0a21d94e83e55382e4f70ef775cfa3046516297c23fa72c33",
       "provenance": {
-        "cid": "594af9d42068f6398539092abf9a86a369ee536431aa6d47cd03a9445f59dbe7",
-        "snapshot_root": "c7c76ad1da7d384f92bbab85c2cf4973ca9962c65f325fc587070c4fb59c7470",
-        "request_root": "40928f4118c2058aa2188beed04162cc5764a24ec36693fa778ef591b0f4838b",
+        "cid": "52d728207f813fa2d0bf90a6c48f27fe276b5c791880d47fdf59047dfe2faa74",
+        "snapshot_root": "e8f89989f341c2d3d290d83217845dffca8ef286ebb8f91f3efa4af619c691ba",
+        "request_root": "4c8c15aea02a07127db1c44d89d24f97ca7cc03899f8198a217353662c8aa004",
         "target_root": "0843714bb8ab058c655fa9e2833f37ed0ddcd009338ce44669fc2ef5117d682e",
         "profile_root": "9e3dd6a9aa3ff407ed694b8705c82fcc13c472b818f189a1a45a7825ac1a967e",
-        "artifact_digest_blake3": "9918af23a773455bc9811dcb720a359b2b9e3841e33ebc2afa22f948c92d8638",
+        "artifact_digest_blake3": "51cffd63ae12acfb331ae86e91339024a609d0548f5f4a66131ac42e35e15525",
         "compiler_identity": "bc351ca3286fa3ff21d2b39e3ea374c3b0f01fb45a5e601d29c2dc08105ce117",
         "lowering_identity": "9dc8d0005a602a54b513fb90539525d8db5eefc9936a8d442b660b6e3c80ebd2"
       }
@@ -160,15 +160,15 @@
   "fixed_point": {
     "comparison": "raw executable bytes (SHA-256)",
     "artifacts": [
-      "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-      "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069",
-      "47d040ace4fa9c6afd17375fe4b1b11708d34fc408587dbd7875feb68569c069"
+      "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+      "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b",
+      "57d75d55a74b4b86cae5067d6d560685e0cd788abab7f5ecdbf9f8aa8ecffe9b"
     ]
   },
   "empty_environment_run": {
     "environment": "empty (no PATH, no PYTHONPATH)",
     "status": "image",
-    "snapshot_sha256": "861d2d030b164e6afbe2d01dc006e2123ef9e7cb2712ba3ad123a7f070804782"
+    "snapshot_sha256": "d2ac77097db72170752be11b83a99199bfaf10c8c3daa2adf3467d15c69fbeb3"
   },
   "executables_have_interpreter": {
     "C0": false,
@@ -908,19 +908,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "dfe88b1e42582629a4bbd16fa1ffb151111b05ce0e082bfedaaa6b695744d915"
+          "3111455778a8b49e9da2cc41b94ce219180eb19ad0c44249a2b7eff44e3b2290"
         ],
         "C1": [
           "image",
-          "dfe88b1e42582629a4bbd16fa1ffb151111b05ce0e082bfedaaa6b695744d915"
+          "3111455778a8b49e9da2cc41b94ce219180eb19ad0c44249a2b7eff44e3b2290"
         ],
         "C2": [
           "image",
-          "dfe88b1e42582629a4bbd16fa1ffb151111b05ce0e082bfedaaa6b695744d915"
+          "3111455778a8b49e9da2cc41b94ce219180eb19ad0c44249a2b7eff44e3b2290"
         ],
         "C3": [
           "image",
-          "dfe88b1e42582629a4bbd16fa1ffb151111b05ce0e082bfedaaa6b695744d915"
+          "3111455778a8b49e9da2cc41b94ce219180eb19ad0c44249a2b7eff44e3b2290"
         ]
       },
       "reference": null
@@ -1010,19 +1010,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+          "b0c1f93398ccec671e6f44ef751b98f3c98da29b67709217ecb1cc3b51e33a46"
         ],
         "C1": [
           "image",
-          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+          "b0c1f93398ccec671e6f44ef751b98f3c98da29b67709217ecb1cc3b51e33a46"
         ],
         "C2": [
           "image",
-          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+          "b0c1f93398ccec671e6f44ef751b98f3c98da29b67709217ecb1cc3b51e33a46"
         ],
         "C3": [
           "image",
-          "2ab76ea26dd1852887e074cfcf63623dc682d3ec6c0feb312df3a72a300c3c0b"
+          "b0c1f93398ccec671e6f44ef751b98f3c98da29b67709217ecb1cc3b51e33a46"
         ]
       },
       "reference": null
@@ -1061,19 +1061,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
+          "f2f3fd9e0238672faf30b49a71d72255134a4f2b950ad9ca7470969e24977a01"
         ],
         "C1": [
           "image",
-          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
+          "f2f3fd9e0238672faf30b49a71d72255134a4f2b950ad9ca7470969e24977a01"
         ],
         "C2": [
           "image",
-          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
+          "f2f3fd9e0238672faf30b49a71d72255134a4f2b950ad9ca7470969e24977a01"
         ],
         "C3": [
           "image",
-          "a93c9aff31273be3061b8d38ecc9d12621cacbdd4e71f29f5a3314218acf5576"
+          "f2f3fd9e0238672faf30b49a71d72255134a4f2b950ad9ca7470969e24977a01"
         ]
       },
       "reference": null
@@ -1112,19 +1112,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+          "dbbdbb6f73fa2c91531448aaf156450dc83e198e0433231d8bc8752af41d7698"
         ],
         "C1": [
           "image",
-          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+          "dbbdbb6f73fa2c91531448aaf156450dc83e198e0433231d8bc8752af41d7698"
         ],
         "C2": [
           "image",
-          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+          "dbbdbb6f73fa2c91531448aaf156450dc83e198e0433231d8bc8752af41d7698"
         ],
         "C3": [
           "image",
-          "5ff1058c957edf40021e7adb5c31dde283c8ff7c1a781e3b5f74cea27e3be002"
+          "dbbdbb6f73fa2c91531448aaf156450dc83e198e0433231d8bc8752af41d7698"
         ]
       },
       "reference": null
@@ -1163,19 +1163,19 @@
       "outcomes": {
         "C0": [
           "image",
-          "9742a6dd238013f1870372e2e32dbe1b0dc787b3ba5fca776fb17ef58f83b754"
+          "b19cdfd0ea5ea78b3a1540723b7cec714f38ab0745249289e1d16959b0b12c68"
         ],
         "C1": [
           "image",
-          "9742a6dd238013f1870372e2e32dbe1b0dc787b3ba5fca776fb17ef58f83b754"
+          "b19cdfd0ea5ea78b3a1540723b7cec714f38ab0745249289e1d16959b0b12c68"
         ],
         "C2": [
           "image",
-          "9742a6dd238013f1870372e2e32dbe1b0dc787b3ba5fca776fb17ef58f83b754"
+          "b19cdfd0ea5ea78b3a1540723b7cec714f38ab0745249289e1d16959b0b12c68"
         ],
         "C3": [
           "image",
-          "9742a6dd238013f1870372e2e32dbe1b0dc787b3ba5fca776fb17ef58f83b754"
+          "b19cdfd0ea5ea78b3a1540723b7cec714f38ab0745249289e1d16959b0b12c68"
         ]
       },
       "reference": null
@@ -4187,6 +4187,518 @@
       ]
     },
     {
+      "case": "build: a Windows DLL (export_high) 1",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.WINDOWS.EXPORT",
+        "WINDOWS-EXPORT-NAME"
+      ]
+    },
+    {
+      "case": "build: an accelerator deployment (none) 1",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ],
+        "C1": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ],
+        "C2": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ],
+        "C3": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ]
+      },
+      "reference": [
+        "image",
+        "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+        "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+      ]
+    },
+    {
+      "case": "build: a Windows DLL (export_nul) 2",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.WINDOWS.EXPORT",
+          "WINDOWS-EXPORT-NAME"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.WINDOWS.EXPORT",
+        "WINDOWS-EXPORT-NAME"
+      ]
+    },
+    {
+      "case": "build: an accelerator deployment (artifact) 1",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ARTIFACT",
+        "BUILD-ARTIFACT-SUPPORTED"
+      ]
+    },
+    {
+      "case": "build: a Windows DLL (constructed) 1",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
+          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+        ],
+        "C1": [
+          "image",
+          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
+          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+        ],
+        "C2": [
+          "image",
+          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
+          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+        ],
+        "C3": [
+          "image",
+          "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
+          "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+        ]
+      },
+      "reference": [
+        "image",
+        "b1f9603539d8da03aaff5f0d5150d96b14eb3fd9c1135c57df99b97b89008a8a",
+        "d795568964207277dc0fc241cba9a729523ba4712d1b4fc15bc8cabd36f38765"
+      ]
+    },
+    {
+      "case": "build: an accelerator deployment (artifact) 2",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.BUILD.ARTIFACT",
+          "BUILD-ARTIFACT-SUPPORTED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.BUILD.ARTIFACT",
+        "BUILD-ARTIFACT-SUPPORTED"
+      ]
+    },
+    {
+      "case": "build: a Windows DLL (constructed) 2",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
+          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+        ],
+        "C1": [
+          "image",
+          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
+          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+        ],
+        "C2": [
+          "image",
+          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
+          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+        ],
+        "C3": [
+          "image",
+          "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
+          "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+        ]
+      },
+      "reference": [
+        "image",
+        "4adeefcede8230d4ae662aed6faeb28dc7c9e80bff871ee3801cea4e13512001",
+        "2bdfdaf978327f8d89c934e9604df5f73cbea3c6271bdf08f8ec22b58b342b74"
+      ]
+    },
+    {
+      "case": "build: an accelerator deployment (none) 2",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ],
+        "C1": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ],
+        "C2": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ],
+        "C3": [
+          "image",
+          "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+          "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+        ]
+      },
+      "reference": [
+        "image",
+        "4e3c8522d322a3c0edceb93df393813c5f7017ca82c2427e94dbf258447ec79f",
+        "9b7c780d49c079b3ba6f5dbf08994138b0addf20263741cc7202c362bef4c7e7"
+      ]
+    },
+    {
+      "case": "build: a SPIR-V collatz kernel",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "a66bec84bf8c9765a1c0a95d40da99f9f0e7e2094e3178d5a2c9f0bee6029c79",
+          "28d9479c7092a53999f1912d72066eac65f81391ab0163cf659719345ff4b53d"
+        ],
+        "C1": [
+          "image",
+          "a66bec84bf8c9765a1c0a95d40da99f9f0e7e2094e3178d5a2c9f0bee6029c79",
+          "28d9479c7092a53999f1912d72066eac65f81391ab0163cf659719345ff4b53d"
+        ],
+        "C2": [
+          "image",
+          "a66bec84bf8c9765a1c0a95d40da99f9f0e7e2094e3178d5a2c9f0bee6029c79",
+          "28d9479c7092a53999f1912d72066eac65f81391ab0163cf659719345ff4b53d"
+        ],
+        "C3": [
+          "image",
+          "a66bec84bf8c9765a1c0a95d40da99f9f0e7e2094e3178d5a2c9f0bee6029c79",
+          "28d9479c7092a53999f1912d72066eac65f81391ab0163cf659719345ff4b53d"
+        ]
+      },
+      "reference": [
+        "image",
+        "a66bec84bf8c9765a1c0a95d40da99f9f0e7e2094e3178d5a2c9f0bee6029c79",
+        "28d9479c7092a53999f1912d72066eac65f81391ab0163cf659719345ff4b53d"
+      ]
+    },
+    {
+      "case": "build: a SPIR-V mix kernel",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "a5066e35c93da7f499d8be3e9412c4f5f03835bc436995545896992ac66dbdd6",
+          "09bfc43cedd5bf5fc829c3eca3e32282a293e04cd7f1886217d2e750bc876d9c"
+        ],
+        "C1": [
+          "image",
+          "a5066e35c93da7f499d8be3e9412c4f5f03835bc436995545896992ac66dbdd6",
+          "09bfc43cedd5bf5fc829c3eca3e32282a293e04cd7f1886217d2e750bc876d9c"
+        ],
+        "C2": [
+          "image",
+          "a5066e35c93da7f499d8be3e9412c4f5f03835bc436995545896992ac66dbdd6",
+          "09bfc43cedd5bf5fc829c3eca3e32282a293e04cd7f1886217d2e750bc876d9c"
+        ],
+        "C3": [
+          "image",
+          "a5066e35c93da7f499d8be3e9412c4f5f03835bc436995545896992ac66dbdd6",
+          "09bfc43cedd5bf5fc829c3eca3e32282a293e04cd7f1886217d2e750bc876d9c"
+        ]
+      },
+      "reference": [
+        "image",
+        "a5066e35c93da7f499d8be3e9412c4f5f03835bc436995545896992ac66dbdd6",
+        "09bfc43cedd5bf5fc829c3eca3e32282a293e04cd7f1886217d2e750bc876d9c"
+      ]
+    },
+    {
+      "case": "build: a SPIR-V trap kernel",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "240ee0e5107f09904f8b64b69624b3c933617016be5524da69f3ba57610bdd81",
+          "9326c5f6e915bcd08d36db79174f6d42359cbce92355a665404fafed2899a027"
+        ],
+        "C1": [
+          "image",
+          "240ee0e5107f09904f8b64b69624b3c933617016be5524da69f3ba57610bdd81",
+          "9326c5f6e915bcd08d36db79174f6d42359cbce92355a665404fafed2899a027"
+        ],
+        "C2": [
+          "image",
+          "240ee0e5107f09904f8b64b69624b3c933617016be5524da69f3ba57610bdd81",
+          "9326c5f6e915bcd08d36db79174f6d42359cbce92355a665404fafed2899a027"
+        ],
+        "C3": [
+          "image",
+          "240ee0e5107f09904f8b64b69624b3c933617016be5524da69f3ba57610bdd81",
+          "9326c5f6e915bcd08d36db79174f6d42359cbce92355a665404fafed2899a027"
+        ]
+      },
+      "reference": [
+        "image",
+        "240ee0e5107f09904f8b64b69624b3c933617016be5524da69f3ba57610bdd81",
+        "9326c5f6e915bcd08d36db79174f6d42359cbce92355a665404fafed2899a027"
+      ]
+    },
+    {
+      "case": "build: a browser page (fib)",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "2c4361ff3b72d8551eb125f3f185fcbfaa2d1bf5d393bef846883697b1165f63",
+          "5431bccbfc6af00d3ed71f93bd77b0428ad5ce355907d1e9c87e52de15126b27"
+        ],
+        "C1": [
+          "image",
+          "2c4361ff3b72d8551eb125f3f185fcbfaa2d1bf5d393bef846883697b1165f63",
+          "5431bccbfc6af00d3ed71f93bd77b0428ad5ce355907d1e9c87e52de15126b27"
+        ],
+        "C2": [
+          "image",
+          "2c4361ff3b72d8551eb125f3f185fcbfaa2d1bf5d393bef846883697b1165f63",
+          "5431bccbfc6af00d3ed71f93bd77b0428ad5ce355907d1e9c87e52de15126b27"
+        ],
+        "C3": [
+          "image",
+          "2c4361ff3b72d8551eb125f3f185fcbfaa2d1bf5d393bef846883697b1165f63",
+          "5431bccbfc6af00d3ed71f93bd77b0428ad5ce355907d1e9c87e52de15126b27"
+        ]
+      },
+      "reference": [
+        "image",
+        "2c4361ff3b72d8551eb125f3f185fcbfaa2d1bf5d393bef846883697b1165f63",
+        "5431bccbfc6af00d3ed71f93bd77b0428ad5ce355907d1e9c87e52de15126b27"
+      ]
+    },
+    {
+      "case": "build: a browser page (random)",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "d14a53a94ca9f24930dfc8b63297efe27634403bc716f13ee8f530949a17aaee",
+          "71dde16cbb5168958ac838a416ce9db201159209f2f7c7d88aeab216199e8e6b"
+        ],
+        "C1": [
+          "image",
+          "d14a53a94ca9f24930dfc8b63297efe27634403bc716f13ee8f530949a17aaee",
+          "71dde16cbb5168958ac838a416ce9db201159209f2f7c7d88aeab216199e8e6b"
+        ],
+        "C2": [
+          "image",
+          "d14a53a94ca9f24930dfc8b63297efe27634403bc716f13ee8f530949a17aaee",
+          "71dde16cbb5168958ac838a416ce9db201159209f2f7c7d88aeab216199e8e6b"
+        ],
+        "C3": [
+          "image",
+          "d14a53a94ca9f24930dfc8b63297efe27634403bc716f13ee8f530949a17aaee",
+          "71dde16cbb5168958ac838a416ce9db201159209f2f7c7d88aeab216199e8e6b"
+        ]
+      },
+      "reference": [
+        "image",
+        "d14a53a94ca9f24930dfc8b63297efe27634403bc716f13ee8f530949a17aaee",
+        "71dde16cbb5168958ac838a416ce9db201159209f2f7c7d88aeab216199e8e6b"
+      ]
+    },
+    {
+      "case": "build: a browser page (random)",
+      "kind": "positive",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "image",
+          "600bedfcf0861754b99be4b5e912604775e2fa12e87953aaf5d1a3bf0e37f823",
+          "be49ffbd737c6b5d87ef4e415a005a9975f15f3052cafbd049cbebee25e07902"
+        ],
+        "C1": [
+          "image",
+          "600bedfcf0861754b99be4b5e912604775e2fa12e87953aaf5d1a3bf0e37f823",
+          "be49ffbd737c6b5d87ef4e415a005a9975f15f3052cafbd049cbebee25e07902"
+        ],
+        "C2": [
+          "image",
+          "600bedfcf0861754b99be4b5e912604775e2fa12e87953aaf5d1a3bf0e37f823",
+          "be49ffbd737c6b5d87ef4e415a005a9975f15f3052cafbd049cbebee25e07902"
+        ],
+        "C3": [
+          "image",
+          "600bedfcf0861754b99be4b5e912604775e2fa12e87953aaf5d1a3bf0e37f823",
+          "be49ffbd737c6b5d87ef4e415a005a9975f15f3052cafbd049cbebee25e07902"
+        ]
+      },
+      "reference": [
+        "image",
+        "600bedfcf0861754b99be4b5e912604775e2fa12e87953aaf5d1a3bf0e37f823",
+        "be49ffbd737c6b5d87ef4e415a005a9975f15f3052cafbd049cbebee25e07902"
+      ]
+    },
+    {
+      "case": "build: a browser page (memory)",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.WASM.MEMORY",
+          "WASM-STATIC-MEMORY-LIMIT"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.WASM.MEMORY",
+          "WASM-STATIC-MEMORY-LIMIT"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.WASM.MEMORY",
+          "WASM-STATIC-MEMORY-LIMIT"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.WASM.MEMORY",
+          "WASM-STATIC-MEMORY-LIMIT"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.WASM.MEMORY",
+        "WASM-STATIC-MEMORY-LIMIT"
+      ]
+    },
+    {
+      "case": "build: a browser page (forged_import)",
+      "kind": "negative",
+      "command": "build",
+      "outcomes": {
+        "C0": [
+          "rejected",
+          "XAX.WEB.IMPORT",
+          "WEB-IMPORT-DECLARED"
+        ],
+        "C1": [
+          "rejected",
+          "XAX.WEB.IMPORT",
+          "WEB-IMPORT-DECLARED"
+        ],
+        "C2": [
+          "rejected",
+          "XAX.WEB.IMPORT",
+          "WEB-IMPORT-DECLARED"
+        ],
+        "C3": [
+          "rejected",
+          "XAX.WEB.IMPORT",
+          "WEB-IMPORT-DECLARED"
+        ]
+      },
+      "reference": [
+        "rejected",
+        "XAX.WEB.IMPORT",
+        "WEB-IMPORT-DECLARED"
+      ]
+    },
+    {
       "case": "resolve with dependencies",
       "kind": "positive",
       "command": "resolve",
@@ -4527,25 +5039,25 @@
           "rejected",
           "XAX.DRIVER.CAPACITY",
           "DRIVER-FILE-CAPACITY",
-          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+          "27ee032d9c2dfa854f65504641ee8b6296dad264e5f92aef5b5dc41855edef56"
         ],
         "C1": [
           "rejected",
           "XAX.DRIVER.CAPACITY",
           "DRIVER-FILE-CAPACITY",
-          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+          "27ee032d9c2dfa854f65504641ee8b6296dad264e5f92aef5b5dc41855edef56"
         ],
         "C2": [
           "rejected",
           "XAX.DRIVER.CAPACITY",
           "DRIVER-FILE-CAPACITY",
-          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+          "27ee032d9c2dfa854f65504641ee8b6296dad264e5f92aef5b5dc41855edef56"
         ],
         "C3": [
           "rejected",
           "XAX.DRIVER.CAPACITY",
           "DRIVER-FILE-CAPACITY",
-          "8e4ec48b418be2747c6add8204667ac72a9670de79f2c5f3d80303345235a435"
+          "27ee032d9c2dfa854f65504641ee8b6296dad264e5f92aef5b5dc41855edef56"
         ]
       },
       "reference": null
@@ -4587,22 +5099,22 @@
         "kinds": [
           "SetConstant"
         ],
-        "record_sha256": "4dcbad0b896f72e683156217e8b5db681f4f6db0de3aace5a6d0c59d1511ce80",
+        "record_sha256": "106649d645f37057acec1f22e0a7c59eb9de009a1a82a843e7bfe1d5b6e30b5d",
         "driver_edit": {
           "status": "image",
           "outputs": [
-            "17b7e701ea86ddbc571f4ebe4161399aadd75a9bf95130d610344beb93566b99"
+            "9e287fa3f4ed3b57734e22e2b3ee064185b1221aac9aa1ea96c2c3f765ce3cf5"
           ],
-          "host_s_nonsemantic": 22.24,
-          "peak_rss_kib_nonsemantic": 6964744
+          "host_s_nonsemantic": 26.21,
+          "peak_rss_kib_nonsemantic": 7705288
         },
         "request_edit": {
           "status": "image",
           "outputs": [
-            "56a55cc8c87b79e899700250497c320e0c8f3081c1b315615cfdf47d6f93b352"
+            "7c14f152f5047eeac50b03a8ea2d3a5a24e2e7f2d93168030b1429ac8cef3deb"
           ],
-          "host_s_nonsemantic": 23.29,
-          "peak_rss_kib_nonsemantic": 6964744
+          "host_s_nonsemantic": 26.07,
+          "peak_rss_kib_nonsemantic": 7705288
         }
       },
       {
@@ -4611,22 +5123,22 @@
         "kinds": [
           "DeleteNode"
         ],
-        "record_sha256": "30e4b2215b7a488a4dd6d807f020c7abd113e3f70c2c8e4ec9a0c74311d552f8",
+        "record_sha256": "48387fa3af94f8fced9507578d0a5b993106f149cb793dd220c76158c179499e",
         "driver_edit": {
           "status": "image",
           "outputs": [
-            "7299817e4b1a6914a40f69359cad3ddf3a19356370bc93cffdf508881846c79b"
+            "6ff9f3f0a422a9e1acb9e9fe185de45be9cacfa1176ada7675fc26c7e2319e14"
           ],
-          "host_s_nonsemantic": 22.22,
-          "peak_rss_kib_nonsemantic": 6964744
+          "host_s_nonsemantic": 26.46,
+          "peak_rss_kib_nonsemantic": 7705288
         },
         "request_edit": {
           "status": "image",
           "outputs": [
-            "8bfa5922c13b51e01017b90975a8cc3e38e612a524a99dda685642b5f117786e"
+            "6b0418f2c86ed7148f4fe6788efb3022573acd25d69ee766837d742371b46d50"
           ],
-          "host_s_nonsemantic": 22.18,
-          "peak_rss_kib_nonsemantic": 6964744
+          "host_s_nonsemantic": 26.05,
+          "peak_rss_kib_nonsemantic": 7705288
         }
       }
     ],
@@ -4656,7 +5168,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-894d5e58a6cd1a5b42fc77c3cb297eca5f9d8b2fd7fbe54c4bdeb274108b7b16.bin"
+      "record": "verified-hash-f23334fdbe9960c0d85c023be45148766edc0cab85ba64934b43dabf6f175cf1.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -4670,12 +5182,12 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-1edb038286cbb8948c206c11215a727879cb498f7ceb94fe1a1455fc6dbb50d2.bin"
+      "record": "verified-store-decoder-26ea3c141f35f855c8ad89c81d691d4306d1ad215673286ade0c80bfdd7a9402.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
-      "semantic_root": "38475748791bd6de6c022e5af52c4336608a83dcf3265be635e36c9291e04599",
-      "native_artifact_digest": "02dfaa70b1b9a0eaeb8e503955daa18faa864f77f357de6adbcd595dd8b25689",
+      "semantic_root": "53b5f4f2ffd52c1a00057356b15a3f35bc0a2cc771e1e4a078b604f6563edbe2",
+      "native_artifact_digest": "8370b030b1e749b2ab41e25564cc9dd7ce2e106a47883318f1e56b06c7ec3539",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -4684,12 +5196,12 @@
     "verification:store-writer": {
       "component": "verification:store-writer",
       "store_verification": "memoized",
-      "record": "verified-store-writer-17ae7821737a80dd24cce483d274279f192b6cfe7321c5c8f3d69536c337bc2e.bin"
+      "record": "verified-store-writer-9fca2d09d9c2c7469fb196ca1e556b5729ae378a0dfd76e1c73fed8f0ed312fa.bin"
     },
     "store-writer": {
       "component": "store-writer",
-      "semantic_root": "72d481a13b9513677642e43bd072d28d272d94e20c43a61076211a216440e7af",
-      "native_artifact_digest": "3c2b579934783262660845f32cc9069e35d63771341dcfb40217bfd315d8c093",
+      "semantic_root": "08b5cefec021e36dfb3b0d0c18812d82493e2c58774070a88c4785ca514324f8",
+      "native_artifact_digest": "7b5c047ce07cc12e3ad85b124877b795bd802e203d557ebbb9ba4f827af2525f",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -4698,7 +5210,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-1d7ae2cccf4f38f62c355b241ff0ff9cfbdfacd7ad84d07943623d79c6c74f46.bin"
+      "record": "verified-graph-decoder-9ac4a19ba679d852d537ab684ce65451c1d3ca1f769b2f3b09bb6b7c8162f83d.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -4712,7 +5224,7 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-4868af012357590a2f97725197d4615f465fb34e44e4dc7fa2b5344bb7dcc950.bin"
+      "record": "verified-cfg-01b2c1152dbb01f7d04654fc6c1a40460fdd92e5d6d51732695973bb5219a7d5.bin"
     },
     "cfg": {
       "component": "cfg",
@@ -4726,12 +5238,12 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-9861c78f5fdfbd0e9938ee9557ec30f9e4d5dfa657a247bd172092a1aeb376bc.bin"
+      "record": "verified-typing-646a520a4260929c2c10435755d8d441e134a01501b9e3a5d9199b87d7a8aab3.bin"
     },
     "typing": {
       "component": "typing",
-      "semantic_root": "f3d86259a40dc06e1abd8042807e3a6190a58e467e4bc30c75ca053a88b826fd",
-      "native_artifact_digest": "6436debb4f3a275b6faee6cc37886adf8d73d6dce7c824af6e246a46663a7942",
+      "semantic_root": "9eec25027c50dbc6b21429307f4bae8aa58dd1da617eda41bb89cdb287ffe83e",
+      "native_artifact_digest": "d0f9d43090f039c907bd0c62a2a0c348b8f96e07349a1beb5d4f630a11045128",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -4740,32 +5252,27 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-649b80bd62d9d67a80598fd4145c8ab8e61c9ced1dc776f1458b4f88e20f0709.bin"
+      "record": "verified-store-verifier-a5d9dcbe1b26b427b662b3d9bee8dac76a336c54e30fe5690af29552cf926624.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
-      "semantic_root": "38af48e9f9858c6526356c30fc0e45fec51b06000bfe26adc286c7c948f50d36",
-      "native_artifact_digest": "43dbd137d50b264d40107d4a7358ff98ded02570d80ab5e56f460997336288d3",
+      "semantic_root": "cc18f4dfefc53f4c79c79b1966536cb543811a691c803a9950932a6063806eb7",
+      "native_artifact_digest": "e9445626a9a8a6c2938e1e3e43f66245fdee9ba95a51cb372620a39ea5fbb3d5",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
       "fallback_reason": null,
-      "declined_inputs": 42496
-    },
-    "verification:compiler-driver-general": {
-      "component": "verification:compiler-driver-general",
-      "store_verification": "memoized",
-      "record": "verified-compiler-driver-general-e93c4dabc4bea5bb5da0bfe035e8adf51bd66a0bc35a5795675f3677bfc34c11.bin"
+      "declined_inputs": 54115
     },
     "verification:xax_x86_64_backend": {
       "component": "verification:xax_x86_64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_backend-240859f78998b4bb745920f9bb2c3e5ae5c0c92224fb1e281ffb64f8eb2a7ca4.bin"
+      "record": "verified-xax_x86_64_backend-bc9e6616dd62b050efe0ee60ec0c0ec581dc427844a3ab774f8e7f2a7cbe4f7f.bin"
     },
     "x86-64-views-backend": {
       "component": "x86-64-views-backend",
-      "semantic_root": "4a5582645f2f3c45ee30376eee0992a75fac778edc5c034c98a8e676e5b0e2bc",
-      "native_artifact_digest": "a4780f46333d36d026504afee02619f2393652a7283da77ae1a971a508861d6d",
+      "semantic_root": "001f2da27ffa84909f937cf0da402bd591de7548445e922250c5af1219522916",
+      "native_artifact_digest": "b2c1a2398bd38d27363866cd21c4533ddde72b7f2e9e874dbf92bb091c5bc991",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -4774,30 +5281,12 @@
     "verification:xax_x86_64_general": {
       "component": "verification:xax_x86_64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_x86_64_general-14be63fc1e050aaf32f87ee6b4fb91783ecba54306c493f6ab6bd6c63bc46eac.bin"
-    },
-    "lowering:x86-64-general-frontend": {
-      "component": "lowering:x86-64-general-frontend",
-      "semantic_root": "f175f59c3378c7c5f2645c232802cffb16d065076ae0cd9c27b46e30bc7c47cf",
-      "native_artifact_digest": "22d7750bc5198872133b13ec5736c9f3ec20dc87cebeb2b6d02da03cd26ee94f",
-      "requested_authority": "xax",
-      "actual_authority": "xax",
-      "fallback_occurred": false,
-      "fallback_reason": null
+      "record": "verified-xax_x86_64_general-3911642d131712be6741772ea8e494e7d7c67dfb5828d8638fe21c27bf39fd7c.bin"
     },
     "x86-64-general-frontend": {
       "component": "x86-64-general-frontend",
-      "semantic_root": "f175f59c3378c7c5f2645c232802cffb16d065076ae0cd9c27b46e30bc7c47cf",
-      "native_artifact_digest": "22d7750bc5198872133b13ec5736c9f3ec20dc87cebeb2b6d02da03cd26ee94f",
-      "requested_authority": "xax",
-      "actual_authority": "xax",
-      "fallback_occurred": false,
-      "fallback_reason": null
-    },
-    "lowering:riscv64-encoder": {
-      "component": "lowering:riscv64-encoder",
-      "semantic_root": "2f1cdd6cea169e7ff788d43b7e11068ccf802a2b090ee918128e81b9f7b2884f",
-      "native_artifact_digest": "fffd2989c93f099ff65c140bfd12ed2ac1b613525ac6fa31d1298ce83597dbd3",
+      "semantic_root": "cfd84a0beeec60f258a697633881482d4e4962fcb024fcc418446349b61b10f7",
+      "native_artifact_digest": "8074b2e99e66b4d9012fc64b4c5165ca67fdd1c5422ef3f6538bfded36fc36b7",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -4815,21 +5304,12 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-e05d6af90ddb8717cbc840c95dc57c917cd2c27bc9ec7b357cdf553a826888e8.bin"
-    },
-    "lowering:riscv64-backend": {
-      "component": "lowering:riscv64-backend",
-      "semantic_root": "27e2a5fb18793b42251262d5d6b2e47b9c88af37574e522562d3b1971b266ed4",
-      "native_artifact_digest": "c0b3fa9d6c0ba9d1c7c3d01130a33e399b0d0c84c60f445306e6102230e8c5a3",
-      "requested_authority": "xax",
-      "actual_authority": "xax",
-      "fallback_occurred": false,
-      "fallback_reason": null
+      "record": "verified-xax_riscv64_backend-790020b85aeefc10d22928d640d7b994a5ab7f948e54df09cc1e67cb8d50d0a3.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",
-      "semantic_root": "27e2a5fb18793b42251262d5d6b2e47b9c88af37574e522562d3b1971b266ed4",
-      "native_artifact_digest": "c0b3fa9d6c0ba9d1c7c3d01130a33e399b0d0c84c60f445306e6102230e8c5a3",
+      "semantic_root": "4903a36ae31ab668e89c24abda36fd92dd86f5cd672de8701efe6adc1ce4d1bc",
+      "native_artifact_digest": "4b40dddf59e2acdcbcbabd7a134ce5d211a091c548bc58bb09936ee841972803",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
@@ -4838,21 +5318,12 @@
     "verification:xax_aarch64_general": {
       "component": "verification:xax_aarch64_general",
       "store_verification": "memoized",
-      "record": "verified-xax_aarch64_general-b10ca1d128eac5e6f0051f20be21ed8f1c1a3f0161f7e7b2385b50ae8f40138d.bin"
-    },
-    "lowering:aarch64-general": {
-      "component": "lowering:aarch64-general",
-      "semantic_root": "dd2c69fbc6d524cc44c2296b04b3b58def2785274d4821e2458f7d5d7130b8f6",
-      "native_artifact_digest": "bb5d6eaee2fc7d4a1db6870daf0a4561752fcd0dce1c9704c13d92143980aca0",
-      "requested_authority": "xax",
-      "actual_authority": "xax",
-      "fallback_occurred": false,
-      "fallback_reason": null
+      "record": "verified-xax_aarch64_general-d5ea33641480e72f16b3060ca6d0ba53bbf0543a206fc3fe5bd3109ae0ab0830.bin"
     },
     "aarch64-general": {
       "component": "aarch64-general",
-      "semantic_root": "dd2c69fbc6d524cc44c2296b04b3b58def2785274d4821e2458f7d5d7130b8f6",
-      "native_artifact_digest": "bb5d6eaee2fc7d4a1db6870daf0a4561752fcd0dce1c9704c13d92143980aca0",
+      "semantic_root": "b2ce1e93a52fb677c1ae9954d6f35e42f5a3b9a05e52afc189e39ae760b0e8e4",
+      "native_artifact_digest": "275c1fa474dbbabb0f4fdcfac495054f7bd7c6740332d5d93844867061b7599b",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,

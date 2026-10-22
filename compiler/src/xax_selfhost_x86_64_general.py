@@ -36,6 +36,7 @@ import xax_selfhost_diagnostics as D
 import xax_selfhost_general_dll as DLL
 from xax_selfhost_general_accel import add_accelerator_functions
 from xax_selfhost_general_spirv import add_spirv_functions
+from xax_selfhost_general_wasm import W_ON, add_wasm_functions
 from xax_selfhost_general_view import add_view_functions, views_prologue
 from xax_selfhost_views_backend import (
     _FN, ARENA_END, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT,
@@ -48,7 +49,7 @@ STORE_PATH = bootstrap_dir() / "xax_x86_64_general.xax"
 OK = 1
 # S14a (ADR-284): the general program's arena starts after the views region (``xax_selfhost_general_view.VIEW_END``);
 # the front end's globals stay at the views backends' ``GLOBALS``.
-GENERAL_ARENA_AT = 68 << 20
+GENERAL_ARENA_AT = 73 << 20  # S15e.4 (ADR-322): was 68M, below the larger views region
 COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each function's four CID words in image order
 # Front-end state beyond the views backends' globals (``GLOBALS + slot``).
 (G_LSIZE, G_LALIGN, G_LSTACK, G_TABI, G_TFMT, G_NARGS, G_GENERAL, G_EA_AT, G_EA_N, G_FRAMES, G_TARGET, G_ENTRY,
@@ -159,9 +160,16 @@ def _starts_with(e: E, at, n, data: bytes):
 
 # -- ABI layouts ------------------------------------------------------------------------------------
 
-def _layout(tables):
-    """``abi_layout`` of TYPE object ``t`` (pointer bytes 8): its size, the alignment memoised in ``G_LALIGN``; NONE on
-    a rejection (a component without a layout, ``ABI-LAYOUT-VALUE-TYPE``) or a decline.  Components are laid out
+def _pointer_bytes(e: E):
+    """8, or 4 on the browser Wasm path (S15e.4, ADR-322: ``abi_layout(..., pointer_bytes=4)``)."""
+    from xax_selfhost_general_wasm import W_ON
+
+    return e.sel(e.ne(e.ld(W_ON), 0), 4, 8)
+
+
+def _layout(tables, wasm: bool = False):
+    """``abi_layout`` of TYPE object ``t`` (pointer bytes 8; with ``wasm``, 4 on the browser Wasm path, S15e.4): its size,
+    the alignment memoised in ``G_LALIGN``; NONE on a rejection (a component without a layout, ``ABI-LAYOUT-VALUE-TYPE``) or a decline.  Components are laid out
     depth first in their order, with an explicit stack, so the first component the bootstrap's recursion would reject
     is the one rejected."""
     def build(e: E):
@@ -265,7 +273,7 @@ def _layout(tables):
                 _reject(e, e.eq(1, 0), "ABI-LAYOUT-VALUE-TYPE", p["lo"],
                         lambda: D.text(e, LAYOUT_EXPECTED), lambda: D.integer(e, form))
 
-            e.if_(e.eq(form, 1), bits, lambda: e.if_(e.eq(form, 2), lambda: done(8, 8), lambda: e.if_(
+            e.if_(e.eq(form, 1), bits, lambda: e.if_(e.eq(form, 2), lambda: done(*((_pointer_bytes(e),) * 2 if wasm else (8, 8))), lambda: e.if_(
                 e.eq(form, 7), float_, lambda: e.if_(e.eq(form, 11), lambda: done(LINK_BYTES, LINK_BYTES), lambda: e.if_(
                     e.eq(form, 8), lambda: components(True), lambda: e.if_(e.eq(form, 9), array, lambda: e.if_(
                         e.eq(form, 10), lambda: components(False), reject)))))))
@@ -673,6 +681,7 @@ def _frontend(tables):
 
         group_member_tables(e, O)
 
+        e.st(W_ON, 0)  # S15e.4 (ADR-322): 8-byte pointers in ``abi_layout`` until the browser Wasm path sets it
         # 1. The target (``decode_native_target``'s fields up to the terminator list, of a verified target object).
         target = p["target"]
         _ok(e, e.eq(_kind(e, target), int(Kind.TARGET)))
@@ -749,6 +758,16 @@ def _frontend(tables):
             e.give(1)
 
         e.if_(e.eq(p["t_arch"], 7), spirv)
+
+        def wasm():
+            """S15e.4 (ADR-322): a browser page (``xax_selfhost_general_wasm``)."""
+            e.var("wasm_entry", e.call(_FN["find"], 1))
+            _ok(e, e.ne(p["wasm_entry"], NONE))
+            _call(e, "wasm", p["wasm_entry"])
+            e.st(0, OK)
+            e.give(1)
+
+        e.if_(e.eq(p["t_arch"], 2), wasm)
         e.st(GLOBALS + G_WINDOWS, e.flag(e.both(e.ne(p["t_windows"], 0), e.eq(p["t_arch"], 1))))
         linux = e.both(e.eq(p["t_abi"], LINUX_ABI), e.either(*(e.eq(p["t_fmt"], f) for f in ELF_FORMATS)))
         e.if_(e.eq(_g(e, G_WINDOWS), 0), lambda: _reject(e, linux, "LINUX-ELF-EXEC-TARGET", target, target_expected, target_actual))
@@ -907,6 +926,7 @@ def build_general_program():
     add_accelerator_functions(add, tables)  # S15e.7a (ADR-321)
     add_spirv_functions(add, tables)  # S15e.7b (ADR-321)
     add_view_functions(add, tables)
+    add_wasm_functions(add, tables)  # S15e.4 (ADR-322): after the views' ``abi_layout``
     program = add("frontend", _frontend(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
 

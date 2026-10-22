@@ -2053,10 +2053,9 @@ def _hosted_container(reader: StoreReader, function_root: bytes, target_object: 
 
         return compile_pe_executable(reader, function_root, target_object)
     if description.architecture == 2 and description.identity == WASM32_BROWSER_IDENTITY:
-        from xax_wasm import compile_wasm_bound_target
-        from xax_web import emit_browser_page
+        from xax_selfhost_general_wasm import browser_page
 
-        return emit_browser_page(compile_wasm_bound_target(reader, function_root, target_object))
+        return browser_page(reader, function_root, target_object)  # S15e.4 (ADR-322): the XAX general program first
     if description.architecture == SPIRV_ARCHITECTURE:
         from xax_selfhost_general_spirv import spirv_module
 

@@ -2423,7 +2423,7 @@ def add_frame_functions(add, tables):
 
     from xax_selfhost_x86_64_general import _layout
 
-    add("abi_layout", _layout(tables))  # the front end's ``layout`` (the view's block layout took that name)
+    add("abi_layout", _layout(tables, wasm=True))  # the front end's ``layout`` (the view's block layout took that name); S15e.4
     add("value_reject", _value_reject_fn(tables))
     add("width_reject", _width_reject_fn(tables))
     add("fixed_reject", _fixed_reject_fn(tables))
