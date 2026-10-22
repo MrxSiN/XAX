@@ -205,10 +205,14 @@ def _image_finish_fn(tables):
             e.st(e.add(p["if_order"], p["if_j"]), p["if_item"])
 
         e.for_("if_s", 1, members, insert)
-        # The stub's 16 bytes, then one thunk per distinct (library, name) in bundle call order.
+        # The stub's 16 bytes, then one thunk per distinct (library, name) in bundle call order; a bare-metal image
+        # (S15f.4, ADR-325) is the bundle alone.
+        from xax_selfhost_aarch64_frame import G_A64RAW
+        from xax_selfhost_views_backend import GLOBALS
+
+        e.var("if_raw", e.ld(GLOBALS + G_A64RAW))
         _set_ra(e, I_LEN, 0)
-        _put_text(e, 0, 8)
-        _put_text(e, 0, 8)
+        e.if_(e.eq(p["if_raw"], 0), lambda: (_put_text(e, 0, 8), _put_text(e, 0, 8)))
         e.var("if_thunks", _ra(e, J_THUNKS))  # (declaration, text offset, C import) per thunk
         e.var("if_nt", 0)
         e.var("if_dynamic", e.flag(e.eq(_g(e, G_TFMT), DYNAMIC_FORMAT)))
@@ -258,6 +262,7 @@ def _image_finish_fn(tables):
 
         function_calls(lambda: e.if_(e.ne(e.ld(e.add(p["if_cat"], 2)), 0), thunk_for))
         _set_ra(e, J_NTHUNKS, p["if_nt"])
+        e.if_(e.ne(p["if_raw"], 0), lambda: _ok(e, e.eq(p["if_nt"], 0)))  # a foreign call: the bootstrap decides
         # The bundle: each function at a 16-byte boundary.
         e.var("if_base", _ra(e, I_LEN))
         _set_ra(e, J_BASE, p["if_base"])
@@ -296,10 +301,14 @@ def _image_finish_fn(tables):
 
         e.var("if_entry", e.ld(_fn(e, e.ld(e.add(_g(e, G_CIDX), _g(e, G_ENTRY))), 6)))
         _set_ra(e, J_ENTRY, p["if_entry"])
-        e.var("if_stub", _bl(e, 0, e.add(p["if_base"], p["if_entry"])))
-        _ok(e, e.ne(p["if_stub"], NONE))
-        _patch(e, 0, p["if_stub"])
-        _patch(e, 4, 0xD4200000 | (BRK_ENTRY_RETURNED << 5))
+
+        def stub():
+            e.var("if_stub", _bl(e, 0, e.add(p["if_base"], p["if_entry"])))
+            _ok(e, e.ne(p["if_stub"], NONE))
+            _patch(e, 0, p["if_stub"])
+            _patch(e, 4, 0xD4200000 | (BRK_ENTRY_RETURNED << 5))
+
+        e.if_(e.eq(p["if_raw"], 0), stub)
 
         def foreign():
             e.var("if_site", e.add(e.add(p["if_base"], e.ld(_fn(e, p["if_f"], 6))), e.ld(p["if_cat"])))
@@ -313,7 +322,14 @@ def _image_finish_fn(tables):
             _patch(e, p["if_site"], p["if_word"])
 
         function_calls(lambda: e.if_(e.ne(e.ld(e.add(p["if_cat"], 2)), 0), foreign))
-        e.if_(e.ne(p["if_dynamic"], 0), lambda: _call(e, "a64_elf_dynamic"), lambda: _call(e, "a64_elf_static"))
+
+        def raw():
+            _set_ra(e, I_ELEN, 0)
+            _copy_text(e)
+            for slot in (I_OUT, I_NNEEDED, J_NNAMES):
+                _set_ra(e, slot, 0)
+
+        e.if_(e.ne(p["if_raw"], 0), raw, lambda: e.if_(e.ne(p["if_dynamic"], 0), lambda: _call(e, "a64_elf_dynamic"), lambda: _call(e, "a64_elf_static")))
         e.give(1)
     return _function(("members",), build, tables)
 

@@ -2186,6 +2186,11 @@ def build(
 
             image = None
             artifact = wasm_module(reader, function_root, target_object)  # S15f.1 (ADR-324): XAX first
+        elif description.architecture == 3 and description.abi == 3 and description.image_format == 1:
+            from xax_selfhost_aarch64_general import aarch64_raw_image
+
+            image = None
+            artifact = aarch64_raw_image(reader, function_root, target_object)  # S15f.4 (ADR-325): XAX first
         elif description.architecture == 3:
             from xax_aarch64 import compile_aarch64_bound_target
 
