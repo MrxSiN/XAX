@@ -8,12 +8,13 @@ evaluated when the task is reached, so the bytes and the pool entries come in th
 Task kinds (``K_*``, five words each: kind and four arguments): ``GET`` a value; ``NODE`` lower a node; ``OP`` a few
 constant bytes; ``ICONST``/``LCONST``; ``PUT`` a value; ``MASK`` (descriptor, width); ``CALL`` an internal method
 (callee function); ``JAVA`` a fixed ``java.lang`` method or the shared ``xax$pk``; ``BRANCH`` (opcode, label);
-``MARK`` (label); ``JUMP`` (condition, when, label); ``STORE`` (descriptor, slot); ``GETLONG`` (value, width, signed).
+``MARK`` (label); ``JUMP`` (condition, when, label); ``STORE`` (descriptor, slot); ``GETLONG`` (value, width, signed);
+``FCONST`` (raw bits, width).
 """
 
 from __future__ import annotations
 
-from xax_compiler import IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS
+from xax_compiler import FloatCompare, IntCompare, Operation, RESOURCE_EFFECT_OPERATIONS
 from xax_selfhost_facts import E, NONE, _function
 from xax_selfhost_general_ranges import _attribute, _block_at, _node_at
 from xax_selfhost_general_regalloc import _callee_object, _eop
@@ -22,9 +23,9 @@ from xax_selfhost_general_view import (
 )
 from xax_selfhost_jvm_class import B_LEN, bdata, blen
 from xax_selfhost_jvm_code import (
-    C_BUF, C_ENDED, C_FIX, C_LABELS, C_LINES, C_NFIX, C_NLINES, C_PENDING, C_POOL, C_READS, C_STORED, C_TARGET, C_VSDESC, C_VSLOT, D_I, D_J,
+    C_BUF, C_ENDED, C_FIX, C_LABELS, C_LINES, C_NFIX, C_NLINES, C_PENDING, C_POOL, C_READS, C_STORED, C_TARGET, C_VSDESC, C_VSLOT, D_D, D_F, D_I, D_J,
     D_NONE, GOTO, LOAD, RETURN as RETURN_OPS, SLOT_LATE, STORE, ZERO, _bx, _flush, _in, _length, _m, _pick, _set_m, branch, iconst, invoke,
-    lconst, local, mark, op, opx, raw,
+    fconst, lconst, local, mark, op, opx, raw,
 )
 from xax_selfhost_jvm_method import (
     BL_BASE, BL_INC, BL_NPRED, BL_ORDER, BL_PLACED, BL_PRED, BL_RESOLVED, M_ENTRY, M_FN, M_FOLLOW, M_FREED, M_GEND, M_ISENTRY, M_KEPTNONE,
@@ -36,7 +37,7 @@ from xax_selfhost_jvm_method import (
 from xax_selfhost_views_backend import _FN, _call, _g, _ok
 
 TASK_W = 5
-(K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG) = range(1, 15)
+(K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG, K_FCONST) = range(1, 16)
 # The fixed methods a lowering calls (``K_JAVA``): owner, name, descriptor.
 JAVA = (
     ("java/lang/Integer", "toUnsignedLong", "(I)J"),
@@ -50,6 +51,8 @@ J_TOUNSIGNED, J_LDIV, J_LREM, J_LROTR, J_IROTR, J_PK = range(6)
 RELATION = {IntCompare.EQ: 0, IntCompare.NE: 1, IntCompare.ULT: 2, IntCompare.SLT: 2, IntCompare.ULE: 5, IntCompare.SLE: 5,
             IntCompare.UGT: 4, IntCompare.SGT: 4, IntCompare.UGE: 3, IntCompare.SGE: 3}
 EQ_, NE_, LT_, GE_, GT_, LE_ = range(6)
+FLOAT_RELATION = {FloatCompare.EQ: EQ_, FloatCompare.NE: NE_, FloatCompare.LT: LT_, FloatCompare.LE: LE_, FloatCompare.GT: GT_,
+                  FloatCompare.GE: GE_}
 BRANCH_IF_NOT = {EQ_: 0x9A, NE_: 0x99, LT_: 0x9C, GE_: 0x9B, GT_: 0x9E, LE_: 0x9D}
 INT_BRANCH_IF_NOT = {EQ_: 0xA0, NE_: 0x9F, LT_: 0xA2, GE_: 0xA1, GT_: 0xA4, LE_: 0xA3}
 INVERSE = {0x99: 0x9A, 0x9A: 0x99, 0x9B: 0x9C, 0x9C: 0x9B, 0x9D: 0x9E, 0x9E: 0x9D, 0x9F: 0xA0, 0xA0: 0x9F, 0xA1: 0xA2, 0xA2: 0xA1, 0xA3: 0xA4,
@@ -257,13 +260,42 @@ def _relation(e: E, kind):
     return _pick(e, kind, {int(k): v for k, v in RELATION.items()})
 
 
-def _compare_to_int(e: E, node, prefix: str):
-    """``compare_to_int`` (integers): its steps into ``prefix_steps``; the relation into ``prefix``."""
+def _relation_of(e: E, node, name: str):
+    """``_INT_RELATION``/``_FLOAT_RELATION`` of a compare node's kind into ``name`` (another float kind: the
+    bootstrap's KeyError, declined)."""
     p = e.p
-    e.var(f"{prefix}_kind", _attribute(e, node, 0))
-    e.var(prefix, _relation(e, p[f"{prefix}_kind"]))
+    e.var(f"{name}_k", _attribute(e, node, 0))
+    e.var(f"{name}_fl", e.flag(e.eq(_eop(e, node), OP["FLOAT_COMPARE"])))
+    e.if_(e.ne(p[f"{name}_fl"], 0), lambda: _ok(e, _in(e, p[f"{name}_k"], tuple(int(k) for k in FLOAT_RELATION))))
+    e.var(name, e.sel(e.ne(p[f"{name}_fl"], 0), _pick(e, p[f"{name}_k"], {int(k): v for k, v in FLOAT_RELATION.items()}), _relation(e, p[f"{name}_k"])))
+    return p[name]
+
+
+def _float_cmp(e: E, desc, nan_high=None):
+    """``fcmpl``/``fcmpg``/``dcmpl``/``dcmpg`` (``nan_high`` None: the ``l`` forms)."""
+    if nan_high is None:
+        return e.sel(e.eq(desc, D_F), 0x95, 0x97)
+    return e.sel(e.eq(desc, D_F), e.sel(nan_high, 0x96, 0x95), e.sel(nan_high, 0x98, 0x97))
+
+
+def _compare_to_int(e: E, node, prefix: str):
+    """``compare_to_int``: its steps pushed (in reverse, after the caller's); the relation into ``prefix``."""
+    p = e.p
+    _relation_of(e, node, prefix)
+
+    def floating():
+        # The NaN result that makes each ordered relation false and NE true.
+        e.var(f"{prefix}_fd", _desc_get(e, _operand(e, node, 0)))
+        nan_high = e.either(e.eq(p[prefix], LT_), e.eq(p[prefix], LE_))
+        Steps(e).add(K_GET, _operand(e, node, 0)).add(K_GET, _operand(e, node, 1)).add(K_OP, _float_cmp(e, p[f"{prefix}_fd"], nan_high), 1).push()
+
+    e.if_(e.ne(p[f"{prefix}_fl"], 0), floating, lambda: _int_compare_to_int(e, node, prefix))
+
+
+def _int_compare_to_int(e: E, node, prefix: str):
+    p = e.p
     _width(e, _operand(e, node, 0), f"{prefix}_w")
-    e.var(f"{prefix}_signed", e.flag(_in(e, p[f"{prefix}_kind"], SIGNED)))
+    e.var(f"{prefix}_signed", e.flag(_in(e, p[f"{prefix}_k"], SIGNED)))
     eqne = e.both(e.le(p[prefix], NE_), e.eq(_sdesc(e, _operand(e, node, 0)), D_J))
     # Pushed in reverse: lcmp after both operands.
     _call(e, "jl_push", K_OP, 0x94, 1, 0, 0)  # lcmp
@@ -615,13 +647,13 @@ def _node_task(e: E, node):
         e.give(1)
 
     e.if_(_in(e, opv, (OP["INT_TRUNCATE"], OP["INT_ZERO_EXTEND"])), extension)
+    _float_nodes(e, node, opv, result)
     e.if_(e.eq(opv, OP["CONSTANT"]), lambda: e.give(1))  # integer constants: every use rematerializes them
 
     def compare():
         e.if_(e.ne(_v(e, V_FUSED, result), 0), lambda: e.give(1))
         _call(e, "jl_push", K_PUT, result, 0, 0, 0)
-        e.var("cm_kind", _attribute(e, node, 0))
-        e.var("cm_rel", _relation(e, p["cm_kind"]))
+        _relation_of(e, node, "cm_rel")
 
         def xor_form():
             e.if_(e.eq(p["cm_rel"], EQ_), lambda: (_call(e, "jl_push", K_OP, 0x82, 1, 0, 0), _call(e, "jl_push", K_ICONST, 1, 0, 0, 0)))
@@ -635,10 +667,10 @@ def _node_task(e: E, node):
             # _compare_result after compare_to_int: both pushed in reverse.
             _compare_result_relation(e, node)
 
-        e.if_(e.both(e.le(p["cm_rel"], NE_), e.eq(_sdesc(e, _operand(e, node, 0)), D_I)), xor_form, long_form)
+        e.if_(e.both(e.eq(p["cm_rel_fl"], 0), e.le(p["cm_rel"], NE_), e.eq(_sdesc(e, _operand(e, node, 0)), D_I)), xor_form, long_form)
         e.give(1)
 
-    e.if_(e.eq(opv, OP["INT_COMPARE"]), compare)
+    e.if_(_in(e, opv, (OP["INT_COMPARE"], OP["FLOAT_COMPARE"])), compare)
 
     def call():
         _callee_object(e, node, "cl_callee")
@@ -687,11 +719,151 @@ def _node_task(e: E, node):
     e.give(1)
 
 
+FLOAT_ARITHMETIC = {OP["FLOAT_ADD"]: (0x62, 0x63), OP["FLOAT_SUB"]: (0x66, 0x67), OP["FLOAT_MUL"]: (0x6A, 0x6B), OP["FLOAT_DIV"]: (0x6E, 0x6F)}
+
+
+def _pow2_bits(e: E, k, width, negative: bool):
+    """The raw bits of ``(-)2**k`` as a binary32 (``width`` 32) or binary64."""
+    single = e.add((1 << 31) if negative else 0, e.mul(e.add(127, k), 1 << 23))
+    double = e.add((1 << 63) if negative else 0, e.mul(e.add(1023, k), 1 << 52))
+    return e.sel(e.eq(width, 32), single, double)
+
+
+def _float_nodes(e: E, node, opv, result):
+    """The float lowerings: constants (raw bits), arithmetic, ``FLOAT_CONVERT``, integer to float (unsigned 64-bit
+    values halve with a sticky bit, convert and double), and the trapping truncations (NaN and the range checks
+    branch to the trap)."""
+    p = e.p
+
+    def constant():
+        from xax_selfhost_jvm_method import _constant_value
+
+        e.var("fk_d", _sdesc(e, result))
+
+        def floating():
+            _constant_value(e, node, "fk_v")
+            Steps(e).add(K_FCONST, p["fk_v"], e.sel(e.eq(p["fk_d"], D_F), 32, 64)).add(K_PUT, result).push()
+            e.give(1)
+
+        e.if_(_in(e, p["fk_d"], (D_F, D_D)), floating)
+
+    e.if_(e.eq(opv, OP["CONSTANT"]), constant)
+
+    def arithmetic():
+        e.var("fa_d", _desc_get(e, _operand(e, node, 0)))
+        code = e.c(0)
+        for opcode, (single, double) in FLOAT_ARITHMETIC.items():
+            code = e.sel(e.eq(opv, opcode), e.sel(e.eq(p["fa_d"], D_D), double, single), code)
+        Steps(e).add(K_GET, _operand(e, node, 0)).add(K_GET, _operand(e, node, 1)).add(K_OP, code, 1).add(K_PUT, result).push()
+        e.give(1)
+
+    e.if_(_in(e, opv, tuple(FLOAT_ARITHMETIC)), arithmetic)
+
+    def convert():
+        e.var("fv_s", _desc_get(e, _operand(e, node, 0)))
+        e.var("fv_differ", e.flag(e.ne(p["fv_s"], _sdesc(e, result))))
+        _call(e, "jl_push", K_PUT, result, 0, 0, 0)
+        e.if_(e.ne(p["fv_differ"], 0), lambda: _call(e, "jl_push", K_OP, e.sel(e.eq(p["fv_s"], D_F), 0x8D, 0x90), 1, 0, 0))
+        _call(e, "jl_push", K_GET, _operand(e, node, 0), 0, 0, 0)
+        e.give(1)
+
+    e.if_(e.eq(opv, OP["FLOAT_CONVERT"]), convert)
+
+    def to_float():
+        e.var("tf_x", _operand(e, node, 0))
+        _width(e, p["tf_x"], "tf_w")
+        e.var("tf_signed", e.flag(e.eq(opv, OP["SINT_TO_FLOAT"])))
+        e.var("tf_f", e.flag(e.eq(_sdesc(e, result), D_F)))
+        l2 = e.sel(e.ne(p["tf_f"], 0), 0x89, 0x8A)
+
+        def halving():
+            e.var("tf_neg", _fresh(e, "tf_ng"))
+            e.var("tf_done", _fresh(e, "tf_dn"))
+            x = p["tf_x"]
+            Steps(e).add(K_GET, x).add(K_LCONST, 0).add(K_OP, 0x94, 1).add(K_BRANCH, 0x9B, p["tf_neg"]) \
+                .add(K_GET, x).add(K_OP, l2, 1).add(K_PUT, result).add(K_BRANCH, GOTO, p["tf_done"]) \
+                .add(K_MARK, p["tf_neg"]) \
+                .add(K_GET, x).add(K_ICONST, 1).add(K_OP, 0x7D, 1).add(K_GET, x).add(K_LCONST, 1).add(K_OP, 0x7F81, 2) \
+                .add(K_OP, l2, 1).add(K_OP, e.sel(e.ne(p["tf_f"], 0), 0x5962, 0x5C63), 2).add(K_PUT, result) \
+                .add(K_MARK, p["tf_done"]).push()
+
+        def direct():
+            e.var("tf_long", e.flag(e.either(e.eq(_sdesc(e, p["tf_x"]), D_J), e.both(e.eq(p["tf_w"], 32), e.eq(p["tf_signed"], 0)))))
+            _call(e, "jl_push", K_PUT, result, 0, 0, 0)
+            e.if_(e.ne(p["tf_long"], 0), lambda: (
+                _call(e, "jl_push", K_OP, l2, 1, 0, 0), _call(e, "jl_push", K_GETLONG, p["tf_x"], p["tf_w"], p["tf_signed"], 0)), lambda: (
+                _call(e, "jl_push", K_OP, e.sel(e.ne(p["tf_f"], 0), 0x86, 0x87), 1, 0, 0),
+                e.if_(e.both(e.ne(p["tf_signed"], 0), e.lt(p["tf_w"], 32)), lambda: (
+                    Steps(e).add(K_ICONST, e.sub(32, p["tf_w"])).add(K_OP, 0x78, 1).add(K_ICONST, e.sub(32, p["tf_w"])).add(K_OP, 0x7A, 1).push())),
+                _call(e, "jl_push", K_GET, p["tf_x"], 0, 0, 0)))
+
+        e.if_(e.both(e.eq(p["tf_signed"], 0), e.eq(p["tf_w"], 64)), halving, direct)
+        e.give(1)
+
+    e.if_(_in(e, opv, (OP["UINT_TO_FLOAT"], OP["SINT_TO_FLOAT"])), to_float)
+
+    def truncation():
+        _set_m(e, M_TRAPUSED, 1)
+        e.var("tr_x", _operand(e, node, 0))
+        e.var("tr_s", _sdesc(e, p["tr_x"]))
+        e.var("tr_sw", e.sel(e.eq(p["tr_s"], D_F), 32, 64))
+        _width(e, result, "tr_w")
+        e.var("tr_d", _sdesc(e, result))
+        e.var("tr_signed", e.flag(e.eq(opv, OP["FLOAT_TO_SINT_TRUNC"])))
+        e.var("tr_trap", _trap_label(e))
+        x = p["tr_x"]
+        cmpl = _float_cmp(e, p["tr_s"])
+        to_long = e.sel(e.eq(p["tr_s"], D_F), 0x8C, 0x8F)
+        to_int = e.sel(e.eq(p["tr_s"], D_F), 0x8B, 0x8E)
+
+        def against(steps, bits, branch_op):
+            steps.add(K_GET, x).add(K_FCONST, bits, p["tr_sw"]).add(K_OP, cmpl, 1).add(K_BRANCH, branch_op, p["tr_trap"])
+
+        def signed():
+            # v <= lower - 1 when that is exact in the source format, else v < lower; then v >= 2^(w-1).
+            e.var("tr_mb", e.sel(e.eq(p["tr_sw"], 32), 23, 52))
+            e.var("tr_exact", e.flag(e.le(p["tr_w"], e.add(p["tr_mb"], 1))))
+            e.var("tr_lb", _pow2_bits(e, 1, p["tr_sw"], True))  # w = 1: lower - 1 = -2
+            # -(2^(w-1) + 1): the exponent w - 1 and the lowest fraction bit at w - 1 (exact only).
+            e.if_(e.both(e.lt(1, p["tr_w"]), e.ne(p["tr_exact"], 0)), lambda: e.set("tr_lb", e.add(
+                _pow2_bits(e, e.sub(p["tr_w"], 1), p["tr_sw"], True), _pow2(e, e.sub(p["tr_mb"], e.sub(p["tr_w"], 1))))))
+            e.var("tr_low", e.sel(e.ne(p["tr_exact"], 0), p["tr_lb"], _pow2_bits(e, e.sub(p["tr_w"], 1), p["tr_sw"], True)))
+            steps = Steps(e).add(K_GET, x).add(K_GET, x).add(K_OP, cmpl, 1).add(K_BRANCH, 0x9A, p["tr_trap"])
+            against(steps, p["tr_low"], e.sel(e.ne(p["tr_exact"], 0), 0x9E, 0x9B))
+            against(steps, _pow2_bits(e, e.sub(p["tr_w"], 1), p["tr_sw"], False), 0x9C)
+            steps.add(K_GET, x).add(K_OP, e.sel(e.eq(p["tr_d"], D_I), to_int, to_long), 1).add(K_MASK, p["tr_d"], p["tr_w"]).add(K_PUT, result).push()
+
+        def unsigned():
+            # The tail first (the task stack runs the last pushed first): then the NaN and range checks before it.
+            def wide():
+                e.var("tr_small", _fresh(e, "tr_sm"))
+                e.var("tr_done", _fresh(e, "tr_dn"))
+                top = _pow2_bits(e, 63, p["tr_sw"], False)
+                Steps(e).add(K_GET, x).add(K_FCONST, top, p["tr_sw"]).add(K_OP, cmpl, 1).add(K_BRANCH, 0x9B, p["tr_small"]) \
+                    .add(K_GET, x).add(K_FCONST, top, p["tr_sw"]).add(K_OP, e.add(e.mul(e.sel(e.eq(p["tr_s"], D_F), 0x66, 0x67), 256), to_long), 2) \
+                    .add(K_LCONST, 1 << 63).add(K_OP, 0x83, 1).add(K_PUT, result).add(K_BRANCH, GOTO, p["tr_done"]) \
+                    .add(K_MARK, p["tr_small"]).add(K_GET, x).add(K_OP, to_long, 1).add(K_PUT, result).add(K_MARK, p["tr_done"]).push()
+
+            def narrow_int():
+                Steps(e).add(K_GET, x).add(K_OP, e.sel(e.eq(p["tr_w"], 32), e.add(e.mul(to_long, 256), 0x88), to_int),
+                                          e.sel(e.eq(p["tr_w"], 32), 2, 1)).add(K_PUT, result).push()
+
+            e.if_(e.eq(p["tr_w"], 64), wide, lambda: e.if_(e.eq(p["tr_d"], D_I), narrow_int, lambda: Steps(e).add(K_GET, x).add(K_OP, to_long, 1).add(
+                K_PUT, result).push()))
+            steps = Steps(e).add(K_GET, x).add(K_GET, x).add(K_OP, cmpl, 1).add(K_BRANCH, 0x9A, p["tr_trap"])
+            against(steps, 0, 0x9B)
+            against(steps, _pow2_bits(e, p["tr_w"], p["tr_sw"], False), 0x9C)
+            steps.push()
+
+        e.if_(e.ne(p["tr_signed"], 0), signed, unsigned)
+        e.give(1)
+
+    e.if_(_in(e, opv, (OP["FLOAT_TO_UINT_TRUNC"], OP["FLOAT_TO_SINT_TRUNC"])), truncation)
+
+
 def _compare_result_relation(e: E, node):
     """``relation = compare_to_int(node); _compare_result(relation)`` (pushed in reverse: the result first)."""
-    p = e.p
-    e.var("cq_kind", _attribute(e, node, 0))
-    _compare_result_pushes(e, _relation(e, p["cq_kind"]))
+    _compare_result_pushes(e, _relation_of(e, node, "cq_r"))
     _compare_to_int(e, node, "cq")
 
 
@@ -724,7 +896,7 @@ def _jump_task(e: E, condition, when, label):
         e.var("jp_op", _eop(e, p["jp_n"]))
         _width(e, _output(e, p["jp_n"], 0), "jp_w")
         e.if_(e.both(_in(e, p["jp_op"], (OP["BIT_OR"], OP["BIT_AND"])), e.eq(p["jp_w"], 1)), lambda: e.set("jp_k", 1))
-        e.if_(e.eq(p["jp_op"], OP["INT_COMPARE"]), lambda: e.set("jp_k", 2))
+        e.if_(_in(e, p["jp_op"], (OP["INT_COMPARE"], OP["FLOAT_COMPARE"])), lambda: e.set("jp_k", 2))
 
     e.if_(e.ne(p["jp_n"], NONE), kind)
 
@@ -747,9 +919,8 @@ def _jump_task(e: E, condition, when, label):
         _int_branch_if_not(e, p["jp_n"], "jp_bin")
 
         def long_path():
-            e.var("jp_kind", _attribute(e, p["jp_n"], 0))
-            e.set("jp_bin", _pick(e, _relation(e, p["jp_kind"]), BRANCH_IF_NOT))
             _compare_to_int(e, p["jp_n"], "jq")
+            e.set("jp_bin", _pick(e, p["jq"], BRANCH_IF_NOT))
 
         e.if_(e.eq(p["jp_bin"], NONE), long_path)
         e.var("jp_op2", e.sel(e.ne(p["jp_when"], 0), _pick(e, p["jp_bin"], INVERSE), p["jp_bin"]))
@@ -790,6 +961,7 @@ def _run_fn(tables):
             e.if_(e.eq(kind, K_JUMP), lambda: _call(e, "jl_jump", p["rn_a"], p["rn_b"], p["rn_c"]))
             e.if_(e.eq(kind, K_STORE), lambda: local(e, True, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_GETLONG), lambda: _call(e, "jl_getlong", p["rn_a"], p["rn_b"], p["rn_c"]))
+            e.if_(e.eq(kind, K_FCONST), lambda: fconst(e, p["rn_a"], p["rn_b"]))
 
         e.while_(lambda: e.lt(p["base"], _m(e, M_ONE)), step)
         e.give(1)

@@ -230,6 +230,29 @@ def _lconst_fn(tables):
     return _function(("value",), build, tables)
 
 
+def _fconst_fn(tables):
+    """``fconst_bits(bits, width)``: ``fconst_0``..``fconst_2``/``dconst_0``..``dconst_1``, else ``ldc`` of a Float or
+    ``ldc2_w`` of a Double (raw bits, so NaN payloads stay exact)."""
+    def build(e: E):
+        p = e.p
+
+        def single():
+            e.if_(e.eq(p["bits"], 0), lambda: op(e, 0x0B), lambda: e.if_(e.eq(p["bits"], 0x3F800000), lambda: op(e, 0x0C), lambda: e.if_(
+                e.eq(p["bits"], 0x40000000), lambda: op(e, 0x0D), lambda: _call(e, "jc_ldc", _call(e, "jp_number", _m(e, C_POOL), 4, p["bits"])))))
+
+        def double():
+            e.if_(e.eq(p["bits"], 0), lambda: op(e, 0x0E), lambda: e.if_(e.eq(p["bits"], 0x3FF0000000000000), lambda: op(e, 0x0F), lambda: (
+                op(e, 0x14), e.var("fk_i", _call(e, "jp_number", _m(e, C_POOL), 6, p["bits"])), raw(e, p["fk_i"], 2))))
+
+        e.if_(e.eq(p["width"], 32), single, double)
+        e.give(1)
+    return _function(("bits", "width"), build, tables)
+
+
+def fconst(e: E, bits, width):
+    _call(e, "jc_fconst", bits, width)
+
+
 def lconst(e: E, value):
     _call(e, "jc_lconst", value)
 
@@ -324,5 +347,5 @@ def _pool_field(e: E, pool, field):
 
 def add_code_functions(add, tables):
     for name, builder in (("jc_flush", _flush_fn), ("jc_op", _op_fn), ("jc_raw", _raw_fn), ("jc_local", _local_fn), ("jc_branch", _branch_fn),
-                          ("jc_mark", _mark_fn), ("jc_ldc", _ldc_fn), ("jc_iconst", _iconst_fn), ("jc_lconst", _lconst_fn), ("jc_depth", _depth_fn)):
+                          ("jc_mark", _mark_fn), ("jc_ldc", _ldc_fn), ("jc_iconst", _iconst_fn), ("jc_lconst", _lconst_fn), ("jc_fconst", _fconst_fn), ("jc_depth", _depth_fn)):
         add(name, builder(tables))

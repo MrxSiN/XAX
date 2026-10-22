@@ -1731,3 +1731,10 @@ A standalone XAX program (`xax_selfhost_jvm`, store `compiler/bootstrap/xax_jvm_
 - Inside `test_xax_jvm.py`, 39 JARs and 1 rejection agree, 61 decline (floats, platform calls, traps), none disagree.
 
 The production driver does not contain the program yet, so the bootstrap status is unchanged.
+
+## S15e.5b JVM floats and conversions through XAX — 2026-10-22 (ADR-328)
+
+The XAX JVM program now also lowers float constants, arithmetic, compares and conversions, including the trapping float-to-integer truncations. Results, checked against the bootstrap:
+
+- In `test_xax_jvm.py`, 86 JARs and 1 rejection agree, 14 decline (platform calls and their rejections), none disagree.
+- In `test_xax_selfhost_jvm.py`, every conversion across eleven integer widths and both float formats agrees byte for byte.

@@ -1318,3 +1318,12 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   - The JVM tests with `XAX_GENERAL_FRONTEND_DIFF=1`.
   - Recording every `compile_jvm_bound_target` call of a test module against `jvm_with_xax` finds the declines to port next.
 - Next: floats and conversions (`test_conversions`, `test_arithmetic_and_compares`), platform calls, traps. After that, a driver request path for JARs (then rotate the seed), and S15e.6 (Android).
+
+## S15e.5b JVM floats — 2026-10-22 (ADR-328)
+
+- `_float_nodes` in `xax_selfhost_jvm_lower.py`.
+- `K_FCONST` is (raw bits, width).
+- `_relation_of` maps both compare kinds. `_compare_to_int` sets `prefix` to the relation and `prefix_fl` for a float compare.
+- The task stack runs the last pushed task first. When a lowering pushes a conditional tail and an unconditional head, push the tail first.
+- `INTERNAL_LABELS` (in `_jvm_method`) feeds the interference `M_ACROSS` and the definite-assignment points.
+- Next: `CALL_FOREIGN` (the platform calls of `java_base_api`, `jvm_static`/`jvm_virtual`), then their rejections (`test_descriptor_type_mismatch_rejects`, `test_foreign_abi_from_another_platform_rejects`, `test_static_arity_mismatch_rejects`).
