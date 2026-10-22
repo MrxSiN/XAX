@@ -316,3 +316,95 @@ in the single-process time; these are not Windows-native times and give no
 competitor verdict. The remaining work in a small build is three driver entry
 runs, each committing the driver's fixed views and re-reading and re-verifying
 its inputs; handing verified stores between steps in memory is the next step.
+That plan is revised by
+[Lazily committed driver views](#lazily-committed-driver-views--2026-10-22),
+which replaces this store.
+
+## Lazily committed driver views — 2026-10-22
+
+[bbc.xax](bbc.xax) now commits the driver's large views on first touch instead of
+up front. It is the driver store (root
+`9bf3f203349cf8712ca93f968db2bd63f1c20b6277181891724ee4fbdd60aafc`) with one
+expected-root transaction,
+[transactions/bbc_lazy_views.edit](transactions/bbc_lazy_views.edit). Result
+root: `654f7dd3022ff251215ab03ba8a980e67365bf23f7870e4f8f4c6e1b7c69c0f4`, entry
+`4d129bdbf510f1152b9cba3610ff7b43265e1215b02fde2f8cd74730399a39e5`. Full
+verification, `Workspace.save` and stale-root rejection pass. The earlier
+transaction [bbc_single_process.edit](transactions/bbc_single_process.edit)
+remains as the record of the previous store.
+
+The driver entry allocates 22 views, 3,550,558,208 bytes, each with
+`VirtualAlloc(MEM_COMMIT | MEM_RESERVE)`. Four backend views (`table`, `image`,
+`vtable`, `work`, 0.5 to 1 GiB each) make up 3 GiB, and a small build touches a
+few MiB in all. All driver file I/O goes through the 64 KiB `chunk` view.
+
+- **Reservation.** All four driver entries in `bbc.xax` (the command-line one
+  and the three `compile` steps) differ from their predecessors in the two
+  constant operands of 17 allocation calls: `MEM_RESERVE` with `PAGE_NOACCESS`
+  as the reservation's protection. These are the views of at least 1 MiB that
+  the driver never hands to the C runtime. `chunk`, `path`, `arguments`,
+  `argument` and the 2 KiB `scratch` view stay committed, because a kernel copy
+  into a reserved page fails instead of faulting. Views, extents, proofs and
+  releases are unchanged. The compile front reserves its two large views the
+  same way: the importer's 512 MiB arena and the 16 MiB record view.
+- **Commit on touch.** The entry first registers one vectored exception handler,
+  a `win64-c` entry with no proof parameters. For an access violation it asks
+  `VirtualQuery` about the faulting address. It acts only when the page is
+  reserved, private, and its reservation was made with `PAGE_NOACCESS`. Then it
+  commits the touched 1 MiB-aligned slice of that reserved run as
+  `PAGE_READWRITE`, which zero-fills it, and resumes the faulting instruction.
+  Every other exception passes on unchanged, and the thread's last-error value
+  is restored. The allocation contract still holds: every page the program
+  reads is zero until written.
+- **Fallback.** If registration fails, driver commands run the unchanged eager
+  entry and `compile` exits 4.
+
+Standalone Wine checks: scattered touches across a 64 MiB reservation read back
+exactly and untouched bytes read zero; the same program without the handler
+faults; with the handler installed, a reservation not marked `PAGE_NOACCESS`
+and a stray access still fault.
+
+### Bootstrap
+
+As above, with the four lazy entries in the driver recipe and the handler in the
+BBC recipe. The tested PE is 15,284,224 bytes, SHA-256
+`b745e5c2aea562145be250831af01c455ff8e68f642e2c89d244136ac22f64af`.
+
+### Evidence
+
+[lazy_views_evidence.json](lazy_views_evidence.json), Wine and qemu user
+emulation on Linux x86-64. Commit is measured as the process's peak private
+writable mappings, which is what Wine's committed pages are; reserved pages are
+`PROT_NONE` there and count for nothing.
+
+- 83 programs, O0/O1, both targets: 332 builds and 588 executions match the
+  reference interpreter; all 996 output files (executables, snapshots,
+  provenance) equal those of the previous single-process `bbc.exe`.
+- Driver commands give byte-identical exits, diagnostics, artifacts and
+  provenance to the previous `bbc.exe` on 141 regression and
+  declared-rejection stores.
+- Error paths give exits 1, 4, 4, 3, 3 and leave no files.
+
+| Complete Android build, -O1 | Peak commit before (MiB) | Peak commit now (MiB) | Median before (s) | Median now (s) |
+|---|---:|---:|---:|---:|
+| hello | 3,398 | 67–98 | 0.100 | 0.100 |
+| nested_math | 3,398 | 67–74 | 0.096 | 0.097 |
+| checksum_four | 3,398 | 66–88 | 0.093 | 0.096 |
+| deep_nesting_512 | 3,398 | 117–131 | 0.676 | 0.652 |
+
+Peak commit is the range over three runs; medians are of ten alternating
+trials. Artifacts are identical in both arms. Latency does not change: under
+Wine, committing untouched pages was already cheap. These are not Windows
+measurements, and Windows commit counters were not read.
+
+### Remaining build latency
+
+A Wine relay timeline for hello gives front 3 ms, edit 10 ms, resolve 10 ms and
+build 23 ms. Reading and writing the intermediate files takes under 1 ms per
+step. Each step spends about 8 ms on the first full verification of a different
+store: `edit` does not verify the store it produces and `resolve` does not
+verify the snapshot it writes. Build spends about 14 ms more lowering and
+packaging. Handing the files over in memory would therefore save under 1 ms, so
+it was not done. Most objects are shared between the request and the snapshot;
+a per-process proof cache keyed by CID inside the driver's verifier, changed
+through the evolution ledger, is the remaining build-latency step.
