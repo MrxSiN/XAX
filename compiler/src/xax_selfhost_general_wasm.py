@@ -2132,7 +2132,7 @@ def _wa_host(name: bytes):
 def _wasm(tables):
     """``compile_wasm_bound_target`` and ``emit_browser_page`` for function ``wf``: 1 with the page in the image record,
     NONE when rejected or declined."""
-    from xax_selfhost_general_image import IMAGE_AT
+    from xax_selfhost_general_image import IMAGE_AT, IMAGE_END
     from xax_selfhost_x86_64_general import G_GENERAL, G_TARGET
 
     def build(e: E):
@@ -2184,7 +2184,7 @@ def _wasm(tables):
         e.st(IMAGE_AT + 2, p["wlen"])
         e.var("wbase", e.ld(PAGE))
         e.var("wwords", e.udiv(e.add(p["wlen"], 7), 8))
-        _ok(e, e.lt(e.add(IMAGE_AT + 8, p["wwords"]), 11 << 20))
+        _ok(e, e.lt(e.add(IMAGE_AT + 8, p["wwords"]), IMAGE_END))
 
         def word():
             e.var("ww", 0)

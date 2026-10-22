@@ -39,7 +39,7 @@ from xax_selfhost_views_backend import (
     _cid_words, _erased, _find, _g, _kind, _node_info, _ok, _payload_uleb, _reference, _target_list, _term_end, _type_form,
 )
 from xax_selfhost_x86_64_general import (
-    COUNT_AT, ENTRY_CONTRACT_EXPECTED, FRAME, F_AT, F_BLOCKS, F_FN, F_GRAPH, F_NODES, GENERAL_ARENA_AT, G_ENTRY, G_FRAMES,
+    COUNT_AT, ENTRY_CONTRACT_EXPECTED, FRAME, F_AT, F_BLOCKS, F_FN, F_GRAPH, F_NODES, GENERAL_ARENA_AT, GENERAL_ARENA_END, G_ENTRY, G_FRAMES,
     G_GROUPOF, G_LALIGN, G_LSIZE, G_LSTACK, G_MEMBERS, G_MTAB, G_NARGS, G_TABI, G_TARGET, G_TFMT, ORDER_AT, OK, _group_interface,
     _proof, _text_at, group_member_tables,
 )
@@ -183,7 +183,7 @@ def _frontend(tables):
         p = e.p
         e.st(0, 0)
         e.set_hd(H_ARENA, GENERAL_ARENA_AT)
-        e.set_hd(H_ARENA_END, ARENA_END)
+        e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
         S = e.rd(0)
         e.st(GLOBALS + G_S, S)
         e.var("ra", 1 + CID_WORDS)
@@ -457,12 +457,12 @@ def native_aarch64():
 
 def _read_record(read):
     """The image record's words (``xax_selfhost_aarch64_image``), up to the program's cursor."""
-    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT
+    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT, IMAGE_END
     from xax_selfhost_general_regalloc import G_RA
 
     (table,) = read(GLOBALS + G_RA, 1)
     (end,) = read(table + I_CURSOR, 1)
-    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_AT + (5 << 20) else []
+    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_END else []
 
 
 def _executable(words, closure, reader, target_cid: bytes):

@@ -40,7 +40,7 @@ from xax_selfhost_views_backend import (
 )
 
 INLINE_NODE_LIMIT = 256
-VIEW_AT, VIEW_END = 32 << 20, 73 << 20  # S14a (ADR-284): the compiler's own closure (above the front end's globals); S15d.0 (ADR-303): 36M words; S15e.4 (ADR-322): 41M
+VIEW_AT, VIEW_END = 32 << 20, 120 << 20  # S14a (ADR-284): the compiler's own closure (above the front end's globals); S15d.0 (ADR-303): 36M words; S15e.4 (ADR-322): 41M; S15f (ADR-323): 88M
 VCAP = 1 << 18  # values per function view
 MAX_HOPS = 8
 
