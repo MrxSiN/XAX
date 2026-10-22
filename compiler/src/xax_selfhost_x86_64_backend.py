@@ -55,14 +55,18 @@ JMP, JZ, JA, JAE, CALL = (0xE9, 1), (0x840F, 2), (0x870F, 2), (0x830F, 2), (0xE8
 # S15e.2 (ADR-315): the code may take 76 MiB.  S15e.3 (ADR-317): the internal stream (21M words; the driver's is 16.1M,
 # past the shared region's 16M) starts at the shared code region, the jumps (524,288) and ranges (2,097,152) follow it
 # below the globals, and the code sits below the header, above the program's arena.
+# S15e.5 (ADR-334): the stream (the driver with the JVM program takes 21.3M words) moves below the code, 32M words,
+# and the arena ends at it; the jumps (2,097,152) and ranges (4,194,304; the driver has 2,134,204) take the shared
+# code region below the globals.
 X86_WORDS_LIMIT = META_AT - WORDS_AT
-X86_STREAM_AT, X86_STREAM_LIMIT = WORDS_AT, 21 << 20
-X86_JUMPS_LIMIT, X86_RANGES_LIMIT = 1 << 20, 1 << 22
-X86_JUMPS_AT = X86_STREAM_AT + X86_STREAM_LIMIT
+X86_STREAM_LIMIT = 32 << 20
+X86_JUMPS_LIMIT, X86_RANGES_LIMIT = 1 << 22, 1 << 23
+X86_JUMPS_AT = WORDS_AT
 X86_RANGES_AT = X86_JUMPS_AT + X86_JUMPS_LIMIT
 X86_CODE_AT = HEADER - 1 - X86_WORDS_LIMIT
-X86_ARENA_END = X86_CODE_AT
-assert X86_RANGES_AT + X86_RANGES_LIMIT <= GLOBALS and X86_ARENA_END > (112 << 20)  # replaces the shared layout
+X86_STREAM_AT = X86_CODE_AT - X86_STREAM_LIMIT
+X86_ARENA_END = X86_STREAM_AT
+assert X86_RANGES_AT + X86_RANGES_LIMIT <= GLOBALS and X86_ARENA_END > (160 << 20)  # replaces the shared layout
 CODE_BYTES = X86_WORDS_LIMIT * 8
 RANGE_WORDS = 2
 JUMP_WORDS = 2
@@ -384,7 +388,7 @@ class X86_64:
     T0 = T0
     CODE_LIMIT = CODE_BYTES
     ARENA_END = X86_ARENA_END
-    STREAM_AT, STREAM_END = X86_STREAM_AT, X86_JUMPS_AT
+    STREAM_AT, STREAM_END = X86_STREAM_AT, X86_STREAM_AT + X86_STREAM_LIMIT
 
     @staticmethod
     def declare(e: E, p) -> None:
