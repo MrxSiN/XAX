@@ -18,8 +18,9 @@ parameter its text (the receiver ``L<class>;`` included) for the narrowing conve
 from __future__ import annotations
 
 from xax_compiler import (
-    JVM_FOREIGN_ABIS, JVM_GETSTATIC_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_ABI, JVM_INVOKESTATIC_INTERFACE_ABI,
-    JVM_INVOKEVIRTUAL_ABI,
+    JVM_ARRAYLENGTH_ABI, JVM_ARRAYLOAD_ABI, JVM_ARRAYSTORE_ABI, JVM_CHECKCAST_ABI, JVM_FOREIGN_ABIS, JVM_GETFIELD_ABI, JVM_GETSTATIC_ABI,
+    JVM_INSTANCEOF_ABI, JVM_INVOKEINTERFACE_ABI, JVM_INVOKESTATIC_ABI, JVM_INVOKESTATIC_INTERFACE_ABI, JVM_INVOKEVIRTUAL_ABI, JVM_LDC_ABI,
+    JVM_MULTIANEWARRAY_ABI, JVM_NEW_ABI, JVM_NEWARRAY_ABI, JVM_PUTFIELD_ABI, JVM_PUTSTATIC_ABI,
 )
 import xax_selfhost_diagnostics as D
 from xax_selfhost_facts import E, NONE, _function
@@ -34,8 +35,17 @@ REFS_CAP = 4096
 CALL_ABIS = {JVM_INVOKESTATIC_ABI: 0xB8, JVM_INVOKEVIRTUAL_ABI: 0xB6, JVM_GETSTATIC_ABI: 0xB2, JVM_INVOKEINTERFACE_ABI: 0xB9,
              JVM_INVOKESTATIC_INTERFACE_ABI: 0xB8}
 (MB_OP, MB_IFACE, MB_CLS, MB_CLSN, MB_NAME, MB_NAMEN, MB_DESC, MB_DESCN, MB_NP, MB_PARAMS, MB_RES, MB_RESN, MB_ARGS, MB_RSLOTS,
- MB_CARRIER) = range(15)
-MB_WORDS = 15
+ MB_CARRIER, MB_KIND, MB_FSIZE) = range(17)
+MB_WORDS = 17
+(OK_CALL, OK_NEW, OK_NEWARRAY, OK_MULTI, OK_ALOAD, OK_ASTORE, OK_ALEN, OK_LDC, OK_GETFIELD, OK_PUTFIELD, OK_PUTSTATIC, OK_CHECKCAST,
+ OK_INSTANCEOF) = range(13)
+KINDS = {**{abi: OK_CALL for abi in CALL_ABIS}, JVM_NEW_ABI: OK_NEW, JVM_NEWARRAY_ABI: OK_NEWARRAY, JVM_MULTIANEWARRAY_ABI: OK_MULTI,
+         JVM_ARRAYLOAD_ABI: OK_ALOAD, JVM_ARRAYSTORE_ABI: OK_ASTORE, JVM_ARRAYLENGTH_ABI: OK_ALEN, JVM_LDC_ABI: OK_LDC,
+         JVM_GETFIELD_ABI: OK_GETFIELD, JVM_PUTFIELD_ABI: OK_PUTFIELD, JVM_PUTSTATIC_ABI: OK_PUTSTATIC, JVM_CHECKCAST_ABI: OK_CHECKCAST,
+         JVM_INSTANCEOF_ABI: OK_INSTANCEOF}
+FIELD_OPS = {OK_GETFIELD: 0xB4, OK_PUTFIELD: 0xB5, OK_PUTSTATIC: 0xB3}
+ARRAY_LOAD = {ord("I"): 0x2E, ord("J"): 0x2F, ord("F"): 0x30, ord("D"): 0x31, ord("B"): 0x33, ord("Z"): 0x33, ord("C"): 0x34, ord("S"): 0x35}
+NEWARRAY_TYPE = {ord("Z"): 4, ord("C"): 5, ord("F"): 6, ord("D"): 7, ord("B"): 8, ord("S"): 9, ord("I"): 10, ord("J"): 11}
 PARAM_WORDS = 2  # a parameter's text and its length
 NARROW = {ord("B"): 0x91, ord("C"): 0x92, ord("S"): 0x93}
 NARROW_WIDTH = {ord("Z"): 1, ord("B"): 8, ord("C"): 16, ord("S"): 16, ord("I"): 32, ord("J"): 64}
@@ -238,18 +248,25 @@ def _member_fn(tables):
         e.var("fm_mem", _copy_input(e, p["fm_sym"], p["fm_symn"], "fm_me"))
         e.for_("fm_k", 0, p["fm_libn"], lambda: _ok(e, e.lt(e.ld(e.add(p["fm_cls"], p["fm_k"])), 128)))
         e.for_("fm_k", 0, p["fm_symn"], lambda: _ok(e, e.lt(e.ld(e.add(p["fm_mem"], p["fm_k"])), 128)))
-        e.var("fm_call", 0)
+        e.var("fm_kind", NONE)
+        for abi, kind_code in KINDS.items():
+            e.if_(abi_is(abi), lambda kind_code=kind_code: e.set("fm_kind", kind_code))
+        set_field(MB_KIND, p["fm_kind"])
         for abi, opcode in CALL_ABIS.items():
-            e.if_(abi_is(abi), lambda opcode=opcode: (e.set("fm_call", 1), set_field(MB_OP, opcode)))
-        _ok(e, e.ne(p["fm_call"], 0))  # an object kind (S15e.5c): declined
+            e.if_(abi_is(abi), lambda opcode=opcode: set_field(MB_OP, opcode))
         _ok(e, e.not_(_bytes_equal_words(e, p["fm_cls"], p["fm_libn"], MEMORY_CLASS)))  # the memory class: declined
         set_field(MB_IFACE, e.flag(e.either(abi_is(JVM_INVOKEINTERFACE_ABI), abi_is(JVM_INVOKESTATIC_INTERFACE_ABI))))
         set_field(MB_CLS, p["fm_cls"])
         set_field(MB_CLSN, p["fm_libn"])
-        e.var("fm_params", e.alloc(e.mul(e.add(p["fm_symn"], 2), PARAM_WORDS)))
+        set_field(MB_NAME, p["fm_mem"])
+        set_field(MB_NAMEN, p["fm_symn"])
+        set_field(MB_DESC, p["fm_mem"])
+        set_field(MB_DESCN, 0)
+        e.var("fm_params", e.alloc(e.mul(e.add(e.add(p["fm_symn"], p["fm_nin"]), 2), PARAM_WORDS)))
         _ok(e, e.ne(p["fm_params"], NONE))
         set_field(MB_PARAMS, p["fm_params"])
         set_field(MB_NP, 0)
+        kind = p["fm_kind"]
 
         def add_param(text, n):
             e.var("fm_np", field(MB_NP))
@@ -257,27 +274,28 @@ def _member_fn(tables):
             e.st(e.add(p["fm_params"], e.add(e.mul(p["fm_np"], PARAM_WORDS), 1)), n)
             set_field(MB_NP, e.add(p["fm_np"], 1))
 
-        def static_field():
+        def set_result(text, n):
+            set_field(MB_RES, text)
+            set_field(MB_RESN, n)
+
+        def member_text():
+            _put_text(e, p["fm_mem"], p["fm_symn"])
+
+        def class_text():
+            _put_text(e, p["fm_cls"], p["fm_libn"])
+
+        def split_field():
+            """``member.split(":", 1)``: the name and the descriptor (``JVM-FIELD-MEMBER`` without a colon)."""
             e.var("fm_colon", _find_byte(e, p["fm_mem"], p["fm_symn"], ord(":"), "fm_cf"))
-            _reject(e, e.ne(p["fm_colon"], NONE), "XAX.JVM.DESCRIPTOR", "JVM-FIELD-MEMBER", c, lambda: D.text(e, "name:descriptor"),
-                    lambda: _put_text(e, p["fm_mem"], p["fm_symn"]))
-            set_field(MB_NAME, p["fm_mem"])
+            _reject(e, e.ne(p["fm_colon"], NONE), "XAX.JVM.DESCRIPTOR", "JVM-FIELD-MEMBER", c, lambda: D.text(e, "name:descriptor"), member_text)
             set_field(MB_NAMEN, p["fm_colon"])
             set_field(MB_DESC, e.add(e.add(p["fm_mem"], p["fm_colon"]), 1))
             set_field(MB_DESCN, e.sub(e.sub(p["fm_symn"], p["fm_colon"]), 1))
-            set_field(MB_RES, field(MB_DESC))
-            set_field(MB_RESN, field(MB_DESCN))
 
-        def method():
-            e.var("fm_open", _find_byte(e, p["fm_mem"], p["fm_symn"], ord("("), "fm_of"))
-            _reject(e, e.ne(p["fm_open"], NONE), "XAX.JVM.DESCRIPTOR", "JVM-METHOD-MEMBER", c, lambda: D.text(e, "name(descriptor)"),
-                    lambda: _put_text(e, p["fm_mem"], p["fm_symn"]))
-            set_field(MB_NAME, p["fm_mem"])
-            set_field(MB_NAMEN, p["fm_open"])
-            e.var("fm_desc", e.add(p["fm_mem"], p["fm_open"]))
-            e.var("fm_descn", e.sub(p["fm_symn"], p["fm_open"]))
-            set_field(MB_DESC, p["fm_desc"])
-            set_field(MB_DESCN, p["fm_descn"])
+        def parse(desc, descn):
+            """``_parse_method_descriptor``: each parameter added, the result (after the first ``)``) set."""
+            e.var("fm_desc", desc)
+            e.var("fm_descn", descn)
 
             def descriptor_actual():
                 _put_text(e, p["fm_desc"], p["fm_descn"])
@@ -288,20 +306,7 @@ def _member_fn(tables):
                     descriptor_actual)
             e.var("fm_inner", e.add(p["fm_desc"], 1))
             e.var("fm_innern", p["fm_close"])
-            set_field(MB_RES, e.add(e.add(p["fm_inner"], p["fm_innern"]), 1))
-            set_field(MB_RESN, e.sub(e.sub(p["fm_descn"], p["fm_innern"]), 2))
-            # The receiver of a virtual or interface call: ``L<class>;``.
-            e.var("fm_recv", e.flag(e.either(abi_is(JVM_INVOKEVIRTUAL_ABI), abi_is(JVM_INVOKEINTERFACE_ABI))))
-
-            def receiver():
-                e.var("fm_rt", e.alloc(e.add(p["fm_libn"], 3)))
-                _ok(e, e.ne(p["fm_rt"], NONE))
-                e.st(p["fm_rt"], ord("L"))
-                e.for_("fm_k", 0, p["fm_libn"], lambda: e.st(e.add(e.add(p["fm_rt"], 1), p["fm_k"]), e.ld(e.add(p["fm_cls"], p["fm_k"]))))
-                e.st(e.add(e.add(p["fm_rt"], 1), p["fm_libn"]), ord(";"))
-                add_param(p["fm_rt"], e.add(p["fm_libn"], 2))
-
-            e.if_(e.ne(p["fm_recv"], 0), receiver)
+            set_result(e.add(e.add(p["fm_inner"], p["fm_innern"]), 1), e.sub(e.sub(p["fm_descn"], p["fm_innern"]), 2))
             e.var("fm_i", 0)
 
             def one():
@@ -331,8 +336,126 @@ def _member_fn(tables):
 
             e.while_(lambda: e.lt(p["fm_i"], p["fm_innern"]), one)
 
-        e.if_(abi_is(JVM_GETSTATIC_ABI), static_field, method)
-        # The machine inputs and outputs (proof values dropped), the arity, and each type against its descriptor.
+        def wrapped(prefix: bytes, suffix: bytes, name: str):
+            """``prefix + library + suffix`` as words."""
+            e.var(name, e.alloc(e.add(p["fm_libn"], len(prefix) + len(suffix) + 1)))
+            _ok(e, e.ne(p[name], NONE))
+            for k, byte in enumerate(prefix):
+                e.st(e.add(p[name], k), byte)
+            e.for_(f"{name}_k", 0, p["fm_libn"], lambda: e.st(e.add(e.add(p[name], len(prefix)), p[f"{name}_k"]), e.ld(e.add(p["fm_cls"], p[f"{name}_k"]))))
+            for k, byte in enumerate(suffix):
+                e.st(e.add(e.add(p[name], e.add(p["fm_libn"], len(prefix))), k), byte)
+            return p[name], e.add(p["fm_libn"], len(prefix) + len(suffix))
+
+        def constant(value: bytes, name: str):
+            from xax_selfhost_jvm_class import literal
+
+            literal(e, name, value.decode())
+            return p[name], len(value)
+
+        def static_field():
+            split_field()
+            set_result(field(MB_DESC), field(MB_DESCN))
+
+        def method():
+            e.var("fm_open", _find_byte(e, p["fm_mem"], p["fm_symn"], ord("("), "fm_of"))
+            _reject(e, e.ne(p["fm_open"], NONE), "XAX.JVM.DESCRIPTOR", "JVM-METHOD-MEMBER", c, lambda: D.text(e, "name(descriptor)"), member_text)
+            set_field(MB_NAMEN, p["fm_open"])
+            set_field(MB_DESC, e.add(p["fm_mem"], p["fm_open"]))
+            set_field(MB_DESCN, e.sub(p["fm_symn"], p["fm_open"]))
+            # The receiver of a virtual or interface call: ``L<class>;``.
+            e.if_(e.either(abi_is(JVM_INVOKEVIRTUAL_ABI), abi_is(JVM_INVOKEINTERFACE_ABI)), lambda: add_param(*wrapped(b"L", b";", "fm_rt")))
+            parse(field(MB_DESC), field(MB_DESCN))
+
+        def new():
+            init = b"<init>("
+            prefixed = e.both(e.le(len(init), p["fm_symn"]), *(e.eq(e.ld(e.add(p["fm_mem"], k)), byte) for k, byte in enumerate(init)))
+            e.var("fm_ok", e.flag(prefixed))
+            e.if_(e.ne(p["fm_ok"], 0), lambda: e.set("fm_ok", e.flag(e.both(e.eq(e.ld(e.add(p["fm_mem"], e.sub(p["fm_symn"], 2))), ord(")")),
+                                                                         e.eq(e.ld(e.add(p["fm_mem"], e.sub(p["fm_symn"], 1))), ord("V"))))))
+            _reject(e, e.ne(p["fm_ok"], 0), "XAX.JVM.DESCRIPTOR", "JVM-NEW-MEMBER", c, lambda: D.text(e, "<init>(descriptor)V"), member_text)
+            set_field(MB_NAMEN, 6)
+            set_field(MB_DESC, e.add(p["fm_mem"], 6))
+            set_field(MB_DESCN, e.sub(p["fm_symn"], 6))
+            parse(field(MB_DESC), field(MB_DESCN))
+            set_result(*wrapped(b"L", b";", "fm_nr"))
+
+        def new_array():
+            add_param(*constant(b"I", "fm_i1"))
+            set_result(*wrapped(b"[", b"", "fm_ar"))
+
+        def multi_array():
+            e.var("fm_rank", 0)
+            e.while_(lambda: e.both(e.lt(p["fm_rank"], p["fm_libn"]), e.eq(e.ld(e.add(p["fm_cls"], p["fm_rank"])), ord("["))),
+                     lambda: e.set("fm_rank", e.add(p["fm_rank"], 1)))
+            e.var("fm_cap", e.sel(e.lt(p["fm_rank"], 255), p["fm_rank"], 255))
+            ok = e.both(e.le(2, p["fm_rank"]), e.le(1, p["fm_min0"]), e.le(p["fm_min0"], p["fm_cap"]))
+
+            def actual():
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                class_text()
+                D.integer(e, p["fm_min0"])
+
+            _reject(e, ok, "XAX.JVM.DESCRIPTOR", "JVM-MULTIANEWARRAY", c, lambda: D.text(e, "[[element with 1..rank lengths"), actual)
+            e.var("fm_i1", constant(b"I", "fm_one")[0])
+            e.for_("fm_k", 0, p["fm_min0"], lambda: add_param(p["fm_i1"], 1))
+            set_result(p["fm_cls"], p["fm_libn"])
+
+        def array():
+            ok = e.both(e.lt(0, p["fm_libn"]), e.eq(e.ld(p["fm_cls"]), ord("[")))
+            _reject(e, ok, "XAX.JVM.DESCRIPTOR", "JVM-ARRAY-DESCRIPTOR", c, lambda: D.text(e, "[element"), class_text)
+            add_param(p["fm_cls"], p["fm_libn"])
+            e.var("fm_el", e.add(p["fm_cls"], 1))
+            e.var("fm_eln", e.sub(p["fm_libn"], 1))
+            e.if_(e.ne(kind, OK_ALEN), lambda: add_param(*constant(b"I", "fm_ix")))
+            e.if_(e.eq(kind, OK_ASTORE), lambda: add_param(p["fm_el"], p["fm_eln"]))
+            e.if_(e.eq(kind, OK_ALOAD), lambda: set_result(p["fm_el"], p["fm_eln"]))
+            e.if_(e.eq(kind, OK_ASTORE), lambda: set_result(*constant(b"V", "fm_v")))
+            e.if_(e.eq(kind, OK_ALEN), lambda: set_result(*constant(b"I", "fm_i2")))
+
+        def ldc():
+            ok = e.both(_bytes_equal_words(e, p["fm_cls"], p["fm_libn"], b"java/lang/String"))
+            e.var("fm_print", e.flag(ok))
+            e.for_("fm_k", 0, p["fm_symn"], lambda: e.if_(e.not_(e.both(e.le(32, e.ld(e.add(p["fm_mem"], p["fm_k"]))),
+                                                                       e.lt(e.ld(e.add(p["fm_mem"], p["fm_k"])), 127))), lambda: e.set("fm_print", 0)))
+            _reject(e, e.ne(p["fm_print"], 0), "XAX.JVM.DESCRIPTOR", "JVM-LDC-STRING", c, lambda: D.text(e, "printable ASCII java/lang/String constant"),
+                    member_text)
+            set_result(*constant(b"Ljava/lang/String;", "fm_str"))
+
+        def fields():
+            split_field()
+            e.if_(e.ne(kind, OK_PUTSTATIC), lambda: add_param(*wrapped(b"L", b";", "fm_fo")))
+            e.if_(e.ne(kind, OK_GETFIELD), lambda: add_param(field(MB_DESC), field(MB_DESCN)))
+            e.if_(e.eq(kind, OK_GETFIELD), lambda: set_result(field(MB_DESC), field(MB_DESCN)), lambda: set_result(*constant(b"V", "fm_fv")))
+
+        def cast():
+            # The one machine input's descriptor, a reference (``_reference_descriptor``), else JVM-CHECKCAST-INPUT.
+            e.var("fm_src", NONE)
+            e.if_(e.eq(p["fm_min0"], 1), lambda: e.set("fm_src", vdesc(e, e.ld(p["fm_mins"]))))
+            e.var("fm_isref", 0)
+            e.var("fm_st", 0)
+            e.var("fm_sn", 0)
+
+            def reference():
+                e.set("fm_st", ref_text(e, p["fm_src"])[0])
+                e.set("fm_sn", ref_text(e, p["fm_src"])[1])
+                e.var("fm_s0", e.ld(p["fm_st"]))
+                e.set("fm_isref", e.flag(e.either(e.eq(p["fm_s0"], ord("[")), e.both(e.eq(p["fm_s0"], ord("L")),
+                                                                                     e.eq(e.ld(e.add(p["fm_st"], e.sub(p["fm_sn"], 1))), ord(";"))))))
+
+            e.if_(e.both(e.ne(p["fm_src"], NONE), e.le(D_REF, p["fm_src"])), reference)
+
+            def actual():
+                e.if_(e.eq(p["fm_src"], NONE), lambda: D.none(e), lambda: e.if_(e.le(D_REF, p["fm_src"]), lambda: _put_text(
+                    e, ref_text(e, p["fm_src"])[0], ref_text(e, p["fm_src"])[1]), lambda: _desc_letter(e, p["fm_src"])))
+
+            _reject(e, e.ne(p["fm_isref"], 0), "XAX.JVM.FOREIGN", "JVM-CHECKCAST-INPUT", c, lambda: D.text(e, "one reference"), actual)
+            add_param(p["fm_st"], p["fm_sn"])
+            e.if_(e.eq(kind, OK_INSTANCEOF), lambda: set_result(*constant(b"Z", "fm_z")), lambda: e.if_(
+                e.eq(e.ld(p["fm_cls"]), ord("[")), lambda: set_result(p["fm_cls"], p["fm_libn"]), lambda: set_result(*wrapped(b"L", b";", "fm_ct"))))
+
+        # The machine inputs and outputs first: ``_object_member`` reads their count and the cast its input's type.
         e.var("fm_mins", e.alloc(e.add(p["fm_nin"], 1)))
         e.var("fm_mouts", e.alloc(e.add(p["fm_nout"], 1)))
         _ok(e, e.both(e.ne(p["fm_mins"], NONE), e.ne(p["fm_mouts"], NONE)))
@@ -348,8 +471,13 @@ def _member_fn(tables):
 
             e.var(f"fm_m{group}", 0)
             e.for_("fm_q", 0, p[f"fm_n{group}"], machine)
+        e.var("fm_min0", p["fm_min"])
+        e.if_(e.eq(kind, OK_CALL), lambda: e.if_(abi_is(JVM_GETSTATIC_ABI), static_field, method), lambda: e.if_(
+            e.eq(kind, OK_NEW), new, lambda: e.if_(e.eq(kind, OK_NEWARRAY), new_array, lambda: e.if_(
+                e.eq(kind, OK_MULTI), multi_array, lambda: e.if_(e.either(e.eq(kind, OK_ALOAD), e.eq(kind, OK_ASTORE), e.eq(kind, OK_ALEN)), array, lambda: e.if_(
+                    e.eq(kind, OK_LDC), ldc, lambda: e.if_(e.either(e.eq(kind, OK_GETFIELD), e.eq(kind, OK_PUTFIELD), e.eq(kind, OK_PUTSTATIC)), fields, cast)))))))
         e.var("fm_void", e.flag(e.both(e.eq(field(MB_RESN), 1), e.eq(e.ld(field(MB_RES)), ord("V")))))
-        arity = e.both(e.lt(0, field(MB_NAMEN)), e.eq(p["fm_min"], field(MB_NP)), e.eq(p["fm_mout"], e.sub(1, p["fm_void"])))
+        arity = e.both(e.either(e.ne(kind, OK_CALL), e.lt(0, field(MB_NAMEN))), e.eq(p["fm_min"], field(MB_NP)), e.eq(p["fm_mout"], e.sub(1, p["fm_void"])))
 
         def arity_expected():
             D.put(e, D.T_LIST)
@@ -382,14 +510,22 @@ def _member_fn(tables):
         e.if_(e.eq(p["fm_void"], 0), lambda: check(field(MB_RES), field(MB_RESN), e.ld(p["fm_mouts"])))
         # The slots ``_descriptor_slots`` gives a method descriptor (receiver excluded), and its result's.
         e.var("fm_slots", 0)
-        e.var("fm_first", e.flag(e.either(abi_is(JVM_INVOKEVIRTUAL_ABI), abi_is(JVM_INVOKEINTERFACE_ABI))))
+        e.var("fm_first", e.flag(e.both(e.eq(kind, OK_CALL), e.either(abi_is(JVM_INVOKEVIRTUAL_ABI), abi_is(JVM_INVOKEINTERFACE_ABI)))))
         e.for_("fm_k", p["fm_first"], field(MB_NP), lambda: e.set("fm_slots", e.add(p["fm_slots"], param_slots(e, p["fm_params"], p["fm_k"]))))
         set_field(MB_ARGS, p["fm_slots"])
         e.var("fm_r0", e.ld(field(MB_RES)))
         set_field(MB_RSLOTS, e.sel(e.ne(p["fm_void"], 0), 0, e.sel(e.both(e.eq(field(MB_RESN), 1), e.either(
             e.eq(p["fm_r0"], ord("J")), e.eq(p["fm_r0"], ord("D")))), 2, 1)))
+        e.var("fm_d0", e.ld(field(MB_DESC)))
+        set_field(MB_FSIZE, e.sel(e.both(e.eq(field(MB_DESCN), 1), e.either(e.eq(p["fm_d0"], ord("J")), e.eq(p["fm_d0"], ord("D")))), 2, 1))
         e.give(mb)
     return _function(("c",), build, tables)
+
+
+def _desc_letter(e: E, d):
+    """The descriptor letter of a primitive code as a diagnostic string."""
+    for code, letter in ((D_I, "I"), (D_J, "J"), (D_F, "F"), (D_D, "D")):
+        e.if_(e.eq(d, code), lambda letter=letter: D.text(e, letter))
 
 
 def param_slots(e: E, params, k):

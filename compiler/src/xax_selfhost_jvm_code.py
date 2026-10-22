@@ -292,7 +292,8 @@ def _effects():
 def _depth_fn(tables):
     """The deepest operand stack the method code reaches: one pass, restarting at each frame offset (``frames``,
     sorted, ``nframes``) and after an instruction that never falls through.  Pool-reading forms read the argument and
-    result slots the pool recorded; ``tableswitch``, ``lookupswitch`` and ``multianewarray`` are never emitted here."""
+    result slots the pool recorded; ``multianewarray`` its dimension count; ``tableswitch`` and ``lookupswitch`` are never
+    emitted here."""
     from xax_selfhost_jvm_class import P_ARGS, P_RESULT
 
     effects = _effects()
@@ -340,6 +341,7 @@ def _depth_fn(tables):
                 e.set("dp_push", e.sel(e.either(e.eq(p["dp_fo"], 0), e.eq(p["dp_fo"], 2)), p["dp_size"], 0))
 
             e.if_(_in(e, p["dp_op"], (0xB2, 0xB3, 0xB4, 0xB5)), field_access)
+            e.if_(e.eq(p["dp_op"], 0xC5), lambda: (e.set("dp_len", 4), e.set("dp_pops", byte(3)), e.set("dp_push", 1)))  # multianewarray
 
             def wide():
                 e.var("dp_inner", byte(1))
