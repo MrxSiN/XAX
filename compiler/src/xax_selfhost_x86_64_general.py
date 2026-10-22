@@ -49,7 +49,8 @@ STORE_PATH = bootstrap_dir() / "xax_x86_64_general.xax"
 OK = 1
 # S14a (ADR-284): the general program's arena starts after the views region (``xax_selfhost_general_view.VIEW_END``);
 # the front end's globals stay at the views backends' ``GLOBALS``.
-GENERAL_ARENA_AT = 73 << 20  # S15e.4 (ADR-322): was 68M, below the larger views region
+GENERAL_ARENA_AT = 120 << 20  # S15e.4 (ADR-322): was 68M; S15f (ADR-323): 120M, below the image buffer
+GENERAL_ARENA_END = 200 << 20  # ``xax_selfhost_general_image.IMAGE_BUFFER_AT``
 COUNT_AT, ORDER_AT = 1, 16  # output words: the closure's size, then each function's four CID words in image order
 # Front-end state beyond the views backends' globals (``GLOBALS + slot``).
 (G_LSIZE, G_LALIGN, G_LSTACK, G_TABI, G_TFMT, G_NARGS, G_GENERAL, G_EA_AT, G_EA_N, G_FRAMES, G_TARGET, G_ENTRY,
@@ -610,7 +611,7 @@ def _frontend(tables):
         p = e.p
         e.st(0, 0)
         e.set_hd(H_ARENA, GENERAL_ARENA_AT)
-        e.set_hd(H_ARENA_END, ARENA_END)
+        e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
         S = e.rd(0)
         e.st(GLOBALS + G_S, S)
         # The store's objects, the bound target, then the count and records of the group member functions the store
@@ -1049,13 +1050,13 @@ class GeneralResult(tuple):
 
 def _image_words(read):
     """The S12e record's words (``xax_selfhost_general_image``), up to the program's cursor."""
-    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT
+    from xax_selfhost_general_image import I_CURSOR, IMAGE_AT, IMAGE_END
     from xax_selfhost_general_regalloc import G_RA
     from xax_selfhost_views_backend import GLOBALS
 
     (table,) = read(GLOBALS + G_RA, 1)
     (end,) = read(table + I_CURSOR, 1)
-    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_AT + (5 << 20) else []
+    return read(IMAGE_AT, end - IMAGE_AT) if IMAGE_AT < end <= IMAGE_END else []
 
 
 def _read_image(words, closure, code):
