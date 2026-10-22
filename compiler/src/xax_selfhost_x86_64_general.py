@@ -1278,7 +1278,8 @@ def rebuild_views(words, closure, resolve, audit: bool = False):
                 edges.append((target, tuple(value() for _ in range(argument_count))))
             payload = b"" if pfn == NONE else graph(pfn).blocks[pb].terminator.payload
             blocks.append(type(origin)(tuple(parameters), tuple(nodes), Terminator(TerminatorKind(kind), values, tuple(edges), payload)))
-        extents = tuple((value(), take()[0]) for _ in range(take()[0]))
+        # The verifier's table is sorted by value reference (``_parse_graph``); the program lists it in position order.
+        extents = tuple(sorted(((value(), take()[0]) for _ in range(take()[0])), key=lambda item: (item[0].tag, item[0].block, item[0].index, item[0].result)))
         views[closure[fidx].cid] = replace(graph(fidx), entry=entry, blocks=tuple(blocks), member_spans=(), pointer_extents=extents)
         # S12c.1: the prefetch marks the program selected (absent: the host selects them).
         (decided, count) = take(2)
