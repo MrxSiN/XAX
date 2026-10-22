@@ -60,11 +60,15 @@ TOOLS: dict[str, dict] = {
     },
     "xax_construct": {
         "title": "XAX construct",
-        "description": "UNIMPLEMENTED natively; calls fail closed with 'unsupported'. Target contract: construct and verify a "
-                       "NEW XAX program from one xax-construct-v1 carrier (typed semantic graph: types, functions of blocks of "
-                       "[operation, operands, result types, extra] nodes, package entries). The carrier is transport; the "
-                       "verified canonical store becomes a workspace. Platforms: linux-x86_64, windows-x86_64 (executable on "
-                       "a host of the same platform; see xax_capabilities targets).",
+        "description": "PROTOTYPE: constructs and verifies a NEW XAX program from one xax-construct-v1 carrier (typed "
+                       "semantic graph: types, functions of blocks of [operation, operands, result types, extra] nodes, "
+                       "package entries) by driving the host-granted native carrier decoder (XAX_MCP_CONSTRUCT) with a "
+                       "fixed argv. The carrier is transport; the verified canonical store it writes replaces the work "
+                       "directory's current store and the result reports its root and byte count. The decoder is a "
+                       "windows-x86_64 XAX program: a carrier that names another platform, needs an unimplemented "
+                       "feature, or is larger than the decoder's carrier limit is refused (construct_rejected), never "
+                       "partially encoded. Without XAX_MCP_CONSTRUCT and XAX_MCP_WORK the call fails closed. Candidate "
+                       "stores, rollback and handles for very large carriers are not implemented yet.",
         "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
         "inputSchema": {"type": "object", "additionalProperties": False, "required": ["request"], "properties": {
             "request": {"type": "object", "required": ["format", "platform", "functions", "package"], "properties": {
