@@ -9,7 +9,7 @@ Task kinds (``K_*``, five words each: kind and four arguments): ``GET`` a value;
 constant bytes; ``ICONST``/``LCONST``; ``PUT`` a value; ``MASK`` (descriptor, width); ``CALL`` an internal method
 (callee function); ``JAVA`` a fixed ``java.lang`` method or the shared ``xax$pk``; ``BRANCH`` (opcode, label);
 ``MARK`` (label); ``JUMP`` (condition, when, label); ``STORE`` (descriptor, slot); ``GETLONG`` (value, width, signed);
-``FCONST`` (raw bits, width); ``FOREIGN`` (member record): a platform call's opcode and pool entry.
+``FCONST`` (raw bits, width); ``FOREIGN`` (member record): a platform call's opcode and pool entry; ``CALLBACK`` (table index): ``new P(k)``.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from xax_selfhost_views_backend import _FN, _call, _g, _ok
 
 TASK_W = 5
 (K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG, K_FCONST,
- K_FOREIGN) = range(1, 17)
+ K_FOREIGN, K_CALLBACK) = range(1, 18)
 # The fixed methods a lowering calls (``K_JAVA``): owner, name, descriptor.
 JAVA = (
     ("java/lang/Integer", "toUnsignedLong", "(I)J"),
@@ -717,6 +717,22 @@ def _node_task(e: E, node):
 
     e.if_(e.eq(opv, OP["CALL_DIRECT"]), call)
     e.if_(e.eq(opv, OP["CALL_FOREIGN"]), lambda: _foreign_node(e, node))
+
+    def address():
+        # A callback (ADR-161): an instance of this class whose interface method calls the function; a plain code
+        # address (a table index) belongs to the general profile (declined).
+        from xax_selfhost_general_view import N_GRAPH, N_OPSAT
+        from xax_selfhost_jvm_callback import table_index
+        from xax_selfhost_jvm_code import D_REF
+        from xax_selfhost_views_backend import _reference
+
+        _ok(e, e.le(D_REF, _sdesc(e, result)))
+        e.var("fa_fn", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
+        _ok(e, e.ne(p["fa_fn"], NONE))
+        Steps(e).add(K_CALLBACK, table_index(e, p["fa_fn"])).add(K_PUT, result).push()
+        e.give(1)
+
+    e.if_(e.eq(opv, OP["FUNCTION_ADDRESS"]), address)
     _ok(e, _in(e, opv, tuple(sorted(int(op) for op in RESOURCE_EFFECT_OPERATIONS))))  # another: the bootstrap
     e.give(1)
 
@@ -920,6 +936,25 @@ def _foreign_node(e: E, node):
     e.if_(e.eq(p["fn_kind"], OK_NEW), lambda: _call(e, "jl_push", K_FOREIGN, mb, 1, 0, 0))  # new; dup
     e.if_(e.lt(_m(e, M_MAXCALL), p["fn_slots"]), lambda: _set_m(e, M_MAXCALL, p["fn_slots"]))
     e.give(1)
+
+
+def _callback_task(e: E, index):
+    """``new P; dup; iconst k; invokespecial P.<init>(I)V``."""
+    from xax_selfhost_jvm import J_CLASSNAME
+    from xax_selfhost_jvm_class import utf8_literal
+    from xax_selfhost_jvm_foreign import _js
+
+    p = e.p
+    e.var("ck_k", index)
+    pool = _m(e, C_POOL)
+    op(e, 0xBB)
+    raw(e, _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, _js(e, J_CLASSNAME), 21)), 2)
+    op(e, 0x59)
+    iconst(e, p["ck_k"])
+    op(e, 0xB7)
+    e.var("ck_cls", _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, _js(e, J_CLASSNAME), 21)))
+    e.var("ck_nt", _call(e, "jp_ref2", pool, 12, utf8_literal(e, pool, "<init>", "ck_in"), utf8_literal(e, pool, "(I)V", "ck_id"), 0, 0))
+    raw(e, _call(e, "jp_ref2", pool, 10, p["ck_cls"], p["ck_nt"], 1, 0), 2)
 
 
 def _foreign_task(e: E, mb, phase):
@@ -1131,6 +1166,7 @@ def _run_fn(tables):
             e.if_(e.eq(kind, K_GETLONG), lambda: _call(e, "jl_getlong", p["rn_a"], p["rn_b"], p["rn_c"]))
             e.if_(e.eq(kind, K_FCONST), lambda: fconst(e, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_FOREIGN), lambda: _foreign_task(e, p["rn_a"], p["rn_b"]))
+            e.if_(e.eq(kind, K_CALLBACK), lambda: _callback_task(e, p["rn_a"]))
 
         e.while_(lambda: e.lt(p["base"], _m(e, M_ONE)), step)
         e.give(1)

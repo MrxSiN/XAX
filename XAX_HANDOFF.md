@@ -1354,3 +1354,20 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   - Indirect calls: `_indirect_calls`, the `xax$i<k>` dispatchers.
   - Recursion groups.
   - The memory and general profiles.
+
+## S15e.5e JVM callbacks — 2026-10-22 (ADR-331)
+
+- `xax_selfhost_jvm_callback`:
+  - `jk_table` runs after the signatures: the table and the groups.
+  - `jk_cb_signature`.
+  - `jk_callbacks` runs inside `jk_class`, before `xax$pk`, whose record then moves ahead of the callback records.
+- `jk_parse` (in `_jvm_foreign`) parses a descriptor without diagnostics.
+- `jk_vdesc` gives a `jvm-interface` code entry's pointer the type `L<interface>;`.
+- `scratchpad/jprobe.py`-style probing works: read `GLOBALS + J_STATE` and its fields after a native run to see how far a declined compile got. A zero state means a front-end decline.
+- Next, the general profile's operations, in `xax_jvm`'s order:
+  - aggregates and sums (flattened `long[]`);
+  - links;
+  - `STACK_ALLOC` and the shadow stack (`S`, `M`, the memory members);
+  - atomics;
+  - indirect calls (`xax$i<k>`).
+- Then the memory profile's members, recursion groups, the threaded launcher, and the driver request path.

@@ -1,7 +1,8 @@
 """S15e.5c (ADR-329): JVM reference types and platform calls in the XAX JVM program.
 
 ``xax_jvm._jvm_type`` gives a pointer to an identity-qualified opaque type ``jvm-ref:<descriptor>`` the reference
-descriptor itself.  Here a reference descriptor is a code ``D_REF + k``: the class's ``k``-th distinct descriptor text
+descriptor itself, and a pointer to a ``jvm-interface`` code entry the interface's class (a callback, ADR-161).  Here a
+reference descriptor is a code ``D_REF + k``: the class's ``k``-th distinct descriptor text
 (``jk_intern``), so equal descriptors are equal codes and slot typing stays integer comparison.
 
 ``jk_member`` is ``_foreign_member`` for the call kinds (``jvm-invokestatic``, ``-invokevirtual``, ``-getstatic``,
@@ -140,11 +141,23 @@ def _vdesc_fn(tables):
         _ok(e, e.eq(_type_form(e, p["vd_el"]), 6))  # else a memory pointer: the memory profile (declined)
         e.var("vd_id", e.add(_at(e, G_PAY, p["vd_el"]), 1))
         e.var("vd_n", _payload_uleb(e, "vd_id"))
-        _ok(e, e.lt(len(REFERENCE_PREFIX), p["vd_n"]))
-        for k, byte in enumerate(REFERENCE_PREFIX):
-            _ok(e, e.eq(e.rd(e.add(p["vd_id"], k)), byte))
-        e.var("vd_text", _copy_input(e, e.add(p["vd_id"], len(REFERENCE_PREFIX)), e.sub(p["vd_n"], len(REFERENCE_PREFIX)), "vd_tx"))
-        e.give(_call(e, "jk_intern", p["vd_text"], p["vd_tx_n"]))
+        reference = e.both(e.lt(len(REFERENCE_PREFIX), p["vd_n"]), *(e.eq(e.rd(e.add(p["vd_id"], k)), byte) for k, byte in enumerate(REFERENCE_PREFIX)))
+
+        def jvm_reference():
+            e.var("vd_text", _copy_input(e, e.add(p["vd_id"], len(REFERENCE_PREFIX)), e.sub(p["vd_n"], len(REFERENCE_PREFIX)), "vd_tx"))
+            e.give(_call(e, "jk_intern", p["vd_text"], p["vd_tx_n"]))
+
+        e.if_(reference, jvm_reference)
+        # A callback object implementing the interface (ADR-161): ``L<interface>;``.
+        from xax_selfhost_jvm_callback import interface_entry
+
+        _ok(e, e.ne(interface_entry(e, p["vd_el"], "vd_ie"), 0))
+        e.var("vd_it", e.alloc(e.add(p["vd_ie_itn"], 3)))
+        _ok(e, e.ne(p["vd_it"], NONE))
+        e.st(p["vd_it"], ord("L"))
+        e.for_("vd_k", 0, p["vd_ie_itn"], lambda: e.st(e.add(e.add(p["vd_it"], 1), p["vd_k"]), e.rd(e.add(p["vd_ie_it"], p["vd_k"]))))
+        e.st(e.add(e.add(p["vd_it"], 1), p["vd_ie_itn"]), ord(";"))
+        e.give(_call(e, "jk_intern", p["vd_it"], e.add(p["vd_ie_itn"], 2)))
     return _function(("t",), build, tables)
 
 
@@ -572,7 +585,54 @@ def _matches_fn(tables):
     return _function(("text", "n", "t"), build, tables)
 
 
+def _parse_fn(tables):
+    """``_parse_method_descriptor`` of the ``n`` words at ``text`` into a record's ``MB_NP``/``MB_PARAMS`` and
+    ``MB_RES``/``MB_RESN``; a malformed descriptor declines (its diagnostic names a text entity)."""
+    def build(e: E):
+        p = e.p
+        e.var("pd_mb", e.alloc(MB_WORDS + 1))
+        e.var("pd_params", e.alloc(e.mul(e.add(p["n"], 1), PARAM_WORDS)))
+        _ok(e, e.both(e.ne(p["pd_mb"], NONE), e.ne(p["pd_params"], NONE), e.lt(0, p["n"]), e.eq(e.ld(p["text"]), ord("("))))
+        e.st(e.add(p["pd_mb"], MB_PARAMS), p["pd_params"])
+        e.var("pd_close", _find_byte(e, e.add(p["text"], 1), e.sub(p["n"], 1), ord(")"), "pd_cl"))
+        _ok(e, e.ne(p["pd_close"], NONE))
+        e.var("pd_inner", e.add(p["text"], 1))
+        e.st(e.add(p["pd_mb"], MB_RES), e.add(e.add(p["pd_inner"], p["pd_close"]), 1))
+        e.st(e.add(p["pd_mb"], MB_RESN), e.sub(e.sub(p["n"], p["pd_close"]), 2))
+        e.var("pd_np", 0)
+        e.var("pd_i", 0)
+
+        def char(k):
+            return e.ld(e.add(p["pd_inner"], k))
+
+        def one():
+            e.var("pd_start", p["pd_i"])
+            e.while_(lambda: e.both(e.lt(p["pd_i"], p["pd_close"]), e.eq(char(p["pd_i"]), ord("["))), lambda: e.set("pd_i", e.add(p["pd_i"], 1)))
+            _ok(e, e.lt(p["pd_i"], p["pd_close"]))
+            e.var("pd_ch", char(p["pd_i"]))
+
+            def klass():
+                e.var("pd_semi", _find_byte(e, e.add(p["pd_inner"], p["pd_i"]), e.sub(p["pd_close"], p["pd_i"]), ord(";"), "pd_sm"))
+                _ok(e, e.ne(p["pd_semi"], NONE))
+                e.set("pd_i", e.add(e.add(p["pd_i"], p["pd_semi"]), 1))
+
+            def primitive():
+                _ok(e, e.either(*(e.eq(p["pd_ch"], ord(ch)) for ch in "ZBCSIJFD")))
+                e.set("pd_i", e.add(p["pd_i"], 1))
+
+            e.if_(e.eq(p["pd_ch"], ord("L")), klass, primitive)
+            e.st(e.add(p["pd_params"], e.mul(p["pd_np"], PARAM_WORDS)), e.add(p["pd_inner"], p["pd_start"]))
+            e.st(e.add(p["pd_params"], e.add(e.mul(p["pd_np"], PARAM_WORDS), 1)), e.sub(p["pd_i"], p["pd_start"]))
+            e.set("pd_np", e.add(p["pd_np"], 1))
+
+        e.while_(lambda: e.lt(p["pd_i"], p["pd_close"]), one)
+        e.st(e.add(p["pd_mb"], MB_NP), p["pd_np"])
+        e.give(p["pd_mb"])
+    return _function(("text", "n"), build, tables)
+
+
 def add_foreign_functions(add, tables):
     """Before the method analyses (``jm_types`` asks ``jk_vdesc``)."""
-    for name, builder in (("jk_intern", _intern_fn), ("jk_vdesc", _vdesc_fn), ("jk_matches", _matches_fn), ("jk_member", _member_fn)):
+    for name, builder in (("jk_intern", _intern_fn), ("jk_vdesc", _vdesc_fn), ("jk_matches", _matches_fn), ("jk_member", _member_fn),
+                          ("jk_parse", _parse_fn)):
         add(name, builder(tables))

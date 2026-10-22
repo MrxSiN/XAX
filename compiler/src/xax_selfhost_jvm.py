@@ -49,14 +49,15 @@ from xax_selfhost_x86_64_general import (
 STORE_PATH = bootstrap_dir() / "xax_jvm_general.xax"
 JVM_ARCHITECTURE = 5
 V1_IDENTITY = b"jvm-classfile-v1"
+PROFILE_IDENTITIES = (b"jvm-classfile-memory-v1", b"jvm-classfile-general-v1")  # a process entry there is threaded (declined)
 J_STATE = 211  # GLOBALS slot: the class state record
 (J_POOL, J_ENTRY_INDEX, J_NFN, J_NAMES, J_DESCS, J_ARGS, J_RESULT, J_METHODS, J_NMETHODS, J_STORE, J_STORE_LEN, J_PK, J_PROCESS,
- J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS) = range(17)
-J_WORDS = 17
+ J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES) = range(24)
+J_WORDS = 24
 METHOD_WORDS = 13  # kind, fidx, code, code length, max stack, max locals, frames, frame count, frame types, their count, lines, line count, bare frame
 (MR_KIND, MR_FIDX, MR_CODE, MR_CLEN, MR_STACK, MR_LOCALS, MR_FRAMES, MR_NFRAMES, MR_FTYPES, MR_NFTYPES, MR_LINES, MR_NLINES, MR_BARE) = range(13)
 STORE_CAP = 1 << 24
-KIND_FN, KIND_PK, KIND_MAIN = range(3)
+KIND_FN, KIND_PK, KIND_MAIN, KIND_CB, KIND_INIT = range(5)  # a callback's interface method and ``<init>(I)V`` (ADR-331)
 SIGNATURE_CAP = 1024  # a method descriptor's characters (a longer one declines)
 VERIFICATION = {D_I: 1, D_J: 2 + 2, 3: 2, 4: 3}  # I 1, J 4, F 2, D 3; Top 0
 
@@ -631,10 +632,21 @@ def _serialize_fn(tables):
             e.if_(e.eq(p["se_kind"], KIND_MAIN), lambda: (e.var("se_ni", utf8_literal(e, pool, "main", "se_mn")),
                                                           e.var("se_di", utf8_literal(e, pool, "([Ljava/lang/String;)V", "se_md"))))
 
+            def callback():
+                from xax_selfhost_jvm_callback import G_DESC, G_DESCN, G_NAME, G_NAMEN, GROUP_WORDS
+
+                e.var("se_g", e.add(_js(e, J_CBG), e.mul(f(MR_FIDX), GROUP_WORDS)))
+                e.var("se_ni", _call(e, "jp_utf8", pool, e.ld(e.add(p["se_g"], G_NAME)), e.ld(e.add(p["se_g"], G_NAMEN))))
+                e.var("se_di", _call(e, "jp_utf8", pool, e.ld(e.add(p["se_g"], G_DESC)), e.ld(e.add(p["se_g"], G_DESCN))))
+
+            e.if_(e.eq(p["se_kind"], KIND_CB), callback)
+            e.if_(e.eq(p["se_kind"], KIND_INIT), lambda: (e.var("se_ni", utf8_literal(e, pool, "<init>", "se_in")),
+                                                          e.var("se_di", utf8_literal(e, pool, "(I)V", "se_id"))))
+
         e.var("se_ni", 0)
         e.var("se_di", 0)
         names()
-        u2(e, p["out"], 0x0009)
+        u2(e, p["out"], e.sel(e.either(e.eq(p["se_kind"], KIND_CB), e.eq(p["se_kind"], KIND_INIT)), 0x0001, 0x0009))
         u2(e, p["out"], p["se_ni"])
         u2(e, p["out"], p["se_di"])
         u2(e, p["out"], 1)
@@ -652,10 +664,31 @@ def _class_fn(tables):
     def build(e: E):
         p = e.p
         pool = _js(e, J_POOL)
+        # The callbacks make their pool entries before the shared members (``_callbacks`` runs first) but follow them.
+        e.var("cl_cb0", _js(e, J_NMETHODS))
+        _call(e, "jk_callbacks")
+        e.var("cl_ncb", e.sub(_js(e, J_NMETHODS), p["cl_cb0"]))
+
         # The shared xax$pk member: iload_0; Integer.toUnsignedLong; iload_1; i2l; bipush 32; lshl; lor; lreturn.
         def pk():
             e.var("cl_tu", method_literal(e, pool, "java/lang/Integer", "toUnsignedLong", "(I)J", "cl_tu_m"))
             _fixed(e, KIND_PK, [0x1A, 0xB8, ("cl_tu", 2), 0x1B, 0x85, 0x10, 32, 0x79, 0x81, 0xAD], 5, 2)
+
+            def rotate():
+                # The pk record (last) moves before the callback records.
+                e.var("cl_methods_at", _js(e, J_METHODS))
+                e.var("cl_last", e.sub(_js(e, J_NMETHODS), 1))
+                e.var("cl_tmp", e.alloc(METHOD_WORDS + 1))
+                _ok(e, e.ne(p["cl_tmp"], NONE))
+                e.for_("cl_w", 0, METHOD_WORDS, lambda: e.st(e.add(p["cl_tmp"], p["cl_w"]), e.ld(e.add(e.add(p["cl_methods_at"], e.mul(p["cl_last"], METHOD_WORDS)), p["cl_w"]))))
+                e.var("cl_r", p["cl_last"])
+                e.while_(lambda: e.lt(p["cl_cb0"], p["cl_r"]), lambda: (
+                    e.for_("cl_w", 0, METHOD_WORDS, lambda: e.st(e.add(e.add(p["cl_methods_at"], e.mul(p["cl_r"], METHOD_WORDS)), p["cl_w"]),
+                                                                e.ld(e.add(e.add(p["cl_methods_at"], e.mul(e.sub(p["cl_r"], 1), METHOD_WORDS)), p["cl_w"])))),
+                    e.set("cl_r", e.sub(p["cl_r"], 1))))
+                e.for_("cl_w", 0, METHOD_WORDS, lambda: e.st(e.add(e.add(p["cl_methods_at"], e.mul(p["cl_cb0"], METHOD_WORDS)), p["cl_w"]), e.ld(e.add(p["cl_tmp"], p["cl_w"]))))
+
+            e.if_(e.ne(p["cl_ncb"], 0), rotate)
 
         e.if_(e.ne(_js(e, J_PK), 0), pk)
 
@@ -667,6 +700,20 @@ def _class_fn(tables):
         # The class file: this class, the super class, the source file attribute's names, the methods (they finish the
         # pool), then the head before them.
         e.var("cl_this", _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, _js(e, J_CLASSNAME), 21)))
+        # The interfaces the callbacks implement, then the private final ``k`` field (ADR-331).
+        buffer(e, "cl_ifs", 1 << 10)
+        e.for_("cl_q", 0, _js(e, J_NIFACES), lambda: u2(e, p["cl_ifs"], _call(e, "jp_ref1", pool, 7, _call(
+            e, "jp_utf8", pool, e.ld(e.add(_js(e, J_IFACES), e.mul(p["cl_q"], 2))), e.ld(e.add(_js(e, J_IFACES), e.add(e.mul(p["cl_q"], 2), 1)))))))
+        buffer(e, "cl_fields", 64)
+        e.var("cl_nf", e.flag(e.lt(0, _js(e, J_NCBG))))
+
+        def field_k():
+            u2(e, p["cl_fields"], 0x0012)
+            u2(e, p["cl_fields"], utf8_literal(e, pool, "k", "cl_fk"))
+            u2(e, p["cl_fields"], utf8_literal(e, pool, "I", "cl_fi"))
+            u2(e, p["cl_fields"], 0)
+
+        e.if_(e.ne(p["cl_nf"], 0), field_k)
         e.var("cl_super", klass_literal(e, pool, "java/lang/Object", "cl_obj"))
         e.var("cl_sf", utf8_literal(e, pool, "SourceFile", "cl_sfn"))
         e.var("cl_sv", utf8_literal(e, pool, "XAX", "cl_sfv"))
@@ -680,8 +727,12 @@ def _class_fn(tables):
 
         u2(e, p["cl_class"], _pf(e, pool, P_COUNT))
         append_buf(e, p["cl_class"], _pf(e, pool, P_BYTES))
-        for word in (0x0031, p["cl_this"], p["cl_super"], 0, 0, _js(e, J_NMETHODS)):
+        for word in (0x0031, p["cl_this"], p["cl_super"], _js(e, J_NIFACES)):
             u2(e, p["cl_class"], word)
+        append_buf(e, p["cl_class"], p["cl_ifs"])
+        u2(e, p["cl_class"], p["cl_nf"])
+        append_buf(e, p["cl_class"], p["cl_fields"])
+        u2(e, p["cl_class"], _js(e, J_NMETHODS))
         append_buf(e, p["cl_class"], p["cl_methods"])
         u2(e, p["cl_class"], 1)
         u2(e, p["cl_class"], p["cl_sf"])
@@ -761,6 +812,16 @@ def _class_fn(tables):
     return _function((), build, tables)
 
 
+def _add_record(e: E, fields: dict):
+    """Append a method record with ``fields`` (``MR_*`` -> word)."""
+    p = e.p
+    e.var("ar_i", _js(e, J_NMETHODS))
+    e.var("ar_at", e.add(_js(e, J_METHODS), e.mul(p["ar_i"], METHOD_WORDS)))
+    for field, word in fields.items():
+        e.st(e.add(p["ar_at"], field), word)
+    _set_js(e, J_NMETHODS, e.add(p["ar_i"], 1))
+
+
 def _fixed(e: E, kind: int, code: list, max_stack: int, max_locals: int):
     """A record for a generated member (code bytes, a ``(name, 2)`` item a pool index variable)."""
     p = e.p
@@ -787,7 +848,7 @@ def _fixed(e: E, kind: int, code: list, max_stack: int, max_locals: int):
 
 def _node(tables):
     """The closure's check of the node just read (``G_NI``) in graph ``g``: the target's operation list (another
-    declines in S15e.5a, as does a code address), and a direct callee to visit (NONE-1: none)."""
+    declines), and a direct callee or an addressed function to visit (NONE-1: none)."""
     def build(e: E):
         p = e.p
         ni = _g(e, G_NI)
@@ -796,8 +857,15 @@ def _node(tables):
         op_ = p["nraw"]
         supported = e.both(e.lt(op_, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(op_, 256), op_, 0)), 0))
         _ok(e, supported)  # JVM-OP-TARGET-SUPPORTED: the bootstrap's
-        _ok(e, e.ne(op_, int(Operation.FUNCTION_ADDRESS)))
         e.var("nvisit", NONE - 1)
+
+        def address():
+            # ``pending.append(node.entity)``: callable through the function table (ADR-159), erased or not.
+            e.var("na", _reference(e, p["g"], e.ld(e.add(ni, NI_ENTITY))))
+            _ok(e, e.both(e.ne(p["na"], NONE), e.eq(_kind(e, p["na"]), int(Kind.FUNCTION))))
+            e.if_(e.eq(e.ld(e.add(_g(e, G_TW), p["na"])), 0), lambda: e.set("nvisit", p["na"]))
+
+        e.if_(e.eq(op_, int(Operation.FUNCTION_ADDRESS)), address)
 
         def callee():
             entity = e.ld(e.add(ni, NI_ENTITY))
@@ -901,14 +969,16 @@ def _frontend(tables):
         e.for_("o", 0, O, resolve)
         group_member_tables(e, O)
 
-        # The target: architecture 5, the v1 profile (S15e.5a), its operation and terminator lists.
+        # The target: architecture 5, a JVM class-file profile (v1, memory or general: they lower alike; the memory
+        # members and the threaded launcher decline), its operation and terminator lists.
+        from xax_selfhost_x86_64_general import _bytes_equal
+
         target = p["target"]
         _ok(e, e.eq(_kind(e, target), int(Kind.TARGET)))
         e.var("ta", _at(e, G_PAY, target))
         e.var("t_idlen", _payload_uleb(e, "ta"))
-        _ok(e, e.eq(p["t_idlen"], len(V1_IDENTITY)))
-        for k, byte in enumerate(V1_IDENTITY):
-            _ok(e, e.eq(e.rd(e.add(p["ta"], k)), byte))
+        e.var("t_v1", e.flag(_bytes_equal(e, p["ta"], p["t_idlen"], V1_IDENTITY)))
+        _ok(e, e.either(e.ne(p["t_v1"], 0), *(_bytes_equal(e, p["ta"], p["t_idlen"], identity) for identity in PROFILE_IDENTITIES)))
         e.set("ta", e.add(p["ta"], p["t_idlen"]))
         fields = [_payload_uleb(e, "ta") for _ in range(6)]
         e.var("t_arch", fields[1])
@@ -948,6 +1018,7 @@ def _frontend(tables):
 
         e.for_("q", 0, p["sx_t"], trap_graph)
         e.var("process", e.rd(p["sx"]))
+        _ok(e, e.either(e.eq(p["process"], 0), e.ne(p["t_v1"], 0)))  # ``threaded``: the launcher (declined)
 
         # The class state.
         e.var("js", e.alloc(J_WORDS + 2))
@@ -1091,7 +1162,9 @@ def _frontend(tables):
             e.var("js_t", e.alloc(e.add(p["members"], 2)))
             _ok(e, e.ne(p["js_t"], NONE))
             _set_js(e, field, p["js_t"])
-        e.var("js_m", e.alloc(e.add(e.mul(e.add(p["members"], 4), METHOD_WORDS), 2)))
+        from xax_selfhost_jvm_callback import GROUPS_CAP
+
+        e.var("js_m", e.alloc(e.add(e.mul(e.add(p["members"], 6 + GROUPS_CAP), METHOD_WORDS), 2)))
         _ok(e, e.ne(p["js_m"], NONE))
         _set_js(e, J_METHODS, p["js_m"])
         e.var("js_name", _store_alloc(e, 24, "js_nm"))
@@ -1104,6 +1177,7 @@ def _frontend(tables):
         pool_new(e, "js_pool")
         _set_js(e, J_POOL, p["js_pool"])
         e.for_("q", 0, p["members"], lambda: _call(e, "jk_signature", e.ld(e.add(order, p["q"])), p["q"]))
+        _call(e, "jk_table")  # ``_indirect_calls``' function table and the callback groups (ADR-331)
         # Each method, in closure order.
         e.for_("q", 0, p["members"], lambda: _call(e, "jk_method", e.ld(e.add(order, p["q"])), p["q"]))
         _call(e, "jk_class")
@@ -1159,6 +1233,9 @@ def build_jvm_program():
     add_method_functions(add, tables)
     add("jk_signature", _signature_fn(tables))
     add("jl_own_method", _own_method_fn(tables))
+    from xax_selfhost_jvm_callback import add_callback_functions
+
+    add_callback_functions(add, tables)
     add_lower_functions(add, tables)
     add_emit_functions(add, tables)
     add("jk_emit_pass", _emit_pass_fn(tables))
