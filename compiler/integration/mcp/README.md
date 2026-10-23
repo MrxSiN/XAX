@@ -1,57 +1,85 @@
-# Native MCP server authoring (XAX-MCP)
+# Native MCP programs (XAX-MCP)
 
 The deployed MCP server `MrxSiN/XAX-MCP` is not a Python server. It is one XAX program, `xax-mcp-native`, built
-from one `xax-construct-v1` carrier into a verified canonical store and a PE32+ executable. `xax-mcp-sandbox` is a
-second XAX program with the same shape. Neither runs Python on its request path.
+from a verified canonical store into a PE32+ executable. `xax-mcp-sandbox` and `xax-mcp-seed` have the same shape.
+None of them runs Python on its request path.
 
-This directory is the authoring tooling for those two programs, and it lives here rather than in the artifact
-repository so that `MrxSiN/XAX-MCP` contains no source code: carriers, canonical stores, executables, evidence and
-docs only. The program semantics are XAX either way; what remains in Python is the carrier emitter, which the native
-`construct` decoder (`compiler/integration/construct/`) replaces when it is finished.
+This directory holds the authoritative XAX programs and the tooling that builds and checks them. It lives in the
+XAX repository so that `MrxSiN/XAX-MCP` contains no source code: carriers, canonical stores, executables, evidence
+and docs only.
+
+## The programs are the stores
+
+`programs/*.xax` are the authoritative programs. A `xax-construct-v1` carrier is transport, never source; the
+carrier files are kept because the native `construct` decoder reads them and because they are the readable form of
+the same graph.
 
 | file | role |
 |---|---|
-| `server.py` | writes the `xax-construct-v1` carrier for `xax-mcp-native` (STDIO framing, JSON validation, JSON-RPC, MCP lifecycle, tool dispatch, host rights) |
-| `sandbox.py` | writes the carrier for `xax-mcp-sandbox`, the fixed executor boundary (job object, AppContainer, pipes, supervision) |
-| `dsl.py` | the block/edge emitter both carriers are written with |
-| `schemas.py` | the tool argument schemas the server carrier embeds (transport values) |
-| `seed.py` | the editable form-2 build-request seed `xax-mcp-seed.xax` |
-| `chain.py` | drives the native compiler over that seed: `edit` -> `resolve` -> `build` |
-| `bench.py` | protocol measurements (cold start, round-trip latency, peak working set) |
-| `fingerprint.py` | recomputes the toolchain fingerprint recorded in the XAX-MCP compatibility matrix |
-| `tests/test_native_stdio.py` | the Windows STDIO suite over the real PE32+ |
-| `tests/generic_client.py` | a minimal MCP client over the same transport |
+| `programs/xax-mcp-native.xax` | the server program: STDIO framing, JSON validation, JSON-RPC, MCP lifecycle, tool dispatch, host rights |
+| `programs/xax-mcp-sandbox.xax` | the executor boundary: job object, AppContainer, pipes, supervision |
+| `programs/xax-mcp-seed.xax` | the editable form-2 build-request seed (entry returns 40 through `ExitProcess`) |
+| `programs/xax-mcp-seed-snapshot.xax` | the resolved snapshot of the seed, as committed by the authors |
+| `programs/construction_request.json` | the `xax-construct-v1` carrier of the server (transport) |
+| `programs/sandbox_request.json` | the carrier of the executor (transport) |
+| `programs/tool-schemas.json` | the tool argument schemas the server carrier embeds (transport data) |
+| `chain.py` | drives the native compiler over the seed: `edit` -> `resolve` -> `build` (port pending) |
+| `bench.py` | protocol measurements (port pending) |
+| `fingerprint.py` | recomputes the toolchain fingerprint (port pending) |
+| `tests/test_native_stdio.py` | the Windows STDIO suite over the real PE32+ (port pending) |
 
-## Regenerate the artifacts
+The five Python carrier emitters (`server.py`, `sandbox.py`, `seed.py`, `dsl.py`, `schemas.py`) were retired in
+this change. They are preserved in git history at `6b6c359`; the programs they emitted are the stores above. The
+store is the source: an edit is a typed `xaxc edit` record, not a regeneration from a DSL.
+
+## Build and verify
+
+No author runs. The committed stores are the inputs:
 
 ```powershell
-$src = (Resolve-Path compiler/src).Path
-python -B compiler/integration/mcp/server.py  $src D:\GitHub\XAX-MCP\native
-python -B compiler/integration/mcp/sandbox.py $src D:\GitHub\XAX-MCP\native
-python -B compiler/integration/mcp/seed.py    $src D:\GitHub\XAX-MCP\native
+$programs = "compiler/integration/mcp/programs"
+# server and executor are snapshots
+build/windows_helpers/xaxc-windows.exe verify $programs/xax-mcp-native.xax   server.verify
+build/windows_helpers/xaxc-windows.exe build  $programs/xax-mcp-native.xax   server.exe server.prov
+build/windows_helpers/xaxc-windows.exe build  $programs/xax-mcp-sandbox.xax  sandbox.exe sandbox.prov
+# the seed is a form-2 build request: resolve it first
+build/windows_helpers/xaxc-windows.exe resolve $programs/xax-mcp-seed.xax seed-snapshot.xax
+build/windows_helpers/xaxc-windows.exe build   seed-snapshot.xax seed.exe seed.prov
 ```
 
-Each command prints the store root, the store size and the artifact size. These are the numbers the committed
-artifacts have, so a regeneration is byte for byte reproducible:
+The committed artifacts are:
 
-| program | store root | store bytes | artifact bytes |
-|---|---|---|---|
-| `xax-mcp-native` | `baec162e4bfb177fff18c3d36efdbd6e2ad0a0dec6cb412874fcbd18c12dd442` | 1 020 614 | 318 464 |
-| `xax-mcp-sandbox` | `7ef7099d5358bf022715faff1ef26387c1486c554ed2f7d9145bd9d8953ef8b6` | 74 434 | 25 600 |
-| `xax-mcp-seed` | `572f683e22d94efe404b5b73f59b85edfd3e6ccbd2614342fdf58fe66cb61587` | 1 852 | 1 536 |
+| program | store root | store bytes | executable | executable bytes |
+|---|---|---|---|---|
+| `xax-mcp-native` | `18ceecd9fe284e16919bb5f0f40bdf52cf5a90407ad007d218f30d3235024b07` | 1 103 602 | `9f6e272bbbc938d3493a98b7c68409de31a09ffc4cc958bb41be7447b65c076a` | 359 424 |
+| `xax-mcp-sandbox` | `7ef7099d5358bf022715faff1ef26387c1486c554ed2f7d9145bd9d8953ef8b6` | 74 434 | `6d563e0f23e4f402d55c82b200d42bce91c41c98aab101267e67d3645a1d37e2` | 25 600 |
+| `xax-mcp-seed` | `572f683e22d94efe404b5b73f59b85edfd3e6ccbd2614342fdf58fe66cb61587` | 1 852 | `8faaeb7e63e5d1a07bcd9c46e3ae3381af267b67e213cec6b992c628fb1843ca` | 1 536 |
+
+The executor build is byte-identical to the committed PE. The server build is not yet byte-identical: the native
+backend omits the reference Windows guard-page probe, which shifts the image by 16 bytes (B1). The committed
+server PE remains the author-built one; the store and the carrier are byte-identical to the committed artifacts.
+
+The native `xaxc` is a local prototype and is not committed to the pinned tree. The pinned compiler commit is
+`3e9b0c2b3f88d2193caae72a5fe8eefa83d1995b`; the tools here are integration tooling for that pin.
 
 ## Run the tests
 
-The suite is a Windows test client; the server under test is the committed executable.
+The suite is an external Windows test client; the server under test is the committed executable. The client also
+checks that `programs/*` are byte-identical to the deployed artifacts in `XAX_MCP_HOME`.
 
 ```powershell
 $env:XAX_MCP_HOME = "D:\GitHub\XAX-MCP"        # committed carriers, stores and executables
-$env:XAX_NATIVE_SRC = "D:\GitHub\XAX\compiler\src"
 python -m pytest -q compiler/integration/mcp/tests
 ```
 
-`XAX_MCP_HOME` supplies the artifacts to compare against; `XAX_NATIVE_SRC` enables the tests that rebuild the
-store and check it byte for byte. Without either, the tests that need them skip rather than pass silently.
+Optional gates, each of which skips rather than passing silently when unset:
+
+| variable | enables |
+|---|---|
+| `XAX_MCP_TEST_COMPILER` | native `xaxc`: deterministic rebuild of the committed server store |
+| `XAX_MCP_TEST_CONSTRUCT` | native `construct`: decode `sandbox_request.json` and compare the store |
+| `XAX_NATIVE_SRC` | the pinned `compiler/src`, for the `xaxc edit` record in the chain test |
+| `XAX_MCP_NATIVE_EXE` | a server executable other than `XAX_MCP_HOME/native/xax-mcp-native.exe` |
 
 The pin's compiler tree is checked with `fingerprint.py`:
 
@@ -62,7 +90,6 @@ python -B compiler/integration/mcp/fingerprint.py D:\GitHub\XAX
 
 ## What is still Python
 
-The carrier emitters. `xax_construct.construct` is Python-only upstream, so a carrier today cannot be turned into
-a store without it. `compiler/integration/construct/` is the native decoder that removes that dependency: when it
-reproduces both stores above byte for byte, the emitters are only needed to *edit* a carrier, and the artifact
-repository's build becomes `construct <carrier> <store>` plus `build <store> <exe>`.
+The carrier emitters are gone. `chain.py`, `bench.py`, `fingerprint.py` and the test client remain Python while
+they are ported to XAX programs; they are build/test tooling, never part of a deployed artifact. The retirements
+and the remaining port are recorded as B5 in the XAX-MCP evidence.
