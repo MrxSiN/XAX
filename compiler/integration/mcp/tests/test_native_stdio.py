@@ -1,10 +1,9 @@
 """The native XAX MCP server over its real STDIO transport, as a Windows x86-64 executable.
 
 The executable is the PE32+ that XAX builds from the committed canonical store.  Set XAX_MCP_HOME to the
-``MrxSiN/XAX-MCP`` checkout that holds the committed carriers and artifacts, and XAX_NATIVE_SRC to a checkout's
-``compiler/src`` (the test rebuilds the store, checks it byte for byte against the committed one, and builds the PE),
-or XAX_MCP_NATIVE_EXE to an already built executable.  ``schemas.py`` is build tooling: it defines the tool schemas
-that the carrier embeds.  Python is a test client here, never a server.
+``MrxSiN/XAX-MCP`` checkout that holds the committed carriers and artifacts, or XAX_MCP_NATIVE_EXE to an already
+built executable.  The authoritative programs are ``programs/*.xax`` in this directory; the tool schemas the
+carrier embeds are ``programs/tool-schemas.json``.  Python is a test client here, never a server.
 """
 from __future__ import annotations
 
@@ -19,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import types
 from pathlib import Path
 
 import pytest
@@ -51,24 +51,21 @@ LMAX = 4 * 1024 * 1024
 
 
 def _schemas():
-    spec = importlib.util.spec_from_file_location("native_test_schemas", TOOLING / "schemas.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    """The tool schemas the server carrier embeds, as transport data (not a Python module)."""
+    document = json.loads((TOOLING / "programs" / "tool-schemas.json").read_text(encoding="utf-8"))
+    return types.SimpleNamespace(SCHEMA_VERSION=document["version"],
+                                 TOOLS={tool["name"]: {key: value for key, value in tool.items() if key != "name"}
+                                        for tool in document["tools"]})
 
 
 @pytest.fixture(scope="module")
 def exe(tmp_path_factory) -> str:
     if os.environ.get("XAX_MCP_NATIVE_EXE"):
         return os.environ["XAX_MCP_NATIVE_EXE"]
-    source = os.environ.get("XAX_NATIVE_SRC")
-    if not source:
-        pytest.skip("set XAX_NATIVE_SRC (XAX compiler/src at NATIVE_XAX_COMMIT) or XAX_MCP_NATIVE_EXE")
-    out = tmp_path_factory.mktemp("native")
-    subprocess.run([sys.executable, str(TOOLING / "server.py"), source, str(out)], check=True, capture_output=True, timeout=900)
-    for name in ("xax-mcp-native-gen0.xax", "construction_request.json"):  # the committed store is its builder's output
-        assert (out / name).read_bytes() == (_native() / name).read_bytes(), name
-    return str(out / "xax-mcp-native.exe")
+    built = _native() / "xax-mcp-native.exe"
+    if not built.is_file():
+        pytest.skip("set XAX_MCP_NATIVE_EXE or commit native/xax-mcp-native.exe")
+    return str(built)
 
 
 class Server:
@@ -383,13 +380,35 @@ def test_standard_sdk_client(exe):
     assert denied.is_error and denied.structured_content["error"]["code"] == "denied_capability"
 
 
-def test_build_is_deterministic(exe, tmp_path):
-    """The committed store builds to the same PE every time (two independent rebuilds from the store's builder)."""
-    source = os.environ.get("XAX_NATIVE_SRC")
-    if not source:
-        pytest.skip("needs XAX_NATIVE_SRC")
-    subprocess.run([sys.executable, str(TOOLING / "server.py"), source, str(tmp_path)], check=True, capture_output=True, timeout=900)
-    assert hashlib.sha256((tmp_path / "xax-mcp-native.exe").read_bytes()).digest() == hashlib.sha256(Path(exe).read_bytes()).digest()
+def test_programs_are_the_committed_artifacts():
+    """The XAX programs in this directory are the source of the artifacts XAX-MCP deploys."""
+    pairs = {
+        "xax-mcp-native.xax": "xax-mcp-native-gen0.xax",
+        "xax-mcp-sandbox.xax": "xax-mcp-sandbox-gen0.xax",
+        "xax-mcp-seed.xax": "xax-mcp-seed.xax",
+        "xax-mcp-seed-snapshot.xax": "xax-mcp-seed-snapshot.xax",
+        "construction_request.json": "construction_request.json",
+        "sandbox_request.json": "sandbox_request.json",
+    }
+    for program, artifact in pairs.items():
+        assert (TOOLING / "programs" / program).read_bytes() == (_native() / artifact).read_bytes(), program
+
+
+def test_native_build_is_deterministic(tmp_path):
+    """The committed store builds to the same PE on every native ``xaxc build``; no author runs."""
+    compiler = os.environ.get("XAX_MCP_TEST_COMPILER")
+    if not compiler:
+        pytest.skip("set XAX_MCP_TEST_COMPILER (native xaxc) to rebuild the committed store")
+    store = TOOLING / "programs" / "xax-mcp-native.xax"
+    hashes = []
+    for index in range(2):
+        artifact, provenance = tmp_path / f"server-{index}.exe", tmp_path / f"server-{index}.prov"
+        built = subprocess.run([compiler, "build", str(store), str(artifact), str(provenance)],
+                               capture_output=True, timeout=900)
+        assert built.returncode == 0, built.stderr.decode(errors="replace")
+        hashes.append(hashlib.sha256(artifact.read_bytes()).hexdigest())
+        assert artifact.stat().st_size == 359424
+    assert hashes[0] == hashes[1]
 
 
 def test_native_compiler_chain_over_stdio(exe, tmp_path):
@@ -402,7 +421,8 @@ def test_native_compiler_chain_over_stdio(exe, tmp_path):
     source = os.environ.get("XAX_NATIVE_SRC")
     if not compiler or not source:
         pytest.skip("set XAX_MCP_TEST_COMPILER (native xaxc) and XAX_NATIVE_SRC (XAX compiler/src) to drive the native chain")
-    seed = _native() / "xax-mcp-seed.xax"
+    seed = TOOLING / "programs" / "xax-mcp-seed.xax"
+    assert seed.read_bytes() == (_native() / "xax-mcp-seed.xax").read_bytes()
     work = tmp_path / "work"
     work.mkdir()
     shutil.copy(seed, work / "current.xax")
@@ -414,10 +434,10 @@ def test_native_compiler_chain_over_stdio(exe, tmp_path):
     # The executor must be installed beside the server executable (the server derives its own directory).
     launcher = Path(exe).parent / "xax-mcp-sandbox.exe"
     if not launcher.is_file():
-        built = tmp_path / "sandbox-build"
-        subprocess.run([sys.executable, str(TOOLING / "sandbox.py"), source, str(built)],
-                       check=True, capture_output=True, timeout=900)
-        shutil.copy(built / "xax-mcp-sandbox.exe", launcher)
+        committed = _native() / "xax-mcp-sandbox.exe"
+        if not committed.is_file():
+            pytest.skip("the committed executor PE is not in XAX_MCP_HOME/native")
+        shutil.copy(committed, launcher)
     server = Server(exe, "--allow-execute",
                     env={"XAX_MCP_COMPILER": compiler, "XAX_MCP_WORK": str(work), "XAX_MCP_STORE": str(seed)})
     try:
@@ -460,8 +480,11 @@ def test_native_construct_over_stdio(exe, tmp_path):
     decoder = os.environ.get("XAX_MCP_TEST_CONSTRUCT")
     if not decoder:
         pytest.skip("set XAX_MCP_TEST_CONSTRUCT (native XAX construct executable) to drive the native decoder")
-    request = json.loads((_native() / "sandbox_request.json").read_text())
-    store = (_native() / "xax-mcp-sandbox-gen0.xax").read_bytes()
+    request_bytes = (TOOLING / "programs" / "sandbox_request.json").read_bytes()
+    store = (TOOLING / "programs" / "xax-mcp-sandbox.xax").read_bytes()
+    assert request_bytes == (_native() / "sandbox_request.json").read_bytes()
+    assert store == (_native() / "xax-mcp-sandbox-gen0.xax").read_bytes()
+    request = json.loads(request_bytes)
     work = tmp_path / "work"
     work.mkdir()
     server = Server(exe, env={"XAX_MCP_WORK": str(work), "XAX_MCP_CONSTRUCT": decoder})
@@ -494,31 +517,24 @@ def test_native_construct_over_stdio(exe, tmp_path):
 
 
 
+def test_sandbox_runs_the_seed_artifact(tmp_path):
     """The native executor runs the committed seed artifact and records its exit code.
 
-    Gated on XAX_NATIVE_SRC: it builds ``native/sandbox.py`` into a launcher with the pinned XAX compiler.  The
-    executor itself creates a capability-less AppContainer inside a job object (see docs/NATIVE.md); this test only
-    asserts that the artifact ran and its exit code was captured.  A host that cannot create or hold the container
-    makes the executor fail closed (exit 51 or 41), which skips this test with that reason.
+    The launcher and the seed artifact are the committed ``native/*.exe`` files; the source stores in ``programs/``
+    must be byte-identical.  The executor creates a capability-less AppContainer inside a job object (see
+    docs/NATIVE.md); this test only asserts that the artifact ran and its exit code was captured.  A host that cannot
+    create or hold the container makes the executor fail closed (exit 51 or 41), which skips this test with that reason.
     """
-    source = os.environ.get("XAX_NATIVE_SRC")
-    if not source:
-        pytest.skip("set XAX_NATIVE_SRC (XAX compiler/src) to build the native sandbox launcher")
-    out = tmp_path / "build"
-    build = subprocess.run([sys.executable, str(TOOLING / "sandbox.py"), source, str(out)],
-                           capture_output=True, timeout=900)
-    assert build.returncode == 0, build.stderr.decode(errors="replace")
-    for name in ("sandbox_request.json", "xax-mcp-sandbox-gen0.xax"):  # the committed store is its builder's output
-        assert (out / name).read_bytes() == (_native() / name).read_bytes(), name
-    launcher = out / "xax-mcp-sandbox.exe"
-    seed = tmp_path / "seed"
-    seeded = subprocess.run([sys.executable, str(TOOLING / "seed.py"), source, str(seed)],
-                            capture_output=True, timeout=900)
-    assert seeded.returncode == 0, seeded.stderr.decode(errors="replace")
+    launcher = _native() / "xax-mcp-sandbox.exe"
+    seed = _native() / "xax-mcp-seed.exe"
+    if not launcher.is_file() or not seed.is_file():
+        pytest.skip("the committed executor and seed PEs are not in XAX_MCP_HOME/native")
+    assert (TOOLING / "programs" / "xax-mcp-sandbox.xax").read_bytes() == (
+        _native() / "xax-mcp-sandbox-gen0.xax").read_bytes()
+    assert (TOOLING / "programs" / "xax-mcp-seed.xax").read_bytes() == (_native() / "xax-mcp-seed.xax").read_bytes()
     work = tmp_path / "work"
     work.mkdir(exist_ok=True)
-    ran = subprocess.run([str(launcher), str(seed / "xax-mcp-seed.exe"), str(work)],
-                         capture_output=True, timeout=120)
+    ran = subprocess.run([str(launcher), str(seed), str(work)], capture_output=True, timeout=120)
     if ran.returncode in (41, 51):
         # the executor fails closed when this host cannot create or hold an AppContainer; say so instead of
         # pretending the artifact ran confined
