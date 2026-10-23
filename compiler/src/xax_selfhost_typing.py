@@ -75,11 +75,12 @@ from xax_compiler import heap_view_type
 from xax_selfhost_cfg import B64, IN_POINTER, MEM, OUT_POINTER, _Builder
 
 # The typing-and-facts program's own views: large graphs need room for their streams and fact tables.
-IN_EXTENT, OUT_EXTENT = 512 << 20, 1 << 31  # S15e.4 (ADR-322): output 2 GiB. S6c; S10e (ADR-266): the driver store as one object table, its stream
+IN_EXTENT, OUT_EXTENT = 1 << 30, 1 << 31  # S15e.4 (ADR-322): output 2 GiB; ADR-334: input 1 GiB. S6c; S10e (ADR-266): the driver store as one object table, its stream
 # S12e.3 (ADR-277): both views grew 2x (input from 128 MiB, output from 512 MiB; the input stays at most a quarter of
 # the output) so the general driver's own object table (28.3M words) fits.  ADR-287: the input view grew to 512 MiB
-# for the verifier's object table of the growing driver store; the typing program's own input stays bounded by
-# TYPING_WORDS, the quarter of the output its tables reserve for it.
+# for the verifier's object table of the growing driver store, and (ADR-334) to 1 GiB when the JVM program made it
+# 71M words; the typing program's own input stays bounded by TYPING_WORDS, the quarter of the output its tables reserve
+# for it.
 IN_WORDS, OUT_WORDS = IN_EXTENT // 8, OUT_EXTENT // 8
 TYPING_WORDS = (256 << 20) // 8
 IN_VIEW, OUT_VIEW = heap_view_type(IN_EXTENT), heap_view_type(OUT_EXTENT)

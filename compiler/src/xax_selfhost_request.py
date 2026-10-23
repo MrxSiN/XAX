@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_ed25519 as ED
-from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
+from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, JVM_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
                           container_lowering_identity)
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
@@ -67,6 +67,11 @@ X86_ARCHITECTURE, X86_RAW_FORMAT = 1, 1
 # AArch64 program.
 PATH_A64_RAW = 9
 A64_ARCHITECTURE, A64_BAREMETAL_ABI, A64_RAW_FORMAT = 3, 3, 1
+# S15e.5 (ADR-334): a JVM JAR (architecture 5, ``build``'s branch after the hosted containers), made by the JVM program.
+PATH_JVM = 10
+JVM_ARCHITECTURE, JVM_FORMAT = 5, 1
+# 1 when the JVM request asks for an executable JAR (``main``; the entry is a process entry).
+B_JVMEXE = 47
 ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
 # S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
 # program reads the package's plan, ``xax_selfhost_general_dll``), and the provenance names the DLL container.
@@ -469,6 +474,7 @@ def _build_request(tables, verify):
             e.var("wasm", 0)  # S15f.1: a raw module, ``build``'s last branch like RISC-V
             e.var("x86raw", 0)  # S15f.2: a Windows load image, likewise
             e.var("a64raw", 0)  # S15f.4: a bare-metal AArch64 image, likewise
+            e.var("jvm", 0)  # S15e.5: a JVM JAR (its requested artifacts checked before lowering)
             e.var("abi", NONE_FIELD)
             e.var("accel", 0)
             e.var("architecture", NONE_FIELD)
@@ -492,6 +498,7 @@ def _build_request(tables, verify):
                                               e.eq(p["image_format"], A64_RAW_FORMAT))))
                 e.set("accel", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], ACCELERATOR_ARCHITECTURE),
                                              e.eq(p["image_format"], ACCELERATOR_FORMAT))))
+                e.set("jvm", e.flag(e.both(e.eq(p["hosted"], 0), e.eq(p["architecture"], JVM_ARCHITECTURE))))
 
             e.if_(e.lt(p["cur"], p["target_end"]), fields)
             for index, (_identity, _path, _dynamic, architecture, formats) in enumerate(HOSTED_PROFILES):
@@ -505,8 +512,12 @@ def _build_request(tables, verify):
             e.if_(e.ne(p["x86raw"], 0), lambda: e.set("path", PATH_X86_RAW))
             e.if_(e.ne(p["a64raw"], 0), lambda: e.set("path", PATH_A64_RAW))
             e.if_(e.ne(p["accel"], 0), lambda: e.set("path", PATH_ACCELERATOR))
+            e.if_(e.ne(p["jvm"], 0), lambda: e.set("path", PATH_JVM))
+            # Another JVM image format: ``lowering_identity`` has none (the bootstrap's ValueError): declined.
+            e.if_(e.both(e.ne(p["jvm"], 0), e.ne(p["image_format"], JVM_FORMAT)), lambda: e.set("outcome", DECLINE))
             _set(e, B_PATH, p["path"])
-            e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0), e.eq(p["wasm"], 0), e.eq(p["x86raw"], 0), e.eq(p["a64raw"], 0), e.eq(p["accel"], 0)),
+            e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0), e.eq(p["wasm"], 0), e.eq(p["x86raw"], 0), e.eq(p["a64raw"], 0), e.eq(p["accel"], 0),
+                         e.eq(p["jvm"], 0)),
                   lambda: e.set("outcome", DECLINE))
 
             def dll():
@@ -553,7 +564,27 @@ def _build_request(tables, verify):
                                                          _name(e, "kind_value", ARTIFACT_NAMES)))
                 e.set("outcome", REJECT)
 
-            native = e.either(e.ne(p["dll"], 0), e.both(e.eq(p["artifacts"], 1), e.eq(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE))),
+            def jvm_artifacts():
+                """``build``'s JVM branch, before compiling: exactly one library or executable JAR."""
+                D.begin(e)
+                D.text(e, "XAX.BUILD.ARTIFACT")
+                _cid(e, p["request"])
+                D.text(e, "BUILD-ARTIFACT-SUPPORTED")
+                D.put(e, D.T_LIST)
+                D.put(e, 2)
+                for kind in (ArtifactKind.JVM_LIBRARY_JAR, ArtifactKind.JVM_EXECUTABLE_JAR):
+                    D.text(e, kind.name)
+                D.put(e, D.T_LIST)
+                D.put(e, p["artifacts"])
+                e.for_("jk", 0, p["artifacts"], lambda: (e.var("kind_value", e.rd(e.add(p["artifacts_at"], p["jk"]))),
+                                                         _name(e, "kind_value", ARTIFACT_NAMES)))
+                e.set("outcome", REJECT)
+
+            jar = e.both(e.eq(p["artifacts"], 1), e.either(e.eq(p["first_kind"], int(ArtifactKind.JVM_LIBRARY_JAR)),
+                                                            e.eq(p["first_kind"], int(ArtifactKind.JVM_EXECUTABLE_JAR))))
+            _set(e, B_JVMEXE, e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.JVM_EXECUTABLE_JAR)))))
+            e.if_(e.both(running(), e.ne(p["jvm"], 0), e.not_(jar)), jvm_artifacts)
+            native = e.either(e.ne(p["jvm"], 0), e.ne(p["dll"], 0), e.both(e.eq(p["artifacts"], 1), e.eq(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE))),
                               e.both(e.eq(p["artifacts"], 1), e.ne(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.ACCELERATOR_DEPLOYMENT))))
             e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.either(e.ne(p["riscv"], 0), e.ne(p["wasm"], 0), e.ne(p["x86raw"], 0), e.ne(p["a64raw"], 0), e.ne(p["accel"], 0)), riscv_artifacts,
                                                                        artifacts))
@@ -584,6 +615,7 @@ def _provenance(tables):
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_A64_RAW), lambda: lowering(AARCH64_LOWERING_IDENTITY_V1))  # S15f.4
         e.if_(e.ne(_ctrl(e, B_DLL), 0), lambda: lowering(container_lowering_identity(DLL_LOWERING)))  # S15e.3b
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_ACCELERATOR), lambda: lowering(ACCELERATOR_LOWERING_IDENTITY_V1))  # S15e.7a
+        e.if_(e.eq(_ctrl(e, B_PATH), PATH_JVM), lambda: lowering(JVM_LOWERING_IDENTITY_V1))  # S15e.5
         for word in range(CID_SIZE // 8):
             for k in range(8):
                 e.st(ENVELOPE_AT + P_DIGEST + 8 * word + k, e.and_(e.udiv(_ctrl(e, B_DIGEST + word), 1 << (8 * k)), 255))

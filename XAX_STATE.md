@@ -1750,3 +1750,12 @@ The XAX JVM program now builds the object kinds byte for byte with the bootstrap
 ## S15e.5e JVM callbacks through XAX — 2026-10-22 (ADR-331)
 
 The XAX JVM program now builds callbacks: JDK streams and comparators that call XAX functions. It also accepts the memory and general class-file profiles. Every compile in `test_xax_jvm_callbacks.py`, `test_xax_jvm_objects.py`, `test_xax_jvm_import.py` and `test_xax_jvm.py` either agrees with the bootstrap or declines, and none disagree. The declines are a stack allocation and the memory-profile rejection.
+
+## S15e.5f/S15e.5 JVM aggregates, the full test run, and JVM JARs through the production compiler — 2026-10-22 (ADR-332, ADR-333, ADR-334)
+
+- The XAX JVM program builds aggregates and sums as flattened `long[]` values. In `test_xax_jvm_general.py`, 3 compiles agree and 12 decline (the memory machinery); none disagree.
+- The full suite after the S15 steps: its failures are fixed (the Linux request bit, the 64 MiB BLAKE3 input, the inventory, the native-width test) or environmental (wheel setuptools, and xdist workers that crashed under memory pressure).
+- The production driver builds JVM library and executable JARs. The verifier's input view is now 1 GiB, and the x86-64 views backend has more room. The seed was rotated in two stages to `445bdf00…` (seed = C1 = C2). The seed binary's hello JAR is byte-equal to `build`'s.
+- Still open:
+  - The selfhost closure and full-selfhost evidence have not been re-run against the new stores.
+  - The serial rerun of the seven crashed tests.
