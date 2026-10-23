@@ -1371,3 +1371,17 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   - atomics;
   - indirect calls (`xax$i<k>`).
 - Then the memory profile's members, recursion groups, the threaded launcher, and the driver request path.
+
+## Handoff — 2026-10-22, JVM JARs in the driver (ADR-332, ADR-333, ADR-334)
+
+- The driver dispatches `PATH_JVM` (10) to `jvm_program`.
+  - `build_request` checks the JAR artifacts and sets `B_JVMEXE`.
+  - The JVM image record uses the general layout `[1, 0, len, jar]` at `IMAGE_AT`.
+- Capacity:
+  - `xax_selfhost_typing.IN_EXTENT` is now `1 << 30`.
+  - The x86-64 views backend's stream sits below the code, and the jumps and ranges share the code region.
+  - A future growth of the driver may need these raised again. Rotate the seed in two stages when the pinned seed cannot verify the new store.
+- Next:
+  1. Re-run the evidence (`refresh_selfhost_store.py` per program, `bench_selfhost_x86_64.py --write`, `bench_full_selfhost --write`, `bench_python_free_seed --write`), then `generate_m14` and `xax_status_docs --write`.
+  2. Re-run serially the tests that crashed under xdist.
+  3. The JVM memory machinery, then S15e.6 Android packages.

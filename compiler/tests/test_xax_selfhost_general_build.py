@@ -432,6 +432,41 @@ class GeneralBuildTests(unittest.TestCase):
                 seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
         self.assertIn("image", seen)
 
+    def test_jvm_jars(self):
+        """S15e.5 (ADR-333): JVM library and executable JARs are the XAX JVM program's: the artifact and provenance are
+        ``build``'s with the bootstrap's backend, and every rejection its diagnostic (the requested artifacts, the
+        process entry); a program the JVM program declines is declined by the driver."""
+        import random
+        from unittest import mock
+
+        import xax_selfhost_jvm as JVM
+        from test_xax_jvm import _hello_program, _random_function
+
+        jar = JVM.jvm_jar
+        target = X.jvm_classfile_target()
+        rng = random.Random(333)
+        cases = []
+        for trial in range(int(os.environ.get("XAX_RAW_TRIALS", "6"))):
+            entry, graph = _random_function(rng, rng.choice((8, 32, 47, 64)))
+            artifacts = (ArtifactKind.JVM_LIBRARY_JAR,) if trial % 3 else (ArtifactKind.JVM_EXECUTABLE_JAR,)
+            cases.append((f"random {trial}", tuple(graph.objects.values()), entry, artifacts))
+        entry, objects = _hello_program(7)
+        cases.append(("hello", objects, entry, (ArtifactKind.JVM_EXECUTABLE_JAR,)))
+        cases.append(("hello library", objects, entry, (ArtifactKind.JVM_LIBRARY_JAR,)))
+        cases.append(("native image", objects, entry, (ArtifactKind.NATIVE_IMAGE,)))
+        cases.append(("two jars", objects, entry, (ArtifactKind.JVM_LIBRARY_JAR, ArtifactKind.JVM_EXECUTABLE_JAR)))
+        seen = set()
+        for name, objects, entry, artifacts in cases:
+            program = _program(tuple(item for item in objects if item.cid != entry.cid), {b"image": entry}, target, artifacts=artifacts)
+            with mock.patch.object(JVM, "jvm_jar", lambda r, f, t, process_entry=False, frontend="auto": jar(r, f, t, process_entry=process_entry,
+                                                                                                         frontend="python")):
+                expected = _expected(program)
+            with self.subTest(case=name):
+                outcome = self.run_build(program.data)
+                self.assertEqual(outcome, expected)
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+        self.assertEqual(seen, {"image", "JVM-PROCESS-ENTRY-CONTRACT", "BUILD-ARTIFACT-SUPPORTED"})
+
     def test_other_paths_decline(self):
         """Android packages, Windows DLLs on a target other than the PE profile, and targets other than the Linux
         x86-64, Linux AArch64, Windows PE32+ and RISC-V raw profiles are ``build``'s other paths: the driver declines and

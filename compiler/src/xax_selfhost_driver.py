@@ -438,6 +438,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         general_reader, general_program = GEN.load_general_program()
         riscv_reader, riscv_backend = RV.load_backend_program()  # S15e.1 (ADR-308)
         aarch64_reader, aarch64_program = A64.load_aarch64_program()  # S15e.2 (ADR-315)
+        import xax_selfhost_jvm as JVM
+
+        jvm_reader, jvm_program = JVM.load_jvm_program()  # S15e.5 (ADR-334)
         writer_reader, writer = WR.load_writer_program()  # S13c
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
@@ -1809,6 +1812,8 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         put(w[j_graphs])
         q2 = w.let("j_copy", 0)
         w.while_(lambda: w.both(w.lt(w[q2], w[j_words]), running()), lambda: (put(w.load("traps", w.mul(w[q2], 8), 8)), w.set(q2, w.add(w[q2], 1))))
+        # S15e.5 (ADR-334): the JVM program reads one more word, 1 for an executable JAR (a process entry).
+        w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_JVM), lambda: put(work_word(SM.CTRL + RQ.B_JVMEXE)))
 
     if general:
         when(lambda: w.if_(w.ne(w[linux], 0), general_sections))
@@ -1827,7 +1832,10 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             # S15f.4 (ADR-325): the AArch64 program also makes the bare-metal AArch64 images.
             aarch64_path = lambda: w.either(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_LINUX_AARCH64),  # noqa: E731
                                             w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_A64_RAW))
-            elf_program = lambda: w.if_(aarch64_path(), lambda: call(aarch64_program), lambda: call(general_program))  # noqa: E731
+            jvm_path = lambda: w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_JVM)  # noqa: E731
+            # S15e.5 (ADR-334): the JVM program writes its JAR where the general program writes an ELF file.
+            elf_program = lambda: w.if_(aarch64_path(), lambda: call(aarch64_program), lambda: w.if_(  # noqa: E731
+                jvm_path(), lambda: call(jvm_program), lambda: call(general_program)))
             w.if_(w.ne(w[linux], 0), elf_program, lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
         else:
             call(backend)
@@ -2048,7 +2056,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader,
-               *((general_reader, writer_reader, riscv_reader, aarch64_reader) if general else ()))
+               *((general_reader, writer_reader, riscv_reader, aarch64_reader, jvm_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
     objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects, *edit_objects,
