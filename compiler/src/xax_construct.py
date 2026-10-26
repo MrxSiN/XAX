@@ -48,6 +48,21 @@ streams as generated members of the program's own class).  Its names use the ``j
 ``xax_jvm.jvm_memory_api`` (``read``, ``write``, ``mmap_anonymous``, ``exit_group``, ...), the same names and shapes as
 the Linux ones, plus ``{"jvm.munmap_view": [TYPE, EXTENT]}``.  There are no startup reads.
 
+Platform ``android-libxposed`` (ADR-262) builds a libxposed module APK whose code is XAX on the JVM general target.
+Types add ``"jvm:<descriptor>"`` (``jvm:Z``/``B``/``C``/``S``/``I``/``J`` are bits; anything else is a JVM reference)
+and ``{"jvm.callback": [INTERFACE, MEMBER]}``, the code-entry type ``function.address`` takes to implement one
+interface method with a constructed function.  The entity ``{"jvm": [ABI, OWNER, MEMBER]}`` is one JVM member
+access (``jvm-invokevirtual``/``-invokeinterface``/``-invokestatic``, ``jvm-new``, ``jvm-getstatic``, ``jvm-getfield``,
+``jvm-putstatic``, ``jvm-checkcast``, ``jvm-ldc``, ``jvm-newarray``, ``jvm-arrayload``, ``jvm-arraystore``,
+``jvm-arraylength``); its typed interface is the node's operand and result types.  The package adds
+``"android": {"package", "module_class", "scopes", "version_code", "version_name"?, "min_sdk"?, "target_sdk"?,
+"dex"?: [BLAKE3...], "libraries"?: {"lib/<abi>/<name>.so": BLAKE3}, "natives"?: [[CLASS, NAME, DESCRIPTOR]...],
+"fields"?: [[CLASS, NAME, DESCRIPTOR]...] (``public static volatile`` holder fields),
+"branding"?: BLAKE3 of a static manifest/resources archive (module record v2),
+"signer"?: CERTIFICATE_SHA256}``; the release entry is ``fn(XposedInterface, PackageReadyParam)``.  DEX and library
+bytes are external build inputs named by digest; with ``signer`` the request is a signed APK and the build needs
+the matching private signing capability (``xax_android_libxposed_jvm.build_module``).
+
 Functions are listed callees first.  The result store's root is the build snapshot of the ``release`` entry; the
 package declares every entry (``app``, ``test``, ...) so every build is a canonical request against it.
 """
@@ -64,7 +79,7 @@ from xax_compiler import (
 from xax_graph_builder import GraphBuilder
 
 FORMAT = "xax-construct-v1"
-_PLATFORMS = ("linux-x86_64", "linux-aarch64", "windows-x86_64", "jvm")
+_PLATFORMS = ("linux-x86_64", "linux-aarch64", "windows-x86_64", "jvm", "android-libxposed")
 
 
 @dataclass(frozen=True)
@@ -94,7 +109,16 @@ class _Builder:
         from xax_build import ArtifactKind
 
         self.artifact = ArtifactKind.NATIVE_IMAGE
-        if request["platform"] == "jvm":
+        self.extra: dict[bytes, SemanticObject] = {}
+        if request["platform"] == "android-libxposed":
+            from xax_compiler import jvm_classfile_general_target
+
+            self.api = None
+            self.prefix, self.namespaces, self.platform_types = "jvm:", (), ()
+            self.startup = None
+            self.target = jvm_classfile_general_target()
+            self.artifact = ArtifactKind.ANDROID_UNSIGNED_APK
+        elif request["platform"] == "jvm":
             from xax_jvm import jvm_memory_api
 
             self.api = jvm_memory_api()
@@ -126,6 +150,15 @@ class _Builder:
         self.objects: dict[bytes, SemanticObject] = {}
 
     def type(self, spec, seen=()) -> SemanticObject:
+        if isinstance(spec, str) and self.prefix == "jvm:" and spec.startswith("jvm:"):
+            return self._jvm_type(spec[4:])
+        if isinstance(spec, dict) and self.prefix == "jvm:" and set(spec) == {"jvm.callback"}:
+            owner, member = spec["jvm.callback"]
+            from xax_compiler import jvm_interface_entry_type, opaque_identity_type
+
+            marker = opaque_identity_type(b"code-entry:jvm-interface:" + owner.encode() + b"." + member.encode())
+            self.extra[marker.cid] = marker
+            return jvm_interface_entry_type(owner.encode(), member.encode())
         if isinstance(spec, str):
             if spec in self.aliases:
                 if spec in seen:
@@ -144,6 +177,30 @@ class _Builder:
                 raise _error(f"bad pointer type {spec!r}")
             return pointer_type(self.type(element, seen), Permission.READ if permission == "r" else Permission.READ_WRITE, alignment, space=space)
         raise _error(f"bad type {spec!r}")
+
+    def _jvm_type(self, descriptor: str) -> SemanticObject:
+        widths = {"Z": 1, "B": 8, "C": 16, "S": 16, "I": 32, "J": 64}
+        if descriptor in widths:
+            return bits_type(widths[descriptor])
+        if len(descriptor) < 2 or not (descriptor.startswith("[") or (descriptor.startswith("L") and descriptor.endswith(";"))):
+            raise _error(f"bad JVM descriptor {descriptor!r}")
+        from xax_compiler import opaque_identity_type
+        from xax_jvm import jvm_reference_type
+
+        marker = opaque_identity_type(b"jvm-ref:" + descriptor.encode())
+        self.extra[marker.cid] = marker
+        return jvm_reference_type(descriptor.encode())
+
+    def jvm_member(self, spec, inputs, outputs) -> SemanticObject:
+        """``{"jvm": [ABI, OWNER, MEMBER]}``: one typed JVM member access; the interface is the node's own types."""
+        from xax_compiler import foreign_function_symbol
+
+        if not isinstance(spec, list) or len(spec) != 3:
+            raise _error(f"bad jvm entity {spec!r}")
+        abi, owner, member = spec
+        if not (isinstance(abi, str) and abi.startswith("jvm-") and isinstance(owner, str) and isinstance(member, str)):
+            raise _error(f"bad jvm entity {spec!r}")
+        return foreign_function_symbol(owner.encode(), member.encode(), tuple(inputs), tuple(outputs), abi=abi.encode())
 
     def entity(self, spec) -> SemanticObject:
         if isinstance(spec, str) and self.startup is not None and spec.startswith("linux.startup."):
@@ -243,9 +300,17 @@ class _Builder:
                     attributes = tuple(
                         IntCompare[item.upper()] if isinstance(item, str) else item for item in extra.get("attrs", ())
                     )
-                    entity = self.entity(extra["entity"]) if "entity" in extra else None
-                    results = block.op(operation, tuple(value(item, here) for item in node[1]),
-                                       tuple(self.type(item) for item in node[2]), entity=entity, attributes=attributes)
+                    operands = tuple(value(item, here) for item in node[1])
+                    result_types = tuple(self.type(item) for item in node[2])
+                    spec_entity = extra.get("entity")
+                    if isinstance(spec_entity, dict) and set(spec_entity) == {"jvm"} and self.prefix == "jvm:":
+                        def type_of(ref):
+                            source = graph.blocks[ref.block]
+                            return source.parameter_types[ref.index] if ref.tag == 0 else source.nodes[ref.index].result_types[ref.result]
+                        entity = self.jvm_member(spec_entity["jvm"], (type_of(ref) for ref in operands), result_types)
+                    else:
+                        entity = self.entity(spec_entity) if spec_entity is not None else None
+                    results = block.op(operation, operands, result_types, entity=entity, attributes=attributes)
                 for result, ref in enumerate(results):
                     named[here][f"n{index}" if result == 0 else f"n{index}.r{result}"] = ref
             end = spec.get("end")
@@ -276,7 +341,7 @@ def construct(request: dict) -> Constructed:
     for record in request.get("functions", []):
         builder.function(record)
     spec = request.get("package")
-    if not isinstance(spec, dict) or set(spec) - {"exports", "forwards", "dll_main"} != {"name", "entries", "release"} or not spec["entries"]:
+    if not isinstance(spec, dict) or set(spec) - {"exports", "forwards", "dll_main", "android"} != {"name", "entries", "release"} or not spec["entries"]:
         raise _error("package needs name, entries, release")
     exports = ()
     if "exports" in spec:
@@ -300,13 +365,188 @@ def construct(request: dict) -> Constructed:
             raise _error(f"bad forwards or dll_main: {error}") from None
     elif set(spec) & {"forwards", "dll_main"}:
         raise _error("forwards and dll_main need exports")
+    android: tuple[SemanticObject, ...] = ()
+    capabilities: tuple = ()
+    if ("android" in spec) != (request["platform"] == "android-libxposed"):
+        raise _error("the android-libxposed platform and the package's android record go together")
+    if "android" in spec:
+        android, capabilities = _android_module(spec)
+        if capabilities:
+            builder.artifact = ArtifactKind.ANDROID_SIGNED_APK
     entries = tuple((name.encode(), builder.functions[function]) for name, function in sorted(spec["entries"].items()) if function in builder.functions)
     if len(entries) != len(spec["entries"]) or spec["release"] not in spec["entries"]:
         raise _error("package entries must name constructed functions, and release must be an entry")
-    module = object_with_refs(Kind.MODULE, (*builder.functions.values(), *exports))
-    app = package(spec["name"].encode(), (module,), build_entries=entries)
-    profile, policy = build_profile(), trust_policy()
+    module = object_with_refs(Kind.MODULE, (*builder.functions.values(), *exports, *android))
+    app = package(spec["name"].encode(), (module,), build_entries=entries, capabilities=capabilities)
+    from xax_build import CapabilityGrant
+
+    profile = build_profile(grants=tuple(CapabilityGrant(spec["name"].encode(), item) for item in capabilities))
+    policy = trust_policy()
     request_object = build_request(app, spec["release"].encode(), builder.target, profile, requested_artifacts=(builder.artifact,))
-    everything = (*builder.objects.values(), *builder.platform_types, *exports, module, app, builder.target, profile, policy, request_object)
+    everything = (*builder.objects.values(), *builder.extra.values(), *builder.platform_types, *exports, *android, module, app,
+                  builder.target, profile, policy, request_object)
     reader = snapshot_store(resolve_packages(request_object, everything, policy, b"xax-construct-v1"), everything)
     return Constructed(reader, app, builder.target, profile, policy, dict(builder.functions), request_object)
+
+
+def _android_module(spec: dict):
+    """ADR-262: the package's ``android`` record becomes the module carrier and libxposed metadata (identity only)."""
+    from xax_android_libxposed_jvm import LibxposedJvmModule, NativeMethod, StaticField, module_objects
+    from xax_build import BuildCapability, BuildCapabilityKind
+
+    record = spec["android"]
+    allowed = {"package", "module_class", "scopes", "version_code", "version_name", "min_sdk", "target_sdk", "dex",
+               "libraries", "natives", "fields", "signer", "branding"}
+    if not isinstance(record, dict) or set(record) - allowed or not {"package", "module_class", "scopes", "version_code"} <= set(record):
+        raise _error("android needs package, module_class, scopes, version_code")
+    try:
+        module = LibxposedJvmModule(
+            record["package"], record["module_class"], tuple(record["scopes"]), record["version_code"],
+            record.get("version_name", ""), record.get("min_sdk", 28), record.get("target_sdk", 35),
+            tuple(bytes.fromhex(item) for item in record.get("dex", ())),
+            tuple((path, bytes.fromhex(digest)) for path, digest in sorted(record.get("libraries", {}).items())),
+            tuple(NativeMethod(*item) for item in record.get("natives", ())),
+            tuple(StaticField(*item) for item in record.get("fields", ())),
+            bytes.fromhex(record["branding"]) if "branding" in record else None)
+    except (TypeError, ValueError) as error:
+        raise _error(f"bad android record: {error}") from None
+    capabilities = ()
+    if "signer" in record:
+        signer = bytes.fromhex(record["signer"])
+        if len(signer) != 32:
+            raise _error("signer is the 32-byte SHA-256 of the signing certificate")
+        capabilities = (BuildCapability(BuildCapabilityKind.SIGN, signer),)
+    return module_objects(module), capabilities
+
+
+def export_carrier(reader: StoreReader) -> dict:
+    """The ``xax-construct-v1`` request that reconstructs a verified ``android-libxposed`` store (ADR-262).
+
+    Construction is one-way transport, so editing a module that has grown past what workspace transactions
+    can express (new members, new functions) goes store -> carrier -> edited carrier -> ``construct``.  The
+    exported request reconstructs the same functions, carriers and package; ``construct(export_carrier(r))``
+    has the same release-entry function CID as ``r``.  The carrier is tooling, never source: the store is.
+    """
+    from xax_android_libxposed_jvm import decode_libxposed_jvm_module, find_carriers
+    from xax_build import BuildCapabilityKind, decode_package, decode_request, decode_snapshot
+    from xax_compiler import (Cursor, Operation, _decode_function_interface, decode_bits_width, decode_foreign_function,
+                              parse_function_graph)
+
+    resolve = reader.get
+    snapshot = decode_snapshot(resolve(reader.root_cid), resolve)
+    request = decode_request(resolve(snapshot.request_root), resolve)
+    package_view = decode_package(resolve(request.package_root), resolve)
+    carrier, _metadata = find_carriers(reader, package_view)
+    if carrier is None:
+        raise _error("export_carrier supports android-libxposed stores")
+    module = decode_libxposed_jvm_module(carrier)
+
+    def opaque(obj):
+        if obj.kind != Kind.TYPE or not obj.body or obj.body[0] != 6:
+            return None
+        return Cursor(obj.body[1:], obj.cid.hex()).byte_string()
+
+    def type_spec(cid: bytes):
+        obj = resolve(cid)
+        try:
+            return f"b{decode_bits_width(obj)}"
+        except Exception:
+            pass
+        if len(obj.references) == 1 and (identity := opaque(resolve(obj.references[0]))) is not None:
+            if identity.startswith(b"jvm-ref:"):
+                return "jvm:" + identity[len(b"jvm-ref:"):].decode()
+            if identity.startswith(b"code-entry:jvm-interface:"):
+                owner, member = identity[len(b"code-entry:jvm-interface:"):].decode().split(".", 1)
+                return {"jvm.callback": [owner, member]}
+        raise _error(f"type {cid.hex()} has no carrier spelling")
+
+    functions = [resolve(cid) for module_cid in package_view.modules for cid in resolve(module_cid).references
+                 if resolve(cid).kind == Kind.FUNCTION]
+    names: dict[bytes, str] = {}
+    order: list = []
+
+    def visit(function):
+        if function.cid in names:
+            return
+        names[function.cid] = ""
+        for block in parse_function_graph(function, resolve).blocks:
+            for node in block.nodes:
+                if node.entity is not None and node.entity.kind == Kind.FUNCTION:
+                    visit(node.entity)
+        names[function.cid] = f"f{len(order)}"
+        order.append(function)
+
+    for function in sorted(functions, key=lambda item: item.cid):
+        visit(function)
+    entry_names = {cid: name.decode() for name, cid in package_view.build_entries}
+    for cid, name in entry_names.items():
+        names[cid] = name
+
+    records = []
+    for function in order:
+        graph, parameters, returns = _decode_function_interface(function, resolve)
+        parsed = parse_function_graph(function, resolve)
+        if parsed.entry != 0:
+            raise _error("export expects entry block 0")
+
+        def operand(ref, here):
+            local = (f"p{ref.index}" if ref.tag == 0 else f"n{ref.index}" + (f".r{ref.result}" if ref.result else ""))
+            return local if ref.block == here else f"B{ref.block}.{local}"
+
+        blocks = []
+        for here, block in enumerate(parsed.blocks):
+            nodes = []
+            for node in block.nodes:
+                if node.member is not None:
+                    raise _error("aggregate members are not exported")
+                operation = Operation(node.operation)
+                if operation == Operation.CONSTANT:
+                    value = node.entity
+                    body = Cursor(value.body, value.cid.hex())
+                    body.uleb()
+                    nodes.append(["const", type_spec(value.references[0]), int.from_bytes(body.byte_string(), "little")])
+                    continue
+                extra = {}
+                if node.attributes:
+                    extra["attrs"] = list(node.attributes)
+                if node.entity is not None:
+                    if node.entity.kind == Kind.FUNCTION:
+                        extra["entity"] = {"fn": names[node.entity.cid]}
+                    else:
+                        foreign = decode_foreign_function(node.entity)
+                        extra["entity"] = {"jvm": [foreign.abi.decode(), foreign.library.decode(), foreign.name.decode()]}
+                record = [operation.name.lower().replace("_", "."), [operand(ref, here) for ref in node.operands],
+                          [type_spec(cid) for cid in node.results]]
+                nodes.append(record + ([extra] if extra else []))
+            terminator = block.terminator
+            kind = terminator.kind.name
+            if kind == "RETURN":
+                end = ["ret", [operand(ref, here) for ref in terminator.values]]
+            elif kind == "BRANCH":
+                (target_block, arguments), = terminator.edges
+                end = ["br", target_block, [operand(ref, here) for ref in arguments]]
+            elif kind == "CONDITIONAL_BRANCH":
+                (true_block, true_args), (false_block, false_args) = terminator.edges
+                end = ["cbr", operand(terminator.values[0], here), true_block, [operand(ref, here) for ref in true_args],
+                       false_block, [operand(ref, here) for ref in false_args]]
+            else:
+                raise _error(f"terminator {kind} is not exported")
+            blocks.append({"params": [type_spec(cid) for cid in block.parameters], "nodes": nodes, "end": end})
+        records.append({"name": names[function.cid], "params": [type_spec(cid) for cid in parameters],
+                        "returns": [type_spec(cid) for cid in returns], "blocks": blocks})
+
+    android = {"package": module.package, "module_class": module.module_class, "scopes": list(module.scopes),
+               "version_code": module.version_code, "version_name": module.version_name,
+               "min_sdk": module.min_sdk, "target_sdk": module.target_sdk,
+               "dex": [digest.hex() for digest in module.dex],
+               "libraries": {path: digest.hex() for path, digest in module.libraries},
+               "natives": [[item.class_descriptor, item.name, item.descriptor] for item in module.natives],
+               "fields": [[item.class_descriptor, item.name, item.descriptor] for item in module.fields]}
+    if module.branding is not None:
+        android["branding"] = module.branding.hex()
+    signers = [item.scope.hex() for item in package_view.capabilities if item.kind == BuildCapabilityKind.SIGN]
+    if signers:
+        android["signer"] = signers[0]
+    return {"format": FORMAT, "platform": "android-libxposed", "functions": records,
+            "package": {"name": package_view.logical_identity.decode(), "entries": {name: name for name in entry_names.values()},
+                        "release": request.build_entry.decode(), "android": android}}
