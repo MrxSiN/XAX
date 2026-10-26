@@ -87,7 +87,9 @@ class AndroidManifestSpec:
     def __post_init__(self) -> None:
         if not self.package_name or any(part == "" for part in self.package_name.split(".")):
             raise ValueError("Android package name must contain nonempty dot-separated components")
-        if not self.activity_class or "/" in self.activity_class or ";" in self.activity_class:
+        # An application without an Activity (no launcher) is legal: libxposed modules
+        # have none (ADR-262).  It is spelled with an empty activity class.
+        if (not self.activity_class and self.launcher) or "/" in self.activity_class or ";" in self.activity_class:
             raise ValueError("Activity class must use Java binary-name notation")
         if not 1 <= self.min_sdk <= self.target_sdk <= 0x7FFFFFFF:
             raise ValueError("invalid Android SDK profile")
@@ -642,7 +644,7 @@ def _tree_from_spec(
     application_element = _Element(
         "application",
         tuple(application_attributes),
-        (activity, *receiver_elements, *service_elements, *declared_components),
+        (*((activity,) if spec.activity_class else ()), *receiver_elements, *service_elements, *declared_components),
     )
     children.append(application_element)
     return _Element(

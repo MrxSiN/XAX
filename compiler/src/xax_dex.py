@@ -69,8 +69,8 @@ class DexNativeMethod:
         _validate_member_name(self.name)
         if not (self.access_flags & ACC_NATIVE):
             raise ValueError("bridge native method must carry ACC_NATIVE")
-        if self.access_flags & ACC_STATIC:
-            raise ValueError("bridge native method must currently be an instance method")
+        # Static natives (a JNI library's ``static native`` entry, e.g. a policy bridge) are
+        # direct methods; everything else about the binding is unchanged.
 
 
 @dataclass(frozen=True, order=True)
@@ -2209,7 +2209,7 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
     virtual_methods: list[tuple[str, DexProto, int, int]] = []
     for item in spec.native_methods:
         record = (item.name, item.proto, item.access_flags, 0)
-        (direct_methods if item.access_flags & ACC_PRIVATE else virtual_methods).append(record)
+        (direct_methods if item.access_flags & (ACC_PRIVATE | ACC_STATIC) else virtual_methods).append(record)
     for item in spec.forwarding_overrides:
         virtual_methods.append((item.name, item.proto, item.access_flags, code_offsets[item.name]))
     for item in spec.null_return_overrides:
