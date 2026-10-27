@@ -2089,7 +2089,13 @@ def build(
         (ArtifactKind.ANDROID_UNSIGNED_APK,),
         (ArtifactKind.ANDROID_SIGNED_APK,),
     ):
-        artifact = _build_android_unsigned_apk(reader, package_view, target_object, function_root)
+        if description.architecture == 5:
+            # ADR-262: a libxposed module whose code is XAX on the JVM general target.
+            from xax_android_libxposed_jvm import build_libxposed_jvm_apk
+
+            artifact = build_libxposed_jvm_apk(reader, package_view, target_object, function_root, external_inputs or {})
+        else:
+            artifact = _build_android_unsigned_apk(reader, package_view, target_object, function_root)
         if request_view.requested_artifacts == (ArtifactKind.ANDROID_UNSIGNED_APK,):
             lowering = ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1
         else:
