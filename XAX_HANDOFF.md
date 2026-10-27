@@ -1,5 +1,17 @@
 # XAX Compiler Handoff
 
+## 2026-10-27 — Native Windows consumer requirements
+
+The Windows checkout was fast-forwarded to remote `main` after preserving its earlier local state in the stash
+`Preserve pre-sync Windows checkout 2026-10-27`; `feat/native-construct` remains intact. No compiler semantics,
+canonical compiler state, replacement levels or bootstrap milestone claims were changed.
+
+`docs/proposals/native-windows-workspace.md` records the native-only construction/seed gap and the smallest
+host-independent verified-candidate/query requirements. The recovered Windows compiler can edit/verify/build
+small new graphs but declines the current driver store. Native `edit` output must be verified before a consumer
+publishes it: an invalid add candidate was accepted as an edit output and then rejected by native verification.
+The proposal is not an implemented contract. No interpreter bootstrap or other-language replacement was added.
+
 ## Invariants that must not drift
 
 - Meaning is source: canonical XAX is the typed semantic graph/store, never diagnostic text, Python constructors, packet dumps, JSON, or CLI syntax.
