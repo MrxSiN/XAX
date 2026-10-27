@@ -1,5 +1,13 @@
 # XAX Compiler State
 
+## 2026-10-27 — Pinned native Windows seed (ADR-335)
+
+The existing Windows compiler is distributed under `compiler/bootstrap/windows`, tied to source root
+`ec66899f...45ebd` at `c97a11d`, with historical bootstrap trust and decline limits disclosed. The unchanged
+BLAKE3 host now has `hash_request.xax`; native verify/resolve/build and empty/abc digest vectors pass. Native
+semantic edits and small application builds were also exercised. This is a usable trusted native Windows seed,
+not whole-compiler migration or a Windows self-build result. Generated milestone and B/R-level blocks are unchanged.
+
 ## Current milestone
 
 M1 — minimal canonical semantic store and structural verifier: **complete for prototype schema revision 1**.

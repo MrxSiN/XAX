@@ -1,6 +1,10 @@
 # Measurement digests bind exact CSV bytes, including original line endings.
 compiler/benchmarks/ai_native/*results.csv -text
 *.xax linguist-language=XAX
+compiler/bootstrap/windows/*.exe binary
+compiler/bootstrap/windows/*.json -text whitespace=cr-at-eol
+compiler/integration/windows_helpers/hash_request.xax binary
+compiler/integration/windows_helpers/native_seed_evidence.json -text whitespace=cr-at-eol
 compiler/integration/bfx/*.edit -text
 compiler/integration/bfx/*.xax -text
 compiler/integration/bfx/wide/*.xax -text

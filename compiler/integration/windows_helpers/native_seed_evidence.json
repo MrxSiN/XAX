@@ -1,0 +1,29 @@
+{
+  "schema": "xax-native-windows-seed-evidence-v1",
+  "recorded": "2026-10-27",
+  "label": "EXECUTED",
+  "seed_sha256": "aa72234d6dd8a111efde62b47ced8449a482c4c5506d876714ff7fbe0968ab79",
+  "request_sha256": "2fa5e8dee84f063191823cc06053604cda6eba5248b39444d4b6a9a0b8fb0551",
+  "hash_executable_sha256": "8e31f6ad1d7bb0eb802b399c948b404bcfc4a33b125fd9181e81bdc51412db1b",
+  "hash_executable_bytes": 45568,
+  "native_verify_exit": 0,
+  "native_resolve_exit": 0,
+  "native_build_exit": 0,
+  "hash_vectors": [
+    {
+      "observed_hex": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+      "input_hex": "",
+      "expected_hex": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
+    },
+    {
+      "observed_hex": "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85",
+      "input_hex": "616263",
+      "expected_hex": "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85"
+    }
+  ],
+  "seed_source_blob_matches_git": true,
+  "native_own_source_build_exit": 2,
+  "native_own_source_build_status": "DECLINED",
+  "bootstrap_interpreter_run": false,
+  "scope": "Trusted native Windows seed publication; generic hash rebuild and supported native semantic transactions/application builds, not whole-compiler self-hosting"
+}

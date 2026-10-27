@@ -2,6 +2,10 @@
 
 This roadmap orders implementation work. A milestone is complete only when every exit criterion is supported by committed conformance/evidence artifacts. “Benchmark valid” means measurable, not favorable.
 
+2026-10-27 (ADR-335): a pinned native Windows seed and a native-buildable hash-host request are available.
+Windows source self-build, the generic constructor and the proposed bounded workspace service remain open.
+No milestone or B/R level is changed by this distribution update.
+
 ## 1. Sequencing rules
 
 1. Semantic correctness precedes optimization.
