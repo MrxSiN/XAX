@@ -1,5 +1,13 @@
 # XAX Compiler Handoff
 
+## 2026-10-27 — Native Windows seed distribution (ADR-335)
+
+`compiler/bootstrap/windows` pins the existing XAX native alias-index compiler executable and its original
+canonical source revision. `compiler/integration/windows_helpers/hash_request.xax` is a native-verified build
+request for the unchanged BLAKE3 host. Its verify/resolve/build path runs with the native seed and no interpreter
+bootstrap. Application source remains outside XAX. The seed's own source still declines native build; no B/R
+promotion or self-build fixed point is claimed. See the seed contract and evidence for the exact limits.
+
 ## 2026-10-27 — Native Windows consumer requirements
 
 The Windows checkout was fast-forwarded to remote `main` after preserving its earlier local state in the stash

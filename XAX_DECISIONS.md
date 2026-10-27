@@ -2,6 +2,19 @@
 
 This file records merged v0.1 decisions. Each decision is normative unless superseded by a versioned architectural revision. Evidence-dependent choices remain in `XAX_OPEN_ISSUES.md`.
 
+## ADR-335 — Pin the existing native Windows compiler as a distribution seed
+
+Date: 2026-10-27. Distribute the existing alias-index Windows compiler by exact executable digest and original
+canonical source revision under `compiler/bootstrap/windows`. Preserve its historical Python bootstrap provenance
+and explicit self-source decline. Consumers can verify/edit/resolve/build supported canonical programs using only
+native XAX executables, without installing the bootstrap SDK. The generic hash host's canonical build request is
+independent of application repositories. Application protocol code and schemas stay outside XAX.
+
+The versioned `xax-native-file-v1` contract retains current command/status meanings. Candidate editing is not a
+verified atomic commit: verify before publication and preserve old state on any failure. This decision neither
+silently changes `edit` semantics nor establishes Windows self-hosting, a bounded workspace service or new B/R
+levels. Evidence is `compiler/integration/windows_helpers/native_seed_evidence.json`.
+
 ## ADR-001 — The language is XAX
 
 | Field | Record |

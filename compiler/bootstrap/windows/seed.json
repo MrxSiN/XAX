@@ -1,0 +1,21 @@
+{
+  "schema": "xax-native-windows-seed-v1",
+  "contract": "xax-native-file-v1",
+  "sha256": "aa72234d6dd8a111efde62b47ced8449a482c4c5506d876714ff7fbe0968ab79",
+  "bytes": 11876864,
+  "source_commit": "c97a11d0d1762c863ae9fc17ca311954d195aaba",
+  "source_path": "compiler/integration/windows_helpers/driver.xax",
+  "source_root": "ec66899fddc117eb0496bbd504e06742daf9931d0b8e64e9efde0725dae45ebd",
+  "source_sha256": "894820c6ec0b777232ac6817f454add9f00493f95c72d53071de8ed4c690eced",
+  "source_git_blob": "bdc740cd3ed4b8bbf8cf43e352663c8d19959db5",
+  "historical_bootstrap": "Python SDK; reused existing native executable, no bootstrap interpreter run in this publication",
+  "native_self_build": "DECLINED; no fixed point or B/R promotion",
+  "commands": [
+    "verify",
+    "inspect",
+    "edit",
+    "resolve",
+    "build"
+  ],
+  "runtime": "native XAX machine code and Windows system DLLs"
+}
