@@ -344,6 +344,23 @@ def sign_apk_v2(unsigned_apk: bytes, capability: RsaSigningCapability) -> bytes:
     specification explicitly identifies for deterministic build systems.
     """
 
+    # S15e.6b (ADR-341): the XAX signer program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    import os
+
+    from xax_selfhost_apk_signing import sign_with_xax
+
+    signed = sign_with_xax(unsigned_apk, capability)
+    if signed is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return signed
+    reference = _sign_apk_v2_python(unsigned_apk, capability)
+    if signed is not None and signed != reference:
+        raise AssertionError("S15e.6b APK signatures disagree")
+    return reference
+
+
+def _sign_apk_v2_python(unsigned_apk: bytes, capability: RsaSigningCapability) -> bytes:
+    """The bootstrap's v2 signer."""
+
     eocd = _locate_eocd(unsigned_apk)
     section1 = unsigned_apk[:eocd.central_offset]
     section3 = unsigned_apk[eocd.central_offset:eocd.offset]
