@@ -634,6 +634,10 @@
     "xax_selfhost_android_rules.py": {
       "class": "G",
       "note": "Builder of the S15e.6f.1 unsigned Android carrier decisions program store (ADR-347); its host part extracts the carriers' decoded facts."
+    },
+    "xax_selfhost_android_managed_rules.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6f.2 managed-class Android profile decisions program store (ADR-348); its host part extracts the classes, export interfaces and reachable platform uses."
     }
   },
   "components": {
