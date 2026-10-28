@@ -1414,3 +1414,11 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
 - The decline audit: a pytest plugin that wraps `xax_jvm.compile_jvm_bound_target` and also runs `jvm_with_xax`, logging equal/declined/different for successes and rejections (see ADR-336). Run it over `test_xax_jvm*.py` after each step.
 - The general driver store and the seed are NOT regenerated yet (the driver merges the JVM program): do that once at S15e.5j (`xax_selfhost_evolution rebase` if needed, `write-request`, two-stage `rotate-seed`, `selfbuild.sh`).
 - Next: S15e.5h (general profile: `STACK_ALLOC` frames and the shadow stack, links, raw loads, atomics), S15e.5i (recursion groups, the threaded launcher).
+
+## S15e.5h-S15e.5i JVM general profile and launcher — 2026-10-28 (ADR-338)
+
+- Frames: `M_FSLOT`/`M_FSIZE`/`N_FOFF` (computed in `jm_slots` after the coloring); the prologue is in `_emit_pass`, the epilogue in `je_terminator`.
+- `general_nodes` and `mem_access` (in `xax_selfhost_jvm_memory`) are the shared access lowering; `Fwd` writes tasks forwards.
+- `jf_scan` (closure rejections in the bootstrap's order) and `jf_shadow` (JVM-ENTRY-SHADOW-STACK) walk the graph stream: each block is its parameter list, node count, nodes, terminator.
+- Debugging a decline: run the native program and read `GLOBALS + J_STATE`/`M_STATE` (the task stack is at `M_WORK + 2^20`, five words a task, top `M_ONE`).
+- Next: S15e.5j (regenerate the general driver store with the new JVM program: ledger rebase if the edit records no longer apply, `write-request`, two-stage seed rotation if the pinned seed cannot verify it, `selfbuild.sh`; then the driver's JVM test and the evidence).

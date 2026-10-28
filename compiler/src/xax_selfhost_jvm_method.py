@@ -36,8 +36,8 @@ VALUE_TABLES = ("V_DESC", "V_CONST", "V_CVAL", "V_FOLDED", "V_ALIAS", "V_NEEDED"
  M_NV, M_NB, M_NN, M_ENTRY, M_T, M_TRACK, M_INTER, M_ACROSS, M_FRAMED, M_HINT, M_NHINT, M_STYPE, M_SOCC, M_NSOCC, M_FREED, M_NEXT,
  M_PEND, M_GEND, M_TYPED, M_FTYPES, M_NFTYPES, M_PASS, M_KEPTNONE, M_FN, M_SCRATCH, M_MAXLOC, M_NORDER, M_MAXSLOTS, M_ONE, M_WORK,
  M_RETTYPES, M_NRET, M_TRAPUSED, M_MAXCALL, M_LABELN, M_FOLLOW, M_NEEDS_PK, M_NEEDZ, M_PSLOTS, M_ISENTRY, M_MNEEDS, M_MBYTES, M_MNBYTES,
- N_RUN, N_INRUN) = range(CODE_FIELDS + len(VALUE_TABLES), CODE_FIELDS + len(VALUE_TABLES) + 59)
-STATE_WORDS = CODE_FIELDS + len(VALUE_TABLES) + 59  # S15e.5g: the memory needs, the string runs
+ N_RUN, N_INRUN, M_FSLOT, M_FSIZE, N_FOFF) = range(CODE_FIELDS + len(VALUE_TABLES), CODE_FIELDS + len(VALUE_TABLES) + 62)
+STATE_WORDS = CODE_FIELDS + len(VALUE_TABLES) + 62  # S15e.5g: the memory needs, the string runs; S15e.5h: the stack frame
 T_CAP = 3000  # tracked values (the interference matrix is T x T words)
 ST_FREED, ST_TOP = 6, 7  # slot types beyond the descriptors: a freed parameter slot (None), Top ("T")
 
@@ -105,8 +105,17 @@ def _result0(e: E, node):
 
 
 def _width(e: E, value, name: str):
-    """``_width`` of the value's bits type into ``name``."""
-    _bits_width(e, _type(e, value), name)
+    """``_width`` of the value's bits type into ``name`` (a link is 32 bits, ADR-160)."""
+    type_width(e, _type(e, value), name)
+
+
+def type_width(e: E, t, name: str):
+    """``_width`` of TYPE ``t`` into ``name``: a link's 32 bits, else its bits width."""
+    from xax_selfhost_views_backend import _type_form
+
+    e.var(f"{name}_t", t)
+    _bits_width(e, e.p[f"{name}_t"], name)
+    e.if_(e.eq(_type_form(e, e.p[f"{name}_t"]), 11), lambda: e.set(name, 32))
 
 
 def _canon_fn(tables):
@@ -1216,6 +1225,34 @@ def _slots_fn(tables):
             e.if_(e.eq(_v(e, C_VSLOT, p["sl_v"]), NONE), place)
 
         e.for_("sl_i", 0, _m(e, M_T), color)
+        # S15e.5h, the stack frame (ADR-159): every allocation at a fixed offset (JVM-STACK-ALIGNMENT past 16), the frame
+        # 16-aligned, its pointer in a new int slot.
+        _set_m(e, M_FSIZE, 0)
+        _set_m(e, M_FSLOT, NONE)
+        e.var("sl_frames", 0)
+
+        def stack(b, node, m):
+            import xax_selfhost_diagnostics as D
+            from xax_selfhost_views_backend import _cid_words
+
+            e.var("sl_align", _attribute(e, node, 1))
+
+            def write():
+                D.text(e, "XAX.JVM.STACK")
+                D.cid(e, _cid_words(e, _f(e, node, N_GRAPH)))
+                D.text(e, "JVM-STACK-ALIGNMENT")
+                D.text(e, "<= 16")
+                D.integer(e, p["sl_align"])
+
+            D.reject_unless(e, e.le(p["sl_align"], 16), write)
+            e.var("sl_fs", e.and_(e.add(_m(e, M_FSIZE), e.sub(p["sl_align"], 1)), e.sub(0, p["sl_align"])))
+            _set_v(e, N_FOFF, _node_id(e, b, node), p["sl_fs"])
+            _set_m(e, M_FSIZE, e.add(p["sl_fs"], _attribute(e, node, 0)))
+            e.set("sl_frames", 1)
+
+        _each_node(e, lambda b, node, m: e.if_(e.eq(_eop(e, node), int(Operation.STACK_ALLOC)), lambda: stack(b, node, m)), "slf")
+        _set_m(e, M_FSIZE, e.and_(e.add(_m(e, M_FSIZE), 15), e.c((1 << 64) - 16)))
+        e.if_(e.ne(p["sl_frames"], 0), lambda: (_set_m(e, M_FSLOT, _call(e, "jm_new_slot", D_I)), e.st(e.add(_m(e, M_STYPE), _m(e, M_FSLOT)), D_I)))
         # Constants and late values: no local; aliases: their canonical value's slot.
         e.for_("sl_v", 0, nv, lambda: e.if_(e.both(e.ne(_v(e, V_DESCOF, p["sl_v"]), 0), e.either(e.ne(_v(e, V_CONST, p["sl_v"]), 0), late(e, p["sl_v"]))), lambda: (
             _set_v(e, C_VSLOT, p["sl_v"], SLOT_LATE), _set_v(e, C_VSDESC, p["sl_v"], _desc(e, p["sl_v"])))))
@@ -1233,6 +1270,7 @@ def _slots_fn(tables):
             e.add(_m(e, M_TYPED), _v(e, C_VSLOT, e.ld(e.add(_m(e, M_TRACK), p["sl_i"])))), 1)))
         e.for_("sl_s", 0, _m(e, M_PEND), lambda: e.if_(e.both(e.ne(_slot_type(e, p["sl_s"]), NONE), e.eq(e.ld(e.add(_m(e, M_FREED), p["sl_s"])), NONE)),
                                                        lambda: e.st(e.add(_m(e, M_TYPED), p["sl_s"]), 1)))
+        e.if_(e.ne(_m(e, M_FSLOT), NONE), lambda: e.st(e.add(_m(e, M_TYPED), _m(e, M_FSLOT)), 1))  # set by the prologue, read at every return
         # The frame's locals: each slot's type where typed, else Top for each of its slots; trailing Tops dropped.
         e.var("sl_nf", 0)
 
