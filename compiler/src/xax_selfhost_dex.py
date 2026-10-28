@@ -36,8 +36,8 @@ from xax_selfhost_x86_64_general import GENERAL_ARENA_AT, GENERAL_ARENA_END
 STORE_PATH = bootstrap_dir() / "xax_dex_bridge.xax"
 OUT = IMAGE_AT + 3
 STATE_AT = 110 << 20
-(G_CUR, G_OUT, G_ON, G_CAP, G_S, G_NS, G_T, G_NT, G_P, G_NP, G_M, G_NM, G_L, G_NL, G_LO, G_C, G_NC, G_SHA) = (STATE_AT + k for k in range(18))
-G_K = STATE_AT + 32  # the constant strings' handles
+(G_CUR, G_OUT, G_ON, G_CAP, G_S, G_NS, G_T, G_NT, G_P, G_NP, G_M, G_NM, G_L, G_NL, G_LO, G_C, G_NC, G_SHA, G_F, G_NF) = (STATE_AT + k for k in range(20))
+G_K = STATE_AT + 512  # the constant strings' handles
 SHA_AT = STATE_AT + 64  # H (5), W (80)
 MASK32 = 0xFFFFFFFF
 CAP = 1 << 16  # strings, types, prototypes, methods, type lists, code items each
@@ -47,6 +47,33 @@ INSTR = 12  # an instruction: opcode, register count, five registers, reference 
 CONSTANTS = ("<init>", "<clinit>", "V", "Ljava/lang/String;", "Ljava/lang/System;", "loadLibrary", "I", "Ljava/lang/CharSequence;",
              "Landroid/content/Context;", "Landroid/view/View;", "Landroid/view/View$OnClickListener;", "Landroid/widget/Button;",
              "Landroid/widget/TextView;", "Landroid/app/Activity;", "setText", "setOnClickListener", "setContentView", "onCreate", "onClick")
+# S15e.6d.3: the libxposed adapters' fixed strings.
+CHAIN, OBJECT, OBJECT_ARRAY = "Lio/github/libxposed/api/XposedInterface$Chain;", "Ljava/lang/Object;", "[Ljava/lang/Object;"
+API = "Lio/github/libxposed/api/"
+READY, RELOADING, RELOADED = API + "XposedModuleInterface$PackageReadyParam;", API + "XposedModuleInterface$HotReloadingParam;", API + "XposedModuleInterface$HotReloadedParam;"
+WRAPPER, BUILDER, HOOKER, HANDLE, MODE = (API + "XposedInterfaceWrapper;", API + "XposedInterface$HookBuilder;", API + "XposedInterface$Hooker;",
+                                          API + "XposedInterface$HookHandle;", API + "XposedInterface$ExceptionMode;")
+LOADER, CLASS, CLASS_ARRAY, METHOD, EXECUTABLE = "Ljava/lang/ClassLoader;", "Ljava/lang/Class;", "[Ljava/lang/Class;", "Ljava/lang/reflect/Method;", "Ljava/lang/reflect/Executable;"
+PREFS, LIST, PFD, STRING_ARRAY = "Landroid/content/SharedPreferences;", "Ljava/util/List;", "Landroid/os/ParcelFileDescriptor;", "[Ljava/lang/String;"
+STRING = "Ljava/lang/String;"
+# (generated name, framework name, return, parameters) in the canonical service order.
+SERVICES = (("xaxFrameworkName", "getFrameworkName", STRING, ()), ("xaxFrameworkVersion", "getFrameworkVersion", STRING, ()),
+            ("xaxRemotePreferences", "getRemotePreferences", PREFS, (STRING,)), ("xaxListRemoteFiles", "listRemoteFiles", STRING_ARRAY, ()),
+            ("xaxOpenRemoteFile", "openRemoteFile", PFD, (STRING,)))
+# (generated name, interface name, result, code shape) in the canonical read order; ``contains`` has no default.
+READS = (("xaxPrefBoolean", "getBoolean", "Z", 0), ("xaxPrefInt", "getInt", "I", 0), ("xaxPrefLong", "getLong", "J", 1),
+         ("xaxPrefFloat", "getFloat", "F", 0), ("xaxPrefString", "getString", STRING, 2), ("xaxPrefContains", "contains", "Z", 3))
+READ_CODES = (((0x3072, None, 0x0432, 0x000A, 0x000F), (5, 4, 3)), ((0x4072, None, 0x6543, 0x000B, 0x0010), (7, 5, 4)),
+              ((0x3072, None, 0x0432, 0x000C, 0x0011), (5, 4, 3)), ((0x2072, None, 0x0032, 0x000A, 0x000F), (4, 3, 2)))
+LIBXPOSED = (CHAIN, OBJECT, OBJECT_ARRAY, READY, RELOADING, RELOADED, WRAPPER, BUILDER, HOOKER, HANDLE, MODE, LOADER, CLASS, CLASS_ARRAY, METHOD,
+             EXECUTABLE, PREFS, LIST, PFD, STRING_ARRAY, "Z", "J", "F", "intercept", "proceed", "getArg", "getClassLoader", "loadClass",
+             "getDeclaredMethod", "hook", "deoptimize", "setExceptionMode", "setId", "xaxHookHandle", "xaxUnhook", "unhook", "onPackageReady",
+             *(name for item in SERVICES for name in item[:2]), "xaxRemotePreferencesIfSupported", "getFrameworkProperties",
+             *(name for item in READS for name in item[:2]), "onHotReloading", "onHotReloaded", "setSavedInstanceState", "getSavedInstanceState",
+             "getOldHookHandles", "get", "isEmpty", "getId", "equals", "replaceHook", "xaxReloadClassLoader", "xaxListRemoteFilesIfSupported",
+             "xaxOpenRemoteFileIfSupported")
+CONSTANTS = tuple(dict.fromkeys((*CONSTANTS, *LIBXPOSED)))
+CONST = {text: k for k, text in enumerate(CONSTANTS)}
 UI_STRINGS = ("Landroid/content/Context;", "Landroid/view/View;", "Landroid/view/View$OnClickListener;", "Landroid/widget/Button;",
               "Landroid/widget/TextView;", "setText", "setOnClickListener", "setContentView")
 CONST = {text: k for k, text in enumerate(CONSTANTS)}
@@ -151,7 +178,7 @@ def push(e: E, which: tuple[int, int], value):
     _call(e, "dx_push", which[0], which[1], value)
 
 
-STRINGS, TYPES, PROTOS, METHODS, LISTS, CODES = (G_S, G_NS), (G_T, G_NT), (G_P, G_NP), (G_M, G_NM), (G_L, G_NL), (G_C, G_NC)
+STRINGS, TYPES, PROTOS, METHODS, LISTS, CODES, FIELDS = (G_S, G_NS), (G_T, G_NT), (G_P, G_NP), (G_M, G_NM), (G_L, G_NL), (G_C, G_NC), (G_F, G_NF)
 
 
 def _sort_fn(tables):
@@ -333,14 +360,15 @@ def _method_same_fn(tables):
 
 def _sort_records_fn(tables):
     """``sort_records(arr, n, kind)``: the ``n`` record pointers at ``arr`` sorted (stable insertion) by ``kind``:
-    0 prototypes, 1 methods, 2 type lists; then duplicates dropped (methods, type lists); the count kept."""
+    0 prototypes, 1 methods, 2 type lists, 3 fields; then duplicates dropped (methods, type lists); the count kept."""
     def build(e: E):
         p = e.p
 
         def less(x, y):  # only the kind's own comparison runs: the others would read the records' words as lengths
             e.var("sr_less", 0)
             e.if_(e.eq(p["kind"], 0), lambda: e.set("sr_less", _call(e, "dx_protoless", x, y)), lambda: e.if_(
-                e.eq(p["kind"], 1), lambda: e.set("sr_less", _call(e, "dx_methodless", x, y)), lambda: e.set("sr_less", _call(e, "dx_listless", x, y))))
+                e.eq(p["kind"], 1), lambda: e.set("sr_less", _call(e, "dx_methodless", x, y)), lambda: e.if_(
+                    e.eq(p["kind"], 3), lambda: e.set("sr_less", _call(e, "dx_fieldless", x, y)), lambda: e.set("sr_less", _call(e, "dx_listless", x, y)))))
             return p["sr_less"]
 
         def insert():
@@ -350,7 +378,7 @@ def _sort_records_fn(tables):
             e.st(e.add(p["arr"], p["sr_j"]), p["sr_item"])
 
         e.for_("sr_s", 1, p["n"], insert)
-        e.if_(e.eq(p["kind"], 0), lambda: e.give(p["n"]))
+        e.if_(e.either(e.eq(p["kind"], 0), e.eq(p["kind"], 3)), lambda: e.give(p["n"]))
         e.var("sr_m", e.sel(e.lt(0, p["n"]), 1, 0))
 
         def keep():
@@ -364,6 +392,51 @@ def _sort_records_fn(tables):
         e.for_("sr_k", 1, p["n"], keep)
         e.give(p["sr_m"])
     return _function(("arr", "n", "kind"), build, tables)
+
+
+def _field_less_fn(tables):
+    """1 when field reference ``a`` (class, name, type) sorts before ``b``."""
+    def build(e: E):
+        p = e.p
+        for k in range(3):
+            e.if_(e.ne(_call(e, "dx_less", at(e, p["a"], k), at(e, p["b"], k)), 0), lambda: e.give(1))
+            e.if_(e.ne(_call(e, "dx_less", at(e, p["b"], k), at(e, p["a"], k)), 0), lambda: e.give(0))
+        e.give(0)
+    return _function(("a", "b"), build, tables)
+
+
+def _field_fn(tables):
+    """``field(cls, name, type)``: one more field reference."""
+    def build(e: E):
+        p = e.p
+        e.var("fl_r", e.alloc(3))
+        _ok(e, e.ne(p["fl_r"], NONE))
+        for k, name in enumerate(("cls", "name", "type")):
+            e.st(e.add(p["fl_r"], k), p[name])
+        push(e, FIELDS, p["fl_r"])
+        e.give(1)
+    return _function(("cls", "name", "type"), build, tables)
+
+
+def _fidx_fn(tables):
+    """``fidx(cls, name, type)``: the field reference's index (it is there)."""
+    def build(e: E):
+        p = e.p
+
+        def each():
+            e.var("fx_r", e.ld(e.add(e.ld(G_F), p["fx_k"])))
+            e.var("fx_same", 1)
+            for k, name in enumerate(("cls", "name", "type")):
+                e.if_(e.eq(_call(e, "dx_same", at(e, p["fx_r"], k), p[name]), 0), lambda: e.set("fx_same", 0))
+            e.if_(e.ne(p["fx_same"], 0), lambda: e.give(p["fx_k"]))
+
+        e.for_("fx_k", 0, e.ld(G_NF), each)
+        e.give(NONE)
+    return _function(("cls", "name", "type"), build, tables)
+
+
+def fidx(e: E, cls, name, type_):
+    return _call(e, "dx_fidx", cls, name, type_)
 
 
 def _midx_fn(tables):
@@ -622,7 +695,7 @@ def _frontend(tables):
         e.st(0, 0)
         e.set_hd(H_ARENA, GENERAL_ARENA_AT)
         e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
-        for base, _count in (STRINGS, TYPES, PROTOS, METHODS, LISTS, CODES):
+        for base, _count in (STRINGS, TYPES, PROTOS, METHODS, LISTS, CODES, FIELDS):
             e.st(base, e.alloc(CAP))
             _ok(e, e.ne(e.ld(base), NONE))
             e.st(_count, 0)
@@ -837,6 +910,7 @@ def _frontend(tables):
             _call(e, "dx_method", K(e, "Landroid/widget/TextView;"), K(e, "setText"), p["click_settext"])
 
         e.if_(e.ne(p["click"], 0), click)
+        _libxposed_pools(e, word, string)
 
         def library():
             e.set("load_proto", _call(e, "dx_intern", K(e, "V"), p["one"]))
@@ -859,6 +933,7 @@ def _frontend(tables):
         _call(e, "dx_sortrec", e.ld(G_P), e.ld(G_NP), 0)
         e.for_("q", 0, e.ld(G_NP), lambda: e.st(e.add(e.ld(e.add(e.ld(G_P), p["q"])), P_RANK), p["q"]))
         e.st(G_NM, _call(e, "dx_sortrec", e.ld(G_M), e.ld(G_NM), 1))
+        _call(e, "dx_sortrec", e.ld(G_F), e.ld(G_NF), 3)
         # The type lists: the prototypes' parameters and the interfaces.
         e.for_("q", 0, e.ld(G_NP), lambda: (e.var("pr", e.ld(e.add(e.ld(G_P), p["q"]))),
                                              e.if_(e.ne(at(e, p["pr"], P_N), 0), lambda: push(e, LISTS, e.add(p["pr"], P_N)))))
@@ -874,7 +949,9 @@ def _frontend(tables):
         e.var("nm", e.ld(G_NM))
         e.var("type_ids", e.add(0x70, e.mul(p["ns"], 4)))
         e.var("proto_ids", e.add(p["type_ids"], e.mul(p["nt"], 4)))
-        e.var("method_ids", e.add(p["proto_ids"], e.mul(p["npr"], 12)))
+        e.var("nf", e.ld(G_NF))
+        e.var("field_ids", e.sel(e.eq(p["nf"], 0), 0, e.add(p["proto_ids"], e.mul(p["npr"], 12))))
+        e.var("method_ids", e.add(e.add(p["proto_ids"], e.mul(p["npr"], 12)), e.mul(p["nf"], 8)))
         e.var("class_defs", e.add(p["method_ids"], e.mul(p["nm"], 8)))
         e.var("data_off", e.add(p["class_defs"], 32))
         e.st(G_CAP, e.add(e.mul(e.ld(G_CUR), 64), 1 << 16))
@@ -893,7 +970,7 @@ def _frontend(tables):
         e.for_("q", 0, e.ld(G_NL), type_list)
 
         # The code items.
-        u = Units(e, "u", 64)
+        u = Units(e, "u", 128)
         u.add(0x1070, midx(e, p["super"], K(e, "<init>"), p["ctor"]), 0, 0x000E)
         u.code(K(e, "<init>"), 1, 1, 1)
 
@@ -995,14 +1072,16 @@ def _frontend(tables):
                     u.code(at(e, p["r"], 0), 3, 2, 2)
 
                 e.var("is_override", e.flag(e.both(e.ne(p["has_override"], 0), e.ne(_call(e, "dx_same", p["override"], at(e, p["r"], 0)), 0))))
+                e.var("is_install", e.flag(e.both(e.ne(p["hk"], 0), e.ne(_call(e, "dx_same", K(e, "onPackageReady"), at(e, p["r"], 0)), 0))))
                 e.var("is_ui", e.flag(e.both(e.both(e.ne(p["ui"], 0), e.ne(at(e, p["r"], 4), 0)), e.ne(_call(e, "dx_same", K(e, "onCreate"), at(e, p["r"], 0)), 0))))
                 e.var("is_click", e.flag(e.both(e.ne(p["click"], 0), e.ne(_call(e, "dx_same", K(e, "onClick"), at(e, p["r"], 0)), 0))))
-                e.if_(e.ne(p["is_override"], 0), deferred, lambda: e.if_(e.ne(p["is_ui"], 0), activity, lambda: e.if_(
-                    e.ne(p["is_click"], 0), clicked, lambda: e.if_(e.ne(at(e, p["r"], 4), 0), super_call, direct))))
+                e.if_(e.ne(p["is_override"], 0), deferred, lambda: e.if_(e.ne(p["is_install"], 0), lambda: _install_code(e, u), lambda: e.if_(
+                    e.ne(p["is_ui"], 0), activity, lambda: e.if_(e.ne(p["is_click"], 0), clicked, lambda: e.if_(e.ne(at(e, p["r"], 4), 0), super_call, direct)))))
 
             e.if_(e.either(e.eq(p["void"], 0), e.either(e.ne(p["wide"], 0), e.lt(3, p["pn"]))), ranged, compact)
 
         e.for_("q", 0, p["n_forwards"], forward)
+        e.if_(e.ne(p["hi"], 0), lambda: _intercept_code(e, u))
 
         def constant_code():
             e.var("r", e.add(p["constants"], e.mul(p["q"], 3)))
@@ -1019,6 +1098,7 @@ def _frontend(tables):
             u.code(at(e, p["r"], 0), 2, 2, 0)
 
         e.for_("q", 0, p["n_echoes"], echo_code)
+        _service_codes(e, u)
 
         def null_code():
             e.var("r", e.add(p["nulls"], e.mul(p["q"], 3)))
@@ -1028,6 +1108,10 @@ def _frontend(tables):
             u.code(at(e, p["r"], 0), e.add(p["ins"], 1), p["ins"], 0)
 
         e.for_("q", 0, p["n_nulls"], null_code)
+        e.if_(e.ne(p["hk_retained"], 0), lambda: (e.set("u_n", 0), u.add(0x1054, fidx(e, p["cls"], K(e, "xaxHookHandle"), K(e, HANDLE)), 0x0038, 0x0008, 0x1072,
+                                                                       midx(e, K(e, HANDLE), K(e, "unhook"), p["ctor"]), 0x0000, 0x0012, 0x105B,
+                                                                       fidx(e, p["cls"], K(e, "xaxHookHandle"), K(e, HANDLE)), 0x000E),
+                                                 u.code(K(e, "xaxUnhook"), 2, 1, 1)))
 
         def asm_code():
             e.var("r", e.add(p["asms"], e.mul(p["q"], 6)))
@@ -1077,7 +1161,7 @@ def _frontend(tables):
 
         # The class data: the direct and virtual methods, each sorted by method index.
         e.var("class_data", e.ld(G_ON))
-        e.var("total", e.add(e.add(e.add(p["n_natives"], p["n_forwards"]), e.add(p["n_nulls"], p["n_constants"])), e.add(e.add(p["n_echoes"], p["n_asms"]), 2)))
+        e.var("total", e.add(e.add(e.add(p["n_natives"], p["n_forwards"]), e.add(p["n_nulls"], p["n_constants"])), e.add(e.add(p["n_echoes"], p["n_asms"]), 32)))
         e.var("direct", e.alloc(e.add(e.mul(p["total"], 3), 1)))
         e.var("virtual", e.alloc(e.add(e.mul(p["total"], 3), 1)))
         _ok(e, e.both(e.ne(p["direct"], NONE), e.ne(p["virtual"], NONE)))
@@ -1112,10 +1196,21 @@ def _frontend(tables):
         table("constants", 3, lambda r: p["string_proto"], 2, 0, True)
         table("echoes", 2, lambda r: p["echo_proto"], 1, 0, True)
         table("asms", 6, lambda r: at(e, r, 1), 3, ACC_PRIVATE | ACC_STATIC | ACC_CONSTRUCTOR, True)
+        _libxposed_entries(e, entry)
+        # The instance fields: the retained hook handle and the reload class loader (private), by field index.
+        e.var("fi", e.alloc(4))
+        _ok(e, e.ne(p["fi"], NONE))
+        e.var("nfi", 0)
+        e.if_(e.ne(p["hk_retained"], 0), lambda: (e.st(e.add(p["fi"], p["nfi"]), fidx(e, p["cls"], K(e, "xaxHookHandle"), K(e, HANDLE))), e.set("nfi", e.add(p["nfi"], 1))))
+        e.if_(e.ne(p["hr"], 0), lambda: (e.st(e.add(p["fi"], p["nfi"]), fidx(e, p["cls"], K(e, "xaxReloadClassLoader"), K(e, LOADER))), e.set("nfi", e.add(p["nfi"], 1))))
+        e.if_(e.both(e.eq(p["nfi"], 2), e.lt(e.ld(e.add(p["fi"], 1)), e.ld(p["fi"]))), lambda: (
+            e.var("fi_t", e.ld(p["fi"])), e.st(p["fi"], e.ld(e.add(p["fi"], 1))), e.st(e.add(p["fi"], 1), p["fi_t"])))
         uleb(e, 0)
-        uleb(e, 0)
+        uleb(e, p["nfi"])
         uleb(e, p["nd"])
         uleb(e, p["nv"])
+        e.var("prev", 0)
+        e.for_("q", 0, p["nfi"], lambda: (uleb(e, e.sub(e.ld(e.add(p["fi"], p["q"])), p["prev"])), uleb(e, ACC_PRIVATE), e.set("prev", e.ld(e.add(p["fi"], p["q"])))))
         for arr, count in (("direct", "nd"), ("virtual", "nv")):
             _call(e, "dx_sortentries", p[arr], p[count])
             e.var("prev", 0)
@@ -1134,9 +1229,14 @@ def _frontend(tables):
         align(e)
         e.var("map", e.ld(G_ON))
         e.var("nlists", e.ld(G_NL))
-        u32(e, e.add(10, e.flag(e.ne(p["nlists"], 0))))
-        for kind, count, offset in ((0x0000, 1, 0), (0x0001, p["ns"], 0x70), (0x0002, p["nt"], p["type_ids"]), (0x0003, p["npr"], p["proto_ids"]),
-                                    (0x0005, p["nm"], p["method_ids"]), (0x0006, 1, p["class_defs"])):
+        u32(e, e.add(e.add(10, e.flag(e.ne(p["nlists"], 0))), e.flag(e.ne(p["nf"], 0))))
+        for kind, count, offset in ((0x0000, 1, 0), (0x0001, p["ns"], 0x70), (0x0002, p["nt"], p["type_ids"]), (0x0003, p["npr"], p["proto_ids"])):
+            u16(e, kind)
+            u16(e, 0)
+            u32(e, count)
+            u32(e, offset)
+        e.if_(e.ne(p["nf"], 0), lambda: (u16(e, 0x0004), u16(e, 0), u32(e, p["nf"]), u32(e, p["field_ids"])))
+        for kind, count, offset in ((0x0005, p["nm"], p["method_ids"]), (0x0006, 1, p["class_defs"])):
             u16(e, kind)
             u16(e, 0)
             u32(e, count)
@@ -1153,7 +1253,7 @@ def _frontend(tables):
         # The header and the index sections.
         for k, byte in enumerate(b"dex\n039\x00"):
             e.st(e.add(e.ld(G_OUT), k), byte)
-        for k, value in enumerate((p["size"], 0x70, 0x12345678, 0, 0, p["map"], p["ns"], 0x70, p["nt"], p["type_ids"], p["npr"], p["proto_ids"], 0, 0,
+        for k, value in enumerate((p["size"], 0x70, 0x12345678, 0, 0, p["map"], p["ns"], 0x70, p["nt"], p["type_ids"], p["npr"], p["proto_ids"], p["nf"], p["field_ids"],
                                    p["nm"], p["method_ids"], 1, p["class_defs"], e.sub(p["size"], p["data_off"]), p["data_off"])):
             _call(e, "dx_set32", 32 + 4 * k, value)
         e.for_("q", 0, p["ns"], lambda: _call(e, "dx_set32", e.add(0x70, e.mul(p["q"], 4)), e.ld(e.add(p["sd"], p["q"]))))
@@ -1178,6 +1278,17 @@ def _frontend(tables):
             _call(e, "dx_set32", e.add(p["ma"], 4), sidx(e, at(e, p["mr"], 1)))
 
         e.for_("q", 0, p["nm"], method_id)
+
+        def field_id():
+            e.var("fr", e.ld(e.add(e.ld(G_F), p["q"])))
+            e.var("fa", e.add(p["field_ids"], e.mul(p["q"], 8)))
+            e.var("fc", tidx(e, at(e, p["fr"], 0)))
+            e.var("ft", tidx(e, at(e, p["fr"], 2)))
+            _ok(e, e.both(e.le(p["fc"], 0xFFFF), e.le(p["ft"], 0xFFFF)))
+            _call(e, "dx_set32", p["fa"], e.add(p["fc"], e.mul(p["ft"], 65536)))
+            _call(e, "dx_set32", e.add(p["fa"], 4), sidx(e, at(e, p["fr"], 1)))
+
+        e.for_("q", 0, p["nf"], field_id)
         for k, value in enumerate((tidx(e, p["cls"]), p["access"], tidx(e, p["super"]), e.sel(e.eq(p["nif"], 0), 0, _call(e, "dx_listat", p["ifs"])),
                                    0xFFFFFFFF, 0, p["class_data"], 0)):
             _call(e, "dx_set32", e.add(p["class_defs"], 4 * k), value)
@@ -1200,6 +1311,355 @@ def _frontend(tables):
         e.st(0, 1)
         e.give(1)
     return _function((), build, tables)
+
+
+# -- S15e.6d.3: the libxposed adapters -----------------------------------------------------------------------------------
+
+def _proto_of(e: E, ret, *params):
+    """The interned prototype of ``ret`` and ``params`` (handles)."""
+    e.var("pl_tmp", e.alloc(len(params) + 1))
+    _ok(e, e.ne(e.p["pl_tmp"], NONE))
+    e.st(e.p["pl_tmp"], len(params))
+    for k, item in enumerate(params):
+        e.st(e.add(e.p["pl_tmp"], 1 + k), item)
+    return _call(e, "dx_intern", ret, e.p["pl_tmp"])
+
+
+LIB_VARS = ("hi", "hi_inspect", "hi_index", "hi_repl", "hi_arg", "hi_proto", "hi_proceed", "hi_getarg", "hi_args",
+            "hk", "hk_class", "hk_method", "hk_hooker", "hk_param", "hk_mode", "hk_retained", "hk_deopt", "hk_id",
+            "hk_loader", "hk_load", "hk_get", "hk_hook", "hk_setmode", "hk_intercept", "hk_deopt_p", "hk_setid",
+            "sv", "rp", "rp_fp", "rp_rp", "hr", "hr_hooker", "hr_id", "rf", "rf_fp", "rf_list", "rf_open",
+            *(f"sv_p{k}" for k in range(len(SERVICES))), *(f"rp_g{k}" for k in range(len(READS))), *(f"rp_i{k}" for k in range(len(READS))),
+            *(f"hr_p{k}" for k in range(10)))
+
+
+def _libxposed_pools(e: E, word, string):
+    """The libxposed specifications' inputs and their prototypes, strings, types, methods and fields."""
+    p = e.p
+    for name in LIB_VARS:
+        e.var(name, 0)
+
+    def strings(*items):
+        for item in items:
+            push(e, STRINGS, K(e, item) if isinstance(item, str) else item)
+
+    def types(*items):
+        for item in items:
+            push(e, TYPES, K(e, item) if isinstance(item, str) else item)
+
+    def method(cls, name, proto):
+        _call(e, "dx_method", K(e, cls) if isinstance(cls, str) else cls, K(e, name) if isinstance(name, str) else name, proto)
+
+    def k(item):
+        return K(e, item) if isinstance(item, str) else item
+
+    def proto(ret, *params):
+        return _proto_of(e, k(ret), *(k(item) for item in params))
+
+    # The hook interceptor: inspected argument (flag, index), result replacement, argument replacement.
+    e.set("hi", word())
+
+    def intercept():
+        e.set("hi_inspect", word())
+        e.set("hi_index", word())
+        e.if_(e.ne(word(), 0), lambda: e.set("hi_repl", string()))
+        e.if_(e.ne(word(), 0), lambda: e.set("hi_arg", string()))
+        e.set("hi_proto", proto(OBJECT, CHAIN))
+        e.set("hi_proceed", proto(OBJECT))
+        strings(CHAIN, OBJECT, "intercept", "proceed")
+        types(CHAIN, OBJECT)
+        method(p["cls"], "intercept", p["hi_proto"])
+        method(CHAIN, "proceed", p["hi_proceed"])
+        e.if_(e.ne(p["hi_inspect"], 0), lambda: (e.set("hi_getarg", proto(OBJECT, "I")), strings("getArg"), method(CHAIN, "getArg", p["hi_getarg"])))
+        e.if_(e.ne(p["hi_repl"], 0), lambda: strings(p["hi_repl"]))
+        e.if_(e.ne(p["hi_arg"], 0), lambda: (e.set("hi_args", proto(OBJECT, OBJECT_ARRAY)), strings(p["hi_arg"]), types(OBJECT_ARRAY),
+                                               method(CHAIN, "proceed", p["hi_args"])))
+
+    e.if_(e.ne(p["hi"], 0), intercept)
+    # The hook installation: target class, method, hooker, parameter, exception mode, retained, deoptimize, hook ID.
+    e.set("hk", word())
+
+    def install():
+        e.set("hk_class", string())
+        e.set("hk_method", string())
+        e.set("hk_hooker", string())
+        e.if_(e.ne(word(), 0), lambda: e.set("hk_param", string()))
+        e.set("hk_mode", string())
+        e.set("hk_retained", word())
+        e.set("hk_deopt", word())
+        e.if_(e.ne(word(), 0), lambda: e.set("hk_id", string()))
+        e.set("hk_loader", proto(LOADER))
+        e.set("hk_load", proto(CLASS, STRING))
+        e.set("hk_get", proto(METHOD, STRING, CLASS_ARRAY))
+        e.set("hk_hook", proto(BUILDER, EXECUTABLE))
+        e.set("hk_setmode", proto(BUILDER, MODE))
+        e.set("hk_intercept", proto(HANDLE, HOOKER))
+        e.if_(e.ne(p["hk_deopt"], 0), lambda: e.set("hk_deopt_p", proto("Z", EXECUTABLE)))
+        e.if_(e.ne(p["hk_id"], 0), lambda: e.set("hk_setid", proto(BUILDER, STRING)))
+        fixed = (READY, WRAPPER, BUILDER, HOOKER, HANDLE, MODE, LOADER, CLASS, CLASS_ARRAY, STRING, METHOD, EXECUTABLE)
+        strings(*fixed, p["hk_hooker"], p["hk_class"], p["hk_method"], "getClassLoader", "loadClass", "getDeclaredMethod", "hook", "setExceptionMode",
+                "intercept", p["hk_mode"])
+        e.if_(e.ne(p["hk_param"], 0), lambda: strings(p["hk_param"]))
+        e.if_(e.ne(p["hk_deopt"], 0), lambda: strings("deoptimize"))
+        e.if_(e.ne(p["hk_id"], 0), lambda: strings("setId", p["hk_id"]))
+        e.if_(e.ne(p["hk_retained"], 0), lambda: strings("xaxHookHandle", "xaxUnhook", "unhook"))
+        types(*fixed, p["hk_hooker"])
+        method(READY, "getClassLoader", p["hk_loader"])
+        method(LOADER, "loadClass", p["hk_load"])
+        method(CLASS, "getDeclaredMethod", p["hk_get"])
+        method(WRAPPER, "hook", p["hk_hook"])
+        method(BUILDER, "setExceptionMode", p["hk_setmode"])
+        method(BUILDER, "intercept", p["hk_intercept"])
+        method(p["hk_hooker"], "<init>", p["ctor"])
+        e.if_(e.ne(p["hk_id"], 0), lambda: method(BUILDER, "setId", p["hk_setid"]))
+        e.if_(e.ne(p["hk_deopt"], 0), lambda: method(WRAPPER, "deoptimize", p["hk_deopt_p"]))
+        e.if_(e.ne(p["hk_retained"], 0), lambda: (method(p["cls"], "xaxUnhook", p["ctor"]), method(HANDLE, "unhook", p["ctor"]),
+                                                  _call(e, "dx_field", p["cls"], K(e, "xaxHookHandle"), K(e, HANDLE))))
+        _call(e, "dx_field", K(e, MODE), p["hk_mode"], K(e, MODE))
+
+    e.if_(e.ne(p["hk"], 0), install)
+    # The module services: a mask in the canonical order.
+    e.set("sv", word())
+
+    def services():
+        strings(WRAPPER)
+        types(WRAPPER)
+        for k_, (generated, framework, ret, params) in enumerate(SERVICES):
+            def one(k_=k_, generated=generated, framework=framework, ret=ret, params=params):
+                e.set(f"sv_p{k_}", proto(ret, *params))
+                strings(generated, framework)
+                method(p["cls"], generated, p[f"sv_p{k_}"])
+                method(WRAPPER, framework, p[f"sv_p{k_}"])
+
+            e.if_(e.ne(e.and_(p["sv"], 1 << k_), 0), one)
+
+    e.if_(e.ne(p["sv"], 0), services)
+    # The remote preferences: a mask of the reads in the canonical order.
+    e.set("rp", word())
+
+    def preferences():
+        e.set("rp_fp", proto("J"))
+        e.set("rp_rp", proto(PREFS, STRING))
+        strings(WRAPPER, PREFS, "xaxRemotePreferencesIfSupported", "getFrameworkProperties", "getRemotePreferences")
+        types(WRAPPER, PREFS)
+        method(p["cls"], "xaxRemotePreferencesIfSupported", p["rp_rp"])
+        method(WRAPPER, "getFrameworkProperties", p["rp_fp"])
+        method(WRAPPER, "getRemotePreferences", p["rp_rp"])
+        for k_, (generated, interface, ret, shape) in enumerate(READS):
+            def one(k_=k_, generated=generated, interface=interface, ret=ret, shape=shape):
+                tail = () if shape == 3 else (ret,)
+                e.set(f"rp_g{k_}", proto(ret, PREFS, STRING, *tail))
+                e.set(f"rp_i{k_}", proto(ret, STRING, *tail))
+                strings(generated, interface)
+                method(p["cls"], generated, p[f"rp_g{k_}"])
+                method(PREFS, interface, p[f"rp_i{k_}"])
+
+            e.if_(e.ne(e.and_(p["rp"], 1 << k_), 0), one)
+
+    e.if_(e.ne(p["rp"], 0), preferences)
+    # The hot reload: hooker, hook ID.
+    e.set("hr", word())
+
+    def reload():
+        e.set("hr_hooker", string())
+        e.set("hr_id", string())
+        shapes = ((RELOADING, ("Z", RELOADING)), (RELOADED, ("V", RELOADED)), (RELOADING, ("V", OBJECT)), (RELOADED, (OBJECT,)), (RELOADED, (LIST,)),
+                  (LIST, (OBJECT, "I")), (LIST, ("Z",)), (HANDLE, (STRING,)), (STRING, ("Z", OBJECT)), (HANDLE, (HANDLE, HOOKER)))
+        names = ("onHotReloading", "onHotReloaded", "setSavedInstanceState", "getSavedInstanceState", "getOldHookHandles", "get", "isEmpty", "getId",
+                 "equals", "replaceHook")
+        for k_, (_cls, sig) in enumerate(shapes):
+            e.set(f"hr_p{k_}", proto(*sig))
+        strings(RELOADING, RELOADED, HANDLE, HOOKER, LIST, OBJECT, p["hr_hooker"], *names[:9], p["hr_id"], "replaceHook", "xaxHookHandle",
+                "xaxReloadClassLoader")
+        types(RELOADING, RELOADED, HANDLE, HOOKER, LIST, OBJECT, p["hr_hooker"])
+        method(p["cls"], "onHotReloading", p["hr_p0"])
+        method(p["cls"], "onHotReloaded", p["hr_p1"])
+        for k_ in range(2, 10):
+            method(shapes[k_][0], names[k_], p[f"hr_p{k_}"])
+        method(p["hr_hooker"], "<init>", p["ctor"])
+        _call(e, "dx_field", p["cls"], K(e, "xaxReloadClassLoader"), K(e, LOADER))
+
+    e.if_(e.ne(p["hr"], 0), reload)
+    # The remote files: a mask (list 1, open 2).
+    e.set("rf", word())
+
+    def files():
+        e.set("rf_fp", proto("J"))
+        strings(WRAPPER, "getFrameworkProperties")
+        types(WRAPPER)
+        method(WRAPPER, "getFrameworkProperties", p["rf_fp"])
+        e.if_(e.ne(e.and_(p["rf"], 1), 0), lambda: (e.set("rf_list", proto(STRING_ARRAY)), strings(STRING_ARRAY, "xaxListRemoteFilesIfSupported", "listRemoteFiles"),
+                                                     types(STRING_ARRAY), method(p["cls"], "xaxListRemoteFilesIfSupported", p["rf_list"]),
+                                                     method(WRAPPER, "listRemoteFiles", p["rf_list"])))
+        e.if_(e.ne(e.and_(p["rf"], 2), 0), lambda: (e.set("rf_open", proto(PFD, STRING)), strings(PFD, STRING, "xaxOpenRemoteFileIfSupported", "openRemoteFile"),
+                                                     types(PFD, STRING), method(p["cls"], "xaxOpenRemoteFileIfSupported", p["rf_open"]),
+                                                     method(WRAPPER, "openRemoteFile", p["rf_open"])))
+
+    e.if_(e.ne(p["rf"], 0), files)
+
+
+def _invoke(u: "Units", opcode: int, index, registers: tuple[int, ...]):
+    u.add(opcode | (len(registers) << 12), index, sum(reg << (4 * k) for k, reg in enumerate(registers)))
+
+
+def _install_code(e: E, u: "Units"):
+    """``onPackageReady``: resolve the target through the package class loader, hook it with the generated hooker."""
+    p = e.p
+    _ok(e, e.le(tidx(e, K(e, CLASS_ARRAY)), 0xFFFF))  # bounded even where the zero-parameter form does not use it
+    one = e.ne(p["hk_param"], 0)
+    this, param = (7, 8), (9, 10)
+
+    def body(regs):
+        me, ready = regs
+        _invoke(u, 0x72, midx(e, K(e, READY), K(e, "getClassLoader"), p["hk_loader"]), (ready,))
+        u.add(0x000C)
+        e.if_(e.ne(p["hr"], 0), lambda: u.add(0x005B | (me << 12), fidx(e, p["cls"], K(e, "xaxReloadClassLoader"), K(e, LOADER))))
+        u.add(0x011A, sidx(e, p["hk_class"]))
+        _invoke(u, 0x6E, midx(e, K(e, LOADER), K(e, "loadClass"), p["hk_load"]), (0, 1))
+        u.add(0x010C)
+        if me == 9:
+            u.add(0x071A, sidx(e, p["hk_param"]))
+            _invoke(u, 0x6E, midx(e, K(e, LOADER), K(e, "loadClass"), p["hk_load"]), (0, 7))
+            u.add(0x070C, 0x1812, 0x8823, tidx(e, K(e, CLASS_ARRAY)), 0x0612, 0x074D, 0x0608)
+            u.add(0x001A, sidx(e, p["hk_method"]))
+            _invoke(u, 0x6E, midx(e, K(e, CLASS), K(e, "getDeclaredMethod"), p["hk_get"]), (1, 0, 8))
+        else:
+            u.add(0x001A, sidx(e, p["hk_method"]), 0x0312)
+            _invoke(u, 0x6E, midx(e, K(e, CLASS), K(e, "getDeclaredMethod"), p["hk_get"]), (1, 0, 3))
+        u.add(0x020C)
+        e.if_(e.ne(p["hk_deopt"], 0), lambda: _invoke(u, 0x6E, midx(e, K(e, WRAPPER), K(e, "deoptimize"), p["hk_deopt_p"]), (me, 2)))
+        _invoke(u, 0x6E, midx(e, K(e, WRAPPER), K(e, "hook"), p["hk_hook"]), (me, 2))
+        u.add(0x030C, 0x0562, fidx(e, K(e, MODE), p["hk_mode"], K(e, MODE)))
+        _invoke(u, 0x72, midx(e, K(e, BUILDER), K(e, "setExceptionMode"), p["hk_setmode"]), (3, 5))
+        u.add(0x030C)
+        e.if_(e.ne(p["hk_id"], 0), lambda: (u.add(0x061A, sidx(e, p["hk_id"])), _invoke(u, 0x72, midx(e, K(e, BUILDER), K(e, "setId"), p["hk_setid"]), (3, 6)),
+                                             u.add(0x030C)))
+        u.add(0x0422, tidx(e, p["hk_hooker"]))
+        _invoke(u, 0x70, midx(e, p["hk_hooker"], K(e, "<init>"), p["ctor"]), (4,))
+        _invoke(u, 0x72, midx(e, K(e, BUILDER), K(e, "intercept"), p["hk_intercept"]), (3, 4))
+        u.add(0x060C)
+        e.if_(e.ne(p["hk_retained"], 0), lambda: u.add(0x065B | (me << 12), fidx(e, p["cls"], K(e, "xaxHookHandle"), K(e, HANDLE))))
+        _invoke(u, 0x70, p["native"], (me, ready))
+        u.add(0x000E)
+        u.code(at(e, p["r"], 0), me + 2, 2, 3)
+
+    e.if_(one, lambda: body(param), lambda: body(this))
+
+
+def _intercept_code(e: E, u: "Units"):
+    """``intercept(Chain)``: the pass-through, result-replacing, argument-inspecting or argument-replacing interceptor."""
+    p = e.p
+    e.set("u_n", 0)
+    e.var("ic_proceed", midx(e, K(e, CHAIN), K(e, "proceed"), p["hi_proceed"]))
+    _ok(e, e.le(p["ic_proceed"], 0xFFFF))
+
+    def arguments():
+        u.add(0x0012, 0x2072, midx(e, K(e, CHAIN), K(e, "getArg"), p["hi_getarg"]), 0x0006, 0x010C, 0x1212, 0x2223, tidx(e, K(e, OBJECT_ARRAY)),
+              0x031A, sidx(e, p["hi_arg"]), 0x0012, 0x034D, 0x0002, 0x2072, midx(e, K(e, CHAIN), K(e, "proceed"), p["hi_args"]), 0x0026, 0x040C)
+        e.if_(e.eq(p["hi_repl"], 0), lambda: u.add(0x0411), lambda: u.add(0x031A, sidx(e, p["hi_repl"]), 0x0311))
+        u.code(K(e, "intercept"), 7, 2, 2)
+
+    def replaced():
+        u.add(0x1072, p["ic_proceed"], 0x0003, 0x000C, 0x011A, sidx(e, p["hi_repl"]), 0x0111)
+        u.code(K(e, "intercept"), 4, 2, 1)
+
+    def passed():
+        u.add(0x1072, p["ic_proceed"], 0x0002, 0x000C, 0x0011)
+        u.code(K(e, "intercept"), 3, 2, 1)
+
+    def inspected():
+        u.add(e.or_(0x0012, e.mul(p["hi_index"], 4096)), 0x2072, midx(e, K(e, CHAIN), K(e, "getArg"), p["hi_getarg"]), 0x0003, 0x000C,
+              0x1072, p["ic_proceed"], 0x0003, 0x010C, 0x0111)
+        u.code(K(e, "intercept"), 4, 2, 2)
+
+    e.if_(e.ne(p["hi_arg"], 0), arguments, lambda: e.if_(
+        e.both(e.eq(p["hi_inspect"], 0), e.ne(p["hi_repl"], 0)), replaced, lambda: e.if_(e.eq(p["hi_inspect"], 0), passed, inspected)))
+
+
+def _service_codes(e: E, u: "Units"):
+    """The module services, the remote preferences, the remote files and the hot-reload callbacks, in that order."""
+    p = e.p
+    for k_, (generated, framework, ret, params) in enumerate(SERVICES):
+        def service(k_=k_, generated=generated, framework=framework, params=params):
+            e.set("u_n", 0)
+            u.add(0x206E if params else 0x106E, midx(e, K(e, WRAPPER), K(e, framework), p[f"sv_p{k_}"]), 0x0021 if params else 0x0001, 0x000C, 0x0011)
+            u.code(K(e, generated), *((3, 2, 2) if params else (2, 1, 1)))
+
+        e.if_(e.ne(e.and_(p["sv"], 1 << k_), 0), service)
+
+    def preferences():
+        e.set("u_n", 0)
+        u.add(0x106E, midx(e, K(e, WRAPPER), K(e, "getFrameworkProperties"), p["rp_fp"]), 0x0002, 0x000B, 0x0084, 0x00DD, 0x0200, 0x0038, 0x0007,
+              0x206E, midx(e, K(e, WRAPPER), K(e, "getRemotePreferences"), p["rp_rp"]), 0x0032, 0x000C, 0x0011, 0x0012, 0x0011)
+        u.code(K(e, "xaxRemotePreferencesIfSupported"), 4, 2, 2)
+        for k_, (generated, interface, _ret, shape) in enumerate(READS):
+            units, sizes = READ_CODES[shape]
+
+            def read(k_=k_, generated=generated, interface=interface, units=units, sizes=sizes):
+                e.set("u_n", 0)
+                u.add(*(midx(e, K(e, PREFS), K(e, interface), p[f"rp_i{k_}"]) if item is None else item for item in units))
+                u.code(K(e, generated), *sizes)
+
+            e.if_(e.ne(e.and_(p["rp"], 1 << k_), 0), read)
+
+    e.if_(e.ne(p["rp"], 0), preferences)
+
+    def files():
+        e.var("rf_props", midx(e, K(e, WRAPPER), K(e, "getFrameworkProperties"), p["rf_fp"]))
+        for bit, generated, remote, proto, first, word, sizes in ((1, "xaxListRemoteFilesIfSupported", "listRemoteFiles", "rf_list", 0x106E, 0x0002, (3, 1, 1)),
+                                                                 (2, "xaxOpenRemoteFileIfSupported", "openRemoteFile", "rf_open", 0x206E, 0x0032, (4, 2, 2))):
+            def one(generated=generated, remote=remote, proto=proto, first=first, word=word, sizes=sizes):
+                e.set("u_n", 0)
+                u.add(0x106E, p["rf_props"], 2, 0x000B, 0x0084, 0x00DD, 0x0200, 0x0038, 0x0007, first, midx(e, K(e, WRAPPER), K(e, remote), p[proto]), word,
+                      0x000C, 0x0011, 0x0012, 0x0011)
+                u.code(K(e, generated), *sizes)
+
+            e.if_(e.ne(e.and_(p["rf"], bit), 0), one)
+
+    e.if_(e.ne(p["rf"], 0), files)
+
+    def reload():
+        loader = lambda: fidx(e, p["cls"], K(e, "xaxReloadClassLoader"), K(e, LOADER))  # noqa: E731
+        e.set("u_n", 0)
+        u.add(0x1054, loader(), 0x0038, 0x0007, 0x2072, midx(e, K(e, RELOADING), K(e, "setSavedInstanceState"), p["hr_p2"]), 0x0002, 0x1012, 0x000F,
+              0x0012, 0x000F)
+        u.code(K(e, "onHotReloading"), 3, 2, 2)
+        e.set("u_n", 0)
+        u.add(0x1072, midx(e, K(e, RELOADED), K(e, "getSavedInstanceState"), p["hr_p3"]), 0x0005, 0x000C, 0x0038, 0x002E, 0x001F, tidx(e, K(e, LOADER)),
+              0x405B, loader(), 0x1072, midx(e, K(e, RELOADED), K(e, "getOldHookHandles"), p["hr_p4"]), 0x0005, 0x000C,
+              0x1072, midx(e, K(e, LIST), K(e, "isEmpty"), p["hr_p6"]), 0x0000, 0x020A, 0x0239, 0x0020, 0x0212,
+              0x2072, midx(e, K(e, LIST), K(e, "get"), p["hr_p5"]), 0x0020, 0x010C, 0x011F, tidx(e, K(e, HANDLE)),
+              0x1072, midx(e, K(e, HANDLE), K(e, "getId"), p["hr_p7"]), 0x0001, 0x020C, 0x031A, sidx(e, p["hr_id"]),
+              0x206E, midx(e, K(e, STRING), K(e, "equals"), p["hr_p8"]), 0x0023, 0x020A, 0x0238, 0x000D, 0x0322, tidx(e, p["hr_hooker"]),
+              0x1070, midx(e, p["hr_hooker"], K(e, "<init>"), p["ctor"]), 0x0003, 0x2072, midx(e, K(e, HANDLE), K(e, "replaceHook"), p["hr_p9"]), 0x0031,
+              0x030C, 0x435B, fidx(e, p["cls"], K(e, "xaxHookHandle"), K(e, HANDLE)), 0x000E)
+        u.code(K(e, "onHotReloaded"), 6, 2, 2)
+
+    e.if_(e.ne(p["hr"], 0), reload)
+
+
+def _libxposed_entries(e: E, entry):
+    """The adapters' virtual methods (public)."""
+    p = e.p
+    virtual = e.eq(0, 1)
+
+    def own(name, proto):
+        entry(virtual, midx(e, p["cls"], K(e, name), proto), 0x0001, _call(e, "dx_codeat", K(e, name)))
+
+    for k_, (generated, *_rest) in enumerate(SERVICES):
+        e.if_(e.ne(e.and_(p["sv"], 1 << k_), 0), lambda generated=generated, k_=k_: own(generated, p[f"sv_p{k_}"]))
+
+    def preferences():
+        own("xaxRemotePreferencesIfSupported", p["rp_rp"])
+        for k_, (generated, *_rest) in enumerate(READS):
+            e.if_(e.ne(e.and_(p["rp"], 1 << k_), 0), lambda generated=generated, k_=k_: own(generated, p[f"rp_g{k_}"]))
+
+    e.if_(e.ne(p["rp"], 0), preferences)
+    e.if_(e.ne(e.and_(p["rf"], 1), 0), lambda: own("xaxListRemoteFilesIfSupported", p["rf_list"]))
+    e.if_(e.ne(e.and_(p["rf"], 2), 0), lambda: own("xaxOpenRemoteFileIfSupported", p["rf_open"]))
+    e.if_(e.ne(p["hr"], 0), lambda: (own("onHotReloading", p["hr_p0"]), own("onHotReloaded", p["hr_p1"])))
+    e.if_(e.ne(p["hi"], 0), lambda: own("intercept", p["hi_proto"]))
+    e.if_(e.ne(p["hk_retained"], 0), lambda: own("xaxUnhook", p["ctor"]))
 
 
 def _sort_entries_fn(tables):
@@ -1237,7 +1697,7 @@ def build_dex_program():
         _FN[name] = function
         return function
 
-    for name, builder in (("dx_less", _less_fn), ("dx_same", _same_fn), ("dx_string", _string_fn), ("dx_word", _word_fn), ("dx_push", _push_fn),
+    for name, builder in (("dx_less", _less_fn), ("dx_same", _same_fn), ("dx_string", _string_fn), ("dx_word", _word_fn), ("dx_push", _push_fn), ("dx_fieldless", _field_less_fn), ("dx_field", _field_fn), ("dx_fidx", _fidx_fn),
                           ("dx_sort", _sort_fn), ("dx_find", _find_fn), ("dx_listless", _list_less_fn), ("dx_listsame", _list_same_fn),
                           ("dx_protoless", _proto_less_fn), ("dx_intern", _intern_fn), ("dx_proto", _proto_in_fn), ("dx_method", _method_fn),
                           ("dx_methodless", _method_less_fn), ("dx_methodsame", _method_same_fn), ("dx_sortrec", _sort_records_fn),
@@ -1254,27 +1714,19 @@ _PROGRAM = NativeProgram(STORE_PATH, build_dex_program, "dex-bridge")
 load_dex_program = _PROGRAM.load
 write_dex_store = _PROGRAM.write
 OPT_OUT = "XAX_DEX_BRIDGE_PYTHON"
-_OPCODES = None
 
 
-def _core(spec) -> bool:
-    return (spec.libxposed_hook_intercept is None and spec.libxposed_hook_install is None
-            and spec.libxposed_module_services is None and spec.libxposed_remote_preferences is None and spec.libxposed_hot_reload is None
-            and spec.libxposed_remote_files is None)
+SERVICE_NAMES = ("framework-name", "framework-version", "remote-preferences", "list-remote-files", "open-remote-file")
+READ_NAMES = ("boolean", "int", "long", "float", "string", "contains")
 
 
 def dex_with_xax(spec, *, required: bool = False) -> bytes | None:
-    """The DEX bytes the XAX program writes for a checked core ``DexBridgeSpec``, or None where it cannot run, the shape
-    is not a core one, or the program declines (unless ``required``)."""
+    """The DEX bytes the XAX program writes for a checked ``DexBridgeSpec``, or None where it cannot run or declines
+    (unless ``required``)."""
     import os
 
     import xax_dex as D
     import xax_native
-
-    if not _core(spec):
-        if required:
-            raise RuntimeError("the XAX DEX bridge program covers the core shapes only (S15e.6d.1)")
-        return None
 
     def text(value: str) -> list[int]:
         units = D._utf16_units(value)
@@ -1331,6 +1783,29 @@ def dex_with_xax(spec, *, required: bool = False) -> bytes | None:
         words.append(0)
     else:
         words += [1, 0, *text(click.text)] if click.text is not None else [1, 1, click.text_resource_id]
+    hook = spec.libxposed_hook_intercept
+    if hook is None:
+        words.append(0)
+    else:
+        words += [1, int(hook.inspected_argument_index is not None), hook.inspected_argument_index or 0]
+        for value in (hook.replacement_string, hook.argument_replacement_string):
+            words += [0] if value is None else [1, *text(value)]
+    install = spec.libxposed_hook_install
+    if install is None:
+        words.append(0)
+    else:
+        words += [1, *text(install.target_class_binary_name), *text(install.target_method_name), *text(install.hooker_class_descriptor)]
+        words += [1, *text(install.parameter_type_binary_names[0])] if install.parameter_type_binary_names else [0]
+        words += [*text(install.exception_mode), int(install.lifetime_policy == "retained-manual-unhook"), int(install.deoptimize_before_hook)]
+        words += [0] if install.hook_id is None else [1, *text(install.hook_id)]
+    services = spec.libxposed_module_services
+    words.append(0 if services is None else sum(1 << k for k, name in enumerate(SERVICE_NAMES) if name in services.services))
+    preferences = spec.libxposed_remote_preferences
+    words.append(0 if preferences is None else sum(1 << k for k, name in enumerate(READ_NAMES) if name in preferences.reads))
+    reload = spec.libxposed_hot_reload
+    words += [0] if reload is None else [1, *text(reload.hooker_class_descriptor), *text(reload.hook_id)]
+    files = spec.libxposed_remote_files
+    words.append(0 if files is None else int("list" in files.operations) | (2 * int("open" in files.operations)))
     if any(not 0 <= word < 1 << 63 for word in words):
         return None
     native = None if os.environ.get(OPT_OUT) == "1" else _PROGRAM.native(OPT_OUT)

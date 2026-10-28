@@ -60,6 +60,41 @@ def _spec(rng):
                            echo_string_methods=echoes, assembled_methods=tuple(assembled))
 
 
+# S15e.6d.3 (ADR-345): seeded libxposed modules and hookers.
+API = "Lio/github/libxposed/api/"
+READY = API+"XposedModuleInterface$PackageReadyParam;"
+def _libxposed_module(rng):
+    proto=P("V",(READY,))
+    kw={}
+    retained=rng.random()<0.5
+    if rng.random()<0.8:
+        hook_id = rng.choice((None,"xax.primary","é𝄞")) if not retained else rng.choice(("xax.primary","id2"))
+        kw["libxposed_hook_install"]=D.DexLibxposedHookInstallSpec("com.example.Target",rng.choice(("greet","é")),"Lxax/generated/Hooker;",
+            rng.choice(((),("java.lang.String",))), lifetime_policy="retained-manual-unhook" if retained else "process",
+            deoptimize_before_hook=rng.random()<0.5, hook_id=hook_id)
+        if retained and rng.random()<0.6:
+            kw["libxposed_hot_reload"]=D.DexLibxposedHotReloadSpec("Lxax/generated/Hooker;", hook_id=hook_id)
+    if rng.random()<0.5:
+        kw["libxposed_module_services"]=D.DexLibxposedModuleServicesSpec(tuple(rng.sample(("framework-name","framework-version","remote-preferences","list-remote-files","open-remote-file"),rng.randint(1,5))))
+    if rng.random()<0.5:
+        kw["libxposed_remote_preferences"]=D.DexLibxposedRemotePreferencesSpec(tuple(rng.sample(("boolean","int","long","float","string","contains"),rng.randint(1,6))))
+    if rng.random()<0.5:
+        kw["libxposed_remote_files"]=D.DexLibxposedRemoteFilesSpec(tuple(rng.sample(("list","open"),rng.randint(1,2))))
+    return D.DexBridgeSpec("Lxax/generated/Module;",API+"XposedModule;",
+        (D.DexNativeMethod("xaxOnPackageReady",proto,D.ACC_PRIVATE|D.ACC_NATIVE),),
+        (D.DexForwardingOverride("onPackageReady",proto,"xaxOnPackageReady",D.ACC_PUBLIC,False),),
+        native_library=rng.choice((None,"xaxapp")), **kw)
+def _libxposed_hooker(rng):
+    inspect=rng.choice((None,0,3,7))
+    arg=None; repl=None
+    if inspect==0 and rng.random()<0.5:
+        arg="arg é"; repl=rng.choice((None,"res"))
+    elif inspect is None and rng.random()<0.5:
+        repl="res 𝄞"
+    return D.DexBridgeSpec("Lxax/generated/Hooker;","Ljava/lang/Object;",interfaces=(API+"XposedInterface$Hooker;",),
+        libxposed_hook_intercept=D.DexLibxposedHookInterceptSpec(inspect,repl,arg))
+
+
 @unittest.skipUnless(LINUX_X86_64, "the XAX DEX bridge program runs natively on Linux x86-64")
 class SelfhostDexTests(unittest.TestCase):
     def test_named_bridges(self):
@@ -83,6 +118,16 @@ class SelfhostDexTests(unittest.TestCase):
                                          echo_string_methods=(D.DexEchoStringMethod("echo"),)))
         for index, spec in enumerate(specs):
             with self.subTest(spec=index):
+                self.assertEqual(dex_with_xax(spec, required=True), D._emit_dex039_bridge_python(spec))
+
+    def test_libxposed_adapters(self):
+        """S15e.6d.3 (ADR-345): seeded module entries (hook installation in both parameter forms, process or retained
+        lifetime, deoptimization, hook IDs, hot reload, module services, remote preferences and files) and hookers
+        (pass-through, argument inspection, result and argument replacement)."""
+        rng = random.Random(345)
+        for trial in range(60):
+            spec = (_libxposed_module if trial % 2 else _libxposed_hooker)(rng)
+            with self.subTest(trial=trial):
                 self.assertEqual(dex_with_xax(spec, required=True), D._emit_dex039_bridge_python(spec))
 
     def test_random_bridges(self):
