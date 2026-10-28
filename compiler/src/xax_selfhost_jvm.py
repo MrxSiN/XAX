@@ -38,7 +38,7 @@ from xax_selfhost_jvm_method import (
     N_LINE, STATE_WORDS, T_CAP, V_KEPT, V_SINGLE, VALUE_TABLES,
 )
 from xax_selfhost_views_backend import (
-    _FN, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUPT, G_TW, GLOBALS, NI_ENTITY, NI_OP,
+    _FN, CID_WORDS, G_ERASED, G_IFACE, G_NI, G_O, G_ORDER, G_PAY, G_REC, G_REFS, G_S, G_SUP, G_SUP_AT, G_SUPT, G_SUPT_AT, G_TW, GLOBALS, NI_ENTITY, NI_OP,
     NativeProgram, _at, _call, _cid_at, _cid_less, _cid_words, _find, _g, _kind, _node_info, _ok, _payload_uleb, _reference, _term_end,
     _type_form,
 )
@@ -53,12 +53,15 @@ V1_IDENTITY = b"jvm-classfile-v1"
 PROFILE_IDENTITIES = (b"jvm-classfile-memory-v1", b"jvm-classfile-general-v1")  # a process entry there is threaded (declined)
 J_STATE = 211  # GLOBALS slot: the class state record
 (J_POOL, J_ENTRY_INDEX, J_NFN, J_NAMES, J_DESCS, J_ARGS, J_RESULT, J_METHODS, J_NMETHODS, J_STORE, J_STORE_LEN, J_PK, J_PROCESS,
- J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES, J_FLAT) = range(25)
-J_WORDS = 25
+ J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES, J_FLAT, J_NEEDS, J_BYTES, J_NBYTES,
+ J_V1, J_INIT, J_STACKS, J_CONTRACTS, J_NCONTRACTS, J_DISPATCH) = range(34)
+J_WORDS = 34  # S15e.5h: the indirect-call contracts and their dispatchers  # S15e.5g: the memory needs and checked byte members, the v1 profile, the initial memory, a stack allocation
 METHOD_WORDS = 13  # kind, fidx, code, code length, max stack, max locals, frames, frame count, frame types, their count, lines, line count, bare frame
 (MR_KIND, MR_FIDX, MR_CODE, MR_CLEN, MR_STACK, MR_LOCALS, MR_FRAMES, MR_NFRAMES, MR_FTYPES, MR_NFTYPES, MR_LINES, MR_NLINES, MR_BARE) = range(13)
 STORE_CAP = 1 << 24
-KIND_FN, KIND_PK, KIND_MAIN, KIND_CB, KIND_INIT = range(5)  # a callback's interface method and ``<init>(I)V`` (ADR-331)
+KIND_FN, KIND_PK, KIND_MAIN, KIND_CB, KIND_INIT, KIND_NAMED = range(6)  # a callback's interface method and ``<init>(I)V`` (ADR-331); a
+# generated member whose name, descriptor and access are in its record (``MR_FIDX``: name, length, descriptor, length, access;
+# S15e.5g)
 SIGNATURE_CAP = 1024  # a method descriptor's characters (a longer one declines)
 VERIFICATION = {D_I: 1, D_J: 2 + 2, 3: 2, 4: 3}  # I 1, J 4, F 2, D 3; Top 0
 
@@ -145,13 +148,15 @@ def _signature_fn(tables):
 
             e.for_("sg_k", 0, p["sg_np"], parameter)
         put_char(ord(")"))
-        # The machine result: at most one (JVM-SINGLE-RESULT: declined); borrowed views given back need heap views (declined).
+        # The machine result: at most one (JVM-SINGLE-RESULT: declined); views given back are the lent ones (ADR-101).
         e.var("sg_result", D_NONE)
         e.var("sg_count", 0)
+        e.var("sg_el", _call(e, "borrowed", p["f"]))
 
         def returned():
             _jvm_desc(e, e.ld(e.add(e.add(p["sg_rt"], 1), p["sg_k"])), "sg_rd")
-            e.if_(e.ne(p["sg_rd"], D_NONE), lambda: (e.set("sg_result", p["sg_rd"]), e.set("sg_count", e.add(p["sg_count"], 1))))
+            e.if_(e.both(e.ne(p["sg_rd"], D_NONE), e.eq(e.ld(e.add(p["sg_el"], p["sg_k"])), NONE)),
+                  lambda: (e.set("sg_result", p["sg_rd"]), e.set("sg_count", e.add(p["sg_count"], 1))))
 
         e.for_("sg_k", 0, e.ld(p["sg_rt"]), returned)
         _ok(e, e.le(p["sg_count"], 1))
@@ -240,7 +245,7 @@ def _analyses(e: E):
         e.var("ms_a", e.alloc(e.add(words, 2)))
         _ok(e, e.ne(p["ms_a"], NONE))
         _set_m(e, field, p["ms_a"])
-    for name in ("jm_liveness", "jm_interference", "jm_hints", "jm_slots"):
+    for name in ("jm_liveness", "jm_interference", "jm_hints", "jm_slots", "jm_runs"):
         _call(e, name)
     _set_m(e, M_MAXLOC, _m(e, M_GEND))
     _set_m(e, M_SCRATCH_SLOT(), _m(e, M_GEND))
@@ -273,6 +278,28 @@ def _emit_pass(e: E):
     _reset_code(e)
     e.var("ep_retry", _call(e, "je_assignment"))
     e.if_(e.ne(p["ep_retry"], 0), lambda: e.give(1))
+
+    def prologue():
+        # S15e.5h: fp = S; S += frame; trap when the shadow stack is exhausted (ADR-159).
+        from xax_selfhost_jvm_code import D_I, branch, iconst, local
+        from xax_selfhost_jvm_lower import _field_s
+        from xax_selfhost_jvm_memory import N_MEMORY, N_STACK, STACK_BYTES, need
+        from xax_selfhost_jvm_method import M_FSIZE, M_FSLOT
+
+        need(e, e.c(N_MEMORY | N_STACK))
+        _set_m(e, M_TRAPUSED, 1)
+        _field_s(e, 0xB2)
+        op(e, 0x59)
+        local(e, True, D_I, _m(e, M_FSLOT))
+        iconst(e, _m(e, M_FSIZE))
+        op(e, 0x60, 0x59)
+        _field_s(e, 0xB3)
+        iconst(e, 16 + STACK_BYTES)
+        branch(e, 0xA3, e.mul(_m(e, M_NB), 2))
+
+    from xax_selfhost_jvm_method import M_FSLOT as FSLOT
+
+    e.if_(e.ne(_m(e, FSLOT), NONE), prologue)
 
     def nop():
         e.var("ep_entered", 0)
@@ -325,7 +352,12 @@ def _method_fn(tables):
         e.for_("mt_q", 0, p["mt_n"], lambda: (_set_v(e, BL_BASE, p["mt_q"], p["mt_nn"]), e.set("mt_nn", e.add(p["mt_nn"], _f(e, _block_at(e, p["mt_q"]), B_NNODES)))))
         _set_m(e, M_NN, p["mt_nn"])
         _tables(e, nv, (*range(VALUE_TABLES_FIRST(), VALUE_TABLES_FIRST() + len(VALUE_TABLES)), C_VSLOT, C_VSDESC, C_READS), "mt_vt")
-        _tables(e, p["mt_nn"], (N_ELIM, N_COPY, N_LINE), "mt_nt")
+        from xax_selfhost_jvm_method import M_MBYTES, M_MNBYTES, M_MNEEDS, N_INRUN, N_RUN
+        from xax_selfhost_jvm_memory import BYTES_CAP, initial_scan
+
+        _tables(e, p["mt_nn"], (N_ELIM, N_COPY, N_LINE, N_RUN, N_INRUN), "mt_nt")
+        _tables(e, 2 * BYTES_CAP, (M_MBYTES,), "mt_mb")
+        initial_scan(e)
         e.var("mt_work", e.alloc(WORK()))
         _ok(e, e.ne(p["mt_work"], NONE))
         _set_m(e, M_WORK, p["mt_work"])
@@ -342,8 +374,9 @@ def _method_fn(tables):
         e.var("mt_nret", e.ld(p["mt_rt"]))
         _set_m(e, M_NRET, p["mt_nret"])
         _tables(e, p["mt_nret"], (M_RETTYPES,), "mt_rtt")
+        e.var("mt_el", _call(e, "borrowed", p["f"]))  # views given back are elided (ADR-101)
         e.for_("mt_k", 0, p["mt_nret"], lambda: (_jvm_desc(e, e.ld(e.add(e.add(p["mt_rt"], 1), p["mt_k"])), "mt_rd"),
-                                                 e.st(e.add(_m(e, M_RETTYPES), p["mt_k"]), p["mt_rd"])))
+                                                 e.st(e.add(_m(e, M_RETTYPES), p["mt_k"]), e.sel(e.eq(e.ld(e.add(p["mt_el"], p["mt_k"])), NONE), p["mt_rd"], D_NONE))))
         # The code state.
         buffer(e, "mt_code", CODE_CAP)
         _set_m(e, C_BUF, p["mt_code"])
@@ -375,9 +408,12 @@ def _method_fn(tables):
         _set_m(e, M_PASS, 2)
         _set_m(e, M_KEPTNONE, 0)
         _set_m(e, M_NEEDS_PK, 0)  # the counting pass's needs are a scratch set; every pass-2 attempt's are the class's
+        _set_m(e, M_MNEEDS, 0)
+        _set_m(e, M_MNBYTES, 0)
         e.var("mt_retry", 1)
         e.while_(lambda: e.ne(p["mt_retry"], 0), lambda: (_analyses(e), e.set("mt_retry", _emit_pass_call(e))))
         e.if_(e.ne(_m(e, M_NEEDS_PK), 0), lambda: _set_js(e, J_PK, 1))
+        _call(e, "jm_merge")  # the method's memory needs join the class's
         _call(e, "je_finish")
         _call(e, "jk_record", KIND_FN, p["fidx"])
         e.set_hd(H_ARENA, p["mt_mark"])
@@ -543,6 +579,7 @@ def _serialize_fn(tables):
     def build(e: E):
         p = e.p
         pool = _js(e, J_POOL)
+        e.var("se_mark", e.hd(H_ARENA))  # the buffers below are this method's: released at its end
         e.var("se_at", e.add(_js(e, J_METHODS), e.mul(p["k"], METHOD_WORDS)))
 
         def f(field):
@@ -644,16 +681,26 @@ def _serialize_fn(tables):
             e.if_(e.eq(p["se_kind"], KIND_INIT), lambda: (e.var("se_ni", utf8_literal(e, pool, "<init>", "se_in")),
                                                           e.var("se_di", utf8_literal(e, pool, "(I)V", "se_id"))))
 
+            def named():
+                e.var("se_nm", f(MR_FIDX))
+                e.var("se_ni", _call(e, "jp_utf8", pool, e.ld(p["se_nm"]), e.ld(e.add(p["se_nm"], 1))))
+                e.var("se_di", _call(e, "jp_utf8", pool, e.ld(e.add(p["se_nm"], 2)), e.ld(e.add(p["se_nm"], 3))))
+
+            e.if_(e.eq(p["se_kind"], KIND_NAMED), named)
+
         e.var("se_ni", 0)
         e.var("se_di", 0)
         names()
-        u2(e, p["out"], e.sel(e.either(e.eq(p["se_kind"], KIND_CB), e.eq(p["se_kind"], KIND_INIT)), 0x0001, 0x0009))
+        e.var("se_access", e.sel(e.either(e.eq(p["se_kind"], KIND_CB), e.eq(p["se_kind"], KIND_INIT)), 0x0001, 0x0009))
+        e.if_(e.eq(p["se_kind"], KIND_NAMED), lambda: e.set("se_access", e.ld(e.add(f(MR_FIDX), 4))))
+        u2(e, p["out"], p["se_access"])
         u2(e, p["out"], p["se_ni"])
         u2(e, p["out"], p["se_di"])
         u2(e, p["out"], 1)
         u2(e, p["out"], p["se_ci"])
         u4(e, p["out"], blen(e, p["se_code"]))
         append_buf(e, p["out"], p["se_code"])
+        e.set_hd(H_ARENA, p["se_mark"])
         e.give(1)
     return _function(("k", "out"), build, tables)
 
@@ -669,6 +716,7 @@ def _class_fn(tables):
         e.var("cl_cb0", _js(e, J_NMETHODS))
         _call(e, "jk_callbacks")
         e.var("cl_ncb", e.sub(_js(e, J_NMETHODS), p["cl_cb0"]))
+
 
         # The shared xax$pk member: iload_0; Integer.toUnsignedLong; iload_1; i2l; bipush 32; lshl; lor; lreturn.
         def pk():
@@ -692,12 +740,38 @@ def _class_fn(tables):
             e.if_(e.ne(p["cl_ncb"], 0), rotate)
 
         e.if_(e.ne(_js(e, J_PK), 0), pk)
+        # S15e.5g: the memory profile's members (``_memory_methods``) after the shared ones, also before the callbacks.
+        e.if_(e.ne(_js(e, J_NEEDS), 0), lambda: _ok(e, e.eq(_js(e, J_V1), 0)))  # JVM-MEMORY-PROFILE on the v1 target: the bootstrap's
+        e.var("cl_mm0", _js(e, J_NMETHODS))
+        e.if_(e.ne(_js(e, J_NEEDS), 0), lambda: _call(e, "jk_members"))
+
+        def rotate_members():
+            e.var("cl_ms", e.sub(_js(e, J_NMETHODS), p["cl_mm0"]))
+            e.for_("cl_mq", 0, p["cl_ms"], lambda: _move_record(e, e.add(p["cl_mm0"], p["cl_mq"]), e.add(e.sub(p["cl_mm0"], p["cl_ncb"]), p["cl_mq"])))
+
+        e.if_(e.ne(p["cl_ncb"], 0), rotate_members)
 
         def main():
             e.var("cl_en", _call(e, "jl_own_method", 1, _js(e, J_ENTRY_INDEX)))
             _fixed(e, KIND_MAIN, [0xB8, ("cl_en", 2), 0xB1], 0, 1)
 
-        e.if_(e.ne(_js(e, J_PROCESS), 0), main)
+        # S15e.5i: a process entry on the memory and general profiles runs on its own thread (the threaded launcher);
+        # a callback ``run()V`` there is JVM-ENTRY-RUNNABLE (the bootstrap's: declined).
+        e.var("cl_threaded", e.flag(e.both(e.ne(_js(e, J_PROCESS), 0), e.eq(_js(e, J_V1), 0))))
+
+        def no_runnable():
+            from xax_selfhost_jvm_callback import G_DESC, G_DESCN, G_NAME, G_NAMEN, GROUP_WORDS
+
+            def group():
+                e.var("cl_rg", e.add(_js(e, J_CBG), e.mul(p["cl_rq"], GROUP_WORDS)))
+                run = e.both(e.eq(e.ld(e.add(p["cl_rg"], G_NAMEN)), 3), e.eq(e.ld(e.add(p["cl_rg"], G_DESCN)), 3),
+                             *(e.eq(e.ld(e.add(e.ld(e.add(p["cl_rg"], G_NAME)), k)), ch) for k, ch in enumerate(b"run")),
+                             *(e.eq(e.ld(e.add(e.ld(e.add(p["cl_rg"], G_DESC)), k)), ch) for k, ch in enumerate(b"()V")))
+                _ok(e, e.not_(run))
+
+            e.for_("cl_rq", 0, _js(e, J_NCBG), group)
+
+        e.if_(e.ne(p["cl_threaded"], 0), lambda: (no_runnable(), _call(e, "jk_launcher")), lambda: e.if_(e.ne(_js(e, J_PROCESS), 0), main))
         # The class file: this class, the super class, the source file attribute's names, the methods (they finish the
         # pool), then the head before them.
         e.var("cl_this", _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, _js(e, J_CLASSNAME), 21)))
@@ -705,8 +779,41 @@ def _class_fn(tables):
         buffer(e, "cl_ifs", 1 << 10)
         e.for_("cl_q", 0, _js(e, J_NIFACES), lambda: u2(e, p["cl_ifs"], _call(e, "jp_ref1", pool, 7, _call(
             e, "jp_utf8", pool, e.ld(e.add(_js(e, J_IFACES), e.mul(p["cl_q"], 2))), e.ld(e.add(_js(e, J_IFACES), e.add(e.mul(p["cl_q"], 2), 1)))))))
+        # A threaded class implements Runnable after the callbacks' interfaces (unless one of them is Runnable).
+        e.var("cl_nifs", _js(e, J_NIFACES))
+
+        def runnable():
+            literal(e, "cl_rn", "java/lang/Runnable")
+            e.var("cl_has", 0)
+
+            def compare():
+                e.var("cl_it", e.ld(e.add(_js(e, J_IFACES), e.mul(p["cl_iq"], 2))))
+                e.var("cl_itn", e.ld(e.add(_js(e, J_IFACES), e.add(e.mul(p["cl_iq"], 2), 1))))
+                e.var("cl_same", e.flag(e.eq(p["cl_itn"], 18)))
+                e.if_(e.ne(p["cl_same"], 0), lambda: e.for_("cl_ik", 0, 18, lambda: e.if_(
+                    e.ne(e.ld(e.add(p["cl_it"], p["cl_ik"])), e.ld(e.add(p["cl_rn"], p["cl_ik"]))), lambda: e.set("cl_same", 0))))
+                e.if_(e.ne(p["cl_same"], 0), lambda: e.set("cl_has", 1))
+
+            e.for_("cl_iq", 0, _js(e, J_NIFACES), compare)
+            e.if_(e.eq(p["cl_has"], 0), lambda: (u2(e, p["cl_ifs"], _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, p["cl_rn"], 18))),
+                                                 e.set("cl_nifs", e.add(p["cl_nifs"], 1))))
+
+        e.if_(e.ne(p["cl_threaded"], 0), runnable)
         buffer(e, "cl_fields", 64)
-        e.var("cl_nf", e.flag(e.lt(0, _js(e, J_NCBG))))
+        e.var("cl_nf", 0)
+
+        def static_field(name: str, descriptor: str):
+            u2(e, p["cl_fields"], 0x000A)
+            u2(e, p["cl_fields"], utf8_literal(e, pool, name, f"cl_f{name}"))
+            u2(e, p["cl_fields"], utf8_literal(e, pool, descriptor, f"cl_d{name}"))
+            u2(e, p["cl_fields"], 0)
+            e.set("cl_nf", e.add(p["cl_nf"], 1))
+
+        from xax_selfhost_jvm_memory import N_STACK
+
+        e.if_(e.ne(_js(e, J_NEEDS), 0), lambda: (static_field("M", "[B"), static_field("H", "I")))
+        e.if_(e.ne(e.and_(_js(e, J_NEEDS), N_STACK), 0), lambda: static_field("S", "I"))
+        e.if_(e.lt(0, _js(e, J_NCBG)), lambda: e.set("cl_nf", e.add(p["cl_nf"], 1)))
 
         def field_k():
             u2(e, p["cl_fields"], 0x0012)
@@ -714,7 +821,7 @@ def _class_fn(tables):
             u2(e, p["cl_fields"], utf8_literal(e, pool, "I", "cl_fi"))
             u2(e, p["cl_fields"], 0)
 
-        e.if_(e.ne(p["cl_nf"], 0), field_k)
+        e.if_(e.lt(0, _js(e, J_NCBG)), field_k)
         e.var("cl_super", klass_literal(e, pool, "java/lang/Object", "cl_obj"))
         e.var("cl_sf", utf8_literal(e, pool, "SourceFile", "cl_sfn"))
         e.var("cl_sv", utf8_literal(e, pool, "XAX", "cl_sfv"))
@@ -728,7 +835,7 @@ def _class_fn(tables):
 
         u2(e, p["cl_class"], _pf(e, pool, P_COUNT))
         append_buf(e, p["cl_class"], _pf(e, pool, P_BYTES))
-        for word in (0x0031, p["cl_this"], p["cl_super"], _js(e, J_NIFACES)):
+        for word in (0x0031, p["cl_this"], p["cl_super"], p["cl_nifs"]):
             u2(e, p["cl_class"], word)
         append_buf(e, p["cl_class"], p["cl_ifs"])
         u2(e, p["cl_class"], p["cl_nf"])
@@ -814,6 +921,23 @@ def _class_fn(tables):
     return _function((), build, tables)
 
 
+def _move_record(e: E, source, target):
+    """Method record ``source`` moved to position ``target`` (below it), the records between moved up one."""
+    p = e.p
+    e.var("mv_at", _js(e, J_METHODS))
+    e.var("mv_tmp", e.alloc(METHOD_WORDS + 1))
+    _ok(e, e.ne(p["mv_tmp"], NONE))
+    e.var("mv_s", source)
+    e.var("mv_t", target)
+    e.for_("mv_w", 0, METHOD_WORDS, lambda: e.st(e.add(p["mv_tmp"], p["mv_w"]), e.ld(e.add(e.add(p["mv_at"], e.mul(p["mv_s"], METHOD_WORDS)), p["mv_w"]))))
+    e.var("mv_r", p["mv_s"])
+    e.while_(lambda: e.lt(p["mv_t"], p["mv_r"]), lambda: (
+        e.for_("mv_w", 0, METHOD_WORDS, lambda: e.st(e.add(e.add(p["mv_at"], e.mul(p["mv_r"], METHOD_WORDS)), p["mv_w"]),
+                                                    e.ld(e.add(e.add(p["mv_at"], e.mul(e.sub(p["mv_r"], 1), METHOD_WORDS)), p["mv_w"])))),
+        e.set("mv_r", e.sub(p["mv_r"], 1))))
+    e.for_("mv_w", 0, METHOD_WORDS, lambda: e.st(e.add(e.add(p["mv_at"], e.mul(p["mv_t"], METHOD_WORDS)), p["mv_w"]), e.ld(e.add(p["mv_tmp"], p["mv_w"]))))
+
+
 def _add_record(e: E, fields: dict):
     """Append a method record with ``fields`` (``MR_*`` -> word)."""
     p = e.p
@@ -855,8 +979,10 @@ def _node(tables):
         p = e.p
         ni = _g(e, G_NI)
         e.var("nraw", e.ld(e.add(ni, NI_OP)))
-        _ok(e, e.ne(p["nraw"], int(Operation.CALL_GROUP_MEMBER)))  # recursion groups: the bootstrap (S15e.5a)
-        op_ = p["nraw"]
+        # In a group member's graph ``call.group_member`` is a direct call of a member of the same group (S15e.5h).
+        e.var("ngroupcall", e.flag(e.eq(p["nraw"], int(Operation.CALL_GROUP_MEMBER))))
+        e.var("nop", e.sel(e.ne(p["ngroupcall"], 0), int(Operation.CALL_DIRECT), p["nraw"]))
+        op_ = p["nop"]
         supported = e.both(e.lt(op_, 256), e.ne(_at(e, G_SUP, e.sel(e.lt(op_, 256), op_, 0)), 0))
         _ok(e, supported)  # JVM-OP-TARGET-SUPPORTED: the bootstrap's
         e.var("nvisit", NONE - 1)
@@ -870,16 +996,197 @@ def _node(tables):
         e.if_(e.eq(op_, int(Operation.FUNCTION_ADDRESS)), address)
 
         def callee():
-            entity = e.ld(e.add(ni, NI_ENTITY))
-            _ok(e, e.ne(entity, NONE))
-            e.var("nc", _reference(e, p["g"], entity))
+            from xax_selfhost_x86_64_general import G_GROUPOF, G_MTAB
+
+            e.var("nc", NONE)
+
+            def direct():
+                entity = e.ld(e.add(ni, NI_ENTITY))
+                _ok(e, e.ne(entity, NONE))
+                e.set("nc", _reference(e, p["g"], entity))
+
+            def sibling():
+                e.var("ngroup", e.ld(e.add(_g(e, G_GROUPOF), p["f"])))
+                _ok(e, e.ne(p["ngroup"], NONE))
+                e.var("nmembers", e.ld(e.add(_g(e, G_MTAB), p["ngroup"])))
+                _ok(e, e.both(e.ne(p["nmembers"], NONE), e.lt(p["member"], e.ld(p["nmembers"]))))
+                e.set("nc", e.ld(e.add(e.add(p["nmembers"], 1), p["member"])))
+
+            e.if_(e.ne(p["ngroupcall"], 0), sibling, direct)
             _ok(e, e.both(e.ne(p["nc"], NONE), e.eq(_kind(e, p["nc"]), int(Kind.FUNCTION))))
             fresh = e.eq(e.ld(e.add(_g(e, G_TW), p["nc"])), 0)
             e.if_(e.both(fresh, e.eq(_call(e, "erased", p["nc"]), 0)), lambda: e.set("nvisit", p["nc"]))
 
         e.if_(e.eq(op_, int(Operation.CALL_DIRECT)), callee)
         e.give(p["nvisit"])
-    return _function(("g", "f"), build, tables)
+    return _function(("g", "f", "member"), build, tables)
+
+
+def _scan_fn(tables):
+    """``_function_closure``'s walk from ``entry``: a stack of functions (last in, first out), every node checked against
+    the target's operation list and every terminator against its terminator list (exact rejections), direct callees
+    that are not erased, group-member siblings and addressed functions pushed."""
+    from xax_selfhost_views_backend import G_SUP_AT, G_SUPT_AT, _target_list
+    from xax_selfhost_x86_64_general import G_GROUPOF, G_MTAB
+
+    def build(e: E):
+        p = e.p
+        e.var("sc_total", _g(e, G_O))
+        e.var("sc_seen", e.alloc(e.add(p["sc_total"], 2)))
+        e.var("sc_stack", e.alloc(e.add(e.mul(p["sc_total"], 4), 4)))
+        _ok(e, e.both(e.ne(p["sc_seen"], NONE), e.ne(p["sc_stack"], NONE)))
+        e.for_("sc_o", 0, p["sc_total"], lambda: e.st(e.add(p["sc_seen"], p["sc_o"]), 0))
+        e.st(p["sc_stack"], p["entry"])
+        e.var("sc_top", 1)
+
+        def push(f):
+            _ok(e, e.lt(p["sc_top"], e.mul(p["sc_total"], 4)))
+            e.st(e.add(p["sc_stack"], p["sc_top"]), f)
+            e.set("sc_top", e.add(p["sc_top"], 1))
+
+        def function():
+            e.set("sc_top", e.sub(p["sc_top"], 1))
+            e.var("sc_f", e.ld(e.add(p["sc_stack"], p["sc_top"])))
+
+            def scan():
+                e.st(e.add(p["sc_seen"], p["sc_f"]), 1)
+                e.var("sc_g", e.ld(_call(e, "interface", p["sc_f"])))
+                _ok(e, e.eq(_kind(e, p["sc_g"]), int(Kind.GRAPH_FRAGMENT)))
+                e.var("sc_s", _at(e, G_PAY, p["sc_g"]))
+                e.var("sc_nb", e.rd(p["sc_s"]))
+                e.var("sc_first", e.add(p["sc_s"], 2))
+                e.var("sc_at", p["sc_first"])  # each block: its parameter list, its node count, its nodes, its terminator
+
+                def block():
+                    e.set("sc_at", e.add(e.add(p["sc_at"], 1), e.rd(p["sc_at"])))
+                    e.var("sc_nn", e.rd(p["sc_at"]))
+                    e.set("sc_at", e.add(p["sc_at"], 1))
+
+                    def node():
+                        e.var("sc_member", e.rd(e.add(p["sc_at"], 1)))
+                        e.set("sc_at", _call(e, "node_info", p["sc_at"]))
+                        ni = _g(e, G_NI)
+                        e.var("sc_raw", e.ld(e.add(ni, NI_OP)))
+                        e.var("sc_group", e.flag(e.eq(p["sc_raw"], int(Operation.CALL_GROUP_MEMBER))))
+                        e.var("sc_op", e.sel(e.ne(p["sc_group"], 0), int(Operation.CALL_DIRECT), p["sc_raw"]))
+                        supported = e.both(e.lt(p["sc_op"], 256), e.ne(_at(e, G_SUP, e.sel(e.lt(p["sc_op"], 256), p["sc_op"], 0)), 0))
+                        _reject(e, supported, "XAX.JVM.UNSUPPORTED_OPERATION", "JVM-OP-TARGET-SUPPORTED", p["sc_g"], lambda: _target_list(e, G_SUP_AT),
+                                lambda: D.integer(e, p["sc_op"]))
+
+                        def callee():
+                            e.var("sc_c", NONE)
+
+                            def sibling():
+                                e.var("sc_grp", e.ld(e.add(_g(e, G_GROUPOF), p["sc_f"])))
+                                _ok(e, e.ne(p["sc_grp"], NONE))
+                                e.var("sc_mt", e.ld(e.add(_g(e, G_MTAB), p["sc_grp"])))
+                                _ok(e, e.both(e.ne(p["sc_mt"], NONE), e.lt(p["sc_member"], e.ld(p["sc_mt"]))))
+                                e.set("sc_c", e.ld(e.add(e.add(p["sc_mt"], 1), p["sc_member"])))
+
+                            e.if_(e.ne(p["sc_group"], 0), sibling, lambda: e.set("sc_c", _reference(e, p["sc_g"], e.ld(e.add(ni, NI_ENTITY)))))
+                            _ok(e, e.both(e.ne(p["sc_c"], NONE), e.eq(_kind(e, p["sc_c"]), int(Kind.FUNCTION))))
+                            e.if_(e.either(e.eq(p["sc_op"], int(Operation.FUNCTION_ADDRESS)), e.eq(_call(e, "erased", p["sc_c"]), 0)), lambda: push(p["sc_c"]))
+
+                        e.if_(e.either(e.eq(p["sc_op"], int(Operation.CALL_DIRECT)), e.eq(p["sc_op"], int(Operation.FUNCTION_ADDRESS))), callee)
+
+                    e.for_("sc_m", 0, p["sc_nn"], node)
+                    e.var("sc_tk", e.rd(p["sc_at"]))
+                    _reject(e, e.both(e.lt(p["sc_tk"], 8), e.ne(_at(e, G_SUPT, e.sel(e.lt(p["sc_tk"], 8), p["sc_tk"], 0)), 0)),
+                            "XAX.JVM.UNSUPPORTED_TERMINATOR", "JVM-TERMINATOR-TARGET-SUPPORTED", p["sc_g"], lambda: _target_list(e, G_SUPT_AT),
+                            lambda: D.integer(e, p["sc_tk"]))
+                    e.set("sc_at", _call(e, "term_end", p["sc_at"]))
+
+                e.for_("sc_b", 0, p["sc_nb"], block)
+
+            e.if_(e.eq(e.ld(e.add(p["sc_seen"], p["sc_f"])), 0), scan)
+
+        e.while_(lambda: e.lt(0, p["sc_top"]), function)
+        e.give(1)
+    return _function(("entry",), build, tables)
+
+
+def _shadow_fn(tables):
+    """``_callbacks``' JVM-ENTRY-SHADOW-STACK for callback target ``f``: the closure functions it reaches (direct and
+    group-member calls, addressed functions) with a stack allocation.  None passes; one rejects naming it; several
+    decline (the bootstrap names the first of a set, in its hash order)."""
+    from xax_selfhost_general_view import G_CIDX
+    from xax_selfhost_x86_64_general import G_GROUPOF, G_MTAB
+
+    def build(e: E):
+        p = e.p
+        e.var("sh_total", _g(e, G_O))
+        e.var("sh_seen", e.alloc(e.add(p["sh_total"], 2)))
+        e.var("sh_stack", e.alloc(e.add(e.mul(p["sh_total"], 4), 4)))
+        _ok(e, e.both(e.ne(p["sh_seen"], NONE), e.ne(p["sh_stack"], NONE)))
+        e.for_("sh_o", 0, p["sh_total"], lambda: e.st(e.add(p["sh_seen"], p["sh_o"]), 0))
+        e.st(p["sh_stack"], p["f"])
+        e.var("sh_top", 1)
+        e.var("sh_found", NONE)
+        e.var("sh_count", 0)
+
+        def function():
+            e.set("sh_top", e.sub(p["sh_top"], 1))
+            e.var("sh_f", e.ld(e.add(p["sh_stack"], p["sh_top"])))
+            in_closure = e.both(e.lt(p["sh_f"], p["sh_total"]), e.ne(e.ld(e.add(_g(e, G_CIDX), e.sel(e.lt(p["sh_f"], p["sh_total"]), p["sh_f"], 0))), NONE))
+
+            def scan():
+                e.st(e.add(p["sh_seen"], p["sh_f"]), 1)
+                e.var("sh_g", e.ld(_call(e, "interface", p["sh_f"])))
+                e.var("sh_s", _at(e, G_PAY, p["sh_g"]))
+                e.var("sh_nb", e.rd(p["sh_s"]))
+                e.var("sh_at", e.add(p["sh_s"], 2))
+                e.var("sh_alloc", 0)
+
+                def block():
+                    e.set("sh_at", e.add(e.add(p["sh_at"], 1), e.rd(p["sh_at"])))
+                    e.var("sh_nn", e.rd(p["sh_at"]))
+                    e.set("sh_at", e.add(p["sh_at"], 1))
+
+                    def node():
+                        e.var("sh_member", e.rd(e.add(p["sh_at"], 1)))
+                        e.set("sh_at", _call(e, "node_info", p["sh_at"]))
+                        ni = _g(e, G_NI)
+                        e.var("sh_op", e.ld(e.add(ni, NI_OP)))
+                        e.if_(e.eq(p["sh_op"], int(Operation.STACK_ALLOC)), lambda: e.set("sh_alloc", 1))
+
+                        def sibling():
+                            e.var("sh_grp", e.ld(e.add(_g(e, G_GROUPOF), p["sh_f"])))
+                            _ok(e, e.ne(p["sh_grp"], NONE))
+                            e.var("sh_mt", e.ld(e.add(_g(e, G_MTAB), p["sh_grp"])))
+                            _ok(e, e.both(e.ne(p["sh_mt"], NONE), e.lt(p["sh_member"], e.ld(p["sh_mt"]))))
+                            e.st(e.add(p["sh_stack"], p["sh_top"]), e.ld(e.add(e.add(p["sh_mt"], 1), p["sh_member"])))
+                            e.set("sh_top", e.add(p["sh_top"], 1))
+
+                        def entity():
+                            e.var("sh_c", _reference(e, p["sh_g"], e.ld(e.add(ni, NI_ENTITY))))
+                            _ok(e, e.both(e.ne(p["sh_c"], NONE), e.lt(p["sh_top"], e.mul(p["sh_total"], 4))))
+                            e.st(e.add(p["sh_stack"], p["sh_top"]), p["sh_c"])
+                            e.set("sh_top", e.add(p["sh_top"], 1))
+
+                        e.if_(e.eq(p["sh_op"], int(Operation.CALL_GROUP_MEMBER)), sibling, lambda: e.if_(
+                            e.either(e.eq(p["sh_op"], int(Operation.CALL_DIRECT)), e.eq(p["sh_op"], int(Operation.FUNCTION_ADDRESS))), entity))
+
+                    e.for_("sh_m", 0, p["sh_nn"], node)
+                    e.set("sh_at", _call(e, "term_end", p["sh_at"]))
+
+                e.for_("sh_b", 0, p["sh_nb"], block)
+                e.if_(e.ne(p["sh_alloc"], 0), lambda: (e.set("sh_found", p["sh_f"]), e.set("sh_count", e.add(p["sh_count"], 1))))
+
+            e.if_(e.both(in_closure, e.eq(e.ld(e.add(p["sh_seen"], e.sel(e.lt(p["sh_f"], p["sh_total"]), p["sh_f"], 0))), 0)), scan)
+
+        e.while_(lambda: e.lt(0, p["sh_top"]), function)
+        _ok(e, e.le(p["sh_count"], 1))
+
+        def write():
+            D.text(e, "XAX.JVM.ENTRY")
+            D.cid(e, _cid_words(e, p["f"]))
+            D.text(e, "JVM-ENTRY-SHADOW-STACK")
+            D.text(e, "no stack allocation reachable from a callback")
+            D.cid(e, _cid_words(e, p["sh_found"]))
+
+        D.reject_unless(e, e.eq(p["sh_count"], 0), write)
+        e.give(1)
+    return _function(("f",), build, tables)
 
 
 def _push(e: E, f):
@@ -986,6 +1293,7 @@ def _frontend(tables):
         e.var("t_arch", fields[1])
         _ok(e, e.eq(p["t_arch"], JVM_ARCHITECTURE))
         for table in (G_SUP, G_SUPT):
+            e.st(GLOBALS + (G_SUP_AT if table == G_SUP else G_SUPT_AT), p["ta"])  # the list a rejection quotes
             e.var("tcount", _payload_uleb(e, "ta"))
             e.for_("q", 0, p["tcount"], lambda table=table: (lambda value: (_ok(e, e.lt(value, 256 if table == G_SUP else 8)), e.st(e.add(_g(e, table), value), 1)))(
                 _payload_uleb(e, "ta")))
@@ -1003,8 +1311,8 @@ def _frontend(tables):
                 lambda: D.text(e, Kind.FUNCTION.name), kind_name)
         e.st(GLOBALS + G_ENTRY, entry)
 
-        # The sections after the objects: pointer extents (skipped), the audit word, the trap heads (skipped), the
-        # process-entry flag.
+        # The sections after the objects: pointer extents (indexed per graph after the view tables, S15e.5g), the
+        # audit word, the trap heads (skipped), the process-entry flag.
         e.var("sx", p["ext_at"])
         e.var("sx_n", e.rd(p["sx"]))
         e.set("sx", e.add(p["sx"], 1))
@@ -1020,7 +1328,6 @@ def _frontend(tables):
 
         e.for_("q", 0, p["sx_t"], trap_graph)
         e.var("process", e.rd(p["sx"]))
-        _ok(e, e.either(e.eq(p["process"], 0), e.ne(p["t_v1"], 0)))  # ``threaded``: the launcher (declined)
 
         # The class state.
         e.var("js", e.alloc(J_WORDS + 2))
@@ -1037,6 +1344,18 @@ def _frontend(tables):
 
         _set_js(e, J_REFS, _store_alloc(e, 2 * REFS_CAP + 2, "js_refs"))
         _set_js(e, J_NREFS, 0)
+        from xax_selfhost_jvm_memory import BYTES_CAP
+
+        _set_js(e, J_V1, p["t_v1"])
+        _set_js(e, J_NEEDS, 0)
+        _set_js(e, J_BYTES, _store_alloc(e, 2 * BYTES_CAP + 2, "js_bytes"))
+        _set_js(e, J_NBYTES, 0)
+        _set_js(e, J_INIT, 16)  # ``_HEAP_START``
+        _set_js(e, J_STACKS, 0)
+        from xax_selfhost_jvm_indirect import CONTRACTS_CAP
+
+        _set_js(e, J_CONTRACTS, _store_alloc(e, CONTRACTS_CAP + 2, "js_contracts"))
+        _set_js(e, J_NCONTRACTS, 0)
 
         def contract():
             """``validate_process_entry``: no machine parameter or result (each a bits value of at most 64 bits here;
@@ -1089,6 +1408,9 @@ def _frontend(tables):
 
         e.if_(e.ne(p["process"], 0), contract)  # JVM-PROCESS-ENTRY-CONTRACT: the bootstrap's
 
+        # ``_function_closure``'s rejections in its own order (S15e.5h): functions taken last in, first out, each
+        # graph's nodes and terminators in order (JVM-OP-TARGET-SUPPORTED, JVM-TERMINATOR-TARGET-SUPPORTED).
+        _call(e, "jf_scan", entry)
         # The closure, depth first; then the CID order.
         e.st(GLOBALS + G_MEMBERS, 0)
         e.var("depth", 0)
@@ -1101,8 +1423,9 @@ def _frontend(tables):
             def node():
                 e.st(e.add(fr, F_NODES), e.sub(e.ld(e.add(fr, F_NODES)), 1))
                 e.var("nat0", e.ld(e.add(fr, F_AT)))
+                e.var("nmember", e.rd(e.add(p["nat0"], 1)))  # ``call.group_member``'s member index (else unused)
                 e.st(e.add(fr, F_AT), _call(e, "node_info", p["nat0"]))
-                e.var("visit", _call(e, "jf_node", e.ld(e.add(fr, F_GRAPH)), e.ld(e.add(fr, F_FN))))
+                e.var("visit", _call(e, "jf_node", e.ld(e.add(fr, F_GRAPH)), e.ld(e.add(fr, F_FN)), p["nmember"]))
                 e.if_(e.ne(p["visit"], NONE - 1), lambda: _push(e, p["visit"]))
 
             def terminator():
@@ -1153,6 +1476,18 @@ def _frontend(tables):
         _globals(e, G_STAMP, 1)
         _globals(e, G_AUDIT, 0)
         _globals(e, G_VIEW_OUT, VIEW_AT)
+        # The verifier's pointer extents per graph (``views_prologue``'s index): ``lift`` reads them into ``G_VEXT``.
+        e.var("vp_at", p["ext_at"])
+        e.var("vp_n", e.rd(p["vp_at"]))
+        e.set("vp_at", e.add(p["vp_at"], 1))
+
+        def extent_graph():
+            e.var("vp_g", e.call(_FN["find"], p["vp_at"]))
+            e.set("vp_at", e.add(p["vp_at"], CID_WORDS))
+            e.if_(e.ne(p["vp_g"], NONE), lambda: e.st(e.add(_g(e, G_GEXT), p["vp_g"]), p["vp_at"]))
+            e.set("vp_at", e.add(e.add(p["vp_at"], 1), e.mul(e.rd(p["vp_at"]), 5)))
+
+        e.for_("vp_k", 0, p["vp_n"], extent_graph)
         e.for_("vp_q", 0, p["members"], lambda: e.st(e.add(_g(e, G_CIDX), e.ld(e.add(order, p["vp_q"]))), p["vp_q"]))
         _set_js(e, J_NFN, p["members"])
         _set_js(e, J_ENTRY_INDEX, e.ld(e.add(_g(e, G_CIDX), entry)))
@@ -1180,9 +1515,11 @@ def _frontend(tables):
         _set_js(e, J_POOL, p["js_pool"])
         e.for_("q", 0, p["members"], lambda: _call(e, "jk_signature", e.ld(e.add(order, p["q"])), p["q"]))
         _call(e, "jk_table")  # ``_indirect_calls``' function table and the callback groups (ADR-331)
+        _call(e, "jk_dispatch_signatures")  # each indirect-call contract's dispatcher (S15e.5h)
         _call(e, "jk_flat")  # every type's flattened size (ADR-332)
         # Each method, in closure order.
         e.for_("q", 0, p["members"], lambda: _call(e, "jk_method", e.ld(e.add(order, p["q"])), p["q"]))
+        _call(e, "jk_dispatchers")  # after the methods (``dispatch_methods()``)
         _call(e, "jk_class")
         e.st(0, 1)
         e.give(1)
@@ -1227,7 +1564,12 @@ def build_jvm_program():
     for name, builder in (("lift", _lift), ("resolve", _resolve), ("replace_uses", _replace_uses), ("node_callee", _node_callee),
                           ("candidate", _candidate), ("positions", _positions)):
         add(name, builder(tables))
+    from xax_selfhost_general_ranges import _extent
+
+    add("extent", _extent(tables))
     add("jf_node", _node(tables))
+    add("jf_scan", _scan_fn(tables))
+    add("jf_shadow", _shadow_fn(tables))
     add_class_functions(add, tables)
     add_code_functions(add, tables)
     from xax_selfhost_jvm_foreign import add_foreign_functions
@@ -1237,8 +1579,14 @@ def build_jvm_program():
 
     add_aggregate_functions(add, tables)
     add_method_functions(add, tables)
+    from xax_selfhost_jvm_memory import add_memory_functions
+
+    add_memory_functions(add, tables)
     add("jk_signature", _signature_fn(tables))
     add("jl_own_method", _own_method_fn(tables))
+    from xax_selfhost_jvm_indirect import add_indirect_functions
+
+    add_indirect_functions(add, tables)
     from xax_selfhost_jvm_callback import add_callback_functions
 
     add_callback_functions(add, tables)

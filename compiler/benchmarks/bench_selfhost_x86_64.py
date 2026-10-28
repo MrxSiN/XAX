@@ -68,7 +68,11 @@ def measure() -> dict:
     b3 = []
     for path in sorted(BOOTSTRAP.glob("*.xax")):
         reader = X.StoreReader(path.read_bytes())
-        words, listed, groups = verifier_input(reader)
+        streamed = verifier_input(reader)
+        if streamed is None:  # ADR-276: a graph body beyond the decoder's capacity: the image makes no claim
+            b3.append({"store": path.name, "objects": len(list(reader.objects())), "store_verdict": None, "agrees": None, "beyond_capacity": True})
+            continue
+        words, listed, groups = streamed
         native = verifier.run(words, lambda read: collect_verdicts(read, len(listed), groups))
         bootstrap_ok = True
         try:

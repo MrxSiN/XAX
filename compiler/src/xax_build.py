@@ -28,6 +28,7 @@ from xax_compiler import (
     verify_object,
     verify_store,
     write_store,
+    _xax_fail,
 )
 
 
@@ -1051,13 +1052,56 @@ def validate_build_effects(reader: StoreReader, snapshot_view: SnapshotView, req
                 )
 
 
+class _AndroidRules:
+    """The rule sites of the Android carrier decisions (S15e.6f, ADR-347).
+
+    Without a verdict each site's condition is the bootstrap's.  With the XAX rules program's verdict (the site that
+    fires, or None when the carriers are accepted) the sites follow it: the decided site raises its diagnostic (as an XAX
+    decision), the others pass, and the bootstrap conditions run only to be compared (``XAX_GENERAL_FRONTEND_DIFF=1``)."""
+
+    def __init__(self, decided: bool = False, site: str | None = None, position=None, texts: tuple[str, ...] = ()) -> None:
+        import os
+
+        self.decided, self.site, self.position, self.texts = decided, site, position, texts
+        self.compare = decided and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
+
+    def fires(self, site: str, condition, position=None) -> bool:
+        if not self.decided:
+            return bool(condition())
+        decided = site == self.site and (position is None or position == self.position)
+        if self.compare and bool(condition()) != decided:
+            raise AssertionError(f"S15e.6f carrier decisions disagree at {site} {position} (XAX: {self.site} {self.position})")
+        return decided
+
+    def text(self, site: str, computed):
+        """The decided site's text (the JNI-signature reason, the platform problems): the XAX program's when it decided
+        (compared with the bootstrap's ``computed()`` under ``XAX_GENERAL_FRONTEND_DIFF=1``), the bootstrap's otherwise."""
+        if not self.decided:
+            return computed()
+        texts = self.texts[0] if site == "M5" else list(self.texts)
+        if self.compare and computed() != texts:
+            raise AssertionError(f"S15e.6f carrier texts disagree at {site}")
+        return texts
+
+    def fail(self, *arguments) -> None:
+        (_xax_fail if self.decided else fail)(*arguments)
+
+
 def _build_android_unsigned_apk(
     reader: StoreReader,
     package_view: PackageView,
     target_object: SemanticObject,
     build_entry_function: bytes,
+    rules: _AndroidRules | None = None,
 ) -> bytes:
     """Lower the bounded semantic Android application slice to one unsigned APK."""
+    if rules is None:
+        # S15e.6f.1 (ADR-347): the XAX rules program decides the carrier rule sites; "MANAGED" accepts the managed-class
+        # profile, whose own checks follow in ``_build_android_managed_apk``.
+        from xax_selfhost_android_rules import rules_with_xax
+
+        decided, site = rules_with_xax(reader, package_view, target_object, build_entry_function)
+        rules = _AndroidRules(decided, None if site == "MANAGED" else site)
 
     from xax_android import (
         ANDROID_ACTIVITY_ARGUMENT_METHOD_UI_PREFIX,
@@ -1134,8 +1178,8 @@ def _build_android_unsigned_apk(
 
     description = decode_native_target(target_object)
     # The managed-class profile (ADR-199) also takes the general v4 target; the others stay on v3.
-    if description.identity not in (ANDROID_TARGET_IDENTITY, b"android-arm64-v8a-shared-v4", b"android-arm64-v8a-shared-v5"):
-        fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
+    if rules.fires("U1", lambda: (description.identity not in (ANDROID_TARGET_IDENTITY, b"android-arm64-v8a-shared-v4", b"android-arm64-v8a-shared-v5"))):
+        rules.fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
 
     ui_carriers: list[SemanticObject] = []
     manifest_carriers: list[SemanticObject] = []
@@ -1221,22 +1265,22 @@ def _build_android_unsigned_apk(
         # General managed classes (ADR-199) are their own APK profile: every component is one.
         others = (ui_carriers, application_carriers, receiver_carriers, service_carriers, libxposed_carriers,
                   libxposed_managed_entry_carriers, libxposed_hook_adapter_carriers, libxposed_hook_install_carriers)
-        if any(others) or len(manifest_carriers) != 1 or len(resource_carriers) > 1 or len(declaration_carriers) > 1:
-            fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-MANAGED-PROFILE",
+        if rules.fires("U2", lambda: (any(others) or len(manifest_carriers) != 1 or len(resource_carriers) > 1 or len(declaration_carriers) > 1)):
+            rules.fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-MANAGED-PROFILE",
                  "managed classes + one manifest + 0..1 resources + 0..1 platform declarations + exports",
                  {"other_carriers": sum(len(item) for item in others), "manifest": len(manifest_carriers),
                   "resources": len(resource_carriers), "declarations": len(declaration_carriers)})
         return _build_android_managed_apk(reader, package_view, target_object, build_entry_function,
                                           manifest_carriers[0], managed_carriers, resource_carriers, export_carriers,
                                           declaration_carriers[0] if declaration_carriers else None)
-    if declaration_carriers:
+    if rules.fires("U3", lambda: (declaration_carriers)):
         # Platform declarations register managed components (ADR-203); other profiles have none.
-        fail("XAX.BUILD.ANDROID", declaration_carriers[0].cid.hex(), "ANDROID-DECLARATIONS-PROFILE",
+        rules.fail("XAX.BUILD.ANDROID", declaration_carriers[0].cid.hex(), "ANDROID-DECLARATIONS-PROFILE",
              "the managed-class profile", "a pre-managed APK profile")
-    if description.identity != ANDROID_TARGET_IDENTITY:
-        fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
+    if rules.fires("U4", lambda: (description.identity != ANDROID_TARGET_IDENTITY)):
+        rules.fail("XAX.BUILD.ANDROID", target_object.cid.hex(), "ANDROID-APK-TARGET", ANDROID_TARGET_IDENTITY.decode(), description.identity.decode("ascii", "replace"))
 
-    if (
+    if rules.fires("U5", lambda: (
         len(ui_carriers) != 1
         or len(manifest_carriers) != 1
         or len(resource_carriers) > 1
@@ -1255,8 +1299,8 @@ def _build_android_unsigned_apk(
         or len(libxposed_remote_preferences_carriers) > 1
         or len(libxposed_remote_files_carriers) > 1
         or len(libxposed_hot_reload_carriers) > 1
-    ):
-        fail(
+    )):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-SEMANTIC-CARRIERS",
@@ -1294,21 +1338,21 @@ def _build_android_unsigned_apk(
         manifest_view = decode_android_manifest_semantics(manifest_carriers[0])
         allowed = {ui_carriers[0].cid, manifest_carriers[0].cid, build_entry_function}
         module_children = {cid for module in package_view.modules for cid in reader.get(module).references}
-        if build_entry_function != selector.cid or module_children != allowed:
-            fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "SURFACE-DECLARATIVE-CLOSURE", "surface + manifest + empty build selector only", sorted(cid.hex() for cid in module_children))
-        if manifest_view.activity_class != descriptor[1:-1].replace("/", "."):
-            fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", descriptor, manifest_view.activity_class)
+        if rules.fires("U6", lambda: (build_entry_function != selector.cid or module_children != allowed)):
+            rules.fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "SURFACE-DECLARATIVE-CLOSURE", "surface + manifest + empty build selector only", sorted(cid.hex() for cid in module_children))
+        if rules.fires("U7", lambda: (manifest_view.activity_class != descriptor[1:-1].replace("/", "."))):
+            rules.fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", descriptor, manifest_view.activity_class)
         # DEX 039 is the existing emitter's profile, supported from Android 9.
-        if manifest_view.min_sdk < 28:
-            fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "SURFACE-DEX039-MINSDK", ">= 28", manifest_view.min_sdk)
+        if rules.fires("U8", lambda: (manifest_view.min_sdk < 28)):
+            rules.fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "SURFACE-DEX039-MINSDK", ">= 28", manifest_view.min_sdk)
         return build_unsigned_apk(
             emit_binary_manifest_with_components_from_semantics(manifest_carriers[0]),
             emit_dex039_bridge(lower_android_surface_activity(ui_carriers[0])),
         )
     if ui_identity.startswith(ANDROID_ACTIVITY_RESOURCE_UI_PREFIX):
         ui_view = decode_android_activity_resource_ui(ui_carriers[0])
-        if len(resource_carriers) != 1:
-            fail(
+        if rules.fires("U9", lambda: (len(resource_carriers) != 1)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 ui_carriers[0].cid.hex(),
                 "ANDROID-RESOURCE-UI-REQUIRES-TABLE",
@@ -1372,45 +1416,36 @@ def _build_android_unsigned_apk(
         if libxposed_hot_reload_carriers else None
     )
     expected_activity_name = ui_view.activity_class_descriptor[1:-1].replace("/", ".")
-    if manifest_view.activity_class != expected_activity_name:
-        fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", expected_activity_name, manifest_view.activity_class)
-    if manifest_view.min_sdk < 21:
-        fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-MULTIDEX-MINSDK", ">= 21", manifest_view.min_sdk)
-    if resource_view is not None and resource_view.package_name != manifest_view.package_name:
-        fail(
+    if rules.fires("U10", lambda: (manifest_view.activity_class != expected_activity_name)):
+        rules.fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", expected_activity_name, manifest_view.activity_class)
+    if rules.fires("U11", lambda: (manifest_view.min_sdk < 21)):
+        rules.fail("XAX.BUILD.ANDROID", manifest_carriers[0].cid.hex(), "ANDROID-APK-MULTIDEX-MINSDK", ">= 21", manifest_view.min_sdk)
+    if rules.fires("U12", lambda: (resource_view is not None and resource_view.package_name != manifest_view.package_name)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             resource_carriers[0].cid.hex(),
             "ANDROID-APK-RESOURCE-PACKAGE",
             manifest_view.package_name,
             resource_view.package_name,
         )
-    if libxposed_managed_entry_view is not None and libxposed_view is None:
-        fail(
+    if rules.fires("U13", lambda: (libxposed_managed_entry_view is not None and libxposed_view is None)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             libxposed_managed_entry_carriers[0].cid.hex(),
             "ANDROID-APK-LIBXPOSED-MANAGED-METADATA",
             "matching libxposed module metadata carrier",
             "missing",
         )
-    if (
-        libxposed_hook_adapter_view is not None
-        or libxposed_hook_install_view is not None
-        or libxposed_hook_result_view is not None
-        or libxposed_hook_argument_view is not None
-        or libxposed_hook_combined_view is not None
-        or libxposed_hot_reload_view is not None
-    ) and (
-        libxposed_view is None or libxposed_managed_entry_view is None
-    ):
-        fail(
+    if rules.fires("U14", lambda: (( libxposed_hook_adapter_view is not None or libxposed_hook_install_view is not None or libxposed_hook_result_view is not None or libxposed_hook_argument_view is not None or libxposed_hook_combined_view is not None or libxposed_hot_reload_view is not None ) and ( libxposed_view is None or libxposed_managed_entry_view is None ))):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-LIBXPOSED-HOOK-MANAGED-ENTRY",
             "libxposed metadata plus generated managed entry",
             "missing",
         )
-    if (libxposed_hook_adapter_view is None) != (libxposed_hook_install_view is None):
-        fail(
+    if rules.fires("U15", lambda: ((libxposed_hook_adapter_view is None) != (libxposed_hook_install_view is None))):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-LIBXPOSED-HOOK-CLOSURE",
@@ -1421,135 +1456,122 @@ def _build_android_unsigned_apk(
             },
         )
     if libxposed_hook_result_view is not None:
-        if libxposed_hook_argument_view is not None or libxposed_hook_combined_view is not None:
-            fail(
+        if rules.fires("U16", lambda: (libxposed_hook_argument_view is not None or libxposed_hook_combined_view is not None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", package_view.logical_identity.hex(),
                 "ANDROID-APK-LIBXPOSED-HOOK-POLICY",
                 "one mutation policy carrier", [name for name, present in (("result", True), ("argument", libxposed_hook_argument_view is not None), ("combined", libxposed_hook_combined_view is not None)) if present],
             )
-        if libxposed_hook_adapter_view is None or libxposed_hook_install_view is None:
-            fail(
+        if rules.fires("U17", lambda: (libxposed_hook_adapter_view is None or libxposed_hook_install_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_hook_result_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-RESULT-CLOSURE",
                 "hook adapter plus hook installation",
                 {"adapter": libxposed_hook_adapter_view is not None, "installation": libxposed_hook_install_view is not None},
             )
-        if libxposed_hook_result_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name:
-            fail(
+        if rules.fires("U18", lambda: (libxposed_hook_result_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_result_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-RESULT-HOOKER", libxposed_hook_adapter_view.java_class_name,
                 libxposed_hook_result_view.hooker_class_name,
             )
-        if (
-            libxposed_hook_result_view.target_class_name != libxposed_hook_install_view.target_class_name
-            or libxposed_hook_result_view.target_method_name != libxposed_hook_install_view.target_method_name
-        ):
-            fail(
+        if rules.fires("U19", lambda: (( libxposed_hook_result_view.target_class_name != libxposed_hook_install_view.target_class_name or libxposed_hook_result_view.target_method_name != libxposed_hook_install_view.target_method_name ))):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_result_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-RESULT-TARGET",
                 [libxposed_hook_install_view.target_class_name, libxposed_hook_install_view.target_method_name],
                 [libxposed_hook_result_view.target_class_name, libxposed_hook_result_view.target_method_name],
             )
-        if libxposed_hook_adapter_view.inspected_argument_index is not None:
-            fail(
+        if rules.fires("U20", lambda: (libxposed_hook_adapter_view.inspected_argument_index is not None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_result_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-RESULT-ZERO-ARG", None, libxposed_hook_adapter_view.inspected_argument_index,
             )
     if libxposed_hook_argument_view is not None:
-        if libxposed_hook_combined_view is not None:
-            fail(
+        if rules.fires("U21", lambda: (libxposed_hook_combined_view is not None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", package_view.logical_identity.hex(),
                 "ANDROID-APK-LIBXPOSED-HOOK-POLICY",
                 "one mutation policy carrier", ["argument", "combined"],
             )
-        if libxposed_hook_adapter_view is None or libxposed_hook_install_view is None:
-            fail(
+        if rules.fires("U22", lambda: (libxposed_hook_adapter_view is None or libxposed_hook_install_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_hook_argument_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-ARGUMENT-CLOSURE",
                 "hook adapter plus hook installation",
                 {"adapter": libxposed_hook_adapter_view is not None, "installation": libxposed_hook_install_view is not None},
             )
-        if libxposed_hook_argument_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name:
-            fail(
+        if rules.fires("U23", lambda: (libxposed_hook_argument_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_argument_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-ARGUMENT-HOOKER", libxposed_hook_adapter_view.java_class_name,
                 libxposed_hook_argument_view.hooker_class_name,
             )
-        if (
-            libxposed_hook_argument_view.target_class_name != libxposed_hook_install_view.target_class_name
-            or libxposed_hook_argument_view.target_method_name != libxposed_hook_install_view.target_method_name
-        ):
-            fail(
+        if rules.fires("U24", lambda: (( libxposed_hook_argument_view.target_class_name != libxposed_hook_install_view.target_class_name or libxposed_hook_argument_view.target_method_name != libxposed_hook_install_view.target_method_name ))):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_argument_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-ARGUMENT-TARGET",
                 [libxposed_hook_install_view.target_class_name, libxposed_hook_install_view.target_method_name],
                 [libxposed_hook_argument_view.target_class_name, libxposed_hook_argument_view.target_method_name],
             )
-        if libxposed_hook_adapter_view.inspected_argument_index != libxposed_hook_argument_view.argument_index:
-            fail(
+        if rules.fires("U25", lambda: (libxposed_hook_adapter_view.inspected_argument_index != libxposed_hook_argument_view.argument_index)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_argument_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-ARGUMENT-INDEX", libxposed_hook_argument_view.argument_index,
                 libxposed_hook_adapter_view.inspected_argument_index,
             )
-        if libxposed_hook_install_view.parameter_type_names != ("java.lang.String",):
-            fail(
+        if rules.fires("U26", lambda: (libxposed_hook_install_view.parameter_type_names != ("java.lang.String",))):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_install_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-ARGUMENT-SIGNATURE", ["java.lang.String"],
                 list(libxposed_hook_install_view.parameter_type_names),
             )
     if libxposed_hook_combined_view is not None:
-        if libxposed_hook_adapter_view is None or libxposed_hook_install_view is None:
-            fail(
+        if rules.fires("U27", lambda: (libxposed_hook_adapter_view is None or libxposed_hook_install_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_combined_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-COMBINED-CLOSURE",
                 "hook adapter plus hook installation",
                 {"adapter": libxposed_hook_adapter_view is not None, "installation": libxposed_hook_install_view is not None},
             )
-        if libxposed_hook_combined_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name:
-            fail(
+        if rules.fires("U28", lambda: (libxposed_hook_combined_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_combined_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-COMBINED-HOOKER", libxposed_hook_adapter_view.java_class_name,
                 libxposed_hook_combined_view.hooker_class_name,
             )
-        if (
-            libxposed_hook_combined_view.target_class_name != libxposed_hook_install_view.target_class_name
-            or libxposed_hook_combined_view.target_method_name != libxposed_hook_install_view.target_method_name
-        ):
-            fail(
+        if rules.fires("U29", lambda: (( libxposed_hook_combined_view.target_class_name != libxposed_hook_install_view.target_class_name or libxposed_hook_combined_view.target_method_name != libxposed_hook_install_view.target_method_name ))):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_combined_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-COMBINED-TARGET",
                 [libxposed_hook_install_view.target_class_name, libxposed_hook_install_view.target_method_name],
                 [libxposed_hook_combined_view.target_class_name, libxposed_hook_combined_view.target_method_name],
             )
-        if libxposed_hook_adapter_view.inspected_argument_index != libxposed_hook_combined_view.argument_index:
-            fail(
+        if rules.fires("U30", lambda: (libxposed_hook_adapter_view.inspected_argument_index != libxposed_hook_combined_view.argument_index)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_combined_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-COMBINED-INDEX", libxposed_hook_combined_view.argument_index,
                 libxposed_hook_adapter_view.inspected_argument_index,
             )
-        if libxposed_hook_install_view.parameter_type_names != ("java.lang.String",):
-            fail(
+        if rules.fires("U31", lambda: (libxposed_hook_install_view.parameter_type_names != ("java.lang.String",))):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_install_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-COMBINED-SIGNATURE", ["java.lang.String"],
                 list(libxposed_hook_install_view.parameter_type_names),
             )
     if libxposed_deoptimization_view is not None:
-        if libxposed_hook_install_view is None:
-            fail(
+        if rules.fires("U32", lambda: (libxposed_hook_install_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_deoptimization_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-DEOPT-CLOSURE",
                 "companion hook installation",
                 None,
             )
-        if (
-            libxposed_deoptimization_view.target_class_name != libxposed_hook_install_view.target_class_name
-            or libxposed_deoptimization_view.target_method_name != libxposed_hook_install_view.target_method_name
-            or libxposed_deoptimization_view.parameter_type_names != libxposed_hook_install_view.parameter_type_names
-        ):
-            fail(
+        if rules.fires("U33", lambda: (( libxposed_deoptimization_view.target_class_name != libxposed_hook_install_view.target_class_name or libxposed_deoptimization_view.target_method_name != libxposed_hook_install_view.target_method_name or libxposed_deoptimization_view.parameter_type_names != libxposed_hook_install_view.parameter_type_names ))):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_deoptimization_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-DEOPT-TARGET",
@@ -1565,8 +1587,8 @@ def _build_android_unsigned_apk(
                 },
             )
     if libxposed_hook_install_view is not None:
-        if libxposed_view.target_api_version != 102:
-            fail(
+        if rules.fires("U34", lambda: (libxposed_view.target_api_version != 102)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOOK-API",
@@ -1575,32 +1597,32 @@ def _build_android_unsigned_apk(
             )
         # HookBuilder.setId is API-102-only; minApiVersion=101 would advertise
         # the module to an API-101 framework that lacks it.
-        if libxposed_hook_install_view.hook_id is not None and libxposed_view.min_api_version != 102:
-            fail(
+        if rules.fires("U35", lambda: (libxposed_hook_install_view.hook_id is not None and libxposed_view.min_api_version != 102)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOOK-ID-API",
                 102,
                 libxposed_view.min_api_version,
             )
-        if libxposed_hook_install_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name:
-            fail(
+        if rules.fires("U36", lambda: (libxposed_hook_install_view.hooker_class_name != libxposed_hook_adapter_view.java_class_name)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_hook_install_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOOKER-IDENTITY",
                 libxposed_hook_adapter_view.java_class_name,
                 libxposed_hook_install_view.hooker_class_name,
             )
-        if "onPackageReady" not in libxposed_managed_entry_view.callbacks:
-            fail(
+        if rules.fires("U37", lambda: ("onPackageReady" not in libxposed_managed_entry_view.callbacks)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_managed_entry_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOOK-LIFECYCLE",
                 "onPackageReady",
                 list(libxposed_managed_entry_view.callbacks),
             )
-        if libxposed_hook_argument_view is None and libxposed_hook_combined_view is None and libxposed_hook_adapter_view.inspected_argument_index is not None:
-            fail(
+        if rules.fires("U38", lambda: (libxposed_hook_argument_view is None and libxposed_hook_combined_view is None and libxposed_hook_adapter_view.inspected_argument_index is not None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_hook_adapter_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-ZERO-ARG-HOOKER",
@@ -1608,8 +1630,8 @@ def _build_android_unsigned_apk(
                 libxposed_hook_adapter_view.inspected_argument_index,
             )
     if libxposed_module_services_view is not None:
-        if libxposed_view is None or libxposed_managed_entry_view is None:
-            fail(
+        if rules.fires("U39", lambda: (libxposed_view is None or libxposed_managed_entry_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_module_services_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-SERVICES-CLOSURE",
@@ -1619,8 +1641,8 @@ def _build_android_unsigned_apk(
                     "managed_entry": libxposed_managed_entry_view is not None,
                 },
             )
-        if libxposed_view.target_api_version != 102:
-            fail(
+        if rules.fires("U40", lambda: (libxposed_view.target_api_version != 102)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-SERVICES-API",
@@ -1628,8 +1650,8 @@ def _build_android_unsigned_apk(
                 libxposed_view.target_api_version,
             )
     if libxposed_remote_preferences_view is not None:
-        if libxposed_view is None or libxposed_managed_entry_view is None:
-            fail(
+        if rules.fires("U41", lambda: (libxposed_view is None or libxposed_managed_entry_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_remote_preferences_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-REMOTE-PREFS-CLOSURE",
@@ -1639,8 +1661,8 @@ def _build_android_unsigned_apk(
                     "managed_entry": libxposed_managed_entry_view is not None,
                 },
             )
-        if libxposed_view.target_api_version != 102:
-            fail(
+        if rules.fires("U42", lambda: (libxposed_view.target_api_version != 102)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-REMOTE-PREFS-API",
@@ -1648,22 +1670,22 @@ def _build_android_unsigned_apk(
                 libxposed_view.target_api_version,
             )
     if libxposed_remote_files_view is not None:
-        if libxposed_view is None or libxposed_managed_entry_view is None:
-            fail(
+        if rules.fires("U43", lambda: (libxposed_view is None or libxposed_managed_entry_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_remote_files_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-REMOTE-FILES-CLOSURE",
                 "libxposed metadata plus generated managed entry",
                 {"metadata": libxposed_view is not None, "managed_entry": libxposed_managed_entry_view is not None},
             )
-        if libxposed_view.target_api_version != 102:
-            fail(
+        if rules.fires("U44", lambda: (libxposed_view.target_api_version != 102)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-REMOTE-FILES-API", 102, libxposed_view.target_api_version,
             )
     if libxposed_hot_reload_view is not None:
-        if libxposed_view is None or libxposed_managed_entry_view is None or libxposed_hook_install_view is None:
-            fail(
+        if rules.fires("U45", lambda: (libxposed_view is None or libxposed_managed_entry_view is None or libxposed_hook_install_view is None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_hot_reload_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOT-RELOAD-CLOSURE",
@@ -1674,26 +1696,26 @@ def _build_android_unsigned_apk(
                     "hook_install": libxposed_hook_install_view is not None,
                 },
             )
-        if libxposed_view.min_api_version != 102 or libxposed_view.target_api_version != 102:
-            fail(
+        if rules.fires("U46", lambda: (libxposed_view.min_api_version != 102 or libxposed_view.target_api_version != 102)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOT-RELOAD-API",
                 {"min": 102, "target": 102},
                 {"min": libxposed_view.min_api_version, "target": libxposed_view.target_api_version},
             )
-        if len(libxposed_view.java_entries) != 1:
-            fail(
+        if rules.fires("U47", lambda: (len(libxposed_view.java_entries) != 1)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOT-RELOAD-ENTRY", 1, len(libxposed_view.java_entries),
             )
-        if libxposed_hook_install_view.lifetime_policy != "retained-manual-unhook":
-            fail(
+        if rules.fires("U48", lambda: (libxposed_hook_install_view.lifetime_policy != "retained-manual-unhook")):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_install_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOT-RELOAD-LIFETIME",
                 "retained-manual-unhook", libxposed_hook_install_view.lifetime_policy,
             )
-        if libxposed_hook_install_view.hook_id != libxposed_hot_reload_view.hook_id:
-            fail(
+        if rules.fires("U49", lambda: (libxposed_hook_install_view.hook_id != libxposed_hot_reload_view.hook_id)):
+            rules.fail(
                 "XAX.BUILD.ANDROID", libxposed_hook_install_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-HOT-RELOAD-ID",
                 libxposed_hot_reload_view.hook_id, libxposed_hook_install_view.hook_id,
@@ -1701,24 +1723,24 @@ def _build_android_unsigned_apk(
 
     if libxposed_view is not None:
         if libxposed_view.java_entries:
-            if libxposed_managed_entry_view is None:
-                fail(
+            if rules.fires("U50", lambda: (libxposed_managed_entry_view is None)):
+                rules.fail(
                     "XAX.BUILD.ANDROID",
                     libxposed_carriers[0].cid.hex(),
                     "ANDROID-APK-LIBXPOSED-JAVA-ENTRY",
                     "one generated XposedModule managed entry carrier",
                     list(libxposed_view.java_entries),
                 )
-            if libxposed_view.java_entries != (libxposed_managed_entry_view.java_class_name,):
-                fail(
+            if rules.fires("U51", lambda: (libxposed_view.java_entries != (libxposed_managed_entry_view.java_class_name,))):
+                rules.fail(
                     "XAX.BUILD.ANDROID",
                     libxposed_carriers[0].cid.hex(),
                     "ANDROID-APK-LIBXPOSED-JAVA-IDENTITY",
                     [libxposed_managed_entry_view.java_class_name],
                     list(libxposed_view.java_entries),
                 )
-        elif libxposed_managed_entry_view is not None:
-            fail(
+        elif rules.fires("U52", lambda: (libxposed_managed_entry_view is not None)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-JAVA-ENTRY",
@@ -1726,8 +1748,8 @@ def _build_android_unsigned_apk(
                 [],
             )
         unsupported_native = tuple(name for name in libxposed_view.native_entries if name != "libxaxapp.so")
-        if unsupported_native:
-            fail(
+        if rules.fires("U53", lambda: (unsupported_native)):
+            rules.fail(
                 "XAX.BUILD.ANDROID",
                 libxposed_carriers[0].cid.hex(),
                 "ANDROID-APK-LIBXPOSED-NATIVE-ENTRY",
@@ -1791,18 +1813,18 @@ def _build_android_unsigned_apk(
     )
     decoded_exports = tuple((carrier, decode_android_export(carrier)) for carrier in export_carriers)
     by_name = {view.name: (carrier, view) for carrier, view in decoded_exports}
-    if activity_symbol not in by_name or listener_symbol not in by_name:
-        fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-APK-JNI-EXPORTS", [activity_symbol.decode(), listener_symbol.decode()], sorted(name.decode("ascii", "replace") for name in by_name))
-    if application_symbol is not None and application_symbol not in by_name:
-        fail(
+    if rules.fires("U54", lambda: (activity_symbol not in by_name or listener_symbol not in by_name)):
+        rules.fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-APK-JNI-EXPORTS", [activity_symbol.decode(), listener_symbol.decode()], sorted(name.decode("ascii", "replace") for name in by_name))
+    if rules.fires("U55", lambda: (application_symbol is not None and application_symbol not in by_name)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-APPLICATION-EXPORT",
             application_symbol.decode(),
             sorted(name.decode("ascii", "replace") for name in by_name),
         )
-    if receiver_symbol is not None and receiver_symbol not in by_name:
-        fail(
+    if rules.fires("U56", lambda: (receiver_symbol is not None and receiver_symbol not in by_name)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-RECEIVER-EXPORT",
@@ -1810,8 +1832,8 @@ def _build_android_unsigned_apk(
             sorted(name.decode("ascii", "replace") for name in by_name),
         )
     missing_service_symbols = tuple(symbol for symbol in service_symbols if symbol not in by_name)
-    if missing_service_symbols:
-        fail(
+    if rules.fires("U57", lambda: (missing_service_symbols)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-SERVICE-EXPORT",
@@ -1819,24 +1841,24 @@ def _build_android_unsigned_apk(
             sorted(name.decode("ascii", "replace") for name in by_name),
         )
     missing_libxposed_managed_symbols = tuple(symbol for symbol in libxposed_managed_symbols if symbol not in by_name)
-    if missing_libxposed_managed_symbols:
-        fail(
+    if rules.fires("U58", lambda: (missing_libxposed_managed_symbols)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-LIBXPOSED-MANAGED-EXPORT",
             [symbol.decode() for symbol in libxposed_managed_symbols],
             sorted(name.decode("ascii", "replace") for name in by_name),
         )
-    if libxposed_view is not None and libxposed_view.native_entries and b"native_init" not in by_name:
-        fail(
+    if rules.fires("U59", lambda: (libxposed_view is not None and libxposed_view.native_entries and b"native_init" not in by_name)):
+        rules.fail(
             "XAX.BUILD.ANDROID",
             package_view.logical_identity.hex(),
             "ANDROID-APK-LIBXPOSED-NATIVE-INIT",
             "exported native_init in libxaxapp.so",
             sorted(name.decode("ascii", "replace") for name in by_name),
         )
-    if by_name[activity_symbol][1].function_cid != build_entry_function:
-        fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-APK-BUILD-ENTRY", build_entry_function.hex(), by_name[activity_symbol][1].function_cid.hex())
+    if rules.fires("U60", lambda: (by_name[activity_symbol][1].function_cid != build_entry_function)):
+        rules.fail("XAX.BUILD.ANDROID", package_view.logical_identity.hex(), "ANDROID-APK-BUILD-ENTRY", build_entry_function.hex(), by_name[activity_symbol][1].function_cid.hex())
 
     shared = compile_android_shared(
         reader,
@@ -1912,27 +1934,44 @@ def _build_android_managed_apk(reader, package_view, target_object, build_entry_
     from xax_resources import emit_resources_arsc_from_semantics
 
     where = package_view.logical_identity.hex()
+    # S15e.6f.2 (ADR-348): the XAX managed rules program decides the profile's sites (``_AndroidRules``).
+    from xax_selfhost_android_managed_rules import managed_rules_with_xax
+
+    rules = _AndroidRules(*managed_rules_with_xax(reader, manifest_carrier, managed_carriers, export_carriers, build_entry_function, declarations_carrier))
     classes = {carrier.cid: decode_android_managed_class(carrier) for carrier in managed_carriers}
-    if len({item.class_descriptor for item in classes.values()}) != len(classes):
-        fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-CLASS-UNIQUE", "distinct class descriptors", sorted(item.class_descriptor for item in classes.values()))
+    if rules.fires("M1", lambda: len({item.class_descriptor for item in classes.values()}) != len(classes)):
+        rules.fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-CLASS-UNIQUE", "distinct class descriptors", sorted(item.class_descriptor for item in classes.values()))
     manifest = decode_android_manifest_semantics(manifest_carrier)
-    if manifest.min_sdk < 28:  # DEX 039
-        fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-MANAGED-DEX039-MINSDK", ">= 28", manifest.min_sdk)
+    if rules.fires("M2", lambda: manifest.min_sdk < 28):  # DEX 039
+        rules.fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-MANAGED-DEX039-MINSDK", ">= 28", manifest.min_sdk)
     activity = next((cid for cid, item in classes.items() if item.java_name == manifest.activity_class), None)
-    if activity is None:
-        fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", sorted(item.java_name for item in classes.values()), manifest.activity_class)
+    if rules.fires("M3", lambda: activity is None):
+        rules.fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", sorted(item.java_name for item in classes.values()), manifest.activity_class)
     exports = {view.name: view for view in (decode_android_export(carrier) for carrier in export_carriers)}
-    for item in classes.values():
-        for symbol, method in item.symbols().items():
-            if symbol not in exports:
-                fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-EXPORT", symbol.decode(), sorted(name.decode("ascii", "replace") for name in exports))
-            reason = check_export_signature(method, item.class_descriptor, reader.get(exports[symbol].function_cid), reader.get)
-            if reason is not None:
-                fail("XAX.BUILD.ANDROID", exports[symbol].function_cid.hex(), "ANDROID-MANAGED-JNI-SIGNATURE", f"{item.java_name}.{method.name}{method.descriptor}", reason)
-    if build_entry_function not in {exports[symbol].function_cid for symbol in classes[activity].symbols()}:
-        fail("XAX.BUILD.ANDROID", where, "ANDROID-APK-BUILD-ENTRY", "an export of the manifest Activity", build_entry_function.hex())
-    from xax_android_platform import check_managed_platform_usage
-    check_managed_platform_usage(reader, manifest, declarations_carrier, classes, exports)
+    for class_index, item in enumerate(classes.values()):
+        for method_index, (symbol, method) in enumerate(item.symbols().items()):
+            if rules.fires("M4", lambda: symbol not in exports, (class_index, method_index)):
+                rules.fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-EXPORT", symbol.decode(), sorted(name.decode("ascii", "replace") for name in exports))
+            computed = lambda: check_export_signature(method, item.class_descriptor, reader.get(exports[symbol].function_cid), reader.get)  # noqa: E731
+            if rules.fires("M5", lambda: computed() is not None, (class_index, method_index)):
+                rules.fail("XAX.BUILD.ANDROID", exports[symbol].function_cid.hex(), "ANDROID-MANAGED-JNI-SIGNATURE", f"{item.java_name}.{method.name}{method.descriptor}",
+                           rules.text("M5", computed))
+    if rules.fires("M6", lambda: build_entry_function not in {exports[symbol].function_cid for symbol in classes[activity].symbols()}):
+        rules.fail("XAX.BUILD.ANDROID", where, "ANDROID-APK-BUILD-ENTRY", "an export of the manifest Activity", build_entry_function.hex())
+    from xax_android_platform import check_managed_platform_usage, platform_usage_violations
+
+    if rules.decided:
+        def computed_problems():
+            from xax_manifest import decode_android_platform_declarations
+
+            declarations = decode_android_platform_declarations(declarations_carrier) if declarations_carrier is not None else None
+            return platform_usage_violations(manifest, declarations, classes, tuple(view.function_cid for view in exports.values()), reader.get)
+
+        if rules.fires("M7", lambda: bool(computed_problems())):
+            rules.fail("XAX.BUILD.ANDROID", declarations_carrier.cid.hex() if declarations_carrier is not None else "managed-apk", "ANDROID-PLATFORM-RULES",
+                       "no platform-rule violations", rules.text("M7", computed_problems))
+    else:
+        check_managed_platform_usage(reader, manifest, declarations_carrier, classes, exports)
     shared = compile_android_shared(reader, tuple(export_carriers), target_object=target_object, soname=b"libxaxapp.so")
     ordered = [activity, *sorted((cid for cid in classes if cid != activity), key=lambda cid: classes[cid].class_descriptor)]
     dex = [emit_dex039_bridge(lower_android_managed_class(reader.get(cid))) for cid in ordered]

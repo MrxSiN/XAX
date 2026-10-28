@@ -590,6 +590,62 @@
     "xax_selfhost_jvm_method.py": {
       "class": "G",
       "note": "Builder of the S15e.5 method analyses in the JVM program store (ADR-327)."
+    },
+    "xax_android_bfc.py": {
+      "class": "A",
+      "components": [
+        "android-backend"
+      ]
+    },
+    "xax_android_libxposed_jvm.py": {
+      "class": "A",
+      "components": [
+        "android-backend"
+      ]
+    },
+    "xax_selfhost_jvm_memory.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5g-S15e.5i memory and general profiles and the threaded launcher in the JVM program store (ADR-337, ADR-338)."
+    },
+    "xax_selfhost_jvm_indirect.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5h indirect-call dispatchers in the JVM program store (ADR-338)."
+    },
+    "xax_selfhost_apk.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6a APK container program store (ADR-340)."
+    },
+    "xax_selfhost_apk_signing.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6b APK Signature Scheme v2 signer program store (ADR-341)."
+    },
+    "xax_selfhost_android_resources.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6c binary manifest and resources.arsc program store (ADR-342)."
+    },
+    "xax_selfhost_dex.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6d DEX 039 bridge program store (ADR-343, ADR-344, ADR-345)."
+    },
+    "xax_selfhost_android_elf.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6e Android AArch64 shared object container program store (ADR-346)."
+    },
+    "xax_selfhost_android_rules.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6f.1 unsigned Android carrier decisions program store (ADR-347); its host part extracts the carriers' decoded facts."
+    },
+    "xax_selfhost_android_managed_rules.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6f.2 managed-class Android profile decisions program store (ADR-348); its host part extracts the classes, export interfaces and reachable platform uses."
+    },
+    "xax_selfhost_dex_writer.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6g.1 JVM-to-DEX writer program store (ADR-349)."
+    },
+    "xax_selfhost_dex_jvm.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6g.2 JVM class-file to DEX class lowering program store (ADR-350)."
     }
   },
   "components": {

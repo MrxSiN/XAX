@@ -598,6 +598,36 @@ def emit_android_elf(
     """Emit the ET_DYN.  ``packed`` selects format 5 (ADR-105): the RW segment
     follows RX in the file, and its addresses are its file offsets plus one
     constant, so it starts on a fresh 16 KiB page in memory."""
+    # S15e.6e (ADR-346): the XAX container program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    from xax_selfhost_android_elf import elf_with_xax
+
+    built = elf_with_xax(bundle, tuple(exports), soname=soname, rodata=rodata, data=data, bss_bytes=bss_bytes, packed=packed)
+    if built is not None:
+        image, text_offset, text_bytes, imports, needed = built
+        ordered = tuple(sorted(exports, key=lambda item: item.name))
+        metrics = AndroidElfMetrics(len(image), text_bytes, len(rodata), len(data), bss_bytes, 2, len(ordered), imports, imports, needed, 0, 0)
+        result = AndroidSharedObject(image, bundle.target_cid, ordered, tuple(sorted({(library, name) for _position, library, name in bundle.foreign_calls})),
+                                     metrics, text_offset, bundle.function_offsets)
+        if os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+            return result
+        reference = _emit_android_elf_python(bundle, exports, soname=soname, rodata=rodata, data=data, bss_bytes=bss_bytes, packed=packed)
+        if reference != result:
+            raise AssertionError("S15e.6e Android shared objects disagree")
+        return reference
+    return _emit_android_elf_python(bundle, exports, soname=soname, rodata=rodata, data=data, bss_bytes=bss_bytes, packed=packed)
+
+
+def _emit_android_elf_python(
+    bundle: Aarch64Bundle,
+    exports: Sequence[AndroidExport],
+    *,
+    soname: bytes = b"libxaxmodule.so",
+    rodata: bytes = b"",
+    data: bytes = b"",
+    bss_bytes: int = 0,
+    packed: bool = False,
+) -> AndroidSharedObject:
+    """The bootstrap's container."""
     if not exports:
         raise ValueError("Android shared object requires at least one explicit export")
     exports = tuple(sorted(exports, key=lambda item: item.name))

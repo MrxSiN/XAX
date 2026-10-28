@@ -35,7 +35,7 @@ The proposal is not an implemented contract. No interpreter bootstrap or other-l
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (JVM jars and Android packages are compiled by Python backends (S15e.5, S15e.6); Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules and browser pages are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (Android packages are compiled by Python backends (S15e.6); Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: yes; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -1405,3 +1405,20 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   1. Re-run the evidence (`refresh_selfhost_store.py` per program, `bench_selfhost_x86_64.py --write`, `bench_full_selfhost --write`, `bench_python_free_seed --write`), then `generate_m14` and `xax_status_docs --write`.
   2. Re-run serially the tests that crashed under xdist.
   3. The JVM memory machinery, then S15e.6 Android packages.
+
+## S15e.5g JVM memory profile — 2026-10-28 (ADR-336, ADR-337)
+
+- ADR-336 drafts the rest of S15 (roadmap rows S15e.5g-S15e.5j, S15e.6a-S15e.6h, S15g).
+- `xax_selfhost_jvm_memory`: the memory lowering (`memory_nodes`, `memory_call`, `run_head`), the runs analysis (`jm_runs`), the needs (`M_MNEEDS`, `M_MBYTES` per method, merged by `jm_merge` into `J_NEEDS`/`J_BYTES`), `initial_scan`, and `jk_members` from `memory_templates` (verify with `check_templates()`).
+- Pitfall: a `_call` whose result is NONE is a decline; a helper that can legitimately answer "none" must return 0 (or use `_call_none`).
+- The decline audit: a pytest plugin that wraps `xax_jvm.compile_jvm_bound_target` and also runs `jvm_with_xax`, logging equal/declined/different for successes and rejections (see ADR-336). Run it over `test_xax_jvm*.py` after each step.
+- The general driver store and the seed are NOT regenerated yet (the driver merges the JVM program): do that once at S15e.5j (`xax_selfhost_evolution rebase` if needed, `write-request`, two-stage `rotate-seed`, `selfbuild.sh`).
+- Next: S15e.5h (general profile: `STACK_ALLOC` frames and the shadow stack, links, raw loads, atomics), S15e.5i (recursion groups, the threaded launcher).
+
+## S15e.5h-S15e.5i JVM general profile and launcher — 2026-10-28 (ADR-338)
+
+- Frames: `M_FSLOT`/`M_FSIZE`/`N_FOFF` (computed in `jm_slots` after the coloring); the prologue is in `_emit_pass`, the epilogue in `je_terminator`.
+- `general_nodes` and `mem_access` (in `xax_selfhost_jvm_memory`) are the shared access lowering; `Fwd` writes tasks forwards.
+- `jf_scan` (closure rejections in the bootstrap's order) and `jf_shadow` (JVM-ENTRY-SHADOW-STACK) walk the graph stream: each block is its parameter list, node count, nodes, terminator.
+- Debugging a decline: run the native program and read `GLOBALS + J_STATE`/`M_STATE` (the task stack is at `M_WORK + 2^20`, five words a task, top `M_ONE`).
+- Next: S15e.5j (regenerate the general driver store with the new JVM program: ledger rebase if the edit records no longer apply, `write-request`, two-stage seed rotation if the pinned seed cannot verify it, `selfbuild.sh`; then the driver's JVM test and the evidence).

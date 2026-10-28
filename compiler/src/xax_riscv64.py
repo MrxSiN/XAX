@@ -768,8 +768,9 @@ def run_riscv64(image: Riscv64Image, arguments: Sequence[int], *, instruction_li
     return emulator.reg_read(rv.UC_RISCV_REG_A0) & ((1 << image.return_widths[0]) - 1)
 
 
-_VIEWS_IN_BASE = 0x20000000
-_VIEWS_OUT_BASE = 0x40000000
+# The views' emulated addresses (passed in a0/a1): apart by more than the input view's capacity (1 GiB since ADR-334).
+_VIEWS_IN_BASE = 0x1_0000_0000
+_VIEWS_OUT_BASE = 0x2_0000_0000
 
 
 def run_riscv64_views(image: Riscv64Image, input_words: Sequence[int], input_capacity: int, output_capacity: int,
