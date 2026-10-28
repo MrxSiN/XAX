@@ -625,7 +625,11 @@
     },
     "xax_selfhost_dex.py": {
       "class": "G",
-      "note": "Builder of the S15e.6d.1 DEX 039 core bridge program store (ADR-343)."
+      "note": "Builder of the S15e.6d DEX 039 bridge program store (ADR-343, ADR-344, ADR-345)."
+    },
+    "xax_selfhost_android_elf.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6e Android AArch64 shared object container program store (ADR-346)."
     }
   },
   "components": {
