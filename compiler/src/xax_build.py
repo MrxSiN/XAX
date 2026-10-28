@@ -1059,18 +1059,29 @@ class _AndroidRules:
     fires, or None when the carriers are accepted) the sites follow it: the decided site raises its diagnostic (as an XAX
     decision), the others pass, and the bootstrap conditions run only to be compared (``XAX_GENERAL_FRONTEND_DIFF=1``)."""
 
-    def __init__(self, decided: bool = False, site: str | None = None) -> None:
+    def __init__(self, decided: bool = False, site: str | None = None, position=None, texts: tuple[str, ...] = ()) -> None:
         import os
 
-        self.decided, self.site = decided, site
+        self.decided, self.site, self.position, self.texts = decided, site, position, texts
         self.compare = decided and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
 
-    def fires(self, site: str, condition) -> bool:
+    def fires(self, site: str, condition, position=None) -> bool:
         if not self.decided:
             return bool(condition())
-        if self.compare and bool(condition()) != (site == self.site):
-            raise AssertionError(f"S15e.6f carrier decisions disagree at {site} (XAX: {self.site})")
-        return site == self.site
+        decided = site == self.site and (position is None or position == self.position)
+        if self.compare and bool(condition()) != decided:
+            raise AssertionError(f"S15e.6f carrier decisions disagree at {site} {position} (XAX: {self.site} {self.position})")
+        return decided
+
+    def text(self, site: str, computed):
+        """The decided site's text (the JNI-signature reason, the platform problems): the XAX program's when it decided
+        (compared with the bootstrap's ``computed()`` under ``XAX_GENERAL_FRONTEND_DIFF=1``), the bootstrap's otherwise."""
+        if not self.decided:
+            return computed()
+        texts = self.texts[0] if site == "M5" else list(self.texts)
+        if self.compare and computed() != texts:
+            raise AssertionError(f"S15e.6f carrier texts disagree at {site}")
+        return texts
 
     def fail(self, *arguments) -> None:
         (_xax_fail if self.decided else fail)(*arguments)
@@ -1923,27 +1934,44 @@ def _build_android_managed_apk(reader, package_view, target_object, build_entry_
     from xax_resources import emit_resources_arsc_from_semantics
 
     where = package_view.logical_identity.hex()
+    # S15e.6f.2 (ADR-348): the XAX managed rules program decides the profile's sites (``_AndroidRules``).
+    from xax_selfhost_android_managed_rules import managed_rules_with_xax
+
+    rules = _AndroidRules(*managed_rules_with_xax(reader, manifest_carrier, managed_carriers, export_carriers, build_entry_function, declarations_carrier))
     classes = {carrier.cid: decode_android_managed_class(carrier) for carrier in managed_carriers}
-    if len({item.class_descriptor for item in classes.values()}) != len(classes):
-        fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-CLASS-UNIQUE", "distinct class descriptors", sorted(item.class_descriptor for item in classes.values()))
+    if rules.fires("M1", lambda: len({item.class_descriptor for item in classes.values()}) != len(classes)):
+        rules.fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-CLASS-UNIQUE", "distinct class descriptors", sorted(item.class_descriptor for item in classes.values()))
     manifest = decode_android_manifest_semantics(manifest_carrier)
-    if manifest.min_sdk < 28:  # DEX 039
-        fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-MANAGED-DEX039-MINSDK", ">= 28", manifest.min_sdk)
+    if rules.fires("M2", lambda: manifest.min_sdk < 28):  # DEX 039
+        rules.fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-MANAGED-DEX039-MINSDK", ">= 28", manifest.min_sdk)
     activity = next((cid for cid, item in classes.items() if item.java_name == manifest.activity_class), None)
-    if activity is None:
-        fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", sorted(item.java_name for item in classes.values()), manifest.activity_class)
+    if rules.fires("M3", lambda: activity is None):
+        rules.fail("XAX.BUILD.ANDROID", manifest_carrier.cid.hex(), "ANDROID-APK-ACTIVITY-IDENTITY", sorted(item.java_name for item in classes.values()), manifest.activity_class)
     exports = {view.name: view for view in (decode_android_export(carrier) for carrier in export_carriers)}
-    for item in classes.values():
-        for symbol, method in item.symbols().items():
-            if symbol not in exports:
-                fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-EXPORT", symbol.decode(), sorted(name.decode("ascii", "replace") for name in exports))
-            reason = check_export_signature(method, item.class_descriptor, reader.get(exports[symbol].function_cid), reader.get)
-            if reason is not None:
-                fail("XAX.BUILD.ANDROID", exports[symbol].function_cid.hex(), "ANDROID-MANAGED-JNI-SIGNATURE", f"{item.java_name}.{method.name}{method.descriptor}", reason)
-    if build_entry_function not in {exports[symbol].function_cid for symbol in classes[activity].symbols()}:
-        fail("XAX.BUILD.ANDROID", where, "ANDROID-APK-BUILD-ENTRY", "an export of the manifest Activity", build_entry_function.hex())
-    from xax_android_platform import check_managed_platform_usage
-    check_managed_platform_usage(reader, manifest, declarations_carrier, classes, exports)
+    for class_index, item in enumerate(classes.values()):
+        for method_index, (symbol, method) in enumerate(item.symbols().items()):
+            if rules.fires("M4", lambda: symbol not in exports, (class_index, method_index)):
+                rules.fail("XAX.BUILD.ANDROID", where, "ANDROID-MANAGED-EXPORT", symbol.decode(), sorted(name.decode("ascii", "replace") for name in exports))
+            computed = lambda: check_export_signature(method, item.class_descriptor, reader.get(exports[symbol].function_cid), reader.get)  # noqa: E731
+            if rules.fires("M5", lambda: computed() is not None, (class_index, method_index)):
+                rules.fail("XAX.BUILD.ANDROID", exports[symbol].function_cid.hex(), "ANDROID-MANAGED-JNI-SIGNATURE", f"{item.java_name}.{method.name}{method.descriptor}",
+                           rules.text("M5", computed))
+    if rules.fires("M6", lambda: build_entry_function not in {exports[symbol].function_cid for symbol in classes[activity].symbols()}):
+        rules.fail("XAX.BUILD.ANDROID", where, "ANDROID-APK-BUILD-ENTRY", "an export of the manifest Activity", build_entry_function.hex())
+    from xax_android_platform import check_managed_platform_usage, platform_usage_violations
+
+    if rules.decided:
+        def computed_problems():
+            from xax_manifest import decode_android_platform_declarations
+
+            declarations = decode_android_platform_declarations(declarations_carrier) if declarations_carrier is not None else None
+            return platform_usage_violations(manifest, declarations, classes, tuple(view.function_cid for view in exports.values()), reader.get)
+
+        if rules.fires("M7", lambda: bool(computed_problems())):
+            rules.fail("XAX.BUILD.ANDROID", declarations_carrier.cid.hex() if declarations_carrier is not None else "managed-apk", "ANDROID-PLATFORM-RULES",
+                       "no platform-rule violations", rules.text("M7", computed_problems))
+    else:
+        check_managed_platform_usage(reader, manifest, declarations_carrier, classes, exports)
     shared = compile_android_shared(reader, tuple(export_carriers), target_object=target_object, soname=b"libxaxapp.so")
     ordered = [activity, *sorted((cid for cid in classes if cid != activity), key=lambda cid: classes[cid].class_descriptor)]
     dex = [emit_dex039_bridge(lower_android_managed_class(reader.get(cid))) for cid in ordered]
