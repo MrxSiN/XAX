@@ -614,6 +614,10 @@
     "xax_selfhost_apk.py": {
       "class": "G",
       "note": "Builder of the S15e.6a APK container program store (ADR-340)."
+    },
+    "xax_selfhost_apk_signing.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6b APK Signature Scheme v2 signer program store (ADR-341)."
     }
   },
   "components": {
