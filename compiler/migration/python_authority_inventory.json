@@ -590,6 +590,30 @@
     "xax_selfhost_jvm_method.py": {
       "class": "G",
       "note": "Builder of the S15e.5 method analyses in the JVM program store (ADR-327)."
+    },
+    "xax_android_bfc.py": {
+      "class": "A",
+      "components": [
+        "android-backend"
+      ]
+    },
+    "xax_android_libxposed_jvm.py": {
+      "class": "A",
+      "components": [
+        "android-backend"
+      ]
+    },
+    "xax_selfhost_jvm_memory.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5g-S15e.5i memory and general profiles and the threaded launcher in the JVM program store (ADR-337, ADR-338)."
+    },
+    "xax_selfhost_jvm_indirect.py": {
+      "class": "G",
+      "note": "Builder of the S15e.5h indirect-call dispatchers in the JVM program store (ADR-338)."
+    },
+    "xax_selfhost_apk.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6a APK container program store (ADR-340)."
     }
   },
   "components": {
