@@ -960,6 +960,24 @@ def emit_dex039_bridge(spec: DexBridgeSpec) -> bytes:
     contain no code item, as required by DEX.
     """
 
+    # S15e.6d.1 (ADR-343): the XAX bridge program first for the core shapes; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it
+    # with this one.
+    import os
+
+    from xax_selfhost_dex import dex_with_xax
+
+    built = dex_with_xax(spec)
+    if built is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return built
+    reference = _emit_dex039_bridge_python(spec)
+    if built is not None and built != reference:
+        raise AssertionError("S15e.6d DEX bridges disagree")
+    return reference
+
+
+def _emit_dex039_bridge_python(spec: DexBridgeSpec) -> bytes:
+    """The bootstrap's DEX bridge."""
+
     constructor_proto = DexProto("V", ())
     load_library_proto = DexProto("V", ("Ljava/lang/String;",))
     has_library_load = spec.native_library is not None
