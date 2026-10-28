@@ -630,6 +630,10 @@
     "xax_selfhost_android_elf.py": {
       "class": "G",
       "note": "Builder of the S15e.6e Android AArch64 shared object container program store (ADR-346)."
+    },
+    "xax_selfhost_android_rules.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6f.1 unsigned Android carrier decisions program store (ADR-347); its host part extracts the carriers' decoded facts."
     }
   },
   "components": {
