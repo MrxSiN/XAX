@@ -3247,3 +3247,12 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Rationale | The fourth layer of S15e.6 (ADR-336). The shapes are split by feature so each step moves real authority: 6d.1 covers every bridge without Android UI or libxposed lowering. |
 | Evidence | EXECUTED on Linux x86-64. `test_xax_selfhost_dex.py`: the Activity and interface-callback bridges and 40 seeded core bridges are byte-identical. The DEX, APK, signing, manifest, resources, Android, libxposed, JNI-float and vector-contract tests pass with `XAX_GENERAL_FRONTEND_DIFF=1`: 156 passed, 1 skipped. One run of the Activity bridge takes 1 ms after the guarded sort (9.4 s before). |
 | Limits | The Activity UI and click-text shapes (S15e.6d.2) and the libxposed adapters (S15e.6d.3) are not asked; `dex_with_xax` returns None for them, so they stay the bootstrap's. |
+
+## ADR-344 — S15e.6d.2: the Activity UI and click-text DEX shapes in XAX
+
+| Field | Record |
+|---|---|
+| Decision | `xax_selfhost_dex` also writes the managed Activity UI setup (the `onCreate(Bundle)` override that calls `super`, creates the `Button`, sets its text from an inline string, an exact resource ID or a managed constant/echo method with its controlled argument, attaches the generated listener, sets the content view and crosses into native code once) and the click-text listener (`onClick(View)` narrows the view to `TextView`, sets an inline or resource text, then calls the native callback). It adds their prototypes, strings, types and method references as the bootstrap does. `dex_with_xax` now asks the program for every bridge without a libxposed adapter. |
+| Rationale | The second feature step of S15e.6d (ADR-343): the surface Activity and listener packages. |
+| Evidence | EXECUTED on Linux x86-64. `test_xax_selfhost_dex.py::test_activity_ui_and_click_text`: seven Activity and listener bridges byte-identical (inline, non-BMP, resource-ID and managed-method texts, with and without the library). The DEX-consuming tests pass with `XAX_GENERAL_FRONTEND_DIFF=1`: 140 passed, 1 skipped. |
+| Limits | The libxposed adapters (hook interception and installation, module services, remote preferences and files, hot reload) are S15e.6d.3. |

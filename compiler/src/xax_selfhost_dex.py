@@ -44,7 +44,11 @@ CAP = 1 << 16  # strings, types, prototypes, methods, type lists, code items eac
 ACC_PRIVATE, ACC_STATIC, ACC_CONSTRUCTOR = 0x0002, 0x0008, 0x10000
 P_RET, P_RANK, P_SHORTY, P_N = range(4)  # a prototype: return, rank, shorty, then its type list [n, parameters...]
 INSTR = 12  # an instruction: opcode, register count, five registers, reference kind, three reference words, literal
-CONSTANTS = ("<init>", "<clinit>", "V", "Ljava/lang/String;", "Ljava/lang/System;", "loadLibrary")
+CONSTANTS = ("<init>", "<clinit>", "V", "Ljava/lang/String;", "Ljava/lang/System;", "loadLibrary", "I", "Ljava/lang/CharSequence;",
+             "Landroid/content/Context;", "Landroid/view/View;", "Landroid/view/View$OnClickListener;", "Landroid/widget/Button;",
+             "Landroid/widget/TextView;", "Landroid/app/Activity;", "setText", "setOnClickListener", "setContentView", "onCreate", "onClick")
+UI_STRINGS = ("Landroid/content/Context;", "Landroid/view/View;", "Landroid/view/View$OnClickListener;", "Landroid/widget/Button;",
+              "Landroid/widget/TextView;", "setText", "setOnClickListener", "setContentView")
 CONST = {text: k for k, text in enumerate(CONSTANTS)}
 SHA1_IV = (0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0)
 
@@ -781,6 +785,59 @@ def _frontend(tables):
 
         items("asms", 6, assembled)
 
+        def single(name, h):
+            e.var(name, e.alloc(2))
+            _ok(e, e.ne(p[name], NONE))
+            e.st(p[name], 1)
+            e.st(e.add(p[name], 1), h)
+            return p[name]
+
+        # S15e.6d.2: the Activity UI (its button's text inline (0), a resource ID (1) or a managed method (2)) and the
+        # click-text listener (inline (0) or a resource ID (1)).
+        for name in ("ui", "ui_kind", "ui_text", "ui_arg", "ui_settext", "ui_button", "ui_listen", "ui_content", "listener",
+                     "click", "click_kind", "click_text", "click_settext"):
+            e.var(name, 0)
+        e.set("ui", word())
+
+        def ui():
+            e.set("listener", string())
+            e.set("ui_kind", word())
+            e.if_(e.eq(p["ui_kind"], 1), lambda: e.set("ui_text", word()), lambda: e.set("ui_text", string()))
+            e.if_(e.eq(p["ui_kind"], 2), lambda: e.if_(e.ne(word(), 0), lambda: e.set("ui_arg", string())))
+            e.set("ui_button", _call(e, "dx_intern", K(e, "V"), single("l_context", K(e, "Landroid/content/Context;"))))
+            e.set("ui_settext", _call(e, "dx_intern", K(e, "V"), single("l_text", e.sel(e.eq(p["ui_kind"], 1), K(e, "I"), K(e, "Ljava/lang/CharSequence;")))))
+            e.set("ui_listen", _call(e, "dx_intern", K(e, "V"), single("l_listen", K(e, "Landroid/view/View$OnClickListener;"))))
+            e.set("ui_content", _call(e, "dx_intern", K(e, "V"), single("l_view", K(e, "Landroid/view/View;"))))
+            for text in UI_STRINGS:
+                push(e, STRINGS, K(e, text))
+                if text.startswith("L"):
+                    push(e, TYPES, K(e, text))
+            push(e, STRINGS, p["listener"])
+            push(e, TYPES, p["listener"])
+            e.if_(e.eq(p["ui_kind"], 0), lambda: (push(e, STRINGS, p["ui_text"]), push(e, STRINGS, K(e, "Ljava/lang/CharSequence;")),
+                                                  push(e, TYPES, K(e, "Ljava/lang/CharSequence;"))))
+            e.if_(e.ne(p["ui_arg"], 0), lambda: push(e, STRINGS, p["ui_arg"]))
+            for cls, name, proto in (("Landroid/widget/Button;", "<init>", "ui_button"), ("Landroid/widget/TextView;", "setText", "ui_settext"),
+                                     (None, "<init>", "ctor"), ("Landroid/view/View;", "setOnClickListener", "ui_listen"),
+                                     ("Landroid/app/Activity;", "setContentView", "ui_content")):
+                _call(e, "dx_method", p["listener"] if cls is None else K(e, cls), K(e, name), p[proto])
+
+        e.if_(e.ne(p["ui"], 0), ui)
+        e.set("click", word())
+
+        def click():
+            e.set("click_kind", word())
+            e.if_(e.eq(p["click_kind"], 1), lambda: e.set("click_text", word()), lambda: e.set("click_text", string()))
+            e.set("click_settext", _call(e, "dx_intern", K(e, "V"), single("c_text", e.sel(e.eq(p["click_kind"], 1), K(e, "I"), K(e, "Ljava/lang/CharSequence;")))))
+            for text in ("Landroid/widget/TextView;", "setText"):
+                push(e, STRINGS, K(e, text))
+            push(e, TYPES, K(e, "Landroid/widget/TextView;"))
+            e.if_(e.eq(p["click_kind"], 0), lambda: (push(e, STRINGS, p["click_text"]), push(e, STRINGS, K(e, "Ljava/lang/CharSequence;")),
+                                                     push(e, TYPES, K(e, "Ljava/lang/CharSequence;"))))
+            _call(e, "dx_method", K(e, "Landroid/widget/TextView;"), K(e, "setText"), p["click_settext"])
+
+        e.if_(e.ne(p["click"], 0), click)
+
         def library():
             e.set("load_proto", _call(e, "dx_intern", K(e, "V"), p["one"]))
             for text in ("Ljava/lang/System;", "loadLibrary"):
@@ -905,8 +962,43 @@ def _frontend(tables):
                     u.add(p["first"], p["native"], p["regs"], 0x000E)
                     u.code(at(e, p["r"], 0), p["rc"], p["rc"], p["rc"])
 
+                def activity():
+                    def invoke(opcode, index, registers):
+                        word = sum(reg << (4 * k) for k, reg in enumerate(registers))
+                        u.add(opcode | (len(registers) << 12), index, word)
+
+                    invoke(0x6F, midx(e, p["super"], at(e, p["r"], 0), p["pr"]), (3, 4))
+                    u.add(0x0022, tidx(e, K(e, "Landroid/widget/Button;")))
+                    invoke(0x70, midx(e, K(e, "Landroid/widget/Button;"), K(e, "<init>"), p["ui_button"]), (0, 3))
+
+                    def method_text():
+                        e.if_(e.eq(p["ui_arg"], 0), lambda: invoke(0x6E, midx(e, p["cls"], p["ui_text"], p["string_proto"]), (3,)),
+                              lambda: (u.add(0x011A, sidx(e, p["ui_arg"])), invoke(0x6E, midx(e, p["cls"], p["ui_text"], p["echo_proto"]), (3, 1))))
+                        u.add(0x010C)
+
+                    e.if_(e.eq(p["ui_kind"], 0), lambda: u.add(0x011A, sidx(e, p["ui_text"])), lambda: e.if_(
+                        e.eq(p["ui_kind"], 2), method_text, lambda: u.add(0x0114, e.and_(p["ui_text"], 0xFFFF), e.and_(e.udiv(p["ui_text"], 65536), 0xFFFF))))
+                    invoke(0x6E, midx(e, K(e, "Landroid/widget/TextView;"), K(e, "setText"), p["ui_settext"]), (0, 1))
+                    u.add(0x0222, tidx(e, p["listener"]))
+                    invoke(0x70, midx(e, p["listener"], K(e, "<init>"), p["ctor"]), (2,))
+                    invoke(0x6E, midx(e, K(e, "Landroid/view/View;"), K(e, "setOnClickListener"), p["ui_listen"]), (0, 2))
+                    invoke(0x6E, midx(e, K(e, "Landroid/app/Activity;"), K(e, "setContentView"), p["ui_content"]), (3, 0))
+                    invoke(0x70, p["native"], (3, 4))
+                    u.add(0x000E)
+                    u.code(at(e, p["r"], 0), 5, 2, 2)
+
+                def clicked():
+                    u.add(0x021F, tidx(e, K(e, "Landroid/widget/TextView;")))
+                    e.if_(e.eq(p["click_kind"], 0), lambda: u.add(0x001A, sidx(e, p["click_text"])),
+                          lambda: u.add(0x0014, e.and_(p["click_text"], 0xFFFF), e.and_(e.udiv(p["click_text"], 65536), 0xFFFF)))
+                    u.add(0x206E, midx(e, K(e, "Landroid/widget/TextView;"), K(e, "setText"), p["click_settext"]), 0x0002, 0x2070, p["native"], 0x0021, 0x000E)
+                    u.code(at(e, p["r"], 0), 3, 2, 2)
+
                 e.var("is_override", e.flag(e.both(e.ne(p["has_override"], 0), e.ne(_call(e, "dx_same", p["override"], at(e, p["r"], 0)), 0))))
-                e.if_(e.ne(p["is_override"], 0), deferred, lambda: e.if_(e.ne(at(e, p["r"], 4), 0), super_call, direct))
+                e.var("is_ui", e.flag(e.both(e.both(e.ne(p["ui"], 0), e.ne(at(e, p["r"], 4), 0)), e.ne(_call(e, "dx_same", K(e, "onCreate"), at(e, p["r"], 0)), 0))))
+                e.var("is_click", e.flag(e.both(e.ne(p["click"], 0), e.ne(_call(e, "dx_same", K(e, "onClick"), at(e, p["r"], 0)), 0))))
+                e.if_(e.ne(p["is_override"], 0), deferred, lambda: e.if_(e.ne(p["is_ui"], 0), activity, lambda: e.if_(
+                    e.ne(p["is_click"], 0), clicked, lambda: e.if_(e.ne(at(e, p["r"], 4), 0), super_call, direct))))
 
             e.if_(e.either(e.eq(p["void"], 0), e.either(e.ne(p["wide"], 0), e.lt(3, p["pn"]))), ranged, compact)
 
@@ -1166,7 +1258,7 @@ _OPCODES = None
 
 
 def _core(spec) -> bool:
-    return (spec.activity_ui is None and spec.click_text is None and spec.libxposed_hook_intercept is None and spec.libxposed_hook_install is None
+    return (spec.libxposed_hook_intercept is None and spec.libxposed_hook_install is None
             and spec.libxposed_module_services is None and spec.libxposed_remote_preferences is None and spec.libxposed_hot_reload is None
             and spec.libxposed_remote_files is None)
 
@@ -1224,6 +1316,21 @@ def dex_with_xax(spec, *, required: bool = False) -> bytes | None:
             else:
                 words += [1 if instruction.mnemonic == "const-string" else 2, *text(reference)]
             words.append((instruction.literal or 0) & 0xFFFFFFFF)
+    ui = spec.activity_ui
+    if ui is None:
+        words.append(0)
+    elif ui.button_text is not None:
+        words += [1, *text(ui.listener_class_descriptor), 0, *text(ui.button_text)]
+    elif ui.button_text_resource_id is not None:
+        words += [1, *text(ui.listener_class_descriptor), 1, ui.button_text_resource_id]
+    else:
+        words += [1, *text(ui.listener_class_descriptor), 2, *text(ui.button_text_method_name)]
+        words += [0] if ui.button_text_method_argument is None else [1, *text(ui.button_text_method_argument)]
+    click = spec.click_text
+    if click is None:
+        words.append(0)
+    else:
+        words += [1, 0, *text(click.text)] if click.text is not None else [1, 1, click.text_resource_id]
     if any(not 0 <= word < 1 << 63 for word in words):
         return None
     native = None if os.environ.get(OPT_OUT) == "1" else _PROGRAM.native(OPT_OUT)
