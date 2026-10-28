@@ -1951,9 +1951,13 @@ def _frontend(tables, isa):
                 _payload_uleb(e, "ta")))
         e.st(GLOBALS + G_FAR, _at(e, G_SUP, int(Operation.CHECKED_LOAD_BITS_LE)))  # views profile: far jumps
         # The closure from the entry (callees that are not erased proof functions).
+        # The work stack holds a callee once per call site met before the callee is visited, so it grows (doubling)
+        # past ``O`` rather than declining: one function may call the same helper more times than the store has
+        # objects (ADR-353).
         work = e.alloc(e.add(O, 1))
         _ok(e, e.ne(work, NONE))
         e.var("work", work)
+        e.var("wcap", e.add(O, 1))
         e.var("wn", 1)
         e.st(p["work"], p["entry"])
         e.var("members", 0)
@@ -1990,8 +1994,19 @@ def _frontend(tables, isa):
                         def callee():
                             e.var("cc", _reference(e, p["cg"], e.ld(e.add(ni, NI_ENTITY))))
                             _ok(e, e.both(e.ne(p["cc"], NONE), e.eq(_kind(e, p["cc"]), int(Kind.FUNCTION))))
-                            e.if_(e.both(e.eq(_call(e, "erased", p["cc"]), 0), e.eq(e.ld(e.add(visited, p["cc"])), 0)), lambda: (
-                                e.st(e.add(p["work"], p["wn"]), p["cc"]), e.set("wn", e.add(p["wn"], 1)), _ok(e, e.le(p["wn"], O))))
+                            def grow():
+                                e.var("wgrown", e.alloc(e.mul(p["wcap"], 2)))
+                                _ok(e, e.ne(p["wgrown"], NONE))
+                                e.for_("wq", 0, p["wn"], lambda: e.st(e.add(p["wgrown"], p["wq"]), e.ld(e.add(p["work"], p["wq"]))))
+                                e.set("work", p["wgrown"])
+                                e.set("wcap", e.mul(p["wcap"], 2))
+
+                            def push():
+                                e.if_(e.eq(p["wn"], p["wcap"]), grow)
+                                e.st(e.add(p["work"], p["wn"]), p["cc"])
+                                e.set("wn", e.add(p["wn"], 1))
+
+                            e.if_(e.both(e.eq(_call(e, "erased", p["cc"]), 0), e.eq(e.ld(e.add(visited, p["cc"])), 0)), push)
 
                         e.if_(e.eq(operation, int(Operation.CALL_DIRECT)), callee)
 

@@ -669,11 +669,11 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "Android packages are compiled by Python backends (S15e.6); Linux x86-64 and AArch64 executables, Windows "
+            "blocker": "Android packages are not the production compiler's: their layers are XAX programs that build asks first (S15e.6a-S15e.6g, ADR-340 to ADR-350), but carrier decoding, bridge lowering and the driver path remain Python (S15e.6h, ADR-351); Linux x86-64 and AArch64 executables, Windows "
                        "PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator "
                        "deployments, SPIR-V modules, browser pages and JVM JARs are the production compiler's; the Linux x86-64 "
                        "production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, "
-                       "ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339)",
+                       "ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351)",
         },
         **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
         "m14_semantic_image_wrapper": {
