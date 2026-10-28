@@ -53,12 +53,14 @@ V1_IDENTITY = b"jvm-classfile-v1"
 PROFILE_IDENTITIES = (b"jvm-classfile-memory-v1", b"jvm-classfile-general-v1")  # a process entry there is threaded (declined)
 J_STATE = 211  # GLOBALS slot: the class state record
 (J_POOL, J_ENTRY_INDEX, J_NFN, J_NAMES, J_DESCS, J_ARGS, J_RESULT, J_METHODS, J_NMETHODS, J_STORE, J_STORE_LEN, J_PK, J_PROCESS,
- J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES, J_FLAT) = range(25)
-J_WORDS = 25
+ J_CLASSNAME, J_SCRATCH, J_REFS, J_NREFS, J_TABLE, J_NTABLE, J_TABIX, J_CBG, J_NCBG, J_IFACES, J_NIFACES, J_FLAT, J_NEEDS, J_BYTES, J_NBYTES,
+ J_V1, J_INIT, J_STACKS) = range(31)
+J_WORDS = 31  # S15e.5g: the memory needs and checked byte members, the v1 profile, the initial memory, a stack allocation
 METHOD_WORDS = 13  # kind, fidx, code, code length, max stack, max locals, frames, frame count, frame types, their count, lines, line count, bare frame
 (MR_KIND, MR_FIDX, MR_CODE, MR_CLEN, MR_STACK, MR_LOCALS, MR_FRAMES, MR_NFRAMES, MR_FTYPES, MR_NFTYPES, MR_LINES, MR_NLINES, MR_BARE) = range(13)
 STORE_CAP = 1 << 24
-KIND_FN, KIND_PK, KIND_MAIN, KIND_CB, KIND_INIT = range(5)  # a callback's interface method and ``<init>(I)V`` (ADR-331)
+KIND_FN, KIND_PK, KIND_MAIN, KIND_CB, KIND_INIT, KIND_NAMED = range(6)  # a callback's interface method and ``<init>(I)V`` (ADR-331); a
+# generated member whose name and descriptor texts are in its record (``MR_FIDX``: name, length, descriptor, length; S15e.5g)
 SIGNATURE_CAP = 1024  # a method descriptor's characters (a longer one declines)
 VERIFICATION = {D_I: 1, D_J: 2 + 2, 3: 2, 4: 3}  # I 1, J 4, F 2, D 3; Top 0
 
@@ -145,13 +147,15 @@ def _signature_fn(tables):
 
             e.for_("sg_k", 0, p["sg_np"], parameter)
         put_char(ord(")"))
-        # The machine result: at most one (JVM-SINGLE-RESULT: declined); borrowed views given back need heap views (declined).
+        # The machine result: at most one (JVM-SINGLE-RESULT: declined); views given back are the lent ones (ADR-101).
         e.var("sg_result", D_NONE)
         e.var("sg_count", 0)
+        e.var("sg_el", _call(e, "borrowed", p["f"]))
 
         def returned():
             _jvm_desc(e, e.ld(e.add(e.add(p["sg_rt"], 1), p["sg_k"])), "sg_rd")
-            e.if_(e.ne(p["sg_rd"], D_NONE), lambda: (e.set("sg_result", p["sg_rd"]), e.set("sg_count", e.add(p["sg_count"], 1))))
+            e.if_(e.both(e.ne(p["sg_rd"], D_NONE), e.eq(e.ld(e.add(p["sg_el"], p["sg_k"])), NONE)),
+                  lambda: (e.set("sg_result", p["sg_rd"]), e.set("sg_count", e.add(p["sg_count"], 1))))
 
         e.for_("sg_k", 0, e.ld(p["sg_rt"]), returned)
         _ok(e, e.le(p["sg_count"], 1))
@@ -240,7 +244,7 @@ def _analyses(e: E):
         e.var("ms_a", e.alloc(e.add(words, 2)))
         _ok(e, e.ne(p["ms_a"], NONE))
         _set_m(e, field, p["ms_a"])
-    for name in ("jm_liveness", "jm_interference", "jm_hints", "jm_slots"):
+    for name in ("jm_liveness", "jm_interference", "jm_hints", "jm_slots", "jm_runs"):
         _call(e, name)
     _set_m(e, M_MAXLOC, _m(e, M_GEND))
     _set_m(e, M_SCRATCH_SLOT(), _m(e, M_GEND))
@@ -325,7 +329,12 @@ def _method_fn(tables):
         e.for_("mt_q", 0, p["mt_n"], lambda: (_set_v(e, BL_BASE, p["mt_q"], p["mt_nn"]), e.set("mt_nn", e.add(p["mt_nn"], _f(e, _block_at(e, p["mt_q"]), B_NNODES)))))
         _set_m(e, M_NN, p["mt_nn"])
         _tables(e, nv, (*range(VALUE_TABLES_FIRST(), VALUE_TABLES_FIRST() + len(VALUE_TABLES)), C_VSLOT, C_VSDESC, C_READS), "mt_vt")
-        _tables(e, p["mt_nn"], (N_ELIM, N_COPY, N_LINE), "mt_nt")
+        from xax_selfhost_jvm_method import M_MBYTES, M_MNBYTES, M_MNEEDS, N_INRUN, N_RUN
+        from xax_selfhost_jvm_memory import BYTES_CAP, initial_scan
+
+        _tables(e, p["mt_nn"], (N_ELIM, N_COPY, N_LINE, N_RUN, N_INRUN), "mt_nt")
+        _tables(e, 2 * BYTES_CAP, (M_MBYTES,), "mt_mb")
+        initial_scan(e)
         e.var("mt_work", e.alloc(WORK()))
         _ok(e, e.ne(p["mt_work"], NONE))
         _set_m(e, M_WORK, p["mt_work"])
@@ -342,8 +351,9 @@ def _method_fn(tables):
         e.var("mt_nret", e.ld(p["mt_rt"]))
         _set_m(e, M_NRET, p["mt_nret"])
         _tables(e, p["mt_nret"], (M_RETTYPES,), "mt_rtt")
+        e.var("mt_el", _call(e, "borrowed", p["f"]))  # views given back are elided (ADR-101)
         e.for_("mt_k", 0, p["mt_nret"], lambda: (_jvm_desc(e, e.ld(e.add(e.add(p["mt_rt"], 1), p["mt_k"])), "mt_rd"),
-                                                 e.st(e.add(_m(e, M_RETTYPES), p["mt_k"]), p["mt_rd"])))
+                                                 e.st(e.add(_m(e, M_RETTYPES), p["mt_k"]), e.sel(e.eq(e.ld(e.add(p["mt_el"], p["mt_k"])), NONE), p["mt_rd"], D_NONE))))
         # The code state.
         buffer(e, "mt_code", CODE_CAP)
         _set_m(e, C_BUF, p["mt_code"])
@@ -375,9 +385,12 @@ def _method_fn(tables):
         _set_m(e, M_PASS, 2)
         _set_m(e, M_KEPTNONE, 0)
         _set_m(e, M_NEEDS_PK, 0)  # the counting pass's needs are a scratch set; every pass-2 attempt's are the class's
+        _set_m(e, M_MNEEDS, 0)
+        _set_m(e, M_MNBYTES, 0)
         e.var("mt_retry", 1)
         e.while_(lambda: e.ne(p["mt_retry"], 0), lambda: (_analyses(e), e.set("mt_retry", _emit_pass_call(e))))
         e.if_(e.ne(_m(e, M_NEEDS_PK), 0), lambda: _set_js(e, J_PK, 1))
+        _call(e, "jm_merge")  # the method's memory needs join the class's
         _call(e, "je_finish")
         _call(e, "jk_record", KIND_FN, p["fidx"])
         e.set_hd(H_ARENA, p["mt_mark"])
@@ -644,6 +657,13 @@ def _serialize_fn(tables):
             e.if_(e.eq(p["se_kind"], KIND_INIT), lambda: (e.var("se_ni", utf8_literal(e, pool, "<init>", "se_in")),
                                                           e.var("se_di", utf8_literal(e, pool, "(I)V", "se_id"))))
 
+            def named():
+                e.var("se_nm", f(MR_FIDX))
+                e.var("se_ni", _call(e, "jp_utf8", pool, e.ld(p["se_nm"]), e.ld(e.add(p["se_nm"], 1))))
+                e.var("se_di", _call(e, "jp_utf8", pool, e.ld(e.add(p["se_nm"], 2)), e.ld(e.add(p["se_nm"], 3))))
+
+            e.if_(e.eq(p["se_kind"], KIND_NAMED), named)
+
         e.var("se_ni", 0)
         e.var("se_di", 0)
         names()
@@ -692,6 +712,16 @@ def _class_fn(tables):
             e.if_(e.ne(p["cl_ncb"], 0), rotate)
 
         e.if_(e.ne(_js(e, J_PK), 0), pk)
+        # S15e.5g: the memory profile's members (``_memory_methods``) after the shared ones, also before the callbacks.
+        e.if_(e.ne(_js(e, J_NEEDS), 0), lambda: _ok(e, e.eq(_js(e, J_V1), 0)))  # JVM-MEMORY-PROFILE on the v1 target: the bootstrap's
+        e.var("cl_mm0", _js(e, J_NMETHODS))
+        e.if_(e.ne(_js(e, J_NEEDS), 0), lambda: _call(e, "jk_members"))
+
+        def rotate_members():
+            e.var("cl_ms", e.sub(_js(e, J_NMETHODS), p["cl_mm0"]))
+            e.for_("cl_mq", 0, p["cl_ms"], lambda: _move_record(e, e.add(p["cl_mm0"], p["cl_mq"]), e.add(e.sub(p["cl_mm0"], p["cl_ncb"]), p["cl_mq"])))
+
+        e.if_(e.ne(p["cl_ncb"], 0), rotate_members)
 
         def main():
             e.var("cl_en", _call(e, "jl_own_method", 1, _js(e, J_ENTRY_INDEX)))
@@ -706,7 +736,20 @@ def _class_fn(tables):
         e.for_("cl_q", 0, _js(e, J_NIFACES), lambda: u2(e, p["cl_ifs"], _call(e, "jp_ref1", pool, 7, _call(
             e, "jp_utf8", pool, e.ld(e.add(_js(e, J_IFACES), e.mul(p["cl_q"], 2))), e.ld(e.add(_js(e, J_IFACES), e.add(e.mul(p["cl_q"], 2), 1)))))))
         buffer(e, "cl_fields", 64)
-        e.var("cl_nf", e.flag(e.lt(0, _js(e, J_NCBG))))
+        e.var("cl_nf", 0)
+
+        def static_field(name: str, descriptor: str):
+            u2(e, p["cl_fields"], 0x000A)
+            u2(e, p["cl_fields"], utf8_literal(e, pool, name, f"cl_f{name}"))
+            u2(e, p["cl_fields"], utf8_literal(e, pool, descriptor, f"cl_d{name}"))
+            u2(e, p["cl_fields"], 0)
+            e.set("cl_nf", e.add(p["cl_nf"], 1))
+
+        from xax_selfhost_jvm_memory import N_STACK
+
+        e.if_(e.ne(_js(e, J_NEEDS), 0), lambda: (static_field("M", "[B"), static_field("H", "I")))
+        e.if_(e.ne(e.and_(_js(e, J_NEEDS), N_STACK), 0), lambda: static_field("S", "I"))
+        e.if_(e.lt(0, _js(e, J_NCBG)), lambda: e.set("cl_nf", e.add(p["cl_nf"], 1)))
 
         def field_k():
             u2(e, p["cl_fields"], 0x0012)
@@ -714,7 +757,7 @@ def _class_fn(tables):
             u2(e, p["cl_fields"], utf8_literal(e, pool, "I", "cl_fi"))
             u2(e, p["cl_fields"], 0)
 
-        e.if_(e.ne(p["cl_nf"], 0), field_k)
+        e.if_(e.lt(0, _js(e, J_NCBG)), field_k)
         e.var("cl_super", klass_literal(e, pool, "java/lang/Object", "cl_obj"))
         e.var("cl_sf", utf8_literal(e, pool, "SourceFile", "cl_sfn"))
         e.var("cl_sv", utf8_literal(e, pool, "XAX", "cl_sfv"))
@@ -812,6 +855,23 @@ def _class_fn(tables):
         e.for_("cl_q", 0, e.udiv(e.add(p["cl_n"], 7), 8), word)
         e.give(1)
     return _function((), build, tables)
+
+
+def _move_record(e: E, source, target):
+    """Method record ``source`` moved to position ``target`` (below it), the records between moved up one."""
+    p = e.p
+    e.var("mv_at", _js(e, J_METHODS))
+    e.var("mv_tmp", e.alloc(METHOD_WORDS + 1))
+    _ok(e, e.ne(p["mv_tmp"], NONE))
+    e.var("mv_s", source)
+    e.var("mv_t", target)
+    e.for_("mv_w", 0, METHOD_WORDS, lambda: e.st(e.add(p["mv_tmp"], p["mv_w"]), e.ld(e.add(e.add(p["mv_at"], e.mul(p["mv_s"], METHOD_WORDS)), p["mv_w"]))))
+    e.var("mv_r", p["mv_s"])
+    e.while_(lambda: e.lt(p["mv_t"], p["mv_r"]), lambda: (
+        e.for_("mv_w", 0, METHOD_WORDS, lambda: e.st(e.add(e.add(p["mv_at"], e.mul(p["mv_r"], METHOD_WORDS)), p["mv_w"]),
+                                                    e.ld(e.add(e.add(p["mv_at"], e.mul(e.sub(p["mv_r"], 1), METHOD_WORDS)), p["mv_w"])))),
+        e.set("mv_r", e.sub(p["mv_r"], 1))))
+    e.for_("mv_w", 0, METHOD_WORDS, lambda: e.st(e.add(e.add(p["mv_at"], e.mul(p["mv_t"], METHOD_WORDS)), p["mv_w"]), e.ld(e.add(p["mv_tmp"], p["mv_w"]))))
 
 
 def _add_record(e: E, fields: dict):
@@ -1003,8 +1063,8 @@ def _frontend(tables):
                 lambda: D.text(e, Kind.FUNCTION.name), kind_name)
         e.st(GLOBALS + G_ENTRY, entry)
 
-        # The sections after the objects: pointer extents (skipped), the audit word, the trap heads (skipped), the
-        # process-entry flag.
+        # The sections after the objects: pointer extents (indexed per graph after the view tables, S15e.5g), the
+        # audit word, the trap heads (skipped), the process-entry flag.
         e.var("sx", p["ext_at"])
         e.var("sx_n", e.rd(p["sx"]))
         e.set("sx", e.add(p["sx"], 1))
@@ -1037,6 +1097,14 @@ def _frontend(tables):
 
         _set_js(e, J_REFS, _store_alloc(e, 2 * REFS_CAP + 2, "js_refs"))
         _set_js(e, J_NREFS, 0)
+        from xax_selfhost_jvm_memory import BYTES_CAP
+
+        _set_js(e, J_V1, p["t_v1"])
+        _set_js(e, J_NEEDS, 0)
+        _set_js(e, J_BYTES, _store_alloc(e, 2 * BYTES_CAP + 2, "js_bytes"))
+        _set_js(e, J_NBYTES, 0)
+        _set_js(e, J_INIT, 16)  # ``_HEAP_START``
+        _set_js(e, J_STACKS, 0)
 
         def contract():
             """``validate_process_entry``: no machine parameter or result (each a bits value of at most 64 bits here;
@@ -1153,6 +1221,18 @@ def _frontend(tables):
         _globals(e, G_STAMP, 1)
         _globals(e, G_AUDIT, 0)
         _globals(e, G_VIEW_OUT, VIEW_AT)
+        # The verifier's pointer extents per graph (``views_prologue``'s index): ``lift`` reads them into ``G_VEXT``.
+        e.var("vp_at", p["ext_at"])
+        e.var("vp_n", e.rd(p["vp_at"]))
+        e.set("vp_at", e.add(p["vp_at"], 1))
+
+        def extent_graph():
+            e.var("vp_g", e.call(_FN["find"], p["vp_at"]))
+            e.set("vp_at", e.add(p["vp_at"], CID_WORDS))
+            e.if_(e.ne(p["vp_g"], NONE), lambda: e.st(e.add(_g(e, G_GEXT), p["vp_g"]), p["vp_at"]))
+            e.set("vp_at", e.add(e.add(p["vp_at"], 1), e.mul(e.rd(p["vp_at"]), 5)))
+
+        e.for_("vp_k", 0, p["vp_n"], extent_graph)
         e.for_("vp_q", 0, p["members"], lambda: e.st(e.add(_g(e, G_CIDX), e.ld(e.add(order, p["vp_q"]))), p["vp_q"]))
         _set_js(e, J_NFN, p["members"])
         _set_js(e, J_ENTRY_INDEX, e.ld(e.add(_g(e, G_CIDX), entry)))
@@ -1227,6 +1307,9 @@ def build_jvm_program():
     for name, builder in (("lift", _lift), ("resolve", _resolve), ("replace_uses", _replace_uses), ("node_callee", _node_callee),
                           ("candidate", _candidate), ("positions", _positions)):
         add(name, builder(tables))
+    from xax_selfhost_general_ranges import _extent
+
+    add("extent", _extent(tables))
     add("jf_node", _node(tables))
     add_class_functions(add, tables)
     add_code_functions(add, tables)
@@ -1237,6 +1320,9 @@ def build_jvm_program():
 
     add_aggregate_functions(add, tables)
     add_method_functions(add, tables)
+    from xax_selfhost_jvm_memory import add_memory_functions
+
+    add_memory_functions(add, tables)
     add("jk_signature", _signature_fn(tables))
     add("jl_own_method", _own_method_fn(tables))
     from xax_selfhost_jvm_callback import add_callback_functions

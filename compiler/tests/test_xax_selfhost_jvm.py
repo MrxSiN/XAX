@@ -249,6 +249,39 @@ class SelfhostJvmTests(unittest.TestCase):
                 test_xax_jvm_callbacks.JvmCallbackRejectionTests("test_the_interface_method_must_match_the_function").test_the_interface_method_must_match_the_function()
             self.assertEqual([(kind, diagnostic.rule) for kind, diagnostic in seen], [("rejected", "JVM-ENTRY-SIGNATURE")])
 
+    def test_memory_programs(self):
+        """S15e.5g: the memory profile (``test_xax_jvm_memory``'s programs: every access width, checked and plain, floats,
+        traps, rebases, null blocks, string runs and repeated loads, ``JVM-MEMORY-MEMBER``) through both front ends."""
+        import test_xax_jvm_memory as memory
+        import xax_jvm
+
+        seen = []
+
+        def compiled(reader, cid, target, *, process_entry=False):
+            expected = _outcome(reader, cid, target, "python", process_entry)
+            self.assertEqual(_outcome(reader, cid, target, "xax", process_entry), expected)
+            seen.append(expected[0] if expected[0] == "jar" else expected[1].rule)
+            if expected[0] == "rejected":
+                raise XaxError(expected[1])
+            return xax_jvm.compile_jvm_bound_target(reader, cid, target, process_entry=process_entry)
+
+        rng = random.Random(memory.SEED)
+        with unittest.mock.patch.object(memory, "compile_jvm_bound_target", compiled):
+            for index in range(memory.COUNT):
+                objects, function, _expected = memory._program(rng)
+                with self.subTest(program=index):
+                    memory._image(objects, function)
+            for name in ("test_checked_access_outside_the_view_traps", "test_rebase_outside_the_view_traps",
+                         "test_an_oversized_request_is_a_null_block_and_its_view_traps", "test_constant_byte_runs_and_repeated_loads"):
+                with self.subTest(case=name), unittest.mock.patch.object(memory, "run_jvm_calls", lambda *a, **k: None):
+                    try:
+                        getattr(memory.JvmMemoryTests(name), name)()
+                    except (AssertionError, TypeError):
+                        pass  # the run itself is test_xax_jvm_memory's
+            memory.JvmMemoryProfileTests("test_unknown_memory_members_reject").test_unknown_memory_members_reject()
+        self.assertEqual(seen.count("jar"), memory.COUNT + 4, seen)  # the null-block case stops at its first run
+        self.assertEqual(seen[-1], "JVM-MEMORY-MEMBER")
+
     def test_entry_must_be_a_function(self):
         target = jvm_classfile_target()
         entry, objects, _ = _random_case(1)
