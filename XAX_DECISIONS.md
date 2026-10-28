@@ -3256,3 +3256,12 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Rationale | The second feature step of S15e.6d (ADR-343): the surface Activity and listener packages. |
 | Evidence | EXECUTED on Linux x86-64. `test_xax_selfhost_dex.py::test_activity_ui_and_click_text`: seven Activity and listener bridges byte-identical (inline, non-BMP, resource-ID and managed-method texts, with and without the library). The DEX-consuming tests pass with `XAX_GENERAL_FRONTEND_DIFF=1`: 140 passed, 1 skipped. |
 | Limits | The libxposed adapters (hook interception and installation, module services, remote preferences and files, hot reload) are S15e.6d.3. |
+
+## ADR-345 — S15e.6d.3: the libxposed DEX adapters in XAX; every bridge shape is XAX's
+
+| Field | Record |
+|---|---|
+| Decision | `xax_selfhost_dex` writes the libxposed adapters of `emit_dex039_bridge`. (1) The hook interceptor: pass-through, argument inspection, result replacement, and argument replacement with or without a result. (2) The API-102 hook installation in `onPackageReady`: zero- and one-`String`-parameter targets, deoptimization, hook IDs, process or retained lifetime with the `xaxHookHandle` field and `xaxUnhook`, and the reload class loader stored for hot reload. (3) The module-service wrappers. (4) The capability-gated remote preferences and their typed reads. (5) The remote-file list and open helpers. (6) The hot-reload callbacks. This adds the field section (field references ordered by class, name and type; the header's field counts and the map item) and the class data's instance fields. `dex_with_xax` now asks the program for every `DexBridgeSpec`. The explicit index bounds the bootstrap checks without emitting the index (the class-array type in the zero-parameter install, `Chain.proceed` in the argument-replacing interceptor) are checked too, so the program declines exactly where the bootstrap raises. |
+| Rationale | The last feature step of S15e.6d (ADR-343, ADR-344): every DEX bridge the Android paths emit is now written by XAX. |
+| Evidence | EXECUTED on Linux x86-64. `test_xax_selfhost_dex.py::test_libxposed_adapters`: 60 seeded module entries and hookers byte-identical (with the earlier tests: 4 passed, 107 subtests). The DEX, libxposed, Android and APK tests pass with `XAX_GENERAL_FRONTEND_DIFF=1`: 179 passed, 1 skipped. |
+| Limits | The specification checks (`DexBridgeSpec.__post_init__`) remain host code; they validate the carrier, and the carrier decisions are S15e.6f. |
