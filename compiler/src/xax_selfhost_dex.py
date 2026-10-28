@@ -38,6 +38,7 @@ OUT = IMAGE_AT + 3
 STATE_AT = 110 << 20
 (G_CUR, G_OUT, G_ON, G_CAP, G_S, G_NS, G_T, G_NT, G_P, G_NP, G_M, G_NM, G_L, G_NL, G_LO, G_C, G_NC, G_SHA, G_F, G_NF) = (STATE_AT + k for k in range(20))
 G_K = STATE_AT + 512  # the constant strings' handles
+SPILL_AT = STATE_AT + 4096  # the frontend's first-half variables, passed to its second half (ADR-352)
 SHA_AT = STATE_AT + 64  # H (5), W (80)
 MASK32 = 0xFFFFFFFF
 CAP = 1 << 20  # strings, types, prototypes, methods, type lists, code items and fields each (before duplicates are dropped)
@@ -697,289 +698,322 @@ def _sign_fn(tables):
 
 # -- the bridge ---------------------------------------------------------------------------------------------------------------
 
-def _frontend(tables):
+def _frontend_head(e: E):
+    """The frontend's first half: the inputs, the pools, their orders, the type lists and the layout."""
+    p = e.p
+    word = lambda: _call(e, "dx_word")  # noqa: E731
+    string = lambda: _call(e, "dx_string")  # noqa: E731
+    proto = lambda: _call(e, "dx_proto")  # noqa: E731
+    e.st(0, 0)
+    e.set_hd(H_ARENA, GENERAL_ARENA_AT)
+    e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
+    for base, _count in (STRINGS, TYPES, PROTOS, METHODS, LISTS, CODES, FIELDS):
+        e.st(base, e.alloc(CAP))
+        _ok(e, e.ne(e.ld(base), NONE))
+        e.st(_count, 0)
+    for k, text in enumerate(CONSTANTS):
+        e.var("cs_h", e.alloc(len(text) + 1))
+        _ok(e, e.ne(p["cs_h"], NONE))
+        e.st(p["cs_h"], len(text))
+        for j, char in enumerate(text):
+            e.st(e.add(p["cs_h"], 1 + j), ord(char))
+        e.st(G_K + k, p["cs_h"])
+    e.st(G_CUR, 0)
+    # Constant prototypes: ``()V``, ``(String)V``, ``()String``, ``(String)String``.
+    e.var("empty", e.alloc(1))
+    e.var("one", e.alloc(2))
+    _ok(e, e.both(e.ne(p["empty"], NONE), e.ne(p["one"], NONE)))
+    e.st(p["empty"], 0)
+    e.st(p["one"], 1)
+    e.st(e.add(p["one"], 1), K(e, "Ljava/lang/String;"))
+    e.var("ctor", _call(e, "dx_intern", K(e, "V"), p["empty"]))
+
+    e.var("cls", string())
+    e.var("super", string())
+    e.var("access", word())
+    e.var("nif", word())
+    _ok(e, e.le(p["nif"], 256))
+    e.var("ifs", e.alloc(e.add(p["nif"], 1)))
+    _ok(e, e.ne(p["ifs"], NONE))
+    e.st(p["ifs"], p["nif"])
+    e.for_("q", 0, p["nif"], lambda: (e.st(e.add(e.add(p["ifs"], 1), p["q"]), string()), push(e, STRINGS, e.ld(e.add(e.add(p["ifs"], 1), p["q"]))),
+                                      push(e, TYPES, e.ld(e.add(e.add(p["ifs"], 1), p["q"])))))
+    for h in (p["cls"], p["super"]):
+        push(e, STRINGS, h)
+        push(e, TYPES, h)
+    push(e, STRINGS, K(e, "<init>"))
+    e.var("has_lib", word())
+    e.var("lib", 0)
+    e.if_(e.ne(p["has_lib"], 0), lambda: e.set("lib", string()))
+    e.var("has_override", word())
+    e.var("override", 0)
+    e.if_(e.ne(p["has_override"], 0), lambda: e.set("override", string()))
+    e.var("clinit", e.flag(e.both(e.ne(p["has_lib"], 0), e.eq(p["has_override"], 0))))
+    _call(e, "dx_method", p["super"], K(e, "<init>"), p["ctor"])
+    _call(e, "dx_method", p["cls"], K(e, "<init>"), p["ctor"])
+
+    def items(name, words, read):
+        """``n`` records of ``words`` words read by ``read(record)``."""
+        e.var(f"n_{name}", word())
+        _ok(e, e.le(p[f"n_{name}"], CAP))
+        e.var(name, e.alloc(e.add(e.mul(p[f"n_{name}"], words), 1)))
+        _ok(e, e.ne(p[name], NONE))
+        e.for_("q", 0, p[f"n_{name}"], lambda: read(e.add(p[name], e.mul(p["q"], words))))
+
+    def own(r, name_word, proto_word):
+        push(e, STRINGS, at(e, r, name_word))
+        _call(e, "dx_method", p["cls"], at(e, r, name_word), at(e, r, proto_word))
+
+    def native(r):
+        e.var("r", r)
+        e.st(p["r"], string())
+        e.st(e.add(p["r"], 1), proto())
+        e.st(e.add(p["r"], 2), word())
+        own(p["r"], 0, 1)
+
+    items("natives", 3, native)
+
+    def forwarding(r):
+        e.var("r", r)
+        e.st(p["r"], string())
+        e.st(e.add(p["r"], 1), proto())
+        e.st(e.add(p["r"], 2), string())
+        e.st(e.add(p["r"], 3), word())
+        e.st(e.add(p["r"], 4), word())
+        own(p["r"], 0, 1)
+        e.if_(e.ne(at(e, p["r"], 4), 0), lambda: _call(e, "dx_method", p["super"], at(e, p["r"], 0), at(e, p["r"], 1)))
+
+    items("forwards", 5, forwarding)
+
+    def null(r):
+        e.var("r", r)
+        e.st(p["r"], string())
+        e.st(e.add(p["r"], 1), proto())
+        e.st(e.add(p["r"], 2), word())
+        own(p["r"], 0, 1)
+
+    items("nulls", 3, null)
+    # The constant and echo prototypes and ``System.loadLibrary``'s join the set only when used, as in the bootstrap.
+    e.var("string_proto", 0)
+    e.var("echo_proto", 0)
+    e.var("load_proto", 0)
+    e.var("peek", e.rd(e.ld(G_CUR)))
+    e.if_(e.ne(p["peek"], 0), lambda: e.set("string_proto", _call(e, "dx_intern", K(e, "Ljava/lang/String;"), p["empty"])))
+
+    def constant(r):
+        e.var("r", r)
+        e.st(p["r"], string())
+        e.st(e.add(p["r"], 1), string())
+        e.st(e.add(p["r"], 2), word())
+        push(e, STRINGS, at(e, p["r"], 1))
+        push(e, STRINGS, at(e, p["r"], 0))
+        _call(e, "dx_method", p["cls"], at(e, p["r"], 0), p["string_proto"])
+
+    items("constants", 3, constant)
+    e.set("peek", e.rd(e.ld(G_CUR)))
+    e.if_(e.ne(p["peek"], 0), lambda: e.set("echo_proto", _call(e, "dx_intern", K(e, "Ljava/lang/String;"), p["one"])))
+
+    def echo(r):
+        e.var("r", r)
+        e.st(p["r"], string())
+        e.st(e.add(p["r"], 1), word())
+        push(e, STRINGS, at(e, p["r"], 0))
+        _call(e, "dx_method", p["cls"], at(e, p["r"], 0), p["echo_proto"])
+
+    items("echoes", 2, echo)
+
+    def assembled(r):
+        e.var("r", r)
+        e.st(p["r"], string())
+        e.st(e.add(p["r"], 1), proto())
+        e.st(e.add(p["r"], 2), word())
+        e.st(e.add(p["r"], 3), word())
+        e.var("ni", word())
+        _ok(e, e.both(e.lt(0, p["ni"]), e.le(p["ni"], 1 << 16)))
+        e.st(e.add(p["r"], 4), p["ni"])
+        e.var("ins", e.alloc(e.mul(p["ni"], INSTR)))
+        _ok(e, e.ne(p["ins"], NONE))
+        e.st(e.add(p["r"], 5), p["ins"])
+        own(p["r"], 0, 1)
+
+        def instruction():
+            e.var("ir", e.add(p["ins"], e.mul(p["j"], INSTR)))
+            e.st(p["ir"], word())
+            e.var("nr", word())
+            _ok(e, e.le(p["nr"], 5))
+            e.st(e.add(p["ir"], 1), p["nr"])
+            for k in range(5):
+                e.st(e.add(p["ir"], 2 + k), 0)
+            e.for_("k", 0, p["nr"], lambda: e.st(e.add(e.add(p["ir"], 2), p["k"]), word()))
+            e.var("rk", word())
+            e.st(e.add(p["ir"], 7), p["rk"])
+
+            def text():
+                e.st(e.add(p["ir"], 8), string())
+                push(e, STRINGS, at(e, p["ir"], 8))
+                e.if_(e.eq(p["rk"], 2), lambda: push(e, TYPES, at(e, p["ir"], 8)))
+
+            def method():
+                e.st(e.add(p["ir"], 8), string())
+                e.st(e.add(p["ir"], 9), string())
+                e.st(e.add(p["ir"], 10), proto())
+                for k in (8, 9):
+                    push(e, STRINGS, at(e, p["ir"], k))
+                push(e, TYPES, at(e, p["ir"], 8))
+                _call(e, "dx_method", at(e, p["ir"], 8), at(e, p["ir"], 9), at(e, p["ir"], 10))
+
+            e.if_(e.either(e.eq(p["rk"], 1), e.eq(p["rk"], 2)), text)
+            e.if_(e.eq(p["rk"], 3), method)
+            e.st(e.add(p["ir"], 11), word())
+
+        e.for_("j", 0, p["ni"], instruction)
+
+    items("asms", 6, assembled)
+
+    def single(name, h):
+        e.var(name, e.alloc(2))
+        _ok(e, e.ne(p[name], NONE))
+        e.st(p[name], 1)
+        e.st(e.add(p[name], 1), h)
+        return p[name]
+
+    # S15e.6d.2: the Activity UI (its button's text inline (0), a resource ID (1) or a managed method (2)) and the
+    # click-text listener (inline (0) or a resource ID (1)).
+    for name in ("ui", "ui_kind", "ui_text", "ui_arg", "ui_settext", "ui_button", "ui_listen", "ui_content", "listener",
+                 "click", "click_kind", "click_text", "click_settext"):
+        e.var(name, 0)
+    e.set("ui", word())
+
+    def ui():
+        e.set("listener", string())
+        e.set("ui_kind", word())
+        e.if_(e.eq(p["ui_kind"], 1), lambda: e.set("ui_text", word()), lambda: e.set("ui_text", string()))
+        e.if_(e.eq(p["ui_kind"], 2), lambda: e.if_(e.ne(word(), 0), lambda: e.set("ui_arg", string())))
+        e.set("ui_button", _call(e, "dx_intern", K(e, "V"), single("l_context", K(e, "Landroid/content/Context;"))))
+        e.set("ui_settext", _call(e, "dx_intern", K(e, "V"), single("l_text", e.sel(e.eq(p["ui_kind"], 1), K(e, "I"), K(e, "Ljava/lang/CharSequence;")))))
+        e.set("ui_listen", _call(e, "dx_intern", K(e, "V"), single("l_listen", K(e, "Landroid/view/View$OnClickListener;"))))
+        e.set("ui_content", _call(e, "dx_intern", K(e, "V"), single("l_view", K(e, "Landroid/view/View;"))))
+        for text in UI_STRINGS:
+            push(e, STRINGS, K(e, text))
+            if text.startswith("L"):
+                push(e, TYPES, K(e, text))
+        push(e, STRINGS, p["listener"])
+        push(e, TYPES, p["listener"])
+        e.if_(e.eq(p["ui_kind"], 0), lambda: (push(e, STRINGS, p["ui_text"]), push(e, STRINGS, K(e, "Ljava/lang/CharSequence;")),
+                                              push(e, TYPES, K(e, "Ljava/lang/CharSequence;"))))
+        e.if_(e.ne(p["ui_arg"], 0), lambda: push(e, STRINGS, p["ui_arg"]))
+        for cls, name, proto in (("Landroid/widget/Button;", "<init>", "ui_button"), ("Landroid/widget/TextView;", "setText", "ui_settext"),
+                                 (None, "<init>", "ctor"), ("Landroid/view/View;", "setOnClickListener", "ui_listen"),
+                                 ("Landroid/app/Activity;", "setContentView", "ui_content")):
+            _call(e, "dx_method", p["listener"] if cls is None else K(e, cls), K(e, name), p[proto])
+
+    e.if_(e.ne(p["ui"], 0), ui)
+    e.set("click", word())
+
+    def click():
+        e.set("click_kind", word())
+        e.if_(e.eq(p["click_kind"], 1), lambda: e.set("click_text", word()), lambda: e.set("click_text", string()))
+        e.set("click_settext", _call(e, "dx_intern", K(e, "V"), single("c_text", e.sel(e.eq(p["click_kind"], 1), K(e, "I"), K(e, "Ljava/lang/CharSequence;")))))
+        for text in ("Landroid/widget/TextView;", "setText"):
+            push(e, STRINGS, K(e, text))
+        push(e, TYPES, K(e, "Landroid/widget/TextView;"))
+        e.if_(e.eq(p["click_kind"], 0), lambda: (push(e, STRINGS, p["click_text"]), push(e, STRINGS, K(e, "Ljava/lang/CharSequence;")),
+                                                 push(e, TYPES, K(e, "Ljava/lang/CharSequence;"))))
+        _call(e, "dx_method", K(e, "Landroid/widget/TextView;"), K(e, "setText"), p["click_settext"])
+
+    e.if_(e.ne(p["click"], 0), click)
+    _libxposed_pools(e, word, string)
+
+    def library():
+        e.set("load_proto", _call(e, "dx_intern", K(e, "V"), p["one"]))
+        for text in ("Ljava/lang/System;", "loadLibrary"):
+            push(e, STRINGS, K(e, text))
+        push(e, STRINGS, p["lib"])
+        push(e, TYPES, K(e, "Ljava/lang/System;"))
+        _call(e, "dx_method", K(e, "Ljava/lang/System;"), K(e, "loadLibrary"), p["load_proto"])
+
+    e.if_(e.ne(p["has_lib"], 0), library)
+
+    def clinit():
+        push(e, STRINGS, K(e, "<clinit>"))
+        _call(e, "dx_method", p["cls"], K(e, "<clinit>"), p["ctor"])
+
+    e.if_(e.ne(p["clinit"], 0), clinit)
+    # The sets, their orders and the prototypes' types and strings (taken only from the prototypes kept).
+    e.st(G_NS, _call(e, "dx_sort", e.ld(G_S), e.ld(G_NS)))
+    e.st(G_NT, _call(e, "dx_sort", e.ld(G_T), e.ld(G_NT)))
+    _call(e, "dx_sortrec", e.ld(G_P), e.ld(G_NP), 0)
+    e.for_("q", 0, e.ld(G_NP), lambda: e.st(e.add(e.ld(e.add(e.ld(G_P), p["q"])), P_RANK), p["q"]))
+    e.st(G_NM, _call(e, "dx_sortrec", e.ld(G_M), e.ld(G_NM), 1))
+    _call(e, "dx_sortrec", e.ld(G_F), e.ld(G_NF), 3)
+    # The type lists: the prototypes' parameters and the interfaces.
+    e.for_("q", 0, e.ld(G_NP), lambda: (e.var("pr", e.ld(e.add(e.ld(G_P), p["q"]))),
+                                         e.if_(e.ne(at(e, p["pr"], P_N), 0), lambda: push(e, LISTS, e.add(p["pr"], P_N)))))
+    e.if_(e.ne(p["nif"], 0), lambda: push(e, LISTS, p["ifs"]))
+    e.st(G_NL, _call(e, "dx_sortrec", e.ld(G_L), e.ld(G_NL), 2))
+    e.st(G_LO, e.alloc(e.add(e.ld(G_NL), 1)))
+    _ok(e, e.ne(e.ld(G_LO), NONE))
+
+    # The layout.
+    e.var("ns", e.ld(G_NS))
+    e.var("nt", e.ld(G_NT))
+    e.var("npr", e.ld(G_NP))
+    e.var("nm", e.ld(G_NM))
+    e.var("type_ids", e.add(0x70, e.mul(p["ns"], 4)))
+    e.var("proto_ids", e.add(p["type_ids"], e.mul(p["nt"], 4)))
+    e.var("nf", e.ld(G_NF))
+    e.var("field_ids", e.sel(e.eq(p["nf"], 0), 0, e.add(p["proto_ids"], e.mul(p["npr"], 12))))
+    e.var("method_ids", e.add(e.add(p["proto_ids"], e.mul(p["npr"], 12)), e.mul(p["nf"], 8)))
+    e.var("class_defs", e.add(p["method_ids"], e.mul(p["nm"], 8)))
+    e.var("data_off", e.add(p["class_defs"], 32))
+    e.st(G_CAP, e.add(e.mul(e.ld(G_CUR), 64), 1 << 16))
+    e.st(G_OUT, e.alloc(e.ld(G_CAP)))
+    _ok(e, e.ne(e.ld(G_OUT), NONE))
+    e.st(G_ON, 0)
+    e.for_("q", 0, p["data_off"], lambda: b(e, 0))
+
+    def type_list():
+        align(e)
+        e.var("tl", e.ld(e.add(e.ld(G_L), p["q"])))
+        e.st(e.add(e.ld(G_LO), p["q"]), e.ld(G_ON))
+        u32(e, e.ld(p["tl"]))
+        e.for_("j", 0, e.ld(p["tl"]), lambda: u16(e, tidx(e, e.ld(e.add(e.add(p["tl"], 1), p["j"])))))
+
+    e.for_("q", 0, e.ld(G_NL), type_list)
+
+
+
+def _spilled(tables) -> tuple[str, ...]:
+    """The first half's variables (ADR-352): a probe build of ``_frontend_head`` names them, in declaration order."""
+    from xax_selfhost_facts import B64
+
+    names: list[str] = []
+
+    def probe(e: E):
+        _frontend_head(e)
+        names.extend(name for name in e.p.order if e.p.types[name] is B64)
+        e.give(1)
+
+    _function((), probe, tables)
+    return tuple(names)
+
+
+def _frontend(tables, spilled):
+    """The frontend: its first half, then (a separate graph, within the graph decoder's capacity) the code items and
+    the image (``dx_code``) on the first half's variables, passed through ``SPILL_AT``."""
+    def build(e: E):
+        _frontend_head(e)
+        for k, name in enumerate(spilled):
+            e.st(SPILL_AT + k, e.p[name])
+        e.give(_call(e, "dx_tail"))
+    return _function((), build, tables)
+
+
+def _frontend_tail_fn(tables, spilled):
     def build(e: E):
         p = e.p
-        word = lambda: _call(e, "dx_word")  # noqa: E731
-        string = lambda: _call(e, "dx_string")  # noqa: E731
-        proto = lambda: _call(e, "dx_proto")  # noqa: E731
-        e.st(0, 0)
-        e.set_hd(H_ARENA, GENERAL_ARENA_AT)
-        e.set_hd(H_ARENA_END, GENERAL_ARENA_END)
-        for base, _count in (STRINGS, TYPES, PROTOS, METHODS, LISTS, CODES, FIELDS):
-            e.st(base, e.alloc(CAP))
-            _ok(e, e.ne(e.ld(base), NONE))
-            e.st(_count, 0)
-        for k, text in enumerate(CONSTANTS):
-            e.var("cs_h", e.alloc(len(text) + 1))
-            _ok(e, e.ne(p["cs_h"], NONE))
-            e.st(p["cs_h"], len(text))
-            for j, char in enumerate(text):
-                e.st(e.add(p["cs_h"], 1 + j), ord(char))
-            e.st(G_K + k, p["cs_h"])
-        e.st(G_CUR, 0)
-        # Constant prototypes: ``()V``, ``(String)V``, ``()String``, ``(String)String``.
-        e.var("empty", e.alloc(1))
-        e.var("one", e.alloc(2))
-        _ok(e, e.both(e.ne(p["empty"], NONE), e.ne(p["one"], NONE)))
-        e.st(p["empty"], 0)
-        e.st(p["one"], 1)
-        e.st(e.add(p["one"], 1), K(e, "Ljava/lang/String;"))
-        e.var("ctor", _call(e, "dx_intern", K(e, "V"), p["empty"]))
-
-        e.var("cls", string())
-        e.var("super", string())
-        e.var("access", word())
-        e.var("nif", word())
-        _ok(e, e.le(p["nif"], 256))
-        e.var("ifs", e.alloc(e.add(p["nif"], 1)))
-        _ok(e, e.ne(p["ifs"], NONE))
-        e.st(p["ifs"], p["nif"])
-        e.for_("q", 0, p["nif"], lambda: (e.st(e.add(e.add(p["ifs"], 1), p["q"]), string()), push(e, STRINGS, e.ld(e.add(e.add(p["ifs"], 1), p["q"]))),
-                                          push(e, TYPES, e.ld(e.add(e.add(p["ifs"], 1), p["q"])))))
-        for h in (p["cls"], p["super"]):
-            push(e, STRINGS, h)
-            push(e, TYPES, h)
-        push(e, STRINGS, K(e, "<init>"))
-        e.var("has_lib", word())
-        e.var("lib", 0)
-        e.if_(e.ne(p["has_lib"], 0), lambda: e.set("lib", string()))
-        e.var("has_override", word())
-        e.var("override", 0)
-        e.if_(e.ne(p["has_override"], 0), lambda: e.set("override", string()))
-        e.var("clinit", e.flag(e.both(e.ne(p["has_lib"], 0), e.eq(p["has_override"], 0))))
-        _call(e, "dx_method", p["super"], K(e, "<init>"), p["ctor"])
-        _call(e, "dx_method", p["cls"], K(e, "<init>"), p["ctor"])
-
-        def items(name, words, read):
-            """``n`` records of ``words`` words read by ``read(record)``."""
-            e.var(f"n_{name}", word())
-            _ok(e, e.le(p[f"n_{name}"], CAP))
-            e.var(name, e.alloc(e.add(e.mul(p[f"n_{name}"], words), 1)))
-            _ok(e, e.ne(p[name], NONE))
-            e.for_("q", 0, p[f"n_{name}"], lambda: read(e.add(p[name], e.mul(p["q"], words))))
-
-        def own(r, name_word, proto_word):
-            push(e, STRINGS, at(e, r, name_word))
-            _call(e, "dx_method", p["cls"], at(e, r, name_word), at(e, r, proto_word))
-
-        def native(r):
-            e.var("r", r)
-            e.st(p["r"], string())
-            e.st(e.add(p["r"], 1), proto())
-            e.st(e.add(p["r"], 2), word())
-            own(p["r"], 0, 1)
-
-        items("natives", 3, native)
-
-        def forwarding(r):
-            e.var("r", r)
-            e.st(p["r"], string())
-            e.st(e.add(p["r"], 1), proto())
-            e.st(e.add(p["r"], 2), string())
-            e.st(e.add(p["r"], 3), word())
-            e.st(e.add(p["r"], 4), word())
-            own(p["r"], 0, 1)
-            e.if_(e.ne(at(e, p["r"], 4), 0), lambda: _call(e, "dx_method", p["super"], at(e, p["r"], 0), at(e, p["r"], 1)))
-
-        items("forwards", 5, forwarding)
-
-        def null(r):
-            e.var("r", r)
-            e.st(p["r"], string())
-            e.st(e.add(p["r"], 1), proto())
-            e.st(e.add(p["r"], 2), word())
-            own(p["r"], 0, 1)
-
-        items("nulls", 3, null)
-        # The constant and echo prototypes and ``System.loadLibrary``'s join the set only when used, as in the bootstrap.
-        e.var("string_proto", 0)
-        e.var("echo_proto", 0)
-        e.var("load_proto", 0)
-        e.var("peek", e.rd(e.ld(G_CUR)))
-        e.if_(e.ne(p["peek"], 0), lambda: e.set("string_proto", _call(e, "dx_intern", K(e, "Ljava/lang/String;"), p["empty"])))
-
-        def constant(r):
-            e.var("r", r)
-            e.st(p["r"], string())
-            e.st(e.add(p["r"], 1), string())
-            e.st(e.add(p["r"], 2), word())
-            push(e, STRINGS, at(e, p["r"], 1))
-            push(e, STRINGS, at(e, p["r"], 0))
-            _call(e, "dx_method", p["cls"], at(e, p["r"], 0), p["string_proto"])
-
-        items("constants", 3, constant)
-        e.set("peek", e.rd(e.ld(G_CUR)))
-        e.if_(e.ne(p["peek"], 0), lambda: e.set("echo_proto", _call(e, "dx_intern", K(e, "Ljava/lang/String;"), p["one"])))
-
-        def echo(r):
-            e.var("r", r)
-            e.st(p["r"], string())
-            e.st(e.add(p["r"], 1), word())
-            push(e, STRINGS, at(e, p["r"], 0))
-            _call(e, "dx_method", p["cls"], at(e, p["r"], 0), p["echo_proto"])
-
-        items("echoes", 2, echo)
-
-        def assembled(r):
-            e.var("r", r)
-            e.st(p["r"], string())
-            e.st(e.add(p["r"], 1), proto())
-            e.st(e.add(p["r"], 2), word())
-            e.st(e.add(p["r"], 3), word())
-            e.var("ni", word())
-            _ok(e, e.both(e.lt(0, p["ni"]), e.le(p["ni"], 1 << 16)))
-            e.st(e.add(p["r"], 4), p["ni"])
-            e.var("ins", e.alloc(e.mul(p["ni"], INSTR)))
-            _ok(e, e.ne(p["ins"], NONE))
-            e.st(e.add(p["r"], 5), p["ins"])
-            own(p["r"], 0, 1)
-
-            def instruction():
-                e.var("ir", e.add(p["ins"], e.mul(p["j"], INSTR)))
-                e.st(p["ir"], word())
-                e.var("nr", word())
-                _ok(e, e.le(p["nr"], 5))
-                e.st(e.add(p["ir"], 1), p["nr"])
-                for k in range(5):
-                    e.st(e.add(p["ir"], 2 + k), 0)
-                e.for_("k", 0, p["nr"], lambda: e.st(e.add(e.add(p["ir"], 2), p["k"]), word()))
-                e.var("rk", word())
-                e.st(e.add(p["ir"], 7), p["rk"])
-
-                def text():
-                    e.st(e.add(p["ir"], 8), string())
-                    push(e, STRINGS, at(e, p["ir"], 8))
-                    e.if_(e.eq(p["rk"], 2), lambda: push(e, TYPES, at(e, p["ir"], 8)))
-
-                def method():
-                    e.st(e.add(p["ir"], 8), string())
-                    e.st(e.add(p["ir"], 9), string())
-                    e.st(e.add(p["ir"], 10), proto())
-                    for k in (8, 9):
-                        push(e, STRINGS, at(e, p["ir"], k))
-                    push(e, TYPES, at(e, p["ir"], 8))
-                    _call(e, "dx_method", at(e, p["ir"], 8), at(e, p["ir"], 9), at(e, p["ir"], 10))
-
-                e.if_(e.either(e.eq(p["rk"], 1), e.eq(p["rk"], 2)), text)
-                e.if_(e.eq(p["rk"], 3), method)
-                e.st(e.add(p["ir"], 11), word())
-
-            e.for_("j", 0, p["ni"], instruction)
-
-        items("asms", 6, assembled)
-
-        def single(name, h):
-            e.var(name, e.alloc(2))
-            _ok(e, e.ne(p[name], NONE))
-            e.st(p[name], 1)
-            e.st(e.add(p[name], 1), h)
-            return p[name]
-
-        # S15e.6d.2: the Activity UI (its button's text inline (0), a resource ID (1) or a managed method (2)) and the
-        # click-text listener (inline (0) or a resource ID (1)).
-        for name in ("ui", "ui_kind", "ui_text", "ui_arg", "ui_settext", "ui_button", "ui_listen", "ui_content", "listener",
-                     "click", "click_kind", "click_text", "click_settext"):
-            e.var(name, 0)
-        e.set("ui", word())
-
-        def ui():
-            e.set("listener", string())
-            e.set("ui_kind", word())
-            e.if_(e.eq(p["ui_kind"], 1), lambda: e.set("ui_text", word()), lambda: e.set("ui_text", string()))
-            e.if_(e.eq(p["ui_kind"], 2), lambda: e.if_(e.ne(word(), 0), lambda: e.set("ui_arg", string())))
-            e.set("ui_button", _call(e, "dx_intern", K(e, "V"), single("l_context", K(e, "Landroid/content/Context;"))))
-            e.set("ui_settext", _call(e, "dx_intern", K(e, "V"), single("l_text", e.sel(e.eq(p["ui_kind"], 1), K(e, "I"), K(e, "Ljava/lang/CharSequence;")))))
-            e.set("ui_listen", _call(e, "dx_intern", K(e, "V"), single("l_listen", K(e, "Landroid/view/View$OnClickListener;"))))
-            e.set("ui_content", _call(e, "dx_intern", K(e, "V"), single("l_view", K(e, "Landroid/view/View;"))))
-            for text in UI_STRINGS:
-                push(e, STRINGS, K(e, text))
-                if text.startswith("L"):
-                    push(e, TYPES, K(e, text))
-            push(e, STRINGS, p["listener"])
-            push(e, TYPES, p["listener"])
-            e.if_(e.eq(p["ui_kind"], 0), lambda: (push(e, STRINGS, p["ui_text"]), push(e, STRINGS, K(e, "Ljava/lang/CharSequence;")),
-                                                  push(e, TYPES, K(e, "Ljava/lang/CharSequence;"))))
-            e.if_(e.ne(p["ui_arg"], 0), lambda: push(e, STRINGS, p["ui_arg"]))
-            for cls, name, proto in (("Landroid/widget/Button;", "<init>", "ui_button"), ("Landroid/widget/TextView;", "setText", "ui_settext"),
-                                     (None, "<init>", "ctor"), ("Landroid/view/View;", "setOnClickListener", "ui_listen"),
-                                     ("Landroid/app/Activity;", "setContentView", "ui_content")):
-                _call(e, "dx_method", p["listener"] if cls is None else K(e, cls), K(e, name), p[proto])
-
-        e.if_(e.ne(p["ui"], 0), ui)
-        e.set("click", word())
-
-        def click():
-            e.set("click_kind", word())
-            e.if_(e.eq(p["click_kind"], 1), lambda: e.set("click_text", word()), lambda: e.set("click_text", string()))
-            e.set("click_settext", _call(e, "dx_intern", K(e, "V"), single("c_text", e.sel(e.eq(p["click_kind"], 1), K(e, "I"), K(e, "Ljava/lang/CharSequence;")))))
-            for text in ("Landroid/widget/TextView;", "setText"):
-                push(e, STRINGS, K(e, text))
-            push(e, TYPES, K(e, "Landroid/widget/TextView;"))
-            e.if_(e.eq(p["click_kind"], 0), lambda: (push(e, STRINGS, p["click_text"]), push(e, STRINGS, K(e, "Ljava/lang/CharSequence;")),
-                                                     push(e, TYPES, K(e, "Ljava/lang/CharSequence;"))))
-            _call(e, "dx_method", K(e, "Landroid/widget/TextView;"), K(e, "setText"), p["click_settext"])
-
-        e.if_(e.ne(p["click"], 0), click)
-        _libxposed_pools(e, word, string)
-
-        def library():
-            e.set("load_proto", _call(e, "dx_intern", K(e, "V"), p["one"]))
-            for text in ("Ljava/lang/System;", "loadLibrary"):
-                push(e, STRINGS, K(e, text))
-            push(e, STRINGS, p["lib"])
-            push(e, TYPES, K(e, "Ljava/lang/System;"))
-            _call(e, "dx_method", K(e, "Ljava/lang/System;"), K(e, "loadLibrary"), p["load_proto"])
-
-        e.if_(e.ne(p["has_lib"], 0), library)
-
-        def clinit():
-            push(e, STRINGS, K(e, "<clinit>"))
-            _call(e, "dx_method", p["cls"], K(e, "<clinit>"), p["ctor"])
-
-        e.if_(e.ne(p["clinit"], 0), clinit)
-        # The sets, their orders and the prototypes' types and strings (taken only from the prototypes kept).
-        e.st(G_NS, _call(e, "dx_sort", e.ld(G_S), e.ld(G_NS)))
-        e.st(G_NT, _call(e, "dx_sort", e.ld(G_T), e.ld(G_NT)))
-        _call(e, "dx_sortrec", e.ld(G_P), e.ld(G_NP), 0)
-        e.for_("q", 0, e.ld(G_NP), lambda: e.st(e.add(e.ld(e.add(e.ld(G_P), p["q"])), P_RANK), p["q"]))
-        e.st(G_NM, _call(e, "dx_sortrec", e.ld(G_M), e.ld(G_NM), 1))
-        _call(e, "dx_sortrec", e.ld(G_F), e.ld(G_NF), 3)
-        # The type lists: the prototypes' parameters and the interfaces.
-        e.for_("q", 0, e.ld(G_NP), lambda: (e.var("pr", e.ld(e.add(e.ld(G_P), p["q"]))),
-                                             e.if_(e.ne(at(e, p["pr"], P_N), 0), lambda: push(e, LISTS, e.add(p["pr"], P_N)))))
-        e.if_(e.ne(p["nif"], 0), lambda: push(e, LISTS, p["ifs"]))
-        e.st(G_NL, _call(e, "dx_sortrec", e.ld(G_L), e.ld(G_NL), 2))
-        e.st(G_LO, e.alloc(e.add(e.ld(G_NL), 1)))
-        _ok(e, e.ne(e.ld(G_LO), NONE))
-
-        # The layout.
-        e.var("ns", e.ld(G_NS))
-        e.var("nt", e.ld(G_NT))
-        e.var("npr", e.ld(G_NP))
-        e.var("nm", e.ld(G_NM))
-        e.var("type_ids", e.add(0x70, e.mul(p["ns"], 4)))
-        e.var("proto_ids", e.add(p["type_ids"], e.mul(p["nt"], 4)))
-        e.var("nf", e.ld(G_NF))
-        e.var("field_ids", e.sel(e.eq(p["nf"], 0), 0, e.add(p["proto_ids"], e.mul(p["npr"], 12))))
-        e.var("method_ids", e.add(e.add(p["proto_ids"], e.mul(p["npr"], 12)), e.mul(p["nf"], 8)))
-        e.var("class_defs", e.add(p["method_ids"], e.mul(p["nm"], 8)))
-        e.var("data_off", e.add(p["class_defs"], 32))
-        e.st(G_CAP, e.add(e.mul(e.ld(G_CUR), 64), 1 << 16))
-        e.st(G_OUT, e.alloc(e.ld(G_CAP)))
-        _ok(e, e.ne(e.ld(G_OUT), NONE))
-        e.st(G_ON, 0)
-        e.for_("q", 0, p["data_off"], lambda: b(e, 0))
-
-        def type_list():
-            align(e)
-            e.var("tl", e.ld(e.add(e.ld(G_L), p["q"])))
-            e.st(e.add(e.ld(G_LO), p["q"]), e.ld(G_ON))
-            u32(e, e.ld(p["tl"]))
-            e.for_("j", 0, e.ld(p["tl"]), lambda: u16(e, tidx(e, e.ld(e.add(e.add(p["tl"], 1), p["j"])))))
-
-        e.for_("q", 0, e.ld(G_NL), type_list)
-
+        for k, name in enumerate(spilled):
+            e.var(name, e.ld(SPILL_AT + k))
         # The code items.
         u = Units(e, "u", 128)
         u.add(0x1070, midx(e, p["super"], K(e, "<init>"), p["ctor"]), 0, 0x000E)
@@ -1724,7 +1758,9 @@ def build_dex_program():
 
     for name, builder in HELPERS:
         add(name, builder(tables))
-    program = add("frontend", _frontend(tables))
+    spilled = _spilled(tables)
+    add("dx_tail", _frontend_tail_fn(tables, spilled))
+    program = add("frontend", _frontend(tables, spilled))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
 
 

@@ -3319,3 +3319,12 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Rationale | ADR-336 left "the driver's Android path" as one step. Its first program showed a natural boundary: the remaining host work is carrier decoding and bridge lowering, not artifact encoding, and the driver integration needs both before it can build an APK. |
 | Evidence | DRAFT. The host functions above are the ones still called by `_build_android_unsigned_apk` and `_build_android_managed_apk` after ADR-350. |
 | Limits | No step is executed by this record. Until S15e.6h.4, Android packages are built by `build` with each layer decided by its XAX program, not by the production compiler. The whole compiler's B levels stay unset (S15g). |
+
+## ADR-352 — The DEX bridge frontend split within the graph decoder's capacity
+
+| Field | Record |
+|---|---|
+| Decision | The DEX bridge program's `frontend` graph had grown to 3,035,067 body bytes with the S15e.6d.3 libxposed adapters, past the native graph decoder's capacity (2,097,120 bytes). It is now two functions. `frontend` keeps the inputs, the pools, their orders, the type lists and the layout. `dx_tail` takes the code items, the class data, the string data, the map list, the header and the image record. The first half stores its 120 B64 variables at `SPILL_AT` (`STATE_AT + 4096`), in the order a probe build of the first half declares them. `dx_tail` reloads them under the same names, so the second half's code is unchanged. The halves are 1,565,895 and 1,485,018 bytes. |
+| Rationale | S15g's full-selfhost run found that the production compiler declined `verify xax_dex_bridge.xax`, a store the bootstrap verifies. That disagreement cost the Linux x86-64 compiler's B3. The B3 benchmark rows also crashed on the store (fixed in the benchmarks to record "beyond capacity", ADR-276). Splitting the graph removes the limit instead of recording it. It follows ADR-339's split of `jl_node`. |
+| Evidence | EXECUTED on Linux x86-64. Every store's largest graph is now within the decoder's capacity. The DEX bridge, Android counter, libxposed JVM, DEX and APK tests and `test_store_regeneration.py`, with `XAX_GENERAL_FRONTEND_DIFF=1`: 63 passed, 2 skipped. The evidence is re-run on the final stores in S15g. |
+| Limits | None beyond the program's own (ADR-343 to ADR-345). |
