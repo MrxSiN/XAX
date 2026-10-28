@@ -18,6 +18,9 @@ only the new magic and identifier; old records reject without fallback.
 | `standalone_arm64.xax` | Direct native decision process host on Android |
 | `standalone_windows.xax` | Direct native decision Windows process host |
 
+[DYNAMIC_TAPE.md](DYNAMIC_TAPE.md) describes the lazily committed 2 GiB decision tape
+(2026-10-29) and its transactions.
+
 [COMPILE.md](COMPILE.md) specifies the unified public interface and exact generic
 bootstrap recipe. `bbc compile` builds Android ARM64 and Windows x86-64
 executables from Brainfuck source with the native XAX driver and no Python at

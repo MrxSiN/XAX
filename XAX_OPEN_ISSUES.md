@@ -780,3 +780,43 @@ diagnostic ordering, accepting the corrected self-store and replaying the large
 transaction byte for byte. Re-run the corpus without treating declines as
 validity claims or removing the diagnostic mismatch. No B-level or replacement
 matrix promotion follows from the current prototype.
+
+
+## OI-52 — 64-bit checked offsets and growable views (roadmap)
+
+**Status: OPEN (2026-10-29).** BBC's decision tape is now a lazily committed
+view of 2,147,246,080 bytes instead of 65,536
+([dynamic tape](compiler/integration/bfx/DYNAMIC_TAPE.md)). That size is set by
+three present XAX limits, measured with the native driver on 2026-10-29:
+
+1. **Static extents.** `heap_view<E>` carries its extent in the type, so a view
+   cannot grow at run time. Hosts reserve the largest extent and commit pages on
+   first touch (Android `mmap` does this natively; Windows needs a reservation
+   plus a commit-on-touch handler, as `bbc.xax` already uses for its driver views).
+2. **32-bit checked offsets.** Checked loads and stores take a `bits<32>` byte
+   offset (docs/04_MEMORY_RESOURCES.md, ADR-231), so no checked view exceeds 4 GiB.
+3. **x86-64 bound encoding.** The x86-64 backend encodes `extent - size` as a
+   signed 32-bit immediate. An extent of 2,147,483,648 builds; 4,294,963,200
+   rejects with `XAX.NATIVE.MEMORY` / `NATIVE-CHECKED-BOUND-ENCODABLE`. The same
+   4,294,963,200-byte view builds for Android ARM64.
+
+**Roadmap.**
+
+- **R1 (x86-64 encoding).** When `extent - size` is not a sign-extended imm32,
+  materialize the bound in a register (`mov r64, imm64`) and compare 64-bit. This
+  alone lifts x86-64 to the 4 GiB offset limit. Test: the 2^31 and 4 GiB−4 KiB
+  probes above, plus first-crossing traps at both edges.
+- **R2 (64-bit checked offsets).** Allow `bits<64>` offsets on byte views with
+  the unchanged rule `offset + size <= extent`, evaluated without overflow.
+  Requires an ADR, verifier and both native backends; `bits<32>` stays valid.
+- **R3 (growable views).** A view whose extent is a run-time value bounded by a
+  static reservation, with a verified grow operation, so hosts need neither a
+  fixed reservation nor a fault handler. Requires an ADR and a resource-state
+  rule for growth.
+- **R4 (BBC follow-through).** Once R1–R2 land, BBC widens the tape and the
+  movement bounds, and moves the decision's position and I/O lengths to 64 bits
+  through a versioned BFX/decision ABI change.
+
+**Evidence that closes it.** Native builds and device runs on Windows x86-64 and
+Android ARM64 of a program that moves past 4 GiB of tape and then fails exactly
+at the new edge, with the importer and hosts unchanged except for the extent.

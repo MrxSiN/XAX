@@ -1,0 +1,151 @@
+{
+ "report": "dynamic_tape",
+ "date": "2026-10-29",
+ "status": "EXECUTED",
+ "scope": "BBC decision views widened from 65,536 to 2,147,246,080 bytes, committed on touch; Windows 11 native and Pixel 8 Pro device execution.",
+ "xax_base_revision": "488684e063c70fa1c4571b9ab9d1f64cfc01981b",
+ "host": {
+  "os": "Windows-11-10.0.26300-SP0",
+  "cpu": "AMD Ryzen 9 5900HS (16 logical)",
+  "ram_gib": 39.4,
+  "python_bootstrap": "3.12.10",
+  "device": "Pixel 8 Pro (husky) via adb, toybox 0.8.13"
+ },
+ "extent": {
+  "bytes": 2147246080,
+  "selection": "largest 4 KiB-step extent <= 2^31 whose view type and E-1 constant keep canonical CID positions in the emitted store, function and fragment (534 candidates)",
+  "x86_64_probe": {
+   "2147483648": "builds",
+   "4294963200": "XAX.NATIVE.MEMORY / NATIVE-CHECKED-BOUND-ENCODABLE"
+  },
+  "arm64_probe": {
+   "2147483648": "builds",
+   "4294963200": "builds"
+  }
+ },
+ "stores": {
+  "import_bfx": {
+   "old_root": "cff13e317b08e36de33b72acff3b196936fe1e40d2c76d79ad4ea46a37456d6d",
+   "root": "d5daf9eb58753123dc6d73f1428a7a6f85f0d12f848cdd4a63bac787ec6d48b8",
+   "sha256": "268a483782be336d6257d58c835aaf09f6bf21d37839c27cfd5fe3c8df748199"
+  },
+  "compile_windows": {
+   "old_root": "db853d409115d4b87bf032613c8f5379b0d4220050b07530c61c0e903645c789",
+   "root": "5f6b3b2d3221676088ddc279a23a64ff653aa9f836d768e49b1e9c897f1bb18f",
+   "sha256": "9237494e7dccc8fb81051e86d698bb973bb469e08e0d37096943d306f1a0dfec"
+  },
+  "bbc": {
+   "old_root": "80fabd92f7812ccdcef82689e3b0fbf32da249b01898708574eea83b606f6537",
+   "root": "79b525e870d3013822a68e24e2eea1dc781e70df99b9fe92006e99b370f1ae5d",
+   "sha256": "52d1f9a9821336ba9f36db87ed51cae747b9213a0b317d954f6d507714d9127f"
+  },
+  "bbc-windows-x86_64": {
+   "old_root": "e2c3f5574a423cb17d54c5bb440508ca0c42faafbd848e6a5a9270ca62ad4560",
+   "root": "e172d640fe002b603502634d2066daca87877c70e16fc45c597136b1ef9ba41e",
+   "sha256": "5a2c8bfd48ee7f48880afd53b4f6b7e833c83754b6b7e13dd76ea93d7b2d6944"
+  },
+  "bbc-android-arm64": {
+   "old_root": "4b2c3e190b548d96b5c504e8fd95c09edb204685340290e9741918f1ccd95d7f",
+   "root": "af08f9f00798f4d33ed6abb970aef555765728fc192fa99139b9938d444b0f29",
+   "sha256": "c2eb1b967e36cbcb4d580dec6b78defd2bd7e515693ff3f6ac88d4393404ecb7"
+  },
+  "standalone_windows": {
+   "old_root": "e87a0de82a00a18c23eb060cefb6f470aa2747646a93cd8e67ae7516692f6120",
+   "root": "97b8811d8903e4133631b44f70555b5f2d1c8fd1e9266cbda082f2e683bba0eb",
+   "sha256": "77db2fa4f73196ae60a89200f4f5dfeac37ff3c50c0b75dc275172ec964a48e2"
+  },
+  "standalone_arm64": {
+   "old_root": "ffc802672a132e2bd40bc89c92d9d89b0ff9b7d21b1157cd0ba9caa2ab7c8dbd",
+   "root": "57a96af804c4ce348332ae7713c65c31df87c7b89872f25b0b4048fb7c148915",
+   "sha256": "7602e2721834363f142ae8d87d81d18d127e1b8cad35aece24e5d9e9c5da2631"
+  }
+ },
+ "records_sha256": {
+  "10_standalone_windows_lazy.edit": "ad78238714de28623c4f6fabe311070817532ec733ccc81f740eeecc393ce8c4",
+  "11_standalone_arm64_tape.edit": "2550972c4220649c336afbd5cf29ac9f1699db75c35239e071bee7b1c4bdf9f2",
+  "1_import_bfx_tape.edit": "f97f56552bbb1c88d45f3e26024f47c6194982c83573808cc90eb3d8ba064c5b",
+  "2_compile_windows_importer.edit": "ff70df7099c24ea07a2f9b591f40dafe49085f88254d204e14d20ccb43e8ff2d",
+  "3_compile_windows_bind.edit": "14808ae827ecbdfe82166a3d8cf017f57a435319baa4b37bf1324b9c7c3b318f",
+  "4_bbc_importer.edit": "40f2daa7c75d3e8fdca319c3f1494fd8871905c362fe8c5346637fe8e7051a9f",
+  "5_bbc_bind.edit": "f4f65587474409f8b11cb4f23e026d8a23ca970a1f4e22b0020604fbaa68187e",
+  "6_request_windows_tape.edit": "a80d8962cd932e01aae554a7b18785d47ca4a3f2f112a93e63623b683e21283e",
+  "7_request_windows_lazy.edit": "2122cff004aea709a39d6c40db8454f7d6e2fcb4ae6c57d3b845ac9b09d5fc8f",
+  "8_request_android_tape.edit": "c646e811a08d96d093335205e56e23cad3990ee42f23b8c771d3793e97b95154",
+  "9_standalone_windows_tape.edit": "426409a748c553ac343bfd658fa6074856276f84619420acc4d0f24fd7e14818"
+ },
+ "native_replay": {
+  "identical": [
+   "1_import_bfx_tape",
+   "2_compile_windows_importer",
+   "3_compile_windows_bind",
+   "6_request_windows_tape",
+   "7_request_windows_lazy",
+   "8_request_android_tape",
+   "9_standalone_windows_tape",
+   "10_standalone_windows_lazy",
+   "11_standalone_arm64_tape"
+  ],
+  "not_replayable_natively": {
+   "4_bbc_importer": "XAX.DRIVER.CAPACITY / DRIVER-FILE-CAPACITY (40,001,857-byte store)",
+   "5_bbc_bind": "XAX.DRIVER.CAPACITY / DRIVER-FILE-CAPACITY"
+  },
+  "reference": "xax_selfhost_edit.apply_reference, full verify_store and stale-root rejection for all eleven"
+ },
+ "bbc_exe": {
+  "sha256": "4589e2beb4cb6e637a51a29b9f18884600ce4613e52b6b08f89c548515aff556",
+  "bytes": 15264768,
+  "recipe": "driver recipe for driver.xax functions and large entry variants, BBC recipe otherwise; not byte-identical to the previous tested PE (rebuild of the unchanged bbc.xax: 595ca41b..., shipped: ac6ee103...)"
+ },
+ "correctness": {
+  "windows_x86_64": {
+   "corpus": "18 programs x O0/O1 through bind/edit/resolve/build and through the final bbc.exe compile: outputs byte-identical to the reference interpreter; mandelbrot O0 declines at resolve (exit 5) as in the baseline",
+   "walk130k": {
+    "cells_moved": 130050,
+    "O0": "exit 0, output 41",
+    "O1": "exit 0, output 41",
+    "baseline": "exit 1 (bounds at 65,536)"
+   },
+   "bounds_left": {
+    "O0": 1,
+    "O1": 1
+   },
+   "bounds_right": {
+    "O0": "exit 1 after 4.28 s",
+    "O1": "exit 1 after 4.03 s"
+   },
+   "peak_commit_walk_O1_MiB": {
+    "eager_commit_hosts": 6156.8,
+    "lazy_hosts": 1.6,
+    "baseline": 1.7
+   },
+   "lazy_bisection": {
+    "tape reserved": "ok",
+    "input reserved + 64 KiB commit": "ok",
+    "output reserved without commit": "exit 5 (kernel copy from reserved pages)",
+    "output reserved + 64 KiB commit": "ok"
+   }
+  },
+  "android_arm64_device": {
+   "programs": "walk130k, hello, life, factor, sierpinski, bottles, scan at O0/O1 (factor O0 declines at build as in the baseline): 13/13 outputs match",
+   "bounds_left": {
+    "O0": 1,
+    "O1": 1
+   },
+   "bounds_right": {
+    "O0": 1,
+    "O1": 1
+   }
+  }
+ },
+ "not_migrated": {
+  "bfc_call_v1 shared host (shared_arm64.xax)": "its C ABI lends a 65,536-byte caller tape; records from the new bbc do not bind"
+ },
+ "unchanged": [
+  "BFX format and decoder",
+  "BBC Brainfuck sources",
+  "generic SDK Python files",
+  "input/output capacity 65,536",
+  "reset of cells 0..65,535 per call"
+ ],
+ "authoring_transport": "records produced with the existing xax_compiler constructors and xax_selfhost_edit.edit_record from external scripts (not committed)"
+}
