@@ -40,7 +40,7 @@ STATE_AT = 110 << 20
 G_K = STATE_AT + 512  # the constant strings' handles
 SHA_AT = STATE_AT + 64  # H (5), W (80)
 MASK32 = 0xFFFFFFFF
-CAP = 1 << 16  # strings, types, prototypes, methods, type lists, code items each
+CAP = 1 << 20  # strings, types, prototypes, methods, type lists, code items and fields each (before duplicates are dropped)
 ACC_PRIVATE, ACC_STATIC, ACC_CONSTRUCTOR = 0x0002, 0x0008, 0x10000
 P_RET, P_RANK, P_SHORTY, P_N = range(4)  # a prototype: return, rank, shorty, then its type list [n, parameters...]
 INSTR = 12  # an instruction: opcode, register count, five registers, reference kind, three reference words, literal
@@ -360,7 +360,7 @@ def _method_same_fn(tables):
 
 def _sort_records_fn(tables):
     """``sort_records(arr, n, kind)``: the ``n`` record pointers at ``arr`` sorted (stable insertion) by ``kind``:
-    0 prototypes, 1 methods, 2 type lists, 3 fields; then duplicates dropped (methods, type lists); the count kept."""
+    0 prototypes, 1 methods, 2 type lists, 3 fields; then duplicates dropped (methods, type lists, fields); the count kept."""
     def build(e: E):
         p = e.p
 
@@ -378,15 +378,16 @@ def _sort_records_fn(tables):
             e.st(e.add(p["arr"], p["sr_j"]), p["sr_item"])
 
         e.for_("sr_s", 1, p["n"], insert)
-        e.if_(e.either(e.eq(p["kind"], 0), e.eq(p["kind"], 3)), lambda: e.give(p["n"]))
+        e.if_(e.eq(p["kind"], 0), lambda: e.give(p["n"]))
         e.var("sr_m", e.sel(e.lt(0, p["n"]), 1, 0))
 
         def keep():
             e.var("sr_h", e.ld(e.add(p["arr"], p["sr_k"])))
             e.var("sr_prev", e.ld(e.add(p["arr"], e.sub(p["sr_m"], 1))))
             e.var("sr_same", 0)
-            e.if_(e.eq(p["kind"], 1), lambda: e.set("sr_same", _call(e, "dx_methodsame", p["sr_h"], p["sr_prev"])),
-                  lambda: e.set("sr_same", _call(e, "dx_listsame", p["sr_h"], p["sr_prev"])))
+            e.if_(e.eq(p["kind"], 1), lambda: e.set("sr_same", _call(e, "dx_methodsame", p["sr_h"], p["sr_prev"])), lambda: e.if_(
+                e.eq(p["kind"], 3), lambda: e.set("sr_same", _call(e, "dx_fieldsame", p["sr_h"], p["sr_prev"])),
+                lambda: e.set("sr_same", _call(e, "dx_listsame", p["sr_h"], p["sr_prev"]))))
             e.if_(e.eq(p["sr_same"], 0), lambda: (e.st(e.add(p["arr"], p["sr_m"]), p["sr_h"]), e.set("sr_m", e.add(p["sr_m"], 1))))
 
         e.for_("sr_k", 1, p["n"], keep)
@@ -402,6 +403,16 @@ def _field_less_fn(tables):
             e.if_(e.ne(_call(e, "dx_less", at(e, p["a"], k), at(e, p["b"], k)), 0), lambda: e.give(1))
             e.if_(e.ne(_call(e, "dx_less", at(e, p["b"], k), at(e, p["a"], k)), 0), lambda: e.give(0))
         e.give(0)
+    return _function(("a", "b"), build, tables)
+
+
+def _field_same_fn(tables):
+    """1 when field references ``a`` and ``b`` name the same class, name and type."""
+    def build(e: E):
+        p = e.p
+        for k in range(3):
+            e.if_(e.eq(_call(e, "dx_same", at(e, p["a"], k), at(e, p["b"], k)), 0), lambda: e.give(0))
+        e.give(1)
     return _function(("a", "b"), build, tables)
 
 
@@ -1685,6 +1696,20 @@ def _sort_entries_fn(tables):
     return _function(("arr", "n"), build, tables)
 
 
+# The DEX programs' shared helpers (the bridge program here, the class-file writer in ``xax_selfhost_dex_writer``).
+HELPERS = (
+    ("dx_less", _less_fn), ("dx_same", _same_fn), ("dx_string", _string_fn), ("dx_word", _word_fn),
+    ("dx_push", _push_fn), ("dx_fieldless", _field_less_fn), ("dx_fieldsame", _field_same_fn), ("dx_field", _field_fn),
+    ("dx_fidx", _fidx_fn), ("dx_sort", _sort_fn), ("dx_find", _find_fn), ("dx_listless", _list_less_fn),
+    ("dx_listsame", _list_same_fn), ("dx_protoless", _proto_less_fn), ("dx_intern", _intern_fn), ("dx_proto", _proto_in_fn),
+    ("dx_method", _method_fn), ("dx_methodless", _method_less_fn), ("dx_methodsame", _method_same_fn), ("dx_sortrec", _sort_records_fn),
+    ("dx_midx", _midx_fn), ("dx_listat", _list_offset_fn), ("dx_byte", _byte_fn), ("dx_le", _le_fn),
+    ("dx_set32", _set32_fn), ("dx_align", _align_fn), ("dx_uleb", _uleb_fn), ("dx_mutf8", _mutf8_fn),
+    ("dx_code", _code_fn), ("dx_codeat", _code_at_fn), ("dx_sha1", _sha1_block_fn), ("dx_sign", _sign_fn),
+    ("dx_sortentries", _sort_entries_fn),
+)
+
+
 def build_dex_program():
     """``(reader, function)``: the DEX bridge program's store and its entry."""
     tables = None
@@ -1697,14 +1722,7 @@ def build_dex_program():
         _FN[name] = function
         return function
 
-    for name, builder in (("dx_less", _less_fn), ("dx_same", _same_fn), ("dx_string", _string_fn), ("dx_word", _word_fn), ("dx_push", _push_fn), ("dx_fieldless", _field_less_fn), ("dx_field", _field_fn), ("dx_fidx", _fidx_fn),
-                          ("dx_sort", _sort_fn), ("dx_find", _find_fn), ("dx_listless", _list_less_fn), ("dx_listsame", _list_same_fn),
-                          ("dx_protoless", _proto_less_fn), ("dx_intern", _intern_fn), ("dx_proto", _proto_in_fn), ("dx_method", _method_fn),
-                          ("dx_methodless", _method_less_fn), ("dx_methodsame", _method_same_fn), ("dx_sortrec", _sort_records_fn),
-                          ("dx_midx", _midx_fn), ("dx_listat", _list_offset_fn), ("dx_byte", _byte_fn), ("dx_le", _le_fn), ("dx_set32", _set32_fn),
-                          ("dx_align", _align_fn), ("dx_uleb", _uleb_fn), ("dx_mutf8", _mutf8_fn), ("dx_code", _code_fn), ("dx_codeat", _code_at_fn),
-                          ("dx_sha1", _sha1_block_fn), ("dx_sign", _sign_fn),
-                          ("dx_sortentries", _sort_entries_fn)):
+    for name, builder in HELPERS:
         add(name, builder(tables))
     program = add("frontend", _frontend(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
