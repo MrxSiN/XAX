@@ -2730,6 +2730,15 @@ def apply_reference(reader, record: bytes):
             if owner.kind in (Kind.MODULE, Kind.PROGRAM_ROOT):
                 references = sorted({child(cid, item) for item in owner.references})
                 body = ref_body(range(len(references)))
+            elif owner.kind in (Kind.PACKAGE, Kind.BUILD):
+                from xax_build import rebuild_package_object
+
+                def replacement(reference):
+                    selected = replaced.get(cid, {}).get(reference, reference)
+                    return new[selected] if selected in new else given[selected] if selected in given else objects[selected]
+
+                rebuilt = rebuild_package_object(owner, objects.__getitem__, replacement)
+                references, body = rebuilt.references, rebuilt.body
             else:
                 collected: list[bytes] = []
 
