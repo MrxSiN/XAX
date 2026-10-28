@@ -579,12 +579,12 @@ def _matches_fn(tables):
         e.if_(e.both(e.eq(_type_form(e, p["t"]), 2), e.eq(p["dm_x"], D_I)), lambda: e.give(e.flag(e.both(e.ne(p["dm_one"], 0), e.eq(p["dm_ch"], ord("I"))))))
 
         def narrow():
-            from xax_selfhost_general_frame import _bits_width
+            from xax_selfhost_jvm_method import type_width
 
             e.var("dm_want", 0)
             for ch, width in NARROW_WIDTH.items():
                 e.if_(e.eq(p["dm_ch"], ch), lambda width=width: e.set("dm_want", width))
-            _bits_width(e, p["t"], "dm_w")
+            type_width(e, p["t"], "dm_w")  # a link is 32 bits
             e.give(e.flag(e.both(e.either(e.eq(p["dm_x"], D_I), e.eq(p["dm_x"], D_J)), e.eq(p["dm_w"], p["dm_want"]))))
 
         e.if_(e.both(e.ne(p["dm_one"], 0), e.either(*(e.eq(p["dm_ch"], ch) for ch in NARROW_WIDTH))), narrow)

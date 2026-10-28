@@ -40,7 +40,7 @@ from xax_selfhost_views_backend import _FN, _call, _g, _ok
 
 TASK_W = 5
 (K_GET, K_NODE, K_OP, K_ICONST, K_LCONST, K_PUT, K_MASK, K_CALL, K_JAVA, K_BRANCH, K_MARK, K_JUMP, K_STORE, K_GETLONG, K_FCONST,
- K_FOREIGN, K_CALLBACK, K_LOAD, K_FIELDM, K_OWN, K_BYTEM, K_STRING) = range(1, 23)
+ K_FOREIGN, K_CALLBACK, K_LOAD, K_FIELDM, K_OWN, K_BYTEM, K_STRING, K_DISPATCH) = range(1, 24)
 # The fixed methods a lowering calls (``K_JAVA``): owner, name, descriptor.
 JAVA = (
     ("java/lang/Integer", "toUnsignedLong", "(I)J"),
@@ -57,8 +57,9 @@ JAVA = (
     ("java/util/Arrays", "copyOfRange", "([JII)[J"),
     ("java/lang/Long", "compareUnsigned", "(JJ)I"),
     ("java/lang/String", "getBytes", "(II[BI)V"),  # invokevirtual (S15e.5g)
+    ("java/util/Arrays", "fill", "([BIIB)V"),  # stack storage (S15e.5h)
 )
-J_TOUNSIGNED, J_LDIV, J_LREM, J_LROTR, J_IROTR, J_PK, J_F2I, J_D2L, J_I2F, J_L2D, J_ARRAYCOPY, J_COPYRANGE, J_COMPAREU, J_GETBYTES = range(14)
+J_TOUNSIGNED, J_LDIV, J_LREM, J_LROTR, J_IROTR, J_PK, J_F2I, J_D2L, J_I2F, J_L2D, J_ARRAYCOPY, J_COPYRANGE, J_COMPAREU, J_GETBYTES, J_FILL = range(15)
 RELATION = {IntCompare.EQ: 0, IntCompare.NE: 1, IntCompare.ULT: 2, IntCompare.SLT: 2, IntCompare.ULE: 5, IntCompare.SLE: 5,
             IntCompare.UGT: 4, IntCompare.SGT: 4, IntCompare.UGE: 3, IntCompare.SGE: 3}
 EQ_, NE_, LT_, GE_, GT_, LE_ = range(6)
@@ -710,11 +711,35 @@ def _node_task(e: E, node):
         _ok(e, e.ne(p["cl_callee"], NONE))
         e.if_(e.ne(_call(e, "erased", p["cl_callee"]), 0), lambda: e.give(1))
         e.var("cl_fidx", _callee_index(e, p["cl_callee"]))
+        e.var("cl_el", _call(e, "borrowed", p["cl_callee"]))  # views given back (ADR-101): not machine results
         e.var("cl_nres", 0)
         e.var("cl_res", NONE)
-        e.for_("cl_r", 0, _f(e, node, N_NRES), lambda: (e.var("cl_rv", _output(e, node, p["cl_r"])), e.if_(e.ne(_slot(e, p["cl_rv"]), NONE), lambda: (
-            e.if_(e.eq(p["cl_res"], NONE), lambda: e.set("cl_res", p["cl_rv"])), e.set("cl_nres", e.add(p["cl_nres"], 1))))))
+        e.for_("cl_r", 0, _f(e, node, N_NRES), lambda: (e.var("cl_rv", _output(e, node, p["cl_r"])), e.if_(
+            e.both(e.ne(_slot(e, p["cl_rv"]), NONE), e.eq(e.ld(e.add(p["cl_el"], p["cl_r"])), NONE)), lambda: (
+                e.if_(e.eq(p["cl_res"], NONE), lambda: e.set("cl_res", p["cl_rv"])), e.set("cl_nres", e.add(p["cl_nres"], 1))))))
         _ok(e, e.le(p["cl_nres"], 1))  # JVM-SINGLE-RESULT: the bootstrap's
+
+        def given_back():
+            """A view given back that is read and lives in another local than the one passed: copied (in reverse)."""
+            from xax_selfhost_jvm_method import V_NEEDED
+
+            e.var("cl_g", _f(e, node, N_NRES))
+
+            def one():
+                e.set("cl_g", e.sub(p["cl_g"], 1))
+                e.var("cl_gp", e.ld(e.add(p["cl_el"], p["cl_g"])))
+
+                def check():
+                    e.var("cl_gv", _output(e, node, p["cl_g"]))
+                    e.var("cl_go", _operand(e, node, p["cl_gp"]))
+                    e.if_(e.both(e.ne(_v(e, V_NEEDED, p["cl_gv"]), 0), e.ne(_slot(e, p["cl_gv"]), NONE), e.ne(_slot(e, p["cl_gv"]), _slot(e, p["cl_go"]))),
+                          lambda: (_call(e, "jl_push", K_PUT, p["cl_gv"], 0, 0, 0), _call(e, "jl_push", K_GET, p["cl_go"], 0, 0, 0)))
+
+                e.if_(e.ne(p["cl_gp"], NONE), check)
+
+            e.while_(lambda: e.lt(0, p["cl_g"]), one)
+
+        given_back()
         e.var("cl_keep", e.flag(e.ne(p["cl_res"], NONE)))
 
         def keep():
@@ -758,9 +783,10 @@ def _node_task(e: E, node):
         from xax_selfhost_jvm_code import D_REF
         from xax_selfhost_views_backend import _reference
 
-        _ok(e, e.le(D_REF, _sdesc(e, result)))
         e.var("fa_fn", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
         _ok(e, e.ne(p["fa_fn"], NONE))
+        # A plain code address: the function's table index (never 0), S15e.5h.
+        e.if_(e.lt(_sdesc(e, result), D_REF), lambda: (Steps(e).add(K_ICONST, table_index(e, p["fa_fn"])).add(K_PUT, result).push(), e.give(1)))
         Steps(e).add(K_CALLBACK, table_index(e, p["fa_fn"])).add(K_PUT, result).push()
         e.give(1)
 
@@ -769,6 +795,17 @@ def _node_task(e: E, node):
     from xax_selfhost_jvm_memory import memory_nodes
 
     memory_nodes(e, node, opv, result)
+    from xax_selfhost_jvm_memory import general_nodes
+
+    general_nodes(e, node, opv, result)
+
+    def indirect():
+        from xax_selfhost_jvm_indirect import indirect_node
+
+        indirect_node(e, node)
+        e.give(1)
+
+    e.if_(e.eq(opv, int(Operation.CALL_INDIRECT)), indirect)
     _ok(e, _in(e, opv, tuple(sorted(int(op) for op in RESOURCE_EFFECT_OPERATIONS))))  # another: the bootstrap
     e.give(1)
 
@@ -1384,6 +1421,7 @@ def _run_fn(tables):
             e.if_(e.eq(kind, K_CALLBACK), lambda: _callback_task(e, p["rn_a"]))
             e.if_(e.eq(kind, K_LOAD), lambda: local(e, False, p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_FIELDM), lambda: _field_m_task(e))
+            e.if_(e.eq(kind, K_DISPATCH), lambda: _call(e, "jl_dispatch", p["rn_a"]))
             e.if_(e.eq(kind, K_OWN), lambda: _call(e, "jl_own", p["rn_a"]))
             e.if_(e.eq(kind, K_BYTEM), lambda: _call(e, "jl_bytem", p["rn_a"], p["rn_b"]))
             e.if_(e.eq(kind, K_STRING), lambda: _call(e, "jc_ldc", _call(e, "jp_ref1", _m(e, C_POOL), 8, _call(e, "jp_utf8", _m(e, C_POOL), p["rn_a"], p["rn_b"]))))
@@ -1495,6 +1533,20 @@ def _byte_member_fn(tables):
         raw(e, p["bm_i"], 2)
         e.give(1)
     return _function(("load", "maximum"), build, tables)
+
+
+def _field_s(e: E, opcode: int):
+    """``getstatic``/``putstatic S`` (the shadow stack's top, ADR-159)."""
+    from xax_selfhost_jvm import J_CLASSNAME
+    from xax_selfhost_jvm_class import utf8_literal
+    from xax_selfhost_jvm_foreign import _js
+
+    p = e.p
+    pool = _m(e, C_POOL)
+    op(e, opcode)
+    e.var("fs_c", _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, _js(e, J_CLASSNAME), 21)))
+    e.var("fs_nt", _call(e, "jp_ref2", pool, 12, utf8_literal(e, pool, "S", "fs_sn"), utf8_literal(e, pool, "I", "fs_sd"), 0, 0))
+    raw(e, _call(e, "jp_ref2", pool, 9, p["fs_c"], p["fs_nt"], 0, 1), 2)
 
 
 def _field_m_task(e: E):

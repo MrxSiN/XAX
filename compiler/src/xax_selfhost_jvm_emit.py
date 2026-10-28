@@ -180,7 +180,9 @@ def _assignment_fn(tables):
             return e.ne(e.ld(e.add(_m(e, M_STYPE), slot)), NONE)
 
         def param_slot(slot):
-            return e.both(key(slot), e.lt(slot, _m(e, M_PEND)), e.eq(e.ld(e.add(_m(e, M_FREED), slot)), NONE))
+            from xax_selfhost_jvm_method import M_FSLOT
+
+            return e.either(e.both(key(slot), e.lt(slot, _m(e, M_PEND)), e.eq(e.ld(e.add(_m(e, M_FREED), slot)), NONE)), e.eq(slot, _m(e, M_FSLOT)))
 
         # writes
         def writes():
@@ -375,6 +377,16 @@ def _terminator_fn(tables):
         e.var("tm_kind", _f(e, p["tm_b"], B_KIND))
 
         def returned():
+            from xax_selfhost_jvm_method import M_FSLOT
+
+            def release():
+                # S = fp: the frame is given back (ADR-159).
+                from xax_selfhost_jvm_lower import _field_s
+
+                local(e, False, D_I, _m(e, M_FSLOT))
+                _field_s(e, 0xB3)
+
+            e.if_(e.ne(_m(e, M_FSLOT), NONE), release)
             e.var("tm_v", NONE)
             e.for_("tm_k", 0, _f(e, p["tm_b"], B_NVALUES), lambda: e.if_(e.both(e.eq(p["tm_v"], NONE), e.lt(p["tm_k"], _m(e, M_NRET)),
                                                                               e.ne(e.ld(e.add(_m(e, M_RETTYPES), p["tm_k"])), D_NONE)),

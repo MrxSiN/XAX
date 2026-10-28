@@ -566,47 +566,10 @@ def memory_nodes(e: E, node, opv, result):
             e.if_(e.eq(p["ma_load"], 0), value_first)
 
         def wide_load():
-            push(K_PUT, result)
-            e.if_(e.both(e.eq(p["ma_float"], 0), e.lt(p["ma_vw"], e.mul(p["ma_size"], 8))), lambda: push(K_MASK, p["ma_desc"], p["ma_vw"]))
-
-            def byte():
-                e.if_(e.eq(p["ma_desc"], D_J), lambda: push(K_OP, 0x85, 1))
-                push(K_OP, 0x7E, 1)
-                push(K_ICONST, 0xFF)
-                push(K_OP, 0x33, 1)
-                push_address()
-                push(K_FIELDM)
-
-            def member():
-                e.if_(e.ne(p["ma_float"], 0), lambda: push(K_JAVA, e.sel(e.eq(p["ma_size"], 4), J_I2F, J_L2D)), lambda: e.if_(
-                    e.both(e.eq(p["ma_desc"], D_J), e.ne(p["ma_size"], 8)), lambda: (
-                        push(K_OP, 0x7F, 1), push(K_LCONST, e.sub(_call(e, "jm_pow2", e.mul(p["ma_size"], 8)), 1)), push(K_OP, 0x85, 1)), lambda: e.if_(
-                        e.both(e.eq(p["ma_desc"], D_I), e.eq(p["ma_size"], 8)), lambda: push(K_OP, 0x88, 1))))
-                push(K_OWN, e.sel(e.eq(p["ma_size"], 2), OWN_INDEX["xax$ld2"], e.sel(e.eq(p["ma_size"], 4), OWN_INDEX["xax$ld4"], OWN_INDEX["xax$ld8"])))
-                push_address()
-                need(e, e.sel(e.eq(p["ma_size"], 2), N_LD2, e.sel(e.eq(p["ma_size"], 4), N_LD4, N_LD8)))
-
-            e.if_(e.eq(p["ma_size"], 1), byte, member)
+            mem_access(e, True, p["ma_size"], p["ma_vt"], result, push_address)
 
         def wide_store():
-            def byte():
-                push(K_OP, 0x54, 1)
-                e.if_(e.eq(p["ma_desc"], D_J), lambda: push(K_OP, 0x88, 1))
-                push(K_GET, p["ma_value"])
-                push_address()
-                push(K_FIELDM)
-
-            def member():
-                push(K_OWN, e.sel(e.eq(p["ma_size"], 2), OWN_INDEX["xax$st2"], e.sel(e.eq(p["ma_size"], 4), OWN_INDEX["xax$st4"], OWN_INDEX["xax$st8"])))
-                d = p["ma_desc"]
-                e.if_(e.eq(d, D_F), lambda: push(K_JAVA, J_F2I), lambda: e.if_(e.eq(d, D_D), lambda: push(K_JAVA, J_D2L), lambda: e.if_(
-                    e.both(e.eq(p["ma_size"], 8), e.eq(d, D_I)), lambda: push(K_OP, 0x85, 1), lambda: e.if_(
-                        e.both(e.ne(p["ma_size"], 8), e.eq(d, D_J)), lambda: push(K_OP, 0x88, 1)))))
-                push(K_GET, p["ma_value"])
-                push_address()
-                need(e, e.sel(e.eq(p["ma_size"], 2), N_ST2, e.sel(e.eq(p["ma_size"], 4), N_ST4, N_ST8)))
-
-            e.if_(e.eq(p["ma_size"], 1), byte, member)
+            mem_access(e, False, p["ma_size"], p["ma_vt"], p["ma_value"], push_address)
 
         members = e.both(e.eq(p["ma_size"], 1), e.either(e.ne(p["ma_helper"], 0), e.both(e.ne(p["ma_load"], 0), e.eq(p["ma_checked"], 0))))
         e.if_(members, byte_member, lambda: e.if_(e.ne(p["ma_load"], 0), wide_load, wide_store))
@@ -626,9 +589,7 @@ def memory_nodes(e: E, node, opv, result):
 
 
 def _in_ops(e: E, opv, names):
-    from xax_selfhost_jvm_method import OP
-
-    return e.either(*(e.eq(opv, OP[name]) for name in names))
+    return e.either(*(e.eq(opv, int(getattr(Operation, name))) for name in names))
 
 
 def run_head(e: E, node, b, count):
@@ -891,12 +852,12 @@ def _members_fn(tables):
                 else:
                     literal(e, f"me_{tag}_lt{k}", local)
                     e.st(e.add(p[f"me_{tag}_ft"], k), _call(e, "jk_intern", p[f"me_{tag}_lt{k}"], len(local)))
-            e.var(f"me_{tag}_nm", _store_alloc(e, 5, f"me_{tag}_ns"))
+            e.var(f"me_{tag}_nm", _store_alloc(e, 6, f"me_{tag}_ns"))
             if name_text is None:
                 literal(e, f"me_{tag}_name", name)
                 name_text = (p[f"me_{tag}_name"], len(name))
             literal(e, f"me_{tag}_desc", descriptor)
-            for k, word in enumerate((name_text[0], name_text[1], p[f"me_{tag}_desc"], len(descriptor))):
+            for k, word in enumerate((name_text[0], name_text[1], p[f"me_{tag}_desc"], len(descriptor), 0x0009)):
                 e.st(e.add(p[f"me_{tag}_nm"], k), word)
             _add_record(e, {MR_KIND: KIND_NAMED, MR_FIDX: p[f"me_{tag}_nm"], MR_CODE: at, MR_CLEN: len(code), MR_STACK: max_stack,
                             MR_LOCALS: max_locals, MR_FRAMES: p[f"me_{tag}_fr"], MR_NFRAMES: len(frames), MR_FTYPES: p[f"me_{tag}_ft"],
@@ -962,5 +923,372 @@ def _bx(e: E, x, y):
 
 def add_memory_functions(add, tables):
     for name, builder in (("jm_hexless", _hex_less_fn), ("jm_needbyte", _need_byte_fn), ("jm_runs", _runs_fn), ("jm_memkey", _member_key_fn),
-                          ("jm_merge", _merge_fn), ("jk_members", _members_fn)):
+                          ("jm_merge", _merge_fn), ("jk_members", _members_fn), ("jk_launcher", _launcher_fn)):
         add(name, builder(tables))
+
+
+def mem_access(e: E, load: bool, size, vt, value, push_address, custom=None):
+    """``memory_access`` (pushed in reverse): a little-endian access of ``size`` bytes at the pushed address of a value
+    of type ``vt``: a load into ``value`` (its result), or a store of ``value`` (or of what ``custom()`` pushes, in
+    reverse, with descriptor ``custom_desc``)."""
+    from xax_selfhost_jvm_method import type_width
+    from xax_selfhost_jvm_code import D_D, D_F, D_I, D_J
+    from xax_selfhost_jvm_lower import J_D2L, J_F2I, J_I2F, J_L2D, K_FIELDM, K_GET, K_JAVA, K_LCONST, K_MASK, K_OP, K_OWN, K_PUT, Reverse, _desc_get, _sdesc
+    from xax_selfhost_views_backend import _type_form
+
+    p = e.p
+    push = Reverse(e)
+    e.var("mx_size", size)
+    e.var("mx_vt", vt)
+    e.var("mx_v", value)
+    e.var("mx_float", e.flag(e.eq(_type_form(e, p["mx_vt"]), 7)))
+    e.var("mx_vw", 64)
+    e.if_(e.eq(p["mx_float"], 0), lambda: (type_width(e, p["mx_vt"], "mx_vw0"), e.set("mx_vw", p["mx_vw0"])))
+    sized = lambda table: e.sel(e.eq(p["mx_size"], 2), table[2], e.sel(e.eq(p["mx_size"], 4), table[4], table[8]))  # noqa: E731
+    if load:
+        e.var("mx_d", _sdesc(e, p["mx_v"]))
+        push(K_PUT, p["mx_v"])
+        e.if_(e.both(e.eq(p["mx_float"], 0), e.lt(p["mx_vw"], e.mul(p["mx_size"], 8))), lambda: push(K_MASK, p["mx_d"], p["mx_vw"]))
+
+        def byte():
+            e.if_(e.eq(p["mx_d"], D_J), lambda: push(K_OP, 0x85, 1))
+            push(K_OP, 0x7E, 1)
+            push(K_ICONST_(), 0xFF)
+            push(K_OP, 0x33, 1)
+            push_address()
+            push(K_FIELDM)
+
+        def member():
+            e.if_(e.ne(p["mx_float"], 0), lambda: push(K_JAVA, e.sel(e.eq(p["mx_size"], 4), J_I2F, J_L2D)), lambda: e.if_(
+                e.both(e.eq(p["mx_d"], D_J), e.ne(p["mx_size"], 8)), lambda: (
+                    push(K_OP, 0x7F, 1), push(K_LCONST, e.sub(_call(e, "jm_pow2", e.mul(p["mx_size"], 8)), 1)), push(K_OP, 0x85, 1)), lambda: e.if_(
+                    e.both(e.eq(p["mx_d"], D_I), e.eq(p["mx_size"], 8)), lambda: push(K_OP, 0x88, 1))))
+            push(K_OWN, sized({2: OWN_INDEX["xax$ld2"], 4: OWN_INDEX["xax$ld4"], 8: OWN_INDEX["xax$ld8"]}))
+            push_address()
+            need(e, sized(LOAD_NEED))
+
+        e.if_(e.eq(p["mx_size"], 1), byte, member)
+        return
+
+    def value_steps():
+        if custom is None:
+            push(K_GET, p["mx_v"])
+        else:
+            custom()
+
+    e.var("mx_d", _desc_get(e, p["mx_v"]) if custom is None else p["custom_desc"])
+
+    def byte():
+        push(K_OP, 0x54, 1)
+        e.if_(e.eq(p["mx_d"], D_J), lambda: push(K_OP, 0x88, 1))
+        value_steps()
+        push_address()
+        push(K_FIELDM)
+
+    def member():
+        push(K_OWN, sized({2: OWN_INDEX["xax$st2"], 4: OWN_INDEX["xax$st4"], 8: OWN_INDEX["xax$st8"]}))
+        d = p["mx_d"]
+        e.if_(e.eq(d, D_F), lambda: push(K_JAVA, J_F2I), lambda: e.if_(e.eq(d, D_D), lambda: push(K_JAVA, J_D2L), lambda: e.if_(
+            e.both(e.eq(p["mx_size"], 8), e.eq(d, D_I)), lambda: push(K_OP, 0x85, 1), lambda: e.if_(
+                e.both(e.ne(p["mx_size"], 8), e.eq(d, D_J)), lambda: push(K_OP, 0x88, 1)))))
+        value_steps()
+        push_address()
+        need(e, sized(STORE_NEED))
+
+    e.if_(e.eq(p["mx_size"], 1), byte, member)
+
+
+def K_ICONST_():
+    from xax_selfhost_jvm_lower import K_ICONST
+
+    return K_ICONST
+
+
+class Fwd:
+    """Tasks written in order, pushed in reverse when done: ``s(kind, *arguments)``, ``s.do(fn)`` (``fn`` pushes its
+    own tasks in reverse), ``s.when(condition, then, otherwise)`` (each given a fresh ``Fwd``)."""
+
+    def __init__(self, e: E):
+        self.e = e
+        self.items = []
+
+    def __call__(self, kind: int, *arguments):
+        self.items.append(("task", kind, arguments))
+        return self
+
+    def do(self, fn):
+        self.items.append(("do", fn))
+        return self
+
+    def when(self, condition, then, otherwise=None):
+        self.items.append(("when", condition, then, otherwise))
+        return self
+
+    def push(self):
+        e = self.e
+        for item in reversed(self.items):
+            if item[0] == "task":
+                words = list(item[2]) + [0] * (4 - len(item[2]))
+                _call(e, "jl_push", item[1], *words)
+            elif item[0] == "do":
+                item[1]()
+            else:
+                _condition, then, otherwise = item[1], item[2], item[3]
+
+                def branch(builder):
+                    inner = Fwd(e)
+                    builder(inner)
+                    inner.push()
+
+                e.if_(_condition(), lambda: branch(then), (lambda: branch(otherwise)) if otherwise is not None else None)
+
+
+# -- the general profile (S15e.5h) ----------------------------------------------------------------------------------------
+
+def general_nodes(e: E, node, opv, result):
+    """Stack storage (zero-filled at its frame offset), links, raw loads, atomics (one XAX thread: each is its
+    sequential effect on the linear memory, ADR-160), pushed in reverse."""
+    from xax_selfhost_general_ranges import _attribute
+    from xax_selfhost_jvm_method import type_width
+    from xax_selfhost_general_view import _f, _operand, _output
+    from xax_selfhost_jvm_code import D_J, _m, _set_m
+    from xax_selfhost_jvm_lower import (
+        EQ_, J_FILL, K_BRANCH, K_FIELDM, K_GET, K_ICONST, K_JAVA, K_LOAD, K_MARK, K_OP, K_PUT, Reverse, _compare_result_pushes, _desc_get,
+        _fresh, _sdesc, _trap_label,
+    )
+    from xax_selfhost_jvm_method import M_FSLOT, M_TRAPUSED, N_FOFF, OP, _node_id, _type, _v
+    from xax_selfhost_views_backend import G_PAY, _at, _payload_uleb, _reference
+
+    p = e.p
+    push = Reverse(e)
+
+    def stack():
+        need(e, e.c(N_MEMORY | N_STACK))
+        e.var("sa_off", _v(e, N_FOFF, _node_id(e, _f(e, node, 1), node)))
+        e.var("sa_fp", _m(e, M_FSLOT))
+        from xax_selfhost_jvm_code import D_I
+
+        push(K_PUT, result)
+        push(K_OP, 0x60, 1)
+        push(K_ICONST, p["sa_off"])
+        push(K_LOAD, D_I, p["sa_fp"])
+        push(K_JAVA, J_FILL)
+        push(K_ICONST, 0)
+        push(K_OP, 0x60, 1)
+        push(K_ICONST, e.add(p["sa_off"], _attribute(e, node, 0)))
+        push(K_LOAD, D_I, p["sa_fp"])
+        push(K_OP, 0x60, 1)
+        push(K_ICONST, p["sa_off"])
+        push(K_LOAD, D_I, p["sa_fp"])
+        push(K_FIELDM)
+        e.give(1)
+
+    e.if_(e.eq(opv, int(Operation.STACK_ALLOC)), stack)
+    e.if_(_in_ops(e, opv, ("STACK_END", "LINK_TARGET", "ATOMIC_FENCE")), lambda: e.give(1))  # proof only
+    e.if_(e.eq(opv, int(Operation.LINK_MAKE)), lambda: (push(K_PUT, result), push(K_GET, _operand(e, node, 0)), e.give(1)))
+
+    def follow():
+        _set_m(e, M_TRAPUSED, 1)
+        push(K_PUT, result)
+        push(K_GET, _operand(e, node, 1))
+        push(K_BRANCH, 0x99, _trap_label(e))
+        push(K_GET, _operand(e, node, 1))
+        e.give(1)
+
+    e.if_(e.eq(opv, int(Operation.LINK_FOLLOW)), follow)
+
+    def raw():
+        need(e, N_MEMORY)
+        e.var("rl_p", _operand(e, node, 0))
+        mem_access(e, True, _attribute(e, node, 0), _type(e, result), result, lambda: push(K_GET, p["rl_p"]))
+        e.give(1)
+
+    e.if_(e.eq(opv, int(Operation.RAW_LOAD_BITS_LE)), raw)
+
+    def atomic():
+        need(e, N_MEMORY)
+        e.var("at_p", _operand(e, node, 0))
+        e.var("at_pt", _type(e, p["at_p"]))
+        e.var("at_pa", e.add(_at(e, G_PAY, p["at_pt"]), 1))
+        _payload_uleb(e, "at_pa")  # the space
+        e.var("at_el", _reference(e, p["at_pt"], _payload_uleb(e, "at_pa")))
+        _ok(e, e.ne(p["at_el"], NONE))
+        type_width(e, p["at_el"], "at_w")
+        e.var("at_size", e.udiv(e.add(p["at_w"], 7), 8))
+        at = lambda: push(K_GET, p["at_p"])  # noqa: E731
+
+        e.if_(e.eq(opv, int(Operation.ATOMIC_LOAD)), lambda: (mem_access(e, True, p["at_size"], p["at_el"], result, at), e.give(1)))
+        e.if_(e.eq(opv, int(Operation.ATOMIC_STORE)), lambda: (mem_access(e, False, p["at_size"], p["at_el"], _operand(e, node, 1), at), e.give(1)))
+
+        def rmw():
+            from xax_compiler import AtomicRmwKind
+
+            def exchange():
+                mem_access(e, False, p["at_size"], p["at_el"], _operand(e, node, 1), at)
+
+            def add():
+                e.var("custom_desc", _desc_get(e, result))
+
+                def added():
+                    """``get(result); get(value); add; mask``: pushed in reverse."""
+                    push(K_MASK_(), p["custom_desc"], p["at_w"])
+                    push(K_OP, e.sel(e.eq(p["custom_desc"], D_J), 0x61, 0x60), 1)
+                    push(K_GET, _operand(e, node, 1))
+                    push(K_GET, result)
+
+                mem_access(e, False, p["at_size"], p["at_el"], result, at, added)
+
+            e.if_(e.eq(_attribute(e, node, 0), int(AtomicRmwKind.EXCHANGE)), exchange, add)
+            mem_access(e, True, p["at_size"], p["at_el"], result, at)
+            e.give(1)
+
+        e.if_(e.eq(opv, int(Operation.ATOMIC_RMW)), rmw)
+
+        def cmpxchg():
+            e.var("cx_exp", _operand(e, node, 1))
+            e.var("cx_des", _operand(e, node, 2))
+            e.var("cx_same", _fresh(e, "cx_l"))
+            e.var("cx_long", e.flag(e.eq(_desc_get(e, result), D_J)))
+            push(K_PUT, _output(e, node, 1))
+
+            def tail_long():
+                _compare_result_pushes(e, EQ_)
+                push(K_OP, 0x94, 1)
+
+            def tail_int():
+                Fwd(e)(K_OP, 0x82597480, 4)(K_ICONST, 31)(K_OP, 0x7C, 1)(K_ICONST, 1)(K_OP, 0x82, 1).push()
+
+            e.if_(e.ne(p["cx_long"], 0), tail_long, tail_int)
+            push(K_GET, p["cx_exp"])
+            push(K_GET, result)
+            push(K_MARK, p["cx_same"])
+            mem_access(e, False, p["at_size"], p["at_el"], p["cx_des"], at)
+            e.if_(e.ne(p["cx_long"], 0), lambda: (push(K_BRANCH, 0x9A, p["cx_same"]), push(K_OP, 0x94, 1)), lambda: push(K_BRANCH, 0xA0, p["cx_same"]))
+            push(K_GET, p["cx_exp"])
+            push(K_GET, result)
+            mem_access(e, True, p["at_size"], p["at_el"], result, at)
+            e.give(1)
+
+        e.if_(e.eq(opv, int(Operation.ATOMIC_CMPXCHG)), cmpxchg)
+
+    e.if_(_in_ops(e, opv, ("ATOMIC_LOAD", "ATOMIC_STORE", "ATOMIC_RMW", "ATOMIC_CMPXCHG")), atomic)
+
+
+def K_MASK_():
+    from xax_selfhost_jvm_lower import K_MASK
+
+    return K_MASK
+
+
+# -- the threaded launcher (S15e.5i) ------------------------------------------------------------------------------------------
+
+# ``<init>`` and ``run`` are byte strings in the bootstrap (no ``_Code``): their pool index positions, by call order.
+LAUNCHER_RAW_SLOTS = {"<init>": ((2, 1),), "run": ((1, 2), (5, 0))}
+
+
+def launcher_templates() -> tuple:
+    """``_threaded_launcher``'s pool calls (in order) and its three members as (name, descriptor, bytes, slots,
+    max stack, max locals, access)."""
+    import xax_jvm
+
+    pool = _RecordingPool()
+    base, original_u2 = xax_jvm._Code, xax_jvm._u2
+    slots: list[tuple[int, int]] = []
+
+    class Recording(base):
+        def raw(self, blob: bytes) -> None:
+            if isinstance(blob, _PlaceholderBytes):
+                slots.append((len(self.buf), blob.placeholder.seq))
+            super().raw(blob)
+
+    def u2(value):
+        if isinstance(value, _Placeholder):
+            blob = _PlaceholderBytes(b"\x00\x00")
+            blob.placeholder = value
+            return blob
+        return original_u2(value)
+
+    xax_jvm._Code, xax_jvm._u2 = Recording, u2
+    try:
+        methods = xax_jvm._threaded_launcher(pool, CLASS, "entry")
+    finally:
+        xax_jvm._Code, xax_jvm._u2 = base, original_u2
+    out = []
+    for method in methods:
+        assert not method.frames and not method.lines
+        own = tuple(slots) if method.name == "main" else LAUNCHER_RAW_SLOTS[method.name]
+        for at, _seq in own:
+            assert method.code[at:at + 2] == b"\x00\x00"
+        out.append((method.name, method.descriptor, method.code, own, method.max_stack, method.max_locals, method.access))
+    return tuple(call.call for call in pool.calls), tuple(out)
+
+
+def check_launcher() -> None:
+    """The launcher rebuilt from its template with a real pool equals ``_threaded_launcher``."""
+    import xax_jvm
+
+    calls, members = launcher_templates()
+    reference_pool, pool = xax_jvm._Pool(), xax_jvm._Pool()
+    reference = xax_jvm._threaded_launcher(reference_pool, "xax/P0123456789abcdef", "entry")
+    indices = [getattr(pool, kind)(*["xax/P0123456789abcdef" if arg == CLASS else arg for arg in args]) for kind, *args in calls]
+    rebuilt = []
+    for name, descriptor, code, own, max_stack, max_locals, access in members:
+        blob = bytearray(code)
+        for at, seq in own:
+            blob[at:at + 2] = struct.pack(">H", indices[seq])
+        rebuilt.append((name, descriptor, bytes(blob), max_stack, max_locals, access))
+    assert rebuilt == [(m.name, m.descriptor, m.code, m.max_stack, m.max_locals, m.access) for m in reference]
+    assert pool.data == reference_pool.data
+
+
+def _launcher_fn(tables):
+    """``_threaded_launcher``: ``main`` starts ``run`` on a thread with ``ENTRY_STACK_BYTES`` of stack and joins it."""
+    from xax_selfhost_jvm import (J_CLASSNAME, J_POOL, KIND_NAMED, MR_BARE, MR_CLEN, MR_CODE, MR_FIDX, MR_FRAMES, MR_FTYPES, MR_KIND, MR_LINES,
+                                  MR_LOCALS, MR_NFRAMES, MR_NFTYPES, MR_NLINES, MR_STACK, _add_record, _js, _store_alloc)
+    from xax_selfhost_jvm_class import klass_literal, literal, utf8_literal
+
+    calls, members = launcher_templates()
+
+    def build(e: E):
+        p = e.p
+        pool = _js(e, J_POOL)
+
+        def klass(name: str, var: str):
+            if name == CLASS:
+                return _call(e, "jp_ref1", pool, 7, _call(e, "jp_utf8", pool, _js(e, J_CLASSNAME), 21))
+            return klass_literal(e, pool, name, var)
+
+        for seq, (kind, *args) in enumerate(calls):
+            var = f"la_{seq}"
+            if kind == "method":
+                owner, name, descriptor = args
+                e.var(f"{var}_c", klass(owner, f"{var}_o"))
+                e.var(f"{var}_nt", _call(e, "jp_ref2", pool, 12, utf8_literal(e, pool, name, f"{var}_n"), utf8_literal(e, pool, descriptor, f"{var}_d"), 0, 0))
+                arguments, result = descriptor_slots(descriptor)
+                e.var(var, _call(e, "jp_ref2", pool, 10, p[f"{var}_c"], p[f"{var}_nt"], arguments, result))
+            elif kind == "klass":
+                e.var(var, klass(args[0], f"{var}_k"))
+            elif kind == "string":
+                e.var(var, _call(e, "jp_ref1", pool, 8, utf8_literal(e, pool, args[0], f"{var}_s")))
+            else:
+                assert kind == "long"
+                e.var(var, _call(e, "jp_number", pool, 5, args[0]))
+        for k, (name, descriptor, code, own, max_stack, max_locals, access) in enumerate(members):
+            e.var(f"la_m{k}", _store_alloc(e, len(code) + 1, f"la_mc{k}"))
+            at = p[f"la_m{k}"]
+            filled = {position for start, _seq in own for position in (start, start + 1)}
+            for q, byte in enumerate(code):
+                if q not in filled:
+                    e.st(e.add(at, q), byte)
+            for start, seq in own:
+                e.st(e.add(at, start), e.and_(e.udiv(p[f"la_{seq}"], 256), 255))
+                e.st(e.add(at, start + 1), e.and_(p[f"la_{seq}"], 255))
+            literal(e, f"la_n{k}", name)
+            literal(e, f"la_d{k}", descriptor)
+            e.var(f"la_r{k}", _store_alloc(e, 6, f"la_rs{k}"))
+            for q, word in enumerate((p[f"la_n{k}"], len(name), p[f"la_d{k}"], len(descriptor), access)):
+                e.st(e.add(p[f"la_r{k}"], q), word)
+            _add_record(e, {MR_KIND: KIND_NAMED, MR_FIDX: p[f"la_r{k}"], MR_CODE: at, MR_CLEN: len(code), MR_STACK: max_stack, MR_LOCALS: max_locals,
+                            MR_FRAMES: 0, MR_NFRAMES: 0, MR_FTYPES: 0, MR_NFTYPES: 0, MR_LINES: 0, MR_NLINES: 0, MR_BARE: NONE})
+        e.give(1)
+    return _function((), build, tables)
