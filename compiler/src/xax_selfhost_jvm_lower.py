@@ -792,20 +792,8 @@ def _node_task(e: E, node):
 
     e.if_(e.eq(opv, OP["FUNCTION_ADDRESS"]), address)
     _aggregate_nodes(e, node, opv, result)
-    from xax_selfhost_jvm_memory import memory_nodes
-
-    memory_nodes(e, node, opv, result)
-    from xax_selfhost_jvm_memory import general_nodes
-
-    general_nodes(e, node, opv, result)
-
-    def indirect():
-        from xax_selfhost_jvm_indirect import indirect_node
-
-        indirect_node(e, node)
-        e.give(1)
-
-    e.if_(e.eq(opv, int(Operation.CALL_INDIRECT)), indirect)
+    # The memory, general-profile and indirect-call lowerings are their own function (a graph's size, S15e.5j).
+    e.if_(e.ne(_call(e, "jl_memnode", node), 0), lambda: e.give(1))
     _ok(e, _in(e, opv, tuple(sorted(int(op) for op in RESOURCE_EFFECT_OPERATIONS))))  # another: the bootstrap
     e.give(1)
 
@@ -967,9 +955,8 @@ def _foreign_node(e: E, node):
     mb = p["fn_mb"]
 
     def memory():
-        from xax_selfhost_jvm_memory import member_key, memory_call
-
-        memory_call(e, node, mb, member_key(e, mb))
+        _call(e, "jl_memcall", node, mb)
+        e.give(1)
 
     from xax_selfhost_jvm_foreign import MB_MEMORY
 
@@ -1574,8 +1561,39 @@ def _call_method_fn(tables):
     return _function(("fidx",), build, tables)
 
 
+def _memory_node_fn(tables):
+    """1 when ``node`` is a memory, general-profile or indirect-call operation (its steps pushed), else 0."""
+    def build(e: E):
+        from xax_selfhost_jvm_memory import general_nodes, memory_nodes
+
+        p = e.p
+        e.var("mn_op", _eop(e, p["node"]))
+        e.var("mn_r", _result0(e, p["node"]))
+        memory_nodes(e, p["node"], p["mn_op"], p["mn_r"])
+        general_nodes(e, p["node"], p["mn_op"], p["mn_r"])
+
+        def indirect():
+            from xax_selfhost_jvm_indirect import indirect_node
+
+            indirect_node(e, p["node"])
+            e.give(1)
+
+        e.if_(e.eq(p["mn_op"], int(Operation.CALL_INDIRECT)), indirect)
+        e.give(0)
+    return _function(("node",), build, tables)
+
+
+def _memory_call_fn(tables):
+    def build(e: E):
+        from xax_selfhost_jvm_memory import member_key, memory_call
+
+        memory_call(e, e.p["node"], e.p["mb"], member_key(e, e.p["mb"]))
+    return _function(("node", "mb"), build, tables)
+
+
 def add_lower_functions(add, tables):
     for name, builder in (("jl_push", _push_fn), ("jl_get", _get_fn), ("jl_getlong", _getlong_fn), ("jl_java", _java_fn), ("jl_own", _own_fn),
+                          ("jl_memnode", _memory_node_fn), ("jl_memcall", _memory_call_fn),
                           ("jl_bytem", _byte_member_fn),
                           ("jl_call", _call_method_fn), ("jl_jump", _jump_fn), ("jl_node", _node_fn), ("jl_run", _run_fn)):
         add(name, builder(tables))

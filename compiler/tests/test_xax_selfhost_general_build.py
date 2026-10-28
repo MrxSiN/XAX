@@ -455,9 +455,30 @@ class GeneralBuildTests(unittest.TestCase):
         cases.append(("hello library", objects, entry, (ArtifactKind.JVM_LIBRARY_JAR,)))
         cases.append(("native image", objects, entry, (ArtifactKind.NATIVE_IMAGE,)))
         cases.append(("two jars", objects, entry, (ArtifactKind.JVM_LIBRARY_JAR, ArtifactKind.JVM_EXECUTABLE_JAR)))
+        # S15e.5g-S15e.5i (ADR-337, ADR-338): the memory and general profiles and the threaded launcher.
+        import test_xax_jvm_general as general
+        import test_xax_jvm_memory as memory
+
+        targets = {}
+        objects, function, _expected_value = memory._program(random.Random(memory.SEED))
+        cases.append(("memory", (*memory.API.types, *objects, memory.B8, memory.B32, memory.B64, memory.F32, memory.F64, memory.VIEW), function,
+                      (ArtifactKind.JVM_LIBRARY_JAR,)))
+        targets["memory"] = X.jvm_classfile_memory_target()
+        for name, (function, objects) in (("stack frames", general._recursive_stack_program()), ("atomics", general._atomic_program(64)),
+                                          ("indirect", general._indirect_program()), ("links", general._link_program())):
+            cases.append((name, objects, function, (ArtifactKind.JVM_LIBRARY_JAR,)))
+            targets[name] = X.jvm_classfile_general_target()
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from benchmarks.jsonmin import build_jsonmin
+
+        jsonmin = build_jsonmin("jvm")
+        cases.append(("jsonmin", tuple(item for item in jsonmin.reader.objects() if item.kind not in (X.Kind.MODULE, X.Kind.PROGRAM_ROOT)), jsonmin.entry,
+                      (ArtifactKind.JVM_EXECUTABLE_JAR,)))
+        targets["jsonmin"] = jsonmin.target
         seen = set()
         for name, objects, entry, artifacts in cases:
-            program = _program(tuple(item for item in objects if item.cid != entry.cid), {b"image": entry}, target, artifacts=artifacts)
+            program = _program(tuple(item for item in objects if item.cid != entry.cid and item.cid != targets.get(name, target).cid), {b"image": entry},
+                               targets.get(name, target), artifacts=artifacts)
             with mock.patch.object(JVM, "jvm_jar", lambda r, f, t, process_entry=False, frontend="auto": jar(r, f, t, process_entry=process_entry,
                                                                                                          frontend="python")):
                 expected = _expected(program)
