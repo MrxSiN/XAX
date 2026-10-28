@@ -98,6 +98,22 @@ def _direct(method: DexMethodDef) -> bool:
 
 def write_dex(classes: Sequence[DexClassDef]) -> bytes:
     """One canonical DEX 039 file holding ``classes`` (a class's superclass and interfaces precede it)."""
+    # S15e.6g.1 (ADR-349): the XAX writer program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    import os
+
+    from xax_selfhost_dex_writer import write_dex_with_xax
+
+    built = write_dex_with_xax(tuple(classes))
+    if built is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return built
+    reference = _write_dex_python(classes)
+    if built is not None and built != reference:
+        raise AssertionError("S15e.6g DEX files disagree")
+    return reference
+
+
+def _write_dex_python(classes: Sequence[DexClassDef]) -> bytes:
+    """The bootstrap's writer."""
     defined = [item.descriptor for item in classes]
     if len(set(defined)) != len(defined):
         fail("XAX.DEX.CLASS", ",".join(defined), "DEX-DUPLICATE-CLASS", "distinct classes", defined)

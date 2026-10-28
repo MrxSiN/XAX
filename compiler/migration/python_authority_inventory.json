@@ -638,6 +638,10 @@
     "xax_selfhost_android_managed_rules.py": {
       "class": "G",
       "note": "Builder of the S15e.6f.2 managed-class Android profile decisions program store (ADR-348); its host part extracts the classes, export interfaces and reachable platform uses."
+    },
+    "xax_selfhost_dex_writer.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6g.1 JVM-to-DEX writer program store (ADR-349)."
     }
   },
   "components": {
