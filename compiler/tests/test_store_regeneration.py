@@ -26,6 +26,15 @@ BUILDERS = (
     ("xax_selfhost_x86_64_general", "build_general_program"),
     ("xax_selfhost_aarch64_general", "build_aarch64_program"),  # S15e.2 (ADR-315)
     ("xax_selfhost_jvm", "build_jvm_program"),  # S15e.5 (ADR-327)
+    ("xax_selfhost_apk", "build_apk_program"),  # S15e.6a (ADR-340)
+    ("xax_selfhost_apk_signing", "build_signer_program"),  # S15e.6b (ADR-341)
+    ("xax_selfhost_android_resources", "build_resources_program"),  # S15e.6c (ADR-342)
+    ("xax_selfhost_dex", "build_dex_program"),  # S15e.6d (ADR-343, ADR-344, ADR-345)
+    ("xax_selfhost_android_elf", "build_android_elf_program"),  # S15e.6e (ADR-346)
+    ("xax_selfhost_android_rules", "build_rules_program"),  # S15e.6f.1 (ADR-347)
+    ("xax_selfhost_android_managed_rules", "build_managed_rules_program"),  # S15e.6f.2 (ADR-348)
+    ("xax_selfhost_dex_writer", "build_dex_writer_program"),  # S15e.6g.1 (ADR-349)
+    ("xax_selfhost_dex_jvm", "build_dex_jvm_program"),  # S15e.6g.2 (ADR-350)
     # S15d.2 (ADR-305): the general driver's committed store is its builder's baseline with the evolution ledger applied.
     ("xax_selfhost_evolution", "build_evolved_general", "GENERAL_STORE_PATH"),
 )

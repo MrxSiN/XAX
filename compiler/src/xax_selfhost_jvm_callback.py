@@ -171,7 +171,12 @@ def _table_fn(tables):
                     e.set("tb_a", _call(e, "node_info", p["tb_a"]))
                     ni = _g(e, G_NI)
                     e.var("tb_op", e.ld(e.add(ni, NI_OP)))
-                    _ok(e, e.ne(p["tb_op"], int(Operation.CALL_INDIRECT)))  # indirect calls: the general profile (declined)
+                    def contract():
+                        from xax_selfhost_jvm_indirect import collect_contract
+
+                        collect_contract(e, _reference(e, p["tb_g"], e.ld(e.add(ni, NI_ENTITY))))
+
+                    e.if_(e.eq(p["tb_op"], int(Operation.CALL_INDIRECT)), contract)  # ``contracts.setdefault`` (S15e.5h)
 
                     def address():
                         e.var("tb_fn", _reference(e, p["tb_g"], e.ld(e.add(ni, NI_ENTITY))))
@@ -412,6 +417,7 @@ def _callbacks_fn(tables):
             def target():
                 e.var("cb_t", e.ld(e.add(p["cb_tl"], p["cb_q2"])))
                 _call(e, "jk_cb_signature", p["cb_t"], p["cb_g"], p["cb_codes"], p["cb_np"], p["cb_rcode"], p["cb_rz"])
+                _call(e, "jf_shadow", p["cb_t"])  # JVM-ENTRY-SHADOW-STACK (S15e.5h)
                 e.var("cb_fx", e.ld(e.add(_g(e, G_CIDX), p["cb_t"])))
                 u1(e, p["cb_code"], 0x2A)
                 u1(e, p["cb_code"], 0xB4)

@@ -36,8 +36,8 @@ REFS_CAP = 4096
 CALL_ABIS = {JVM_INVOKESTATIC_ABI: 0xB8, JVM_INVOKEVIRTUAL_ABI: 0xB6, JVM_GETSTATIC_ABI: 0xB2, JVM_INVOKEINTERFACE_ABI: 0xB9,
              JVM_INVOKESTATIC_INTERFACE_ABI: 0xB8}
 (MB_OP, MB_IFACE, MB_CLS, MB_CLSN, MB_NAME, MB_NAMEN, MB_DESC, MB_DESCN, MB_NP, MB_PARAMS, MB_RES, MB_RESN, MB_ARGS, MB_RSLOTS,
- MB_CARRIER, MB_KIND, MB_FSIZE) = range(17)
-MB_WORDS = 17
+ MB_CARRIER, MB_KIND, MB_FSIZE, MB_MEMORY) = range(18)
+MB_WORDS = 18  # MB_MEMORY: a member of the memory class (S15e.5g), parsed as a call
 (OK_CALL, OK_NEW, OK_NEWARRAY, OK_MULTI, OK_ALOAD, OK_ASTORE, OK_ALEN, OK_LDC, OK_GETFIELD, OK_PUTFIELD, OK_PUTSTATIC, OK_CHECKCAST,
  OK_INSTANCEOF) = range(13)
 KINDS = {**{abi: OK_CALL for abi in CALL_ABIS}, JVM_NEW_ABI: OK_NEW, JVM_NEWARRAY_ABI: OK_NEWARRAY, JVM_MULTIANEWARRAY_ABI: OK_MULTI,
@@ -112,8 +112,9 @@ def ref_text(e: E, code):
 
 def _vdesc_fn(tables):
     """``_jvm_type`` of TYPE ``t``: ``D_NONE`` for a proof value, ``D_I``/``D_J`` for bits of at most 64 bits, ``D_F``/
-    ``D_D`` for floats, ``[J`` for an aggregate or sum, ``D_I`` for a link, a reference code for a pointer to
-    ``jvm-ref:<descriptor>`` or to a ``jvm-interface`` entry; anything else (a memory pointer, a wider value) declines."""
+    ``D_D`` for floats, ``[J`` for an aggregate or sum, ``D_I`` for a link or a memory pointer (S15e.5g), a reference
+    code for a pointer to ``jvm-ref:<descriptor>`` or to a ``jvm-interface`` entry; anything else (a wider value)
+    declines."""
     from xax_selfhost_general_frame import _bits_width, _float_width
 
     def build(e: E):
@@ -146,7 +147,7 @@ def _vdesc_fn(tables):
         _payload_uleb(e, "vd_at")  # the address space
         e.var("vd_el", _reference(e, p["t"], _payload_uleb(e, "vd_at")))
         _ok(e, e.ne(p["vd_el"], NONE))
-        _ok(e, e.eq(_type_form(e, p["vd_el"]), 6))  # else a memory pointer: the memory profile (declined)
+        e.if_(e.ne(_type_form(e, p["vd_el"]), 6), lambda: e.give(D_I))  # an offset into the linear memory (ADR-156)
         e.var("vd_id", e.add(_at(e, G_PAY, p["vd_el"]), 1))
         e.var("vd_n", _payload_uleb(e, "vd_id"))
         reference = e.both(e.lt(len(REFERENCE_PREFIX), p["vd_n"]), *(e.eq(e.rd(e.add(p["vd_id"], k)), byte) for k, byte in enumerate(REFERENCE_PREFIX)))
@@ -240,7 +241,11 @@ def _member_fn(tables):
         e.var("fm_nout", _payload_uleb(e, "fm_at"))
         e.var("fm_outs", p["fm_at"])
         e.set("fm_at", e.add(p["fm_at"], e.mul(p["fm_nout"], 32)))
-        _ok(e, e.eq(p["fm_at"], p["fm_end"]))  # an allocator or deallocator contract: not a JVM call (declined)
+        from xax_selfhost_x86_64_general import _bytes_equal
+
+        # An allocator or deallocator contract: only the memory class's (``alloc``, ``free``) is a JVM call here.
+        e.var("fm_memory", e.flag(_bytes_equal(e, p["fm_lib"], p["fm_libn"], MEMORY_CLASS)))
+        _ok(e, e.either(e.eq(p["fm_at"], p["fm_end"]), e.ne(p["fm_memory"], 0)))
         _ok(e, e.both(e.lt(0, p["fm_abin"]), e.lt(0, p["fm_libn"]), e.lt(0, p["fm_symn"])))  # FOREIGN-FUNCTION-NONEMPTY: the bootstrap's
 
         def abi_is(abi: bytes):
@@ -275,7 +280,7 @@ def _member_fn(tables):
         set_field(MB_KIND, p["fm_kind"])
         for abi, opcode in CALL_ABIS.items():
             e.if_(abi_is(abi), lambda opcode=opcode: set_field(MB_OP, opcode))
-        _ok(e, e.not_(_bytes_equal_words(e, p["fm_cls"], p["fm_libn"], MEMORY_CLASS)))  # the memory class: declined
+        set_field(MB_MEMORY, p["fm_memory"])
         set_field(MB_IFACE, e.flag(e.either(abi_is(JVM_INVOKEINTERFACE_ABI), abi_is(JVM_INVOKESTATIC_INTERFACE_ABI))))
         set_field(MB_CLS, p["fm_cls"])
         set_field(MB_CLSN, p["fm_libn"])
@@ -570,14 +575,16 @@ def _matches_fn(tables):
         e.var("dm_x", vdesc(e, p["t"]))
         e.var("dm_ch", e.ld(p["text"]))
         e.var("dm_one", e.flag(e.eq(p["n"], 1)))
+        # A memory pointer is an int offset (ADR-156): only ``I`` matches it.
+        e.if_(e.both(e.eq(_type_form(e, p["t"]), 2), e.eq(p["dm_x"], D_I)), lambda: e.give(e.flag(e.both(e.ne(p["dm_one"], 0), e.eq(p["dm_ch"], ord("I"))))))
 
         def narrow():
-            from xax_selfhost_general_frame import _bits_width
+            from xax_selfhost_jvm_method import type_width
 
             e.var("dm_want", 0)
             for ch, width in NARROW_WIDTH.items():
                 e.if_(e.eq(p["dm_ch"], ch), lambda width=width: e.set("dm_want", width))
-            _bits_width(e, p["t"], "dm_w")
+            type_width(e, p["t"], "dm_w")  # a link is 32 bits
             e.give(e.flag(e.both(e.either(e.eq(p["dm_x"], D_I), e.eq(p["dm_x"], D_J)), e.eq(p["dm_w"], p["dm_want"]))))
 
         e.if_(e.both(e.ne(p["dm_one"], 0), e.either(*(e.eq(p["dm_ch"], ch) for ch in NARROW_WIDTH))), narrow)

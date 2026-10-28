@@ -95,7 +95,11 @@ def measure(include_b4: bool = True) -> dict:
     b3 = []
     for path in sorted(BOOTSTRAP.glob("*.xax")):
         reader = X.StoreReader(path.read_bytes())
-        words, listed, groups = verifier_input(reader)
+        streamed = verifier_input(reader)
+        if streamed is None:  # ADR-276: a graph body beyond the decoder's capacity: the image makes no claim
+            b3.append({"store": path.name, "objects": len(list(reader.objects())), "store_proven": None, "beyond_capacity": True})
+            continue
+        words, listed, groups = streamed
         start = time.perf_counter()
         expected = native.verify(words, len(listed), groups)
         native_seconds = time.perf_counter() - start

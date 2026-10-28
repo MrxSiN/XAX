@@ -561,9 +561,8 @@ def current_m14_readiness() -> M14ClosureReadiness:
     )
 
 
-# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the program
-# backends of the browser page, JVM, Android and raw-image targets are Python (S15e.4-S15e.6; ADR-180, ADR-308, ADR-320,
-# ADR-321).
+# The canonical XAX store implementing the whole production compiler, once one exists.  None today: the Android
+# package backend is Python (S15e.6; ADR-180, ADR-308, ADR-336).
 FULL_COMPILER_STORE: Path | None = None
 # S14b (ADR-285): the executed generations of the Linux x86-64 production compiler (the general driver).
 FULL_SELFHOST_EVIDENCE = Path(__file__).resolve().parents[1] / "benchmarks" / "full_selfhost_evidence.json"
@@ -670,11 +669,11 @@ def bootstrap_status(evidence: M14RecursiveEvidence) -> dict:
         "derivation_source": "xax_selfhost.bootstrap_status",
         "full_production_compiler": {
             **{f"B{level}": False for level in range(7)},
-            "blocker": "JVM jars and Android packages are compiled by Python backends (S15e.5, S15e.6); Linux x86-64 and AArch64 "
-                       "executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw "
-                       "images, accelerator deployments, SPIR-V modules and browser pages are the production compiler's; the Linux "
-                       "x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, "
-                       "ADR-321, ADR-322, ADR-324, ADR-325, ADR-326)",
+            "blocker": "Android packages are compiled by Python backends (S15e.6); Linux x86-64 and AArch64 executables, Windows "
+                       "PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator "
+                       "deployments, SPIR-V modules, browser pages and JVM JARs are the production compiler's; the Linux x86-64 "
+                       "production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, "
+                       "ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339)",
         },
         **({"linux_x86_64_production_compiler": linux} if linux is not None else {}),
         "m14_semantic_image_wrapper": {

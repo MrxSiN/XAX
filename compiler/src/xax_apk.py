@@ -88,6 +88,22 @@ def build_apk(entries: Iterable[ApkEntry]) -> bytes:
     entries = tuple(sorted(entries, key=lambda item: item.name.encode("utf-8")))
     if not entries or len({item.name for item in entries}) != len(entries):
         raise ValueError("APK entries must be nonempty and have unique names")
+    # S15e.6a (ADR-340): the XAX container program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    import os
+
+    from xax_selfhost_apk import apk_with_xax
+
+    built = apk_with_xax(entries)
+    if built is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return built
+    reference = _build_apk_python(entries)
+    if built is not None and built != reference:
+        raise AssertionError("S15e.6a APK containers disagree")
+    return reference
+
+
+def _build_apk_python(entries: tuple[ApkEntry, ...]) -> bytes:
+    """The bootstrap's container (``entries`` sorted and checked)."""
     out = bytearray()
     central: list[bytes] = []
 

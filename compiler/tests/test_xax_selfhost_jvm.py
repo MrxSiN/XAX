@@ -249,6 +249,101 @@ class SelfhostJvmTests(unittest.TestCase):
                 test_xax_jvm_callbacks.JvmCallbackRejectionTests("test_the_interface_method_must_match_the_function").test_the_interface_method_must_match_the_function()
             self.assertEqual([(kind, diagnostic.rule) for kind, diagnostic in seen], [("rejected", "JVM-ENTRY-SIGNATURE")])
 
+    def test_memory_programs(self):
+        """S15e.5g: the memory profile (``test_xax_jvm_memory``'s programs: every access width, checked and plain, floats,
+        traps, rebases, null blocks, string runs and repeated loads, ``JVM-MEMORY-MEMBER``) through both front ends."""
+        import test_xax_jvm_memory as memory
+        import xax_jvm
+
+        seen = []
+
+        def compiled(reader, cid, target, *, process_entry=False):
+            expected = _outcome(reader, cid, target, "python", process_entry)
+            self.assertEqual(_outcome(reader, cid, target, "xax", process_entry), expected)
+            seen.append(expected[0] if expected[0] == "jar" else expected[1].rule)
+            if expected[0] == "rejected":
+                raise XaxError(expected[1])
+            return xax_jvm.compile_jvm_bound_target(reader, cid, target, process_entry=process_entry)
+
+        rng = random.Random(memory.SEED)
+        with unittest.mock.patch.object(memory, "compile_jvm_bound_target", compiled):
+            for index in range(memory.COUNT):
+                objects, function, _expected = memory._program(rng)
+                with self.subTest(program=index):
+                    memory._image(objects, function)
+            for name in ("test_checked_access_outside_the_view_traps", "test_rebase_outside_the_view_traps",
+                         "test_an_oversized_request_is_a_null_block_and_its_view_traps", "test_constant_byte_runs_and_repeated_loads"):
+                with self.subTest(case=name), unittest.mock.patch.object(memory, "run_jvm_calls", lambda *a, **k: None):
+                    try:
+                        getattr(memory.JvmMemoryTests(name), name)()
+                    except (AssertionError, TypeError):
+                        pass  # the run itself is test_xax_jvm_memory's
+            memory.JvmMemoryProfileTests("test_unknown_memory_members_reject").test_unknown_memory_members_reject()
+        self.assertEqual(seen.count("jar"), memory.COUNT + 4, seen)  # the null-block case stops at its first run
+        self.assertEqual(seen[-1], "JVM-MEMORY-MEMBER")
+
+    def _both(self, reader, cid, target, process_entry=False):
+        expected = _outcome(reader, cid, target, "python", process_entry)
+        self.assertEqual(_outcome(reader, cid, target, "xax", process_entry), expected)
+        return expected[0] if expected[0] == "jar" else expected[1].rule
+
+    def test_general_programs(self):
+        """S15e.5h: the general profile (``test_xax_jvm_general``'s programs: aggregates, sums, indirect calls through a
+        passed pointer, stack frames and the shadow stack in a recursion group, atomics, links, raw loads) and the memory
+        profile's JVM-OP-TARGET-SUPPORTED rejections."""
+        import test_xax_jvm_general as general
+        from xax_compiler import jvm_classfile_general_target, jvm_classfile_memory_target
+
+        programs = (general._aggregate_program(), general._sum_program(), general._wrong_variant_program(), general._indirect_program(),
+                    general._recursive_stack_program(), general._atomic_program(32), general._atomic_program(64), general._link_program(),
+                    general._link_program(null_follow=True), general._raw_load_program())
+        for index, (function, objects) in enumerate(programs):
+            with self.subTest(program=index):
+                target = jvm_classfile_general_target()
+                self.assertEqual(self._both(program_store(function, target, objects), function.cid, target), "jar")
+        for index, (function, objects) in enumerate(programs[:2] + programs[3:4]):
+            with self.subTest(rejected=index):
+                target = jvm_classfile_memory_target()
+                self.assertEqual(self._both(program_store(function, target, objects), function.cid, target), "JVM-OP-TARGET-SUPPORTED")
+
+    def test_threaded_process_entries(self):
+        """S15e.5i: a process entry on the memory and general profiles runs on the threaded launcher."""
+        import test_xax_jvm_general as general
+        from xax_compiler import jvm_classfile_general_target
+
+        member_function, objects = general._recursive_stack_program()
+        member = next(item for item in objects if getattr(item, "kind", None) is not None and item.cid != member_function.cid and item.kind.name == "FUNCTION")
+        graph = GraphBuilder()
+        block = graph.block()
+        block.op1(Operation.CALL_DIRECT, (block.const(bits_type(32), 9),), objects[0], entity=member)
+        block.ret()
+        entry = graph.function((), ())
+        target = jvm_classfile_general_target()
+        self.assertEqual(self._both(program_store(entry, target, (*objects, *graph.objects.values())), entry.cid, target, True), "jar")
+
+    def test_shadow_stack_rejection(self):
+        import test_xax_jvm_callbacks as callbacks
+        import xax_jvm
+
+        seen = []
+
+        def compiled(reader, cid, target, *, process_entry=False):
+            seen.append(self._both(reader, cid, target, process_entry))
+            return xax_jvm.compile_jvm_bound_target(reader, cid, target, process_entry=process_entry)
+
+        with unittest.mock.patch.object(callbacks, "compile_jvm_bound_target", compiled):
+            with self.assertRaises(XaxError):
+                callbacks._program(stack_in_square=True)
+        self.assertEqual(seen, ["JVM-ENTRY-SHADOW-STACK"])
+
+    def test_jsonmin_application(self):
+        """The JVM row's application (``benchmarks.jsonmin``): memory, platform streams, the threaded launcher."""
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from benchmarks.jsonmin import build_jsonmin
+
+        program = build_jsonmin("jvm")
+        self.assertEqual(self._both(program.reader, program.entry.cid, program.target, True), "jar")
+
     def test_entry_must_be_a_function(self):
         target = jvm_classfile_target()
         entry, objects, _ = _random_case(1)
