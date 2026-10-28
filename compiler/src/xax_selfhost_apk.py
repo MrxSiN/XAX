@@ -41,6 +41,15 @@ def _shift_bytes(e: E, k):
     return result
 
 
+def _down(e: E, j: str, test, body):
+    """``while j > 0 and test(): body()``, with ``test`` (a call reading element ``j - 1``) evaluated only while
+    ``j > 0``: ``both`` evaluates every operand, so a plain condition would compare a word before the array."""
+    go = f"{j}_go"
+    e.var(go, 1)
+    e.while_(lambda: e.ne(e.p[go], 0), lambda: e.if_(e.eq(e.p[j], 0), lambda: e.set(go, 0),
+                                                       lambda: e.if_(e.ne(test(), 0), body, lambda: e.set(go, 0))))
+
+
 def _put_fn(tables):
     """``put(byte)``: the next output byte (the running length is the record's length word)."""
     def build(e: E):
@@ -150,8 +159,7 @@ def _frontend(tables):
         def insert():
             e.var("item", e.ld(e.add(p["order"], p["s"])))
             e.var("j", p["s"])
-            before = lambda: e.both(e.lt(0, p["j"]), e.ne(_call(e, "az_less", p["item"], e.ld(e.add(p["order"], e.sub(p["j"], 1)))), 0))  # noqa: E731
-            e.while_(before, lambda: (e.st(e.add(p["order"], p["j"]), e.ld(e.add(p["order"], e.sub(p["j"], 1)))), e.set("j", e.sub(p["j"], 1))))
+            _down(e, "j", lambda: _call(e, "az_less", p["item"], e.ld(e.add(p["order"], e.sub(p["j"], 1)))), lambda: (e.st(e.add(p["order"], p["j"]), e.ld(e.add(p["order"], e.sub(p["j"], 1)))), e.set("j", e.sub(p["j"], 1))))
             e.st(e.add(p["order"], p["j"]), p["item"])
 
         e.for_("s", 1, p["n"], insert)

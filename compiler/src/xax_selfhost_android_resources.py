@@ -71,6 +71,15 @@ def _shift_bytes(e: E, k):
     return result
 
 
+def _down(e: E, j: str, test, body):
+    """``while j > 0 and test(): body()``, with ``test`` (a call reading element ``j - 1``) evaluated only while
+    ``j > 0``: ``both`` evaluates every operand, so a plain condition would compare a word before the array."""
+    go = f"{j}_go"
+    e.var(go, 1)
+    e.while_(lambda: e.ne(e.p[go], 0), lambda: e.if_(e.eq(e.p[j], 0), lambda: e.set(go, 0),
+                                                       lambda: e.if_(e.ne(test(), 0), body, lambda: e.set(go, 0))))
+
+
 def _put_fn(tables):
     """``put(byte)``: the next output byte (the running length is the record's length word)."""
     def build(e: E):
@@ -245,8 +254,8 @@ def _sort_fn(tables):
         def insert():
             e.var("so_item", e.ld(e.add(p["arr"], p["so_s"])))
             e.var("so_j", p["so_s"])
-            before = lambda: e.both(e.lt(0, p["so_j"]), e.ne(_call(e, "ar_less", p["so_item"], e.ld(e.add(p["arr"], e.sub(p["so_j"], 1)))), 0))  # noqa: E731
-            e.while_(before, lambda: (e.st(e.add(p["arr"], p["so_j"]), e.ld(e.add(p["arr"], e.sub(p["so_j"], 1)))), e.set("so_j", e.sub(p["so_j"], 1))))
+            _down(e, "so_j", lambda: _call(e, "ar_less", p["so_item"], e.ld(e.add(p["arr"], e.sub(p["so_j"], 1)))),
+                  lambda: (e.st(e.add(p["arr"], p["so_j"]), e.ld(e.add(p["arr"], e.sub(p["so_j"], 1)))), e.set("so_j", e.sub(p["so_j"], 1))))
             e.st(e.add(p["arr"], p["so_j"]), p["so_item"])
 
         e.for_("so_s", 1, p["n"], insert)
@@ -333,8 +342,6 @@ def _element_fn(tables):
         def insert():  # a stable insertion of the records' five words
             e.var("el_j", p["el_s"])
 
-            def before():
-                return e.both(e.lt(0, p["el_j"]), e.ne(_call(e, "ar_attrless", rec(p["el_j"]), rec(e.sub(p["el_j"], 1))), 0))
 
             def swap():
                 for field in range(A_WORDS):
@@ -343,7 +350,7 @@ def _element_fn(tables):
                     e.st(e.add(rec(e.sub(p["el_j"], 1)), field), p["el_t"])
                 e.set("el_j", e.sub(p["el_j"], 1))
 
-            e.while_(before, swap)
+            _down(e, "el_j", lambda: _call(e, "ar_attrless", rec(p["el_j"]), rec(e.sub(p["el_j"], 1))), swap)
 
         e.for_("el_s", 1, p["el_n"], insert)
         for value, n in ((0x0102, 2), (16, 2), (e.add(36, e.mul(p["el_n"], 20)), 4), (0, 4), (NO_INDEX, 4),
@@ -398,8 +405,6 @@ def _sort_records_fn(tables):
         def insert():
             e.var("sr_j", p["sr_s"])
 
-            def before():
-                return e.both(e.lt(0, p["sr_j"]), e.ne(_call(e, "ar_less", e.ld(rec(p["sr_j"])), e.ld(rec(e.sub(p["sr_j"], 1)))), 0))
 
             def swap():
                 e.for_("sr_f", 0, p["words"], lambda: (
@@ -408,7 +413,7 @@ def _sort_records_fn(tables):
                     e.st(e.add(rec(e.sub(p["sr_j"], 1)), p["sr_f"]), p["sr_t"])))
                 e.set("sr_j", e.sub(p["sr_j"], 1))
 
-            e.while_(before, swap)
+            _down(e, "sr_j", lambda: _call(e, "ar_less", e.ld(rec(p["sr_j"])), e.ld(rec(e.sub(p["sr_j"], 1)))), swap)
 
         e.for_("sr_s", 1, p["n"], insert)
         e.give(1)

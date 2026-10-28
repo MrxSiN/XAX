@@ -622,6 +622,10 @@
     "xax_selfhost_android_resources.py": {
       "class": "G",
       "note": "Builder of the S15e.6c binary manifest and resources.arsc program store (ADR-342)."
+    },
+    "xax_selfhost_dex.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6d.1 DEX 039 core bridge program store (ADR-343)."
     }
   },
   "components": {
