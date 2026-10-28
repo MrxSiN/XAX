@@ -21,7 +21,7 @@ from xax_selfhost_general_ranges import _attribute, _block_at, _node_at
 from xax_selfhost_general_regalloc import _eop
 from xax_selfhost_general_view import (
     B_EDGES, B_INPUTS, B_KIND, B_NEDGES, B_NNODES, B_NP, B_NVALUES, B_VALUES, BRANCH, CONDITIONAL, EDGE, G_BCOUNT, G_BENTRY, G_VCOUNT,
-    G_VPOS, G_VPROD, G_VTYPE, N_GRAPH, N_N, N_NOPS, N_NRES, N_OPSAT, POS_BLOCK, POS_INDEX, RETURN, TRAP, _f, _operand, _output, _vf,
+    G_VPOS, G_VPROD, G_VTYPE, N_ATTR, N_GRAPH, N_N, N_NOPS, N_NRES, N_OPSAT, POS_BLOCK, POS_INDEX, RETURN, TRAP, _f, _operand, _output, _vf,
 )
 from xax_selfhost_jvm_code import CODE_FIELDS, C_READS, C_VSDESC, C_VSLOT, D_D, D_F, D_I, D_J, D_NONE, SLOT_LATE, SLOTS, _in, _m, _set_m
 from xax_selfhost_views_backend import _call, _g, _ok
@@ -35,9 +35,9 @@ VALUE_TABLES = ("V_DESC", "V_CONST", "V_CVAL", "V_FOLDED", "V_ALIAS", "V_NEEDED"
 (N_ELIM, N_COPY, N_LINE, BL_BASE, BL_INC, BL_REACH, BL_UP, BL_DEF, BL_LIVE, BL_PRED, BL_NPRED, BL_RESOLVED, BL_ORDER, BL_PLACED,
  M_NV, M_NB, M_NN, M_ENTRY, M_T, M_TRACK, M_INTER, M_ACROSS, M_FRAMED, M_HINT, M_NHINT, M_STYPE, M_SOCC, M_NSOCC, M_FREED, M_NEXT,
  M_PEND, M_GEND, M_TYPED, M_FTYPES, M_NFTYPES, M_PASS, M_KEPTNONE, M_FN, M_SCRATCH, M_MAXLOC, M_NORDER, M_MAXSLOTS, M_ONE, M_WORK,
- M_RETTYPES, M_NRET, M_TRAPUSED, M_MAXCALL, M_LABELN, M_FOLLOW, M_NEEDS_PK, M_NEEDZ, M_PSLOTS, M_ISENTRY) = range(
-    CODE_FIELDS + len(VALUE_TABLES), CODE_FIELDS + len(VALUE_TABLES) + 54)
-STATE_WORDS = CODE_FIELDS + len(VALUE_TABLES) + 54
+ M_RETTYPES, M_NRET, M_TRAPUSED, M_MAXCALL, M_LABELN, M_FOLLOW, M_NEEDS_PK, M_NEEDZ, M_PSLOTS, M_ISENTRY, M_MNEEDS, M_MBYTES, M_MNBYTES,
+ N_RUN, N_INRUN) = range(CODE_FIELDS + len(VALUE_TABLES), CODE_FIELDS + len(VALUE_TABLES) + 59)
+STATE_WORDS = CODE_FIELDS + len(VALUE_TABLES) + 59  # S15e.5g: the memory needs, the string runs
 T_CAP = 3000  # tracked values (the interference matrix is T x T words)
 ST_FREED, ST_TOP = 6, 7  # slot types beyond the descriptors: a freed parameter slot (None), Top ("T")
 
@@ -57,7 +57,9 @@ OP = {name: int(getattr(Operation, name)) for name in (
     "ADD_WRAP", "SUB_WRAP", "MUL_WRAP", "BIT_AND", "BIT_OR", "BIT_XOR", "ROTATE_RIGHT", "INT_TRUNCATE", "INT_ZERO_EXTEND", "INT_COMPARE",
     "CONSTANT", "CALL_DIRECT", "UDIV", "UREM", "HEAP_VIEW", "POINTER_CAST", "FLOAT_ADD", "FLOAT_SUB", "FLOAT_MUL", "FLOAT_DIV",
     "FLOAT_CONVERT", "FLOAT_COMPARE", "UINT_TO_FLOAT", "SINT_TO_FLOAT", "FLOAT_TO_UINT_TRUNC", "FLOAT_TO_SINT_TRUNC", "CALL_FOREIGN",
-    "FUNCTION_ADDRESS", "AGGREGATE_MAKE", "AGGREGATE_GET", "SUM_MAKE", "SUM_TAG", "SUM_GET")}
+    "FUNCTION_ADDRESS", "AGGREGATE_MAKE", "AGGREGATE_GET", "SUM_MAKE", "SUM_TAG", "SUM_GET", "LOAD_BITS_LE", "STORE_BITS_LE",
+    "CHECKED_LOAD_BITS_LE", "CHECKED_STORE_BITS_LE", "ADDRESS_OFFSET", "POINTER_ADDRESS", "POINTER_REBASE")}
+LOADS = (OP["LOAD_BITS_LE"], OP["CHECKED_LOAD_BITS_LE"])
 # Lowerings that place their own branch targets inside a node (``_INTERNAL_LABELS``).
 INTERNAL_LABELS = tuple(int(op) for op in (Operation.ATOMIC_CMPXCHG, Operation.UINT_TO_FLOAT, Operation.SINT_TO_FLOAT,
                                            Operation.FLOAT_TO_UINT_TRUNC, Operation.FLOAT_TO_SINT_TRUNC))
@@ -317,6 +319,53 @@ def _aliases_fn(tables):
 
         e.for_("al_bi", 0, nb, lambda: e.if_(e.both(e.ne(_v(e, BL_REACH, p["al_bi"]), 0), e.ne(p["al_bi"], _m(e, M_ENTRY)),
                                                      e.eq(_v(e, BL_INC, p["al_bi"]), 1)), lambda: single(p["al_bi"])))
+        # S15e.5g: a load from the same place as the load whose memory it consumes is that load's value (eliminated:
+        # its value aliases the earlier one's, its memory its own operand's), to a fixed point over the reachable
+        # blocks in order.
+        e.for_("al_i", 0, _m(e, M_NN), lambda: _set_v(e, N_ELIM, p["al_i"], 0))
+        e.var("al_changed", 1)
+
+        def same_index(left, right):
+            e.var("al_l", canon(e, left))
+            e.var("al_r", canon(e, right))
+            return e.either(e.eq(p["al_l"], p["al_r"]), e.both(e.ne(_v(e, V_CONST, p["al_l"]), 0), e.ne(_v(e, V_CONST, p["al_r"]), 0),
+                                                              e.eq(_v(e, V_CVAL, p["al_l"]), _v(e, V_CVAL, p["al_r"]))))
+
+        def load(b, node, m):
+            e.var("al_id", _node_id(e, b, node))
+
+            def candidate():
+                e.var("al_nops", _f(e, node, N_NOPS))
+                e.var("al_mem", canon(e, _operand(e, node, e.sub(p["al_nops"], 1))))
+                e.var("al_early", e.sel(_is_param(e, p["al_mem"]), NONE, _def(e, p["al_mem"])))
+
+                def earlier():
+                    early = p["al_early"]
+                    e.var("al_ok", e.flag(e.both(e.eq(_f(e, early, N_NRES), _f(e, node, N_NRES)), e.lt(1, _f(e, early, N_NRES)))))
+                    e.if_(e.ne(p["al_ok"], 0), lambda: e.set("al_ok", e.flag(e.both(
+                        e.eq(_output(e, early, 1), p["al_mem"]), e.eq(_eop(e, early), _eop(e, node)), e.eq(_f(e, early, N_NOPS), p["al_nops"]),
+                        e.eq(e.rd(_f(e, early, N_ATTR)), e.rd(_f(e, node, N_ATTR)))))))
+                    e.if_(e.ne(p["al_ok"], 0), lambda: e.for_("al_k", 0, e.rd(_f(e, node, N_ATTR)), lambda: e.if_(
+                        e.ne(e.rd(e.add(_f(e, early, N_ATTR), e.add(p["al_k"], 1))), e.rd(e.add(_f(e, node, N_ATTR), e.add(p["al_k"], 1)))),
+                        lambda: e.set("al_ok", 0))))
+                    e.if_(e.ne(p["al_ok"], 0), lambda: e.for_("al_k", 0, _f(e, node, N_NRES), lambda: e.if_(
+                        e.ne(_type(e, _output(e, early, p["al_k"])), _type(e, _output(e, node, p["al_k"]))), lambda: e.set("al_ok", 0))))
+                    e.if_(e.ne(p["al_ok"], 0), lambda: e.for_("al_k", 0, e.sub(p["al_nops"], 1), lambda: e.if_(
+                        e.not_(same_index(_operand(e, early, p["al_k"]), _operand(e, node, p["al_k"]))), lambda: e.set("al_ok", 0))))
+
+                    def eliminate():
+                        _set_v(e, V_ALIAS, _output(e, node, 0), _output(e, early, 0))
+                        _set_v(e, V_ALIAS, _output(e, node, 1), _operand(e, node, e.sub(p["al_nops"], 1)))
+                        _set_v(e, N_ELIM, p["al_id"], 1)
+                        e.set("al_changed", 1)
+
+                    e.if_(e.ne(p["al_ok"], 0), eliminate)
+
+                e.if_(e.ne(p["al_early"], NONE), earlier)
+
+            e.if_(e.both(e.ne(_v(e, BL_REACH, b), 0), _in(e, _eop(e, node), LOADS), e.eq(_v(e, N_ELIM, p["al_id"]), 0)), candidate)
+
+        e.while_(lambda: e.ne(p["al_changed"], 0), lambda: (e.set("al_changed", 0), _each_node(e, load, "all")))
         e.give(1)
     return _function((), build, tables)
 
@@ -332,11 +381,11 @@ def _needed_fn(tables):
     def build(e: E):
         p = e.p
         e.for_("nd_v", 0, _m(e, M_NV), lambda: _set_v(e, V_NEEDED, p["nd_v"], 0))
-        e.for_("nd_i", 0, _m(e, M_NN), lambda: _set_v(e, N_ELIM, p["nd_i"], 0))
         e.var("nd_changed", 0)
 
         def impure(b, node, m):
-            e.if_(e.not_(_in(e, _eop(e, node), DEAD_IF_UNREAD)), lambda: e.for_("nd_k", 0, _f(e, node, N_NOPS), lambda: _need(e, _operand(e, node, p["nd_k"]), "nd_c")))
+            e.if_(e.both(e.eq(_v(e, N_ELIM, _node_id(e, b, node)), 0), e.not_(_in(e, _eop(e, node), DEAD_IF_UNREAD))),
+                  lambda: e.for_("nd_k", 0, _f(e, node, N_NOPS), lambda: _need(e, _operand(e, node, p["nd_k"]), "nd_c")))
 
         _each_node(e, impure, "ndi")
 
@@ -469,6 +518,12 @@ def _facts_fn(tables):
                 e.var("kw_o", e.sel(e.ne(_v(e, V_KW, p["kw_src"]), NONE), _v(e, V_KW, p["kw_src"]), 64))
                 _set_v(e, V_KW, p["kw_r"], e.sel(e.lt(p["kw_o"], p["kw_rw"]), p["kw_o"], p["kw_rw"]))
 
+            def load():
+                _width(e, p["kw_r"], "kw_lw")
+                e.var("kw_lb", e.mul(_attribute(e, node, 0), 8))
+                _set_v(e, V_KW, p["kw_r"], e.sel(e.lt(p["kw_lb"], p["kw_lw"]), p["kw_lb"], p["kw_lw"]))
+
+            e.if_(e.both(_in(e, p["kw_op"], LOADS), _in(e, _desc(e, p["kw_r"]), (D_I, D_J))), load)
             e.if_(e.eq(p["kw_op"], OP["INT_ZERO_EXTEND"]), zext)
             e.if_(e.eq(p["kw_op"], OP["INT_TRUNCATE"]), trunc)
 
@@ -505,15 +560,29 @@ def _facts_fn(tables):
                             e.eq(_v(e, V_CONST, p["cp_src"]), 0), e.ne(_desc(e, p["cp_r"]), D_NONE))
                 e.set("cp_like", e.flag(ok))
 
+            def pointer():
+                # A heap view's pointer is its raw block (the null check reads only the operand).
+                e.set("cp_like", e.flag(e.both(e.eq(_v(e, V_CONST, _operand(e, node, 0)), 0), e.ne(_desc(e, _output(e, node, 0)), D_NONE))))
+
             e.if_(_in(e, p["cp_op"], (OP["INT_ZERO_EXTEND"], OP["INT_TRUNCATE"])), extension)
+            e.if_(_in(e, p["cp_op"], (OP["POINTER_CAST"], OP["HEAP_VIEW"])), pointer)
             _set_v(e, N_COPY, p["cp_id"], p["cp_like"])
 
             def mark():
-                _set_v(e, V_COPYOF, _output(e, node, 0), _operand(e, node, 0))
+                e.if_(e.ne(p["cp_op"], OP["HEAP_VIEW"]), lambda: _set_v(e, V_COPYOF, _output(e, node, 0), _operand(e, node, 0)))
                 e.var("cp_c", canon(e, _operand(e, node, 0)))
                 _set_v(e, V_IMPLICIT, p["cp_c"], 1)
 
             e.if_(e.ne(p["cp_like"], 0), mark)
+
+            def given_back():
+                # Views a direct call gives back (ADR-101): the operand each one is read implicitly.
+                e.var("cp_el", elided(e, node, "cp_ec"))
+                e.if_(e.ne(p["cp_el"], NONE), lambda: e.for_("cp_r", 0, _f(e, node, N_NRES), lambda: e.if_(
+                    e.both(e.ne(e.ld(e.add(p["cp_el"], p["cp_r"])), NONE), e.ne(_desc(e, _output(e, node, p["cp_r"])), D_NONE)), lambda: (
+                        e.var("cp_gc", canon(e, _operand(e, node, e.ld(e.add(p["cp_el"], p["cp_r"]))))), _set_v(e, V_IMPLICIT, p["cp_gc"], 1)))))
+
+            e.if_(e.eq(p["cp_op"], OP["CALL_DIRECT"]), given_back)
 
         _each_node(e, copy, "cpn")
         e.for_("im_bi", 0, _m(e, M_NB), lambda: each_edge_read(e, _block_at(e, p["im_bi"]), lambda c, t, param, arg: (
@@ -543,6 +612,22 @@ def _facts_fn(tables):
         e.for_("fu_bi", 0, _m(e, M_NB), fused)
         e.give(1)
     return _function((), build, tables)
+
+
+def elided(e: E, node, name: str):
+    """``borrowed_view_returns`` of a direct call of a function that is not an erased proof function: per result the
+    operand it gives back (NONE: a machine result), else NONE."""
+    from xax_selfhost_general_regalloc import _callee_object
+
+    p = e.p
+    e.var(name, NONE)
+
+    def direct():
+        _callee_object(e, node, f"{name}_f")
+        e.if_(e.ne(p[f"{name}_f"], NONE), lambda: e.if_(e.eq(_call(e, "erased", p[f"{name}_f"]), 0), lambda: e.set(name, _call(e, "borrowed", p[f"{name}_f"]))))
+
+    e.if_(e.eq(_eop(e, node), OP["CALL_DIRECT"]), direct)
+    return p[name]
 
 
 def copy_like(e: E, b, node):
@@ -873,6 +958,7 @@ def _interference_fn(tables):
                     e.for_("in_k", 0, _f(e, p["in_n"], N_NOPS), lambda: effective(e, _operand(e, p["in_n"], p["in_k"]), p["in_ops"]))
                     e.var("in_reads_first", e.flag(_in(e, _eop(e, p["in_n"]), ARITHMETIC)))
                     e.var("in_copy", e.flag(copy_like(e, p["in_bi"], p["in_n"])))
+                    e.var("in_el", elided(e, p["in_n"], "in_ec"))
 
                     def result():
                         e.var("in_rv", _output(e, p["in_n"], p["in_r"]))
@@ -891,6 +977,12 @@ def _interference_fn(tables):
                                 e.if_(e.ne(p["in_sb"], NONE), lambda: e.st(e.add(p["in_with"], p["in_sb"]), 0))
 
                             e.if_(e.both(e.eq(p["in_reads_first"], 0), e.ne(p["in_copy"], 0), e.eq(p["in_r"], 0)), same)
+
+                            def returned():
+                                e.var("in_gb", _v(e, V_BIT, canon(e, _operand(e, p["in_n"], e.ld(e.add(p["in_el"], p["in_r"]))))))
+                                e.if_(e.ne(p["in_gb"], NONE), lambda: e.st(e.add(p["in_with"], p["in_gb"]), 0))
+
+                            e.if_(e.both(e.ne(p["in_el"], NONE), e.eq(p["in_copy"], 0)), lambda: e.if_(e.ne(e.ld(e.add(p["in_el"], p["in_r"])), NONE), returned))
                             _call(e, "jm_interfere", p["in_tmp"], p["in_with"])
 
                         e.if_(e.ne(p["in_rb"], NONE), interfere)
@@ -942,6 +1034,16 @@ def _hints_fn(tables):
                                                                                                          _hint(e, p["hi_o"], p["hi_r"])))
 
             e.if_(copy_like(e, b, nd), copy)
+
+            def given_back():
+                e.var("hi_el", elided(e, nd, "hi_ec"))
+                e.if_(e.ne(p["hi_el"], NONE), lambda: e.for_("hi_r", 0, _f(e, nd, N_NRES), lambda: e.if_(
+                    e.ne(e.ld(e.add(p["hi_el"], p["hi_r"])), NONE), lambda: (
+                        e.var("hi_gr", _output(e, nd, p["hi_r"])), e.var("hi_go", _operand(e, nd, e.ld(e.add(p["hi_el"], p["hi_r"])))),
+                        e.if_(e.both(e.ne(_desc(e, p["hi_gr"]), D_NONE), e.ne(_v(e, V_BIT, p["hi_gr"]), NONE), e.ne(_v(e, V_BIT, p["hi_go"]), NONE)),
+                              lambda: (_hint(e, p["hi_gr"], p["hi_go"]), _hint(e, p["hi_go"], p["hi_gr"])))))))
+
+            e.if_(e.both(e.not_(copy_like(e, b, nd)), e.eq(_eop(e, nd), OP["CALL_DIRECT"])), given_back)
 
             def increment():
                 e.var("hi_o", canon(e, _operand(e, nd, 0)))

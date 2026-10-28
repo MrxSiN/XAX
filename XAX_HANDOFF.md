@@ -1405,3 +1405,12 @@ JNI `F`/`D` are exact, the managed-class APK takes an `android-platform-declarat
   1. Re-run the evidence (`refresh_selfhost_store.py` per program, `bench_selfhost_x86_64.py --write`, `bench_full_selfhost --write`, `bench_python_free_seed --write`), then `generate_m14` and `xax_status_docs --write`.
   2. Re-run serially the tests that crashed under xdist.
   3. The JVM memory machinery, then S15e.6 Android packages.
+
+## S15e.5g JVM memory profile — 2026-10-28 (ADR-336, ADR-337)
+
+- ADR-336 drafts the rest of S15 (roadmap rows S15e.5g-S15e.5j, S15e.6a-S15e.6h, S15g).
+- `xax_selfhost_jvm_memory`: the memory lowering (`memory_nodes`, `memory_call`, `run_head`), the runs analysis (`jm_runs`), the needs (`M_MNEEDS`, `M_MBYTES` per method, merged by `jm_merge` into `J_NEEDS`/`J_BYTES`), `initial_scan`, and `jk_members` from `memory_templates` (verify with `check_templates()`).
+- Pitfall: a `_call` whose result is NONE is a decline; a helper that can legitimately answer "none" must return 0 (or use `_call_none`).
+- The decline audit: a pytest plugin that wraps `xax_jvm.compile_jvm_bound_target` and also runs `jvm_with_xax`, logging equal/declined/different for successes and rejections (see ADR-336). Run it over `test_xax_jvm*.py` after each step.
+- The general driver store and the seed are NOT regenerated yet (the driver merges the JVM program): do that once at S15e.5j (`xax_selfhost_evolution rebase` if needed, `write-request`, two-stage `rotate-seed`, `selfbuild.sh`).
+- Next: S15e.5h (general profile: `STACK_ALLOC` frames and the shadow stack, links, raw loads, atomics), S15e.5i (recursion groups, the threaded launcher).
