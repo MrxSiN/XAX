@@ -67,6 +67,24 @@ class SelfhostDexTests(unittest.TestCase):
                                                                                 P("V", ("Landroid/view/View;",)))):
             self.assertEqual(dex_with_xax(spec, required=True), D._emit_dex039_bridge_python(spec))
 
+    def test_activity_ui_and_click_text(self):
+        """S15e.6d.2 (ADR-344): the Activity button (inline text, a resource ID, a managed method with and without its
+        argument) and the click-text listener (inline text, a resource ID)."""
+        import dataclasses
+
+        button = D.activity_button_bridge_spec(button_text="Héllo 𝄞")
+        specs = [button, D.activity_button_resource_bridge_spec(button_text_resource_id=0x7F010002),
+                 D.click_text_listener_bridge_spec(text="Clicked é"), D.click_text_listener_bridge_spec(native_library="xaxapp"),
+                 D.click_resource_listener_bridge_spec(text_resource_id=0x7F01FFFF)]
+        specs.append(dataclasses.replace(button, activity_ui=D.DexActivityUiSpec(button.activity_ui.listener_class_descriptor, button_text_method_name="label"),
+                                         constant_string_methods=(D.DexConstantStringMethod("label", "From XAX"),)))
+        specs.append(dataclasses.replace(button, activity_ui=D.DexActivityUiSpec(button.activity_ui.listener_class_descriptor, button_text_method_name="echo",
+                                                                                 button_text_method_argument="argument"),
+                                         echo_string_methods=(D.DexEchoStringMethod("echo"),)))
+        for index, spec in enumerate(specs):
+            with self.subTest(spec=index):
+                self.assertEqual(dex_with_xax(spec, required=True), D._emit_dex039_bridge_python(spec))
+
     def test_random_bridges(self):
         rng = random.Random(343)
         for trial in range(40):
