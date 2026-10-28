@@ -10,6 +10,11 @@ Root: `ffd141c47487642b66a2ab9c8be02f217363ae5c0bb81106f04a6e8e6750be84`.
 Store SHA-256: `d77b35172d73ac34792669a608efbaabc6938b04bf0650ff28e692747b792d17` (12,191 bytes).
 It was made once with the generic graph builder; later changes use workspace transactions.
 
+**Not migrated to the 2026-10-29 tape (status: open).** Decisions bound by the current `bbc`
+borrow 2,147,246,080-byte views ([DYNAMIC_TAPE.md](DYNAMIC_TAPE.md)); this host still lends
+the caller's 65,536-byte tape, so those records do not bind here. Migrating it changes this
+C ABI (the host must own a lazily committed tape and zero it between calls).
+
 ## ABI
 
 ```text
