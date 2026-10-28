@@ -172,6 +172,23 @@ def _package_name(value: str) -> bytes:
 def emit_resources_arsc(spec: AndroidResourceSpec) -> bytes:
     """Emit one deterministic Android ``resources.arsc`` string table."""
 
+    # S15e.6c (ADR-342): the XAX resources program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    import os
+
+    from xax_selfhost_android_resources import arsc_with_xax
+
+    built = arsc_with_xax(spec)
+    if built is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return built
+    reference = _emit_resources_arsc_python(spec)
+    if built is not None and built != reference:
+        raise AssertionError("S15e.6c resource tables disagree")
+    return reference
+
+
+def _emit_resources_arsc_python(spec: AndroidResourceSpec) -> bytes:
+    """The bootstrap's resource table."""
+
     type_pool = _string_pool(("string",))
     key_pool = _string_pool(tuple(item.name for item in spec.strings))
     value_strings = tuple(sorted({item.value for item in spec.strings}, key=lambda value: value.encode("utf-8")))

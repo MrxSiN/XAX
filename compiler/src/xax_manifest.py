@@ -665,6 +665,28 @@ def emit_binary_manifest(
     application: AndroidManifestApplication | None = None,
     declarations: AndroidPlatformDeclarations | None = None,
 ) -> bytes:
+    # S15e.6c (ADR-342): the XAX resources program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    import os
+
+    from xax_selfhost_android_resources import manifest_with_xax
+
+    built = manifest_with_xax(spec, receivers=receivers, services=services, application=application, declarations=declarations)
+    if built is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return built
+    reference = _emit_binary_manifest_python(spec, receivers, services, application, declarations)
+    if built is not None and built != reference:
+        raise AssertionError("S15e.6c binary manifests disagree")
+    return reference
+
+
+def _emit_binary_manifest_python(
+    spec: AndroidManifestSpec,
+    receivers: tuple[AndroidManifestReceiver, ...] = (),
+    services: tuple[AndroidManifestService, ...] = (),
+    application: AndroidManifestApplication | None = None,
+    declarations: AndroidPlatformDeclarations | None = None,
+) -> bytes:
+    """The bootstrap's binary manifest."""
     tree = _tree_from_spec(spec, receivers, services, application, declarations)
     # debuggable and declaration attributes join the resource map only when used,
     # so other manifests keep their bytes.

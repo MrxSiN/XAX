@@ -618,6 +618,10 @@
     "xax_selfhost_apk_signing.py": {
       "class": "G",
       "note": "Builder of the S15e.6b APK Signature Scheme v2 signer program store (ADR-341)."
+    },
+    "xax_selfhost_android_resources.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6c binary manifest and resources.arsc program store (ADR-342)."
     }
   },
   "components": {
