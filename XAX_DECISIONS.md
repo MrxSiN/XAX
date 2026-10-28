@@ -3202,3 +3202,12 @@ feature. Tests and contract: compiler/integration/android/CARRIER_TRANSACTIONS.m
 | Rationale | These were the last JARs the decline audit showed only the bootstrap building. |
 | Evidence | EXECUTED on Linux x86-64. The decline audit over `test_xax_jvm*.py`, `test_jsonmin.py`, `test_xax_recursion.py`, `test_xax_byte_view_widening.py` and `test_xax_android_libxposed_jvm.py`: 159 equal JARs, 15 equal rejections, nothing declined or different. `test_xax_selfhost_jvm.py`: 15 passed (new: the general programs and the memory profile's rejections, a threaded process entry, `JVM-ENTRY-SHADOW-STACK`, the jsonmin application). |
 | Limits | `JVM-ENTRY-RUNNABLE`, `JVM-MEMORY-PROFILE` on a v1 target reached through a platform memory call, and a shadow-stack rejection naming one of several functions decline. The general driver's store and the seed are regenerated at S15e.5j. |
+
+## ADR-339 — S15e.5j: every JVM JAR is the production compiler's
+
+| Field | Record |
+|---|---|
+| Decision | The general driver's store is regenerated with the S15e.5g-S15e.5i JVM program (the evolution ledger's two records rebased; 42.2 MB), the request store rewritten, and the seed rotated in one stage. A first attempt declined: one JVM graph (`jl_node`, 70,653 nodes once the memory and general lowerings were inlined into it) was more than the driver's graph checks take, so those lowerings became their own functions (`jl_memnode`, `jl_memcall`; the largest graph is now 44,056 nodes). The whole-compiler blocker no longer names JVM JARs. |
+| Rationale | S15e.5's exit: no JAR left to Python. |
+| Evidence | EXECUTED on Linux x86-64. The pinned seed verifies the new driver store and builds the new compiler; seed `b3e24dbf…` (20,336,443 bytes); `selfbuild.sh` with only `sh`, `dirname`, `mkdir`, `chmod`, `cmp` on `PATH`: seed = C1 = C2. `test_xax_selfhost_general_build.py::test_jvm_jars` (now with a memory-profile program, stack frames in a recursion group, atomics, indirect calls, links and the jsonmin executable JAR on the threaded launcher): 16 cases, every outcome `build`'s. `test_store_regeneration.py`: all stores equal their builders. The decline audit (ADR-338): 159 equal JARs, 15 equal rejections. |
+| Limits | The self-hosting evidence records bound to the committed stores (`selfhost_closure`, `selfhost_x86_64`, `full_selfhost`, `python_free_seed`) are stale until re-run (S15g); the first two were already stale at `3cca599`. The whole multi-target compiler still holds none of B0-B6: Android packages remain (S15e.6). |
