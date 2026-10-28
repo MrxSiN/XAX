@@ -1051,6 +1051,21 @@ def _translate_method(cls: _JvmClass, method: _JvmMethod, rename: dict[str, str]
 
 def translate_class(data: bytes, rename: dict[str, str] | None = None) -> DexClassDef:
     """One JVM class file as a DEX class; ``rename`` maps internal class names, everywhere they occur."""
+    # S15e.6g.2 (ADR-350): the XAX lowering program first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with this one.
+    import os
+
+    from xax_selfhost_dex_jvm import translate_class_with_xax
+
+    lowered = translate_class_with_xax(data, rename)
+    if lowered is not None and os.environ.get("XAX_GENERAL_FRONTEND_DIFF") != "1":
+        return lowered
+    reference = _translate_class_python(data, rename)
+    if lowered is not None and lowered != reference:
+        raise AssertionError("S15e.6g DEX classes disagree")
+    return reference
+
+
+def _translate_class_python(data: bytes, rename: dict[str, str] | None = None) -> DexClassDef:
     cls = _parse_classfile(data)
     probe = _Method(cls, _JvmMethod(ACC_STATIC, "<probe>", "()V", 0, 0, b"", {}), dict(rename or {}), 0, False)
     return DexClassDef(

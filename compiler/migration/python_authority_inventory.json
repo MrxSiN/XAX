@@ -642,6 +642,10 @@
     "xax_selfhost_dex_writer.py": {
       "class": "G",
       "note": "Builder of the S15e.6g.1 JVM-to-DEX writer program store (ADR-349)."
+    },
+    "xax_selfhost_dex_jvm.py": {
+      "class": "G",
+      "note": "Builder of the S15e.6g.2 JVM class-file to DEX class lowering program store (ADR-350)."
     }
   },
   "components": {
