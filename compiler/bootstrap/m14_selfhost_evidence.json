@@ -9,7 +9,7 @@
       "B4": false,
       "B5": false,
       "B6": false,
-      "blocker": "signed APKs and libxposed JVM modules are not the production compiler's: the driver takes no signing effect and keeps no external input's bytes (S15e.6i); unsigned APKs on Android targets are the production compiler's through the XAX Android program (S15e.6h, ADR-354 to ADR-356), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356)"
+      "blocker": "libxposed JVM modules are not the production compiler's: the driver keeps no external input's bytes and chains no libxposed JVM program (S15e.6i.2); signed and unsigned APKs on Android targets are the production compiler's through the XAX Android program and APK signer (S15e.6h, S15e.6i.1, ADR-354 to ADR-357), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356, ADR-357)"
     },
     "linux_x86_64_production_compiler": {
       "B0": true,

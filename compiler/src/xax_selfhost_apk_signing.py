@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 
+import xax_selfhost_diagnostics as D
 from xax_compiler import Operation, x86_64_linux_exec_target
 from xax_graph_builder import program_store
 from xax_native import bootstrap_dir
@@ -46,6 +47,18 @@ SHA_IV = (0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C
 DIGEST_INFO_PREFIX = bytes.fromhex("3031300d060960864801650304020105000420")
 CHUNK_SIZE = 1 << 20
 V2_BLOCK_ID, ALGORITHM_ID, MAGIC = 0x7109871A, 0x0103, b"APK Sig Block 42"
+# S15e.6i.1 (ADR-357): the transport mode, ``build``'s signing of an Android package.  Input word 0 is ``TRANSPORT_MARK``;
+# then the APK (its byte count and its bytes packed eight to a word, or ``FROM_IMAGE``: the image record a program wrote
+# before, at ``IMAGE_AT`` of the output view), the effect flag (1: one SIGN effect), the SIGN capability's scope (its
+# length, then its bytes one per word), the package's logical identity (likewise) and the private signing transport
+# (``xax_apk_signing.encode_private_signing_capability``, likewise).  The program makes ``build``'s signing rejections in
+# its order (``ANDROID-APK-SIGNING-CAPABILITY`` without the effect, ``ANDROID-APK-SIGNER-IDENTITY`` for a scope that is
+# no SHA-256, ``ANDROID-APK-SIGNING-CAPABILITY`` where ``decode_private_signing_capability`` raises,
+# ``ANDROID-APK-SIGNER-IDENTITY`` for another certificate), each with its diagnostic; otherwise it signs.
+TRANSPORT_MARK, FROM_IMAGE = 1 << 40, 1 << 41
+TRANSPORT_MAGIC = b"XAX-APK-RSA-CAP-1"
+G_TAG, G_ERR, G_MEM = G_AT + 40, G_AT + 41, G_AT + 42
+RSA_OID = bytes.fromhex("2a864886f70d010101")
 
 
 def _bx(e: E, x, y):
@@ -61,11 +74,6 @@ def _shift_bytes(e: E, k):
     for q in range(1, 8):
         result = e.sel(e.eq(k, q), 1 << (8 * q), result)
     return result
-
-
-def _packed_byte(e: E, at, k):
-    """Byte ``k`` of the packed input at word ``at``."""
-    return e.and_(e.udiv(e.rd(e.add(at, e.udiv(k, 8))), _shift_bytes(e, e.urem(k, 8))), 255)
 
 
 # -- SHA-256 ------------------------------------------------------------------------------------------------------------
@@ -192,10 +200,21 @@ def _copy_fn(tables):
     """``copy(start, stop)``: APK bytes ``start`` to ``stop`` to the output."""
     def build(e: E):
         p = e.p
-        e.var("cp_apk", e.ld(G_APK))
-        e.for_("cp_k", p["start"], p["stop"], lambda: put(e, _packed_byte(e, p["cp_apk"], p["cp_k"])))
+        e.for_("cp_k", p["start"], p["stop"], lambda: put(e, _call(e, "sx_apk", p["cp_k"])))
         e.give(1)
     return _function(("start", "stop"), build, tables)
+
+
+def _apk_fn(tables):
+    """``apk(k)``: the APK's byte ``k``, packed eight to a word at ``G_APK`` of the input view or (``G_MEM``, the
+    transport mode's APK from the image record) of the output view."""
+    def build(e: E):
+        p = e.p
+        e.var("ab_word", e.add(e.ld(G_APK), e.udiv(p["k"], 8)))
+        e.var("ab_value", 0)
+        e.if_(e.ne(e.ld(G_MEM), 0), lambda: e.set("ab_value", e.ld(p["ab_word"])), lambda: e.set("ab_value", e.rd(p["ab_word"])))
+        e.give(e.and_(e.udiv(p["ab_value"], _shift_bytes(e, e.urem(p["k"], 8))), 255))
+    return _function(("k",), build, tables)
 
 
 # -- bytes in the arena (one per word) --------------------------------------------------------------------------------------
@@ -317,6 +336,205 @@ def _spki_fn(tables):
         _ok(e, e.both(e.lt(p["sp_ix"], p["sp_f_n"]), e.eq(e.ld(e.add(p["sp_f"], e.mul(p["sp_ix"], 3))), 0x30)))
         e.give(e.add(e.ld(e.add(p["sp_f"], e.add(e.mul(p["sp_ix"], 3), 1))), e.mul(e.ld(e.add(p["sp_f"], e.add(e.mul(p["sp_ix"], 3), 2))), 1 << 32)))
     return _function((), build, tables)
+
+
+# -- S15e.6i.1 (ADR-357): the private signing transport --------------------------------------------------------------------
+
+def _der_fn(tables):
+    """``der(at, limit, base, size)``: ``_read_der_tlv`` over the ``size`` input bytes at ``base`` (one per word):
+    ``end + 2^32 * content``, the tag in ``G_TAG``; where it raises, ``G_ERR`` is set and 0 given.  Every read is inside
+    the ``size`` bytes, so a caller may go on after an error before it looks."""
+    def build(e: E):
+        p = e.p
+        byte = lambda k: e.rd(e.add(p["base"], k))  # noqa: E731
+
+        def fail():
+            e.st(G_ERR, 1)
+            e.give(0)
+
+        e.if_(e.not_(e.both(e.lt(p["at"], p["limit"]), e.lt(e.add(p["at"], 1), p["size"]))), fail)
+        e.st(G_TAG, byte(p["at"]))
+        e.var("dr_o", e.add(p["at"], 2))
+        e.var("dr_first", byte(e.add(p["at"], 1)))
+        e.var("dr_len", p["dr_first"])
+
+        def long():
+            e.var("dr_count", e.and_(p["dr_first"], 0x7F))
+            e.if_(e.either(e.eq(p["dr_count"], 0), e.lt(4, p["dr_count"]), e.lt(p["size"], e.add(p["dr_o"], p["dr_count"]))), fail)
+            e.if_(e.eq(byte(p["dr_o"]), 0), fail)
+            e.set("dr_len", 0)
+            e.for_("dr_k", 0, p["dr_count"], lambda: e.set("dr_len", e.add(e.mul(p["dr_len"], 256), byte(e.add(p["dr_o"], p["dr_k"])))))
+            e.if_(e.lt(p["dr_len"], 0x80), fail)
+            e.set("dr_o", e.add(p["dr_o"], p["dr_count"]))
+
+        e.if_(e.le(0x80, p["dr_first"]), long)
+        e.var("dr_end", e.add(p["dr_o"], p["dr_len"]))
+        e.if_(e.lt(p["limit"], p["dr_end"]), fail)
+        e.give(e.add(p["dr_end"], e.mul(p["dr_o"], 1 << 32)))
+    return _function(("at", "limit", "base", "size"), build, tables)
+
+
+def _check_fn(tables):
+    """``check(t, tn)``: 1 when ``decode_private_signing_capability`` accepts the ``tn`` transport bytes at input word
+    ``t`` (one per word), else 0 (it raises ``ValueError``: every such reason is the same diagnostic).  On 1 the modulus
+    (without leading zero bytes), the private exponent and the certificate are the signer's (``G_N`` .. ``G_CN``)."""
+    def build(e: E):
+        p = e.p
+        byte = lambda k: e.rd(e.add(p["t"], k))  # noqa: E731
+
+        def invalid():
+            e.give(0)
+
+        def reject_unless(condition):
+            e.if_(e.not_(condition), invalid)
+
+        # The magic, then four non-empty little-endian length-prefixed fields filling the transport.
+        reject_unless(e.le(len(TRANSPORT_MAGIC), p["tn"]))
+        for k, value in enumerate(TRANSPORT_MAGIC):
+            reject_unless(e.eq(byte(k), value))
+        e.var("ck_c", len(TRANSPORT_MAGIC))
+        for name in ("ck_n", "ck_e", "ck_d", "ck_cert"):
+            reject_unless(e.le(e.add(p["ck_c"], 4), p["tn"]))
+            e.var(f"{name}_size", e.c(0))
+            for k in reversed(range(4)):
+                e.set(f"{name}_size", e.add(e.mul(p[f"{name}_size"], 256), byte(e.add(p["ck_c"], k))))
+            e.var(f"{name}_at", e.add(p["ck_c"], 4))
+            reject_unless(e.le(e.add(p[f"{name}_at"], p[f"{name}_size"]), p["tn"]))
+            reject_unless(e.ne(p[f"{name}_size"], 0))
+            e.set("ck_c", e.add(p[f"{name}_at"], p[f"{name}_size"]))
+        reject_unless(e.eq(p["ck_c"], p["tn"]))
+
+        def strip(name):
+            """The field's first non-zero byte (``name_z``) and its length from there (``name_l``)."""
+            e.var(f"{name}_z", p[f"{name}_at"])
+            e.var(f"{name}_end", e.add(p[f"{name}_at"], p[f"{name}_size"]))
+            e.while_(lambda: e.both(e.lt(p[f"{name}_z"], p[f"{name}_end"]), e.eq(byte(p[f"{name}_z"]), 0)),
+                     lambda: e.set(f"{name}_z", e.add(p[f"{name}_z"], 1)))
+            e.var(f"{name}_l", e.sub(p[f"{name}_end"], p[f"{name}_z"]))
+
+        for name in ("ck_n", "ck_e", "ck_d"):
+            strip(name)
+        # The modulus: at least 1024 bits, a whole number of bytes.
+        reject_unless(e.both(e.le(128, p["ck_n_l"]), e.le(0x80, byte(p["ck_n_z"]))))
+        # The public exponent: odd and at least 3.
+        reject_unless(e.lt(0, p["ck_e_l"]))
+        reject_unless(e.either(e.lt(1, p["ck_e_l"]), e.le(3, byte(p["ck_e_z"]))))
+        reject_unless(e.eq(e.and_(byte(e.sub(p["ck_e_end"], 1)), 1), 1))
+        # 1 < the private exponent < the modulus.
+        reject_unless(e.lt(0, p["ck_d_l"]))
+        reject_unless(e.either(e.lt(1, p["ck_d_l"]), e.lt(1, byte(p["ck_d_z"]))))
+
+        def less(a, a_l, b, b_l, name):
+            """1 when the stripped big-endian integer at ``a`` is below the one at ``b``."""
+            e.var(f"{name}_less", e.flag(e.lt(a_l, b_l)))
+
+            def same_length():
+                e.var(f"{name}_q", 0)
+                e.while_(lambda: e.both(e.lt(p[f"{name}_q"], a_l), e.eq(byte(e.add(a, p[f"{name}_q"])), byte(e.add(b, p[f"{name}_q"])))),
+                         lambda: e.set(f"{name}_q", e.add(p[f"{name}_q"], 1)))
+                e.if_(e.lt(p[f"{name}_q"], a_l), lambda: e.set(f"{name}_less", e.flag(e.lt(byte(e.add(a, p[f"{name}_q"])), byte(e.add(b, p[f"{name}_q"]))))))
+
+            e.if_(e.eq(a_l, b_l), same_length)
+            return p[f"{name}_less"]
+
+        reject_unless(e.ne(less(p["ck_d_z"], p["ck_d_l"], p["ck_n_z"], p["ck_n_l"], "ck_dn"), 0))
+
+        # ``extract_certificate_spki``, then ``parse_rsa_spki``: each DER object read by ``sx_der``.
+        e.st(G_ERR, 0)
+        e.var("ck_base", p["t"])
+        e.var("ck_size", 0)
+
+        def der(at, limit, name):
+            e.var(name, _call(e, "sx_der", at, limit, p["ck_base"], p["ck_size"]))
+            reject_unless(e.eq(e.ld(G_ERR), 0))
+            e.var(f"{name}_tag", e.ld(G_TAG))
+            e.var(f"{name}_end", e.and_(p[name], MASK32))
+            e.var(f"{name}_content", e.udiv(p[name], 1 << 32))
+
+        def children(content, end, name, keep: int):
+            """``_der_child_ranges``: the count (``name_n``) and the first ``keep`` children's tag, start and end
+            (``name_tag{k}``, ``name_start{k}``, ``name_end{k}``)."""
+            e.var(f"{name}_n", 0)
+            e.var(f"{name}_c", content)
+            for k in range(keep):
+                for field in ("tag", "start", "end"):
+                    e.var(f"{name}_{field}{k}", 0)
+
+            def child():
+                der(p[f"{name}_c"], end, f"{name}_x")
+                for k in range(keep):
+                    e.if_(e.eq(p[f"{name}_n"], k), lambda k=k: (e.set(f"{name}_tag{k}", p[f"{name}_x_tag"]), e.set(f"{name}_start{k}", p[f"{name}_c"]),
+                                                               e.set(f"{name}_end{k}", p[f"{name}_x_end"])))
+                e.set(f"{name}_n", e.add(p[f"{name}_n"], 1))
+                e.set(f"{name}_c", p[f"{name}_x_end"])
+
+            e.while_(lambda: e.lt(p[f"{name}_c"], end), child)
+            reject_unless(e.eq(p[f"{name}_c"], end))
+
+        e.set("ck_base", e.add(p["t"], p["ck_cert_at"]))
+        e.set("ck_size", p["ck_cert_size"])
+        der(0, p["ck_size"], "ck_crt")
+        reject_unless(e.both(e.eq(p["ck_crt_tag"], 0x30), e.eq(p["ck_crt_end"], p["ck_size"])))
+        children(p["ck_crt_content"], p["ck_crt_end"], "ck_cc", 1)
+        reject_unless(e.both(e.eq(p["ck_cc_n"], 3), e.eq(p["ck_cc_tag0"], 0x30)))
+        der(p["ck_cc_start0"], p["ck_cc_end0"], "ck_tbs")
+        children(p["ck_tbs_content"], p["ck_cc_end0"], "ck_f", 7)
+        e.var("ck_ix", e.sel(e.both(e.lt(0, p["ck_f_n"]), e.eq(p["ck_f_tag0"], 0xA0)), 6, 5))
+        reject_unless(e.lt(p["ck_ix"], p["ck_f_n"]))
+        e.var("ck_spki_tag", e.sel(e.eq(p["ck_ix"], 6), p["ck_f_tag6"], p["ck_f_tag5"]))
+        reject_unless(e.eq(p["ck_spki_tag"], 0x30))
+        e.var("ck_spki_start", e.sel(e.eq(p["ck_ix"], 6), p["ck_f_start6"], p["ck_f_start5"]))
+        e.var("ck_spki_end", e.sel(e.eq(p["ck_ix"], 6), p["ck_f_end6"], p["ck_f_end5"]))
+        # ``parse_rsa_spki`` over the SubjectPublicKeyInfo's bytes.
+        e.set("ck_base", e.add(e.add(p["t"], p["ck_cert_at"]), p["ck_spki_start"]))
+        e.set("ck_size", e.sub(p["ck_spki_end"], p["ck_spki_start"]))
+        der(0, p["ck_size"], "ck_sp")
+        reject_unless(e.both(e.eq(p["ck_sp_tag"], 0x30), e.eq(p["ck_sp_end"], p["ck_size"])))
+        children(p["ck_sp_content"], p["ck_sp_end"], "ck_sf", 2)
+        reject_unless(e.both(e.eq(p["ck_sf_n"], 2), e.eq(p["ck_sf_tag0"], 0x30), e.eq(p["ck_sf_tag1"], 0x03)))
+        der(p["ck_sf_start0"], p["ck_sf_end0"], "ck_alg")
+        children(p["ck_alg_content"], p["ck_sf_end0"], "ck_af", 1)
+        reject_unless(e.both(e.lt(0, p["ck_af_n"]), e.eq(p["ck_af_tag0"], 0x06)))
+        der(p["ck_af_start0"], p["ck_af_end0"], "ck_oid")
+        reject_unless(e.eq(e.sub(p["ck_af_end0"], p["ck_oid_content"]), len(RSA_OID)))
+        for k, value in enumerate(RSA_OID):
+            reject_unless(e.eq(e.rd(e.add(p["ck_base"], e.add(p["ck_oid_content"], k))), value))
+        der(p["ck_sf_start1"], p["ck_sf_end1"], "ck_bit")
+        reject_unless(e.lt(p["ck_bit_content"], p["ck_sf_end1"]))
+        reject_unless(e.eq(e.rd(e.add(p["ck_base"], p["ck_bit_content"])), 0))
+        # The RSA public key: the BIT STRING's bytes after the unused-bits byte.
+        e.set("ck_base", e.add(e.add(p["ck_base"], p["ck_bit_content"]), 1))
+        e.set("ck_size", e.sub(e.sub(p["ck_sf_end1"], p["ck_bit_content"]), 1))
+        der(0, p["ck_size"], "ck_rsa")
+        reject_unless(e.both(e.eq(p["ck_rsa_tag"], 0x30), e.eq(p["ck_rsa_end"], p["ck_size"])))
+        children(p["ck_rsa_content"], p["ck_rsa_end"], "ck_ri", 2)
+        reject_unless(e.eq(p["ck_ri_n"], 2))
+        for k, field in ((0, "ck_n"), (1, "ck_e")):
+            # ``_der_integer``: a canonical non-negative INTEGER, equal to the transport's field.
+            der(p[f"ck_ri_start{k}"], p[f"ck_ri_end{k}"], f"ck_int{k}")
+            content, stop = p[f"ck_int{k}_content"], p[f"ck_int{k}_end"]
+            reject_unless(e.both(e.eq(p[f"ck_int{k}_tag"], 0x02), e.eq(stop, p[f"ck_ri_end{k}"]), e.lt(content, stop)))
+            raw = lambda q: e.rd(e.add(p["ck_base"], q))  # noqa: E731
+            reject_unless(e.eq(e.and_(raw(content), 0x80), 0))
+            reject_unless(e.not_(e.both(e.lt(1, e.sub(stop, content)), e.eq(raw(content), 0), e.eq(e.and_(raw(e.add(content, 1)), 0x80), 0))))
+            e.var(f"ck_iz{k}", content)
+            e.while_(lambda k=k, stop=stop: e.both(e.lt(p[f"ck_iz{k}"], stop), e.eq(raw(p[f"ck_iz{k}"]), 0)),
+                     lambda k=k: e.set(f"ck_iz{k}", e.add(p[f"ck_iz{k}"], 1)))
+            e.var(f"ck_il{k}", e.sub(stop, p[f"ck_iz{k}"]))
+            reject_unless(e.eq(p[f"ck_il{k}"], p[f"{field}_l"]))
+            e.var(f"ck_eq{k}", 1)
+            e.for_(f"ck_iq{k}", 0, p[f"ck_il{k}"], lambda k=k, field=field: e.if_(
+                e.ne(raw(e.add(p[f"ck_iz{k}"], p[f"ck_iq{k}"])), byte(e.add(p[f"{field}_z"], p[f"ck_iq{k}"]))), lambda: e.set(f"ck_eq{k}", 0)))
+            reject_unless(e.ne(p[f"ck_eq{k}"], 0))
+        # Accepted: the signer's inputs.
+        e.st(G_N, e.add(p["t"], p["ck_n_z"]))
+        e.st(G_NN, p["ck_n_l"])
+        e.st(G_D, e.add(p["t"], p["ck_d_at"]))
+        e.st(G_DN, p["ck_d_size"])
+        e.st(G_C, e.add(p["t"], p["ck_cert_at"]))
+        e.st(G_CN, p["ck_cert_size"])
+        e.give(1)
+    return _function(("t", "tn"), build, tables)
 
 
 # -- RSA: Montgomery arithmetic over 32-bit limbs ----------------------------------------------------------------------------
@@ -500,15 +718,88 @@ def _frontend(tables):
             e.st(e.add(p["kt"], k), word)
         e.st(G_AT + 32, p["kt"])
         # The inputs.
-        e.var("apkn", e.rd(0))
-        e.st(G_APK, 1)
+        e.var("transport", e.flag(e.eq(e.rd(0), TRANSPORT_MARK)))
+        e.var("apkn", e.rd(p["transport"]))
+        e.st(G_MEM, 0)
+        e.st(G_APK, e.add(p["transport"], 1))
+        e.var("at", e.add(e.add(p["transport"], 1), e.udiv(e.add(p["apkn"], 7), 8)))
+
+        def from_image():
+            """The APK of the image record (status, code bytes, then the file's length and words), copied to the arena:
+            the signed APK is written over the record."""
+            e.var("fi_at", e.add(IMAGE_AT + 2, e.udiv(e.add(e.ld(IMAGE_AT + 1), 7), 8)))
+            e.set("apkn", e.ld(p["fi_at"]))
+            e.var("fi_words", e.udiv(e.add(p["apkn"], 7), 8))
+            e.var("fi_buf", e.alloc(e.add(p["fi_words"], 1)))
+            _ok(e, e.ne(p["fi_buf"], NONE))
+            e.for_("fi_q", 0, p["fi_words"], lambda: e.st(e.add(p["fi_buf"], p["fi_q"]), e.ld(e.add(e.add(p["fi_at"], 1), p["fi_q"]))))
+            e.st(G_APK, p["fi_buf"])
+            e.st(G_MEM, 1)
+            e.set("at", 2)
+
+        e.if_(e.both(e.ne(p["transport"], 0), e.eq(p["apkn"], FROM_IMAGE)), from_image)
         e.st(G_APKN, p["apkn"])
-        e.var("at", e.add(1, e.udiv(e.add(p["apkn"], 7), 8)))
-        for place, size in ((G_N, G_NN), (G_D, G_DN), (G_C, G_CN)):
-            e.st(size, e.rd(p["at"]))
-            e.st(place, e.add(p["at"], 1))
-            e.set("at", e.add(e.add(p["at"], 1), e.ld(size)))
-        apk = lambda k: _packed_byte(e, 1, k)  # noqa: E731
+
+        def capability():
+            for place, size in ((G_N, G_NN), (G_D, G_DN), (G_C, G_CN)):
+                e.st(size, e.rd(p["at"]))
+                e.st(place, e.add(p["at"], 1))
+                e.set("at", e.add(e.add(p["at"], 1), e.ld(size)))
+
+        def transported():
+            """S15e.6i.1: ``build``'s signing rejections, in its order, then the signer's inputs."""
+            def string(name):
+                e.var(f"{name}_n", e.rd(p["at"]))
+                e.var(f"{name}_at", e.add(p["at"], 1))
+                e.set("at", e.add(e.add(p["at"], 1), p[f"{name}_n"]))
+
+            e.var("effect", e.rd(p["at"]))
+            e.set("at", e.add(p["at"], 1))
+            string("scope")
+            string("lid")
+            string("tr")
+
+            def hex_(n, byte, name):
+                D.put(e, D.T_HEX)
+                D.put(e, n)
+
+                def word():
+                    e.var(f"{name}_w", 0)
+                    for k in reversed(range(8)):
+                        e.var(f"{name}_i", e.add(e.mul(p[f"{name}_q"], 8), k))
+                        e.set(f"{name}_w", e.add(e.mul(p[f"{name}_w"], 256), e.sel(e.lt(p[f"{name}_i"], n), byte(e.sel(e.lt(p[f"{name}_i"], n), p[f"{name}_i"], 0)), 0)))
+                    D.put(e, p[f"{name}_w"])
+
+                e.for_(f"{name}_q", 0, e.udiv(e.add(n, 7), 8), word)
+
+            def reject(rule, expected, actual):
+                D.begin(e)
+                D.text(e, "XAX.BUILD.ANDROID")
+                hex_(p["lid_n"], lambda k: e.rd(e.add(p["lid_at"], k)), "rj_lid")
+                D.text(e, rule)
+                expected()
+                actual()
+                e.st(0, D.REJECT)
+                e.give(1)
+
+            scope = lambda: hex_(p["scope_n"], lambda k: e.rd(e.add(p["scope_at"], k)), "rj_scope")  # noqa: E731
+            e.if_(e.eq(p["effect"], 0), lambda: reject("ANDROID-APK-SIGNING-CAPABILITY", lambda: D.text(e, "exactly one explicit package SIGN effect"),
+                                                       lambda: D.integer(e, 0)))
+            e.if_(e.ne(p["scope_n"], 32), lambda: reject("ANDROID-APK-SIGNER-IDENTITY", lambda: D.text(e, "32-byte certificate SHA-256"), scope))
+            e.if_(e.eq(_call(e, "sx_check", p["tr_at"], p["tr_n"]), 0), lambda: reject(
+                "ANDROID-APK-SIGNING-CAPABILITY", lambda: D.text(e, "valid private signing capability transport"), lambda: D.text(e, "invalid")))
+            e.var("identity", e.alloc(34))
+            _ok(e, e.ne(p["identity"], NONE))
+            sha_init(e)
+            e.for_("id_k", 0, e.ld(G_CN), lambda: sha_byte(e, e.rd(e.add(e.ld(G_C), p["id_k"]))))
+            _call(e, "sx_final", p["identity"])
+            e.var("same", 1)
+            e.for_("id_q", 0, 32, lambda: e.if_(e.ne(e.ld(e.add(p["identity"], p["id_q"])), e.rd(e.add(p["scope_at"], p["id_q"]))), lambda: e.set("same", 0)))
+            e.if_(e.eq(p["same"], 0), lambda: reject("ANDROID-APK-SIGNER-IDENTITY", scope,
+                                                     lambda: hex_(32, lambda k: e.ld(e.add(p["identity"], k)), "rj_id")))
+
+        e.if_(e.ne(p["transport"], 0), transported, capability)
+        apk = lambda k: _call(e, "sx_apk", k)  # noqa: E731
         # ``_locate_eocd``: the last end record in the final 65557 bytes, its comment reaching the end exactly.
         e.var("minimum", e.sel(e.lt(65557, p["apkn"]), e.sub(p["apkn"], 65557), 0))
         e.var("eocd", NONE)
@@ -655,8 +946,8 @@ def build_signer_program():
         return function
 
     for name, builder in (("sx_compress", _compress_fn), ("sx_byte", _byte_fn), ("sx_final", _final_fn), ("sx_hash", _hash_words_fn),
-                          ("sx_put", _put_fn), ("sx_copy", _copy_fn), ("sx_tlv", _tlv_fn), ("sx_spki", _spki_fn), ("sx_reduce", _reduce_fn),
-                          ("sx_mont", _mont_fn), ("sx_sign", _sign_fn)):
+                          ("sx_put", _put_fn), ("sx_apk", _apk_fn), ("sx_copy", _copy_fn), ("sx_tlv", _tlv_fn), ("sx_spki", _spki_fn), ("sx_reduce", _reduce_fn),
+                          ("sx_mont", _mont_fn), ("sx_sign", _sign_fn), ("sx_der", _der_fn), ("sx_check", _check_fn)):
         add(name, builder(tables))
     program = add("frontend", _frontend(tables))
     return program_store(program, x86_64_linux_exec_target(), tuple(objects)), program
@@ -699,6 +990,35 @@ def sign_with_xax(unsigned_apk: bytes, capability, *, required: bool = False) ->
     if data is None and required:
         raise RuntimeError("the XAX APK signer program is unavailable or declined")
     return data
+
+
+
+def sign_transport_with_xax(unsigned_apk: bytes, transport: bytes, scope: bytes, identity: bytes, *, effect: bool = True):
+    """S15e.6i.1 (ADR-357): the transport mode with the APK in its input: ``("signed", apk)``, ``("rejected",
+    diagnostic)`` (``build``'s signing rejection for the package ``identity``), or None where the program cannot run or
+    declines."""
+    from xax_selfhost_diagnostics import decode_diagnostic
+
+    native = _PROGRAM.native(OPT_OUT)
+    if native is None:
+        return None
+    padded = unsigned_apk + bytes(-len(unsigned_apk) % 8)
+    words = [TRANSPORT_MARK, len(unsigned_apk), *(int.from_bytes(padded[k:k + 8], "little") for k in range(0, len(padded), 8)), int(effect)]
+    for field in (scope, identity, transport):
+        words += [len(field), *field]
+
+    def collect(read):
+        diagnostic = decode_diagnostic(read)
+        if diagnostic is not None:
+            return ("rejected", diagnostic)
+        (status,) = read(0, 1)
+        if status != 1:
+            return None
+        head = read(IMAGE_AT, 3)
+        packed = read(IMAGE_AT + 3, (head[2] + 7) // 8)
+        return ("signed", b"".join(word.to_bytes(8, "little") for word in packed)[:head[2]])
+
+    return native.run(words, collect)
 
 
 del hashlib

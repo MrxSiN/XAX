@@ -15,10 +15,13 @@ results travel in its control words (``B_*``, after the semantic helpers' ``C_*`
   (``BUILD-SNAPSHOT-ROOT``); the snapshot declares external inputs, of which the driver is given none
   (``BUILD-EXTERNAL-COMPLETE``); its trust policy requires package signatures, which the driver does not verify
   (``TRUST-SIGNATURE-REQUIRED``, ``build`` without a signature verifier).  It finds the build entry's function and the
-  target, and declines ``build``'s other paths: signed Android packages and Android packages on other targets, Windows
+  target, and declines ``build``'s other paths: Android packages on other targets, Windows
   DLLs off the PE profile, and targets other than the Linux x86-64 ELF profiles, (S15e.1, ADR-308) the RISC-V raw image
   profiles, whose requested artifacts it checks at once, (S15e.2, ADR-315) the Linux AArch64 ELF profiles and (S15e.6h.3,
-  ADR-356) an unsigned APK on an Android shared-object target, whose package's modules it records.  The target's path is ``B_PATH`` (``PATH_*``): the program
+  ADR-356) an APK on an Android shared-object target, whose package's modules it records.  S15e.6i.1 (ADR-357): under
+  ``build-signed`` it checks the one SIGN effect as ``validate_build_effects`` does (``_effect``), and for a signed APK it lays
+  out the APK signer's input (``_signer_input``): the signer, chained after the Android program, makes ``build``'s
+  signing rejections.  The target's path is ``B_PATH`` (``PATH_*``): the program
   the driver lowers it with.  ``build`` checks the requested artifacts only after it made the container, so a request for
   anything but one native image writes its record (``BUILD-ARTIFACT-SUPPORTED``) and sets ``B_ARTIFACT``; the driver
   rejects with it only when lowering succeeded.
@@ -32,7 +35,7 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_ed25519 as ED
-from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1, JVM_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
+from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1, ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1, JVM_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
                           container_lowering_identity)
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
@@ -79,6 +82,18 @@ PATH_ANDROID = 11
 ANDROID_ARCHITECTURE, ANDROID_ABI, ANDROID_FORMATS = 3, 4, (4, 5)
 B_NMOD, B_MODS, MAX_MODULES = 48, 49, 14
 B_PACKAGE = 63  # the package's object index (its logical identity is the Android program's diagnostic entity)
+# S15e.6i.1 (ADR-357): the signing state (workspace words).  ``build-signed`` passes one SIGN effect: the package's only
+# SIGN capability with the transport file's bytes as its value (``SG_EFFECT`` 1, the transport's BLAKE3 digest at
+# ``SG_DIGEST``, its bytes one per word at ``TRANSPORT_AT``).  ``build_request`` checks it as ``validate_build_effects``
+# does and, for a signed APK, lays out the APK signer's transport-mode input (``xax_selfhost_apk_signing``: the effect,
+# the scope, the package's identity, the transport) at ``SIGNER_AT`` (``SIGNER_N`` words), which the driver copies to the
+# signer after the Android program; the signer makes ``build``'s signing rejections.
+SIGN_AT = 50 << 20
+SG_EFFECT, SG_SIGNED, SG_TN, SIGNER_N = (SIGN_AT + k for k in range(4))
+SG_DIGEST = SIGN_AT + 8
+TRANSPORT_AT, TRANSPORT_LIMIT = SIGN_AT + 1024, 1 << 16
+SIGNER_AT = SIGN_AT + (1 << 18)
+SIGN_KIND = 7  # ``BuildCapabilityKind.SIGN``
 ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
 # S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
 # program reads the package's plan, ``xax_selfhost_general_dll``), and the provenance names the DLL container.
@@ -182,6 +197,22 @@ class _Reader:
 
 def _cid(e: E, o):
     D.cid(e, [_cid_word(e, o, k) for k in range(4)])
+
+
+def _hex(e: E, at, n, name: str):
+    """A hex value (``bytes.hex()``) of the ``n`` input bytes at ``at`` (one per word)."""
+    p = e.p
+    D.put(e, D.T_HEX)
+    D.put(e, n)
+
+    def word():
+        e.var(f"{name}_w", 0)
+        for k in reversed(range(8)):
+            e.var(f"{name}_i", e.add(e.mul(p[f"{name}_q"], 8), k))
+            e.set(f"{name}_w", e.add(e.mul(p[f"{name}_w"], 256), e.sel(e.lt(p[f"{name}_i"], n), e.rd(e.add(at, e.sel(e.lt(p[f"{name}_i"], n), p[f"{name}_i"], 0))), 0)))
+        D.put(e, p[f"{name}_w"])
+
+    e.for_(f"{name}_q", 0, e.udiv(e.add(n, 7), 8), word)
 
 
 def _name(e: E, value: str, names: dict[int, str]):
@@ -318,6 +349,161 @@ def _trust(e: E, r: _Reader, verify):
 
     e.if_(e.both(e.eq(p["outcome"], ACCEPT), e.ne(p["unaccepted"], 0)), lambda: _reject(
         e, "XAX.TRUST.SNAPSHOT", lambda: D.text(e, "snapshot"), "TRUST-SNAPSHOT-SIGNATURES", listed(False), listed(True)))
+
+
+def _stop(e: E):
+    """``build_request``'s outcome, now (its status word, then the result)."""
+    _set(e, B_STATUS, e.p["outcome"])
+    e.give(e.p["outcome"])
+
+
+def _signer_input(e: E, r: _Reader):
+    """S15e.6i.1 (ADR-357): the APK signer's transport-mode input at ``SIGNER_AT``: the mark, the APK from the image record,
+    the effect flag, the SIGN scope, the package's identity and the transport (each its length, then a byte a word)."""
+    p = e.p
+    import xax_selfhost_apk_signing as SGN
+
+    e.var("si_saved", p["cur"])
+    e.var("si_at", SIGNER_AT)
+
+    def word(value):
+        e.st(p["si_at"], value)
+        e.set("si_at", e.add(p["si_at"], 1))
+
+    def string(n, byte, name):
+        word(n)
+        e.for_(name, 0, n, lambda: word(byte(p[name])))
+
+    word(SGN.TRANSPORT_MARK)
+    word(SGN.FROM_IMAGE)
+    word(e.ld(SG_EFFECT))
+    string(p["scope_n"], lambda k: e.rd(e.add(p["scope_at"], k)), "si_s")
+    r.at(_ctrl(e, B_PACKAGE))
+    e.var("si_lid_n", r.uleb())
+    string(p["si_lid_n"], lambda k: e.rd(e.add(p["cur"], k)), "si_l")
+    e.var("si_tn", e.sel(e.ne(e.ld(SG_EFFECT), 0), e.ld(SG_TN), 0))
+    string(p["si_tn"], lambda k: e.ld(e.add(TRANSPORT_AT, k)), "si_t")
+    e.st(SIGNER_N, e.sub(p["si_at"], SIGNER_AT))
+    e.set("cur", p["si_saved"])
+
+
+def _effect(e: E, r: _Reader):
+    """S15e.6i.1 (ADR-357): ``validate_build_effects`` for ``build-signed``'s one SIGN effect (the package's identity,
+    its only SIGN capability, the transport): the profile grants it and every snapshot package of that identity declares
+    it (``BUILD-CAPABILITY-ISOLATED``); a hermetic reproducible profile declares the transport's digest among the
+    external inputs (``BUILD-SIGNING-MATERIAL-DECLARED``).  Not one SIGN capability, or another snapshot package of the
+    identity: declined."""
+    p = e.p
+    e.if_(e.ne(p["signs"], 1), lambda: e.set("outcome", DECLINE))
+    e.if_(e.ne(p["outcome"], ACCEPT), lambda: _stop(e))
+    e.var("ef_saved", p["cur"])
+    r.at(_ctrl(e, B_PACKAGE))
+    e.var("lid_n", r.uleb())
+    e.var("lid_at", p["cur"])
+
+    def same_identity(at, n, name):
+        e.var(name, e.flag(e.eq(n, p["lid_n"])))
+        e.for_(f"{name}_k", 0, e.sel(e.ne(p[name], 0), n, 0), lambda: e.set(name, e.and_(p[name], e.flag(
+            e.eq(e.rd(e.add(at, p[f"{name}_k"])), e.rd(e.add(p["lid_at"], p[f"{name}_k"])))))))
+        return p[name]
+
+    def same_scope(at, n, name):
+        e.var(name, e.flag(e.eq(n, p["scope_n"])))
+        e.for_(f"{name}_k", 0, e.sel(e.ne(p[name], 0), n, 0), lambda: e.set(name, e.and_(p[name], e.flag(
+            e.eq(e.rd(e.add(at, p[f"{name}_k"])), e.rd(e.add(p["scope_at"], p[f"{name}_k"])))))))
+        return p[name]
+
+    # The profile's grants.
+    r.at(_ctrl(e, B_PROFILE))
+    r.uleb()  # the form
+    e.var("ef_mode", r.uleb())
+    r.uleb()
+    r.uleb()
+    e.var("granted", 0)
+
+    def grant():
+        e.var("gi_n", r.uleb())
+        e.var("gi_at", p["cur"])
+        e.set("cur", e.add(p["cur"], p["gi_n"]))
+        e.var("gk", r.uleb())
+        e.var("gs_n", r.uleb())
+        e.var("gs_at", p["cur"])
+        e.set("cur", e.add(p["cur"], p["gs_n"]))
+        e.var("g_hit", e.and_(same_identity(p["gi_at"], p["gi_n"], "g_id"), e.flag(e.eq(p["gk"], SIGN_KIND))))
+        e.set("g_hit", e.and_(p["g_hit"], same_scope(p["gs_at"], p["gs_n"], "g_scope")))
+        e.set("granted", e.or_(p["granted"], p["g_hit"]))
+
+    r.repeat("eg", r.uleb(), grant)
+    # The snapshot's packages of the identity: only the request's package.
+    r.at(p["snapshot"])
+    r.uleb()  # the form
+    r.uleb()  # the request
+    r.skip_bytes()  # the resolver identity
+    r.uleb()  # the policy
+    e.var("ef_packages", r.uleb())
+    e.var("same_packages", 0)
+    e.var("other_same", 0)
+
+    def snapshot_package():
+        e.var("sp_object", r.ref("snapshot"))
+        e.var("sp_cur", p["cur"])
+        r.at(p["sp_object"])
+        e.var("spi_n", r.uleb())
+        e.var("sp_same", same_identity(p["cur"], p["spi_n"], "sp_id"))
+        e.set("same_packages", e.add(p["same_packages"], p["sp_same"]))
+        e.set("other_same", e.or_(p["other_same"], e.and_(p["sp_same"], e.flag(e.ne(p["sp_object"], _ctrl(e, B_PACKAGE))))))
+        e.set("cur", p["sp_cur"])
+
+    r.repeat("es", p["ef_packages"], snapshot_package)
+    e.if_(e.ne(p["other_same"], 0), lambda: e.set("outcome", DECLINE))
+    e.if_(e.ne(p["outcome"], ACCEPT), lambda: _stop(e))
+
+    def lid():
+        _hex(e, p["lid_at"], p["lid_n"], "ef_lid")
+
+    e.if_(e.either(e.eq(p["same_packages"], 0), e.eq(p["granted"], 0)), lambda: _reject(
+        e, "XAX.BUILD.CAPABILITY", lid, "BUILD-CAPABILITY-ISOLATED", lambda: D.text(e, "declared package-local grant"),
+        lambda: (D.put(e, D.T_LIST), D.put(e, 2), D.text(e, "SIGN"), _hex(e, p["scope_at"], p["scope_n"], "ef_scope"))))
+    e.if_(e.ne(p["outcome"], ACCEPT), lambda: _stop(e))
+
+    def declared():
+        r.at(p["snapshot"])
+        r.uleb()
+        r.uleb()
+        r.skip_bytes()
+        r.uleb()
+        r.repeat("dz", r.uleb(), r.uleb)
+        r.repeat("dy", r.uleb(), r.uleb)
+        e.var("ed_digests", r.uleb())
+        e.var("ed_at", p["cur"])
+        e.var("ed_hit", 0)
+
+        def digest():
+            e.var("ed_same", 1)
+            e.for_("ed_k", 0, CID_SIZE, lambda: e.set("ed_same", e.and_(p["ed_same"], e.flag(
+                e.eq(e.rd(e.add(e.add(p["ed_at"], e.mul(p["ed_q"], CID_SIZE)), p["ed_k"])), e.ld(e.add(SG_DIGEST, p["ed_k"])))))))
+            e.set("ed_hit", e.or_(p["ed_hit"], p["ed_same"]))
+
+        e.for_("ed_q", 0, p["ed_digests"], digest)
+
+        def listed():
+            D.put(e, D.T_LIST)
+            D.put(e, p["ed_digests"])
+            e.for_("el", 0, p["ed_digests"], lambda: _hex(e, e.add(p["ed_at"], e.mul(p["el"], CID_SIZE)), CID_SIZE, "el_hex"))
+
+        def actual():
+            D.put(e, D.T_HEX)
+            D.put(e, CID_SIZE)
+            for word in range(CID_SIZE // 8):
+                value = e.c(0)
+                for k in reversed(range(8)):
+                    value = e.add(e.mul(value, 256), e.ld(SG_DIGEST + 8 * word + k))
+                D.put(e, value)
+
+        e.if_(e.eq(p["ed_hit"], 0), lambda: _reject(e, "XAX.BUILD.INPUT_CLOSURE", lid, "BUILD-SIGNING-MATERIAL-DECLARED", listed, actual))
+
+    e.if_(e.eq(p["ef_mode"], 1), declared)  # ``BuildMode.HERMETIC_REPRODUCIBLE``
+    e.set("cur", p["ef_saved"])
 
 
 def _build_request(tables, verify):
@@ -457,14 +643,34 @@ def _build_request(tables, verify):
                 e.if_(e.ne(p["same"], 0), lambda: _set(e, B_ENTRY, _ref(e, p["package"], p["index"])))
 
             r.repeat("pe", r.uleb(), build_entry)
+            # S15e.6i.1 (ADR-357): the package's SIGN capabilities (their count; the first one's scope).
+            for name in ("pf", "pg"):  # feature and configuration schemas
+                r.repeat(name, r.uleb(), lambda: (r.skip_bytes(), r.uleb()))
+            e.var("signs", 0)
+            e.var("scope_n", 0)
+            e.var("scope_at", 0)
+
+            def capability():
+                e.var("cap_kind", r.uleb())
+                e.var("cap_n", r.uleb())
+                e.if_(e.both(e.eq(p["cap_kind"], SIGN_KIND), e.eq(p["signs"], 0)), lambda: (e.set("scope_n", p["cap_n"]), e.set("scope_at", p["cur"])))
+                e.set("signs", e.add(p["signs"], e.flag(e.eq(p["cap_kind"], SIGN_KIND))))
+                e.set("cur", e.add(p["cur"], p["cap_n"]))
+
+            r.repeat("pc", r.uleb(), capability)
+            e.if_(e.ne(e.ld(SG_EFFECT), 0), lambda: _effect(e, r))
+            e.if_(e.ne(p["outcome"], ACCEPT), lambda: _stop(e))
             e.if_(e.eq(_ctrl(e, B_ENTRY), e.c(-1)), lambda: e.set("outcome", DECLINE))
 
             # ``build``'s own paths come first; the Linux x86-64 profiles are ``_hosted_container``'s.  S15e.3b: a Windows DLL
             # on the PE profile is the general program's (decided below, with the target's fields).
             e.var("first_kind", e.rd(p["artifacts_at"]))  # artifact kinds are one ULEB byte
             e.var("dll", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.WINDOWS_DLL)))))
-            e.var("apk", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.ANDROID_UNSIGNED_APK)))))
-            # An unsigned APK is decided with the target's fields below (S15e.6h.3); a signed one is ``build``'s.
+            e.var("apk", e.flag(e.both(e.eq(p["artifacts"], 1), e.either(e.eq(p["first_kind"], int(ArtifactKind.ANDROID_UNSIGNED_APK)),
+                                                                           e.eq(p["first_kind"], int(ArtifactKind.ANDROID_SIGNED_APK))))))
+            # An APK is decided with the target's fields below (S15e.6h.3); S15e.6i.1: a signed one is then signed.
+            e.st(SG_SIGNED, e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.ANDROID_SIGNED_APK)))))
+            e.if_(e.ne(e.ld(SG_SIGNED), 0), lambda: _signer_input(e, r))
             e.var("bootstrap_artifact", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["dll"], 0), e.eq(p["apk"], 0),
                                                       e.either(*(e.eq(p["first_kind"], int(kind)) for kind in BOOTSTRAP_ARTIFACTS)))))
             e.if_(e.ne(p["bootstrap_artifact"], 0), lambda: e.set("outcome", DECLINE))
@@ -643,7 +849,8 @@ def _provenance(tables):
         e.if_(e.ne(_ctrl(e, B_DLL), 0), lambda: lowering(container_lowering_identity(DLL_LOWERING)))  # S15e.3b
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_ACCELERATOR), lambda: lowering(ACCELERATOR_LOWERING_IDENTITY_V1))  # S15e.7a
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_JVM), lambda: lowering(JVM_LOWERING_IDENTITY_V1))  # S15e.5
-        e.if_(e.eq(_ctrl(e, B_PATH), PATH_ANDROID), lambda: lowering(ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1))  # S15e.6h.3
+        e.if_(e.eq(_ctrl(e, B_PATH), PATH_ANDROID), lambda: e.if_(e.ne(e.ld(SG_SIGNED), 0), lambda: lowering(ANDROID_SIGNED_APK_LOWERING_IDENTITY_V1),
+                                                                   lambda: lowering(ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1)))  # S15e.6h.3, S15e.6i.1
         for word in range(CID_SIZE // 8):
             for k in range(8):
                 e.st(ENVELOPE_AT + P_DIGEST + 8 * word + k, e.and_(e.udiv(_ctrl(e, B_DIGEST + word), 1 << (8 * k)), 255))

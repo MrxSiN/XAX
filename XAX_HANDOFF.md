@@ -5,7 +5,7 @@
 - [Invariants that must not drift](#invariants-that-must-not-drift)
 - [Current repository state](#current-repository-state)
 - [Milestones M0-M14 (historical status)](#milestones-m0-m14-historical-status) (5 entries)
-- [Self-hosting steps (S0-S15)](#self-hosting-steps-s0-s15) (108 entries)
+- [Self-hosting steps (S0-S15)](#self-hosting-steps-s0-s15) (109 entries)
 - [JVM](#jvm) (16 entries)
 - [Android](#android) (11 entries)
 - [Windows](#windows) (3 entries)
@@ -31,7 +31,7 @@
 
 <!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (signed APKs and libxposed JVM modules are not the production compiler's: the driver takes no signing effect and keeps no external input's bytes (S15e.6i); unsigned APKs on Android targets are the production compiler's through the XAX Android program (S15e.6h, ADR-354 to ADR-356), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (libxposed JVM modules are not the production compiler's: the driver keeps no external input's bytes and chains no libxposed JVM program (S15e.6i.2); signed and unsigned APKs on Android targets are the production compiler's through the XAX Android program and APK signer (S15e.6h, S15e.6i.1, ADR-354 to ADR-357), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356, ADR-357)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Sections below are dated; a later section supersedes an earlier figure. The current full-suite result is under "Multi-language performance rule" and later entries in `XAX_STATE.md`.
 
@@ -917,6 +917,23 @@ Step: [S1](#step-s1) · [S4](#step-s4) · [S5](#step-s5) · [S6](#step-s6) · [S
   - Signed APKs need a signing-effect input checked as `validate_build_effects` does, with the XAX signer chained.
   - libxposed JVM modules need the bytes of external inputs, with the JVM program, class translation and DEX writer chained.
   - Then S15g: derive the whole-compiler B levels.
+
+#### S15e.6i.1 signed APKs in the driver — 2026-10-29 (ADR-357)
+
+- The pinned seed verifies the next driver, so the driver's function must fit that seed's capacities.
+  - The binding one is the CFG program's 2M input words: six per operand use, including every edge argument.
+  - The graph decoder's 2 MiB comes second.
+  - Measure with the main graph of `build_general_driver_program()` before a regeneration (count its blocks, edges, nodes and uses as `xax_selfhost_semantic._cfg_input` writes them). The function is at 2,078,110 words.
+  - A seed that declines `resolve` of a new request store is the symptom. A decline-site debug build of HEAD (`XAX_DRIVER_DECLINE_SITES=1`, built and run by the seed) names the helper.
+- Each `w.let` name at the function's level is a block argument of every later block, and so costs a use on every edge.
+  - Keep new state in workspace words (`SIGN_AT`).
+  - Put decisions in helper functions (`xax_selfhost_request`) or in the programs the driver calls. The APK signer writes `build`'s signing rejections itself.
+  - Write copies as loops.
+- Next: S15e.6i.2, libxposed JVM modules (roadmap row).
+  - First raise the CFG and graph capacities in two rotations: a driver with larger capacities built by this seed, then the change built by it.
+  - The driver must keep the external inputs' bytes.
+  - A new libxposed JVM program chains the JVM program, class translation, the DEX writer and bridges, the manifest or branding, the metadata and the APK.
+  - Branding archives in the tests are stored, not deflated.
 
 ### Other self-hosting records
 
