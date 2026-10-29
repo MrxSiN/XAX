@@ -1,4 +1,4 @@
-# XAX - Xenial Agent Xenogenesis
+# XAX — Xenial Agent Xenogenesis
 
 **An AI-native programming language. Meaning is the source.**
 
@@ -6,23 +6,47 @@
 ![Python](https://img.shields.io/badge/bootstrap-Python%203.11%2B-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
-XAX has no text syntax. A program is a verified **semantic graph**. AI agents read the smallest part they need, send a small typed edit, and the compiler verifies it and builds machine code or a platform artifact directly.
+XAX has no text syntax. A program is a verified **semantic graph**. AI agents read the smallest part they need, send a
+small typed edit, and the compiler verifies it and builds machine code or a platform artifact directly.
 
-The goal: one small language that can build what C, Rust, Java, Kotlin, Swift, JavaScript, Python and others build today — from firmware to apps to GPU kernels — with **zero hidden runtime cost** (no mandatory GC, allocator, VM, exceptions, or runtime library).
+The goal: one small language that can build what C, Rust, Java, Kotlin, Swift, JavaScript, Python and others build
+today — from firmware to apps to GPU kernels — with **zero hidden runtime cost** (no mandatory GC, allocator, VM,
+exceptions, or runtime library).
 
-## How it works
+## Contents
+
+- [Overview](#overview)
+- [Status](#status)
+- [Getting started](#getting-started)
+- [Repository layout](#repository-layout)
+- [Documentation](#documentation)
+- [BFX integration](#bfx-integration)
+
+## Overview
+
+### How it works
 
 ```text
 intent -> AI -> small semantic edit -> verified XAX graph -> optimize -> target artifact
 ```
 
-- **Tiny kernel**: values, arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target ops, compile-time meta.
+### Design
+
+- **Tiny kernel**: values, arithmetic, aggregates, control, calls, memory, resources, effects, atomics, target ops,
+  compile-time meta.
 - **Everything else is a library or package**: strings, collections, objects, async, GC — you pay only for what you use.
-- **Platforms are packages**: ABI, OS, and target packages lower the same semantics to ELF, PE, DEX/APK, JVM class files, WebAssembly, SPIR-V, and raw images.
+- **Platforms are packages**: ABI, OS, and target packages lower the same semantics to ELF, PE, DEX/APK, JVM class
+  files, WebAssembly, SPIR-V, and raw images.
 
-## Replacement levels
+## Status
 
-A platform gets a level only when evidence exists. Levels are cumulative. Full rules: [`XAX_SPEC.md`](XAX_SPEC.md) §21.2.
+Research prototype. Much of the compiler is now XAX: hashing, decoding, typing, the store verifier and writer, the
+driver, the code generators, and the platform containers. The rest is Python.
+
+### Replacement levels
+
+A platform gets a level only when evidence exists. Levels are cumulative. Full rules: [`XAX_SPEC.md`](XAX_SPEC.md)
+§21.2.
 
 | Level | Meaning |
 |---|---|
@@ -36,7 +60,7 @@ A platform gets a level only when evidence exists. Levels are cumulative. Full r
 
 AI token efficiency (≤ 0.50× textual languages) is a later milestone, not a level.
 
-## Targets
+### Targets
 
 Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "—" means not started.
 
@@ -61,9 +85,35 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "�
 | BSD / other Unix | `bsd-unix` | — | Not started. |
 <!-- /xax-status:targets -->
 
-## Quick start
+### Self-hosting
 
-Requires Python 3.11+. No third-party runtime dependencies.
+On Linux x86-64 the XAX compiler rebuilds itself byte for byte, and its seed needs no Python. The self-built compiler
+builds Linux and Windows executables, bare-metal, RISC-V and WebAssembly images, SPIR-V modules, browser pages, JVM JARs
+and unsigned Android APKs. Signed APKs and libxposed JVM modules are still built by the bootstrap (S15e.6i). The self-hosting steps
+(S0-S15) and the bootstrap levels (B0-B6) are tracked in [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md)
+and [`compiler/bootstrap/README.md`](compiler/bootstrap/README.md).
+
+### Recent results
+
+Details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md).
+
+- **Linux x86-64 is R6**: faster than the fastest C/Rust build on `filestat` (0.85× clang), `jsonmin` (0.96× clang, a
+  small margin) and `chains` (0.91× rustc). `xb64` is 100% XAX.
+- **Linux AArch64 is R6**: `jsonmin` beats NDK clang and rustc on two Pixel phones. `xcksum` is 100% XAX.
+- **JVM is R6**: `jsonmin` runs 0.87× javac. `xwc` is 100% XAX.
+- **XAX-only apps**: `xb64`, `xcksum` and `xwc` match the standard tools, and each shipped a second release through one
+  transaction.
+- **Android**: every unsigned APK profile is built by one XAX program, which decodes the package's carriers, decides
+  their rules and chains the native-code, container, manifest and DEX programs (ADR-355). The self-built compiler
+  builds them with it (ADR-356).
+
+## Getting started
+
+### Requirements
+
+Python 3.11+. No third-party runtime dependencies.
+
+### Install and test
 
 ```bash
 cd compiler
@@ -72,35 +122,51 @@ xaxc --help
 PYTHONPATH=src:.:.. python -m pytest -n auto tests
 ```
 
-Tests that need a missing host tool (QEMU, Wine, JDK, Android tools, …) are skipped; skipped is not passed. Full host setup: [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-benchmark-suite).
+Tests that need a missing host tool (QEMU, Wine, JDK, Android tools, …) are skipped; skipped is not passed. Full host
+setup: [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md#host-setup-for-the-full-test-and-benchmark-suite).
 
-AI agents: read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
+### For AI agents
 
-## Status
+Read [`docs/09_AI_PROTOCOL.md`](docs/09_AI_PROTOCOL.md) and [`CLAUDE.md`](CLAUDE.md) first.
 
-Research prototype. Much of the compiler is now XAX: hashing, decoding, typing, the store verifier and writer, the driver, and the Linux code generators. The rest is Python.
+## Repository layout
 
-Recent results (details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md)):
+| Path | Contents |
+|---|---|
+| [`docs/`](docs/) | The normative documentation (index: [`docs/README.md`](docs/README.md)) |
+| [`compiler/src/`](compiler/src/) | The bootstrap compiler (`xaxc`) and the builders of the XAX self-hosting programs (`xax_selfhost_*`) |
+| [`compiler/bootstrap/`](compiler/bootstrap/) | The committed XAX program stores, the seeds, the evolution ledger and the bootstrap evidence |
+| [`compiler/tests/`](compiler/tests/) | The test suite |
+| [`compiler/benchmarks/`](compiler/benchmarks/) | Benchmarks, evidence runners and their recorded results |
+| [`compiler/integration/`](compiler/integration/) | External integrations (BFX) |
+| `XAX_*.md` | The specification, the state, the roadmap and the decision records (below) |
 
-- **Linux x86-64 is R6**: faster than the fastest C/Rust build on `filestat` (0.85× clang), `jsonmin` (0.96× clang, a small margin) and `chains` (0.91× rustc). `xb64` is 100% XAX.
-- **Linux AArch64 is R6**: `jsonmin` beats NDK clang and rustc on two Pixel phones. `xcksum` is 100% XAX.
-- **JVM is R6**: `jsonmin` runs 0.87× javac. `xwc` is 100% XAX.
-- **XAX-only apps**: `xb64`, `xcksum` and `xwc` match the standard tools, and each shipped a second release through one transaction.
-- **The compiler builds itself**: on Linux x86-64, the XAX compiler rebuilds itself byte for byte, and its seed needs no Python. Full bootstrap status: [`compiler/bootstrap/README.md`](compiler/bootstrap/README.md).
+## Documentation
 
-## Docs
+### Language
 
-- [Architecture](XAX_AI_Native_Programming_Language_Architecture.md) · [Specification](XAX_SPEC.md) · [Normative docs](docs/)
-- [State](XAX_STATE.md) · [Roadmap](XAX_IMPLEMENTATION_ROADMAP.md) · [Handoff](XAX_HANDOFF.md)
-- [Decisions](XAX_DECISIONS.md) · [Open issues](XAX_OPEN_ISSUES.md)
-- [Conformance](XAX_CONFORMANCE.md) · [Benchmarks](XAX_BENCHMARKS.md)
+- [Architecture](XAX_AI_Native_Programming_Language_Architecture.md) — the design rationale.
+- [Specification](XAX_SPEC.md) — the language, the replacement levels and the bootstrap levels.
+- [Normative documents](docs/README.md) — the stage documents 01-18.
+- [Prototype schema](XAX_PROTOTYPE_SCHEMA_V1.md) — the prototype's canonical encoding.
+
+### Project records
+
+- [State](XAX_STATE.md) — what holds now, with dated results.
+- [Roadmap](XAX_IMPLEMENTATION_ROADMAP.md) — the milestones and the self-hosting steps.
+- [Handoff](XAX_HANDOFF.md) — the working notes between sessions.
+- [Decisions](XAX_DECISIONS.md) — the architecture decision records (ADRs).
+- [Open issues](XAX_OPEN_ISSUES.md) — what is known to be missing or wrong.
+
+### Evidence
+
+- [Conformance](XAX_CONFORMANCE.md) — the conformance suite and its coverage.
+- [Benchmarks](XAX_BENCHMARKS.md) — the measured results and the host setup.
 
 ## BFX integration
 
-BBC emits BFX modules for the [canonical XAX decoder](docs/18_BFX_IMPORT.md),
-which executes on Android ARM64 and Windows x86-64. The
-[native BFX importer](compiler/integration/bfx/IMPORT.md) emits complete
-canonical decision stores and executes on Android and Windows. Three frontend
-generations on each platform produce identical artifacts. The
-[canonical Android app](compiler/integration/bfx/ANDROID.md) passes eight
-Activity cases. Native lowering uses the Windows build host.
+BBC emits BFX modules for the [canonical XAX decoder](docs/18_BFX_IMPORT.md), which executes on Android ARM64 and
+Windows x86-64. The [native BFX importer](compiler/integration/bfx/IMPORT.md) emits complete canonical decision stores
+and executes on Android and Windows. Three frontend generations on each platform produce identical artifacts. The
+[canonical Android app](compiler/integration/bfx/ANDROID.md) passes eight Activity cases. Native lowering uses the
+Windows build host.

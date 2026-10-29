@@ -1,5 +1,25 @@
 # XAX Compile-Time Execution, Specialization, Generics, and Metaprogramming
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative terminology](#2-normative-terminology)
+- [3. Stage model](#3-stage-model)
+- [4. Compile-time values and types](#4-compile-time-values-and-types)
+- [5. Compile-time execution request](#5-compile-time-execution-request)
+- [6. Environmental isolation](#6-environmental-isolation)
+- [7. Generic programming by specialization](#7-generic-programming-by-specialization)
+- [8. Semantic introspection](#8-semantic-introspection)
+- [9. Semantic construction](#9-semantic-construction)
+- [10. Determinism and bounded execution](#10-determinism-and-bounded-execution)
+- [11. Memoization and content addressing](#11-memoization-and-content-addressing)
+- [12. Target-package compile-time use](#12-target-package-compile-time-use)
+- [13. Invariants](#13-invariants)
+- [14. Rejected alternatives](#14-rejected-alternatives)
+- [15. Interfaces with other XAX subsystems](#15-interfaces-with-other-xax-subsystems)
+- [16. Open issues](#16-open-issues)
+- [17. Falsification criteria](#17-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the normative compile-time execution model for XAX.

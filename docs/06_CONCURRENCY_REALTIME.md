@@ -1,5 +1,22 @@
 # XAX Stage 06 — Concurrency, Atomics, Interrupts, and Real-Time Profiles
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Atomic operation model](#3-atomic-operation-model)
+- [4. Shared-memory race and synchronization rules](#4-shared-memory-race-and-synchronization-rules)
+- [5. Threads, tasks, fibers, coroutines, actors, and schedulers](#5-threads-tasks-fibers-coroutines-actors-and-schedulers)
+- [6. Interrupt, fault, and target-trap handlers](#6-interrupt-fault-and-target-trap-handlers)
+- [7. SIMD and GPU parallelism boundary](#7-simd-and-gpu-parallelism-boundary)
+- [8. Real-time profile model](#8-real-time-profile-model)
+- [9. Guarantees versus estimates](#9-guarantees-versus-estimates)
+- [10. Invariants](#10-invariants)
+- [11. Rejected alternatives](#11-rejected-alternatives)
+- [12. Interfaces with other XAX subsystems](#12-interfaces-with-other-xax-subsystems)
+- [13. Open issues requiring implementation evidence](#13-open-issues-requiring-implementation-evidence)
+- [14. Falsification criteria](#14-falsification-criteria)
+
 ## 1. Purpose and scope
 
 This document defines the low-level concurrency and deterministic-latency semantics of XAX.

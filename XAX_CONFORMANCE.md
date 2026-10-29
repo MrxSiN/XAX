@@ -2,7 +2,42 @@
 
 This document consolidates conformance requirements and test categories. It contains **no test results**.
 
-## 1. Claim format
+## Contents
+
+- [Part I — Claims, levels and profiles](#part-i--claims-levels-and-profiles)
+  - [1. Claim format](#1-claim-format)
+  - [2. Conformance levels](#2-conformance-levels)
+  - [3. Conformance profiles](#3-conformance-profiles)
+- [Part II — Test requirements](#part-ii--test-requirements)
+  - [4. Canonical serialization tests](#4-canonical-serialization-tests)
+  - [5. Structural graph verification tests](#5-structural-graph-verification-tests)
+  - [6. Type/value/layout tests](#6-typevaluelayout-tests)
+  - [7. Memory and resource tests](#7-memory-and-resource-tests)
+  - [8. Effects, calls, errors, and control tests](#8-effects-calls-errors-and-control-tests)
+  - [9. Concurrency and real-time tests](#9-concurrency-and-real-time-tests)
+  - [10. Compile-time/META tests](#10-compile-timemeta-tests)
+  - [11. Target and ABI/platform tests](#11-target-and-abiplatform-tests)
+  - [12. Compiler/incrementality tests](#12-compilerincrementality-tests)
+  - [13. Workspace C4 tests](#13-workspace-c4-tests)
+  - [14. Package/build/reproducibility tests](#14-packagebuildreproducibility-tests)
+  - [15. Bootstrap/self-hosting conformance evidence](#15-bootstrapself-hosting-conformance-evidence)
+  - [16. Deterministic diagnostics](#16-deterministic-diagnostics)
+  - [17. Cross-implementation equivalence](#17-cross-implementation-equivalence)
+  - [18. Normative reference-example categories](#18-normative-reference-example-categories)
+  - [19. Optimizer and validated-search conformance](#19-optimizer-and-validated-search-conformance)
+- [Part III — Obligations](#part-iii--obligations)
+  - [20. No-results rule](#20-no-results-rule)
+  - [20. M13 accelerator target/deployment obligations](#20-m13-accelerator-targetdeployment-obligations)
+  - [21. AI-native C-vs-XAX experiment obligations](#21-ai-native-c-vs-xax-experiment-obligations)
+  - [22. Android direct-artifact/platform-package obligations](#22-android-direct-artifactplatform-package-obligations)
+  - [23. Universal-replacement obligations](#23-universal-replacement-obligations)
+  - [24. Snapshot-bound mutation and JVM token evidence (ADR-186)](#24-snapshot-bound-mutation-and-jvm-token-evidence-adr-186)
+- [Part IV — Records](#part-iv--records)
+  - [Platform carrier replacement v1 (2026-10-07)](#platform-carrier-replacement-v1-2026-10-07)
+
+## Part I — Claims, levels and profiles
+
+### 1. Claim format
 
 Every conformance claim MUST name:
 
@@ -15,7 +50,7 @@ Every conformance claim MUST name:
 
 An unscoped claim such as “supports XAX” is insufficient.
 
-## 2. Conformance levels
+### 2. Conformance levels
 
 | Level | Name | Required obligations |
 |---|---|---|
@@ -27,7 +62,7 @@ An unscoped claim such as “supports XAX” is insufficient.
 
 Levels are capability dimensions, not maturity grades.
 
-## 3. Conformance profiles
+### 3. Conformance profiles
 
 `CORE` is mandatory for C1–C4.
 
@@ -44,9 +79,11 @@ Levels are capability dimensions, not maturity grades.
 
 Experimental extensions are outside a claim unless standardized by the named suite/spec revision.
 
-## 4. Canonical serialization tests
+## Part II — Test requirements
 
-### 4.1 Positive vectors
+### 4. Canonical serialization tests
+
+#### 4.1 Positive vectors
 
 The suite MUST include canonical fixtures for:
 
@@ -65,7 +102,7 @@ The suite MUST include canonical fixtures for:
 - canonical index/integrity trailer as defined by active serialization schema;
 - deserialize→serialize byte identity.
 
-### 4.2 Negative vectors
+#### 4.2 Negative vectors
 
 Readers MUST reject:
 
@@ -86,7 +123,7 @@ Readers MUST reject:
 - corrupted/truncated index or integrity data;
 - ambiguous or heuristic-repair-dependent input.
 
-## 5. Structural graph verification tests
+### 5. Structural graph verification tests
 
 The verifier MUST accept valid vectors and reject at least:
 
@@ -102,7 +139,7 @@ The verifier MUST accept valid vectors and reject at least:
 - illegal target dependency reference;
 - cyclic content-addressed object references outside schema-defined local recursion indirection.
 
-## 6. Type/value/layout tests
+### 6. Type/value/layout tests
 
 Required categories:
 
@@ -123,7 +160,7 @@ Required categories:
 - raw reinterpretation waiver visibility;
 - proof-fact dependency invalidation.
 
-## 7. Memory and resource tests
+### 7. Memory and resource tests
 
 The suite MUST include positive/negative vectors for:
 
@@ -146,7 +183,7 @@ The suite MUST include positive/negative vectors for:
 - MMIO speculative-access restrictions;
 - DMA ownership/mapping transition checks where target profile supports them.
 
-## 8. Effects, calls, errors, and control tests
+### 8. Effects, calls, errors, and control tests
 
 Required categories:
 
@@ -168,9 +205,9 @@ Required categories:
 
 Current implementation-local M7/C6 evidence includes the earlier bounded single-pointer stack-memory direct-call contracts plus a general resource/effect operation layer. Operations cover acquire, transfer, declared state transition, release, affine discard, partitionable two-piece split/sibling join, and effect steps over distinct domain instances. Exact linear consumption is checked through same-block uses, block parameters, branches, conditional branches, returns, and traps. Reference execution covers the lifecycle, transitions, split/join, and independent effect domains. Negative coverage includes duplicate/reuse, dropped linear values, invalid transition, illegal discard/release, non-sibling join, non-partitionable split, and effect-domain forks. Verified direct-function interfaces/terminators yield derived domain-instance/return/trap summaries exposed through the workspace. x86-64, AArch64, and WebAssembly erase resource/effect values from ABI slots, edge copies, calls, returns, and emitted bytes; the deterministic comparison is byte-identical for baseline versus lifecycle programs. The full 2026-09-30 regression passed 189/189, including 47 memory tests and 8 general resource/effect tests. No indirect-call operation is accepted, and no persistent or recursive fixed-point summary representation is claimed.
 
-## 9. Concurrency and real-time tests
+### 9. Concurrency and real-time tests
 
-### 9.1 Atomic semantics
+#### 9.1 Atomic semantics
 
 Tests MUST cover:
 
@@ -187,7 +224,7 @@ Tests MUST cover:
 - rejection or explicit runtime-assist dependency for unsupported native operations;
 - no hidden lock/helper/scheduler/syscall lowering.
 
-### 9.2 Race/synchronization and profiles
+#### 9.2 Race/synchronization and profiles
 
 Tests MUST include:
 
@@ -202,7 +239,7 @@ Tests MUST include:
 
 Current implementation-local M8 evidence covers all five portable atomic families, legal load/store/RMW/fence orders, compare-exchange success/failure-order legality, explicit strong/weak behavior, wrapping RMW arithmetic, modification order, release sequences, seq-cst ordering, and target width/alignment/address-space/scope checks. Conflicting unordered non-atomic abstract memory events reject while ordered or wholly atomic conflicts pass. Failed compare-exchange derives read synchronization and seq-cst participation from its failure order. The x86-64 revision-2 target package declares native system-scope 32/64-bit atomic capability and one explicit handler entry; direct lowering emits no helper call, lock object, scheduler, syscall, allocator, or runtime dependency. WebAssembly and unsupported scopes/alignment/widths reject. Strict real-time profiles inspect specialized/selected-target properties and reject unknown target support, loops/recursion, runtime assistance, progress, timing guarantees, effect domains, and interrupt-mask bounds when required. Workspace queries expose atomic capability, handler policy, and latency-relevant facts without relabeling unavailable cost estimates as guarantees. `xax-atomic-litmus-v1` is the OI-29 minimum conformance corpus: 9 greedily retained cases from an 11-case source corpus cover the portable order/family surface, release sequence, SC order, race rejection, and x86-64/AArch64/WebAssembly target-capability boundaries while detecting all seven declared injected fault classes. Unsupported target cases MUST remain explicit, and target packages MUST add vectors for target-only synchronization claims. The corpus is sufficient only for that declared fault model; physical concurrent execution is supplementary. External thread/lock/channel fixtures and exhaustive physical-device weak-memory execution remain unavailable and are not claimed.
 
-## 10. Compile-time/META tests
+### 10. Compile-time/META tests
 
 Tests MUST cover:
 
@@ -222,9 +259,9 @@ Tests MUST cover:
 
 Current implementation-local M9 evidence covers typed type/constant/function/target compile-time references, explicit capabilities, declared reproducible and non-reproducible bit inputs, deterministic repeat evaluation, content-derived memoization, evaluator/verifier/target/input invalidation, ordinary calls/control/recursion, all five mandatory budget dimensions, non-caching failure, runtime-operation stage rejection, target-package inspection, candidate constant/function/graph construction, whole-store verifier-gated materialization, and reference/x86-64 execution of the erased generated function. The final 2026-09-30 regression passed 206/206, including 6 `CompileTimeTests`; the deterministic M9 record reproduced a cache hit and reference/native result 44. Construction beyond constant-return functions, persistent cache storage, external conformance vectors, and representative specialization workloads remain unavailable and are not claimed.
 
-## 11. Target and ABI/platform tests
+### 11. Target and ABI/platform tests
 
-### 11.1 Target profile
+#### 11.1 Target profile
 
 For each claimed C3 target, suites MUST test:
 
@@ -241,7 +278,7 @@ For each claimed C3 target, suites MUST test:
 - object/executable/image emission and relocation;
 - bare-metal image where target profile declares it.
 
-### 11.2 ABI/platform
+#### 11.2 ABI/platform
 
 Tests MUST cover, where claimed:
 
@@ -260,7 +297,7 @@ Tests MUST cover, where claimed:
 - dynamic-linking availability only when explicitly selected;
 - freestanding program with no mandatory hosted runtime.
 
-## 12. Compiler/incrementality tests
+### 12. Compiler/incrementality tests
 
 The compiler-core suite SHOULD test:
 
@@ -275,7 +312,7 @@ The compiler-core suite SHOULD test:
 - crash/corruption recovery without accepting invalid authoritative state;
 - optimizer candidate rejection when translation/equivalence validation fails.
 
-## 13. Workspace C4 tests
+### 13. Workspace C4 tests
 
 Required vectors include:
 
@@ -310,7 +347,7 @@ Required vectors include:
 - deterministic structured diagnostic core and repair neighborhood;
 - no whole-function/module dump unless explicitly requested/required by query.
 
-## 14. Package/build/reproducibility tests
+### 14. Package/build/reproducibility tests
 
 The suite SHOULD include:
 
@@ -328,7 +365,7 @@ The suite SHOULD include:
 - cross-target cache separation;
 - same-input repeated output-byte identity for deterministic profile, except where active spec explicitly uses a versioned canonical projection.
 
-## 15. Bootstrap/self-hosting conformance evidence
+### 15. Bootstrap/self-hosting conformance evidence
 
 Bootstrap claims are evidence labels, not base language conformance levels. Evidence bundles MUST identify exact compiler/spec/target/build-policy roots.
 
@@ -345,7 +382,7 @@ Bootstrap claims are evidence labels, not base language conformance levels. Evid
 Diverse double compilation or comparable trust evidence SHOULD be attached for trust-sensitive releases; it is not equivalent to a proof of compiler correctness.
 
 
-### 15.1 Current M11 bootstrap evidence
+#### 15.1 Current M11 bootstrap evidence
 
 The 2026-09-30 M11 implementation claims **B0** and **B1 only** for the declared arithmetic-folding compiler component. The authoritative program root is `e73735dff5be8c569a94fa434abf73015330d59fc13c4e4bf8e81aad87e2b92e`; the fixed hermetic bootstrap snapshot root is `ad0af6c240790d0e9845c2776fa8f4431fd7bf149997348995a323a1a262ad0e`; the package root is `c65da02999393448b39895a6085e64c65837eeded76bf9faecce1a56b18767b1`; the request root is `b44f86473bcb8cd1e49e242b5a14a798cb783582fff4fa5924d9df3bb13d950d`; and the fixed WebAssembly target root is `946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed`.
 
@@ -353,7 +390,7 @@ The seed build uses compiler identity `13dbd0cf3458d70b1e2f817928fa7248dabd7c6da
 
 B2, B3, B4, B5, and B6 are **not claimed**. No recursive compilation, generation equivalence, self-build fixed point, toolchain closure, bootstrap independence, or diverse-double-compilation trust claim follows from M11.
 
-### 15.2 Current M14 closure evidence
+#### 15.2 Current M14 closure evidence
 
 The 2026-09-30 M14 implementation claims **B2–B6 only for the declared `xax-semantic-image-v1` closure target**. It does not extend those labels to the legacy x86-64, AArch64, WebAssembly, or accelerator lowerers.
 
@@ -369,10 +406,10 @@ The committed evidence record is `compiler/bootstrap/m14_selfhost_evidence.json`
 
 **Correction (2026-10-06, ADR-177).** The M14 B5 and B6 claims above are withdrawn. The verifier-facing, encoding, and materialization services are single host-executed META nodes, so B5 does not hold, and B6 was never derivable from the readiness logic. `m14_selfhost_evidence.json` now records `bootstrap_status` from `xax_selfhost.bootstrap_status`: B2–B4 for the semantic-image META wrapper and no B level for the whole compiler.
 
-### 15.3 OI-27 release-only diversity evidence
+#### 15.3 OI-27 release-only diversity evidence
 
 OI-27 adds a release-only Go checker rather than a second production compiler. For the bounded M11/M14 subset it independently implements suite-1 BLAKE3-256, canonical store/index/CID validation, semantic verification, and canonical store re-emission. On 2026-10-02 the selected 32,017-byte OI-26 seed and CPython 3.13.5 reconstructed the M14 semantic image through two generations at root `097da62f7ba9832620f5d202297fc522783ed5b4c9e68f8da6b77515b185164d`; the Go 1.23.2 checker independently verified that root and re-emitted the same 2,020 bytes under raw-byte comparison. Four controlled faults—pinned-root semantic divergence, runtime/output corruption, object-CID/hash corruption under a repaired outer digest, and a primary-verifier omission—were detected by the independent path. This is diversity evidence against those declared classes, not a proof that the pinned compiler graph, specification, test vectors, hardware, or release authorization are correct. The exact tool/seed identities and residual dependencies are recorded in `compiler/benchmarks/oi27_bootstrap_diversity_evidence.json`.
-## 16. Deterministic diagnostics
+### 16. Deterministic diagnostics
 
 Every negative semantic test SHOULD identify:
 
@@ -388,7 +425,7 @@ repair_neighborhood
 
 The same candidate graph, verifier version, target/configuration, and rule set MUST yield the same core diagnostic identity/payload where determinism is claimed. Human wording may vary and is non-normative.
 
-## 17. Cross-implementation equivalence
+### 17. Cross-implementation equivalence
 
 For common supported profiles:
 
@@ -399,7 +436,7 @@ For common supported profiles:
 5. different optimizer/code-generation choices are permitted when observable semantics and deterministic-profile obligations are preserved;
 6. unsupported features MUST be reported as unsupported, not silently approximated.
 
-## 18. Normative reference-example categories
+### 18. Normative reference-example categories
 
 The conformance suite MUST include at least one valid and one invalid or boundary-focused case, where meaningful, for:
 
@@ -418,7 +455,7 @@ The conformance suite MUST include at least one valid and one invalid or boundar
 
 Human-readable example notation is explanatory only; canonical fixtures are the conformance authority.
 
-## 19. Optimizer and validated-search conformance
+### 19. Optimizer and validated-search conformance
 
 An implementation claiming the M12 optimizer slice MUST demonstrate:
 
@@ -431,7 +468,7 @@ An implementation claiming the M12 optimizer slice MUST demonstrate:
 7. target cost reports identify the exact target, objective, unit, model identity/classification, and assumptions used for selection;
 8. deterministic mode reproduces selected semantic identity/store bytes for the same input, policy, target, and tool identities.
 
-### 19.1 Current M12 implementation-local evidence
+#### 19.1 Current M12 implementation-local evidence
 
 The 2026-09-30 M12 prototype uses canonical optimization-policy root `924e070eceab1b9abba8c1cbb67fb2365fa7cc9f21362537f4b228bcdbd90dba`. Its search validator is exact polynomial equivalence over `Z/(2^N)` for the restricted pure wrapping-arithmetic subset, followed by ordinary graph verification. The fixed search fixture examines 64 candidates per target: 4 pass equivalence and 60 fail validation; rejected candidates do not alter accepted output. Deterministic selection chooses function CID `949339b59e4a8283ca0b269155c0f7db1573663e44bcf5cde1cd182a11ae9a7b` for both tested targets.
 
@@ -439,11 +476,13 @@ The lowering-derived code-size oracle records exact emitted function extents of 
 
 This evidence is implementation-local and code-size-specific. It does not establish runtime speedup, calibrated target cost prediction, general optimization completeness, general solver equivalence, or closure of OI-17–OI-19.
 
-## 20. No-results rule
+## Part III — Obligations
+
+### 20. No-results rule
 
 This file defines obligations and test categories only. Conformance status, pass rates, benchmark measurements, and performance claims MUST be recorded in separate evidence artifacts tied to exact revisions.
 
-## 20. M13 accelerator target/deployment obligations
+### 20. M13 accelerator target/deployment obligations
 
 An implementation claiming the M13 accelerator slice MUST demonstrate:
 
@@ -456,7 +495,7 @@ An implementation claiming the M13 accelerator slice MUST demonstrate:
 7. package/build provenance and semantic-to-artifact mapping remain target-neutral interfaces rather than target-specific side channels;
 8. hardware/runtime performance is claimed only from actual physical execution measurements, not packet size or a host conformance harness.
 
-### 20.1 Current M13 implementation-local evidence
+#### 20.1 Current M13 implementation-local evidence
 
 The 2026-09-30 prototype target root is `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`. It declares 32-lane execution, device/workgroup execution scopes, explicit host/global/workgroup memory spaces, and six target-operation contracts. The tested graph threads one device effect and one linear buffer resource through explicit allocate → H→D → launch → synchronize → D→H → free operations. The target declares no runtime dependency.
 
@@ -464,17 +503,17 @@ The fixed program root is `6e088c0ff84c0723a9c3b7f527bf2bd98b886f8e5846f0200f5b1
 
 This evidence establishes the declared prototype path only. No physical GPU was executed, so no accelerator latency/throughput/energy or vendor-portability claim is made. OI-16 remains open; OI-13 scope-normalization closure evidence is recorded below.
 
-### 20.2 OI-13 synchronization-scope normalization evidence
+#### 20.2 OI-13 synchronization-scope normalization evidence
 
 The 2026-10-02 OI-13 experiment preserves the original M13 target root and deployment evidence byte-for-byte and adds a second package-driven accelerator model, `coherent-grid-accelerator-v1`, target root `0ffdb5e9fece2ccf25d51b7b48246ae8deb04cc9652471f786aa9f6eb91db7bf`. The second package has coherent host+device-visible unified memory plus workgroup-local memory and supports system/device/workgroup scopes. Its existing six-operation deployment contract verifies and lowers through the ordinary accelerator path without runtime dependencies.
 
 The measured portable synchronization-scope subset is exactly `workgroup < device`. Portable-to-target mapping returns the same scope meaning on both target packages and rejects absence; target-to-portable mapping round-trips those two scopes exactly and reports coherent-grid `system` as nonportable rather than approximating it. Conformance vectors cover atomic and barrier ordering, both portable scopes, workgroup global/local cross-space synchronization, rejection of device scope over local-only memory, coherent-grid target-only system scope, and SIMT rejection of that system scope. These are semantic and target-package conformance vectors only; no physical accelerator execution or performance claim follows.
 
-## 21. AI-native C-vs-XAX experiment obligations
+### 21. AI-native C-vs-XAX experiment obligations
 
 The exploratory suite MUST use the same Codex Desktop model/reasoning setting, the same semantic goal, equivalent starting states and checks, fresh chats, and the same token-counting rule for C and XAX. Every question, failed edit, retry, turn, and associated token count remains in the recorded result. The task prompt must not include expected answers. Report all five paired rows and simple totals without inferential claims. The complete operator procedure is `compiler/benchmarks/ai_native/README.md`.
 
-## 22. Android direct-artifact/platform-package obligations
+### 22. Android direct-artifact/platform-package obligations
 
 An implementation claiming the current direct Android prototype slice MUST
 demonstrate, for the exact declared profile:
@@ -609,7 +648,7 @@ demonstrate, for the exact declared profile:
     Runtime saved-state transfer, ID transfer, mismatch behavior, and replacement atomicity
     remain unproven until compatible framework execution.
 
-## 23. Universal-replacement obligations
+### 23. Universal-replacement obligations
 
 Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels certify an implementation; R-levels certify a `(platform package, workload class)` pair.
 
@@ -673,7 +712,7 @@ Replacement claims (`XAX_SPEC.md` §21) are separate from C0–C4: C-levels cert
 
 44. **Next-iteration prefetch and edge sinking (ADR-211).** A prefetch transform MUST add only pure nodes, division only by nonzero constants, and loads proven in bounds; its loaded values MUST feed only `prefetcht0` hints. A sunk edge value MUST equal the wrapped add/sub at its width. Vectors: `compiler/tests/test_x86_64_optimizations.py::EdgeSinkAndPrefetchTests`.
 
-## 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
+### 24. Snapshot-bound mutation and JVM token evidence (ADR-186)
 
 The normal local adapter MUST preserve snapshot preconditions, reject stale generations including restored identical roots, reject unexposed or cross-function values, and publish a batch atomically. Bounded function binding MUST reject truncation. Vectors: `compiler/tests/test_xax_local_protocol.py`.
 
@@ -713,7 +752,9 @@ resolved operands and descriptors. Selecting a different overload MUST reject.
 Vectors: `compiler/tests/test_jvm_r5_response.py`.
 
 
-## Platform carrier replacement v1 (2026-10-07)
+## Part IV — Records
+
+### Platform carrier replacement v1 (2026-10-07)
 
 Workspace exposes bind_object(cid, byte_budget=...) and ReplaceTarget(handle,
 expected_old_cid, new_identity_only_target). Transactions require RootRef and

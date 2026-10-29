@@ -1,5 +1,32 @@
 # XAX Documentation Stage 11: ABI, Foreign Interoperability, Platform Capabilities, and Standard Environment
 
+## Contents
+
+- [1. Purpose and scope](#1-purpose-and-scope)
+- [2. Normative definitions](#2-normative-definitions)
+- [3. Architectural boundary](#3-architectural-boundary)
+- [4. First-class ABI model](#4-first-class-abi-model)
+- [5. Foreign import and export](#5-foreign-import-and-export)
+- [6. Syscall, kernel, firmware, and device ABIs](#6-syscall-kernel-firmware-and-device-abis)
+- [7. Platform capability model](#7-platform-capability-model)
+- [8. Freestanding-first standard environment](#8-freestanding-first-standard-environment)
+- [9. Dynamic linking](#9-dynamic-linking)
+- [10. Exact unsupported-platform behavior](#10-exact-unsupported-platform-behavior)
+- [11. Invariants](#11-invariants)
+- [12. Rejected alternatives](#12-rejected-alternatives)
+- [13. Interfaces with other XAX subsystems](#13-interfaces-with-other-xax-subsystems)
+- [14. Open issues](#14-open-issues)
+- [15. Falsification criteria](#15-falsification-criteria)
+- [16. Android arm64-v8a / modern libxposed bounded ABI slice (2026-10-01)](#16-android-arm64-v8a--modern-libxposed-bounded-abi-slice-2026-10-01)
+- [17. Windows x86-64 hosted PE slice (2026-10-02)](#17-windows-x86-64-hosted-pe-slice-2026-10-02)
+- [18. wasm32 WASI slice (2026-10-02)](#18-wasm32-wasi-slice-2026-10-02)
+- [18a. wasm32 browser slice (`wasm32-browser-v1`, ADR-103)](#18a-wasm32-browser-slice-wasm32-browser-v1-adr-103)
+- [19. Linux x86-64 hosted slice (2026-10-02)](#19-linux-x86-64-hosted-slice-2026-10-02)
+- [20. JVM slice (`jvm-classfile-v1`, ADR-112, 2026-10-03)](#20-jvm-slice-jvm-classfile-v1-adr-112-2026-10-03)
+- [21. RISC-V RV64 raw slice (`riscv64-baremetal-raw-v1`, ADR-113, 2026-10-03)](#21-risc-v-rv64-raw-slice-riscv64-baremetal-raw-v1-adr-113-2026-10-03)
+- [22. Linux AArch64 slice (`aarch64-linux-elf-*-v1`, ADR-123, 2026-10-03)](#22-linux-aarch64-slice-aarch64-linux-elf--v1-adr-123-2026-10-03)
+- [23. SPIR-V compute slice (`spirv-compute-v1`, ADR-124, 2026-10-03)](#23-spir-v-compute-slice-spirv-compute-v1-adr-124-2026-10-03)
+
 ## 1. Purpose and scope
 
 This document defines the boundary between core XAX semantics, binary application binary interfaces (ABIs), platform facilities, foreign ecosystems, and optional hosted environments.

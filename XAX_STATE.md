@@ -4,6 +4,22 @@ What holds now, then the dated record of every result, grouped by topic. Dated e
 supersedes an earlier figure, and a superseded entry is kept rather than rewritten. Decisions are in
 [`XAX_DECISIONS.md`](XAX_DECISIONS.md), the plan in [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md).
 
+## Contents
+
+- [Current status](#current-status)
+- [Prototype milestones (M1-M14)](#prototype-milestones-m1-m14)
+- [Milestones M0-M14 (historical status)](#milestones-m0-m14-historical-status) (9 entries)
+- [Self-hosting steps (S0-S15)](#self-hosting-steps-s0-s15) (118 entries)
+- [JVM](#jvm) (21 entries)
+- [Android](#android) (17 entries)
+- [Windows](#windows) (8 entries)
+- [Replacement levels and performance](#replacement-levels-and-performance) (18 entries)
+- [Other targets](#other-targets) (6 entries)
+- [Compiler engineering](#compiler-engineering) (11 entries)
+- [AI protocol and token efficiency](#ai-protocol-and-token-efficiency) (9 entries)
+- [Open issues](#open-issues) (9 entries)
+- [Documentation and process](#documentation-and-process) (5 entries)
+
 ## Current status
 
 ### Replacement levels
@@ -22,14 +38,6 @@ supersedes an earlier figure, and a superseded entry is kept rather than rewritt
   Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages, JVM JARs
   and unsigned Android APKs (S15b-S15f, S15e.6h).
 - Open: signed APKs and libxposed JVM modules in the driver (S15e.6i), then the whole compiler's B levels (S15g).
-
-## 2026-10-27 — Pinned native Windows seed (ADR-335)
-
-The existing Windows compiler is distributed under `compiler/bootstrap/windows`, tied to source root
-`ec66899f...45ebd` at `c97a11d`, with historical bootstrap trust and decline limits disclosed. The unchanged
-BLAKE3 host now has `hash_request.xax`; native verify/resolve/build and empty/abc digest vectors pass. Native
-semantic edits and small application builds were also exercised. This is a usable trusted native Windows seed,
-not whole-compiler migration or a Windows self-build result. Generated milestone and B/R-level blocks are unchanged.
 
 ## Prototype milestones (M1-M14)
 
@@ -78,381 +86,9 @@ S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (na
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
-## Replacement levels v3 — 2026-10-08 (ADR-207)
+## Milestones M0-M14 (historical status)
 
-R4 is now performance leadership: XAX's median must be at most 0.9999× the fastest non-XAX median, compared unrounded, with a significant one-sided Mann–Whitney advantage on raw samples (validator `xax-replacement-validator-v3`). R5 is autonomous maintenance; R6 is a proven 100% XAX-developed application (new field `xax_only_application`). AI-token trials are a deferred milestone and gate no level. Effect: JVM keeps R4 (`jsonmin` 0.835× `javac`, p ≈ 3e-5); `android-arm64` drops from R4 to R3 (1.007273× `clang_ndk_java`). No row has R5 or R6 evidence. Earlier dated statements that Android holds R4, or that R5 means AI tokens, are superseded by this section. Next milestone: U2 in `XAX_IMPLEMENTATION_ROADMAP.md`.
-
-Test state on this host (Python 3.13, x86-64, no QEMU/Wine/JDK/Android tools): 1,305 passed, 74 skipped, and 4 failed for host reasons (wheel build and install without a working setuptools; two AArch64 execution tests without `qemu-aarch64`), with `unicorn` and `tiktoken` installed.
-
-## Linux x86-64 raw-sample re-run — 2026-10-08 (ADR-208)
-
-Predicate tables on the x86-64 register path; `jsonmin`'s string loop in the C twin's shape. Re-run with 31 raw samples per arm (`XAX_BENCHMARKS.md` §15.30): `filestat` 0.882x and `jsonmin` 0.968x clang -O2 (significant), `chains` 0.984x rustc -O3 (p = 0.29). Linux x86-64 stays R3; `performance` is MEASURED; OI-45 closed. The program change also re-ran the JVM comparison (§15.31): XAX 0.884x javac, JVM keeps R4. Full suite on this host: 1,332 passed, 51 skipped, 2 failed for host reasons (wheel build and install without a working setuptools).
-
-## First R5 maintenance record — 2026-10-08 (ADR-209)
-
-The workspace now edits recursion-group members. One maintenance cycle of the JVM `jsonmin` application (depth limit 512 → 1024) ran through query, one 13-byte agent edit, verified commit, rebuild, contract tests (16/16), a before/after benchmark (no measurable change), and a canonical save: `compiler/benchmarks/r5_jvm_jsonmin_maintenance_evidence.json`. The JVM row derives R5. No row has R6 evidence.
-
-## First XAX-only application — 2026-10-08 (ADR-210)
-
-`xax_construct` builds general programs from one typed request. `xb64` (base64 encoder) was constructed that way, tested by its own XAX `selftest`, built through the canonical build service, deployed, and maintained by one workspace transaction (release 2: 64-column lines); both releases match coreutils `base64`. Evidence: `compiler/benchmarks/r6_xb64_evidence.json`. The Linux row cites it but stays R3 (R4 not met).
-
-## chains leads; jsonmin inside noise — 2026-10-08 (ADR-211)
-
-Next-iteration prefetch and edge sinking: `chains` 0.943x rustc (p = 0.019), `filestat` 0.896x clang. `jsonmin`'s unchanged binary measured 1.029x clang this run (0.968x before), so Linux stays R3 until `jsonmin` has a margin larger than run-to-run variation (§15.32).
-
-## Linux x86-64 reaches R4 — 2026-10-08 (ADR-212)
-
-`filestat` 0.852x and `jsonmin` 0.959x clang, `chains` 0.911x rustc, all significant in one run on one shared host (§15.33); the row derives R4. `jsonmin`'s margin is small (its previous binary measured 0.968x and 1.029x). JVM stays R5 (0.865x javac; R5 record re-recorded).
-
-## Linux x86-64 derives R6 — 2026-10-08 (ADR-213)
-
-A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance_evidence.json`) joins the R4 run (§15.33) and `xb64` (R6, ADR-210): the validator derives R6 for `linux-x86_64`. Each level rests on one run or one cycle; see the row's blockers.
-
-## S8c.1 integer typing rejections — 2026-10-08 (ADR-214)
-
-On Linux x86-64 the XAX typing program now rejects integer-family nodes (arity, type, width, rotate amount) with the bootstrap's exact diagnostic; `verify_store` raises it at the node's own position. The rest of S8c (other typing families, facts, object verification) is still Python. Migration stays SH1.
-
-## S8c.2 float and compare typing rejections — 2026-10-08 (ADR-215)
-
-The XAX typing program also rejects float, conversion, and integer-compare nodes with the bootstrap's exact diagnostic. Still Python in S8c: aggregate, sum, resource, meta, constant, and call typing; facts declines; object verification.
-
-## S8c.3 aggregate and sum typing rejections — 2026-10-08 (ADR-216)
-
-Aggregate and sum nodes are now rejected by XAX too. Still Python in S8c: resource, meta, constant, and call typing; facts declines; object verification.
-
-## S8c.4 meta typing rejections — 2026-10-08 (ADR-217)
-
-Meta operations are now rejected by XAX too. Still Python in S8c: resource/effect, constant, and call typing; facts declines; object verification.
-
-## S8c.5 resource/effect typing rejections — 2026-10-08 (ADR-218)
-
-Resource and effect nodes are now rejected by XAX too. The rejection logic is its own XAX function, and the views backends' output regions were resized so the typing program still lowers natively. Still Python in S8c: constant and call typing; facts declines; object verification.
-
-## S8c.6 constant and call-target rejections — 2026-10-08 (ADR-219)
-
-Constant targets and contracts and direct-call targets are now rejected by XAX. Still Python in S8c: call contracts, facts declines, object verification.
-
-## S8c.7 call-contract rejections — 2026-10-08 (ADR-220)
-
-Direct-call contract mismatches against graph-fragment callees are now rejected by XAX. Still Python in S8c: group-member call contracts, facts declines, object verification.
-
-## S8c.8 stack-memory rejections — 2026-10-08 (ADR-221)
-
-The XAX facts engine now decides the stack-memory rejections (lifetime, bounds, alignment, permission, frontier linearity, uninitialized loads, leaks) with the bootstrap's exact diagnostic: over 90% of the memory corpus's rejections. Still Python: heap-view, checked-access, call, atomic, and link memory rejections; object verification.
-
-## Host integration contracts and component-verification memo — 2026-10-08 (ADR-222 to ADR-225)
-
-Component stores are verified once per store bytes and compiler version (`verify_component_store`, ADR-222). A first `construct` in a fresh process with a populated image cache dropped from 21.9 s to 2.7 s. The construction carrier reaches argv/env/auxv through `linux.startup.*` (ADR-223). `linux-x86_64-process-v1` (ADR-224) and `xax-host-contract-v1` (ADR-225) give integrations a versioned surface. First consumer: XAX-MCP.
-
-## S8c.9 checked-access rejections — 2026-10-08 (ADR-226)
-
-Checked accesses and the type checks of loads and stores are now rejected by the XAX facts engine; 820 of 824 corpus rejections are engine-decided.
-
-## S8c.10 rebase-window rejections — 2026-10-08 (ADR-227)
-
-`pointer.rebase` rejections are now decided by the XAX facts engine; 822 of 824 corpus rejections are engine-decided.
-
-## S8c.11 returned-view rejections — 2026-10-08 (ADR-228)
-
-Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
-
-## S15e.4 browser pages — 2026-10-21 (ADR-322)
-
-The production compiler's `build` now makes the browser page of a `wasm32-browser-v1` target itself: the general x86-64 program lowers the closure to the WebAssembly module and writes the page, byte for byte the bootstrap's (`compile_wasm_bound_target` + `emit_browser_page`), with the same diagnostic on every rejection; 340 differential pages agree and none declined. The compiler's own lowering views needed a larger region (41M words; the arena now starts at 73M), so the seed was rotated in two stages; the new seed (16,131,490 bytes) rebuilds itself to a fixed point. JVM jars, Android packages and the raw images remain the bootstrap's (S15e.5, S15e.6).
-
-## S15e.3b, S15e.3c, S15e.7 DLLs, accelerator deployments and SPIR-V modules — 2026-10-21 (ADR-319 to ADR-321)
-
-The production compiler's `build` now makes Windows DLLs (exports, loader forwards, DllMain and its loader-lock rules), accelerator deployment packets and SPIR-V compute modules itself, inside the general x86-64 program; each equals the bootstrap's bytes or exact rejection on its test programs and on random corpora (620 DLL requests, 120 accelerator requests, 420 SPIR-V kernels), with none declined. The compiler outgrew the driver's 32 MiB store views, so they were raised to 64 MiB first and the seed rotated (ADR-319); the new compiler is a fixed point of `selfbuild.sh` from that seed. Still Python: the browser Wasm page, JVM jars, Android packages, the raw x86-64, Wasm and AArch64 images, and Windows functions only the legacy register path takes.
-
-## S15b.3e B1 holds for the Linux x86-64 production compiler — 2026-10-21 (ADR-318)
-
-The production compiler's `verify` now decides graphs that call several different resource callees before their own decision: it remembers which graphs it has already accepted (the bootstrap does not parse those again), waits on the first callee it has not, and checks the waiting graph again once that callee is accepted. On 800 random multi-callee programs every outcome is the bootstrap's and none declines. The evidence re-run has C1 = C2 = C3 = the bootstrap's compile with no recorded rejection gap: **B0 to B6 all hold for the Linux x86-64 production compiler**, and the Python-free seed rebuilds it. The whole multi-target compiler still holds none of B0-B6 (other targets are built by Python backends). Next: S15e.3b-S15e.7.
-
-## S15e.3 Windows executables built by the production compiler — 2026-10-17 (ADR-317)
-
-The production compiler's `build` now makes Windows PE32+ executables itself: the general x86-64 program lowers the Windows calling convention (imports through the import table, COM methods, arguments on the stack), applies the bootstrap's Windows-only peephole, and writes the PE container. On the Windows test programs and 850 random ones the executable and every rejection equal the bootstrap's. The compiler rebuilds itself from the pinned seed with no rotation. Windows DLLs, and functions only the bootstrap's older register path takes on Windows, are still built by the bootstrap (S15e.3b). Next: S15e.4 (the browser Wasm page).
-
-## S15e.2 Linux AArch64 executables built by the production compiler — 2026-10-17 (ADR-315, ADR-316)
-
-The production compiler's `build` now makes Linux AArch64 executables, static and dynamic, with a new AArch64 backend written in XAX: its register allocator, its general frame lowering (floats, products, sums, aggregates, stack storage), the syscall and import thunks and the ELF container. On every AArch64 test program and 340 random ones the executable, its provenance and every rejection equal the bootstrap's. The compiler grew past its image buffer, which was raised to 16 MiB; the seed was rotated deliberately and rebuilds itself to the same bytes. The evidence re-run keeps B0 and B2-B6 for the Linux x86-64 production compiler (B1 still has its one gap). Code addresses, indirect calls, atomics and the legacy register path on AArch64 still decline to the bootstrap. Next: S15e.3 (Windows PE32+).
-
-## S8c.12 heap-view construction rejections — 2026-10-08 (ADR-229)
-
-`heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
-
-## S15d.4b the compiler changes itself by structural transactions — 2026-10-16 (ADR-314)
-
-The compiler's `edit` command now takes the protocol's own graph mutations: insert a pure node before another, delete an unused one, replace an operand, change a result type, disconnect and connect edge arguments, with inserted nodes usable by later mutations in the same transaction. It checks every precondition exactly as the Python workspace does (same rule, same expected and actual) and produces the same store byte for byte. With it the compiler was changed structurally through its evolution ledger: entry 0002 deletes six unused constants from the compiler's main function. The self-built compiler replays the whole ledger from the builders' baseline to exactly the committed stores and verifies them, rebuilds itself to a fixed point from the pinned seed, and B6 (ordinary evolution without a second implementation) is now derived as holding for the Linux x86-64 production compiler. The x86-64 views backend needed room for the larger compiler (44 MiB of code, two-word node ranges). Still open: B1's one gap and the other targets (S15e.2-S15e.7); the whole multi-target production compiler stays at none of B0-B6.
-
-## Evidence after S15b.3d: every corpus rejection is the bootstrap's — 2026-10-16 (ADR-313)
-
-The re-run (`benchmarks/full_selfhost_evidence.json`) has C1 = C2 = C3 = the bootstrap's own compile (11,674,511 bytes) and all 38 verification rejections of the 123-case corpus written exactly as the bootstrap writes them. B0 and B2-B5 hold. B1 still does not: the one recorded gap (a graph calling two different resource callees before its own decision) declines. The x86-64 views backend's jump table had filled with the larger driver; a jump record is now two words. The Python-free seed rebuilds the same compiler.
-
-## S15b.3d the compiler's verification rejections, nearly complete — 2026-10-16 (ADR-311, ADR-313)
-
-The production compiler's `verify` now writes the bootstrap's exact rejection in the cases it used to leave undecided: builds that reference each other (a provenance's snapshot, a request's package), stores missing objects that a nested build object reaches, function and type corner cases, and the memory checks that quote a declaration (a foreign function's signature, a call contract, a code-entry type, an accelerator target's operation contracts) or a stack-owner entry's body. A caller's check now waits for the callee's graph when the bootstrap would parse the callee first. Over the randomized verification corpora (16 hash seeds of the object-site corpus and the type, graph, memory and use corpora) and 36 collected declaration and stack-owner stores, the self-built compiler declined none and wrote no diagnostic that differs from the bootstrap's. One narrow class still declines: a graph that calls two different resource callees before its own decision. Two compiler bugs were found on the way: the general x86-64 backend miscompiles a variable copy whose source keeps advancing (worked around here; the backend fix is its own task), and an internal header word was shared by two uses. Whether B1 holds is decided by the evidence re-run (see the evidence section above: it does not yet).
-
-## S15d.4a structural compiler changes as transactions — 2026-10-16 (ADR-312)
-
-The compiler's `edit` command can now replace any reference in the store (a function's graph, a module's function, a type or constant) with new objects carried in the transaction record, rebuilding everything that depends on it, byte for byte as the Python reference does. That makes every structural compiler change expressible as a transaction; writing the fine-grained graph mutations (insert, delete, rewire nodes) in the engine is the next step (S15d.4b), and B6 is not yet established. (Superseded by the S15d.4b section above.)
-
-## S15c.5a room for the compiler's largest function — 2026-10-16 (ADR-310)
-
-The program that compiles the compiler kept a 12.6M-word buffer for the final executable reserved through the whole compilation, although it is only used at the very end; with the next feature the compiler's largest function no longer fit beside it. The buffer is now taken at the end. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15c.5.
-
-## Evidence after S15c.5: B5 holds for the Linux x86-64 production compiler — 2026-10-16
-
-`bench_full_selfhost.py` and `bench_python_free_seed.py` were re-run (with `XAX_REQUIRE_NATIVE=1`) on the committed compiler after S15c.5, S15c.5a and S15e.1. Derived by `xax_selfhost.linux_x86_64_status`: **B0, B2, B3, B4, B5 hold; B1 and B6 do not.** B5 holds because no required build path of the declared scope is left to Python any more (signed resolution was the last) and no generation has an ELF interpreter. B1 is still blocked by the rejection-exactness gaps (S15b.3d) and one of 23 corpus verification rejections; B6 by the edit engine's vocabulary (S15d.4). The seed still requires no Python.
-
-## S15c.5 signed resolution in the production compiler — 2026-10-16 (ADR-309)
-
-The production compiler can now resolve a build under a trust policy that requires package signatures: the new `resolve-trusted` command takes the policy and the signatures as a small file of objects, verifies every signature in XAX, and writes the same signed snapshot as the bootstrap resolver, or the same rejection. That was the last required build path the compiler left to Python for its declared scope. Whether B5 now holds is decided by the evidence re-run, not by this note.
-
-## S15e.1 RISC-V images built by the production compiler — 2026-10-16 (ADR-308)
-
-The production compiler's `build` now makes RISC-V raw images itself, with the RISC-V backend that was already written in XAX: the artifact, its provenance, and every rejection equal the bootstrap's. The remaining targets (AArch64 Linux, Windows, the browser, JVM, Android, accelerators and SPIR-V) are listed as their own steps; each still needs its lowering written in XAX, and until then only the bootstrap builds them. Next: the evidence re-run and the final gate report.
-
-## S15e.0 room for target backends in the compiler — 2026-10-16 (ADR-307)
-
-The compiler's own build nearly filled the scratch memory of the program that compiles it (62.21M of 62.91M words), mostly because the buffer for one function's machine code was 18 times larger than the compiler's largest function needs. The buffer is now 2M words, freeing about 6M words for the backends S15e adds to the driver. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15e.1.
-
-## S15d.2-S15d.3 the compiler changed by its own transactions — 2026-10-16 (ADR-305, ADR-306)
-
-The compiler's committed store is now its historical Python construction plus a ledger of transactions, and the first transaction is a real change made without touching any Python compiler code: the compiler's `resolve` and `build` now accept up to 100 external input files instead of 64. The compiler applied the transaction to its own store with its `edit` command, verified the result, rebuilt itself to identical bytes, and the new compiler behaves as intended while still matching the bootstrap's results. B6 (bootstrap independence) is still not established: the transaction engine can only change operations and constants, so most compiler changes still need the Python builders. Next: S15d.4 (a larger transaction vocabulary), S15c.5, the S15b.3d remainder, S15e.
-
-## S15d.1 semantic transactions in the production compiler — 2026-10-16 (ADR-304)
-
-The production compiler can now change a canonical store itself. Its new `edit` command takes a small transaction record (change an arithmetic operation, or the value of a constant, at a named node of a named function), verifies the store, rebuilds every object that depends on the change, and writes the new store. The result is byte for byte what the existing Python workspace commits for the same transaction, and it rejects where the workspace rejects. On the compiler's own store an edit takes about 15 seconds and the result verifies. Next: S15d.2 (the committed compiler stores become authoritative, with a ledger of transactions) and S15d.3 (a real compiler change made this way).
-
-## S15d.0 room for the compiler's own lowering views — 2026-10-16 (ADR-303)
-
-The general x86-64 program keeps the lowering view of every function of the compiler at once, and after S15c those views filled 99.6 % of their region. The program image's buffer now lives in a part of the program's memory that was unused, which lets the views region grow by half without taking memory from anything else. The seed was rotated deliberately: the previous seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. Next: S15d.1.
-
-## S15c.1-S15c.4 grants, external inputs, Ed25519 signatures, capacities — 2026-10-16 (ADR-298 to ADR-302)
-
-The production compiler now decides four build paths it used to leave to Python. `resolve` checks profile grants and rejects an undeclared one with the bootstrap's own diagnostic. `resolve` and `build` take external input files, hash them in XAX, and record or check their digests. `build` verifies package signatures under a policy that requires them, with Ed25519 implemented in XAX (SHA-512 and the curve arithmetic), and rejects in the bootstrap's order with its exact diagnostics. An input past one of the compiler's declared capacities is the compiler's own rejection instead of a decline. Every scenario equals the bootstrap given the same inputs and the reference verifier, on the views-built driver and on the compiler built by its own backend, which still rebuilds itself to identical bytes from the pinned seed. Still open for B5: making signed snapshots (S15c.5). The B levels are unchanged until the evidence is re-run. Next: S15d.
-
-## S15b.3d objects inside a graph's parse — 2026-10-15 (ADR-297)
-
-A graph that names a malformed type, uses an unproven constant, applies a sum operation to a type of another form, or belongs to an undecided recursion group is now rejected with the bootstrap's own diagnostic. So is a sum or tuple type with a malformed item index, and an invalid use the bootstrap reaches at the same node as another check. Over the exactness corpora, declined rejections fell from 54 to 10, and none differs from the bootstrap. Still declining: the memory engine's declaration and pointer decoders, stack-owner entries, a few nested build decoders. B1 does not hold yet. Next: the remaining S15b.3d sites, then evidence.
-
-## S15b.3d nested decoders — 2026-10-15 (ADR-296)
-
-The production compiler now follows the bootstrap into two more nested decoders: a recursion group's member types, and a build snapshot's request and packages. It also types an object named as a type on demand. The two corpus rejections that were not yet exact now are. Next: the remaining S15b.3d sites, then evidence. S15b.3d objects inside a graph's parse: see above.
-
-## S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
-
-A graph that uses a value that does not exist, or that does not dominate its use, is now rejected with the bootstrap's own diagnostic. Any earlier check the bootstrap's first pass makes comes first, and the compiler no longer writes a record of its own for any verification rejection. What still declines: memory rejections that quote a foreign, lend, target-operation or bounded indirect-call declaration; a stack-owner entry's contract; and a constant or type the bootstrap first reaches inside a graph. B1 does not hold yet. Next: S15b.3d.
-
-## S15b.4 exact code generation rejections — 2026-10-15 (ADR-294)
-
-The production compiler now rejects with the bootstrap's own diagnostic where it reaches the bootstrap's code generation failures on malformed or extreme inputs. These include unencodable stack offsets, malformed syscall names, foreign calls of other ABIs, startup reads of other names, a call with two machine results, wrong pointer widths, and one symbol imported from two libraries. Every such program a test builds is the bootstrap's exact rejection. Rules no verified program reaches are recorded as such. B1 still waits on S15b.3c, a graph's invalid uses. Next: S15b.3c. S15b.3c: see above.
-
-## S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
-
-The production compiler now writes the bootstrap's own diagnostic for a graph that fails operation typing, a terminator, a memory-fact check, linear resource flow, or a branch target. The typing program follows `_parse_graph`'s order and renders the record that decides the graph's outcome. On every corpus and mutated graph the compiler's `verify` either matches the bootstrap exactly or declines. Over the typing, linear and memory corpora, 2290 rejections are exact, none differs, and 18 decline. Still declining: memory sites that quote a foreign, lend, target-operation or bounded indirect-call declaration, and a stack-owner entry's contract. Invalid uses still carry the driver's own record. B1 does not hold yet. Next: S15b.3c. S15b.4: see above.
-
-## S15b room for the compiler's image — 2026-10-15 (ADR-291)
-
-The general x86-64 program can now assemble a compiler image of up to 12 MiB, up from 8 MiB. The compiler's own image is about 8 MiB and grows as S15b adds the bootstrap's diagnostics. The seed was rotated deliberately: the previous seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.3. S15b.3a-S15b.3b: see above.
-
-## S15b.1-S15b.2 exact object, type, and constant rejections — 2026-10-15 (ADR-288, ADR-289)
-
-The production compiler now reports the bootstrap's own diagnostic when it rejects a store for an object, type, constant, or store-level fault, and it reports the first one in the bootstrap's order. The store verifier writes every object rejection itself, including entity, values and their exact types. It also computes which graphs `verify_store` parses, in which order, before which object fails. The driver follows that order, and renders type and constant rejections from the typing program's records. On 480 mutated stores the compiler's `verify` accepts exactly what the bootstrap accepts, and every rejection it makes outside the graph checks is the bootstrap's. Graph rejections (operation typing, terminators, memory facts, linear flow, invalid uses) still carry the driver's own record. A few cases the bootstrap decides through another object's decoder decline. B1 does not hold yet. Next: S15b.3. Image capacity and S15b.3a-S15b.3b: see above.
-
-## S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
-
-The input view the verifier and the backends read grew from 256 MiB to 512 MiB, so the driver can keep verifying its own store as S15b adds the bootstrap's diagnostics to it. The typing program's own input stays bounded at its former size. The seed was rotated deliberately: the S15a seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.1. S15b.1-S15b.2: see above.
-
-## S15a a Python-free seed — 2026-10-15 (ADR-286)
-
-The Linux x86-64 production compiler no longer needs Python to start. Its seed is a pinned copy of the compiler as its own build made it, committed with the compiler's build request. A shell script makes the seed rebuild the compiler twice, and both builds equal the seed, with only `sh`, `dirname`, `mkdir`, `chmod`, and `cmp` on `PATH` and no Python anywhere. The committed record derives "seed requires Python: no". The B levels are unchanged (B1, B5, and B6 still do not hold). Next: S15b to S15e. S15b.0: see above.
-
-## S14 complete: S14b the production compiler's generations — 2026-10-15 (ADR-285)
-
-On Linux x86-64 the production compiler now builds itself through its ordinary path. Each generation resolves the compiler's own build request to its snapshot and builds the snapshot into the next compiler and its provenance, all as plain processes with no Python inside. Generations 1, 2, and 3 are byte for byte the same executable, equal to the bootstrap's own compile, and they agree with each other and with the bootstrap on a 72-case positive and negative corpus. The B levels are derived from the committed record for this declared scope: B0, B2, B3, and B4 hold; B1, B5, and B6 do not. The driver's verification rejections are its own record, required package paths such as signatures and external inputs are not XAX-hosted, and compiler evolution still edits Python builders. The seed still requires Python, every other target is still compiled by Python, and the whole production compiler is not self-hosted. Next: S15. S15a: see above.
-
-## S14a the compiler compiles itself with its optimizing backend — 2026-10-15 (ADR-284)
-
-The production compiler on Linux x86-64 (the general driver) is now compiled by its own optimizing backend. The views-built driver (C0) compiles it to C1; C1 compiles it to C2, and C2 to C3. C1, C2, and C3 are byte for byte the same 6.9 MB executable, and equal to the bootstrap's own compile. That executable is four times smaller than the views-built one and rebuilds the compiler in 31 s instead of 103 s. Getting there fixed a register-allocator bug in the bootstrap reference (mirrored in XAX), quadratic memory use and unchecked buffer writes in the XAX backend program, and capacities. This is a component fixed point, not yet the B-milestone generations. Next: S14b (generations through `resolve` and `build` with provenance, and the positive/negative equivalence corpus). S14b: see above.
-
-## S13 complete: S13c package resolution — 2026-10-15 (ADR-283)
-
-S13 is complete on Linux x86-64. The general driver process now resolves a build request's packages and writes the snapshot store with the XAX store writer, byte for byte `snapshot_store(resolve_packages(...))`'s, under the default trust policy and its own resolver identity. With S13a and S13b, the whole ordinary build path runs in the XAX process: from a request store to a snapshot, from the snapshot to the executable and its provenance, plus `verify` and `inspect`. Signature-checking policies, external inputs, and profile grants decline. The store writer's 16 MiB capacity is below the general driver's own store, so S14 must grow it first. These are component results, not B milestones. Next: S14 (full-compiler generations C1 → C2 → C3). S14a: see above.
-
-## S13b verify and inspect — 2026-10-15 (ADR-282)
-
-S13b is complete on Linux x86-64. The general driver process now answers `verify` and `inspect` itself: it accepts exactly the stores `xaxc verify` accepts, and its inspection records equal `xaxc inspect`'s output. The graph decoder's body view doubled to 2 MiB first, so the driver's own function body has room to grow again. Next: S13c (package resolution and snapshot formation). These are component results, not B milestones. S13c: see above.
-
-## S13a build requests and provenance — 2026-10-15 (ADR-281)
-
-S13 is decomposed into S13a (build requests and provenance), S13b (`verify` and `inspect`), and S13c (package resolution and snapshot formation). S13a is complete on Linux x86-64. The general driver now takes a command. Its `build` command makes, as a plain process with no Python inside, what `xax_build.build` makes for a resolved snapshot's request: the Linux x86-64 executable and its canonical provenance object, byte for byte. The digest and the CID come from the S2 hash, and `build`'s rejections before lowering and for the requested artifacts are exact. Android packages, Windows DLLs, and other targets decline. The general driver still rebuilds itself through three generations, now with its `lower` command. These are component results, not B milestones. Next: S13b; first, grow the graph decoder's body view, because the driver's function body is 36 KB below its capacity. S13b: see above.
-
-## S12 complete: S12f.4 wide values and the legacy register path — 2026-10-15 (ADR-280)
-
-S12 is complete on Linux x86-64. The general backend program now compiles, byte for byte, every function the bootstrap compiles for the Linux executable profiles. That includes functions with values wider than 64 bits, functions on the bootstrap's legacy register path, atomics, and aggregates passed by reference. The general driver, a standalone XAX executable, does all of this itself, from the store file to the ELF file, and rebuilds itself through three generations. The bootstrap's remaining code-generation rejections for malformed or extreme inputs are declined rather than decided; ADR-280 lists them, and S14's negative equivalence covers them. These are component results, not B milestones. Next: S13 (build, package, and provenance, and the minimal command surface). S13a: see above.
-
-## S12f.3 atomics and by-reference aggregates — 2026-10-15 (ADR-279)
-
-The general backend program now lowers atomics, with the bootstrap's capability check and rejections. It also lowers aggregates passed or returned by reference, byte for byte the bootstrap's. Such programs are now compiled entirely by XAX. Next: S12f.4 (values wider than 64 bits, the legacy register path, and links and rebases on the frame path). S12f.4: see above.
-
-## S12f.2 code generation rejections — 2026-10-15 (ADR-278)
-
-The general backend program now makes the bootstrap's code-generation rejections itself, with the exact diagnostics. Every compile in the Linux test suites is decided entirely by XAX: 152 executables and 5 rejections. Next: S12f.3 (atomics, aggregates passed by reference, values wider than 64 bits, and the legacy register path). S12f.3: see above.
-
-## S12e.3 the general driver rebuilds itself — 2026-10-15 (ADR-277)
-
-S12e.3 is complete on Linux x86-64. The verifier views doubled, so the general driver now verifies its own store. It rebuilds itself through three generations as plain processes, byte for byte, like the views driver (S11). This is a component fixed point, not a B milestone. S12e is complete. Next: S12f.2. S12f.2: see above.
-
-## S12e.2 the general driver — 2026-10-14 (ADR-276)
-
-S12e.2 is complete on Linux x86-64. A second driver store, the general driver, links the general x86-64 backend program into the S11 driver. As a plain Linux process with no Python inside, it reads a program store and a Linux target, verifies the store, builds every input the general program needs (recursion-group member functions included), and writes the executable. On the Linux test programs its output is byte for byte `compile_linux_executable`'s: 117 executables and 2 rejections. It declines what the general program still leaves to the bootstrap. It cannot yet rebuild itself: its own store is beyond the verifier's input view. Next: S12e.3 (larger verifier views, so the general driver is a fixed point) and S12f.2. S12e.3: see above.
-
-## S12f.1 the frame lowering — 2026-10-14 (ADR-275)
-
-S12f is cut into S12f.1 (the frame lowering) and S12f.2 (atomics, by-reference aggregates, and the legacy register path). S12f.1 is complete on Linux x86-64. The general backend program now lowers, byte for byte the bootstrap's, the functions the register-resident lowering cannot take, including floating-point code. 152 of the 157 Linux test compiles are produced entirely by XAX, and no function in those suites is left on the bootstrap's paths. Next: S12e.2 and S12f.2. S12e.2: see above.
-
-## S12d.2 every startup read — 2026-10-14 (ADR-274)
-
-The XAX emission now covers every Linux startup read (arguments, environment, auxiliary vector). 148 of the 157 Linux test compiles are produced entirely by XAX; the functions still on the bootstrap's paths in those suites are floating-point code (the frame lowering). Next: S12f and S12e.2. S12f.1: see above.
-
-## S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
-
-S12e is cut into S12e.1 (assembly and container) and S12e.2 (the driver runs the general backend). S12e.1 is complete on Linux x86-64. When the general backend program emits every function, it also places them, builds the SysV entry adapters, binds every fixup and import, and writes the static or dynamic ELF64 executable, byte for byte the bootstrap's. 143 of the 157 Linux test compiles are now produced entirely by XAX from the closure to the executable file; jsonmin compiles in 189 ms against 1,003 ms in Python. Next: S12e.2 and S12f (the remaining lowering paths).
-
-## S12d register-resident emission — 2026-10-14 (ADR-272)
-
-S12d is complete on Linux x86-64. The general backend program now also emits each register-resident function's machine code, call fixups, and semantic ranges, byte for byte the bootstrap's: 827 random-program functions, jsonmin, chains, and every Linux test compile agree, and Linux compiles now use the XAX code. On jsonmin the whole per-function pipeline (closure through code) takes 247.5 ms in XAX against 977.3 ms in Python. Image assembly, the ELF container, and the other lowering paths are still Python. Next: S12e (image assembly and the container). S12e.1: see above.
-
-## S12c.2 register-resident analyses — 2026-10-14 (ADR-271)
-
-S12c is complete on Linux x86-64. The general backend program now makes every analysis of the register-resident lowering: eligibility and its rejections, widths, folding, predicate tables, membership tests, uses, homes, pins, hoisted constants, and the frame. An audit compares them with the bootstrap's: 2,840 random-program functions and every Linux test compile agree. Emission still uses the bootstrap's analyses. Closure, views, prefetch, and analyses together take 114.7 ms in XAX on jsonmin; the bootstrap's analyses alone take 543.5 ms. Next: S12d (register-resident emission). S12d: see above.
-
-## S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
-
-S12c is cut into S12c.1 (ranges and prefetch) and S12c.2 (the register-resident analyses). S12c.1 is complete on Linux x86-64. The general backend program bounds values exactly as `upper_bounds` does: 81,492 audited bounds over jsonmin, chains, and 550 random programs agree, and so do all Linux test compiles. It selects the next-iteration prefetch on the view (the chains lookup's mark included), byte-identical executables. Closure, views, and prefetch together take 73.5 ms in XAX against 163 ms in Python on jsonmin. Next: S12c.2. S12c.2: see above.
-
-## S12b the general backend's lowering view — 2026-10-14 (ADR-269)
-
-S12b is complete on Linux x86-64. The general backend program now also decides each closure function's lowering view: leaf inlining, the simplification fixed point, and the fall-through block layout. Every view of every Linux test compile, and of 340 random programs, equals `inline_leaf_calls`. The XAX path (closure and views) is about 2.6x faster than Python on jsonmin. Prefetch selection moved to S12c with value ranges. Code generation is still Python. Next: S12c. S12c.1: see above.
-
-## S12a the general backend's front end — 2026-10-14 (ADR-268)
-
-S12 is cut into S12a-S12f by measurement: every function the Linux test corpus lowers for `x86_64-linux-elf-exec-v1` takes the inlining → register-resident path, so that path is ported next and the frame lowering last. S12a is complete on Linux x86-64. `xax_x86_64_general.xax` decides the target and process-entry checks, the general backend's function closure in the bootstrap's depth-first order with every pre-codegen rejection (arity, ABI layouts computed in XAX, operations, terminators, foreign entries), recursion-group members, and the image order. `compile_linux_executable` now verifies first and takes the closure from that program. Both front ends agree on all 160 compiles of the Linux test suites. Code generation is still Python. Next: S12b (the lowering view). S12b: see above.
-
-## S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
-
-S11 is complete on Linux x86-64. The views profile has a process-entry variant (`x86_64-linux-views-exec-v1`: aligned entry frame, `argc`/`arg_copy`, `ud2` on return). Both generators lower it identically, and images package as a static ELF64 executable that adds no code. The compiler driver is that executable: it takes its three paths from argv, does all its work, and exits with its status. The executable rebuilds itself through three generations byte for byte as plain processes (about 25 s each). This is a component fixed point of the views-profile compiler path, not a whole-compiler B milestone. Next: S12 (general x86-64 lowering in XAX). S12a: see above.
-
-## S10e semantic verification in the driver — 2026-10-14 (ADR-266)
-
-S10 is complete in a host process. The driver builds `verify_store`'s inputs itself in XAX (`xax_selfhost_semantic.py`, word-identical to the Python marshals) and calls the typing, store-verifier, CFG, and facts programs directly; a store `verify_store` rejects is rejected with the driver's `XAX.DRIVER.VERIFY` record (or declined), never lowered. Shared view capacities grew so the driver handles its own 8.8 MB store, and it verifies and lowers itself to its own image. With verification included it is about twice as fast as Python orchestrating the same components. Next: S11 (the driver as a standalone ELF64 executable). Superseded by S11 above.
-
-## S10 the compiler driver as XAX — 2026-10-14 (ADR-265)
-
-S10a-S10d are complete on Linux x86-64. One XAX program, `xax_compiler_driver.xax`, owns its memory (`mmap`, `heap.view`, `munmap`) and does its own file I/O. It reads a program store and a target-package store, and decides the container, digest, and every object CID with the XAX decoder and hash. It streams graphs with the XAX graph decoder, builds the object table, lowers with the XAX backend, and writes the image or the exact diagnostic. On all 16 committed stores its output equals `compile_x86_64_views`, and it lowers its own store to its own image. It takes about the same time as Python orchestrating the same components. Semantic verification (typing, facts, object and store verification) is still orchestrated by Python and is re-cut to S10e (open). Next: S10e, and S11 (the driver as an ELF64 executable). Superseded by S10e above.
-
-## S10a Linux syscalls in the views profile — 2026-10-14 (ADR-264)
-
-S10 is cut into S10a-S10d (I/O, owned memory, the `verify` driver, the `lower` driver). S10a is complete on Linux x86-64: the `x86_64-linux-views-v2` profile adds explicit Linux syscalls, and the XAX x86-64 backend program decodes each declaration and its register template, lowers it byte-identically to the bootstrap generator, and decides every rejection with the exact diagnostic. An XAX views image opens, reads, writes, and closes files natively with its own syscalls. The RISC-V backend store is unchanged. No driver is XAX yet. Next: S10b (driver-owned memory).
-
-## S9 canonical store writing — 2026-10-14 (ADR-262)
-
-S9 is complete on Linux x86-64: `write_store`, `StoreReader.from_objects`, and lazy serialization run the XAX store writer (`xax_store_writer.xax`). It re-derives every object's CID with the S2 hash graph over its own view, decides schema versions, reference order, duplicate CIDs, the root, and record order and duplicates in the bootstrap's precedence, and emits the container with its digest. Committed stores (shuffled), 150 random stores, and every rejection with its precedence match the bootstrap writer exactly; the writer writes its own store byte for byte. Python still decides off Linux x86-64 and for inputs over the writer's capacity, and `SemanticObject.create` still proposes CIDs in Python (re-derived at write). Next: S10 (the driver as a native XAX program).
-
-## S8 verifier totality — 2026-10-09 (ADR-251)
-
-S8 is complete: on Linux x86-64 every verifier rejection the suite reaches is decided by an XAX program with the bootstrap's exact diagnostic. The full-suite trace (`compiler/migration/s8_rejection_trace.py`) reports 0 bootstrap-decided rejection sites, and the differential plugin (`compiler/migration/s8_differential.py`) matched 4,685 live rejections to the bootstrap's with 0 differences. Python still decides off Linux x86-64 and where an XAX program declines (oversized or unmodelled inputs); it remains the differential oracle. Next: S9 (canonical store writing in XAX).
-## Fast first start: `xax_native.prepare` — 2026-10-09 (ADR-250)
-
-`xax_native.prepare(parallel=True)` readies every component image and verified-store record in child processes (host contract minor 3); cache entries are published by atomic rename; lowering no longer re-verifies a store its loader just verified. First construct of the warm-up carrier, `XAX_REQUIRE_NATIVE=1`, this host:
-
-| | Before (4e16e32) | After P6 (ADR-248) | After P6+P7 (ADR-249) | After P6+P7+P8 (ADR-250) |
-|---|---|---|---|---|
-| Warm cache, wall (median of 5) | 2.235 s | 1.962 s | 0.528 s | 0.523 s |
-| Warm cache, added peak RSS | +764.7 MB | +43.3 MB | +45.0 MB | +44.9 MB |
-| Empty cache, sequential | 47.3 / 47.0 s, +1.36 GB | 46.0 / 47.3 s, +694 MB | 45.5 / 45.0 s, +697 MB | 47.4 / 44.5 s, +703 MB |
-| Empty cache, `prepare(parallel=True)` + construct | — | — | — | 25.5 / 25.7 s |
-
-The constructed store (root `70cff343…`), every image, and every CID are unchanged except the regenerated BLAKE3 hash store (ADR-249). Prebuilt images are not shipped (ADR-250).
-
-## One-call BLAKE3 up to 16 MiB — 2026-10-09 (ADR-249)
-
-The XAX BLAKE3 hash lends a 16 MiB input view (`xax_blake3_hash.xax` regenerated; its CID is the only one that changes), so every committed store hashes in one native call; the per-block driver reuses its argument buffers. Warm first construct: 1.96 s → 0.53 s, +45 MB peak RSS. Digests are unchanged.
-
-## Lazily zeroed component views — 2026-10-09 (ADR-248)
-
-The XAX-hosted components' views are lazily zeroed anonymous mappings. Warm first construct: 2.24 s and +765 MB peak RSS before, 1.96 s and +43 MB after; no change to any store, CID, or artifact.
-
-## S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
-
-The XAX typing program now rejects constants with an out-of-range type index, a truncated value, or trailing bytes. Still Python: resource transitions, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines. Superseded by S8 above.
-
-## S8c.28 pointer element and opaque identity rejections — 2026-10-09 (ADR-246)
-
-The XAX typing program now rejects pointers to proof types or with extra references, and malformed opaque identity types. Still Python: resource transitions, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
-
-## S8c.27 tuple and sum item rejections — 2026-10-09 (ADR-245)
-
-The XAX typing program now rejects tuple and sum types with an item index out of range, trailing bytes, a proof-type item, or an unused reference. Still Python: pointer element checks, resource transitions, opaque identity types, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
-
-## S8c.26 compound type rejections — 2026-10-09 (ADR-244)
-
-The XAX typing program now rejects malformed opaque, effect, sum, pointer, resource, and array types (their own fields, before element types) with the bootstrap's diagnostics. Still Python: tuple and sum element checks, pointer element checks, resource transitions, opaque identity types, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
-
-## S8c.25 scalar type rejections — 2026-10-09 (ADR-243)
-
-The XAX typing program now rejects malformed bits, float, and link types and unsupported type forms with the bootstrap's diagnostics. Still Python: compound type rejections, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
-
-## S8c.24 constant object rejections — 2026-10-09 (ADR-242)
-
-The XAX typing program now rejects constants whose value does not fit their type (bits width or spare bits, float width, non-canonical NaN, non-null link, non-scalar type) with the bootstrap's diagnostics. Still Python: malformed constant bodies, types, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
-
-## S8c.23 target object rejections — 2026-10-09 (ADR-241)
-
-The XAX store verifier now rejects malformed target objects (references, identity, architecture, trailing bytes, profile, and each architecture's machine and profile rules) with the bootstrap's diagnostics. Still Python: target register lists and profile sections, the canonical group order, types, constants, packages, builds; the remaining memory declines.
-
-## S8c.22 recursion-group member-graph rejections — 2026-10-08 (ADR-240)
-
-The XAX store verifier now rejects recursion groups whose member graphs break the member interface, call a member out of range or with the wrong types, or do not form one recursive component. Still Python: the canonical member order, types, constants, targets, packages, builds; the remaining memory declines.
-
-## S8c.21 recursion-group member-list rejections — 2026-10-08 (ADR-239)
-
-The XAX store verifier now rejects malformed recursion-group member lists (empty group, reference index, carrier, trailing bytes, unused references) with the bootstrap's diagnostics. Still Python: group checks after member parses, types, constants, targets, packages, builds; the remaining memory declines.
-
-## S8c.20 function object rejections — 2026-10-08 (ADR-238)
-
-The XAX store verifier now rejects malformed function objects (reference index, carrier, trailing bytes, group member, entry and return contracts, unused references) with the bootstrap's diagnostics. Still Python: rejections of recursion groups, types, constants, targets, packages, and builds; the remaining memory declines.
-
-## S8c.19 object rejections: reference lists and call contracts — 2026-10-08 (ADR-237)
-
-The XAX store verifier now rejects malformed program-root and module reference lists and call contracts with the bootstrap's diagnostics. Still Python: rejections of functions, groups, types, constants, targets, packages, and builds; the remaining memory declines.
-
-## S8c.18 address, record, and link-lifetime rejections — 2026-10-08 (ADR-236)
-
-Address offsets into records (field offset, stride, authority, alignment), unsized access elements, foreign writes to link-bearing storage, and storage ending before its link dependents are now rejected by the XAX facts engine. Still Python: atomic enum diagnostics, invalid record fields, ambiguous link dependents; object verification.
-
-## S8c.17 link memory rejections — 2026-10-08 (ADR-235)
-
-Link make/follow/target, stored-link and stored-pointer provenance, and record-view checks are now rejected by the XAX facts engine. Still Python: record field offsets and strides, byte-addressable values, link dependents of ended storage, foreign writes to link-bearing storage, atomic enums; object verification.
-
-## S8c.16 atomic memory rejections — 2026-10-08 (ADR-234)
-
-Atomic load/store/read-modify-write/compare-exchange and fence rejections (contract, access, frontier, permission, value types, initialization) are now decided by the XAX facts engine. Still Python: atomic order and scope enum diagnostics, link dependents of released views, links; object verification.
-
-## S8c.15 indirect-call stack-proof rejections — 2026-10-08 (ADR-233)
-
-The stack proof of an indirect call (one local pointer, its owner and frontier crossing the call) is now rejected by the XAX facts engine. Still Python: link dependents of released views, atomics, links; object verification.
-
-## S8c.14 view-passing call rejections — 2026-10-08 (ADR-232)
-
-View borrowing at direct and group-member calls (owner, base, link target, effect provenance, liveness, forks, initialization) and group-call memory slots are now decided by the XAX facts engine. Still Python: link dependents of released views, indirect calls, atomics, links; object verification.
-
-## S8c.13 foreign-call memory rejections — 2026-10-08 (ADR-230)
-
-Foreign-call memory rejections (release, use after release, frontier forks) are now decided by the XAX facts engine. Still Python: view-passing and indirect calls, atomics, links; object verification.
-
-## Implemented
+### Implemented
 
 - Python 3.11+ bootstrap library and `xaxc` diagnostic CLI.
 - M14 compile-time function/graph introspection plus generic semantic-object/byte opaque values, verifier-gated program materialization, canonical-store emission, and semantic verification under explicit META capabilities. Executed bootstrap labels are recorded separately from mere capability presence.
@@ -562,24 +198,7 @@ Foreign-call memory rejections (release, use after release, frontier forks) are 
 - `compiler/src/xax_accelerator.py` emits the deterministic `XAXA\x01` deployment packet directly. The fixed M13 path uses an explicit device effect and a linear buffer resource through all six operations; the deterministic harness executes the target-defined wrapping-add launch for conformance only.
 - Accelerator deployment is artifact kind 2 and uses the ordinary package/build snapshot and provenance path plus a versioned lowering identity. Workspace artifact/mapping queries consume the same target-neutral `MappableArtifact` ranges used by CPU/WebAssembly targets.
 
-## Supported targets
-
-- x86-64 Windows, raw callable load-image profile revision 2 with native system-scope 32/64-bit atomics and one explicit handler entry, target CID `24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56`. Invocation uses an isolated Windows host harness.
-- WebAssembly core module, target CID `946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed`. Invocation uses Node/V8 only as a test harness; emitted modules have no imports.
-- AArch64 bare-metal raw callable load image, target CID `0af5a0c8db7996951be281cf7ab22a7ee158287c43f195c9518f782f5832e355`. Invocation uses QEMU/semihosting only as a test harness; emitted code contains neither.
-- Prototype SIMT packet accelerator, profile 3 / architecture 4, target CID `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`. It emits a deterministic deployment packet with no declared runtime dependency; `run_accelerator_deployment` is a conformance harness, not an emitted runtime or physical-GPU claim.
-
-- x86-64 Windows hosted PE32+ executable, target `x86_64-windows-pe-v1` (CID `9c6224e5e314c60a1bbfd2dc54b28ccac19b570d5113ba2c70bb7686fbf67d1c`): v5 operations plus `call_foreign`, `heap_view`, and `pointer_address` under the `win64-c` ABI, bound through a loader-filled import table by `xax_pe.emit_pe_executable`. Runs as an ordinary Windows process; no harness.
-
-- x86-64 Linux `x86_64-linux-elf-exec-v1` (static) and `x86_64-linux-elf-dynexec-v1` (explicit `ld.so`, declared `DT_NEEDED` only): direct ELF64 `ET_EXEC`, EXECUTED natively on Linux x86-64. `e_entry` is the XAX entry; the program exits explicitly with `exit_group`.
-
-- JVM `jvm-classfile-v1` (architecture 5, ADR-112): one class file (major 61) in a stored deterministic JAR, EXECUTED on OpenJDK 21 HotSpot with `java -jar`. Foreign members are typed `jvm-invokestatic`/`jvm-invokevirtual`/`jvm-getstatic` declarations; `xax_jvm.java_base_api()` covers `System.out`, `println`, `print(char)`, `flush`, `System.exit`, `Math.sqrt`, `System.nanoTime`, and `Long.bitCount`.
-
-- RISC-V `riscv64-baremetal-raw-v1` (architecture 6, ADR-113): a raw position-independent RV64IM image with the LP64 integer convention, EXECUTED under the Unicorn RV64 emulator (test harness only).
-
-All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, linker, or LLVM dependency. The M13 accelerator package declares an empty runtime-dependency set.
-
-## Build and test commands
+### Build and test commands
 
 ```text
 cd compiler
@@ -595,7 +214,7 @@ SOURCE_DATE_EPOCH=946684800 python -m pip wheel . --no-deps --no-build-isolation
 
 Since ADR-114 the raw Win64 images also execute on Linux x86-64 hosts (a harness call thunk), and AArch64 raw images run in Unicorn when `qemu-system-aarch64` is absent (`pip install unicorn`). The RISC-V tests need Unicorn, and the JVM tests need `java` and `javac`. M14's `xax-semantic-image-v1` closure tests themselves are host-portable under the approved Python seed execution environment.
 
-## Executed test state
+### Executed test state
 
 - 2026-09-30 Linux x86-64 / Python 3.13.5 final M14 repository contains **239 test methods**.
 - Basic Python syntax/import compilation passed for `compiler/src`, `compiler/tests`, `compiler/benchmarks`, and `compiler/bootstrap`.
@@ -613,7 +232,7 @@ Since ADR-114 the raw Win64 images also execute on Linux x86-64 hosts (a harness
 - OI-07 DMA-vocabulary harness on 2026-10-01: focused tests pass **7/7**. The non-coherent split-memory and coherent shared-memory target packages both verify, compile deterministically, and execute **4/4** fixed DMA vectors; omitting non-coherent cache clean or either target's synchronization rejects by resource/target type state. Portable core/workspace/build/optimizer/bootstrap/selfhost plus OI-05/OI-06/OI-07 regression passed **265 tests with 1 existing skip** after excluding exactly the same 8 host-bound execution cases. In addition, all six non-evidence OI-02 tests, all nine non-tokenizer OI-03 tests, and all nine non-tokenizer OI-04 tests passed. The OI-02 committed-evidence replay exceeded this host's execution window; the OI-03/OI-04 committed-evidence replays are blocked here by absent `tiktoken`. No semantics or tests were weakened to hide those environment/tooling limits.
 - OI-08 effect partition/edge-encoding harness on 2026-10-01: focused tests pass **8/8**. Syntax compilation passed for all compiler source, benchmark, and test modules. The broad core/workspace/build/optimizer/bootstrap/selfhost/accelerator plus OI-05/OI-06/OI-07/OI-08 run produced **260 passes** and exactly the same **8 host-bound execution failures** (6 Windows x86-64, 2 AArch64/QEMU); rerunning with only those eight collected node IDs deselected produced **260/260 passed**. The portable non-evidence OI-02/OI-03/OI-04 subset added **24/24 passed**, and the AI-native test module added **13 passed / 1 existing skip**. No semantic test was weakened or skipped to make OI-08 pass.
 
-## Known gaps
+### Known gaps
 
 - Workspace specialization is deliberately restricted to one explicit-constant clone of a standalone straight-line single-block constants/wrapping-arithmetic function. It does not evaluate calls, control flow, effects/resources, target queries, types as values, or arbitrary compile-time XAX; it does not automatically rewire callers or implement specialization caching policy.
 - No external normative fixture corpus exists yet; current vectors are implementation-local.
@@ -639,7 +258,7 @@ Since ADR-114 the raw Win64 images also execute on Linux x86-64 hosts (a harness
 
 - M13 proves one synthetic non-CPU deployment target and target-package contract path only. It does not execute on physical GPU hardware, normalize multiple vendor scope lattices, lower general kernels, prove coherence/barrier semantics across devices, or calibrate accelerator cost/performance. OI-13 and OI-16 remain open.
 
-## Latest benchmark status
+### Latest benchmark status
 
 - **OI-05 proof-cache persistence (2026-10-01):** `compiler/benchmarks/oi05_proof_cache_evidence.json` records seven raw samples per arm over a deterministic 96-function workload. Median verifier-only cold/warm is 92.65/42.46 ms; restart-inclusive load+verify 135.98/124.27 ms; compiler-only cold/warm 127.55/79.36 ms; restart-inclusive load+compile 171.70/162.73 ms; build-only cold/warm 218.56/171.81 ms; restart-inclusive load+build 319.64/253.19 ms. A local edit verifies 5 objects, reuses 286, invalidates/writes 5 cache entries, and reduces the following compile from 127.61 to 81.68 ms while adding about 2.5% commit-time maintenance in this run. Program/build cache sizes are 33,639/34,123 B (79.8%/79.5% of their stores). Artifact/provenance identity is unchanged. These are host timing observations, not normative thresholds.
 
@@ -700,7 +319,7 @@ The 2026-09-30 M14 bootstrap evidence (`compiler/bootstrap/m14_selfhost_evidence
 
 The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` and matched byte-for-byte: **117,715 bytes**, SHA-256 `fa4add6e966ca09fe5df6c02043e91d333f0726ec92f681a03bf7251e4a4a34e`.
 
-## M6/M7/M8/M9/M10/M11/M12/M13/M14 exit audit
+### M6/M7/M8/M9/M10/M11/M12/M13/M14 exit audit
 
 - M6 exit is satisfied for the declared prototype: atomic local transactions, exact preconditions/conflicts, dependency-aware affected-frontier verification, bounded queries, candidate verify/rollback, narrow specialization, retained multi-generation diff/rebase for unchanged entities, and durable canonical store save/load have executable coverage.
 - M7 exit is satisfied for the declared operation set: generic lifecycle/state transitions, affine/linear handling, split/join, domain-instance effect ordering and independence, cross-block flow, derived direct-call summaries, reference execution, deterministic diagnostics, and native/WebAssembly proof erasure have executable coverage.
@@ -716,7 +335,7 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 - M14 exit is satisfied for the declared `xax-semantic-image-v1` closure target: B2 recursive compilation executed; B3 fixed-policy equivalence passed **4/4** vectors; B4 reached exact byte identity across generations 0/1/2; B5 is satisfied by the XAX-hosted semantic-image materialize→verify→encode→finalize/build path with verifier/serializer retained as deliberate trusted META substrate; and B6 is satisfied at the declared immutable-seed boundary by reconstructing the release compiler without repository Python sources on the import path. The claim does **not** extend to legacy x86-64, AArch64, WebAssembly, or accelerator target maintenance.
 - Final M14 validation on 2026-09-30: syntax compilation passed; M14 narrow tests passed **7/7**; the broad pre-artifact-finalization suite had **237 tests** with the same 8 host-only errors; the exact final applicable regression passed **231/231** out of 239 current tests after excluding those same 8 unavailable cases; M14 artifacts regenerated deterministically twice; and the wheel reproduced byte-for-byte at **117,715 bytes**, SHA-256 `fa4add6e966ca09fe5df6c02043e91d333f0726ec92f681a03bf7251e4a4a34e`.
 
-## Bootstrap dependencies
+### Bootstrap dependencies
 
 - Python 3.13.5 — execution environment for the committed immutable M14 seed runtime and the removable bootstrap/reference implementation. The declared B6 claim does not assert elimination of the interpreter; it asserts that ordinary `xax-semantic-image-v1` release reconstruction need not import or edit repository Python implementation sources.
 - In-tree `compiler/src/blake3.py` — dependency-free suite-1 BLAKE3 implementation. The external platform-specific `blake3` wheel dependency has been removed from `pyproject.toml`.
@@ -725,7 +344,7 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 - MSYS2 QEMU 11.0.1 plus its runtime package dependencies — AArch64 execution harness only; outside the M14 semantic-image closure claim.
 - Capstone 5.0.9 — transitive QEMU-package dependency used only to inspect AArch64 bytes.
 
-## Current blockers
+### Current blockers
 
 - **S7b** (object table, image assembly, and XAX-produced rejection diagnostics) is the next compiler migration step; it starts from the ADR-177 baseline.
 - **OI-45:** the self-hosting re-runs were executed on Linux x86-64 on 2026-10-07; no `native_rerun_required` entry is left (see the dated section below). Linux x86-64 and Android R4 still need re-measurement with raw samples and the full baseline set before the matrix can derive R4 again.
@@ -735,7 +354,7 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 
 *(Corrected 2026-10-06, ADR-177: this list previously still named OI-31 and OI-27 as open after ADR-174 and the OI-27 closure, and listed indirect calls as future work after they were implemented.)*
 
-## Prototype choices pending evidence
+### Prototype choices pending evidence
 
 - Index `record_length` currently repeats the semantic envelope payload length; `file_offset` points at the record-length prefix.
 - Graph fragments own block/node-local numbering. Their reference tables contain external type/entity CIDs used by the body.
@@ -768,7 +387,797 @@ The final M14 reproducible wheel built twice with `SOURCE_DATE_EPOCH=946684800` 
 - These choices do not close OI-02, OI-04, OI-05, OI-11, OI-12, OI-13, OI-14, OI-15, OI-16, OI-17, OI-18, OI-19, OI-21, OI-22, OI-23, OI-24, OI-28, OI-29, or OI-30.
 
 
-## Android arm64-v8a shared-library target — 2026-10-01
+## Self-hosting steps (S0-S15)
+
+Step: [S1](#step-s1) · [S2](#step-s2) · [S3](#step-s3) · [S4](#step-s4) · [S5](#step-s5) · [S6](#step-s6) · [S7](#step-s7) · [S8](#step-s8) · [S9](#step-s9) · [S10](#step-s10) · [S11](#step-s11) · [S12](#step-s12) · [S13](#step-s13) · [S14](#step-s14) · [S15](#step-s15) · [other](#other-self-hosting-records)
+
+### Step S1
+
+#### Self-hosting step S1: XAX-authored RISC-V encoder on the production path (ADR-116) — 2026-10-03
+
+- `xax_selfhost_riscv64.py` builds `encode(kind, a1..a6)`, covering all RV64 formats plus the `li` planner, as one XAX function. Its committed store is `bootstrap/xax_riscv64_encoder.xax` (10,129 bytes). On Linux x86-64 the RISC-V backend encodes through it by default, natively, with the Python encoders as reference and fallback.
+- EXECUTED: the native leaf agrees with Python on 12,072/12,072 cases. The encoder also runs on RISC-V (emulated, 300/300) and on the JVM. Corpus images are byte-identical with either encoder, and the encoder compiling itself is a fixed point (`test_xax_selfhost_riscv64.py`, `selfhost_s1_evidence.json`).
+- Cost: about 2.0 µs per native call against 0.18 µs in Python; a RISC-V compile takes 2.30 ms against 2.15 ms. The compiler is still mostly Python; see the S ladder in the roadmap.
+
+### Step S2
+
+#### Self-hosting step S2: every CID from an XAX-authored hash (ADR-117) — 2026-10-03
+
+- `xax_selfhost_blake3.py` implements the whole BLAKE3-256 hash as one XAX function over lent input and scratch views (store `bootstrap/xax_blake3_hash.xax`, 34,025 bytes; native leaf 44,387 bytes). `blake3.blake3()` uses it by default on Linux x86-64, so the compiler's content identities come from XAX code.
+- EXECUTED: official vectors, boundary and random lengths up to 1 MiB, and 3,000/3,000 agreement with the Python driver. MEASURED: 11.6× faster object hashing (49 ms against 568 ms for 3,000 objects).
+
+### Step S3
+
+#### Self-hosting step S3: the store container decoder is XAX (ADR-118) — 2026-10-03
+
+- `xax_selfhost_store.py` (store `bootstrap/xax_store_decoder.xax`) decides container acceptance and builds the record index. `StoreReader` uses it by default on Linux x86-64, checking digests with the S2 XAX hash, and runs the bootstrap parser only to produce diagnostics or for deferred cases. EXECUTED: identical accept/reject and index over 2,000 mutations (6,000 in development), and identical diagnostics on rejection. MEASURED: 0.70 ms against 1.17 ms per read of a 34 KB store.
+- With S0–S3 on the production path, an object's identity (hash) and the container that holds it are both computed by XAX code.
+- S3b (ADR-119): the XAX decoder also parses every object envelope; `StoreReader.get` builds objects from it and checks CIDs with the S2 hash. Objects or their exact diagnostics are identical to the bootstrap decoder's on committed stores and 600 mutations. Read plus decode of a 34 KB store: 1.90 ms against 3.48 ms.
+- S3c (ADR-120): graph-body syntax is decoded by XAX (`xax_selfhost_graph.py`, store `bootstrap/xax_graph_decoder.xax`); `_parse_graph` walks its stream. Parses and diagnostics are identical on real graphs and 1,500 mutations. Full suite: 936 passed, 1 host-bound failure.
+- S3d (ADR-121): branch targets, dominators, and block order are computed by XAX (`xax_selfhost_cfg.py`, store `bootstrap/xax_cfg_analysis.xax`), identical to the bootstrap on 400 random CFGs. Full suite: 941 passed, 1 host-bound failure.
+- S3e (ADR-122): every value use's definition and dominance is checked by XAX; `value_type` is a plain lookup when XAX proves them all. Full suite: 942 passed, 1 host-bound failure.
+
+### Step S4
+
+#### Self-hosting step S4: scalar operation typing is XAX (ADR-132) — 2026-10-03
+
+- `xax_selfhost_typing.py` (store `bootstrap/xax_op_typing.xax`) types the integer, compare, rotate, float, and conversion nodes, decoding type objects itself. It is the default verifier path on Linux x86-64. The bootstrap checks only the nodes it does not prove, so diagnostics are unchanged. EXECUTED: on 600 random nodes, the proven set is exactly the bootstrap-accepted set. MEASURED: all 2,419 covered nodes in four real stores are proven, with verify time roughly unchanged. Full suite: 868 tests, 17 skipped.
+
+#### Self-hosting step S4b: aggregate and sum typing is XAX (ADR-133) — 2026-10-03
+
+- The XAX typing function now also decodes tuple, array, and sum types (of scalar elements) and checks `aggregate.make/get` and `sum.make/tag/get`. On 1,000 random nodes it agrees with the bootstrap: every proven node is accepted, and every accepted node is proven except those with nested aggregates. 2,444/2,444 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4c: call, constant, memory, and resource nodes together with the fact tracking.
+
+#### Self-hosting step S4c: resource, effect, and meta typing is XAX (ADR-134) — 2026-10-03
+
+- The XAX typing function now decodes effect, resource, and opaque types and checks `effect.step`, `resource.*`, and `meta.*` nodes. Every node check that reads only types is now XAX. For 2,000 random nodes, outcomes and exact diagnostics are identical with the path on and off. 2,447/2,447 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4d: call, constant, memory, atomic, and target typing, which needs the pointer/owner/effect fact tracking.
+
+#### Self-hosting step S4d.1: constants and terminators typed by XAX (ADR-135) — 2026-10-03
+
+- The XAX typing function now validates constant objects and values, and terminator condition and edge types. Outcomes are identical with the path on and off on random nodes and 150 random branching graphs. 3,374/3,374 covered corpus nodes and 427/427 terminators are proven. Full suite: 870 tests, 17 skipped. Remaining in Python: call contracts and the pointer/owner/effect fact system (S4d.2).
+
+#### Self-hosting step S4d.2a: memory-free graphs skip the fact system (ADR-136) — 2026-10-03
+
+- XAX now checks `call.direct` contracts and reports whether a graph is memory-free. When it is, and every node and terminator is proven, the verifier runs no memory-fact passes. Outcomes are identical with the path on and off on random nodes, calls, and branching graphs. 5 of 20 corpus graphs take the skip path. Full suite: 870 tests, 17 skipped. Next is S4d.2b: stack-storage facts in XAX.
+
+#### Self-hosting step S4d.2b: memory-fact engine in XAX, stack storage (ADR-137) — 2026-10-03
+
+- `xax_selfhost_facts.py` runs the bootstrap's memory-fact passes as XAX (same facts, merge, and fixpoint), accept or decline. It models stack storage now; on acceptance the verifier skips its Python passes and takes the pointer extents from XAX. Identical outcomes and extents on 300 random stack programs; full suite 872 tests, 17 skipped. Next: heap views (S4d.2c), then links, atomics, and the rest (S4d.2d).
+
+#### Self-hosting step S4d.2c: the facts engine models heap views and calls (ADR-138) — 2026-10-03
+
+- Borrowed and allocated views, checked accesses, rebase windows, foreign calls (carrier decoded in XAX), view-passing direct and group calls, and view returns are modelled. All 20 corpus graphs are verified by the XAX engine with identical pointer extents, and `verify_store` is 20–30% faster on the view-heavy stores. Full suite: 872 tests, 17 skipped. Remaining for S4d.2d: links and records, atomics, raw loads, stack resource contracts, lend entries, indirect calls, function addresses, and target operations.
+
+#### Self-hosting step S4d.2d: S4 complete (ADR-139) — 2026-10-03
+
+- The XAX facts engine now decides atomics, raw loads, stack resource contracts, function addresses, indirect calls, lend entries, and target operations, the last through a target-package decoder in XAX (`xax_selfhost_target.py`). It also decides records and links: layouts, field addresses, padding-aware windows, the link operations, link stores and loads, link targets, dependents, and declarations.
+- Across the whole suite, every graph the bootstrap accepts is now decided by XAX. Python only produces diagnostics on a decline or a rejection. The exceptions are the helper programs' own seed graphs, parsed while those programs are built or loaded.
+- Larger views let the engine handle the biggest self-hosting graphs (98K values, 1,594 blocks).
+- `verify_store` is 10–25% faster with the XAX path on the measured stores. Full suite: 875 tests, 17 skipped. Next: S5, the RISC-V backend in XAX.
+
+### Step S5
+
+#### Self-hosting step S5a: RISC-V code generation in XAX (ADR-140) — 2026-10-03
+
+- `compile_riscv64` now generates code with an XAX program (`xax_selfhost_riscv64_backend.py`): liveness, linear scan, frame layout, lowering, the `li` planner, and jump fixups. Images are byte-identical to the bootstrap's, which stays as the fallback and the source of diagnostics.
+- Compiling is 2.3× faster on a 300-value loop. Full suite: 881 tests, 17 skipped. Next: S5b, which feeds the program from the XAX decoders instead of the Python marshal.
+
+#### Self-hosting step S5b: S5 complete, store objects to RISC-V image in XAX (ADR-141) — 2026-10-03
+
+- The XAX backend program now reads the store's objects and the XAX graph decoder's streams itself. It decides the target's operation sets, function interfaces, value widths, constants, the call closure (skipping erased proof callees), and the function order. Python only copies objects and assembles the image object.
+- Images are byte-identical to the bootstrap's. `compile_riscv64` is 6.4× faster on a 300-value loop. Full suite: 882 tests, 17 skipped. Next: S6.
+
+### Step S6
+
+#### Self-hosting step S6a: linear flow in XAX (ADR-142) — 2026-10-03
+
+- The facts engine proves resource and effect linearity (`_verify_linear_flow`), and the verifier skips the Python pass when it does. 6,518 suite graphs are proven, none of them wrongly. Full suite: 883 tests, 17 skipped. Next: S6b, object-level verification.
+
+#### Self-hosting step S6b.1: types and constants decided by XAX (ADR-143) — 2026-10-03
+
+- `verify_store` asks the typing program for a verdict on every type and constant, and skips the Python decoders for each one proven. On 600 random and mutated objects, XAX proved every valid one and no invalid one. Full suite: 884 tests, 17 skipped. Next: S6b.2 (functions, groups, contracts, reference lists, build objects, targets).
+
+#### Self-hosting step S6b.2: functions, lists, contracts, and rootedness decided by XAX (ADR-144) — 2026-10-03
+
+- A native XAX store verifier decides ordinary functions (interface and graph contract), module and root reference lists, call contracts, and store rootedness and acyclicity. Every ordinary corpus function is proven. Full suite: 885 tests, 17 skipped.
+- The E DSL now binds a value already held by another variable as a fresh copy. This avoids an x86-64 register-resident lowering issue (aliased variables across control flow) whose root cause is open.
+
+#### Self-hosting step S6b.3: recursion groups, group member functions, and targets decided by XAX (ADR-146) — 2026-10-03
+
+- The store verifier decides recursion groups, with the bootstrap's full member key for the canonical order. It also decides group member functions, and identity carriers plus general and concurrency targets. Every corpus function (including jsonmin's group member), group, list, contract, and target is proven. Full suite: 890 tests, 18 skipped. Next: S6b.4 (build and package objects, the remaining target profiles, and the per-graph glue).
+
+#### Self-hosting step S6b.4: packages, build objects, all target profiles, and per-graph glue decided by XAX (ADR-149) — 2026-10-03
+
+- The store verifier decides packages; profiles, trust policies, signatures, and optimization policies; then requests, snapshots, and provenance in later passes (closures, grants, signature coverage); platform, accelerator, and board targets; and every streamed graph's type references, reference use, and trap payloads. Randomized and mutated stores agree with the bootstrap exactly, and no verdict holds for an object the bootstrap rejects. Full suite: 1,064 passed, 4 skipped. Next: the remaining S6 work (the bootstrap's graph checks that are not yet XAX passes, then B1–B4 for the real compiler on one target).
+
+#### Self-hosting step S6c: all committed stores decided by XAX; B1–B4 for the store verifier on RV64 (ADR-150) — 2026-10-04
+
+- The graph decoder and the verifier windows now hold the largest helper stores, so every object of all 12 committed stores, the verifier's own included, is decided by XAX. The XAX RISC-V backend reclaims each function's arena and compiles the verifier and the typing program like the bootstrap. The verifier's RISC-V image verifies every committed store with the native verdicts (B2/B3). The backend's RISC-V image recompiles the verifier byte for byte (B4). The backend's own fixed point was re-run and still holds. S6 is EXECUTED for RV64. Next: aggregates in the RISC-V views profile (BLAKE3), and moving the Python driver's lowering structures and the x86-64 backend into XAX.
+
+#### S6d: aggregates and stack arguments in the RISC-V views profile (2026-10-04, ADR-151)
+
+- Both RISC-V generators lower `aggregate.make`/`aggregate.get` for tuples and arrays of up to 255 scalar fields, LP64 indirect results (a hidden result-area address in a0, field k at offset 8k), and stack arguments past a7. Frames without such calls are unchanged, so every earlier image is byte-identical. The shared, instruction-set-neutral analysis moved to `compiler/src/xax_views_lowering.py`.
+- BLAKE3 (`xax_blake3_hash.xax`) compiles through both generators to one 18,844-byte RV64 image. Emulated, it matches the official vectors and the reference across chunk and tree boundaries, and gives the production digest of every committed store under 1 MiB. gen2 (the backend's own RISC-V image) compiles the BLAKE3 store to gen1's image (a default test, 3 s).
+- Evidence regenerated: `selfhost_closure_evidence.json` (B1 now includes BLAKE3; B4 verifier image unchanged, 4,559,444 bytes) and `selfhost_fixed_point_evidence.json` (backend store 902,679 bytes; gen2 = reference = gen3, 2,810,964 bytes).
+
+### Step S7
+
+#### S7a: the x86-64 backend as XAX; B1–B4 natively on x86-64 (2026-10-04, ADR-152)
+
+- `x86_64_views_target()` (`x86_64-linux-views-v1`) and its bootstrap reference `compiler/src/xax_x86_64_views.py` (Win64 registers, stack arguments above the shadow area, aggregate results through a hidden area, `ud2` traps). It matches the reference executor on 320 random calls and executes aggregates of 3–255 fields.
+- The XAX backends now share `compiler/src/xax_selfhost_views_backend.py` (front end, liveness, linear scan, edge copies, driver, native runner); the RISC-V store is byte-identical after the split. `compiler/src/xax_selfhost_x86_64_backend.py` adds the x86-64 hooks and lowering (store `compiler/bootstrap/xax_x86_64_backend.xax`, 974,862 bytes).
+- B1 on all nine helper programs, itself included; the native verifier image agrees with the bootstrap verifier on all 13 committed stores; gen2 reproduces itself natively in 0.95 s (`benchmarks/selfhost_x86_64_evidence.json`).
+- Production: every native helper is lowered by the XAX x86-64 backend (`host_image`); the optimizing `compile_native` lowers no XAX helper. MEASURED cost: 1.08–1.32× the optimizing images' run time; warm self-hosting suites 1.14×, cold 0.67×.
+- `blake3.py` now retries the native hasher when a module on its path is still importing (it previously gave up for the process). Full suite: **1,087 passed, 5 skipped** (the same host-bound five).
+
+
+#### S7b.1: x86-64 views rejections decided by XAX (2026-10-07, ADR-179, ADR-180)
+
+- EXECUTED on Linux x86-64: the XAX x86-64 views program decides every target-legality check of the bootstrap lowering, in the bootstrap's order, and writes the diagnostic record (code, entity CID, rule, expected, actual). `compile_with_xax` raises it, and no Python check decides an x86-64 views rejection there. `tests/test_xax_selfhost_diagnostics.py`: 14 rejection programs covering every reachable rule, with `Diagnostic` equal in every field and in repr. Accepted programs, the helpers, and the native fixed point are unchanged byte for byte.
+- Store `xax_x86_64_backend.xax`: 1,369,383 bytes (S7a: 974,862). The RISC-V store is unchanged.
+- ADR-180: `compiler/migration/python_authority_inventory.json` classifies all 67 compiler modules (35 A, 5 B, 6 C, 4 D, 1 E, 2 F, 14 G; 26 components). `XAX_SPEC.md` §16.5 gains condition 5 (rejections migrate too). The roadmap gains S7b.1–S7b.3 and S8–S15. Migration level: SH1. `FULL_PRODUCTION_SELF_HOSTED`: NO.
+
+#### S7b.2: object table and image record decided by XAX (2026-10-07, ADR-181)
+
+- EXECUTED on Linux x86-64: the views backend programs take the store objects (and the bound target) with references and identities as CID words, and their payloads unselected. A new program function, `find`, bisects the CID-ordered objects; with it the program places the target, finds the entry, and resolves every reference. After patching, the program writes the image record: each function's CID and code range in layout order. Python only copies words in (`_object_table`) and renders the record (`image_record`).
+- Images are unchanged byte for byte on both backends; the native x86-64 and emulated RV64 component evidence was regenerated. Stores: x86-64 1,384,123 bytes, RISC-V 917,236 bytes.
+
+#### S7b.3: RISC-V views rejections decided by XAX; S7b complete (2026-10-07, ADR-182)
+
+- EXECUTED on Linux x86-64: the RISC-V views program opts into the legality pass (`DIAGNOSTICS = "RISCV64"`), and `_compile_with_xax` raises the diagnostic it writes. Both generators share `LOWERED_OPERATIONS` (`xax_views_lowering`). The entry-interface width check is deferred in both programs until the code is laid out, which is where the bootstrap makes it, after its RISC-V range limits.
+- `tests/test_xax_selfhost_diagnostics.py`: 14 rejection programs × 2 families, all equal to the bootstrap in every field and repr; production rejections record `actual_authority: xax`. Images and component fixed points are unchanged.
+- S7b is complete for the views profiles: their legality, diagnostics, object table, and image record are XAX decisions on Linux x86-64, except RISC-V range rejections, which only images over ±1 MiB reach. Migration level remains SH1. `FULL_PRODUCTION_SELF_HOSTED`: NO.
+
+### Step S8
+
+#### S8c.1 integer typing rejections — 2026-10-08 (ADR-214)
+
+On Linux x86-64 the XAX typing program now rejects integer-family nodes (arity, type, width, rotate amount) with the bootstrap's exact diagnostic; `verify_store` raises it at the node's own position. The rest of S8c (other typing families, facts, object verification) is still Python. Migration stays SH1.
+
+#### S8c.2 float and compare typing rejections — 2026-10-08 (ADR-215)
+
+The XAX typing program also rejects float, conversion, and integer-compare nodes with the bootstrap's exact diagnostic. Still Python in S8c: aggregate, sum, resource, meta, constant, and call typing; facts declines; object verification.
+
+#### S8c.3 aggregate and sum typing rejections — 2026-10-08 (ADR-216)
+
+Aggregate and sum nodes are now rejected by XAX too. Still Python in S8c: resource, meta, constant, and call typing; facts declines; object verification.
+
+#### S8c.4 meta typing rejections — 2026-10-08 (ADR-217)
+
+Meta operations are now rejected by XAX too. Still Python in S8c: resource/effect, constant, and call typing; facts declines; object verification.
+
+#### S8c.5 resource/effect typing rejections — 2026-10-08 (ADR-218)
+
+Resource and effect nodes are now rejected by XAX too. The rejection logic is its own XAX function, and the views backends' output regions were resized so the typing program still lowers natively. Still Python in S8c: constant and call typing; facts declines; object verification.
+
+#### S8c.6 constant and call-target rejections — 2026-10-08 (ADR-219)
+
+Constant targets and contracts and direct-call targets are now rejected by XAX. Still Python in S8c: call contracts, facts declines, object verification.
+
+#### S8c.7 call-contract rejections — 2026-10-08 (ADR-220)
+
+Direct-call contract mismatches against graph-fragment callees are now rejected by XAX. Still Python in S8c: group-member call contracts, facts declines, object verification.
+
+#### S8c.8 stack-memory rejections — 2026-10-08 (ADR-221)
+
+The XAX facts engine now decides the stack-memory rejections (lifetime, bounds, alignment, permission, frontier linearity, uninitialized loads, leaks) with the bootstrap's exact diagnostic: over 90% of the memory corpus's rejections. Still Python: heap-view, checked-access, call, atomic, and link memory rejections; object verification.
+
+#### S8c.9 checked-access rejections — 2026-10-08 (ADR-226)
+
+Checked accesses and the type checks of loads and stores are now rejected by the XAX facts engine; 820 of 824 corpus rejections are engine-decided.
+
+#### S8c.10 rebase-window rejections — 2026-10-08 (ADR-227)
+
+`pointer.rebase` rejections are now decided by the XAX facts engine; 822 of 824 corpus rejections are engine-decided.
+
+#### S8c.11 returned-view rejections — 2026-10-08 (ADR-228)
+
+Returned-view rejections are now decided by the XAX facts engine; all 824 rejections of the memory corpus are engine-decided.
+
+#### S8c.12 heap-view construction rejections — 2026-10-08 (ADR-229)
+
+`heap.view` rejections are now decided by the XAX facts engine. Still Python: foreign and view-passing calls, atomics, links, stored-pointer provenance, element/record checks; object verification.
+
+#### S8 verifier totality — 2026-10-09 (ADR-251)
+
+S8 is complete: on Linux x86-64 every verifier rejection the suite reaches is decided by an XAX program with the bootstrap's exact diagnostic. The full-suite trace (`compiler/migration/s8_rejection_trace.py`) reports 0 bootstrap-decided rejection sites, and the differential plugin (`compiler/migration/s8_differential.py`) matched 4,685 live rejections to the bootstrap's with 0 differences. Python still decides off Linux x86-64 and where an XAX program declines (oversized or unmodelled inputs); it remains the differential oracle. Next: S9 (canonical store writing in XAX).
+#### S8c.29 malformed constant body rejections — 2026-10-09 (ADR-247)
+
+The XAX typing program now rejects constants with an out-of-range type index, a truncated value, or trailing bytes. Still Python: resource transitions, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines. Superseded by S8 above.
+
+#### S8c.28 pointer element and opaque identity rejections — 2026-10-09 (ADR-246)
+
+The XAX typing program now rejects pointers to proof types or with extra references, and malformed opaque identity types. Still Python: resource transitions, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
+#### S8c.27 tuple and sum item rejections — 2026-10-09 (ADR-245)
+
+The XAX typing program now rejects tuple and sum types with an item index out of range, trailing bytes, a proof-type item, or an unused reference. Still Python: pointer element checks, resource transitions, opaque identity types, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
+#### S8c.26 compound type rejections — 2026-10-09 (ADR-244)
+
+The XAX typing program now rejects malformed opaque, effect, sum, pointer, resource, and array types (their own fields, before element types) with the bootstrap's diagnostics. Still Python: tuple and sum element checks, pointer element checks, resource transitions, opaque identity types, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
+#### S8c.25 scalar type rejections — 2026-10-09 (ADR-243)
+
+The XAX typing program now rejects malformed bits, float, and link types and unsupported type forms with the bootstrap's diagnostics. Still Python: compound type rejections, malformed constant bodies, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
+#### S8c.24 constant object rejections — 2026-10-09 (ADR-242)
+
+The XAX typing program now rejects constants whose value does not fit their type (bits width or spare bits, float width, non-canonical NaN, non-null link, non-scalar type) with the bootstrap's diagnostics. Still Python: malformed constant bodies, types, target register lists and profile sections, the canonical group order, packages, builds; the remaining memory declines.
+
+#### S8c.23 target object rejections — 2026-10-09 (ADR-241)
+
+The XAX store verifier now rejects malformed target objects (references, identity, architecture, trailing bytes, profile, and each architecture's machine and profile rules) with the bootstrap's diagnostics. Still Python: target register lists and profile sections, the canonical group order, types, constants, packages, builds; the remaining memory declines.
+
+#### S8c.22 recursion-group member-graph rejections — 2026-10-08 (ADR-240)
+
+The XAX store verifier now rejects recursion groups whose member graphs break the member interface, call a member out of range or with the wrong types, or do not form one recursive component. Still Python: the canonical member order, types, constants, targets, packages, builds; the remaining memory declines.
+
+#### S8c.21 recursion-group member-list rejections — 2026-10-08 (ADR-239)
+
+The XAX store verifier now rejects malformed recursion-group member lists (empty group, reference index, carrier, trailing bytes, unused references) with the bootstrap's diagnostics. Still Python: group checks after member parses, types, constants, targets, packages, builds; the remaining memory declines.
+
+#### S8c.20 function object rejections — 2026-10-08 (ADR-238)
+
+The XAX store verifier now rejects malformed function objects (reference index, carrier, trailing bytes, group member, entry and return contracts, unused references) with the bootstrap's diagnostics. Still Python: rejections of recursion groups, types, constants, targets, packages, and builds; the remaining memory declines.
+
+#### S8c.19 object rejections: reference lists and call contracts — 2026-10-08 (ADR-237)
+
+The XAX store verifier now rejects malformed program-root and module reference lists and call contracts with the bootstrap's diagnostics. Still Python: rejections of functions, groups, types, constants, targets, packages, and builds; the remaining memory declines.
+
+#### S8c.18 address, record, and link-lifetime rejections — 2026-10-08 (ADR-236)
+
+Address offsets into records (field offset, stride, authority, alignment), unsized access elements, foreign writes to link-bearing storage, and storage ending before its link dependents are now rejected by the XAX facts engine. Still Python: atomic enum diagnostics, invalid record fields, ambiguous link dependents; object verification.
+
+#### S8c.17 link memory rejections — 2026-10-08 (ADR-235)
+
+Link make/follow/target, stored-link and stored-pointer provenance, and record-view checks are now rejected by the XAX facts engine. Still Python: record field offsets and strides, byte-addressable values, link dependents of ended storage, foreign writes to link-bearing storage, atomic enums; object verification.
+
+#### S8c.16 atomic memory rejections — 2026-10-08 (ADR-234)
+
+Atomic load/store/read-modify-write/compare-exchange and fence rejections (contract, access, frontier, permission, value types, initialization) are now decided by the XAX facts engine. Still Python: atomic order and scope enum diagnostics, link dependents of released views, links; object verification.
+
+#### S8c.15 indirect-call stack-proof rejections — 2026-10-08 (ADR-233)
+
+The stack proof of an indirect call (one local pointer, its owner and frontier crossing the call) is now rejected by the XAX facts engine. Still Python: link dependents of released views, atomics, links; object verification.
+
+#### S8c.14 view-passing call rejections — 2026-10-08 (ADR-232)
+
+View borrowing at direct and group-member calls (owner, base, link target, effect provenance, liveness, forks, initialization) and group-call memory slots are now decided by the XAX facts engine. Still Python: link dependents of released views, indirect calls, atomics, links; object verification.
+
+#### S8c.13 foreign-call memory rejections — 2026-10-08 (ADR-230)
+
+Foreign-call memory rejections (release, use after release, frontier forks) are now decided by the XAX facts engine. Still Python: view-passing and indirect calls, atomics, links; object verification.
+
+#### S8a: store-container rejections decided by XAX (2026-10-07, ADR-183)
+
+- EXECUTED on Linux x86-64: the XAX store decoder makes every `StoreReader` container check in the bootstrap's order and writes the exact diagnostic (16 codes across 20 sites). That includes the digest comparison: two passes, with the digest computed by the XAX hash and compared by the decoder. `StoreReader` raises the program's diagnostic; the bootstrap parser now runs only for deferred containers and off Linux x86-64.
+- `tests/test_xax_selfhost_store.py`: 31 constructed stores, one per rule including 70-bit ULEB values, and 1,200 mutations, all equal to the bootstrap in every field and repr.
+- Store `xax_store_decoder.xax`: 212,454 bytes (was 29,910); the rule table is written once in a shared diagnostic block.
+- Full suite on this host (Linux x86-64, Python 3.13): 1,177 passed, 49 skipped, 5 failed in the first run. Three were fixed before commit: the graph-decoder store had drifted through the shared `_Decoder` base, now restored, with the S8a machinery in a `_ContainerDecoder` subclass; and the evidence binding, after regeneration. One was environmental (`tiktoken` missing, now installed). The fifth is the JVM R5 CSV digest test, which already fails on the pre-change tree (ADR-178). The affected suites were re-run green (122 passed).
+
+#### S8b.1: object envelopes decided by XAX (2026-10-07, ADR-184)
+
+- EXECUTED on Linux x86-64: `StoreReader.get` hands each object's envelope to the XAX decoder's object mode, which makes every `decode_object` check in its order and compares the CID, which the XAX hash computes over the span the program reports. The program writes the exact diagnostic (five new sites; entity `object:<CID hex>`). The Python CID comparison (`_object_from_parse`) is gone.
+- `tests/test_xax_selfhost_store.py`: 13 malformed-object stores match the bootstrap in every field and repr; every object of 600 mutated stores matches the bootstrap reader.
+
+#### S8b.2: graph-body syntax rejections decided by XAX (2026-10-07, ADR-185)
+
+- EXECUTED on Linux x86-64: the S3c graph decoder decides every syntax rule of a graph body (entry block, reference index, value tag, terminator kind, trailing bytes, ULEB rules, trap truncation), deciding each value before it enters the stream and keeping all 70 bits of the decisive ones. On a rejection it reports the stream prefix; `_parse_graph_uncached` walks it (resolution and type checks, still Python) before raising the program's diagnostic, so the bootstrap's order holds.
+- The S8a site machinery is now a mixin, `_SiteDiagnostics`, shared by the container and graph decoders.
+- `tests/test_xax_selfhost_graph.py`: 18 constructed bodies are rejected by the XAX decoder with exact diagnostics, the resolution-first case holds, and 1,500 mutated bodies match the bootstrap.
+
+
+### Step S9
+
+#### S9 canonical store writing — 2026-10-14 (ADR-262)
+
+S9 is complete on Linux x86-64: `write_store`, `StoreReader.from_objects`, and lazy serialization run the XAX store writer (`xax_store_writer.xax`). It re-derives every object's CID with the S2 hash graph over its own view, decides schema versions, reference order, duplicate CIDs, the root, and record order and duplicates in the bootstrap's precedence, and emits the container with its digest. Committed stores (shuffled), 150 random stores, and every rejection with its precedence match the bootstrap writer exactly; the writer writes its own store byte for byte. Python still decides off Linux x86-64 and for inputs over the writer's capacity, and `SemanticObject.create` still proposes CIDs in Python (re-derived at write). Next: S10 (the driver as a native XAX program).
+
+### Step S10
+
+#### S10e semantic verification in the driver — 2026-10-14 (ADR-266)
+
+S10 is complete in a host process. The driver builds `verify_store`'s inputs itself in XAX (`xax_selfhost_semantic.py`, word-identical to the Python marshals) and calls the typing, store-verifier, CFG, and facts programs directly; a store `verify_store` rejects is rejected with the driver's `XAX.DRIVER.VERIFY` record (or declined), never lowered. Shared view capacities grew so the driver handles its own 8.8 MB store, and it verifies and lowers itself to its own image. With verification included it is about twice as fast as Python orchestrating the same components. Next: S11 (the driver as a standalone ELF64 executable). Superseded by S11 above.
+
+#### S10 the compiler driver as XAX — 2026-10-14 (ADR-265)
+
+S10a-S10d are complete on Linux x86-64. One XAX program, `xax_compiler_driver.xax`, owns its memory (`mmap`, `heap.view`, `munmap`) and does its own file I/O. It reads a program store and a target-package store, and decides the container, digest, and every object CID with the XAX decoder and hash. It streams graphs with the XAX graph decoder, builds the object table, lowers with the XAX backend, and writes the image or the exact diagnostic. On all 16 committed stores its output equals `compile_x86_64_views`, and it lowers its own store to its own image. It takes about the same time as Python orchestrating the same components. Semantic verification (typing, facts, object and store verification) is still orchestrated by Python and is re-cut to S10e (open). Next: S10e, and S11 (the driver as an ELF64 executable). Superseded by S10e above.
+
+#### S10a Linux syscalls in the views profile — 2026-10-14 (ADR-264)
+
+S10 is cut into S10a-S10d (I/O, owned memory, the `verify` driver, the `lower` driver). S10a is complete on Linux x86-64: the `x86_64-linux-views-v2` profile adds explicit Linux syscalls, and the XAX x86-64 backend program decodes each declaration and its register template, lowers it byte-identically to the bootstrap generator, and decides every rejection with the exact diagnostic. An XAX views image opens, reads, writes, and closes files natively with its own syscalls. The RISC-V backend store is unchanged. No driver is XAX yet. Next: S10b (driver-owned memory).
+
+### Step S11
+
+#### S11 the driver as an ELF64 executable — 2026-10-14 (ADR-267)
+
+S11 is complete on Linux x86-64. The views profile has a process-entry variant (`x86_64-linux-views-exec-v1`: aligned entry frame, `argc`/`arg_copy`, `ud2` on return). Both generators lower it identically, and images package as a static ELF64 executable that adds no code. The compiler driver is that executable: it takes its three paths from argv, does all its work, and exits with its status. The executable rebuilds itself through three generations byte for byte as plain processes (about 25 s each). This is a component fixed point of the views-profile compiler path, not a whole-compiler B milestone. Next: S12 (general x86-64 lowering in XAX). S12a: see above.
+
+### Step S12
+
+#### S12 complete: S12f.4 wide values and the legacy register path — 2026-10-15 (ADR-280)
+
+S12 is complete on Linux x86-64. The general backend program now compiles, byte for byte, every function the bootstrap compiles for the Linux executable profiles. That includes functions with values wider than 64 bits, functions on the bootstrap's legacy register path, atomics, and aggregates passed by reference. The general driver, a standalone XAX executable, does all of this itself, from the store file to the ELF file, and rebuilds itself through three generations. The bootstrap's remaining code-generation rejections for malformed or extreme inputs are declined rather than decided; ADR-280 lists them, and S14's negative equivalence covers them. These are component results, not B milestones. Next: S13 (build, package, and provenance, and the minimal command surface). S13a: see above.
+
+#### S12f.3 atomics and by-reference aggregates — 2026-10-15 (ADR-279)
+
+The general backend program now lowers atomics, with the bootstrap's capability check and rejections. It also lowers aggregates passed or returned by reference, byte for byte the bootstrap's. Such programs are now compiled entirely by XAX. Next: S12f.4 (values wider than 64 bits, the legacy register path, and links and rebases on the frame path). S12f.4: see above.
+
+#### S12f.2 code generation rejections — 2026-10-15 (ADR-278)
+
+The general backend program now makes the bootstrap's code-generation rejections itself, with the exact diagnostics. Every compile in the Linux test suites is decided entirely by XAX: 152 executables and 5 rejections. Next: S12f.3 (atomics, aggregates passed by reference, values wider than 64 bits, and the legacy register path). S12f.3: see above.
+
+#### S12e.3 the general driver rebuilds itself — 2026-10-15 (ADR-277)
+
+S12e.3 is complete on Linux x86-64. The verifier views doubled, so the general driver now verifies its own store. It rebuilds itself through three generations as plain processes, byte for byte, like the views driver (S11). This is a component fixed point, not a B milestone. S12e is complete. Next: S12f.2. S12f.2: see above.
+
+#### S12e.2 the general driver — 2026-10-14 (ADR-276)
+
+S12e.2 is complete on Linux x86-64. A second driver store, the general driver, links the general x86-64 backend program into the S11 driver. As a plain Linux process with no Python inside, it reads a program store and a Linux target, verifies the store, builds every input the general program needs (recursion-group member functions included), and writes the executable. On the Linux test programs its output is byte for byte `compile_linux_executable`'s: 117 executables and 2 rejections. It declines what the general program still leaves to the bootstrap. It cannot yet rebuild itself: its own store is beyond the verifier's input view. Next: S12e.3 (larger verifier views, so the general driver is a fixed point) and S12f.2. S12e.3: see above.
+
+#### S12f.1 the frame lowering — 2026-10-14 (ADR-275)
+
+S12f is cut into S12f.1 (the frame lowering) and S12f.2 (atomics, by-reference aggregates, and the legacy register path). S12f.1 is complete on Linux x86-64. The general backend program now lowers, byte for byte the bootstrap's, the functions the register-resident lowering cannot take, including floating-point code. 152 of the 157 Linux test compiles are produced entirely by XAX, and no function in those suites is left on the bootstrap's paths. Next: S12e.2 and S12f.2. S12e.2: see above.
+
+#### S12d.2 every startup read — 2026-10-14 (ADR-274)
+
+The XAX emission now covers every Linux startup read (arguments, environment, auxiliary vector). 148 of the 157 Linux test compiles are produced entirely by XAX; the functions still on the bootstrap's paths in those suites are floating-point code (the frame lowering). Next: S12f and S12e.2. S12f.1: see above.
+
+#### S12e.1 image assembly and the ELF container — 2026-10-14 (ADR-273)
+
+S12e is cut into S12e.1 (assembly and container) and S12e.2 (the driver runs the general backend). S12e.1 is complete on Linux x86-64. When the general backend program emits every function, it also places them, builds the SysV entry adapters, binds every fixup and import, and writes the static or dynamic ELF64 executable, byte for byte the bootstrap's. 143 of the 157 Linux test compiles are now produced entirely by XAX from the closure to the executable file; jsonmin compiles in 189 ms against 1,003 ms in Python. Next: S12e.2 and S12f (the remaining lowering paths).
+
+#### S12d register-resident emission — 2026-10-14 (ADR-272)
+
+S12d is complete on Linux x86-64. The general backend program now also emits each register-resident function's machine code, call fixups, and semantic ranges, byte for byte the bootstrap's: 827 random-program functions, jsonmin, chains, and every Linux test compile agree, and Linux compiles now use the XAX code. On jsonmin the whole per-function pipeline (closure through code) takes 247.5 ms in XAX against 977.3 ms in Python. Image assembly, the ELF container, and the other lowering paths are still Python. Next: S12e (image assembly and the container). S12e.1: see above.
+
+#### S12c.2 register-resident analyses — 2026-10-14 (ADR-271)
+
+S12c is complete on Linux x86-64. The general backend program now makes every analysis of the register-resident lowering: eligibility and its rejections, widths, folding, predicate tables, membership tests, uses, homes, pins, hoisted constants, and the frame. An audit compares them with the bootstrap's: 2,840 random-program functions and every Linux test compile agree. Emission still uses the bootstrap's analyses. Closure, views, prefetch, and analyses together take 114.7 ms in XAX on jsonmin; the bootstrap's analyses alone take 543.5 ms. Next: S12d (register-resident emission). S12d: see above.
+
+#### S12c.1 value ranges and prefetch selection — 2026-10-14 (ADR-270)
+
+S12c is cut into S12c.1 (ranges and prefetch) and S12c.2 (the register-resident analyses). S12c.1 is complete on Linux x86-64. The general backend program bounds values exactly as `upper_bounds` does: 81,492 audited bounds over jsonmin, chains, and 550 random programs agree, and so do all Linux test compiles. It selects the next-iteration prefetch on the view (the chains lookup's mark included), byte-identical executables. Closure, views, and prefetch together take 73.5 ms in XAX against 163 ms in Python on jsonmin. Next: S12c.2. S12c.2: see above.
+
+#### S12b the general backend's lowering view — 2026-10-14 (ADR-269)
+
+S12b is complete on Linux x86-64. The general backend program now also decides each closure function's lowering view: leaf inlining, the simplification fixed point, and the fall-through block layout. Every view of every Linux test compile, and of 340 random programs, equals `inline_leaf_calls`. The XAX path (closure and views) is about 2.6x faster than Python on jsonmin. Prefetch selection moved to S12c with value ranges. Code generation is still Python. Next: S12c. S12c.1: see above.
+
+#### S12a the general backend's front end — 2026-10-14 (ADR-268)
+
+S12 is cut into S12a-S12f by measurement: every function the Linux test corpus lowers for `x86_64-linux-elf-exec-v1` takes the inlining → register-resident path, so that path is ported next and the frame lowering last. S12a is complete on Linux x86-64. `xax_x86_64_general.xax` decides the target and process-entry checks, the general backend's function closure in the bootstrap's depth-first order with every pre-codegen rejection (arity, ABI layouts computed in XAX, operations, terminators, foreign entries), recursion-group members, and the image order. `compile_linux_executable` now verifies first and takes the closure from that program. Both front ends agree on all 160 compiles of the Linux test suites. Code generation is still Python. Next: S12b (the lowering view). S12b: see above.
+
+### Step S13
+
+#### S13 complete: S13c package resolution — 2026-10-15 (ADR-283)
+
+S13 is complete on Linux x86-64. The general driver process now resolves a build request's packages and writes the snapshot store with the XAX store writer, byte for byte `snapshot_store(resolve_packages(...))`'s, under the default trust policy and its own resolver identity. With S13a and S13b, the whole ordinary build path runs in the XAX process: from a request store to a snapshot, from the snapshot to the executable and its provenance, plus `verify` and `inspect`. Signature-checking policies, external inputs, and profile grants decline. The store writer's 16 MiB capacity is below the general driver's own store, so S14 must grow it first. These are component results, not B milestones. Next: S14 (full-compiler generations C1 → C2 → C3). S14a: see above.
+
+#### S13b verify and inspect — 2026-10-15 (ADR-282)
+
+S13b is complete on Linux x86-64. The general driver process now answers `verify` and `inspect` itself: it accepts exactly the stores `xaxc verify` accepts, and its inspection records equal `xaxc inspect`'s output. The graph decoder's body view doubled to 2 MiB first, so the driver's own function body has room to grow again. Next: S13c (package resolution and snapshot formation). These are component results, not B milestones. S13c: see above.
+
+#### S13a build requests and provenance — 2026-10-15 (ADR-281)
+
+S13 is decomposed into S13a (build requests and provenance), S13b (`verify` and `inspect`), and S13c (package resolution and snapshot formation). S13a is complete on Linux x86-64. The general driver now takes a command. Its `build` command makes, as a plain process with no Python inside, what `xax_build.build` makes for a resolved snapshot's request: the Linux x86-64 executable and its canonical provenance object, byte for byte. The digest and the CID come from the S2 hash, and `build`'s rejections before lowering and for the requested artifacts are exact. Android packages, Windows DLLs, and other targets decline. The general driver still rebuilds itself through three generations, now with its `lower` command. These are component results, not B milestones. Next: S13b; first, grow the graph decoder's body view, because the driver's function body is 36 KB below its capacity. S13b: see above.
+
+### Step S14
+
+#### S14 complete: S14b the production compiler's generations — 2026-10-15 (ADR-285)
+
+On Linux x86-64 the production compiler now builds itself through its ordinary path. Each generation resolves the compiler's own build request to its snapshot and builds the snapshot into the next compiler and its provenance, all as plain processes with no Python inside. Generations 1, 2, and 3 are byte for byte the same executable, equal to the bootstrap's own compile, and they agree with each other and with the bootstrap on a 72-case positive and negative corpus. The B levels are derived from the committed record for this declared scope: B0, B2, B3, and B4 hold; B1, B5, and B6 do not. The driver's verification rejections are its own record, required package paths such as signatures and external inputs are not XAX-hosted, and compiler evolution still edits Python builders. The seed still requires Python, every other target is still compiled by Python, and the whole production compiler is not self-hosted. Next: S15. S15a: see above.
+
+#### S14a the compiler compiles itself with its optimizing backend — 2026-10-15 (ADR-284)
+
+The production compiler on Linux x86-64 (the general driver) is now compiled by its own optimizing backend. The views-built driver (C0) compiles it to C1; C1 compiles it to C2, and C2 to C3. C1, C2, and C3 are byte for byte the same 6.9 MB executable, and equal to the bootstrap's own compile. That executable is four times smaller than the views-built one and rebuilds the compiler in 31 s instead of 103 s. Getting there fixed a register-allocator bug in the bootstrap reference (mirrored in XAX), quadratic memory use and unchecked buffer writes in the XAX backend program, and capacities. This is a component fixed point, not yet the B-milestone generations. Next: S14b (generations through `resolve` and `build` with provenance, and the positive/negative equivalence corpus). S14b: see above.
+
+### Step S15
+
+#### S15e.4 browser pages — 2026-10-21 (ADR-322)
+
+The production compiler's `build` now makes the browser page of a `wasm32-browser-v1` target itself: the general x86-64 program lowers the closure to the WebAssembly module and writes the page, byte for byte the bootstrap's (`compile_wasm_bound_target` + `emit_browser_page`), with the same diagnostic on every rejection; 340 differential pages agree and none declined. The compiler's own lowering views needed a larger region (41M words; the arena now starts at 73M), so the seed was rotated in two stages; the new seed (16,131,490 bytes) rebuilds itself to a fixed point. JVM jars, Android packages and the raw images remain the bootstrap's (S15e.5, S15e.6).
+
+#### S15e.3b, S15e.3c, S15e.7 DLLs, accelerator deployments and SPIR-V modules — 2026-10-21 (ADR-319 to ADR-321)
+
+The production compiler's `build` now makes Windows DLLs (exports, loader forwards, DllMain and its loader-lock rules), accelerator deployment packets and SPIR-V compute modules itself, inside the general x86-64 program; each equals the bootstrap's bytes or exact rejection on its test programs and on random corpora (620 DLL requests, 120 accelerator requests, 420 SPIR-V kernels), with none declined. The compiler outgrew the driver's 32 MiB store views, so they were raised to 64 MiB first and the seed rotated (ADR-319); the new compiler is a fixed point of `selfbuild.sh` from that seed. Still Python: the browser Wasm page, JVM jars, Android packages, the raw x86-64, Wasm and AArch64 images, and Windows functions only the legacy register path takes.
+
+#### S15b.3e B1 holds for the Linux x86-64 production compiler — 2026-10-21 (ADR-318)
+
+The production compiler's `verify` now decides graphs that call several different resource callees before their own decision: it remembers which graphs it has already accepted (the bootstrap does not parse those again), waits on the first callee it has not, and checks the waiting graph again once that callee is accepted. On 800 random multi-callee programs every outcome is the bootstrap's and none declines. The evidence re-run has C1 = C2 = C3 = the bootstrap's compile with no recorded rejection gap: **B0 to B6 all hold for the Linux x86-64 production compiler**, and the Python-free seed rebuilds it. The whole multi-target compiler still holds none of B0-B6 (other targets are built by Python backends). Next: S15e.3b-S15e.7.
+
+#### S15e.3 Windows executables built by the production compiler — 2026-10-17 (ADR-317)
+
+The production compiler's `build` now makes Windows PE32+ executables itself: the general x86-64 program lowers the Windows calling convention (imports through the import table, COM methods, arguments on the stack), applies the bootstrap's Windows-only peephole, and writes the PE container. On the Windows test programs and 850 random ones the executable and every rejection equal the bootstrap's. The compiler rebuilds itself from the pinned seed with no rotation. Windows DLLs, and functions only the bootstrap's older register path takes on Windows, are still built by the bootstrap (S15e.3b). Next: S15e.4 (the browser Wasm page).
+
+#### S15e.2 Linux AArch64 executables built by the production compiler — 2026-10-17 (ADR-315, ADR-316)
+
+The production compiler's `build` now makes Linux AArch64 executables, static and dynamic, with a new AArch64 backend written in XAX: its register allocator, its general frame lowering (floats, products, sums, aggregates, stack storage), the syscall and import thunks and the ELF container. On every AArch64 test program and 340 random ones the executable, its provenance and every rejection equal the bootstrap's. The compiler grew past its image buffer, which was raised to 16 MiB; the seed was rotated deliberately and rebuilds itself to the same bytes. The evidence re-run keeps B0 and B2-B6 for the Linux x86-64 production compiler (B1 still has its one gap). Code addresses, indirect calls, atomics and the legacy register path on AArch64 still decline to the bootstrap. Next: S15e.3 (Windows PE32+).
+
+#### S15d.4b the compiler changes itself by structural transactions — 2026-10-16 (ADR-314)
+
+The compiler's `edit` command now takes the protocol's own graph mutations: insert a pure node before another, delete an unused one, replace an operand, change a result type, disconnect and connect edge arguments, with inserted nodes usable by later mutations in the same transaction. It checks every precondition exactly as the Python workspace does (same rule, same expected and actual) and produces the same store byte for byte. With it the compiler was changed structurally through its evolution ledger: entry 0002 deletes six unused constants from the compiler's main function. The self-built compiler replays the whole ledger from the builders' baseline to exactly the committed stores and verifies them, rebuilds itself to a fixed point from the pinned seed, and B6 (ordinary evolution without a second implementation) is now derived as holding for the Linux x86-64 production compiler. The x86-64 views backend needed room for the larger compiler (44 MiB of code, two-word node ranges). Still open: B1's one gap and the other targets (S15e.2-S15e.7); the whole multi-target production compiler stays at none of B0-B6.
+
+#### Evidence after S15b.3d: every corpus rejection is the bootstrap's — 2026-10-16 (ADR-313)
+
+The re-run (`benchmarks/full_selfhost_evidence.json`) has C1 = C2 = C3 = the bootstrap's own compile (11,674,511 bytes) and all 38 verification rejections of the 123-case corpus written exactly as the bootstrap writes them. B0 and B2-B5 hold. B1 still does not: the one recorded gap (a graph calling two different resource callees before its own decision) declines. The x86-64 views backend's jump table had filled with the larger driver; a jump record is now two words. The Python-free seed rebuilds the same compiler.
+
+#### S15b.3d the compiler's verification rejections, nearly complete — 2026-10-16 (ADR-311, ADR-313)
+
+The production compiler's `verify` now writes the bootstrap's exact rejection in the cases it used to leave undecided: builds that reference each other (a provenance's snapshot, a request's package), stores missing objects that a nested build object reaches, function and type corner cases, and the memory checks that quote a declaration (a foreign function's signature, a call contract, a code-entry type, an accelerator target's operation contracts) or a stack-owner entry's body. A caller's check now waits for the callee's graph when the bootstrap would parse the callee first. Over the randomized verification corpora (16 hash seeds of the object-site corpus and the type, graph, memory and use corpora) and 36 collected declaration and stack-owner stores, the self-built compiler declined none and wrote no diagnostic that differs from the bootstrap's. One narrow class still declines: a graph that calls two different resource callees before its own decision. Two compiler bugs were found on the way: the general x86-64 backend miscompiles a variable copy whose source keeps advancing (worked around here; the backend fix is its own task), and an internal header word was shared by two uses. Whether B1 holds is decided by the evidence re-run (see the evidence section above: it does not yet).
+
+#### S15d.4a structural compiler changes as transactions — 2026-10-16 (ADR-312)
+
+The compiler's `edit` command can now replace any reference in the store (a function's graph, a module's function, a type or constant) with new objects carried in the transaction record, rebuilding everything that depends on it, byte for byte as the Python reference does. That makes every structural compiler change expressible as a transaction; writing the fine-grained graph mutations (insert, delete, rewire nodes) in the engine is the next step (S15d.4b), and B6 is not yet established. (Superseded by the S15d.4b section above.)
+
+#### S15c.5a room for the compiler's largest function — 2026-10-16 (ADR-310)
+
+The program that compiles the compiler kept a 12.6M-word buffer for the final executable reserved through the whole compilation, although it is only used at the very end; with the next feature the compiler's largest function no longer fit beside it. The buffer is now taken at the end. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15c.5.
+
+#### Evidence after S15c.5: B5 holds for the Linux x86-64 production compiler — 2026-10-16
+
+`bench_full_selfhost.py` and `bench_python_free_seed.py` were re-run (with `XAX_REQUIRE_NATIVE=1`) on the committed compiler after S15c.5, S15c.5a and S15e.1. Derived by `xax_selfhost.linux_x86_64_status`: **B0, B2, B3, B4, B5 hold; B1 and B6 do not.** B5 holds because no required build path of the declared scope is left to Python any more (signed resolution was the last) and no generation has an ELF interpreter. B1 is still blocked by the rejection-exactness gaps (S15b.3d) and one of 23 corpus verification rejections; B6 by the edit engine's vocabulary (S15d.4). The seed still requires no Python.
+
+#### S15c.5 signed resolution in the production compiler — 2026-10-16 (ADR-309)
+
+The production compiler can now resolve a build under a trust policy that requires package signatures: the new `resolve-trusted` command takes the policy and the signatures as a small file of objects, verifies every signature in XAX, and writes the same signed snapshot as the bootstrap resolver, or the same rejection. That was the last required build path the compiler left to Python for its declared scope. Whether B5 now holds is decided by the evidence re-run, not by this note.
+
+#### S15e.1 RISC-V images built by the production compiler — 2026-10-16 (ADR-308)
+
+The production compiler's `build` now makes RISC-V raw images itself, with the RISC-V backend that was already written in XAX: the artifact, its provenance, and every rejection equal the bootstrap's. The remaining targets (AArch64 Linux, Windows, the browser, JVM, Android, accelerators and SPIR-V) are listed as their own steps; each still needs its lowering written in XAX, and until then only the bootstrap builds them. Next: the evidence re-run and the final gate report.
+
+#### S15e.0 room for target backends in the compiler — 2026-10-16 (ADR-307)
+
+The compiler's own build nearly filled the scratch memory of the program that compiles it (62.21M of 62.91M words), mostly because the buffer for one function's machine code was 18 times larger than the compiler's largest function needs. The buffer is now 2M words, freeing about 6M words for the backends S15e adds to the driver. The seed was rotated deliberately and rebuilds itself to the same bytes. Next: S15e.1.
+
+#### S15d.2-S15d.3 the compiler changed by its own transactions — 2026-10-16 (ADR-305, ADR-306)
+
+The compiler's committed store is now its historical Python construction plus a ledger of transactions, and the first transaction is a real change made without touching any Python compiler code: the compiler's `resolve` and `build` now accept up to 100 external input files instead of 64. The compiler applied the transaction to its own store with its `edit` command, verified the result, rebuilt itself to identical bytes, and the new compiler behaves as intended while still matching the bootstrap's results. B6 (bootstrap independence) is still not established: the transaction engine can only change operations and constants, so most compiler changes still need the Python builders. Next: S15d.4 (a larger transaction vocabulary), S15c.5, the S15b.3d remainder, S15e.
+
+#### S15d.1 semantic transactions in the production compiler — 2026-10-16 (ADR-304)
+
+The production compiler can now change a canonical store itself. Its new `edit` command takes a small transaction record (change an arithmetic operation, or the value of a constant, at a named node of a named function), verifies the store, rebuilds every object that depends on the change, and writes the new store. The result is byte for byte what the existing Python workspace commits for the same transaction, and it rejects where the workspace rejects. On the compiler's own store an edit takes about 15 seconds and the result verifies. Next: S15d.2 (the committed compiler stores become authoritative, with a ledger of transactions) and S15d.3 (a real compiler change made this way).
+
+#### S15d.0 room for the compiler's own lowering views — 2026-10-16 (ADR-303)
+
+The general x86-64 program keeps the lowering view of every function of the compiler at once, and after S15c those views filled 99.6 % of their region. The program image's buffer now lives in a part of the program's memory that was unused, which lets the views region grow by half without taking memory from anything else. The seed was rotated deliberately: the previous seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. Next: S15d.1.
+
+#### S15c.1-S15c.4 grants, external inputs, Ed25519 signatures, capacities — 2026-10-16 (ADR-298 to ADR-302)
+
+The production compiler now decides four build paths it used to leave to Python. `resolve` checks profile grants and rejects an undeclared one with the bootstrap's own diagnostic. `resolve` and `build` take external input files, hash them in XAX, and record or check their digests. `build` verifies package signatures under a policy that requires them, with Ed25519 implemented in XAX (SHA-512 and the curve arithmetic), and rejects in the bootstrap's order with its exact diagnostics. An input past one of the compiler's declared capacities is the compiler's own rejection instead of a decline. Every scenario equals the bootstrap given the same inputs and the reference verifier, on the views-built driver and on the compiler built by its own backend, which still rebuilds itself to identical bytes from the pinned seed. Still open for B5: making signed snapshots (S15c.5). The B levels are unchanged until the evidence is re-run. Next: S15d.
+
+#### S15b.3d objects inside a graph's parse — 2026-10-15 (ADR-297)
+
+A graph that names a malformed type, uses an unproven constant, applies a sum operation to a type of another form, or belongs to an undecided recursion group is now rejected with the bootstrap's own diagnostic. So is a sum or tuple type with a malformed item index, and an invalid use the bootstrap reaches at the same node as another check. Over the exactness corpora, declined rejections fell from 54 to 10, and none differs from the bootstrap. Still declining: the memory engine's declaration and pointer decoders, stack-owner entries, a few nested build decoders. B1 does not hold yet. Next: the remaining S15b.3d sites, then evidence.
+
+#### S15b.3d nested decoders — 2026-10-15 (ADR-296)
+
+The production compiler now follows the bootstrap into two more nested decoders: a recursion group's member types, and a build snapshot's request and packages. It also types an object named as a type on demand. The two corpus rejections that were not yet exact now are. Next: the remaining S15b.3d sites, then evidence. S15b.3d objects inside a graph's parse: see above.
+
+#### S15b.3c exact invalid-use rejections — 2026-10-15 (ADR-295)
+
+A graph that uses a value that does not exist, or that does not dominate its use, is now rejected with the bootstrap's own diagnostic. Any earlier check the bootstrap's first pass makes comes first, and the compiler no longer writes a record of its own for any verification rejection. What still declines: memory rejections that quote a foreign, lend, target-operation or bounded indirect-call declaration; a stack-owner entry's contract; and a constant or type the bootstrap first reaches inside a graph. B1 does not hold yet. Next: S15b.3d.
+
+#### S15b.4 exact code generation rejections — 2026-10-15 (ADR-294)
+
+The production compiler now rejects with the bootstrap's own diagnostic where it reaches the bootstrap's code generation failures on malformed or extreme inputs. These include unencodable stack offsets, malformed syscall names, foreign calls of other ABIs, startup reads of other names, a call with two machine results, wrong pointer widths, and one symbol imported from two libraries. Every such program a test builds is the bootstrap's exact rejection. Rules no verified program reaches are recorded as such. B1 still waits on S15b.3c, a graph's invalid uses. Next: S15b.3c. S15b.3c: see above.
+
+#### S15b.3a-S15b.3b exact graph rejections — 2026-10-15 (ADR-292, ADR-293)
+
+The production compiler now writes the bootstrap's own diagnostic for a graph that fails operation typing, a terminator, a memory-fact check, linear resource flow, or a branch target. The typing program follows `_parse_graph`'s order and renders the record that decides the graph's outcome. On every corpus and mutated graph the compiler's `verify` either matches the bootstrap exactly or declines. Over the typing, linear and memory corpora, 2290 rejections are exact, none differs, and 18 decline. Still declining: memory sites that quote a foreign, lend, target-operation or bounded indirect-call declaration, and a stack-owner entry's contract. Invalid uses still carry the driver's own record. B1 does not hold yet. Next: S15b.3c. S15b.4: see above.
+
+#### S15b room for the compiler's image — 2026-10-15 (ADR-291)
+
+The general x86-64 program can now assemble a compiler image of up to 12 MiB, up from 8 MiB. The compiler's own image is about 8 MiB and grows as S15b adds the bootstrap's diagnostics. The seed was rotated deliberately: the previous seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.3. S15b.3a-S15b.3b: see above.
+
+#### S15b.1-S15b.2 exact object, type, and constant rejections — 2026-10-15 (ADR-288, ADR-289)
+
+The production compiler now reports the bootstrap's own diagnostic when it rejects a store for an object, type, constant, or store-level fault, and it reports the first one in the bootstrap's order. The store verifier writes every object rejection itself, including entity, values and their exact types. It also computes which graphs `verify_store` parses, in which order, before which object fails. The driver follows that order, and renders type and constant rejections from the typing program's records. On 480 mutated stores the compiler's `verify` accepts exactly what the bootstrap accepts, and every rejection it makes outside the graph checks is the bootstrap's. Graph rejections (operation typing, terminators, memory facts, linear flow, invalid uses) still carry the driver's own record. A few cases the bootstrap decides through another object's decoder decline. B1 does not hold yet. Next: S15b.3. Image capacity and S15b.3a-S15b.3b: see above.
+
+#### S15b.0 room for the driver's own verification — 2026-10-15 (ADR-287)
+
+The input view the verifier and the backends read grew from 256 MiB to 512 MiB, so the driver can keep verifying its own store as S15b adds the bootstrap's diagnostics to it. The typing program's own input stays bounded at its former size. The seed was rotated deliberately: the S15a seed built the new compiler, which rebuilds itself to the same bytes with no Python on `PATH`. The B levels are unchanged. Next: S15b.1. S15b.1-S15b.2: see above.
+
+#### S15a a Python-free seed — 2026-10-15 (ADR-286)
+
+The Linux x86-64 production compiler no longer needs Python to start. Its seed is a pinned copy of the compiler as its own build made it, committed with the compiler's build request. A shell script makes the seed rebuild the compiler twice, and both builds equal the seed, with only `sh`, `dirname`, `mkdir`, `chmod`, and `cmp` on `PATH` and no Python anywhere. The committed record derives "seed requires Python: no". The B levels are unchanged (B1, B5, and B6 still do not hold). Next: S15b to S15e. S15b.0: see above.
+
+#### S15f.4 bare-metal AArch64 images and S15e.3b hosted legacy path — 2026-10-22 (ADR-325, ADR-326)
+
+The production compiler now builds bare-metal AArch64 load images itself. Before, only Python did. The AArch64 program gained the bootstrap's legacy register path, which these profiles use, and the image is the bundle code. On 600 random programs (spills, calls, homes, wide joins, loops, traps, narrow-width rejections) and the frame and offset rejections, the output equals the bootstrap's. On Windows, functions the bootstrap lowers on its hosted legacy register path are now built by the general program too, including compares, imports and COM calls, code addresses, heap views and checked accesses. 230 programs that reach that path and 20 rejection cases equal the bootstrap's. The seed was rotated (`ec14532e…`) and rebuilds itself (seed = C1 = C2). Every target except JVM jars and Android packages is now built by the production compiler.
+
+#### S15e.5a JVM JARs for the integer subset through XAX — 2026-10-22 (ADR-327)
+
+A standalone XAX program (`xax_selfhost_jvm`, store `compiler/bootstrap/xax_jvm_general.xax`) now builds JVM JARs for `jvm-classfile-v1` programs that use only integer operations, byte for byte equal to `compile_jvm_bound_target`'s. `build` asks it first and falls back to the bootstrap when it declines. Results:
+
+- 330 seeded random programs agree, none declined.
+- Inside `test_xax_jvm.py`, 39 JARs and 1 rejection agree, 61 decline (floats, platform calls, traps), none disagree.
+
+The production driver does not contain the program yet, so the bootstrap status is unchanged.
+
+#### S15e.5b JVM floats and conversions through XAX — 2026-10-22 (ADR-328)
+
+The XAX JVM program now also lowers float constants, arithmetic, compares and conversions, including the trapping float-to-integer truncations. Results, checked against the bootstrap:
+
+- In `test_xax_jvm.py`, 86 JARs and 1 rejection agree, 14 decline (platform calls and their rejections), none disagree.
+- In `test_xax_selfhost_jvm.py`, every conversion across eleven integer widths and both float formats agrees byte for byte.
+
+#### S15e.5c JVM references and platform calls through XAX — 2026-10-22 (ADR-329)
+
+The XAX JVM program now handles JVM reference values and platform calls: static, virtual and interface methods, and static fields. It decides `_foreign_member`'s rejections exactly. Checked against the bootstrap, `test_xax_jvm.py` gives 94 JARs and 4 rejections that agree, and 1 decline (the memory profile), none disagreeing. The memory, general and object profiles still fall back to the bootstrap.
+
+#### S15e.5d JVM object kinds through XAX — 2026-10-22 (ADR-330)
+
+The XAX JVM program now builds the object kinds byte for byte with the bootstrap: `new`, arrays, `ldc`, instance and static fields, `checkcast` and `instanceof`. In `test_xax_jvm_objects.py`, 6 JARs and 3 rejections agree, and 1 callback declines.
+
+#### S15e.5e JVM callbacks through XAX — 2026-10-22 (ADR-331)
+
+The XAX JVM program now builds callbacks: JDK streams and comparators that call XAX functions. It also accepts the memory and general class-file profiles. Every compile in `test_xax_jvm_callbacks.py`, `test_xax_jvm_objects.py`, `test_xax_jvm_import.py` and `test_xax_jvm.py` either agrees with the bootstrap or declines, and none disagree. The declines are a stack allocation and the memory-profile rejection.
+
+#### S15e.5f/S15e.5 JVM aggregates, the full test run, and JVM JARs through the production compiler — 2026-10-22 (ADR-332, ADR-333, ADR-334)
+
+- The XAX JVM program builds aggregates and sums as flattened `long[]` values. In `test_xax_jvm_general.py`, 3 compiles agree and 12 decline (the memory machinery); none disagree.
+- The full suite after the S15 steps: its failures are fixed (the Linux request bit, the 64 MiB BLAKE3 input, the inventory, the native-width test) or environmental (wheel setuptools, and xdist workers that crashed under memory pressure).
+- The production driver builds JVM library and executable JARs. The verifier's input view is now 1 GiB, and the x86-64 views backend has more room. The seed was rotated in two stages to `445bdf00…` (seed = C1 = C2). The seed binary's hello JAR is byte-equal to `build`'s.
+- Still open:
+  - The selfhost closure and full-selfhost evidence have not been re-run against the new stores.
+  - The serial rerun of the seven crashed tests.
+
+#### S15e.6, S15g and the full test run after them — 2026-10-29 (ADR-340 to ADR-353)
+
+- Android's layers are XAX programs that `build` asks first: the APK container, v2 signing, the binary manifest and `resources.arsc`, the bridge DEX, the multi-export ELF container, the unsigned and managed carrier decisions, and the JVM-to-DEX lowering and writer (S15e.6a-S15e.6g). The driver's Android path is drafted as four steps (S15e.6h, ADR-351). Until those steps are done, the whole compiler's blocker still names Android packages.
+- The DEX bridge frontend was split into two graphs to fit the graph decoder's capacity (ADR-352).
+- The views backend's closure work stack now grows; it used to decline once one function called the same helper more times than its store had objects (ADR-353). The backend and driver stores were regenerated, the ledger rebased, and the seed rotated to `f968cdd7…` (seed = C1 = C2).
+- S15g evidence was re-run on the final stores with `XAX_REQUIRE_NATIVE=1`:
+  - x86-64, closure (8 B1 images and 28 stores, all agreeing), full self-host, and the Python-free seed.
+  - The Linux x86-64 production compiler holds B0-B6, and its seed requires no Python.
+- The full suite (`-n 2`, before ADR-353): 1594 passed, 59 skipped, 13 failed, 3 errors. The fixed regression:
+  - The S11 driver declined the four stores the work stack overflowed.
+  - After the fix, those four stores, store regeneration, the driver suites and the evolution test pass: 42 passed, 324 subtests.
+- The four tests whose xdist workers crashed under memory pressure pass serially: `test_argument_counts`, the general driver's self-rebuild, the evolution test and `test_declared_rejections`.
+- Environmental failures:
+  - `tiktoken` is not installed.
+  - The `compiler` package import needs the repository root on `sys.path` (`test_oi03`, `test_oi06`, the `test_oi07`-`test_oi09` collection errors).
+  - Wheel builds fail on this host's setuptools (`install_layout`).
+- Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `06f9675`.
+
+#### S15e.6h unsigned APKs in the self-built compiler — 2026-10-29 (ADR-354, ADR-355, ADR-356)
+
+- The Android shared object bundles are built by the XAX AArch64 program (S15e.6h.1, ADR-354).
+- One XAX program, `xax_selfhost_android`, builds every unsigned APK (S15e.6h.2, ADR-355). It decodes the package's carriers, decides their rules (U1-U60, M1-M7) and chains the AArch64, ELF, manifest, resource-table, DEX and APK programs. Under `XAX_GENERAL_FRONTEND_DIFF=1`, 127 APKs and 88 rejections equal the bootstrap's, and none is declined.
+- The general driver builds unsigned APKs through that program (S15e.6h.3, ADR-356). The request takes the Android path, the program is called twice (roots, then build), and its rejections are the driver's own.
+- The regenerated driver did not fit two capacities, and both were fixed (S15e.6h.4, ADR-356):
+  - The previous seed's general x86-64 program could not emit the Android program's 1.56 MB decoding phase. The decoding is now three phases.
+  - The views backend program ran out of code at 79.7 MiB. Its code region is now 128 MiB.
+- The driver, request, S10 driver and backend stores were regenerated, and the ledger rebased. The seed was rotated to `ee974928…` (29,183,659 bytes; seed = C1 = C2).
+- `bootstrap_status` now names only signed APKs and libxposed JVM modules (S15e.6i) as outside the production compiler.
+
+### Other self-hosting records
+
+#### B1–B4 for the XAX RISC-V backend: a self-compilation fixed point (ADR-145) — 2026-10-03
+
+- A RISC-V views profile (checked heap-view loads and stores, 64-bit pointers, borrowed-view returns elided, `auipc`/`jalr` far jumps) lets the XAX RISC-V backend compile its own store. The XAX backend's image is identical to the bootstrap generator's (1,959,876 bytes).
+- That image, run in the RV64 emulator, compiles a corpus exactly as the native backend does. Compiling the backend store with it reproduces it byte for byte (gen3 == gen2, at most 22 billion emulated instructions).
+
+#### Native self-hosting evidence re-executed on Linux x86-64 (2026-10-07, OI-45)
+
+- Host: Linux x86-64, Python 3.13.16. `bench_selfhost_closure.py --write` (22 min) and `bench_selfhost_x86_64.py --write` (3.5 min) were run against the committed stores at `5e0fd93`, both under `XAX_REQUIRE_NATIVE=1`. Every component in both evidence files records `actual_authority: xax` with no fallback.
+- The typing store (`xax_op_typing.xax`, SHA-256 `c3395d39…`), stale until ADR-177, now has executed entries again: its gen1 RV64 image equals the bootstrap reference (46 functions, 4,728,348 code bytes, image SHA-256 `0cd34705…`); the verifier's emulated verdict on it equals the native one (95 objects proven); and its x86-64 image matches its bootstrap reference with the native verifier agreeing. No `native_rerun_required` entry is left in either file.
+- Native self-hosting tests at that revision with `XAX_REQUIRE_NATIVE=1`: 97 passed (2 opt-in skips). The opt-in fixed-point tests (`XAX_FIXED_POINT=1`) also passed: 7 tests, 31 subtests, 31 minutes, two workers.
+- A cold image cache exposed a bootstrap-order bug: `XAX_REQUIRE_NATIVE=1` failed when the XAX backend could not yet lower the hash and decoder images. Those images are now recorded as Python lowering by design (`lowering:<component>` entries in `xax_native.AUTHORITY`). The x86-64 evidence was regenerated from a cold cache: its content is identical apart from timings, and it now records the lowering authority of each image.
+- Still open in OI-45: the Linux x86-64 R4 re-runs with raw samples, and the Android second baseline. The matrix is unchanged.
+
+## JVM
+
+### JVM and RISC-V targets; evidence hosts (ADR-112–ADR-114) — 2026-10-03
+
+- JVM (ADR-112): `xax_jvm.py`. EXECUTED: integer differential corpus (widths 8/13/32/47/64), float/conversion grid, `java -jar` run (stdout through `System.out`, exit 7 via `System.exit`), a trap stack trace mapped to its node, package build (`JVM_EXECUTABLE_JAR`/`JVM_LIBRARY_JAR`), and workspace mapping (`test_xax_jvm.py`, 18 tests and 78 subtests). MEASURED: Collatz 1.04× `javac` kernel time, 1.51× class bytes, 1.01× peak RSS (`XAX_BENCHMARKS.md` §15.8). JVM row: R2.
+- RISC-V (ADR-113): `xax_riscv64.py`, with liveness-hull linear scan into s1–s11. EXECUTED under Unicorn: the same differential corpus, a register-pressure loop, traps; every word decodes under `llvm-mc` (`test_xax_riscv64.py`, 9 tests and 383 subtests). MEASURED (emulated): Collatz 3.72× `clang -O2` instructions, 3.23× bytes (§15.9). riscv64 row: R1.
+- Evidence hosts (ADR-114): the six Windows-only x86-64 tests and both QEMU-only AArch64 tests now execute on Linux. One stale code hash was re-pinned after execution.
+- Repairs: OI-25's projection benchmark wrote zip entries in filesystem order (Python 3.11 `zipapp` uses an unsorted `rglob`), so its replay failed on some hosts; it now writes them in declared order. OI-26's replay compared the generating interpreter's version, a host observation. The wheel listed neither `xax_web` nor `xax_android_counter`.
+- Regression on this host (Linux x86-64, Python 3.11.15, OpenJDK 21.0.11, clang 18.1.3, unicorn 2.1.0): **903 passed, 19 skipped, 2 failed**. The two failures are environment-bound: `tiktoken` is not installed, and the wheel build requires Python ≥ 3.12. Before this pass: 862 passed, 16 failed.
+
+### JVM linear memory and the JVM R3 application (2026-10-04, ADR-156)
+
+- `jvm-classfile-memory-v1`: linear memory as one `byte[]` with `int` pointers, the generated `xax/jvm/Memory` package (allocate, free, read, write), view-return elision, and a 256 MiB entry thread. `tests/test_xax_jvm_memory.py` (widths, floats, traps, profile rejection).
+- `jsonmin` runs unchanged on HotSpot (`build_jsonmin("jvm")`) and matches its reference on every test input; JVM row R3 (`practical_application` EXECUTED).
+- MEASURED against a `javac` twin on an 8 MiB document: 1.178× process wall time, 1.00× peak RSS, 8.9× class bytes (`jvm_jsonmin_evidence.json`, `XAX_BENCHMARKS.md` §15.16). Superseded by the ADR-157 section below (JVM R4).
+- Full suite: **1,106 passed, 5 skipped**.
+
+### JVM R4: code quality and the javac/kotlinc comparison (2026-10-04, ADR-157)
+
+- The JVM backend gained liveness-based slot coloring with coalescing, Top frame slots, folded and rematerialized constants, deferred and `dup`ed stores, `if_icmp`/`if` compare fusion, jump threading, rotate-to-shift forms, and shared bounds-check and byte-access members. `jsonmin`'s class went from 33,330 to 8,539 bytes.
+- MEASURED under the JVM runtime rule (`XAX_BENCHMARKS.md` §15.0a, §15.17). On 8 MiB, XAX takes 0.1336 s; the `javac` twin is 1.023× that and the `kotlinc` twin 1.094×. XAX is meets-primary-target with the lowest peak RSS (0.89× javac). Its program class is 2.29× javac's (blocker recorded). Collatz: 0.93× `javac` kernel time, 0.99× class bytes.
+- `xax_replacement.py` checks JVM verdicts for `javac` and `kotlinc` arms. JVM row **R4** (`jvm_jsonmin_evidence.json` competitive). Superseded: the ADR-156 section above (1.178×, R3).
+- Full suite: **1,108 passed, 5 skipped**. Code size superseded by the ADR-158 section below.
+
+### JVM code size: `jsonmin`'s class below kotlinc's (2026-10-05, ADR-158)
+
+- The JVM backend now evaluates single-use pure values at their reader, as stack expressions. Branches on OR/AND trees of compares short-circuit.
+- Values get one name each:
+  - one-predecessor block parameters alias their edge arguments;
+  - a repeated load is the earlier load;
+  - copies and given-back views share locals.
+- Dead block parameters, dead pure nodes, and unused call results are dropped.
+- Frames exist only at branch targets. The trap label has its own empty frame, and definite assignment decides which locals need a zero store.
+- Blocks are laid out in fallthrough chains. Identical return blocks merge, and `x = x + c` is one `iinc`.
+- Constant ASCII stores become one `String.getBytes`. Internal methods take one-slot parameters first.
+- MEASURED (`XAX_BENCHMARKS.md` §15.18):
+  - **`jsonmin` class:** 33,330 bytes (ADR-156) → 8,539 (ADR-157) → **5,575**. That is 0.99× the `kotlinc` twin's classes (5,649) and 1.49× the `javac` twin's class (3,730).
+  - **`jsonmin` time and memory:** XAX is still the fastest arm (javac 1.197×, kotlinc 1.251×) with the lowest peak RSS.
+  - **Collatz:** class 724 vs 760 bytes, kernel 0.91× `javac`.
+- **Not met: 1.05× javac's class.** The remaining gap comes from the unchanged XAX program's shape, the same graph as on Linux. The parser is inlined into large functions, every call returns a packed (pos, out) state that is checked and unpacked, and every byte access goes through an explicit view. The line table maps each of 104 raising sites to its node (javac emits 98 entries for its statements).
+- Full suite: **1,111 passed, 5 skipped**.
+
+### JVM general profile (2026-10-05, ADR-159)
+
+- `jvm-classfile-general-v1` adds aggregates and sums (immutable flattened `long[]` values), stack allocations (a per-activation shadow stack in the linear memory), and indirect calls (a function table plus a generated dispatcher per contract). Recursion through stack storage and aggregates is exact.
+- EXECUTED against the reference executor (`tests/test_xax_jvm_general.py`), including the wrong-variant and shadow-stack overflow traps. The JVM row stays R4; the remaining operation gaps are atomics, links, and raw loads.
+- Full suite: **1,118 passed, 5 skipped**.
+
+### JVM links, raw loads, and atomics (2026-10-05, ADR-160)
+
+- The general profile now has record links (an `int` offset, stored as 8 bytes; null traps), raw loads, and atomics. Atomics are exact as sequential memory operations because exactly one XAX thread runs on the JVM profiles. The JVM now has every operation of the native general profiles.
+- EXECUTED (`tests/test_xax_jvm_general.py`): atomics match the reference executor at 32 and 64 bits; a linked list walk sums its keys; a null follow traps. JVM `atomics` field EXECUTED.
+- Full suite: **1,121 passed, 5 skipped**.
+
+### JVM callbacks (2026-10-05, ADR-161)
+
+- XAX functions become Java functional-interface objects (`jvm-interface:` code-entry types; the program class implements the interfaces). Two new foreign ABIs, `jvm-invokeinterface` and `jvm-invokestatic-interface`, call interface methods. EXECUTED: a JDK `IntStream` pipeline calls three XAX callbacks (`tests/test_xax_jvm_callbacks.py`). The self-hosted typing store was regenerated.
+- Full suite: **1,125 passed, 5 skipped**.
+
+### JVM objects, arrays, string constants, and casts (2026-10-05, ADR-162)
+
+- Seven typed foreign ABIs: `jvm-new`, `jvm-newarray`, `jvm-arrayload`, `jvm-arraystore`, `jvm-arraylength`, `jvm-ldc`, and `jvm-checkcast`. EXECUTED (`tests/test_xax_jvm_objects.py`):
+  - an `int[]` sorted by `Arrays.sort`;
+  - a `StringBuilder` string;
+  - an `Integer[]` sorted by an XAX `Comparator` callback that takes objects;
+  - an out-of-bounds load that terminates.
+- The JVM row's object-construction blocker is closed.
+- Full suite: **1,129 passed, 5 skipped**.
+
+### JVM instance fields and `instanceof` (2026-10-05, ADR-163)
+
+- Three typed foreign ABIs: `jvm-getfield`, `jvm-putfield`, and `jvm-instanceof`. EXECUTED (`tests/test_xax_jvm_objects.py`): a `java.awt.Point` has its fields read and written and is type-tested as `Point2D` (true) and `String` (false).
+- `putstatic` is not added: there is no `java.base` field to execute it against.
+- Full suite: **1,130 passed, 5 skipped**.
+
+### JVM multi-dimensional arrays and the native-bridge arm (2026-10-05, ADR-164, ADR-165)
+
+- `jvm-multianewarray` (ADR-164). EXECUTED (`tests/test_xax_jvm_objects.py`): `int[a][b]` and a partial `long[b][a][]`.
+- Native code plus a generated bridge (ADR-165, `xax_jvm_bridge`). EXECUTED (`tests/test_xax_jvm_bridge.py`): `jsonmin` runs on HotSpot as an x86-64 JNI library behind a generated 352-byte bridge class, and Java code calls a native XAX kernel.
+- MEASURED (§15.19), native bridge over direct emission for `jsonmin`:
+  - 0.68× start-up and process time;
+  - 0.64× peak RSS;
+  - 2.86× artifact bytes.
+- **OI-35 is closed for the JVM.** The answer is per workload, defaulting to direct emission. CLR is not covered.
+
+### JVM class-file importer; OI-32 closed (2026-10-05, ADR-166)
+
+- `xax_jvm_import` imports typed `jvm-*` declarations from JDK `.jmod`/JAR class files (exported public API only, conservative effects, opt-in callbacks). EXECUTED (`tests/test_xax_jvm_import.py`): a program over imported declarations only runs on HotSpot, and `java_base_api` is reproduced byte for byte.
+- MEASURED (`oi32_import_evidence.json`):
+  - 14,973 of 15,806 public and protected `java.base` members import, in 1.79 s.
+  - Declaration error rate is 0/30 (JVM) and 0/5 (C).
+  - An import request costs 0.40× (JVM) and 0.23× (C) the tokens of the hand-built declaration (offline).
+- **OI-32 is closed.** The JVM row's importer blocker is removed.
+
+### JVM static field writes (2026-10-05, ADR-167)
+
+- `jvm-putstatic`. EXECUTED (`tests/test_xax_jvm_objects.py`) against a `javac`-compiled class on the class path, because no JDK module has a public mutable static field. Java code observes the XAX writes and XAX reads Java's.
+- The importer now imports static field writes; `tests/test_xax_jvm_import.py` reproduces the hand-built declarations byte for byte.
+- The JVM direct-emission gaps listed in OI-35 are all closed.
+
+### JVM R5-candidate AI efficiency (2026-10-06, ADR-174)
+
+- MEASURED (`compiler/benchmarks/ai_native/jvm-r5-evidence.json`, `jvm-r5-results.csv`): five balanced C/XAX pairs under fixed `gpt-5.6-luna` low reasoning, one fresh session per cell, all 10/10 passing in one turn with no repair.
+- C-like text used 325,282 total tokens; XAX semantic transactions used 264,535 (0.813×, 18.675% fewer). Median per task: 64,857 versus 50,083.
+- The JVM row stays R4. The evidence is target-neutral semantic editing, not Java/Kotlin editing, and lacks the remaining §6.2 task classes required for R5.
+
+### JVM R5 full-corpus attempt (2026-10-06, ADR-176)
+
+- Added the 15-family Java/Kotlin/XAX harness and exact external checkers in `compiler/benchmarks/jvm_r5_ai.py` and `compiler/benchmarks/run_jvm_r5_ai.py`.
+- Local compiler/workspace and benchmark tests pass: 124 tests, 1 skipped.
+- The real-model run completed 42/45 cells. Three retry cells were blocked before a model turn by the Codex account usage limit; evidence is `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json`.
+- Completed-cell medians: Java 50,342.5, Kotlin 50,737.5, XAX 38,679 tokens (0.7683× the lowest textual median), so the 0.50 R5 gate is not met. JVM remains R4/PROTOTYPE.
+
+### JVM snapshot-bound token workflow (2026-10-07, ADR-186)
+
+*Superseded workflow: the current host-response comparison is described in
+the ADR-187–189 follow-up below; retain this section as historical evidence.*
+
+EXECUTED: `LocalMutationSession` is normal compiler tooling, shared by direct edit arms. It binds the queried generation, derives exact old attributes, and delegates atomic verification/publication to `Workspace`. Deterministic semantic evidence is `compiler/benchmarks/local_protocol_evidence.json`. No JVM backend runtime claim changes.
+
+Validation: the affected JVM/workspace/protocol/evidence suites passed 204 tests with 3 host-unavailable skips and 276 subtests before the role-binding follow-up. The follow-up corpus/protocol suites passed 38 tests; targeted diagnostic regressions passed 37 tests with one textual-compilation case deselected (that case passed in the corpus run). The wider Windows attempt had 992 passes, 178 skips, 6 failures and 3 import errors; the inventory omission, JDK-specific member count, and two JVM line-ending failures were then fixed and rerun. Remaining broad-run issues are unrelated provenance/memory evidence and host/import/emulator availability. Unicorn crashed during RISC-V emulation on this Windows host; this is not passing execution evidence.
+
+The exploratory local profile stopped at 16 attempts: 15 successes, with a failed creation cell costing 208,350 tokens and a move cell costing 92,165. All costs and raw events remain archived, with the source snapshot. Explicit role bindings and snapshot/insertion help were then added; two fresh XAX preflights passed (move 26,518; creation 38,463 including one repair). The separate full three-trial Java/Kotlin/XAX comparison is recorded in `jvm-r5-bound-results.evidence.json`. JVM stays R4/PROTOTYPE; incomplete data and unresolved corpus-equivalence limits cannot establish R5.
+
+The historical ADR-175 CSV's CRLF bytes were restored to its original recorded SHA-256, without changing any measurement; `.gitattributes` prevents future newline normalization of result CSVs.
+
+### JVM host-response follow-up (2026-10-07, ADR-187–189)
+
+Normal snapshot setters, dead-chain pruning, compact aliases and multi-result
+help are implemented. A redundant Kotlin literal conversion is admitted only
+with matching compiled instructions; an overload-changing conversion rejects.
+Affected validation: 142 tests and 167 subtests passed on Windows/JDK 17.
+
+Response-v4 remains separate incomplete negative evidence: 137 attempts,
+134/135 successful cells, all costs known, partial ratio 0.501623. Its checker
+falsely rejected an equivalent explicit Kotlin literal conversion. The source
+snapshot and independent raw-usage audit are retained unchanged.
+
+The current response-v5 comparison runs three trials for each of the 15
+Java/Kotlin/XAX task families. Use its CSV, evidence JSON, manifest and streamed
+traces under `compiler/benchmarks/ai_native`; do not import older cells. Source
+bytes are frozen during inference. Resume with `benchmarks.run_jvm_r5_response`
+only after ensuring no runner is active; never start a second CSV writer.
+A `runs-jvm-r5-response-v5/STOP` file stops safely between cells. Every failed
+response/attempt remains in successful-cell cost. Independently audit using
+`benchmarks.audit_jvm_r5_response` before reporting a complete numeric result.
+
+JVM stays R4/PROTOTYPE pending the complete result and corpus review. The graph
+is host-projected while textual edits inspect a named file; the large fixture
+is synthetic and resource effects are abstract verifier contracts. This work
+makes no JVM backend-speed or native self-hosting claim.
+
+### JVM median token gate achieved (2026-10-07, ADR-194)
+
+*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
+
+Response-v9 completed 135/135 cells in 142 attempts. Medians including all failed-response/attempt costs: Java 21,564; Kotlin 21,566; XAX 10,748. Ratio 0.4984232980894083 meets 0.50, a 50.1577% median reduction against the lowest textual median. The independent audit reports zero errors, no live-source drift and complete accounting. Recorded aggregate XAX cost is 772,632 versus Java 1,033,413 and Kotlin 1,175,166; the aggregate ratio is 0.747651, so the measured 50% reduction is specifically the median gate. Validation: 146 tests and 167 subtests, plus regenerated-status checks. JVM stays R4 until corpus/context equivalence review; no runtime-speed claim changes.
+
+### JVM R5 corpus review and same-prefill profile (2026-10-07, ADR-195)
+
+*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
+
+Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
+
+Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
+
+The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
+
+### JVM minimal-client run: R5 unmet at 0.995× (2026-10-07, ADR-196)
+
+*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
+
+The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
+
+Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
+
+Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
+
+R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
+
+### JVM multi-file corpus: 1.68× vs IDE excerpts (2026-10-08, ADR-197)
+
+`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
+
+Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
+
+| Arm | Median |
+|---|---|
+| Kotlin excerpt | 286 |
+| Java excerpt | 306 |
+| XAX | 481 |
+| Kotlin files | 1,315 |
+| Java files | 1,391 |
+
+XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
+
+Normal-protocol work from this corpus:
+- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
+- Exact `type OLD NEW` and `type F OLD NEW` retypes.
+- Removal of edits the batch already implies.
+- Kind-specific node diagnostics.
+
+R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
+
+### JVM R6: `xwc` — 2026-10-10 (ADR-257)
+
+- `xwc`, a GNU `wc`-compatible word counter, is the JVM row's XAX-only application: one hand-written `xax-construct-v1` request (platform `jvm`), an XAX selftest, canonical package and builds, and a second release (UTF-8 words) made by one workspace transaction. Both releases match GNU `wc` on every test input; the JVM row derives R6.
+- The JVM backend sizes `max_stack` from the method's own bytecode when the fixed bound is too small (nested 64-bit expression trees); existing JARs are unchanged. Host contract minor 6 (`jvm` construct platform).
+
+## Android
+
+### Android arm64-v8a shared-library target — 2026-10-01
 
 A bounded `android-arm64-v8a-shared-v3` target now reuses the register-resident
 AArch64 backend and directly emits ELF64 little-endian `ET_DYN` / `EM_AARCH64`
@@ -799,7 +1208,7 @@ committed only as future benchmark oracles; no C/C++ stage participates in XAX
 production code generation.
 
 
-### JNI platform package phase 1 — 2026-10-01
+#### JNI platform package phase 1 — 2026-10-01
 
 Android JNI remains outside the XAX kernel. The generic type system now has an
 identity-qualified opaque ABI carrier used for distinct `JavaVM*`, `JNIEnv*`,
@@ -831,7 +1240,7 @@ explicit null construction, successful thread-attachment state, runtime
 loader-relative resolution/caching, and floating-point AAPCS64 JNI calls remain
 unvalidated/unimplemented.
 
-### Direct managed Android artifacts, signing, and SDK import — 2026-10-01
+#### Direct managed Android artifacts, signing, and SDK import — 2026-10-01
 
 The Android prototype now directly emits deterministic DEX 039 managed classes,
 binary `AndroidManifest.xml`, an aligned deterministic APK ZIP container, and an
@@ -908,7 +1317,7 @@ managed libxposed execution remain open. A bounded cached
 helper/import/relocation and are structural codegen evidence, not Android latency
 evidence.
 
-### Android resources, components, and modern libxposed managed-hook structure — 2026-10-01
+#### Android resources, components, and modern libxposed managed-hook structure — 2026-10-01
 
 The generic Android APK builder now accepts an optional content-addressed string-resource carrier and emits deterministic `resources.arsc` only when reachable. Resource-backed UI semantics resolve exact resource IDs into DEX; the bounded resource-backed fixture is 34,742 bytes and keeps `XAX`/`Clicked` literals out of the managed classes. Resource-free APKs remain byte-unchanged and acquire no resource runtime machinery. Android runtime `AssetManager` acceptance remains UNEXECUTED.
 
@@ -926,56 +1335,7 @@ Bounded API-102 hot reload is also implemented structurally. `libxposed-hot-relo
 
 *(2026-10-06, ADR-178: the runtime target is now Vector; the harness exists but is UNEXECUTED. See "Vector as the libxposed runtime" below.)* This does **not** establish working managed hooking on Android. Module discovery, framework attachment, package-ready delivery, class-loader resolution, hook installation, interception, argument/result mutation, original invocation, exception-mode behavior, retained-handle behavior, actual unhook/idempotence, ART deoptimization result, remote capability/value behavior, preference/file operations, hot-reload callback delivery, saved target-ClassLoader transfer, stable-ID transfer/mismatch behavior, atomic replacement, ART allocation counts, and process survival remain UNEXECUTED because no compatible Android/libxposed runtime is available on this host. Broader method signatures/boxing, remote-file-descriptor consumption, preference writes/listeners, multi-hook stable-identity reload, package/process/resource/listener/thread migration, and measured runtime latency remain unimplemented or unproven.
 
-## Native XAX compiler leaf — BLAKE3 compression (2026-10-02)
-
-The first performance-critical compiler leaf now executes as ordinary XAX semantics. `compiler/bootstrap/xax_blake3_compress.xax` is the committed canonical implementation; `compiler/src/xax_native_blake3.py` can regenerate the full seven-round BLAKE3 compression function as one verified graph with 28 `bits<32>` inputs and one 16-word tuple result. The graph uses ordinary `add.wrap`, new width-exact `bit.xor` and `rotate.right`, aggregate construction, and the existing x86-64 general target; there is no handwritten BLAKE3 lowering or target intrinsic. The graph CID is `f1744e682b2f99c542100f0e987dced9a87f40dfa4b8f173596fb24b78faa216`, function CID `3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564`, and the normal x86-64 backend emits 19,744 bytes with 806 semantic machine-code ranges.
-
-`compiler/src/blake3.py` retains its dependency-free Python compressor as the immutable bootstrap/fallback path. After `xax_compiler` is available on a compatible x86-64 host, the first compression lazily loads/verifies/lowers the committed XAX graph; recursive hashing during accelerator initialization is forced through the Python leaf. Subsequent compiler BLAKE3 compression calls use the XAX-generated native leaf. The Linux host boundary uses a 279-byte SysV-to-Win64 argument trampoline only because the repository x86-64 target ABI is Win64; the trampoline contains no hash logic.
-
-Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, reproduced by `bench_xax_native_blake3.py`. The native graph matched the Python compressor on the committed vector and full public BLAKE3 digests. On the evidence host (`x86_64` Linux, Python 3.13.5), median 5,000-call leaf timing improved by **5.18x** and two 1 MiB whole-hash iterations improved by **4.77x** after warm-up. These are host measurements, not a cross-platform performance guarantee. The existing official BLAKE3 vector tests remain authoritative for digest compatibility.
-
-## U1.1 hosted Windows PE32+ executable — 2026-10-02
-
-- Path: verified XAX -> existing x86-64 frame lowering -> `xax_pe.py` PE32+ container -> Windows loader. No CRT, linker, assembler, LLVM, startup stub, or base-relocation table (code is position independent; image is ASLR/NX compatible).
-- `call_foreign` lowers to `call [rip+disp32]`; each distinct `(library, symbol)` gets one IAT slot. Foreign ABI ownership is now explicit: verifier accepts `android-aapcs64-c` and `win64-c`; x86-64 rejects non-`win64-c`, AArch64 rejects non-`android-aapcs64-c`; raw load images reject import-bearing images (`XAX.NATIVE.IMPORTS`). `x86_64-windows-load-image-v5` CID unchanged.
-- Escaping stack pointers are materialized by one `lea` only at foreign/direct call argument sites; 1/2-byte stack loads/stores now lower (previously rejected). Existing 4/8-byte encodings unchanged.
-- Bounded platform package `xax_platform.win32_kernel32_api`: GetStdHandle, WriteFile, GetProcessHeap, HeapAlloc (verified heap-owner allocator contract), HeapFree (deallocator contract), ExitProcess.
-- Returning from a PE entry left the process alive (observed hang; loader worker threads), so termination is an explicit `ExitProcess` call; the container adds no exit path (ADR-076).
-- EXECUTED at U1.1 (evidence file since regenerated by U1.2a below): 2,048-byte PE (SHA-256 `4c0bffdf87a5042eccb3737f7e0891e6ebb563e41a5fa75c2d7bc15efd6c7c46`), 918 code bytes, six kernel32 imports; fixture writes `XAX\n` from stack storage, allocates/frees 64 heap bytes, runs a looping `sum_to(10)` direct call, exits 57; 20/20 runs on Windows 11 10.0.26200 AMD64 (AMD Family 25 Model 80). Process wall median 19.3 ms (includes CreateProcess/pipe; not a code-quality claim).
-- Historical limit at U1.1: R2 was not claimed because callbacks/threads/files/sockets were absent. ADR-170 later adds executed callbacks and thread lifecycle and advances the row to R2. R4, files/sockets, unwind/PDB/TLS, and the other listed gaps remain open.
-- Tests: `tests/test_xax_pe.py` 5/5 (execution test runs only on Windows x86-64), `tests/test_replacement_matrix.py` 3/3. Full suite: 577 tests; the 31 failures/errors are identical by name to the pre-change baseline (missing `pytest`/tokenizer modules, stale pinned evidence/code hashes, host-bound cases); 0 new.
-
-## U1.2a heap views on x86-64 and U1.4 WASI — 2026-10-02
-
-- x86-64 frame lowering now lowers `heap_view` (null test + `ud2`), static heap loads/stores with folded offsets, and checked dynamic heap loads/stores (`[base+index+disp32]` after an unsigned bound check + `ud2`). Heap `address_offset`/`pointer_cast` results are materialized so calls/returns/branches see them. Atomics on heap views reject explicitly. `x86_64-windows-pe-v1` adds `heap_view`; its CID changed to `f9385ae2…`.
-- Verifier (ADR-079): pointer-free memory-effect call interfaces are pure ordering frontiers; previously any effect-bearing direct call needed a stack contract.
-- `win32_kernel32_api` adds `VirtualAlloc` (zero-filled, 4096-aligned allocator contract) and `virtual_free_view`.
-- EXECUTED (Windows 11 x86-64): the PE fixture now also calls `squares_sum`, which fills a 16 x b32 heap array with i*i in one loop and sums it in another through checked heap accesses, then frees it. Exit 1298 = 55 + 1 + 1 + 1240 + 1. Evidence: 3,072-byte PE, 1,997 code bytes, 8 kernel32 imports, 20/20 runs (`windows_pe_hosted_evidence.json`, SHA-256 `ab3d7a86…`). Out-of-bounds variant (17 elements) traps with `STATUS_ILLEGAL_INSTRUCTION` (test).
-- WASI (ADR-080): `wasm32-wasi-v1` + `wasm32-import` ABI + `xax_platform.wasi_preview1_api`; `run_wasi_isolated` runs modules under Node `node:wasi`. EXECUTED: 451-byte module; host writes argc/argv size into XAX stack storage via `args_sizes_get`; XAX reads them, runs `sum_to(10)`, and calls `proc_exit(97)`; 10/10 runs on Node v26.7.0 (`wasi_command_evidence.json`).
-- U1.2b prototype: `x86_64-windows-pe-v1` frame functions get a chunk-exact store→load forwarding peephole (reload deleted, or `mov dst, src`; never at a branch target; labels/branches/calls/semantic ranges shifted). Legacy load-image targets keep pinned bytes. PE fixture code 1,997 → 1,873 bytes (−6.2%); evidence regenerated (3,072-byte PE, SHA-256 `87e1edaa…`), still exit 1298 on 20/20 runs.
-- Regression after all U1 changes: 584 tests; the 31 failures/errors are identical by name to the pre-change baseline; 0 new.
-- Not done: real register allocation for frame functions (U1.2b); pointer values in memory (OI-37) — blocks `fd_write` iovecs and linked structures; browser bindings.
-
-## OI-37 first slice: `pointer_address` — 2026-10-02
-
-- New memory operation `pointer_address` (id 66, ADR-081): pointer -> `bits<pointer width>`, mandatory exposure waiver, live-storage check, provenance-free result; lowered on x86-64 (`lea`/load) and wasm32 (no-op); reference executor rejects. Added to `x86_64-windows-pe-v1` (CID now `9c6224e5…`; PE bytes unchanged) and `wasm32-wasi-v1`.
-- `wasi_preview1_api.fd_write` declared with iovec/nwritten memory effect plus buffer memory effect.
-- EXECUTED: WASI fixture now prints `XAX\n` to stdout through `fd_write` and exits 97; 635-byte module; 10/10 runs on Node v26.7.0 (`wasi_command_evidence.json`, SHA-256 `88df1893…`).
-- Still open (OI-37): provenance-carrying pointer stores/reloads (linked structures, vtables).
-
-## OI-37 second slice: provenance-free pointer elements — 2026-10-02
-
-- ADR-082: memory elements may be pointer types; only provenance-free pointers (function addresses, external pointers) may be stored; reloads carry no facts. x86-64 checks pointer-element accesses against the 64-bit pointer width. Reference executor rejects pointer elements explicitly.
-- EXECUTED (Windows 11 x86-64): PE fixture adds `dispatch()` — a two-entry function-pointer table in stack memory, reloaded by checked loads and called via `call_indirect` (41). Exit 1339; 3,584-byte PE, 2,181 code bytes, SHA-256 `87fd6168…`, 20/20 runs.
-- Negative: storing the table's own stack address rejects (`MEMORY-POINTER-STORE-LOCAL-PROVENANCE`).
-
-## U1.2b register path for hosted x86-64 — 2026-10-02
-
-- ADR-083: on `x86_64-windows-pe-v1` the register-resident allocator now also lowers compares, foreign calls (with shadow space), function addresses, heap views, heap pointer arithmetic, static/checked heap loads/stores, and cross-block SSA uses (frame homes). Stack-storage/float/aggregate/indirect-call functions remain on the frame path with the forwarding peephole. Legacy targets unchanged.
-- MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
-- EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
-
-## Android without a device (ADR-105, ADR-106) — 2026-10-02
+### Android without a device (ADR-105, ADR-106) — 2026-10-02
 
 - Host tooling (not in the repository): `qemu-user-static` 8.2.2, NDK r28c, build-tools 34 and 36.1, platform 35, and the official Android 14 arm64 system image. `linker64` and bionic were extracted from it into a qemu root (paths in `bench_android_bionic.py`).
 - EXECUTED under Android's `linker64` and bionic, via `qemu-aarch64` (`android_bionic_qemu_evidence.json`, 29/29). That covers the platform-contract probe (file, pthread, socket through 10 bionic imports; first execution ever), libxposed `native_init`, nine JNI fixtures checked slot by slot against recording stubs generated from the NDK `jni.h`, `JNI_OnLoad`/`GetEnv`, a bionic `getpid` import, and both callbacks from the device-validated APK. Every case runs in both ELF containers.
@@ -990,304 +1350,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - ADR-111: stateful app `xax.counter` (`benchmarks/android_counter_app.py`). XAX native code owns the count, the file reads and writes, and descriptor closing; DEX only opens the descriptor and shows the number. ART verifies both classes. Under bionic the APK's library restores, increments, and persists across a simulated restart (0,1,2,3 → 3 → 4; 8-byte file; descriptors closed). The DEX emitter gained generic assembled methods, and existing DEX is byte-identical. The official-tools and ART evidence now cover 21 APKs (64 classes, all `Verified`). Device run pending: `integration/android/validate_counter_apk.sh`.
 - Regression: 717 tests. The failure set equals the baseline except for environment effects of installing `tiktoken` (OI-03 now passes; OI-12/OI-13 evidence replays fail whenever `tiktoken` is present, as already recorded below).
 
-## Post-upgrade token test (lowest cost) — 2026-10-02
-
-- Offline, with no model tokens: after installing `tiktoken` 0.14.0, the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44.
-- Model: one `task-01` pair (change a shared constant) run as fresh `haiku` subagents. C used 38,278 tokens and 4 tool calls; XAX used 39,997 tokens and 7 tool calls (1.04× C). Both passed the external checkers on the first attempt with no repairs. This is n=1 with fixed agent-harness overhead dominating, so it is not OI-31 evidence. It agrees with the earlier `task-02` smoke check (1.04×): on tiny edits, the XAX protocol's extra inspect/test round trips cost about as much as the C edit saves.
-
-## Browser pages with generated host bindings (ADR-103, U1.4) — 2026-10-02
-
-- Target `wasm32-browser-v1`, platform package `compiler/src/xax_web.py` (`xax-web-v1`: `query_copy`, `set_body_text`; host state ordered by `effect<io>`). `emit_browser_page` generates one deterministic HTML page containing the module plus host functions for the imported bindings only. Imports outside the package reject.
-- The wasm backend lowers `bit.and`/`bit.or`/`bit.xor`/`udiv`/`urem`/`int.truncate`/`int.zero_extend`, but only on targets that list them. Existing wasm targets and their evidence are byte-identical.
-- EXECUTED in headless Chromium 141 through Playwright (`compiler/benchmarks/browser_fib.py`, `browser_fib_evidence.json`). The XAX program reads the URL query, parses `n`, computes `fib(n)` modulo 2^64, formats it, and renders it into the DOM. Four queries pass with no page errors. Module 1,270 B, page 2,343 B. Vectors: `compiler/tests/test_xax_web.py` (7 tests).
-- Event entries (ADR-104, closes OI-43): `code-entry:wasm32-browser-event` addresses lower to exported `entry_<k>`; `body_on_click` and `body_text_copy` bindings. The interactive page (`n fib(n)`, advanced by XAX on each click) passes 4 queries × 2 clicks in Chromium. Module 3,700 B, page 5,843 B.
-- Matrix: `browser-web` NONE → R2 (bounded bindings executed, including events). R3 needs a nontrivial application.
-
-## C callbacks and SSE-class SysV arguments (ADR-102, OI-40) — 2026-10-02
-
-- A code address's calling convention is now part of its type. `FUNCTION_ADDRESS` returns `ptr<opaque<function>>` (internal) or `ptr<opaque_identity<"code-entry:sysv-x86_64-c">>` (`linux_api().c_callback`). The verifier requires foreign-entry targets to be pure and rejects both convention mismatches. No new operation, object kind, or type form.
-- x86-64 emits one 20-byte SysV-to-internal adapter per C-entry function after all functions. `sysv-x86_64-c` imports pass f32/f64 in `xmm0`–`xmm7` and return them in `xmm0`.
-- EXECUTED (`compiler/benchmarks/linux_c_interop.py`, `linux_c_interop_evidence.json`): libc `tsearch`/`tfind` with an XAX comparator exits 31 (a constant comparator, as a control, exits 78); libm `ldexp`/`pow`/`sqrtf` exits 68. Artifacts are 1,640 and 1,536 bytes and deterministic. Vectors: `compiler/tests/test_xax_c_interop.py` (12 tests).
-- Bug fixed: the Linux register allocator silently dropped SysV C arguments past the sixth. It now defers to the frame path, which rejects (`SYSV-C-SCALAR-CLASS`).
-- Open: effectful callbacks such as a `qsort` comparator that reads elements (OI-42); aggregates, stack arguments, and variadics (OI-40).
-
-## U1.3 Linux x86-64 executables and the Linux register path — 2026-10-02
-
-- Kernel integer completion (ADR-084): `bit.and` 67, `bit.or` 68, `udiv` 69, `urem` 70, `int.truncate` 71, `int.zero_extend` 72, with verifier rules, reference semantics, and x86-64 lowering. Portable trap reason 2 is `integer-divide-by-zero`. Only the Linux target packages advertise these operations.
-- Foreign ABIs: `linux-x86_64-syscall-v1` (ADR-085, register templates in declaration identity) and `sysv-x86_64-c` (ADR-087, INTEGER class only), both added to the single `FOREIGN_ABIS` registry. Typed declarations live in `xax_linux.py` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`, `exit_group`, and `c_function` for C imports).
-- Containers (ADR-086/087): `xax_linux.py` emits static or explicit-loader ELF64 `ET_EXEC` with no container code. Generic ELF packing is in `xax_elf.py`, shared with the Android emitter (Android bytes unchanged). Linux imports use the shared `call_import`/`NativeImage.imports` path.
-- Process entry: the entry function is lowered for Linux's aligned, no-return-address start (`compile_native(..., process_entry=True)`); its `ret` lowers to `ud2`, and exit is the program's explicit `exit_group` (ADR-076 rule).
-- Frame path (ADR-088): on Linux profiles only, escaping frame pointers are materialized and value pointers use base-register access, alongside main's heap-view lowering. `pointer_extent_from_graph` is shared with AArch64.
-- Register path (ADR-089): `xax_x86_64_regalloc.py`, separate from the PE allocator (ADR-083); convergence is OI-38. Differential corpus: `compiler/tests/test_xax_regalloc_differential.py` (120 seeded programs executed natively versus the reference executor).
-- Workload: `compiler/benchmarks/linux_filestat.py`. MEASURED (`u1_linux_filestat_evidence.json`, `XAX_BENCHMARKS.md` §15.1): 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` over seven runs; 3,560-byte artifact; 1,184 KiB peak RSS (loader + libz + libc). R4 is not met.
-- Construction tooling: `xax_graph_builder.py` (block/node builder and reachable-closure store writer); it is not a source language.
-- Token test after the upgrade (lowest cost). Offline: with `tiktoken` installed, the OI-01 transport counts and the OI-03/OI-04 replays reproduce, and the AI-native tests pass 17/17. The OI-12 and OI-13 committed evidence records `tiktoken` as unavailable, so those replays fail whenever it is present (environment-dependent; predates this work). Model: one `task-02` pair with `haiku` subagents — C 35,151 tokens, XAX 36,492 tokens (1.04×), both pass; this is not OI-31 evidence.
-- Regression on Linux x86-64 (Python 3.11.15, pytest, `tiktoken` installed): the merged tree has exactly main's 17 environment/evidence failures — host-bound Windows/QEMU cases, the stale stack-memory hash pin, the OI-25/OI-26 replays, the OI-12/OI-13 `tiktoken` replays, and the wheel build — with 781 tests passing.
-
-## OI-37 measurement: arena + index versus pointer links — 2026-10-02
-
-- Workload `compiler/benchmarks/linux_chains.py` (chained hash table, 2^20 nodes, 2^16 buckets) in XAX with arena indices and checked access. Its C twin uses pointer links, and diagnostic C twins use index links with and without checks. Shared tooling: `benchmarks/linux_graph_kit.py` and `benchmarks/linux_harness.py` (filestat ported with a byte-identical artifact).
-- MEASURED (`oi37_chains_evidence.json`, two runs): XAX 3.49–3.58× `gcc -O2`, 1,598 B, 16,896 KiB RSS. Attribution: representation 1.44–1.47×, checks 1.34–1.41×, XAX code generation 1.73–1.80×. Decision ADR-090: OI-37 pointer provenance is justified but follows OI-38.
-- Tests: `compiler/tests/test_xax_chains.py` (small-table correctness against an independent reference, plus artifact identity).
-
-## OI-38 step 1: Linux allocator (ADR-091) — 2026-10-02
-
-- `xax_x86_64_regalloc.py`: cross-block values used in loops are pinned to `rbx/rbp/r12–r15`; fall-through branch layout with out-of-line edge stubs; shared cold trap stubs; power-of-two `udiv`/`urem` as shift/mask; 16-byte loop-header alignment.
-- MEASURED (one run each): `chains` 1.91× `gcc -O2` (was 3.49×), and 1.06× equivalent checked-index C (was 1.80×). `filestat` 0.94× `gcc -O2`, 1.47× `clang -O2`.
-- Differential corpus: 120 + 40 programs (the 40 call while values are pinned). Evidence JSONs regenerated.
-
-## OI-37 step: `pointer_rebase` (ADR-092) — 2026-10-02
-
-- Operation 73 in the kernel. Verifier windows, executor and frame-path rejection, Linux allocator lowering (`sub; ror; cmp; ja` to a cold trap). Spec §5.6, conformance §23 item 12.
-- `chains` builds `links="pointer"`, and C gains a `-DCHECKED` diagnostic. MEASURED: pointer links 1.64× `gcc -O2` (1.07× checked-pointer C); index links 2.00×. The Linux allocator also keeps a layout-next successor inline when both edges copy.
-- Tests: `compiler/tests/test_xax_pointer_rebase.py` (executed traps, verifier rejections), and `test_xax_chains.py` covers both link kinds.
-
-## OI-37 step: `pointer_rebase` on wasm32 (ADR-093) — 2026-10-02
-
-- `wasm32-wasi-v1` lowers operation 73 (`i32.sub; i32.rotr; i32.gt_u; unreachable`). The wasm static layout reserves address 0–15, so 0 is never a storage address.
-- EXECUTED: a WASI linked-list walk exits 42, and four corrupted-link vectors trap (`test_xax_wasm_rebase.py`). Full suite: 790 passed, plus the 17 pre-existing failures.
-
-## Linux argv/env/auxv (ADR-094) — 2026-10-02
-
-- New foreign ABI `linux-x86_64-startup-v1`: `argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`, `auxv_value`, lowered inline in the process entry (`xax_linux.linux_startup_api()`). `run_linux_executable` accepts `arguments` and `env`.
-- EXECUTED: an echo-style tool, envc, `AT_PAGESZ`, truncation reporting, and traps (`test_xax_linux_startup.py`). Full suite: 796 passed, plus the 17 pre-existing failures.
-
-## OI-38: PE on the converged allocator (ADR-095) — 2026-10-02
-
-- `x86_64-windows-pe-v1` uses `xax_x86_64_regalloc.py` first. It adds Win64 calls (including stack arguments), `function_address`, `call_indirect`, and stack storage, with per-profile foreign ABI ownership. It also fixes the constant-return epilogue bug.
-- PE fixture: 6/6 functions converged; code 700 B (was 1,269); EXECUTED-UNDER-WINE 9.0 (`windows_pe_wine_evidence.json`; `WineExecutionTests` runs when wine64 is installed).
-
-## OI-37 closed (ADR-096) — 2026-10-02
-
-- Closure evidence: iovecs (ADR-081); pointer-linked traversal on x86-64 (heap) and wasm32 (stack storage, the stated deviation); forged/expired vectors on both targets; verifier cost and offline edit tokens (`oi37_closure_evidence.json`).
-- Check-free reloads move to OI-41 (typed mixed storage, deferred).
-
-## OI-41 closed: record links (ADR-097) — 2026-10-02
-
-- Kernel: type `link` (form 11), operations `link_make` (74) and `link_follow` (75), record views over tuple elements, and an optional `heap_view` link-target operand. Verifier rules: 21 (`oi41_links_evidence.json`).
-- Allocator (shared by Linux and PE): null-test elision, displacement folding, loop rotation with aligned targets, edge hints, and range-proven rebase elision.
-- MEASURED: `chains` record links 1.066× `gcc -O2`. Tests: `test_xax_links.py` (9 rejection vectors, null-only constants, a walk, and a null-follow trap). Full suite: 801+ passed, plus the 17 pre-existing failures.
-
-## Record links on wasm32 and PE (ADR-098) — 2026-10-02
-
-- wasm32: 8-byte link fields holding zero-extended `i32` addresses; `link_follow` as `i32.eqz`/`unreachable`. PE: operations 73–75 admitted and lowered by the converged allocator.
-- EXECUTED: `test_xax_wasm_links.py` (walk exits 42, null traps) and `test_xax_pe_links.py` (exit 42 under Wine 9.0). Full suite: 807 passed, plus the 17 pre-existing failures.
-
-## Links across calls and padding (ADR-099) — 2026-10-02
-
-- Borrowed record views link into themselves (callers may pass only such views). Windowed record loads ignore uninitialized padding.
-- EXECUTED: a callee walk (exit 42); a cross-target table cannot be passed; padded wasm32 stack records walk to 42; an unwritten field still rejects.
-
-## PE row: first C comparison (ADR-100) — 2026-10-02
-
-- `hosted.c` is now an exact twin of the fixture (exit 1339). MinGW-w64 no-CRT build; `CTwinTests` checks parity under Wine.
-- MEASURED-UNDER-WINE: file 2,048 B (XAX) against 2,560 B (C); code 757 B against 416 B (gcc folds `sum_to` and the dispatch table); wall time equal, start-up bound.
-
-## Cross-call link targets (ADR-101) — 2026-10-02
-
-- `link_target` (op 76) lets a callee borrow a table and the arena its links point into. Every call site checks the pair. It lowers to no code.
-- x86-64 elides returned borrowed views when a function has more than one machine return. Executed: callee walks cross-storage links, exit 42. Three rejection vectors.
-- Linux target profiles now list op 76. That changes the `chains` and `filestat` program roots; the executables are byte-identical. Evidence JSONs are updated.
-
-## JVM and RISC-V targets; evidence hosts (ADR-112–ADR-114) — 2026-10-03
-
-- JVM (ADR-112): `xax_jvm.py`. EXECUTED: integer differential corpus (widths 8/13/32/47/64), float/conversion grid, `java -jar` run (stdout through `System.out`, exit 7 via `System.exit`), a trap stack trace mapped to its node, package build (`JVM_EXECUTABLE_JAR`/`JVM_LIBRARY_JAR`), and workspace mapping (`test_xax_jvm.py`, 18 tests and 78 subtests). MEASURED: Collatz 1.04× `javac` kernel time, 1.51× class bytes, 1.01× peak RSS (`XAX_BENCHMARKS.md` §15.8). JVM row: R2.
-- RISC-V (ADR-113): `xax_riscv64.py`, with liveness-hull linear scan into s1–s11. EXECUTED under Unicorn: the same differential corpus, a register-pressure loop, traps; every word decodes under `llvm-mc` (`test_xax_riscv64.py`, 9 tests and 383 subtests). MEASURED (emulated): Collatz 3.72× `clang -O2` instructions, 3.23× bytes (§15.9). riscv64 row: R1.
-- Evidence hosts (ADR-114): the six Windows-only x86-64 tests and both QEMU-only AArch64 tests now execute on Linux. One stale code hash was re-pinned after execution.
-- Repairs: OI-25's projection benchmark wrote zip entries in filesystem order (Python 3.11 `zipapp` uses an unsorted `rglob`), so its replay failed on some hosts; it now writes them in declared order. OI-26's replay compared the generating interpreter's version, a host observation. The wheel listed neither `xax_web` nor `xax_android_counter`.
-- Regression on this host (Linux x86-64, Python 3.11.15, OpenJDK 21.0.11, clang 18.1.3, unicorn 2.1.0): **903 passed, 19 skipped, 2 failed**. The two failures are environment-bound: `tiktoken` is not installed, and the wheel build requires Python ≥ 3.12. Before this pass: 862 passed, 16 failed.
-
-## Lend entries: `qsort_r` with an XAX comparator (ADR-115, OI-42 closed) — 2026-10-03
-
-- `sysv-x86_64-c-lend` entries read a view lent by the C call that receives them. EXECUTED: glibc `qsort_r` sorts a 16-element XAX heap array; exit 117 (`linux_qsort_evidence.json`). Seven rejection vectors (`test_xax_lend_entry.py`, 9 tests).
-
-## Post-upgrade token test (lowest cost) — 2026-10-03
-
-- Offline, with no model tokens (tiktoken 0.14.0, `o200k_base`): the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44. With a tokenizer installed, the OI-12/OI-13 suites now check real counts, and OI-12's committed evidence records them (9 and 7 tokens per timing query/response).
-- Model: one `task-01` pair (change a shared constant), each arm a fresh `haiku` subagent given the identical task prompt. C used 37,576 tokens and 3 tool calls; XAX used 40,021 tokens and 10 tool calls (1.065× C). Both pass the external checkers on the first attempt with no repairs. n=1, dominated by fixed agent-harness overhead, so this is neither R5 nor OI-31 evidence. It matches the earlier results (1.04×, 1.04×): on one-constant edits, the XAX protocol's inspect/mutate/test round trips cost slightly more than the C edit saves. The ADR-112–115 changes did not touch the workspace protocol, so this is a regression check, not a new measurement of it.
-
-## Self-hosting step S1: XAX-authored RISC-V encoder on the production path (ADR-116) — 2026-10-03
-
-- `xax_selfhost_riscv64.py` builds `encode(kind, a1..a6)`, covering all RV64 formats plus the `li` planner, as one XAX function. Its committed store is `bootstrap/xax_riscv64_encoder.xax` (10,129 bytes). On Linux x86-64 the RISC-V backend encodes through it by default, natively, with the Python encoders as reference and fallback.
-- EXECUTED: the native leaf agrees with Python on 12,072/12,072 cases. The encoder also runs on RISC-V (emulated, 300/300) and on the JVM. Corpus images are byte-identical with either encoder, and the encoder compiling itself is a fixed point (`test_xax_selfhost_riscv64.py`, `selfhost_s1_evidence.json`).
-- Cost: about 2.0 µs per native call against 0.18 µs in Python; a RISC-V compile takes 2.30 ms against 2.15 ms. The compiler is still mostly Python; see the S ladder in the roadmap.
-
-## Self-hosting step S2: every CID from an XAX-authored hash (ADR-117) — 2026-10-03
-
-- `xax_selfhost_blake3.py` implements the whole BLAKE3-256 hash as one XAX function over lent input and scratch views (store `bootstrap/xax_blake3_hash.xax`, 34,025 bytes; native leaf 44,387 bytes). `blake3.blake3()` uses it by default on Linux x86-64, so the compiler's content identities come from XAX code.
-- EXECUTED: official vectors, boundary and random lengths up to 1 MiB, and 3,000/3,000 agreement with the Python driver. MEASURED: 11.6× faster object hashing (49 ms against 568 ms for 3,000 objects).
-
-## Self-hosting step S3: the store container decoder is XAX (ADR-118) — 2026-10-03
-
-- `xax_selfhost_store.py` (store `bootstrap/xax_store_decoder.xax`) decides container acceptance and builds the record index. `StoreReader` uses it by default on Linux x86-64, checking digests with the S2 XAX hash, and runs the bootstrap parser only to produce diagnostics or for deferred cases. EXECUTED: identical accept/reject and index over 2,000 mutations (6,000 in development), and identical diagnostics on rejection. MEASURED: 0.70 ms against 1.17 ms per read of a 34 KB store.
-- With S0–S3 on the production path, an object's identity (hash) and the container that holds it are both computed by XAX code.
-- S3b (ADR-119): the XAX decoder also parses every object envelope; `StoreReader.get` builds objects from it and checks CIDs with the S2 hash. Objects or their exact diagnostics are identical to the bootstrap decoder's on committed stores and 600 mutations. Read plus decode of a 34 KB store: 1.90 ms against 3.48 ms.
-- S3c (ADR-120): graph-body syntax is decoded by XAX (`xax_selfhost_graph.py`, store `bootstrap/xax_graph_decoder.xax`); `_parse_graph` walks its stream. Parses and diagnostics are identical on real graphs and 1,500 mutations. Full suite: 936 passed, 1 host-bound failure.
-- S3d (ADR-121): branch targets, dominators, and block order are computed by XAX (`xax_selfhost_cfg.py`, store `bootstrap/xax_cfg_analysis.xax`), identical to the bootstrap on 400 random CFGs. Full suite: 941 passed, 1 host-bound failure.
-- S3e (ADR-122): every value use's definition and dominance is checked by XAX; `value_type` is a plain lookup when XAX proves them all. Full suite: 942 passed, 1 host-bound failure.
-
-## Linux AArch64 executables (ADR-123) — 2026-10-03
-
-- New platform row `linux-aarch64` at R2 (emulator-only): static and explicit-loader ELF64 executables from the shared AAPCS64 lowerer, `linux-aarch64-syscall-v1` thunks, `aapcs64-linux-c` imports, and the unchanged `filestat` graph executed under qemu-aarch64 with glibc and `libz.so.1`. 14,024 bytes vs 67,496 for gcc -O2; 6.6× gcc's emulated time (frame path).
-- AArch64 frame path: integer completion operations; liveness-shared value slots on the Linux identities (filestat frame 4,848 → 240 bytes).
-- Fixed a miscompile: a duplicate `_cset` made frame-path integer and float compares crash or pick the wrong condition. Regression test executes every compare kind.
-- Matrix validator now enforces conformance §23.17 (no performance evidence on emulator-only rows). `requires-python` lowered to 3.11, where the full suite passes.
-- Full suite: 809 tests pass, 17 skipped (host-bound), on Python 3.11 with qemu-user, pytest, tiktoken, and unicorn installed.
-
-## SPIR-V compute kernels on Vulkan (ADR-124) — 2026-10-03
-
-- GPU row NONE → R1. `xax_spirv.py` lowers ordinary XAX functions (the `spirv-compute-v1` entry contract) to SPIR-V 1.3 compute modules; they pass `spirv-val` and run on Mesa llvmpipe with buffers and trap status equal to the reference executor. Concurrency safety is a checked rule (`SPIRV-KERNEL-OWN-ELEMENT`). Collatz: 6.9× glslang's time on llvmpipe, 1.81× module bytes (dispatch-loop lowering).
-- `GraphBuilder` blocks gained `trap()`; the reference executor accepts reference-backed heap-space pointer arguments.
-
-## Recursion is callable (ADR-125) — 2026-10-03
-
-- Group member functions make `(group, member)` callable; recursion now compiles and runs on the reference executor, wasm32, RISC-V, the JVM, AArch64 bare metal, and Linux x86-64/AArch64 executables (factorial, even/odd, and recursion over a borrowed view). Previously no compiled program could recurse.
-- AArch64 now elides borrowed-view returns (ADR-101), so view-passing functions compile there.
-- Full suite: 833 passed, 17 skipped.
-
-## First R3 application: `jsonmin` (ADR-126) — 2026-10-03
-
-- Linux x86-64 R2 → R3 and Linux AArch64 R2 → R3 (emulated). `jsonmin` validates and minifies JSON from stdin; it matches its reference contract and Python's parser on generated and mutated inputs. Against C twins it now takes 1.56× gcc -O2 and 1.67× clang -O2 time (from 2.11× before program and compiler changes) with the smallest RSS and binary, so it is not R4.
-- The matrix validator now gates R4 on an explicit `competitive` verdict.
-- Fixed: narrow-width register binary operations on the Linux x86-64 allocator; extents of pointers that calls give back.
-- Full suite: 840 passed, 17 skipped.
-
-## C header import (ADR-127) — 2026-10-03
-
-- `xax_c_import` turns C prototypes (clang JSON AST) into canonical foreign declarations. It is byte-identical to the hand-built `crc32`, libm, and `strlen` declarations, and an XAX program using imported glibc stdio executes. Coverage: 855 of 1,084 functions across zlib.h, string.h, stdio.h, and math.h; the rest are refused with reasons (variadics, by-value types).
-
-## Bare-metal board on QEMU virt (ADR-128) — 2026-10-03
-
-- Board profile 5 and `aarch64-qemu-virt-v1`: a bare-metal XAX program prints over UART MMIO, takes three GICv2 virtual-timer interrupts through a contract-checked XAX handler, and powers off via PSCI (5,420-byte image, exact output). U1.6 is executed (emulated); the row stays R1 because bare metal cannot link foreign objects yet.
-- The semihosting AArch64 harness now passes `-net none`: with `qemu-system-aarch64` installed but no EFI ROMs, its default NIC failed to start (3 tests errored in the commit that added the board; fixed in the next commit). Full suite: 853 passed, 17 skipped.
-
-## Static linking into bare-metal images (ADR-129) — 2026-10-03
-
-- `xax_elf_link` links freestanding AArch64 ELF objects (exact relocation subset) into board images. XAX calls C through `aapcs64-c` declarations imported from the header, including a C-side allocator under an explicit contract. The aarch64-baremetal row R1 → R2 (emulated). Matrix: `NOT_APPLICABLE` needs a justification and satisfies only `dynamic_linking`.
-
-## Standard semantic libraries (ADR-130) — 2026-10-03
-
-- `xax_stdlib`: the `xax.text` and `xax.collections.hashset_u64` package families (canonical `PACKAGE` objects, function-granular, instantiated per extent or capacity, target independent). `uniqcount` uses them and is EXECUTED on Linux x86-64 and AArch64. OI-36 CLOSED.
-
-## Small-set membership selection (ADR-131) — 2026-10-03
-
-- The Linux x86-64 register allocator lowers `x == c1 || x == c2 || …` branches to one `bt`. `jsonmin` went from 1.56× to 1.20× gcc -O2, and from 1.67× to 1.31× clang -O2. Linux stays at R3 (not competitive).
-
-## Post-upgrade token test (lowest cost) — 2026-10-03, after ADR-123–131
-
-- Offline only, with zero model tokens (tiktoken 0.14.0): the AI-native harness and the OI-03/OI-04/OI-12/OI-13 tokenizer replays pass 67/67 against the changed verifier. New offline token evidence comes from OI-36 (`oi36_stdlib_evidence.json`): using the standard packages takes a 268-token interface view plus a 1,360-token application mutation, against 3,256 tokens with the library bodies inline.
-- No model pair was run. `xax_workspace`, the AI-native harness, and `docs/09_AI_PROTOCOL.md` are unchanged since the last pair (`task-01`, `haiku`, XAX 1.065× C), so a new pair would only repeat that regression check. The next paid trial should measure something new: a library-using edit, such as adding a call to `hashset_u64.contains`.
-
-## Self-hosting step S4: scalar operation typing is XAX (ADR-132) — 2026-10-03
-
-- `xax_selfhost_typing.py` (store `bootstrap/xax_op_typing.xax`) types the integer, compare, rotate, float, and conversion nodes, decoding type objects itself. It is the default verifier path on Linux x86-64. The bootstrap checks only the nodes it does not prove, so diagnostics are unchanged. EXECUTED: on 600 random nodes, the proven set is exactly the bootstrap-accepted set. MEASURED: all 2,419 covered nodes in four real stores are proven, with verify time roughly unchanged. Full suite: 868 tests, 17 skipped.
-
-## Self-hosting step S4b: aggregate and sum typing is XAX (ADR-133) — 2026-10-03
-
-- The XAX typing function now also decodes tuple, array, and sum types (of scalar elements) and checks `aggregate.make/get` and `sum.make/tag/get`. On 1,000 random nodes it agrees with the bootstrap: every proven node is accepted, and every accepted node is proven except those with nested aggregates. 2,444/2,444 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4c: call, constant, memory, and resource nodes together with the fact tracking.
-
-## Self-hosting step S4c: resource, effect, and meta typing is XAX (ADR-134) — 2026-10-03
-
-- The XAX typing function now decodes effect, resource, and opaque types and checks `effect.step`, `resource.*`, and `meta.*` nodes. Every node check that reads only types is now XAX. For 2,000 random nodes, outcomes and exact diagnostics are identical with the path on and off. 2,447/2,447 covered corpus nodes are proven. Full suite: 868 tests, 17 skipped. Next is S4d: call, constant, memory, atomic, and target typing, which needs the pointer/owner/effect fact tracking.
-
-## Self-hosting step S4d.1: constants and terminators typed by XAX (ADR-135) — 2026-10-03
-
-- The XAX typing function now validates constant objects and values, and terminator condition and edge types. Outcomes are identical with the path on and off on random nodes and 150 random branching graphs. 3,374/3,374 covered corpus nodes and 427/427 terminators are proven. Full suite: 870 tests, 17 skipped. Remaining in Python: call contracts and the pointer/owner/effect fact system (S4d.2).
-
-## Self-hosting step S4d.2a: memory-free graphs skip the fact system (ADR-136) — 2026-10-03
-
-- XAX now checks `call.direct` contracts and reports whether a graph is memory-free. When it is, and every node and terminator is proven, the verifier runs no memory-fact passes. Outcomes are identical with the path on and off on random nodes, calls, and branching graphs. 5 of 20 corpus graphs take the skip path. Full suite: 870 tests, 17 skipped. Next is S4d.2b: stack-storage facts in XAX.
-
-## Self-hosting step S4d.2b: memory-fact engine in XAX, stack storage (ADR-137) — 2026-10-03
-
-- `xax_selfhost_facts.py` runs the bootstrap's memory-fact passes as XAX (same facts, merge, and fixpoint), accept or decline. It models stack storage now; on acceptance the verifier skips its Python passes and takes the pointer extents from XAX. Identical outcomes and extents on 300 random stack programs; full suite 872 tests, 17 skipped. Next: heap views (S4d.2c), then links, atomics, and the rest (S4d.2d).
-
-## Self-hosting step S4d.2c: the facts engine models heap views and calls (ADR-138) — 2026-10-03
-
-- Borrowed and allocated views, checked accesses, rebase windows, foreign calls (carrier decoded in XAX), view-passing direct and group calls, and view returns are modelled. All 20 corpus graphs are verified by the XAX engine with identical pointer extents, and `verify_store` is 20–30% faster on the view-heavy stores. Full suite: 872 tests, 17 skipped. Remaining for S4d.2d: links and records, atomics, raw loads, stack resource contracts, lend entries, indirect calls, function addresses, and target operations.
-
-## Self-hosting step S4d.2d: S4 complete (ADR-139) — 2026-10-03
-
-- The XAX facts engine now decides atomics, raw loads, stack resource contracts, function addresses, indirect calls, lend entries, and target operations, the last through a target-package decoder in XAX (`xax_selfhost_target.py`). It also decides records and links: layouts, field addresses, padding-aware windows, the link operations, link stores and loads, link targets, dependents, and declarations.
-- Across the whole suite, every graph the bootstrap accepts is now decided by XAX. Python only produces diagnostics on a decline or a rejection. The exceptions are the helper programs' own seed graphs, parsed while those programs are built or loaded.
-- Larger views let the engine handle the biggest self-hosting graphs (98K values, 1,594 blocks).
-- `verify_store` is 10–25% faster with the XAX path on the measured stores. Full suite: 875 tests, 17 skipped. Next: S5, the RISC-V backend in XAX.
-
-## Self-hosting step S5a: RISC-V code generation in XAX (ADR-140) — 2026-10-03
-
-- `compile_riscv64` now generates code with an XAX program (`xax_selfhost_riscv64_backend.py`): liveness, linear scan, frame layout, lowering, the `li` planner, and jump fixups. Images are byte-identical to the bootstrap's, which stays as the fallback and the source of diagnostics.
-- Compiling is 2.3× faster on a 300-value loop. Full suite: 881 tests, 17 skipped. Next: S5b, which feeds the program from the XAX decoders instead of the Python marshal.
-
-## Self-hosting step S5b: S5 complete, store objects to RISC-V image in XAX (ADR-141) — 2026-10-03
-
-- The XAX backend program now reads the store's objects and the XAX graph decoder's streams itself. It decides the target's operation sets, function interfaces, value widths, constants, the call closure (skipping erased proof callees), and the function order. Python only copies objects and assembles the image object.
-- Images are byte-identical to the bootstrap's. `compile_riscv64` is 6.4× faster on a 300-value loop. Full suite: 882 tests, 17 skipped. Next: S6.
-
-## Self-hosting step S6a: linear flow in XAX (ADR-142) — 2026-10-03
-
-- The facts engine proves resource and effect linearity (`_verify_linear_flow`), and the verifier skips the Python pass when it does. 6,518 suite graphs are proven, none of them wrongly. Full suite: 883 tests, 17 skipped. Next: S6b, object-level verification.
-
-## Self-hosting step S6b.1: types and constants decided by XAX (ADR-143) — 2026-10-03
-
-- `verify_store` asks the typing program for a verdict on every type and constant, and skips the Python decoders for each one proven. On 600 random and mutated objects, XAX proved every valid one and no invalid one. Full suite: 884 tests, 17 skipped. Next: S6b.2 (functions, groups, contracts, reference lists, build objects, targets).
-
-## Self-hosting step S6b.2: functions, lists, contracts, and rootedness decided by XAX (ADR-144) — 2026-10-03
-
-- A native XAX store verifier decides ordinary functions (interface and graph contract), module and root reference lists, call contracts, and store rootedness and acyclicity. Every ordinary corpus function is proven. Full suite: 885 tests, 17 skipped.
-- The E DSL now binds a value already held by another variable as a fresh copy. This avoids an x86-64 register-resident lowering issue (aliased variables across control flow) whose root cause is open.
-
-## B1–B4 for the XAX RISC-V backend: a self-compilation fixed point (ADR-145) — 2026-10-03
-
-- A RISC-V views profile (checked heap-view loads and stores, 64-bit pointers, borrowed-view returns elided, `auipc`/`jalr` far jumps) lets the XAX RISC-V backend compile its own store. The XAX backend's image is identical to the bootstrap generator's (1,959,876 bytes).
-- That image, run in the RV64 emulator, compiles a corpus exactly as the native backend does. Compiling the backend store with it reproduces it byte for byte (gen3 == gen2, at most 22 billion emulated instructions).
-
-## Self-hosting step S6b.3: recursion groups, group member functions, and targets decided by XAX (ADR-146) — 2026-10-03
-
-- The store verifier decides recursion groups, with the bootstrap's full member key for the canonical order. It also decides group member functions, and identity carriers plus general and concurrency targets. Every corpus function (including jsonmin's group member), group, list, contract, and target is proven. Full suite: 890 tests, 18 skipped. Next: S6b.4 (build and package objects, the remaining target profiles, and the per-graph glue).
-
-## Multi-language performance rule; x86-64 within 1.05× of the fastest (ADR-147, ADR-148) — 2026-10-03
-
-- Performance requirements were updated: each CPU/native runtime comparison now includes C/C++ and Rust, and XAX must be within 1.05× of the fastest valid implementation. The first run measured XAX at 1.57× (`filestat`), 1.18× (`chains`), and 1.21× (`jsonmin`) the fastest: unmet.
-- After ADR-148 (range-proven checks, a lowering view with leaf inlining and layout, call-aware allocation), the interleaved re-run measures 1.017×, 1.000× (XAX fastest), and 1.029×: MEASURED, primary target met on all three. Linux x86-64 row: R4 for that scope. Full suite: 1,059 passed, 4 skipped. Next: S6b.4.
-
-## Self-hosting step S6b.4: packages, build objects, all target profiles, and per-graph glue decided by XAX (ADR-149) — 2026-10-03
-
-- The store verifier decides packages; profiles, trust policies, signatures, and optimization policies; then requests, snapshots, and provenance in later passes (closures, grants, signature coverage); platform, accelerator, and board targets; and every streamed graph's type references, reference use, and trap payloads. Randomized and mutated stores agree with the bootstrap exactly, and no verdict holds for an object the bootstrap rejects. Full suite: 1,064 passed, 4 skipped. Next: the remaining S6 work (the bootstrap's graph checks that are not yet XAX passes, then B1–B4 for the real compiler on one target).
-
-## Self-hosting step S6c: all committed stores decided by XAX; B1–B4 for the store verifier on RV64 (ADR-150) — 2026-10-04
-
-- The graph decoder and the verifier windows now hold the largest helper stores, so every object of all 12 committed stores, the verifier's own included, is decided by XAX. The XAX RISC-V backend reclaims each function's arena and compiles the verifier and the typing program like the bootstrap. The verifier's RISC-V image verifies every committed store with the native verdicts (B2/B3). The backend's RISC-V image recompiles the verifier byte for byte (B4). The backend's own fixed point was re-run and still holds. S6 is EXECUTED for RV64. Next: aggregates in the RISC-V views profile (BLAKE3), and moving the Python driver's lowering structures and the x86-64 backend into XAX.
-
-## Documentation sync (2026-10-04)
-
-- Replacement levels in `README.md`, this file, `XAX_HANDOFF.md`, the roadmap, and the architecture document are now generated from `XAX_REPLACEMENT_MATRIX.json` by `compiler/src/xax_status_docs.py`; `tests/test_status_docs.py` fails while any copy is stale. Stale current-status text was corrected (README: "no platform is above R2", the 1.4–1.8× `clang` figure, and Python 3.12; the architecture snapshot after ADR-129; roadmap U1.8). Superseded benchmark sections (§15.1, §15.12) now point at §15.14.
-- Markdown structure: one H1 per document (architecture, specification, bootstrap README), fence languages in `docs/10_TARGET_MODEL.md` and `docs/11_ABI_PLATFORM.md`, and a store table in `compiler/bootstrap/README.md`.
-- `compiler/pyproject.toml` gains a `test` extra (`pytest`, `pytest-xdist`, `unicorn`, `tiktoken`).
-- Full suite on Linux x86-64 (Python 3.11.15, the `XAX_HANDOFF.md` environment, Android root from `make_android_root.py`): **1,070 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` emulation runs).
-
-## S6d: aggregates and stack arguments in the RISC-V views profile (2026-10-04, ADR-151)
-
-- Both RISC-V generators lower `aggregate.make`/`aggregate.get` for tuples and arrays of up to 255 scalar fields, LP64 indirect results (a hidden result-area address in a0, field k at offset 8k), and stack arguments past a7. Frames without such calls are unchanged, so every earlier image is byte-identical. The shared, instruction-set-neutral analysis moved to `compiler/src/xax_views_lowering.py`.
-- BLAKE3 (`xax_blake3_hash.xax`) compiles through both generators to one 18,844-byte RV64 image. Emulated, it matches the official vectors and the reference across chunk and tree boundaries, and gives the production digest of every committed store under 1 MiB. gen2 (the backend's own RISC-V image) compiles the BLAKE3 store to gen1's image (a default test, 3 s).
-- Evidence regenerated: `selfhost_closure_evidence.json` (B1 now includes BLAKE3; B4 verifier image unchanged, 4,559,444 bytes) and `selfhost_fixed_point_evidence.json` (backend store 902,679 bytes; gen2 = reference = gen3, 2,810,964 bytes).
-
-## S7a: the x86-64 backend as XAX; B1–B4 natively on x86-64 (2026-10-04, ADR-152)
-
-- `x86_64_views_target()` (`x86_64-linux-views-v1`) and its bootstrap reference `compiler/src/xax_x86_64_views.py` (Win64 registers, stack arguments above the shadow area, aggregate results through a hidden area, `ud2` traps). It matches the reference executor on 320 random calls and executes aggregates of 3–255 fields.
-- The XAX backends now share `compiler/src/xax_selfhost_views_backend.py` (front end, liveness, linear scan, edge copies, driver, native runner); the RISC-V store is byte-identical after the split. `compiler/src/xax_selfhost_x86_64_backend.py` adds the x86-64 hooks and lowering (store `compiler/bootstrap/xax_x86_64_backend.xax`, 974,862 bytes).
-- B1 on all nine helper programs, itself included; the native verifier image agrees with the bootstrap verifier on all 13 committed stores; gen2 reproduces itself natively in 0.95 s (`benchmarks/selfhost_x86_64_evidence.json`).
-- Production: every native helper is lowered by the XAX x86-64 backend (`host_image`); the optimizing `compile_native` lowers no XAX helper. MEASURED cost: 1.08–1.32× the optimizing images' run time; warm self-hosting suites 1.14×, cold 0.67×.
-- `blake3.py` now retries the native hasher when a module on its path is still importing (it previously gave up for the process). Full suite: **1,087 passed, 5 skipped** (the same host-bound five).
-
-
-## Documentation sync: generated Targets table and R0–R6 summary (2026-10-04)
-
-- `README.md` explains the replacement levels R0–R6 and the evidence labels, and its Targets table is now generated from `XAX_REPLACEMENT_MATRIX.json` (a new `<!-- xax-status:targets -->` block in `compiler/src/xax_status_docs.py`). Every matrix row carries a `name` and `summary`; the validator rejects a row without them. Platforms that have not started stay visible at level `NONE` (shown as "—"): Apple, .NET, RTOS/MCU, and a new `bsd-unix` row.
-- Roadmap: the U1 progress paragraph and levels block had drifted into M1 and are back under U1; the U1.3 row no longer states the Linux rows' old R2 levels as current.
-- README test command fixed (`PYTHONPATH=src:.:..`; `compiler.benchmarks` imports need the repository root) and the complete Ubuntu host environment written out.
-- Full suite on Linux x86-64 (Python 3.11.15, that environment): **1,089 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` runs). A statically linked `busybox` fails the three OI-24 sandbox tests; the dynamic build is required.
-
-## Android counter: verified descriptor ownership, durable writes, Java + NDK twin (2026-10-04, ADR-153)
+### Android counter: verified descriptor ownership, durable writes, Java + NDK twin (2026-10-04, ADR-153)
 
 - `xax_platform.posix_descriptor_api()`: a linear `descriptor` resource consumed only by the owning `close`, plus `fdatasync`. The counter's JNI callbacks take the token with the descriptor, so a leak (`XAX.RESOURCE.DROP`) or double close (`XAX.RESOURCE.DUPLICATE`) is rejected; a click syncs its write before closing. The rebuilt APK passes Google's tools and ART's verifier and runs the same sequence under bionic (`android_counter_evidence.json`).
 - `bench_android_counter_twin.py` and `benchmarks/android_counter_twin/`: a same-behavior Java + NDK twin. Sizes MEASURED: APK 0.715×, native library 0.561×, DEX 1.188× (`android_counter_twin_evidence.json`). `--device` measures cold start and PSS; it counts as evidence only on arm64 hardware.
@@ -1295,125 +1358,21 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - Android row: still R2. The device run of the stateful app is still outstanding. *(Superseded: R3 on an emulator, see the ADR-155 section below.)*
 - Full suite: **1,094 passed, 5 skipped** (the same host-bound five).
 
-## AArch64 register path: heap views and heap loads/stores (2026-10-04, ADR-154)
-
-- General AArch64 functions with null-checked heap views and full-width heap loads/stores now stay on the register path. A 40-program heap corpus matches its mirror under bionic (160 results); the ADR-110 corpus is unchanged.
-- The counter's callbacks shrink from 224/324 to 128/168 bytes (clang twin 96/132); APK 20,393 bytes, 0.706× the Java + NDK twin. No other committed artifact changes.
-- Full suite: **1,096 passed, 5 skipped** (the counter APK pin was the only failure before regenerating it).
-- Emulator: the API 30 x86_64 image runs arm64 code through ARM translation, but without KVM an arm64 app misses Android 11's fixed 10-second process-attach deadline, so the counter did not launch there (`compiler/integration/android/README.md`). The device run is still outstanding. *(Superseded: it passed on API 32, see the ADR-155 section below.)*
-
-## Android R3: the counter app on an x86_64 emulator with ARM translation (2026-10-04, ADR-155)
+### Android R3: the counter app on an x86_64 emulator with ARM translation (2026-10-04, ADR-155)
 
 - The committed counter APK passed `validate_counter_apk.sh` on an Android 12L (API 32) `google_apis` x86_64 emulator, its arm64 library run through `libndk_translation`: 0 → 1 → 2 → 3, restore 3 after `force-stop`, 4, state file 4 (`android_counter_evidence.json` `device`, `hardware: false`).
 - Android row: `practical_application` EXECUTED, level R3. Correctness evidence only; arm64 hardware is still wanted, and start-up and memory against the twin need it.
 - Full suite: **1,096 passed, 5 skipped**.
 - The host has no KVM: the run needed `ro.hw_timeout_multiplier=20` (Android 12+), a JDWP connection on `system_server`, and hidden error dialogs (`compiler/integration/android/README.md`). The oracle now reads the state file correctly on non-debuggable builds and can retry a lost tap.
 
-## Android twin harness checked on the emulator (2026-10-04, ADR-153)
+### Android twin harness checked on the emulator (2026-10-04, ADR-153)
 
 - `bench_android_counter_twin.py --device` ran end to end on the API 32 emulator (`XAX_TWIN_RUNS=4`, `XAX_TWIN_WARMUP=1`): both apps installed, launched, and passed the click check, and every launch was tracked. Recorded with `hardware: false`; the timings and PSS there are not evidence. The run found and fixed four harness problems (dumpsys's 10 s limit, untracked launches, install races, lost taps).
 - Size comparison recorded in `XAX_BENCHMARKS.md` §15.15.
 - Platform contracts: `validate_platform_contracts.sh` (the `XAX_ANDROID_RUNTIME=1` test) passed on the same emulator: the XAX library's own `open/write/read/close`, `pthread_create/join`, and loopback socket calls printed `XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1` under the Android 12L kernel, arm64 code translated (`android_platform_runtime_probe_evidence.json`, `hardware: false`). The Android oracle scripts were not executable in git, so that test could not have passed anywhere before; they are now.
 - Test coverage on this host: the default suite gives 1,096 passed and 5 skipped. Of the five, the Android runtime test passes with the emulator (`XAX_ANDROID_RUNTIME=1`) and the two opt-in self-hosting files pass with `XAX_FIXED_POINT=1` (7 tests, about 40 minutes). Only the two Windows-host PE runs cannot run here.
 
-## JVM linear memory and the JVM R3 application (2026-10-04, ADR-156)
-
-- `jvm-classfile-memory-v1`: linear memory as one `byte[]` with `int` pointers, the generated `xax/jvm/Memory` package (allocate, free, read, write), view-return elision, and a 256 MiB entry thread. `tests/test_xax_jvm_memory.py` (widths, floats, traps, profile rejection).
-- `jsonmin` runs unchanged on HotSpot (`build_jsonmin("jvm")`) and matches its reference on every test input; JVM row R3 (`practical_application` EXECUTED).
-- MEASURED against a `javac` twin on an 8 MiB document: 1.178× process wall time, 1.00× peak RSS, 8.9× class bytes (`jvm_jsonmin_evidence.json`, `XAX_BENCHMARKS.md` §15.16). Superseded by the ADR-157 section below (JVM R4).
-- Full suite: **1,106 passed, 5 skipped**.
-
-## JVM R4: code quality and the javac/kotlinc comparison (2026-10-04, ADR-157)
-
-- The JVM backend gained liveness-based slot coloring with coalescing, Top frame slots, folded and rematerialized constants, deferred and `dup`ed stores, `if_icmp`/`if` compare fusion, jump threading, rotate-to-shift forms, and shared bounds-check and byte-access members. `jsonmin`'s class went from 33,330 to 8,539 bytes.
-- MEASURED under the JVM runtime rule (`XAX_BENCHMARKS.md` §15.0a, §15.17). On 8 MiB, XAX takes 0.1336 s; the `javac` twin is 1.023× that and the `kotlinc` twin 1.094×. XAX is meets-primary-target with the lowest peak RSS (0.89× javac). Its program class is 2.29× javac's (blocker recorded). Collatz: 0.93× `javac` kernel time, 0.99× class bytes.
-- `xax_replacement.py` checks JVM verdicts for `javac` and `kotlinc` arms. JVM row **R4** (`jvm_jsonmin_evidence.json` competitive). Superseded: the ADR-156 section above (1.178×, R3).
-- Full suite: **1,108 passed, 5 skipped**. Code size superseded by the ADR-158 section below.
-
-## JVM code size: `jsonmin`'s class below kotlinc's (2026-10-05, ADR-158)
-
-- The JVM backend now evaluates single-use pure values at their reader, as stack expressions. Branches on OR/AND trees of compares short-circuit.
-- Values get one name each:
-  - one-predecessor block parameters alias their edge arguments;
-  - a repeated load is the earlier load;
-  - copies and given-back views share locals.
-- Dead block parameters, dead pure nodes, and unused call results are dropped.
-- Frames exist only at branch targets. The trap label has its own empty frame, and definite assignment decides which locals need a zero store.
-- Blocks are laid out in fallthrough chains. Identical return blocks merge, and `x = x + c` is one `iinc`.
-- Constant ASCII stores become one `String.getBytes`. Internal methods take one-slot parameters first.
-- MEASURED (`XAX_BENCHMARKS.md` §15.18):
-  - **`jsonmin` class:** 33,330 bytes (ADR-156) → 8,539 (ADR-157) → **5,575**. That is 0.99× the `kotlinc` twin's classes (5,649) and 1.49× the `javac` twin's class (3,730).
-  - **`jsonmin` time and memory:** XAX is still the fastest arm (javac 1.197×, kotlinc 1.251×) with the lowest peak RSS.
-  - **Collatz:** class 724 vs 760 bytes, kernel 0.91× `javac`.
-- **Not met: 1.05× javac's class.** The remaining gap comes from the unchanged XAX program's shape, the same graph as on Linux. The parser is inlined into large functions, every call returns a packed (pos, out) state that is checked and unpacked, and every byte access goes through an explicit view. The line table maps each of 104 raising sites to its node (javac emits 98 entries for its statements).
-- Full suite: **1,111 passed, 5 skipped**.
-
-## JVM general profile (2026-10-05, ADR-159)
-
-- `jvm-classfile-general-v1` adds aggregates and sums (immutable flattened `long[]` values), stack allocations (a per-activation shadow stack in the linear memory), and indirect calls (a function table plus a generated dispatcher per contract). Recursion through stack storage and aggregates is exact.
-- EXECUTED against the reference executor (`tests/test_xax_jvm_general.py`), including the wrong-variant and shadow-stack overflow traps. The JVM row stays R4; the remaining operation gaps are atomics, links, and raw loads.
-- Full suite: **1,118 passed, 5 skipped**.
-
-## JVM links, raw loads, and atomics (2026-10-05, ADR-160)
-
-- The general profile now has record links (an `int` offset, stored as 8 bytes; null traps), raw loads, and atomics. Atomics are exact as sequential memory operations because exactly one XAX thread runs on the JVM profiles. The JVM now has every operation of the native general profiles.
-- EXECUTED (`tests/test_xax_jvm_general.py`): atomics match the reference executor at 32 and 64 bits; a linked list walk sums its keys; a null follow traps. JVM `atomics` field EXECUTED.
-- Full suite: **1,121 passed, 5 skipped**.
-
-## JVM callbacks (2026-10-05, ADR-161)
-
-- XAX functions become Java functional-interface objects (`jvm-interface:` code-entry types; the program class implements the interfaces). Two new foreign ABIs, `jvm-invokeinterface` and `jvm-invokestatic-interface`, call interface methods. EXECUTED: a JDK `IntStream` pipeline calls three XAX callbacks (`tests/test_xax_jvm_callbacks.py`). The self-hosted typing store was regenerated.
-- Full suite: **1,125 passed, 5 skipped**.
-
-## JVM objects, arrays, string constants, and casts (2026-10-05, ADR-162)
-
-- Seven typed foreign ABIs: `jvm-new`, `jvm-newarray`, `jvm-arrayload`, `jvm-arraystore`, `jvm-arraylength`, `jvm-ldc`, and `jvm-checkcast`. EXECUTED (`tests/test_xax_jvm_objects.py`):
-  - an `int[]` sorted by `Arrays.sort`;
-  - a `StringBuilder` string;
-  - an `Integer[]` sorted by an XAX `Comparator` callback that takes objects;
-  - an out-of-bounds load that terminates.
-- The JVM row's object-construction blocker is closed.
-- Full suite: **1,129 passed, 5 skipped**.
-
-## JVM instance fields and `instanceof` (2026-10-05, ADR-163)
-
-- Three typed foreign ABIs: `jvm-getfield`, `jvm-putfield`, and `jvm-instanceof`. EXECUTED (`tests/test_xax_jvm_objects.py`): a `java.awt.Point` has its fields read and written and is type-tested as `Point2D` (true) and `String` (false).
-- `putstatic` is not added: there is no `java.base` field to execute it against.
-- Full suite: **1,130 passed, 5 skipped**.
-
-## JVM multi-dimensional arrays and the native-bridge arm (2026-10-05, ADR-164, ADR-165)
-
-- `jvm-multianewarray` (ADR-164). EXECUTED (`tests/test_xax_jvm_objects.py`): `int[a][b]` and a partial `long[b][a][]`.
-- Native code plus a generated bridge (ADR-165, `xax_jvm_bridge`). EXECUTED (`tests/test_xax_jvm_bridge.py`): `jsonmin` runs on HotSpot as an x86-64 JNI library behind a generated 352-byte bridge class, and Java code calls a native XAX kernel.
-- MEASURED (§15.19), native bridge over direct emission for `jsonmin`:
-  - 0.68× start-up and process time;
-  - 0.64× peak RSS;
-  - 2.86× artifact bytes.
-- **OI-35 is closed for the JVM.** The answer is per workload, defaulting to direct emission. CLR is not covered.
-
-## JVM class-file importer; OI-32 closed (2026-10-05, ADR-166)
-
-- `xax_jvm_import` imports typed `jvm-*` declarations from JDK `.jmod`/JAR class files (exported public API only, conservative effects, opt-in callbacks). EXECUTED (`tests/test_xax_jvm_import.py`): a program over imported declarations only runs on HotSpot, and `java_base_api` is reproduced byte for byte.
-- MEASURED (`oi32_import_evidence.json`):
-  - 14,973 of 15,806 public and protected `java.base` members import, in 1.79 s.
-  - Declaration error rate is 0/30 (JVM) and 0/5 (C).
-  - An import request costs 0.40× (JVM) and 0.23× (C) the tokens of the hand-built declaration (offline).
-- **OI-32 is closed.** The JVM row's importer blocker is removed.
-
-## JVM static field writes (2026-10-05, ADR-167)
-
-- `jvm-putstatic`. EXECUTED (`tests/test_xax_jvm_objects.py`) against a `javac`-compiled class on the class path, because no JDK module has a public mutable static field. Java code observes the XAX writes and XAX reads Java's.
-- The importer now imports static field writes; `tests/test_xax_jvm_import.py` reproduces the hand-built declarations byte for byte.
-- The JVM direct-emission gaps listed in OI-35 are all closed.
-
-## Linux AArch64 register allocation (2026-10-05, ADR-168)
-
-- `xax_aarch64_regalloc`: function-wide allocation for the Linux AArch64 profiles. Live ranges keep their holes, values are assigned hottest first, and constants are folded or hoisted. It adds compare/branch fusion, branch layout, proven bounds checks, a flag-free membership bit test, and `bic`. The range analysis is shared with x86-64 (`xax_ranges`).
-- EXECUTED: a random differential corpus against the reference executor (`tests/test_xax_aarch64_linux_regalloc.py`), plus the existing Linux AArch64 execution tests.
-- MEASURED-EMULATED (§15.20): `filestat` under qemu is the fastest of XAX, clang, rustc, and gcc. XAX takes 0.767× gcc `-O2`'s time (was 7.18×), with a 4,688-byte executable.
-- Full suite: **1,150 passed, 5 skipped**.
-
-## Android callbacks on the ADR-168 allocator (2026-10-05, ADR-169)
+### Android callbacks on the ADR-168 allocator (2026-10-05, ADR-169)
 
 - The general Android profile (v4) uses the function-wide allocator, with `stp`/`ldp` pair saves.
 - The counter callbacks are now 96 and 128 bytes, against the NDK twin's 96 and 132 (§15.21). The native library is 0.488× the twin's.
@@ -1423,62 +1382,24 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
   - the platform probe on the emulator;
   - ART verification and official tools: 21/21 each.
 
-## Windows x86-64 R2 (2026-10-05, ADR-170)
-
-- `win64-c` is now a foreign-entry ABI. Pure XAX callbacks use their existing Win64 function entry; no adapter or runtime is emitted.
-- `win32_thread_api` adds `CreateThread`, `WaitForSingleObject`, `GetExitCodeThread`, and `CloseHandle`. The handle is a linear resource returned by creation, passed through wait/result queries, and consumed by close.
-- EXECUTED on Windows 11: the 1,536-byte thread PE calls an XAX worker returning 37, retrieves that value, closes the handle, and exits 39. The current 2,048-byte hosted PE also executed 20/20 times, writing `XAX\n` and exiting 1339. Evidence: `compiler/benchmarks/windows_pe_hosted_evidence.json`.
-- The `windows-x86_64-pe` matrix row advances from R1 to R2. Remaining blockers include file/socket APIs, PE exports, Windows-host performance baselines, and unwind/PDB/TLS.
-
-## Android retained-hook identity ownership (2026-10-05, ADR-171)
+### Android retained-hook identity ownership (2026-10-05, ADR-171)
 
 - A stable API-102 hook ID is now canonical data on `LibxposedHookInstallationDescription`; process-lifetime installations reject IDs, and hot reload rejects a missing or mismatched installation ID instead of injecting one implicitly.
 - Existing installations without an ID keep their canonical identity. The hot-reload fixture now explicitly declares `xax.primary`; its APK/DEX bytes stay unchanged, while its semantic package/request/build identities change as required.
 - STRUCTURAL evidence was regenerated in `android_libxposed_hot_reload_evidence.json`. Focused standard-library tests pass (16/16); compatible libxposed runtime execution and multiple retained installations remain outstanding.
 
-## Android arm64 hardware R4 (2026-10-05, ADR-172)
+### Android arm64 hardware R4 (2026-10-05, ADR-172)
 
 - Physical Pixel 8 Pro (Tensor G3, Android 17/API 37) passed the counter oracle natively: 0→1→2→3, restored 3 after process death, then 4. `android_counter_evidence.json` records `hardware: true`, `arm64_native: true`, and the exact APK hash/target.
 - The Java + NDK twin comparison completed with 16 measured cold starts per arm after three warmups per pass. XAX median `TotalTime` is 227.0 ms versus 223.5 ms (`1.016×`, primary target met); median PSS is 112,862.0 versus 113,411.5 KiB. APK/native-library size ratios are 0.703/0.471.
 - `bench_android_ndk_twin.py` now resolves native Windows SDK/NDK executables; NDK r28c rebuilt the behavioral twin. The Android matrix row advances R3→R4. libxposed runtime remains outstanding; physical file/thread/socket execution followed in ADR-173 below.
 
-## Android platform contracts on arm64 hardware (2026-10-05, ADR-173)
+### Android platform contracts on arm64 hardware (2026-10-05, ADR-173)
 
 - The XAX-generated `android-arm64-v8a-shared-v4` probe executed on Pixel 8 Pro and printed `XAX_PLATFORM_RUNTIME_OK file=1 thread=1 socket=1`. Its own calls cover open/write/read/close, pthread create/join, and loopback socket connect/send/recv/close.
 - `validate_platform_contracts.sh` now supports Windows-host NDK r28c under Git Bash without allowing MSYS to rewrite remote adb paths. `android_platform_runtime_probe_evidence.json` records `hardware: true`, `arm64_native: true`, API 37, and the exact 17,496-byte artifact hash.
 
-## JVM R5-candidate AI efficiency (2026-10-06, ADR-174)
-
-- MEASURED (`compiler/benchmarks/ai_native/jvm-r5-evidence.json`, `jvm-r5-results.csv`): five balanced C/XAX pairs under fixed `gpt-5.6-luna` low reasoning, one fresh session per cell, all 10/10 passing in one turn with no repair.
-- C-like text used 325,282 total tokens; XAX semantic transactions used 264,535 (0.813×, 18.675% fewer). Median per task: 64,857 versus 50,083.
-- The JVM row stays R4. The evidence is target-neutral semantic editing, not Java/Kotlin editing, and lacks the remaining §6.2 task classes required for R5.
-
-## Direct semantic-edit workflow (2026-10-06, ADR-175)
-
-- MEASURED (`compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json`, `jvm-r5-optimized-results.csv`): the same five semantic edits under one fixed controlled client profile, with task-local exact-target checkers and 10/10 passing in one turn with no repair.
-- C-like text used 197,252 total tokens; XAX-DIRECT used 98,432 (0.4990×, 50.098% fewer). Median per task: 39,479 versus 19,704.
-- `XAX-DIRECT` supplies the bounded local semantic view and uses one atomic apply/verify/commit/check operation. The matrix remains R4 until the other §6.2 classes and Java/Kotlin/repeated evidence exist.
-
-## JVM R5 full-corpus attempt (2026-10-06, ADR-176)
-
-- Added the 15-family Java/Kotlin/XAX harness and exact external checkers in `compiler/benchmarks/jvm_r5_ai.py` and `compiler/benchmarks/run_jvm_r5_ai.py`.
-- Local compiler/workspace and benchmark tests pass: 124 tests, 1 skipped.
-- The real-model run completed 42/45 cells. Three retry cells were blocked before a model turn by the Codex account usage limit; evidence is `compiler/benchmarks/ai_native/jvm-r5-full-evidence.json`.
-- Completed-cell medians: Java 50,342.5, Kotlin 50,737.5, XAX 38,679 tokens (0.7683× the lowest textual median), so the 0.50 R5 gate is not met. JVM remains R4/PROTOTYPE.
-
-## Evidence and canonical-state integrity, EI (2026-10-06, ADR-177)
-
-- An independent audit found claims ahead of evidence. This milestone repairs the causes before S7b; it migrates nothing.
-- **Typing store**: `xax_op_typing.xax` was stale. ADR-170 added `win64-c` to `FOREIGN_ENTRY_ABIS`, which the facts builder embeds, without regenerating the store; and decline-site codes were numbered per process, so a second build in one process differed. Both are fixed. Regenerated store: root `4681e6c50bd88ba3d96ab87ddc45ea294a8a9ae3b0658868c8f0b77beb0383ce`, SHA-256 `c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02`, 2,840,749 bytes. All nine helper stores now regenerate byte-identically twice per process, in either build order, on any host (`tests/test_store_regeneration.py`). Self-hosting evidence entries are bound to store hashes; the typing entries are `native_rerun_required` (OI-45).
-- **B status**: derived only by `xax_selfhost.bootstrap_status`. The M14 semantic-image META wrapper holds B2–B4; B5/B6 are withdrawn; no whole-compiler B level. Component fixed points are no longer called B1–B4.
-- **Seed**: pinned (46,255 bytes, `4e0c64d6…`); `generate_m14.py` never writes it; `rotate-seed` is the reviewed path; packing is deterministic. Requires Python.
-- **Authority**: `xax_native.AUTHORITY` per component; `XAX_REQUIRE_NATIVE=1` forbids silent fallback; W^X mappings; authenticated image cache.
-- **Packaging**: the wheel now has all 65 modules and the 13 stores; a clean install verifies a store and reports authority.
-- **Matrix**: validator v2. Linux x86-64 R4→R3 and Android arm64 R4→R3; no other level changed.
-- **Provenance**: Linux ELF (x86-64, AArch64), PE32+, browser pages, and SPIR-V build through `xax_build.build`.
-- Full suite on Windows 11 x86-64, Python 3.12.10: **975 passed, 0 failed, 219 skipped**; every skip names an unavailable host tool (75 Linux x86-64, 34 Java, 20 native leaf, 10 Go, …). Native-host behaviour of the new mechanisms is UNVERIFIED until run on Linux x86-64.
-
-## Vector as the libxposed runtime (2026-10-06, ADR-178)
+### Vector as the libxposed runtime (2026-10-06, ADR-178)
 
 - **Contract**: XAX -> libxposed API-102 module -> Vector -> ART. Generated modules link only `io.github.libxposed.api`; Vector v2.2 (commit `88f8e1fa`) with libxposed-api `39cac084` and libxposed-service `33189408` is pinned in `compiler/integration/android/vector/vector_runtime_pin.json`, together with the API-102 member table from the SHA-256-pinned `api-102.0.0` AAR.
 - **Corrected**: a module needs at least one Java entry (Vector ignores native-only APKs and never opens native entries itself); the native fixture now carries the generated `XposedModule` and its APK, ART verify/execute (13/13) and official-tools evidence were regenerated by running the tools. A stable hook ID now requires `minApiVersion=102`.
@@ -1487,118 +1408,7 @@ Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, r
 - **Layer 4 (Vector runtime)**: `compiler/integration/android/vector/vector_harness.py` - 27 checks over 14 signed profiles (`android_vector_profiles_evidence.json`). **UNEXECUTED**: no rooted arm64 device with Zygisk and Vector v2.2+ on this host; `android_vector_runtime_evidence.json` records the plan.
 - Full suite (Linux x86-64, Python 3.13, `/opt/android` built by `make_android_root.py`, pip setuptools): **1184 passed, 36 skipped, 1 failed**. The failure, `test_jvm_r5_candidate_evidence_is_consistent` (a JVM AI-token CSV SHA-256 mismatch), fails identically on the pre-change tree (clean baseline: 1144 passed, 47 skipped, 3 failed; the other two were wheel builds under Debian's patched setuptools).
 
-## Native self-hosting evidence re-executed on Linux x86-64 (2026-10-07, OI-45)
-
-- Host: Linux x86-64, Python 3.13.16. `bench_selfhost_closure.py --write` (22 min) and `bench_selfhost_x86_64.py --write` (3.5 min) were run against the committed stores at `5e0fd93`, both under `XAX_REQUIRE_NATIVE=1`. Every component in both evidence files records `actual_authority: xax` with no fallback.
-- The typing store (`xax_op_typing.xax`, SHA-256 `c3395d39…`), stale until ADR-177, now has executed entries again: its gen1 RV64 image equals the bootstrap reference (46 functions, 4,728,348 code bytes, image SHA-256 `0cd34705…`); the verifier's emulated verdict on it equals the native one (95 objects proven); and its x86-64 image matches its bootstrap reference with the native verifier agreeing. No `native_rerun_required` entry is left in either file.
-- Native self-hosting tests at that revision with `XAX_REQUIRE_NATIVE=1`: 97 passed (2 opt-in skips). The opt-in fixed-point tests (`XAX_FIXED_POINT=1`) also passed: 7 tests, 31 subtests, 31 minutes, two workers.
-- A cold image cache exposed a bootstrap-order bug: `XAX_REQUIRE_NATIVE=1` failed when the XAX backend could not yet lower the hash and decoder images. Those images are now recorded as Python lowering by design (`lowering:<component>` entries in `xax_native.AUTHORITY`). The x86-64 evidence was regenerated from a cold cache: its content is identical apart from timings, and it now records the lowering authority of each image.
-- Still open in OI-45: the Linux x86-64 R4 re-runs with raw samples, and the Android second baseline. The matrix is unchanged.
-
-## S7b.1: x86-64 views rejections decided by XAX (2026-10-07, ADR-179, ADR-180)
-
-- EXECUTED on Linux x86-64: the XAX x86-64 views program decides every target-legality check of the bootstrap lowering, in the bootstrap's order, and writes the diagnostic record (code, entity CID, rule, expected, actual). `compile_with_xax` raises it, and no Python check decides an x86-64 views rejection there. `tests/test_xax_selfhost_diagnostics.py`: 14 rejection programs covering every reachable rule, with `Diagnostic` equal in every field and in repr. Accepted programs, the helpers, and the native fixed point are unchanged byte for byte.
-- Store `xax_x86_64_backend.xax`: 1,369,383 bytes (S7a: 974,862). The RISC-V store is unchanged.
-- ADR-180: `compiler/migration/python_authority_inventory.json` classifies all 67 compiler modules (35 A, 5 B, 6 C, 4 D, 1 E, 2 F, 14 G; 26 components). `XAX_SPEC.md` §16.5 gains condition 5 (rejections migrate too). The roadmap gains S7b.1–S7b.3 and S8–S15. Migration level: SH1. `FULL_PRODUCTION_SELF_HOSTED`: NO.
-
-## S7b.2: object table and image record decided by XAX (2026-10-07, ADR-181)
-
-- EXECUTED on Linux x86-64: the views backend programs take the store objects (and the bound target) with references and identities as CID words, and their payloads unselected. A new program function, `find`, bisects the CID-ordered objects; with it the program places the target, finds the entry, and resolves every reference. After patching, the program writes the image record: each function's CID and code range in layout order. Python only copies words in (`_object_table`) and renders the record (`image_record`).
-- Images are unchanged byte for byte on both backends; the native x86-64 and emulated RV64 component evidence was regenerated. Stores: x86-64 1,384,123 bytes, RISC-V 917,236 bytes.
-
-## S7b.3: RISC-V views rejections decided by XAX; S7b complete (2026-10-07, ADR-182)
-
-- EXECUTED on Linux x86-64: the RISC-V views program opts into the legality pass (`DIAGNOSTICS = "RISCV64"`), and `_compile_with_xax` raises the diagnostic it writes. Both generators share `LOWERED_OPERATIONS` (`xax_views_lowering`). The entry-interface width check is deferred in both programs until the code is laid out, which is where the bootstrap makes it, after its RISC-V range limits.
-- `tests/test_xax_selfhost_diagnostics.py`: 14 rejection programs × 2 families, all equal to the bootstrap in every field and repr; production rejections record `actual_authority: xax`. Images and component fixed points are unchanged.
-- S7b is complete for the views profiles: their legality, diagnostics, object table, and image record are XAX decisions on Linux x86-64, except RISC-V range rejections, which only images over ±1 MiB reach. Migration level remains SH1. `FULL_PRODUCTION_SELF_HOSTED`: NO.
-
-## S8a: store-container rejections decided by XAX (2026-10-07, ADR-183)
-
-- EXECUTED on Linux x86-64: the XAX store decoder makes every `StoreReader` container check in the bootstrap's order and writes the exact diagnostic (16 codes across 20 sites). That includes the digest comparison: two passes, with the digest computed by the XAX hash and compared by the decoder. `StoreReader` raises the program's diagnostic; the bootstrap parser now runs only for deferred containers and off Linux x86-64.
-- `tests/test_xax_selfhost_store.py`: 31 constructed stores, one per rule including 70-bit ULEB values, and 1,200 mutations, all equal to the bootstrap in every field and repr.
-- Store `xax_store_decoder.xax`: 212,454 bytes (was 29,910); the rule table is written once in a shared diagnostic block.
-- Full suite on this host (Linux x86-64, Python 3.13): 1,177 passed, 49 skipped, 5 failed in the first run. Three were fixed before commit: the graph-decoder store had drifted through the shared `_Decoder` base, now restored, with the S8a machinery in a `_ContainerDecoder` subclass; and the evidence binding, after regeneration. One was environmental (`tiktoken` missing, now installed). The fifth is the JVM R5 CSV digest test, which already fails on the pre-change tree (ADR-178). The affected suites were re-run green (122 passed).
-
-## S8b.1: object envelopes decided by XAX (2026-10-07, ADR-184)
-
-- EXECUTED on Linux x86-64: `StoreReader.get` hands each object's envelope to the XAX decoder's object mode, which makes every `decode_object` check in its order and compares the CID, which the XAX hash computes over the span the program reports. The program writes the exact diagnostic (five new sites; entity `object:<CID hex>`). The Python CID comparison (`_object_from_parse`) is gone.
-- `tests/test_xax_selfhost_store.py`: 13 malformed-object stores match the bootstrap in every field and repr; every object of 600 mutated stores matches the bootstrap reader.
-
-## S8b.2: graph-body syntax rejections decided by XAX (2026-10-07, ADR-185)
-
-- EXECUTED on Linux x86-64: the S3c graph decoder decides every syntax rule of a graph body (entry block, reference index, value tag, terminator kind, trailing bytes, ULEB rules, trap truncation), deciding each value before it enters the stream and keeping all 70 bits of the decisive ones. On a rejection it reports the stream prefix; `_parse_graph_uncached` walks it (resolution and type checks, still Python) before raising the program's diagnostic, so the bootstrap's order holds.
-- The S8a site machinery is now a mixin, `_SiteDiagnostics`, shared by the container and graph decoders.
-- `tests/test_xax_selfhost_graph.py`: 18 constructed bodies are rejected by the XAX decoder with exact diagnostics, the resolution-first case holds, and 1,500 mutated bodies match the bootstrap.
-
-
-## JVM snapshot-bound token workflow (2026-10-07, ADR-186)
-
-*Superseded workflow: the current host-response comparison is described in
-the ADR-187–189 follow-up below; retain this section as historical evidence.*
-
-EXECUTED: `LocalMutationSession` is normal compiler tooling, shared by direct edit arms. It binds the queried generation, derives exact old attributes, and delegates atomic verification/publication to `Workspace`. Deterministic semantic evidence is `compiler/benchmarks/local_protocol_evidence.json`. No JVM backend runtime claim changes.
-
-Validation: the affected JVM/workspace/protocol/evidence suites passed 204 tests with 3 host-unavailable skips and 276 subtests before the role-binding follow-up. The follow-up corpus/protocol suites passed 38 tests; targeted diagnostic regressions passed 37 tests with one textual-compilation case deselected (that case passed in the corpus run). The wider Windows attempt had 992 passes, 178 skips, 6 failures and 3 import errors; the inventory omission, JDK-specific member count, and two JVM line-ending failures were then fixed and rerun. Remaining broad-run issues are unrelated provenance/memory evidence and host/import/emulator availability. Unicorn crashed during RISC-V emulation on this Windows host; this is not passing execution evidence.
-
-The exploratory local profile stopped at 16 attempts: 15 successes, with a failed creation cell costing 208,350 tokens and a move cell costing 92,165. All costs and raw events remain archived, with the source snapshot. Explicit role bindings and snapshot/insertion help were then added; two fresh XAX preflights passed (move 26,518; creation 38,463 including one repair). The separate full three-trial Java/Kotlin/XAX comparison is recorded in `jvm-r5-bound-results.evidence.json`. JVM stays R4/PROTOTYPE; incomplete data and unresolved corpus-equivalence limits cannot establish R5.
-
-The historical ADR-175 CSV's CRLF bytes were restored to its original recorded SHA-256, without changing any measurement; `.gitattributes` prevents future newline normalization of result CSVs.
-
-## JVM host-response follow-up (2026-10-07, ADR-187–189)
-
-Normal snapshot setters, dead-chain pruning, compact aliases and multi-result
-help are implemented. A redundant Kotlin literal conversion is admitted only
-with matching compiled instructions; an overload-changing conversion rejects.
-Affected validation: 142 tests and 167 subtests passed on Windows/JDK 17.
-
-Response-v4 remains separate incomplete negative evidence: 137 attempts,
-134/135 successful cells, all costs known, partial ratio 0.501623. Its checker
-falsely rejected an equivalent explicit Kotlin literal conversion. The source
-snapshot and independent raw-usage audit are retained unchanged.
-
-The current response-v5 comparison runs three trials for each of the 15
-Java/Kotlin/XAX task families. Use its CSV, evidence JSON, manifest and streamed
-traces under `compiler/benchmarks/ai_native`; do not import older cells. Source
-bytes are frozen during inference. Resume with `benchmarks.run_jvm_r5_response`
-only after ensuring no runner is active; never start a second CSV writer.
-A `runs-jvm-r5-response-v5/STOP` file stops safely between cells. Every failed
-response/attempt remains in successful-cell cost. Independently audit using
-`benchmarks.audit_jvm_r5_response` before reporting a complete numeric result.
-
-JVM stays R4/PROTOTYPE pending the complete result and corpus review. The graph
-is host-projected while textual edits inspect a named file; the large fixture
-is synthetic and resource effects are abstract verifier contracts. This work
-makes no JVM backend-speed or native self-hosting claim.
-
-## JVM median token gate achieved (2026-10-07, ADR-194)
-
-*Superseded as R5 evidence by ADR-195 (2026-10-07): the corpus review found the comparison context-asymmetric; see the response-v10 section below.*
-
-Response-v9 completed 135/135 cells in 142 attempts. Medians including all failed-response/attempt costs: Java 21,564; Kotlin 21,566; XAX 10,748. Ratio 0.4984232980894083 meets 0.50, a 50.1577% median reduction against the lowest textual median. The independent audit reports zero errors, no live-source drift and complete accounting. Recorded aggregate XAX cost is 772,632 versus Java 1,033,413 and Kotlin 1,175,166; the aggregate ratio is 0.747651, so the measured 50% reduction is specifically the median gate. Validation: 146 tests and 167 subtests, plus regenerated-status checks. JVM stays R4 until corpus/context equivalence review; no runtime-speed claim changes.
-
-## JVM R5 corpus review and same-prefill profile (2026-10-07, ADR-195)
-
-*Superseded by ADR-196 (2026-10-07): option (a) measured; see the response-v12 section below.*
-
-Response-v9 is not R5 evidence. In every textual edit cell the model read its file through a tool call, a second client request with about 10,000 tokens of fixed client context. XAX got its view inline, along with an out-of-band mutation kind and target. On creation, where nobody reads a file, XAX was 1.007× Java. Response-v9 rows, traces and audits are retained unchanged.
-
-Response-v10 is same-prefill: every arm gets inline context and one request with no tools, and XAX is unbound. Textual checks admit equal compiled JVM instructions that differ from the initial program. The status distinguishes `TARGET_MET` (≤ 0.50), `ACCEPTED_WITHIN_TOLERANCE` (≤ 0.55, owner-approved) and `NOT_R5`. The pilot (jvm-01 and jvm-15, one trial, CSV SHA-256 f4839408a24567cd66a20a8014375fd334a9522d2322a90bb0f0a7f051f66c23) gives Java 10,753/10,723, Kotlin 10,738/10,747 and XAX 21,965 (one repair)/10,834. Even with one-line instructions the client still uses about 6,900 input tokens per request, so a fair ratio stays near 0.93× or above.
-
-The full 135-cell v10 run has not been executed. Resolve OI-46's measurement design first. Validation: 29 JVM R5 tests pass on Windows with Temurin 17 and Kotlin 2.1.0. JVM stays R4.
-
-## JVM minimal-client run: R5 unmet at 0.995× (2026-10-07, ADR-196)
-
-*Superseded by ADR-197 (2026-10-08): option (b) measured; see the multi-file section below.*
-
-The run uses option (a) of OI-46. Every arm goes through the pinned Codex client with all configurable optional tools, skills and instruction blocks removed, one-line base instructions, and `gpt-6-luna` at low reasoning. The fixed per-request floor was calibrated at 3,501 input tokens, identical in three samples. The gate subtracts it once per request from every arm, and failed attempts still count.
-
-Two adapter defects were fixed first, and each fix started a new profile. Edit forms are now listed one per line as labelled placeholders. Cross-function views now alias callee parameters instead of leaking `F2.B0.P0`. v10 (stopped) and v11 (stopped, 113/135 cells) are retained unchanged.
-
-Response-v12 had 151 attempts and 123/135 successful cells after one refill pass. 28 attempts failed: XAX 16, Kotlin 10 and Java 2. Medians including failed costs were Java 3,710, Kotlin 3,702 and XAX 3,701. The raw ratio is 0.99973 and the floor-adjusted ratio is **0.99502**. Aggregate recorded tokens were Java 200,712, Kotlin 283,035 and XAX 322,843. The independent audit has zero errors and no source drift. CSV SHA-256: c39f72bedb1e7162938ab1d642669be7c0fe9846fd4bad4c794c332c94cc6bac.
-
-R5 is unmet, with a target of 0.50 and acceptance at 0.55. On single-function edits the XAX view plus edit list costs about the same as the inline program plus a patch, and the model repairs XAX more often. 12 cells never passed: XAX jvm-07, jvm-09, jvm-14 and jvm-15, and Kotlin jvm-12 and jvm-14, where "u16" invites `UShort`. JVM stays R4. Validation: 47 JVM R5/local-protocol tests pass.
-
-## Declarative Android Surface Activity (2026-10-07)
+### Declarative Android Surface Activity (2026-10-07)
 
 General `android-surface-activity-v1` carrier in `xax_android_components` generates
 an Activity with one platform-owned SurfaceView using the existing DEX assembler.
@@ -1623,20 +1433,20 @@ or codec execution. AutoHead retains exact store/APK hashes, raw launch samples,
 accessible hierarchy and screenshot in its evidence directory. The initial secure
 lock-screen attempts and oracle corrections are not counted as runtime passes.
 
-## Android hardware: Vector runtime and R4 restored (2026-10-07, ADR-197, ADR-198)
+### Android hardware: Vector runtime and R4 restored (2026-10-07, ADR-197, ADR-198)
 
 - Vector v2.2 on a rooted Pixel 8 Pro (Android 17/API 37) loads and runs the generated libxposed API-102 modules. `android_vector_runtime_evidence.json` has 18 PASS, 0 FAIL and 9 UNEXECUTED (breakpoint/invocation checks). Attaching JDWP aborts Vector-hosted ART on this build, so the harness uses heap dumps.
 - The run found and fixed a codegen bug: `onHotReloading` passed `{ClassLoader, HotReloadingParam}` to `setSavedInstanceState` in the wrong order. API-102 hot reload with stable IDs now works on hardware.
 - ART verify (21/21) and ART execute (13/13) now run on the device's own ART (`XAX_ART_DEVICE=1`). The official-tools check runs on Windows.
 - Android counter R4 (§15.29): XAX 1.007× the fastest of Java + NDK and pure Java twins, with per-pass ratios 1.00/1.053/1.06/1.00. The Android row is R4 again.
 
-## Android general managed classes (2026-10-07, ADR-199)
+### Android general managed classes (2026-10-07, ADR-199)
 
 - `android-managed-class-v1` declares any DEX class whose methods forward to XAX JNI exports: lifecycle overrides, callback interfaces, and value-returning callbacks. The range form adds non-void results, `long` parameters and five or more registers; existing DEX bytes are unchanged.
 - The build checks each export's ABI against the Java descriptor. Pixel 8 Pro: ART verifies all classes, the XAX `jboolean` result consumes VOLUME_UP (with a control), and `call_super` lifecycle survives pause/resume (`android_managed_evidence.json`).
 
 
-## Exact platform carrier maintenance (2026-10-07)
+### Exact platform carrier maintenance (2026-10-07)
 
 Platform-carrier-replacement-v1 rebuilds package/build ancestors transactionally
 under generation, handle/read and exact-CID preconditions. Private Android APK
@@ -1650,41 +1460,7 @@ behavior or replacement-level promotion. Recovery patch and exact roots/hashes
 are retained in AutoHead. Upstream ADR-199 managed callback forwarding is reused
 as the starting point for subsequent lifecycle work.
 
-## JVM multi-file corpus: 1.68× vs IDE excerpts (2026-10-08, ADR-197)
-
-`benchmarks.run_jvm_r5_multifile` compares XAX with four textual workflows on generated five-class projects. The textual workflows are Java and Kotlin, each with whole files or an IDE-style excerpt of the same call hierarchy. There are three families: a cross-file API change, a large-class operation change with its dependent assertion, and a transitive constant change. XAX gets the target and its transitive callers from the workspace `callers` query. Client, model (`gpt-6-luna`, low) and the calibrated 3,501-token floor are as in ADR-196.
-
-Profile v5 had 48 attempts and 42/45 cells after one refill pass. Floor-adjusted medians:
-
-| Arm | Median |
-|---|---|
-| Kotlin excerpt | 286 |
-| Java excerpt | 306 |
-| XAX | 481 |
-| Kotlin files | 1,315 |
-| Java files | 1,391 |
-
-XAX is **1.68×** the lowest textual median (raw 1.05×) and 0.35× the whole-file workflows. XAX had 6 failed attempts and the textual arms none. Every XAX mf-02 attempt changed the operation but not the assertion constant. CSV SHA-256: 9414ad6a56deac5ef95939b6de419e0bdb033be60c535142360dd04a39f8c0aa. Profiles v1–v4 were stopped for protocol defects and are retained.
-
-Normal-protocol work from this corpus:
-- A workspace fix: an edited function no longer calls a stale, rebuilt callee.
-- Exact `type OLD NEW` and `type F OLD NEW` retypes.
-- Removal of edits the batch already implies.
-- Kind-specific node diagnostics.
-
-R5 is unmet and JVM stays R4. The remaining gap is the per-request edit-form help, which the textual arms don't pay because the model knows Java and Kotlin, and lower model reliability on XAX.
-
-## Shared edit grammar (2026-10-08, ADR-200)
-
-The per-request edit-form help is now optional in the normal protocol. `edit_grammar()` is the complete, request-independent carrier grammar, and `edit_grammar_id()` is its identity. A client sends the grammar once as shared context, and `session.instructions(shared=ID)` then adds nothing per request. A stale ID rejects, and acceptance rules don't change. The protocol is specified in `docs/09_AI_PROTOCOL.md`.
-
-There is no model measurement yet. In the existing one-request-per-cell profiles the grammar would still be sent with every request, and the full grammar (about 1 KB) is larger than the filtered help. The saving needs multi-request sessions or prompt caching. A new R5 profile has to pin the grammar as shared context, count it, and leave its accounting against textual arms to the owner. R5 is still unmet and JVM stays R4.
-
-## Multi-file profile v6 with the shared grammar (2026-10-08, ADR-201)
-
-`python -m benchmarks.run_jvm_r5_multifile` from `compiler/` now runs profile v6. The XAX arm holds the shared edit grammar in its client base instructions and gets no per-request edit help. The runner calibrates the common floor and the XAX floor (`calibration-xax.json`); their difference is the grammar's cost per request. The gate counts that cost in every XAX request. The evidence JSON also reports informational ratios with the grammar counted once per attempt and excluded, for the owner's accounting decision. No inference has been run. Use the ADR-190 toolchain setup with one writer, `--repetitions 3`, and keep every failed attempt. R5 is still unmet and JVM stays R4.
-
-## Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
+### Android platform capability contracts (2026-10-08, ADR-202 to ADR-204)
 
 This follows the AutoHead capability audit of 2026-10-07, whose rows were partial or unsupported. All new work is STRUCTURAL with verified lowering; nothing here ran on a device, and no replacement level changes.
 
@@ -1694,23 +1470,7 @@ This follows the AutoHead capability audit of 2026-10-07, whose rows were partia
 
 Tests: `compiler/tests/test_xax_jni_float.py`, `compiler/tests/test_xax_android_platform.py`. The per-capability status is in `docs/ANDROID_PLATFORM_CAPABILITIES.md`. Open gaps: OI-47 (path-exact ownership for buffers, NULL windows and JNI-held SDK objects) and device evidence for every new contract.
 
-## Emulated JNI float execution (2026-10-08, ADR-205)
-
-The ADR-202 float carriers and typed-record packs now run: the compiled arm64 code executes under Unicorn with a mock `JNIEnv`, and the call receives the exact `jvalue[]` bytes and returns a float in `s0` (`compiler/tests/test_xax_jni_float.py`). This is emulated execution, not device evidence (OI-44).
-
-## Emulated NDK and POSIX contract programs (2026-10-08, ADR-206)
-
-Codec lifecycle, an AAudio output stream (build, configure, open, start, write, stop, close) and an owned nonblocking socket run under Unicorn through their real ELF import slots (`compiler/tests/test_xax_android_platform_emulated.py`, `compiler/benchmarks/android_elf_emulator.py`). AAudio handles are now 64-bit words loaded from stack out-cells. Emulated execution, not device evidence.
-
-## Byte-view widening — 2026-10-08 (ADR-231)
-
-A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one little-endian integer (a `u64` from a `bytes_rw` view is one node instead of eight). Every proof obligation is unchanged. x86-64, AArch64, JVM, and wasm run it; RISC-V rejects it (`RISCV64-CHECKED-BYTE-VIEW-WIDTH`); SPIR-V kernels take word views only. The XAX facts engine decides these accesses itself. Host contract minor 2.
-
-## Windows construct platform — 2026-10-10 (ADR-252)
-
-`xax-construct-v1` now builds Windows programs: `"platform": "windows-x86_64"` targets `x86_64-windows-pe-v1`, and the build service emits a PE32+ executable. The carrier names kernel32 contracts as `win32.*`; the new `win32_stdio_api()` gives `ReadFile`/`WriteFile` heap-view pointers, so a constructed program can read stdin and write stdout. EXECUTED on Windows 11 x86-64: a constructed stdin echo (1,536-byte PE) returns its input and exits with the byte count. Linux stores are byte-identical. Host contract minor 4. Open: Windows startup reads (command line) and a published Windows process contract.
-
-## Android cold start and AArch64 hardware — 2026-10-10 (ADR-253, ADR-254)
+### Android cold start and AArch64 hardware — 2026-10-10 (ADR-253, ADR-254)
 
 - Android counter cold start (U2.3, §15.34): every arm installed side by side, six fresh-install blocks, 90 cold starts per arm, plus a Kotlin arm. XAX 202.5 ms, Java + NDK 205.0, Java 200.0, Kotlin 202.0: a tie, so the Android row stays R3 (1.0125x the fastest arm).
 - Linux AArch64 static images run on hardware: the Pixel 8 Pro's Android kernel runs them through `adb` (`XAX_AARCH64_ADB=1`), and the Linux AArch64 runtime tests pass there (first hardware AArch64 run, OI-44).
@@ -1719,103 +1479,415 @@ A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one
 
 - Second AArch64 device (§15.36): on an original Pixel (Snapdragon 821) the same `jsonmin` image is 0.898x NDK `clang -O2 -static`, and the AArch64 runtime tests pass. A OnePlus One is ARMv7-only: no XAX target runs there.
 
-## Android R5 maintenance record — 2026-10-10 (ADR-255)
+### Android R5 maintenance record — 2026-10-10 (ADR-255)
 
 - One maintenance cycle of the Android counter app: cap the count at 9999 in three semantic transactions (insert compare and extension, retarget the add, delete the old constant); the rebuilt APK passes the device oracle, and the library behaves at the cap on Pixel 8 Pro; no cold-start change (p = 0.14). The Android row records R5 evidence but stays R3 until R4 holds.
 - Workspace transactions can insert compares, extensions, truncations, and bitwise nodes, with `bits<N>` result types the store need not hold yet. New Android profile `android-arm64-v8a-shared-v5` (v4 plus the full integer set).
 
-## Windows PE integer-completion operations — 2026-10-10 (ADR-256)
+## Windows
+
+### 2026-10-27 — Pinned native Windows seed (ADR-335)
+
+The existing Windows compiler is distributed under `compiler/bootstrap/windows`, tied to source root
+`ec66899f...45ebd` at `c97a11d`, with historical bootstrap trust and decline limits disclosed. The unchanged
+BLAKE3 host now has `hash_request.xax`; native verify/resolve/build and empty/abc digest vectors pass. Native
+semantic edits and small application builds were also exercised. This is a usable trusted native Windows seed,
+not whole-compiler migration or a Windows self-build result. Generated milestone and B/R-level blocks are unchanged.
+
+### PE row: first C comparison (ADR-100) — 2026-10-02
+
+- `hosted.c` is now an exact twin of the fixture (exit 1339). MinGW-w64 no-CRT build; `CTwinTests` checks parity under Wine.
+- MEASURED-UNDER-WINE: file 2,048 B (XAX) against 2,560 B (C); code 757 B against 416 B (gcc folds `sum_to` and the dispatch table); wall time equal, start-up bound.
+
+### Windows x86-64 R2 (2026-10-05, ADR-170)
+
+- `win64-c` is now a foreign-entry ABI. Pure XAX callbacks use their existing Win64 function entry; no adapter or runtime is emitted.
+- `win32_thread_api` adds `CreateThread`, `WaitForSingleObject`, `GetExitCodeThread`, and `CloseHandle`. The handle is a linear resource returned by creation, passed through wait/result queries, and consumed by close.
+- EXECUTED on Windows 11: the 1,536-byte thread PE calls an XAX worker returning 37, retrieves that value, closes the handle, and exits 39. The current 2,048-byte hosted PE also executed 20/20 times, writing `XAX\n` and exiting 1339. Evidence: `compiler/benchmarks/windows_pe_hosted_evidence.json`.
+- The `windows-x86_64-pe` matrix row advances from R1 to R2. Remaining blockers include file/socket APIs, PE exports, Windows-host performance baselines, and unwind/PDB/TLS.
+
+### Windows construct platform — 2026-10-10 (ADR-252)
+
+`xax-construct-v1` now builds Windows programs: `"platform": "windows-x86_64"` targets `x86_64-windows-pe-v1`, and the build service emits a PE32+ executable. The carrier names kernel32 contracts as `win32.*`; the new `win32_stdio_api()` gives `ReadFile`/`WriteFile` heap-view pointers, so a constructed program can read stdin and write stdout. EXECUTED on Windows 11 x86-64: a constructed stdin echo (1,536-byte PE) returns its input and exits with the byte count. Linux stores are byte-identical. Host contract minor 4. Open: Windows startup reads (command line) and a published Windows process contract.
+
+### Windows PE integer-completion operations — 2026-10-10 (ADR-256)
 
 `x86_64-windows-pe-v1` declares bit and/or, udiv/urem, truncate, and zero-extend (as Linux x86-64), so constructed Windows programs can use them; a program over the runtime stdin length runs on Windows. Host contract minor 5.
 
-## JVM R6: `xwc` — 2026-10-10 (ADR-257)
+### Windows PE32+ DLLs — 2026-10-13 (ADR-259)
 
-- `xwc`, a GNU `wc`-compatible word counter, is the JVM row's XAX-only application: one hand-written `xax-construct-v1` request (platform `jvm`), an XAX selftest, canonical package and builds, and a second release (UTF-8 words) made by one workspace transaction. Both releases match GNU `wc` on every test input; the JVM row derives R6.
-- The JVM backend sizes `max_stack` from the method's own bytecode when the fixed bound is too small (nested 64-bit expression trees); existing JARs are unchanged. Host contract minor 6 (`jvm` construct platform).
+`xax-construct-v1` on `windows-x86_64` accepts `package.exports`; the build is then a PE32+ DLL (`ArtifactKind.WINDOWS_DLL`) with a `win64-c` export directory and no DllMain. EXECUTED on Windows 11 x86-64: a constructed DLL loads with `LoadLibrary` and its exports return the expected values (`tests/test_xax_pe_dll.py`). Host contract minor 8. Executable bytes are unchanged.
 
-## Linux AArch64 R5 and R6: `jsonmin` maintenance and `xcksum` — 2026-10-10 (ADR-258)
+### Windows imports and COM calls — 2026-10-13 (ADR-260)
+
+`xax-construct-v1` on `windows-x86_64` declares any `win64-c` import (`win32.import`) and any COM method (`win32.com`: a `win64-c` declaration on library `com:<Interface>`, called through vtable slot k of a `b64` interface pointer). EXECUTED on Windows 11 x86-64: an XAX DLL reads the DXGI local-memory budget through `CreateDXGIFactory1` and four interface methods, and the value matches an independent reading (`tests/test_xax_pe_dll.py`). Host contract minor 9.
+
+### Windows DLL forwards and DllMain — 2026-10-13 (ADR-261)
+
+A Windows XAX DLL may forward exports to another module (`package.forwards`) and have a DllMain (`package.dll_main`) whose reachable calls the build limits to a loader-lock-safe kernel32 allowlist. EXECUTED on Windows 11 x86-64: an XAX DllMain's result governs `LoadLibrary`, forwards resolve to kernelbase, and a `version.dll` proxy built from XAX loads from a game-style executable's directory and starts a thread (`tests/test_xax_pe_dll.py`, VRAMBoost `tools/proxy_check.py`). Host contract minor 10.
+
+## Replacement levels and performance
+
+### Replacement levels v3 — 2026-10-08 (ADR-207)
+
+R4 is now performance leadership: XAX's median must be at most 0.9999× the fastest non-XAX median, compared unrounded, with a significant one-sided Mann–Whitney advantage on raw samples (validator `xax-replacement-validator-v3`). R5 is autonomous maintenance; R6 is a proven 100% XAX-developed application (new field `xax_only_application`). AI-token trials are a deferred milestone and gate no level. Effect: JVM keeps R4 (`jsonmin` 0.835× `javac`, p ≈ 3e-5); `android-arm64` drops from R4 to R3 (1.007273× `clang_ndk_java`). No row has R5 or R6 evidence. Earlier dated statements that Android holds R4, or that R5 means AI tokens, are superseded by this section. Next milestone: U2 in `XAX_IMPLEMENTATION_ROADMAP.md`.
+
+Test state on this host (Python 3.13, x86-64, no QEMU/Wine/JDK/Android tools): 1,305 passed, 74 skipped, and 4 failed for host reasons (wheel build and install without a working setuptools; two AArch64 execution tests without `qemu-aarch64`), with `unicorn` and `tiktoken` installed.
+
+### Linux x86-64 raw-sample re-run — 2026-10-08 (ADR-208)
+
+Predicate tables on the x86-64 register path; `jsonmin`'s string loop in the C twin's shape. Re-run with 31 raw samples per arm (`XAX_BENCHMARKS.md` §15.30): `filestat` 0.882x and `jsonmin` 0.968x clang -O2 (significant), `chains` 0.984x rustc -O3 (p = 0.29). Linux x86-64 stays R3; `performance` is MEASURED; OI-45 closed. The program change also re-ran the JVM comparison (§15.31): XAX 0.884x javac, JVM keeps R4. Full suite on this host: 1,332 passed, 51 skipped, 2 failed for host reasons (wheel build and install without a working setuptools).
+
+### First R5 maintenance record — 2026-10-08 (ADR-209)
+
+The workspace now edits recursion-group members. One maintenance cycle of the JVM `jsonmin` application (depth limit 512 → 1024) ran through query, one 13-byte agent edit, verified commit, rebuild, contract tests (16/16), a before/after benchmark (no measurable change), and a canonical save: `compiler/benchmarks/r5_jvm_jsonmin_maintenance_evidence.json`. The JVM row derives R5. No row has R6 evidence.
+
+### First XAX-only application — 2026-10-08 (ADR-210)
+
+`xax_construct` builds general programs from one typed request. `xb64` (base64 encoder) was constructed that way, tested by its own XAX `selftest`, built through the canonical build service, deployed, and maintained by one workspace transaction (release 2: 64-column lines); both releases match coreutils `base64`. Evidence: `compiler/benchmarks/r6_xb64_evidence.json`. The Linux row cites it but stays R3 (R4 not met).
+
+### chains leads; jsonmin inside noise — 2026-10-08 (ADR-211)
+
+Next-iteration prefetch and edge sinking: `chains` 0.943x rustc (p = 0.019), `filestat` 0.896x clang. `jsonmin`'s unchanged binary measured 1.029x clang this run (0.968x before), so Linux stays R3 until `jsonmin` has a margin larger than run-to-run variation (§15.32).
+
+### Linux x86-64 reaches R4 — 2026-10-08 (ADR-212)
+
+`filestat` 0.852x and `jsonmin` 0.959x clang, `chains` 0.911x rustc, all significant in one run on one shared host (§15.33); the row derives R4. `jsonmin`'s margin is small (its previous binary measured 0.968x and 1.029x). JVM stays R5 (0.865x javac; R5 record re-recorded).
+
+### Linux x86-64 derives R6 — 2026-10-08 (ADR-213)
+
+A Linux R5 maintenance record (`compiler/benchmarks/r5_linux_jsonmin_maintenance_evidence.json`) joins the R4 run (§15.33) and `xb64` (R6, ADR-210): the validator derives R6 for `linux-x86_64`. Each level rests on one run or one cycle; see the row's blockers.
+
+### C callbacks and SSE-class SysV arguments (ADR-102, OI-40) — 2026-10-02
+
+- A code address's calling convention is now part of its type. `FUNCTION_ADDRESS` returns `ptr<opaque<function>>` (internal) or `ptr<opaque_identity<"code-entry:sysv-x86_64-c">>` (`linux_api().c_callback`). The verifier requires foreign-entry targets to be pure and rejects both convention mismatches. No new operation, object kind, or type form.
+- x86-64 emits one 20-byte SysV-to-internal adapter per C-entry function after all functions. `sysv-x86_64-c` imports pass f32/f64 in `xmm0`–`xmm7` and return them in `xmm0`.
+- EXECUTED (`compiler/benchmarks/linux_c_interop.py`, `linux_c_interop_evidence.json`): libc `tsearch`/`tfind` with an XAX comparator exits 31 (a constant comparator, as a control, exits 78); libm `ldexp`/`pow`/`sqrtf` exits 68. Artifacts are 1,640 and 1,536 bytes and deterministic. Vectors: `compiler/tests/test_xax_c_interop.py` (12 tests).
+- Bug fixed: the Linux register allocator silently dropped SysV C arguments past the sixth. It now defers to the frame path, which rejects (`SYSV-C-SCALAR-CLASS`).
+- Open: effectful callbacks such as a `qsort` comparator that reads elements (OI-42); aggregates, stack arguments, and variadics (OI-40).
+
+### Linux argv/env/auxv (ADR-094) — 2026-10-02
+
+- New foreign ABI `linux-x86_64-startup-v1`: `argc`, `arg_length`, `arg_copy`, `envc`, `env_length`, `env_copy`, `auxv_value`, lowered inline in the process entry (`xax_linux.linux_startup_api()`). `run_linux_executable` accepts `arguments` and `env`.
+- EXECUTED: an echo-style tool, envc, `AT_PAGESZ`, truncation reporting, and traps (`test_xax_linux_startup.py`). Full suite: 796 passed, plus the 17 pre-existing failures.
+
+### Linux AArch64 executables (ADR-123) — 2026-10-03
+
+- New platform row `linux-aarch64` at R2 (emulator-only): static and explicit-loader ELF64 executables from the shared AAPCS64 lowerer, `linux-aarch64-syscall-v1` thunks, `aapcs64-linux-c` imports, and the unchanged `filestat` graph executed under qemu-aarch64 with glibc and `libz.so.1`. 14,024 bytes vs 67,496 for gcc -O2; 6.6× gcc's emulated time (frame path).
+- AArch64 frame path: integer completion operations; liveness-shared value slots on the Linux identities (filestat frame 4,848 → 240 bytes).
+- Fixed a miscompile: a duplicate `_cset` made frame-path integer and float compares crash or pick the wrong condition. Regression test executes every compare kind.
+- Matrix validator now enforces conformance §23.17 (no performance evidence on emulator-only rows). `requires-python` lowered to 3.11, where the full suite passes.
+- Full suite: 809 tests pass, 17 skipped (host-bound), on Python 3.11 with qemu-user, pytest, tiktoken, and unicorn installed.
+
+### First R3 application: `jsonmin` (ADR-126) — 2026-10-03
+
+- Linux x86-64 R2 → R3 and Linux AArch64 R2 → R3 (emulated). `jsonmin` validates and minifies JSON from stdin; it matches its reference contract and Python's parser on generated and mutated inputs. Against C twins it now takes 1.56× gcc -O2 and 1.67× clang -O2 time (from 2.11× before program and compiler changes) with the smallest RSS and binary, so it is not R4.
+- The matrix validator now gates R4 on an explicit `competitive` verdict.
+- Fixed: narrow-width register binary operations on the Linux x86-64 allocator; extents of pointers that calls give back.
+- Full suite: 840 passed, 17 skipped.
+
+### C header import (ADR-127) — 2026-10-03
+
+- `xax_c_import` turns C prototypes (clang JSON AST) into canonical foreign declarations. It is byte-identical to the hand-built `crc32`, libm, and `strlen` declarations, and an XAX program using imported glibc stdio executes. Coverage: 855 of 1,084 functions across zlib.h, string.h, stdio.h, and math.h; the rest are refused with reasons (variadics, by-value types).
+
+### Static linking into bare-metal images (ADR-129) — 2026-10-03
+
+- `xax_elf_link` links freestanding AArch64 ELF objects (exact relocation subset) into board images. XAX calls C through `aapcs64-c` declarations imported from the header, including a C-side allocator under an explicit contract. The aarch64-baremetal row R1 → R2 (emulated). Matrix: `NOT_APPLICABLE` needs a justification and satisfies only `dynamic_linking`.
+
+### Small-set membership selection (ADR-131) — 2026-10-03
+
+- The Linux x86-64 register allocator lowers `x == c1 || x == c2 || …` branches to one `bt`. `jsonmin` went from 1.56× to 1.20× gcc -O2, and from 1.67× to 1.31× clang -O2. Linux stays at R3 (not competitive).
+
+### Multi-language performance rule; x86-64 within 1.05× of the fastest (ADR-147, ADR-148) — 2026-10-03
+
+- Performance requirements were updated: each CPU/native runtime comparison now includes C/C++ and Rust, and XAX must be within 1.05× of the fastest valid implementation. The first run measured XAX at 1.57× (`filestat`), 1.18× (`chains`), and 1.21× (`jsonmin`) the fastest: unmet.
+- After ADR-148 (range-proven checks, a lowering view with leaf inlining and layout, call-aware allocation), the interleaved re-run measures 1.017×, 1.000× (XAX fastest), and 1.029×: MEASURED, primary target met on all three. Linux x86-64 row: R4 for that scope. Full suite: 1,059 passed, 4 skipped. Next: S6b.4.
+
+### Linux AArch64 register allocation (2026-10-05, ADR-168)
+
+- `xax_aarch64_regalloc`: function-wide allocation for the Linux AArch64 profiles. Live ranges keep their holes, values are assigned hottest first, and constants are folded or hoisted. It adds compare/branch fusion, branch layout, proven bounds checks, a flag-free membership bit test, and `bic`. The range analysis is shared with x86-64 (`xax_ranges`).
+- EXECUTED: a random differential corpus against the reference executor (`tests/test_xax_aarch64_linux_regalloc.py`), plus the existing Linux AArch64 execution tests.
+- MEASURED-EMULATED (§15.20): `filestat` under qemu is the fastest of XAX, clang, rustc, and gcc. XAX takes 0.767× gcc `-O2`'s time (was 7.18×), with a 4,688-byte executable.
+- Full suite: **1,150 passed, 5 skipped**.
+
+### Shared edit grammar (2026-10-08, ADR-200)
+
+The per-request edit-form help is now optional in the normal protocol. `edit_grammar()` is the complete, request-independent carrier grammar, and `edit_grammar_id()` is its identity. A client sends the grammar once as shared context, and `session.instructions(shared=ID)` then adds nothing per request. A stale ID rejects, and acceptance rules don't change. The protocol is specified in `docs/09_AI_PROTOCOL.md`.
+
+There is no model measurement yet. In the existing one-request-per-cell profiles the grammar would still be sent with every request, and the full grammar (about 1 KB) is larger than the filtered help. The saving needs multi-request sessions or prompt caching. A new R5 profile has to pin the grammar as shared context, count it, and leave its accounting against textual arms to the owner. R5 is still unmet and JVM stays R4.
+
+### Linux AArch64 R5 and R6: `jsonmin` maintenance and `xcksum` — 2026-10-10 (ADR-258)
 
 - R5: the `jsonmin` depth-limit cycle (one local mutation) ran on the AArch64 store; the rebuilt static image passes every contract case on a Pixel 8 Pro and runs at 0.994x the original there.
 - R6: `xcksum`, a POSIX `cksum`, is the row's XAX-only application: one hand-written `xax-construct-v1` request (new platform `linux-aarch64`), an XAX selftest, canonical package and builds, and a second release (`cksum -H`) made by one workspace transaction. Both releases match toybox `cksum` on every test input on a Pixel 8 Pro and an original Pixel; the row derives R6. Host contract minor 7.
 
-## Windows PE32+ DLLs — 2026-10-13 (ADR-259)
+## Other targets
 
-`xax-construct-v1` on `windows-x86_64` accepts `package.exports`; the build is then a PE32+ DLL (`ArtifactKind.WINDOWS_DLL`) with a `win64-c` export directory and no DllMain. EXECUTED on Windows 11 x86-64: a constructed DLL loads with `LoadLibrary` and its exports return the expected values (`tests/test_xax_pe_dll.py`). Host contract minor 8. Executable bytes are unchanged.
+### Browser pages with generated host bindings (ADR-103, U1.4) — 2026-10-02
 
-## Windows imports and COM calls — 2026-10-13 (ADR-260)
+- Target `wasm32-browser-v1`, platform package `compiler/src/xax_web.py` (`xax-web-v1`: `query_copy`, `set_body_text`; host state ordered by `effect<io>`). `emit_browser_page` generates one deterministic HTML page containing the module plus host functions for the imported bindings only. Imports outside the package reject.
+- The wasm backend lowers `bit.and`/`bit.or`/`bit.xor`/`udiv`/`urem`/`int.truncate`/`int.zero_extend`, but only on targets that list them. Existing wasm targets and their evidence are byte-identical.
+- EXECUTED in headless Chromium 141 through Playwright (`compiler/benchmarks/browser_fib.py`, `browser_fib_evidence.json`). The XAX program reads the URL query, parses `n`, computes `fib(n)` modulo 2^64, formats it, and renders it into the DOM. Four queries pass with no page errors. Module 1,270 B, page 2,343 B. Vectors: `compiler/tests/test_xax_web.py` (7 tests).
+- Event entries (ADR-104, closes OI-43): `code-entry:wasm32-browser-event` addresses lower to exported `entry_<k>`; `body_on_click` and `body_text_copy` bindings. The interactive page (`n fib(n)`, advanced by XAX on each click) passes 4 queries × 2 clicks in Chromium. Module 3,700 B, page 5,843 B.
+- Matrix: `browser-web` NONE → R2 (bounded bindings executed, including events). R3 needs a nontrivial application.
 
-`xax-construct-v1` on `windows-x86_64` declares any `win64-c` import (`win32.import`) and any COM method (`win32.com`: a `win64-c` declaration on library `com:<Interface>`, called through vtable slot k of a `b64` interface pointer). EXECUTED on Windows 11 x86-64: an XAX DLL reads the DXGI local-memory budget through `CreateDXGIFactory1` and four interface methods, and the value matches an independent reading (`tests/test_xax_pe_dll.py`). Host contract minor 9.
+### SPIR-V compute kernels on Vulkan (ADR-124) — 2026-10-03
 
-## Windows DLL forwards and DllMain — 2026-10-13 (ADR-261)
+- GPU row NONE → R1. `xax_spirv.py` lowers ordinary XAX functions (the `spirv-compute-v1` entry contract) to SPIR-V 1.3 compute modules; they pass `spirv-val` and run on Mesa llvmpipe with buffers and trap status equal to the reference executor. Concurrency safety is a checked rule (`SPIRV-KERNEL-OWN-ELEMENT`). Collatz: 6.9× glslang's time on llvmpipe, 1.81× module bytes (dispatch-loop lowering).
+- `GraphBuilder` blocks gained `trap()`; the reference executor accepts reference-backed heap-space pointer arguments.
 
-A Windows XAX DLL may forward exports to another module (`package.forwards`) and have a DllMain (`package.dll_main`) whose reachable calls the build limits to a loader-lock-safe kernel32 allowlist. EXECUTED on Windows 11 x86-64: an XAX DllMain's result governs `LoadLibrary`, forwards resolve to kernelbase, and a `version.dll` proxy built from XAX loads from a game-style executable's directory and starts a thread (`tests/test_xax_pe_dll.py`, VRAMBoost `tools/proxy_check.py`). Host contract minor 10.
+### Bare-metal board on QEMU virt (ADR-128) — 2026-10-03
 
-## S15f.4 bare-metal AArch64 images and S15e.3b hosted legacy path — 2026-10-22 (ADR-325, ADR-326)
+- Board profile 5 and `aarch64-qemu-virt-v1`: a bare-metal XAX program prints over UART MMIO, takes three GICv2 virtual-timer interrupts through a contract-checked XAX handler, and powers off via PSCI (5,420-byte image, exact output). U1.6 is executed (emulated); the row stays R1 because bare metal cannot link foreign objects yet.
+- The semihosting AArch64 harness now passes `-net none`: with `qemu-system-aarch64` installed but no EFI ROMs, its default NIC failed to start (3 tests errored in the commit that added the board; fixed in the next commit). Full suite: 853 passed, 17 skipped.
 
-The production compiler now builds bare-metal AArch64 load images itself. Before, only Python did. The AArch64 program gained the bootstrap's legacy register path, which these profiles use, and the image is the bundle code. On 600 random programs (spills, calls, homes, wide joins, loops, traps, narrow-width rejections) and the frame and offset rejections, the output equals the bootstrap's. On Windows, functions the bootstrap lowers on its hosted legacy register path are now built by the general program too, including compares, imports and COM calls, code addresses, heap views and checked accesses. 230 programs that reach that path and 20 rejection cases equal the bootstrap's. The seed was rotated (`ec14532e…`) and rebuilds itself (seed = C1 = C2). Every target except JVM jars and Android packages is now built by the production compiler.
+### AArch64 register path: heap views and heap loads/stores (2026-10-04, ADR-154)
 
-## S15e.5a JVM JARs for the integer subset through XAX — 2026-10-22 (ADR-327)
+- General AArch64 functions with null-checked heap views and full-width heap loads/stores now stay on the register path. A 40-program heap corpus matches its mirror under bionic (160 results); the ADR-110 corpus is unchanged.
+- The counter's callbacks shrink from 224/324 to 128/168 bytes (clang twin 96/132); APK 20,393 bytes, 0.706× the Java + NDK twin. No other committed artifact changes.
+- Full suite: **1,096 passed, 5 skipped** (the counter APK pin was the only failure before regenerating it).
+- Emulator: the API 30 x86_64 image runs arm64 code through ARM translation, but without KVM an arm64 app misses Android 11's fixed 10-second process-attach deadline, so the counter did not launch there (`compiler/integration/android/README.md`). The device run is still outstanding. *(Superseded: it passed on API 32, see the ADR-155 section below.)*
 
-A standalone XAX program (`xax_selfhost_jvm`, store `compiler/bootstrap/xax_jvm_general.xax`) now builds JVM JARs for `jvm-classfile-v1` programs that use only integer operations, byte for byte equal to `compile_jvm_bound_target`'s. `build` asks it first and falls back to the bootstrap when it declines. Results:
+### Emulated JNI float execution (2026-10-08, ADR-205)
 
-- 330 seeded random programs agree, none declined.
-- Inside `test_xax_jvm.py`, 39 JARs and 1 rejection agree, 61 decline (floats, platform calls, traps), none disagree.
+The ADR-202 float carriers and typed-record packs now run: the compiled arm64 code executes under Unicorn with a mock `JNIEnv`, and the call receives the exact `jvalue[]` bytes and returns a float in `s0` (`compiler/tests/test_xax_jni_float.py`). This is emulated execution, not device evidence (OI-44).
 
-The production driver does not contain the program yet, so the bootstrap status is unchanged.
+### Emulated NDK and POSIX contract programs (2026-10-08, ADR-206)
 
-## S15e.5b JVM floats and conversions through XAX — 2026-10-22 (ADR-328)
+Codec lifecycle, an AAudio output stream (build, configure, open, start, write, stop, close) and an owned nonblocking socket run under Unicorn through their real ELF import slots (`compiler/tests/test_xax_android_platform_emulated.py`, `compiler/benchmarks/android_elf_emulator.py`). AAudio handles are now 64-bit words loaded from stack out-cells. Emulated execution, not device evidence.
 
-The XAX JVM program now also lowers float constants, arithmetic, compares and conversions, including the trapping float-to-integer truncations. Results, checked against the bootstrap:
+## Compiler engineering
 
-- In `test_xax_jvm.py`, 86 JARs and 1 rejection agree, 14 decline (platform calls and their rejections), none disagree.
-- In `test_xax_selfhost_jvm.py`, every conversion across eleven integer widths and both float formats agrees byte for byte.
+### Host integration contracts and component-verification memo — 2026-10-08 (ADR-222 to ADR-225)
 
-## S15e.5c JVM references and platform calls through XAX — 2026-10-22 (ADR-329)
+Component stores are verified once per store bytes and compiler version (`verify_component_store`, ADR-222). A first `construct` in a fresh process with a populated image cache dropped from 21.9 s to 2.7 s. The construction carrier reaches argv/env/auxv through `linux.startup.*` (ADR-223). `linux-x86_64-process-v1` (ADR-224) and `xax-host-contract-v1` (ADR-225) give integrations a versioned surface. First consumer: XAX-MCP.
 
-The XAX JVM program now handles JVM reference values and platform calls: static, virtual and interface methods, and static fields. It decides `_foreign_member`'s rejections exactly. Checked against the bootstrap, `test_xax_jvm.py` gives 94 JARs and 4 rejections that agree, and 1 decline (the memory profile), none disagreeing. The memory, general and object profiles still fall back to the bootstrap.
+### Fast first start: `xax_native.prepare` — 2026-10-09 (ADR-250)
 
-## S15e.5d JVM object kinds through XAX — 2026-10-22 (ADR-330)
+`xax_native.prepare(parallel=True)` readies every component image and verified-store record in child processes (host contract minor 3); cache entries are published by atomic rename; lowering no longer re-verifies a store its loader just verified. First construct of the warm-up carrier, `XAX_REQUIRE_NATIVE=1`, this host:
 
-The XAX JVM program now builds the object kinds byte for byte with the bootstrap: `new`, arrays, `ldc`, instance and static fields, `checkcast` and `instanceof`. In `test_xax_jvm_objects.py`, 6 JARs and 3 rejections agree, and 1 callback declines.
+| | Before (4e16e32) | After P6 (ADR-248) | After P6+P7 (ADR-249) | After P6+P7+P8 (ADR-250) |
+|---|---|---|---|---|
+| Warm cache, wall (median of 5) | 2.235 s | 1.962 s | 0.528 s | 0.523 s |
+| Warm cache, added peak RSS | +764.7 MB | +43.3 MB | +45.0 MB | +44.9 MB |
+| Empty cache, sequential | 47.3 / 47.0 s, +1.36 GB | 46.0 / 47.3 s, +694 MB | 45.5 / 45.0 s, +697 MB | 47.4 / 44.5 s, +703 MB |
+| Empty cache, `prepare(parallel=True)` + construct | — | — | — | 25.5 / 25.7 s |
 
-## S15e.5e JVM callbacks through XAX — 2026-10-22 (ADR-331)
+The constructed store (root `70cff343…`), every image, and every CID are unchanged except the regenerated BLAKE3 hash store (ADR-249). Prebuilt images are not shipped (ADR-250).
 
-The XAX JVM program now builds callbacks: JDK streams and comparators that call XAX functions. It also accepts the memory and general class-file profiles. Every compile in `test_xax_jvm_callbacks.py`, `test_xax_jvm_objects.py`, `test_xax_jvm_import.py` and `test_xax_jvm.py` either agrees with the bootstrap or declines, and none disagree. The declines are a stack allocation and the memory-profile rejection.
+### One-call BLAKE3 up to 16 MiB — 2026-10-09 (ADR-249)
 
-## S15e.5f/S15e.5 JVM aggregates, the full test run, and JVM JARs through the production compiler — 2026-10-22 (ADR-332, ADR-333, ADR-334)
+The XAX BLAKE3 hash lends a 16 MiB input view (`xax_blake3_hash.xax` regenerated; its CID is the only one that changes), so every committed store hashes in one native call; the per-block driver reuses its argument buffers. Warm first construct: 1.96 s → 0.53 s, +45 MB peak RSS. Digests are unchanged.
 
-- The XAX JVM program builds aggregates and sums as flattened `long[]` values. In `test_xax_jvm_general.py`, 3 compiles agree and 12 decline (the memory machinery); none disagree.
-- The full suite after the S15 steps: its failures are fixed (the Linux request bit, the 64 MiB BLAKE3 input, the inventory, the native-width test) or environmental (wheel setuptools, and xdist workers that crashed under memory pressure).
-- The production driver builds JVM library and executable JARs. The verifier's input view is now 1 GiB, and the x86-64 views backend has more room. The seed was rotated in two stages to `445bdf00…` (seed = C1 = C2). The seed binary's hello JAR is byte-equal to `build`'s.
-- Still open:
-  - The selfhost closure and full-selfhost evidence have not been re-run against the new stores.
-  - The serial rerun of the seven crashed tests.
+### Lazily zeroed component views — 2026-10-09 (ADR-248)
 
-## S15e.6, S15g and the full test run after them — 2026-10-29 (ADR-340 to ADR-353)
+The XAX-hosted components' views are lazily zeroed anonymous mappings. Warm first construct: 2.24 s and +765 MB peak RSS before, 1.96 s and +43 MB after; no change to any store, CID, or artifact.
 
-- Android's layers are XAX programs that `build` asks first: the APK container, v2 signing, the binary manifest and `resources.arsc`, the bridge DEX, the multi-export ELF container, the unsigned and managed carrier decisions, and the JVM-to-DEX lowering and writer (S15e.6a-S15e.6g). The driver's Android path is drafted as four steps (S15e.6h, ADR-351). Until those steps are done, the whole compiler's blocker still names Android packages.
-- The DEX bridge frontend was split into two graphs to fit the graph decoder's capacity (ADR-352).
-- The views backend's closure work stack now grows; it used to decline once one function called the same helper more times than its store had objects (ADR-353). The backend and driver stores were regenerated, the ledger rebased, and the seed rotated to `f968cdd7…` (seed = C1 = C2).
-- S15g evidence was re-run on the final stores with `XAX_REQUIRE_NATIVE=1`:
-  - x86-64, closure (8 B1 images and 28 stores, all agreeing), full self-host, and the Python-free seed.
-  - The Linux x86-64 production compiler holds B0-B6, and its seed requires no Python.
-- The full suite (`-n 2`, before ADR-353): 1594 passed, 59 skipped, 13 failed, 3 errors. The fixed regression:
-  - The S11 driver declined the four stores the work stack overflowed.
-  - After the fix, those four stores, store regeneration, the driver suites and the evolution test pass: 42 passed, 324 subtests.
-- The four tests whose xdist workers crashed under memory pressure pass serially: `test_argument_counts`, the general driver's self-rebuild, the evolution test and `test_declared_rejections`.
-- Environmental failures:
-  - `tiktoken` is not installed.
-  - The `compiler` package import needs the repository root on `sys.path` (`test_oi03`, `test_oi06`, the `test_oi07`-`test_oi09` collection errors).
-  - Wheel builds fail on this host's setuptools (`install_layout`).
-- Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `06f9675`.
+### Native XAX compiler leaf — BLAKE3 compression (2026-10-02)
 
-## S15e.6h unsigned APKs in the self-built compiler — 2026-10-29 (ADR-354, ADR-355, ADR-356)
+The first performance-critical compiler leaf now executes as ordinary XAX semantics. `compiler/bootstrap/xax_blake3_compress.xax` is the committed canonical implementation; `compiler/src/xax_native_blake3.py` can regenerate the full seven-round BLAKE3 compression function as one verified graph with 28 `bits<32>` inputs and one 16-word tuple result. The graph uses ordinary `add.wrap`, new width-exact `bit.xor` and `rotate.right`, aggregate construction, and the existing x86-64 general target; there is no handwritten BLAKE3 lowering or target intrinsic. The graph CID is `f1744e682b2f99c542100f0e987dced9a87f40dfa4b8f173596fb24b78faa216`, function CID `3d3a391c22e1baf03a0a037e33ce7689df0aaceea0f5e65e1bbdf0677a2bf564`, and the normal x86-64 backend emits 19,744 bytes with 806 semantic machine-code ranges.
 
-- The Android shared object bundles are built by the XAX AArch64 program (S15e.6h.1, ADR-354).
-- One XAX program, `xax_selfhost_android`, builds every unsigned APK (S15e.6h.2, ADR-355). It decodes the package's carriers, decides their rules (U1-U60, M1-M7) and chains the AArch64, ELF, manifest, resource-table, DEX and APK programs. Under `XAX_GENERAL_FRONTEND_DIFF=1`, 127 APKs and 88 rejections equal the bootstrap's, and none is declined.
-- The general driver builds unsigned APKs through that program (S15e.6h.3, ADR-356). The request takes the Android path, the program is called twice (roots, then build), and its rejections are the driver's own.
-- The regenerated driver did not fit two capacities, and both were fixed (S15e.6h.4, ADR-356):
-  - The previous seed's general x86-64 program could not emit the Android program's 1.56 MB decoding phase. The decoding is now three phases.
-  - The views backend program ran out of code at 79.7 MiB. Its code region is now 128 MiB.
-- The driver, request, S10 driver and backend stores were regenerated, and the ledger rebased. The seed was rotated to `ee974928…` (29,183,659 bytes; seed = C1 = C2).
-- `bootstrap_status` now names only signed APKs and libxposed JVM modules (S15e.6i) as outside the production compiler.
+`compiler/src/blake3.py` retains its dependency-free Python compressor as the immutable bootstrap/fallback path. After `xax_compiler` is available on a compatible x86-64 host, the first compression lazily loads/verifies/lowers the committed XAX graph; recursive hashing during accelerator initialization is forced through the Python leaf. Subsequent compiler BLAKE3 compression calls use the XAX-generated native leaf. The Linux host boundary uses a 279-byte SysV-to-Win64 argument trampoline only because the repository x86-64 target ABI is Win64; the trampoline contains no hash logic.
+
+Executed evidence is in `compiler/benchmarks/xax_native_blake3_evidence.json`, reproduced by `bench_xax_native_blake3.py`. The native graph matched the Python compressor on the committed vector and full public BLAKE3 digests. On the evidence host (`x86_64` Linux, Python 3.13.5), median 5,000-call leaf timing improved by **5.18x** and two 1 MiB whole-hash iterations improved by **4.77x** after warm-up. These are host measurements, not a cross-platform performance guarantee. The existing official BLAKE3 vector tests remain authoritative for digest compatibility.
+
+### Record links on wasm32 and PE (ADR-098) — 2026-10-02
+
+- wasm32: 8-byte link fields holding zero-extended `i32` addresses; `link_follow` as `i32.eqz`/`unreachable`. PE: operations 73–75 admitted and lowered by the converged allocator.
+- EXECUTED: `test_xax_wasm_links.py` (walk exits 42, null traps) and `test_xax_pe_links.py` (exit 42 under Wine 9.0). Full suite: 807 passed, plus the 17 pre-existing failures.
+
+### Links across calls and padding (ADR-099) — 2026-10-02
+
+- Borrowed record views link into themselves (callers may pass only such views). Windowed record loads ignore uninitialized padding.
+- EXECUTED: a callee walk (exit 42); a cross-target table cannot be passed; padded wasm32 stack records walk to 42; an unwritten field still rejects.
+
+### Cross-call link targets (ADR-101) — 2026-10-02
+
+- `link_target` (op 76) lets a callee borrow a table and the arena its links point into. Every call site checks the pair. It lowers to no code.
+- x86-64 elides returned borrowed views when a function has more than one machine return. Executed: callee walks cross-storage links, exit 42. Three rejection vectors.
+- Linux target profiles now list op 76. That changes the `chains` and `filestat` program roots; the executables are byte-identical. Evidence JSONs are updated.
+
+### Lend entries: `qsort_r` with an XAX comparator (ADR-115, OI-42 closed) — 2026-10-03
+
+- `sysv-x86_64-c-lend` entries read a view lent by the C call that receives them. EXECUTED: glibc `qsort_r` sorts a 16-element XAX heap array; exit 117 (`linux_qsort_evidence.json`). Seven rejection vectors (`test_xax_lend_entry.py`, 9 tests).
+
+### Recursion is callable (ADR-125) — 2026-10-03
+
+- Group member functions make `(group, member)` callable; recursion now compiles and runs on the reference executor, wasm32, RISC-V, the JVM, AArch64 bare metal, and Linux x86-64/AArch64 executables (factorial, even/odd, and recursion over a borrowed view). Previously no compiled program could recurse.
+- AArch64 now elides borrowed-view returns (ADR-101), so view-passing functions compile there.
+- Full suite: 833 passed, 17 skipped.
+
+### Byte-view widening — 2026-10-08 (ADR-231)
+
+A checked load or store on a `bits<8>` view can now move 2, 4, or 8 bytes as one little-endian integer (a `u64` from a `bytes_rw` view is one node instead of eight). Every proof obligation is unchanged. x86-64, AArch64, JVM, and wasm run it; RISC-V rejects it (`RISCV64-CHECKED-BYTE-VIEW-WIDTH`); SPIR-V kernels take word views only. The XAX facts engine decides these accesses itself. Host contract minor 2.
+
+## AI protocol and token efficiency
+
+### U1.1 hosted Windows PE32+ executable — 2026-10-02
+
+- Path: verified XAX -> existing x86-64 frame lowering -> `xax_pe.py` PE32+ container -> Windows loader. No CRT, linker, assembler, LLVM, startup stub, or base-relocation table (code is position independent; image is ASLR/NX compatible).
+- `call_foreign` lowers to `call [rip+disp32]`; each distinct `(library, symbol)` gets one IAT slot. Foreign ABI ownership is now explicit: verifier accepts `android-aapcs64-c` and `win64-c`; x86-64 rejects non-`win64-c`, AArch64 rejects non-`android-aapcs64-c`; raw load images reject import-bearing images (`XAX.NATIVE.IMPORTS`). `x86_64-windows-load-image-v5` CID unchanged.
+- Escaping stack pointers are materialized by one `lea` only at foreign/direct call argument sites; 1/2-byte stack loads/stores now lower (previously rejected). Existing 4/8-byte encodings unchanged.
+- Bounded platform package `xax_platform.win32_kernel32_api`: GetStdHandle, WriteFile, GetProcessHeap, HeapAlloc (verified heap-owner allocator contract), HeapFree (deallocator contract), ExitProcess.
+- Returning from a PE entry left the process alive (observed hang; loader worker threads), so termination is an explicit `ExitProcess` call; the container adds no exit path (ADR-076).
+- EXECUTED at U1.1 (evidence file since regenerated by U1.2a below): 2,048-byte PE (SHA-256 `4c0bffdf87a5042eccb3737f7e0891e6ebb563e41a5fa75c2d7bc15efd6c7c46`), 918 code bytes, six kernel32 imports; fixture writes `XAX\n` from stack storage, allocates/frees 64 heap bytes, runs a looping `sum_to(10)` direct call, exits 57; 20/20 runs on Windows 11 10.0.26200 AMD64 (AMD Family 25 Model 80). Process wall median 19.3 ms (includes CreateProcess/pipe; not a code-quality claim).
+- Historical limit at U1.1: R2 was not claimed because callbacks/threads/files/sockets were absent. ADR-170 later adds executed callbacks and thread lifecycle and advances the row to R2. R4, files/sockets, unwind/PDB/TLS, and the other listed gaps remain open.
+- Tests: `tests/test_xax_pe.py` 5/5 (execution test runs only on Windows x86-64), `tests/test_replacement_matrix.py` 3/3. Full suite: 577 tests; the 31 failures/errors are identical by name to the pre-change baseline (missing `pytest`/tokenizer modules, stale pinned evidence/code hashes, host-bound cases); 0 new.
+
+### U1.2a heap views on x86-64 and U1.4 WASI — 2026-10-02
+
+- x86-64 frame lowering now lowers `heap_view` (null test + `ud2`), static heap loads/stores with folded offsets, and checked dynamic heap loads/stores (`[base+index+disp32]` after an unsigned bound check + `ud2`). Heap `address_offset`/`pointer_cast` results are materialized so calls/returns/branches see them. Atomics on heap views reject explicitly. `x86_64-windows-pe-v1` adds `heap_view`; its CID changed to `f9385ae2…`.
+- Verifier (ADR-079): pointer-free memory-effect call interfaces are pure ordering frontiers; previously any effect-bearing direct call needed a stack contract.
+- `win32_kernel32_api` adds `VirtualAlloc` (zero-filled, 4096-aligned allocator contract) and `virtual_free_view`.
+- EXECUTED (Windows 11 x86-64): the PE fixture now also calls `squares_sum`, which fills a 16 x b32 heap array with i*i in one loop and sums it in another through checked heap accesses, then frees it. Exit 1298 = 55 + 1 + 1 + 1240 + 1. Evidence: 3,072-byte PE, 1,997 code bytes, 8 kernel32 imports, 20/20 runs (`windows_pe_hosted_evidence.json`, SHA-256 `ab3d7a86…`). Out-of-bounds variant (17 elements) traps with `STATUS_ILLEGAL_INSTRUCTION` (test).
+- WASI (ADR-080): `wasm32-wasi-v1` + `wasm32-import` ABI + `xax_platform.wasi_preview1_api`; `run_wasi_isolated` runs modules under Node `node:wasi`. EXECUTED: 451-byte module; host writes argc/argv size into XAX stack storage via `args_sizes_get`; XAX reads them, runs `sum_to(10)`, and calls `proc_exit(97)`; 10/10 runs on Node v26.7.0 (`wasi_command_evidence.json`).
+- U1.2b prototype: `x86_64-windows-pe-v1` frame functions get a chunk-exact store→load forwarding peephole (reload deleted, or `mov dst, src`; never at a branch target; labels/branches/calls/semantic ranges shifted). Legacy load-image targets keep pinned bytes. PE fixture code 1,997 → 1,873 bytes (−6.2%); evidence regenerated (3,072-byte PE, SHA-256 `87e1edaa…`), still exit 1298 on 20/20 runs.
+- Regression after all U1 changes: 584 tests; the 31 failures/errors are identical by name to the pre-change baseline; 0 new.
+- Not done: real register allocation for frame functions (U1.2b); pointer values in memory (OI-37) — blocks `fd_write` iovecs and linked structures; browser bindings.
+
+### U1.2b register path for hosted x86-64 — 2026-10-02
+
+- ADR-083: on `x86_64-windows-pe-v1` the register-resident allocator now also lowers compares, foreign calls (with shadow space), function addresses, heap views, heap pointer arithmetic, static/checked heap loads/stores, and cross-block SSA uses (frame homes). Stack-storage/float/aggregate/indirect-call functions remain on the frame path with the forwarding peephole. Legacy targets unchanged.
+- MEASURED (`x86_register_path_evidence.json`): `sum_to(200,000,000)` frame path 433 B / 738.7 ms median vs register path 89 B / 92.1 ms (8.02x), 7 runs.
+- EXECUTED: PE fixture code 1,269 bytes (was 2,181), PE 2,560 bytes (SHA-256 `a5e01731…`), exit 1339, 20/20 runs; OOB heap store still traps.
+
+### Post-upgrade token test (lowest cost) — 2026-10-02
+
+- Offline, with no model tokens: after installing `tiktoken` 0.14.0, the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44.
+- Model: one `task-01` pair (change a shared constant) run as fresh `haiku` subagents. C used 38,278 tokens and 4 tool calls; XAX used 39,997 tokens and 7 tool calls (1.04× C). Both passed the external checkers on the first attempt with no repairs. This is n=1 with fixed agent-harness overhead dominating, so it is not OI-31 evidence. It agrees with the earlier `task-02` smoke check (1.04×): on tiny edits, the XAX protocol's extra inspect/test round trips cost about as much as the C edit saves.
+
+### U1.3 Linux x86-64 executables and the Linux register path — 2026-10-02
+
+- Kernel integer completion (ADR-084): `bit.and` 67, `bit.or` 68, `udiv` 69, `urem` 70, `int.truncate` 71, `int.zero_extend` 72, with verifier rules, reference semantics, and x86-64 lowering. Portable trap reason 2 is `integer-divide-by-zero`. Only the Linux target packages advertise these operations.
+- Foreign ABIs: `linux-x86_64-syscall-v1` (ADR-085, register templates in declaration identity) and `sysv-x86_64-c` (ADR-087, INTEGER class only), both added to the single `FOREIGN_ABIS` registry. Typed declarations live in `xax_linux.py` (`read`, `write`, `openat`, `close`, `mmap_anonymous`, `munmap_view`, `exit_group`, and `c_function` for C imports).
+- Containers (ADR-086/087): `xax_linux.py` emits static or explicit-loader ELF64 `ET_EXEC` with no container code. Generic ELF packing is in `xax_elf.py`, shared with the Android emitter (Android bytes unchanged). Linux imports use the shared `call_import`/`NativeImage.imports` path.
+- Process entry: the entry function is lowered for Linux's aligned, no-return-address start (`compile_native(..., process_entry=True)`); its `ret` lowers to `ud2`, and exit is the program's explicit `exit_group` (ADR-076 rule).
+- Frame path (ADR-088): on Linux profiles only, escaping frame pointers are materialized and value pointers use base-register access, alongside main's heap-view lowering. `pointer_extent_from_graph` is shared with AArch64.
+- Register path (ADR-089): `xax_x86_64_regalloc.py`, separate from the PE allocator (ADR-083); convergence is OI-38. Differential corpus: `compiler/tests/test_xax_regalloc_differential.py` (120 seeded programs executed natively versus the reference executor).
+- Workload: `compiler/benchmarks/linux_filestat.py`. MEASURED (`u1_linux_filestat_evidence.json`, `XAX_BENCHMARKS.md` §15.1): 0.95–1.14× `gcc -O2` and 1.41–1.82× `clang -O2` over seven runs; 3,560-byte artifact; 1,184 KiB peak RSS (loader + libz + libc). R4 is not met.
+- Construction tooling: `xax_graph_builder.py` (block/node builder and reachable-closure store writer); it is not a source language.
+- Token test after the upgrade (lowest cost). Offline: with `tiktoken` installed, the OI-01 transport counts and the OI-03/OI-04 replays reproduce, and the AI-native tests pass 17/17. The OI-12 and OI-13 committed evidence records `tiktoken` as unavailable, so those replays fail whenever it is present (environment-dependent; predates this work). Model: one `task-02` pair with `haiku` subagents — C 35,151 tokens, XAX 36,492 tokens (1.04×), both pass; this is not OI-31 evidence.
+- Regression on Linux x86-64 (Python 3.11.15, pytest, `tiktoken` installed): the merged tree has exactly main's 17 environment/evidence failures — host-bound Windows/QEMU cases, the stale stack-memory hash pin, the OI-25/OI-26 replays, the OI-12/OI-13 `tiktoken` replays, and the wheel build — with 781 tests passing.
+
+### Post-upgrade token test (lowest cost) — 2026-10-03
+
+- Offline, with no model tokens (tiktoken 0.14.0, `o200k_base`): the AI-native harness and the OI-03/OI-04 tokenizer replays pass 44/44. With a tokenizer installed, the OI-12/OI-13 suites now check real counts, and OI-12's committed evidence records them (9 and 7 tokens per timing query/response).
+- Model: one `task-01` pair (change a shared constant), each arm a fresh `haiku` subagent given the identical task prompt. C used 37,576 tokens and 3 tool calls; XAX used 40,021 tokens and 10 tool calls (1.065× C). Both pass the external checkers on the first attempt with no repairs. n=1, dominated by fixed agent-harness overhead, so this is neither R5 nor OI-31 evidence. It matches the earlier results (1.04×, 1.04×): on one-constant edits, the XAX protocol's inspect/mutate/test round trips cost slightly more than the C edit saves. The ADR-112–115 changes did not touch the workspace protocol, so this is a regression check, not a new measurement of it.
+
+### Post-upgrade token test (lowest cost) — 2026-10-03, after ADR-123–131
+
+- Offline only, with zero model tokens (tiktoken 0.14.0): the AI-native harness and the OI-03/OI-04/OI-12/OI-13 tokenizer replays pass 67/67 against the changed verifier. New offline token evidence comes from OI-36 (`oi36_stdlib_evidence.json`): using the standard packages takes a 268-token interface view plus a 1,360-token application mutation, against 3,256 tokens with the library bodies inline.
+- No model pair was run. `xax_workspace`, the AI-native harness, and `docs/09_AI_PROTOCOL.md` are unchanged since the last pair (`task-01`, `haiku`, XAX 1.065× C), so a new pair would only repeat that regression check. The next paid trial should measure something new: a library-using edit, such as adding a call to `hashset_u64.contains`.
+
+### Direct semantic-edit workflow (2026-10-06, ADR-175)
+
+- MEASURED (`compiler/benchmarks/ai_native/jvm-r5-optimized-evidence.json`, `jvm-r5-optimized-results.csv`): the same five semantic edits under one fixed controlled client profile, with task-local exact-target checkers and 10/10 passing in one turn with no repair.
+- C-like text used 197,252 total tokens; XAX-DIRECT used 98,432 (0.4990×, 50.098% fewer). Median per task: 39,479 versus 19,704.
+- `XAX-DIRECT` supplies the bounded local semantic view and uses one atomic apply/verify/commit/check operation. The matrix remains R4 until the other §6.2 classes and Java/Kotlin/repeated evidence exist.
+
+### Multi-file profile v6 with the shared grammar (2026-10-08, ADR-201)
+
+`python -m benchmarks.run_jvm_r5_multifile` from `compiler/` now runs profile v6. The XAX arm holds the shared edit grammar in its client base instructions and gets no per-request edit help. The runner calibrates the common floor and the XAX floor (`calibration-xax.json`); their difference is the grammar's cost per request. The gate counts that cost in every XAX request. The evidence JSON also reports informational ratios with the grammar counted once per attempt and excluded, for the owner's accounting decision. No inference has been run. Use the ADR-190 toolchain setup with one writer, `--repetitions 3`, and keep every failed attempt. R5 is still unmet and JVM stays R4.
+
+## Open issues
+
+### OI-37 first slice: `pointer_address` — 2026-10-02
+
+- New memory operation `pointer_address` (id 66, ADR-081): pointer -> `bits<pointer width>`, mandatory exposure waiver, live-storage check, provenance-free result; lowered on x86-64 (`lea`/load) and wasm32 (no-op); reference executor rejects. Added to `x86_64-windows-pe-v1` (CID now `9c6224e5…`; PE bytes unchanged) and `wasm32-wasi-v1`.
+- `wasi_preview1_api.fd_write` declared with iovec/nwritten memory effect plus buffer memory effect.
+- EXECUTED: WASI fixture now prints `XAX\n` to stdout through `fd_write` and exits 97; 635-byte module; 10/10 runs on Node v26.7.0 (`wasi_command_evidence.json`, SHA-256 `88df1893…`).
+- Still open (OI-37): provenance-carrying pointer stores/reloads (linked structures, vtables).
+
+### OI-37 second slice: provenance-free pointer elements — 2026-10-02
+
+- ADR-082: memory elements may be pointer types; only provenance-free pointers (function addresses, external pointers) may be stored; reloads carry no facts. x86-64 checks pointer-element accesses against the 64-bit pointer width. Reference executor rejects pointer elements explicitly.
+- EXECUTED (Windows 11 x86-64): PE fixture adds `dispatch()` — a two-entry function-pointer table in stack memory, reloaded by checked loads and called via `call_indirect` (41). Exit 1339; 3,584-byte PE, 2,181 code bytes, SHA-256 `87fd6168…`, 20/20 runs.
+- Negative: storing the table's own stack address rejects (`MEMORY-POINTER-STORE-LOCAL-PROVENANCE`).
+
+### OI-37 measurement: arena + index versus pointer links — 2026-10-02
+
+- Workload `compiler/benchmarks/linux_chains.py` (chained hash table, 2^20 nodes, 2^16 buckets) in XAX with arena indices and checked access. Its C twin uses pointer links, and diagnostic C twins use index links with and without checks. Shared tooling: `benchmarks/linux_graph_kit.py` and `benchmarks/linux_harness.py` (filestat ported with a byte-identical artifact).
+- MEASURED (`oi37_chains_evidence.json`, two runs): XAX 3.49–3.58× `gcc -O2`, 1,598 B, 16,896 KiB RSS. Attribution: representation 1.44–1.47×, checks 1.34–1.41×, XAX code generation 1.73–1.80×. Decision ADR-090: OI-37 pointer provenance is justified but follows OI-38.
+- Tests: `compiler/tests/test_xax_chains.py` (small-table correctness against an independent reference, plus artifact identity).
+
+### OI-38 step 1: Linux allocator (ADR-091) — 2026-10-02
+
+- `xax_x86_64_regalloc.py`: cross-block values used in loops are pinned to `rbx/rbp/r12–r15`; fall-through branch layout with out-of-line edge stubs; shared cold trap stubs; power-of-two `udiv`/`urem` as shift/mask; 16-byte loop-header alignment.
+- MEASURED (one run each): `chains` 1.91× `gcc -O2` (was 3.49×), and 1.06× equivalent checked-index C (was 1.80×). `filestat` 0.94× `gcc -O2`, 1.47× `clang -O2`.
+- Differential corpus: 120 + 40 programs (the 40 call while values are pinned). Evidence JSONs regenerated.
+
+### OI-37 step: `pointer_rebase` (ADR-092) — 2026-10-02
+
+- Operation 73 in the kernel. Verifier windows, executor and frame-path rejection, Linux allocator lowering (`sub; ror; cmp; ja` to a cold trap). Spec §5.6, conformance §23 item 12.
+- `chains` builds `links="pointer"`, and C gains a `-DCHECKED` diagnostic. MEASURED: pointer links 1.64× `gcc -O2` (1.07× checked-pointer C); index links 2.00×. The Linux allocator also keeps a layout-next successor inline when both edges copy.
+- Tests: `compiler/tests/test_xax_pointer_rebase.py` (executed traps, verifier rejections), and `test_xax_chains.py` covers both link kinds.
+
+### OI-37 step: `pointer_rebase` on wasm32 (ADR-093) — 2026-10-02
+
+- `wasm32-wasi-v1` lowers operation 73 (`i32.sub; i32.rotr; i32.gt_u; unreachable`). The wasm static layout reserves address 0–15, so 0 is never a storage address.
+- EXECUTED: a WASI linked-list walk exits 42, and four corrupted-link vectors trap (`test_xax_wasm_rebase.py`). Full suite: 790 passed, plus the 17 pre-existing failures.
+
+### OI-38: PE on the converged allocator (ADR-095) — 2026-10-02
+
+- `x86_64-windows-pe-v1` uses `xax_x86_64_regalloc.py` first. It adds Win64 calls (including stack arguments), `function_address`, `call_indirect`, and stack storage, with per-profile foreign ABI ownership. It also fixes the constant-return epilogue bug.
+- PE fixture: 6/6 functions converged; code 700 B (was 1,269); EXECUTED-UNDER-WINE 9.0 (`windows_pe_wine_evidence.json`; `WineExecutionTests` runs when wine64 is installed).
+
+### OI-37 closed (ADR-096) — 2026-10-02
+
+- Closure evidence: iovecs (ADR-081); pointer-linked traversal on x86-64 (heap) and wasm32 (stack storage, the stated deviation); forged/expired vectors on both targets; verifier cost and offline edit tokens (`oi37_closure_evidence.json`).
+- Check-free reloads move to OI-41 (typed mixed storage, deferred).
+
+### OI-41 closed: record links (ADR-097) — 2026-10-02
+
+- Kernel: type `link` (form 11), operations `link_make` (74) and `link_follow` (75), record views over tuple elements, and an optional `heap_view` link-target operand. Verifier rules: 21 (`oi41_links_evidence.json`).
+- Allocator (shared by Linux and PE): null-test elision, displacement folding, loop rotation with aligned targets, edge hints, and range-proven rebase elision.
+- MEASURED: `chains` record links 1.066× `gcc -O2`. Tests: `test_xax_links.py` (9 rejection vectors, null-only constants, a walk, and a null-follow trap). Full suite: 801+ passed, plus the 17 pre-existing failures.
+
+## Documentation and process
+
+### Supported targets
+
+- x86-64 Windows, raw callable load-image profile revision 2 with native system-scope 32/64-bit atomics and one explicit handler entry, target CID `24e312c773b777ac4dd892b39a9477f1758ff8bf05d7708bfb8282120a9ded56`. Invocation uses an isolated Windows host harness.
+- WebAssembly core module, target CID `946143a04b0b1ba8ed7312af6c85f70cbb4f71644fb20f7aea3be8ed06da41ed`. Invocation uses Node/V8 only as a test harness; emitted modules have no imports.
+- AArch64 bare-metal raw callable load image, target CID `0af5a0c8db7996951be281cf7ab22a7ee158287c43f195c9518f782f5832e355`. Invocation uses QEMU/semihosting only as a test harness; emitted code contains neither.
+- Prototype SIMT packet accelerator, profile 3 / architecture 4, target CID `202e9d0db81107e8380f27ef1f233327c34fe8a1f56431d38814ec4ee6feee04`. It emits a deterministic deployment packet with no declared runtime dependency; `run_accelerator_deployment` is a conformance harness, not an emitted runtime or physical-GPU claim.
+
+- x86-64 Windows hosted PE32+ executable, target `x86_64-windows-pe-v1` (CID `9c6224e5e314c60a1bbfd2dc54b28ccac19b570d5113ba2c70bb7686fbf67d1c`): v5 operations plus `call_foreign`, `heap_view`, and `pointer_address` under the `win64-c` ABI, bound through a loader-filled import table by `xax_pe.emit_pe_executable`. Runs as an ordinary Windows process; no harness.
+
+- x86-64 Linux `x86_64-linux-elf-exec-v1` (static) and `x86_64-linux-elf-dynexec-v1` (explicit `ld.so`, declared `DT_NEEDED` only): direct ELF64 `ET_EXEC`, EXECUTED natively on Linux x86-64. `e_entry` is the XAX entry; the program exits explicitly with `exit_group`.
+
+- JVM `jvm-classfile-v1` (architecture 5, ADR-112): one class file (major 61) in a stored deterministic JAR, EXECUTED on OpenJDK 21 HotSpot with `java -jar`. Foreign members are typed `jvm-invokestatic`/`jvm-invokevirtual`/`jvm-getstatic` declarations; `xax_jvm.java_base_api()` covers `System.out`, `println`, `print(char)`, `flush`, `System.exit`, `Math.sqrt`, `System.nanoTime`, and `Long.bitCount`.
+
+- RISC-V `riscv64-baremetal-raw-v1` (architecture 6, ADR-113): a raw position-independent RV64IM image with the LP64 integer convention, EXECUTED under the Unicorn RV64 emulator (test harness only).
+
+All emitted forms have no mandatory XAX runtime, allocator, libc, assembler, linker, or LLVM dependency. The M13 accelerator package declares an empty runtime-dependency set.
+
+### Standard semantic libraries (ADR-130) — 2026-10-03
+
+- `xax_stdlib`: the `xax.text` and `xax.collections.hashset_u64` package families (canonical `PACKAGE` objects, function-granular, instantiated per extent or capacity, target independent). `uniqcount` uses them and is EXECUTED on Linux x86-64 and AArch64. OI-36 CLOSED.
+
+### Documentation sync (2026-10-04)
+
+- Replacement levels in `README.md`, this file, `XAX_HANDOFF.md`, the roadmap, and the architecture document are now generated from `XAX_REPLACEMENT_MATRIX.json` by `compiler/src/xax_status_docs.py`; `tests/test_status_docs.py` fails while any copy is stale. Stale current-status text was corrected (README: "no platform is above R2", the 1.4–1.8× `clang` figure, and Python 3.12; the architecture snapshot after ADR-129; roadmap U1.8). Superseded benchmark sections (§15.1, §15.12) now point at §15.14.
+- Markdown structure: one H1 per document (architecture, specification, bootstrap README), fence languages in `docs/10_TARGET_MODEL.md` and `docs/11_ABI_PLATFORM.md`, and a store table in `compiler/bootstrap/README.md`.
+- `compiler/pyproject.toml` gains a `test` extra (`pytest`, `pytest-xdist`, `unicorn`, `tiktoken`).
+- Full suite on Linux x86-64 (Python 3.11.15, the `XAX_HANDOFF.md` environment, Android root from `make_android_root.py`): **1,070 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` emulation runs).
+
+### Documentation sync: generated Targets table and R0–R6 summary (2026-10-04)
+
+- `README.md` explains the replacement levels R0–R6 and the evidence labels, and its Targets table is now generated from `XAX_REPLACEMENT_MATRIX.json` (a new `<!-- xax-status:targets -->` block in `compiler/src/xax_status_docs.py`). Every matrix row carries a `name` and `summary`; the validator rejects a row without them. Platforms that have not started stay visible at level `NONE` (shown as "—"): Apple, .NET, RTOS/MCU, and a new `bsd-unix` row.
+- Roadmap: the U1 progress paragraph and levels block had drifted into M1 and are back under U1; the U1.3 row no longer states the Linux rows' old R2 levels as current.
+- README test command fixed (`PYTHONPATH=src:.:..`; `compiler.benchmarks` imports need the repository root) and the complete Ubuntu host environment written out.
+- Full suite on Linux x86-64 (Python 3.11.15, that environment): **1,089 passed, 5 skipped** (two Windows-host PE runs, the physical arm64 device, and the two opt-in `XAX_FIXED_POINT=1` runs). A statically linked `busybox` fails the three OI-24 sandbox tests; the dynamic build is required.
+
+### Evidence and canonical-state integrity, EI (2026-10-06, ADR-177)
+
+- An independent audit found claims ahead of evidence. This milestone repairs the causes before S7b; it migrates nothing.
+- **Typing store**: `xax_op_typing.xax` was stale. ADR-170 added `win64-c` to `FOREIGN_ENTRY_ABIS`, which the facts builder embeds, without regenerating the store; and decline-site codes were numbered per process, so a second build in one process differed. Both are fixed. Regenerated store: root `4681e6c50bd88ba3d96ab87ddc45ea294a8a9ae3b0658868c8f0b77beb0383ce`, SHA-256 `c3395d39e7f3556910ea1483c59cbc29a8ef3e0a20fee2892b49d4b9f8f99c02`, 2,840,749 bytes. All nine helper stores now regenerate byte-identically twice per process, in either build order, on any host (`tests/test_store_regeneration.py`). Self-hosting evidence entries are bound to store hashes; the typing entries are `native_rerun_required` (OI-45).
+- **B status**: derived only by `xax_selfhost.bootstrap_status`. The M14 semantic-image META wrapper holds B2–B4; B5/B6 are withdrawn; no whole-compiler B level. Component fixed points are no longer called B1–B4.
+- **Seed**: pinned (46,255 bytes, `4e0c64d6…`); `generate_m14.py` never writes it; `rotate-seed` is the reviewed path; packing is deterministic. Requires Python.
+- **Authority**: `xax_native.AUTHORITY` per component; `XAX_REQUIRE_NATIVE=1` forbids silent fallback; W^X mappings; authenticated image cache.
+- **Packaging**: the wheel now has all 65 modules and the 13 stores; a clean install verifies a store and reports authority.
+- **Matrix**: validator v2. Linux x86-64 R4→R3 and Android arm64 R4→R3; no other level changed.
+- **Provenance**: Linux ELF (x86-64, AArch64), PE32+, browser pages, and SPIR-V build through `xax_build.build`.
+- Full suite on Windows 11 x86-64, Python 3.12.10: **975 passed, 0 failed, 219 skipped**; every skip names an unavailable host tool (75 Linux x86-64, 34 Java, 20 native leaf, 10 Go, …). Native-host behaviour of the new mechanisms is UNVERIFIED until run on Linux x86-64.
