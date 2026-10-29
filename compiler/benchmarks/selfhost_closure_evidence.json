@@ -12,7 +12,7 @@
       "image_sha256": "a86020a8f2ad57f26df46b055a71f90103dbc63670be89c10773cf345b85eddf",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.32,
+        "gen1": 1.35,
         "bootstrap": 0.05
       }
     },
@@ -25,8 +25,8 @@
       "image_sha256": "7f2983222ad00db4146398245ab11b5cfb02b6b51e0d52ad454817662444c16b",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.81,
-        "bootstrap": 0.52
+        "gen1": 0.86,
+        "bootstrap": 0.72
       }
     },
     {
@@ -38,8 +38,8 @@
       "image_sha256": "4c19dd0eb2db997d9ec0e49f56df8635d76fae8a61642b30f62d5f5b8be15bc8",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.02,
-        "bootstrap": 0.01
+        "gen1": 0.04,
+        "bootstrap": 0.03
       }
     },
     {
@@ -51,8 +51,8 @@
       "image_sha256": "86e4a11a9583b7cef8dd94b0b47df97eafbf803d0c8c54f06a020b95e2595f23",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.97,
-        "bootstrap": 0.82
+        "gen1": 1.92,
+        "bootstrap": 0.9
       }
     },
     {
@@ -64,8 +64,8 @@
       "image_sha256": "e945fe42fc408b08be2f3931d66eb8240cf7207883b95ee3c8228b102bedaa40",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 24.72,
-        "bootstrap": 30.35
+        "gen1": 39.47,
+        "bootstrap": 30.2
       }
     },
     {
@@ -77,8 +77,8 @@
       "image_sha256": "b6534be67dfb944a33cef25fd1bccd7f39dff8f4bb00ebf41b1579c15d40d8a9",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 23.75,
-        "bootstrap": 25.24
+        "gen1": 32.08,
+        "bootstrap": 34.59
       }
     },
     {
@@ -90,21 +90,21 @@
       "image_sha256": "c6b30a5fa42085012608b6fb75aed3ae19a5446ecd608c08787c662df01aa5d1",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 0.06,
-        "bootstrap": 0.07
+        "gen1": 0.08,
+        "bootstrap": 0.09
       }
     },
     {
       "program": "xax_selfhost_riscv64_backend",
-      "store_bytes": 1372244,
-      "store_sha256": "edab6957faf0ed9c9796214e3b8d175397d8f161ebce86635645fbdf4b205eb8",
+      "store_bytes": 1375194,
+      "store_sha256": "67136fff7fd65fe37fbe31f9a9db005dc51c5ddd5edf2787aac7b31265e21a13",
       "functions": 21,
-      "code_bytes": 4506472,
-      "image_sha256": "9a2e4ddd57e4af3522ae7a415eccf944d6571c9fd594a848423d68b624a572de",
+      "code_bytes": 4523644,
+      "image_sha256": "ef05cf7d4eb81c06d5a26cbab4336e58f28995ac83efa551bfae916de93d6fe0",
       "gen1_equals_bootstrap_reference": true,
       "host_s_nonsemantic": {
-        "gen1": 8.19,
-        "bootstrap": 8.6
+        "gen1": 9.39,
+        "bootstrap": 11.09
       }
     }
   ],
@@ -118,7 +118,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.001,
-        "emulated": 1.8
+        "emulated": 1.7
       }
     },
     {
@@ -142,7 +142,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.0,
-        "emulated": 0.2
+        "emulated": 0.3
       }
     },
     {
@@ -153,8 +153,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 10000000000,
       "host_s_nonsemantic": {
-        "native": 1.075,
-        "emulated": 170.3
+        "native": 1.521,
+        "emulated": 203.7
       }
     },
     {
@@ -165,8 +165,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.108,
-        "emulated": 12.5
+        "native": 0.117,
+        "emulated": 14.8
       }
     },
     {
@@ -177,8 +177,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.17,
-        "emulated": 26.5
+        "native": 0.273,
+        "emulated": 29.5
       }
     },
     {
@@ -189,8 +189,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.075,
-        "emulated": 12.4
+        "native": 0.149,
+        "emulated": 14.6
       }
     },
     {
@@ -201,8 +201,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.076,
-        "emulated": 11.7
+        "native": 0.113,
+        "emulated": 13.9
       }
     },
     {
@@ -213,8 +213,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.013,
-        "emulated": 2.4
+        "native": 0.018,
+        "emulated": 2.8
       }
     },
     {
@@ -225,8 +225,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.044,
-        "emulated": 6.9
+        "native": 0.062,
+        "emulated": 8.3
       }
     },
     {
@@ -238,7 +238,7 @@
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
         "native": 0.003,
-        "emulated": 0.7
+        "emulated": 0.8
       }
     },
     {
@@ -249,8 +249,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.004,
-        "emulated": 1.1
+        "native": 0.011,
+        "emulated": 1.4
       }
     },
     {
@@ -261,8 +261,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.003,
-        "emulated": 1.0
+        "native": 0.004,
+        "emulated": 1.1
       }
     },
     {
@@ -273,8 +273,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 20000000000,
       "host_s_nonsemantic": {
-        "native": 2.242,
-        "emulated": 320.6
+        "native": 3.044,
+        "emulated": 384.6
       }
     },
     {
@@ -285,8 +285,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 71000000000,
       "host_s_nonsemantic": {
-        "native": 8.567,
-        "emulated": 1209.9
+        "native": 11.58,
+        "emulated": 1388.6
       }
     },
     {
@@ -297,8 +297,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 5000000000,
       "host_s_nonsemantic": {
-        "native": 0.55,
-        "emulated": 66.9
+        "native": 0.68,
+        "emulated": 132.6
       }
     },
     {
@@ -309,8 +309,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 2000000000,
       "host_s_nonsemantic": {
-        "native": 0.117,
-        "emulated": 17.9
+        "native": 0.16,
+        "emulated": 20.0
       }
     },
     {
@@ -321,8 +321,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.063,
-        "emulated": 9.5
+        "native": 0.085,
+        "emulated": 11.3
       }
     },
     {
@@ -333,8 +333,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.025,
-        "emulated": 4.9
+        "native": 0.034,
+        "emulated": 5.0
       }
     },
     {
@@ -345,8 +345,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 12000000000,
       "host_s_nonsemantic": {
-        "native": 1.152,
-        "emulated": 187.2
+        "native": 1.696,
+        "emulated": 218.1
       }
     },
     {
@@ -357,8 +357,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 9000000000,
       "host_s_nonsemantic": {
-        "native": 0.973,
-        "emulated": 146.9
+        "native": 1.328,
+        "emulated": 165.1
       }
     },
     {
@@ -369,8 +369,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 3000000000,
       "host_s_nonsemantic": {
-        "native": 0.241,
-        "emulated": 37.0
+        "native": 0.329,
+        "emulated": 42.4
       }
     },
     {
@@ -381,8 +381,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.001,
-        "emulated": 0.7
+        "native": 0.002,
+        "emulated": 0.6
       }
     },
     {
@@ -393,8 +393,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.046,
-        "emulated": 9.5
+        "native": 0.066,
+        "emulated": 9.3
       }
     },
     {
@@ -405,8 +405,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 6000000000,
       "host_s_nonsemantic": {
-        "native": 0.676,
-        "emulated": 83.4
+        "native": 0.821,
+        "emulated": 97.9
       }
     },
     {
@@ -417,8 +417,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 1000000000,
       "host_s_nonsemantic": {
-        "native": 0.024,
-        "emulated": 3.5
+        "native": 0.028,
+        "emulated": 3.9
       }
     },
     {
@@ -429,8 +429,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 4000000000,
       "host_s_nonsemantic": {
-        "native": 0.318,
-        "emulated": 51.7
+        "native": 0.514,
+        "emulated": 58.2
       }
     },
     {
@@ -441,8 +441,8 @@
       "emulated_equals_native": true,
       "emulated_instructions_upper_bound": 25000000000,
       "host_s_nonsemantic": {
-        "native": 2.661,
-        "emulated": 404.9
+        "native": 3.663,
+        "emulated": 478.1
       }
     }
   ],
@@ -469,43 +469,43 @@
       "store": "xax_aarch64_general.xax",
       "bytes": 5743524,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 2.96
+      "host_s_nonsemantic": 5.46
     },
     {
       "store": "xax_android_elf.xax",
       "bytes": 535453,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.26
+      "host_s_nonsemantic": 0.52
     },
     {
       "store": "xax_android_managed_rules.xax",
       "bytes": 1411271,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.69
+      "host_s_nonsemantic": 1.34
     },
     {
       "store": "xax_android_resources.xax",
       "bytes": 450712,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.23
+      "host_s_nonsemantic": 0.46
     },
     {
       "store": "xax_android_rules.xax",
       "bytes": 443685,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.22
+      "host_s_nonsemantic": 0.43
     },
     {
       "store": "xax_apk_container.xax",
       "bytes": 81828,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.05
+      "host_s_nonsemantic": 0.09
     },
     {
       "store": "xax_apk_signer.xax",
       "bytes": 286193,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.15
+      "host_s_nonsemantic": 0.28
     },
     {
       "store": "xax_blake3_compress.xax",
@@ -517,7 +517,7 @@
       "store": "xax_blake3_hash.xax",
       "bytes": 34041,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.03
+      "host_s_nonsemantic": 0.04
     },
     {
       "store": "xax_cfg_analysis.xax",
@@ -527,57 +527,57 @@
     },
     {
       "store": "xax_compiler_driver.xax",
-      "bytes": 11973201,
+      "bytes": 11976241,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 6.23
+      "host_s_nonsemantic": 11.88
     },
     {
       "store": "xax_compiler_driver_general.xax",
-      "bytes": 42185750,
+      "bytes": 42191746,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 22.77
+      "host_s_nonsemantic": 46.55
     },
     {
       "store": "xax_dex_bridge.xax",
       "bytes": 3254754,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 1.64
+      "host_s_nonsemantic": 3.18
     },
     {
       "store": "xax_dex_jvm.xax",
       "bytes": 703708,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.33
+      "host_s_nonsemantic": 0.66
     },
     {
       "store": "xax_dex_writer.xax",
       "bytes": 387978,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.26
+      "host_s_nonsemantic": 0.39
     },
     {
       "store": "xax_graph_decoder.xax",
       "bytes": 147689,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.12
+      "host_s_nonsemantic": 0.15
     },
     {
       "store": "xax_jvm_general.xax",
       "bytes": 6478332,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 3.3
+      "host_s_nonsemantic": 6.33
     },
     {
       "store": "xax_op_typing.xax",
       "bytes": 5045815,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 2.49
+      "host_s_nonsemantic": 4.85
     },
     {
       "store": "xax_riscv64_backend.xax",
-      "bytes": 1372244,
+      "bytes": 1375194,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.69
+      "host_s_nonsemantic": 1.31
     },
     {
       "store": "xax_riscv64_encoder.xax",
@@ -589,31 +589,31 @@
       "store": "xax_store_decoder.xax",
       "bytes": 274630,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.15
+      "host_s_nonsemantic": 0.27
     },
     {
       "store": "xax_store_verifier.xax",
       "bytes": 3213605,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 1.6
+      "host_s_nonsemantic": 3.12
     },
     {
       "store": "xax_store_writer.xax",
       "bytes": 133881,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.07
+      "host_s_nonsemantic": 0.14
     },
     {
       "store": "xax_x86_64_backend.xax",
-      "bytes": 1863417,
+      "bytes": 1866462,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 0.91
+      "host_s_nonsemantic": 1.77
     },
     {
       "store": "xax_x86_64_general.xax",
       "bytes": 13965708,
       "emulated_equals_production": true,
-      "host_s_nonsemantic": 6.87
+      "host_s_nonsemantic": 14.17
     }
   ],
   "b4_gen2_compiles_verifier": {
@@ -623,7 +623,7 @@
     "sha256": "b6534be67dfb944a33cef25fd1bccd7f39dff8f4bb00ebf41b1579c15d40d8a9",
     "equals_gen1_verifier_image": true,
     "emulated_instructions_upper_bound": 174000000000,
-    "host_s_nonsemantic": 2230.8
+    "host_s_nonsemantic": 3226.7
   },
   "authority": {
     "blake3-compress": {
@@ -638,7 +638,7 @@
     "verification:hash": {
       "component": "verification:hash",
       "store_verification": "memoized",
-      "record": "verified-hash-2e6fedfe8a12be76a40416d4f64bf033510d9f0cbf057db1da6789db3dd6316b.bin"
+      "record": "verified-hash-c388c4ab6f6d9d00805e99f6cf02045e047db4a1bc8696d71a02178c2ba998af.bin"
     },
     "blake3-hash": {
       "component": "blake3-hash",
@@ -652,7 +652,7 @@
     "verification:store-decoder": {
       "component": "verification:store-decoder",
       "store_verification": "memoized",
-      "record": "verified-store-decoder-b4aec81aa2e3b2a7e84f45aa6c05a7e66e553329c06bd1e5a9e5e5032a688ed0.bin"
+      "record": "verified-store-decoder-fe7857b254996d2756748d04debae524c11bba69b1bcac36cffbc117f83556f4.bin"
     },
     "store-decoder": {
       "component": "store-decoder",
@@ -666,12 +666,12 @@
     "verification:cfg": {
       "component": "verification:cfg",
       "store_verification": "memoized",
-      "record": "verified-cfg-043d588e76bacff787ae6ce3a88511b76772be8ae06ce3acc08d03682a04c1ef.bin"
+      "record": "verified-cfg-6f61122a25bcf5ffc3f6a352e28405ecedb352845ab982a5622bccc33f287b91.bin"
     },
     "verification:riscv64-encoder": {
       "component": "verification:riscv64-encoder",
       "store_verification": "memoized",
-      "record": "verified-riscv64-encoder-5bffb97284997fb7a294727acda908feeb1c49fbc15bbfd93d98a4d184629120.bin"
+      "record": "verified-riscv64-encoder-0b84b150577633ccda810175436d9e6bdc13b1cbd864b48c1cccdb8ca70e2437.bin"
     },
     "riscv64-encoder": {
       "component": "riscv64-encoder",
@@ -685,7 +685,7 @@
     "verification:typing": {
       "component": "verification:typing",
       "store_verification": "memoized",
-      "record": "verified-typing-b0afddee06aa487ae10469a5ef5eedb4e876fdb2ffbd11c71d72acefbb2b3d33.bin"
+      "record": "verified-typing-4188eaa120927fff1c04ed6659903ff0a56a4365064893c135ee9c2ac3a45854.bin"
     },
     "typing": {
       "component": "typing",
@@ -699,7 +699,7 @@
     "verification:store-verifier": {
       "component": "verification:store-verifier",
       "store_verification": "memoized",
-      "record": "verified-store-verifier-b04a360cd39b0890d70cb85286556c7670721362c5c9c3a3fb64812ba147b18f.bin"
+      "record": "verified-store-verifier-219d0faa8711cf9a6152056c6786c8c28d96f453d66c3c4570cb6dd4c2a276dc.bin"
     },
     "store-verifier": {
       "component": "store-verifier",
@@ -714,7 +714,7 @@
     "verification:graph-decoder": {
       "component": "verification:graph-decoder",
       "store_verification": "memoized",
-      "record": "verified-graph-decoder-1e91600c41c078c69d34719ecb899e8bc2c7a2c23455c739995f0e9a7f25bc1b.bin"
+      "record": "verified-graph-decoder-f1bf07cce8599cb9f592a37bf127a9bc26e3bddbd3ca657d15f040303dcffeba.bin"
     },
     "graph-decoder": {
       "component": "graph-decoder",
@@ -737,12 +737,12 @@
     "verification:xax_riscv64_backend": {
       "component": "verification:xax_riscv64_backend",
       "store_verification": "memoized",
-      "record": "verified-xax_riscv64_backend-4daa259706cc549e2d19aec27a4369627b36b3e8d1a50f0810184d8bc69255e6.bin"
+      "record": "verified-xax_riscv64_backend-aa519e8286c0d200a9d44ebb877c5c13fe532ad89fc69282957c3ff57e9d76ea.bin"
     },
     "riscv64-backend": {
       "component": "riscv64-backend",
-      "semantic_root": "c8bd2f8ce260f561ab404cf09b80dab04ca2340541c13f5a0394e521b3b860dd",
-      "native_artifact_digest": "c1088ac4c52a294fbf9af10c968f61d76e319d2839c39cbb4d4b01ce0d2a2099",
+      "semantic_root": "a87d15799d6ad47d734118861133f271625d0927d39bb0d35007065b8dbd3b22",
+      "native_artifact_digest": "80d243f68383bbe6cded40d2a5927d52a29a17feab5a72608875708f7a992e15",
       "requested_authority": "xax",
       "actual_authority": "xax",
       "fallback_occurred": false,
