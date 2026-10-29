@@ -8,7 +8,9 @@ general backend program, hashes the artifact with the S2 hash, and writes the ca
 re-derived with the S2 hash).  Differential: the artifact bytes and the provenance object's envelope equal
 ``build(..., compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1)``'s, and every rejection ``build`` makes on these
 paths is the driver's, with the exact diagnostic.  S15e.1 (ADR-308): a RISC-V raw image target is lowered by the XAX
-RISC-V backend program; S15e.2 (ADR-315): a Linux AArch64 ELF profile by the XAX AArch64 program.  What ``build`` makes on other paths (Android packages, Windows DLLs, other targets) the driver
+RISC-V backend program; S15e.2 (ADR-315): a Linux AArch64 ELF profile by the XAX AArch64 program; S15e.6h.3 (ADR-356): an
+unsigned APK on an Android shared-object target by the XAX Android program.  What ``build`` makes on other paths (signed
+Android packages, Android packages on other targets, Windows DLLs off the PE profile, other targets) the driver
 declines.  The driver is given no external inputs and verifies no signatures, which is
 ``build`` called without them.
 """
@@ -488,8 +490,60 @@ class GeneralBuildTests(unittest.TestCase):
                 seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
         self.assertEqual(seen, {"image", "JVM-PROCESS-ENTRY-CONTRACT", "BUILD-ARTIFACT-SUPPORTED"})
 
+    def test_android_apks(self):
+        """S15e.6h.3 (ADR-356): an unsigned APK on an Android shared-object target is the XAX Android program's: the
+        artifact and provenance are ``build``'s, for the Activity UIs, the components and the libxposed module profiles;
+        the activity-identity and missing-export rejections are the program's, with ``build``'s diagnostics."""
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import xax_libxposed as L
+        from benchmarks.bench_android_libxposed_managed import _managed_callbacks
+        from benchmarks.bench_android_managed_bridge import ui_activity_fixture
+        from xax_android import android_activity_method_ui_semantics
+        from xax_manifest import AndroidManifestSpec, android_manifest_semantics
+
+        def snapshot(*, ui_semantics=None, xposed=False, activity="xax.generated.XaxActivity", drop_export=False):
+            ui = ui_activity_fixture()
+            carriers = [ui_semantics or ui["ui_semantics"],
+                        android_manifest_semantics(AndroidManifestSpec("xax.generated", activity, min_sdk=28, target_sdk=35))]
+            functions = [ui["activity_callback"], ui["listener_callback"]]
+            exports = [ui["activity_export"], ui["listener_export"]]
+            extra = list(ui["reader"].objects())
+            if xposed:
+                managed = _managed_callbacks()
+                carriers += [L.libxposed_module_semantics(L.LibxposedModuleDescription(
+                                 min_api_version=102, target_api_version=102, java_entries=("xax.generated.XaxModule",), scopes=("com.example.target",))),
+                             managed["managed"],
+                             L.libxposed_hook_adapter_semantics(L.LibxposedHookAdapterDescription(java_class_name="xax.generated.XaxHooker",
+                                                                                                  inspected_argument_index=None)),
+                             L.libxposed_hook_installation_semantics(L.LibxposedHookInstallationDescription(
+                                 target_class_name="android.app.Activity", target_method_name="onResume", hooker_class_name="xax.generated.XaxHooker"))]
+                functions += list(managed["callbacks"])
+                exports += list(managed["exports"])
+                extra += [*managed["types"], *managed["graphs"]]
+            if drop_export:
+                exports = exports[1:]
+            module = X.object_with_refs(X.Kind.MODULE, (*functions, *exports, *carriers))
+            app = package(b"android-app", (module,), build_entries=((b"apk", ui["activity_callback"]),))
+            target, profile, policy = X.android_arm64_shared_target(), build_profile(), trust_policy()
+            request = build_request(app, b"apk", target, profile, requested_artifacts=(ArtifactKind.ANDROID_UNSIGNED_APK,))
+            objects = tuple({item.cid: item for item in (*extra, *functions, *exports, *carriers, module, app, target, profile, policy, request)}.values())
+            resolution = resolve_packages(request, objects, policy, b"android-resolver-v1")
+            return snapshot_store(resolution, objects)
+
+        cases = {
+            "activity": snapshot(),
+            "method ui": snapshot(ui_semantics=android_activity_method_ui_semantics()),
+            "libxposed hook": snapshot(xposed=True),
+        }
+        for name, reader in cases.items():
+            with self.subTest(case=name):
+                self.assertBuild(reader)
+        for name, reader in (("activity identity", snapshot(activity="xax.generated.Other")), ("missing export", snapshot(drop_export=True))):
+            with self.subTest(case=name):
+                self.assertEqual(self.assertBuild(reader)[0], "rejected")
+
     def test_other_paths_decline(self):
-        """Android packages, Windows DLLs on a target other than the PE profile, and targets other than the Linux
+        """Android packages on a target other than an Android one, Windows DLLs on a target other than the PE profile, and targets other than the Linux
         x86-64, Linux AArch64, Windows PE32+ and RISC-V raw profiles are ``build``'s other paths: the driver declines and
         writes nothing."""
         from test_xax_linux import _status_program

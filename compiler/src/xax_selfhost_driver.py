@@ -35,8 +35,9 @@ path above.  ``build <snapshot store> <artifact> <provenance>`` is ``xax_build.b
 after verification it reads the snapshot, its request, and the package's build entry, makes ``build``'s rejections
 (the root, external inputs, required signatures, requested artifacts) with its exact diagnostics, lowers the entry for
 the request's Linux x86-64 ELF target, and writes the artifact and the canonical provenance object's envelope, the
-digest and the CID derived with the S2 hash.  ``build``'s other paths (Android packages, Windows DLLs, other targets)
-decline.
+digest and the CID derived with the S2 hash.  ``build``'s other paths (signed Android packages, other targets)
+decline.  S15e.6h.3 (ADR-356): an unsigned APK on an Android shared-object target is the Android program's, called
+twice (the roots, then the APK).
 """
 
 from __future__ import annotations
@@ -441,6 +442,9 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         import xax_selfhost_jvm as JVM
 
         jvm_reader, jvm_program = JVM.load_jvm_program()  # S15e.5 (ADR-334)
+        import xax_selfhost_android as AN
+
+        android_reader, android_program = AN.load_android_program()  # S15e.6h.3 (ADR-356)
         writer_reader, writer = WR.load_writer_program()  # S13c
     hash_at, hash_objects = H.hash_function(bytes_rw, heap_view_type(S.DATA_EXTENT), based=True)
     decoder_triples = (S.DATA_POINTER, S.DATA_VIEW, MEM, S.OUT_POINTER, S.OUT_VIEW, MEM)
@@ -1814,8 +1818,32 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
         w.while_(lambda: w.both(w.lt(w[q2], w[j_words]), running()), lambda: (put(w.load("traps", w.mul(w[q2], 8), 8)), w.set(q2, w.add(w[q2], 1))))
         # S15e.5 (ADR-334): the JVM program reads one more word, 1 for an executable JAR (a process entry).
         w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_JVM), lambda: put(work_word(SM.CTRL + RQ.B_JVMEXE)))
+        # S15e.6h.3 (ADR-356): the Android program reads the roots (none yet: its first call names them) and its words.
+        w.if_(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_ANDROID), lambda: (w.set(android_at, w[words]), android_words(0, ())))
+
+    def android_words(mode_value, roots):
+        """The roots (``roots()`` puts them; none on the first call), then the Android words: the mode, the build
+        entry's CID, the module count and the modules' CIDs."""
+        if roots:
+            roots()
+        else:
+            put(0)
+        put(mode_value)
+        put_cid("data", record_word(w[entry], 2))
+        put(work_word(SM.CTRL + RQ.B_NMOD))
+        q = w.let("mod_q", 0)
+        w.while_(lambda: w.lt(w[q], work_word(SM.CTRL + RQ.B_NMOD)), lambda: (
+            put_cid("data", record_word(work_word(w.add(SM.CTRL + RQ.B_MODS, w[q])), 2)), w.set(q, w.add(w[q], 1))))
+        # The package's logical identity: one ULEB byte (a longer identity declines), then its bytes.
+        body = w.let("lid_body", record_word(work_word(SM.CTRL + RQ.B_PACKAGE), 7))
+        size = w.let("lid_size", w.load("data", w[body]))
+        w.if_(w.le(128, w[size]), lambda: stop(DECLINED))
+        put(w[size])
+        q2 = w.let("lid_q", 0)
+        w.while_(lambda: w.lt(w[q2], w[size]), lambda: (put(w.load("data", w.add(w.add(w[body], 1), w[q2]))), w.set(q2, w.add(w[q2], 1))))
 
     if general:
+        android_at = w.let("android_at", 0)
         when(lambda: w.if_(w.ne(w[linux], 0), general_sections))
 
     # -- the backend -------------------------------------------------------------------------------------------
@@ -1833,9 +1861,32 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
             aarch64_path = lambda: w.either(w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_LINUX_AARCH64),  # noqa: E731
                                             w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_A64_RAW))
             jvm_path = lambda: w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_JVM)  # noqa: E731
+            android_path = lambda: w.eq(work_word(SM.CTRL + RQ.B_PATH), RQ.PATH_ANDROID)  # noqa: E731
+
+            def android():
+                """S15e.6h.3 (ADR-356): the Android program twice: it names the roots (the exports' functions), then,
+                given them after the table (whose entry becomes the first root), writes the APK where the general
+                program writes an ELF file."""
+                call(android_program)
+
+                def named():
+                    count = w.let("root_count", w.ld(1))
+                    w.set(words, w[android_at])
+
+                    def roots():
+                        put(w[count])
+                        q = w.let("root_q", 0)
+                        w.while_(lambda: w.lt(w[q], w.mul(w[count], 4)), lambda: (put(w.ld(w.add(2, w[q]))), w.set(q, w.add(w[q], 1))))
+
+                    android_words(1, roots)
+                    w.if_(w.ne(w[count], 0), lambda: [w.store("table", 8 * (1 + word), w.ld(2 + word), 8) for word in range(4)])
+                    call(android_program)
+
+                w.if_(w.eq(w.ld(0), 1), named)
+
             # S15e.5 (ADR-334): the JVM program writes its JAR where the general program writes an ELF file.
             elf_program = lambda: w.if_(aarch64_path(), lambda: call(aarch64_program), lambda: w.if_(  # noqa: E731
-                jvm_path(), lambda: call(jvm_program), lambda: call(general_program)))
+                jvm_path(), lambda: call(jvm_program), lambda: w.if_(android_path(), android, lambda: call(general_program))))
             w.if_(w.ne(w[linux], 0), elf_program, lambda: w.if_(w.ne(w[riscv], 0), lambda: call(riscv_backend), lambda: call(backend)))
         else:
             call(backend)
@@ -2056,7 +2107,7 @@ def build_driver_program(general: bool = False) -> tuple[StoreReader, SemanticOb
     proc.ret(proc["fs"], process, *released)
     function = proc.function((FS, PROCESS, *(MEM,) * len(buffers)))
     readers = (decoder_reader, graph_reader, backend_reader, typing_reader, verifier_reader, cfg_reader,
-               *((general_reader, writer_reader, riscv_reader, aarch64_reader, jvm_reader) if general else ()))
+               *((general_reader, writer_reader, riscv_reader, aarch64_reader, jvm_reader, android_reader) if general else ()))
     component_objects = [item for reader in readers for item in reader.objects()
                          if item.kind not in (Kind.MODULE, Kind.PROGRAM_ROOT, Kind.TARGET)]
     objects_ = (*proc.graph.objects.values(), *hash_objects, *semantic_objects, *type_objects, *request_objects, *resolve_objects, *edit_objects,
