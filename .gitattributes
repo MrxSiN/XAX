@@ -50,3 +50,4 @@ compiler/integration/windows_helpers/*.edit -text
 compiler/integration/bfx/single_process_evidence.json -text whitespace=cr-at-eol
 compiler/integration/bfx/lazy_views_evidence.json -text whitespace=cr-at-eol
 compiler/integration/bfx/proof_cache_evidence.json -text whitespace=cr-at-eol
+compiler/integration/bfx/transactions/v2/*.edit -text

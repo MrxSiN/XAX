@@ -13,13 +13,18 @@ only the new magic and identifier; old records reject without fallback.
 | `bbc.xax` | Single-process `bbc.exe`: BBC commands plus the native XAX driver |
 | `bbc-android-arm64.xax`, `bbc-windows-x86_64.xax` | Host build requests `bbc compile` binds a decision into |
 | `source.xax` | BF chunk filtering/validation and final BFX publication |
-| `pack.xax` | BF streaming run packing of validated BFX, including opaque encoded opcodes |
+| `pack.xax` | Historical: BF streaming run packing for BFX id `01`; no longer reached by `compile_bfx` |
 | `android_bfx.xax` | Bounded decision demo, JNI/lifecycle/UI packaging |
 | `standalone_arm64.xax` | Direct native decision process host on Android |
 | `standalone_windows.xax` | Direct native decision Windows process host |
 
 [DYNAMIC_TAPE.md](DYNAMIC_TAPE.md) describes the lazily committed 2 GiB decision tape
 (2026-10-29) and its transactions.
+
+[BFX_V2.md](BFX_V2.md) describes BFX id `02` (2026-10-29): no count field, an END byte,
+offset ADD/MUL/CHECK/MOVE instructions emitted by BBC's `fold.bf`, and the importer,
+decoder and `compile_bfx` transactions that implement them. Where older sections of this
+directory describe id `01`, its u32 count, power opcodes or the packer, they are historical.
 
 [COMPILE.md](COMPILE.md) specifies the unified public interface and exact generic
 bootstrap recipe. `bbc compile` builds Android ARM64 and Windows x86-64
