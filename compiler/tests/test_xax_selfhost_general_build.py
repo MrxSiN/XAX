@@ -490,6 +490,114 @@ class GeneralBuildTests(unittest.TestCase):
                 seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
         self.assertEqual(seen, {"image", "JVM-PROCESS-ENTRY-CONTRACT", "BUILD-ARTIFACT-SUPPORTED"})
 
+    def run_signed(self, data: bytes, transport: bytes, inputs=()):
+        """``build-signed`` (S15e.6i.1): the transport file, then the external input files."""
+        snapshot, artifact, provenance, carrier = (os.path.join(self.directory, name) for name in ("snapshot.xax", "artifact.bin", "provenance.bin",
+                                                                                                    "transport.bin"))
+        Path(snapshot).write_bytes(data)
+        Path(carrier).write_bytes(transport)
+        paths = []
+        for index, value in enumerate(inputs):
+            paths.append(os.path.join(self.directory, f"input{index}.bin"))
+            Path(paths[-1]).write_bytes(value)
+        for path in (artifact, provenance):
+            if os.path.exists(path):
+                os.unlink(path)
+        status = self.driver.build_signed(snapshot, artifact, provenance, carrier, *paths)
+        produced = Path(artifact).read_bytes() if os.path.exists(artifact) else None
+        if status == 0:
+            return "image", produced, Path(provenance).read_bytes()
+        if status == 1:
+            return "rejected", decode_record([int.from_bytes(produced[k:k + 8], "little") for k in range(0, len(produced), 8)])
+        return {2: "declined", 3: "failed"}[status], None
+
+    def test_signed_apks(self):
+        """S15e.6i.1 (ADR-357): ``build-signed`` is ``build`` with one SIGN effect, the package's SIGN capability with the
+        transport as its value: the signed APK and its provenance, and ``build``'s effect and signing rejections (the
+        grant, the declared signing material, no effect, the signer's identity, an invalid transport)."""
+        from blake3 import blake3
+
+        from benchmarks.bench_android_managed_bridge import ui_activity_fixture
+        from test_xax_build import android_signing_capability
+        from xax_apk_signing import encode_private_signing_capability, inspect_apk_v2
+        from xax_build import BuildCapability, BuildCapabilityKind, BuildEffect, BuildMode, CapabilityGrant
+        from xax_manifest import AndroidManifestSpec, android_manifest_semantics
+
+        signer = android_signing_capability()
+        transport = encode_private_signing_capability(signer)
+        inputs = {blake3(transport).digest(): transport}
+
+        def snapshot(*, scope=None, grant=True, declare=True, mode=BuildMode.HERMETIC_REPRODUCIBLE, signed=True):
+            ui = ui_activity_fixture()
+            capability = BuildCapability(BuildCapabilityKind.SIGN, bytes.fromhex(signer.identity_sha256) if scope is None else scope)
+            manifest = android_manifest_semantics(AndroidManifestSpec("xax.generated", "xax.generated.XaxActivity", min_sdk=28, target_sdk=35,
+                                                                      version_code=1, launcher=True))
+            carriers = [ui["ui_semantics"], manifest]
+            functions = [ui["activity_callback"], ui["listener_callback"]]
+            exports = [ui["activity_export"], ui["listener_export"]]
+            module = X.object_with_refs(X.Kind.MODULE, (*functions, *exports, *carriers))
+            app = package(b"android-app", (module,), build_entries=((b"apk", ui["activity_callback"]),), capabilities=(capability,))
+            profile = build_profile(mode, grants=(CapabilityGrant(b"android-app", capability),) if grant else ())
+            target, policy = X.android_arm64_shared_target(), trust_policy()
+            kind = ArtifactKind.ANDROID_SIGNED_APK if signed else ArtifactKind.ANDROID_UNSIGNED_APK
+            request = build_request(app, b"apk", target, profile, requested_artifacts=(kind,))
+            objects = tuple({item.cid: item for item in (*ui["reader"].objects(), *functions, *exports, *carriers, module, app, target, profile, policy,
+                                                         request)}.values())
+            resolution = resolve_packages(request, objects, policy, b"android-resolver-v1", external_inputs=inputs if declare else None)
+            return snapshot_store(resolution, objects), capability
+
+        def expected(reader, capability, value, given):
+            try:
+                result = build(reader, _request_root(reader), compiler_identity=XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1, external_inputs=given,
+                               effects=(BuildEffect(b"android-app", capability, value),))
+            except X.XaxError as error:
+                return "rejected", error.diagnostic
+            return "image", result.artifact, result.provenance.envelope()
+
+        garbage = transport[:-1]
+        cases = {
+            "signed": (snapshot(), transport, inputs),
+            "signed, ambient profile": (snapshot(mode=BuildMode.AMBIENT, declare=False), transport, {}),
+            "unsigned request": (snapshot(signed=False), transport, inputs),
+            "not granted": (snapshot(grant=False), transport, inputs),
+            "material not declared": (snapshot(declare=False), transport, {}),
+            "other signer": (snapshot(scope=bytes(32)), transport, inputs),
+            "short scope": (snapshot(scope=b"\1\2"), transport, inputs),
+            "invalid transport": (snapshot(mode=BuildMode.AMBIENT, declare=False), garbage, {}),
+        }
+        seen = set()
+        for name, ((reader, capability), value, given) in cases.items():
+            with self.subTest(case=name):
+                outcome = self.run_signed(reader.data, value, tuple(given.values()))
+                self.assertEqual(outcome, expected(reader, capability, value, given))
+                seen.add(outcome[0] if outcome[0] == "image" else outcome[1].rule)
+                if name == "signed":
+                    self.assertTrue(inspect_apk_v2(outcome[1]).signature_valid)
+        self.assertEqual(seen, {"image", "BUILD-CAPABILITY-ISOLATED", "BUILD-SIGNING-MATERIAL-DECLARED", "ANDROID-APK-SIGNER-IDENTITY",
+                                "ANDROID-APK-SIGNING-CAPABILITY"})
+        # ``build`` of a signed request without the effect: no SIGN effect.
+        reader, _capability = snapshot()
+        outcome = self.run_build_inputs(reader.data, tuple(inputs.values()))
+        self.assertEqual(outcome[0], "rejected")
+        self.assertEqual(outcome[1], _expected(reader, inputs)[1])
+        self.assertEqual(outcome[1].rule, "ANDROID-APK-SIGNING-CAPABILITY")
+
+    def run_build_inputs(self, data: bytes, inputs):
+        snapshot, artifact, provenance = (os.path.join(self.directory, name) for name in ("snapshot.xax", "artifact.bin", "provenance.bin"))
+        Path(snapshot).write_bytes(data)
+        paths = []
+        for index, value in enumerate(inputs):
+            paths.append(os.path.join(self.directory, f"input{index}.bin"))
+            Path(paths[-1]).write_bytes(value)
+        for path in (artifact, provenance):
+            if os.path.exists(path):
+                os.unlink(path)
+        status = self.driver.build(snapshot, artifact, provenance, *paths)
+        produced = Path(artifact).read_bytes() if os.path.exists(artifact) else None
+        if status == 1:
+            return "rejected", decode_record([int.from_bytes(produced[k:k + 8], "little") for k in range(0, len(produced), 8)])
+        return {0: "image", 2: "declined", 3: "failed"}[status], produced
+
     def test_android_apks(self):
         """S15e.6h.3 (ADR-356): an unsigned APK on an Android shared-object target is the XAX Android program's: the
         artifact and provenance are ``build``'s, for the Activity UIs, the components and the libxposed module profiles;

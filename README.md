@@ -89,7 +89,7 @@ Generated from [`XAX_REPLACEMENT_MATRIX.json`](XAX_REPLACEMENT_MATRIX.json). "â€
 
 On Linux x86-64 the XAX compiler rebuilds itself byte for byte, and its seed needs no Python. The self-built compiler
 builds Linux and Windows executables, bare-metal, RISC-V and WebAssembly images, SPIR-V modules, browser pages, JVM JARs
-and unsigned Android APKs. Signed APKs and libxposed JVM modules are still built by the bootstrap (S15e.6i). The self-hosting steps
+and signed and unsigned Android APKs. libxposed JVM modules are still built by the bootstrap (S15e.6i.2). The self-hosting steps
 (S0-S15) and the bootstrap levels (B0-B6) are tracked in [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md)
 and [`compiler/bootstrap/README.md`](compiler/bootstrap/README.md).
 
@@ -105,7 +105,7 @@ Details in [`XAX_BENCHMARKS.md`](XAX_BENCHMARKS.md).
   transaction.
 - **Android**: every unsigned APK profile is built by one XAX program, which decodes the package's carriers, decides
   their rules and chains the native-code, container, manifest and DEX programs (ADR-355). The self-built compiler
-  builds them with it (ADR-356).
+  builds them with it (ADR-356) and signs them with the XAX APK signer (ADR-357).
 
 ## Getting started
 
