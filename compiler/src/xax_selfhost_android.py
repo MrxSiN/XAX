@@ -42,7 +42,7 @@ G_INBASE = CO_AT  # ``INPUT_REDIRECT``: a chained layer's input base
 G_CUR, G_END, G_W, G_SAVE = CO_AT + 1, CO_AT + 2, CO_AT + 3, CO_AT + 4  # the payload cursor and end, the writer, the arena
 G_K = CO_AT + 64  # the constants' handles
 SPILL_AT, SPILL_WORDS = CO_AT + 1024, 3072  # a phase's variables, for the next (ADR-352's split)
-PHASES = 10
+PHASES = 12
 SLOT_AT, SLOT_END = CO_AT + 4096, CO_AT + 16384  # the frontend's variables, one word each (``_Slotted``)
 CO_ARENA_AT, CO_ARENA_END = SLOT_END, CO_AT + (3 << 19)  # this program's arena
 WRITER_AT, WRITER_END = CO_ARENA_END, HEADER - 4096  # the layers' inputs, written in turn (apart from the arena)
@@ -925,6 +925,10 @@ def _phases(tables, layers):
 
         e.if_(e.eq(p["t_known"], 0), target_rejected)  # U1
 
+        # S15e.6h.4 (ADR-356): the decoding is three phases, each small enough for the general x86-64 program to emit
+        # (the compiler that builds the driver; one 1.56 MB phase was not).
+        e = _Slotted((yield), slots)
+        p = e.p
         # 3. The carriers of the package's modules, classified in the bootstrap's order: per class its count and its
         # first carrier's identity (the bootstrap's ``carriers[0]``), and every export.
         e.var("counts", e.alloc(len(CLASSES)))
@@ -1006,6 +1010,9 @@ def _phases(tables, layers):
         e.var("n_ui", e.add(e.add(e.add(count("ui_plain"), count("ui_resource")), e.add(count("ui_method"), count("ui_argument"))), count("surface")))
         integer = lambda value: lambda: D.integer(e, value)  # noqa: E731
         text_ = lambda value: lambda: D.text(e, value)  # noqa: E731
+
+        e = _Slotted((yield), slots)
+        p = e.p
 
         def managed_profile():
             """U2 (``ANDROID-MANAGED-PROFILE``); otherwise the managed-class profile (S15e.6h.2c)."""

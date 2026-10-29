@@ -1,5 +1,28 @@
 # XAX Compiler State
 
+What holds now, then the dated record of every result, grouped by topic. Dated entries are historical: a later entry
+supersedes an earlier figure, and a superseded entry is kept rather than rewritten. Decisions are in
+[`XAX_DECISIONS.md`](XAX_DECISIONS.md), the plan in [`XAX_IMPLEMENTATION_ROADMAP.md`](XAX_IMPLEMENTATION_ROADMAP.md).
+
+## Current status
+
+### Replacement levels
+
+<!-- xax-status:levels -->Replacement levels (generated from `XAX_REPLACEMENT_MATRIX.json`): R6: jvm, linux-aarch64, linux-x86_64; R3: android-arm64; R2: aarch64-baremetal, browser-web, windows-x86_64-pe; R1: gpu-spirv-cuda-metal-dxil, riscv64, wasm32-core, wasm32-wasi; R0: accelerator-simt-packet; no level yet: bsd-unix, dotnet-clr, macos-ios-apple, rtos-embedded-mcu.<!-- /xax-status:levels -->
+
+### Bootstrap levels
+
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (signed APKs and libxposed JVM modules are not the production compiler's: the driver takes no signing effect and keeps no external input's bytes (S15e.6i); unsigned APKs on Android targets are the production compiler's through the XAX Android program (S15e.6h, ADR-354 to ADR-356), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+
+### Self-hosting
+
+- The Linux x86-64 production compiler is an XAX program that rebuilds itself byte for byte from a pinned seed with no
+  Python (S15a, B0-B6 for that compiler).
+- The self-built compiler builds Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm,
+  Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages, JVM JARs
+  and unsigned Android APKs (S15b-S15f, S15e.6h).
+- Open: signed APKs and libxposed JVM modules in the driver (S15e.6i), then the whole compiler's B levels (S15g).
+
 ## 2026-10-27 — Pinned native Windows seed (ADR-335)
 
 The existing Windows compiler is distributed under `compiler/bootstrap/windows`, tied to source root
@@ -8,7 +31,7 @@ BLAKE3 host now has `hash_request.xax`; native verify/resolve/build and empty/ab
 semantic edits and small application builds were also exercised. This is a usable trusted native Windows seed,
 not whole-compiler migration or a Windows self-build result. Generated milestone and B/R-level blocks are unchanged.
 
-## Current milestone
+## Prototype milestones (M1-M14)
 
 M1 — minimal canonical semantic store and structural verifier: **complete for prototype schema revision 1**.
 
@@ -51,7 +74,7 @@ U1 — universal-replacement proof set: **in progress**. Step status is in `XAX_
 
 S — compiler migration ladder: **S0–S5 EXECUTED** on the production path (native XAX leaves on Linux x86-64 only; Python on every other host) and **S6 EXECUTED** with component fixed points for the RISC-V backend and the store verifier on RV64 under emulation (ADR-116–ADR-151). BLAKE3 also closes on RV64 (ADR-151). **S7a EXECUTED** (ADR-152): the x86-64 views backend is an XAX program with a native component fixed point on x86-64; it lowers every native helper except its own production image, which the bootstrap generator lowers (byte-identical by that fixed point). These are S-step component results, not B milestones (`XAX_SPEC.md` §16.5; ADR-177 renamed the earlier "B1–B4" wording). **S7b.1 EXECUTED** (ADR-179): on Linux x86-64 the XAX x86-64 views program decides its own target legality and writes the exact rejection diagnostic. **S7b.2 EXECUTED** (ADR-181): both views programs resolve references, place the target, find the entry, and produce the image record themselves. **S7b.3 EXECUTED** (ADR-182): the RISC-V views program decides its rejections too, so S7b is complete for the views profiles. **S8a EXECUTED** (ADR-183): every store-container rejection is decided by XAX with the exact diagnostic. **S8b.1 EXECUTED** (ADR-184): object envelopes and their CID check are decided by XAX on `get`. **S8b.2 EXECUTED** (ADR-185): graph-body syntax rejections are decided by XAX through the shared site mechanism. Next: S8c (resolution, typing, facts, and object verification). Since ADR-180, S3–S7a count as migrated for acceptance only (`XAX_SPEC.md` §16.5 condition 5); the ladder continues with S8–S15, and migration is reported as SH1. The typing store was stale against its builder until ADR-177 regenerated it; its native and emulated evidence was re-run on Linux x86-64 on 2026-10-07 and matches (OI-45, self-hosting half).
 
-<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (Android packages are not the production compiler's: their layers are XAX programs that build asks first (S15e.6a-S15e.6g, ADR-340 to ADR-350), but carrier decoding, bridge lowering and the driver path remain Python (S15e.6h, ADR-351); Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs are the production compiler's; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
+<!-- xax-status:bootstrap -->Bootstrap status (generated from `compiler/bootstrap/m14_selfhost_evidence.json`, derived by `xax_selfhost.bootstrap_status`): whole production compiler: none of B0-B6 is established (signed APKs and libxposed JVM modules are not the production compiler's: the driver takes no signing effect and keeps no external input's bytes (S15e.6i); unsigned APKs on Android targets are the production compiler's through the XAX Android program (S15e.6h, ADR-354 to ADR-356), as are Linux x86-64 and AArch64 executables, Windows PE32+ executables and DLLs, RISC-V, Wasm, Windows load-image and bare-metal AArch64 raw images, accelerator deployments, SPIR-V modules, browser pages and JVM JARs; the Linux x86-64 production compiler is reported separately (ADR-180, ADR-285, ADR-308, ADR-315, ADR-317, ADR-320, ADR-321, ADR-322, ADR-324, ADR-325, ADR-326, ADR-334, ADR-339, ADR-351, ADR-356)); Linux x86-64 production compiler (`benchmarks/full_selfhost_evidence.json`): B0, B1, B2, B3, B4, B5, B6 hold, none do not; its seed requires Python: no; M14 semantic-image META wrapper: B2, B3, B4 hold, B5, B6 do not (host-executed META_CANONICAL_STORE, META_MATERIALIZE_PROGRAM, META_VERIFY_SEMANTICS). S-step component fixed points are not B milestones (`XAX_SPEC.md` §16.5). Bootstrap seed: python-zipapp, 46,255 bytes, requires Python: yes.<!-- /xax-status:bootstrap -->
 
 Dated sections below are historical records: a figure in them (a ratio, a level, a test count) is current only if no later section supersedes it.
 
@@ -1785,3 +1808,14 @@ The XAX JVM program now builds callbacks: JDK streams and comparators that call 
   - The `compiler` package import needs the repository root on `sys.path` (`test_oi03`, `test_oi06`, the `test_oi07`-`test_oi09` collection errors).
   - Wheel builds fail on this host's setuptools (`install_layout`).
 - Already failing before this work: `test_windows_construct_platform_is_on_the_host_surface`. `xax_contract`'s construct platforms lack `android-libxposed`, added in `06f9675`.
+
+## S15e.6h unsigned APKs in the self-built compiler — 2026-10-29 (ADR-354, ADR-355, ADR-356)
+
+- The Android shared object bundles are built by the XAX AArch64 program (S15e.6h.1, ADR-354).
+- One XAX program, `xax_selfhost_android`, builds every unsigned APK (S15e.6h.2, ADR-355). It decodes the package's carriers, decides their rules (U1-U60, M1-M7) and chains the AArch64, ELF, manifest, resource-table, DEX and APK programs. Under `XAX_GENERAL_FRONTEND_DIFF=1`, 127 APKs and 88 rejections equal the bootstrap's, and none is declined.
+- The general driver builds unsigned APKs through that program (S15e.6h.3, ADR-356). The request takes the Android path, the program is called twice (roots, then build), and its rejections are the driver's own.
+- The regenerated driver did not fit two capacities, and both were fixed (S15e.6h.4, ADR-356):
+  - The previous seed's general x86-64 program could not emit the Android program's 1.56 MB decoding phase. The decoding is now three phases.
+  - The views backend program ran out of code at 79.7 MiB. Its code region is now 128 MiB.
+- The driver, request, S10 driver and backend stores were regenerated, and the ledger rebased. The seed was rotated to `ee974928…` (29,183,659 bytes; seed = C1 = C2).
+- `bootstrap_status` now names only signed APKs and libxposed JVM modules (S15e.6i) as outside the production compiler.

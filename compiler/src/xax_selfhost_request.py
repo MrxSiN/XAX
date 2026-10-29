@@ -15,9 +15,10 @@ results travel in its control words (``B_*``, after the semantic helpers' ``C_*`
   (``BUILD-SNAPSHOT-ROOT``); the snapshot declares external inputs, of which the driver is given none
   (``BUILD-EXTERNAL-COMPLETE``); its trust policy requires package signatures, which the driver does not verify
   (``TRUST-SIGNATURE-REQUIRED``, ``build`` without a signature verifier).  It finds the build entry's function and the
-  target, and declines ``build``'s other paths: Android packages, Windows DLLs, and targets other than the Linux
-  x86-64 ELF profiles, (S15e.1, ADR-308) the RISC-V raw image profiles, whose requested artifacts it checks at once,
-  and (S15e.2, ADR-315) the Linux AArch64 ELF profiles.  The target's path is ``B_PATH`` (``PATH_*``): the program
+  target, and declines ``build``'s other paths: signed Android packages and Android packages on other targets, Windows
+  DLLs off the PE profile, and targets other than the Linux x86-64 ELF profiles, (S15e.1, ADR-308) the RISC-V raw image
+  profiles, whose requested artifacts it checks at once, (S15e.2, ADR-315) the Linux AArch64 ELF profiles and (S15e.6h.3,
+  ADR-356) an unsigned APK on an Android shared-object target, whose package's modules it records.  The target's path is ``B_PATH`` (``PATH_*``): the program
   the driver lowers it with.  ``build`` checks the requested artifacts only after it made the container, so a request for
   anything but one native image writes its record (``BUILD-ARTIFACT-SUPPORTED``) and sets ``B_ARTIFACT``; the driver
   rejects with it only when lowering succeeded.
@@ -31,7 +32,7 @@ from __future__ import annotations
 
 import xax_selfhost_diagnostics as D
 import xax_selfhost_ed25519 as ED
-from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, JVM_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
+from xax_artifact import (AARCH64_LOWERING_IDENTITY_V1, ACCELERATOR_LOWERING_IDENTITY_V1, ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1, JVM_LOWERING_IDENTITY_V1, RISCV64_LOWERING_IDENTITY_V1, WASM_LOWERING_IDENTITY_V1, X86_64_LOWERING_IDENTITY_V1, XAX_GENERAL_DRIVER_COMPILER_IDENTITY_V1,
                           container_lowering_identity)
 from xax_build import ArtifactKind, BuildForm
 from xax_compiler import (
@@ -72,6 +73,12 @@ PATH_JVM = 10
 JVM_ARCHITECTURE, JVM_FORMAT = 5, 1
 # 1 when the JVM request asks for an executable JAR (``main``; the entry is a process entry).
 B_JVMEXE = 47
+# S15e.6h.3 (ADR-356): an unsigned APK on an Android AArch64 shared-object target (architecture 3, ABI 4, image format 4
+# or 5), made by the Android program; ``B_NMOD`` and ``B_MODS``: the package's modules (object indices, in order).
+PATH_ANDROID = 11
+ANDROID_ARCHITECTURE, ANDROID_ABI, ANDROID_FORMATS = 3, 4, (4, 5)
+B_NMOD, B_MODS, MAX_MODULES = 48, 49, 14
+B_PACKAGE = 63  # the package's object index (its logical identity is the Android program's diagnostic entity)
 ACCELERATOR_ARCHITECTURE, ACCELERATOR_FORMAT = 4, 3
 # S15e.3b (ADR-320): 1 for a Windows DLL request on the PE profile: ``B_ENTRY`` is then the request itself (the general
 # program reads the package's plan, ``xax_selfhost_general_dll``), and the provenance names the DLL container.
@@ -426,7 +433,17 @@ def _build_request(tables, verify):
             _set(e, B_ENTRY, e.c(-1))
             r.at(p["package"])
             r.skip_bytes()  # the logical identity
-            r.repeat("pm", r.uleb(), r.uleb)  # modules
+            _set(e, B_NMOD, 0)
+            _set(e, B_PACKAGE, p["package"])
+
+            def module():
+                """S15e.6h.3: the modules' object indices (past ``MAX_MODULES`` only counted: the Android path declines)."""
+                e.var("module_ref", r.uleb())
+                e.var("nmod", _ctrl(e, B_NMOD))
+                e.if_(e.lt(p["nmod"], MAX_MODULES), lambda: e.st(e.add(CTRL + B_MODS, p["nmod"]), _ref(e, p["package"], p["module_ref"])))
+                _set(e, B_NMOD, e.add(p["nmod"], 1))
+
+            r.repeat("pm", r.uleb(), module)  # modules
             r.repeat("pd", r.uleb(), lambda: e.if_(e.eq(r.uleb(), 1), r.uleb, r.skip_bytes))  # dependencies
 
             def build_entry():
@@ -446,8 +463,11 @@ def _build_request(tables, verify):
             # on the PE profile is the general program's (decided below, with the target's fields).
             e.var("first_kind", e.rd(p["artifacts_at"]))  # artifact kinds are one ULEB byte
             e.var("dll", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.WINDOWS_DLL)))))
-            e.if_(e.both(e.eq(p["artifacts"], 1), e.eq(p["dll"], 0), e.either(*(e.eq(p["first_kind"], int(kind)) for kind in BOOTSTRAP_ARTIFACTS))),
-                  lambda: e.set("outcome", DECLINE))
+            e.var("apk", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.ANDROID_UNSIGNED_APK)))))
+            # An unsigned APK is decided with the target's fields below (S15e.6h.3); a signed one is ``build``'s.
+            e.var("bootstrap_artifact", e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["dll"], 0), e.eq(p["apk"], 0),
+                                                      e.either(*(e.eq(p["first_kind"], int(kind)) for kind in BOOTSTRAP_ARTIFACTS)))))
+            e.if_(e.ne(p["bootstrap_artifact"], 0), lambda: e.set("outcome", DECLINE))
             r.at(_ctrl(e, B_TARGET))
             e.var("hosted", 0)
             e.var("path", PATH_LINUX_X86_64)
@@ -515,9 +535,16 @@ def _build_request(tables, verify):
             e.if_(e.ne(p["jvm"], 0), lambda: e.set("path", PATH_JVM))
             # Another JVM image format: ``lowering_identity`` has none (the bootstrap's ValueError): declined.
             e.if_(e.both(e.ne(p["jvm"], 0), e.ne(p["image_format"], JVM_FORMAT)), lambda: e.set("outcome", DECLINE))
+            # S15e.6h.3 (ADR-356): an unsigned APK on an Android shared-object target, with at most ``MAX_MODULES``
+            # modules, is the Android program's; on any other target it is ``build``'s.
+            e.var("android", e.flag(e.both(e.ne(p["apk"], 0), e.eq(p["hosted"], 0), e.eq(p["architecture"], ANDROID_ARCHITECTURE),
+                                           e.eq(p["abi"], ANDROID_ABI), e.either(*(e.eq(p["image_format"], value) for value in ANDROID_FORMATS)),
+                                           e.le(_ctrl(e, B_NMOD), MAX_MODULES))))
+            e.if_(e.ne(p["android"], 0), lambda: e.set("path", PATH_ANDROID))
+            e.if_(e.both(e.ne(p["apk"], 0), e.eq(p["android"], 0)), lambda: e.set("outcome", DECLINE))
             _set(e, B_PATH, p["path"])
             e.if_(e.both(e.eq(p["hosted"], 0), e.eq(p["riscv"], 0), e.eq(p["wasm"], 0), e.eq(p["x86raw"], 0), e.eq(p["a64raw"], 0), e.eq(p["accel"], 0),
-                         e.eq(p["jvm"], 0)),
+                         e.eq(p["jvm"], 0), e.eq(p["android"], 0)),
                   lambda: e.set("outcome", DECLINE))
 
             def dll():
@@ -584,7 +611,7 @@ def _build_request(tables, verify):
                                                             e.eq(p["first_kind"], int(ArtifactKind.JVM_EXECUTABLE_JAR))))
             _set(e, B_JVMEXE, e.flag(e.both(e.eq(p["artifacts"], 1), e.eq(p["first_kind"], int(ArtifactKind.JVM_EXECUTABLE_JAR)))))
             e.if_(e.both(running(), e.ne(p["jvm"], 0), e.not_(jar)), jvm_artifacts)
-            native = e.either(e.ne(p["jvm"], 0), e.ne(p["dll"], 0), e.both(e.eq(p["artifacts"], 1), e.eq(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE))),
+            native = e.either(e.ne(p["jvm"], 0), e.ne(p["dll"], 0), e.ne(p["android"], 0), e.both(e.eq(p["artifacts"], 1), e.eq(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.NATIVE_IMAGE))),
                               e.both(e.eq(p["artifacts"], 1), e.ne(p["accel"], 0), e.eq(p["first_kind"], int(ArtifactKind.ACCELERATOR_DEPLOYMENT))))
             e.if_(e.both(running(), e.not_(native)), lambda: e.if_(e.either(e.ne(p["riscv"], 0), e.ne(p["wasm"], 0), e.ne(p["x86raw"], 0), e.ne(p["a64raw"], 0), e.ne(p["accel"], 0)), riscv_artifacts,
                                                                        artifacts))
@@ -616,6 +643,7 @@ def _provenance(tables):
         e.if_(e.ne(_ctrl(e, B_DLL), 0), lambda: lowering(container_lowering_identity(DLL_LOWERING)))  # S15e.3b
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_ACCELERATOR), lambda: lowering(ACCELERATOR_LOWERING_IDENTITY_V1))  # S15e.7a
         e.if_(e.eq(_ctrl(e, B_PATH), PATH_JVM), lambda: lowering(JVM_LOWERING_IDENTITY_V1))  # S15e.5
+        e.if_(e.eq(_ctrl(e, B_PATH), PATH_ANDROID), lambda: lowering(ANDROID_UNSIGNED_APK_LOWERING_IDENTITY_V1))  # S15e.6h.3
         for word in range(CID_SIZE // 8):
             for k in range(8):
                 e.st(ENVELOPE_AT + P_DIGEST + 8 * word + k, e.and_(e.udiv(_ctrl(e, B_DIGEST + word), 1 << (8 * k)), 255))
