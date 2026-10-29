@@ -155,7 +155,7 @@ class OI06MemorySurfaceTests(unittest.TestCase):
 
 
     def test_committed_evidence_reproduces_deterministic_measurements(self):
-        from compiler.benchmarks.bench_oi06_memory_surface import collect_evidence
+        from benchmarks.bench_oi06_memory_surface import collect_evidence
         committed = json.loads((Path(__file__).parents[1] / "benchmarks" / "oi06_memory_surface_evidence.json").read_text())
         actual = collect_evidence()
         self.assertEqual(actual["schema"], committed["schema"])

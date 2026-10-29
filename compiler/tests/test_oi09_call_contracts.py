@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 
-from compiler.benchmarks.bench_oi09_call_contracts import (
+from benchmarks.bench_oi09_call_contracts import (
     ContractPlacementError,
     build_corpus,
     build_embedded_candidate,
@@ -109,7 +109,7 @@ class OI09CallContractTests(unittest.TestCase):
         target_ref_positions = [i for i, cid in enumerate(refs) if cid in self.corpus.functions_by_contract[0]]
         self.assertTrue(target_ref_positions)
         refs[target_ref_positions[0]] = foreign
-        from compiler.benchmarks.bench_oi09_call_contracts import CandidateObject, Candidate
+        from benchmarks.bench_oi09_call_contracts import CandidateObject, Candidate
         bad_set = CandidateObject.create(first.tag, first.body, refs)
         metadata = (bad_set, *sealed.metadata_objects[1:])
         # Redirect callable refs that named the old set to the modified set.

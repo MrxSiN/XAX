@@ -16,7 +16,7 @@ from __future__ import annotations
 import importlib
 
 HOST_CONTRACT = "xax-host-contract-v1"
-HOST_CONTRACT_MINOR = 10  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
+HOST_CONTRACT_MINOR = 11  # 1: initial surface, including linux.startup carrier entities and linux-x86_64-process-v1;
 # 2: byte-view widening of checked accesses (ADR-231); 3: xax_native.prepare, readying component images (ADR-250);
 # 4: the windows-x86_64 construct platform and its win32.* carrier names (ADR-252); 5: integer-completion operations
 # (bit.and/or, udiv/urem, int.truncate, int.zero.extend) on the windows-x86_64 platform (ADR-256); 6: the jvm construct
@@ -24,10 +24,11 @@ HOST_CONTRACT_MINOR = 10  # 1: initial surface, including linux.startup carrier 
 # windows-x86_64, building a PE32+ DLL (ArtifactKind.WINDOWS_DLL, windows_export_symbol; ADR-259); 9: win32.import and
 # win32.com carrier entities, COM methods as com:<Interface> win64-c declarations (win64_com_method; ADR-260)
 # 10: package.forwards and package.dll_main on windows-x86_64 DLLs (windows_forward_symbol, windows_dllmain_symbol; ADR-261)
+# 11: the android-libxposed construct platform, a libxposed module APK on the JVM general target (ADR-262)
 
 FORMATS = {
     "construct_carrier": "xax-construct-v1",        # xax_construct.FORMAT (ADR-210, ADR-223)
-    "construct_platforms": ["linux-x86_64", "linux-aarch64", "windows-x86_64", "jvm"],  # xax_construct._PLATFORMS (ADR-252, ADR-257, ADR-258)
+    "construct_platforms": ["linux-x86_64", "linux-aarch64", "windows-x86_64", "jvm", "android-libxposed"],  # xax_construct._PLATFORMS (ADR-252, ADR-257, ADR-258, ADR-262)
     "linux_process": "linux-x86_64-process-v1",     # xax_linux.process_contract() (ADR-224)
     "linux_startup_abi": "linux-x86_64-startup-v1",  # ADR-094
     "local_edit_grammar": "ADR-200",                 # xax_local_protocol.edit_grammar(), identified by edit_grammar_id()

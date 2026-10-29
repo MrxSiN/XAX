@@ -13,6 +13,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
+from _wheel_host import SKIP_REASON, host_builds_wheels
+
 PROJECT = Path(__file__).resolve().parents[1]
 MODULES = sorted(path.stem for path in (PROJECT / "src").glob("*.py"))
 STORES = sorted(path.name for path in (PROJECT / "bootstrap").glob("*.xax"))
@@ -31,7 +33,7 @@ print(json.dumps({"bootstrap_dir": str(directory), "stores": stores, "authority"
 """
 
 
-@unittest.skipUnless(importlib.util.find_spec("setuptools"), "setuptools is unavailable: the wheel cannot be built")
+@unittest.skipUnless(host_builds_wheels(), SKIP_REASON)
 class WheelInstallTests(unittest.TestCase):
     def test_clean_install_has_every_module_and_store(self):
         with tempfile.TemporaryDirectory() as temporary:

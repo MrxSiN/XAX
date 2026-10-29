@@ -773,11 +773,13 @@ def _checked_fn(tables):
 
 
 SYSCALL_ABI, C_ABI = b"linux-aarch64-syscall-v1", b"aapcs64-linux-c"
-ABI_SYSCALL_CLASS, ABI_C_CLASS = 1, 2
+ANDROID_C_ABI = b"android-aapcs64-c"  # S15e.6h.1 (ADR-354): the Android shared object profiles' only foreign convention
+ABI_SYSCALL_CLASS, ABI_C_CLASS, ABI_ANDROID_CLASS = 1, 2, 3
 
 
 def _foreign_class(e: E, obj, name: str):
-    """The foreign declaration ``obj``'s ABI: ``ABI_SYSCALL_CLASS``, ``ABI_C_CLASS``, or 0 for any other."""
+    """The foreign declaration ``obj``'s ABI: ``ABI_SYSCALL_CLASS``, ``ABI_C_CLASS``, ``ABI_ANDROID_CLASS``, or 0 for
+    any other."""
     from xax_selfhost_views_backend import _FOREIGN_PREFIX, G_PAY, _at, _payload_uleb
 
     p = e.p
@@ -789,12 +791,40 @@ def _foreign_class(e: E, obj, name: str):
         e.if_(e.ne(e.rd(e.add(p[f"{name}_cur"], k)), value), lambda: e.set(f"{name}_ok", 0))
     e.set(f"{name}_cur", e.add(p[f"{name}_cur"], len(_FOREIGN_PREFIX)))
     e.var(f"{name}_alen", _payload_uleb(e, f"{name}_cur"))
-    for kind, abi in ((ABI_SYSCALL_CLASS, SYSCALL_ABI), (ABI_C_CLASS, C_ABI)):
+    for kind, abi in ((ABI_SYSCALL_CLASS, SYSCALL_ABI), (ABI_C_CLASS, C_ABI), (ABI_ANDROID_CLASS, ANDROID_C_ABI)):
         e.var(f"{name}_m", e.flag(e.both(e.ne(p[f"{name}_ok"], 0), e.eq(p[f"{name}_alen"], len(abi)))))
         for k, value in enumerate(abi):
             e.if_(e.ne(e.rd(e.add(p[f"{name}_cur"], k)), value), lambda: e.set(f"{name}_m", 0))
         e.if_(e.ne(p[f"{name}_m"], 0), lambda kind=kind: e.set(name, kind))
     return p[name]
+
+
+def foreign_abi_rule(e: E, cls, name: str, function):
+    """``_require_foreign_abi`` of a declaration of class ``cls`` (``_foreign_class`` under ``name``) in ``function``:
+    on an Android shared object profile only ``android-aapcs64-c`` (S15e.6h.1, ADR-354); on Linux a syscall always and
+    a C import only on the dynamic-loader profile.  Otherwise ``AARCH64-FOREIGN-ABI`` on the function's graph, quoting
+    the declaration's ABI."""
+    from xax_selfhost_aarch64_frame import G_A64ANDROID
+    from xax_selfhost_x86_64_general import G_TFMT
+    from xax_selfhost_views_backend import GLOBALS
+
+    p = e.p
+    e.var(f"{name}_android", e.flag(e.ne(e.ld(GLOBALS + G_A64ANDROID), 0)))
+    e.var(f"{name}_dynamic", e.flag(e.both(e.eq(p[f"{name}_android"], 0), e.eq(e.ld(GLOBALS + G_TFMT), 7))))
+    allowed = e.sel(e.ne(p[f"{name}_android"], 0), e.flag(e.eq(cls, ABI_ANDROID_CLASS)), e.flag(e.either(
+        e.eq(cls, ABI_SYSCALL_CLASS), e.both(e.eq(cls, ABI_C_CLASS), e.ne(p[f"{name}_dynamic"], 0)))))
+
+    def write():
+        from xax_selfhost_aarch64_general import SITE
+
+        e.call(_FN["diagnostic"], SITE["AARCH64-FOREIGN-ABI"], e.ld(_call(e, "interface", function)))
+        D.put(e, D.T_LIST)
+        e.if_(e.ne(p[f"{name}_android"], 0), lambda: (D.put(e, 1), D.text(e, ANDROID_C_ABI.decode())), lambda: (
+            D.put(e, e.add(1, p[f"{name}_dynamic"])), D.text(e, SYSCALL_ABI.decode()),
+            e.if_(e.ne(p[f"{name}_dynamic"], 0), lambda: D.text(e, C_ABI.decode()))))
+        _call(e, "text_at", p[f"{name}_cur"], p[f"{name}_alen"])
+
+    D.reject_unless(e, e.ne(allowed, 0), write)
 
 
 def _call_fn(tables):
@@ -821,26 +851,9 @@ def _call_fn(tables):
             e.var("cl_decl", _reference(e, _f(e, node, N_GRAPH), e.rd(e.sub(_f(e, node, N_OPSAT), 1))))
             _ok(e, e.ne(p["cl_decl"], NONE))
             e.var("cl_class", _foreign_class(e, p["cl_decl"], "cl_abi"))
-            from xax_selfhost_x86_64_general import G_TFMT
-            from xax_selfhost_views_backend import GLOBALS
+            from xax_selfhost_aarch64_lower import A_FN
 
-            e.var("cl_dynamic", e.flag(e.eq(e.ld(GLOBALS + G_TFMT), 7)))
-            # ``_require_foreign_abi``: a syscall always, a C import only on the dynamic-loader profile; else
-            # ``AARCH64-FOREIGN-ABI`` on the function's graph, quoting the declaration's ABI (S15e.2, ADR-315).
-            allowed = e.either(e.eq(p["cl_class"], ABI_SYSCALL_CLASS), e.both(e.eq(p["cl_class"], ABI_C_CLASS), e.ne(p["cl_dynamic"], 0)))
-
-            def write():
-                from xax_selfhost_aarch64_general import SITE
-                from xax_selfhost_aarch64_lower import A_FN
-
-                e.call(_FN["diagnostic"], SITE["AARCH64-FOREIGN-ABI"], e.ld(_call(e, "interface", _a(e, A_FN))))
-                D.put(e, D.T_LIST)
-                D.put(e, e.add(1, p["cl_dynamic"]))
-                D.text(e, SYSCALL_ABI.decode())
-                e.if_(e.ne(p["cl_dynamic"], 0), lambda: D.text(e, C_ABI.decode()))
-                _call(e, "text_at", p["cl_abi_cur"], p["cl_abi_alen"])
-
-            D.reject_unless(e, allowed, write)
+            foreign_abi_rule(e, p["cl_class"], "cl_abi", _a(e, A_FN))
             e.set("cl_target", e.add(p["cl_decl"], 1 << 40))
 
         e.if_(e.eq(p["cl_op"], int(Operation.CALL_DIRECT)), direct, foreign)

@@ -1096,6 +1096,36 @@ def _build_android_unsigned_apk(
 ) -> bytes:
     """Lower the bounded semantic Android application slice to one unsigned APK."""
     if rules is None:
+        # S15e.6h.2 (ADR-355): the XAX Android program builds the whole APK first; ``XAX_GENERAL_FRONTEND_DIFF=1``
+        # compares it with the bootstrap's.
+        import os
+
+        from xax_compiler import XaxError
+        from xax_selfhost_android import android_with_xax
+
+        def reference():
+            from xax_selfhost_android_rules import rules_with_xax
+
+            decided, site = rules_with_xax(reader, package_view, target_object, build_entry_function)
+            try:
+                return _build_android_unsigned_apk(reader, package_view, target_object, build_entry_function,
+                                                   _AndroidRules(decided, None if site == "MANAGED" else site))
+            except XaxError as error:
+                return error.diagnostic
+
+        diff = os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1"
+        try:
+            built = android_with_xax(reader, package_view, target_object, build_entry_function)
+        except XaxError as error:  # the program decided the rejection
+            if diff and reference() != error.diagnostic:
+                raise AssertionError("S15e.6h.2 Android rejections disagree") from error
+            raise
+        if built is not None:
+            if not diff:
+                return built
+            if reference() != built:
+                raise AssertionError("S15e.6h.2 Android APKs disagree")
+            return built
         # S15e.6f.1 (ADR-347): the XAX rules program decides the carrier rule sites; "MANAGED" accepts the managed-class
         # profile, whose own checks follow in ``_build_android_managed_apk``.
         from xax_selfhost_android_rules import rules_with_xax

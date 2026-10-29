@@ -39,6 +39,8 @@ from xax_selfhost_typing import IN_POINTER, IN_VIEW, IN_WORDS, OUT_POINTER, OUT_
 from xax_structured import B1, B32, B64, Proc
 
 NONE = 0xFFFFFFFF
+# S15e.6h.2 (ADR-355): set while a chained layer program is built (``xax_selfhost_android``); None otherwise.
+INPUT_REDIRECT: int | None = None
 VIEWS = ("ip", "iv", "im", "op", "ov", "om")
 VIEW_TYPES = (IN_POINTER, IN_VIEW, MEM, OUT_POINTER, OUT_VIEW, MEM)
 # Header words at the end of the output view.
@@ -232,6 +234,10 @@ class E:
         return self.p.op1(Operation.INT_TRUNCATE, (self.mul(clamped, 8),), B32)
 
     def rd(self, index):
+        if INPUT_REDIRECT is not None:
+            # S15e.6h.2 (ADR-355): a layer program chained by the Android program reads its input words from output
+            # memory, at the base its caller stores at ``INPUT_REDIRECT``.
+            return self.ld(self.add(self.ld(INPUT_REDIRECT), index))
         p = self.p
         value, p["im"] = p.op(Operation.CHECKED_LOAD_BITS_LE, (p["ip"], self._offset(index, IN_WORDS), p["im"]), (B64, MEM), attributes=(8, 1))
         return value

@@ -861,7 +861,16 @@ def compile_android_shared(
             description.identity.decode("ascii", "replace"),
         )
     function_cids = tuple(dict.fromkeys(item.function_cid for item in exports))
-    bundle = compile_aarch64_bundle_bound_target(reader, function_cids, target_object)
+    # S15e.6h.1 (ADR-354): the XAX AArch64 program's bundle first; ``XAX_GENERAL_FRONTEND_DIFF=1`` compares it with the
+    # bootstrap's.
+    from xax_selfhost_aarch64_general import android_bundle_with_xax
+
+    bundle = android_bundle_with_xax(reader, function_cids, target_object) if function_cids else None
+    if bundle is None or os.environ.get("XAX_GENERAL_FRONTEND_DIFF") == "1":
+        reference = compile_aarch64_bundle_bound_target(reader, function_cids, target_object)
+        if bundle is not None and bundle != reference:
+            raise AssertionError("S15e.6h.1 Android AArch64 bundles disagree")
+        bundle = reference
     return emit_android_elf(bundle, exports, soname=soname, rodata=rodata, data=data, bss_bytes=bss_bytes, packed=description.image_format == ANDROID_ELF_PACKED_FORMAT)
 
 
