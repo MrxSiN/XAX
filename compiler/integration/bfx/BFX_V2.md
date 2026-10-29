@@ -64,6 +64,24 @@ the tape. The arithmetic power opcodes `01`–`1C` of id `01` are gone. Id `01` 
 references (one record each). Their interfaces, buffers and the host build requests are
 unchanged.
 
+## Pool sized to the program (records 7–10)
+
+The fixed 254-node pool enlarged every decision's frame: small executables grew about
+28 KiB and large O0 builds slowed 38–71% (BBC `evidence/fold_v2.json`). Record 7 sizes it:
+
+- The emitter's pre-pass computes M, the largest operand magnitude any offset instruction
+  uses. Offsets are signed bytes (|d| ≤ 128); factors use their magnitude too (≤ 128) with
+  the handler choosing add or subtract, so `k = 255` costs pool entry 1. M starts at 1, so a
+  record with no offset instruction (every O0 record) gets no pool.
+- Block 0 gets nodes for 2…M only, written by a loop; its node count is 12 + M.
+- M lives in an arena word (offset 536,870,904, above every other arena region) rather than a
+  loop-carried block parameter. The generic bootstrap's x86-64 lowering of the importer lost a
+  new loop-carried parameter across the pre-pass loop (it read the opcode's value), while the
+  reference executor computed it correctly; this is the same bootstrap defect class
+  `COMPILE.md` records, and keeping the scalar in memory is the documented workaround.
+- Record 8 rebinds `compile_bfx` to the `fold.bf` decision imported by the new importer (an
+  O0 record, so no pool). Records 9 and 10 rebind the hosts.
+
 ## Transactions
 
 Expected-root `REPLACE_REFERENCE` records in [transactions/v2/](transactions/v2/). Each was
@@ -78,6 +96,10 @@ its result.
 | `4_facade.edit` | result of 3 | O1 through `fold.bf`, O0 fallback |
 | `5_compile_windows.edit` | `compile_windows.xax` | Importer, decoder, facade references |
 | `6_bbc.edit` | `bbc.xax` | Importer, decoder, facade references |
+| `7_importer_pool.edit` | result of 2 | Pool sized by the program's largest operand |
+| `8_facade_fold.edit` | result of 4 | `fold.bf` decision from the new importer |
+| `9_compile_windows.edit` | result of 5 | Importer and facade references |
+| `10_bbc.edit` | result of 6 | Importer and facade references |
 
 Authoring transport: short external Python scripts using the generic `xax_compiler`
 constructors and `xax_selfhost_edit.edit_record` (not committed), the same method as the
